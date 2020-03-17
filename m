@@ -2,606 +2,532 @@ Return-Path: <SRS0=1QMh=5C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B191C10F29
-	for <linux-nfs@archiver.kernel.org>; Tue, 17 Mar 2020 10:41:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B444EC10F29
+	for <linux-nfs@archiver.kernel.org>; Tue, 17 Mar 2020 14:22:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 067DC20663
-	for <linux-nfs@archiver.kernel.org>; Tue, 17 Mar 2020 10:41:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 66DB420663
+	for <linux-nfs@archiver.kernel.org>; Tue, 17 Mar 2020 14:22:37 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="I2AWIl5k"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725868AbgCQKly (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 17 Mar 2020 06:41:54 -0400
-Received: from mx2.suse.de ([195.135.220.15]:50486 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725730AbgCQKly (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Mar 2020 06:41:54 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id C72ADAED2;
-        Tue, 17 Mar 2020 10:41:50 +0000 (UTC)
-From:   NeilBrown <neilb@suse.de>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "Anna.Schumaker\@Netapp.com" <Anna.Schumaker@Netapp.com>
-Date:   Tue, 17 Mar 2020 21:41:44 +1100
-Cc:     "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        id S1726474AbgCQOWh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 17 Mar 2020 10:22:37 -0400
+Received: from mail-eopbgr760102.outbound.protection.outlook.com ([40.107.76.102]:42472
+        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726345AbgCQOWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 17 Mar 2020 10:22:36 -0400
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=Cwi6nEiks6PycwR8mAiiuhPaGhwnzhJw3aBg8e6IQXAbG+efzPRDeD06aED3xAGATLK5UrmklYOaWcGS/S4KOae7CDf0WxJEItN+xWY8j/taH4R1R+UVvguJSXaoHD897avTQqZ1vwylr+oMyDsFn4ouM4BOyLvi8NhFFkewTZ3rYqCQ9k1xeWho9dwy7XXsWMDmRLhKiqybsyxFvj4BpDl+UDd0mkyCJSl2cPgUaOlDyCwxQUxxE8nc7kB4QaQfnLaa2RAu6Q+8A2bTgHQC2R5HpXETcfRv188oqc37qntXMP42atI22MOGIOr6xM2K+Ru+jah43X6n8ny7+TpQnw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=H2FEbSy7uy2GibIgXVaYerfoMK7uGFJMiJqmDZVIhkk=;
+ b=JVW6rhcR/7jGkIY3dkts9PzWcqmwM5ZEu223cpyAibbocfc6nDyFwZ+unq28rC0T7DYsCJ/DGgxOn9TT4u9yif9PJ6KJFBoUSSfKlVuaDU2bG/2AUtdcac6LZKayTUevjXvvhcobcY2kKBSEvGcy3q/SPkYchAAGQLVB9DbGEH0Dcj/0wUJLZo3A3Hpni7n7RcLcjjXWNDHi2/7mBn2CUgASSCvvPaVMRopaCHPB7djAveA+zuSmKyRh1LKc458/tSZ9oiSY/QJOOv9Ljf0m8D2n+RhvbvT3GwNfLKOwgiw1NXhYQKmuewais9dOJMNn7qhr/wAJyTEmW5YnImggKg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=hammerspace.com; dmarc=pass action=none
+ header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=H2FEbSy7uy2GibIgXVaYerfoMK7uGFJMiJqmDZVIhkk=;
+ b=I2AWIl5kIt2ykglXYVa0qq6mlYjnQtjip90cxDgGY8C0bdbG9X+FOZVA/ELr+NCWYs/FD9LDosL4apCdP/8D4RDzgVHyENcqnCT7D/+cyF/Xv0ntwKtFEqeYpWjjaf/RzUM8MFp4rWfSsvtwIaM+1qUL5S8FBsMXahooKCj9B7U=
+Received: from CH2PR13MB3398.namprd13.prod.outlook.com (2603:10b6:610:2a::33)
+ by CH2PR13MB3559.namprd13.prod.outlook.com (2603:10b6:610:2e::24) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.2835.10; Tue, 17 Mar
+ 2020 14:22:28 +0000
+Received: from CH2PR13MB3398.namprd13.prod.outlook.com
+ ([fe80::9570:c1b8:9eb3:1c36]) by CH2PR13MB3398.namprd13.prod.outlook.com
+ ([fe80::9570:c1b8:9eb3:1c36%7]) with mapi id 15.20.2835.013; Tue, 17 Mar 2020
+ 14:22:28 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "neilb@suse.de" <neilb@suse.de>,
+        "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH/RFC] NFS: Minimize COMMIT calls during writeback.
-In-Reply-To: <d841ade018c9b90a74e7977243bf0975b87c4365.camel@hammerspace.com>
-References: <87y2s1rwof.fsf@notabene.neil.brown.name> <b557a1d43105b42b304a2682ce8e2c31637e1989.camel@hammerspace.com> <87v9n5rmrz.fsf@notabene.neil.brown.name> <d841ade018c9b90a74e7977243bf0975b87c4365.camel@hammerspace.com>
-Message-ID: <87eetrs1p3.fsf@notabene.neil.brown.name>
+Thread-Topic: [PATCH/RFC] NFS: Minimize COMMIT calls during writeback.
+Thread-Index: AQHV+yakSiG1mHeDHU6uGW2VQQ2dq6hKbIoAgAAmJgCAAAlngIAB/ugAgAA9qYA=
+Date:   Tue, 17 Mar 2020 14:22:27 +0000
+Message-ID: <7a556bb02c9cd7ef219d156aff2a603b9c0fe22b.camel@hammerspace.com>
+References: <87y2s1rwof.fsf@notabene.neil.brown.name>
+         <b557a1d43105b42b304a2682ce8e2c31637e1989.camel@hammerspace.com>
+         <87v9n5rmrz.fsf@notabene.neil.brown.name>
+         <d841ade018c9b90a74e7977243bf0975b87c4365.camel@hammerspace.com>
+         <87eetrs1p3.fsf@notabene.neil.brown.name>
+In-Reply-To: <87eetrs1p3.fsf@notabene.neil.brown.name>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 9e3e3cc3-4b3b-449c-0ac5-08d7ca7e9f23
+x-ms-traffictypediagnostic: CH2PR13MB3559:
+x-microsoft-antispam-prvs: <CH2PR13MB35590BF800C84CE37BCBD3BBB8F60@CH2PR13MB3559.namprd13.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:9508;
+x-forefront-prvs: 0345CFD558
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(39830400003)(396003)(136003)(346002)(366004)(376002)(199004)(71200400001)(4326008)(6486002)(186003)(66946007)(66556008)(66446008)(66476007)(2906002)(64756008)(91956017)(6512007)(26005)(76116006)(36756003)(5660300002)(8676002)(30864003)(2616005)(316002)(8936002)(81156014)(81166006)(6506007)(86362001)(110136005)(478600001)(579004);DIR:OUT;SFP:1102;SCL:1;SRVR:CH2PR13MB3559;H:CH2PR13MB3398.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: mdQBummhVT8haqLYpvYZmadCsCfQ2E6jT6mRPCyVR7SZx8JCxoRkq1O8SblJt09FLbU2g2BLJiyiN7WOS3Uc1WNb+75K3x+iTKTob6DdAfUA+/X9NQEpsimSjsxl6Cq9sY1bgrCmPsxTRl+ywnXZ+vRWWsC2keznu5uQvsVp4oQRL3Dbw9yK3E0pzxwT0aq/TPiDpI4kuWrc20+jX6cMZ/jGu/4gkJJYyS7g0OZOkKj0wNZB1H29DXClW1V0xJtrKnvEKtWZqm3meTBP7s5vN2baOCvZQUwpMm7NnbY3ZUZxnBW2zQsvjtBxR9rjtgw0ItxqAHOoeJldgOfIimGQFh0cTPxhctck8XrQEcjR//Vkddo+/KTaWiQ9TQLHHP3MXVC0kL13bvrUMTSljXSQ56eLqkxhD6sF6Sg1tUeW7oguamtmpkg/o/imZ4ueXKZE
+x-ms-exchange-antispam-messagedata: ID+e9Ed7ilE1vB4O7j82/+C3RErZzG9ygo6rLUpaHuXCFeaOOq5ybkGlnKfWPQMDYMGddleTRlWeWM+K6554CypkH7qo+7QoKMqCBdRAYVLtzAL/7ABQeyFPpOwnWAfbmpAL0NrnX8mOSplD8KASOw==
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <7BE38DE229072D459D460D128465B9F9@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 9e3e3cc3-4b3b-449c-0ac5-08d7ca7e9f23
+X-MS-Exchange-CrossTenant-originalarrivaltime: 17 Mar 2020 14:22:27.9049
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: 4+GvWiKOyl6hKJ9r7BW/093iMrzYtvLnVhsYJ/Gj3T2PWhI8hnspaDN1jKnRgrdPp7VhUTO45UCOWqK+hDlEig==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR13MB3559
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Mon, Mar 16 2020, Trond Myklebust wrote:
-
-> On Mon, 2020-03-16 at 14:39 +1100, NeilBrown wrote:
->> On Mon, Mar 16 2020, Trond Myklebust wrote:
->>=20
->> > On Mon, 2020-03-16 at 11:05 +1100, NeilBrown wrote:
->> > > Since 4.13 (see Fixes: commit) NFS has sent a COMMIT request for
->> > > every
->> > > .writepages() call it received - when the writes submitted for
->> > > that
->> > > call
->> > > have all completed.
->> > >=20
->> > > This works well enough when COMMIT is fast, but if COMMIT is slow
->> > > these
->> > > calls can overlap each other, overload the server, and
->> > > substantially
->> > > reduce throughput.
->> > >=20
->> > > I looked at this due to a report of regression when writing to a
->> > > Ganesha
->> > > NFS server with tracing showing multiple overlapping COMMITs, and
->> > > individual commits typically taking 200ms to 300ms.  This
->> > > resulted in
->> > > 2
->> > > orders of magnitude slow down when writing 1000x1M from /dev/zero
->> > > with dd.
->> > > This is easily reproduced by adding 'msleep(300)' to
->> > > nfsd_commit() in
->> > > the
->> > > Linux NFS server.
->> >=20
->> > When there is overlap of writeback to the same file, then it is
->> > almost
->> > always because we're hitting memory reclaim on the client. In that
->> > case
->> > we want to ensure that memory reclaim completes, which it won't do
->> > if
->> > we delay COMMIT.
->> > IOW: this behaviour is very much intentional.
->>=20
->> What do you mean by "overlap of writeback" ?
->> The ->writepages calls are sequential - they don't overlap.
->> The WRITE rpcs are asynchronous so of course they overlap.
->> The COMMITs are expected to overlap with subsequent WRITEs.
->> It is only when COMMITs overlap with COMMITs that I think we might
->> overload the server, and I cannot see how that would ever be a useful
->> thing to do.
->>=20
->
-> I mean that the NFS writeback code has exactly two cases where it
-> starts to write out data before an fsync() or close() forces it to do
-> so:
->
-> 1) Read of a page that was written to, but not up to date
-> 2) Memory pressure.
->
-> IOW: If you're seeing overlapping commits, it is due to a situation
-> where we're trying to free up the pages as soon as possible.
->
->> In the cases I've experiment with there is plenty of memory, but the
->> total write size exceeds dirty_threshold, so writeout starts to limit
->> the amount of dirty memory.  Certainly we want the COMMIT promptly as
->> a group of writes finish, but that group doesn't need to be tiny.
->>=20
->> (Our initial explorations found that increasing dirty_threshold to
->> larger than the write size restored normal performance)
->>=20
->
-> That's the definition of memory pressure here. It's not the job of the
-> filesystem to second guess what is going on in the higher layers. Its
-> job is to write out data as quickly as possible when asked to do so.
-
-Fair enough.  I don't usually think of writeback as due to memory
-pressure, but I can see that I filesystem wouldn't much care for the
-distinction.
-
-Still there is no overlap imposed by the VM.  The VM is sending a
-sensible streak of writepages requests - as dd dirties more pages, the
-VM asks NFS to write out more pages.  All in a nice orderly fashion.
-
->
->> > > This patch changes the details of when COMMIT is sent without
->> > > changing
->> > > the general approach.
->> > >=20
->> > > Where previously the writes from a single .writepages() call were
->> > > accounted together in a nfs_io_completion, now the writes from
->> > > multiple
->> > > writepages() calls are accounted together.  The set of writepages
->> > > calls
->> > > that are grouped together are all those from when one COMMIT call
->> > > ends
->> > > to when the next COMMIT call ends.  This automatically reduces
->> > > the
->> > > rate
->> > > of COMMIT requests when COMMIT itself is slow.
->> > > (If there are no COMMIT calls pending, the first .writepages will
->> > > get
->> > >  an nfs_io_completion to itself, then subsequenct writepages
->> > > requests
->> > >  until the first COMMIT completes will go in the next
->> > > nfs_io_completion)
->> > >=20
->> > > There are typically at most two nfs_io_completion structures
->> > > allocated
->> > > for writeback to a given inode.
->> > >=20
->> > > - If there was been any writepages calls since the last time a
->> > > COMMIT
->> > >   completed, there will be an nfs_io_completion stored in the
->> > > inode
->> > > (in
->> > >   nfs_mds_commit_info) which new writepages requests are
->> > > accounted
->> > > it.
->> > >=20
->> > > - If there is no pending COMMIT request, but there are pending
->> > > writeback
->> > >   WRITES, there will be another nfs_io_completion which is not
->> > > attached
->> > >   and which is draining.  When it fully drains a COMMIT will be
->> > > sent.
->> > >   When that COMMIT completes, the attached nfs_io_completion will
->> > > be
->> > >   detached and allowed to drain.
->> > >=20
->> > > The rpcs_out counter now counts the unattached nfs_io_completion
->> > > as
->> > > well
->> > > as any pending COMMIT requests.  As an unattached
->> > > nfs_io_completion
->> > > will
->> > > soon turn into a COMMIT request, this seems reasonable.  It
->> > > allows us
->> > > to
->> > > clearly detect when there are no longer any COMMITs expected to
->> > > complete, so we know to detach any nfs_io_completion from the
->> > > inode
->> > > and
->> > > allow it to drain.
->> > >=20
->> > > As we use atomic accesses (e.g.  xchg and kref_get_unless_zero())
->> > > to
->> > > access the attached nfs_io_completion, we now use kfree_rcu() to
->> > > free
->> > > it, to ensure it is not accessed after it is freed.
->> > >=20
->> > > With 300ms commits, this improves throught of a 1G dd by 2 orders
->> > > of
->> > > magnitude.  Even without the 300ms delay, this noticeably
->> > > improves
->> > > throughput to a Linux NFS server is a simple VM.
->> > >=20
->> > > Fixes: 919e3bd9a875 ("NFS: Ensure we commit after writeback is
->> > > complete")
->> > > Signed-off-by: NeilBrown <neilb@suse.de>
->> > > ---
->> > >  fs/nfs/inode.c          |  1 +
->> > >  fs/nfs/write.c          | 50
->> > > ++++++++++++++++++++++++++++++++++++---
->> > > --
->> > >  include/linux/nfs_xdr.h |  7 ++++++
->> > >  3 files changed, 53 insertions(+), 5 deletions(-)
->> > >=20
->> > > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> > > index 11bf15800ac9..c00b54491949 100644
->> > > --- a/fs/nfs/inode.c
->> > > +++ b/fs/nfs/inode.c
->> > > @@ -2110,6 +2110,7 @@ static void init_once(void *foo)
->> > >  	INIT_LIST_HEAD(&nfsi->commit_info.list);
->> > >  	atomic_long_set(&nfsi->nrequests, 0);
->> > >  	atomic_long_set(&nfsi->commit_info.ncommit, 0);
->> > > +	nfsi->commit_info.ioc =3D NULL;
->> > >  	atomic_set(&nfsi->commit_info.rpcs_out, 0);
->> > >  	init_rwsem(&nfsi->rmdir_sem);
->> > >  	mutex_init(&nfsi->commit_mutex);
->> > > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> > > index c478b772cc49..57e209f964e4 100644
->> > > --- a/fs/nfs/write.c
->> > > +++ b/fs/nfs/write.c
->> > > @@ -47,6 +47,7 @@ struct nfs_io_completion {
->> > >  	void (*complete)(void *data);
->> > >  	void *data;
->> > >  	struct kref refcount;
->> > > +	struct rcu_head rcu;
->> > >  };
->> > >=20=20
->> > >  /*
->> > > @@ -134,7 +135,7 @@ static void nfs_io_completion_release(struct
->> > > kref
->> > > *kref)
->> > >  	struct nfs_io_completion *ioc =3D container_of(kref,
->> > >  			struct nfs_io_completion, refcount);
->> > >  	ioc->complete(ioc->data);
->> > > -	kfree(ioc);
->> > > +	kfree_rcu(ioc, rcu);
->> > >  }
->> > >=20=20
->> > >  static void nfs_io_completion_get(struct nfs_io_completion *ioc)
->> > > @@ -720,6 +721,8 @@ static void nfs_io_completion_commit(void
->> > > *inode)
->> > >  	nfs_commit_inode(inode, 0);
->> > >  }
->> > >=20=20
->> > > +static void nfs_commit_end(struct nfs_mds_commit_info *cinfo);
->> > > +
->> > >  int nfs_writepages(struct address_space *mapping, struct
->> > > writeback_control *wbc)
->> > >  {
->> > >  	struct inode *inode =3D mapping->host;
->> > > @@ -729,9 +732,37 @@ int nfs_writepages(struct address_space
->> > > *mapping, struct writeback_control *wbc)
->> > >=20=20
->> > >  	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGES);
->> > >=20=20
->> > > -	ioc =3D nfs_io_completion_alloc(GFP_KERNEL);
->> > > -	if (ioc)
->> > > -		nfs_io_completion_init(ioc, nfs_io_completion_commit,
->> > > inode);
->> > > +	rcu_read_lock();
->> > > +	ioc =3D rcu_dereference(NFS_I(inode)->commit_info.ioc);
->> > > +	if (ioc && kref_get_unless_zero(&ioc->refcount)) {
->> > > +		rcu_read_unlock();
->> > > +		/* We've successfully piggybacked on the attached ioc
->> > > */
->> > > +	} else {
->> > > +		rcu_read_unlock();
->> > > +		ioc =3D nfs_io_completion_alloc(GFP_KERNEL);
->> > > +		if (ioc) {
->> > > +			struct nfs_io_completion *ioc_prev;
->> > > +
->> > > +			nfs_io_completion_init(ioc,
->> > > nfs_io_completion_commit,
->> > > +					       inode);
->> > > +			/* Temporarily elevate rpcs_out to ensure a
->> > > commit
->> > > +			 * completion *will* happen after we attach
->> > > this ioc,
->> > > +			 * so it *will* get a chance to drain.
->> > > +			 */
->> > > +			atomic_inc(&NFS_I(inode)-
->> > > > commit_info.rpcs_out);
->> > > +			nfs_io_completion_get(ioc);
->> > > +			ioc_prev =3D xchg(&NFS_I(inode)->commit_info.ioc,
->> > > +				    ioc);
->> > > +			/* ioc_prev is normally NULL, but racing
->> > > writepages
->> > > +			 * calls might result in it being non-NULL.
->> > > +			 * In either case it is safe to put it - worst
->> > > case
->> > > +			 * we get an extra COMMIT.
->> > > +			 */
->> > > +			nfs_io_completion_put(ioc_prev);
->> > > +			/* release temporary ref on rpcs_out */
->> > > +			nfs_commit_end(&NFS_I(inode)->commit_info);
->> >=20
->> > So won't this normally trigger the xchg(NULL) in nfs_commmit_end()?
->> > For
->> > most cases, I'd expect commit_info.rpcs_out to be zero until we
->> > start
->> > actually sending out the COMMITs.
->>=20
->> On the first writepages call after a period of quiet, that is exactly
->> correct.  The ioc that we have just allocated and attached will
->> immediately be detached.  It will have a refcount of 1 at this point
->> so
->> nothing further happens.
->> Then WRITEs get queued elevating the refcount.  This will eventually
->> drain and a COMMIT will be sent.  So the behaviour for the firstpages
->> call is exactly like the current code (I think I mentioned that in
->> the
->> commit message).
->> If the WRITEs and COMMIT complete before the next .writepages, then
->> that
->> writepages will behave the same way.
->> But if the WRITEs or COMMIT are still pending, then rpcs_out will
->> still
->> be elevated....
->> Only - no.  Unattached iocs are meant to be counted in rpcs_out, but
->> I
->> haven't got that right.  So we can still end up with parallel
->> COMMITs.
->> I think that might explain some slightly odd numbers in my testing.
->>=20
->> Here is the new version.
->>=20
->> Thanks for the review.
->>=20
->> NeilBrown
->>=20
->> From: NeilBrown <neilb@suse.de>
->> Subject: [PATCH] NFS: Minimize COMMIT calls during writeback.
->>=20
->> Since 4.13 (see Fixes: commit) NFS has sent a COMMIT request for
->> every
->> .writepages() call it received - when the writes submitted for that
->> call
->> have all completed.
->>=20
->> This works well enough when COMMIT is fast, but if COMMIT is slow
->> these
->> calls can overlap each other, overload the server, and substantially
->> reduce throughput.
->>=20
->> I looked at this due to a report of regression when writing to a
->> Ganesha
->> NFS server with tracing showing multiple overlapping COMMITs, and
->> individual commits typically taking 200ms to 300ms.  This resulted in
->> 2
->> orders of magnitude slow down when writing 1000x1M from /dev/zero
->> with dd.
->> This is easily reproduced by adding 'msleep(300)' to nfsd_commit() in
->> the
->> Linux NFS server.
->>=20
->> This patch changes the details of when COMMIT is sent without
->> changing
->> the general approach.
->>=20
->> Where previously the writes from a single .writepages() call were
->> accounted together in a nfs_io_completion, now the writes from
->> multiple
->> writepages() calls are accounted together.  The set of writepages
->> calls
->> that are grouped together are all those from when one COMMIT call
->> ends
->> to when the next COMMIT call ends.  This automatically reduces the
->> rate
->> of COMMIT requests when COMMIT itself is slow.
->> (If there are no COMMIT calls pending, the first .writepages will get
->>  an nfs_io_completion to itself, then subsequenct writepages requests
->>  until the first COMMIT completes will go in the next
->> nfs_io_completion)
->>=20
->> There are typically at most two nfs_io_completion structures
->> allocated
->> for writeback to a given inode.
->>=20
->> - If there was been any writepages calls since the last time a COMMIT
->>   completed, there will be an nfs_io_completion stored in the inode
->> (in
->>   nfs_mds_commit_info) which new writepages requests are accounted
->> it.
->>=20
->> - If there is no pending COMMIT request, but there are pending
->> writeback
->>   WRITES, there will be another nfs_io_completion which is not
->> attached
->>   and which is draining.  When it fully drains a COMMIT will be sent.
->>   When that COMMIT completes, the attached nfs_io_completion will be
->>   detached and allowed to drain.
->>=20
->> The rpcs_out counter now counts the unattached nfs_io_completion as
->> well
->> as any pending COMMIT requests.  As an unattached nfs_io_completion
->> will
->> soon turn into a COMMIT request, this seems reasonable.  It allows us
->> to
->> clearly detect when there are no longer any COMMITs expected to
->> complete, so we know to detach any nfs_io_completion from the inode
->> and
->> allow it to drain.
->>=20
->> As we use atomic accesses (e.g.  xchg and kref_get_unless_zero()) to
->> access the attached nfs_io_completion, we now use kfree_rcu() to free
->> it, to ensure it is not accessed after it is freed.
->>=20
->> With 300ms commits, this improves throught of a 1G dd by 2 orders of
->> magnitude.  Even without the 300ms delay, this noticeably improves
->> throughput to a Linux NFS server is a simple VM.
->>=20
->> Fixes: 919e3bd9a875 ("NFS: Ensure we commit after writeback is
->> complete")
->> Signed-off-by: NeilBrown <neilb@suse.de>
->> ---
->>  fs/nfs/inode.c          |  1 +
->>  fs/nfs/write.c          | 69 +++++++++++++++++++++++++++++++++++++
->> ----
->>  include/linux/nfs_xdr.h |  7 +++++
->>  3 files changed, 71 insertions(+), 6 deletions(-)
->>=20
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index 11bf15800ac9..c00b54491949 100644
->> --- a/fs/nfs/inode.c
->> +++ b/fs/nfs/inode.c
->> @@ -2110,6 +2110,7 @@ static void init_once(void *foo)
->>  	INIT_LIST_HEAD(&nfsi->commit_info.list);
->>  	atomic_long_set(&nfsi->nrequests, 0);
->>  	atomic_long_set(&nfsi->commit_info.ncommit, 0);
->> +	nfsi->commit_info.ioc =3D NULL;
->>  	atomic_set(&nfsi->commit_info.rpcs_out, 0);
->>  	init_rwsem(&nfsi->rmdir_sem);
->>  	mutex_init(&nfsi->commit_mutex);
->> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> index c478b772cc49..6dbb055f80bf 100644
->> --- a/fs/nfs/write.c
->> +++ b/fs/nfs/write.c
->> @@ -47,6 +47,7 @@ struct nfs_io_completion {
->>  	void (*complete)(void *data);
->>  	void *data;
->>  	struct kref refcount;
->> +	struct rcu_head rcu;
->>  };
->>=20=20
->>  /*
->> @@ -134,7 +135,7 @@ static void nfs_io_completion_release(struct kref
->> *kref)
->>  	struct nfs_io_completion *ioc =3D container_of(kref,
->>  			struct nfs_io_completion, refcount);
->>  	ioc->complete(ioc->data);
->> -	kfree(ioc);
->> +	kfree_rcu(ioc, rcu);
->>  }
->>=20=20
->>  static void nfs_io_completion_get(struct nfs_io_completion *ioc)
->> @@ -715,9 +716,15 @@ static int nfs_writepages_callback(struct page
->> *page, struct writeback_control *
->>  	return ret;
->>  }
->>=20=20
->> +static void nfs_commit_end(struct nfs_mds_commit_info *cinfo);
->> +
->>  static void nfs_io_completion_commit(void *inode)
->>  {
->>  	nfs_commit_inode(inode, 0);
->> +	/* this came from a detached nfs_io_completion, which is now
->> +	 * no longer active, so must decrement rpcs_out.
->> +	 */
->> +	nfs_commit_end(&NFS_I(inode)->commit_info);
->>  }
->>=20=20
->>  int nfs_writepages(struct address_space *mapping, struct
->> writeback_control *wbc)
->> @@ -729,9 +736,46 @@ int nfs_writepages(struct address_space
->> *mapping, struct writeback_control *wbc)
->>=20=20
->>  	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGES);
->>=20=20
->> -	ioc =3D nfs_io_completion_alloc(GFP_KERNEL);
->> -	if (ioc)
->> -		nfs_io_completion_init(ioc, nfs_io_completion_commit,
->> inode);
->> +	rcu_read_lock();
->> +	ioc =3D rcu_dereference(NFS_I(inode)->commit_info.ioc);
->> +	if (ioc && kref_get_unless_zero(&ioc->refcount)) {
->> +		rcu_read_unlock();
->> +		/* We've successfully piggybacked on the attached ioc
->> */
->> +	} else {
->> +		rcu_read_unlock();
->> +		ioc =3D nfs_io_completion_alloc(GFP_KERNEL);
->> +		if (ioc) {
->> +			struct nfs_io_completion *ioc_prev;
->> +
->> +			nfs_io_completion_init(ioc,
->> nfs_io_completion_commit,
->> +					       inode);
->> +			/* This is now a detached ioc so we count it in
->> +			 * rpcs_out.  *After* we successfully attach it
->> +			 * below (likely, but not certain), we will
->> call
->> +			 * nfs_commit_end() which might detach it
->> immedately
->> +			 * if there are no outstanding commit.
->> +			 */
->> +			atomic_inc(&NFS_I(inode)-
->> >commit_info.rpcs_out);
->
-> commit_info.rpcs_out is there in order to count the number of
-> outstanding COMMITs. I'm not seeing why we need to change that
-> definition, particularly given that there can be processes out there
-> that are trying to wait for the count to go to zero.
->
-> The I/O completion structure already has its own reference counter, and
-> I can see nothing stopping you from modifying
-> nfs_io_completion_commit() to do the same things you are trying to do
-> in nfs_commit_end() here.
-
-I don't see how that would work.
-There are two events that need to happen asynchronously when a counter
-hits zero.
-One is that a COMMIT needs to be sent when the number of outstanding
-writes from a particular set hits zero.  That is the nfs_io_completion
-counter.
-The other is that the currently growing set of pending commits needs to
-be detached and allowed to drain so that another COMMIT will get sent.
-This is what I'm using rpcs_out for.  It seems quite a natural extension
-of its current use.
-
->
-> However as I said, I have my doubts as to whether or not this is a good
-> idea. It sounds to me as if you're trying to fix a memory management
-> layer problem in the NFS layer.
-
-I guess we really need to resolve this issue before we put too much
-effort into sorting out differences over the code.
-
-This is certainly not a memory management layer problem.  The MM layer
-is doing exactly what it should - sending an orderly sequence of
-writepages requests to the filesystem in response to relevant limits or
-timeouts being reached.
-
-NFS is putting these into effect by sending out WRITE requests for the
-chosen pages, just as it should.
-
-It is also sending COMMIT requests and this is where the problem lies.
-It sometimes sends too many.
-
-Clearly (I hope) sending one COMMIT request for every WRITE request
-would be too many.  At the other end of the spectrum, only sending a
-COMMIT when there are no out standing WRITEs and haven't been for some
-time would be far too few.  We need something in between.
-
-The current behaviour is to send one COMMIT for every writepages call.
-This often works well but is quite arbitrary.  It ties details of the
-NFS protocol to unrelated details of the MM behaviour which is not
-designed to meet the specific needs of NFS.
-
-This behaviour results in extremely poor performance in some
-circumstances when COMMIT takes a long time - e.g. 300ms.  As the
-frequency of COMMIT messages is tied to the behaviour of the MM, and not
-the behaviour of the server, it can do things that hurt the server.
-In particularly it can easily send COMMIT messages more frequently than
-can be handled, which can overload the server.
-
-I think it makes much more sense to tie the frequency of the COMMIT
-messages to the speed at which the server replies to them, and in
-particular only have a single COMMIT outstanding at a time.
-Whether we then want to send a COMMIT immediately after the last one
-returns, or after a short delay or with some other heuristic is
-something I'm quite willing to discuss.  I have a solution that I like
-but there might be a better one.
-
-But can we at least agree that sending multiple concurrent COMMIT
-requests is unlikely to be helpful, and to achieve this we need to let
-the behaviour of the server affect the frequency of COMMITs??
-
-Thanks,
-NeilBrown
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAl5wqWgACgkQOeye3VZi
-gbkz/RAAl+8mzMqalgP/hWsJWgyvb3oic7XPLBv3YqRg5CWcLSHTnmK1jNe+NgJX
-xArrDGTSi/263mi1rI6O8VI2a30Bk93JJfPMs/uY4Lqs58tccDkHUesvU4oRU3LK
-gv7n3Zyqj9Ppup1d25zBLosSNy5+f3j5EuS1dpbXPYTUxoLdkFtVmoBdsREa5t5a
-3HGWEKAm6Wcd2ej5mNiS+R6r/s/jLvzw78TTxqrpxLKuWGhzmxngQbM22yF5K17H
-ifseUScdfcKzMm55Hs2Z/eg//X0e5MjIAIYGQ6WFSUKnd/ZpL7lDETx5E6vsIVqZ
-aumjzfjt3hnkxh/uORvNbsR68KOpqAoohswfs5C5giRJYLcIq98odFRpLq8yWhTT
-m/5ODk2B9AGIeni1CIwvG5jNNbcr6RXUtVuQh97sIML10lVYjdiGS/ylBqlPVg3M
-CtyTRX2rkqhojlNmrNXRFVq0Zowl0QXSBTW+ZsCbyc4jTliLwHUKDTk6cpPM2vPT
-UCwbmw4A/UcV8iVHrBNEOgCHGu4RvFHRMqtfZeZzqME2DV5G2lwx/G4QemGGVIhf
-A6e6j7l4j6oEXhSL0iLZ2g0tFqZB8mF7p5roOhW1UzTsSMhUBxe/7DnH9eoi59rF
-oSPeAKmjBqsQzlgvDN9ApF3qbErthCxIuG+wyiSxo4Y5rYcVjCE=
-=m4O5
------END PGP SIGNATURE-----
---=-=-=--
+T24gVHVlLCAyMDIwLTAzLTE3IGF0IDIxOjQxICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IE1vbiwgTWFyIDE2IDIwMjAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gT24gTW9u
+LCAyMDIwLTAzLTE2IGF0IDE0OjM5ICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+ID4gPiBPbiBN
+b24sIE1hciAxNiAyMDIwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gPiANCj4gPiA+ID4g
+T24gTW9uLCAyMDIwLTAzLTE2IGF0IDExOjA1ICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+ID4g
+PiA+ID4gU2luY2UgNC4xMyAoc2VlIEZpeGVzOiBjb21taXQpIE5GUyBoYXMgc2VudCBhIENPTU1J
+VCByZXF1ZXN0DQo+ID4gPiA+ID4gZm9yDQo+ID4gPiA+ID4gZXZlcnkNCj4gPiA+ID4gPiAud3Jp
+dGVwYWdlcygpIGNhbGwgaXQgcmVjZWl2ZWQgLSB3aGVuIHRoZSB3cml0ZXMgc3VibWl0dGVkDQo+
+ID4gPiA+ID4gZm9yDQo+ID4gPiA+ID4gdGhhdA0KPiA+ID4gPiA+IGNhbGwNCj4gPiA+ID4gPiBo
+YXZlIGFsbCBjb21wbGV0ZWQuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gVGhpcyB3b3JrcyB3ZWxs
+IGVub3VnaCB3aGVuIENPTU1JVCBpcyBmYXN0LCBidXQgaWYgQ09NTUlUIGlzDQo+ID4gPiA+ID4g
+c2xvdw0KPiA+ID4gPiA+IHRoZXNlDQo+ID4gPiA+ID4gY2FsbHMgY2FuIG92ZXJsYXAgZWFjaCBv
+dGhlciwgb3ZlcmxvYWQgdGhlIHNlcnZlciwgYW5kDQo+ID4gPiA+ID4gc3Vic3RhbnRpYWxseQ0K
+PiA+ID4gPiA+IHJlZHVjZSB0aHJvdWdocHV0Lg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEkgbG9v
+a2VkIGF0IHRoaXMgZHVlIHRvIGEgcmVwb3J0IG9mIHJlZ3Jlc3Npb24gd2hlbiB3cml0aW5nDQo+
+ID4gPiA+ID4gdG8gYQ0KPiA+ID4gPiA+IEdhbmVzaGENCj4gPiA+ID4gPiBORlMgc2VydmVyIHdp
+dGggdHJhY2luZyBzaG93aW5nIG11bHRpcGxlIG92ZXJsYXBwaW5nIENPTU1JVHMsDQo+ID4gPiA+
+ID4gYW5kDQo+ID4gPiA+ID4gaW5kaXZpZHVhbCBjb21taXRzIHR5cGljYWxseSB0YWtpbmcgMjAw
+bXMgdG8gMzAwbXMuICBUaGlzDQo+ID4gPiA+ID4gcmVzdWx0ZWQgaW4NCj4gPiA+ID4gPiAyDQo+
+ID4gPiA+ID4gb3JkZXJzIG9mIG1hZ25pdHVkZSBzbG93IGRvd24gd2hlbiB3cml0aW5nIDEwMDB4
+MU0gZnJvbQ0KPiA+ID4gPiA+IC9kZXYvemVybw0KPiA+ID4gPiA+IHdpdGggZGQuDQo+ID4gPiA+
+ID4gVGhpcyBpcyBlYXNpbHkgcmVwcm9kdWNlZCBieSBhZGRpbmcgJ21zbGVlcCgzMDApJyB0bw0K
+PiA+ID4gPiA+IG5mc2RfY29tbWl0KCkgaW4NCj4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiBMaW51
+eCBORlMgc2VydmVyLg0KPiA+ID4gPiANCj4gPiA+ID4gV2hlbiB0aGVyZSBpcyBvdmVybGFwIG9m
+IHdyaXRlYmFjayB0byB0aGUgc2FtZSBmaWxlLCB0aGVuIGl0IGlzDQo+ID4gPiA+IGFsbW9zdA0K
+PiA+ID4gPiBhbHdheXMgYmVjYXVzZSB3ZSdyZSBoaXR0aW5nIG1lbW9yeSByZWNsYWltIG9uIHRo
+ZSBjbGllbnQuIEluDQo+ID4gPiA+IHRoYXQNCj4gPiA+ID4gY2FzZQ0KPiA+ID4gPiB3ZSB3YW50
+IHRvIGVuc3VyZSB0aGF0IG1lbW9yeSByZWNsYWltIGNvbXBsZXRlcywgd2hpY2ggaXQgd29uJ3QN
+Cj4gPiA+ID4gZG8NCj4gPiA+ID4gaWYNCj4gPiA+ID4gd2UgZGVsYXkgQ09NTUlULg0KPiA+ID4g
+PiBJT1c6IHRoaXMgYmVoYXZpb3VyIGlzIHZlcnkgbXVjaCBpbnRlbnRpb25hbC4NCj4gPiA+IA0K
+PiA+ID4gV2hhdCBkbyB5b3UgbWVhbiBieSAib3ZlcmxhcCBvZiB3cml0ZWJhY2siID8NCj4gPiA+
+IFRoZSAtPndyaXRlcGFnZXMgY2FsbHMgYXJlIHNlcXVlbnRpYWwgLSB0aGV5IGRvbid0IG92ZXJs
+YXAuDQo+ID4gPiBUaGUgV1JJVEUgcnBjcyBhcmUgYXN5bmNocm9ub3VzIHNvIG9mIGNvdXJzZSB0
+aGV5IG92ZXJsYXAuDQo+ID4gPiBUaGUgQ09NTUlUcyBhcmUgZXhwZWN0ZWQgdG8gb3ZlcmxhcCB3
+aXRoIHN1YnNlcXVlbnQgV1JJVEVzLg0KPiA+ID4gSXQgaXMgb25seSB3aGVuIENPTU1JVHMgb3Zl
+cmxhcCB3aXRoIENPTU1JVHMgdGhhdCBJIHRoaW5rIHdlDQo+ID4gPiBtaWdodA0KPiA+ID4gb3Zl
+cmxvYWQgdGhlIHNlcnZlciwgYW5kIEkgY2Fubm90IHNlZSBob3cgdGhhdCB3b3VsZCBldmVyIGJl
+IGENCj4gPiA+IHVzZWZ1bA0KPiA+ID4gdGhpbmcgdG8gZG8uDQo+ID4gPiANCj4gPiANCj4gPiBJ
+IG1lYW4gdGhhdCB0aGUgTkZTIHdyaXRlYmFjayBjb2RlIGhhcyBleGFjdGx5IHR3byBjYXNlcyB3
+aGVyZSBpdA0KPiA+IHN0YXJ0cyB0byB3cml0ZSBvdXQgZGF0YSBiZWZvcmUgYW4gZnN5bmMoKSBv
+ciBjbG9zZSgpIGZvcmNlcyBpdCB0bw0KPiA+IGRvDQo+ID4gc286DQo+ID4gDQo+ID4gMSkgUmVh
+ZCBvZiBhIHBhZ2UgdGhhdCB3YXMgd3JpdHRlbiB0bywgYnV0IG5vdCB1cCB0byBkYXRlDQo+ID4g
+MikgTWVtb3J5IHByZXNzdXJlLg0KPiA+IA0KPiA+IElPVzogSWYgeW91J3JlIHNlZWluZyBvdmVy
+bGFwcGluZyBjb21taXRzLCBpdCBpcyBkdWUgdG8gYSBzaXR1YXRpb24NCj4gPiB3aGVyZSB3ZSdy
+ZSB0cnlpbmcgdG8gZnJlZSB1cCB0aGUgcGFnZXMgYXMgc29vbiBhcyBwb3NzaWJsZS4NCj4gPiAN
+Cj4gPiA+IEluIHRoZSBjYXNlcyBJJ3ZlIGV4cGVyaW1lbnQgd2l0aCB0aGVyZSBpcyBwbGVudHkg
+b2YgbWVtb3J5LCBidXQNCj4gPiA+IHRoZQ0KPiA+ID4gdG90YWwgd3JpdGUgc2l6ZSBleGNlZWRz
+IGRpcnR5X3RocmVzaG9sZCwgc28gd3JpdGVvdXQgc3RhcnRzIHRvDQo+ID4gPiBsaW1pdA0KPiA+
+ID4gdGhlIGFtb3VudCBvZiBkaXJ0eSBtZW1vcnkuICBDZXJ0YWlubHkgd2Ugd2FudCB0aGUgQ09N
+TUlUDQo+ID4gPiBwcm9tcHRseSBhcw0KPiA+ID4gYSBncm91cCBvZiB3cml0ZXMgZmluaXNoLCBi
+dXQgdGhhdCBncm91cCBkb2Vzbid0IG5lZWQgdG8gYmUgdGlueS4NCj4gPiA+IA0KPiA+ID4gKE91
+ciBpbml0aWFsIGV4cGxvcmF0aW9ucyBmb3VuZCB0aGF0IGluY3JlYXNpbmcgZGlydHlfdGhyZXNo
+b2xkDQo+ID4gPiB0bw0KPiA+ID4gbGFyZ2VyIHRoYW4gdGhlIHdyaXRlIHNpemUgcmVzdG9yZWQg
+bm9ybWFsIHBlcmZvcm1hbmNlKQ0KPiA+ID4gDQo+ID4gDQo+ID4gVGhhdCdzIHRoZSBkZWZpbml0
+aW9uIG9mIG1lbW9yeSBwcmVzc3VyZSBoZXJlLiBJdCdzIG5vdCB0aGUgam9iIG9mDQo+ID4gdGhl
+DQo+ID4gZmlsZXN5c3RlbSB0byBzZWNvbmQgZ3Vlc3Mgd2hhdCBpcyBnb2luZyBvbiBpbiB0aGUg
+aGlnaGVyIGxheWVycy4NCj4gPiBJdHMNCj4gPiBqb2IgaXMgdG8gd3JpdGUgb3V0IGRhdGEgYXMg
+cXVpY2tseSBhcyBwb3NzaWJsZSB3aGVuIGFza2VkIHRvIGRvDQo+ID4gc28uDQo+IA0KPiBGYWly
+IGVub3VnaC4gIEkgZG9uJ3QgdXN1YWxseSB0aGluayBvZiB3cml0ZWJhY2sgYXMgZHVlIHRvIG1l
+bW9yeQ0KPiBwcmVzc3VyZSwgYnV0IEkgY2FuIHNlZSB0aGF0IEkgZmlsZXN5c3RlbSB3b3VsZG4n
+dCBtdWNoIGNhcmUgZm9yIHRoZQ0KPiBkaXN0aW5jdGlvbi4NCj4gDQo+IFN0aWxsIHRoZXJlIGlz
+IG5vIG92ZXJsYXAgaW1wb3NlZCBieSB0aGUgVk0uICBUaGUgVk0gaXMgc2VuZGluZyBhDQo+IHNl
+bnNpYmxlIHN0cmVhayBvZiB3cml0ZXBhZ2VzIHJlcXVlc3RzIC0gYXMgZGQgZGlydGllcyBtb3Jl
+IHBhZ2VzLA0KPiB0aGUNCj4gVk0gYXNrcyBORlMgdG8gd3JpdGUgb3V0IG1vcmUgcGFnZXMuICBB
+bGwgaW4gYSBuaWNlIG9yZGVybHkgZmFzaGlvbi4NCg0KVGhlIHF1ZXN0aW9uIGVzc2VudGlhbGx5
+IGJvaWxzIGRvd24gdG86ICJXaGF0IGlzIHRoZSBwdXJwb3NlIG9mIHRoZQ0KYmFja2dyb3VuZCB3
+cml0ZWJhY2s/IiBNeSBhbnN3ZXIgd291bGQgYmUgIlRvIGZyZWUgdXAgcGFnZXMiLCBzb21ldGhp
+bmcNCnRoYXQgZG9lcyBub3QgaGFwcGVuIHVudGlsIENPTU1JVCBpcyBzZW50Lg0KDQpJT1c6IE15
+IGNvbmNlcm4gaXMgbGl2ZWxvY2ssIG5vdCBzZXJpYWxpc2F0aW9uLiBSaWdodCBub3csIHdlIGRv
+IHN0YXJ0DQpjb21taXQgd2hlbiBhIGJhdGNoIHNlbnQgYnkgdGhlIFZNIGhhcyBiZWVuIGNvbXBs
+ZXRlbHkgd3JpdHRlbiAoc2FtZSBhcw0Kd2UgZG8gd2hlbiBhbiBPX0RJUkVDVCBiYXRjaCBoYXMg
+YmVlbiBjb21wbGV0ZWx5IHdyaXR0ZW4pLiBUaGF0IGVuc3VyZXMNCnRoYXQgdGhlIHBhZ2VzIGNh
+biBiZSBmcmVlZC4gWW91ciBwYXRjaCBpcyBkZWxpYmVyYXRlbHkgZGVzaWduZWQgdG8NCmRlZmVy
+IHRoYXQgcHJvY2VzcyB0aGF0IGFsbG93cyBwYWdlcyB0byBiZSBmcmVlZCwgYW5kIEknbSBub3Qg
+c2VlaW5nDQpob3cgaXQgaXMgYm91bmRlZC4NCg0KDQo+ID4gPiA+ID4gVGhpcyBwYXRjaCBjaGFu
+Z2VzIHRoZSBkZXRhaWxzIG9mIHdoZW4gQ09NTUlUIGlzIHNlbnQgd2l0aG91dA0KPiA+ID4gPiA+
+IGNoYW5naW5nDQo+ID4gPiA+ID4gdGhlIGdlbmVyYWwgYXBwcm9hY2guDQo+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gV2hlcmUgcHJldmlvdXNseSB0aGUgd3JpdGVzIGZyb20gYSBzaW5nbGUgLndyaXRl
+cGFnZXMoKSBjYWxsDQo+ID4gPiA+ID4gd2VyZQ0KPiA+ID4gPiA+IGFjY291bnRlZCB0b2dldGhl
+ciBpbiBhIG5mc19pb19jb21wbGV0aW9uLCBub3cgdGhlIHdyaXRlcw0KPiA+ID4gPiA+IGZyb20N
+Cj4gPiA+ID4gPiBtdWx0aXBsZQ0KPiA+ID4gPiA+IHdyaXRlcGFnZXMoKSBjYWxscyBhcmUgYWNj
+b3VudGVkIHRvZ2V0aGVyLiAgVGhlIHNldCBvZg0KPiA+ID4gPiA+IHdyaXRlcGFnZXMNCj4gPiA+
+ID4gPiBjYWxscw0KPiA+ID4gPiA+IHRoYXQgYXJlIGdyb3VwZWQgdG9nZXRoZXIgYXJlIGFsbCB0
+aG9zZSBmcm9tIHdoZW4gb25lIENPTU1JVA0KPiA+ID4gPiA+IGNhbGwNCj4gPiA+ID4gPiBlbmRz
+DQo+ID4gPiA+ID4gdG8gd2hlbiB0aGUgbmV4dCBDT01NSVQgY2FsbCBlbmRzLiAgVGhpcyBhdXRv
+bWF0aWNhbGx5DQo+ID4gPiA+ID4gcmVkdWNlcw0KPiA+ID4gPiA+IHRoZQ0KPiA+ID4gPiA+IHJh
+dGUNCj4gPiA+ID4gPiBvZiBDT01NSVQgcmVxdWVzdHMgd2hlbiBDT01NSVQgaXRzZWxmIGlzIHNs
+b3cuDQo+ID4gPiA+ID4gKElmIHRoZXJlIGFyZSBubyBDT01NSVQgY2FsbHMgcGVuZGluZywgdGhl
+IGZpcnN0IC53cml0ZXBhZ2VzDQo+ID4gPiA+ID4gd2lsbA0KPiA+ID4gPiA+IGdldA0KPiA+ID4g
+PiA+ICBhbiBuZnNfaW9fY29tcGxldGlvbiB0byBpdHNlbGYsIHRoZW4gc3Vic2VxdWVuY3Qgd3Jp
+dGVwYWdlcw0KPiA+ID4gPiA+IHJlcXVlc3RzDQo+ID4gPiA+ID4gIHVudGlsIHRoZSBmaXJzdCBD
+T01NSVQgY29tcGxldGVzIHdpbGwgZ28gaW4gdGhlIG5leHQNCj4gPiA+ID4gPiBuZnNfaW9fY29t
+cGxldGlvbikNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBUaGVyZSBhcmUgdHlwaWNhbGx5IGF0IG1v
+c3QgdHdvIG5mc19pb19jb21wbGV0aW9uIHN0cnVjdHVyZXMNCj4gPiA+ID4gPiBhbGxvY2F0ZWQN
+Cj4gPiA+ID4gPiBmb3Igd3JpdGViYWNrIHRvIGEgZ2l2ZW4gaW5vZGUuDQo+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gLSBJZiB0aGVyZSB3YXMgYmVlbiBhbnkgd3JpdGVwYWdlcyBjYWxscyBzaW5jZSB0
+aGUgbGFzdCB0aW1lDQo+ID4gPiA+ID4gYQ0KPiA+ID4gPiA+IENPTU1JVA0KPiA+ID4gPiA+ICAg
+Y29tcGxldGVkLCB0aGVyZSB3aWxsIGJlIGFuIG5mc19pb19jb21wbGV0aW9uIHN0b3JlZCBpbiB0
+aGUNCj4gPiA+ID4gPiBpbm9kZQ0KPiA+ID4gPiA+IChpbg0KPiA+ID4gPiA+ICAgbmZzX21kc19j
+b21taXRfaW5mbykgd2hpY2ggbmV3IHdyaXRlcGFnZXMgcmVxdWVzdHMgYXJlDQo+ID4gPiA+ID4g
+YWNjb3VudGVkDQo+ID4gPiA+ID4gaXQuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gLSBJZiB0aGVy
+ZSBpcyBubyBwZW5kaW5nIENPTU1JVCByZXF1ZXN0LCBidXQgdGhlcmUgYXJlDQo+ID4gPiA+ID4g
+cGVuZGluZw0KPiA+ID4gPiA+IHdyaXRlYmFjaw0KPiA+ID4gPiA+ICAgV1JJVEVTLCB0aGVyZSB3
+aWxsIGJlIGFub3RoZXIgbmZzX2lvX2NvbXBsZXRpb24gd2hpY2ggaXMNCj4gPiA+ID4gPiBub3QN
+Cj4gPiA+ID4gPiBhdHRhY2hlZA0KPiA+ID4gPiA+ICAgYW5kIHdoaWNoIGlzIGRyYWluaW5nLiAg
+V2hlbiBpdCBmdWxseSBkcmFpbnMgYSBDT01NSVQgd2lsbA0KPiA+ID4gPiA+IGJlDQo+ID4gPiA+
+ID4gc2VudC4NCj4gPiA+ID4gPiAgIFdoZW4gdGhhdCBDT01NSVQgY29tcGxldGVzLCB0aGUgYXR0
+YWNoZWQgbmZzX2lvX2NvbXBsZXRpb24NCj4gPiA+ID4gPiB3aWxsDQo+ID4gPiA+ID4gYmUNCj4g
+PiA+ID4gPiAgIGRldGFjaGVkIGFuZCBhbGxvd2VkIHRvIGRyYWluLg0KPiA+ID4gPiA+IA0KPiA+
+ID4gPiA+IFRoZSBycGNzX291dCBjb3VudGVyIG5vdyBjb3VudHMgdGhlIHVuYXR0YWNoZWQNCj4g
+PiA+ID4gPiBuZnNfaW9fY29tcGxldGlvbg0KPiA+ID4gPiA+IGFzDQo+ID4gPiA+ID4gd2VsbA0K
+PiA+ID4gPiA+IGFzIGFueSBwZW5kaW5nIENPTU1JVCByZXF1ZXN0cy4gIEFzIGFuIHVuYXR0YWNo
+ZWQNCj4gPiA+ID4gPiBuZnNfaW9fY29tcGxldGlvbg0KPiA+ID4gPiA+IHdpbGwNCj4gPiA+ID4g
+PiBzb29uIHR1cm4gaW50byBhIENPTU1JVCByZXF1ZXN0LCB0aGlzIHNlZW1zIHJlYXNvbmFibGUu
+ICBJdA0KPiA+ID4gPiA+IGFsbG93cyB1cw0KPiA+ID4gPiA+IHRvDQo+ID4gPiA+ID4gY2xlYXJs
+eSBkZXRlY3Qgd2hlbiB0aGVyZSBhcmUgbm8gbG9uZ2VyIGFueSBDT01NSVRzIGV4cGVjdGVkDQo+
+ID4gPiA+ID4gdG8NCj4gPiA+ID4gPiBjb21wbGV0ZSwgc28gd2Uga25vdyB0byBkZXRhY2ggYW55
+IG5mc19pb19jb21wbGV0aW9uIGZyb20gdGhlDQo+ID4gPiA+ID4gaW5vZGUNCj4gPiA+ID4gPiBh
+bmQNCj4gPiA+ID4gPiBhbGxvdyBpdCB0byBkcmFpbi4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBB
+cyB3ZSB1c2UgYXRvbWljIGFjY2Vzc2VzIChlLmcuICB4Y2hnIGFuZA0KPiA+ID4gPiA+IGtyZWZf
+Z2V0X3VubGVzc196ZXJvKCkpDQo+ID4gPiA+ID4gdG8NCj4gPiA+ID4gPiBhY2Nlc3MgdGhlIGF0
+dGFjaGVkIG5mc19pb19jb21wbGV0aW9uLCB3ZSBub3cgdXNlIGtmcmVlX3JjdSgpDQo+ID4gPiA+
+ID4gdG8NCj4gPiA+ID4gPiBmcmVlDQo+ID4gPiA+ID4gaXQsIHRvIGVuc3VyZSBpdCBpcyBub3Qg
+YWNjZXNzZWQgYWZ0ZXIgaXQgaXMgZnJlZWQuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gV2l0aCAz
+MDBtcyBjb21taXRzLCB0aGlzIGltcHJvdmVzIHRocm91Z2h0IG9mIGEgMUcgZGQgYnkgMg0KPiA+
+ID4gPiA+IG9yZGVycw0KPiA+ID4gPiA+IG9mDQo+ID4gPiA+ID4gbWFnbml0dWRlLiAgRXZlbiB3
+aXRob3V0IHRoZSAzMDBtcyBkZWxheSwgdGhpcyBub3RpY2VhYmx5DQo+ID4gPiA+ID4gaW1wcm92
+ZXMNCj4gPiA+ID4gPiB0aHJvdWdocHV0IHRvIGEgTGludXggTkZTIHNlcnZlciBpcyBhIHNpbXBs
+ZSBWTS4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBGaXhlczogOTE5ZTNiZDlhODc1ICgiTkZTOiBF
+bnN1cmUgd2UgY29tbWl0IGFmdGVyIHdyaXRlYmFjaw0KPiA+ID4gPiA+IGlzDQo+ID4gPiA+ID4g
+Y29tcGxldGUiKQ0KPiA+ID4gPiA+IFNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3Vz
+ZS5kZT4NCj4gPiA+ID4gPiAtLS0NCj4gPiA+ID4gPiAgZnMvbmZzL2lub2RlLmMgICAgICAgICAg
+fCAgMSArDQo+ID4gPiA+ID4gIGZzL25mcy93cml0ZS5jICAgICAgICAgIHwgNTANCj4gPiA+ID4g
+PiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0NCj4gPiA+ID4gPiAtLQ0K
+PiA+ID4gPiA+ICBpbmNsdWRlL2xpbnV4L25mc194ZHIuaCB8ICA3ICsrKysrKw0KPiA+ID4gPiA+
+ICAzIGZpbGVzIGNoYW5nZWQsIDUzIGluc2VydGlvbnMoKyksIDUgZGVsZXRpb25zKC0pDQo+ID4g
+PiA+ID4gDQo+ID4gPiA+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbm9kZS5jIGIvZnMvbmZzL2lu
+b2RlLmMNCj4gPiA+ID4gPiBpbmRleCAxMWJmMTU4MDBhYzkuLmMwMGI1NDQ5MTk0OSAxMDA2NDQN
+Cj4gPiA+ID4gPiAtLS0gYS9mcy9uZnMvaW5vZGUuYw0KPiA+ID4gPiA+ICsrKyBiL2ZzL25mcy9p
+bm9kZS5jDQo+ID4gPiA+ID4gQEAgLTIxMTAsNiArMjExMCw3IEBAIHN0YXRpYyB2b2lkIGluaXRf
+b25jZSh2b2lkICpmb28pDQo+ID4gPiA+ID4gIAlJTklUX0xJU1RfSEVBRCgmbmZzaS0+Y29tbWl0
+X2luZm8ubGlzdCk7DQo+ID4gPiA+ID4gIAlhdG9taWNfbG9uZ19zZXQoJm5mc2ktPm5yZXF1ZXN0
+cywgMCk7DQo+ID4gPiA+ID4gIAlhdG9taWNfbG9uZ19zZXQoJm5mc2ktPmNvbW1pdF9pbmZvLm5j
+b21taXQsIDApOw0KPiA+ID4gPiA+ICsJbmZzaS0+Y29tbWl0X2luZm8uaW9jID0gTlVMTDsNCj4g
+PiA+ID4gPiAgCWF0b21pY19zZXQoJm5mc2ktPmNvbW1pdF9pbmZvLnJwY3Nfb3V0LCAwKTsNCj4g
+PiA+ID4gPiAgCWluaXRfcndzZW0oJm5mc2ktPnJtZGlyX3NlbSk7DQo+ID4gPiA+ID4gIAltdXRl
+eF9pbml0KCZuZnNpLT5jb21taXRfbXV0ZXgpOw0KPiA+ID4gPiA+IGRpZmYgLS1naXQgYS9mcy9u
+ZnMvd3JpdGUuYyBiL2ZzL25mcy93cml0ZS5jDQo+ID4gPiA+ID4gaW5kZXggYzQ3OGI3NzJjYzQ5
+Li41N2UyMDlmOTY0ZTQgMTAwNjQ0DQo+ID4gPiA+ID4gLS0tIGEvZnMvbmZzL3dyaXRlLmMNCj4g
+PiA+ID4gPiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiA+ID4gPiA+IEBAIC00Nyw2ICs0Nyw3IEBA
+IHN0cnVjdCBuZnNfaW9fY29tcGxldGlvbiB7DQo+ID4gPiA+ID4gIAl2b2lkICgqY29tcGxldGUp
+KHZvaWQgKmRhdGEpOw0KPiA+ID4gPiA+ICAJdm9pZCAqZGF0YTsNCj4gPiA+ID4gPiAgCXN0cnVj
+dCBrcmVmIHJlZmNvdW50Ow0KPiA+ID4gPiA+ICsJc3RydWN0IHJjdV9oZWFkIHJjdTsNCj4gPiA+
+ID4gPiAgfTsNCj4gPiA+ID4gPiAgDQo+ID4gPiA+ID4gIC8qDQo+ID4gPiA+ID4gQEAgLTEzNCw3
+ICsxMzUsNyBAQCBzdGF0aWMgdm9pZA0KPiA+ID4gPiA+IG5mc19pb19jb21wbGV0aW9uX3JlbGVh
+c2Uoc3RydWN0DQo+ID4gPiA+ID4ga3JlZg0KPiA+ID4gPiA+ICprcmVmKQ0KPiA+ID4gPiA+ICAJ
+c3RydWN0IG5mc19pb19jb21wbGV0aW9uICppb2MgPSBjb250YWluZXJfb2Yoa3JlZiwNCj4gPiA+
+ID4gPiAgCQkJc3RydWN0IG5mc19pb19jb21wbGV0aW9uLCByZWZjb3VudCk7DQo+ID4gPiA+ID4g
+IAlpb2MtPmNvbXBsZXRlKGlvYy0+ZGF0YSk7DQo+ID4gPiA+ID4gLQlrZnJlZShpb2MpOw0KPiA+
+ID4gPiA+ICsJa2ZyZWVfcmN1KGlvYywgcmN1KTsNCj4gPiA+ID4gPiAgfQ0KPiA+ID4gPiA+ICAN
+Cj4gPiA+ID4gPiAgc3RhdGljIHZvaWQgbmZzX2lvX2NvbXBsZXRpb25fZ2V0KHN0cnVjdCBuZnNf
+aW9fY29tcGxldGlvbg0KPiA+ID4gPiA+ICppb2MpDQo+ID4gPiA+ID4gQEAgLTcyMCw2ICs3MjEs
+OCBAQCBzdGF0aWMgdm9pZCBuZnNfaW9fY29tcGxldGlvbl9jb21taXQodm9pZA0KPiA+ID4gPiA+
+ICppbm9kZSkNCj4gPiA+ID4gPiAgCW5mc19jb21taXRfaW5vZGUoaW5vZGUsIDApOw0KPiA+ID4g
+PiA+ICB9DQo+ID4gPiA+ID4gIA0KPiA+ID4gPiA+ICtzdGF0aWMgdm9pZCBuZnNfY29tbWl0X2Vu
+ZChzdHJ1Y3QgbmZzX21kc19jb21taXRfaW5mbw0KPiA+ID4gPiA+ICpjaW5mbyk7DQo+ID4gPiA+
+ID4gKw0KPiA+ID4gPiA+ICBpbnQgbmZzX3dyaXRlcGFnZXMoc3RydWN0IGFkZHJlc3Nfc3BhY2Ug
+Km1hcHBpbmcsIHN0cnVjdA0KPiA+ID4gPiA+IHdyaXRlYmFja19jb250cm9sICp3YmMpDQo+ID4g
+PiA+ID4gIHsNCj4gPiA+ID4gPiAgCXN0cnVjdCBpbm9kZSAqaW5vZGUgPSBtYXBwaW5nLT5ob3N0
+Ow0KPiA+ID4gPiA+IEBAIC03MjksOSArNzMyLDM3IEBAIGludCBuZnNfd3JpdGVwYWdlcyhzdHJ1
+Y3QgYWRkcmVzc19zcGFjZQ0KPiA+ID4gPiA+ICptYXBwaW5nLCBzdHJ1Y3Qgd3JpdGViYWNrX2Nv
+bnRyb2wgKndiYykNCj4gPiA+ID4gPiAgDQo+ID4gPiA+ID4gIAluZnNfaW5jX3N0YXRzKGlub2Rl
+LCBORlNJT1NfVkZTV1JJVEVQQUdFUyk7DQo+ID4gPiA+ID4gIA0KPiA+ID4gPiA+IC0JaW9jID0g
+bmZzX2lvX2NvbXBsZXRpb25fYWxsb2MoR0ZQX0tFUk5FTCk7DQo+ID4gPiA+ID4gLQlpZiAoaW9j
+KQ0KPiA+ID4gPiA+IC0JCW5mc19pb19jb21wbGV0aW9uX2luaXQoaW9jLA0KPiA+ID4gPiA+IG5m
+c19pb19jb21wbGV0aW9uX2NvbW1pdCwNCj4gPiA+ID4gPiBpbm9kZSk7DQo+ID4gPiA+ID4gKwly
+Y3VfcmVhZF9sb2NrKCk7DQo+ID4gPiA+ID4gKwlpb2MgPSByY3VfZGVyZWZlcmVuY2UoTkZTX0ko
+aW5vZGUpLT5jb21taXRfaW5mby5pb2MpOw0KPiA+ID4gPiA+ICsJaWYgKGlvYyAmJiBrcmVmX2dl
+dF91bmxlc3NfemVybygmaW9jLT5yZWZjb3VudCkpIHsNCj4gPiA+ID4gPiArCQlyY3VfcmVhZF91
+bmxvY2soKTsNCj4gPiA+ID4gPiArCQkvKiBXZSd2ZSBzdWNjZXNzZnVsbHkgcGlnZ3liYWNrZWQg
+b24gdGhlDQo+ID4gPiA+ID4gYXR0YWNoZWQgaW9jDQo+ID4gPiA+ID4gKi8NCj4gPiA+ID4gPiAr
+CX0gZWxzZSB7DQo+ID4gPiA+ID4gKwkJcmN1X3JlYWRfdW5sb2NrKCk7DQo+ID4gPiA+ID4gKwkJ
+aW9jID0gbmZzX2lvX2NvbXBsZXRpb25fYWxsb2MoR0ZQX0tFUk5FTCk7DQo+ID4gPiA+ID4gKwkJ
+aWYgKGlvYykgew0KPiA+ID4gPiA+ICsJCQlzdHJ1Y3QgbmZzX2lvX2NvbXBsZXRpb24gKmlvY19w
+cmV2Ow0KPiA+ID4gPiA+ICsNCj4gPiA+ID4gPiArCQkJbmZzX2lvX2NvbXBsZXRpb25faW5pdChp
+b2MsDQo+ID4gPiA+ID4gbmZzX2lvX2NvbXBsZXRpb25fY29tbWl0LA0KPiA+ID4gPiA+ICsJCQkJ
+CSAgICAgICBpbm9kZSk7DQo+ID4gPiA+ID4gKwkJCS8qIFRlbXBvcmFyaWx5IGVsZXZhdGUgcnBj
+c19vdXQgdG8NCj4gPiA+ID4gPiBlbnN1cmUgYQ0KPiA+ID4gPiA+IGNvbW1pdA0KPiA+ID4gPiA+
+ICsJCQkgKiBjb21wbGV0aW9uICp3aWxsKiBoYXBwZW4gYWZ0ZXIgd2UNCj4gPiA+ID4gPiBhdHRh
+Y2gNCj4gPiA+ID4gPiB0aGlzIGlvYywNCj4gPiA+ID4gPiArCQkJICogc28gaXQgKndpbGwqIGdl
+dCBhIGNoYW5jZSB0byBkcmFpbi4NCj4gPiA+ID4gPiArCQkJICovDQo+ID4gPiA+ID4gKwkJCWF0
+b21pY19pbmMoJk5GU19JKGlub2RlKS0NCj4gPiA+ID4gPiA+IGNvbW1pdF9pbmZvLnJwY3Nfb3V0
+KTsNCj4gPiA+ID4gPiArCQkJbmZzX2lvX2NvbXBsZXRpb25fZ2V0KGlvYyk7DQo+ID4gPiA+ID4g
+KwkJCWlvY19wcmV2ID0geGNoZygmTkZTX0koaW5vZGUpLQ0KPiA+ID4gPiA+ID5jb21taXRfaW5m
+by5pb2MsDQo+ID4gPiA+ID4gKwkJCQkgICAgaW9jKTsNCj4gPiA+ID4gPiArCQkJLyogaW9jX3By
+ZXYgaXMgbm9ybWFsbHkgTlVMTCwgYnV0DQo+ID4gPiA+ID4gcmFjaW5nDQo+ID4gPiA+ID4gd3Jp
+dGVwYWdlcw0KPiA+ID4gPiA+ICsJCQkgKiBjYWxscyBtaWdodCByZXN1bHQgaW4gaXQgYmVpbmcg
+bm9uLQ0KPiA+ID4gPiA+IE5VTEwuDQo+ID4gPiA+ID4gKwkJCSAqIEluIGVpdGhlciBjYXNlIGl0
+IGlzIHNhZmUgdG8gcHV0IGl0DQo+ID4gPiA+ID4gLSB3b3JzdA0KPiA+ID4gPiA+IGNhc2UNCj4g
+PiA+ID4gPiArCQkJICogd2UgZ2V0IGFuIGV4dHJhIENPTU1JVC4NCj4gPiA+ID4gPiArCQkJICov
+DQo+ID4gPiA+ID4gKwkJCW5mc19pb19jb21wbGV0aW9uX3B1dChpb2NfcHJldik7DQo+ID4gPiA+
+ID4gKwkJCS8qIHJlbGVhc2UgdGVtcG9yYXJ5IHJlZiBvbiBycGNzX291dCAqLw0KPiA+ID4gPiA+
+ICsJCQluZnNfY29tbWl0X2VuZCgmTkZTX0koaW5vZGUpLQ0KPiA+ID4gPiA+ID5jb21taXRfaW5m
+byk7DQo+ID4gPiA+IA0KPiA+ID4gPiBTbyB3b24ndCB0aGlzIG5vcm1hbGx5IHRyaWdnZXIgdGhl
+IHhjaGcoTlVMTCkgaW4NCj4gPiA+ID4gbmZzX2NvbW1taXRfZW5kKCk/DQo+ID4gPiA+IEZvcg0K
+PiA+ID4gPiBtb3N0IGNhc2VzLCBJJ2QgZXhwZWN0IGNvbW1pdF9pbmZvLnJwY3Nfb3V0IHRvIGJl
+IHplcm8gdW50aWwgd2UNCj4gPiA+ID4gc3RhcnQNCj4gPiA+ID4gYWN0dWFsbHkgc2VuZGluZyBv
+dXQgdGhlIENPTU1JVHMuDQo+ID4gPiANCj4gPiA+IE9uIHRoZSBmaXJzdCB3cml0ZXBhZ2VzIGNh
+bGwgYWZ0ZXIgYSBwZXJpb2Qgb2YgcXVpZXQsIHRoYXQgaXMNCj4gPiA+IGV4YWN0bHkNCj4gPiA+
+IGNvcnJlY3QuICBUaGUgaW9jIHRoYXQgd2UgaGF2ZSBqdXN0IGFsbG9jYXRlZCBhbmQgYXR0YWNo
+ZWQgd2lsbA0KPiA+ID4gaW1tZWRpYXRlbHkgYmUgZGV0YWNoZWQuICBJdCB3aWxsIGhhdmUgYSBy
+ZWZjb3VudCBvZiAxIGF0IHRoaXMNCj4gPiA+IHBvaW50DQo+ID4gPiBzbw0KPiA+ID4gbm90aGlu
+ZyBmdXJ0aGVyIGhhcHBlbnMuDQo+ID4gPiBUaGVuIFdSSVRFcyBnZXQgcXVldWVkIGVsZXZhdGlu
+ZyB0aGUgcmVmY291bnQuICBUaGlzIHdpbGwNCj4gPiA+IGV2ZW50dWFsbHkNCj4gPiA+IGRyYWlu
+IGFuZCBhIENPTU1JVCB3aWxsIGJlIHNlbnQuICBTbyB0aGUgYmVoYXZpb3VyIGZvciB0aGUNCj4g
+PiA+IGZpcnN0cGFnZXMNCj4gPiA+IGNhbGwgaXMgZXhhY3RseSBsaWtlIHRoZSBjdXJyZW50IGNv
+ZGUgKEkgdGhpbmsgSSBtZW50aW9uZWQgdGhhdA0KPiA+ID4gaW4NCj4gPiA+IHRoZQ0KPiA+ID4g
+Y29tbWl0IG1lc3NhZ2UpLg0KPiA+ID4gSWYgdGhlIFdSSVRFcyBhbmQgQ09NTUlUIGNvbXBsZXRl
+IGJlZm9yZSB0aGUgbmV4dCAud3JpdGVwYWdlcywNCj4gPiA+IHRoZW4NCj4gPiA+IHRoYXQNCj4g
+PiA+IHdyaXRlcGFnZXMgd2lsbCBiZWhhdmUgdGhlIHNhbWUgd2F5Lg0KPiA+ID4gQnV0IGlmIHRo
+ZSBXUklURXMgb3IgQ09NTUlUIGFyZSBzdGlsbCBwZW5kaW5nLCB0aGVuIHJwY3Nfb3V0IHdpbGwN
+Cj4gPiA+IHN0aWxsDQo+ID4gPiBiZSBlbGV2YXRlZC4uLi4NCj4gPiA+IE9ubHkgLSBuby4gIFVu
+YXR0YWNoZWQgaW9jcyBhcmUgbWVhbnQgdG8gYmUgY291bnRlZCBpbiBycGNzX291dCwNCj4gPiA+
+IGJ1dA0KPiA+ID4gSQ0KPiA+ID4gaGF2ZW4ndCBnb3QgdGhhdCByaWdodC4gIFNvIHdlIGNhbiBz
+dGlsbCBlbmQgdXAgd2l0aCBwYXJhbGxlbA0KPiA+ID4gQ09NTUlUcy4NCj4gPiA+IEkgdGhpbmsg
+dGhhdCBtaWdodCBleHBsYWluIHNvbWUgc2xpZ2h0bHkgb2RkIG51bWJlcnMgaW4gbXkNCj4gPiA+
+IHRlc3RpbmcuDQo+ID4gPiANCj4gPiA+IEhlcmUgaXMgdGhlIG5ldyB2ZXJzaW9uLg0KPiA+ID4g
+DQo+ID4gPiBUaGFua3MgZm9yIHRoZSByZXZpZXcuDQo+ID4gPiANCj4gPiA+IE5laWxCcm93bg0K
+PiA+ID4gDQo+ID4gPiBGcm9tOiBOZWlsQnJvd24gPG5laWxiQHN1c2UuZGU+DQo+ID4gPiBTdWJq
+ZWN0OiBbUEFUQ0hdIE5GUzogTWluaW1pemUgQ09NTUlUIGNhbGxzIGR1cmluZyB3cml0ZWJhY2su
+DQo+ID4gPiANCj4gPiA+IFNpbmNlIDQuMTMgKHNlZSBGaXhlczogY29tbWl0KSBORlMgaGFzIHNl
+bnQgYSBDT01NSVQgcmVxdWVzdCBmb3INCj4gPiA+IGV2ZXJ5DQo+ID4gPiAud3JpdGVwYWdlcygp
+IGNhbGwgaXQgcmVjZWl2ZWQgLSB3aGVuIHRoZSB3cml0ZXMgc3VibWl0dGVkIGZvcg0KPiA+ID4g
+dGhhdA0KPiA+ID4gY2FsbA0KPiA+ID4gaGF2ZSBhbGwgY29tcGxldGVkLg0KPiA+ID4gDQo+ID4g
+PiBUaGlzIHdvcmtzIHdlbGwgZW5vdWdoIHdoZW4gQ09NTUlUIGlzIGZhc3QsIGJ1dCBpZiBDT01N
+SVQgaXMgc2xvdw0KPiA+ID4gdGhlc2UNCj4gPiA+IGNhbGxzIGNhbiBvdmVybGFwIGVhY2ggb3Ro
+ZXIsIG92ZXJsb2FkIHRoZSBzZXJ2ZXIsIGFuZA0KPiA+ID4gc3Vic3RhbnRpYWxseQ0KPiA+ID4g
+cmVkdWNlIHRocm91Z2hwdXQuDQo+ID4gPiANCj4gPiA+IEkgbG9va2VkIGF0IHRoaXMgZHVlIHRv
+IGEgcmVwb3J0IG9mIHJlZ3Jlc3Npb24gd2hlbiB3cml0aW5nIHRvIGENCj4gPiA+IEdhbmVzaGEN
+Cj4gPiA+IE5GUyBzZXJ2ZXIgd2l0aCB0cmFjaW5nIHNob3dpbmcgbXVsdGlwbGUgb3ZlcmxhcHBp
+bmcgQ09NTUlUcywgYW5kDQo+ID4gPiBpbmRpdmlkdWFsIGNvbW1pdHMgdHlwaWNhbGx5IHRha2lu
+ZyAyMDBtcyB0byAzMDBtcy4gIFRoaXMNCj4gPiA+IHJlc3VsdGVkIGluDQo+ID4gPiAyDQo+ID4g
+PiBvcmRlcnMgb2YgbWFnbml0dWRlIHNsb3cgZG93biB3aGVuIHdyaXRpbmcgMTAwMHgxTSBmcm9t
+IC9kZXYvemVybw0KPiA+ID4gd2l0aCBkZC4NCj4gPiA+IFRoaXMgaXMgZWFzaWx5IHJlcHJvZHVj
+ZWQgYnkgYWRkaW5nICdtc2xlZXAoMzAwKScgdG8NCj4gPiA+IG5mc2RfY29tbWl0KCkgaW4NCj4g
+PiA+IHRoZQ0KPiA+ID4gTGludXggTkZTIHNlcnZlci4NCj4gPiA+IA0KPiA+ID4gVGhpcyBwYXRj
+aCBjaGFuZ2VzIHRoZSBkZXRhaWxzIG9mIHdoZW4gQ09NTUlUIGlzIHNlbnQgd2l0aG91dA0KPiA+
+ID4gY2hhbmdpbmcNCj4gPiA+IHRoZSBnZW5lcmFsIGFwcHJvYWNoLg0KPiA+ID4gDQo+ID4gPiBX
+aGVyZSBwcmV2aW91c2x5IHRoZSB3cml0ZXMgZnJvbSBhIHNpbmdsZSAud3JpdGVwYWdlcygpIGNh
+bGwgd2VyZQ0KPiA+ID4gYWNjb3VudGVkIHRvZ2V0aGVyIGluIGEgbmZzX2lvX2NvbXBsZXRpb24s
+IG5vdyB0aGUgd3JpdGVzIGZyb20NCj4gPiA+IG11bHRpcGxlDQo+ID4gPiB3cml0ZXBhZ2VzKCkg
+Y2FsbHMgYXJlIGFjY291bnRlZCB0b2dldGhlci4gIFRoZSBzZXQgb2Ygd3JpdGVwYWdlcw0KPiA+
+ID4gY2FsbHMNCj4gPiA+IHRoYXQgYXJlIGdyb3VwZWQgdG9nZXRoZXIgYXJlIGFsbCB0aG9zZSBm
+cm9tIHdoZW4gb25lIENPTU1JVCBjYWxsDQo+ID4gPiBlbmRzDQo+ID4gPiB0byB3aGVuIHRoZSBu
+ZXh0IENPTU1JVCBjYWxsIGVuZHMuICBUaGlzIGF1dG9tYXRpY2FsbHkgcmVkdWNlcw0KPiA+ID4g
+dGhlDQo+ID4gPiByYXRlDQo+ID4gPiBvZiBDT01NSVQgcmVxdWVzdHMgd2hlbiBDT01NSVQgaXRz
+ZWxmIGlzIHNsb3cuDQo+ID4gPiAoSWYgdGhlcmUgYXJlIG5vIENPTU1JVCBjYWxscyBwZW5kaW5n
+LCB0aGUgZmlyc3QgLndyaXRlcGFnZXMgd2lsbA0KPiA+ID4gZ2V0DQo+ID4gPiAgYW4gbmZzX2lv
+X2NvbXBsZXRpb24gdG8gaXRzZWxmLCB0aGVuIHN1YnNlcXVlbmN0IHdyaXRlcGFnZXMNCj4gPiA+
+IHJlcXVlc3RzDQo+ID4gPiAgdW50aWwgdGhlIGZpcnN0IENPTU1JVCBjb21wbGV0ZXMgd2lsbCBn
+byBpbiB0aGUgbmV4dA0KPiA+ID4gbmZzX2lvX2NvbXBsZXRpb24pDQo+ID4gPiANCj4gPiA+IFRo
+ZXJlIGFyZSB0eXBpY2FsbHkgYXQgbW9zdCB0d28gbmZzX2lvX2NvbXBsZXRpb24gc3RydWN0dXJl
+cw0KPiA+ID4gYWxsb2NhdGVkDQo+ID4gPiBmb3Igd3JpdGViYWNrIHRvIGEgZ2l2ZW4gaW5vZGUu
+DQo+ID4gPiANCj4gPiA+IC0gSWYgdGhlcmUgd2FzIGJlZW4gYW55IHdyaXRlcGFnZXMgY2FsbHMg
+c2luY2UgdGhlIGxhc3QgdGltZSBhDQo+ID4gPiBDT01NSVQNCj4gPiA+ICAgY29tcGxldGVkLCB0
+aGVyZSB3aWxsIGJlIGFuIG5mc19pb19jb21wbGV0aW9uIHN0b3JlZCBpbiB0aGUNCj4gPiA+IGlu
+b2RlDQo+ID4gPiAoaW4NCj4gPiA+ICAgbmZzX21kc19jb21taXRfaW5mbykgd2hpY2ggbmV3IHdy
+aXRlcGFnZXMgcmVxdWVzdHMgYXJlDQo+ID4gPiBhY2NvdW50ZWQNCj4gPiA+IGl0Lg0KPiA+ID4g
+DQo+ID4gPiAtIElmIHRoZXJlIGlzIG5vIHBlbmRpbmcgQ09NTUlUIHJlcXVlc3QsIGJ1dCB0aGVy
+ZSBhcmUgcGVuZGluZw0KPiA+ID4gd3JpdGViYWNrDQo+ID4gPiAgIFdSSVRFUywgdGhlcmUgd2ls
+bCBiZSBhbm90aGVyIG5mc19pb19jb21wbGV0aW9uIHdoaWNoIGlzIG5vdA0KPiA+ID4gYXR0YWNo
+ZWQNCj4gPiA+ICAgYW5kIHdoaWNoIGlzIGRyYWluaW5nLiAgV2hlbiBpdCBmdWxseSBkcmFpbnMg
+YSBDT01NSVQgd2lsbCBiZQ0KPiA+ID4gc2VudC4NCj4gPiA+ICAgV2hlbiB0aGF0IENPTU1JVCBj
+b21wbGV0ZXMsIHRoZSBhdHRhY2hlZCBuZnNfaW9fY29tcGxldGlvbiB3aWxsDQo+ID4gPiBiZQ0K
+PiA+ID4gICBkZXRhY2hlZCBhbmQgYWxsb3dlZCB0byBkcmFpbi4NCj4gPiA+IA0KPiA+ID4gVGhl
+IHJwY3Nfb3V0IGNvdW50ZXIgbm93IGNvdW50cyB0aGUgdW5hdHRhY2hlZCBuZnNfaW9fY29tcGxl
+dGlvbg0KPiA+ID4gYXMNCj4gPiA+IHdlbGwNCj4gPiA+IGFzIGFueSBwZW5kaW5nIENPTU1JVCBy
+ZXF1ZXN0cy4gIEFzIGFuIHVuYXR0YWNoZWQNCj4gPiA+IG5mc19pb19jb21wbGV0aW9uDQo+ID4g
+PiB3aWxsDQo+ID4gPiBzb29uIHR1cm4gaW50byBhIENPTU1JVCByZXF1ZXN0LCB0aGlzIHNlZW1z
+IHJlYXNvbmFibGUuICBJdA0KPiA+ID4gYWxsb3dzIHVzDQo+ID4gPiB0bw0KPiA+ID4gY2xlYXJs
+eSBkZXRlY3Qgd2hlbiB0aGVyZSBhcmUgbm8gbG9uZ2VyIGFueSBDT01NSVRzIGV4cGVjdGVkIHRv
+DQo+ID4gPiBjb21wbGV0ZSwgc28gd2Uga25vdyB0byBkZXRhY2ggYW55IG5mc19pb19jb21wbGV0
+aW9uIGZyb20gdGhlDQo+ID4gPiBpbm9kZQ0KPiA+ID4gYW5kDQo+ID4gPiBhbGxvdyBpdCB0byBk
+cmFpbi4NCj4gPiA+IA0KPiA+ID4gQXMgd2UgdXNlIGF0b21pYyBhY2Nlc3NlcyAoZS5nLiAgeGNo
+ZyBhbmQga3JlZl9nZXRfdW5sZXNzX3plcm8oKSkNCj4gPiA+IHRvDQo+ID4gPiBhY2Nlc3MgdGhl
+IGF0dGFjaGVkIG5mc19pb19jb21wbGV0aW9uLCB3ZSBub3cgdXNlIGtmcmVlX3JjdSgpIHRvDQo+
+ID4gPiBmcmVlDQo+ID4gPiBpdCwgdG8gZW5zdXJlIGl0IGlzIG5vdCBhY2Nlc3NlZCBhZnRlciBp
+dCBpcyBmcmVlZC4NCj4gPiA+IA0KPiA+ID4gV2l0aCAzMDBtcyBjb21taXRzLCB0aGlzIGltcHJv
+dmVzIHRocm91Z2h0IG9mIGEgMUcgZGQgYnkgMiBvcmRlcnMNCj4gPiA+IG9mDQo+ID4gPiBtYWdu
+aXR1ZGUuICBFdmVuIHdpdGhvdXQgdGhlIDMwMG1zIGRlbGF5LCB0aGlzIG5vdGljZWFibHkNCj4g
+PiA+IGltcHJvdmVzDQo+ID4gPiB0aHJvdWdocHV0IHRvIGEgTGludXggTkZTIHNlcnZlciBpcyBh
+IHNpbXBsZSBWTS4NCj4gPiA+IA0KPiA+ID4gRml4ZXM6IDkxOWUzYmQ5YTg3NSAoIk5GUzogRW5z
+dXJlIHdlIGNvbW1pdCBhZnRlciB3cml0ZWJhY2sgaXMNCj4gPiA+IGNvbXBsZXRlIikNCj4gPiA+
+IFNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5kZT4NCj4gPiA+IC0tLQ0KPiA+
+ID4gIGZzL25mcy9pbm9kZS5jICAgICAgICAgIHwgIDEgKw0KPiA+ID4gIGZzL25mcy93cml0ZS5j
+ICAgICAgICAgIHwgNjkNCj4gPiA+ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysNCj4gPiA+IC0tLS0NCj4gPiA+ICBpbmNsdWRlL2xpbnV4L25mc194ZHIuaCB8ICA3ICsrKysr
+DQo+ID4gPiAgMyBmaWxlcyBjaGFuZ2VkLCA3MSBpbnNlcnRpb25zKCspLCA2IGRlbGV0aW9ucygt
+KQ0KPiA+ID4gDQo+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2lub2RlLmMgYi9mcy9uZnMvaW5v
+ZGUuYw0KPiA+ID4gaW5kZXggMTFiZjE1ODAwYWM5Li5jMDBiNTQ0OTE5NDkgMTAwNjQ0DQo+ID4g
+PiAtLS0gYS9mcy9uZnMvaW5vZGUuYw0KPiA+ID4gKysrIGIvZnMvbmZzL2lub2RlLmMNCj4gPiA+
+IEBAIC0yMTEwLDYgKzIxMTAsNyBAQCBzdGF0aWMgdm9pZCBpbml0X29uY2Uodm9pZCAqZm9vKQ0K
+PiA+ID4gIAlJTklUX0xJU1RfSEVBRCgmbmZzaS0+Y29tbWl0X2luZm8ubGlzdCk7DQo+ID4gPiAg
+CWF0b21pY19sb25nX3NldCgmbmZzaS0+bnJlcXVlc3RzLCAwKTsNCj4gPiA+ICAJYXRvbWljX2xv
+bmdfc2V0KCZuZnNpLT5jb21taXRfaW5mby5uY29tbWl0LCAwKTsNCj4gPiA+ICsJbmZzaS0+Y29t
+bWl0X2luZm8uaW9jID0gTlVMTDsNCj4gPiA+ICAJYXRvbWljX3NldCgmbmZzaS0+Y29tbWl0X2lu
+Zm8ucnBjc19vdXQsIDApOw0KPiA+ID4gIAlpbml0X3J3c2VtKCZuZnNpLT5ybWRpcl9zZW0pOw0K
+PiA+ID4gIAltdXRleF9pbml0KCZuZnNpLT5jb21taXRfbXV0ZXgpOw0KPiA+ID4gZGlmZiAtLWdp
+dCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRlLmMNCj4gPiA+IGluZGV4IGM0NzhiNzcy
+Y2M0OS4uNmRiYjA1NWY4MGJmIDEwMDY0NA0KPiA+ID4gLS0tIGEvZnMvbmZzL3dyaXRlLmMNCj4g
+PiA+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+ID4gPiBAQCAtNDcsNiArNDcsNyBAQCBzdHJ1Y3Qg
+bmZzX2lvX2NvbXBsZXRpb24gew0KPiA+ID4gIAl2b2lkICgqY29tcGxldGUpKHZvaWQgKmRhdGEp
+Ow0KPiA+ID4gIAl2b2lkICpkYXRhOw0KPiA+ID4gIAlzdHJ1Y3Qga3JlZiByZWZjb3VudDsNCj4g
+PiA+ICsJc3RydWN0IHJjdV9oZWFkIHJjdTsNCj4gPiA+ICB9Ow0KPiA+ID4gIA0KPiA+ID4gIC8q
+DQo+ID4gPiBAQCAtMTM0LDcgKzEzNSw3IEBAIHN0YXRpYyB2b2lkIG5mc19pb19jb21wbGV0aW9u
+X3JlbGVhc2Uoc3RydWN0DQo+ID4gPiBrcmVmDQo+ID4gPiAqa3JlZikNCj4gPiA+ICAJc3RydWN0
+IG5mc19pb19jb21wbGV0aW9uICppb2MgPSBjb250YWluZXJfb2Yoa3JlZiwNCj4gPiA+ICAJCQlz
+dHJ1Y3QgbmZzX2lvX2NvbXBsZXRpb24sIHJlZmNvdW50KTsNCj4gPiA+ICAJaW9jLT5jb21wbGV0
+ZShpb2MtPmRhdGEpOw0KPiA+ID4gLQlrZnJlZShpb2MpOw0KPiA+ID4gKwlrZnJlZV9yY3UoaW9j
+LCByY3UpOw0KPiA+ID4gIH0NCj4gPiA+ICANCj4gPiA+ICBzdGF0aWMgdm9pZCBuZnNfaW9fY29t
+cGxldGlvbl9nZXQoc3RydWN0IG5mc19pb19jb21wbGV0aW9uICppb2MpDQo+ID4gPiBAQCAtNzE1
+LDkgKzcxNiwxNSBAQCBzdGF0aWMgaW50IG5mc193cml0ZXBhZ2VzX2NhbGxiYWNrKHN0cnVjdA0K
+PiA+ID4gcGFnZQ0KPiA+ID4gKnBhZ2UsIHN0cnVjdCB3cml0ZWJhY2tfY29udHJvbCAqDQo+ID4g
+PiAgCXJldHVybiByZXQ7DQo+ID4gPiAgfQ0KPiA+ID4gIA0KPiA+ID4gK3N0YXRpYyB2b2lkIG5m
+c19jb21taXRfZW5kKHN0cnVjdCBuZnNfbWRzX2NvbW1pdF9pbmZvICpjaW5mbyk7DQo+ID4gPiAr
+DQo+ID4gPiAgc3RhdGljIHZvaWQgbmZzX2lvX2NvbXBsZXRpb25fY29tbWl0KHZvaWQgKmlub2Rl
+KQ0KPiA+ID4gIHsNCj4gPiA+ICAJbmZzX2NvbW1pdF9pbm9kZShpbm9kZSwgMCk7DQo+ID4gPiAr
+CS8qIHRoaXMgY2FtZSBmcm9tIGEgZGV0YWNoZWQgbmZzX2lvX2NvbXBsZXRpb24sIHdoaWNoIGlz
+IG5vdw0KPiA+ID4gKwkgKiBubyBsb25nZXIgYWN0aXZlLCBzbyBtdXN0IGRlY3JlbWVudCBycGNz
+X291dC4NCj4gPiA+ICsJICovDQo+ID4gPiArCW5mc19jb21taXRfZW5kKCZORlNfSShpbm9kZSkt
+PmNvbW1pdF9pbmZvKTsNCj4gPiA+ICB9DQo+ID4gPiAgDQo+ID4gPiAgaW50IG5mc193cml0ZXBh
+Z2VzKHN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5nLCBzdHJ1Y3QNCj4gPiA+IHdyaXRlYmFj
+a19jb250cm9sICp3YmMpDQo+ID4gPiBAQCAtNzI5LDkgKzczNiw0NiBAQCBpbnQgbmZzX3dyaXRl
+cGFnZXMoc3RydWN0IGFkZHJlc3Nfc3BhY2UNCj4gPiA+ICptYXBwaW5nLCBzdHJ1Y3Qgd3JpdGVi
+YWNrX2NvbnRyb2wgKndiYykNCj4gPiA+ICANCj4gPiA+ICAJbmZzX2luY19zdGF0cyhpbm9kZSwg
+TkZTSU9TX1ZGU1dSSVRFUEFHRVMpOw0KPiA+ID4gIA0KPiA+ID4gLQlpb2MgPSBuZnNfaW9fY29t
+cGxldGlvbl9hbGxvYyhHRlBfS0VSTkVMKTsNCj4gPiA+IC0JaWYgKGlvYykNCj4gPiA+IC0JCW5m
+c19pb19jb21wbGV0aW9uX2luaXQoaW9jLCBuZnNfaW9fY29tcGxldGlvbl9jb21taXQsDQo+ID4g
+PiBpbm9kZSk7DQo+ID4gPiArCXJjdV9yZWFkX2xvY2soKTsNCj4gPiA+ICsJaW9jID0gcmN1X2Rl
+cmVmZXJlbmNlKE5GU19JKGlub2RlKS0+Y29tbWl0X2luZm8uaW9jKTsNCj4gPiA+ICsJaWYgKGlv
+YyAmJiBrcmVmX2dldF91bmxlc3NfemVybygmaW9jLT5yZWZjb3VudCkpIHsNCj4gPiA+ICsJCXJj
+dV9yZWFkX3VubG9jaygpOw0KPiA+ID4gKwkJLyogV2UndmUgc3VjY2Vzc2Z1bGx5IHBpZ2d5YmFj
+a2VkIG9uIHRoZSBhdHRhY2hlZCBpb2MNCj4gPiA+ICovDQo+ID4gPiArCX0gZWxzZSB7DQo+ID4g
+PiArCQlyY3VfcmVhZF91bmxvY2soKTsNCj4gPiA+ICsJCWlvYyA9IG5mc19pb19jb21wbGV0aW9u
+X2FsbG9jKEdGUF9LRVJORUwpOw0KPiA+ID4gKwkJaWYgKGlvYykgew0KPiA+ID4gKwkJCXN0cnVj
+dCBuZnNfaW9fY29tcGxldGlvbiAqaW9jX3ByZXY7DQo+ID4gPiArDQo+ID4gPiArCQkJbmZzX2lv
+X2NvbXBsZXRpb25faW5pdChpb2MsDQo+ID4gPiBuZnNfaW9fY29tcGxldGlvbl9jb21taXQsDQo+
+ID4gPiArCQkJCQkgICAgICAgaW5vZGUpOw0KPiA+ID4gKwkJCS8qIFRoaXMgaXMgbm93IGEgZGV0
+YWNoZWQgaW9jIHNvIHdlIGNvdW50IGl0IGluDQo+ID4gPiArCQkJICogcnBjc19vdXQuICAqQWZ0
+ZXIqIHdlIHN1Y2Nlc3NmdWxseSBhdHRhY2ggaXQNCj4gPiA+ICsJCQkgKiBiZWxvdyAobGlrZWx5
+LCBidXQgbm90IGNlcnRhaW4pLCB3ZSB3aWxsDQo+ID4gPiBjYWxsDQo+ID4gPiArCQkJICogbmZz
+X2NvbW1pdF9lbmQoKSB3aGljaCBtaWdodCBkZXRhY2ggaXQNCj4gPiA+IGltbWVkYXRlbHkNCj4g
+PiA+ICsJCQkgKiBpZiB0aGVyZSBhcmUgbm8gb3V0c3RhbmRpbmcgY29tbWl0Lg0KPiA+ID4gKwkJ
+CSAqLw0KPiA+ID4gKwkJCWF0b21pY19pbmMoJk5GU19JKGlub2RlKS0NCj4gPiA+ID4gY29tbWl0
+X2luZm8ucnBjc19vdXQpOw0KPiA+IA0KPiA+IGNvbW1pdF9pbmZvLnJwY3Nfb3V0IGlzIHRoZXJl
+IGluIG9yZGVyIHRvIGNvdW50IHRoZSBudW1iZXIgb2YNCj4gPiBvdXRzdGFuZGluZyBDT01NSVRz
+LiBJJ20gbm90IHNlZWluZyB3aHkgd2UgbmVlZCB0byBjaGFuZ2UgdGhhdA0KPiA+IGRlZmluaXRp
+b24sIHBhcnRpY3VsYXJseSBnaXZlbiB0aGF0IHRoZXJlIGNhbiBiZSBwcm9jZXNzZXMgb3V0DQo+
+ID4gdGhlcmUNCj4gPiB0aGF0IGFyZSB0cnlpbmcgdG8gd2FpdCBmb3IgdGhlIGNvdW50IHRvIGdv
+IHRvIHplcm8uDQo+ID4gDQo+ID4gVGhlIEkvTyBjb21wbGV0aW9uIHN0cnVjdHVyZSBhbHJlYWR5
+IGhhcyBpdHMgb3duIHJlZmVyZW5jZSBjb3VudGVyLA0KPiA+IGFuZA0KPiA+IEkgY2FuIHNlZSBu
+b3RoaW5nIHN0b3BwaW5nIHlvdSBmcm9tIG1vZGlmeWluZw0KPiA+IG5mc19pb19jb21wbGV0aW9u
+X2NvbW1pdCgpIHRvIGRvIHRoZSBzYW1lIHRoaW5ncyB5b3UgYXJlIHRyeWluZyB0bw0KPiA+IGRv
+DQo+ID4gaW4gbmZzX2NvbW1pdF9lbmQoKSBoZXJlLg0KPiANCj4gSSBkb24ndCBzZWUgaG93IHRo
+YXQgd291bGQgd29yay4NCj4gVGhlcmUgYXJlIHR3byBldmVudHMgdGhhdCBuZWVkIHRvIGhhcHBl
+biBhc3luY2hyb25vdXNseSB3aGVuIGENCj4gY291bnRlcg0KPiBoaXRzIHplcm8uDQo+IE9uZSBp
+cyB0aGF0IGEgQ09NTUlUIG5lZWRzIHRvIGJlIHNlbnQgd2hlbiB0aGUgbnVtYmVyIG9mIG91dHN0
+YW5kaW5nDQo+IHdyaXRlcyBmcm9tIGEgcGFydGljdWxhciBzZXQgaGl0cyB6ZXJvLiAgVGhhdCBp
+cyB0aGUNCj4gbmZzX2lvX2NvbXBsZXRpb24NCj4gY291bnRlci4NCj4gVGhlIG90aGVyIGlzIHRo
+YXQgdGhlIGN1cnJlbnRseSBncm93aW5nIHNldCBvZiBwZW5kaW5nIGNvbW1pdHMgbmVlZHMNCj4g
+dG8NCj4gYmUgZGV0YWNoZWQgYW5kIGFsbG93ZWQgdG8gZHJhaW4gc28gdGhhdCBhbm90aGVyIENP
+TU1JVCB3aWxsIGdldA0KPiBzZW50Lg0KPiBUaGlzIGlzIHdoYXQgSSdtIHVzaW5nIHJwY3Nfb3V0
+IGZvci4gIEl0IHNlZW1zIHF1aXRlIGEgbmF0dXJhbA0KPiBleHRlbnNpb24NCj4gb2YgaXRzIGN1
+cnJlbnQgdXNlLg0KPiANCg0KWW91J3JlIG5vdCBzdXBwb3NlZCB0byBjYWxsIGtyZWZfZ2V0KCkg
+b24gc29tZXRoaW5nIHdpdGggYSByZWZjb3VudCBvZg0KemVyby4gVGhhdCBtZWFucyB0aGUgbmZz
+X2lvX2NvbXBsZXRpb24gY291bnRlciBkZWZpbmVzIHRoZSBsaWZldGltZSBvZg0KdGhlIG9iamVj
+dCB0aGF0IHlvdXIgY29tbWl0X2luZm8uaW9jIHBvaW50cyB0bywgYW5kIG9uY2UgdGhhdCByZWZj
+b3VudA0KZ29lcyB0byB6ZXJvLCB5b3Ugc2hvdWxkIGJlIHJlbW92aW5nIGl0LCB3aGljaCB5b3Ug
+YXJlIGRvaW5nIGluDQpuZnNfd3JpdGVwYWdlcygpLg0KDQpjb21taXRfaW5mby5ycGNzX291dCBp
+cyBub24temVybyBmb3IgdGhlIGxpZmV0aW1lIG9mIGFueSBDT01NSVQNCm9wZXJhdGlvbnMuIEkn
+bSBub3Qgc2VlaW5nIGhvdyB0aGF0IHJlbGF0ZXMgdG8gYW55dGhpbmcgaW4gdGhlDQpwcmVjZWRp
+bmcgcGFyYWdyYXBoIChvdGhlciB0aGFuIHRoYXQgbmZzX2lvX2NvbXBsZXRpb24gZ29pbmcgdG8g
+emVybw0Kd2lsbCB1c3VhbGx5IGNhdXNlIGNvbW1pdF9pbmZvLnJwY3Nfb3V0IHRvIGdldCBpbmNy
+ZW1lbnRlZCkuDQpJT1c6IGNvbW1pdF9pbmZvLnJwY3Nfb3V0IGdvZXMgdG8gemVybyBhIGxvbmcg
+dGltZSBhZnRlciB0aGUgb2JqZWN0DQpwb2ludGVkIHRvIGJ5IGNvbW1pdF9pbmZvLmlvYyBvdWdo
+dCB0byBiZSBmcmVlZC4NCg0KPiA+IEhvd2V2ZXIgYXMgSSBzYWlkLCBJIGhhdmUgbXkgZG91YnRz
+IGFzIHRvIHdoZXRoZXIgb3Igbm90IHRoaXMgaXMgYQ0KPiA+IGdvb2QNCj4gPiBpZGVhLiBJdCBz
+b3VuZHMgdG8gbWUgYXMgaWYgeW91J3JlIHRyeWluZyB0byBmaXggYSBtZW1vcnkNCj4gPiBtYW5h
+Z2VtZW50DQo+ID4gbGF5ZXIgcHJvYmxlbSBpbiB0aGUgTkZTIGxheWVyLg0KPiANCj4gSSBndWVz
+cyB3ZSByZWFsbHkgbmVlZCB0byByZXNvbHZlIHRoaXMgaXNzdWUgYmVmb3JlIHdlIHB1dCB0b28g
+bXVjaA0KPiBlZmZvcnQgaW50byBzb3J0aW5nIG91dCBkaWZmZXJlbmNlcyBvdmVyIHRoZSBjb2Rl
+Lg0KPiANCj4gVGhpcyBpcyBjZXJ0YWlubHkgbm90IGEgbWVtb3J5IG1hbmFnZW1lbnQgbGF5ZXIg
+cHJvYmxlbS4gIFRoZSBNTQ0KPiBsYXllcg0KPiBpcyBkb2luZyBleGFjdGx5IHdoYXQgaXQgc2hv
+dWxkIC0gc2VuZGluZyBhbiBvcmRlcmx5IHNlcXVlbmNlIG9mDQo+IHdyaXRlcGFnZXMgcmVxdWVz
+dHMgdG8gdGhlIGZpbGVzeXN0ZW0gaW4gcmVzcG9uc2UgdG8gcmVsZXZhbnQgbGltaXRzDQo+IG9y
+DQo+IHRpbWVvdXRzIGJlaW5nIHJlYWNoZWQuDQo+IA0KPiBORlMgaXMgcHV0dGluZyB0aGVzZSBp
+bnRvIGVmZmVjdCBieSBzZW5kaW5nIG91dCBXUklURSByZXF1ZXN0cyBmb3INCj4gdGhlDQo+IGNo
+b3NlbiBwYWdlcywganVzdCBhcyBpdCBzaG91bGQuDQo+IA0KPiBJdCBpcyBhbHNvIHNlbmRpbmcg
+Q09NTUlUIHJlcXVlc3RzIGFuZCB0aGlzIGlzIHdoZXJlIHRoZSBwcm9ibGVtDQo+IGxpZXMuDQo+
+IEl0IHNvbWV0aW1lcyBzZW5kcyB0b28gbWFueS4NCj4gDQo+IENsZWFybHkgKEkgaG9wZSkgc2Vu
+ZGluZyBvbmUgQ09NTUlUIHJlcXVlc3QgZm9yIGV2ZXJ5IFdSSVRFIHJlcXVlc3QNCj4gd291bGQg
+YmUgdG9vIG1hbnkuICBBdCB0aGUgb3RoZXIgZW5kIG9mIHRoZSBzcGVjdHJ1bSwgb25seSBzZW5k
+aW5nIGENCj4gQ09NTUlUIHdoZW4gdGhlcmUgYXJlIG5vIG91dCBzdGFuZGluZyBXUklURXMgYW5k
+IGhhdmVuJ3QgYmVlbiBmb3INCj4gc29tZQ0KPiB0aW1lIHdvdWxkIGJlIGZhciB0b28gZmV3LiAg
+V2UgbmVlZCBzb21ldGhpbmcgaW4gYmV0d2Vlbi4NCj4gDQo+IFRoZSBjdXJyZW50IGJlaGF2aW91
+ciBpcyB0byBzZW5kIG9uZSBDT01NSVQgZm9yIGV2ZXJ5IHdyaXRlcGFnZXMNCj4gY2FsbC4NCj4g
+VGhpcyBvZnRlbiB3b3JrcyB3ZWxsIGJ1dCBpcyBxdWl0ZSBhcmJpdHJhcnkuICBJdCB0aWVzIGRl
+dGFpbHMgb2YgdGhlDQo+IE5GUyBwcm90b2NvbCB0byB1bnJlbGF0ZWQgZGV0YWlscyBvZiB0aGUg
+TU0gYmVoYXZpb3VyIHdoaWNoIGlzIG5vdA0KPiBkZXNpZ25lZCB0byBtZWV0IHRoZSBzcGVjaWZp
+YyBuZWVkcyBvZiBORlMuDQo+IA0KPiBUaGlzIGJlaGF2aW91ciByZXN1bHRzIGluIGV4dHJlbWVs
+eSBwb29yIHBlcmZvcm1hbmNlIGluIHNvbWUNCj4gY2lyY3Vtc3RhbmNlcyB3aGVuIENPTU1JVCB0
+YWtlcyBhIGxvbmcgdGltZSAtIGUuZy4gMzAwbXMuICBBcyB0aGUNCj4gZnJlcXVlbmN5IG9mIENP
+TU1JVCBtZXNzYWdlcyBpcyB0aWVkIHRvIHRoZSBiZWhhdmlvdXIgb2YgdGhlIE1NLCBhbmQNCj4g
+bm90DQo+IHRoZSBiZWhhdmlvdXIgb2YgdGhlIHNlcnZlciwgaXQgY2FuIGRvIHRoaW5ncyB0aGF0
+IGh1cnQgdGhlIHNlcnZlci4NCj4gSW4gcGFydGljdWxhcmx5IGl0IGNhbiBlYXNpbHkgc2VuZCBD
+T01NSVQgbWVzc2FnZXMgbW9yZSBmcmVxdWVudGx5DQo+IHRoYW4NCj4gY2FuIGJlIGhhbmRsZWQs
+IHdoaWNoIGNhbiBvdmVybG9hZCB0aGUgc2VydmVyLg0KPiANCj4gSSB0aGluayBpdCBtYWtlcyBt
+dWNoIG1vcmUgc2Vuc2UgdG8gdGllIHRoZSBmcmVxdWVuY3kgb2YgdGhlIENPTU1JVA0KPiBtZXNz
+YWdlcyB0byB0aGUgc3BlZWQgYXQgd2hpY2ggdGhlIHNlcnZlciByZXBsaWVzIHRvIHRoZW0sIGFu
+ZCBpbg0KPiBwYXJ0aWN1bGFyIG9ubHkgaGF2ZSBhIHNpbmdsZSBDT01NSVQgb3V0c3RhbmRpbmcg
+YXQgYSB0aW1lLg0KPiBXaGV0aGVyIHdlIHRoZW4gd2FudCB0byBzZW5kIGEgQ09NTUlUIGltbWVk
+aWF0ZWx5IGFmdGVyIHRoZSBsYXN0IG9uZQ0KPiByZXR1cm5zLCBvciBhZnRlciBhIHNob3J0IGRl
+bGF5IG9yIHdpdGggc29tZSBvdGhlciBoZXVyaXN0aWMgaXMNCj4gc29tZXRoaW5nIEknbSBxdWl0
+ZSB3aWxsaW5nIHRvIGRpc2N1c3MuICBJIGhhdmUgYSBzb2x1dGlvbiB0aGF0IEkNCj4gbGlrZQ0K
+PiBidXQgdGhlcmUgbWlnaHQgYmUgYSBiZXR0ZXIgb25lLg0KPiANCj4gQnV0IGNhbiB3ZSBhdCBs
+ZWFzdCBhZ3JlZSB0aGF0IHNlbmRpbmcgbXVsdGlwbGUgY29uY3VycmVudCBDT01NSVQNCj4gcmVx
+dWVzdHMgaXMgdW5saWtlbHkgdG8gYmUgaGVscGZ1bCwgYW5kIHRvIGFjaGlldmUgdGhpcyB3ZSBu
+ZWVkIHRvDQo+IGxldA0KPiB0aGUgYmVoYXZpb3VyIG9mIHRoZSBzZXJ2ZXIgYWZmZWN0IHRoZSBm
+cmVxdWVuY3kgb2YgQ09NTUlUcz8/DQo+IA0KPiBUaGFua3MsDQo+IE5laWxCcm93bg0KPiANCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNw
+YWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
