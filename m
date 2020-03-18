@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5BEB2C4332D
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 21:09:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA2CCC4332D
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 21:10:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2993E20409
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 21:09:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B3E0320775
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 21:10:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1584565766;
-	bh=ePVB3mhFEyRGGn0YVF44FQkofOhQSp5ciqnPPMTYVzk=;
+	s=default; t=1584565819;
+	bh=ztCb4QjpjJS95pKFatfKpFF+V1RYi6Jlppehs5ldGno=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=ak5geGYdK2hhY5Waowg8Sbn6QNgASKHAvU4RsOp3UuOgRMMQsIrQxyKf1n1ka8cSR
-	 JRuCY1U3R5Y21OAnCz9BySZOURdtXt/XbZQI5NRiOhi1VZ1m6waH6s1Aa7Mp4yXYky
-	 RowvbZJoVMMcX0W0b6Rl+7/CtneyZMNz3DXbG6v4=
+	b=Pxv5k00r6MsLMMDwMjjoKr8Pzn4PQZ2Q5zaSNUM5NkRtQx3Tk4lqGV0Ub1A8FqNHi
+	 h5GQk0J8fBxW6TRDPOWNc7fJaxEb8DSb0fO0tZVqqM3WCMTDANmhK78tgXg6SAOguM
+	 JEPTUPTwrhUMM5ka97g7w3SplbyI5v9BKFHa9e9c=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726596AbgCRUxr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Mar 2020 16:53:47 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52890 "EHLO mail.kernel.org"
+        id S1726871AbgCRVKH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Mar 2020 17:10:07 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52490 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727262AbgCRUxr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 18 Mar 2020 16:53:47 -0400
+        id S1726894AbgCRUxc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 18 Mar 2020 16:53:32 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9087B20724;
-        Wed, 18 Mar 2020 20:53:45 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5462020724;
+        Wed, 18 Mar 2020 20:53:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1584564826;
-        bh=ePVB3mhFEyRGGn0YVF44FQkofOhQSp5ciqnPPMTYVzk=;
+        s=default; t=1584564812;
+        bh=ztCb4QjpjJS95pKFatfKpFF+V1RYi6Jlppehs5ldGno=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=0keH5Kmk71gBT9xIw73R84/gVmmUhps1hdByTe328mc9m4hVLVdgrle1H1JZOq9Xi
-         cBtJZqhAdVT9PZPgbOXmdlHhMJPavHA/ymLfMK7UGHGJC47/kYXHtb3Tqdjukb34m1
-         /t3ypmUTaI7tTElZkQVhShR6StTJJF+y9XbKnDRI=
+        b=ZMa1bmOXn60di3oemyQDhkn1VfwvXwpO67qyvF9D22bukV//U/oQ70/8Zj2QRUQyJ
+         LpmQSge07auPvIq70aTDxENmLLzjeO+xNkZgG9dXuTEw7zlzmA0ZoLvQ/2mWHEwtUG
+         nyzGcsh4HkzoC7rewAmqd0bkkA8369N8t/ownB2o=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Scott Mayhew <smayhew@redhat.com>,
         Dave Wysochanski <dwysocha@redhat.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 07/73] nfs: add minor version to nfs_server_key for fscache
-Date:   Wed, 18 Mar 2020 16:52:31 -0400
-Message-Id: <20200318205337.16279-7-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 08/84] nfs: add minor version to nfs_server_key for fscache
+Date:   Wed, 18 Mar 2020 16:52:05 -0400
+Message-Id: <20200318205321.16066-8-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200318205337.16279-1-sashal@kernel.org>
-References: <20200318205337.16279-1-sashal@kernel.org>
+In-Reply-To: <20200318205321.16066-1-sashal@kernel.org>
+References: <20200318205321.16066-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -84,7 +84,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  3 files changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 30838304a0bf2..a05f77f9c21ed 100644
+index 02110a30a49ea..a851339defeb5 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
 @@ -153,6 +153,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
@@ -116,7 +116,7 @@ index 3800ab6f08fa8..a6dcc2151e779 100644
  
  	switch (clp->cl_addr.ss_family) {
 diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index da6204025a2db..914feab64702c 100644
+index 460d6251c405f..2c274fea80937 100644
 --- a/fs/nfs/nfs4client.c
 +++ b/fs/nfs/nfs4client.c
 @@ -216,7 +216,6 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
