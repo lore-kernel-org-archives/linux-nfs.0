@@ -2,151 +2,131 @@ Return-Path: <SRS0=WOQA=5D=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 501BDC5ACD7
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 16:06:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FB84C4332B
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 21:04:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 24BF920714
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 16:06:04 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="key not found in DNS" (0-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b="PmkHFgaj"
+	by mail.kernel.org (Postfix) with ESMTP id EF38E20777
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Mar 2020 21:04:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1584565481;
+	bh=8gWxQB1hy2Rs45/USgNRR4m1Ti7GPXXLLt/ZXidVBr0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=Aw5yRbaWeUIcdwvsJDof2fsJrTktiM2Eb1w5d/26gx4crnuPGkKQ6Lto8AgR3Ktmv
+	 I4dP6oEEzFnU9gsGzKhBRUpy8gnziRAxwFquIL+A7LE+c6B1/HzXghsw275wJqTJYM
+	 SN53IIcfPEfy9fdl9kVeosCSl0fvHWznb7qDnSHw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727049AbgCRQGD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Mar 2020 12:06:03 -0400
-Received: from mail-il1-f193.google.com ([209.85.166.193]:34022 "EHLO
-        mail-il1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726871AbgCRQGC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2020 12:06:02 -0400
-Received: by mail-il1-f193.google.com with SMTP id c8so24232120ilm.1
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2020 09:06:02 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=szeredi.hu; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=Q+E6phefA0/UCxZU68Ee5CkdpY/LreXqfKusKthyp5I=;
-        b=PmkHFgajk2/8VWOHdYUg8VCj1tVopeX6fqfrGgYm0sPb35e5EoxUjxowANbaw3zCwS
-         wqDhItzeSSD2F4OzNelMLAyDUKSqRDkOzITlg+Hge+tWY5LhXczVM8GuM5pTiPEM5aFa
-         ut6OlQnzTW2CXrIbgEnOI63xRs4UIkIGUhynA=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=Q+E6phefA0/UCxZU68Ee5CkdpY/LreXqfKusKthyp5I=;
-        b=VBQXaCIp15lQOGPtIWRSnwzOkkKYkFVlynSX0WngRnAMw2Yjc0Hq7i+eJUbfv3QUbR
-         HT7ZOQKMmp9j8MsYaaI1Yt3K99S+eBtoy+wsFIzpnsYC/cbSq2D/aby0NtoNfct/jRG3
-         yFO2KYdJFcRmHoNwdhmjNR5GzcutRTEcRpzeUPbEJhx+qHWd23z64QcIYAXTRVFu9ffI
-         b8NdkFsY9YFS7Tkyfj+nfX+8EQ6ylGkNHnVoTogM+pAZHwkOZkxxZ8Pg+BdOFPljqbdr
-         4lBR5uu/30X5X9HNgM3kvkcVIbOG394dhpHqiaketbk/EpyDsHeEVZ0oVxIgHpk5fph+
-         sy/A==
-X-Gm-Message-State: ANhLgQ1NKj6uY8JRGjbga4EUqtV0zCe+Uz4MdbnhLHVhuhLXlu6kdgMs
-        xu3rx5jJGLg0+NbQBfirVP7gj7V5DfGJbxgSkC2Wmw==
-X-Google-Smtp-Source: ADFU+vseuj9ZXYFeMbS3X+5vGmRRSiZoxImF5rzfLQFjQscZDtBKPWLdRkROYV3TZYIAEV5wBxQF2hmZ0LlipmXRNY0=
-X-Received: by 2002:a92:5d52:: with SMTP id r79mr4664957ilb.212.1584547562099;
- Wed, 18 Mar 2020 09:06:02 -0700 (PDT)
+        id S1726851AbgCRVEg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Mar 2020 17:04:36 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55612 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728257AbgCRUzR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 18 Mar 2020 16:55:17 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id DDA5F208E4;
+        Wed, 18 Mar 2020 20:55:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1584564916;
+        bh=8gWxQB1hy2Rs45/USgNRR4m1Ti7GPXXLLt/ZXidVBr0=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=gPE6kgigtu1BukX5TZmv3drvh2TSwTekEpAwY/i9zB58kex8uVL9r1iQHiZ1/abrh
+         iGbs/2eDvY6xUZsCIKdQXZrUvB8bqT+CvaDiOfgZZ3IZg9T/kBEZXfH6Y9WDHZ7nS1
+         4TC1mCGE6uZA3e5EN/IQBNtCFfDC7+iFqsD2eI58=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Scott Mayhew <smayhew@redhat.com>,
+        Dave Wysochanski <dwysocha@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 05/37] nfs: add minor version to nfs_server_key for fscache
+Date:   Wed, 18 Mar 2020 16:54:37 -0400
+Message-Id: <20200318205509.17053-5-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200318205509.17053-1-sashal@kernel.org>
+References: <20200318205509.17053-1-sashal@kernel.org>
 MIME-Version: 1.0
-References: <158454408854.2864823.5910520544515668590.stgit@warthog.procyon.org.uk>
-In-Reply-To: <158454408854.2864823.5910520544515668590.stgit@warthog.procyon.org.uk>
-From:   Miklos Szeredi <miklos@szeredi.hu>
-Date:   Wed, 18 Mar 2020 17:05:50 +0100
-Message-ID: <CAJfpeguaiicjS2StY5m=8H7BCjq6PLxMsWE3Mx_jYR1foDWVTg@mail.gmail.com>
-Subject: Re: [PATCH 00/13] VFS: Filesystem information [ver #19]
-To:     David Howells <dhowells@redhat.com>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Linux API <linux-api@vger.kernel.org>,
-        linux-ext4@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Ian Kent <raven@themaw.net>,
-        Miklos Szeredi <mszeredi@redhat.com>,
-        Christian Brauner <christian@brauner.io>,
-        Jann Horn <jannh@google.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Karel Zak <kzak@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        linux-fsdevel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 18, 2020 at 4:08 PM David Howells <dhowells@redhat.com> wrote:
+From: Scott Mayhew <smayhew@redhat.com>
 
-> ============================
-> WHY NOT USE PROCFS OR SYSFS?
-> ============================
->
-> Why is it better to go with a new system call rather than adding more magic
-> stuff to /proc or /sysfs for each superblock object and each mount object?
->
->  (1) It can be targetted.  It makes it easy to query directly by path.
->      procfs and sysfs cannot do this easily.
->
->  (2) It's more efficient as we can return specific binary data rather than
->      making huge text dumps.  Granted, sysfs and procfs could present the
->      same data, though as lots of little files which have to be
->      individually opened, read, closed and parsed.
+[ Upstream commit 55dee1bc0d72877b99805e42e0205087e98b9edd ]
 
-Asked this a number of times, but you haven't answered yet:  what
-application would require such a high efficiency?
+An NFS client that mounts multiple exports from the same NFS
+server with higher NFSv4 versions disabled (i.e. 4.2) and without
+forcing a specific NFS version results in fscache index cookie
+collisions and the following messages:
+[  570.004348] FS-Cache: Duplicate cookie detected
 
-Nobody's suggesting we move stat(2) to proc interfaces, and AFAIK
-nobody suggested we move /proc/PID/* to a binary syscall interface.
-Each one has its place, and I strongly feel that mount info belongs in
-the latter category.    Feel free to prove the opposite.
+Each nfs_client structure should have its own fscache index cookie,
+so add the minorversion to nfs_server_key.
 
->  (3) We wouldn't have the overhead of open and close (even adding a
->      self-contained readfile() syscall has to do that internally
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=200145
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/nfs/client.c     | 1 +
+ fs/nfs/fscache.c    | 2 ++
+ fs/nfs/nfs4client.c | 1 -
+ 3 files changed, 3 insertions(+), 1 deletion(-)
 
-Busted: add f_op->readfile() and be done with all that.   For example
-DEFINE_SHOW_ATTRIBUTE() could be trivially moved to that interface.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0a2b59c1ecb3d..07c5ddd5d6d50 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -157,6 +157,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	if ((clp = kzalloc(sizeof(*clp), GFP_KERNEL)) == NULL)
+ 		goto error_0;
+ 
++	clp->cl_minorversion = cl_init->minorversion;
+ 	clp->cl_nfs_mod = cl_init->nfs_mod;
+ 	if (!try_module_get(clp->cl_nfs_mod->owner))
+ 		goto error_dealloc;
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index a7bc4e0494f92..6f45b1a957397 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -35,6 +35,7 @@ static DEFINE_SPINLOCK(nfs_fscache_keys_lock);
+ struct nfs_server_key {
+ 	struct {
+ 		uint16_t	nfsversion;		/* NFS protocol version */
++		uint32_t	minorversion;		/* NFSv4 minor version */
+ 		uint16_t	family;			/* address family */
+ 		__be16		port;			/* IP port */
+ 	} hdr;
+@@ -59,6 +60,7 @@ void nfs_fscache_get_client_cookie(struct nfs_client *clp)
+ 
+ 	memset(&key, 0, sizeof(key));
+ 	key.hdr.nfsversion = clp->rpc_ops->version;
++	key.hdr.minorversion = clp->cl_minorversion;
+ 	key.hdr.family = clp->cl_addr.ss_family;
+ 
+ 	switch (clp->cl_addr.ss_family) {
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 86991bcfbeb12..faaabbedc891d 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -210,7 +210,6 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	INIT_LIST_HEAD(&clp->cl_ds_clients);
+ 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+ 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
+-	clp->cl_minorversion = cl_init->minorversion;
+ 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
+ 	clp->cl_mig_gen = 1;
+ #if IS_ENABLED(CONFIG_NFS_V4_1)
+-- 
+2.20.1
 
-We could optimize existing proc, sys, etc. interfaces, but it's not
-been an issue, apparently.
-
->
->  (4) Opening a file in procfs or sysfs has a pathwalk overhead for each
->      file accessed.  We can use an integer attribute ID instead (yes, this
->      is similar to ioctl) - but could also use a string ID if that is
->      preferred.
->
->  (5) Can easily query cross-namespace if, say, a container manager process
->      is given an fs_context that hasn't yet been mounted into a namespace -
->      or hasn't even been fully created yet.
-
-Works with my patch.
-
->  (6) Don't have to create/delete a bunch of sysfs/procfs nodes each time a
->      mount happens or is removed - and since systemd makes much use of
->      mount namespaces and mount propagation, this will create a lot of
->      nodes.
-
-Not true.
-
-> The argument for doing this through procfs/sysfs/somemagicfs is that
-> someone using a shell can just query the magic files using ordinary text
-> tools, such as cat - and that has merit - but it doesn't solve the
-> query-by-pathname problem.
->
-> The suggested way around the query-by-pathname problem is to open the
-> target file O_PATH and then look in a magic directory under procfs
-> corresponding to the fd number to see a set of attribute files[*] laid out.
-> Bash, however, can't open by O_PATH or O_NOFOLLOW as things stand...
-
-Bash doesn't have fsinfo(2) either, so that's not really a good argument.
-
-Implementing a utility to show mount attribute(s) by path is trivial
-for the file based interface, while it would need to be updated for
-each extension of fsinfo(2).   Same goes for libc, language bindings,
-etc.
-
-Thanks,
-Miklos
