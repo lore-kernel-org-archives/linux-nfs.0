@@ -1,132 +1,137 @@
-Return-Path: <SRS0=fE1b=5E=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=0eYR=5F=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no autolearn_force=no
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B416C4332D
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Mar 2020 22:15:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A710C4332D
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Mar 2020 16:47:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3C54620663
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Mar 2020 22:15:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5BDDD20753
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Mar 2020 16:47:42 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="fE+Xxom/"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="YXL9LWQ5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727406AbgCSWP3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 19 Mar 2020 18:15:29 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:42770 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727297AbgCSWP3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2020 18:15:29 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 02JM9Gk7033728;
-        Thu, 19 Mar 2020 22:15:23 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=E1FaicFESA4imF///TfvbR91Gf+p3rJfvO3SjUsBAps=;
- b=fE+Xxom/O3bYtmMRbV1oukvUvf/oN3tXZ83eCre4OK8i7c4cgi6/pSdFigOMHc24Umw9
- av9WyMv7nuOoXZdyXl2TkFkp+8m8LqE3EFqnGix7/ech8/iHQ69oltGoY9Xw8/YLKbh8
- SKfw0tDSAwELnkKhJPm7gl6pem95Izo7Xegd3hroIJHEQBvE+2QhzkUKbd6NRCJoEu8A
- py12zmXI8Ci1JDWJosfBF+TuvZRlimG8fmoq9/p0V1ieRMtXGj17rUPjdbs31ZGgP7Ev
- eS/HG1FS/A+uID6N1Sp3szCwKwG+6vY1AabS7/v4kUYxpCm5zzscnSehZ0V29J9eCYa9 Ow== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by userp2130.oracle.com with ESMTP id 2yrpprjyh3-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 19 Mar 2020 22:15:23 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 02JM2jw9134111;
-        Thu, 19 Mar 2020 22:15:22 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by userp3020.oracle.com with ESMTP id 2ys9054nb2-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 19 Mar 2020 22:15:22 +0000
-Received: from abhmp0004.oracle.com (abhmp0004.oracle.com [141.146.116.10])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 02JMFKjq015571;
-        Thu, 19 Mar 2020 22:15:21 GMT
-Received: from anon-dhcp-153.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Thu, 19 Mar 2020 15:15:20 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
-Subject: Re: [PATCH 11/14] nfsd: add user xattr RPC XDR encoding/decoding
- logic
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20200319221350.GA18279@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
-Date:   Thu, 19 Mar 2020 18:15:19 -0400
-Cc:     Bruce Fields <bfields@fieldses.org>,
+        id S1727560AbgCTQrl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Mar 2020 12:47:41 -0400
+Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:55688 "EHLO
+        smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727120AbgCTQrl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2020 12:47:41 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1584722861; x=1616258861;
+  h=date:from:to:cc:message-id:references:mime-version:
+   in-reply-to:subject;
+  bh=XtMDPpIarwf/crTWNE7mjozXIyPtNkdtp+PQxgObG64=;
+  b=YXL9LWQ5QzL/DGXg8rALEYqm7Z/VNwJ+Z9AaPsfmq7rBncdB1l0YMGet
+   mX8w35QtecWnYfa1qVrRiVsPo6c0NpVGfcRF5BiU2BiomB/O9atQqLyBP
+   wREnTWLzanIHwvil+gVtCatdb8ikujfTiqiirqV0fC463xIRrDYXT5NjY
+   E=;
+IronPort-SDR: PUw4Fpjs8TpfwBL9gxTCkc+VlojwYQ6+8Yvw3lYmTwkAHhjfEbP1P296FAVVTFrjzy8c8SLfDK
+ 1L/MAX0eI6vw==
+X-IronPort-AV: E=Sophos;i="5.72,285,1580774400"; 
+   d="scan'208";a="33811913"
+Subject: Re: [PATCH 11/14] nfsd: add user xattr RPC XDR encoding/decoding logic
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-2b-c7131dcf.us-west-2.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 20 Mar 2020 16:47:39 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan2.pdx.amazon.com [10.170.41.162])
+        by email-inbound-relay-2b-c7131dcf.us-west-2.amazon.com (Postfix) with ESMTPS id 7DAE4A1DC8;
+        Fri, 20 Mar 2020 16:47:38 +0000 (UTC)
+Received: from EX13D02UWC004.ant.amazon.com (10.43.162.236) by
+ EX13MTAUWC001.ant.amazon.com (10.43.162.135) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Fri, 20 Mar 2020 16:47:37 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13D02UWC004.ant.amazon.com (10.43.162.236) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Fri, 20 Mar 2020 16:47:37 +0000
+Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
+ (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
+ Server id 15.0.1367.3 via Frontend Transport; Fri, 20 Mar 2020 16:47:37 +0000
+Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
+        id 80807CAD77; Fri, 20 Mar 2020 16:47:37 +0000 (UTC)
+Date:   Fri, 20 Mar 2020 16:47:37 +0000
+From:   Frank van der Linden <fllinden@amazon.com>
+To:     Chuck Lever <chuck.lever@oracle.com>
+CC:     Bruce Fields <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <1C99F4A1-4868-43C2-9F36-25FA5D82B92E@oracle.com>
+Message-ID: <20200320164737.GA19415@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
 References: <20200311195954.27117-1-fllinden@amazon.com>
  <20200311195954.27117-12-fllinden@amazon.com>
- <17D7709F-2FE0-4B84-A9AF-4D6C2B36A4E7@oracle.com>
- <20200319221350.GA18279@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
-To:     Frank van der Linden <fllinden@amazon.com>
-X-Mailer: Apple Mail (2.3445.104.11)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9565 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 mlxlogscore=999 mlxscore=0
- adultscore=0 bulkscore=0 malwarescore=0 spamscore=0 suspectscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2003020000
- definitions=main-2003190090
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9565 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 bulkscore=0
- suspectscore=0 lowpriorityscore=0 phishscore=0 adultscore=0 clxscore=1015
- impostorscore=0 priorityscore=1501 spamscore=0 mlxlogscore=999 mlxscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2003020000
- definitions=main-2003190090
+ <6955728A-CFCC-40FC-9E02-671255EDD45F@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+In-Reply-To: <6955728A-CFCC-40FC-9E02-671255EDD45F@oracle.com>
+User-Agent: Mutt/1.11.4 (2019-03-13)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Chuck,
 
+On Thu, Mar 12, 2020 at 03:16:37PM -0400, Chuck Lever wrote:
+> > +static __be32
+> > +nfsd4_decode_setxattr(struct nfsd4_compoundargs *argp,
+> > +                   struct nfsd4_setxattr *setxattr)
+> > +{
+> > +     DECODE_HEAD;
+> > +     u32 flags, maxcount, size;
+> > +     struct kvec head;
+> > +     struct page **pagelist;
+> > +
+> > +     READ_BUF(4);
+> > +     flags = be32_to_cpup(p++);
+> > +
+> > +     if (flags > SETXATTR4_REPLACE)
+> > +             return nfserr_inval;
+> > +     setxattr->setxa_flags = flags;
+> > +
+> > +     status = nfsd4_decode_xattr_name(argp, &setxattr->setxa_name);
+> > +     if (status)
+> > +             return status;
+> > +
+> > +     maxcount = svc_max_payload(argp->rqstp);
+> > +     maxcount = min_t(u32, XATTR_SIZE_MAX, maxcount);
+> > +
+> > +     READ_BUF(4);
+> > +     size = be32_to_cpup(p++);
+> > +     if (size > maxcount)
+> > +             return nfserr_xattr2big;
+> > +
+> > +     setxattr->setxa_len = size;
+> > +     if (size > 0) {
+> > +             status = svcxdr_construct_vector(argp, &head, &pagelist, size);
+> > +             if (status)
+> > +                     return status;
+> > +
+> > +             status = nfsd4_vbuf_from_stream(argp, &head, pagelist,
+> > +                 &setxattr->setxa_buf, size);
+> > +     }
+> 
+> Now I'm wondering if read_bytes_from_xdr_buf() might be adequate
+> for this purpose, so you can avoid open-coding all of this logic.
 
-> On Mar 19, 2020, at 6:13 PM, Frank van der Linden =
-<fllinden@amazon.com> wrote:
->=20
-> On Thu, Mar 12, 2020 at 12:24:18PM -0400, Chuck Lever wrote:
->>> +static inline u32 nfsd4_getxattr_rsize(struct svc_rqst *rqstp,
->>> +                                    struct nfsd4_op *op)
->>> +{
->>> +     u32 maxcount, rlen;
->>> +
->>> +     maxcount =3D svc_max_payload(rqstp);
->>> +     rlen =3D min_t(u32, XATTR_SIZE_MAX, maxcount);
->>> +
->>> +     return (op_encode_hdr_size + 1 + XDR_QUADLEN(rlen)) * =
-sizeof(__be32);
->>=20
->> These should be added in the same patch that adds OP_GETXATTR and =
-friends.
->>=20
->> Also, Trond recently added xdr_align_size which I prefer over the
->> use of XDR_QUADLEN in new code.
->=20
-> Thanks, I've squashed together those patches for this and the other =
-reasons
-> you pointed out.
->=20
-> As for XDR_QUADLEN: that returns the 32bit-word rounded up lenghth - =
-in words.
-> xdr_aligned_size returns the 32bit-word rounded up length - in bytes.
->=20
-> So, the result would then look something like:
->=20
-> 	return xdr_align_size((op_encode_hdr_size * 4) + 4 + rlen);
->=20
-> Is that what you're suggesting?
+This took a little longer, I had to check my notes, but basically the
+reasons for doing it this way are:
 
-Oops, you're right. When you want words, XDR_QUADLEN is correct. Never =
-mind!
+* The nfsd decode path uses nfsd4_compoundargs, which doesn't have an
+  xdr_stream (it has a page array). So read_bytes_from_xdr_buf isn't
+  a natural fit.
+* READ_BUF/read_buf don't deal with > PAGE_SIZE chunks, but xattrs may
+  be larger than that.
 
+The other code that deals with > PAGE_SIZE chunks is the write code. So,
+I factored out some code from the write code, used that, and added a function
+to process the resulting kvec / pagelist (nfs4_vbuf_from_stream).
 
---
-Chuck Lever
+There definitely seem to be several copy functions in both the client
+and server code that basically do the same, but in slightly different ways,
+depending on whether they use an XDR buf or not, whether the pages are
+mapped or not, etc. Seems like a good candidate for a cleanup, but I
+considered it to be out of scope for these patches.
 
-
-
+- Frank
