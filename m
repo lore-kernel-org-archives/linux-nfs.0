@@ -1,179 +1,114 @@
-Return-Path: <SRS0=2PpH=5G=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=a94W=5H=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_2 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 824F0C4332B
-	for <linux-nfs@archiver.kernel.org>; Sat, 21 Mar 2020 19:51:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6C97C4332D
+	for <linux-nfs@archiver.kernel.org>; Sun, 22 Mar 2020 03:43:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4C3F82072C
-	for <linux-nfs@archiver.kernel.org>; Sat, 21 Mar 2020 19:51:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1F69520732
+	for <linux-nfs@archiver.kernel.org>; Sun, 22 Mar 2020 03:43:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Ifu9A8BQ"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=belsznica.pl header.i=@belsznica.pl header.b="cQtHnIpE"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727573AbgCUTvA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 21 Mar 2020 15:51:00 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:34762 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727028AbgCUTvA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Mar 2020 15:51:00 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 02LJh0OF183514;
-        Sat, 21 Mar 2020 19:50:56 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=FkYDoPbxAdFj3OjJ/2q9cQl6ed4npbXs12ybaG2zVNs=;
- b=Ifu9A8BQgfMXYQwg3qGWBSgFuCQPuSWRWa8AESMFH6/GlRPUMtXwmYx1NIcnBb/HiUGp
- wBbQyJyK0R6c4ekis9eSLuzKDQNTG91PbrBMObXTJZWAg2lD7X0TjJ4Ay9eO2vnxh9ER
- 7Qs7GMGaP05zjJi9f2/veKAU9lm6csrk+RJ0lS+8S752XcF1rW+NimkW0Dm9Jj/cToSC
- R5CQ3DbMbusN3HdxZqNO9R4ymrhpn4CddW69oyF1pEV+LPCuMqr0+N1+k2NMyBw7myKL
- 7H1Gjvt2YVc4XFSWX1ICawmhjqd1T6XgQGl/a64x21Rph4/8nccAxdZcPnt/zRxmYukU rw== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by userp2130.oracle.com with ESMTP id 2ywabqsg6r-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 21 Mar 2020 19:50:55 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 02LJo3ct113904;
-        Sat, 21 Mar 2020 19:50:55 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3020.oracle.com with ESMTP id 2ywar1t47r-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 21 Mar 2020 19:50:55 +0000
-Received: from abhmp0009.oracle.com (abhmp0009.oracle.com [141.146.116.15])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 02LJoqiT031723;
-        Sat, 21 Mar 2020 19:50:52 GMT
-Received: from anon-dhcp-153.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Sat, 21 Mar 2020 12:50:51 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
-Subject: Re: refcount underflow in nfsd41_destroy_cb
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHmME9ro8BPBTMfu8dEbGmkH7qHLdQ=CXGEOW2C7MR4bmT6T+w@mail.gmail.com>
-Date:   Sat, 21 Mar 2020 15:50:50 -0400
+        id S1727851AbgCVDn5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 21 Mar 2020 23:43:57 -0400
+Received: from s58.linuxpl.com ([5.9.16.239]:53266 "EHLO s58.linuxpl.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727700AbgCVDn5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 21 Mar 2020 23:43:57 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=belsznica.pl; s=x; h=Content-Transfer-Encoding:Content-Type:MIME-Version:
+        References:In-Reply-To:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
+        Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
+        List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=5RqKex8KbYpbGsT6RWzmMGGHCMZsA9dtLWNVMB80qA0=; b=cQtHnIpEtNZ6je+2B6gcw1YOfE
+        Xe8+atZplu2RFWPzaLXLuMTkXcwLoh1dxClqfre7RuAiIe+BMENJG4vEVtyYOCIg6d3S76l6Cqo7s
+        857zykRv8mR8KvhqYeiIKyboekUfFpFdKhLuyieW03fa5Z6+rSCQ8QH3SjCfx1c4omGXCkhCVejZU
+        Rg113Os2xT+2dcBECK8mkNDGQ54sgSfnAuPNqAtpWg9lASk8MftvEdrN6Unu7Xa2ynrOtFUbE4XHu
+        D30kr6O/HVfYk+cX7cBeI2/5CnjPRDudkkTAykLkZKue6eUR18fa86B8DH4kkoRAjA+qlFYccwwWz
+        7hPUz35A==;
+Received: from user-5-173-97-3.play-internet.pl ([5.173.97.3] helo=mordimer)
+        by s58.linuxpl.com with esmtpa (Exim 4.92.3)
+        (envelope-from <jasiu@belsznica.pl>)
+        id 1jFrWj-000827-Ax; Sun, 22 Mar 2020 04:43:53 +0100
+Received: from mordimer (localhost [127.0.0.1])
+        by mordimer (Postfix) with ESMTP id 454BF60192;
+        Sun, 22 Mar 2020 04:43:53 +0100 (CET)
+Date:   Sun, 22 Mar 2020 04:43:52 +0100
+From:   Jan Psota <jasiu@belsznica.pl>
+To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         "Jason A. Donenfeld" <Jason@zx2c4.com>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <44C9D860-4F51-46B1-88A3-D10DDEF4BD8E@oracle.com>
+Subject: Re: refcount underflow in nfsd41_destroy_cb
+Message-ID: <20200322044352.2ff1fbd8.jasiu@belsznica.pl>
+In-Reply-To: <44C9D860-4F51-46B1-88A3-D10DDEF4BD8E@oracle.com>
 References: <CAHmME9ro8BPBTMfu8dEbGmkH7qHLdQ=CXGEOW2C7MR4bmT6T+w@mail.gmail.com>
-To:     Jan Psota <jasiu@belsznica.pl>
-X-Mailer: Apple Mail (2.3445.104.11)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9567 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 adultscore=0 suspectscore=2
- malwarescore=0 spamscore=0 bulkscore=0 phishscore=0 mlxlogscore=999
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2003020000
- definitions=main-2003210117
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9567 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 suspectscore=2
- lowpriorityscore=0 malwarescore=0 phishscore=0 priorityscore=1501
- clxscore=1011 adultscore=0 mlxscore=0 mlxlogscore=999 bulkscore=0
- impostorscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2003020000 definitions=main-2003210117
+ <44C9D860-4F51-46B1-88A3-D10DDEF4BD8E@oracle.com>
+X-Mailer: Claws Mail 3.17.4 (GTK+ 2.24.32; x86_64-pc-linux-gnu)
+X-Operating-System: Linux; Gentoo
+MIME-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-2
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Chuck Lever <chuck.lever@oracle.com> napisa=B3(a):
+> Jan, how are you reproducing this?
 
+It looks like it's taking place on server on high NFS load and about
+a day after boot! (as I noticed looking into last -x results, below)
+Then system runs all right for a month (to be rebooted on new kernel
+[not always] or something like this).
 
-> On Mar 20, 2020, at 10:51 PM, Jason A. Donenfeld <Jason@zx2c4.com> =
-wrote:
->=20
-> Hello,
->=20
-> A user erroneously sent me a refcount UaF in NFS with 5.6-rc6. I
-> thought I should forward it onward here in case this is not already
-> known. The original reporter is CC'd in case you have any questions.
+We have some NFS-rooted machines:
+/systemd on / type nfs4 (rw,relatime,vers=3D4.2,rsize=3D4096,wsize=3D4096,n=
+amlen=3D255,hard,proto=3Dtcp,
+	timeo=3D10,retrans=3D2,sec=3Dsys,clientaddr=3D192.168.1.18,local_lock=3Dno=
+ne,addr=3D192.168.1.1)
 
-Jan, how are you reproducing this?
+Server has 10Gb Aquantia AQC107 card connected to Mikrotik CSS326
+switch. Clients running distcc (aside from acting as workstations)
+are connected on 1Gb ethernet. Server runs Gentoo Linux on OpenRC
+(stations have Systemd) with recent gcc-9.3, binutils-2.34 and
+glibc-2.30, has 32 GB RAM and AMD Phenom II X6 1090T CPU.
 
+/var/tmp/portage, where compilation takes place, normally is on client
+tmpfs, but when there is not enough space to compile huge program, I
+switch it to server exported NFS
+(/etc/exports opts: -rw,async,no_root_squash,no_subtree_check)
 
-> Regards,
-> Jason
->=20
-> -------8<------------------------
->=20
-> Mar 20 21:43:34 agro kernel: ------------[ cut here ]------------
-> Mar 20 21:43:34 agro kernel: refcount_t: underflow; use-after-free.
-> Mar 20 21:43:34 agro kernel: WARNING: CPU: 1 PID: 9334 at
-> lib/refcount.c:28 refcount_warn_saturate+0xd9/0xe0
-> Mar 20 21:43:34 agro kernel: Modules linked in: md5 wireguard
-> curve25519_x86_64 libcurve25519_generic libchacha20poly1305
-> chacha_x86_64 libchacha poly1305_x86_64 ip6_udp_tunnel udp_tunnel
-> libblake2s blake2s_x86_64 libblake2s_generic xt_mac xt_nat
-> xt_MASQUERADE xt_REDIRECT xt_owner xt_comment ipt_REJECT
-> nf_reject_ipv4 xt_mark xt_hashlimit xt_multiport nfnetlink_log
-> xt_NFLOG nf_log_ipv4 nf_log_common xt_LOG nf_nat_tftp nf_nat_sip
-> nf_nat_h323 nf_nat_ftp nf_conntrack_tftp nf_conntrack_sip
-> nf_conntrack_netlink nfnetlink nf_conntrack_h323 nf_conntrack_ftp nfsd
-> auth_rpcgss nfs_acl lockd grace sunrpc cpufreq_ondemand msr bridge stp
-> llc xt_tcpudp xt_conntrack iptable_mangle iptable_nat nf_nat
-> nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 iptable_raw iptable_filter
-> ip_tables x_tables btrfs blake2b_generic xor raid6_pq libcrc32c
-> zstd_compress zstd_decompress zlib_deflate zlib_inflate uas
-> usb_storage snd_hda_codec_realtek snd_hda_codec_generic matroxfb_base
-> matroxfb_g450 matroxfb_Ti3026 snd_hda_int
-> el matroxfb_accel
-> Mar 20 21:43:34 agro kernel:  snd_intel_dspcfg cfbfillrect cfbimgblt
-> atlantic snd_hda_codec r8169 cfbcopyarea e1000e snd_hda_core snd_hwdep
-> matroxfb_DAC1064 g450_pll matroxfb_misc ptp realtek fb snd_pcm libphy
-> snd_timer mxm_wmi xhci_pci pcspkr i2c_piix4 input_leds pps_core fbdev
-> k10temp ohci_pci snd xhci_hcd ohci_hcd ehci_pci soundcore i2c_core
-> ehci_hcd wmi acpi_cpufreq vhci_hcd usbip_core usbcore usb_common
-> vhost_net vhost kvm_amd kvm irqbypass loop tun fuse it87 hwmon_vid
-> hwmon
-> Mar 20 21:43:34 agro kernel: CPU: 1 PID: 9334 Comm: kworker/u16:3 Not
-> tainted 5.6.0-rc6 #1
-> Mar 20 21:43:34 agro kernel: Hardware name: Gigabyte Technology Co.,
-> Ltd. GA-990FXA-UD5/GA-990FXA-UD5, BIOS F12 10/03/2013
-> Mar 20 21:43:34 agro kernel: Workqueue: rpciod rpc_async_schedule =
-[sunrpc]
-> Mar 20 21:43:34 agro kernel: RIP: =
-0010:refcount_warn_saturate+0xd9/0xe0
-> Mar 20 21:43:34 agro kernel: Code: ff 48 c7 c7 e8 ff d5 81 c6 05 cd 49
-> b5 00 01 e8 4d 04 cf ff 0f 0b c3 48 c7 c7 90 ff d5 81 c6 05 b9 49 b5
-> 00 01 e8 37 04 cf ff <0f> 0b c3 0f 1f 40 00 8b 07 3d 00 00 00 c0 74 12
-> 83 f8 01 74 46 8d
-> Mar 20 21:43:34 agro kernel: RSP: 0018:ffffc900010dfde0 EFLAGS: =
-00010282
-> Mar 20 21:43:34 agro kernel: RAX: 0000000000000026 RBX:
-> 0000000000000e81 RCX: 0000000000000007
-> Mar 20 21:43:34 agro kernel: RDX: 0000000000000007 RSI:
-> 0000000000000092 RDI: ffff88881fc587c0
-> Mar 20 21:43:34 agro kernel: RBP: ffff8887eeb40470 R08:
-> 00000000000004d9 R09: 0000000000000001
-> Mar 20 21:43:34 agro kernel: R10: 0000000000000000 R11:
-> 0000000000000001 R12: ffff8884f1e28510
-> Mar 20 21:43:34 agro kernel: R13: ffff88837dc49f30 R14:
-> 0000000000000001 R15: ffff888780b8a840
-> Mar 20 21:43:34 agro kernel: FS:  0000000000000000(0000)
-> GS:ffff88881fc40000(0000) knlGS:0000000000000000
-> Mar 20 21:43:34 agro kernel: CS:  0010 DS: 0000 ES: 0000 CR0: =
-0000000080050033
-> Mar 20 21:43:34 agro kernel: CR2: 000000000421efb0 CR3:
-> 0000000510564000 CR4: 00000000000006e0
-> Mar 20 21:43:34 agro kernel: Call Trace:
-> Mar 20 21:43:34 agro kernel:  nfsd41_destroy_cb+0x36/0x50 [nfsd]
-> Mar 20 21:43:34 agro kernel:  rpc_free_task+0x3c/0x70 [sunrpc]
-> Mar 20 21:43:34 agro kernel:  __rpc_execute+0x3a5/0x3c0 [sunrpc]
-> Mar 20 21:43:34 agro kernel:  ? finish_task_switch+0x7f/0x250
-> Mar 20 21:43:34 agro kernel:  rpc_async_schedule+0x2f/0x50 [sunrpc]
-> Mar 20 21:43:34 agro kernel:  process_one_work+0x1ca/0x3c0
-> Mar 20 21:43:34 agro kernel:  worker_thread+0x45/0x3d0
-> Mar 20 21:43:34 agro kernel:  kthread+0xf3/0x130
-> Mar 20 21:43:34 agro kernel:  ? process_one_work+0x3c0/0x3c0
-> Mar 20 21:43:34 agro kernel:  ? kthread_park+0x80/0x80
-> Mar 20 21:43:34 agro kernel:  ret_from_fork+0x1f/0x30
-> Mar 20 21:43:34 agro kernel: ---[ end trace 99765c8e28c46274 ]---
+# "grep nfs.*destroy /var/log/messages" mixed with "last -x"
 
---
-Chuck Lever
+reboot   system boot  5.5.1-gentoo     Mon Feb  3 00:20 - 15:22 (25+15:01)
+Feb  4 17:44:39 agro kernel:  nfsd41_destroy_cb+0x2c/0x40 [nfsd]
+	rust compilation, kernel 5.5.1-gentoo
 
+reboot   system boot  5.5.6-gentoo     Fri Feb 28 15:23 - 16:25 (14+01:02)
+Feb 29 13:51:49 agro kernel:  nfsd41_destroy_cb+0x2c/0x40 [nfsd]
+	rust compilation, kernel 5.5.6-gentoo
 
+reboot   system boot  5.5.9-gentoo     Fri Mar 13 16:27 - 00:04 (4+07:36)
+Mar 14 18:03:49 agro kernel:  nfsd41_destroy_cb+0x2c/0x40 [nfsd]
+	libpciaccess compilation, kernel=20
 
+reboot   system boot  5.6.0-rc6        Wed Mar 18 00:06 - 20:39 (2+20:32)
+Mar 19 11:08:07 agro kernel:  nfsd41_destroy_cb+0x36/0x50 [nfsd]
+	linux-firmware merge
+*
+reboot   system boot  5.6.0-rc6        Fri Mar 20 20:40 - 02:40  (05:59)
+Mar 20 21:43:34 agro kernel:  nfsd41_destroy_cb+0x36/0x50 [nfsd]
+	zstd compilation
+*
+reboot   system boot  5.6.0-rc6        Sat Mar 21 02:42   still running
+Mar 21 17:34:43 agro kernel:  nfsd41_destroy_cb+0x36/0x50 [nfsd]
+	nodejs compilation
+
+* - I noticed kernel fault looking for a reason, why WireGuard refused
+to connect with _some_ remote peers so I rebooted the server and it helped.
