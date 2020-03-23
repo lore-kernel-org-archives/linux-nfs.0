@@ -1,71 +1,115 @@
-Return-Path: <SRS0=a94W=5H=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=SST9=5I=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50603C4332D
-	for <linux-nfs@archiver.kernel.org>; Sun, 22 Mar 2020 07:03:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F028C10F26
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Mar 2020 07:55:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2496E20637
-	for <linux-nfs@archiver.kernel.org>; Sun, 22 Mar 2020 07:03:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E76A52074D
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Mar 2020 07:55:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725946AbgCVHDO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 22 Mar 2020 03:03:14 -0400
-Received: from gandalf.kite.hu ([212.92.8.81]:42104 "EHLO gandalf.kite.hu"
+        id S1727422AbgCWHz0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Mar 2020 03:55:26 -0400
+Received: from relay.sw.ru ([185.231.240.75]:49212 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725881AbgCVHDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 22 Mar 2020 03:03:14 -0400
-Received: (qmail 22759 invoked from network); 22 Mar 2020 07:03:11 -0000
-Received: from fibhost-66-103-77.fibernet.hu (HELO ?192.168.0.3?) (muszi@85.66.103.77)
-  by gandalf.kite.hu with ESMTPA; 22 Mar 2020 07:03:11 -0000
-Subject: Re: NFSv3 directory traversal causes lockup in 4.9.214
-From:   Bartos-Elekes Zsolt <muszi@kite.hu>
-To:     Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <9b126ee3-a51c-76f8-aa97-312f3e76f866@kite.hu>
-Message-ID: <f9afd297-24d7-0343-6bdf-b2ead1cedc0f@kite.hu>
-Date:   Sun, 22 Mar 2020 08:03:12 +0100
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:52.0) Gecko/20100101
- Firefox/52.0 SeaMonkey/2.49.5
+        id S1727428AbgCWHzZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Mar 2020 03:55:25 -0400
+Received: from vvs-ws.sw.ru ([172.16.24.21])
+        by relay.sw.ru with esmtp (Exim 4.92.3)
+        (envelope-from <vvs@virtuozzo.com>)
+        id 1jGHvT-0005vz-Q2; Mon, 23 Mar 2020 10:55:12 +0300
+From:   Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH] nfsd: memory corruption in nfsd4_lock()
+To:     "J. Bruce Fields" <bfields@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>
+Cc:     linux-nfs@vger.kernel.org
+Message-ID: <db0980d0-8c99-940a-1748-04e679a366d1@virtuozzo.com>
+Date:   Mon, 23 Mar 2020 10:55:11 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.4.1
 MIME-Version: 1.0
-In-Reply-To: <9b126ee3-a51c-76f8-aa97-312f3e76f866@kite.hu>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi!
+New struct nfsd4_blocked_lock allocated in find_or_allocate_block()
+does not initialised nbl_list and nbl_lru.
+If conflock allocation fails rollback can call list_del_init()
+access uninitialized fields and corrupt memory.
 
-> I think I found a bug in 4.9.214: a simple directory traversal of a NFSv3-mounted filesystem causes system lockup after 
-> a few seconds - everything attempting NFS and local disk access is blocked. The machine is still alive (responding to 
-> pings and on the console), but I can't start any new programs.
-> 
-> 
-> 4.9.213 is OK, 4.9.214 is not.
-> 
-> If we revert commit 67a56e9743171bdacddbdc05a58735aa024bb474 (commit 4b310319c6a8ce708f1033d57145e2aa027a883c upstream), 
-> the problem goes away.
-> 
-> 
-> How to trigger the problem:
-> 
-> mount nfs-server.example.com:/ /mnt/net -o vers=3,ro
-> find /mnt/net
-> 
-> 
-> I have observed this only on two older machines running in i386 mode (my home server, an Intel D2500HN, and a test 
-> machine, a Lenovo ThinkCentre A57 (Product ID: 9851-7AG)), but could not trigger the bug on a Pentium III machine (all 
-> three running the very same kernel).
+Fixes: 76d348fadff5 ("nfsd: have nfsd4_lock use blocking locks for v4.1+ lock")
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/nfsd/nfs4state.c | 32 +++++++++++++++-----------------
+ 1 file changed, 15 insertions(+), 17 deletions(-)
 
-I reply to myself: commit dbfc9e9878561da92cdcda41f321137c16966587 ("NFS: Remove superfluous kmap in 
-nfs_readdir_xdr_to_array") in 4.9.217 fixes it.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 369e574c5092..176ef8d24fae 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6524,6 +6524,13 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
+ 	}
+ 
++	conflock = locks_alloc_lock();
++	if (!conflock) {
++		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
++		status = nfserr_jukebox;
++		goto out;
++	}
++
+ 	nbl = find_or_allocate_block(lock_sop, &fp->fi_fhandle, nn);
+ 	if (!nbl) {
+ 		dprintk("NFSD: %s: unable to allocate block!\n", __func__);
+@@ -6542,13 +6549,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
+ 	nfs4_transform_lock_offset(file_lock);
+ 
+-	conflock = locks_alloc_lock();
+-	if (!conflock) {
+-		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+-		status = nfserr_jukebox;
+-		goto out;
+-	}
+-
+ 	if (fl_flags & FL_SLEEP) {
+ 		nbl->nbl_time = jiffies;
+ 		spin_lock(&nn->blocked_locks_lock);
+@@ -6581,17 +6581,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserrno(err);
+ 		break;
+ 	}
+-out:
+-	if (nbl) {
+-		/* dequeue it if we queued it before */
+-		if (fl_flags & FL_SLEEP) {
+-			spin_lock(&nn->blocked_locks_lock);
+-			list_del_init(&nbl->nbl_list);
+-			list_del_init(&nbl->nbl_lru);
+-			spin_unlock(&nn->blocked_locks_lock);
+-		}
+-		free_blocked_lock(nbl);
++	/* dequeue it if we queued it before */
++	if (fl_flags & FL_SLEEP) {
++		spin_lock(&nn->blocked_locks_lock);
++		list_del_init(&nbl->nbl_list);
++		list_del_init(&nbl->nbl_lru);
++		spin_unlock(&nn->blocked_locks_lock);
+ 	}
++	free_blocked_lock(nbl);
++out:
+ 	if (nf)
+ 		nfsd_file_put(nf);
+ 	if (lock_stp) {
 -- 
-Best regards,
-Zsolt
+2.17.1
+
