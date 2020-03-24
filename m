@@ -7,44 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8381C54FD1
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5CA0EC54FCE
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 939E22074D
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2E6902072E
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585093784;
-	bh=9TfW3eJyhlN+A0d2XUhAtxTSyb8hkL/qjLtKnnStKMQ=;
+	s=default; t=1585093785;
+	bh=54+SJxB4rrF3g6/CzkafuNmAUSnVvMIQXgiS3bfQ0Xs=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Z/ysZdxu/5zNCZ4kChQHMqUYjWk/W2M0tg8sGdfdVinkZvgt8ygwScACfViI1hG7B
-	 2L5Iiq3O6ku+TQ3DlU7Rg50qu+c9X59rxeRVBS4mnlFE2+Zac3No/FlT4OI2CJxyEv
-	 71hHFqTMufT0nHPhwRMDBNhUrxXapL+CRynC/1n4=
+	b=aUD26MaFsy+Vnz3aIYPm5eRY5AJeXHP1JA7U7fRdz6IRK5HG+gQ20li1zESRm9/D4
+	 mhIG71nYSPA2OpAmf56BNg0BZWdQ4RguKyaJauaOJzIjPzZNcX9Y2qqzYAUMPls2oJ
+	 UbKhz8n+yneBH7/mGpbT8SROGKEUuQ85OocU3/Ag=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727144AbgCXXtn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Mar 2020 19:49:43 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35394 "EHLO mail.kernel.org"
+        id S1727149AbgCXXto (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Mar 2020 19:49:44 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35404 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727135AbgCXXtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727134AbgCXXtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 24 Mar 2020 19:49:43 -0400
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net [68.40.189.247])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9A9C920719
+        by mail.kernel.org (Postfix) with ESMTPSA id 25FA52074D
         for <linux-nfs@vger.kernel.org>; Tue, 24 Mar 2020 23:49:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1585093782;
-        bh=9TfW3eJyhlN+A0d2XUhAtxTSyb8hkL/qjLtKnnStKMQ=;
+        bh=54+SJxB4rrF3g6/CzkafuNmAUSnVvMIQXgiS3bfQ0Xs=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=q4Rza0JzomfBzJ3eoxHDfR07M9Y25chOHx4A5kjYQ+FjT59INNakePyljNkf8dZpW
-         q65wTD9VhbdiR1DrGv/NEsrMqgrMJYBWnnYSx/4TAPMeRqFzLzPMZVXsxvnAQeq+Y7
-         cGhIEfon7I7b7UJCpa4UWtjGVDKHDWgwntMKlkwc=
+        b=GIyF9pivyN9sd4psLtkktK1aaiaClvjC678IC+8gEyD+Ncr2jsrLzjqV9JIsNIFpB
+         6+My0IKwtmV5EeZOO7gzNn36RpolzuEWcVXXdf7yxfxr/b0wftu4ca/IPFnlSfZ4e/
+         PmDfAfUYtWcsH2rJeNqBQqz7kRMvfcssMKympvHI=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 11/22] NFS/pNFS: Support commit arrays in nfs_clear_pnfs_ds_commit_verifiers()
-Date:   Tue, 24 Mar 2020 19:47:17 -0400
-Message-Id: <20200324234728.8997-12-trondmy@kernel.org>
+Subject: [PATCH 10/22] NFS: Fix O_DIRECT commit verifier handling
+Date:   Tue, 24 Mar 2020 19:47:16 -0400
+Message-Id: <20200324234728.8997-11-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200324234728.8997-11-trondmy@kernel.org>
+In-Reply-To: <20200324234728.8997-10-trondmy@kernel.org>
 References: <20200324234728.8997-1-trondmy@kernel.org>
  <20200324234728.8997-2-trondmy@kernel.org>
  <20200324234728.8997-3-trondmy@kernel.org>
@@ -55,7 +55,6 @@ References: <20200324234728.8997-1-trondmy@kernel.org>
  <20200324234728.8997-8-trondmy@kernel.org>
  <20200324234728.8997-9-trondmy@kernel.org>
  <20200324234728.8997-10-trondmy@kernel.org>
- <20200324234728.8997-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -65,48 +64,248 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Add support for scanning the full list of per-layout segment commit
-arrays to nfs_clear_pnfs_ds_commit_verifiers().
+Instead of trying to save the commit verifiers and checking them against
+previous writes, adopt the same strategy as for buffered writes, of
+just checking the verifiers at commit time.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/internal.h | 19 ++++++++++++++++---
- 1 file changed, 16 insertions(+), 3 deletions(-)
+ fs/nfs/direct.c   | 135 +++++-----------------------------------------
+ fs/nfs/internal.h |   8 +++
+ fs/nfs/write.c    |   3 +-
+ 3 files changed, 22 insertions(+), 124 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index b58381b3edbc..0f970ef2f026 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -95,7 +95,6 @@ struct nfs_direct_req {
+ 	/* for read */
+ #define NFS_ODIRECT_SHOULD_DIRTY	(3)	/* dirty user-space page after read */
+ #define NFS_ODIRECT_DONE		INT_MAX	/* write verification failed */
+-	struct nfs_writeverf	verf;		/* unstable write verifier */
+ };
+ 
+ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops;
+@@ -152,106 +151,6 @@ nfs_direct_count_bytes(struct nfs_direct_req *dreq,
+ 		dreq->count = dreq_len;
+ }
+ 
+-/*
+- * nfs_direct_select_verf - select the right verifier
+- * @dreq - direct request possibly spanning multiple servers
+- * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
+- * @commit_idx - commit bucket index for the DS
+- *
+- * returns the correct verifier to use given the role of the server
+- */
+-static struct nfs_writeverf *
+-nfs_direct_select_verf(struct nfs_direct_req *dreq,
+-		       struct nfs_client *ds_clp,
+-		       int commit_idx)
+-{
+-	struct nfs_writeverf *verfp = &dreq->verf;
+-
+-#ifdef CONFIG_NFS_V4_1
+-	/*
+-	 * pNFS is in use, use the DS verf except commit_through_mds is set
+-	 * for layout segment where nbuckets is zero.
+-	 */
+-	if (ds_clp && dreq->ds_cinfo.nbuckets > 0) {
+-		if (commit_idx >= 0 && commit_idx < dreq->ds_cinfo.nbuckets)
+-			verfp = &dreq->ds_cinfo.buckets[commit_idx].direct_verf;
+-		else
+-			WARN_ON_ONCE(1);
+-	}
+-#endif
+-	return verfp;
+-}
+-
+-
+-/*
+- * nfs_direct_set_hdr_verf - set the write/commit verifier
+- * @dreq - direct request possibly spanning multiple servers
+- * @hdr - pageio header to validate against previously seen verfs
+- *
+- * Set the server's (MDS or DS) "seen" verifier
+- */
+-static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
+-				    struct nfs_pgio_header *hdr)
+-{
+-	struct nfs_writeverf *verfp;
+-
+-	verfp = nfs_direct_select_verf(dreq, hdr->ds_clp, hdr->ds_commit_idx);
+-	WARN_ON_ONCE(verfp->committed >= 0);
+-	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+-	WARN_ON_ONCE(verfp->committed < 0);
+-}
+-
+-static int nfs_direct_cmp_verf(const struct nfs_writeverf *v1,
+-		const struct nfs_writeverf *v2)
+-{
+-	return nfs_write_verifier_cmp(&v1->verifier, &v2->verifier);
+-}
+-
+-/*
+- * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
+- * @dreq - direct request possibly spanning multiple servers
+- * @hdr - pageio header to validate against previously seen verf
+- *
+- * set the server's "seen" verf if not initialized.
+- * returns result of comparison between @hdr->verf and the "seen"
+- * verf of the server used by @hdr (DS or MDS)
+- */
+-static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
+-					  struct nfs_pgio_header *hdr)
+-{
+-	struct nfs_writeverf *verfp;
+-
+-	verfp = nfs_direct_select_verf(dreq, hdr->ds_clp, hdr->ds_commit_idx);
+-	if (verfp->committed < 0) {
+-		nfs_direct_set_hdr_verf(dreq, hdr);
+-		return 0;
+-	}
+-	return nfs_direct_cmp_verf(verfp, &hdr->verf);
+-}
+-
+-/*
+- * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
+- * @dreq - direct request possibly spanning multiple servers
+- * @data - commit data to validate against previously seen verf
+- *
+- * returns result of comparison between @data->verf and the verf of
+- * the server used by @data (DS or MDS)
+- */
+-static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+-					   struct nfs_commit_data *data)
+-{
+-	struct nfs_writeverf *verfp;
+-
+-	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
+-					 data->ds_commit_index);
+-
+-	/* verifier not set so always fail */
+-	if (verfp->committed < 0 || data->res.verf->committed <= NFS_UNSTABLE)
+-		return 1;
+-
+-	return nfs_direct_cmp_verf(verfp, data->res.verf);
+-}
+-
+ /**
+  * nfs_direct_IO - NFS address space operation for direct I/O
+  * @iocb: target I/O control block
+@@ -307,7 +206,6 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+ 	init_completion(&dreq->completion);
+ 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
+ 	INIT_LIST_HEAD(&dreq->ds_cinfo.commits);
+-	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+ 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+ 	spin_lock_init(&dreq->lock);
+ 
+@@ -637,7 +535,6 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	dreq->max_count = 0;
+ 	list_for_each_entry(req, &reqs, wb_list)
+ 		dreq->max_count += req->wb_bytes;
+-	dreq->verf.committed = NFS_INVALID_STABLE_HOW;
+ 	nfs_clear_pnfs_ds_commit_verifiers(&dreq->ds_cinfo);
+ 	get_dreq(dreq);
+ 
+@@ -674,6 +571,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 
+ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ {
++	const struct nfs_writeverf *verf = data->res.verf;
+ 	struct nfs_direct_req *dreq = data->dreq;
+ 	struct nfs_commit_info cinfo;
+ 	struct nfs_page *req;
+@@ -689,21 +587,19 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ 		status = dreq->error;
+ 
+ 	nfs_init_cinfo_from_dreq(&cinfo, dreq);
+-	if (nfs_direct_cmp_commit_data_verf(dreq, data))
+-		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 
+ 	while (!list_empty(&data->pages)) {
+ 		req = nfs_list_entry(data->pages.next);
+ 		nfs_list_remove_request(req);
+-		if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES) {
++		if (status >= 0 && !nfs_write_match_verf(verf, req)) {
++			dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 			/*
+ 			 * Despite the reboot, the write was successful,
+ 			 * so reset wb_nio.
+ 			 */
+ 			req->wb_nio = 0;
+-			/* Note the rewrite will go through mds */
+ 			nfs_mark_request_commit(req, NULL, &cinfo, 0);
+-		} else
++		} else /* Error or match */
+ 			nfs_release_request(req);
+ 		nfs_unlock_and_release_request(req);
+ 	}
+@@ -799,20 +695,15 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 	}
+ 
+ 	nfs_direct_count_bytes(dreq, hdr);
+-	if (hdr->good_bytes != 0) {
+-		if (nfs_write_need_commit(hdr)) {
+-			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+-				request_commit = true;
+-			else if (dreq->flags == 0) {
+-				nfs_direct_set_hdr_verf(dreq, hdr);
+-				request_commit = true;
+-				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+-			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+-				request_commit = true;
+-				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr))
+-					dreq->flags =
+-						NFS_ODIRECT_RESCHED_WRITES;
+-			}
++	if (hdr->good_bytes != 0 && nfs_write_need_commit(hdr)) {
++		switch (dreq->flags) {
++		case 0:
++			dreq->flags = NFS_ODIRECT_DO_COMMIT;
++			request_commit = true;
++			break;
++		case NFS_ODIRECT_RESCHED_WRITES:
++		case NFS_ODIRECT_DO_COMMIT:
++			request_commit = true;
+ 		}
+ 	}
+ 	spin_unlock(&dreq->lock);
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6542411c020f..4a1adad3740f 100644
+index 3b6fa9edc9b5..6542411c020f 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -517,13 +517,26 @@ int nfs_filemap_write_and_wait_range(struct address_space *mapping,
- 		loff_t lstart, loff_t lend);
- 
- #ifdef CONFIG_NFS_V4_1
-+static inline void
-+pnfs_bucket_clear_pnfs_ds_commit_verifiers(struct pnfs_commit_bucket *buckets,
-+		unsigned int nbuckets)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i < nbuckets; i++)
-+		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
-+}
- static inline
- void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
- {
--	int i;
-+	struct pnfs_commit_array *array;
-+
-+	pnfs_bucket_clear_pnfs_ds_commit_verifiers(cinfo->buckets,
-+			cinfo->nbuckets);
- 
--	for (i = 0; i < cinfo->nbuckets; i++)
--		cinfo->buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
-+	list_for_each_entry(array, &cinfo->commits, cinfo_list)
-+		pnfs_bucket_clear_pnfs_ds_commit_verifiers(array->buckets,
-+				array->nbuckets);
+@@ -544,6 +544,14 @@ nfs_write_verifier_cmp(const struct nfs_write_verifier *v1,
+ 	return memcmp(v1->data, v2->data, sizeof(v1->data));
  }
- #else
- static inline
+ 
++static inline bool
++nfs_write_match_verf(const struct nfs_writeverf *verf,
++		struct nfs_page *req)
++{
++	return verf->committed > NFS_UNSTABLE &&
++		!nfs_write_verifier_cmp(&req->wb_verf, &verf->verifier);
++}
++
+ /* unlink.c */
+ extern struct rpc_task *
+ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 1f8108f5a041..03b7f64f7c4f 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1874,8 +1874,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 
+ 		/* Okay, COMMIT succeeded, apparently. Check the verifier
+ 		 * returned by the server against all stored verfs. */
+-		if (verf->committed > NFS_UNSTABLE &&
+-		    !nfs_write_verifier_cmp(&req->wb_verf, &verf->verifier)) {
++		if (nfs_write_match_verf(verf, req)) {
+ 			/* We have a match */
+ 			if (req->wb_page)
+ 				nfs_inode_remove_request(req);
 -- 
 2.25.1
 
