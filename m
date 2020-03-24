@@ -7,46 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E88BC18E5B
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C7B07C54FD2
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0CE7920719
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A0A7020719
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585093780;
-	bh=Ihi7Dit/Q8Thk1RIhBwaphJ7XIANwUrtk7jMQv7GX8s=;
+	s=default; t=1585093781;
+	bh=asZPu00uS55iLq65hnYce26g4HNvsBAKVZEYJOk+hl8=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=v7WA1wTDkroN+kZKdoYEyAxJEmfPgfcuNmIgAncf3TMdmCeM4wp8wP2SpgUoym3Ux
-	 GA/cK/VD+BMohvjTE4tn9K+C1D9yNbjj66BJMRMU9te0VP9hQyEOj7aUxEhW/arWI7
-	 Bo3XK6jiguvLYUceEL43/7A8Z3i7H8NYutcT4GWA=
+	b=kwK1rmOuzvVaqDENeZ/5/cn2nWaevPZqcpiIBO/sw6lNw0AbUeK6r7ir7Fjlt2YFc
+	 AF0IxcQz7lEfYiWByz8NuXGcwR7EKPthLHXlyltNU4r0nuLmYTMogWfYZtTLlSVGVO
+	 BSMp+6WlPEyIBISbhOf6YGcAeaDDINPTYGI81Y9s=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727070AbgCXXtj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Mar 2020 19:49:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35354 "EHLO mail.kernel.org"
+        id S1727104AbgCXXtl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Mar 2020 19:49:41 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35382 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726956AbgCXXtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Mar 2020 19:49:39 -0400
+        id S1726212AbgCXXtk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Mar 2020 19:49:40 -0400
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net [68.40.189.247])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7217B2073C
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Mar 2020 23:49:38 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id D19552073C
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Mar 2020 23:49:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585093778;
-        bh=Ihi7Dit/Q8Thk1RIhBwaphJ7XIANwUrtk7jMQv7GX8s=;
+        s=default; t=1585093780;
+        bh=asZPu00uS55iLq65hnYce26g4HNvsBAKVZEYJOk+hl8=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=q+/R74IuJ5X5JwoHI0b7oblsDydVWvdn+Zl3ZqEcV81EpjGm7/mcJW+OZizVIgiDs
-         IyOQ91utNCPgRAOwbxhzZ01284m2NfK1xizA+iNASze+ixp0bzsLf3U2ee3SjRSLVU
-         230/m2G5QPCSgq5oL/uqjmes0Fr3d17KqZAbf7mQ=
+        b=ivo0NeoGuYpZiPYNbCxYu5JLfqWEsN8rfx1QgLLA+lLwbG9yUJ8yr/VGA9H3V6xT2
+         yI1ZZqZNPyqQoIUgcbrfbDrpsbP4gL0kVE7qBsyU/NxRLDcH+TnrdAXxjC+nqk11K9
+         /3pw0N8rmgiLXuvWuJz1+UjrCLDfEmfvcUNx5RNo=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 02/22] NFS/pNFS: Refactor pnfs_generic_commit_pagelist()
-Date:   Tue, 24 Mar 2020 19:47:08 -0400
-Message-Id: <20200324234728.8997-3-trondmy@kernel.org>
+Subject: [PATCH 05/22] NFSv4/pNFS: Scan the full list of commit arrays when committing
+Date:   Tue, 24 Mar 2020 19:47:11 -0400
+Message-Id: <20200324234728.8997-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200324234728.8997-2-trondmy@kernel.org>
+In-Reply-To: <20200324234728.8997-5-trondmy@kernel.org>
 References: <20200324234728.8997-1-trondmy@kernel.org>
  <20200324234728.8997-2-trondmy@kernel.org>
+ <20200324234728.8997-3-trondmy@kernel.org>
+ <20200324234728.8997-4-trondmy@kernel.org>
+ <20200324234728.8997-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -56,266 +59,90 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Refactor pnfs_generic_commit_pagelist() to simplify the conversion
-to layout segment based commit lists.
+Add support for scanning the full list of per-layout segment commit
+arrays to pnfs_generic_scan_commit_lists()
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs_nfs.c | 164 +++++++++++++++++++---------------------------
- fs/nfs/write.c    |  13 ++--
- 2 files changed, 76 insertions(+), 101 deletions(-)
+ fs/nfs/pnfs_nfs.c | 52 ++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 40 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 8b37e7f8e789..3d0942541618 100644
+index c8518ce3a4ef..81fd85e66fd9 100644
 --- a/fs/nfs/pnfs_nfs.c
 +++ b/fs/nfs/pnfs_nfs.c
-@@ -156,103 +156,86 @@ void pnfs_generic_recover_commit_reqs(struct list_head *dst,
+@@ -118,10 +118,14 @@ pnfs_free_commit_array(struct pnfs_commit_array *p)
  }
- EXPORT_SYMBOL_GPL(pnfs_generic_recover_commit_reqs);
+ EXPORT_SYMBOL_GPL(pnfs_free_commit_array);
  
--static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
-+static struct pnfs_layout_segment *
-+pnfs_bucket_get_committing(struct list_head *head,
-+			   struct pnfs_commit_bucket *bucket,
-+			   struct nfs_commit_info *cinfo)
++/*
++ * Locks the nfs_page requests for commit and moves them to
++ * @bucket->committing.
++ */
+ static int
+-pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
+-				 struct nfs_commit_info *cinfo,
+-				 int max)
++pnfs_bucket_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
++				struct nfs_commit_info *cinfo,
++				int max)
  {
--	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
--	struct pnfs_commit_bucket *bucket;
- 	struct pnfs_layout_segment *freeme;
- 	struct list_head *pos;
-+
-+	list_for_each(pos, &bucket->committing)
-+		cinfo->ds->ncommitting--;
-+	list_splice_init(&bucket->committing, head);
-+	freeme = bucket->clseg;
-+	bucket->clseg = NULL;
-+	return freeme;
-+}
-+
-+static struct nfs_commit_data *
-+pnfs_bucket_fetch_commitdata(struct pnfs_commit_bucket *bucket,
-+			     struct nfs_commit_info *cinfo)
-+{
-+	struct nfs_commit_data *data = nfs_commitdata_alloc(false);
-+
-+	if (!data)
-+		return NULL;
-+	data->lseg = pnfs_bucket_get_committing(&data->pages, bucket, cinfo);
-+	return data;
-+}
-+
-+static void pnfs_generic_retry_commit(struct pnfs_commit_bucket *buckets,
-+				      unsigned int nbuckets,
-+				      struct nfs_commit_info *cinfo,
-+				      unsigned int idx)
-+{
-+	struct pnfs_commit_bucket *bucket;
-+	struct pnfs_layout_segment *freeme;
- 	LIST_HEAD(pages);
--	int i;
- 
--	mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
--	for (i = idx; i < fl_cinfo->nbuckets; i++) {
--		bucket = &fl_cinfo->buckets[i];
-+	for (bucket = buckets; idx < nbuckets; bucket++, idx++) {
- 		if (list_empty(&bucket->committing))
- 			continue;
--		freeme = bucket->clseg;
--		bucket->clseg = NULL;
--		list_for_each(pos, &bucket->committing)
--			cinfo->ds->ncommitting--;
--		list_splice_init(&bucket->committing, &pages);
-+		mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
-+		freeme = pnfs_bucket_get_committing(&pages, bucket, cinfo);
- 		mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
--		nfs_retry_commit(&pages, freeme, cinfo, i);
-+		nfs_retry_commit(&pages, freeme, cinfo, idx);
- 		pnfs_put_lseg(freeme);
--		mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
- 	}
--	mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
+ 	struct list_head *src = &bucket->written;
+ 	struct list_head *dst = &bucket->committing;
+@@ -142,20 +146,44 @@ pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
+ 	return ret;
  }
  
- static unsigned int
--pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
--			      struct list_head *list)
-+pnfs_bucket_alloc_ds_commits(struct list_head *list,
-+			     struct pnfs_commit_bucket *buckets,
-+			     unsigned int nbuckets,
-+			     struct nfs_commit_info *cinfo)
- {
--	struct pnfs_ds_commit_info *fl_cinfo;
- 	struct pnfs_commit_bucket *bucket;
- 	struct nfs_commit_data *data;
--	int i;
++static int pnfs_bucket_scan_array(struct nfs_commit_info *cinfo,
++				  struct pnfs_commit_bucket *buckets,
++				  unsigned int nbuckets,
++				  int max)
++{
 +	unsigned int i;
- 	unsigned int nreq = 0;
- 
--	fl_cinfo = cinfo->ds;
--	bucket = fl_cinfo->buckets;
--	for (i = 0; i < fl_cinfo->nbuckets; i++, bucket++) {
-+	for (i = 0, bucket = buckets; i < nbuckets; i++, bucket++) {
- 		if (list_empty(&bucket->committing))
- 			continue;
--		data = nfs_commitdata_alloc(false);
--		if (!data)
--			break;
--		data->ds_commit_index = i;
--		list_add(&data->pages, list);
--		nreq++;
-+		mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
-+		if (!list_empty(&bucket->committing)) {
-+			data = pnfs_bucket_fetch_commitdata(bucket, cinfo);
-+			if (!data)
-+				goto out_error;
-+			data->ds_commit_index = i;
-+			list_add_tail(&data->list, list);
-+			atomic_inc(&cinfo->mds->rpcs_out);
-+			nreq++;
-+		}
-+		mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
- 	}
--
--	/* Clean up on error */
--	pnfs_generic_retry_commit(cinfo, i);
- 	return nreq;
--}
--
--static inline
--void pnfs_fetch_commit_bucket_list(struct list_head *pages,
--		struct nfs_commit_data *data,
--		struct nfs_commit_info *cinfo)
--{
--	struct pnfs_commit_bucket *bucket;
--	struct list_head *pos;
--
--	bucket = &cinfo->ds->buckets[data->ds_commit_index];
--	mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
--	list_for_each(pos, &bucket->committing)
--		cinfo->ds->ncommitting--;
--	list_splice_init(&bucket->committing, pages);
--	data->lseg = bucket->clseg;
--	bucket->clseg = NULL;
-+out_error:
- 	mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
--
--}
--
--/* Helper function for pnfs_generic_commit_pagelist to catch an empty
-- * page list. This can happen when two commits race.
-- *
-- * This must be called instead of nfs_init_commit - call one or the other, but
-- * not both!
-- */
--static bool
--pnfs_generic_commit_cancel_empty_pagelist(struct list_head *pages,
--					  struct nfs_commit_data *data,
--					  struct nfs_commit_info *cinfo)
--{
--	if (list_empty(pages)) {
--		if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
--			wake_up_var(&cinfo->mds->rpcs_out);
--		/* don't call nfs_commitdata_release - it tries to put
--		 * the open_context which is not acquired until nfs_init_commit
--		 * which has not been called on @data */
--		WARN_ON_ONCE(data->context);
--		nfs_commit_free(data);
--		return true;
--	}
--
--	return false;
-+	/* Clean up on error */
-+	pnfs_generic_retry_commit(buckets, nbuckets, cinfo, i);
-+	return nreq;
- }
- 
- /* This follows nfs_commit_list pretty closely */
-@@ -262,6 +245,7 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 			     int (*initiate_commit)(struct nfs_commit_data *data,
- 						    int how))
- {
-+	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
- 	struct nfs_commit_data *data, *tmp;
- 	LIST_HEAD(list);
- 	unsigned int nreq = 0;
-@@ -269,40 +253,26 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
- 	if (!list_empty(mds_pages)) {
- 		data = nfs_commitdata_alloc(true);
- 		data->ds_commit_index = -1;
--		list_add(&data->pages, &list);
-+		list_splice_init(mds_pages, &data->pages);
-+		list_add_tail(&data->list, &list);
-+		atomic_inc(&cinfo->mds->rpcs_out);
- 		nreq++;
- 	}
- 
--	nreq += pnfs_generic_alloc_ds_commits(cinfo, &list);
--
-+	nreq += pnfs_bucket_alloc_ds_commits(&list, fl_cinfo->buckets,
-+			fl_cinfo->nbuckets, cinfo);
- 	if (nreq == 0)
- 		goto out;
- 
--	atomic_add(nreq, &cinfo->mds->rpcs_out);
--
--	list_for_each_entry_safe(data, tmp, &list, pages) {
--		list_del_init(&data->pages);
-+	list_for_each_entry_safe(data, tmp, &list, list) {
-+		list_del(&data->list);
- 		if (data->ds_commit_index < 0) {
--			/* another commit raced with us */
--			if (pnfs_generic_commit_cancel_empty_pagelist(mds_pages,
--				data, cinfo))
--				continue;
--
--			nfs_init_commit(data, mds_pages, NULL, cinfo);
-+			nfs_init_commit(data, NULL, NULL, cinfo);
- 			nfs_initiate_commit(NFS_CLIENT(inode), data,
- 					    NFS_PROTO(data->inode),
- 					    data->mds_ops, how, 0);
- 		} else {
--			LIST_HEAD(pages);
--
--			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
--
--			/* another commit raced with us */
--			if (pnfs_generic_commit_cancel_empty_pagelist(&pages,
--				data, cinfo))
--				continue;
--
--			nfs_init_commit(data, &pages, data->lseg, cinfo);
-+			nfs_init_commit(data, NULL, data->lseg, cinfo);
- 			initiate_commit(data, how);
- 		}
- 	}
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5544ee6cfda8..1f8108f5a041 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1746,14 +1746,19 @@ void nfs_init_commit(struct nfs_commit_data *data,
- 		     struct pnfs_layout_segment *lseg,
- 		     struct nfs_commit_info *cinfo)
- {
--	struct nfs_page *first = nfs_list_entry(head->next);
--	struct nfs_open_context *ctx = nfs_req_openctx(first);
--	struct inode *inode = d_inode(ctx->dentry);
-+	struct nfs_page *first;
-+	struct nfs_open_context *ctx;
-+	struct inode *inode;
- 
- 	/* Set up the RPC argument and reply structs
- 	 * NB: take care not to mess about with data->commit et al. */
- 
--	list_splice_init(head, &data->pages);
-+	if (head)
-+		list_splice_init(head, &data->pages);
++	int rv = 0, cnt;
 +
-+	first = nfs_list_entry(data->pages.next);
-+	ctx = nfs_req_openctx(first);
-+	inode = d_inode(ctx->dentry);
- 
- 	data->inode	  = inode;
- 	data->cred	  = ctx->cred;
++	for (i = 0; i < nbuckets && max != 0; i++) {
++		cnt = pnfs_bucket_scan_ds_commit_list(&buckets[i], cinfo, max);
++		rv += cnt;
++		max -= cnt;
++	}
++	return rv;
++}
++
+ /* Move reqs from written to committing lists, returning count
+  * of number moved.
+  */
+-int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo,
+-				   int max)
++int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo, int max)
+ {
+-	int i, rv = 0, cnt;
+-
+-	lockdep_assert_held(&NFS_I(cinfo->inode)->commit_mutex);
+-	for (i = 0; i < cinfo->ds->nbuckets && max != 0; i++) {
+-		cnt = pnfs_generic_scan_ds_commit_list(&cinfo->ds->buckets[i],
+-						       cinfo, max);
+-		max -= cnt;
++	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
++	struct pnfs_commit_array *array;
++	int rv = 0, cnt;
++
++	cnt = pnfs_bucket_scan_array(cinfo, fl_cinfo->buckets,
++			fl_cinfo->nbuckets, max);
++	rv += cnt;
++	max -= cnt;
++	if (!max)
++		return rv;
++	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list) {
++		cnt = pnfs_bucket_scan_array(cinfo, array->buckets,
++				array->nbuckets, max);
+ 		rv += cnt;
++		max -= cnt;
++		if (!max)
++			break;
+ 	}
+ 	return rv;
+ }
 -- 
 2.25.1
 
