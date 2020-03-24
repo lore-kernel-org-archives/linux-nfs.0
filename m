@@ -7,21 +7,21 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42F78C54FD1
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E88BC18E5B
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1C80320719
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0CE7920719
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Mar 2020 23:49:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585093781;
-	bh=xHWBf0eqI5OhgRxmiUyN/XIxypyT+fzgs4uxipL4d7Y=;
+	s=default; t=1585093780;
+	bh=Ihi7Dit/Q8Thk1RIhBwaphJ7XIANwUrtk7jMQv7GX8s=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=wjzOpSvL+OvJJ8BN4Pin+Y41iC2Z3E7xCXEq68pKgygobH9KopZnT/t2nwK0ZjXsp
-	 fC2QtGqI0TAEm+IuwMkb1UfTIszpYADX8rc+E/PsqDhbZurC2XBG1Np+QF2DuhtnRb
-	 jC5JjM8v/bXDpjvF9CWBEP4NrD3uIJulaEGmhPx8=
+	b=v7WA1wTDkroN+kZKdoYEyAxJEmfPgfcuNmIgAncf3TMdmCeM4wp8wP2SpgUoym3Ux
+	 GA/cK/VD+BMohvjTE4tn9K+C1D9yNbjj66BJMRMU9te0VP9hQyEOj7aUxEhW/arWI7
+	 Bo3XK6jiguvLYUceEL43/7A8Z3i7H8NYutcT4GWA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727101AbgCXXtk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Mar 2020 19:49:40 -0400
+        id S1727070AbgCXXtj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Mar 2020 19:49:39 -0400
 Received: from mail.kernel.org ([198.145.29.99]:35354 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
         id S1726956AbgCXXtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
@@ -29,26 +29,24 @@ Received: from mail.kernel.org ([198.145.29.99]:35354 "EHLO mail.kernel.org"
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net [68.40.189.247])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 625172073E
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Mar 2020 23:49:39 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7217B2073C
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Mar 2020 23:49:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585093779;
-        bh=xHWBf0eqI5OhgRxmiUyN/XIxypyT+fzgs4uxipL4d7Y=;
+        s=default; t=1585093778;
+        bh=Ihi7Dit/Q8Thk1RIhBwaphJ7XIANwUrtk7jMQv7GX8s=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Jbx+ah7W+O601HYTNqH4S5MJ1k8vw3KYCdIgckPC1CxfoCRfteaH4dP+sUsdDPSoo
-         WMvoVNpD8+Rp78HjJY0u/PRNY8YYYe6dK3HmGX8n+dXeHhfqvGX5qfYbyrBVCP26Qw
-         GILG0F/vMSeO2Uyu/o07LUsikK885DqxigPJhYmQ=
+        b=q+/R74IuJ5X5JwoHI0b7oblsDydVWvdn+Zl3ZqEcV81EpjGm7/mcJW+OZizVIgiDs
+         IyOQ91utNCPgRAOwbxhzZ01284m2NfK1xizA+iNASze+ixp0bzsLf3U2ee3SjRSLVU
+         230/m2G5QPCSgq5oL/uqjmes0Fr3d17KqZAbf7mQ=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 04/22] NFSv4/pnfs: Support a list of commit arrays in struct pnfs_ds_commit_info
-Date:   Tue, 24 Mar 2020 19:47:10 -0400
-Message-Id: <20200324234728.8997-5-trondmy@kernel.org>
+Subject: [PATCH 02/22] NFS/pNFS: Refactor pnfs_generic_commit_pagelist()
+Date:   Tue, 24 Mar 2020 19:47:08 -0400
+Message-Id: <20200324234728.8997-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200324234728.8997-4-trondmy@kernel.org>
+In-Reply-To: <20200324234728.8997-2-trondmy@kernel.org>
 References: <20200324234728.8997-1-trondmy@kernel.org>
  <20200324234728.8997-2-trondmy@kernel.org>
- <20200324234728.8997-3-trondmy@kernel.org>
- <20200324234728.8997-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -58,71 +56,266 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-When we have multiple layout segments with different lists of mirrored
-data, we need to track the commits on a per layout segment basis.
-This patch adds a list to support this tracking in struct
-pnfs_ds_commit_info.
+Refactor pnfs_generic_commit_pagelist() to simplify the conversion
+to layout segment based commit lists.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/direct.c                        | 1 +
- fs/nfs/filelayout/filelayout.c         | 5 ++++-
- fs/nfs/flexfilelayout/flexfilelayout.c | 1 +
- include/linux/nfs_xdr.h                | 1 +
- 4 files changed, 7 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs_nfs.c | 164 +++++++++++++++++++---------------------------
+ fs/nfs/write.c    |  13 ++--
+ 2 files changed, 76 insertions(+), 101 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index ade2435551c8..45d3ad1ad4df 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -305,6 +305,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
- 	kref_get(&dreq->kref);
- 	init_completion(&dreq->completion);
- 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
-+	INIT_LIST_HEAD(&dreq->ds_cinfo.commits);
- 	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
- 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
- 	spin_lock_init(&dreq->lock);
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index bd234394a87c..7bd02efbe19a 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -1140,7 +1140,10 @@ filelayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
- 	struct nfs4_filelayout *flo;
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 8b37e7f8e789..3d0942541618 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -156,103 +156,86 @@ void pnfs_generic_recover_commit_reqs(struct list_head *dst,
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_recover_commit_reqs);
  
- 	flo = kzalloc(sizeof(*flo), gfp_flags);
--	return flo != NULL ? &flo->generic_hdr : NULL;
-+	if (flo == NULL)
+-static void pnfs_generic_retry_commit(struct nfs_commit_info *cinfo, int idx)
++static struct pnfs_layout_segment *
++pnfs_bucket_get_committing(struct list_head *head,
++			   struct pnfs_commit_bucket *bucket,
++			   struct nfs_commit_info *cinfo)
+ {
+-	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
+-	struct pnfs_commit_bucket *bucket;
+ 	struct pnfs_layout_segment *freeme;
+ 	struct list_head *pos;
++
++	list_for_each(pos, &bucket->committing)
++		cinfo->ds->ncommitting--;
++	list_splice_init(&bucket->committing, head);
++	freeme = bucket->clseg;
++	bucket->clseg = NULL;
++	return freeme;
++}
++
++static struct nfs_commit_data *
++pnfs_bucket_fetch_commitdata(struct pnfs_commit_bucket *bucket,
++			     struct nfs_commit_info *cinfo)
++{
++	struct nfs_commit_data *data = nfs_commitdata_alloc(false);
++
++	if (!data)
 +		return NULL;
-+	INIT_LIST_HEAD(&flo->commit_info.commits);
-+	return &flo->generic_hdr;
++	data->lseg = pnfs_bucket_get_committing(&data->pages, bucket, cinfo);
++	return data;
++}
++
++static void pnfs_generic_retry_commit(struct pnfs_commit_bucket *buckets,
++				      unsigned int nbuckets,
++				      struct nfs_commit_info *cinfo,
++				      unsigned int idx)
++{
++	struct pnfs_commit_bucket *bucket;
++	struct pnfs_layout_segment *freeme;
+ 	LIST_HEAD(pages);
+-	int i;
+ 
+-	mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
+-	for (i = idx; i < fl_cinfo->nbuckets; i++) {
+-		bucket = &fl_cinfo->buckets[i];
++	for (bucket = buckets; idx < nbuckets; bucket++, idx++) {
+ 		if (list_empty(&bucket->committing))
+ 			continue;
+-		freeme = bucket->clseg;
+-		bucket->clseg = NULL;
+-		list_for_each(pos, &bucket->committing)
+-			cinfo->ds->ncommitting--;
+-		list_splice_init(&bucket->committing, &pages);
++		mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
++		freeme = pnfs_bucket_get_committing(&pages, bucket, cinfo);
+ 		mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
+-		nfs_retry_commit(&pages, freeme, cinfo, i);
++		nfs_retry_commit(&pages, freeme, cinfo, idx);
+ 		pnfs_put_lseg(freeme);
+-		mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
+ 	}
+-	mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
  }
  
- static void
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 19728206e9c6..c7cccdd746e4 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -48,6 +48,7 @@ ff_layout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
+ static unsigned int
+-pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
+-			      struct list_head *list)
++pnfs_bucket_alloc_ds_commits(struct list_head *list,
++			     struct pnfs_commit_bucket *buckets,
++			     unsigned int nbuckets,
++			     struct nfs_commit_info *cinfo)
+ {
+-	struct pnfs_ds_commit_info *fl_cinfo;
+ 	struct pnfs_commit_bucket *bucket;
+ 	struct nfs_commit_data *data;
+-	int i;
++	unsigned int i;
+ 	unsigned int nreq = 0;
  
- 	ffl = kzalloc(sizeof(*ffl), gfp_flags);
- 	if (ffl) {
-+		INIT_LIST_HEAD(&ffl->commit_info.commits);
- 		INIT_LIST_HEAD(&ffl->error_list);
- 		INIT_LIST_HEAD(&ffl->mirrors);
- 		ffl->last_report_time = ktime_get();
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index e91c917c9c1c..9946787eda72 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1280,6 +1280,7 @@ struct pnfs_commit_array {
- };
+-	fl_cinfo = cinfo->ds;
+-	bucket = fl_cinfo->buckets;
+-	for (i = 0; i < fl_cinfo->nbuckets; i++, bucket++) {
++	for (i = 0, bucket = buckets; i < nbuckets; i++, bucket++) {
+ 		if (list_empty(&bucket->committing))
+ 			continue;
+-		data = nfs_commitdata_alloc(false);
+-		if (!data)
+-			break;
+-		data->ds_commit_index = i;
+-		list_add(&data->pages, list);
+-		nreq++;
++		mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
++		if (!list_empty(&bucket->committing)) {
++			data = pnfs_bucket_fetch_commitdata(bucket, cinfo);
++			if (!data)
++				goto out_error;
++			data->ds_commit_index = i;
++			list_add_tail(&data->list, list);
++			atomic_inc(&cinfo->mds->rpcs_out);
++			nreq++;
++		}
++		mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
+ 	}
+-
+-	/* Clean up on error */
+-	pnfs_generic_retry_commit(cinfo, i);
+ 	return nreq;
+-}
+-
+-static inline
+-void pnfs_fetch_commit_bucket_list(struct list_head *pages,
+-		struct nfs_commit_data *data,
+-		struct nfs_commit_info *cinfo)
+-{
+-	struct pnfs_commit_bucket *bucket;
+-	struct list_head *pos;
+-
+-	bucket = &cinfo->ds->buckets[data->ds_commit_index];
+-	mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
+-	list_for_each(pos, &bucket->committing)
+-		cinfo->ds->ncommitting--;
+-	list_splice_init(&bucket->committing, pages);
+-	data->lseg = bucket->clseg;
+-	bucket->clseg = NULL;
++out_error:
+ 	mutex_unlock(&NFS_I(cinfo->inode)->commit_mutex);
+-
+-}
+-
+-/* Helper function for pnfs_generic_commit_pagelist to catch an empty
+- * page list. This can happen when two commits race.
+- *
+- * This must be called instead of nfs_init_commit - call one or the other, but
+- * not both!
+- */
+-static bool
+-pnfs_generic_commit_cancel_empty_pagelist(struct list_head *pages,
+-					  struct nfs_commit_data *data,
+-					  struct nfs_commit_info *cinfo)
+-{
+-	if (list_empty(pages)) {
+-		if (atomic_dec_and_test(&cinfo->mds->rpcs_out))
+-			wake_up_var(&cinfo->mds->rpcs_out);
+-		/* don't call nfs_commitdata_release - it tries to put
+-		 * the open_context which is not acquired until nfs_init_commit
+-		 * which has not been called on @data */
+-		WARN_ON_ONCE(data->context);
+-		nfs_commit_free(data);
+-		return true;
+-	}
+-
+-	return false;
++	/* Clean up on error */
++	pnfs_generic_retry_commit(buckets, nbuckets, cinfo, i);
++	return nreq;
+ }
  
- struct pnfs_ds_commit_info {
-+	struct list_head commits;
- 	unsigned int nwritten;
- 	unsigned int ncommitting;
- 	unsigned int nbuckets;
+ /* This follows nfs_commit_list pretty closely */
+@@ -262,6 +245,7 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 			     int (*initiate_commit)(struct nfs_commit_data *data,
+ 						    int how))
+ {
++	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
+ 	struct nfs_commit_data *data, *tmp;
+ 	LIST_HEAD(list);
+ 	unsigned int nreq = 0;
+@@ -269,40 +253,26 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 	if (!list_empty(mds_pages)) {
+ 		data = nfs_commitdata_alloc(true);
+ 		data->ds_commit_index = -1;
+-		list_add(&data->pages, &list);
++		list_splice_init(mds_pages, &data->pages);
++		list_add_tail(&data->list, &list);
++		atomic_inc(&cinfo->mds->rpcs_out);
+ 		nreq++;
+ 	}
+ 
+-	nreq += pnfs_generic_alloc_ds_commits(cinfo, &list);
+-
++	nreq += pnfs_bucket_alloc_ds_commits(&list, fl_cinfo->buckets,
++			fl_cinfo->nbuckets, cinfo);
+ 	if (nreq == 0)
+ 		goto out;
+ 
+-	atomic_add(nreq, &cinfo->mds->rpcs_out);
+-
+-	list_for_each_entry_safe(data, tmp, &list, pages) {
+-		list_del_init(&data->pages);
++	list_for_each_entry_safe(data, tmp, &list, list) {
++		list_del(&data->list);
+ 		if (data->ds_commit_index < 0) {
+-			/* another commit raced with us */
+-			if (pnfs_generic_commit_cancel_empty_pagelist(mds_pages,
+-				data, cinfo))
+-				continue;
+-
+-			nfs_init_commit(data, mds_pages, NULL, cinfo);
++			nfs_init_commit(data, NULL, NULL, cinfo);
+ 			nfs_initiate_commit(NFS_CLIENT(inode), data,
+ 					    NFS_PROTO(data->inode),
+ 					    data->mds_ops, how, 0);
+ 		} else {
+-			LIST_HEAD(pages);
+-
+-			pnfs_fetch_commit_bucket_list(&pages, data, cinfo);
+-
+-			/* another commit raced with us */
+-			if (pnfs_generic_commit_cancel_empty_pagelist(&pages,
+-				data, cinfo))
+-				continue;
+-
+-			nfs_init_commit(data, &pages, data->lseg, cinfo);
++			nfs_init_commit(data, NULL, data->lseg, cinfo);
+ 			initiate_commit(data, how);
+ 		}
+ 	}
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5544ee6cfda8..1f8108f5a041 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1746,14 +1746,19 @@ void nfs_init_commit(struct nfs_commit_data *data,
+ 		     struct pnfs_layout_segment *lseg,
+ 		     struct nfs_commit_info *cinfo)
+ {
+-	struct nfs_page *first = nfs_list_entry(head->next);
+-	struct nfs_open_context *ctx = nfs_req_openctx(first);
+-	struct inode *inode = d_inode(ctx->dentry);
++	struct nfs_page *first;
++	struct nfs_open_context *ctx;
++	struct inode *inode;
+ 
+ 	/* Set up the RPC argument and reply structs
+ 	 * NB: take care not to mess about with data->commit et al. */
+ 
+-	list_splice_init(head, &data->pages);
++	if (head)
++		list_splice_init(head, &data->pages);
++
++	first = nfs_list_entry(data->pages.next);
++	ctx = nfs_req_openctx(first);
++	inode = d_inode(ctx->dentry);
+ 
+ 	data->inode	  = inode;
+ 	data->cred	  = ctx->cred;
 -- 
 2.25.1
 
