@@ -7,57 +7,57 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD688C2D0E9
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6E71C43331
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9AC0F20737
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B3B9920737
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="wHc5UPdb"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="ZdT0J4Af"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727461AbgCYXLA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Mar 2020 19:11:00 -0400
-Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:53587 "EHLO
-        smtp-fw-9102.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727401AbgCYXK7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 19:10:59 -0400
+        id S1727485AbgCYXLG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Mar 2020 19:11:06 -0400
+Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:40828 "EHLO
+        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727401AbgCYXLG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 19:11:06 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1585177858; x=1616713858;
+  t=1585177865; x=1616713865;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=wNjdjasEM8JaM3c5ae6NnKaZaNgSfuuhN9tlgSTrFOk=;
-  b=wHc5UPdbNz0YG67UvwE+cL/B0KCuGxgMJFcUdp6No6KD97bf0oOvDdi4
-   frhYWnvaeoLNSsd1PNSdThmJopFDOP+Ob0jfG4CWHl530ASUVC2/qIfMd
-   Fbb820kfPplIybz7tDtYYQkPFt47rjzOoTOEvF2BqeGyhsa2aT2A0Xn4y
-   8=;
-IronPort-SDR: w8Xlu6dy/zZxt3W5bzxwu0MKnEmE9Rjn9RJsnnBIgKmZs+IeaJmaXqpha5NO8nrRjjkYKY4reZ
- A65zaiObHPug==
+  bh=eZeWbPDIFuYOcQFds2CBKE2Ml+c1Xl1+OMbta7BvFLA=;
+  b=ZdT0J4AfBe6LaNX9pW0QhES90G0eLnSuf5icW46NLWGDhCOgzIIp9/2s
+   HhA+J0AuDhy0ER3KZ52SDsFS0tcMtj30zW5Gly5SnGWeU3G9sZT8hBxjt
+   LgJ4UyfGRXZbBYBFbRKLOgLIWDxCyD8VEBKR1v1OB2M+8JMqKNxiPTUXR
+   4=;
+IronPort-SDR: v/vLSkByqoFJ8d9YJ9f/uzXsVo+nnG8Oti+/T7I8KE1tQjbBNRGTlNqVOhqtBo0WDta2kPlR+w
+ tbBGgzcJ9tMw==
 X-IronPort-AV: E=Sophos;i="5.72,306,1580774400"; 
-   d="scan'208";a="33468197"
-Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com) ([10.47.23.38])
-  by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 25 Mar 2020 23:10:55 +0000
+   d="scan'208";a="22761095"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-f273de60.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 25 Mar 2020 23:10:53 +0000
 Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com (Postfix) with ESMTPS id A30C2C12E9;
-        Wed, 25 Mar 2020 23:10:53 +0000 (UTC)
+        by email-inbound-relay-1d-f273de60.us-east-1.amazon.com (Postfix) with ESMTPS id B450AA27C5;
+        Wed, 25 Mar 2020 23:10:52 +0000 (UTC)
 Received: from EX13D13UWA004.ant.amazon.com (10.43.160.251) by
  EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Wed, 25 Mar 2020 23:10:52 +0000
-Received: from EX13MTAUEB002.ant.amazon.com (10.43.60.12) by
+Received: from EX13MTAUWA001.ant.amazon.com (10.43.160.58) by
  EX13D13UWA004.ant.amazon.com (10.43.160.251) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Wed, 25 Mar 2020 23:10:52 +0000
+ id 15.0.1497.2; Wed, 25 Mar 2020 23:10:51 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.60.234) with Microsoft SMTP
+ (172.23.141.97) by mail-relay.amazon.com (10.43.160.118) with Microsoft SMTP
  Server id 15.0.1367.3 via Frontend Transport; Wed, 25 Mar 2020 23:10:51 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 589C5D92C3; Wed, 25 Mar 2020 23:10:51 +0000 (UTC)
+        id 70DB7D92CA; Wed, 25 Mar 2020 23:10:51 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <linux-nfs@vger.kernel.org>, <anna.schumaker@netapp.com>,
         <trond.myklebust@hammerspace.com>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH v2 05/13] NFSv4.2: add client side XDR handling for extended attributes
-Date:   Wed, 25 Mar 2020 23:10:43 +0000
-Message-ID: <20200325231051.31652-6-fllinden@amazon.com>
+Subject: [PATCH v2 12/13] NFSv4.2: hook in the user extended attribute handlers
+Date:   Wed, 25 Mar 2020 23:10:50 +0000
+Message-ID: <20200325231051.31652-13-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 In-Reply-To: <20200325231051.31652-1-fllinden@amazon.com>
 References: <20200325231051.31652-1-fllinden@amazon.com>
@@ -68,509 +68,181 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Define the argument and response structures that will be used for
-RFC 8276 extended attribute RPC calls, and implement the necessary
-functions to encode/decode the extended attribute operations.
+Now that all the lower level code is there to make the RPC calls, hook
+it in to the xattr handlers and the listxattr entry point, to make them
+available.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfs/nfs42xdr.c       | 368 +++++++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4xdr.c        |   6 +
- include/linux/nfs_xdr.h |  59 ++++++-
- 3 files changed, 430 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4proc.c | 123 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 121 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 6712daa9d85b..cc50085e151c 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -169,7 +169,6 @@
- 					 decode_clone_maxsz + \
- 					 decode_getattr_maxsz)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c1193766cfe5..33bbd4c90416 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -66,6 +66,7 @@
+ #include "nfs4idmap.h"
+ #include "nfs4session.h"
+ #include "fscache.h"
++#include "nfs42.h"
  
--#ifdef CONFIG_NFS_V4_2
- /* Not limited by NFS itself, limited by the generic xattr code */
- #define nfs4_xattr_name_maxsz   XDR_QUADLEN(XATTR_NAME_MAX)
+ #include "nfs4trace.h"
  
-@@ -241,7 +240,6 @@ const u32 nfs42_maxlistxattrs_overhead = ((RPC_MAX_HEADER_WITH_AUTH +
- 					compound_decode_hdr_maxsz +
- 					decode_sequence_maxsz +
- 					decode_putfh_maxsz + 3) * XDR_UNIT);
--#endif
+@@ -7442,6 +7443,103 @@ nfs4_listxattr_nfs4_label(struct inode *inode, char *list, size_t list_len)
  
- static void encode_fallocate(struct xdr_stream *xdr,
- 			     const struct nfs42_falloc_args *args)
-@@ -407,6 +405,210 @@ static void encode_layouterror(struct xdr_stream *xdr,
- 	encode_device_error(xdr, &args->errors[0]);
- }
- 
-+static void encode_setxattr(struct xdr_stream *xdr,
-+			    const struct nfs42_setxattrargs *arg,
-+			    struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	BUILD_BUG_ON(XATTR_CREATE != SETXATTR4_CREATE);
-+	BUILD_BUG_ON(XATTR_REPLACE != SETXATTR4_REPLACE);
-+
-+	encode_op_hdr(xdr, OP_SETXATTR, decode_setxattr_maxsz, hdr);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(arg->xattr_flags);
-+	encode_string(xdr, strlen(arg->xattr_name), arg->xattr_name);
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(arg->xattr_len);
-+	if (arg->xattr_len)
-+		xdr_write_pages(xdr, arg->xattr_pages, 0, arg->xattr_len);
-+}
-+
-+static int decode_setxattr(struct xdr_stream *xdr,
-+			   struct nfs4_change_info *cinfo)
-+{
-+	int status;
-+
-+	status = decode_op_hdr(xdr, OP_SETXATTR);
-+	if (status)
-+		goto out;
-+	status = decode_change_info(xdr, cinfo);
-+out:
-+	return status;
-+}
-+
-+
-+static void encode_getxattr(struct xdr_stream *xdr, const char *name,
-+			    struct compound_hdr *hdr)
-+{
-+	encode_op_hdr(xdr, OP_GETXATTR, decode_getxattr_maxsz, hdr);
-+	encode_string(xdr, strlen(name), name);
-+}
-+
-+static int decode_getxattr(struct xdr_stream *xdr,
-+			   struct nfs42_getxattrres *res,
-+			   struct rpc_rqst *req)
-+{
-+	int status;
-+	__be32 *p;
-+	u32 len, rdlen;
-+
-+	status = decode_op_hdr(xdr, OP_GETXATTR);
-+	if (status)
-+		return status;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		return -EIO;
-+
-+	len = be32_to_cpup(p);
-+	if (len > req->rq_rcv_buf.page_len)
-+		return -ERANGE;
-+
-+	res->xattr_len = len;
-+
-+	if (len > 0) {
-+		rdlen = xdr_read_pages(xdr, len);
-+		if (rdlen < len)
-+			return -EIO;
-+	}
-+
-+	return 0;
-+}
-+
-+static void encode_removexattr(struct xdr_stream *xdr, const char *name,
-+			       struct compound_hdr *hdr)
-+{
-+	encode_op_hdr(xdr, OP_REMOVEXATTR, decode_removexattr_maxsz, hdr);
-+	encode_string(xdr, strlen(name), name);
-+}
-+
-+
-+static int decode_removexattr(struct xdr_stream *xdr,
-+			   struct nfs4_change_info *cinfo)
-+{
-+	int status;
-+
-+	status = decode_op_hdr(xdr, OP_REMOVEXATTR);
-+	if (status)
-+		goto out;
-+
-+	status = decode_change_info(xdr, cinfo);
-+out:
-+	return status;
-+}
-+
-+static void encode_listxattrs(struct xdr_stream *xdr,
-+			     const struct nfs42_listxattrsargs *arg,
-+			     struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	encode_op_hdr(xdr, OP_LISTXATTRS, decode_listxattrs_maxsz + 1, hdr);
-+
-+	p = reserve_space(xdr, 12);
-+	if (unlikely(!p))
-+		return;
-+
-+	p = xdr_encode_hyper(p, arg->cookie);
-+	/*
-+	 * RFC 8276 says to specify the full max length of the LISTXATTRS
-+	 * XDR reply. Count is set to the XDR length of the names array
-+	 * plus the EOF marker. So, add the cookie and the names count.
-+	 */
-+	*p = cpu_to_be32(arg->count + 8 + 4);
-+}
-+
-+static int decode_listxattrs(struct xdr_stream *xdr,
-+			    struct nfs42_listxattrsres *res)
-+{
-+	int status;
-+	__be32 *p;
-+	u32 count, len, ulen;
-+	size_t left, copied;
-+	char *buf;
-+
-+	status = decode_op_hdr(xdr, OP_LISTXATTRS);
-+	if (status) {
-+		/*
-+		 * Special case: for LISTXATTRS, NFS4ERR_TOOSMALL
-+		 * should be translated to ERANGE.
-+		 */
-+		if (status == -ETOOSMALL)
-+			status = -ERANGE;
-+		goto out;
-+	}
-+
-+	p = xdr_inline_decode(xdr, 8);
-+	if (unlikely(!p))
-+		return -EIO;
-+
-+	xdr_decode_hyper(p, &res->cookie);
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		return -EIO;
-+
-+	left = res->xattr_len;
-+	buf = res->xattr_buf;
-+
-+	count = be32_to_cpup(p);
-+	copied = 0;
-+
-+	/*
-+	 * We have asked for enough room to encode the maximum number
-+	 * of possible attribute names, so everything should fit.
-+	 *
-+	 * But, don't rely on that assumption. Just decode entries
-+	 * until they don't fit anymore, just in case the server did
-+	 * something odd.
-+	 */
-+	while (count--) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			return -EIO;
-+
-+		len = be32_to_cpup(p);
-+		if (len > (XATTR_NAME_MAX - XATTR_USER_PREFIX_LEN)) {
-+			status = -ERANGE;
-+			goto out;
-+		}
-+
-+		p = xdr_inline_decode(xdr, len);
-+		if (unlikely(!p))
-+			return -EIO;
-+
-+		ulen = len + XATTR_USER_PREFIX_LEN + 1;
-+		if (buf) {
-+			if (ulen > left) {
-+				status = -ERANGE;
-+				goto out;
-+			}
-+
-+			memcpy(buf, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN);
-+			memcpy(buf + XATTR_USER_PREFIX_LEN, p, len);
-+
-+			buf[ulen - 1] = 0;
-+			buf += ulen;
-+			left -= ulen;
-+		}
-+		copied += ulen;
-+	}
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		return -EIO;
-+
-+	res->eof = be32_to_cpup(p);
-+	res->copied = copied;
-+
-+out:
-+	if (status == -ERANGE && res->xattr_len == XATTR_LIST_MAX)
-+		status = -E2BIG;
-+
-+	return status;
-+}
-+
- /*
-  * Encode ALLOCATE request
-  */
-@@ -1062,4 +1264,166 @@ static int nfs4_xdr_dec_layouterror(struct rpc_rqst *rqstp,
- 	return status;
- }
+ #endif
  
 +#ifdef CONFIG_NFS_V4_2
-+static void nfs4_xdr_enc_setxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
-+				  const void *data)
++static int nfs4_xattr_set_nfs4_user(const struct xattr_handler *handler,
++				    struct dentry *unused, struct inode *inode,
++				    const char *key, const void *buf,
++				    size_t buflen, int flags)
 +{
-+	const struct nfs42_setxattrargs *args = data;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
++	struct nfs_access_entry cache;
 +
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, args->fh, &hdr);
-+	encode_setxattr(xdr, args, &hdr);
-+	encode_nops(&hdr);
++	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
++		return -EOPNOTSUPP;
++
++	/*
++	 * There is no mapping from the MAY_* flags to the NFS_ACCESS_XA*
++	 * flags right now. Handling of xattr operations use the normal
++	 * file read/write permissions.
++	 *
++	 * Just in case the server has other ideas (which RFC 8276 allows),
++	 * do a cached access check for the XA* flags to possibly avoid
++	 * doing an RPC and getting EACCES back.
++	 */
++	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
++		if (!(cache.mask & NFS_ACCESS_XAWRITE))
++			return -EACCES;
++	}
++
++	if (buf == NULL)
++		return nfs42_proc_removexattr(inode, key);
++	else
++		return nfs42_proc_setxattr(inode, key, buf, buflen, flags);
 +}
 +
-+static int nfs4_xdr_dec_setxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
-+				 void *data)
++static int nfs4_xattr_get_nfs4_user(const struct xattr_handler *handler,
++				    struct dentry *unused, struct inode *inode,
++				    const char *key, void *buf, size_t buflen)
 +{
-+	struct nfs42_setxattrres *res = data;
-+	struct compound_hdr hdr;
-+	int status;
++	struct nfs_access_entry cache;
 +
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, req);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
++	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
++		return -EOPNOTSUPP;
 +
-+	status = decode_setxattr(xdr, &res->cinfo);
-+out:
-+	return status;
++	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
++		if (!(cache.mask & NFS_ACCESS_XAREAD))
++			return -EACCES;
++	}
++
++	return nfs42_proc_getxattr(inode, key, buf, buflen);
 +}
 +
-+static void nfs4_xdr_enc_getxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
-+				  const void *data)
++static ssize_t
++nfs4_listxattr_nfs4_user(struct inode *inode, char *list, size_t list_len)
 +{
-+	const struct nfs42_getxattrargs *args = data;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+	size_t plen;
++	u64 cookie;
++	bool eof;
++	int ret, size;
++	char *buf;
++	size_t buflen;
++	struct nfs_access_entry cache;
 +
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, args->fh, &hdr);
-+	encode_getxattr(xdr, args->xattr_name, &hdr);
++	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
++		return 0;
 +
-+	plen = args->xattr_len ? args->xattr_len : XATTR_SIZE_MAX;
++	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
++		if (!(cache.mask & NFS_ACCESS_XALIST))
++			return 0;
++	}
 +
-+	rpc_prepare_reply_pages(req, args->xattr_pages, 0, plen,
-+	    hdr.replen);
-+	req->rq_rcv_buf.flags |= XDRBUF_SPARSE_PAGES;
++	cookie = 0;
++	eof = false;
++	buflen = list_len ? list_len : XATTR_LIST_MAX;
++	buf = list_len ? list : NULL;
++	size = 0;
 +
-+	encode_nops(&hdr);
++	while (!eof) {
++		ret = nfs42_proc_listxattrs(inode, buf, buflen,
++		    &cookie, &eof);
++		if (ret < 0)
++			return ret;
++
++		if (list_len) {
++			buf += ret;
++			buflen -= ret;
++		}
++		size += ret;
++	}
++
++	return size;
 +}
 +
-+static int nfs4_xdr_dec_getxattr(struct rpc_rqst *rqstp,
-+				 struct xdr_stream *xdr, void *data)
++#else
++
++static ssize_t
++nfs4_listxattr_nfs4_user(struct inode *inode, char *list, size_t list_len)
 +{
-+	struct nfs42_getxattrres *res = data;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_getxattr(xdr, res, rqstp);
-+out:
-+	return status;
++	return 0;
 +}
-+
-+static void nfs4_xdr_enc_listxattrs(struct rpc_rqst *req,
-+				    struct xdr_stream *xdr, const void *data)
-+{
-+	const struct nfs42_listxattrsargs *args = data;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, args->fh, &hdr);
-+	encode_listxattrs(xdr, args, &hdr);
-+
-+	rpc_prepare_reply_pages(req, args->xattr_pages, 0, args->count,
-+	    hdr.replen);
-+	req->rq_rcv_buf.flags |= XDRBUF_SPARSE_PAGES;
-+
-+	encode_nops(&hdr);
-+}
-+
-+static int nfs4_xdr_dec_listxattrs(struct rpc_rqst *rqstp,
-+				   struct xdr_stream *xdr, void *data)
-+{
-+	struct nfs42_listxattrsres *res = data;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	xdr_set_scratch_buffer(xdr, page_address(res->scratch), PAGE_SIZE);
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_listxattrs(xdr, res);
-+out:
-+	return status;
-+}
-+
-+static void nfs4_xdr_enc_removexattr(struct rpc_rqst *req,
-+				     struct xdr_stream *xdr, const void *data)
-+{
-+	const struct nfs42_removexattrargs *args = data;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, args->fh, &hdr);
-+	encode_removexattr(xdr, args->xattr_name, &hdr);
-+	encode_nops(&hdr);
-+}
-+
-+static int nfs4_xdr_dec_removexattr(struct rpc_rqst *req,
-+				    struct xdr_stream *xdr, void *data)
-+{
-+	struct nfs42_removexattrres *res = data;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, req);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+
-+	status = decode_removexattr(xdr, &res->cinfo);
-+out:
-+	return status;
-+}
-+#endif
- #endif /* __LINUX_FS_NFS_NFS4_2XDR_H */
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 9e1b07640e9a..388ac520b104 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -7481,6 +7481,8 @@ static struct {
- 	{ NFS4ERR_SYMLINK,	-ELOOP		},
- 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
- 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
-+	{ NFS4ERR_NOXATTR,	-ENODATA	},
-+	{ NFS4ERR_XATTR2BIG,	-E2BIG		},
- 	{ -1,			-EIO		}
- };
- 
-@@ -7609,6 +7611,10 @@ const struct rpc_procinfo nfs4_procedures[] = {
- 	PROC42(COPY_NOTIFY,	enc_copy_notify,	dec_copy_notify),
- 	PROC(LOOKUPP,		enc_lookupp,		dec_lookupp),
- 	PROC42(LAYOUTERROR,	enc_layouterror,	dec_layouterror),
-+	PROC42(GETXATTR,	enc_getxattr,		dec_getxattr),
-+	PROC42(SETXATTR,	enc_setxattr,		dec_setxattr),
-+	PROC42(LISTXATTRS,	enc_listxattrs,		dec_listxattrs),
-+	PROC42(REMOVEXATTR,	enc_removexattr,	dec_removexattr),
- };
- 
- static unsigned int nfs_version4_counts[ARRAY_SIZE(nfs4_procedures)];
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6fb1f2b65db3..23b8e740af36 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1497,7 +1497,64 @@ struct nfs42_seek_res {
- 	u32	sr_eof;
- 	u64	sr_offset;
- };
--#endif
-+
-+struct nfs42_setxattrargs {
-+	struct nfs4_sequence_args	seq_args;
-+	struct nfs_fh			*fh;
-+	const char			*xattr_name;
-+	u32				xattr_flags;
-+	size_t				xattr_len;
-+	struct page			**xattr_pages;
-+};
-+
-+struct nfs42_setxattrres {
-+	struct nfs4_sequence_res	seq_res;
-+	struct nfs4_change_info		cinfo;
-+};
-+
-+struct nfs42_getxattrargs {
-+	struct nfs4_sequence_args	seq_args;
-+	struct nfs_fh			*fh;
-+	const char			*xattr_name;
-+	size_t				xattr_len;
-+	struct page			**xattr_pages;
-+};
-+
-+struct nfs42_getxattrres {
-+	struct nfs4_sequence_res	seq_res;
-+	size_t				xattr_len;
-+};
-+
-+struct nfs42_listxattrsargs {
-+	struct nfs4_sequence_args	seq_args;
-+	struct nfs_fh			*fh;
-+	u32				count;
-+	u64				cookie;
-+	struct page			**xattr_pages;
-+};
-+
-+struct nfs42_listxattrsres {
-+	struct nfs4_sequence_res	seq_res;
-+	struct page			*scratch;
-+	void				*xattr_buf;
-+	size_t				xattr_len;
-+	u64				cookie;
-+	bool				eof;
-+	size_t				copied;
-+};
-+
-+struct nfs42_removexattrargs {
-+	struct nfs4_sequence_args	seq_args;
-+	struct nfs_fh			*fh;
-+	const char			*xattr_name;
-+};
-+
-+struct nfs42_removexattrres {
-+	struct nfs4_sequence_res	seq_res;
-+	struct nfs4_change_info		cinfo;
-+};
-+
 +#endif /* CONFIG_NFS_V4_2 */
++
+ /*
+  * nfs_fhget will use either the mounted_on_fileid or the fileid
+  */
+@@ -10039,7 +10137,7 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
  
- struct nfs_page;
+ static ssize_t nfs4_listxattr(struct dentry *dentry, char *list, size_t size)
+ {
+-	ssize_t error, error2;
++	ssize_t error, error2, error3;
  
+ 	error = generic_listxattr(dentry, list, size);
+ 	if (error < 0)
+@@ -10052,7 +10150,17 @@ static ssize_t nfs4_listxattr(struct dentry *dentry, char *list, size_t size)
+ 	error2 = nfs4_listxattr_nfs4_label(d_inode(dentry), list, size);
+ 	if (error2 < 0)
+ 		return error2;
+-	return error + error2;
++
++	if (list) {
++		list += error2;
++		size -= error2;
++	}
++
++	error3 = nfs4_listxattr_nfs4_user(d_inode(dentry), list, size);
++	if (error3 < 0)
++		return error3;
++
++	return error + error2 + error3;
+ }
+ 
+ static const struct inode_operations nfs4_dir_inode_operations = {
+@@ -10140,10 +10248,21 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+ 	.set	= nfs4_xattr_set_nfs4_acl,
+ };
+ 
++#ifdef CONFIG_NFS_V4_2
++static const struct xattr_handler nfs4_xattr_nfs4_user_handler = {
++	.prefix	= XATTR_USER_PREFIX,
++	.get	= nfs4_xattr_get_nfs4_user,
++	.set	= nfs4_xattr_set_nfs4_user,
++};
++#endif
++
+ const struct xattr_handler *nfs4_xattr_handlers[] = {
+ 	&nfs4_xattr_nfs4_acl_handler,
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+ 	&nfs4_xattr_nfs4_label_handler,
++#endif
++#ifdef CONFIG_NFS_V4_2
++	&nfs4_xattr_nfs4_user_handler,
+ #endif
+ 	NULL
+ };
 -- 
 2.17.2
 
