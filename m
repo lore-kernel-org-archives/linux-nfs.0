@@ -2,181 +2,113 @@ Return-Path: <SRS0=ul47=5K=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E196C43331
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 22:53:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7EC37C43331
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:10:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 39B3A20719
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 22:53:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5145320737
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:10:57 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="ZrCK63ef"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727417AbgCYWx2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Mar 2020 18:53:28 -0400
-Received: from mx2.suse.de ([195.135.220.15]:54188 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727399AbgCYWx2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 25 Mar 2020 18:53:28 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id E7F1AAD88;
-        Wed, 25 Mar 2020 22:53:25 +0000 (UTC)
-From:   NeilBrown <neilb@suse.de>
-To:     Christophe JAILLET <christophe.jaillet@wanadoo.fr>,
-        linux-kernel@vger.kernel.org
-Date:   Thu, 26 Mar 2020 09:53:19 +1100
-Cc:     linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: Re: [PATCH 2/2] SUNRPC: Optimize 'svc_print_xprts()'
-In-Reply-To: <42afbf1f-19e1-a05c-e70c-1d46eaba3a71@wanadoo.fr>
-References: <20200325070452.22043-1-christophe.jaillet@wanadoo.fr> <EA5BCDB2-DB05-4B26-8635-E6F5C231DDC6@oracle.com> <42afbf1f-19e1-a05c-e70c-1d46eaba3a71@wanadoo.fr>
-Message-ID: <87wo786o80.fsf@notabene.neil.brown.name>
+        id S1727452AbgCYXK4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Mar 2020 19:10:56 -0400
+Received: from smtp-fw-9101.amazon.com ([207.171.184.25]:57079 "EHLO
+        smtp-fw-9101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727358AbgCYXK4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 19:10:56 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1585177856; x=1616713856;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version;
+  bh=vFxYbbJ0r1Vr860xlMErPtE+KLkDFnIDnLKOGik33OI=;
+  b=ZrCK63efmQaj0UZ4em4O05Z54iq16UG0rjnZOSjPVYjzp+BSv+EGzZ+f
+   7aeIZ22WejFaOYtE86Q7T4cPc2Z4E2d5AIVm4hWoFYpSSeDjVb32y2MuK
+   PDdqJH/iCvDuhWsNUg9KaCTFGBYuL2QSpU0c+pAVWXh04nt5JaZuTweo7
+   I=;
+IronPort-SDR: P1MRoKeFhvlJPM3nQJMwAw78SfinSP1SBoFFJZYaevWptu0XaWHdG1hwp5tr4yZV1ARNZLhS9o
+ 10VRXn91/g2A==
+X-IronPort-AV: E=Sophos;i="5.72,306,1580774400"; 
+   d="scan'208";a="25116063"
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1a-af6a10df.us-east-1.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-9101.sea19.amazon.com with ESMTP; 25 Mar 2020 23:10:53 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
+        by email-inbound-relay-1a-af6a10df.us-east-1.amazon.com (Postfix) with ESMTPS id 6BEB0A2D34;
+        Wed, 25 Mar 2020 23:10:52 +0000 (UTC)
+Received: from EX13D13UWA001.ant.amazon.com (10.43.160.136) by
+ EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 25 Mar 2020 23:10:51 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (10.43.160.58) by
+ EX13D13UWA001.ant.amazon.com (10.43.160.136) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Wed, 25 Mar 2020 23:10:51 +0000
+Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
+ (172.23.141.97) by mail-relay.amazon.com (10.43.160.118) with Microsoft SMTP
+ Server id 15.0.1367.3 via Frontend Transport; Wed, 25 Mar 2020 23:10:51 +0000
+Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
+        id 5F839D92C5; Wed, 25 Mar 2020 23:10:51 +0000 (UTC)
+From:   Frank van der Linden <fllinden@amazon.com>
+To:     <linux-nfs@vger.kernel.org>, <anna.schumaker@netapp.com>,
+        <trond.myklebust@hammerspace.com>
+CC:     Frank van der Linden <fllinden@amazon.com>
+Subject: [PATCH v2 07/13] NFSv4.2: query the extended attribute access bits
+Date:   Wed, 25 Mar 2020 23:10:45 +0000
+Message-ID: <20200325231051.31652-8-fllinden@amazon.com>
+X-Mailer: git-send-email 2.16.6
+In-Reply-To: <20200325231051.31652-1-fllinden@amazon.com>
+References: <20200325231051.31652-1-fllinden@amazon.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+RFC 8276 defines separate ACCESS bits for extended attribute checking.
+Query them in nfs_do_access and opendata.
 
-On Wed, Mar 25 2020, Christophe JAILLET wrote:
+Signed-off-by: Frank van der Linden <fllinden@amazon.com>
+---
+ fs/nfs/dir.c      | 4 ++++
+ fs/nfs/nfs4proc.c | 6 ++++++
+ 2 files changed, 10 insertions(+)
 
-> Le 25/03/2020 =C3=A0 15:52, Chuck Lever a =C3=A9crit=C2=A0:
->> Hi Christophe,
->>
->>
->>> On Mar 25, 2020, at 3:04 AM, Christophe JAILLET <christophe.jaillet@wan=
-adoo.fr> wrote:
->>>
->>> Using 'snprintf' is safer than 'sprintf' because it can avoid a buffer
->>> overflow.
->> That's true as a general statement, but how likely is such an
->> overflow to occur here?
->>
-> I guess, that it us unlikely and that the 80 chars buffer is big enough.
-> That is the exact reason of why I've proposed 2 patches. The first one=20
-> could happen in RL. The 2nd is more like a clean-up and is less=20
-> relevant, IMHO.
->>
->>> The return value can also be used to avoid a strlen a call.
->> That's also true of sprintf, isn't it?
->
-> Sure.
->
->
->>
->>> Finally, we know where we need to copy and the length to copy, so, we
->>> can save a few cycles by rearraging the code and using a memcpy instead=
- of
->>> a strcat.
->> I would be OK with squashing these two patches together. I don't
->> see the need to keep the two changes separated.
->
-> NP, I can resend as a V2 with your comments.
-> As said above, the first fixes something that could, IMHO, happen and=20
-> the 2nd is more a matter of taste and a clean-up.
->
->
->>
->>> Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
->>> ---
->>> This patch should have no functionnal change.
->>> We could go further, use scnprintf and write directly in the destination
->>> buffer. However, this could lead to a truncated last line.
->> That's exactly what this function is trying to avoid. As part of any
->> change in this area, it would be good to replace the current block
->> comment before this function with a Doxygen-format comment that
->> documents that goal.
->
-> I'll take care of it.
->
->
->>> ---
->>> net/sunrpc/svc_xprt.c | 8 ++++----
->>> 1 file changed, 4 insertions(+), 4 deletions(-)
->>>
->>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->>> index df39e7b8b06c..6df861650040 100644
->>> --- a/net/sunrpc/svc_xprt.c
->>> +++ b/net/sunrpc/svc_xprt.c
->>> @@ -118,12 +118,12 @@ int svc_print_xprts(char *buf, int maxlen)
->>> 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
->>> 		int slen;
->>>
->>> -		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
->>> -		slen =3D strlen(tmpstr);
->>> -		if (len + slen >=3D maxlen)
->>> +		slen =3D snprintf(tmpstr, sizeof(tmpstr), "%s %d\n",
->>> +				xcl->xcl_name, xcl->xcl_max_payload);
->>> +		if (slen >=3D sizeof(tmpstr) || len + slen >=3D maxlen)
->>> 			break;
->>> +		memcpy(buf + len, tmpstr, slen + 1);
->>> 		len +=3D slen;
->>> -		strcat(buf, tmpstr);
->> IMO replacing the strcat makes the code harder to read, and this
->> is certainly not a performance path. Can you drop that part of the
->> patch?
->
-> Ok
->
->
->>
->>> 	}
->>> 	spin_unlock(&svc_xprt_class_lock);
->>>
->>> --=20
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index a0b564781e3e..bd2606539299 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2646,6 +2646,10 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
+ 	 * Determine which access bits we want to ask for...
+ 	 */
+ 	cache.mask = NFS_ACCESS_READ | NFS_ACCESS_MODIFY | NFS_ACCESS_EXTEND;
++	if (nfs_server_capable(inode, NFS_CAP_XATTR)) {
++		cache.mask |= NFS_ACCESS_XAREAD | NFS_ACCESS_XAWRITE |
++		    NFS_ACCESS_XALIST;
++	}
+ 	if (S_ISDIR(inode->i_mode))
+ 		cache.mask |= NFS_ACCESS_DELETE | NFS_ACCESS_LOOKUP;
+ 	else
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 11eac1b46749..9207f945d75c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1341,6 +1341,12 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 				NFS4_ACCESS_MODIFY |
+ 				NFS4_ACCESS_EXTEND |
+ 				NFS4_ACCESS_EXECUTE;
++#ifdef CONFIG_NFS_V4_2
++			if (server->caps & NFS_CAP_XATTR)
++				p->o_arg.access |= NFS4_ACCESS_XAREAD |
++				    NFS4_ACCESS_XAWRITE |
++				    NFS4_ACCESS_XALIST;
++#endif
+ 		}
+ 	}
+ 	p->o_arg.clientid = server->nfs_client->cl_clientid;
+-- 
+2.17.2
 
-Can I suggest something more like this:
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index de3c077733a7..0292f45b70f6 100644
-=2D-- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -115,16 +115,9 @@ int svc_print_xprts(char *buf, int maxlen)
- 	buf[0] =3D '\0';
-=20
- 	spin_lock(&svc_xprt_class_lock);
-=2D	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
-=2D		int slen;
-=2D
-=2D		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
-=2D		slen =3D strlen(tmpstr);
-=2D		if (len + slen > maxlen)
-=2D			break;
-=2D		len +=3D slen;
-=2D		strcat(buf, tmpstr);
-=2D	}
-+	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list)
-+		len +=3D scnprintf(buf + len, maxlen - len, "%s %d\n",
-+				 xcl->xcl_name, xcl->xcl_max_payload);
- 	spin_unlock(&svc_xprt_class_lock);
-=20
- 	return len;
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAl574N8ACgkQOeye3VZi
-gblt1g/9HiVqAgfOAczPAHMlZ3fEpsGid1IWxmMW6KeiZkcNztY76eVboisWNlPs
-ZZK88kbrsOAKqagKDyKbRc1qbEFBfMQd0EGzQm4J562fO0YQgF7MwGVhBfxXGEeL
-ca9GPo2ZqG2p9/9FjFIk+/kOYk/8WMpK9noKlKR4Nqk/C+jW2jqNtZf/f6BE1OU/
-js7FCd0iK4KQSLGXSKT4i9puHiJoZMi0d+7bAxWDxub9UFrQk5yk1HQDQK6EuQj0
-hhalu5Pz3KoBih6gzlVLR0O2rUGr8abLRM/L0Cwa3p2113gymBmsEVPJyAQ2O5E/
-ohyRZCeGKMs9RXAcsAjFUr6CVmeJFvT+P35wbDT29V5wbnOja0R8UubAVxg8PPnm
-ZPrGeDVzOrKvRWoydX1mPffpj8PexJvJSZaXvDugmqY30WKDgDsjg7vsHox7oRC7
-R0MY26ilBwsvdrsegZlr3J7jRIcDj+ItkLoKYubhu0VUMQSyGZlP++Cz43PdQD21
-dujfjUKOVQvZ3h3IKO8L7Zo8hcetaKwDqCtrigO0O0IrClfSX7Jtrojnyj8jUobB
-67x/pEkRB8WVXI6ldungASWirIir5COofkJCVRNPeQDk6tFKb4blb5jqA8Xxi/Xt
-gua4apqXIK9M1nmXvriKSzVmiB+RRJG6Tjx+jfqNaDi8WRZKcyI=
-=aTlo
------END PGP SIGNATURE-----
---=-=-=--
