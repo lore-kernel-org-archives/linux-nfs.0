@@ -2,118 +2,96 @@ Return-Path: <SRS0=ul47=5K=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B31FC43331
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9709C43331
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:45:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3177620737
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A115420737
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:45:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="l53eG/MC"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="GkF64XYy"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727508AbgCYXLO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Mar 2020 19:11:14 -0400
-Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:33265 "EHLO
-        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727487AbgCYXLO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 19:11:14 -0400
+        id S1727406AbgCYXpB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Mar 2020 19:45:01 -0400
+Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:55704 "EHLO
+        smtp-fw-9102.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727402AbgCYXpB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 19:45:01 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1585177874; x=1616713874;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version;
-  bh=jVrJZTHir3ub+Fdgg4hefiI3EHBvthaDoftd0LvUzXA=;
-  b=l53eG/MCOBeNgS8rz7fWu4sUCVkvQ5j97s7npKSCXN7MomYcN+mGydVN
-   u18Mc0TY+HjhKtIA3Kp3D/PS4ETOOooxLwH9ELmcupzndyYtb/LOaNgex
-   16kCL8KGb+VkUp+yrRNVXVIBvBpPM/4ZaMyE+Tb8B6zTTkVJpP52oWgtc
-   M=;
-IronPort-SDR: GThdym+C3jK7KcBmAXNtLe+Nq3HFbCWu2F5cpsrWG+RjU4TLNi7mPw+6C6RUlB9MzOiaAd+Yzc
- lNly81y14YWQ==
+  t=1585179901; x=1616715901;
+  h=date:from:to:cc:message-id:references:mime-version:
+   in-reply-to:subject;
+  bh=7JI0zNZnqBVSTnkujz+99I77yvFGg4iqfKnGSolIdEg=;
+  b=GkF64XYyLxR+Kj63FzR7Vod7jC6fE6ylKn/x33sIE8Qy72KjrWATYQtc
+   ZdNvgMgw28YUlGPlQ95vDmsCprFgoaTzennJHdvq44KX3PJUsoyEh6sQ/
+   FQZ9OnGimIB7PTzPco8mIyOLxuctMTY+7r578EUGejpwob/HyF3k8fU54
+   I=;
+IronPort-SDR: L0zWidj/zRgOxSCqHGxQMkMw+j7htn8KudrSjG/XFuuv83t+Lk1tAoiIVik60k0RLxy1ZRADyp
+ T2VxBElayaRA==
 X-IronPort-AV: E=Sophos;i="5.72,306,1580774400"; 
-   d="scan'208";a="23184860"
-Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-1a-af6a10df.us-east-1.amazon.com) ([10.43.8.2])
-  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 25 Mar 2020 23:11:14 +0000
-Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
-        by email-inbound-relay-1a-af6a10df.us-east-1.amazon.com (Postfix) with ESMTPS id 956AAA2D34;
-        Wed, 25 Mar 2020 23:11:12 +0000 (UTC)
-Received: from EX13D13UWA001.ant.amazon.com (10.43.160.136) by
- EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Wed, 25 Mar 2020 23:10:53 +0000
+   d="scan'208";a="33472389"
+Subject: Re: [PATCH 11/14] nfsd: add user xattr RPC XDR encoding/decoding logic
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-2a-90c42d1d.us-west-2.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 25 Mar 2020 23:44:59 +0000
+Received: from EX13MTAUEE002.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan3.pdx.amazon.com [10.170.41.166])
+        by email-inbound-relay-2a-90c42d1d.us-west-2.amazon.com (Postfix) with ESMTPS id D84BCA0495;
+        Wed, 25 Mar 2020 23:44:57 +0000 (UTC)
+Received: from EX13D15UEE004.ant.amazon.com (10.43.62.241) by
+ EX13MTAUEE002.ant.amazon.com (10.43.62.24) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 25 Mar 2020 23:44:56 +0000
 Received: from EX13MTAUEE002.ant.amazon.com (10.43.62.24) by
- EX13D13UWA001.ant.amazon.com (10.43.160.136) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Wed, 25 Mar 2020 23:10:52 +0000
+ EX13D15UEE004.ant.amazon.com (10.43.62.241) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Wed, 25 Mar 2020 23:44:56 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
  (172.23.141.97) by mail-relay.amazon.com (10.43.62.224) with Microsoft SMTP
- Server id 15.0.1367.3 via Frontend Transport; Wed, 25 Mar 2020 23:10:51 +0000
+ Server id 15.0.1367.3 via Frontend Transport; Wed, 25 Mar 2020 23:44:56 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 69EBDD92C8; Wed, 25 Mar 2020 23:10:51 +0000 (UTC)
+        id 08745C1350; Wed, 25 Mar 2020 23:44:56 +0000 (UTC)
+Date:   Wed, 25 Mar 2020 23:44:56 +0000
 From:   Frank van der Linden <fllinden@amazon.com>
-To:     <linux-nfs@vger.kernel.org>, <anna.schumaker@netapp.com>,
-        <trond.myklebust@hammerspace.com>
-CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH v2 10/13] nfs: make the buf_to_pages_noslab function available to the nfs code
-Date:   Wed, 25 Mar 2020 23:10:48 +0000
-Message-ID: <20200325231051.31652-11-fllinden@amazon.com>
-X-Mailer: git-send-email 2.16.6
-In-Reply-To: <20200325231051.31652-1-fllinden@amazon.com>
-References: <20200325231051.31652-1-fllinden@amazon.com>
+To:     Chuck Lever <chuck.lever@oracle.com>
+CC:     Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <20200325234455.GA742@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
+References: <20200311195954.27117-1-fllinden@amazon.com>
+ <20200311195954.27117-12-fllinden@amazon.com>
+ <17D7709F-2FE0-4B84-A9AF-4D6C2B36A4E7@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+In-Reply-To: <17D7709F-2FE0-4B84-A9AF-4D6C2B36A4E7@oracle.com>
+User-Agent: Mutt/1.11.4 (2019-03-13)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Make the buf_to_pages_noslab function available to the rest of the NFS
-code. Rename it to nfs4_buf_to_pages_noslab to be consistent.
+On Thu, Mar 12, 2020 at 12:24:18PM -0400, Chuck Lever wrote:
+> > On Mar 11, 2020, at 3:59 PM, Frank van der Linden <fllinden@amazon.com> wrote:
+> > +     /*
+> > +      * Unfortunately, there is no interface to only list xattrs for
+> > +      * one prefix. So there is no good way to convert maxcount to
+> > +      * a maximum value to pass to vfs_listxattr, as we don't know
+> > +      * how many of the returned attributes will be user attributes.
+> > +      *
+> > +      * So, always ask vfs_listxattr for the maximum size, and encode
+> > +      * as many as possible.
+> > +      */
+> 
+> Well, this approach worries me a little bit. Wouldn't it be better if the
+> VFS provided the APIs? Review by linux-fsdevel might help here.
 
-This will be used later in the NFSv4.2 xattr code.
+I missed this comment initially, sorry about the slow reply.
 
-Signed-off-by: Frank van der Linden <fllinden@amazon.com>
----
- fs/nfs/nfs4_fs.h  | 2 ++
- fs/nfs/nfs4proc.c | 4 ++--
- 2 files changed, 4 insertions(+), 2 deletions(-)
+I'll copy this one to -fsdevel for v2.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index f82c3e884662..da18d0254c75 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -326,6 +326,8 @@ extern void nfs4_update_changeattr(struct inode *dir,
- 				   struct nfs4_change_info *cinfo,
- 				   unsigned long timestamp,
- 				   unsigned long cache_validity);
-+extern int nfs4_buf_to_pages_noslab(const void *buf, size_t buflen,
-+				    struct page **pages);
- 
- #if defined(CONFIG_NFS_V4_1)
- extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 441bdbb7f247..c1193766cfe5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5544,7 +5544,7 @@ static inline int nfs4_server_supports_acls(struct nfs_server *server)
-  */
- #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
- 
--static int buf_to_pages_noslab(const void *buf, size_t buflen,
-+int nfs4_buf_to_pages_noslab(const void *buf, size_t buflen,
- 		struct page **pages)
- {
- 	struct page *newpage, **spages;
-@@ -5786,7 +5786,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 		return -EOPNOTSUPP;
- 	if (npages > ARRAY_SIZE(pages))
- 		return -ERANGE;
--	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages);
-+	i = nfs4_buf_to_pages_noslab(buf, buflen, arg.acl_pages);
- 	if (i < 0)
- 		return i;
- 	nfs4_inode_make_writeable(inode);
--- 
-2.17.2
+It would require a modified or new entry point to all filesystems to
+support this properly, so I didn't touch it. It's not a complex
+task, it just would lead to quite a bit of code churn.
 
+- Frank
