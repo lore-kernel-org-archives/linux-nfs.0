@@ -2,81 +2,98 @@ Return-Path: <SRS0=ul47=5K=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF78AC5518F
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 07:14:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2FDDC43331
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 10:30:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E7BA92051A
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 07:04:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C0F9820772
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 10:30:51 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JqK87J+g"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725939AbgCYHE7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Mar 2020 03:04:59 -0400
-Received: from smtp02.smtpout.orange.fr ([80.12.242.124]:47645 "EHLO
-        smtp.smtpout.orange.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725907AbgCYHE7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 03:04:59 -0400
-Received: from localhost.localdomain ([93.22.148.147])
-        by mwinf5d03 with ME
-        id JX4r2200J3B2lW503X4s9d; Wed, 25 Mar 2020 08:04:56 +0100
-X-ME-Helo: localhost.localdomain
-X-ME-Auth: Y2hyaXN0b3BoZS5qYWlsbGV0QHdhbmFkb28uZnI=
-X-ME-Date: Wed, 25 Mar 2020 08:04:56 +0100
-X-ME-IP: 93.22.148.147
-From:   Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, chuck.lever@oracle.com, davem@davemloft.net,
-        kuba@kernel.org, gnb@sgi.com, neilb@suse.de,
-        tom@opengridcomputing.com
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-janitors@vger.kernel.org,
-        Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-Subject: [PATCH 1/2] SUNRPC: Fix a potential buffer overflow in 'svc_print_xprts()'
-Date:   Wed, 25 Mar 2020 08:04:40 +0100
-Message-Id: <20200325070440.21988-1-christophe.jaillet@wanadoo.fr>
-X-Mailer: git-send-email 2.20.1
+        id S1726225AbgCYKav (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Mar 2020 06:30:51 -0400
+Received: from mail-lj1-f181.google.com ([209.85.208.181]:40475 "EHLO
+        mail-lj1-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726139AbgCYKav (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 06:30:51 -0400
+Received: by mail-lj1-f181.google.com with SMTP id 19so1833969ljj.7
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2020 03:30:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=2vx7juo2SrcWwCvw0JhtUEkwXLe4JTpokN+5rvlXIBQ=;
+        b=JqK87J+gCehU5QntYxpZZ1q0wjOWXZxZ+Mx+Qa27DFkNfrimjV9L7ZmCVcoiDI7Ql+
+         fR+aykLygUWkQY71DuvLMFDS/nLFqMKT4q//T9Kum/e2k0Te7UCO7FWVCFo1xve5putk
+         mQTt3nHeIL9cdOcwLGCBGCARuDO/E4OKClT204i+KIV4JiVwQ62HfsTC/3PK+s23qwWn
+         Xudvw9enFQFwaYQjOSx6CSlGMMSRncBf34YikTP+jrQdgyc26RNhEX0BmyQhd9hasBu7
+         a4stwNd93dfRV7SAfbllkTnEA10fuZGShc0TmvHOxq5iZVSVF2Z0JjpIb+nrXaXRGbHW
+         xWSA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=2vx7juo2SrcWwCvw0JhtUEkwXLe4JTpokN+5rvlXIBQ=;
+        b=sBVDg+WtzUUuZiLu5VgL0C3Fjveto9FlzO3+dpswz5FF5XORaYphOPQuCSqJBbNltT
+         vt0L/5kl4dSkyCRwe8C5ksvXk9TM4aAbz5+FUI0MGhfWh5p+RBA54gbqktj0xUHIfx/R
+         cqdzS97hCLkFY9Y9r8OMPnQ2px+OFflf7oDgFtFjLPx+7cK9TcbpYrsNEyJnfT9nX+jy
+         N2gV8HQuF65wqKgnHOhNlsfViYmFnV/QoqY4e3TVC9qOO6GhE1U00KxF8bh+zugOKJr+
+         Drruh8pOp4HQbw0Fuq8GU+WN0BrUDglJRTRcnoy9NimSUVpiGmzse0tmz2+ZyOF5MOz4
+         LxeA==
+X-Gm-Message-State: AGi0PuaXYbME81mtLyYowe3xRGOzbyuk1Bp9RBffqvCsagiKk9kl2cD2
+        HyhRlIe51LkkH6wdVr7boUJ3RYBll/Z1OehKQisquCJ+
+X-Google-Smtp-Source: ADFU+vudzHjyQ9Vr4tcgud2Nt4IHmrJx/GD6v56O7l4WQ+/Ec9kfyqiezx6wQexKC7UC8Whbf7Z4i7lBxUmZLQjJbkA=
+X-Received: by 2002:a2e:964e:: with SMTP id z14mr1626886ljh.44.1585132248069;
+ Wed, 25 Mar 2020 03:30:48 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From:   James Pearson <jcpearson@gmail.com>
+Date:   Wed, 25 Mar 2020 10:30:36 +0000
+Message-ID: <CAK3fRr_Yh9Ko+E3-=z6g8p0vvUA9QW+PAoQ+ct3EWya9_oxZ3w@mail.gmail.com>
+Subject: Stuck NFSv4 mounts of Isilon filer with repeated NFS4ERR_STALE_CLIENTID
+ errors
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-'maxlen' is the total size of the destination buffer. There is only one
-caller and this value is 256.
+We're seeing a number of Linux (CentOS 7.5) clients getting nfs:
+server isilon not responding, still trying'  from various exports from
+a Isilon
 
-When we compute the size already used and what we would like to add in
-the buffer, the trailling NULL character is not taken into account.
-However, this trailling character will be added by the 'strcat' once we
-have checked that we have enough place.
+I appreciate we're using a vendor's Linux (out-of-date) kernel and a
+third party filer, but if anyone can give me any pointers of how to
+debug this issue, I would be grateful (we also have a support case
+open with the Isilon vendor)
 
-So, there is a off-by-one issue and 1 byte of the stack could be
-erroneously overwridden.
+Running tshark on a client when this issue happens (taken several
+hours after the issue happened), we get repeating:
 
-Take into account the trailling NULL, when checking if there is enough
-place in the destination buffer.
+  1   12:18:11 10.78.201.95 -> 10.78.196.184 NFS 194 V4 Call RENEW CID: 0xde68
+  2   12:18:11 10.78.196.184 -> 10.78.201.95 NFS 114 V4 Reply (Call In
+1) RENEW Status: NFS4ERR_STALE_CLIENTID
+  4   12:18:16 10.78.201.95 -> 10.78.196.184 NFS 194 V4 Call RENEW CID: 0xde68
+  5   12:18:16 10.78.196.184 -> 10.78.201.95 NFS 114 V4 Reply (Call In
+4) RENEW Status: NFS4ERR_STALE_CLIENTID
+  7   12:18:21 10.78.201.95 -> 10.78.196.184 NFS 194 V4 Call RENEW CID: 0xde68
+  8   12:18:21 10.78.196.184 -> 10.78.201.95 NFS 114 V4 Reply (Call In
+7) RENEW Status: NFS4ERR_STALE_CLIENTID
+...
 
-Fixes: dc9a16e49dbba ("svc: Add /proc/sys/sunrpc/transport files")
-Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
----
- net/sunrpc/svc_xprt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+My knowledge of NFSv4 is sketchy, but from my (partial) reading of
+rfc7530 shouldn't the client be sending a SETCLIENTID in response to a
+NFS4ERR_STALE_CLIENTID - which doesn't appear to be happening here?
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d53259346235..df39e7b8b06c 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -120,7 +120,7 @@ int svc_print_xprts(char *buf, int maxlen)
- 
- 		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
- 		slen = strlen(tmpstr);
--		if (len + slen > maxlen)
-+		if (len + slen >= maxlen)
- 			break;
- 		len += slen;
- 		strcat(buf, tmpstr);
--- 
-2.20.1
+Although the server hasn't rebooted since the client mounted the file
+system - so not sure what might be going on ?
 
+We are upgrading clients to the latest CentOS (RHEL) 7.7 to see if
+that 'fixes' the issue - but would appreciate any other pointers
+
+Thanks
+
+James Pearson
