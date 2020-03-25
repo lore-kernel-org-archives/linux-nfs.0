@@ -2,62 +2,65 @@ Return-Path: <SRS0=ul47=5K=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFF2EC43331
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A46DC2D0E8
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 95BE520737
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0251620737
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 23:11:10 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="k8Ek+H1b"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="uCnRPlQq"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727486AbgCYXLI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Mar 2020 19:11:08 -0400
-Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:40828 "EHLO
-        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727487AbgCYXLI (ORCPT
+        id S1727504AbgCYXLJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Mar 2020 19:11:09 -0400
+Received: from smtp-fw-4101.amazon.com ([72.21.198.25]:45746 "EHLO
+        smtp-fw-4101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727469AbgCYXLI (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 19:11:08 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
   t=1585177867; x=1616713867;
-  h=from:to:cc:subject:date:message-id:mime-version;
-  bh=njHYg5IBfxigZMQpTlelWlI9ARc5mEgd9mXi449OG1A=;
-  b=k8Ek+H1bZNJpOCnOK0CcCdyJ3NVADDWD6F4jBfJJ/JeMSS/AMthN95CN
-   yXogKa9LRkhv6ttRqCl25VkGbFB6HZ0P7qvauoDq1NHE+LKIELIFO4tVP
-   mcEkxmCrB83pWgGMv7q3iFU2Aw6oIRCZHvCFRtHOSjwQgMvXjPqKwY3O3
-   c=;
-IronPort-SDR: 9XcHhEf3FqrEJfURWhpPsC+RfVheREnRe3j25fB4bsEM7ce7hMx4KnBObwOjNQoz5y097M5aMT
- Lfq5nq/wlk5Q==
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version;
+  bh=KatEFjI2jPn7fetiU6/lu4aiwgIU+vsVMmnpk6wO1PQ=;
+  b=uCnRPlQqK5GLQMBZoP+1Xwh5SsrjehZEExNNwPXlAQthWJBV9ERQlQd7
+   liDaf1/YSOzpEVIRLufmTeUJg/Ys0UN/TX0xm/fV8Lv3wjw2A4immVtPk
+   eOeD15uBQginLKBUs85uPzj4kUv1lbE4vM9bvIWj0ovWESiWR+3ykILW9
+   o=;
+IronPort-SDR: Kzg3XG3jOFWtDjRth7J9FCDueX6cdazOC37HxUoxucsIvFjDKf3vijD2eIAYzNziOy3+aTjP9V
+ NZzDSa8svNOA==
 X-IronPort-AV: E=Sophos;i="5.72,306,1580774400"; 
-   d="scan'208";a="22761098"
-Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1e-a70de69e.us-east-1.amazon.com) ([10.43.8.6])
-  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 25 Mar 2020 23:10:54 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1e-a70de69e.us-east-1.amazon.com (Postfix) with ESMTPS id CD25AA239C;
-        Wed, 25 Mar 2020 23:10:53 +0000 (UTC)
-Received: from EX13D13UWB001.ant.amazon.com (10.43.161.156) by
+   d="scan'208";a="22920039"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1e-303d0b0e.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-4101.iad4.amazon.com with ESMTP; 25 Mar 2020 23:10:55 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
+        by email-inbound-relay-1e-303d0b0e.us-east-1.amazon.com (Postfix) with ESMTPS id B02C4A2F3C;
+        Wed, 25 Mar 2020 23:10:54 +0000 (UTC)
+Received: from EX13D13UWB003.ant.amazon.com (10.43.161.233) by
  EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Wed, 25 Mar 2020 23:10:52 +0000
-Received: from EX13MTAUEA002.ant.amazon.com (10.43.61.77) by
- EX13D13UWB001.ant.amazon.com (10.43.161.156) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 25 Mar 2020 23:10:53 +0000
+Received: from EX13MTAUEE002.ant.amazon.com (10.43.62.24) by
+ EX13D13UWB003.ant.amazon.com (10.43.161.233) with Microsoft SMTP Server (TLS)
  id 15.0.1497.2; Wed, 25 Mar 2020 23:10:52 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.61.169) with Microsoft SMTP
- Server id 15.0.1236.3 via Frontend Transport; Wed, 25 Mar 2020 23:10:51 +0000
+ (172.23.141.97) by mail-relay.amazon.com (10.43.62.224) with Microsoft SMTP
+ Server id 15.0.1367.3 via Frontend Transport; Wed, 25 Mar 2020 23:10:51 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 46F23D92AA; Wed, 25 Mar 2020 23:10:51 +0000 (UTC)
+        id 5C10AD92C4; Wed, 25 Mar 2020 23:10:51 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <linux-nfs@vger.kernel.org>, <anna.schumaker@netapp.com>,
         <trond.myklebust@hammerspace.com>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH v2 00/13] NFS client user xattr (RFC8276) support
-Date:   Wed, 25 Mar 2020 23:10:38 +0000
-Message-ID: <20200325231051.31652-1-fllinden@amazon.com>
+Subject: [PATCH v2 06/13] nfs: define nfs_access_get_cached function
+Date:   Wed, 25 Mar 2020 23:10:44 +0000
+Message-ID: <20200325231051.31652-7-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
+In-Reply-To: <20200325231051.31652-1-fllinden@amazon.com>
+References: <20200325231051.31652-1-fllinden@amazon.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
@@ -65,68 +68,77 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-v1 is here: https://www.spinics.net/lists/linux-nfs/msg76740.html
+The only consumer of nfs_access_get_cached_rcu and nfs_access_cached
+calls these static functions in order to first try RCU access, and
+then locked access.
 
-v2:
+Combine them in to a single function, and call that. Make this function
+available to the rest of the NFS code.
 
-* Move nfs4 specific definitions to nfs_fs4.h
-* Squash some patches together to avoid unused function warnings
-  when bisecting.
-* Made determining server support a two-step process. First,
-  the extended attribute FATTR is verified to be supported, then
-  the value of the attributed is queried in fsinfo to determine
-  support.
-* Fixed up Makefile to remove an unneeded extra line.
+Signed-off-by: Frank van der Linden <fllinden@amazon.com>
+---
+ fs/nfs/dir.c           | 20 ++++++++++++++++----
+ include/linux/nfs_fs.h |  2 ++
+ 2 files changed, 18 insertions(+), 4 deletions(-)
 
-This was tested as before (using my own stress tests), but also
-with xfstests-dev. No issues were found, but xfstests needs some
-fixes to correctly run the applicable xattr tests on NFS. I
-have those changes, but need to send them out.
-
-I also tested stress-ng-xattr with 1000 workers on the client
-side, running for 8 hours without problems (except for noting
-that the session tbl_lock can become quite hot when doing
-NFS operations by 1000 threads, but that's a separate issue).
-
-
-Frank van der Linden (13):
-  nfs,nfsd:  NFSv4.2 extended attribute protocol definitions
-  nfs: add client side only definitions for user xattrs
-  NFSv4.2: define limits and sizes for user xattr handling
-  NFSv4.2: query the server for extended attribute support
-  NFSv4.2: add client side XDR handling for extended attributes
-  nfs: define nfs_access_get_cached function
-  NFSv4.2: query the extended attribute access bits
-  nfs: modify update_changeattr to deal with regular files
-  nfs: define and use the NFS_INO_INVALID_XATTR flag
-  nfs: make the buf_to_pages_noslab function available to the nfs code
-  NFSv4.2: add the extended attribute proc functions.
-  NFSv4.2: hook in the user extended attribute handlers
-  NFSv4.2: add client side xattr caching.
-
- fs/nfs/Makefile             |    2 +-
- fs/nfs/client.c             |   22 +-
- fs/nfs/dir.c                |   24 +-
- fs/nfs/inode.c              |   16 +-
- fs/nfs/nfs42.h              |   24 +
- fs/nfs/nfs42proc.c          |  248 ++++++++
- fs/nfs/nfs42xattr.c         | 1083 +++++++++++++++++++++++++++++++++++
- fs/nfs/nfs42xdr.c           |  438 ++++++++++++++
- fs/nfs/nfs4_fs.h            |   35 ++
- fs/nfs/nfs4client.c         |   31 +
- fs/nfs/nfs4proc.c           |  237 +++++++-
- fs/nfs/nfs4super.c          |   10 +
- fs/nfs/nfs4xdr.c            |   31 +
- fs/nfs/nfstrace.h           |    3 +-
- include/linux/nfs4.h        |   25 +
- include/linux/nfs_fs.h      |   12 +
- include/linux/nfs_fs_sb.h   |    6 +
- include/linux/nfs_xdr.h     |   60 +-
- include/uapi/linux/nfs4.h   |    3 +
- include/uapi/linux/nfs_fs.h |    1 +
- 20 files changed, 2269 insertions(+), 42 deletions(-)
- create mode 100644 fs/nfs/nfs42xattr.c
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 193d6fb363b7..a0b564781e3e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2433,7 +2433,7 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, co
+ 	return NULL;
+ }
+ 
+-static int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res, bool may_block)
++static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res, bool may_block)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_access_entry *cache;
+@@ -2506,6 +2506,20 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
+ 	return err;
+ }
+ 
++int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct
++nfs_access_entry *res, bool may_block)
++{
++	int status;
++
++	status = nfs_access_get_cached_rcu(inode, cred, res);
++	if (status != 0)
++		status = nfs_access_get_cached_locked(inode, cred, res,
++		    may_block);
++
++	return status;
++}
++EXPORT_SYMBOL_GPL(nfs_access_get_cached);
++
+ static void nfs_access_add_rbtree(struct inode *inode, struct nfs_access_entry *set)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -2620,9 +2634,7 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
+ 
+ 	trace_nfs_access_enter(inode);
+ 
+-	status = nfs_access_get_cached_rcu(inode, cred, &cache);
+-	if (status != 0)
+-		status = nfs_access_get_cached(inode, cred, &cache, may_block);
++	status = nfs_access_get_cached(inode, cred, &cache, may_block);
+ 	if (status == 0)
+ 		goto out_cached;
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 442458e94ab5..e86e7a747092 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -491,6 +491,8 @@ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh,
+ 			struct nfs_fattr *fattr, struct nfs4_label *label);
+ extern int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags);
+ extern void nfs_access_zap_cache(struct inode *inode);
++extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res,
++				 bool may_block);
+ 
+ /*
+  * linux/fs/nfs/symlink.c
 -- 
 2.17.2
 
