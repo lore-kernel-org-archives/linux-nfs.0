@@ -4,73 +4,84 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 189BFC54FCF
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 07:00:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 630B6C54FD9
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 07:14:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EA8C620409
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 07:00:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F249E208C3
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Mar 2020 07:05:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726319AbgCYHAG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Mar 2020 03:00:06 -0400
-Received: from mail1.windriver.com ([147.11.146.13]:55376 "EHLO
-        mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725907AbgCYHAD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 03:00:03 -0400
-X-Greylist: delayed 11358 seconds by postgrey-1.27 at vger.kernel.org; Wed, 25 Mar 2020 03:00:00 EDT
-Received: from ALA-HCB.corp.ad.wrs.com (ala-hcb.corp.ad.wrs.com [147.11.189.41])
-        by mail1.windriver.com (8.15.2/8.15.2) with ESMTPS id 02P3oXp9021731
-        (version=TLSv1 cipher=AES256-SHA bits=256 verify=FAIL);
-        Tue, 24 Mar 2020 20:50:33 -0700 (PDT)
-Received: from pek-lpggp3.wrs.com (128.224.153.76) by ALA-HCB.corp.ad.wrs.com
- (147.11.189.41) with Microsoft SMTP Server id 14.3.487.0; Tue, 24 Mar 2020
- 20:50:15 -0700
-From:   Song liwei <liwei.song@windriver.com>
-To:     Trond <trond.myklebust@hammerspace.com>,
-        Anna <anna.schumaker@netapp.com>
-CC:     Olga <olga.kornievskaia@gmail.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        LiweiSong <liwei.song@windriver.com>
-Subject: [PATCH] nfsroot: set tcp as the defalut transport protocol
-Date:   Wed, 25 Mar 2020 11:50:13 +0800
-Message-ID: <20200325035013.26697-1-liwei.song@windriver.com>
-X-Mailer: git-send-email 2.17.1
+        id S1727302AbgCYHFJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Mar 2020 03:05:09 -0400
+Received: from smtp02.smtpout.orange.fr ([80.12.242.124]:44712 "EHLO
+        smtp.smtpout.orange.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727291AbgCYHFI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2020 03:05:08 -0400
+Received: from localhost.localdomain ([93.22.148.147])
+        by mwinf5d03 with ME
+        id JX552200Q3B2lW503X56BU; Wed, 25 Mar 2020 08:05:07 +0100
+X-ME-Helo: localhost.localdomain
+X-ME-Auth: Y2hyaXN0b3BoZS5qYWlsbGV0QHdhbmFkb28uZnI=
+X-ME-Date: Wed, 25 Mar 2020 08:05:07 +0100
+X-ME-IP: 93.22.148.147
+From:   Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        bfields@fieldses.org, chuck.lever@oracle.com, davem@davemloft.net,
+        kuba@kernel.org, gnb@sgi.com, neilb@suse.de,
+        tom@opengridcomputing.com
+Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        kernel-janitors@vger.kernel.org,
+        Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+Subject: [PATCH 2/2] SUNRPC: Optimize 'svc_print_xprts()'
+Date:   Wed, 25 Mar 2020 08:04:52 +0100
+Message-Id: <20200325070452.22043-1-christophe.jaillet@wanadoo.fr>
+X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Liwei Song <liwei.song@windriver.com>
+Using 'snprintf' is safer than 'sprintf' because it can avoid a buffer
+overflow.
+The return value can also be used to avoid a strlen a call.
 
-UDP is disabled by default in commit b24ee6c64ca7 ("NFS: allow
-deprecation of NFS UDP protocol"), but the default mount options
-is still udp, change it to tcp to avoid the "Unsupported transport
-protocol udp" error if no protocol is specified when mount nfs.
+Finally, we know where we need to copy and the length to copy, so, we
+can save a few cycles by rearraging the code and using a memcpy instead of
+a strcat.
 
-Fixes: b24ee6c64ca7 ("NFS: allow deprecation of NFS UDP protocol")
-Signed-off-by: Liwei Song <liwei.song@windriver.com>
+Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
 ---
- fs/nfs/nfsroot.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This patch should have no functionnal change.
+We could go further, use scnprintf and write directly in the destination
+buffer. However, this could lead to a truncated last line.
+---
+ net/sunrpc/svc_xprt.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index effaa4247b91..8d3278805602 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -88,7 +88,7 @@
- #define NFS_ROOT		"/tftpboot/%s"
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index df39e7b8b06c..6df861650040 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -118,12 +118,12 @@ int svc_print_xprts(char *buf, int maxlen)
+ 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+ 		int slen;
  
- /* Default NFSROOT mount options. */
--#define NFS_DEF_OPTIONS		"vers=2,udp,rsize=4096,wsize=4096"
-+#define NFS_DEF_OPTIONS		"vers=2,tcp,rsize=4096,wsize=4096"
+-		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
+-		slen = strlen(tmpstr);
+-		if (len + slen >= maxlen)
++		slen = snprintf(tmpstr, sizeof(tmpstr), "%s %d\n",
++				xcl->xcl_name, xcl->xcl_max_payload);
++		if (slen >= sizeof(tmpstr) || len + slen >= maxlen)
+ 			break;
++		memcpy(buf + len, tmpstr, slen + 1);
+ 		len += slen;
+-		strcat(buf, tmpstr);
+ 	}
+ 	spin_unlock(&svc_xprt_class_lock);
  
- /* Parameters passed from the kernel command line */
- static char nfs_root_parms[NFS_MAXPATHLEN + 1] __initdata = "";
 -- 
-2.17.1
+2.20.1
 
