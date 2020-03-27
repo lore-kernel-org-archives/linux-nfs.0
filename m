@@ -2,63 +2,62 @@ Return-Path: <SRS0=DrMw=5M=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CBB91C2D0EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 23:27:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EA5BC2D0EC
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 23:27:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A0A2B2082D
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 23:27:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 424DD2076B
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 23:27:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="AO5p3cvF"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="SPQ1qULZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727048AbgC0X1d (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 27 Mar 2020 19:27:33 -0400
-Received: from smtp-fw-4101.amazon.com ([72.21.198.25]:2074 "EHLO
-        smtp-fw-4101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726937AbgC0X1c (ORCPT
+        id S1726956AbgC0X1e (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 27 Mar 2020 19:27:34 -0400
+Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:51393 "EHLO
+        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726947AbgC0X1c (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2020 19:27:32 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
   t=1585351652; x=1616887652;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=WAV7q+SsqyVjidgxV50ppb2t+UvXzpobe+1ztvalcnY=;
-  b=AO5p3cvFE+7TJd5+HhhcimdGSpNHdCkNtV38CEdFIpMRXh7xCJB+DUeg
-   nAHLXjDAlzud1s/6SoptfCaPoUSICC734hwdAID63ojw8NKK2zt8CbAfj
-   T+mNt+jdAwB1cA6qyUrSn5FWRF2511gHFYtalYYsgclgySkC1U4knZIrH
-   Y=;
-IronPort-SDR: HDRBX7jIUbximG1vNCLAFlceLmCyCWidEVBA+gYy5s2fKz5/e6uWruoDgbVGjxzqo6Y6RhCBfj
- Z875MZ+D+nkw==
+  bh=mWoLMZMD6wKtikQfIoaSogOJZTV/zTDexHSbMMAjozY=;
+  b=SPQ1qULZPgWZzJlmSP8lztVtCeu8R4+OlHu34X3AMmQW/XrUU73sRJ30
+   oBFQWb0qbW8ckyL7QTw94l51wOz77COBTJAPFBycsm+314F+fhx9T8euG
+   IRmEKQ2UKt/OndrrOvyjfepodJ3TRhgZqqJJvDLWDgWmXvqV2ENF6PLTK
+   w=;
+IronPort-SDR: 7AOi3Nvag9xYPCTD24VPnbC20WJlA/cMg0oYjRWjtR8Z77Dl5Fji9DNbUo2+CTGCtYy/gGEH6N
+ Gq40+j0/UcCw==
 X-IronPort-AV: E=Sophos;i="5.72,314,1580774400"; 
-   d="scan'208";a="23245172"
-Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-2a-1c1b5cdd.us-west-2.amazon.com) ([10.43.8.6])
-  by smtp-border-fw-out-4101.iad4.amazon.com with ESMTP; 27 Mar 2020 23:27:18 +0000
+   d="scan'208";a="23086499"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-2b-4e24fd92.us-west-2.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 27 Mar 2020 23:27:19 +0000
 Received: from EX13MTAUWA001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan2.pdx.amazon.com [10.170.41.162])
-        by email-inbound-relay-2a-1c1b5cdd.us-west-2.amazon.com (Postfix) with ESMTPS id D0847A2346;
-        Fri, 27 Mar 2020 23:27:17 +0000 (UTC)
-Received: from EX13D13UWA004.ant.amazon.com (10.43.160.251) by
- EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Fri, 27 Mar 2020 23:27:17 +0000
-Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
- EX13D13UWA004.ant.amazon.com (10.43.160.251) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Fri, 27 Mar 2020 23:27:17 +0000
+        by email-inbound-relay-2b-4e24fd92.us-west-2.amazon.com (Postfix) with ESMTPS id 2DA98A224F;
+        Fri, 27 Mar 2020 23:27:19 +0000 (UTC)
+Received: from EX13D13UWA003.ant.amazon.com (10.43.160.181) by
+ EX13MTAUWA001.ant.amazon.com (10.43.160.118) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Fri, 27 Mar 2020 23:27:18 +0000
+Received: from EX13MTAUEA001.ant.amazon.com (10.43.61.82) by
+ EX13D13UWA003.ant.amazon.com (10.43.160.181) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Fri, 27 Mar 2020 23:27:18 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
+ (172.23.141.97) by mail-relay.amazon.com (10.43.61.243) with Microsoft SMTP
  Server id 15.0.1367.3 via Frontend Transport; Fri, 27 Mar 2020 23:27:17 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 31167DEFAE; Fri, 27 Mar 2020 23:27:17 +0000 (UTC)
+        id 430DFDEFB3; Fri, 27 Mar 2020 23:27:17 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
-CC:     Frank van der Linden <fllinden@amazon.com>,
-        <linux-fsdevel@vger.kernel.org>, Al Viro <viro@zeniv.linux.org.uk>
-Subject: [PATCH v2 01/11] xattr: break delegations in {set,remove}xattr and add _locked versions
-Date:   Fri, 27 Mar 2020 23:27:07 +0000
-Message-ID: <20200327232717.15331-2-fllinden@amazon.com>
+CC:     Frank van der Linden <fllinden@amazon.com>
+Subject: [PATCH v2 06/11] nfsd: define xattr functions to call in to their vfs counterparts
+Date:   Fri, 27 Mar 2020 23:27:12 +0000
+Message-ID: <20200327232717.15331-7-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 In-Reply-To: <20200327232717.15331-1-fllinden@amazon.com>
 References: <20200327232717.15331-1-fllinden@amazon.com>
@@ -69,180 +68,177 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-set/removexattr on an exported filesystem should break NFS delegations.
-This is true in general, but also for the upcoming support for
-RFC 8726 (NFSv4 extended attribute support). Make sure that they do.
+This adds the filehandle based functions for the xattr operations
+that call in to the vfs layer to do the actual work.
 
-Additonally, they need to grow a _locked variant, since the NFS server code
-will call this with i_rwsem held. It needs to do that in fh_lock to be
-able to atomically provide the before and after change attributes.
-
-Cc: stable@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
-Cc: Al Viro <viro@zeniv.linux.org.uk>
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/xattr.c            | 84 +++++++++++++++++++++++++++++++++++++++----
- include/linux/xattr.h |  2 ++
- 2 files changed, 79 insertions(+), 7 deletions(-)
+ fs/nfsd/vfs.c | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/vfs.h |  10 ++++
+ 2 files changed, 140 insertions(+)
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 90dd78f0eb27..f2854570d411 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -204,10 +204,22 @@ int __vfs_setxattr_noperm(struct dentry *dentry, const char *name,
- 	return error;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 0aa02eb18bd3..115449009bc0 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -2058,6 +2058,136 @@ static int exp_rdonly(struct svc_rqst *rqstp, struct svc_export *exp)
+ 	return nfsexp_flags(rqstp, exp) & NFSEXP_READONLY;
  }
  
--
-+/**
-+ * __vfs_setxattr_locked: set an extended attribute while holding the inode
-+ * lock
++#ifdef CONFIG_NFSD_V4
++/*
++ * Helper function to translate error numbers. In the case of xattr operations,
++ * some error codes need to be translated outside of the standard translations.
 + *
-+ *  @dentry - object to perform setxattr on
-+ *  @name - xattr name to set
-+ *  @value - value to set @name to
-+ *  @size - size of @value
-+ *  @flags - flags to pass into filesystem operations
-+ *  @delegated_inode - on return, will contain an inode pointer that
-+ *  a delegation was broken on, NULL if none.
-+ */
- int
--vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
--		size_t size, int flags)
-+__vfs_setxattr_locked(struct dentry *dentry, const char *name,
-+		const void *value, size_t size, int flags,
-+		struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error;
-@@ -216,15 +228,40 @@ vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
- 	if (error)
- 		return error;
- 
--	inode_lock(inode);
- 	error = security_inode_setxattr(dentry, name, value, size, flags);
- 	if (error)
- 		goto out;
- 
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		goto out;
-+
- 	error = __vfs_setxattr_noperm(dentry, name, value, size, flags);
- 
- out:
-+	return error;
-+}
-+EXPORT_SYMBOL_GPL(__vfs_setxattr_locked);
-+
-+int
-+vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
-+		size_t size, int flags)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
-+	int error;
-+
-+retry_deleg:
-+	inode_lock(inode);
-+	error = __vfs_setxattr_locked(dentry, name, value, size, flags,
-+	    &delegated_inode);
- 	inode_unlock(inode);
-+
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	return error;
- }
- EXPORT_SYMBOL_GPL(vfs_setxattr);
-@@ -378,8 +415,18 @@ __vfs_removexattr(struct dentry *dentry, const char *name)
- }
- EXPORT_SYMBOL(__vfs_removexattr);
- 
-+/**
-+ * __vfs_removexattr_locked: set an extended attribute while holding the inode
-+ * lock
++ * ENODATA needs to be translated to nfserr_noxattr.
++ * E2BIG to nfserr_xattr2big.
 + *
-+ *  @dentry - object to perform setxattr on
-+ *  @name - name of xattr to remove
-+ *  @delegated_inode - on return, will contain an inode pointer that
-+ *  a delegation was broken on, NULL if none.
++ * Additionally, vfs_listxattr can return -ERANGE. This means that the
++ * file has too many extended attributes to retrieve inside an
++ * XATTR_LIST_MAX sized buffer. This is a bug in the xattr implementation:
++ * filesystems will allow the adding of extended attributes until they hit
++ * their own internal limit. This limit may be larger than XATTR_LIST_MAX.
++ * So, at that point, the attributes are present and valid, but can't
++ * be retrieved using listxattr, since the upper level xattr code enforces
++ * the XATTR_LIST_MAX limit.
++ *
++ * This bug means that we need to deal with listxattr returning -ERANGE. The
++ * best mapping is to return TOOSMALL.
 + */
- int
--vfs_removexattr(struct dentry *dentry, const char *name)
-+__vfs_removexattr_locked(struct dentry *dentry, const char *name,
-+		struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error;
-@@ -388,11 +435,14 @@ vfs_removexattr(struct dentry *dentry, const char *name)
- 	if (error)
- 		return error;
- 
--	inode_lock(inode);
- 	error = security_inode_removexattr(dentry, name);
- 	if (error)
- 		goto out;
- 
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		goto out;
-+
- 	error = __vfs_removexattr(dentry, name);
- 
- 	if (!error) {
-@@ -401,12 +451,32 @@ vfs_removexattr(struct dentry *dentry, const char *name)
- 	}
- 
- out:
-+	return error;
-+}
-+EXPORT_SYMBOL_GPL(__vfs_removexattr_locked);
-+
-+int
-+vfs_removexattr(struct dentry *dentry, const char *name)
++static __be32
++nfsd_xattr_errno(int err)
 +{
-+	struct inode *inode = dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
-+	int error;
-+
-+retry_deleg:
-+	inode_lock(inode);
-+	error = __vfs_removexattr_locked(dentry, name, &delegated_inode);
- 	inode_unlock(inode);
-+
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
++	switch (err) {
++	case -ENODATA:
++		return nfserr_noxattr;
++	case -E2BIG:
++		return nfserr_xattr2big;
++	case -ERANGE:
++		return nfserr_toosmall;
 +	}
++	return nfserrno(err);
++}
 +
- 	return error;
- }
- EXPORT_SYMBOL_GPL(vfs_removexattr);
- 
--
++__be32
++nfsd_getxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name,
++	      void *buf, int *lenp)
++{
++	ssize_t lerr;
++	int err;
++
++	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_READ);
++	if (err)
++		return err;
++
++	lerr = vfs_getxattr(fhp->fh_dentry, name, buf, *lenp);
++	if (lerr < 0)
++		err = nfsd_xattr_errno(lerr);
++	else
++		*lenp = lerr;
++
++	return err;
++}
++
++__be32
++nfsd_listxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, void *buf, int *lenp)
++{
++	ssize_t lerr;
++	int err;
++
++	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_READ);
++	if (err)
++		return err;
++
++	lerr = vfs_listxattr(fhp->fh_dentry, buf, *lenp);
++
++	if (lerr < 0)
++		err = nfsd_xattr_errno(lerr);
++	else
++		*lenp = lerr;
++
++	return err;
++}
++
++/*
++ * Removexattr and setxattr need to call fh_lock to both lock the inode
++ * and set the change attribute. Since the top-level vfs_removexattr
++ * and vfs_setxattr calls already do their own inode_lock calls, call
++ * the _locked variant. Pass in a NULL pointer for delegated_inode,
++ * and let the client deal with NFS4ERR_DELAY (same as with e.g.
++ * setattr and remove).
++ */
++__be32
++nfsd_removexattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name)
++{
++	int err, ret;
++
++	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_WRITE);
++	if (err)
++		return err;
++
++	ret = fh_want_write(fhp);
++	if (ret)
++		return nfserrno(ret);
++
++	fh_lock(fhp);
++
++	ret = __vfs_removexattr_locked(fhp->fh_dentry, name, NULL);
++
++	fh_unlock(fhp);
++	fh_drop_write(fhp);
++
++	return nfsd_xattr_errno(ret);
++}
++
++__be32
++nfsd_setxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name,
++	      void *buf, u32 len, u32 flags)
++{
++	int err, ret;
++
++	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_WRITE);
++	if (err)
++		return err;
++
++	ret = fh_want_write(fhp);
++	if (ret)
++		return nfserrno(ret);
++	fh_lock(fhp);
++
++	ret = __vfs_setxattr_locked(fhp->fh_dentry, name, buf, len, flags,
++				    NULL);
++
++	fh_unlock(fhp);
++	fh_drop_write(fhp);
++
++	return nfsd_xattr_errno(ret);
++}
++#endif
++
  /*
-  * Extended attribute SET operations
+  * Check for a user's access permissions to this inode.
   */
-diff --git a/include/linux/xattr.h b/include/linux/xattr.h
-index 6dad031be3c2..3a71ad716da5 100644
---- a/include/linux/xattr.h
-+++ b/include/linux/xattr.h
-@@ -51,8 +51,10 @@ ssize_t vfs_getxattr(struct dentry *, const char *, void *, size_t);
- ssize_t vfs_listxattr(struct dentry *d, char *list, size_t size);
- int __vfs_setxattr(struct dentry *, struct inode *, const char *, const void *, size_t, int);
- int __vfs_setxattr_noperm(struct dentry *, const char *, const void *, size_t, int);
-+int __vfs_setxattr_locked(struct dentry *, const char *, const void *, size_t, int, struct inode **);
- int vfs_setxattr(struct dentry *, const char *, const void *, size_t, int);
- int __vfs_removexattr(struct dentry *, const char *);
-+int __vfs_removexattr_locked(struct dentry *, const char *, struct inode **);
- int vfs_removexattr(struct dentry *, const char *);
- 
- ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size);
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 3eb660ad80d1..2d2cf5b0543b 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -76,6 +76,16 @@ __be32		do_nfsd_create(struct svc_rqst *, struct svc_fh *,
+ __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
+ 				loff_t, unsigned long, __be32 *verf);
+ #endif /* CONFIG_NFSD_V3 */
++#ifdef CONFIG_NFSD_V4
++__be32		nfsd_getxattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
++			    char *name, void *buf, int *lenp);
++__be32		nfsd_listxattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
++			    void *buf, int *lenp);
++__be32		nfsd_removexattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
++			    char *name);
++__be32		nfsd_setxattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
++			    char *name, void *buf, u32 len, u32 flags);
++#endif
+ int 		nfsd_open_break_lease(struct inode *, int);
+ __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
+ 				int, struct file **);
 -- 
 2.17.2
 
