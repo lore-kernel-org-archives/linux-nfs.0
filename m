@@ -7,57 +7,57 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47901C2D0EC
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DBEFC2D0EE
 	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 23:27:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1D0FE2073B
+	by mail.kernel.org (Postfix) with ESMTP id 72DAB2073B
 	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 23:27:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="FlGxhRs/"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="CFKKBE3t"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726661AbgC0X1W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726384AbgC0X1W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 27 Mar 2020 19:27:22 -0400
-Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:31504 "EHLO
-        smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726340AbgC0X1W (ORCPT
+Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:12188 "EHLO
+        smtp-fw-9102.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726422AbgC0X1W (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2020 19:27:22 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1585351641; x=1616887641;
+  t=1585351642; x=1616887642;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=Dfdpo+8rRqByfVx41/1teOaOK+FCgk8LcsP5WXXEn4Q=;
-  b=FlGxhRs/g7y19VlWFcPVbl+LdUw/QKTJPJYpn0NTkfbHw8bV1TMhHbTz
-   LcdArgW62UcabvhCeHUUQ2cN3PBwGRJ94rTR/mqEqqvHrshNud+KFWdIT
-   upvNldMfypokFHO0e9YU30PsiXkJufVP7AHkryMiQ5jfB3cmp10bcVUXR
-   E=;
-IronPort-SDR: HkeB1GcqfWvvZmoWlryjBYoZhXwDFcJ10dm8+wW24fXaROYJ7D++gWOF+DLLYghgNY88pJiWHA
- kJEphU7d5U+Q==
+  bh=BEgJ6f0d4G9lFlPved0AH6fQpspQ/nvMCpPzD8vZEmk=;
+  b=CFKKBE3tpeUUdKoM018Xv46Xqh7szALbrrZ90EZW8VB6fV1bH/qTUP4Z
+   OCBTM83D0IJ+H6Nf81/0czgMg6Ce+7kOjiAXcfo/E1Bzt6itwLCDu/wm6
+   vRlAg5xjdUaZmaQjslH+xnr/2A4hG53qFAGUuz3Fsodeiztpo0J1/wr8X
+   I=;
+IronPort-SDR: Zd7Hv4zZYhWFbZta75oCUVYRk4SvzgJ0nKkEysB2SDMGerOUS5L6qEzt0cgfjLaSNasa8bBqZS
+ QBcOVA5kAGzw==
 X-IronPort-AV: E=Sophos;i="5.72,314,1580774400"; 
-   d="scan'208";a="35299128"
-Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-2a-e7be2041.us-west-2.amazon.com) ([10.47.23.38])
-  by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 27 Mar 2020 23:27:18 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan2.pdx.amazon.com [10.170.41.162])
-        by email-inbound-relay-2a-e7be2041.us-west-2.amazon.com (Postfix) with ESMTPS id E5BCBA2A2B;
+   d="scan'208";a="33900223"
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-2b-81e76b79.us-west-2.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 27 Mar 2020 23:27:18 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan3.pdx.amazon.com [10.170.41.166])
+        by email-inbound-relay-2b-81e76b79.us-west-2.amazon.com (Postfix) with ESMTPS id B7519A259C;
         Fri, 27 Mar 2020 23:27:17 +0000 (UTC)
-Received: from EX13D13UWB002.ant.amazon.com (10.43.161.21) by
+Received: from EX13D13UWB003.ant.amazon.com (10.43.161.233) by
  EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Fri, 27 Mar 2020 23:27:17 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
- EX13D13UWB002.ant.amazon.com (10.43.161.21) with Microsoft SMTP Server (TLS)
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13D13UWB003.ant.amazon.com (10.43.161.233) with Microsoft SMTP Server (TLS)
  id 15.0.1497.2; Fri, 27 Mar 2020 23:27:17 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP
+ (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
  Server id 15.0.1367.3 via Frontend Transport; Fri, 27 Mar 2020 23:27:17 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 46923DEFB4; Fri, 27 Mar 2020 23:27:17 +0000 (UTC)
+        id 3848BDEFB0; Fri, 27 Mar 2020 23:27:17 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH v2 07/11] nfsd: take xattr bits in to account for permission checks
-Date:   Fri, 27 Mar 2020 23:27:13 +0000
-Message-ID: <20200327232717.15331-8-fllinden@amazon.com>
+Subject: [PATCH v2 03/11] nfs,nfsd: NFSv4.2 extended attribute protocol definitions
+Date:   Fri, 27 Mar 2020 23:27:09 +0000
+Message-ID: <20200327232717.15331-4-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 In-Reply-To: <20200327232717.15331-1-fllinden@amazon.com>
 References: <20200327232717.15331-1-fllinden@amazon.com>
@@ -68,66 +68,79 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Since the NFSv4.2 extended attributes extension defines 3 new access
-bits for xattr operations, take them in to account when validating
-what the client is asking for, and when checking permissions.
+Add definitions for the new operations, errors and flags as defined
+in RFC 8276 (File System Extended Attributes in NFSv4).
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfsd/nfs4proc.c |  8 +++++++-
- fs/nfsd/vfs.c      | 12 ++++++++++++
- 2 files changed, 19 insertions(+), 1 deletion(-)
+ include/linux/nfs4.h      | 20 ++++++++++++++++++++
+ include/uapi/linux/nfs4.h |  3 +++
+ 2 files changed, 23 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0e75f7fb5fec..ee317ae0b609 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -566,8 +566,14 @@ nfsd4_access(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	     union nfsd4_op_u *u)
- {
- 	struct nfsd4_access *access = &u->access;
-+	u32 access_full;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 82d8fb422092..350aeda0c48c 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -150,6 +150,12 @@ enum nfs_opnum4 {
+ 	OP_WRITE_SAME = 70,
+ 	OP_CLONE = 71,
  
--	if (access->ac_req_access & ~NFS3_ACCESS_FULL)
-+	access_full = NFS3_ACCESS_FULL;
-+	if (cstate->minorversion >= 2)
-+		access_full |= NFS4_ACCESS_XALIST | NFS4_ACCESS_XAREAD |
-+			       NFS4_ACCESS_XAWRITE;
++	/* xattr support (RFC8726) */
++	OP_GETXATTR                = 72,
++	OP_SETXATTR                = 73,
++	OP_LISTXATTRS              = 74,
++	OP_REMOVEXATTR             = 75,
 +
-+	if (access->ac_req_access & ~access_full)
- 		return nfserr_inval;
- 
- 	access->ac_resp_access = access->ac_req_access;
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 115449009bc0..19608e690069 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -612,6 +612,12 @@ static struct accessmap	nfs3_regaccess[] = {
-     {	NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_TRUNC	},
-     {	NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE			},
- 
-+#ifdef CONFIG_NFSD_V4
-+    {	NFS4_ACCESS_XAREAD,	NFSD_MAY_READ			},
-+    {	NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE			},
-+    {	NFS4_ACCESS_XALIST,	NFSD_MAY_READ			},
-+#endif
-+
-     {	0,			0				}
+ 	OP_ILLEGAL = 10044,
  };
  
-@@ -622,6 +628,12 @@ static struct accessmap	nfs3_diraccess[] = {
-     {	NFS3_ACCESS_EXTEND,	NFSD_MAY_EXEC|NFSD_MAY_WRITE	},
-     {	NFS3_ACCESS_DELETE,	NFSD_MAY_REMOVE			},
- 
-+#ifdef CONFIG_NFSD_V4
-+    {	NFS4_ACCESS_XAREAD,	NFSD_MAY_READ			},
-+    {	NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE			},
-+    {	NFS4_ACCESS_XALIST,	NFSD_MAY_READ			},
-+#endif
+@@ -280,6 +286,10 @@ enum nfsstat4 {
+ 	NFS4ERR_WRONG_LFS = 10092,
+ 	NFS4ERR_BADLABEL = 10093,
+ 	NFS4ERR_OFFLOAD_NO_REQS = 10094,
 +
-     {	0,			0				}
++	/* xattr (RFC8276) */
++	NFS4ERR_NOXATTR        = 10095,
++	NFS4ERR_XATTR2BIG      = 10096,
  };
  
+ static inline bool seqid_mutating_err(u32 err)
+@@ -452,6 +462,7 @@ enum change_attr_type4 {
+ #define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
++#define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
+ 
+ /* MDS threshold bitmap bits */
+ #define THRESHOLD_RD                    (1UL << 0)
+@@ -700,4 +711,13 @@ struct nl4_server {
+ 		struct nfs42_netaddr	nl4_addr; /* NL4_NETADDR */
+ 	} u;
+ };
++
++/*
++ * Options for setxattr. These match the flags for setxattr(2).
++ */
++enum nfs4_setxattr_options {
++	SETXATTR4_EITHER	= 0,
++	SETXATTR4_CREATE	= 1,
++	SETXATTR4_REPLACE	= 2,
++};
+ #endif
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 8572930cf5b0..bf197e99b98f 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -33,6 +33,9 @@
+ #define NFS4_ACCESS_EXTEND      0x0008
+ #define NFS4_ACCESS_DELETE      0x0010
+ #define NFS4_ACCESS_EXECUTE     0x0020
++#define NFS4_ACCESS_XAREAD      0x0040
++#define NFS4_ACCESS_XAWRITE     0x0080
++#define NFS4_ACCESS_XALIST      0x0100
+ 
+ #define NFS4_FH_PERSISTENT		0x0000
+ #define NFS4_FH_NOEXPIRE_WITH_OPEN	0x0001
 -- 
 2.17.2
 
