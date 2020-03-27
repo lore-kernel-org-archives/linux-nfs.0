@@ -2,114 +2,116 @@ Return-Path: <SRS0=DrMw=5M=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 91AF0C2D0E5
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 15:53:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A17CC2D0EE
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 16:15:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 68FCE20787
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 15:53:19 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="UM1EawGz"
+	by mail.kernel.org (Postfix) with ESMTP id EE33F20658
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 Mar 2020 16:15:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727247AbgC0PxS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 27 Mar 2020 11:53:18 -0400
-Received: from us-smtp-delivery-74.mimecast.com ([216.205.24.74]:22966 "EHLO
-        us-smtp-delivery-74.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726900AbgC0PxS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2020 11:53:18 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1585324397;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=4ux9281k5ABNf6TBBZshoWzpO+bbygIq24q5khD5TiA=;
-        b=UM1EawGzdFppvpq0ZaVgH8ryyOD5/vH9HbvIngz7b4tImklLxgU1cIsmsgrhehKcsnexgD
-        qf9XCGcKeksi2orM56NTWFsMjxNTquWhYAt1sQXCUWUKXTyFpt/QSBeBQJIgtKPqLoysVn
-        wH9Lx62qEYMAHBGuESydlLyhJxbQaXc=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-409-XdiGj_h6NCOK8aNdh-iUtw-1; Fri, 27 Mar 2020 11:53:12 -0400
-X-MC-Unique: XdiGj_h6NCOK8aNdh-iUtw-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 0B0181005514;
-        Fri, 27 Mar 2020 15:53:11 +0000 (UTC)
-Received: from pick.fieldses.org (ovpn-119-7.rdu2.redhat.com [10.10.119.7])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id BE1EACFCC;
-        Fri, 27 Mar 2020 15:53:10 +0000 (UTC)
-Received: by pick.fieldses.org (Postfix, from userid 2815)
-        id 851DE12023D; Fri, 27 Mar 2020 11:53:09 -0400 (EDT)
-Date:   Fri, 27 Mar 2020 11:53:09 -0400
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SUNRPC/cache: don't allow invalid entries to be flushed
-Message-ID: <20200327155309.GA135601@pick.fieldses.org>
-References: <20200114165738.922961-1-trond.myklebust@hammerspace.com>
- <20200206163322.GB2244@fieldses.org>
- <8dc1ed17de98e4b59fb9e408692c152456863a20.camel@hammerspace.com>
- <20200207181817.GC17036@fieldses.org>
- <20200326204001.GA25053@fieldses.org>
- <1a0ce8bb1150835f7a25126df2524e8a8fb0e112.camel@hammerspace.com>
- <20200327015012.GA107036@pick.fieldses.org>
- <80c83f5543d7d758a165be167d3bf0b2175e57f8.camel@hammerspace.com>
+        id S1727722AbgC0QPw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 27 Mar 2020 12:15:52 -0400
+Received: from smtp02.smtpout.orange.fr ([80.12.242.124]:25843 "EHLO
+        smtp.smtpout.orange.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727560AbgC0QPw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2020 12:15:52 -0400
+Received: from localhost.localdomain ([93.22.151.104])
+        by mwinf5d49 with ME
+        id KUFj2200S2FPlbR03UFkmY; Fri, 27 Mar 2020 17:15:48 +0100
+X-ME-Helo: localhost.localdomain
+X-ME-Auth: Y2hyaXN0b3BoZS5qYWlsbGV0QHdhbmFkb28uZnI=
+X-ME-Date: Fri, 27 Mar 2020 17:15:48 +0100
+X-ME-IP: 93.22.151.104
+From:   Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+To:     bfields@fieldses.org, chuck.lever@oracle.com,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        davem@davemloft.net, kuba@kernel.org, neilb@suse.de,
+        tom@opengridcomputing.com, gnb@sgi.com
+Cc:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+Subject: [PATCH V2] SUNRPC: Fix a potential buffer overflow in 'svc_print_xprts()'
+Date:   Fri, 27 Mar 2020 17:15:39 +0100
+Message-Id: <20200327161539.21554-1-christophe.jaillet@wanadoo.fr>
+X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <80c83f5543d7d758a165be167d3bf0b2175e57f8.camel@hammerspace.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+'maxlen' is the total size of the destination buffer. There is only one
+caller and this value is 256.
 
-Trond points out in 277f27e2f277 that we allow invalid cache entries to
-persist indefinitely.  That fix, however, reintroduces the problem fixed
-by Kinglong Mee's d6fc8821c2d2 "SUNRPC/Cache: Always treat the invalid
-cache as unexpired", where an invalid cache entry is immediately removed
-by a flush before mountd responds to it.  The result is that the server
-thread that should be waiting for mountd to fill in that entry instead
-gets an -ETIMEDOUT return from cache_check().  Symptoms are the server
-becoming unresponsive after a restart, reproduceable by running pynfs
-4.1 test REBT5.
+When we compute the size already used and what we would like to add in
+the buffer, the trailling NULL character is not taken into account.
+However, this trailling character will be added by the 'strcat' once we
+have checked that we have enough place.
 
-Instead, take a compromise approach: allow invalid cache entries to be
-removed after they expire, but not to be removed by a cache flush.
+So, there is a off-by-one issue and 1 byte of the stack could be
+erroneously overwridden.
 
-Fixes: 277f27e2f277 "SUNRPC/cache: Allow garbage collection..."
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Take into account the trailling NULL, when checking if there is enough
+place in the destination buffer.
+
+
+While at it, also replace a 'sprintf' by a safer 'snprintf', check for
+output truncation and avoid a superfluous 'strlen'.
+
+Fixes: dc9a16e49dbba ("svc: Add /proc/sys/sunrpc/transport files")
+Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
 ---
- include/linux/sunrpc/cache.h | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+V2: add a doxygen comment to clarify the goal of the function
+    merge previous 2 patches into a single one
+    keep strcat for clarity, this function being just a slow path anyway
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 532cdbda43da..10891b70fc7b 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -209,8 +209,11 @@ static inline void cache_put(struct cache_head *h, struct cache_detail *cd)
- 
- static inline bool cache_is_expired(struct cache_detail *detail, struct cache_head *h)
- {
--	return  (h->expiry_time < seconds_since_boot()) ||
--		(detail->flush_time >= h->last_refresh);
-+	if (h->expiry_time < seconds_since_boot())
-+		return true;
-+	if (!test_bit(CACHE_VALID, &h->flags))
-+		return false;
-+	return detail->flush_time >= h->last_refresh;
+Doc being most of the time a matter of taste, please adjust the description
+as needed.
+---
+ net/sunrpc/svc_xprt.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index de3c077733a7..e0f61a8c1965 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -104,8 +104,17 @@ void svc_unreg_xprt_class(struct svc_xprt_class *xcl)
  }
+ EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
  
- extern int cache_check(struct cache_detail *detail,
+-/*
+- * Format the transport list for printing
++/**
++ * svc_print_xprts - Format the transport list for printing
++ * @buf: target buffer for formatted address
++ * @maxlen: length of target buffer
++ *
++ * Fills in @buf with a string containing a list of transport names, each name
++ * terminated with '\n'. If the buffer is too small, some entries may be
++ * missing, but it is guaranteed that the line in the output buffer are
++ * complete.
++ *
++ * Returns positive length of the filled-in string.
+  */
+ int svc_print_xprts(char *buf, int maxlen)
+ {
+@@ -118,9 +127,9 @@ int svc_print_xprts(char *buf, int maxlen)
+ 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+ 		int slen;
+ 
+-		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
+-		slen = strlen(tmpstr);
+-		if (len + slen > maxlen)
++		slen = snprintf(tmpstr, sizeof(tmpstr), "%s %d\n",
++				xcl->xcl_name, xcl->xcl_max_payload);
++		if (slen >= sizeof(tmpstr) || len + slen >= maxlen)
+ 			break;
+ 		len += slen;
+ 		strcat(buf, tmpstr);
 -- 
-2.25.1
+2.20.1
 
