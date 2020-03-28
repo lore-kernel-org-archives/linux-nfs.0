@@ -7,49 +7,51 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2F89C2D0EB
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C285FC2D0EF
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9A679207FF
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F7942082F
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585409677;
-	bh=asZPu00uS55iLq65hnYce26g4HNvsBAKVZEYJOk+hl8=;
+	s=default; t=1585409678;
+	bh=7EnajCoY61wyaI04/xGUaouttgnSwwfGTe62JcRBxjE=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=kLavUjj6k2SUDINgecMH4VeM5xeZmEA/i7E7+viKwBtrCx8IwL1vX1mNxv0qengBr
-	 9XMCEpk60A8Ht8Ox0siaiUxRQo+shiOCiwyowVxi4HQ4a4wxHFLmVd0ileCpOnfH59
-	 kMTyGbhJHvDySomGzOBZiLmu+POki84iVVIwP7MY=
+	b=CdXy9He6bk4kFIOp/b6KiA6y1fdpj2KtGd7mTbYjW1qYC9BoNOs+DeEBfVSmBTJRz
+	 4iekAz8znfqKQjL2KBTi8uZSH0IXJ+Rw4wUw8mEAxF46D8hAkETJkfFb1q6Do3lTZ0
+	 9B/7C72TRQhNhu9Zc/l0ZeXCtf5L4Q6CBY441Jgw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727144AbgC1Peg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 28 Mar 2020 11:34:36 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40264 "EHLO mail.kernel.org"
+        id S1727009AbgC1Peh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 28 Mar 2020 11:34:37 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40304 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727131AbgC1Pef (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 28 Mar 2020 11:34:35 -0400
+        id S1727131AbgC1Peg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 28 Mar 2020 11:34:36 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 5E8C620748
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:35 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 48CFA2073B
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585409675;
-        bh=asZPu00uS55iLq65hnYce26g4HNvsBAKVZEYJOk+hl8=;
+        s=default; t=1585409676;
+        bh=7EnajCoY61wyaI04/xGUaouttgnSwwfGTe62JcRBxjE=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Pz1yZ68U8xAyRvM9UxRvyhqe6tcfbSgmCpLMMayiv5uoupBMuSJzD8XdgDZvczuuw
-         aitY4FdLYHB3MXvHnEFdASP8+GTmFHV0IdmbbyWEjwlIM9UG3qp5fqFnmV2jTknET4
-         aKBtiM46pOGlOX7ZtSXqsaQ3hkUis01qjVyEiwC0=
+        b=MrjiTozTD0XEvIu+XErgUb/KqTrZ+ZprIxMDX7SQpvaujukGiKTKijDSHgmP0v8wW
+         gWtsYUM4bGi7g+Qsq8pAb0fGa1rT4DHbABEfXagtXqggyRmMavyvC21j4XobpY+QVo
+         5uUnMu2Q7kJd1Wpc46LIRumSNcZhhuXRvp10tGwY=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/22] NFSv4/pNFS: Scan the full list of commit arrays when committing
-Date:   Sat, 28 Mar 2020 11:32:03 -0400
-Message-Id: <20200328153220.1352010-6-trondmy@kernel.org>
+Subject: [PATCH v2 07/22] pNFS: Support per-layout segment commits in pnfs_generic_commit_pagelist()
+Date:   Sat, 28 Mar 2020 11:32:05 -0400
+Message-Id: <20200328153220.1352010-8-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200328153220.1352010-5-trondmy@kernel.org>
+In-Reply-To: <20200328153220.1352010-7-trondmy@kernel.org>
 References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-2-trondmy@kernel.org>
  <20200328153220.1352010-3-trondmy@kernel.org>
  <20200328153220.1352010-4-trondmy@kernel.org>
  <20200328153220.1352010-5-trondmy@kernel.org>
+ <20200328153220.1352010-6-trondmy@kernel.org>
+ <20200328153220.1352010-7-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -60,89 +62,47 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
 Add support for scanning the full list of per-layout segment commit
-arrays to pnfs_generic_scan_commit_lists()
+arrays to pnfs_generic_commit_pagelist().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs_nfs.c | 52 ++++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 40 insertions(+), 12 deletions(-)
+ fs/nfs/pnfs_nfs.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
 diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index c8518ce3a4ef..81fd85e66fd9 100644
+index f16bd6d0e830..f895a28b1e26 100644
 --- a/fs/nfs/pnfs_nfs.c
 +++ b/fs/nfs/pnfs_nfs.c
-@@ -118,10 +118,14 @@ pnfs_free_commit_array(struct pnfs_commit_array *p)
- }
- EXPORT_SYMBOL_GPL(pnfs_free_commit_array);
- 
-+/*
-+ * Locks the nfs_page requests for commit and moves them to
-+ * @bucket->committing.
-+ */
- static int
--pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
--				 struct nfs_commit_info *cinfo,
--				 int max)
-+pnfs_bucket_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
-+				struct nfs_commit_info *cinfo,
-+				int max)
- {
- 	struct list_head *src = &bucket->written;
- 	struct list_head *dst = &bucket->committing;
-@@ -142,20 +146,44 @@ pnfs_generic_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
- 	return ret;
+@@ -322,6 +322,20 @@ pnfs_bucket_alloc_ds_commits(struct list_head *list,
+ 	return nreq;
  }
  
-+static int pnfs_bucket_scan_array(struct nfs_commit_info *cinfo,
-+				  struct pnfs_commit_bucket *buckets,
-+				  unsigned int nbuckets,
-+				  int max)
++static unsigned int
++pnfs_alloc_ds_commits_list(struct list_head *list,
++			   struct pnfs_ds_commit_info *fl_cinfo,
++			   struct nfs_commit_info *cinfo)
 +{
-+	unsigned int i;
-+	int rv = 0, cnt;
++	struct pnfs_commit_array *array;
++	unsigned int ret = 0;
 +
-+	for (i = 0; i < nbuckets && max != 0; i++) {
-+		cnt = pnfs_bucket_scan_ds_commit_list(&buckets[i], cinfo, max);
-+		rv += cnt;
-+		max -= cnt;
-+	}
-+	return rv;
++	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list)
++		ret += pnfs_bucket_alloc_ds_commits(list, array->buckets,
++				array->nbuckets, cinfo);
++	return ret;
 +}
 +
- /* Move reqs from written to committing lists, returning count
-  * of number moved.
-  */
--int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo,
--				   int max)
-+int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo, int max)
- {
--	int i, rv = 0, cnt;
--
--	lockdep_assert_held(&NFS_I(cinfo->inode)->commit_mutex);
--	for (i = 0; i < cinfo->ds->nbuckets && max != 0; i++) {
--		cnt = pnfs_generic_scan_ds_commit_list(&cinfo->ds->buckets[i],
--						       cinfo, max);
--		max -= cnt;
-+	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
-+	struct pnfs_commit_array *array;
-+	int rv = 0, cnt;
+ /* This follows nfs_commit_list pretty closely */
+ int
+ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+@@ -345,6 +359,8 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 
+ 	nreq += pnfs_bucket_alloc_ds_commits(&list, fl_cinfo->buckets,
+ 			fl_cinfo->nbuckets, cinfo);
 +
-+	cnt = pnfs_bucket_scan_array(cinfo, fl_cinfo->buckets,
-+			fl_cinfo->nbuckets, max);
-+	rv += cnt;
-+	max -= cnt;
-+	if (!max)
-+		return rv;
-+	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list) {
-+		cnt = pnfs_bucket_scan_array(cinfo, array->buckets,
-+				array->nbuckets, max);
- 		rv += cnt;
-+		max -= cnt;
-+		if (!max)
-+			break;
- 	}
- 	return rv;
- }
++	nreq += pnfs_alloc_ds_commits_list(&list, fl_cinfo, cinfo);
+ 	if (nreq == 0)
+ 		goto out;
+ 
 -- 
 2.25.1
 
