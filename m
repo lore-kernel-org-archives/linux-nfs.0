@@ -7,44 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C7CA8C2D0EB
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03F63C2D0EE
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8B33A20748
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BA9B72073B
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585409682;
-	bh=kgJwq8VPMwifyd0KwkcA6eKekrxmSxwH7DFb8y8BizM=;
+	s=default; t=1585409683;
+	bh=9b76lu0bXU8xRvfjRRZvPyklMHdMCeF8CDtr3MJQFB8=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=suyIRG5Gp/LZ4k2+7RALGbnIFxLyHmLdBh41OtHcXD1+DpaYsQVFnz5fBpc4uS2PS
-	 Bfj/rwVYnxzmPxaBJ/m3OJ2xQn7hBFlb5nmqbjRWCRUAYJkiIlPUj9RHpQC3WR1ndI
-	 hHodkL3fxfWI5nMfAE7m7eEBKAI+MGemKOrV9ji8=
+	b=XojJKbDpb4nbPVuLJqlsofE+n7mF24HpcDfdkITbFDzAtG6fa65Cmz1cpW0H6bXl5
+	 kDOEARMtUjApaOyDbLl9Gc9HQRCx04w+/JOYWaoVYFGUf/TgMvjc8gmZWyxf/1ofqj
+	 lAfaAj0ivMDgxVv81stGfWzVrgHuhkGpDVLfA9BE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726947AbgC1Pel (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727173AbgC1Pel (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 28 Mar 2020 11:34:41 -0400
 Received: from mail.kernel.org ([198.145.29.99]:40346 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727173AbgC1Pej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 28 Mar 2020 11:34:39 -0400
+        id S1726977AbgC1Pek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 28 Mar 2020 11:34:40 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 5DE3F20748
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:38 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id BEE9620748
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585409678;
-        bh=kgJwq8VPMwifyd0KwkcA6eKekrxmSxwH7DFb8y8BizM=;
+        s=default; t=1585409680;
+        bh=9b76lu0bXU8xRvfjRRZvPyklMHdMCeF8CDtr3MJQFB8=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=cnRBdHQ/YDDFPzYq3GaGFXyXQTUTsU9JcG6NaRsFOCv7yzf9qzRRValUhcA3R/Qis
-         1ekZB/ZM2cwoxcOHX5tXrUHrfp/OpGtFiqbZU0GW4lFXc07xKMXjfG+h+pvgOquCY9
-         K4JTnAyEL53+l2+spnb4bdXgntlW4QgIGFjSJTK8=
+        b=Kewi1vDL1mv7TJBPHeV1CpsmvLdbzSyb46dmaUPYgQO5CBwwIxki65f8FTUh5mxmJ
+         kDv+Dl3XAK9TkWcs9cYCAzaJfazIZBZ2Hj/q8zLijGhKowbeowIpdykNlEaxXBnE2V
+         BKmRi2U1hzwF4GKf7xAWO+8xUVXT+9bgnznDsBJ8=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 12/22] pNFS: Add infrastructure for cleaning up per-layout commit structures
-Date:   Sat, 28 Mar 2020 11:32:10 -0400
-Message-Id: <20200328153220.1352010-13-trondmy@kernel.org>
+Subject: [PATCH v2 15/22] NFS: Remove bucket array from struct pnfs_ds_commit_info
+Date:   Sat, 28 Mar 2020 11:32:13 -0400
+Message-Id: <20200328153220.1352010-16-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200328153220.1352010-12-trondmy@kernel.org>
+In-Reply-To: <20200328153220.1352010-15-trondmy@kernel.org>
 References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-2-trondmy@kernel.org>
  <20200328153220.1352010-3-trondmy@kernel.org>
@@ -57,6 +57,9 @@ References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-10-trondmy@kernel.org>
  <20200328153220.1352010-11-trondmy@kernel.org>
  <20200328153220.1352010-12-trondmy@kernel.org>
+ <20200328153220.1352010-13-trondmy@kernel.org>
+ <20200328153220.1352010-14-trondmy@kernel.org>
+ <20200328153220.1352010-15-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -66,300 +69,359 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that both the file and flexfiles layout types clean up when
-freeing the layout segments.
+Remove the unused bucket array in struct pnfs_ds_commit_info.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/filelayout/filelayout.c         | 16 +++++
- fs/nfs/flexfilelayout/flexfilelayout.c | 11 ++++
- fs/nfs/internal.h                      |  4 +-
- fs/nfs/pnfs.c                          |  1 +
- fs/nfs/pnfs.h                          |  4 ++
- fs/nfs/pnfs_nfs.c                      | 88 +++++++++++++++++++++++++-
- include/linux/nfs_xdr.h                |  1 +
- 7 files changed, 121 insertions(+), 4 deletions(-)
+ fs/nfs/direct.c                        |  1 -
+ fs/nfs/filelayout/filelayout.c         | 75 +------------------------
+ fs/nfs/flexfilelayout/flexfilelayout.c | 76 --------------------------
+ fs/nfs/internal.h                      |  3 -
+ fs/nfs/pnfs_nfs.c                      | 18 ------
+ include/linux/nfs_xdr.h                | 13 -----
+ 6 files changed, 1 insertion(+), 185 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 4ee26465b510..61f93a0fb0e0 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -217,7 +217,6 @@ static void nfs_direct_req_free(struct kref *kref)
+ 	struct nfs_direct_req *dreq = container_of(kref, struct nfs_direct_req, kref);
+ 
+ 	pnfs_release_ds_info(&dreq->ds_cinfo, dreq->inode);
+-	nfs_free_pnfs_ds_cinfo(&dreq->ds_cinfo);
+ 	if (dreq->l_ctx != NULL)
+ 		nfs_put_lock_context(dreq->l_ctx);
+ 	if (dreq->ctx != NULL)
 diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index b051d5d320ba..ffc5e2af1776 100644
+index 795508054a4d..854f350e2599 100644
 --- a/fs/nfs/filelayout/filelayout.c
 +++ b/fs/nfs/filelayout/filelayout.c
-@@ -750,11 +750,16 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
- 	/* This assumes a single RW lseg */
- 	if (lseg->pls_range.iomode == IOMODE_RW) {
- 		struct nfs4_filelayout *flo;
-+		struct inode *inode;
- 
+@@ -755,72 +755,12 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
  		flo = FILELAYOUT_FROM_HDR(lseg->pls_layout);
-+		inode = flo->generic_hdr.plh_inode;
-+		spin_lock(&inode->i_lock);
- 		flo->commit_info.nbuckets = 0;
- 		kfree(flo->commit_info.buckets);
- 		flo->commit_info.buckets = NULL;
-+		pnfs_generic_ds_cinfo_release_lseg(&flo->commit_info, lseg);
-+		spin_unlock(&inode->i_lock);
+ 		inode = flo->generic_hdr.plh_inode;
+ 		spin_lock(&inode->i_lock);
+-		flo->commit_info.nbuckets = 0;
+-		kfree(flo->commit_info.buckets);
+-		flo->commit_info.buckets = NULL;
+ 		pnfs_generic_ds_cinfo_release_lseg(&flo->commit_info, lseg);
+ 		spin_unlock(&inode->i_lock);
  	}
  	_filelayout_free_lseg(fl);
  }
-@@ -1163,6 +1168,16 @@ filelayout_get_ds_info(struct inode *inode)
- 		return &FILELAYOUT_FROM_HDR(layout)->commit_info;
+ 
+-static int
+-filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+-			     struct nfs_commit_info *cinfo,
+-			     gfp_t gfp_flags)
+-{
+-	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+-	struct pnfs_commit_bucket *buckets;
+-	int size, i;
+-
+-	if (fl->commit_through_mds)
+-		return 0;
+-
+-	size = (fl->stripe_type == STRIPE_SPARSE) ?
+-		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
+-
+-	if (cinfo->ds->nbuckets >= size) {
+-		/* This assumes there is only one IOMODE_RW lseg.  What
+-		 * we really want to do is have a layout_hdr level
+-		 * dictionary of <multipath_list4, fh> keys, each
+-		 * associated with a struct list_head, populated by calls
+-		 * to filelayout_write_pagelist().
+-		 * */
+-		return 0;
+-	}
+-
+-	buckets = kcalloc(size, sizeof(struct pnfs_commit_bucket),
+-			  gfp_flags);
+-	if (!buckets)
+-		return -ENOMEM;
+-	for (i = 0; i < size; i++) {
+-		INIT_LIST_HEAD(&buckets[i].written);
+-		INIT_LIST_HEAD(&buckets[i].committing);
+-		/* mark direct verifier as unset */
+-		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+-	}
+-
+-	spin_lock(&cinfo->inode->i_lock);
+-	if (cinfo->ds->nbuckets >= size)
+-		goto out;
+-	for (i = 0; i < cinfo->ds->nbuckets; i++) {
+-		list_splice(&cinfo->ds->buckets[i].written,
+-			    &buckets[i].written);
+-		list_splice(&cinfo->ds->buckets[i].committing,
+-			    &buckets[i].committing);
+-		buckets[i].direct_verf.committed =
+-			cinfo->ds->buckets[i].direct_verf.committed;
+-		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
+-		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+-	}
+-	swap(cinfo->ds->buckets, buckets);
+-	cinfo->ds->nbuckets = size;
+-out:
+-	spin_unlock(&cinfo->inode->i_lock);
+-	kfree(buckets);
+-	return 0;
+-}
+-
+ static struct pnfs_layout_segment *
+ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+ 		      struct nfs4_layoutget_res *lgr,
+@@ -943,9 +883,6 @@ static void
+ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			 struct nfs_page *req)
+ {
+-	struct nfs_commit_info cinfo;
+-	int status;
+-
+ 	pnfs_generic_pg_check_layout(pgio);
+ 	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg = fl_pnfs_update_layout(pgio->pg_inode,
+@@ -964,17 +901,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 
+ 	/* If no lseg, fall back to write through mds */
+ 	if (pgio->pg_lseg == NULL)
+-		goto out_mds;
+-	nfs_init_cinfo(&cinfo, pgio->pg_inode, pgio->pg_dreq);
+-	status = filelayout_alloc_commit_info(pgio->pg_lseg, &cinfo, GFP_NOFS);
+-	if (status < 0) {
+-		pnfs_put_lseg(pgio->pg_lseg);
+-		pgio->pg_lseg = NULL;
+-		goto out_mds;
+-	}
+-	return;
+-out_mds:
+-	nfs_pageio_reset_write_mds(pgio);
++		nfs_pageio_reset_write_mds(pgio);
  }
  
-+static void
-+filelayout_release_ds_info(struct pnfs_ds_commit_info *fl_cinfo,
-+		struct inode *inode)
-+{
-+	spin_lock(&inode->i_lock);
-+	pnfs_generic_ds_cinfo_destroy(fl_cinfo);
-+	spin_unlock(&inode->i_lock);
-+}
-+
-+
- static struct pnfs_layoutdriver_type filelayout_type = {
- 	.id			= LAYOUT_NFSV4_1_FILES,
- 	.name			= "LAYOUT_NFSV4_1_FILES",
-@@ -1176,6 +1191,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
- 	.pg_read_ops		= &filelayout_pg_read_ops,
- 	.pg_write_ops		= &filelayout_pg_write_ops,
- 	.get_ds_info		= &filelayout_get_ds_info,
-+	.release_ds_info	= filelayout_release_ds_info,
- 	.mark_request_commit	= filelayout_mark_request_commit,
- 	.clear_request_commit	= pnfs_generic_clear_request_commit,
- 	.scan_commit_lists	= pnfs_generic_scan_commit_lists,
+ static const struct nfs_pageio_ops filelayout_pg_read_ops = {
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index c9e79c8e62cd..8e1393d75cbc 100644
+index f343a241906a..1a4e36d07eab 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -580,6 +580,7 @@ ff_layout_free_lseg(struct pnfs_layout_segment *lseg)
- 			kfree(ffl->commit_info.buckets);
- 			ffl->commit_info.buckets = NULL;
- 		}
-+		pnfs_generic_ds_cinfo_release_lseg(&ffl->commit_info, lseg);
+@@ -550,17 +550,6 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 	goto out_free_page;
+ }
+ 
+-static bool ff_layout_has_rw_segments(struct pnfs_layout_hdr *layout)
+-{
+-	struct pnfs_layout_segment *lseg;
+-
+-	list_for_each_entry(lseg, &layout->plh_segs, pls_list)
+-		if (lseg->pls_range.iomode == IOMODE_RW)
+-			return true;
+-
+-	return false;
+-}
+-
+ static void
+ ff_layout_free_lseg(struct pnfs_layout_segment *lseg)
+ {
+@@ -575,24 +564,12 @@ ff_layout_free_lseg(struct pnfs_layout_segment *lseg)
+ 		ffl = FF_LAYOUT_FROM_HDR(lseg->pls_layout);
+ 		inode = ffl->generic_hdr.plh_inode;
+ 		spin_lock(&inode->i_lock);
+-		if (!ff_layout_has_rw_segments(lseg->pls_layout)) {
+-			ffl->commit_info.nbuckets = 0;
+-			kfree(ffl->commit_info.buckets);
+-			ffl->commit_info.buckets = NULL;
+-		}
+ 		pnfs_generic_ds_cinfo_release_lseg(&ffl->commit_info, lseg);
  		spin_unlock(&inode->i_lock);
  	}
  	_ff_layout_free_lseg(fls);
-@@ -2003,6 +2004,15 @@ ff_layout_get_ds_info(struct inode *inode)
- 	return &FF_LAYOUT_FROM_HDR(layout)->commit_info;
  }
  
-+static void
-+ff_layout_release_ds_info(struct pnfs_ds_commit_info *fl_cinfo,
-+		struct inode *inode)
-+{
-+	spin_lock(&inode->i_lock);
-+	pnfs_generic_ds_cinfo_destroy(fl_cinfo);
-+	spin_unlock(&inode->i_lock);
-+}
-+
+-/* Return 1 until we have multiple lsegs support */
+-static int
+-ff_layout_get_lseg_count(struct nfs4_ff_layout_segment *fls)
+-{
+-	return 1;
+-}
+-
  static void
- ff_layout_free_deviceid_node(struct nfs4_deviceid_node *d)
+ nfs4_ff_start_busy_timer(struct nfs4_ff_busy_timer *timer, ktime_t now)
  {
-@@ -2503,6 +2513,7 @@ static struct pnfs_layoutdriver_type flexfilelayout_type = {
- 	.pg_read_ops		= &ff_layout_pg_read_ops,
- 	.pg_write_ops		= &ff_layout_pg_write_ops,
- 	.get_ds_info		= ff_layout_get_ds_info,
-+	.release_ds_info	= ff_layout_release_ds_info,
- 	.free_deviceid_node	= ff_layout_free_deviceid_node,
- 	.mark_request_commit	= pnfs_layout_mark_request_commit,
- 	.clear_request_commit	= pnfs_generic_clear_request_commit,
+@@ -737,52 +714,6 @@ nfs4_ff_layout_stat_io_end_write(struct rpc_task *task,
+ 	spin_unlock(&mirror->lock);
+ }
+ 
+-static int
+-ff_layout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+-			    struct nfs_commit_info *cinfo,
+-			    gfp_t gfp_flags)
+-{
+-	struct nfs4_ff_layout_segment *fls = FF_LAYOUT_LSEG(lseg);
+-	struct pnfs_commit_bucket *buckets;
+-	int size;
+-
+-	if (cinfo->ds->nbuckets != 0) {
+-		/* This assumes there is only one RW lseg per file.
+-		 * To support multiple lseg per file, we need to
+-		 * change struct pnfs_commit_bucket to allow dynamic
+-		 * increasing nbuckets.
+-		 */
+-		return 0;
+-	}
+-
+-	size = ff_layout_get_lseg_count(fls) * FF_LAYOUT_MIRROR_COUNT(lseg);
+-
+-	buckets = kcalloc(size, sizeof(struct pnfs_commit_bucket),
+-			  gfp_flags);
+-	if (!buckets)
+-		return -ENOMEM;
+-	else {
+-		int i;
+-
+-		spin_lock(&cinfo->inode->i_lock);
+-		if (cinfo->ds->nbuckets != 0)
+-			kfree(buckets);
+-		else {
+-			cinfo->ds->buckets = buckets;
+-			cinfo->ds->nbuckets = size;
+-			for (i = 0; i < size; i++) {
+-				INIT_LIST_HEAD(&buckets[i].written);
+-				INIT_LIST_HEAD(&buckets[i].committing);
+-				/* mark direct verifier as unset */
+-				buckets[i].direct_verf.committed =
+-					NFS_INVALID_STABLE_HOW;
+-			}
+-		}
+-		spin_unlock(&cinfo->inode->i_lock);
+-		return 0;
+-	}
+-}
+-
+ static void
+ ff_layout_mark_ds_unreachable(struct pnfs_layout_segment *lseg, int idx)
+ {
+@@ -944,10 +875,8 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ {
+ 	struct nfs4_ff_layout_mirror *mirror;
+ 	struct nfs_pgio_mirror *pgm;
+-	struct nfs_commit_info cinfo;
+ 	struct nfs4_pnfs_ds *ds;
+ 	int i;
+-	int status;
+ 
+ retry:
+ 	pnfs_generic_pg_check_layout(pgio);
+@@ -969,11 +898,6 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	if (pgio->pg_lseg == NULL)
+ 		goto out_mds;
+ 
+-	nfs_init_cinfo(&cinfo, pgio->pg_inode, pgio->pg_dreq);
+-	status = ff_layout_alloc_commit_info(pgio->pg_lseg, &cinfo, GFP_NOFS);
+-	if (status < 0)
+-		goto out_mds;
+-
+ 	/* Use a direct mapping of ds_idx to pgio mirror_idx */
+ 	if (WARN_ON_ONCE(pgio->pg_mirror_count !=
+ 	    FF_LAYOUT_MIRROR_COUNT(pgio->pg_lseg)))
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 4a1adad3740f..683146a51599 100644
+index 683146a51599..78f317fac940 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -534,9 +534,11 @@ void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
- 	pnfs_bucket_clear_pnfs_ds_commit_verifiers(cinfo->buckets,
- 			cinfo->nbuckets);
- 
--	list_for_each_entry(array, &cinfo->commits, cinfo_list)
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(array, &cinfo->commits, cinfo_list)
- 		pnfs_bucket_clear_pnfs_ds_commit_verifiers(array->buckets,
- 				array->nbuckets);
-+	rcu_read_unlock();
- }
- #else
- static inline
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6b25117fca5f..eba18f137fb0 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -506,6 +506,7 @@ pnfs_init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg,
+@@ -531,9 +531,6 @@ void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
  {
- 	INIT_LIST_HEAD(&lseg->pls_list);
- 	INIT_LIST_HEAD(&lseg->pls_lc_list);
-+	INIT_LIST_HEAD(&lseg->pls_commits);
- 	refcount_set(&lseg->pls_refcount, 1);
- 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->pls_layout = lo;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2ec97b419b56..6c48bd7b4640 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -66,6 +66,7 @@ struct nfs4_pnfs_ds {
- struct pnfs_layout_segment {
- 	struct list_head pls_list;
- 	struct list_head pls_lc_list;
-+	struct list_head pls_commits;
- 	struct pnfs_layout_range pls_range;
- 	refcount_t pls_refcount;
- 	u32 pls_seq;
-@@ -370,6 +371,9 @@ void nfs4_deviceid_purge_client(const struct nfs_client *);
- /* pnfs_nfs.c */
- struct pnfs_commit_array *pnfs_alloc_commit_array(size_t n, gfp_t gfp_flags);
- void pnfs_free_commit_array(struct pnfs_commit_array *p);
-+void pnfs_generic_ds_cinfo_release_lseg(struct pnfs_ds_commit_info *fl_cinfo,
-+		struct pnfs_layout_segment *lseg);
-+void pnfs_generic_ds_cinfo_destroy(struct pnfs_ds_commit_info *fl_cinfo);
+ 	struct pnfs_commit_array *array;
  
- void pnfs_generic_clear_request_commit(struct nfs_page *req,
- 				       struct nfs_commit_info *cinfo);
+-	pnfs_bucket_clear_pnfs_ds_commit_verifiers(cinfo->buckets,
+-			cinfo->nbuckets);
+-
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(array, &cinfo->commits, cinfo_list)
+ 		pnfs_bucket_clear_pnfs_ds_commit_verifiers(array->buckets,
 diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index f895a28b1e26..edad251a6a48 100644
+index 9b55919e64ac..20f12f3cbe38 100644
 --- a/fs/nfs/pnfs_nfs.c
 +++ b/fs/nfs/pnfs_nfs.c
-@@ -118,6 +118,67 @@ pnfs_free_commit_array(struct pnfs_commit_array *p)
- }
- EXPORT_SYMBOL_GPL(pnfs_free_commit_array);
- 
-+static void
-+pnfs_release_commit_array_locked(struct pnfs_commit_array *array)
-+{
-+	list_del_rcu(&array->cinfo_list);
-+	list_del(&array->lseg_list);
-+	pnfs_free_commit_array(array);
-+}
-+
-+static void
-+pnfs_put_commit_array_locked(struct pnfs_commit_array *array)
-+{
-+	if (refcount_dec_and_test(&array->refcount))
-+		pnfs_release_commit_array_locked(array);
-+}
-+
-+static void
-+pnfs_put_commit_array(struct pnfs_commit_array *array, struct inode *inode)
-+{
-+	if (refcount_dec_and_lock(&array->refcount, &inode->i_lock)) {
-+		pnfs_release_commit_array_locked(array);
-+		spin_unlock(&inode->i_lock);
-+	}
-+}
-+
-+static struct pnfs_commit_array *
-+pnfs_get_commit_array(struct pnfs_commit_array *array)
-+{
-+	if (refcount_inc_not_zero(&array->refcount))
-+		return array;
-+	return NULL;
-+}
-+
-+static void
-+pnfs_remove_and_free_commit_array(struct pnfs_commit_array *array)
-+{
-+	array->lseg = NULL;
-+	list_del_init(&array->lseg_list);
-+	pnfs_put_commit_array_locked(array);
-+}
-+
-+void
-+pnfs_generic_ds_cinfo_release_lseg(struct pnfs_ds_commit_info *fl_cinfo,
-+		struct pnfs_layout_segment *lseg)
-+{
-+	struct pnfs_commit_array *array, *tmp;
-+
-+	list_for_each_entry_safe(array, tmp, &lseg->pls_commits, lseg_list)
-+		pnfs_remove_and_free_commit_array(array);
-+}
-+EXPORT_SYMBOL_GPL(pnfs_generic_ds_cinfo_release_lseg);
-+
-+void
-+pnfs_generic_ds_cinfo_destroy(struct pnfs_ds_commit_info *fl_cinfo)
-+{
-+	struct pnfs_commit_array *array, *tmp;
-+
-+	list_for_each_entry_safe(array, tmp, &fl_cinfo->commits, cinfo_list)
-+		pnfs_remove_and_free_commit_array(array);
-+}
-+EXPORT_SYMBOL_GPL(pnfs_generic_ds_cinfo_destroy);
-+
- /*
-  * Locks the nfs_page requests for commit and moves them to
-  * @bucket->committing.
-@@ -177,14 +238,21 @@ int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo, int max)
- 	max -= cnt;
- 	if (!max)
- 		return rv;
--	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list) {
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(array, &fl_cinfo->commits, cinfo_list) {
-+		if (!array->lseg || !pnfs_get_commit_array(array))
-+			continue;
-+		rcu_read_unlock();
- 		cnt = pnfs_bucket_scan_array(cinfo, array->buckets,
- 				array->nbuckets, max);
-+		rcu_read_lock();
-+		pnfs_put_commit_array(array, cinfo->inode);
- 		rv += cnt;
- 		max -= cnt;
- 		if (!max)
- 			break;
- 	}
-+	rcu_read_unlock();
- 	return rv;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_scan_commit_lists);
-@@ -230,13 +298,20 @@ void pnfs_generic_recover_commit_reqs(struct list_head *dst,
- 						   fl_cinfo->nbuckets,
- 						   cinfo);
- 	fl_cinfo->nwritten -= nwritten;
--	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list) {
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(array, &fl_cinfo->commits, cinfo_list) {
-+		if (!array->lseg || !pnfs_get_commit_array(array))
-+			continue;
-+		rcu_read_unlock();
- 		nwritten = pnfs_bucket_recover_commit_reqs(dst,
- 							   array->buckets,
- 							   array->nbuckets,
- 							   cinfo);
-+		rcu_read_lock();
-+		pnfs_put_commit_array(array, cinfo->inode);
- 		fl_cinfo->nwritten -= nwritten;
- 	}
-+	rcu_read_unlock();
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_recover_commit_reqs);
- 
-@@ -330,9 +405,16 @@ pnfs_alloc_ds_commits_list(struct list_head *list,
+@@ -292,12 +292,6 @@ int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo, int max)
  	struct pnfs_commit_array *array;
- 	unsigned int ret = 0;
+ 	int rv = 0, cnt;
  
--	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list)
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(array, &fl_cinfo->commits, cinfo_list) {
-+		if (!array->lseg || !pnfs_get_commit_array(array))
-+			continue;
-+		rcu_read_unlock();
- 		ret += pnfs_bucket_alloc_ds_commits(list, array->buckets,
- 				array->nbuckets, cinfo);
-+		rcu_read_lock();
-+		pnfs_put_commit_array(array, cinfo->inode);
-+	}
- 	return ret;
- }
+-	cnt = pnfs_bucket_scan_array(cinfo, fl_cinfo->buckets,
+-			fl_cinfo->nbuckets, max);
+-	rv += cnt;
+-	max -= cnt;
+-	if (!max)
+-		return rv;
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(array, &fl_cinfo->commits, cinfo_list) {
+ 		if (!array->lseg || !pnfs_get_commit_array(array))
+@@ -353,11 +347,6 @@ void pnfs_generic_recover_commit_reqs(struct list_head *dst,
+ 	unsigned int nwritten;
  
+ 	lockdep_assert_held(&NFS_I(cinfo->inode)->commit_mutex);
+-	nwritten = pnfs_bucket_recover_commit_reqs(dst,
+-						   fl_cinfo->buckets,
+-						   fl_cinfo->nbuckets,
+-						   cinfo);
+-	fl_cinfo->nwritten -= nwritten;
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(array, &fl_cinfo->commits, cinfo_list) {
+ 		if (!array->lseg || !pnfs_get_commit_array(array))
+@@ -412,10 +401,6 @@ pnfs_generic_search_commit_reqs(struct nfs_commit_info *cinfo, struct page *page
+ 	struct pnfs_commit_array *array;
+ 	struct nfs_page *req;
+ 
+-	req = pnfs_bucket_search_commit_reqs(fl_cinfo->buckets,
+-			fl_cinfo->nbuckets, page);
+-	if (req)
+-		return req;
+ 	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list) {
+ 		req = pnfs_bucket_search_commit_reqs(array->buckets,
+ 				array->nbuckets, page);
+@@ -550,9 +535,6 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 		nreq++;
+ 	}
+ 
+-	nreq += pnfs_bucket_alloc_ds_commits(&list, fl_cinfo->buckets,
+-			fl_cinfo->nbuckets, cinfo);
+-
+ 	nreq += pnfs_alloc_ds_commits_list(&list, fl_cinfo, cinfo);
+ 	if (nreq == 0)
+ 		goto out;
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9946787eda72..33be2ee2a248 100644
+index 33be2ee2a248..2903597ec88c 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -1275,6 +1275,7 @@ struct pnfs_commit_array {
- 	struct list_head lseg_list;
- 	struct pnfs_layout_segment *lseg;
- 	struct rcu_head rcu;
-+	refcount_t refcount;
- 	unsigned int nbuckets;
- 	struct pnfs_commit_bucket buckets[];
+@@ -1284,8 +1284,6 @@ struct pnfs_ds_commit_info {
+ 	struct list_head commits;
+ 	unsigned int nwritten;
+ 	unsigned int ncommitting;
+-	unsigned int nbuckets;
+-	struct pnfs_commit_bucket *buckets;
  };
+ 
+ struct nfs41_state_protection {
+@@ -1396,22 +1394,11 @@ struct nfs41_free_stateid_res {
+ 	unsigned int			status;
+ };
+ 
+-static inline void
+-nfs_free_pnfs_ds_cinfo(struct pnfs_ds_commit_info *cinfo)
+-{
+-	kfree(cinfo->buckets);
+-}
+-
+ #else
+ 
+ struct pnfs_ds_commit_info {
+ };
+ 
+-static inline void
+-nfs_free_pnfs_ds_cinfo(struct pnfs_ds_commit_info *cinfo)
+-{
+-}
+-
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #ifdef CONFIG_NFS_V4_2
 -- 
 2.25.1
 
