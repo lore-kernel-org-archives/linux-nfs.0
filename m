@@ -7,50 +7,52 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D0F9C2D0E5
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BA5B6C43331
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 64BCB2082E
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F25F2073B
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585409678;
-	bh=ksX41en9zXztZkK7yJUP1w30ssz69SdnHLr2M+BntI0=;
+	s=default; t=1585409679;
+	bh=vutH3/YReiNFiYTDSRW2/u7raVAoGoT4cTuq6TCiAtk=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=e8kJdcBUxfo1yJFOiwGpBb++lF3X9f4XnvzhVpV7nuFP71PWfJ8u+plWp16mC8ygX
-	 9y/FfH6AXVAJOJ5eUjRMbwnihLtQZyiW8iiQASK2Vsi7MlYAfVHHqVcQOAT81DswTB
-	 TXgW44Ys/zATle+n09D06ZhLm4buW+Iv0X0JJ0Rc=
+	b=u7ji8YMPm4LWHKxJ7GSVYwaTEwe6cdOsLctJT2Fqe93IFutVSusfSjlqTLp+kAj/n
+	 /UnPOp9+ifXOzjO6DO6HcVLqJd0X834oDJfh+vJLQ2ONVHqF+hA5SwSyeed3XMA/UO
+	 rJguvPgvHzX4LU2Fg4QEhK0aXvNw9B3p2FtlwhBw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727148AbgC1Peh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 28 Mar 2020 11:34:37 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40298 "EHLO mail.kernel.org"
+        id S1727167AbgC1Pei (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 28 Mar 2020 11:34:38 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40310 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727009AbgC1Peg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 28 Mar 2020 11:34:36 -0400
+        id S1726389AbgC1Peh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 28 Mar 2020 11:34:37 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C81892082D
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:35 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id B13FA20748
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1585409676;
-        bh=ksX41en9zXztZkK7yJUP1w30ssz69SdnHLr2M+BntI0=;
+        bh=vutH3/YReiNFiYTDSRW2/u7raVAoGoT4cTuq6TCiAtk=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=LimI/DbaWwBXBgrHKc5Owta7Jo537FiSr0epkXCcOA9Y54NEaYV8zIKr11HSMmmL+
-         dw0ME6x2Jbvi4mHYt4HBnFA+Za+5zEbGteQErU/8yG0RWapHXPYmqswIkkZOYexRYN
-         GHvDG7tbnRxG9SWuGkZfCmQQ/1aDSK8hX7Uc4Blw=
+        b=miqghEpXJ8w7AZRyxyLvBN6eK0c68MB30GvrswnnsQZy9clekwsNkLrLqPrVAHzFt
+         Fc6ikZD/wEfKgB74Am8OYSBRKAaS+Xe4LC7gCVex24mYqLif+M0aPo8QdnE+3qH+XN
+         +btv3g0wT9aoQOMEw7u3Q2cNEtNluBF4aA2INy24=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/22] pNFS: Support per-layout segment commits in pnfs_generic_recover_commit_reqs()
-Date:   Sat, 28 Mar 2020 11:32:04 -0400
-Message-Id: <20200328153220.1352010-7-trondmy@kernel.org>
+Subject: [PATCH v2 08/22] NFS/pNFS: Allow O_DIRECT to release the DS commitinfo
+Date:   Sat, 28 Mar 2020 11:32:06 -0400
+Message-Id: <20200328153220.1352010-9-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200328153220.1352010-6-trondmy@kernel.org>
+In-Reply-To: <20200328153220.1352010-8-trondmy@kernel.org>
 References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-2-trondmy@kernel.org>
  <20200328153220.1352010-3-trondmy@kernel.org>
  <20200328153220.1352010-4-trondmy@kernel.org>
  <20200328153220.1352010-5-trondmy@kernel.org>
  <20200328153220.1352010-6-trondmy@kernel.org>
+ <20200328153220.1352010-7-trondmy@kernel.org>
+ <20200328153220.1352010-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -60,81 +62,68 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Add support for scanning the full list of per-layout segment commit
-arrays to pnfs_generic_recover_commit_reqs().
+Add a pNFS callback to allow the O_DIRECT code to release the DS
+commitinfo when freeing the dreq.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs_nfs.c | 41 +++++++++++++++++++++++++++++++++--------
- 1 file changed, 33 insertions(+), 8 deletions(-)
+ fs/nfs/direct.c |  1 +
+ fs/nfs/pnfs.h   | 16 ++++++++++++++++
+ 2 files changed, 17 insertions(+)
 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 81fd85e66fd9..f16bd6d0e830 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -189,22 +189,23 @@ int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo, int max)
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_scan_commit_lists);
- 
--/* Pull everything off the committing lists and dump into @dst.  */
--void pnfs_generic_recover_commit_reqs(struct list_head *dst,
--				      struct nfs_commit_info *cinfo)
-+static unsigned int
-+pnfs_bucket_recover_commit_reqs(struct list_head *dst,
-+			        struct pnfs_commit_bucket *buckets,
-+				unsigned int nbuckets,
-+				struct nfs_commit_info *cinfo)
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index f9a73febce02..7ef7f71ae315 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -317,6 +317,7 @@ static void nfs_direct_req_free(struct kref *kref)
  {
- 	struct pnfs_commit_bucket *b;
- 	struct pnfs_layout_segment *freeme;
--	int nwritten;
--	int i;
-+	unsigned int nwritten, ret = 0;
-+	unsigned int i;
+ 	struct nfs_direct_req *dreq = container_of(kref, struct nfs_direct_req, kref);
  
--	lockdep_assert_held(&NFS_I(cinfo->inode)->commit_mutex);
- restart:
--	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
-+	for (i = 0, b = buckets; i < nbuckets; i++, b++) {
- 		nwritten = nfs_scan_commit_list(&b->written, dst, cinfo, 0);
- 		if (!nwritten)
- 			continue;
--		cinfo->ds->nwritten -= nwritten;
-+		ret += nwritten;
- 		if (list_empty(&b->written)) {
- 			freeme = b->wlseg;
- 			b->wlseg = NULL;
-@@ -212,6 +213,30 @@ void pnfs_generic_recover_commit_reqs(struct list_head *dst,
- 			goto restart;
- 		}
- 	}
-+	return ret;
++	pnfs_release_ds_info(&dreq->ds_cinfo, dreq->inode);
+ 	nfs_free_pnfs_ds_cinfo(&dreq->ds_cinfo);
+ 	if (dreq->l_ctx != NULL)
+ 		nfs_put_lock_context(dreq->l_ctx);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index b293afb48d04..2ec97b419b56 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -149,6 +149,8 @@ struct pnfs_layoutdriver_type {
+ 	const struct nfs_pageio_ops *pg_write_ops;
+ 
+ 	struct pnfs_ds_commit_info *(*get_ds_info) (struct inode *inode);
++	void (*release_ds_info)(struct pnfs_ds_commit_info *,
++				struct inode *inode);
+ 	void (*mark_request_commit) (struct nfs_page *req,
+ 				     struct pnfs_layout_segment *lseg,
+ 				     struct nfs_commit_info *cinfo,
+@@ -468,6 +470,15 @@ pnfs_init_ds_commit_info(struct pnfs_ds_commit_info *fl_cinfo)
+ 	INIT_LIST_HEAD(&fl_cinfo->commits);
+ }
+ 
++static inline void
++pnfs_release_ds_info(struct pnfs_ds_commit_info *fl_cinfo, struct inode *inode)
++{
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
++
++	if (ld != NULL && ld->release_ds_info != NULL)
++		ld->release_ds_info(fl_cinfo, inode);
 +}
 +
-+/* Pull everything off the committing lists and dump into @dst.  */
-+void pnfs_generic_recover_commit_reqs(struct list_head *dst,
-+				      struct nfs_commit_info *cinfo)
-+{
-+	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
-+	struct pnfs_commit_array *array;
-+	unsigned int nwritten;
-+
-+	lockdep_assert_held(&NFS_I(cinfo->inode)->commit_mutex);
-+	nwritten = pnfs_bucket_recover_commit_reqs(dst,
-+						   fl_cinfo->buckets,
-+						   fl_cinfo->nbuckets,
-+						   cinfo);
-+	fl_cinfo->nwritten -= nwritten;
-+	list_for_each_entry(array, &fl_cinfo->commits, cinfo_list) {
-+		nwritten = pnfs_bucket_recover_commit_reqs(dst,
-+							   array->buckets,
-+							   array->nbuckets,
-+							   cinfo);
-+		fl_cinfo->nwritten -= nwritten;
-+	}
+ static inline void
+ pnfs_generic_mark_devid_invalid(struct nfs4_deviceid_node *node)
+ {
+@@ -770,6 +781,11 @@ pnfs_init_ds_commit_info(struct pnfs_ds_commit_info *fl_cinfo)
+ {
  }
- EXPORT_SYMBOL_GPL(pnfs_generic_recover_commit_reqs);
  
++static inline void
++pnfs_release_ds_info(struct pnfs_ds_commit_info *fl_cinfo, struct inode *inode)
++{
++}
++
+ static inline bool
+ pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg,
+ 			 struct nfs_commit_info *cinfo, u32 ds_commit_idx)
 -- 
 2.25.1
 
