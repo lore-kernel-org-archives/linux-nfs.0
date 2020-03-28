@@ -7,45 +7,55 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5AEB9C2D0EE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E547C2D0F1
 	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 303A62073B
+	by mail.kernel.org (Postfix) with ESMTP id 5BF2F2082D
 	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1585409680;
-	bh=6mPriu0gpOtKj59zFY2FBD+rje0XT523KPDFTm2vWOw=;
+	bh=9TfW3eJyhlN+A0d2XUhAtxTSyb8hkL/qjLtKnnStKMQ=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=ETJHGETve5eBpY4YLWkn85oOJ3Z7P/Is0lDSrVU4HEzkoD+Zg0ZvDSKSxTmsVS5Kj
-	 wbrkkvUm2Z9NVG6UrL+Rs7jcYfXwNVL7S3IeoSYc/prhEcPXVKeoy4uNjLHZFQFU83
-	 NnuCDAdnrUV5njU0Ii09XEOgHRFpxeyqnCW45KGk=
+	b=KAwFa8Dh5t9bgTTQ2I3WrTh15VEhpa3yKF+XmUmIH5bxxDHmNXR7jSypzSn8uPu52
+	 P91/jDY5BnNaB08iYz6GNrwAc3SutqggZr4qwxkr4uQuvEXfoZvaZF4bA92t16SCp5
+	 c81JI0pK3zTuK/BCeTb2bzosipmrpyd4f/PyhjT4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726389AbgC1Pej (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726482AbgC1Pej (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 28 Mar 2020 11:34:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40252 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:40334 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726482AbgC1Pee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 28 Mar 2020 11:34:34 -0400
+        id S1726518AbgC1Pei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 28 Mar 2020 11:34:38 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9B4D52074F
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:33 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id E93B5207FF
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585409673;
-        bh=6mPriu0gpOtKj59zFY2FBD+rje0XT523KPDFTm2vWOw=;
+        s=default; t=1585409678;
+        bh=9TfW3eJyhlN+A0d2XUhAtxTSyb8hkL/qjLtKnnStKMQ=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=fS8ndF5pKKxXC9ZMVIqBlrNb2BHZloV3/o9BQTiBUhM6/gIjErPrCJ6IDddGc2tSa
-         g100RZ2oBNMNPdP/PhrgbnJodv/MBf7c8q+EYYo9rcDfwKm2f3b/W7z9kFPYkePIn6
-         pfXvBhxFNUXWAOPg12sOr31mXzHNM7Oy7z5wqMKk=
+        b=slvpnJTV0YW7TtbTTtz1htYtUskXwViSmm4jPEkWuHAoS9whj8yAOToxiW5OnsomB
+         9TLf1EIwYNDMholVExKoxmz6gI/cm8lW2pNFNOhy9vPDAixyXt+VrCHkm+B7tayiXW
+         Yd/Bi/RYpsufvH5dzkY+KWmez1jYgotect/riwBk=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/22] pNFS/flexfiles: Simplify allocation of the mirror array
-Date:   Sat, 28 Mar 2020 11:31:59 -0400
-Message-Id: <20200328153220.1352010-2-trondmy@kernel.org>
+Subject: [PATCH v2 11/22] NFS/pNFS: Support commit arrays in nfs_clear_pnfs_ds_commit_verifiers()
+Date:   Sat, 28 Mar 2020 11:32:09 -0400
+Message-Id: <20200328153220.1352010-12-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200328153220.1352010-1-trondmy@kernel.org>
+In-Reply-To: <20200328153220.1352010-11-trondmy@kernel.org>
 References: <20200328153220.1352010-1-trondmy@kernel.org>
+ <20200328153220.1352010-2-trondmy@kernel.org>
+ <20200328153220.1352010-3-trondmy@kernel.org>
+ <20200328153220.1352010-4-trondmy@kernel.org>
+ <20200328153220.1352010-5-trondmy@kernel.org>
+ <20200328153220.1352010-6-trondmy@kernel.org>
+ <20200328153220.1352010-7-trondmy@kernel.org>
+ <20200328153220.1352010-8-trondmy@kernel.org>
+ <20200328153220.1352010-9-trondmy@kernel.org>
+ <20200328153220.1352010-10-trondmy@kernel.org>
+ <20200328153220.1352010-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -55,73 +65,48 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Just allocate the array at the end of the layout segment structure,
-instead of allocating it as a separate array of pointers.
+Add support for scanning the full list of per-layout segment commit
+arrays to nfs_clear_pnfs_ds_commit_verifiers().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 21 +++++----------------
- fs/nfs/flexfilelayout/flexfilelayout.h |  2 +-
- 2 files changed, 6 insertions(+), 17 deletions(-)
+ fs/nfs/internal.h | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index e7d8ae4d0cc5..19728206e9c6 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -248,18 +248,10 @@ static void ff_layout_put_mirror(struct nfs4_ff_layout_mirror *mirror)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 6542411c020f..4a1adad3740f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -517,13 +517,26 @@ int nfs_filemap_write_and_wait_range(struct address_space *mapping,
+ 		loff_t lstart, loff_t lend);
  
- static void ff_layout_free_mirror_array(struct nfs4_ff_layout_segment *fls)
+ #ifdef CONFIG_NFS_V4_1
++static inline void
++pnfs_bucket_clear_pnfs_ds_commit_verifiers(struct pnfs_commit_bucket *buckets,
++		unsigned int nbuckets)
++{
++	unsigned int i;
++
++	for (i = 0; i < nbuckets; i++)
++		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
++}
+ static inline
+ void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
  {
 -	int i;
-+	u32 i;
++	struct pnfs_commit_array *array;
++
++	pnfs_bucket_clear_pnfs_ds_commit_verifiers(cinfo->buckets,
++			cinfo->nbuckets);
  
--	if (fls->mirror_array) {
--		for (i = 0; i < fls->mirror_array_cnt; i++) {
--			/* normally mirror_ds is freed in
--			 * .free_deviceid_node but we still do it here
--			 * for .alloc_lseg error path */
--			ff_layout_put_mirror(fls->mirror_array[i]);
--		}
--		kfree(fls->mirror_array);
--		fls->mirror_array = NULL;
--	}
-+	for (i = 0; i < fls->mirror_array_cnt; i++)
-+		ff_layout_put_mirror(fls->mirror_array[i]);
+-	for (i = 0; i < cinfo->nbuckets; i++)
+-		cinfo->buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
++	list_for_each_entry(array, &cinfo->commits, cinfo_list)
++		pnfs_bucket_clear_pnfs_ds_commit_verifiers(array->buckets,
++				array->nbuckets);
  }
- 
- static int ff_layout_check_layout(struct nfs4_layoutget_res *lgr)
-@@ -400,16 +392,13 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 		goto out_err_free;
- 
- 	rc = -ENOMEM;
--	fls = kzalloc(sizeof(*fls), gfp_flags);
-+	fls = kzalloc(struct_size(fls, mirror_array, mirror_array_cnt),
-+			gfp_flags);
- 	if (!fls)
- 		goto out_err_free;
- 
- 	fls->mirror_array_cnt = mirror_array_cnt;
- 	fls->stripe_unit = stripe_unit;
--	fls->mirror_array = kcalloc(fls->mirror_array_cnt,
--				    sizeof(fls->mirror_array[0]), gfp_flags);
--	if (fls->mirror_array == NULL)
--		goto out_err_free;
- 
- 	for (i = 0; i < fls->mirror_array_cnt; i++) {
- 		struct nfs4_ff_layout_mirror *mirror;
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 2f369966abf7..354a031c69b1 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -99,7 +99,7 @@ struct nfs4_ff_layout_segment {
- 	u64				stripe_unit;
- 	u32				flags;
- 	u32				mirror_array_cnt;
--	struct nfs4_ff_layout_mirror	**mirror_array;
-+	struct nfs4_ff_layout_mirror	*mirror_array[];
- };
- 
- struct nfs4_flexfile_layout {
+ #else
+ static inline
 -- 
 2.25.1
 
