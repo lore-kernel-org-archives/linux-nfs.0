@@ -7,44 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E547C2D0F1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0793C2D0F0
 	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5BF2F2082D
+	by mail.kernel.org (Postfix) with ESMTP id B811F2073B
 	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1585409680;
-	bh=9TfW3eJyhlN+A0d2XUhAtxTSyb8hkL/qjLtKnnStKMQ=;
+	bh=CJ8DY17KMdhfCO9nyiXNNd4crXhjDpelxBt0kju1zOw=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=KAwFa8Dh5t9bgTTQ2I3WrTh15VEhpa3yKF+XmUmIH5bxxDHmNXR7jSypzSn8uPu52
-	 P91/jDY5BnNaB08iYz6GNrwAc3SutqggZr4qwxkr4uQuvEXfoZvaZF4bA92t16SCp5
-	 c81JI0pK3zTuK/BCeTb2bzosipmrpyd4f/PyhjT4=
+	b=000Hsafrm1NHTuZBpye9Fr0FY7m/8TcB+NXy7/aznjJCZ9Ksk+XZHhwujqbUMdYpc
+	 uxEfoj8izIz8sT2NGab5JAccf069TaDgBAFnw023jiXjl4FeB2kpMxaUOeKfbmkZ0O
+	 5lJAMMTs4UzLxo5u5GXmgPisQYQcSQk+it6CJ5mU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726482AbgC1Pej (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726518AbgC1Pej (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 28 Mar 2020 11:34:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40334 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:40320 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726518AbgC1Pei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727131AbgC1Pei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Sat, 28 Mar 2020 11:34:38 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E93B5207FF
+        by mail.kernel.org (Postfix) with ESMTPSA id 267032082D
         for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585409678;
-        bh=9TfW3eJyhlN+A0d2XUhAtxTSyb8hkL/qjLtKnnStKMQ=;
+        s=default; t=1585409677;
+        bh=CJ8DY17KMdhfCO9nyiXNNd4crXhjDpelxBt0kju1zOw=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=slvpnJTV0YW7TtbTTtz1htYtUskXwViSmm4jPEkWuHAoS9whj8yAOToxiW5OnsomB
-         9TLf1EIwYNDMholVExKoxmz6gI/cm8lW2pNFNOhy9vPDAixyXt+VrCHkm+B7tayiXW
-         Yd/Bi/RYpsufvH5dzkY+KWmez1jYgotect/riwBk=
+        b=1qsdctqpXtSB9W6+jRdk6bVH1DmPnzSmRMEeb1g9UOCpfsua5Xc8ewaDyn12EHLNm
+         9Q2r9yq/GSSooFABAteKwA/q5hFJNh4a7DFtERR7flQiP+rYoik1ESEwpk0peeu3pI
+         A+QH4f9hzmEVORuX2KNLGucuQnHP1Ao7HRPNyDSA=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 11/22] NFS/pNFS: Support commit arrays in nfs_clear_pnfs_ds_commit_verifiers()
-Date:   Sat, 28 Mar 2020 11:32:09 -0400
-Message-Id: <20200328153220.1352010-12-trondmy@kernel.org>
+Subject: [PATCH v2 09/22] NFS: commit errors should be fatal
+Date:   Sat, 28 Mar 2020 11:32:07 -0400
+Message-Id: <20200328153220.1352010-10-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200328153220.1352010-11-trondmy@kernel.org>
+In-Reply-To: <20200328153220.1352010-9-trondmy@kernel.org>
 References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-2-trondmy@kernel.org>
  <20200328153220.1352010-3-trondmy@kernel.org>
@@ -54,8 +54,6 @@ References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-7-trondmy@kernel.org>
  <20200328153220.1352010-8-trondmy@kernel.org>
  <20200328153220.1352010-9-trondmy@kernel.org>
- <20200328153220.1352010-10-trondmy@kernel.org>
- <20200328153220.1352010-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -65,48 +63,86 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Add support for scanning the full list of per-layout segment commit
-arrays to nfs_clear_pnfs_ds_commit_verifiers().
+Fix the O_DIRECT code to avoid retries if the COMMIT fails with a fatal
+error.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/internal.h | 19 ++++++++++++++++---
- 1 file changed, 16 insertions(+), 3 deletions(-)
+ fs/nfs/direct.c | 32 ++++++++++++++++++++++++++++++--
+ 1 file changed, 30 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6542411c020f..4a1adad3740f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -517,13 +517,26 @@ int nfs_filemap_write_and_wait_range(struct address_space *mapping,
- 		loff_t lstart, loff_t lend);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 7ef7f71ae315..f7bf1181b690 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -94,6 +94,7 @@ struct nfs_direct_req {
+ #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
+ 	/* for read */
+ #define NFS_ODIRECT_SHOULD_DIRTY	(3)	/* dirty user-space page after read */
++#define NFS_ODIRECT_DONE		INT_MAX	/* write verification failed */
+ 	struct nfs_writeverf	verf;		/* unstable write verifier */
+ };
  
- #ifdef CONFIG_NFS_V4_1
-+static inline void
-+pnfs_bucket_clear_pnfs_ds_commit_verifiers(struct pnfs_commit_bucket *buckets,
-+		unsigned int nbuckets)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i < nbuckets; i++)
-+		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
-+}
- static inline
- void nfs_clear_pnfs_ds_commit_verifiers(struct pnfs_ds_commit_info *cinfo)
- {
--	int i;
-+	struct pnfs_commit_array *array;
-+
-+	pnfs_bucket_clear_pnfs_ds_commit_verifiers(cinfo->buckets,
-+			cinfo->nbuckets);
+@@ -678,8 +679,17 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ 	struct nfs_page *req;
+ 	int status = data->task.tk_status;
  
--	for (i = 0; i < cinfo->nbuckets; i++)
--		cinfo->buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
-+	list_for_each_entry(array, &cinfo->commits, cinfo_list)
-+		pnfs_bucket_clear_pnfs_ds_commit_verifiers(array->buckets,
-+				array->nbuckets);
++	if (status < 0) {
++		/* Errors in commit are fatal */
++		dreq->error = status;
++		dreq->max_count = 0;
++		dreq->count = 0;
++		dreq->flags = NFS_ODIRECT_DONE;
++	} else if (dreq->flags == NFS_ODIRECT_DONE)
++		status = dreq->error;
++
+ 	nfs_init_cinfo_from_dreq(&cinfo, dreq);
+-	if (status < 0 || nfs_direct_cmp_commit_data_verf(dreq, data))
++	if (nfs_direct_cmp_commit_data_verf(dreq, data))
+ 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 
+ 	while (!list_empty(&data->pages)) {
+@@ -708,7 +718,8 @@ static void nfs_direct_resched_write(struct nfs_commit_info *cinfo,
+ 	struct nfs_direct_req *dreq = cinfo->dreq;
+ 
+ 	spin_lock(&dreq->lock);
+-	dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
++	if (dreq->flags != NFS_ODIRECT_DONE)
++		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 	spin_unlock(&dreq->lock);
+ 	nfs_mark_request_commit(req, NULL, cinfo, 0);
  }
- #else
- static inline
+@@ -731,6 +742,22 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+ 		nfs_direct_write_reschedule(dreq);
+ }
+ 
++static void nfs_direct_write_clear_reqs(struct nfs_direct_req *dreq)
++{
++	struct nfs_commit_info cinfo;
++	struct nfs_page *req;
++	LIST_HEAD(reqs);
++
++	nfs_init_cinfo_from_dreq(&cinfo, dreq);
++	nfs_direct_write_scan_commit_list(dreq->inode, &reqs, &cinfo);
++
++	while (!list_empty(&reqs)) {
++		req = nfs_list_entry(reqs.next);
++		nfs_list_remove_request(req);
++		nfs_unlock_and_release_request(req);
++	}
++}
++
+ static void nfs_direct_write_schedule_work(struct work_struct *work)
+ {
+ 	struct nfs_direct_req *dreq = container_of(work, struct nfs_direct_req, work);
+@@ -745,6 +772,7 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
+ 			nfs_direct_write_reschedule(dreq);
+ 			break;
+ 		default:
++			nfs_direct_write_clear_reqs(dreq);
+ 			nfs_zap_mapping(dreq->inode, dreq->inode->i_mapping);
+ 			nfs_direct_complete(dreq);
+ 	}
 -- 
 2.25.1
 
