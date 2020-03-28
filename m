@@ -7,44 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E42A6C2D0F0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97B43C43331
 	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BB1CB2073B
+	by mail.kernel.org (Postfix) with ESMTP id 651F02073B
 	for <linux-nfs@archiver.kernel.org>; Sat, 28 Mar 2020 15:34:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1585409684;
-	bh=+SFShDxnoX+gVXJT4uPxAaGlDjkIaMd8lZ0ElJY57m0=;
+	bh=SfThXb5sbELLShXdiZVWMn/D+sIxP3vxICn3SobEKq0=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=RHcWrNZRMb5D4vlTTAquhn6SKKXQQV47No+aW3fcPJz2/epftQ6734IuduJkEP27V
-	 dUHipvFwqNYNZE+81TH1pWzH5hF3q3n/3NqpINyctD+1DkMEDC7Fk1F0I2x+1JHOvC
-	 JcyhJ16TNnmLVIBrrcwGYjRPUM7k1t6grD9ImgnA=
+	b=bvGN33Jf0o9jbh9OFDvAbl6NR5t7HKZToFdtFfD256nf373JgxoVj6+E3zhuZfbdS
+	 fqsK1h0G74cW47z4tElfQ67oHyESF0vb0cqjpV/DpuOTS8kXuK2oFPqqiH/JbRSyYU
+	 a/uwwQCD/TbdJicEMHaK3pCTB0obXV8kG0VKg6I4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727183AbgC1Pem (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 28 Mar 2020 11:34:42 -0400
+        id S1727067AbgC1Pen (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 28 Mar 2020 11:34:43 -0400
 Received: from mail.kernel.org ([198.145.29.99]:40346 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727178AbgC1Pel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 28 Mar 2020 11:34:41 -0400
+        id S1726977AbgC1Pem (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 28 Mar 2020 11:34:42 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1C4CA2073B
+        by mail.kernel.org (Postfix) with ESMTPSA id F0F5820848
         for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2020 15:34:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585409681;
-        bh=+SFShDxnoX+gVXJT4uPxAaGlDjkIaMd8lZ0ElJY57m0=;
+        s=default; t=1585409682;
+        bh=SfThXb5sbELLShXdiZVWMn/D+sIxP3vxICn3SobEKq0=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=oypH7GgjQyt+jYGpGipTemTdSliCmkNLEGUfdnxdNvrQjo0Q6gWhUrOYNcI77jnMT
-         EZxvNeTMJXgm/v0HO7Xd+blFKearldO3IkvklyMy+104WBgYWpmEJEnVRvLou0mtJY
-         6rqQSdyZ4DuEA/vRlSrkyoSlQTq9qZusUFqOvOIQ=
+        b=H04n6K2PSYaLjL/htFFW3k1PyFpz7GmZL8OZkVJAHn6sWyrrpYbfNMmTPMlDoeARw
+         1Sl1ASISdWkBJYHYEY8lz8+VgO8D0j8P8sdR03IzAsjvNvvz6/yR9K9AIshOtYL/sh
+         rPkKBaMsbqwQOQOvywRQi6MnC50UCoRSt/tABrEo=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 18/22] NFS/pNFS: Fix pnfs_layout_mark_request_commit() invalid layout segment handling
-Date:   Sat, 28 Mar 2020 11:32:16 -0400
-Message-Id: <20200328153220.1352010-19-trondmy@kernel.org>
+Subject: [PATCH v2 20/22] pNFS/flexfiles: Check the layout segment range before doing I/O
+Date:   Sat, 28 Mar 2020 11:32:18 -0400
+Message-Id: <20200328153220.1352010-21-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200328153220.1352010-18-trondmy@kernel.org>
+In-Reply-To: <20200328153220.1352010-20-trondmy@kernel.org>
 References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-2-trondmy@kernel.org>
  <20200328153220.1352010-3-trondmy@kernel.org>
@@ -63,6 +63,8 @@ References: <20200328153220.1352010-1-trondmy@kernel.org>
  <20200328153220.1352010-16-trondmy@kernel.org>
  <20200328153220.1352010-17-trondmy@kernel.org>
  <20200328153220.1352010-18-trondmy@kernel.org>
+ <20200328153220.1352010-19-trondmy@kernel.org>
+ <20200328153220.1352010-20-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -72,57 +74,86 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Fix up pnfs_layout_mark_request_commit() to alway reschedule the write
-if the layout segment is invalid. Also minor cleanup.
+When starting to read or write with a layout segment, check that the
+range matches our request.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs_nfs.c | 28 ++++++++++++----------------
- 1 file changed, 12 insertions(+), 16 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 12 ++++++++++--
+ fs/nfs/pnfs.c                          |  3 ++-
+ fs/nfs/pnfs.h                          |  1 +
+ 3 files changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index abf16fc98346..25f135572fc8 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -1166,26 +1166,22 @@ pnfs_layout_mark_request_commit(struct nfs_page *req,
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 3221001f2ea1..2b45807a5221 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -830,6 +830,14 @@ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
+ 	}
+ }
+ 
++static void
++ff_layout_pg_check_layout(struct nfs_pageio_descriptor *pgio,
++			  struct nfs_page *req)
++{
++	pnfs_generic_pg_check_layout(pgio);
++	pnfs_generic_pg_check_range(pgio, req);
++}
++
+ static void
+ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct nfs_page *req)
+@@ -840,7 +848,7 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 	int ds_idx;
+ 
+ retry:
+-	pnfs_generic_pg_check_layout(pgio);
++	ff_layout_pg_check_layout(pgio, req);
+ 	/* Use full layout for now */
+ 	if (!pgio->pg_lseg) {
+ 		ff_layout_pg_get_read(pgio, req, false);
+@@ -900,7 +908,7 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	int i;
+ 
+ retry:
+-	pnfs_generic_pg_check_layout(pgio);
++	ff_layout_pg_check_layout(pgio, req);
+ 	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   nfs_req_openctx(req),
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index eba18f137fb0..6fcf26b16816 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2611,7 +2611,7 @@ EXPORT_SYMBOL_GPL(pnfs_generic_pg_check_layout);
+  * Check for any intersection between the request and the pgio->pg_lseg,
+  * and if none, put this pgio->pg_lseg away.
+  */
+-static void
++void
+ pnfs_generic_pg_check_range(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
  {
- 	struct list_head *list;
- 	struct pnfs_commit_array *array;
--	struct pnfs_commit_bucket *buckets;
-+	struct pnfs_commit_bucket *bucket;
+ 	if (pgio->pg_lseg && !pnfs_lseg_request_intersecting(pgio->pg_lseg, req)) {
+@@ -2619,6 +2619,7 @@ pnfs_generic_pg_check_range(struct nfs_pageio_descriptor *pgio, struct nfs_page
+ 		pgio->pg_lseg = NULL;
+ 	}
+ }
++EXPORT_SYMBOL_GPL(pnfs_generic_pg_check_range);
  
- 	mutex_lock(&NFS_I(cinfo->inode)->commit_mutex);
- 	array = pnfs_lookup_commit_array(cinfo->ds, lseg);
--	if (!array)
-+	if (!array || !pnfs_is_valid_lseg(lseg))
- 		goto out_resched;
--	buckets = array->buckets;
--	list = &buckets[ds_commit_idx].written;
--	if (list_empty(list)) {
--		if (!pnfs_is_valid_lseg(lseg))
--			goto out_resched;
--		/* Non-empty buckets hold a reference on the lseg.  That ref
--		 * is normally transferred to the COMMIT call and released
--		 * there.  It could also be released if the last req is pulled
--		 * off due to a rewrite, in which case it will be done in
--		 * pnfs_common_clear_request_commit
--		 */
--		if (!buckets[ds_commit_idx].lseg)
--			buckets[ds_commit_idx].lseg = pnfs_get_lseg(lseg);
--	}
-+	bucket = &array->buckets[ds_commit_idx];
-+	list = &bucket->written;
-+	/* Non-empty buckets hold a reference on the lseg.  That ref
-+	 * is normally transferred to the COMMIT call and released
-+	 * there.  It could also be released if the last req is pulled
-+	 * off due to a rewrite, in which case it will be done in
-+	 * pnfs_common_clear_request_commit
-+	 */
-+	if (!bucket->lseg)
-+		bucket->lseg = pnfs_get_lseg(lseg);
- 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
- 	cinfo->ds->nwritten++;
- 
+ void
+ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index b32025553f26..8e0ada581b92 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -252,6 +252,7 @@ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, struct nfs_fsinfo *);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_check_layout(struct nfs_pageio_descriptor *pgio);
++void pnfs_generic_pg_check_range(struct nfs_pageio_descriptor *pgio, struct nfs_page *req);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+ void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
 -- 
 2.25.1
 
