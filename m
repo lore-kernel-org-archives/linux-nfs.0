@@ -2,91 +2,76 @@ Return-Path: <SRS0=pQhJ=5P=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 88FECC43331
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Mar 2020 10:22:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16FA9C43331
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Mar 2020 12:43:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 51EB920748
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Mar 2020 10:22:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585563769;
-	bh=ZrDA4XEe+oooR3I5ta+CCjaMOqer6mFM9Ab+oPDGTFQ=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:List-ID:From;
-	b=HdKCuhwOfhXTk4xLY+7mWUpHxLLkJu94ZvztMdYwGUf0d9+XaIPG4yHeYwVQaLLTS
-	 JkiKMWPvcT1MgfvVk9PmtBT7JBPhV1u1zx9zj32ua0TUIA2fDlT4dLbxTx9CDTwEbg
-	 zgylz3KhwLfh0Nwl1yO/XaX3PcWflH9uoowgGC5c=
+	by mail.kernel.org (Postfix) with ESMTP id D314B20675
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Mar 2020 12:43:07 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Adcb4TCu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729307AbgC3KWs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Mar 2020 06:22:48 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34118 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729241AbgC3KWs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Mar 2020 06:22:48 -0400
-Received: from tleilax.poochiereds.net (68-20-15-154.lightspeed.rlghnc.sbcglobal.net [68.20.15.154])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id CF83F206DB;
-        Mon, 30 Mar 2020 10:22:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585563768;
-        bh=ZrDA4XEe+oooR3I5ta+CCjaMOqer6mFM9Ab+oPDGTFQ=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=yOBn3zUZwPtXEVIi9Uv+HHtBnECPA3FReKWBjQlBBWMHqzUCoLq+8v5qLwbohgbQ8
-         y+v51Oh3DQ7oPlSmY+48ynaDkDW29wkHS9N6o4jn3z/SvJFRu0hakR4y7W6S1z3++O
-         5b9aRl/lYeOLukStHG7Va2PlvNfxc/3/9eNaOibE=
-Message-ID: <80e1506f0a997f1f925990fe12c4469947b7b184.camel@kernel.org>
-Subject: Re: [PATCH v2] nfsd: memory corruption in nfsd4_lock()
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Vasily Averin <vvs@virtuozzo.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
-Date:   Mon, 30 Mar 2020 06:22:46 -0400
-In-Reply-To: <d169e942-03e4-0a4b-8c45-56f4c26cd45c@virtuozzo.com>
-References: <7E365A05-4D39-4BF9-8E44-244136173FC7@oracle.com>
-         <d169e942-03e4-0a4b-8c45-56f4c26cd45c@virtuozzo.com>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.34.4 (3.34.4-1.fc31) 
+        id S1729596AbgC3MnH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Mar 2020 08:43:07 -0400
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:38411 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727339AbgC3MnH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2020 08:43:07 -0400
+Received: by mail-pf1-f196.google.com with SMTP id c21so7860661pfo.5
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Mar 2020 05:43:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=date:from:to:subject:message-id:mime-version:content-disposition;
+        bh=4eANpMDTE+G6Q9rWGKxo6oSRPOg4DOHsmr6rBaWJCcA=;
+        b=Adcb4TCuqi7sI83JI7TDGbxDmwiMMsHgUjbzITJo4ASxGzI0ZKZDiDIy5TS2DcO71d
+         E16quUNI+lcq326D3MD1dhI3jVPf4u44ZqWuE1Z7gbJI5/MDYbjgf4wANuLObJTaoioy
+         ao7WcJXARzYXGO6MRpGHGGB4WpXauy05MNz0lNDNRSsyb1smZzg4L+JUg1WACVJN+ZeT
+         7QeCTm8qlsIU1v2hT+2i12n2SHTGhstBkeObOH0fVhQagVfVCr/FPndxuO7ri24moIea
+         H8Ke5oeFekaSSszCTwPIcQBCioOi9fAf6h9j+0peSU6hm1V3fp6SPVRrxeTQQEx7X/E9
+         meeA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:subject:message-id:mime-version
+         :content-disposition;
+        bh=4eANpMDTE+G6Q9rWGKxo6oSRPOg4DOHsmr6rBaWJCcA=;
+        b=J5zLON8gwR5gYer8XrSRcu9PcXPPqr3jseKZ43BbydzfkJla232UKP14IzolBEWWzG
+         1PTE7OqddTmz+n9r1YCtdw4YXEHmtO/+vVxh6SVDfSxJVHGagovIgjlU7NHZg2jX0Op5
+         Ry4JrmhbMKUlX6pKEjiBGcMzGZqT2h+B32Nl6kbExBcJJlHY/XaospWYajxGgjPZ5XiZ
+         LUu365CnQyp28fwwp76ah2IvKZUye0tkjj5c00p0cVOZ0n+6FykUmqA/v/RsokzKl78e
+         b9Cd9aAiLlZ1alMYpPMVPdOz7bTRDpX6XRoMMYuGvhepT/F5Agkh04NpwgrADLT9Wb6z
+         m1BQ==
+X-Gm-Message-State: ANhLgQ0bZaYKVOzcdkEtwL2/3x+CfJSpAfiTkJUDutD8kRq5/lCOqgkU
+        FHOJkJnRNvX+AX7PEOWU168DXrLu
+X-Google-Smtp-Source: ADFU+vua0cBzazx0Nsw/4FpTrcyupHnogcLj5mcnNqMETJP6EIxsUXbRR5jIkUIA0d4ccwFtT4PpBw==
+X-Received: by 2002:a63:8343:: with SMTP id h64mr12306920pge.73.1585572184421;
+        Mon, 30 Mar 2020 05:43:04 -0700 (PDT)
+Received: from C02W82TBHV2R ([116.75.57.209])
+        by smtp.gmail.com with ESMTPSA id w9sm10198732pfd.94.2020.03.30.05.43.02
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 30 Mar 2020 05:43:03 -0700 (PDT)
+Date:   Mon, 30 Mar 2020 18:12:59 +0530
+From:   Srikrishan Malik <srikrishanmalik@gmail.com>
+To:     linux-nfs@vger.kernel.org
+Subject: libnfsidmap: SASL bind suppoprt in umich_ldap
+Message-ID: <20200330123501.GA50689@C02W82TBHV2R>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2020-03-27 at 07:50 +0300, Vasily Averin wrote:
-> Dear Chuck,
-> please use following patch instead.
-> -----
-> New struct nfsd4_blocked_lock allocated in find_or_allocate_block()
-> does not initialized nbl_list and nbl_lru.
-> If conflock allocation fails rollback can call list_del_init()
-> access uninitialized fields and corrupt memory.
-> 
-> v2: just initialize nbl_list and nbl_lru right after nbl allocation.
-> 
-> Fixes: 76d348fadff5 ("nfsd: have nfsd4_lock use blocking locks for v4.1+ lock")
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 369e574c5092..1b2eb6b35d64 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -266,6 +266,8 @@ find_or_allocate_block(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
->  	if (!nbl) {
->  		nbl= kmalloc(sizeof(*nbl), GFP_KERNEL);
->  		if (nbl) {
-> +			INIT_LIST_HEAD(&nbl->nbl_list);
-> +			INIT_LIST_HEAD(&nbl->nbl_lru);
->  			fh_copy_shallow(&nbl->nbl_fh, fh);
->  			locks_init_lock(&nbl->nbl_lock);
->  			nfsd4_init_cb(&nbl->nbl_cb, lo->lo_owner.so_client,
+Hi,
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+This is regarding the umich_ldap plugin in libnfsidmap.
+This plugin uses only simple bind, are there any
+plans/ongoing efforts to support SASL binds.
 
+Thanks 
+Sri
