@@ -7,43 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2770C43331
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 23:51:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C813EC2BA18
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 23:51:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 94BFF20787
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 23:51:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 937DC20787
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 23:51:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585871507;
-	bh=nqt8+cX6SQem6DZLzOlBmx3XAeGEX6R/w8yCNPG6izQ=;
-	h=From:To:Subject:Date:List-ID:From;
-	b=OPR3CX0nATWlFVBJbryLSFUfZ3sLA6VGuItvpsbF+D9v8JfUQS5JG1tZ9IXffPe7Y
-	 kNf3+TnRutjGydVVkE+k/JXwSrgT7mrJr4irTzS3oUiwslEZb8UyYKc1Qc32ubGlcw
-	 5LZvie9DkTA/VBc0DW1cqIQWRJGgLt0eGfb8kXIc=
+	s=default; t=1585871509;
+	bh=bQx2x/qI2oBe78xTPFmoMSAAsU4fRFb5TrCyV+Ii+b8=;
+	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=yOHapVsqCCXxLKa5D/Cc+5PM5Jk1tFUbJ0X0pPitJASu1hcGCZxR48F4H1bTvsL+y
+	 R2kGK2WRIZ5BJAFzjkFTxu4yUloUpg9l3U/wTN0QUfHM3VruqwSs+0o2jqkmwf0gUb
+	 RQEAhH0skpZ4iY5+xgOxvzr+roRFqQtcmJCYD3+A=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390216AbgDBXvr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 2 Apr 2020 19:51:47 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54596 "EHLO mail.kernel.org"
+        id S2390289AbgDBXvt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 2 Apr 2020 19:51:49 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54600 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2390172AbgDBXvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Apr 2020 19:51:47 -0400
+        id S2390284AbgDBXvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Apr 2020 19:51:48 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3BCF62072E
-        for <linux-nfs@vger.kernel.org>; Thu,  2 Apr 2020 23:51:46 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 34CBA2072E
+        for <linux-nfs@vger.kernel.org>; Thu,  2 Apr 2020 23:51:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585871506;
-        bh=nqt8+cX6SQem6DZLzOlBmx3XAeGEX6R/w8yCNPG6izQ=;
-        h=From:To:Subject:Date:From;
-        b=crW1J/m6l5ne/tnGtsE+lFZqOrbSvYy5UQBsVH8tRUxB31j4rALvY2M3guHaINoot
-         iJECAMKXz7mCUgUokjZZsyt0XxuMQASBh1SXc5Jfkgg75ENQuEU6cRN2BtmGgWPErv
-         alet9XQtjTTTOaRxJn4dEwXGg1+hVFf8FWuBPbQ8=
+        s=default; t=1585871507;
+        bh=bQx2x/qI2oBe78xTPFmoMSAAsU4fRFb5TrCyV+Ii+b8=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=QcmFnULAE4+RfNTrGbFJSqkn5ITlR3wyu0cEXPePiPGPd2wACcS34PSw1QN9wbGJI
+         gS6tl564cJFixrE1Nmn72rkXsZef2DKyyB6+6fDA3bhOVlnJMep4i48wkn/W06IBCk
+         ciA/80sG1kYt/BTMPStVG93FeZVDJkWS1V2l2HGo=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFS: Beware when dereferencing the delegation cred
-Date:   Thu,  2 Apr 2020 19:49:15 -0400
-Message-Id: <20200402234917.797185-1-trondmy@kernel.org>
+Subject: [PATCH 3/3] NFS/pnfs: Reference the layout cred in pnfs_prepare_layoutreturn()
+Date:   Thu,  2 Apr 2020 19:49:17 -0400
+Message-Id: <20200402234917.797185-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200402234917.797185-2-trondmy@kernel.org>
+References: <20200402234917.797185-1-trondmy@kernel.org>
+ <20200402234917.797185-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -53,81 +56,199 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-When we look up the delegation cred, we are usually doing so in
-conjunction with a read of the stateid, and we want to ensure
-that the look up is atomic with that read.
+When we're sending a layoutreturn, ensure that we reference the
+layout cred atomically with the copy of the stateid.
 
-Fixes: 5f4adff16fa2 ("NFSv4: nfs_update_inplace_delegation() should update delegation cred")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/delegation.c | 9 ++++++++-
- fs/nfs/nfs4proc.c   | 3 +++
- 2 files changed, 11 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c |  1 +
+ fs/nfs/pnfs.c     | 52 ++++++++++++++++++++++++++++++-----------------
+ 2 files changed, 34 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 01974f17afc9..816e1427f17e 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -1243,8 +1243,10 @@ static int nfs_server_reap_expired_delegations(struct nfs_server *server,
- 		inode = nfs_delegation_grab_inode(delegation);
- 		if (inode == NULL)
- 			goto restart_locked;
-+		spin_lock(&delegation->lock);
- 		cred = get_cred_rcu(delegation->cred);
- 		nfs4_stateid_copy(&stateid, &delegation->stateid);
-+		spin_unlock(&delegation->lock);
- 		clear_bit(NFS_DELEGATION_TEST_EXPIRED, &delegation->flags);
- 		rcu_read_unlock();
- 		nfs_delegation_test_free_expired(inode, &stateid, cred);
-@@ -1363,11 +1365,14 @@ bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags,
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_delegation *delegation;
--	bool ret;
-+	bool ret = false;
- 
- 	flags &= FMODE_READ|FMODE_WRITE;
- 	rcu_read_lock();
- 	delegation = rcu_dereference(nfsi->delegation);
-+	if (!delegation)
-+		goto out;
-+	spin_lock(&delegation->lock);
- 	ret = nfs4_is_valid_delegation(delegation, flags);
- 	if (ret) {
- 		nfs4_stateid_copy(dst, &delegation->stateid);
-@@ -1375,6 +1380,8 @@ bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags,
- 		if (cred)
- 			*cred = get_cred(delegation->cred);
- 	}
-+	spin_unlock(&delegation->lock);
-+out:
- 	rcu_read_unlock();
- 	return ret;
- }
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 905c7d1bc277..e4f8311e506c 100644
+index e4f8311e506c..99e9f2ee7e7a 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2790,16 +2790,19 @@ static int nfs41_check_delegation_stateid(struct nfs4_state *state)
- 		return NFS_OK;
+@@ -9297,6 +9297,7 @@ static void nfs4_layoutreturn_release(void *calldata)
+ 		lrp->ld_private.ops->free(&lrp->ld_private);
+ 	pnfs_put_layout_hdr(lrp->args.layout);
+ 	nfs_iput_and_deactive(lrp->inode);
++	put_cred(lrp->cred);
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 84029c9b2b1b..f2dc35c22964 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1144,6 +1144,7 @@ void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
+ static bool
+ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
+ 		nfs4_stateid *stateid,
++		const struct cred **cred,
+ 		enum pnfs_iomode *iomode)
+ {
+ 	/* Serialise LAYOUTGET/LAYOUTRETURN */
+@@ -1154,18 +1155,17 @@ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
+ 	set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
+ 	pnfs_get_layout_hdr(lo);
+ 	if (test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags)) {
+-		if (stateid != NULL) {
+-			nfs4_stateid_copy(stateid, &lo->plh_stateid);
+-			if (lo->plh_return_seq != 0)
+-				stateid->seqid = cpu_to_be32(lo->plh_return_seq);
+-		}
++		nfs4_stateid_copy(stateid, &lo->plh_stateid);
++		*cred = get_cred(lo->plh_lc_cred);
++		if (lo->plh_return_seq != 0)
++			stateid->seqid = cpu_to_be32(lo->plh_return_seq);
+ 		if (iomode != NULL)
+ 			*iomode = lo->plh_return_iomode;
+ 		pnfs_clear_layoutreturn_info(lo);
+ 		return true;
+ 	}
+-	if (stateid != NULL)
+-		nfs4_stateid_copy(stateid, &lo->plh_stateid);
++	nfs4_stateid_copy(stateid, &lo->plh_stateid);
++	*cred = get_cred(lo->plh_lc_cred);
+ 	if (iomode != NULL)
+ 		*iomode = IOMODE_ANY;
+ 	return true;
+@@ -1189,20 +1189,26 @@ pnfs_init_layoutreturn_args(struct nfs4_layoutreturn_args *args,
+ }
+ 
+ static int
+-pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+-		       enum pnfs_iomode iomode, bool sync)
++pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo,
++		       const nfs4_stateid *stateid,
++		       const struct cred **pcred,
++		       enum pnfs_iomode iomode,
++		       bool sync)
+ {
+ 	struct inode *ino = lo->plh_inode;
+ 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
+ 	struct nfs4_layoutreturn *lrp;
++	const struct cred *cred = *pcred;
+ 	int status = 0;
+ 
++	*pcred = NULL;
+ 	lrp = kzalloc(sizeof(*lrp), GFP_NOFS);
+ 	if (unlikely(lrp == NULL)) {
+ 		status = -ENOMEM;
+ 		spin_lock(&ino->i_lock);
+ 		pnfs_clear_layoutreturn_waitbit(lo);
+ 		spin_unlock(&ino->i_lock);
++		put_cred(cred);
+ 		pnfs_put_layout_hdr(lo);
+ 		goto out;
+ 	}
+@@ -1210,7 +1216,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo, const nfs4_stateid *stateid,
+ 	pnfs_init_layoutreturn_args(&lrp->args, lo, stateid, iomode);
+ 	lrp->args.ld_private = &lrp->ld_private;
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
+-	lrp->cred = lo->plh_lc_cred;
++	lrp->cred = cred;
+ 	if (ld->prepare_layoutreturn)
+ 		ld->prepare_layoutreturn(&lrp->args);
+ 
+@@ -1255,15 +1261,16 @@ static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 		return;
+ 	spin_lock(&inode->i_lock);
+ 	if (pnfs_layout_need_return(lo)) {
++		const struct cred *cred;
+ 		nfs4_stateid stateid;
+ 		enum pnfs_iomode iomode;
+ 		bool send;
+ 
+-		send = pnfs_prepare_layoutreturn(lo, &stateid, &iomode);
++		send = pnfs_prepare_layoutreturn(lo, &stateid, &cred, &iomode);
+ 		spin_unlock(&inode->i_lock);
+ 		if (send) {
+ 			/* Send an async layoutreturn so we dont deadlock */
+-			pnfs_send_layoutreturn(lo, &stateid, iomode, false);
++			pnfs_send_layoutreturn(lo, &stateid, &cred, iomode, false);
+ 		}
+ 	} else
+ 		spin_unlock(&inode->i_lock);
+@@ -1283,6 +1290,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	struct pnfs_layout_hdr *lo = NULL;
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+ 	LIST_HEAD(tmp_list);
++	const struct cred *cred;
+ 	nfs4_stateid stateid;
+ 	int status = 0;
+ 	bool send, valid_layout;
+@@ -1327,10 +1335,10 @@ _pnfs_return_layout(struct inode *ino)
+ 		goto out_put_layout_hdr;
  	}
  
-+	spin_lock(&delegation->lock);
- 	nfs4_stateid_copy(&stateid, &delegation->stateid);
+-	send = pnfs_prepare_layoutreturn(lo, &stateid, NULL);
++	send = pnfs_prepare_layoutreturn(lo, &stateid, &cred, NULL);
+ 	spin_unlock(&ino->i_lock);
+ 	if (send)
+-		status = pnfs_send_layoutreturn(lo, &stateid, IOMODE_ANY, true);
++		status = pnfs_send_layoutreturn(lo, &stateid, &cred, IOMODE_ANY, true);
+ out_put_layout_hdr:
+ 	pnfs_free_lseg_list(&tmp_list);
+ 	pnfs_put_layout_hdr(lo);
+@@ -1376,6 +1384,7 @@ bool pnfs_roc(struct inode *ino,
+ 	struct nfs4_state *state;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg, *next;
++	const struct cred *lc_cred;
+ 	nfs4_stateid stateid;
+ 	enum pnfs_iomode iomode = 0;
+ 	bool layoutreturn = false, roc = false;
+@@ -1445,16 +1454,20 @@ bool pnfs_roc(struct inode *ino,
+ 	 * 2. we don't send layoutreturn
+ 	 */
+ 	/* lo ref dropped in pnfs_roc_release() */
+-	layoutreturn = pnfs_prepare_layoutreturn(lo, &stateid, &iomode);
++	layoutreturn = pnfs_prepare_layoutreturn(lo, &stateid, &lc_cred, &iomode);
+ 	/* If the creds don't match, we can't compound the layoutreturn */
+-	if (!layoutreturn || cred_fscmp(cred, lo->plh_lc_cred) != 0)
++	if (!layoutreturn)
+ 		goto out_noroc;
++	if (cred_fscmp(cred, lc_cred) != 0)
++		goto out_noroc_put_cred;
  
- 	if (!test_and_clear_bit(NFS_DELEGATION_TEST_EXPIRED,
- 				&delegation->flags)) {
-+		spin_unlock(&delegation->lock);
- 		rcu_read_unlock();
- 		return NFS_OK;
- 	}
+ 	roc = layoutreturn;
+ 	pnfs_init_layoutreturn_args(args, lo, &stateid, iomode);
+ 	res->lrs_present = 0;
+ 	layoutreturn = false;
  
- 	if (delegation->cred)
- 		cred = get_cred(delegation->cred);
-+	spin_unlock(&delegation->lock);
++out_noroc_put_cred:
++	put_cred(lc_cred);
+ out_noroc:
+ 	spin_unlock(&ino->i_lock);
  	rcu_read_unlock();
- 	status = nfs41_test_and_free_expired_stateid(server, &stateid, cred);
- 	trace_nfs4_test_delegation_stateid(state, NULL, status);
+@@ -1467,7 +1480,7 @@ bool pnfs_roc(struct inode *ino,
+ 		return true;
+ 	}
+ 	if (layoutreturn)
+-		pnfs_send_layoutreturn(lo, &stateid, iomode, true);
++		pnfs_send_layoutreturn(lo, &stateid, &lc_cred, iomode, true);
+ 	pnfs_put_layout_hdr(lo);
+ 	return false;
+ }
+@@ -2464,13 +2477,14 @@ pnfs_mark_layout_for_return(struct inode *inode,
+ 	 * for how it works.
+ 	 */
+ 	if (pnfs_mark_matching_lsegs_return(lo, &lo->plh_return_segs, range, 0) != -EBUSY) {
++		const struct cred *cred;
+ 		nfs4_stateid stateid;
+ 		enum pnfs_iomode iomode;
+ 
+-		return_now = pnfs_prepare_layoutreturn(lo, &stateid, &iomode);
++		return_now = pnfs_prepare_layoutreturn(lo, &stateid, &cred, &iomode);
+ 		spin_unlock(&inode->i_lock);
+ 		if (return_now)
+-			pnfs_send_layoutreturn(lo, &stateid, iomode, false);
++			pnfs_send_layoutreturn(lo, &stateid, &cred, iomode, false);
+ 	} else {
+ 		spin_unlock(&inode->i_lock);
+ 		nfs_commit_inode(inode, 0);
 -- 
 2.25.1
 
