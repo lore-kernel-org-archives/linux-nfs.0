@@ -2,178 +2,206 @@ Return-Path: <SRS0=WoEm=5S=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE0D9C43331
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 16:55:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AAAE4C2BA16
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 19:55:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8B32120787
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 16:55:36 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="X8vhP6xZ"
+	by mail.kernel.org (Postfix) with ESMTP id 80B562077D
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Apr 2020 19:55:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388706AbgDBQzf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 2 Apr 2020 12:55:35 -0400
-Received: from mail-bn7nam10on2101.outbound.protection.outlook.com ([40.107.92.101]:48032
-        "EHLO NAM10-BN7-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727412AbgDBQzf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Apr 2020 12:55:35 -0400
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=homAWchNUGOl0o6WZXgjnAKULg72bm6S53jcqn1kL6qk7HutHY04ELTvtkT7gX38mYzHOaqriFUeSJ3Qf9LDzXBPcNkUzOTKqScRPIOFj9x9gxgBKSGLT9xHb4QVfgT25EnsgkdsMvgAIH1V8ExG29/vr8JIxQx4KSmymB79BUoCEXS2vYJiuy+0JtHJqSbQUbGHT5IMxs0eID85VNXAH3ZtZebWivgxmpfoVzYLmkGFjCTKyJnhyv4IeLIopibiIl7rXKvgkQYoojy+k7ottCbvEf65n/NAzPnSD7RXoPn7OKl10FtLgcBXE7pA65oaitJYOuhYY6mek47HS8A0hw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=eW1ny1Tt1YocpPnRCJS2WvZ0xZtSAyjiQ/hWgL3CwHI=;
- b=fRTJlODtUufLOBuR6m/MzjOVIy1H/WQYsd+A+uMh0AEN5/FLS5Q9JrdzAZDpERX4TJOPDLLl5L8rA3eGD7Jp4CO0eGVH7pfMPgmWFEET8AYBkneQnPsKP//wekveeh3+7J0nWMpU0wo2cXA9hUrWdn+0xf9SSdU9pInJ+RifARz3ncZRz4LMn9ggXGDQ2IG2ElvJgU+zQa1pTBanFPmKXvZhk0HPyjec4RGXH5dXqSIuLqgQtGgMHMrzu9S7pgwb6WOgFyixFIkeI8PSFRyfYjaKdQOrx03OQac/bdC5RLBj2Sa/vpgwHPjeijlxDSjHFrIgLQkuIbad0kg8FgT/+Q==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=eW1ny1Tt1YocpPnRCJS2WvZ0xZtSAyjiQ/hWgL3CwHI=;
- b=X8vhP6xZ2RSNsMPOuHXzw4lKjm+dYBhwDt2I5nJB9nfkj1Xo8Um4uejyJlMeUBODKDcLSbHllDTx8afe7RR6Po6jyqHUzTum97MS3HBPZ0in4nVogfnMrPAepXZrtAQ++0M70dOgXzODK1IFZTTekmeT+5DZ8Ht0jv1mBwbCKt4=
-Received: from CH2PR13MB3398.namprd13.prod.outlook.com (2603:10b6:610:2a::33)
- by CH2PR13MB3782.namprd13.prod.outlook.com (2603:10b6:610:a0::11) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.2878.13; Thu, 2 Apr
- 2020 16:52:55 +0000
-Received: from CH2PR13MB3398.namprd13.prod.outlook.com
- ([fe80::9570:c1b8:9eb3:1c36]) by CH2PR13MB3398.namprd13.prod.outlook.com
- ([fe80::9570:c1b8:9eb3:1c36%7]) with mapi id 15.20.2878.012; Thu, 2 Apr 2020
- 16:52:55 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "aglo@umich.edu" <aglo@umich.edu>
-Subject: Re: oops in 5.6-rc
-Thread-Topic: oops in 5.6-rc
-Thread-Index: AQHWCQ2INQlSVhOUz0SkwbhAoBg7rKhmDDKA
-Date:   Thu, 2 Apr 2020 16:52:55 +0000
-Message-ID: <2a088f5f4a25ce3ee548b0e32ae2c181ef90b98e.camel@hammerspace.com>
-References: <CAN-5tyEdabKDZLRJ1kSF2-epLGKwMX5s76OLgQMPOy5ccXFRbQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyEdabKDZLRJ1kSF2-epLGKwMX5s76OLgQMPOy5ccXFRbQ@mail.gmail.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.36.133.222]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 653797f0-7a96-4071-c4f5-08d7d7264a51
-x-ms-traffictypediagnostic: CH2PR13MB3782:
-x-microsoft-antispam-prvs: <CH2PR13MB37820CFA58C2F4A4BA4DD9F2B8C60@CH2PR13MB3782.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:1388;
-x-forefront-prvs: 0361212EA8
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH2PR13MB3398.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFTY:;SFS:(10019020)(39830400003)(376002)(366004)(346002)(136003)(396003)(186003)(110136005)(2616005)(81166006)(6506007)(316002)(86362001)(81156014)(45080400002)(36756003)(26005)(6486002)(478600001)(71200400001)(66946007)(66476007)(64756008)(2906002)(8676002)(76116006)(66446008)(91956017)(6512007)(5660300002)(8936002)(66556008);DIR:OUT;SFP:1102;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: 88cvUCbv1NJiTCMx7tkjkEXZiDDYfcZvP2zEUbd0FASKzJJ9kSTTee0sQUAc/zQ33+/21zYVWBgnUFPHoCSzgR9U3cV2ibmmoQnUWEKw9x/2XkiOmIYuD9ZfLtmoG4ZKudhVcYFTm+XwdZt35i3g37FMVOtarprb71CxlIxVU3FrXoz4jJrZzGH70zHenuckYQidQBjN8890/+aaMMvZoT6uOMe4Cb5bs3Rn21MvH4zjXoQEU3WLesEboDz2OFvN7SW2gK3hdGwyjwE3H7xjdoSTu7aY7l8d19xC+czAONAZTTE71aFqHyzdsjyuT3ghNjJRuRLXrBhfGInw6ejbjVpy2yGxYjqMrWxy2GulRjuAXriyVrplJU1nI9TC1B+ilPDIrgvWQb501CjeQPIT6ImyDGJFSya8p2vFJnvfWqMM61TqLl+loyxRHn+Sq20C
-x-ms-exchange-antispam-messagedata: 6FPAnfVWe29V588VgiqI8igkocJfxVWPku5tkTkVBhk5l6iwkIwyBnvtPi6y/zGXSsZCrnJ5ErlTTfbNMhpBZkrl53bmxU5wbGOPNWU5K4enJhq0wJy6cwA40DFYnUcDFDE87mAK1vu1L1T2XlaCIA==
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <14D60B53309F3F4DA69976D1C17C50BF@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1727412AbgDBTz7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 2 Apr 2020 15:55:59 -0400
+Received: from mx2.suse.de ([195.135.220.15]:42184 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726617AbgDBTz6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Apr 2020 15:55:58 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id 4E2C5AC84;
+        Thu,  2 Apr 2020 19:55:55 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 047E81E11F4; Thu,  2 Apr 2020 21:55:52 +0200 (CEST)
+Date:   Thu, 2 Apr 2020 21:55:51 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     NeilBrown <neilb@suse.de>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        "Anna.Schumaker@Netapp.com" <Anna.Schumaker@netapp.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 2/2] Deprecate NR_UNSTABLE_NFS, use NR_WRITEBACK
+Message-ID: <20200402195551.GD9751@quack2.suse.cz>
+References: <87tv2b7q72.fsf@notabene.neil.brown.name>
+ <87v9miydai.fsf@notabene.neil.brown.name>
+ <87sghmyd8v.fsf@notabene.neil.brown.name>
+ <87pncqyd7k.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 653797f0-7a96-4071-c4f5-08d7d7264a51
-X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Apr 2020 16:52:55.0487
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: WwngO0COYDGhNnXqQy2ypgpmOIqXMCDK7I/oxZEtBMwL/ICmXtcYkpm+uPuz/Nf0MOvlIAjuWKyYRI5NaIDdLQ==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR13MB3782
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <87pncqyd7k.fsf@notabene.neil.brown.name>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDIwLTA0LTAyIGF0IDEyOjQxIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gSXMgdGhpcyBrbm93biBvcHMsIHJlcHJvZHVjaWJsZSAxMDAlIHdpdGggZ2FyYmFnZSBh
-cmdzIHRvIG1vdW50Og0KPiBtb3VudCAtbyB2ZXJzPTQuMCxzZWM9c2hzIDxzZXJ2ZXJpcD46Lzxt
-b3VudD4gL21udA0KPiBNeSBrZXJuZWwgaXMgY29tbWl0OiAwZmVjZmNiOWQ0ZDI4MDMwNzkwNDhk
-Zjc5NDYwMTk0NjM1NDQ0MTRlDQo+IEkgaGF2ZW4ndCBiaXNldHMgYnV0IHNlZW1zIHRvIGJlIGEg
-cmVjZW50LiBNeSA1LjUga2VybmVsIHdvcmtzLg0KPiANCj4gbG9jYWxob3N0IGxvZ2luOiBbICAx
-MDMuOTgyMDk5XSBCVUc6IHVuYWJsZSB0byBoYW5kbGUgcGFnZSBmYXVsdCBmb3INCj4gYWRkcmVz
-czogMDAwMDAwMDAwMDAyMDAwMA0KPiBbICAxMDMuOTg3OTcwXSAjUEY6IHN1cGVydmlzb3IgcmVh
-ZCBhY2Nlc3MgaW4ga2VybmVsIG1vZGUNCj4gWyAgMTAzLjk5MDgzNV0gI1BGOiBlcnJvcl9jb2Rl
-KDB4MDAwMCkgLSBub3QtcHJlc2VudCBwYWdlDQo+IFsgIDEwMy45OTM3MjFdIFBHRCAwIFA0RCAw
-DQo+IFsgIDEwMy45OTUyOTFdIE9vcHM6IDAwMDAgWyMxXSBTTVAgUFRJDQo+IFsgIDEwMy45OTcy
-NTZdIENQVTogMCBQSUQ6IDMwNTkgQ29tbTogbW91bnQubmZzIE5vdCB0YWludGVkIDUuNi4wLQ0K
-PiByYzUrICMyOTUNCj4gWyAgMTA0LjAwMDk0Nl0gSGFyZHdhcmUgbmFtZTogVk13YXJlLCBJbmMu
-IFZNd2FyZSBWaXJ0dWFsDQo+IFBsYXRmb3JtLzQ0MEJYIERlc2t0b3AgUmVmZXJlbmNlIFBsYXRm
-b3JtLCBCSU9TIDYuMDAgMDQvMTMvMjAxOA0KPiBbICAxMDQuMDA3MzYwXSBSSVA6IDAwMTA6c3Ry
-Y21wKzB4Yy8weDMwDQo+IFsgIDEwNC4wMDk0MTZdIENvZGU6IDc1IGY3IDQ4IDgzIGM2IDAxIDBm
-IGI2IDRlIGZmIDQ4IDgzIGMyIDAxIDg0IGM5DQo+IDg4IDRhIGZmIDc1IGVkIGYzIGMzIDBmIDFm
-IDgwIDAwIDAwIDAwIDAwIDQ4IDgzIGM3IDAxIDBmIGI2IDQ3IGZmIDQ4DQo+IDgzIGM2IDAxIDwz
-YT4gNDYgZmYgNzUgMDcgODQgYzAgNzUgZWIgMzEgYzAgYzMgMTkgYzAgODMgYzggMDEgMGYgMWYN
-Cj4gMDANCj4gYzMgMGYNCj4gWyAgMTA0LjAxOTc1Nl0gUlNQOiAwMDE4OmZmZmZjMmEwYzIyMDdk
-NTAgRUZMQUdTOiAwMDAxMDIwMg0KPiBbICAxMDQuMDIyNjU5XSBSQVg6IDAwMDAwMDAwMDAwMDAw
-NzMgUkJYOiBmZmZmZmZmZmMwYTRmMWQwIFJDWDoNCj4gMDAwMDAwMDAwMDAwMDAwMA0KPiBbICAx
-MDQuMDI2NzQyXSBSRFg6IDAwMDAwMDAwZmZmZmZmZmYgUlNJOiAwMDAwMDAwMDAwMDIwMDAxIFJE
-SToNCj4gZmZmZjlmZmNhYmY3MWRmOQ0KPiBbICAxMDQuMDMxMTYxXSBSQlA6IGZmZmY5ZmZjYWJm
-NzFkZjggUjA4OiAwMDAwMDAwMDAwMDAwMDAwIFIwOToNCj4gZmZmZjlmZmNhYmY3MWRmYg0KPiBb
-ICAxMDQuMDM1NDEwXSBSMTA6IDAwMDAwMDAwMDAwMDAwM2EgUjExOiA2NTcyNjE2ODczNzM2NjZl
-IFIxMjoNCj4gZmZmZjlmZmNhYmY3MWRmOA0KPiBbICAxMDQuMDM5NzU1XSBSMTM6IGZmZmZjMmEw
-YzIyMDdkODAgUjE0OiBmZmZmOWZmYzIyMDM3ODM0IFIxNToNCj4gMDAwMDAwMDAwMDAwMDAyMA0K
-PiBbICAxMDQuMDQ0MDAxXSBGUzogIDAwMDA3Zjg3MzU3OTA4ODAoMDAwMCkgR1M6ZmZmZjlmZmNi
-OWUwMDAwMCgwMDAwKQ0KPiBrbmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+IFsgIDEwNC4wNDg5NTJd
-IENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj4gWyAg
-MTA0LjA1MzI2MF0gQ1I6IDAwMDAwMDAwMDAwMjAwMDAgQ1IzOiAwMDAwMDAwMTM1MjEwMDAxIENS
-NDoNCj4gMDAwMDAwMDAwMDE2MDZmMA0KPiBbICAxMDQuMDU3MjMzXSBDYWxsIFRyYWNlOg0KPiBb
-ICAxMDQuMDU4NjQ2XSAgX19sb29rdXBfY29uc3RhbnQrMHgyYi8weDQwDQo+IFsgIDEwNC4wNjA4
-MzldICBsb29rdXBfY29uc3RhbnQrMHhkLzB4MjANCj4gWyAgMTA0LjA2MjkyOF0gIG5mc19mc19j
-b250ZXh0X3BhcnNlX3BhcmFtKzB4MWU5LzB4OTIwIFtuZnNdDQo+IFsgIDEwNC4wNjU5ODldICB2
-ZnNfcGFyc2VfZnNfcGFyYW0rMHhkMy8weDE5MA0KPiBbICAxMDQuMDY4MzAzXSAgdmZzX3BhcnNl
-X2ZzX3N0cmluZysweDc1LzB4YjANCj4gWyAgMTA0LjA3MDU5MF0gIGdlbmVyaWNfcGFyc2VfbW9u
-b2xpdGhpYysweDhmLzB4YzANCj4gWyAgMTA0LjA3MzE1NV0gIG5mc19mc19jb250ZXh0X3BhcnNl
-X21vbm9saXRoaWMrMHgyMmIvMHg2NzAgW25mc10NCj4gWyAgMTA0LjA3NjQzN10gIGRvX21vdW50
-KzB4NjI2LzB4OTcwDQo+IFsgIDEwNC4wNzg2NTVdICBfX3g2NF9zeXNfbW91bnQrMHg4Ni8weGQw
-DQo+IFsgIDEwNC4wODExMThdICBkb19zeXNjYWxsXzY0KzB4NTUvMHgxZjANCj4gWyAgMTA0LjA4
-MzU5Ml0gIGVudHJ5X1NZU0NBTExfNjRfYWZ0ZXJfaHdmcmFtZSsweDQ0LzB4YTkNCj4gWyAgMTA0
-LjA4NjkwM10gUklQOiAwMDMzOjB4N2Y4NzM0ZTU3YWFhDQo+IFsgIDEwNC4wODkwNzJdIENvZGU6
-IDQ4IDhiIDBkIGUxIDMzIDJjIDAwIGY3IGQ4IDY0IDg5IDAxIDQ4IDgzIGM4IGZmDQo+IGMzIDY2
-IDJlIDBmIDFmIDg0IDAwIDAwIDAwIDAwIDAwIDBmIDFmIDQ0IDAwIDAwIDQ5IDg5IGNhIGI4IGE1
-IDAwIDAwDQo+IDAwIDBmIDA1IDw0OD4gM2QgMDEgZjAgZmYgZmYgNzMgMDEgYzMgNDggOGIgMGQg
-YWUgMzMgMmMgMDAgZjcgZDggNjQNCj4gODkNCj4gMDEgNDgNCj4gWyAgMTA0LjA5OTYxMl0gUlNQ
-OiAwMDJiOjAwMDA3ZmZlMzNmMTdiYTggRUZMQUdTOiAwMDAwMDI0NiBPUklHX1JBWDoNCj4gMDAw
-MDAwMDAwMDAwMDBhNQ0KPiBbICAxMDQuMTAzOTE3XSBSQVg6IGZmZmZmZmZmZmZmZmZmZGEgUkJY
-OiAwMDAwMDAwMDAwMDAwMDAwIFJDWDoNCj4gMDAwMDdmODczNGU1N2FhYQ0KPiBbICAxMDQuMTA3
-OTEzXSBSRFg6IDAwMDA1NjI3MGE3Y2IyNjAgUlNJOiAwMDAwNTYyNzBhN2NiMjQwIFJESToNCj4g
-MDAwMDU2MjcwYTdjYjI4MA0KPiBbICAxMDQuMTExODc2XSBSQlA6IDAwMDA3ZmZlMzNmMTdkMjAg
-UjA4OiAwMDAwNTYyNzBhN2NiN2MwIFIwOToNCj4gMDAwMDAwMDAwMDAwMDAzYg0KPiBbICAxMDQu
-MTE1ODY0XSBSMTA6IDAwMDAwMDAwMDAwMDAwMDAgUjExOiAwMDAwMDAwMDAwMDAwMjQ2IFIxMjoN
-Cj4gMDAwMDdmZmUzM2YxN2QyMA0KPiBbICAxMDQuMTE5ODExXSBSMTM6IDAwMDA1NjI3MGE3Y2I1
-MjAgUjE0OiAwMDAwMDAwMDAwMDAwMDEwIFIxNToNCj4gMDAwMDdmZmUzM2YxN2MzMA0KPiBbICAx
-MDQuMTI0MDE5XSBNb2R1bGVzIGxpbmtlZCBpbjogbmZzIHJmY29tbSBmdXNlIGJyaWRnZSBzdHAg
-bGxjDQo+IGlwNnRfcnBmaWx0ZXIgaXB0X1JFSkVDVCBuZl9yZWplY3RfaXB2NCBpcDZ0X1JFSkVD
-VCBuZl9yZWplY3RfaXB2Ng0KPiB4dF9jb25udHJhY2sgbmZfY29ubnRyYWNrIG5mX2RlZnJhZ19p
-cHY2IG5mX2RlZnJhZ19pcHY0IGVidGFibGVfbmF0DQo+IGVidGFibGVfYnJvdXRlIGlwNnRhYmxl
-X21hbmdsZSBpcDZ0YWJsZV9zZWN1cml0eSBpcDZ0YWJsZV9yYXcNCj4gaXB0YWJsZV9tYW5nbGUg
-aXB0YWJsZV9zZWN1cml0eSBpcHRhYmxlX3JhdyBlYnRhYmxlX2ZpbHRlciBlYnRhYmxlcw0KPiBp
-cDZ0YWJsZV9maWx0ZXIgaXA2X3RhYmxlcyBpcHRhYmxlX2ZpbHRlciBibmVwIHNuZF9zZXFfbWlk
-aQ0KPiBzbmRfc2VxX21pZGlfZXZlbnQgY3JjdDEwZGlmX3BjbG11bCBjcmMzMl9wY2xtdWwgZ2hh
-c2hfY2xtdWxuaV9pbnRlbA0KPiBidHVzYiBidHJ0bCBidGJjbSBidGludGVsIGJsdWV0b290aCBz
-bmRfZW5zMTM3MSB1dmN2aWRlbw0KPiBzbmRfYWM5N19jb2RlYyBhZXNuaV9pbnRlbCBhYzk3X2J1
-cyBnbHVlX2hlbHBlciBzbmRfc2VxIGNyeXB0b19zaW1kDQo+IGNyeXB0ZCB2aWRlb2J1ZjJfdm1h
-bGxvYyB2aWRlb2J1ZjJfbWVtb3BzIHNuZF9wY20gdmlkZW9idWYyX3Y0bDINCj4gdm13X2JhbGxv
-b24gdmlkZW9kZXYgdm13X3ZtY2kgc25kX3RpbWVyIHNuZF9yYXdtaWRpIHBjc3Brcg0KPiBzbmRf
-c2VxX2RldmljZSBzbmQgdmlkZW9idWYyX2NvbW1vbiByZmtpbGwgZWNkaF9nZW5lcmljIGkyY19w
-aWl4NCBlY2MNCj4gc291bmRjb3JlIG5mc2QgbmZzX2FjbCBsb2NrZCBhdXRoX3JwY2dzcyBncmFj
-ZSBzdW5ycGMgaXBfdGFibGVzIHhmcw0KPiBsaWJjcmMzMmMgdm13Z2Z4IHNyX21vZCBzZF9tb2Qg
-Y2Ryb20gdDEwX3BpIGF0YV9nZW5lcmljIHBhdGFfYWNwaQ0KPiBkcm1fa21zX2hlbHBlciBzeXNj
-b3B5YXJlYSBzeXNmaWxscmVjdCBzeXNpbWdibHQgZmJfc3lzX2ZvcHMgdHRtIGRybQ0KPiBhaGNp
-IGxpYmFoY2kgYXRhX3BpaXgNCj4gWyAgMTA0LjEyNDA1Ml0gIGxpYmF0YSBlMTAwMCBtcHRzcGkg
-c2NzaV90cmFuc3BvcnRfc3BpIGkyY19jb3JlDQo+IG1wdHNjc2loIGNyYzMyY19pbnRlbCBtcHRi
-YXNlIHNlcmlvX3JhdyBkbV9taXJyb3IgZG1fcmVnaW9uX2hhc2gNCj4gZG1fbG9nIGRtX21vZA0K
-PiBbICAxMDQuMTkwOTI1XSBDUjI6IDAwMDAwMDAwMDAwMjAwMDANCj4gWyAgMTA0LjE5Mjk4OV0g
-LS0tWyBlbmQgdHJhY2UgODcwODQzMjMwMTUxY2ZjMCBdLS0tDQoNClRoYXQgaXMgdGhlIG1vdW50
-IGNvZGUgcmV3cml0ZSB0aGF0IHdlbnQgaW50byA1LjYuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1
-c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+On Thu 02-04-20 10:54:07, NeilBrown wrote:
+> 
+> After an NFS page has been written it is considered "unstable" until a
+> COMMIT request succeeds.  If the COMMIT fails, the page will be
+> re-written.
+> 
+> These "unstable" pages are currently accounted as "reclaimable",
+> either in WB_RECLAIMABLE, or in NR_UNSTABLE_NFS which is included in a
+> 'reclaimable' count.  This might have made sense when sending the COMMIT
+> required a separate action by the VFS/MM (e.g. releasepage() used to
+> send a COMMIT).  However now that all writes generated by ->writepages()
+> will automatically be followed by a COMMIT, it makes more sense to
+> treat them as writeback pages.
+> 
+> So this page deprecates NR_UNSTABLE_NFS and accounts unstable pages in
+> NR_WRITEBACK and WB_WRITEBACK.
+> 
+> A particular effect of this change is that when
+> wb_check_background_flush() calls wb_over_bg_threshold(), the latter
+> will report 'true' a lot less often as the 'unstable' pages are no
+> longer considered 'dirty' (and there is nothing that writeback can do
+> about them anyway).
+> 
+> Currently wb_check_background_flush() will trigger writeback to NFS even
+> when there are relatively few dirty pages (if there are lots of unstable
+> pages), this can result in small writes going to the server (10s of
+> Kilobytes rather than a Megabyte) which hurts throughput.
+> With this that, there are fewer writes which are each larger on average.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+
+The patch looks good to me. I agree with Christoph that it would be best to
+remove NR_UNSTABLE_NFS completely. We just have to be careful, not change
+format of any entries in /proc/ where it currently gets reported...
+
+								Honza
+
+> ---
+>  fs/fs-writeback.c      | 1 -
+>  fs/nfs/internal.h      | 7 +++++--
+>  fs/nfs/write.c         | 4 ++--
+>  include/linux/mmzone.h | 2 +-
+>  mm/memcontrol.c        | 1 -
+>  mm/page-writeback.c    | 7 ++-----
+>  6 files changed, 10 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> index 76ac9c7d32ec..c5bdf46e3b4b 100644
+> --- a/fs/fs-writeback.c
+> +++ b/fs/fs-writeback.c
+> @@ -1070,7 +1070,6 @@ static void bdi_split_work_to_wbs(struct backing_dev_info *bdi,
+>  static unsigned long get_nr_dirty_pages(void)
+>  {
+>  	return global_node_page_state(NR_FILE_DIRTY) +
+> -		global_node_page_state(NR_UNSTABLE_NFS) +
+>  		get_nr_dirty_inodes();
+>  }
+>  
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index f80c47d5ff27..ba1ff5adeccd 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -660,8 +660,11 @@ void nfs_mark_page_unstable(struct page *page, struct nfs_commit_info *cinfo)
+>  	if (!cinfo->dreq) {
+>  		struct inode *inode = page_file_mapping(page)->host;
+>  
+> -		inc_node_page_state(page, NR_UNSTABLE_NFS);
+> -		inc_wb_stat(&inode_to_bdi(inode)->wb, WB_RECLAIMABLE);
+> +		/* This page is really still in write-back - just that the
+> +		 * writeback is happening on the server now.
+> +		 */
+> +		inc_node_page_state(page, NR_WRITEBACK);
+> +		inc_wb_stat(&inode_to_bdi(inode)->wb, WB_WRITEBACK);
+>  		__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+>  	}
+>  }
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index c478b772cc49..2e15a56620b3 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -958,9 +958,9 @@ nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg,
+>  static void
+>  nfs_clear_page_commit(struct page *page)
+>  {
+> -	dec_node_page_state(page, NR_UNSTABLE_NFS);
+> +	dec_node_page_state(page, NR_WRITEBACK);
+>  	dec_wb_stat(&inode_to_bdi(page_file_mapping(page)->host)->wb,
+> -		    WB_RECLAIMABLE);
+> +		    WB_WRITEBACK);
+>  }
+>  
+>  /* Called holding the request lock on @req */
+> diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+> index 462f6873905a..227fcb8cd0e6 100644
+> --- a/include/linux/mmzone.h
+> +++ b/include/linux/mmzone.h
+> @@ -237,7 +237,7 @@ enum node_stat_item {
+>  	NR_FILE_THPS,
+>  	NR_FILE_PMDMAPPED,
+>  	NR_ANON_THPS,
+> -	NR_UNSTABLE_NFS,	/* NFS unstable pages */
+> +	NR_UNSTABLE_NFS,	/* NFS unstable pages - DEPRECATED DO NOT USE */
+>  	NR_VMSCAN_WRITE,
+>  	NR_VMSCAN_IMMEDIATE,	/* Prioritise for reclaim when writeback ends */
+>  	NR_DIRTIED,		/* page dirtyings since bootup */
+> diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+> index 7ddf91c4295f..fad8e8a23235 100644
+> --- a/mm/memcontrol.c
+> +++ b/mm/memcontrol.c
+> @@ -4317,7 +4317,6 @@ void mem_cgroup_wb_stats(struct bdi_writeback *wb, unsigned long *pfilepages,
+>  
+>  	*pdirty = memcg_exact_page_state(memcg, NR_FILE_DIRTY);
+>  
+> -	/* this should eventually include NR_UNSTABLE_NFS */
+>  	*pwriteback = memcg_exact_page_state(memcg, NR_WRITEBACK);
+>  	*pfilepages = memcg_exact_page_state(memcg, NR_INACTIVE_FILE) +
+>  			memcg_exact_page_state(memcg, NR_ACTIVE_FILE);
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 2afb09fa2fe0..d1f03c799d11 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -504,7 +504,6 @@ bool node_dirty_ok(struct pglist_data *pgdat)
+>  	unsigned long nr_pages = 0;
+>  
+>  	nr_pages += node_page_state(pgdat, NR_FILE_DIRTY);
+> -	nr_pages += node_page_state(pgdat, NR_UNSTABLE_NFS);
+>  	nr_pages += node_page_state(pgdat, NR_WRITEBACK);
+>  
+>  	return nr_pages <= limit;
+> @@ -1595,8 +1594,7 @@ static void balance_dirty_pages(struct bdi_writeback *wb,
+>  		 * written to the server's write cache, but has not yet
+>  		 * been flushed to permanent storage.
+>  		 */
+> -		nr_reclaimable = global_node_page_state(NR_FILE_DIRTY) +
+> -					global_node_page_state(NR_UNSTABLE_NFS);
+> +		nr_reclaimable = global_node_page_state(NR_FILE_DIRTY);
+>  		gdtc->avail = global_dirtyable_memory();
+>  		gdtc->dirty = nr_reclaimable + global_node_page_state(NR_WRITEBACK);
+>  
+> @@ -1940,8 +1938,7 @@ bool wb_over_bg_thresh(struct bdi_writeback *wb)
+>  	 * as we're trying to decide whether to put more under writeback.
+>  	 */
+>  	gdtc->avail = global_dirtyable_memory();
+> -	gdtc->dirty = global_node_page_state(NR_FILE_DIRTY) +
+> -		      global_node_page_state(NR_UNSTABLE_NFS);
+> +	gdtc->dirty = global_node_page_state(NR_FILE_DIRTY);
+>  	domain_dirty_limits(gdtc);
+>  
+>  	if (gdtc->dirty > gdtc->bg_thresh)
+> -- 
+> 2.26.0
+> 
+
+
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
