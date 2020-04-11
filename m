@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED98CC2BBC7
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:27:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78EA4C2BB86
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:34:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B8BEE2051A
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:27:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4AD5720769
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:34:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586647652;
-	bh=AoLVn9ur3lngp1Ixb/z1N1owMqffcuYbV3fR+frcf2s=;
+	s=default; t=1586648083;
+	bh=4vIqwrTNQQV6FnhPv1WDbSVoK8lV3eRH1NL66egZ1/w=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=qxunm8VFvI6YTQO0IfNubuJVbxv0Vzwj02r7xoOnULiENm0gcqL6W47XwMIgNzyQi
-	 y48Chlw8iayN6X4MVrQYumShx005Q06xHTRzqJWmUQM1ih8t0QxJckRm64bbsFacyF
-	 cxs2jfIIfnLO4qDeKz0TjOtXrYvz9WAO47Xu6uoU=
+	b=t1E2u5h3ANHWgWeWZu+nahT1w57f3ku6VahbEl0q2P41ClZg438jeMWt0+vqiKgCc
+	 IFiGSCyRI5ZyclaszhElW3eB66BH2Lt/m396ZcbAHJHqnLel8Qz+fT2y/nbUKmPf2s
+	 Z4RX8enapL4+BbzBJu9eifxRvWQpJ6ExFzXd4ppU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727728AbgDKX0d (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 11 Apr 2020 19:26:33 -0400
-Received: from mail.kernel.org ([198.145.29.99]:51608 "EHLO mail.kernel.org"
+        id S1729580AbgDKXdr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 11 Apr 2020 19:33:47 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47220 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729613AbgDKXLv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 11 Apr 2020 19:11:51 -0400
+        id S1729240AbgDKXJ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 11 Apr 2020 19:09:27 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4A5F0215A4;
-        Sat, 11 Apr 2020 23:11:50 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id D942D21D79;
+        Sat, 11 Apr 2020 23:09:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586646711;
-        bh=AoLVn9ur3lngp1Ixb/z1N1owMqffcuYbV3fR+frcf2s=;
+        s=default; t=1586646567;
+        bh=4vIqwrTNQQV6FnhPv1WDbSVoK8lV3eRH1NL66egZ1/w=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=zFMLMEpCSvSBrpamgxpBgfujfPfSN2ytKvpQ1fi+NPZoJvKs5yIbnMW6EHpYTP+lj
-         s0iMqQ5yhYdLY6Bo6vwFUYlrCL/9M1IkREb5Yj2W4lagrzEF1Mb/sAaHZN0+8Nk92b
-         9jmNs65/v+VQcZEZNTQdrC7APQhfkfLQxKNvZmdw=
+        b=ZjqA62KoWo99py3ROQQaD4dkCDmGtHQp5STRUidjWLcHyfpIbMh/aEKocNzc+F+pB
+         W94u5EhNTVCzuiUmszZcV/drKSr9/Ti6k9S3hJW6AnTz0ydVKsxoVyn6shBQDa6rkG
+         +kfijyb2ppBOwoE3PqWmw6i9BCtcUnfeackXjFm8=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trondmy@gmail.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 102/108] nfsd: Don't add locks to closed or closing open stateids
-Date:   Sat, 11 Apr 2020 19:09:37 -0400
-Message-Id: <20200411230943.24951-102-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 115/121] nfsd: Don't add locks to closed or closing open stateids
+Date:   Sat, 11 Apr 2020 19:07:00 -0400
+Message-Id: <20200411230706.23855-115-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200411230943.24951-1-sashal@kernel.org>
-References: <20200411230943.24951-1-sashal@kernel.org>
+In-Reply-To: <20200411230706.23855-1-sashal@kernel.org>
+References: <20200411230706.23855-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -115,7 +115,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 43 insertions(+), 30 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1c82d7dd54df0..7e695c3540d6f 100644
+index e909ca36c255a..26461058d516a 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
 @@ -493,6 +493,8 @@ find_any_file(struct nfs4_file *f)
