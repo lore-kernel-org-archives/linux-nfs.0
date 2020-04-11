@@ -4,51 +4,51 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45A32C2BBC7
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:10:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B3AFC2BBC7
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:17:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 11844216FD
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:10:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3B9F320769
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Apr 2020 23:17:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586646628;
-	bh=6+bWPDXJPSzVT3DAvVk4z5aXpF04J4dNJSc3XKD31JY=;
+	s=default; t=1586647043;
+	bh=Nw/dfC0EA+MH0y6lhM7T8r0En1aJj2wCuKFC2emzcNE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=c+248lcX7o0mUzcxnYhUNDQ8ljSJDzHmjqm7/nKjx9YNzkiBweDSfExWNejtn0ceR
-	 SZtc3cLTNtbn8qAYcMPtjQ4LoRLMRcMUi4OdIpZhaHz2cT7j4SbG78h5TSK1KXuS+g
-	 W0SXLjz5u70f495SjqQi3vQAsUhG7dGTI7DE//vQ=
+	b=EOWcrGvJj+VPbQ/kzfUaZXfa63NnFHr6qH2xWn31nL4qe+TcyzR/oazorYQ88vL6c
+	 MqRTJPkjznoXjQxQ4zRkRT6ZUPPMfYC3XZLi4F11Q/9WO+golFglzCR9XaShYxU5f/
+	 F9aVMAjFi9/M9XQ0W8NQJC0o+RKTw5wXVdUXhgiI=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728709AbgDKXJd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 11 Apr 2020 19:09:33 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47358 "EHLO mail.kernel.org"
+        id S1729627AbgDKXQW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 11 Apr 2020 19:16:22 -0400
+Received: from mail.kernel.org ([198.145.29.99]:56726 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729258AbgDKXJc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 11 Apr 2020 19:09:32 -0400
+        id S1730427AbgDKXOp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 11 Apr 2020 19:14:45 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A1FAE21835;
-        Sat, 11 Apr 2020 23:09:31 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 2894420CC7;
+        Sat, 11 Apr 2020 23:14:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586646572;
-        bh=6+bWPDXJPSzVT3DAvVk4z5aXpF04J4dNJSc3XKD31JY=;
+        s=default; t=1586646885;
+        bh=Nw/dfC0EA+MH0y6lhM7T8r0En1aJj2wCuKFC2emzcNE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=gq6feiTuuNwxyoBfXw4UcODxHDys6Z/1r3JiQGhhqGjrA6PqWJMwhNSUCLEpeu1Y7
-         B+odTA0TqiSY1BDrmG5gyZtfYUVQuOuS6iS5n7qxgDlOjtAYc5Ln5ioEHIg6zq1lAw
-         Dzh+pY9bXRygOgBgTqbW7qrTuoIIF5PnCPt9jAKo=
+        b=f6wB5ZxluzlAdVPg0kjPkTdAyvDjYnNenhKWqR7jxm6PpCnviZW8bzbUgvzv+yEqw
+         voKjyzMCy6A1rvs97nFP5xojfRqHBB8Y8SuF1YILY3hGxwMWaiAKtqaRgzDsPVFfX4
+         uj+dxTYF823EYFhvRZ1QbyobSeX8Tha/SM6/M6VI=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 119/121] svcrdma: Fix leak of transport addresses
-Date:   Sat, 11 Apr 2020 19:07:04 -0400
-Message-Id: <20200411230706.23855-119-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 26/26] svcrdma: Fix leak of transport addresses
+Date:   Sat, 11 Apr 2020 19:14:13 -0400
+Message-Id: <20200411231413.26911-26-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200411230706.23855-1-sashal@kernel.org>
-References: <20200411230706.23855-1-sashal@kernel.org>
+In-Reply-To: <20200411231413.26911-1-sashal@kernel.org>
+References: <20200411231413.26911-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -95,17 +95,17 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index 908e78bb87c64..c4fb930779a92 100644
+index 6035c5a380a6b..b3d48c6243c80 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -250,6 +250,7 @@ xprt_rdma_bc_put(struct rpc_xprt *xprt)
+@@ -277,6 +277,7 @@ xprt_rdma_bc_put(struct rpc_xprt *xprt)
  {
  	dprintk("svcrdma: %s: xprt %p\n", __func__, xprt);
  
 +	xprt_rdma_free_addresses(xprt);
  	xprt_free(xprt);
+ 	module_put(THIS_MODULE);
  }
- 
 -- 
 2.20.1
 
