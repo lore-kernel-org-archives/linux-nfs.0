@@ -2,147 +2,88 @@ Return-Path: <SRS0=jEWo=55=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DD35FC2BBC7
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Apr 2020 09:04:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 23AF6C2BA19
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Apr 2020 14:44:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B375F20678
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Apr 2020 09:04:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EB53F20732
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Apr 2020 14:44:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gtIWF+DR"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="eSQaMoRZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728115AbgDMJEq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Apr 2020 05:04:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55406 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1728091AbgDMJEl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2020 05:04:41 -0400
-Received: from mail-il1-x143.google.com (mail-il1-x143.google.com [IPv6:2607:f8b0:4864:20::143])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0008AC008749;
-        Mon, 13 Apr 2020 01:57:51 -0700 (PDT)
-Received: by mail-il1-x143.google.com with SMTP id f82so4509930ilh.8;
-        Mon, 13 Apr 2020 01:57:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=GHA9/acdYNKg6TtXigttoWf+ctJ+xZIYedEqvuMFErI=;
-        b=gtIWF+DRFw3NFjElbOmdUq+StalADZweXYUfWCkqiK8JLnF7+ewHUQMxY+05DelQSh
-         qXSsO4sJPiZJO5nQCa3P36ztKcww04jTPFhV7HkEKzuN22nplRCgZ1Zf7qRo3fGIKHQ6
-         7X+qnxY6W3J8t4tN73OF6zZKx1wsnuu+3MN8PLFa77bWZvxOID6Hap2HgyVEMWm3235m
-         wPXQZS9Mq+UFvND3v/rf6kfHfS9Dtlj7GHzLNFHzDfKI7YP88UIGKKQWyrGgKy/TRMLg
-         f8Hw9XVxkuDpz/JGArMAMJnoBgNoxJHtqr1WTtcp0Hph4bDYkRgn0hNTjOVSZevNria0
-         0x/w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=GHA9/acdYNKg6TtXigttoWf+ctJ+xZIYedEqvuMFErI=;
-        b=NwsDSGSaKdFTZkTmiVqAnpW62xZArNmU6d5w+o9F3+bbxfOmvyEXM1NA/Tx9OASAs5
-         9sbCeOYFDS4bKI7QSV71QBVjO8wgap36rBwLifstQCNg9eEuR69n/+eLuSxaFt1pjfGW
-         ngPQ13g8ZqqbeAFU5lrAwPuA/O6SVjn89RKS3ogq/3kMc4sgXcfaHeKiOAgYZkg3Xkbs
-         wX2Thtd2M9nmPcCjwXVyEjHeEUY0kExO9sU8AlrGC7v7FCu5D3CrD2blMwUNlSW6C8iU
-         P93Ne5NimiENFEA368sKClnHegA3N+jmRyv8LI5wpckkC+fJWJcOGR8KPEf5Wdanzgmq
-         65ZQ==
-X-Gm-Message-State: AGi0PuZ9vZcE3FWUmgWohdx6HQ09ge0lVV//bZNOsX3jJqaJwNvlOKXN
-        As5tGuTTwMH4mLlSh8PJ70ThsoCQc5F6VOHZWFMU/qWI
-X-Google-Smtp-Source: APiQypJCBRNY8WDeGRUOflqvmNLp4SLE40Vw+oZCgbf0ZQM7kLQ076HrzVTr4mL4n8pgv7NuZjDw6OSN5H1RzKfZw1A=
-X-Received: by 2002:a92:cc02:: with SMTP id s2mr12907286ilp.9.1586768271374;
- Mon, 13 Apr 2020 01:57:51 -0700 (PDT)
+        id S1729081AbgDMOol (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Apr 2020 10:44:41 -0400
+Received: from us-smtp-2.mimecast.com ([205.139.110.61]:45109 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728557AbgDMOok (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2020 10:44:40 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1586789079;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=wSqyBKl+wpXtU9Z0W3dj5PIs7MKtf+VZUzD4l0ECGYs=;
+        b=eSQaMoRZaSqEGv/gKB0Slt8kUxDzNXl5IkKCc7JztoAW8DXHPFkbjWL4ID1PS0VnZxcpM8
+        KxyLPCycv2Qwa07cOob2dXpt52QGoizXVuKszj7S2ynvHkgWwqyQerSKK4tVHr4vgRKZAo
+        oWLwULf5PhGYe3gyE4ZprEh4S8GACbw=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-52-fr3FOwJaNmSkD6-gAJfNzw-1; Mon, 13 Apr 2020 10:44:37 -0400
+X-MC-Unique: fr3FOwJaNmSkD6-gAJfNzw-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 571BF18C43C1
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Apr 2020 14:44:36 +0000 (UTC)
+Received: from aion.usersys.redhat.com (ovpn-113-55.rdu2.redhat.com [10.10.113.55])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 39E945E001;
+        Mon, 13 Apr 2020 14:44:36 +0000 (UTC)
+Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
+        id 738751A00A6; Mon, 13 Apr 2020 10:44:35 -0400 (EDT)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     steved@redhat.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] nfsdcld: fix possible buffer overrun in sqlite_iterate_recovery()
+Date:   Mon, 13 Apr 2020 10:44:35 -0400
+Message-Id: <20200413144435.1220985-1-smayhew@redhat.com>
 MIME-Version: 1.0
-References: <CABV8kRw_jGxPqWc68Bj-uP_hSrKO0MmShOmtuzGQA2W3WHyCrg@mail.gmail.com>
- <CAOQ4uxhPKR34cXvWfF49z8mTGJm+oP2ibfohsXNdY7tXaOi4RA@mail.gmail.com> <CABV8kRxVA0j2qLkyWx+vULh2DxK2Ef4nPk-zXCikN8XmdBOFgQ@mail.gmail.com>
-In-Reply-To: <CABV8kRxVA0j2qLkyWx+vULh2DxK2Ef4nPk-zXCikN8XmdBOFgQ@mail.gmail.com>
-From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Mon, 13 Apr 2020 11:57:40 +0300
-Message-ID: <CAOQ4uxh2KKwORLC+gWEF=mWzBa3Kh4A4HgRoiad5N5qu06xjcg@mail.gmail.com>
-Subject: Re: Same mountpoint restriction in FICLONE ioctls
-To:     Keno Fischer <keno@juliacomputing.com>
-Cc:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Miklos Szeredi <mszeredi@redhat.com>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        Steve French <smfrench@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Apr 13, 2020 at 1:28 AM Keno Fischer <keno@juliacomputing.com> wrote:
->
-> > You did not specify your use case.
->
-> My use case is recording (https://rr-project.org/) executions
+Prior to release, cp_data was originally intended to hold the gss
+principal string.  When it was changed to hold a hash of the principal
+instead, the size of the field was changed but the 'n' arg of the
+memcpy() in sqlite_iterate_recovery() was not.
 
-Cool! I should try that ;-)
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/nfsdcld/sqlite.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> of containers (which often make heavy use of bind mounts on
-> the same file system, thus me running into this restriction).
-> In essence, at relevant read or mmap operations,
-> rr needs to checkpoint the file that was opened,
-> in case it later gets deleted or modified.
-> It always tries to FICLONE the file first,
-> before deciding heuristically whether to
-> instead create a copy (if it decides there is a low
-> likelihood the file will get changed - e.g. because
-> it's a system file - it may decide to take the chance and
-> not copy it at the risk of creating a broken recording).
-> That's often a decent trade-off, but of course it's not
-> 100% perfect.
->
-> > The question is: do you *really* need cross mount clone?
-> > Can you use copy_file_range() instead?
->
-> Good question. copy_file_range doesn't quite work
-> for that initial clone, because we do want it to fail if
-> cloning doesn't work (so that we can apply the
-> heuristics). However, you make a good point that
-> the copy fallback should probably use copy_file_range.
-> At least that way, if it does decide to copy, the
-> performance will be better.
->
-> It would still be nice for FICLONE to ease this restriction,
-> since it reduces the chance of the heuristics getting
-> it wrong and preventing the copy, even if such
-> a copy would have been cheap.
->
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index 09518e2..6666c86 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -1337,7 +1337,7 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client=
+ *clnt), struct cld_client *c
+ 		cmsg->cm_u.cm_clntinfo.cc_name.cn_len =3D sqlite3_column_bytes(stmt, 0=
+);
+ 		if (sqlite3_column_bytes(stmt, 1) > 0) {
+ 			memcpy(&cmsg->cm_u.cm_clntinfo.cc_princhash.cp_data,
+-				sqlite3_column_blob(stmt, 1), NFS4_OPAQUE_LIMIT);
++				sqlite3_column_blob(stmt, 1), SHA256_DIGEST_SIZE);
+ 			cmsg->cm_u.cm_clntinfo.cc_princhash.cp_len =3D sqlite3_column_bytes(s=
+tmt, 1);
+ 		}
+ #else
+--=20
+2.25.1
 
-You make it sound like the heuristic decision must be made
-*after* trying to clone, but it can be made before and pass
-flags to the kernel whether or to fallback to copy.
-
-copy_file_range(2) has an unused flags argument.
-Adding support for flags like:
-COPY_FILE_RANGE_BY_FS
-COPY_FILE_RANGE_BY_KERNEL
-
-or any other names elected after bike shedding can be used
-to control whether user intended to use filesystem internal
-clone/copy methods and/or to fallback to kernel copy.
-
-I think this functionality will be useful to many.
-
-> > Across which filesystems mounts are you trying to clone?
->
-> This functionality was written with btrfs in mind, so that's
-> what I was testing with. The mounts themselves are just
-> different bindmounts into the same filesystem.
->
-
-I can also suggest a workaround for you.
-If your only problem is bind mounts and if recorder is a privileged
-process (CAP_DAC_READ_SEARCH) then you can use a "master"
-bind mount to perform all clone operations on.
-Use name_to_handle_at(2) to get sb file handle of source file.
-Use open_by_handle_at(2) to get an open file descriptor of the source
-file under the "master" bind mount.
-
-Thanks,
-Amir.
