@@ -2,100 +2,122 @@ Return-Path: <SRS0=vByh=57=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5C38C3815B
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 20:14:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17281C2BA19
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 21:58:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AA2E320787
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 20:14:54 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GsH7iYmJ"
+	by mail.kernel.org (Postfix) with ESMTP id F05B62078A
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 21:58:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2436830AbgDOUOx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Apr 2020 16:14:53 -0400
-Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:34209 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S2441994AbgDOUOx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2020 16:14:53 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1586981691;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:in-reply-to:in-reply-to:references:references;
-        bh=Efur/vY4xwn/kIgQfIM5xCo7lZEU9KQjeM4hi3ie3uA=;
-        b=GsH7iYmJGpaGrcFvnICYBKq0rBZw+tvXmtTc/pBlTZaohLvirsIr1KdKppl+ZpD75tToCf
-        HyBFeVWJm/Q+AqBxhqJjq+jBJ7UOYwbhw/YIRXDtk1GTYl1VUDQ9EK6QSbeXMx6+SmwIvU
-        bAuioZQCNNtYUORfoVMAj1XGE3TZHgQ=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-202-g6XCC-80O5STmKUegHqq7w-1; Wed, 15 Apr 2020 16:14:47 -0400
-X-MC-Unique: g6XCC-80O5STmKUegHqq7w-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4ABFA18FF661
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Apr 2020 20:14:46 +0000 (UTC)
-Received: from dwysocha.rdu.csb (ovpn-112-216.rdu2.redhat.com [10.10.112.216])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id E9283A63D6;
-        Wed, 15 Apr 2020 20:14:45 +0000 (UTC)
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     dhowells@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFS: Fix fscache super_cookie allocation
-Date:   Wed, 15 Apr 2020 16:14:42 -0400
-Message-Id: <1586981683-3077-2-git-send-email-dwysocha@redhat.com>
-In-Reply-To: <1586981683-3077-1-git-send-email-dwysocha@redhat.com>
-References: <1586981683-3077-1-git-send-email-dwysocha@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+        id S1729940AbgDOV61 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Apr 2020 17:58:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52198 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1729298AbgDOV6Z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2020 17:58:25 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00::f03c:91ff:fe50:41d6])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 184ADC061A0C
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Apr 2020 14:58:25 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id E7180C51; Wed, 15 Apr 2020 17:58:23 -0400 (EDT)
+Date:   Wed, 15 Apr 2020 17:58:23 -0400
+From:   Bruce Fields <bfields@fieldses.org>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Jeff Layton <jlayton@kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: GSS unwrapping breaks the DRC
+Message-ID: <20200415215823.GB6466@fieldses.org>
+References: <DAED9EC8-7461-48FF-AD6C-C85FB968F8A6@oracle.com>
+ <20200415192542.GA6466@fieldses.org>
+ <0775FBE7-C2DD-4ED6-955D-22B944F302E0@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0775FBE7-C2DD-4ED6-955D-22B944F302E0@oracle.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Commit f2aedb713c28 ("NFS: Add fs_context support.") reworked
-NFS mount code paths for fs_context support which included
-super_block initialization.  In the process there was an extra
-return left in the code and so we never call
-nfs_fscache_get_super_cookie even if 'fsc' is given on as mount
-option.  In addition, there is an extra check inside
-nfs_fscache_get_super_cookie for the NFS_OPTION_FSCACHE which
-is unnecessary since the only caller nfs_get_cache_cookie
-checks this flag.
+On Wed, Apr 15, 2020 at 04:06:17PM -0400, Chuck Lever wrote:
+> 
+> 
+> > On Apr 15, 2020, at 3:25 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Wed, Apr 15, 2020 at 01:05:11PM -0400, Chuck Lever wrote:
+> >> Hi Bruce and Jeff:
+> >> 
+> >> Testing intensive workloads with NFSv3 and NFSv4.0 on NFS/RDMA with krb5i
+> >> or krb5p results in a pretty quick workload failure. Closer examination
+> >> shows that the client is able to overrun the GSS sequence window with
+> >> some regularity. When that happens, the server drops the connection.
+> >> 
+> >> However, when the client retransmits requests with lost replies, they
+> >> never hit in the DRC, and that results in unexpected failures of non-
+> >> idempotent requests.
+> >> 
+> >> The retransmitted XIDs are found in the DRC, but the retransmitted request
+> >> has a different checksum than the original. We're hitting the "mismatch"
+> >> case in nfsd_cache_key_cmp for these requests.
+> >> 
+> >> I tracked down the problem to the way the DRC computes the length of the
+> >> part of the buffer it wants to checksum. nfsd_cache_csum uses
+> >> 
+> >>  head.iov_len + page_len
+> >> 
+> >> and then caps that at RC_CSUMLEN.
+> >> 
+> >> That works fine for krb5 and sys, but the GSS unwrap functions
+> >> (integ_unwrap_data and priv_unwrap_data) don't appear to update head.iov_len
+> >> properly. So nfsd_cache_csum's length computation is significantly larger
+> >> than the clear-text message, and that allows stale parts of the xdr_buf
+> >> to be included in the checksum.
+> >> 
+> >> Using xdr_buf_subsegment() at the end of integ_unwrap_data sets the xdr_buf
+> >> lengths properly and fixes the situation for krb5i.
+> >> 
+> >> I don't see a similar solution for priv_unwrap_data: there's no MIC len
+> >> available, and priv_len is not the actual length of the clear-text message.
+> >> 
+> >> Moreover, the comment in fix_priv_head() is disturbing. I don't see anywhere
+> >> where the relationship between the buf's head/len and how svc_defer works is
+> >> authoritatively documented. It's not clear exactly how priv_unwrap_data is
+> >> supposed to accommodate svc_defer, or whether integ_unwrap_data also needs
+> >> to accommodate it.
+> >> 
+> >> So I can't tell if the GSS unwrap functions are wrong or if there's a more
+> >> accurate way to compute the message length in nfsd_cache_csum. I suspect
+> >> both could use some improvement, but I'm not certain exactly what that
+> >> might be.
+> > 
+> > I don't know, I tried looking through that code and didn't get any
+> > further than you.  The gss unwrap code does look suspect to me.  It
+> > needs some kind of proper design, as it stands it's just an accumulation
+> > of fixes.
+> 
+> Having recently completed overhauling the client-side equivalents, I
+> agree with you there.
+> 
+> I've now convinced myself that because nfsd_cache_csum might need to
+> advance into the first page of the Call message, rq_arg.head.iov_len
+> must contain an accurate length so that csum_partial is applied
+> correctly to the head buffer.
+> 
+> Therefore it is the preceding code that needs to set up rq_arg.head.iov_len
+> correctly. The GSS unwrap functions have to do this, and therefore these
+> must be fixed. I would theorize that svc_defer also depends on head.iov_len
+> being set correctly.
+> 
+> As far as how rq_arg.len needs to be set for svc_defer, I think I need
+> to have some kind of test case to examine how that path is triggered. Any
+> advice appreciated.
 
-Fixes: f2aedb713c28 ("NFS: Add fs_context support.")
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
----
- fs/nfs/fscache.c | 2 --
- fs/nfs/super.c   | 1 -
- 2 files changed, 3 deletions(-)
+It's triggered on upcalls, so for example if you flush the export caches
+with exports -f and then send an rpc with a filehandle, it should call
+svc_defer on that request.
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index 8eff1fd806b1..f51718415606 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -118,8 +118,6 @@ void nfs_fscache_get_super_cookie(struct super_block *sb, const char *uniq, int
- 
- 	nfss->fscache_key = NULL;
- 	nfss->fscache = NULL;
--	if (!(nfss->options & NFS_OPTION_FSCACHE))
--		return;
- 	if (!uniq) {
- 		uniq = "";
- 		ulen = 1;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 59ef3b13ccca..cc34aa3a8ba4 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1189,7 +1189,6 @@ static void nfs_get_cache_cookie(struct super_block *sb,
- 			uniq = ctx->fscache_uniq;
- 			ulen = strlen(ctx->fscache_uniq);
- 		}
--		return;
- 	}
- 
- 	nfs_fscache_get_super_cookie(sb, uniq, ulen);
--- 
-1.8.3.1
-
+--b.
