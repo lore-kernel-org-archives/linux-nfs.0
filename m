@@ -4,51 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34875C2BA19
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:07:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B04E3C2BA19
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:09:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0AAB820737
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:07:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 85ED9206A2
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:09:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586952433;
-	bh=/63fZqYCIXjoyIJCOZP6JWSBlxyWwKCVjmCJ99axx4g=;
+	s=default; t=1586952588;
+	bh=+KmynoHUM8GPQn2SP+1MLZiKCFKLZrqLb2uvnd1KsQY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=mO78jnlqWYgG5slEcVZ8x88SaVC0O0tEchhvRCmRkHJcmBbXN5Xa5qXSphPaid/ub
-	 oZseJp2HdhKNA8pFNvqOIfIbJjqz6KXsI1m9RoVAPlx1YtqxWpUY1H2jQpppbl+QfP
-	 ATjzGLefcBsjZFDLSZ67ju7fdsfk/KZU77kvP9Ms=
+	b=qKPVdAPrE0+12h0EJ2sTIesyGBppcKBCUeGCm7VB1SijBbEzLWc21ab8glnmZwV5K
+	 rGYeo5s9jAC2aoIsv7MZNvP1d+tY+uk5aiTq45fLqKkNa5IaIhFbn5zCt9Tr/n7gGc
+	 TOqRbUNsbrTlWVSBn+7guNfHprSiWubFQKwx3iRk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2439541AbgDOMHL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Apr 2020 08:07:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42664 "EHLO mail.kernel.org"
+        id S368494AbgDOMJm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Apr 2020 08:09:42 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42096 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2897625AbgDOLrU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:47:20 -0400
+        id S2897580AbgDOLq6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:46:58 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 489C32166E;
-        Wed, 15 Apr 2020 11:47:19 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 77C8420775;
+        Wed, 15 Apr 2020 11:46:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951239;
-        bh=/63fZqYCIXjoyIJCOZP6JWSBlxyWwKCVjmCJ99axx4g=;
+        s=default; t=1586951218;
+        bh=+KmynoHUM8GPQn2SP+1MLZiKCFKLZrqLb2uvnd1KsQY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=k1TDw2TMmUyxsrqOIdrLcPtn5YVW7RwTN1w1q86Azxo2NygHVTgmxghQkSWhLjZ38
-         DabK8CRLlkmlxGcP6+cFYwx8iukXrXWGeg0DPB7AunAhSazOaHfxI7TIu0kJrYUw5t
-         mDMd3+1d+5b59bsVdjnl73fjv6ws3ELSJR72C3Ts=
+        b=TctTorNHWNDfHeJ5FmYNSogh/zZyQw8cN+4pTZn73C+TRHB3Kt1J9lfCRk+ZznnhI
+         7geEfCnR5FNhlVXZE5YJNiXT/Y9TAcQ8jCp1/EPke2k1ij95Us2eAl+OIqRkxh6Nyf
+         ihSC1CzYOOWtI/f6hEP3+l2hK1lTR5GAHIYwj1lo=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 07/30] NFS: direct.c: Fix memory leak of dreq when nfs_get_lock_context fails
-Date:   Wed, 15 Apr 2020 07:46:48 -0400
-Message-Id: <20200415114711.15381-7-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 29/40] NFS: Fix memory leaks in nfs_pageio_stop_mirroring()
+Date:   Wed, 15 Apr 2020 07:46:12 -0400
+Message-Id: <20200415114623.14972-29-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200415114711.15381-1-sashal@kernel.org>
-References: <20200415114711.15381-1-sashal@kernel.org>
+In-Reply-To: <20200415114623.14972-1-sashal@kernel.org>
+References: <20200415114623.14972-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -58,48 +57,54 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 8605cf0e852af3b2c771c18417499dc4ceed03d5 ]
+[ Upstream commit 862f35c94730c9270833f3ad05bd758a29f204ed ]
 
-When dreq is allocated by nfs_direct_req_alloc(), dreq->kref is
-initialized to 2. Therefore we need to call nfs_direct_req_release()
-twice to release the allocated dreq. Usually it is called in
-nfs_file_direct_{read, write}() and nfs_direct_complete().
+If we just set the mirror count to 1 without first clearing out
+the mirrors, we can leak queued up requests.
 
-However, current code only calls nfs_direct_req_relese() once if
-nfs_get_lock_context() fails in nfs_file_direct_{read, write}().
-So, that case would result in memory leak.
-
-Fix this by adding the missing call.
-
-Signed-off-by: Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/direct.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/pagelist.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 9d07b53e1647b..e6ea4511c41ce 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -600,6 +600,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
-+		nfs_direct_req_release(dreq);
- 		goto out_release;
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9cf59e2622f8e..5dae7c85d9b6e 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -865,15 +865,6 @@ static void nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
+ 	pgio->pg_mirror_count = mirror_count;
+ }
+ 
+-/*
+- * nfs_pageio_stop_mirroring - stop using mirroring (set mirror count to 1)
+- */
+-void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio)
+-{
+-	pgio->pg_mirror_count = 1;
+-	pgio->pg_mirror_idx = 0;
+-}
+-
+ static void nfs_pageio_cleanup_mirroring(struct nfs_pageio_descriptor *pgio)
+ {
+ 	pgio->pg_mirror_count = 1;
+@@ -1302,6 +1293,14 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
  	}
- 	dreq->l_ctx = l_ctx;
-@@ -1023,6 +1024,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
-+		nfs_direct_req_release(dreq);
- 		goto out_release;
- 	}
- 	dreq->l_ctx = l_ctx;
+ }
+ 
++/*
++ * nfs_pageio_stop_mirroring - stop using mirroring (set mirror count to 1)
++ */
++void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio)
++{
++	nfs_pageio_complete(pgio);
++}
++
+ int __init nfs_init_nfspagecache(void)
+ {
+ 	nfs_page_cachep = kmem_cache_create("nfs_page",
 -- 
 2.20.1
 
