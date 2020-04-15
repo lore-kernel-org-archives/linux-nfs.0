@@ -4,51 +4,51 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57B58C3815B
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:51:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8C6DC2BB55
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2BA98206D9
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:51:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AF7F820737
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586951483;
-	bh=JPbhoqeFUPHJpXc+rO/mAZalsSq5l5AOvG/Eb06Qy8o=;
+	s=default; t=1586951799;
+	bh=TF/01RNQtNtjrq6KbrU+2FAcLCzjC1oerULda68YHj4=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=11UZpZEf+EkFU23m8//j5XNaUJMG5sRDexciKd5Iupso/6IZ0nQFLvdUJOgFb0mLP
-	 VMJ00gzOzAlAKDk2IgXkm9y7ayVlPVFrRXylT526w6eBkFy+L7dz9UJk9eqj2Bzwcq
-	 xdPk94r+OprdwOSCHRl6DknLlMuLGMJTmadygaEQ=
+	b=LBKwA4Ml+2XKEggStUEdUSNHMWxGlEVrvT2DtLZ/rRV/s/DZ2ykz2WKgW+DtPn4u5
+	 Y/eEaw9G7rXEcpvqHHcsYF7wJUeVhkOoVqdZnCzYaYymVxIC84ln8vRZPk4aXaownJ
+	 PCRJ0lmKxmWUPPwIZKYqG7pDSkRZfOKD83TbnZmU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2897665AbgDOLvU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Apr 2020 07:51:20 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44022 "EHLO mail.kernel.org"
+        id S2409653AbgDOL4g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Apr 2020 07:56:36 -0400
+Received: from mail.kernel.org ([198.145.29.99]:43468 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409450AbgDOLsU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:48:20 -0400
+        id S1727920AbgDOLry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:47:54 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 988512137B;
-        Wed, 15 Apr 2020 11:48:17 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 03A5821582;
+        Wed, 15 Apr 2020 11:47:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951298;
-        bh=JPbhoqeFUPHJpXc+rO/mAZalsSq5l5AOvG/Eb06Qy8o=;
+        s=default; t=1586951273;
+        bh=TF/01RNQtNtjrq6KbrU+2FAcLCzjC1oerULda68YHj4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=RmaRB2C0Gj3jnumoF09ojCr/TS+/F/XEJynsTXdeInZCeB0ytpSGNQ8wgqV2w1aX5
-         0op5pnon53nHcnLftOm+nWW+Me+n62U3RsI46JRp7KDlF5/F5mXdU2kr+qxRkBy5Y4
-         jHt4mtOMmOGKG5SaK8zznUDypSBXc++c5rpNv9HI=
+        b=CvxUiypJuukFn8WeoAaKsHcmZqHkoSTZ7jCCMnlX8ipfj1euR9kxwpM8dl4aCtdo1
+         ayFM4Aqw08ZWNe4ffzxVn+BDL+bimho1LbWSb4ju3yE1kr13hrggs+s3VhmtsgQpHy
+         KNPk6ZEWn1hkkDntaSV1bUqJ8sV7mFJ+H5qsdpRk=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 03/14] NFS: direct.c: Fix memory leak of dreq when nfs_get_lock_context fails
-Date:   Wed, 15 Apr 2020 07:48:03 -0400
-Message-Id: <20200415114814.15954-3-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 04/21] NFS: direct.c: Fix memory leak of dreq when nfs_get_lock_context fails
+Date:   Wed, 15 Apr 2020 07:47:31 -0400
+Message-Id: <20200415114748.15713-4-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200415114814.15954-1-sashal@kernel.org>
-References: <20200415114814.15954-1-sashal@kernel.org>
+In-Reply-To: <20200415114748.15713-1-sashal@kernel.org>
+References: <20200415114748.15713-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -81,10 +81,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 2 insertions(+)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 88cb8e0d60149..7789f0b9b999e 100644
+index 53f0012ace42f..de135d2591ffb 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -605,6 +605,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+@@ -595,6 +595,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
  	l_ctx = nfs_get_lock_context(dreq->ctx);
  	if (IS_ERR(l_ctx)) {
  		result = PTR_ERR(l_ctx);
@@ -92,7 +92,7 @@ index 88cb8e0d60149..7789f0b9b999e 100644
  		goto out_release;
  	}
  	dreq->l_ctx = l_ctx;
-@@ -1015,6 +1016,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+@@ -1019,6 +1020,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
  	l_ctx = nfs_get_lock_context(dreq->ctx);
  	if (IS_ERR(l_ctx)) {
  		result = PTR_ERR(l_ctx);
