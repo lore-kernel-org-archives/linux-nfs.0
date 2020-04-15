@@ -4,47 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E855C2BA19
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:43:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41AA2C2BA19
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:44:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DF39720936
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:43:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 17C6420936
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:44:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586950985;
-	bh=DJq3kiVid+PEWn5WE6VUYAktHgMxGYUpiygRCvaI3+Q=;
+	s=default; t=1586951051;
+	bh=IMGULC2cXAQ6DuCwZ1QCNT0FF77EOO3SOTS0Todyx5U=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=UtkcGkMeZkiHtJz68VAqjmplZOdfeIlyNvUdkjq9J4W5ZCmOBZvWGPtK0+g0+t0sX
-	 8F0RUWZSJypf0FAAoNjSzH7Gr+FkduWCQ20gdppeK87shFp0kuYZuwdc8eeRsnNbG5
-	 cpwqqQ5DEB+lAv2ECqnuBOSf3/Ube0zrSHnlQqxE=
+	b=VgM8qMnGduEivJKbxHcRD6oA33OMfYcgZmMFq6dsnW2nTyZdp7vTm0r9Z1eaJjs6g
+	 6Sig5C6xTmueziQ8+Q9xfM526L0fxdTBb0gObxVkTTd470hQ+nqeD6PjKC2CBko1nE
+	 +IiZThbcDdmOOQnnXBxTZVR8B0SyEOoh15SSEdes=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2408943AbgDOLnA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Apr 2020 07:43:00 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34128 "EHLO mail.kernel.org"
+        id S2409050AbgDOLoJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Apr 2020 07:44:09 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36604 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2408938AbgDOLm7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:42:59 -0400
+        id S2897564AbgDOLoG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:44:06 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6A33D20775;
-        Wed, 15 Apr 2020 11:42:58 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id A192420775;
+        Wed, 15 Apr 2020 11:44:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586950979;
-        bh=DJq3kiVid+PEWn5WE6VUYAktHgMxGYUpiygRCvaI3+Q=;
+        s=default; t=1586951046;
+        bh=IMGULC2cXAQ6DuCwZ1QCNT0FF77EOO3SOTS0Todyx5U=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=FGT/xGDWIiZbVRjEsJE9aGeUmfMYwl8iMbeE36IP9yCBWaLXJg3EdlDJ/i2D2VwIR
-         HH9n3g+l7bbCq1OW3tFedklpue3oh+yhZQnqoN9gfgvi3wy14YTIFpuQmuvsFlYODq
-         lCRI9Meut1DW9ftP1hTz0YTaEawM4IyoNqGE7DeQ=
+        b=cqYTgjS+XtnhxDfNBk6okhSGMND+lFoAbnF8vMWy1Pg62f5lsour4LguqOecTq7TN
+         YDUMb0WntQos9QC92147TSMcZNG/6DIndPddbw5kF1AfYHPIr3qdt0uEDrEgZT/CWk
+         /B4EbyZMS9MzqpT8AxLXdneXlpPELzSJ2xzK1JQE=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 027/106] NFSv4/pnfs: Return valid stateids in nfs_layout_find_inode_by_stateid()
-Date:   Wed, 15 Apr 2020 07:41:07 -0400
-Message-Id: <20200415114226.13103-27-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 081/106] NFS: Fix memory leaks in nfs_pageio_stop_mirroring()
+Date:   Wed, 15 Apr 2020 07:42:01 -0400
+Message-Id: <20200415114226.13103-81-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200415114226.13103-1-sashal@kernel.org>
 References: <20200415114226.13103-1-sashal@kernel.org>
@@ -59,32 +59,52 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit d911c57a19551c6bef116a3b55c6b089901aacb0 ]
+[ Upstream commit 862f35c94730c9270833f3ad05bd758a29f204ed ]
 
-Make sure to test the stateid for validity so that we catch instances
-where the server may have been reusing stateids in
-nfs_layout_find_inode_by_stateid().
+If we just set the mirror count to 1 without first clearing out
+the mirrors, we can leak queued up requests.
 
-Fixes: 7b410d9ce460 ("pNFS: Delay getting the layout header in CB_LAYOUTRECALL handlers")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/callback_proc.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/pagelist.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index cd4c6bc81caed..40d31024b72d1 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -128,6 +128,8 @@ static struct inode *nfs_layout_find_inode_by_stateid(struct nfs_client *clp,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 20b3717cd7ca8..3335cd2e8047b 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -886,15 +886,6 @@ static void nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
+ 	pgio->pg_mirror_count = mirror_count;
+ }
  
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
-+			if (!pnfs_layout_is_valid(lo))
-+				continue;
- 			if (stateid != NULL &&
- 			    !nfs4_stateid_match_other(stateid, &lo->plh_stateid))
- 				continue;
+-/*
+- * nfs_pageio_stop_mirroring - stop using mirroring (set mirror count to 1)
+- */
+-void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio)
+-{
+-	pgio->pg_mirror_count = 1;
+-	pgio->pg_mirror_idx = 0;
+-}
+-
+ static void nfs_pageio_cleanup_mirroring(struct nfs_pageio_descriptor *pgio)
+ {
+ 	pgio->pg_mirror_count = 1;
+@@ -1320,6 +1311,14 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+ 	}
+ }
+ 
++/*
++ * nfs_pageio_stop_mirroring - stop using mirroring (set mirror count to 1)
++ */
++void nfs_pageio_stop_mirroring(struct nfs_pageio_descriptor *pgio)
++{
++	nfs_pageio_complete(pgio);
++}
++
+ int __init nfs_init_nfspagecache(void)
+ {
+ 	nfs_page_cachep = kmem_cache_create("nfs_page",
 -- 
 2.20.1
 
