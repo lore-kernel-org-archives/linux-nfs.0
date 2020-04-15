@@ -7,47 +7,47 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 51AFFC2BB55
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:47:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6582BC2BB55
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:48:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 315F92137B
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:47:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 379C420775
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 11:48:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586951264;
-	bh=n3FIpkFU20A2sit5DXStONHFEVjMmscjr40uyQE7MYg=;
+	s=default; t=1586951295;
+	bh=GaNAlxoIcuufHCy0GFgNzN8L5z5nlk6PDPiyXYSP6Ag=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=1tHxdjnCrdjihimSMVwbvJiyRhPWd+CRRdwq2zhzW5NnEgJzxAzWjdo5nm778mCMl
-	 8Sx8LNciHwLD1+72uxflC3NNygecvEqeplEira6WYFRlIZpAnScABlpwiLC3auxjxB
-	 VLARXg31mqlhtswg5Y1udhZZxUwJHwjvjtal3LFY=
+	b=EuuLAZp92dkAqA6PrRaKZvRrCLDmXUTWIcqN8w2exmDsCM+EGIGAZmTIiqPp0Yn6U
+	 e9OjOxWO9pQXteidHFK7OE/htetScubeeStVKyUkliFQUv304Qp/UR3UhJ8fwmwaiQ
+	 rbHJO66QonhUvDlYBstZewJyjv1sslzcZEtEePr0=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2409372AbgDOLrm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Apr 2020 07:47:42 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42672 "EHLO mail.kernel.org"
+        id S2409435AbgDOLsL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Apr 2020 07:48:11 -0400
+Received: from mail.kernel.org ([198.145.29.99]:43824 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409364AbgDOLrl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:47:41 -0400
+        id S2409424AbgDOLsI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:48:08 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1E5E4206A2;
-        Wed, 15 Apr 2020 11:47:40 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7542621569;
+        Wed, 15 Apr 2020 11:48:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951260;
-        bh=n3FIpkFU20A2sit5DXStONHFEVjMmscjr40uyQE7MYg=;
+        s=default; t=1586951288;
+        bh=GaNAlxoIcuufHCy0GFgNzN8L5z5nlk6PDPiyXYSP6Ag=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=k9+GOQj4hH9VmB8c45CNybbIpaFnDG6c+WqVy3TF4RTSRVF9iU9QVZoFdVTeD1NPJ
-         jiq/RARGCKvUaSA5R30AAWu7JmpVVPvxRe8TJ48Mtk9lDplhUzxqq4TUEwCBcJEXJp
-         /9zdFs1Gysb4d8eSTmzV+UqpesxyKPYdChLxmm/o=
+        b=bP6zF7zTQdLC8mjCqjDt55UVqMFc77oYbyIKfIO+bZRuEO+cyc1CE0lx0VjCw0ke3
+         yIfpyYbMWUPPJ70aiZQll3IT0qdleupEzyHy5r18PDplvHn4xSvUzwN4gRR1DDdXos
+         dGWiUj/Dbp7VN/JT/tLxvvYlJjiHVzV2stZMgFbc=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 24/30] NFS: Fix memory leaks in nfs_pageio_stop_mirroring()
-Date:   Wed, 15 Apr 2020 07:47:05 -0400
-Message-Id: <20200415114711.15381-24-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 16/21] NFS: Fix memory leaks in nfs_pageio_stop_mirroring()
+Date:   Wed, 15 Apr 2020 07:47:43 -0400
+Message-Id: <20200415114748.15713-16-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200415114711.15381-1-sashal@kernel.org>
-References: <20200415114711.15381-1-sashal@kernel.org>
+In-Reply-To: <20200415114748.15713-1-sashal@kernel.org>
+References: <20200415114748.15713-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -71,11 +71,11 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index ceb6892d9bbdc..7c01936be7c70 100644
+index b6e25126a0b0f..529f3a5762637 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -864,15 +864,6 @@ static void nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
- 	pgio->pg_mirror_count = mirror_count;
+@@ -851,15 +851,6 @@ static int nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
+ 	return 0;
  }
  
 -/*
@@ -90,7 +90,7 @@ index ceb6892d9bbdc..7c01936be7c70 100644
  static void nfs_pageio_cleanup_mirroring(struct nfs_pageio_descriptor *pgio)
  {
  	pgio->pg_mirror_count = 1;
-@@ -1301,6 +1292,14 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+@@ -1285,6 +1276,14 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
  	}
  }
  
