@@ -7,45 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CD2AC38A29
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01CACC2BA19
 	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:17:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 00438208FE
+	by mail.kernel.org (Postfix) with ESMTP id CC6992078A
 	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:17:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586953055;
-	bh=6Qusnb+hvblgVvgzQUKkQ1ZP7XGAWG225QsbQDOykRc=;
+	s=default; t=1586953054;
+	bh=F99xk0SnwSsIMiTxAabUhr6xnimitrs0ZPmUg5LI9ps=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Rp+ikh/0e75JHXHcZcclw/RKMZHHXCDF2oZS8jIFFATWK5LPHFmGXn8y1TAAVOeOp
-	 iVRmtwnkkUm7FL6elnllcfdK3Qhz4N7MwyMKBNZFsUlI8c9i1rTQuOB7mzDX6Vbsa+
-	 SjjhB/y8mLqRuzlIEDoH9Mf3hVP+e55lchNjp38c=
+	b=AE1OgT0XzIndgrrZtXVr+jVSdg67g5LpJW49C9H+2LDSdPG0qOYDW3CAWnuom6SSa
+	 o/6a5TI5QhNUm4aqiFU5Qyn0J3UnRQPMR+lm3sdI5/7nwW822GEkRElNeMhwbkxtJl
+	 5b35sYv0mw18o090BDsBTZOvT1PmaKgbYMUlf6so=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S368770AbgDOMRI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Apr 2020 08:17:08 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41578 "EHLO mail.kernel.org"
+        id S368764AbgDOMRH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Apr 2020 08:17:07 -0400
+Received: from mail.kernel.org ([198.145.29.99]:41572 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409300AbgDOLqf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S2409301AbgDOLqf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 15 Apr 2020 07:46:35 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2F1B321569;
-        Wed, 15 Apr 2020 11:46:31 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 3DFCD21582;
+        Wed, 15 Apr 2020 11:46:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951191;
-        bh=6Qusnb+hvblgVvgzQUKkQ1ZP7XGAWG225QsbQDOykRc=;
+        s=default; t=1586951190;
+        bh=F99xk0SnwSsIMiTxAabUhr6xnimitrs0ZPmUg5LI9ps=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=GH1Hx6PZUdCh+tx3KAYasHTmVZijLvDtgdsgQqEei0DXvvgeHOU9T/7m3EeeJzxdj
-         zRtnjoUjz+X4+xatfuYdyLe2BavtY3u4AXgYE0o4J2g5he6gwEQ8sd1wlPtBbpx4pR
-         AWGTasaoEkrIUqYXA+16/y5YtfW3YXqNRI7WAImk=
+        b=Izf117GsC6bl4njFuiC1p7PPtD/hL/II75mRkbIQL/oG+FHMySvk84r/03p1e8/Rx
+         OSJXxioGtc9ZvoToNgRVBzC31JaZqgaFwHs5UcsL0K5MvTlCaCBvt3BJ+VHKuq21MN
+         MQkCY+LNVSPzdK1+82xm5iaOIaa5GNqpnw4O4BqA=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 07/40] NFS: direct.c: Fix memory leak of dreq when nfs_get_lock_context fails
-Date:   Wed, 15 Apr 2020 07:45:50 -0400
-Message-Id: <20200415114623.14972-7-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 06/40] NFSv4/pnfs: Return valid stateids in nfs_layout_find_inode_by_stateid()
+Date:   Wed, 15 Apr 2020 07:45:49 -0400
+Message-Id: <20200415114623.14972-6-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200415114623.14972-1-sashal@kernel.org>
 References: <20200415114623.14972-1-sashal@kernel.org>
@@ -58,48 +57,34 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 8605cf0e852af3b2c771c18417499dc4ceed03d5 ]
+[ Upstream commit d911c57a19551c6bef116a3b55c6b089901aacb0 ]
 
-When dreq is allocated by nfs_direct_req_alloc(), dreq->kref is
-initialized to 2. Therefore we need to call nfs_direct_req_release()
-twice to release the allocated dreq. Usually it is called in
-nfs_file_direct_{read, write}() and nfs_direct_complete().
+Make sure to test the stateid for validity so that we catch instances
+where the server may have been reusing stateids in
+nfs_layout_find_inode_by_stateid().
 
-However, current code only calls nfs_direct_req_relese() once if
-nfs_get_lock_context() fails in nfs_file_direct_{read, write}().
-So, that case would result in memory leak.
-
-Fix this by adding the missing call.
-
-Signed-off-by: Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>
+Fixes: 7b410d9ce460 ("pNFS: Delay getting the layout header in CB_LAYOUTRECALL handlers")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/direct.c | 2 ++
+ fs/nfs/callback_proc.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index c61bd3fc723ee..e5da9d7fb69e9 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -600,6 +600,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
-+		nfs_direct_req_release(dreq);
- 		goto out_release;
- 	}
- 	dreq->l_ctx = l_ctx;
-@@ -1023,6 +1024,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
-+		nfs_direct_req_release(dreq);
- 		goto out_release;
- 	}
- 	dreq->l_ctx = l_ctx;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 3159673549540..bcc51f131a496 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -130,6 +130,8 @@ static struct inode *nfs_layout_find_inode_by_stateid(struct nfs_client *clp,
+ 
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
++			if (!pnfs_layout_is_valid(lo))
++				continue;
+ 			if (stateid != NULL &&
+ 			    !nfs4_stateid_match_other(stateid, &lo->plh_stateid))
+ 				continue;
 -- 
 2.20.1
 
