@@ -4,51 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99470C2BB55
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:33:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E07DCC2BA19
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:47:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7B9AC2078A
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:33:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B3FDB20737
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Apr 2020 12:47:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586954007;
-	bh=KumeSezBYFcfKEPN0JqzpgTR3COOhKtsh9LKtTxA6cU=;
+	s=default; t=1586954830;
+	bh=L0c94b19MVAUqN2/oWXuSNcZrhQ1Dm0Nd6V1dgiWk8s=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=gDo53AtR8z9+eMPunaRfTQvQiKIISHd2IO6/T0PSAuL14qUrqgT/3Ayv5zc+ijIoQ
-	 JQG/P7byFPlBI4lEchev2h9qJ6PHP+0dfrBH1gN93hVTTPkuKfo1qRF7nytkw8vWon
-	 5hn2yYEq6gOx3KLrOeD0Al2TXbeD0Eyh5wlA1kXg=
+	b=NU6HWXq0okyxgRMeL9C441XlFPB/0p10aNlBNIeES9dy4UnVZnUtMKU+LZXd4Wk4f
+	 FVX8MdmOK6Gqzv2c4c+PUhiIeQgQ9xSC23EjOvwTZ81Zi1Zblz9PI6d0U2wkUe2Ng+
+	 n9KlZVwI3N4Y5ndtYjqV3HY67Ye3lUkMa4VVY/2Y=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S369689AbgDOMdY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Apr 2020 08:33:24 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36946 "EHLO mail.kernel.org"
+        id S2408966AbgDOLnK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Apr 2020 07:43:10 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34498 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2897566AbgDOLoR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:44:17 -0400
+        id S2408961AbgDOLnI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:43:08 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 26C73214D8;
-        Wed, 15 Apr 2020 11:44:16 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7E94E2137B;
+        Wed, 15 Apr 2020 11:43:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951057;
-        bh=KumeSezBYFcfKEPN0JqzpgTR3COOhKtsh9LKtTxA6cU=;
+        s=default; t=1586950988;
+        bh=L0c94b19MVAUqN2/oWXuSNcZrhQ1Dm0Nd6V1dgiWk8s=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=cHSrNryPVeBycYk9KpRVC5mzX9tsY7LD732a+8mi/560GoCTCMwXqCtKKFhk6Rwqu
-         neJji8lLMMtyE/cyYsJ+tk4H0yhO2ynYxuIiwgQYJs6kQSmj0j8VC19YyVAz+eVay2
-         y9GsEVxCRLRK7QeE5q5sv+3wE7wCIiwdiUlTJyVQ=
+        b=jaros32FamXqjXmou8BEAegA1Skj7yU7uUkFkndQMkChXxn7AJi3+Jw++2OwsUZfU
+         s7TJ2JMlL9e6dh9Rvo9QqKusoh+fUp7cV//s8LAYnIpI/n46p9BCSEwmb3DlIPS1LS
+         qqhzg96KE1oDMXl2Xvxhqp4WgIbeZgFWLip5holQ=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
+Cc:     Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 090/106] SUNRPC: fix krb5p mount to provide large enough buffer in rq_rcvsize
-Date:   Wed, 15 Apr 2020 07:42:10 -0400
-Message-Id: <20200415114226.13103-90-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.5 035/106] NFS: direct.c: Fix memory leak of dreq when nfs_get_lock_context fails
+Date:   Wed, 15 Apr 2020 07:41:15 -0400
+Message-Id: <20200415114226.13103-35-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200415114226.13103-1-sashal@kernel.org>
 References: <20200415114226.13103-1-sashal@kernel.org>
@@ -61,122 +58,48 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
+From: Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>
 
-[ Upstream commit df513a7711712758b9cb1a48d86712e7e1ee03f4 ]
+[ Upstream commit 8605cf0e852af3b2c771c18417499dc4ceed03d5 ]
 
-Ever since commit 2c94b8eca1a2 ("SUNRPC: Use au_rslack when computing
-reply buffer size"). It changed how "req->rq_rcvsize" is calculated. It
-used to use au_cslack value which was nice and large and changed it to
-au_rslack value which turns out to be too small.
+When dreq is allocated by nfs_direct_req_alloc(), dreq->kref is
+initialized to 2. Therefore we need to call nfs_direct_req_release()
+twice to release the allocated dreq. Usually it is called in
+nfs_file_direct_{read, write}() and nfs_direct_complete().
 
-Since 5.1, v3 mount with sec=krb5p fails against an Ontap server
-because client's receive buffer it too small.
+However, current code only calls nfs_direct_req_relese() once if
+nfs_get_lock_context() fails in nfs_file_direct_{read, write}().
+So, that case would result in memory leak.
 
-For gss krb5p, we need to account for the mic token in the verifier,
-and the wrap token in the wrap token.
+Fix this by adding the missing call.
 
-RFC 4121 defines:
-mic token
-Octet no   Name        Description
-         --------------------------------------------------------------
-         0..1     TOK_ID     Identification field.  Tokens emitted by
-                             GSS_GetMIC() contain the hex value 04 04
-                             expressed in big-endian order in this
-                             field.
-         2        Flags      Attributes field, as described in section
-                             4.2.2.
-         3..7     Filler     Contains five octets of hex value FF.
-         8..15    SND_SEQ    Sequence number field in clear text,
-                             expressed in big-endian order.
-         16..last SGN_CKSUM  Checksum of the "to-be-signed" data and
-                             octet 0..15, as described in section 4.2.4.
-
-that's 16bytes (GSS_KRB5_TOK_HDR_LEN) + chksum
-
-wrap token
-Octet no   Name        Description
-         --------------------------------------------------------------
-          0..1     TOK_ID    Identification field.  Tokens emitted by
-                             GSS_Wrap() contain the hex value 05 04
-                             expressed in big-endian order in this
-                             field.
-          2        Flags     Attributes field, as described in section
-                             4.2.2.
-          3        Filler    Contains the hex value FF.
-          4..5     EC        Contains the "extra count" field, in big-
-                             endian order as described in section 4.2.3.
-          6..7     RRC       Contains the "right rotation count" in big-
-                             endian order, as described in section
-                             4.2.5.
-          8..15    SND_SEQ   Sequence number field in clear text,
-                             expressed in big-endian order.
-          16..last Data      Encrypted data for Wrap tokens with
-                             confidentiality, or plaintext data followed
-                             by the checksum for Wrap tokens without
-                             confidentiality, as described in section
-                             4.2.4.
-
-Also 16bytes of header (GSS_KRB5_TOK_HDR_LEN), encrypted data, and cksum
-(other things like padding)
-
-RFC 3961 defines known cksum sizes:
-Checksum type              sumtype        checksum         section or
-                                value            size         reference
-   ---------------------------------------------------------------------
-   CRC32                            1               4           6.1.3
-   rsa-md4                          2              16           6.1.2
-   rsa-md4-des                      3              24           6.2.5
-   des-mac                          4              16           6.2.7
-   des-mac-k                        5               8           6.2.8
-   rsa-md4-des-k                    6              16           6.2.6
-   rsa-md5                          7              16           6.1.1
-   rsa-md5-des                      8              24           6.2.4
-   rsa-md5-des3                     9              24             ??
-   sha1 (unkeyed)                  10              20             ??
-   hmac-sha1-des3-kd               12              20            6.3
-   hmac-sha1-des3                  13              20             ??
-   sha1 (unkeyed)                  14              20             ??
-   hmac-sha1-96-aes128             15              20         [KRB5-AES]
-   hmac-sha1-96-aes256             16              20         [KRB5-AES]
-   [reserved]                  0x8003               ?         [GSS-KRB5]
-
-Linux kernel now mainly supports type 15,16 so max cksum size is 20bytes.
-(GSS_KRB5_MAX_CKSUM_LEN)
-
-Re-use already existing define of GSS_KRB5_MAX_SLACK_NEEDED that's used
-for encoding the gss_wrap tokens (same tokens are used in reply).
-
-Fixes: 2c94b8eca1a2 ("SUNRPC: Use au_rslack when computing reply buffer size")
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Misono Tomohiro <misono.tomohiro@jp.fujitsu.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/direct.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index d75fddca44c94..f9e1a7e61eda0 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -20,6 +20,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/auth.h>
- #include <linux/sunrpc/auth_gss.h>
-+#include <linux/sunrpc/gss_krb5.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/gss_err.h>
- #include <linux/workqueue.h>
-@@ -1050,7 +1051,7 @@ gss_create_new(const struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- 		goto err_put_mech;
- 	auth = &gss_auth->rpc_auth;
- 	auth->au_cslack = GSS_CRED_SLACK >> 2;
--	auth->au_rslack = GSS_VERF_SLACK >> 2;
-+	auth->au_rslack = GSS_KRB5_MAX_SLACK_NEEDED >> 2;
- 	auth->au_verfsize = GSS_VERF_SLACK >> 2;
- 	auth->au_ralign = GSS_VERF_SLACK >> 2;
- 	auth->au_flags = 0;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 29f00da8a0b7f..6b0bf4ebd8124 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -571,6 +571,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
+ 	l_ctx = nfs_get_lock_context(dreq->ctx);
+ 	if (IS_ERR(l_ctx)) {
+ 		result = PTR_ERR(l_ctx);
++		nfs_direct_req_release(dreq);
+ 		goto out_release;
+ 	}
+ 	dreq->l_ctx = l_ctx;
+@@ -989,6 +990,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+ 	l_ctx = nfs_get_lock_context(dreq->ctx);
+ 	if (IS_ERR(l_ctx)) {
+ 		result = PTR_ERR(l_ctx);
++		nfs_direct_req_release(dreq);
+ 		goto out_release;
+ 	}
+ 	dreq->l_ctx = l_ctx;
 -- 
 2.20.1
 
