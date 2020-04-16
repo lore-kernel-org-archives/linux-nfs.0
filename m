@@ -2,89 +2,118 @@ Return-Path: <SRS0=UO7P=6A=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7156FC352BE
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F1927C2BA2B
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 23:30:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4E40B22245
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587075305;
-	bh=0gdPE40FK1apLhWsEYvg0xL+rWdC2zhl3BTc08Bc+tQ=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=PpEjbN0C1S0mfC4wcoeE9o8loWmixkajEWFwCJ9p/ImfZpUiPRbKYGW+ateL3xrHe
-	 Apa5f1axBzNEe4RoOuhGZF7HHhJzYTKZkqIax0A7oQfSHqihRj/Yjqv4e1p19kpgfR
-	 gVVwxn2760Lby6ytztABhqHdJTXovVw4TypQvbu8=
+	by mail.kernel.org (Postfix) with ESMTP id A0142217D8
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 23:30:52 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Sc8Q9wvK"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729197AbgDPWPE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Apr 2020 18:15:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54210 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729164AbgDPWPC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Apr 2020 18:15:02 -0400
-Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 31F3D2220A;
-        Thu, 16 Apr 2020 22:15:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587075302;
-        bh=0gdPE40FK1apLhWsEYvg0xL+rWdC2zhl3BTc08Bc+tQ=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=fcyjMcELf+I8QOQ+03XECuu3PdVmz44ZtrovCBYkFItOiUkK7oeooz+/KIhoUl9dU
-         jf1hXuBjQhsRh9SBCSQ/A6I5oKyPvdVt0apsWOYZBgr3WD36YEeypOcXKUmfNs/wSD
-         OGUAusQMSiEA4Ji2egxgNT8idQvVXWmzY8BtCHZM=
-From:   trondmy@kernel.org
-To:     Steve Dickson <SteveD@redhat.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 4/7] Fix autoconf probe for 'struct nfs_filehandle'
-Date:   Thu, 16 Apr 2020 18:12:49 -0400
-Message-Id: <20200416221252.82102-5-trondmy@kernel.org>
-X-Mailer: git-send-email 2.25.2
-In-Reply-To: <20200416221252.82102-4-trondmy@kernel.org>
-References: <20200416221252.82102-1-trondmy@kernel.org>
- <20200416221252.82102-2-trondmy@kernel.org>
- <20200416221252.82102-3-trondmy@kernel.org>
- <20200416221252.82102-4-trondmy@kernel.org>
+        id S1725805AbgDPXaw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Apr 2020 19:30:52 -0400
+Received: from mail-eopbgr700130.outbound.protection.outlook.com ([40.107.70.130]:7041
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725770AbgDPXav (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Apr 2020 19:30:51 -0400
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=naL2U0/ClywqvuhZacYg5gPEA+NRbKKTnoLZLGwX4Pak33y6gQVuurxO3Xb25FVl/9fTJBPXxURqgp3uUO4c/s/7K4bARxqaARjPKWSk/XEwJc6Zg+U75+xMvhuNc2FJjhKCX7qRrhmUWGFVja7TuNomuAlxzna8aszJ+1NeVXYfPh+jB/XTN21l7y3PtCRtqt5WvqcdRYQ53VtTmo0vHfKR+Nuh8B76+Yi45J7K+iiYQXohe6reEbZvW8eTZ0iLs3FPefC77xn58U+Eufy0/8Anx1jD9XkYi42QAXg5MEXIuoH2o2UoeIx9h2UDSNPrsThxXCL37etfwBb7mwdHjA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=afV9f+mTC8QeJ7RoyIalj9hcmmTN5SJTVvnSjn+7nI0=;
+ b=H1e98sJI/Ov2JKztNvnDmcOHiSCen0zWtk8fct412Ss4zr9XzJzQpenEu/xTUfvH4HIL0z5T0RPqCPIrNmZHnEDl8rKLf1+JnyfdcPueZDAGdMmDTCKDXviOXaJcVWal5km30M5+D/R50RieWvXA39OQxrEA5VdWur044TpuEc81HD1z1GbPTa0eGNmyuL2oMwxCCKw354Gzu6RQFVNKqprJuDHVOQKPNCXvumBXtZu2OhaLMckClfEIU71UeK99wmfY8FeUg8NwlsydG/Vult2aIL8NdkkkzBSTOLlLt9eW4bhskgtHUlxrCmyIDG95Ae4DKHVDQpM503pXZjENuw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=hammerspace.com; dmarc=pass action=none
+ header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=afV9f+mTC8QeJ7RoyIalj9hcmmTN5SJTVvnSjn+7nI0=;
+ b=Sc8Q9wvKc+ikmDP9xpmFaHqYlRQgteu77gDYKm2qefMPwQa/e0EQ4H2mlOYfkzH6oOCxCbhbyZF8Pkzwt1Jx3MMwUqLDSxnCt5YjV87wIBEycOHfcGvCXyhylaz8bgNINBHinivlbH3ePnYZLfbwRSFT40eDc2sljPcyiZCtzP4=
+Received: from CH2PR13MB3398.namprd13.prod.outlook.com (2603:10b6:610:2a::33)
+ by CH2PR13MB3527.namprd13.prod.outlook.com (2603:10b6:610:29::19) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.2937.6; Thu, 16 Apr
+ 2020 23:30:49 +0000
+Received: from CH2PR13MB3398.namprd13.prod.outlook.com
+ ([fe80::49f6:ce9b:9803:2493]) by CH2PR13MB3398.namprd13.prod.outlook.com
+ ([fe80::49f6:ce9b:9803:2493%6]) with mapi id 15.20.2937.007; Thu, 16 Apr 2020
+ 23:30:49 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL] Please pull another NFS client bugfix
+Thread-Topic: [GIT PULL] Please pull another NFS client bugfix
+Thread-Index: AQHWFEav9k7H+BHYw02oEswjsl2GTah8ZY+A
+Date:   Thu, 16 Apr 2020 23:30:48 +0000
+Message-ID: <e2f62ab02037ca4ab2f72081851d3e0d0c521e77.camel@hammerspace.com>
+References: <74a2fbfca03c6150c0a88e915109babbc45b9e08.camel@hammerspace.com>
+In-Reply-To: <74a2fbfca03c6150c0a88e915109babbc45b9e08.camel@hammerspace.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.36.133.222]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 6e453b20-9385-47bf-1dd4-08d7e25e3218
+x-ms-traffictypediagnostic: CH2PR13MB3527:
+x-microsoft-antispam-prvs: <CH2PR13MB3527EB297F6EF62BDACDAFF7B8D80@CH2PR13MB3527.namprd13.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:873;
+x-forefront-prvs: 0375972289
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH2PR13MB3398.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFTY:;SFS:(39830400003)(396003)(366004)(136003)(376002)(346002)(54906003)(316002)(91956017)(186003)(2906002)(26005)(76116006)(6506007)(36756003)(8676002)(81156014)(8936002)(2616005)(4326008)(5660300002)(478600001)(6512007)(6916009)(6486002)(86362001)(71200400001)(66946007)(66476007)(66556008)(64756008)(66446008);DIR:OUT;SFP:1102;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: t+X5Imti3JcVDWGVWbLV2HU2rtWB/vTpODiUfF1tqwzg04OEy1FrXmzPtm6onLNyoogTzRqShaFBBIctKNShddhaa5Q+ftR8EFcyBUWWNxEpd5m/g1Y1gDHOcBfLz6eM3AGDSfZKAOt9H+AB89bUX6Q2wAqSdWhwDTex/j/amtydKiSKVY/YR6KEoC3Ft2bJG31nyhZKvNebbSy6uIX5gohOwFDFnUfMgCyFoMwtVgIgMQyxHTsqxGAzihlcJsBckp1gzgjj4kKgBc1OG+BOIELYwtgllM9azGrdTmzEhu29evBx3xdVFMs82yc6fSco7Fypww4a1dYF10pZmcuuqKL5KTHjroa9PIUQsaNUG4sMxryZICTpKlSJwso9B6HtpciPeoekCTQmA2YJrw7q+iOFlBZYPhp5c5I8YjPeluEPx+e5umCAbN1R5xjJwxk7
+x-ms-exchange-antispam-messagedata: UH3xIBZkoU6iHpn2PquxSeWF+mayyom6gdHnP1P0/8YzYoHQLR9Dn/FB/8VfSIA1pJheKYq3g6ioPt/MRAOSi4hcyPUFwe4Zs2wn7jm1CqMXgxWij9B+H5m3OAIGWtkqVnZd+S3KPOMODneNyL5N5Q==
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <7B002E6C9E220E42ABE38D3D4C464679@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 6e453b20-9385-47bf-1dd4-08d7e25e3218
+X-MS-Exchange-CrossTenant-originalarrivaltime: 16 Apr 2020 23:30:48.9829
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: gnGTtJ/PjFw5ml6kScT8rTgoIEvKAwgVKuaww0XLQ9EYeKfltEZR88wEeEmv/0wkvEG39cw/P4buysUU6pHPEA==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR13MB3527
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-
-It was failing because fcntl.h is not one of the standard
-includes.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- configure.ac | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/configure.ac b/configure.ac
-index 00b32800c526..df88e58fd0d4 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -531,7 +531,12 @@ AC_TYPE_PID_T
- AC_TYPE_SIZE_T
- AC_HEADER_TIME
- AC_STRUCT_TM
--AC_CHECK_TYPES([struct file_handle])
-+AC_CHECK_TYPES([struct file_handle], [], [], [[
-+		#define _GNU_SOURCE
-+		#include <sys/types.h>
-+		#include <sys/stat.h>
-+		#include <fcntl.h>
-+	]])
- 
- dnl *************************************************************
- dnl Check for functions
--- 
-2.25.2
-
+T24gVGh1LCAyMDIwLTA0LTE2IGF0IDE5OjI4IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IEhpIExpbnVzLA0KPiANCj4gVGhlIGZvbGxvd2luZyBjaGFuZ2VzIHNpbmNlIGNvbW1pdA0K
+PiA4ZjNkOWYzNTQyODY3NDVjNzUxMzc0ZjVmMWZjYWZlZTZiM2YzMTM2Og0KPiANCj4gICBMaW51
+eCA1LjctcmMxICgyMDIwLTA0LTEyIDEyOjM1OjU1IC0wNzAwKQ0KPiANCj4gYXJlIGF2YWlsYWJs
+ZSBpbiB0aGUgR2l0IHJlcG9zaXRvcnkgYXQ6DQo+IA0KPiAgIGdpdDovL2dpdC5saW51eC1uZnMu
+b3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCB0YWdzL25mcy0NCj4gZm9yLTUuNy0z
+DQo+IA0KPiBmb3IgeW91IHRvIGZldGNoIGNoYW5nZXMgdXAgdG8NCj4gZmJmNGJjYzlhODM3MzEy
+Mjg4MTkwOTMzMWYyZjk1NjZhMTI4MTI2ZToNCj4gDQo+ICAgTkZTOiBGaXggYW4gQUJCQSBzcGlu
+bG9jayBpc3N1ZSBpbiBwbmZzX3VwZGF0ZV9sYXlvdXQoKSAoMjAyMC0wNC0xMyANCj4gMTU6NTU6
+MjEgLTA0MDApDQo+IA0KPiBUaGFua3MNCj4gICBUcm9uZA0KPiANCj4gLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiBORlMg
+Y2xpZW50IGJ1Z2ZpeCBmb3IgTGludXggNS43DQo+IA0KPiBCdWdmaXg6DQo+IC0gRml4IGFuIEFC
+QkEgc3BpbmxvY2sgaXNzdWUgaW4gcG5mc191cGRhdGVfbGF5b3V0KCkNCj4gDQo+IC0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0N
+Cj4gVHJvbmQgTXlrbGVidXN0ICgxKToNCj4gICAgICAgTkZTOiBGaXggYW4gQUJCQSBzcGlubG9j
+ayBpc3N1ZSBpbiBwbmZzX3VwZGF0ZV9sYXlvdXQoKQ0KPiANCj4gIGZzL25mcy9wbmZzLmMgfCAz
+ICsrLQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0K
+DQpTb3JyeSBhYm91dCB0aGUgZHVwLCBMaW51cy4gSSBpbmFkdmVydGVudGx5IGhpdCAnc2VuZCcg
+YmVmb3JlIEkgaGFkDQphZGRlZCB0aGUgdXN1YWwgQ2NzLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWts
+ZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
