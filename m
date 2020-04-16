@@ -2,56 +2,48 @@ Return-Path: <SRS0=UO7P=6A=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 028B3C38A2B
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B863DC2BA2B
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CB799221F9
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9622C2222D
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587075305;
-	bh=3aUFRrpZcE/s1KgidxE52RylYFuRQiFUfWiqJcLIGjA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=dsj7yDGMG0nAZlaEY+1slbEMUPqwkEING4zNeGlEsilK/1FVhc/xIB0hvGkPfPaUE
-	 o/ISGqn9nlRqH99NKfzckmosEslhTC9pZj/dvp2XQ0lEVOTOHVXvshfzmK0nCAt4PC
-	 r8CzDpc+v7kwkvh3aV7B8kUqa33s+sMIat8QqW3o=
+	s=default; t=1587075301;
+	bh=ZAoqiSLYIHCPiPPHL49mECpuSjsGwo97DueDNKp4HSI=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=WAhpEsjajtDAHB2MKW0DC/mzsrC9sZUt1+3uk7N0XN3xTNj6cjFrttDGN6KyHC/uX
+	 usyU0qt+nYi8e6u5/GHlooPsh8aWPf5wxHKO+BouUrHPivgCAsNwMyxmYIqo8ZphLo
+	 6LOpk0LlTFGPqhGnk3j/ApraY+LmWLRtJ/+T0dlM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729164AbgDPWPE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Apr 2020 18:15:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54234 "EHLO mail.kernel.org"
+        id S1729182AbgDPWPA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Apr 2020 18:15:00 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54116 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729199AbgDPWPD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Apr 2020 18:15:03 -0400
+        id S1729164AbgDPWPA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Apr 2020 18:15:00 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3B3C4221F9;
-        Thu, 16 Apr 2020 22:15:03 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 23133218AC;
+        Thu, 16 Apr 2020 22:15:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587075303;
-        bh=3aUFRrpZcE/s1KgidxE52RylYFuRQiFUfWiqJcLIGjA=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=r3IgAwR42Ba40tyMNX0H++hTLOh6X5tbjjpcB5iKt+8RzXpnPfDMz8H+T60m5J4K9
-         S+J+TUQ4WJZlZYwfq4epGcvCB38JbQOZ/sh9YMFgoYr7pnkHeRxG/RpHLiZRoabW41
-         sZz3bBAtwNC7XLnzq8Un5A5jbXPRGyUObp27TZXM=
+        s=default; t=1587075300;
+        bh=ZAoqiSLYIHCPiPPHL49mECpuSjsGwo97DueDNKp4HSI=;
+        h=From:To:Cc:Subject:Date:From;
+        b=bvtMqPtvPFZh1sr5R+aZ70gmoVKJ8qgkeWllH287rnr2m1qmPsLsk9tsrzWt9FAXH
+         tGjyY7kGPOkShwEerYN7qFIIX32jG9+Ob22IPIrLzu2bBIiNMrUAI6jAeDfxFhuzZK
+         o6Y1VrSA5d/J8IQA5f7EIEL0ywisq0bYkHdKBcts=
 From:   trondmy@kernel.org
 To:     Steve Dickson <SteveD@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 6/7] mountd: Ignore transient and non-fatal filesystem errors in nfsd_fh()
-Date:   Thu, 16 Apr 2020 18:12:51 -0400
-Message-Id: <20200416221252.82102-7-trondmy@kernel.org>
+Subject: [PATCH 0/7] nfs-utils fixes
+Date:   Thu, 16 Apr 2020 18:12:45 -0400
+Message-Id: <20200416221252.82102-1-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.2
-In-Reply-To: <20200416221252.82102-6-trondmy@kernel.org>
-References: <20200416221252.82102-1-trondmy@kernel.org>
- <20200416221252.82102-2-trondmy@kernel.org>
- <20200416221252.82102-3-trondmy@kernel.org>
- <20200416221252.82102-4-trondmy@kernel.org>
- <20200416221252.82102-5-trondmy@kernel.org>
- <20200416221252.82102-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -61,61 +53,29 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-In nfsd_fh(), if the error returned by the downcall is transient,
-then we should ignore it. Only reject the export if the filesystem
-path is truly not exportable.
-This fixes a case where we can see spurious NFSERR_STALE errors
-being returned by knfsd.
+This patchset fixes a couple of missed API changes in mountd to
+ensure that the [exports]rootdir root jail works correctly. It
+fixes up the 'same_path' function, as well as 'uuid_by_path'.
+It also improves the error handling, and tries to distinguish
+between bona fide path resolution problems, and other transient
+issues in order to avoid having knfsd return spurious ESTALE
+errors.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- utils/mountd/cache.c | 25 +++++++++++++------------
- 1 file changed, 13 insertions(+), 12 deletions(-)
+Trond Myklebust (7):
+  mountd: Add a helper nfsd_path_statfs64() for uuid_by_path()
+  nfsd: Support running nfsd_name_to_handle_at() in the root jail
+  mountd: Fix up path checking helper same_path()
+  Fix autoconf probe for 'struct nfs_filehandle'
+  mountd: Ensure dump_to_cache() sets errno appropriately
+  mountd: Ignore transient and non-fatal filesystem errors in nfsd_fh()
+  mountd: Check the stat() return values in match_fsid()
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 0f323226b12a..79d3ee085a90 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -843,8 +843,14 @@ static void nfsd_fh(int f)
- 			}
- 		}
- 	}
--	if (found && 
--	    found->e_mountpoint &&
-+
-+	if (!found) {
-+		/* The missing dev could be what we want, so just be
-+		 * quiet rather than returning stale yet
-+		 */
-+		if (dev_missing)
-+			goto out;
-+	} else if (found->e_mountpoint &&
- 	    !is_mountpoint(found->e_mountpoint[0]?
- 			   found->e_mountpoint:
- 			   found->e_path)) {
-@@ -855,17 +861,12 @@ static void nfsd_fh(int f)
- 		 */
- 		/* FIXME we need to make sure we re-visit this later */
- 		goto out;
-+	} else if (cache_export_ent(buf, sizeof(buf), dom, found, found_path) < 0) {
-+		if (!path_lookup_error(errno))
-+			goto out;
-+		/* The kernel is saying the path is unexportable */
-+		found = NULL;
- 	}
--	if (!found && dev_missing) {
--		/* The missing dev could be what we want, so just be
--		 * quite rather than returning stale yet
--		 */
--		goto out;
--	}
--
--	if (found)
--		if (cache_export_ent(buf, sizeof(buf), dom, found, found_path) < 0)
--			found = 0;
- 
- 	bp = buf; blen = sizeof(buf);
- 	qword_add(&bp, &blen, dom);
+ configure.ac                |   7 +-
+ support/include/nfsd_path.h |   9 ++
+ support/misc/nfsd_path.c    | 109 ++++++++++++++++++++++
+ utils/mountd/cache.c        | 174 ++++++++++++++++++++++++------------
+ 4 files changed, 242 insertions(+), 57 deletions(-)
+
 -- 
 2.25.2
 
