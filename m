@@ -7,52 +7,48 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AB43C2BA2B
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72A25C2BB55
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 49888218AC
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 53D86221F9
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587075308;
-	bh=TxjuFdblTE83Xqokj0V9LEHx2yuzl+bFcMMPFlaotck=;
+	s=default; t=1587075309;
+	bh=XcOH0u56sQC3dCT24oQ04hjxmbOtq4sKYGsePtObZeY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=mpSWAsYnHsmyzVhNmSNOsNN3sAqD2XMLO5Bfji5+qoHEqbrUnYiFZSq33PDlTiyI5
-	 S/UsMUWtshW3sPRAUZ8nGougzSZx4ugdoTeUyW7tsroKe2IT6Sd+sSIlNq665DlpF+
-	 6zpNDrNNezil6B8/ES1+iXRrsTAi+bY5Ao4dlbro=
+	b=jZFhVoB0zyrIoPDYcYzdwe0a4uvgjEBrYM4hKNno7vTJ2IjTCJUCx61/pKBy75RBO
+	 h1CEzpREoJ9qg136tG18purHKa2OyX2G58jEON5FM260vkQE38A+KJ9aiWYkkJA2EI
+	 0ygRmNUQoPJRgZVglVvIZD51smpUMxUB0BpHQgoQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729193AbgDPWPF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1729199AbgDPWPF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 16 Apr 2020 18:15:05 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54246 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:54198 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729205AbgDPWPE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Apr 2020 18:15:04 -0400
+        id S1729193AbgDPWPC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Apr 2020 18:15:02 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id CB8B022202;
-        Thu, 16 Apr 2020 22:15:03 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id AB9072223F;
+        Thu, 16 Apr 2020 22:15:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587075304;
-        bh=TxjuFdblTE83Xqokj0V9LEHx2yuzl+bFcMMPFlaotck=;
+        s=default; t=1587075302;
+        bh=XcOH0u56sQC3dCT24oQ04hjxmbOtq4sKYGsePtObZeY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=MzPrOadT3SnE/NcE+lUyA7xCwtwrGCg+R3HLk793mYyy3IEwspcHvR2cbmplhwe5f
-         P/vhcKkofK4qNNqs6QixRJqOhaQZdN8KC9ebZ8Fsjx54wtgow3xiqC0k44GatnA6Rp
-         0w8SvSGUOqjkoGNFAlIw6lToaxMW5ciymCWgVLns=
+        b=qI//DXS3Dl+Ay6ociqIRM5DeFZ6AavbPMvTPyUaWUmEoT+r3ALknm60R0zkV4V3a+
+         MztMA31gOCbCmn8q1j2f8+GF1ZHWY40f/lWymgFSO4/qqyibToBfhEwnMhaZG3EBgi
+         xB5CC2vWn9ri+VhdF+qcoJg3yR1Ay8alrl84rSOQ=
 From:   trondmy@kernel.org
 To:     Steve Dickson <SteveD@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 7/7] mountd: Check the stat() return values in match_fsid()
-Date:   Thu, 16 Apr 2020 18:12:52 -0400
-Message-Id: <20200416221252.82102-8-trondmy@kernel.org>
+Subject: [PATCH 3/7] mountd: Fix up path checking helper same_path()
+Date:   Thu, 16 Apr 2020 18:12:48 -0400
+Message-Id: <20200416221252.82102-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.2
-In-Reply-To: <20200416221252.82102-7-trondmy@kernel.org>
+In-Reply-To: <20200416221252.82102-3-trondmy@kernel.org>
 References: <20200416221252.82102-1-trondmy@kernel.org>
  <20200416221252.82102-2-trondmy@kernel.org>
  <20200416221252.82102-3-trondmy@kernel.org>
- <20200416221252.82102-4-trondmy@kernel.org>
- <20200416221252.82102-5-trondmy@kernel.org>
- <20200416221252.82102-6-trondmy@kernel.org>
- <20200416221252.82102-7-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -62,113 +58,144 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Propagate errors from the stat() calls in match_fsid() so that the
-caller can be more careful about how they are handled.
+Convert 'same_path()' so that it works when 'rootdir'
+is set in the [exports] section of nfs.conf.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- utils/mountd/cache.c | 45 +++++++++++++++++++++++++++++---------------
- 1 file changed, 30 insertions(+), 15 deletions(-)
+ utils/mountd/cache.c | 83 +++++++++++++++++++++++++++++++-------------
+ 1 file changed, 59 insertions(+), 24 deletions(-)
 
 diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 79d3ee085a90..6cba2883026f 100644
+index 7d8657c91323..94e9e44b46b9 100644
 --- a/utils/mountd/cache.c
 +++ b/utils/mountd/cache.c
-@@ -659,55 +659,66 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
- 	return 0;
+@@ -72,6 +72,18 @@ static ssize_t cache_write(int fd, const char *buf, size_t len)
+ 	return nfsd_path_write(fd, buf, len);
  }
  
--static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
-+static int match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
- {
- 	struct stat stb;
- 	int type;
- 	char u[16];
- 
- 	if (nfsd_path_stat(path, &stb) != 0)
--		return false;
-+		goto path_error;
- 	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode))
--		return false;
-+		goto nomatch;
- 
- 	switch (parsed->fsidtype) {
- 	case FSID_DEV:
- 	case FSID_MAJOR_MINOR:
- 	case FSID_ENCODE_DEV:
- 		if (stb.st_ino != parsed->inode)
--			return false;
-+			goto nomatch;
- 		if (parsed->major != major(stb.st_dev) ||
- 		    parsed->minor != minor(stb.st_dev))
--			return false;
--		return true;
-+			goto nomatch;
-+		goto match;
- 	case FSID_NUM:
- 		if (((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
- 		     exp->m_export.e_fsid != parsed->fsidnum))
--			return false;
--		return true;
-+			goto nomatch;
-+		goto match;
- 	case FSID_UUID4_INUM:
- 	case FSID_UUID16_INUM:
- 		if (stb.st_ino != parsed->inode)
--			return false;
-+			goto nomatch;
- 		goto check_uuid;
- 	case FSID_UUID8:
- 	case FSID_UUID16:
--		if (!is_mountpoint(path))
--			return false;
-+		errno = 0;
-+		if (!is_mountpoint(path)) {
-+			if (!errno)
-+				goto nomatch;
-+			goto path_error;
-+		}
- 	check_uuid:
- 		if (exp->m_export.e_uuid) {
- 			get_uuid(exp->m_export.e_uuid, parsed->uuidlen, u);
- 			if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
--				return true;
-+				goto match;
- 		}
- 		else
- 			for (type = 0;
- 			     uuid_by_path(path, type, parsed->uuidlen, u);
- 			     type++)
- 				if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
--					return true;
-+					goto match;
- 	}
--	return false;
-+nomatch:
++static bool path_lookup_error(int err)
++{
++	switch (err) {
++	case ELOOP:
++	case ENAMETOOLONG:
++	case ENOENT:
++	case ENOTDIR:
++		return 1;
++	}
 +	return 0;
-+match:
-+	return 1;
-+path_error:
-+	if (path_lookup_error(errno))
-+		goto nomatch;
-+	return -1;
++}
++
+ /*
+  * Support routines for text-based upcalls.
+  * Fields are separated by spaces.
+@@ -430,23 +442,9 @@ static inline int count_slashes(char *p)
+ 	return cnt;
  }
  
- static struct addrinfo *lookup_client_addr(char *dom)
-@@ -815,8 +826,12 @@ static void nfsd_fh(int f)
- 					   exp->m_export.e_path))
- 				dev_missing ++;
+-static int same_path(char *child, char *parent, int len)
++#if defined(HAVE_STRUCT_FILE_HANDLE)
++static int check_same_path_by_handle(const char *child, const char *parent)
+ {
+-	static char p[PATH_MAX];
+-	struct stat sc, sp;
+-
+-	if (len <= 0)
+-		len = strlen(child);
+-	strncpy(p, child, len);
+-	p[len] = 0;
+-	if (strcmp(p, parent) == 0)
+-		return 1;
+-
+-	/* If number of '/' are different, they must be different */
+-	if (count_slashes(p) != count_slashes(parent))
+-		return 0;
+-
+-#if defined(HAVE_NAME_TO_HANDLE_AT) && defined(HAVE_STRUCT_FILE_HANDLE)
+ 	struct {
+ 		struct file_handle fh;
+ 		unsigned char handle[128];
+@@ -455,13 +453,17 @@ static int same_path(char *child, char *parent, int len)
  
--			if (!match_fsid(&parsed, exp, path))
-+			switch(match_fsid(&parsed, exp, path)) {
-+			case 0:
- 				continue;
-+			case -1:
-+				goto out;
-+			}
- 			if (is_ipaddr_client(dom)
- 					&& !ipaddr_client_matches(exp, ai))
- 				continue;
+ 	fchild.fh.handle_bytes = 128;
+ 	fparent.fh.handle_bytes = 128;
+-	if (name_to_handle_at(AT_FDCWD, p, &fchild.fh, &mnt_child, 0) != 0) {
+-		if (errno == ENOSYS)
+-			goto fallback;
+-		return 0;
++
++	/* This process should have the CAP_DAC_READ_SEARCH capability */
++	if (nfsd_name_to_handle_at(AT_FDCWD, child, &fchild.fh, &mnt_child, 0) < 0)
++		return -1;
++	if (nfsd_name_to_handle_at(AT_FDCWD, parent, &fparent.fh, &mnt_parent, 0) < 0) {
++		/* If the child resolved, but the parent did not, they differ */
++		if (path_lookup_error(errno))
++			return 0;
++		/* Otherwise, we just don't know */
++		return -1;
+ 	}
+-	if (name_to_handle_at(AT_FDCWD, parent, &fparent.fh, &mnt_parent, 0) != 0)
+-		return 0;
+ 
+ 	if (mnt_child != mnt_parent ||
+ 	    fchild.fh.handle_bytes != fparent.fh.handle_bytes ||
+@@ -471,14 +473,24 @@ static int same_path(char *child, char *parent, int len)
+ 		return 0;
+ 
+ 	return 1;
+-fallback:
++}
++#else
++static int check_same_path_by_handle(const char *child, const char *parent)
++{
++	errno = ENOSYS;
++	return -1;
++}
+ #endif
+ 
++static int check_same_path_by_inode(const char *child, const char *parent)
++{
++	struct stat sc, sp;
++
+ 	/* This is nearly good enough.  However if a directory is
+ 	 * bind-mounted in two places and both are exported, it
+ 	 * could give a false positive
+ 	 */
+-	if (nfsd_path_lstat(p, &sc) != 0)
++	if (nfsd_path_lstat(child, &sc) != 0)
+ 		return 0;
+ 	if (nfsd_path_lstat(parent, &sp) != 0)
+ 		return 0;
+@@ -490,6 +502,29 @@ fallback:
+ 	return 1;
+ }
+ 
++static int same_path(char *child, char *parent, int len)
++{
++	static char p[PATH_MAX];
++	int err;
++
++	if (len <= 0)
++		len = strlen(child);
++	strncpy(p, child, len);
++	p[len] = 0;
++	if (strcmp(p, parent) == 0)
++		return 1;
++
++	/* If number of '/' are different, they must be different */
++	if (count_slashes(p) != count_slashes(parent))
++		return 0;
++
++	/* Try to use filehandle approach before falling back to stat() */
++	err = check_same_path_by_handle(p, parent);
++	if (err != -1)
++		return err;
++	return check_same_path_by_inode(p, parent);
++}
++
+ static int is_subdirectory(char *child, char *parent)
+ {
+ 	/* Check is child is strictly a subdirectory of
 -- 
 2.25.2
 
