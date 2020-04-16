@@ -7,45 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9B2DC2BA2B
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 21:39:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 56B3EC2BB55
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6F70622209
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 21:39:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 361E122242
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587073172;
-	bh=vT1282yyyejk8G/Ee89lBGCkVNIcKwl2iVRTwWKUBPU=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=MDfjX6f3MZgIc+SnUBQ7X5Hf3zCMpVOzrca36lpCwEXkip4ktbXud/23hh70s/SJI
-	 2vtlaqOIqSzFRPU12W65DZjTclp01mEt/qJDIKAXXpm/yuwrpsfrsqL/3UPeeS1hyE
-	 2BX5qLqRgq7bvQjTqgoXtml3rlDQjWEElpg9YLH0=
+	s=default; t=1587075304;
+	bh=UBxOfKwmooiVMIBZRcKC/SzyfEfO3jdrx0sJu4y+Nmg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=BtYdgPE90qn2Yzv6tDSnPqromYDwzLpAzoyDJiUskq3i83P4coIj+DHYWEaZZqIOK
+	 YXDRru84ccG6TkiKIz1oH19eTpFiYXvWHWSOAkn+YAhAwY2Pmh+t1GIH8vLxl4QSb1
+	 4qxFOOXbm40+1s57Sq3DCzod70Fie+IJy9AXPrJ8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726407AbgDPVjb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Apr 2020 17:39:31 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53498 "EHLO mail.kernel.org"
+        id S1729192AbgDPWPC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Apr 2020 18:15:02 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54128 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726116AbgDPVjb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Apr 2020 17:39:31 -0400
+        id S1729164AbgDPWPB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Apr 2020 18:15:01 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 0D0F3221F9;
-        Thu, 16 Apr 2020 21:39:30 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9EC29221F9;
+        Thu, 16 Apr 2020 22:15:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587073171;
-        bh=vT1282yyyejk8G/Ee89lBGCkVNIcKwl2iVRTwWKUBPU=;
-        h=From:To:Cc:Subject:Date:From;
-        b=C3/WQX6UVxo0XoW/VKUBtcpxEpg+CoCSpe+hB23HwkPKhUqAfFCjq2z6bKFVTeJJW
-         ISllS091ZgJ/WSemQZG/jjPOgWw++tC3yp4NW/4zUJKlgNcaJicdi8wb9rKBJrL3vc
-         8RjQLzXHCTb/V27pOqRpXfseSz4CV3Um+OJntRGY=
+        s=default; t=1587075300;
+        bh=UBxOfKwmooiVMIBZRcKC/SzyfEfO3jdrx0sJu4y+Nmg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=OzBDqnQD3DblWJL/zo55P51ilF6bGp2azZMYek7e7uJzZO3Jn4yDuqJWBYUrUmwxp
+         +9Q4Xd/qM36WuBFCaaALBoRXxSiSdTYpUWnmd4Z9VgVLVP5vBWG0mlCRxz0kcsHdxO
+         MW1xVd9780NnYzzkWfgACPWRHiJT9HGljQ6iXuYE=
 From:   trondmy@kernel.org
 To:     Steve Dickson <SteveD@redhat.com>
-Cc:     Lance Shelton <lance.shelton@hammerspace.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] mountd: Preserve special characters in refer and replica path options
-Date:   Thu, 16 Apr 2020 17:37:22 -0400
-Message-Id: <20200416213722.80201-1-trondmy@kernel.org>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/7] mountd: Add a helper nfsd_path_statfs64() for uuid_by_path()
+Date:   Thu, 16 Apr 2020 18:12:46 -0400
+Message-Id: <20200416221252.82102-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.2
+In-Reply-To: <20200416221252.82102-1-trondmy@kernel.org>
+References: <20200416221252.82102-1-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -53,74 +54,115 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Lance Shelton <lance.shelton@hammerspace.com>
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Allow referral paths to contain special character by adding an
-escaping mechanism.
+Ensure uuid_by_path() works correctly when 'rootdir'
+is set in the [exports] section of nfs.conf.
 
-Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- support/nfs/exports.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
+ support/include/nfsd_path.h |  5 +++++
+ support/misc/nfsd_path.c    | 43 +++++++++++++++++++++++++++++++++++++
+ utils/mountd/cache.c        |  2 +-
+ 3 files changed, 49 insertions(+), 1 deletion(-)
 
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index 8fbb6b15c299..97eb31837816 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -247,23 +247,28 @@ void secinfo_show(FILE *fp, struct exportent *ep)
- 	}
+diff --git a/support/include/nfsd_path.h b/support/include/nfsd_path.h
+index b42416bbff58..8331ff96a277 100644
+--- a/support/include/nfsd_path.h
++++ b/support/include/nfsd_path.h
+@@ -6,6 +6,8 @@
+ 
+ #include <sys/stat.h>
+ 
++struct statfs64;
++
+ void 		nfsd_path_init(void);
+ 
+ const char *	nfsd_path_nfsd_rootdir(void);
+@@ -15,6 +17,9 @@ char *		nfsd_path_prepend_dir(const char *dir, const char *pathname);
+ int 		nfsd_path_stat(const char *pathname, struct stat *statbuf);
+ int 		nfsd_path_lstat(const char *pathname, struct stat *statbuf);
+ 
++int		nfsd_path_statfs64(const char *pathname,
++				   struct statfs64 *statbuf);
++
+ char *		nfsd_realpath(const char *path, char *resolved_path);
+ 
+ ssize_t		nfsd_path_read(int fd, char *buf, size_t len);
+diff --git a/support/misc/nfsd_path.c b/support/misc/nfsd_path.c
+index f078a668fb8f..ab6c98dbe395 100644
+--- a/support/misc/nfsd_path.c
++++ b/support/misc/nfsd_path.c
+@@ -5,6 +5,7 @@
+ #include <errno.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <sys/vfs.h>
+ #include <limits.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+@@ -180,6 +181,48 @@ nfsd_path_lstat(const char *pathname, struct stat *statbuf)
+ 	return nfsd_run_stat(nfsd_wq, nfsd_lstatfunc, pathname, statbuf);
  }
  
++struct nfsd_statfs64_data {
++	const char *pathname;
++	struct statfs64 *statbuf;
++	int ret;
++	int err;
++};
++
 +static void
-+fprintpath(FILE *fp, const char *path)
++nfsd_statfs64func(void *data)
 +{
-+	int i;
-+	for (i=0; path[i]; i++)
-+		if (iscntrl(path[i]) || path[i] == '"' || path[i] == '\\' || path[i] == '#' || isspace(path[i]))
-+			fprintf(fp, "\\%03o", path[i]);
-+		else
-+			fprintf(fp, "%c", path[i]);
++	struct nfsd_statfs64_data *d = data;
++
++	d->ret = statfs64(d->pathname, d->statbuf);
++	if (d->ret < 0)
++		d->err = errno;
 +}
 +
- void
- putexportent(struct exportent *ep)
- {
- 	FILE	*fp;
- 	int	*id, i;
--	char	*esc=ep->e_path;
++static int
++nfsd_run_statfs64(struct xthread_workqueue *wq,
++		  const char *pathname,
++		  struct statfs64 *statbuf)
++{
++	struct nfsd_statfs64_data data = {
++		pathname,
++		statbuf,
++		0,
++		0
++	};
++	xthread_work_run_sync(wq, nfsd_statfs64func, &data);
++	if (data.ret < 0)
++		errno = data.err;
++	return data.ret;
++}
++
++int
++nfsd_path_statfs64(const char *pathname, struct statfs64 *statbuf)
++{
++	if (!nfsd_wq)
++		return statfs64(pathname, statbuf);
++	return nfsd_run_statfs64(nfsd_wq, pathname, statbuf);
++}
++
+ struct nfsd_realpath_data {
+ 	const char *pathname;
+ 	char *resolved;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 8f54e37b7936..7d8657c91323 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -352,7 +352,7 @@ static int uuid_by_path(char *path, int type, size_t uuidlen, char *uuid)
+ 	const char *val;
+ 	int rc;
  
- 	if (!efp)
- 		return;
+-	rc = statfs64(path, &st);
++	rc = nfsd_path_statfs64(path, &st);
  
- 	fp = efp->x_fp;
--	for (i=0; esc[i]; i++)
--	        if (iscntrl(esc[i]) || esc[i] == '"' || esc[i] == '\\' || esc[i] == '#' || isspace(esc[i]))
--			fprintf(fp, "\\%03o", esc[i]);
--		else
--			fprintf(fp, "%c", esc[i]);
--
-+	fprintpath(fp, ep->e_path);
- 	fprintf(fp, "\t%s(", ep->e_hostname);
- 	fprintf(fp, "%s,", (ep->e_flags & NFSEXP_READONLY)? "ro" : "rw");
- 	fprintf(fp, "%ssync,", (ep->e_flags & NFSEXP_ASYNC)? "a" : "");
-@@ -302,10 +307,14 @@ putexportent(struct exportent *ep)
- 	case FSLOC_NONE:
- 		break;
- 	case FSLOC_REFER:
--		fprintf(fp, "refer=%s,", ep->e_fslocdata);
-+		fprintf(fp, "refer=");
-+		fprintpath(fp, ep->e_fslocdata);
-+		fprintf(fp, ",");
- 		break;
- 	case FSLOC_REPLICA:
--		fprintf(fp, "replicas=%s,", ep->e_fslocdata);
-+		fprintf(fp, "replicas=");
-+		fprintpath(fp, ep->e_fslocdata);
-+		fprintf(fp, ",");
- 		break;
- #ifdef DEBUG
- 	case FSLOC_STUB:
+ 	if (type == 0 && rc == 0) {
+ 		const unsigned long *bad;
 -- 
 2.25.2
 
