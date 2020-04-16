@@ -7,50 +7,52 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AA42C38A2C
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AB43C2BA2B
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5DD8A221F9
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 49888218AC
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 22:15:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587075306;
-	bh=L9CuUF9Eo7o6IB4MaJhkwj9cQWCykiYgn3y2kq3cvk0=;
+	s=default; t=1587075308;
+	bh=TxjuFdblTE83Xqokj0V9LEHx2yuzl+bFcMMPFlaotck=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=DEm+15nUIc8WE5rjbdM7VDKCDy3gMQndds26ZS7J/3cKN3+DBxhSVMfP3B8E9CZij
-	 0+FfzE8kozxxyn+dy3HRu1LQNPkeKSicnYPHQqOws5HIxeJz2TjUUgeLoXS0xw0feN
-	 Wl1TfSyikax3F5K/rFbD76aMKZ8bMx2g1vKHr82Q=
+	b=mpSWAsYnHsmyzVhNmSNOsNN3sAqD2XMLO5Bfji5+qoHEqbrUnYiFZSq33PDlTiyI5
+	 S/UsMUWtshW3sPRAUZ8nGougzSZx4ugdoTeUyW7tsroKe2IT6Sd+sSIlNq665DlpF+
+	 6zpNDrNNezil6B8/ES1+iXRrsTAi+bY5Ao4dlbro=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729187AbgDPWPE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Apr 2020 18:15:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54222 "EHLO mail.kernel.org"
+        id S1729193AbgDPWPF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Apr 2020 18:15:05 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54246 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729197AbgDPWPD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Apr 2020 18:15:03 -0400
+        id S1729205AbgDPWPE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Apr 2020 18:15:04 -0400
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B3D982222D;
-        Thu, 16 Apr 2020 22:15:02 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CB8B022202;
+        Thu, 16 Apr 2020 22:15:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587075303;
-        bh=L9CuUF9Eo7o6IB4MaJhkwj9cQWCykiYgn3y2kq3cvk0=;
+        s=default; t=1587075304;
+        bh=TxjuFdblTE83Xqokj0V9LEHx2yuzl+bFcMMPFlaotck=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=aVQWMFK7F8fCTBEprh63MlAN7vA3Jw2r/YgFA7Wiy7sJ8kXsoa8Kz53bppO4Sgz3h
-         5te1SjBx+uewiNg2SIZyNValIhtJrF+rDtjMTkoM4ZHzyRg7f4TFYc/XJhOf9Mv25S
-         bGUVvtz8hL7Sstfad/3GJLOKKiIc6lL2AT1qm/r8=
+        b=MzPrOadT3SnE/NcE+lUyA7xCwtwrGCg+R3HLk793mYyy3IEwspcHvR2cbmplhwe5f
+         P/vhcKkofK4qNNqs6QixRJqOhaQZdN8KC9ebZ8Fsjx54wtgow3xiqC0k44GatnA6Rp
+         0w8SvSGUOqjkoGNFAlIw6lToaxMW5ciymCWgVLns=
 From:   trondmy@kernel.org
 To:     Steve Dickson <SteveD@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 5/7] mountd: Ensure dump_to_cache() sets errno appropriately
-Date:   Thu, 16 Apr 2020 18:12:50 -0400
-Message-Id: <20200416221252.82102-6-trondmy@kernel.org>
+Subject: [PATCH 7/7] mountd: Check the stat() return values in match_fsid()
+Date:   Thu, 16 Apr 2020 18:12:52 -0400
+Message-Id: <20200416221252.82102-8-trondmy@kernel.org>
 X-Mailer: git-send-email 2.25.2
-In-Reply-To: <20200416221252.82102-5-trondmy@kernel.org>
+In-Reply-To: <20200416221252.82102-7-trondmy@kernel.org>
 References: <20200416221252.82102-1-trondmy@kernel.org>
  <20200416221252.82102-2-trondmy@kernel.org>
  <20200416221252.82102-3-trondmy@kernel.org>
  <20200416221252.82102-4-trondmy@kernel.org>
  <20200416221252.82102-5-trondmy@kernel.org>
+ <20200416221252.82102-6-trondmy@kernel.org>
+ <20200416221252.82102-7-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -60,56 +62,113 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-cache_write() will set errno if it returns -1, so that callers can
-handle errors appropriately, however dump_to_cache() needs to do
-so too.
+Propagate errors from the stat() calls in match_fsid() so that the
+caller can be more careful about how they are handled.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- utils/mountd/cache.c | 19 +++++++++++++++----
- 1 file changed, 15 insertions(+), 4 deletions(-)
+ utils/mountd/cache.c | 45 +++++++++++++++++++++++++++++---------------
+ 1 file changed, 30 insertions(+), 15 deletions(-)
 
 diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 94e9e44b46b9..0f323226b12a 100644
+index 79d3ee085a90..6cba2883026f 100644
 --- a/utils/mountd/cache.c
 +++ b/utils/mountd/cache.c
-@@ -936,12 +936,13 @@ static void write_secinfo(char **bp, int *blen, struct exportent *ep, int flag_m
- 
- }
- 
--static int dump_to_cache(int f, char *buf, int buflen, char *domain,
-+static int dump_to_cache(int f, char *buf, int blen, char *domain,
- 			 char *path, struct exportent *exp, int ttl)
- {
- 	char *bp = buf;
--	int blen = buflen;
- 	time_t now = time(0);
-+	size_t buflen;
-+	ssize_t err;
- 
- 	if (ttl <= 1)
- 		ttl = DEFAULT_TTL;
-@@ -974,8 +975,18 @@ static int dump_to_cache(int f, char *buf, int buflen, char *domain,
- 	} else
- 		qword_adduint(&bp, &blen, now + ttl);
- 	qword_addeol(&bp, &blen);
--	if (blen <= 0) return -1;
--	if (cache_write(f, buf, bp - buf) != bp - buf) return -1;
-+	if (blen <= 0) {
-+		errno = ENOBUFS;
-+		return -1;
-+	}
-+	buflen = bp - buf;
-+	err = cache_write(f, buf, buflen);
-+	if (err < 0)
-+		return err;
-+	if ((size_t)err != buflen) {
-+		errno = ENOSPC;
-+		return -1;
-+	}
+@@ -659,55 +659,66 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
  	return 0;
  }
  
+-static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
++static int match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
+ {
+ 	struct stat stb;
+ 	int type;
+ 	char u[16];
+ 
+ 	if (nfsd_path_stat(path, &stb) != 0)
+-		return false;
++		goto path_error;
+ 	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode))
+-		return false;
++		goto nomatch;
+ 
+ 	switch (parsed->fsidtype) {
+ 	case FSID_DEV:
+ 	case FSID_MAJOR_MINOR:
+ 	case FSID_ENCODE_DEV:
+ 		if (stb.st_ino != parsed->inode)
+-			return false;
++			goto nomatch;
+ 		if (parsed->major != major(stb.st_dev) ||
+ 		    parsed->minor != minor(stb.st_dev))
+-			return false;
+-		return true;
++			goto nomatch;
++		goto match;
+ 	case FSID_NUM:
+ 		if (((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
+ 		     exp->m_export.e_fsid != parsed->fsidnum))
+-			return false;
+-		return true;
++			goto nomatch;
++		goto match;
+ 	case FSID_UUID4_INUM:
+ 	case FSID_UUID16_INUM:
+ 		if (stb.st_ino != parsed->inode)
+-			return false;
++			goto nomatch;
+ 		goto check_uuid;
+ 	case FSID_UUID8:
+ 	case FSID_UUID16:
+-		if (!is_mountpoint(path))
+-			return false;
++		errno = 0;
++		if (!is_mountpoint(path)) {
++			if (!errno)
++				goto nomatch;
++			goto path_error;
++		}
+ 	check_uuid:
+ 		if (exp->m_export.e_uuid) {
+ 			get_uuid(exp->m_export.e_uuid, parsed->uuidlen, u);
+ 			if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
+-				return true;
++				goto match;
+ 		}
+ 		else
+ 			for (type = 0;
+ 			     uuid_by_path(path, type, parsed->uuidlen, u);
+ 			     type++)
+ 				if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
+-					return true;
++					goto match;
+ 	}
+-	return false;
++nomatch:
++	return 0;
++match:
++	return 1;
++path_error:
++	if (path_lookup_error(errno))
++		goto nomatch;
++	return -1;
+ }
+ 
+ static struct addrinfo *lookup_client_addr(char *dom)
+@@ -815,8 +826,12 @@ static void nfsd_fh(int f)
+ 					   exp->m_export.e_path))
+ 				dev_missing ++;
+ 
+-			if (!match_fsid(&parsed, exp, path))
++			switch(match_fsid(&parsed, exp, path)) {
++			case 0:
+ 				continue;
++			case -1:
++				goto out;
++			}
+ 			if (is_ipaddr_client(dom)
+ 					&& !ipaddr_client_matches(exp, ai))
+ 				continue;
 -- 
 2.25.2
 
