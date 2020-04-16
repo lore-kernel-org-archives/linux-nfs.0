@@ -2,127 +2,78 @@ Return-Path: <SRS0=UO7P=6A=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7264C2BB55
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 19:05:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EB6CC2BB55
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 21:37:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 95BDE21973
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 19:05:38 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b="g4omBsfX"
+	by mail.kernel.org (Postfix) with ESMTP id 040FA221F4
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Apr 2020 21:37:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1587073023;
+	bh=Cfi0+yFzJtQK/nhYT+xLhV32M3eu6Haf2f7Ia1tbhnQ=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=DvqUOjwVULBYcGfjI24wXOk3M6Y6o4OBnpMumRewMw2/4bJslBcH+Q31bcb5oM5jT
+	 Pn83a45KYGVDsuWjFf6RigNfudWoGzeLyRRWq0NBTQMYqEqKmIY2PmFdC7UPwd17ZU
+	 VJlKoLUeEQu8mlZ9dovftUJN9XZuEcu7FFcGf2Iw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728611AbgDPTFh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Apr 2020 15:05:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52076 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730533AbgDPTFe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2020 15:05:34 -0400
-Received: from mail-qk1-x744.google.com (mail-qk1-x744.google.com [IPv6:2607:f8b0:4864:20::744])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 82D6AC061A0F
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Apr 2020 12:05:34 -0700 (PDT)
-Received: by mail-qk1-x744.google.com with SMTP id v7so22626175qkc.0
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Apr 2020 12:05:34 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ziepe.ca; s=google;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to:user-agent;
-        bh=XhfGxn6jc7e8D8i7SongnP0TYe1kQlI7ZqhlC/3v4ao=;
-        b=g4omBsfXROniaxYIxlhCUVRClP59Iuiw1htHSX0ztzQOdE3r4L6oOcqbNqm72vGgon
-         oFi8qTGtqNyYxyZm7NZF3UNsF1dAMG9dhj0GHWOoUKf6k52gSK+OhV0XjS1mtbFeNCLN
-         gWFzqG+9zyhKbEAVA5H6Opbpyod7cLafsSkok/zDp3Ny0ENWhS3aG77PhKv/hbfm/5qt
-         hstzl7ffFY2JcJqic1tippB1DHLsOcy2clhzXh7x4ukVAbkz6YhEAs4+xe8Qy7kQHYcz
-         P5yJjnWBSK6hdxDpQ7CBAi4DAKq5Lzf7GkdNRWSmgDgBZdvWddCzFbJr5KRf3Q7iDTw3
-         ZKHA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to:user-agent;
-        bh=XhfGxn6jc7e8D8i7SongnP0TYe1kQlI7ZqhlC/3v4ao=;
-        b=PtXcq65acIrbQZ8m7BZjsBRxu5/aE9fbIZkeRwzk9N019E+WIsU4c1wD7YnJiyDiuI
-         dgZDNr8MY8gSeFk7sKhuyNNNsB+aNhbKj8SO3OwAknhayPRhSZoSO74eWjDwjjcA5Y2T
-         iyeKu1O6nTq+IDXBtpnViEc4EBHNNbplwWakDRyEOfcFC70i97k/uZpLEfH0r8vMfPad
-         /FNZWw7e//jC8elBZ58cPcXUHyDTA0GCeGbFww7H2BQzG9U1ZeAqck6LXntO4CBn/Y2L
-         ofOjO9Hrd0ARS+IiHs9XMptlOyzOetTV7jAnTtzgo8m5wQx2EYUa1fmrs42hBFB6f5Qz
-         tsPA==
-X-Gm-Message-State: AGi0PuYYnB6R9kyDvnPSS5r43bhcRxdCoy6gkjctapFxbvAswrIyDCHX
-        eeAdamfF7ohipxypNxdidoJvVQ==
-X-Google-Smtp-Source: APiQypIcyHlxTWxUikFJ0W4WN7Qm8jAEhbxfg+Epu22JCk0t+ZiPOKJNocPmN/Fmgy08lIlI06SZWA==
-X-Received: by 2002:a37:67c4:: with SMTP id b187mr11383303qkc.296.1587063933377;
-        Thu, 16 Apr 2020 12:05:33 -0700 (PDT)
-Received: from ziepe.ca (hlfxns017vw-142-68-57-212.dhcp-dynamic.fibreop.ns.bellaliant.net. [142.68.57.212])
-        by smtp.gmail.com with ESMTPSA id b19sm1739084qkg.72.2020.04.16.12.05.32
-        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 16 Apr 2020 12:05:32 -0700 (PDT)
-Received: from jgg by mlx.ziepe.ca with local (Exim 4.90_1)
-        (envelope-from <jgg@ziepe.ca>)
-        id 1jP9pM-0007EN-6V; Thu, 16 Apr 2020 16:05:32 -0300
-Date:   Thu, 16 Apr 2020 16:05:32 -0300
-From:   Jason Gunthorpe <jgg@ziepe.ca>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Leon Romanovsky <leon@kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH v1 3/3] svcrdma: Fix leak of svc_rdma_recv_ctxt objects
-Message-ID: <20200416190532.GA5100@ziepe.ca>
-References: <20200407190938.24045.64947.stgit@klimt.1015granger.net>
- <20200407191106.24045.88035.stgit@klimt.1015granger.net>
- <20200408060242.GB3310@unreal>
- <D3CFDCAA-589C-4B3F-B769-099BF775D098@oracle.com>
- <20200409174750.GK11886@ziepe.ca>
- <20200413192907.GA23596@fieldses.org>
- <20200414121931.GA5100@ziepe.ca>
- <20200414151303.GA9796@fieldses.org>
- <20200414152016.GE5100@ziepe.ca>
- <20200414161744.GB9796@fieldses.org>
+        id S1726362AbgDPVhC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Apr 2020 17:37:02 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49920 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726465AbgDPVhB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Apr 2020 17:37:01 -0400
+Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4BBC6206D5;
+        Thu, 16 Apr 2020 21:37:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1587073021;
+        bh=Cfi0+yFzJtQK/nhYT+xLhV32M3eu6Haf2f7Ia1tbhnQ=;
+        h=From:To:Cc:Subject:Date:From;
+        b=liL+FgkgbMS6OSJCt4/Y28tEjenmatPCsivUONuiDU0HobT68XnhDhBmJBxiAWr7u
+         2Tccj8GT4WE3wL6UaE/i+pj8MHPxcAI9A7CAIUPGUOH2f8bDSYaoVdxuSLDTeziNhW
+         dnxLd3Tl5EEGPBgllR2ciIwJV0VyyTLFaOo65QSs=
+From:   trondmy@kernel.org
+To:     Steve Dickson <SteveD@redhat.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] Fix a buffer overflow in qword_add()
+Date:   Thu, 16 Apr 2020 17:34:53 -0400
+Message-Id: <20200416213453.80110-1-trondmy@kernel.org>
+X-Mailer: git-send-email 2.25.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200414161744.GB9796@fieldses.org>
-User-Agent: Mutt/1.9.4 (2018-02-28)
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Apr 14, 2020 at 12:17:44PM -0400, J. Bruce Fields wrote:
-> On Tue, Apr 14, 2020 at 12:20:16PM -0300, Jason Gunthorpe wrote:
-> > On Tue, Apr 14, 2020 at 11:13:03AM -0400, J. Bruce Fields wrote:
-> > > On Tue, Apr 14, 2020 at 09:19:31AM -0300, Jason Gunthorpe wrote:
-> > > > On Mon, Apr 13, 2020 at 03:29:07PM -0400, J. Bruce Fields wrote:
-> > > > > On Thu, Apr 09, 2020 at 02:47:50PM -0300, Jason Gunthorpe wrote:
-> > > > > > On Thu, Apr 09, 2020 at 10:33:32AM -0400, Chuck Lever wrote:
-> > > > > > > The commit ID is what automation should key off of. The short
-> > > > > > > description is only for human consumption. 
-> > > > > > 
-> > > > > > Right, so if the actual commit message isn't included so humans can
-> > > > > > read it then what was the point of including anything?
-> > > > > 
-> > > > > Personally as a human reading commits in a terminal window I prefer the
-> > > > > abbreviated form.
-> > > > 
-> > > > Frankly, I think they are useless, picking one of yours at random:
-> > > > 
-> > > >     Fixes: 4e48f1cccab3 "NFSD: allow inter server COPY to have... "
-> > > > 
-> > > > And sadly the '4e48f1cccab3' commit doesn't appear in Linus's tree so
-> > > 
-> > > Ow, apologies.  Looks like I rebased after writing that Fixes tag.
-> > > 
-> > > I wonder if it's possible to make git warn....
-> > > 
-> > > Looks like a pre-rebase hook could check the branch being rebased for
-> > > "Fixes:" lines referencing commits on the rebased branch.
-> > 
-> > I have some silly stuff to check patches before pushing them and it
-> > includes checking the fixes lines because they are very often
-> > wrong, both with wrong commit IDs and wrong subjects!
-> 
-> I'd be interested in seeing it.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Sure, let me put my scripts on github..
+Don't allow writing beyond the end of the buffer.
 
-Jason
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ support/nfs/cacheio.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index 126c12831668..70ead94d64f0 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -42,7 +42,7 @@ void qword_add(char **bpp, int *lp, char *str)
+ 
+ 	if (len < 0) return;
+ 
+-	while ((c=*str++) && len)
++	while ((c=*str++) && len > 0)
+ 		switch(c) {
+ 		case ' ':
+ 		case '\t':
+-- 
+2.25.2
+
