@@ -2,44 +2,37 @@ Return-Path: <SRS0=DkyH=6C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CC12AC3A5A9
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:46:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F76CC352BE
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:47:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A2BFA2223F
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:46:44 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="nqtHk9Rc"
+	by mail.kernel.org (Postfix) with ESMTP id 421C321D6C
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:47:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727771AbgDRSqj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Apr 2020 14:46:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42060 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725824AbgDRSqj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:46:39 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 40BDEC061A0C;
-        Sat, 18 Apr 2020 11:46:39 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        Content-Type:In-Reply-To:MIME-Version:Date:Message-ID:From:References:Cc:To:
-        Subject:Sender:Reply-To:Content-ID:Content-Description;
-        bh=VISMEuIrdwsT06Me0Ojm4dxgrzpFN+IXsxHmlBlB8Qk=; b=nqtHk9RcEHVzyndzlvZR0ApTMu
-        IN1fIO34WRJMJqoiVj7+SryUcbwhljitvqy/ICpkyIIe3BbMMImIye+e0/hX/bK155cyiYWUCLYSi
-        BtcqtD6RrusuGCd9kZzO2uiwoFPl/pFtQB+EGVC0bUi41qqnl4Vd22sCWLoaS3qMDLJU6B+8Y/b3B
-        pwlcV/D8BHV05r1/Bqcf3oReONTpcDhMqDTzxTxGSy3/capPzIfLqB6dlPwacRlKAaiVeGpJyRWHw
-        KugYiErRe0UugJTz9HVHOvQZE01XSsMXRBvnxI0dM+ehHI+0RgwUw4Yb5V/AkkYq+jOPkS4NBxqRm
-        SktMceiA==;
-Received: from [2601:1c0:6280:3f0::19c2]
-        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jPsU6-0002Y8-4x; Sat, 18 Apr 2020 18:46:34 +0000
-Subject: Re: [PATCH 5/9] usb: fix empty-body warning in sysfs.c
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     linux-kernel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
+        id S1727944AbgDRSrD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Apr 2020 14:47:03 -0400
+Received: from smtprelay0006.hostedemail.com ([216.40.44.6]:56240 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1725824AbgDRSrC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:47:02 -0400
+Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
+        by smtprelay05.hostedemail.com (Postfix) with ESMTP id 3F8761802EC1C;
+        Sat, 18 Apr 2020 18:47:01 +0000 (UTC)
+X-Session-Marker: 6A6F6540706572636865732E636F6D
+X-HE-Tag: loss63_59e6ce4dc9051
+X-Filterd-Recvd-Size: 2163
+Received: from XPS-9350.home (unknown [47.151.136.130])
+        (Authenticated sender: joe@perches.com)
+        by omf12.hostedemail.com (Postfix) with ESMTPA;
+        Sat, 18 Apr 2020 18:46:57 +0000 (UTC)
+Message-ID: <6bb8d99e6e56fa1622fc7238c1ae37c3b3510ded.camel@perches.com>
+Subject: Re: [RFC PATCH 1/9] kernel.h: add do_empty() macro
+From:   Joe Perches <joe@perches.com>
+To:     Randy Dunlap <rdunlap@infradead.org>, linux-kernel@vger.kernel.org
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
         Andrew Morton <akpm@linux-foundation.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org,
@@ -58,44 +51,34 @@ Cc:     linux-kernel@vger.kernel.org,
         "Martin K. Petersen" <martin.petersen@oracle.com>,
         linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
         Zzy Wysm <zzy@zzywysm.com>
+Date:   Sat, 18 Apr 2020 11:44:43 -0700
+In-Reply-To: <20200418184111.13401-2-rdunlap@infradead.org>
 References: <20200418184111.13401-1-rdunlap@infradead.org>
- <20200418184111.13401-6-rdunlap@infradead.org>
- <20200418184409.GP5820@bombadil.infradead.org>
-From:   Randy Dunlap <rdunlap@infradead.org>
-Message-ID: <3998d056-e115-4e36-2705-eea132cce7de@infradead.org>
-Date:   Sat, 18 Apr 2020 11:46:32 -0700
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.6.0
+         <20200418184111.13401-2-rdunlap@infradead.org>
+Content-Type: text/plain; charset="ISO-8859-1"
+User-Agent: Evolution 3.34.1-2 
 MIME-Version: 1.0
-In-Reply-To: <20200418184409.GP5820@bombadil.infradead.org>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
 Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 4/18/20 11:44 AM, Matthew Wilcox wrote:
-> On Sat, Apr 18, 2020 at 11:41:07AM -0700, Randy Dunlap wrote:
->> +++ linux-next-20200327/drivers/usb/core/sysfs.c
->> @@ -1263,7 +1263,7 @@ void usb_create_sysfs_intf_files(struct
->>  	if (!alt->string && !(udev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
->>  		alt->string = usb_cache_string(udev, alt->desc.iInterface);
->>  	if (alt->string && device_create_file(&intf->dev, &dev_attr_interface))
->> -		;	/* We don't actually care if the function fails. */
->> +		do_empty(); /* We don't actually care if the function fails. */
->>  	intf->sysfs_files_created = 1;
->>  }
+On Sat, 2020-04-18 at 11:41 -0700, Randy Dunlap wrote:
+> Add the do_empty() macro to silence gcc warnings about an empty body
+> following an "if" statement when -Wextra is used.
 > 
-> Why not just?
-> 
-> +	if (alt->string)
-> +		device_create_file(&intf->dev, &dev_attr_interface);
-> 
+> However, for debug printk calls that are being disabled, use either
+> no_printk() or pr_debug() [and optionally dynamic printk debugging]
+> instead.
+[]
+> +#define do_empty()		do { } while (0)
 
-Yes, looks good. Thanks.
+If this is really useful
+(I think the warning is somewhat silly)
 
--- 
-~Randy
+bikeshed:
+
+I think do_nothing() is more descriptive
+
 
