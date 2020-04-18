@@ -2,44 +2,43 @@ Return-Path: <SRS0=DkyH=6C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77074C38A29
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:42:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B137BC352BE
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:44:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5B8C022240
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:42:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 89FE6221E9
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:44:16 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="px+muzAC"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="XZDspZHL"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726788AbgDRSlT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Apr 2020 14:41:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41188 "EHLO
+        id S1727905AbgDRSoK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Apr 2020 14:44:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41676 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725824AbgDRSlR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:41:17 -0400
+        by vger.kernel.org with ESMTP id S1726181AbgDRSoK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:44:10 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 80B19C061A0C;
-        Sat, 18 Apr 2020 11:41:17 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51C2CC061A0C;
+        Sat, 18 Apr 2020 11:44:10 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        Content-Type:MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:
-        To:From:Sender:Reply-To:Content-ID:Content-Description;
-        bh=SGvFqJlge/g9dh6ag6oSj2PmPKQuD0q8zfCwNpSxj1k=; b=px+muzACVI4ZR8Qma6/M2w08SW
-        hySuB9tKA02KzaeL7Bz0hXOlFit5cPmIV408Ey2/X6DSkMu6cgZOGJNeXNArmsoAsUoc5WLXe/hw7
-        PUb7y3czjGD9CQNnzOug4xBpyyS7F1rtcwnMYwldVZcEKIxxjt8fEjtiOCtqBiv/YhL1hpiEkcC32
-        +Ial0oM3ilDiy7b15NOERaI8soL0uKgf7Q1zCQdIIn1pdo7wE4v1udirhHNffI5G2FWCaDzt7pqmn
-        Os3cuV4r/Vol0BRefFeWzgu2YZhyihiwy2DDv2Uyg5GiuU2bN2PxS+V9KP2uy1ZGZchyZTVXk6HhJ
-        OTstc49w==;
-Received: from [2601:1c0:6280:3f0::19c2] (helo=smtpauth.infradead.org)
-        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jPsOy-0007rZ-2e; Sat, 18 Apr 2020 18:41:16 +0000
-From:   Randy Dunlap <rdunlap@infradead.org>
-To:     linux-kernel@vger.kernel.org
-Cc:     Randy Dunlap <rdunlap@infradead.org>,
+        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=tL7oBItZTGP6Ja0KJzj5epfoD8nvKm3R0ync/alPIPM=; b=XZDspZHLNEdieJauqz1tT3tU6E
+        YTnCIpvp5xSBzMeKUYN/ZrY33Xv8ujXKOpRTHETYgjlXYNG9Bevf+VNJTem44EiEuHW7Kf02I1k/X
+        SJhnpcUnJ6bRMlTie1XiEGAADIuP2UhPDajunCcwmIaLQ9R7A0f83xZxenWNGKa6FZUj7cMWrxEBg
+        PSon0anIZCVaqUvfDbOlu0w9rllj/BKv5pm+pUXO24gnqsHCRmlgucoKgC2iB8Ur4nykcm4RDvIcd
+        Z3/5U9tzWaeZCnR4s79Lw+eywQDgY2zp8dPurJQWwcNvxfQ7gTQUf4A+LyA8bN9q1CVLcYHJlvoR/
+        44a0PpaA==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jPsRm-0008GS-2P; Sat, 18 Apr 2020 18:44:10 +0000
+Date:   Sat, 18 Apr 2020 11:44:09 -0700
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Randy Dunlap <rdunlap@infradead.org>
+Cc:     linux-kernel@vger.kernel.org,
         Linus Torvalds <torvalds@linux-foundation.org>,
         Andrew Morton <akpm@linux-foundation.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -59,52 +58,32 @@ Cc:     Randy Dunlap <rdunlap@infradead.org>,
         "Martin K. Petersen" <martin.petersen@oracle.com>,
         linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
         Zzy Wysm <zzy@zzywysm.com>
-Subject: [PATCH 3/9] input: fix empty-body warning in synaptics.c
-Date:   Sat, 18 Apr 2020 11:41:05 -0700
-Message-Id: <20200418184111.13401-4-rdunlap@infradead.org>
-X-Mailer: git-send-email 2.16.4
-In-Reply-To: <20200418184111.13401-1-rdunlap@infradead.org>
+Subject: Re: [PATCH 5/9] usb: fix empty-body warning in sysfs.c
+Message-ID: <20200418184409.GP5820@bombadil.infradead.org>
 References: <20200418184111.13401-1-rdunlap@infradead.org>
+ <20200418184111.13401-6-rdunlap@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200418184111.13401-6-rdunlap@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Fix gcc empty-body warning when -Wextra is used:
+On Sat, Apr 18, 2020 at 11:41:07AM -0700, Randy Dunlap wrote:
+> +++ linux-next-20200327/drivers/usb/core/sysfs.c
+> @@ -1263,7 +1263,7 @@ void usb_create_sysfs_intf_files(struct
+>  	if (!alt->string && !(udev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
+>  		alt->string = usb_cache_string(udev, alt->desc.iInterface);
+>  	if (alt->string && device_create_file(&intf->dev, &dev_attr_interface))
+> -		;	/* We don't actually care if the function fails. */
+> +		do_empty(); /* We don't actually care if the function fails. */
+>  	intf->sysfs_files_created = 1;
+>  }
 
-../drivers/input/mouse/synaptics.c: In function ‘synaptics_process_packet’:
-../drivers/input/mouse/synaptics.c:1106:6: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
-      ;   /* Nothing, treat a pen as a single finger */
-      ^
+Why not just?
 
-Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
-Cc: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org
-Cc: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>
----
- drivers/input/mouse/synaptics.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
++	if (alt->string)
++		device_create_file(&intf->dev, &dev_attr_interface);
 
---- linux-next-20200327.orig/drivers/input/mouse/synaptics.c
-+++ linux-next-20200327/drivers/input/mouse/synaptics.c
-@@ -20,6 +20,7 @@
-  * Trademarks are the property of their respective owners.
-  */
- 
-+#include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/delay.h>
- #include <linux/dmi.h>
-@@ -1103,7 +1104,7 @@ static void synaptics_process_packet(str
- 				break;
- 			case 2:
- 				if (SYN_MODEL_PEN(info->model_id))
--					;   /* Nothing, treat a pen as a single finger */
-+					do_empty(); /* Nothing, treat a pen as a single finger */
- 				break;
- 			case 4 ... 15:
- 				if (SYN_CAP_PALMDETECT(info->capabilities))
