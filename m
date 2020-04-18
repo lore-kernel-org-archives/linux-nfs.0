@@ -2,48 +2,72 @@ Return-Path: <SRS0=DkyH=6C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F76CC352BE
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:47:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D07FC352BE
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:47:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 421C321D6C
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:47:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 64004221E9
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:47:11 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="XarPKwUM"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727944AbgDRSrD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Apr 2020 14:47:03 -0400
-Received: from smtprelay0006.hostedemail.com ([216.40.44.6]:56240 "EHLO
-        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725824AbgDRSrC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:47:02 -0400
-Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
-        by smtprelay05.hostedemail.com (Postfix) with ESMTP id 3F8761802EC1C;
-        Sat, 18 Apr 2020 18:47:01 +0000 (UTC)
-X-Session-Marker: 6A6F6540706572636865732E636F6D
-X-HE-Tag: loss63_59e6ce4dc9051
-X-Filterd-Recvd-Size: 2163
-Received: from XPS-9350.home (unknown [47.151.136.130])
-        (Authenticated sender: joe@perches.com)
-        by omf12.hostedemail.com (Postfix) with ESMTPA;
-        Sat, 18 Apr 2020 18:46:57 +0000 (UTC)
-Message-ID: <6bb8d99e6e56fa1622fc7238c1ae37c3b3510ded.camel@perches.com>
-Subject: Re: [RFC PATCH 1/9] kernel.h: add do_empty() macro
-From:   Joe Perches <joe@perches.com>
-To:     Randy Dunlap <rdunlap@infradead.org>, linux-kernel@vger.kernel.org
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        id S1727961AbgDRSrK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Apr 2020 14:47:10 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:52556 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725824AbgDRSrH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:47:07 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 03IIbvof110170;
+        Sat, 18 Apr 2020 18:46:05 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=OMbwDKsG/vOO5AAoxKcfs/BIRelllRhJg9DLfQ0cROg=;
+ b=XarPKwUMp7eFpqLRIA+E9xQ6HCh/1NBQo9ytJJXL2GWJvERJWITDG8npsHm0A3vtM/23
+ AK2WjOnJN8Q+JnFN5kmACcUtBxWi6ByISqRcwrOTWuEZd5g1XrMTALImUQKyGTaASrZY
+ c2gTo/F7Rtr2Bb+UaZJkRthP1d7dqHb1BoQFH/ah6DeWtsupMYIUzN7zvmKJF3TetZ6d
+ LxI5gemgWLkr8CdWBGY1u6v3vxXBHogEkemzupqaynwk1+E7X7Nv5chOi5dOmEgXULA4
+ ejp8E/PSLZXUmu6Thg9uKe42tMoDDyGAOA4OE0x2XWAKh2hrsC/CzOSCEc1P348Xlqib Sw== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by userp2130.oracle.com with ESMTP id 30g6dwr26c-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 18 Apr 2020 18:46:05 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 03IIbSC4149674;
+        Sat, 18 Apr 2020 18:46:04 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by aserp3030.oracle.com with ESMTP id 30fqka563c-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 18 Apr 2020 18:46:04 +0000
+Received: from abhmp0012.oracle.com (abhmp0012.oracle.com [141.146.116.18])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 03IIjvac015073;
+        Sat, 18 Apr 2020 18:45:57 GMT
+Received: from anon-dhcp-153.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Sat, 18 Apr 2020 11:45:57 -0700
+Content-Type: text/plain;
+        charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
+Subject: Re: [PATCH 6/9] nfsd: fix empty-body warning in nfs4state.c
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20200418184111.13401-7-rdunlap@infradead.org>
+Date:   Sat, 18 Apr 2020 14:45:55 -0400
+Cc:     LKML <linux-kernel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
         Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Al Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org,
         Dmitry Torokhov <dmitry.torokhov@gmail.com>,
         linux-input@vger.kernel.org, Jaroslav Kysela <perex@perex.cz>,
         Takashi Iwai <tiwai@suse.com>, alsa-devel@alsa-project.org,
         Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        linux-usb@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org,
+        linux-usb@vger.kernel.org, Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Johannes Berg <johannes@sipsolutions.net>,
         Dan Williams <dan.j.williams@intel.com>,
         Vishal Verma <vishal.l.verma@intel.com>,
@@ -51,34 +75,79 @@ Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
         "Martin K. Petersen" <martin.petersen@oracle.com>,
         linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
         Zzy Wysm <zzy@zzywysm.com>
-Date:   Sat, 18 Apr 2020 11:44:43 -0700
-In-Reply-To: <20200418184111.13401-2-rdunlap@infradead.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <CDCF7717-7CBC-47CA-9E83-3A18ECB3AB89@oracle.com>
 References: <20200418184111.13401-1-rdunlap@infradead.org>
-         <20200418184111.13401-2-rdunlap@infradead.org>
-Content-Type: text/plain; charset="ISO-8859-1"
-User-Agent: Evolution 3.34.1-2 
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+ <20200418184111.13401-7-rdunlap@infradead.org>
+To:     Randy Dunlap <rdunlap@infradead.org>
+X-Mailer: Apple Mail (2.3445.104.11)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9595 signatures=668686
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 adultscore=0
+ spamscore=0 mlxscore=0 malwarescore=0 phishscore=0 bulkscore=0
+ suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2003020000 definitions=main-2004180156
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9595 signatures=668686
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 impostorscore=0 lowpriorityscore=0
+ malwarescore=0 phishscore=0 adultscore=0 bulkscore=0 priorityscore=1501
+ suspectscore=0 mlxlogscore=999 clxscore=1011 mlxscore=0 spamscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2003020000
+ definitions=main-2004180156
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sat, 2020-04-18 at 11:41 -0700, Randy Dunlap wrote:
-> Add the do_empty() macro to silence gcc warnings about an empty body
-> following an "if" statement when -Wextra is used.
-> 
-> However, for debug printk calls that are being disabled, use either
-> no_printk() or pr_debug() [and optionally dynamic printk debugging]
-> instead.
-[]
-> +#define do_empty()		do { } while (0)
 
-If this is really useful
-(I think the warning is somewhat silly)
 
-bikeshed:
+> On Apr 18, 2020, at 2:41 PM, Randy Dunlap <rdunlap@infradead.org> =
+wrote:
+>=20
+> Fix gcc empty-body warning when -Wextra is used:
+>=20
+> ../fs/nfsd/nfs4state.c:3898:3: warning: suggest braces around empty =
+body in an =E2=80=98else=E2=80=99 statement [-Wempty-body]
+>=20
+> Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+> Cc: Linus Torvalds <torvalds@linux-foundation.org>
+> Cc: Andrew Morton <akpm@linux-foundation.org>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Cc: linux-nfs@vger.kernel.org
 
-I think do_nothing() is more descriptive
+I have a patch in my queue that addresses this particular warning,
+but your change works for me too.
+
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
+
+Unless Bruce objects.
+
+
+> ---
+> fs/nfsd/nfs4state.c |    3 ++-
+> 1 file changed, 2 insertions(+), 1 deletion(-)
+>=20
+> --- linux-next-20200417.orig/fs/nfsd/nfs4state.c
+> +++ linux-next-20200417/fs/nfsd/nfs4state.c
+> @@ -34,6 +34,7 @@
+>=20
+> #include <linux/file.h>
+> #include <linux/fs.h>
+> +#include <linux/kernel.h>
+> #include <linux/slab.h>
+> #include <linux/namei.h>
+> #include <linux/swap.h>
+> @@ -3895,7 +3896,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp
+> 		copy_clid(new, conf);
+> 		gen_confirm(new, nn);
+> 	} else /* case 4 (new client) or cases 2, 3 (client reboot): */
+> -		;
+> +		do_empty();
+> 	new->cl_minorversion =3D 0;
+> 	gen_callback(new, setclid, rqstp);
+> 	add_to_unconfirmed(new);
+
+--
+Chuck Lever
+
 
 
