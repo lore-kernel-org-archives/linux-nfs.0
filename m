@@ -2,42 +2,42 @@ Return-Path: <SRS0=DkyH=6C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B137BC352BE
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:44:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CC12AC3A5A9
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:46:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 89FE6221E9
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:44:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A2BFA2223F
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:46:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="XZDspZHL"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="nqtHk9Rc"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727905AbgDRSoK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Apr 2020 14:44:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41676 "EHLO
+        id S1727771AbgDRSqj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Apr 2020 14:46:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42060 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726181AbgDRSoK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:44:10 -0400
+        by vger.kernel.org with ESMTP id S1725824AbgDRSqj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:46:39 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51C2CC061A0C;
-        Sat, 18 Apr 2020 11:44:10 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 40BDEC061A0C;
+        Sat, 18 Apr 2020 11:46:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=tL7oBItZTGP6Ja0KJzj5epfoD8nvKm3R0ync/alPIPM=; b=XZDspZHLNEdieJauqz1tT3tU6E
-        YTnCIpvp5xSBzMeKUYN/ZrY33Xv8ujXKOpRTHETYgjlXYNG9Bevf+VNJTem44EiEuHW7Kf02I1k/X
-        SJhnpcUnJ6bRMlTie1XiEGAADIuP2UhPDajunCcwmIaLQ9R7A0f83xZxenWNGKa6FZUj7cMWrxEBg
-        PSon0anIZCVaqUvfDbOlu0w9rllj/BKv5pm+pUXO24gnqsHCRmlgucoKgC2iB8Ur4nykcm4RDvIcd
-        Z3/5U9tzWaeZCnR4s79Lw+eywQDgY2zp8dPurJQWwcNvxfQ7gTQUf4A+LyA8bN9q1CVLcYHJlvoR/
-        44a0PpaA==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jPsRm-0008GS-2P; Sat, 18 Apr 2020 18:44:10 +0000
-Date:   Sat, 18 Apr 2020 11:44:09 -0700
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Randy Dunlap <rdunlap@infradead.org>
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        Content-Type:In-Reply-To:MIME-Version:Date:Message-ID:From:References:Cc:To:
+        Subject:Sender:Reply-To:Content-ID:Content-Description;
+        bh=VISMEuIrdwsT06Me0Ojm4dxgrzpFN+IXsxHmlBlB8Qk=; b=nqtHk9RcEHVzyndzlvZR0ApTMu
+        IN1fIO34WRJMJqoiVj7+SryUcbwhljitvqy/ICpkyIIe3BbMMImIye+e0/hX/bK155cyiYWUCLYSi
+        BtcqtD6RrusuGCd9kZzO2uiwoFPl/pFtQB+EGVC0bUi41qqnl4Vd22sCWLoaS3qMDLJU6B+8Y/b3B
+        pwlcV/D8BHV05r1/Bqcf3oReONTpcDhMqDTzxTxGSy3/capPzIfLqB6dlPwacRlKAaiVeGpJyRWHw
+        KugYiErRe0UugJTz9HVHOvQZE01XSsMXRBvnxI0dM+ehHI+0RgwUw4Yb5V/AkkYq+jOPkS4NBxqRm
+        SktMceiA==;
+Received: from [2601:1c0:6280:3f0::19c2]
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jPsU6-0002Y8-4x; Sat, 18 Apr 2020 18:46:34 +0000
+Subject: Re: [PATCH 5/9] usb: fix empty-body warning in sysfs.c
+To:     Matthew Wilcox <willy@infradead.org>
 Cc:     linux-kernel@vger.kernel.org,
         Linus Torvalds <torvalds@linux-foundation.org>,
         Andrew Morton <akpm@linux-foundation.org>,
@@ -58,32 +58,44 @@ Cc:     linux-kernel@vger.kernel.org,
         "Martin K. Petersen" <martin.petersen@oracle.com>,
         linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
         Zzy Wysm <zzy@zzywysm.com>
-Subject: Re: [PATCH 5/9] usb: fix empty-body warning in sysfs.c
-Message-ID: <20200418184409.GP5820@bombadil.infradead.org>
 References: <20200418184111.13401-1-rdunlap@infradead.org>
  <20200418184111.13401-6-rdunlap@infradead.org>
+ <20200418184409.GP5820@bombadil.infradead.org>
+From:   Randy Dunlap <rdunlap@infradead.org>
+Message-ID: <3998d056-e115-4e36-2705-eea132cce7de@infradead.org>
+Date:   Sat, 18 Apr 2020 11:46:32 -0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.6.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200418184111.13401-6-rdunlap@infradead.org>
+In-Reply-To: <20200418184409.GP5820@bombadil.infradead.org>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sat, Apr 18, 2020 at 11:41:07AM -0700, Randy Dunlap wrote:
-> +++ linux-next-20200327/drivers/usb/core/sysfs.c
-> @@ -1263,7 +1263,7 @@ void usb_create_sysfs_intf_files(struct
->  	if (!alt->string && !(udev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
->  		alt->string = usb_cache_string(udev, alt->desc.iInterface);
->  	if (alt->string && device_create_file(&intf->dev, &dev_attr_interface))
-> -		;	/* We don't actually care if the function fails. */
-> +		do_empty(); /* We don't actually care if the function fails. */
->  	intf->sysfs_files_created = 1;
->  }
+On 4/18/20 11:44 AM, Matthew Wilcox wrote:
+> On Sat, Apr 18, 2020 at 11:41:07AM -0700, Randy Dunlap wrote:
+>> +++ linux-next-20200327/drivers/usb/core/sysfs.c
+>> @@ -1263,7 +1263,7 @@ void usb_create_sysfs_intf_files(struct
+>>  	if (!alt->string && !(udev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
+>>  		alt->string = usb_cache_string(udev, alt->desc.iInterface);
+>>  	if (alt->string && device_create_file(&intf->dev, &dev_attr_interface))
+>> -		;	/* We don't actually care if the function fails. */
+>> +		do_empty(); /* We don't actually care if the function fails. */
+>>  	intf->sysfs_files_created = 1;
+>>  }
+> 
+> Why not just?
+> 
+> +	if (alt->string)
+> +		device_create_file(&intf->dev, &dev_attr_interface);
+> 
 
-Why not just?
+Yes, looks good. Thanks.
 
-+	if (alt->string)
-+		device_create_file(&intf->dev, &dev_attr_interface);
+-- 
+~Randy
 
