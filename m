@@ -2,40 +2,41 @@ Return-Path: <SRS0=DkyH=6C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 507B4C38A29
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:41:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F36BC352BE
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:41:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2EAD3221E9
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:41:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3DD36221E9
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:41:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="XCwSjlVe"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="JDXvnRUe"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727884AbgDRSlU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Apr 2020 14:41:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41194 "EHLO
+        id S1727830AbgDRSlZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Apr 2020 14:41:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41220 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726320AbgDRSlR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:41:17 -0400
+        by vger.kernel.org with ESMTP id S1727989AbgDRSlW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:41:22 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 90C78C061A41;
-        Sat, 18 Apr 2020 11:41:17 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E464C061A0C;
+        Sat, 18 Apr 2020 11:41:22 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        Content-Type:MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=d5zfrylOKoUmkiJ/VV8Fl3fzLkxXbmDEJr/3MIsevyo=; b=XCwSjlVez+qHxOPmcyTIK6oiMp
-        olawr70vtpi0V1QI9XKQUEdNlzc7gZtydJwYjHnNgNwCiR0Y8ytqLU1885mYKcfU2nNRcSQ+hBEej
-        MiJH64ZiTrBz5h80SHKV7B2XhV/8NA5dx2/XMstBP2kRcY+jAyFTPEP07dibSEvWPpw6URRhjEARq
-        GsW6VSkFXNXfFpWKtacsKtxhxuNePEr2gYhZGljGT1rr1HkTT8hxKqdKHdiJLDwOvTjuHdAESVOeL
-        NqEnuUJjyC5UmLntvc7lJwAg8Acv/O1w1fMRoAZtCHCPa4lyuiz4kTPN/HiIYqU17pqZ6fxYiBEQ9
-        d15hNa1Q==;
+        Content-Type:MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:
+        To:From:Sender:Reply-To:Content-ID:Content-Description;
+        bh=PcYjWQQ7jWfjWjAXgVV1SYCf3duL2j5Dyqo6dTDCrvc=; b=JDXvnRUeifNZ+Ac5TUneCkXEfw
+        xGm7FAIuWAOT5gimqOHdhp/grioqH8IcST+jg0KLZY3liAOqyk+QRxz88gfFrn1pGspjvVf4kn+9z
+        6WnDEql0MbixpKyaGExg7dKQXpW5xcLjkR6Sghi8cCQI/hTO1yXq4UDTbsHmGn4nDqmEnHzJuU3K1
+        xD7HyAbbCak26otzJily36UMy3pM+4gOlaaVkoFKBllnKTlL2HIrqBh3/P+uJ7g73UIIdgCRYZljh
+        6KJkixDPOYB+DeexXaN99s1T3haGNSH+ia9YOZZ2bNW49PZ2AL6kZXsFv+3C4ILtQ3Sm08S03mSqL
+        JJuwddgw==;
 Received: from [2601:1c0:6280:3f0::19c2] (helo=smtpauth.infradead.org)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jPsOv-0007rZ-9I; Sat, 18 Apr 2020 18:41:13 +0000
+        id 1jPsP4-0007rZ-33; Sat, 18 Apr 2020 18:41:22 +0000
 From:   Randy Dunlap <rdunlap@infradead.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Randy Dunlap <rdunlap@infradead.org>,
@@ -58,10 +59,12 @@ Cc:     Randy Dunlap <rdunlap@infradead.org>,
         "Martin K. Petersen" <martin.petersen@oracle.com>,
         linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
         Zzy Wysm <zzy@zzywysm.com>
-Subject: [RFC PATCH 0/9] fix -Wempty-body build warnings
-Date:   Sat, 18 Apr 2020 11:41:02 -0700
-Message-Id: <20200418184111.13401-1-rdunlap@infradead.org>
+Subject: [PATCH 9/9] target: fix empty-body warning in target_core_pscsi.c
+Date:   Sat, 18 Apr 2020 11:41:11 -0700
+Message-Id: <20200418184111.13401-10-rdunlap@infradead.org>
 X-Mailer: git-send-email 2.16.4
+In-Reply-To: <20200418184111.13401-1-rdunlap@infradead.org>
+References: <20200418184111.13401-1-rdunlap@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -70,53 +73,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+Fix gcc empty-body warning when -Wextra is used:
 
-When -Wextra is used, gcc emits many warnings about an empty 'if' or
-'else' body, like this:
+../drivers/target/target_core_pscsi.c:624:5: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
 
-../fs/posix_acl.c: In function ‘get_acl’:
-../fs/posix_acl.c:127:22: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
-   /* fall through */ ;
-                      ^
-
-To quieten these warnings, add a new macro "do_empty()".
-I originally wanted to use do_nothing(), but that's already in use.
-
-It would sorta be nice if "fallthrough" could be coerced for this
-instead of using something like do_empty().
-
-Or should we just use "{}" in place of ";"?
-This causes some odd coding style issue IMO. E.g., see this change:
-
-original:
- 	if (cmpxchg(p, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED)
-		/* fall through */ ;
-
-with new macro:
- 	if (cmpxchg(p, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED)
-		do_empty(); /* fall through */
-
-using {}:
- 	if (cmpxchg(p, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED)
-		{} /* fall through */
-or
-		{ /* fall through */ }
-or even
- 	if (cmpxchg(p, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED) {
-		/* fall through */ }
-or
- 	if (cmpxchg(p, ACL_NOT_CACHED, sentinel) != ACL_NOT_CACHED) {
-		} /* fall through */
-
-
- drivers/base/devcoredump.c         |    5 +++--
- drivers/dax/bus.c                  |    5 +++--
- drivers/input/mouse/synaptics.c    |    3 ++-
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: "Martin K. Petersen" <martin.petersen@oracle.com>
+Cc: linux-scsi@vger.kernel.org
+Cc: target-devel@vger.kernel.org
+---
  drivers/target/target_core_pscsi.c |    3 ++-
- drivers/usb/core/sysfs.c           |    2 +-
- fs/nfsd/nfs4state.c                |    3 ++-
- fs/posix_acl.c                     |    2 +-
- include/linux/kernel.h             |    8 ++++++++
- sound/drivers/vx/vx_core.c         |    3 ++-
- 9 files changed, 24 insertions(+), 10 deletions(-)
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- linux-next-20200417.orig/drivers/target/target_core_pscsi.c
++++ linux-next-20200417/drivers/target/target_core_pscsi.c
+@@ -18,6 +18,7 @@
+ #include <linux/slab.h>
+ #include <linux/spinlock.h>
+ #include <linux/genhd.h>
++#include <linux/kernel.h>
+ #include <linux/cdrom.h>
+ #include <linux/ratelimit.h>
+ #include <linux/module.h>
+@@ -621,7 +622,7 @@ static void pscsi_complete_cmd(struct se
+ 
+ 			buf = transport_kmap_data_sg(cmd);
+ 			if (!buf)
+-				; /* XXX: TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE */
++				do_empty(); /* XXX: TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE */
+ 
+ 			if (cdb[0] == MODE_SENSE_10) {
+ 				if (!(buf[3] & 0x80))
