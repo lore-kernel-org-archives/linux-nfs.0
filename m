@@ -4,39 +4,39 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D144C4CC77
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:42:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8186FC38A29
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:42:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5C002221F7
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:42:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 63321221E9
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Apr 2020 18:42:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="rJ3FSC6+"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="pyHV1Yju"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728204AbgDRSmJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Apr 2020 14:42:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41212 "EHLO
+        id S1727899AbgDRSlU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Apr 2020 14:41:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41202 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1727902AbgDRSlU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:41:20 -0400
+        by vger.kernel.org with ESMTP id S1726408AbgDRSlS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Apr 2020 14:41:18 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 78995C061A0C;
-        Sat, 18 Apr 2020 11:41:20 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 917EFC0610D6;
+        Sat, 18 Apr 2020 11:41:18 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         Content-Type:MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:
         To:From:Sender:Reply-To:Content-ID:Content-Description;
-        bh=Z/ABBV2vtDLyfRcjamC38HwxTrQtSwsZcb0OzbkWsUE=; b=rJ3FSC6+DaZYG5qDC0wUPtN1SQ
-        6kc24pbTmZHwpWQG5VbJcOvhSND5w9lvWyU0STq3J5awSJ+mQGR6mBrLgoi2n3O6n9Jw35QUg9Y74
-        9mmpZhqsG2g9ClzjoUATTOR7PYeSeWpeoKr+IpZYuUcbVJVRFfFgNbPYgpOz2vwvO1ArJnNTugkXf
-        e5UqMYAoTNEErclRAZHOgSgCt9idLwF4FUQ0aYMp3ZrqvF+UofS5GPLc/CzBRVxKIeIMKMq5oaCq0
-        LHXEtvPs6ntRLkN71ahJU4FlZPCqVhnccZu4pp1C/uv0wBPvLn5xg26bBKm46QINfwvrPOOMyxieh
-        11sA8ibQ==;
+        bh=8++U0J0JftLda//wkFlmbDic7vW6wvPQj9vRP451qyE=; b=pyHV1YjuYgoOSvT5iNE2Y7QesB
+        NXrQxVgUayq4HjgeqKsk2tapY3tZ0T5adrg2tRGVb9UDxjDW8Ymr23ZQvkVi+4TN/ycZwkIUkaudG
+        oGMqI5Zd6s+C1gyru6NOrS5ZFX1JqPWuYEb45qk0a5RAHpEztnjpgk8xMtaZ2YEB2mXtj14HUzOUk
+        LVAd8pg4/P6e1JpzKE3ulBSzOtFhS8JXHt+oL461ce4TL035IHm65XTXUhN54RnOcQ2jZv7YhSCS+
+        V6nVFKIksP8CDgK7V6ubm5iolAEN2qiHG681gjIL3NBvd9hAfq4bMBMyPZ7R3p3jHd0ZxUtJLl1rc
+        SIUUC5lg==;
 Received: from [2601:1c0:6280:3f0::19c2] (helo=smtpauth.infradead.org)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jPsP2-0007rZ-8t; Sat, 18 Apr 2020 18:41:20 +0000
+        id 1jPsP0-0007rZ-CC; Sat, 18 Apr 2020 18:41:18 +0000
 From:   Randy Dunlap <rdunlap@infradead.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Randy Dunlap <rdunlap@infradead.org>,
@@ -59,9 +59,9 @@ Cc:     Randy Dunlap <rdunlap@infradead.org>,
         "Martin K. Petersen" <martin.petersen@oracle.com>,
         linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
         Zzy Wysm <zzy@zzywysm.com>
-Subject: [PATCH 7/9] drivers/base: fix empty-body warnings in devcoredump.c
-Date:   Sat, 18 Apr 2020 11:41:09 -0700
-Message-Id: <20200418184111.13401-8-rdunlap@infradead.org>
+Subject: [PATCH 5/9] usb: fix empty-body warning in sysfs.c
+Date:   Sat, 18 Apr 2020 11:41:07 -0700
+Message-Id: <20200418184111.13401-6-rdunlap@infradead.org>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20200418184111.13401-1-rdunlap@infradead.org>
 References: <20200418184111.13401-1-rdunlap@infradead.org>
@@ -75,38 +75,28 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Fix gcc empty-body warning when -Wextra is used:
 
-../drivers/base/devcoredump.c:297:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
-../drivers/base/devcoredump.c:301:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+../drivers/usb/core/sysfs.c: In function ‘usb_create_sysfs_intf_files’:
+../drivers/usb/core/sysfs.c:1266:3: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+   ; /* We don't actually care if the function fails. */
+   ^
 
 Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
-Cc: Johannes Berg <johannes@sipsolutions.net>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org
 Cc: Linus Torvalds <torvalds@linux-foundation.org>
 Cc: Andrew Morton <akpm@linux-foundation.org>
 ---
- drivers/base/devcoredump.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ drivers/usb/core/sysfs.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
---- linux-next-20200417.orig/drivers/base/devcoredump.c
-+++ linux-next-20200417/drivers/base/devcoredump.c
-@@ -9,6 +9,7 @@
-  *
-  * Author: Johannes Berg <johannes@sipsolutions.net>
-  */
-+#include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/device.h>
- #include <linux/devcoredump.h>
-@@ -294,11 +295,11 @@ void dev_coredumpm(struct device *dev, s
+--- linux-next-20200327.orig/drivers/usb/core/sysfs.c
++++ linux-next-20200327/drivers/usb/core/sysfs.c
+@@ -1263,7 +1263,7 @@ void usb_create_sysfs_intf_files(struct
+ 	if (!alt->string && !(udev->quirks & USB_QUIRK_CONFIG_INTF_STRINGS))
+ 		alt->string = usb_cache_string(udev, alt->desc.iInterface);
+ 	if (alt->string && device_create_file(&intf->dev, &dev_attr_interface))
+-		;	/* We don't actually care if the function fails. */
++		do_empty(); /* We don't actually care if the function fails. */
+ 	intf->sysfs_files_created = 1;
+ }
  
- 	if (sysfs_create_link(&devcd->devcd_dev.kobj, &dev->kobj,
- 			      "failing_device"))
--		/* nothing - symlink will be missing */;
-+		do_empty(); /* nothing - symlink will be missing */
- 
- 	if (sysfs_create_link(&dev->kobj, &devcd->devcd_dev.kobj,
- 			      "devcoredump"))
--		/* nothing - symlink will be missing */;
-+		do_empty(); /* nothing - symlink will be missing */
- 
- 	INIT_DELAYED_WORK(&devcd->del_wk, devcd_del);
- 	schedule_delayed_work(&devcd->del_wk, DEVCD_TIMEOUT);
