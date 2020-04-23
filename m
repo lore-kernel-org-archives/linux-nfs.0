@@ -2,71 +2,94 @@ Return-Path: <SRS0=2qS5=6H=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11987C55191
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 Apr 2020 16:45:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7711C54FD0
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 Apr 2020 19:34:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E479420767
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 Apr 2020 16:45:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587660306;
-	bh=isgpAyPuQoQTkz/JRTcmILgPw06/ov1SPHElk2aGTlQ=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=CLAdgDxf3yL2i8m92MoSxwrJ7Y+a1n3iif/bkPbSDUrP47g8RBzHCksf3lwfQAsOP
-	 dvI3HSfOfGSXLcTvfPDcGeoGZpOIFFu7MDg77g5W7MsPFgIQhKXstuG43AzqqtDDSr
-	 XPyNwWT7jzgbn2grRzsr/lx4RhhZzwTYNV14m7bM=
+	by mail.kernel.org (Postfix) with ESMTP id 944DE20724
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 Apr 2020 19:34:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729621AbgDWQpC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 23 Apr 2020 12:45:02 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42082 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729407AbgDWQpC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Apr 2020 12:45:02 -0400
-Subject: Re: [GIT PULL] Please pull first round of NFS server -rc fixes for
- v5.7
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587660302;
-        bh=isgpAyPuQoQTkz/JRTcmILgPw06/ov1SPHElk2aGTlQ=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=AWvo6I8hOGVIqdl2jwTrj4yTITzkRzdCCbUbNmxLb1yhB1oiF0G7i/B/pWqgR5kHh
-         GOfNvjUyedheqe9gP1/bRVejm5u7P/EjLUhwGrp1lx7Ss1cDdYtDIkLXFLKH+0Zw5q
-         g0ne8bm6IUntaYmAtT0qydUpqy5aqxhcPG/jVEdQ=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <AC510313-C744-4F22-82F7-F75F20F4B073@oracle.com>
-References: <AC510313-C744-4F22-82F7-F75F20F4B073@oracle.com>
-X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
-X-PR-Tracked-Message-Id: <AC510313-C744-4F22-82F7-F75F20F4B073@oracle.com>
-X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/cel/cel-2.6.git
- tags/nfsd-5.7-rc-1
-X-PR-Tracked-Commit-Id: 23cf1ee1f1869966b75518c59b5cbda4c6c92450
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 1ddd873948c9836c2b154e4fabd6e94da0ab9727
-Message-Id: <158766030219.20212.18051076581025427769.pr-tracker-bot@kernel.org>
-Date:   Thu, 23 Apr 2020 16:45:02 +0000
+        id S1728782AbgDWTeG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 23 Apr 2020 15:34:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35190 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728308AbgDWTeG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2020 15:34:06 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00::f03c:91ff:fe50:41d6])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3E81FC09B042
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2020 12:34:06 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 757D414DC; Thu, 23 Apr 2020 15:34:05 -0400 (EDT)
+Date:   Thu, 23 Apr 2020 15:34:05 -0400
+From:   Bruce Fields <bfields@fieldses.org>
 To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        Jeff Layton <jlayton@kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: GSS unwrapping breaks the DRC
+Message-ID: <20200423193405.GB4561@fieldses.org>
+References: <DAED9EC8-7461-48FF-AD6C-C85FB968F8A6@oracle.com>
+ <20200415192542.GA6466@fieldses.org>
+ <0775FBE7-C2DD-4ED6-955D-22B944F302E0@oracle.com>
+ <20200415215823.GB6466@fieldses.org>
+ <39815C35-EAD8-4B2E-B48F-88F3D5B10C57@oracle.com>
+ <AA069628-0668-4F15-8C29-23997D04185B@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <AA069628-0668-4F15-8C29-23997D04185B@oracle.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The pull request you sent on Thu, 23 Apr 2020 10:36:39 -0400:
+On Fri, Apr 17, 2020 at 05:48:35PM -0400, Chuck Lever wrote:
+> I've hit a snag here.
+> 
+> I reverted 241b1f419f0e on my server, and all tests completed
+> successfully.
+> 
+> I reverted 241b1f419f0e on my client, and now krb5p is failing. Using
+> xdr_buf_trim does the right thing on the server, but on the client it
+> has exposed a latent bug in gss_unwrap_resp_priv() (ie, the bug does
+> not appear to be harmful until 241b1f419f0e has been reverted).
+> 
+> The calculation of au_ralign in that function is wrong, and that forces
+> rpc_prepare_reply_pages to allocate a zero-length tail. xdr_buf_trim()
+> then lops off the end of each subsequent clear-text RPC message, and
+> eventually a short READ results in test failures.
+> 
+> After experimenting with this for a day, I don't see any way for
+> gss_unwrap_resp_priv() to estimate au_ralign based on what gss_unwrap()
+> has done to the xdr_buf. The kerberos_v1 unwrap method does not appear
+> to have any trailing checksum, for example, but v2 does.
+> 
+> The best approach for now seems to be to have the pseudoflavor-specific
+> unwrap methods return the correct ralign value. A straightforward way
+> to do this would be to add a *int parameter to ->gss_unwrap that would
+> be set to the proper value; or hide that value somewhere in the xdr_buf.
+> 
+> Any other thoughts or random bits of inspiration?
 
-> git://git.linux-nfs.org/projects/cel/cel-2.6.git tags/nfsd-5.7-rc-1
+No.  Among other things, a quick skim wasn't enough to remind me what
+au_ralign is and why we have both that and au_rslack....  Sorry!  I've
+got not much to offer but sympathy.
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/1ddd873948c9836c2b154e4fabd6e94da0ab9727
+...
 
-Thank you!
+I have a random thought out of left field: after the xdr_stream
+conversion, fs/nfs/nfs4xdr.c mostly doesn't deal directly with the reply
+buffer any more.  It calls xdr_inline_decode(xdr, n) and gets back a
+pointer to the next n bytes of rpc data.  Or it calls xdr_read_pages()
+after which read data's supposed to be moved to the right place.
 
--- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
+Would it be possible to delay rpcsec_gss decoding until then?  Would
+that make things simpler or more complicated?
+
+Eh, I think the answer is probably "more complicated".
+
+--b.
