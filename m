@@ -1,155 +1,126 @@
-Return-Path: <SRS0=HFWl=6K=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=uE3C=6L=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48CF9C54FCB
-	for <linux-nfs@archiver.kernel.org>; Sun, 26 Apr 2020 18:17:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D54F3C54FD0
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Apr 2020 11:00:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2FABA2080C
-	for <linux-nfs@archiver.kernel.org>; Sun, 26 Apr 2020 18:17:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587925036;
-	bh=qROv98kUQCFciYko7LfskMvs1cO2HeSbFAEN/lIjErs=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=p11Wc/QHafD/3MSe6qiE1kU9fvuZLE8Z+QaU5Icqm3wvlFxFs6u6UE6kGTuiBYLKH
-	 Rg8TlRBKWw63JuwB7pEUWmQbUUorxOlGqamK604NY0aqXbpAY72TjZ+Zq80homtQwn
-	 lHyDDNB+TJwD/HrWoH5xwVGj6OsmsqOadwPictLk=
+	by mail.kernel.org (Postfix) with ESMTP id A9038206B6
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Apr 2020 11:00:04 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="TYvZAhqx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726174AbgDZSRP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 26 Apr 2020 14:17:15 -0400
-Received: from mail.kernel.org ([198.145.29.99]:51440 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726151AbgDZSRP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 26 Apr 2020 14:17:15 -0400
-Received: from localhost (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1726589AbgD0LAE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 27 Apr 2020 07:00:04 -0400
+Received: from us-smtp-2.mimecast.com ([207.211.31.81]:58683 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726539AbgD0LAD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2020 07:00:03 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1587985202;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:autocrypt:autocrypt;
+        bh=Z7a2Fb/GgqKLsKLdung2T1u6un/O5fVLJmtiwIOV9jc=;
+        b=TYvZAhqxEPqrztXL1kY7zTwvaekfJL00RY8Ell9CsYq3qSCwKmYMONkQKn1hpGs7TkX559
+        QUzeqFRTn2rZr8Ms3X2f8fJT+LGdkyTGUiPVLXMVnX9DorFk9zk9P7TsMmMTb4CgPNdhjs
+        OUFG6Gs0x6kBN+ZYAH6bsnrJkmgIubY=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-117-2TE088DMNd-_i8QatyfzBA-1; Mon, 27 Apr 2020 07:00:00 -0400
+X-MC-Unique: 2TE088DMNd-_i8QatyfzBA-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 552DA2070A;
-        Sun, 26 Apr 2020 18:17:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587925034;
-        bh=qROv98kUQCFciYko7LfskMvs1cO2HeSbFAEN/lIjErs=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=m+j2V/J0+ZTCKt6rZXNZb0HFifLo6drrTJo8s5FaT4Tp1EH73l5rZcbUUVd5Dv4L4
-         TycSMpupx3OgvFsQkEElNf3453ohWIlmE6FzHC3V3y6FfFJdD5j0PiTwdXqu6Cia3J
-         y4EOpkdE9PqlV0hVw/trRVhSvGKfjqav4BmA+Rf8=
-Date:   Sun, 26 Apr 2020 14:17:13 -0400
-From:   Sasha Levin <sashal@kernel.org>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>, stable@vger.kernel.org
-Subject: Re: [PATCH v2 1/1] NFSv4.1: fix handling of backchannel binding in
- BIND_CONN_TO_SESSION
-Message-ID: <20200426181713.GK13035@sasha-vm>
-References: <20200424214550.30462-1-olga.kornievskaia@gmail.com>
- <20200426150342.44DD22078E@mail.kernel.org>
- <CAN-5tyH3wtdy5AtfPJPows5p4zYWiJ2BAD+B-a2R3nqqFxyTVg@mail.gmail.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6B1811005510
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2020 10:59:59 +0000 (UTC)
+Received: from dresden.str.redhat.com (ovpn-114-29.ams2.redhat.com [10.36.114.29])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 07CEA10013A1
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2020 10:59:58 +0000 (UTC)
+From:   Max Reitz <mreitz@redhat.com>
+Subject: Testing auto-submounts
+To:     linux-nfs@vger.kernel.org
+Autocrypt: addr=mreitz@redhat.com; prefer-encrypt=mutual; keydata=
+ mQENBFXOJlcBCADEyyhOTsoa/2ujoTRAJj4MKA21dkxxELVj3cuILpLTmtachWj7QW+TVG8U
+ /PsMCFbpwsQR7oEy8eHHZwuGQsNpEtNC2G/L8Yka0BIBzv7dEgrPzIu+W3anZXQW4702+uES
+ U29G8TP/NGfXRRHGlbBIH9KNUnOSUD2vRtpOLXkWsV5CN6vQFYgQfFvmp5ZpPeUe6xNplu8V
+ mcTw8OSEDW/ZnxJc8TekCKZSpdzYoxfzjm7xGmZqB18VFwgJZlIibt1HE0EB4w5GsD7x5ekh
+ awIe3RwoZgZDLQMdOitJ1tUc8aqaxvgA4tz6J6st8D8pS//m1gAoYJWGwwIVj1DjTYLtABEB
+ AAG0HU1heCBSZWl0eiA8bXJlaXR6QHJlZGhhdC5jb20+iQFTBBMBCAA9AhsDBQkSzAMABQsJ
+ CAcCBhUICQoLAgQWAgMBAh4BAheABQJVzie5FRhoa3A6Ly9rZXlzLmdudXBnLm5ldAAKCRD0
+ B9sAYdXPQDcIB/9uNkbYEex1rHKz3mr12uxYMwLOOFY9fstP5aoVJQ1nWQVB6m2cfKGdcRe1
+ 2/nFaHSNAzT0NnKz2MjhZVmcrpyd2Gp2QyISCfb1FbT82GMtXFj1wiHmPb3CixYmWGQUUh+I
+ AvUqsevLA+WihgBUyaJq/vuDVM1/K9Un+w+Tz5vpeMidlIsTYhcsMhn0L9wlCjoucljvbDy/
+ 8C9L2DUdgi3XTa0ORKeflUhdL4gucWoAMrKX2nmPjBMKLgU7WLBc8AtV+84b9OWFML6NEyo4
+ 4cP7cM/07VlJK53pqNg5cHtnWwjHcbpGkQvx6RUx6F1My3y52vM24rNUA3+ligVEgPYBuQEN
+ BFXOJlcBCADAmcVUNTWT6yLWQHvxZ0o47KCP8OcLqD+67T0RCe6d0LP8GsWtrJdeDIQk+T+F
+ xO7DolQPS6iQ6Ak2/lJaPX8L0BkEAiMuLCKFU6Bn3lFOkrQeKp3u05wCSV1iKnhg0UPji9V2
+ W5eNfy8F4ZQHpeGUGy+liGXlxqkeRVhLyevUqfU0WgNqAJpfhHSGpBgihUupmyUg7lfUPeRM
+ DzAN1pIqoFuxnN+BRHdAecpsLcbR8sQddXmDg9BpSKozO/JyBmaS1RlquI8HERQoe6EynJhd
+ 64aICHDfj61rp+/0jTIcevxIIAzW70IadoS/y3DVIkuhncgDBvGbF3aBtjrJVP+5ABEBAAGJ
+ ASUEGAEIAA8FAlXOJlcCGwwFCRLMAwAACgkQ9AfbAGHVz0CbFwf9F/PXxQR9i4N0iipISYjU
+ sxVdjJOM2TMut+ZZcQ6NSMvhZ0ogQxJ+iEQ5OjnIputKvPVd5U7WRh+4lF1lB/NQGrGZQ1ic
+ alkj6ocscQyFwfib+xIe9w8TG1CVGkII7+TbS5pXHRxZH1niaRpoi/hYtgzkuOPp35jJyqT/
+ /ELbqQTDAWcqtJhzxKLE/ugcOMK520dJDeb6x2xVES+S5LXby0D4juZlvUj+1fwZu+7Io5+B
+ bkhSVPb/QdOVTpnz7zWNyNw+OONo1aBUKkhq2UIByYXgORPFnbfMY7QWHcjpBVw9MgC4tGeF
+ R4bv+1nAMMxKmb5VvQCExr0eFhJUAHAhVg==
+Message-ID: <877990a3-14ea-9c65-c38a-1701cccf504e@redhat.com>
+Date:   Mon, 27 Apr 2020 12:59:57 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.7.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Disposition: inline
-In-Reply-To: <CAN-5tyH3wtdy5AtfPJPows5p4zYWiJ2BAD+B-a2R3nqqFxyTVg@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, Apr 26, 2020 at 11:25:25AM -0400, Olga Kornievskaia wrote:
->On Sun, Apr 26, 2020 at 11:03 AM Sasha Levin <sashal@kernel.org> wrote:
->>
->> Hi
->>
->> [This is an automated email]
->>
->> This commit has been processed because it contains a -stable tag.
->> The stable tag indicates that it's relevant for the following trees: all
->>
->> The bot has tested the following trees: v5.6.7, v5.4.35, v4.19.118, v4.14.177, v4.9.220, v4.4.220.
->>
->> v5.6.7: Build OK!
->> v5.4.35: Failed to apply! Possible dependencies:
->>     Unable to calculate
->>
->> v4.19.118: Failed to apply! Possible dependencies:
->>     07d02a67b7fa ("SUNRPC: Simplify lookup code")
->>     3453d5708b33 ("NFSv4.1: Avoid false retries when RPC calls are interrupted")
->>     5c441544f045 ("NFSv4.x: Handle bad/dead sessions correctly in nfs41_sequence_process()")
->>     79b181810285 ("SUNRPC: Convert auth creds to use refcount_t")
->>     8276c902bbe9 ("SUNRPC: remove uid and gid from struct auth_cred")
->>     95cd623250ad ("SUNRPC: Clean up the AUTH cache code")
->>     97f68c6b02e0 ("SUNRPC: add 'struct cred *' to auth_cred and rpc_cred")
->>     a52458b48af1 ("NFS/NFSD/SUNRPC: replace generic creds with 'struct cred'.")
->>     fc0664fd9bcc ("SUNRPC: remove groupinfo from struct auth_cred.")
->>
->> v4.14.177: Failed to apply! Possible dependencies:
->>     07d02a67b7fa ("SUNRPC: Simplify lookup code")
->>     12f275cdd163 ("NFSv4: Retry CLOSE and DELEGRETURN on NFS4ERR_OLD_STATEID.")
->>     1eb5d98f16f6 ("nfs: convert to new i_version API")
->>     3453d5708b33 ("NFSv4.1: Avoid false retries when RPC calls are interrupted")
->>     35156bfff3c0 ("NFSv4: Fix the nfs_inode_set_delegation() arguments")
->>     5c441544f045 ("NFSv4.x: Handle bad/dead sessions correctly in nfs41_sequence_process()")
->>     79b181810285 ("SUNRPC: Convert auth creds to use refcount_t")
->>     95cd623250ad ("SUNRPC: Clean up the AUTH cache code")
->>     97f68c6b02e0 ("SUNRPC: add 'struct cred *' to auth_cred and rpc_cred")
->>     a52458b48af1 ("NFS/NFSD/SUNRPC: replace generic creds with 'struct cred'.")
->>     b3dce6a2f060 ("pnfs/blocklayout: handle transient devices")
->>     fc0664fd9bcc ("SUNRPC: remove groupinfo from struct auth_cred.")
->>
->> v4.9.220: Failed to apply! Possible dependencies:
->>     172d9de15a0d ("NFS: Change nfs4_get_session() to take an nfs_client structure")
->>     3453d5708b33 ("NFSv4.1: Avoid false retries when RPC calls are interrupted")
->>     3be0f80b5fe9 ("NFSv4.1: Fix up replays of interrupted requests")
->>     42e1cca7e91e ("NFS: Change nfs4_setup_sequence() to take an nfs_client structure")
->>     5c441544f045 ("NFSv4.x: Handle bad/dead sessions correctly in nfs41_sequence_process()")
->>     6de7e12f53a1 ("NFS: Use nfs4_setup_sequence() everywhere")
->>     7981c8a65914 ("NFS: Create a single nfs4_setup_sequence() function")
->>     efc6f4aa742d ("NFS: Move nfs4_get_session() into nfs4_session.h")
->>
->> v4.4.220: Failed to apply! Possible dependencies:
->>     172d9de15a0d ("NFS: Change nfs4_get_session() to take an nfs_client structure")
->>     3453d5708b33 ("NFSv4.1: Avoid false retries when RPC calls are interrupted")
->>     3be0f80b5fe9 ("NFSv4.1: Fix up replays of interrupted requests")
->>     42e1cca7e91e ("NFS: Change nfs4_setup_sequence() to take an nfs_client structure")
->>     5c441544f045 ("NFSv4.x: Handle bad/dead sessions correctly in nfs41_sequence_process()")
->>     5f83d86cf531 ("NFSv4.x: Fix wraparound issues when validing the callback sequence id")
->>     68d264cf02b0 ("NFS42: handle layoutstats stateid error")
->>     6de7e12f53a1 ("NFS: Use nfs4_setup_sequence() everywhere")
->>     80f9642724af ("NFSv4.x: Enforce the ca_maxresponsesize_cached on the back channel")
->>     810d82e68301 ("NFSv4.x: Allow multiple callbacks in flight")
->>     9a0fe86745b8 ("pNFS: Handle NFS4ERR_OLD_STATEID correctly in LAYOUTSTAT calls")
->>     efc6f4aa742d ("NFS: Move nfs4_get_session() into nfs4_session.h")
->>     f74a834a0e1b ("NFSv4.x: CB_SEQUENCE should return NFS4ERR_DELAY if still executing")
->>
->>
->> NOTE: The patch will not be queued to stable trees until it is upstream.
->>
->> How should we proceed with this patch?
->
->Trond,
->
->This is my first time trying to mark the patch as something that
->should be back ported. What's the right approach?
->
->I couldn't find a patch that would make sense to say that this patch
->"fixes". Should I just pick one of them (maybe "SUNRPC: Allow creation
->of RPC clients with multiple connections" (612b41f808a))?
->
->I should have said that this only needs to be fixed up to when the
->feature was included which was 5.3. The fact that I doesn't apply to
->5.4 is the only problem I see needs to be looked at / addressed.
+Hi everyone,
 
-Hi Olga,
+Most of this mail may make it seem like it doesn=E2=80=99t concern NFS at=
+ all,
+so let me get to my question before the explanation on why I=E2=80=99m as=
+king it:
 
-You can add annotate the stable tag with versions of the branches you
-want it to be included in. For example here you could do:
+Do you happen to have any tests for auto-submounts, i.e. creating
+submounts on the client for every crossmount on the server in the
+exported directory tree?  I was looking in nfstest.git (and xfstests)
+for things like =E2=80=9Csubmount=E2=80=9D, =E2=80=9Ccrossmount=E2=80=9D,=
+ or =E2=80=9Cautomount=E2=80=9D, but didn=E2=80=99t
+spot anything.
 
-	CC: stable@kernel.org # 5.3+
+Now, for why I=E2=80=99m asking:
 
--- 
-Thanks,
-Sasha
+I=E2=80=99m involved in virtio-fs, a way to share directories between VM =
+hosts
+and guests, using the FUSE protocol.
+
+We have the problem of presenting unique st_dev/st_ino combinations in
+the guest for every unique inode on the host.  Right now, we just pass
+through the st_ino value from the host, but if you have submounts in the
+shared directory, then those st_ino values may collide between different
+devices (because the whole tree is just a single mount with a single
+st_dev in the guest).
+
+To fix it, we plan on creating an automounted submount in the guest for
+every submount on the host, such that every submount has its own st_dev,
+so the combination of st_dev/st_ino will remain unique.
+
+This seems similar to what NFS does with the crossmnt option.  Now,
+because of course we want to test that everything works, I was wondering
+whether there are any such tests for NFS already that we could modify
+for virtio-fs to get reasonable coverage.
+
+
+Thanks a lot and kind regards,
+
+Max
+
