@@ -2,125 +2,100 @@ Return-Path: <SRS0=uE3C=6L=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D54F3C54FD0
-	for <linux-nfs@archiver.kernel.org>; Mon, 27 Apr 2020 11:00:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4B2EC54FD0
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Apr 2020 14:14:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A9038206B6
-	for <linux-nfs@archiver.kernel.org>; Mon, 27 Apr 2020 11:00:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AC040206B6
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Apr 2020 14:14:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="TYvZAhqx"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Dm7vS3H6"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726589AbgD0LAE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 27 Apr 2020 07:00:04 -0400
-Received: from us-smtp-2.mimecast.com ([207.211.31.81]:58683 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726539AbgD0LAD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2020 07:00:03 -0400
+        id S1727807AbgD0OOV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 27 Apr 2020 10:14:21 -0400
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:40080 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727022AbgD0OOU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2020 10:14:20 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1587985202;
+        s=mimecast20190719; t=1587996859;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:autocrypt:autocrypt;
-        bh=Z7a2Fb/GgqKLsKLdung2T1u6un/O5fVLJmtiwIOV9jc=;
-        b=TYvZAhqxEPqrztXL1kY7zTwvaekfJL00RY8Ell9CsYq3qSCwKmYMONkQKn1hpGs7TkX559
-        QUzeqFRTn2rZr8Ms3X2f8fJT+LGdkyTGUiPVLXMVnX9DorFk9zk9P7TsMmMTb4CgPNdhjs
-        OUFG6Gs0x6kBN+ZYAH6bsnrJkmgIubY=
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=e3orOv4UV0UUot/Ua4Hzf+JbsqQyQDP5B+jzSFOMsFU=;
+        b=Dm7vS3H6ixn4KSyTdXmu34DAWYAszmuSNJnqsxLpAGibDsksdyyC+u/L1f2ys5UR74jKaE
+        MQFBAwRy7bS8AHeUuimoo6v/OeIWzimJiH/M//Yy5ZJvIXGWxB48KPTl2BoJzeaKgecoeE
+        uaa0M5oYrOGDIeZNhdl3ZjGaF5Lv7Ao=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-117-2TE088DMNd-_i8QatyfzBA-1; Mon, 27 Apr 2020 07:00:00 -0400
-X-MC-Unique: 2TE088DMNd-_i8QatyfzBA-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+ us-mta-128-76A4-QV6MRaMfWf3thZIPA-1; Mon, 27 Apr 2020 10:14:15 -0400
+X-MC-Unique: 76A4-QV6MRaMfWf3thZIPA-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6B1811005510
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2020 10:59:59 +0000 (UTC)
-Received: from dresden.str.redhat.com (ovpn-114-29.ams2.redhat.com [10.36.114.29])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 07CEA10013A1
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2020 10:59:58 +0000 (UTC)
-From:   Max Reitz <mreitz@redhat.com>
-Subject: Testing auto-submounts
-To:     linux-nfs@vger.kernel.org
-Autocrypt: addr=mreitz@redhat.com; prefer-encrypt=mutual; keydata=
- mQENBFXOJlcBCADEyyhOTsoa/2ujoTRAJj4MKA21dkxxELVj3cuILpLTmtachWj7QW+TVG8U
- /PsMCFbpwsQR7oEy8eHHZwuGQsNpEtNC2G/L8Yka0BIBzv7dEgrPzIu+W3anZXQW4702+uES
- U29G8TP/NGfXRRHGlbBIH9KNUnOSUD2vRtpOLXkWsV5CN6vQFYgQfFvmp5ZpPeUe6xNplu8V
- mcTw8OSEDW/ZnxJc8TekCKZSpdzYoxfzjm7xGmZqB18VFwgJZlIibt1HE0EB4w5GsD7x5ekh
- awIe3RwoZgZDLQMdOitJ1tUc8aqaxvgA4tz6J6st8D8pS//m1gAoYJWGwwIVj1DjTYLtABEB
- AAG0HU1heCBSZWl0eiA8bXJlaXR6QHJlZGhhdC5jb20+iQFTBBMBCAA9AhsDBQkSzAMABQsJ
- CAcCBhUICQoLAgQWAgMBAh4BAheABQJVzie5FRhoa3A6Ly9rZXlzLmdudXBnLm5ldAAKCRD0
- B9sAYdXPQDcIB/9uNkbYEex1rHKz3mr12uxYMwLOOFY9fstP5aoVJQ1nWQVB6m2cfKGdcRe1
- 2/nFaHSNAzT0NnKz2MjhZVmcrpyd2Gp2QyISCfb1FbT82GMtXFj1wiHmPb3CixYmWGQUUh+I
- AvUqsevLA+WihgBUyaJq/vuDVM1/K9Un+w+Tz5vpeMidlIsTYhcsMhn0L9wlCjoucljvbDy/
- 8C9L2DUdgi3XTa0ORKeflUhdL4gucWoAMrKX2nmPjBMKLgU7WLBc8AtV+84b9OWFML6NEyo4
- 4cP7cM/07VlJK53pqNg5cHtnWwjHcbpGkQvx6RUx6F1My3y52vM24rNUA3+ligVEgPYBuQEN
- BFXOJlcBCADAmcVUNTWT6yLWQHvxZ0o47KCP8OcLqD+67T0RCe6d0LP8GsWtrJdeDIQk+T+F
- xO7DolQPS6iQ6Ak2/lJaPX8L0BkEAiMuLCKFU6Bn3lFOkrQeKp3u05wCSV1iKnhg0UPji9V2
- W5eNfy8F4ZQHpeGUGy+liGXlxqkeRVhLyevUqfU0WgNqAJpfhHSGpBgihUupmyUg7lfUPeRM
- DzAN1pIqoFuxnN+BRHdAecpsLcbR8sQddXmDg9BpSKozO/JyBmaS1RlquI8HERQoe6EynJhd
- 64aICHDfj61rp+/0jTIcevxIIAzW70IadoS/y3DVIkuhncgDBvGbF3aBtjrJVP+5ABEBAAGJ
- ASUEGAEIAA8FAlXOJlcCGwwFCRLMAwAACgkQ9AfbAGHVz0CbFwf9F/PXxQR9i4N0iipISYjU
- sxVdjJOM2TMut+ZZcQ6NSMvhZ0ogQxJ+iEQ5OjnIputKvPVd5U7WRh+4lF1lB/NQGrGZQ1ic
- alkj6ocscQyFwfib+xIe9w8TG1CVGkII7+TbS5pXHRxZH1niaRpoi/hYtgzkuOPp35jJyqT/
- /ELbqQTDAWcqtJhzxKLE/ugcOMK520dJDeb6x2xVES+S5LXby0D4juZlvUj+1fwZu+7Io5+B
- bkhSVPb/QdOVTpnz7zWNyNw+OONo1aBUKkhq2UIByYXgORPFnbfMY7QWHcjpBVw9MgC4tGeF
- R4bv+1nAMMxKmb5VvQCExr0eFhJUAHAhVg==
-Message-ID: <877990a3-14ea-9c65-c38a-1701cccf504e@redhat.com>
-Date:   Mon, 27 Apr 2020 12:59:57 +0200
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 1445818FE860;
+        Mon, 27 Apr 2020 14:14:14 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-163.phx2.redhat.com [10.3.112.163])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A493027CC9;
+        Mon, 27 Apr 2020 14:14:13 +0000 (UTC)
+Subject: Re: [Libtirpc-devel] [PATCH v2] pkg-config: use the correct
+ replacements for libdir/includedir
+To:     Eli Schwartz <eschwartz@archlinux.org>,
+        libtirpc-devel@lists.sourceforge.net
+Cc:     linux-nfs@vger.kernel.org
+References: <20200419075201.1161001-1-eschwartz@archlinux.org>
+ <20200420182635.1488536-1-eschwartz@archlinux.org>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <69f52eaf-52dd-9729-af35-a2c5f6a398b1@RedHat.com>
+Date:   Mon, 27 Apr 2020 10:14:13 -0400
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.7.0
+ Thunderbird/68.5.0
 MIME-Version: 1.0
+In-Reply-To: <20200420182635.1488536-1-eschwartz@archlinux.org>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi everyone,
-
-Most of this mail may make it seem like it doesn=E2=80=99t concern NFS at=
- all,
-so let me get to my question before the explanation on why I=E2=80=99m as=
-king it:
-
-Do you happen to have any tests for auto-submounts, i.e. creating
-submounts on the client for every crossmount on the server in the
-exported directory tree?  I was looking in nfstest.git (and xfstests)
-for things like =E2=80=9Csubmount=E2=80=9D, =E2=80=9Ccrossmount=E2=80=9D,=
- or =E2=80=9Cautomount=E2=80=9D, but didn=E2=80=99t
-spot anything.
-
-Now, for why I=E2=80=99m asking:
-
-I=E2=80=99m involved in virtio-fs, a way to share directories between VM =
-hosts
-and guests, using the FUSE protocol.
-
-We have the problem of presenting unique st_dev/st_ino combinations in
-the guest for every unique inode on the host.  Right now, we just pass
-through the st_ino value from the host, but if you have submounts in the
-shared directory, then those st_ino values may collide between different
-devices (because the whole tree is just a single mount with a single
-st_dev in the guest).
-
-To fix it, we plan on creating an automounted submount in the guest for
-every submount on the host, such that every submount has its own st_dev,
-so the combination of st_dev/st_ino will remain unique.
-
-This seems similar to what NFS does with the crossmnt option.  Now,
-because of course we want to test that everything works, I was wondering
-whether there are any such tests for NFS already that we could modify
-for virtio-fs to get reasonable coverage.
 
 
-Thanks a lot and kind regards,
+On 4/20/20 2:26 PM, Eli Schwartz wrote:
+> They are defined pkg-config variables for a reason, let's reuse them as
+> is the intended usage of pkg-config. This ensures various pkg-config
+> features continue to work as expected.
+> 
+> Signed-off-by: Eli Schwartz <eschwartz@archlinux.org>
+Committed... (tag: libtirpc-1-2-7-rc1)
 
-Max
+steved.
+> ---
+> 
+> v2: forgot the Libs change
+> 
+>  libtirpc.pc.in | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/libtirpc.pc.in b/libtirpc.pc.in
+> index 38034c5..d2c7878 100644
+> --- a/libtirpc.pc.in
+> +++ b/libtirpc.pc.in
+> @@ -7,6 +7,6 @@ Name: libtirpc
+>  Description: Transport Independent RPC Library
+>  Requires:
+>  Version: @PACKAGE_VERSION@
+> -Libs: -L@libdir@ -ltirpc
+> +Libs: -L${libdir} -ltirpc
+>  Libs.private: -lpthread
+> -Cflags: -I@includedir@/tirpc
+> +Cflags: -I${includedir}/tirpc
+> 
 
