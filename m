@@ -2,96 +2,271 @@ Return-Path: <SRS0=XrmD=6O=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19283C4724C
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:12:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3999C47247
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:48:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E8DDC20774
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:12:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1588255976;
-	bh=y4Ozww6uIijXuHAOvz0mMxvOX3PpOo2Vb+eBpOul4JM=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=pgCcIK/2ODCI393JZxcsT8Hx/Cmvi4Hfx8lGP8EqpiSxPKiSgMQ6iWLXloWg4cX8f
-	 i/jJXGeZ1JMlJPhL8fLtgIiZIjhihrXimXz6LPp5DNDv/ho6eLrU598H1iKpbD1r/d
-	 9zCo0OzXbfrmijVrVvl6K1MzPXSTdcN3lSsFmQ5A=
+	by mail.kernel.org (Postfix) with ESMTP id A8AC32076D
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:48:54 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Q/xDUpKZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727848AbgD3NvA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 30 Apr 2020 09:51:00 -0400
-Received: from mail.kernel.org ([198.145.29.99]:58830 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727843AbgD3NvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Apr 2020 09:51:00 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2793C2137B;
-        Thu, 30 Apr 2020 13:50:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1588254659;
-        bh=y4Ozww6uIijXuHAOvz0mMxvOX3PpOo2Vb+eBpOul4JM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=rGmKvgLW9VHBI6qYEEGaEQ1e8AxQQZjkdhtmw8hrrfIF8MIs8JE+cCGVaAbHgPRrO
-         CerqMFFjpWWjj0HjUMO24pRad71jIUXv5aQz+rSGXuWE8mUbs7zWPLf0dVxTvlQT6k
-         zyF3fx3/l9OPpcnUFvYZOovfshDBwfGDtdgSUQ2c=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Vasily Averin <vvs@virtuozzo.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.6 13/79] nfsd: memory corruption in nfsd4_lock()
-Date:   Thu, 30 Apr 2020 09:49:37 -0400
-Message-Id: <20200430135043.19851-13-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200430135043.19851-1-sashal@kernel.org>
-References: <20200430135043.19851-1-sashal@kernel.org>
+        id S1726822AbgD3Osy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 30 Apr 2020 10:48:54 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:54423 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726130AbgD3Osu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2020 10:48:50 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1588258127;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=q4t9tINQn93GZUGuo19CMuuD0S2FQr8iWUebN42jl+o=;
+        b=Q/xDUpKZ0ioH7ZNh5MGHQwl+teobjzKAiUrfBNRzu5G7KZPOukyKZUZUgERiRA1/arw3z0
+        DZv4E8GZna5aGic/80qsFK+tk/n/NVZF6Blwp5Qv/i7MrXm5OVF2nSKp+Kwid5iQ9y5utM
+        fc+Pa69J15VXPHMkMxKKaQaFSWAbsXI=
+Received: from mail-lj1-f200.google.com (mail-lj1-f200.google.com
+ [209.85.208.200]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-410-uaj2hYmkPJOMwBLc4WFnBg-1; Thu, 30 Apr 2020 10:48:42 -0400
+X-MC-Unique: uaj2hYmkPJOMwBLc4WFnBg-1
+Received: by mail-lj1-f200.google.com with SMTP id p17so1042597ljn.12
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Apr 2020 07:48:42 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=q4t9tINQn93GZUGuo19CMuuD0S2FQr8iWUebN42jl+o=;
+        b=G4oUb6oijztHrYxm4K8FUjmvdrqYGToiq6DLkRml90R2bkFFXO/l++zX4DUySrVjaK
+         WJmYqoKO9xQ6MbD8227VWZpuBJ79kryUiI1Jg7sInqxniTbQXHOaZdI9ME/3jRzUBIi3
+         oQhONfRCOxQl7l+3IhGDlQUrYio2hrxbJ4573TdKOtZt8wN9nkNMndK6xfuSmP6hu4bC
+         YKyVRQWpRELDoBK88NTP3b0KRIdT6TaVNSsrfZh70vq2dIlVDqzNigZvjJ2KTEazsWQF
+         A3gSMEZmxDoAFAqGQAqrdaGsxJSjIxdgKXzmzKSC+SYxSN1SNmBI6IhuPY2nXqKa8RVa
+         pySA==
+X-Gm-Message-State: AGi0PuY+1lya3b6JZte+pptK6iFkZGbd8klDY5Fdv9iTTW+87xTRtj7u
+        ZoWhCJ2iN6e4cPjWhzNj06BNMH26h46ywkLDU7oXsV2U6Bi8Aqg4MHrPZjddPJwKSA3QcVSZzyW
+        5NnzkV/cViCIKyZwgxB+zobkad4A6oq3Vg/jH
+X-Received: by 2002:a2e:9a8e:: with SMTP id p14mr2333082lji.142.1588258120442;
+        Thu, 30 Apr 2020 07:48:40 -0700 (PDT)
+X-Google-Smtp-Source: APiQypJHwm5nP9zCev8z3WyzyNmvVrG5T9GyOsujlBVyB2QoKDmxH3a66CIedZCzAWBHSmO5OiRZyd7jSorbKoh9BoE=
+X-Received: by 2002:a2e:9a8e:: with SMTP id p14mr2333065lji.142.1588258120041;
+ Thu, 30 Apr 2020 07:48:40 -0700 (PDT)
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+References: <20200428165142.GA1392654@nevermore.foobar.lan> <20200430140545.GA28617@fieldses.org>
+In-Reply-To: <20200430140545.GA28617@fieldses.org>
+From:   Achilles Gaikwad <agaikwad@redhat.com>
+Date:   Thu, 30 Apr 2020 20:18:28 +0530
+Message-ID: <CAK0MK2rvFJJHnC4c_-xyhvr63UwOOZsvHoaZjC6BHBaGup=ueg@mail.gmail.com>
+Subject: Re: [PATCH] nfs-utils: add new tool nfsd4-show to parse output from
+ proc files
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>,
+        Kenneth Dsouza <kdsouza@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Vasily Averin <vvs@virtuozzo.com>
+Good catch.
+Thank you for the review! We'll send a v2 for this.
 
-[ Upstream commit e1e8399eee72e9d5246d4d1bcacd793debe34dd3 ]
-
-New struct nfsd4_blocked_lock allocated in find_or_allocate_block()
-does not initialized nbl_list and nbl_lru.
-If conflock allocation fails rollback can call list_del_init()
-access uninitialized fields and corrupt memory.
-
-v2: just initialize nbl_list and nbl_lru right after nbl allocation.
-
-Fixes: 76d348fadff5 ("nfsd: have nfsd4_lock use blocking locks for v4.1+ lock")
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Best,
+- Achilles
 ---
- fs/nfsd/nfs4state.c | 2 ++
- 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 65cfe9ab47be0..de9fbe7ed06ce 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -267,6 +267,8 @@ find_or_allocate_block(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
- 	if (!nbl) {
- 		nbl= kmalloc(sizeof(*nbl), GFP_KERNEL);
- 		if (nbl) {
-+			INIT_LIST_HEAD(&nbl->nbl_list);
-+			INIT_LIST_HEAD(&nbl->nbl_lru);
- 			fh_copy_shallow(&nbl->nbl_fh, fh);
- 			locks_init_lock(&nbl->nbl_lock);
- 			nfsd4_init_cb(&nbl->nbl_cb, lo->lo_owner.so_client,
--- 
-2.20.1
+On Thu, Apr 30, 2020 at 7:35 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> Just one thing that jumped out at me:
+>
+> On Tue, Apr 28, 2020 at 10:21:42PM +0530, Achilles Gaikwad wrote:
+> > +# this function converts the info file to a dictionary format, sorta. :)
+> > +def file_to_dict(path):
+> > +    client_info = {}
+> > +    with open(path) as f:
+> > +        for line in f:
+> > +            try:
+> > +                (key, val) = line.split(':')
+>
+> A colon could appear in a string and this would give the wrong results.
+>
+> These files are supposed to be legal json.  I think we want to use
+> python's builtin "json" module rather than try to parse them on our own.
+>
+> --b.
+>
+> > +                client_info[key] = val
+> > +    # FIXME: There has to be a better way of converting tscrews he info file to a dictionary.
+> > +            except ValueError:
+> > +                try:
+> > +                    (key, val) = line.split()
+> > +                    client_info[key] = val
+> > +                except:
+> > +                    pass
+> > +    return client_info
+> > +
+> > +# this functino gets the paths from /proc/fs/nfsd/clients/
+> > +# returns a list of paths for each client which has nfs-share mounted.
+> > +def getpaths():
+> > +    path = []
+> > +    try:
+> > +        dirs = os.listdir('/proc/fs/nfsd/clients/')
+> > +    except OSError as reason:
+> > +        exit('%s' % reason)
+> > +    if len(dirs) !=0:
+> > +         for i in dirs:
+> > +                 path.append('/proc/fs/nfsd/clients/' + i + '/states')
+> > +         return (path)
+> > +    else:
+> > +         exit('Nothing to process')
+> > +
+> > +# A single function to rule them all, in this function we gather all the data
+> > +# from already populated data_list and client_info.
+> > +def printer(data_list, argument):
+> > +    client_info_path = data_list.pop()
+> > +    client_info = file_to_dict(client_info_path)
+> > +    for i in data_list:
+> > +        for key in i:
+> > +            inode = i[key]['superblock'].split(':')[-1]
+> > +            # get the ip address from client_info as 'address:' note the extra
+> > +            # ':' as a suffix to address. If there is a better way to convert
+> > +            # the file to dictionary, please change the following value too.
+> > +            client_ip = client_info['address:']
+> > +            # The ip address is quoted, so we dequote it.
+> > +            client_ip = client_ip[1:-1]
+> > +            try:
+> > +                # if the nfs-server reboots while the nfs-client holds the files open,
+> > +                # the nfs-server would print the filename as '/'. For such instaces we
+> > +                # print the output as disconnected dentry instead of '/'.
+> > +                if(i[key]['filename']=='/'):
+> > +                    fname = 'disconnected dentry'
+> > +                else:
+> > +                    fname = i[key]['filename'].split('/')[-1]
+> > +            except KeyError:
+> > +                # for older kernels which do not have the fname patch in kernel, they
+> > +                # won't be able to see the fname field. Therefore post it as N/A.
+> > +                fname = "N/A"
+> > +            otype = i[key]['type']
+> > +            try:
+> > +                access = i[key]['access']
+> > +            except:
+> > +                access = ''
+> > +            try:
+> > +                deny = i[key]['deny']
+> > +            except:
+> > +                deny = ''
+> > +            hostname = client_info['name'].split()[-1].split('"')[0]
+> > +            hostname =  hostname.split('.')[0]
+> > +            otype = i[key]['type']
+> > +            # if the hostname is too long, it messes up with the output being in columns,
+> > +            # therefore we truncate the hostname followed by two '..' as suffix.
+> > +            if len(hostname) > 20:
+> > +                hostname = hostname[0:20] + '..'
+> > +            clientid = client_info['clientid'].strip()
+> > +            minorversion = client_info['minor version'].rstrip().rsplit()[0]
+> > +            # since some fields do not have deny column, we drop those if -t is either
+> > +            # layout or lock.
+> > +            drop = ['layout', 'lock']
+> > +
+> > +            # Printing the output this way instead of a single string which is concatenated
+> > +            # this makes it better to quickly add more columns in future.
+> > +            if(otype == argument.type or  argument.type == 'all'):
+> > +                print('%-13s' %inode, end='| ')
+> > +                print('%-7s' %otype, end='| ')
+> > +                if (argument.type not in drop):
+> > +                    print('%-7s' %access, end='| ')
+> > +                if (argument.type not in drop and argument.type !='deleg'):
+> > +                    print('%-5s' %deny, end='| ')
+> > +                if (argument.hostname == True):
+> > +                    print('%-22s' %hostname, end='| ')
+> > +                else:
+> > +                   print('%-22s' %client_ip, end='| ')
+> > +                if (argument.clientinfo == True) :
+> > +                    print('%-20s' %clientid, end='| ')
+> > +                    print('4.%-3s' %minorversion, end='| ')
+> > +                print(fname)
+> > +
+> > +def opener(path):
+> > +    try:
+> > +        with open(path, 'r') as nfsdata:
+> > +            data = yaml.load(nfsdata, Loader = yaml.BaseLoader)
+> > +            if data is not None:
+> > +                clientinfo = path.rsplit('/', 1)[0] + '/info'
+> > +                data.append(clientinfo)
+> > +                return data
+> > +
+> > +    except OSError as reason:
+> > +        print('%s' % reason)
+> > +
+> > +def print_cols(argument):
+> > +    title_inode = 'Inode number'
+> > +    title_otype = 'Type'
+> > +    title_access = 'Access'
+> > +    title_deny = 'Deny'
+> > +    title_fname = 'Filename'
+> > +    title_clientID = 'Client ID'
+> > +    title_hostname = 'Hostname'
+> > +    title_ip = 'ip address'
+> > +    title_nfsvers = 'vers'
+> > +
+> > +    drop = ['lock', 'layout']
+> > +    print(BBOLD, end='')
+> > +    print('%-13s' %title_inode, end='| ')
+> > +    print('%-7s' %title_otype, end='| ')
+> > +    if (argument.type not in drop):
+> > +        print('%-7s' %title_access, end='| ')
+> > +    if (argument.type not in drop and argument.type !='deleg'):
+> > +        print('%-5s' %title_deny, end='| ')
+> > +    if (argument.hostname == True):
+> > +        print('%-22s' %title_hostname, end='| ')
+> > +    else:
+> > +        print('%-22s' %title_ip, end='| ')
+> > +    if (argument.clientinfo == True):
+> > +        print('%-20s' %title_clientID, end='| ')
+> > +        print('%-5s' %title_nfsvers, end='| ')
+> > +    print(title_fname, end='')
+> > +    print(ENDC)
+> > +
+> > +def nfsd4_show():
+> > +
+> > +    parser = argparse.ArgumentParser(description = 'Parse the nfsd states and clientinfo files.')
+> > +    parser.add_argument('-t', '--type', metavar = 'type', type = str, choices = ['open',
+> > +        'deleg', 'lock', 'layout', 'all'],
+> > +        default = 'all',
+> > +        help = 'Input the type that you want to be printed: open, lock, deleg, layout, all')
+> > +    parser.add_argument('--clientinfo', action = 'store_true',
+> > +        help = 'output clients information, --hostname is implied.')
+> > +    parser.add_argument('--hostname', action = 'store_true',
+> > +        help = 'print hostname of client instead of its ip address. Longer hostnames are truncated.')
+> > +    parser.add_argument('-q', '--quiet', action = 'store_true',
+> > +        help = 'don\'t print the header information')
+> > +
+> > +    args = parser.parse_args()
+> > +    paths = getpaths()
+> > +    p = mp.Pool(mp.cpu_count(), init_worker)
+> > +    try:
+> > +        result = p.map(opener, paths)
+> > +        p.close()
+> > +        p.join()
+> > +        if len(result) !=0 and not args.quiet and result[0] is not None:
+> > +            print_cols(args)
+> > +
+> > +        for i in result:
+> > +            if i is not None:
+> > +                printer(i, args)
+> > +
+> > +    except KeyboardInterrupt:
+> > +        print('Caught KeyboardInterrupt, terminating workers')
+> > +        p.terminate()
+> > +        p.join()
+> > +
+> > +if __name__ == "__main__":
+> > +    nfsd4_show()
+> > --
+> > 2.25.4
+>
 
