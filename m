@@ -4,49 +4,49 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE6A4C47247
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:12:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 19283C4724C
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:12:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 848542082E
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:12:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E8DDC20774
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 Apr 2020 14:12:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1588255969;
-	bh=X+8B5r+3ozNjTtxJhR0LgbtW2wp7VlQ+Pb0lz57jQmY=;
+	s=default; t=1588255976;
+	bh=y4Ozww6uIijXuHAOvz0mMxvOX3PpOo2Vb+eBpOul4JM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=IBOUgYG4DYfj8ELw4ohhb0l38z210G04gFaL5j5qF8rAnL2enDCEwb7o9sVkAIlZb
-	 q5pCIcBKD9dn3ahorBrODLpoCVvwrzc1d60oRCNOS6C1JFPEA7wAxNFhgEsqkwV7V3
-	 SVnb/wfk7hCHQjo66Gk8W9T2nlCmDxQBDCabsYF0=
+	b=pgCcIK/2ODCI393JZxcsT8Hx/Cmvi4Hfx8lGP8EqpiSxPKiSgMQ6iWLXloWg4cX8f
+	 i/jJXGeZ1JMlJPhL8fLtgIiZIjhihrXimXz6LPp5DNDv/ho6eLrU598H1iKpbD1r/d
+	 9zCo0OzXbfrmijVrVvl6K1MzPXSTdcN3lSsFmQ5A=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728677AbgD3OMs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 30 Apr 2020 10:12:48 -0400
-Received: from mail.kernel.org ([198.145.29.99]:58840 "EHLO mail.kernel.org"
+        id S1727848AbgD3NvA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 30 Apr 2020 09:51:00 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58830 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727856AbgD3NvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Apr 2020 09:51:01 -0400
+        id S1727843AbgD3NvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 30 Apr 2020 09:51:00 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3CF4F208D5;
-        Thu, 30 Apr 2020 13:51:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 2793C2137B;
+        Thu, 30 Apr 2020 13:50:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1588254661;
-        bh=X+8B5r+3ozNjTtxJhR0LgbtW2wp7VlQ+Pb0lz57jQmY=;
+        s=default; t=1588254659;
+        bh=y4Ozww6uIijXuHAOvz0mMxvOX3PpOo2Vb+eBpOul4JM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=mIEMYHK8k1jV8J6Od2UQdFLxY9/epwe1j/mPxU6JGhqyhhaQagtRmol9ZqaQickAG
-         IBvpneHsuHame9iz7pBkvJTeYPvJ6UCO6Lv6hmQK31ungMbv17qm8iJfDdvi61425D
-         9IyEZRVOLWLhfwd7VJOA2zzQNHcZeaF6fY350PX8=
+        b=rGmKvgLW9VHBI6qYEEGaEQ1e8AxQQZjkdhtmw8hrrfIF8MIs8JE+cCGVaAbHgPRrO
+         CerqMFFjpWWjj0HjUMO24pRad71jIUXv5aQz+rSGXuWE8mUbs7zWPLf0dVxTvlQT6k
+         zyF3fx3/l9OPpcnUFvYZOovfshDBwfGDtdgSUQ2c=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Yihao Wu <wuyihao@linux.alibaba.com>, NeilBrown <neilb@suse.de>,
+Cc:     Vasily Averin <vvs@virtuozzo.com>,
+        Jeff Layton <jlayton@kernel.org>,
         Chuck Lever <chuck.lever@oracle.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.6 14/79] SUNRPC/cache: Fix unsafe traverse caused double-free in cache_purge
-Date:   Thu, 30 Apr 2020 09:49:38 -0400
-Message-Id: <20200430135043.19851-14-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.6 13/79] nfsd: memory corruption in nfsd4_lock()
+Date:   Thu, 30 Apr 2020 09:49:37 -0400
+Message-Id: <20200430135043.19851-13-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200430135043.19851-1-sashal@kernel.org>
 References: <20200430135043.19851-1-sashal@kernel.org>
@@ -59,50 +59,39 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Yihao Wu <wuyihao@linux.alibaba.com>
+From: Vasily Averin <vvs@virtuozzo.com>
 
-[ Upstream commit 43e33924c38e8faeb0c12035481cb150e602e39d ]
+[ Upstream commit e1e8399eee72e9d5246d4d1bcacd793debe34dd3 ]
 
-Deleting list entry within hlist_for_each_entry_safe is not safe unless
-next pointer (tmp) is protected too. It's not, because once hash_lock
-is released, cache_clean may delete the entry that tmp points to. Then
-cache_purge can walk to a deleted entry and tries to double free it.
+New struct nfsd4_blocked_lock allocated in find_or_allocate_block()
+does not initialized nbl_list and nbl_lru.
+If conflock allocation fails rollback can call list_del_init()
+access uninitialized fields and corrupt memory.
 
-Fix this bug by holding only the deleted entry's reference.
+v2: just initialize nbl_list and nbl_lru right after nbl allocation.
 
-Suggested-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Yihao Wu <wuyihao@linux.alibaba.com>
-Reviewed-by: NeilBrown <neilb@suse.de>
-[ cel: removed unused variable ]
+Fixes: 76d348fadff5 ("nfsd: have nfsd4_lock use blocking locks for v4.1+ lock")
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/cache.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index bd843a81afa0b..d36cea4e270de 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -521,7 +521,6 @@ void cache_purge(struct cache_detail *detail)
- {
- 	struct cache_head *ch = NULL;
- 	struct hlist_head *head = NULL;
--	struct hlist_node *tmp = NULL;
- 	int i = 0;
- 
- 	spin_lock(&detail->hash_lock);
-@@ -533,7 +532,9 @@ void cache_purge(struct cache_detail *detail)
- 	dprintk("RPC: %d entries in %s cache\n", detail->entries, detail->name);
- 	for (i = 0; i < detail->hash_size; i++) {
- 		head = &detail->hash_table[i];
--		hlist_for_each_entry_safe(ch, tmp, head, cache_list) {
-+		while (!hlist_empty(head)) {
-+			ch = hlist_entry(head->first, struct cache_head,
-+					 cache_list);
- 			sunrpc_begin_cache_remove_entry(ch, detail);
- 			spin_unlock(&detail->hash_lock);
- 			sunrpc_end_cache_remove_entry(ch, detail);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 65cfe9ab47be0..de9fbe7ed06ce 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -267,6 +267,8 @@ find_or_allocate_block(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
+ 	if (!nbl) {
+ 		nbl= kmalloc(sizeof(*nbl), GFP_KERNEL);
+ 		if (nbl) {
++			INIT_LIST_HEAD(&nbl->nbl_list);
++			INIT_LIST_HEAD(&nbl->nbl_lru);
+ 			fh_copy_shallow(&nbl->nbl_fh, fh);
+ 			locks_init_lock(&nbl->nbl_lock);
+ 			nfsd4_init_cb(&nbl->nbl_cb, lo->lo_owner.so_client,
 -- 
 2.20.1
 
