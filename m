@@ -2,94 +2,91 @@ Return-Path: <SRS0=2uGU=6P=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.7 required=3.0 tests=FORGED_MUA_MOZILLA,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0EA1FC47254
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 06:38:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9969FC4724C
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 16:01:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E152E208C3
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 06:38:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 73E89208DB
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 16:01:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728274AbgEAGir (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 May 2020 02:38:47 -0400
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:45872 "EHLO
-        mx0b-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726452AbgEAGiq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2020 02:38:46 -0400
-Received: from pps.filterd (m0127361.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 0416XqW9160045;
-        Fri, 1 May 2020 02:37:54 -0400
-Received: from ppma02fra.de.ibm.com (47.49.7a9f.ip4.static.sl-reverse.com [159.122.73.71])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 30r821rte6-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 01 May 2020 02:37:54 -0400
-Received: from pps.filterd (ppma02fra.de.ibm.com [127.0.0.1])
-        by ppma02fra.de.ibm.com (8.16.0.27/8.16.0.27) with SMTP id 0416WEqt015322;
-        Fri, 1 May 2020 06:37:52 GMT
-Received: from b06avi18626390.portsmouth.uk.ibm.com (b06avi18626390.portsmouth.uk.ibm.com [9.149.26.192])
-        by ppma02fra.de.ibm.com with ESMTP id 30mcu7y8ur-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 01 May 2020 06:37:51 +0000
-Received: from d06av26.portsmouth.uk.ibm.com (d06av26.portsmouth.uk.ibm.com [9.149.105.62])
-        by b06avi18626390.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 0416afcx65929600
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 1 May 2020 06:36:41 GMT
-Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id BACEFAE045;
-        Fri,  1 May 2020 06:37:49 +0000 (GMT)
-Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id D8FD8AE04D;
-        Fri,  1 May 2020 06:37:47 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.85.81.13])
-        by d06av26.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Fri,  1 May 2020 06:37:47 +0000 (GMT)
-Subject: Re: [RESEND PATCH 0/1] Use inode_lock/unlock class of provided APIs
- in filesystems
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     linux-fsdevel@vger.kernel.org, willy@infradead.org,
-        jlayton@kernel.org, ceph-devel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        devel@lists.orangefs.org, linux-unionfs@vger.kernel.org,
-        dsterba@suse.cz
-References: <20200101105248.25304-1-riteshh@linux.ibm.com>
- <20200501043741.GK23230@ZenIV.linux.org.uk>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Fri, 1 May 2020 12:07:46 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
-MIME-Version: 1.0
-In-Reply-To: <20200501043741.GK23230@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-Message-Id: <20200501063747.D8FD8AE04D@d06av26.portsmouth.uk.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.138,18.0.676
- definitions=2020-05-01_01:2020-04-30,2020-05-01 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 clxscore=1011
- mlxscore=0 malwarescore=0 suspectscore=0 bulkscore=0 adultscore=0
- priorityscore=1501 mlxlogscore=748 spamscore=0 lowpriorityscore=0
- impostorscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2003020000 definitions=main-2005010044
+        id S1729881AbgEAQBy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 May 2020 12:01:54 -0400
+Received: from fieldses.org ([173.255.197.46]:40318 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728495AbgEAQBy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 1 May 2020 12:01:54 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id D38A43158; Fri,  1 May 2020 12:01:53 -0400 (EDT)
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        David Howells <dhowells@redhat.com>, Tejun Heo <tj@kernel.org>,
+        Shaohua Li <shli@fb.com>, Oleg Nesterov <oleg@redhat.com>,
+        linux-kernel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 0/4] allow multiple kthreadd's
+Date:   Fri,  1 May 2020 12:01:48 -0400
+Message-Id: <1588348912-24781-1-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+These patches allow a caller to create its own kthreadd.
 
-On 5/1/20 10:07 AM, Al Viro wrote:
-> On Wed, Jan 01, 2020 at 04:22:47PM +0530, Ritesh Harjani wrote:
->> Al, any comments?
->> Resending this after adding Reviewed-by/Acked-by tags.
-> 
-> .... argh.  My apologies - that got fallen through the cracks.
-> Could you rebase and resend it?
-> 
-Np.
-Sure, will rebase and resend.
+The motivation is file delegations: currently any write operation from a
+client breaks all delegations, even delegations held by the same client.
 
--ritesh
+To fix that, we need to know which client is performing a given
+operation.
+
+So, we let nfsd put all the nfsd threads into the same thread group (by
+spawning them from its own private kthreadd), then patch the delegation
+code to treat delegation breaks from the same thread group as not
+conflicting, and then leave it to nfsd to sort out conflicts among its
+own clients.  Those patches are in:
+
+	git://linux-nfs.org/~bfields/linux.git deleg-fix-self-conflicts
+
+This was an idea from Trond.  Part of his motivation was that it could
+work for userspace servers (like Ganesha and Samba) as well.  (We don't
+currently let them request delegations, but probably will some day--it
+shouldn't be difficult.)
+
+Previously I considered instead adding a new field somewhere in the
+struct task.  That might require a new system call to expose to user
+space.  Or we might be able to put this in a keyring, if David Howells
+thought that would work.
+
+Before that I tried passing the identity of the breaker explicitly, but
+that looks like it would require passing the new argument around to huge
+swaths of the VFS.
+
+Anyway, does this multiple kthreadd approach look reasonable?
+
+(If so, who should handle the patches?)
+
+--b.
+
+J. Bruce Fields (4):
+  kthreads: minor kthreadd refactoring
+  kthreads: Simplify tsk_fork_get_node
+  kthreads: allow multiple kthreadd's
+  kthreads: allow cloning threads with different flags
+
+ include/linux/kthread.h |  21 +++++-
+ init/init_task.c        |   3 +
+ init/main.c             |   4 +-
+ kernel/fork.c           |   4 ++
+ kernel/kthread.c        | 140 +++++++++++++++++++++++++++++-----------
+ 5 files changed, 132 insertions(+), 40 deletions(-)
+
+-- 
+2.26.2
 
