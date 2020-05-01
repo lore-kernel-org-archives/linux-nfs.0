@@ -4,68 +4,68 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED9CCC4724C
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 17:34:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CEE05C47257
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 17:34:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CFFF224953
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 17:34:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B06C824953
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 17:34:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PsTcrLSP"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YvGTyLYH"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730287AbgEAReR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 May 2020 13:34:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60876 "EHLO
+        id S1729693AbgEARdl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 May 2020 13:33:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60818 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1730229AbgEARdu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2020 13:33:50 -0400
-Received: from mail-qt1-x841.google.com (mail-qt1-x841.google.com [IPv6:2607:f8b0:4864:20::841])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B258FC08E859;
-        Fri,  1 May 2020 10:33:50 -0700 (PDT)
-Received: by mail-qt1-x841.google.com with SMTP id e17so8451154qtp.7;
-        Fri, 01 May 2020 10:33:50 -0700 (PDT)
+        by vger.kernel.org with ESMTP id S1728495AbgEARdk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2020 13:33:40 -0400
+Received: from mail-qv1-xf42.google.com (mail-qv1-xf42.google.com [IPv6:2607:f8b0:4864:20::f42])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 00210C061A0E;
+        Fri,  1 May 2020 10:33:39 -0700 (PDT)
+Received: by mail-qv1-xf42.google.com with SMTP id ck5so5039291qvb.11;
+        Fri, 01 May 2020 10:33:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=mN34Y6mlei8qRJsOn3ab5qgvrc/s/iI5ogq9M2gjqQs=;
-        b=PsTcrLSPxEpJld6ThNTd9ShWJRA1il58CyKyjhMZPrs4U1yJgd7Z4h58y9JkT4tPzf
-         rDhiHUexgCbUAJSzgca316cqm+WvqlW0NgzXBLZO52s7mjigCbfCHj5ey8Rs5z6v6bbV
-         0SEOw05Cggj6UiHyamaCYFSPS6F2AUqcvQcK7czMpIVNFjmuj2a3TG4qR2GAw1DIlTf/
-         iC33J9oVqhhWfAn7vgE9Stj56m4cG+zj6hT+aDTsp9SNcXbGULPYUNTlggRuMpHXbYhh
-         10O0YXJ2LkF33GF1RA7vCxN3dlhqZAuHkNWv7OD6NCudhROb+yZ89XhGx1FeSia/1vFf
-         zMkg==
+        bh=DBCaK7pbCwMuwP6HQRx0Jo8MIPjemXKq5oiMN0wKyEc=;
+        b=YvGTyLYHhAJD4VrOP3i08HZMyTysOSxIbiKY7KXwB8OqEPJMA5vZAyuQf5+09QEtKG
+         A/rKWiKq7Qts/Pk/qktKda6OVcLsoulSDUOHxEoHcTgvkvbuSwnYj6MBspKpwLRmOWR7
+         +oeM9mpOomnVpDJmdzGEqSjIn8OeLp7flHCsxPjh8GP58zNietveM2YrWlOXv19a6e1M
+         p3K+8OazJMCiiZY8MMwl0wwpToB1sqveRYwq+BNgDiCrdPSi1/tTbXsGkwdGrSuw0fNl
+         FWjGdGgy5FmD6lLTM75Ir/G7i7PQrXOdfgvOGyp5//C5OapSoCs/5Ex/m8O+7ReH+frS
+         gfGg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=mN34Y6mlei8qRJsOn3ab5qgvrc/s/iI5ogq9M2gjqQs=;
-        b=XPlQRIlVN1/OLAI2j5RtbkJuPMDhs78lpUuD/ZjR++UpERvdkY/vuZmi8M7JYNXDU2
-         kObKLl30B6eNfWk8oqnO1fSFVU+OlUAFcCSq7Ue5+CWhTy/ahlk+4M1KAle/dIQqHTuK
-         /SI2TowVsbb3PmW3cNjp+EOpPhe9oX8ekcbk+ej+/+lbnFG0FPVcYCPDkt1NvxqZfJ0T
-         Ob6rBwbBbIbj9r0KmK2oQb3PVxT+CMq0VjuQ1rPGiBYfowxiKF/BQcQ0Km7+Jwq25BQu
-         jV7tXNDveaszQNH1Csq7B5SkoWTrMWo0Ipv7/MF7b2JMxaEHreNiPwyZQb7HTAOcsKPF
-         gd0A==
-X-Gm-Message-State: AGi0Pubes6S9A/ZC7Erdk5vLLGPJWj7tvC1W2Kw16Xv38sh2XJwct3H/
-        VNeDXEgtLu2sR9tJ6C3veuLcmpLv
-X-Google-Smtp-Source: APiQypLqWoRwjWaTllW3gPA3dHrhF3NLbjKoMl4GJ9rGMgf3ZOjS6rbpoGwSo7HhVH8iCVpoGsSX4g==
-X-Received: by 2002:ac8:7581:: with SMTP id s1mr4865751qtq.260.1588354429722;
-        Fri, 01 May 2020 10:33:49 -0700 (PDT)
+        bh=DBCaK7pbCwMuwP6HQRx0Jo8MIPjemXKq5oiMN0wKyEc=;
+        b=unM7svCe6XoXvaNyh1cTCJhHa8uUhcnd0hYGS8npFN0xNIP2KwKqGV/UR3GmqGmQGO
+         hc4VXDuxwGcVjr67PVUceaOP4rkTZ4Y6RKHEf6OpB2XSe7HlvwDfGUSRPaSJdqsot8lB
+         P+Db3Hc13SaSO4ClmWirIIywa8bLsIls37Pifw7x/3dxga+uL9t/qDElzFEVbWq4fHzO
+         ktltG+70kINIM05rOP6JaAt1STfPWvQPPmIoNiOgKGKdF3wgfWkFvzXtn6OutnqBUUXR
+         KwueT4/JimdhgmltjuT/1TGoPEwvO4NyFuSEINlkYHgr93aLt83JedvMpnlczDmpc0o0
+         0yeg==
+X-Gm-Message-State: AGi0Pua9ME4IAERiV7xPtOvH3a645igwmXWEYVo5zKHN+bsUh85qjVWr
+        tq1sijxHehoc5D4G0QoSSskwGY1P
+X-Google-Smtp-Source: APiQypKTHdxR3b23BoTUslj+SlqCsA/irFvUJbdGu9w1jsizPCK62ezHEaJsvT+J0HDMhWQHWYCuVQ==
+X-Received: by 2002:ad4:45ac:: with SMTP id y12mr4950493qvu.227.1588354419080;
+        Fri, 01 May 2020 10:33:39 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id i5sm2920366qtw.97.2020.05.01.10.33.48
+        by smtp.gmail.com with ESMTPSA id e8sm3013948qkl.57.2020.05.01.10.33.38
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 01 May 2020 10:33:49 -0700 (PDT)
+        Fri, 01 May 2020 10:33:38 -0700 (PDT)
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 041HXmXB026715;
-        Fri, 1 May 2020 17:33:48 GMT
-Subject: [PATCH v1 5/7] SUNRPC: Tracepoint to record errors in
- svc_xpo_create()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 041HXbfh026709;
+        Fri, 1 May 2020 17:33:37 GMT
+Subject: [PATCH v1 3/7] svcrdma: Displayed remote IP address should match
+ stored address
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Fri, 01 May 2020 13:33:48 -0400
-Message-ID: <20200501173348.3798.89598.stgit@klimt.1015granger.net>
+Date:   Fri, 01 May 2020 13:33:37 -0400
+Message-ID: <20200501173337.3798.58834.stgit@klimt.1015granger.net>
 In-Reply-To: <20200501172849.3798.75190.stgit@klimt.1015granger.net>
 References: <20200501172849.3798.75190.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.22-20-geafe
@@ -77,77 +77,27 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This enables capture of failures for an audit log.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/sunrpc.h |   29 +++++++++++++++++++++++++++++
- net/sunrpc/svc_xprt.c         |    7 ++++++-
- 2 files changed, 35 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 282f703b3976..5bcc0089e9a5 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -1178,6 +1178,35 @@ DEFINE_EVENT(svc_rqst_status, svc_send,
- 		{ (1UL << XPT_KILL_TEMP),	"XPT_KILL_TEMP"},	\
- 		{ (1UL << XPT_CONG_CTRL),	"XPT_CONG_CTRL"})
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index ea54785db4f8..0a1125277a48 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -211,7 +211,12 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id,
+ 	newxprt->sc_ord = param->initiator_depth;
  
-+TRACE_EVENT(svc_xprt_create_err,
-+	TP_PROTO(
-+		const char *program,
-+		const char *protocol,
-+		struct sockaddr *sap,
-+		const struct svc_xprt *xprt
-+	),
+ 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+-	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
++	newxprt->sc_xprt.xpt_remotelen = svc_addr_len(sa);
++	memcpy(&newxprt->sc_xprt.xpt_remote, sa,
++	       newxprt->sc_xprt.xpt_remotelen);
++	snprintf(newxprt->sc_xprt.xpt_remotebuf,
++		 sizeof(newxprt->sc_xprt.xpt_remotebuf) - 1, "%pISc", sa);
 +
-+	TP_ARGS(program, protocol, sap, xprt),
-+
-+	TP_STRUCT__entry(
-+		__field(long, error)
-+		__string(program, program)
-+		__string(protocol, protocol)
-+		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
-+	),
-+
-+	TP_fast_assign(
-+		__entry->error = PTR_ERR(xprt);
-+		__assign_str(program, program);
-+		__assign_str(protocol, protocol);
-+		memcpy(__entry->addr, sap, sizeof(__entry->addr));
-+	),
-+
-+	TP_printk("addr=%pISpc program=%s protocol=%s error=%ld",
-+		__entry->addr, __get_str(program), __get_str(protocol),
-+		__entry->error)
-+);
-+
- TRACE_EVENT(svc_xprt_do_enqueue,
- 	TP_PROTO(struct svc_xprt *xprt, struct svc_rqst *rqst),
- 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index e8092225e784..c444c01c6b6b 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -206,6 +206,7 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 		.sin6_port		= htons(port),
- 	};
- #endif
-+	struct svc_xprt *xprt;
- 	struct sockaddr *sap;
- 	size_t len;
- 
-@@ -224,7 +225,11 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 		return ERR_PTR(-EAFNOSUPPORT);
- 	}
- 
--	return xcl->xcl_ops->xpo_create(serv, net, sap, len, flags);
-+	xprt = xcl->xcl_ops->xpo_create(serv, net, sap, len, flags);
-+	if (IS_ERR(xprt))
-+		trace_svc_xprt_create_err(serv->sv_program->pg_name,
-+					  xcl->xcl_name, sap, xprt);
-+	return xprt;
- }
- 
- /*
+ 	/* The remote port is arbitrary and not under the control of the
+ 	 * client ULP. Set it to a fixed value so that the DRC continues
+ 	 * to be effective after a reconnect.
 
