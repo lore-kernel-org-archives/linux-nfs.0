@@ -2,304 +2,99 @@ Return-Path: <SRS0=2uGU=6P=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B2ED4C47253
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 16:02:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B5D14C47253
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 17:22:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 94EF524956
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 16:02:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 943762137B
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 May 2020 17:22:10 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Fg0e1cq5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729950AbgEAQCG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 May 2020 12:02:06 -0400
-Received: from fieldses.org ([173.255.197.46]:40344 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729859AbgEAQBy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 May 2020 12:01:54 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id F159D5F28; Fri,  1 May 2020 12:01:53 -0400 (EDT)
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        David Howells <dhowells@redhat.com>, Tejun Heo <tj@kernel.org>,
-        Shaohua Li <shli@fb.com>, Oleg Nesterov <oleg@redhat.com>,
-        linux-kernel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] kthreads: allow multiple kthreadd's
-Date:   Fri,  1 May 2020 12:01:51 -0400
-Message-Id: <1588348912-24781-4-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1588348912-24781-1-git-send-email-bfields@redhat.com>
-References: <1588348912-24781-1-git-send-email-bfields@redhat.com>
+        id S1729108AbgEARWK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 May 2020 13:22:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59016 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1729046AbgEARWJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2020 13:22:09 -0400
+Received: from mail-qt1-x831.google.com (mail-qt1-x831.google.com [IPv6:2607:f8b0:4864:20::831])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 80257C061A0C
+        for <linux-nfs@vger.kernel.org>; Fri,  1 May 2020 10:22:09 -0700 (PDT)
+Received: by mail-qt1-x831.google.com with SMTP id w29so8462870qtv.3
+        for <linux-nfs@vger.kernel.org>; Fri, 01 May 2020 10:22:09 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=AQtGKzCzBcvGBUFLvjv8R9YA9GLoumA3ZRJvMwXGlxI=;
+        b=Fg0e1cq5srwh/Ok+tqqldTIRp3F3zoHqGgjQhz6YX5B1NDWxeIfxYoTpRcLHLbYDGk
+         +gp48BtYmIvq/tq++NvUQ4hTEPdKliLyOc7HJKRWR7VSCOCyruklEYCKvsaufidbRSc/
+         Hx3qCEYVFsiDBjwjr5PnSlKZdYAehZ9Of+S8/I8E79eIFMfV4TIh3w6F+L6Kf7kS6iIK
+         nBojcG12yR9tdal9x8kvhaw42zuVJeS33S77JGgUuWOvFLeR2gPLI5FVrwnsLyv34vkx
+         ypOMbBEkkcZXPKNk3NkIXLfkIAEvqLwqwdU/ss6TjV3OJKtfxlSDEbkXkO2Do78e1MRy
+         HaDg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=AQtGKzCzBcvGBUFLvjv8R9YA9GLoumA3ZRJvMwXGlxI=;
+        b=OPjPe3IloHr3UZIS6DH+tGeV0F8TZ8lQdVljw5FVxgoUTgFeD1/91qdyRY8+RBNrV/
+         vcPHPNfFWhO2Pvp7yxjAmpE7CewsuOfF65gfPEo4R+H96Tx7l6BH57ANP7xmcli7ZxK3
+         CUWlDXS+IL6UKLSM7cUX39lNjJxl/PtXP7YVVesLBBzSJkA6Dfc+a8xpURzbENVXK2td
+         5/UzO998NcMRlLZH+rurTcadFPRIYB7MOrUwR3bID4IVu/Cz9yOfNz7cJR0KaZWzmU9y
+         eUlNQYpAtdFtMsA4B2lm4VuazCtd4/k/qJLuoEws0kHQ9jGsIo+MQZhpTP2/AFt3TfRC
+         IzVw==
+X-Gm-Message-State: AGi0PuYOYNYOidQ2L05uIQILpQPfJEQhR638G1vZJwd99bzkXcCh0uy5
+        7oDQ9/QHvjkLt+v5vaq5Kkn83N51
+X-Google-Smtp-Source: APiQypLmM975yyUL2ZJkFg1/BUrf3QM/r52DMDreob5x7QAJiELoWGkZAnN6RhvFepyUL8DJz1NP7Q==
+X-Received: by 2002:ac8:70c8:: with SMTP id g8mr4844062qtp.385.1588353728545;
+        Fri, 01 May 2020 10:22:08 -0700 (PDT)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id y18sm3187811qty.41.2020.05.01.10.22.07
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 01 May 2020 10:22:07 -0700 (PDT)
+Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 041HM5QS026672
+        for <linux-nfs@vger.kernel.org>; Fri, 1 May 2020 17:22:06 GMT
+Subject: [PATCH v1 0/4] New NFSD tracepoints
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Date:   Fri, 01 May 2020 13:22:05 -0400
+Message-ID: <20200501171750.3764.7676.stgit@klimt.1015granger.net>
+User-Agent: StGit/0.22-20-geafe
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+These patches introduce tracepoint infrastructure in several places
+in the NFS server in order to help improve operational observability.
+They were constructed while chasing down problems I found while
+testing v5.7.
 
-Allow subsystems to run their own kthreadd's.
-
-I'm experimenting with this to allow nfsd to put its threads into its
-own thread group to make it easy for the vfs to tell when nfsd is
-breaking one of its own leases.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- include/linux/kthread.h |  20 ++++++-
- init/main.c             |   4 +-
- kernel/kthread.c        | 113 ++++++++++++++++++++++++++++++----------
- 3 files changed, 107 insertions(+), 30 deletions(-)
 
-diff --git a/include/linux/kthread.h b/include/linux/kthread.h
-index 8bbcaad7ef0f..a7ffdf96a3b2 100644
---- a/include/linux/kthread.h
-+++ b/include/linux/kthread.h
-@@ -5,6 +5,24 @@
- #include <linux/err.h>
- #include <linux/sched.h>
- 
-+struct kthread_group {
-+	char *name;
-+	spinlock_t create_lock;
-+	struct list_head create_list;
-+	struct task_struct *task;
-+};
-+
-+extern struct kthread_group kthreadd_default;
-+
-+struct kthread_group *kthread_start_group(char *);
-+void kthread_stop_group(struct kthread_group *);
-+
-+struct task_struct *kthread_group_create_on_node(struct kthread_group *,
-+					int (*threadfn)(void *data),
-+					 void *data,
-+					 int node,
-+					 const char namefmt[], ...);
-+
- __printf(4, 5)
- struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
- 					   void *data,
-@@ -63,7 +81,7 @@ int kthread_park(struct task_struct *k);
- void kthread_unpark(struct task_struct *k);
- void kthread_parkme(void);
- 
--int kthreadd(void *unused);
-+int kthreadd(void *);
- extern struct task_struct *kthreadd_task;
- extern int tsk_fork_get_node(struct task_struct *tsk);
- 
-diff --git a/init/main.c b/init/main.c
-index a48617f2e5e5..5256071b0e05 100644
---- a/init/main.c
-+++ b/init/main.c
-@@ -641,9 +641,9 @@ noinline void __ref rest_init(void)
- 	rcu_read_unlock();
- 
- 	numa_default_policy();
--	pid = kernel_thread(kthreadd, NULL, CLONE_FS | CLONE_FILES);
-+	pid = kernel_thread(kthreadd, &kthreadd_default, CLONE_FS | CLONE_FILES);
- 	rcu_read_lock();
--	kthreadd_task = find_task_by_pid_ns(pid, &init_pid_ns);
-+	kthreadd_default.task = find_task_by_pid_ns(pid, &init_pid_ns);
- 	rcu_read_unlock();
- 
- 	/*
-diff --git a/kernel/kthread.c b/kernel/kthread.c
-index 483bee57a9c8..5232f6f597b5 100644
---- a/kernel/kthread.c
-+++ b/kernel/kthread.c
-@@ -25,9 +25,44 @@
- #include <linux/numa.h>
- #include <trace/events/sched.h>
- 
--static DEFINE_SPINLOCK(kthread_create_lock);
--static LIST_HEAD(kthread_create_list);
--struct task_struct *kthreadd_task;
-+struct kthread_group kthreadd_default = {
-+	.name = "kthreadd",
-+	.create_lock = __SPIN_LOCK_UNLOCKED(kthreadd_default.create_lock),
-+	.create_list = LIST_HEAD_INIT(kthreadd_default.create_list),
-+};
-+
-+void wake_kthreadd(struct kthread_group *kg)
-+{
-+	wake_up_process(kg->task);
-+}
-+
-+struct kthread_group *kthread_start_group(char *name)
-+{
-+	struct kthread_group *new;
-+	struct task_struct *task;
-+
-+	new = kmalloc(sizeof(struct kthread_group), GFP_KERNEL);
-+	if (!new)
-+		return ERR_PTR(-ENOMEM);
-+	spin_lock_init(&new->create_lock);
-+	INIT_LIST_HEAD(&new->create_list);
-+	new->name = name;
-+	task = kthread_run(kthreadd, new, name);
-+	if (IS_ERR(task)) {
-+		kfree(new);
-+		return ERR_CAST(task);
-+	}
-+	new->task = task;
-+	return new;
-+}
-+EXPORT_SYMBOL_GPL(kthread_start_group);
-+
-+void kthread_stop_group(struct kthread_group *kg)
-+{
-+	kthread_stop(kg->task);
-+	kfree(kg);
-+}
-+EXPORT_SYMBOL_GPL(kthread_stop_group);
- 
- struct kthread_create_info
- {
-@@ -301,11 +336,13 @@ static void create_kthread(struct kthread_create_info *create)
- 	}
- }
- 
--static __printf(4, 0)
--struct task_struct *__kthread_create_on_node(int (*threadfn)(void *data),
--						    void *data, int node,
--						    const char namefmt[],
--						    va_list args)
-+
-+static __printf(5, 0)
-+struct task_struct *__kthread_group_create_on_node(struct kthread_group *kg,
-+						int (*threadfn)(void *data),
-+						void *data, int node,
-+						const char namefmt[],
-+						va_list args)
- {
- 	DECLARE_COMPLETION_ONSTACK(done);
- 	struct task_struct *task;
-@@ -319,11 +356,11 @@ struct task_struct *__kthread_create_on_node(int (*threadfn)(void *data),
- 	create->node = node;
- 	create->done = &done;
- 
--	spin_lock(&kthread_create_lock);
--	list_add_tail(&create->list, &kthread_create_list);
--	spin_unlock(&kthread_create_lock);
-+	spin_lock(&kg->create_lock);
-+	list_add_tail(&create->list, &kg->create_list);
-+	spin_unlock(&kg->create_lock);
- 
--	wake_up_process(kthreadd_task);
-+	wake_kthreadd(kg);
- 	/*
- 	 * Wait for completion in killable state, for I might be chosen by
- 	 * the OOM killer while kthreadd is trying to allocate memory for
-@@ -365,6 +402,25 @@ struct task_struct *__kthread_create_on_node(int (*threadfn)(void *data),
- 	return task;
- }
- 
-+__printf(5, 0)
-+struct task_struct *kthread_group_create_on_node(struct kthread_group *kg,
-+						int (*threadfn)(void *data),
-+						void *data, int node,
-+						const char namefmt[],
-+						...)
-+{
-+	struct task_struct *task;
-+	va_list args;
-+
-+	va_start(args, namefmt);
-+	task = __kthread_group_create_on_node(kg, threadfn,
-+						data, node, namefmt, args);
-+	va_end(args);
-+
-+	return task;
-+}
-+EXPORT_SYMBOL_GPL(kthread_group_create_on_node);
-+
- /**
-  * kthread_create_on_node - create a kthread.
-  * @threadfn: the function to run until signal_pending(current).
-@@ -397,7 +453,8 @@ struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
- 	va_list args;
- 
- 	va_start(args, namefmt);
--	task = __kthread_create_on_node(threadfn, data, node, namefmt, args);
-+	task = __kthread_group_create_on_node(&kthreadd_default, threadfn,
-+						data, node, namefmt, args);
- 	va_end(args);
- 
- 	return task;
-@@ -577,30 +634,31 @@ int kthread_stop(struct task_struct *k)
- }
- EXPORT_SYMBOL(kthread_stop);
- 
--void kthread_do_work(void)
-+void kthread_do_work(struct kthread_group *kg)
- {
--	spin_lock(&kthread_create_lock);
--	while (!list_empty(&kthread_create_list)) {
-+	spin_lock(&kg->create_lock);
-+	while (!list_empty(&kg->create_list)) {
- 		struct kthread_create_info *create;
- 
--		create = list_entry(kthread_create_list.next,
-+		create = list_entry(kg->create_list.next,
- 				    struct kthread_create_info, list);
- 		list_del_init(&create->list);
--		spin_unlock(&kthread_create_lock);
-+		spin_unlock(&kg->create_lock);
- 
- 		create_kthread(create);
- 
--		spin_lock(&kthread_create_lock);
-+		spin_lock(&kg->create_lock);
- 	}
--	spin_unlock(&kthread_create_lock);
-+	spin_unlock(&kg->create_lock);
- }
- 
--int kthreadd(void *unused)
-+int kthreadd(void *data)
- {
-+	struct kthread_group *kg = data;
- 	struct task_struct *tsk = current;
- 
- 	/* Setup a clean context for our children to inherit. */
--	set_task_comm(tsk, "kthreadd");
-+	set_task_comm(tsk, kg->name);
- 	ignore_signals(tsk);
- 	set_cpus_allowed_ptr(tsk, cpu_all_mask);
- 	set_mems_allowed(node_states[N_MEMORY]);
-@@ -608,13 +666,13 @@ int kthreadd(void *unused)
- 	current->flags |= PF_NOFREEZE;
- 	cgroup_init_kthreadd();
- 
--	for (;;) {
-+	while (current == kthreadd_default.task || !kthread_should_stop()) {
- 		set_current_state(TASK_INTERRUPTIBLE);
--		if (list_empty(&kthread_create_list))
-+		if (list_empty(&kg->create_list))
- 			schedule();
- 		__set_current_state(TASK_RUNNING);
- 
--		kthread_do_work();
-+		kthread_do_work(kg);
- 	}
- 
- 	return 0;
-@@ -712,8 +770,9 @@ __kthread_create_worker(int cpu, unsigned int flags,
- 	if (cpu >= 0)
- 		node = cpu_to_node(cpu);
- 
--	task = __kthread_create_on_node(kthread_worker_fn, worker,
--						node, namefmt, args);
-+	task = __kthread_group_create_on_node(&kthreadd_default,
-+					kthread_worker_fn,
-+					worker, node, namefmt, args);
- 	if (IS_ERR(task))
- 		goto fail_task;
- 
--- 
-2.26.2
+Chuck Lever (4):
+      NFSD: Add tracepoints to NFSD's duplicate reply cache
+      NFSD: Add tracepoints to the NFSD state management code
+      NFSD: Add tracepoints for monitoring NFSD callbacks
+      SUNRPC: Clean up request deferral tracepoints
 
+
+ fs/nfsd/nfs4callback.c        |  37 +++--
+ fs/nfsd/nfs4state.c           |  58 +++----
+ fs/nfsd/state.h               |   7 -
+ fs/nfsd/trace.h               | 286 ++++++++++++++++++++++++++++++++++
+ include/trace/events/sunrpc.h |  11 +-
+ net/sunrpc/svc_xprt.c         |  12 +-
+ 6 files changed, 343 insertions(+), 68 deletions(-)
+
+--
+Chuck Lever
