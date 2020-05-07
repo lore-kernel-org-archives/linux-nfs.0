@@ -2,172 +2,123 @@ Return-Path: <SRS0=BdmX=6V=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8301FC38A2A
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:36:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4D1CC38A2A
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 18:57:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 595992073A
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:36:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A2C1620575
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 18:57:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1588862212;
-	bh=Dek+MGDDA1gIbGByUT5XOUMDdXthngPtNd3pio84ldc=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=fQ4oCtBXss0gJ2iYGUs9gcfp2JPV17y5p4rSu0dJns5uBvVnglh6WrZNtW8lGyyV7
-	 sr0TqGpfkSjZyVSKNhVoTO6EAu7cAln84UtGvTbOjwkvwSCMGaVoD9EcV6CT20D1wq
-	 XlnelKs4K5q4HpJzKiW4iPx8Mcn7QrQzYijNmEzQ=
+	s=default; t=1588877878;
+	bh=v54+jJXI55ev/ljByJU0bELFAb0LTCoWQZNBXlPcq6M=;
+	h=Date:From:To:Cc:Subject:List-ID:From;
+	b=cHNgWmiewwULKWtQncE8Tj890nVrnhjrAT7pmNfy8vBISpv1NatX6QGAHZH0JKLUZ
+	 Hly+aJdQqWZ/oS2RHTKQHDRkHaKuyf/KmEXuVm7m29XLWfJgXJPbbDytZRNk2nGvfa
+	 NYuz3Dly4DfTFUSdNYamBtQ76UvBemye233WZPcc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728559AbgEGOgv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 May 2020 10:36:51 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54428 "EHLO mail.kernel.org"
+        id S1728324AbgEGS56 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 May 2020 14:57:58 -0400
+Received: from mail.kernel.org ([198.145.29.99]:59320 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727978AbgEGO2K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 May 2020 10:28:10 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1726926AbgEGS55 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 May 2020 14:57:57 -0400
+Received: from embeddedor (unknown [189.207.59.248])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C2D802083B;
-        Thu,  7 May 2020 14:28:08 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 8AB8620575;
+        Thu,  7 May 2020 18:57:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1588861689;
-        bh=Dek+MGDDA1gIbGByUT5XOUMDdXthngPtNd3pio84ldc=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Xtc9G+odZRk3kQaWCw06CGd9FFmF4dz1vGM2GYvdWALgYPN88Movj/1VYNt3aaBb7
-         HR2Nq3jvgwnxG3bkYDWiE6sJRiOR6xXlssX5NEniIC94wijjnzkkaPpTVSUn+t65r4
-         kQcE308K6qTdjOc7q6QyJHxb5dZ3qOC5O9YpGiJM=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.6 34/50] SUNRPC: defer slow parts of rpc_free_client() to a workqueue.
-Date:   Thu,  7 May 2020 10:27:10 -0400
-Message-Id: <20200507142726.25751-34-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200507142726.25751-1-sashal@kernel.org>
-References: <20200507142726.25751-1-sashal@kernel.org>
+        s=default; t=1588877877;
+        bh=v54+jJXI55ev/ljByJU0bELFAb0LTCoWQZNBXlPcq6M=;
+        h=Date:From:To:Cc:Subject:From;
+        b=jNUUPCbHLXL+RGEmVjXV4LexFXr2GtNKv+s2Fi35Ni/57M7Xa2vVfUsuYHNYHLOao
+         ARkd0WBSfasJhdIAz1BUfP6UdO/swEaHn1/TJHozcEZrf70tNiIYfflYm8KOstj7A9
+         UQnSrNgiG+0Ms7UVehDBfqh/EnYUmasRl3Jdoeag=
+Date:   Thu, 7 May 2020 14:02:23 -0500
+From:   "Gustavo A. R. Silva" <gustavoars@kernel.org>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] NFS: Replace zero-length array with flexible-array
+Message-ID: <20200507190223.GA15428@embeddedor>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: NeilBrown <neilb@suse.de>
+The current codebase makes use of the zero-length array language
+extension to the C90 standard, but the preferred mechanism to declare
+variable-length types such as these ones is a flexible array member[1][2],
+introduced in C99:
 
-[ Upstream commit 7c4310ff56422ea43418305d22bbc5fe19150ec4 ]
+struct foo {
+        int stuff;
+        struct boo array[];
+};
 
-The rpciod workqueue is on the write-out path for freeing dirty memory,
-so it is important that it never block waiting for memory to be
-allocated - this can lead to a deadlock.
+By making use of the mechanism above, we will get a compiler warning
+in case the flexible array does not occur last in the structure, which
+will help us prevent some kind of undefined behavior bugs from being
+inadvertently introduced[3] to the codebase from now on.
 
-rpc_execute() - which is often called by an rpciod work item - calls
-rcp_task_release_client() which can lead to rpc_free_client().
+Also, notice that, dynamic memory allocations won't be affected by
+this change:
 
-rpc_free_client() makes two calls which could potentially block wating
-for memory allocation.
+"Flexible array members have incomplete type, and so the sizeof operator
+may not be applied. As a quirk of the original implementation of
+zero-length arrays, sizeof evaluates to zero."[1]
 
-rpc_clnt_debugfs_unregister() calls into debugfs and will block while
-any of the debugfs files are being accessed.  In particular it can block
-while any of the 'open' methods are being called and all of these use
-malloc for one thing or another.  So this can deadlock if the memory
-allocation waits for NFS to complete some writes via rpciod.
+sizeof(flexible-array-member) triggers a warning because flexible array
+members have incomplete type[1]. There are some instances of code in
+which the sizeof operator is being incorrectly/erroneously applied to
+zero-length arrays and the result is zero. Such instances may be hiding
+some bugs. So, this work (flexible-array member conversions) will also
+help to get completely rid of those sorts of issues.
 
-rpc_clnt_remove_pipedir() can take the inode_lock() and while it isn't
-obvious that memory allocations can happen while the lock it held, it is
-safer to assume they might and to not let rpciod call
-rpc_clnt_remove_pipedir().
+This issue was found with the help of Coccinelle.
 
-So this patch moves these two calls (together with the final kfree() and
-rpciod_down()) into a work-item to be run from the system work-queue.
-rpciod can continue its important work, and the final stages of the free
-can happen whenever they happen.
+[1] https://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html
+[2] https://github.com/KSPP/linux/issues/21
+[3] commit 76497732932f ("cxgb3/l2t: Fix undefined behaviour")
 
-I have seen this deadlock on a 4.12 based kernel where debugfs used
-synchronize_srcu() when removing objects.  synchronize_srcu() requires a
-workqueue and there were no free workther threads and none could be
-allocated.  While debugsfs no longer uses SRCU, I believe the deadlock
-is still possible.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
 ---
- include/linux/sunrpc/clnt.h |  8 +++++++-
- net/sunrpc/clnt.c           | 21 +++++++++++++++++----
- 2 files changed, 24 insertions(+), 5 deletions(-)
+ include/linux/nfs4.h    |    2 +-
+ include/linux/nfs_xdr.h |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index ca7e108248e21..7bd124e06b36f 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -71,7 +71,13 @@ struct rpc_clnt {
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	struct dentry		*cl_debugfs;	/* debugfs directory */
- #endif
--	struct rpc_xprt_iter	cl_xpi;
-+	/* cl_work is only needed after cl_xpi is no longer used,
-+	 * and that are of similar size
-+	 */
-+	union {
-+		struct rpc_xprt_iter	cl_xpi;
-+		struct work_struct	cl_work;
-+	};
- 	const struct cred	*cl_cred;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 82d8fb422092..7c4b63561035 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -38,7 +38,7 @@ struct nfs4_ace {
+ 
+ struct nfs4_acl {
+ 	uint32_t	naces;
+-	struct nfs4_ace	aces[0];
++	struct nfs4_ace	aces[];
  };
  
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 7324b21f923e6..a2c215a6980d8 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -880,6 +880,20 @@ EXPORT_SYMBOL_GPL(rpc_shutdown_client);
- /*
-  * Free an RPC client
-  */
-+static void rpc_free_client_work(struct work_struct *work)
-+{
-+	struct rpc_clnt *clnt = container_of(work, struct rpc_clnt, cl_work);
-+
-+	/* These might block on processes that might allocate memory,
-+	 * so they cannot be called in rpciod, so they are handled separately
-+	 * here.
-+	 */
-+	rpc_clnt_debugfs_unregister(clnt);
-+	rpc_clnt_remove_pipedir(clnt);
-+
-+	kfree(clnt);
-+	rpciod_down();
-+}
- static struct rpc_clnt *
- rpc_free_client(struct rpc_clnt *clnt)
- {
-@@ -890,17 +904,16 @@ rpc_free_client(struct rpc_clnt *clnt)
- 			rcu_dereference(clnt->cl_xprt)->servername);
- 	if (clnt->cl_parent != clnt)
- 		parent = clnt->cl_parent;
--	rpc_clnt_debugfs_unregister(clnt);
--	rpc_clnt_remove_pipedir(clnt);
- 	rpc_unregister_client(clnt);
- 	rpc_free_iostats(clnt->cl_metrics);
- 	clnt->cl_metrics = NULL;
- 	xprt_put(rcu_dereference_raw(clnt->cl_xprt));
- 	xprt_iter_destroy(&clnt->cl_xpi);
--	rpciod_down();
- 	put_cred(clnt->cl_cred);
- 	rpc_free_clid(clnt);
--	kfree(clnt);
-+
-+	INIT_WORK(&clnt->cl_work, rpc_free_client_work);
-+	schedule_work(&clnt->cl_work);
- 	return parent;
- }
+ #define NFS4_MAXLABELLEN	2048
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 440230488025..6aad9b0a5062 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1227,7 +1227,7 @@ struct nfs4_secinfo4 {
  
--- 
-2.20.1
+ struct nfs4_secinfo_flavors {
+ 	unsigned int		num_flavors;
+-	struct nfs4_secinfo4	flavors[0];
++	struct nfs4_secinfo4	flavors[];
+ };
+ 
+ struct nfs4_secinfo_arg {
 
