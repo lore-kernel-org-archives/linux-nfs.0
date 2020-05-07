@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B3BDC38A24
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:29:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EE04C47247
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:30:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5B91120A8B
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:29:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4EAAA20B1F
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:30:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1588861765;
-	bh=P/53KeBLUfSp6cH6jFVXAAM70GyzU7sKGW1utgxVDys=;
+	s=default; t=1588861824;
+	bh=LeHCs5TUDusUjeNEfndr0UAM6RWKmcCX6pSKfwjK5ag=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=dMYhJF0Eq+IkpnZ/ozPbxnMRvdohhpdF5yBgXX0Jp61mCFqhlnjim/LCqAjhwxWxN
-	 rsK6tRaRKxvIdPSsliiUqUtEygJGvHT4sdV2JeUnMJqUMHX/HW+7FQ40Ls/P/vaYX7
-	 7DNXmCaztwUqOmzfVQ3Oliyv1yKpc0b6YIKLOdWI=
+	b=J4RKrR8uBE2HjnYhj5HcNdPELWzvTQqU5UbuWHcIXmA1cg57RNpHpGF9ldgHq5zcU
+	 FHM8N6Z45fD+n1EEJ6/pFif8Cb+AtyaYycD7GV6s9yVgdUvrcFTjVX45QD2wN5HUUs
+	 G2hI9nGgl3AMe6Hm+gB3vOOwAwfEEhtIj4y656Ug=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728525AbgEGO3X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 May 2020 10:29:23 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56954 "EHLO mail.kernel.org"
+        id S1728816AbgEGOaW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 May 2020 10:30:22 -0400
+Received: from mail.kernel.org ([198.145.29.99]:59174 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728510AbgEGO3V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 May 2020 10:29:21 -0400
+        id S1728812AbgEGOaW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 May 2020 10:30:22 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B92E6208D6;
-        Thu,  7 May 2020 14:29:19 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7E5A72083B;
+        Thu,  7 May 2020 14:30:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1588861760;
-        bh=P/53KeBLUfSp6cH6jFVXAAM70GyzU7sKGW1utgxVDys=;
+        s=default; t=1588861821;
+        bh=LeHCs5TUDusUjeNEfndr0UAM6RWKmcCX6pSKfwjK5ag=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=GozIW/Osf/Fs8vCmmAUacLfVxMGpRD89Y5J9wPYRCEr5BPxcyr1cJWWf/GO4VRl6d
-         vXZ/xVn3lXWqbwSANNsBZlwjWw3lX3PeTjy1RUtnnCVT7D2l6OFfmdA/fFXM5jRInc
-         iDIjSbwakjN7ZgzFEjFBw2I9/pqVYwDVYruzoIKY=
+        b=PGPN1iZAYAVC4qJkLUBmGhlUaHyM+Bx8uDp+OFlForWUcOPNoP4t3mFtwc902h+ee
+         Knt0bgXpNqYiDgz+eoTncw7owwv7jFtaodu4Sa6ZMDNUL8ELoM8J2wIBUIGffNP+JY
+         TAi+6VJ01GCH1jM0Uojgmr25aMFT/4JEK336jCdU=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Andreas Gruenbacher <agruenba@redhat.com>,
         Xiyu Yang <xiyuyang19@fudan.edu.cn>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 02/20] nfs: Fix potential posix_acl refcnt leak in nfs3_set_acl
-Date:   Thu,  7 May 2020 10:28:58 -0400
-Message-Id: <20200507142917.26612-2-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 2/9] nfs: Fix potential posix_acl refcnt leak in nfs3_set_acl
+Date:   Thu,  7 May 2020 10:30:11 -0400
+Message-Id: <20200507143018.27195-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200507142917.26612-1-sashal@kernel.org>
-References: <20200507142917.26612-1-sashal@kernel.org>
+In-Reply-To: <20200507143018.27195-1-sashal@kernel.org>
+References: <20200507143018.27195-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -78,10 +78,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 15 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 9fce18548f7e8..24d39cce8ba49 100644
+index 1ebe2fc7cda27..05c697d5b4779 100644
 --- a/fs/nfs/nfs3acl.c
 +++ b/fs/nfs/nfs3acl.c
-@@ -255,37 +255,45 @@ int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+@@ -213,37 +213,45 @@ int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
  
  int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type)
  {
