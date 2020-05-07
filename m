@@ -4,52 +4,52 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EE04C47247
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:30:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9934C47247
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:32:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4EAAA20B1F
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:30:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BB56A208D6
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 May 2020 14:32:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1588861824;
-	bh=LeHCs5TUDusUjeNEfndr0UAM6RWKmcCX6pSKfwjK5ag=;
+	s=default; t=1588861926;
+	bh=y6xNY4FUPfwME4g40KTEXsNeJ2mHn/jJnx4h7P1rEgA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=J4RKrR8uBE2HjnYhj5HcNdPELWzvTQqU5UbuWHcIXmA1cg57RNpHpGF9ldgHq5zcU
-	 FHM8N6Z45fD+n1EEJ6/pFif8Cb+AtyaYycD7GV6s9yVgdUvrcFTjVX45QD2wN5HUUs
-	 G2hI9nGgl3AMe6Hm+gB3vOOwAwfEEhtIj4y656Ug=
+	b=sxckN2urR25h2MSoMsromZLApTTfxYQIrqV9aFvp6X2sukZ9VRu7NNkrHluZ6MWAG
+	 v2fkUJ/DkcTP1vMxVRHrhs/H8hf2TUy85qKenQTT5flmsUVPm2+hdI16jxqsf/bs9k
+	 TAOmokDyAZmGkciJCCsXN73/mJj6JUWN4qAfIsJg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728816AbgEGOaW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 May 2020 10:30:22 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59174 "EHLO mail.kernel.org"
+        id S1728763AbgEGOaH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 May 2020 10:30:07 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58654 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728812AbgEGOaW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 May 2020 10:30:22 -0400
+        id S1728759AbgEGOaH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 May 2020 10:30:07 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7E5A72083B;
-        Thu,  7 May 2020 14:30:20 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1082D2073A;
+        Thu,  7 May 2020 14:30:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1588861821;
-        bh=LeHCs5TUDusUjeNEfndr0UAM6RWKmcCX6pSKfwjK5ag=;
+        s=default; t=1588861806;
+        bh=y6xNY4FUPfwME4g40KTEXsNeJ2mHn/jJnx4h7P1rEgA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=PGPN1iZAYAVC4qJkLUBmGhlUaHyM+Bx8uDp+OFlForWUcOPNoP4t3mFtwc902h+ee
-         Knt0bgXpNqYiDgz+eoTncw7owwv7jFtaodu4Sa6ZMDNUL8ELoM8J2wIBUIGffNP+JY
-         TAi+6VJ01GCH1jM0Uojgmr25aMFT/4JEK336jCdU=
+        b=W2Imevlvt4REE5IRFqYvU3rNeM+4OoFt9T1zh+4KilkgGU94+KtxMO3nqpsdVqt/V
+         d9AR0rrGZHpcV9M3y9qhNXGUbehpSfFckcjC+DmDIv6mpsf4XwmqY1OAgGISlzpTF9
+         aP2b63DcHISJFgydgrtc3Mlu9RoMP3a7HhpSsGus=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Andreas Gruenbacher <agruenba@redhat.com>,
         Xiyu Yang <xiyuyang19@fudan.edu.cn>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 2/9] nfs: Fix potential posix_acl refcnt leak in nfs3_set_acl
-Date:   Thu,  7 May 2020 10:30:11 -0400
-Message-Id: <20200507143018.27195-2-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 02/11] nfs: Fix potential posix_acl refcnt leak in nfs3_set_acl
+Date:   Thu,  7 May 2020 10:29:54 -0400
+Message-Id: <20200507143003.27047-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200507143018.27195-1-sashal@kernel.org>
-References: <20200507143018.27195-1-sashal@kernel.org>
+In-Reply-To: <20200507143003.27047-1-sashal@kernel.org>
+References: <20200507143003.27047-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -78,10 +78,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 15 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 1ebe2fc7cda27..05c697d5b4779 100644
+index 720d92f5abfb8..6c378435fa291 100644
 --- a/fs/nfs/nfs3acl.c
 +++ b/fs/nfs/nfs3acl.c
-@@ -213,37 +213,45 @@ int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+@@ -252,37 +252,45 @@ int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
  
  int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type)
  {
