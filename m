@@ -6,20 +6,20 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62F2CC35280
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1374AC35280
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 44A932051A
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 000772051A
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726770AbgEHBjN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 May 2020 21:39:13 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:42760 "EHLO huawei.com"
+        id S1726542AbgEHBjM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 May 2020 21:39:12 -0400
+Received: from szxga05-in.huawei.com ([45.249.212.191]:4284 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726509AbgEHBjN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 May 2020 21:39:13 -0400
-Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id C3308472343513D2840E;
+        id S1726514AbgEHBjM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 May 2020 21:39:12 -0400
+Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 98546C53397FFD92BD33;
         Fri,  8 May 2020 09:39:10 +0800 (CST)
 Received: from linux-ibm.site (10.175.102.37) by
  DGGEMS404-HUB.china.huawei.com (10.3.19.204) with Microsoft SMTP Server id
@@ -30,9 +30,9 @@ To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <davem@davemloft.net>, <kuba@kernel.org>
 CC:     <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
         <linux-kernel@vger.kernel.org>, <wangxiongfeng2@huawei.com>
-Subject: [PATCH 1/2] sunrpc: add missing newline when printing parameter 'pool_mode' by sysfs
-Date:   Fri, 8 May 2020 09:32:59 +0800
-Message-ID: <1588901580-44687-2-git-send-email-wangxiongfeng2@huawei.com>
+Subject: [PATCH 2/2] sunrpc: add missing newline when printing parameter 'auth_hashtable_size' by sysfs
+Date:   Fri, 8 May 2020 09:33:00 +0800
+Message-ID: <1588901580-44687-3-git-send-email-wangxiongfeng2@huawei.com>
 X-Mailer: git-send-email 1.7.12.4
 In-Reply-To: <1588901580-44687-1-git-send-email-wangxiongfeng2@huawei.com>
 References: <1588901580-44687-1-git-send-email-wangxiongfeng2@huawei.com>
@@ -45,42 +45,31 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When I cat parameter '/sys/module/sunrpc/parameters/pool_mode', it
-displays as follows. It is better to add a newline for easy reading.
+When I cat parameter
+'/sys/module/sunrpc/parameters/auth_hashtable_size', it displays as
+follows. It is better to add a newline for easy reading.
 
-[root@hulk-202 ~]# cat /sys/module/sunrpc/parameters/pool_mode
-global[root@hulk-202 ~]#
+[root@hulk-202 ~]# cat /sys/module/sunrpc/parameters/auth_hashtable_size
+16[root@hulk-202 ~]#
 
 Signed-off-by: Xiongfeng Wang <wangxiongfeng2@huawei.com>
 ---
- net/sunrpc/svc.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ net/sunrpc/auth.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 187dd4e..d8ef47f 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -88,15 +88,15 @@ struct svc_pool_map svc_pool_map = {
- 	switch (*ip)
- 	{
- 	case SVC_POOL_AUTO:
--		return strlcpy(buf, "auto", 20);
-+		return strlcpy(buf, "auto\n", 20);
- 	case SVC_POOL_GLOBAL:
--		return strlcpy(buf, "global", 20);
-+		return strlcpy(buf, "global\n", 20);
- 	case SVC_POOL_PERCPU:
--		return strlcpy(buf, "percpu", 20);
-+		return strlcpy(buf, "percpu\n", 20);
- 	case SVC_POOL_PERNODE:
--		return strlcpy(buf, "pernode", 20);
-+		return strlcpy(buf, "pernode\n", 20);
- 	default:
--		return sprintf(buf, "%d", *ip);
-+		return sprintf(buf, "%d\n", *ip);
- 	}
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 5748ad0..a9f0d17 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -81,7 +81,7 @@ static int param_get_hashtbl_sz(char *buffer, const struct kernel_param *kp)
+ 	unsigned int nbits;
+ 
+ 	nbits = *(unsigned int *)kp->arg;
+-	return sprintf(buffer, "%u", 1U << nbits);
++	return sprintf(buffer, "%u\n", 1U << nbits);
  }
  
+ #define param_check_hashtbl_sz(name, p) __param_check(name, p, unsigned int);
 -- 
 1.7.12.4
 
