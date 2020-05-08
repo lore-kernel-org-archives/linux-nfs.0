@@ -2,38 +2,40 @@ Return-Path: <SRS0=IGmK=6W=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 39509C47247
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62F2CC35280
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 25467208E4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 44A932051A
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 May 2020 01:39:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726948AbgEHBjQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 May 2020 21:39:16 -0400
-Received: from szxga05-in.huawei.com ([45.249.212.191]:4283 "EHLO huawei.com"
+        id S1726770AbgEHBjN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 May 2020 21:39:13 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:42760 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726518AbgEHBjO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 May 2020 21:39:14 -0400
-Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 919F6D0D62CC164AF885;
+        id S1726509AbgEHBjN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 May 2020 21:39:13 -0400
+Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id C3308472343513D2840E;
         Fri,  8 May 2020 09:39:10 +0800 (CST)
 Received: from linux-ibm.site (10.175.102.37) by
  DGGEMS404-HUB.china.huawei.com (10.3.19.204) with Microsoft SMTP Server id
- 14.3.487.0; Fri, 8 May 2020 09:39:03 +0800
+ 14.3.487.0; Fri, 8 May 2020 09:39:04 +0800
 From:   Xiongfeng Wang <wangxiongfeng2@huawei.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>,
         <davem@davemloft.net>, <kuba@kernel.org>
 CC:     <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
         <linux-kernel@vger.kernel.org>, <wangxiongfeng2@huawei.com>
-Subject: [PATCH 0/2] sunrpc: add missing newline when printing module parameters by sysfs
-Date:   Fri, 8 May 2020 09:32:58 +0800
-Message-ID: <1588901580-44687-1-git-send-email-wangxiongfeng2@huawei.com>
+Subject: [PATCH 1/2] sunrpc: add missing newline when printing parameter 'pool_mode' by sysfs
+Date:   Fri, 8 May 2020 09:32:59 +0800
+Message-ID: <1588901580-44687-2-git-send-email-wangxiongfeng2@huawei.com>
 X-Mailer: git-send-email 1.7.12.4
+In-Reply-To: <1588901580-44687-1-git-send-email-wangxiongfeng2@huawei.com>
+References: <1588901580-44687-1-git-send-email-wangxiongfeng2@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 X-Originating-IP: [10.175.102.37]
@@ -43,23 +45,42 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When I cat parameters below ''/sys/module/sunrpc/parameters/', I found the 
-following two parameter need a new line.
+When I cat parameter '/sys/module/sunrpc/parameters/pool_mode', it
+displays as follows. It is better to add a newline for easy reading.
 
 [root@hulk-202 ~]# cat /sys/module/sunrpc/parameters/pool_mode
-global[root@hulk-202 ~]# cat /sys/module/sunrpc/parameters/auth_hashtable_size
-16[root@hulk-202 ~]#
+global[root@hulk-202 ~]#
 
-Xiongfeng Wang (2):
-  sunrpc: add missing newline when printing parameter 'pool_mode' by
-    sysfs
-  sunrpc: add missing newline when printing parameter
-    'auth_hashtable_size' by sysfs
+Signed-off-by: Xiongfeng Wang <wangxiongfeng2@huawei.com>
+---
+ net/sunrpc/svc.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
- net/sunrpc/auth.c |  2 +-
- net/sunrpc/svc.c  | 10 +++++-----
- 2 files changed, 6 insertions(+), 6 deletions(-)
-
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 187dd4e..d8ef47f 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -88,15 +88,15 @@ struct svc_pool_map svc_pool_map = {
+ 	switch (*ip)
+ 	{
+ 	case SVC_POOL_AUTO:
+-		return strlcpy(buf, "auto", 20);
++		return strlcpy(buf, "auto\n", 20);
+ 	case SVC_POOL_GLOBAL:
+-		return strlcpy(buf, "global", 20);
++		return strlcpy(buf, "global\n", 20);
+ 	case SVC_POOL_PERCPU:
+-		return strlcpy(buf, "percpu", 20);
++		return strlcpy(buf, "percpu\n", 20);
+ 	case SVC_POOL_PERNODE:
+-		return strlcpy(buf, "pernode", 20);
++		return strlcpy(buf, "pernode\n", 20);
+ 	default:
+-		return sprintf(buf, "%d", *ip);
++		return sprintf(buf, "%d\n", *ip);
+ 	}
+ }
+ 
 -- 
 1.7.12.4
 
