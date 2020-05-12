@@ -1,110 +1,88 @@
-Return-Path: <SRS0=m7q9=6Z=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=SGEM=62=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D033DC47255
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 May 2020 23:17:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75B2BC47255
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 May 2020 00:21:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B3F0720675
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 May 2020 23:17:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5C3E4206D6
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 May 2020 00:21:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726106AbgEKXRS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 May 2020 19:17:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37236 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726891AbgEKXRS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2020 19:17:18 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00::f03c:91ff:fe50:41d6])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0FF24C061A0C
-        for <linux-nfs@vger.kernel.org>; Mon, 11 May 2020 16:17:18 -0700 (PDT)
+        id S1726415AbgELAVN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 May 2020 20:21:13 -0400
+Received: from fieldses.org ([173.255.197.46]:55234 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725854AbgELAVN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 May 2020 20:21:13 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 617341C21; Mon, 11 May 2020 19:17:17 -0400 (EDT)
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] nfsd4: common stateid-printing code
-Date:   Mon, 11 May 2020 19:17:15 -0400
-Message-Id: <1589239036-17100-1-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
+        id DD4588A6; Mon, 11 May 2020 20:21:12 -0400 (EDT)
+Date:   Mon, 11 May 2020 20:21:12 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Xiongfeng Wang <wangxiongfeng2@huawei.com>
+Cc:     chuck.lever@oracle.com, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, davem@davemloft.net, kuba@kernel.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/2] sunrpc: add missing newline when printing parameter
+ 'pool_mode' by sysfs
+Message-ID: <20200512002112.GA17212@fieldses.org>
+References: <1588901580-44687-1-git-send-email-wangxiongfeng2@huawei.com>
+ <1588901580-44687-2-git-send-email-wangxiongfeng2@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1588901580-44687-2-git-send-email-wangxiongfeng2@huawei.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, May 08, 2020 at 09:32:59AM +0800, Xiongfeng Wang wrote:
+> When I cat parameter '/sys/module/sunrpc/parameters/pool_mode', it
+> displays as follows. It is better to add a newline for easy reading.
 
-There's a problem with how I'm formatting stateids.  Before I fix it,
-I'd like to move the stateid formatting into a common helper.
+Applying for 5.8.  I assume Trond's getting the other patch.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c | 21 +++++++++++++++++----
- 1 file changed, 17 insertions(+), 4 deletions(-)
+--b.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c107caa56525..ded08aeae497 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2422,6 +2422,11 @@ static void nfs4_show_owner(struct seq_file *s, struct nfs4_stateowner *oo)
- 	seq_quote_mem(s, oo->so_owner.data, oo->so_owner.len);
- }
- 
-+static void nfs4_show_stateid(struct seq_file *s, stateid_t *stid)
-+{
-+	seq_printf(s, "0x%16phN", stid);
-+}
-+
- static int nfs4_show_open(struct seq_file *s, struct nfs4_stid *st)
- {
- 	struct nfs4_ol_stateid *ols;
-@@ -2437,7 +2442,9 @@ static int nfs4_show_open(struct seq_file *s, struct nfs4_stid *st)
- 	nf = st->sc_file;
- 	file = find_any_file(nf);
- 
--	seq_printf(s, "- 0x%16phN: { type: open, ", &st->sc_stateid);
-+	seq_printf(s, "- ");
-+	nfs4_show_stateid(s, &st->sc_stateid);
-+	seq_printf(s, ": { type: open, ");
- 
- 	access = bmap_to_share_mode(ols->st_access_bmap);
- 	deny   = bmap_to_share_mode(ols->st_deny_bmap);
-@@ -2470,7 +2477,9 @@ static int nfs4_show_lock(struct seq_file *s, struct nfs4_stid *st)
- 	nf = st->sc_file;
- 	file = find_any_file(nf);
- 
--	seq_printf(s, "- 0x%16phN: { type: lock, ", &st->sc_stateid);
-+	seq_printf(s, "- ");
-+	nfs4_show_stateid(s, &st->sc_stateid);
-+	seq_printf(s, ": { type: lock, ");
- 
- 	/*
- 	 * Note: a lock stateid isn't really the same thing as a lock,
-@@ -2499,7 +2508,9 @@ static int nfs4_show_deleg(struct seq_file *s, struct nfs4_stid *st)
- 	nf = st->sc_file;
- 	file = nf->fi_deleg_file;
- 
--	seq_printf(s, "- 0x%16phN: { type: deleg, ", &st->sc_stateid);
-+	seq_printf(s, "- ");
-+	nfs4_show_stateid(s, &st->sc_stateid);
-+	seq_printf(s, ": { type: deleg, ");
- 
- 	/* Kinda dead code as long as we only support read delegs: */
- 	seq_printf(s, "access: %s, ",
-@@ -2521,7 +2532,9 @@ static int nfs4_show_layout(struct seq_file *s, struct nfs4_stid *st)
- 	ls = container_of(st, struct nfs4_layout_stateid, ls_stid);
- 	file = ls->ls_file;
- 
--	seq_printf(s, "- 0x%16phN: { type: layout, ", &st->sc_stateid);
-+	seq_printf(s, "- ");
-+	nfs4_show_stateid(s, &st->sc_stateid);
-+	seq_printf(s, ": { type: layout, ");
- 
- 	/* XXX: What else would be useful? */
- 
--- 
-2.26.2
-
+> 
+> [root@hulk-202 ~]# cat /sys/module/sunrpc/parameters/pool_mode
+> global[root@hulk-202 ~]#
+> 
+> Signed-off-by: Xiongfeng Wang <wangxiongfeng2@huawei.com>
+> ---
+>  net/sunrpc/svc.c | 10 +++++-----
+>  1 file changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 187dd4e..d8ef47f 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -88,15 +88,15 @@ struct svc_pool_map svc_pool_map = {
+>  	switch (*ip)
+>  	{
+>  	case SVC_POOL_AUTO:
+> -		return strlcpy(buf, "auto", 20);
+> +		return strlcpy(buf, "auto\n", 20);
+>  	case SVC_POOL_GLOBAL:
+> -		return strlcpy(buf, "global", 20);
+> +		return strlcpy(buf, "global\n", 20);
+>  	case SVC_POOL_PERCPU:
+> -		return strlcpy(buf, "percpu", 20);
+> +		return strlcpy(buf, "percpu\n", 20);
+>  	case SVC_POOL_PERNODE:
+> -		return strlcpy(buf, "pernode", 20);
+> +		return strlcpy(buf, "pernode\n", 20);
+>  	default:
+> -		return sprintf(buf, "%d", *ip);
+> +		return sprintf(buf, "%d\n", *ip);
+>  	}
+>  }
+>  
+> -- 
+> 1.7.12.4
