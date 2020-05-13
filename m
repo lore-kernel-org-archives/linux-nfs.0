@@ -4,39 +4,39 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FBDEC2D0F8
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:29:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9090DC2D0F9
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:29:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 20C09206F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:29:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 66850206A5
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:29:32 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="pxhQaa1U"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="bg0Uo11G"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732176AbgEMG3F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 02:29:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46204 "EHLO
+        id S1732279AbgEMG3Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 02:29:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46252 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732108AbgEMG3D (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:29:03 -0400
+        with ESMTP id S1732256AbgEMG3R (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:29:17 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D1DBC061A0E;
-        Tue, 12 May 2020 23:29:03 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 37949C061A0C;
+        Tue, 12 May 2020 23:29:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=qKkhwwH9olQLFLmlxkgq6ArpL5LZdN1qvB6lNx/Jjh4=; b=pxhQaa1U3KdOYtasAWRKCqw1OY
-        h9pkNE8ZzmKVddyFpFJPgmglClzT+hi+8ZoptLUGpUcB4Hrq5tRvsDhx7+fgOE6dEDeo6YnDV1Vp2
-        UOfi6F+biZdnG6q9Ovti2wad8/1htWsC0Bd55R2/v3BkHAxCsP1BUyO2stG7UlAXQtesrpqXCl/A6
-        KnVqnWKYly8p7osClxbUay1UAGC6MiZx4eWsGZB8dF7G1JhMbRFOgxXKMI2kto3djEyr16ajaBxRd
-        pmAj+oMJI7ZKFntig/ZE+zERUM7tHZrD8dYQxcWddYZhMxaoHUlULvr7C7Id1uGdjLvSBsLgk+ktF
-        zXqdP1ZQ==;
+        bh=5TSZ8ysmfXzR1IyTmnCaDhVaLMJELOeh31MTPRTaaRg=; b=bg0Uo11GWZx6GNXGrHbkE3nXm0
+        taqofikn5nC4WaRZXCxqiSLdyTkTTFW5UNIP24uAjeFOM0EGzvoL482lUYdOvuu8ct1+aXLqQRisK
+        6IYJ3L4rSu39PvpsULY2UJkLwdTRuDVZY8Fco6Or/xpdxPXu9+REO84oBiXIgLQEKEUsbndw+l3jD
+        P/kY4BPZ6CSprNiOIYEi+t10fgZtRaBF0v01Zui1LQjdoJY7+Y9FsoK3ElMqA/MVS2tzQavYzdHYF
+        H9zewZGSEh4qP5IaY/4GsS2p/qUC1IRH7wlQcQHP9T+NHtpHjccmmK3YGr7hqB0o89AydBPZb9WDB
+        HSJ6jAGA==;
 Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYks6-0004pR-63; Wed, 13 May 2020 06:28:02 +0000
+        id 1jYksI-000522-Iw; Wed, 13 May 2020 06:28:15 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
         linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 23/33] ipv6: add ip6_sock_set_recverr
-Date:   Wed, 13 May 2020 08:26:38 +0200
-Message-Id: <20200513062649.2100053-24-hch@lst.de>
+Subject: [PATCH 27/33] sctp: export sctp_setsockopt_bindx
+Date:   Wed, 13 May 2020 08:26:42 +0200
+Message-Id: <20200513062649.2100053-28-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 References: <20200513062649.2100053-1-hch@lst.de>
@@ -69,76 +69,77 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the IPV6_RECVERR sockopt from kernel space
-without going through a fake uaccess.
+And call it directly from dlm instead of going through kernel_setsockopt.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ipv6.h       |  1 +
- net/ipv6/ipv6_sockglue.c | 10 ++++++++++
- net/rxrpc/local_object.c | 10 ++--------
- 3 files changed, 13 insertions(+), 8 deletions(-)
+ fs/dlm/lowcomms.c       | 13 ++++++++-----
+ include/net/sctp/sctp.h |  3 +++
+ net/sctp/socket.c       |  5 +++--
+ 3 files changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index e24b59201a00d..69bc1651aaef8 100644
---- a/include/net/ipv6.h
-+++ b/include/net/ipv6.h
-@@ -1176,5 +1176,6 @@ int ipv6_sock_mc_drop(struct sock *sk, int ifindex,
- 		      const struct in6_addr *addr);
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index b722a09a7ca05..e4939d770df53 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1005,14 +1005,17 @@ static int sctp_bind_addrs(struct connection *con, uint16_t port)
+ 		memcpy(&localaddr, dlm_local_addr[i], sizeof(localaddr));
+ 		make_sockaddr(&localaddr, port, &addr_len);
  
- int ip6_sock_set_v6only(struct sock *sk, bool val);
-+void ip6_sock_set_recverr(struct sock *sk, bool val);
+-		if (!i)
++		if (!i) {
+ 			result = kernel_bind(con->sock,
+ 					     (struct sockaddr *)&localaddr,
+ 					     addr_len);
+-		else
+-			result = kernel_setsockopt(con->sock, SOL_SCTP,
+-						   SCTP_SOCKOPT_BINDX_ADD,
+-						   (char *)&localaddr, addr_len);
++		} else {
++			lock_sock(con->sock->sk);
++			result = sctp_setsockopt_bindx(con->sock->sk,
++					(struct sockaddr *)&localaddr, addr_len,
++					SCTP_BINDX_ADD_ADDR);
++			release_sock(con->sock->sk);
++		}
  
- #endif /* _NET_IPV6_H */
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index f26224bb3e098..3c67626b6f5a9 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -147,6 +147,16 @@ int ip6_sock_set_v6only(struct sock *sk, bool val)
+ 		if (result < 0) {
+ 			log_print("Can't bind to %d addr number %d, %d.\n",
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 3ab5c6bbb90bd..f702b14d768ba 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -615,4 +615,7 @@ static inline bool sctp_newsk_ready(const struct sock *sk)
+ 	return sock_flag(sk, SOCK_DEAD) || sk->sk_socket;
  }
- EXPORT_SYMBOL(ip6_sock_set_v6only);
  
-+void ip6_sock_set_recverr(struct sock *sk, bool val)
-+{
-+	lock_sock(sk);
-+	inet6_sk(sk)->recverr = val;
-+	if (!val)
-+		skb_queue_purge(&sk->sk_error_queue);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(ip6_sock_set_recverr);
++int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *kaddrs,
++		int addrs_size, int op);
 +
- static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		    char __user *optval, unsigned int optlen)
+ #endif /* __net_sctp_h__ */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1c96b52c4aa28..30c981d9f6158 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -979,8 +979,8 @@ int sctp_asconf_mgmt(struct sctp_sock *sp, struct sctp_sockaddr_entry *addrw)
+  *
+  * Returns 0 if ok, <0 errno code on error.
+  */
+-static int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *kaddrs,
+-				 int addrs_size, int op)
++int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *kaddrs,
++		int addrs_size, int op)
  {
-diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
-index 20236ddecd2ef..5e356a63aa791 100644
---- a/net/rxrpc/local_object.c
-+++ b/net/rxrpc/local_object.c
-@@ -107,7 +107,7 @@ static struct rxrpc_local *rxrpc_alloc_local(struct rxrpc_net *rxnet,
- static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
- {
- 	struct sock *usk;
--	int ret, opt;
-+	int ret;
+ 	int err;
+ 	int addrcnt = 0;
+@@ -1032,6 +1032,7 @@ static int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *kaddrs,
+ 		return -EINVAL;
+ 	}
+ }
++EXPORT_SYMBOL(sctp_setsockopt_bindx);
  
- 	_enter("%p{%d,%d}",
- 	       local, local->srx.transport_type, local->srx.transport.family);
-@@ -157,13 +157,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
- 	switch (local->srx.transport.family) {
- 	case AF_INET6:
- 		/* we want to receive ICMPv6 errors */
--		opt = 1;
--		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_RECVERR,
--					(char *) &opt, sizeof(opt));
--		if (ret < 0) {
--			_debug("setsockopt failed");
--			goto error;
--		}
-+		ip6_sock_set_recverr(local->socket->sk, true);
- 
- 		/* Fall through and set IPv4 options too otherwise we don't get
- 		 * errors from IPv4 packets sent through the IPv6 socket.
+ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
+ 				 const union sctp_addr *daddr,
 -- 
 2.26.2
 
