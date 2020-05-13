@@ -2,41 +2,41 @@ Return-Path: <SRS0=+TNs=63=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B11BC2D0F8
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CEB96C2D0F9
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0B8D120718
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B08F5206F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="a2OmO8ud"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="tazCl9eR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729522AbgEMGcN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 02:32:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46032 "EHLO
+        id S1729854AbgEMG2O (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 02:28:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46030 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729880AbgEMG2O (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:14 -0400
+        with ESMTP id S1729679AbgEMG2N (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:13 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F4A2C061A0C;
-        Tue, 12 May 2020 23:28:14 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6A25FC061A0E;
+        Tue, 12 May 2020 23:28:13 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=eyAruZdqZ/GqReCoW2dlggnX7vcsXfgyfym1psK0Qy4=; b=a2OmO8ud3Y4vygBhHR40fF0YjS
-        8mkgDk7og1F5E3P3drhZCOzPZHbda6MmDSPrJL5HeaQHGzLvVFo8+H35posIZtH+PT4iY03rHic03
-        BFV7pe2lKPcgLCucmv4E9ZLHEG3Oid/a7VT/xh3Mj+YvtfEohgQhOPQamWFYhD7IV4bAnuyhvLgLr
-        4c32T3A/Svju9rvMlZ6b+3Q/MW6UoYHnn/QCAw42J0zBr5U2+1txx9nUtNbUdu6Rf5pk4OFdIjQTa
-        wvS+9lHzoQd8BgueBVfCa8V4V4fUQZOSi/VIyL0P0P4qOhc9SFNpWJkRmDDNeaboacwY7tCPSXzh9
-        ZPgMG0ig==;
+        bh=i8FI3LSbksg0B4cndOfJsa++XicNxeW/zkgZeE5mN7U=; b=tazCl9eRS7nQKB3iKz2RuE9e3B
+        0vTTHfaiCkWuiWwWQNpo2FWApgyD06j2vYC1/PdkIPZfopMhw4SLCENpJ1qNNKFVnYQbAy4MZ6hRs
+        OL6GFsojnSymFuA7InCzVIz5tu9AfNbe/5s3xWZ5LJWQDqV4OHsJ+HK23bw9UFOA/lcso8Bwes9re
+        M5tQHPrIlkn/dDuMN/PS8kLtPntQ1CpGHHKr20qikqYeg+i8mtzdpnmbBIXjrdqegfV6CfWTA9lJx
+        ysjhmhFjeuOGo2MM/53cAH82vWYN51+K1TRwHExSq3VVqeIwEmDHNL4zPkPpEwTw6XsNR1DbmWBxi
+        Z/IUEJVA==;
 Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYkrg-0004QD-3a; Wed, 13 May 2020 06:27:36 +0000
+        id 1jYkr8-0003s6-TG; Wed, 13 May 2020 06:27:03 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
         linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 15/33] tcp: add tcp_sock_set_keepidle
-Date:   Wed, 13 May 2020 08:26:30 +0200
-Message-Id: <20200513062649.2100053-16-hch@lst.de>
+Subject: [PATCH 04/33] net: add sock_set_sndtimeo
+Date:   Wed, 13 May 2020 08:26:19 +0200
+Message-Id: <20200513062649.2100053-5-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 References: <20200513062649.2100053-1-hch@lst.de>
@@ -69,125 +69,79 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the TCP_KEEP_IDLE sockopt from kernel
-space without going through a fake uaccess.
+Add a helper to directly set the SO_SNDTIMEO_NEW sockopt from kernel
+space without going through a fake uaccess.  The interface is
+simplified to only pass the seconds value, as that is the only
+thing needed at the moment.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/tcp.h   |  1 +
- net/ipv4/tcp.c        | 49 ++++++++++++++++++++++++++++++-------------
- net/rds/tcp_listen.c  |  5 +----
- net/sunrpc/xprtsock.c |  3 +--
- 4 files changed, 37 insertions(+), 21 deletions(-)
+ fs/dlm/lowcomms.c  |  8 ++------
+ include/net/sock.h |  1 +
+ net/core/sock.c    | 11 +++++++++++
+ 3 files changed, 14 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 69c988f84a184..4d3a3e959e45b 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -499,5 +499,6 @@ void tcp_sock_set_nodelay(struct sock *sk, bool on);
- void tcp_sock_set_quickack(struct sock *sk, int val);
- int tcp_sock_set_syncnt(struct sock *sk, int val);
- void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
-+int tcp_sock_set_keepidle(struct sock *sk, int val);
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 48e7ba796c6fb..0c0a6413fdfcc 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1035,7 +1035,6 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	int result;
+ 	int addr_len;
+ 	struct socket *sock;
+-	struct __kernel_sock_timeval tv = { .tv_sec = 5, .tv_usec = 0 };
  
- #endif	/* _LINUX_TCP_H */
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 9a8d062b17a48..22eb9159c7d05 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2890,6 +2890,39 @@ void tcp_sock_set_user_timeout(struct sock *sk, u32 val)
+ 	if (con->nodeid == 0) {
+ 		log_print("attempt to connect sock 0 foiled");
+@@ -1087,13 +1086,10 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	 * since O_NONBLOCK argument in connect() function does not work here,
+ 	 * then, we should restore the default value of this attribute.
+ 	 */
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO_NEW, (char *)&tv,
+-			  sizeof(tv));
++	sock_set_sndtimeo(sock->sk, 5);
+ 	result = sock->ops->connect(sock, (struct sockaddr *)&daddr, addr_len,
+ 				   0);
+-	memset(&tv, 0, sizeof(tv));
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO_NEW, (char *)&tv,
+-			  sizeof(tv));
++	sock_set_sndtimeo(sock->sk, 0);
+ 
+ 	if (result == -EINPROGRESS)
+ 		result = 0;
+diff --git a/include/net/sock.h b/include/net/sock.h
+index cce11782dc295..809596ffd32d2 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2690,5 +2690,6 @@ void sock_def_readable(struct sock *sk);
+ void sock_set_reuseaddr(struct sock *sk, unsigned char reuse);
+ void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger);
+ void sock_set_priority(struct sock *sk, u32 priority);
++void sock_set_sndtimeo(struct sock *sk, unsigned int secs);
+ 
+ #endif	/* _SOCK_H */
+diff --git a/net/core/sock.c b/net/core/sock.c
+index e9f1e2247b004..76527681e50b9 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -752,6 +752,17 @@ void sock_set_priority(struct sock *sk, u32 priority)
  }
- EXPORT_SYMBOL(tcp_sock_set_user_timeout);
+ EXPORT_SYMBOL(sock_set_priority);
  
-+static int __tcp_sock_set_keepidle(struct sock *sk, int val)
++void sock_set_sndtimeo(struct sock *sk, unsigned int secs)
 +{
-+	struct tcp_sock *tp = tcp_sk(sk);
-+
-+	if (val < 1 || val > MAX_TCP_KEEPIDLE)
-+		return -EINVAL;
-+
-+	tp->keepalive_time = val * HZ;
-+	if (sock_flag(sk, SOCK_KEEPOPEN) &&
-+	    !((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_LISTEN))) {
-+		u32 elapsed = keepalive_time_elapsed(tp);
-+
-+		if (tp->keepalive_time > elapsed)
-+			elapsed = tp->keepalive_time - elapsed;
-+		else
-+			elapsed = 0;
-+		inet_csk_reset_keepalive_timer(sk, elapsed);
-+	}
-+
-+	return 0;
-+}
-+
-+int tcp_sock_set_keepidle(struct sock *sk, int val)
-+{
-+	int err;
-+
 +	lock_sock(sk);
-+	err = __tcp_sock_set_keepidle(sk, val);
++	if (secs && secs < MAX_SCHEDULE_TIMEOUT / HZ - 1)
++		sk->sk_sndtimeo = secs * HZ;
++	else
++		sk->sk_sndtimeo = MAX_SCHEDULE_TIMEOUT;
 +	release_sock(sk);
-+	return err;
 +}
-+EXPORT_SYMBOL(tcp_sock_set_keepidle);
++EXPORT_SYMBOL(sock_set_sndtimeo);
 +
  /*
-  *	Socket option code for TCP.
-  */
-@@ -3059,21 +3092,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- 		break;
- 
- 	case TCP_KEEPIDLE:
--		if (val < 1 || val > MAX_TCP_KEEPIDLE)
--			err = -EINVAL;
--		else {
--			tp->keepalive_time = val * HZ;
--			if (sock_flag(sk, SOCK_KEEPOPEN) &&
--			    !((1 << sk->sk_state) &
--			      (TCPF_CLOSE | TCPF_LISTEN))) {
--				u32 elapsed = keepalive_time_elapsed(tp);
--				if (tp->keepalive_time > elapsed)
--					elapsed = tp->keepalive_time - elapsed;
--				else
--					elapsed = 0;
--				inet_csk_reset_keepalive_timer(sk, elapsed);
--			}
--		}
-+		err = __tcp_sock_set_keepidle(sk, val);
- 		break;
- 	case TCP_KEEPINTVL:
- 		if (val < 1 || val > MAX_TCP_KEEPINTVL)
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index e76ec64b43fe7..8c76969d8c878 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -52,10 +52,7 @@ int rds_tcp_keepalive(struct socket *sock)
- 	if (ret < 0)
- 		goto bail;
- 
--	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE,
--				(char *)&keepidle, sizeof(keepidle));
--	if (ret < 0)
--		goto bail;
-+	tcp_sock_set_keepidle(sock->sk, keepidle);
- 
- 	/* KEEPINTVL is the interval between successive probes. We follow
- 	 * the model in xs_tcp_finish_connecting() and re-use keepidle.
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 30d4c4fcd3e38..ea79446789c69 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2107,8 +2107,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 
- 	/* TCP Keepalive options */
- 	sock_set_keepalive(sock->sk, 1);
--	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
--			(char *)&keepidle, sizeof(keepidle));
-+	tcp_sock_set_keepidle(sock->sk, keepidle);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
- 			(char *)&keepidle, sizeof(keepidle));
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
 -- 
 2.26.2
 
