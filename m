@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 831D9C2D0FD
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FAB3C2D0F8
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5F03F206F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F1F1020708
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ELbWvom7"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="gziW83p6"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732056AbgEMG26 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 02:28:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46178 "EHLO
+        id S1729574AbgEMGaZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 02:30:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46164 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730583AbgEMG25 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:57 -0400
+        with ESMTP id S1731775AbgEMG2w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:52 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E5AA5C061A0C;
-        Tue, 12 May 2020 23:28:56 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 269F1C061A0E;
+        Tue, 12 May 2020 23:28:52 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=H54azrsd7E+axT6O+qhvgxc728YbsMwbwoaorN8dTak=; b=ELbWvom7OLUEPHUlh+K/wa+2Yz
-        MIv09pB/hz0X4YfDe4pQIyKwYEMo67G3o6vnn79V8nmNHPPF/8QEIv7y4djVl7U7gw9S6CXyOBYUY
-        q5cq7qzzyhYmaJ6XpEvfcRSJzBGzliLAWlLnXNFGxaQVa9CR1qc+ntgF7igPhKb9A7i4KFlp1VOE/
-        zWCTktm4v/FY3kUg8KD9KT9vFaPVeVzDfxceYE5Yqbdlg6LN2IyetU3B4z/6U3piE5rRIhndG7rCk
-        lpMzjxU2n05eGTSTGNdgaUVraTLoFYMtpD9HQ7YSAJo96c8eLvv0+iJrPMIRl+S0ztiUuHEnpfb3e
-        uMYRSzvg==;
+        bh=cW3MEV/WwtWzunuIIhkoKW20oXwwRZpBvDGURWiq844=; b=gziW83p6duUvL0soJDNgiPSF/p
+        sH/59QqWomThwnJAnXN25bczjjRb1S4Mk8DmzM7AdlM7kTbRuzqQ0/kIJZ+1eL9I2z/ttXwWA9hyR
+        9il5dbOUfnGubcd0AQQHxZw8R3SAtRdl+e8mVPejSieXkS7Rn5wwdgrVi1FX0qNLDfO5tV2OeCLwC
+        FwuIpblQiZp8mAcpvKaFH2pXasHe4j/G6RO8yajiFwk1QC6p6kRaSePezb8JUyQjR3PIqwYiMAjzD
+        8p8RzWV3T5Z3UM7wVy4UHteCYYZdCa+SZeqLHnDobknz5kN4/0UYaOMIqfrxc+a1lnMM7Yy2JQaYs
+        KeJOr5Ww==;
 Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYkrz-0004i7-0s; Wed, 13 May 2020 06:27:55 +0000
+        id 1jYksO-00057L-NZ; Wed, 13 May 2020 06:28:21 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
         linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 21/33] ipv4: add ip_sock_set_mtu_discover
-Date:   Wed, 13 May 2020 08:26:36 +0200
-Message-Id: <20200513062649.2100053-22-hch@lst.de>
+Subject: [PATCH 29/33] rxrpc_sock_set_min_security_level
+Date:   Wed, 13 May 2020 08:26:44 +0200
+Message-Id: <20200513062649.2100053-30-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 References: <20200513062649.2100053-1-hch@lst.de>
@@ -69,134 +69,75 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the IP_MTU_DISCOVER sockopt from kernel
-space without going through a fake uaccess.
+Add a helper to directly set the RXRPC_MIN_SECURITY_LEVEL sockopt from
+kernel space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ip.h         |  2 ++
- net/ipv4/ip_sockglue.c   | 22 ++++++++++++++++++++++
- net/rxrpc/local_object.c |  8 +-------
- net/rxrpc/output.c       | 14 +++++---------
- net/sunrpc/svcsock.c     |  5 ++---
- 5 files changed, 32 insertions(+), 19 deletions(-)
+ fs/afs/rxrpc.c         |  6 ++----
+ include/net/af_rxrpc.h |  2 ++
+ net/rxrpc/af_rxrpc.c   | 13 +++++++++++++
+ 3 files changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 7ab8140b54429..536eaffec59f0 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -768,5 +768,7 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
- void ip_sock_set_tos(struct sock *sk, int val);
- void ip_sock_set_freebind(struct sock *sk, bool val);
- void ip_sock_set_recverr(struct sock *sk, bool val);
-+int ip_sock_set_mtu_discover(struct sock *sk, int val);
-+void ip_sock_set_pktinfo(struct sock *sk, bool val);
+diff --git a/fs/afs/rxrpc.c b/fs/afs/rxrpc.c
+index 1ecc67da6c1a4..7dfcbd58da85c 100644
+--- a/fs/afs/rxrpc.c
++++ b/fs/afs/rxrpc.c
+@@ -37,7 +37,6 @@ int afs_open_socket(struct afs_net *net)
+ {
+ 	struct sockaddr_rxrpc srx;
+ 	struct socket *socket;
+-	unsigned int min_level;
+ 	int ret;
  
- #endif	/* _IP_H */
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index 9abecc3195520..df6ce0a7b0e3d 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -599,6 +599,28 @@ void ip_sock_set_recverr(struct sock *sk, bool val)
+ 	_enter("");
+@@ -57,9 +56,8 @@ int afs_open_socket(struct afs_net *net)
+ 	srx.transport.sin6.sin6_family	= AF_INET6;
+ 	srx.transport.sin6.sin6_port	= htons(AFS_CM_PORT);
+ 
+-	min_level = RXRPC_SECURITY_ENCRYPT;
+-	ret = kernel_setsockopt(socket, SOL_RXRPC, RXRPC_MIN_SECURITY_LEVEL,
+-				(void *)&min_level, sizeof(min_level));
++	ret = rxrpc_sock_set_min_security_level(socket->sk,
++			RXRPC_SECURITY_ENCRYPT);
+ 	if (ret < 0)
+ 		goto error_2;
+ 
+diff --git a/include/net/af_rxrpc.h b/include/net/af_rxrpc.h
+index 04e97bab6f28b..8d7b469453bda 100644
+--- a/include/net/af_rxrpc.h
++++ b/include/net/af_rxrpc.h
+@@ -72,4 +72,6 @@ bool rxrpc_kernel_call_is_complete(struct rxrpc_call *);
+ void rxrpc_kernel_set_max_life(struct socket *, struct rxrpc_call *,
+ 			       unsigned long);
+ 
++int rxrpc_sock_set_min_security_level(struct sock *sk, unsigned int val);
++
+ #endif /* _NET_RXRPC_H */
+diff --git a/net/rxrpc/af_rxrpc.c b/net/rxrpc/af_rxrpc.c
+index 15ee92d795815..394189b81849f 100644
+--- a/net/rxrpc/af_rxrpc.c
++++ b/net/rxrpc/af_rxrpc.c
+@@ -571,6 +571,19 @@ static int rxrpc_sendmsg(struct socket *sock, struct msghdr *m, size_t len)
+ 	return ret;
  }
- EXPORT_SYMBOL(ip_sock_set_recverr);
  
-+int ip_sock_set_mtu_discover(struct sock *sk, int val)
++int rxrpc_sock_set_min_security_level(struct sock *sk, unsigned int val)
 +{
-+	if (val < IP_PMTUDISC_DONT || val > IP_PMTUDISC_OMIT)
++	if (sk->sk_state != RXRPC_UNBOUND)
++		return -EISCONN;
++	if (val > RXRPC_SECURITY_MAX)
 +		return -EINVAL;
 +	lock_sock(sk);
-+	inet_sk(sk)->pmtudisc = val;
++	rxrpc_sk(sk)->min_sec_level = val;
 +	release_sock(sk);
 +	return 0;
 +}
-+EXPORT_SYMBOL(ip_sock_set_mtu_discover);
-+
-+void ip_sock_set_pktinfo(struct sock *sk, bool val)
-+{
-+	lock_sock(sk);
-+	if (val)
-+		inet_sk(sk)->cmsg_flags |= IP_CMSG_PKTINFO;
-+	else
-+		inet_sk(sk)->cmsg_flags &= ~IP_CMSG_PKTINFO;
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(ip_sock_set_pktinfo);
++EXPORT_SYMBOL(rxrpc_sock_set_min_security_level);
 +
  /*
-  *	Socket option code for IP. This is the end of the line after any
-  *	TCP,UDP etc options on an IP socket.
-diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
-index 1b87b8a9ff725..20236ddecd2ef 100644
---- a/net/rxrpc/local_object.c
-+++ b/net/rxrpc/local_object.c
-@@ -174,13 +174,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
- 		ip_sock_set_recverr(local->socket->sk, true);
- 
- 		/* we want to set the don't fragment bit */
--		opt = IP_PMTUDISC_DO;
--		ret = kernel_setsockopt(local->socket, SOL_IP, IP_MTU_DISCOVER,
--					(char *) &opt, sizeof(opt));
--		if (ret < 0) {
--			_debug("setsockopt failed");
--			goto error;
--		}
-+		ip_sock_set_mtu_discover(local->socket->sk, IP_PMTUDISC_DO);
- 
- 		/* We want receive timestamps. */
- 		sock_set_timestamps(local->socket->sk, true, false, true);
-diff --git a/net/rxrpc/output.c b/net/rxrpc/output.c
-index 90e263c6aa69e..ad0234e1e1713 100644
---- a/net/rxrpc/output.c
-+++ b/net/rxrpc/output.c
-@@ -321,7 +321,7 @@ int rxrpc_send_data_packet(struct rxrpc_call *call, struct sk_buff *skb,
- 	struct kvec iov[2];
- 	rxrpc_serial_t serial;
- 	size_t len;
--	int ret, opt;
-+	int ret;
- 
- 	_enter(",{%d}", skb->len);
- 
-@@ -476,18 +476,14 @@ int rxrpc_send_data_packet(struct rxrpc_call *call, struct sk_buff *skb,
- 	switch (conn->params.local->srx.transport.family) {
- 	case AF_INET6:
- 	case AF_INET:
--		opt = IP_PMTUDISC_DONT;
--		kernel_setsockopt(conn->params.local->socket,
--				  SOL_IP, IP_MTU_DISCOVER,
--				  (char *)&opt, sizeof(opt));
-+		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
-+				IP_PMTUDISC_DONT);
- 		ret = kernel_sendmsg(conn->params.local->socket, &msg,
- 				     iov, 2, len);
- 		conn->params.peer->last_tx_at = ktime_get_seconds();
- 
--		opt = IP_PMTUDISC_DO;
--		kernel_setsockopt(conn->params.local->socket,
--				  SOL_IP, IP_MTU_DISCOVER,
--				  (char *)&opt, sizeof(opt));
-+		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
-+				IP_PMTUDISC_DO);
- 		break;
- 
- 	default:
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0f6b78d0e6170..7a4f01c79e0f1 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -616,9 +616,8 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 	/* make sure we get destination address info */
- 	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET:
--		level = SOL_IP;
--		optname = IP_PKTINFO;
--		break;
-+		ip_sock_set_pktinfo(svsk->sk_sock->sk, true);
-+		return;
- 	case AF_INET6:
- 		level = SOL_IPV6;
- 		optname = IPV6_RECVPKTINFO;
+  * set RxRPC socket options
+  */
 -- 
 2.26.2
 
