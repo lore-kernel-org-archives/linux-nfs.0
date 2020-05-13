@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6341C2D0F9
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DA51AC2D0FD
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ABCCE206F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BBE7E206F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Wqf2t06b"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="sR5EMxLZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730835AbgEMG2t (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1730781AbgEMG2t (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 13 May 2020 02:28:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46134 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46150 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730583AbgEMG2n (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:43 -0400
+        with ESMTP id S1730668AbgEMG2s (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:48 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6923EC061A0C;
-        Tue, 12 May 2020 23:28:43 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ED09BC061A0E;
+        Tue, 12 May 2020 23:28:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=m2cJUr52FglwX1vg/2cpZagwD/qeXka2YOLw7+cE1hw=; b=Wqf2t06bPG68kMAO/liebkvId6
-        2VigPyauHsu9RHu5Vg+NB8l/4cY4aPtc5RJs3S7CEUDu75rMEzX/zDMO/UDEATyGXjVGb0u3P5BMy
-        Oix1BY75NsjQyfaXhlXYZ+Ge1dsuqXPNQbo+gr3tcjJpevlyytQvdy0E6uFQzYuuZuy4mB1NUUSK6
-        PwZLHaw2WeTa86I4bE//xvWghB4mm6nsz6oVLFCYxsG3D4OmR2tUS4A61xo3ePDTTnLMmXdO12SMR
-        OQ9s9W9u/tksMHORHYRLN86m3Ahq8dQ/lb4KSs3ycsmyAm4HUl9JOviXtYqmB29EfzplCnZ8UDlnZ
-        r2iRA9DA==;
+        bh=VriKupxRYsJlL2uxVcilvd0cTKLGSfORdeySMsHEWM0=; b=sR5EMxLZAt8B7bA1KxAxjuv6wd
+        og2rytl6Jc0A+7hlcV8EXWIPDvh8UgyAUErFODUlIipxvuEJxEu+x0A+pFk4I9pySnf1f6T/pJsTu
+        KUB2RdqvTmiJkfhDXGEnvLdf2lvs3k6LXxLu8DoXiOA5hsxN5fm073OAF4CTNSLl0Ep1EftErwAfc
+        ruLPqbJ9CiN7AAnc5ZtNGwBAsO1fO1kYiDgavZXz4LAWVgsG1wmLD7Lx1Aqs0ZTJ+3mTtyrj5sjE6
+        Cyq8JY7tvf4boI1g+6bKr+ilMXPAkaVbj0N5rx+PLXDX6Fpi6bbyIG6W385vcDxJrl4RMddG0+l3X
+        3F/wY21g==;
 Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYksU-0005Dh-Pl; Wed, 13 May 2020 06:28:27 +0000
+        id 1jYksL-00054q-LC; Wed, 13 May 2020 06:28:18 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
         linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 31/33] net: remove kernel_setsockopt
-Date:   Wed, 13 May 2020 08:26:46 +0200
-Message-Id: <20200513062649.2100053-32-hch@lst.de>
+Subject: [PATCH 28/33] sctp: add sctp_sock_set_nodelay
+Date:   Wed, 13 May 2020 08:26:43 +0200
+Message-Id: <20200513062649.2100053-29-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 References: <20200513062649.2100053-1-hch@lst.de>
@@ -69,69 +69,88 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-No users left.
+Add a helper to directly set the SCTP_NODELAY sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/net.h |  2 --
- net/socket.c        | 31 -------------------------------
- 2 files changed, 33 deletions(-)
+ fs/dlm/lowcomms.c       | 10 ++--------
+ include/net/sctp/sctp.h |  1 +
+ net/sctp/socket.c       |  8 ++++++++
+ 3 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/net.h b/include/linux/net.h
-index 6451425e828f5..ece7513326293 100644
---- a/include/linux/net.h
-+++ b/include/linux/net.h
-@@ -305,8 +305,6 @@ int kernel_getsockname(struct socket *sock, struct sockaddr *addr);
- int kernel_getpeername(struct socket *sock, struct sockaddr *addr);
- int kernel_getsockopt(struct socket *sock, int level, int optname, char *optval,
- 		      int *optlen);
--int kernel_setsockopt(struct socket *sock, int level, int optname, char *optval,
--		      unsigned int optlen);
- int kernel_sendpage(struct socket *sock, struct page *page, int offset,
- 		    size_t size, int flags);
- int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
-diff --git a/net/socket.c b/net/socket.c
-index 1c9a7260a41de..f37c3ef508691 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -3749,37 +3749,6 @@ int kernel_getsockopt(struct socket *sock, int level, int optname,
- }
- EXPORT_SYMBOL(kernel_getsockopt);
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index e4939d770df53..6fa45365666a8 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1034,7 +1034,6 @@ static int sctp_bind_addrs(struct connection *con, uint16_t port)
+ static void sctp_connect_to_sock(struct connection *con)
+ {
+ 	struct sockaddr_storage daddr;
+-	int one = 1;
+ 	int result;
+ 	int addr_len;
+ 	struct socket *sock;
+@@ -1081,8 +1080,7 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	log_print("connecting to %d", con->nodeid);
  
--/**
-- *	kernel_setsockopt - set a socket option (kernel space)
-- *	@sock: socket
-- *	@level: API level (SOL_SOCKET, ...)
-- *	@optname: option tag
-- *	@optval: option value
-- *	@optlen: option length
-- *
-- *	Returns 0 or an error.
-- */
--
--int kernel_setsockopt(struct socket *sock, int level, int optname,
--			char *optval, unsigned int optlen)
--{
--	mm_segment_t oldfs = get_fs();
--	char __user *uoptval;
--	int err;
--
--	uoptval = (char __user __force *) optval;
--
--	set_fs(KERNEL_DS);
--	if (level == SOL_SOCKET)
--		err = sock_setsockopt(sock, level, optname, uoptval, optlen);
--	else
--		err = sock->ops->setsockopt(sock, level, optname, uoptval,
--					    optlen);
--	set_fs(oldfs);
--	return err;
--}
--EXPORT_SYMBOL(kernel_setsockopt);
--
- /**
-  *	kernel_sendpage - send a &page through a socket (kernel space)
-  *	@sock: socket
+ 	/* Turn off Nagle's algorithm */
+-	kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+-			  sizeof(one));
++	sctp_sock_set_nodelay(sock->sk, true);
+ 
+ 	/*
+ 	 * Make sock->ops->connect() function return in specified time,
+@@ -1296,7 +1294,6 @@ static int sctp_listen_for_all(void)
+ 	struct socket *sock = NULL;
+ 	int result = -EINVAL;
+ 	struct connection *con = nodeid2con(0, GFP_NOFS);
+-	int one = 1;
+ 
+ 	if (!con)
+ 		return -ENOMEM;
+@@ -1311,10 +1308,7 @@ static int sctp_listen_for_all(void)
+ 	}
+ 
+ 	sock_set_rcvbuf(sock->sk, NEEDED_RMEM);
+-	result = kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+-				   sizeof(one));
+-	if (result < 0)
+-		log_print("Could not set SCTP NODELAY error %d\n", result);
++	sctp_sock_set_nodelay(sock->sk, true);
+ 
+ 	write_lock_bh(&sock->sk->sk_callback_lock);
+ 	/* Init con struct */
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index f702b14d768ba..b505fa082f254 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -617,5 +617,6 @@ static inline bool sctp_newsk_ready(const struct sock *sk)
+ 
+ int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *kaddrs,
+ 		int addrs_size, int op);
++void sctp_sock_set_nodelay(struct sock *sk, bool val);
+ 
+ #endif /* __net_sctp_h__ */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 30c981d9f6158..64c395f7a86d5 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3066,6 +3066,14 @@ static int sctp_setsockopt_nodelay(struct sock *sk, char __user *optval,
+ 	return 0;
+ }
+ 
++void sctp_sock_set_nodelay(struct sock *sk, bool val)
++{
++	lock_sock(sk);
++	sctp_sk(sk)->nodelay = val;
++	release_sock(sk);
++}
++EXPORT_SYMBOL(sctp_sock_set_nodelay);
++
+ /*
+  *
+  * 7.1.1 SCTP_RTOINFO
 -- 
 2.26.2
 
