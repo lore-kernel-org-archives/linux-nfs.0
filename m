@@ -2,176 +2,96 @@ Return-Path: <SRS0=+TNs=63=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F7E5C2D0F8
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:33:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB4F6C2D0F8
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 07:16:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1052A206A5
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:33:00 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="qNzpdoEM"
+	by mail.kernel.org (Postfix) with ESMTP id D2DCC206D6
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 07:16:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729126AbgEMG14 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 02:27:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45968 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729602AbgEMG1y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:27:54 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3D14C061A0C;
-        Tue, 12 May 2020 23:27:54 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=LxzPoA5gvJN0ZEH7ZiGs9x0zOf60hnPDcSro4oU97rM=; b=qNzpdoEMGMmgdfxtOdvpBW+rxQ
-        7O4qjcKk5X4//kNZMOmxFmxnTrXtVmJst3Ur82QW4tVfJX+S+2Gk04HGnfRNDoXDHKv0erIrfRsUO
-        jla3SCtCGOQxqr2hKPnbaU92Q4eYl3wlaFbAHFukJV7xKhP/1rVX92IquXZmumv7p68HN6pr9Nbaw
-        FESpfho3HqUUXEt2/edXqqAkquu4B/Imsc8/t4PThletUfwOTdqjaxHJ0JKeCutpAXDcxa2tvPo7O
-        QWkrMRuUM8N/+OuJJrUSfHdpPfID4TCjJyvfUg/aWLdeDerAeEzog2SqpJpNqxxQl6daD4OQA0mne
-        JxLxr1Cw==;
-Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYkrI-00043g-7I; Wed, 13 May 2020 06:27:12 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     "David S. Miller" <davem@davemloft.net>,
-        Jakub Kicinski <kuba@kernel.org>
-Cc:     Eric Dumazet <edumazet@google.com>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Vlad Yasevich <vyasevich@gmail.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Jon Maloy <jmaloy@redhat.com>,
-        Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org,
-        target-devel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-cifs@vger.kernel.org, cluster-devel@redhat.com,
-        ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
-        linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
-        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 07/33] net: add sock_set_keepalive
-Date:   Wed, 13 May 2020 08:26:22 +0200
-Message-Id: <20200513062649.2100053-8-hch@lst.de>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
-References: <20200513062649.2100053-1-hch@lst.de>
+        id S1728988AbgEMHQm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 03:16:42 -0400
+Received: from mx2.suse.de ([195.135.220.15]:60540 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728490AbgEMHQl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 13 May 2020 03:16:41 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id B8867B1DD;
+        Wed, 13 May 2020 07:16:42 +0000 (UTC)
+From:   NeilBrown <neilb@suse.de>
+To:     Jan Kara <jack@suse.cz>
+Date:   Wed, 13 May 2020 17:16:32 +1000
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        Michal Hocko <mhocko@kernel.org>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 1/2 V3] MM: replace PF_LESS_THROTTLE with PF_LOCAL_THROTTLE
+In-Reply-To: <20200422124600.GH8775@quack2.suse.cz>
+References: <87tv2b7q72.fsf@notabene.neil.brown.name> <87v9miydai.fsf@notabene.neil.brown.name> <87ftdgw58w.fsf@notabene.neil.brown.name> <87wo6gs26e.fsf@notabene.neil.brown.name> <87tv1ks24t.fsf@notabene.neil.brown.name> <20200416151906.GQ23739@quack2.suse.cz> <87zhb5r30c.fsf@notabene.neil.brown.name> <20200422124600.GH8775@quack2.suse.cz>
+Message-ID: <871rnob8z3.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the SO_KEEPALIVE sockopt from kernel space
-without going through a fake uaccess.
+--=-=-=
+Content-Type: text/plain
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/dlm/lowcomms.c     |  6 +-----
- include/net/sock.h    |  1 +
- net/core/sock.c       | 10 ++++++++++
- net/rds/tcp_listen.c  |  6 +-----
- net/sunrpc/xprtsock.c |  4 +---
- 5 files changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index 0c0a6413fdfcc..16d616c180613 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -1259,11 +1259,7 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
- 		con->sock = NULL;
- 		goto create_out;
- 	}
--	result = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--				 (char *)&one, sizeof(one));
--	if (result < 0) {
--		log_print("Set keepalive failed: %d", result);
--	}
-+	sock_set_keepalive(sock->sk, true);
- 
- 	result = sock->ops->listen(sock, 5);
- 	if (result < 0) {
-diff --git a/include/net/sock.h b/include/net/sock.h
-index cf8a30e0168de..4cedde585424f 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2691,6 +2691,7 @@ void sock_set_reuseaddr(struct sock *sk, unsigned char reuse);
- void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger);
- void sock_set_priority(struct sock *sk, u32 priority);
- void sock_set_sndtimeo(struct sock *sk, unsigned int secs);
-+void sock_set_keepalive(struct sock *sk, bool keepalive);
- int sock_bindtoindex(struct sock *sk, int ifindex);
- void sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns);
- 
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 1589f242ecc7e..dfd2b839f88bb 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -794,6 +794,16 @@ void sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns)
- }
- EXPORT_SYMBOL(sock_set_timestamps);
- 
-+void sock_set_keepalive(struct sock *sk, bool keepalive)
-+{
-+	lock_sock(sk);
-+	if (sk->sk_prot->keepalive)
-+		sk->sk_prot->keepalive(sk, keepalive);
-+	sock_valbool_flag(sk, SOCK_KEEPOPEN, keepalive);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(sock_set_keepalive);
-+
- /*
-  *	This is meant for all protocols to use and covers goings on
-  *	at the socket level. Everything here is generic.
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index 96f7538e5fa8d..a55b39cd45a6c 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -43,13 +43,9 @@ int rds_tcp_keepalive(struct socket *sock)
- 	/* values below based on xs_udp_default_timeout */
- 	int keepidle = 5; /* send a probe 'keepidle' secs after last data */
- 	int keepcnt = 5; /* number of unack'ed probes before declaring dead */
--	int keepalive = 1;
- 	int ret = 0;
- 
--	ret = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--				(char *)&keepalive, sizeof(keepalive));
--	if (ret < 0)
--		goto bail;
-+	sock_set_keepalive(sock->sk, true);
- 
- 	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT,
- 				(char *)&keepcnt, sizeof(keepcnt));
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 845d0be805ece..bb61d3758be2b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2110,7 +2110,6 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	unsigned int keepidle;
- 	unsigned int keepcnt;
--	unsigned int opt_on = 1;
- 	unsigned int timeo;
- 
- 	spin_lock(&xprt->transport_lock);
-@@ -2122,8 +2121,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	spin_unlock(&xprt->transport_lock);
- 
- 	/* TCP Keepalive options */
--	kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--			(char *)&opt_on, sizeof(opt_on));
-+	sock_set_keepalive(sock->sk, 1);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
- 			(char *)&keepidle, sizeof(keepidle));
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
--- 
-2.26.2
+I thought about this some more and come up with another "simple"
+approach that didn't require me understanding too much code, but does -
+I think - address your concerns.
 
+I've changed the heuristic to avoid any throttling on PF_LOCAL_THROTTLE
+task if:
+ - the global dirty count is below the global free-run threshold.  The
+   code did this already.
+ - (or) the per-wb dirty count is below the per-wb free-run threshold.
+   This is the change.
+
+This means that:
+ - in a steady stated, all bdis will be throttled based on their (steady
+   state) throughput, which is equally appropriate for PF_LOCAL_THROTTLE
+   tasks.
+ - a PF_LOCAL_THROTTLE task will never be *completely* blocked by dirty
+   pages queued for other devices.  This means no deadlock, and that is
+   the primary purpose of PF_LOCAL_THROTTLE.
+ - when writes through the PF_LOCAL_THROTTLE task start up from idle -
+   when there is no current throughput estimate - the PF_LOCAL_THROTTLE
+   can be expected to get a fair share of the available memory, just as
+   much as any other writer.  This was the possible problem with
+   treating PF_LOCAL_THROTTLE just like BDI_CAP_STRICTLIMIT.
+
+So I think this is a good solution.  Thoughts?
+Patches follow - I've address the comment formatting issue.
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAl67ntAACgkQOeye3VZi
+gbkPqRAAtxj9x2Nnc8sDId77c2gR7zMDpFPEY6g07dqJpWw0yBr6dWPypKbUpsso
+4kqJpJDxKpM/zo6ysnkDPJJmNmgIS5n6s3vQCsumP7+TF3PpnMtAqG2GnvxVOLkN
+VPIb4HCghdI0mGS9xeR1OBPHsK8I0HvHg0CGWAo5rCCICRmDAQXCYL5QdGqfLuxj
+B/55yI4jzKfH6OaArJrrKWvWVdI825oGSn/bdffz/GighPP1QdLbNz4iWS5ab43O
+0tR4m9JjGQIB7RjxnNXp0knc3+2hVqKY6dallTpOpn4fE0n7TeSFu7lvI6wRL7F/
+OKLBlY9ca7jeIOcrCwBan5GFOh9Ou0IFvX41ehrFEFUc6dTb4836b8T9HunKP95d
+dwL3v1gpFI06IZwb+K0YGrf9MWDSZQeZ/tPyHM2VDFb2Jl3hx+3aVxhhY9bgPtjZ
+Mf3cbYBiGWU+xoZwPYKKw4ghNgJDTOZd0ohTTfM0c9TuGp7+NZUtU/3/9J9/Cw91
+P4ZNnN4AyW20Jh2ucfACOesx3LorjbvXIwRPaJJ8hLHQVUZ66RJoIs3QJ+5lpbQc
+pO6kQ8uTynnSHa5Gt39CnQVjAz2AoXsrU/sKFRQ/HAZd8hyzDXrgnn+EAdy6KwO1
+EF92Wa5AIVLDF4qfCuYsLDH4gAUrtRxFqoER4NWMxIJtX8nrChU=
+=vbJX
+-----END PGP SIGNATURE-----
+--=-=-=--
