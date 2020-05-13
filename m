@@ -1,281 +1,246 @@
-Return-Path: <SRS0=SGEM=62=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=+TNs=63=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 51347C2D0F8
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 May 2020 21:24:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ABF56C2D0F9
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:27:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2BF4F20731
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 May 2020 21:24:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8719E206F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:27:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="M+jVFcTc"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="nhuXoZu7"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731351AbgELVYj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 May 2020 17:24:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46396 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1731334AbgELVYj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 May 2020 17:24:39 -0400
-Received: from mail-qk1-x743.google.com (mail-qk1-x743.google.com [IPv6:2607:f8b0:4864:20::743])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 19854C061A0C;
-        Tue, 12 May 2020 14:24:39 -0700 (PDT)
-Received: by mail-qk1-x743.google.com with SMTP id a136so6308189qkg.6;
-        Tue, 12 May 2020 14:24:39 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=k4aFKZu7Ir4BTmsKFh4XOyBP0EdUtSdQg2tscndZkEA=;
-        b=M+jVFcTcJSeCBnmcmEiK2kPUr7D/qnL8f2t9aTTtMIlMxdlSu7L9v4Pv61jB65Vzem
-         dEHHAc8E9SDeuJ0MW6wI1xVIwMtuyF4SXdRPH1sTzQ1NjrkH36bbyxyT+uaivj5B1BBR
-         xZJs3yug7nKmIPJ2p54fJQAU7zzBzuLDjoIuxQxhubxtAW0lgz5wRjaD9h5pHD+zI+Ba
-         YnwtVWXi+D6JYU04Z7q+58bHYvdVvjanyly9Ej7iIF87p7js/5kC777TWFBZ/T2SqUwv
-         ydaafYsM6d8u2ifOTFoX9ArOCGgloSgPj5FayY92rXvOlyiNUF/5NtXpMsTCv5TPbxLt
-         t3+g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=k4aFKZu7Ir4BTmsKFh4XOyBP0EdUtSdQg2tscndZkEA=;
-        b=dTDYNYh8azxqG0q/OOaeyWgVlchGVQayOj2KZBMFamezPrHhWJptGwZeHXMOtZbt6H
-         VVHBE358KLP+fjgrzEgnQSB1H39B678UJ65VoKd3NMcjNWyGSbb0tI++8HIAKU3wGq4B
-         205yd4LQ/cKUb8G+aN9PiGPkQlZk62gpUSUqyNrbhvDXbohrCcFH04rpQ/7zumnE2dO1
-         jp6fZQ5Vru8o7d1HwpfTFWzrcZUf5eVXS2YRL9oTW5wZPE9y/tnp4M31UUdW/prT0qQV
-         UG7EWRBFvwiY62kt6EeYL8O1RQmsmS0IjbVZKkgsaxDWYo5P2T/CiKpZDeY8NL/EWkuq
-         o6IA==
-X-Gm-Message-State: AGi0PuZLmKGKnbVQ6y6ZYydu51TxUF+13illxV6w4EphOQGlgiWPd6j6
-        HKjBB/PzhKgeqyZ3VGI012pkj6nn
-X-Google-Smtp-Source: APiQypI6Dv6llDwJwnfJOABbUlW+jI5qhq5LP/2DiJmSUuAsbm0PAEAruooW9loMHX/H9QfK/eVfjw==
-X-Received: by 2002:a05:620a:484:: with SMTP id 4mr12021090qkr.1.1589318677925;
-        Tue, 12 May 2020 14:24:37 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id u56sm5261914qtb.91.2020.05.12.14.24.37
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 12 May 2020 14:24:37 -0700 (PDT)
-Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 04CLOarv009963;
-        Tue, 12 May 2020 21:24:36 GMT
-Subject: [PATCH v2 29/29] NFSD: Fix improperly-formatted Doxygen comments
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     bfields@fieldses.org
-Cc:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Tue, 12 May 2020 17:24:36 -0400
-Message-ID: <20200512212436.5826.37327.stgit@klimt.1015granger.net>
-In-Reply-To: <20200512211640.5826.77139.stgit@klimt.1015granger.net>
-References: <20200512211640.5826.77139.stgit@klimt.1015granger.net>
-User-Agent: StGit/0.22-31-g4b47
+        id S1729502AbgEMG1g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 02:27:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45914 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729455AbgEMG1d (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:27:33 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 28F3DC061A0C;
+        Tue, 12 May 2020 23:27:33 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=BLpwCwIpYz3ikENt5wDyD2BUJ7smAfnMj0CZR6I2f/U=; b=nhuXoZu7GOpSo062Lc3aZPDhyR
+        HFTUjOvLwB9j1fovydR6PFkBFNgkqZLxrIctB3s3+akBKFBC8mYeCUATXXX1znMSFD0vj/rENlrvk
+        n1ksDwN+lfjyFcCa3qqjVJRzGNWuvmR/bdZnCNhKMVdkP3UqAYydceUXU8Ph4LKS+4WZUhtskXkdE
+        u5tFSzPIgdm2zdStYsFk4WKRVE5k5gyAqT/bI8GVYDeS/icpcaOeTgm24Dj7rTsyHiA8nKvmK1ObG
+        eih6TfucqTgwcURf3XK6OZkBa+LYmMXDoIVYU8QDCoYDeqHk5ZCkEFOJGKU7mp3VU3OJdX49X5yWO
+        4ymnKDjg==;
+Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jYkr2-0003mH-UE; Wed, 13 May 2020 06:26:57 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     "David S. Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>
+Cc:     Eric Dumazet <edumazet@google.com>,
+        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+        Vlad Yasevich <vyasevich@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Jon Maloy <jmaloy@redhat.com>,
+        Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org,
+        target-devel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-cifs@vger.kernel.org, cluster-devel@redhat.com,
+        ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
+        linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
+        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 02/33] net: add sock_set_linger
+Date:   Wed, 13 May 2020 08:26:17 +0200
+Message-Id: <20200513062649.2100053-3-hch@lst.de>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
+References: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-fs/nfsd/nfsctl.c:256: warning: Function parameter or member 'file' not described in 'write_unlock_ip'
-fs/nfsd/nfsctl.c:256: warning: Function parameter or member 'buf' not described in 'write_unlock_ip'
-fs/nfsd/nfsctl.c:256: warning: Function parameter or member 'size' not described in 'write_unlock_ip'
-fs/nfsd/nfsctl.c:295: warning: Function parameter or member 'file' not described in 'write_unlock_fs'
-fs/nfsd/nfsctl.c:295: warning: Function parameter or member 'buf' not described in 'write_unlock_fs'
-fs/nfsd/nfsctl.c:295: warning: Function parameter or member 'size' not described in 'write_unlock_fs'
-fs/nfsd/nfsctl.c:352: warning: Function parameter or member 'file' not described in 'write_filehandle'
-fs/nfsd/nfsctl.c:352: warning: Function parameter or member 'buf' not described in 'write_filehandle'
-fs/nfsd/nfsctl.c:352: warning: Function parameter or member 'size' not described in 'write_filehandle'
-fs/nfsd/nfsctl.c:434: warning: Function parameter or member 'file' not described in 'write_threads'
-fs/nfsd/nfsctl.c:434: warning: Function parameter or member 'buf' not described in 'write_threads'
-fs/nfsd/nfsctl.c:434: warning: Function parameter or member 'size' not described in 'write_threads'
-fs/nfsd/nfsctl.c:478: warning: Function parameter or member 'file' not described in 'write_pool_threads'
-fs/nfsd/nfsctl.c:478: warning: Function parameter or member 'buf' not described in 'write_pool_threads'
-fs/nfsd/nfsctl.c:478: warning: Function parameter or member 'size' not described in 'write_pool_threads'
-fs/nfsd/nfsctl.c:697: warning: Function parameter or member 'file' not described in 'write_versions'
-fs/nfsd/nfsctl.c:697: warning: Function parameter or member 'buf' not described in 'write_versions'
-fs/nfsd/nfsctl.c:697: warning: Function parameter or member 'size' not described in 'write_versions'
-fs/nfsd/nfsctl.c:858: warning: Function parameter or member 'file' not described in 'write_ports'
-fs/nfsd/nfsctl.c:858: warning: Function parameter or member 'buf' not described in 'write_ports'
-fs/nfsd/nfsctl.c:858: warning: Function parameter or member 'size' not described in 'write_ports'
-fs/nfsd/nfsctl.c:892: warning: Function parameter or member 'file' not described in 'write_maxblksize'
-fs/nfsd/nfsctl.c:892: warning: Function parameter or member 'buf' not described in 'write_maxblksize'
-fs/nfsd/nfsctl.c:892: warning: Function parameter or member 'size' not described in 'write_maxblksize'
-fs/nfsd/nfsctl.c:941: warning: Function parameter or member 'file' not described in 'write_maxconn'
-fs/nfsd/nfsctl.c:941: warning: Function parameter or member 'buf' not described in 'write_maxconn'
-fs/nfsd/nfsctl.c:941: warning: Function parameter or member 'size' not described in 'write_maxconn'
-fs/nfsd/nfsctl.c:1023: warning: Function parameter or member 'file' not described in 'write_leasetime'
-fs/nfsd/nfsctl.c:1023: warning: Function parameter or member 'buf' not described in 'write_leasetime'
-fs/nfsd/nfsctl.c:1023: warning: Function parameter or member 'size' not described in 'write_leasetime'
-fs/nfsd/nfsctl.c:1039: warning: Function parameter or member 'file' not described in 'write_gracetime'
-fs/nfsd/nfsctl.c:1039: warning: Function parameter or member 'buf' not described in 'write_gracetime'
-fs/nfsd/nfsctl.c:1039: warning: Function parameter or member 'size' not described in 'write_gracetime'
-fs/nfsd/nfsctl.c:1094: warning: Function parameter or member 'file' not described in 'write_recoverydir'
-fs/nfsd/nfsctl.c:1094: warning: Function parameter or member 'buf' not described in 'write_recoverydir'
-fs/nfsd/nfsctl.c:1094: warning: Function parameter or member 'size' not described in 'write_recoverydir'
-fs/nfsd/nfsctl.c:1125: warning: Function parameter or member 'file' not described in 'write_v4_end_grace'
-fs/nfsd/nfsctl.c:1125: warning: Function parameter or member 'buf' not described in 'write_v4_end_grace'
-fs/nfsd/nfsctl.c:1125: warning: Function parameter or member 'size' not described in 'write_v4_end_grace'
+Add a helper to directly set the SO_LINGER sockopt from kernel space
+without going through a fake uaccess.
 
-fs/nfsd/nfs4proc.c:1164: warning: Function parameter or member 'nss' not described in 'nfsd4_interssc_connect'
-fs/nfsd/nfs4proc.c:1164: warning: Function parameter or member 'rqstp' not described in 'nfsd4_interssc_connect'
-fs/nfsd/nfs4proc.c:1164: warning: Function parameter or member 'mount' not described in 'nfsd4_interssc_connect'
-fs/nfsd/nfs4proc.c:1262: warning: Function parameter or member 'rqstp' not described in 'nfsd4_setup_inter_ssc'
-fs/nfsd/nfs4proc.c:1262: warning: Function parameter or member 'cstate' not described in 'nfsd4_setup_inter_ssc'
-fs/nfsd/nfs4proc.c:1262: warning: Function parameter or member 'copy' not described in 'nfsd4_setup_inter_ssc'
-fs/nfsd/nfs4proc.c:1262: warning: Function parameter or member 'mount' not described in 'nfsd4_setup_inter_ssc'
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4proc.c |    7 +++----
- fs/nfsd/nfsctl.c   |   26 +++++++++++++-------------
- 2 files changed, 16 insertions(+), 17 deletions(-)
+ drivers/nvme/host/tcp.c   |  9 +--------
+ drivers/nvme/target/tcp.c |  6 +-----
+ include/net/sock.h        |  1 +
+ net/core/sock.c           | 36 +++++++++++++++++++++++++-----------
+ net/rds/tcp_listen.c      |  8 +-------
+ net/sunrpc/svcsock.c      | 12 ++----------
+ 6 files changed, 31 insertions(+), 41 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0e75f7fb5fec..ec1b28d08c1c 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1155,7 +1155,7 @@ extern void nfs_sb_deactive(struct super_block *sb);
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index c15a92163c1f7..5cacb61c73229 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -1313,7 +1313,6 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
+ {
+ 	struct nvme_tcp_ctrl *ctrl = to_tcp_ctrl(nctrl);
+ 	struct nvme_tcp_queue *queue = &ctrl->queues[qid];
+-	struct linger sol = { .l_onoff = 1, .l_linger = 0 };
+ 	int ret, opt, rcv_pdu_size;
  
- #define NFSD42_INTERSSC_MOUNTOPS "vers=4.2,addr=%s,sec=sys"
+ 	queue->ctrl = ctrl;
+@@ -1361,13 +1360,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
+ 	 * close. This is done to prevent stale data from being sent should
+ 	 * the network connection be restored before TCP times out.
+ 	 */
+-	ret = kernel_setsockopt(queue->sock, SOL_SOCKET, SO_LINGER,
+-			(char *)&sol, sizeof(sol));
+-	if (ret) {
+-		dev_err(nctrl->device,
+-			"failed to set SO_LINGER sock opt %d\n", ret);
+-		goto err_sock;
+-	}
++	sock_set_linger(queue->sock->sk, true, 0);
  
--/**
-+/*
-  * Support one copy source server for now.
-  */
- static __be32
-@@ -1245,10 +1245,9 @@ nfsd4_interssc_disconnect(struct vfsmount *ss_mnt)
- 	mntput(ss_mnt);
+ 	if (so_priority > 0) {
+ 		ret = kernel_setsockopt(queue->sock, SOL_SOCKET, SO_PRIORITY,
+diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
+index 791aa32beeb98..87aba417189d2 100644
+--- a/drivers/nvme/target/tcp.c
++++ b/drivers/nvme/target/tcp.c
+@@ -1429,7 +1429,6 @@ static int nvmet_tcp_set_queue_sock(struct nvmet_tcp_queue *queue)
+ {
+ 	struct socket *sock = queue->sock;
+ 	struct inet_sock *inet = inet_sk(sock->sk);
+-	struct linger sol = { .l_onoff = 1, .l_linger = 0 };
+ 	int ret;
+ 
+ 	ret = kernel_getsockname(sock,
+@@ -1447,10 +1446,7 @@ static int nvmet_tcp_set_queue_sock(struct nvmet_tcp_queue *queue)
+ 	 * close. This is done to prevent stale data from being sent should
+ 	 * the network connection be restored before TCP times out.
+ 	 */
+-	ret = kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+-			(char *)&sol, sizeof(sol));
+-	if (ret)
+-		return ret;
++	sock_set_linger(sock->sk, true, 0);
+ 
+ 	if (so_priority > 0) {
+ 		ret = kernel_setsockopt(sock, SOL_SOCKET, SO_PRIORITY,
+diff --git a/include/net/sock.h b/include/net/sock.h
+index e801a147ad746..60890fb47fbc0 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2688,5 +2688,6 @@ static inline bool sk_dev_equal_l3scope(struct sock *sk, int dif)
+ 
+ void sock_def_readable(struct sock *sk);
+ void sock_set_reuseaddr(struct sock *sk, unsigned char reuse);
++void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger);
+ 
+ #endif	/* _SOCK_H */
+diff --git a/net/core/sock.c b/net/core/sock.c
+index ff4faa3e68ac4..cbc5104ca3515 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -720,6 +720,30 @@ void sock_set_reuseaddr(struct sock *sk, unsigned char reuse)
+ }
+ EXPORT_SYMBOL(sock_set_reuseaddr);
+ 
++static void __sock_set_linger(struct sock *sk, bool onoff, unsigned int linger)
++{
++	if (!onoff) {
++		sock_reset_flag(sk, SOCK_LINGER);
++		return;
++	}
++
++#if (BITS_PER_LONG == 32)
++	if (linger >= MAX_SCHEDULE_TIMEOUT / HZ)
++		sk->sk_lingertime = MAX_SCHEDULE_TIMEOUT;
++	else
++#endif
++		sk->sk_lingertime = linger * HZ;
++	sock_set_flag(sk, SOCK_LINGER);
++}
++
++void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger)
++{
++	lock_sock(sk);
++	__sock_set_linger(sk, onoff, linger);
++	release_sock(sk);
++}
++EXPORT_SYMBOL(sock_set_linger);
++
+ /*
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
+@@ -886,17 +910,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+-		if (!ling.l_onoff)
+-			sock_reset_flag(sk, SOCK_LINGER);
+-		else {
+-#if (BITS_PER_LONG == 32)
+-			if ((unsigned int)ling.l_linger >= MAX_SCHEDULE_TIMEOUT/HZ)
+-				sk->sk_lingertime = MAX_SCHEDULE_TIMEOUT;
+-			else
+-#endif
+-				sk->sk_lingertime = (unsigned int)ling.l_linger * HZ;
+-			sock_set_flag(sk, SOCK_LINGER);
+-		}
++		__sock_set_linger(sk, ling.l_onoff, ling.l_linger);
+ 		break;
+ 
+ 	case SO_BSDCOMPAT:
+diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
+index 810a3a49e9474..96f7538e5fa8d 100644
+--- a/net/rds/tcp_listen.c
++++ b/net/rds/tcp_listen.c
+@@ -113,13 +113,7 @@ struct rds_tcp_connection *rds_tcp_accept_one_path(struct rds_connection *conn)
+ 
+ void rds_tcp_set_linger(struct socket *sock)
+ {
+-	struct linger no_linger = {
+-		.l_onoff = 1,
+-		.l_linger = 0,
+-	};
+-
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+-			  (char *)&no_linger, sizeof(no_linger));
++	sock_set_linger(sock->sk, true, 0);
  }
  
--/**
-- * nfsd4_setup_inter_ssc
-- *
-+/*
-  * Verify COPY destination stateid.
-+ *
-  * Connect to the source server with NFSv4.1.
-  * Create the source struct file for nfsd_copy_range.
-  * Called with COPY cstate:
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 3bb2db947d29..b48eac3bb72b 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -238,7 +238,7 @@ static inline struct net *netns(struct file *file)
- 	return file_inode(file)->i_sb->s_fs_info;
+ int rds_tcp_accept_one(struct socket *sock)
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 023514e392b31..0f6b78d0e6170 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -323,17 +323,9 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ 
+ static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
+ {
+-	struct svc_sock *svsk;
+-	struct socket *sock;
+-	struct linger no_linger = {
+-		.l_onoff = 1,
+-		.l_linger = 0,
+-	};
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
+ 
+-	svsk = container_of(xprt, struct svc_sock, sk_xprt);
+-	sock = svsk->sk_sock;
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
+-			  (char *)&no_linger, sizeof(no_linger));
++	sock_set_linger(svsk->sk_sock->sk, true, 0);
  }
  
--/**
-+/*
-  * write_unlock_ip - Release all locks used by a client
-  *
-  * Experimental.
-@@ -277,7 +277,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
- 	return nlmsvc_unlock_all_by_ip(sap);
- }
- 
--/**
-+/*
-  * write_unlock_fs - Release all locks on a local file system
-  *
-  * Experimental.
-@@ -327,7 +327,7 @@ static ssize_t write_unlock_fs(struct file *file, char *buf, size_t size)
- 	return error;
- }
- 
--/**
-+/*
-  * write_filehandle - Get a variable-length NFS file handle by path
-  *
-  * On input, the buffer contains a '\n'-terminated C string comprised of
-@@ -402,7 +402,7 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
- 	return mesg - buf;	
- }
- 
--/**
-+/*
-  * write_threads - Start NFSD, or report the current number of running threads
-  *
-  * Input:
-@@ -452,7 +452,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
- 	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n", rv);
- }
- 
--/**
-+/*
-  * write_pool_threads - Set or report the current number of threads per pool
-  *
-  * Input:
-@@ -661,7 +661,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 	return tlen + len;
- }
- 
--/**
-+/*
-  * write_versions - Set or report the available NFS protocol versions
-  *
-  * Input:
-@@ -811,7 +811,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size,
- 	return -EINVAL;
- }
- 
--/**
-+/*
-  * write_ports - Pass a socket file descriptor or transport name to listen on
-  *
-  * Input:
-@@ -867,7 +867,7 @@ static ssize_t write_ports(struct file *file, char *buf, size_t size)
- 
- int nfsd_max_blksize;
- 
--/**
-+/*
-  * write_maxblksize - Set or report the current NFS blksize
-  *
-  * Input:
-@@ -917,7 +917,7 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
- 							nfsd_max_blksize);
- }
- 
--/**
-+/*
-  * write_maxconn - Set or report the current max number of connections
-  *
-  * Input:
-@@ -998,7 +998,7 @@ static ssize_t nfsd4_write_time(struct file *file, char *buf, size_t size,
- 	return rv;
- }
- 
--/**
-+/*
-  * write_leasetime - Set or report the current NFSv4 lease time
-  *
-  * Input:
-@@ -1025,7 +1025,7 @@ static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
- 	return nfsd4_write_time(file, buf, size, &nn->nfsd4_lease, nn);
- }
- 
--/**
-+/*
-  * write_gracetime - Set or report current NFSv4 grace period time
-  *
-  * As above, but sets the time of the NFSv4 grace period.
-@@ -1069,7 +1069,7 @@ static ssize_t __write_recoverydir(struct file *file, char *buf, size_t size,
- 							nfs4_recoverydir());
- }
- 
--/**
-+/*
-  * write_recoverydir - Set or report the pathname of the recovery directory
-  *
-  * Input:
-@@ -1101,7 +1101,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- 	return rv;
- }
- 
--/**
-+/*
-  * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
-  *
-  * Input:
+ /*
+-- 
+2.26.2
 
