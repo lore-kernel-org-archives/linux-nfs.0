@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BCCCC2D0FD
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B11BC2D0F8
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0B703206A5
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B8D120718
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:32:24 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="qenFgteX"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="a2OmO8ud"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729932AbgEMG2R (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 02:28:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46038 "EHLO
+        id S1729522AbgEMGcN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 02:32:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46032 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729904AbgEMG2P (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:15 -0400
+        with ESMTP id S1729880AbgEMG2O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:14 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0D2A9C061A0E;
-        Tue, 12 May 2020 23:28:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F4A2C061A0C;
+        Tue, 12 May 2020 23:28:14 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=IEh9ZmFO5wqxAq2bKvDDXMAdX0GdkIAJdFHyY8t97p8=; b=qenFgteXPMvirhjEH2enSeyV21
-        f4E+NEvJ9QbgSFZvZtp0iTzaa7y5uByORVHVlIdzeIIzXe0Ihnv/g3E7oECj48+tEcP3LFhD+pc+G
-        kx7ymBLjEMXF4lv+JFUYt1209tyklN+RSCRGczbQ6UQZQDJAEF5N9RPwO/lOhOImcXhAdT8/AvfnT
-        OsbwRKlVoMX5plFMUr1gR6Lc+o5xj2eH05lulOd6vsIHm27b0ut4FsvtP0SllvJ5YyhokrX2XmnFg
-        OxmWWt/8cLwAa6uKDTD6mJOgvYQyhtc00TsCmkFESx0Fqqh4Mg/74QFEdFbI1/qdqIWt9YvlHn09W
-        58MCTq0Q==;
+        bh=eyAruZdqZ/GqReCoW2dlggnX7vcsXfgyfym1psK0Qy4=; b=a2OmO8ud3Y4vygBhHR40fF0YjS
+        8mkgDk7og1F5E3P3drhZCOzPZHbda6MmDSPrJL5HeaQHGzLvVFo8+H35posIZtH+PT4iY03rHic03
+        BFV7pe2lKPcgLCucmv4E9ZLHEG3Oid/a7VT/xh3Mj+YvtfEohgQhOPQamWFYhD7IV4bAnuyhvLgLr
+        4c32T3A/Svju9rvMlZ6b+3Q/MW6UoYHnn/QCAw42J0zBr5U2+1txx9nUtNbUdu6Rf5pk4OFdIjQTa
+        wvS+9lHzoQd8BgueBVfCa8V4V4fUQZOSi/VIyL0P0P4qOhc9SFNpWJkRmDDNeaboacwY7tCPSXzh9
+        ZPgMG0ig==;
 Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYkrF-0003zu-13; Wed, 13 May 2020 06:27:09 +0000
+        id 1jYkrg-0004QD-3a; Wed, 13 May 2020 06:27:36 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
         linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 06/33] net: add sock_set_timestamps
-Date:   Wed, 13 May 2020 08:26:21 +0200
-Message-Id: <20200513062649.2100053-7-hch@lst.de>
+Subject: [PATCH 15/33] tcp: add tcp_sock_set_keepidle
+Date:   Wed, 13 May 2020 08:26:30 +0200
+Message-Id: <20200513062649.2100053-16-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 References: <20200513062649.2100053-1-hch@lst.de>
@@ -69,115 +69,125 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the SO_TIMESTAMP* sockopts from kernel space
-without going through a fake uaccess.
+Add a helper to directly set the TCP_KEEP_IDLE sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/sock.h       |  1 +
- net/core/sock.c          | 47 +++++++++++++++++++++++++---------------
- net/rxrpc/local_object.c |  8 +------
- 3 files changed, 31 insertions(+), 25 deletions(-)
+ include/linux/tcp.h   |  1 +
+ net/ipv4/tcp.c        | 49 ++++++++++++++++++++++++++++++-------------
+ net/rds/tcp_listen.c  |  5 +----
+ net/sunrpc/xprtsock.c |  3 +--
+ 4 files changed, 37 insertions(+), 21 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index b63ea15362065..cf8a30e0168de 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2692,5 +2692,6 @@ void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger);
- void sock_set_priority(struct sock *sk, u32 priority);
- void sock_set_sndtimeo(struct sock *sk, unsigned int secs);
- int sock_bindtoindex(struct sock *sk, int ifindex);
-+void sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns);
+diff --git a/include/linux/tcp.h b/include/linux/tcp.h
+index 69c988f84a184..4d3a3e959e45b 100644
+--- a/include/linux/tcp.h
++++ b/include/linux/tcp.h
+@@ -499,5 +499,6 @@ void tcp_sock_set_nodelay(struct sock *sk, bool on);
+ void tcp_sock_set_quickack(struct sock *sk, int val);
+ int tcp_sock_set_syncnt(struct sock *sk, int val);
+ void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
++int tcp_sock_set_keepidle(struct sock *sk, int val);
  
- #endif	/* _SOCK_H */
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 4b7439308caec..1589f242ecc7e 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -772,6 +772,28 @@ void sock_set_sndtimeo(struct sock *sk, unsigned int secs)
+ #endif	/* _LINUX_TCP_H */
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 9a8d062b17a48..22eb9159c7d05 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -2890,6 +2890,39 @@ void tcp_sock_set_user_timeout(struct sock *sk, u32 val)
  }
- EXPORT_SYMBOL(sock_set_sndtimeo);
+ EXPORT_SYMBOL(tcp_sock_set_user_timeout);
  
-+static void __sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns)
++static int __tcp_sock_set_keepidle(struct sock *sk, int val)
 +{
-+	if (val)  {
-+		sock_valbool_flag(sk, SOCK_TSTAMP_NEW, new);
-+		sock_valbool_flag(sk, SOCK_RCVTSTAMPNS, ns);
-+		sock_set_flag(sk, SOCK_RCVTSTAMP);
-+		sock_enable_timestamp(sk, SOCK_TIMESTAMP);
-+	} else {
-+		sock_reset_flag(sk, SOCK_RCVTSTAMP);
-+		sock_reset_flag(sk, SOCK_RCVTSTAMPNS);
-+		sock_reset_flag(sk, SOCK_TSTAMP_NEW);
++	struct tcp_sock *tp = tcp_sk(sk);
++
++	if (val < 1 || val > MAX_TCP_KEEPIDLE)
++		return -EINVAL;
++
++	tp->keepalive_time = val * HZ;
++	if (sock_flag(sk, SOCK_KEEPOPEN) &&
++	    !((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_LISTEN))) {
++		u32 elapsed = keepalive_time_elapsed(tp);
++
++		if (tp->keepalive_time > elapsed)
++			elapsed = tp->keepalive_time - elapsed;
++		else
++			elapsed = 0;
++		inet_csk_reset_keepalive_timer(sk, elapsed);
 +	}
++
++	return 0;
 +}
 +
-+void sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns)
++int tcp_sock_set_keepidle(struct sock *sk, int val)
 +{
++	int err;
++
 +	lock_sock(sk);
-+	__sock_set_timestamps(sk, val, new, ns);
++	err = __tcp_sock_set_keepidle(sk, val);
 +	release_sock(sk);
++	return err;
 +}
-+EXPORT_SYMBOL(sock_set_timestamps);
++EXPORT_SYMBOL(tcp_sock_set_keepidle);
 +
  /*
-  *	This is meant for all protocols to use and covers goings on
-  *	at the socket level. Everything here is generic.
-@@ -953,28 +975,17 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+  *	Socket option code for TCP.
+  */
+@@ -3059,21 +3092,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
  		break;
  
- 	case SO_TIMESTAMP_OLD:
-+		__sock_set_timestamps(sk, valbool, false, false);
-+		break;
- 	case SO_TIMESTAMP_NEW:
-+		__sock_set_timestamps(sk, valbool, true, false);
-+		break;
- 	case SO_TIMESTAMPNS_OLD:
-+		__sock_set_timestamps(sk, valbool, false, true);
-+		break;
- 	case SO_TIMESTAMPNS_NEW:
--		if (valbool)  {
--			if (optname == SO_TIMESTAMP_NEW || optname == SO_TIMESTAMPNS_NEW)
--				sock_set_flag(sk, SOCK_TSTAMP_NEW);
--			else
--				sock_reset_flag(sk, SOCK_TSTAMP_NEW);
--
--			if (optname == SO_TIMESTAMP_OLD || optname == SO_TIMESTAMP_NEW)
--				sock_reset_flag(sk, SOCK_RCVTSTAMPNS);
--			else
--				sock_set_flag(sk, SOCK_RCVTSTAMPNS);
--			sock_set_flag(sk, SOCK_RCVTSTAMP);
--			sock_enable_timestamp(sk, SOCK_TIMESTAMP);
--		} else {
--			sock_reset_flag(sk, SOCK_RCVTSTAMP);
--			sock_reset_flag(sk, SOCK_RCVTSTAMPNS);
--			sock_reset_flag(sk, SOCK_TSTAMP_NEW);
+ 	case TCP_KEEPIDLE:
+-		if (val < 1 || val > MAX_TCP_KEEPIDLE)
+-			err = -EINVAL;
+-		else {
+-			tp->keepalive_time = val * HZ;
+-			if (sock_flag(sk, SOCK_KEEPOPEN) &&
+-			    !((1 << sk->sk_state) &
+-			      (TCPF_CLOSE | TCPF_LISTEN))) {
+-				u32 elapsed = keepalive_time_elapsed(tp);
+-				if (tp->keepalive_time > elapsed)
+-					elapsed = tp->keepalive_time - elapsed;
+-				else
+-					elapsed = 0;
+-				inet_csk_reset_keepalive_timer(sk, elapsed);
+-			}
 -		}
-+		__sock_set_timestamps(sk, valbool, true, true);
++		err = __tcp_sock_set_keepidle(sk, val);
  		break;
--
- 	case SO_TIMESTAMPING_NEW:
- 		sock_set_flag(sk, SOCK_TSTAMP_NEW);
- 		/* fall through */
-diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
-index 01135e54d95d2..562ea36c96b0f 100644
---- a/net/rxrpc/local_object.c
-+++ b/net/rxrpc/local_object.c
-@@ -189,13 +189,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
- 		}
+ 	case TCP_KEEPINTVL:
+ 		if (val < 1 || val > MAX_TCP_KEEPINTVL)
+diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
+index e76ec64b43fe7..8c76969d8c878 100644
+--- a/net/rds/tcp_listen.c
++++ b/net/rds/tcp_listen.c
+@@ -52,10 +52,7 @@ int rds_tcp_keepalive(struct socket *sock)
+ 	if (ret < 0)
+ 		goto bail;
  
- 		/* We want receive timestamps. */
--		opt = 1;
--		ret = kernel_setsockopt(local->socket, SOL_SOCKET, SO_TIMESTAMPNS_OLD,
--					(char *)&opt, sizeof(opt));
--		if (ret < 0) {
--			_debug("setsockopt failed");
--			goto error;
--		}
-+		sock_set_timestamps(local->socket->sk, true, false, true);
- 		break;
+-	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE,
+-				(char *)&keepidle, sizeof(keepidle));
+-	if (ret < 0)
+-		goto bail;
++	tcp_sock_set_keepidle(sock->sk, keepidle);
  
- 	default:
+ 	/* KEEPINTVL is the interval between successive probes. We follow
+ 	 * the model in xs_tcp_finish_connecting() and re-use keepidle.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 30d4c4fcd3e38..ea79446789c69 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2107,8 +2107,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 
+ 	/* TCP Keepalive options */
+ 	sock_set_keepalive(sock->sk, 1);
+-	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
+-			(char *)&keepidle, sizeof(keepidle));
++	tcp_sock_set_keepidle(sock->sk, keepidle);
+ 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
+ 			(char *)&keepidle, sizeof(keepidle));
+ 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
 -- 
 2.26.2
 
