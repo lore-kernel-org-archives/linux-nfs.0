@@ -2,193 +2,101 @@ Return-Path: <SRS0=+TNs=63=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URI_NOVOWEL
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3B36C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 16:30:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B70F0C433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 17:39:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 406FA2054F
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 16:30:11 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="VyWTH6pd"
+	by mail.kernel.org (Postfix) with ESMTP id 4AEFC20659
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 17:39:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389431AbgEMQaK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 12:30:10 -0400
-Received: from us-smtp-2.mimecast.com ([207.211.31.81]:60649 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1730731AbgEMQaK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 12:30:10 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1589387407;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=Exm4qW0Af39SzPt80LsptZOAW+umrHL7Qe+EiZz4je4=;
-        b=VyWTH6pd0crDy5jP4an0wsjQP6b6ar7NQe33yJp0VZKJevMP6W+t6EtpQfcweaLTpvGM/X
-        N488oEETBDiaJU4oE8Ptrkj2sHRoPulJ1riUdcebv4JRjJyQSRHd6gCxTYtOe+iU5Ak3p5
-        vCGaB5s2syRBFNHDe3NYj78yGtXaqZ4=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-207-IHuHKQgmOsSQPy6D40yBnw-1; Wed, 13 May 2020 12:29:53 -0400
-X-MC-Unique: IHuHKQgmOsSQPy6D40yBnw-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9266AEC1A9
-        for <linux-nfs@vger.kernel.org>; Wed, 13 May 2020 16:29:52 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-112-12.phx2.redhat.com [10.3.112.12])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 50B8599D6
-        for <linux-nfs@vger.kernel.org>; Wed, 13 May 2020 16:29:52 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsdclddb: Redname clddb-tool to nfsdclddb
-Date:   Wed, 13 May 2020 12:29:50 -0400
-Message-Id: <20200513162950.186930-1-steved@redhat.com>
+        id S1732731AbgEMRjH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 13:39:07 -0400
+Received: from smtprelay0150.hostedemail.com ([216.40.44.150]:54324 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1732694AbgEMRjG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 13:39:06 -0400
+Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
+        by smtprelay05.hostedemail.com (Postfix) with ESMTP id 213E41802912F;
+        Wed, 13 May 2020 17:39:05 +0000 (UTC)
+X-Session-Marker: 6A6F6540706572636865732E636F6D
+X-HE-Tag: watch82_4eccc56996d20
+X-Filterd-Recvd-Size: 2964
+Received: from XPS-9350.home (unknown [47.151.136.130])
+        (Authenticated sender: joe@perches.com)
+        by omf13.hostedemail.com (Postfix) with ESMTPA;
+        Wed, 13 May 2020 17:39:01 +0000 (UTC)
+Message-ID: <ecc165c33962d964d518c80de605af632eee0474.camel@perches.com>
+Subject: Re: remove kernel_setsockopt and kernel_getsockopt
+From:   Joe Perches <joe@perches.com>
+To:     Christoph Hellwig <hch@lst.de>,
+        "David S. Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>
+Cc:     Eric Dumazet <edumazet@google.com>,
+        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+        Vlad Yasevich <vyasevich@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Jon Maloy <jmaloy@redhat.com>,
+        Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org,
+        target-devel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-cifs@vger.kernel.org, cluster-devel@redhat.com,
+        ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
+        linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
+        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Date:   Wed, 13 May 2020 10:38:59 -0700
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
+References: <20200513062649.2100053-1-hch@lst.de>
+Content-Type: text/plain; charset="ISO-8859-1"
+User-Agent: Evolution 3.36.1-2 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-To try to maintain some type of name convention
-rename clddb-tool to nfsdclddb
+On Wed, 2020-05-13 at 08:26 +0200, Christoph Hellwig wrote:
+> this series removes the kernel_setsockopt and kernel_getsockopt
+> functions, and instead switches their users to small functions that
+> implement setting (or in one case getting) a sockopt directly using
+> a normal kernel function call with type safety and all the other
+> benefits of not having a function call.
+> 
+> In some cases these functions seem pretty heavy handed as they do
+> a lock_sock even for just setting a single variable, but this mirrors
+> the real setsockopt implementation - counter to that a few kernel
+> drivers just set the fields directly already.
+> 
+> Nevertheless the diffstat looks quite promising:
+> 
+>  42 files changed, 721 insertions(+), 799 deletions(-)
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- configure.ac                                  |  2 +-
- tools/Makefile.am                             |  2 +-
- tools/{clddb-tool => nfsdclddb}/Makefile.am   |  6 +++---
- .../nfsdclddb.man}                            | 20 +++++++++----------
- .../clddb-tool.py => nfsdclddb/nfsdclddb.py}  |  0
- 5 files changed, 15 insertions(+), 15 deletions(-)
- rename tools/{clddb-tool => nfsdclddb}/Makefile.am (60%)
- rename tools/{clddb-tool/clddb-tool.man => nfsdclddb/nfsdclddb.man} (84%)
- rename tools/{clddb-tool/clddb-tool.py => nfsdclddb/nfsdclddb.py} (100%)
+trivia:
 
-diff --git a/configure.ac b/configure.ac
-index df88e58..0b1c8cc 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -695,7 +695,7 @@ AC_CONFIG_FILES([
- 	tools/mountstats/Makefile
- 	tools/nfs-iostat/Makefile
- 	tools/nfsconf/Makefile
--	tools/clddb-tool/Makefile
-+	tools/nfsdclddb/Makefile
- 	utils/Makefile
- 	utils/blkmapd/Makefile
- 	utils/nfsdcld/Makefile
-diff --git a/tools/Makefile.am b/tools/Makefile.am
-index 53e6117..432d35d 100644
---- a/tools/Makefile.am
-+++ b/tools/Makefile.am
-@@ -9,7 +9,7 @@ endif
- OPTDIRS += nfsconf
- 
- if CONFIG_NFSDCLD
--OPTDIRS += clddb-tool
-+OPTDIRS += nfsdclddb
- endif
- 
- SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat $(OPTDIRS)
-diff --git a/tools/clddb-tool/Makefile.am b/tools/nfsdclddb/Makefile.am
-similarity index 60%
-rename from tools/clddb-tool/Makefile.am
-rename to tools/nfsdclddb/Makefile.am
-index 15a8fd4..18263fb 100644
---- a/tools/clddb-tool/Makefile.am
-+++ b/tools/nfsdclddb/Makefile.am
-@@ -1,13 +1,13 @@
- ## Process this file with automake to produce Makefile.in
--PYTHON_FILES =  clddb-tool.py
-+PYTHON_FILES =  nfsdclddb.py
- 
--man8_MANS	= clddb-tool.man
-+man8_MANS	= nfsdclddb.man
- 
- EXTRA_DIST	= $(man8_MANS) $(PYTHON_FILES)
- 
- all-local: $(PYTHON_FILES)
- 
- install-data-hook:
--	$(INSTALL) -m 755 clddb-tool.py $(DESTDIR)$(sbindir)/clddb-tool
-+	$(INSTALL) -m 755 nfsdclddb.py $(DESTDIR)$(sbindir)/nfsdclddb
- 
- MAINTAINERCLEANFILES=Makefile.in
-diff --git a/tools/clddb-tool/clddb-tool.man b/tools/nfsdclddb/nfsdclddb.man
-similarity index 84%
-rename from tools/clddb-tool/clddb-tool.man
-rename to tools/nfsdclddb/nfsdclddb.man
-index e80b2c0..8ec7b18 100644
---- a/tools/clddb-tool/clddb-tool.man
-+++ b/tools/nfsdclddb/nfsdclddb.man
-@@ -1,20 +1,20 @@
- .\"
--.\" clddb-tool(8)
-+.\" nfsdclddb(8)
- .\"
--.TH clddb-tool 8 "07 Aug 2019"
-+.TH nfsdclddb 8 "07 Aug 2019"
- .SH NAME
--clddb-tool \- Tool for manipulating the nfsdcld sqlite database
-+nfsdclddb \- Tool for manipulating the nfsdcld sqlite database
- .SH SYNOPSIS
--.B clddb-tool
-+.B nfsdclddb
- .RB [ \-h | \-\-help ]
- .P
--.B clddb-tool
-+.B nfsdclddb
- .RB [ \-p | \-\-path
- .IR dbpath ]
- .B fix-table-names
- .RB [ \-h | \-\-help ]
- .P
--.B clddb-tool
-+.B nfsdclddb
- .RB [ \-p | \-\-path
- .IR dbpath ]
- .B downgrade-schema
-@@ -22,7 +22,7 @@ clddb-tool \- Tool for manipulating the nfsdcld sqlite database
- .RB [ \-v | \-\-version
- .IR to-version ]
- .P
--.B clddb-tool
-+.B nfsdclddb
- .RB [ \-p | \-\-path
- .IR dbpath ]
- .B print
-@@ -31,10 +31,10 @@ clddb-tool \- Tool for manipulating the nfsdcld sqlite database
- .P
- 
- .SH DESCRIPTION
--.RB "The " clddb-tool " command is provided to perform some manipulation of the nfsdcld sqlite database schema and to print the contents of the database."
-+.RB "The " nfsdclddb " command is provided to perform some manipulation of the nfsdcld sqlite database schema and to print the contents of the database."
- .SS Sub-commands
- Valid
--.B clddb-tool
-+.B nfsdclddb
- subcommands are:
- .IP "\fBfix-table-names\fP"
- .RB "A previous version of " nfsdcld "(8) contained a bug that corrupted the reboot epoch table names.  This sub-command will fix those table names."
-@@ -66,7 +66,7 @@ The schema version to downgrade to.  Currently the schema can only be downgraded
- Do not list the clients in the reboot epoch tables in the output.
- .SH NOTES
- The
--.B clddb-tool
-+.B nfsdclddb
- command will not allow the
- .B fix-table-names
- or
-diff --git a/tools/clddb-tool/clddb-tool.py b/tools/nfsdclddb/nfsdclddb.py
-similarity index 100%
-rename from tools/clddb-tool/clddb-tool.py
-rename to tools/nfsdclddb/nfsdclddb.py
--- 
-2.24.1
+It might be useful to show overall object size change.
+
+More EXPORT_SYMBOL uses increase object size a little.
+
+And not sure it matters much except it reduces overall object
+size, but these patches remove (unnecessary) logging on error
+and that could be mentioned in the cover letter too.
+
+e.g.:
+
+-       ret = kernel_setsockopt(queue->sock, SOL_SOCKET, SO_LINGER,
+-                       (char *)&sol, sizeof(sol));
+-       if (ret) {
+-               dev_err(nctrl->device,
+-                       "failed to set SO_LINGER sock opt %d\n", ret);
+-               goto err_sock;
+-       }
++       sock_set_linger(queue->sock->sk, true, 0);
+
+
 
