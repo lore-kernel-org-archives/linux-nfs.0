@@ -4,39 +4,39 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 021E2C2D0FD
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:27:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FBDEC2D0F8
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:29:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D5E40206F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:27:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 20C09206F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:29:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="fVaTPPyQ"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="pxhQaa1U"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729437AbgEMG1w (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 02:27:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45960 "EHLO
+        id S1732176AbgEMG3F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 02:29:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46204 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729126AbgEMG1v (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:27:51 -0400
+        with ESMTP id S1732108AbgEMG3D (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:29:03 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7DEBCC061A0C;
-        Tue, 12 May 2020 23:27:51 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D1DBC061A0E;
+        Tue, 12 May 2020 23:29:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=Yll3LCPJutUiti34Ki4uSQu1Yod3OpGLSI0ZUkOV0es=; b=fVaTPPyQ4BtT0M8ekjDS78Wb9d
-        M8I6DK33t8lIVkxbaHtMLKAZ2IqvfPjgpQucDW+uYpNWLjpjjsAiEpPjtWS5DnsHmEuEawjUM+Q3q
-        rpM4zoHJRwfp/e3tWizs/J0wXunGbDwD2TcJ29bRVrFdsutbMtjcpyK94rKyrBEUtb1JmAM9pC+GK
-        iGGcP6ux1/HKgoYnJLMWsosI6+i9M9vApVbLrrflK0fpWcowTgQ42xFJXlA9V64+X2p+s58R7diRe
-        V1AO+TSBlgkduGSYdXguiyzxy0KwoInAqysUqGPQGzvFq43RAgWTapgLvhV/5xo3fZfS1sGFwjwNF
-        FFUDzXwg==;
+        bh=qKkhwwH9olQLFLmlxkgq6ArpL5LZdN1qvB6lNx/Jjh4=; b=pxhQaa1U3KdOYtasAWRKCqw1OY
+        h9pkNE8ZzmKVddyFpFJPgmglClzT+hi+8ZoptLUGpUcB4Hrq5tRvsDhx7+fgOE6dEDeo6YnDV1Vp2
+        UOfi6F+biZdnG6q9Ovti2wad8/1htWsC0Bd55R2/v3BkHAxCsP1BUyO2stG7UlAXQtesrpqXCl/A6
+        KnVqnWKYly8p7osClxbUay1UAGC6MiZx4eWsGZB8dF7G1JhMbRFOgxXKMI2kto3djEyr16ajaBxRd
+        pmAj+oMJI7ZKFntig/ZE+zERUM7tHZrD8dYQxcWddYZhMxaoHUlULvr7C7Id1uGdjLvSBsLgk+ktF
+        zXqdP1ZQ==;
 Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYkrB-0003wN-SH; Wed, 13 May 2020 06:27:06 +0000
+        id 1jYks6-0004pR-63; Wed, 13 May 2020 06:28:02 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
         linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 05/33] net: add sock_bindtoindex
-Date:   Wed, 13 May 2020 08:26:20 +0200
-Message-Id: <20200513062649.2100053-6-hch@lst.de>
+Subject: [PATCH 23/33] ipv6: add ip6_sock_set_recverr
+Date:   Wed, 13 May 2020 08:26:38 +0200
+Message-Id: <20200513062649.2100053-24-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 References: <20200513062649.2100053-1-hch@lst.de>
@@ -69,111 +69,76 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the SO_BINDTOIFINDEX sockopt from kernel
-space without going through a fake uaccess.
+Add a helper to directly set the IPV6_RECVERR sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/sock.h        |  1 +
- net/core/sock.c           | 21 +++++++++++++++------
- net/ipv4/udp_tunnel.c     |  4 +---
- net/ipv6/ip6_udp_tunnel.c |  4 +---
- 4 files changed, 18 insertions(+), 12 deletions(-)
+ include/net/ipv6.h       |  1 +
+ net/ipv6/ipv6_sockglue.c | 10 ++++++++++
+ net/rxrpc/local_object.c | 10 ++--------
+ 3 files changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 809596ffd32d2..b63ea15362065 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2691,5 +2691,6 @@ void sock_set_reuseaddr(struct sock *sk, unsigned char reuse);
- void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger);
- void sock_set_priority(struct sock *sk, u32 priority);
- void sock_set_sndtimeo(struct sock *sk, unsigned int secs);
-+int sock_bindtoindex(struct sock *sk, int ifindex);
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index e24b59201a00d..69bc1651aaef8 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -1176,5 +1176,6 @@ int ipv6_sock_mc_drop(struct sock *sk, int ifindex,
+ 		      const struct in6_addr *addr);
  
- #endif	/* _SOCK_H */
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 76527681e50b9..4b7439308caec 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -566,7 +566,7 @@ struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie)
+ int ip6_sock_set_v6only(struct sock *sk, bool val);
++void ip6_sock_set_recverr(struct sock *sk, bool val);
+ 
+ #endif /* _NET_IPV6_H */
+diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
+index f26224bb3e098..3c67626b6f5a9 100644
+--- a/net/ipv6/ipv6_sockglue.c
++++ b/net/ipv6/ipv6_sockglue.c
+@@ -147,6 +147,16 @@ int ip6_sock_set_v6only(struct sock *sk, bool val)
  }
- EXPORT_SYMBOL(sk_dst_check);
+ EXPORT_SYMBOL(ip6_sock_set_v6only);
  
--static int sock_setbindtodevice_locked(struct sock *sk, int ifindex)
-+static int sock_bindtoindex_locked(struct sock *sk, int ifindex)
- {
- 	int ret = -ENOPROTOOPT;
- #ifdef CONFIG_NETDEVICES
-@@ -594,6 +594,18 @@ static int sock_setbindtodevice_locked(struct sock *sk, int ifindex)
- 	return ret;
- }
- 
-+int sock_bindtoindex(struct sock *sk, int ifindex)
++void ip6_sock_set_recverr(struct sock *sk, bool val)
 +{
-+	int ret;
-+
 +	lock_sock(sk);
-+	ret = sock_bindtoindex_locked(sk, ifindex);
++	inet6_sk(sk)->recverr = val;
++	if (!val)
++		skb_queue_purge(&sk->sk_error_queue);
 +	release_sock(sk);
-+
-+	return ret;
 +}
-+EXPORT_SYMBOL(sock_bindtoindex);
++EXPORT_SYMBOL(ip6_sock_set_recverr);
 +
- static int sock_setbindtodevice(struct sock *sk, char __user *optval,
- 				int optlen)
+ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 		    char __user *optval, unsigned int optlen)
  {
-@@ -634,10 +646,7 @@ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
- 			goto out;
- 	}
+diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
+index 20236ddecd2ef..5e356a63aa791 100644
+--- a/net/rxrpc/local_object.c
++++ b/net/rxrpc/local_object.c
+@@ -107,7 +107,7 @@ static struct rxrpc_local *rxrpc_alloc_local(struct rxrpc_net *rxnet,
+ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+ {
+ 	struct sock *usk;
+-	int ret, opt;
++	int ret;
  
--	lock_sock(sk);
--	ret = sock_setbindtodevice_locked(sk, index);
--	release_sock(sk);
--
-+	return sock_bindtoindex(sk, index);
- out:
- #endif
+ 	_enter("%p{%d,%d}",
+ 	       local, local->srx.transport_type, local->srx.transport.family);
+@@ -157,13 +157,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+ 	switch (local->srx.transport.family) {
+ 	case AF_INET6:
+ 		/* we want to receive ICMPv6 errors */
+-		opt = 1;
+-		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_RECVERR,
+-					(char *) &opt, sizeof(opt));
+-		if (ret < 0) {
+-			_debug("setsockopt failed");
+-			goto error;
+-		}
++		ip6_sock_set_recverr(local->socket->sk, true);
  
-@@ -1221,7 +1230,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 		break;
- 
- 	case SO_BINDTOIFINDEX:
--		ret = sock_setbindtodevice_locked(sk, val);
-+		ret = sock_bindtoindex_locked(sk, val);
- 		break;
- 
- 	default:
-diff --git a/net/ipv4/udp_tunnel.c b/net/ipv4/udp_tunnel.c
-index 150e6f0fdbf59..2158e8bddf41c 100644
---- a/net/ipv4/udp_tunnel.c
-+++ b/net/ipv4/udp_tunnel.c
-@@ -22,9 +22,7 @@ int udp_sock_create4(struct net *net, struct udp_port_cfg *cfg,
- 		goto error;
- 
- 	if (cfg->bind_ifindex) {
--		err = kernel_setsockopt(sock, SOL_SOCKET, SO_BINDTOIFINDEX,
--					(void *)&cfg->bind_ifindex,
--					sizeof(cfg->bind_ifindex));
-+		err = sock_bindtoindex(sock->sk, cfg->bind_ifindex);
- 		if (err < 0)
- 			goto error;
- 	}
-diff --git a/net/ipv6/ip6_udp_tunnel.c b/net/ipv6/ip6_udp_tunnel.c
-index 58956a6b66a21..6523609516d25 100644
---- a/net/ipv6/ip6_udp_tunnel.c
-+++ b/net/ipv6/ip6_udp_tunnel.c
-@@ -33,9 +33,7 @@ int udp_sock_create6(struct net *net, struct udp_port_cfg *cfg,
- 			goto error;
- 	}
- 	if (cfg->bind_ifindex) {
--		err = kernel_setsockopt(sock, SOL_SOCKET, SO_BINDTOIFINDEX,
--					(void *)&cfg->bind_ifindex,
--					sizeof(cfg->bind_ifindex));
-+		err = sock_bindtoindex(sock->sk, cfg->bind_ifindex);
- 		if (err < 0)
- 			goto error;
- 	}
+ 		/* Fall through and set IPv4 options too otherwise we don't get
+ 		 * errors from IPv4 packets sent through the IPv6 socket.
 -- 
 2.26.2
 
