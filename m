@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A65EC2D0F9
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 831D9C2D0FD
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7A6D9206A5
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5F03F206F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 May 2020 06:30:19 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="P605jlmO"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ELbWvom7"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729477AbgEMGaI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 May 2020 02:30:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46186 "EHLO
+        id S1732056AbgEMG26 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 May 2020 02:28:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46178 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732083AbgEMG27 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:59 -0400
+        with ESMTP id S1730583AbgEMG25 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2020 02:28:57 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86381C061A0C;
-        Tue, 12 May 2020 23:28:58 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E5AA5C061A0C;
+        Tue, 12 May 2020 23:28:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=6XOFdt3BhFcNF2nq+dKDKc/KE/QRe9Oo6tdZvR2zaY4=; b=P605jlmOKAHwaUzXuMGp80OJVA
-        BxJvfSS1jIOttJdhLLliXi+cn2s5stvO7DkT3dFlQnHT0OlF0paUa9fGcjWDX8p/0XOlblpNK+4Z0
-        Fql+YGdCYGrimgaS8bfFOQlB3d0B4mkOixklXM8AHtWqkvDIo5V0VJqmZqTvk4igECtxsLprp+77k
-        5dKVYi5NUi8T6PMDU0L9OA3mTR4RHlv8Nu/AyQ4BvAKCxtVsavtzw+7QwsCvy82LgMqo6+KfG4/4S
-        GLTV4Jr5N8SLyMjerprlkzI5pWNBaxR8hgUvoPwE3uL0b7BJRs+6bx01dW/QNyFPEK/uvAHSIWqou
-        alAce1uw==;
+        bh=H54azrsd7E+axT6O+qhvgxc728YbsMwbwoaorN8dTak=; b=ELbWvom7OLUEPHUlh+K/wa+2Yz
+        MIv09pB/hz0X4YfDe4pQIyKwYEMo67G3o6vnn79V8nmNHPPF/8QEIv7y4djVl7U7gw9S6CXyOBYUY
+        q5cq7qzzyhYmaJ6XpEvfcRSJzBGzliLAWlLnXNFGxaQVa9CR1qc+ntgF7igPhKb9A7i4KFlp1VOE/
+        zWCTktm4v/FY3kUg8KD9KT9vFaPVeVzDfxceYE5Yqbdlg6LN2IyetU3B4z/6U3piE5rRIhndG7rCk
+        lpMzjxU2n05eGTSTGNdgaUVraTLoFYMtpD9HQ7YSAJo96c8eLvv0+iJrPMIRl+S0ztiUuHEnpfb3e
+        uMYRSzvg==;
 Received: from [2001:4bb8:180:9d3f:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jYksY-0005Ge-1j; Wed, 13 May 2020 06:28:30 +0000
+        id 1jYkrz-0004i7-0s; Wed, 13 May 2020 06:27:55 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org,
         linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 32/33] sctp: add sctp_sock_get_primary_addr
-Date:   Wed, 13 May 2020 08:26:47 +0200
-Message-Id: <20200513062649.2100053-33-hch@lst.de>
+Subject: [PATCH 21/33] ipv4: add ip_sock_set_mtu_discover
+Date:   Wed, 13 May 2020 08:26:36 +0200
+Message-Id: <20200513062649.2100053-22-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 References: <20200513062649.2100053-1-hch@lst.de>
@@ -69,139 +69,134 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly get the SCTP_PRIMARY_ADDR sockopt from kernel
+Add a helper to directly set the IP_MTU_DISCOVER sockopt from kernel
 space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/dlm/lowcomms.c       | 11 +++-----
- include/net/sctp/sctp.h |  1 +
- net/sctp/socket.c       | 57 +++++++++++++++++++++++++----------------
- 3 files changed, 39 insertions(+), 30 deletions(-)
+ include/net/ip.h         |  2 ++
+ net/ipv4/ip_sockglue.c   | 22 ++++++++++++++++++++++
+ net/rxrpc/local_object.c |  8 +-------
+ net/rxrpc/output.c       | 14 +++++---------
+ net/sunrpc/svcsock.c     |  5 ++---
+ 5 files changed, 32 insertions(+), 19 deletions(-)
 
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index 6fa45365666a8..46d2d71b62c57 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -855,10 +855,9 @@ static int tcp_accept_from_sock(struct connection *con)
- static int sctp_accept_from_sock(struct connection *con)
- {
- 	/* Check that the new node is in the lockspace */
--	struct sctp_prim prim;
-+	struct sctp_prim prim = { };
- 	int nodeid;
--	int prim_len, ret;
--	int addr_len;
-+	int addr_len, ret;
- 	struct connection *newcon;
- 	struct connection *addcon;
- 	struct socket *newsock;
-@@ -876,11 +875,7 @@ static int sctp_accept_from_sock(struct connection *con)
- 	if (ret < 0)
- 		goto accept_err;
+diff --git a/include/net/ip.h b/include/net/ip.h
+index 7ab8140b54429..536eaffec59f0 100644
+--- a/include/net/ip.h
++++ b/include/net/ip.h
+@@ -768,5 +768,7 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
+ void ip_sock_set_tos(struct sock *sk, int val);
+ void ip_sock_set_freebind(struct sock *sk, bool val);
+ void ip_sock_set_recverr(struct sock *sk, bool val);
++int ip_sock_set_mtu_discover(struct sock *sk, int val);
++void ip_sock_set_pktinfo(struct sock *sk, bool val);
  
--	memset(&prim, 0, sizeof(struct sctp_prim));
--	prim_len = sizeof(struct sctp_prim);
--
--	ret = kernel_getsockopt(newsock, IPPROTO_SCTP, SCTP_PRIMARY_ADDR,
--				(char *)&prim, &prim_len);
-+	ret = sctp_sock_get_primary_addr(con->sock->sk, &prim);
- 	if (ret < 0) {
- 		log_print("getsockopt/sctp_primary_addr failed: %d", ret);
- 		goto accept_err;
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index b505fa082f254..c98b1d14db853 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -618,5 +618,6 @@ static inline bool sctp_newsk_ready(const struct sock *sk)
- int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *kaddrs,
- 		int addrs_size, int op);
- void sctp_sock_set_nodelay(struct sock *sk, bool val);
-+int sctp_sock_get_primary_addr(struct sock *sk, struct sctp_prim *prim);
- 
- #endif /* __net_sctp_h__ */
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 64c395f7a86d5..39bf8090dbe1e 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -6411,6 +6411,35 @@ static int sctp_getsockopt_local_addrs(struct sock *sk, int len,
- 	return err;
+ #endif	/* _IP_H */
+diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
+index 9abecc3195520..df6ce0a7b0e3d 100644
+--- a/net/ipv4/ip_sockglue.c
++++ b/net/ipv4/ip_sockglue.c
+@@ -599,6 +599,28 @@ void ip_sock_set_recverr(struct sock *sk, bool val)
  }
+ EXPORT_SYMBOL(ip_sock_set_recverr);
  
-+static int __sctp_sock_get_primary_addr(struct sock *sk, struct sctp_prim *prim)
++int ip_sock_set_mtu_discover(struct sock *sk, int val)
 +{
-+	struct sctp_association *asoc;
-+
-+	asoc = sctp_id2assoc(sk, prim->ssp_assoc_id);
-+	if (!asoc)
++	if (val < IP_PMTUDISC_DONT || val > IP_PMTUDISC_OMIT)
 +		return -EINVAL;
-+	if (!asoc->peer.primary_path)
-+		return -ENOTCONN;
-+
-+	memcpy(&prim->ssp_addr, &asoc->peer.primary_path->ipaddr,
-+		asoc->peer.primary_path->af_specific->sockaddr_len);
-+
-+	sctp_get_pf_specific(sk->sk_family)->addr_to_user(sctp_sk(sk),
-+			(union sctp_addr *)&prim->ssp_addr);
++	lock_sock(sk);
++	inet_sk(sk)->pmtudisc = val;
++	release_sock(sk);
 +	return 0;
 +}
++EXPORT_SYMBOL(ip_sock_set_mtu_discover);
 +
-+int sctp_sock_get_primary_addr(struct sock *sk, struct sctp_prim *prim)
++void ip_sock_set_pktinfo(struct sock *sk, bool val)
 +{
-+	int ret;
-+
 +	lock_sock(sk);
-+	ret = __sctp_sock_get_primary_addr(sk, prim);
++	if (val)
++		inet_sk(sk)->cmsg_flags |= IP_CMSG_PKTINFO;
++	else
++		inet_sk(sk)->cmsg_flags &= ~IP_CMSG_PKTINFO;
 +	release_sock(sk);
-+	return ret;
 +}
-+EXPORT_SYMBOL(sctp_sock_get_primary_addr);
++EXPORT_SYMBOL(ip_sock_set_pktinfo);
 +
- /* 7.1.10 Set Primary Address (SCTP_PRIMARY_ADDR)
-  *
-  * Requests that the local SCTP stack use the enclosed peer address as
-@@ -6421,35 +6450,19 @@ static int sctp_getsockopt_primary_addr(struct sock *sk, int len,
- 					char __user *optval, int __user *optlen)
- {
- 	struct sctp_prim prim;
--	struct sctp_association *asoc;
--	struct sctp_sock *sp = sctp_sk(sk);
+ /*
+  *	Socket option code for IP. This is the end of the line after any
+  *	TCP,UDP etc options on an IP socket.
+diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
+index 1b87b8a9ff725..20236ddecd2ef 100644
+--- a/net/rxrpc/local_object.c
++++ b/net/rxrpc/local_object.c
+@@ -174,13 +174,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+ 		ip_sock_set_recverr(local->socket->sk, true);
+ 
+ 		/* we want to set the don't fragment bit */
+-		opt = IP_PMTUDISC_DO;
+-		ret = kernel_setsockopt(local->socket, SOL_IP, IP_MTU_DISCOVER,
+-					(char *) &opt, sizeof(opt));
+-		if (ret < 0) {
+-			_debug("setsockopt failed");
+-			goto error;
+-		}
++		ip_sock_set_mtu_discover(local->socket->sk, IP_PMTUDISC_DO);
+ 
+ 		/* We want receive timestamps. */
+ 		sock_set_timestamps(local->socket->sk, true, false, true);
+diff --git a/net/rxrpc/output.c b/net/rxrpc/output.c
+index 90e263c6aa69e..ad0234e1e1713 100644
+--- a/net/rxrpc/output.c
++++ b/net/rxrpc/output.c
+@@ -321,7 +321,7 @@ int rxrpc_send_data_packet(struct rxrpc_call *call, struct sk_buff *skb,
+ 	struct kvec iov[2];
+ 	rxrpc_serial_t serial;
+ 	size_t len;
+-	int ret, opt;
 +	int ret;
  
- 	if (len < sizeof(struct sctp_prim))
- 		return -EINVAL;
--
--	len = sizeof(struct sctp_prim);
--
--	if (copy_from_user(&prim, optval, len))
-+	if (copy_from_user(&prim, optval, sizeof(struct sctp_prim)))
- 		return -EFAULT;
+ 	_enter(",{%d}", skb->len);
  
--	asoc = sctp_id2assoc(sk, prim.ssp_assoc_id);
--	if (!asoc)
--		return -EINVAL;
--
--	if (!asoc->peer.primary_path)
--		return -ENOTCONN;
--
--	memcpy(&prim.ssp_addr, &asoc->peer.primary_path->ipaddr,
--		asoc->peer.primary_path->af_specific->sockaddr_len);
--
--	sctp_get_pf_specific(sk->sk_family)->addr_to_user(sp,
--			(union sctp_addr *)&prim.ssp_addr);
-+	ret = __sctp_sock_get_primary_addr(sk, &prim);
-+	if (ret)
-+		return ret;
+@@ -476,18 +476,14 @@ int rxrpc_send_data_packet(struct rxrpc_call *call, struct sk_buff *skb,
+ 	switch (conn->params.local->srx.transport.family) {
+ 	case AF_INET6:
+ 	case AF_INET:
+-		opt = IP_PMTUDISC_DONT;
+-		kernel_setsockopt(conn->params.local->socket,
+-				  SOL_IP, IP_MTU_DISCOVER,
+-				  (char *)&opt, sizeof(opt));
++		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
++				IP_PMTUDISC_DONT);
+ 		ret = kernel_sendmsg(conn->params.local->socket, &msg,
+ 				     iov, 2, len);
+ 		conn->params.peer->last_tx_at = ktime_get_seconds();
  
--	if (put_user(len, optlen))
-+	if (put_user(len, optlen) || copy_to_user(optval, &prim, len))
- 		return -EFAULT;
--	if (copy_to_user(optval, &prim, len))
--		return -EFAULT;
--
- 	return 0;
- }
+-		opt = IP_PMTUDISC_DO;
+-		kernel_setsockopt(conn->params.local->socket,
+-				  SOL_IP, IP_MTU_DISCOVER,
+-				  (char *)&opt, sizeof(opt));
++		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
++				IP_PMTUDISC_DO);
+ 		break;
  
+ 	default:
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 0f6b78d0e6170..7a4f01c79e0f1 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -616,9 +616,8 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	/* make sure we get destination address info */
+ 	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET:
+-		level = SOL_IP;
+-		optname = IP_PKTINFO;
+-		break;
++		ip_sock_set_pktinfo(svsk->sk_sock->sk, true);
++		return;
+ 	case AF_INET6:
+ 		level = SOL_IPV6;
+ 		optname = IPV6_RECVPKTINFO;
 -- 
 2.26.2
 
