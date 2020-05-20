@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01FC5C433DF
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25D4DC433DF
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D3371207F9
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EA79B20829
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:45 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="UA6PaKxV"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="sP1AgZpH"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727822AbgETUAR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 16:00:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51098 "EHLO
+        id S1728273AbgETUAj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 16:00:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51088 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728043AbgETT4N (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:13 -0400
+        with ESMTP id S1727981AbgETT4K (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:10 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 75DA4C061A0E;
-        Wed, 20 May 2020 12:56:13 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 83ED5C061A0E;
+        Wed, 20 May 2020 12:56:10 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=OW2uCMeCAECvL0mFP+aIowjmR1Y37DbY3NyDlODlSU4=; b=UA6PaKxV+xIcFMzHF3iPOdbLeU
-        ll4bvIiCxtw/t4xg1wCqEMfLPQD5jz3Muxml4cdmm21Z8D6ygA4AXn+b4rEqQvINBPpnMkd96/H9F
-        sM9gOTkeFdj8RfQ3r43LJanFWwnzw248TJMIgy6oA9N3wNsXRb4xcK+tWQWjU9VrkkexCYh2d+dMf
-        R1LSv7oyBPpV2HEXkjP7qdEW+XSSrJcXS7As302dfN6tvk+1Gcr6oJz4Jc2BaPTBsRaHFI/V39JdU
-        au3Bp5KZ3Nm+xgT1tU5pvQLnUKN1o2Dmz49w76h2UICPK6ZTE95j1SXuVkVlYi+oc6as+vDhsm0h2
-        02xMUuIg==;
+        bh=VdTXGAkw/1nyL6z33X0b7/NfvqZ5AsGTWmUq3QW34Eo=; b=sP1AgZpHmBOJUgORxF1Q3Yl0Nq
+        LEaAnzrXH0IACXVLmx6OIVbcscW0R2W5TvriIN3uIsuBZDP1Dec4s1GdTnq8+RWfLo4mI0cmntirI
+        F9PZF/1/pYGiqYs+Vl+s7aDnND0jzF2RyuBpmKnCGivxr2imyNhRTCegf/VgYxnlnwJS0X9HVhShb
+        L7HrZHOuWjds4Vdyxwe7OWKk28J5M1Qg1fpahZwHU7E36LIE0h4ObltqkJDxUy1xAsg8z/Lyh3/MN
+        u+cR9L4cHBuZQpJpN3ArdUnKxBgWIhs7Wqwnxa4cmOQ/knTaWBbgyP+GbR6osrfa4MmAXgZHM2EYN
+        Gc9zWKsg==;
 Received: from [2001:4bb8:188:1506:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jbUoS-0002L3-E8; Wed, 20 May 2020 19:55:36 +0000
+        id 1jbUoM-0002DS-V4; Wed, 20 May 2020 19:55:31 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
         ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 09/33] net: add sock_set_keepalive
-Date:   Wed, 20 May 2020 21:54:45 +0200
-Message-Id: <20200520195509.2215098-10-hch@lst.de>
+Subject: [PATCH 07/33] net: add sock_bindtoindex
+Date:   Wed, 20 May 2020 21:54:43 +0200
+Message-Id: <20200520195509.2215098-8-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 References: <20200520195509.2215098-1-hch@lst.de>
@@ -69,109 +69,112 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the SO_KEEPALIVE sockopt from kernel space
-without going through a fake uaccess.
+Add a helper to directly set the SO_BINDTOIFINDEX sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/dlm/lowcomms.c     |  6 +-----
- include/net/sock.h    |  1 +
- net/core/sock.c       | 10 ++++++++++
- net/rds/tcp_listen.c  |  6 +-----
- net/sunrpc/xprtsock.c |  4 +---
- 5 files changed, 14 insertions(+), 13 deletions(-)
+ include/net/sock.h        |  1 +
+ net/core/sock.c           | 21 +++++++++++++++------
+ net/ipv4/udp_tunnel.c     |  4 +---
+ net/ipv6/ip6_udp_tunnel.c |  4 +---
+ 4 files changed, 18 insertions(+), 12 deletions(-)
 
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index b79711d0aac72..b6e6dba281547 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -1142,11 +1142,7 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
- 		con->sock = NULL;
- 		goto create_out;
- 	}
--	result = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--				 (char *)&one, sizeof(one));
--	if (result < 0) {
--		log_print("Set keepalive failed: %d", result);
--	}
-+	sock_set_keepalive(sock->sk);
- 
- 	result = sock->ops->listen(sock, 5);
- 	if (result < 0) {
 diff --git a/include/net/sock.h b/include/net/sock.h
-index 99ef43508d2b5..dc08c176238fd 100644
+index 9a7b9e98685ac..cdec7bc055d5b 100644
 --- a/include/net/sock.h
 +++ b/include/net/sock.h
-@@ -2691,6 +2691,7 @@ void sock_def_readable(struct sock *sk);
- int sock_bindtoindex(struct sock *sk, int ifindex);
- void sock_enable_timestamps(struct sock *sk);
+@@ -2688,6 +2688,7 @@ static inline bool sk_dev_equal_l3scope(struct sock *sk, int dif)
+ 
+ void sock_def_readable(struct sock *sk);
+ 
++int sock_bindtoindex(struct sock *sk, int ifindex);
  void sock_no_linger(struct sock *sk);
-+void sock_set_keepalive(struct sock *sk);
  void sock_set_priority(struct sock *sk, u32 priority);
  void sock_set_reuseaddr(struct sock *sk);
- void sock_set_sndtimeo(struct sock *sk, s64 secs);
 diff --git a/net/core/sock.c b/net/core/sock.c
-index e4a4dd2b3d8b3..728f5fb156a0c 100644
+index d3b1d61e4f768..23f80880fbb2c 100644
 --- a/net/core/sock.c
 +++ b/net/core/sock.c
-@@ -779,6 +779,16 @@ void sock_enable_timestamps(struct sock *sk)
+@@ -566,7 +566,7 @@ struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie)
  }
- EXPORT_SYMBOL(sock_enable_timestamps);
+ EXPORT_SYMBOL(sk_dst_check);
  
-+void sock_set_keepalive(struct sock *sk)
+-static int sock_setbindtodevice_locked(struct sock *sk, int ifindex)
++static int sock_bindtoindex_locked(struct sock *sk, int ifindex)
+ {
+ 	int ret = -ENOPROTOOPT;
+ #ifdef CONFIG_NETDEVICES
+@@ -594,6 +594,18 @@ static int sock_setbindtodevice_locked(struct sock *sk, int ifindex)
+ 	return ret;
+ }
+ 
++int sock_bindtoindex(struct sock *sk, int ifindex)
 +{
-+	lock_sock(sk);
-+	if (sk->sk_prot->keepalive)
-+		sk->sk_prot->keepalive(sk, true);
-+	sock_valbool_flag(sk, SOCK_KEEPOPEN, true);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(sock_set_keepalive);
++	int ret;
 +
- /*
-  *	This is meant for all protocols to use and covers goings on
-  *	at the socket level. Everything here is generic.
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index bbb31b9c0b391..d8bd132769594 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -43,13 +43,9 @@ int rds_tcp_keepalive(struct socket *sock)
- 	/* values below based on xs_udp_default_timeout */
- 	int keepidle = 5; /* send a probe 'keepidle' secs after last data */
- 	int keepcnt = 5; /* number of unack'ed probes before declaring dead */
--	int keepalive = 1;
- 	int ret = 0;
++	lock_sock(sk);
++	ret = sock_bindtoindex_locked(sk, ifindex);
++	release_sock(sk);
++
++	return ret;
++}
++EXPORT_SYMBOL(sock_bindtoindex);
++
+ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
+ 				int optlen)
+ {
+@@ -634,10 +646,7 @@ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
+ 			goto out;
+ 	}
  
--	ret = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--				(char *)&keepalive, sizeof(keepalive));
--	if (ret < 0)
--		goto bail;
-+	sock_set_keepalive(sock->sk);
+-	lock_sock(sk);
+-	ret = sock_setbindtodevice_locked(sk, index);
+-	release_sock(sk);
+-
++	return sock_bindtoindex(sk, index);
+ out:
+ #endif
  
- 	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT,
- 				(char *)&keepcnt, sizeof(keepcnt));
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 845d0be805ece..30082cd039960 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2110,7 +2110,6 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	unsigned int keepidle;
- 	unsigned int keepcnt;
--	unsigned int opt_on = 1;
- 	unsigned int timeo;
+@@ -1216,7 +1225,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		break;
  
- 	spin_lock(&xprt->transport_lock);
-@@ -2122,8 +2121,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	spin_unlock(&xprt->transport_lock);
+ 	case SO_BINDTOIFINDEX:
+-		ret = sock_setbindtodevice_locked(sk, val);
++		ret = sock_bindtoindex_locked(sk, val);
+ 		break;
  
- 	/* TCP Keepalive options */
--	kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--			(char *)&opt_on, sizeof(opt_on));
-+	sock_set_keepalive(sock->sk);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
- 			(char *)&keepidle, sizeof(keepidle));
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
+ 	default:
+diff --git a/net/ipv4/udp_tunnel.c b/net/ipv4/udp_tunnel.c
+index 150e6f0fdbf59..2158e8bddf41c 100644
+--- a/net/ipv4/udp_tunnel.c
++++ b/net/ipv4/udp_tunnel.c
+@@ -22,9 +22,7 @@ int udp_sock_create4(struct net *net, struct udp_port_cfg *cfg,
+ 		goto error;
+ 
+ 	if (cfg->bind_ifindex) {
+-		err = kernel_setsockopt(sock, SOL_SOCKET, SO_BINDTOIFINDEX,
+-					(void *)&cfg->bind_ifindex,
+-					sizeof(cfg->bind_ifindex));
++		err = sock_bindtoindex(sock->sk, cfg->bind_ifindex);
+ 		if (err < 0)
+ 			goto error;
+ 	}
+diff --git a/net/ipv6/ip6_udp_tunnel.c b/net/ipv6/ip6_udp_tunnel.c
+index 58956a6b66a21..6523609516d25 100644
+--- a/net/ipv6/ip6_udp_tunnel.c
++++ b/net/ipv6/ip6_udp_tunnel.c
+@@ -33,9 +33,7 @@ int udp_sock_create6(struct net *net, struct udp_port_cfg *cfg,
+ 			goto error;
+ 	}
+ 	if (cfg->bind_ifindex) {
+-		err = kernel_setsockopt(sock, SOL_SOCKET, SO_BINDTOIFINDEX,
+-					(void *)&cfg->bind_ifindex,
+-					sizeof(cfg->bind_ifindex));
++		err = sock_bindtoindex(sock->sk, cfg->bind_ifindex);
+ 		if (err < 0)
+ 			goto error;
+ 	}
 -- 
 2.26.2
 
