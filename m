@@ -2,253 +2,223 @@ Return-Path: <SRS0=uryC=7C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EF9BC433DF
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:01:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B70A8C433DF
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 21:54:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 09901207D8
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:01:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 790B420823
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 21:54:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="CdXPAUVR"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="vv1FmPXW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727016AbgETT4H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 15:56:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51062 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726837AbgETT4G (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:06 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7D80C061A0E;
-        Wed, 20 May 2020 12:56:06 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=LnylUFmE6LGjXbTh/304lIDcSEDmTsi7Z0jAT1kL31A=; b=CdXPAUVRNHUd4djUXKzygY6eqY
-        pddYRAuSDCjKp5OLMvV5HFWp4+1lnoX+ce1HqqmdjML9v7HulBDUQiiS8N9RR3VhaHOVH38CeV1Hd
-        7vMQxFQ8UF/Ls3XjtwWajwKgAUY5Stczl7TojeRxwxl0vSDd8MAt8Orwg8ea/rwWafbJoOUpqFgf2
-        15nXAAHDd2ojx+DTSyebVz7TaPqLOz6dNV6vfzQQONLM4L9Aiy6XYCo6Nr77PHrYECfy6ErFSuvsI
-        23bogPEg1gNuVFfIzjo7W+dOfZWQgPOv3UOqQmHorx1wuqcokze0WXWraldOcl6Z3ugZc5nHsYKPU
-        iKLCwkTQ==;
-Received: from [2001:4bb8:188:1506:c70:4a89:bc61:2] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jbUoD-0001yn-Ef; Wed, 20 May 2020 19:55:22 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     "David S. Miller" <davem@davemloft.net>,
-        Jakub Kicinski <kuba@kernel.org>
-Cc:     Eric Dumazet <edumazet@google.com>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Vlad Yasevich <vyasevich@gmail.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Jon Maloy <jmaloy@redhat.com>,
-        Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com,
-        linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-nvme@lists.infradead.org, target-devel@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
-        cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
-        netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
-        ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com,
-        linux-nfs@vger.kernel.org, Sagi Grimberg <sagi@grimberg.me>
-Subject: [PATCH 04/33] net: add sock_no_linger
-Date:   Wed, 20 May 2020 21:54:40 +0200
-Message-Id: <20200520195509.2215098-5-hch@lst.de>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
-References: <20200520195509.2215098-1-hch@lst.de>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+        id S1728148AbgETVy0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 17:54:26 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:48288 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727947AbgETVyZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 17:54:25 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 04KLpux9149930;
+        Wed, 20 May 2020 21:54:20 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=woVXosAKyqdx6tSDTZHQ3wqU8phfpf5uBnb6I2SqBFE=;
+ b=vv1FmPXWvONc4mtZomIRcmhHwhFNUbaPT0KF7S1J3Xf1Gbt7Fqy+MKbYQArai6arRax/
+ hWeaxakE4kGtZXw2t/ujCd+3kFYhrhGxW6CL2A5ZhMBzLwP9g0dIfIDAnd7slmtKG0eV
+ JPtOTrvbU7dmiAqq0JlVvMHoAfkwOMJ11OiVj4VBeEIdLjGKD7HAICAu+JhWALwKb8Aj
+ 6A4nZq/BoYYivAGV2kyRv+qtN8m1A+mG/hHaLUeTClPvfwnBX2Mxvb/UdKhc8XFLZvwj
+ YGW8sWQ9CS6jfb0iUTzladuF6JdgevKQIjMpJfclFENgYEKSVYXOCokzpZoYIbNou+gz 9g== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2120.oracle.com with ESMTP id 31501rc3fm-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Wed, 20 May 2020 21:54:20 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 04KLrDTx073434;
+        Wed, 20 May 2020 21:54:20 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by userp3020.oracle.com with ESMTP id 315021405g-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 20 May 2020 21:54:20 +0000
+Received: from abhmp0017.oracle.com (abhmp0017.oracle.com [141.146.116.23])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 04KLsJUh011393;
+        Wed, 20 May 2020 21:54:19 GMT
+Received: from anon-dhcp-153.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Wed, 20 May 2020 14:54:19 -0700
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
+Subject: Re: kernel oops in rdma in 5.7-rc5
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAN-5tyFSmvHEi9tBz=fvXGcbNhNU4Ogfrff2JnTxHZD88369dA@mail.gmail.com>
+Date:   Wed, 20 May 2020 17:54:18 -0400
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <AF17E460-454C-4481-9D62-3FA6CDC5AE4B@oracle.com>
+References: <CAN-5tyH=QiviyLQcmzBJpcejNTyXUKPenu3-rUeHOLLut9fX2A@mail.gmail.com>
+ <4A13A8B1-C8DC-434F-936E-627D38DFA86E@oracle.com>
+ <CAN-5tyFSmvHEi9tBz=fvXGcbNhNU4Ogfrff2JnTxHZD88369dA@mail.gmail.com>
+To:     Olga Kornievskaia <aglo@umich.edu>
+X-Mailer: Apple Mail (2.3445.104.11)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9627 signatures=668686
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 bulkscore=0 suspectscore=0 phishscore=0 malwarescore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2004280000
+ definitions=main-2005200171
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9627 signatures=668686
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 lowpriorityscore=0 spamscore=0
+ mlxlogscore=999 clxscore=1015 priorityscore=1501 cotscore=-2147483648
+ impostorscore=0 bulkscore=0 adultscore=0 malwarescore=0 phishscore=0
+ mlxscore=0 suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2004280000 definitions=main-2005200171
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the SO_LINGER sockopt from kernel space
-with onoff set to true and a linger time of 0 without going through a
-fake uaccess.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Sagi Grimberg <sagi@grimberg.me>
----
- drivers/nvme/host/tcp.c   |  9 +--------
- drivers/nvme/target/tcp.c |  6 +-----
- include/net/sock.h        |  1 +
- net/core/sock.c           |  9 +++++++++
- net/rds/tcp.h             |  1 -
- net/rds/tcp_connect.c     |  2 +-
- net/rds/tcp_listen.c      | 13 +------------
- net/sunrpc/svcsock.c      | 12 ++----------
- 8 files changed, 16 insertions(+), 37 deletions(-)
 
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index c15a92163c1f7..e72d87482eb78 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -1313,7 +1313,6 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
- {
- 	struct nvme_tcp_ctrl *ctrl = to_tcp_ctrl(nctrl);
- 	struct nvme_tcp_queue *queue = &ctrl->queues[qid];
--	struct linger sol = { .l_onoff = 1, .l_linger = 0 };
- 	int ret, opt, rcv_pdu_size;
- 
- 	queue->ctrl = ctrl;
-@@ -1361,13 +1360,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
- 	 * close. This is done to prevent stale data from being sent should
- 	 * the network connection be restored before TCP times out.
- 	 */
--	ret = kernel_setsockopt(queue->sock, SOL_SOCKET, SO_LINGER,
--			(char *)&sol, sizeof(sol));
--	if (ret) {
--		dev_err(nctrl->device,
--			"failed to set SO_LINGER sock opt %d\n", ret);
--		goto err_sock;
--	}
-+	sock_no_linger(queue->sock->sk);
- 
- 	if (so_priority > 0) {
- 		ret = kernel_setsockopt(queue->sock, SOL_SOCKET, SO_PRIORITY,
-diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
-index 40757a63f4553..e0801494b097f 100644
---- a/drivers/nvme/target/tcp.c
-+++ b/drivers/nvme/target/tcp.c
-@@ -1429,7 +1429,6 @@ static int nvmet_tcp_set_queue_sock(struct nvmet_tcp_queue *queue)
- {
- 	struct socket *sock = queue->sock;
- 	struct inet_sock *inet = inet_sk(sock->sk);
--	struct linger sol = { .l_onoff = 1, .l_linger = 0 };
- 	int ret;
- 
- 	ret = kernel_getsockname(sock,
-@@ -1447,10 +1446,7 @@ static int nvmet_tcp_set_queue_sock(struct nvmet_tcp_queue *queue)
- 	 * close. This is done to prevent stale data from being sent should
- 	 * the network connection be restored before TCP times out.
- 	 */
--	ret = kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
--			(char *)&sol, sizeof(sol));
--	if (ret)
--		return ret;
-+	sock_no_linger(sock->sk);
- 
- 	if (so_priority > 0) {
- 		ret = kernel_setsockopt(sock, SOL_SOCKET, SO_PRIORITY,
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 2ec085044790c..6ed00bf009bbe 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2688,6 +2688,7 @@ static inline bool sk_dev_equal_l3scope(struct sock *sk, int dif)
- 
- void sock_def_readable(struct sock *sk);
- 
-+void sock_no_linger(struct sock *sk);
- void sock_set_reuseaddr(struct sock *sk);
- 
- #endif	/* _SOCK_H */
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 18eb84fdf5fbe..f0f09524911c8 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -720,6 +720,15 @@ void sock_set_reuseaddr(struct sock *sk)
- }
- EXPORT_SYMBOL(sock_set_reuseaddr);
- 
-+void sock_no_linger(struct sock *sk)
-+{
-+	lock_sock(sk);
-+	sk->sk_lingertime = 0;
-+	sock_set_flag(sk, SOCK_LINGER);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(sock_no_linger);
-+
- /*
-  *	This is meant for all protocols to use and covers goings on
-  *	at the socket level. Everything here is generic.
-diff --git a/net/rds/tcp.h b/net/rds/tcp.h
-index 3c69361d21c73..d640e210b97b6 100644
---- a/net/rds/tcp.h
-+++ b/net/rds/tcp.h
-@@ -73,7 +73,6 @@ void rds_tcp_listen_data_ready(struct sock *sk);
- int rds_tcp_accept_one(struct socket *sock);
- int rds_tcp_keepalive(struct socket *sock);
- void *rds_tcp_listen_sock_def_readable(struct net *net);
--void rds_tcp_set_linger(struct socket *sock);
- 
- /* tcp_recv.c */
- int rds_tcp_recv_init(void);
-diff --git a/net/rds/tcp_connect.c b/net/rds/tcp_connect.c
-index 008f50fb25dd2..4e64598176b05 100644
---- a/net/rds/tcp_connect.c
-+++ b/net/rds/tcp_connect.c
-@@ -207,7 +207,7 @@ void rds_tcp_conn_path_shutdown(struct rds_conn_path *cp)
- 
- 	if (sock) {
- 		if (rds_destroy_pending(cp->cp_conn))
--			rds_tcp_set_linger(sock);
-+			sock_no_linger(sock->sk);
- 		sock->ops->shutdown(sock, RCV_SHUTDOWN | SEND_SHUTDOWN);
- 		lock_sock(sock->sk);
- 		rds_tcp_restore_callbacks(sock, tc); /* tc->tc_sock = NULL */
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index 810a3a49e9474..bbb31b9c0b391 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -111,17 +111,6 @@ struct rds_tcp_connection *rds_tcp_accept_one_path(struct rds_connection *conn)
- 	return NULL;
- }
- 
--void rds_tcp_set_linger(struct socket *sock)
--{
--	struct linger no_linger = {
--		.l_onoff = 1,
--		.l_linger = 0,
--	};
--
--	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
--			  (char *)&no_linger, sizeof(no_linger));
--}
--
- int rds_tcp_accept_one(struct socket *sock)
- {
- 	struct socket *new_sock = NULL;
-@@ -241,7 +230,7 @@ int rds_tcp_accept_one(struct socket *sock)
- 	 * be pending on it. By setting linger, we achieve the side-effect
- 	 * of avoiding TIME_WAIT state on new_sock.
- 	 */
--	rds_tcp_set_linger(new_sock);
-+	sock_no_linger(new_sock->sk);
- 	kernel_sock_shutdown(new_sock, SHUT_RDWR);
- 	ret = 0;
- out:
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 023514e392b31..6773dacc64d8e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -323,17 +323,9 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- 
- static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
- {
--	struct svc_sock *svsk;
--	struct socket *sock;
--	struct linger no_linger = {
--		.l_onoff = 1,
--		.l_linger = 0,
--	};
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
- 
--	svsk = container_of(xprt, struct svc_sock, sk_xprt);
--	sock = svsk->sk_sock;
--	kernel_setsockopt(sock, SOL_SOCKET, SO_LINGER,
--			  (char *)&no_linger, sizeof(no_linger));
-+	sock_no_linger(svsk->sk_sock->sk);
- }
- 
- /*
--- 
-2.26.2
+> On May 20, 2020, at 1:33 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>=20
+> On Wed, May 20, 2020 at 11:29 AM Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>>=20
+>>=20
+>>=20
+>>> On May 20, 2020, at 11:19 AM, Olga Kornievskaia <aglo@umich.edu> =
+wrote:
+>>>=20
+>>> Hi Chuck,
+>>>=20
+>>> I was running some tests on latest in Trond's origin/testing and got
+>>> the following oops. Is this known?
+>>=20
+>> It is a known issue, but it's been difficult to reproduce. I think it
+>> can happen when the server disconnects unexpectedly. I have some =
+rather
+>> fresh patches that might prevent this crash. But because it's so
+>> intermittent it's not yet clear they are 100% effective. Thus I'd =
+like
+>> to let them marinate for a while longer.
+>>=20
+>> Do you encounter this crash frequently? If it's a true and royal pain
+>> I can push what I have to a topic branch on linux-git.
+>=20
+> Disclaimer I haven't tested rdma on softroce (or hardware for that
+> matter) in a long time so I'm not sure if it's a recent problem.
+>=20
+> If you are not ready to push out the patches, can I get a tar from you
+> (again not sure I really need it)?
+
+I pushed some patches into the cel-testing topic branch here:
+
+   git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+In particular, commit 6a1c1cda9728 ("xprtrdma: Prevent dereferencing
+r_xprt->rx_ep after it is freed") is probably the one that addresses
+the crasher. But without a 100% reproducer it's tough to say for sure.
+
+
+> I'm not sure how easily it's reproduced. My first oops was when
+> running "nfstest_io", ever since I couldn't even mount and the client
+> oops-ed every time until I rebooted the server.
+> The set up is linux-to-linux (soft roce) running: ./nfstest_io -d
+> /mnt/data -v all -s 1583972683450 -n 10 -r 3600 -e --createlog
+> --logdir /home/aglo/logs/lock-eagain
+>=20
+> After rebooting the system, i can mount, start another nfstest_io run
+> and it's been running ok for 40mins now (before I hit it in less than
+> 30mins).
+>=20
+> My server is currently somewhat dated 5.5-rc5.
+>=20
+>>> [ 2116.066790] CPU: 1 PID: 429 Comm: kworker/u256:3 Not tainted =
+5.7.0-rc5 #16
+>>> [ 2116.070852] Hardware name: VMware, Inc. VMware Virtual
+>>> Platform/440BX Desktop Reference Platform, BIOS 6.00 04/13/2018
+>>> [ 2116.077145] Workqueue: rpciod rpc_async_schedule [sunrpc]
+>>> [ 2116.080990] RIP: 0010:ib_drain_rq+0x7/0x80 [ib_core]
+>>> [ 2116.084088] Code: c6 48 c7 c7 c8 b1 cf c0 31 c0 c6 05 57 85 04 00
+>>> 01 e8 0d c9 3c e4 0f 0b e9 00 ff ff ff 66 0f 1f 44 00 00 0f 1f 44 00
+>>> 00 55 53 <48> 8b 07 48 89 fb 48 8b 40 30 48 85 c0 74 53 e8 85 34 f3 =
+e4
+>>> 48 8b
+>>> [ 2116.094874] RSP: 0018:ffffae1bc07e7d80 EFLAGS: 00010292
+>>> [ 2116.098270] RAX: ffff99006ffdb800 RBX: ffff99006fff2c00 RCX: =
+0000000000000000
+>>> [ 2116.102803] RDX: 0000000000000000 RSI: 0000000000000207 RDI: =
+0000000000000000
+>>> [ 2116.107521] RBP: ffff990071110800 R08: 0000000000000000 R09: =
+ffff990031b10000
+>>> [ 2116.111567] R10: 0000000000000000 R11: 000000000000477d R12: =
+ffff99006ffdb800
+>>> [ 2116.115771] R13: ffff99006fff2c00 R14: ffff990071110e40 R15: =
+0000000000000001
+>>> [ 2116.119860] FS:  0000000000000000(0000) GS:ffff99007be40000(0000)
+>>> knlGS:0000000000000000
+>>> [ 2116.124401] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>>> [ 2116.127864] CR2: 0000000000000000 CR3: 00000000788a2003 CR4: =
+00000000001606e0
+>>> [ 2116.131983] Call Trace:
+>>> [ 2116.136671]  rpcrdma_xprt_disconnect+0x52/0x2b0 [rpcrdma]
+>>> [ 2116.140171]  ? call_transmit+0xa0/0xa0 [sunrpc]
+>>> [ 2116.142819]  xprt_rdma_close+0x17/0x80 [rpcrdma]
+>>> [ 2116.145496]  xprt_connect+0x17b/0x1e0 [sunrpc]
+>>> [ 2116.148116]  ? call_transmit+0xa0/0xa0 [sunrpc]
+>>> [ 2116.150834]  __rpc_execute+0x80/0x430 [sunrpc]
+>>> [ 2116.153994]  ? try_to_wake_up+0x62/0x5e0
+>>> [ 2116.156374]  rpc_async_schedule+0x29/0x40 [sunrpc]
+>>> [ 2116.159099]  process_one_work+0x172/0x380
+>>> [ 2116.161591]  worker_thread+0x49/0x3f0
+>>> [ 2116.163707]  kthread+0xf8/0x130
+>>> [ 2116.165512]  ? max_active_store+0x80/0x80
+>>> [ 2116.167892]  ? kthread_bind+0x10/0x10
+>>> [ 2116.170231]  ret_from_fork+0x35/0x40
+>>> [ 2116.172468] Modules linked in: rpcsec_gss_krb5 auth_rpcgss nfsv4
+>>> dns_resolver nfs lockd grace fscache ib_isert iscsi_target_mod =
+ib_srpt
+>>> target_core_mod rpcrdma ib_srp ib_iser scsi_transport_srp libiscsi
+>>> ib_ipoib scsi_transport_iscsi rdma_rxe ib_umad ip6_udp_tunnel
+>>> udp_tunnel rdma_ucm rdma_cm iw_cm ib_cm ib_uverbs ib_core tcp_lp
+>>> nls_utf8 isofs rfcomm fuse xt_CHECKSUM xt_MASQUERADE tun bridge stp
+>>> llc ip6t_rpfilter ipt_REJECT nf_reject_ipv4 ip6t_REJECT =
+nf_reject_ipv6
+>>> xt_conntrack ip_set nfnetlink ebtable_nat ebtable_broute =
+ip6table_nat
+>>> ip6table_mangle ip6table_security ip6table_raw iptable_nat nf_nat
+>>> nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 iptable_mangle
+>>> iptable_security iptable_raw ebtable_filter ebtables ip6table_filter
+>>> ip6_tables iptable_filter vsock_loopback
+>>> vmw_vsock_virtio_transport_common vmw_vsock_vmci_transport vsock =
+bnep
+>>> sunrpc snd_seq_midi snd_seq_midi_event intel_rapl_msr
+>>> intel_rapl_common crc32_pclmul snd_ens1371 snd_ac97_codec
+>>> ghash_clmulni_intel ac97_bus snd_rawmidi snd_seq
+>>> [ 2116.172559]  btusb btrtl btbcm btintel bluetooth snd_seq_device
+>>> uvcvideo snd_pcm videobuf2_vmalloc videobuf2_memops aesni_intel
+>>> videobuf2_v4l2 vmw_balloon videobuf2_common videodev crypto_simd
+>>> cryptd glue_helper snd_timer snd vmw_vmci mc joydev pcspkr
+>>> ecdh_generic ecc rfkill sg soundcore i2c_piix4 ip_tables xfs =
+libcrc32c
+>>> sd_mod t10_pi sr_mod crc_t10dif cdrom crct10dif_generic ata_generic
+>>> pata_acpi crct10dif_pclmul crct10dif_common vmwgfx crc32c_intel
+>>> drm_kms_helper serio_raw syscopyarea sysfillrect sysimgblt =
+fb_sys_fops
+>>> ttm e1000 ata_piix drm libata mptspi scsi_transport_spi mptscsih
+>>> mptbase dm_mirror dm_region_hash dm_log dm_mod
+>>> [ 2116.259736] CR2: 0000000000000000
+>>> [ 2116.266264] ---[ end trace f10e2bf40bcc51ad ]---
+>>=20
+>> --
+>> Chuck Lever
+
+--
+Chuck Lever
+
+
 
