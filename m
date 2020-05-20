@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3B2DC433DF
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29DBEC433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BAF4D207F9
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0393620849
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:48 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="eL+iZ/AU"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="W6xMYpJm"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726818AbgETT5h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 15:57:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51308 "EHLO
+        id S1728407AbgETT5E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 15:57:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51262 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727115AbgETT5P (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:57:15 -0400
+        with ESMTP id S1728391AbgETT5D (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:57:03 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 14BEEC061A0E;
-        Wed, 20 May 2020 12:57:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3214C061A0E;
+        Wed, 20 May 2020 12:57:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=jyyKSsv2ojCllyHR6oLPZbDWIQjSKqRL9iRFY8LVQRE=; b=eL+iZ/AUkTJIFFZXMSwHoGneON
-        zJJ1NeqUKJUTN+XZ+YXm8mTVN7Txrwu1Gg7XkE2Srm6yGK/RuXNS7Ili9ClBHEwqrRrtJoldNAgkP
-        Q496eI/2kvkExRHJ/CY36rhk/J2RxEB5WJ8ohluo/iBbAOgnuzGjM/nkv9M8dugc5PVDanmUGfXyQ
-        Qc+zVcyXwpHthxlOJQyWO4rDVd9GSOHiST7k6ZKisSXyDBJvJrDVrUe1KmJuP+c2G7wSi9ehhYxKS
-        QMTEF3YQ/vfSABacZbuuwH7F+qrL5jjbdwYKQMxaZyMxOKb22ANiCCHVZ0OMREzvwY/Lcshh6XMVj
-        uVa/SV0g==;
+        bh=TVWRZ+dDVbUkqjKFRCRZsKcY4V10hWh4MQUOMOhQzp0=; b=W6xMYpJmfq6e+cBhu3IXfq0F7J
+        1awdkKkfctWpBz5liyupxCbX8YQv1Na/qQpO67S0j1a98bLcoWpj0HYWvfze27JPSxvaxsSstQ5zM
+        gSz/cEH8aI0rEBIJSkT8oIjFYvRLAiC/z7iqRkR4T6zgaqQL5iXdfhmthyv5brhymQRJCH7QW0bSB
+        genBzBLGGBpLQNKVa2162RYrKcJtleKqRNH0WMivQwOPrnxblf87/mKRzd/lQwww7Lp/vVOajbEN0
+        d0L/Gd/BfyH8AMusu7b0uVltVijFIVDzMqCKov0Aha/7TOPvsv22qZQOhSMnZGGinxDpB/cfKYCkj
+        PG+1mJmg==;
 Received: from [2001:4bb8:188:1506:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jbUpk-0003er-B6; Wed, 20 May 2020 19:56:56 +0000
+        id 1jbUpQ-0003Tx-Ac; Wed, 20 May 2020 19:56:48 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
         ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 33/33] net: remove kernel_setsockopt
-Date:   Wed, 20 May 2020 21:55:09 +0200
-Message-Id: <20200520195509.2215098-34-hch@lst.de>
+Subject: [PATCH 30/33] tipc: call tsk_set_importance from tipc_topsrv_create_listener
+Date:   Wed, 20 May 2020 21:55:06 +0200
+Message-Id: <20200520195509.2215098-31-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 References: <20200520195509.2215098-1-hch@lst.de>
@@ -69,69 +69,99 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-No users left.
+Avoid using kernel_setsockopt for the TIPC_IMPORTANCE option when we can
+just use the internal helper.  The only change needed is to pass a struct
+sock instead of tipc_sock, which is private to socket.c
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/net.h |  2 --
- net/socket.c        | 31 -------------------------------
- 2 files changed, 33 deletions(-)
+ net/tipc/socket.c | 18 +++++++++---------
+ net/tipc/socket.h |  2 ++
+ net/tipc/topsrv.c |  6 +++---
+ 3 files changed, 14 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/net.h b/include/linux/net.h
-index 74ef5d7315f70..e10f378194a59 100644
---- a/include/linux/net.h
-+++ b/include/linux/net.h
-@@ -303,8 +303,6 @@ int kernel_connect(struct socket *sock, struct sockaddr *addr, int addrlen,
- 		   int flags);
- int kernel_getsockname(struct socket *sock, struct sockaddr *addr);
- int kernel_getpeername(struct socket *sock, struct sockaddr *addr);
--int kernel_setsockopt(struct socket *sock, int level, int optname, char *optval,
--		      unsigned int optlen);
- int kernel_sendpage(struct socket *sock, struct page *page, int offset,
- 		    size_t size, int flags);
- int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
-diff --git a/net/socket.c b/net/socket.c
-index 81a98b6cbd087..976426d03f099 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -3624,37 +3624,6 @@ int kernel_getpeername(struct socket *sock, struct sockaddr *addr)
+diff --git a/net/tipc/socket.c b/net/tipc/socket.c
+index e370ad0edd768..28c57d4544c53 100644
+--- a/net/tipc/socket.c
++++ b/net/tipc/socket.c
+@@ -191,17 +191,17 @@ static int tsk_importance(struct tipc_sock *tsk)
+ 	return msg_importance(&tsk->phdr);
  }
- EXPORT_SYMBOL(kernel_getpeername);
  
--/**
-- *	kernel_setsockopt - set a socket option (kernel space)
-- *	@sock: socket
-- *	@level: API level (SOL_SOCKET, ...)
-- *	@optname: option tag
-- *	@optval: option value
-- *	@optlen: option length
-- *
-- *	Returns 0 or an error.
-- */
--
--int kernel_setsockopt(struct socket *sock, int level, int optname,
--			char *optval, unsigned int optlen)
--{
--	mm_segment_t oldfs = get_fs();
--	char __user *uoptval;
--	int err;
--
--	uoptval = (char __user __force *) optval;
--
--	set_fs(KERNEL_DS);
--	if (level == SOL_SOCKET)
--		err = sock_setsockopt(sock, level, optname, uoptval, optlen);
--	else
--		err = sock->ops->setsockopt(sock, level, optname, uoptval,
--					    optlen);
--	set_fs(oldfs);
--	return err;
--}
--EXPORT_SYMBOL(kernel_setsockopt);
--
- /**
-  *	kernel_sendpage - send a &page through a socket (kernel space)
-  *	@sock: socket
+-static int tsk_set_importance(struct tipc_sock *tsk, int imp)
++static struct tipc_sock *tipc_sk(const struct sock *sk)
+ {
+-	if (imp > TIPC_CRITICAL_IMPORTANCE)
+-		return -EINVAL;
+-	msg_set_importance(&tsk->phdr, (u32)imp);
+-	return 0;
++	return container_of(sk, struct tipc_sock, sk);
+ }
+ 
+-static struct tipc_sock *tipc_sk(const struct sock *sk)
++int tsk_set_importance(struct sock *sk, int imp)
+ {
+-	return container_of(sk, struct tipc_sock, sk);
++	if (imp > TIPC_CRITICAL_IMPORTANCE)
++		return -EINVAL;
++	msg_set_importance(&tipc_sk(sk)->phdr, (u32)imp);
++	return 0;
+ }
+ 
+ static bool tsk_conn_cong(struct tipc_sock *tsk)
+@@ -2681,7 +2681,7 @@ static int tipc_accept(struct socket *sock, struct socket *new_sock, int flags,
+ 	/* Connect new socket to it's peer */
+ 	tipc_sk_finish_conn(new_tsock, msg_origport(msg), msg_orignode(msg));
+ 
+-	tsk_set_importance(new_tsock, msg_importance(msg));
++	tsk_set_importance(new_sk, msg_importance(msg));
+ 	if (msg_named(msg)) {
+ 		new_tsock->conn_type = msg_nametype(msg);
+ 		new_tsock->conn_instance = msg_nameinst(msg);
+@@ -3099,7 +3099,7 @@ static int tipc_setsockopt(struct socket *sock, int lvl, int opt,
+ 
+ 	switch (opt) {
+ 	case TIPC_IMPORTANCE:
+-		res = tsk_set_importance(tsk, value);
++		res = tsk_set_importance(sk, value);
+ 		break;
+ 	case TIPC_SRC_DROPPABLE:
+ 		if (sock->type != SOCK_STREAM)
+diff --git a/net/tipc/socket.h b/net/tipc/socket.h
+index 235b9679acee4..b11575afc66fe 100644
+--- a/net/tipc/socket.h
++++ b/net/tipc/socket.h
+@@ -75,4 +75,6 @@ u32 tipc_sock_get_portid(struct sock *sk);
+ bool tipc_sk_overlimit1(struct sock *sk, struct sk_buff *skb);
+ bool tipc_sk_overlimit2(struct sock *sk, struct sk_buff *skb);
+ 
++int tsk_set_importance(struct sock *sk, int imp);
++
+ #endif
+diff --git a/net/tipc/topsrv.c b/net/tipc/topsrv.c
+index 446af7bbd13e6..1489cfb941d8e 100644
+--- a/net/tipc/topsrv.c
++++ b/net/tipc/topsrv.c
+@@ -497,7 +497,6 @@ static void tipc_topsrv_listener_data_ready(struct sock *sk)
+ 
+ static int tipc_topsrv_create_listener(struct tipc_topsrv *srv)
+ {
+-	int imp = TIPC_CRITICAL_IMPORTANCE;
+ 	struct socket *lsock = NULL;
+ 	struct sockaddr_tipc saddr;
+ 	struct sock *sk;
+@@ -514,8 +513,9 @@ static int tipc_topsrv_create_listener(struct tipc_topsrv *srv)
+ 	sk->sk_user_data = srv;
+ 	write_unlock_bh(&sk->sk_callback_lock);
+ 
+-	rc = kernel_setsockopt(lsock, SOL_TIPC, TIPC_IMPORTANCE,
+-			       (char *)&imp, sizeof(imp));
++	lock_sock(sk);
++	rc = tsk_set_importance(sk, TIPC_CRITICAL_IMPORTANCE);
++	release_sock(sk);
+ 	if (rc < 0)
+ 		goto err;
+ 
 -- 
 2.26.2
 
