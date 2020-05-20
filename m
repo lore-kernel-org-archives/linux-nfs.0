@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29DBEC433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8EBEC433DF
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0393620849
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8712F207E8
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:57:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="W6xMYpJm"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="caFkmXfU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728407AbgETT5E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 15:57:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51262 "EHLO
+        id S1728509AbgETT5s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 15:57:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51266 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728391AbgETT5D (ORCPT
+        with ESMTP id S1728392AbgETT5D (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:57:03 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3214C061A0E;
-        Wed, 20 May 2020 12:57:02 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6BAB1C061A0F;
+        Wed, 20 May 2020 12:57:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=TVWRZ+dDVbUkqjKFRCRZsKcY4V10hWh4MQUOMOhQzp0=; b=W6xMYpJmfq6e+cBhu3IXfq0F7J
-        1awdkKkfctWpBz5liyupxCbX8YQv1Na/qQpO67S0j1a98bLcoWpj0HYWvfze27JPSxvaxsSstQ5zM
-        gSz/cEH8aI0rEBIJSkT8oIjFYvRLAiC/z7iqRkR4T6zgaqQL5iXdfhmthyv5brhymQRJCH7QW0bSB
-        genBzBLGGBpLQNKVa2162RYrKcJtleKqRNH0WMivQwOPrnxblf87/mKRzd/lQwww7Lp/vVOajbEN0
-        d0L/Gd/BfyH8AMusu7b0uVltVijFIVDzMqCKov0Aha/7TOPvsv22qZQOhSMnZGGinxDpB/cfKYCkj
-        PG+1mJmg==;
+        bh=TdxZOAuFy69KHn/dIFhOGI32U8H99MaSy14m7/E8SrM=; b=caFkmXfUsLNb9SZxDTt3hdNDl4
+        6a9x3Cx/9e5I899dMA+Ip5zzKxO8EDimI1c3WV1JTZW/H/jyz8KkpWqa+iqSOzZ7Bw9Z/Mb0Co3Ml
+        uRNInlY+rOAuGQL46+AxMN8+QGuTpTd4qKst5g9zXNoTXHEJ6ifsT3mFauWseMxvL/jXjsboqnBC6
+        fVz/IlgMqTQ0VFU4f7SZzy+IC3jhtq/VmfxMgrHVUMkmBOOtnW1I0RtoYAkZVRzoTIlL7nsDAhsU5
+        5UkcJkQARWOe3SYdH/R7a0wAAj6KJiqCXf43xx9Pj5OLfxrVt2mGvghBfjI/J8Mx+WUo6pNWWxChF
+        4VOY/EJQ==;
 Received: from [2001:4bb8:188:1506:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jbUpQ-0003Tx-Ac; Wed, 20 May 2020 19:56:48 +0000
+        id 1jbUpK-0003Nh-KO; Wed, 20 May 2020 19:56:31 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
         ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 30/33] tipc: call tsk_set_importance from tipc_topsrv_create_listener
-Date:   Wed, 20 May 2020 21:55:06 +0200
-Message-Id: <20200520195509.2215098-31-hch@lst.de>
+Subject: [PATCH 28/33] ipv6: add ip6_sock_set_recvpktinfo
+Date:   Wed, 20 May 2020 21:55:04 +0200
+Message-Id: <20200520195509.2215098-29-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 References: <20200520195509.2215098-1-hch@lst.de>
@@ -69,99 +69,64 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Avoid using kernel_setsockopt for the TIPC_IMPORTANCE option when we can
-just use the internal helper.  The only change needed is to pass a struct
-sock instead of tipc_sock, which is private to socket.c
+Add a helper to directly set the IPV6_RECVPKTINFO sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/tipc/socket.c | 18 +++++++++---------
- net/tipc/socket.h |  2 ++
- net/tipc/topsrv.c |  6 +++---
- 3 files changed, 14 insertions(+), 12 deletions(-)
+ include/net/ipv6.h   |  7 +++++++
+ net/sunrpc/svcsock.c | 10 ++--------
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/net/tipc/socket.c b/net/tipc/socket.c
-index e370ad0edd768..28c57d4544c53 100644
---- a/net/tipc/socket.c
-+++ b/net/tipc/socket.c
-@@ -191,17 +191,17 @@ static int tsk_importance(struct tipc_sock *tsk)
- 	return msg_importance(&tsk->phdr);
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 80260cff7e0c0..79b68ee3820e7 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -1261,4 +1261,11 @@ static inline int ip6_sock_set_addr_preferences(struct sock *sk, bool val)
+ 	return ret;
  }
  
--static int tsk_set_importance(struct tipc_sock *tsk, int imp)
-+static struct tipc_sock *tipc_sk(const struct sock *sk)
- {
--	if (imp > TIPC_CRITICAL_IMPORTANCE)
--		return -EINVAL;
--	msg_set_importance(&tsk->phdr, (u32)imp);
--	return 0;
-+	return container_of(sk, struct tipc_sock, sk);
- }
- 
--static struct tipc_sock *tipc_sk(const struct sock *sk)
-+int tsk_set_importance(struct sock *sk, int imp)
- {
--	return container_of(sk, struct tipc_sock, sk);
-+	if (imp > TIPC_CRITICAL_IMPORTANCE)
-+		return -EINVAL;
-+	msg_set_importance(&tipc_sk(sk)->phdr, (u32)imp);
-+	return 0;
- }
- 
- static bool tsk_conn_cong(struct tipc_sock *tsk)
-@@ -2681,7 +2681,7 @@ static int tipc_accept(struct socket *sock, struct socket *new_sock, int flags,
- 	/* Connect new socket to it's peer */
- 	tipc_sk_finish_conn(new_tsock, msg_origport(msg), msg_orignode(msg));
- 
--	tsk_set_importance(new_tsock, msg_importance(msg));
-+	tsk_set_importance(new_sk, msg_importance(msg));
- 	if (msg_named(msg)) {
- 		new_tsock->conn_type = msg_nametype(msg);
- 		new_tsock->conn_instance = msg_nameinst(msg);
-@@ -3099,7 +3099,7 @@ static int tipc_setsockopt(struct socket *sock, int lvl, int opt,
- 
- 	switch (opt) {
- 	case TIPC_IMPORTANCE:
--		res = tsk_set_importance(tsk, value);
-+		res = tsk_set_importance(sk, value);
- 		break;
- 	case TIPC_SRC_DROPPABLE:
- 		if (sock->type != SOCK_STREAM)
-diff --git a/net/tipc/socket.h b/net/tipc/socket.h
-index 235b9679acee4..b11575afc66fe 100644
---- a/net/tipc/socket.h
-+++ b/net/tipc/socket.h
-@@ -75,4 +75,6 @@ u32 tipc_sock_get_portid(struct sock *sk);
- bool tipc_sk_overlimit1(struct sock *sk, struct sk_buff *skb);
- bool tipc_sk_overlimit2(struct sock *sk, struct sk_buff *skb);
- 
-+int tsk_set_importance(struct sock *sk, int imp);
-+
- #endif
-diff --git a/net/tipc/topsrv.c b/net/tipc/topsrv.c
-index 446af7bbd13e6..1489cfb941d8e 100644
---- a/net/tipc/topsrv.c
-+++ b/net/tipc/topsrv.c
-@@ -497,7 +497,6 @@ static void tipc_topsrv_listener_data_ready(struct sock *sk)
- 
- static int tipc_topsrv_create_listener(struct tipc_topsrv *srv)
- {
--	int imp = TIPC_CRITICAL_IMPORTANCE;
- 	struct socket *lsock = NULL;
- 	struct sockaddr_tipc saddr;
- 	struct sock *sk;
-@@ -514,8 +513,9 @@ static int tipc_topsrv_create_listener(struct tipc_topsrv *srv)
- 	sk->sk_user_data = srv;
- 	write_unlock_bh(&sk->sk_callback_lock);
- 
--	rc = kernel_setsockopt(lsock, SOL_TIPC, TIPC_IMPORTANCE,
--			       (char *)&imp, sizeof(imp));
++static inline void ip6_sock_set_recvpktinfo(struct sock *sk)
++{
 +	lock_sock(sk);
-+	rc = tsk_set_importance(sk, TIPC_CRITICAL_IMPORTANCE);
++	inet6_sk(sk)->rxopt.bits.rxinfo = true;
 +	release_sock(sk);
- 	if (rc < 0)
- 		goto err;
++}
++
+ #endif /* _NET_IPV6_H */
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index a391892977cd2..e7a0037d9b56c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -595,8 +595,6 @@ static struct svc_xprt_class svc_udp_class = {
  
+ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ {
+-	int err, level, optname, one = 1;
+-
+ 	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
+ 		      &svsk->sk_xprt, serv);
+ 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+@@ -617,17 +615,13 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET:
+ 		ip_sock_set_pktinfo(svsk->sk_sock->sk);
+-		return;
++		break;
+ 	case AF_INET6:
+-		level = SOL_IPV6;
+-		optname = IPV6_RECVPKTINFO;
++		ip6_sock_set_recvpktinfo(svsk->sk_sock->sk);
+ 		break;
+ 	default:
+ 		BUG();
+ 	}
+-	err = kernel_setsockopt(svsk->sk_sock, level, optname,
+-					(char *)&one, sizeof(one));
+-	dprintk("svc: kernel_setsockopt returned %d\n", err);
+ }
+ 
+ /*
 -- 
 2.26.2
 
