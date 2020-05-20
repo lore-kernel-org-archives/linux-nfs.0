@@ -2,41 +2,40 @@ Return-Path: <SRS0=uryC=7C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C698C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 110CDC433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:01:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1ACEB20823
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C675A207D8
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:01:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Zn7/Ne73"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ma/DUEc/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728451AbgETUAv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 16:00:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51084 "EHLO
+        id S1727936AbgETT4J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 15:56:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51072 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727964AbgETT4K (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:10 -0400
+        with ESMTP id S1726964AbgETT4H (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:07 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D191CC061A0E;
-        Wed, 20 May 2020 12:56:09 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C2A15C08C5C0;
+        Wed, 20 May 2020 12:56:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=OiNHoC++ZJU6Frq2cw0ICACNWwiR/rswekrw6423rd8=; b=Zn7/Ne73or8IKnF1hrtFo2d59x
-        cQ3ZkfKPxSeMFK9wAHs1TnoW91cYr3Q/B6blL59jfHD84P/F0nr7yan3oDWkKYAG8UUR9xzyVwlpj
-        PbIBrSz3c8xKUIA66xiAtxuj6za6zOtxeEUUzvHsAUs9PhmA0fJ48I0H168sHn19lWbrAXzm0p9rN
-        ZYtzepaO/Zf9BUokiPf5UxrC7AVjI9KNwKlomeY60e8voSEcTmOjd95IwKX5ljs/8fUN/Cjgc6j1p
-        2YM5OQhF6Fvb/3WjyXNWYvhpJLc5zFt9n7niMsq1zanF9vfgjpc3iAXRhwDSs7uvuBhFI9/y7ivsf
-        So7lrlDg==;
+        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
+        Content-ID:Content-Description:In-Reply-To:References;
+        bh=AvcdAD8zTTSJDfWEpIpfpetvjQ99drHMp3Vtm1fZek8=; b=ma/DUEc/VfLIdSMqChe6fBXtRM
+        KFPIi0kExGxuMcY7MKuOHO7HDRL3fZTdRlVLkDNs7CIr3Y81qhwST3zP5iggrt/WXayW1EKMqqag1
+        AvC/YCGpoRtlOhSsCppb9mDB78KuJpoGGXo5TuGPK9ngfY+jniQETGjxwv6oE9IfQ7Ni40xZ36pxh
+        qAk7tK35dbFwZz+5SSeM6/7oFaHXTh9RiaDcOrrmB/wNmgFnkW3elg7zIJsYQTCrm5fdS8GdfQvzi
+        bQ35oJTYDm0DTjgxdbe5Rw1DYcKft1UsNPhk9zD9I1wl67ev9qL0kSTZBwuDqU1mwQI7FPc3zZzm4
+        zSwwU/3A==;
 Received: from [2001:4bb8:188:1506:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jbUoP-0002Ho-Sq; Wed, 20 May 2020 19:55:34 +0000
+        id 1jbUo3-0001ns-KW; Wed, 20 May 2020 19:55:12 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,12 +54,10 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
         ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 08/33] net: add sock_enable_timestamps
-Date:   Wed, 20 May 2020 21:54:44 +0200
-Message-Id: <20200520195509.2215098-9-hch@lst.de>
+Subject: remove kernel_setsockopt and kernel_getsockopt v2
+Date:   Wed, 20 May 2020 21:54:36 +0200
+Message-Id: <20200520195509.2215098-1-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
-References: <20200520195509.2215098-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -69,117 +66,25 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly enable timestamps instead of setting the
-SO_TIMESTAMP* sockopts from kernel space and going through a fake
-uaccess.
+Hi Dave,
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- include/net/sock.h       |  1 +
- net/core/sock.c          | 47 +++++++++++++++++++++++++---------------
- net/rxrpc/local_object.c |  8 +------
- 3 files changed, 31 insertions(+), 25 deletions(-)
+this series removes the kernel_setsockopt and kernel_getsockopt
+functions, and instead switches their users to small functions that
+implement setting (or in one case getting) a sockopt directly using
+a normal kernel function call with type safety and all the other
+benefits of not having a function call.
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index cdec7bc055d5b..99ef43508d2b5 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2689,6 +2689,7 @@ static inline bool sk_dev_equal_l3scope(struct sock *sk, int dif)
- void sock_def_readable(struct sock *sk);
- 
- int sock_bindtoindex(struct sock *sk, int ifindex);
-+void sock_enable_timestamps(struct sock *sk);
- void sock_no_linger(struct sock *sk);
- void sock_set_priority(struct sock *sk, u32 priority);
- void sock_set_reuseaddr(struct sock *sk);
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 23f80880fbb2c..e4a4dd2b3d8b3 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -757,6 +757,28 @@ void sock_set_sndtimeo(struct sock *sk, s64 secs)
- }
- EXPORT_SYMBOL(sock_set_sndtimeo);
- 
-+static void __sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns)
-+{
-+	if (val)  {
-+		sock_valbool_flag(sk, SOCK_TSTAMP_NEW, new);
-+		sock_valbool_flag(sk, SOCK_RCVTSTAMPNS, ns);
-+		sock_set_flag(sk, SOCK_RCVTSTAMP);
-+		sock_enable_timestamp(sk, SOCK_TIMESTAMP);
-+	} else {
-+		sock_reset_flag(sk, SOCK_RCVTSTAMP);
-+		sock_reset_flag(sk, SOCK_RCVTSTAMPNS);
-+		sock_reset_flag(sk, SOCK_TSTAMP_NEW);
-+	}
-+}
-+
-+void sock_enable_timestamps(struct sock *sk)
-+{
-+	lock_sock(sk);
-+	__sock_set_timestamps(sk, true, false, true);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(sock_enable_timestamps);
-+
- /*
-  *	This is meant for all protocols to use and covers goings on
-  *	at the socket level. Everything here is generic.
-@@ -948,28 +970,17 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 		break;
- 
- 	case SO_TIMESTAMP_OLD:
-+		__sock_set_timestamps(sk, valbool, false, false);
-+		break;
- 	case SO_TIMESTAMP_NEW:
-+		__sock_set_timestamps(sk, valbool, true, false);
-+		break;
- 	case SO_TIMESTAMPNS_OLD:
-+		__sock_set_timestamps(sk, valbool, false, true);
-+		break;
- 	case SO_TIMESTAMPNS_NEW:
--		if (valbool)  {
--			if (optname == SO_TIMESTAMP_NEW || optname == SO_TIMESTAMPNS_NEW)
--				sock_set_flag(sk, SOCK_TSTAMP_NEW);
--			else
--				sock_reset_flag(sk, SOCK_TSTAMP_NEW);
--
--			if (optname == SO_TIMESTAMP_OLD || optname == SO_TIMESTAMP_NEW)
--				sock_reset_flag(sk, SOCK_RCVTSTAMPNS);
--			else
--				sock_set_flag(sk, SOCK_RCVTSTAMPNS);
--			sock_set_flag(sk, SOCK_RCVTSTAMP);
--			sock_enable_timestamp(sk, SOCK_TIMESTAMP);
--		} else {
--			sock_reset_flag(sk, SOCK_RCVTSTAMP);
--			sock_reset_flag(sk, SOCK_RCVTSTAMPNS);
--			sock_reset_flag(sk, SOCK_TSTAMP_NEW);
--		}
-+		__sock_set_timestamps(sk, valbool, true, true);
- 		break;
--
- 	case SO_TIMESTAMPING_NEW:
- 		sock_set_flag(sk, SOCK_TSTAMP_NEW);
- 		/* fall through */
-diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
-index 01135e54d95d2..5ea2bd01fdd59 100644
---- a/net/rxrpc/local_object.c
-+++ b/net/rxrpc/local_object.c
-@@ -189,13 +189,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
- 		}
- 
- 		/* We want receive timestamps. */
--		opt = 1;
--		ret = kernel_setsockopt(local->socket, SOL_SOCKET, SO_TIMESTAMPNS_OLD,
--					(char *)&opt, sizeof(opt));
--		if (ret < 0) {
--			_debug("setsockopt failed");
--			goto error;
--		}
-+		sock_enable_timestamps(local->socket->sk);
- 		break;
- 
- 	default:
--- 
-2.26.2
+In some cases these functions seem pretty heavy handed as they do
+a lock_sock even for just setting a single variable, but this mirrors
+the real setsockopt implementation unlike a few drivers that just set
+set the fields directly.
 
+
+Changes since v1:
+ - use ->getname for sctp sockets in dlm
+ - add a new ->bind_add struct proto method for dlm/sctp
+ - switch the ipv6 and remaining sctp helpers to inline function so that
+   the ipv6 and sctp modules are not pulled in by any module that could
+   potentially use ipv6 or sctp connections
+ - remove arguments to various sock_* helpers that are always used with
+   the same constant arguments
