@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77A00C433E1
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E7D0C433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 54091207F9
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5B847207F9
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 20:00:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="dQ8E2Az6"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Yf8Ka3KY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726925AbgETT40 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 15:56:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51128 "EHLO
+        id S1728084AbgETT4Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 15:56:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51104 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728078AbgETT4Y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:24 -0400
+        with ESMTP id S1728078AbgETT4P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:15 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1AE97C061A0F;
-        Wed, 20 May 2020 12:56:24 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7140CC061A0E;
+        Wed, 20 May 2020 12:56:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=4NVYDD9dVtr0WtQxy7SjHzDrfj1IJPmnztjpKvUnyfA=; b=dQ8E2Az6/ysSJFFDNsu049N458
-        FvlpDWjzUNhhJxe0fecnnA60MGb/A11fnXfOW5TmiARgZDEINSL3kUDnOfYS6g5OPV/gsfN+xW5qu
-        IFX5uR60fqCKohydtrrZfc//52RWRC6vW4wxpqELO1kEUj+fua50JaSEOJCMmAkDgLHkjAqgct6sw
-        Qj+HsB2ALn7y1HAS5C5G2HDVfidIyQ6R5guyiKavv3190X2z9YhvRh2cuChyDJr5MayLGhP7VXriB
-        GJfE3zgVfMjpq8EBtMZo6A7LF80AtFvV1qpHaFrrfi1rJmh7k1cAMm5lgsQCdK8SHSCa/j1XO0zzP
-        gIPqCt2w==;
+        bh=i5gzlZfmXUuIBw3Csz0XurxqeATQQuTIPLX7NZ3IHJc=; b=Yf8Ka3KY10PsFQLSQ0S7PJwbz9
+        /nh5S639e1X1O5QwFd3tu0u+AyQ4K3+hlTVIKPTnIIw/vDZO1lg6HKQhxT+kaECLnHIKZmCZ70jig
+        /azcg0Gyk6j/PFKUf1YC7jwW8/bRbEifwsOY10bTlg2nI2PIC8UL8QZG0hOV7187M8HcogWW31O5E
+        1j6S/k6P5anvVQnxYi4ald6MEHrDvZF36fB+sJVvQOkismQQ5U12aDGuTrQKspD6rUGBGp1+f5RlC
+        XNL96I/2JQo0Jr/+CFB+42e38fw49FLT0lfB7gdTl0B6WEUcC57e1Xr4/f1F3frhNwNuNtUplCQnV
+        KpFdtCnw==;
 Received: from [2001:4bb8:188:1506:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jbUog-0002eo-6k; Wed, 20 May 2020 19:55:50 +0000
+        id 1jbUoV-0002Rc-8B; Wed, 20 May 2020 19:55:39 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -55,9 +55,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
         ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 14/33] tcp: add tcp_sock_set_quickack
-Date:   Wed, 20 May 2020 21:54:50 +0200
-Message-Id: <20200520195509.2215098-15-hch@lst.de>
+Subject: [PATCH 10/33] net: add sock_set_rcvbuf
+Date:   Wed, 20 May 2020 21:54:46 +0200
+Message-Id: <20200520195509.2215098-11-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 References: <20200520195509.2215098-1-hch@lst.de>
@@ -69,127 +69,137 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the TCP_QUICKACK sockopt from kernel space
-without going through a fake uaccess.  Cleanup the callers to avoid
-pointless wrappers now that this is a simple function call.
+Add a helper to directly set the SO_RCVBUFFORCE sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/block/drbd/drbd_int.h      |  7 ------
- drivers/block/drbd/drbd_receiver.c |  5 ++--
- include/linux/tcp.h                |  1 +
- net/ipv4/tcp.c                     | 39 ++++++++++++++++++++----------
- 4 files changed, 29 insertions(+), 23 deletions(-)
+ fs/dlm/lowcomms.c  |  7 +-----
+ include/net/sock.h |  1 +
+ net/core/sock.c    | 59 +++++++++++++++++++++++++---------------------
+ 3 files changed, 34 insertions(+), 33 deletions(-)
 
-diff --git a/drivers/block/drbd/drbd_int.h b/drivers/block/drbd/drbd_int.h
-index e24bba87c8e02..14345a87c7cc5 100644
---- a/drivers/block/drbd/drbd_int.h
-+++ b/drivers/block/drbd/drbd_int.h
-@@ -1570,13 +1570,6 @@ extern void drbd_set_recv_tcq(struct drbd_device *device, int tcq_enabled);
- extern void _drbd_clear_done_ee(struct drbd_device *device, struct list_head *to_be_freed);
- extern int drbd_connected(struct drbd_peer_device *);
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index b6e6dba281547..2822a430a2b49 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1180,7 +1180,6 @@ static int sctp_listen_for_all(void)
+ 	struct socket *sock = NULL;
+ 	int result = -EINVAL;
+ 	struct connection *con = nodeid2con(0, GFP_NOFS);
+-	int bufsize = NEEDED_RMEM;
+ 	int one = 1;
  
--static inline void drbd_tcp_quickack(struct socket *sock)
--{
--	int val = 2;
--	(void) kernel_setsockopt(sock, SOL_TCP, TCP_QUICKACK,
--			(char*)&val, sizeof(val));
--}
+ 	if (!con)
+@@ -1195,11 +1194,7 @@ static int sctp_listen_for_all(void)
+ 		goto out;
+ 	}
+ 
+-	result = kernel_setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE,
+-				 (char *)&bufsize, sizeof(bufsize));
+-	if (result)
+-		log_print("Error increasing buffer space on socket %d", result);
 -
- /* sets the number of 512 byte sectors of our virtual device */
- void drbd_set_my_capacity(struct drbd_device *device, sector_t size);
++	sock_set_rcvbuf(sock->sk, NEEDED_RMEM);
+ 	result = kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+ 				   sizeof(one));
+ 	if (result < 0)
+diff --git a/include/net/sock.h b/include/net/sock.h
+index dc08c176238fd..c997289aabbf9 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2693,6 +2693,7 @@ void sock_enable_timestamps(struct sock *sk);
+ void sock_no_linger(struct sock *sk);
+ void sock_set_keepalive(struct sock *sk);
+ void sock_set_priority(struct sock *sk, u32 priority);
++void sock_set_rcvbuf(struct sock *sk, int val);
+ void sock_set_reuseaddr(struct sock *sk);
+ void sock_set_sndtimeo(struct sock *sk, s64 secs);
  
-diff --git a/drivers/block/drbd/drbd_receiver.c b/drivers/block/drbd/drbd_receiver.c
-index 20a5e94494acd..3a3f2b6a821f3 100644
---- a/drivers/block/drbd/drbd_receiver.c
-+++ b/drivers/block/drbd/drbd_receiver.c
-@@ -1223,7 +1223,7 @@ static int drbd_recv_header_maybe_unplug(struct drbd_connection *connection, str
- 		 * quickly as possible, and let remote TCP know what we have
- 		 * received so far. */
- 		if (err == -EAGAIN) {
--			drbd_tcp_quickack(connection->data.socket);
-+			tcp_sock_set_quickack(connection->data.socket->sk, 2);
- 			drbd_unplug_all_devices(connection);
- 		}
- 		if (err > 0) {
-@@ -4959,8 +4959,7 @@ static int receive_UnplugRemote(struct drbd_connection *connection, struct packe
- {
- 	/* Make sure we've acked all the TCP data associated
- 	 * with the data requests being unplugged */
--	drbd_tcp_quickack(connection->data.socket);
--
-+	tcp_sock_set_quickack(connection->data.socket->sk, 2);
- 	return 0;
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 728f5fb156a0c..3c6ebf952e9ad 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -789,6 +789,35 @@ void sock_set_keepalive(struct sock *sk)
  }
+ EXPORT_SYMBOL(sock_set_keepalive);
  
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 9e42c7fe50a8b..2eaf8320b9db0 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -499,5 +499,6 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
- 
- void tcp_sock_set_cork(struct sock *sk, bool on);
- void tcp_sock_set_nodelay(struct sock *sk);
-+void tcp_sock_set_quickack(struct sock *sk, int val);
- 
- #endif	/* _LINUX_TCP_H */
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index a65f293a19fac..27b5e7a4e2ef9 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2856,6 +2856,31 @@ void tcp_sock_set_nodelay(struct sock *sk)
- }
- EXPORT_SYMBOL(tcp_sock_set_nodelay);
- 
-+static void __tcp_sock_set_quickack(struct sock *sk, int val)
++static void __sock_set_rcvbuf(struct sock *sk, int val)
 +{
-+	if (!val) {
-+		inet_csk_enter_pingpong_mode(sk);
-+		return;
-+	}
++	/* Ensure val * 2 fits into an int, to prevent max_t() from treating it
++	 * as a negative value.
++	 */
++	val = min_t(int, val, INT_MAX / 2);
++	sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
 +
-+	inet_csk_exit_pingpong_mode(sk);
-+	if ((1 << sk->sk_state) & (TCPF_ESTABLISHED | TCPF_CLOSE_WAIT) &&
-+	    inet_csk_ack_scheduled(sk)) {
-+		inet_csk(sk)->icsk_ack.pending |= ICSK_ACK_PUSHED;
-+		tcp_cleanup_rbuf(sk, 1);
-+		if (!(val & 1))
-+			inet_csk_enter_pingpong_mode(sk);
-+	}
++	/* We double it on the way in to account for "struct sk_buff" etc.
++	 * overhead.   Applications assume that the SO_RCVBUF setting they make
++	 * will allow that much actual data to be received on that socket.
++	 *
++	 * Applications are unaware that "struct sk_buff" and other overheads
++	 * allocate from the receive buffer during socket buffer allocation.
++	 *
++	 * And after considering the possible alternatives, returning the value
++	 * we actually used in getsockopt is the most desirable behavior.
++	 */
++	WRITE_ONCE(sk->sk_rcvbuf, max_t(int, val * 2, SOCK_MIN_RCVBUF));
 +}
 +
-+void tcp_sock_set_quickack(struct sock *sk, int val)
++void sock_set_rcvbuf(struct sock *sk, int val)
 +{
 +	lock_sock(sk);
-+	__tcp_sock_set_quickack(sk, val);
++	__sock_set_rcvbuf(sk, val);
 +	release_sock(sk);
 +}
-+EXPORT_SYMBOL(tcp_sock_set_quickack);
++EXPORT_SYMBOL(sock_set_rcvbuf);
 +
  /*
-  *	Socket option code for TCP.
-  */
-@@ -3096,19 +3121,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
+@@ -885,30 +914,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		 * play 'guess the biggest size' games. RCVBUF/SNDBUF
+ 		 * are treated in BSD as hints
+ 		 */
+-		val = min_t(u32, val, sysctl_rmem_max);
+-set_rcvbuf:
+-		/* Ensure val * 2 fits into an int, to prevent max_t()
+-		 * from treating it as a negative value.
+-		 */
+-		val = min_t(int, val, INT_MAX / 2);
+-		sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
+-		/*
+-		 * We double it on the way in to account for
+-		 * "struct sk_buff" etc. overhead.   Applications
+-		 * assume that the SO_RCVBUF setting they make will
+-		 * allow that much actual data to be received on that
+-		 * socket.
+-		 *
+-		 * Applications are unaware that "struct sk_buff" and
+-		 * other overheads allocate from the receive buffer
+-		 * during socket buffer allocation.
+-		 *
+-		 * And after considering the possible alternatives,
+-		 * returning the value we actually used in getsockopt
+-		 * is the most desirable behavior.
+-		 */
+-		WRITE_ONCE(sk->sk_rcvbuf,
+-			   max_t(int, val * 2, SOCK_MIN_RCVBUF));
++		__sock_set_rcvbuf(sk, min_t(u32, val, sysctl_rmem_max));
  		break;
  
- 	case TCP_QUICKACK:
--		if (!val) {
--			inet_csk_enter_pingpong_mode(sk);
--		} else {
--			inet_csk_exit_pingpong_mode(sk);
--			if ((1 << sk->sk_state) &
--			    (TCPF_ESTABLISHED | TCPF_CLOSE_WAIT) &&
--			    inet_csk_ack_scheduled(sk)) {
--				icsk->icsk_ack.pending |= ICSK_ACK_PUSHED;
--				tcp_cleanup_rbuf(sk, 1);
--				if (!(val & 1))
--					inet_csk_enter_pingpong_mode(sk);
--			}
--		}
-+		__tcp_sock_set_quickack(sk, val);
- 		break;
+ 	case SO_RCVBUFFORCE:
+@@ -920,9 +926,8 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		/* No negative values (to prevent underflow, as val will be
+ 		 * multiplied by 2).
+ 		 */
+-		if (val < 0)
+-			val = 0;
+-		goto set_rcvbuf;
++		__sock_set_rcvbuf(sk, max(val, 0));
++		break;
  
- #ifdef CONFIG_TCP_MD5SIG
+ 	case SO_KEEPALIVE:
+ 		if (sk->sk_prot->keepalive)
 -- 
 2.26.2
 
