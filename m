@@ -4,39 +4,39 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E5501C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:59:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0441C433E1
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:59:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BBDD7207D8
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:59:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B575620823
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 May 2020 19:59:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="nrnGlUaG"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="W3EYxX/w"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727975AbgETT7c (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 15:59:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51156 "EHLO
+        id S1728212AbgETT7p (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 15:59:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51144 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728228AbgETT4d (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:33 -0400
+        with ESMTP id S1728191AbgETT43 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 May 2020 15:56:29 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CCFF6C061A0E;
-        Wed, 20 May 2020 12:56:32 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F155C061A0E;
+        Wed, 20 May 2020 12:56:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=CohEq7IX/OF1rZJsT6wV2qMWAc/eXczZXke5014yf6k=; b=nrnGlUaGYsraCK7qHqu5QoVapF
-        roe1qJlfRQCmGPK1gpYBl6EaK5c0DLkyNe93ndr2PvJfoy/fVJivZDBGbnX9GbQfTqdNzL1JFJJhD
-        lIXRmsm+gol/kP1NyUsBWael1unXa8wL7cDfudAw/LS3cnVz81sFEHBWJ+S/ISp7Enpm3afSQ095U
-        eL20JzkleepZ0fBmXgBJiE1cr1LaD0p2MxYHQ7jggt7Q94F73eyxM14j66efbC7UNdafO13qqsnWi
-        i9657gDXAlab2m0XT2NvcEKTCwjl8+C7gP/XBUA2ilxsAIIRjRSspGAt5bgxnSQtOdQcTZV1Jz7Bc
-        64V8e1qA==;
+        bh=JWtkP70sZ2MvAAMQ0YREWdy3areO0OMeHhh2vuawOD0=; b=W3EYxX/w4msULI3UiL3G4XyO8l
+        PvHTpLEh4wFaZo0oh/gb1/ChHqeLJNR1+TrNp2J1F5KBHmRnR+jt2oOfN+HQQyR+JSKZff0nApeNH
+        QrqsxOhsNxZd8hUj94ZN7/0KgdHzIxC6J7u4hjA7u64vmFkr3IUI/LJdqV+mzs4UQGEVOX6asDj40
+        DXBlyur8Ew3yDtpo1eE/0/e6ADqGQPG9t4XCC+oHYY1S+cfotns1ogw3VJpPeeS5Oz2wLXETCMi3U
+        dvADb1NBQudhxFf7Ym2yYtvdRyMtdhfs8lhW/louieS9v1hV1IrPMG+3RpTDz0XTJY5d/S+3RBBeQ
+        JcZJkukQ==;
 Received: from [2001:4bb8:188:1506:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jbUoi-0002iL-W4; Wed, 20 May 2020 19:55:53 +0000
+        id 1jbUod-0002bc-Jc; Wed, 20 May 2020 19:55:48 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -54,10 +54,11 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
         netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
         ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com,
-        linux-nfs@vger.kernel.org, Sagi Grimberg <sagi@grimberg.me>
-Subject: [PATCH 15/33] tcp: add tcp_sock_set_syncnt
-Date:   Wed, 20 May 2020 21:54:51 +0200
-Message-Id: <20200520195509.2215098-16-hch@lst.de>
+        linux-nfs@vger.kernel.org, Sagi Grimberg <sagi@grimberg.me>,
+        Jason Gunthorpe <jgg@mellanox.com>
+Subject: [PATCH 13/33] tcp: add tcp_sock_set_nodelay
+Date:   Wed, 20 May 2020 21:54:49 +0200
+Message-Id: <20200520195509.2215098-14-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 References: <20200520195509.2215098-1-hch@lst.de>
@@ -69,71 +70,448 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the TCP_SYNCNT sockopt from kernel space
-without going through a fake uaccess.
+Add a helper to directly set the TCP_NODELAY sockopt from kernel space
+without going through a fake uaccess.  Cleanup the callers to avoid
+pointless wrappers now that this is a simple function call.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Acked-by: Sagi Grimberg <sagi@grimberg.me>
+Acked-by: Jason Gunthorpe <jgg@mellanox.com>
 ---
- drivers/nvme/host/tcp.c |  9 +--------
- include/linux/tcp.h     |  1 +
- net/ipv4/tcp.c          | 12 ++++++++++++
- 3 files changed, 14 insertions(+), 8 deletions(-)
+ drivers/block/drbd/drbd_int.h             |  7 ----
+ drivers/block/drbd/drbd_main.c            |  2 +-
+ drivers/block/drbd/drbd_receiver.c        |  4 +--
+ drivers/infiniband/sw/siw/siw_cm.c        | 24 +++-----------
+ drivers/nvme/host/tcp.c                   |  9 +-----
+ drivers/nvme/target/tcp.c                 | 12 ++-----
+ drivers/target/iscsi/iscsi_target_login.c | 15 ++-------
+ fs/cifs/connect.c                         | 10 ++----
+ fs/dlm/lowcomms.c                         |  8 ++---
+ fs/ocfs2/cluster/tcp.c                    | 20 ++----------
+ include/linux/tcp.h                       |  1 +
+ net/ceph/messenger.c                      | 11 ++-----
+ net/ipv4/tcp.c                            | 39 +++++++++++++++--------
+ net/rds/tcp.c                             | 11 +------
+ net/rds/tcp.h                             |  1 -
+ net/rds/tcp_listen.c                      |  2 +-
+ 16 files changed, 49 insertions(+), 127 deletions(-)
 
+diff --git a/drivers/block/drbd/drbd_int.h b/drivers/block/drbd/drbd_int.h
+index 3550adc93c68b..e24bba87c8e02 100644
+--- a/drivers/block/drbd/drbd_int.h
++++ b/drivers/block/drbd/drbd_int.h
+@@ -1570,13 +1570,6 @@ extern void drbd_set_recv_tcq(struct drbd_device *device, int tcq_enabled);
+ extern void _drbd_clear_done_ee(struct drbd_device *device, struct list_head *to_be_freed);
+ extern int drbd_connected(struct drbd_peer_device *);
+ 
+-static inline void drbd_tcp_nodelay(struct socket *sock)
+-{
+-	int val = 1;
+-	(void) kernel_setsockopt(sock, SOL_TCP, TCP_NODELAY,
+-			(char*)&val, sizeof(val));
+-}
+-
+ static inline void drbd_tcp_quickack(struct socket *sock)
+ {
+ 	int val = 2;
+diff --git a/drivers/block/drbd/drbd_main.c b/drivers/block/drbd/drbd_main.c
+index c094c3c2c5d4d..45fbd526c453b 100644
+--- a/drivers/block/drbd/drbd_main.c
++++ b/drivers/block/drbd/drbd_main.c
+@@ -660,7 +660,7 @@ static int __send_command(struct drbd_connection *connection, int vnr,
+ 	/* DRBD protocol "pings" are latency critical.
+ 	 * This is supposed to trigger tcp_push_pending_frames() */
+ 	if (!err && (cmd == P_PING || cmd == P_PING_ACK))
+-		drbd_tcp_nodelay(sock->socket);
++		tcp_sock_set_nodelay(sock->socket->sk);
+ 
+ 	return err;
+ }
+diff --git a/drivers/block/drbd/drbd_receiver.c b/drivers/block/drbd/drbd_receiver.c
+index 55ea907ad33cb..20a5e94494acd 100644
+--- a/drivers/block/drbd/drbd_receiver.c
++++ b/drivers/block/drbd/drbd_receiver.c
+@@ -1051,8 +1051,8 @@ static int conn_connect(struct drbd_connection *connection)
+ 
+ 	/* we don't want delays.
+ 	 * we use TCP_CORK where appropriate, though */
+-	drbd_tcp_nodelay(sock.socket);
+-	drbd_tcp_nodelay(msock.socket);
++	tcp_sock_set_nodelay(sock.socket->sk);
++	tcp_sock_set_nodelay(msock.socket->sk);
+ 
+ 	connection->data.socket = sock.socket;
+ 	connection->meta.socket = msock.socket;
+diff --git a/drivers/infiniband/sw/siw/siw_cm.c b/drivers/infiniband/sw/siw/siw_cm.c
+index d1860f3e87401..1662216be66df 100644
+--- a/drivers/infiniband/sw/siw/siw_cm.c
++++ b/drivers/infiniband/sw/siw/siw_cm.c
+@@ -947,16 +947,8 @@ static void siw_accept_newconn(struct siw_cep *cep)
+ 	siw_cep_get(new_cep);
+ 	new_s->sk->sk_user_data = new_cep;
+ 
+-	if (siw_tcp_nagle == false) {
+-		int val = 1;
+-
+-		rv = kernel_setsockopt(new_s, SOL_TCP, TCP_NODELAY,
+-				       (char *)&val, sizeof(val));
+-		if (rv) {
+-			siw_dbg_cep(cep, "setsockopt NODELAY error: %d\n", rv);
+-			goto error;
+-		}
+-	}
++	if (siw_tcp_nagle == false)
++		tcp_sock_set_nodelay(new_s->sk);
+ 	new_cep->state = SIW_EPSTATE_AWAIT_MPAREQ;
+ 
+ 	rv = siw_cm_queue_work(new_cep, SIW_CM_WORK_MPATIMEOUT);
+@@ -1386,16 +1378,8 @@ int siw_connect(struct iw_cm_id *id, struct iw_cm_conn_param *params)
+ 		siw_dbg_qp(qp, "kernel_bindconnect: error %d\n", rv);
+ 		goto error;
+ 	}
+-	if (siw_tcp_nagle == false) {
+-		int val = 1;
+-
+-		rv = kernel_setsockopt(s, SOL_TCP, TCP_NODELAY, (char *)&val,
+-				       sizeof(val));
+-		if (rv) {
+-			siw_dbg_qp(qp, "setsockopt NODELAY error: %d\n", rv);
+-			goto error;
+-		}
+-	}
++	if (siw_tcp_nagle == false)
++		tcp_sock_set_nodelay(s->sk);
+ 	cep = siw_cep_alloc(sdev);
+ 	if (!cep) {
+ 		rv = -ENOMEM;
 diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index 4e4a750ecdb97..2872584f52f63 100644
+index a307972d33a02..4e4a750ecdb97 100644
 --- a/drivers/nvme/host/tcp.c
 +++ b/drivers/nvme/host/tcp.c
-@@ -1336,14 +1336,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
+@@ -1346,14 +1346,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
  	}
  
- 	/* Single syn retry */
+ 	/* Set TCP no delay */
 -	opt = 1;
--	ret = kernel_setsockopt(queue->sock, IPPROTO_TCP, TCP_SYNCNT,
--			(char *)&opt, sizeof(opt));
+-	ret = kernel_setsockopt(queue->sock, IPPROTO_TCP,
+-			TCP_NODELAY, (char *)&opt, sizeof(opt));
 -	if (ret) {
 -		dev_err(nctrl->device,
--			"failed to set TCP_SYNCNT sock opt %d\n", ret);
+-			"failed to set TCP_NODELAY sock opt %d\n", ret);
 -		goto err_sock;
 -	}
-+	tcp_sock_set_syncnt(queue->sock->sk, 1);
++	tcp_sock_set_nodelay(queue->sock->sk);
  
- 	/* Set TCP no delay */
- 	tcp_sock_set_nodelay(queue->sock->sk);
+ 	/*
+ 	 * Cleanup whatever is sitting in the TCP transmit queue on socket
+diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
+index f3088156d01da..55bc4c3c0a74a 100644
+--- a/drivers/nvme/target/tcp.c
++++ b/drivers/nvme/target/tcp.c
+@@ -1580,7 +1580,7 @@ static int nvmet_tcp_add_port(struct nvmet_port *nport)
+ {
+ 	struct nvmet_tcp_port *port;
+ 	__kernel_sa_family_t af;
+-	int opt, ret;
++	int ret;
+ 
+ 	port = kzalloc(sizeof(*port), GFP_KERNEL);
+ 	if (!port)
+@@ -1625,15 +1625,7 @@ static int nvmet_tcp_add_port(struct nvmet_port *nport)
+ 	port->data_ready = port->sock->sk->sk_data_ready;
+ 	port->sock->sk->sk_data_ready = nvmet_tcp_listen_data_ready;
+ 	sock_set_reuseaddr(port->sock->sk);
+-
+-	opt = 1;
+-	ret = kernel_setsockopt(port->sock, IPPROTO_TCP,
+-			TCP_NODELAY, (char *)&opt, sizeof(opt));
+-	if (ret) {
+-		pr_err("failed to set TCP_NODELAY sock opt %d\n", ret);
+-		goto err_sock;
+-	}
+-
++	tcp_sock_set_nodelay(port->sock->sk);
+ 	if (so_priority > 0)
+ 		sock_set_priority(port->sock->sk, so_priority);
+ 
+diff --git a/drivers/target/iscsi/iscsi_target_login.c b/drivers/target/iscsi/iscsi_target_login.c
+index 91acb3f07b4cc..b561b07a869a0 100644
+--- a/drivers/target/iscsi/iscsi_target_login.c
++++ b/drivers/target/iscsi/iscsi_target_login.c
+@@ -897,20 +897,11 @@ int iscsit_setup_np(
+ 	/*
+ 	 * Set SO_REUSEADDR, and disable Nagel Algorithm with TCP_NODELAY.
+ 	 */
+-	/* FIXME: Someone please explain why this is endian-safe */
+-	opt = 1;
+-	if (np->np_network_transport == ISCSI_TCP) {
+-		ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+-				(char *)&opt, sizeof(opt));
+-		if (ret < 0) {
+-			pr_err("kernel_setsockopt() for TCP_NODELAY"
+-				" failed: %d\n", ret);
+-			goto fail;
+-		}
+-	}
+-
++	if (np->np_network_transport == ISCSI_TCP)
++		tcp_sock_set_nodelay(sock->sk);
+ 	sock_set_reuseaddr(sock->sk);
+ 
++	opt = 1;
+ 	ret = kernel_setsockopt(sock, IPPROTO_IP, IP_FREEBIND,
+ 			(char *)&opt, sizeof(opt));
+ 	if (ret < 0) {
+diff --git a/fs/cifs/connect.c b/fs/cifs/connect.c
+index 28268ed461b82..ad8fb53b36827 100644
+--- a/fs/cifs/connect.c
++++ b/fs/cifs/connect.c
+@@ -3929,14 +3929,8 @@ generic_ip_connect(struct TCP_Server_Info *server)
+ 			socket->sk->sk_rcvbuf = 140 * 1024;
+ 	}
+ 
+-	if (server->tcp_nodelay) {
+-		int val = 1;
+-		rc = kernel_setsockopt(socket, SOL_TCP, TCP_NODELAY,
+-				(char *)&val, sizeof(val));
+-		if (rc)
+-			cifs_dbg(FYI, "set TCP_NODELAY socket option error %d\n",
+-				 rc);
+-	}
++	if (server->tcp_nodelay)
++		tcp_sock_set_nodelay(socket->sk);
+ 
+ 	cifs_dbg(FYI, "sndbuf %d rcvbuf %d rcvtimeo 0x%lx\n",
+ 		 socket->sk->sk_sndbuf,
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 2822a430a2b49..69333728d871b 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1011,7 +1011,6 @@ static void tcp_connect_to_sock(struct connection *con)
+ 	struct sockaddr_storage saddr, src_addr;
+ 	int addr_len;
+ 	struct socket *sock = NULL;
+-	int one = 1;
+ 	int result;
+ 
+ 	if (con->nodeid == 0) {
+@@ -1060,8 +1059,7 @@ static void tcp_connect_to_sock(struct connection *con)
+ 	log_print("connecting to %d", con->nodeid);
+ 
+ 	/* Turn off Nagle's algorithm */
+-	kernel_setsockopt(sock, SOL_TCP, TCP_NODELAY, (char *)&one,
+-			  sizeof(one));
++	tcp_sock_set_nodelay(sock->sk);
+ 
+ 	result = sock->ops->connect(sock, (struct sockaddr *)&saddr, addr_len,
+ 				   O_NONBLOCK);
+@@ -1103,7 +1101,6 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
+ {
+ 	struct socket *sock = NULL;
+ 	int result = 0;
+-	int one = 1;
+ 	int addr_len;
+ 
+ 	if (dlm_local_addr[0]->ss_family == AF_INET)
+@@ -1120,8 +1117,7 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
+ 	}
+ 
+ 	/* Turn off Nagle's algorithm */
+-	kernel_setsockopt(sock, SOL_TCP, TCP_NODELAY, (char *)&one,
+-			  sizeof(one));
++	tcp_sock_set_nodelay(sock->sk);
+ 
+ 	sock_set_reuseaddr(sock->sk);
+ 
+diff --git a/fs/ocfs2/cluster/tcp.c b/fs/ocfs2/cluster/tcp.c
+index 2c512b40a940e..4c70fe9d19ab2 100644
+--- a/fs/ocfs2/cluster/tcp.c
++++ b/fs/ocfs2/cluster/tcp.c
+@@ -1441,14 +1441,6 @@ static void o2net_rx_until_empty(struct work_struct *work)
+ 	sc_put(sc);
+ }
+ 
+-static int o2net_set_nodelay(struct socket *sock)
+-{
+-	int val = 1;
+-
+-	return kernel_setsockopt(sock, SOL_TCP, TCP_NODELAY,
+-				    (void *)&val, sizeof(val));
+-}
+-
+ static int o2net_set_usertimeout(struct socket *sock)
+ {
+ 	int user_timeout = O2NET_TCP_USER_TIMEOUT;
+@@ -1636,11 +1628,7 @@ static void o2net_start_connect(struct work_struct *work)
+ 		goto out;
+ 	}
+ 
+-	ret = o2net_set_nodelay(sc->sc_sock);
+-	if (ret) {
+-		mlog(ML_ERROR, "setting TCP_NODELAY failed with %d\n", ret);
+-		goto out;
+-	}
++	tcp_sock_set_nodelay(sc->sc_sock->sk);
+ 
+ 	ret = o2net_set_usertimeout(sock);
+ 	if (ret) {
+@@ -1832,11 +1820,7 @@ static int o2net_accept_one(struct socket *sock, int *more)
+ 	*more = 1;
+ 	new_sock->sk->sk_allocation = GFP_ATOMIC;
+ 
+-	ret = o2net_set_nodelay(new_sock);
+-	if (ret) {
+-		mlog(ML_ERROR, "setting TCP_NODELAY failed with %d\n", ret);
+-		goto out;
+-	}
++	tcp_sock_set_nodelay(new_sock->sk);
+ 
+ 	ret = o2net_set_usertimeout(new_sock);
+ 	if (ret) {
 diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 2eaf8320b9db0..6aa4ae5ebf3d5 100644
+index 889eeb2256c2d..9e42c7fe50a8b 100644
 --- a/include/linux/tcp.h
 +++ b/include/linux/tcp.h
-@@ -500,5 +500,6 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
+@@ -498,5 +498,6 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
+ 		  int shiftlen);
+ 
  void tcp_sock_set_cork(struct sock *sk, bool on);
- void tcp_sock_set_nodelay(struct sock *sk);
- void tcp_sock_set_quickack(struct sock *sk, int val);
-+int tcp_sock_set_syncnt(struct sock *sk, int val);
++void tcp_sock_set_nodelay(struct sock *sk);
  
  #endif	/* _LINUX_TCP_H */
+diff --git a/net/ceph/messenger.c b/net/ceph/messenger.c
+index f8ca5edc5f2c9..27d6ab11f9ee8 100644
+--- a/net/ceph/messenger.c
++++ b/net/ceph/messenger.c
+@@ -490,15 +490,8 @@ static int ceph_tcp_connect(struct ceph_connection *con)
+ 		return ret;
+ 	}
+ 
+-	if (ceph_test_opt(from_msgr(con->msgr), TCP_NODELAY)) {
+-		int optval = 1;
+-
+-		ret = kernel_setsockopt(sock, SOL_TCP, TCP_NODELAY,
+-					(char *)&optval, sizeof(optval));
+-		if (ret)
+-			pr_err("kernel_setsockopt(TCP_NODELAY) failed: %d",
+-			       ret);
+-	}
++	if (ceph_test_opt(from_msgr(con->msgr), TCP_NODELAY))
++		tcp_sock_set_nodelay(sock->sk);
+ 
+ 	con->sock = sock;
+ 	return 0;
 diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 27b5e7a4e2ef9..d2c67ae1da07a 100644
+index e6cf702e16d66..a65f293a19fac 100644
 --- a/net/ipv4/tcp.c
 +++ b/net/ipv4/tcp.c
-@@ -2881,6 +2881,18 @@ void tcp_sock_set_quickack(struct sock *sk, int val)
+@@ -2832,6 +2832,30 @@ void tcp_sock_set_cork(struct sock *sk, bool on)
  }
- EXPORT_SYMBOL(tcp_sock_set_quickack);
+ EXPORT_SYMBOL(tcp_sock_set_cork);
  
-+int tcp_sock_set_syncnt(struct sock *sk, int val)
++/* TCP_NODELAY is weaker than TCP_CORK, so that this option on corked socket is
++ * remembered, but it is not activated until cork is cleared.
++ *
++ * However, when TCP_NODELAY is set we make an explicit push, which overrides
++ * even TCP_CORK for currently queued segments.
++ */
++static void __tcp_sock_set_nodelay(struct sock *sk, bool on)
 +{
-+	if (val < 1 || val > MAX_TCP_SYNCNT)
-+		return -EINVAL;
-+
-+	lock_sock(sk);
-+	inet_csk(sk)->icsk_syn_retries = val;
-+	release_sock(sk);
-+	return 0;
++	if (on) {
++		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF|TCP_NAGLE_PUSH;
++		tcp_push_pending_frames(sk);
++	} else {
++		tcp_sk(sk)->nonagle &= ~TCP_NAGLE_OFF;
++	}
 +}
-+EXPORT_SYMBOL(tcp_sock_set_syncnt);
++
++void tcp_sock_set_nodelay(struct sock *sk)
++{
++	lock_sock(sk);
++	__tcp_sock_set_nodelay(sk, true);
++	release_sock(sk);
++}
++EXPORT_SYMBOL(tcp_sock_set_nodelay);
 +
  /*
   *	Socket option code for TCP.
   */
+@@ -2929,20 +2953,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ 		break;
+ 
+ 	case TCP_NODELAY:
+-		if (val) {
+-			/* TCP_NODELAY is weaker than TCP_CORK, so that
+-			 * this option on corked socket is remembered, but
+-			 * it is not activated until cork is cleared.
+-			 *
+-			 * However, when TCP_NODELAY is set we make
+-			 * an explicit push, which overrides even TCP_CORK
+-			 * for currently queued segments.
+-			 */
+-			tp->nonagle |= TCP_NAGLE_OFF|TCP_NAGLE_PUSH;
+-			tcp_push_pending_frames(sk);
+-		} else {
+-			tp->nonagle &= ~TCP_NAGLE_OFF;
+-		}
++		__tcp_sock_set_nodelay(sk, val);
+ 		break;
+ 
+ 	case TCP_THIN_LINEAR_TIMEOUTS:
+diff --git a/net/rds/tcp.c b/net/rds/tcp.c
+index 46782fac4c162..43db0eca911fa 100644
+--- a/net/rds/tcp.c
++++ b/net/rds/tcp.c
+@@ -89,15 +89,6 @@ static struct ctl_table rds_tcp_sysctl_table[] = {
+ 	{ }
+ };
+ 
+-/* doing it this way avoids calling tcp_sk() */
+-void rds_tcp_nonagle(struct socket *sock)
+-{
+-	int val = 1;
+-
+-	kernel_setsockopt(sock, SOL_TCP, TCP_NODELAY, (void *)&val,
+-			      sizeof(val));
+-}
+-
+ u32 rds_tcp_write_seq(struct rds_tcp_connection *tc)
+ {
+ 	/* seq# of the last byte of data in tcp send buffer */
+@@ -502,7 +493,7 @@ void rds_tcp_tune(struct socket *sock)
+ 	struct net *net = sock_net(sk);
+ 	struct rds_tcp_net *rtn = net_generic(net, rds_tcp_netid);
+ 
+-	rds_tcp_nonagle(sock);
++	tcp_sock_set_nodelay(sock->sk);
+ 	lock_sock(sk);
+ 	if (rtn->sndbuf_size > 0) {
+ 		sk->sk_sndbuf = rtn->sndbuf_size;
+diff --git a/net/rds/tcp.h b/net/rds/tcp.h
+index d640e210b97b6..f6d75d8cb167a 100644
+--- a/net/rds/tcp.h
++++ b/net/rds/tcp.h
+@@ -50,7 +50,6 @@ struct rds_tcp_statistics {
+ 
+ /* tcp.c */
+ void rds_tcp_tune(struct socket *sock);
+-void rds_tcp_nonagle(struct socket *sock);
+ void rds_tcp_set_callbacks(struct socket *sock, struct rds_conn_path *cp);
+ void rds_tcp_reset_callbacks(struct socket *sock, struct rds_conn_path *cp);
+ void rds_tcp_restore_callbacks(struct socket *sock,
+diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
+index d8bd132769594..6f90ea077adcd 100644
+--- a/net/rds/tcp_listen.c
++++ b/net/rds/tcp_listen.c
+@@ -288,7 +288,7 @@ struct socket *rds_tcp_listen_init(struct net *net, bool isv6)
+ 	}
+ 
+ 	sock->sk->sk_reuse = SK_CAN_REUSE;
+-	rds_tcp_nonagle(sock);
++	tcp_sock_set_nodelay(sock->sk);
+ 
+ 	write_lock_bh(&sock->sk->sk_callback_lock);
+ 	sock->sk->sk_user_data = sock->sk->sk_data_ready;
 -- 
 2.26.2
 
