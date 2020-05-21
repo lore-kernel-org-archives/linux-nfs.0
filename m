@@ -2,162 +2,82 @@ Return-Path: <SRS0=L+CW=7D=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64B9EC433DF
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 03:23:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B7F0C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 05:13:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 384A82075F
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 03:23:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 35AF320748
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 05:13:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728072AbgEUDXN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 23:23:13 -0400
-Received: from mx2.suse.de ([195.135.220.15]:59126 "EHLO mx2.suse.de"
+        id S1726821AbgEUFM7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 May 2020 01:12:59 -0400
+Received: from mx2.suse.de ([195.135.220.15]:34104 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727825AbgEUDXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 20 May 2020 23:23:13 -0400
+        id S1726790AbgEUFM7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 21 May 2020 01:12:59 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 6DD5FB132;
-        Thu, 21 May 2020 03:23:14 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id CF7B0B213;
+        Thu, 21 May 2020 05:13:00 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
-To:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, kircherlike@outlook.com,
-        Stephen Hemminger <stephen@networkplumber.org>
-Date:   Thu, 21 May 2020 13:21:41 +1000
-Subject: [PATCH 3/3] sunrpc: clean up properly in gss_mech_unregister()
-Cc:     linux-nfs@vger.kernel.org
-Message-ID: <159003130171.24897.14813111815409180711.stgit@noble>
-In-Reply-To: <159003086409.24897.4659128962844846611.stgit@noble>
-References: <159003086409.24897.4659128962844846611.stgit@noble>
-User-Agent: StGit/0.21
+To:     Craig Small <csmall@dropbear.xyz>, linux-nfs@vger.kernel.org
+Date:   Thu, 21 May 2020 15:12:49 +1000
+Subject: Re: How to separate NFS mounts have same device ID
+In-Reply-To: <20200521023055.GA1246587@dropbear.xyz>
+References: <20200521023055.GA1246587@dropbear.xyz>
+Message-ID: <87eerdan1q.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-gss_mech_register() calls svcauth_gss_register_pseudoflavor() for each
-flavour, but gss_mech_unregister() does not call auth_domain_put().
-This is unbalanced and makes it impossible to reload the module.
+--=-=-=
+Content-Type: text/plain
 
-Change svcauth_gss_register_pseudoflavor() to return the registered
-auth_domain, and save it for later release.
+On Thu, May 21 2020, Craig Small wrote:
 
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=206651
-Cc: stable@vger.kernel.org
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/sunrpc/gss_api.h        |    1 +
- include/linux/sunrpc/svcauth_gss.h    |    3 ++-
- net/sunrpc/auth_gss/gss_mech_switch.c |   12 +++++++++---
- net/sunrpc/auth_gss/svcauth_gss.c     |   12 ++++++------
- 4 files changed, 18 insertions(+), 10 deletions(-)
+> Hi,
+>   I'm the author of the psmisc programs that include things like killall and fuser.  I have a problem with finding files open on NFS mounts from the same server.  The issue is at https://gitlab.com/psmisc/psmisc/-/issues/10
+>
+> The way fuser does its job is to find the mounts you specify and collect the device IDs, then scans all /proc/<PID/fd/* for matching devices. However, NFS mounts from the same server have the same device ID so fuser reports every mount has the same file opened.
+>
+> Putting it another way, if I said "here is file /proc/<PID>/fd/3, dereference the symlink and tell me which of these two NFS mounts from the same server it comes from?" how would you do it?
+> A simple string match (/mnt/a vs /mnt/b) does not work because you can have symlinks across mounts.
 
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index bc07e51f20d1..bf4ac8a0268c 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -84,6 +84,7 @@ struct pf_desc {
- 	u32	service;
- 	char	*name;
- 	char	*auth_domain_name;
-+	struct auth_domain *domain;
- 	bool	datatouch;
- };
- 
-diff --git a/include/linux/sunrpc/svcauth_gss.h b/include/linux/sunrpc/svcauth_gss.h
-index ca39a388dc22..8983628b10ff 100644
---- a/include/linux/sunrpc/svcauth_gss.h
-+++ b/include/linux/sunrpc/svcauth_gss.h
-@@ -20,7 +20,8 @@ int gss_svc_init(void);
- void gss_svc_shutdown(void);
- int gss_svc_init_net(struct net *net);
- void gss_svc_shutdown_net(struct net *net);
--int svcauth_gss_register_pseudoflavor(u32 pseudoflavor, char * name);
-+struct auth_domain *svcauth_gss_register_pseudoflavor(u32 pseudoflavor,
-+						      char * name);
- u32 svcauth_gss_flavor(struct auth_domain *dom);
- 
- #endif /* _LINUX_SUNRPC_SVCAUTH_GSS_H */
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 69316ab1b9fa..fae632da1058 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -37,6 +37,8 @@ gss_mech_free(struct gss_api_mech *gm)
- 
- 	for (i = 0; i < gm->gm_pf_num; i++) {
- 		pf = &gm->gm_pfs[i];
-+		if (pf->domain)
-+			auth_domain_put(pf->domain);
- 		kfree(pf->auth_domain_name);
- 		pf->auth_domain_name = NULL;
- 	}
-@@ -59,6 +61,7 @@ make_auth_domain_name(char *name)
- static int
- gss_mech_svc_setup(struct gss_api_mech *gm)
- {
-+	struct auth_domain *dom;
- 	struct pf_desc *pf;
- 	int i, status;
- 
-@@ -68,10 +71,13 @@ gss_mech_svc_setup(struct gss_api_mech *gm)
- 		status = -ENOMEM;
- 		if (pf->auth_domain_name == NULL)
- 			goto out;
--		status = svcauth_gss_register_pseudoflavor(pf->pseudoflavor,
--							pf->auth_domain_name);
--		if (status)
-+		dom = svcauth_gss_register_pseudoflavor(
-+			pf->pseudoflavor, pf->auth_domain_name);
-+		if (IS_ERR(dom)) {
-+			status = PTR_ERR(dom);
- 			goto out;
-+		}
-+		pf->domain = dom;
- 	}
- 	return 0;
- out:
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 4aaaad794edb..4441920c3d04 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -809,7 +809,7 @@ u32 svcauth_gss_flavor(struct auth_domain *dom)
- 
- EXPORT_SYMBOL_GPL(svcauth_gss_flavor);
- 
--int
-+struct auth_domain *
- svcauth_gss_register_pseudoflavor(u32 pseudoflavor, char * name)
- {
- 	struct gss_domain	*new;
-@@ -833,17 +833,17 @@ svcauth_gss_register_pseudoflavor(u32 pseudoflavor, char * name)
- 		       name);
- 		stat = -EALREADY;
- 		auth_domain_put(test);
--		kfree(new->h.name);
--		goto out_free_dom;
-+		goto out_free_name;
- 	}
--	return 0;
-+	return test;
- 
-+out_free_name:
-+	kfree(new->h.name);
- out_free_dom:
- 	kfree(new);
- out:
--	return stat;
-+	return ERR_PTR(stat);
- }
--
- EXPORT_SYMBOL_GPL(svcauth_gss_register_pseudoflavor);
- 
- static inline int
+I would examine /proc/<PID>/fdinfo/3 and extract the 'mnt_id:' number,
+then look for that (as the first field) in /proc/<PID>/mountinfo.
+
+NeilBrown
 
 
+>
+> Any help here would be appreciated. I'm not subscribed to the list so hopefully, this makes it through whatever filters there are and please CC me on replies.
+>
+>  - Craig
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAl7GDdQACgkQOeye3VZi
+gbmRIRAAspnl4XAGQbyhYdRpvczTXVCW2+pI6auDReMK9BfdFZ2cOQDZOV/mo1dT
+SSbq9cBctuVghelRy/6aA+PNA09Wm2BeA7v+gyPKNX/ocbAlqlSXjzueq16ZMLPj
+Q9l84fWYu4NJtd1jlxD3SYwbxV/C9XZb5UVdtbEb5fKs7eRSBYpz7VT7+0DOMgzu
+VU7Ml8qr/6fVTbPki9+oYugGkeSQJXnMOVwjiFuYU/ShgMXR8FiRMve7YSJ4os4J
+oxqeF2MI0Pe3vX9JoVfiHYUP+4puqJgXvpKExO9Z2EIulk6rDCk15OS7oz2LciUv
+9c1pe8nGh8DMz4gPd72K2BHKzdzv4bYpnpgeHyv/8FafeQWasss+yBPBouHIwkbM
+PBJh7Blj0o7GekVwQ/9YJIqpJplLB4qsv6oBPgzwTByqpOA67nzC1Y7iNAk0eUSS
+eci6U7nvWN2QzQncBRVkvIZBLJ+xJ3MQZ7rh7RtXMh0VXZl+I48gzxQOoz3cjIaY
+V+dgXHeyioGIaPytepfcmxmb6WTxz//YMXzTzbOQj8L4biezv8XMzZ2Y3vwRIq4H
+xsVXDAVIUeuwbBMwz9xfPhPyTGPI1HHRQo/AbMKqMIFpcblFzf1FQjsbS6NCj1X7
+dqcG6c0oxq1r8tGSERppw28R90isfvkuTdY567Fgp4YsOuCqEXY=
+=uTa8
+-----END PGP SIGNATURE-----
+--=-=-=--
