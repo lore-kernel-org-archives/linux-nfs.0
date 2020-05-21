@@ -2,34 +2,37 @@ Return-Path: <SRS0=L+CW=7D=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A060C433E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 03:22:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CE750C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 03:23:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0456B2075F
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 03:22:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A8C612075F
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 03:23:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727955AbgEUDWy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 May 2020 23:22:54 -0400
-Received: from mx2.suse.de ([195.135.220.15]:58918 "EHLO mx2.suse.de"
+        id S1728048AbgEUDXB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 May 2020 23:23:01 -0400
+Received: from mx2.suse.de ([195.135.220.15]:58966 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727825AbgEUDWy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 20 May 2020 23:22:54 -0400
+        id S1727825AbgEUDXA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 20 May 2020 23:23:00 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id D577CB132;
-        Thu, 21 May 2020 03:22:55 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id E641CB13E;
+        Thu, 21 May 2020 03:23:01 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>, kircherlike@outlook.com,
         Stephen Hemminger <stephen@networkplumber.org>
 Date:   Thu, 21 May 2020 13:21:41 +1000
-Subject: [PATCH 0/3] SUNRPC/svc: fix gss flavour registration problems.
+Subject: [PATCH 1/3] sunrpc: check that domain table is empty at module
+ unload.
 Cc:     linux-nfs@vger.kernel.org
-Message-ID: <159003086409.24897.4659128962844846611.stgit@noble>
+Message-ID: <159003130168.24897.13206733830315341548.stgit@noble>
+In-Reply-To: <159003086409.24897.4659128962844846611.stgit@noble>
+References: <159003086409.24897.4659128962844846611.stgit@noble>
 User-Agent: StGit/0.21
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -39,47 +42,73 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-As reported in
- https://bugzilla.kernel.org/show_bug.cgi?id=206651
-there are problems with sunrpc/svc flavour registration.
+The domain table should be empty at module unload.  If it isn't there is
+a bug somewhere.  So check and report.
 
-This can be demonstrated as a memory-leak if you load the
-rpcsec_gss_krb5 module, then unload the sunrpc module and all
-dependents.  This action leaks 3 kmalloc-64 slab entires, and some
-strings.
-
-The possible consequences are worse.  If only unload rpcsec_gss_krb5
-and reload just that, it will allow the old registered flavour handlers
-to be used, and they will include pointers into memory which has since
-been freed and possibly reused.  This can result in undesired
-behaviour.
-
-The first patch makes the leak apparent with a WARNing, the second
-prevents it but also prevents module reload, the third removes the
-incorrect behaviour so the module can be safely unloaded and reloaded.
-
-I think all are suitable for -stable, but I haven't determined
-appropriate 'Fixes:' tags.
-
-NeilBrown
-
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=206651
+Cc: stable@vger.kernel.org
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ net/sunrpc/sunrpc.h      |    1 +
+ net/sunrpc/sunrpc_syms.c |    2 ++
+ net/sunrpc/svcauth.c     |   18 ++++++++++++++++++
+ 3 files changed, 21 insertions(+)
 
-NeilBrown (3):
-      sunrpc: check that domain table is empty at module unload.
-      sunrpc: svcauth_gss_register_pseudoflavor must reject duplicate registrations.
-      sunrpc: clean up properly in gss_mech_unregister()
+diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+index 47a756503d11..f6fe2e6cd65a 100644
+--- a/net/sunrpc/sunrpc.h
++++ b/net/sunrpc/sunrpc.h
+@@ -52,4 +52,5 @@ static inline int sock_is_loopback(struct sock *sk)
+ 
+ int rpc_clients_notifier_register(void);
+ void rpc_clients_notifier_unregister(void);
++void auth_domain_cleanup(void);
+ #endif /* _NET_SUNRPC_SUNRPC_H */
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index f9edaa9174a4..236fadc4a439 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -23,6 +23,7 @@
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/xprtsock.h>
+ 
++#include "sunrpc.h"
+ #include "netns.h"
+ 
+ unsigned int sunrpc_net_id;
+@@ -131,6 +132,7 @@ cleanup_sunrpc(void)
+ 	unregister_rpc_pipefs();
+ 	rpc_destroy_mempool();
+ 	unregister_pernet_subsys(&sunrpc_net_ops);
++	auth_domain_cleanup();
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	rpc_unregister_sysctl();
+ #endif
+diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
+index 552617e3467b..477890e8b9d8 100644
+--- a/net/sunrpc/svcauth.c
++++ b/net/sunrpc/svcauth.c
+@@ -205,3 +205,21 @@ struct auth_domain *auth_domain_find(char *name)
+ 	return NULL;
+ }
+ EXPORT_SYMBOL_GPL(auth_domain_find);
++
++void auth_domain_cleanup(void)
++{
++	/* There should be no auth_domains left at module unload */
++	int h;
++	bool found = false;
++
++	for (h = 0; h < DN_HASHMAX; h++) {
++		struct auth_domain *hp;
++
++		hlist_for_each_entry(hp, auth_domain_table+h, hash) {
++			found = true;
++			printk(KERN_WARNING "sunrpc: domain %s still present at module unload.\n",
++			       hp->name);
++		}
++	}
++	WARN(found, "sunrpc: auth_domain_table not clean -> memory leak\n");
++}
 
-
- include/linux/sunrpc/gss_api.h        |    1 +
- include/linux/sunrpc/svcauth_gss.h    |    3 ++-
- net/sunrpc/auth_gss/gss_mech_switch.c |   12 +++++++++---
- net/sunrpc/auth_gss/svcauth_gss.c     |   17 ++++++++++-------
- net/sunrpc/sunrpc.h                   |    1 +
- net/sunrpc/sunrpc_syms.c              |    2 ++
- net/sunrpc/svcauth.c                  |   18 ++++++++++++++++++
- 7 files changed, 43 insertions(+), 11 deletions(-)
-
---
-Signature
 
