@@ -2,79 +2,151 @@ Return-Path: <SRS0=L+CW=7D=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15BBDC433E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 09:08:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06424C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 09:10:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E821320759
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 09:08:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CEB082070A
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 May 2020 09:10:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728764AbgEUJIS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 May 2020 05:08:18 -0400
-Received: from verein.lst.de ([213.95.11.211]:53789 "EHLO verein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728702AbgEUJIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 21 May 2020 05:08:18 -0400
-Received: by verein.lst.de (Postfix, from userid 2407)
-        id B08C668BEB; Thu, 21 May 2020 11:08:12 +0200 (CEST)
-Date:   Thu, 21 May 2020 11:08:12 +0200
-From:   'Christoph Hellwig' <hch@lst.de>
-To:     David Laight <David.Laight@ACULAB.COM>
-Cc:     'Christoph Hellwig' <hch@lst.de>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        David Miller <davem@davemloft.net>,
-        "kuba@kernel.org" <kuba@kernel.org>,
-        "edumazet@google.com" <edumazet@google.com>,
-        "kuznet@ms2.inr.ac.ru" <kuznet@ms2.inr.ac.ru>,
-        "yoshfuji@linux-ipv6.org" <yoshfuji@linux-ipv6.org>,
-        "vyasevich@gmail.com" <vyasevich@gmail.com>,
-        "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>,
-        "jmaloy@redhat.com" <jmaloy@redhat.com>,
-        "ying.xue@windriver.com" <ying.xue@windriver.com>,
-        "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
-        "linux-afs@lists.infradead.org" <linux-afs@lists.infradead.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
-        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "rds-devel@oss.oracle.com" <rds-devel@oss.oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 31/33] sctp: add sctp_sock_set_nodelay
-Message-ID: <20200521090812.GA8330@lst.de>
-References: <20200520195509.2215098-1-hch@lst.de> <20200520195509.2215098-32-hch@lst.de> <20200520231001.GU2491@localhost.localdomain> <20200520.162355.2212209708127373208.davem@davemloft.net> <20200520233913.GV2491@localhost.localdomain> <20200521083442.GA7771@lst.de> <0a6839ab0ba04fcf9b9c92784c9564aa@AcuMS.aculab.com>
+        id S1728551AbgEUJK1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 May 2020 05:10:27 -0400
+Received: from szxga05-in.huawei.com ([45.249.212.191]:4832 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728545AbgEUJK1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 21 May 2020 05:10:27 -0400
+Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id B3713F55A67F70CD991E;
+        Thu, 21 May 2020 17:10:23 +0800 (CST)
+Received: from huawei.com (10.90.53.225) by DGGEMS409-HUB.china.huawei.com
+ (10.3.19.209) with Microsoft SMTP Server id 14.3.487.0; Thu, 21 May 2020
+ 17:10:14 +0800
+From:   Zheng Bin <zhengbin13@huawei.com>
+To:     <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>
+CC:     <yi.zhang@huawei.com>, <zhangxiaoxu5@huawei.com>,
+        <zhengbin13@huawei.com>
+Subject: [PATCH v3] nfs: set invalid blocks after NFSv4 writes
+Date:   Thu, 21 May 2020 17:17:21 +0800
+Message-ID: <20200521091721.105622-1-zhengbin13@huawei.com>
+X-Mailer: git-send-email 2.26.0.106.g9fadedd
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <0a6839ab0ba04fcf9b9c92784c9564aa@AcuMS.aculab.com>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.90.53.225]
+X-CFilter-Loop: Reflected
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, May 21, 2020 at 09:06:19AM +0000, David Laight wrote:
-> > > The comment still applies, though. (re the duplication)
-> > 
-> > Where do you see duplication?
-> 
-> The whole thing just doesn't scale.
-> 
-> As soon as you get to the slightly more complex requests
-> like SCTP_INITMSG (which should probably be called to
-> set the required number of data streams) you've either
-> got replicated code or nested wrappers.
+Use the following command to test nfsv4(size of file1M is 1MB):
+mount -t nfs -o vers=4.0,actimeo=60 127.0.0.1/dir1 /mnt
+cp file1M /mnt
+du -h /mnt/file1M  -->0 within 60s, then 1M
 
-None of that is relevant to setting the nodelay option.  If you actually
-read through the series you'd say that whenever there was non-trivial
-logic it is shared with getopt.  However sharing just for purpose of
-sharing doesn't make sense, so where the kernel API ended up just
-setting a flag after taking the sock lock I did not opt for it.
+When write is done(cp file1M /mnt), will call this:
+nfs_writeback_done
+  nfs4_write_done
+    nfs4_write_done_cb
+      nfs_writeback_update_inode
+        nfs_post_op_update_inode_force_wcc_locked(change, ctime, mtime
+nfs_post_op_update_inode_force_wcc_locked
+   nfs_set_cache_invalid
+   nfs_refresh_inode_locked
+     nfs_update_inode
+
+nfsd write response contains change, ctime, mtime, the flag will be
+clear after nfs_update_inode. Howerver, write response does not contain
+space_used, previous open response contains space_used whose value is 0,
+so inode->i_blocks is still 0.
+
+nfs_getattr  -->called by "du -h"
+  do_update |= force_sync || nfs_attribute_cache_expired -->false in 60s
+  cache_validity = READ_ONCE(NFS_I(inode)->cache_validity)
+  do_update |= cache_validity & (NFS_INO_INVALID_ATTR    -->false
+  if (do_update) {
+        __nfs_revalidate_inode
+  }
+
+Within 60s, does not send getattr request to nfsd, thus "du -h /mnt/file1M"
+is 0.
+
+Add a NFS_INO_INVALID_BLOCKS flag, set it when nfsv4 write is done.
+
+Fixes: 16e143751727 ("NFS: More fine grained attribute tracking")
+Signed-off-by: Zheng Bin <zhengbin13@huawei.com>
+---
+
+v1->v2: add STATX_BLOCKS check in nfs_getattr
+v2->v3: need clear NFS_INO_INVALID_BLOCKS flag first in nfs_update_inode
+
+ fs/nfs/inode.c         | 14 +++++++++++---
+ include/linux/nfs_fs.h |  1 +
+ 2 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index b9d0921cb4fe..0bf1f835de01 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -833,6 +833,8 @@ int nfs_getattr(const struct path *path, struct kstat *stat,
+ 		do_update |= cache_validity & NFS_INO_INVALID_ATIME;
+ 	if (request_mask & (STATX_CTIME|STATX_MTIME))
+ 		do_update |= cache_validity & NFS_INO_REVAL_PAGECACHE;
++	if (request_mask & STATX_BLOCKS)
++		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+ 	if (do_update) {
+ 		/* Update the attribute cache */
+ 		if (!(server->flags & NFS_MOUNT_NOAC))
+@@ -1764,7 +1766,8 @@ int nfs_post_op_update_inode_force_wcc_locked(struct inode *inode, struct nfs_fa
+ 	status = nfs_post_op_update_inode_locked(inode, fattr,
+ 			NFS_INO_INVALID_CHANGE
+ 			| NFS_INO_INVALID_CTIME
+-			| NFS_INO_INVALID_MTIME);
++			| NFS_INO_INVALID_MTIME
++			| NFS_INO_INVALID_BLOCKS);
+ 	return status;
+ }
+
+@@ -1871,7 +1874,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR
+ 			| NFS_INO_INVALID_ATIME
+ 			| NFS_INO_REVAL_FORCED
+-			| NFS_INO_REVAL_PAGECACHE);
++			| NFS_INO_REVAL_PAGECACHE
++			| NFS_INO_INVALID_BLOCKS);
+
+ 	/* Do atomic weak cache consistency updates */
+ 	nfs_wcc_update_inode(inode, fattr);
+@@ -2033,8 +2037,12 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		inode->i_blocks = nfs_calc_block_size(fattr->du.nfs3.used);
+ 	} else if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
+ 		inode->i_blocks = fattr->du.nfs2.blocks;
+-	else
++	else {
++		nfsi->cache_validity |= save_cache_validity &
++				(NFS_INO_INVALID_BLOCKS
++				| NFS_INO_REVAL_FORCED);
+ 		cache_revalidated = false;
++	}
+
+ 	/* Update attrtimeo value if we're out of the unstable period */
+ 	if (attr_changed) {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 73eda45f1cfd..6ee9119acc5d 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -230,6 +230,7 @@ struct nfs4_copy_state {
+ #define NFS_INO_INVALID_OTHER	BIT(12)		/* other attrs are invalid */
+ #define NFS_INO_DATA_INVAL_DEFER	\
+ 				BIT(13)		/* Deferred cache invalidation */
++#define NFS_INO_INVALID_BLOCKS	BIT(14)         /* cached blocks are invalid */
+
+ #define NFS_INO_INVALID_ATTR	(NFS_INO_INVALID_CHANGE \
+ 		| NFS_INO_INVALID_CTIME \
+--
+2.26.0.106.g9fadedd
+
