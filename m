@@ -3,34 +3,34 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D201DC433E0
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 May 2020 02:03:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82A3AC433DF
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 May 2020 02:03:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 985F0207F7
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 May 2020 02:03:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 411FC2072C
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 May 2020 02:03:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727055AbgEVCDh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 May 2020 22:03:37 -0400
-Received: from mx2.suse.de ([195.135.220.15]:47098 "EHLO mx2.suse.de"
+        id S1727065AbgEVCDm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 May 2020 22:03:42 -0400
+Received: from mx2.suse.de ([195.135.220.15]:47192 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726335AbgEVCDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 21 May 2020 22:03:37 -0400
+        id S1726335AbgEVCDm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 21 May 2020 22:03:42 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id EB8BCAD09;
-        Fri, 22 May 2020 02:03:37 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id 453AAB007;
+        Fri, 22 May 2020 02:03:44 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>, kircherlike@outlook.com,
         Stephen Hemminger <stephen@networkplumber.org>
-Date:   Fri, 22 May 2020 12:01:32 +1000
-Subject: [PATCH 1/3] sunrpc: check that domain table is empty at module
- unload.
+Date:   Fri, 22 May 2020 12:01:33 +1000
+Subject: [PATCH 2/3] sunrpc: svcauth_gss_register_pseudoflavor must reject
+ duplicate registrations.
 Cc:     linux-nfs@vger.kernel.org
-Message-ID: <159011289291.29107.750750426822869150.stgit@noble>
+Message-ID: <159011289297.29107.15128425916228317497.stgit@noble>
 In-Reply-To: <159011265914.29107.13764997801950546826.stgit@noble>
 References: <159011265914.29107.13764997801950546826.stgit@noble>
 User-Agent: StGit/0.21
@@ -42,86 +42,41 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The domain table should be empty at module unload.  If it isn't there is
-a bug somewhere.  So check and report.
+There is no valid case for supporting duplicate pseudoflavor
+registrations.
+Currently the silent acceptance of such registrations is hiding a bug.
+The rpcsec_gss_krb5 module registers 2 flavours but does not unregister
+them, so if you load, unload, reload the module, it will happily
+continue to use the old registration which now has pointers to the
+memory were the module was originally loaded.  This could lead to
+unexpected results.
+
+So disallow duplicate registrations.
 
 Link: https://bugzilla.kernel.org/show_bug.cgi?id=206651
+Cc: stable@vger.kernel.org (v2.6.12+)
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- net/sunrpc/sunrpc.h      |    1 +
- net/sunrpc/sunrpc_syms.c |    2 ++
- net/sunrpc/svcauth.c     |   25 +++++++++++++++++++++++++
- 3 files changed, 28 insertions(+)
+ net/sunrpc/auth_gss/svcauth_gss.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-index 47a756503d11..f6fe2e6cd65a 100644
---- a/net/sunrpc/sunrpc.h
-+++ b/net/sunrpc/sunrpc.h
-@@ -52,4 +52,5 @@ static inline int sock_is_loopback(struct sock *sk)
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 50d93c49ef1a..49bb346a6215 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -826,9 +826,11 @@ svcauth_gss_register_pseudoflavor(u32 pseudoflavor, char * name)
+ 	new->h.flavour = &svcauthops_gss;
+ 	new->pseudoflavor = pseudoflavor;
  
- int rpc_clients_notifier_register(void);
- void rpc_clients_notifier_unregister(void);
-+void auth_domain_cleanup(void);
- #endif /* _NET_SUNRPC_SUNRPC_H */
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index f9edaa9174a4..236fadc4a439 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -23,6 +23,7 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/xprtsock.h>
- 
-+#include "sunrpc.h"
- #include "netns.h"
- 
- unsigned int sunrpc_net_id;
-@@ -131,6 +132,7 @@ cleanup_sunrpc(void)
- 	unregister_rpc_pipefs();
- 	rpc_destroy_mempool();
- 	unregister_pernet_subsys(&sunrpc_net_ops);
-+	auth_domain_cleanup();
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	rpc_unregister_sysctl();
- #endif
-diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
-index 552617e3467b..998b196b6176 100644
---- a/net/sunrpc/svcauth.c
-+++ b/net/sunrpc/svcauth.c
-@@ -21,6 +21,8 @@
- 
- #include <trace/events/sunrpc.h>
- 
-+#include "sunrpc.h"
-+
- #define RPCDBG_FACILITY	RPCDBG_AUTH
- 
- 
-@@ -205,3 +207,26 @@ struct auth_domain *auth_domain_find(char *name)
- 	return NULL;
- }
- EXPORT_SYMBOL_GPL(auth_domain_find);
-+
-+/**
-+ * auth_domain_cleanup - check that the auth_domain table is empty
-+ *
-+ * On module unload the auth_domain_table must be empty.  To make it
-+ * easier to catch bugs which don't clean up domains properly, we
-+ * warn if anything remains in the table at cleanup time.
-+ *
-+ * Note that we cannot proactively remove the domains at this stage.
-+ * The ->release() function might be in a module that has already been
-+ * unloaded.
-+ */
-+
-+void auth_domain_cleanup(void)
-+{
-+	int h;
-+	struct auth_domain *hp;
-+
-+	for (h = 0; h < DN_HASHMAX; h++)
-+		hlist_for_each_entry(hp, &auth_domain_table[h], hash)
-+			pr_warn("svc: domain %s still present at module unload.\n",
-+				hp->name);
-+}
+-	stat = 0;
+ 	test = auth_domain_lookup(name, &new->h);
+-	if (test != &new->h) { /* Duplicate registration */
++	if (test != &new->h) {
++		pr_warn("svc: duplicate registration of gss pseudo flavour %s.\n",
++			name);
++		stat = -EADDRINUSE;
+ 		auth_domain_put(test);
+ 		kfree(new->h.name);
+ 		goto out_free_dom;
 
 
