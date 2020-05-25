@@ -1,72 +1,99 @@
-Return-Path: <SRS0=5FLr=7F=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=u5lm=7H=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 98147C433E2
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 May 2020 07:23:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7384FC433E0
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 May 2020 14:16:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 75CBE20723
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 May 2020 07:23:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E254207CB
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 May 2020 14:16:22 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=fudan.edu.cn header.i=@fudan.edu.cn header.b="FgVc/37q"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387662AbgEWHXW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 23 May 2020 03:23:22 -0400
-Received: from verein.lst.de ([213.95.11.211]:34128 "EHLO verein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387622AbgEWHXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 23 May 2020 03:23:21 -0400
-Received: by verein.lst.de (Postfix, from userid 2407)
-        id EB36D68BEB; Sat, 23 May 2020 09:23:16 +0200 (CEST)
-Date:   Sat, 23 May 2020 09:23:16 +0200
-From:   Christoph Hellwig <hch@lst.de>
-To:     "David S. Miller" <davem@davemloft.net>,
-        Jakub Kicinski <kuba@kernel.org>
-Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Eric Dumazet <edumazet@google.com>,
-        linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org,
-        target-devel@vger.kernel.org, linux-afs@lists.infradead.org,
-        drbd-dev@lists.linbit.com, linux-cifs@vger.kernel.org,
-        rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org,
-        cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Neil Horman <nhorman@tuxdriver.com>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>,
-        linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>,
-        Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
-Subject: Re: remove kernel_setsockopt and kernel_getsockopt v2
-Message-ID: <20200523072316.GA10575@lst.de>
-References: <20200520195509.2215098-1-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+        id S2388873AbgEYOQV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 25 May 2020 10:16:21 -0400
+Received: from mail.fudan.edu.cn ([202.120.224.10]:52101 "EHLO fudan.edu.cn"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2388714AbgEYOQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 25 May 2020 10:16:21 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=fudan.edu.cn; s=dkim; h=Received:From:To:Cc:Subject:Date:
+        Message-Id; bh=A2C6VJveWD7/k0MVHTpe6FT8HSlUTvfLdgwU7DetgHI=; b=F
+        gVc/37qjCWc81JOyIy9zjfz0hxwLFOMlaceF5MaATZ1PV1RIuf/iNwdCWKLxv/tx
+        gUPvkVzsqsumy3tWQ/SNt/CkHPzibbSIbYsCzmOiRsPXRFKRqAkHOysyJj0u1hzs
+        LSZcZQSxetU8gEfLNJ7PZy0rfd4JkBjRxas+tgTjpM=
+Received: from localhost.localdomain (unknown [223.73.184.21])
+        by app1 (Coremail) with SMTP id XAUFCgC3vpoq08tejM8wAg--.42131S3;
+        Mon, 25 May 2020 22:16:11 +0800 (CST)
+From:   Xiyu Yang <xiyuyang19@fudan.edu.cn>
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc:     yuanxzhang@fudan.edu.cn, kjlu@umn.edu,
+        Xiyu Yang <xiyuyang19@fudan.edu.cn>,
+        Xin Tan <tanxin.ctf@gmail.com>
+Subject: [PATCH] nfsd: Fix svc_xprt refcnt leak when setup callback client failed
+Date:   Mon, 25 May 2020 22:15:41 +0800
+Message-Id: <1590416141-52534-1-git-send-email-xiyuyang19@fudan.edu.cn>
+X-Mailer: git-send-email 2.7.4
+X-CM-TRANSID: XAUFCgC3vpoq08tejM8wAg--.42131S3
+X-Coremail-Antispam: 1UD129KBjvdXoW7JFW8Kr48uFyUZFWfCryfJFb_yoWDAFX_Gr
+        4fXr1DX348tF17JFyxtrWvyrW0g3yDGFyUGFWvy343GFWF93yDXF93trnrWF47KrWaqw1a
+        yFyDGr9I9aySvjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUIcSsGvfJTRUUUbskFF20E14v26r4j6ryUM7CY07I20VC2zVCF04k26cxKx2IYs7xG
+        6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48ve4kI8w
+        A2z4x0Y4vE2Ix0cI8IcVAFwI0_tr0E3s1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI0_Cr1j
+        6rxdM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s
+        0DM2vYz4IE04k24VAvwVAKI4IrM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI
+        64kE6c02F40Ex7xfMcIj6xIIjxv20xvE14v26r1Y6r17McIj6I8E87Iv67AKxVWUJVW8Jw
+        Am72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAG
+        YxC7MxkIecxEwVAFwVW5XwCF04k20xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8Jw
+        C20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAF
+        wI0_Jw0_GFylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjx
+        v20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxKx2IYs7xG6Fyj6rWUJwCI42IY6I8E
+        87Iv67AKxVWUJVW8JwCI42IY6I8E87Iv6xkF7I0E14v26r4j6r4UJbIYCTnIWIevJa73Uj
+        IFyTuYvjfUOyCJUUUUU
+X-CM-SenderInfo: irzsiiysuqikmy6i3vldqovvfxof0/
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, May 20, 2020 at 09:54:36PM +0200, Christoph Hellwig wrote:
-> Hi Dave,
-> 
-> this series removes the kernel_setsockopt and kernel_getsockopt
-> functions, and instead switches their users to small functions that
-> implement setting (or in one case getting) a sockopt directly using
-> a normal kernel function call with type safety and all the other
-> benefits of not having a function call.
-> 
-> In some cases these functions seem pretty heavy handed as they do
-> a lock_sock even for just setting a single variable, but this mirrors
-> the real setsockopt implementation unlike a few drivers that just set
-> set the fields directly.
+nfsd4_process_cb_update() invokes svc_xprt_get(), which increases the
+refcount of the "c->cn_xprt".
 
-Hi Dave and other maintainers,
+The reference counting issue happens in one exception handling path of
+nfsd4_process_cb_update(). When setup callback client failed, the
+function forgets to decrease the refcnt increased by svc_xprt_get(),
+causing a refcnt leak.
 
-can you take a look at and potentially merge patches 1-30 while we
-discuss the sctp refactoring?  It would get a nice headstart by removing
-kernel_getsockopt and most kernel_setsockopt users, and for the next
-follow on I wouldn't need to spam lots of lists with 30+ patches again.
+Fix this issue by calling svc_xprt_put() when setup callback client
+failed.
+
+Signed-off-by: Xiyu Yang <xiyuyang19@fudan.edu.cn>
+Signed-off-by: Xin Tan <tanxin.ctf@gmail.com>
+---
+ fs/nfsd/nfs4callback.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 5cf91322de0f..07e0c6f6322f 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1301,6 +1301,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 	err = setup_callback_client(clp, &conn, ses);
+ 	if (err) {
+ 		nfsd4_mark_cb_down(clp, err);
++		if (c)
++			svc_xprt_put(c->cn_xprt);
+ 		return;
+ 	}
+ }
+-- 
+2.7.4
+
