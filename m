@@ -1,70 +1,174 @@
-Return-Path: <SRS0=K8b2=7J=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=W4f8=7K=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B6B20C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 May 2020 12:56:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C0CDC433DF
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:13:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9C1432084C
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 May 2020 12:56:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3BFFF2084C
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:13:23 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Hfyc3f3k"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730181AbgE0M4Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 27 May 2020 08:56:16 -0400
-Received: from youngberry.canonical.com ([91.189.89.112]:60159 "EHLO
-        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730045AbgE0M4P (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 May 2020 08:56:15 -0400
-Received: from 1.general.cking.uk.vpn ([10.172.193.212] helo=localhost)
-        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
-        (Exim 4.86_2)
-        (envelope-from <colin.king@canonical.com>)
-        id 1jdvbP-0000Yq-SZ; Wed, 27 May 2020 12:56:11 +0000
-From:   Colin King <colin.king@canonical.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org
-Cc:     kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] NFS: remove redundant initialization of variable result
-Date:   Wed, 27 May 2020 13:56:11 +0100
-Message-Id: <20200527125611.174291-1-colin.king@canonical.com>
-X-Mailer: git-send-email 2.25.1
+        id S1727084AbgE1FNO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 May 2020 01:13:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40366 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725298AbgE1FNO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2020 01:13:14 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D53B2C05BD1E;
+        Wed, 27 May 2020 22:13:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=Io53oiUYmuqiLEcJhawAHM3/CUXeG0e+cdSPzGhQq5w=; b=Hfyc3f3k/XdgrkK1eG1P7V7b3X
+        KQNAiGUgx1VKqquEIPejFXE5v1rtzGTYQmdNDOKE90n4pnoSDARlTovbn+5yuCaqX3Cp2nmatj/8L
+        9E9bpX9lLlOVlF2PMw9gS1SxsKzvRrynvd1go+99+PQYKkdROotWSLFtVYJkkx+6gPAUaqT47SmXL
+        uBFzqpY7tPAzfaKJ/vjcBQDiE4JLMXuysi2z+R2jlpKlRLFygT4eEhUF0eH0X9KSTfXFIVkHdSMlZ
+        DFy+8zK04ZEp0FOsptEmQVhEDaCUuxMd2/9bUB960RXSTbWHswfO0gNJwRLL/5Jp2Adp6X/2VosLa
+        jewaRBmg==;
+Received: from p4fdb1ad2.dip0.t-ipconnect.de ([79.219.26.210] helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jeAqW-0001R3-Lf; Thu, 28 May 2020 05:12:49 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     "David S. Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>
+Cc:     Eric Dumazet <edumazet@google.com>,
+        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+        Jon Maloy <jmaloy@redhat.com>,
+        Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com,
+        linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
+        linux-nvme@lists.infradead.org, target-devel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
+        cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
+        netdev@vger.kernel.org, ceph-devel@vger.kernel.org,
+        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org,
+        tipc-discussion@lists.sourceforge.net,
+        Sagi Grimberg <sagi@grimberg.me>
+Subject: [PATCH 03/28] net: add sock_set_priority
+Date:   Thu, 28 May 2020 07:12:11 +0200
+Message-Id: <20200528051236.620353-4-hch@lst.de>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20200528051236.620353-1-hch@lst.de>
+References: <20200528051236.620353-1-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Colin Ian King <colin.king@canonical.com>
+Add a helper to directly set the SO_PRIORITY sockopt from kernel space
+without going through a fake uaccess.
 
-The variable result is being initialized with a value that is never read
-and it is being updated later with a new value.  The initialization is
-redundant and can be removed.
-
-Addresses-Coverity: ("Unused value")
-Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Acked-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- fs/nfs/direct.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/nvme/host/tcp.c   | 12 ++----------
+ drivers/nvme/target/tcp.c | 18 ++++--------------
+ include/net/sock.h        |  1 +
+ net/core/sock.c           |  8 ++++++++
+ 4 files changed, 15 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index a57e7c72c7f4..bb63e2b93ff7 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -446,7 +446,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
- 	struct inode *inode = mapping->host;
- 	struct nfs_direct_req *dreq;
- 	struct nfs_lock_context *l_ctx;
--	ssize_t result = -EINVAL, requested;
-+	ssize_t result, requested;
- 	size_t count = iov_iter_count(iter);
- 	nfs_add_stats(mapping->host, NFSIOS_DIRECTREADBYTES, count);
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index e72d87482eb78..a307972d33a02 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -1362,16 +1362,8 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
+ 	 */
+ 	sock_no_linger(queue->sock->sk);
  
+-	if (so_priority > 0) {
+-		ret = kernel_setsockopt(queue->sock, SOL_SOCKET, SO_PRIORITY,
+-				(char *)&so_priority, sizeof(so_priority));
+-		if (ret) {
+-			dev_err(ctrl->ctrl.device,
+-				"failed to set SO_PRIORITY sock opt, ret %d\n",
+-				ret);
+-			goto err_sock;
+-		}
+-	}
++	if (so_priority > 0)
++		sock_set_priority(queue->sock->sk, so_priority);
+ 
+ 	/* Set socket type of service */
+ 	if (nctrl->opts->tos >= 0) {
+diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
+index e0801494b097f..f3088156d01da 100644
+--- a/drivers/nvme/target/tcp.c
++++ b/drivers/nvme/target/tcp.c
+@@ -1448,12 +1448,8 @@ static int nvmet_tcp_set_queue_sock(struct nvmet_tcp_queue *queue)
+ 	 */
+ 	sock_no_linger(sock->sk);
+ 
+-	if (so_priority > 0) {
+-		ret = kernel_setsockopt(sock, SOL_SOCKET, SO_PRIORITY,
+-				(char *)&so_priority, sizeof(so_priority));
+-		if (ret)
+-			return ret;
+-	}
++	if (so_priority > 0)
++		sock_set_priority(sock->sk, so_priority);
+ 
+ 	/* Set socket type of service */
+ 	if (inet->rcv_tos > 0) {
+@@ -1638,14 +1634,8 @@ static int nvmet_tcp_add_port(struct nvmet_port *nport)
+ 		goto err_sock;
+ 	}
+ 
+-	if (so_priority > 0) {
+-		ret = kernel_setsockopt(port->sock, SOL_SOCKET, SO_PRIORITY,
+-				(char *)&so_priority, sizeof(so_priority));
+-		if (ret) {
+-			pr_err("failed to set SO_PRIORITY sock opt %d\n", ret);
+-			goto err_sock;
+-		}
+-	}
++	if (so_priority > 0)
++		sock_set_priority(port->sock->sk, so_priority);
+ 
+ 	ret = kernel_bind(port->sock, (struct sockaddr *)&port->addr,
+ 			sizeof(port->addr));
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 6ed00bf009bbe..a3a43141a4be2 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2689,6 +2689,7 @@ static inline bool sk_dev_equal_l3scope(struct sock *sk, int dif)
+ void sock_def_readable(struct sock *sk);
+ 
+ void sock_no_linger(struct sock *sk);
++void sock_set_priority(struct sock *sk, u32 priority);
+ void sock_set_reuseaddr(struct sock *sk);
+ 
+ #endif	/* _SOCK_H */
+diff --git a/net/core/sock.c b/net/core/sock.c
+index f0f09524911c8..ceda1a9248b3e 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -729,6 +729,14 @@ void sock_no_linger(struct sock *sk)
+ }
+ EXPORT_SYMBOL(sock_no_linger);
+ 
++void sock_set_priority(struct sock *sk, u32 priority)
++{
++	lock_sock(sk);
++	sk->sk_priority = priority;
++	release_sock(sk);
++}
++EXPORT_SYMBOL(sock_set_priority);
++
+ /*
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
 -- 
-2.25.1
+2.26.2
 
