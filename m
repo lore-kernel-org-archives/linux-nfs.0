@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5BDFC433E1
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B6FCC433E1
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B47822089D
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3A866212CC
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="TyyzpOSO"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="actGpQKr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728251AbgE1FO2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1728247AbgE1FO2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 28 May 2020 01:14:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40598 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40596 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728235AbgE1FO1 (ORCPT
+        with ESMTP id S1728234AbgE1FO1 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2020 01:14:27 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C538C08C5C3;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0363DC05BD1E;
         Wed, 27 May 2020 22:14:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=B8AAretIu5FmedPsdm8UByxsgeixSPHOD/FDCOuT058=; b=TyyzpOSO7/oKDZGowkS0hprG/g
-        YGiFM+X4kmRzl761xV3iqO3ALicBOREACJGYJaiR9tGScQt0z8zG3dpyEGl53HUH8cl/ZCFfu34Ks
-        Z2ACUovmX8WL/XYeE7ewQ0czVaH6MsErvhmxz95ozhQA8SijytgFLW7FnLrfIeBqkdrQYJnej3xty
-        CbOt+GNZQbIIAnQH66dY6QohYOu77xVV4Tccy5bE3oy0dB6bKUysaXWiojk3dotM7Q5p0M4LceMEy
-        fbs8470Gv0QRYpfoLCrv5343vgRATpA6CHLOIO7gpkRNrK5vmBqQ9+3+mNRQJxv7HMLbxvXh5OFED
-        85V2vqOQ==;
+        bh=1p3cd+gWSJpx0kr+QTwgr/Rfd2wUwT7HTc1b3QOXmAk=; b=actGpQKrGmLduRlAPittX5HMiS
+        grFUGQ9E7KErmFMkBTMTODl3drMsnL9k6lLNdxpTO1IoaA4WEfi0E+logisRNY9JwnSyI8GQQLdwE
+        METiRzK3a7FUKrgC4OFAGbDknOACaP/K6CHMdu4DroXfmgLQ3ASU0m+XMcGtgC54AQX9YORjcoGjA
+        09mXFqNaK9fqyGfAETNx5k+yHccZB+YfGOAFaF4N/WHyMGC5imST+LclhRY0WXJ1yngJtMu3HPRYu
+        PkuHeTI9nptn22KpOaVKo22bgVtdygyHspgZPDPmoJBwEiIuotljIMAw9fb8esDI1HNZeU6ywppf9
+        LJVmte6w==;
 Received: from p4fdb1ad2.dip0.t-ipconnect.de ([79.219.26.210] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jeAre-0002XI-Jl; Thu, 28 May 2020 05:13:59 +0000
+        id 1jeArk-0002bM-Ar; Thu, 28 May 2020 05:14:04 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -51,11 +51,10 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
         netdev@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org,
-        tipc-discussion@lists.sourceforge.net,
-        David Howells <dhowells@redhat.com>
-Subject: [PATCH 24/28] ipv6: add ip6_sock_set_recverr
-Date:   Thu, 28 May 2020 07:12:32 +0200
-Message-Id: <20200528051236.620353-25-hch@lst.de>
+        tipc-discussion@lists.sourceforge.net
+Subject: [PATCH 26/28] ipv6: add ip6_sock_set_recvpktinfo
+Date:   Thu, 28 May 2020 07:12:34 +0200
+Message-Id: <20200528051236.620353-27-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200528051236.620353-1-hch@lst.de>
 References: <20200528051236.620353-1-hch@lst.de>
@@ -67,60 +66,64 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the IPV6_RECVERR sockopt from kernel space
-without going through a fake uaccess.
+Add a helper to directly set the IPV6_RECVPKTINFO sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: David Howells <dhowells@redhat.com>
 ---
- include/net/ipv6.h       |  7 +++++++
- net/rxrpc/local_object.c | 10 ++--------
+ include/net/ipv6.h   |  7 +++++++
+ net/sunrpc/svcsock.c | 10 ++--------
  2 files changed, 9 insertions(+), 8 deletions(-)
 
 diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index 9b91188c9a74c..49c4abf991489 100644
+index 9a90759830162..5e65bf2fd32d0 100644
 --- a/include/net/ipv6.h
 +++ b/include/net/ipv6.h
-@@ -1188,4 +1188,11 @@ static inline int ip6_sock_set_v6only(struct sock *sk)
- 	return 0;
+@@ -1262,4 +1262,11 @@ static inline int ip6_sock_set_addr_preferences(struct sock *sk, bool val)
+ 	return ret;
  }
  
-+static inline void ip6_sock_set_recverr(struct sock *sk)
++static inline void ip6_sock_set_recvpktinfo(struct sock *sk)
 +{
 +	lock_sock(sk);
-+	inet6_sk(sk)->recverr = true;
++	inet6_sk(sk)->rxopt.bits.rxinfo = true;
 +	release_sock(sk);
 +}
 +
  #endif /* _NET_IPV6_H */
-diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
-index 6f4e6b4817cf2..c8b2097f499c0 100644
---- a/net/rxrpc/local_object.c
-+++ b/net/rxrpc/local_object.c
-@@ -107,7 +107,7 @@ static struct rxrpc_local *rxrpc_alloc_local(struct rxrpc_net *rxnet,
- static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index a391892977cd2..e7a0037d9b56c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -595,8 +595,6 @@ static struct svc_xprt_class svc_udp_class = {
+ 
+ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
  {
- 	struct sock *usk;
--	int ret, opt;
-+	int ret;
- 
- 	_enter("%p{%d,%d}",
- 	       local, local->srx.transport_type, local->srx.transport.family);
-@@ -157,13 +157,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
- 	switch (local->srx.transport.family) {
+-	int err, level, optname, one = 1;
+-
+ 	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
+ 		      &svsk->sk_xprt, serv);
+ 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+@@ -617,17 +615,13 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET:
+ 		ip_sock_set_pktinfo(svsk->sk_sock->sk);
+-		return;
++		break;
  	case AF_INET6:
- 		/* we want to receive ICMPv6 errors */
--		opt = 1;
--		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_RECVERR,
--					(char *) &opt, sizeof(opt));
--		if (ret < 0) {
--			_debug("setsockopt failed");
--			goto error;
--		}
-+		ip6_sock_set_recverr(local->socket->sk);
+-		level = SOL_IPV6;
+-		optname = IPV6_RECVPKTINFO;
++		ip6_sock_set_recvpktinfo(svsk->sk_sock->sk);
+ 		break;
+ 	default:
+ 		BUG();
+ 	}
+-	err = kernel_setsockopt(svsk->sk_sock, level, optname,
+-					(char *)&one, sizeof(one));
+-	dprintk("svc: kernel_setsockopt returned %d\n", err);
+ }
  
- 		/* Fall through and set IPv4 options too otherwise we don't get
- 		 * errors from IPv4 packets sent through the IPv6 socket.
+ /*
 -- 
 2.26.2
 
