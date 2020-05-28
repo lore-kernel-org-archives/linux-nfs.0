@@ -4,39 +4,39 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B18CC433DF
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 890FBC433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:16:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DCE6420C56
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6AB5120721
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:16:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="mAMWj06H"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="T35UOcRE"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727885AbgE1FPu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 May 2020 01:15:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40516 "EHLO
+        id S1728037AbgE1FN7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 May 2020 01:13:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40504 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728071AbgE1FOB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2020 01:14:01 -0400
+        with ESMTP id S1727999AbgE1FN6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2020 01:13:58 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 57917C05BD1E;
-        Wed, 27 May 2020 22:14:01 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E103C05BD1E;
+        Wed, 27 May 2020 22:13:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=gnA7+jJn2EzdItRqBuzPEJaaaUKccHwFvREFWvcVmhA=; b=mAMWj06HF4EdHLsw9UsjZhrR0T
-        Cyt1pbjZ/Vy8VEWJkn8gv3tgZBZWQqkoSve/ersmLPEk1+ZCte6TguxQkNhtECRegdS7Hz0ij3np7
-        DjHk104lfC7NCAnreOsOCNQTIzRkU6Ywjz6U8QNip0Av2xj+WItd0U9EwkYHe66Tj1ZAUBrMNLHMU
-        ki6SeCt0ruXv3KlQXzk7kAkiWDE7wjqt3zbE6rDBRwX6Ez0Uo3aAuCnlqkmttinzeBEIgFFBNHTXP
-        HjL/ZhiRZsCQn0D4XlHVRlS0H/S19h1YBvkEIZk2yyYMlWD4EbnJJ7XcliWtLc6HFFvAjwcDYm/DC
-        ERyS7ekA==;
+        bh=SIoouIsiS3Klp7Vqz34E2/dHqJYHKmkNxnKEUVmnUrI=; b=T35UOcRE36extKI797grrT1zOT
+        RxPmm5ghaJ7vGedAJgFMeK7sdQPqoXHj6fsuTRjB0lbd3FbGeLk5ASrb8GuYn3SPULS1ztD1bd+V8
+        7eyirxc2XS3rQN01zrLThBEy2PnWUjpPbsF29ri9eqfFW0EPKdwyTn1ZMPDj5Aq6n0jgopUBCsO/6
+        52sPyZyAhwFjYgKokslO9/fhtHUG6NSoXU/RbkGiZ28ZG+oZFVHxmc8XWxkKCVE2wHtAWLBDqTWIB
+        62jxkUfIIP6n/E3lck0QFO//XgZBi1O6pLkSIQe8KL4SoXAmy4eYs2ORrrtyh85zzFddx22o2dFtk
+        ZOExhZeA==;
 Received: from p4fdb1ad2.dip0.t-ipconnect.de ([79.219.26.210] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jeArF-00027k-1K; Thu, 28 May 2020 05:13:33 +0000
+        id 1jeAr8-00021k-Jk; Thu, 28 May 2020 05:13:27 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -52,9 +52,9 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         netdev@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org,
         tipc-discussion@lists.sourceforge.net
-Subject: [PATCH 16/28] tcp: add tcp_sock_set_keepintvl
-Date:   Thu, 28 May 2020 07:12:24 +0200
-Message-Id: <20200528051236.620353-17-hch@lst.de>
+Subject: [PATCH 14/28] tcp: add tcp_sock_set_user_timeout
+Date:   Thu, 28 May 2020 07:12:22 +0200
+Message-Id: <20200528051236.620353-15-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200528051236.620353-1-hch@lst.de>
 References: <20200528051236.620353-1-hch@lst.de>
@@ -66,84 +66,108 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the TCP_KEEPINTVL sockopt from kernel space
-without going through a fake uaccess.
+Add a helper to directly set the TCP_USER_TIMEOUT sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/tcp.h   |  1 +
- net/ipv4/tcp.c        | 12 ++++++++++++
- net/rds/tcp_listen.c  |  4 +---
- net/sunrpc/xprtsock.c |  3 +--
- 4 files changed, 15 insertions(+), 5 deletions(-)
+ fs/ocfs2/cluster/tcp.c | 22 ++--------------------
+ include/linux/tcp.h    |  1 +
+ net/ipv4/tcp.c         |  8 ++++++++
+ net/sunrpc/xprtsock.c  |  3 +--
+ 4 files changed, 12 insertions(+), 22 deletions(-)
 
+diff --git a/fs/ocfs2/cluster/tcp.c b/fs/ocfs2/cluster/tcp.c
+index 4c70fe9d19ab2..79a2317194600 100644
+--- a/fs/ocfs2/cluster/tcp.c
++++ b/fs/ocfs2/cluster/tcp.c
+@@ -1441,14 +1441,6 @@ static void o2net_rx_until_empty(struct work_struct *work)
+ 	sc_put(sc);
+ }
+ 
+-static int o2net_set_usertimeout(struct socket *sock)
+-{
+-	int user_timeout = O2NET_TCP_USER_TIMEOUT;
+-
+-	return kernel_setsockopt(sock, SOL_TCP, TCP_USER_TIMEOUT,
+-				(void *)&user_timeout, sizeof(user_timeout));
+-}
+-
+ static void o2net_initialize_handshake(void)
+ {
+ 	o2net_hand->o2hb_heartbeat_timeout_ms = cpu_to_be32(
+@@ -1629,12 +1621,7 @@ static void o2net_start_connect(struct work_struct *work)
+ 	}
+ 
+ 	tcp_sock_set_nodelay(sc->sc_sock->sk);
+-
+-	ret = o2net_set_usertimeout(sock);
+-	if (ret) {
+-		mlog(ML_ERROR, "set TCP_USER_TIMEOUT failed with %d\n", ret);
+-		goto out;
+-	}
++	tcp_sock_set_user_timeout(sock->sk, O2NET_TCP_USER_TIMEOUT);
+ 
+ 	o2net_register_callbacks(sc->sc_sock->sk, sc);
+ 
+@@ -1821,12 +1808,7 @@ static int o2net_accept_one(struct socket *sock, int *more)
+ 	new_sock->sk->sk_allocation = GFP_ATOMIC;
+ 
+ 	tcp_sock_set_nodelay(new_sock->sk);
+-
+-	ret = o2net_set_usertimeout(new_sock);
+-	if (ret) {
+-		mlog(ML_ERROR, "set TCP_USER_TIMEOUT failed with %d\n", ret);
+-		goto out;
+-	}
++	tcp_sock_set_user_timeout(new_sock->sk, O2NET_TCP_USER_TIMEOUT);
+ 
+ 	ret = new_sock->ops->getname(new_sock, (struct sockaddr *) &sin, 1);
+ 	if (ret < 0)
 diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 5724dd84a85ed..1f9bada00faab 100644
+index 6aa4ae5ebf3d5..de682143efe4d 100644
 --- a/include/linux/tcp.h
 +++ b/include/linux/tcp.h
-@@ -499,6 +499,7 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
- 
- void tcp_sock_set_cork(struct sock *sk, bool on);
- int tcp_sock_set_keepidle(struct sock *sk, int val);
-+int tcp_sock_set_keepintvl(struct sock *sk, int val);
+@@ -501,5 +501,6 @@ void tcp_sock_set_cork(struct sock *sk, bool on);
  void tcp_sock_set_nodelay(struct sock *sk);
  void tcp_sock_set_quickack(struct sock *sk, int val);
  int tcp_sock_set_syncnt(struct sock *sk, int val);
++void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
+ 
+ #endif	/* _LINUX_TCP_H */
 diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index bdf0ff9333514..7eb083e09786a 100644
+index d2c67ae1da07a..0004bd9ae7b0a 100644
 --- a/net/ipv4/tcp.c
 +++ b/net/ipv4/tcp.c
-@@ -2934,6 +2934,18 @@ int tcp_sock_set_keepidle(struct sock *sk, int val)
+@@ -2893,6 +2893,14 @@ int tcp_sock_set_syncnt(struct sock *sk, int val)
  }
- EXPORT_SYMBOL(tcp_sock_set_keepidle);
+ EXPORT_SYMBOL(tcp_sock_set_syncnt);
  
-+int tcp_sock_set_keepintvl(struct sock *sk, int val)
++void tcp_sock_set_user_timeout(struct sock *sk, u32 val)
 +{
-+	if (val < 1 || val > MAX_TCP_KEEPINTVL)
-+		return -EINVAL;
-+
 +	lock_sock(sk);
-+	tcp_sk(sk)->keepalive_intvl = val * HZ;
++	inet_csk(sk)->icsk_user_timeout = val;
 +	release_sock(sk);
-+	return 0;
 +}
-+EXPORT_SYMBOL(tcp_sock_set_keepintvl);
++EXPORT_SYMBOL(tcp_sock_set_user_timeout);
 +
  /*
   *	Socket option code for TCP.
   */
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index 79f9adc008114..9ad555c48d15d 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -53,12 +53,10 @@ int rds_tcp_keepalive(struct socket *sock)
- 		goto bail;
- 
- 	tcp_sock_set_keepidle(sock->sk, keepidle);
--
- 	/* KEEPINTVL is the interval between successive probes. We follow
- 	 * the model in xs_tcp_finish_connecting() and re-use keepidle.
- 	 */
--	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL,
--				(char *)&keepidle, sizeof(keepidle));
-+	tcp_sock_set_keepintvl(sock->sk, keepidle);
- bail:
- 	return ret;
- }
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 473290f7c5c0a..5ca64e12af0c5 100644
+index 399848c2bcb29..231fd6162f68d 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -2108,8 +2108,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	/* TCP Keepalive options */
- 	sock_set_keepalive(sock->sk);
- 	tcp_sock_set_keepidle(sock->sk, keepidle);
--	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
--			(char *)&keepidle, sizeof(keepidle));
-+	tcp_sock_set_keepintvl(sock->sk, keepidle);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
+@@ -2115,8 +2115,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
  			(char *)&keepcnt, sizeof(keepcnt));
  
+ 	/* TCP user timeout (see RFC5482) */
+-	kernel_setsockopt(sock, SOL_TCP, TCP_USER_TIMEOUT,
+-			(char *)&timeo, sizeof(timeo));
++	tcp_sock_set_user_timeout(sock->sk, timeo);
+ }
+ 
+ static void xs_tcp_set_connect_timeout(struct rpc_xprt *xprt,
 -- 
 2.26.2
 
