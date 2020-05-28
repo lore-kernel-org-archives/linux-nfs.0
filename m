@@ -2,41 +2,41 @@ Return-Path: <SRS0=W4f8=7K=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1FA0C433E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 95316C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9E24D20721
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7584120C56
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 May 2020 05:15:47 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Tyq5sSYa"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="hdih7qS1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728117AbgE1FOK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 May 2020 01:14:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40536 "EHLO
+        id S1727770AbgE1FPh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 May 2020 01:15:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40546 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728092AbgE1FOH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2020 01:14:07 -0400
+        with ESMTP id S1728118AbgE1FOK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2020 01:14:10 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30745C08C5C4;
-        Wed, 27 May 2020 22:14:07 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50610C05BD1E;
+        Wed, 27 May 2020 22:14:10 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=rkPSLt83JgtGQXMIhVazd1jON1AmWkQMFJTFZxl0OWU=; b=Tyq5sSYa9G10GlkbQvW78Dk2ex
-        M3xSVesP+2fGjwzr43486Tig80pF4p43ospcSpNKSyeK0iebc6ZzpklYnfUekSB0x56OR/GFnTF0m
-        Su3bgd4b10XJuuMQ+sz7ZRCn6hoiVFa+vC0puKPN2qxZz7JY7B8ZKLmZzm8CmaPSHKEpYtZAmPSI6
-        BBxIhFSXa5bczPHR6FL8AuXaOQkVuvAcnPDmqJwaNoM4yrImcnnRm+vFHjH53vyCw+ZpfacExy6TK
-        ZM+zcCmW7OVPAoya33Lt2ndc5y4P5DAfvxleTi+sI1LrTUQe4M+IGXWf/K5f0Gva75fD0ujVhj5Rt
-        s5IX4mtw==;
+        bh=OfDlGdyFJbY3guIEMLUBPt/bisXMPCmZcgN0xNtZrAc=; b=hdih7qS1Ki00+vlbsFVix20bhy
+        Ak2PsMf4AXQkQYfbDYkq3IO9ziSk1NeqT/FGOQebDmIBaH/KGLVSE0lHtRKOlTJ+rlFHNEEoYTjaW
+        4tkbnZM6DzHod7Zs+rvQ1WoywwMIGUmoE5sw9PUrN4ZYX6wGVLvJQzzmr6kQInq7ztb34uRKxh58H
+        P+9BVM3RUyQVtiyxH49xwC17LFVdK7Z3BzAchWikaZJrq0xPd612f1RI/WWE4B7buHnklx+pmc9bW
+        KHnhBIdKdvYgFsqO4PVjF9DAWgCVca5a99N7taEQQ2niAR+IYVUP5SMNsFh4t2gl3uB4ji3zLEJTD
+        XPp7smhw==;
 Received: from p4fdb1ad2.dip0.t-ipconnect.de ([79.219.26.210] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jeArL-0002Fz-6e; Thu, 28 May 2020 05:13:39 +0000
+        id 1jeArU-0002Pc-U3; Thu, 28 May 2020 05:13:49 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>
@@ -52,10 +52,10 @@ Cc:     Eric Dumazet <edumazet@google.com>,
         netdev@vger.kernel.org, ceph-devel@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org,
         tipc-discussion@lists.sourceforge.net,
-        Sagi Grimberg <sagi@grimberg.me>
-Subject: [PATCH 18/28] ipv4: add ip_sock_set_tos
-Date:   Thu, 28 May 2020 07:12:26 +0200
-Message-Id: <20200528051236.620353-19-hch@lst.de>
+        David Howells <dhowells@redhat.com>
+Subject: [PATCH 21/28] ipv4: add ip_sock_set_mtu_discover
+Date:   Thu, 28 May 2020 07:12:29 +0200
+Message-Id: <20200528051236.620353-22-hch@lst.de>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200528051236.620353-1-hch@lst.de>
 References: <20200528051236.620353-1-hch@lst.de>
@@ -67,130 +67,107 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to directly set the IP_TOS sockopt from kernel space without
-going through a fake uaccess.
+Add a helper to directly set the IP_MTU_DISCOVER sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Sagi Grimberg <sagi@grimberg.me>
+Reviewed-by: David Howells <dhowells@redhat.com> [rxrpc bits]
 ---
- drivers/nvme/host/tcp.c   | 14 +++-----------
- drivers/nvme/target/tcp.c | 10 ++--------
- include/net/ip.h          |  2 ++
- net/ipv4/ip_sockglue.c    | 30 +++++++++++++++++++++---------
- 4 files changed, 28 insertions(+), 28 deletions(-)
+ include/net/ip.h         |  1 +
+ net/ipv4/ip_sockglue.c   | 11 +++++++++++
+ net/rxrpc/local_object.c |  8 +-------
+ net/rxrpc/output.c       | 14 +++++---------
+ 4 files changed, 18 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index 2872584f52f63..4c972d8abf317 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -1313,7 +1313,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
- {
- 	struct nvme_tcp_ctrl *ctrl = to_tcp_ctrl(nctrl);
- 	struct nvme_tcp_queue *queue = &ctrl->queues[qid];
--	int ret, opt, rcv_pdu_size;
-+	int ret, rcv_pdu_size;
- 
- 	queue->ctrl = ctrl;
- 	INIT_LIST_HEAD(&queue->send_list);
-@@ -1352,16 +1352,8 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
- 		sock_set_priority(queue->sock->sk, so_priority);
- 
- 	/* Set socket type of service */
--	if (nctrl->opts->tos >= 0) {
--		opt = nctrl->opts->tos;
--		ret = kernel_setsockopt(queue->sock, SOL_IP, IP_TOS,
--				(char *)&opt, sizeof(opt));
--		if (ret) {
--			dev_err(nctrl->device,
--				"failed to set IP_TOS sock opt %d\n", ret);
--			goto err_sock;
--		}
--	}
-+	if (nctrl->opts->tos >= 0)
-+		ip_sock_set_tos(queue->sock->sk, nctrl->opts->tos);
- 
- 	queue->sock->sk->sk_allocation = GFP_ATOMIC;
- 	nvme_tcp_set_queue_io_cpu(queue);
-diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
-index 55bc4c3c0a74a..4546049a96b37 100644
---- a/drivers/nvme/target/tcp.c
-+++ b/drivers/nvme/target/tcp.c
-@@ -1452,14 +1452,8 @@ static int nvmet_tcp_set_queue_sock(struct nvmet_tcp_queue *queue)
- 		sock_set_priority(sock->sk, so_priority);
- 
- 	/* Set socket type of service */
--	if (inet->rcv_tos > 0) {
--		int tos = inet->rcv_tos;
--
--		ret = kernel_setsockopt(sock, SOL_IP, IP_TOS,
--				(char *)&tos, sizeof(tos));
--		if (ret)
--			return ret;
--	}
-+	if (inet->rcv_tos > 0)
-+		ip_sock_set_tos(sock->sk, inet->rcv_tos);
- 
- 	write_lock_bh(&sock->sk->sk_callback_lock);
- 	sock->sk->sk_user_data = queue;
 diff --git a/include/net/ip.h b/include/net/ip.h
-index 5b317c9f4470a..2fc52e26fa88b 100644
+index f063a491b9063..d3649c49dd333 100644
 --- a/include/net/ip.h
 +++ b/include/net/ip.h
-@@ -765,4 +765,6 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
- 	return likely(mtu >= IPV4_MIN_MTU);
+@@ -766,6 +766,7 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
  }
  
-+void ip_sock_set_tos(struct sock *sk, int val);
-+
- #endif	/* _IP_H */
+ void ip_sock_set_freebind(struct sock *sk);
++int ip_sock_set_mtu_discover(struct sock *sk, int val);
+ void ip_sock_set_recverr(struct sock *sk);
+ void ip_sock_set_tos(struct sock *sk, int val);
+ 
 diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index f43d5f12aa86a..b43a29e11f4a5 100644
+index aca6b81da9bae..aa115be11dcfb 100644
 --- a/net/ipv4/ip_sockglue.c
 +++ b/net/ipv4/ip_sockglue.c
-@@ -560,6 +560,26 @@ int ip_recv_error(struct sock *sk, struct msghdr *msg, int len, int *addr_len)
- 	return err;
+@@ -597,6 +597,17 @@ void ip_sock_set_recverr(struct sock *sk)
  }
+ EXPORT_SYMBOL(ip_sock_set_recverr);
  
-+static void __ip_sock_set_tos(struct sock *sk, int val)
++int ip_sock_set_mtu_discover(struct sock *sk, int val)
 +{
-+	if (sk->sk_type == SOCK_STREAM) {
-+		val &= ~INET_ECN_MASK;
-+		val |= inet_sk(sk)->tos & INET_ECN_MASK;
-+	}
-+	if (inet_sk(sk)->tos != val) {
-+		inet_sk(sk)->tos = val;
-+		sk->sk_priority = rt_tos2priority(val);
-+		sk_dst_reset(sk);
-+	}
-+}
-+
-+void ip_sock_set_tos(struct sock *sk, int val)
-+{
++	if (val < IP_PMTUDISC_DONT || val > IP_PMTUDISC_OMIT)
++		return -EINVAL;
 +	lock_sock(sk);
-+	__ip_sock_set_tos(sk, val);
++	inet_sk(sk)->pmtudisc = val;
 +	release_sock(sk);
++	return 0;
 +}
-+EXPORT_SYMBOL(ip_sock_set_tos);
- 
++EXPORT_SYMBOL(ip_sock_set_mtu_discover);
++
  /*
   *	Socket option code for IP. This is the end of the line after any
-@@ -823,15 +843,7 @@ static int do_ip_setsockopt(struct sock *sk, int level,
- 			inet->cmsg_flags &= ~IP_CMSG_RECVFRAGSIZE;
- 		break;
- 	case IP_TOS:	/* This sets both TOS and Precedence */
--		if (sk->sk_type == SOCK_STREAM) {
--			val &= ~INET_ECN_MASK;
--			val |= inet->tos & INET_ECN_MASK;
+  *	TCP,UDP etc options on an IP socket.
+diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
+index 4c0e8fe5ec1fb..6f4e6b4817cf2 100644
+--- a/net/rxrpc/local_object.c
++++ b/net/rxrpc/local_object.c
+@@ -174,13 +174,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+ 		ip_sock_set_recverr(local->socket->sk);
+ 
+ 		/* we want to set the don't fragment bit */
+-		opt = IP_PMTUDISC_DO;
+-		ret = kernel_setsockopt(local->socket, SOL_IP, IP_MTU_DISCOVER,
+-					(char *) &opt, sizeof(opt));
+-		if (ret < 0) {
+-			_debug("setsockopt failed");
+-			goto error;
 -		}
--		if (inet->tos != val) {
--			inet->tos = val;
--			sk->sk_priority = rt_tos2priority(val);
--			sk_dst_reset(sk);
--		}
-+		__ip_sock_set_tos(sk, val);
++		ip_sock_set_mtu_discover(local->socket->sk, IP_PMTUDISC_DO);
+ 
+ 		/* We want receive timestamps. */
+ 		sock_enable_timestamps(local->socket->sk);
+diff --git a/net/rxrpc/output.c b/net/rxrpc/output.c
+index f8b632a5c6197..1ba43c3df4adb 100644
+--- a/net/rxrpc/output.c
++++ b/net/rxrpc/output.c
+@@ -321,7 +321,7 @@ int rxrpc_send_data_packet(struct rxrpc_call *call, struct sk_buff *skb,
+ 	struct kvec iov[2];
+ 	rxrpc_serial_t serial;
+ 	size_t len;
+-	int ret, opt;
++	int ret;
+ 
+ 	_enter(",{%d}", skb->len);
+ 
+@@ -473,18 +473,14 @@ int rxrpc_send_data_packet(struct rxrpc_call *call, struct sk_buff *skb,
+ 	switch (conn->params.local->srx.transport.family) {
+ 	case AF_INET6:
+ 	case AF_INET:
+-		opt = IP_PMTUDISC_DONT;
+-		kernel_setsockopt(conn->params.local->socket,
+-				  SOL_IP, IP_MTU_DISCOVER,
+-				  (char *)&opt, sizeof(opt));
++		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
++				IP_PMTUDISC_DONT);
+ 		ret = kernel_sendmsg(conn->params.local->socket, &msg,
+ 				     iov, 2, len);
+ 		conn->params.peer->last_tx_at = ktime_get_seconds();
+ 
+-		opt = IP_PMTUDISC_DO;
+-		kernel_setsockopt(conn->params.local->socket,
+-				  SOL_IP, IP_MTU_DISCOVER,
+-				  (char *)&opt, sizeof(opt));
++		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
++				IP_PMTUDISC_DO);
  		break;
- 	case IP_TTL:
- 		if (optlen < 1)
+ 
+ 	default:
 -- 
 2.26.2
 
