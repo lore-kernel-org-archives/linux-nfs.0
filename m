@@ -2,126 +2,113 @@ Return-Path: <SRS0=jYsY=7S=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C142C433E0
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 02:10:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 611E8C433E0
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 07:53:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 32CA0207F7
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 02:10:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 39235206E6
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 07:53:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726129AbgFECKn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 Jun 2020 22:10:43 -0400
-Received: from szxga07-in.huawei.com ([45.249.212.35]:34044 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725497AbgFECKn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Jun 2020 22:10:43 -0400
-Received: from DGGEMS410-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id B4A92E608DFB6990351D;
-        Fri,  5 Jun 2020 10:10:39 +0800 (CST)
-Received: from [127.0.0.1] (10.166.215.138) by DGGEMS410-HUB.china.huawei.com
- (10.3.19.210) with Microsoft SMTP Server id 14.3.487.0; Fri, 5 Jun 2020
- 10:10:30 +0800
-Subject: Re: [PATCH] sunrpc: need delete xprt->timer in xs_destroy
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "kuba@kernel.org" <kuba@kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
-CC:     "yuehaibing@huawei.com" <yuehaibing@huawei.com>,
-        "weiyongjun1@huawei.com" <weiyongjun1@huawei.com>
-References: <20200604144910.133756-1-zhengbin13@huawei.com>
- <bc4755e6c5cee7a326cf06f983907a3170be1649.camel@hammerspace.com>
-From:   "Zhengbin (OSKernel)" <zhengbin13@huawei.com>
-Message-ID: <b04044c7-597c-0487-f459-4d0032d66d5b@huawei.com>
-Date:   Fri, 5 Jun 2020 10:10:29 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.3.0
+        id S1726024AbgFEHxj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 5 Jun 2020 03:53:39 -0400
+Received: from mx2.suse.de ([195.135.220.15]:39160 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725986AbgFEHxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Jun 2020 03:53:39 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id 0500EADBB;
+        Fri,  5 Jun 2020 07:53:41 +0000 (UTC)
+From:   Petr Vorel <pvorel@suse.cz>
+To:     linux-nfs@vger.kernel.org
+Cc:     Petr Vorel <pvorel@suse.cz>, Steve Dickson <SteveD@RedHat.com>
+Subject: [rpcbind 1/1] man/rpcbind: Mention systemd socket in -h
+Date:   Fri,  5 Jun 2020 09:53:32 +0200
+Message-Id: <20200605075332.14564-1-pvorel@suse.cz>
+X-Mailer: git-send-email 2.26.2
 MIME-Version: 1.0
-In-Reply-To: <bc4755e6c5cee7a326cf06f983907a3170be1649.camel@hammerspace.com>
-Content-Type: text/plain; charset="utf-8"; format=flowed
 Content-Transfer-Encoding: 8bit
-Content-Language: en-US
-X-Originating-IP: [10.166.215.138]
-X-CFilter-Loop: Reflected
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The complete process is like this:
+and reformat doc a bit.
 
-xprt_destroy
-   wait_on_bit_lock(&xprt->state, XPRT_LOCKED, TASK_UNINTERRUPTIBLE)  
--->getlock
-   del_timer_sync(&xprt->timer)   -->del xprt->timer
-   INIT_WORK(&xprt->task_cleanup, xprt_destroy_cb)
+Based on Olaf Kirch's patch for openSUSE.
 
-xprt_destroy_cb
-   xs_destroy(xprt->ops->destroy)
-     cancel_delayed_work_sync     -->will call 
-transport->connect_worker, whose callback is xs_udp_setup_socket
-     xs_xprt_free(xprt)                    -->free xprt
+Signed-off-by: Petr Vorel <pvorel@suse.cz>
+---
+Hi Steve,
 
-xs_udp_setup_socket
-   sock = xs_create_sock
-   xprt_unlock_connect
-       if (!test_bit(XPRT_LOCKED, &xprt->state)) -->state is XPRT_LOCKED
-       xprt_schedule_autodisconnect
-         mod_timer
-           internal_add_timer  -->insert xprt->timer to base timer list
+original patch:
+https://build.opensuse.org/package/view_file/openSUSE:Factory/rpcbind/0031-rpcbind-manpage.patch?expand=1
 
-On 2020/6/4 23:39, Trond Myklebust wrote:
-> On Thu, 2020-06-04 at 22:49 +0800, Zheng Bin wrote:
->> If RPC use udp as it's transport protocol, transport->connect_worker
->> will call xs_udp_setup_socket.
->> xs_udp_setup_socket
->>    sock = xs_create_sock
->>    if (IS_ERR(sock))
->>      goto out;
->>    out:
->>      xprt_unlock_connect
->>        xprt_schedule_autodisconnect
->>          mod_timer
->>            internal_add_timer  -->insert xprt->timer to base timer
->> list
->>
->> xs_destroy
->>    cancel_delayed_work_sync(&transport->connect_worker)
->>    xs_xprt_free(xprt)           -->free xprt
->>
->> Thus use-after-free will happen.
->>
->> Signed-off-by: Zheng Bin <zhengbin13@huawei.com>
->> ---
->>   net/sunrpc/xprtsock.c | 1 +
->>   1 file changed, 1 insertion(+)
->>
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 845d0be805ec..c796808e7f7a 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -1242,6 +1242,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
->>   	dprintk("RPC:       xs_destroy xprt %p\n", xprt);
->>
->>   	cancel_delayed_work_sync(&transport->connect_worker);
->> +	del_timer_sync(&xprt->timer);
->>   	xs_close(xprt);
->>   	cancel_work_sync(&transport->recv_worker);
->>   	cancel_work_sync(&transport->error_worker);
->> --
->> 2.26.0.106.g9fadedd
->>
-> I'm confused. How can this happen given that xprt_destroy() first takes
-> the XPRT_LOCK, and then deletes xprt->timer?
->
-> Right now, the socket code knows nothing about the details of xprt-
->> timer and what it is used for. I'd prefer to keep it that way if
-> possible.
->
+Olaf removed note about multi-homed host and about adding 127.0.0.1 an
+::1. I kept them, but maybe multi-homed is not relevant any more or not
+limited only to UDP. Feel free to modify the text to better accommodate
+to current usage.
+
+Kind regards,
+Petr
+
+ man/rpcbind.8 | 32 ++++++++++++++++++++++----------
+ 1 file changed, 22 insertions(+), 10 deletions(-)
+
+diff --git a/man/rpcbind.8 b/man/rpcbind.8
+index af6200f..fbf0ace 100644
+--- a/man/rpcbind.8
++++ b/man/rpcbind.8
+@@ -86,9 +86,16 @@ checks are shown in detail.
+ Do not fork and become a background process.
+ .It Fl h
+ Specify specific IP addresses to bind to for UDP requests.
+-This option
+-may be specified multiple times and is typically necessary when running
+-on a multi-homed host.
++This option may be specified multiple times and can be used to
++restrict the interfaces rpcbind will respond to.
++When specifying IP addresses with
++.Fl h ,
++.Nm
++will automatically add
++.Li 127.0.0.1
++and if IPv6 is enabled,
++.Li ::1
++to the list.
+ If no
+ .Fl h
+ option is specified,
+@@ -99,14 +106,19 @@ which could lead to problems on a multi-homed host due to
+ .Nm
+ returning a UDP packet from a different IP address than it was
+ sent to.
+-Note that when specifying IP addresses with
+-.Fl h ,
++Note that when
+ .Nm
+-will automatically add
+-.Li 127.0.0.1
+-and if IPv6 is enabled,
+-.Li ::1
+-to the list.
++is controlled via systemd's socket activation,
++the
++.Fl h
++option is ignored. In this case, you need to edit
++the
++.Nm ListenStream
++and
++.Nm ListenDgram
++definitions in
++.Nm /usr/lib/systemd/system/rpcbind.socket
++instead.
+ .It Fl i
+ .Dq Insecure
+ mode.
+-- 
+2.26.2
 
