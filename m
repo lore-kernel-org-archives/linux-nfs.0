@@ -2,122 +2,125 @@ Return-Path: <SRS0=jYsY=7S=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84D4AC433E0
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 13:24:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D8F6C433DF
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 13:48:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 538D92065C
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 13:24:24 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="r6PyZqFJ"
+	by mail.kernel.org (Postfix) with ESMTP id 6FD6F206E6
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jun 2020 13:48:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726956AbgFENYY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 5 Jun 2020 09:24:24 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40134 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726894AbgFENYX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2020 09:24:23 -0400
-Received: from mail-ed1-x52a.google.com (mail-ed1-x52a.google.com [IPv6:2a00:1450:4864:20::52a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3AE6EC08C5C2
-        for <linux-nfs@vger.kernel.org>; Fri,  5 Jun 2020 06:24:23 -0700 (PDT)
-Received: by mail-ed1-x52a.google.com with SMTP id g1so7448239edv.6
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Jun 2020 06:24:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=ipvxsaIe+knj+KAG2NI2ZaOtk+Egw3FS/G2xGknuKD0=;
-        b=r6PyZqFJI3d3AB9DsyZc3SeWIQVA9m+bjbSGQcrV64yJNQTc+VNQhjT7cs/uYrlZWZ
-         zIb2gCCg0rpVzf6XwmaXnQbj+TKi9Oxu3+Tbu706fEQckA5TW0F+Km4QbSL6p5b/KmQH
-         LH0HxDLAc2rYQoIsQDS8bBSpv841YERrjqepeL2ICjEW0O5ZTZpqKLTapGEA2XVHjWjj
-         2Rt7jhuId1pWvWBkiKk/g2tubtWbnM/3SxHzt6ZJHKf9o0NSQvgo1dCdWLl1dAdGoyhQ
-         7dSe91Yv8KEqAlnnu+189yvqaWLMryD4DjFaiVAAVbdqHnf06fZuepaeFJQby5r0VaBa
-         XlTA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=ipvxsaIe+knj+KAG2NI2ZaOtk+Egw3FS/G2xGknuKD0=;
-        b=TP7oHwTWXDf1iqL3opOc03IUtPE1sXEP1HH+IN7niFjt+5tCJpSMrkhyIjBW+m46Bf
-         wkHZQgZxvSi0PCs67qVEHfvzPaI6Ikw0+Vq4n9Y4+cF2JfJ89Zn4oyZ8t0W4cWD2pXdq
-         Hiz1Taqde9oxtMOR9izXIXj93P3bQA2aHCHv6TLBVCQpGB5TpXuA0Q1ORnkNhcyOnSL8
-         dPp2YP4pJSCgGcAUUe6jl4AkA4CABQGb1No476ByXap6lpYB6zOZC8muEHRt2rWATuXf
-         gUdUNBFmrz/zm2RGh1MfyZjxCOSEDeNjNfSsRxOXXtSuROcbk3yxttrZQBqJbSG2US29
-         wYfw==
-X-Gm-Message-State: AOAM530avICTkroG/ibShgrGADzA/mWGXnt968RWyevSH/Ft3P26XnYW
-        9Qp5FL4P1vB7Dzy5Hy3XlrPb8aIIqO2oOZRG+Bg=
-X-Google-Smtp-Source: ABdhPJx08iDAlSIHBWHPKEcTqbYt3f2rzNqOoV95hsOgDtg/1voq4k1sucLq4A191DPy8j89Oe8y8q9m1MVr9xQWbiA=
-X-Received: by 2002:a05:6402:3ca:: with SMTP id t10mr9590666edw.128.1591363461790;
- Fri, 05 Jun 2020 06:24:21 -0700 (PDT)
-MIME-Version: 1.0
-References: <CAN-5tyFCotATeYVR0J1B_UaxhXYBDhp21LbFEzZtLYmgN_i+hg@mail.gmail.com>
- <13bed646-39b7-197e-ff90-85f8af10d93c@talpey.com>
-In-Reply-To: <13bed646-39b7-197e-ff90-85f8af10d93c@talpey.com>
-From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Fri, 5 Jun 2020 09:24:11 -0400
-Message-ID: <CAN-5tyFdof2MxKn5wG6k3eJRjNKJeC1VvQ4qOYC-ByYfnoUWPg@mail.gmail.com>
+        id S1726970AbgFENs6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 5 Jun 2020 09:48:58 -0400
+Received: from p3plsmtpa06-02.prod.phx3.secureserver.net ([173.201.192.103]:44887
+        "EHLO p3plsmtpa06-02.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726553AbgFENs5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2020 09:48:57 -0400
+Received: from [192.168.0.78] ([24.218.182.144])
+        by :SMTPAUTH: with ESMTPSA
+        id hCiOjfeGIE4KhhCiOj7To0; Fri, 05 Jun 2020 06:48:57 -0700
+X-CMAE-Analysis: v=2.3 cv=QpUgIm6d c=1 sm=1 tr=0
+ a=ugQcCzLIhEHbLaAUV45L0A==:117 a=ugQcCzLIhEHbLaAUV45L0A==:17
+ a=IkcTkHD0fZMA:10 a=SEc3moZ4AAAA:8 a=Ttyvi4g-exlmjVYibWUA:9
+ a=zBh3vVxrueG1MFmw:21 a=sKJz03POVbth83Jt:21 a=QEXdDO2ut3YA:10
+ a=5oRCH6oROnRZc2VpWJZ3:22
+X-SECURESERVER-ACCT: tom@talpey.com
 Subject: Re: once again problems with interrupted slots
-To:     Tom Talpey <tom@talpey.com>
+To:     Olga Kornievskaia <aglo@umich.edu>
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+References: <CAN-5tyFCotATeYVR0J1B_UaxhXYBDhp21LbFEzZtLYmgN_i+hg@mail.gmail.com>
+ <13bed646-39b7-197e-ff90-85f8af10d93c@talpey.com>
+ <CAN-5tyFdof2MxKn5wG6k3eJRjNKJeC1VvQ4qOYC-ByYfnoUWPg@mail.gmail.com>
+From:   Tom Talpey <tom@talpey.com>
+Message-ID: <ce227f0a-c97a-2bd9-7321-1193e5fc56b4@talpey.com>
+Date:   Fri, 5 Jun 2020 09:48:55 -0400
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101
+ Thunderbird/68.8.1
+MIME-Version: 1.0
+In-Reply-To: <CAN-5tyFdof2MxKn5wG6k3eJRjNKJeC1VvQ4qOYC-ByYfnoUWPg@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CMAE-Envelope: MS4wfF6qzMGbK3wZQJfSceIaArPVuATzHNasRIDHT/OfXo3ghwL2GD5X4n2DsxyYQxfxOmyk4yaXY6jpmb/TiOLKU7sXDk+GQ0oKFt8CknG1xxT362SX7Tmi
+ bNt+XITIpRNefCOs5cnw2MmEF6e8k4sRbMnR+ol2+2iFHNpMx0/O0uxm9wYB8lhhQp7sqc2ELhSdDXi+f1F5pb6RID04U2rQiNiyW67CFIExT1CmuWofd59k
+ eMHnqa9110ujFeIdfvE58Q==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Jun 5, 2020 at 8:06 AM Tom Talpey <tom@talpey.com> wrote:
->
-> On 6/4/2020 5:21 PM, Olga Kornievskaia wrote:
-> > Hi Trond,
-> >
-> > There is a problem with interrupted slots (yet again).
-> >
-> > We send an operation to the server and it gets interrupted by the a signal.
-> >
-> > We used to send a sole SEQUENCE to remove the problem of having real
-> > operation get an out of the cache reply and failing. Now we are not
-> > doing it again (since 3453d5708 NFSv4.1: Avoid false retries when RPC
-> > calls are interrupted"). So the problem is
-> >
-> > We bump the sequence on the next use of the slot, and get SEQ_MISORDERED.
->
-> Misordered? It sounds like the client isn't managing the sequence
-> number, or perhaps the server never saw the original request, and
-> is being overly strict.
+On 6/5/2020 9:24 AM, Olga Kornievskaia wrote:
+> On Fri, Jun 5, 2020 at 8:06 AM Tom Talpey <tom@talpey.com> wrote:
+>>
+>> On 6/4/2020 5:21 PM, Olga Kornievskaia wrote:
+>>> Hi Trond,
+>>>
+>>> There is a problem with interrupted slots (yet again).
+>>>
+>>> We send an operation to the server and it gets interrupted by the a signal.
+>>>
+>>> We used to send a sole SEQUENCE to remove the problem of having real
+>>> operation get an out of the cache reply and failing. Now we are not
+>>> doing it again (since 3453d5708 NFSv4.1: Avoid false retries when RPC
+>>> calls are interrupted"). So the problem is
+>>>
+>>> We bump the sequence on the next use of the slot, and get SEQ_MISORDERED.
+>>
+>> Misordered? It sounds like the client isn't managing the sequence
+>> number, or perhaps the server never saw the original request, and
+>> is being overly strict.
+> 
+> Well, both the client and the server are acting appropriately.  I'm
+> not arguing against bumping the sequence. Client sent say REMOVE with
+> slot=1 seq=5 which got interrupted. So client doesn't know in what
+> state the slot is left. So it sends the next operation say READ with
+> slot=1 seq=6. Server acts appropriately too, as it's version of the
+> slot has seq=4, this request with seq=6 gets SEQ_MISORDERED.
 
-Well, both the client and the server are acting appropriately.  I'm
-not arguing against bumping the sequence. Client sent say REMOVE with
-slot=1 seq=5 which got interrupted. So client doesn't know in what
-state the slot is left. So it sends the next operation say READ with
-slot=1 seq=6. Server acts appropriately too, as it's version of the
-slot has seq=4, this request with seq=6 gets SEQ_MISORDERED.
+Wait, if the client sent slot=1 seq=5, then unless the connection
+breaks, that slot is at seq=5, simple as that. If the operation was
+interrupted before sending the request, then the sequence should
+not be bumped.
 
-> > We decrement the number back to the interrupted operation. This gets
-> > us a reply out of the cache. We again fail with REMOTE EIO error.
->
-> Ew. The client *decrements* the sequence?
+>>> We decrement the number back to the interrupted operation. This gets
+>>> us a reply out of the cache. We again fail with REMOTE EIO error.
+>>
+>> Ew. The client *decrements* the sequence?
+> 
+> Yes, as client then decides that server never received seq=5 operation
+> so it re-sends with seq=5. But in reality seq=5 operation also reached
+> the server so it has 2 requests REMOVE/READ both with seq=5 for
+> slot=1. This leads to READ failing with some error.
 
-Yes, as client then decides that server never received seq=5 operation
-so it re-sends with seq=5. But in reality seq=5 operation also reached
-the server so it has 2 requests REMOVE/READ both with seq=5 for
-slot=1. This leads to READ failing with some error.
+But if the connection didn't break, it's reliable therefore the "resend"
+must not be performed. This is a new operation, not a retry. It cannot
+use the same slot+seq pair. And decrementing the slot is even sillier,
+it's reusing *two* seq's at that point.
 
-We used to before send a sole SEQUENCE when we have an interrupted
-slot to sync up the seq numbers. But commit 3453d5708 changed that and
-I would like to understand why. As I think we need to go back to
-sending sole SEQUENCE.
+> We used to before send a sole SEQUENCE when we have an interrupted
+> slot to sync up the seq numbers. But commit 3453d5708 changed that and
+> I would like to understand why. As I think we need to go back to
+> sending sole SEQUENCE.
 
-> Tom.
->
-> > Going back to the commit's message. I don't see the logic that the
-> > server can't tell if this is a new call or the old one. We used to
-> > send a lone SEQUENCE as a way to protect reuse of slot by a normal
-> > operation. An interrupted slot couldn't have been another SEQUENCE. So
-> > I don't see how the server can't tell a difference between SEQUENCE
-> > and any other operations.
-> >
-> >
+Sounds like a hack, frankly. What if the server responds the same
+way? The client will start burning the wire.
+
+Closing the connection, or never using that slot again, seems to
+me the only correct option, given the other behavior described.
+
+Tom.
+
+
+>>> Going back to the commit's message. I don't see the logic that the
+>>> server can't tell if this is a new call or the old one. We used to
+>>> send a lone SEQUENCE as a way to protect reuse of slot by a normal
+>>> operation. An interrupted slot couldn't have been another SEQUENCE. So
+>>> I don't see how the server can't tell a difference between SEQUENCE
+>>> and any other operations.
+>>>
+>>>
+> 
+> 
