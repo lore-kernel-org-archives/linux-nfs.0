@@ -2,53 +2,54 @@ Return-Path: <SRS0=S27I=7X=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9AFE4C433E2
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 15:50:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F04BC433E1
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 15:50:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 79B94206C3
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 15:50:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DD5E0206C3
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 15:50:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1591804203;
-	bh=Q9LLla2AHZm5fPM4otACCqwxWCS8AXst7Dotyay87T8=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=V6RiB7PJfNhPNR6lLvQJePOfsfXvjEzjOUPiNiAGruCE7w9kNa1H49SHiq9iCzVHW
-	 xAEyU8ZMu7o7THy8l4fc/EBxSZlv8tWFb0okocxjFMq7XMd68EqHABrukByGglspLY
-	 C7u8iImvlz33Xitjznq3kF/1sndBlECiHGg0QzbM=
+	s=default; t=1591804210;
+	bh=p6i/IqPt79eKNWiJ/ilbD6VdrBxWjGYWZhum1eNHc/k=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=dbXQ5wwbCS8M6jDakSigBYOTUke1qdeo1iV5e2u92S2Fw8AzMqHPMrHY4t0SZch6l
+	 Q7bS18e8LvO6YEml8m4VkumscCgtgUSJJrTWm9CcDhQrXZCxFCw/c1NYnAJfYUXp0y
+	 CDXoifiX5wfZ8Fee4OWUr9ihHT352HRT+RFUhxag=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730353AbgFJPte (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Jun 2020 11:49:34 -0400
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:35550 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730345AbgFJPtb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2020 11:49:31 -0400
-Received: by mail-pf1-f194.google.com with SMTP id h185so1278318pfg.2;
-        Wed, 10 Jun 2020 08:49:31 -0700 (PDT)
+        id S1730402AbgFJPuF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Jun 2020 11:50:05 -0400
+Received: from mail-pf1-f193.google.com ([209.85.210.193]:44741 "EHLO
+        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730336AbgFJPta (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2020 11:49:30 -0400
+Received: by mail-pf1-f193.google.com with SMTP id 64so1260190pfv.11;
+        Wed, 10 Jun 2020 08:49:29 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=J9spO8sCjIOMs0wQgccVfIprXE/wzCnPTAA23dgMAdc=;
-        b=h98127/o82LX2PUy40wev+U3cj7HdHMYnU8Jv3cGah9MgwOFtgQigPyLhjMQxgfwjQ
-         HILdmy+dMuwrtcvtNidCN/lgmknQnGDL/NUdUALy8r++cKG6mJzKMkSdT7cM0l6Z1id0
-         QPdRlj9Yg2dS31GiVMPRfaHXY2FWVWVlCIUvoMy5FNBaKrWIh/8LYQuoKXpGDShNN00T
-         lEhLAYrIOUbTplmkKywLarwm/qP0cQt8qlii3VFS6G+b/nOCBrIJW6M++qm7twFAdMS2
-         lwIQOn6ijjVUt6TElXVE9AIu2OlUWSEPrChLGkZdlPkXweZ4ils+eqGHVkWy23Ip9mBi
-         4HtA==
-X-Gm-Message-State: AOAM5301rp10LPb2cpiCWEvjK2wL9S0WhXoqKSDp5jfLsTsfRaZ22AWD
-        tX8EVJVdgthfNsGLjpD3zmo=
-X-Google-Smtp-Source: ABdhPJyu1eX5pyEODFKXM1tUOb06KZbLUOW+sULR/svGLkAhoxImKT7+pXfTo+K5VKZEdMa5hV0cwg==
-X-Received: by 2002:a62:aa0a:: with SMTP id e10mr3428008pff.91.1591804170947;
-        Wed, 10 Jun 2020 08:49:30 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=CrxGEOGFjsdVHn3Jd9UDXtWDflxIQ5FEpiOYf5podJs=;
+        b=K4vctIrodxtU656nnPd0chQXWRRECjOiTHcokQ3nwzufmTJH48yozHbRvOCQ0mTLJJ
+         EAW/wqlgQC6svpjRJXD/iBd+JtHpxEoDFIFddPTD7nu7czb218EYL30ZZwnDdlrvPZMZ
+         nkN/6xXB6y25bdJz3vybKfdQkWxz5Qwjeho3wGqDidMv+CGPw3POKKOg523eI5qtL7F0
+         oJxTImI5/M5rt+mNxX3mrfj1KBI1Fzcq0ccG9pLpKsY2+PKF1WJySJa9siG3vUxH8Vhp
+         c/a8bjp/5ij6LRNdPBQSgdzpnb3n1r4SBQAajDTGpslv/Yh3iHCKVnurtp4OyPlt0ZG3
+         nzqg==
+X-Gm-Message-State: AOAM531W96+PUtpPQt5YADLaZqYLW3WxLAgYAxzLatPnsAM2QKs4i5qt
+        fGuXMZgB65p5ABWhJHc8G9Q=
+X-Google-Smtp-Source: ABdhPJwXqgq7uS6Tcjx1SZx1Aww2/d5U2tI05GsSHHER7yozK95nSSwZLGkFi7ZnI4HAy3+k2OwCKQ==
+X-Received: by 2002:a63:ce14:: with SMTP id y20mr3147465pgf.186.1591804168526;
+        Wed, 10 Jun 2020 08:49:28 -0700 (PDT)
 Received: from 42.do-not-panic.com (42.do-not-panic.com. [157.230.128.187])
-        by smtp.gmail.com with ESMTPSA id c12sm242070pgm.73.2020.06.10.08.49.25
+        by smtp.gmail.com with ESMTPSA id c9sm302681pfp.100.2020.06.10.08.49.25
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Wed, 10 Jun 2020 08:49:26 -0700 (PDT)
 Received: by 42.do-not-panic.com (Postfix, from userid 1000)
-        id 2C139403AB; Wed, 10 Jun 2020 15:49:25 +0000 (UTC)
+        id 4CCCE40ED5; Wed, 10 Jun 2020 15:49:25 +0000 (UTC)
 From:   "Luis R. Rodriguez" <mcgrof@kernel.org>
 To:     gregkh@linuxfoundation.org, viro@zeniv.linux.org.uk,
         philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
@@ -62,11 +63,14 @@ Cc:     slyfox@gentoo.org, ast@kernel.org, keescook@chromium.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         bridge@lists.linux-foundation.org, keyrings@vger.kernel.org,
         linux-security-module@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Luis Chamberlain <mcgrof@kernel.org>
-Subject: [PATCH 0/5] kmod/umh: a few fixes
-Date:   Wed, 10 Jun 2020 15:49:18 +0000
-Message-Id: <20200610154923.27510-1-mcgrof@kernel.org>
+        linux-kernel@vger.kernel.org, Tiezhu Yang <yangtiezhu@loongson.cn>,
+        Luis Chamberlain <mcgrof@kernel.org>
+Subject: [PATCH 2/5] kmod: Remove redundant "be an" in the comment
+Date:   Wed, 10 Jun 2020 15:49:20 +0000
+Message-Id: <20200610154923.27510-3-mcgrof@kernel.org>
 X-Mailer: git-send-email 2.23.0.rc1
+In-Reply-To: <20200610154923.27510-1-mcgrof@kernel.org>
+References: <20200610154923.27510-1-mcgrof@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -74,40 +78,33 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Luis Chamberlain <mcgrof@kernel.org>
+From: Tiezhu Yang <yangtiezhu@loongson.cn>
 
-Tiezhu Yang had sent out a patch set with a slew of kmod selftest
-fixes, and one patch which modified kmod to return 254 when a module
-was not found. This opened up pandora's box about why that was being
-used for and low and behold its because when UMH_WAIT_PROC is used
-we call a kernel_wait4() call but have never unwrapped the error code.
-The commit log for that fix details the rationale for the approach
-taken. I'd appreciate some review on that, in particular nfs folks
-as it seems a case was never really hit before.
+There exists redundant "be an" in the comment, remove it.
 
-This goes boot tested, selftested with kmod, and 0-day gives its
-build blessings.
+Acked-by: Luis Chamberlain <mcgrof@kernel.org>
+Signed-off-by: Tiezhu Yang <yangtiezhu@loongson.cn>
+Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
+---
+ kernel/kmod.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-Luis Chamberlain (2):
-  umh: fix processed error when UMH_WAIT_PROC is used
-  selftests: simplify kmod failure value
-
-Tiezhu Yang (3):
-  selftests: kmod: Use variable NAME in kmod_test_0001()
-  kmod: Remove redundant "be an" in the comment
-  test_kmod: Avoid potential double free in trigger_config_run_type()
-
- drivers/block/drbd/drbd_nl.c         | 20 +++++------
- fs/nfsd/nfs4recover.c                |  2 +-
- include/linux/sched/task.h           | 13 ++++++++
- kernel/kmod.c                        |  5 ++-
- kernel/umh.c                         |  4 +--
- lib/test_kmod.c                      |  2 +-
- net/bridge/br_stp_if.c               | 10 ++----
- security/keys/request_key.c          |  2 +-
- tools/testing/selftests/kmod/kmod.sh | 50 +++++++++++++++++++++++-----
- 9 files changed, 71 insertions(+), 37 deletions(-)
-
+diff --git a/kernel/kmod.c b/kernel/kmod.c
+index 37c3c4b97b8e..3cd075ce2a1e 100644
+--- a/kernel/kmod.c
++++ b/kernel/kmod.c
+@@ -36,9 +36,8 @@
+  *
+  * If you need less than 50 threads would mean we're dealing with systems
+  * smaller than 3200 pages. This assumes you are capable of having ~13M memory,
+- * and this would only be an be an upper limit, after which the OOM killer
+- * would take effect. Systems like these are very unlikely if modules are
+- * enabled.
++ * and this would only be an upper limit, after which the OOM killer would take
++ * effect. Systems like these are very unlikely if modules are enabled.
+  */
+ #define MAX_KMOD_CONCURRENT 50
+ static atomic_t kmod_concurrent_max = ATOMIC_INIT(MAX_KMOD_CONCURRENT);
 -- 
 2.26.2
 
