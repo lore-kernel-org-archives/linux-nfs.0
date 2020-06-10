@@ -2,77 +2,109 @@ Return-Path: <SRS0=S27I=7X=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URI_NOVOWEL
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74D02C433DF
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 12:04:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A847C433DF
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 15:49:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4C8DF2072E
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 12:04:48 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="StcAhYmb"
+	by mail.kernel.org (Postfix) with ESMTP id 130C1206C3
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 15:49:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1591804172;
+	bh=lqkmGRLsCrqJLSBkfcGA1y6l9/8phOppP14+RBqy6FM=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=npXo/2TQv6mH4h3DSdo3bxn5eHxsyWWuZwnL5atoor3Nn/8oeL3NDa77cSBOO3XSG
+	 +Hh0HoxTONgySBLnAE7hTqo5HK7tPmZikM3A9Vd28/J43guVMIN99+9ff0mU9pBpGm
+	 j+nT3n8oGuiFj9eSLrMd4eumGNp1MJwj+y+1iw4c=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728870AbgFJMEr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Jun 2020 08:04:47 -0400
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:48906 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1728848AbgFJMEr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2020 08:04:47 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1591790686;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=dli/3hq+oxVrrFkpBpeVzvhrqlnrr59g+y5Wu6G6QAE=;
-        b=StcAhYmbcyP6b0Mt659c0QkRRJZBilV8l985N8MNtuyW6IWWuTfZvNVVF8iLw8noekkoN2
-        V3ad3mhNNCImd6a2KNd5ZQsgAvUihFnYL+9ZGKchKE1kzpF0PPpQUo6UIcWnNwIpjLc0eU
-        x45GlEwrMh4R4o5SyspVP7y4pmwPeUs=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-272-WKmdH7m0NmaTo-z03QSK4A-1; Wed, 10 Jun 2020 08:04:44 -0400
-X-MC-Unique: WKmdH7m0NmaTo-z03QSK4A-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B092118FE860
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2020 12:04:43 +0000 (UTC)
-Received: from localhost.localdomain.com (unknown [10.74.9.195])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 6D47F600F7;
-        Wed, 10 Jun 2020 12:04:41 +0000 (UTC)
-From:   Kenneth D'souza <kdsouza@redhat.com>
-To:     SteveD@redhat.com, linux-nfs@vger.kernel.org
-Cc:     kdsouza@redhat.com
-Subject: [PATCH] nfsdclnts: Change shebang to /usr/bin/python3
-Date:   Wed, 10 Jun 2020 17:34:37 +0530
-Message-Id: <20200610120437.17482-1-kdsouza@redhat.com>
+        id S1730340AbgFJPtb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Jun 2020 11:49:31 -0400
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:33074 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728129AbgFJPt3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2020 11:49:29 -0400
+Received: by mail-pg1-f193.google.com with SMTP id s10so1172047pgm.0;
+        Wed, 10 Jun 2020 08:49:28 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=qSIwN4KZGofFPlUal7btJTGNfkPGbkCJjMaiuCB3kq4=;
+        b=idX9HP+xbdH5W0ymKxrXC5TgZruF6m/3aFicOX7DGbsOqw7iARid6WHbe7UFklwcN+
+         UTdizeWKK6JQ3BGDKSEoDT8efVyqudWIfDcNi6HYhppjzKka4OBhLSvyUSYj5/sgXg/Z
+         2X8VrNRK9AbhalAoYh/rs6LbVw2jNbWyNUldpkGjA1Zdpwpv25VQirAJ1E2yWtJWk+6o
+         2mlUnj8fcwp2wDwlLebwkGONyhxKkorTdy3YzbKt83cAw08TnZcvTKXhZNTKRFrld2D1
+         UmsIZQwEyBLtWp1nmdVrHDjIAoVEKRAi9uPi90aXUjBpsZF6fH5gOosehGgGCH/vEW4R
+         AZYQ==
+X-Gm-Message-State: AOAM530jWXWIfpGEOMbrSHH+NLw0fxVgiKvMIHCdWUzrMIi24keGlo7J
+        EvBMxk+nUl8vuxtKsq9lS1qppR0e/21v6w==
+X-Google-Smtp-Source: ABdhPJzQjKy64D7JAY2b9Df/J8XTTNXeIN4ec7JdMHHdnO0cu4EShFKvEj31fLfQzVASTIHoxJ1AIw==
+X-Received: by 2002:a62:4e91:: with SMTP id c139mr3418995pfb.18.1591804167551;
+        Wed, 10 Jun 2020 08:49:27 -0700 (PDT)
+Received: from 42.do-not-panic.com (42.do-not-panic.com. [157.230.128.187])
+        by smtp.gmail.com with ESMTPSA id 12sm338947pfb.3.2020.06.10.08.49.25
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 10 Jun 2020 08:49:25 -0700 (PDT)
+Received: by 42.do-not-panic.com (Postfix, from userid 1000)
+        id 606C741C23; Wed, 10 Jun 2020 15:49:25 +0000 (UTC)
+From:   "Luis R. Rodriguez" <mcgrof@kernel.org>
+To:     gregkh@linuxfoundation.org, viro@zeniv.linux.org.uk,
+        philipp.reisner@linbit.com, lars.ellenberg@linbit.com,
+        axboe@kernel.dk, bfields@fieldses.org, chuck.lever@oracle.com,
+        roopa@cumulusnetworks.com, nikolay@cumulusnetworks.com,
+        davem@davemloft.net, kuba@kernel.org, dhowells@redhat.com,
+        jarkko.sakkinen@linux.intel.com, jmorris@namei.org,
+        serge@hallyn.com, christian.brauner@ubuntu.com
+Cc:     slyfox@gentoo.org, ast@kernel.org, keescook@chromium.org,
+        josh@joshtriplett.org, ravenexp@gmail.com, chainsaw@gentoo.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        bridge@lists.linux-foundation.org, keyrings@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Tiezhu Yang <yangtiezhu@loongson.cn>,
+        Luis Chamberlain <mcgrof@kernel.org>
+Subject: [PATCH 3/5] test_kmod: Avoid potential double free in trigger_config_run_type()
+Date:   Wed, 10 Jun 2020 15:49:21 +0000
+Message-Id: <20200610154923.27510-4-mcgrof@kernel.org>
+X-Mailer: git-send-email 2.23.0.rc1
+In-Reply-To: <20200610154923.27510-1-mcgrof@kernel.org>
+References: <20200610154923.27510-1-mcgrof@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Change shebang to /usr/bin/python3 which is widely accepted.
+From: Tiezhu Yang <yangtiezhu@loongson.cn>
 
-Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
+Reset the member "test_fs" of the test configuration after a call
+of the function "kfree_const" to a null pointer so that a double
+memory release will not be performed.
+
+Fixes: d9c6a72d6fa2 ("kmod: add test driver to stress test the module loader")
+Acked-by: Luis Chamberlain <mcgrof@kernel.org>
+Signed-off-by: Tiezhu Yang <yangtiezhu@loongson.cn>
+Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
 ---
- tools/nfsdclnts/nfsdclnts.py | 2 +-
+ lib/test_kmod.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/tools/nfsdclnts/nfsdclnts.py b/tools/nfsdclnts/nfsdclnts.py
-index e5f636a2..5e7e03c2 100755
---- a/tools/nfsdclnts/nfsdclnts.py
-+++ b/tools/nfsdclnts/nfsdclnts.py
-@@ -1,4 +1,4 @@
--#!/bin/python3
-+#!/usr/bin/python3
- # -*- python-mode -*-
- '''
-     Copyright (C) 2020
+diff --git a/lib/test_kmod.c b/lib/test_kmod.c
+index e651c37d56db..eab52770070d 100644
+--- a/lib/test_kmod.c
++++ b/lib/test_kmod.c
+@@ -745,7 +745,7 @@ static int trigger_config_run_type(struct kmod_test_device *test_dev,
+ 		break;
+ 	case TEST_KMOD_FS_TYPE:
+ 		kfree_const(config->test_fs);
+-		config->test_driver = NULL;
++		config->test_fs = NULL;
+ 		copied = config_copy_test_fs(config, test_str,
+ 					     strlen(test_str));
+ 		break;
 -- 
-2.21.1
+2.26.2
 
