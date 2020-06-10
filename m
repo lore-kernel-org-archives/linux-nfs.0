@@ -1,81 +1,78 @@
-Return-Path: <SRS0=qOnK=7W=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=S27I=7X=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URI_NOVOWEL
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB5F2C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Jun 2020 23:23:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74D02C433DF
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 12:04:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 91F3B2067B
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Jun 2020 23:23:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4C8DF2072E
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Jun 2020 12:04:48 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="StcAhYmb"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725948AbgFIXXC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 9 Jun 2020 19:23:02 -0400
-Received: from youngberry.canonical.com ([91.189.89.112]:38214 "EHLO
-        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725468AbgFIXXB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2020 19:23:01 -0400
-Received: from 1.general.cking.uk.vpn ([10.172.193.212] helo=localhost)
-        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
-        (Exim 4.86_2)
-        (envelope-from <colin.king@canonical.com>)
-        id 1jina5-0005EV-L6; Tue, 09 Jun 2020 23:22:57 +0000
-From:   Colin King <colin.king@canonical.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org
-Cc:     kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] NFS: remove redundant pointer clnt
-Date:   Wed, 10 Jun 2020 00:22:57 +0100
-Message-Id: <20200609232257.1118354-1-colin.king@canonical.com>
-X-Mailer: git-send-email 2.27.0.rc0
+        id S1728870AbgFJMEr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Jun 2020 08:04:47 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:48906 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728848AbgFJMEr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2020 08:04:47 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1591790686;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=dli/3hq+oxVrrFkpBpeVzvhrqlnrr59g+y5Wu6G6QAE=;
+        b=StcAhYmbcyP6b0Mt659c0QkRRJZBilV8l985N8MNtuyW6IWWuTfZvNVVF8iLw8noekkoN2
+        V3ad3mhNNCImd6a2KNd5ZQsgAvUihFnYL+9ZGKchKE1kzpF0PPpQUo6UIcWnNwIpjLc0eU
+        x45GlEwrMh4R4o5SyspVP7y4pmwPeUs=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-272-WKmdH7m0NmaTo-z03QSK4A-1; Wed, 10 Jun 2020 08:04:44 -0400
+X-MC-Unique: WKmdH7m0NmaTo-z03QSK4A-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B092118FE860
+        for <linux-nfs@vger.kernel.org>; Wed, 10 Jun 2020 12:04:43 +0000 (UTC)
+Received: from localhost.localdomain.com (unknown [10.74.9.195])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 6D47F600F7;
+        Wed, 10 Jun 2020 12:04:41 +0000 (UTC)
+From:   Kenneth D'souza <kdsouza@redhat.com>
+To:     SteveD@redhat.com, linux-nfs@vger.kernel.org
+Cc:     kdsouza@redhat.com
+Subject: [PATCH] nfsdclnts: Change shebang to /usr/bin/python3
+Date:   Wed, 10 Jun 2020 17:34:37 +0530
+Message-Id: <20200610120437.17482-1-kdsouza@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Colin Ian King <colin.king@canonical.com>
+Change shebang to /usr/bin/python3 which is widely accepted.
 
-The pointer clnt is being initialized with a value that is never
-read and so this is assignment redundant and can be removed. The
-pointer can removed because it is being used as a temporary
-variable and it is clearer to make the direct assignment and remove
-it completely.
-
-Addresses-Coverity: ("Unused value")
-Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ tools/nfsdclnts/nfsdclnts.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e32717fd1169..7a56e2ab473b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -9518,7 +9518,6 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
--	struct rpc_clnt *clnt = server->client;
- 	struct nfs4_call_sync_data data = {
- 		.seq_server = server,
- 		.seq_args = &args.seq_args,
-@@ -9535,8 +9534,7 @@ _nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
- 	int status;
- 
- 	if (use_integrity) {
--		clnt = server->nfs_client->cl_rpcclient;
--		task_setup.rpc_client = clnt;
-+		task_setup.rpc_client = server->nfs_client->cl_rpcclient;
- 
- 		cred = nfs4_get_clid_cred(server->nfs_client);
- 		msg.rpc_cred = cred;
+diff --git a/tools/nfsdclnts/nfsdclnts.py b/tools/nfsdclnts/nfsdclnts.py
+index e5f636a2..5e7e03c2 100755
+--- a/tools/nfsdclnts/nfsdclnts.py
++++ b/tools/nfsdclnts/nfsdclnts.py
+@@ -1,4 +1,4 @@
+-#!/bin/python3
++#!/usr/bin/python3
+ # -*- python-mode -*-
+ '''
+     Copyright (C) 2020
 -- 
-2.27.0.rc0
+2.21.1
 
