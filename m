@@ -2,127 +2,87 @@ Return-Path: <SRS0=72J9=74=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 531B0C433DF
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jun 2020 13:21:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9372DC433DF
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jun 2020 14:50:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 29FE9207BB
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jun 2020 13:21:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6047D20644
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jun 2020 14:50:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RZRksO3y"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="IhIkBOhR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730313AbgFONVP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Jun 2020 09:21:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55572 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729965AbgFONVO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2020 09:21:14 -0400
-Received: from mail-io1-xd43.google.com (mail-io1-xd43.google.com [IPv6:2607:f8b0:4864:20::d43])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C244CC061A0E;
-        Mon, 15 Jun 2020 06:21:14 -0700 (PDT)
-Received: by mail-io1-xd43.google.com with SMTP id o5so17730076iow.8;
-        Mon, 15 Jun 2020 06:21:14 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=SjNLJ91cqhULMfUPkTYp0OY2T4Mkc4LkzZDNbiHB4Nc=;
-        b=RZRksO3ycfjFO3RdOXuk4Sqo3hGvAP0JdBG1HwHx0N7aMiwfdfwhqtpHhBrfFgw5Rf
-         Z24Gc+8gNSnayDv08TDxtrv8oHiZouCQGV4bqy7ate9Jq6Zm2FtY+DPmCEGLrod91UkI
-         RcksliCk0ZOnLSrdH4+galCNZdAGNi7DRreCgZ9VwvixC8AjWn91YYYdNYXyhjRmOD8g
-         GW7tdRDzoETsJnAbFGqCbqQLuRfXEHDG1/ykIOQyzCmZA0OK/CGz/ZnOfrDk23Xvy7LE
-         izXj32JRf6CGPyDkgWokdsXRtp41PqOwp2F84RBCIUJmWOEgUZoFCd9xCLisRYwGs1Vr
-         GnDA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=SjNLJ91cqhULMfUPkTYp0OY2T4Mkc4LkzZDNbiHB4Nc=;
-        b=C9zFCf1DwrygloAxrXFCfKMPAYpMkkutLTZqZ2o/xqFGaU46tsaDpjhphqX9WnuuVu
-         HTLoPWhe+qw19jwPb9h3ZrV1kamEpLo9X2NaynU4UGV6BCPep1c50auPVJp8ZJ126U+r
-         1EvVgfInbAIgTmPtsiaeX0Ks+Zua1sdkiPpSF4jAhoyhxirYDh09fT5/Dj/73+XzOstw
-         bn+BPkWx7RlaitDKRGqOPWF88zGWmnP01J2VDpKc7jj8BkFLF84J9WPntPp0ErgULLsz
-         aRNfgcRG4F3jjcrUnUDdyOPwcin9Be+szkVVyk3Ejey6JL2ljxM5cJDLqPUjWaUhHZ8I
-         9NDw==
-X-Gm-Message-State: AOAM532n39YQAC33aG0mLxxGAODNfwLheHJ9P32dbocO6UmQCRcBH9yo
-        NQSFkpHhM+2C8xaAPR7oH3g=
-X-Google-Smtp-Source: ABdhPJzEqhCJ0I+jhP7ALxkXT4AJX7Ap4ce+fcHr0aiFji2tihBExiJWNW532uyhMnt5GkS5Mv8XMw==
-X-Received: by 2002:a6b:630d:: with SMTP id p13mr27599094iog.145.1592227274182;
-        Mon, 15 Jun 2020 06:21:14 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id n4sm8106768ioc.8.2020.06.15.06.21.13
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 15 Jun 2020 06:21:13 -0700 (PDT)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 05FDLDbi018444;
-        Mon, 15 Jun 2020 13:21:13 GMT
-Subject: [PATCH v1 5/5] xprtrdma: Fix handling of RDMA_ERROR replies
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Mon, 15 Jun 2020 09:21:13 -0400
-Message-ID: <20200615132113.11800.52604.stgit@manet.1015granger.net>
-In-Reply-To: <20200615131642.11800.27486.stgit@manet.1015granger.net>
-References: <20200615131642.11800.27486.stgit@manet.1015granger.net>
-User-Agent: StGit/0.22-38-gfb18
+        id S1730214AbgFOOux (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Jun 2020 10:50:53 -0400
+Received: from us-smtp-2.mimecast.com ([205.139.110.61]:20169 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728304AbgFOOuw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2020 10:50:52 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1592232651;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=TpVjMtECVs4h4/5L1/hV06u0Qvrl5D0MM8zvZ/HINqQ=;
+        b=IhIkBOhRguxbRmrXdS9RMKJDDmkamZjAJzFtv6vSXU4KTe+YBGI6GizESLo0yw6jWcRcDd
+        uQEDq2ZmFfj/DwumHVmUXC6AmO7A3Bp8loGwUblRKbqdDQRsycvmvostGk6QQMQkCVKI03
+        9bvdWALckhsizVISGthx1ZM30cWuHiM=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-40-hJQvTLJCPUKltUfRYFWWLg-1; Mon, 15 Jun 2020 10:50:38 -0400
+X-MC-Unique: hJQvTLJCPUKltUfRYFWWLg-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B2C17100A8F7;
+        Mon, 15 Jun 2020 14:50:37 +0000 (UTC)
+Received: from pick.fieldses.org (ovpn-118-200.rdu2.redhat.com [10.10.118.200])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 4F1FE61983;
+        Mon, 15 Jun 2020 14:50:37 +0000 (UTC)
+Received: by pick.fieldses.org (Postfix, from userid 2815)
+        id DA423120476; Mon, 15 Jun 2020 10:50:35 -0400 (EDT)
+Date:   Mon, 15 Jun 2020 10:50:35 -0400
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     Elliott Mitchell <ehem+debian@m5p.com>
+Cc:     Salvatore Bonaccorso <carnil@debian.org>, 962254@bugs.debian.org,
+        linux-nfs@vger.kernel.org, agruenba@redhat.com
+Subject: Re: Umask ignored when mounting NFSv4.2 share of an exported ZFS
+ (with acltype=off) (was: Re: Bug#962254: NFS(v4) broken at 4.19.118-2)
+Message-ID: <20200615145035.GA214986@pick.fieldses.org>
+References: <20200605051607.GA34405@mattapan.m5p.com>
+ <20200605064426.GA1538868@eldamar.local>
+ <20200605051607.GA34405@mattapan.m5p.com>
+ <20200605174349.GA40135@mattapan.m5p.com>
+ <20200605183631.GA1720057@eldamar.local>
+ <20200611223711.GA37917@mattapan.m5p.com>
+ <20200613125431.GA349352@eldamar.local>
+ <20200613184527.GA54221@mattapan.m5p.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200613184527.GA54221@mattapan.m5p.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The RPC client currently doesn't handle ERR_CHUNK replies correctly.
-rpcrdma_complete_rqst() incorrectly passes a negative number to
-xprt_complete_rqst() as the number of bytes copied. Instead, set
-task->tk_status to the error value, and return zero bytes copied.
+On Sat, Jun 13, 2020 at 11:45:27AM -0700, Elliott Mitchell wrote:
+> I disagree with this assessment.  All of the reporters have been using
+> ZFS, but this could indicate an absence of testers using other
+> filesystems.  We need someone with a NFS server which has a 4.15+ kernel
+> and uses a different filesystem which supports ACLs.
 
-In these cases, return -EIO rather than -EREMOTEIO. The RPC client's
-finite state machine doesn't know what to do with -EREMOTEIO.
+Honestly I don't think I currently have a regression test for this so
+it's possible I could have missed something upstream.  I haven't seen
+any reports, though....
 
-Additional clean ups:
-- Don't double-count RDMA_ERROR replies
-- Remove a stale comment
+ZFS's ACL implementation is very different from any in-tree
+filesystem's, and given limited time, a filesystem with no prospect of
+going upstream isn't going to get much attention, so, yes, I'd need to
+see a reproducer on xfs or ext4 or something.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: <stable@kernel.vger.org>
----
- net/sunrpc/xprtrdma/rpc_rdma.c |    9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 2081c8fbfa48..935bbef2f7be 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1349,8 +1349,7 @@ rpcrdma_decode_error(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
- 			be32_to_cpup(p), be32_to_cpu(rep->rr_xid));
- 	}
- 
--	r_xprt->rx_stats.bad_reply_count++;
--	return -EREMOTEIO;
-+	return -EIO;
- }
- 
- /* Perform XID lookup, reconstruction of the RPC reply, and
-@@ -1387,13 +1386,11 @@ void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
- 	spin_unlock(&xprt->queue_lock);
- 	return;
- 
--/* If the incoming reply terminated a pending RPC, the next
-- * RPC call will post a replacement receive buffer as it is
-- * being marshaled.
-- */
- out_badheader:
- 	trace_xprtrdma_reply_hdr(rep);
- 	r_xprt->rx_stats.bad_reply_count++;
-+	rqst->rq_task->tk_status = status;
-+	status = 0;
- 	goto out;
- }
- 
+--b.
 
