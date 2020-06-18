@@ -7,44 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC6B3C433DF
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:32:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 720BDC433DF
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:34:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BEF75206E2
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:32:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 50CBF2089D
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:34:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1592447572;
-	bh=5U5PiWIjiwW7vjikoQHtJKRjG+IOR2gWNoMdCr8MBEc=;
+	s=default; t=1592447677;
+	bh=kORKvHUzmV/NBfbheBdOjgteXeEJ0yznxbX4KSGtpMk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=JofNM9R8/DqT7KVfCQKRzqTVGai+AREo03BLDu/Ing0q64pwrBHARn+IO3B4Mlek1
-	 l+H/HTn/QrCR3vtjykUckbI9hwDVu8DCrztVOYmjAxtJL03BD5IWOKE1fgJjRH8yfK
-	 O2n8XO/jiSAWaTq6ovgJtdRwlorCR1DgnFGOb+gA=
+	b=HqrxAdYwQV1LL7HMcvEmFRJLKRwfylWzVPYM9dXfXLoR+nAzi9fcTUnziMdVzU6pS
+	 Uv0N5eCv9DvOPnrNzBedzd7ueDRmZ76NhgU6jUJ4ShB9rCRZttcNBF3t2XFSL/QOgp
+	 QTLLrzjz/GDj7h7Hp2KKqWz2QnA55VCRl/EjLoPw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729533AbgFRCcj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 17 Jun 2020 22:32:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:45116 "EHLO mail.kernel.org"
+        id S1729319AbgFRBOb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 17 Jun 2020 21:14:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44140 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729441AbgFRBPI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Jun 2020 21:15:08 -0400
+        id S1729315AbgFRBOa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 17 Jun 2020 21:14:30 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7C6B221D7B;
-        Thu, 18 Jun 2020 01:15:07 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 154CA221EE;
+        Thu, 18 Jun 2020 01:14:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1592442908;
-        bh=5U5PiWIjiwW7vjikoQHtJKRjG+IOR2gWNoMdCr8MBEc=;
+        s=default; t=1592442869;
+        bh=kORKvHUzmV/NBfbheBdOjgteXeEJ0yznxbX4KSGtpMk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vDDK0HyOhVc5PIBzQ73MG2Yf0bLEfSxGT14ps3D3E9jrbx+K9xO+j19Z9Q93YCkv7
-         iEAc8ctOnvqU2SOW4FaGQs2w8pO3z6ZmupJyteIe7TgCnq6TqH6qSQLlmGqDB1iUPS
-         ENXVNvgFp6/mR2nfCZRU1Tzm8temhYxuqSjD672Q=
+        b=TNlmPC0lFcBbJOztx5g9voCcA0VMT/lO9dloqY5EvIeYT8z6VoCpbkR3LE6vQpYmo
+         qyDioeu3q9srHp8kU1zxwEnnbycr79iie+TosnBEow6Gw7R6wy5eH5sAkEyj1DnzgR
+         9PNVnlE57UL16qKiQoeWQvnjYKvpDTv5Nk/VBCKM=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+Cc:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.7 327/388] nfsd: safer handling of corrupted c_type
-Date:   Wed, 17 Jun 2020 21:07:04 -0400
-Message-Id: <20200618010805.600873-327-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.7 296/388] NFSv4.1 fix rpc_call_done assignment for BIND_CONN_TO_SESSION
+Date:   Wed, 17 Jun 2020 21:06:33 -0400
+Message-Id: <20200618010805.600873-296-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200618010805.600873-1-sashal@kernel.org>
 References: <20200618010805.600873-1-sashal@kernel.org>
@@ -57,34 +59,31 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
 
-[ Upstream commit c25bf185e57213b54ea0d632ac04907310993433 ]
+[ Upstream commit 1c709b766e73e54d64b1dde1b7cfbcf25bcb15b9 ]
 
-This can only happen if there's a bug somewhere, so let's make it a WARN
-not a printk.  Also, I think it's safest to ignore the corruption rather
-than trying to fix it by removing a cache entry.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Fixes: 02a95dee8cf0 ("NFS add callback_ops to nfs4_proc_bind_conn_to_session_callback")
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/nfscache.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 0c10bfea039e..4a258065188e 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -469,8 +469,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		rtn = RC_REPLY;
- 		break;
- 	default:
--		printk(KERN_WARNING "nfsd: bad repcache type %d\n", rp->c_type);
--		nfsd_reply_cache_free_locked(b, rp, nn);
-+		WARN_ONCE(1, "nfsd: bad repcache type %d\n", rp->c_type);
- 	}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9056f3dd380e..e32717fd1169 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7909,7 +7909,7 @@ nfs4_bind_one_conn_to_session_done(struct rpc_task *task, void *calldata)
+ }
  
- 	goto out;
+ static const struct rpc_call_ops nfs4_bind_one_conn_to_session_ops = {
+-	.rpc_call_done =  &nfs4_bind_one_conn_to_session_done,
++	.rpc_call_done =  nfs4_bind_one_conn_to_session_done,
+ };
+ 
+ /*
 -- 
 2.25.1
 
