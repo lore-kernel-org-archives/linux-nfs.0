@@ -4,52 +4,52 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 75FEBC433DF
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 01:17:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C83D1C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 01:36:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4CDC521D90
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 01:17:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A321A2192A
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 01:36:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1592443079;
-	bh=Jn566st4WXENMqlUQMlT38EichEb2vGs1vnaLTneYyo=;
+	s=default; t=1592444167;
+	bh=iZZmz+Ap5bLY4GuNSraezb984yLj0cyMICkNa8CYumg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=fPGDFV0ahLvYvyTsjSAubh5TDWDlaM0/I/C0vdeb3Hz6J3aNRDR4pZbsjfHk3kVb+
-	 RlZhYpY4DNYYVjFEFt4avWMOE51zaQeSzLXM8v4qzihhUzXQN2sbgc7P9UIpnLuxuF
-	 Ws01zwVOw+YVN9mrGUhDysQ3K2ubB/qA9FT8o9EI=
+	b=diDhdbXccT72FOLQxddwamAg90ijTyEx53ZcnWdxqe5sc3xMu/aXi3QNC1VTG1vK/
+	 2b2IdQMb6mdHfR/Fj/epJkgbWBgeJQDEf4iBugHOuJs2iyjNg+DdUt0GK9YD8fMXq4
+	 6Uu++o5l+NrQF7gUft0zhbVC/ia+J7Q3R5xd/mXE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729853AbgFRBR5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 17 Jun 2020 21:17:57 -0400
-Received: from mail.kernel.org ([198.145.29.99]:49218 "EHLO mail.kernel.org"
+        id S1732735AbgFRBbM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 17 Jun 2020 21:31:12 -0400
+Received: from mail.kernel.org ([198.145.29.99]:41726 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729848AbgFRBR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Jun 2020 21:17:56 -0400
+        id S1731360AbgFRBbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 17 Jun 2020 21:31:11 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7E58621D82;
-        Thu, 18 Jun 2020 01:17:55 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 38353221EC;
+        Thu, 18 Jun 2020 01:31:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1592443076;
-        bh=Jn566st4WXENMqlUQMlT38EichEb2vGs1vnaLTneYyo=;
+        s=default; t=1592443871;
+        bh=iZZmz+Ap5bLY4GuNSraezb984yLj0cyMICkNa8CYumg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vcS9mFbrEy7WDqYA8kbhjAbTwAafGGnBxnmQA/cb9xy9WTrVJWWotWWbzjN9GzWSB
-         4v5w5v0b8D4S58/HmYP4xSIKaqosohtLTyBG8Ua38yv6vWBQ8aiQXGLv+Ud0ZmFINV
-         LIOdE3OVFjmdoSIgA7Z/Gqx0b1qIY3AOjhMmD1h4=
+        b=1oT4yCjQBrGRNzN+4tQ3qbaZQHcohx+dtnAq/Q1vsVJOecE+SsojUuOYH8wYb19L7
+         ORAmUknl7XaONSMsaH6fUO5nxSvifZh5mFyQC3TEWo1dBpLihyX1XyyPjJ7EWvdj0Q
+         h/ojk5x9UfIip3Kp38G2tLqhY7DJthZxDb08re5U=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Xiyu Yang <xiyuyang19@fudan.edu.cn>,
-        Xin Tan <tanxin.ctf@gmail.com>,
-        "J . Bruce Fields" <bfields@redhat.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 063/266] nfsd: Fix svc_xprt refcnt leak when setup callback client failed
-Date:   Wed, 17 Jun 2020 21:13:08 -0400
-Message-Id: <20200618011631.604574-63-sashal@kernel.org>
+Cc:     Fedor Tokarev <ftokarev@gmail.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.4 51/60] net: sunrpc: Fix off-by-one issues in 'rpc_ntop6'
+Date:   Wed, 17 Jun 2020 21:29:55 -0400
+Message-Id: <20200618013004.610532-51-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200618011631.604574-1-sashal@kernel.org>
-References: <20200618011631.604574-1-sashal@kernel.org>
+In-Reply-To: <20200618013004.610532-1-sashal@kernel.org>
+References: <20200618013004.610532-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -59,42 +59,43 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Xiyu Yang <xiyuyang19@fudan.edu.cn>
+From: Fedor Tokarev <ftokarev@gmail.com>
 
-[ Upstream commit a4abc6b12eb1f7a533c2e7484cfa555454ff0977 ]
+[ Upstream commit 118917d696dc59fd3e1741012c2f9db2294bed6f ]
 
-nfsd4_process_cb_update() invokes svc_xprt_get(), which increases the
-refcount of the "c->cn_xprt".
+Fix off-by-one issues in 'rpc_ntop6':
+ - 'snprintf' returns the number of characters which would have been
+   written if enough space had been available, excluding the terminating
+   null byte. Thus, a return value of 'sizeof(scopebuf)' means that the
+   last character was dropped.
+ - 'strcat' adds a terminating null byte to the string, thus if len ==
+   buflen, the null byte is written past the end of the buffer.
 
-The reference counting issue happens in one exception handling path of
-nfsd4_process_cb_update(). When setup callback client failed, the
-function forgets to decrease the refcnt increased by svc_xprt_get(),
-causing a refcnt leak.
-
-Fix this issue by calling svc_xprt_put() when setup callback client
-failed.
-
-Signed-off-by: Xiyu Yang <xiyuyang19@fudan.edu.cn>
-Signed-off-by: Xin Tan <tanxin.ctf@gmail.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Fedor Tokarev <ftokarev@gmail.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/nfs4callback.c | 2 ++
- 1 file changed, 2 insertions(+)
+ net/sunrpc/addr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index afca3287184b..efe55d101b0e 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1230,6 +1230,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 	err = setup_callback_client(clp, &conn, ses);
- 	if (err) {
- 		nfsd4_mark_cb_down(clp, err);
-+		if (c)
-+			svc_xprt_put(c->cn_xprt);
- 		return;
- 	}
- }
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index 2e0a6f92e563..8391c2785550 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -81,11 +81,11 @@ static size_t rpc_ntop6(const struct sockaddr *sap,
+ 
+ 	rc = snprintf(scopebuf, sizeof(scopebuf), "%c%u",
+ 			IPV6_SCOPE_DELIMITER, sin6->sin6_scope_id);
+-	if (unlikely((size_t)rc > sizeof(scopebuf)))
++	if (unlikely((size_t)rc >= sizeof(scopebuf)))
+ 		return 0;
+ 
+ 	len += rc;
+-	if (unlikely(len > buflen))
++	if (unlikely(len >= buflen))
+ 		return 0;
+ 
+ 	strcat(buf, scopebuf);
 -- 
 2.25.1
 
