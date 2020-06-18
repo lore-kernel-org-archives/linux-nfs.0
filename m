@@ -2,87 +2,168 @@ Return-Path: <SRS0=2npy=77=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC179C433DF
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:04:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CDE16C433DF
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:07:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 908F5221F8
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:04:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A7F5D2088E
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Jun 2020 02:07:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1592446076;
+	bh=GrXHVtwxhb7GAQ5w2+0nA8HW2ks88zZMM+TVvt4858s=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=KspJAb38qNAS9716hl7lKvhepP55ZhFzTfjMWGfkOpZq6+mxUdU++V8cg8bjoXknn
+	 ECJMy/ng/kVrqCk69d0XNJnp0nkKRqunA1pyXexOthDseP8HLUvhcO2tyflMICLGsR
+	 HJoxQMtmFVsBSp79a3Bv0+Rn1vtvAoJo6k6MSH/g=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731578AbgFRCEV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 17 Jun 2020 22:04:21 -0400
-Received: from smtp25.cstnet.cn ([159.226.251.25]:60498 "EHLO cstnet.cn"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726893AbgFRCEU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Jun 2020 22:04:20 -0400
-X-Greylist: delayed 469 seconds by postgrey-1.27 at vger.kernel.org; Wed, 17 Jun 2020 22:04:19 EDT
-Received: from ubuntu.localdomain (unknown [124.16.136.101])
-        by APP-05 (Coremail) with SMTP id zQCowACnEg+9yepektJEAQ--.42974S2;
-        Thu, 18 Jun 2020 09:56:14 +0800 (CST)
-From:   Xu Wang <vulab@iscas.ac.cn>
-To:     bfields@fieldses.org, chuck.lever@oracle.com,
-        linux-nfs@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org
-Subject: [PATCH] nfsd: Use seq_putc() in two functions
-Date:   Thu, 18 Jun 2020 09:56:13 +0800
-Message-Id: <20200618015613.17806-1-vulab@iscas.ac.cn>
-X-Mailer: git-send-email 2.17.1
-X-CM-TRANSID: zQCowACnEg+9yepektJEAQ--.42974S2
-X-Coremail-Antispam: 1UD129KBjvdXoWrKF18tr1DKFWxXr4UZFyfCrg_yoWfZFbE93
-        yxuF10kF45Jwn8GFZ0ga1fta4DuayDJr1rt3yI9r9rKF95Gw1UZrs7ZrW3Ar95G3yFgFy8
-        Cr9YgFyFy34S9jkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-        9fnUUIcSsGvfJTRUUUb2xYjsxI4VWkCwAYFVCjjxCrM7AC8VAFwI0_Jr0_Gr1l1xkIjI8I
-        6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l8cAvFVAK0II2c7xJM2
-        8CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4x0Y4vE2Ix0
-        cI8IcVCY1x0267AKxVW8JVWxJwA2z4x0Y4vEx4A2jsIE14v26r4UJVWxJr1l84ACjcxK6I
-        8E87Iv6xkF7I0E14v26r4UJVWxJr1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xv
-        F2IEw4CE5I8CrVC2j2WlYx0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r
-        4UMcvjeVCFs4IE7xkEbVWUJVW8JwACjcxG0xvY0x0EwIxGrwCY02Avz4vE14v_KwCF04k2
-        0xvY0x0EwIxGrwCFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI
-        8I3I0E7480Y4vE14v26r106r1rMI8E67AF67kF1VAFwI0_JF0_Jw1lIxkGc2Ij64vIr41l
-        IxAIcVC0I7IYx2IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Jr0_Gr1lIx
-        AIcVCF04k26cxKx2IYs7xG6rW3Jr0E3s1lIxAIcVC2z280aVAFwI0_Jr0_Gr1lIxAIcVC2
-        z280aVCY1x0267AKxVWUJVW8JbIYCTnIWIevJa73UjIFyTuYvjxUcBMKDUUUU
-X-Originating-IP: [124.16.136.101]
-X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiBQcLA16HQn8FdgAAsd
+        id S1730680AbgFRBWN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 17 Jun 2020 21:22:13 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55070 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1730671AbgFRBWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 17 Jun 2020 21:22:11 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 92CAD21D82;
+        Thu, 18 Jun 2020 01:22:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1592443331;
+        bh=GrXHVtwxhb7GAQ5w2+0nA8HW2ks88zZMM+TVvt4858s=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=OBMJQjoMC+0nUXW70w6MLleQAgjisRTQ1MvRcL6XHWd8TI5QtWgdVGz19F1Fm+ZkY
+         BTwQKGgbgNhTDfekmgZbsVcMcf0WHieSiIe8MIzf3QwavybdNUq9bIFYg/KcItSN0I
+         oAf+QrmCK5b0NZZfDjP/eueltYBLOycFFSHNIglo=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Zheng Bin <zhengbin13@huawei.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 263/266] nfs: set invalid blocks after NFSv4 writes
+Date:   Wed, 17 Jun 2020 21:16:28 -0400
+Message-Id: <20200618011631.604574-263-sashal@kernel.org>
+X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200618011631.604574-1-sashal@kernel.org>
+References: <20200618011631.604574-1-sashal@kernel.org>
+MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-A single character (line break) should be put into a sequence.
-Thus use the corresponding function "seq_putc()".
+From: Zheng Bin <zhengbin13@huawei.com>
 
-Signed-off-by: Xu Wang <vulab@iscas.ac.cn>
+[ Upstream commit 3a39e778690500066b31fe982d18e2e394d3bce2 ]
+
+Use the following command to test nfsv4(size of file1M is 1MB):
+mount -t nfs -o vers=4.0,actimeo=60 127.0.0.1/dir1 /mnt
+cp file1M /mnt
+du -h /mnt/file1M  -->0 within 60s, then 1M
+
+When write is done(cp file1M /mnt), will call this:
+nfs_writeback_done
+  nfs4_write_done
+    nfs4_write_done_cb
+      nfs_writeback_update_inode
+        nfs_post_op_update_inode_force_wcc_locked(change, ctime, mtime
+nfs_post_op_update_inode_force_wcc_locked
+   nfs_set_cache_invalid
+   nfs_refresh_inode_locked
+     nfs_update_inode
+
+nfsd write response contains change, ctime, mtime, the flag will be
+clear after nfs_update_inode. Howerver, write response does not contain
+space_used, previous open response contains space_used whose value is 0,
+so inode->i_blocks is still 0.
+
+nfs_getattr  -->called by "du -h"
+  do_update |= force_sync || nfs_attribute_cache_expired -->false in 60s
+  cache_validity = READ_ONCE(NFS_I(inode)->cache_validity)
+  do_update |= cache_validity & (NFS_INO_INVALID_ATTR    -->false
+  if (do_update) {
+        __nfs_revalidate_inode
+  }
+
+Within 60s, does not send getattr request to nfsd, thus "du -h /mnt/file1M"
+is 0.
+
+Add a NFS_INO_INVALID_BLOCKS flag, set it when nfsv4 write is done.
+
+Fixes: 16e143751727 ("NFS: More fine grained attribute tracking")
+Signed-off-by: Zheng Bin <zhengbin13@huawei.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/nfs4idmap.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/inode.c         | 14 +++++++++++---
+ include/linux/nfs_fs.h |  1 +
+ 2 files changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 9460be8a8321..f92161ce1f97 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -168,7 +168,7 @@ idtoname_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
- 			ent->id);
- 	if (test_bit(CACHE_VALID, &h->flags))
- 		seq_printf(m, " %s", ent->name);
--	seq_printf(m, "\n");
-+	seq_putc(m, '\n');
- 	return 0;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 3802c88e8372..6de41f741280 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -826,6 +826,8 @@ int nfs_getattr(const struct path *path, struct kstat *stat,
+ 		do_update |= cache_validity & NFS_INO_INVALID_ATIME;
+ 	if (request_mask & (STATX_CTIME|STATX_MTIME))
+ 		do_update |= cache_validity & NFS_INO_REVAL_PAGECACHE;
++	if (request_mask & STATX_BLOCKS)
++		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+ 	if (do_update) {
+ 		/* Update the attribute cache */
+ 		if (!(server->flags & NFS_MOUNT_NOAC))
+@@ -1750,7 +1752,8 @@ int nfs_post_op_update_inode_force_wcc_locked(struct inode *inode, struct nfs_fa
+ 	status = nfs_post_op_update_inode_locked(inode, fattr,
+ 			NFS_INO_INVALID_CHANGE
+ 			| NFS_INO_INVALID_CTIME
+-			| NFS_INO_INVALID_MTIME);
++			| NFS_INO_INVALID_MTIME
++			| NFS_INO_INVALID_BLOCKS);
+ 	return status;
  }
  
-@@ -346,7 +346,7 @@ nametoid_show(struct seq_file *m, struct cache_detail *cd, struct cache_head *h)
- 			ent->name);
- 	if (test_bit(CACHE_VALID, &h->flags))
- 		seq_printf(m, " %u", ent->id);
--	seq_printf(m, "\n");
-+	seq_putc(m, '\n');
- 	return 0;
- }
+@@ -1857,7 +1860,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR
+ 			| NFS_INO_INVALID_ATIME
+ 			| NFS_INO_REVAL_FORCED
+-			| NFS_INO_REVAL_PAGECACHE);
++			| NFS_INO_REVAL_PAGECACHE
++			| NFS_INO_INVALID_BLOCKS);
  
+ 	/* Do atomic weak cache consistency updates */
+ 	nfs_wcc_update_inode(inode, fattr);
+@@ -2019,8 +2023,12 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		inode->i_blocks = nfs_calc_block_size(fattr->du.nfs3.used);
+ 	} else if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
+ 		inode->i_blocks = fattr->du.nfs2.blocks;
+-	else
++	else {
++		nfsi->cache_validity |= save_cache_validity &
++				(NFS_INO_INVALID_BLOCKS
++				| NFS_INO_REVAL_FORCED);
+ 		cache_revalidated = false;
++	}
+ 
+ 	/* Update attrtimeo value if we're out of the unstable period */
+ 	if (attr_changed) {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 570a60c2f4f4..ad09c0cc5464 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -225,6 +225,7 @@ struct nfs4_copy_state {
+ #define NFS_INO_INVALID_OTHER	BIT(12)		/* other attrs are invalid */
+ #define NFS_INO_DATA_INVAL_DEFER	\
+ 				BIT(13)		/* Deferred cache invalidation */
++#define NFS_INO_INVALID_BLOCKS	BIT(14)         /* cached blocks are invalid */
+ 
+ #define NFS_INO_INVALID_ATTR	(NFS_INO_INVALID_CHANGE \
+ 		| NFS_INO_INVALID_CTIME \
 -- 
-2.17.1
+2.25.1
 
