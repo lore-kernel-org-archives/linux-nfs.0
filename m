@@ -2,112 +2,118 @@ Return-Path: <SRS0=vE3C=AE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 065FCC433E0
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Jun 2020 15:22:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B8BEC433DF
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Jun 2020 22:44:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D181D20774
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Jun 2020 15:22:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 795312098B
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Jun 2020 22:44:11 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FFuk1JpZ"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="gkaaOLMF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732935AbgFWPWy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Jun 2020 11:22:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34576 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732781AbgFWPWy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2020 11:22:54 -0400
-Received: from mail-io1-xd43.google.com (mail-io1-xd43.google.com [IPv6:2607:f8b0:4864:20::d43])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 06DC6C061573
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Jun 2020 08:22:54 -0700 (PDT)
-Received: by mail-io1-xd43.google.com with SMTP id m81so24103238ioa.1
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Jun 2020 08:22:53 -0700 (PDT)
+        id S2387842AbgFWWoK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Jun 2020 18:44:10 -0400
+Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:14750 "EHLO
+        smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387777AbgFWWoJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2020 18:44:09 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=WcFQbP/Z4Pe5B/OwrmJk0jCaVCNncNJLas6kvCANqC8=;
-        b=FFuk1JpZ31CKfgp9HDeUByYxPRe/Cp9F7uAKvXnHUaINwjujRcJxXxdGsqOVyRIi6F
-         MlqqZnpE6AUi+ykne6z+PO68Cr8m9tCb1muRdKr0GGWri1B3HzJ29h3jeynJxDpaMgjv
-         C+JROuaLlif8vhXqgKRJbWaOAx24RvPXgHuQeI0E2sFMvW1Cj4nalW1SAYiesZt3ti2y
-         2dmsLLL3TVfjOGOz6uqm8EZAHn+TubipEmQCTwxGtLpozu+ep7rNdZH30l0mNCMYN+Lv
-         ANbNFTX/0RjawVUOHINZUEtrkIhJ3y5dIHoRBT6PqQb9eSddF+4Gko6YOUQbLni15++p
-         165g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=WcFQbP/Z4Pe5B/OwrmJk0jCaVCNncNJLas6kvCANqC8=;
-        b=fFpmmCBx05aavT2t3lEzzjAlDYzDuVvGms3KGGzLKw2GMRh6PCiR96XUzCcRR1PUxj
-         hjuuFXvsVuYP9EcNHkDYZudh7SLmOBntmt6KnU827Xui061Ol3psRorZCl1yMdNxcij5
-         ksNQX8KYzrZ2vEe2kls36Oi4gGTvVb6tsHZW92txd/yW9GhqU/65m9A9ULCVXylZim+c
-         wID7JK0rhIciBlg7tBGWahSvjSU8lnrf7WT5g+XatBd2AWlUjqnLyM4GUnpJ3e11gkFI
-         QBaeG6Ix3TdGpc1XrTJpTTHXlw96v0iKFZkTB05ElH/B1C/7H269P7yxcFEsZHI7tK9Z
-         2/Ng==
-X-Gm-Message-State: AOAM5321Xjy/oqrAW3MNgnrKoHo5LGAnbTXAQ+PbyO8Y9ks3JhsImrkF
-        eADpbkFNdz869udyiQ/yfeq9LxbF
-X-Google-Smtp-Source: ABdhPJz6VQhCrRqUL0S9rN2J5GOc+6wA3DqLRNOqC6xzjsXRhWLwx8axGZm5xuuAYo/tEFXZBOh+vw==
-X-Received: by 2002:a05:6638:223:: with SMTP id f3mr16423004jaq.144.1592925773103;
-        Tue, 23 Jun 2020 08:22:53 -0700 (PDT)
-Received: from Olgas-MBP-286.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id n20sm9832487ila.85.2020.06.23.08.22.52
-        (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Tue, 23 Jun 2020 08:22:52 -0700 (PDT)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] SUNRPC dont update timeout value on connection reset
-Date:   Tue, 23 Jun 2020 11:24:09 -0400
-Message-Id: <20200623152409.70257-1-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.10.1 (Apple Git-78)
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1592952248; x=1624488248;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version;
+  bh=90k9R2laag9b9yU9BeMIcBFv1kEnSoVU6phDOygQXqI=;
+  b=gkaaOLMF4AXF2It7aaPv8ygnEXzK/QY2O//3kBpbWQhrCpz5LmA4JZLL
+   vm/9z4GpGu5RVDp9+cqPFTKINBb6966zCEl3MgM8gS7bNycXzC3gG+bmI
+   ANAKuoIpRTZXt+RxTlOcbs2D61qBNid5y4D1c9lBCwmenpOML3oVC/B9K
+   g=;
+IronPort-SDR: gF1o6aeFdcFWsSWZgYRWBWfSRxoFVe9kpxtpUHFO7W0CIzpMXw4p/7pe8SpzTgitCUoCQ2daUb
+ cHMT/0cnYhYQ==
+X-IronPort-AV: E=Sophos;i="5.75,272,1589241600"; 
+   d="scan'208";a="53337203"
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-2b-a7fdc47a.us-west-2.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 23 Jun 2020 22:39:07 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan2.pdx.amazon.com [10.170.41.162])
+        by email-inbound-relay-2b-a7fdc47a.us-west-2.amazon.com (Postfix) with ESMTPS id 29719C0756;
+        Tue, 23 Jun 2020 22:39:06 +0000 (UTC)
+Received: from EX13D13UWB002.ant.amazon.com (10.43.161.21) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Tue, 23 Jun 2020 22:39:05 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
+ EX13D13UWB002.ant.amazon.com (10.43.161.21) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Tue, 23 Jun 2020 22:39:05 +0000
+Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
+ (172.23.141.97) by mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP
+ Server id 15.0.1497.2 via Frontend Transport; Tue, 23 Jun 2020 22:39:05 +0000
+Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
+        id D3A6CCD364; Tue, 23 Jun 2020 22:39:04 +0000 (UTC)
+From:   Frank van der Linden <fllinden@amazon.com>
+To:     <linux-nfs@vger.kernel.org>, <anna.schumaker@netapp.com>,
+        <trond.myklebust@hammerspace.com>
+CC:     Frank van der Linden <fllinden@amazon.com>
+Subject: [PATCH v3 10/13] nfs: make the buf_to_pages_noslab function available to the nfs code
+Date:   Tue, 23 Jun 2020 22:39:01 +0000
+Message-ID: <20200623223904.31643-11-fllinden@amazon.com>
+X-Mailer: git-send-email 2.16.6
+In-Reply-To: <20200623223904.31643-1-fllinden@amazon.com>
+References: <20200623223904.31643-1-fllinden@amazon.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Current behaviour: every time a v3 operation is re-sent to the server
-we update (double) the timeout. There is no distinction between whether
-or not the previous timer had expired before the re-sent happened.
+Make the buf_to_pages_noslab function available to the rest of the NFS
+code. Rename it to nfs4_buf_to_pages_noslab to be consistent.
 
-Here's the scenario:
-1. Client sends a v3 operation
-2. Server RST-s the connection (prior to the timeout) (eg., connection
-is immediately reset)
-3. Client re-sends a v3 operation but the timeout is now 120sec.
+This will be used later in the NFSv4.2 xattr code.
 
-As a result, an application sees 2mins pause before a retry in case
-server again does not reply. Where as if a connection reset didn't
-change the timeout value, the client would have re-tried (the 3rd
-time) after 60secs.
-
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-
---- I have a question with regards to should we also not update the
-number of retries when connection is RST-ed? This would allow the
-client to still weather a 6mins (60+120+180) of unresponsive server.
-After this patch the client can handle only 3mins (60+120) of
-unresponsive server after the initial RST ---
+Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- net/sunrpc/clnt.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4_fs.h  | 2 ++
+ fs/nfs/nfs4proc.c | 4 ++--
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a91d1cd..65517cf 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2405,7 +2405,8 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
- 		goto out_exit;
- 	}
- 	task->tk_action = call_encode;
--	rpc_check_timeout(task);
-+	if (status != -ECONNRESET && status != -ECONNABORTED)
-+		rpc_check_timeout(task);
- 	return;
- out_exit:
- 	rpc_call_rpcerror(task, status);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index c16ec860b8b3..2fa9e4ea98d2 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -328,6 +328,8 @@ extern void nfs4_update_changeattr(struct inode *dir,
+ 				   struct nfs4_change_info *cinfo,
+ 				   unsigned long timestamp,
+ 				   unsigned long cache_validity);
++extern int nfs4_buf_to_pages_noslab(const void *buf, size_t buflen,
++				    struct page **pages);
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0d123fe0a423..0fbd2925a828 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5541,7 +5541,7 @@ static inline int nfs4_server_supports_acls(struct nfs_server *server)
+  */
+ #define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
+ 
+-static int buf_to_pages_noslab(const void *buf, size_t buflen,
++int nfs4_buf_to_pages_noslab(const void *buf, size_t buflen,
+ 		struct page **pages)
+ {
+ 	struct page *newpage, **spages;
+@@ -5783,7 +5783,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+ 		return -EOPNOTSUPP;
+ 	if (npages > ARRAY_SIZE(pages))
+ 		return -ERANGE;
+-	i = buf_to_pages_noslab(buf, buflen, arg.acl_pages);
++	i = nfs4_buf_to_pages_noslab(buf, buflen, arg.acl_pages);
+ 	if (i < 0)
+ 		return i;
+ 	nfs4_inode_make_writeable(inode);
 -- 
-1.8.3.1
+2.17.2
 
