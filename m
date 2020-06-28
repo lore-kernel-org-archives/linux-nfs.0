@@ -2,121 +2,121 @@ Return-Path: <SRS0=fMfL=AJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50255C433DF
-	for <linux-nfs@archiver.kernel.org>; Sun, 28 Jun 2020 09:25:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90CF8C433DF
+	for <linux-nfs@archiver.kernel.org>; Sun, 28 Jun 2020 18:04:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2B4A020775
-	for <linux-nfs@archiver.kernel.org>; Sun, 28 Jun 2020 09:25:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6F8412076C
+	for <linux-nfs@archiver.kernel.org>; Sun, 28 Jun 2020 18:04:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mwNw4tLu"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CUSX+sZA"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726002AbgF1JZZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 28 Jun 2020 05:25:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41582 "EHLO
+        id S1726143AbgF1SEL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 28 Jun 2020 14:04:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35976 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725999AbgF1JZZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jun 2020 05:25:25 -0400
-Received: from mail-ej1-x642.google.com (mail-ej1-x642.google.com [IPv6:2a00:1450:4864:20::642])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E4C3DC061794
-        for <linux-nfs@vger.kernel.org>; Sun, 28 Jun 2020 02:25:24 -0700 (PDT)
-Received: by mail-ej1-x642.google.com with SMTP id dr13so13349607ejc.3
-        for <linux-nfs@vger.kernel.org>; Sun, 28 Jun 2020 02:25:24 -0700 (PDT)
+        with ESMTP id S1726060AbgF1SEL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jun 2020 14:04:11 -0400
+Received: from mail-ed1-x542.google.com (mail-ed1-x542.google.com [IPv6:2a00:1450:4864:20::542])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 39CD3C03E979
+        for <linux-nfs@vger.kernel.org>; Sun, 28 Jun 2020 11:04:11 -0700 (PDT)
+Received: by mail-ed1-x542.google.com with SMTP id g20so10773297edm.4
+        for <linux-nfs@vger.kernel.org>; Sun, 28 Jun 2020 11:04:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=LBuBHRdDisSMltLdbjdy6NfP5E6hOSzeSOV94dimf44=;
-        b=mwNw4tLuT0ry5AdN5/9vFaRqLpsOttLbMU+YFTqW1nRdwbqPMtw1ueuLzYUc2pnQ+s
-         dacDi4NZDCK61eAl8MZfSgKZ982fevPBwe1qHyb6psyZEFcuVO5Bgewcn7dXznStEpxh
-         KCMlFk6qVoIZyEBITryKlDRdn1OfSWp/fR1aRAriMR6ymXXSJhdgVHCeZs6idk7Eg8nQ
-         mpd1TxAgIJIKOfh8qTif/RC6UYk6K+e+Sezroo5+agliYyewytVBhCqZLVq/2EpK/Ru1
-         FlV/5aQeTwlEM7N2tAGsZUbK4Zs93TRHs4eegtU3oYzUnELb3osTqscr3CIqoekQAWD+
-         mzjQ==
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=kwsmUReimni6pOal01WQYZrI8sGjg65L2JZmlOU+F8g=;
+        b=CUSX+sZAZU9ULHxGxelZuvvaeQ23v+4v/BKz41vyrZIpIFdvZ+gbe5CxCJDxXzaXqR
+         R7U5I7V8hWgQZnx1qRprXt9PjFaTVciVRA383lWhHbVdSa4JKio8LAdduc9MVQ6WAyUQ
+         PHKMuMm23Z1Tha1Oq1iznJwXaD+nRjjRCUMcEahmLasqMG4bW7I6e3+b6WLNzH7K4Lw3
+         CZAGwTtcrjX4DDFt6NnozTcMcE/tCn2bBg7IY2CydmbS/gllMAgXY4LnWpqgkhaMT5tY
+         YWY+/Zj8DNNBu/TNdZaPuVEqUMlDa5Urz5GLtjcUfqaEJv6T8mmjXfN0nO5MLJ9AIQpx
+         1JQw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :mime-version:content-transfer-encoding;
-        bh=LBuBHRdDisSMltLdbjdy6NfP5E6hOSzeSOV94dimf44=;
-        b=k8Chkl+4Fh9OCoIbR39CkmMPqRCzXrmJEddYzPIcEGD4nGof1ehkdTifH3jfuIgTez
-         JG8pLgUtQXKlXfvVtshvkEimyeGEKu7JaE3XXJHGavxQEHtoi3bPQrY6bVffR+aRFZ/w
-         bMsGBDmnOklIXrYdSijaZrdPa51pGBrT1BpphYsW6/fBFwqN0m4WlpO9FbU/jLYw9kcO
-         i5q65Wb/NriisYnflvODwuW2pjkcbAfqli8+VLXLRDf8EgZLOz44LKUplXz/2CP3Pfcb
-         IF/HWG+3j5V4QjUPzfo2ZClW4P+ZmDyP6cwtC9hmQXFQ3M9P7bzku1Cg/yH3tyr4PaUz
-         LaNg==
-X-Gm-Message-State: AOAM5336JiYIA5jT4Lsb0+PXvtSkr5cfrSKZB2I+atK9flp2E4mjSVW1
-        ZpqMBIMGF5OOahoPLIi5b0o=
-X-Google-Smtp-Source: ABdhPJxB6cVxk6wVQ75KXvNDLxmpvwUt0IQHhFTx3aq/t1R0dBvNqQ3TBg6AYAwtmi3ftKOOhPUNlg==
-X-Received: by 2002:a17:906:b888:: with SMTP id hb8mr9448693ejb.124.1593336323690;
-        Sun, 28 Jun 2020 02:25:23 -0700 (PDT)
-Received: from eldamar (80-218-24-251.dclient.hispeed.ch. [80.218.24.251])
-        by smtp.gmail.com with ESMTPSA id d12sm19165943edx.80.2020.06.28.02.25.22
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 28 Jun 2020 02:25:23 -0700 (PDT)
-From:   Salvatore Bonaccorso <carnil@debian.org>
-To:     linux-nfs@vger.kernel.org
-Cc:     NeilBrown <neilb@suse.de>, Steve Dickson <steved@redhat.com>,
-        Scott Mayhew <smayhew@redhat.com>,
-        Salvatore Bonaccorso <carnil@debian.org>
-Subject: [PATCH] nfs-utils: systemd: nfs-server.service: Cleanup extra whitespaces
-Date:   Sun, 28 Jun 2020 11:24:42 +0200
-Message-Id: <20200628092441.81529-1-carnil@debian.org>
-X-Mailer: git-send-email 2.27.0
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=kwsmUReimni6pOal01WQYZrI8sGjg65L2JZmlOU+F8g=;
+        b=A5vQk0QIATcgrpBO+vYoNYdxKBgl1nQb+47+wC6wEtp34cYVBBBOZkKoplGNkhkwze
+         ynBwSCtqRdAXhO68HoNT/UegnPFRXL4X1YdZlod0t0P0zfDFCA/6Ze5yEpPoII0irEmB
+         COV48b6DdG69mRf8lPCiWdE01v4sThNVsbe6k1v9uqEfb2wVKWhHMzbH1zAaYL2eiOBR
+         sGFDvY5EHs5YdvKdXGra+71tVXbtAsqk97W0mAUFqijswTifwBc/GweVTFn7+Vmrt4X9
+         Zvxz6xRunJatFbxKa2TVNNHKV4VawRbIyb34QDf2gOmDy33cWzoNpQY8t6KY3iiTDDXQ
+         q2og==
+X-Gm-Message-State: AOAM530UpYGhEnxXjgX8TwCE7x+8edpXNnP1AZyamLjeJaoQFnk8+Hew
+        9eTNr6U87anv8/t8DQJyTsfdv7D8DHsLLLHWO8Q=
+X-Google-Smtp-Source: ABdhPJyez7n1u0+FLJXNMU2HGz4H1IPxtoZToBhjsxipjlRN1MCq6XUUKINpAyH0zuH2h4c78m0mbnf7iRJ3uqM888g=
+X-Received: by 2002:a05:6402:b9b:: with SMTP id cf27mr11306627edb.84.1593367449909;
+ Sun, 28 Jun 2020 11:04:09 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20200623152409.70257-1-olga.kornievskaia@gmail.com>
+In-Reply-To: <20200623152409.70257-1-olga.kornievskaia@gmail.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Sun, 28 Jun 2020 14:03:59 -0400
+Message-ID: <CAN-5tyHuZwA-mrwUu1U+85-=mAFFtPZZJLAXyKyTaq7vqGwAfw@mail.gmail.com>
+Subject: Re: [PATCH 1/1] SUNRPC dont update timeout value on connection reset
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Although whitespaces immediately before or after the "=" are ignored,
-removing the extra whitespaces in some of the key=value assignments
-makes the style more consistent.
+Trond/Anna,
 
-At least since systemd v242-rc1[1] this has been clarified that
-whitespaces immediately before and after the "=" are allowed.
+Any comments on this patch?
 
- [1] https://github.com/systemd/systemd/commit/170342c90be07f418ab786718d95ef76289126a0
-
-Signed-off-by: Salvatore Bonaccorso <carnil@debian.org>
----
- systemd/nfs-server.service | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
-
-diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-index 24118d693965..06c1adb71692 100644
---- a/systemd/nfs-server.service
-+++ b/systemd/nfs-server.service
-@@ -1,18 +1,18 @@
- [Unit]
- Description=NFS server and services
- DefaultDependencies=no
--Requires= network.target proc-fs-nfsd.mount
--Requires= nfs-mountd.service
-+Requires=network.target proc-fs-nfsd.mount
-+Requires=nfs-mountd.service
- Wants=rpcbind.socket network-online.target
- Wants=rpc-statd.service nfs-idmapd.service
- Wants=rpc-statd-notify.service
- Wants=nfsdcld.service
- 
--After= network-online.target local-fs.target
--After= proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
--After= nfs-idmapd.service rpc-statd.service
--After= nfsdcld.service
--Before= rpc-statd-notify.service
-+After=network-online.target local-fs.target
-+After=proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
-+After=nfs-idmapd.service rpc-statd.service
-+After=nfsdcld.service
-+Before=rpc-statd-notify.service
- 
- # GSS services dependencies and ordering
- Wants=auth-rpcgss-module.service
--- 
-2.27.0
-
+On Tue, Jun 23, 2020 at 11:22 AM Olga Kornievskaia
+<olga.kornievskaia@gmail.com> wrote:
+>
+> Current behaviour: every time a v3 operation is re-sent to the server
+> we update (double) the timeout. There is no distinction between whether
+> or not the previous timer had expired before the re-sent happened.
+>
+> Here's the scenario:
+> 1. Client sends a v3 operation
+> 2. Server RST-s the connection (prior to the timeout) (eg., connection
+> is immediately reset)
+> 3. Client re-sends a v3 operation but the timeout is now 120sec.
+>
+> As a result, an application sees 2mins pause before a retry in case
+> server again does not reply. Where as if a connection reset didn't
+> change the timeout value, the client would have re-tried (the 3rd
+> time) after 60secs.
+>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>
+> --- I have a question with regards to should we also not update the
+> number of retries when connection is RST-ed? This would allow the
+> client to still weather a 6mins (60+120+180) of unresponsive server.
+> After this patch the client can handle only 3mins (60+120) of
+> unresponsive server after the initial RST ---
+> ---
+>  net/sunrpc/clnt.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index a91d1cd..65517cf 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -2405,7 +2405,8 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
+>                 goto out_exit;
+>         }
+>         task->tk_action = call_encode;
+> -       rpc_check_timeout(task);
+> +       if (status != -ECONNRESET && status != -ECONNABORTED)
+> +               rpc_check_timeout(task);
+>         return;
+>  out_exit:
+>         rpc_call_rpcerror(task, status);
+> --
+> 1.8.3.1
+>
