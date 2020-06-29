@@ -1,128 +1,161 @@
-Return-Path: <SRS0=fMfL=AJ=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=Sa69=AK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8430C433DF
-	for <linux-nfs@archiver.kernel.org>; Sun, 28 Jun 2020 21:16:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E676EC433E1
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 18:38:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8042D20720
-	for <linux-nfs@archiver.kernel.org>; Sun, 28 Jun 2020 21:16:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C7C532225F
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 18:38:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="FqwRUtC/"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="coD1YD95"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726138AbgF1VQm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 28 Jun 2020 17:16:42 -0400
-Received: from mail-dm6nam10on2122.outbound.protection.outlook.com ([40.107.93.122]:22336
-        "EHLO NAM10-DM6-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726080AbgF1VQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 28 Jun 2020 17:16:42 -0400
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=G6Uyh7/I8KSb6oI6hoExsavsLhBqUnKkUF7YQVe+2JF1DBJUC2cIepUGdBuFUkAXhQVc2RzQNniKe3/1gzgxbqZfi492TxRVN7LqyTI3/LfrmtFD+XX9ax1BvKMB8+N0T3iB+bZ6iQYVpdZ4ar4rnTM9Pds6Ll6+9XdEH88mtxAJjz9xVn+opRFAjbCuRm/IcW0oUZYFo0Nw4nEF1rWvolWPKqfpsxl29sG/338FPMInjk4uxBmM1SNHxRkt+X+wJStQBwtTxyNkDNLE0wJ8yHTaxCWalnritofYzTVoWvq+4bPU86R2bEDj+VbKFxm5ducQBN6nXG3LfCpXSQaRig==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ncdeshHCUFcTh14jbDigHOyoLUjNBVoj7wbIDTt0IEw=;
- b=KRcZS+MG/wzVWmitGN4FFch5rluZCelJCFr+Wc5RP01goEEKSjMP2n9D1BG9KVWkJPLIuuj9Lg3o4tsxA09M73uSQu6nADmxTKbNjEr+zJAFEAWqc/JJCmLjwC2H6wM0gVBaEQqOzYvyPJaDbNHyNHJmraw7khIuLY6fUafh8gd3P7iAAMd57JM3WmxMLn1Gq2fiuEQT3XqoaFHl/tn9TIvNPbG5IJ9CJRzhmAUON7JppphlTxM9AHW5jIHQWE3YnINAWtnMjmFKf+vc2CR3IvRxfVs6M5cKcqTC9zdnwjrrG/f//UW3k6OLFgZnOiX/cL5DuUsj9QzzQZxgL9sW/Q==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ncdeshHCUFcTh14jbDigHOyoLUjNBVoj7wbIDTt0IEw=;
- b=FqwRUtC/0TGae8X6akqCGI9dg5zXPz9AXwYFzMaQaEHPqR60bq7i8JZG47He6W1qx5Jhwet/ueuh8++WgsCAD2orplpFBfKneAvKW4FUMaCsstEB61//gqIhHw/gMkDhrgzojm0FUQ+Vm5D3hlqMLkswJCshe3sUQScUnEq86Ug=
-Received: from CH2PR13MB3398.namprd13.prod.outlook.com (2603:10b6:610:2a::33)
- by CH2PR13MB3799.namprd13.prod.outlook.com (2603:10b6:610:91::20) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3153.10; Sun, 28 Jun
- 2020 21:16:38 +0000
-Received: from CH2PR13MB3398.namprd13.prod.outlook.com
- ([fe80::352c:f318:f4a7:6a0f]) by CH2PR13MB3398.namprd13.prod.outlook.com
- ([fe80::352c:f318:f4a7:6a0f%3]) with mapi id 15.20.3153.016; Sun, 28 Jun 2020
- 21:16:38 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC dont update timeout value on connection reset
-Thread-Topic: [PATCH 1/1] SUNRPC dont update timeout value on connection reset
-Thread-Index: AQHWSXIsArYTKArlwEqCv2M1geuCzqjuWhqAgAA10oA=
-Date:   Sun, 28 Jun 2020 21:16:38 +0000
-Message-ID: <b9c8d38a17d89c231ed1b11f3e730ab4475ce85a.camel@hammerspace.com>
-References: <20200623152409.70257-1-olga.kornievskaia@gmail.com>
-         <CAN-5tyHuZwA-mrwUu1U+85-=mAFFtPZZJLAXyKyTaq7vqGwAfw@mail.gmail.com>
-In-Reply-To: <CAN-5tyHuZwA-mrwUu1U+85-=mAFFtPZZJLAXyKyTaq7vqGwAfw@mail.gmail.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: netapp.com; dkim=none (message not signed)
- header.d=none;netapp.com; dmarc=none action=none header.from=hammerspace.com;
-x-originating-ip: [68.36.133.222]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 5d4b1ba9-a7e0-4bb4-5822-08d81ba88bd6
-x-ms-traffictypediagnostic: CH2PR13MB3799:
-x-microsoft-antispam-prvs: <CH2PR13MB3799DA52BC9A42CF6409F5A5B8910@CH2PR13MB3799.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:6430;
-x-forefront-prvs: 0448A97BF2
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: iLIPLlO/l0gbMgd9AfsUwuURMQIkUI28Fiocwag9RNNEt2zz1TF4Bm+eHmuN0gWhY3e/zzI88g33UOnaxCCg1C8W/OCGnynvhIf38oNdZHQY8UtZnXC7quJWA+tHg6G8izoiEy3dwJF7QXw5WD3GZbychDSGNV0bZyzy+Qs+QCkdLaD++pSpYkIbp9iSgiEO1dsRNCdWcSgHM7P571bzuTr+NLzskZBlpMfcPpg4Sh/jnAp/XvKs3RB1SbNDh8opXsGHmQ3QS5M9Lj1Ga/GP6ze5AnaC7Iuej+0z6toknRTXE+vPStSit6FtidyLi4IwKXVmP3CZHeqI7hK8SnLPbWT1kq2PaVnSbBoq+gK3Er8yCIslCIsbDzJRjQZUUXga
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH2PR13MB3398.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFTY:;SFS:(136003)(376002)(346002)(366004)(6486002)(2906002)(66556008)(53546011)(66476007)(86362001)(71200400001)(83380400001)(66446008)(76116006)(64756008)(66946007)(8676002)(36756003)(6512007)(508600001)(8936002)(2616005)(4326008)(110136005)(26005)(186003)(15650500001)(5660300002)(6506007)(192303002);DIR:OUT;SFP:1102;
-x-ms-exchange-antispam-messagedata: j8QIdhHMZ33GRuJzgtB15SO7oh3MgYUBqqH39TKcpsWlAZ1K5Pq1XLDvakr/7wEg9g/mK2XSdfzZhZeuV6Q0hbPn7jfT442FlO1C+dnX0KMXpjVumVeSzhfl65bnpTYPk5k0KrvRCn5MdC2R6gyJQIWCFJN5v01s0ZpxSdoEGoxAlKQ0l+H1AJUGvckz2v3mm+LoqZM/rd9o670GbswL2Q/4dk4DmilMmR7Np/hab8s1YI8kxuQ55PPA+jV6p4NiO5cUoFWoWAuA3/Y07MANTx3qYsQvOu5++Da1FCMFBg91hFnq2l1JxR5Svwlpa1ddY4IedE2dhRo8ojs+gGbOCgZi3d+7b2FcdNmvKKwOqIJIIUcsrZXczpAIdbP5S8NlD7jtHm6vrOTgzWo/tm5C3mFvP5nbCtFkWc5ZdYsc+sXdN9MpHs2NYv4yqBhFF5ua1Df7VO2+kvqQumjBraBCo90OBCG2j2RCF2NmvLLQZyA=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <B39A88FA902F4A4F8E2FF245663D88D7@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1727973AbgF2SiC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Jun 2020 14:38:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37590 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727928AbgF2Sh6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2020 14:37:58 -0400
+Received: from mail-qv1-xf44.google.com (mail-qv1-xf44.google.com [IPv6:2607:f8b0:4864:20::f44])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51FE9C02F02D;
+        Mon, 29 Jun 2020 07:58:57 -0700 (PDT)
+Received: by mail-qv1-xf44.google.com with SMTP id h18so7762254qvl.3;
+        Mon, 29 Jun 2020 07:58:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:date:message-id:in-reply-to:references
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=/7ALjZmMhPiK2bUZpUhyi04sGW2Du1Oy+/g9ThZu2tA=;
+        b=coD1YD9552dXMDfaNeV/cduKkpIQsFqmw5abIRPL4wuCL6pMv6dWwEYtrUVZpO3XCW
+         OVp9OrZaz5S3LJQvn9EkOkmnMf6snGtnyh7gM4NAIuyfGXSliuamb0hRRVz4v1bnb9Yi
+         9GpU+VVmG00EOycch7flF5rFeRt5sxCkK+dzA1YuUt6kU9zn8FX0LazeRqpf3G78wzQC
+         HDYu7y41mo7ZkHdgenPNBomx5u6IUUY6BdMKE56OG+WnQYaYcvVdJ3mIK/9yOmq87I71
+         FJvQkrag3CZ8mEItw87tqefFZmqp+RNrGSt5WDqTweJ51T2loPaw9Ba3bDuOeOdyd0fb
+         sjsQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :in-reply-to:references:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=/7ALjZmMhPiK2bUZpUhyi04sGW2Du1Oy+/g9ThZu2tA=;
+        b=c5DNv0iqNQQXk1ctW8XK8Y6S/b9HwHyS4I62kYpTeNZEuuFpa/6v2TDUOhOSY8BUDk
+         mlaYGCUjVuQMzeq9F3ubhsorJvLbMHLBpkCyxUoXaCsXdBE4qTC0u6CkrOO5vmCKJvDO
+         tE9Hqoez6AkDw06VwAevFDpmoAPPuWWuskoP5FMr/r4LfOtUjV0EBHBCYsaWi4oDYlz5
+         ZJW3Xa7OfJtL9hgKFunoPfoajf+Lf9Pf0ek7m+LPhOI+2ngXNfTWOe39ldQIxFM7vGHd
+         9rCl3okY8w9w7QHpqGQYHzwLouJ31ri/m6CypXDwKxJZOVNFywPMT0juoHTl3Mz+DWq8
+         pvbA==
+X-Gm-Message-State: AOAM531IiLBJEjlCFRPa4pLlO1O5UvZWLf+GBsbDE+76DOb0PM5nORE/
+        DX/qa9ni4cpdbjHTesA4m2dIkNON
+X-Google-Smtp-Source: ABdhPJxP6p1gONdceAjyIf5JgerLUqs7yVCkVfKV3N5uulh4nzHOX7lWMIBMssk8arrOXjNY87FaOQ==
+X-Received: by 2002:a0c:fc02:: with SMTP id z2mr2102823qvo.1.1593442736422;
+        Mon, 29 Jun 2020 07:58:56 -0700 (PDT)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id x19sm18960973qtc.36.2020.06.29.07.58.55
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 29 Jun 2020 07:58:56 -0700 (PDT)
+Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 05TEwtkG006251;
+        Mon, 29 Jun 2020 14:58:55 GMT
+Subject: [PATCH v1 4/6] svcrdma: Introduce Send completion IDs
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date:   Mon, 29 Jun 2020 10:58:55 -0400
+Message-ID: <20200629145855.15100.8619.stgit@klimt.1015granger.net>
+In-Reply-To: <20200629145528.15100.77805.stgit@klimt.1015granger.net>
+References: <20200629145528.15100.77805.stgit@klimt.1015granger.net>
+User-Agent: StGit/0.22-31-g4b47
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: CH2PR13MB3398.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 5d4b1ba9-a7e0-4bb4-5822-08d81ba88bd6
-X-MS-Exchange-CrossTenant-originalarrivaltime: 28 Jun 2020 21:16:38.5882
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: HXg2RzaPIM6qPqd23d4qkBrocNobSUS+fBngHhWDLZ6WLKswENY8a7IMct+a/LGk7iNAW9U2GwCeYnN+kH9Abw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR13MB3799
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gU3VuLCAyMDIwLTA2LTI4IGF0IDE0OjAzIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gVHJvbmQvQW5uYSwNCj4gDQo+IEFueSBjb21tZW50cyBvbiB0aGlzIHBhdGNoPw0KPiAN
-Cj4gT24gVHVlLCBKdW4gMjMsIDIwMjAgYXQgMTE6MjIgQU0gT2xnYSBLb3JuaWV2c2thaWENCj4g
-PG9sZ2Eua29ybmlldnNrYWlhQGdtYWlsLmNvbT4gd3JvdGU6DQo+ID4gQ3VycmVudCBiZWhhdmlv
-dXI6IGV2ZXJ5IHRpbWUgYSB2MyBvcGVyYXRpb24gaXMgcmUtc2VudCB0byB0aGUNCj4gPiBzZXJ2
-ZXINCj4gPiB3ZSB1cGRhdGUgKGRvdWJsZSkgdGhlIHRpbWVvdXQuIFRoZXJlIGlzIG5vIGRpc3Rp
-bmN0aW9uIGJldHdlZW4NCj4gPiB3aGV0aGVyDQo+ID4gb3Igbm90IHRoZSBwcmV2aW91cyB0aW1l
-ciBoYWQgZXhwaXJlZCBiZWZvcmUgdGhlIHJlLXNlbnQgaGFwcGVuZWQuDQo+ID4gDQo+ID4gSGVy
-ZSdzIHRoZSBzY2VuYXJpbzoNCj4gPiAxLiBDbGllbnQgc2VuZHMgYSB2MyBvcGVyYXRpb24NCj4g
-PiAyLiBTZXJ2ZXIgUlNULXMgdGhlIGNvbm5lY3Rpb24gKHByaW9yIHRvIHRoZSB0aW1lb3V0KSAo
-ZWcuLA0KPiA+IGNvbm5lY3Rpb24NCj4gPiBpcyBpbW1lZGlhdGVseSByZXNldCkNCj4gPiAzLiBD
-bGllbnQgcmUtc2VuZHMgYSB2MyBvcGVyYXRpb24gYnV0IHRoZSB0aW1lb3V0IGlzIG5vdyAxMjBz
-ZWMuDQoNCkFoLi4uIFRoZSBwcm9ibGVtIGhlcmUgaXMgY2xlYXJseSAnMy4nIGluY3JlbWVudGlu
-ZyB0aGUgdGltZW91dCB2YWx1ZQ0KYmVmb3JlIHdlJ3ZlIGFjdHVhbGx5IGhpdCBhIG1pbm9yIG9y
-IG1ham9yIHRpbWVvdXQuLi4NCg0KU28gSSB0aGluayB3ZSB3YW50IHRvIGxvb2sgY2FyZWZ1bGx5
-IGF0IHhwcnRfYWRqdXN0X3RpbWVvdXQoKS4gVGhlDQpmaXJzdCBydWxlIHRoZXJlIHNob3VsZCBi
-ZSB0aGF0IGlmIHdlJ3JlIGJlbG93IHRoZSB0aHJlc2hvbGQgZm9yIGENCm1pbm9yIHRpbWVvdXQs
-IHdlIGp1c3Qgd2FudCB0byBleGl0IHdpdGhvdXQgY2hhbmdpbmcgYW55dGhpbmcuDQoNClRoZSBz
-ZWNvbmQgcnVsZSBpcyB0aGVuIHRoYXQgaWYgd2UncmUgYmVsb3cgdGhlIHRocmVzaG9sZCBmb3Ig
-YSBtYWpvcg0KdGltZW91dCwgdGhlbiB3ZSBhZGp1c3QgdGhlIHRpbWVvdXQgdmFsdWUgYnkgZG91
-YmxpbmcgaXQgKGlmIHRvLQ0KPnRvX2V4cG9uZW50aWFsKSBvciBhZGRpbmcgdGhlIHZhbHVlIHRv
-LT50b19pbmNyZW1lbnQgKGlmICF0by0NCj50b19leHBvbmVudGlhbCkgYW5kIHRoZW4gZXhpdC4N
-Cg0KRmluYWxseSwgaWYgdGhpcyBpcyBhIG1ham9yIHRpbWVvdXQsIHdlIHJlc2V0IHJlcS0+cnFf
-dGltZW91dCB0byB0by0NCj50b19pbml0dmFsLCByZXNldCByZXEtPnJxX3JldHJpZXMsIGNhbGwg
-eHBydF9yZXNldF9tYWpvcnRpbWVvKCksIHJlc2V0DQp0aGUgUlRUIGNvdW50ZXJzIGFuZCByZXR1
-cm4gRVRJTUVET1VULg0KDQpOb25lIG9mIHRoaXMgc2hvdWxkIGJlIHNwZWNpZmljIHRvIHlvdXIg
-Y29ubmVjdGlvbiByZXNldCBjYXNlLiBUaGlzIGlzDQpob3cgd2Ugd2FudCB0aW1lb3V0cyB0byB3
-b3JrIGluIHRoZSBnZW5lcmljIGNhc2UsIHNvIHdlIG5lZWQgdG8gZml4DQp0aGF0Lg0KDQotLSAN
-ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFj
-ZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+Set up a completion ID in each svc_rdma_send_ctxt. The ID is used
+to match an incoming Send completion to a transport and to a
+previous ib_post_send().
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ include/linux/sunrpc/svc_rdma.h       |    2 ++
+ include/trace/events/rpcrdma.h        |    2 +-
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |   15 ++++++++++++---
+ 3 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index c3c1e46f510f..c91e00bc937e 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -151,6 +151,8 @@ struct svc_rdma_recv_ctxt {
+ 
+ struct svc_rdma_send_ctxt {
+ 	struct list_head	sc_list;
++	struct rpc_rdma_cid	sc_cid;
++
+ 	struct ib_send_wr	sc_send_wr;
+ 	struct ib_cqe		sc_cqe;
+ 	struct xdr_buf		sc_hdrbuf;
+diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+index df49ae5d447b..782a4d826a4b 100644
+--- a/include/trace/events/rpcrdma.h
++++ b/include/trace/events/rpcrdma.h
+@@ -1863,7 +1863,7 @@ TRACE_EVENT(svcrdma_post_send,
+ 	)
+ );
+ 
+-DEFINE_SENDCOMP_EVENT(send);
++DEFINE_COMPLETION_EVENT(svcrdma_wc_send);
+ 
+ TRACE_EVENT(svcrdma_post_recv,
+ 	TP_PROTO(
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 38d8f0ee35ec..c720dcf56231 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -122,6 +122,13 @@ svc_rdma_next_send_ctxt(struct list_head *list)
+ 					sc_list);
+ }
+ 
++static void svc_rdma_send_cid_init(struct svcxprt_rdma *rdma,
++				   struct rpc_rdma_cid *cid)
++{
++	cid->ci_queue_id = rdma->sc_sq_cq->res.id;
++	cid->ci_completion_id = atomic_inc_return(&rdma->sc_completion_ids);
++}
++
+ static struct svc_rdma_send_ctxt *
+ svc_rdma_send_ctxt_alloc(struct svcxprt_rdma *rdma)
+ {
+@@ -144,6 +151,8 @@ svc_rdma_send_ctxt_alloc(struct svcxprt_rdma *rdma)
+ 	if (ib_dma_mapping_error(rdma->sc_pd->device, addr))
+ 		goto fail2;
+ 
++	svc_rdma_send_cid_init(rdma, &ctxt->sc_cid);
++
+ 	ctxt->sc_send_wr.next = NULL;
+ 	ctxt->sc_send_wr.wr_cqe = &ctxt->sc_cqe;
+ 	ctxt->sc_send_wr.sg_list = ctxt->sc_sges;
+@@ -268,14 +277,14 @@ static void svc_rdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
+ {
+ 	struct svcxprt_rdma *rdma = cq->cq_context;
+ 	struct ib_cqe *cqe = wc->wr_cqe;
+-	struct svc_rdma_send_ctxt *ctxt;
++	struct svc_rdma_send_ctxt *ctxt =
++		container_of(cqe, struct svc_rdma_send_ctxt, sc_cqe);
+ 
+-	trace_svcrdma_wc_send(wc);
++	trace_svcrdma_wc_send(wc, &ctxt->sc_cid);
+ 
+ 	atomic_inc(&rdma->sc_sq_avail);
+ 	wake_up(&rdma->sc_send_wait);
+ 
+-	ctxt = container_of(cqe, struct svc_rdma_send_ctxt, sc_cqe);
+ 	svc_rdma_send_ctxt_put(rdma, ctxt);
+ 
+ 	if (unlikely(wc->status != IB_WC_SUCCESS)) {
+
