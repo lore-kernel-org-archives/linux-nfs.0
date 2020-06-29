@@ -2,133 +2,175 @@ Return-Path: <SRS0=Sa69=AK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BC7AC433E7
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 18:45:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B22B1C433E0
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 19:37:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 05B402063A
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 18:45:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 92626206F1
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 19:37:51 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=tu-berlin.de header.i=@tu-berlin.de header.b="EUtOG8Ur"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AfhSnfsv"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727042AbgF2SpL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Jun 2020 14:45:11 -0400
-Received: from exchange.tu-berlin.de ([130.149.7.70]:61311 "EHLO
-        exchange.tu-berlin.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726706AbgF2So4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2020 14:44:56 -0400
-Received: from SPMA-02.tubit.win.tu-berlin.de (localhost.localdomain [127.0.0.1])
-        by localhost (Email Security Appliance) with SMTP id 0268535BF1_EF97E7DB;
-        Mon, 29 Jun 2020 05:39:09 +0000 (GMT)
-Received: from exchange.tu-berlin.de (exchange.tu-berlin.de [130.149.7.70])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
-        (Client CN "exchange.tu-berlin.de", Issuer "DFN-Verein Global Issuing CA" (not verified))
-        by SPMA-02.tubit.win.tu-berlin.de (Sophos Email Appliance) with ESMTPS id B5F3132F9A_EF97E7CF;
-        Mon, 29 Jun 2020 05:39:08 +0000 (GMT)
-Received: from ex-06.tubit.win.tu-berlin.de (172.26.35.189) by
- EX-MBX06.tubit.win.tu-berlin.de (172.26.35.176) with Microsoft SMTP Server
- (TLS) id 15.0.1395.4; Mon, 29 Jun 2020 07:39:08 +0200
-Received: from ex-02.tubit.win.tu-berlin.de (172.26.35.185) by
- ex-06.tubit.win.tu-berlin.de (172.26.35.189) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.529.5;
- Mon, 29 Jun 2020 07:39:08 +0200
-Received: from ex-02.tubit.win.tu-berlin.de ([172.26.26.142]) by
- ex-02.tubit.win.tu-berlin.de ([172.26.26.142]) with mapi id 15.02.0529.008;
- Mon, 29 Jun 2020 07:39:08 +0200
-From:   "Kraus, Sebastian" <sebastian.kraus@tu-berlin.de>
-To:     Doug Nazar <nazard@nazar.ca>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] Re: Strange segmentation violations of rpc.gssd in
- Debian Buster
-Thread-Topic: [PATCH v2] Re: Strange segmentation violations of rpc.gssd in
- Debian Buster
-Thread-Index: AQHWSxgxwlq3b/mulkebnqBRRSeMOajpu9IAgAEVEpGAADSGAIAAJ84AgAAINwCAAA0egIAAB7GAgAPJdTE=
-Date:   Mon, 29 Jun 2020 05:39:08 +0000
-Message-ID: <6cf63c80f285495d8328c5c8b55fc9d6@tu-berlin.de>
-References: <28a44712b25c4420909360bd813f8bfd@tu-berlin.de>
- <20200620170316.GH1514@fieldses.org>
- <5c45562c90404838944ee71a1d926c74@tu-berlin.de>
- <20200622223628.GC11051@fieldses.org>
- <406fe972135846dc8a23b60be59b0590@tu-berlin.de>
- <1527b158-3404-168c-8908-de4b8a709ccd@nazar.ca>
- <e9de5046e7734e728e64b386314a5d2e@tu-berlin.de>
- <c1c314fd-1855-cf04-3ec5-5f6eb35719a5@nazar.ca>
- <20200626194622.GB11850@fieldses.org>
- <3eb80b1f-e4d3-e87c-aacd-34dc28637948@nazar.ca>
- <20200626210243.GD11850@fieldses.org>,<bebca60d-09e4-f118-c195-c6245e6496fb@nazar.ca>
-In-Reply-To: <bebca60d-09e4-f118-c195-c6245e6496fb@nazar.ca>
-Accept-Language: en-US, de-DE
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [91.64.112.104]
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+        id S1729260AbgF2Tht (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Jun 2020 15:37:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47638 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387460AbgF2Thp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2020 15:37:45 -0400
+Received: from mail-qt1-x844.google.com (mail-qt1-x844.google.com [IPv6:2607:f8b0:4864:20::844])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F2B0BC02F015;
+        Mon, 29 Jun 2020 07:50:15 -0700 (PDT)
+Received: by mail-qt1-x844.google.com with SMTP id q22so6504062qtl.2;
+        Mon, 29 Jun 2020 07:50:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:date:message-id:in-reply-to:references
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=m3s/UkyYnkq3YGDNG0dmiQUvsV/sibLQqZw3O2Q0D4M=;
+        b=AfhSnfsvIbXQfmLzY/Rt8yo66Wpz5wuvj2qIa1JUd6vcX6NN57tYGUjmSIpLt8huFn
+         ecW1dMzvdERrGcYEXcbM/hWGdSX60OULThMeNaPFydlpsmZGmnNDdDC+fZxGUBuMHHVh
+         qcXcGBm4Z9VrEM/Qp8Zm9NkrCWiLJJe/h4yJytsAqqSwcIIX7zdMr35N9IGgNLkGE/iJ
+         cFdV5XlVsr2BI/j73AKzeGHuE+BLEtc3onSrvn+K6AkpCH79JbQwV9Zty0kcOXy28ZZf
+         sWn8xqa0iR9Ip3s3Ft05JLp76scqXykAEp8D3UJPzTKJN18qbUm51rbAr0+26smq9vd5
+         SHOg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :in-reply-to:references:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=m3s/UkyYnkq3YGDNG0dmiQUvsV/sibLQqZw3O2Q0D4M=;
+        b=fTx/TIijQ1jq/lPHq+fzTkJMzGJTs2cYjNFv9j+jkWd1ZPMycvkafbKvhb1SMJDSq2
+         PZIr60z/6mYg+PkKr1BuHX0fzIKS7VR/R5Hgiqwtbv/3NFVnYoQkQroeZzhmHvbhqvqO
+         mO0+ry1BnsoDDMOPgLPyp0+ti56EojR0ITdXwQIvF/m825uQSiUxt+EPHgkQCQXg6n9E
+         tnQFYrTzD7SqgnrLibXpVtPT4fTP/eWhSawErE85AASBg+QZRnRyuY180078rau56lNe
+         brVqfv/8sZX2ZBVc/5E41NW+W3k1FxuCgN9bGjipWrA/qe+PZMAJQOpb8Ke5JMzQm2mc
+         Yvlw==
+X-Gm-Message-State: AOAM533kRO2u7YpiLNi6RXXv3CE7ji/udMU+gSCZhjx1LmfqJf/3DzU6
+        WvZAkqXiFtC5z06W5d4RBxeDYag9
+X-Google-Smtp-Source: ABdhPJxtzBHSAxjoNJWIKY+xSsiqa5biNN3RNEABOl7ad7oI8LD4csTBkHVl3PNTstuwIqOVFOmyPg==
+X-Received: by 2002:aed:3081:: with SMTP id 1mr16580938qtf.118.1593442215019;
+        Mon, 29 Jun 2020 07:50:15 -0700 (PDT)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id 188sm28021qkf.50.2020.06.29.07.50.14
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 29 Jun 2020 07:50:14 -0700 (PDT)
+Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 05TEoD7O006202;
+        Mon, 29 Jun 2020 14:50:13 GMT
+Subject: [PATCH v2 3/8] svcrdma: Add @rctxt parameter to
+ svc_rdma_send_error() functions
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date:   Mon, 29 Jun 2020 10:50:13 -0400
+Message-ID: <20200629145013.15024.68894.stgit@klimt.1015granger.net>
+In-Reply-To: <20200629144802.15024.30635.stgit@klimt.1015granger.net>
+References: <20200629144802.15024.30635.stgit@klimt.1015granger.net>
+User-Agent: StGit/0.22-31-g4b47
 MIME-Version: 1.0
-X-PMWin-Version: 4.0.1, Antivirus-Engine: 3.77.1, Antivirus-Data: 5.76
-X-PureMessage: [Scanned]
-X-SASI-RCODE: 200
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=tu-berlin.de; h=from:to:cc:subject:date:message-id:references:in-reply-to:content-type:content-transfer-encoding:mime-version; s=dkim-tub; bh=GVMiFtejPA79Hmicr5O0oY1wKdVcVg6X7g2fCsSE0cY=; b=EUtOG8UrhUi54milgWojWniEBkSo9s/93JT0jXAmrjQwdNq5oCiE+F7qEOfo4dyNc4KQUlbtGMro8OmvVdB1CJ3U2mRDGq2knlvbduBFYKJzAo/B7h7WRHqTZekndM5uPrx9M8lyPe93mb3KqtD/tIuT1Tccr3GIKC7s/hB4fjI=
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Doug,
-thanks very much for your patch and efforts.
-I manually backported the patch to nfs-utils 1.3.4-2.5 source in Debian Bus=
-ter.
-I am now testing the modified build on one of my NFSv4 file servers. Looks =
-promising.
+Another step towards making svc_rdma_send_error_msg() and
+svc_rdma_send_error() similar enough to eliminate one of them.
 
-One additional question: Which nfs-utils branch are your working on - steve=
-d/nfs-utils.git ?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    9 +++++----
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   23 +++++++++++------------
+ 2 files changed, 16 insertions(+), 16 deletions(-)
 
-Best Sebastian
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index e426fedb9524..60d855116ae7 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -715,10 +715,11 @@ static void rdma_read_complete(struct svc_rqst *rqstp,
+ }
+ 
+ static void svc_rdma_send_error(struct svcxprt_rdma *xprt,
+-				__be32 *rdma_argp, int status)
++				struct svc_rdma_recv_ctxt *rctxt,
++				int status)
+ {
++	__be32 *p, *rdma_argp = rctxt->rc_recv_buf;
+ 	struct svc_rdma_send_ctxt *ctxt;
+-	__be32 *p;
+ 	int ret;
+ 
+ 	ctxt = svc_rdma_send_ctxt_get(xprt);
+@@ -900,13 +901,13 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 	return 0;
+ 
+ out_err:
+-	svc_rdma_send_error(rdma_xprt, p, ret);
++	svc_rdma_send_error(rdma_xprt, ctxt, ret);
+ 	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+ 	return 0;
+ 
+ out_postfail:
+ 	if (ret == -EINVAL)
+-		svc_rdma_send_error(rdma_xprt, p, ret);
++		svc_rdma_send_error(rdma_xprt, ctxt, ret);
+ 	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+ 	return ret;
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 2f88d01e8d27..47ada61411c3 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -811,18 +811,17 @@ static int svc_rdma_send_reply_msg(struct svcxprt_rdma *rdma,
+  * Remote Invalidation is skipped for simplicity.
+  */
+ static int svc_rdma_send_error_msg(struct svcxprt_rdma *rdma,
+-				   struct svc_rdma_send_ctxt *ctxt,
+-				   struct svc_rqst *rqstp)
++				   struct svc_rdma_send_ctxt *sctxt,
++				   struct svc_rdma_recv_ctxt *rctxt)
+ {
+-	struct svc_rdma_recv_ctxt *rctxt = rqstp->rq_xprt_ctxt;
+ 	__be32 *rdma_argp = rctxt->rc_recv_buf;
+ 	__be32 *p;
+ 
+-	rpcrdma_set_xdrlen(&ctxt->sc_hdrbuf, 0);
+-	xdr_init_encode(&ctxt->sc_stream, &ctxt->sc_hdrbuf, ctxt->sc_xprt_buf,
+-			NULL);
++	rpcrdma_set_xdrlen(&sctxt->sc_hdrbuf, 0);
++	xdr_init_encode(&sctxt->sc_stream, &sctxt->sc_hdrbuf,
++			sctxt->sc_xprt_buf, NULL);
+ 
+-	p = xdr_reserve_space(&ctxt->sc_stream, RPCRDMA_HDRLEN_ERR);
++	p = xdr_reserve_space(&sctxt->sc_stream, RPCRDMA_HDRLEN_ERR);
+ 	if (!p)
+ 		return -ENOMSG;
+ 
+@@ -833,10 +832,10 @@ static int svc_rdma_send_error_msg(struct svcxprt_rdma *rdma,
+ 	*p   = err_chunk;
+ 	trace_svcrdma_err_chunk(*rdma_argp);
+ 
+-	ctxt->sc_send_wr.num_sge = 1;
+-	ctxt->sc_send_wr.opcode = IB_WR_SEND;
+-	ctxt->sc_sges[0].length = ctxt->sc_hdrbuf.len;
+-	return svc_rdma_send(rdma, &ctxt->sc_send_wr);
++	sctxt->sc_send_wr.num_sge = 1;
++	sctxt->sc_send_wr.opcode = IB_WR_SEND;
++	sctxt->sc_sges[0].length = sctxt->sc_hdrbuf.len;
++	return svc_rdma_send(rdma, &sctxt->sc_send_wr);
+ }
+ 
+ /**
+@@ -931,7 +930,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	 * of previously posted RDMA Writes.
+ 	 */
+ 	svc_rdma_save_io_pages(rqstp, sctxt);
+-	ret = svc_rdma_send_error_msg(rdma, sctxt, rqstp);
++	ret = svc_rdma_send_error_msg(rdma, sctxt, rctxt);
+ 	if (ret < 0)
+ 		goto err1;
+ 	return 0;
 
-__________________
-Sebastian Kraus
-Team IT am Institut f=FCr Chemie
-Geb=E4ude C, Stra=DFe des 17. Juni 115, Raum C7
-
-Technische Universit=E4t Berlin
-Fakult=E4t II
-Institut f=FCr Chemie
-Sekretariat C3
-Stra=DFe des 17. Juni 135
-10623 Berlin
-
-Email: sebastian.kraus@tu-berlin.de
-
-________________________________________
-From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on =
-behalf of Doug Nazar <nazard@nazar.ca>
-Sent: Friday, June 26, 2020 23:30
-To: J. Bruce Fields
-Cc: Kraus, Sebastian; linux-nfs@vger.kernel.org; Steve Dickson; Olga Kornie=
-vskaia
-Subject: [PATCH v2] Re: Strange segmentation violations of rpc.gssd in Debi=
-an Buster
-
-On 2020-06-26 17:02, J. Bruce Fields wrote:
-> Unless I'm missing something--an upcall thread could still be using this
-> file descriptor.
->
-> If we're particularly unlucky, we could do a new open in a moment and
-> reuse this file descriptor number, and then then writes in do_downcall()
-> could end up going to some other random file.
->
-> I think we want these closes done by gssd_free_client() in the !refcnt
-> case?
-
-Makes sense. I was thinking more that it was an abort situation and we
-shouldn't be sending any data to the kernel but re-use is definitely a
-concern.
-
-I've split it so that we are removed from the event loop in destroy()
-but the close happens in free().
-
-Doug=
