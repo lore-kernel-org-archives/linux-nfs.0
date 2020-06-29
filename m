@@ -2,300 +2,120 @@ Return-Path: <SRS0=Sa69=AK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E5D51C433E0
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 19:43:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C597C433DF
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 20:07:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BBEAE2089D
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 19:43:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3518320760
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Jun 2020 20:07:20 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BKyjxNXs"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=nazar.ca header.i=@nazar.ca header.b="LxF6M5iV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387878AbgF2Tni (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Jun 2020 15:43:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48512 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387970AbgF2Tmn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2020 15:42:43 -0400
-Received: from mail-qt1-x841.google.com (mail-qt1-x841.google.com [IPv6:2607:f8b0:4864:20::841])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 29302C02F021;
-        Mon, 29 Jun 2020 07:53:46 -0700 (PDT)
-Received: by mail-qt1-x841.google.com with SMTP id d27so13032353qtg.4;
-        Mon, 29 Jun 2020 07:53:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=ZkrTQFCNrGZ2J9HlWpEHVgSvYmNVSxda0z0g3Ja1x0Q=;
-        b=BKyjxNXsjoIqJQ7duuZwQ8NBqE4yh0ajYKaxfZbmRdACJrbcHetOGdgFPIM5Mr6Qdc
-         5fhMtD9U2066biIaSm4kezGxULI+Pq4NjcT5ICHqwVqk5bwX+9A3ljDyKq2bBsNnt3B5
-         MProH4Wex8e1K8XJg7C+mJy9Y9C2D+r3M5i3ukLsSNXWyn0TXVUl0I0EWQPMla1ttFn+
-         8LtohEhKaV/gjzTrRNWwjcm9VXFSeCIpe1JA5fQ52xPT/9I9/c2Z41BUSsZ+Hmk8tH4M
-         JxdjVn6zQsBkG0RUnYGMjNj0dWQm7U+sfIYZhd6TjGwPf2j0cKqwyAk/YJGkosg8ctl2
-         s4Sw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=ZkrTQFCNrGZ2J9HlWpEHVgSvYmNVSxda0z0g3Ja1x0Q=;
-        b=LaMMlr0joHq7FmAGNW6gXjMwKjyFiC9T+J2xnJDHjW+IuQMNbpLoWlkrn9PvGcEzBn
-         D/K3Lc7RNj7Bsz1288vgHUkUakUhOOdWARIjSEmTVyT4Q7mvCig1KQ4yA6NZ90tWZu6O
-         SoFCdIrqbWFqyudtHi6jv6tQYL8lkPieu80CLNp7UzpHVVnsew0nirwcXQWeH2MEe50Q
-         Tln4Q1UxtUzktOUxAGkVC2dGWPVJCxiO53t/27Ln5jAu9pznrZus491vCkAuZ/BiMcI2
-         RIentgUj9k1MaQM0cdClxMwXR5q+1yzkq6FKbwLhjztydEr1nas+XuyttUhLIGZzusEL
-         iq7g==
-X-Gm-Message-State: AOAM531kup7dSRGSY4X1FgKgfXwSEmuPhPH7HYs7YYGeCvCLxQOnRNYs
-        NkBAdfjIs6zf781UxRgdgMpK03ud
-X-Google-Smtp-Source: ABdhPJyHM0XuuBxXuGH/jLJUdEWyWEe8HWZHzqwgKt1ehC4az5OmD5zWgKItFubYRVo7RYLLnsuwqw==
-X-Received: by 2002:ac8:4507:: with SMTP id q7mr15885586qtn.142.1593442425188;
-        Mon, 29 Jun 2020 07:53:45 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id r49sm20147693qtr.11.2020.06.29.07.53.44
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 29 Jun 2020 07:53:44 -0700 (PDT)
-Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 05TErhZN006230;
-        Mon, 29 Jun 2020 14:53:43 GMT
-Subject: [PATCH v1 3/4] svcrdma: Add common XDR decoders for RDMA and Read
- segments
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Mon, 29 Jun 2020 10:53:43 -0400
-Message-ID: <20200629145343.15063.16512.stgit@klimt.1015granger.net>
-In-Reply-To: <20200629145150.15063.29447.stgit@klimt.1015granger.net>
-References: <20200629145150.15063.29447.stgit@klimt.1015granger.net>
-User-Agent: StGit/0.22-31-g4b47
+        id S2388886AbgF2UHS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Jun 2020 16:07:18 -0400
+Received: from ny018.relay.arandomserver.com ([172.96.188.180]:50287 "EHLO
+        ny018.relay.arandomserver.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729373AbgF2UHQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2020 16:07:16 -0400
+Received: from nyc006.hawkhost.com ([172.96.186.142])
+        by se004.arandomserver.com with esmtps (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
+        (Exim 4.92)
+        (envelope-from <nazard@nazar.ca>)
+        id 1jpuTZ-0005od-7m; Mon, 29 Jun 2020 09:09:39 -0500
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=nazar.ca;
+         s=default; h=Content-Transfer-Encoding:Content-Type:In-Reply-To:MIME-Version
+        :Date:Message-ID:From:References:Cc:To:Subject:Sender:Reply-To:Content-ID:
+        Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+        :Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
+        List-Post:List-Owner:List-Archive;
+        bh=yfqcHGsgbVNwSVOE96ED7QFGFR+4k0cNIE9PBNLyS44=; b=LxF6M5iVFH1rPgMOE9Q3+jQc0F
+        CF90LX7PiRTAQxQzoLHnV9pLB5wzyMImX4xhmiCLVVLgW1wUIdHR0y+X+j0SnPrb3qOgHetwQR9oG
+        gWOtebLjfQMvrdnH7BtUYjXHgId8UAlM+xaGZD5MHNrA+XE8e2Ppemk9sV++0ywCHt+w8BjqL5Xvo
+        l1GgaaKySiBakwTzdhWKNmIqFh1foDqP8Bq2yUJIfz9hxXuhfuA0x7bOoeA0UPRI3eQJ8LANU0ymo
+        ebytaRzs05hk4qFKnq5ZadITCmHqMJx8X8YIAT2sfknBLK+jcu5YcHFC3aqfYkT917vwSC6sHEmQl
+        zynU2XiQ==;
+Received: from [174.119.114.224] (port=60618 helo=[192.168.21.100])
+        by nyc006.hawkhost.com with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        (Exim 4.93)
+        (envelope-from <nazard@nazar.ca>)
+        id 1jpuTY-0005gy-4b; Mon, 29 Jun 2020 10:09:36 -0400
+Subject: Re: [PATCH v2] Re: Strange segmentation violations of rpc.gssd in
+ Debian Buster
+To:     "Kraus, Sebastian" <sebastian.kraus@tu-berlin.de>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <28a44712b25c4420909360bd813f8bfd@tu-berlin.de>
+ <20200620170316.GH1514@fieldses.org>
+ <5c45562c90404838944ee71a1d926c74@tu-berlin.de>
+ <20200622223628.GC11051@fieldses.org>
+ <406fe972135846dc8a23b60be59b0590@tu-berlin.de>
+ <1527b158-3404-168c-8908-de4b8a709ccd@nazar.ca>
+ <e9de5046e7734e728e64b386314a5d2e@tu-berlin.de>
+ <c1c314fd-1855-cf04-3ec5-5f6eb35719a5@nazar.ca>
+ <20200626194622.GB11850@fieldses.org>
+ <3eb80b1f-e4d3-e87c-aacd-34dc28637948@nazar.ca>
+ <20200626210243.GD11850@fieldses.org>
+ <bebca60d-09e4-f118-c195-c6245e6496fb@nazar.ca>
+ <6cf63c80f285495d8328c5c8b55fc9d6@tu-berlin.de>
+From:   Doug Nazar <nazard@nazar.ca>
+Message-ID: <41614030-a616-1ad0-280c-7e24342cd455@nazar.ca>
+Date:   Mon, 29 Jun 2020 10:09:35 -0400
+User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:78.0) Gecko/20100101
+ Firefox/78.0 Thunderbird/78.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <6cf63c80f285495d8328c5c8b55fc9d6@tu-berlin.de>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 7bit
+Content-Language: en-US
+X-Get-Message-Sender-Via: nyc006.hawkhost.com: authenticated_id: nazard@nazar.ca
+X-Authenticated-Sender: nyc006.hawkhost.com: nazard@nazar.ca
+X-Originating-IP: 172.96.186.142
+X-SpamExperts-Domain: nyc006.hawkhost.com
+X-SpamExperts-Username: 172.96.186.142
+Authentication-Results: arandomserver.com; auth=pass smtp.auth=172.96.186.142@nyc006.hawkhost.com
+X-SpamExperts-Outgoing-Class: ham
+X-SpamExperts-Outgoing-Evidence: Combined (0.03)
+X-Recommended-Action: accept
+X-Filter-ID: Mvzo4OR0dZXEDF/gcnlw0f6LF1GdvkEexklpcFpSF5apSDasLI4SayDByyq9LIhVvbDy/9MK5kFq
+ xPuLb6onRUTNWdUk1Ol2OGx3IfrIJKyP9eGNFz9TW9u+Jt8z2T3K5r8HtW+i+zOSEp4G6/nKThTT
+ uTzzE6IXwvY6nHo4sMR7z3Qmxf9LL3YwTn7mqFDKhD3eopicjALgkOhTtfsl+Ko2AgdDl0X122/y
+ ecgK81hjtKXqX2R4K0XNQpmBqHFTQjBWL8RNTyPJzsds9V/6lEwmr6TNDmoNGsncSY9bd15pRS7f
+ 7mZVK7fXToVZ6vCgu4aV6E2UnWQ5LtEEB+XvLRyeP3kMF/HM2qi7bXBmBn+u1WaiZswnh7amfkLT
+ IEwd6LkGFt94dBx3TpAokA4UmbCGVypsM2xk+Fb6Uy9BG+eG09xLM7yGwGwdmctNXf+yF45HU3lW
+ dqhlsf8B0aV+vLwhC45y7F6Q5PEoXTb+KPAIoaacdoUTZPqsW5IYvohDIxfs2qKc0fhF4YMd0lwH
+ wOXyY7DGIntSiB4r6Kj1fsgmrNzcio0vvTNoY5tUR/a/1p3btshdqNdejy9cf5FpO1goS3MkISSy
+ dS6EA7KSoHbm+ifPs2yIXVaS7j1CpD4sbMC/K6klzbRMjzrXH/SDfWiH1Wgh6RAenBR+licROGZg
+ nHuN3T3lnVlGD4niHpIoevbTmP6zX4CU1xL6keyrGY0LnHT8yy5Ar3sXfVdEv8RHfqKKhnXuHBKx
+ 2WmGgCd6OGA/nCOmvrY4iQcbIGanrffQsJMjVuaCfq+S2F3DJOIRFZ4oobg8BBg3Jq+ntzj0rh/2
+ 2eyHcgpFD92kILePdl2bSnc9GinQymBttOmXG2/AMTL+ZoFzBGSZfKA1OWq88wHL8rsvWDB30Q9t
+ MrtTasA/9xGgj7taJxWtHZ97uYqgmGT5RbB5IWt8fZ6ctVYFYnNGFdRN3CtPPBjSHkIxZatgw7Jg
+ KTqMJNGdaglvWusdDN2jqhFWg+7z30fj3VpdeToUvy4JCT53crzj1o5/muiPCtB/5ydmLUuJyvfZ
+ LuDOE4wUcLzs7u9jpBeoYE7DC0Hh3V60YI4Fdc71eibaCdbFBCUcNiB34tnDdEu8PUIxL7hrJSk6
+ 0SF3F6RYOYr2
+X-Report-Abuse-To: spam@se001.arandomserver.com
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up: De-duplicate some code.
+On 2020-06-29 01:39, Kraus, Sebastian wrote:
+> Hi Doug,
+> thanks very much for your patch and efforts.
+> I manually backported the patch to nfs-utils 1.3.4-2.5 source in Debian Buster.
+> I am now testing the modified build on one of my NFSv4 file servers. Looks promising.
+>
+> One additional question: Which nfs-utils branch are your working on - steved/nfs-utils.git ?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/rpc_rdma.h          |   37 ++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c           |    1 -
- net/sunrpc/xprtrdma/rpc_rdma.c           |    5 +---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    4 +--
- net/sunrpc/xprtrdma/svc_rdma_rw.c        |   37 +++++++++++++-----------------
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    5 +---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 -
- 7 files changed, 56 insertions(+), 34 deletions(-)
+Yes, I'm working against upstream. I did check briefly that the code 
+hadn't changed too much since 1.3.4 in that area.
 
-diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
-index 320c672d84de..db50380f64f4 100644
---- a/include/linux/sunrpc/rpc_rdma.h
-+++ b/include/linux/sunrpc/rpc_rdma.h
-@@ -124,4 +124,41 @@ rpcrdma_decode_buffer_size(u8 val)
- 	return ((unsigned int)val + 1) << 10;
- }
- 
-+/**
-+ * xdr_decode_rdma_segment - Decode contents of an RDMA segment
-+ * @p: Pointer to the undecoded RDMA segment
-+ * @handle: Upon return, the RDMA handle
-+ * @length: Upon return, the RDMA length
-+ * @offset: Upon return, the RDMA offset
-+ *
-+ * Return value:
-+ *   Pointer to the XDR item that follows the RDMA segment
-+ */
-+static inline __be32 *xdr_decode_rdma_segment(__be32 *p, u32 *handle,
-+					      u32 *length, u64 *offset)
-+{
-+	*handle = be32_to_cpup(p++);
-+	*length = be32_to_cpup(p++);
-+	return xdr_decode_hyper(p, offset);
-+}
-+
-+/**
-+ * xdr_decode_read_segment - Decode contents of a Read segment
-+ * @p: Pointer to the undecoded Read segment
-+ * @position: Upon return, the segment's position
-+ * @handle: Upon return, the RDMA handle
-+ * @length: Upon return, the RDMA length
-+ * @offset: Upon return, the RDMA offset
-+ *
-+ * Return value:
-+ *   Pointer to the XDR item that follows the Read segment
-+ */
-+static inline __be32 *xdr_decode_read_segment(__be32 *p, u32 *position,
-+					      u32 *handle, u32 *length,
-+					      u64 *offset)
-+{
-+	*position = be32_to_cpup(p++);
-+	return xdr_decode_rdma_segment(p, handle, length, offset);
-+}
-+
- #endif				/* _LINUX_SUNRPC_RPC_RDMA_H */
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index b647562a26dd..7f94c9a19fd3 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -40,7 +40,6 @@
-  * New MRs are created on demand.
-  */
- 
--#include <linux/sunrpc/rpc_rdma.h>
- #include <linux/sunrpc/svc_rdma.h>
- 
- #include "xprt_rdma.h"
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index feecd1f55f18..5461f01eeca6 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1176,10 +1176,7 @@ static int decode_rdma_segment(struct xdr_stream *xdr, u32 *length)
- 	if (unlikely(!p))
- 		return -EIO;
- 
--	handle = be32_to_cpup(p++);
--	*length = be32_to_cpup(p++);
--	xdr_decode_hyper(p, &offset);
--
-+	xdr_decode_rdma_segment(p, &handle, length, &offset);
- 	trace_xprtrdma_decode_seg(handle, *length, offset);
- 	return 0;
- }
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 5e78067889f3..c0587d3cd389 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -466,9 +466,7 @@ static bool xdr_check_write_chunk(struct svc_rdma_recv_ctxt *rctxt, u32 maxlen)
- 		if (!p)
- 			return false;
- 
--		handle = be32_to_cpup(p++);
--		length = be32_to_cpup(p++);
--		xdr_decode_hyper(p, &offset);
-+		xdr_decode_rdma_segment(p, &handle, &length, &offset);
- 		trace_svcrdma_decode_wseg(handle, length, offset);
- 
- 		total += length;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 83806fa94def..2038b1b286dd 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -7,6 +7,7 @@
- 
- #include <rdma/rw.h>
- 
-+#include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/rpc_rdma.h>
- #include <linux/sunrpc/svc_rdma.h>
- 
-@@ -441,34 +442,32 @@ svc_rdma_build_writes(struct svc_rdma_write_info *info,
- 	seg = info->wi_segs + info->wi_seg_no * rpcrdma_segment_maxsz;
- 	do {
- 		unsigned int write_len;
--		u32 seg_length, seg_handle;
--		u64 seg_offset;
-+		u32 handle, length;
-+		u64 offset;
- 
- 		if (info->wi_seg_no >= info->wi_nsegs)
- 			goto out_overflow;
- 
--		seg_handle = be32_to_cpup(seg);
--		seg_length = be32_to_cpup(seg + 1);
--		xdr_decode_hyper(seg + 2, &seg_offset);
--		seg_offset += info->wi_seg_off;
-+		xdr_decode_rdma_segment(seg, &handle, &length, &offset);
-+		offset += info->wi_seg_off;
- 
--		write_len = min(remaining, seg_length - info->wi_seg_off);
-+		write_len = min(remaining, length - info->wi_seg_off);
- 		ctxt = svc_rdma_get_rw_ctxt(rdma,
- 					    (write_len >> PAGE_SHIFT) + 2);
- 		if (!ctxt)
- 			return -ENOMEM;
- 
- 		constructor(info, write_len, ctxt);
--		ret = svc_rdma_rw_ctx_init(rdma, ctxt, seg_offset, seg_handle,
-+		ret = svc_rdma_rw_ctx_init(rdma, ctxt, offset, handle,
- 					   DMA_TO_DEVICE);
- 		if (ret < 0)
- 			return -EIO;
- 
--		trace_svcrdma_send_wseg(seg_handle, write_len, seg_offset);
-+		trace_svcrdma_send_wseg(handle, write_len, offset);
- 
- 		list_add(&ctxt->rw_list, &cc->cc_rwctxts);
- 		cc->cc_sqecount += ret;
--		if (write_len == seg_length - info->wi_seg_off) {
-+		if (write_len == length - info->wi_seg_off) {
- 			seg += 4;
- 			info->wi_seg_no++;
- 			info->wi_seg_off = 0;
-@@ -689,21 +688,17 @@ static int svc_rdma_build_read_chunk(struct svc_rqst *rqstp,
- 	ret = -EINVAL;
- 	info->ri_chunklen = 0;
- 	while (*p++ != xdr_zero && be32_to_cpup(p++) == info->ri_position) {
--		u32 rs_handle, rs_length;
--		u64 rs_offset;
-+		u32 handle, length;
-+		u64 offset;
- 
--		rs_handle = be32_to_cpup(p++);
--		rs_length = be32_to_cpup(p++);
--		p = xdr_decode_hyper(p, &rs_offset);
--
--		ret = svc_rdma_build_read_segment(info, rqstp,
--						  rs_handle, rs_length,
--						  rs_offset);
-+		p = xdr_decode_rdma_segment(p, &handle, &length, &offset);
-+		ret = svc_rdma_build_read_segment(info, rqstp, handle, length,
-+						  offset);
- 		if (ret < 0)
- 			break;
- 
--		trace_svcrdma_send_rseg(rs_handle, rs_length, rs_offset);
--		info->ri_chunklen += rs_length;
-+		trace_svcrdma_send_rseg(handle, length, offset);
-+		info->ri_chunklen += length;
- 	}
- 
- 	return ret;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index f985f548346a..a78f1d22e9bb 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -106,7 +106,6 @@
- #include <rdma/rdma_cm.h>
- 
- #include <linux/sunrpc/debug.h>
--#include <linux/sunrpc/rpc_rdma.h>
- #include <linux/sunrpc/svc_rdma.h>
- 
- #include "xprt_rdma.h"
-@@ -375,9 +374,7 @@ static ssize_t svc_rdma_encode_write_segment(__be32 *src,
- 	if (!p)
- 		return -EMSGSIZE;
- 
--	handle = be32_to_cpup(src++);
--	length = be32_to_cpup(src++);
--	xdr_decode_hyper(src, &offset);
-+	xdr_decode_rdma_segment(src, &handle, &length, &offset);
- 
- 	*p++ = cpu_to_be32(handle);
- 	if (*remaining < length) {
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index d38be57b00ed..3da7901a49e6 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -55,7 +55,6 @@
- 
- #include <linux/sunrpc/addr.h>
- #include <linux/sunrpc/debug.h>
--#include <linux/sunrpc/rpc_rdma.h>
- #include <linux/sunrpc/svc_xprt.h>
- #include <linux/sunrpc/svc_rdma.h>
- 
+I've found one other place that has insufficient locking but the race to 
+hit it is fairly small. It's in the Kerberos machine principal cache 
+when it refreshes the machine credentials. I have a patch for that, but 
+it's pretty invasive due to some other changes I'm currently working on. 
+Let me know if you hit it, and I can work on a simple version to backport.
+
+Doug
 
