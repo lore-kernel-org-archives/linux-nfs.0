@@ -2,440 +2,209 @@ Return-Path: <SRS0=k2H/=AN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2885C433E0
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:23:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2388C433DF
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:28:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ADE8D20747
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:23:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1593685390;
-	bh=K/YKWmFmMxrknHU9GpBAMuzcSIeTYnk+XWbWEpLs/+M=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=2qw4mX9FXK8jusbQ5lbootKqkNupiHuBguXZT1RL5q2yZgJWEMeKsT13951wlGfku
-	 yBkx0nNSYWA99EiSUGnl7Ir2Qh1JhCDkLq0O5E4dCZLE/Crer2fjEhiPSxFOYjuI/t
-	 vgUgt+4TKC95LFC6oyYdWfStnmhC0N0OH14h7/yw=
+	by mail.kernel.org (Postfix) with ESMTP id 8C3E02073E
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:28:33 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="A0XEcDFr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728101AbgGBKWr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 2 Jul 2020 06:22:47 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59820 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728379AbgGBKU2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Jul 2020 06:20:28 -0400
-Received: from e123331-lin.nice.arm.com (lfbn-nic-1-188-42.w2-15.abo.wanadoo.fr [2.15.37.42])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9C61120747;
-        Thu,  2 Jul 2020 10:20:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1593685227;
-        bh=K/YKWmFmMxrknHU9GpBAMuzcSIeTYnk+XWbWEpLs/+M=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ffi+t5z0X97+zWS7W130a3OgzDDu34UJR1ix9sN4yi86JLWskkFzoFRKgfcZx9tSZ
-         ZGWNlIpieN0GLFF3Vfj5KKTRIq2nlEx/KjGrALWlKziECLTMtlxLDar+FqBwL92MzG
-         w/+6JsJFxna0mSJHhaZZbc4lTXj/rf6oftUGt7Io=
-From:   Ard Biesheuvel <ardb@kernel.org>
-To:     linux-kernel@vger.kernel.org
-Cc:     Ard Biesheuvel <ardb@kernel.org>,
-        Herbert Xu <herbert@gondor.apana.org.au>,
-        "David S. Miller" <davem@davemloft.net>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Eric Biggers <ebiggers@google.com>,
-        linux-crypto@vger.kernel.org, netdev@vger.kernel.org,
-        devel@driverdev.osuosl.org, linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 2/7] staging/rtl8192u: switch to RC4 library interface
-Date:   Thu,  2 Jul 2020 12:19:42 +0200
-Message-Id: <20200702101947.682-3-ardb@kernel.org>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20200702101947.682-1-ardb@kernel.org>
-References: <20200702101947.682-1-ardb@kernel.org>
+        id S1728357AbgGBK2d (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 2 Jul 2020 06:28:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38144 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727991AbgGBK2c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Jul 2020 06:28:32 -0400
+Received: from mail-lj1-x242.google.com (mail-lj1-x242.google.com [IPv6:2a00:1450:4864:20::242])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50F7DC08C5C1
+        for <linux-nfs@vger.kernel.org>; Thu,  2 Jul 2020 03:28:32 -0700 (PDT)
+Received: by mail-lj1-x242.google.com with SMTP id b25so27610430ljp.6
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Jul 2020 03:28:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to;
+        bh=NDf/Go6IME0UpwwW8wupU7VZWzCSs3tnOTVhxAuwUsY=;
+        b=A0XEcDFrYGLt2KtCFb1s+rcOCxyxg8P60DwfB/zkyGaV2Sx2c2QCyjQSNJTGbyxaOP
+         AFQPMJ2tIwxq87Eu6pksM6NujuJrp0lxZWwINXSEnD9JY6bamil054MmScjTD9o4hiKd
+         xjKlm7M0oWpfemS5DZ9tlUdPaod+bZuugCuoWO7VOu8V2tVa4uRD9znWGaSRPep4/SY1
+         bUNrVXrTYn90v+PPKrtgF+U1WXf4SiuSAM7Q10vEZy3EEg7fXd/58ANh8Gx9juSc2ZXA
+         tFCbsB00btir4FhuydJcZXbNwOkH76fjf3LgB7KrSgWzSTP0xAWU+XDI0P2UyG41ViPa
+         cF3g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to;
+        bh=NDf/Go6IME0UpwwW8wupU7VZWzCSs3tnOTVhxAuwUsY=;
+        b=c0gHrdvHG+j8a0Z0VSrlPeqQdIP+Arflb1U+7QiewAKufNxJBxuj7j67yycYZ1NIin
+         gpLfuws4BhWrVfANPpKE+xZe+7t1l5PCt0mGbRDuVLmPYLgsw2ziUmFxD5J07dDNQqOT
+         9R5DQM8ckdE+zzcvyXX1bMwFcFxuXUg0AGxXhMrAD4iGQb64zLx+5Iipt/Kdzl9JXauh
+         cH7cTtaD63pZNjDQKD6XxKHJQU1XkIvHMRBKkQijemCqFJrVMejRRo8ScMHquO7APGfI
+         gOpPO/3dLCdaCm5oF9/4/ZN3ARMpNAO8f+8yXLArUbux7G/y65OXSCvGGk0zT3RflDqZ
+         VA8A==
+X-Gm-Message-State: AOAM531icslPxyXVtEPuQawOe4En1M/BL01qM4e/EBZK7wvpaUQPK5WR
+        82zQqv4nThFOYnsDZxGYh9e8S9THO08kjlrLAMfVtvgy
+X-Google-Smtp-Source: ABdhPJyieQgZm3lyw6dLpKoOI3T8TcLwRJlOtrzNmvaoZk+WtotZ9VUvus4DY00wVdXv5VG8w8Ag6wAbsv+PCqAvk5U=
+X-Received: by 2002:a2e:890d:: with SMTP id d13mr16333311lji.75.1593685709691;
+ Thu, 02 Jul 2020 03:28:29 -0700 (PDT)
+MIME-Version: 1.0
+References: <0aee01d63d91$1f104300$5d30c900$@gmail.com> <7E441550-FCCF-492E-BACB-271A42D4A6C4@oracle.com>
+ <119601d63f43$9d55e860$d801b920$@gmail.com> <CAK3fRr-cV_0c-sHhA2rMswrHEcLrkNfHs-=ejHRS8-j8zzObhA@mail.gmail.com>
+In-Reply-To: <CAK3fRr-cV_0c-sHhA2rMswrHEcLrkNfHs-=ejHRS8-j8zzObhA@mail.gmail.com>
+From:   James Pearson <jcpearson@gmail.com>
+Date:   Thu, 2 Jul 2020 11:28:18 +0100
+Message-ID: <CAK3fRr_GR3bY5d6GC-cQYGN4UTR0nmkCyJa9AOgmSbxSxYWYEw@mail.gmail.com>
+Subject: Re: NFSv4.0: client stuck looping on RENEW + NFSERR_STALE_CLIENTID
+To:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Switch to the ARC4 library interface, to remove the pointless
-dependency on the skcipher API, from which we will hopefully be
-able to drop ecb(arc4) skcipher support.
+On Wed, 24 Jun 2020 at 09:54, James Pearson <jcpearson@gmail.com> wrote:
+>
+> On Wed, 10 Jun 2020 at 17:24, Robert Milkowski <rmilkowski@gmail.com> wrote:
+> >
+> > I was hoping someone here might get back with "hey, this has been fixed by
+> > commit...".
+> > We also did see it on centos 7.6
+> >
+> > I will try to get it re-produce it and once I can then I'll try to reproduce
+> > it against upstream.
+>
+> I haven't been monitoring this list recently - but we are still having
+> the same problem with CentOS 7.7 clients and Isilon filers
+>
+> I've just 'fixed' one client with the issue in the way you described
+> earlier in this thread by looking for a process in nfs4_state_manager
+> via a stack trace - killing that pid with -9 and all the stuck mount
+> pops back to life
 
-Signed-off-by: Ard Biesheuvel <ardb@kernel.org>
----
- drivers/staging/rtl8192u/Kconfig                          |  1 +
- drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_tkip.c | 82 ++++----------------
- drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_wep.c  | 64 +++------------
- 3 files changed, 27 insertions(+), 120 deletions(-)
+I have tcpdumps of when this RENEW/NFSERR_STALE_CLIENTID loop starts
+taken on different clients - and all show a similar behaviour - from
+one of these tcpdumps:
 
-diff --git a/drivers/staging/rtl8192u/Kconfig b/drivers/staging/rtl8192u/Kconfig
-index 1edca5c304fb..ef883d462d3d 100644
---- a/drivers/staging/rtl8192u/Kconfig
-+++ b/drivers/staging/rtl8192u/Kconfig
-@@ -8,3 +8,4 @@ config RTL8192U
- 	select CRYPTO
- 	select CRYPTO_AES
- 	select CRYPTO_CCM
-+	select CRYPTO_LIB_ARC4
-diff --git a/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_tkip.c b/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_tkip.c
-index ffe624ed0c0c..a315133c20db 100644
---- a/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_tkip.c
-+++ b/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_tkip.c
-@@ -5,6 +5,7 @@
-  * Copyright (c) 2003-2004, Jouni Malinen <jkmaline@cc.hut.fi>
-  */
- 
-+#include <linux/fips.h>
- #include <linux/module.h>
- #include <linux/init.h>
- #include <linux/slab.h>
-@@ -17,9 +18,7 @@
- 
- #include "ieee80211.h"
- 
--#include <crypto/hash.h>
--#include <crypto/skcipher.h>
--	#include <linux/scatterlist.h>
-+#include <crypto/arc4.h>
- #include <linux/crc32.h>
- 
- MODULE_AUTHOR("Jouni Malinen");
-@@ -49,9 +48,9 @@ struct ieee80211_tkip_data {
- 
- 	int key_idx;
- 
--	struct crypto_sync_skcipher *rx_tfm_arc4;
-+	struct arc4_ctx rx_ctx_arc4;
-+	struct arc4_ctx tx_ctx_arc4;
- 	struct crypto_shash *rx_tfm_michael;
--	struct crypto_sync_skcipher *tx_tfm_arc4;
- 	struct crypto_shash *tx_tfm_michael;
- 
- 	/* scratch buffers for virt_to_page() (crypto API) */
-@@ -62,19 +61,14 @@ static void *ieee80211_tkip_init(int key_idx)
- {
- 	struct ieee80211_tkip_data *priv;
- 
-+	if (fips_enabled)
-+		return NULL;
-+
- 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
- 	if (!priv)
- 		goto fail;
- 	priv->key_idx = key_idx;
- 
--	priv->tx_tfm_arc4 = crypto_alloc_sync_skcipher("ecb(arc4)", 0, 0);
--	if (IS_ERR(priv->tx_tfm_arc4)) {
--		printk(KERN_DEBUG "ieee80211_crypt_tkip: could not allocate "
--				"crypto API arc4\n");
--		priv->tx_tfm_arc4 = NULL;
--		goto fail;
--	}
--
- 	priv->tx_tfm_michael = crypto_alloc_shash("michael_mic", 0, 0);
- 	if (IS_ERR(priv->tx_tfm_michael)) {
- 		printk(KERN_DEBUG "ieee80211_crypt_tkip: could not allocate "
-@@ -83,14 +77,6 @@ static void *ieee80211_tkip_init(int key_idx)
- 		goto fail;
- 	}
- 
--	priv->rx_tfm_arc4 = crypto_alloc_sync_skcipher("ecb(arc4)", 0, 0);
--	if (IS_ERR(priv->rx_tfm_arc4)) {
--		printk(KERN_DEBUG "ieee80211_crypt_tkip: could not allocate "
--				"crypto API arc4\n");
--		priv->rx_tfm_arc4 = NULL;
--		goto fail;
--	}
--
- 	priv->rx_tfm_michael = crypto_alloc_shash("michael_mic", 0, 0);
- 	if (IS_ERR(priv->rx_tfm_michael)) {
- 		printk(KERN_DEBUG "ieee80211_crypt_tkip: could not allocate "
-@@ -104,9 +90,7 @@ static void *ieee80211_tkip_init(int key_idx)
- fail:
- 	if (priv) {
- 		crypto_free_shash(priv->tx_tfm_michael);
--		crypto_free_sync_skcipher(priv->tx_tfm_arc4);
- 		crypto_free_shash(priv->rx_tfm_michael);
--		crypto_free_sync_skcipher(priv->rx_tfm_arc4);
- 		kfree(priv);
- 	}
- 
-@@ -120,11 +104,9 @@ static void ieee80211_tkip_deinit(void *priv)
- 
- 	if (_priv) {
- 		crypto_free_shash(_priv->tx_tfm_michael);
--		crypto_free_sync_skcipher(_priv->tx_tfm_arc4);
- 		crypto_free_shash(_priv->rx_tfm_michael);
--		crypto_free_sync_skcipher(_priv->rx_tfm_arc4);
- 	}
--	kfree(priv);
-+	kzfree(priv);
- }
- 
- 
-@@ -290,10 +272,8 @@ static int ieee80211_tkip_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	u8 *pos;
- 	struct rtl_80211_hdr_4addr *hdr;
- 	struct cb_desc *tcb_desc = (struct cb_desc *)(skb->cb + MAX_DEV_ADDR_SIZE);
--	int ret = 0;
- 	u8 rc4key[16],  *icv;
- 	u32 crc;
--	struct scatterlist sg;
- 
- 	if (skb_headroom(skb) < 8 || skb_tailroom(skb) < 4 ||
- 	    skb->len < hdr_len)
-@@ -334,21 +314,15 @@ static int ieee80211_tkip_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	*pos++ = (tkey->tx_iv32 >> 24) & 0xff;
- 
- 	if (!tcb_desc->bHwSec) {
--		SYNC_SKCIPHER_REQUEST_ON_STACK(req, tkey->tx_tfm_arc4);
--
- 		icv = skb_put(skb, 4);
- 		crc = ~crc32_le(~0, pos, len);
- 		icv[0] = crc;
- 		icv[1] = crc >> 8;
- 		icv[2] = crc >> 16;
- 		icv[3] = crc >> 24;
--		crypto_sync_skcipher_setkey(tkey->tx_tfm_arc4, rc4key, 16);
--		sg_init_one(&sg, pos, len + 4);
--		skcipher_request_set_sync_tfm(req, tkey->tx_tfm_arc4);
--		skcipher_request_set_callback(req, 0, NULL, NULL);
--		skcipher_request_set_crypt(req, &sg, &sg, len + 4, NULL);
--		ret = crypto_skcipher_encrypt(req);
--		skcipher_request_zero(req);
-+
-+		arc4_setkey(&tkey->tx_ctx_arc4, rc4key, 16);
-+		arc4_crypt(&tkey->tx_ctx_arc4, pos, pos, len + 4);
- 	}
- 
- 	tkey->tx_iv16++;
-@@ -357,12 +331,7 @@ static int ieee80211_tkip_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 		tkey->tx_iv32++;
- 	}
- 
--	if (!tcb_desc->bHwSec)
--		return ret;
--	else
--		return 0;
--
--
-+	return 0;
- }
- 
- static int ieee80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
-@@ -376,9 +345,7 @@ static int ieee80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	u8 rc4key[16];
- 	u8 icv[4];
- 	u32 crc;
--	struct scatterlist sg;
- 	int plen;
--	int err;
- 
- 	if (skb->len < hdr_len + 8 + 4)
- 		return -1;
-@@ -412,8 +379,6 @@ static int ieee80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	pos += 8;
- 
- 	if (!tcb_desc->bHwSec) {
--		SYNC_SKCIPHER_REQUEST_ON_STACK(req, tkey->rx_tfm_arc4);
--
- 		if (iv32 < tkey->rx_iv32 ||
- 		(iv32 == tkey->rx_iv32 && iv16 <= tkey->rx_iv16)) {
- 			if (net_ratelimit()) {
-@@ -434,23 +399,8 @@ static int ieee80211_tkip_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 
- 		plen = skb->len - hdr_len - 12;
- 
--		crypto_sync_skcipher_setkey(tkey->rx_tfm_arc4, rc4key, 16);
--		sg_init_one(&sg, pos, plen + 4);
--
--		skcipher_request_set_sync_tfm(req, tkey->rx_tfm_arc4);
--		skcipher_request_set_callback(req, 0, NULL, NULL);
--		skcipher_request_set_crypt(req, &sg, &sg, plen + 4, NULL);
--
--		err = crypto_skcipher_decrypt(req);
--		skcipher_request_zero(req);
--		if (err) {
--			if (net_ratelimit()) {
--				netdev_dbg(skb->dev, "TKIP: failed to decrypt "
--						"received packet from %pM\n",
--						hdr->addr2);
--			}
--			return -7;
--		}
-+		arc4_setkey(&tkey->rx_ctx_arc4, rc4key, 16);
-+		arc4_crypt(&tkey->rx_ctx_arc4, pos, pos, plen + 4);
- 
- 		crc = ~crc32_le(~0, pos, plen);
- 		icv[0] = crc;
-@@ -655,17 +605,13 @@ static int ieee80211_tkip_set_key(void *key, int len, u8 *seq, void *priv)
- 	struct ieee80211_tkip_data *tkey = priv;
- 	int keyidx;
- 	struct crypto_shash *tfm = tkey->tx_tfm_michael;
--	struct crypto_sync_skcipher *tfm2 = tkey->tx_tfm_arc4;
- 	struct crypto_shash *tfm3 = tkey->rx_tfm_michael;
--	struct crypto_sync_skcipher *tfm4 = tkey->rx_tfm_arc4;
- 
- 	keyidx = tkey->key_idx;
- 	memset(tkey, 0, sizeof(*tkey));
- 	tkey->key_idx = keyidx;
- 	tkey->tx_tfm_michael = tfm;
--	tkey->tx_tfm_arc4 = tfm2;
- 	tkey->rx_tfm_michael = tfm3;
--	tkey->rx_tfm_arc4 = tfm4;
- 
- 	if (len == TKIP_KEY_LEN) {
- 		memcpy(tkey->key, key, TKIP_KEY_LEN);
-diff --git a/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_wep.c b/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_wep.c
-index 26482c3dcd1c..1c56e2d03aae 100644
---- a/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_wep.c
-+++ b/drivers/staging/rtl8192u/ieee80211/ieee80211_crypt_wep.c
-@@ -5,6 +5,7 @@
-  * Copyright (c) 2002-2004, Jouni Malinen <jkmaline@cc.hut.fi>
-  */
- 
-+#include <linux/fips.h>
- #include <linux/module.h>
- #include <linux/init.h>
- #include <linux/slab.h>
-@@ -14,8 +15,7 @@
- 
- #include "ieee80211.h"
- 
--#include <crypto/skcipher.h>
--#include <linux/scatterlist.h>
-+#include <crypto/arc4.h>
- #include <linux/crc32.h>
- 
- MODULE_AUTHOR("Jouni Malinen");
-@@ -28,8 +28,8 @@ struct prism2_wep_data {
- 	u8 key[WEP_KEY_LEN + 1];
- 	u8 key_len;
- 	u8 key_idx;
--	struct crypto_sync_skcipher *tx_tfm;
--	struct crypto_sync_skcipher *rx_tfm;
-+	struct arc4_ctx rx_ctx_arc4;
-+	struct arc4_ctx tx_ctx_arc4;
- };
- 
- 
-@@ -37,39 +37,24 @@ static void *prism2_wep_init(int keyidx)
- {
- 	struct prism2_wep_data *priv;
- 
-+	if (fips_enabled)
-+		return NULL;
-+
- 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
- 	if (!priv)
- 		return NULL;
- 	priv->key_idx = keyidx;
- 
--	priv->tx_tfm = crypto_alloc_sync_skcipher("ecb(arc4)", 0, 0);
--	if (IS_ERR(priv->tx_tfm))
--		goto free_priv;
--	priv->rx_tfm = crypto_alloc_sync_skcipher("ecb(arc4)", 0, 0);
--	if (IS_ERR(priv->rx_tfm))
--		goto free_tx;
--
- 	/* start WEP IV from a random value */
- 	get_random_bytes(&priv->iv, 4);
- 
- 	return priv;
--free_tx:
--	crypto_free_sync_skcipher(priv->tx_tfm);
--free_priv:
--	kfree(priv);
--	return NULL;
- }
- 
- 
- static void prism2_wep_deinit(void *priv)
- {
--	struct prism2_wep_data *_priv = priv;
--
--	if (_priv) {
--		crypto_free_sync_skcipher(_priv->tx_tfm);
--		crypto_free_sync_skcipher(_priv->rx_tfm);
--	}
--	kfree(priv);
-+	kzfree(priv);
- }
- 
- /* Perform WEP encryption on given skb that has at least 4 bytes of headroom
-@@ -87,8 +72,6 @@ static int prism2_wep_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	struct cb_desc *tcb_desc = (struct cb_desc *)(skb->cb + MAX_DEV_ADDR_SIZE);
- 	u32 crc;
- 	u8 *icv;
--	struct scatterlist sg;
--	int err;
- 
- 	if (skb_headroom(skb) < 4 || skb_tailroom(skb) < 4 ||
- 	    skb->len < hdr_len)
-@@ -124,8 +107,6 @@ static int prism2_wep_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	memcpy(key + 3, wep->key, wep->key_len);
- 
- 	if (!tcb_desc->bHwSec) {
--		SYNC_SKCIPHER_REQUEST_ON_STACK(req, wep->tx_tfm);
--
- 		/* Append little-endian CRC32 and encrypt it to produce ICV */
- 		crc = ~crc32_le(~0, pos, len);
- 		icv = skb_put(skb, 4);
-@@ -134,16 +115,8 @@ static int prism2_wep_encrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 		icv[2] = crc >> 16;
- 		icv[3] = crc >> 24;
- 
--		crypto_sync_skcipher_setkey(wep->tx_tfm, key, klen);
--		sg_init_one(&sg, pos, len + 4);
--
--		skcipher_request_set_sync_tfm(req, wep->tx_tfm);
--		skcipher_request_set_callback(req, 0, NULL, NULL);
--		skcipher_request_set_crypt(req, &sg, &sg, len + 4, NULL);
--
--		err = crypto_skcipher_encrypt(req);
--		skcipher_request_zero(req);
--		return err;
-+		arc4_setkey(&wep->tx_ctx_arc4, key, klen);
-+		arc4_crypt(&wep->tx_ctx_arc4, pos, pos, len + 4);
- 	}
- 
- 	return 0;
-@@ -166,8 +139,6 @@ static int prism2_wep_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	struct cb_desc *tcb_desc = (struct cb_desc *)(skb->cb + MAX_DEV_ADDR_SIZE);
- 	u32 crc;
- 	u8 icv[4];
--	struct scatterlist sg;
--	int err;
- 
- 	if (skb->len < hdr_len + 8)
- 		return -1;
-@@ -189,19 +160,8 @@ static int prism2_wep_decrypt(struct sk_buff *skb, int hdr_len, void *priv)
- 	plen = skb->len - hdr_len - 8;
- 
- 	if (!tcb_desc->bHwSec) {
--		SYNC_SKCIPHER_REQUEST_ON_STACK(req, wep->rx_tfm);
--
--		crypto_sync_skcipher_setkey(wep->rx_tfm, key, klen);
--		sg_init_one(&sg, pos, plen + 4);
--
--		skcipher_request_set_sync_tfm(req, wep->rx_tfm);
--		skcipher_request_set_callback(req, 0, NULL, NULL);
--		skcipher_request_set_crypt(req, &sg, &sg, plen + 4, NULL);
--
--		err = crypto_skcipher_decrypt(req);
--		skcipher_request_zero(req);
--		if (err)
--			return -7;
-+		arc4_setkey(&wep->rx_ctx_arc4, key, klen);
-+		arc4_crypt(&wep->rx_ctx_arc4, pos, pos, plen + 4);
- 
- 		crc = ~crc32_le(~0, pos, plen);
- 		icv[0] = crc;
--- 
-2.17.1
+27803 2020-06-23 13:40:36 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+27804 2020-06-23 13:40:36 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 27803) RENEW
+27815 2020-06-23 13:41:06 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+27816 2020-06-23 13:41:06 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 27815) RENEW
+27827 2020-06-23 13:41:36 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+27828 2020-06-23 13:41:36 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 27827) RENEW
+27856 2020-06-23 13:42:06 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+27857 2020-06-23 13:42:06 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 27856) RENEW
+28071 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 110 V4
+NULL Call[Malformed Packet]
+28073 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 94 V4
+NULL Reply (Call In 28071)[Malformed Packet]
+28082 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 110 V4
+NULL Call[Malformed Packet]
+28084 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 94 V4
+NULL Reply (Call In 28082)[Malformed Packet]
+28086 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 370 V4
+Call EXCHANGE_ID
+28087 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 106 V4
+Reply (Call In 28086) Status: NFS4ERR_MINOR_VERS_MISMATCH
+28092 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 206 V4
+Call PUTROOTFH | GETATTR
+28093 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 342 V4
+Reply (Call In 28092) PUTROOTFH | GETATTR
+28095 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 258 V4
+Call GETATTR FH: 0x2e47f02d
+28096 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 162 V4
+Reply (Call In 28095) GETATTR
+28097 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 262 V4
+Call GETATTR FH: 0x2e47f02d
+28098 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 178 V4
+Reply (Call In 28097) GETATTR
+28099 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 258 V4
+Call GETATTR FH: 0x2e47f02d
+28100 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 162 V4
+Reply (Call In 28099) GETATTR
+...
+39660 2020-06-23 13:42:53 10.78.202.217 -> 10.78.196.220 NFS 346 V4
+Call LOOKUP DH: 0x19cf3646/shared
+39661 2020-06-23 13:42:53 10.78.196.220 -> 10.78.202.217 NFS 342 V4
+Reply (Call In 39660) LOOKUP
+39663 2020-06-23 13:42:53 10.78.202.217 -> 10.78.196.220 NFS 314 V4
+Call READLINK
+39665 2020-06-23 13:42:53 10.78.196.220 -> 10.78.202.217 NFS 162 V4
+Reply (Call In 39663) READLINK
+44182 2020-06-23 13:42:56 10.78.202.217 -> 10.78.196.220 NFS 326 V4
+Call GETATTR FH: 0xff288ce9
+44183 2020-06-23 13:42:56 10.78.196.220 -> 10.78.202.217 NFS 266 V4
+Reply (Call In 44182) GETATTR
+68152 2020-06-23 13:42:59 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+68153 2020-06-23 13:42:59 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 68152) RENEW Status: NFS4ERR_STALE_CLIENTID
+68155 2020-06-23 13:42:59 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+68156 2020-06-23 13:42:59 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 68155) RENEW Status: NFS4ERR_STALE_CLIENTID
+73012 2020-06-23 13:43:04 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+73013 2020-06-23 13:43:04 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 73012) RENEW Status: NFS4ERR_STALE_CLIENTID
+73270 2020-06-23 13:43:09 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+73271 2020-06-23 13:43:09 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 73270) RENEW Status: NFS4ERR_STALE_CLIENTID
+73273 2020-06-23 13:43:14 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+73274 2020-06-23 13:43:14 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 73273) RENEW Status: NFS4ERR_STALE_CLIENTID
+73276 2020-06-23 13:43:19 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+73277 2020-06-23 13:43:19 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 73276) RENEW Status: NFS4ERR_STALE_CLIENTID
+73279 2020-06-23 13:43:24 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+73280 2020-06-23 13:43:24 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 73279) RENEW Status: NFS4ERR_STALE_CLIENTID
 
+i.e. all clients have:
+
+28071 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 110 V4
+NULL Call[Malformed Packet]
+28073 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 94 V4
+NULL Reply (Call In 28071)[Malformed Packet]
+28082 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 110 V4
+NULL Call[Malformed Packet]
+28084 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 94 V4
+NULL Reply (Call In 28082)[Malformed Packet]
+28086 2020-06-23 13:42:29 10.78.202.217 -> 10.78.196.220 NFS 370 V4
+Call EXCHANGE_ID
+28087 2020-06-23 13:42:29 10.78.196.220 -> 10.78.202.217 NFS 106 V4
+Reply (Call In 28086) Status: NFS4ERR_MINOR_VERS_MISMATCH
+
+then 30 seconds later, the RENEW/NFSERR_STALE_CLIENTID loop starts:
+
+68152 2020-06-23 13:42:59 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+68153 2020-06-23 13:42:59 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 68152) RENEW Status: NFS4ERR_STALE_CLIENTID
+68155 2020-06-23 13:42:59 10.78.202.217 -> 10.78.196.220 NFS 194 V4
+Call RENEW CID: 0x3091
+68156 2020-06-23 13:42:59 10.78.196.220 -> 10.78.202.217 NFS 114 V4
+Reply (Call In 68155) RENEW Status: NFS4ERR_STALE_CLIENTID
+
+Does anyone have any idea if the above might point to something that
+has already been fixed in the mainline kernel?
+
+Thanks
+
+James Pearson
