@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C87FC433DF
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 165C8C433E2
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E9CAD20747
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DEF8120772
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1593685332;
-	bh=BEFjNdvfKyJ+hPtNF3BSTZhE6Ir6RlgKVVjkC2LTMeE=;
+	s=default; t=1593685357;
+	bh=kaueKEmWjbH4Y/IsmnyUJSukPLRE5+XfMcf0ophHf3Y=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=ZdE04mTKkPgB//sGKSdMyirIfwyPj9HGFcV6RE/HA2SSYQVSOocMPjNjrJiot+kZM
-	 J8pPsKirrJyG71qng8oE6A+1D0fj9yUAf5OoA9T387iWbOsgnYEWGwtQyUTHUtk/C2
-	 HEMrt6Udu9ce0FVke12FMMnU6xwtp86wjNVi8giQ=
+	b=oJrqzKq8mm19NssqwgH3RaC9ulD+rxCcROUiodDt2D5h75adiQqNz2BKfA15h2MGi
+	 KaXxRcTPtEmsa1vxiBahjwXq6qniFLVV3xR82EIj5WoPEmr8rXD9wh7YnlJJYV7C63
+	 fftqiSaoFhWuTLHZBZTJZfvMvutmdx6VucNnYEdE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728454AbgGBKWJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 2 Jul 2020 06:22:09 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59948 "EHLO mail.kernel.org"
+        id S1728472AbgGBKWL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 2 Jul 2020 06:22:11 -0400
+Received: from mail.kernel.org ([198.145.29.99]:59864 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728280AbgGBKUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Jul 2020 06:20:41 -0400
+        id S1728367AbgGBKUf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Jul 2020 06:20:35 -0400
 Received: from e123331-lin.nice.arm.com (lfbn-nic-1-188-42.w2-15.abo.wanadoo.fr [2.15.37.42])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9DA5F206DD;
-        Thu,  2 Jul 2020 10:20:37 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 621BD20884;
+        Thu,  2 Jul 2020 10:20:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1593685240;
-        bh=BEFjNdvfKyJ+hPtNF3BSTZhE6Ir6RlgKVVjkC2LTMeE=;
+        s=default; t=1593685234;
+        bh=kaueKEmWjbH4Y/IsmnyUJSukPLRE5+XfMcf0ophHf3Y=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=zJTrFCj+Qh571w+IHsFYe2TV3F68N0RGr7kIRZkuBPliIy4OdnkwbHqa8rgJkrgX8
-         Lf7Or6HJTANuH8xtK2IJ0yhEwkEE3mjT6NLvycD4u+QN0bLKko96If6+9QuvyajoTz
-         cTflrIwZ808In3u57ckCUp3pQW6Y6xRwWw9FG+5E=
+        b=rR5cI1xEq2UaIXRaKecu6AAFsz50MEvbYusJVXJWxesdyTbKDZFlfBve8q5pJZ/WW
+         57JV7VDH8b2vk15TQIb7Pz6PYBW2RB4UWb+EiI0glP4IU25Q2/iuGvWCRC9aqE1sAB
+         Va8Yj8C6MSaQP5jQi63frRgN0IyLgdlPODrzvMrs=
 From:   Ard Biesheuvel <ardb@kernel.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Ard Biesheuvel <ardb@kernel.org>,
@@ -51,9 +51,9 @@ Cc:     Ard Biesheuvel <ardb@kernel.org>,
         Eric Biggers <ebiggers@google.com>,
         linux-crypto@vger.kernel.org, netdev@vger.kernel.org,
         devel@driverdev.osuosl.org, linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 6/7] crypto: bcm-iproc - remove ecb(arc4) support
-Date:   Thu,  2 Jul 2020 12:19:46 +0200
-Message-Id: <20200702101947.682-7-ardb@kernel.org>
+Subject: [RFC PATCH 4/7] crypto: remove ARC4 support from the skcipher API
+Date:   Thu,  2 Jul 2020 12:19:44 +0200
+Message-Id: <20200702101947.682-5-ardb@kernel.org>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20200702101947.682-1-ardb@kernel.org>
 References: <20200702101947.682-1-ardb@kernel.org>
@@ -62,337 +62,163 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Remove the generic ecb(arc4) skcipher, which is slightly cumbersome from
+a maintenance perspective, since it does not quite behave like other
+skciphers do in terms of key vs IV lifetime. Since we are leaving the
+library interface in place, which is used by the various WEP and TKIP
+implementations we have in the tree, we can safely drop this code now
+it no longer has any users.
+
 Signed-off-by: Ard Biesheuvel <ardb@kernel.org>
 ---
- drivers/crypto/bcm/cipher.c | 96 +-------------------
- drivers/crypto/bcm/cipher.h |  1 -
- drivers/crypto/bcm/spu.c    | 23 +----
- drivers/crypto/bcm/spu.h    |  1 -
- drivers/crypto/bcm/spu2.c   | 12 +--
- drivers/crypto/bcm/spu2.h   |  1 -
- 6 files changed, 6 insertions(+), 128 deletions(-)
+ crypto/Kconfig                               | 12 ----
+ crypto/Makefile                              |  1 -
+ crypto/arc4.c                                | 76 --------------------
+ drivers/net/wireless/intel/ipw2x00/Kconfig   |  1 -
+ drivers/net/wireless/intersil/hostap/Kconfig |  1 -
+ 5 files changed, 91 deletions(-)
 
-diff --git a/drivers/crypto/bcm/cipher.c b/drivers/crypto/bcm/cipher.c
-index a353217a0d33..f73b4bd86482 100644
---- a/drivers/crypto/bcm/cipher.c
-+++ b/drivers/crypto/bcm/cipher.c
-@@ -165,10 +165,6 @@ spu_skcipher_rx_sg_create(struct brcm_message *mssg,
- 		return -EFAULT;
- 	}
+diff --git a/crypto/Kconfig b/crypto/Kconfig
+index 091c0a0bbf26..fd0d1f78ac47 100644
+--- a/crypto/Kconfig
++++ b/crypto/Kconfig
+@@ -1197,18 +1197,6 @@ config CRYPTO_ANUBIS
+ 	  <https://www.cosic.esat.kuleuven.be/nessie/reports/>
+ 	  <http://www.larc.usp.br/~pbarreto/AnubisPage.html>
  
--	if (ctx->cipher.alg == CIPHER_ALG_RC4)
--		/* Add buffer to catch 260-byte SUPDT field for RC4 */
--		sg_set_buf(sg++, rctx->msg_buf.c.supdt_tweak, SPU_SUPDT_LEN);
+-config CRYPTO_ARC4
+-	tristate "ARC4 cipher algorithm"
+-	select CRYPTO_SKCIPHER
+-	select CRYPTO_LIB_ARC4
+-	help
+-	  ARC4 cipher algorithm.
 -
- 	if (stat_pad_len)
- 		sg_set_buf(sg++, rctx->msg_buf.rx_stat_pad, stat_pad_len);
- 
-@@ -317,7 +313,6 @@ static int handle_skcipher_req(struct iproc_reqctx_s *rctx)
- 	u8 local_iv_ctr[MAX_IV_SIZE];
- 	u32 stat_pad_len;	/* num bytes to align status field */
- 	u32 pad_len;		/* total length of all padding */
--	bool update_key = false;
- 	struct brcm_message *mssg;	/* mailbox message */
- 
- 	/* number of entries in src and dst sg in mailbox message. */
-@@ -391,28 +386,6 @@ static int handle_skcipher_req(struct iproc_reqctx_s *rctx)
- 		}
- 	}
- 
--	if (ctx->cipher.alg == CIPHER_ALG_RC4) {
--		rx_frag_num++;
--		if (chunk_start) {
--			/*
--			 * for non-first RC4 chunks, use SUPDT from previous
--			 * response as key for this chunk.
--			 */
--			cipher_parms.key_buf = rctx->msg_buf.c.supdt_tweak;
--			update_key = true;
--			cipher_parms.type = CIPHER_TYPE_UPDT;
--		} else if (!rctx->is_encrypt) {
--			/*
--			 * First RC4 chunk. For decrypt, key in pre-built msg
--			 * header may have been changed if encrypt required
--			 * multiple chunks. So revert the key to the
--			 * ctx->enckey value.
--			 */
--			update_key = true;
--			cipher_parms.type = CIPHER_TYPE_INIT;
--		}
--	}
+-	  ARC4 is a stream cipher using keys ranging from 8 bits to 2048
+-	  bits in length.  This algorithm is required for driver-based
+-	  WEP, but it should not be for other purposes because of the
+-	  weakness of the algorithm.
 -
- 	if (ctx->max_payload == SPU_MAX_PAYLOAD_INF)
- 		flow_log("max_payload infinite\n");
- 	else
-@@ -425,14 +398,9 @@ static int handle_skcipher_req(struct iproc_reqctx_s *rctx)
- 	memcpy(rctx->msg_buf.bcm_spu_req_hdr, ctx->bcm_spu_req_hdr,
- 	       sizeof(rctx->msg_buf.bcm_spu_req_hdr));
- 
--	/*
--	 * Pass SUPDT field as key. Key field in finish() call is only used
--	 * when update_key has been set above for RC4. Will be ignored in
--	 * all other cases.
--	 */
- 	spu->spu_cipher_req_finish(rctx->msg_buf.bcm_spu_req_hdr + BCM_HDR_LEN,
- 				   ctx->spu_req_hdr_len, !(rctx->is_encrypt),
--				   &cipher_parms, update_key, chunksize);
-+				   &cipher_parms, chunksize);
- 
- 	atomic64_add(chunksize, &iproc_priv.bytes_out);
- 
-@@ -527,9 +495,6 @@ static void handle_skcipher_resp(struct iproc_reqctx_s *rctx)
- 		 __func__, rctx->total_received, payload_len);
- 
- 	dump_sg(req->dst, rctx->total_received, payload_len);
--	if (ctx->cipher.alg == CIPHER_ALG_RC4)
--		packet_dump("  supdt ", rctx->msg_buf.c.supdt_tweak,
--			    SPU_SUPDT_LEN);
- 
- 	rctx->total_received += payload_len;
- 	if (rctx->total_received == rctx->total_todo) {
-@@ -1853,26 +1818,6 @@ static int aes_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 	return 0;
- }
- 
--static int rc4_setkey(struct crypto_skcipher *cipher, const u8 *key,
--		      unsigned int keylen)
+ config CRYPTO_BLOWFISH
+ 	tristate "Blowfish cipher algorithm"
+ 	select CRYPTO_ALGAPI
+diff --git a/crypto/Makefile b/crypto/Makefile
+index 4ca12b6044f7..af88c7e30b3c 100644
+--- a/crypto/Makefile
++++ b/crypto/Makefile
+@@ -128,7 +128,6 @@ obj-$(CONFIG_CRYPTO_CAMELLIA) += camellia_generic.o
+ obj-$(CONFIG_CRYPTO_CAST_COMMON) += cast_common.o
+ obj-$(CONFIG_CRYPTO_CAST5) += cast5_generic.o
+ obj-$(CONFIG_CRYPTO_CAST6) += cast6_generic.o
+-obj-$(CONFIG_CRYPTO_ARC4) += arc4.o
+ obj-$(CONFIG_CRYPTO_TEA) += tea.o
+ obj-$(CONFIG_CRYPTO_KHAZAD) += khazad.o
+ obj-$(CONFIG_CRYPTO_ANUBIS) += anubis.o
+diff --git a/crypto/arc4.c b/crypto/arc4.c
+deleted file mode 100644
+index aa79571dbd49..000000000000
+--- a/crypto/arc4.c
++++ /dev/null
+@@ -1,76 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-or-later
+-/*
+- * Cryptographic API
+- *
+- * ARC4 Cipher Algorithm
+- *
+- * Jon Oberheide <jon@oberheide.org>
+- */
+-
+-#include <crypto/algapi.h>
+-#include <crypto/arc4.h>
+-#include <crypto/internal/skcipher.h>
+-#include <linux/init.h>
+-#include <linux/module.h>
+-
+-static int crypto_arc4_setkey(struct crypto_skcipher *tfm, const u8 *in_key,
+-			      unsigned int key_len)
 -{
--	struct iproc_ctx_s *ctx = crypto_skcipher_ctx(cipher);
--	int i;
+-	struct arc4_ctx *ctx = crypto_skcipher_ctx(tfm);
 -
--	ctx->enckeylen = ARC4_MAX_KEY_SIZE + ARC4_STATE_SIZE;
--
--	ctx->enckey[0] = 0x00;	/* 0x00 */
--	ctx->enckey[1] = 0x00;	/* i    */
--	ctx->enckey[2] = 0x00;	/* 0x00 */
--	ctx->enckey[3] = 0x00;	/* j    */
--	for (i = 0; i < ARC4_MAX_KEY_SIZE; i++)
--		ctx->enckey[i + ARC4_STATE_SIZE] = key[i % keylen];
--
--	ctx->cipher_type = CIPHER_TYPE_INIT;
--
--	return 0;
+-	return arc4_setkey(ctx, in_key, key_len);
 -}
 -
- static int skcipher_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 			     unsigned int keylen)
- {
-@@ -1895,9 +1840,6 @@ static int skcipher_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 	case CIPHER_ALG_AES:
- 		err = aes_setkey(cipher, key, keylen);
- 		break;
--	case CIPHER_ALG_RC4:
--		err = rc4_setkey(cipher, key, keylen);
--		break;
- 	default:
- 		pr_err("%s() Error: unknown cipher alg\n", __func__);
- 		err = -EINVAL;
-@@ -1905,11 +1847,9 @@ static int skcipher_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 	if (err)
- 		return err;
- 
--	/* RC4 already populated ctx->enkey */
--	if (ctx->cipher.alg != CIPHER_ALG_RC4) {
--		memcpy(ctx->enckey, key, keylen);
--		ctx->enckeylen = keylen;
--	}
-+	memcpy(ctx->enckey, key, keylen);
-+	ctx->enckeylen = keylen;
-+
- 	/* SPU needs XTS keys in the reverse order the crypto API presents */
- 	if ((ctx->cipher.alg == CIPHER_ALG_AES) &&
- 	    (ctx->cipher.mode == CIPHER_MODE_XTS)) {
-@@ -2872,9 +2812,6 @@ static int aead_authenc_setkey(struct crypto_aead *cipher,
- 			goto badkey;
- 		}
- 		break;
--	case CIPHER_ALG_RC4:
--		ctx->cipher_type = CIPHER_TYPE_INIT;
--		break;
- 	default:
- 		pr_err("%s() Error: Unknown cipher alg\n", __func__);
- 		return -EINVAL;
-@@ -3573,25 +3510,6 @@ static struct iproc_alg_s driver_algs[] = {
- 	 },
- 
- /* SKCIPHER algorithms. */
--	{
--	 .type = CRYPTO_ALG_TYPE_SKCIPHER,
--	 .alg.skcipher = {
--			.base.cra_name = "ecb(arc4)",
--			.base.cra_driver_name = "ecb-arc4-iproc",
--			.base.cra_blocksize = ARC4_BLOCK_SIZE,
--			.min_keysize = ARC4_MIN_KEY_SIZE,
--			.max_keysize = ARC4_MAX_KEY_SIZE,
--			.ivsize = 0,
--			},
--	 .cipher_info = {
--			 .alg = CIPHER_ALG_RC4,
--			 .mode = CIPHER_MODE_NONE,
--			 },
--	 .auth_info = {
--		       .alg = HASH_ALG_NONE,
--		       .mode = HASH_MODE_NONE,
--		       },
--	 },
- 	{
- 	 .type = CRYPTO_ALG_TYPE_SKCIPHER,
- 	 .alg.skcipher = {
-@@ -4495,15 +4413,9 @@ static void spu_counters_init(void)
- 
- static int spu_register_skcipher(struct iproc_alg_s *driver_alg)
- {
--	struct spu_hw *spu = &iproc_priv.spu;
- 	struct skcipher_alg *crypto = &driver_alg->alg.skcipher;
- 	int err;
- 
--	/* SPU2 does not support RC4 */
--	if ((driver_alg->cipher_info.alg == CIPHER_ALG_RC4) &&
--	    (spu->spu_type == SPU_TYPE_SPU2))
--		return 0;
+-static int crypto_arc4_crypt(struct skcipher_request *req)
+-{
+-	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
+-	struct arc4_ctx *ctx = crypto_skcipher_ctx(tfm);
+-	struct skcipher_walk walk;
+-	int err;
 -
- 	crypto->base.cra_module = THIS_MODULE;
- 	crypto->base.cra_priority = cipher_pri;
- 	crypto->base.cra_alignmask = 0;
-diff --git a/drivers/crypto/bcm/cipher.h b/drivers/crypto/bcm/cipher.h
-index b6d83e3aa46c..035c8389cb3d 100644
---- a/drivers/crypto/bcm/cipher.h
-+++ b/drivers/crypto/bcm/cipher.h
-@@ -388,7 +388,6 @@ struct spu_hw {
- 				      u16 spu_req_hdr_len,
- 				      unsigned int is_inbound,
- 				      struct spu_cipher_parms *cipher_parms,
--				      bool update_key,
- 				      unsigned int data_size);
- 	void (*spu_request_pad)(u8 *pad_start, u32 gcm_padding,
- 				u32 hash_pad_len, enum hash_alg auth_alg,
-diff --git a/drivers/crypto/bcm/spu.c b/drivers/crypto/bcm/spu.c
-index e7562e9bf396..fe126f95c702 100644
---- a/drivers/crypto/bcm/spu.c
-+++ b/drivers/crypto/bcm/spu.c
-@@ -222,10 +222,6 @@ void spum_dump_msg_hdr(u8 *buf, unsigned int buf_len)
- 				cipher_key_len = 24;
- 				name = "3DES";
- 				break;
--			case CIPHER_ALG_RC4:
--				cipher_key_len = 260;
--				name = "ARC4";
--				break;
- 			case CIPHER_ALG_AES:
- 				switch (cipher_type) {
- 				case CIPHER_TYPE_AES128:
-@@ -919,21 +915,16 @@ u16 spum_cipher_req_init(u8 *spu_hdr, struct spu_cipher_parms *cipher_parms)
-  * @spu_req_hdr_len: Length in bytes of the SPU request header
-  * @isInbound:       0 encrypt, 1 decrypt
-  * @cipher_parms:    Parameters describing cipher operation to be performed
-- * @update_key:      If true, rewrite the cipher key in SCTX
-  * @data_size:       Length of the data in the BD field
-  *
-  * Assumes much of the header was already filled in at setkey() time in
-  * spum_cipher_req_init().
-- * spum_cipher_req_init() fills in the encryption key. For RC4, when submitting
-- * a request for a non-first chunk, we use the 260-byte SUPDT field from the
-- * previous response as the key. update_key is true for this case. Unused in all
-- * other cases.
-+ * spum_cipher_req_init() fills in the encryption key.
-  */
- void spum_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size)
- {
- 	struct SPUHEADER *spuh;
-@@ -948,11 +939,6 @@ void spum_cipher_req_finish(u8 *spu_hdr,
- 	flow_log(" in: %u\n", is_inbound);
- 	flow_log(" cipher alg: %u, cipher_type: %u\n", cipher_parms->alg,
- 		 cipher_parms->type);
--	if (update_key) {
--		flow_log(" cipher key len: %u\n", cipher_parms->key_len);
--		flow_dump("  key: ", cipher_parms->key_buf,
--			  cipher_parms->key_len);
--	}
- 
- 	/*
- 	 * In XTS mode, API puts "i" parameter (block tweak) in IV.  For
-@@ -981,13 +967,6 @@ void spum_cipher_req_finish(u8 *spu_hdr,
- 	else
- 		cipher_bits &= ~CIPHER_INBOUND;
- 
--	/* update encryption key for RC4 on non-first chunk */
--	if (update_key) {
--		spuh->sa.cipher_flags |=
--			cipher_parms->type << CIPHER_TYPE_SHIFT;
--		memcpy(spuh + 1, cipher_parms->key_buf, cipher_parms->key_len);
+-	err = skcipher_walk_virt(&walk, req, false);
+-
+-	while (walk.nbytes > 0) {
+-		arc4_crypt(ctx, walk.dst.virt.addr, walk.src.virt.addr,
+-			   walk.nbytes);
+-		err = skcipher_walk_done(&walk, 0);
 -	}
 -
- 	if (cipher_parms->alg && cipher_parms->iv_buf && cipher_parms->iv_len)
- 		/* cipher iv provided so put it in here */
- 		memcpy(bdesc_ptr - cipher_parms->iv_len, cipher_parms->iv_buf,
-diff --git a/drivers/crypto/bcm/spu.h b/drivers/crypto/bcm/spu.h
-index b247bc5b9354..dd132389bcaa 100644
---- a/drivers/crypto/bcm/spu.h
-+++ b/drivers/crypto/bcm/spu.h
-@@ -251,7 +251,6 @@ void spum_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size);
- 
- void spum_request_pad(u8 *pad_start,
-diff --git a/drivers/crypto/bcm/spu2.c b/drivers/crypto/bcm/spu2.c
-index 59abb5ecefa4..c860ffb0b4c3 100644
---- a/drivers/crypto/bcm/spu2.c
-+++ b/drivers/crypto/bcm/spu2.c
-@@ -1170,21 +1170,16 @@ u16 spu2_cipher_req_init(u8 *spu_hdr, struct spu_cipher_parms *cipher_parms)
-  * @spu_req_hdr_len: Length in bytes of the SPU request header
-  * @isInbound:       0 encrypt, 1 decrypt
-  * @cipher_parms:    Parameters describing cipher operation to be performed
-- * @update_key:      If true, rewrite the cipher key in SCTX
-  * @data_size:       Length of the data in the BD field
-  *
-  * Assumes much of the header was already filled in at setkey() time in
-  * spu_cipher_req_init().
-- * spu_cipher_req_init() fills in the encryption key. For RC4, when submitting a
-- * request for a non-first chunk, we use the 260-byte SUPDT field from the
-- * previous response as the key. update_key is true for this case. Unused in all
-- * other cases.
-+ * spu_cipher_req_init() fills in the encryption key.
-  */
- void spu2_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size)
- {
- 	struct SPU2_FMD *fmd;
-@@ -1196,11 +1191,6 @@ void spu2_cipher_req_finish(u8 *spu_hdr,
- 	flow_log(" in: %u\n", is_inbound);
- 	flow_log(" cipher alg: %u, cipher_type: %u\n", cipher_parms->alg,
- 		 cipher_parms->type);
--	if (update_key) {
--		flow_log(" cipher key len: %u\n", cipher_parms->key_len);
--		flow_dump("  key: ", cipher_parms->key_buf,
--			  cipher_parms->key_len);
--	}
- 	flow_log(" iv len: %d\n", cipher_parms->iv_len);
- 	flow_dump("    iv: ", cipher_parms->iv_buf, cipher_parms->iv_len);
- 	flow_log(" data_size: %u\n", data_size);
-diff --git a/drivers/crypto/bcm/spu2.h b/drivers/crypto/bcm/spu2.h
-index 03af6c38df7f..6e666bfb3cfc 100644
---- a/drivers/crypto/bcm/spu2.h
-+++ b/drivers/crypto/bcm/spu2.h
-@@ -200,7 +200,6 @@ void spu2_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size);
- void spu2_request_pad(u8 *pad_start, u32 gcm_padding, u32 hash_pad_len,
- 		      enum hash_alg auth_alg, enum hash_mode auth_mode,
+-	return err;
+-}
+-
+-static struct skcipher_alg arc4_alg = {
+-	/*
+-	 * For legacy reasons, this is named "ecb(arc4)", not "arc4".
+-	 * Nevertheless it's actually a stream cipher, not a block cipher.
+-	 */
+-	.base.cra_name		=	"ecb(arc4)",
+-	.base.cra_driver_name	=	"ecb(arc4)-generic",
+-	.base.cra_priority	=	100,
+-	.base.cra_blocksize	=	ARC4_BLOCK_SIZE,
+-	.base.cra_ctxsize	=	sizeof(struct arc4_ctx),
+-	.base.cra_module	=	THIS_MODULE,
+-	.min_keysize		=	ARC4_MIN_KEY_SIZE,
+-	.max_keysize		=	ARC4_MAX_KEY_SIZE,
+-	.setkey			=	crypto_arc4_setkey,
+-	.encrypt		=	crypto_arc4_crypt,
+-	.decrypt		=	crypto_arc4_crypt,
+-};
+-
+-static int __init arc4_init(void)
+-{
+-	return crypto_register_skcipher(&arc4_alg);
+-}
+-
+-static void __exit arc4_exit(void)
+-{
+-	crypto_unregister_skcipher(&arc4_alg);
+-}
+-
+-subsys_initcall(arc4_init);
+-module_exit(arc4_exit);
+-
+-MODULE_LICENSE("GPL");
+-MODULE_DESCRIPTION("ARC4 Cipher Algorithm");
+-MODULE_AUTHOR("Jon Oberheide <jon@oberheide.org>");
+-MODULE_ALIAS_CRYPTO("ecb(arc4)");
+diff --git a/drivers/net/wireless/intel/ipw2x00/Kconfig b/drivers/net/wireless/intel/ipw2x00/Kconfig
+index d00386915a9d..82b7eea3495f 100644
+--- a/drivers/net/wireless/intel/ipw2x00/Kconfig
++++ b/drivers/net/wireless/intel/ipw2x00/Kconfig
+@@ -160,7 +160,6 @@ config LIBIPW
+ 	select WIRELESS_EXT
+ 	select WEXT_SPY
+ 	select CRYPTO
+-	select CRYPTO_ARC4
+ 	select CRYPTO_ECB
+ 	select CRYPTO_AES
+ 	select CRYPTO_MICHAEL_MIC
+diff --git a/drivers/net/wireless/intersil/hostap/Kconfig b/drivers/net/wireless/intersil/hostap/Kconfig
+index 6ad88299432f..428fb6f55f51 100644
+--- a/drivers/net/wireless/intersil/hostap/Kconfig
++++ b/drivers/net/wireless/intersil/hostap/Kconfig
+@@ -5,7 +5,6 @@ config HOSTAP
+ 	select WEXT_SPY
+ 	select WEXT_PRIV
+ 	select CRYPTO
+-	select CRYPTO_ARC4
+ 	select CRYPTO_ECB
+ 	select CRYPTO_AES
+ 	select CRYPTO_MICHAEL_MIC
 -- 
 2.17.1
 
