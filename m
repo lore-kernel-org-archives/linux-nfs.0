@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 165C8C433E2
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CAEA6C433E1
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DEF8120772
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A639620772
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 Jul 2020 10:22:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1593685357;
-	bh=kaueKEmWjbH4Y/IsmnyUJSukPLRE5+XfMcf0ophHf3Y=;
+	s=default; t=1593685367;
+	bh=Dgcjvy0hCTfHOwCVOrjRfrBiKApvt8n4dhLRuzaQnTA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=oJrqzKq8mm19NssqwgH3RaC9ulD+rxCcROUiodDt2D5h75adiQqNz2BKfA15h2MGi
-	 KaXxRcTPtEmsa1vxiBahjwXq6qniFLVV3xR82EIj5WoPEmr8rXD9wh7YnlJJYV7C63
-	 fftqiSaoFhWuTLHZBZTJZfvMvutmdx6VucNnYEdE=
+	b=usTHRaHL+Y1PRoHNBViBYuTwL8fJ+3fcrOH6Cqayr5sCpuAF9rjowP6FyjT8LCFXm
+	 FHxTT7KTND01ALGDCdGiREjXREgKwDBmECyjxtpc2BojrEWe4YRGjjpxlzlwsWWsRy
+	 twhF6E8Whzvm/8b3EtAD4+BxDAYltDm/NVToHow4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728472AbgGBKWL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 2 Jul 2020 06:22:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59864 "EHLO mail.kernel.org"
+        id S1728008AbgGBKWJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 2 Jul 2020 06:22:09 -0400
+Received: from mail.kernel.org ([198.145.29.99]:59972 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728367AbgGBKUf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Jul 2020 06:20:35 -0400
+        id S1728389AbgGBKUp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Jul 2020 06:20:45 -0400
 Received: from e123331-lin.nice.arm.com (lfbn-nic-1-188-42.w2-15.abo.wanadoo.fr [2.15.37.42])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 621BD20884;
-        Thu,  2 Jul 2020 10:20:31 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 3092E208D5;
+        Thu,  2 Jul 2020 10:20:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1593685234;
-        bh=kaueKEmWjbH4Y/IsmnyUJSukPLRE5+XfMcf0ophHf3Y=;
+        s=default; t=1593685244;
+        bh=Dgcjvy0hCTfHOwCVOrjRfrBiKApvt8n4dhLRuzaQnTA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=rR5cI1xEq2UaIXRaKecu6AAFsz50MEvbYusJVXJWxesdyTbKDZFlfBve8q5pJZ/WW
-         57JV7VDH8b2vk15TQIb7Pz6PYBW2RB4UWb+EiI0glP4IU25Q2/iuGvWCRC9aqE1sAB
-         Va8Yj8C6MSaQP5jQi63frRgN0IyLgdlPODrzvMrs=
+        b=eih0jVBvh7Y1bN4cY1nF7fJ9CwT3o2BoGfRUZVQM+4FJmd7mGUPmo4UWNkrVfYdiB
+         QtE+5mjRUT1SuE5e5DJezfzxeQKrJTsTgcuMrq10aCUG0TYfa2oHkEK9CcqHd7Gq5J
+         oTxHKpYq7H7UmQRq7PM5eDzFiReX5/NUi4ukBBWA=
 From:   Ard Biesheuvel <ardb@kernel.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Ard Biesheuvel <ardb@kernel.org>,
@@ -51,9 +51,9 @@ Cc:     Ard Biesheuvel <ardb@kernel.org>,
         Eric Biggers <ebiggers@google.com>,
         linux-crypto@vger.kernel.org, netdev@vger.kernel.org,
         devel@driverdev.osuosl.org, linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 4/7] crypto: remove ARC4 support from the skcipher API
-Date:   Thu,  2 Jul 2020 12:19:44 +0200
-Message-Id: <20200702101947.682-5-ardb@kernel.org>
+Subject: [RFC PATCH 7/7] crypto: tcrypt - remove ecb(arc4) testing/benchmarking support
+Date:   Thu,  2 Jul 2020 12:19:47 +0200
+Message-Id: <20200702101947.682-8-ardb@kernel.org>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20200702101947.682-1-ardb@kernel.org>
 References: <20200702101947.682-1-ardb@kernel.org>
@@ -62,163 +62,164 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove the generic ecb(arc4) skcipher, which is slightly cumbersome from
-a maintenance perspective, since it does not quite behave like other
-skciphers do in terms of key vs IV lifetime. Since we are leaving the
-library interface in place, which is used by the various WEP and TKIP
-implementations we have in the tree, we can safely drop this code now
-it no longer has any users.
-
 Signed-off-by: Ard Biesheuvel <ardb@kernel.org>
 ---
- crypto/Kconfig                               | 12 ----
- crypto/Makefile                              |  1 -
- crypto/arc4.c                                | 76 --------------------
- drivers/net/wireless/intel/ipw2x00/Kconfig   |  1 -
- drivers/net/wireless/intersil/hostap/Kconfig |  1 -
- 5 files changed, 91 deletions(-)
+ crypto/tcrypt.c  | 21 +------
+ crypto/testmgr.c |  7 ---
+ crypto/testmgr.h | 62 --------------------
+ 3 files changed, 1 insertion(+), 89 deletions(-)
 
-diff --git a/crypto/Kconfig b/crypto/Kconfig
-index 091c0a0bbf26..fd0d1f78ac47 100644
---- a/crypto/Kconfig
-+++ b/crypto/Kconfig
-@@ -1197,18 +1197,6 @@ config CRYPTO_ANUBIS
- 	  <https://www.cosic.esat.kuleuven.be/nessie/reports/>
- 	  <http://www.larc.usp.br/~pbarreto/AnubisPage.html>
+diff --git a/crypto/tcrypt.c b/crypto/tcrypt.c
+index ba0b7702f2e9..72828c4acd3a 100644
+--- a/crypto/tcrypt.c
++++ b/crypto/tcrypt.c
+@@ -68,7 +68,7 @@ static char *tvmem[TVMEMSIZE];
+ static const char *check[] = {
+ 	"des", "md5", "des3_ede", "rot13", "sha1", "sha224", "sha256", "sm3",
+ 	"blowfish", "twofish", "serpent", "sha384", "sha512", "md4", "aes",
+-	"cast6", "arc4", "michael_mic", "deflate", "crc32c", "tea", "xtea",
++	"cast6", "michael_mic", "deflate", "crc32c", "tea", "xtea",
+ 	"khazad", "wp512", "wp384", "wp256", "tnepres", "xeta",  "fcrypt",
+ 	"camellia", "seed", "salsa20", "rmd128", "rmd160", "rmd256", "rmd320",
+ 	"lzo", "lzo-rle", "cts", "sha3-224", "sha3-256", "sha3-384",
+@@ -1762,10 +1762,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
+ 		ret += tcrypt_test("xts(cast6)");
+ 		break;
  
--config CRYPTO_ARC4
--	tristate "ARC4 cipher algorithm"
--	select CRYPTO_SKCIPHER
--	select CRYPTO_LIB_ARC4
--	help
--	  ARC4 cipher algorithm.
+-	case 16:
+-		ret += tcrypt_test("ecb(arc4)");
+-		break;
 -
--	  ARC4 is a stream cipher using keys ranging from 8 bits to 2048
--	  bits in length.  This algorithm is required for driver-based
--	  WEP, but it should not be for other purposes because of the
--	  weakness of the algorithm.
+ 	case 17:
+ 		ret += tcrypt_test("michael_mic");
+ 		break;
+@@ -2201,11 +2197,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
+ 				  speed_template_32_64);
+ 		break;
+ 
+-	case 208:
+-		test_cipher_speed("ecb(arc4)", ENCRYPT, sec, NULL, 0,
+-				  speed_template_8);
+-		break;
 -
- config CRYPTO_BLOWFISH
- 	tristate "Blowfish cipher algorithm"
- 	select CRYPTO_ALGAPI
-diff --git a/crypto/Makefile b/crypto/Makefile
-index 4ca12b6044f7..af88c7e30b3c 100644
---- a/crypto/Makefile
-+++ b/crypto/Makefile
-@@ -128,7 +128,6 @@ obj-$(CONFIG_CRYPTO_CAMELLIA) += camellia_generic.o
- obj-$(CONFIG_CRYPTO_CAST_COMMON) += cast_common.o
- obj-$(CONFIG_CRYPTO_CAST5) += cast5_generic.o
- obj-$(CONFIG_CRYPTO_CAST6) += cast6_generic.o
--obj-$(CONFIG_CRYPTO_ARC4) += arc4.o
- obj-$(CONFIG_CRYPTO_TEA) += tea.o
- obj-$(CONFIG_CRYPTO_KHAZAD) += khazad.o
- obj-$(CONFIG_CRYPTO_ANUBIS) += anubis.o
-diff --git a/crypto/arc4.c b/crypto/arc4.c
-deleted file mode 100644
-index aa79571dbd49..000000000000
---- a/crypto/arc4.c
-+++ /dev/null
-@@ -1,76 +0,0 @@
--// SPDX-License-Identifier: GPL-2.0-or-later
+ 	case 209:
+ 		test_cipher_speed("ecb(cast5)", ENCRYPT, sec, NULL, 0,
+ 				  speed_template_8_16);
+@@ -2720,11 +2711,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
+ 				   speed_template_32_48_64);
+ 		break;
+ 
+-	case 505:
+-		test_acipher_speed("ecb(arc4)", ENCRYPT, sec, NULL, 0,
+-				   speed_template_8);
+-		break;
+-
+ 	case 506:
+ 		test_acipher_speed("ecb(cast5)", ENCRYPT, sec, NULL, 0,
+ 				   speed_template_8_16);
+@@ -2932,11 +2918,6 @@ static int do_test(const char *alg, u32 type, u32 mask, int m, u32 num_mb)
+ 				       speed_template_32_48_64, num_mb);
+ 		break;
+ 
+-	case 605:
+-		test_mb_skcipher_speed("ecb(arc4)", ENCRYPT, sec, NULL, 0,
+-				       speed_template_8, num_mb);
+-		break;
+-
+ 	case 606:
+ 		test_mb_skcipher_speed("ecb(cast5)", ENCRYPT, sec, NULL, 0,
+ 				       speed_template_8_16, num_mb);
+diff --git a/crypto/testmgr.c b/crypto/testmgr.c
+index 6863f911fcee..7c1bdc5690e2 100644
+--- a/crypto/testmgr.c
++++ b/crypto/testmgr.c
+@@ -4783,13 +4783,6 @@ static const struct alg_test_desc alg_test_descs[] = {
+ 		.suite = {
+ 			.cipher = __VECS(anubis_tv_template)
+ 		}
+-	}, {
+-		.alg = "ecb(arc4)",
+-		.generic_driver = "ecb(arc4)-generic",
+-		.test = alg_test_skcipher,
+-		.suite = {
+-			.cipher = __VECS(arc4_tv_template)
+-		}
+ 	}, {
+ 		.alg = "ecb(blowfish)",
+ 		.test = alg_test_skcipher,
+diff --git a/crypto/testmgr.h b/crypto/testmgr.h
+index d29983908c38..48cd6330ec8d 100644
+--- a/crypto/testmgr.h
++++ b/crypto/testmgr.h
+@@ -22490,68 +22490,6 @@ static const struct cipher_testvec cast5_ctr_tv_template[] = {
+ 	},
+ };
+ 
 -/*
-- * Cryptographic API
-- *
-- * ARC4 Cipher Algorithm
-- *
-- * Jon Oberheide <jon@oberheide.org>
+- * ARC4 test vectors from OpenSSL
 - */
--
--#include <crypto/algapi.h>
--#include <crypto/arc4.h>
--#include <crypto/internal/skcipher.h>
--#include <linux/init.h>
--#include <linux/module.h>
--
--static int crypto_arc4_setkey(struct crypto_skcipher *tfm, const u8 *in_key,
--			      unsigned int key_len)
--{
--	struct arc4_ctx *ctx = crypto_skcipher_ctx(tfm);
--
--	return arc4_setkey(ctx, in_key, key_len);
--}
--
--static int crypto_arc4_crypt(struct skcipher_request *req)
--{
--	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
--	struct arc4_ctx *ctx = crypto_skcipher_ctx(tfm);
--	struct skcipher_walk walk;
--	int err;
--
--	err = skcipher_walk_virt(&walk, req, false);
--
--	while (walk.nbytes > 0) {
--		arc4_crypt(ctx, walk.dst.virt.addr, walk.src.virt.addr,
--			   walk.nbytes);
--		err = skcipher_walk_done(&walk, 0);
--	}
--
--	return err;
--}
--
--static struct skcipher_alg arc4_alg = {
--	/*
--	 * For legacy reasons, this is named "ecb(arc4)", not "arc4".
--	 * Nevertheless it's actually a stream cipher, not a block cipher.
--	 */
--	.base.cra_name		=	"ecb(arc4)",
--	.base.cra_driver_name	=	"ecb(arc4)-generic",
--	.base.cra_priority	=	100,
--	.base.cra_blocksize	=	ARC4_BLOCK_SIZE,
--	.base.cra_ctxsize	=	sizeof(struct arc4_ctx),
--	.base.cra_module	=	THIS_MODULE,
--	.min_keysize		=	ARC4_MIN_KEY_SIZE,
--	.max_keysize		=	ARC4_MAX_KEY_SIZE,
--	.setkey			=	crypto_arc4_setkey,
--	.encrypt		=	crypto_arc4_crypt,
--	.decrypt		=	crypto_arc4_crypt,
+-static const struct cipher_testvec arc4_tv_template[] = {
+-	{
+-		.key	= "\x01\x23\x45\x67\x89\xab\xcd\xef",
+-		.klen	= 8,
+-		.ptext	= "\x01\x23\x45\x67\x89\xab\xcd\xef",
+-		.ctext	= "\x75\xb7\x87\x80\x99\xe0\xc5\x96",
+-		.len	= 8,
+-	}, {
+-		.key	= "\x01\x23\x45\x67\x89\xab\xcd\xef",
+-		.klen	= 8,
+-		.ptext	= "\x00\x00\x00\x00\x00\x00\x00\x00",
+-		.ctext	= "\x74\x94\xc2\xe7\x10\x4b\x08\x79",
+-		.len	= 8,
+-	}, {
+-		.key	= "\x00\x00\x00\x00\x00\x00\x00\x00",
+-		.klen	= 8,
+-		.ptext	= "\x00\x00\x00\x00\x00\x00\x00\x00",
+-		.ctext	= "\xde\x18\x89\x41\xa3\x37\x5d\x3a",
+-		.len	= 8,
+-	}, {
+-		.key	= "\xef\x01\x23\x45",
+-		.klen	= 4,
+-		.ptext	= "\x00\x00\x00\x00\x00\x00\x00\x00"
+-			  "\x00\x00\x00\x00\x00\x00\x00\x00"
+-			  "\x00\x00\x00\x00",
+-		.ctext	= "\xd6\xa1\x41\xa7\xec\x3c\x38\xdf"
+-			  "\xbd\x61\x5a\x11\x62\xe1\xc7\xba"
+-			  "\x36\xb6\x78\x58",
+-		.len	= 20,
+-	}, {
+-		.key	= "\x01\x23\x45\x67\x89\xab\xcd\xef",
+-		.klen	= 8,
+-		.ptext	= "\x12\x34\x56\x78\x9A\xBC\xDE\xF0"
+-			  "\x12\x34\x56\x78\x9A\xBC\xDE\xF0"
+-			  "\x12\x34\x56\x78\x9A\xBC\xDE\xF0"
+-			  "\x12\x34\x56\x78",
+-		.ctext	= "\x66\xa0\x94\x9f\x8a\xf7\xd6\x89"
+-			  "\x1f\x7f\x83\x2b\xa8\x33\xc0\x0c"
+-			  "\x89\x2e\xbe\x30\x14\x3c\xe2\x87"
+-			  "\x40\x01\x1e\xcf",
+-		.len	= 28,
+-	}, {
+-		.key	= "\xef\x01\x23\x45",
+-		.klen	= 4,
+-		.ptext	= "\x00\x00\x00\x00\x00\x00\x00\x00"
+-			  "\x00\x00",
+-		.ctext	= "\xd6\xa1\x41\xa7\xec\x3c\x38\xdf"
+-			  "\xbd\x61",
+-		.len	= 10,
+-	}, {
+-		.key	= "\x01\x23\x45\x67\x89\xAB\xCD\xEF"
+-			"\x00\x00\x00\x00\x00\x00\x00\x00",
+-		.klen	= 16,
+-		.ptext	= "\x01\x23\x45\x67\x89\xAB\xCD\xEF",
+-		.ctext	= "\x69\x72\x36\x59\x1B\x52\x42\xB1",
+-		.len	= 8,
+-	},
 -};
 -
--static int __init arc4_init(void)
--{
--	return crypto_register_skcipher(&arc4_alg);
--}
--
--static void __exit arc4_exit(void)
--{
--	crypto_unregister_skcipher(&arc4_alg);
--}
--
--subsys_initcall(arc4_init);
--module_exit(arc4_exit);
--
--MODULE_LICENSE("GPL");
--MODULE_DESCRIPTION("ARC4 Cipher Algorithm");
--MODULE_AUTHOR("Jon Oberheide <jon@oberheide.org>");
--MODULE_ALIAS_CRYPTO("ecb(arc4)");
-diff --git a/drivers/net/wireless/intel/ipw2x00/Kconfig b/drivers/net/wireless/intel/ipw2x00/Kconfig
-index d00386915a9d..82b7eea3495f 100644
---- a/drivers/net/wireless/intel/ipw2x00/Kconfig
-+++ b/drivers/net/wireless/intel/ipw2x00/Kconfig
-@@ -160,7 +160,6 @@ config LIBIPW
- 	select WIRELESS_EXT
- 	select WEXT_SPY
- 	select CRYPTO
--	select CRYPTO_ARC4
- 	select CRYPTO_ECB
- 	select CRYPTO_AES
- 	select CRYPTO_MICHAEL_MIC
-diff --git a/drivers/net/wireless/intersil/hostap/Kconfig b/drivers/net/wireless/intersil/hostap/Kconfig
-index 6ad88299432f..428fb6f55f51 100644
---- a/drivers/net/wireless/intersil/hostap/Kconfig
-+++ b/drivers/net/wireless/intersil/hostap/Kconfig
-@@ -5,7 +5,6 @@ config HOSTAP
- 	select WEXT_SPY
- 	select WEXT_PRIV
- 	select CRYPTO
--	select CRYPTO_ARC4
- 	select CRYPTO_ECB
- 	select CRYPTO_AES
- 	select CRYPTO_MICHAEL_MIC
+ /*
+  * TEA test vectors
+  */
 -- 
 2.17.1
 
