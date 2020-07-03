@@ -2,67 +2,107 @@ Return-Path: <SRS0=JAGy=AO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 18AE1C433DF
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Jul 2020 05:40:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D36A2C433E0
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Jul 2020 13:28:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E41BC20772
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Jul 2020 05:40:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ADB1720760
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Jul 2020 13:28:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1593754802;
-	bh=kNleJkAWKZvx+iwUJt4yKWIGyM7h176BHp1WjJbIc+c=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=S1nsmHdK0l530PUOdMSR6cxt88k1TYUgIYM6xCLHjGacoJE6XUQut1etEe2TMMtis
-	 wsVMGzJTMsFWDBhy+4JY8ZcT5lT5r4LQod9darJA8Q7A4qKCjDtMHxmHt9Sc60Ylo1
-	 tatlnZA+gC+lKDS2CDufeA+ipg1lejvVyrybCJLQ=
+	s=default; t=1593782934;
+	bh=UPiZOo6ID3+xdr4knN6OGUVhtbu2OeFwQd8arqripq8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=UuBapI90qpBwDcGQOlU92vlg22wlA4MXTe/gb03bnTFlsjwR3Q3xY+oG3juj2BtKR
+	 4n9Y38e/+1c9Rdgx1EOJdcrp3Ucgcmise0Q8Hg8by4jY2Y0TMmY/p6y566D5Cu4+HB
+	 6lINffXb8vLYth77J6O66VLPlxDWkrnNpI6G6a/E=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725786AbgGCFkC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Jul 2020 01:40:02 -0400
-Received: from mail.kernel.org ([198.145.29.99]:48268 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725779AbgGCFkC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 3 Jul 2020 01:40:02 -0400
-Subject: Re: [GIT PULL] nfsd bugfixes for 5.8
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1593754801;
-        bh=kNleJkAWKZvx+iwUJt4yKWIGyM7h176BHp1WjJbIc+c=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=WAtSYguye5SVxrjo49NlzbjbIu1qTJpOrWsJrzXpia3Ki9qXMFuxod9ngPqU201n3
-         CBLGzhTCyr3l2a/A7bOaTpvklgH5Htcu9x9mVqSvHQNyMXRGqZ2SQmZPm7KOZWkssh
-         jnQfJKHaSoRA976xLCO51ssZ6eDVMY3f0OYjlJ+Y=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20200702151039.GC6904@fieldses.org>
-References: <20200702151039.GC6904@fieldses.org>
-X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20200702151039.GC6904@fieldses.org>
-X-PR-Tracked-Remote: git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.8-1
-X-PR-Tracked-Commit-Id: becd2014923ff259b8155df58199f605dd50cb8f
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 083176c86ffae8c9b467358eca5ba05a54a27898
-Message-Id: <159375480186.400.10690168272088373129.pr-tracker-bot@kernel.org>
-Date:   Fri, 03 Jul 2020 05:40:01 +0000
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
+        id S1726053AbgGCN2x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Jul 2020 09:28:53 -0400
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:33519 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726022AbgGCN2x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jul 2020 09:28:53 -0400
+Received: by mail-pl1-f195.google.com with SMTP id 72so2088344ple.0;
+        Fri, 03 Jul 2020 06:28:52 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=nZixvdmK63kTxJGVp6SPuFsnYljJqU7VXv2wxF9MXFA=;
+        b=XlNdsEJKuh017yoaqze1QzzzKwb783SXTEXBcadTk0ed7oA0Sm9nPzkmkG/qKzrvEU
+         x65NJnpnvbpqJk3IIddNLcEFc7l4Q+/G3w8PRmJJKa6cnmgSZyNEpbNLnO003LUDNoWG
+         UcMNQqXDIw8J1ptTFItLwr8SKneXNiFzj1h/tEagCN1MbHMoVQPrkt+DyOCl+bJGan/v
+         ICsT56q9x2sRIMeVNfo1yDRB0cXK80hl+0mZJqzXYST5IwX7IUV7AYSp4gbZWsLBWolx
+         WFEpexWDUQ9c6YCO01nzQ46uHQn9/yp4qNK4vOr4JuUdvWMwqWutVPLflMZ87p8Y/qM2
+         3UPA==
+X-Gm-Message-State: AOAM5302es4kl5puR7Xy9zWGA/rez4EwCHDqFyMFAI9j3/0ffCfy5mgr
+        5qBgU2pGPtZDXLhiVgt8QlU=
+X-Google-Smtp-Source: ABdhPJx7Zgvv1Ln8YT3HW6KzNg/0D212spMjLCprFe2ez6VGItOK7VCNoHYcRalmweCVJasHt2okLw==
+X-Received: by 2002:a17:90a:3223:: with SMTP id k32mr38367135pjb.121.1593782932606;
+        Fri, 03 Jul 2020 06:28:52 -0700 (PDT)
+Received: from 42.do-not-panic.com (42.do-not-panic.com. [157.230.128.187])
+        by smtp.gmail.com with ESMTPSA id 125sm11298479pff.130.2020.07.03.06.28.50
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 03 Jul 2020 06:28:51 -0700 (PDT)
+Received: by 42.do-not-panic.com (Postfix, from userid 1000)
+        id 5569C40945; Fri,  3 Jul 2020 13:28:50 +0000 (UTC)
+Date:   Fri, 3 Jul 2020 13:28:50 +0000
+From:   Luis Chamberlain <mcgrof@kernel.org>
+To:     Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
+Cc:     David Howells <dhowells@redhat.com>,
+        Christian Borntraeger <borntraeger@de.ibm.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, ast@kernel.org,
+        axboe@kernel.dk, bfields@fieldses.org,
+        bridge@lists.linux-foundation.org, chainsaw@gentoo.org,
+        christian.brauner@ubuntu.com, chuck.lever@oracle.com,
+        davem@davemloft.net, gregkh@linuxfoundation.org,
+        jarkko.sakkinen@linux.intel.com, jmorris@namei.org,
+        josh@joshtriplett.org, keescook@chromium.org,
+        keyrings@vger.kernel.org, kuba@kernel.org,
+        lars.ellenberg@linbit.com, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org, nikolay@cumulusnetworks.com,
+        philipp.reisner@linbit.com, ravenexp@gmail.com,
+        roopa@cumulusnetworks.com, serge@hallyn.com, slyfox@gentoo.org,
+        viro@zeniv.linux.org.uk, yangtiezhu@loongson.cn,
+        netdev@vger.kernel.org, markward@linux.ibm.com,
+        linux-s390 <linux-s390@vger.kernel.org>
+Subject: Re: linux-next: umh: fix processed error when UMH_WAIT_PROC is used
+ seems to break linux bridge on s390x (bisected)
+Message-ID: <20200703132850.GW4332@42.do-not-panic.com>
+References: <20200626025410.GJ4332@42.do-not-panic.com>
+ <20200630175704.GO13911@42.do-not-panic.com>
+ <b24d8dae-1872-ba2c-acd4-ed46c0781317@de.ibm.com>
+ <a6792135-3285-0861-014e-3db85ea251dc@i-love.sakura.ne.jp>
+ <20200701135324.GS4332@42.do-not-panic.com>
+ <8d714a23-bac4-7631-e5fc-f97c20a46083@i-love.sakura.ne.jp>
+ <20200701153859.GT4332@42.do-not-panic.com>
+ <e3f3e501-2cb7-b683-4b85-2002b7603244@i-love.sakura.ne.jp>
+ <20200702194656.GV4332@42.do-not-panic.com>
+ <d8a74a06-de97-54ae-de03-0d955e82f62b@i-love.sakura.ne.jp>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <d8a74a06-de97-54ae-de03-0d955e82f62b@i-love.sakura.ne.jp>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The pull request you sent on Thu, 2 Jul 2020 11:10:39 -0400:
+On Fri, Jul 03, 2020 at 09:52:01AM +0900, Tetsuo Handa wrote:
+> On 2020/07/03 4:46, Luis Chamberlain wrote:
+> > The alternative to making a compromise is using generic wrappers for
+> > things which make sense and letting the callers use those.
+> 
+> I suggest just introducing KWIFEXITED()/KWEXITSTATUS()/KWIFSIGNALED()/KWTERMSIG()
+> macros and fixing the callers, for some callers are not aware of possibility of
+> KWIFSIGNALED() case.
 
-> git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.8-1
+OK so we open code all uses. Do that in a next iteration.
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/083176c86ffae8c9b467358eca5ba05a54a27898
+  Luis
 
-Thank you!
-
--- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
