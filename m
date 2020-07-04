@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E0746C433E1
-	for <linux-nfs@archiver.kernel.org>; Sat,  4 Jul 2020 03:21:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AEA2C433DF
+	for <linux-nfs@archiver.kernel.org>; Sat,  4 Jul 2020 03:21:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B4B19212CC
-	for <linux-nfs@archiver.kernel.org>; Sat,  4 Jul 2020 03:21:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 494022088E
+	for <linux-nfs@archiver.kernel.org>; Sat,  4 Jul 2020 03:21:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Vr5yaAj1"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="cwGGq3XJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727926AbgGDDVZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Jul 2020 23:21:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48796 "EHLO
+        id S1727891AbgGDDVO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Jul 2020 23:21:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48764 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727067AbgGDDVW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jul 2020 23:21:22 -0400
+        with ESMTP id S1727789AbgGDDVM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Jul 2020 23:21:12 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 78F73C061794;
-        Fri,  3 Jul 2020 20:21:22 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2FA84C061794;
+        Fri,  3 Jul 2020 20:21:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=8pKvrcNaFuZeOjcq9eNrFm90IIli99w7VYLzSvP2y/o=; b=Vr5yaAj1Ow2hOWq/9C2zxsJ/Ih
-        O0OJdZk0igUSwbBN6Coig/XIlsc6duH3uegpjCHLNSAew5qXmj8JWos7K97HeWesePg2chNgXnnmX
-        Fm0rn3ALzxs6znAgYSoRLrp2oaO5NKphqg+xKe0qr8V2ZHhJt1ekEjax+61rghNovm7npGJNuAIBv
-        5TQa/YURh8seaHlSM2wgsBGNGWSnMiM0p48qQPEITU0X59w8FryqV1X9ohHmEmeEjIbgsb/mZwRk3
-        SJNzh68EBoS/b4DUnSJ9cazhy1UXJE5lbmBzU0jAOOW3astTOcTCgr6SMZd1wDPvAa5iP/Sc/o/YG
-        7lyRnaew==;
+        bh=2T86phqvAjaFev1DitRym/3ukUuz3anye73gz3G7R78=; b=cwGGq3XJv64zqNaxsegz15kH2d
+        j3kiOnOl8Szg4QARRlvN0/pdBxzdH1lTGsw4F0NQ11c7yXqZt8rIiEfjXtC/fDkmLI/20jFkXT7ID
+        DUtGIPblPYEFFm9m+A4WTJTPpylbXzLEmyFTkzIqwkHQQtmbume1OXesFufG+Ymkm38h1c+5bA6Ug
+        ZzfoxpLBMeaa61dIOpPfywy+0IF6ZDQ34xj82KX0ghkxskMoIOyr/mrbwekCraXG8FHORusXTWjnr
+        ucJRUrNj71DrU7aadinKacnN9B1lKeREJG8AUK95IEhA4rDpDeVYFVhfRErFf+W6n1UJS/1gtCpL2
+        lMMbGdxw==;
 Received: from [2601:1c0:6280:3f0::19c2] (helo=smtpauth.infradead.org)
         by casper.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jrYjv-0000Ri-Jh; Sat, 04 Jul 2020 03:21:20 +0000
+        id 1jrYjl-0000Ri-AL; Sat, 04 Jul 2020 03:21:10 +0000
 From:   Randy Dunlap <rdunlap@infradead.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Randy Dunlap <rdunlap@infradead.org>,
@@ -53,9 +53,9 @@ Cc:     Randy Dunlap <rdunlap@infradead.org>,
         platform-driver-x86@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org
-Subject: [PATCH 11/13] Documentation/admin-guide: sysctl/kernel: drop doubled word
-Date:   Fri,  3 Jul 2020 20:20:18 -0700
-Message-Id: <20200704032020.21923-12-rdunlap@infradead.org>
+Subject: [PATCH 09/13] Documentation/admin-guide: intel_pstate: drop doubled word
+Date:   Fri,  3 Jul 2020 20:20:16 -0700
+Message-Id: <20200704032020.21923-10-rdunlap@infradead.org>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200704032020.21923-1-rdunlap@infradead.org>
 References: <20200704032020.21923-1-rdunlap@infradead.org>
@@ -66,23 +66,26 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Drop the doubled word "set".
+Drop the doubled word "to".
 
 Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
 Cc: Jonathan Corbet <corbet@lwn.net>
 Cc: linux-doc@vger.kernel.org
+Cc: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+Cc: Len Brown <lenb@kernel.org>
+Cc: linux-pm@vger.kernel.org
 ---
- Documentation/admin-guide/sysctl/kernel.rst |    2 +-
+ Documentation/admin-guide/pm/intel_pstate.rst |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
---- linux-next-20200701.orig/Documentation/admin-guide/sysctl/kernel.rst
-+++ linux-next-20200701/Documentation/admin-guide/sysctl/kernel.rst
-@@ -235,7 +235,7 @@ This toggle indicates whether unprivileg
- from using ``dmesg(8)`` to view messages from the kernel's log
- buffer.
- When ``dmesg_restrict`` is set to 0 there are no restrictions.
--When ``dmesg_restrict`` is set set to 1, users must have
-+When ``dmesg_restrict`` is set to 1, users must have
- ``CAP_SYSLOG`` to use ``dmesg(8)``.
+--- linux-next-20200701.orig/Documentation/admin-guide/pm/intel_pstate.rst
++++ linux-next-20200701/Documentation/admin-guide/pm/intel_pstate.rst
+@@ -708,7 +708,7 @@ core (for the policies with other scalin
  
- The kernel config option ``CONFIG_SECURITY_DMESG_RESTRICT`` sets the
+ The ``ftrace`` interface can be used for low-level diagnostics of
+ ``intel_pstate``.  For example, to check how often the function to set a
+-P-state is called, the ``ftrace`` filter can be set to to
++P-state is called, the ``ftrace`` filter can be set to
+ :c:func:`intel_pstate_set_pstate`::
+ 
+  # cd /sys/kernel/debug/tracing/
