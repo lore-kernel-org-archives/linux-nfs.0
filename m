@@ -2,146 +2,138 @@ Return-Path: <SRS0=7+dT=AT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4630C433DF
-	for <linux-nfs@archiver.kernel.org>; Wed,  8 Jul 2020 14:50:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5AB8FC433E2
+	for <linux-nfs@archiver.kernel.org>; Wed,  8 Jul 2020 15:50:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7BB6020720
-	for <linux-nfs@archiver.kernel.org>; Wed,  8 Jul 2020 14:50:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3720A206F5
+	for <linux-nfs@archiver.kernel.org>; Wed,  8 Jul 2020 15:50:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="MQTnTpUF"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="X05PgNuj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729625AbgGHOuN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 8 Jul 2020 10:50:13 -0400
-Received: from us-smtp-1.mimecast.com ([207.211.31.81]:31961 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1729206AbgGHOuM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jul 2020 10:50:12 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1594219811;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=47zG5omVzgKomzLQDhiyB0uXTW9JWgLP19IjH1Zmztg=;
-        b=MQTnTpUFGnT3egRLbYJQAO/e4QIcRcBwHRlUkVAWuBS1EEJu8CqTQqAjBMfOxShKu+9sOM
-        SUmefzjp29+SZDQAEo/7jZB4LYM4xS1yxK+V9MDAdS636EbxodP6XOL8EYZQS3/KI3Wtsw
-        rxisUx7FqbtBpshwL6B51PUzwIRf1So=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-291-0cej2CeaNVm__aveDLc2sw-1; Wed, 08 Jul 2020 10:50:09 -0400
-X-MC-Unique: 0cej2CeaNVm__aveDLc2sw-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6D9891B2C980;
-        Wed,  8 Jul 2020 14:50:08 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-112-95.phx2.redhat.com [10.3.112.95])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E53F45FC3B;
-        Wed,  8 Jul 2020 14:50:07 +0000 (UTC)
-Subject: Re: [PATCH 04/10] gssd: gssd_k5_err_msg() returns a ". Use free() to
- release.
-To:     Doug Nazar <nazard@nazar.ca>, linux-nfs@vger.kernel.org
-References: <20200701182803.14947-1-nazard@nazar.ca>
- <20200701182803.14947-5-nazard@nazar.ca>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <3a758b78-e477-4a75-63ca-65333a413599@RedHat.com>
-Date:   Wed, 8 Jul 2020 10:50:07 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.5.0
+        id S1730329AbgGHPuW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 8 Jul 2020 11:50:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34560 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729022AbgGHPuW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jul 2020 11:50:22 -0400
+Received: from mail-qt1-x843.google.com (mail-qt1-x843.google.com [IPv6:2607:f8b0:4864:20::843])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 887F1C061A0B
+        for <linux-nfs@vger.kernel.org>; Wed,  8 Jul 2020 08:50:21 -0700 (PDT)
+Received: by mail-qt1-x843.google.com with SMTP id u12so34829973qth.12
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Jul 2020 08:50:21 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=L+4dvGsVa2N5qZBTBY4Cn204WCS0Equmlh2E0J4FsNo=;
+        b=X05PgNujsoIIBkHZamICcNiatM4uEdqVYW997F5xxwzCFUhtSH+1uh3SnuasyzYhEA
+         EuYknMLY8QPExjTbEmMdQ/HTLpXBwpsZ8Rz20JbIg+B2KDXX3U/dmKIhzk7TCkKVnwus
+         8HfpmkmYUD2MNC1LDg2QpAYcyfsUCmkXzqYL+nSu3zUbEBx7SkD7Q33HArjyV4KRYKuW
+         zrf1jywFnzqdFyEGDJlHaOrT/q63ZP8pKAsouA77XUHSTQRby8wQhZ4NE+Z6mE3EJOmV
+         6l2J51zUuN1LmD+yt36LUJvNNb6pjvUALWtoDvlfT14j69x5W/45Cd7FCASuAc0/51wv
+         K1Bg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :mime-version:content-transfer-encoding;
+        bh=L+4dvGsVa2N5qZBTBY4Cn204WCS0Equmlh2E0J4FsNo=;
+        b=WCCz1clKsRt/1HQx2hA/V+nP5evYsQHaBDzT+3wot+zNLkJeClAPr+xOMHef9Ck0cR
+         +5AAbc+EdYP5xKj79OjovoZFQztafDS6qTof3CfSpN4vmKiEsZWD2+ltNjNYwb0OUjLF
+         friy5ND8frnDGhIeCcTnL9iAxPJEC0Qu91yVny/u2hN0wLg8x+x6Q8PLIECJtuqPvhry
+         D8vMGQGej1W9kEv4hQbZ7pwBh5xLjiYTFJqGB7pJA5/+dhpQIJbVfjN6bRwCRPOsrlK5
+         bJEF3Fdc/4UgKi3bYT/2LP2xDQ2uZUkid3QabYX7sU5m5OputC7YNfzTD8ym87UBTRhZ
+         VIGg==
+X-Gm-Message-State: AOAM533ublXuGgxI0dhJIiuEcH94HnlFtFk3+lxRZf6qAO8pjSpFAMku
+        DkfxZNxLmdPodG8lQ8aOhlUTZEUj
+X-Google-Smtp-Source: ABdhPJzA6RNFC8sIb0aYFvViBLwsTPsl2CQ44CgAvuitFS1/4DLJkqrvappZrBKOjY2QN2v6p9Qe7w==
+X-Received: by 2002:ac8:5542:: with SMTP id o2mr60488632qtr.47.1594223420287;
+        Wed, 08 Jul 2020 08:50:20 -0700 (PDT)
+Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
+        by smtp.gmail.com with ESMTPSA id h41sm26996qtk.68.2020.07.08.08.50.19
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 08 Jul 2020 08:50:19 -0700 (PDT)
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v1 0/1] NFS: Fix -EREMOTEIO error on interrupted slots
+Date:   Wed,  8 Jul 2020 11:50:17 -0400
+Message-Id: <20200708155018.110150-1-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.27.0
 MIME-Version: 1.0
-In-Reply-To: <20200701182803.14947-5-nazard@nazar.ca>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello,
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-On 7/1/20 2:27 PM, Doug Nazar wrote:
-> Signed-off-by: Doug Nazar <nazard@nazar.ca>
-> ---
->  utils/gssd/krb5_util.c | 14 +++++++-------
->  1 file changed, 7 insertions(+), 7 deletions(-)
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index c49c6672..b1e48241 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -484,7 +484,7 @@ gssd_get_single_krb5_cred(krb5_context context,
->  	if (ccache)
->  		krb5_cc_close(context, ccache);
->  	krb5_free_cred_contents(context, &my_creds);
-> -	krb5_free_string(context, k5err);
-> +	free(k5err);
->  	return (code);
->  }
->  
-> @@ -723,7 +723,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
->  				 "we failed to unparse principal name: %s\n",
->  				 k5err);
->  			k5_free_kt_entry(context, kte);
-> -			krb5_free_string(context, k5err);
-> +			free(k5err);
->  			k5err = NULL;
->  			continue;
->  		}
-> @@ -770,7 +770,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
->  	if (retval < 0)
->  		retval = 0;
->    out:
-> -	krb5_free_string(context, k5err);
-> +	free(k5err);
->  	return retval;
->  }
->  
-> @@ -927,7 +927,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
->  				k5err = gssd_k5_err_msg(context, code);
->  				printerr(1, "%s while building principal for '%s'\n",
->  					 k5err, spn);
-> -				krb5_free_string(context, k5err);
-> +				free(k5err);
->  				k5err = NULL;
->  				continue;
->  			}
-> @@ -937,7 +937,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
->  				k5err = gssd_k5_err_msg(context, code);
->  				printerr(3, "%s while getting keytab entry for '%s'\n",
->  					 k5err, spn);
-> -				krb5_free_string(context, k5err);
-> +				free(k5err);
->  				k5err = NULL;
->  				/*
->  				 * We tried the active directory machine account
-> @@ -986,7 +986,7 @@ out:
->  		k5_free_default_realm(context, default_realm);
->  	if (realmnames)
->  		krb5_free_host_realm(context, realmnames);
-> -	krb5_free_string(context, k5err);
-> +	free(k5err);
->  	return retval;
->  }
->  
-> @@ -1355,7 +1355,7 @@ out_free_kt:
->  out_free_context:
->  	krb5_free_context(context);
->  out:
-> -	krb5_free_string(context, k5err);
-> +	free(k5err);
->  	return retval;
->  }
->  
-> 
-I'm curious about these changes... since all krb5_free_string()
-does is call free()... where is the "strdup'd msg" coming from?
+The scenario is as follows:
+ - The client attempts to remove a file on the server, but the remove is
+   interrupted AFTER the server receives it.
+ - At the same time, another thread removes the same file on the server
+   before NFSD has a chance to remove it
+ - The client then attempts another NFS operation with the same slot.
 
-steved.
+Because another thread removed the file the vfs returns -ENOENT to NFSD,
+which causes NFSD to reply to the next operation on the same slot with
+the result of the REMOVE (even if we asked for an OPEN). The client
+detects the mismatched operations during decoding, and returns
+-EREMOTEIO to the application.
+
+The timing is tricky to get right on this, so I added a 3-second sleep
+to nfsd4_remove() before calling nfsd_unlink():
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a09c35f0f6f0..bd93be50eaa8 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -851,6 +851,8 @@ nfsd4_remove(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	if (opens_in_grace(SVC_NET(rqstp)))
+ 		return nfserr_grace;
++
++	ssleep(3);
+ 	status = nfsd_unlink(rqstp, &cstate->current_fh, 0,
+ 			     remove->rm_name, remove->rm_namelen);
+ 	if (!status) {
+
+
+I'm able to hit this every time using the following script combined with
+the artifical delay on the server:
+
+#!/bin/bash
+SERVER=192.168.111.200
+SERVER_DIR=/srv/test
+CLIENT_DIR=/mnt/test
+
+ssh $SERVER "echo test > $SERVER_DIR/test1"
+rm -v $CLIENT_DIR/test1 &
+sleep 1
+killall -9 rm
+ssh $SERVER "rm $SERVER_DIR/test1"
+echo "test2" > $CLIENT_DIR/test2
+
+
+I was able to solve the issue by sending a SEQUENCE using the same slot.
+The server replies to this with NFS4ERR_SEQ_FALSE_RETRY instead of an
+operation from the reply cache, and we are able to recover from here.
+
+Thoughts?
+Anna
+
+Anna Schumaker (1):
+  NFS: Fix interrupted slots by sending a solo SEQUENCE operation
+
+ fs/nfs/nfs4proc.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+
+-- 
+2.27.0
 
