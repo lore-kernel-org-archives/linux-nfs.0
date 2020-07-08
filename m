@@ -1,145 +1,147 @@
-Return-Path: <SRS0=4hnT=AS=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=7+dT=AT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B897C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue,  7 Jul 2020 19:50:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4630C433DF
+	for <linux-nfs@archiver.kernel.org>; Wed,  8 Jul 2020 14:50:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E10E6206F6
-	for <linux-nfs@archiver.kernel.org>; Tue,  7 Jul 2020 19:50:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7BB6020720
+	for <linux-nfs@archiver.kernel.org>; Wed,  8 Jul 2020 14:50:13 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="MQTnTpUF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728530AbgGGTuW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 7 Jul 2020 15:50:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46022 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726951AbgGGTuW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jul 2020 15:50:22 -0400
-Received: from smtp.al2klimov.de (smtp.al2klimov.de [IPv6:2a01:4f8:c0c:1465::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0CF4C061755;
-        Tue,  7 Jul 2020 12:50:21 -0700 (PDT)
-Received: from authenticated-user (PRIMARY_HOSTNAME [PUBLIC_IP])
-        by smtp.al2klimov.de (Postfix) with ESMTPA id 52F51BC0C1;
-        Tue,  7 Jul 2020 19:50:18 +0000 (UTC)
-From:   "Alexander A. Klimov" <grandmaster@al2klimov.de>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, chuck.lever@oracle.com, davem@davemloft.net,
-        kuba@kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, netdev@vger.kernel.org
-Cc:     "Alexander A. Klimov" <grandmaster@al2klimov.de>
-Subject: [PATCH] Replace HTTP links with HTTPS ones: NFS, SUNRPC, and LOCKD clients
-Date:   Tue,  7 Jul 2020 21:50:12 +0200
-Message-Id: <20200707195012.52559-1-grandmaster@al2klimov.de>
+        id S1729625AbgGHOuN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 8 Jul 2020 10:50:13 -0400
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:31961 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1729206AbgGHOuM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jul 2020 10:50:12 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1594219811;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=47zG5omVzgKomzLQDhiyB0uXTW9JWgLP19IjH1Zmztg=;
+        b=MQTnTpUFGnT3egRLbYJQAO/e4QIcRcBwHRlUkVAWuBS1EEJu8CqTQqAjBMfOxShKu+9sOM
+        SUmefzjp29+SZDQAEo/7jZB4LYM4xS1yxK+V9MDAdS636EbxodP6XOL8EYZQS3/KI3Wtsw
+        rxisUx7FqbtBpshwL6B51PUzwIRf1So=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-291-0cej2CeaNVm__aveDLc2sw-1; Wed, 08 Jul 2020 10:50:09 -0400
+X-MC-Unique: 0cej2CeaNVm__aveDLc2sw-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6D9891B2C980;
+        Wed,  8 Jul 2020 14:50:08 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-95.phx2.redhat.com [10.3.112.95])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E53F45FC3B;
+        Wed,  8 Jul 2020 14:50:07 +0000 (UTC)
+Subject: Re: [PATCH 04/10] gssd: gssd_k5_err_msg() returns a ". Use free() to
+ release.
+To:     Doug Nazar <nazard@nazar.ca>, linux-nfs@vger.kernel.org
+References: <20200701182803.14947-1-nazard@nazar.ca>
+ <20200701182803.14947-5-nazard@nazar.ca>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <3a758b78-e477-4a75-63ca-65333a413599@RedHat.com>
+Date:   Wed, 8 Jul 2020 10:50:07 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Spamd-Bar: +++++
-Authentication-Results: smtp.al2klimov.de;
-        auth=pass smtp.auth=aklimov@al2klimov.de smtp.mailfrom=grandmaster@al2klimov.de
+In-Reply-To: <20200701182803.14947-5-nazard@nazar.ca>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Rationale:
-Reduces attack surface on kernel devs opening the links for MITM
-as HTTPS traffic is much harder to manipulate.
+Hello,
 
-Deterministic algorithm:
-For each file:
-  If not .svg:
-    For each line:
-      If doesn't contain `\bxmlns\b`:
-        For each link, `\bhttp://[^# \t\r\n]*(?:\w|/)`:
-          If both the HTTP and HTTPS versions
-          return 200 OK and serve the same content:
-            Replace HTTP with HTTPS.
+On 7/1/20 2:27 PM, Doug Nazar wrote:
+> Signed-off-by: Doug Nazar <nazard@nazar.ca>
+> ---
+>  utils/gssd/krb5_util.c | 14 +++++++-------
+>  1 file changed, 7 insertions(+), 7 deletions(-)
+> 
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index c49c6672..b1e48241 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -484,7 +484,7 @@ gssd_get_single_krb5_cred(krb5_context context,
+>  	if (ccache)
+>  		krb5_cc_close(context, ccache);
+>  	krb5_free_cred_contents(context, &my_creds);
+> -	krb5_free_string(context, k5err);
+> +	free(k5err);
+>  	return (code);
+>  }
+>  
+> @@ -723,7 +723,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+>  				 "we failed to unparse principal name: %s\n",
+>  				 k5err);
+>  			k5_free_kt_entry(context, kte);
+> -			krb5_free_string(context, k5err);
+> +			free(k5err);
+>  			k5err = NULL;
+>  			continue;
+>  		}
+> @@ -770,7 +770,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+>  	if (retval < 0)
+>  		retval = 0;
+>    out:
+> -	krb5_free_string(context, k5err);
+> +	free(k5err);
+>  	return retval;
+>  }
+>  
+> @@ -927,7 +927,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
+>  				k5err = gssd_k5_err_msg(context, code);
+>  				printerr(1, "%s while building principal for '%s'\n",
+>  					 k5err, spn);
+> -				krb5_free_string(context, k5err);
+> +				free(k5err);
+>  				k5err = NULL;
+>  				continue;
+>  			}
+> @@ -937,7 +937,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
+>  				k5err = gssd_k5_err_msg(context, code);
+>  				printerr(3, "%s while getting keytab entry for '%s'\n",
+>  					 k5err, spn);
+> -				krb5_free_string(context, k5err);
+> +				free(k5err);
+>  				k5err = NULL;
+>  				/*
+>  				 * We tried the active directory machine account
+> @@ -986,7 +986,7 @@ out:
+>  		k5_free_default_realm(context, default_realm);
+>  	if (realmnames)
+>  		krb5_free_host_realm(context, realmnames);
+> -	krb5_free_string(context, k5err);
+> +	free(k5err);
+>  	return retval;
+>  }
+>  
+> @@ -1355,7 +1355,7 @@ out_free_kt:
+>  out_free_context:
+>  	krb5_free_context(context);
+>  out:
+> -	krb5_free_string(context, k5err);
+> +	free(k5err);
+>  	return retval;
+>  }
+>  
+> 
+I'm curious about these changes... since all krb5_free_string()
+does is call free()... where is the "strdup'd msg" coming from?
 
-Signed-off-by: Alexander A. Klimov <grandmaster@al2klimov.de>
----
- Continuing my work started at 93431e0607e5.
-
- If there are any URLs to be removed completely or at least not HTTPSified:
- Just clearly say so and I'll *undo my change*.
- See also https://lkml.org/lkml/2020/6/27/64
-
- If there are any valid, but yet not changed URLs:
- See https://lkml.org/lkml/2020/6/26/837
-
- fs/lockd/mon.c                  | 2 +-
- include/linux/sunrpc/bc_xprt.h  | 2 +-
- include/linux/sunrpc/msg_prot.h | 2 +-
- net/sunrpc/backchannel_rqst.c   | 2 +-
- net/sunrpc/sunrpc.h             | 2 +-
- 5 files changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 1eabd91870e6..1d9488cf0534 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -417,7 +417,7 @@ void nsm_release(struct nsm_handle *nsm)
- /*
-  * XDR functions for NSM.
-  *
-- * See http://www.opengroup.org/ for details on the Network
-+ * See https://www.opengroup.org/ for details on the Network
-  * Status Monitor wire protocol.
-  */
- 
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index d796058cdff2..f07c334c599f 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -4,7 +4,7 @@
- 
- NetApp provides this source code under the GPL v2 License.
- The GPL v2 license is available at
--http://opensource.org/licenses/gpl-license.php.
-+https://opensource.org/licenses/gpl-license.php.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
-index bea40d9f03a1..43f854487539 100644
---- a/include/linux/sunrpc/msg_prot.h
-+++ b/include/linux/sunrpc/msg_prot.h
-@@ -143,7 +143,7 @@ typedef __be32	rpc_fraghdr;
- /*
-  * Well-known netids. See:
-  *
-- *   http://www.iana.org/assignments/rpc-netids/rpc-netids.xhtml
-+ *   https://www.iana.org/assignments/rpc-netids/rpc-netids.xhtml
-  */
- #define RPCBIND_NETID_UDP	"udp"
- #define RPCBIND_NETID_TCP	"tcp"
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 195b40c5dae4..3fecad369592 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -5,7 +5,7 @@
- 
- NetApp provides this source code under the GPL v2 License.
- The GPL v2 license is available at
--http://opensource.org/licenses/gpl-license.php.
-+https://opensource.org/licenses/gpl-license.php.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-index f6fe2e6cd65a..2f59464e6524 100644
---- a/net/sunrpc/sunrpc.h
-+++ b/net/sunrpc/sunrpc.h
-@@ -4,7 +4,7 @@
- 
- NetApp provides this source code under the GPL v2 License.
- The GPL v2 license is available at
--http://opensource.org/licenses/gpl-license.php.
-+https://opensource.org/licenses/gpl-license.php.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
--- 
-2.27.0
+steved.
 
