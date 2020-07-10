@@ -2,77 +2,119 @@ Return-Path: <SRS0=vVyH=AV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD32BC433E0
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Jul 2020 20:37:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87BB6C433E1
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Jul 2020 20:37:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 85B7D2075D
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Jul 2020 20:37:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5A01B2075D
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Jul 2020 20:37:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="daOeRwg3"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Lf6WHgKW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728146AbgGJUhE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Jul 2020 16:37:04 -0400
-Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:39796 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727086AbgGJUhE (ORCPT
+        id S1727820AbgGJUhF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Jul 2020 16:37:05 -0400
+Received: from us-smtp-2.mimecast.com ([207.211.31.81]:47573 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726725AbgGJUhE (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2020 16:37:04 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1594413423;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=hT08BMjw/4UeT3A1ba84465T9AIXzKJxlIjglRTTEsE=;
-        b=daOeRwg3mY1+ofoNfOwaReUc437Im4bZil3qHmyjei7jvolJRp3erp9OEsQmWnso7GZWVT
-        D8F+JVoucD3YsZaZ/Sr4BHzJS2PKdDRxiUm+4vQB0xor1DPU4L0VFQXv0Mbeu1+gNkKXhy
-        K3Qjuen6L5d3ETKhpo1oFW6xFNKgwGA=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=2SzHac3Ct3/Ey8/0VOkLkyClJK2CehQmPHYM2FvcU3Q=;
+        b=Lf6WHgKWR/MOwp1GkJEtnX56tx70w/70zxOU/zjDC8G3aM1dkvZ+ZbmXsxxHQLMQXiGCoP
+        nkeUQ0pRFwa6bCMyPVRl28x0OH2Y91Df9osXDZbzShxh/A3vqM8BOj/nzpk9G9UyJ8iXXB
+        NZNWcaYTuJerEAp8+/Chs3SBQ9Rih8s=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-260-FB3wo0E7O22aNKNhqujfpA-1; Fri, 10 Jul 2020 16:37:02 -0400
-X-MC-Unique: FB3wo0E7O22aNKNhqujfpA-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+ us-mta-29-GpwdaCizNT2UhuF09mwfyQ-1; Fri, 10 Jul 2020 16:37:02 -0400
+X-MC-Unique: GpwdaCizNT2UhuF09mwfyQ-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 42CAC1083
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4B718100A68E
         for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2020 20:37:01 +0000 (UTC)
 Received: from aion.usersys.redhat.com (ovpn-113-242.rdu2.redhat.com [10.10.113.242])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 268107EF99;
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 2F91210013C4;
         Fri, 10 Jul 2020 20:37:01 +0000 (UTC)
 Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
-        id 5ABB51A0245; Fri, 10 Jul 2020 16:37:00 -0400 (EDT)
+        id 6F4861A025A; Fri, 10 Jul 2020 16:37:00 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH 0/5] nfsdcld: Fix a number of Coverity Scan
-Date:   Fri, 10 Jul 2020 16:36:55 -0400
-Message-Id: <20200710203700.2546112-1-smayhew@redhat.com>
+Subject: [nfs-utils PATCH 4/5] nfsdcld: Fix a few Coverity Scan CLANG_WARNING errors
+Date:   Fri, 10 Jul 2020 16:36:59 -0400
+Message-Id: <20200710203700.2546112-5-smayhew@redhat.com>
+In-Reply-To: <20200710203700.2546112-1-smayhew@redhat.com>
+References: <20200710203700.2546112-1-smayhew@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These patches fix some errors in nfsdcld flagged by the Coverity scan
-software.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c | 6 ++++--
+ utils/nfsdcld/sqlite.c  | 3 ++-
+ 2 files changed, 6 insertions(+), 3 deletions(-)
 
-Scott Mayhew (5):
-  nfsdcld: Fix a few Coverity Scan RESOURCE_LEAK errors
-  nfsdcld: Fix a few Coverity Scan TOCTOU errors
-  nfsdcld: Fix a few Coverity Scan STRING_NULL errors
-  nfsdcld: Fix a few Coverity Scan CLANG_WARNING errors
-  nfsdcld: Fix a few Coverity Scan CHECKED_RETURN errors.
-
- utils/nfsdcld/legacy.c  | 38 ++++++++++++--------------------------
- utils/nfsdcld/nfsdcld.c |  7 +++++--
- utils/nfsdcld/sqlite.c  |  5 +++--
- 3 files changed, 20 insertions(+), 30 deletions(-)
-
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index bb8e365..9b6d2c3 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -252,11 +252,12 @@ cld_inotify_setup(void)
+ 		xlog_err("%s: inotify_add_watch failed: %m", __func__);
+ 		ret = -errno;
+ 		goto out_err;
+-	}
++	} else
++		ret = 0;
+ 
+ out_free:
+ 	free(dirc);
+-	return 0;
++	return ret;
+ out_err:
+ 	close(inotify_fd);
+ 	goto out_free;
+@@ -796,6 +797,7 @@ main(int argc, char **argv)
+ 			break;
+ 		default:
+ 			usage(progname);
++			free(progname);
+ 			return 0;
+ 		}
+ 	}
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index e61e67c..ef11a54 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -831,7 +831,6 @@ sqlite_prepare_dbh(const char *topdir)
+ 	switch (ret) {
+ 	case CLD_SQLITE_LATEST_SCHEMA_VERSION:
+ 		/* DB is already set up. Do nothing */
+-		ret = 0;
+ 		break;
+ 	case 3:
+ 		/* Old DB -- update to new schema */
+@@ -868,6 +867,8 @@ sqlite_prepare_dbh(const char *topdir)
+ 	}
+ 
+ 	ret = sqlite_startup_query_grace();
++	if (ret)
++		goto out_close;
+ 
+ 	ret = sqlite_query_first_time(&first_time);
+ 	if (ret)
 -- 
 2.25.4
 
