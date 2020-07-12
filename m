@@ -1,126 +1,227 @@
-Return-Path: <SRS0=vVyH=AV=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=4TIs=AX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNPARSEABLE_RELAY autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B945C433E5
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Jul 2020 20:37:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 71187C433DF
+	for <linux-nfs@archiver.kernel.org>; Sun, 12 Jul 2020 14:47:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 66AAF2075D
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Jul 2020 20:37:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 469D5206D9
+	for <linux-nfs@archiver.kernel.org>; Sun, 12 Jul 2020 14:47:08 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="CAbpOjh+"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="E7xijBbT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728003AbgGJUhG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Jul 2020 16:37:06 -0400
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:42672 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727840AbgGJUhF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2020 16:37:05 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1594413424;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=uGBjYBBnrmlbW76UC/Zf/TpBSoipVj9Ds1NUss7ASjM=;
-        b=CAbpOjh+YN3lE3TadSGLQjkFkQmm9x9h22U5fMSFY0ZtYVci5+k4f+R8RFTeH8Lxv4/fsA
-        +NGnZL+0/QMaAZLVBUmaiJbUmYLUslklfgRlRO9WQbD7JRla0nckV0FZT6muXGrCZk5uGr
-        dHDhc7U2wz0DKcbHRNy/ffrMdMWxm1w=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-12-Gsv9TsmXOJuYUNuvuPGekQ-1; Fri, 10 Jul 2020 16:37:02 -0400
-X-MC-Unique: Gsv9TsmXOJuYUNuvuPGekQ-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 32D3D800597
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2020 20:37:01 +0000 (UTC)
-Received: from aion.usersys.redhat.com (ovpn-113-242.rdu2.redhat.com [10.10.113.242])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1956B7EF92;
-        Fri, 10 Jul 2020 20:37:01 +0000 (UTC)
-Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
-        id 67B3B1A0254; Fri, 10 Jul 2020 16:37:00 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     steved@redhat.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH 2/5] nfsdcld: Fix a few Coverity Scan TOCTOU errors
-Date:   Fri, 10 Jul 2020 16:36:57 -0400
-Message-Id: <20200710203700.2546112-3-smayhew@redhat.com>
-In-Reply-To: <20200710203700.2546112-1-smayhew@redhat.com>
-References: <20200710203700.2546112-1-smayhew@redhat.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+        id S1728844AbgGLOrH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 12 Jul 2020 10:47:07 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:41256 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728786AbgGLOrG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jul 2020 10:47:06 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06CEhH5G014035;
+        Sun, 12 Jul 2020 14:47:00 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=zDeK5RziViwzXmbwfqq5aLI663VszJzfDtqfjAjEd7s=;
+ b=E7xijBbTQRxz0vblsaVIjW9uarQ4SnALb3kl2PRDWcfzNwtyewe/FD46/OCF11PbYcrF
+ hM266XApPaD6irNngCtDiCplfwclvwYR+5k+CcjPbb+l+T0o/bGlqZqPXMhVlO8Ft5oe
+ 4s/28SR8iV2cfcxY0JGxXzObhL6MI7gynxvnvWN8TtplBC0w3lLMEU8TFeANUZY58OuD
+ olADty1Sa69fftfKk4JC8EfKJLKv3K/oiFnFTDyO0KTWm7/7At+hMBfd3UF4GK2v5dgr
+ 9BSwlHtGes5YPRMRxXZWRGQgeZjJuKddM0P34aW8sc9t+DWDCRSTkwHqtO2hrXMsTEvV Mg== 
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
+        by userp2130.oracle.com with ESMTP id 3274uqum17-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Sun, 12 Jul 2020 14:46:59 +0000
+Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
+        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06CEhQph035071;
+        Sun, 12 Jul 2020 14:46:59 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserp3020.oracle.com with ESMTP id 327qax071p-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 12 Jul 2020 14:46:59 +0000
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 06CEkrAf022939;
+        Sun, 12 Jul 2020 14:46:53 GMT
+Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Sun, 12 Jul 2020 07:46:53 -0700
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.80.23.2.2\))
+Subject: Re: [PATCH] nfsd: avoid a NULL dereference in __cld_pipe_upcall()
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20200710203307.2545412-1-smayhew@redhat.com>
+Date:   Sun, 12 Jul 2020 10:46:52 -0400
+Cc:     Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Message-Id: <B6722AC5-A7DD-4EAF-B08A-45C12160D5DF@oracle.com>
+References: <20200710203307.2545412-1-smayhew@redhat.com>
+To:     Scott Mayhew <smayhew@redhat.com>
+X-Mailer: Apple Mail (2.3608.80.23.2.2)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9680 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 malwarescore=0
+ mlxscore=0 spamscore=0 phishscore=0 suspectscore=0 bulkscore=0
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2006250000 definitions=main-2007120116
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9680 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 lowpriorityscore=0 impostorscore=0
+ suspectscore=0 phishscore=0 spamscore=0 mlxlogscore=999 malwarescore=0
+ mlxscore=0 priorityscore=1501 adultscore=0 bulkscore=0 clxscore=1015
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2007120116
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Calling stat() on recdirname so that we can see if it's a directory is
-unnecessary anyways, since opendir() will report an error if it's not.
+Hi Scott-
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- utils/nfsdcld/legacy.c | 20 --------------------
- 1 file changed, 20 deletions(-)
+> On Jul 10, 2020, at 4:33 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> 
+> If the rpc_pipefs is unmounted, then the rpc_pipe->dentry becomes NULL
+> and dereferencing the dentry->d_sb will trigger an oops.  The only
+> reason we're doing that is to determine the nfsd_net, which could
+> instead be passed in by the caller.  So do that instead.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 
-diff --git a/utils/nfsdcld/legacy.c b/utils/nfsdcld/legacy.c
-index b8ea4ff..1fb74d4 100644
---- a/utils/nfsdcld/legacy.c
-+++ b/utils/nfsdcld/legacy.c
-@@ -50,7 +50,6 @@ legacy_load_clients_from_recdir(int *num_records)
- 	struct dirent *entry;
- 	char recdirname[PATH_MAX];
- 	char buf[NFS4_OPAQUE_LIMIT];
--	struct stat st;
- 	char *nl;
- 
- 	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
-@@ -69,15 +68,6 @@ legacy_load_clients_from_recdir(int *num_records)
- 	if (!nl)
- 		return;
- 	*nl = '\0';
--	if (stat(recdirname, &st) < 0) {
--		xlog(D_GENERAL, "Unable to stat %s: %d", recdirname, errno);
--		return;
--	}
--	if (!S_ISDIR(st.st_mode)) {
--		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdirname
--				, st.st_mode);
--		return;
--	}
- 	v4recovery = opendir(recdirname);
- 	if (!v4recovery)
- 		return;
-@@ -126,7 +116,6 @@ legacy_clear_recdir(void)
- 	struct dirent *entry;
- 	char recdirname[PATH_MAX];
- 	char dirname[PATH_MAX];
--	struct stat st;
- 	char *nl;
- 
- 	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
-@@ -145,15 +134,6 @@ legacy_clear_recdir(void)
- 	if (!nl)
- 		return;
- 	*nl = '\0';
--	if (stat(recdirname, &st) < 0) {
--		xlog(D_GENERAL, "Unable to stat %s: %d", recdirname, errno);
--		return;
--	}
--	if (!S_ISDIR(st.st_mode)) {
--		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdirname
--				, st.st_mode);
--		return;
--	}
- 	v4recovery = opendir(recdirname);
- 	if (!v4recovery)
- 		return;
--- 
-2.25.4
+Looks straightforward. Applied to the nfsd-5.9 testing tree.
+
+I'm wondering about automatic backports to stable. This fix does not
+apply to kernels before v5.6, but IIUC addresses a crash introduced
+in f3f8014862d8 ("nfsd: add the infrastructure to handle the cld upcall")
+[2012] ?
+
+Is "Cc: <stable@kernel.org> # v5.6+" appropriate?
+
+Also, is there a bug report that documents the crash?
+
+
+> ---
+> fs/nfsd/nfs4recover.c | 24 +++++++++++-------------
+> 1 file changed, 11 insertions(+), 13 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index 9e40dfecf1b1..186fa2c2c6ba 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -747,13 +747,11 @@ struct cld_upcall {
+> };
+> 
+> static int
+> -__cld_pipe_upcall(struct rpc_pipe *pipe, void *cmsg)
+> +__cld_pipe_upcall(struct rpc_pipe *pipe, void *cmsg, struct nfsd_net *nn)
+> {
+> 	int ret;
+> 	struct rpc_pipe_msg msg;
+> 	struct cld_upcall *cup = container_of(cmsg, struct cld_upcall, cu_u);
+> -	struct nfsd_net *nn = net_generic(pipe->dentry->d_sb->s_fs_info,
+> -					  nfsd_net_id);
+> 
+> 	memset(&msg, 0, sizeof(msg));
+> 	msg.data = cmsg;
+> @@ -773,7 +771,7 @@ __cld_pipe_upcall(struct rpc_pipe *pipe, void *cmsg)
+> }
+> 
+> static int
+> -cld_pipe_upcall(struct rpc_pipe *pipe, void *cmsg)
+> +cld_pipe_upcall(struct rpc_pipe *pipe, void *cmsg, struct nfsd_net *nn)
+> {
+> 	int ret;
+> 
+> @@ -782,7 +780,7 @@ cld_pipe_upcall(struct rpc_pipe *pipe, void *cmsg)
+> 	 *  upcalls queued.
+> 	 */
+> 	do {
+> -		ret = __cld_pipe_upcall(pipe, cmsg);
+> +		ret = __cld_pipe_upcall(pipe, cmsg, nn);
+> 	} while (ret == -EAGAIN);
+> 
+> 	return ret;
+> @@ -1115,7 +1113,7 @@ nfsd4_cld_create(struct nfs4_client *clp)
+> 	memcpy(cup->cu_u.cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
+> 			clp->cl_name.len);
+> 
+> -	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg, nn);
+> 	if (!ret) {
+> 		ret = cup->cu_u.cu_msg.cm_status;
+> 		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+> @@ -1180,7 +1178,7 @@ nfsd4_cld_create_v2(struct nfs4_client *clp)
+> 	} else
+> 		cmsg->cm_u.cm_clntinfo.cc_princhash.cp_len = 0;
+> 
+> -	ret = cld_pipe_upcall(cn->cn_pipe, cmsg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, cmsg, nn);
+> 	if (!ret) {
+> 		ret = cmsg->cm_status;
+> 		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+> @@ -1218,7 +1216,7 @@ nfsd4_cld_remove(struct nfs4_client *clp)
+> 	memcpy(cup->cu_u.cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
+> 			clp->cl_name.len);
+> 
+> -	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg, nn);
+> 	if (!ret) {
+> 		ret = cup->cu_u.cu_msg.cm_status;
+> 		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+> @@ -1261,7 +1259,7 @@ nfsd4_cld_check_v0(struct nfs4_client *clp)
+> 	memcpy(cup->cu_u.cu_msg.cm_u.cm_name.cn_id, clp->cl_name.data,
+> 			clp->cl_name.len);
+> 
+> -	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg, nn);
+> 	if (!ret) {
+> 		ret = cup->cu_u.cu_msg.cm_status;
+> 		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+> @@ -1404,7 +1402,7 @@ nfsd4_cld_grace_start(struct nfsd_net *nn)
+> 	}
+> 
+> 	cup->cu_u.cu_msg.cm_cmd = Cld_GraceStart;
+> -	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg, nn);
+> 	if (!ret)
+> 		ret = cup->cu_u.cu_msg.cm_status;
+> 
+> @@ -1432,7 +1430,7 @@ nfsd4_cld_grace_done_v0(struct nfsd_net *nn)
+> 
+> 	cup->cu_u.cu_msg.cm_cmd = Cld_GraceDone;
+> 	cup->cu_u.cu_msg.cm_u.cm_gracetime = nn->boot_time;
+> -	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg, nn);
+> 	if (!ret)
+> 		ret = cup->cu_u.cu_msg.cm_status;
+> 
+> @@ -1460,7 +1458,7 @@ nfsd4_cld_grace_done(struct nfsd_net *nn)
+> 	}
+> 
+> 	cup->cu_u.cu_msg.cm_cmd = Cld_GraceDone;
+> -	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg, nn);
+> 	if (!ret)
+> 		ret = cup->cu_u.cu_msg.cm_status;
+> 
+> @@ -1524,7 +1522,7 @@ nfsd4_cld_get_version(struct nfsd_net *nn)
+> 		goto out_err;
+> 	}
+> 	cup->cu_u.cu_msg.cm_cmd = Cld_GetVersion;
+> -	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg);
+> +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_u.cu_msg, nn);
+> 	if (!ret) {
+> 		ret = cup->cu_u.cu_msg.cm_status;
+> 		if (ret)
+> -- 
+> 2.25.4
+> 
+
+--
+Chuck Lever
+
+
 
