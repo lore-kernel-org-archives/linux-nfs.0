@@ -2,52 +2,53 @@ Return-Path: <SRS0=AYid=AY=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0922C433E8
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:35:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EEA9C433E2
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:35:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8EDF82067D
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:35:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3F536206F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:35:40 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ENTbKQJb"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="PvATHN9D"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730370AbgGMQfM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Jul 2020 12:35:12 -0400
-Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:42454 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1730148AbgGMQfL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2020 12:35:11 -0400
+        id S1730720AbgGMQfg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Jul 2020 12:35:36 -0400
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:51728 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1730047AbgGMQff (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2020 12:35:35 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1594658109;
+        s=mimecast20190719; t=1594658133;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=rVenIhoN1kPnORHI5PqF7aNOKItyyL3fIQiCBHDCBTc=;
-        b=ENTbKQJbL04/j+EVDr4sUACXXvjffQOcEjrFD9ftk+xtSoEO1vZJIYG2Bi0200wXq+jqCn
-        Hoxi6iRI/jhSXCHEa4PSrNP74piYN3tvBWsZkaghJlE8gETn3TTbj226WDRHu295OP2wrH
-        j0bdOrqmyZB4oEjZffDdOkSKRnUF5zg=
+        bh=wQkmMwKqdoqPES4EgtSnMTmwzuuUgpaX2PYBWluvNRQ=;
+        b=PvATHN9DVuK0+31uvBsPEDkGeMPFDC8g6ZvrGw5sOidv/1+K+n8XRwPNM2E8OnihoPkFFE
+        +TCxehYkWNQrEG7ev3W+tW6PZQ7W4jPSmD08sLermsTrWOpfL0fH6RM73CVzGJzji9v1gT
+        saCpbO436N8tNWvSBHwmLdDLqbYm+TU=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-321-uyg96JPGOSKroSyJJz1-4w-1; Mon, 13 Jul 2020 12:35:05 -0400
-X-MC-Unique: uyg96JPGOSKroSyJJz1-4w-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+ us-mta-191-FznXJ4y8M4qbT_ZvwuEGwg-1; Mon, 13 Jul 2020 12:35:28 -0400
+X-MC-Unique: FznXJ4y8M4qbT_ZvwuEGwg-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6B7251009441;
-        Mon, 13 Jul 2020 16:35:03 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 07B1E107ACCA;
+        Mon, 13 Jul 2020 16:35:27 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-112-113.rdu2.redhat.com [10.10.112.113])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C3B7310021B3;
-        Mon, 13 Jul 2020 16:34:57 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 4E22B60CD0;
+        Mon, 13 Jul 2020 16:35:21 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 23/32] cachefiles: Add I/O tracepoints
+Subject: [PATCH 25/32] fscache: Display cache-specific data in
+ /proc/fs/fscache/objects
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -60,226 +61,193 @@ Cc:     Jeff Layton <jlayton@redhat.com>,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 13 Jul 2020 17:34:57 +0100
-Message-ID: <159465809699.1376674.8132002248953593870.stgit@warthog.procyon.org.uk>
+Date:   Mon, 13 Jul 2020 17:35:20 +0100
+Message-ID: <159465812047.1376674.773368234437370021.stgit@warthog.procyon.org.uk>
 In-Reply-To: <159465784033.1376674.18106463693989811037.stgit@warthog.procyon.org.uk>
 References: <159465784033.1376674.18106463693989811037.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.22
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Allow the cache to add information in /proc/fs/fscache/objects instead of
+displaying cookie key and aux data - which can be seen in the cookies file.
 
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/cachefiles/interface.c         |   16 +++--
- fs/cachefiles/io.c                |    2 +
- include/trace/events/cachefiles.h |  123 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 136 insertions(+), 5 deletions(-)
+ fs/cachefiles/content-map.c   |   41 +++++++++++++++++++++++++++++++++++++++++
+ fs/cachefiles/interface.c     |    1 +
+ fs/cachefiles/internal.h      |    1 +
+ fs/fscache/object-list.c      |   33 +++------------------------------
+ include/linux/fscache-cache.h |    4 ++++
+ 5 files changed, 50 insertions(+), 30 deletions(-)
 
+diff --git a/fs/cachefiles/content-map.c b/fs/cachefiles/content-map.c
+index 91c44bb39a93..f2a10e8d8d6d 100644
+--- a/fs/cachefiles/content-map.c
++++ b/fs/cachefiles/content-map.c
+@@ -396,3 +396,44 @@ void cachefiles_save_content_map(struct cachefiles_object *object)
+ 
+ 	_leave(" = %zd", ret);
+ }
++
++/*
++ * Display object information in proc.
++ */
++int cachefiles_display_object(struct seq_file *m, struct fscache_object *_object)
++{
++	struct cachefiles_object *object =
++		container_of(_object, struct cachefiles_object, fscache);
++
++	if (object->fscache.cookie->type == FSCACHE_COOKIE_TYPE_INDEX) {
++		if (object->content_info != CACHEFILES_CONTENT_NO_DATA)
++			seq_printf(m, " ???%u???", object->content_info);
++	} else {
++		switch (object->content_info) {
++		case CACHEFILES_CONTENT_NO_DATA:
++			seq_puts(m, " <n>");
++			break;
++		case CACHEFILES_CONTENT_SINGLE:
++			seq_puts(m, " <s>");
++			break;
++		case CACHEFILES_CONTENT_ALL:
++			seq_puts(m, " <a>");
++			break;
++		case CACHEFILES_CONTENT_MAP:
++			read_lock_bh(&object->content_map_lock);
++			if (object->content_map) {
++				seq_printf(m, " %*phN",
++					   object->content_map_size,
++					   object->content_map);
++			}
++			read_unlock_bh(&object->content_map_lock);
++			break;
++		default:
++			seq_printf(m, " <%u>", object->content_info);
++			break;
++		}
++	}
++
++	seq_putc(m, '\n');
++	return 0;
++}
 diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index 054d5cc794b5..e73de62d0e73 100644
+index e73de62d0e73..78180d269c5f 100644
 --- a/fs/cachefiles/interface.c
 +++ b/fs/cachefiles/interface.c
-@@ -160,7 +160,8 @@ static void cachefiles_update_object(struct fscache_object *_object)
- 	struct cachefiles_object *object;
- 	struct cachefiles_cache *cache;
- 	const struct cred *saved_cred;
--	loff_t object_size;
-+	struct inode *inode;
-+	loff_t object_size, i_size;
- 	int ret;
+@@ -491,4 +491,5 @@ const struct fscache_cache_ops cachefiles_cache_ops = {
+ 	.shape_request		= cachefiles_shape_request,
+ 	.read			= cachefiles_read,
+ 	.write			= cachefiles_write,
++	.display_object		= cachefiles_display_object,
+ };
+diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
+index 2ea469b77712..c91a9b3c5bd5 100644
+--- a/fs/cachefiles/internal.h
++++ b/fs/cachefiles/internal.h
+@@ -132,6 +132,7 @@ extern void cachefiles_expand_content_map(struct cachefiles_object *object, loff
+ extern void cachefiles_shorten_content_map(struct cachefiles_object *object, loff_t new_size);
+ extern bool cachefiles_load_content_map(struct cachefiles_object *object);
+ extern void cachefiles_save_content_map(struct cachefiles_object *object);
++extern int cachefiles_display_object(struct seq_file *m, struct fscache_object *object);
  
- 	_enter("{OBJ%x}", _object->debug_id);
-@@ -172,12 +173,15 @@ static void cachefiles_update_object(struct fscache_object *_object)
- 	cachefiles_begin_secure(cache, &saved_cred);
+ /*
+  * daemon.c
+diff --git a/fs/fscache/object-list.c b/fs/fscache/object-list.c
+index 5777f909d31a..361610e124bd 100644
+--- a/fs/fscache/object-list.c
++++ b/fs/fscache/object-list.c
+@@ -155,7 +155,6 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ 	struct fscache_cookie *cookie;
+ 	unsigned long config = data->config;
+ 	char _type[3], *type;
+-	u8 *p;
  
- 	object_size = object->fscache.cookie->object_size;
--	if (i_size_read(d_inode(object->dentry)) > object_size) {
-+	inode = d_inode(object->dentry);
-+	i_size = i_size_read(inode);
-+	if (i_size > object_size) {
- 		struct path path = {
- 			.mnt	= cache->mnt,
- 			.dentry	= object->dentry
- 		};
--		_debug("trunc %llx -> %llx", i_size_read(d_inode(object->dentry)), object_size);
-+		_debug("trunc %llx -> %llx", i_size, object_size);
-+		trace_cachefiles_trunc(object, inode, i_size, object_size);
- 		ret = vfs_truncate(&path, object_size);
- 		if (ret < 0) {
- 			cachefiles_io_error_obj(object, "Trunc-to-size failed");
-@@ -186,8 +190,10 @@ static void cachefiles_update_object(struct fscache_object *_object)
+ 	if ((unsigned long) v == 1) {
+ 		seq_puts(m, "OBJECT   PARENT   USE CHLDN OPS FL  S"
+@@ -201,8 +200,6 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ 		   obj->stage);
+ 
+ 	if (obj->cookie) {
+-		uint16_t keylen = 0, auxlen = 0;
+-
+ 		switch (cookie->type) {
+ 		case 0:
+ 			type = "IX";
+@@ -211,8 +208,7 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ 			type = "DT";
+ 			break;
+ 		default:
+-			snprintf(_type, sizeof(_type), "%02u",
+-				 cookie->type);
++			snprintf(_type, sizeof(_type), "%02x", cookie->type);
+ 			type = _type;
+ 			break;
  		}
+@@ -223,34 +219,11 @@ static int fscache_objlist_show(struct seq_file *m, void *v)
+ 			   type,
+ 			   cookie->stage,
+ 			   cookie->flags);
+-
+-		if (config & FSCACHE_OBJLIST_CONFIG_KEY)
+-			keylen = cookie->key_len;
+-
+-		if (config & FSCACHE_OBJLIST_CONFIG_AUX)
+-			auxlen = cookie->aux_len;
+-
+-		if (keylen > 0 || auxlen > 0) {
+-			seq_puts(m, " ");
+-			p = keylen <= sizeof(cookie->inline_key) ?
+-				cookie->inline_key : cookie->key;
+-			for (; keylen > 0; keylen--)
+-				seq_printf(m, "%02x", *p++);
+-			if (auxlen > 0) {
+-				if (config & FSCACHE_OBJLIST_CONFIG_KEY)
+-					seq_puts(m, ", ");
+-				p = auxlen <= sizeof(cookie->inline_aux) ?
+-					cookie->inline_aux : cookie->aux;
+-				for (; auxlen > 0; auxlen--)
+-					seq_printf(m, "%02x", *p++);
+-			}
+-		}
+-
+-		seq_puts(m, "\n");
+ 	} else {
+ 		seq_puts(m, "<no_netfs>\n");
+ 	}
+-	return 0;
++
++	return obj->cache->ops->display_object(m, obj);
+ }
  
- 		object_size = round_up(object_size, CACHEFILES_DIO_BLOCK_SIZE);
--		_debug("trunc %llx -> %llx", i_size_read(d_inode(object->dentry)), object_size);
--		if (i_size_read(d_inode(object->dentry)) < object_size) {
-+		i_size = i_size_read(inode);
-+		_debug("trunc %llx -> %llx", i_size, object_size);
-+		if (i_size < object_size) {
-+			trace_cachefiles_trunc(object, inode, i_size, object_size);
- 			ret = vfs_truncate(&path, object_size);
- 			if (ret < 0) {
- 				cachefiles_io_error_obj(object, "Trunc-to-dio-size failed");
-diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
-index 42e0d620d778..268e6f69ba9c 100644
---- a/fs/cachefiles/io.c
-+++ b/fs/cachefiles/io.c
-@@ -88,6 +88,7 @@ int cachefiles_read(struct fscache_object *obj,
- 		goto presubmission_error_free;
+ static const struct seq_operations fscache_objlist_ops = {
+diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
+index 81a41e37f07b..1357c44d371b 100644
+--- a/include/linux/fscache-cache.h
++++ b/include/linux/fscache-cache.h
+@@ -19,6 +19,7 @@
  
- 	fscache_get_io_request(req);
-+	trace_cachefiles_read(object, file_inode(file), req);
- 	ret = call_read_iter(file, &ki->iocb, iter);
- 	switch (ret) {
- 	case -EIOCBQUEUED:
-@@ -198,6 +199,7 @@ int cachefiles_write(struct fscache_object *obj,
- 	__sb_writers_release(inode->i_sb, SB_FREEZE_WRITE);
+ #define NR_MAXCACHES BITS_PER_LONG
  
- 	fscache_get_io_request(req);
-+	trace_cachefiles_write(object, inode, req);
- 	ret = call_write_iter(file, &ki->iocb, iter);
- 	switch (ret) {
- 	case -EIOCBQUEUED:
-diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cachefiles.h
-index e7af1d683009..d83568e8fee8 100644
---- a/include/trace/events/cachefiles.h
-+++ b/include/trace/events/cachefiles.h
-@@ -351,6 +351,129 @@ TRACE_EVENT(cachefiles_coherency,
- 		      __entry->content)
- 	    );
++struct seq_file;
+ struct fscache_cache;
+ struct fscache_cache_ops;
+ struct fscache_object;
+@@ -151,6 +152,9 @@ struct fscache_cache_ops {
+ 	int (*write)(struct fscache_object *object,
+ 		     struct fscache_io_request *req,
+ 		     struct iov_iter *iter);
++
++	/* Display object info in /proc/fs/fscache/objects */
++	int (*display_object)(struct seq_file *m, struct fscache_object *object);
+ };
  
-+TRACE_EVENT(cachefiles_read,
-+	    TP_PROTO(struct cachefiles_object *obj,
-+		     struct inode *backer,
-+		     struct fscache_io_request *req),
-+
-+	    TP_ARGS(obj, backer, req),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj	)
-+		    __field(unsigned int,			backer	)
-+		    __field(unsigned int,			len	)
-+		    __field(loff_t,				pos	)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj->fscache.debug_id;
-+		    __entry->backer	= backer->i_ino;
-+		    __entry->pos	= req->pos;
-+		    __entry->len	= req->len;
-+			   ),
-+
-+	    TP_printk("o=%08x b=%08x p=%llx l=%x",
-+		      __entry->obj,
-+		      __entry->backer,
-+		      __entry->pos,
-+		      __entry->len)
-+	    );
-+
-+TRACE_EVENT(cachefiles_write,
-+	    TP_PROTO(struct cachefiles_object *obj,
-+		     struct inode *backer,
-+		     struct fscache_io_request *req),
-+
-+	    TP_ARGS(obj, backer, req),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj	)
-+		    __field(unsigned int,			backer	)
-+		    __field(unsigned int,			len	)
-+		    __field(loff_t,				pos	)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj->fscache.debug_id;
-+		    __entry->backer	= backer->i_ino;
-+		    __entry->pos	= req->pos;
-+		    __entry->len	= req->len;
-+			   ),
-+
-+	    TP_printk("o=%08x b=%08x p=%llx l=%x",
-+		      __entry->obj,
-+		      __entry->backer,
-+		      __entry->pos,
-+		      __entry->len)
-+	    );
-+
-+TRACE_EVENT(cachefiles_trunc,
-+	    TP_PROTO(struct cachefiles_object *obj, struct inode *backer,
-+		     loff_t from, loff_t to),
-+
-+	    TP_ARGS(obj, backer, from, to),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj	)
-+		    __field(unsigned int,			backer	)
-+		    __field(loff_t,				from	)
-+		    __field(loff_t,				to	)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj->fscache.debug_id;
-+		    __entry->backer	= backer->i_ino;
-+		    __entry->from	= from;
-+		    __entry->to		= to;
-+			   ),
-+
-+	    TP_printk("o=%08x b=%08x l=%llx->%llx",
-+		      __entry->obj,
-+		      __entry->backer,
-+		      __entry->from,
-+		      __entry->to)
-+	    );
-+
-+TRACE_EVENT(cachefiles_tmpfile,
-+	    TP_PROTO(struct cachefiles_object *obj, struct inode *backer),
-+
-+	    TP_ARGS(obj, backer),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj	)
-+		    __field(unsigned int,			backer	)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj->fscache.debug_id;
-+		    __entry->backer	= backer->i_ino;
-+			   ),
-+
-+	    TP_printk("o=%08x b=%08x",
-+		      __entry->obj,
-+		      __entry->backer)
-+	    );
-+
-+TRACE_EVENT(cachefiles_link,
-+	    TP_PROTO(struct cachefiles_object *obj, struct inode *backer),
-+
-+	    TP_ARGS(obj, backer),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj	)
-+		    __field(unsigned int,			backer	)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj->fscache.debug_id;
-+		    __entry->backer	= backer->i_ino;
-+			   ),
-+
-+	    TP_printk("o=%08x b=%08x",
-+		      __entry->obj,
-+		      __entry->backer)
-+	    );
-+
- #endif /* _TRACE_CACHEFILES_H */
- 
- /* This part must be outside protection */
+ extern struct fscache_cookie fscache_fsdef_index;
 
 
