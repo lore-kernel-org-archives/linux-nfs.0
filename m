@@ -7,47 +7,47 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C418C433F4
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:33:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79801C433ED
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:33:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5ADA3206F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:33:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 561632065F
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jul 2020 16:33:13 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dFDrs7x1"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="FqFYIQCY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730552AbgGMQcu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Jul 2020 12:32:50 -0400
-Received: from us-smtp-2.mimecast.com ([205.139.110.61]:25834 "EHLO
+        id S1730234AbgGMQdM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Jul 2020 12:33:12 -0400
+Received: from us-smtp-2.mimecast.com ([207.211.31.81]:41554 "EHLO
         us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1730377AbgGMQco (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2020 12:32:44 -0400
+        by vger.kernel.org with ESMTP id S1730587AbgGMQdI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2020 12:33:08 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1594657963;
+        s=mimecast20190719; t=1594657986;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=D1wPsoBbNSccmnM5FewiFx0xZyD377Fb6Hp+rWU3DnI=;
-        b=dFDrs7x13G3yiGpJLZuYd9j+Ci6nkLywiRgZS2DO6YXFgbHYMeWnaSYepDggPDGXMbqM/O
-        DR4z2f0zRNXK5MwilIYrfoiSIopSyNkNQvtSUZX6tz0/N40uOjxRR2x69SNbzPhizhePfz
-        Widj8+CWh78QZ1fitKk7Jzz6GAdxu00=
+        bh=jQyN5nMptUdr+FXFnO+0cz+AZazAi5FEXN8n0OwGMPM=;
+        b=FqFYIQCYE3wPVIwLVJek3Y/3zdwK1O3+2dl9N5JctErzDEznmbhagsabEo6CBAhq2XKHuU
+        q+G09+eR/0mRGPc1eR/Oc5qQZTDTb8OHGcQJHc+U1SotMZDl16ya58VbcY4Tb2E7WVdFQH
+        IfLfeH2EcLdQ0cFwCTT8f8vQ0LaeSF4=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-236-aVjucGd_MIeHprorq-cBOQ-1; Mon, 13 Jul 2020 12:32:39 -0400
-X-MC-Unique: aVjucGd_MIeHprorq-cBOQ-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+ us-mta-501-6akDkgNxPv2r1vJGIyslDQ-1; Mon, 13 Jul 2020 12:33:03 -0400
+X-MC-Unique: 6akDkgNxPv2r1vJGIyslDQ-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 97D8110059B5;
-        Mon, 13 Jul 2020 16:32:37 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4A6FB100A8C0;
+        Mon, 13 Jul 2020 16:33:01 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-112-113.rdu2.redhat.com [10.10.112.113])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 25C8760BF3;
-        Mon, 13 Jul 2020 16:32:32 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id B34915D9CC;
+        Mon, 13 Jul 2020 16:32:55 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 10/32] fscache: Remove fscache_wait_on_invalidate()
+Subject: [PATCH 12/32] fscache, cachefiles: Fix disabled histogram warnings
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -60,89 +60,87 @@ Cc:     Jeff Layton <jlayton@redhat.com>,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 13 Jul 2020 17:32:31 +0100
-Message-ID: <159465795136.1376674.599056208279354471.stgit@warthog.procyon.org.uk>
+Date:   Mon, 13 Jul 2020 17:32:54 +0100
+Message-ID: <159465797497.1376674.14328755555295693847.stgit@warthog.procyon.org.uk>
 In-Reply-To: <159465784033.1376674.18106463693989811037.stgit@warthog.procyon.org.uk>
 References: <159465784033.1376674.18106463693989811037.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.22
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove fscache_wait_on_invalidate() as the invalidation wait is now built into
-the I/O path.
+Fix variable unused warnings due to disabled histogram stuff.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/fscache/cookie.c     |   14 --------------
- include/linux/fscache.h |   17 -----------------
- 2 files changed, 31 deletions(-)
+ fs/cachefiles/internal.h |    7 +++++--
+ fs/fscache/internal.h    |    6 ++++--
+ 2 files changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
-index a8aa1639e93b..a1eba3be9ce8 100644
---- a/fs/fscache/cookie.c
-+++ b/fs/fscache/cookie.c
-@@ -492,20 +492,6 @@ void __fscache_invalidate(struct fscache_cookie *cookie)
- }
- EXPORT_SYMBOL(__fscache_invalidate);
- 
--/*
-- * Wait for object invalidation to complete.
-- */
--void __fscache_wait_on_invalidate(struct fscache_cookie *cookie)
--{
--	_enter("%p", cookie);
--
--	wait_on_bit(&cookie->flags, FSCACHE_COOKIE_INVALIDATING,
--		    TASK_UNINTERRUPTIBLE);
--
--	_leave("");
--}
--EXPORT_SYMBOL(__fscache_wait_on_invalidate);
--
+diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
+index b89f76a03546..16d15291a629 100644
+--- a/fs/cachefiles/internal.h
++++ b/fs/cachefiles/internal.h
+@@ -143,11 +143,11 @@ extern int cachefiles_check_in_use(struct cachefiles_cache *cache,
  /*
-  * Update the index entries backing a cookie.  The writeback is done lazily.
+  * proc.c
   */
-diff --git a/include/linux/fscache.h b/include/linux/fscache.h
-index aec75fc0d297..56fdd0e74a88 100644
---- a/include/linux/fscache.h
-+++ b/include/linux/fscache.h
-@@ -217,7 +217,6 @@ extern void __fscache_unuse_cookie(struct fscache_cookie *, const void *, const
- extern void __fscache_relinquish_cookie(struct fscache_cookie *, bool);
- extern void __fscache_update_cookie(struct fscache_cookie *, const void *, const loff_t *);
- extern void __fscache_invalidate(struct fscache_cookie *);
--extern void __fscache_wait_on_invalidate(struct fscache_cookie *);
- extern void __fscache_shape_request(struct fscache_cookie *, struct fscache_request_shape *);
- extern void __fscache_init_io_request(struct fscache_io_request *,
- 				      struct fscache_cookie *);
-@@ -466,22 +465,6 @@ void fscache_invalidate(struct fscache_cookie *cookie)
- 		__fscache_invalidate(cookie);
- }
+-#ifdef CONFIG_CACHEFILES_HISTOGRAM
+ extern atomic_t cachefiles_lookup_histogram[HZ];
+ extern atomic_t cachefiles_mkdir_histogram[HZ];
+ extern atomic_t cachefiles_create_histogram[HZ];
  
--/**
-- * fscache_wait_on_invalidate - Wait for invalidation to complete
-- * @cookie: The cookie representing the cache object
-- *
-- * Wait for the invalidation of an object to complete.
-- *
-- * See Documentation/filesystems/caching/netfs-api.rst for a complete
-- * description.
-- */
--static inline
--void fscache_wait_on_invalidate(struct fscache_cookie *cookie)
--{
--	if (fscache_cookie_valid(cookie))
--		__fscache_wait_on_invalidate(cookie);
--}
--
- /**
-  * fscache_init_io_request - Initialise an I/O request
-  * @req: The I/O request to initialise
++#ifdef CONFIG_CACHEFILES_HISTOGRAM
+ extern int __init cachefiles_proc_init(void);
+ extern void cachefiles_proc_cleanup(void);
+ static inline
+@@ -162,7 +162,10 @@ void cachefiles_hist(atomic_t histogram[], unsigned long start_jif)
+ #else
+ #define cachefiles_proc_init()		(0)
+ #define cachefiles_proc_cleanup()	do {} while (0)
+-#define cachefiles_hist(hist, start_jif) do {} while (0)
++static inline
++void cachefiles_hist(atomic_t histogram[], unsigned long start_jif)
++{
++}
+ #endif
+ 
+ /*
+diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
+index 443671310e31..a70c1a612309 100644
+--- a/fs/fscache/internal.h
++++ b/fs/fscache/internal.h
+@@ -95,13 +95,13 @@ extern struct fscache_cookie fscache_fsdef_index;
+ /*
+  * histogram.c
+  */
+-#ifdef CONFIG_FSCACHE_HISTOGRAM
+ extern atomic_t fscache_obj_instantiate_histogram[HZ];
+ extern atomic_t fscache_objs_histogram[HZ];
+ extern atomic_t fscache_ops_histogram[HZ];
+ extern atomic_t fscache_retrieval_delay_histogram[HZ];
+ extern atomic_t fscache_retrieval_histogram[HZ];
+ 
++#ifdef CONFIG_FSCACHE_HISTOGRAM
+ static inline void fscache_hist(atomic_t histogram[], unsigned long start_jif)
+ {
+ 	unsigned long jif = jiffies - start_jif;
+@@ -113,7 +113,9 @@ static inline void fscache_hist(atomic_t histogram[], unsigned long start_jif)
+ extern const struct seq_operations fscache_histogram_ops;
+ 
+ #else
+-#define fscache_hist(hist, start_jif) do {} while (0)
++static inline void fscache_hist(atomic_t histogram[], unsigned long start_jif)
++{
++}
+ #endif
+ 
+ /*
 
 
