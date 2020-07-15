@@ -2,157 +2,320 @@ Return-Path: <SRS0=teKl=A2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C985AC433E7
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6FC81C433E6
 	for <linux-nfs@archiver.kernel.org>; Wed, 15 Jul 2020 15:11:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A661E20658
+	by mail.kernel.org (Postfix) with ESMTP id 4B66420658
 	for <linux-nfs@archiver.kernel.org>; Wed, 15 Jul 2020 15:11:52 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Fg5UBcRN"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="VyHFeb6D"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726661AbgGOPLv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1725922AbgGOPLv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 15 Jul 2020 11:11:51 -0400
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:41781 "EHLO
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:23700 "EHLO
         us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725992AbgGOPLv (ORCPT
+        by vger.kernel.org with ESMTP id S1725770AbgGOPLv (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2020 11:11:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1594825909;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc; bh=kiP9/hkrOoyToSpFjJqZnI1/ilc2c2i/joUZgMCxTQc=;
-        b=Fg5UBcRNBNgTP8Q7YaolaW+tbmewGYlSlBDCDEL0R9i9k1KXdDKT69guqiSvw7Edby4/PT
-        h7UZxk6eB3bhwbDqHPG3VysKsO1DxlSfg18tFfYECCFObyab7ErQhHkIc4o0wqF+44la7E
-        bBFqrZzj82JRolDWyUZu9qWtKP+MC9E=
+         to:to:cc:cc:in-reply-to:in-reply-to:references:references;
+        bh=kXwXiEgoP7zNkkeKqhiGxIDkjdGeiLAf78f73Emhhu0=;
+        b=VyHFeb6DDA6JF0J+t3XdyBOC7JDk49TG4So5qxZAggMarVE1+dFphwEeX5OwI2eDiEQ9L2
+        DYSAd3LxEkrV8M9+gINES0nih7idmIZjwd24sZtywBqYacLmxLnZcPdal0S4JSfdSzsdgd
+        BpyAksoT4JU64rEMVIeQDy5a41L0v3k=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-194-l6r8wVIXPn2O1vlNxeIIxA-1; Wed, 15 Jul 2020 11:11:44 -0400
-X-MC-Unique: l6r8wVIXPn2O1vlNxeIIxA-1
+ us-mta-503-ivQkZ-uSNou9QSnoLfjMKw-1; Wed, 15 Jul 2020 11:11:47 -0400
+X-MC-Unique: ivQkZ-uSNou9QSnoLfjMKw-1
 Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 891AE8027F7;
-        Wed, 15 Jul 2020 15:10:51 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 66ED6804B75;
+        Wed, 15 Jul 2020 15:10:58 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-118-79.rdu2.redhat.com [10.10.118.79])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1C05560BF1;
-        Wed, 15 Jul 2020 15:10:50 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id EED6F60BF1;
+        Wed, 15 Jul 2020 15:10:57 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [RFC PATCH v1 0/13] Convert NFS client to new fscache-iter API
-Date:   Wed, 15 Jul 2020 11:10:36 -0400
-Message-Id: <1594825849-24991-1-git-send-email-dwysocha@redhat.com>
+Subject: [RFC PATCH v1 12/13] NFS: Convert fscache invalidation and update aux_data and i_size
+Date:   Wed, 15 Jul 2020 11:10:48 -0400
+Message-Id: <1594825849-24991-13-git-send-email-dwysocha@redhat.com>
+In-Reply-To: <1594825849-24991-1-git-send-email-dwysocha@redhat.com>
+References: <1594825849-24991-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These patches update the nfs client to use the new FS-Cache API and are at:
-https://github.com/DaveWysochanskiRH/kernel/commit/a426b431873ea755c94ccd403aeaba0c4e635016
+Convert nfs_fscache_invalidate to the new FS-Cache API.  Also,
+now when invalidating an fscache cookie, be sure to pass the latest
+i_size as well as aux_data to fscache.
 
-They are based on David Howells fscache-iter tree at ff12b5a05bd6984ad83e762f702cb655222bad74
-https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/commit/?h=fscache-iter&id=ff12b5a05bd6984ad83e762f702cb655222bad74
+A few APIs no longer exist so remove them.  We can call directly to
+wait_on_page_fscache() because it checks whether a page is an fscache
+page before waiting on it.
 
-The following patches may be of specific interest to review
-as they are related to the conversion:
-NFS: Convert fscache_acquire_cookie and fscache_relinquish_cookie
-NFS: Convert nfs_readpage() and readpages() to new fscache API
-NFS: Only use and unuse an fscache cookie a single time based on NFS_INO_FSCACHE
-NFS: Convert fscache invalidation and update aux_data and i_size
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+---
+ fs/nfs/file.c    | 20 +++++++++++-------
+ fs/nfs/fscache.c | 21 -------------------
+ fs/nfs/fscache.h | 64 +++++++++++++++++++-------------------------------------
+ fs/nfs/inode.c   |  1 -
+ fs/nfs/write.c   |  2 +-
+ 5 files changed, 35 insertions(+), 73 deletions(-)
 
-Note that this is only a "first pass" v1 / RFC set I wanted to get
-out there for the maintainers to see and know this is being worked on.
-It is far from perfect and has some problems still need worked out.
-A short summary of this set:
-
-1. Takes a "least invasive to existing code" approach
-* most fscache bits stay fs/nfs/fscache.[ch] 
-* fscache enable/disable switched inside NFS code on nfs_inode.fscache
-* only enable fscache for reads
-* may not be the best approach (see future patcheset items below)
-
-2. Basically works and passes a series of tests
-* should not affect NFS when fscache is disabled (no "fsc" option)
-* a couple small NFS + fscache basic verification tests
-* connectathon (all NFS versions, with/without 'fsc' option)
-* various iozone tests (all NFS versions, with/without 'fsc' option)
-
-3. Still has a few known problems that are being tracked down
-* Data integrity issue when write with O_DIRECT and read
-back without O_DIRECT (we get 0's back from the cache)
-* iozone tests run through ok but at the end superblock
-cookies are left (each NFS version has a different superblock
-cookie); this leads to "duplicate cookie" messages
-upon subsequent mounts / runs
-* A couple oopses in fscache reported to dhowells, may
-be related to NFS's enable/disable of fscache on read/write
-* Kernel build fails about halfway through with a strange
-dubious error at the same place, linking this file:
-ld: net/sunrpc/auth_gss/trace.o: attempt to load strings from a non-string section (number 41)
-
-
-In addition to fixing various code issues and above issues,
-a future patchset may:
-
-1. The readpage/readpages conversion patch call read_helpers
-directly rather than isolation into fs/nfs/fscache.c
-* Similar to the AFS conversion, with calls directly to the
-read_helpers, but not sure about non-fsc code path
-
-2. Add write-through support
-* Would probably eliminate some problematic code
-paths where fscache is turned on / off depending on whether
-a file switches from read to write and vice-versa
-* This would rework open as well
-* Have to work out whether this is possible or not and
-with what caveats as far as NFS version support (is this
-an NFSv4.x only thing?)
-
-3. Rework dfprintks and/or add ftrace points
-* fscache/cachefiles has 'debug' logging similar to rpcdebug
-so not sure if we keep rpcdebug here or go full ftrace
-
-
-Dave Wysochanski (13):
-  NFS: Clean up nfs_readpage() and nfs_readpages()
-  NFS: In nfs_readpage() only increment NFSIOS_READPAGES when read
-    succeeds
-  NFS: Refactor nfs_readpage() and nfs_readpage_async() to use
-    nfs_readdesc
-  NFS: Call readpage_async_filler() from nfs_readpage_async()
-  NFS: Add nfs_pageio_complete_read() and remove nfs_readpage_async()
-  NFS: Rename readpage_async_filler() to nfs_pageio_add_page_read()
-  NFS: Convert fscache_acquire_cookie and fscache_relinquish_cookie
-  NFS: Allow nfs_async_read_completion_ops to be used by other NFS code
-  NFS: Convert nfs_readpage() and readpages() to new fscache API
-  NFS: Allow NFS use of new fscache API in build
-  NFS: Only use and unuse an fscache cookie a single time based on
-    NFS_INO_FSCACHE
-  NFS: Convert fscache invalidation and update aux_data and i_size
-  NFS: Call nfs_fscache_invalidate() when write extends the size of the
-    file
-
- fs/nfs/Kconfig           |   2 +-
- fs/nfs/file.c            |  20 +--
- fs/nfs/fscache-index.c   |  94 --------------
- fs/nfs/fscache.c         | 315 ++++++++++++++++++++++++-----------------------
- fs/nfs/fscache.h         |  92 +++++---------
- fs/nfs/inode.c           |   1 -
- fs/nfs/internal.h        |   4 +
- fs/nfs/pagelist.c        |   1 +
- fs/nfs/read.c            | 221 ++++++++++++++++-----------------
- fs/nfs/write.c           |   9 +-
- include/linux/nfs_fs.h   |   3 +-
- include/linux/nfs_page.h |   1 +
- include/linux/nfs_xdr.h  |   1 +
- 13 files changed, 322 insertions(+), 442 deletions(-)
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index ccd6c1637b27..7af528c423c0 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -413,8 +413,8 @@ static void nfs_invalidate_page(struct page *page, unsigned int offset,
+ 		return;
+ 	/* Cancel any unstarted writes on this page */
+ 	nfs_wb_page_cancel(page_file_mapping(page)->host, page);
+-
+-	nfs_fscache_invalidate_page(page, page->mapping->host);
++	wait_on_page_fscache(page);
++	nfs_fscache_invalidate(page_file_mapping(page)->host);
+ }
+ 
+ /*
+@@ -429,8 +429,13 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ 
+ 	/* If PagePrivate() is set, then the page is not freeable */
+ 	if (PagePrivate(page))
+-		return 0;
+-	return nfs_fscache_release_page(page, gfp);
++		return false;
++	if (PageFsCache(page)) {
++		if (!(gfp & __GFP_DIRECT_RECLAIM) || !(gfp & __GFP_FS))
++			return false;
++		wait_on_page_fscache(page);
++	}
++	return true;
+ }
+ 
+ static void nfs_check_dirty_writeback(struct page *page,
+@@ -473,12 +478,11 @@ static void nfs_check_dirty_writeback(struct page *page,
+ static int nfs_launder_page(struct page *page)
+ {
+ 	struct inode *inode = page_file_mapping(page)->host;
+-	struct nfs_inode *nfsi = NFS_I(inode);
+ 
+ 	dfprintk(PAGECACHE, "NFS: launder_page(%ld, %llu)\n",
+ 		inode->i_ino, (long long)page_offset(page));
+ 
+-	nfs_fscache_wait_on_page_write(nfsi, page);
++	wait_on_page_fscache(page);
+ 	return nfs_wb_page(inode, page);
+ }
+ 
+@@ -553,7 +557,9 @@ static vm_fault_t nfs_vm_page_mkwrite(struct vm_fault *vmf)
+ 	sb_start_pagefault(inode->i_sb);
+ 
+ 	/* make sure the cache has finished storing the page */
+-	nfs_fscache_wait_on_page_write(NFS_I(inode), page);
++	if (PageFsCache(vmf->page) &&
++	    wait_on_page_bit_killable(vmf->page, PG_fscache) < 0)
++		return VM_FAULT_RETRY;
+ 
+ 	wait_on_bit_action(&NFS_I(inode)->flags, NFS_INO_INVALIDATING,
+ 			nfs_wait_bit_killable, TASK_KILLABLE);
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index ec66a0d33543..f2d3d4d45d34 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -14,7 +14,6 @@
+ #include <linux/in6.h>
+ #include <linux/seq_file.h>
+ #include <linux/slab.h>
+-#include <linux/iversion.h>
+ 
+ #include "internal.h"
+ #include "iostat.h"
+@@ -234,19 +233,6 @@ void nfs_fscache_release_super_cookie(struct super_block *sb)
+ 	}
+ }
+ 
+-static void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *auxdata,
+-				  struct nfs_inode *nfsi)
+-{
+-	memset(auxdata, 0, sizeof(*auxdata));
+-	auxdata->mtime_sec  = nfsi->vfs_inode.i_mtime.tv_sec;
+-	auxdata->mtime_nsec = nfsi->vfs_inode.i_mtime.tv_nsec;
+-	auxdata->ctime_sec  = nfsi->vfs_inode.i_ctime.tv_sec;
+-	auxdata->ctime_nsec = nfsi->vfs_inode.i_ctime.tv_nsec;
+-
+-	if (NFS_SERVER(&nfsi->vfs_inode)->nfs_client->rpc_ops->version == 4)
+-		auxdata->change_attr = inode_peek_iversion_raw(&nfsi->vfs_inode);
+-}
+-
+ /*
+  * Initialise the per-inode cache cookie pointer for an NFS inode.
+  */
+@@ -293,13 +279,6 @@ void nfs_fscache_clear_inode(struct inode *inode)
+ 	nfsi->fscache = NULL;
+ }
+ 
+-static bool nfs_fscache_can_enable(void *data)
+-{
+-	struct inode *inode = data;
+-
+-	return !inode_is_open_for_write(inode);
+-}
+-
+ /*
+  * Enable or disable caching for a file that is being opened as appropriate.
+  * The cookie is allocated when the inode is initialised, but is not enabled at
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index 723dc2eed5db..af36f7a310ae 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -12,6 +12,7 @@
+ #include <linux/nfs_mount.h>
+ #include <linux/nfs4_mount.h>
+ #include <linux/fscache.h>
++#include <linux/iversion.h>
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+ 
+@@ -90,9 +91,6 @@ struct nfs_fscache_inode_auxdata {
+ extern void nfs_fscache_clear_inode(struct inode *);
+ extern void nfs_fscache_open_file(struct inode *, struct file *);
+ 
+-extern void __nfs_fscache_invalidate_page(struct page *, struct inode *);
+-extern int nfs_fscache_release_page(struct page *, gfp_t);
+-
+ extern int __nfs_readpage_from_fscache(struct nfs_open_context *,
+ 				       struct inode *, struct page *);
+ extern int __nfs_readpages_from_fscache(struct nfs_open_context *,
+@@ -100,28 +98,6 @@ extern int __nfs_readpages_from_fscache(struct nfs_open_context *,
+ 					struct list_head *);
+ extern void __nfs_read_completion_to_fscache(struct nfs_pgio_header *hdr,
+ 					     unsigned long bytes);
+-
+-/*
+- * wait for a page to complete writing to the cache
+- */
+-static inline void nfs_fscache_wait_on_page_write(struct nfs_inode *nfsi,
+-						  struct page *page)
+-{
+-	if (PageFsCache(page))
+-		fscache_wait_on_page_write(nfsi->fscache, page);
+-}
+-
+-/*
+- * release the caching state associated with a page if undergoing complete page
+- * invalidation
+- */
+-static inline void nfs_fscache_invalidate_page(struct page *page,
+-					       struct inode *inode)
+-{
+-	if (PageFsCache(page))
+-		__nfs_fscache_invalidate_page(page, inode);
+-}
+-
+ /*
+  * Retrieve a page from an inode data storage object.
+  */
+@@ -158,20 +134,32 @@ static inline void nfs_read_completion_to_fscache(struct nfs_pgio_header *hdr,
+ 		__nfs_read_completion_to_fscache(hdr, bytes);
+ }
+ 
+-/*
+- * Invalidate the contents of fscache for this inode.  This will not sleep.
+- */
+-static inline void nfs_fscache_invalidate(struct inode *inode)
++static inline void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *auxdata,
++				  struct nfs_inode *nfsi)
+ {
+-	fscache_invalidate(NFS_I(inode)->fscache);
++	memset(auxdata, 0, sizeof(*auxdata));
++	auxdata->mtime_sec  = nfsi->vfs_inode.i_mtime.tv_sec;
++	auxdata->mtime_nsec = nfsi->vfs_inode.i_mtime.tv_nsec;
++	auxdata->ctime_sec  = nfsi->vfs_inode.i_ctime.tv_sec;
++	auxdata->ctime_nsec = nfsi->vfs_inode.i_ctime.tv_nsec;
++
++	if (NFS_SERVER(&nfsi->vfs_inode)->nfs_client->rpc_ops->version == 4)
++		auxdata->change_attr = inode_peek_iversion_raw(&nfsi->vfs_inode);
+ }
+ 
+ /*
+- * Wait for an object to finish being invalidated.
++ * Invalidate the contents of fscache for this inode.  This will not sleep.
+  */
+-static inline void nfs_fscache_wait_on_invalidate(struct inode *inode)
++static inline void nfs_fscache_invalidate(struct inode *inode)
+ {
+-	fscache_wait_on_invalidate(NFS_I(inode)->fscache);
++	struct nfs_fscache_inode_auxdata auxdata;
++	struct nfs_inode *nfsi = NFS_I(inode);
++
++	if (NFS_I(inode)->fscache) {
++		nfs_fscache_update_auxdata(&auxdata, nfsi);
++		fscache_invalidate(nfs_i_fscache(inode), &auxdata,
++				   i_size_read(&nfsi->vfs_inode), 0);
++	}
+ }
+ 
+ /*
+@@ -198,15 +186,6 @@ static inline void nfs_fscache_clear_inode(struct inode *inode) {}
+ static inline void nfs_fscache_open_file(struct inode *inode,
+ 					 struct file *filp) {}
+ 
+-static inline int nfs_fscache_release_page(struct page *page, gfp_t gfp)
+-{
+-	return 1; /* True: may release page */
+-}
+-static inline void nfs_fscache_invalidate_page(struct page *page,
+-					       struct inode *inode) {}
+-static inline void nfs_fscache_wait_on_page_write(struct nfs_inode *nfsi,
+-						  struct page *page) {}
+-
+ static inline int nfs_readpage_from_fscache(struct nfs_open_context *ctx,
+ 					    struct inode *inode,
+ 					    struct page *page)
+@@ -225,7 +204,6 @@ static inline void nfs_readpage_to_fscache(struct inode *inode,
+ 
+ 
+ static inline void nfs_fscache_invalidate(struct inode *inode) {}
+-static inline void nfs_fscache_wait_on_invalidate(struct inode *inode) {}
+ 
+ static inline const char *nfs_server_fscache_state(struct nfs_server *server)
+ {
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 0bf1f835de01..b9a84f1c1a5c 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1248,7 +1248,6 @@ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *map
+ 		spin_unlock(&inode->i_lock);
+ 	}
+ 	nfs_inc_stats(inode, NFSIOS_DATAINVALIDATE);
+-	nfs_fscache_wait_on_invalidate(inode);
+ 
+ 	dfprintk(PAGECACHE, "NFS: (%s/%Lu) data cache invalidated\n",
+ 			inode->i_sb->s_id,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 639c34fec04a..005eea29e0ec 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -2112,7 +2112,7 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
+ 	if (PagePrivate(page))
+ 		return -EBUSY;
+ 
+-	if (!nfs_fscache_release_page(page, GFP_KERNEL))
++	if (PageFsCache(page))
+ 		return -EBUSY;
+ 
+ 	return migrate_page(mapping, newpage, page, mode);
 -- 
 1.8.3.1
 
