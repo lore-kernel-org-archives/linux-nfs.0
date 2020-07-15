@@ -7,47 +7,47 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25533C433EC
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 52FACC433ED
 	for <linux-nfs@archiver.kernel.org>; Wed, 15 Jul 2020 15:11:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ED93120658
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Jul 2020 15:11:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1DC9D20672
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Jul 2020 15:11:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="KveFdQsA"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ipU8i2Qv"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726617AbgGOPL5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1725770AbgGOPL5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 15 Jul 2020 11:11:57 -0400
-Received: from us-smtp-2.mimecast.com ([207.211.31.81]:40562 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725770AbgGOPL4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2020 11:11:56 -0400
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:20909 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726785AbgGOPLz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2020 11:11:55 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1594825914;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=c5b3XQ9WjR0YBaYTlAJ491KTgAyJMkpeFCX7YgY/5tk=;
-        b=KveFdQsA/UQF/8iUKauhKuPpnFb5CaM/O8Xr2IysocT9C/VCG80B7RsdqbDySJrbCS6fVW
-        Rdi4UN3CGT2vgUWTDmpUaWvbdk4kjIiK1xHvTlCM9Es88ikE2pKWhS38QerjynVA4yGJ6s
-        /cAWCcis5SamR9TRLQMELTQsTPC9MRU=
+        bh=TmUm+FqsWNSGezib7++Wn5qxVEto0VOC87DhDKJ5c38=;
+        b=ipU8i2Qv99Ye04tboqzFKqa9234KBr71FnDU5m2ZqgTMIJCLjURmRg1Ky1/J2J1xRbPeju
+        Nx15+VZ6KS8K1JJlXzRtbcxrCD9EOakq6ibFWcGogKkkRgmDFe18KCNoGnXoUO5RSNWtN2
+        dflgvtbsttImvZzcm6gxt9FWAxBT25A=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-497-z31x22EtMi-5Bi24tbluvA-1; Wed, 15 Jul 2020 11:11:52 -0400
-X-MC-Unique: z31x22EtMi-5Bi24tbluvA-1
+ us-mta-234-aqZVDPOjOuqDrpSEp9RRMA-1; Wed, 15 Jul 2020 11:11:52 -0400
+X-MC-Unique: aqZVDPOjOuqDrpSEp9RRMA-1
 Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id EE33F803E4A;
-        Wed, 15 Jul 2020 15:10:54 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id AB41418C8992;
+        Wed, 15 Jul 2020 15:10:52 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-118-79.rdu2.redhat.com [10.10.118.79])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 8234460BF1;
-        Wed, 15 Jul 2020 15:10:54 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 3FCE460BF1;
+        Wed, 15 Jul 2020 15:10:52 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [RFC PATCH v1 06/13] NFS: Rename readpage_async_filler() to nfs_pageio_add_page_read()
-Date:   Wed, 15 Jul 2020 11:10:42 -0400
-Message-Id: <1594825849-24991-7-git-send-email-dwysocha@redhat.com>
+Subject: [RFC PATCH v1 02/13] NFS: In nfs_readpage() only increment NFSIOS_READPAGES when read succeeds
+Date:   Wed, 15 Jul 2020 11:10:38 -0400
+Message-Id: <1594825849-24991-3-git-send-email-dwysocha@redhat.com>
 In-Reply-To: <1594825849-24991-1-git-send-email-dwysocha@redhat.com>
 References: <1594825849-24991-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
@@ -56,81 +56,39 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Rename the function that handles adding a page to an existing
-nfs_pageio_descriptor and export for future use.
+There is a small inconsistency with nfs_readpage() vs nfs_readpages() with
+regards to NFSIOS_READPAGES.  In readpage we unconditionally increment
+NFSIOS_READPAGES at the top, which means even if the read fails.  In
+readpages, we increment NFSIOS_READPAGES at the bottom based on how
+many pages were successfully read.  Change readpage to be consistent with
+readpages and so NFSIOS_READPAGES only reflects successful, non-fscache
+reads.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/internal.h |  3 +++
- fs/nfs/read.c     | 13 ++++++-------
- 2 files changed, 9 insertions(+), 7 deletions(-)
+ fs/nfs/read.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6673a77884d9..df4ffe9afb6a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -446,6 +446,9 @@ extern char *nfs_path(char **p, struct dentry *dentry,
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
-+extern int nfs_pageio_add_page_read(void *data, struct page *page);
-+extern void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
-+				     struct inode *inode);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
 diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 32d359604220..de57bb692a4b 100644
+index a05fb3904ddf..1153c4e0a155 100644
 --- a/fs/nfs/read.c
 +++ b/fs/nfs/read.c
-@@ -74,8 +74,8 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+@@ -319,7 +319,6 @@ int nfs_readpage(struct file *filp, struct page *page)
+ 	dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
+ 		page, PAGE_SIZE, page_index(page));
+ 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
+-	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
  
--static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
--				     struct inode *inode)
-+void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
-+			      struct inode *inode)
- {
- 	struct nfs_pgio_mirror *pgm;
- 	unsigned long npages;
-@@ -158,7 +158,7 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
- 
- 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
- 			/* note: regions of the page not covered by a
--			 * request are zeroed in readpage_async_filler */
-+			 * request are zeroed in nfs_pageio_add_page_read */
- 			if (bytes > hdr->good_bytes) {
- 				/* nothing in this request was good, so zero
- 				 * the full extent of the request */
-@@ -290,8 +290,7 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
- 
--static int
--readpage_async_filler(void *data, struct page *page)
-+int nfs_pageio_add_page_read(void *data, struct page *page)
- {
- 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
- 	struct nfs_page *new;
-@@ -375,7 +374,7 @@ int nfs_readpage(struct file *filp, struct page *page)
- 	nfs_pageio_init_read(desc.pgio, inode, false,
- 			     &nfs_async_read_completion_ops);
- 
--	ret = readpage_async_filler(desc.pgio, page);
-+	ret = nfs_pageio_add_page_read(desc.pgio, page);
- 
- 	if (!ret)
- 		nfs_pageio_complete_read(desc.pgio, inode);
-@@ -432,7 +431,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	nfs_pageio_init_read(&pgio, inode, false,
- 			     &nfs_async_read_completion_ops);
- 
--	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
-+	ret = read_cache_pages(mapping, pages, nfs_pageio_add_page_read, &desc);
- 
- 	nfs_pageio_complete_read(desc.pgio, inode);
- 
+ 	/*
+ 	 * Try to flush any pending writes to the file..
+@@ -359,6 +358,7 @@ int nfs_readpage(struct file *filp, struct page *page)
+ 		if (!PageUptodate(page) && !ret)
+ 			ret = xchg(&ctx->error, 0);
+ 	}
++	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
+ out:
+ 	put_nfs_open_context(ctx);
+ 	return ret;
 -- 
 1.8.3.1
 
