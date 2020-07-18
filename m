@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 674D7C433EB
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Jul 2020 09:25:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6C4BC433EC
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Jul 2020 09:25:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3B7B82074B
+	by mail.kernel.org (Postfix) with ESMTP id 62CE7207FB
 	for <linux-nfs@archiver.kernel.org>; Sat, 18 Jul 2020 09:25:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=nazar.ca header.i=@nazar.ca header.b="Z8I82+z/"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=nazar.ca header.i=@nazar.ca header.b="knctxZZF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726179AbgGRJY4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Jul 2020 05:24:56 -0400
-Received: from ny018.relay.arandomserver.com ([172.96.188.180]:51377 "EHLO
+        id S1726564AbgGRJY7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Jul 2020 05:24:59 -0400
+Received: from ny018.relay.arandomserver.com ([172.96.188.180]:39403 "EHLO
         ny018.relay.arandomserver.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726499AbgGRJYy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jul 2020 05:24:54 -0400
+        by vger.kernel.org with ESMTP id S1726550AbgGRJY4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jul 2020 05:24:56 -0400
 Received: from nyc006.hawkhost.com ([172.96.186.142])
         by se004.arandomserver.com with esmtps (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
         (Exim 4.92)
         (envelope-from <nazard@nazar.ca>)
-        id 1jwj5N-0000Qp-8x
-        for linux-nfs@vger.kernel.org; Sat, 18 Jul 2020 04:24:51 -0500
+        id 1jwj5O-0000SO-Ee
+        for linux-nfs@vger.kernel.org; Sat, 18 Jul 2020 04:24:52 -0500
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=nazar.ca;
          s=default; h=Content-Transfer-Encoding:MIME-Version:References:In-Reply-To:
         Message-Id:Date:Subject:To:From:Sender:Reply-To:Cc:Content-Type:Content-ID:
         Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
         :Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
         List-Post:List-Owner:List-Archive;
-        bh=svRA7aoHOMvVxIvs35zO4PcgOG2zRhRVK8CiwRc7iLw=; b=Z8I82+z/42DDhNK/UOOROHbIKm
-        E6u0n1saO8SU2E2afpy3OLaHjg4k5GlxuRZlqH5clqi7HyS9t1byv+YXLYGoMNzk81rabJClVYPvm
-        FxuSYzX0u0PbzZP1kehmAFg16UFt5342AXMa+GE9AF0FuwGppMJqot4I+iQR88wxMLHDlOwkIuYg7
-        q94jjwPwHqf1ffcvlhyZUDdytb67hLsvHbSJUqtQtmTV0pkrVt+uxQ3te8wE3trzLQWk3qF+Wy9qH
-        lpQv4dK0QdSrD5f3wXLH+eWmccFsaKzFNVPavYymbgydLecYN2Y8m1863UVCD/UdSHXsed9iil83C
-        qE9zXViA==;
+        bh=2evkaif8ftnj6zcV44zkFu1pv+/30twOeh//mCmXqG4=; b=knctxZZFEr2KOHG/flXLC5Rj3o
+        gpfOXqqGE/KmAjnc7VbipllTclNlOxYT/st2KR3M4lJ2Hh1KopDEJV82VPAoN66hUJJQrsxGrybKd
+        kpUJOHOmdb8a8rUE5glM7sHbBWCATAzbJ+23tyOxqJNw71igulGbkbkzDAg6LS8FVftO+XglH8K84
+        2a2RVYd/3S62waSoZvw8XuxZ6Xjn/ZfTTHUT5bKRLtN2CwYivvc1qNgDTgMIijLJdHIA26DPK8dC1
+        uVaupwVAziymlD2Wh4occp4k7h6/QRz4Tapts4awNSIxXz6/sgIm57ICVCs6D2JoM17VsdLXEmrv7
+        W7cCCLZQ==;
 Received: from [174.119.114.224] (port=53842 helo=wraith.dragoninc.ca)
         by nyc006.hawkhost.com with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
         (Exim 4.93)
         (envelope-from <nazard@nazar.ca>)
-        id 1jwj5N-0001He-3i
-        for linux-nfs@vger.kernel.org; Sat, 18 Jul 2020 05:24:49 -0400
+        id 1jwj5O-0001He-8N
+        for linux-nfs@vger.kernel.org; Sat, 18 Jul 2020 05:24:50 -0400
 From:   Doug Nazar <nazard@nazar.ca>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 01/11] Add error handling to libevent allocations.
-Date:   Sat, 18 Jul 2020 05:24:11 -0400
-Message-Id: <20200718092421.31691-2-nazard@nazar.ca>
+Subject: [PATCH 08/11] svcgssd: Convert to using libevent
+Date:   Sat, 18 Jul 2020 05:24:18 -0400
+Message-Id: <20200718092421.31691-9-nazard@nazar.ca>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20200718092421.31691-1-nazard@nazar.ca>
 References: <20200718092421.31691-1-nazard@nazar.ca>
@@ -62,20 +62,20 @@ X-SpamExperts-Domain: nyc006.hawkhost.com
 X-SpamExperts-Username: 172.96.186.142
 Authentication-Results: arandomserver.com; auth=pass smtp.auth=172.96.186.142@nyc006.hawkhost.com
 X-SpamExperts-Outgoing-Class: ham
-X-SpamExperts-Outgoing-Evidence: SB/global_tokens (0.00279471690026)
+X-SpamExperts-Outgoing-Evidence: SB/global_tokens (0.000621683892355)
 X-Recommended-Action: accept
-X-Filter-ID: Mvzo4OR0dZXEDF/gcnlw0ZZlDYW4q2llG44Qh0NJtYKpSDasLI4SayDByyq9LIhV4nrcCLuIZDk+
- 36DwAGCZnkTNWdUk1Ol2OGx3IfrIJKywOmJyM1qr8uRnWBrbSAGDoHt0IcOGwKCbMuu8Bh1PoO2W
- aaJF459Au8f7ARCz5dLX05wiIfJ4ndNwWne761Sox7kTeATwqXzUYlxYOl0P/HXpGCeulZALlD2V
+X-Filter-ID: Mvzo4OR0dZXEDF/gcnlw0ZZlDYW4q2llG44Qh0NJtYKpSDasLI4SayDByyq9LIhVBhdVvatOQL85
+ W8QN1VviSkTNWdUk1Ol2OGx3IfrIJKywOmJyM1qr8uRnWBrbSAGDoHt0IcOGwKCbMuu8Bh1PoO2W
+ aaJF459Au8f7ARCz5dJNr/iRojbelwSN6M+UT4TnTjSBu0xXNTKZ+UZE2i7xNXXpGCeulZALlD2V
  AvpAcEdNy48VCLWq/B04EaMIT1z9KJ9I7HJckiqd4uUgfyUDbi0mNlctu/ZLaOH13A3s9cVWgxmT
  epC+rmMtfXSN6UccbEYBdMHLz8fdZytxBPvQ/tfm/6ZhrBvMHqGRRS2yqrTz7IssKbNSm6Aylrz7
  vRRedYGRJ5j/qgI5gfjNk3Q1FcO1wjmeb9RCa+YI49T4kOuq00YljRCkN7s2SRETCBXfmpMlsQfU
  CJBMRaGGGXrzQwzEEJbreAQRsbSZZ9fXoUEifL76GD10kuo3nOZaoX+gsjENmEszkjZCjfYHwrdv
  NOzx52pqgFKULzmTh7lC+C1OB0fQQI8VICRbS6zGNgmk2+y1r/Jt2+QI0NYgZu+YDGDmnroh/8hH
  WR/Etfk4HCQTo4dLz8XEDoyijq2CEGKcGplHcpVCCoX989hgB8R+yHz6Wz8d/Pp/n7kUT3MNKWyV
- mI6ol8ojWV/XK6LQktrhcLHrhidnRCj/3YGmYs9moX9nMre3YEbkuALmW8gN9RXH3DI0NOgo6/Ab
+ mI6ol8ojWV/XK6LQktrhz+UjdAvdDKZ5U5spZO6hon9nMre3YEbkuALmW8gN9RXH3DI0NOgo6/Ab
  vYB8YDlEEBksfbu9yLQMc7lcHkHFV/djzQ6YC7Heg3Xf7O1TOd4Lp6/mezP3/ta7RoBl7TSj8Cd1
- 02D1/PxWBdanhqFXVNfl/yowmv/m59rLSnpj2Nwi8SRcE85x96+mMa5iwb7SZjEa/sNl+vcoDGoY
+ 02D1/PxWBdanhqFXVNO0eLTyIuJf+IqbzABHTTf5J09OpIztnwXJmc43Cm+HZjEa/sNl+vcoDGoY
  k0DAXQsuA+ZOE6ZCLBhP3Kw7GhP6DxWSEoQUnaVSVuR240Ewmn4rjkt/ing/Kst6lT+FgU1vUJm2
  lwcjBA1nf30dydyo/g58MkufxisELuuE3bZK19QhM8um7L9VndMW7hyljAQWfxYdU0gXE07BZ9Ya
  Ke+gc5LamkkGaPkiMxmyjA0L/Ub/yrYgxwwQmd72Iri+RjEvuGslKTrRIXcXpFg5ivY=
@@ -87,227 +87,310 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Doug Nazar <nazard@nazar.ca>
 ---
- utils/gssd/gssd.c       | 37 +++++++++++++++++++++++++++----------
- utils/idmapd/idmapd.c   | 32 ++++++++++++++++++++++++++++++++
- utils/nfsdcld/nfsdcld.c | 18 +++++++++++++++++-
- 3 files changed, 76 insertions(+), 11 deletions(-)
+ utils/gssd/Makefile.am         |  2 +-
+ utils/gssd/svcgssd.c           | 72 ++++++++++++++++++++++++--
+ utils/gssd/svcgssd.h           |  3 +-
+ utils/gssd/svcgssd_main_loop.c | 94 ----------------------------------
+ utils/gssd/svcgssd_proc.c      | 15 +-----
+ 5 files changed, 70 insertions(+), 116 deletions(-)
+ delete mode 100644 utils/gssd/svcgssd_main_loop.c
 
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 3c7c703a..85bc4b07 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -560,14 +560,9 @@ static int
- gssd_scan_clnt(struct clnt_info *clp)
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index 321046b9..21d3bb88 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -67,7 +67,6 @@ gssd_CFLAGS = \
+ svcgssd_SOURCES = \
+ 	$(COMMON_SRCS) \
+ 	svcgssd.c \
+-	svcgssd_main_loop.c \
+ 	svcgssd_mech2file.c \
+ 	svcgssd_proc.c \
+ 	svcgssd_krb5.c \
+@@ -78,6 +77,7 @@ svcgssd_SOURCES = \
+ svcgssd_LDADD = \
+ 	../../support/nfs/libnfs.la \
+ 	../../support/nfsidmap/libnfsidmap.la \
++	$(LIBEVENT) \
+ 	$(RPCSECGSS_LIBS) \
+ 	$(KRBLIBS) $(GSSAPI_LIBS) $(LIBTIRPC)
+ 
+diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+index ec49b616..f538fd2a 100644
+--- a/utils/gssd/svcgssd.c
++++ b/utils/gssd/svcgssd.c
+@@ -57,20 +57,30 @@
+ #include <string.h>
+ #include <signal.h>
+ #include <nfsidmap.h>
++#include <event2/event.h>
++
+ #include "nfslib.h"
+ #include "svcgssd.h"
+ #include "gss_util.h"
+ #include "err_util.h"
+ #include "conffile.h"
++#include "misc.h"
+ 
+ struct state_paths etab;
++static bool signal_received = false;
++static struct event_base *evbase = NULL;
+ 
+ static void
+ sig_die(int signal)
  {
- 	int clntfd;
--	bool gssd_was_closed;
--	bool krb5_was_closed;
+-	/* destroy krb5 machine creds */
++	if (signal_received) {
++		/* destroy krb5 machine creds */
++		printerr(1, "forced exiting on signal %d\n", signal);
++		exit(0);
++	}
++	signal_received = true;
+ 	printerr(1, "exiting on signal %d\n", signal);
+-	exit(0);
++	event_base_loopexit(evbase, NULL);
+ }
  
- 	printerr(3, "scanning client %s\n", clp->relpath);
+ static void
+@@ -89,6 +99,24 @@ usage(char *progname)
+ 	exit(1);
+ }
  
--	gssd_was_closed = clp->gssd_fd < 0 ? true : false;
--	krb5_was_closed = clp->krb5_fd < 0 ? true : false;
--
- 	clntfd = openat(pipefs_fd, clp->relpath, O_RDONLY);
- 	if (clntfd < 0) {
- 		if (errno != ENOENT)
-@@ -582,16 +577,30 @@ gssd_scan_clnt(struct clnt_info *clp)
- 	if (clp->gssd_fd == -1 && clp->krb5_fd == -1)
- 		clp->krb5_fd = openat(clntfd, "krb5", O_RDWR | O_NONBLOCK);
++static void
++svcgssd_nullrpc_cb(int fd, short UNUSED(which), void *UNUSED(data))
++{
++	char	lbuf[RPC_CHAN_BUF_SIZE];
++	int	lbuflen = 0;
++
++	printerr(1, "reading null request\n");
++
++	lbuflen = read(fd, lbuf, sizeof(lbuf));
++	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
++		printerr(0, "WARNING: handle_nullreq: failed reading request\n");
++		return;
++	}
++	lbuf[lbuflen-1] = 0;
++
++	handle_nullreq(lbuf);
++}
++
+ int
+ main(int argc, char *argv[])
+ {
+@@ -102,6 +130,9 @@ main(int argc, char *argv[])
+ 	char *progname;
+ 	char *principal = NULL;
+ 	char *s;
++	int rc;
++	int nullrpc_fd = -1;
++	struct event *nullrpc_event = NULL;
  
--	if (gssd_was_closed && clp->gssd_fd >= 0) {
-+	if (!clp->gssd_ev && clp->gssd_fd >= 0) {
- 		clp->gssd_ev = event_new(evbase, clp->gssd_fd, EV_READ | EV_PERSIST,
- 					 gssd_clnt_gssd_cb, clp);
--		event_add(clp->gssd_ev, NULL);
-+		if (!clp->gssd_ev) {
-+			printerr(0, "ERROR: %s: can't create gssd event for %s: %s\n",
-+				 __FUNCTION__, clp->relpath, strerror(errno));
-+			close(clp->gssd_fd);
-+			clp->gssd_fd = -1;
-+		} else {
-+			event_add(clp->gssd_ev, NULL);
-+		}
- 	}
+ 	conf_init_file(NFS_CONFFILE);
  
--	if (krb5_was_closed && clp->krb5_fd >= 0) {
-+	if (!clp->krb5_ev && clp->krb5_fd >= 0) {
- 		clp->krb5_ev = event_new(evbase, clp->krb5_fd, EV_READ | EV_PERSIST,
- 					 gssd_clnt_krb5_cb, clp);
--		event_add(clp->krb5_ev, NULL);
-+		if (!clp->krb5_ev) {
-+			printerr(0, "ERROR: %s: can't create krb5 event for %s: %s\n",
-+				 __FUNCTION__, clp->relpath, strerror(errno));
-+			close(clp->krb5_fd);
-+			clp->krb5_fd = -1;
-+		} else {
-+			event_add(clp->krb5_ev, NULL);
-+		}
- 	}
+@@ -182,6 +213,12 @@ main(int argc, char *argv[])
  
- 	if (clp->krb5_fd == -1 && clp->gssd_fd == -1)
-@@ -1086,7 +1095,7 @@ main(int argc, char *argv[])
+ 	daemon_init(fg);
  
- 	evbase = event_base_new();
- 	if (!evbase) {
--		printerr(0, "ERROR: failed to create event base\n");
++	evbase = event_base_new();
++	if (!evbase) {
 +		printerr(0, "ERROR: failed to create event base: %s\n", strerror(errno));
- 		exit(EXIT_FAILURE);
- 	}
- 
-@@ -1111,9 +1120,17 @@ main(int argc, char *argv[])
- 	signal(SIGINT, sig_die);
- 	signal(SIGTERM, sig_die);
- 	sighup_ev = evsignal_new(evbase, SIGHUP, gssd_scan_cb, NULL);
-+	if (!sighup_ev) {
-+		printerr(0, "ERROR: failed to create SIGHUP event: %s\n", strerror(errno));
 +		exit(EXIT_FAILURE);
-+	}
- 	evsignal_add(sighup_ev, NULL);
- 	inotify_ev = event_new(evbase, inotify_fd, EV_READ | EV_PERSIST,
- 			       gssd_inotify_cb, NULL);
-+	if (!inotify_ev) {
-+		printerr(0, "ERROR: failed to create inotify event: %s\n", strerror(errno));
-+		exit(EXIT_FAILURE);
-+	}
- 	event_add(inotify_ev, NULL);
- 
- 	TAILQ_INIT(&topdir_list);
-diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index 12648f67..491ef54c 100644
---- a/utils/idmapd/idmapd.c
-+++ b/utils/idmapd/idmapd.c
-@@ -400,13 +400,21 @@ main(int argc, char **argv)
- 
- 		/* These events are persistent */
- 		rootdirev = evsignal_new(evbase, SIGUSR1, dirscancb, &icq);
-+		if (rootdirev == NULL)
-+			errx(1, "Failed to create SIGUSR1 event.");
- 		evsignal_add(rootdirev, NULL);
- 		clntdirev = evsignal_new(evbase, SIGUSR2, clntscancb, &icq);
-+		if (clntdirev == NULL)
-+			errx(1, "Failed to create SIGUSR2 event.");
- 		evsignal_add(clntdirev, NULL);
- 		svrdirev = evsignal_new(evbase, SIGHUP, svrreopen, NULL);
-+		if (svrdirev == NULL)
-+			errx(1, "Failed to create SIGHUP event.");
- 		evsignal_add(svrdirev, NULL);
- 		if ( wd >= 0) {
- 			inotifyev = event_new(evbase, inotify_fd, EV_READ, dirscancb, &icq);
-+			if (inotifyev == NULL)
-+				errx(1, "Failed to create inotify read event.");
- 			event_add(inotifyev, NULL);
- 		}
- 
-@@ -414,6 +422,8 @@ main(int argc, char **argv)
- 		/* (Delay till start of event_dispatch to avoid possibly losing
- 		 * a SIGUSR1 between here and the call to event_dispatch().) */
- 		initialize = evtimer_new(evbase, dirscancb, &icq);
-+		if (initialize == NULL)
-+			errx(1, "Failed to create initialize event.");
- 		evtimer_add(initialize, &now);
- 	}
- 
-@@ -768,6 +778,13 @@ nfsdreopen_one(struct idmap_client *ic)
- 
- 		ic->ic_fd = fd;
- 		ic->ic_event = event_new(evbase, ic->ic_fd, EV_READ, nfsdcb, ic);
-+		if (ic->ic_event == NULL) {
-+			xlog_warn("nfsdreopen: Failed to create event for '%s'",
-+				  ic->ic_path);
-+			close(ic->ic_fd);
-+			ic->ic_fd = -1;
-+			return;
-+		}
- 		event_add(ic->ic_event, NULL);
- 	} else {
- 		xlog_warn("nfsdreopen: Opening '%s' failed: errno %d (%s)",
-@@ -802,6 +819,14 @@ nfsdopenone(struct idmap_client *ic)
- 	}
- 
- 	ic->ic_event = event_new(evbase, ic->ic_fd, EV_READ, nfsdcb, ic);
-+	if (ic->ic_event == NULL) {
-+		if (verbose > 0)
-+			xlog_warn("nfsdopenone: Create event for %s failed",
-+				  ic->ic_path);
-+		close(ic->ic_fd);
-+		ic->ic_fd = -1;
-+		return (-1);
-+	}
- 	event_add(ic->ic_event, NULL);
- 
- 	if (verbose > 0)
-@@ -826,6 +851,13 @@ nfsopen(struct idmap_client *ic)
- 		}
- 	} else {
- 		ic->ic_event = event_new(evbase, ic->ic_fd, EV_READ, nfscb, ic);
-+		if (ic->ic_event == NULL) {
-+			xlog_warn("nfsdopenone: Create event for %s failed",
-+				  ic->ic_path);
-+			close(ic->ic_fd);
-+			ic->ic_fd = -1;
-+			return -1;
-+		}
- 		event_add(ic->ic_event, NULL);
- 		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
- 		fcntl(ic->ic_dirfd, F_SETSIG, 0);
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index 6cefcf24..5ad94ce2 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -142,6 +142,7 @@ static int
- cld_pipe_open(struct cld_client *clnt)
- {
- 	int fd;
-+	struct event *ev;
- 
- 	xlog(D_GENERAL, "%s: opening upcall pipe %s", __func__, pipepath);
- 	fd = open(pipepath, O_RDWR, 0);
-@@ -150,6 +151,13 @@ cld_pipe_open(struct cld_client *clnt)
- 		return -errno;
- 	}
- 
-+	ev = event_new(evbase, fd, EV_READ, cldcb, clnt);
-+	if (ev == NULL) {
-+		xlog(D_GENERAL, "%s: failed to create event for %s", __func__, pipepath);
-+		close(fd);
-+		return -ENOMEM;
 +	}
 +
- 	if (clnt->cl_event && event_initialized(clnt->cl_event)) {
- 		event_del(clnt->cl_event);
- 		event_free(clnt->cl_event);
-@@ -158,7 +166,7 @@ cld_pipe_open(struct cld_client *clnt)
- 		close(clnt->cl_fd);
- 
- 	clnt->cl_fd = fd;
--	clnt->cl_event = event_new(evbase, clnt->cl_fd, EV_READ, cldcb, clnt);
-+	clnt->cl_event = ev;
- 	/* event_add is done by the caller */
- 	return 0;
- }
-@@ -304,6 +312,10 @@ cld_pipe_init(struct cld_client *clnt)
- 
- 	/* set event for inotify read */
- 	pipedir_event = event_new(evbase, inotify_fd, EV_READ, cld_inotify_cb, clnt);
-+	if (pipedir_event == NULL) {
-+		close(inotify_fd);
-+		return -ENOMEM;
-+	}
- 	event_add(pipedir_event, NULL);
- out:
- 	return ret;
-@@ -768,6 +780,10 @@ main(int argc, char **argv)
+ 	signal(SIGINT, sig_die);
+ 	signal(SIGTERM, sig_die);
+ 	signal(SIGHUP, sig_hup);
+@@ -209,10 +246,35 @@ main(int argc, char *argv[])
+ 		}
  	}
  
- 	evbase = event_base_new();
-+	if (evbase == NULL) {
-+		fprintf(stderr, "%s: unable to allocate event base.\n", argv[0]);
-+		return 1;
++#define NULLRPC_FILE "/proc/net/rpc/auth.rpcsec.init/channel"
++
++	nullrpc_fd = open(NULLRPC_FILE, O_RDWR);
++	if (nullrpc_fd < 0) {
++		printerr(0, "failed to open %s: %s\n",
++			 NULLRPC_FILE, strerror(errno));
++		exit(1);
 +	}
- 	xlog_syslog(0);
- 	xlog_stderr(1);
++	nullrpc_event = event_new(evbase, nullrpc_fd, EV_READ | EV_PERSIST,
++				  svcgssd_nullrpc_cb, NULL);
++	if (!nullrpc_event) {
++		printerr(0, "failed to create event for %s: %s\n",
++			 NULLRPC_FILE, strerror(errno));
++		exit(1);
++	}
++	event_add(nullrpc_event, NULL);
++
+ 	daemon_ready();
  
+ 	nfs4_init_name_mapping(NULL); /* XXX: should only do this once */
+-	gssd_run();
+-	printerr(0, "gssd_run returned!\n");
+-	abort();
++
++	rc = event_base_dispatch(evbase);
++	if (rc < 0)
++		printerr(0, "event_base_dispatch() returned %i!\n", rc);
++
++	event_free(nullrpc_event);
++	close(nullrpc_fd);
++
++	event_base_free(evbase);
++
++	return EXIT_SUCCESS;
+ }
+diff --git a/utils/gssd/svcgssd.h b/utils/gssd/svcgssd.h
+index 02b5c7ae..e229b989 100644
+--- a/utils/gssd/svcgssd.h
++++ b/utils/gssd/svcgssd.h
+@@ -35,8 +35,7 @@
+ #include <sys/queue.h>
+ #include <gssapi/gssapi.h>
+ 
+-void handle_nullreq(int f);
+-void gssd_run(void);
++void handle_nullreq(char *cp);
+ 
+ #define GSSD_SERVICE_NAME	"nfs"
+ 
+diff --git a/utils/gssd/svcgssd_main_loop.c b/utils/gssd/svcgssd_main_loop.c
+deleted file mode 100644
+index 920520d0..00000000
+--- a/utils/gssd/svcgssd_main_loop.c
++++ /dev/null
+@@ -1,94 +0,0 @@
+-/*
+-  Copyright (c) 2004 The Regents of the University of Michigan.
+-  All rights reserved.
+-
+-  Redistribution and use in source and binary forms, with or without
+-  modification, are permitted provided that the following conditions
+-  are met:
+-
+-  1. Redistributions of source code must retain the above copyright
+-     notice, this list of conditions and the following disclaimer.
+-  2. Redistributions in binary form must reproduce the above copyright
+-     notice, this list of conditions and the following disclaimer in the
+-     documentation and/or other materials provided with the distribution.
+-  3. Neither the name of the University nor the names of its
+-     contributors may be used to endorse or promote products derived
+-     from this software without specific prior written permission.
+-
+-  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+-  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+-  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+-  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+-  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+-  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+-  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-*/
+-
+-#ifdef HAVE_CONFIG_H
+-#include <config.h>
+-#endif	/* HAVE_CONFIG_H */
+-
+-#include <sys/param.h>
+-#include <sys/socket.h>
+-#include <poll.h>
+-#include <sys/types.h>
+-#include <sys/stat.h>
+-#include <netinet/in.h>
+-
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <string.h>
+-#include <memory.h>
+-#include <fcntl.h>
+-#include <errno.h>
+-#include <unistd.h>
+-
+-#include "svcgssd.h"
+-#include "err_util.h"
+-
+-void
+-gssd_run()
+-{
+-	int			ret;
+-	int			f;
+-	struct pollfd		pollfd;
+-
+-#define NULLRPC_FILE "/proc/net/rpc/auth.rpcsec.init/channel"
+-
+-	f = open(NULLRPC_FILE, O_RDWR);
+-	if (f < 0) {
+-		printerr(0, "failed to open %s: %s\n",
+-			 NULLRPC_FILE, strerror(errno));
+-		exit(1);
+-	}
+-	pollfd.fd = f;
+-	pollfd.events = POLLIN;
+-	while (1) {
+-		int save_err;
+-
+-		pollfd.revents = 0;
+-		printerr(1, "entering poll\n");
+-		ret = poll(&pollfd, 1, -1);
+-		save_err = errno;
+-		printerr(1, "leaving poll\n");
+-		if (ret < 0) {
+-			if (save_err != EINTR)
+-				printerr(0, "error return from poll: %s\n",
+-					 strerror(save_err));
+-		} else if (ret == 0) {
+-			/* timeout; shouldn't happen. */
+-		} else {
+-			if (ret != 1) {
+-				printerr(0, "bug: unexpected poll return %d\n",
+-						ret);
+-				exit(1);
+-			}
+-			if (pollfd.revents & POLLIN)
+-				handle_nullreq(f);
+-		}
+-	}
+-}
+diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
+index 72ec2540..b4031432 100644
+--- a/utils/gssd/svcgssd_proc.c
++++ b/utils/gssd/svcgssd_proc.c
+@@ -318,7 +318,7 @@ print_hexl(const char *description, unsigned char *cp, int length)
+ #endif
+ 
+ void
+-handle_nullreq(int f) {
++handle_nullreq(char *cp) {
+ 	/* XXX initialize to a random integer to reduce chances of unnecessary
+ 	 * invalidation of existing ctx's on restarting svcgssd. */
+ 	static u_int32_t	handle_seq = 0;
+@@ -340,24 +340,11 @@ handle_nullreq(int f) {
+ 	u_int32_t		maj_stat = GSS_S_FAILURE, min_stat = 0;
+ 	u_int32_t		ignore_min_stat;
+ 	struct svc_cred		cred;
+-	char			lbuf[RPC_CHAN_BUF_SIZE];
+-	int			lbuflen = 0;
+-	char			*cp;
+ 	int32_t			ctx_endtime;
+ 	char			*hostbased_name = NULL;
+ 
+ 	printerr(1, "handling null request\n");
+ 
+-	lbuflen = read(f, lbuf, sizeof(lbuf));
+-	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+-		printerr(0, "WARNING: handle_nullreq: "
+-			    "failed reading request\n");
+-		return;
+-	}
+-	lbuf[lbuflen-1] = 0;
+-
+-	cp = lbuf;
+-
+ 	in_handle.length = (size_t) qword_get(&cp, in_handle.value,
+ 					      sizeof(in_handle_buf));
+ #ifdef DEBUG
 -- 
 2.26.2
 
