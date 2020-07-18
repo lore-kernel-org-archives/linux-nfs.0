@@ -2,336 +2,121 @@ Return-Path: <SRS0=BQ/q=A5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7CA60C433DF
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Jul 2020 15:57:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 43FB7C433DF
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Jul 2020 18:07:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2CAEF2076A
-	for <linux-nfs@archiver.kernel.org>; Sat, 18 Jul 2020 15:57:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 138A62073A
+	for <linux-nfs@archiver.kernel.org>; Sat, 18 Jul 2020 18:07:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="wtXI9Ywn"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=nazar.ca header.i=@nazar.ca header.b="Z5T445iO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726863AbgGRP5v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Jul 2020 11:57:51 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:45362 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726829AbgGRP5v (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jul 2020 11:57:51 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06IFqbo2001162;
-        Sat, 18 Jul 2020 15:55:36 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=XO8prSTKSifbb4EdjsniCd+hOiNuXqYTnRZh2fa4p0U=;
- b=wtXI9Ywnz7kPSLb72x6R8N2kz4IGgHdjywTP9LcasfIKW9EWkuQ4djUBkiA5T6Wsku3q
- F5Mi/V9gKzosEUQC2eecYvrsTaTfA8iQzbPKZJZmlQ933hovvlnzh/HwXBgxDVitFpyV
- FTC6wMmEqJhsR3PrkhiQ9UtIWQKnU78nnf8hrF/BN4XSa0FyOXHED5Mxu082b6N+Pcev
- EhyfRP1TX870/RYvriLIYW4WjjTY5Jf20Vsw9XZZ+fVRGrlVqR4Ol5hDHppNYm7ffR81
- AN4eKFU5+3anr0N2IFWUJtaHbBX+gf222ayfpI56iO3nnIROhrAvJr4F6JbJH6dzSVle TQ== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by userp2130.oracle.com with ESMTP id 32brgr1cqr-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Sat, 18 Jul 2020 15:55:36 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06IFsCOB061667;
-        Sat, 18 Jul 2020 15:55:35 GMT
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by userp3020.oracle.com with ESMTP id 32c03h9vh7-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 18 Jul 2020 15:55:35 +0000
-Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 06IFtVbQ003633;
-        Sat, 18 Jul 2020 15:55:31 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Sat, 18 Jul 2020 15:55:30 +0000
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.80.23.2.2\))
-Subject: Re: [Regression] "SUNRPC: Add "@len" parameter to gss_unwrap()"
- breaks NFS Kerberos on upstream stable 5.4.y
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4572147.31r3eYUQgx@keks.as.studentenwerk.mhn.de>
-Date:   Sat, 18 Jul 2020 11:55:28 -0400
-Cc:     Kai-Heng Feng <kai.heng.feng@canonical.com>,
-        matthew.ruffell@canonical.com,
-        linux-stable <stable@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "open list:NETWORKING DRIVERS" <netdev@vger.kernel.org>,
-        open list <linux-kernel@vger.kernel.org>,
-        linux-kernel-owner@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <9AA41536-4CD0-46E0-BE5E-850A420EF7FE@oracle.com>
-References: <309E203B-8818-4E33-87F0-017E127788E2@canonical.com>
- <650B6279-9550-4844-9375-280F11C3DC4B@oracle.com>
- <CCF13E29-7B8B-47B3-A8D0-1A6E0E626BA6@canonical.com>
- <4572147.31r3eYUQgx@keks.as.studentenwerk.mhn.de>
-To:     Pierre Sauter <pierre.sauter@stwm.de>
-X-Mailer: Apple Mail (2.3608.80.23.2.2)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9686 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 malwarescore=0 mlxscore=0
- bulkscore=0 mlxlogscore=999 phishscore=0 adultscore=0 suspectscore=2
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2007180120
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9686 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 bulkscore=0 spamscore=0
- impostorscore=0 suspectscore=2 adultscore=0 clxscore=1015 mlxlogscore=999
- priorityscore=1501 phishscore=0 lowpriorityscore=0 mlxscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2007180120
+        id S1726604AbgGRSHm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 18 Jul 2020 14:07:42 -0400
+Received: from ny018.relay.arandomserver.com ([172.96.188.180]:44447 "EHLO
+        ny018.relay.arandomserver.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726155AbgGRSHl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jul 2020 14:07:41 -0400
+Received: from nyc006.hawkhost.com ([172.96.186.142])
+        by se004.arandomserver.com with esmtps (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
+        (Exim 4.92)
+        (envelope-from <nazard@nazar.ca>)
+        id 1jwrFK-0002Ec-P1; Sat, 18 Jul 2020 13:07:40 -0500
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=nazar.ca;
+         s=default; h=Content-Transfer-Encoding:Content-Type:In-Reply-To:MIME-Version
+        :Date:Message-ID:From:References:Cc:To:Subject:Sender:Reply-To:Content-ID:
+        Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+        :Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
+        List-Post:List-Owner:List-Archive;
+        bh=0lMxVG9DhlpdlStM0yVK9+ShTlLsgRFGPNvlAVjByc8=; b=Z5T445iOmvluYGckZ3FSQeu2gQ
+        gv9CNATkn7Igc2qS7xHJaJybmf+ATdAuLMPjBPpQygacX1c9zzqLiUSeX2U0/t/TK+7xDwEX+JUH5
+        6BTbkLmm9y0Wd/8lilzjqihqk+LV/X4dchszEDSAuSZibRCHlSr2XKsdg/futLy7rFkezbQXORKrR
+        nFTIfG6BSkJMVSj9oDRi8NE1ajwTFEpJIq1jFk+3YAOQX1JAuRXxv59m7dvphpO8IOSy/5ddRC8oM
+        wwPFDPHk8TQuT0apAFKJvmkbRTEnarI1IEXq/nhEqv21g5ZzWzgkFUhBz+mhaP3gMOeb3syK+4q+q
+        VCdwqNVw==;
+Received: from [174.119.114.224] (port=61475 helo=[192.168.21.100])
+        by nyc006.hawkhost.com with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        (Exim 4.93)
+        (envelope-from <nazard@nazar.ca>)
+        id 1jwrFK-0005gh-Ak; Sat, 18 Jul 2020 14:07:38 -0400
+Subject: Re: [PATCH 11/11] svcgssd: Wait for nullrpc channel if not available
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     linux-nfs@vger.kernel.org
+References: <20200718092421.31691-1-nazard@nazar.ca>
+ <20200718092421.31691-12-nazard@nazar.ca>
+ <20200718155501.GB27817@fieldses.org>
+From:   Doug Nazar <nazard@nazar.ca>
+Message-ID: <3b9a70ce-f1b4-da68-cfc1-8e93af197461@nazar.ca>
+Date:   Sat, 18 Jul 2020 14:07:37 -0400
+User-Agent: Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:78.0) Gecko/20100101
+ Firefox/78.0 Thunderbird/78.0
+MIME-Version: 1.0
+In-Reply-To: <20200718155501.GB27817@fieldses.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
+X-Get-Message-Sender-Via: nyc006.hawkhost.com: authenticated_id: nazard@nazar.ca
+X-Authenticated-Sender: nyc006.hawkhost.com: nazard@nazar.ca
+X-Originating-IP: 172.96.186.142
+X-SpamExperts-Domain: nyc006.hawkhost.com
+X-SpamExperts-Username: 172.96.186.142
+Authentication-Results: arandomserver.com; auth=pass smtp.auth=172.96.186.142@nyc006.hawkhost.com
+X-SpamExperts-Outgoing-Class: ham
+X-SpamExperts-Outgoing-Evidence: Combined (0.09)
+X-Recommended-Action: accept
+X-Filter-ID: Mvzo4OR0dZXEDF/gcnlw0ZZlDYW4q2llG44Qh0NJtYKpSDasLI4SayDByyq9LIhVDncSqfHBIqen
+ moyOfPgwyUTNWdUk1Ol2OGx3IfrIJKyP9eGNFz9TW9u+Jt8z2T3K5r8HtW+i+zOSEp4G6/nKTpHR
+ 3t4R4vw0+gs6rQMezuDQdD3ECQyPVYuo/ujzNsc8viEqxXu9nsjup+bYfVGN6j3c2bTBkiueaPJT
+ gX20BBPX8GBK2+FCvMRX/exKBeIMDxZyF+/quwlXr13DBHJ7kWp/mCTKAj9EQotc65cQxEIUOled
+ bu+r9+W9cDXvzL3SjEekZ1w6js9KEGCkjNjGdcOV2awaruQPIfR7DggPD4IAKQlQdTfwbSciar+2
+ JCMst0dEunmtVTQWqR0MJGYnYGBIZS4rRgm1GD0QN7Psq7kMoOLjGsRz/MUE6aIZoCcUNXR4aVG4
+ tVHU1Zldyy+zfTHgoRSIkNGyZDkdPdUqQyeAwOSH7Hm+6hU/jLtdYTiGHQrtppYmxMktfUX7kfB+
+ UdezYqxGMqsKjARq8PBC4qgVedic00I3CA/YxDWByJcFD6rr00FXqj5BQiRpjh6VtRR9Ovbqz/k9
+ Jlx8RTZkJCspOMQJvQ/Ck3iiU+4DQAj366V+bW1tsfg2xPA2CLYwN9BKAwe6u/Z3EPCB2KCyO1D7
+ ry+P9mvkP6Vs460VPtaTVT6bE0ihpqUKOhPoey51kVRouUaKew42cME526cBHCITG4aOo9aTjoWh
+ BEYykJb/5H/Lzjsr3foqzoW7y6GskI89mIoZPNvZfQKw2NX8SuW4vJz2+4kbZsr/7Bkn+2moEPa+
+ 9NZ1qwLC8KIVpu8GCwIOT2izZex7n9jkqzOt1NMEV6gwbG4z0RlfxqM+my40HHASJNUmoOHSoqgq
+ xfHmWVt/SL7ectM6Ephk0yyOsO2hm/Umr3EBwhPfF53vAaarHHVcTyqIv4H/pWtDI5cIrmbzroJX
+ jH7wQNY/kO3yis8rKC1V3fY3WzdMefBRTJj7sqHXVea/5OzO4moKJZPGcIFh8wkpjrBcUVLrf2ME
+ wcB49DjiWowOnKvI8aF4jzAuaOZSGeNj6SDHeu/o/TAv4qgzSk6C9sUJqq9ebzUDvEk=
+X-Report-Abuse-To: spam@se001.arandomserver.com
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On 2020-07-18 11:55, J. Bruce Fields wrote:
 
+> So, is there a race here that could result in a hang, and has anyone
+> seen it in practice?
+>
+> Just curious.  Thanks for doing this.--b.
 
-> On Jul 17, 2020, at 3:46 PM, Pierre Sauter <pierre.sauter@stwm.de> =
-wrote:
->=20
-> Am Freitag, 17. Juli 2020, 19:56:09 CEST schrieb Kai-Heng Feng:
->>> Pierre, thanks for confirming!
->>>=20
->>> Kai-Heng suspected an upstream stable commit that is missing in =
-5.4.0-40,
->>> but I don't have any good suggestions.
->>=20
->> Well, Ubuntu's 5.4 kernel is based on upstream stable v5.4, so I =
-asked users to test stable v5.4.51, however the feedback was negative, =
-and that's the reason why I raised the issue here.
->>=20
->> Anyway, good to know that it's fixed in upstream stable, everything's =
-good now!
->> Thanks for your effort Chuck.
->>=20
->> Kai-Heng
->=20
-> Sorry to have caused premature happiness. Kai-Hengs last message =
-reminded me
-> that I had seen the bug earlier in the week on Ubuntu Mainline =
-v.5.4.51.
-> So I decided to rebuild vanilla v5.4.51 with Ubuntus config + KASAN, =
-and voila.
-> It seems that their config is just really good in exposing the bug on =
-mount. I
-> am off for the weekend, can do more testing next week.
->=20
-> [   21.664580] =
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> [   21.664657] BUG: KASAN: slab-out-of-bounds in =
-_copy_from_pages+0xed/0x210 [sunrpc]
-> [   21.664705] Write of size 64 at addr ffff8883b6b7d444 by task =
-update-desktop-/1345
->=20
-> [   21.664764] CPU: 0 PID: 1345 Comm: update-desktop- Not tainted =
-5.4.51 #1
-> [   21.664765] Hardware name: XXXXXX
-> [   21.664766] Call Trace:
-> [   21.664771]  dump_stack+0x96/0xca
-> [   21.664775]  print_address_description.constprop.0+0x20/0x210
-> [   21.664795]  ? _copy_from_pages+0xed/0x210 [sunrpc]
-> [   21.664797]  __kasan_report.cold+0x1b/0x41
-> [   21.664816]  ? _copy_from_pages+0xed/0x210 [sunrpc]
-> [   21.664819]  kasan_report+0x14/0x20
-> [   21.664820]  check_memory_region+0x129/0x1b0
-> [   21.664822]  memcpy+0x38/0x50
-> [   21.664840]  _copy_from_pages+0xed/0x210 [sunrpc]
-> [   21.664859]  xdr_shrink_pagelen+0x1d6/0x440 [sunrpc]
-> [   21.664877]  xdr_align_pages+0x15f/0x580 [sunrpc]
-> [   21.664897]  ? decode_setattr+0x120/0x120 [nfsv4]
-> [   21.664916]  xdr_read_pages+0x44/0x290 [sunrpc]
-> [   21.664933]  ? __decode_op_hdr+0x29/0x430 [nfsv4]
-> [   21.664950]  nfs4_xdr_dec_readlink+0x238/0x390 [nfsv4]
+Not a hang, with the existing code, svcgssd will just exit. I'd have to 
+go and restart it after boot. I'm assuming a systemd setup would just 
+restart it automatically.
+On my original systems I'd configured it to force load the modules, but 
+I'd forgotten about that (it was about 10 years ago) when I built this 
+new box last month.
 
-READLINK appears to be a common element in these splats. Is there
-an especially large symbolic link in your home directory? Knowing
-that might help me reproduce the problem here.
+As mentioned in the other email, sunrpc is loaded from an initramfs that 
+doesn't have any of the gss modules. When nfsd is started (after 
+svcgssd) it'll then load the gss modules but by then it's too late.
 
-You confirmed the crash does not occur in v5.5.19, but the 5.8-ish
-kernel you tested was Ubuntu's. Do you have test results for a
-stock upstream v5.8-rc5 kernel?
+It seems to be a standard Gentoo setup. I just checked the default 
+kernel config for genkernel (their kernel & initramfs builder) and it 
+has all the rpc & nfs as modules, with the initramfs not supporting 
+Kerberos.
 
-Do you know if v5.6.19 has this issue?
+Looks like Debian modprobes rpcsec_gss_krb5 before starting rpc.svcgssd.
 
+So with this waiting for the file to appear, and I'm planning on adding 
+a conditional module load to the Gentoo rpc.svcgssd init script, things 
+should be as bulletproof as I can make it.
 
-> [   21.664966]  ? nfs4_xdr_dec_read+0x3c0/0x3c0 [nfsv4]
-> [   21.664969]  ? __kasan_slab_free+0x14e/0x180
-> [   21.664985]  ? nfs4_xdr_dec_read+0x3c0/0x3c0 [nfsv4]
-> [   21.665003]  rpcauth_unwrap_resp_decode+0xaa/0x100 [sunrpc]
-> [   21.665009]  gss_unwrap_resp+0x99d/0x1570 [auth_rpcgss]
-> [   21.665014]  ? gss_destroy_cred+0x460/0x460 [auth_rpcgss]
-> [   21.665016]  ? finish_task_switch+0x163/0x670
-> [   21.665019]  ? __switch_to_asm+0x34/0x70
-> [   21.665023]  ? gss_wrap_req+0x1700/0x1700 [auth_rpcgss]
-> [   21.665026]  ? prepare_to_wait+0xea/0x2b0
-> [   21.665045]  rpcauth_unwrap_resp+0xac/0x100 [sunrpc]
-> [   21.665061]  call_decode+0x454/0x7e0 [sunrpc]
-> [   21.665077]  ? rpc_decode_header+0x10a0/0x10a0 [sunrpc]
-> [   21.665079]  ? var_wake_function+0x140/0x140
-> [   21.665095]  ? call_transmit_status+0x31e/0x5d0 [sunrpc]
-> [   21.665110]  ? rpc_decode_header+0x10a0/0x10a0 [sunrpc]
-> [   21.665127]  __rpc_execute+0x204/0xbd0 [sunrpc]
-> [   21.665143]  ? xprt_wait_for_reply_request_def+0x170/0x170 [sunrpc]
-> [   21.665160]  ? rpc_exit+0xc0/0xc0 [sunrpc]
-> [   21.665162]  ? __kasan_check_read+0x11/0x20
-> [   21.665164]  ? wake_up_bit+0x42/0x50
-> [   21.665181]  rpc_execute+0x1a0/0x1f0 [sunrpc]
-> [   21.665197]  rpc_run_task+0x454/0x5e0 [sunrpc]
-> [   21.665213]  nfs4_call_sync_custom+0x12/0x70 [nfsv4]
-> [   21.665229]  nfs4_call_sync_sequence+0x143/0x1f0 [nfsv4]
-> [   21.665244]  ? nfs4_call_sync_custom+0x70/0x70 [nfsv4]
-> [   21.665247]  ? get_page_from_freelist+0x24d0/0x45f0
-> [   21.665263]  _nfs4_proc_readlink+0x1a6/0x250 [nfsv4]
-> [   21.665280]  ? _nfs4_proc_getdeviceinfo+0x350/0x350 [nfsv4]
-> [   21.665282]  ? release_pages+0x44b/0xca0
-> [   21.665284]  ? __mod_lruvec_state+0x8f/0x320
-> [   21.665286]  ? pagevec_lru_move_fn+0x18d/0x230
-> [   21.665303]  nfs4_proc_readlink+0x101/0x2c0 [nfsv4]
-> [   21.665320]  ? nfs4_proc_link+0x1c0/0x1c0 [nfsv4]
-> [   21.665322]  ? add_to_page_cache_locked+0x20/0x20
-> [   21.665339]  nfs_symlink_filler+0xdc/0x190 [nfs]
-> [   21.665341]  do_read_cache_page+0x60e/0x1490
-> [   21.665353]  ? nfs4_do_lookup_revalidate+0x1a1/0x2d0 [nfs]
-> [   21.665365]  ? nfs_get_link+0x370/0x370 [nfs]
-> [   21.665367]  ? xas_load+0x23/0x250
-> [   21.665369]  ? pagecache_get_page+0x760/0x760
-> [   21.665372]  ? lockref_get_not_dead+0xe3/0x1c0
-> [   21.665374]  ? __kasan_check_write+0x14/0x20
-> [   21.665376]  ? lockref_get_not_dead+0xe3/0x1c0
-> [   21.665378]  ? __kasan_check_write+0x14/0x20
-> [   21.665380]  ? _raw_spin_lock+0x7b/0xd0
-> [   21.665382]  ? _raw_write_trylock+0x110/0x110
-> [   21.665384]  read_cache_page+0x4c/0x80
-> [   21.665396]  nfs_get_link+0x75/0x370 [nfs]
-> [   21.665399]  trailing_symlink+0x6fe/0x810
-> [   21.665411]  ? nfs_destroy_readpagecache+0x20/0x20 [nfs]
-> [   21.665413]  path_lookupat.isra.0+0x188/0x7d0
-> [   21.665416]  ? do_syscall_64+0x9f/0x3a0
-> [   21.665418]  ? entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> [   21.665420]  ? path_parentat.isra.0+0x110/0x110
-> [   21.665423]  ? stack_trace_save+0x94/0xc0
-> [   21.665424]  ? stack_trace_consume_entry+0x170/0x170
-> [   21.665427]  filename_lookup+0x185/0x3b0
-> [   21.665429]  ? nd_jump_link+0x1d0/0x1d0
-> [   21.665431]  ? kasan_slab_free+0xe/0x10
-> [   21.665434]  ? __kasan_check_read+0x11/0x20
-> [   21.665436]  ? __check_object_size+0x249/0x316
-> [   21.665438]  ? strncpy_from_user+0x80/0x290
-> [   21.665440]  ? kmem_cache_alloc+0x180/0x250
-> [   21.665442]  ? getname_flags+0x100/0x520
-> [   21.665444]  user_path_at_empty+0x3a/0x50
-> [   21.665447]  vfs_statx+0xca/0x150
-> [   21.665449]  ? vfs_statx_fd+0x90/0x90
-> [   21.665451]  ? __kasan_slab_free+0x14e/0x180
-> [   21.665453]  __do_sys_newstat+0x9a/0x100
-> [   21.665455]  ? cp_new_stat+0x5d0/0x5d0
-> [   21.665457]  ? __kasan_check_write+0x14/0x20
-> [   21.665459]  ? _raw_spin_lock_irq+0x82/0xe0
-> [   21.665461]  ? _raw_read_lock_irq+0x50/0x50
-> [   21.665464]  ? __blkcg_punt_bio_submit+0x1c0/0x1c0
-> [   21.665466]  ? __kasan_check_write+0x14/0x20
-> [   21.665469]  ? switch_fpu_return+0x13a/0x2d0
-> [   21.665471]  ? fpregs_mark_activate+0x150/0x150
-> [   21.665474]  __x64_sys_newstat+0x54/0x80
-> [   21.665476]  do_syscall_64+0x9f/0x3a0
-> [   21.665478]  ? prepare_exit_to_usermode+0xee/0x1a0
-> [   21.665480]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> [   21.665482] RIP: 0033:0x7f6e05f5c49a
-> [   21.665485] Code: 00 00 75 05 48 83 c4 18 c3 e8 f2 24 02 00 66 90 =
-f3 0f 1e fa 41 89 f8 48 89 f7 48 89 d6 41 83 f8 01 77 2d b8 04 00 00 00 =
-0f 05 <48> 3d 00 f0 ff ff 77 06 c3 0f 1f 44 00 00 48 8b 15 c1 a9 0d 00 =
-f7
-> [   21.665486] RSP: 002b:00007fff043e5f18 EFLAGS: 00000246 ORIG_RAX: =
-0000000000000004
-> [   21.665488] RAX: ffffffffffffffda RBX: 0000000000000004 RCX: =
-00007f6e05f5c49a
-> [   21.665489] RDX: 00007fff043e5f20 RSI: 00007fff043e5f20 RDI: =
-000055af4c4ea5f0
-> [   21.665490] RBP: 000055af4c4ea5f0 R08: 0000000000000001 R09: =
-0000000000000001
-> [   21.665491] R10: 0000000000000017 R11: 0000000000000246 R12: =
-000055af4c4eede3
-> [   21.665492] R13: 000055af4c4e81a0 R14: 000055af4c4e6940 R15: =
-000055af4c4e6990
->=20
-> [   21.665508] Allocated by task 1345:
-> [   21.665532]  save_stack+0x23/0x90
-> [   21.665534]  __kasan_kmalloc.constprop.0+0xcf/0xe0
-> [   21.665536]  kasan_slab_alloc+0xe/0x10
-> [   21.665538]  kmem_cache_alloc+0xd7/0x250
-> [   21.665539]  mempool_alloc_slab+0x17/0x20
-> [   21.665541]  mempool_alloc+0x126/0x330
-> [   21.665558]  rpc_malloc+0x1f2/0x270 [sunrpc]
-> [   21.665574]  call_allocate+0x3b9/0x9d0 [sunrpc]
-> [   21.665591]  __rpc_execute+0x204/0xbd0 [sunrpc]
-> [   21.665607]  rpc_execute+0x1a0/0x1f0 [sunrpc]
-> [   21.665623]  rpc_run_task+0x454/0x5e0 [sunrpc]
-> [   21.665638]  nfs4_call_sync_custom+0x12/0x70 [nfsv4]
-> [   21.665653]  nfs4_call_sync_sequence+0x143/0x1f0 [nfsv4]
-> [   21.665668]  _nfs4_proc_readlink+0x1a6/0x250 [nfsv4]
-> [   21.665684]  nfs4_proc_readlink+0x101/0x2c0 [nfsv4]
-> [   21.665698]  nfs_symlink_filler+0xdc/0x190 [nfs]
-> [   21.665699]  do_read_cache_page+0x60e/0x1490
-> [   21.665701]  read_cache_page+0x4c/0x80
-> [   21.665713]  nfs_get_link+0x75/0x370 [nfs]
-> [   21.665714]  trailing_symlink+0x6fe/0x810
-> [   21.665716]  path_lookupat.isra.0+0x188/0x7d0
-> [   21.665718]  filename_lookup+0x185/0x3b0
-> [   21.665719]  user_path_at_empty+0x3a/0x50
-> [   21.665721]  vfs_statx+0xca/0x150
-> [   21.665723]  __do_sys_newstat+0x9a/0x100
-> [   21.665725]  __x64_sys_newstat+0x54/0x80
-> [   21.665727]  do_syscall_64+0x9f/0x3a0
-> [   21.665729]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
->=20
-> [   21.665743] Freed by task 0:
-> [   21.665762] (stack is not available)
->=20
-> [   21.665798] The buggy address belongs to the object at =
-ffff8883b6b7cc80
->                which belongs to the cache rpc_buffers of size 2048
-> [   21.665871] The buggy address is located 1988 bytes inside of
->                2048-byte region [ffff8883b6b7cc80, ffff8883b6b7d480)
-> [   21.665939] The buggy address belongs to the page:
-> [   21.665970] page:ffffea000edade00 refcount:1 mapcount:0 =
-mapping:ffff88840afecc00 index:0x0 compound_mapcount: 0
-> [   21.666029] flags: 0x17ffffc0010200(slab|head)
-> [   21.666059] raw: 0017ffffc0010200 dead000000000100 dead000000000122 =
-ffff88840afecc00
-> [   21.666107] raw: 0000000000000000 00000000800f000f 00000001ffffffff =
-0000000000000000
-> [   21.666152] page dumped because: kasan: bad access detected
->=20
-> [   21.666197] Memory state around the buggy address:
-> [   21.666228]  ffff8883b6b7d380: 00 00 00 00 00 00 00 00 00 00 00 00 =
-00 00 00 00
-> [   21.666272]  ffff8883b6b7d400: 00 00 00 00 00 00 00 00 00 00 00 00 =
-00 00 00 00
-> [   21.666315] >ffff8883b6b7d480: fc fc fc fc fc fc fc fc fc fc fc fc =
-fc fc fc fc
-> [   21.666358]                    ^
-> [   21.666379]  ffff8883b6b7d500: fc fc fc fc fc fc fc fc fc fc fc fc =
-fc fc fc fc
-> [   21.666423]  ffff8883b6b7d580: fc fc fc fc fc fc fc fc fc fc fc fc =
-fc fc fc fc
-> [   21.666465] =
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> [   21.666509] Disabling lock debugging due to kernel taint
->=20
->=20
->=20
-
---
-Chuck Lever
-
-
+Doug
 
