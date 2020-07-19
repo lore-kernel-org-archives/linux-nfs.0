@@ -2,31 +2,54 @@ Return-Path: <SRS0=l1yb=A6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D051C433DF
-	for <linux-nfs@archiver.kernel.org>; Sun, 19 Jul 2020 01:45:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DECFFC433E1
+	for <linux-nfs@archiver.kernel.org>; Sun, 19 Jul 2020 09:52:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 788F220882
-	for <linux-nfs@archiver.kernel.org>; Sun, 19 Jul 2020 01:45:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B8C4F2073A
+	for <linux-nfs@archiver.kernel.org>; Sun, 19 Jul 2020 09:52:05 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="KTNUbDob"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726330AbgGSBpE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Jul 2020 21:45:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57544 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726256AbgGSBpE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Jul 2020 21:45:04 -0400
-Received: from ZenIV.linux.org.uk (zeniv.linux.org.uk [IPv6:2002:c35c:fd02::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 44B80C0619D2;
-        Sat, 18 Jul 2020 18:45:04 -0700 (PDT)
-Received: from viro by ZenIV.linux.org.uk with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jwyNY-00FOFG-MQ; Sun, 19 Jul 2020 01:44:36 +0000
-Date:   Sun, 19 Jul 2020 02:44:36 +0100
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     David Howells <dhowells@redhat.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        id S1726024AbgGSJwE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 19 Jul 2020 05:52:04 -0400
+Received: from us-smtp-2.mimecast.com ([205.139.110.61]:56443 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726468AbgGSJwE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jul 2020 05:52:04 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1595152322;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=mknWuDNTSPVA5tuUznaF/9X4S4nuMwQxpbXQ5+3goe4=;
+        b=KTNUbDob46tg9SJK7KzWkduacmY2eOFp9p4cWPefWh8xV/H29cBNiB36A068Zcny5RdTeK
+        y9gpO9xNrG1oTtDOnP2Pv1Pcn4CAGvNeRpNgWqThWxYnMIOrGBKHZJCemWPx7anQQIvN/p
+        rryJvEu+SWR9hPemHmiDTseufKW+MAU=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-138-nURWLhFwNNyG7fNENd1CWQ-1; Sun, 19 Jul 2020 05:52:00 -0400
+X-MC-Unique: nURWLhFwNNyG7fNENd1CWQ-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 940D580183C;
+        Sun, 19 Jul 2020 09:51:58 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-112-32.rdu2.redhat.com [10.10.112.32])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8F9481A90F;
+        Sun, 19 Jul 2020 09:51:52 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+In-Reply-To: <20200719014436.GG2786714@ZenIV.linux.org.uk>
+References: <20200719014436.GG2786714@ZenIV.linux.org.uk> <159465784033.1376674.18106463693989811037.stgit@warthog.procyon.org.uk> <159465785214.1376674.6062549291411362531.stgit@warthog.procyon.org.uk>
+To:     Al Viro <viro@zeniv.linux.org.uk>
+Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Steve French <sfrench@samba.org>,
         Matthew Wilcox <willy@infradead.org>,
@@ -37,52 +60,42 @@ Cc:     Trond Myklebust <trondmy@hammerspace.com>,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
 Subject: Re: [PATCH 01/32] iov_iter: Add ITER_MAPPING
-Message-ID: <20200719014436.GG2786714@ZenIV.linux.org.uk>
-References: <159465784033.1376674.18106463693989811037.stgit@warthog.procyon.org.uk>
- <159465785214.1376674.6062549291411362531.stgit@warthog.procyon.org.uk>
+From:   David Howells <dhowells@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <159465785214.1376674.6062549291411362531.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <3417.1595152311.1@warthog.procyon.org.uk>
+Date:   Sun, 19 Jul 2020 10:51:51 +0100
+Message-ID: <3418.1595152311@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Jul 13, 2020 at 05:30:52PM +0100, David Howells wrote:
-> Add an iterator, ITER_MAPPING, that walks through a set of pages attached
-> to an address_space, starting at a given page and offset and walking for
-> the specified amount of bytes.
-> 
-> The caller must guarantee that the pages are all present and they must be
-> locked using PG_locked, PG_writeback or PG_fscache to prevent them from
-> going away or being migrated whilst they're being accessed.
-> 
-> This is useful for copying data from socket buffers to inodes in network
-> filesystems and for transferring data between those inodes and the cache
-> using direct I/O.
-> 
-> Whilst it is true that ITER_BVEC could be used instead, that would require
-> a bio_vec array to be allocated to refer to all the pages - which should be
-> redundant if inode->i_pages also points to all these pages.
-> 
-> This could also be turned into an ITER_XARRAY, taking and xarray pointer
-> instead of a mapping pointer.  It would be mostly trivial, except for the
-> use of find_get_pages_contig() by iov_iter_get_pages*().
-> 
+Al Viro <viro@zeniv.linux.org.uk> wrote:
 
-My main problem here is that your iterate_mapping() assumes that STEP is
-safe under rcu_read_lock(), with no visible mentioning of that fact.
-Note, BTW, that iov_iter_for_each_range() quietly calls user-supplied
-callback in such context.
+> My main problem here is that your iterate_mapping() assumes that STEP is
+> safe under rcu_read_lock(), with no visible mentioning of that fact.
 
-Incidentally, do you ever have different steps for bvec and mapping?
+Yeah, that's probably the biggest objection to this.
 
-> +	if (unlikely(iov_iter_is_mapping(i))) {
-> +		/* We really don't want to fetch pages if we can avoid it */
-> +		i->iov_offset += size;
-> +		i->count -= size;
-> +		return;
+> Note, BTW, that iov_iter_for_each_range() quietly calls user-supplied
+> callback in such context.
 
-That's... not nice.  At the very least you want to cap size by i->count here
-(and for discard case as well, while we are at it).
+And calls kmap(), but should probably use kmap_atomic().  git grep doesn't
+show any users of this, so can it be removed?
+
+> Incidentally, do you ever have different steps for bvec and mapping?
+
+Yes:
+
+	csum_and_copy_from_iter_full()
+	iov_iter_npages()
+	iov_iter_get_pages()
+	iov_iter_get_pages_alloc()
+
+But I've tried to use the internal representation struct for bvec where I can
+rather than inventing a new one.
+
+David
+
