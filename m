@@ -7,48 +7,48 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B79D1C43464
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jul 2020 21:41:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD6DDC47274
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jul 2020 21:42:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8E58622C7B
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jul 2020 21:41:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9B5A022BEF
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jul 2020 21:42:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1595281264;
-	bh=OvpeHZN2OI73IrG1M3/GUSDmqOk62H1tCVxpxfNoLDg=;
+	s=default; t=1595281374;
+	bh=hyoWTlXaRJHz9u15BbwMpNHvU6B/qEq0Zc3o3cyjtOg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=pomzRvHDuC8ehVlMuIP+yvvdm6Ut+zyF0JwKTF3Oh7XiKhA/WKQGXMiNpPDtgvOZF
-	 nU2zJ6XvcHfWAs4n/s2XwxFDrMn5saO3QIJvAt6FVnW4WPiwT/TXwOIoHi4lmRzf/i
-	 1mOknp/xnW3nwoubPh8Qz9miVDURjTmkLPd9w3zw=
+	b=ow054XaGxfXDJLV7YyTmVAz+y9pBYJxyjilJ5YwQcBzcC8kLYpxCIfeqlWua6z+0q
+	 q3VvvY9LaakrQTwJUW7rPTUJR91HuvGk6BI/IkeQHdbW/g9oidkqdf8PovOqppnNuW
+	 A+gVtI33OYCwMm9jUc8XMAqfz4NfH2Df6AoEFHaY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727983AbgGTVkz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 20 Jul 2020 17:40:55 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59672 "EHLO mail.kernel.org"
+        id S1727887AbgGTVmm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 20 Jul 2020 17:42:42 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57706 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727029AbgGTVjo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Jul 2020 17:39:44 -0400
+        id S1728266AbgGTViu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Jul 2020 17:38:50 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A05E020717;
-        Mon, 20 Jul 2020 21:39:42 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4605022CB3;
+        Mon, 20 Jul 2020 21:38:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1595281183;
-        bh=OvpeHZN2OI73IrG1M3/GUSDmqOk62H1tCVxpxfNoLDg=;
+        s=default; t=1595281129;
+        bh=hyoWTlXaRJHz9u15BbwMpNHvU6B/qEq0Zc3o3cyjtOg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=SwLNees4QXktuRpv3/Z2h0DYfXnZYk/fm9SGENqcc+J67NF4Chkfm+Qt2E/NqIgVb
-         znzlK3fh6j0HkTR+TiHlYpg8YsVfYqDs4bzRTVCiSTUGpNt8ygw1N5BzacIm0MTN0K
-         zg0IQLyox5SuBT+fKEwMUJ8Pg1im5GX+3u4Psy9I=
+        b=XlSdhg/BEh5G5sEuTfae3MCcynrZcNNYCl1Zy1Zeerqh7ydb+7wzQ0RZzeNAATw67
+         60wc1D7PMXXHHyVr/rqTcb/Wy17dgITPSg77sH4A1WpfLYLNXlhciynRAIZSkoVB48
+         mBmxpoBXDxc/HA5IM+AGfuFyYj9DYnAaD5V0GxIA=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Olga Kornievskaia <kolga@netapp.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 9/9] SUNRPC reverting d03727b248d0 ("NFSv4 fix CLOSE not waiting for direct IO compeletion")
-Date:   Mon, 20 Jul 2020 17:39:32 -0400
-Message-Id: <20200720213932.408089-9-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 34/34] SUNRPC reverting d03727b248d0 ("NFSv4 fix CLOSE not waiting for direct IO compeletion")
+Date:   Mon, 20 Jul 2020 17:38:07 -0400
+Message-Id: <20200720213807.407380-34-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200720213932.408089-1-sashal@kernel.org>
-References: <20200720213932.408089-1-sashal@kernel.org>
+In-Reply-To: <20200720213807.407380-1-sashal@kernel.org>
+References: <20200720213807.407380-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -81,10 +81,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  2 files changed, 4 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 1affdec237299..de135d2591ffb 100644
+index 70cf8c5760c73..6b0bf4ebd8124 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -379,6 +379,8 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
+@@ -367,6 +367,8 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
  {
  	struct inode *inode = dreq->inode;
  
@@ -93,7 +93,7 @@ index 1affdec237299..de135d2591ffb 100644
  	if (dreq->iocb) {
  		long res = (long) dreq->error;
  		if (dreq->count != 0) {
-@@ -390,10 +392,7 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
+@@ -378,10 +380,7 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
  
  	complete(&dreq->completion);
  
@@ -103,8 +103,8 @@ index 1affdec237299..de135d2591ffb 100644
 -	iput(inode);
  }
  
- static void nfs_direct_readpage_release(struct nfs_page *req)
-@@ -535,10 +534,8 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+@@ -511,10 +510,8 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
  	 * generic layer handle the completion.
  	 */
  	if (requested_bytes == 0) {
@@ -116,7 +116,7 @@ index 1affdec237299..de135d2591ffb 100644
  		return result < 0 ? result : -EIO;
  	}
  
-@@ -956,10 +953,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+@@ -926,10 +923,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
  	 * generic layer handle the completion.
  	 */
  	if (requested_bytes == 0) {
@@ -129,10 +129,10 @@ index 1affdec237299..de135d2591ffb 100644
  	}
  
 diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index a89d2f793c1b8..1eec947c562d2 100644
+index 7b31367532054..95dc90570786c 100644
 --- a/fs/nfs/file.c
 +++ b/fs/nfs/file.c
-@@ -82,7 +82,6 @@ nfs_file_release(struct inode *inode, struct file *filp)
+@@ -83,7 +83,6 @@ nfs_file_release(struct inode *inode, struct file *filp)
  	dprintk("NFS: release(%pD2)\n", filp);
  
  	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
