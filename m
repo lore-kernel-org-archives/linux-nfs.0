@@ -4,77 +4,83 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
-	autolearn=no autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2D29C433E5
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 15:20:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE961C433E4
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 15:23:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 996CA2065F
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 15:20:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 99B32206E3
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 15:23:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="SCYP1JWD"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="TriqlTgm"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726654AbgGUPUo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 21 Jul 2020 11:20:44 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:56408 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729956AbgGUPUn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2020 11:20:43 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06LFHSFn026865;
-        Tue, 21 Jul 2020 15:20:24 GMT
+        id S1728089AbgGUPXz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 21 Jul 2020 11:23:55 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:52154 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726436AbgGUPXy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jul 2020 11:23:54 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06LFGeAS045175;
+        Tue, 21 Jul 2020 15:23:49 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
  mime-version : subject : from : in-reply-to : date : cc :
  content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=/ZcK6I8L04e5efoZhwItrtv1eMer73YzeucF6KYOgDw=;
- b=SCYP1JWDsxldTBpQDhqko4cdS8EPV8aHM7kJnaBhDAMAR7iURxbQAMPWCDCVS7tyeTrY
- oGP1uJiyEx3w8VmKzhJ9742HHLDhr/JcQL2x5oYs6zLMQx1Uvw0hoQ5bFu/HjppItHKG
- 1IzZnNPdCTtV63plZXyRS/4z0Z36Lv2RReGF5uew7T6BdSwzp5KRQa5nFxIvVQe4t/GT
- bo3pm0X+1xJ2bKZKSF/D11RoG0kQSyNK6+HAA3rLs6s9fgbrvDW+2OBU96xZtoDgjXcl
- fEBSPVOZt8dPvh8/agvTxBYdi6JXMIwwGU5rRKZ78fPckS9P/fnE5nadEnza2bPfXMzS BQ== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by userp2120.oracle.com with ESMTP id 32d6ksj4me-1
+ s=corp-2020-01-29; bh=uDnkOi8w6m/EYE+Efjyq2XbzSdY4OsepJoHHhA1yU9Q=;
+ b=TriqlTgmQR8TNrVyr9QrFTtxOs/BFqDGB5ZKGDTlTLGKGAqjndcpRcO/Z+SJKkhql4lR
+ v5htVdpRSsa41op4ocolbamFh1ewr1NcKFTVhDK+M3AvNCH9UW1gEbElYYsbsJyU1lkM
+ X9qgnzo3/m7GJq/GXeyhmfX/3ujKlcz4LgGAuux28JzuSSnqqc3rcoo1RlnnAM7mZmlG
+ dEhiBRGiUlkvtxQxtLmE5tk1WU2l+ujJZuSnkcbSP1yj19+SiaXldjdJqu2dSV+8p7Qh
+ ViDDv/0I1brHPRIpPGLjasDUvsTCQRP2xKuO2dKUwarH4vvI8O6s7On6P9+iZHl2ut05 Fg== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2130.oracle.com with ESMTP id 32brgrdxs9-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Tue, 21 Jul 2020 15:20:23 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06LFIIsG075927;
-        Tue, 21 Jul 2020 15:18:22 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserp3030.oracle.com with ESMTP id 32e2s9096u-1
+        Tue, 21 Jul 2020 15:23:49 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06LFMw4P043931;
+        Tue, 21 Jul 2020 15:23:49 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userp3020.oracle.com with ESMTP id 32dyj63xwu-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 21 Jul 2020 15:18:20 +0000
-Received: from abhmp0006.oracle.com (abhmp0006.oracle.com [141.146.116.12])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 06LFI2ba028002;
-        Tue, 21 Jul 2020 15:18:02 GMT
+        Tue, 21 Jul 2020 15:23:48 +0000
+Received: from abhmp0019.oracle.com (abhmp0019.oracle.com [141.146.116.25])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 06LFNXOD029630;
+        Tue, 21 Jul 2020 15:23:33 GMT
 Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 21 Jul 2020 08:18:02 -0700
+        with ESMTP ; Tue, 21 Jul 2020 15:23:32 +0000
 Content-Type: text/plain;
         charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.80.23.2.2\))
-Subject: Re: rmk build: 54 warnings 0 failures
- (rmk/v5.8-rc3-11-g48b8eed3a337d)
+Subject: Re: [PATCH v2 4/4] nfs-utils: Update nfs4_unique_id module parameter
+ from the nfs.conf value
 From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20200721151417.GU1605@shell.armlinux.org.uk>
-Date:   Tue, 21 Jul 2020 11:18:01 -0400
-Cc:     linux-arm-kernel@lists.infradead.org,
+In-Reply-To: <8584c1f2-c771-8b07-7759-e597e3011544@RedHat.com>
+Date:   Tue, 21 Jul 2020 11:23:31 -0400
+Cc:     Alice Mitchell <ajmitchell@redhat.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Transfer-Encoding: quoted-printable
-Message-Id: <B976F9BE-F1DA-40B6-99D4-B53D8862433C@oracle.com>
-References: <5f16fd81.1c69fb81.6bf0b.4e31@mx.google.com>
- <20200721151417.GU1605@shell.armlinux.org.uk>
-To:     Russell King - ARM Linux admin <linux@armlinux.org.uk>
+Message-Id: <F1FE4EC3-A48D-4F55-836E-D51BFBFA316E@oracle.com>
+References: <c6571aecaaeff95681421c1684814a823b8a087e.camel@redhat.com>
+ <ff4f8d30e849190eeb2e0fee1ef501ee461a531f.camel@redhat.com>
+ <F25A094C-CA96-45D3-8422-C2F77ECF9C78@oracle.com>
+ <4dc8c372324d551456a47e60d73d926d96fc0d24.camel@redhat.com>
+ <a6756b37-fe93-bf0c-715c-82a62407ead9@RedHat.com>
+ <A1D15C75-D811-4214-8818-FBB99A7E48E6@oracle.com>
+ <8584c1f2-c771-8b07-7759-e597e3011544@RedHat.com>
+To:     Steve Dickson <SteveD@redhat.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>
 X-Mailer: Apple Mail (2.3608.80.23.2.2)
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9689 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 mlxlogscore=999
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 adultscore=0
- malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2006250000 definitions=main-2007210111
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 adultscore=0 suspectscore=0
+ mlxscore=0 mlxlogscore=999 phishscore=0 bulkscore=0 malwarescore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2007210111
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9689 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 suspectscore=0
- bulkscore=0 mlxscore=0 mlxlogscore=999 impostorscore=0 priorityscore=1501
- lowpriorityscore=0 phishscore=0 spamscore=0 adultscore=0 clxscore=1011
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 bulkscore=0 spamscore=0
+ impostorscore=0 suspectscore=0 adultscore=0 clxscore=1015 mlxlogscore=999
+ priorityscore=1501 phishscore=0 lowpriorityscore=0 mlxscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
  definitions=main-2007210111
 Sender: linux-nfs-owner@vger.kernel.org
@@ -82,55 +88,43 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Russell-
 
-> On Jul 21, 2020, at 11:14 AM, Russell King - ARM Linux admin =
-<linux@armlinux.org.uk> wrote:
+
+> On Jul 21, 2020, at 11:20 AM, Steve Dickson <SteveD@RedHat.com> wrote:
 >=20
-> A build of my tree by Olof's autobuilder revealed a problem concerning
-> a couple of platforms - this is based on v5.8-rc3:
+> Hey!
 >=20
-> On Tue, Jul 21, 2020 at 07:36:48AM -0700, Olof's autobuilder wrote:
->> 	arm.mps2_defconfig:
->> net/sunrpc/svcsock.c:226:5: warning: =
-"ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE" is not defined, evaluates to 0 =
-[-Wundef]
+> On 7/20/20 2:23 PM, Chuck Lever wrote:
 >>=20
->> 	arm.xcep_defconfig:
->> net/sunrpc/svcsock.c:226:5: warning: =
-"ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE" is not defined, evaluates to 0 =
-[-Wundef]
->> net/sunrpc/svcsock.c:226:5: warning: =
-"ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE" is not defined, evaluates to 0 =
-[-Wundef]
->=20
-> The issue is that as the #if concerned is used to determine whether
-> code that calls flush_dcache_page() (and therefore ensures data
-> integrity) is omitted - and in the above cases it will be omitted.
->=20
-> On ARM, we define ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE to 1 in
-> asm/cacheflush.h, but for some reason, it seems that
-> net/sunrpc/svcsock.c is not seeing that.
->=20
-> Maybe net/sunrpc/svcsock.c needs to include asm/cacheflush.h to
-> ensure it picks up the definition of this preprocessor symbol?
->=20
-> It looks like this was introduced by:
->=20
-> commit ca07eda33e01eafa7a26ec06974f7eacee6a89c8
-> Author: Chuck Lever <chuck.lever@oracle.com>
-> Date:   Wed May 20 17:30:12 2020 -0400
->=20
->    SUNRPC: Refactor svc_recvfrom()
->=20
-> Thanks.
+>>=20
+>>> On Jul 20, 2020, at 1:54 PM, Steve Dickson <SteveD@RedHat.com> =
+wrote:
+>>>=20
+>>> Hello,
+>>>=20
+>>> On 7/19/20 3:57 PM, Alice Mitchell wrote:
+>>>> Hi Chuck,
+>>>> I must have missed the discussion on Trond's work sorry, and I =
+agree
+>>>> that having it fixed in a way that is both automatic and =
+transparent to
+>>>> the user is far preferable to the solution I have posted. Do we =
+have
+>>>> any timeline on this yet ?
+>>> I too did missed  the discussion... Chuck or Trond can you give us =
+more=20
+>>> context on how this is going to work automatically and transparent?
+>>> Is there a thread you can point us to?
+>>=20
+>> =
+https://lore.kernel.org/linux-nfs/20190611180832.119488-1-trond.myklebust@=
+hammerspace.com/
+> Thanks! That is the kernel support but you mentioned something
+> about a udev-based mechanism for automation... What the story
+> on that?
 
-This should be addressed by
+Trond is working on that.
 
-becd2014923f ("SUNRPC: Add missing definition of =
-ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE")
-
-which was merged in v5.8-rc4.
 
 --
 Chuck Lever
