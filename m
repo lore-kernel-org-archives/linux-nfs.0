@@ -1,145 +1,86 @@
-Return-Path: <SRS0=j4kQ=A7=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=ojZM=BA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53C7DC47435
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jul 2020 21:44:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 156FFC433DF
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 09:31:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2F39D22C7B
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jul 2020 21:44:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1595281470;
-	bh=dg1Dc+f2arvI/CA1MwvMImWkcblxr85gei0Xg7n6XxY=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=VxqI0+XXMInvTjnvszrtp9wlugUv55GcLbQ9l8bLAdFnfskqX5zLLTtPWzhuHpYtC
-	 b7pYXa8RCpJO6vyFrL5TUDXiFI6MBfW9F+U0WqhWFuLd3G/HiQ8ZTT8cn/l9jxR/XU
-	 lwQQEslF69psNTzBCsPd+p5caR9LvvHYE9MAa12E=
+	by mail.kernel.org (Postfix) with ESMTP id E0A0A2070A
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 09:31:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728097AbgGTVoU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 20 Jul 2020 17:44:20 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56402 "EHLO mail.kernel.org"
+        id S1726769AbgGUJbS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 21 Jul 2020 05:31:18 -0400
+Received: from mx2.suse.de ([195.135.220.15]:58148 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727965AbgGTViF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Jul 2020 17:38:05 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 26A9022D03;
-        Mon, 20 Jul 2020 21:38:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1595281084;
-        bh=dg1Dc+f2arvI/CA1MwvMImWkcblxr85gei0Xg7n6XxY=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=xcqfOqGFW34EFNj6S1Bu+ZzS/ps1HtKcSthVNxjeGqV0jHh2m62tLNKyCJyKxCUAv
-         u/Sqo1WOKCSZ1Kz53szFu+7HMdQDYo6yeWs06x4lYdfxhcwyJXsGvtp9sIW+7Z0Uyk
-         osYU4wrCTsbjm7VU97RiGSwpen6nlqUzaXH4RPZw=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.7 39/40] SUNRPC reverting d03727b248d0 ("NFSv4 fix CLOSE not waiting for direct IO compeletion")
-Date:   Mon, 20 Jul 2020 17:37:14 -0400
-Message-Id: <20200720213715.406997-39-sashal@kernel.org>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200720213715.406997-1-sashal@kernel.org>
-References: <20200720213715.406997-1-sashal@kernel.org>
+        id S1725984AbgGUJbS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 21 Jul 2020 05:31:18 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 950C4B875;
+        Tue, 21 Jul 2020 09:31:23 +0000 (UTC)
+Date:   Tue, 21 Jul 2020 11:31:15 +0200
+From:   Petr Vorel <pvorel@suse.cz>
+To:     Christoph Hellwig <hch@infradead.org>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        "ltp@lists.linux.it" <ltp@lists.linux.it>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "alexey.kodanev@oracle.com" <alexey.kodanev@oracle.com>,
+        "yangx.jy@cn.fujitsu.com" <yangx.jy@cn.fujitsu.com>,
+        Cyril Hrubis <chrubis@suse.cz>, Yong Sun <yosun@suse.com>
+Subject: Re: [RFC PATCH 1/1] Remove nfsv4
+Message-ID: <20200721093115.GB1164@dell5510>
+Reply-To: Petr Vorel <pvorel@suse.cz>
+References: <20200720091449.19813-1-pvorel@suse.cz>
+ <ffb5cd64d5d65b762bdc85b6044b7fdc526d27cb.camel@hammerspace.com>
+ <20200720151742.GA16973@infradead.org>
+ <20200720181658.GA32123@dell5510>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200720181658.GA32123@dell5510>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+Hi Christoph,
 
-[ Upstream commit 65caafd0d2145d1dd02072c4ced540624daeab40 ]
+> > On Mon, Jul 20, 2020 at 01:32:09PM +0000, Trond Myklebust wrote:
+> > > On Mon, 2020-07-20 at 11:14 +0200, Petr Vorel wrote:
+> > > > Reasons to drop:
+> > > > * outdated tests (from 2005)
+> > > > * not used (NFS kernel maintainers use pynfs [1])
+> > > > * written in Python (we support C and shell, see [2])
 
-Reverting commit d03727b248d0 "NFSv4 fix CLOSE not waiting for
-direct IO compeletion". This patch made it so that fput() by calling
-inode_dio_done() in nfs_file_release() would wait uninterruptably
-for any outstanding directIO to the file (but that wait on IO should
-be killable).
+> > > > [1] http://git.linux-nfs.org/?p=bfields/pynfs.git;a=summary
+> > > > [2] https://github.com/linux-test-project/ltp/issues/547
 
-The problem the patch was also trying to address was REMOVE returning
-ERR_ACCESS because the file is still opened, is supposed to be resolved
-by server returning ERR_FILE_OPEN and not ERR_ACCESS.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/nfs/direct.c | 13 ++++---------
- fs/nfs/file.c   |  1 -
- 2 files changed, 4 insertions(+), 10 deletions(-)
+> > > Unlike pynfs, these tests run on a real NFS client, and were designed
+> > > to test client implementations, as well as the servers.
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index f0c3f0123131e..d49b1d1979084 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -267,6 +267,8 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
- {
- 	struct inode *inode = dreq->inode;
- 
-+	inode_dio_end(inode);
-+
- 	if (dreq->iocb) {
- 		long res = (long) dreq->error;
- 		if (dreq->count != 0) {
-@@ -278,10 +280,7 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
- 
- 	complete(&dreq->completion);
- 
--	igrab(inode);
- 	nfs_direct_req_release(dreq);
--	inode_dio_end(inode);
--	iput(inode);
- }
- 
- static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
-@@ -411,10 +410,8 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 	 * generic layer handle the completion.
- 	 */
- 	if (requested_bytes == 0) {
--		igrab(inode);
--		nfs_direct_req_release(dreq);
- 		inode_dio_end(inode);
--		iput(inode);
-+		nfs_direct_req_release(dreq);
- 		return result < 0 ? result : -EIO;
- 	}
- 
-@@ -867,10 +864,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 	 * generic layer handle the completion.
- 	 */
- 	if (requested_bytes == 0) {
--		igrab(inode);
--		nfs_direct_req_release(dreq);
- 		inode_dio_end(inode);
--		iput(inode);
-+		nfs_direct_req_release(dreq);
- 		return result < 0 ? result : -EIO;
- 	}
- 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index ccd6c1637b270..f96367a2463e3 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -83,7 +83,6 @@ nfs_file_release(struct inode *inode, struct file *filp)
- 	dprintk("NFS: release(%pD2)\n", filp);
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
--	inode_dio_wait(inode);
- 	nfs_file_clear_open_context(filp);
- 	return 0;
- }
--- 
-2.25.1
+> > > So if they get dropped from ltp, then we will have to figure out some
+> > > other way of continuing to maintain them.
 
+> > NFS tests using the kernel sound like a prime candidate for xfstests.
+> In the past Yong Sun moved some ext4 related tests from LTP to xfstests.
+> LTP has various NFS related tests. IMHO more important than where these tests
+> should be is if anybody has a deeper look into them an cleanup them / rewrite
+> them from scratch.
+
+Although xfstests sounds like a natural choice, atm there are quite a lot NFS
+tests in LTP. xfstests contain only single NFS test.
+
+IMHO it's a choice of anybody who rewrites these tests whether he tries to put
+them to LTP or into xfstests. If it were me I'd probably keep them in LTP,
+because I prefer LTP framework capabilities.
+
+Kind regards,
+Petr
