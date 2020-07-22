@@ -1,88 +1,122 @@
-Return-Path: <SRS0=ojZM=BA=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=Q61g=BB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.1 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 842D9C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 19:44:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D099C433DF
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jul 2020 05:35:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2E103206C1
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 Jul 2020 19:44:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 061D1207DD
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jul 2020 05:35:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="ZSsN3Eic"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=nazar.ca header.i=@nazar.ca header.b="RdS2JTEV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730817AbgGUToC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 21 Jul 2020 15:44:02 -0400
-Received: from smtp-o-3.desy.de ([131.169.56.156]:52273 "EHLO smtp-o-3.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730322AbgGUToC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Jul 2020 15:44:02 -0400
-Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [IPv6:2001:638:700:1038::1:a6])
-        by smtp-o-3.desy.de (Postfix) with ESMTP id 6B445604B9
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Jul 2020 21:44:00 +0200 (CEST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de 6B445604B9
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1595360640; bh=b3PX4q+a14CUjCrFywSV0vdMplCkj4DKe7YfJDXVRoI=;
-        h=From:To:Cc:Subject:Date:From;
-        b=ZSsN3EicSmPsAq7weFs+4rk3JI0WivLf0rMVm5F5hPmjNOhbBdXECOe8kRzGhSrGf
-         dampR/YPE9GbT8CoxSoAlOpDyc1KEvAz0BvCNEwK1oDKdgyvD7Bwt3tZC6R01F5HcU
-         DQiiz8j7vm4jDAXdhg36Kw2SrMLScRT3jojdS6Cc=
-Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [131.169.56.131])
-        by smtp-buf-3.desy.de (Postfix) with ESMTP id 65E92A00C3;
-        Tue, 21 Jul 2020 21:44:00 +0200 (CEST)
-X-Virus-Scanned: amavisd-new at desy.de
-Received: from ani.desy.de (zitpcx21033.desy.de [131.169.185.213])
-        by smtp-intra-2.desy.de (Postfix) with ESMTP id 39A0810007B;
-        Tue, 21 Jul 2020 21:44:00 +0200 (CEST)
-From:   Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To:     bfields@fieldses.org
-Cc:     linux-nfs@vger.kernel.org,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] nfs41client: fix raising an error when pnfs test hits non pnfs server
-Date:   Tue, 21 Jul 2020 21:43:58 +0200
-Message-Id: <20200721194358.18132-1-tigran.mkrtchyan@desy.de>
+        id S1728059AbgGVFe7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 Jul 2020 01:34:59 -0400
+Received: from ny018.relay.arandomserver.com ([172.96.188.180]:46427 "EHLO
+        ny018.relay.arandomserver.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726253AbgGVFe5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2020 01:34:57 -0400
+Received: from nyc006.hawkhost.com ([172.96.186.142])
+        by se004.arandomserver.com with esmtps (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
+        (Exim 4.92)
+        (envelope-from <nazard@nazar.ca>)
+        id 1jy7P3-0005QS-R0; Wed, 22 Jul 2020 00:34:55 -0500
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=nazar.ca;
+         s=default; h=Content-Transfer-Encoding:MIME-Version:Message-Id:Date:Subject:
+        Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:Content-Description:
+        Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:
+        In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
+        List-Post:List-Owner:List-Archive;
+        bh=g4oX3BgZ9ods+C0xQm/7CSC1FN00hD+kHzy8iHeuEbg=; b=RdS2JTEVFU47LeCwVu4BND8wHe
+        YTfKSYZ7Gs/FtCIIe69A68i1eHWHYMsvz2hOh9zbzvebGgQcMYTZo5YN2EO4eoVN6svKVPNL6A+h5
+        edsWW9gnxw9tUJRp7MPYY/c6oYPG95zP9ZIzNvATS2hZuxNrto3JVBjYa1etXDjUD2P6CgPMzDbBS
+        jBcilj9IVGz2FIjNrAaru+lWqWt/FzgtWZowEUMEFlb5f7B06/pxL1YltDPNGYrCjHIM+vRmLdKEo
+        eH5VzDawJ4ixReRqPbrRSm2tueglFoungpSDt1biPDrl+4u6m4I+6LsRksZ+oZzcro++c7a1rHZr6
+        qPADgIQA==;
+Received: from [174.119.114.224] (port=44150 helo=wraith.dragoninc.ca)
+        by nyc006.hawkhost.com with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        (Exim 4.93)
+        (envelope-from <nazard@nazar.ca>)
+        id 1jy7P3-00045O-GS; Wed, 22 Jul 2020 01:34:53 -0400
+From:   Doug Nazar <nazard@nazar.ca>
+To:     libtirpc-devel@lists.sourceforge.net
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 0/5] libtirpc patches
+Date:   Wed, 22 Jul 2020 01:34:40 -0400
+Message-Id: <20200722053445.27987-1-nazard@nazar.ca>
 X-Mailer: git-send-email 2.26.2
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Get-Message-Sender-Via: nyc006.hawkhost.com: authenticated_id: nazard@nazar.ca
+X-Authenticated-Sender: nyc006.hawkhost.com: nazard@nazar.ca
+X-Originating-IP: 172.96.186.142
+X-SpamExperts-Domain: nyc006.hawkhost.com
+X-SpamExperts-Username: 172.96.186.142
+Authentication-Results: arandomserver.com; auth=pass smtp.auth=172.96.186.142@nyc006.hawkhost.com
+X-SpamExperts-Outgoing-Class: ham
+X-SpamExperts-Outgoing-Evidence: Combined (0.09)
+X-Recommended-Action: accept
+X-Filter-ID: Mvzo4OR0dZXEDF/gcnlw0bN4ZX/cCaR95pQ7tQtUF1ypSDasLI4SayDByyq9LIhVco68FsdzuGD4
+ 737Z8XZT0ETNWdUk1Ol2OGx3IfrIJKyP9eGNFz9TW9u+Jt8z2T3KnRr9dv6aS/XsdM3hwL/Vxz9G
+ 0IA9bRwRct9JixjrSnwE9+MNv0Z9Z/ftUlQdQf4t0vBWG099Hxh0Nb9o6T55Sb4hKsV7vZ7I7qfm
+ 2H1RjeqTlVJu4AFLIxXDoYUKrmuq1/BgStvhQrzEV/3sSgXiDA8Wchfv6rsJV69dwwRye5Fqf5gk
+ ygI/REKLXOuXEMRCFDpXnW7vq/flvXA178y90oxHpGdcOo7PShBgpIzYxnXDldmsGq7kDyH0ew4I
+ Dw+CACkJUHU38G0nImq/tiQjLLdHRLp5rVU0FqkdDCRmJ2BgSGUuK0YJtRg9EDez7Ku5DKDi4xrE
+ c/zFBOmiGaAnFDV0eGlRuLVR1NWZXcsvs30x4KEUiJDRsmQ5HT3VKkMngMDkh+x5vuoVP4y7XWE4
+ hh0K7aaWJsTJLX1F+5HwflHXs2KsRjKrCowEavDwQuKoFXnYnNNCNwgP2MQ1gciXBQ+q69NBV6o+
+ QUIkaY4elbUUfTr26s/5PSZcfEU2ZCQrKTjECb0PwpN4olPuA0AI9+ulfm1tbbH4NsTwNgi2MDfQ
+ SgMHurv2dxDwgdigsjtQ+68vj/Zr5D+lbOOtFT7Wk7yyri//9sNP2pYqoDB9thlqQWNDIOqHl/su
+ Cgr6cqCgExuGjqPWk46FoQRGMpCW/+R/y847K936Ks6Fu8uhrJCPPZiKGTzb2X0CsNjV/ErluLyc
+ 9vuJG2bK/+wZJ/tpqBD2vvTWdasCwvCiFabvBgsCDk9os2Xse5/Y5KszrdTTybAFkn6/xPgn4DFt
+ oWH9FBxwEiTVJqDh0qKoKsXx5llbf0i+3nLTOhKYZNMsjrDtoZv1Jq9xAcIT3xed7wGmqxx1XE8q
+ iL+B/6VrQyOXCK5m866CV4x+8EDWP5Dt8orPKygtVd32N1s3THnwUUyY+7Kh11Xmv+TszuJqCiWT
+ xnCBYfMJKY6wXFFS639jBMHAePQ44lqMDpyryPGheI8wLmjmUhnjY+kgx3rv6P0wL+KoM0pOgvbF
+ CaqvXm81A7xJ
+X-Report-Abuse-To: spam@se001.arandomserver.com
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-fail function is not defined
+While running valgrind on various nfs-utils programs, I came across a leak
+while destroying a svc_dg object.
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- nfs4.1/nfs4client.py | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Second, I noticed that pollfds were being reallocated a dozen times, so
+added an optimization to batch the allocations.
 
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index f06d9c5..3d55f96 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -1,7 +1,7 @@
- import use_local # HACK so don't have to rebuild constantly
- import rpc.rpc as rpc
- import nfs4lib
--from nfs4lib import NFS4Error, NFS4Replay, inc_u32
-+from nfs4lib import NFS4Error, NFS4Replay, inc_u32, UnexpectedCompoundRes
- from xdrdef.nfs4_type import *
- from xdrdef.nfs4_const import *
- from xdrdef.sctrl_pack import SCTRLPacker, SCTRLUnpacker
-@@ -331,7 +331,7 @@ class NFS4Client(rpc.Client, rpc.Server):
-         # Make sure E_ID returns MDS capabilities
-         c = self.new_client(name, flags=flags)
-         if not c.flags & EXCHGID4_FLAG_USE_PNFS_MDS:
--            fail("Server can not be used as pnfs metadata server")
-+            raise UnexpectedCompoundRes("Server can not be used as pnfs metadata server")
-         s = c.create_session(sec=sec)
-         s.compound([op4.reclaim_complete(FALSE)])
-         return s
+Third, I added destructor functions to clear up some of the static allocations
+on exit. This is mainly to help with running valgrind. Not too important, more
+of an RFC if it's desired.
+
+Forth, I noticed that the comments expected the main thread to use the static
+variable, instead of thread specific data but wasn't doing that. The last two
+patches implement that. Also helps with valgrind as TSD is not destroyed on
+the main thread.
+
+Thanks,
+Doug
+
+Doug Nazar (5):
+  svc_dg: Free xp_netid during destroy
+  svc: Batch allocations of pollfds
+  Add destructor functions to cleanup static resources on exit
+  Add ability to detect if we're on the main thread.
+  Use static object on main thread, instead of thread specific data.
+
+ src/auth_none.c    | 14 ++++++++++++++
+ src/clnt_dg.c      | 12 ++++++++++++
+ src/clnt_vc.c      | 12 ++++++++++++
+ src/getnetconfig.c |  3 +++
+ src/mt_misc.c      | 20 ++++++++++++++++++++
+ src/svc.c          | 35 ++++++++++++++++++++++++++++-------
+ src/svc_dg.c       |  2 ++
+ tirpc/reentrant.h  |  1 +
+ 8 files changed, 92 insertions(+), 7 deletions(-)
+
 -- 
 2.26.2
 
