@@ -1,81 +1,104 @@
-Return-Path: <SRS0=Q61g=BB=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=gZaf=BC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E96D5C433DF
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jul 2020 14:11:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 57D51C433DF
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 Jul 2020 17:46:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B07E920709
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jul 2020 14:11:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2720E206F4
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 Jul 2020 17:46:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="AJXMzsgB"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="RzQZYGcr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727825AbgGVOLZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Jul 2020 10:11:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48668 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726973AbgGVOLZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jul 2020 10:11:25 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E1EFAC0619DC
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2020 07:11:24 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 1AA13876B; Wed, 22 Jul 2020 10:11:24 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 1AA13876B
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1595427084;
-        bh=kp5ieLlSgXf2H6hGaNQIRISvfrl8r/TifTVbnsXTlxw=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=AJXMzsgBxdCl4fqAEhE+7Mch3L7ooiCfPUOn1KGxoKsASH/1DK0zdZg+NkM7c2hUf
-         mK+vAgyv9VgKinAL71yjKe5F3xiiCpHcO6VwlyL3+xXFzF0eKJscFiAidCQzxh1+i2
-         U7Xo1uuUgzLxc1+rd7G139Nsr3U3k8DfHYpAkBuU=
-Date:   Wed, 22 Jul 2020 10:11:24 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] generic currentstateid test of should not require
- pnfs-aware session
-Message-ID: <20200722141124.GB28219@fieldses.org>
-References: <20200721191628.16970-1-tigran.mkrtchyan@desy.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200721191628.16970-1-tigran.mkrtchyan@desy.de>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+        id S1726717AbgGWRq1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 23 Jul 2020 13:46:27 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:57684 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726666AbgGWRq1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jul 2020 13:46:27 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06NHavYp160702;
+        Thu, 23 Jul 2020 17:46:21 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : content-type :
+ content-transfer-encoding : mime-version : subject : message-id : date :
+ cc : to; s=corp-2020-01-29;
+ bh=vh2adqeBmjt9wvvZYlrQfuZg9Kyw6/qIp1oXYO6WY+c=;
+ b=RzQZYGcrSbpQg9EB5ERSm/kDSjKTkIf402KlURj4MdAeT/sSiaOYxaWSOQU/k6WeYt+a
+ 7H+5gAiCz2hETkweHlmxUNozWM1341c2BVGId1Y0bj1YVp3Z1hxhpNfpmYbg9a4g4IG0
+ 7Fs9bfSFykgWnRAwIQyvWLBsnIsJ+Qh832BsOFS/YZ6zZVwMJWIaSJcRR5jQMPmahYdg
+ oVxoKswRCUlGTqIrbYsrdJZuZXIg9rpVd6vw/1b9w/U2x+0TSpLXMh5U3pXTfbZsBBnl
+ DE3BwX/x1lGTzYvjbONunKGIioHsDBsRu3vlEEiDcWdkGs7rrUIa1SQOwVJ+ICfuV65S UQ== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2130.oracle.com with ESMTP id 32brgrtwmd-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Thu, 23 Jul 2020 17:46:21 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06NHfv2K144636;
+        Thu, 23 Jul 2020 17:46:21 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userp3020.oracle.com with ESMTP id 32fc5nvvk4-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 23 Jul 2020 17:46:21 +0000
+Received: from abhmp0012.oracle.com (abhmp0012.oracle.com [141.146.116.18])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 06NHkKBl012340;
+        Thu, 23 Jul 2020 17:46:20 GMT
+Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 23 Jul 2020 10:46:19 -0700
+From:   Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain;
+        charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.80.23.2.2\))
+Subject: fix_priv_head
+Message-Id: <3799C9E0-DFF3-450C-A815-14BAFAC97EA8@oracle.com>
+Date:   Thu, 23 Jul 2020 13:46:19 -0400
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To:     Bruce Fields <bfields@fieldses.org>
+X-Mailer: Apple Mail (2.3608.80.23.2.2)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9691 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=975 malwarescore=0
+ phishscore=0 mlxscore=0 suspectscore=0 spamscore=0 adultscore=0
+ bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2006250000 definitions=main-2007230129
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9691 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 bulkscore=0 spamscore=0
+ impostorscore=0 suspectscore=0 adultscore=0 clxscore=1015 mlxlogscore=999
+ priorityscore=1501 phishscore=0 lowpriorityscore=0 mlxscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2007230129
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Jul 21, 2020 at 09:16:28PM +0200, Tigran Mkrtchyan wrote:
-> CSID8 doesn't depend on pnfs capability of a server, thus should not
-> create pnfs-aware session.
+Hi Bruce-
 
-Thanks!--b.
+I'm trying to figure out if fix_priv_head is still necessary. This
+was introduced by 7c9fdcfb1b64 ("[PATCH] knfsd: svcrpc: gss:
+server-side implementation of rpcsec_gss privacy").
 
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  nfs4.1/server41tests/st_current_stateid.py | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_current_stateid.py b/nfs4.1/server41tests/st_current_stateid.py
-> index 8882e96..6480ae9 100644
-> --- a/nfs4.1/server41tests/st_current_stateid.py
-> +++ b/nfs4.1/server41tests/st_current_stateid.py
-> @@ -164,7 +164,7 @@ def testOpenSetattr(t, env):
->      CODE: CSID8
->      """
->      size = 8
-> -    sess = env.c1.new_pnfs_client_session(env.testname(t))
-> +    sess = env.c1.new_client_session(env.testname(t))
->  
->      open_op = open_create_file_op(sess, env.testname(t), open_create=OPEN4_CREATE)
->      res = sess.compound( open_op +
-> -- 
-> 2.26.2
+static void
+fix_priv_head(struct xdr_buf *buf, int pad)
+{
+        if (buf->page_len == 0) {
+                /* We need to adjust head and buf->len in tandem in this
+                 * case to make svc_defer() work--it finds the original
+                 * buffer start using buf->len - buf->head[0].iov_len. */
+                buf->head[0].iov_len -= pad;
+        }
+}
+
+It doesn't seem like unwrapping can ever result in a buffer length that
+is not quad-aligned. Is that simply a characteristic of modern enctypes?
+
+--
+Chuck Lever
+
+
+
