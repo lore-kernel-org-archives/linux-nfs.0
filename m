@@ -2,193 +2,134 @@ Return-Path: <SRS0=1EG6=BD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
+X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6635C433FB
-	for <linux-nfs@archiver.kernel.org>; Fri, 24 Jul 2020 14:10:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1206FC433E3
+	for <linux-nfs@archiver.kernel.org>; Fri, 24 Jul 2020 18:55:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ACDAA2063A
-	for <linux-nfs@archiver.kernel.org>; Fri, 24 Jul 2020 14:10:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E7EEA206F6
+	for <linux-nfs@archiver.kernel.org>; Fri, 24 Jul 2020 18:55:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="vuhT7AXz"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BuGsJ5lj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726947AbgGXOKT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 24 Jul 2020 10:10:19 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:32976 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726891AbgGXOKT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2020 10:10:19 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06OE7P0Z018161;
-        Fri, 24 Jul 2020 14:10:13 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=r/jCJ2lBqkTVdFz6qzmuPX4WCaz0peM6Dv/PBrP08Xs=;
- b=vuhT7AXzNGGe8w/vGiRNGkLnsFRKy+Mn7MJSly0XTsb5n4AbgFaUDXbQkX9V1cGNQCp9
- mQiN8TZlj2xMrRMyotdxfS1cQMSKdR6Fnmfmp+cYIM8ZOpyvWpgE038ITHFFeZsRdo+Y
- /ArDPgjUjIM4laQFpcpxjyHiwStTBIEeL1CxKlZMVSVN8M42cdi9ygpSNUiqQ1dwlhVZ
- Pb3jgkmLVMAsBK5GOVlNjzcVUJxko3PlX/VaxV7Qf/6/oHvtTNYW54SgqVAOKa8V/ktt
- 4Vxs26TgCWjWHanySTvU9eCxEddV9UJpUAp7X6x8mHiDUdUt0Ez7FHaYY5ng350AFm7I GQ== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by userp2120.oracle.com with ESMTP id 32d6kt3jjd-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Fri, 24 Jul 2020 14:10:13 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06OE3DsH073379;
-        Fri, 24 Jul 2020 14:10:13 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userp3030.oracle.com with ESMTP id 32g0s2hs3f-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 24 Jul 2020 14:10:13 +0000
-Received: from abhmp0004.oracle.com (abhmp0004.oracle.com [141.146.116.10])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 06OEAA7l029234;
-        Fri, 24 Jul 2020 14:10:12 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 24 Jul 2020 07:10:10 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.80.23.2.2\))
-Subject: Re: fix_priv_head
+        id S1726397AbgGXSzM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 24 Jul 2020 14:55:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60634 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726381AbgGXSzL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2020 14:55:11 -0400
+Received: from mail-io1-xd42.google.com (mail-io1-xd42.google.com [IPv6:2607:f8b0:4864:20::d42])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9FE45C0619D3
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jul 2020 11:55:11 -0700 (PDT)
+Received: by mail-io1-xd42.google.com with SMTP id c16so10833418ioi.9
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jul 2020 11:55:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=FRjvCfO/dKe/I49SQgPyRDs92Ez30Nh5sjzTmD1Wtfc=;
+        b=BuGsJ5lj2vRKhP4F1xGRPoT84tvsvGhkfEGeksOXXyM+2m26Uq1oEB9rznTdDdn2Pp
+         Zu0/M8Zoq4COPVCTyUDGRut7qOTg/VH9a2QO8q+d49A+dXOk6dnn3r7uOF6V/iwEpqcm
+         kmYMxKaNKF55mQj0xfs/kh7TWCyZtshodG51P91aww3jbNi8NA14HE/ZgNr/1vZR9pzi
+         1GS5BpxqdAGa7x0R4olp5LuumzfXBvgbLUsGDtBuazIufDP0o/ASl1H/KUbuzHypwYZE
+         MWvt7njNOeArbj4kLWFtQDLlkA3zmfAMJljrNV6xJkG8AWjPATEXXU0wRYVf829/5f5B
+         Y+LA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=FRjvCfO/dKe/I49SQgPyRDs92Ez30Nh5sjzTmD1Wtfc=;
+        b=DPlv8FZAxkWZyemwjAnEr8064q9as0jycu2J6OIy30fE1wm4GApFKHoMrfsvT0PBTw
+         +1PrCyYVIn7RAYrZIXJuikOkTrOZNnJ3wQJhgdICaSHzFDMLPf9N0KXccdnIuMUWTAuy
+         uIJahgHsAs2ytf7EiXECJvxFkagQ7RvOcKUaoVrEZfLVIpySVbyogS4qV+sz7KwR1r3T
+         sjChApvJTwoEKxLpk5p0IwQl4i5ePlSfJ+AEM5zyC1Xf5cIS1oARvCTZ36qf4V+DjMpf
+         do8eNcAGJfOTkAYpoO7hj45ZX3ZvXmG5D5ndvqeuRwznAb6p4vWqb7S9N0eFk9Q538M+
+         GRbQ==
+X-Gm-Message-State: AOAM5334PSDOcaNgLpWuNH5Ep/ApJXFTPLcc96o/B1tvTNoUN0TE09n9
+        ZWMc/PzFN2uka8W41wcIrf00azlX
+X-Google-Smtp-Source: ABdhPJz5zLMGVQQUTl9CCg9jjXpTUqqr2Iy2l2jDxRMtX1kO0zNGp1q/AXONu0/qhdreV2a5aaQ4Hg==
+X-Received: by 2002:a02:7691:: with SMTP id z139mr12616165jab.6.1595616910441;
+        Fri, 24 Jul 2020 11:55:10 -0700 (PDT)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id j4sm3698325iog.35.2020.07.24.11.55.09
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 24 Jul 2020 11:55:09 -0700 (PDT)
+Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 06OIt7Gb006266;
+        Fri, 24 Jul 2020 18:55:08 GMT
+Subject: [PATCH v2] SUNRPC: Fix ("SUNRPC: Add "@len" parameter to
+ gss_unwrap()")
 From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20200724011720.GH31487@fieldses.org>
-Date:   Fri, 24 Jul 2020 10:10:08 -0400
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <7557A354-8396-448D-BFC5-CA5512A4516B@oracle.com>
-References: <3799C9E0-DFF3-450C-A815-14BAFAC97EA8@oracle.com>
- <20200723193811.GG31487@fieldses.org>
- <94381D74-3563-4071-A0CF-4EC016744FEC@oracle.com>
- <20200724011720.GH31487@fieldses.org>
-To:     Bruce Fields <bfields@fieldses.org>
-X-Mailer: Apple Mail (2.3608.80.23.2.2)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9691 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 mlxlogscore=999 mlxscore=0
- spamscore=0 adultscore=0 suspectscore=0 phishscore=0 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2007240108
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9691 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 suspectscore=0
- bulkscore=0 mlxscore=0 mlxlogscore=999 impostorscore=0 priorityscore=1501
- lowpriorityscore=0 phishscore=0 spamscore=0 adultscore=0 clxscore=1015
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2007240108
+To:     bfields@fieldses.org
+Cc:     linux-nfs@vger.kernel.org
+Date:   Fri, 24 Jul 2020 14:55:07 -0400
+Message-ID: <159561664051.1673.12679579228291628238.stgit@klimt.1015granger.net>
+User-Agent: StGit/0.23
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Braino when converting "buf->len -=" to "buf->len = len -".
 
+The result is under-estimation of the ralign and rslack values. On
+krb5p mounts, this has caused READDIR to fail with EIO, and KASAN
+splats when decoding READLINK replies.
 
-> On Jul 23, 2020, at 9:17 PM, Bruce Fields <bfields@fieldses.org> =
-wrote:
->=20
-> On Thu, Jul 23, 2020 at 04:23:05PM -0400, Chuck Lever wrote:
->>=20
->>=20
->>> On Jul 23, 2020, at 3:38 PM, Bruce Fields <bfields@fieldses.org> =
-wrote:
->>>=20
->>> On Thu, Jul 23, 2020 at 01:46:19PM -0400, Chuck Lever wrote:
->>>> Hi Bruce-
->>>>=20
->>>> I'm trying to figure out if fix_priv_head is still necessary. This
->>>> was introduced by 7c9fdcfb1b64 ("[PATCH] knfsd: svcrpc: gss:
->>>> server-side implementation of rpcsec_gss privacy").
->>>>=20
->>>> static void
->>>> fix_priv_head(struct xdr_buf *buf, int pad)
->>>> {
->>>>       if (buf->page_len =3D=3D 0) {
->>>>               /* We need to adjust head and buf->len in tandem in =
-this
->>>>                * case to make svc_defer() work--it finds the =
-original
->>>>                * buffer start using buf->len - =
-buf->head[0].iov_len. */
->>>>               buf->head[0].iov_len -=3D pad;
->>>>       }
->>>> }
->>>>=20
->>>> It doesn't seem like unwrapping can ever result in a buffer length =
-that
->>>> is not quad-aligned. Is that simply a characteristic of modern =
-enctypes?
->>=20
->> And: how is it correct to subtract "pad" ? if the length of the =
-content
->> is not aligned, this truncates it. Instead, shouldn't the length be
->> extended to the next quad-boundary?
->>=20
->>> This code is before any unwrapping.  We're looking at the length of =
-the
->>> encrypted (wrapped) object here, not the unwrapped buffer.
->>=20
->> fix_priv_head() is called twice: once before and once after =
-gss_unwrap.
->=20
-> OK, sorry, I missed that.
->=20
->> There is also this adjustment, just after the gss_unwrap() call:
->>=20
->>        maj_stat =3D gss_unwrap(ctx, 0, priv_len, buf);
->>        pad =3D priv_len - buf->len;
->>        buf->len -=3D pad;
->>=20
->> This is actually a bug, now that gss_unwrap adjusts buf->len: =
-subtracting
->> "pad" can make buf->len go negative.
->=20
-> OK.  Looking at the code now....  I'm not sure I follow it, but I'll
-> believe you.
->=20
-> (But if we've been leaving buf->len too short, why hasn't that been
-> causing really obvious test failures?)
+As a result of fixing this oversight, the gss_unwrap method now
+returns a buf->len that can be shorter than priv_len for small
+RPC messages. The additional adjustment done in unwrap_priv_data()
+can underflow buf->len. This causes the nfsd_request_too_large
+check to fail during some NFSv3 operations.
 
-Probably it's because the server's receive paths don't rely on buf->len
-because they traditionally use svc_getnl() and friends, which change
-the size of the head buffer but never update buf->len.
+Reported-by: Marian Rainer-Harbach
+Reported-by: Pierre Sauter <pierre.sauter@stwm.de>
+BugLink: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1886277
+Fixes: 31c9590ae468 ("SUNRPC: Add "@len" parameter to gss_unwrap()")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_wrap.c |    2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c   |    1 -
+ 2 files changed, 1 insertion(+), 2 deletions(-)
 
-Shortening goes unnoticed until gss_unwrap sets buf->len to a value
-that is 32 or more bytes smaller than priv_len. When an RPC message
-is smaller than that difference, then "buf->len -=3D pad;" results
-in an underflow.
+Hi Bruce-
 
-A more accurate but dangerously short buf->len is the result of
+I can take this in v5.9 if you agree it's a righteous fix.
 
-=
-https://lore.kernel.org/linux-nfs/159554608522.6546.6837849890434723341.st=
-git@klimt.1015granger.net/T/#u
+Changes since RFC:
+- series squashed into a single patch
+- "pad" is still calculated in unwrap_priv_data for later use
 
-So, perhaps those two patches should be combined, since the first one
-breaks the server.
-
-
->> I'd like to remove this code, but
->> I'd first like to understand how it will effect the code that follows
->> immediately after:
->>=20
->>        offset =3D xdr_pad_size(buf->head[0].iov_len);
->>        if (offset) {
->>                buf->buflen =3D RPCSVC_MAXPAYLOAD;
->>                xdr_shift_buf(buf, offset);
->>                fix_priv_head(buf, pad);
->>        }
-
-So if one of those patches removes "pad =3D priv_len - buf->len;"
-then the above code will break.
-
-But I'm trying to see when it is possible for gss_unwrap to
-return a head buffer that is not quad-aligned. Not coming up
-with any such scenario.
-
-
---
-Chuck Lever
-
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index cf0fd170ac18..90b8329fef82 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -584,7 +584,7 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, int len,
+ 							buf->head[0].iov_len);
+ 	memmove(ptr, ptr + GSS_KRB5_TOK_HDR_LEN + headskip, movelen);
+ 	buf->head[0].iov_len -= GSS_KRB5_TOK_HDR_LEN + headskip;
+-	buf->len = len - GSS_KRB5_TOK_HDR_LEN + headskip;
++	buf->len = len - (GSS_KRB5_TOK_HDR_LEN + headskip);
+ 
+ 	/* Trim off the trailing "extra count" and checksum blob */
+ 	xdr_buf_trim(buf, ec + GSS_KRB5_TOK_HDR_LEN + tailskip);
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 7d83f54aaaa6..258b04372f85 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -990,7 +990,6 @@ unwrap_priv_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct gs
+ 
+ 	maj_stat = gss_unwrap(ctx, 0, priv_len, buf);
+ 	pad = priv_len - buf->len;
+-	buf->len -= pad;
+ 	/* The upper layers assume the buffer is aligned on 4-byte boundaries.
+ 	 * In the krb5p case, at least, the data ends up offset, so we need to
+ 	 * move it around. */
 
 
