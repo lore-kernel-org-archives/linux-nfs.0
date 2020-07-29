@@ -7,47 +7,47 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B1D0C433DF
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 Jul 2020 14:12:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79B48C433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Jul 2020 14:12:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F13D42070B
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 Jul 2020 14:12:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5944A20809
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Jul 2020 14:12:52 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="PFHhYMUL"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NznXPpme"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726533AbgG2OMu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 Jul 2020 10:12:50 -0400
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:47660 "EHLO
+        id S1726724AbgG2OMv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 Jul 2020 10:12:51 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:58289 "EHLO
         us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726588AbgG2OMt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2020 10:12:49 -0400
+        by vger.kernel.org with ESMTP id S1726645AbgG2OMv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2020 10:12:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1596031967;
+        s=mimecast20190719; t=1596031969;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=ZO51AlEVjRDpbdyzlwxBpFZPFwttovNgkZLStrTVS8s=;
-        b=PFHhYMUL1aUaVsmPIVrxSs/Ju/l6CxE2SCgnAag6qkVd0ZdKGxZl/6gNZOLcZSzk6nqbyj
-        Nn+GpbNtmVHVUjYMWrw3ZvYpJTCx8leLhW0XLv4/1xGAGcSbFkp8UD7wOt07aIOwEHeAQP
-        ijReH543Ilv2VE1WPNeCZS29maVrxQo=
+        bh=Sxvpy87d5Vab50/XQgKs9K2RBO/Dznmf8wgzdG9msaU=;
+        b=NznXPpmeE+eT1RS4XEYZmf81WaCqtGmW4TB5C0jIAPV0LHI+mpSf4R3sJM9kstUPM9nv6P
+        KUSjFchq8/xeZeVtn+FwyGjJqJdbdd9NAM/c4+jE7mUAyROcy1QtfeuMsKfWTriOCD92Mu
+        DLqZ+AACfATBKsZrjV4R75LhM1t6ehc=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-264-oCj-73irMN-laPHOn1xB2w-1; Wed, 29 Jul 2020 10:12:46 -0400
-X-MC-Unique: oCj-73irMN-laPHOn1xB2w-1
+ us-mta-232-j9r6HIdhPD-thQ_YZFw3pw-1; Wed, 29 Jul 2020 10:12:48 -0400
+X-MC-Unique: j9r6HIdhPD-thQ_YZFw3pw-1
 Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 068C718C63CA;
-        Wed, 29 Jul 2020 14:12:45 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id E6F4A106B242;
+        Wed, 29 Jul 2020 14:12:46 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-113-23.rdu2.redhat.com [10.10.113.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 833C771906;
-        Wed, 29 Jul 2020 14:12:44 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 6E6BA71923;
+        Wed, 29 Jul 2020 14:12:46 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [RFC PATCH v2 06/14] NFS: Allow internal use of read structs and functions
-Date:   Wed, 29 Jul 2020 10:12:21 -0400
-Message-Id: <1596031949-26793-7-git-send-email-dwysocha@redhat.com>
+Subject: [RFC PATCH v2 09/14] NFS: Only use and unuse an fscache cookie a single time based on NFS_INO_FSCACHE
+Date:   Wed, 29 Jul 2020 10:12:24 -0400
+Message-Id: <1596031949-26793-10-git-send-email-dwysocha@redhat.com>
 In-Reply-To: <1596031949-26793-1-git-send-email-dwysocha@redhat.com>
 References: <1596031949-26793-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
@@ -56,94 +56,63 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The conversion of the NFS read paths to the new fscache API
-will require use of a few read structs and functions,
-so move these declarations as required.
+For NFS, we only want to make a decision whether to "use" a inode based
+fscache cookie one time, not multiple times, and based on whether the
+inode is open for write by any process.  Achieve this by gating the
+call to fscache_use_cookie / fscache_unuse_cookie by the NFS_INO_FSCACHE
+flag on the nfs_inode.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/internal.h |  9 +++++++++
- fs/nfs/read.c     | 13 ++++---------
- 2 files changed, 13 insertions(+), 9 deletions(-)
+ fs/nfs/fscache.c | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6673a77884d9..cfa848de5742 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -443,12 +443,21 @@ extern char *nfs_path(char **p, struct dentry *dentry,
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index 1c4ced273fb7..00bb720cccfa 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -285,8 +285,10 @@ void nfs_fscache_clear_inode(struct inode *inode)
  
- struct nfs_pgio_completion_ops;
- /* read.c */
-+extern const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
-+struct nfs_readdesc {
-+	struct nfs_pageio_descriptor pgio;
-+	struct nfs_open_context *ctx;
-+};
-+extern int readpage_async_filler(void *data, struct page *page);
-+extern void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
-+				     struct inode *inode);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ 	dfprintk(FSCACHE, "NFS: clear cookie (0x%p/0x%p)\n", nfsi, cookie);
  
-+
- /* super.c */
- void nfs_umount_begin(struct super_block *);
- int  nfs_statfs(struct dentry *, struct kstatfs *);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index c2df4040f26c..13266eda8f60 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -30,7 +30,7 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
- static struct kmem_cache *nfs_rdata_cachep;
-@@ -74,7 +74,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+-	nfs_fscache_update_auxdata(&auxdata, nfsi);
+-	fscache_unuse_cookie(cookie, &auxdata, NULL);
++	if (test_and_clear_bit(NFS_INO_FSCACHE, &NFS_I(inode)->flags)) {
++		nfs_fscache_update_auxdata(&auxdata, nfsi);
++		fscache_unuse_cookie(cookie, &auxdata, NULL);
++	}
+ 	fscache_relinquish_cookie(cookie, false);
+ 	nfsi->fscache = NULL;
  }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
--static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
-+void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
- 				     struct inode *inode)
+@@ -321,18 +323,23 @@ void nfs_fscache_open_file(struct inode *inode, struct file *filp)
  {
- 	struct nfs_pgio_mirror *pgm;
-@@ -132,11 +132,6 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
- 	nfs_release_request(req);
- }
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct fscache_cookie *cookie = nfs_i_fscache(inode);
++	struct nfs_fscache_inode_auxdata auxdata;
  
--struct nfs_readdesc {
--	struct nfs_pageio_descriptor pgio;
--	struct nfs_open_context *ctx;
--};
--
- static void nfs_page_group_set_uptodate(struct nfs_page *req)
- {
- 	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
-@@ -215,7 +210,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
+ 	if (!fscache_cookie_valid(cookie))
+ 		return;
+ 
+ 	if (inode_is_open_for_write(inode)) {
+-		dfprintk(FSCACHE, "NFS: nfsi 0x%p disabling cache\n", nfsi);
+-		clear_bit(NFS_INO_FSCACHE, &nfsi->flags);
++		if (test_and_clear_bit(NFS_INO_FSCACHE, &nfsi->flags)) {
++			dfprintk(FSCACHE, "NFS: nfsi 0x%p disabling cache\n", nfsi);
++			nfs_fscache_update_auxdata(&auxdata, nfsi);
++			fscache_unuse_cookie(cookie, &auxdata, NULL);
++		}
+ 	} else {
+-		dfprintk(FSCACHE, "NFS: nfsi 0x%p enabling cache\n", nfsi);
+-		set_bit(NFS_INO_FSCACHE, &NFS_I(inode)->flags);
++		if (!test_and_set_bit(NFS_INO_FSCACHE, &nfsi->flags)) {
++			dfprintk(FSCACHE, "NFS: nfsi 0x%p enabling cache\n", nfsi);
++			fscache_use_cookie(cookie, false);
++		}
  	}
+-	fscache_use_cookie(cookie, false);
  }
+ EXPORT_SYMBOL_GPL(nfs_fscache_open_file);
  
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.error_cleanup = nfs_async_read_error,
- 	.completion = nfs_read_completion,
- };
-@@ -290,7 +285,7 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
- 
--static int
-+int
- readpage_async_filler(void *data, struct page *page)
- {
- 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
 -- 
 1.8.3.1
 
