@@ -1,254 +1,186 @@
-Return-Path: <SRS0=VluT=BH=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=tL+H=BI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 73700C433DF
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 Jul 2020 20:19:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 52B3FC433DF
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Jul 2020 14:12:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 488422075A
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 Jul 2020 20:19:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 335A22070B
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Jul 2020 14:12:47 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="gCa0QcL1"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="glplL9zz"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728270AbgG1UTC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 Jul 2020 16:19:02 -0400
-Received: from smtp-fw-9101.amazon.com ([207.171.184.25]:35160 "EHLO
-        smtp-fw-9101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728253AbgG1UTC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2020 16:19:02 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1595967541; x=1627503541;
-  h=date:from:to:cc:message-id:references:mime-version:
-   in-reply-to:subject;
-  bh=0cze+HalMMesmjlOUnqhOlmobCWHMFo1lFXE2WRXQy4=;
-  b=gCa0QcL1a2nf0NOQR4H6ZZAX3W0CQ4fqmuuIDkrOxmrqLJFy3n9mZJhr
-   ycHgukrNOAkzT54VXFIDn9KC1yWQKSQjz+S97fykoxYmd3Xx+WIFdGzjB
-   2Ml3P0lGtzcpe+eV3812Q/KAMrkp1qhE4qs+v4Ltee09Lc4UcWDIxfrXr
-   c=;
-IronPort-SDR: IFTkACwcV5GK4yzPnNGox7G6KVD2NOlGMd6XS2J5mfSRZym9Am6+NOx65NpSB0gXXsB3FDtqW3
- WY8vqecZkCtw==
-X-IronPort-AV: E=Sophos;i="5.75,407,1589241600"; 
-   d="scan'208";a="55521430"
-Subject: Re: [PATCH] NFSv4.2: Fix an error code in nfs4_xattr_cache_init()
-Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1a-821c648d.us-east-1.amazon.com) ([10.47.23.38])
-  by smtp-border-fw-out-9101.sea19.amazon.com with ESMTP; 28 Jul 2020 20:18:56 +0000
-Received: from EX13MTAUEA002.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1a-821c648d.us-east-1.amazon.com (Postfix) with ESMTPS id 06EBAA04C7;
-        Tue, 28 Jul 2020 20:18:54 +0000 (UTC)
-Received: from EX13D34UEA004.ant.amazon.com (10.43.61.143) by
- EX13MTAUEA002.ant.amazon.com (10.43.61.77) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Tue, 28 Jul 2020 20:18:54 +0000
-Received: from EX13MTAUEA002.ant.amazon.com (10.43.61.77) by
- EX13D34UEA004.ant.amazon.com (10.43.61.143) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Tue, 28 Jul 2020 20:18:54 +0000
-Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.61.169) with Microsoft SMTP
- Server id 15.0.1497.2 via Frontend Transport; Tue, 28 Jul 2020 20:18:53 +0000
-Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id CE2B0C3B09; Tue, 28 Jul 2020 20:18:53 +0000 (UTC)
-Date:   Tue, 28 Jul 2020 20:18:53 +0000
-From:   Frank van der Linden <fllinden@amazon.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-CC:     "dan.carpenter@oracle.com" <dan.carpenter@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
-Message-ID: <20200728201853.GA27458@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
-References: <20200727112344.GH389488@mwanda>
- <20200727163423.GA7563@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <4bb93c1413151ccbd918cc371c67555042763e11.camel@hammerspace.com>
- <20200728160953.GA1208@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <61d4e88c18818cd94dfbd14f054e6a2cb8858c8d.camel@hammerspace.com>
- <20200728180051.GA10902@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <13f86f29cc05944894813632bd537e559859e254.camel@hammerspace.com>
- <20200728181309.GA14661@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <d006b84e722cbebf9a94b8816bd59e11bc7d5219.camel@hammerspace.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-In-Reply-To: <d006b84e722cbebf9a94b8816bd59e11bc7d5219.camel@hammerspace.com>
-User-Agent: Mutt/1.11.4 (2019-03-13)
+        id S1726496AbgG2OMq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 Jul 2020 10:12:46 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:30783 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726353AbgG2OMq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2020 10:12:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1596031964;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:in-reply-to:in-reply-to:references:references;
+        bh=buXyeDqhJk3lr2ZvPH0W6IIv0GhiX9VQVRcp4DWDrA4=;
+        b=glplL9zzdsA48h9m3oVVLv85RYVnzHnAL4oJ583hoJssQWm6sUYIooTe+VBPwf5oHwFnCa
+        0aQv3gR9VmKWrR2awVm3kMIojpesBhUl1s2A8OYHyuUHwL2PuhyVymhZ7WIeTG8FIv/L6x
+        /M4AYT6jS1e0VR3FBbMRIueAuTLYOtM=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-282-XpDTpP-eN4uC2THKl-Mong-1; Wed, 29 Jul 2020 10:12:42 -0400
+X-MC-Unique: XpDTpP-eN4uC2THKl-Mong-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D2FF880183C;
+        Wed, 29 Jul 2020 14:12:41 +0000 (UTC)
+Received: from dwysocha.rdu.csb (ovpn-113-23.rdu2.redhat.com [10.10.113.23])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5A95971923;
+        Wed, 29 Jul 2020 14:12:41 +0000 (UTC)
+From:   Dave Wysochanski <dwysocha@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
+Subject: [RFC PATCH v2 01/14] NFS: Clean up nfs_readpage() and nfs_readpages()
+Date:   Wed, 29 Jul 2020 10:12:16 -0400
+Message-Id: <1596031949-26793-2-git-send-email-dwysocha@redhat.com>
+In-Reply-To: <1596031949-26793-1-git-send-email-dwysocha@redhat.com>
+References: <1596031949-26793-1-git-send-email-dwysocha@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Jul 28, 2020 at 06:21:19PM +0000, Trond Myklebust wrote:
-> 
-> On Tue, 2020-07-28 at 18:13 +0000, Frank van der Linden wrote:
-> > On Tue, Jul 28, 2020 at 06:04:21PM +0000, Trond Myklebust wrote:
-> > > On Tue, 2020-07-28 at 18:00 +0000, Frank van der Linden wrote:
-> > > > On Tue, Jul 28, 2020 at 05:10:34PM +0000, Trond Myklebust wrote:
-> > > > > On Tue, 2020-07-28 at 16:09 +0000, Frank van der Linden wrote:
-> > > > > > Hi Trond,
-> > > > > >
-> > > > > > On Tue, Jul 28, 2020 at 03:17:12PM +0000, Trond Myklebust
-> > > > > > wrote:
-> > > > > > > On Mon, 2020-07-27 at 16:34 +0000, Frank van der Linden
-> > > > > > > wrote:
-> > > > > > > > Hi Dan,
-> > > > > > > >
-> > > > > > > > On Mon, Jul 27, 2020 at 02:23:44PM +0300, Dan Carpenter
-> > > > > > > > wrote:
-> > > > > > > > > This should return -ENOMEM on failure instead of
-> > > > > > > > > success.
-> > > > > > > > >
-> > > > > > > > > Fixes: 95ad37f90c33 ("NFSv4.2: add client side xattr
-> > > > > > > > > caching.")
-> > > > > > > > > Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> > > > > > > > > ---
-> > > > > > > > > ---
-> > > > > > > > >  fs/nfs/nfs42xattr.c | 4 +++-
-> > > > > > > > >  1 file changed, 3 insertions(+), 1 deletion(-)
-> > > > > > > > >
-> > > > > > > > > diff --git a/fs/nfs/nfs42xattr.c b/fs/nfs/nfs42xattr.c
-> > > > > > > > > index 23fdab977a2a..e75c4bb70266 100644
-> > > > > > > > > --- a/fs/nfs/nfs42xattr.c
-> > > > > > > > > +++ b/fs/nfs/nfs42xattr.c
-> > > > > > > > > @@ -1040,8 +1040,10 @@ int __init
-> > > > > > > > > nfs4_xattr_cache_init(void)
-> > > > > > > > >                 goto out2;
-> > > > > > > > >
-> > > > > > > > >         nfs4_xattr_cache_wq =
-> > > > > > > > > alloc_workqueue("nfs4_xattr",
-> > > > > > > > > WQ_MEM_RECLAIM, 0);
-> > > > > > > > > -       if (nfs4_xattr_cache_wq == NULL)
-> > > > > > > > > +       if (nfs4_xattr_cache_wq == NULL) {
-> > > > > > > > > +               ret = -ENOMEM;
-> > > > > > > > >                 goto out1;
-> > > > > > > > > +       }
-> > > > > > > > >
-> > > > > > > > >         ret =
-> > > > > > > > > register_shrinker(&nfs4_xattr_cache_shrinker);
-> > > > > > > > >         if (ret)
-> > > > > > > > > --
-> > > > > > > > > 2.27.0
-> > > > > > > > >
-> > > > > > > >
-> > > > > > > > Thanks for catching that one. Since this is against
-> > > > > > > > linux-
-> > > > > > > > next
-> > > > > > > > via
-> > > > > > > > Trond,
-> > > > > > > > I assume Trond will add it to his tree (right?)
-> > > > > > > >
-> > > > > > > > In any case:
-> > > > > > > >
-> > > > > > > >
-> > > > > > > > Reviewed-by: Frank van der Linden <fllinden@amazon.com>
-> > > > > > > >
-> > > > > > > >
-> > > > > > > > - Frank
-> > > > > > >
-> > > > > > > Frank, why do we need a workqueue here at all?
-> > > > > >
-> > > > > > The xattr caches are per-inode, and get created on demand.
-> > > > > > Invalidating
-> > > > > > a cache is done by setting the invalidate flag (as it is for
-> > > > > > other
-> > > > > > cached attribues and data).
-> > > > > >
-> > > > > > When nfs4_xattr_get_cache() sees an invalidated cache, it
-> > > > > > will
-> > > > > > just
-> > > > > > unlink it
-> > > > > > from the inode, and create a new one if needed.
-> > > > > >
-> > > > > > The old cache then still needs to be freed. Theoretically,
-> > > > > > there
-> > > > > > can
-> > > > > > be
-> > > > > > quite a few entries in it, and nfs4_xattr_get_cache() will be
-> > > > > > called
-> > > > > > in
-> > > > > > the get/setxattr systemcall path. So my reasoning here was
-> > > > > > that
-> > > > > > it's
-> > > > > > better
-> > > > > > to use a workqueue to free the old invalidated cache instead
-> > > > > > of
-> > > > > > wasting
-> > > > > > cycles in the I/O path.
-> > > > > >
-> > > > > > - Frank
-> > > > >
-> > > > > I think we might want to explore the reasons for this argument.
-> > > > > We
-> > > > > do
-> > > > > not offload any other cache invalidations, and that includes
-> > > > > the
-> > > > > case
-> > > > > when we have to invalidate the entire inode data cache before
-> > > > > reading.
-> > > > >
-> > > > > So what is special about xattrs that causes invalidation to be
-> > > > > a
-> > > > > problem in the I/O path? Why do we expect them to grow so large
-> > > > > that
-> > > > > they are more unwieldy than the inode data cache?
-> > > >
-> > > > In the case of inode data, so you should probably invalidate it
-> > > > immediately, or accept that you're serving up known-stale data.
-> > > > So
-> > > > offloading it doesn't seem like a good idea, and you'll just have
-> > > > to
-> > > > accept
-> > > > the extra cycles you're using to do it.
-> > > >
-> > > > For this particular case, you're just reaping a cache that is no
-> > > > longer
-> > > > being used. There is no correctness gain in doing it in the I/O
-> > > > path
-> > > > -
-> > > > the cache has already been orphaned and new getxattr/listxattr
-> > > > calls
-> > > > will not see it. So there doesn't seem to be a reason to do it in
-> > > > the
-> > > > I/O path at all.
-> > > >
-> > > > The caches shouldn't become very large, no. In the normal case,
-> > > > there
-> > > > shouldn't be much of a performance difference.
-> > > >
-> > > > Then again, what do you gain by doing the reaping of the cache in
-> > > > the
-> > > > I/O path,
-> > > > instead of using a work queue? I concluded that there wasn't an
-> > > > upside, only
-> > > > a downside, so that's why I implemented it that way.
-> > > >
-> > > > If you think it's better to do it inline, I'm happy to change it,
-> > > > of
-> > > > course.
-> > > > It would just mean getting rid of the work queue and the
-> > > > reap_cache
-> > > > function,
-> > > > and calling discard_cache directly, instead of reap_cache.
-> > > >
-> > > > - Frank
-> > >
-> > > I think we should start with doing the freeing of the old cache
-> > > inline.
-> > > If it turns out to be a real performance problem, then we can later
-> > > revisit using a work queue, however in that case, I'd prefer to use
-> > > nfsiod rather than adding a special workqueue that is reserved for
-> > > xattrs.
-> >
-> > Sure, I can do that.
-> >
-> > Do you want me to send a new version of the patch series, or an
-> > incremental patch?
-> 
-> Please just send as an incremental patch.
-> 
-> Thanks!
+In prep for the new fscache netfs API, refactor nfs_readpage()
+and nfs_readpages() for future patches.  No functional change.
 
-Made the change, re-tested it. Patch sent - thanks!
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+---
+ fs/nfs/read.c | 45 +++++++++++++++++++++++----------------------
+ 1 file changed, 23 insertions(+), 22 deletions(-)
 
-- Frank
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index eb854f1f86e2..a05fb3904ddf 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -310,11 +310,11 @@ static void nfs_readpage_result(struct rpc_task *task,
+  *  -	The error flag is set for this page. This happens only when a
+  *	previous async read operation failed.
+  */
+-int nfs_readpage(struct file *file, struct page *page)
++int nfs_readpage(struct file *filp, struct page *page)
+ {
+ 	struct nfs_open_context *ctx;
+ 	struct inode *inode = page_file_mapping(page)->host;
+-	int		error;
++	int ret;
+ 
+ 	dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
+ 		page, PAGE_SIZE, page_index(page));
+@@ -328,43 +328,43 @@ int nfs_readpage(struct file *file, struct page *page)
+ 	 * be any new pending writes generated at this point
+ 	 * for this page (other pages can be written to).
+ 	 */
+-	error = nfs_wb_page(inode, page);
+-	if (error)
++	ret = nfs_wb_page(inode, page);
++	if (ret)
+ 		goto out_unlock;
+ 	if (PageUptodate(page))
+ 		goto out_unlock;
+ 
+-	error = -ESTALE;
++	ret = -ESTALE;
+ 	if (NFS_STALE(inode))
+ 		goto out_unlock;
+ 
+-	if (file == NULL) {
+-		error = -EBADF;
++	if (filp == NULL) {
++		ret = -EBADF;
+ 		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+ 		if (ctx == NULL)
+ 			goto out_unlock;
+ 	} else
+-		ctx = get_nfs_open_context(nfs_file_open_context(file));
++		ctx = get_nfs_open_context(nfs_file_open_context(filp));
+ 
+ 	if (!IS_SYNC(inode)) {
+-		error = nfs_readpage_from_fscache(ctx, inode, page);
+-		if (error == 0)
++		ret = nfs_readpage_from_fscache(ctx, inode, page);
++		if (ret == 0)
+ 			goto out;
+ 	}
+ 
+ 	xchg(&ctx->error, 0);
+-	error = nfs_readpage_async(ctx, inode, page);
+-	if (!error) {
+-		error = wait_on_page_locked_killable(page);
+-		if (!PageUptodate(page) && !error)
+-			error = xchg(&ctx->error, 0);
++	ret = nfs_readpage_async(ctx, inode, page);
++	if (!ret) {
++		ret = wait_on_page_locked_killable(page);
++		if (!PageUptodate(page) && !ret)
++			ret = xchg(&ctx->error, 0);
+ 	}
+ out:
+ 	put_nfs_open_context(ctx);
+-	return error;
++	return ret;
+ out_unlock:
+ 	unlock_page(page);
+-	return error;
++	return ret;
+ }
+ 
+ struct nfs_readdesc {
+@@ -409,12 +409,10 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ {
+ 	struct nfs_pageio_descriptor pgio;
+ 	struct nfs_pgio_mirror *pgm;
+-	struct nfs_readdesc desc = {
+-		.pgio = &pgio,
+-	};
++	struct nfs_readdesc desc;
+ 	struct inode *inode = mapping->host;
+ 	unsigned long npages;
+-	int ret = -ESTALE;
++	int ret;
+ 
+ 	dprintk("NFS: nfs_readpages (%s/%Lu %d)\n",
+ 			inode->i_sb->s_id,
+@@ -422,13 +420,15 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 			nr_pages);
+ 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGES);
+ 
++	ret = -ESTALE;
+ 	if (NFS_STALE(inode))
+ 		goto out;
+ 
+ 	if (filp == NULL) {
++		ret = -EBADF;
+ 		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+ 		if (desc.ctx == NULL)
+-			return -EBADF;
++			goto out;
+ 	} else
+ 		desc.ctx = get_nfs_open_context(nfs_file_open_context(filp));
+ 
+@@ -440,6 +440,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
++	desc.pgio = &pgio;
+ 	nfs_pageio_init_read(&pgio, inode, false,
+ 			     &nfs_async_read_completion_ops);
+ 
+-- 
+1.8.3.1
+
