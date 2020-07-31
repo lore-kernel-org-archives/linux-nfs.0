@@ -4,137 +4,107 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD954C433E0
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 12:31:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5919FC433DF
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 17:46:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A700321744
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 12:31:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 368542087C
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 17:46:20 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="NwmBChcM"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="bDxq42QB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732953AbgGaMbJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 31 Jul 2020 08:31:09 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:37810 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732902AbgGaMbJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2020 08:31:09 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06VCGwmO061038;
-        Fri, 31 Jul 2020 12:30:56 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=S2FJno61QIe7o+ADEVkw0UIBI1L/nLqkAaDZ/z8Qr6k=;
- b=NwmBChcM+3JNewyStFy+vkarODb/HYYdFDltyNBaR51ceaCT5S9eVvCstCNlLZVxIXuR
- UmXfiX+Az5pShvnQQeLux65Ed2nRalT9S4kZXprJI345agXlBMERaeBb7Lem1TAUYbPp
- oHfoaQ01047dWh8It22ii2Ts51k4s+mn1pePT0ZkIWUAGJbl68JejQDBX0Bzkw/aRYxg
- 9GwtEg4SvPQhanNNvNyHqx+G7lYwV+XtR8sNCqEYi+qwNAN4Q0v2eribCme069Lf+nPF
- LCOTYxgEz1pHLyKl/TdZ1pWmThA7Uk3MQ/KqZeAx1Z7tA221t+iB29hXylljlVlJQ4UW Eg== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by userp2130.oracle.com with ESMTP id 32hu1jrte7-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Fri, 31 Jul 2020 12:30:56 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06VCIdvP009788;
-        Fri, 31 Jul 2020 12:30:55 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserp3020.oracle.com with ESMTP id 32hu63yr0p-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 31 Jul 2020 12:30:55 +0000
-Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 06VCUrjT000606;
-        Fri, 31 Jul 2020 12:30:54 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 31 Jul 2020 05:30:53 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.80.23.2.2\))
-Subject: Re: [PATCH -next] nfsd: use DEFINE_SPINLOCK() for spinlock
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20200725085642.98356-1-miaoqinglang@huawei.com>
-Date:   Fri, 31 Jul 2020 08:30:52 -0400
-Cc:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        open list <linux-kernel@vger.kernel.org>
-Content-Transfer-Encoding: 7bit
-Message-Id: <161A0175-C77B-4252-9D1E-22FEC7EEADE9@oracle.com>
-References: <20200725085642.98356-1-miaoqinglang@huawei.com>
-To:     Qinglang Miao <miaoqinglang@huawei.com>,
-        Bruce Fields <bfields@fieldses.org>
-X-Mailer: Apple Mail (2.3608.80.23.2.2)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9698 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=2 adultscore=0 bulkscore=0
- malwarescore=0 mlxscore=0 spamscore=0 mlxlogscore=999 phishscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2007310092
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9698 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 clxscore=1011
- malwarescore=0 spamscore=0 suspectscore=2 bulkscore=0 priorityscore=1501
- phishscore=0 mlxlogscore=999 lowpriorityscore=0 impostorscore=0 mlxscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2007310092
+        id S2387469AbgGaRqT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 31 Jul 2020 13:46:19 -0400
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:57908 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S2387429AbgGaRqT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2020 13:46:19 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1596217578;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=qFPO+Z15nztX6EIfKvMpKcaydKBsQ7RALeC0PvYnrFg=;
+        b=bDxq42QBiT0nkQXN7Yo2loNlBEvnVVALVFTijsHtyXDMW+79m91oawySvfzXnlgxEjE/QO
+        YNFqqaWvRW3hTwRAxLzJaeQlJc3SwWuhxVzShG13oUsvYono71igDBjOcmd8Tj5r3EFsL/
+        uxhhNVxAjRBH8hYN+g9X13qt7OKlKKU=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-347-VdaqVV9jNKyEAvrC9yiT6Q-1; Fri, 31 Jul 2020 13:46:16 -0400
+X-MC-Unique: VdaqVV9jNKyEAvrC9yiT6Q-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7C92618839CD;
+        Fri, 31 Jul 2020 17:46:15 +0000 (UTC)
+Received: from aion.usersys.redhat.com (ovpn-115-198.rdu2.redhat.com [10.10.115.198])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 612425BAC3;
+        Fri, 31 Jul 2020 17:46:15 +0000 (UTC)
+Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
+        id 7857C1A0005; Fri, 31 Jul 2020 13:46:14 -0400 (EDT)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfs: ensure correct writeback errors are returned on close()
+Date:   Fri, 31 Jul 2020 13:46:13 -0400
+Message-Id: <20200731174614.1299346-2-smayhew@redhat.com>
+In-Reply-To: <20200731174614.1299346-1-smayhew@redhat.com>
+References: <20200731174614.1299346-1-smayhew@redhat.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello-
+nfs_wb_all() calls filemap_write_and_wait(), which uses
+filemap_check_errors() to determine the error to return.
+filemap_check_errors() only looks at the mapping->flags and will
+therefore only return either -ENOSPC or -EIO.  To ensure that the
+correct error is returned on close(), nfs{,4}_file_flush() should call
+file_check_and_advance_wb_err() which looks at the errseq value in
+mapping->wb_err.
 
-> On Jul 25, 2020, at 4:56 AM, Qinglang Miao <miaoqinglang@huawei.com> wrote:
-> 
-> nfsd_drc_lock can be initialized automatically with
-> DEFINE_SPINLOCK() rather than explicitly calling spin_lock_init().
-> 
-> Signed-off-by: Qinglang Miao <miaoqinglang@huawei.com>
+Fixes: 6fbda89b257f ("NFS: Replace custom error reporting mechanism with
+generic one")
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/file.c     | 3 ++-
+ fs/nfs/nfs4file.c | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-Thanks for your patch.
-
-I am quite honestly on the fence about this one. It doesn't
-seem to make a difference behaviorally or in terms of code
-legibility.
-
-A broader clean-up that moves set_max_drc and those global
-variables into nfs4state.c might be better, but again, there
-isn't much to justify such a change.
-
-Bruce, any thoughts?
-
-
-> ---
-> fs/nfsd/nfssvc.c | 3 +--
-> 1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index b603dfcdd..20f0a27fe 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -88,7 +88,7 @@ DEFINE_MUTEX(nfsd_mutex);
->  * version 4.1 DRC caches.
->  * nfsd_drc_pages_used tracks the current version 4.1 DRC memory usage.
->  */
-> -spinlock_t	nfsd_drc_lock;
-> +DEFINE_SPINLOCK(nfsd_drc_lock);
-> unsigned long	nfsd_drc_max_mem;
-> unsigned long	nfsd_drc_mem_used;
-> 
-> @@ -568,7 +568,6 @@ static void set_max_drc(void)
-> 	nfsd_drc_max_mem = (nr_free_buffer_pages()
-> 					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
-> 	nfsd_drc_mem_used = 0;
-> -	spin_lock_init(&nfsd_drc_lock);
-> 	dprintk("%s nfsd_drc_max_mem %lu \n", __func__, nfsd_drc_max_mem);
-> }
-> 
-> -- 
-> 2.25.1
-> 
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index f96367a2463e..eeef6580052f 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -148,7 +148,8 @@ nfs_file_flush(struct file *file, fl_owner_t id)
+ 		return 0;
+ 
+ 	/* Flush writes to the server and return any errors */
+-	return nfs_wb_all(inode);
++	nfs_wb_all(inode);
++	return file_check_and_advance_wb_err(file);
+ }
+ 
+ ssize_t
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 8e5d6223ddd3..77bf9c12734c 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -125,7 +125,8 @@ nfs4_file_flush(struct file *file, fl_owner_t id)
+ 		return filemap_fdatawrite(file->f_mapping);
+ 
+ 	/* Flush writes to the server and return any errors */
+-	return nfs_wb_all(inode);
++	nfs_wb_all(inode);
++	return file_check_and_advance_wb_err(file);
+ }
+ 
+ #ifdef CONFIG_NFS_V4_2
+-- 
+2.25.4
 
