@@ -2,102 +2,126 @@ Return-Path: <SRS0=5W3S=BK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9040BC433E0
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 17:46:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6701DC433E0
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 17:46:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7769D2087C
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 17:46:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4C2272087C
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 Jul 2020 17:46:22 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WgF4cLrq"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="hQGw2lJk"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387429AbgGaRqU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 31 Jul 2020 13:46:20 -0400
-Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:42569 "EHLO
+        id S2387476AbgGaRqV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 31 Jul 2020 13:46:21 -0400
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:37478 "EHLO
         us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1729018AbgGaRqT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2020 13:46:19 -0400
+        with ESMTP id S1729018AbgGaRqV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jul 2020 13:46:21 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1596217578;
+        s=mimecast20190719; t=1596217580;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=xiiP36tfbwvvObrNRZ6Hnur1uEP0vsW4lm684yYKuBI=;
-        b=WgF4cLrqlVCjKEoVUKKWMWT4s1GYZdZWrZUUHem0+E1IRVez56yXqcR+BpUpYqpQeJ4CBi
-        hIw1dFb0i8GN+vdLWqYpalz9jwdwuuZa+CaRTBT8jTXOhnar4Xh/Nx5wnxlqpzjnL3+tgm
-        iePs4bBbCxxYvDXdUyKtL5rpITHSqBE=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=5rCgyPvN75bBTdUNtUGmsTPrHkuqaykQ50uu30gYKSk=;
+        b=hQGw2lJkq9GumaGt4ozVgbS3W0iW8FYvJjT4VOoOwB74XqBFHa/fqCR9v9u1FtIxYY4mXI
+        RqMJIi16khpU/y+8hc5mRtHdainaeXJ5xo3gSHPjGQWM8zbYat6WZ4FCWrFp8e0fATGpLL
+        poH7N8shVhP94i6Wlu2JqJdzJh/AQIs=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-435-mePwr5_5OHeLtjVAKpcb7w-1; Fri, 31 Jul 2020 13:46:16 -0400
-X-MC-Unique: mePwr5_5OHeLtjVAKpcb7w-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+ us-mta-300-EAUx7jjSMiihieM2QmkB2g-1; Fri, 31 Jul 2020 13:46:16 -0400
+X-MC-Unique: EAUx7jjSMiihieM2QmkB2g-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 5E895100AA21;
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 5CD0D18839CB;
         Fri, 31 Jul 2020 17:46:15 +0000 (UTC)
 Received: from aion.usersys.redhat.com (ovpn-115-198.rdu2.redhat.com [10.10.115.198])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 43E451C92D;
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 43D946179C;
         Fri, 31 Jul 2020 17:46:15 +0000 (UTC)
 Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
-        id 746DF1A0006; Fri, 31 Jul 2020 13:46:14 -0400 (EDT)
+        id 7BEA11A0008; Fri, 31 Jul 2020 13:46:14 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] nfs: two writeback error reporting fixes
-Date:   Fri, 31 Jul 2020 13:46:12 -0400
-Message-Id: <20200731174614.1299346-1-smayhew@redhat.com>
+Subject: [PATCH 2/2] nfs: nfs_file_write() should check for writeback errors
+Date:   Fri, 31 Jul 2020 13:46:14 -0400
+Message-Id: <20200731174614.1299346-3-smayhew@redhat.com>
+In-Reply-To: <20200731174614.1299346-1-smayhew@redhat.com>
+References: <20200731174614.1299346-1-smayhew@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These fixes fix two regressions reported by Red Hat QE.  This first
-issue reported was that writing a file larger than the available space
-would result in a client hang instead of returning -ENOSPC.  The second
-issue reported was that the client was returning -EIO instead of -EDQUOT
-when a quota is exceeded.
+The NFS_CONTEXT_ERROR_WRITE flag (as well as the check of said flag) was
+removed by commit 6fbda89b257f.  The absence of an error check allows
+writes to be continually queued up for a server that may no longer be
+able to handle them.  Fix it by adding an error check using the generic
+error reporting functions.
 
-On further investigation, I found that in the first issue the client
-wasn't really hung.  Instead it was performing all of the requested
-writes before it would eventually return -ENOSPC.  The dd command was
-writing 400TB, which would have taken a few weeks to complete.
-Adjusting the 'bs' and 'count' arguments so that the resulting file
-would be much smaller (but still enough to fill up the space on the NFS
-server) showed that the dd command would indeed complete with -ENOSPC.
-But on older kernels even the 400TB dd would return -ENOSPC quickly.
+Fixes: 6fbda89b257f ("NFS: Replace custom error reporting mechanism with
+generic one")
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/file.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-In the second issue, I found that adding 'conv=fsync' would make the dd
-command return -EDQUOT.  So what was happening with the original
-command was that it was doing a close() without first calling fsync()
-and the close() was returning -EIO.
-
-I bisected both of these down to commit aded8d7b54f2 ("NFS: Don't
-inadvertently clear writeback errors").  HOWEVER, as a test I reverted
-that commit and it wasn't sufficient to bring back the old behavior.  I
-turns out that was due to commit 6fbda89b257f ("NFS: Replace custom
-error reporting mechanism with generic one").  This is why I listed the
-second commit in the 'Fixes:' tag of both of my patches.
-
-The first patch fixes the -EDQUOT issue and the second one fixes the
--ENOSPC issue.
-
--Scott
-
-Scott Mayhew (2):
-  nfs: ensure correct writeback errors are returned on close()
-  nfs: nfs_file_write() should check for writeback errors
-
- fs/nfs/file.c     | 15 +++++++++++----
- fs/nfs/nfs4file.c |  3 ++-
- 2 files changed, 13 insertions(+), 5 deletions(-)
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index eeef6580052f..c6496f21d1e2 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -588,12 +588,14 @@ static const struct vm_operations_struct nfs_file_vm_ops = {
+ 	.page_mkwrite = nfs_vm_page_mkwrite,
+ };
+ 
+-static int nfs_need_check_write(struct file *filp, struct inode *inode)
++static int nfs_need_check_write(struct file *filp, struct inode *inode,
++				int error)
+ {
+ 	struct nfs_open_context *ctx;
+ 
+ 	ctx = nfs_file_open_context(filp);
+-	if (nfs_ctx_key_to_expire(ctx, inode))
++	if (nfs_error_is_fatal_on_server(error) ||
++	    nfs_ctx_key_to_expire(ctx, inode))
+ 		return 1;
+ 	return 0;
+ }
+@@ -604,6 +606,8 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 	struct inode *inode = file_inode(file);
+ 	unsigned long written = 0;
+ 	ssize_t result;
++	errseq_t since;
++	int error;
+ 
+ 	result = nfs_key_timeout_notify(file, inode);
+ 	if (result)
+@@ -628,6 +632,7 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 	if (iocb->ki_pos > i_size_read(inode))
+ 		nfs_revalidate_mapping(inode, file->f_mapping);
+ 
++	since = filemap_sample_wb_err(file->f_mapping);
+ 	nfs_start_io_write(inode);
+ 	result = generic_write_checks(iocb, from);
+ 	if (result > 0) {
+@@ -646,7 +651,8 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 		goto out;
+ 
+ 	/* Return error values */
+-	if (nfs_need_check_write(file, inode)) {
++	error = filemap_check_wb_err(file->f_mapping, since);
++	if (nfs_need_check_write(file, inode, error)) {
+ 		int err = nfs_wb_all(inode);
+ 		if (err < 0)
+ 			result = err;
 -- 
 2.25.4
 
