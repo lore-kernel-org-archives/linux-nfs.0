@@ -2,206 +2,82 @@ Return-Path: <SRS0=oxud=BP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 17305C433DF
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 16:48:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D9DEC433DF
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 19:05:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E89042076E
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 16:48:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1596646091;
-	bh=4IXuXNxvGfeK4Lm/RyUj3pAht3o7OOXUoJtD6gkHrkc=;
-	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=bdfkfq3XEQp00xoXeplo7ifd0UsUXPbDJLUQQCZokd78kwplTFTAbtgEtdAXSzTGq
-	 xQgCwD/WaJCwqAxTvEG80WVpwWqanDL9FZz+1FB8cEDAkOAXM7Du16d5kTMqA14ST2
-	 kufTnQJiA2uCuFznF83RG6zd43RFEAMLG3q5gqGw=
+	by mail.kernel.org (Postfix) with ESMTP id 7462722D01
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 19:05:11 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ignP0JIu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728057AbgHEQsJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 5 Aug 2020 12:48:09 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54492 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727826AbgHEQpU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Aug 2020 12:45:20 -0400
-Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1728592AbgHETFF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 5 Aug 2020 15:05:05 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:51648 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728527AbgHETBw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2020 15:01:52 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1596654060;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=JLqa+MAv7jPDr+cHdCpQFs/slcQCkBQUMol1ozhrJSA=;
+        b=ignP0JIu8GpeMrzkwNkZty2TKz0J7MsCTmDnjBbYxPEb5hWbgbKBg13AozVzMzxFjArTE+
+        MhwrpwAaxm7kAdcVEHrNxMHWrbRBo8EmObgByvy1xUYE+x+9tNgpF9kTaxEJlRFU8Dk9xt
+        eJAxd0bYA0zCSL0uDn/Wt8zdWHG1HI4=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-466-mf-IFr-qN8q8HUVgoQICYg-1; Wed, 05 Aug 2020 15:00:57 -0400
+X-MC-Unique: mf-IFr-qN8q8HUVgoQICYg-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 61118235FC
-        for <linux-nfs@vger.kernel.org>; Wed,  5 Aug 2020 16:16:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1596644215;
-        bh=4IXuXNxvGfeK4Lm/RyUj3pAht3o7OOXUoJtD6gkHrkc=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=HpdiqxKXSklZxbJVINZe07HxsqUTBjokau1AkEO3otFqqRFe0+A7F/lCFj4T6T36o
-         3KhCWse+CXLU1hCiB0Tq5ykwX3CvoNBt4QgOAik411Zib6TlRKGvM8+edIx2jmOP5s
-         XklDjChFG+occ5UxwCzNYhEfWdAEinW+FcW9LHu0=
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFS: Add layout segment info to pnfs read/write/commit tracepoints
-Date:   Wed,  5 Aug 2020 12:14:46 -0400
-Message-Id: <20200805161446.383482-3-trondmy@kernel.org>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20200805161446.383482-2-trondmy@kernel.org>
-References: <20200805161446.383482-1-trondmy@kernel.org>
- <20200805161446.383482-2-trondmy@kernel.org>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 124A11005504
+        for <linux-nfs@vger.kernel.org>; Wed,  5 Aug 2020 19:00:57 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-70.phx2.redhat.com [10.3.112.70])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C6ADC5DA60
+        for <linux-nfs@vger.kernel.org>; Wed,  5 Aug 2020 19:00:56 +0000 (UTC)
+From:   Steve Dickson <steved@redhat.com>
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] idmapd: Turn down the verbosity in flush_inotify()
+Date:   Wed,  5 Aug 2020 15:00:54 -0400
+Message-Id: <20200805190054.39513-1-steved@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+So idmapd does not flood the logs with messages
+nobody will understand, only print the message
+with verbose is set.
 
-Allow the pnfs I/O tracepoints to trace which layout segment is being
-used.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/nfs4trace.h | 39 +++++++++++++++++++++++++++++++++------
- 1 file changed, 33 insertions(+), 6 deletions(-)
+ utils/idmapd/idmapd.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 61c33536dcf3..072a35adb0e3 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -1745,6 +1745,8 @@ DECLARE_EVENT_CLASS(nfs4_read_event,
- 			__field(unsigned long, error)
- 			__field(int, stateid_seq)
- 			__field(u32, stateid_hash)
-+			__field(int, layoutstateid_seq)
-+			__field(u32, layoutstateid_hash)
- 		),
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index 8631414..7d1096d 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -500,7 +500,8 @@ flush_inotify(int fd)
+ 		     ptr += sizeof(struct inotify_event) + ev->len) {
  
- 		TP_fast_assign(
-@@ -1754,6 +1756,8 @@ DECLARE_EVENT_CLASS(nfs4_read_event,
- 						  hdr->args.fh : &nfsi->fh;
- 			const struct nfs4_state *state =
- 				hdr->args.context->state;
-+			const struct pnfs_layout_segment *lseg = hdr->lseg;
-+			const struct pnfs_layout_hdr *lo = lseg->pls_layout;
- 
- 			__entry->dev = inode->i_sb->s_dev;
- 			__entry->fileid = nfsi->fileid;
-@@ -1766,11 +1770,15 @@ DECLARE_EVENT_CLASS(nfs4_read_event,
- 				be32_to_cpu(state->stateid.seqid);
- 			__entry->stateid_hash =
- 				nfs_stateid_hash(&state->stateid);
-+			__entry->layoutstateid_seq = lseg->pls_seq;
-+			__entry->layoutstateid_hash =
-+				nfs_stateid_hash(&lo->plh_stateid);
- 		),
- 
- 		TP_printk(
- 			"error=%ld (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
--			"offset=%lld count=%u res=%u stateid=%d:0x%08x",
-+			"offset=%lld count=%u res=%u stateid=%d:0x%08x "
-+			"layoutstateid=%d:0x%08x",
- 			-__entry->error,
- 			show_nfsv4_errors(__entry->error),
- 			MAJOR(__entry->dev), MINOR(__entry->dev),
-@@ -1778,7 +1786,8 @@ DECLARE_EVENT_CLASS(nfs4_read_event,
- 			__entry->fhandle,
- 			(long long)__entry->offset,
- 			__entry->arg_count, __entry->res_count,
--			__entry->stateid_seq, __entry->stateid_hash
-+			__entry->stateid_seq, __entry->stateid_hash,
-+			__entry->layoutstateid_seq, __entry->layoutstateid_hash
- 		)
- );
- #define DEFINE_NFS4_READ_EVENT(name) \
-@@ -1811,6 +1820,8 @@ DECLARE_EVENT_CLASS(nfs4_write_event,
- 			__field(unsigned long, error)
- 			__field(int, stateid_seq)
- 			__field(u32, stateid_hash)
-+			__field(int, layoutstateid_seq)
-+			__field(u32, layoutstateid_hash)
- 		),
- 
- 		TP_fast_assign(
-@@ -1820,6 +1831,8 @@ DECLARE_EVENT_CLASS(nfs4_write_event,
- 						  hdr->args.fh : &nfsi->fh;
- 			const struct nfs4_state *state =
- 				hdr->args.context->state;
-+			const struct pnfs_layout_segment *lseg = hdr->lseg;
-+			const struct pnfs_layout_hdr *lo = lseg->pls_layout;
- 
- 			__entry->dev = inode->i_sb->s_dev;
- 			__entry->fileid = nfsi->fileid;
-@@ -1832,11 +1845,15 @@ DECLARE_EVENT_CLASS(nfs4_write_event,
- 				be32_to_cpu(state->stateid.seqid);
- 			__entry->stateid_hash =
- 				nfs_stateid_hash(&state->stateid);
-+			__entry->layoutstateid_seq = lseg->pls_seq;
-+			__entry->layoutstateid_hash =
-+				nfs_stateid_hash(&lo->plh_stateid);
- 		),
- 
- 		TP_printk(
- 			"error=%ld (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
--			"offset=%lld count=%u res=%u stateid=%d:0x%08x",
-+			"offset=%lld count=%u res=%u stateid=%d:0x%08x "
-+			"layoutstateid=%d:0x%08x",
- 			-__entry->error,
- 			show_nfsv4_errors(__entry->error),
- 			MAJOR(__entry->dev), MINOR(__entry->dev),
-@@ -1844,7 +1861,8 @@ DECLARE_EVENT_CLASS(nfs4_write_event,
- 			__entry->fhandle,
- 			(long long)__entry->offset,
- 			__entry->arg_count, __entry->res_count,
--			__entry->stateid_seq, __entry->stateid_hash
-+			__entry->stateid_seq, __entry->stateid_hash,
-+			__entry->layoutstateid_seq, __entry->layoutstateid_hash
- 		)
- );
- 
-@@ -1875,6 +1893,8 @@ DECLARE_EVENT_CLASS(nfs4_commit_event,
- 			__field(unsigned long, error)
- 			__field(loff_t, offset)
- 			__field(u32, count)
-+			__field(int, layoutstateid_seq)
-+			__field(u32, layoutstateid_hash)
- 		),
- 
- 		TP_fast_assign(
-@@ -1882,6 +1902,9 @@ DECLARE_EVENT_CLASS(nfs4_commit_event,
- 			const struct nfs_inode *nfsi = NFS_I(inode);
- 			const struct nfs_fh *fh = data->args.fh ?
- 						  data->args.fh : &nfsi->fh;
-+			const struct pnfs_layout_segment *lseg = data->lseg;
-+			const struct pnfs_layout_hdr *lo = lseg ?
-+						  lseg->pls_layout : NULL;
- 
- 			__entry->dev = inode->i_sb->s_dev;
- 			__entry->fileid = nfsi->fileid;
-@@ -1889,18 +1912,22 @@ DECLARE_EVENT_CLASS(nfs4_commit_event,
- 			__entry->offset = data->args.offset;
- 			__entry->count = data->args.count;
- 			__entry->error = error < 0 ? -error : 0;
-+			__entry->layoutstateid_seq = lseg ? lseg->pls_seq : 0;
-+			__entry->layoutstateid_hash = lo ?
-+					nfs_stateid_hash(&lo->plh_stateid) : 0;
- 		),
- 
- 		TP_printk(
- 			"error=%ld (%s) fileid=%02x:%02x:%llu fhandle=0x%08x "
--			"offset=%lld count=%u",
-+			"offset=%lld count=%u layoutstateid=%d:0x%08x",
- 			-__entry->error,
- 			show_nfsv4_errors(__entry->error),
- 			MAJOR(__entry->dev), MINOR(__entry->dev),
- 			(unsigned long long)__entry->fileid,
- 			__entry->fhandle,
- 			(long long)__entry->offset,
--			__entry->count
-+			__entry->count,
-+			__entry->layoutstateid_seq, __entry->layoutstateid_hash
- 		)
- );
- #define DEFINE_NFS4_COMMIT_EVENT(name) \
+ 			ev = (const struct inotify_event *)ptr;
+-			xlog_warn("pipefs inotify: wd=%i, mask=0x%08x, len=%i, name=%s",
++			if (verbose > 1)
++				xlog_warn("pipefs inotify: wd=%i, mask=0x%08x, len=%i, name=%s",
+ 				  ev->wd, ev->mask, ev->len, ev->len ? ev->name : "");
+ 		}
+ 	}
 -- 
-2.26.2
+2.24.1
 
