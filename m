@@ -1,102 +1,130 @@
-Return-Path: <SRS0=eVwt=BO=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=oxud=BP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14882C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Aug 2020 21:21:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1073C433E0
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 16:36:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DE3B920842
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Aug 2020 21:21:32 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="dIr28ctZ"
+	by mail.kernel.org (Postfix) with ESMTP id A0DA32076E
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 16:36:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1596645404;
+	bh=yn16hTfeAN7v9zr3ZQIMfWk0+F1q90uR69Eqk8hWbIo=;
+	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=UmLHKWxKzovtDp7K8Qp9u/DTw6Ya1KiDUSzz1B9bAqF50Zgir0f1Juo8Vz5J9qZoe
+	 u+58VjrtZ7rytFsUqG34ziTgiq5paOAd8TQM+NtkupTrBKUoHTNeCgT2mYJa69s8He
+	 JyFrbevrlbs4ul3il91LXvkl5kdvpVV0FkmboBHM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726644AbgHDVVc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 Aug 2020 17:21:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36170 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726101AbgHDVVc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2020 17:21:32 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 07829C06174A
-        for <linux-nfs@vger.kernel.org>; Tue,  4 Aug 2020 14:21:31 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 2DFB19238; Tue,  4 Aug 2020 17:21:28 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 2DFB19238
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1596576088;
-        bh=wxupdSrHcU6qkYlO1fDUVOVEHsL3xf/8Nki//4HSvn8=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=dIr28ctZUaMUY/YRyOQugzP1UDnuZGaPnrdE1M4ig5ljPe0slOOm1FNIUXfGOmyaI
-         m0Qq0pUwuhIRgbqUCAijK0clVIXdzAAd3m3gdjD6jJ+DSGL7v5qz9JA2vwX6Xis64J
-         wkyq+gXpMrqiN/yZBW8bJJYSga+p7S42MJQDZMN4=
-Date:   Tue, 4 Aug 2020 17:21:28 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Stephen Hemminger <stephen@networkplumber.org>
-Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: Fw: [Bug 208807] New: Problem with NFS kernel server code
-Message-ID: <20200804212128.GC25981@fieldses.org>
-References: <20200804140744.35ce4bdd@hermes.lan>
+        id S1725920AbgHEQgm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 5 Aug 2020 12:36:42 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49782 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726994AbgHEQeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Aug 2020 12:34:37 -0400
+Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id E904C235F9
+        for <linux-nfs@vger.kernel.org>; Wed,  5 Aug 2020 16:16:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1596644215;
+        bh=yn16hTfeAN7v9zr3ZQIMfWk0+F1q90uR69Eqk8hWbIo=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=LKcHVkyRv3qbEzbfKjV2bTWMBFUY0AgEvlQNKzof5DVs3Ed1o1bMM71pUKDmu+qFK
+         5I4VstC61g1uuKJrpOyB9oIgtNNyW7LYdnwThCc0Zwmm5HandHG6fQyaiaG4lG+hMt
+         WPTl8gqtmDdfwxzM1Lhes+ykBP1acSoYs33/JmVw=
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] NFS: Add tracepoints for layouterror and layoutstats.
+Date:   Wed,  5 Aug 2020 12:14:45 -0400
+Message-Id: <20200805161446.383482-2-trondmy@kernel.org>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20200805161446.383482-1-trondmy@kernel.org>
+References: <20200805161446.383482-1-trondmy@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200804140744.35ce4bdd@hermes.lan>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Commented, but I guess it should really be reassigned to nfsd, I'm not
-sure how.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
---b.
+Allow tracing of the NFSv4.2 layouterror and layoutstats operations.
 
-On Tue, Aug 04, 2020 at 02:07:44PM -0700, Stephen Hemminger wrote:
-> 
-> 
-> Begin forwarded message:
-> 
-> Date: Tue, 04 Aug 2020 11:33:23 +0000
-> From: bugzilla-daemon@bugzilla.kernel.org
-> To: stephen@networkplumber.org
-> Subject: [Bug 208807] New: Problem with NFS kernel server code
-> 
-> 
-> https://bugzilla.kernel.org/show_bug.cgi?id=208807
-> 
->             Bug ID: 208807
->            Summary: Problem with NFS kernel server code
->            Product: Networking
->            Version: 2.5
->     Kernel Version: 5.8.0
->           Hardware: All
->                 OS: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: normal
->           Priority: P1
->          Component: Other
->           Assignee: stephen@networkplumber.org
->           Reporter: nanook@eskimo.com
->         Regression: No
-> 
-> Created attachment 290759
->   --> https://bugzilla.kernel.org/attachment.cgi?id=290759&action=edit  
-> Output of dmesg while machine was dying
-> 
-> After about an hour and a half of operating on 5.8.0, one of our NFS servers
-> began to slow and basically ground to a halt.  Looks like a spinlock issue in
-> the NFS kernel server code.  I'll attach the output of dmesg while the machine
-> was dying in a file called "spinlock".  A shame because while it was running,
-> the performance of 5.8 was astounding.  Only the NFS servers seem to get ill,
-> the
-> client machines seem to run fine on 5.8 so far at least.
-> 
-> -- 
-> You are receiving this mail because:
-> You are the assignee for the bug.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs42proc.c | 10 ++++++++--
+ fs/nfs/nfs4trace.h |  2 ++
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index e200522469af..142225f0af59 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -17,6 +17,7 @@
+ #include "nfs4session.h"
+ #include "internal.h"
+ #include "delegation.h"
++#include "nfs4trace.h"
+ 
+ #define NFSDBG_FACILITY NFSDBG_PROC
+ static int nfs42_do_offload_cancel_async(struct file *dst, nfs4_stateid *std);
+@@ -714,7 +715,7 @@ nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
+ 
+ 	switch (task->tk_status) {
+ 	case 0:
+-		break;
++		return;
+ 	case -NFS4ERR_BADHANDLE:
+ 	case -ESTALE:
+ 		pnfs_destroy_layout(NFS_I(inode));
+@@ -760,6 +761,8 @@ nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
+ 	case -EOPNOTSUPP:
+ 		NFS_SERVER(inode)->caps &= ~NFS_CAP_LAYOUTSTATS;
+ 	}
++
++	trace_nfs4_layoutstats(inode, &data->args.stateid, task->tk_status);
+ }
+ 
+ static void
+@@ -882,7 +885,7 @@ nfs42_layouterror_done(struct rpc_task *task, void *calldata)
+ 
+ 	switch (task->tk_status) {
+ 	case 0:
+-		break;
++		return;
+ 	case -NFS4ERR_BADHANDLE:
+ 	case -ESTALE:
+ 		pnfs_destroy_layout(NFS_I(inode));
+@@ -926,6 +929,9 @@ nfs42_layouterror_done(struct rpc_task *task, void *calldata)
+ 	case -EOPNOTSUPP:
+ 		NFS_SERVER(inode)->caps &= ~NFS_CAP_LAYOUTERROR;
+ 	}
++
++	trace_nfs4_layouterror(inode, &data->args.errors[0].stateid,
++			       task->tk_status);
+ }
+ 
+ static void
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 07ea8d847710..61c33536dcf3 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -1994,6 +1994,8 @@ TRACE_EVENT(nfs4_layoutget,
+ DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_layoutcommit);
+ DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_layoutreturn);
+ DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_layoutreturn_on_close);
++DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_layouterror);
++DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_layoutstats);
+ 
+ TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_UNKNOWN);
+ TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_NO_PNFS);
+-- 
+2.26.2
+
