@@ -1,123 +1,95 @@
-Return-Path: <SRS0=oxud=BP=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=ZRiW=BR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5606CC433E1
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 20:26:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AEB0C433DF
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Aug 2020 15:11:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2B5F222B42
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Aug 2020 20:26:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1596659202;
-	bh=+xdDK7UiSeg17vtYouNeo6HcNkdiq8oHOMNNJBmqyD0=;
-	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Bf4S+by4Tpz3YcSX+/v+DM00oV/PQaZwc1Y/LgDLd/Z0mdXEyde5HgDHI+A8+FYGl
-	 pucnMkudjYPh9JaM5sdcPHJJ9Tu3/O8KL9QUNZtPXI+0oENDsAKv4mv33MzZ7GSzgh
-	 3VFfSv18QZgAoyFNG7g2y8NHT9tgJdlWBxgOX+HE=
+	by mail.kernel.org (Postfix) with ESMTP id E41222075D
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Aug 2020 15:11:54 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="L2RDxf9R"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726149AbgHEU0l (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 5 Aug 2020 16:26:41 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57018 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726013AbgHEU0l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Aug 2020 16:26:41 -0400
-Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1725993AbgHGPLy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 7 Aug 2020 11:11:54 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:30982 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1725893AbgHGPLy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2020 11:11:54 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1596813112;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=pPuxnFHo3jjZjpkhbXsaIuwya0Ld+Dzk4mQeLTjZGNs=;
+        b=L2RDxf9R1/ytVe3zSjP3uBUyj7BkghXwwyqpa/4WPDCOuTPckyoE5TlVCeXChL9XnznKej
+        O+klK8qbvsoRo+Vf4q1bdyCWiIEQFgjKsmlun9WFAmmLPNYuLSphCdT/Cq6dqCSXePgJL0
+        V24W1fd8Y+aDX1eL0jArwfnLrEb+TB8=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-514-LmjF-B8jPxKXWvHC43ADDw-1; Fri, 07 Aug 2020 11:11:51 -0400
+X-MC-Unique: LmjF-B8jPxKXWvHC43ADDw-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A406622B42
-        for <linux-nfs@vger.kernel.org>; Wed,  5 Aug 2020 20:26:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1596659200;
-        bh=+xdDK7UiSeg17vtYouNeo6HcNkdiq8oHOMNNJBmqyD0=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=hc4/CALOXoFuNxN08WyaTNoiAfA+QJst5LBsyVDcbBo/Z7XuO//VsM9TdhW6550Ub
-         oQx/nq8+HXP7FLsNwOJA7xSSzOZR3s1JHwqeHeS+TGletpygGqNn0z4nhTahdg2y0F
-         3cPjOxkWHY9PX4fqO4cfQ8A/qKv1/ZFyR1kx8Clc=
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFS: Don't return layout segments that are in use
-Date:   Wed,  5 Aug 2020 16:24:31 -0400
-Message-Id: <20200805202431.627013-3-trondmy@kernel.org>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20200805202431.627013-2-trondmy@kernel.org>
-References: <20200805202431.627013-1-trondmy@kernel.org>
- <20200805202431.627013-2-trondmy@kernel.org>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 32FF3100A8E7
+        for <linux-nfs@vger.kernel.org>; Fri,  7 Aug 2020 15:11:50 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-70.phx2.redhat.com [10.3.112.70])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 041C61973B
+        for <linux-nfs@vger.kernel.org>; Fri,  7 Aug 2020 15:11:49 +0000 (UTC)
+Subject: Re: [PATCH] idmapd: Turn down the verbosity in flush_inotify()
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20200805190054.39513-1-steved@redhat.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <8d993f69-11d8-49f3-5146-02c1da8aae56@RedHat.com>
+Date:   Fri, 7 Aug 2020 11:11:49 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20200805190054.39513-1-steved@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the NFS_LAYOUT_RETURN_REQUESTED flag is set, we want to return the
-layout as soon as possible, meaning that the affected layout segments
-should be marked as invalid, and should no longer be in use for I/O.
 
-Fixes: f0b429819b5f ("pNFS: Ignore non-recalled layouts in pnfs_layout_need_return()")
-Cc: stable@vger.kernel.org # v4.19+
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/pnfs.c | 34 +++++++++++++++-------------------
- 1 file changed, 15 insertions(+), 19 deletions(-)
+On 8/5/20 3:00 PM, Steve Dickson wrote:
+> So idmapd does not flood the logs with messages
+> nobody will understand, only print the message
+> with verbose is set.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 262ce01c7abe..b5baf36d4de5 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1226,31 +1226,27 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo,
- 	return status;
- }
- 
-+static bool
-+pnfs_layout_segments_returnable(struct pnfs_layout_hdr *lo,
-+				enum pnfs_iomode iomode,
-+				u32 seq)
-+{
-+	struct pnfs_layout_range recall_range = {
-+		.length = NFS4_MAX_UINT64,
-+		.iomode = iomode,
-+	};
-+	return pnfs_mark_matching_lsegs_return(lo, &lo->plh_return_segs,
-+					       &recall_range, seq) != -EBUSY;
-+}
-+
- /* Return true if layoutreturn is needed */
- static bool
- pnfs_layout_need_return(struct pnfs_layout_hdr *lo)
- {
--	struct pnfs_layout_segment *s;
--	enum pnfs_iomode iomode;
--	u32 seq;
--
- 	if (!test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags))
- 		return false;
--
--	seq = lo->plh_return_seq;
--	iomode = lo->plh_return_iomode;
--
--	/* Defer layoutreturn until all recalled lsegs are done */
--	list_for_each_entry(s, &lo->plh_segs, pls_list) {
--		if (seq && pnfs_seqid_is_newer(s->pls_seq, seq))
--			continue;
--		if (iomode != IOMODE_ANY && s->pls_range.iomode != iomode)
--			continue;
--		if (test_bit(NFS_LSEG_LAYOUTRETURN, &s->pls_flags))
--			return false;
--	}
--
--	return true;
-+	return pnfs_layout_segments_returnable(lo, lo->plh_return_iomode,
-+					       lo->plh_return_seq);
- }
- 
- static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
--- 
-2.26.2
+steved.
+> ---
+>  utils/idmapd/idmapd.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+> index 8631414..7d1096d 100644
+> --- a/utils/idmapd/idmapd.c
+> +++ b/utils/idmapd/idmapd.c
+> @@ -500,7 +500,8 @@ flush_inotify(int fd)
+>  		     ptr += sizeof(struct inotify_event) + ev->len) {
+>  
+>  			ev = (const struct inotify_event *)ptr;
+> -			xlog_warn("pipefs inotify: wd=%i, mask=0x%08x, len=%i, name=%s",
+> +			if (verbose > 1)
+> +				xlog_warn("pipefs inotify: wd=%i, mask=0x%08x, len=%i, name=%s",
+>  				  ev->wd, ev->mask, ev->len, ev->len ? ev->name : "");
+>  		}
+>  	}
+> 
 
