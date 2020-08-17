@@ -2,147 +2,159 @@ Return-Path: <SRS0=jts/=B3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
+X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,
+	DKIM_ADSP_CUSTOM_MED,DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,
+	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 076D6C433DF
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:26:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BDF6C433DF
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:33:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BDCAB20657
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:26:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 242B22063A
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:33:22 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="X7dcva2A"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tTyADODw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389807AbgHQR0R (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Aug 2020 13:26:17 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:33928 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390061AbgHQR0H (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2020 13:26:07 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 07HHMAqE183413;
-        Mon, 17 Aug 2020 17:25:47 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=yJnm27QNs3bXTn5r/vqDmrcKyhoK1fjjWPz5rTHbnsk=;
- b=X7dcva2AzmRVXS+VMTWHZHGtcHHm+b847eqx/dwezOtAHJKP4Kxd8rrX3yyrdIZNjbOh
- MKPGces/+9+GHL/dZp24e9ywACEdwlGtfshUw+aDruKTVchcgHB9F1GJvYpqoqzTVoTZ
- 5csuCtBveMRp1OOtWNg7Y+austubFcZJGp5IvA6lc55bnBinss6k49HPXrz79d5sxQq7
- VJy79YO0vbd8A6WkXGgWEferA8MEffSwK+ERnDaYIaylFRk/HuXIGG/gysvUColG/zQx
- JT/P/0tfhjkHenokaicWoYVJdhnFcIGrFamIAUxRMYyC38+xTAYQcy7PZ0vSfFMrA6xb xg== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by userp2130.oracle.com with ESMTP id 32x74r07uh-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Mon, 17 Aug 2020 17:25:47 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 07HHMtIX163387;
-        Mon, 17 Aug 2020 17:25:47 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userp3030.oracle.com with ESMTP id 32xsmw6f0d-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 17 Aug 2020 17:25:47 +0000
-Received: from abhmp0009.oracle.com (abhmp0009.oracle.com [141.146.116.15])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 07HHPenK027269;
-        Mon, 17 Aug 2020 17:25:46 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 17 Aug 2020 10:25:40 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.1\))
-Subject: Re: [PATCH v1 00/22] SUNRPC: Replace dprintk calls with tracepoints
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20200708200121.22129.92375.stgit@manet.1015granger.net>
-Date:   Mon, 17 Aug 2020 13:25:38 -0400
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: 7bit
-Message-Id: <242E6FB6-6C7F-4529-A4B4-B8248152F448@oracle.com>
-References: <20200708200121.22129.92375.stgit@manet.1015granger.net>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-X-Mailer: Apple Mail (2.3608.120.23.2.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9716 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 spamscore=0 bulkscore=0
- mlxlogscore=999 phishscore=0 mlxscore=0 suspectscore=0 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2008170126
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9716 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 impostorscore=0 mlxlogscore=999
- priorityscore=1501 phishscore=0 spamscore=0 mlxscore=0 adultscore=0
- suspectscore=0 lowpriorityscore=0 bulkscore=0 malwarescore=0 clxscore=1015
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2008170126
+        id S2389262AbgHQRdS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Aug 2020 13:33:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46780 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389111AbgHQQyE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2020 12:54:04 -0400
+Received: from mail-io1-xd43.google.com (mail-io1-xd43.google.com [IPv6:2607:f8b0:4864:20::d43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72ABDC061359
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2020 09:53:40 -0700 (PDT)
+Received: by mail-io1-xd43.google.com with SMTP id b17so18284048ion.7
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2020 09:53:40 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=3AsGc/1Xpo40vE8L6nCtW9cEOngIRVeMlkrIMYelAG0=;
+        b=tTyADODwhitY6QSkseippOl+P33mGViQEjaKKMStcePMPz7jf5GaDHFm3Ws1GJhsAX
+         HCmACL3w7VdqC2YOBVuXUriwPWLRnFkF6HFbqeJBKacIgl12TYSbNi3IprXCBS8TqeMm
+         8BlBVHu9AFn1bqeixAeETq9DHlbp1OigEAXS45nEXgHlwLSi6HddYiceansuVHj0G1BR
+         TcneAeZr3i9aUWjpXsv973ZISXDPY8bBzvBoLhVmoZpG1wqMx+Mek+dF6mFtbQAdmnUQ
+         TYg/QfALludTLOnrlVkbWQ6vrraaojSanknpwNNRLnUujMTEnFcepoa31fnNKCZHJ5S0
+         SNFQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=3AsGc/1Xpo40vE8L6nCtW9cEOngIRVeMlkrIMYelAG0=;
+        b=iEd0hgrxHhkMBUe0Gm3qBAZFzn0C0qJrX8ykSlbIozLVVp4+EetZLK00Rt3M0eKi/h
+         K62Pz0tjJtmjFQVZRO1j1vCKENgOuxF3HVnO3vR4f2Rkk8LeQUabD1dq19XZ+YSQKQOm
+         EzLR68E1vrJI93IzOUmsxi/+VeTYrRj9nIfVNk9irkvvzrUihu7cXLhbvVa2T1WKToyO
+         l7htskD9UTTwlrwHAsDVsj0dI9KeHWgmGBPkulIi3xmCQeiXhL4wlDxv9ssM4SZeyyqp
+         6V2gsfTIDoQhutuBMec8wFCtZIqCzwfJBpcb5YUFZ1yrlqslwDkbGzYl1vt5rfR/I0ba
+         gziQ==
+X-Gm-Message-State: AOAM531sFbIfgLuLm8LGVsG0NnxUiHeA1S0MzppN33RPPT5BQW6jJvj/
+        MU5PgZi9TM0wFbnZvR9rdLdIvY3Hciw=
+X-Google-Smtp-Source: ABdhPJxr708I75qwmNW82UJJrmhpisVBSup1kIgHot/yT3arhPoTZFPDwAJsr99COffOFXlODV1Y/Q==
+X-Received: by 2002:a5d:91d4:: with SMTP id k20mr13399540ior.9.1597683219549;
+        Mon, 17 Aug 2020 09:53:39 -0700 (PDT)
+Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
+        by smtp.gmail.com with ESMTPSA id a16sm7413106ilc.7.2020.08.17.09.53.38
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 17 Aug 2020 09:53:38 -0700 (PDT)
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v4 10/10] NFS: Decode a full READ_PLUS reply
+Date:   Mon, 17 Aug 2020 12:53:27 -0400
+Message-Id: <20200817165327.354181-11-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.28.0
+In-Reply-To: <20200817165327.354181-1-Anna.Schumaker@Netapp.com>
+References: <20200817165327.354181-1-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-> On Jul 8, 2020, at 4:08 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> Hi-
-> 
-> This series replaces many client-side RPC dprintk call sites with
-> tracepoints. The goals of this series are:
-> 
-> - Replace chatty dprintk call sites with tracepoints, which can
->  handle a higher event rate, and won't get rate-limited.
-> 
-> - At some later point, expand the 0-64K range of RPC task IDs.
->  Task IDs would be displayed only by tracepoints as 32-bit unsigned
->  integers.
-> 
-> - Eliminate redundant tracepoints in the transport implementations.
+Decode multiple hole and data segments sent by the server, placing
+everything directly where they need to go in the xdr pages.
 
-None of the patches in this series made it into v5.9. I don't recall
-seeing any feedback on these either. Can they be considered for v5.10?
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs42xdr.c | 36 +++++++++++++++++++-----------------
+ 1 file changed, 19 insertions(+), 17 deletions(-)
 
-
-> ---
-> 
-> Chuck Lever (22):
->      SUNRPC: Remove trace_xprt_complete_rqst()
->      SUNRPC: Hoist trace_xprtrdma_op_allocate into generic code
->      SUNRPC: Remove debugging instrumentation from xprt_release
->      SUNRPC: Update debugging instrumentation in xprt_do_reserve()
->      SUNRPC: Replace dprintk() call site in xprt_prepare_transmit
->      SUNRPC: Replace dprintk() call site in xs_nospace()
->      SUNRPC: Remove the dprint_status() macro
->      SUNRPC: Remove dprintk call site in call_start()
->      SUNRPC: Replace connect dprintk call sites with a tracepoint
->      SUNRPC: Mitigate cond_resched() in xprt_transmit()
->      SUNRPC: Add trace_rpc_timeout_status()
->      SUNRPC: Trace call_refresh events
->      SUNRPC: Remove dprintk call site in call_decode
->      SUNRPC: Clean up call_bind_status() observability
->      SUNRPC: Remove rpcb_getport_async dprintk call sites
->      SUNRPC: Hoist trace_xprtrdma_op_setport into generic code
->      SUNRPC: Remove dprintk call sites in rpcbind XDR functions
->      SUNRPC: Remove more dprintks in rpcb_clnt.c
->      SUNRPC: Replace rpcbind dprintk call sites with tracepoints
->      SUNRPC: Clean up RPC scheduler tracepoints
->      SUNRPC: Remove dprintk call sites in RPC queuing functions
->      SUNRPC: Remove remaining dprintks from sched.c
-> 
-> 
-> include/trace/events/rpcrdma.h  |  63 -------
-> include/trace/events/sunrpc.h   | 285 ++++++++++++++++++++++++++++----
-> net/sunrpc/clnt.c               |  75 ++-------
-> net/sunrpc/rpcb_clnt.c          | 129 +++------------
-> net/sunrpc/sched.c              |  52 +-----
-> net/sunrpc/xprt.c               |  22 +--
-> net/sunrpc/xprtrdma/transport.c |   7 -
-> net/sunrpc/xprtsock.c           |   5 +-
-> 8 files changed, 304 insertions(+), 334 deletions(-)
-> 
-> --
-> Chuck Lever
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 90f415944b90..ffaa7ae9304a 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -756,7 +756,7 @@ static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ 
+ 	p = xdr_decode_hyper(p, &offset);
+ 	count = be32_to_cpup(p);
+-	recvd = xdr_read_pages(xdr, count);
++	recvd = xdr_align_data(xdr, res->count, count);
+ 	res->count += recvd;
+ 
+ 	if (count > recvd) {
+@@ -781,7 +781,7 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ 
+ 	p = xdr_decode_hyper(p, &offset);
+ 	p = xdr_decode_hyper(p, &length);
+-	recvd = xdr_expand_hole(xdr, 0, length);
++	recvd = xdr_expand_hole(xdr, res->count, length);
+ 	res->count += recvd;
+ 
+ 	if (recvd < length) {
+@@ -794,7 +794,7 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ {
+ 	uint32_t eof, segments, type;
+-	int status;
++	int status, i;
+ 	__be32 *p;
+ 
+ 	status = decode_op_hdr(xdr, OP_READ_PLUS);
+@@ -810,22 +810,24 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ 	if (segments == 0)
+ 		goto out;
+ 
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+-		return -EIO;
++	for (i = 0; i < segments; i++) {
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			return -EIO;
+ 
+-	type = be32_to_cpup(p++);
+-	if (type == NFS4_CONTENT_DATA)
+-		status = decode_read_plus_data(xdr, res, &eof);
+-	else if (type == NFS4_CONTENT_HOLE)
+-		status = decode_read_plus_hole(xdr, res, &eof);
+-	else
+-		return -EINVAL;
++		type = be32_to_cpup(p++);
++		if (type == NFS4_CONTENT_DATA)
++			status = decode_read_plus_data(xdr, res, &eof);
++		else if (type == NFS4_CONTENT_HOLE)
++			status = decode_read_plus_hole(xdr, res, &eof);
++		else
++			return -EINVAL;
+ 
+-	if (status)
+-		return status;
+-	if (segments > 1)
+-		eof = 0;
++		if (status < 0)
++			return status;
++		if (status > 0)
++			break;
++	}
+ 
+ out:
+ 	res->eof = eof;
+-- 
+2.28.0
 
