@@ -2,216 +2,126 @@ Return-Path: <SRS0=jts/=B3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,
-	DKIM_ADSP_CUSTOM_MED,DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,
-	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DD6DC433DF
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:33:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01466C433DF
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:35:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 27B8F2063A
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:33:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C623A20716
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Aug 2020 17:35:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eutV8oXG"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="in2NhKQu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388537AbgHQRdm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Aug 2020 13:33:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46716 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389099AbgHQQxP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2020 12:53:15 -0400
-Received: from mail-io1-xd41.google.com (mail-io1-xd41.google.com [IPv6:2607:f8b0:4864:20::d41])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 80B18C061344
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2020 09:53:13 -0700 (PDT)
-Received: by mail-io1-xd41.google.com with SMTP id g19so18289617ioh.8
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2020 09:53:13 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=/SxUNl+jSH6Huy97tnl5zQzeoQGswbqbvVa0pe7sWZQ=;
-        b=eutV8oXGsB32bc/7mIbre4yAY5qRTQHd8wGNVf4H8485rQ7F4mTFtkoSld+ZBvzAz2
-         TzQsFISgDNC5k/i5frpRQFBrR+4XsKfJ9cxC++QHG3aesRpxECrA2zKxbM6UR0Tl8zLa
-         OZiBeXrZCT6KFw1L3vTYp2DN82aJ/LbaVYnRQfR7tSTVmV6A1hCgiO98SAvlQIIRE8Qx
-         ybvKiBUMTgg00UlH3nMkjQKxnpogabFqFPtg2d9eUoDbkJku23BKfaYl9shogsJCrCcM
-         V1hLjJytsZtEQ0UwSOUbtOlOpZZ/kNrvU6sDDiR5L+tDPtZe10OQsGt25Oij/FU+uBCH
-         O14Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=/SxUNl+jSH6Huy97tnl5zQzeoQGswbqbvVa0pe7sWZQ=;
-        b=fVepb+1rX7MjuB76QJe2aNrVUypWlZKdWusscm6VVQ3xluwvhXZ9Thj0AzwVXFqCfr
-         GmNJMMiNhLIdm6LMOcEfWOMgYoS/k/+nMu3dc5ho3HyQrXJB9ImRKNTMv+b/trR2Zpan
-         xuO1ss1xkH8wU9EPteG53yA78LQHv/QKQDXOkn0bVa5fy8FBsYtdUg0k7ztyaGWpm4oQ
-         1/DTTjSs5B2K1nLum+KEA0HlOLbi3fMQDeT1UuDeIzkQCDYZzG27HefPrUhBnWiLORQ3
-         eQb5+alR1QQMZV7b9GcMfa/Sff7REovXOoLvyPvvQFGlTPeWWdm/Bpuz2QY3yzx2Urz6
-         n3BQ==
-X-Gm-Message-State: AOAM531AMuO2LMPdYrqTiDUrYCpl72eIlx9TwBx7mTFTxd09H7oj6A2g
-        lz+b/AuKtEAp2wNiR3ZKmAw=
-X-Google-Smtp-Source: ABdhPJx1cLuKtOxKAx3rmidxB8wpOTYUrdz3NjcBA3YJ8I8EwTzB66LKB1mvLL0fzDn16+dSxH/MqQ==
-X-Received: by 2002:a02:7691:: with SMTP id z139mr15877294jab.6.1597683192843;
-        Mon, 17 Aug 2020 09:53:12 -0700 (PDT)
-Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
-        by smtp.gmail.com with ESMTPSA id s3sm9410039iol.49.2020.08.17.09.53.12
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 17 Aug 2020 09:53:12 -0700 (PDT)
-From:   schumaker.anna@gmail.com
-X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     bfields@redhat.com, chuck.lever@oracle.com,
-        linux-nfs@vger.kernel.org
-Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v4 1/5] SUNRPC/NFSD: Implement xdr_reserve_space_vec()
-Date:   Mon, 17 Aug 2020 12:53:06 -0400
-Message-Id: <20200817165310.354092-2-Anna.Schumaker@Netapp.com>
-X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20200817165310.354092-1-Anna.Schumaker@Netapp.com>
-References: <20200817165310.354092-1-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1729060AbgHQRfA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Aug 2020 13:35:00 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:40876 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728989AbgHQRe4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2020 13:34:56 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 07HHWAc0010080;
+        Mon, 17 Aug 2020 17:34:54 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=uRZfGyNcH1mRTBQ0EADaPl9oEsia1jJQyhRFSspY/NI=;
+ b=in2NhKQu1wjrx0cKgzZdj7MOzwJJYqKBPT2po1Tb3fYSpV4PPqjEUTz62y/aBhNRoYK8
+ 8qGQR07RKOPBJoAzzNfNrnrIxK339DuHWT+rOlpn4iVR5BnbsKYg86NRMv4PCAucltcG
+ 8ULF0Od8jVP/DN0XG1TuwX3SIcRn9J5RUw4f3vu4cOxp3h/4CcK3Ybqsgd+k6gtko+5h
+ KGGpmrlx+atd0FoUHwDqlXbRriTP6+jZDm4HZQ7CCIWbdAPjTSbPm/cU3/CFl453Zyaa
+ lB/pP9i63+KNLPcxOHGX+GWl8cezdDAP5J4EURib6AfAKugMVRA8sHzON7iG7sACMgsL vg== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by userp2130.oracle.com with ESMTP id 32x74r09d8-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Mon, 17 Aug 2020 17:34:54 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 07HHY81H081318;
+        Mon, 17 Aug 2020 17:34:53 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by aserp3030.oracle.com with ESMTP id 32xs9m0g4u-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 17 Aug 2020 17:34:53 +0000
+Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 07HHYqmB010999;
+        Mon, 17 Aug 2020 17:34:52 GMT
+Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 17 Aug 2020 10:34:52 -0700
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.1\))
+Subject: Re: [PATCH RFC] xprtrdma: Release in-flight MRs on disconnect
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <159767751439.190071.13659900216337230912.stgit@manet.1015granger.net>
+Date:   Mon, 17 Aug 2020 13:34:51 -0400
+Cc:     dan@kernelim.com,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Message-Id: <8836EE99-C971-434A-B4A4-C1C4241073BC@oracle.com>
+References: <159767751439.190071.13659900216337230912.stgit@manet.1015granger.net>
+To:     Anna Schumaker <anna.schumaker@netapp.com>
+X-Mailer: Apple Mail (2.3608.120.23.2.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9716 signatures=668679
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 adultscore=0 spamscore=0
+ mlxscore=0 mlxlogscore=999 suspectscore=0 malwarescore=0 bulkscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2008170127
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9716 signatures=668679
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 impostorscore=0 mlxlogscore=999
+ priorityscore=1501 phishscore=0 spamscore=0 mlxscore=0 adultscore=0
+ suspectscore=0 lowpriorityscore=0 bulkscore=0 malwarescore=0 clxscore=1015
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2008170127
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Reserving space for a large READ payload requires special handling when
-reserving space in the xdr buffer pages. One problem we can have is use
-of the scratch buffer, which is used to get a pointer to a contiguous
-region of data up to PAGE_SIZE. When using the scratch buffer, calls to
-xdr_commit_encode() shift the data to it's proper alignment in the xdr
-buffer. If we've reserved several pages in a vector, then this could
-potentially invalidate earlier pointers and result in incorrect READ
-data being sent to the client.
+> On Aug 17, 2020, at 11:19 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> Dan Aloni reports that when a server disconnects abruptly, a few
+> memory regions are left DMA mapped. Over time this leak could pin
+> enough I/O resources to slow or even deadlock an NFS/RDMA client.
+> 
+> I found that if a transport disconnects before pending Send and
+> FastReg WRs can be posted, the to-be-registered MRs are stranded on
+> the req's rl_registered list and never released -- since they
+> weren't posted, there's no Send completion to DMA unmap them.
+> 
+> Reported-by: Dan Aloni <dan@kernelim.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> net/sunrpc/xprtrdma/verbs.c |    2 ++
+> 1 file changed, 2 insertions(+)
+> 
+> Hi Dan, does this help?
 
-I get around this by looking at the amount of space left in the current
-page, and never reserve more than that for each entry in the read
-vector. This lets us place data directly where it needs to go in the
-buffer pages.
+Hi Anna, can you grab this for v5.9-rc ?
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfsd/nfs4xdr.c          | 28 +++---------------------
- include/linux/sunrpc/xdr.h |  2 ++
- net/sunrpc/xdr.c           | 45 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 50 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 996ac01ee977..6a1c0a7fae05 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3584,36 +3584,14 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- {
- 	struct xdr_stream *xdr = &resp->xdr;
- 	u32 eof;
--	int v;
- 	int starting_len = xdr->buf->len - 8;
--	long len;
--	int thislen;
- 	__be32 nfserr;
- 	__be32 tmp;
--	__be32 *p;
- 	int pad;
- 
--	/*
--	 * svcrdma requires every READ payload to start somewhere
--	 * in xdr->pages.
--	 */
--	if (xdr->iov == xdr->buf->head) {
--		xdr->iov = NULL;
--		xdr->end = xdr->p;
--	}
--
--	len = maxcount;
--	v = 0;
--	while (len) {
--		thislen = min_t(long, len, PAGE_SIZE);
--		p = xdr_reserve_space(xdr, thislen);
--		WARN_ON_ONCE(!p);
--		resp->rqstp->rq_vec[v].iov_base = p;
--		resp->rqstp->rq_vec[v].iov_len = thislen;
--		v++;
--		len -= thislen;
--	}
--	read->rd_vlen = v;
-+	read->rd_vlen = xdr_reserve_space_vec(xdr, resp->rqstp->rq_vec, maxcount);
-+	if (read->rd_vlen < 0)
-+		return nfserr_resource;
- 
- 	nfserr = nfsd_readv(resp->rqstp, read->rd_fhp, file, read->rd_offset,
- 			    resp->rqstp->rq_vec, read->rd_vlen, &maxcount,
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 22c207b2425f..bac459584dd0 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -234,6 +234,8 @@ typedef int	(*kxdrdproc_t)(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf,
- 			    __be32 *p, struct rpc_rqst *rqst);
- extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
-+extern int xdr_reserve_space_vec(struct xdr_stream *xdr, struct kvec *vec,
-+		size_t nbytes);
- extern void xdr_commit_encode(struct xdr_stream *xdr);
- extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
- extern int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index be11d672b5b9..6dfe5dc8b35f 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -648,6 +648,51 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
- }
- EXPORT_SYMBOL_GPL(xdr_reserve_space);
- 
-+
-+/**
-+ * xdr_reserve_space_vec - Reserves a large amount of buffer space for sending
-+ * @xdr: pointer to xdr_stream
-+ * @vec: pointer to a kvec array
-+ * @nbytes: number of bytes to reserve
-+ *
-+ * Reserves enough buffer space to encode 'nbytes' of data and stores the
-+ * pointers in 'vec'. The size argument passed to xdr_reserve_space() is
-+ * determined based on the number of bytes remaining in the current page to
-+ * avoid invalidating iov_base pointers when xdr_commit_encode() is called.
-+ */
-+int xdr_reserve_space_vec(struct xdr_stream *xdr, struct kvec *vec, size_t nbytes)
-+{
-+	int thislen;
-+	int v = 0;
-+	__be32 *p;
-+
-+	/*
-+	 * svcrdma requires every READ payload to start somewhere
-+	 * in xdr->pages.
-+	 */
-+	if (xdr->iov == xdr->buf->head) {
-+		xdr->iov = NULL;
-+		xdr->end = xdr->p;
-+	}
-+
-+	while (nbytes) {
-+		thislen = xdr->buf->page_len % PAGE_SIZE;
-+		thislen = min_t(size_t, nbytes, PAGE_SIZE - thislen);
-+
-+		p = xdr_reserve_space(xdr, thislen);
-+		if (!p)
-+			return -EIO;
-+
-+		vec[v].iov_base = p;
-+		vec[v].iov_len = thislen;
-+		v++;
-+		nbytes -= thislen;
-+	}
-+
-+	return v;
-+}
-+EXPORT_SYMBOL_GPL(xdr_reserve_space_vec);
-+
- /**
-  * xdr_truncate_encode - truncate an encode buffer
-  * @xdr: pointer to xdr_stream
--- 
-2.28.0
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 95c66a339e34..53962e41896d 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -936,6 +936,8 @@ static void rpcrdma_req_reset(struct rpcrdma_req *req)
+> 
+> 	rpcrdma_regbuf_dma_unmap(req->rl_sendbuf);
+> 	rpcrdma_regbuf_dma_unmap(req->rl_recvbuf);
+> +
+> +	frwr_reset(req);
+> }
+> 
+> /* ASSUMPTION: the rb_allreqs list is stable for the duration,
+> 
+> 
+
+--
+Chuck Lever
+
+
 
