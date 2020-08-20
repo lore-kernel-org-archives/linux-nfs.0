@@ -7,48 +7,48 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B432C433E1
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Aug 2020 00:09:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A325C433E3
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Aug 2020 00:11:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E307B208C7
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Aug 2020 00:09:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2E3102075E
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Aug 2020 00:11:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1597882184;
-	bh=DDo9rlJ1vGfTkw3ErVmo14AXqfaIcHBATRLU97RdBrc=;
+	s=default; t=1597882285;
+	bh=OoNOYyVcBqHtuU3jcJNjtmLrgGP7luC9MQmdDUnLJTI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=OOPNBOzBCDvMtsLq/C5zan7cPy7bdFJ9Rj0cxEoTaR7acPYNu1wyeqkVWFYQM5gj8
-	 fB3vMFMEGIZGMTM5nh1sTTx99/UrnraFJNU3BPAOaUJdsbavNnPwZQK5bieFOnDaFU
-	 wtWOEIGeNhtuKlF+0JbZWX/SjY10oUdo0PNYJWqw=
+	b=LtClnPTE6ItazBPIHuWknZTtT8Q0fs4wAdpY+fkcv+xazG9kZoxztPrZiKcgxzdyk
+	 u31HoAJRqhDX2c07osBlyb3jVKqgz5R3p5UcyQTvWPyF9iZDI8sUwjNzNkJgwdFlad
+	 ceex5Mya0lk8QzGRGBfxq+BqnxU1TmYoD+2nkhB0=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727086AbgHTACo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 19 Aug 2020 20:02:44 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59778 "EHLO mail.kernel.org"
+        id S1728683AbgHTALO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 19 Aug 2020 20:11:14 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58608 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728058AbgHTACm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Aug 2020 20:02:42 -0400
+        id S1727827AbgHTACJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Aug 2020 20:02:09 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C549821741;
-        Thu, 20 Aug 2020 00:02:41 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4550221741;
+        Thu, 20 Aug 2020 00:02:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1597881762;
-        bh=DDo9rlJ1vGfTkw3ErVmo14AXqfaIcHBATRLU97RdBrc=;
+        s=default; t=1597881729;
+        bh=OoNOYyVcBqHtuU3jcJNjtmLrgGP7luC9MQmdDUnLJTI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=AkmcNMPNMrSJlEW9XK+GFJmC8mZGTNYeRohvmCrZRv1kvKNagxmTahcsc6cR42ZJe
-         MNMMPacmWYFP5p/8el0mjJ1tZMF5qQZEc5DJInNxcXljZr+bIXQT4K4Mpv0THwfmsi
-         hzIlIDwz2r+vBeFA3xDaCIEB+yYYCDW39NMnrIXo=
+        b=Pe5lT6MZEqU9f0TPlzFWi9tg08y25x1FtL33s+PjC36vR7iKZ6iZ7CHQI1xJqEIc3
+         Br0B3kzrXamn4ZbsC2ONzs+bZFKBnUcXeigo9WYw591MI/cTpxKHMlcVoR+IMwtqH0
+         01cSbRauBeZq+uhB0LQKwDE6tfrUQwORU0jtwou8=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 09/22] svcrdma: Fix another Receive buffer leak
-Date:   Wed, 19 Aug 2020 20:02:16 -0400
-Message-Id: <20200820000229.215333-9-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.7 10/24] svcrdma: Fix another Receive buffer leak
+Date:   Wed, 19 Aug 2020 20:01:41 -0400
+Message-Id: <20200820000155.215089-10-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200820000229.215333-1-sashal@kernel.org>
-References: <20200820000229.215333-1-sashal@kernel.org>
+In-Reply-To: <20200820000155.215089-1-sashal@kernel.org>
+References: <20200820000155.215089-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -83,7 +83,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 2 insertions(+)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 0ce4e75b29812..d803d814a03ad 100644
+index efa5fcb5793f7..952b8f1908500 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 @@ -265,6 +265,8 @@ static int svc_rdma_post_recv(struct svcxprt_rdma *rdma)
