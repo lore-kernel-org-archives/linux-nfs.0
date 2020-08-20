@@ -1,114 +1,100 @@
-Return-Path: <SRS0=ueAN=B5=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=3r48=B6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F252C433E3
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Aug 2020 21:29:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DFC05C433DF
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Aug 2020 00:08:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0039920FC3
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Aug 2020 21:29:32 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="qL0wn+4a"
+	by mail.kernel.org (Postfix) with ESMTP id B38D6208C7
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Aug 2020 00:08:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1597882085;
+	bh=cl6pCi7Kvd90yBpkRdLa9gsjAZiENQRRie7QpCBE7YI=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=lqx7UpkTp9Jl25ds2PJl/mv2Gtcq+dxCwZ6rcvtOFYAjn6osEKgBuXtFDREg+/kto
+	 5ktvjHZKRJxfWn4mnAfk0CADnLeoormHl4J02EbIctoftnj4PLuyIH9MlALA+Ka0eg
+	 6XCpAXZvwcsdWUzaB5o09gT+DnQJdEGgQzh1ghDs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726617AbgHSV3c (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 19 Aug 2020 17:29:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59000 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727108AbgHSV32 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2020 17:29:28 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 831A2C061757
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2020 14:29:28 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 47E0BABC; Wed, 19 Aug 2020 17:29:27 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 47E0BABC
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1597872567;
-        bh=noGlcyS5AanYkmVkc3pkjb5mhjeMFZbTKz7J8Fj1gaI=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=qL0wn+4aGKT9rWmgacdBv/1D9pdbE9J12th0xETqFb0bLrMKKNubUZ1T2BP8rP9Qm
-         ddXM44toI/jZ2BH615LlrPcJ+2ot1EES32/JMFEmU03Mf8iy75jazX+gG+8HB/eKQJ
-         cIevnqo5A0wk9NYNjariQQqY2urmIV98QeaRcQl8=
-Date:   Wed, 19 Aug 2020 17:29:27 -0400
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: still seeing single client NFS4ERR_DELAY / CB_RECALL
-Message-ID: <20200819212927.GB30476@fieldses.org>
-References: <20200809202739.GA29574@fieldses.org>
- <20200809212531.GB29574@fieldses.org>
- <227E18E8-5A45-47E3-981C-549042AFB391@oracle.com>
- <20200810190729.GB13266@fieldses.org>
- <00CAA5B7-418E-4AB5-AE08-FE2F87B06795@oracle.com>
- <20200810201001.GC13266@fieldses.org>
- <CA3288FC-8B9A-4F19-A51C-E1169726E946@oracle.com>
- <F20E4EC5-71DD-4A92-A583-41BEE177F53C@oracle.com>
- <20200817222034.GA6390@fieldses.org>
- <CD4B80B9-4F58-46B4-872C-F2F139AFB231@oracle.com>
+        id S1728511AbgHTAHu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 19 Aug 2020 20:07:50 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60906 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728239AbgHTADN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Aug 2020 20:03:13 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7E2DC20FC3;
+        Thu, 20 Aug 2020 00:03:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1597881793;
+        bh=cl6pCi7Kvd90yBpkRdLa9gsjAZiENQRRie7QpCBE7YI=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Tu3zNMks04jR61XX7UzBKKwehlatSNNSqCNWc+yn/wi+U6kzHxLVU2+xyyVccoSYx
+         UfyXv4YfZRmWzufStNSp+oO137mKUXBzdmFeeDxh4+staQx6pU7eKMxcPcWlEs5fe8
+         YLuEbXTbj+fzSuJN8QYN9RKWHrNe8LWag2kt8aXo=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 08/18] svcrdma: Fix another Receive buffer leak
+Date:   Wed, 19 Aug 2020 20:02:51 -0400
+Message-Id: <20200820000302.215560-8-sashal@kernel.org>
+X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200820000302.215560-1-sashal@kernel.org>
+References: <20200820000302.215560-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CD4B80B9-4F58-46B4-872C-F2F139AFB231@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Aug 18, 2020 at 05:26:26PM -0400, Chuck Lever wrote:
-> 
-> > On Aug 17, 2020, at 6:20 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Sun, Aug 16, 2020 at 04:46:00PM -0400, Chuck Lever wrote:
-> > 
-> >> In order of application:
-> >> 
-> >> 5920afa3c85f ("nfsd: hook nfsd_commit up to the nfsd_file cache")
-> >> 961.68user 5252.40system 20:12.30elapsed 512%CPU, 2541 DELAY errors
-> >> These results are similar to v5.3.
-> >> 
-> >> fd4f83fd7dfb ("nfsd: convert nfs4_file->fi_fds array to use nfsd_files")
-> >> Does not build
-> >> 
-> >> eb82dd393744 ("nfsd: convert fi_deleg_file and ls_file fields to nfsd_file")
-> >> 966.92user 5425.47system 33:52.79elapsed 314%CPU, 1330 DELAY errors
-> >> 
-> >> Can you take a look and see if there's anything obvious?
-> > 
-> > Unfortunately nothing about the file cache code is very obvious to me.
-> > I'm looking at it....
-> > 
-> > It adds some new nfserr_jukebox returns in nfsd_file_acquire.  Those
-> > mostly look like kmalloc failures, the one I'm not sure about is the
-> > NFSD_FILE_HASHED check.
-> > 
-> > Or maybe it's the lease break there.
-> 
-> nfsd_file_acquire() always calls fh_verify() before it invokes nfsd_open().
-> Replacing nfs4_get_vfs_file's nfsd_open() call with nfsd_file_acquire() adds
-> almost 10 million fh_verify() calls to my test run.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Checking out the code as of fd4f83fd7dfb....
+[ Upstream commit 64d26422516b2e347b32e6d9b1d40b3c19a62aae ]
 
-nfsd_file_acquire() calls nfsd_open_verified().
+During a connection tear down, the Receive queue is flushed before
+the device resources are freed. Typically, all the Receives flush
+with IB_WR_FLUSH_ERR.
 
-And nfsd_open() is basically just fh_verify()+nfsd_open_verified().
+However, any pending successful Receives flush with IB_WR_SUCCESS,
+and the server automatically posts a fresh Receive to replace the
+completing one. This happens even after the connection has closed
+and the RQ is drained. Receives that are posted after the RQ is
+drained appear never to complete, causing a Receive resource leak.
+The leaked Receive buffer is left DMA-mapped.
 
-So it doesn't look like the replacement of nfsd_open() by
-nfsd_file_acquire() should have changed the number of fh_verify() calls.
+To prevent these late-posted recv_ctxt's from leaking, block new
+Receive posting after XPT_CLOSE is set.
 
---b.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-> 
-> On my server, fh_verify() is quite expensive. Most of the cost is in the
-> prepare_creds() call.
-> 
-> --
-> Chuck Lever
-> 
-> 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 16c8174658fd1..252495ff9010d 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -268,6 +268,8 @@ static int svc_rdma_post_recv(struct svcxprt_rdma *rdma)
+ {
+ 	struct svc_rdma_recv_ctxt *ctxt;
+ 
++	if (test_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags))
++		return 0;
+ 	ctxt = svc_rdma_recv_ctxt_get(rdma);
+ 	if (!ctxt)
+ 		return -ENOMEM;
+-- 
+2.25.1
+
