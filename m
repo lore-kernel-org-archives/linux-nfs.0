@@ -2,397 +2,1030 @@ Return-Path: <SRS0=CFcy=CC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EAE3FC433E3
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:42:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B101C433DF
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:53:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BFD91204FD
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:42:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1598276549;
-	bh=e0P1kF3B2HlFgtlQzzMfqOke3yY9TEoFSA2McbClWM4=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=imDk8utNqWeLkeF6k+Vy6l7ulw5fmVb4QLjo9F/n69Wmiwh6dihpFnfKkWVoKFt6Q
-	 GUeCokrEQgNmaKsXVVVaaGKZvrroRmpbg+t7DMzV+zEb7915kzooy8ixfLHuzkEn5p
-	 M21Uxdni9F3yuENj9fM2UH8u3M5XbegoMSspnbsw=
+	by mail.kernel.org (Postfix) with ESMTP id 57B8B206B5
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:53:45 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RHB2oDis"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727998AbgHXNm2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Aug 2020 09:42:28 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57284 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727091AbgHXNcL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Aug 2020 09:32:11 -0400
-Received: from e123331-lin.arnhem.chello.nl (dhcp-077-251-017-237.chello.nl [77.251.17.237])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id BB237206B5;
-        Mon, 24 Aug 2020 13:30:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1598275896;
-        bh=e0P1kF3B2HlFgtlQzzMfqOke3yY9TEoFSA2McbClWM4=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=wVJsPm2fRcA0bd2YaOjFRXcECn7TAtyy47xhsVGMCn5fv5N6mW5dd01/kOASpHpeJ
-         nA3qulYl5JXmmT+FIqvwElXBVdA7SQ66vLZ8hScgNlKOdHSd4Y20/GLbKL+qTfj2Jd
-         jNoBNCm2dAFx9xuYRDfmpBP9BjKnxjrdboTJInOI=
-From:   Ard Biesheuvel <ardb@kernel.org>
-To:     linux-crypto@vger.kernel.org
-Cc:     Ard Biesheuvel <ardb@kernel.org>,
-        Herbert Xu <herbert@gondor.apana.org.au>,
-        "David S. Miller" <davem@davemloft.net>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Eric Biggers <ebiggers@google.com>,
-        Arnd Bergmann <arnd@arndb.de>, netdev@vger.kernel.org,
-        devel@driverdev.osuosl.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/7] crypto: bcm-iproc - remove ecb(arc4) support
-Date:   Mon, 24 Aug 2020 15:29:59 +0200
-Message-Id: <20200824133001.9546-6-ardb@kernel.org>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20200824133001.9546-1-ardb@kernel.org>
-References: <20200824133001.9546-1-ardb@kernel.org>
+        id S1726858AbgHXNxn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Aug 2020 09:53:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56442 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726187AbgHXNxl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2020 09:53:41 -0400
+Received: from mail-il1-x142.google.com (mail-il1-x142.google.com [IPv6:2607:f8b0:4864:20::142])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3918C061573
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2020 06:53:41 -0700 (PDT)
+Received: by mail-il1-x142.google.com with SMTP id e11so7272310ils.10
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Aug 2020 06:53:41 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:subject:from:in-reply-to:date:cc
+         :content-transfer-encoding:message-id:references:to;
+        bh=AAmMHH05bjsNsljU7cO0eHbLpA0Gp4jkp3UV8bvZbts=;
+        b=RHB2oDisOGED/c1WMeoIGQEFmgi6CHStA3q2u5Ykwo9B6m4prOF64x5EQZY2pGnpr3
+         KYHmd97tZZ8wQcPGc/KYxRvJlSA0lnfO2cbcYYnxIv/o6xAsX5TemsbbILaWvb6Ok5+V
+         U0W0+oYL4bX2S1Q6PQgQyKXIquS1wrgSQVJD3ZFFXIGYjoEE1Viw9e3l6YsSL1W2NK5y
+         GtcWDqNKFradFRA3nDciUuQwqLGk9OxJ5Ryej4FHhscBPey9/hkGp8MVSUDSH7JBnnSG
+         eC1waS5TFxcgL69eOwr9wc0EkuCx5f16XUlgAPG/BA4KGt5VL09/FOQ5iFO7fSM0x3P5
+         jyoQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:subject:from:in-reply-to:date:cc
+         :content-transfer-encoding:message-id:references:to;
+        bh=AAmMHH05bjsNsljU7cO0eHbLpA0Gp4jkp3UV8bvZbts=;
+        b=TW4P7ruYgN7Uxd8gAN8RTtGxrQYQNZhL7AXnYlcAZq97Ri5lzExnXx/FpvMpUmVqnt
+         XUB/GHh7E5PbGNVRul/LXGluAseFm3INkiNETQ+barPeuWTQ1bAL7NOJsfznLe7m5Knj
+         b+bNMxhDWr3VVC62SqddO8Q/hUIRQmqOtHa9c/RWwxlt9OHhRb6PZYQTBRw6eXv3t3hM
+         2tKYKdmSQkYgd644V4thk1XthdIJ2yKswa4+giKbHBNbJA7cFNQar7LENvy/ZVyLCw5e
+         xblh4z3UdWRWc13aGowCa1kwVzAhJgUnTO35UwqWPZ7XfpgKK/SrISkMtyPPzoHljc66
+         MH+g==
+X-Gm-Message-State: AOAM533APQCS3KKRtrPkwsQewHGk95aLwcACwhoYoCVWgY91lDtJRayB
+        jvaoRIJlw5t/taHIUkdeFErppsDzoPw=
+X-Google-Smtp-Source: ABdhPJxMrOcl9KRflu9NF0AmfJyXqRbBmVCsreg8ROC0UjQNysjddjhkoSbKA9kcU9EU2+fi7s83Ww==
+X-Received: by 2002:a92:9117:: with SMTP id t23mr5328703ild.177.1598277220725;
+        Mon, 24 Aug 2020 06:53:40 -0700 (PDT)
+Received: from anon-dhcp-152.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id t16sm7390273ili.75.2020.08.24.06.53.39
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 24 Aug 2020 06:53:39 -0700 (PDT)
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.1\))
+Subject: Re: [PATCH] nfsd: remove fault injection code
+From:   Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <20200820194944.GC28555@fieldses.org>
+Date:   Mon, 24 Aug 2020 09:53:37 -0400
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <6895C9AD-3622-4925-A268-23E6404C42D1@gmail.com>
+References: <20200820194944.GC28555@fieldses.org>
+To:     Bruce Fields <bfields@fieldses.org>
+X-Mailer: Apple Mail (2.3608.120.23.2.1)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Signed-off-by: Ard Biesheuvel <ardb@kernel.org>
----
- drivers/crypto/bcm/cipher.c | 96 +-------------------
- drivers/crypto/bcm/cipher.h |  1 -
- drivers/crypto/bcm/spu.c    | 23 +----
- drivers/crypto/bcm/spu.h    |  1 -
- drivers/crypto/bcm/spu2.c   | 12 +--
- drivers/crypto/bcm/spu2.h   |  1 -
- 6 files changed, 6 insertions(+), 128 deletions(-)
+Hi Bruce-
 
-diff --git a/drivers/crypto/bcm/cipher.c b/drivers/crypto/bcm/cipher.c
-index 8a7fa1ae1ade..5d38b87b9d77 100644
---- a/drivers/crypto/bcm/cipher.c
-+++ b/drivers/crypto/bcm/cipher.c
-@@ -165,10 +165,6 @@ spu_skcipher_rx_sg_create(struct brcm_message *mssg,
- 		return -EFAULT;
- 	}
- 
--	if (ctx->cipher.alg == CIPHER_ALG_RC4)
--		/* Add buffer to catch 260-byte SUPDT field for RC4 */
--		sg_set_buf(sg++, rctx->msg_buf.c.supdt_tweak, SPU_SUPDT_LEN);
--
- 	if (stat_pad_len)
- 		sg_set_buf(sg++, rctx->msg_buf.rx_stat_pad, stat_pad_len);
- 
-@@ -317,7 +313,6 @@ static int handle_skcipher_req(struct iproc_reqctx_s *rctx)
- 	u8 local_iv_ctr[MAX_IV_SIZE];
- 	u32 stat_pad_len;	/* num bytes to align status field */
- 	u32 pad_len;		/* total length of all padding */
--	bool update_key = false;
- 	struct brcm_message *mssg;	/* mailbox message */
- 
- 	/* number of entries in src and dst sg in mailbox message. */
-@@ -391,28 +386,6 @@ static int handle_skcipher_req(struct iproc_reqctx_s *rctx)
- 		}
- 	}
- 
--	if (ctx->cipher.alg == CIPHER_ALG_RC4) {
--		rx_frag_num++;
--		if (chunk_start) {
--			/*
--			 * for non-first RC4 chunks, use SUPDT from previous
--			 * response as key for this chunk.
--			 */
--			cipher_parms.key_buf = rctx->msg_buf.c.supdt_tweak;
--			update_key = true;
--			cipher_parms.type = CIPHER_TYPE_UPDT;
--		} else if (!rctx->is_encrypt) {
--			/*
--			 * First RC4 chunk. For decrypt, key in pre-built msg
--			 * header may have been changed if encrypt required
--			 * multiple chunks. So revert the key to the
--			 * ctx->enckey value.
--			 */
--			update_key = true;
--			cipher_parms.type = CIPHER_TYPE_INIT;
--		}
--	}
--
- 	if (ctx->max_payload == SPU_MAX_PAYLOAD_INF)
- 		flow_log("max_payload infinite\n");
- 	else
-@@ -425,14 +398,9 @@ static int handle_skcipher_req(struct iproc_reqctx_s *rctx)
- 	memcpy(rctx->msg_buf.bcm_spu_req_hdr, ctx->bcm_spu_req_hdr,
- 	       sizeof(rctx->msg_buf.bcm_spu_req_hdr));
- 
--	/*
--	 * Pass SUPDT field as key. Key field in finish() call is only used
--	 * when update_key has been set above for RC4. Will be ignored in
--	 * all other cases.
--	 */
- 	spu->spu_cipher_req_finish(rctx->msg_buf.bcm_spu_req_hdr + BCM_HDR_LEN,
- 				   ctx->spu_req_hdr_len, !(rctx->is_encrypt),
--				   &cipher_parms, update_key, chunksize);
-+				   &cipher_parms, chunksize);
- 
- 	atomic64_add(chunksize, &iproc_priv.bytes_out);
- 
-@@ -527,9 +495,6 @@ static void handle_skcipher_resp(struct iproc_reqctx_s *rctx)
- 		 __func__, rctx->total_received, payload_len);
- 
- 	dump_sg(req->dst, rctx->total_received, payload_len);
--	if (ctx->cipher.alg == CIPHER_ALG_RC4)
--		packet_dump("  supdt ", rctx->msg_buf.c.supdt_tweak,
--			    SPU_SUPDT_LEN);
- 
- 	rctx->total_received += payload_len;
- 	if (rctx->total_received == rctx->total_todo) {
-@@ -1853,26 +1818,6 @@ static int aes_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 	return 0;
- }
- 
--static int rc4_setkey(struct crypto_skcipher *cipher, const u8 *key,
--		      unsigned int keylen)
--{
--	struct iproc_ctx_s *ctx = crypto_skcipher_ctx(cipher);
--	int i;
--
--	ctx->enckeylen = ARC4_MAX_KEY_SIZE + ARC4_STATE_SIZE;
--
--	ctx->enckey[0] = 0x00;	/* 0x00 */
--	ctx->enckey[1] = 0x00;	/* i    */
--	ctx->enckey[2] = 0x00;	/* 0x00 */
--	ctx->enckey[3] = 0x00;	/* j    */
--	for (i = 0; i < ARC4_MAX_KEY_SIZE; i++)
--		ctx->enckey[i + ARC4_STATE_SIZE] = key[i % keylen];
--
--	ctx->cipher_type = CIPHER_TYPE_INIT;
--
--	return 0;
--}
--
- static int skcipher_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 			     unsigned int keylen)
- {
-@@ -1895,9 +1840,6 @@ static int skcipher_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 	case CIPHER_ALG_AES:
- 		err = aes_setkey(cipher, key, keylen);
- 		break;
--	case CIPHER_ALG_RC4:
--		err = rc4_setkey(cipher, key, keylen);
--		break;
- 	default:
- 		pr_err("%s() Error: unknown cipher alg\n", __func__);
- 		err = -EINVAL;
-@@ -1905,11 +1847,9 @@ static int skcipher_setkey(struct crypto_skcipher *cipher, const u8 *key,
- 	if (err)
- 		return err;
- 
--	/* RC4 already populated ctx->enkey */
--	if (ctx->cipher.alg != CIPHER_ALG_RC4) {
--		memcpy(ctx->enckey, key, keylen);
--		ctx->enckeylen = keylen;
--	}
-+	memcpy(ctx->enckey, key, keylen);
-+	ctx->enckeylen = keylen;
-+
- 	/* SPU needs XTS keys in the reverse order the crypto API presents */
- 	if ((ctx->cipher.alg == CIPHER_ALG_AES) &&
- 	    (ctx->cipher.mode == CIPHER_MODE_XTS)) {
-@@ -2872,9 +2812,6 @@ static int aead_authenc_setkey(struct crypto_aead *cipher,
- 			goto badkey;
- 		}
- 		break;
--	case CIPHER_ALG_RC4:
--		ctx->cipher_type = CIPHER_TYPE_INIT;
--		break;
- 	default:
- 		pr_err("%s() Error: Unknown cipher alg\n", __func__);
- 		return -EINVAL;
-@@ -3603,25 +3540,6 @@ static struct iproc_alg_s driver_algs[] = {
- 	 },
- 
- /* SKCIPHER algorithms. */
--	{
--	 .type = CRYPTO_ALG_TYPE_SKCIPHER,
--	 .alg.skcipher = {
--			.base.cra_name = "ecb(arc4)",
--			.base.cra_driver_name = "ecb-arc4-iproc",
--			.base.cra_blocksize = ARC4_BLOCK_SIZE,
--			.min_keysize = ARC4_MIN_KEY_SIZE,
--			.max_keysize = ARC4_MAX_KEY_SIZE,
--			.ivsize = 0,
--			},
--	 .cipher_info = {
--			 .alg = CIPHER_ALG_RC4,
--			 .mode = CIPHER_MODE_NONE,
--			 },
--	 .auth_info = {
--		       .alg = HASH_ALG_NONE,
--		       .mode = HASH_MODE_NONE,
--		       },
--	 },
- 	{
- 	 .type = CRYPTO_ALG_TYPE_SKCIPHER,
- 	 .alg.skcipher = {
-@@ -4526,15 +4444,9 @@ static void spu_counters_init(void)
- 
- static int spu_register_skcipher(struct iproc_alg_s *driver_alg)
- {
--	struct spu_hw *spu = &iproc_priv.spu;
- 	struct skcipher_alg *crypto = &driver_alg->alg.skcipher;
- 	int err;
- 
--	/* SPU2 does not support RC4 */
--	if ((driver_alg->cipher_info.alg == CIPHER_ALG_RC4) &&
--	    (spu->spu_type == SPU_TYPE_SPU2))
--		return 0;
--
- 	crypto->base.cra_module = THIS_MODULE;
- 	crypto->base.cra_priority = cipher_pri;
- 	crypto->base.cra_alignmask = 0;
-diff --git a/drivers/crypto/bcm/cipher.h b/drivers/crypto/bcm/cipher.h
-index b6d83e3aa46c..035c8389cb3d 100644
---- a/drivers/crypto/bcm/cipher.h
-+++ b/drivers/crypto/bcm/cipher.h
-@@ -388,7 +388,6 @@ struct spu_hw {
- 				      u16 spu_req_hdr_len,
- 				      unsigned int is_inbound,
- 				      struct spu_cipher_parms *cipher_parms,
--				      bool update_key,
- 				      unsigned int data_size);
- 	void (*spu_request_pad)(u8 *pad_start, u32 gcm_padding,
- 				u32 hash_pad_len, enum hash_alg auth_alg,
-diff --git a/drivers/crypto/bcm/spu.c b/drivers/crypto/bcm/spu.c
-index e7562e9bf396..fe126f95c702 100644
---- a/drivers/crypto/bcm/spu.c
-+++ b/drivers/crypto/bcm/spu.c
-@@ -222,10 +222,6 @@ void spum_dump_msg_hdr(u8 *buf, unsigned int buf_len)
- 				cipher_key_len = 24;
- 				name = "3DES";
- 				break;
--			case CIPHER_ALG_RC4:
--				cipher_key_len = 260;
--				name = "ARC4";
--				break;
- 			case CIPHER_ALG_AES:
- 				switch (cipher_type) {
- 				case CIPHER_TYPE_AES128:
-@@ -919,21 +915,16 @@ u16 spum_cipher_req_init(u8 *spu_hdr, struct spu_cipher_parms *cipher_parms)
-  * @spu_req_hdr_len: Length in bytes of the SPU request header
-  * @isInbound:       0 encrypt, 1 decrypt
-  * @cipher_parms:    Parameters describing cipher operation to be performed
-- * @update_key:      If true, rewrite the cipher key in SCTX
-  * @data_size:       Length of the data in the BD field
-  *
-  * Assumes much of the header was already filled in at setkey() time in
-  * spum_cipher_req_init().
-- * spum_cipher_req_init() fills in the encryption key. For RC4, when submitting
-- * a request for a non-first chunk, we use the 260-byte SUPDT field from the
-- * previous response as the key. update_key is true for this case. Unused in all
-- * other cases.
-+ * spum_cipher_req_init() fills in the encryption key.
-  */
- void spum_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size)
- {
- 	struct SPUHEADER *spuh;
-@@ -948,11 +939,6 @@ void spum_cipher_req_finish(u8 *spu_hdr,
- 	flow_log(" in: %u\n", is_inbound);
- 	flow_log(" cipher alg: %u, cipher_type: %u\n", cipher_parms->alg,
- 		 cipher_parms->type);
--	if (update_key) {
--		flow_log(" cipher key len: %u\n", cipher_parms->key_len);
--		flow_dump("  key: ", cipher_parms->key_buf,
--			  cipher_parms->key_len);
--	}
- 
- 	/*
- 	 * In XTS mode, API puts "i" parameter (block tweak) in IV.  For
-@@ -981,13 +967,6 @@ void spum_cipher_req_finish(u8 *spu_hdr,
- 	else
- 		cipher_bits &= ~CIPHER_INBOUND;
- 
--	/* update encryption key for RC4 on non-first chunk */
--	if (update_key) {
--		spuh->sa.cipher_flags |=
--			cipher_parms->type << CIPHER_TYPE_SHIFT;
--		memcpy(spuh + 1, cipher_parms->key_buf, cipher_parms->key_len);
--	}
--
- 	if (cipher_parms->alg && cipher_parms->iv_buf && cipher_parms->iv_len)
- 		/* cipher iv provided so put it in here */
- 		memcpy(bdesc_ptr - cipher_parms->iv_len, cipher_parms->iv_buf,
-diff --git a/drivers/crypto/bcm/spu.h b/drivers/crypto/bcm/spu.h
-index b247bc5b9354..dd132389bcaa 100644
---- a/drivers/crypto/bcm/spu.h
-+++ b/drivers/crypto/bcm/spu.h
-@@ -251,7 +251,6 @@ void spum_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size);
- 
- void spum_request_pad(u8 *pad_start,
-diff --git a/drivers/crypto/bcm/spu2.c b/drivers/crypto/bcm/spu2.c
-index 59abb5ecefa4..c860ffb0b4c3 100644
---- a/drivers/crypto/bcm/spu2.c
-+++ b/drivers/crypto/bcm/spu2.c
-@@ -1170,21 +1170,16 @@ u16 spu2_cipher_req_init(u8 *spu_hdr, struct spu_cipher_parms *cipher_parms)
-  * @spu_req_hdr_len: Length in bytes of the SPU request header
-  * @isInbound:       0 encrypt, 1 decrypt
-  * @cipher_parms:    Parameters describing cipher operation to be performed
-- * @update_key:      If true, rewrite the cipher key in SCTX
-  * @data_size:       Length of the data in the BD field
-  *
-  * Assumes much of the header was already filled in at setkey() time in
-  * spu_cipher_req_init().
-- * spu_cipher_req_init() fills in the encryption key. For RC4, when submitting a
-- * request for a non-first chunk, we use the 260-byte SUPDT field from the
-- * previous response as the key. update_key is true for this case. Unused in all
-- * other cases.
-+ * spu_cipher_req_init() fills in the encryption key.
-  */
- void spu2_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size)
- {
- 	struct SPU2_FMD *fmd;
-@@ -1196,11 +1191,6 @@ void spu2_cipher_req_finish(u8 *spu_hdr,
- 	flow_log(" in: %u\n", is_inbound);
- 	flow_log(" cipher alg: %u, cipher_type: %u\n", cipher_parms->alg,
- 		 cipher_parms->type);
--	if (update_key) {
--		flow_log(" cipher key len: %u\n", cipher_parms->key_len);
--		flow_dump("  key: ", cipher_parms->key_buf,
--			  cipher_parms->key_len);
--	}
- 	flow_log(" iv len: %d\n", cipher_parms->iv_len);
- 	flow_dump("    iv: ", cipher_parms->iv_buf, cipher_parms->iv_len);
- 	flow_log(" data_size: %u\n", data_size);
-diff --git a/drivers/crypto/bcm/spu2.h b/drivers/crypto/bcm/spu2.h
-index 03af6c38df7f..6e666bfb3cfc 100644
---- a/drivers/crypto/bcm/spu2.h
-+++ b/drivers/crypto/bcm/spu2.h
-@@ -200,7 +200,6 @@ void spu2_cipher_req_finish(u8 *spu_hdr,
- 			    u16 spu_req_hdr_len,
- 			    unsigned int is_inbound,
- 			    struct spu_cipher_parms *cipher_parms,
--			    bool update_key,
- 			    unsigned int data_size);
- void spu2_request_pad(u8 *pad_start, u32 gcm_padding, u32 hash_pad_len,
- 		      enum hash_alg auth_alg, enum hash_mode auth_mode,
--- 
-2.17.1
+> On Aug 20, 2020, at 3:49 PM, J. Bruce Fields <bfields@fieldses.org> =
+wrote:
+>=20
+> From: "J. Bruce Fields" <bfields@redhat.com>
+>=20
+> It was an interesting idea but nobody seems to be using it, it's buggy
+> at this point, and nfs4state.c is already complicated enough without =
+it.
+> The new nfsd/clients/ code provides some of the same functionality, =
+and
+> could probably do more if desired.
+
+Maybe this should mention that the feature has been deprecated since
+9d60d93198c6 ("Deprecate nfsd fault injection").
+
+
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+> .../admin-guide/nfs/fault_injection.rst       |  70 ---
+> Documentation/admin-guide/nfs/index.rst       |   1 -
+> fs/nfsd/Kconfig                               |  10 -
+> fs/nfsd/Makefile                              |   1 -
+> fs/nfsd/nfs4state.c                           | 593 ------------------
+> fs/nfsd/nfsctl.c                              |   3 -
+> fs/nfsd/state.h                               |  27 -
+> tools/nfsd/inject_fault.sh                    |  50 --
+> 8 files changed, 755 deletions(-)
+> delete mode 100644 Documentation/admin-guide/nfs/fault_injection.rst
+> delete mode 100755 tools/nfsd/inject_fault.sh
+>=20
+> diff --git a/Documentation/admin-guide/nfs/fault_injection.rst =
+b/Documentation/admin-guide/nfs/fault_injection.rst
+> deleted file mode 100644
+> index eb029c0c15ce..000000000000
+> --- a/Documentation/admin-guide/nfs/fault_injection.rst
+> +++ /dev/null
+> @@ -1,70 +0,0 @@
+> -=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> -NFS Fault Injection
+> -=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> -
+> -Fault injection is a method for forcing errors that may not normally =
+occur, or
+> -may be difficult to reproduce.  Forcing these errors in a controlled =
+environment
+> -can help the developer find and fix bugs before their code is shipped =
+in a
+> -production system.  Injecting an error on the Linux NFS server will =
+allow us to
+> -observe how the client reacts and if it manages to recover its state =
+correctly.
+> -
+> -NFSD_FAULT_INJECTION must be selected when configuring the kernel to =
+use this
+> -feature.
+> -
+> -
+> -Using Fault Injection
+> -=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> -On the client, mount the fault injection server through NFS v4.0+ and =
+do some
+> -work over NFS (open files, take locks, ...).
+> -
+> -On the server, mount the debugfs filesystem to <debug_dir> and ls
+> -<debug_dir>/nfsd.  This will show a list of files that will be used =
+for
+> -injecting faults on the NFS server.  As root, write a number n to the =
+file
+> -corresponding to the action you want the server to take.  The server =
+will then
+> -process the first n items it finds.  So if you want to forget 5 =
+locks, echo '5'
+> -to <debug_dir>/nfsd/forget_locks.  A value of 0 will tell the server =
+to forget
+> -all corresponding items.  A log message will be created containing =
+the number
+> -of items forgotten (check dmesg).
+> -
+> -Go back to work on the client and check if the client recovered from =
+the error
+> -correctly.
+> -
+> -
+> -Available Faults
+> -=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> -forget_clients:
+> -     The NFS server keeps a list of clients that have placed a mount =
+call.  If
+> -     this list is cleared, the server will have no knowledge of who =
+the client
+> -     is, forcing the client to reauthenticate with the server.
+> -
+> -forget_openowners:
+> -     The NFS server keeps a list of what files are currently opened =
+and who
+> -     they were opened by.  Clearing this list will force the client =
+to reopen
+> -     its files.
+> -
+> -forget_locks:
+> -     The NFS server keeps a list of what files are currently locked =
+in the VFS.
+> -     Clearing this list will force the client to reclaim its locks =
+(files are
+> -     unlocked through the VFS as they are cleared from this list).
+> -
+> -forget_delegations:
+> -     A delegation is used to assure the client that a file, or part =
+of a file,
+> -     has not changed since the delegation was awarded.  Clearing this =
+list will
+> -     force the client to reacquire its delegation before accessing =
+the file
+> -     again.
+> -
+> -recall_delegations:
+> -     Delegations can be recalled by the server when another client =
+attempts to
+> -     access a file.  This test will notify the client that its =
+delegation has
+> -     been revoked, forcing the client to reacquire the delegation =
+before using
+> -     the file again.
+> -
+> -
+> -tools/nfs/inject_faults.sh script
+> -=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> -This script has been created to ease the fault injection process.  =
+This script
+> -will detect the mounted debugfs directory and write to the files =
+located there
+> -based on the arguments passed by the user.  For example, running
+> -`inject_faults.sh forget_locks 1` as root will instruct the server to =
+forget
+> -one lock.  Running `inject_faults forget_locks` will instruct the =
+server to
+> -forgetall locks.
+> diff --git a/Documentation/admin-guide/nfs/index.rst =
+b/Documentation/admin-guide/nfs/index.rst
+> index 6b5a3c90fac5..3601a708f333 100644
+> --- a/Documentation/admin-guide/nfs/index.rst
+> +++ b/Documentation/admin-guide/nfs/index.rst
+> @@ -12,4 +12,3 @@ NFS
+>     nfs-idmapper
+>     pnfs-block-server
+>     pnfs-scsi-server
+> -    fault_injection
+> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+> index 99d2cae91bd6..9223e13c3051 100644
+> --- a/fs/nfsd/Kconfig
+> +++ b/fs/nfsd/Kconfig
+> @@ -156,13 +156,3 @@ config NFSD_V4_SECURITY_LABEL
+>=20
+> 	If you do not wish to enable fine-grained security labels =
+SELinux or
+> 	Smack policies on NFSv4 files, say N.
+> -
+> -config NFSD_FAULT_INJECTION
+> -	bool "NFS server manual fault injection"
+> -	depends on NFSD_V4 && DEBUG_KERNEL && DEBUG_FS && BROKEN
+> -	help
+> -	  This option enables support for manually injecting faults
+> -	  into the NFS server.  This is intended to be used for
+> -	  testing error recovery on the NFS client.
+> -
+> -	  If unsure, say N.
+> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+> index 6a40b1afe703..3f0983e93a99 100644
+> --- a/fs/nfsd/Makefile
+> +++ b/fs/nfsd/Makefile
+> @@ -13,7 +13,6 @@ nfsd-y			+=3D trace.o
+> nfsd-y 			+=3D nfssvc.o nfsctl.o nfsproc.o nfsfh.o =
+vfs.o \
+> 			   export.o auth.o lockd.o nfscache.o nfsxdr.o \
+> 			   stats.o filecache.o
+> -nfsd-$(CONFIG_NFSD_FAULT_INJECTION) +=3D fault_inject.o
+> nfsd-$(CONFIG_NFSD_V2_ACL) +=3D nfs2acl.o
+> nfsd-$(CONFIG_NFSD_V3)	+=3D nfs3proc.o nfs3xdr.o
+> nfsd-$(CONFIG_NFSD_V3_ACL) +=3D nfs3acl.o
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 81ed8e8bab3f..4c9c79fdc3b8 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -7251,599 +7251,6 @@ nfs4_check_open_reclaim(clientid_t *clid,
+> 	return nfs_ok;
+> }
+>=20
+> -#ifdef CONFIG_NFSD_FAULT_INJECTION
+> -static inline void
+> -put_client(struct nfs4_client *clp)
+> -{
+> -	atomic_dec(&clp->cl_rpc_users);
+> -}
+> -
+> -static struct nfs4_client *
+> -nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
+> -{
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -					  nfsd_net_id);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return NULL;
+> -
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
+> -		if (memcmp(&clp->cl_addr, addr, addr_size) =3D=3D 0)
+> -			return clp;
+> -	}
+> -	return NULL;
+> -}
+> -
+> -u64
+> -nfsd_inject_print_clients(void)
+> -{
+> -	struct nfs4_client *clp;
+> -	u64 count =3D 0;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -					  nfsd_net_id);
+> -	char buf[INET6_ADDRSTRLEN];
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return 0;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
+> -		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, =
+sizeof(buf));
+> -		pr_info("NFS Client: %s\n", buf);
+> -		++count;
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_client(struct sockaddr_storage *addr, size_t =
+addr_size)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -					  nfsd_net_id);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	clp =3D nfsd_find_client(addr, addr_size);
+> -	if (clp) {
+> -		if (mark_client_expired_locked(clp) =3D=3D nfs_ok)
+> -			++count;
+> -		else
+> -			clp =3D NULL;
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	if (clp)
+> -		expire_client(clp);
+> -
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_clients(u64 max)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp, *next;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
+> -		if (mark_client_expired_locked(clp) =3D=3D nfs_ok) {
+> -			list_add(&clp->cl_lru, &reaplist);
+> -			if (max !=3D 0 && ++count >=3D max)
+> -				break;
+> -		}
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	list_for_each_entry_safe(clp, next, &reaplist, cl_lru)
+> -		expire_client(clp);
+> -
+> -	return count;
+> -}
+> -
+> -static void nfsd_print_count(struct nfs4_client *clp, unsigned int =
+count,
+> -			     const char *type)
+> -{
+> -	char buf[INET6_ADDRSTRLEN];
+> -	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+> -	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, =
+type);
+> -}
+> -
+> -static void
+> -nfsd_inject_add_lock_to_list(struct nfs4_ol_stateid *lst,
+> -			     struct list_head *collect)
+> -{
+> -	struct nfs4_client *clp =3D lst->st_stid.sc_client;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -					  nfsd_net_id);
+> -
+> -	if (!collect)
+> -		return;
+> -
+> -	lockdep_assert_held(&nn->client_lock);
+> -	atomic_inc(&clp->cl_rpc_users);
+> -	list_add(&lst->st_locks, collect);
+> -}
+> -
+> -static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+> -				    struct list_head *collect,
+> -				    bool (*func)(struct nfs4_ol_stateid =
+*))
+> -{
+> -	struct nfs4_openowner *oop;
+> -	struct nfs4_ol_stateid *stp, *st_next;
+> -	struct nfs4_ol_stateid *lst, *lst_next;
+> -	u64 count =3D 0;
+> -
+> -	spin_lock(&clp->cl_lock);
+> -	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
+> -		list_for_each_entry_safe(stp, st_next,
+> -				&oop->oo_owner.so_stateids, =
+st_perstateowner) {
+> -			list_for_each_entry_safe(lst, lst_next,
+> -					&stp->st_locks, st_locks) {
+> -				if (func) {
+> -					if (func(lst))
+> -						=
+nfsd_inject_add_lock_to_list(lst,
+> -									=
+collect);
+> -				}
+> -				++count;
+> -				/*
+> -				 * Despite the fact that these functions =
+deal
+> -				 * with 64-bit integers for "count", we =
+must
+> -				 * ensure that it doesn't blow up the
+> -				 * clp->cl_rpc_users. Throw a warning if =
+we
+> -				 * start to approach INT_MAX here.
+> -				 */
+> -				WARN_ON_ONCE(count =3D=3D (INT_MAX / =
+2));
+> -				if (count =3D=3D max)
+> -					goto out;
+> -			}
+> -		}
+> -	}
+> -out:
+> -	spin_unlock(&clp->cl_lock);
+> -
+> -	return count;
+> -}
+> -
+> -static u64
+> -nfsd_collect_client_locks(struct nfs4_client *clp, struct list_head =
+*collect,
+> -			  u64 max)
+> -{
+> -	return nfsd_foreach_client_lock(clp, max, collect, =
+unhash_lock_stateid);
+> -}
+> -
+> -static u64
+> -nfsd_print_client_locks(struct nfs4_client *clp)
+> -{
+> -	u64 count =3D nfsd_foreach_client_lock(clp, 0, NULL, NULL);
+> -	nfsd_print_count(clp, count, "locked files");
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_print_locks(void)
+> -{
+> -	struct nfs4_client *clp;
+> -	u64 count =3D 0;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return 0;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru)
+> -		count +=3D nfsd_print_client_locks(clp);
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	return count;
+> -}
+> -
+> -static void
+> -nfsd_reap_locks(struct list_head *reaplist)
+> -{
+> -	struct nfs4_client *clp;
+> -	struct nfs4_ol_stateid *stp, *next;
+> -
+> -	list_for_each_entry_safe(stp, next, reaplist, st_locks) {
+> -		list_del_init(&stp->st_locks);
+> -		clp =3D stp->st_stid.sc_client;
+> -		nfs4_put_stid(&stp->st_stid);
+> -		put_client(clp);
+> -	}
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_client_locks(struct sockaddr_storage *addr, size_t =
+addr_size)
+> -{
+> -	unsigned int count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	clp =3D nfsd_find_client(addr, addr_size);
+> -	if (clp)
+> -		count =3D nfsd_collect_client_locks(clp, &reaplist, 0);
+> -	spin_unlock(&nn->client_lock);
+> -	nfsd_reap_locks(&reaplist);
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_locks(u64 max)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
+> -		count +=3D nfsd_collect_client_locks(clp, &reaplist, max =
+- count);
+> -		if (max !=3D 0 && count >=3D max)
+> -			break;
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> -	nfsd_reap_locks(&reaplist);
+> -	return count;
+> -}
+> -
+> -static u64
+> -nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
+> -			      struct list_head *collect,
+> -			      void (*func)(struct nfs4_openowner *))
+> -{
+> -	struct nfs4_openowner *oop, *next;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	u64 count =3D 0;
+> -
+> -	lockdep_assert_held(&nn->client_lock);
+> -
+> -	spin_lock(&clp->cl_lock);
+> -	list_for_each_entry_safe(oop, next, &clp->cl_openowners, =
+oo_perclient) {
+> -		if (func) {
+> -			func(oop);
+> -			if (collect) {
+> -				atomic_inc(&clp->cl_rpc_users);
+> -				list_add(&oop->oo_perclient, collect);
+> -			}
+> -		}
+> -		++count;
+> -		/*
+> -		 * Despite the fact that these functions deal with
+> -		 * 64-bit integers for "count", we must ensure that
+> -		 * it doesn't blow up the clp->cl_rpc_users. Throw a
+> -		 * warning if we start to approach INT_MAX here.
+> -		 */
+> -		WARN_ON_ONCE(count =3D=3D (INT_MAX / 2));
+> -		if (count =3D=3D max)
+> -			break;
+> -	}
+> -	spin_unlock(&clp->cl_lock);
+> -
+> -	return count;
+> -}
+> -
+> -static u64
+> -nfsd_print_client_openowners(struct nfs4_client *clp)
+> -{
+> -	u64 count =3D nfsd_foreach_client_openowner(clp, 0, NULL, NULL);
+> -
+> -	nfsd_print_count(clp, count, "openowners");
+> -	return count;
+> -}
+> -
+> -static u64
+> -nfsd_collect_client_openowners(struct nfs4_client *clp,
+> -			       struct list_head *collect, u64 max)
+> -{
+> -	return nfsd_foreach_client_openowner(clp, max, collect,
+> -						=
+unhash_openowner_locked);
+> -}
+> -
+> -u64
+> -nfsd_inject_print_openowners(void)
+> -{
+> -	struct nfs4_client *clp;
+> -	u64 count =3D 0;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return 0;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru)
+> -		count +=3D nfsd_print_client_openowners(clp);
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	return count;
+> -}
+> -
+> -static void
+> -nfsd_reap_openowners(struct list_head *reaplist)
+> -{
+> -	struct nfs4_client *clp;
+> -	struct nfs4_openowner *oop, *next;
+> -
+> -	list_for_each_entry_safe(oop, next, reaplist, oo_perclient) {
+> -		list_del_init(&oop->oo_perclient);
+> -		clp =3D oop->oo_owner.so_client;
+> -		release_openowner(oop);
+> -		put_client(clp);
+> -	}
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_client_openowners(struct sockaddr_storage *addr,
+> -				     size_t addr_size)
+> -{
+> -	unsigned int count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	clp =3D nfsd_find_client(addr, addr_size);
+> -	if (clp)
+> -		count =3D nfsd_collect_client_openowners(clp, &reaplist, =
+0);
+> -	spin_unlock(&nn->client_lock);
+> -	nfsd_reap_openowners(&reaplist);
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_openowners(u64 max)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
+> -		count +=3D nfsd_collect_client_openowners(clp, =
+&reaplist,
+> -							max - count);
+> -		if (max !=3D 0 && count >=3D max)
+> -			break;
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> -	nfsd_reap_openowners(&reaplist);
+> -	return count;
+> -}
+> -
+> -static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 =
+max,
+> -				     struct list_head *victims)
+> -{
+> -	struct nfs4_delegation *dp, *next;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	u64 count =3D 0;
+> -
+> -	lockdep_assert_held(&nn->client_lock);
+> -
+> -	spin_lock(&state_lock);
+> -	list_for_each_entry_safe(dp, next, &clp->cl_delegations, =
+dl_perclnt) {
+> -		if (victims) {
+> -			/*
+> -			 * It's not safe to mess with delegations that =
+have a
+> -			 * non-zero dl_time. They might have already =
+been broken
+> -			 * and could be processed by the laundromat =
+outside of
+> -			 * the state_lock. Just leave them be.
+> -			 */
+> -			if (dp->dl_time !=3D 0)
+> -				continue;
+> -
+> -			atomic_inc(&clp->cl_rpc_users);
+> -			WARN_ON(!unhash_delegation_locked(dp));
+> -			list_add(&dp->dl_recall_lru, victims);
+> -		}
+> -		++count;
+> -		/*
+> -		 * Despite the fact that these functions deal with
+> -		 * 64-bit integers for "count", we must ensure that
+> -		 * it doesn't blow up the clp->cl_rpc_users. Throw a
+> -		 * warning if we start to approach INT_MAX here.
+> -		 */
+> -		WARN_ON_ONCE(count =3D=3D (INT_MAX / 2));
+> -		if (count =3D=3D max)
+> -			break;
+> -	}
+> -	spin_unlock(&state_lock);
+> -	return count;
+> -}
+> -
+> -static u64
+> -nfsd_print_client_delegations(struct nfs4_client *clp)
+> -{
+> -	u64 count =3D nfsd_find_all_delegations(clp, 0, NULL);
+> -
+> -	nfsd_print_count(clp, count, "delegations");
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_print_delegations(void)
+> -{
+> -	struct nfs4_client *clp;
+> -	u64 count =3D 0;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return 0;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru)
+> -		count +=3D nfsd_print_client_delegations(clp);
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	return count;
+> -}
+> -
+> -static void
+> -nfsd_forget_delegations(struct list_head *reaplist)
+> -{
+> -	struct nfs4_client *clp;
+> -	struct nfs4_delegation *dp, *next;
+> -
+> -	list_for_each_entry_safe(dp, next, reaplist, dl_recall_lru) {
+> -		list_del_init(&dp->dl_recall_lru);
+> -		clp =3D dp->dl_stid.sc_client;
+> -		revoke_delegation(dp);
+> -		put_client(clp);
+> -	}
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_client_delegations(struct sockaddr_storage *addr,
+> -				      size_t addr_size)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	clp =3D nfsd_find_client(addr, addr_size);
+> -	if (clp)
+> -		count =3D nfsd_find_all_delegations(clp, 0, &reaplist);
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	nfsd_forget_delegations(&reaplist);
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_forget_delegations(u64 max)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
+> -		count +=3D nfsd_find_all_delegations(clp, max - count, =
+&reaplist);
+> -		if (max !=3D 0 && count >=3D max)
+> -			break;
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> -	nfsd_forget_delegations(&reaplist);
+> -	return count;
+> -}
+> -
+> -static void
+> -nfsd_recall_delegations(struct list_head *reaplist)
+> -{
+> -	struct nfs4_client *clp;
+> -	struct nfs4_delegation *dp, *next;
+> -
+> -	list_for_each_entry_safe(dp, next, reaplist, dl_recall_lru) {
+> -		list_del_init(&dp->dl_recall_lru);
+> -		clp =3D dp->dl_stid.sc_client;
+> -
+> -		trace_nfsd_deleg_recall(&dp->dl_stid.sc_stateid);
+> -
+> -		/*
+> -		 * We skipped all entries that had a zero dl_time =
+before,
+> -		 * so we can now reset the dl_time back to 0. If a =
+delegation
+> -		 * break comes in now, then it won't make any difference =
+since
+> -		 * we're recalling it either way.
+> -		 */
+> -		spin_lock(&state_lock);
+> -		dp->dl_time =3D 0;
+> -		spin_unlock(&state_lock);
+> -		nfsd_break_one_deleg(dp);
+> -		put_client(clp);
+> -	}
+> -}
+> -
+> -u64
+> -nfsd_inject_recall_client_delegations(struct sockaddr_storage *addr,
+> -				      size_t addr_size)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	clp =3D nfsd_find_client(addr, addr_size);
+> -	if (clp)
+> -		count =3D nfsd_find_all_delegations(clp, 0, &reaplist);
+> -	spin_unlock(&nn->client_lock);
+> -
+> -	nfsd_recall_delegations(&reaplist);
+> -	return count;
+> -}
+> -
+> -u64
+> -nfsd_inject_recall_delegations(u64 max)
+> -{
+> -	u64 count =3D 0;
+> -	struct nfs4_client *clp, *next;
+> -	struct nfsd_net *nn =3D net_generic(current->nsproxy->net_ns,
+> -						nfsd_net_id);
+> -	LIST_HEAD(reaplist);
+> -
+> -	if (!nfsd_netns_ready(nn))
+> -		return count;
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
+> -		count +=3D nfsd_find_all_delegations(clp, max - count, =
+&reaplist);
+> -		if (max !=3D 0 && ++count >=3D max)
+> -			break;
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> -	nfsd_recall_delegations(&reaplist);
+> -	return count;
+> -}
+> -#endif /* CONFIG_NFSD_FAULT_INJECTION */
+> -
+> /*
+>  * Since the lifetime of a delegation isn't limited to that of an =
+open, a
+>  * client may quite reasonably hang on to a delegation as long as it =
+has
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 7ae236113040..f6d5d783f4a4 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1534,7 +1534,6 @@ static int __init init_nfsd(void)
+> 	retval =3D nfsd4_init_pnfs();
+> 	if (retval)
+> 		goto out_free_slabs;
+> -	nfsd_fault_inject_init(); /* nfsd fault injection controls */
+> 	nfsd_stat_init();	/* Statistics */
+> 	retval =3D nfsd_drc_slab_create();
+> 	if (retval)
+> @@ -1555,7 +1554,6 @@ static int __init init_nfsd(void)
+> 	nfsd_drc_slab_free();
+> out_free_stat:
+> 	nfsd_stat_shutdown();
+> -	nfsd_fault_inject_cleanup();
+> 	nfsd4_exit_pnfs();
+> out_free_slabs:
+> 	nfsd4_free_slabs();
+> @@ -1575,7 +1573,6 @@ static void __exit exit_nfsd(void)
+> 	nfsd_lockd_shutdown();
+> 	nfsd4_free_slabs();
+> 	nfsd4_exit_pnfs();
+> -	nfsd_fault_inject_cleanup();
+> 	unregister_filesystem(&nfsd_fs_type);
+> 	unregister_cld_notifier();
+> 	unregister_pernet_subsys(&nfsd_net_ops);
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 3b408532a5dc..9eae11a9d21c 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -693,31 +693,4 @@ extern void nfsd4_client_record_remove(struct =
+nfs4_client *clp);
+> extern int nfsd4_client_record_check(struct nfs4_client *clp);
+> extern void nfsd4_record_grace_done(struct nfsd_net *nn);
+>=20
+> -/* nfs fault injection functions */
+> -#ifdef CONFIG_NFSD_FAULT_INJECTION
+> -void nfsd_fault_inject_init(void);
+> -void nfsd_fault_inject_cleanup(void);
+> -
+> -u64 nfsd_inject_print_clients(void);
+> -u64 nfsd_inject_forget_client(struct sockaddr_storage *, size_t);
+> -u64 nfsd_inject_forget_clients(u64);
+> -
+> -u64 nfsd_inject_print_locks(void);
+> -u64 nfsd_inject_forget_client_locks(struct sockaddr_storage *, =
+size_t);
+> -u64 nfsd_inject_forget_locks(u64);
+> -
+> -u64 nfsd_inject_print_openowners(void);
+> -u64 nfsd_inject_forget_client_openowners(struct sockaddr_storage *, =
+size_t);
+> -u64 nfsd_inject_forget_openowners(u64);
+> -
+> -u64 nfsd_inject_print_delegations(void);
+> -u64 nfsd_inject_forget_client_delegations(struct sockaddr_storage *, =
+size_t);
+> -u64 nfsd_inject_forget_delegations(u64);
+> -u64 nfsd_inject_recall_client_delegations(struct sockaddr_storage *, =
+size_t);
+> -u64 nfsd_inject_recall_delegations(u64);
+> -#else /* CONFIG_NFSD_FAULT_INJECTION */
+> -static inline void nfsd_fault_inject_init(void) {}
+> -static inline void nfsd_fault_inject_cleanup(void) {}
+> -#endif /* CONFIG_NFSD_FAULT_INJECTION */
+> -
+> #endif   /* NFSD4_STATE_H */
+> diff --git a/tools/nfsd/inject_fault.sh b/tools/nfsd/inject_fault.sh
+> deleted file mode 100755
+> index 10ceee64a09a..000000000000
+> --- a/tools/nfsd/inject_fault.sh
+> +++ /dev/null
+> @@ -1,50 +0,0 @@
+> -#!/bin/bash
+> -# SPDX-License-Identifier: GPL-2.0
+> -#
+> -# Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
+> -#
+> -# Script for easier NFSD fault injection
+> -
+> -# Check that debugfs has been mounted
+> -DEBUGFS=3D`cat /proc/mounts | grep debugfs`
+> -if [ "$DEBUGFS" =3D=3D "" ]; then
+> -	echo "debugfs does not appear to be mounted!"
+> -	echo "Please mount debugfs and try again"
+> -	exit 1
+> -fi
+> -
+> -# Check that the fault injection directory exists
+> -DEBUGDIR=3D`echo $DEBUGFS | awk '{print $2}'`/nfsd
+> -if [ ! -d "$DEBUGDIR" ]; then
+> -	echo "$DEBUGDIR does not exist"
+> -	echo "Check that your .config selects =
+CONFIG_NFSD_FAULT_INJECTION"
+> -	exit 1
+> -fi
+> -
+> -function help()
+> -{
+> -	echo "Usage $0 injection_type [count]"
+> -	echo ""
+> -	echo "Injection types are:"
+> -	ls $DEBUGDIR
+> -	exit 1
+> -}
+> -
+> -if [ $# =3D=3D 0 ]; then
+> -	help
+> -elif [ ! -f $DEBUGDIR/$1 ]; then
+> -	help
+> -elif [ $# !=3D 2 ]; then
+> -	COUNT=3D0
+> -else
+> -	COUNT=3D$2
+> -fi
+> -
+> -BEFORE=3D`mktemp`
+> -AFTER=3D`mktemp`
+> -dmesg > $BEFORE
+> -echo $COUNT > $DEBUGDIR/$1
+> -dmesg > $AFTER
+> -# Capture lines that only exist in the $AFTER file
+> -diff $BEFORE $AFTER | grep ">"
+> -rm -f $BEFORE $AFTER
+> --=20
+> 2.26.2
+>=20
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
 
