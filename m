@@ -2,46 +2,59 @@ Return-Path: <SRS0=CFcy=CC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E36EEC433E3
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:32:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBDD7C433DF
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:39:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BAC552063A
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:32:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A1FA92063A
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Aug 2020 13:39:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1598275959;
-	bh=K1jpHm33Dkh6QUv4J3qctT+brWTrrCjnoswvkFtwurY=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=RiXeKxPOCu9xm5X0o3q4sPHcV/lOJ9WFT/GsgA5UiaumKZ0hi6VYnHkpk3rd9Kfdp
-	 3EKVP0waG7UiqoZfvucRXOC1nuSOp0lgKy865p+MBcnh+CpLYwP7OCM3J0opdZNnls
-	 tPKKCPsRSUrxkwN4F43xrW+csbL2zn7k9Kl+oOg8=
+	s=default; t=1598276358;
+	bh=kEbqLgXtUbdCPrN4ICEl0OvR3tkJnudXGG5JsPUDVig=;
+	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
+	b=Az3nw/YO1R99MsLicp+oaX/b/Q8jo5nVHY7vPTHJKRRxSOeRjC6YpJBACSioEOORt
+	 iktiEzCApjaMYRCE7kQsDqmkmn/dqhUwoLpINbq376SFf3f3DXKqN6dW9tRdhwnUiO
+	 QOLFPZ9GeTwhJEXJOEYKn8kIYLiut1Y12bkykAbM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727111AbgHXNcX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Aug 2020 09:32:23 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57688 "EHLO mail.kernel.org"
+        id S1727111AbgHXNjE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Aug 2020 09:39:04 -0400
+Received: from mail.kernel.org ([198.145.29.99]:38876 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726024AbgHXNcK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Aug 2020 09:32:10 -0400
-Received: from e123331-lin.arnhem.chello.nl (dhcp-077-251-017-237.chello.nl [77.251.17.237])
+        id S1727015AbgHXNi7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Aug 2020 09:38:59 -0400
+Received: from mail-ot1-f53.google.com (mail-ot1-f53.google.com [209.85.210.53])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id CFA4B2065F;
-        Mon, 24 Aug 2020 13:31:42 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5E3E42177B;
+        Mon, 24 Aug 2020 13:38:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1598275909;
-        bh=K1jpHm33Dkh6QUv4J3qctT+brWTrrCjnoswvkFtwurY=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=iBQt4OLc2g/bSHV1ipBdXkEyUn2JxRkGCnIch6eb/omDEsHnqMyaNbmIwcorbQM2N
-         Kd8Rjt7v2Ki/jMREy3msyNW4FDBh4SAtBXTDGr/N61WzVuoUYKRH/X7KoA3sR0soxt
-         P/+RBDeqWk1p82umfXyvvYXMYGsSRq8A+v4iJppU=
+        s=default; t=1598276339;
+        bh=kEbqLgXtUbdCPrN4ICEl0OvR3tkJnudXGG5JsPUDVig=;
+        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
+        b=MLII6vb04GJQ+J/FKHi16LG3O2tI047xpNLr7Yy6fqVE3od/oITTChvIRzwLwzRA9
+         ThSwD0T8Bra0lEVUfDR7/JbGO0M4a6vV5K3RXBxP/6DbPK684u97use7vD3drZDdpE
+         4WAgxNaLPWltVSlkzLsPv3CaMfgzNYYYwc719kAM=
+Received: by mail-ot1-f53.google.com with SMTP id h22so7265270otq.11;
+        Mon, 24 Aug 2020 06:38:59 -0700 (PDT)
+X-Gm-Message-State: AOAM533ClwPx2f9BYgq3E4/uvggU1bB5zJyqBKpTqvAqH7S6HIU507ir
+        zncR4vZTx0PAMjoC8TSNHaMkqVf/Ddr82L3WzLE=
+X-Google-Smtp-Source: ABdhPJw1+FTr8NU33NPKN/I6Uh6X3jKuIjoVKrbJNixZCRN6rv3ElWe8BMm5ignE2b4v6a+Idlz15Bx3llj3ETTz3rU=
+X-Received: by 2002:a9d:774d:: with SMTP id t13mr3396136otl.108.1598276338681;
+ Mon, 24 Aug 2020 06:38:58 -0700 (PDT)
+MIME-Version: 1.0
+References: <20200824133001.9546-1-ardb@kernel.org> <20200824133001.9546-8-ardb@kernel.org>
+ <20200824133448.GA5019@gondor.apana.org.au>
+In-Reply-To: <20200824133448.GA5019@gondor.apana.org.au>
 From:   Ard Biesheuvel <ardb@kernel.org>
-To:     linux-crypto@vger.kernel.org
-Cc:     Ard Biesheuvel <ardb@kernel.org>,
-        Herbert Xu <herbert@gondor.apana.org.au>,
+Date:   Mon, 24 Aug 2020 15:38:47 +0200
+X-Gmail-Original-Message-ID: <CAMj1kXFSuFfgYHfD69XQHpGMyA+vg0KqEg-ymix1-Vu=CfDDvQ@mail.gmail.com>
+Message-ID: <CAMj1kXFSuFfgYHfD69XQHpGMyA+vg0KqEg-ymix1-Vu=CfDDvQ@mail.gmail.com>
+Subject: Re: [PATCH v2 7/7] crypto: arc4 - mark ecb(arc4) skcipher as obsolete
+To:     Herbert Xu <herbert@gondor.apana.org.au>
+Cc:     Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
         "David S. Miller" <davem@davemloft.net>,
         Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -49,112 +62,27 @@ Cc:     Ard Biesheuvel <ardb@kernel.org>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
         Eric Biggers <ebiggers@google.com>,
-        Arnd Bergmann <arnd@arndb.de>, netdev@vger.kernel.org,
-        devel@driverdev.osuosl.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 7/7] crypto: arc4 - mark ecb(arc4) skcipher as obsolete
-Date:   Mon, 24 Aug 2020 15:30:01 +0200
-Message-Id: <20200824133001.9546-8-ardb@kernel.org>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20200824133001.9546-1-ardb@kernel.org>
-References: <20200824133001.9546-1-ardb@kernel.org>
+        Arnd Bergmann <arnd@arndb.de>,
+        "open list:BPF JIT for MIPS (32-BIT AND 64-BIT)" 
+        <netdev@vger.kernel.org>, devel@driverdev.osuosl.org,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Cryptographic algorithms may have a lifespan that is significantly
-shorter than Linux's, and so we need to start phasing out algorithms
-that are known to be broken, and are no longer fit for general use.
+On Mon, 24 Aug 2020 at 15:35, Herbert Xu <herbert@gondor.apana.org.au> wrote:
+>
+> On Mon, Aug 24, 2020 at 03:30:01PM +0200, Ard Biesheuvel wrote:
+> >
+> > +config CRYPTO_USER_ENABLE_OBSOLETE
+> > +     bool "Enable obsolete cryptographic algorithms for userspace"
+> > +     depends on CRYPTO_USER
+>
+> That should be CRYPTO_USER_API which is the option for af_alg.
+> CRYPTO_USER is the configuration interface which has nothing to
+> do with af_alg.
+>
 
-RC4 (or arc4) is a good example here: there are a few areas where its
-use is still somewhat acceptable, e.g., for interoperability with legacy
-wifi hardware that can only use WEP or TKIP data encryption, but that
-should not imply that, for instance, use of RC4 based EAP-TLS by the WPA
-supplicant for negotiating TKIP keys is equally acceptable, or that RC4
-should remain available as a general purpose cryptographic transform for
-all in-kernel and user space clients.
-
-Now that all in-kernel users that need to retain support have moved to
-the arc4 library interface, and the known users of ecb(arc4) via the
-socket API (iwd [0] and libell [1][2]) have been updated to switch to a
-local implementation, we can take the next step, and mark the ecb(arc4)
-skcipher as obsolete, and only provide it if the socket API is enabled in
-the first place, as well as provide the option to disable all algorithms
-that have been marked as obsolete.
-
-[0] https://git.kernel.org/pub/scm/network/wireless/iwd.git/commit/?id=1db8a85a60c64523
-[1] https://git.kernel.org/pub/scm/libs/ell/ell.git/commit/?id=53482ce421b727c2
-[2] https://git.kernel.org/pub/scm/libs/ell/ell.git/commit/?id=7f6a137809d42f6b
-
-Signed-off-by: Ard Biesheuvel <ardb@kernel.org>
----
- crypto/Kconfig | 10 ++++++++++
- crypto/arc4.c  | 10 ++++++++++
- 2 files changed, 20 insertions(+)
-
-diff --git a/crypto/Kconfig b/crypto/Kconfig
-index 1b57419fa2e7..89d63d240c2e 100644
---- a/crypto/Kconfig
-+++ b/crypto/Kconfig
-@@ -136,6 +136,15 @@ config CRYPTO_USER
- 	  Userspace configuration for cryptographic instantiations such as
- 	  cbc(aes).
- 
-+config CRYPTO_USER_ENABLE_OBSOLETE
-+	bool "Enable obsolete cryptographic algorithms for userspace"
-+	depends on CRYPTO_USER
-+	default y
-+	help
-+	  Allow obsolete cryptographic algorithms to be selected that have
-+	  already been phased out from internal use by the kernel, and are
-+	  only useful for userspace clients that still rely on them.
-+
- config CRYPTO_MANAGER_DISABLE_TESTS
- 	bool "Disable run-time self tests"
- 	default y
-@@ -1199,6 +1208,7 @@ config CRYPTO_ANUBIS
- 
- config CRYPTO_ARC4
- 	tristate "ARC4 cipher algorithm"
-+	depends on CRYPTO_USER_ENABLE_OBSOLETE
- 	select CRYPTO_SKCIPHER
- 	select CRYPTO_LIB_ARC4
- 	help
-diff --git a/crypto/arc4.c b/crypto/arc4.c
-index aa79571dbd49..923aa7a6cd60 100644
---- a/crypto/arc4.c
-+++ b/crypto/arc4.c
-@@ -12,6 +12,7 @@
- #include <crypto/internal/skcipher.h>
- #include <linux/init.h>
- #include <linux/module.h>
-+#include <linux/sched.h>
- 
- static int crypto_arc4_setkey(struct crypto_skcipher *tfm, const u8 *in_key,
- 			      unsigned int key_len)
-@@ -39,6 +40,14 @@ static int crypto_arc4_crypt(struct skcipher_request *req)
- 	return err;
- }
- 
-+static int crypto_arc4_init(struct crypto_skcipher *tfm)
-+{
-+	pr_warn_ratelimited("\"%s\" (%ld) uses obsolete ecb(arc4) skcipher\n",
-+			    current->comm, (unsigned long)current->pid);
-+
-+	return 0;
-+}
-+
- static struct skcipher_alg arc4_alg = {
- 	/*
- 	 * For legacy reasons, this is named "ecb(arc4)", not "arc4".
-@@ -55,6 +64,7 @@ static struct skcipher_alg arc4_alg = {
- 	.setkey			=	crypto_arc4_setkey,
- 	.encrypt		=	crypto_arc4_crypt,
- 	.decrypt		=	crypto_arc4_crypt,
-+	.init			=	crypto_arc4_init,
- };
- 
- static int __init arc4_init(void)
--- 
-2.17.1
-
+OK, will fix.
