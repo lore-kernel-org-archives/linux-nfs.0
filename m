@@ -1,126 +1,108 @@
-Return-Path: <SRS0=1cnt=CH=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=5tQo=CJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F4A6C433E2
-	for <linux-nfs@archiver.kernel.org>; Sat, 29 Aug 2020 22:58:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6B3DC433E6
+	for <linux-nfs@archiver.kernel.org>; Mon, 31 Aug 2020 14:59:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 044332098B
-	for <linux-nfs@archiver.kernel.org>; Sat, 29 Aug 2020 22:58:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7FD162083E
+	for <linux-nfs@archiver.kernel.org>; Mon, 31 Aug 2020 14:59:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=messinet.com header.i=@messinet.com header.b="xRVNWAsc"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="hdmh4eJn"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728246AbgH2W6I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 29 Aug 2020 18:58:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46408 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727987AbgH2W6I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Aug 2020 18:58:08 -0400
-X-Greylist: delayed 336 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sat, 29 Aug 2020 15:58:08 PDT
-Received: from chicago.messinet.com (chicago.messinet.com [IPv6:2603:300a:134:50e0::3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 10A16C061573
-        for <linux-nfs@vger.kernel.org>; Sat, 29 Aug 2020 15:58:08 -0700 (PDT)
-Received: from localhost (localhost [127.0.0.1])
-        by chicago.messinet.com (Postfix) with ESMTP id B535CD2567
-        for <linux-nfs@vger.kernel.org>; Sat, 29 Aug 2020 17:52:26 -0500 (CDT)
-X-Virus-Scanned: amavisd-new at messinet.com
-Received: from chicago.messinet.com ([127.0.0.1])
-        by localhost (chicago.messinet.com [127.0.0.1]) (amavisd-new, port 10024)
-        with LMTP id VxEZqmssK2or for <linux-nfs@vger.kernel.org>;
-        Sat, 29 Aug 2020 17:52:25 -0500 (CDT)
-Received: from linux-ws1.messinet.com (linux-ws1.messinet.com [IPv6:2603:300a:134:50e0:48c7:47e6:1bca:4abe])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        id S1728149AbgHaO7x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 31 Aug 2020 10:59:53 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:37673 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726144AbgHaO7s (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Aug 2020 10:59:48 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1598885987;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=SGKkBRx2X2c4kqxAWKe1E8dQFFxz1tEDVcsZgrSOY0w=;
+        b=hdmh4eJnAS7T5btWyDGRx7oS3kyHiad6r+bCmITRyWVrBnsLOhFALQw9t1NmOJBGENNXJ1
+        IcA3URZKvwVJyBLjpCgO5tdu0PMJPKnZjCzjZDmJYgy6Z4LmkldZZLEIcrl/i3KFyln7xa
+        lbOeWxaWgi1IiC6NhTJ5XzUnjv03u1k=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-545-Vh5kN6AHPyCm3SZLY9mpwQ-1; Mon, 31 Aug 2020 10:59:44 -0400
+X-MC-Unique: Vh5kN6AHPyCm3SZLY9mpwQ-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by chicago.messinet.com (Postfix) with ESMTPSA id 10897D2566
-        for <linux-nfs@vger.kernel.org>; Sat, 29 Aug 2020 17:52:25 -0500 (CDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 chicago.messinet.com 10897D2566
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=messinet.com;
-        s=20170806; t=1598741545;
-        bh=V/iVKlJf19i4pTUgBmwLSWun9IiOmu3IVwmI92mfdNI=;
-        h=From:To:Subject:Date:From;
-        b=xRVNWAscMesxn32W6m5RUIi2Gvg4g+WFEv5Jdkb0CynXWfJCEixC1vGMPCjuB+OeT
-         /1R0534efAgf4T3PO9pZkz+vvhc2df07+eeQoKRJ3REEbeyHFS9eLzfeaspqLvyYOH
-         4el1q27BN2C3mmaFLN5/ugsDo2Ahgm+xcDev+3oAZ3enMPbeL84ezzARccmCODQkw4
-         XqoBS71tLZmb7HI7S7///0YYDjp1lGTxx42PepfbjKM//cfPQYWPCsBiGB7fZqmQkC
-         WhCCNwJX8ZFT/sI3M9KJ8XqlvlGnZkSliGSSNhoLeybvRvvbuJe0mKlaQQKNEZy5/+
-         BgdXLE0otuMmA==
-From:   Anthony Joseph Messina <amessina@messinet.com>
-To:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: NFS client cannot "see" files or directories in /home/<username>
-Date:   Sat, 29 Aug 2020 17:52:19 -0500
-Message-ID: <12603973.uLZWGnKmhe@linux-ws1.messinet.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9F9DD801AAC;
+        Mon, 31 Aug 2020 14:59:43 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-113-190.phx2.redhat.com [10.3.113.190])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 38B707A5E0;
+        Mon, 31 Aug 2020 14:59:43 +0000 (UTC)
+Subject: Re: [PATCH nfs-utils] Convert remaining python scripts to python3
+To:     NeilBrown <neil@brown.name>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <87zh6iqtm9.fsf@notabene.neil.brown.name>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <f028aa18-6c5a-4ff0-3714-14a396cf20c4@RedHat.com>
+Date:   Mon, 31 Aug 2020 10:59:42 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.11.0
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="nextPart2748348.e9J7NaK4W3"; micalg="pgp-sha256"; protocol="application/pgp-signature"
+In-Reply-To: <87zh6iqtm9.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---nextPart2748348.e9J7NaK4W3
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
-
-I've reported this issue to Fedora:
-https://lists.fedoraproject.org/archives/list/users@lists.fedoraproject.org/
-thread/YECR5Q4LLTEQO3RNSXXKOCZUZF53UAST/
-https://bugzilla.redhat.com/show_bug.cgi?id=1873720
-
-I've got an NFS client that mounts /home via NFSv4.2 with sec=krb5p.  Any 
-kernel since 5.7.17 through 5.8.4 is unable to "see" files or directories in 
-the mounted /home/<username> directory with the exception of the first "dot" 
-directory.
-
-While I cannot see /home/<username>/subdirectory, if I manually cd into /home/
-<username>/subdirectory, I can list that subdirectory's contents as normal.
-
-If I mv "/home/<username>/.dotdir" to "/home/<username>/.dotdir.old", I can no 
-longer see it, and I can see "/home/<username>/.dotnextdir".  
-
-If I then mv "/home/<username>/.dotdir.old" back to "/home/
-<username>/.dotdir", I am not able to see it and can still only see "/home/
-<username>/.dotnextdir"
-
-My last NFS client that can "see" /home/<username> directory contents (normal 
-operation) is kernel-5.7.15 (I was unable to test 5.7.16)
-
-NFS server upgrades from kernel-5.7.15 through kernel-5.8.4 didn't seem to 
-have any affect.
-
-I understand this list is for developers, but I'm wondering if any of the NFS 
-experts can point me in the right direction...  Thank you.
-
--- 
-Anthony - https://messinet.com
-F9B6 560E 68EA 037D 8C3D  D1C9 FF31 3BDB D9D8 99B6
-
---nextPart2748348.e9J7NaK4W3
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part.
-Content-Transfer-Encoding: 7Bit
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAABCAAdFiEE+bZWDmjqA32MPdHJ/zE729nYmbYFAl9K3CMACgkQ/zE729nY
-mbadfQ/9G28S5VgDs/03oXTMSynQXNin0RlXZod44bqXCvre9g0O05hRlD+KomZQ
-96+2Mfiq9xTo+rTHjCjiid31UKIjRcns9tiPoI33CFB45gJR5ERE7NrenAz0v31j
-KpWK00xhtdiKjYXRt0ku+UN+xUGjabKUB2AnXUY3WlEVfGd2Zn3GesmN+Kp0wk7z
-aCVXKBZpwytuCam1Y7mqJTBHkwtvH7v7gC5f0QT7mpL1Fhigpx1cZcKBCQrA4uhA
-+cA+2A4FIaGfyNcxOohfmRueKLgfY77wXn7zXZHXSJQzMoIXaokD2TI+e9CSlDG4
-YpJ/mBxfeoTi3eIl8AN0KrTjV7GhQoEznchoOr2Iq/aAtE44hL+n70QLt7lCdgCT
-eS487JLpox8j1Ajq5Q75wEVw99NreElCSW0mbjjci6ws5uwiz5um6ahMLuwvEVYO
-pid6Wu2k5d9flvwYGOBidVIg1vAvnID8VG2hNje2i9MTVOkX0rFbQc8PrGNSsjrw
-aVCNIp8w6ZhvYnhaCEKfT33B/h8Mzg6Bh7Th5eY30CCpEweDZ8vZGZYmGaLRDR4S
-z7C2fTb1ZVmb7gtcpzpzYlw0bNgZZoOmdMwp8kBwB0L8g51fncvI4glBLIkfw5/E
-+KfiiT5YbnvD4FCUKgHjcQEJ57dVFGZylVEFnXjgc9tBWqKpSMo=
-=SXvf
------END PGP SIGNATURE-----
-
---nextPart2748348.e9J7NaK4W3--
 
 
+On 8/25/20 5:54 PM, NeilBrown wrote:
+> 
+> nfs-utils contains 4 python scripts, two request
+>  /usr/bin/python3
+> in their shebang line, two request
+>  /usr/bin/python
+> 
+> Those latter two run perfectly well with python3 and as python2 is on the
+> way out, change them so they requrest /usr/bin/python3.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+Committed... (tag: nfs-utils-2-5-2-rc4)
+
+steved.
+> ---
+>  tools/mountstats/mountstats.py | 2 +-
+>  tools/nfs-iostat/nfs-iostat.py | 2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+> index 1054f698c8e3..00adc96bafeb 100755
+> --- a/tools/mountstats/mountstats.py
+> +++ b/tools/mountstats/mountstats.py
+> @@ -1,4 +1,4 @@
+> -#!/usr/bin/python
+> +#!/usr/bin/python3
+>  # -*- python-mode -*-
+>  """Parse /proc/self/mountstats and display it in human readable form
+>  """
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+> index 5556f692b7ee..6e59837ee673 100755
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -1,4 +1,4 @@
+> -#!/usr/bin/python
+> +#!/usr/bin/python3
+>  # -*- python-mode -*-
+>  """Emulate iostat for NFS mount points using /proc/self/mountstats
+>  """
+> 
 
