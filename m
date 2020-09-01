@@ -2,134 +2,93 @@ Return-Path: <SRS0=68Gb=CK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-5.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5BDF3C433E7
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Sep 2020 17:40:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8F8CC433E2
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Sep 2020 19:18:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 40E82207D3
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Sep 2020 17:40:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9121820767
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Sep 2020 19:18:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="knz0YS9n"
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="frA9yW8f"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730658AbgIARki (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Sep 2020 13:40:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46172 "EHLO
+        id S1726144AbgIATS4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Sep 2020 15:18:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33212 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726116AbgIARkd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2020 13:40:33 -0400
-Received: from mail-ed1-x544.google.com (mail-ed1-x544.google.com [IPv6:2a00:1450:4864:20::544])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50069C061244
-        for <linux-nfs@vger.kernel.org>; Tue,  1 Sep 2020 10:40:33 -0700 (PDT)
-Received: by mail-ed1-x544.google.com with SMTP id c10so2271015edk.6
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Sep 2020 10:40:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=d0SfT1YYyMWAU7BRqh0HQxr7Epb8PYffS7fgo0+UQJc=;
-        b=knz0YS9nrNoS2ZqeHsdvaduW4T0qF3bTtDifb7Bdfe17AvnHwwLixdJ29DWtZoquOO
-         vDic0Jgf1fezwND7M4iGv5sunAZauEX2jIUz+lT5+XEciaKnPYGSNsxBcHQ4xhztKuRp
-         Gw+djVMrHovRuF9EE4nmK25SvbOQJ4K+4loOxryqIR5iqj/Ia+J7Ero/jAA7ZsacQdvH
-         Yk23JT+rHHsi+Sj5P+40T6kF2sULQx3C9xFaYfyRY7yPx6iIAatqekPq83dgmpDl9bTi
-         bg8t0RV5WiyxX+GJz4YqWfiUS3Y1O5zjJ8EJfXqPleNjcHCeOntgcontoOZSq0YwMyiY
-         WSkg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=d0SfT1YYyMWAU7BRqh0HQxr7Epb8PYffS7fgo0+UQJc=;
-        b=LhS8gx+JEFcxJFyvalHGVt1W3Ys6+0ObbZqOeaPeMFihNRjvKl8D+7bmh1PDh/zWb1
-         xB2xZOflqabBP5zQei7UOIypF05pbh1BPUFutD6q3CAeX9bQtrikFIRB1jpLpZoqYPWQ
-         z0n+X+ZgwvJWYtn4HtrEFe37kI7XON5Cymr6VfPT5hw3IqKFM1xZZ0Pmhfymogl2FJqB
-         kwprro3NwdniInlRgWPvadTPlwjpFcDPE2YKxMujH+ogNhv8FeH/pEKOF8OYjte7dS3p
-         LG3DIJ8s8SwHBGLLary6JjV1hfYsnecPN/N/0ICTkLyEqRIhufXKMG43jghl1ErfICaO
-         6l1Q==
-X-Gm-Message-State: AOAM5306YYdRKS1yWO5SaKcNvj+cjonlwICctt/AQ8aou/+a2FYLsZ/a
-        llKV0Z7uj0DIOQBHEdmuwIs+qDm7dmq+UndFMss=
-X-Google-Smtp-Source: ABdhPJxkXMAP242zP+Nnek9iGayTAvE+iPoyA4NFEQ+1vTKX6yWHeh73fhm2mKE0zg5dGnE1GUXP4DVUb/hbwwXyMU8=
-X-Received: by 2002:aa7:cfda:: with SMTP id r26mr2806180edy.209.1598982031806;
- Tue, 01 Sep 2020 10:40:31 -0700 (PDT)
-MIME-Version: 1.0
-References: <20200817165310.354092-1-Anna.Schumaker@Netapp.com>
- <20200817165310.354092-3-Anna.Schumaker@Netapp.com> <20200828212521.GA33226@pick.fieldses.org>
- <20200828215627.GB33226@pick.fieldses.org> <CAFX2Jfn3LN9Zc-=4mAm1mQ3k8PN6C1yF4xqh6B-yyXCxFnp7hQ@mail.gmail.com>
- <20200901164938.GC12082@fieldses.org>
-In-Reply-To: <20200901164938.GC12082@fieldses.org>
-From:   Anna Schumaker <schumaker.anna@gmail.com>
-Date:   Tue, 1 Sep 2020 13:40:16 -0400
-Message-ID: <CAFX2Jf=vmnfV_4=401=BFnmZJCOqfEWTQRPHzRHePpJrTCcb7w@mail.gmail.com>
-Subject: Re: [PATCH v4 2/5] NFSD: Add READ_PLUS data support
-To:     "J. Bruce Fields" <bfields@fieldses.org>
+        with ESMTP id S1731576AbgIATS4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2020 15:18:56 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA4BAC061244
+        for <linux-nfs@vger.kernel.org>; Tue,  1 Sep 2020 12:18:55 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 42BFF5F98; Tue,  1 Sep 2020 15:18:54 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 42BFF5F98
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1598987934;
+        bh=1/0q7fnxeeAC3t8KuZliK4V55iKTBSIt8BXbGxbVV6g=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=frA9yW8fUW6LKsN7Jj1vkavkQ/jEnnqSexecRdZeeAfssWV/+muzAb0u5HLBwsEzH
+         LcFJY0T4u48c91CqQIUDycXAzJhTBuXBYMDFyH3dGLgBpAV1G4GsvKGilglkDyflfx
+         L9uZmCgnXmpVeU0M0B+b/BLfEvxjWzQRLlxR6lq8=
+Date:   Tue, 1 Sep 2020 15:18:54 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Anna Schumaker <schumaker.anna@gmail.com>
 Cc:     "J. Bruce Fields" <bfields@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Subject: Re: [PATCH v4 2/5] NFSD: Add READ_PLUS data support
+Message-ID: <20200901191854.GD12082@fieldses.org>
+References: <20200817165310.354092-1-Anna.Schumaker@Netapp.com>
+ <20200817165310.354092-3-Anna.Schumaker@Netapp.com>
+ <20200828212521.GA33226@pick.fieldses.org>
+ <20200828215627.GB33226@pick.fieldses.org>
+ <CAFX2Jfn3LN9Zc-=4mAm1mQ3k8PN6C1yF4xqh6B-yyXCxFnp7hQ@mail.gmail.com>
+ <20200901164938.GC12082@fieldses.org>
+ <CAFX2Jf=vmnfV_4=401=BFnmZJCOqfEWTQRPHzRHePpJrTCcb7w@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAFX2Jf=vmnfV_4=401=BFnmZJCOqfEWTQRPHzRHePpJrTCcb7w@mail.gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Sep 1, 2020 at 12:49 PM J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> On Mon, Aug 31, 2020 at 02:16:26PM -0400, Anna Schumaker wrote:
-> > On Fri, Aug 28, 2020 at 5:56 PM J. Bruce Fields <bfields@redhat.com> wrote:
-> > >
-> > > On Fri, Aug 28, 2020 at 05:25:21PM -0400, J. Bruce Fields wrote:
-> > > > On Mon, Aug 17, 2020 at 12:53:07PM -0400, schumaker.anna@gmail.com wrote:
-> > > > > From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> > > > >
-> > > > > This patch adds READ_PLUS support for returning a single
-> > > > > NFS4_CONTENT_DATA segment to the client. This is basically the same as
-> > > > > the READ operation, only with the extra information about data segments.
-> > > > >
-> > > > > Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> > > > > ---
-> > > > >  fs/nfsd/nfs4proc.c | 17 ++++++++++
-> > > > >  fs/nfsd/nfs4xdr.c  | 83 ++++++++++++++++++++++++++++++++++++++++++++--
-> > > > >  2 files changed, 98 insertions(+), 2 deletions(-)
-> > > > >
-> > > > > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > > > > index a09c35f0f6f0..9630d33211f2 100644
-> > > > > --- a/fs/nfsd/nfs4proc.c
-> > > > > +++ b/fs/nfsd/nfs4proc.c
-> > > > > @@ -2523,6 +2523,16 @@ static inline u32 nfsd4_read_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-> > > > >     return (op_encode_hdr_size + 2 + XDR_QUADLEN(rlen)) * sizeof(__be32);
-> > > > >  }
-> > > > >
-> > > > > +static inline u32 nfsd4_read_plus_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-> > > > > +{
-> > > > > +   u32 maxcount = svc_max_payload(rqstp);
-> > > > > +   u32 rlen = min(op->u.read.rd_length, maxcount);
-> > > > > +   /* enough extra xdr space for encoding either a hole or data segment. */
-> > > > > +   u32 segments = 1 + 2 + 2;
-> > > > > +
-> > > > > +   return (op_encode_hdr_size + 2 + segments + XDR_QUADLEN(rlen)) * sizeof(__be32);
-> > > >
-> > > > I'm not sure I understand this calculation.
-> > > >
-> > > > In the final code, there's no fixed limit on the number of segments
-> > > > returned by a single READ_PLUS op, right?
-> > >
-> > > I think the worst-case overhead to represent a hole is around 50 bytes.
-> > >
-> > > So as long as we don't encode any holes less than that, then we can just
-> > > use rlen as an upper bound.
-> > >
-> > > We really don't want to bother encoding small holes.  I doubt
-> > > filesystems want to bother with them either.  Do they give us any
-> > > guarantees as to the minimum size of a hole?
+On Tue, Sep 01, 2020 at 01:40:16PM -0400, Anna Schumaker wrote:
+> On Tue, Sep 1, 2020 at 12:49 PM J. Bruce Fields <bfields@fieldses.org> wrote:
 > >
-> > The minimum size seems to be PAGE_SIZE from everything I've seen.
->
-> OK, can we make that assumption explicit?  It'd simplify stuff like
-> this.
+> > On Mon, Aug 31, 2020 at 02:16:26PM -0400, Anna Schumaker wrote:
+> > > On Fri, Aug 28, 2020 at 5:56 PM J. Bruce Fields <bfields@redhat.com> wrote:
+> > > > We really don't want to bother encoding small holes.  I doubt
+> > > > filesystems want to bother with them either.  Do they give us any
+> > > > guarantees as to the minimum size of a hole?
+> > >
+> > > The minimum size seems to be PAGE_SIZE from everything I've seen.
+> >
+> > OK, can we make that assumption explicit?  It'd simplify stuff like
+> > this.
+> 
+> I'm okay with that, but it's technically up to the underlying filesystem.
 
-I'm okay with that, but it's technically up to the underlying filesystem.
+Maybe we should ask on linux-fsdevel.
 
->
-> --b.
+Maybe minimum hole length isn't the right question: suppose at time 1 a
+file has a single hole at bytes 100-200, then it's modified so at time 2
+it has a hole at bytes 50-150.  If you lseek(fd, 0, SEEK_HOLE) at time
+1, you'll get 100.  Then if you lseek(fd, 100, SEEK_DATA) at time 2,
+you'll get 150.  So you'll encode a 50-byte hole in the READ_PLUS reply
+even though the file never had a hole smaller than 100 bytes.
+
+Minimum hole alignment might be the right idea.
+
+If we can't get that: maybe just teach encode_read to stop when it
+*either* returns maxcount worth of file data (and holes) *or* maxcount
+of encoded xdr data, just to prevent a weird filesystem from triggering
+a bug.
+
+--b.
