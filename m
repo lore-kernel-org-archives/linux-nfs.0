@@ -2,124 +2,85 @@ Return-Path: <SRS0=r7ra=CN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E9D87C2D0E4
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Sep 2020 18:10:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 526EAC43461
+	for <linux-nfs@archiver.kernel.org>; Fri,  4 Sep 2020 18:20:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 166D7251BF
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Sep 2020 18:03:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 030A620796
+	for <linux-nfs@archiver.kernel.org>; Fri,  4 Sep 2020 18:20:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="RMOCQnJC"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="MH/LSqLt"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726399AbgIDRPT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 4 Sep 2020 13:15:19 -0400
-Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:38513 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726114AbgIDRPT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2020 13:15:19 -0400
+        id S1726226AbgIDSUE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 4 Sep 2020 14:20:04 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:25811 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726029AbgIDSUC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2020 14:20:02 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1599239714;
+        s=mimecast20190719; t=1599243601;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=3B1ObzyY4uALqeWLa8dsuMkbzolS57F7xECHzd17UCw=;
-        b=RMOCQnJCmET+aDOp5U5DX69dioDb1H3zjTKlaDr0HngOVRFY4ix+yF4PKBZigaqOlW202t
-        hLwgNaaXLeqsUrerb9GXUbq8R9rbbag4fvB27qTO7lKVjizEO6t8qigiDsMgvkWCh7uK5O
-        7bJluUfnE6UYO7OBnwwjgk4EmxY/SIw=
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=MhtvFGyWgPeohVCJ3gKqvcwTyrfaCuSn2P1NAQ3lBeI=;
+        b=MH/LSqLte5pIqkNqs9lTcgXe8sOhuYooCtHHEMepQUaoA4j6FfrUSgCkQJZeorPP/Zo/Pt
+        36gn+EtkzNf1HkVNfMnVL7+BIIsUXo0lMdslSifdotd0J08YpMu48fal8n7fZW7ew0Eq+q
+        94SJv1xyDonh0Fz6j1c25Gz3fN45k/4=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-435-46kBPJ5OPu-gZ420zED4rg-1; Fri, 04 Sep 2020 13:15:11 -0400
-X-MC-Unique: 46kBPJ5OPu-gZ420zED4rg-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+ us-mta-142-4tj1-2GpM0CmAvMrCJQR1Q-1; Fri, 04 Sep 2020 14:19:59 -0400
+X-MC-Unique: 4tj1-2GpM0CmAvMrCJQR1Q-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2B8741009610;
-        Fri,  4 Sep 2020 17:15:10 +0000 (UTC)
-Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id DD3E46CE61;
-        Fri,  4 Sep 2020 17:15:09 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     Pradeep <pradeepthomas@gmail.com>
-Cc:     "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: Wrong mode bits in stat of NFSv4 referral directories.
-Date:   Fri, 04 Sep 2020 13:15:08 -0400
-Message-ID: <0226355B-58CD-4792-B7B9-B4447CC4FD7F@redhat.com>
-In-Reply-To: <CAD8zhTAA2c+cSNxDWwHnEa3-DTm8AEZKVMo7Xw9Wwpv8Wfsfzg@mail.gmail.com>
-References: <CAD8zhTCZmZTosrtKbBatXo40Lt40OfzsZGw7tzHdcP4xo9rWCg@mail.gmail.com>
- <CAD8zhTDOZyhDnOqqO0uUVfscPFXj391frTEKT3dLu9rNZVNtzQ@mail.gmail.com>
- <CAD8zhTAA2c+cSNxDWwHnEa3-DTm8AEZKVMo7Xw9Wwpv8Wfsfzg@mail.gmail.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 24707801AB8
+        for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2020 18:19:59 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-113-89.phx2.redhat.com [10.3.113.89])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id D813310013BD
+        for <linux-nfs@vger.kernel.org>; Fri,  4 Sep 2020 18:19:58 +0000 (UTC)
+From:   Steve Dickson <steved@redhat.com>
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpc.idmapd: Do not free config varibles
+Date:   Fri,  4 Sep 2020 14:19:57 -0400
+Message-Id: <20200904181957.9772-1-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Probably in nfs_fixup_secinfo_attributes(), and looks deliberate.  I'm not
-sure about the reasoning behind it, though.  Maybe it's to clarify that you
-can't traverse this directory.
+Commit 93e8f092e added a conf_cleanup() call to clean
+up memory after the config file was parsed. It turns
+out that memory still needed and it is not very much
+so the call is removed.
 
-Ben
+Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1873965
 
-On 4 Sep 2020, at 12:57, Pradeep wrote:
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/idmapd/idmapd.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-> Just to add, if you look at packet 100 (READDIR response) in tcpdump,
-> the mode bits are set to 0755. But what is displayed by "ls" is 0555.
-> I'm trying to figure out where that one bit gets lost.
->
-> On Fri, Sep 4, 2020 at 8:55 AM Pradeep <pradeepthomas@gmail.com> wrote:
->>
->> Hello,
->>
->> I'm seeing an issue where stat (and ls) reports wrong mode bits on
->> referral directories. Actual permissions are 755; but Linux client
->> displays 555. This causes some operations like setattr (chmod) to
->> fail. Traversing to the directory fixes the issue.
->>
->> Kernel version : 5.8.6-2.el7.elrepo.x86_64
->>
->> [nfstest@centos77 ~]$ mkdir /mnt/nfsh1/dir.{1..5}
->> [nfstest@centos77 ~]$ ls -l /mnt/nfsh1
->> total 3
->> dr-xr-xr-x. 2 nfstest wheel 2 Sep  3 17:55 dir.1
->> drwxr-xr-x. 2 nfstest wheel 2 Sep  3 17:55 dir.2
->> dr-xr-xr-x. 2 nfstest wheel 2 Sep  3 17:55 dir.3
->> dr-xr-xr-x. 2 nfstest wheel 2 Sep  3 17:55 dir.4
->> dr-xr-xr-x. 2 nfstest wheel 2 Sep  3 17:55 dir.5
->> [nfstest@centos77 ~]$ stat /mnt/nfsh1/dir.1
->>   File: ‘/mnt/nfsh1/dir.1’
->>   Size: 2               Blocks: 1          IO Block: 1048576 directory
->> Device: 30h/48d Inode: 3940649673949864  Links: 2
->> Access: (0555/dr-xr-xr-x)  Uid: ( 2000/ nfstest)   Gid: (   10/   wheel)
->> Context: system_u:object_r:nfs_t:s0
->> Access: 2020-09-03 17:55:59.082327209 -0400
->> Modify: 2020-09-03 17:55:59.082327209 -0400
->> Change: 2020-09-03 17:55:59.082327209 -0400
->>  Birth: -
->> [nfstest@centos77 ~]$ ls /mnt/nfsh1/dir.1  <-- Try traversing into the
->> dir, see the mode bits in stat after traversal.
->> [nfstest@centos77 ~]$ stat /mnt/nfsh1/dir.1
->>   File: ‘/mnt/nfsh1/dir.1’
->>   Size: 2               Blocks: 1          IO Block: 32768  directory
->> Device: 32h/50d Inode: 3940649673949864  Links: 2
->> Access: (0755/drwxr-xr-x)  Uid: ( 2000/ nfstest)   Gid: (   10/   wheel)
->> Context: system_u:object_r:nfs_t:s0
->> Access: 2020-09-03 17:55:59.082327209 -0400
->> Modify: 2020-09-03 17:55:59.082327209 -0400
->> Change: 2020-09-03 17:55:59.082327209 -0400
->>  Birth: -
->>
->> Attached is the tcpdump for requests. It looks like the server sends
->> back correct attributes; but the client somehow is ignoring it. Any
->> ideas why?
->>
->> Thanks,
->> Pradeep
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index f3d2314..51c71fb 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -306,9 +306,6 @@ main(int argc, char **argv)
+ 			serverstart = 0;
+ 	}
+ 
+-	/* Config memory is no longer needed */
+-	conf_cleanup();
+-
+ 	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1)
+ 		switch (opt) {
+ 		case 'v':
+-- 
+2.26.2
 
