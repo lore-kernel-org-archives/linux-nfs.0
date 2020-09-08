@@ -8,67 +8,66 @@ X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A89CC433E2
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:47:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DE38C433E2
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:48:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2C61F206E6
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:47:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 16CAB20708
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:48:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CsVxCIKT"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jHRVG4tP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731957AbgIHQrK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Sep 2020 12:47:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58746 "EHLO
+        id S1731956AbgIHQrM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Sep 2020 12:47:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58830 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731956AbgIHQ0T (ORCPT
+        with ESMTP id S1731952AbgIHQ0T (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2020 12:26:19 -0400
-Received: from mail-io1-xd43.google.com (mail-io1-xd43.google.com [IPv6:2607:f8b0:4864:20::d43])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E399C06179F
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 09:26:06 -0700 (PDT)
-Received: by mail-io1-xd43.google.com with SMTP id d190so17757244iof.3
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2020 09:26:06 -0700 (PDT)
+Received: from mail-il1-x143.google.com (mail-il1-x143.google.com [IPv6:2607:f8b0:4864:20::143])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 73F0FC061799
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 09:25:25 -0700 (PDT)
+Received: by mail-il1-x143.google.com with SMTP id l4so15987823ilq.2
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2020 09:25:25 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=gF4PFGeOCBPbyVDX2yvL+porZgljePXBrb0QVyft2vc=;
-        b=CsVxCIKT5dFNSCN2oTW/KY2IS/GvnAfgbkFLzCt+gH6CSSWwsN9ViMR5NHmD1vkxTq
-         SJubjv4bdvg+NbnBvA+JXDj//oU7KFk1vrdHEvf8nAS79s9H1w1uRditovAwVywQnDRN
-         zk3YKD0ffZJHYpj7oR1gMT/DUPAyhKNw0J4fkFDXpzibosqfs+vyS1D7yprYddcSKsnD
-         cEF1BPHhGgjiZ5VJONWSZbFtPIdyrLKDd0ACYwEKon4QfPGH+F6MlGvedxVN7llIXfOW
-         Si2dAxeCbFQ32D28Wuw5QHdJERIZfUVIMUkEBacm7BlgfYEz+w36pQR+zOmW8Q3m9+9s
-         O5BA==
+        bh=McNZrU0EDFV6A3TZqivdfUIZNz6mK+EHHnD6g+nLLJ8=;
+        b=jHRVG4tPsvF1IqVMGyQfVzxW8qACaqbKAd12Yx4AX8QZE/wjKLYHEggEi3xZPzTKbN
+         E6/S0d+xSmgnAsjmDCypPOi+R3IyFH0foW/TexU6incpe8aHwEBRiJNrEYe0hEWLVqZv
+         xoXxvqWnMNtJ4pLiqkZPYWKXkBi2S3eC82qFaF+Yc2J0GzNwMM28LNWxhLGryVjVKfev
+         XKdBACG46frQZIgTDx/RujNIpPqpRLxFsLkCatumSuAfSCROC6NZe8asVRJ8JNVp/4rB
+         GDuIg4uu70eg94n/ziRkR0SYYcSHIGTSpIGFy/5DJXfKKXzFh4m3LpGbOv1+pX7au0qd
+         Pd4A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=gF4PFGeOCBPbyVDX2yvL+porZgljePXBrb0QVyft2vc=;
-        b=o8/5kWZXvWDfGG0DcH05fMZ14NB/CoArxaZXZxGSvQflyMeW7QJ0Mj4t3J3Hwt7m0b
-         TlPnkpCfaVPg+WFq32uaeUhW7ggIRB51GzoQJEmjE7oP0WswSFORGZ3ARGV1enKmPUFi
-         m8e9ni6u5T2F9h5XR0oTlvpg1ye3kK+POMgmMR82Rn02lTcdN2VNsbHa9+6Hai5RsJh6
-         c4uq43KNRAqR1XXUfJELU+jjJ3hEG5XVARRyTNajeHWhvEO0K9OH1cQlN/SttG0uPHs0
-         xhxi8yhccEzquS1XpphlzSFPd95Rzkhz8Qkketxkjnl8/Gg3ytHeFcMz2ORAxO0sj4rU
-         oKhw==
-X-Gm-Message-State: AOAM531zLrXomcNOkFHB6G8kzDOqvednmSMX25UmR9hkP+37ZAF64m15
-        5Tqix2BQtxBTuCP4nOZpuHo=
-X-Google-Smtp-Source: ABdhPJxNSuiV+YvEVUpTjO4FbpA1xAMjGcVGXZemMMPVqWm4SgrI++enm2aLr5jJiKhnIEYrBCJuIw==
-X-Received: by 2002:a6b:f919:: with SMTP id j25mr22013078iog.113.1599582365573;
-        Tue, 08 Sep 2020 09:26:05 -0700 (PDT)
+        bh=McNZrU0EDFV6A3TZqivdfUIZNz6mK+EHHnD6g+nLLJ8=;
+        b=qp4H5Q0nXoLp8LzGNAZvvucAfkrjWOOvulJjyAAJUj7F91M+H2nh86NuSXyWdjoRrn
+         Q/n6awcqW+ucdLcRarbd7wAl2d2SbI/KwNoLe6qZck00afyJDYQMMozYFT01MKUgFcoJ
+         x4GCHUnrhNiBGKTSXkgwPvV/F5U3YXMRhU4E7++uGneZW/B8730/6ImrOKE1A3/uTFO0
+         h8UaAoq6ylAORGxjgens8bWktVEitSOQ92AoNwBtPc8pjkb5TzVXgtzLSAMgSaThVqAW
+         /1WwGqDjt9X/K2yFLstYQ67/P+3Brxqd5ILQzZXZME6fopUk3ONd94cJzVG3O1lzK1gC
+         eNMQ==
+X-Gm-Message-State: AOAM532+fCSL0suG2IntVoZ1HAUmRnTdtYgLkzhRHcfw+x0YcZLzIIfl
+        V7eVHhh31q6/oeH7XMIDkk2Ik58A4Ys=
+X-Google-Smtp-Source: ABdhPJyw07jYdzBGJ819pYypA+BcTw1md400y3Gh2zgG6nRzxPW18G2pcG7Uj2IPlDsTwVzrTw3mJQ==
+X-Received: by 2002:a92:dd85:: with SMTP id g5mr23754878iln.210.1599582324596;
+        Tue, 08 Sep 2020 09:25:24 -0700 (PDT)
 Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
-        by smtp.gmail.com with ESMTPSA id v7sm10269657ilg.83.2020.09.08.09.26.04
+        by smtp.gmail.com with ESMTPSA id 2sm10291375ilj.24.2020.09.08.09.25.23
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 08 Sep 2020 09:26:04 -0700 (PDT)
+        Tue, 08 Sep 2020 09:25:23 -0700 (PDT)
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     bfields@redhat.com, chuck.lever@oracle.com,
-        linux-nfs@vger.kernel.org
+To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v5 4/5] NFSD: Return both a hole and a data segment
-Date:   Tue,  8 Sep 2020 12:25:58 -0400
-Message-Id: <20200908162559.509113-5-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v5 10/10] NFS: Decode a full READ_PLUS reply
+Date:   Tue,  8 Sep 2020 12:25:13 -0400
+Message-Id: <20200908162513.508991-11-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20200908162559.509113-1-Anna.Schumaker@Netapp.com>
-References: <20200908162559.509113-1-Anna.Schumaker@Netapp.com>
+In-Reply-To: <20200908162513.508991-1-Anna.Schumaker@Netapp.com>
+References: <20200908162513.508991-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -78,157 +77,84 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-But only one of each right now. We'll expand on this in the next patch.
+Decode multiple hole and data segments sent by the server, placing
+everything directly where they need to go in the xdr pages.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
-v5: If we've already encoded a segment, then return a short read if
-    later segments return an error for some reason.
----
- fs/nfsd/nfs4xdr.c | 54 ++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 39 insertions(+), 15 deletions(-)
+ fs/nfs/nfs42xdr.c | 36 +++++++++++++++++++-----------------
+ 1 file changed, 19 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 45159bd9e9a4..856606263c1d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4603,7 +4603,7 @@ nfsd4_encode_offload_status(struct nfsd4_compoundres *resp, __be32 nfserr,
- static __be32
- nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp,
- 			    struct nfsd4_read *read,
--			    unsigned long maxcount,  u32 *eof)
-+			    unsigned long *maxcount, u32 *eof)
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 9720fedd2e57..0dc31ad2362e 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -1032,7 +1032,7 @@ static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ 
+ 	p = xdr_decode_hyper(p, &offset);
+ 	count = be32_to_cpup(p);
+-	recvd = xdr_read_pages(xdr, count);
++	recvd = xdr_align_data(xdr, res->count, count);
+ 	res->count += recvd;
+ 
+ 	if (count > recvd) {
+@@ -1057,7 +1057,7 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ 
+ 	p = xdr_decode_hyper(p, &offset);
+ 	p = xdr_decode_hyper(p, &length);
+-	recvd = xdr_expand_hole(xdr, 0, length);
++	recvd = xdr_expand_hole(xdr, res->count, length);
+ 	res->count += recvd;
+ 
+ 	if (recvd < length) {
+@@ -1070,7 +1070,7 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
  {
- 	struct xdr_stream *xdr = &resp->xdr;
- 	struct file *file = read->rd_nf->nf_file;
-@@ -4614,19 +4614,19 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp,
- 	__be64 tmp64;
- 
- 	if (hole_pos > read->rd_offset)
--		maxcount = min_t(unsigned long, maxcount, hole_pos - read->rd_offset);
-+		*maxcount = min_t(unsigned long, *maxcount, hole_pos - read->rd_offset);
- 
- 	/* Content type, offset, byte count */
- 	p = xdr_reserve_space(xdr, 4 + 8 + 4);
- 	if (!p)
- 		return nfserr_resource;
- 
--	read->rd_vlen = xdr_reserve_space_vec(xdr, resp->rqstp->rq_vec, maxcount);
-+	read->rd_vlen = xdr_reserve_space_vec(xdr, resp->rqstp->rq_vec, *maxcount);
- 	if (read->rd_vlen < 0)
- 		return nfserr_resource;
- 
- 	nfserr = nfsd_readv(resp->rqstp, read->rd_fhp, file, read->rd_offset,
--			    resp->rqstp->rq_vec, read->rd_vlen, &maxcount, eof);
-+			    resp->rqstp->rq_vec, read->rd_vlen, maxcount, eof);
- 	if (nfserr)
- 		return nfserr;
- 
-@@ -4634,7 +4634,7 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp,
- 	write_bytes_to_xdr_buf(xdr->buf, starting_len,      &tmp,   4);
- 	tmp64 = cpu_to_be64(read->rd_offset);
- 	write_bytes_to_xdr_buf(xdr->buf, starting_len + 4,  &tmp64, 8);
--	tmp = htonl(maxcount);
-+	tmp = htonl(*maxcount);
- 	write_bytes_to_xdr_buf(xdr->buf, starting_len + 12, &tmp,   4);
- 	return nfs_ok;
- }
-@@ -4642,11 +4642,19 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp,
- static __be32
- nfsd4_encode_read_plus_hole(struct nfsd4_compoundres *resp,
- 			    struct nfsd4_read *read,
--			    unsigned long maxcount, u32 *eof)
-+			    unsigned long *maxcount, u32 *eof)
- {
- 	struct file *file = read->rd_nf->nf_file;
-+	loff_t data_pos = vfs_llseek(file, read->rd_offset, SEEK_DATA);
-+	unsigned long count;
+ 	uint32_t eof, segments, type;
+-	int status;
++	int status, i;
  	__be32 *p;
  
-+	if (data_pos == -ENXIO)
-+		data_pos = i_size_read(file_inode(file));
-+	else if (data_pos <= read->rd_offset)
-+		return nfserr_resource;
-+	count = data_pos - read->rd_offset;
-+
- 	/* Content type, offset, byte count */
- 	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 8);
- 	if (!p)
-@@ -4654,9 +4662,10 @@ nfsd4_encode_read_plus_hole(struct nfsd4_compoundres *resp,
+ 	status = decode_op_hdr(xdr, OP_READ_PLUS);
+@@ -1086,22 +1086,24 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ 	if (segments == 0)
+ 		goto out;
  
- 	*p++ = htonl(NFS4_CONTENT_HOLE);
- 	 p   = xdr_encode_hyper(p, read->rd_offset);
--	 p   = xdr_encode_hyper(p, maxcount);
-+	 p   = xdr_encode_hyper(p, count);
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+-		return -EIO;
++	for (i = 0; i < segments; i++) {
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			return -EIO;
  
--	*eof = (read->rd_offset + maxcount) >= i_size_read(file_inode(file));
-+	*eof = (read->rd_offset + count) >= i_size_read(file_inode(file));
-+	*maxcount = min_t(unsigned long, count, *maxcount);
- 	return nfs_ok;
- }
+-	type = be32_to_cpup(p++);
+-	if (type == NFS4_CONTENT_DATA)
+-		status = decode_read_plus_data(xdr, res, &eof);
+-	else if (type == NFS4_CONTENT_HOLE)
+-		status = decode_read_plus_hole(xdr, res, &eof);
+-	else
+-		return -EINVAL;
++		type = be32_to_cpup(p++);
++		if (type == NFS4_CONTENT_DATA)
++			status = decode_read_plus_data(xdr, res, &eof);
++		else if (type == NFS4_CONTENT_HOLE)
++			status = decode_read_plus_hole(xdr, res, &eof);
++		else
++			return -EINVAL;
  
-@@ -4664,7 +4673,7 @@ static __be32
- nfsd4_encode_read_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		       struct nfsd4_read *read)
- {
--	unsigned long maxcount;
-+	unsigned long maxcount, count;
- 	struct xdr_stream *xdr = &resp->xdr;
- 	struct file *file;
- 	int starting_len = xdr->buf->len;
-@@ -4687,6 +4696,7 @@ nfsd4_encode_read_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	maxcount = min_t(unsigned long, maxcount,
- 			 (xdr->buf->buflen - xdr->buf->len));
- 	maxcount = min_t(unsigned long, maxcount, read->rd_length);
-+	count    = maxcount;
- 
- 	eof = read->rd_offset >= i_size_read(file_inode(file));
- 	if (eof)
-@@ -4695,24 +4705,38 @@ nfsd4_encode_read_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	pos = vfs_llseek(file, read->rd_offset, SEEK_DATA);
- 	if (pos == -ENXIO)
- 		pos = i_size_read(file_inode(file));
-+	else if (pos < 0)
-+		pos = read->rd_offset;
- 
--	if (pos > read->rd_offset) {
--		maxcount = pos - read->rd_offset;
--		nfserr = nfsd4_encode_read_plus_hole(resp, read, maxcount, &eof);
-+	if (pos == read->rd_offset) {
-+		maxcount = count;
-+		nfserr = nfsd4_encode_read_plus_data(resp, read, &maxcount, &eof);
-+		if (nfserr)
-+			goto out;
-+		count -= maxcount;
-+		read->rd_offset += maxcount;
- 		segments++;
--	} else {
--		nfserr = nfsd4_encode_read_plus_data(resp, read, maxcount, &eof);
+-	if (status)
+-		return status;
+-	if (segments > 1)
+-		eof = 0;
++		if (status < 0)
++			return status;
++		if (status > 0)
++			break;
 +	}
-+
-+	if (count > 0 && !eof) {
-+		maxcount = count;
-+		nfserr = nfsd4_encode_read_plus_hole(resp, read, &maxcount, &eof);
-+		if (nfserr)
-+			goto out;
-+		count -= maxcount;
-+		read->rd_offset += maxcount;
- 		segments++;
- 	}
  
  out:
--	if (nfserr)
-+	if (nfserr && segments == 0)
- 		xdr_truncate_encode(xdr, starting_len);
- 	else {
- 		tmp = htonl(eof);
- 		write_bytes_to_xdr_buf(xdr->buf, starting_len,     &tmp, 4);
- 		tmp = htonl(segments);
- 		write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
-+		nfserr = nfs_ok;
- 	}
- 
- 	return nfserr;
+ 	res->eof = eof;
 -- 
 2.28.0
 
