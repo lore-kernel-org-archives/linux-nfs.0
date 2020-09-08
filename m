@@ -2,209 +2,126 @@ Return-Path: <SRS0=kBQ9=CR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,
+	DKIM_ADSP_CUSTOM_MED,DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,
+	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4533CC43461
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 11:08:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67CAFC433E2
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:25:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F332120936
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 11:08:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1DD0120678
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:25:43 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ut8yCrtj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728982AbgIHLIH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Sep 2020 07:08:07 -0400
-Received: from natter.dneg.com ([193.203.89.68]:35976 "EHLO natter.dneg.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729799AbgIHLGu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 8 Sep 2020 07:06:50 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by natter.dneg.com (Postfix) with ESMTP id 38ACB1DB1282;
-        Tue,  8 Sep 2020 12:06:45 +0100 (BST)
-X-Virus-Scanned: amavisd-new at mx-dneg
-Received: from natter.dneg.com ([127.0.0.1])
-        by localhost (natter.dneg.com [127.0.0.1]) (amavisd-new, port 10024)
-        with LMTP id g2eLEF3P0BXr; Tue,  8 Sep 2020 12:06:45 +0100 (BST)
-Received: from zrozimbrai.dneg.com (zrozimbrai.dneg.com [10.11.20.12])
-        by natter.dneg.com (Postfix) with ESMTPS id 05B239C88F3;
-        Tue,  8 Sep 2020 12:06:45 +0100 (BST)
-Received: from localhost (localhost [127.0.0.1])
-        by zrozimbrai.dneg.com (Postfix) with ESMTP id 41AD881475E6;
-        Tue,  8 Sep 2020 12:06:44 +0100 (BST)
-Received: from zrozimbrai.dneg.com ([127.0.0.1])
-        by localhost (zrozimbrai.dneg.com [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id yhNO6k2_G9XV; Tue,  8 Sep 2020 12:06:44 +0100 (BST)
-Received: from localhost (localhost [127.0.0.1])
-        by zrozimbrai.dneg.com (Postfix) with ESMTP id 249968146AFC;
-        Tue,  8 Sep 2020 12:06:44 +0100 (BST)
-X-Virus-Scanned: amavisd-new at zimbra-dneg
-Received: from zrozimbrai.dneg.com ([127.0.0.1])
-        by localhost (zrozimbrai.dneg.com [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id Fe0ZnO9CPmRQ; Tue,  8 Sep 2020 12:06:44 +0100 (BST)
-Received: from zrozimbra1.dneg.com (zrozimbra1.dneg.com [10.11.16.16])
-        by zrozimbrai.dneg.com (Postfix) with ESMTP id 0CE2281475E6;
-        Tue,  8 Sep 2020 12:06:44 +0100 (BST)
-Date:   Tue, 8 Sep 2020 12:06:44 +0100 (BST)
-From:   Daire Byrne <daire@dneg.com>
-To:     "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-cachefs <linux-cachefs@redhat.com>
-Message-ID: <767326930.31952012.1599563204539.JavaMail.zimbra@dneg.com>
-In-Reply-To: <1642729052.4237865.1599558047149.JavaMail.zimbra@desy.de>
-References: <943482310.31162206.1599499860595.JavaMail.zimbra@dneg.com> <1642729052.4237865.1599558047149.JavaMail.zimbra@desy.de>
-Subject: Re: Adventures in NFS re-exporting
+        id S1731905AbgIHQZl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Sep 2020 12:25:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58684 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731936AbgIHQZS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2020 12:25:18 -0400
+Received: from mail-il1-x143.google.com (mail-il1-x143.google.com [IPv6:2607:f8b0:4864:20::143])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 447C1C061756
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 09:25:17 -0700 (PDT)
+Received: by mail-il1-x143.google.com with SMTP id b17so15996515ilh.4
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2020 09:25:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=FifsME1ATOsJkuZC/VYkpO0dbUrlMefaE25nRi/x3mQ=;
+        b=ut8yCrtjH0mpCteKDmc31/qTjayhnDmpGU3VIXdOKeoD+pbovHil2TOFM6juvawtOS
+         p10u4y/sRI7tNmCF0Z+7g3AUgoa9tE3+BCU5byTHD7nTNOp0Yp3ffPtkkyFZibwrRAS2
+         CLD/L9EAugXGfIUl2HHoMRUNKqhyA5YD0XU2mBpjE4YaTdeHZiDDUqH4Hr3B9ktDxebf
+         yAcqMtERtiWzKrbvSCfh7Vxzu80R71C2wmHNAT+MbEhaSI5VDRrd6bUBqjwHh1G2LSpG
+         rxxfOLUr+N+2mTsZNg1ixhe54I5wKqxjpTepPQefOaHeqSNGRHXsTOsTV3dfDRfIHg4T
+         ITbg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=FifsME1ATOsJkuZC/VYkpO0dbUrlMefaE25nRi/x3mQ=;
+        b=nKnb46X69cQPTPwmYaHAqnvY8/wxymx1+m+icyrNukuK8I4XPPn2Hy+LHBvr5OXZ5n
+         Te52XrlZI28SK0w/Q+2g7m+Q7xdgSRJ+6JunBdRFfol95FZmsQbNtia6mPv8CRdaKKpR
+         A/W2e/hWNEFUncnccZrY5MqsZICNc5/btZIDjQRc6KPPpXzclQFYDJtox31mKHjtupOw
+         9DzuUQvLMzf5V7u3Bu9t5Kbo4UJ/CZQUDXz2mMJFOP5wIWm1jxtMYyXZv1YCgLRwDClp
+         DO1kQ/ok3eptap4edi75JFCZn7Ahki0AdEDWSyqfSjrKQFa7+oNyBEcU/++mIupdOvLe
+         Zoqg==
+X-Gm-Message-State: AOAM531i5auvMU79LS2IqjPIsdoxzNlsBZT95y5yJKW1+7Tnlqd08B6J
+        mBfKU6bJdZrd2PLSxmFA0WtO4eNy02Q=
+X-Google-Smtp-Source: ABdhPJz96WU0zuehnhnFLMOBoj8dvRw165BXx9BTP3+FU9iBwRNjTKUX6RT1f/myCbzV8y9bb0hxjA==
+X-Received: by 2002:a92:5e84:: with SMTP id f4mr24267582ilg.104.1599582316389;
+        Tue, 08 Sep 2020 09:25:16 -0700 (PDT)
+Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
+        by smtp.gmail.com with ESMTPSA id 2sm10291375ilj.24.2020.09.08.09.25.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 08 Sep 2020 09:25:15 -0700 (PDT)
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v5 02/10] SUNRPC: Implement a xdr_page_pos() function
+Date:   Tue,  8 Sep 2020 12:25:05 -0400
+Message-Id: <20200908162513.508991-3-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.28.0
+In-Reply-To: <20200908162513.508991-1-Anna.Schumaker@Netapp.com>
+References: <20200908162513.508991-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Mailer: Zimbra 8.7.11_GA_1854 (ZimbraWebClient - GC78 (Linux)/8.7.11_GA_1854)
-Thread-Topic: Adventures in NFS re-exporting
-Thread-Index: fNDm/l4o9cYx5Rz5g0S1EO4zMAtIR5PHKb0Pjd1zDnQ=
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Tigran,
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-I guess I never really considered overlayfs because we still want to seamlessly write through to the original servers from time to time and post processing the copies from upper to lower seems like it might be hard to make reliable or do with low latency? I would also worry that our lower filesystem is being actively updated by processes outside of the overlay clients and how overlayfs would deal with that. And ultimately, the COW nature of overlayfs is a somewhat wasted feature for our workloads whereby it's the caching of file reads (and metadata) we care most about.
+I'll need this for READ_PLUS to help figure out the offset where page
+data is stored at, but it might also be useful for other things.
 
-I must confess to not having looked at overlayfs in a few years so there may be lots of new tricks and options that would help our case. I'm aware that it gained the ability to NFS (re-)export a couple of years back.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ include/linux/sunrpc/xdr.h |  1 +
+ net/sunrpc/xdr.c           | 13 +++++++++++++
+ 2 files changed, 14 insertions(+)
 
-But I'm certainly now interested to know if that NFS re-export implementation fares any better with the issues I experience with a direct knfsd re-export of an NFS client. So I will do some testing with overlayfs and see how it stacks up (see what I did there?).
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 6613d96a3029..026edbd041d5 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -242,6 +242,7 @@ extern int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern unsigned int xdr_stream_pos(const struct xdr_stream *xdr);
++extern unsigned int xdr_page_pos(const struct xdr_stream *xdr);
+ extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf,
+ 			    __be32 *p, struct rpc_rqst *rqst);
+ extern void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index c62b0882c0d8..8d29450fdce5 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -505,6 +505,19 @@ unsigned int xdr_stream_pos(const struct xdr_stream *xdr)
+ }
+ EXPORT_SYMBOL_GPL(xdr_stream_pos);
+ 
++/**
++ * xdr_page_pos - Return the current offset from the start of the xdr pages
++ * @xdr: pointer to struct xdr_stream
++ */
++unsigned int xdr_page_pos(const struct xdr_stream *xdr)
++{
++	unsigned int pos = xdr_stream_pos(xdr);
++
++	WARN_ON(pos < xdr->buf->head[0].iov_len);
++	return pos - xdr->buf->head[0].iov_len;
++}
++EXPORT_SYMBOL_GPL(xdr_page_pos);
++
+ /**
+  * xdr_init_encode - Initialize a struct xdr_stream for sending data.
+  * @xdr: pointer to xdr_stream struct
+-- 
+2.28.0
 
-Thanks for the suggestion!
-
-Daire
-
------ On 8 Sep, 2020, at 10:40, Mkrtchyan, Tigran tigran.mkrtchyan@desy.de wrote:
-
-> Just out of curiosity:
-> 
-> did you have tries instead of re-exporting nfs mount directly
-> re-export an overlayfs mount on top of the original nfs mount?
-> Such setup should cover most of your issues.
-> 
-> Regards,
->   Tigran.
-> 
-> ----- Original Message -----
->> From: "Daire Byrne" <daire@dneg.com>
->> To: "linux-nfs" <linux-nfs@vger.kernel.org>
->> Cc: linux-cachefs@redhat.com
->> Sent: Monday, September 7, 2020 7:31:00 PM
->> Subject: Adventures in NFS re-exporting
-> 
->> Hi,
->> 
->> Apologies for this rather long email, but I thought there may be some interest
->> out there in the community in how and why we've been doing something
->> unsupported and barely documented - NFS re-exporting! And I'm not sure I can
->> tell our story well in just a few short sentences so please bear with me (or
->> stop now!).
->> 
->> Full disclosure - I am also rather hoping that this story piques some interest
->> amongst developers to help make our rather niche setup even better and perhaps
->> a little better documented. I also totally understand if this is something
->> people wouldn't want to touch with a very long barge pole....
->> 
->> First a quick bit of history (I hope I have this right). Late in 2015, Jeff
->> Layton proposed a patch series allowing knfsd to re-export a NFS client mount.
->> The rationale then was to provide a "proxy" server that could mount an NFSv4
->> only server and re-export it to older clients that only supported NFSv3. One of
->> the main sticking points then (as now), was around the 63 byte limit of
->> filehandles for NFSv3 and how it couldn't be guaranteed that all re-exported
->> filehandles would fit within that (in my experience it mostly works with
->> "no_subtree_check"). There are also the usual locking and coherence concerns
->> with NFSv3 too but I'll get to that in a bit.
->> 
->> Then almost two years later, v4.13 was released including parts of the patch
->> series that actually allowed the re-export and since then other relevant bits
->> (such as the open file cache) have also been merged. I soon became interested
->> in using this new functionality to both accelerate our on-premises NFS storage
->> and use it as a "WAN cache" to provide cloud compute instances locally cached
->> proxy access to our on-premises storage.
->> 
->> Cut to a brief introduction to us and what we do... DNEG is an award winning VFX
->> company which uses large compute farms to generate complex final frame renders
->> for movies and TV. This workload mostly consists of reads of common data shared
->> between many render clients (e.g textures, geometry) and a little unique data
->> per frame. All file writes are to unique files per process (frames) and there
->> is very little if any writing over existing files. Hence it's not very
->> demanding on locking and coherence guarantees.
->> 
->> When our on-premises NFS storage is being overloaded or the server's network is
->> maxed out, we can place multiple re-export servers in between them and our farm
->> to improve performance. When our on-premises render farm is not quite big
->> enough to meet a deadline, we spin up compute instances with a (reasonably
->> local) cloud provider. Some of these cloud instances are Linux NFS servers
->> which mount our on-premises NFS storage servers (~10ms away) and re-export
->> these to the other cloud (render) instances. Since we know that the data we are
->> reading doesn't change often, we can increase the actimeo and even use nocto to
->> reduce the network chatter back to the on-prem servers. These re-export servers
->> also use fscache/cachefiles to cache data to disk so that we can retain TBs of
->> previously read data locally in the cloud over long periods of time. We also
->> use NFSv4 (less network chatter) all the way from our on-prem storage to the
->> re-export server and then on to the clients.
->> 
->> The re-export server(s) quickly builds up both a memory cache and disk backed
->> fscache/cachefiles storage cache of our working data set so the data being
->> pulled from on-prem lessens over time. Data is only ever read once over the WAN
->> network from on-prem storage and then read multiple times by the many render
->> client instances in the cloud. Recent NFS features such as "nconnect" help to
->> speed up the initial reading of data from on-prem by using multiple connections
->> to offset TCP latency. At the end of the render, we write the files back
->> through the re-export server to our on-prem storage. Our average read bandwidth
->> is many times higher than our write bandwidth.
->> 
->> Rather surprisingly, this mostly works for our particular workloads. We've
->> completed movies using this setup and saved money on commercial caching systems
->> (e.g Avere, GPFS, etc). But there are still some remaining issues with doing
->> something that is very much not widely supported (or recommended). In most
->> cases we have worked around them, but it would be great if we didn't have to so
->> others could also benefit. I will list the main problems quickly now and
->> provide more information and reproducers later if anyone is interested.
->> 
->> 1) The kernel can drop entries out of the NFS client inode cache (under memory
->> cache churn) when those filehandles are still being used by the knfsd's remote
->> clients resulting in sporadic and random stale filehandles. This seems to be
->> mostly for directories from what I've seen. Does the NFS client not know that
->> knfsd is still using those files/dirs? The workaround is to never drop inode &
->> dentry caches on the re-export servers (vfs_cache_pressure=1). This also helps
->> to ensure that we actually make the most of our actimeo=3600,nocto mount
->> options for the full specified time.
->> 
->> 2) If we cache metadata on the re-export server using actimeo=3600,nocto we can
->> cut the network packets back to the origin server to zero for repeated lookups.
->> However, if a client of the re-export server walks paths and memory maps those
->> files (i.e. loading an application), the re-export server starts issuing
->> unexpected calls back to the origin server again, ignoring/invalidating the
->> re-export server's NFS client cache. We worked around this this by patching an
->> inode/iversion validity check in inode.c so that the NFS client cache on the
->> re-export server is used. I'm not sure about the correctness of this patch but
->> it works for our corner case.
->> 
->> 3) If we saturate an NFS client's network with reads from the server, all client
->> metadata lookups become unbearably slow even if it's all cached in the NFS
->> client's memory and no network RPCs should be required. This is the case for
->> any NFS client regardless of re-exporting but it affects this case more because
->> when we can't serve cached metadata we also can't serve the cached data. It
->> feels like some sort of bottleneck in the client's ability to parallelise
->> requests? We work around this by not maxing out our network.
->> 
->> 4) With an NFSv4 re-export, lots of open/close requests (hundreds per second)
->> quickly eat up the CPU on the re-export server and perf top shows we are mostly
->> in native_queued_spin_lock_slowpath. Does NFSv4 also need an open file cache
->> like that added to NFSv3? Our workaround is to either fix the thing doing lots
->> of repeated open/closes or use NFSv3 instead.
->> 
->> If you made it this far, I've probably taken up way too much of your valuable
->> time already. If nobody is interested in this rather niche application of the
->> Linux client & knfsd, then I totally understand and I will not mention it here
->> again. If your interest is piqued however, I'm happy to go into more detail
->> about any of this with the hope that this could become a better documented and
->> understood type of setup that others with similar workloads could reference.
->> 
->> Also, many thanks to all the Linux NFS developers for the amazing work you do
->> which, in turn, helps us to make great movies. :)
->> 
-> > Daire (Head of Systems DNEG)
