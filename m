@@ -2,132 +2,154 @@ Return-Path: <SRS0=kBQ9=CR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-3.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D70E4C43461
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:56:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE880C2BC11
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 19:02:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 98A9C207DE
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:56:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8417020757
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 19:02:40 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eUiEDJtd"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Z54OsuWi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732055AbgIHQ4X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Sep 2020 12:56:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58278 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731818AbgIHQWu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2020 12:22:50 -0400
-Received: from mail-qk1-x743.google.com (mail-qk1-x743.google.com [IPv6:2607:f8b0:4864:20::743])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 373A4C09B041
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 07:40:12 -0700 (PDT)
-Received: by mail-qk1-x743.google.com with SMTP id n133so15415235qkn.11
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2020 07:40:12 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=pRD4TDkRALqxK9LxYsFQi/z7ytWafNFxICfASgS7Mbw=;
-        b=eUiEDJtdxSonlW1nccEEFj0ULIyhpJEgzV4rKLl9q7KhfuREZ3TvAp3Ys1aqi3JNWP
-         /TdA1SN3e+k1hu9YErgTw4ANuRVsaThsA+LMFD+jKKZrvSwAHTDaYvYN2QcgM2CQea0a
-         RQXwqj+DQ8QhJlGLA/a+t6mLlrImJtP2GaKxVG4AmjK08vROYEZwwWkoAljWxmuk+u0F
-         Qp4+aoii6sjPhY+3kcyKCM4g8ma8UxEMDduvUORG/9z/FPx8vt2uvr3qEGliRND+Ai4S
-         +MLYgq5MxJt8BAQfvp0dX5pdab3M3xjRrGDO9nziMbbZ7XW6YXVW7oyVEn1oTW8Mniyk
-         YLyw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=pRD4TDkRALqxK9LxYsFQi/z7ytWafNFxICfASgS7Mbw=;
-        b=swaLnw3CELHbG9u180NfVsrXnXIrykCAQAL/8gXzdIA1QkHnX0i/dJEgDW4INbHW0F
-         ul+SvTjtNgk7WuZuB1aEfNffCOFXUAYMLoA7i7/W1HHT/IC7lJyNYpUAxUdWFb+meDoz
-         fFfe21sQ8EGhQOiOcSSwVgVsbNdHkVEvpcyhMnZ/u10A7G20O9R8rYj4clSy8iwGLi2e
-         IBTI8Wlvxp++m5gvuW0Ts4PFaoWRYWy2r1Zqyr558qQITOJFOjinPNn+Xk3ZCn77uFSN
-         fibYjGue53dyK1gZ+Rks29b1iQSrsfhHVNmlV+xXwaShkEO8XOWE/ibEt8KYxpRquoJj
-         V5eg==
-X-Gm-Message-State: AOAM531aYIQxZSP7T4hliiAbLIm0oqoSLdh3Uq+WSKm6TcPwhqr8OoUN
-        7qsxWiVTPpl0k8o/ve3QnWxfJSBz9mE=
-X-Google-Smtp-Source: ABdhPJznCYZRgZKSKmig++XOXM3ibgc2tRvrQlfr29SkEGtSa5ACGZAWoyNg9k0Ow4Vcyzzmtyy3bA==
-X-Received: by 2002:a37:c202:: with SMTP id i2mr350319qkm.169.1599576010818;
-        Tue, 08 Sep 2020 07:40:10 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id y10sm13991599qkf.47.2020.09.08.07.40.09
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 08 Sep 2020 07:40:09 -0700 (PDT)
-Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 088Ee8EV024288;
-        Tue, 8 Sep 2020 14:40:08 GMT
-Subject: [PATCH] NFSD: Correct type annotations in user xattr XDR functions
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     fllinden@amazon.com
-Date:   Tue, 08 Sep 2020 10:40:08 -0400
-Message-ID: <159957600810.2070.13566475771084248808.stgit@klimt.1015granger.net>
-User-Agent: StGit/0.23
+        id S1730979AbgIHTCf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Sep 2020 15:02:35 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:33657 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1731246AbgIHQIB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2020 12:08:01 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1599581260;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=6dqrwLrSz74T5A+ccgX3XD/bc6eP53kVtfONjGG7fws=;
+        b=Z54OsuWi58JuAv/Li0dRp62bDceucHW9D0+HW37y1GEPGTca52k+jnKY2KMIBPaoF1qMK7
+        8ejkWxiG4PtjmPinffL7PZJtdf3TcWmTVZMB61KtxXQZP+bHvIoWFddKyxluKBI/aIcTDt
+        9TDQBkjw3lETaC+ONeG0NvtWq6u16do=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-536-j2kxPdzZPsCW0dhpNvXUxw-1; Tue, 08 Sep 2020 08:43:50 -0400
+X-MC-Unique: j2kxPdzZPsCW0dhpNvXUxw-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4961E18BFEC0;
+        Tue,  8 Sep 2020 12:43:49 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id B73F960C0F;
+        Tue,  8 Sep 2020 12:43:48 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Chuck Lever" <chuck.lever@oracle.com>
+Cc:     "Murphy Zhou" <jencce.kernel@gmail.com>,
+        "Trond Myklebust" <trondmy@hammerspace.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: fix stateid refreshing when CLOSE racing with OPEN
+Date:   Tue, 08 Sep 2020 08:43:47 -0400
+Message-ID: <3ABDF891-C6AE-4EA8-BCB1-D8BD3015280C@redhat.com>
+In-Reply-To: <BE205FBB-E5BC-40B2-8F3D-B7B6A7EBEB53@oracle.com>
+References: <20191010074020.o2uwtuyegtmfdlze@XZHOUW.usersys.redhat.com>
+ <f81d80f09c59d78c32fddd535b5604bc05c2a2b5.camel@hammerspace.com>
+ <20191011084910.joa3ptovudasyo7u@xzhoux.usersys.redhat.com>
+ <cbe6a84f9cd61a8f60e70c05a07b3247030a262f.camel@hammerspace.com>
+ <6AAFBD30-1931-49A8-8120-B7171B0DA01C@redhat.com>
+ <20200904030411.enioqeng4wxftucd@xzhoux.usersys.redhat.com>
+ <B6AA10F3-072D-4BFD-9D96-275EC1A9D990@redhat.com>
+ <BE205FBB-E5BC-40B2-8F3D-B7B6A7EBEB53@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; format=flowed
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Squelch some sparse warnings:
+On 4 Sep 2020, at 10:14, Chuck Lever wrote:
 
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4692:24: warning: incorrect type in return expression (different base types)
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4692:24:    expected int
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4692:24:    got restricted __be32 [usertype]
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4702:32: warning: incorrect type in return expression (different base types)
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4702:32:    expected int
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4702:32:    got restricted __be32 [usertype]
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4739:13: warning: incorrect type in assignment (different base types)
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4739:13:    expected restricted __be32 [usertype] err
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4739:13:    got int
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4891:15: warning: incorrect type in assignment (different base types)
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4891:15:    expected unsigned int [assigned] [usertype] count
-/home/cel/src/linux/linux/fs/nfsd/nfs4xdr.c:4891:15:    got restricted __be32 [usertype]
+>> On Sep 4, 2020, at 6:55 AM, Benjamin Coddington <bcodding@redhat.com> 
+>> wrote:
+>>
+>> On 3 Sep 2020, at 23:04, Murphy Zhou wrote:
+>>
+>>> Hi Benjamin,
+>>>
+>>> On Thu, Sep 03, 2020 at 01:54:26PM -0400, Benjamin Coddington wrote:
+>>>>
+>>>> On 11 Oct 2019, at 10:14, Trond Myklebust wrote:
+>>>>> On Fri, 2019-10-11 at 16:49 +0800, Murphy Zhou wrote:
+>>>>>> On Thu, Oct 10, 2019 at 02:46:40PM +0000, Trond Myklebust wrote:
+>>>>>>> On Thu, 2019-10-10 at 15:40 +0800, Murphy Zhou wrote:
+>>>> ...
+>>>>>>>> @@ -3367,14 +3368,16 @@ static bool
+>>>>>>>> nfs4_refresh_open_old_stateid(nfs4_stateid *dst,
+>>>>>>>> 			break;
+>>>>>>>> 		}
+>>>>>>>> 		seqid_open = state->open_stateid.seqid;
+>>>>>>>> -		if (read_seqretry(&state->seqlock, seq))
+>>>>>>>> -			continue;
+>>>>>>>>
+>>>>>>>> 		dst_seqid = be32_to_cpu(dst->seqid);
+>>>>>>>> -		if ((s32)(dst_seqid - be32_to_cpu(seqid_open)) >= 0)
+>>>>>>>> +		if ((s32)(dst_seqid - be32_to_cpu(seqid_open)) > 0)
+>>>>>>>> 			dst->seqid = cpu_to_be32(dst_seqid + 1);
+>>>>>>>
+>>>>>>> This negates the whole intention of the patch you reference in 
+>>>>>>> the
+>>>>>>> 'Fixes:', which was to allow us to CLOSE files even if seqid 
+>>>>>>> bumps
+>>>>>>> have
+>>>>>>> been lost due to interrupted RPC calls e.g. when using 'soft' or
+>>>>>>> 'softerr' mounts.
+>>>>>>> With the above change, the check could just be tossed out
+>>>>>>> altogether,
+>>>>>>> because dst_seqid will never become larger than seqid_open.
+>>>>>>
+>>>>>> Hmm.. I got it wrong. Thanks for the explanation.
+>>>>>
+>>>>> So to be clear: I'm not saying that what you describe is not a 
+>>>>> problem.
+>>>>> I'm just saying that the fix you propose is really no better than
+>>>>> reverting the entire patch. I'd prefer not to do that, and would 
+>>>>> rather
+>>>>> see us look for ways to fix both problems, but if we can't find 
+>>>>> such as
+>>>>> fix then that would be the better solution.
+>>>>
+>>>> Hi Trond and Murphy Zhou,
+>>>>
+>>>> Sorry to resurrect this old thread, but I'm wondering if any 
+>>>> progress was
+>>>> made on this front.
+>>>
+>>> This failure stoped showing up since v5.6-rc1 release cycle
+>>> in my records. Can you reproduce this on latest upstream kernel?
+>>
+>> I'm seeing it on generic/168 on a v5.8 client against a v5.3 knfsd 
+>> server.
+>> When I test against v5.8 server, the test takes longer to complete 
+>> and I
+>> have yet to reproduce the livelock.
+>>
+>> - on v5.3 server takes ~50 iterations to produce, each test completes 
+>> in ~40
+>> seconds
+>> - on v5.8 server my test has run ~750 iterations without getting into
+>> the lock, each test takes ~60 seconds.
+>>
+>> I suspect recent changes to the server have changed the timing of 
+>> open
+>> replies such that the problem isn't reproduced on the client.
+>
+> The Linux NFS server in v5.4 does behave differently than earlier
+> kernels with NFSv4.0, and it is performance-related. The filecache
+> went into v5.4, and that seems to change the frequency at which
+> the server offers delegations.
 
-Fixes: 23e50fe3a5e6 ("nfsd: implement the xattr functions and en/decode logic")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/nfs4xdr.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Just a point of reference - finally reproduced it on a v5.8 server after
+4900 runs.  This took several days, and helped to heat the basement.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 259d5ad0e3f4..400b41b86595 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4679,7 +4679,7 @@ nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
- /*
-  * Encode kmalloc-ed buffer in to XDR stream.
-  */
--static int
-+static __be32
- nfsd4_vbuf_to_stream(struct xdr_stream *xdr, char *buf, u32 buflen)
- {
- 	u32 cplen;
-@@ -4795,7 +4795,7 @@ nfsd4_encode_listxattrs(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	u32 xdrlen, offset;
- 	u64 cookie;
- 	char *sp;
--	__be32 status;
-+	__be32 status, tmp;
- 	__be32 *p;
- 	u32 nuser;
- 
-@@ -4888,8 +4888,8 @@ nfsd4_encode_listxattrs(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	cookie = offset + count;
- 
- 	write_bytes_to_xdr_buf(xdr->buf, cookie_offset, &cookie, 8);
--	count = htonl(count);
--	write_bytes_to_xdr_buf(xdr->buf, count_offset, &count, 4);
-+	tmp = cpu_to_be32(count);
-+	write_bytes_to_xdr_buf(xdr->buf, count_offset, &tmp, 4);
- out:
- 	if (listxattrs->lsxa_len)
- 		kvfree(listxattrs->lsxa_buf);
-
+Ben
 
