@@ -2,69 +2,72 @@ Return-Path: <SRS0=kBQ9=CR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.3 required=3.0 tests=BAYES_00,DKIM_ADSP_CUSTOM_MED,
-	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,
+	DKIM_ADSP_CUSTOM_MED,DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,
+	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26DDFC43461
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:25:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 76717C433E2
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:26:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C88E320678
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:25:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 33761206E7
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 16:26:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tB1h238P"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Mx2paZxA"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731936AbgIHQZm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Sep 2020 12:25:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58674 "EHLO
+        id S1731596AbgIHQ0T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Sep 2020 12:26:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58748 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731429AbgIHQZQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2020 12:25:16 -0400
+        with ESMTP id S1731502AbgIHQZj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2020 12:25:39 -0400
 Received: from mail-il1-x144.google.com (mail-il1-x144.google.com [IPv6:2607:f8b0:4864:20::144])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E159BC061573
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 09:25:15 -0700 (PDT)
-Received: by mail-il1-x144.google.com with SMTP id l4so15987282ilq.2
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2020 09:25:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9FE1EC061796
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 09:25:22 -0700 (PDT)
+Received: by mail-il1-x144.google.com with SMTP id w5so8048460ilo.5
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Sep 2020 09:25:22 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=9eqY2VgLNiH4Wvt02/zDamwhTEN0QgqZSAfqhEkVnDg=;
-        b=tB1h238PAv+ZVO59RHkHB5OqbA7LiJq6rxsFCkZsxJgbODZqWIsoOgtQKzq7nP2Zk4
-         bp5EEy4hjnsD/NuEZK4FI3JbR78nUilOBW1bBR8ZwR0NgBcHjFxLPDplySRZdhJdX1T7
-         0yUjsrtoCpB+k5h9ZSk5Z44PreVSPOuR9o4SV3+amZ9o6b2GtRMiFPIbjppGf2MPp8MZ
-         ozJ425pb7VZCqN0b6TQhNntuhFsBG1xSDN1eeBDZb7EFy+w9I9+nReswh3bsOlHBd3cx
-         JyCEqFZ+FapjKFjO5ytMGVakxAX23EAz1z9Ti5empI+OjieojlalYMTY+XamyzbZNWvG
-         ct3w==
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=q1kCKc3IoQZq6eAPMW1QAyP6Judd54FV+ny15Qj8+pI=;
+        b=Mx2paZxAVj0R2QtYQItw6wTx3pDZ9HAs9Nra5RSUb8Icp/KtaWd3eKX9G0X59+P9h5
+         SV/L5sKaQwdyHrF2fYFhBPQgeIdLaG+i0N5fDaAMbLNeO8AZhD3wNcXf1MnkJMgScim/
+         n0YhiOxBHbD/A3M8LhBDmL8qPBom7WjNXi46m4RcR/ibHif94DyydMF7EH7dLkerd59E
+         96YUYMiCATT7YZNzFNQn/9HOdrzS1if33tPrgBJP3eKXu8li5GvhX3rfXrsAxgRtIrsb
+         MaSEwaLmBekK70jzER51cpJHtmKZCh5Zw+/KDcMFH0vaBQ17g3lEHyqVT37UzerqprHm
+         LWGg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :mime-version:content-transfer-encoding;
-        bh=9eqY2VgLNiH4Wvt02/zDamwhTEN0QgqZSAfqhEkVnDg=;
-        b=gmGBxfA32AlbYll3N9vuf1hUGm0UiKXU0/dRQ93+s9a8rUiXMXFX0HXH/p5lfaDj0e
-         q1Zzlu95XJ5WsipSktK9BagptwniuPUyLEbDT24T6N6/b5DyN4uj2IIL4MMUzNG2Eukt
-         8P9D+2rCMKEtCO7Z8SRZoWLHqZL7TqLaO7z69TQ8KJK6UQyQ8gUmgvOx/pqe+oyf5m6o
-         rZcWyEEflbngH8Tqx0G3zgLoZmbMaf9AC1/Mv11onhhQ86o0/z6IpG2SPv6LdHn+g/uO
-         zxfkIzUNhDjT/YxiBOLEy6nVLpgtZmyvd14sxn7kwrrFRynqLxQkBB1jMLpmGJMotUFO
-         lsWg==
-X-Gm-Message-State: AOAM531eNzWmF5SDhrysOrHl0YcQ8mLWLQPUlKv1jvk0RM/pacEHeXSF
-        l8cu5T9Oy7unRoMcidg0lHasWIOk7RM=
-X-Google-Smtp-Source: ABdhPJzsnMoZzll9vpjEKBfCzYKlbXLlC4P1JXVUQww2kvVrPdtMhONSI4E1L6rS+7LbxXzJX+3QVQ==
-X-Received: by 2002:a92:9f53:: with SMTP id u80mr24015569ili.42.1599582314526;
-        Tue, 08 Sep 2020 09:25:14 -0700 (PDT)
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=q1kCKc3IoQZq6eAPMW1QAyP6Judd54FV+ny15Qj8+pI=;
+        b=GGZgS2JjBjq5V0AmQKS83lvFaui4/FxP41Hz7OweCJP7ZMgLCbDOkO1C7leUgAU4m1
+         WIQfRXKPMCOvbXjZSp8amQoFYvyNNElfcJDMo0e8t/S5DLEn6d2iMZi2N4mp7LdtRTiQ
+         fHjX6tYDc0aAGLa2JUZ7HDgxHeKPtMRtCTXqbm9Ct1SwaazQxfnVcPT6GEaDr2KJdF4c
+         ITIK3dmwmaX4gnz65oBYyT//p/J1SA8xA/0V61xSwRSgnIER753+qWdYHUBvAH4aFWOD
+         fhQLv1svISdklXYBrjJtiHtZFsIMM5IOwZjBKEZbqmxdS83Ek9UMv0RDI7hLrkD69knU
+         +6zQ==
+X-Gm-Message-State: AOAM531LcWRnr7aMUARp4SU5QCL5AT+zYhkEKjy8X5Ou3dcr7+DWJwKv
+        4iUo6DZIKrN4snK43xvkw1RJdTjLJ7M=
+X-Google-Smtp-Source: ABdhPJxdepruYnVTvoMEiD8b8t+KaTBdcRqAC2jHTLMcXXkuQ8Y3Xo4uQkuFwLSlumgUjP0m5cJBNQ==
+X-Received: by 2002:a92:d08e:: with SMTP id h14mr24365623ilh.1.1599582321661;
+        Tue, 08 Sep 2020 09:25:21 -0700 (PDT)
 Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
-        by smtp.gmail.com with ESMTPSA id 2sm10291375ilj.24.2020.09.08.09.25.13
+        by smtp.gmail.com with ESMTPSA id 2sm10291375ilj.24.2020.09.08.09.25.20
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 08 Sep 2020 09:25:13 -0700 (PDT)
+        Tue, 08 Sep 2020 09:25:21 -0700 (PDT)
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v5 00/10] NFS: Add support for the v4.2 READ_PLUS operation
-Date:   Tue,  8 Sep 2020 12:25:03 -0400
-Message-Id: <20200908162513.508991-1-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v5 07/10] SUNRPC: Add the ability to expand holes in data pages
+Date:   Tue,  8 Sep 2020 12:25:10 -0400
+Message-Id: <20200908162513.508991-8-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.28.0
+In-Reply-To: <20200908162513.508991-1-Anna.Schumaker@Netapp.com>
+References: <20200908162513.508991-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -74,221 +77,123 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-These patches add client support for the READ_PLUS operation, which
-breaks read requests into several "data" and "hole" segments when
-replying to the client.
+This patch adds the ability to "read a hole" into a set of XDR data
+pages by taking the following steps:
 
-- Changes since v4i:
-  - Fixups for the xattr patches
-  - Update to v5.9-rc4
+1) Shift all data after the current xdr->p to the right, possibly into
+   the tail,
+2) Zero the specified range, and
+3) Update xdr->p to point beyond the hole.
 
-Here are the results of some performance tests I ran on some lab
-machines. I tested by reading various 2G files from a few different underlying
-filesystems and across several NFS versions. I used the `vmtouch` utility
-to make sure files were only cached when we wanted them to be. In addition
-to 100% data and 100% hole cases, I also tested with files that alternate
-between data and hole segments. These files have either 4K, 8K, 16K, or 32K
-segment sizes and start with either data or hole segments. So the file
-mixed-4d has a 4K segment size beginning with a data segment, but mixed-32h
-has 32K segments beginning with a hole. The units are in seconds, with the
-first number for each NFS version being the uncached read time and the second
-number is for when the file is cached on the server.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ include/linux/sunrpc/xdr.h |  1 +
+ net/sunrpc/xdr.c           | 73 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+)
 
-I added some extra data collection (client cpu percentage and sys time),
-but the extra data means I couldn't figure out a way to break this down
-into a concise table. I cut out v3 and v4.0 performance numbers to get
-the size down, but I kept v4.1 for comparison because it uses the same
-code that v4.2 without read plus uses.
-
-
-Read Plus Results (ext4):
-  data
-   :... v4.1 ... Uncached ... 20.540 s, 105 MB/s, 0.65 s kern, 3% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.70 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 20.605 s, 104 MB/s, 0.65 s kern, 3% cpu
-        :....... Cached ..... 18.253 s, 118 MB/s, 0.67 s kern, 3% cpu
-  hole
-   :... v4.1 ... Uncached ... 18.255 s, 118 MB/s, 0.72 s kern,  3% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.72 s kern,  3% cpu
-   :... v4.2 ... Uncached ...  0.847 s, 2.5 GB/s, 0.73 s kern, 86% cpu
-        :....... Cached .....  0.845 s, 2.5 GB/s, 0.72 s kern, 85% cpu
-  mixed-4d
-   :... v4.1 ... Uncached ... 54.691 s,  39 MB/s, 0.75 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.71 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 51.587 s,  42 MB/s, 0.75 s kern, 1% cpu
-        :....... Cached .....  9.215 s, 233 MB/s, 0.67 s kern, 7% cpu
-  mixed-8d
-   :... v4.1 ... Uncached ... 37.072 s,  58 MB/s, 0.67 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.71 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 33.259 s,  65 MB/s, 0.68 s kern, 2% cpu
-        :....... Cached .....  9.172 s, 234 MB/s, 0.67 s kern, 7% cpu
-  mixed-16d
-   :... v4.1 ... Uncached ... 27.138 s,  79 MB/s, 0.73 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.71 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 23.042 s,  93 MB/s, 0.73 s kern, 3% cpu
-        :....... Cached .....  9.150 s, 235 MB/s, 0.66 s kern, 7% cpu
-  mixed-32d
-   :... v4.1 ... Uncached ... 25.326 s,  85 MB/s, 0.68 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.70 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 21.125 s, 102 MB/s, 0.69 s kern, 3% cpu
-        :....... Cached .....  9.140 s, 235 MB/s, 0.67 s kern, 7% cpu
-  mixed-4h
-   :... v4.1 ... Uncached ... 58.317 s,  37 MB/s, 0.75 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.70 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 51.878 s,  41 MB/s, 0.74 s kern, 1% cpu
-        :....... Cached .....  9.215 s, 233 MB/s, 0.68 s kern, 7% cpu
-  mixed-8h
-   :... v4.1 ... Uncached ... 36.855 s,  58 MB/s, 0.68 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.72 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 29.457 s,  73 MB/s, 0.68 s kern, 2% cpu
-        :....... Cached .....  9.172 s, 234 MB/s, 0.67 s kern, 7% cpu
-  mixed-16h
-   :... v4.1 ... Uncached ... 26.460 s,  81 MB/s, 0.74 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.71 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 19.587 s, 110 MB/s, 0.74 s kern, 3% cpu
-        :....... Cached .....  9.150 s, 235 MB/s, 0.67 s kern, 7% cpu
-  mixed-32h
-   :... v4.1 ... Uncached ... 25.495 s,  84 MB/s, 0.69 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.65 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 17.634 s, 122 MB/s, 0.69 s kern, 3% cpu
-        :....... Cached .....  9.140 s, 235 MB/s, 0.68 s kern, 7% cpu
-
-
-
-Read Plus Results (xfs):
-  data
-   :... v4.1 ... Uncached ... 20.230 s, 106 MB/s, 0.65 s kern, 3% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.68 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 20.724 s, 104 MB/s, 0.65 s kern, 3% cpu
-        :....... Cached ..... 18.253 s, 118 MB/s, 0.67 s kern, 3% cpu
-  hole
-   :... v4.1 ... Uncached ... 18.255 s, 118 MB/s, 0.68 s kern,  3% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.69 s kern,  3% cpu
-   :... v4.2 ... Uncached ...  0.904 s, 2.4 GB/s, 0.72 s kern, 79% cpu
-        :....... Cached .....  0.908 s, 2.4 GB/s, 0.73 s kern, 80% cpu
-  mixed-4d
-   :... v4.1 ... Uncached ... 57.553 s,  37 MB/s, 0.77 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.70 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 37.162 s,  58 MB/s, 0.73 s kern, 1% cpu
-        :....... Cached .....  9.215 s, 233 MB/s, 0.67 s kern, 7% cpu
-  mixed-8d
-   :... v4.1 ... Uncached ... 36.754 s,  58 MB/s, 0.69 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.68 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 24.454 s,  88 MB/s, 0.69 s kern, 2% cpu
-        :....... Cached .....  9.172 s, 234 MB/s, 0.66 s kern, 7% cpu
-  mixed-16d
-   :... v4.1 ... Uncached ... 27.156 s,  79 MB/s, 0.73 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.71 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 22.934 s,  94 MB/s, 0.72 s kern, 3% cpu
-        :....... Cached .....  9.150 s, 235 MB/s, 0.68 s kern, 7% cpu
-  mixed-32d
-   :... v4.1 ... Uncached ... 27.849 s,  77 MB/s, 0.68 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.72 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 23.670 s,  91 MB/s, 0.67 s kern, 2% cpu
-        :....... Cached .....  9.139 s, 235 MB/s, 0.64 s kern, 7% cpu
-  mixed-4h
-   :... v4.1 ... Uncached ... 57.639 s,  37 MB/s, 0.72 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.69 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 35.503 s,  61 MB/s, 0.72 s kern, 2% cpu
-        :....... Cached .....  9.215 s, 233 MB/s, 0.66 s kern, 7% cpu
-  mixed-8h
-   :... v4.1 ... Uncached ... 37.044 s,  58 MB/s, 0.71 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.68 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 23.779 s,  90 MB/s, 0.69 s kern, 2% cpu
-        :....... Cached .....  9.172 s, 234 MB/s, 0.65 s kern, 7% cpu
-  mixed-16h
-   :... v4.1 ... Uncached ... 27.167 s,  79 MB/s, 0.73 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.67 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 19.088 s, 113 MB/s, 0.75 s kern, 3% cpu
-        :....... Cached .....  9.159 s, 234 MB/s, 0.66 s kern, 7% cpu
-  mixed-32h
-   :... v4.1 ... Uncached ... 27.592 s,  78 MB/s, 0.71 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.68 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 19.682 s, 109 MB/s, 0.67 s kern, 3% cpu
-        :....... Cached .....  9.140 s, 235 MB/s, 0.67 s kern, 7% cpu
-
-
-
-Read Plus Results (btrfs):
-  data
-   :... v4.1 ... Uncached ... 21.317 s, 101 MB/s, 0.63 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.67 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 28.665 s,  75 MB/s, 0.65 s kern, 2% cpu
-        :....... Cached ..... 18.253 s, 118 MB/s, 0.66 s kern, 3% cpu
-  hole
-   :... v4.1 ... Uncached ... 18.256 s, 118 MB/s, 0.70 s kern,  3% cpu
-   :    :....... Cached ..... 18.254 s, 118 MB/s, 0.73 s kern,  4% cpu
-   :... v4.2 ... Uncached ...  0.851 s, 2.5 GB/s, 0.72 s kern, 84% cpu
-        :....... Cached .....  0.847 s, 2.5 GB/s, 0.73 s kern, 86% cpu
-  mixed-4d
-   :... v4.1 ... Uncached ... 56.857 s,  38 MB/s, 0.76 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.72 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 54.455 s,  39 MB/s, 0.73 s kern, 1% cpu
-        :....... Cached .....  9.215 s, 233 MB/s, 0.68 s kern, 7% cpu
-  mixed-8d
-   :... v4.1 ... Uncached ... 36.641 s,  59 MB/s, 0.68 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.70 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 33.205 s,  65 MB/s, 0.67 s kern, 2% cpu
-        :....... Cached .....  9.172 s, 234 MB/s, 0.65 s kern, 7% cpu
-  mixed-16d
-   :... v4.1 ... Uncached ... 28.653 s,  75 MB/s, 0.72 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.70 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 25.748 s,  83 MB/s, 0.71 s kern, 2% cpu
-        :....... Cached .....  9.150 s, 235 MB/s, 0.64 s kern, 7% cpu
-  mixed-32d
-   :... v4.1 ... Uncached ... 28.886 s,  74 MB/s, 0.67 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.71 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 24.724 s,  87 MB/s, 0.74 s kern, 2% cpu
-        :....... Cached .....  9.140 s, 235 MB/s, 0.63 s kern, 6% cpu
-  mixed-4h
-   :... v4.1 ... Uncached ...  52.181 s,  41 MB/s, 0.73 s kern, 1% cpu
-   :    :....... Cached .....  18.252 s, 118 MB/s, 0.66 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 150.341 s,  14 MB/s, 0.72 s kern, 0% cpu
-        :....... Cached .....   9.216 s, 233 MB/s, 0.63 s kern, 6% cpu
-  mixed-8h
-   :... v4.1 ... Uncached ... 36.945 s,  58 MB/s, 0.68 s kern, 1% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.65 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 79.781 s,  27 MB/s, 0.68 s kern, 0% cpu
-        :....... Cached .....  9.172 s, 234 MB/s, 0.66 s kern, 7% cpu
-  mixed-16h
-   :... v4.1 ... Uncached ... 28.651 s,  75 MB/s, 0.73 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.66 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 47.428 s,  45 MB/s, 0.71 s kern, 1% cpu
-        :....... Cached .....  9.150 s, 235 MB/s, 0.67 s kern, 7% cpu
-  mixed-32h
-   :... v4.1 ... Uncached ... 28.618 s,  75 MB/s, 0.69 s kern, 2% cpu
-   :    :....... Cached ..... 18.252 s, 118 MB/s, 0.70 s kern, 3% cpu
-   :... v4.2 ... Uncached ... 38.813 s,  55 MB/s, 0.67 s kern, 1% cpu
-        :....... Cached .....  9.140 s, 235 MB/s, 0.61 s kern, 6% cpu
-
-
-
-Thoughts?
-Anna
-
-
-Anna Schumaker (10):
-  SUNRPC: Split out a function for setting current page
-  SUNRPC: Implement a xdr_page_pos() function
-  NFS: Use xdr_page_pos() in NFSv4 decode_getacl()
-  NFS: Add READ_PLUS data segment support
-  SUNRPC: Split out xdr_realign_pages() from xdr_align_pages()
-  SUNRPC: Split out _shift_data_right_tail()
-  SUNRPC: Add the ability to expand holes in data pages
-  NFS: Add READ_PLUS hole segment decoding
-  SUNRPC: Add an xdr_align_data() function
-  NFS: Decode a full READ_PLUS reply
-
- fs/nfs/nfs42xdr.c          | 167 ++++++++++++++++++++
- fs/nfs/nfs4proc.c          |  43 +++++-
- fs/nfs/nfs4xdr.c           |   7 +-
- include/linux/nfs4.h       |   2 +-
- include/linux/nfs_fs_sb.h  |   1 +
- include/linux/nfs_xdr.h    |   2 +-
- include/linux/sunrpc/xdr.h |   3 +
- net/sunrpc/xdr.c           | 309 ++++++++++++++++++++++++++++++++-----
- 8 files changed, 486 insertions(+), 48 deletions(-)
-
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 026edbd041d5..36a81c29542e 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -252,6 +252,7 @@ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
+ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
+ extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
+ extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
++extern uint64_t xdr_expand_hole(struct xdr_stream *, uint64_t, uint64_t);
+ 
+ /**
+  * xdr_stream_remaining - Return the number of bytes remaining in the stream
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index d8c9555c6f2b..24baf052e6e6 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -390,6 +390,42 @@ _copy_from_pages(char *p, struct page **pages, size_t pgbase, size_t len)
+ }
+ EXPORT_SYMBOL_GPL(_copy_from_pages);
+ 
++/**
++ * _zero_pages
++ * @pages: array of pages
++ * @pgbase: beginning page vector address
++ * @len: length
++ */
++static void
++_zero_pages(struct page **pages, size_t pgbase, size_t len)
++{
++	struct page **page;
++	char *vpage;
++	size_t zero;
++
++	page = pages + (pgbase >> PAGE_SHIFT);
++	pgbase &= ~PAGE_MASK;
++
++	do {
++		zero = PAGE_SIZE - pgbase;
++		if (zero > len)
++			zero = len;
++
++		vpage = kmap_atomic(*page);
++		memset(vpage + pgbase, 0, zero);
++		kunmap_atomic(vpage);
++
++		pgbase += zero;
++		if (pgbase == PAGE_SIZE) {
++			flush_dcache_page(*page);
++			pgbase = 0;
++			page++;
++		}
++
++	} while ((len -= zero) != 0);
++	flush_dcache_page(*page);
++}
++
+ /**
+  * xdr_shrink_bufhead
+  * @buf: xdr_buf
+@@ -1141,6 +1177,43 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
+ }
+ EXPORT_SYMBOL_GPL(xdr_read_pages);
+ 
++uint64_t xdr_expand_hole(struct xdr_stream *xdr, uint64_t offset, uint64_t length)
++{
++	struct xdr_buf *buf = xdr->buf;
++	unsigned int bytes;
++	unsigned int from;
++	unsigned int truncated = 0;
++
++	if ((offset + length) < offset ||
++	    (offset + length) > buf->page_len)
++		length = buf->page_len - offset;
++
++	xdr_realign_pages(xdr);
++	from = xdr_page_pos(xdr);
++	bytes = xdr->nwords << 2;
++
++	if (offset + length + bytes > buf->page_len) {
++		unsigned int shift = (offset + length + bytes) - buf->page_len;
++		unsigned int res = _shift_data_right_tail(buf, from + bytes - shift, shift);
++		truncated = shift - res;
++		xdr->nwords -= XDR_QUADLEN(truncated);
++		bytes -= shift;
++	}
++
++	/* Now move the page data over and zero pages */
++	if (bytes > 0)
++		_shift_data_right_pages(buf->pages,
++					buf->page_base + offset + length,
++					buf->page_base + from,
++					bytes);
++	_zero_pages(buf->pages, buf->page_base + offset, length);
++
++	buf->len += length - (from - offset) - truncated;
++	xdr_set_page(xdr, offset + length, PAGE_SIZE);
++	return length;
++}
++EXPORT_SYMBOL_GPL(xdr_expand_hole);
++
+ /**
+  * xdr_enter_page - decode data from the XDR page
+  * @xdr: pointer to xdr_stream struct
 -- 
 2.28.0
 
