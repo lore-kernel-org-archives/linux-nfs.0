@@ -2,97 +2,97 @@ Return-Path: <SRS0=kBQ9=CR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44E70C43461
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 19:58:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01398C433E2
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 21:22:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F172620658
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 19:58:55 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dYs3Op4S"
+	by mail.kernel.org (Postfix) with ESMTP id B035D2145D
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Sep 2020 21:22:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1599600131;
+	bh=xjGHLZ644R5X1ZIl/BOJou1nJG4aRxf6oUivukUN47Y=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=IBw+WEM+BTTHaGNy26RCVT0YCSKU8AYcxPnDIZx0vDuBT17ecsKz+ZuxjmxODNDtT
+	 LqOoaKDzw5ATluteMjy8GZugvqPKW/ObeYWqSIKSW2LJnWWvjjwOGKoc/TV8tehW73
+	 apwyVoFtAkmEqpWc1zhWn94YPqhasmCklOk2MhFg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730846AbgIHT6l (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Sep 2020 15:58:41 -0400
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:54335 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1730475AbgIHPfq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2020 11:35:46 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1599579337;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=YAfemmp0Bt/EOqPC4VWHkvI5RGStK9hr1r53ZyHgTv0=;
-        b=dYs3Op4S26ZFCFFNyD3ju4PsfH/NYLNcTc9vdWETlAjcDdRiUdF6U26THAOxXwGMV5QAWh
-        GIItOy/L9lopG6O7oYhO7gBiWImgokLQIWAGI/LFRmegQz/BkxSVNdEkUwhKsqtpMVCDlR
-        Z6eJP8/PMdODYelKENx06wRzMUxT+38=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-215-eQ-OnyeBPC2-bwquvvj0pQ-1; Tue, 08 Sep 2020 11:27:30 -0400
-X-MC-Unique: eQ-OnyeBPC2-bwquvvj0pQ-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        id S1728458AbgIHVWK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Sep 2020 17:22:10 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50178 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728390AbgIHVWI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 8 Sep 2020 17:22:08 -0400
+Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 94E43800402
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 15:27:28 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-113-89.phx2.redhat.com [10.3.113.89])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 66D7F7D8AE
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Sep 2020 15:27:28 +0000 (UTC)
-Subject: Re: [PATCH] rpc.idmapd: Do not free config varibles
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20200904181957.9772-1-steved@redhat.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <5ad5c795-66d3-bebc-6ae6-050d516047e6@RedHat.com>
-Date:   Tue, 8 Sep 2020 11:27:27 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.11.0
+        by mail.kernel.org (Postfix) with ESMTPSA id A2AFE2087C;
+        Tue,  8 Sep 2020 21:22:07 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1599600127;
+        bh=xjGHLZ644R5X1ZIl/BOJou1nJG4aRxf6oUivukUN47Y=;
+        h=From:To:Cc:Subject:Date:From;
+        b=jwiJ0E22INV4/swU/NgewPUJ4jLbJLeaQIt4vIOT8NtEQU+ic0FSW9/v05sQudtmX
+         PSp7hT3RyMTUwMmpxzl8FEEj7VtqaJblDhPnW9dSBfTAe6AaZuhATY9nbVqALss17e
+         ejBPciOkXPAMFi0URUhbES5PPQlb/nVdhszIdlg0=
+From:   trondmy@kernel.org
+To:     Steve Dickson <SteveD@redhat.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] mountd: Ignore transient and non-fatal filesystem errors in nfsd_export
+Date:   Tue,  8 Sep 2020 17:19:58 -0400
+Message-Id: <20200908211958.38741-1-trondmy@kernel.org>
+X-Mailer: git-send-email 2.26.2
 MIME-Version: 1.0
-In-Reply-To: <20200904181957.9772-1-steved@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
+If the mount point check in nfsd_export fails due to a transient error,
+then ignore it to avoid spurious NFSERR_STALE errors being returned by
+knfsd.
 
-On 9/4/20 2:19 PM, Steve Dickson wrote:
-> Commit 93e8f092e added a conf_cleanup() call to clean
-> up memory after the config file was parsed. It turns
-> out that memory still needed and it is not very much
-> so the call is removed.
-> 
-> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1873965
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ utils/mountd/cache.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-steved.
-> ---
->  utils/idmapd/idmapd.c | 3 ---
->  1 file changed, 3 deletions(-)
-> 
-> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-> index f3d2314..51c71fb 100644
-> --- a/utils/idmapd/idmapd.c
-> +++ b/utils/idmapd/idmapd.c
-> @@ -306,9 +306,6 @@ main(int argc, char **argv)
->  			serverstart = 0;
->  	}
->  
-> -	/* Config memory is no longer needed */
-> -	conf_cleanup();
-> -
->  	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1)
->  		switch (opt) {
->  		case 'v':
-> 
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 6cba2883026f..93e868341d15 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -1411,7 +1411,10 @@ static void nfsd_export(int f)
+ 
+ 		if (mp && !*mp)
+ 			mp = found->m_export.e_path;
+-		if (mp && !is_mountpoint(mp))
++		errno = 0;
++		if (mp && !is_mountpoint(mp)) {
++			if (errno != 0 && !path_lookup_error(errno))
++				goto out;
+ 			/* Exportpoint is not mounted, so tell kernel it is
+ 			 * not available.
+ 			 * This will cause it not to appear in the V4 Pseudo-root
+@@ -1420,9 +1423,12 @@ static void nfsd_export(int f)
+ 			 * And filehandle for this mountpoint from an earlier
+ 			 * mount will block in nfsd.fh lookup.
+ 			 */
++			xlog(L_WARNING,
++			     "Cannot export path '%s': not a mountpoint",
++			     path);
+ 			dump_to_cache(f, buf, sizeof(buf), dom, path,
+ 				      NULL, 60);
+-		else if (dump_to_cache(f, buf, sizeof(buf), dom, path,
++		} else if (dump_to_cache(f, buf, sizeof(buf), dom, path,
+ 					 &found->m_export, 0) < 0) {
+ 			xlog(L_WARNING,
+ 			     "Cannot export %s, possibly unsupported filesystem"
+-- 
+2.26.2
 
