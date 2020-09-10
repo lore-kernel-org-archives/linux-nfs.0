@@ -7,54 +7,54 @@ X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A762C2D0A7
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:46:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 30742C43461
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 20:08:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0B69621556
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:46:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E2B4B221E2
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 20:08:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="O0RT1xSH"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="P0+QiFT3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726969AbgIJTqY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Sep 2020 15:46:24 -0400
-Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:34788 "EHLO
-        smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725866AbgIJTpo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2020 15:45:44 -0400
+        id S1726725AbgIJUIA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Sep 2020 16:08:00 -0400
+Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:55905 "EHLO
+        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726794AbgIJUGs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2020 16:06:48 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1599767144; x=1631303144;
+  t=1599768408; x=1631304408;
   h=from:to:cc:subject:date:message-id:mime-version;
-  bh=gmlWuiVF6lTyuXM2DMK29LqZoM8yT1IeCfMCz7Htt3A=;
-  b=O0RT1xSHiq8YmuGcK8utLPpbCO1JL/o9EXf6ojNNJXqPbHLgJjSQix9J
-   l1JJPXnFjkEfM+h2fz1WHhsFLWmoq0aG4Uz0MTJt6wILLwg3aMhl+yPHh
-   4QGC1d2Ss5oFsAUCiqIPedWduZ+GV+5JleRaWzl4HIBIc9HdiRDSc/svh
-   w=;
+  bh=U/17dhFzVoYN9syJU0oQsrBTAZmFFgl6ZBB+fFcBKbI=;
+  b=P0+QiFT3pdlo82QijmaIxYWMeP677hIVhgWbBJLGg/aOv17OJQ6CRjAK
+   TuIksi1THBISk+xvd4wH27t/q4+jiG8kVu2/H9UiohVp+dfvjngzRddK+
+   G/23OmNzh83bjk+rhMmkN1p1xn/gKLJzEfd4BtFnh1AGn8I3t0d3p64ji
+   k=;
 X-IronPort-AV: E=Sophos;i="5.76,413,1592870400"; 
-   d="scan'208";a="74009299"
-Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1e-62350142.us-east-1.amazon.com) ([10.47.23.38])
-  by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 10 Sep 2020 19:43:57 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan2.iad.amazon.com [10.40.163.34])
-        by email-inbound-relay-1e-62350142.us-east-1.amazon.com (Postfix) with ESMTPS id A4422A0715;
-        Thu, 10 Sep 2020 19:43:56 +0000 (UTC)
-Received: from EX13D13UWB004.ant.amazon.com (10.43.161.218) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Thu, 10 Sep 2020 19:43:55 +0000
-Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
- EX13D13UWB004.ant.amazon.com (10.43.161.218) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Thu, 10 Sep 2020 19:43:55 +0000
+   d="scan'208";a="53085255"
+Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-1d-37fd6b3d.us-east-1.amazon.com) ([10.43.8.2])
+  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 10 Sep 2020 20:06:47 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan3.iad.amazon.com [10.40.163.38])
+        by email-inbound-relay-1d-37fd6b3d.us-east-1.amazon.com (Postfix) with ESMTPS id A5863282108;
+        Thu, 10 Sep 2020 20:06:45 +0000 (UTC)
+Received: from EX13D13UWA001.ant.amazon.com (10.43.160.136) by
+ EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Thu, 10 Sep 2020 20:06:44 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (10.43.160.58) by
+ EX13D13UWA001.ant.amazon.com (10.43.160.136) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Thu, 10 Sep 2020 20:06:44 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
- Server id 15.0.1497.2 via Frontend Transport; Thu, 10 Sep 2020 19:43:55 +0000
+ (172.23.141.97) by mail-relay.amazon.com (10.43.160.118) with Microsoft SMTP
+ Server id 15.0.1497.2 via Frontend Transport; Thu, 10 Sep 2020 20:06:44 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 976B3C1400; Thu, 10 Sep 2020 19:43:55 +0000 (UTC)
+        id 6992FC1429; Thu, 10 Sep 2020 20:06:44 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
-To:     <fstests@vger.kernel.org>
-CC:     <linux-nfs@vger.kernel.org>,
-        Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 1/3] common/attr: make _require_attrs more fine-grained
-Date:   Thu, 10 Sep 2020 19:43:53 +0000
-Message-ID: <20200910194355.5977-1-fllinden@amazon.com>
+To:     <linux-nfs@vger.kernel.org>, <anna.schumaker@netapp.com>,
+        <trond.myklebust@hammerspace.com>, <dhowells@redhat.com>
+CC:     Frank van der Linden <fllinden@amazon.com>
+Subject: [PATCH] nfs: round down reported block numbers in statfs
+Date:   Thu, 10 Sep 2020 20:06:44 +0000
+Message-ID: <20200910200644.8165-1-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -63,86 +63,70 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Filesystems may not support all xattr types. But, _require_attr assumes
-that being able to use "user" namespace xattrs means that all namespaces
-("trusted", "system", etc) are supported. This breaks on NFS, that only
-supports the "user" namespace, and a few cases in the "system" namespace.
+nfs_statfs rounds up the numbers of blocks as computed
+from the numbers the server return values.
 
-Change _require_attrs to optionally take namespace arguments that specify
-the namespaces to check for. The default behavior (no arguments) is still
-to check for the "user" namespace only.
+This works out well if the client block size, which is
+the same as wrsize, is smaller than or equal to the actual
+filesystem block size on the server.
+
+But, for NFS4, the size is usually larger (1M), meaning
+that statfs reports more free space than actually is
+available. This confuses, for example, fstest generic/103.
+
+Given a choice between reporting too much or too little
+space, the latter is the safer option, so don't round
+up the number of blocks. This also simplifies the code.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- common/attr | 49 +++++++++++++++++++++++++++++++------------------
- 1 file changed, 31 insertions(+), 18 deletions(-)
+ fs/nfs/super.c | 25 ++++---------------------
+ 1 file changed, 4 insertions(+), 21 deletions(-)
 
-diff --git a/common/attr b/common/attr
-index 20049de0..c60cb6ed 100644
---- a/common/attr
-+++ b/common/attr
-@@ -175,30 +175,43 @@ _list_acl()
- 
- _require_attrs()
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 7a70287f21a2..45d368a5cc95 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -217,8 +217,6 @@ EXPORT_SYMBOL_GPL(nfs_client_for_each_server);
+ int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
  {
-+    local args
-+    local nsp
+ 	struct nfs_server *server = NFS_SB(dentry->d_sb);
+-	unsigned char blockbits;
+-	unsigned long blockres;
+ 	struct nfs_fh *fh = NFS_FH(d_inode(dentry));
+ 	struct nfs_fsstat res;
+ 	int error = -ENOMEM;
+@@ -241,26 +239,11 @@ int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 
+ 	buf->f_type = NFS_SUPER_MAGIC;
+ 
+-	/*
+-	 * Current versions of glibc do not correctly handle the
+-	 * case where f_frsize != f_bsize.  Eventually we want to
+-	 * report the value of wtmult in this field.
+-	 */
+-	buf->f_frsize = dentry->d_sb->s_blocksize;
+-
+-	/*
+-	 * On most *nix systems, f_blocks, f_bfree, and f_bavail
+-	 * are reported in units of f_frsize.  Linux hasn't had
+-	 * an f_frsize field in its statfs struct until recently,
+-	 * thus historically Linux's sys_statfs reports these
+-	 * fields in units of f_bsize.
+-	 */
+ 	buf->f_bsize = dentry->d_sb->s_blocksize;
+-	blockbits = dentry->d_sb->s_blocksize_bits;
+-	blockres = (1 << blockbits) - 1;
+-	buf->f_blocks = (res.tbytes + blockres) >> blockbits;
+-	buf->f_bfree = (res.fbytes + blockres) >> blockbits;
+-	buf->f_bavail = (res.abytes + blockres) >> blockbits;
 +
-+    if [ $# -eq 0 ];
-+    then
-+      args="user"
-+    else
-+      args="$*"
-+    fi
-+
-     [ -n "$ATTR_PROG" ] || _notrun "attr command not found"
-     [ -n "$GETFATTR_PROG" ] || _notrun "getfattr command not found"
-     [ -n "$SETFATTR_PROG" ] || _notrun "setfattr command not found"
++	buf->f_blocks = res.tbytes / buf->f_bsize;
++	buf->f_bfree = res.fbytes / buf->f_bsize;
++	buf->f_bavail = res.abytes / buf->f_bsize;
  
--    #
--    # Test if chacl is able to write an attribute on the target filesystems.
--    # On really old kernels the system calls might not be implemented at all,
--    # but the more common case is that the tested filesystem simply doesn't
--    # support attributes.  Note that we can't simply list attributes as
--    # various security modules generate synthetic attributes not actually
--    # stored on disk.
--    #
--    touch $TEST_DIR/syscalltest
--    attr -s "user.xfstests" -V "attr" $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
--    cat $TEST_DIR/syscalltest.out >> $seqres.full
-+    for nsp in $args
-+    do
-+      #
-+      # Test if chacl is able to write an attribute on the target filesystems.
-+      # On really old kernels the system calls might not be implemented at all,
-+      # but the more common case is that the tested filesystem simply doesn't
-+      # support attributes.  Note that we can't simply list attributes as
-+      # various security modules generate synthetic attributes not actually
-+      # stored on disk.
-+      #
-+      touch $TEST_DIR/syscalltest
-+      $SETFATTR_PROG -n "$nsp.xfstests" -v "attr" $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
-+      cat $TEST_DIR/syscalltest.out >> $seqres.full
- 
--    if grep -q 'Function not implemented' $TEST_DIR/syscalltest.out; then
--      _notrun "kernel does not support attrs"
--    fi
--    if grep -q 'Operation not supported' $TEST_DIR/syscalltest.out; then
--      _notrun "attrs not supported by this filesystem type: $FSTYP"
--    fi
-+      if grep -q 'Function not implemented' $TEST_DIR/syscalltest.out; then
-+        _notrun "kernel does not support attrs"
-+      fi
-+      if grep -q 'Operation not supported' $TEST_DIR/syscalltest.out; then
-+        _notrun "attr namespace $nsp not supported by this filesystem type: $FSTYP"
-+      fi
- 
--    rm -f $TEST_DIR/syscalltest.out
-+      rm -f $TEST_DIR/syscalltest.out
-+    done
- }
- 
- _require_attr_v1()
+ 	buf->f_files = res.tfiles;
+ 	buf->f_ffree = res.afiles;
 -- 
 2.16.6
 
