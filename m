@@ -2,141 +2,101 @@ Return-Path: <SRS0=2DhQ=CT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A28AC43461
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 18:24:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88DDCC43461
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:44:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8C55E207EA
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 18:24:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 460B321556
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:44:38 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="au/tda0r"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="QIQZaKK+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726837AbgIJSYj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Sep 2020 14:24:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36448 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726987AbgIJSYJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2020 14:24:09 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D186C061796
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Sep 2020 11:23:53 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id E4CE7AB6; Thu, 10 Sep 2020 14:23:52 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org E4CE7AB6
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1599762232;
-        bh=4TcYDGJM97PTk+lIjXws9nrn3BETA7VtDCtpGUmrta4=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=au/tda0rak6hz4Kp+uptqZN5jPoNVR8c2zloziUbQOqxahecQNyRF2RuHr4o7Q6IF
-         ZvnqBbwULBbe9J83rn7EpCDnaqnOTFnmXCiGG1WMxeFmkQg31vPQmT9f/u8PHRvIAJ
-         VAMdBm6HjDYrOigaCTf2MQqlkkVeVhGBxqWSK6nQ=
-Date:   Thu, 10 Sep 2020 14:23:52 -0400
-From:   "bfields@fieldses.org" <bfields@fieldses.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "SteveD@redhat.com" <SteveD@redhat.com>
-Subject: Re: [PATCH] mountd: Ignore transient and non-fatal filesystem errors
- in nfsd_export
-Message-ID: <20200910182352.GC28793@fieldses.org>
-References: <20200908211958.38741-1-trondmy@kernel.org>
- <20200910170220.GB28793@fieldses.org>
- <5672634521118539d469018df083d4c5a221d330.camel@hammerspace.com>
+        id S1725965AbgIJToP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Sep 2020 15:44:15 -0400
+Received: from smtp-fw-4101.amazon.com ([72.21.198.25]:64168 "EHLO
+        smtp-fw-4101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725372AbgIJToI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2020 15:44:08 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1599767048; x=1631303048;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version;
+  bh=JdeE5S5BkzjhhMMAdlB7SxXk6Vsu4NC+W7hi2SgDYDU=;
+  b=QIQZaKK+4+JwnNliDlBcpq1mzOaC9QXwZpo09Fh5Bz0XhgTAA5vZnKY5
+   6pJ7KtVqp61hDCezbX+X5+L/rRw6rSYMsaDQzIYBYZhLdFqIdwqrYa67e
+   z7LsJ6GYxnEBTnXsMWMwDW0F9sCQ3rqTDflWl5Wo6E0/OLmVWRkAf3LME
+   g=;
+X-IronPort-AV: E=Sophos;i="5.76,413,1592870400"; 
+   d="scan'208";a="53318928"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1a-e34f1ddc.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-4101.iad4.amazon.com with ESMTP; 10 Sep 2020 19:43:57 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan3.iad.amazon.com [10.40.163.38])
+        by email-inbound-relay-1a-e34f1ddc.us-east-1.amazon.com (Postfix) with ESMTPS id 848CDA1E05;
+        Thu, 10 Sep 2020 19:43:56 +0000 (UTC)
+Received: from EX13D13UWB002.ant.amazon.com (10.43.161.21) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Thu, 10 Sep 2020 19:43:55 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13D13UWB002.ant.amazon.com (10.43.161.21) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Thu, 10 Sep 2020 19:43:55 +0000
+Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
+ (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
+ Server id 15.0.1497.2 via Frontend Transport; Thu, 10 Sep 2020 19:43:55 +0000
+Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
+        id 9AE52C1429; Thu, 10 Sep 2020 19:43:55 +0000 (UTC)
+From:   Frank van der Linden <fllinden@amazon.com>
+To:     <fstests@vger.kernel.org>
+CC:     <linux-nfs@vger.kernel.org>,
+        Frank van der Linden <fllinden@amazon.com>
+Subject: [PATCH 2/3] common/attr: set MAX_ATTR values correctly for NFS
+Date:   Thu, 10 Sep 2020 19:43:54 +0000
+Message-ID: <20200910194355.5977-2-fllinden@amazon.com>
+X-Mailer: git-send-email 2.16.6
+In-Reply-To: <20200910194355.5977-1-fllinden@amazon.com>
+References: <20200910194355.5977-1-fllinden@amazon.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <5672634521118539d469018df083d4c5a221d330.camel@hammerspace.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Sep 10, 2020 at 05:25:19PM +0000, Trond Myklebust wrote:
-> On Thu, 2020-09-10 at 13:02 -0400, J. Bruce Fields wrote:
-> > On Tue, Sep 08, 2020 at 05:19:58PM -0400, trondmy@kernel.org wrote:
-> > > From: Trond Myklebust <trond.myklebust@hammerspace.com>
-> > > 
-> > > If the mount point check in nfsd_export fails due to a transient
-> > > error,
-> > > then ignore it to avoid spurious NFSERR_STALE errors being returned
-> > > by
-> > > knfsd.
-> > 
-> > What sort of transient errors?
-> > 
-> > I guess this makes the upcall (and the original rpc) eventually time
-> > out?
-> 
-> The point here is that is_mountpoint() is making the assumption that
-> _any_ error from stat() can be used to infer that there is nothing
-> mounted. In reality, only a subset of errors allow it to make that
-> assumption (specifically the errors ELOOP, ENAMETOOLONG, ENOENT, and
-> ENOTDIR).
-> 
-> In our case, we're seeing a problem when the underlying filesystem is a
-> soft mounted NFSv4.2 client (i.e. we're running our Hammerspace use
-> case of proxying NFSv4.2 to legacy NFSv3 clients) and that NFS4.2 mount
-> times out due to a reboot of the underlying server, for instance.
-> 
-> So, yes, in that case we want the upcall to time out instead of poking
-> knfsd into declaring that the directory is stale.
+Now that NFS can handle user xattrs, set the MAX_ATTR
+and MAX_ATTRVAL_SIZE to reflect the applicable limits
+for that filesystem.
 
-Thanks for the explanation, I guess I agree that's the best you can do
-in that situation.
+Signed-off-by: Frank van der Linden <fllinden@amazon.com>
+---
+ common/attr | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
---b.
+diff --git a/common/attr b/common/attr
+index c60cb6ed..fb856449 100644
+--- a/common/attr
++++ b/common/attr
+@@ -251,7 +251,7 @@ _getfattr()
+ 
+ # set maximum total attr space based on fs type
+ case "$FSTYP" in
+-xfs|udf|pvfs2|9p|ceph)
++xfs|udf|pvfs2|9p|ceph|nfs)
+ 	MAX_ATTRS=1000
+ 	;;
+ *)
+@@ -271,7 +271,7 @@ xfs|udf|btrfs)
+ pvfs2)
+ 	MAX_ATTRVAL_SIZE=8192
+ 	;;
+-9p|ceph)
++9p|ceph|nfs)
+ 	MAX_ATTRVAL_SIZE=65536
+ 	;;
+ *)
+-- 
+2.16.6
 
-> > > Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> > > ---
-> > >  utils/mountd/cache.c | 10 ++++++++--
-> > >  1 file changed, 8 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> > > index 6cba2883026f..93e868341d15 100644
-> > > --- a/utils/mountd/cache.c
-> > > +++ b/utils/mountd/cache.c
-> > > @@ -1411,7 +1411,10 @@ static void nfsd_export(int f)
-> > >  
-> > >  		if (mp && !*mp)
-> > >  			mp = found->m_export.e_path;
-> > > -		if (mp && !is_mountpoint(mp))
-> > > +		errno = 0;
-> > > +		if (mp && !is_mountpoint(mp)) {
-> > > +			if (errno != 0 && !path_lookup_error(errno))
-> > > +				goto out;
-> > >  			/* Exportpoint is not mounted, so tell kernel
-> > > it is
-> > >  			 * not available.
-> > >  			 * This will cause it not to appear in the V4
-> > > Pseudo-root
-> > > @@ -1420,9 +1423,12 @@ static void nfsd_export(int f)
-> > >  			 * And filehandle for this mountpoint from an
-> > > earlier
-> > >  			 * mount will block in nfsd.fh lookup.
-> > >  			 */
-> > > +			xlog(L_WARNING,
-> > > +			     "Cannot export path '%s': not a
-> > > mountpoint",
-> > > +			     path);
-> > >  			dump_to_cache(f, buf, sizeof(buf), dom, path,
-> > >  				      NULL, 60);
-> > > -		else if (dump_to_cache(f, buf, sizeof(buf), dom, path,
-> > > +		} else if (dump_to_cache(f, buf, sizeof(buf), dom,
-> > > path,
-> > >  					 &found->m_export, 0) < 0) {
-> > >  			xlog(L_WARNING,
-> > >  			     "Cannot export %s, possibly unsupported
-> > > filesystem"
-> > > -- 
-> > > 2.26.2
-> -- 
-> Trond Myklebust
-> CTO, Hammerspace Inc
-> 4984 El Camino Real, Suite 208
-> Los Altos, CA 94022
-> www.hammer.space
-> 
