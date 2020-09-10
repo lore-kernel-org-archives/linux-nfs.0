@@ -5,60 +5,57 @@ X-Spam-Level:
 X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBFBFC433E2
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:45:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A762C2D0A7
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:46:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 83C482078B
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:45:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B69621556
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Sep 2020 19:46:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="h/hKDJrL"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="O0RT1xSH"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726837AbgIJTpq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Sep 2020 15:45:46 -0400
+        id S1726969AbgIJTqY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Sep 2020 15:46:24 -0400
 Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:34788 "EHLO
         smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725803AbgIJTpk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2020 15:45:40 -0400
+        with ESMTP id S1725866AbgIJTpo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2020 15:45:44 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1599767140; x=1631303140;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version;
-  bh=6IYqoqN49rcKyFd+M8E2CkqUikBu6MG8xK08IhY9Z5g=;
-  b=h/hKDJrLgK+J8I+fNMKYV1Z5DRudMxCsYlQuhSRfuhjre1bwQ/gvLoR3
-   tcdxIred/DAfOX6aXRxNBh9bOyULwaCqkT7jlWSE9Anfb60EKdizpS5IK
-   HiOA8/S0+/+f+wTYlmz0qBg5g8GlArSc6Y48nPZHRd67uV/zl4YrjSERZ
-   o=;
+  t=1599767144; x=1631303144;
+  h=from:to:cc:subject:date:message-id:mime-version;
+  bh=gmlWuiVF6lTyuXM2DMK29LqZoM8yT1IeCfMCz7Htt3A=;
+  b=O0RT1xSHiq8YmuGcK8utLPpbCO1JL/o9EXf6ojNNJXqPbHLgJjSQix9J
+   l1JJPXnFjkEfM+h2fz1WHhsFLWmoq0aG4Uz0MTJt6wILLwg3aMhl+yPHh
+   4QGC1d2Ss5oFsAUCiqIPedWduZ+GV+5JleRaWzl4HIBIc9HdiRDSc/svh
+   w=;
 X-IronPort-AV: E=Sophos;i="5.76,413,1592870400"; 
-   d="scan'208";a="74009304"
-Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1e-27fb8269.us-east-1.amazon.com) ([10.47.23.38])
-  by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 10 Sep 2020 19:43:58 +0000
+   d="scan'208";a="74009299"
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1e-62350142.us-east-1.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 10 Sep 2020 19:43:57 +0000
 Received: from EX13MTAUWB001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan2.iad.amazon.com [10.40.163.34])
-        by email-inbound-relay-1e-27fb8269.us-east-1.amazon.com (Postfix) with ESMTPS id C3F30A1DE9;
-        Thu, 10 Sep 2020 19:43:57 +0000 (UTC)
-Received: from EX13D13UWB001.ant.amazon.com (10.43.161.156) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Thu, 10 Sep 2020 19:43:57 +0000
-Received: from EX13MTAUEB002.ant.amazon.com (10.43.60.12) by
- EX13D13UWB001.ant.amazon.com (10.43.161.156) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Thu, 10 Sep 2020 19:43:56 +0000
+        by email-inbound-relay-1e-62350142.us-east-1.amazon.com (Postfix) with ESMTPS id A4422A0715;
+        Thu, 10 Sep 2020 19:43:56 +0000 (UTC)
+Received: from EX13D13UWB004.ant.amazon.com (10.43.161.218) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Thu, 10 Sep 2020 19:43:55 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13D13UWB004.ant.amazon.com (10.43.161.218) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Thu, 10 Sep 2020 19:43:55 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.60.234) with Microsoft SMTP
+ (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
  Server id 15.0.1497.2 via Frontend Transport; Thu, 10 Sep 2020 19:43:55 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 9E614C15D0; Thu, 10 Sep 2020 19:43:55 +0000 (UTC)
+        id 976B3C1400; Thu, 10 Sep 2020 19:43:55 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <fstests@vger.kernel.org>
 CC:     <linux-nfs@vger.kernel.org>,
         Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 3/3] fstests: explicitly specify xattr namespace
-Date:   Thu, 10 Sep 2020 19:43:55 +0000
-Message-ID: <20200910194355.5977-3-fllinden@amazon.com>
+Subject: [PATCH 1/3] common/attr: make _require_attrs more fine-grained
+Date:   Thu, 10 Sep 2020 19:43:53 +0000
+Message-ID: <20200910194355.5977-1-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
-In-Reply-To: <20200910194355.5977-1-fllinden@amazon.com>
-References: <20200910194355.5977-1-fllinden@amazon.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
@@ -66,231 +63,86 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Explicitly specify the xattr namespace required for tests.
-This allows tests to be skipped correctly for filesystems
-that don't support all xattr namespaces.
+Filesystems may not support all xattr types. But, _require_attr assumes
+that being able to use "user" namespace xattrs means that all namespaces
+("trusted", "system", etc) are supported. This breaks on NFS, that only
+supports the "user" namespace, and a few cases in the "system" namespace.
 
-This changes all tests that require anything other than
-the "user" xattr namespace. When called without arguments
-as before, _require_attrs() still defaults to the "user"
-namespace, so those tests do not need to be changed.
+Change _require_attrs to optionally take namespace arguments that specify
+the namespaces to check for. The default behavior (no arguments) is still
+to check for the "user" namespace only.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- tests/generic/062 | 4 ++++
- tests/generic/093 | 2 +-
- tests/generic/097 | 2 +-
- tests/generic/403 | 2 +-
- tests/generic/449 | 2 +-
- tests/overlay/011 | 2 +-
- tests/overlay/026 | 2 +-
- tests/overlay/038 | 2 +-
- tests/overlay/041 | 2 +-
- tests/overlay/045 | 2 +-
- tests/overlay/046 | 2 +-
- tests/overlay/056 | 2 +-
- tests/xfs/063     | 2 +-
- tests/xfs/267     | 2 +-
- tests/xfs/268     | 2 +-
- 15 files changed, 18 insertions(+), 14 deletions(-)
+ common/attr | 49 +++++++++++++++++++++++++++++++------------------
+ 1 file changed, 31 insertions(+), 18 deletions(-)
 
-diff --git a/tests/generic/062 b/tests/generic/062
-index cab4b4fa..78c1c95c 100755
---- a/tests/generic/062
-+++ b/tests/generic/062
-@@ -82,6 +82,10 @@ else
-     ATTR_MODES="user trusted"
-     ATTR_FILTER="^(user|trusted)"
- fi
+diff --git a/common/attr b/common/attr
+index 20049de0..c60cb6ed 100644
+--- a/common/attr
++++ b/common/attr
+@@ -175,30 +175,43 @@ _list_acl()
+ 
+ _require_attrs()
+ {
++    local args
++    local nsp
 +
-+_require_attrs $ATTR_MODES
++    if [ $# -eq 0 ];
++    then
++      args="user"
++    else
++      args="$*"
++    fi
 +
-+
- for nsp in $ATTR_MODES; do
- 	for inode in reg dir lnk dev/b dev/c dev/p; do
+     [ -n "$ATTR_PROG" ] || _notrun "attr command not found"
+     [ -n "$GETFATTR_PROG" ] || _notrun "getfattr command not found"
+     [ -n "$SETFATTR_PROG" ] || _notrun "setfattr command not found"
  
-diff --git a/tests/generic/093 b/tests/generic/093
-index 10fdcfc7..7ffcfb7d 100755
---- a/tests/generic/093
-+++ b/tests/generic/093
-@@ -35,7 +35,7 @@ _supported_fs generic
- _supported_os Linux
+-    #
+-    # Test if chacl is able to write an attribute on the target filesystems.
+-    # On really old kernels the system calls might not be implemented at all,
+-    # but the more common case is that the tested filesystem simply doesn't
+-    # support attributes.  Note that we can't simply list attributes as
+-    # various security modules generate synthetic attributes not actually
+-    # stored on disk.
+-    #
+-    touch $TEST_DIR/syscalltest
+-    attr -s "user.xfstests" -V "attr" $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
+-    cat $TEST_DIR/syscalltest.out >> $seqres.full
++    for nsp in $args
++    do
++      #
++      # Test if chacl is able to write an attribute on the target filesystems.
++      # On really old kernels the system calls might not be implemented at all,
++      # but the more common case is that the tested filesystem simply doesn't
++      # support attributes.  Note that we can't simply list attributes as
++      # various security modules generate synthetic attributes not actually
++      # stored on disk.
++      #
++      touch $TEST_DIR/syscalltest
++      $SETFATTR_PROG -n "$nsp.xfstests" -v "attr" $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
++      cat $TEST_DIR/syscalltest.out >> $seqres.full
  
- _require_test
--_require_attrs
-+_require_attrs security
- _require_user
- _require_test_program "writemod"
- _require_command "$SETCAP_PROG" "setcap"
-diff --git a/tests/generic/097 b/tests/generic/097
-index 39730bb0..c2c82460 100755
---- a/tests/generic/097
-+++ b/tests/generic/097
-@@ -48,7 +48,7 @@ _supported_fs generic
- _supported_os Linux
+-    if grep -q 'Function not implemented' $TEST_DIR/syscalltest.out; then
+-      _notrun "kernel does not support attrs"
+-    fi
+-    if grep -q 'Operation not supported' $TEST_DIR/syscalltest.out; then
+-      _notrun "attrs not supported by this filesystem type: $FSTYP"
+-    fi
++      if grep -q 'Function not implemented' $TEST_DIR/syscalltest.out; then
++        _notrun "kernel does not support attrs"
++      fi
++      if grep -q 'Operation not supported' $TEST_DIR/syscalltest.out; then
++        _notrun "attr namespace $nsp not supported by this filesystem type: $FSTYP"
++      fi
  
- _require_test
--_require_attrs
-+_require_attrs user trusted
+-    rm -f $TEST_DIR/syscalltest.out
++      rm -f $TEST_DIR/syscalltest.out
++    done
+ }
  
- echo -e "\ncreate file foo"
- rm -f $file
-diff --git a/tests/generic/403 b/tests/generic/403
-index 39c64061..9d9ea539 100755
---- a/tests/generic/403
-+++ b/tests/generic/403
-@@ -36,7 +36,7 @@ rm -f $seqres.full
- _supported_fs generic
- _supported_os Linux
- _require_scratch
--_require_attrs
-+_require_attrs trusted
- 
- _scratch_mkfs > $seqres.full 2>&1 || _fail "mkfs"
- _scratch_mount
-diff --git a/tests/generic/449 b/tests/generic/449
-index 21b920bf..129ac9a8 100755
---- a/tests/generic/449
-+++ b/tests/generic/449
-@@ -39,7 +39,7 @@ _supported_os Linux
- _require_scratch
- _require_test
- _require_acls
--_require_attrs
-+_require_attrs trusted
- 
- _scratch_mkfs_sized $((256 * 1024 * 1024)) >> $seqres.full 2>&1
- _scratch_mount || _fail "mount failed"
-diff --git a/tests/overlay/011 b/tests/overlay/011
-index 1d09341b..b491c37a 100755
---- a/tests/overlay/011
-+++ b/tests/overlay/011
-@@ -37,7 +37,7 @@ _supported_fs overlay
- _supported_os Linux
- _require_test
- _require_scratch
--_require_attrs
-+_require_attrs trusted
- 
- # Remove all files from previous tests
- _scratch_mkfs
-diff --git a/tests/overlay/026 b/tests/overlay/026
-index d0d2a5bf..84fc2412 100755
---- a/tests/overlay/026
-+++ b/tests/overlay/026
-@@ -53,7 +53,7 @@ rm -f $seqres.full
- _supported_fs overlay
- _supported_os Linux
- _require_scratch
--_require_attrs
-+_require_attrs trusted
- 
- # Remove all files from previous tests
- _scratch_mkfs
-diff --git a/tests/overlay/038 b/tests/overlay/038
-index 25f9979b..98267d33 100755
---- a/tests/overlay/038
-+++ b/tests/overlay/038
-@@ -32,7 +32,7 @@ _supported_os Linux
- # Use non-default scratch underlying overlay dirs, we need to check
- # them explicity after test.
- _require_scratch_nocheck
--_require_attrs
-+_require_attrs trusted
- _require_test_program "t_dir_type"
- 
- rm -f $seqres.full
-diff --git a/tests/overlay/041 b/tests/overlay/041
-index 277fb913..d23de4f9 100755
---- a/tests/overlay/041
-+++ b/tests/overlay/041
-@@ -35,7 +35,7 @@ _supported_os Linux
- # them explicity after test.
- _require_scratch_nocheck
- _require_test
--_require_attrs
-+_require_attrs trusted
- _require_test_program "t_dir_type"
- 
- rm -f $seqres.full
-diff --git a/tests/overlay/045 b/tests/overlay/045
-index 34b7ce4c..e5e65734 100755
---- a/tests/overlay/045
-+++ b/tests/overlay/045
-@@ -33,7 +33,7 @@ rm -f $seqres.full
- _supported_fs overlay
- _supported_os Linux
- _require_scratch_nocheck
--_require_attrs
-+_require_attrs trusted
- _require_command "$FSCK_OVERLAY_PROG" fsck.overlay
- 
- OVL_XATTR_OPAQUE_VAL=y
-diff --git a/tests/overlay/046 b/tests/overlay/046
-index 36c74207..fe912ff3 100755
---- a/tests/overlay/046
-+++ b/tests/overlay/046
-@@ -33,7 +33,7 @@ rm -f $seqres.full
- _supported_fs overlay
- _supported_os Linux
- _require_scratch_nocheck
--_require_attrs
-+_require_attrs trusted
- _require_command "$FSCK_OVERLAY_PROG" fsck.overlay
- 
- # remove all files from previous tests
-diff --git a/tests/overlay/056 b/tests/overlay/056
-index dc7b98cb..35169c36 100755
---- a/tests/overlay/056
-+++ b/tests/overlay/056
-@@ -33,7 +33,7 @@ rm -f $seqres.full
- _supported_fs overlay
- _supported_os Linux
- _require_scratch_nocheck
--_require_attrs
-+_require_attrs trusted
- _require_command "$FSCK_OVERLAY_PROG" fsck.overlay
- 
- OVL_XATTR_IMPURE_VAL=y
-diff --git a/tests/xfs/063 b/tests/xfs/063
-index b6d4c03a..85ab1aa8 100755
---- a/tests/xfs/063
-+++ b/tests/xfs/063
-@@ -32,7 +32,7 @@ _cleanup()
- _supported_fs xfs
- _supported_os Linux
- 
--_require_attrs
-+_require_attrs trusted user
- 
- # create files with EAs
- _create_dumpdir_fill_ea
-diff --git a/tests/xfs/267 b/tests/xfs/267
-index d13ec19a..f0c60350 100755
---- a/tests/xfs/267
-+++ b/tests/xfs/267
-@@ -52,7 +52,7 @@ _supported_fs xfs
- _supported_os Linux
- 
- _require_tape $TAPE_DEV
--_require_attrs
-+_require_attrs trusted
- 
- _create_files
- _erase_hard
-diff --git a/tests/xfs/268 b/tests/xfs/268
-index fa5b9283..07034671 100755
---- a/tests/xfs/268
-+++ b/tests/xfs/268
-@@ -55,7 +55,7 @@ _supported_fs xfs
- _supported_os Linux
- 
- _require_tape $TAPE_DEV
--_require_attrs
-+_require_attrs trusted user
- 
- _create_files
- _erase_hard
+ _require_attr_v1()
 -- 
 2.16.6
 
