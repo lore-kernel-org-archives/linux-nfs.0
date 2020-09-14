@@ -4,52 +4,49 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-14.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7297C433E2
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 13:15:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7775BC43461
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 13:17:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 893C1208DB
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 13:15:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 375C0208E4
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 13:17:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600089312;
-	bh=tuaTiQei/i3Lpz/htWALCQkFU1BPdyiproFme4Yr4L8=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=bAQAni8fGagLLS392A5I998qUqmOW9p931RvpQ5+AHiyiWleU54ORNcIwcMfr8L4I
-	 knQVRejaq8XhrywZzqtMFfb3NRO+1B4UQQX8pgvkO71t0uLds1lENYmcZHnzVN7Eve
-	 DNu9wxmSSbtL1ajLhtjTbIc4Mi8qr58hR/ZEk4us=
+	s=default; t=1600089438;
+	bh=PcFS4xgIDtvvf/g6pRLbif+U5fD1idhTuM9rUr1LFgc=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=s5XUZwnJr3K+fYTinSX2O6W/XQrl0lt5LCwNVzmTdWmHIUUrujbciOBvnRYvlJOrz
+	 VW7twA1SRLycsGAWM1kRxUPYK2jfwNkjgVBKA7KFs/DSKeHN5DRlyl56/1SQ8L16Af
+	 jk3PutJ+OGMWtCEoOLRqwHcSN5jDISVMl9w+VI4Y=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726716AbgINNNu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Sep 2020 09:13:50 -0400
-Received: from mail.kernel.org ([198.145.29.99]:32956 "EHLO mail.kernel.org"
+        id S1726629AbgINNQ6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Sep 2020 09:16:58 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60294 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726116AbgINNHQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 14 Sep 2020 09:07:16 -0400
+        id S1726703AbgINNHO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 14 Sep 2020 09:07:14 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4DB41206B2;
-        Mon, 14 Sep 2020 13:06:04 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 451272223C;
+        Mon, 14 Sep 2020 13:06:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600088765;
-        bh=tuaTiQei/i3Lpz/htWALCQkFU1BPdyiproFme4Yr4L8=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=a9Gv2PXikcG3y7Pm4sGLxIowpf0HccAJijv2ENaeTWyTTTAS+3UdA7x0O/6tt25u9
-         Zl7vu8GNe/g1GXw4HCe2ivt7lRitNJjOSZPPFojXuK8MkdtRhUzBNvZcvlHxbK2ovz
-         AWJkWYYqR1352qhnJK373Z324G0USJ718ubXkmEM=
+        s=default; t=1600088760;
+        bh=PcFS4xgIDtvvf/g6pRLbif+U5fD1idhTuM9rUr1LFgc=;
+        h=From:To:Cc:Subject:Date:From;
+        b=K9OVUHcaVagO6a3vpUCu9ksq90VdHBi1/FLDrx8Ee9D7FgJYltyhJjaP6KqtN+eHf
+         5aVOHQpAPJ5/mYqV954hoFgBUnqTrQA2QtG/UmM3oz8EnMpkuKxn2OVTex5iK4TGpP
+         he7WLNzlx2iRfOe87IQUdLJeb+3ZeGpsYSGBpDxY=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>, Zhi Li <yieli@redhat.com>,
+Cc:     Olga Kornievskaia <kolga@netapp.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 4/8] SUNRPC: stop printk reading past end of string
-Date:   Mon, 14 Sep 2020 09:05:54 -0400
-Message-Id: <20200914130559.1805574-4-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.4 1/8] NFSv4.1 handle ERR_DELAY error reclaiming locking state on delegation recall
+Date:   Mon, 14 Sep 2020 09:05:51 -0400
+Message-Id: <20200914130559.1805574-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200914130559.1805574-1-sashal@kernel.org>
-References: <20200914130559.1805574-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -59,37 +56,42 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-[ Upstream commit 8c6b6c793ed32b8f9770ebcdf1ba99af423c303b ]
+[ Upstream commit 3d7a9520f0c3e6a68b6de8c5812fc8b6d7a52626 ]
 
-Since p points at raw xdr data, there's no guarantee that it's NULL
-terminated, so we should give a length.  And probably escape any special
-characters too.
+A client should be able to handle getting an ERR_DELAY error
+while doing a LOCK call to reclaim state due to delegation being
+recalled. This is a transient error that can happen due to server
+moving its volumes and invalidating its file location cache and
+upon reference to it during the LOCK call needing to do an
+expensive lookup (leading to an ERR_DELAY error on a PUTFH).
 
-Reported-by: Zhi Li <yieli@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/rpcb_clnt.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index c89626b2afffb..696381a516341 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -977,8 +977,8 @@ static int rpcb_dec_getaddr(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, len);
- 	if (unlikely(p == NULL))
- 		goto out_fail;
--	dprintk("RPC: %5u RPCB_%s reply: %s\n", req->rq_task->tk_pid,
--			req->rq_task->tk_msg.rpc_proc->p_name, (char *)p);
-+	dprintk("RPC: %5u RPCB_%s reply: %*pE\n", req->rq_task->tk_pid,
-+			req->rq_task->tk_msg.rpc_proc->p_name, len, (char *)p);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ca1702cefb852..64d15c2662db6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6171,7 +6171,12 @@ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state,
+ 	err = nfs4_set_lock_state(state, fl);
+ 	if (err != 0)
+ 		return err;
+-	err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
++	do {
++		err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
++		if (err != -NFS4ERR_DELAY)
++			break;
++		ssleep(1);
++	} while (err == -NFS4ERR_DELAY);
+ 	return nfs4_handle_delegation_recall_error(server, state, stateid, fl, err);
+ }
  
- 	if (rpc_uaddr2sockaddr(req->rq_xprt->xprt_net, (char *)p, len,
- 				sap, sizeof(address)) == 0)
 -- 
 2.25.1
 
