@@ -7,45 +7,45 @@ X-Spam-Status: No, score=-14.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8F15C43461
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 14:42:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF88CC43461
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 15:09:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 84181207EA
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 14:42:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A168A20829
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 15:09:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600094560;
-	bh=j5YB8/729lmMfMHnjBaAOLOk6VmxfVl+o6QiTk5rQe0=;
+	s=default; t=1600096157;
+	bh=ebo5BxbbeEfCkSIYFkB6GEE4cewRZ0XayVh101BgQLE=;
 	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=hO526ytsZZWSGjDJT/i6Z0CKfKYWwvNenMfLGrh3zGBejemw2xgZX7M3fmAFsMLnu
-	 /QahmsUuYHNrExlUHM1ieSllk9O7xc0nj2CR/w9uNfoGtkNhzTyFBG53tAxm2HBEnZ
-	 E++TFs6OkkDlVN1vOpBAh7gjjSTR3RFvMMnAIYVM=
+	b=ssfhSv2hsYrqXOhgCDYnDOrdhLc1ZUttNmKwxSClMXhFUutcqJRabqBXk3E7rjuUm
+	 Y1YOSiiDaoblO8GhvjFURuWW7oFXtIY6neWVYL/xUtM2spYLG37F6VZhqoh5RAFywu
+	 jQAjQyuB11DHfDr2OKeT7lJvV0CsdYaAtoUcDdec=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726570AbgINOmg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Sep 2020 10:42:36 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60804 "EHLO mail.kernel.org"
+        id S1726033AbgINPJE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Sep 2020 11:09:04 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60296 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726631AbgINNFm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 14 Sep 2020 09:05:42 -0400
+        id S1726617AbgINNF3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 14 Sep 2020 09:05:29 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1884A2224D;
-        Mon, 14 Sep 2020 13:05:04 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 36B9722228;
+        Mon, 14 Sep 2020 13:04:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600088704;
-        bh=j5YB8/729lmMfMHnjBaAOLOk6VmxfVl+o6QiTk5rQe0=;
+        s=default; t=1600088676;
+        bh=ebo5BxbbeEfCkSIYFkB6GEE4cewRZ0XayVh101BgQLE=;
         h=From:To:Cc:Subject:Date:From;
-        b=fcLnBPMVQOmOVMfA6I0M/EG88cYrjjTntAmWxCTtJVmE9jAakzSENTqu2TfCUeVT7
-         vLoAaSgaApcFDDt53/T5zXnrjF4SWrgEA0JJQNwmxS635t5bRfYlvQStCa8P55xqmn
-         nkwVBEohcoF1G44qGe7eG7fOET71bEiWpSQDFRx4=
+        b=ocwuBjU72IHk9CX8v5BKYKnYIAgpA55iVja9pzniwaSySZwXNq3HvDdN5Hxy1/E3A
+         n7Ib591sdniKbmOLt+OXTGDC7V7GNPaYKSgp/ZNs1Kx+q5YD3CuyQGfMOUu/sRWzp3
+         hAS/GFz64EOkbWl9yBwyu8LobY68gCL78dTmHq9Q=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Olga Kornievskaia <kolga@netapp.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 01/19] NFSv4.1 handle ERR_DELAY error reclaiming locking state on delegation recall
-Date:   Mon, 14 Sep 2020 09:04:44 -0400
-Message-Id: <20200914130502.1804708-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 01/22] NFSv4.1 handle ERR_DELAY error reclaiming locking state on delegation recall
+Date:   Mon, 14 Sep 2020 09:04:13 -0400
+Message-Id: <20200914130434.1804478-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
 MIME-Version: 1.0
 X-stable: review
@@ -75,10 +75,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1ef75b1deffa3..929f1d72bfd39 100644
+index d0cb827b72cfa..16414ae02c089 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -7006,7 +7006,12 @@ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state,
+@@ -7232,7 +7232,12 @@ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state,
  	err = nfs4_set_lock_state(state, fl);
  	if (err != 0)
  		return err;
