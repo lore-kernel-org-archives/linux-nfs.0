@@ -2,95 +2,80 @@ Return-Path: <SRS0=tdDw=CX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_2 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE750C433E2
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 17:14:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97EA4C43461
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 17:17:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 89BBB21BE5
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 17:14:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600103644;
-	bh=J3gXBR/Gjl3DzX0hS0PTmUv2pIWLYi4Gy2GOp/A5aj8=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=mjNQ5JiXnzr3/9GYLVDJEZioCVfobOeDw71x10yn7dj80rvf+Zuxm+PyIFJNp4e15
-	 sS8yrNIuwCvoYh9aFZmyKlDgU8QvSZ3qP5iFEd6P0KMxWPRmr3qdJI9O7bHZWBaOlM
-	 ai+SwhilUcvvIrvUSR0Tppi5gVfofl/p1lQtzwP0=
+	by mail.kernel.org (Postfix) with ESMTP id 6A297206B7
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 17:17:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726373AbgINRNu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Sep 2020 13:13:50 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59498 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726580AbgINNEC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 14 Sep 2020 09:04:02 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9F5D8206B2;
-        Mon, 14 Sep 2020 13:03:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600088640;
-        bh=J3gXBR/Gjl3DzX0hS0PTmUv2pIWLYi4Gy2GOp/A5aj8=;
-        h=From:To:Cc:Subject:Date:From;
-        b=Ibpqat+v98TEks1nzT76lEahgOWNEOrkmYdVvGTdHzUtrkSJkyddYXw4iUwkWUfmm
-         qJk+n5zzwU1qJ3vlreb9UJd5pceP6AgNPQ55FrMLXtfmTkyzG4FYhKf/xrky5y0qCf
-         odeaYzv6DsDmUD2AQzXf5/OuTCL+JJPpEC2sitFU=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>, Dan Aloni <dan@kernelim.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.8 01/29] xprtrdma: Release in-flight MRs on disconnect
-Date:   Mon, 14 Sep 2020 09:03:30 -0400
-Message-Id: <20200914130358.1804194-1-sashal@kernel.org>
-X-Mailer: git-send-email 2.25.1
+        id S1725984AbgINRRj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Sep 2020 13:17:39 -0400
+Received: from shelob.surriel.com ([96.67.55.147]:47246 "EHLO
+        shelob.surriel.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726045AbgINRQo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Sep 2020 13:16:44 -0400
+X-Greylist: delayed 558 seconds by postgrey-1.27 at vger.kernel.org; Mon, 14 Sep 2020 13:16:43 EDT
+Received: from [2603:3005:d05:2b00:6e0b:84ff:fee2:98bb] (helo=imladris.surriel.com)
+        by shelob.surriel.com with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        (Exim 4.94)
+        (envelope-from <riel@shelob.surriel.com>)
+        id 1kHrwn-0006gu-1u; Mon, 14 Sep 2020 13:07:21 -0400
+Date:   Mon, 14 Sep 2020 13:07:19 -0400
+From:   Rik van Riel <riel@surriel.com>
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, kernel-team@fb.com
+Subject: [PATCH] silence nfscache allocation warnings with kvzalloc
+Message-ID: <20200914130719.247cccb0@imladris.surriel.com>
+X-Mailer: Claws Mail 3.17.6 (GTK+ 2.24.32; x86_64-redhat-linux-gnu)
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+silence nfscache allocation warnings with kvzalloc
 
-[ Upstream commit 5de55ce951a1466e31ff68a7bc6b0a7ce3cb5947 ]
+Currently nfsd_reply_cache_init attempts hash table allocation through
+kmalloc, and manually falls back to vzalloc if that fails. This makes
+the code a little larger than needed, and creates a significant amount
+of serial console spam if you have enough systems.
 
-Dan Aloni reports that when a server disconnects abruptly, a few
-memory regions are left DMA mapped. Over time this leak could pin
-enough I/O resources to slow or even deadlock an NFS/RDMA client.
+Switching to kvzalloc gets rid of the allocation warnings, and makes
+the code a little cleaner too as a side effect.
 
-I found that if a transport disconnects before pending Send and
-FastReg WRs can be posted, the to-be-registered MRs are stranded on
-the req's rl_registered list and never released -- since they
-weren't posted, there's no Send completion to DMA unmap them.
+Freeing of nn->drc_hashtbl is already done using kvfree currently.
 
-Reported-by: Dan Aloni <dan@kernelim.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Rik van Riel <riel@surriel.com>
 ---
- net/sunrpc/xprtrdma/verbs.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 75c646743df3e..ca89f24a1590b 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -933,6 +933,8 @@ static void rpcrdma_req_reset(struct rpcrdma_req *req)
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 96352ab7bd81..5125b5ef25b6 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -164,14 +164,10 @@ int nfsd_reply_cache_init(struct nfsd_net *nn)
+ 	if (!nn->drc_slab)
+ 		goto out_shrinker;
  
- 	rpcrdma_regbuf_dma_unmap(req->rl_sendbuf);
- 	rpcrdma_regbuf_dma_unmap(req->rl_recvbuf);
-+
-+	frwr_reset(req);
- }
+-	nn->drc_hashtbl = kcalloc(hashsize,
+-				sizeof(*nn->drc_hashtbl), GFP_KERNEL);
+-	if (!nn->drc_hashtbl) {
+-		nn->drc_hashtbl = vzalloc(array_size(hashsize,
+-						 sizeof(*nn->drc_hashtbl)));
+-		if (!nn->drc_hashtbl)
+-			goto out_slab;
+-	}
++	nn->drc_hashtbl = kvzalloc(array_size(hashsize,
++				   sizeof(*nn->drc_hashtbl)), GFP_KERNEL);
++	if (!nn->drc_hashtbl)
++		goto out_slab;
  
- /* ASSUMPTION: the rb_allreqs list is stable for the duration,
--- 
-2.25.1
+ 	for (i = 0; i < hashsize; i++) {
+ 		INIT_LIST_HEAD(&nn->drc_hashtbl[i].lru_head);
 
