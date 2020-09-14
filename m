@@ -5,50 +5,50 @@ X-Spam-Level:
 X-Spam-Status: No, score=-14.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3223DC2BC11
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 14:32:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 04720C43461
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 14:39:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E404C206C9
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 14:32:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BB21C207EA
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Sep 2020 14:39:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600093941;
-	bh=/+g3tl0tKR2B1dR6A3fWUZXSKcXBlnnKwUTXG4CoPQA=;
+	s=default; t=1600094358;
+	bh=nZmhz7Uay+BXhaZ3w0/AhY7bK+1aE+dQvrdG9JQkNFw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=B+XEzO/Vz5dxJ2hj5o3RipUi3Op3+Fr97VJ5jnXSbPiLSv0LcPXp0pLSbjpyEAVIb
-	 Po0xR/nYIu3Jxv8tGlLtoRV5HAlV6b/ZPydEIemP2eHDFgOhAAg/KubLudcsr1TXQw
-	 jtlt+RYhqCraZ3aONmwETXRaezVpqbnvYnHF88cA=
+	b=uWAXxXIRvQae7bJ9zzvE0LCiYn35xOzZEOsqFnXjK4fMIrcR3nQBeBjrsuVvfBbyO
+	 H+ytvHLM40NUJ9Gdi8EiCizn+b97k+Vmg5o0Mq2XiSCV/MFnXYf58CF7YdqC/dNvPB
+	 NZjZnbxHrxlw5btGx2q4KQD8di7bMyg6YO1C/DCw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726680AbgINOcP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Sep 2020 10:32:15 -0400
-Received: from mail.kernel.org ([198.145.29.99]:32960 "EHLO mail.kernel.org"
+        id S1726684AbgINOhR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Sep 2020 10:37:17 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60694 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726653AbgINNGA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 14 Sep 2020 09:06:00 -0400
+        id S1726642AbgINNFm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 14 Sep 2020 09:05:42 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E091B221E2;
-        Mon, 14 Sep 2020 13:05:10 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0DC4222240;
+        Mon, 14 Sep 2020 13:04:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600088711;
-        bh=/+g3tl0tKR2B1dR6A3fWUZXSKcXBlnnKwUTXG4CoPQA=;
+        s=default; t=1600088683;
+        bh=nZmhz7Uay+BXhaZ3w0/AhY7bK+1aE+dQvrdG9JQkNFw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=kuzZvJ0xFgYjt+E6AyTaWiHHCD68YRdtEy73mmd9HNMiamjBCJXo9BQpYqhw9bi1F
-         40QpgzlNla9dUWV8uAfK+QpULXXdnr5W85N6PvXR7HzKCL+V1wk9ID9NIs7BdV88dS
-         IcepsSZselDht3RpkLPvHU3FuQV11jI4lg28zAbE=
+        b=p+0MCd9jSNIaeBpjs0c7fzCDDPQ2wGCErVWquQ/pfxxKVsmxhD8rOHHTqwuIJ2RiR
+         Timkf+ahiH8K9OEE7GrkBYeam7M9ocqu4iBMyjfKf0h/TjGP68scIrAUoxj4GWh53S
+         6XajgQTOSheDdSmgxKCWYIAwmKw7jynI17NrDotE=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 07/19] NFS: Zero-stateid SETATTR should first return delegation
-Date:   Mon, 14 Sep 2020 09:04:50 -0400
-Message-Id: <20200914130502.1804708-7-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 07/22] NFS: Zero-stateid SETATTR should first return delegation
+Date:   Mon, 14 Sep 2020 09:04:19 -0400
+Message-Id: <20200914130434.1804478-7-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200914130502.1804708-1-sashal@kernel.org>
-References: <20200914130502.1804708-1-sashal@kernel.org>
+In-Reply-To: <20200914130434.1804478-1-sashal@kernel.org>
+References: <20200914130434.1804478-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -84,10 +84,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 929f1d72bfd39..b2a2ff3f22a46 100644
+index 16414ae02c089..00435556db0ce 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3129,8 +3129,10 @@ static int _nfs4_do_setattr(struct inode *inode,
+@@ -3257,8 +3257,10 @@ static int _nfs4_do_setattr(struct inode *inode,
  
  	/* Servers should only apply open mode checks for file size changes */
  	truncate = (arg->iap->ia_valid & ATTR_SIZE) ? true : false;
