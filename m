@@ -2,122 +2,171 @@ Return-Path: <SRS0=3Pxj=CZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 41BC5C43461
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 00:34:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A26CC433E2
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 00:39:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0DF5420739
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 00:34:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D1F6720809
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 00:39:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726783AbgIPAeF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 15 Sep 2020 20:34:05 -0400
-Received: from smtprelay0130.hostedemail.com ([216.40.44.130]:55218 "EHLO
-        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726661AbgIPAd5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2020 20:33:57 -0400
-Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
-        by smtprelay03.hostedemail.com (Postfix) with ESMTP id 3DD4D837F24C;
-        Wed, 16 Sep 2020 00:33:55 +0000 (UTC)
-X-Session-Marker: 6A6F6540706572636865732E636F6D
-X-HE-Tag: corn68_1c0caec27115
-X-Filterd-Recvd-Size: 3131
-Received: from XPS-9350.home (unknown [47.151.133.149])
-        (Authenticated sender: joe@perches.com)
-        by omf09.hostedemail.com (Postfix) with ESMTPA;
-        Wed, 16 Sep 2020 00:33:53 +0000 (UTC)
-Message-ID: <2786f88508b99c8e1ebee62ea955c4026368c878.camel@perches.com>
-Subject: Re: [PATCH] nfs: remove incorrect fallthrough label
-From:   Joe Perches <joe@perches.com>
-To:     "Gustavo A. R. Silva" <gustavo@embeddedor.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     Nathan Chancellor <natechancellor@gmail.com>,
-        Miaohe Lin <linmiaohe@huawei.com>,
-        Hongxiang Lou <louhongxiang@huawei.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        clang-built-linux@googlegroups.com
-Date:   Tue, 15 Sep 2020 17:33:52 -0700
-In-Reply-To: <de27c65b-ae7d-a2ba-3ab8-717c10f297c3@embeddedor.com>
-References: <20200915225751.274531-1-ndesaulniers@google.com>
-         <9441ed0f247d0cac6e85f3847e1b4c32a199dd8f.camel@perches.com>
-         <55f1ff08-fc3c-62ed-429d-c9ae285a3a49@embeddedor.com>
-         <de27c65b-ae7d-a2ba-3ab8-717c10f297c3@embeddedor.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-User-Agent: Evolution 3.36.4-0ubuntu1 
+        id S1726565AbgIPAjd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 15 Sep 2020 20:39:33 -0400
+Received: from cerberus.halldom.com ([79.135.97.241]:53025 "EHLO
+        cerberus.halldom.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726210AbgIONHC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2020 09:07:02 -0400
+Received: from ceres.halldom.com ([79.135.97.244]:65112)
+        by cerberus.halldom.com with esmtpsa  (TLS1.3) tls TLS_AES_128_GCM_SHA256
+        (Exim 4.94)
+        (envelope-from <linux-nfs@gmch.uk>)
+        id 1kIAf6-000JBD-81
+        for linux-nfs@vger.kernel.org; Tue, 15 Sep 2020 14:06:20 +0100
+Subject: Re: mount.nfs4 and logging
+To:     linux-nfs@vger.kernel.org
+References: <S1725851AbgIKKt5/20200911104957Z+185@vger.kernel.org>
+ <a38a1249-c570-9069-a498-5e17d85a418a@gmch.uk>
+ <f06f86ef-08bd-3974-3d92-1fbda700cc11@RedHat.com>
+From:   Chris Hall <linux-nfs@gmch.uk>
+Message-ID: <f7b9c8b4-29a6-2f28-b1d9-739c546fd557@gmch.uk>
+Date:   Tue, 15 Sep 2020 14:06:23 +0100
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.12.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <f06f86ef-08bd-3974-3d92-1fbda700cc11@RedHat.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-GB
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 2020-09-15 at 19:01 -0500, Gustavo A. R. Silva wrote:
+On 14/09/2020 19:30, Steve Dickson wrote:
+> Hello,
 > 
-> On 9/15/20 18:51, Gustavo A. R. Silva wrote:
-> > 
-> > On 9/15/20 18:29, Joe Perches wrote:
-> > > On Tue, 2020-09-15 at 15:57 -0700, Nick Desaulniers wrote:
-> > > > There is no case after the default from which to fallthrough to. Clang
-> > > > will error in this case (unhelpfully without context, see link below)
-> > > > and GCC will with -Wswitch-unreachable.
-> > > > 
-> > > > The previous commit should have just removed the comment.
-> > > []
-> > > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > > []
-> > > > @@ -889,7 +889,6 @@ static struct nfs_server *nfs_try_mount_request(struct fs_context *fc)
-> > > >  		default:
-> > > >  			if (rpcauth_get_gssinfo(flavor, &info) != 0)
-> > > >  				continue;
-> > > > -			fallthrough;
-> > > 
-> > > My preference would be to convert the fallthrough
-> > > to a break here so if someone ever adds another
-> > > label after default: for any reason, the code would
-> > > still work as expected.
-> > 
-> > I agree with Joe.
-> 
-> Actually, this is part of the work I plan to do to enable -Wimplicit-fallthrough
-> for Clang: audit every place where we could use a break instead of a fallthrough.
-> 
-> I'm on vacation this week. So, I'll get back to this next week.
+> On 9/11/20 7:45 AM, Chris Hall wrote:
 
-Nice, thanks Gustavo.
+>> I have a client and server configured for nfs4 only.
 
-As part of that work, perhaps you could also find all the
+> Would you mind sharing this configuration? Privately if
+> that works better...
 
-	switch (<foo>) {
-	[cases...]
-		[code...];
-		break;
+The client /etc/nfsmount.conf has:
 
-	default:
-		[code...]
-		(no break)
-	}
+   [ NFSMount_Global_Options ]
+   Defaultvers=4
+   Nfsvers=4
+   Defaultproto=tcp
+   Proto=tcp
 
-uawa where the last label/default block does _not_ have a break
-statement and add one too.
+and (now, see below) nothing else.
 
-Also see:  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91432
+FWIW, I guess setting the 'Defaultvers' and 'Defaultproto' is 
+redundant... but does not appear to stop anything from working.
 
-gcc does _not_ warn on
+Also FWIW, I gather that this is configuration for the client-side 
+'mount' of nfs exports, *only*.  I suppose it should be obvious that 
+this has absolutely nothing to do with configuring (server-side) 
+'mountd'.  Speaking as a fully paid up moron-in-a-hurry, it has taken me 
+a while to work that out :-(  [I suggest that the comments in the .conf 
+files and the man-page could say that nfs.conf is server-side and 
+nfsmount.conf is client-side -- just a few words, for the avoidance of 
+doubt.]
 
-	switch (<foo>) {
-	case BAR:
-		[code];
-		(no fallthrough)
+The server /etc/nfs.conf has only:
 
-	case BAZ:
-		break;
-	}
+   [nfsd]
+   debug=0
+   threads=8
+   host=cerberus2
+   port=1001
+   # grace-time=90
+   # lease-time=90
+   udp=n
+   tcp=y
+   vers2=n
+   vers3=n
+   vers4=y
+   vers4.0=y
+   vers4.1=y
+   vers4.2=y
 
-It might be good to add the appropriate fallthrough
-for those case blocks too.
+I wish I knew whether the 'vers4.X' settings make the slightest 
+difference.  This server is my firewall, hence the funky port number.
 
+> I'm thinking that is a good direction to go towards
+> so maybe we make this configuration the default??
 
+I don't use nfs very much, but every time I have tangled with it I have 
+come way limping :-(
+
+Given that NFSv4 is going on 20 years old now, I do wonder why the 
+earlier versions are not treated a "legacy".  When trying to discover 
+how to configure and use nfs I find I am still wading through stuff 
+which does not apply to NFSv4.  Much of what the "wisdom of the 
+Internet" has to offer seems firmly routed in the past, and often NFSv4 
+is describe in terms of its difference from NFSv3 and v2.
+
+For example: I run nfs on my firewall machine so that I can configure it 
+from elsewhere on the network.  Naturally, the firewall machine is 
+firmly wrapped so that it may only be accessed by particular machines 
+inside the network.  I also try to ensure that the absolute minimum 
+number of daemons are running and the absolute minumum number of ports 
+are open.  In that context, (a) is there a way to persuade 'systemctl 
+start nfs-service' to be "nfs4 only", and to *not* start 'rpcbind' (and 
+*not* open port 111), and (b) are rpc.idmapd, rpc.mountd and rpc.statd 
+required for nfs4 ?  (ie, is nfsdcld sufficient ?)
+
+>> The configuration used to work.
+>>
+>> I have just upgraded from Fedora 31 to 32 on the client.  I now get:
+>>
+>>    # mount /foo
+>>    mount.nfs4: Protocol not supported
+
+> I've been trying to keep the versions the same... hopefully
+> nothing has broken in f31... ;-(
+
+Rest easy: my problem was entirely self inflicted -- it had nothing 
+directly to do with the upgrade from Fedora 31 to 32.
+
+Since the client 'mount' and 'mount.nfs4' were not even attempting to 
+speak to the server, I downloaded the source and the debug symbols and 
+had a go at it with strace and gdb...
+
+...and discovered that I had caused the problem by setting:
+
+   mountproto=tcp
+   mountvers=4
+
+in /etc/nfsmount.conf at the client end.  [Full disclosure: I am 
+building a replacement for the server and was reviewing all 
+configuration at both ends, updating Fedora all round and generally 
+tidying up.]
+
+It turns out that mount.nfs4 takes a dim view of the existence of these 
+settings and declines to do the mount(2) call; instead it sets 
+errno=EPROTONOSUPPORT and returns as if the mount(2) had failed.  [See 
+nfs_do_mount_v4() in stropts.c of utils/mount/.  I note in passing that 
+it worries about "mounthost", "mountaddr", "mountvers" and "mountproto", 
+where "mountaddr" is not mentioned in the man-page for nfs.  But it does 
+not worry about "mountport", which is mentioned in the man-page.]
+
+Having checked carefully, I now know that mountport, mountproto, 
+mounthost and mountvers are all "Options for NFS versions 2 and 3 only". 
+  But I don't know if their presence with 'nfsvers=4' would cause 
+mount(2) to fail.
+
+In any case, frankly, I think that mount is being singularly obtuse. 
+Since it knows that these options do not apply, it could IMHO simply 
+discard them.  If that's a step too far, it could produce a rather more 
+informative message -- in particular *not* the standard system message 
+for EPROTONOSUPPORT, which a quick search of POSIX.1-2017 tells me is 
+returned only by socket() and socketpair() !
+
+Thanks,
+
+Chris
