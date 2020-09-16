@@ -2,119 +2,146 @@ Return-Path: <SRS0=3Pxj=CZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E354DC2BB84
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:13:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16943C433E2
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:15:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 952C421582
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:13:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600287185;
-	bh=HJTHeTWn53Pu1Qt1ZPPIIpWjMROw4SxePoyDOc2+HWg=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=TB7/Y3pN/jE6JQIPnFYyOYr6GGiccubGdlcQHu95+rrX7/W15x0WJ1bq56iEafYID
-	 +Oyh//ppJ0Nw8zWkI45mxzvEpICMDknYvcKQcMAHsVJidpAScmHgE8Ty1OvcVZGY2U
-	 R8Jw+mpsUBMci0S8gduiMaFEHQnAP6uUCLSFRB3Y=
+	by mail.kernel.org (Postfix) with ESMTP id B46252064E
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:15:32 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="oGFyz4co"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727288AbgIPUNA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Sep 2020 16:13:00 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35138 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726361AbgIPUM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 16 Sep 2020 16:12:57 -0400
-Received: from embeddedor (187-162-31-110.static.axtel.net [187.162.31.110])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id D11BC20936;
-        Wed, 16 Sep 2020 20:12:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600287177;
-        bh=HJTHeTWn53Pu1Qt1ZPPIIpWjMROw4SxePoyDOc2+HWg=;
+        id S1727145AbgIPUM7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Sep 2020 16:12:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33218 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727061AbgIPRdO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 13:33:14 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA66EC02C2AD;
+        Wed, 16 Sep 2020 09:03:24 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 30C2D689F; Wed, 16 Sep 2020 12:03:16 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 30C2D689F
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1600272196;
+        bh=AhbQil9hi1jajqnwwBoDpoEkSw6sqlLr283ReFc5xQg=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=IPTBAYXvKLi5j5Lr9NCFHLo2ZiDYa718UzsZTwt31vgOEMk8/olInWW41FJDeIReZ
-         dtBFsPzIJ4Q3YkVCfU2lZYOkLamVbqfq4ExmfKDQRUomeDFGoe/+L6dCaigt/Ksm2d
-         KgXLgiET43dKAZoi6/y8Fw63CmTQrfoN6QTpbSvI=
-Date:   Wed, 16 Sep 2020 15:18:27 -0500
-From:   "Gustavo A. R. Silva" <gustavoars@kernel.org>
-To:     Nick Desaulniers <ndesaulniers@google.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
-        Joe Perches <joe@perches.com>,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        Hongxiang Lou <louhongxiang@huawei.com>,
-        Miaohe Lin <linmiaohe@huawei.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, clang-built-linux@googlegroups.com
-Subject: Re: [PATCH v2] nfs: remove incorrect fallthrough label
-Message-ID: <20200916201827.GA22908@embeddedor>
-References: <9441ed0f247d0cac6e85f3847e1b4c32a199dd8f.camel@perches.com>
- <20200916200255.1382086-1-ndesaulniers@google.com>
+        b=oGFyz4comJG6R79ISTIV5cstLTo7DBCtV3gmkUf2vHJHQue7W9VeVwmdy+Dqp2ucR
+         gc1fU3CQra+Ebnqq67PfhQ2EkkLC5VhhQcXeZdIQb3xyWM1iBUU7TXG+MbbMZiejrz
+         E1/Wi9MFGcYe+jJfw4dnRGXPvS+jDFiftMA3szxs=
+Date:   Wed, 16 Sep 2020 12:03:16 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     syzbot <syzbot+1594adb1b44e354153d8@syzkaller.appspotmail.com>
+Cc:     anna.schumaker@netapp.com, chuck.lever@oracle.com,
+        davem@davemloft.net, kuba@kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        syzkaller-bugs@googlegroups.com, trond.myklebust@hammerspace.com
+Subject: Re: general protection fault in cache_clean
+Message-ID: <20200916160316.GA4560@fieldses.org>
+References: <0000000000002b3ac605af559958@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200916200255.1382086-1-ndesaulniers@google.com>
-User-Agent: Mutt/1.9.4 (2018-02-28)
+In-Reply-To: <0000000000002b3ac605af559958@google.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Sep 16, 2020 at 01:02:55PM -0700, Nick Desaulniers wrote:
-> There is no case after the default from which to fallthrough to. Clang
-> will error in this case (unhelpfully without context, see link below)
-> and GCC will with -Wswitch-unreachable.
+On Tue, Sep 15, 2020 at 01:04:20AM -0700, syzbot wrote:
+> syzbot found the following issue on:
 > 
-> The previous commit should have just replaced the comment with a break
-> statement.
+> HEAD commit:    581cb3a2 Merge tag 'f2fs-for-5.9-rc5' of git://git.kernel...
+> git tree:       upstream
+> console output: https://syzkaller.appspot.com/x/log.txt?x=11f5c011900000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=a9075b36a6ae26c9
+> dashboard link: https://syzkaller.appspot.com/bug?extid=1594adb1b44e354153d8
+> compiler:       gcc (GCC) 10.1.0-syz 20200507
 > 
-> If we consider implicit fallthrough to be a design mistake of C, then
-> all case statements should be terminated with one of the following
-> statements:
-> * break
-> * continue
-> * return
-> * __attribute__(__fallthrough__)
-> * goto (plz no)
-> * (call of function with __attribute__(__noreturn__))
+> Unfortunately, I don't have any reproducer for this issue yet.
 > 
-> Fixes: 2a1390c95a69 ("nfs: Convert to use the preferred fallthrough macro")
-> Link: https://bugs.llvm.org/show_bug.cgi?id=47539
-> Suggested-by: Joe Perches <joe@perches.com>
-> Signed-off-by: Nick Desaulniers <ndesaulniers@google.com>
+> IMPORTANT: if you fix the issue, please add the following tag to the commit:
+> Reported-by: syzbot+1594adb1b44e354153d8@syzkaller.appspotmail.com
+> 
+> general protection fault, probably for non-canonical address 0xdffffc0012e34a9a: 0000 [#1] PREEMPT SMP KASAN
+> KASAN: probably user-memory-access in range [0x00000000971a54d0-0x00000000971a54d7]
+> CPU: 1 PID: 19990 Comm: kworker/1:11 Not tainted 5.9.0-rc4-syzkaller #0
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
+> Workqueue: events_power_efficient do_cache_clean
+> RIP: 0010:cache_clean+0x119/0x7f0 net/sunrpc/cache.c:444
 
-Acked-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-Reviewed-by: Gustavo A. R. Silva <gustavoars@kernel.org>
+That's in cache_clean():
+	spin_lock(&cache_list_lock);
+	...
+	current_detail = list_entry(next, struct cache_detail, others)
+444:	if (current_detail->nextcheck > seconds_since_boot())
 
-Thanks
---
-Gustavo
+It suggests cache_list or current_detail (both globals) are corrupted
+somehow.
 
+Those are manipulated only by cache_clean() and
+sunrpc_{init,destroy}_cache_detail(), always under the cache_list_lock.
+
+All the callers have to do to get this right is make sure the
+cache_detail they pass in is allocated before calling
+sunrpc_init_cache_detail() and not freed till after calling
+sunrpc_destroy_cache_detail().  I think they all get that right.
+
+So I'm assuming this is a random memory scribble from somewhere else or
+something, unless it pops up again....
+
+(The one thing I'm a little unsure of here is the
+list_empty(&cache_list) checks used to decide when to stop the
+cache_cleaner.  But that's a separate problem, if it is a problem.)
+
+--b.
+
+
+> Code: 81 fb 20 eb 94 8a 0f 84 b8 00 00 00 e8 80 df 33 fa 48 8d 83 40 ff ff ff 48 8d 7b 10 48 89 05 8e 8e 13 06 48 89 f8 48 c1 e8 03 <42> 80 3c 28 00 0f 85 e0 05 00 00 48 8d 6c 24 38 4c 8b 63 10 48 89
+> RSP: 0018:ffffc90008e1fc48 EFLAGS: 00010206
+> RAX: 0000000012e34a9a RBX: 00000000971a54c0 RCX: ffffffff87406dbb
+> RDX: ffff88804358a000 RSI: ffffffff87406e00 RDI: 00000000971a54d0
+> RBP: 0000000000000100 R08: 0000000000000001 R09: 0000000000000003
+> R10: 0000000000000100 R11: 0000000000000000 R12: 0000000000000100
+> R13: dffffc0000000000 R14: ffff88803451b200 R15: ffff8880ae735600
+> FS:  0000000000000000(0000) GS:ffff8880ae700000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00000000004ef310 CR3: 000000009ca1b000 CR4: 00000000001526e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> Call Trace:
+>  do_cache_clean+0xd/0xd0 net/sunrpc/cache.c:502
+>  process_one_work+0x94c/0x1670 kernel/workqueue.c:2269
+>  worker_thread+0x64c/0x1120 kernel/workqueue.c:2415
+>  kthread+0x3b5/0x4a0 kernel/kthread.c:292
+>  ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:294
+> Modules linked in:
+> ---[ end trace 4c54bbd0e20d734b ]---
+> RIP: 0010:cache_clean+0x119/0x7f0 net/sunrpc/cache.c:444
+> Code: 81 fb 20 eb 94 8a 0f 84 b8 00 00 00 e8 80 df 33 fa 48 8d 83 40 ff ff ff 48 8d 7b 10 48 89 05 8e 8e 13 06 48 89 f8 48 c1 e8 03 <42> 80 3c 28 00 0f 85 e0 05 00 00 48 8d 6c 24 38 4c 8b 63 10 48 89
+> RSP: 0018:ffffc90008e1fc48 EFLAGS: 00010206
+> RAX: 0000000012e34a9a RBX: 00000000971a54c0 RCX: ffffffff87406dbb
+> RDX: ffff88804358a000 RSI: ffffffff87406e00 RDI: 00000000971a54d0
+> RBP: 0000000000000100 R08: 0000000000000001 R09: 0000000000000003
+> R10: 0000000000000100 R11: 0000000000000000 R12: 0000000000000100
+> R13: dffffc0000000000 R14: ffff88803451b200 R15: ffff8880ae735600
+> FS:  0000000000000000(0000) GS:ffff8880ae700000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00000000004ef310 CR3: 000000009ca1b000 CR4: 00000000001526e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> 
+> 
 > ---
-> Changes v2:
-> * add break rather than no terminating statement as per Joe.
-> * add Joe's suggested by tag.
-> * add blurb about acceptable terminal statements.
+> This report is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
 > 
->  fs/nfs/super.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index d20326ee0475..eb2401079b04 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -889,7 +889,7 @@ static struct nfs_server *nfs_try_mount_request(struct fs_context *fc)
->  		default:
->  			if (rpcauth_get_gssinfo(flavor, &info) != 0)
->  				continue;
-> -			fallthrough;
-> +			break;
->  		}
->  		dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", flavor);
->  		ctx->selected_flavor = flavor;
-> -- 
-> 2.28.0.618.gf4bc123cb7-goog
-> 
+> syzbot will keep track of this issue. See:
+> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
