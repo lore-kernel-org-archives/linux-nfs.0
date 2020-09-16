@@ -7,66 +7,66 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DDBCC2D0E3
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0300AC35257
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E5ED620708
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B556420732
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MSu4GEWA"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uFC45fti"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726455AbgIPWSV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Sep 2020 18:18:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49526 "EHLO
+        id S1726419AbgIPWSW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Sep 2020 18:18:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49532 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726444AbgIPWR5 (ORCPT
+        with ESMTP id S1726441AbgIPWR5 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 18:17:57 -0400
-Received: from mail-il1-x143.google.com (mail-il1-x143.google.com [IPv6:2607:f8b0:4864:20::143])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05C53C061A2D
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:48 -0700 (PDT)
-Received: by mail-il1-x143.google.com with SMTP id a8so298437ilk.1
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:47 -0700 (PDT)
+Received: from mail-io1-xd43.google.com (mail-io1-xd43.google.com [IPv6:2607:f8b0:4864:20::d43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 66677C061A2A
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:36 -0700 (PDT)
+Received: by mail-io1-xd43.google.com with SMTP id g7so9964844iov.13
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=bz731S6wZQA+1qpFznGE8eQlmK/fBClUt6HbiD7bfaQ=;
-        b=MSu4GEWAvVsiY0wxg9FIYGP/KaWb43SMshTTHFSakZENiuyB6gWKuFi1twj3Th/cSp
-         t6kJikL1Cu3ehZtcIxYwDbMb1iwMqRhgJcBdCNDV1nnFrz4+Lat53mq6sYxNQ9ErVEPG
-         8VJA/cZAqRDJJxMZfKXU3RKN+IWawB6tTblJ9SJpFWCaqu3O9fVVx6ptlsNzJTcNqi5l
-         JO8m4+9pf61km/BziP8+DfmZFLnRxzpCQpzEJFTAlrG36mPLPAFa7c3gTWfo+7mYMgOE
-         VtEeuzxahoKi6OQl+W1TJG7qSRGmMNQVFabzGVw9CBKWwMNJ6v9xrbgCiEzF6GY/4gJn
-         26bw==
+        bh=GX8blvT22n2flPRieLsZA2945QuhO1WonegzvfRPWcE=;
+        b=uFC45ftiAg3Vf7nmSSJK0F6l/d6wIkwmudumh/AYw1RaKQ7ev/HhuqaGiLnVJcU9wK
+         lelXphsfHpWO5q191QMxviv9grovykVWBBUIAwc6vPVIO5d00Ry7rp9dWRPXy9vIWJbF
+         M1pznFiTb5QGlHhBLAq08o8sbhN1aXHry49hh8FCgQChyAlPNdrHCuscbHyHiMxciMSn
+         RD+LyhrE6fa3XoNYjJcVG90RoxI5Yo/OZvcx5Syj8DBM47YLv0AqhevCH81Nf7STD5s6
+         34i8M+SzudUDcTqe9lIp2Y/Q9w+DzuVYsCxmbKMj+Vu8S7JRdXE0nGKdnxDBku3it0lP
+         3MSw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=bz731S6wZQA+1qpFznGE8eQlmK/fBClUt6HbiD7bfaQ=;
-        b=WwGMZ1m4O9roGfd07GXAB+qIBW0P2BsSJa8onGZ3nAP0dMayEJtXiFjamqXNGMBT/9
-         pPbN+8MEif4fJR5wgsRTKR1WCAJTPbTN+W+hBde3c/O1JFJt3pSyQHUo2RD77Dxdal5F
-         FsogzsATv2SaieR4JjOeg7n2nvyx5kpMtpxJX96WCptni1JuRzb0IbE6iTaWIscO01mZ
-         OSLERi0kTQnY2Gtw3i5tX0ejxT6UVdcICSj/Deuc8kb0wbl9OF+j9ATs95kyo3/spL9p
-         cwIwfJSSoOu038b0wYm06pbfKVTT7UTNGTFRu5fDSvBopDjyW9Kp72dnRhVuQiCOECK1
-         CrhQ==
-X-Gm-Message-State: AOAM5300WB+HorhF0SW8bVobprjKda0VziExA5Ct+peX4WTwpvYxtmlg
-        w+FKnScJFsW6u8N5gO6WR/s=
-X-Google-Smtp-Source: ABdhPJx7biM1+qbPHXeAL5HqSUKghKqFTun1p1ci9kTqYkbhmzp8EIkREKZ2Om3umQzwOGBmtKuXJg==
-X-Received: by 2002:a92:c7a2:: with SMTP id f2mr3558811ilk.171.1600292566182;
-        Wed, 16 Sep 2020 14:42:46 -0700 (PDT)
+        bh=GX8blvT22n2flPRieLsZA2945QuhO1WonegzvfRPWcE=;
+        b=ea0pJJYQ3ZXMzmUUMx4dQrntJrQJTeNpQNxKX1vAX6sWydQP9kfJUbWRb3VufBqLLC
+         jjNGBl/IEfXCjVCt+l59F2W7094FBAR/FwVuuZC4JWcbNFiqzpqfMGN2zDvD5wCOhM7W
+         L8XbiJitRD7kIfUDatHUetiKYXqVozZSDB2e6GOdW6lMhY3y/HZpJV8mSqfpn/qUHfkc
+         XVtT8CTZaFPQ/21MZZgGQRRwNgf8SenCbi28yKVkohfVkBrTSs2UAtTFj9evuA8L1DC9
+         2zRdyzYxEl4ikEd3uvU0yabM8ZwwTStYHbynodFMvv2bvMTb26wYygn4PmmjqXDZxqxl
+         iicA==
+X-Gm-Message-State: AOAM533AWSeVRNG60/30cWCcKZp9AAQ572KcewF2uwfS2775lxlV8aF3
+        Rf0Jg9kqf8i86tALtG/LYCM=
+X-Google-Smtp-Source: ABdhPJxZ61TJmVe6Ch7nGdOrCX83txGzTr0GKrGp4DN+LlWctsYW+w2bTEi7jpmtAMvbUPRmLxWRig==
+X-Received: by 2002:a05:6602:22cf:: with SMTP id e15mr20713403ioe.114.1600292555769;
+        Wed, 16 Sep 2020 14:42:35 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id s23sm9776897iol.23.2020.09.16.14.42.45
+        by smtp.gmail.com with ESMTPSA id i144sm9629121ioa.55.2020.09.16.14.42.34
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 16 Sep 2020 14:42:45 -0700 (PDT)
+        Wed, 16 Sep 2020 14:42:35 -0700 (PDT)
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLgiYl022996;
-        Wed, 16 Sep 2020 21:42:44 GMT
-Subject: [PATCH RFC 06/21] NFSD: Constify @fh argument of knfsd_fh_hash()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLgYOT022990;
+        Wed, 16 Sep 2020 21:42:34 GMT
+Subject: [PATCH RFC 04/21] NFSD: Clean up the show_nf_may macro
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     bfields@fieldses.org, Bill.Baker@oracle.com
 Cc:     linux-nfs@vger.kernel.org
-Date:   Wed, 16 Sep 2020 17:42:44 -0400
-Message-ID: <160029256470.29208.12060672647527057465.stgit@klimt.1015granger.net>
+Date:   Wed, 16 Sep 2020 17:42:34 -0400
+Message-ID: <160029255410.29208.10420863210576888477.stgit@klimt.1015granger.net>
 In-Reply-To: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
 References: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23
@@ -77,35 +77,116 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Refactor: Enable knfsd_fh_hash() to be invoked in functions where
-the FH is const.
+Display all possible NFSD_MAY permission flags.
+
+Rename show_nf_may with a more generic name because the NFSD_MAY
+permission flags are used in other places besides the file cache.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsfh.h |    7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/nfsd/trace.h |   52 ++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 40 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 56cfbc361561..1a2e28369d04 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -219,15 +219,12 @@ static inline bool fh_fsid_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
-  * returns a crc32 hash for the filehandle that is compatible with
-  * the one displayed by "wireshark".
-  */
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index 1861db1bdc67..a8013338f4d5 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -12,6 +12,38 @@
+ #include "export.h"
+ #include "nfsfh.h"
+ 
++/*
++ * from fs/nfsd/vfs.h
++ */
++#define NFSD_PERMISSION_LIST						\
++	nfsd_perm_flag(EXEC)						\
++	nfsd_perm_flag(WRITE)						\
++	nfsd_perm_flag(READ)						\
++	nfsd_perm_flag(SATTR)						\
++	nfsd_perm_flag(TRUNC)						\
++	nfsd_perm_flag(LOCK)						\
++	nfsd_perm_flag(OWNER_OVERRIDE)					\
++	nfsd_perm_flag(LOCAL_ACCESS)					\
++	nfsd_perm_flag(BYPASS_GSS_ON_ROOT)				\
++	nfsd_perm_flag(NOT_BREAK_LEASE)					\
++	nfsd_perm_flag(BYPASS_GSS)					\
++	nfsd_perm_flag(READ_IF_EXEC)					\
++	nfsd_perm_flag_end(64BIT_COOKIE)
++
++#undef nfsd_perm_flag
++#undef nfsd_perm_flag_end
++#define nfsd_perm_flag(x)	TRACE_DEFINE_ENUM(NFSD_MAY_##x);
++#define nfsd_perm_flag_end(x)	TRACE_DEFINE_ENUM(NFSD_MAY_##x);
++
++NFSD_PERMISSION_LIST
++
++#undef nfsd_perm_flag
++#undef nfsd_perm_flag_end
++#define nfsd_perm_flag(x)	{ NFSD_MAY_##x, #x },
++#define nfsd_perm_flag_end(x)	{ NFSD_MAY_##x, #x }
++
++#define show_perm_flags(val)	__print_flags(val, "|", NFSD_PERMISSION_LIST)
++
+ TRACE_EVENT(nfsd_compound,
+ 	TP_PROTO(const struct svc_rqst *rqst,
+ 		 u32 args_opcnt),
+@@ -421,6 +453,9 @@ TRACE_EVENT(nfsd_clid_inuse_err,
+ 		__entry->cl_boot, __entry->cl_id)
+ )
+ 
++/*
++ * from fs/nfsd/filecache.h
++ */
+ TRACE_DEFINE_ENUM(NFSD_FILE_HASHED);
+ TRACE_DEFINE_ENUM(NFSD_FILE_PENDING);
+ TRACE_DEFINE_ENUM(NFSD_FILE_BREAK_READ);
+@@ -435,13 +470,6 @@ TRACE_DEFINE_ENUM(NFSD_FILE_REFERENCED);
+ 		{ 1 << NFSD_FILE_BREAK_WRITE,	"BREAK_WRITE" },	\
+ 		{ 1 << NFSD_FILE_REFERENCED,	"REFERENCED"})
+ 
+-/* FIXME: This should probably be fleshed out in the future. */
+-#define show_nf_may(val)						\
+-	__print_flags(val, "|",						\
+-		{ NFSD_MAY_READ,		"READ" },		\
+-		{ NFSD_MAY_WRITE,		"WRITE" },		\
+-		{ NFSD_MAY_NOT_BREAK_LEASE,	"NOT_BREAK_LEASE" })
 -
--static inline u32
--knfsd_fh_hash(struct knfsd_fh *fh)
-+static inline u32 knfsd_fh_hash(const struct knfsd_fh *fh)
- {
- 	return ~crc32_le(0xFFFFFFFF, (unsigned char *)&fh->fh_base, fh->fh_size);
- }
- #else
--static inline u32
--knfsd_fh_hash(struct knfsd_fh *fh)
-+static inline u32 knfsd_fh_hash(const struct knfsd_fh *fh)
- {
- 	return 0;
- }
+ DECLARE_EVENT_CLASS(nfsd_file_class,
+ 	TP_PROTO(struct nfsd_file *nf),
+ 	TP_ARGS(nf),
+@@ -466,7 +494,7 @@ DECLARE_EVENT_CLASS(nfsd_file_class,
+ 		__entry->nf_inode,
+ 		__entry->nf_ref,
+ 		show_nf_flags(__entry->nf_flags),
+-		show_nf_may(__entry->nf_may),
++		show_perm_flags(__entry->nf_may),
+ 		__entry->nf_file)
+ )
+ 
+@@ -492,10 +520,10 @@ TRACE_EVENT(nfsd_file_acquire,
+ 		__field(u32, xid)
+ 		__field(unsigned int, hash)
+ 		__field(void *, inode)
+-		__field(unsigned int, may_flags)
++		__field(unsigned long, may_flags)
+ 		__field(int, nf_ref)
+ 		__field(unsigned long, nf_flags)
+-		__field(unsigned char, nf_may)
++		__field(unsigned long, nf_may)
+ 		__field(struct file *, nf_file)
+ 		__field(u32, status)
+ 	),
+@@ -514,9 +542,9 @@ TRACE_EVENT(nfsd_file_acquire,
+ 
+ 	TP_printk("xid=0x%x hash=0x%x inode=0x%p may_flags=%s ref=%d nf_flags=%s nf_may=%s nf_file=0x%p status=%u",
+ 			__entry->xid, __entry->hash, __entry->inode,
+-			show_nf_may(__entry->may_flags), __entry->nf_ref,
++			show_perm_flags(__entry->may_flags), __entry->nf_ref,
+ 			show_nf_flags(__entry->nf_flags),
+-			show_nf_may(__entry->nf_may), __entry->nf_file,
++			show_perm_flags(__entry->nf_may), __entry->nf_file,
+ 			__entry->status)
+ );
+ 
 
 
