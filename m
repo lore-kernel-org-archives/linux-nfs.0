@@ -7,66 +7,66 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBEF9C433E2
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:23:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1512AC2BB84
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:23:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 94DC220708
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:23:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D23A720708
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:23:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lb3R7SM/"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ej3SV/Ew"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726538AbgIPWX1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Sep 2020 18:23:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50394 "EHLO
+        id S1726187AbgIPWXZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Sep 2020 18:23:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50372 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726548AbgIPWXE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 18:23:04 -0400
-Received: from mail-io1-xd41.google.com (mail-io1-xd41.google.com [IPv6:2607:f8b0:4864:20::d41])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B410DC0698C7
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:43:55 -0700 (PDT)
-Received: by mail-io1-xd41.google.com with SMTP id d190so10033767iof.3
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:43:55 -0700 (PDT)
+        with ESMTP id S1726533AbgIPWXF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 18:23:05 -0400
+Received: from mail-il1-x143.google.com (mail-il1-x143.google.com [IPv6:2607:f8b0:4864:20::143])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BDA36C0698C4
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:43:39 -0700 (PDT)
+Received: by mail-il1-x143.google.com with SMTP id q4so281552ils.4
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:43:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=NuIAiN/1UVAd6SOLAMUMtbBqJvbGTZYkrGFIQef8tUQ=;
-        b=lb3R7SM/CioOWnYjm4Hj6Qxy9yDwso5Zx2xODSmJJBZQN+HA6wFn0PCFFKFUbPz7Q+
-         4/02IC3gvGrKuGrTWRXcDznr6sTui9tmdbgM4akhsUFMpmQmU1mA0sv/KVjIVjzH49Ye
-         ojC9DUjIGoLQinuLPdsSGEF12fH6wJYhMthLmr4tH+maui5Iemjb8/EUGHwQ8GRwnZBm
-         wGyhXprQPWIo6EqhrnhETZGYktxDuyw9ZN4u/9MKDvrX8uP6WPsF0q6KmxX60mLLm7Nv
-         mnBq2Wlk4CwBWcuxgqPraUGeTvic5/vxl1ReHvAY//+Pli2ch8yniYAKnZHBHIJq3A4h
-         uTIA==
+        bh=YVe7K407MPmMCUFBdDJOKKyhj4+ELuRupMkeZa5wOGA=;
+        b=Ej3SV/EwGejCfJqZ0uUGrQytMLkiawURztJgXHfZQuq060jYdD0MC44LIgYF7cFMcA
+         w8zVzaMHeiTQjPW/6/x6pUQF4CZp3DBh+RCFSst05RaemGDVaSHqb1toCvnuInNOtkz3
+         Rl+cy9QiK6wm3++qrX81PFFfVaiJFdbiHqcUIk2uSAIHB9UwqzBYxMZmtxew6yEIS6IQ
+         PwAYBn4f01np7Ze9G+f7v9b5Sv9jh6chquf2cAWZkVcDpMCGf2teBIx4jRC0v/CIaa9H
+         pGYkOMko3SobKBhCeDZ0qYBHxyuN+PZPLJNdIvFF1S0iOtIp+qjvv/lwS13KDT3e7Fnw
+         7vBA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=NuIAiN/1UVAd6SOLAMUMtbBqJvbGTZYkrGFIQef8tUQ=;
-        b=k+LjSnrTDBkzlFBR5deqdcZBxgOGykTlWvkC1DshyPEoieWegH2S2jl8rTBT3jJh2S
-         xTyPvD8PpSrcYsRbNr/D/Lcpa8VX7NGEawb6iVz0iZ6g+MYfz1+7AXr2fgYZrTlvPswY
-         y7F0BzfX1rGX0apgaMhTzSlyQbaBcS+L20JSvC+JkuN2v3UTrUsIIP53crOAqAqsIkNz
-         xT4SvGF959Kdp7bT6F/lpVjLF1FfBYDLOnx7ByCFYRTYwtERaMzn80t4dkFP9/fvZMGm
-         QB23/mWvX0KRfLPkzIUZ8D+s0R7Vl8oS9fgtYNkRkZc7gTmijVL/XC8LuETaZft0NnB7
-         +A3g==
-X-Gm-Message-State: AOAM531rnvnew0P3E/8TzfakeQQh7AYLVg+oZBpIIh+WGR9GbTsMQy/v
-        uycIKvjYegXdV+7W3U0PPUqxUQv+gng=
-X-Google-Smtp-Source: ABdhPJzIEP3ce+HrBhZdKOsxFgixFmni6kmp6mimxA6KLT/6G0WrkovdtBtGJyM6pVz4LAR6YVPZow==
-X-Received: by 2002:a5e:8c07:: with SMTP id n7mr14332526ioj.130.1600292635107;
-        Wed, 16 Sep 2020 14:43:55 -0700 (PDT)
+        bh=YVe7K407MPmMCUFBdDJOKKyhj4+ELuRupMkeZa5wOGA=;
+        b=Uxcst0z/n+Aeecu/5NbqAgNY9dtExnqLnNo5IsaJAwb28VL8AotLOz4BECzhpndipb
+         tjPUxE/qzusBbj1aGOaA5aMvstOphVdJIHsy814ieggsywINPNRTDKGEZpnORE4sx9Gh
+         lXVURtISPSLwxiDANthTtnOXNEFQYoPyLhdJ1SVPlP9QvddRAKqKQA9b6snG/mo3N7h8
+         6Y/qw3vcZNiH32sMcWykrsrdBHvsyOMeecKimLqr2UVKWhCTlZcfEtT2av5YYT4jUzHj
+         O5k/DETIwhHTIGVXr6Nr0Y2+0MlIHEgPzAyzo2N2/c378HkoAvMBzCAVpj4hbn13IYTz
+         m1nA==
+X-Gm-Message-State: AOAM53062EReVWhWzjStvzyI4xt/0EbFUxH2LV8eZ0OK3gGnQuJVkY7R
+        j2vaUQB/IngWfsVtVFHUm8TVfR/1BKI=
+X-Google-Smtp-Source: ABdhPJzKCSKsgbAfSPhVRhvu9CVyhV1navsXDmPOzoXcY/NHNpEjMredI0MfSJR3WV3EqwBap7BAUQ==
+X-Received: by 2002:a92:9fcc:: with SMTP id z73mr15884827ilk.234.1600292619174;
+        Wed, 16 Sep 2020 14:43:39 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id a23sm9515686ioc.54.2020.09.16.14.43.54
+        by smtp.gmail.com with ESMTPSA id u15sm9770592ior.6.2020.09.16.14.43.38
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 16 Sep 2020 14:43:54 -0700 (PDT)
+        Wed, 16 Sep 2020 14:43:38 -0700 (PDT)
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLhrkX023035;
-        Wed, 16 Sep 2020 21:43:53 GMT
-Subject: [PATCH RFC 19/21] NFSD: Add lock and locku tracepoints
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLhbim023026;
+        Wed, 16 Sep 2020 21:43:37 GMT
+Subject: [PATCH RFC 16/21] NFSD: Add CLOSE tracepoint
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     bfields@fieldses.org, Bill.Baker@oracle.com
 Cc:     linux-nfs@vger.kernel.org
-Date:   Wed, 16 Sep 2020 17:43:53 -0400
-Message-ID: <160029263350.29208.7239182282422599644.stgit@klimt.1015granger.net>
+Date:   Wed, 16 Sep 2020 17:43:37 -0400
+Message-ID: <160029261781.29208.12239350175590800182.stgit@klimt.1015granger.net>
 In-Reply-To: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
 References: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23
@@ -77,115 +77,69 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Record lock metadata.
+Record the state ID being closed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c |    8 ++----
- fs/nfsd/trace.h     |   65 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 67 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c |    3 +--
+ fs/nfsd/trace.h     |   31 +++++++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8444e8b51fa8..b7c99fe8bdd0 100644
+index 47790c7a29a3..6509e431ddd2 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -6701,9 +6701,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -6253,8 +6253,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
  	struct net *net = SVC_NET(rqstp);
  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
  
--	dprintk("NFSD: nfsd4_lock: start=%Ld length=%Ld\n",
--		(long long) lock->lk_offset,
--		(long long) lock->lk_length);
-+	trace_nfsd4_lock(rqstp, lock);
+-	dprintk("NFSD: nfsd4_close on file %pd\n", 
+-			cstate->current_fh.fh_dentry);
++	trace_nfsd4_close(rqstp, close);
  
- 	if (check_lock_length(lock->lk_offset, lock->lk_length))
- 		 return nfserr_inval;
-@@ -7001,9 +6999,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	int err;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
--	dprintk("NFSD: nfsd4_locku: start=%Ld length=%Ld\n",
--		(long long) locku->lu_offset,
--		(long long) locku->lu_length);
-+	trace_nfsd4_locku(rqstp, locku);
- 
- 	if (check_lock_length(locku->lu_offset, locku->lu_length))
- 		 return nfserr_inval;
+ 	status = nfs4_preprocess_seqid_op(cstate, close->cl_seqid,
+ 					&close->cl_stateid,
 diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index fd212fc1fd2a..c345a73a818f 100644
+index 3c587d5076f7..cf350f37ddc9 100644
 --- a/fs/nfsd/trace.h
 +++ b/fs/nfsd/trace.h
-@@ -1605,6 +1605,71 @@ TRACE_EVENT(nfsd4_exchange_id,
+@@ -450,6 +450,37 @@ TRACE_EVENT(nfsd4_open_downgrade,
  	)
  );
  
-+/*
-+ * from include/linux/nfs4.h
-+ */
-+TRACE_DEFINE_ENUM(NFS4_UNLOCK_LT);
-+TRACE_DEFINE_ENUM(NFS4_READ_LT);
-+TRACE_DEFINE_ENUM(NFS4_WRITE_LT);
-+TRACE_DEFINE_ENUM(NFS4_READW_LT);
-+TRACE_DEFINE_ENUM(NFS4_WRITEW_LT);
-+
-+#define show_nfsd_lock_type(x)					\
-+	__print_symbolic(x,					\
-+		{ NFS4_UNLOCK_LT,	"UNLOCK" },		\
-+		{ NFS4_READ_LT,		"READ" },		\
-+		{ NFS4_WRITE_LT,	"WRITE" },		\
-+		{ NFS4_READW_LT,	"READW" },		\
-+		{ NFS4_WRITEW_LT,	"WRITEW" })
-+
-+TRACE_EVENT(nfsd4_lock,
++TRACE_EVENT(nfsd4_close,
 +	TP_PROTO(
 +		const struct svc_rqst *rqstp,
-+		const struct nfsd4_lock *lock
++		const struct nfsd4_close *close
 +	),
-+	TP_ARGS(rqstp, lock),
++	TP_ARGS(rqstp, close),
 +	TP_STRUCT__entry(
 +		__field(u32, xid)
-+		__field(unsigned long, type)
-+		__field(bool, new)
-+		__field(long long, start)
-+		__field(long long, length)
++		__field(u32, seqid)
++		__field(u32, cl_boot)
++		__field(u32, cl_id)
++		__field(u32, si_id)
++		__field(u32, si_generation)
 +	),
 +	TP_fast_assign(
++		const stateid_t *stp = &close->cl_stateid;
++
 +		__entry->xid = be32_to_cpu(rqstp->rq_xid);
-+		__entry->type = lock->lk_type;
-+		__entry->new = lock->lk_is_new;
-+		__entry->start = lock->lk_offset;
-+		__entry->length = lock->lk_length;
++		__entry->seqid = close->cl_seqid;
++		__entry->cl_boot = stp->si_opaque.so_clid.cl_boot;
++		__entry->cl_id = stp->si_opaque.so_clid.cl_id;
++		__entry->si_id = stp->si_opaque.so_id;
++		__entry->si_generation = stp->si_generation;
 +	),
-+	TP_printk("xid=0x%08x type=%s start=%Ld length=%Ld (%s)",
-+		__entry->xid, show_nfsd_lock_type(__entry->type),
-+		__entry->start, __entry->length,
-+		__entry->new ? "new" : "not new"
++	TP_printk("xid=0x%08x seqid=%u client %08x:%08x stateid %08x:%08x",
++		__entry->xid, __entry->seqid,
++		__entry->cl_boot, __entry->cl_id,
++		__entry->si_id, __entry->si_generation
 +	)
 +);
 +
-+TRACE_EVENT(nfsd4_locku,
-+	TP_PROTO(
-+		const struct svc_rqst *rqstp,
-+		const struct nfsd4_locku *locku
-+	),
-+	TP_ARGS(rqstp, locku),
-+	TP_STRUCT__entry(
-+		__field(u32, xid)
-+		__field(long long, start)
-+		__field(long long, length)
-+	),
-+	TP_fast_assign(
-+		__entry->xid = be32_to_cpu(rqstp->rq_xid);
-+		__entry->start = locku->lu_offset;
-+		__entry->length = locku->lu_length;
-+	),
-+	TP_printk("xid=0x%08x start=%Ld length=%Ld",
-+		__entry->xid, __entry->start, __entry->length
-+	)
-+);
-+
- #endif /* _NFSD_TRACE_H */
- 
- #undef TRACE_INCLUDE_PATH
+ TRACE_EVENT(nfsd4_stateid_prep,
+ 	TP_PROTO(
+ 		const struct svc_rqst *rqstp,
 
 
