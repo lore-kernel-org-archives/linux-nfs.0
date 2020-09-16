@@ -7,66 +7,66 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0300AC35257
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B0CCC2BB84
 	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B556420732
+	by mail.kernel.org (Postfix) with ESMTP id 03EAB20708
 	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uFC45fti"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Tix2bEKS"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726419AbgIPWSW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Sep 2020 18:18:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49532 "EHLO
+        id S1726441AbgIPWSX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Sep 2020 18:18:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49528 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726441AbgIPWR5 (ORCPT
+        with ESMTP id S1726436AbgIPWR5 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 18:17:57 -0400
-Received: from mail-io1-xd43.google.com (mail-io1-xd43.google.com [IPv6:2607:f8b0:4864:20::d43])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 66677C061A2A
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:36 -0700 (PDT)
-Received: by mail-io1-xd43.google.com with SMTP id g7so9964844iov.13
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:36 -0700 (PDT)
+Received: from mail-il1-x142.google.com (mail-il1-x142.google.com [IPv6:2607:f8b0:4864:20::142])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D2356C061A28
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:26 -0700 (PDT)
+Received: by mail-il1-x142.google.com with SMTP id y9so293913ilq.2
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=GX8blvT22n2flPRieLsZA2945QuhO1WonegzvfRPWcE=;
-        b=uFC45ftiAg3Vf7nmSSJK0F6l/d6wIkwmudumh/AYw1RaKQ7ev/HhuqaGiLnVJcU9wK
-         lelXphsfHpWO5q191QMxviv9grovykVWBBUIAwc6vPVIO5d00Ry7rp9dWRPXy9vIWJbF
-         M1pznFiTb5QGlHhBLAq08o8sbhN1aXHry49hh8FCgQChyAlPNdrHCuscbHyHiMxciMSn
-         RD+LyhrE6fa3XoNYjJcVG90RoxI5Yo/OZvcx5Syj8DBM47YLv0AqhevCH81Nf7STD5s6
-         34i8M+SzudUDcTqe9lIp2Y/Q9w+DzuVYsCxmbKMj+Vu8S7JRdXE0nGKdnxDBku3it0lP
-         3MSw==
+        bh=eZsJrS5RIkpBLpJ5cvtnOC7i1FNw4orc+FZSFyzk3fU=;
+        b=Tix2bEKSbJ6oblpHOsPuvYoSJU/1Sl7n4BeI7p2nf0AwljfTwMXWdHqf+iqED259NJ
+         q4TU3OAQdSfAt/5arc+3Oaspd10co1JO0oH9rf2knmvlAHZKa7JOU35JFICZR4DYKTwG
+         c0Ax5I1C4kroJ04QJvwr6xbhgricW8M50NPk67APgDZxahCunH8+LkWKIJP2ynhbFDpl
+         QSUrbeRA0ibmELWZ9BM6j7MB0A/ApGAR3jvHJwu7fpuisst7z0m9il4M/XA+RpnM3Nsw
+         LWhbJ8PRE0ojtWUnGoDSNSjVUX5w+aJ37yiJdrS89YbI9YMNaPHSOzZiSzrN7gMnow/h
+         dPwA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=GX8blvT22n2flPRieLsZA2945QuhO1WonegzvfRPWcE=;
-        b=ea0pJJYQ3ZXMzmUUMx4dQrntJrQJTeNpQNxKX1vAX6sWydQP9kfJUbWRb3VufBqLLC
-         jjNGBl/IEfXCjVCt+l59F2W7094FBAR/FwVuuZC4JWcbNFiqzpqfMGN2zDvD5wCOhM7W
-         L8XbiJitRD7kIfUDatHUetiKYXqVozZSDB2e6GOdW6lMhY3y/HZpJV8mSqfpn/qUHfkc
-         XVtT8CTZaFPQ/21MZZgGQRRwNgf8SenCbi28yKVkohfVkBrTSs2UAtTFj9evuA8L1DC9
-         2zRdyzYxEl4ikEd3uvU0yabM8ZwwTStYHbynodFMvv2bvMTb26wYygn4PmmjqXDZxqxl
-         iicA==
-X-Gm-Message-State: AOAM533AWSeVRNG60/30cWCcKZp9AAQ572KcewF2uwfS2775lxlV8aF3
-        Rf0Jg9kqf8i86tALtG/LYCM=
-X-Google-Smtp-Source: ABdhPJxZ61TJmVe6Ch7nGdOrCX83txGzTr0GKrGp4DN+LlWctsYW+w2bTEi7jpmtAMvbUPRmLxWRig==
-X-Received: by 2002:a05:6602:22cf:: with SMTP id e15mr20713403ioe.114.1600292555769;
-        Wed, 16 Sep 2020 14:42:35 -0700 (PDT)
+        bh=eZsJrS5RIkpBLpJ5cvtnOC7i1FNw4orc+FZSFyzk3fU=;
+        b=BdaHQX7r+CZRH1Blu6f2ZXBe+VEVI9Y/JX+wmBSkQZKQPdeR8Is4O7OR6aovt3nO4F
+         zwn+l13pfy2Yi4ItbrFQDgmCKwO+C6q3SC9ONoZoCeHmrPo3IGmn1UJUYIgIqIrR7r0z
+         rubyOvPqrfUU5J2Cas5ZkdqWOkhO/KyB0vZvqxwpr1yEUjPc9cawy8dgMqsO/fixluOK
+         pmOf4qfaARSupjfZW+rWDuxMyZqdw6IZJCpy37ZmA+TAI9HeBLscwNDhFa9r6XgPUpHe
+         b7F1hdJVVbYlPxbBOEyEEqLY3bTZ5ArMxrRbcl1+eyYy2jWNcbGCV19zvVf3RqhH7XAC
+         9gqQ==
+X-Gm-Message-State: AOAM532J7SopPYm1o99HR8tqrYF4ZbX8dRF7GSC+w2CEP+PNrBkjMZ2d
+        DLDuoLEqASPmax8EH7lFPmRq6Rpe9kc=
+X-Google-Smtp-Source: ABdhPJxDkdg1vaUkje/n2XgoRjjvAIMKvvz6p4Pp4ihJ8drr7COMDkgUbn+ufwcaK26IACEJjlUGjw==
+X-Received: by 2002:a92:c847:: with SMTP id b7mr10373381ilq.35.1600292545246;
+        Wed, 16 Sep 2020 14:42:25 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id i144sm9629121ioa.55.2020.09.16.14.42.34
+        by smtp.gmail.com with ESMTPSA id o8sm11807154ilb.64.2020.09.16.14.42.24
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 16 Sep 2020 14:42:35 -0700 (PDT)
+        Wed, 16 Sep 2020 14:42:24 -0700 (PDT)
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLgYOT022990;
-        Wed, 16 Sep 2020 21:42:34 GMT
-Subject: [PATCH RFC 04/21] NFSD: Clean up the show_nf_may macro
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLgNBm022984;
+        Wed, 16 Sep 2020 21:42:23 GMT
+Subject: [PATCH RFC 02/21] SUNRPC: Move the svc_xdr_recvfrom() tracepoint
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     bfields@fieldses.org, Bill.Baker@oracle.com
 Cc:     linux-nfs@vger.kernel.org
-Date:   Wed, 16 Sep 2020 17:42:34 -0400
-Message-ID: <160029255410.29208.10420863210576888477.stgit@klimt.1015granger.net>
+Date:   Wed, 16 Sep 2020 17:42:23 -0400
+Message-ID: <160029254350.29208.3186375071514902812.stgit@klimt.1015granger.net>
 In-Reply-To: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
 References: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23
@@ -77,116 +77,74 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Display all possible NFSD_MAY permission flags.
-
-Rename show_nf_may with a more generic name because the NFSD_MAY
-permission flags are used in other places besides the file cache.
+Commit c509f15a5801 ("SUNRPC: Split the xdr_buf event class") added
+display of the rqst's XID to the svc_xdr_buf_class. However, when
+the recvfrom tracepoint fires, rq_xid has yet to be filled in with
+the current XID. So it ends up recording the last XID that was
+handled by that svc_rqst.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/trace.h |   52 ++++++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 40 insertions(+), 12 deletions(-)
+ include/trace/events/sunrpc.h |   24 ------------------------
+ net/sunrpc/svc_xprt.c         |    4 +---
+ 2 files changed, 1 insertion(+), 27 deletions(-)
 
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 1861db1bdc67..a8013338f4d5 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -12,6 +12,38 @@
- #include "export.h"
- #include "nfsfh.h"
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 65d7dfbbc9cd..6afd39572dcd 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -1279,30 +1279,6 @@ SVC_RQST_FLAG_LIST
+ #define show_rqstp_flags(flags)						\
+ 		__print_flags(flags, "|", SVC_RQST_FLAG_LIST)
  
-+/*
-+ * from fs/nfsd/vfs.h
-+ */
-+#define NFSD_PERMISSION_LIST						\
-+	nfsd_perm_flag(EXEC)						\
-+	nfsd_perm_flag(WRITE)						\
-+	nfsd_perm_flag(READ)						\
-+	nfsd_perm_flag(SATTR)						\
-+	nfsd_perm_flag(TRUNC)						\
-+	nfsd_perm_flag(LOCK)						\
-+	nfsd_perm_flag(OWNER_OVERRIDE)					\
-+	nfsd_perm_flag(LOCAL_ACCESS)					\
-+	nfsd_perm_flag(BYPASS_GSS_ON_ROOT)				\
-+	nfsd_perm_flag(NOT_BREAK_LEASE)					\
-+	nfsd_perm_flag(BYPASS_GSS)					\
-+	nfsd_perm_flag(READ_IF_EXEC)					\
-+	nfsd_perm_flag_end(64BIT_COOKIE)
-+
-+#undef nfsd_perm_flag
-+#undef nfsd_perm_flag_end
-+#define nfsd_perm_flag(x)	TRACE_DEFINE_ENUM(NFSD_MAY_##x);
-+#define nfsd_perm_flag_end(x)	TRACE_DEFINE_ENUM(NFSD_MAY_##x);
-+
-+NFSD_PERMISSION_LIST
-+
-+#undef nfsd_perm_flag
-+#undef nfsd_perm_flag_end
-+#define nfsd_perm_flag(x)	{ NFSD_MAY_##x, #x },
-+#define nfsd_perm_flag_end(x)	{ NFSD_MAY_##x, #x }
-+
-+#define show_perm_flags(val)	__print_flags(val, "|", NFSD_PERMISSION_LIST)
-+
- TRACE_EVENT(nfsd_compound,
- 	TP_PROTO(const struct svc_rqst *rqst,
- 		 u32 args_opcnt),
-@@ -421,6 +453,9 @@ TRACE_EVENT(nfsd_clid_inuse_err,
- 		__entry->cl_boot, __entry->cl_id)
- )
- 
-+/*
-+ * from fs/nfsd/filecache.h
-+ */
- TRACE_DEFINE_ENUM(NFSD_FILE_HASHED);
- TRACE_DEFINE_ENUM(NFSD_FILE_PENDING);
- TRACE_DEFINE_ENUM(NFSD_FILE_BREAK_READ);
-@@ -435,13 +470,6 @@ TRACE_DEFINE_ENUM(NFSD_FILE_REFERENCED);
- 		{ 1 << NFSD_FILE_BREAK_WRITE,	"BREAK_WRITE" },	\
- 		{ 1 << NFSD_FILE_REFERENCED,	"REFERENCED"})
- 
--/* FIXME: This should probably be fleshed out in the future. */
--#define show_nf_may(val)						\
--	__print_flags(val, "|",						\
--		{ NFSD_MAY_READ,		"READ" },		\
--		{ NFSD_MAY_WRITE,		"WRITE" },		\
--		{ NFSD_MAY_NOT_BREAK_LEASE,	"NOT_BREAK_LEASE" })
+-TRACE_EVENT(svc_recv,
+-	TP_PROTO(struct svc_rqst *rqst, int len),
 -
- DECLARE_EVENT_CLASS(nfsd_file_class,
- 	TP_PROTO(struct nfsd_file *nf),
- 	TP_ARGS(nf),
-@@ -466,7 +494,7 @@ DECLARE_EVENT_CLASS(nfsd_file_class,
- 		__entry->nf_inode,
- 		__entry->nf_ref,
- 		show_nf_flags(__entry->nf_flags),
--		show_nf_may(__entry->nf_may),
-+		show_perm_flags(__entry->nf_may),
- 		__entry->nf_file)
- )
+-	TP_ARGS(rqst, len),
+-
+-	TP_STRUCT__entry(
+-		__field(u32, xid)
+-		__field(int, len)
+-		__field(unsigned long, flags)
+-		__string(addr, rqst->rq_xprt->xpt_remotebuf)
+-	),
+-
+-	TP_fast_assign(
+-		__entry->xid = be32_to_cpu(rqst->rq_xid);
+-		__entry->len = len;
+-		__entry->flags = rqst->rq_flags;
+-		__assign_str(addr, rqst->rq_xprt->xpt_remotebuf);
+-	),
+-
+-	TP_printk("addr=%s xid=0x%08x len=%d flags=%s",
+-			__get_str(addr), __entry->xid, __entry->len,
+-			show_rqstp_flags(__entry->flags))
+-);
+-
+ TRACE_DEFINE_ENUM(SVC_GARBAGE);
+ TRACE_DEFINE_ENUM(SVC_SYSERR);
+ TRACE_DEFINE_ENUM(SVC_VALID);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 43cf8dbde898..5fb9164aa690 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -813,8 +813,6 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 			len = svc_deferred_recv(rqstp);
+ 		else
+ 			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
+-		if (len > 0)
+-			trace_svc_xdr_recvfrom(rqstp, &rqstp->rq_arg);
+ 		rqstp->rq_stime = ktime_get();
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+@@ -868,7 +866,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
  
-@@ -492,10 +520,10 @@ TRACE_EVENT(nfsd_file_acquire,
- 		__field(u32, xid)
- 		__field(unsigned int, hash)
- 		__field(void *, inode)
--		__field(unsigned int, may_flags)
-+		__field(unsigned long, may_flags)
- 		__field(int, nf_ref)
- 		__field(unsigned long, nf_flags)
--		__field(unsigned char, nf_may)
-+		__field(unsigned long, nf_may)
- 		__field(struct file *, nf_file)
- 		__field(u32, status)
- 	),
-@@ -514,9 +542,9 @@ TRACE_EVENT(nfsd_file_acquire,
- 
- 	TP_printk("xid=0x%x hash=0x%x inode=0x%p may_flags=%s ref=%d nf_flags=%s nf_may=%s nf_file=0x%p status=%u",
- 			__entry->xid, __entry->hash, __entry->inode,
--			show_nf_may(__entry->may_flags), __entry->nf_ref,
-+			show_perm_flags(__entry->may_flags), __entry->nf_ref,
- 			show_nf_flags(__entry->nf_flags),
--			show_nf_may(__entry->nf_may), __entry->nf_file,
-+			show_perm_flags(__entry->nf_may), __entry->nf_file,
- 			__entry->status)
- );
- 
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->netcnt++;
+-	trace_svc_recv(rqstp, len);
++	trace_svc_xdr_recvfrom(rqstp, &rqstp->rq_arg);
+ 	return len;
+ out_release:
+ 	rqstp->rq_res.len = 0;
 
 
