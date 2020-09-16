@@ -2,73 +2,70 @@ Return-Path: <SRS0=3Pxj=CZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F551C433E2
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:08:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78BAFC2BB84
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E4B1A2220B
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:08:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 346BD20708
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 22:18:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sDYBCcZI"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W2e3QLc4"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726084AbgIPWIM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Sep 2020 18:08:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47960 "EHLO
+        id S1726610AbgIPWSK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Sep 2020 18:18:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49538 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726336AbgIPWH7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 18:07:59 -0400
-Received: from mail-il1-x143.google.com (mail-il1-x143.google.com [IPv6:2607:f8b0:4864:20::143])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4A703C061A30
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:57 -0700 (PDT)
-Received: by mail-il1-x143.google.com with SMTP id y2so269399ilp.7
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:57 -0700 (PDT)
+        with ESMTP id S1726533AbgIPWR5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 18:17:57 -0400
+Received: from mail-io1-xd43.google.com (mail-io1-xd43.google.com [IPv6:2607:f8b0:4864:20::d43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A6D7FC0611BE
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:15 -0700 (PDT)
+Received: by mail-io1-xd43.google.com with SMTP id y13so10022392iow.4
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Sep 2020 14:42:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=1WJK/KvRSZWksK8GCJOggEZuMj4piQ+8Bp8DYLB3E7w=;
-        b=sDYBCcZIBJ5KgUeN+c1x3mC8lt/+ZUEtHBUfNJ1F//2TCsjr//DKl0Up1Ru5q1AJ4e
-         ngCuJ8JBlMaQU1e1y1z2adERUWG6Pg3iLP40XrQCjwH/uTcw7+pSizUnqXWMguE7Q83J
-         cn91Y1L+n2e2OjlYOI/BF3GFTqQKB2n02d7MOevLOUiPdbBpTQ8nKw2V1gHLpnoePJ6R
-         GmRTgU/ZFYR/+tOJW0kOfvRWxIUd95lkJVD7h3cX8ynEqC5BJHJph8mQDGYQLArD7V+L
-         Xu204ujUSdtD9i+QzvElDlXBfd7wLZAJ/DbstyV0iSu9Va5acx6NpmJArGqrC/J8/spn
-         rA2A==
+        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=FRUCK8+VSOPO6v3rP+tHADwYHg0GplTMh5VZHAVEQwc=;
+        b=W2e3QLc4h7yu/fkSnByvYthNTJpfSNkUVY/ZrqlMVbZDBvXvH8SJbrf02E9MFTORSH
+         tpajDnJ5zpWQJJwvfG2TX/eiib7CvxuGdWzqHTTWcNm8UcBqots2pYfTW8Be9LF3NEce
+         XFgzKgf4dWFohJM+gR2bnYsmnVo1X67l1PLQYKgkoSKQWxZPId426bPFYm7h5W36YvK5
+         efLm1nlcHY0TAVR0/Ol/lvANbRz4NWgU5yXgh73mPtinuD2mHsilJ/VXSKzSkIxtj7ZH
+         S516yCI+UEKCNYirRcdOZiK18U/6hD6bREf7sgWR7z7CGdzfUpwxxQuJeSfzkQ3KhZmj
+         6WWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=1WJK/KvRSZWksK8GCJOggEZuMj4piQ+8Bp8DYLB3E7w=;
-        b=QrauN1gqg7Trw9pXlGxWimG9hdMRK36jAeoDU6ICSot/JxTE16LtWk5CtXGJL5LpIx
-         JNRpPOYDdADlPTFMsWn4lb16RxuI6Qwe94cY2NlqwL1d5olkEXJNu/OMbCHP/JBA8q5D
-         zDrfqJdhfFXmcPh7Yvuf34/lTuGJ1wPRfFIZBocMgn/uN0ZFYXUHea0ntDgw/75+SZ1X
-         noa4ZLeFLtqnKAh7ePEVVeCrMEgRJTcPUJH0GQh27n65I+5jVXpvkK53lNNZ2xJDbvVc
-         IMSuqdU7+36fXU9QvkzU7LQFylHzPfM1EVVt/U2mihXD5SnCYgML8tksKP1Xf19XhqH5
-         WHaw==
-X-Gm-Message-State: AOAM533C3yfJ0YGFGYYWie1UjL40HfghpmCs7uqr1Z8+7rWPHAsxjBKn
-        V6f0NGLQ8h2HoY1EZKjwLug=
-X-Google-Smtp-Source: ABdhPJyRQXvoPuEOi1SbdOWxT8g6/2gwi44PjAk+E3ScjQm2azz+hXuP8tti6/3BAEAqrQjLIi88vQ==
-X-Received: by 2002:a92:6a0c:: with SMTP id f12mr21145223ilc.213.1600292576695;
-        Wed, 16 Sep 2020 14:42:56 -0700 (PDT)
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=FRUCK8+VSOPO6v3rP+tHADwYHg0GplTMh5VZHAVEQwc=;
+        b=NQaSjYex51VjimNdlB9cqsBOJiG/JAUlvDH9F7OU7fUx+lxpeTFmCSN3+QhU/kJOrI
+         aYI8XpCwJshyFfwawFqPD5dYhiO0yiLZNrpdl2Mi7x7hePQEfCi0oEHLSunnGt4u13St
+         Pg5lOu8qVpgGXV4jzdzin+H+Dxkwb1EOpxsG3y5fgoxWSM/z2h1/wXyytmaNZx++k3Ho
+         HdyHRPhtLoAn3wABylk/iMPyWYgS447NNi9zT88NVXqt0A/d6CRXSKwlnQeLG7d+NcLR
+         mk4DTGgh5YE6UCYgvnthsZqIf5EQw4ajOcePOecWKmBJt8XKYa0NRtfnxvVQZddDaPCm
+         Q6nA==
+X-Gm-Message-State: AOAM5335RaFqrRewwgLDURqcClm1t/S+TKdE9965fAYa8wqjiCGhD+eS
+        m9vlmuFANppDtvfdZ3hdrPE=
+X-Google-Smtp-Source: ABdhPJxpANtVRSmR85mGm5jVVRgD2STj4Bx0ecXU3p+TEXnfxxw0iQcu3ZBhrq7J4yLmlA5VlBL4pQ==
+X-Received: by 2002:a02:7b0d:: with SMTP id q13mr24963412jac.7.1600292534990;
+        Wed, 16 Sep 2020 14:42:14 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id a21sm9673054ioh.12.2020.09.16.14.42.55
+        by smtp.gmail.com with ESMTPSA id k16sm11103720ilc.38.2020.09.16.14.42.13
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 16 Sep 2020 14:42:56 -0700 (PDT)
+        Wed, 16 Sep 2020 14:42:14 -0700 (PDT)
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLgtak023002;
-        Wed, 16 Sep 2020 21:42:55 GMT
-Subject: [PATCH RFC 08/21] NFSD: Add tracepoint for nfsd_access()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 08GLgC07022978;
+        Wed, 16 Sep 2020 21:42:12 GMT
+Subject: [PATCH RFC 00/21] NFSD operation monitoring tracepoints
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     bfields@fieldses.org, Bill.Baker@oracle.com
 Cc:     linux-nfs@vger.kernel.org
-Date:   Wed, 16 Sep 2020 17:42:55 -0400
-Message-ID: <160029257508.29208.10177582417317460106.stgit@klimt.1015granger.net>
-In-Reply-To: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
-References: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
+Date:   Wed, 16 Sep 2020 17:42:12 -0400
+Message-ID: <160029169954.29208.8757662600714736320.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -77,96 +74,75 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-It is possible to use this tracepoint for several purposes,
-including troubleshooting export permission problems and auditing
-accesses to files.
+Hi-
 
-nfsd-1025  [002]   256.807403: nfsd_permission:      xid=0x12147d7a type=REG access=WRITE|SATTR|OWNER_OVERRIDE owner=1046/100 user=1046/100 name=.clang-format status=0
+As I've been working on various server bugs, I've been adding
+tracepoints that record NFS operation arguments. Here's a snapshot
+of this work for your review and comment.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The idea here is to provide a degree of NFS traffic observability
+without needing network capture. Tracepoints are generally lighter-
+weight than full network capture, allowing effective capture-time
+data reduction:
+
+- One or a handful of these can be enabled at a time
+- Each tracepoint records much less data per operation than capture
+- Extra capture-time filtering can reduce data amount even further
+- Some of these operations are infrequent enough that their
+  tracepoint could be enabled persistently without a significant
+  performance impact (for example, for security auditing)
+
+I've also pushed these patches into a topic branch:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git nfsd-more-tracepoints
+
+There is probably more work to be done. For example, one thing I'd
+like to do is move client-side helpers (like the macro to display
+NFS4ERR status codes symbolically) into an include file that can be
+shared with server tracepoints.
+
+
 ---
- fs/nfsd/trace.c |    2 ++
- fs/nfsd/trace.h |   44 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/vfs.c   |    1 +
- 3 files changed, 47 insertions(+)
 
-diff --git a/fs/nfsd/trace.c b/fs/nfsd/trace.c
-index f008b95ceec2..e6857b8bdf2b 100644
---- a/fs/nfsd/trace.c
-+++ b/fs/nfsd/trace.c
-@@ -1,4 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0
- 
-+#include <linux/nfs4.h>
-+
- #define CREATE_TRACE_POINTS
- #include "trace.h"
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 77b7e8a45776..4167726fe835 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -511,6 +511,50 @@ TRACE_EVENT(nfsd_clid_inuse_err,
- 		__entry->cl_boot, __entry->cl_id)
- )
- 
-+TRACE_EVENT(nfsd_access,
-+	TP_PROTO(
-+		const struct svc_rqst *rqstp,
-+		const struct dentry *dentry,
-+		int access,
-+		__be32 status
-+	),
-+	TP_ARGS(rqstp, dentry, access, status),
-+	TP_STRUCT__entry(
-+		__field(u32, xid)
-+		__field(unsigned long, type)
-+		__field(unsigned long, access)
-+		__field(uid_t, owner)
-+		__field(gid_t, owner_group)
-+		__field(uid_t, user)
-+		__field(gid_t, user_group)
-+		__field(int, status)
-+		__dynamic_array(unsigned char, name, dentry->d_name.len + 1)
-+	),
-+	TP_fast_assign(
-+		const struct inode *inode = d_inode(dentry);
-+
-+		__entry->xid = be32_to_cpu(rqstp->rq_xid);
-+		__entry->type = inode->i_mode & S_IFMT;
-+		__entry->access = access;
-+		__entry->owner = __kuid_val(inode->i_uid);
-+		__entry->owner_group = __kgid_val(inode->i_gid);
-+		__entry->user = __kuid_val(current_fsuid());
-+		__entry->user_group = __kgid_val(current_fsgid());
-+		__entry->status = be32_to_cpu(status);
-+		memcpy(__get_str(name), dentry->d_name.name,
-+		       dentry->d_name.len);
-+		__get_str(name)[dentry->d_name.len] = '\0';
-+	),
-+	TP_printk("xid=0x%08x type=%s access=%s owner=%u/%u user=%u/%u name=%s status=%d",
-+		__entry->xid,
-+		show_inode_type(__entry->type),
-+		show_perm_flags(__entry->access),
-+		__entry->owner, __entry->owner_group,
-+		__entry->user, __entry->user_group,
-+		__get_str(name), __entry->status
-+	)
-+);
-+
- /*
-  * from fs/nfsd/filecache.h
-  */
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index a311593ac976..0d354531ed19 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -687,6 +687,7 @@ nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32 *suppor
- 			sresult |= map->access;
- 
- 			err2 = nfsd_permission(rqstp, export, dentry, map->how);
-+			trace_nfsd_access(rqstp, dentry, map->how, err2);
- 			switch (err2) {
- 			case nfs_ok:
- 				result |= map->access;
+Chuck Lever (21):
+      NFSD: Add SPDK header for fs/nfsd/trace.c
+      SUNRPC: Move the svc_xdr_recvfrom() tracepoint
+      SUNRPC: Add svc_xdr_authenticate tracepoint
+      NFSD: Clean up the show_nf_may macro
+      NFSD: Remove extra "0x" in tracepoint format specifier
+      NFSD: Constify @fh argument of knfsd_fh_hash()
+      NFSD: Add tracepoint in nfsd_setattr()
+      NFSD: Add tracepoint for nfsd_access()
+      NFSD: nfsd_compound_status tracepoint should record XID
+      NFSD: Add client ID lifetime tracepoints
+      NFSD: Add tracepoints to report NFSv4 session state
+      NFSD: Add a tracepoint to report the current filehandle
+      NFSD: Add GETATTR tracepoint
+      NFSD: Add tracepoint in nfsd4_stateid_preprocess()
+      NFSD: Add tracepoint to report arguments to NFSv4 OPEN
+      NFSD: Add CLOSE tracepoint
+      NFSD: Add a tracepoint for DELEGRETURN
+      NFSD: Add a lookup tracepoint
+      NFSD: Add lock and locku tracepoints
+      NFSD: Add tracepoints to record the result of TEST_STATEID and FREE_STATEID
+      NFSD: Rename nfsd_ tracepoints to nfsd4_
 
+
+ fs/nfsd/nfs3proc.c            |    3 +
+ fs/nfsd/nfs4callback.c        |   28 +-
+ fs/nfsd/nfs4layouts.c         |   16 +-
+ fs/nfsd/nfs4proc.c            |   39 +-
+ fs/nfsd/nfs4state.c           |  103 ++--
+ fs/nfsd/nfsfh.h               |    7 +-
+ fs/nfsd/nfsproc.c             |    3 +
+ fs/nfsd/trace.c               |    2 +
+ fs/nfsd/trace.h               | 1083 +++++++++++++++++++++++++++++++--
+ fs/nfsd/vfs.c                 |   21 +-
+ include/trace/events/sunrpc.h |   25 +-
+ net/sunrpc/svc_xprt.c         |    4 +-
+ net/sunrpc/svcauth.c          |    5 +-
+ 13 files changed, 1151 insertions(+), 188 deletions(-)
+
+--
+Chuck Lever
 
