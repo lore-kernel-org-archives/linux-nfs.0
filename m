@@ -2,90 +2,168 @@ Return-Path: <SRS0=3Pxj=CZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ADEAFC433E2
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:19:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65FA9C2BB84
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:50:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 600B020936
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:19:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B305206BE
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Sep 2020 20:50:37 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="amcMWvjP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728371AbgIPUTf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Sep 2020 16:19:35 -0400
-Received: from smtprelay0049.hostedemail.com ([216.40.44.49]:41948 "EHLO
-        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1728366AbgIPUTc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 16:19:32 -0400
-Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
-        by smtprelay07.hostedemail.com (Postfix) with ESMTP id 958F6180013D2;
-        Wed, 16 Sep 2020 20:19:29 +0000 (UTC)
-X-Session-Marker: 6A6F6540706572636865732E636F6D
-X-HE-Tag: goat48_1209be22711c
-X-Filterd-Recvd-Size: 2294
-Received: from XPS-9350.home (unknown [47.151.133.149])
-        (Authenticated sender: joe@perches.com)
-        by omf11.hostedemail.com (Postfix) with ESMTPA;
-        Wed, 16 Sep 2020 20:19:27 +0000 (UTC)
-Message-ID: <ce28bb9bc25cb3f1197f75950a0cfe14947f9002.camel@perches.com>
-Subject: Re: [PATCH v2] nfs: remove incorrect fallthrough label
-From:   Joe Perches <joe@perches.com>
-To:     Nick Desaulniers <ndesaulniers@google.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        Hongxiang Lou <louhongxiang@huawei.com>,
-        Miaohe Lin <linmiaohe@huawei.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, clang-built-linux@googlegroups.com
-Date:   Wed, 16 Sep 2020 13:19:26 -0700
-In-Reply-To: <20200916200255.1382086-1-ndesaulniers@google.com>
-References: <9441ed0f247d0cac6e85f3847e1b4c32a199dd8f.camel@perches.com>
-         <20200916200255.1382086-1-ndesaulniers@google.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-User-Agent: Evolution 3.36.4-0ubuntu1 
+        id S1726636AbgIPUuf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Sep 2020 16:50:35 -0400
+Received: from smtp-fw-4101.amazon.com ([72.21.198.25]:29452 "EHLO
+        smtp-fw-4101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726525AbgIPQzK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2020 12:55:10 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1600275310; x=1631811310;
+  h=date:from:to:cc:message-id:references:mime-version:
+   in-reply-to:subject;
+  bh=6ob0BV7LnNRWdj/YzgA6m/Bpxb59FBXjuzFp1afNqa0=;
+  b=amcMWvjPsMpobV1ex/TIF0g9z1EFYnAESVbZ5/gqpxtgOIqJIrQFI48V
+   7ikdTqET/XLW2xVEF0PXuoEGASMNU9JFRMax9UhStM7FkmwAOI/Gg4jeS
+   LGQIvBW9PwGGvKvgXCJOIM3Uz++5bndcgNuBruKpb2JTY3/3OQ+opqbHx
+   M=;
+X-IronPort-AV: E=Sophos;i="5.76,433,1592870400"; 
+   d="scan'208";a="54428960"
+Subject: Re: [PATCH] nfs: round down reported block numbers in statfs
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1a-715bee71.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-4101.iad4.amazon.com with ESMTP; 16 Sep 2020 16:35:07 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan3.iad.amazon.com [10.40.163.38])
+        by email-inbound-relay-1a-715bee71.us-east-1.amazon.com (Postfix) with ESMTPS id 06102A1E26;
+        Wed, 16 Sep 2020 16:35:05 +0000 (UTC)
+Received: from EX13D35UWB004.ant.amazon.com (10.43.161.230) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Wed, 16 Sep 2020 16:35:05 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
+ EX13D35UWB004.ant.amazon.com (10.43.161.230) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Wed, 16 Sep 2020 16:35:05 +0000
+Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
+ (172.23.141.97) by mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP
+ Server id 15.0.1497.2 via Frontend Transport; Wed, 16 Sep 2020 16:35:04 +0000
+Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
+        id 0347FC13E8; Wed, 16 Sep 2020 16:35:05 +0000 (UTC)
+Date:   Wed, 16 Sep 2020 16:35:04 +0000
+From:   Frank van der Linden <fllinden@amazon.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
+Message-ID: <20200916163504.GA3598@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
+References: <20200910200644.8165-1-fllinden@amazon.com>
+ <38d81562153d8168a54d93f452407a24f5cf5240.camel@hammerspace.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+In-Reply-To: <38d81562153d8168a54d93f452407a24f5cf5240.camel@hammerspace.com>
+User-Agent: Mutt/1.11.4 (2019-03-13)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 2020-09-16 at 13:02 -0700, Nick Desaulniers wrote:
-> There is no case after the default from which to fallthrough to. Clang
-> will error in this case (unhelpfully without context, see link below)
-> and GCC will with -Wswitch-unreachable.
+On Wed, Sep 16, 2020 at 03:14:52PM +0000, Trond Myklebust wrote:
+> On Thu, 2020-09-10 at 20:06 +0000, Frank van der Linden wrote:
+> > nfs_statfs rounds up the numbers of blocks as computed
+> > from the numbers the server return values.
+> >
+> > This works out well if the client block size, which is
+> > the same as wrsize, is smaller than or equal to the actual
+> > filesystem block size on the server.
+> >
+> > But, for NFS4, the size is usually larger (1M), meaning
+> > that statfs reports more free space than actually is
+> > available. This confuses, for example, fstest generic/103.
+> >
+> > Given a choice between reporting too much or too little
+> > space, the latter is the safer option, so don't round
+> > up the number of blocks. This also simplifies the code.
+> >
+> > Signed-off-by: Frank van der Linden <fllinden@amazon.com>
+> > ---
+> >  fs/nfs/super.c | 25 ++++---------------------
+> >  1 file changed, 4 insertions(+), 21 deletions(-)
+> >
+> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > index 7a70287f21a2..45d368a5cc95 100644
+> > --- a/fs/nfs/super.c
+> > +++ b/fs/nfs/super.c
+> > @@ -217,8 +217,6 @@ EXPORT_SYMBOL_GPL(nfs_client_for_each_server);
+> >  int nfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+> >  {
+> >       struct nfs_server *server = NFS_SB(dentry->d_sb);
+> > -     unsigned char blockbits;
+> > -     unsigned long blockres;
+> >       struct nfs_fh *fh = NFS_FH(d_inode(dentry));
+> >       struct nfs_fsstat res;
+> >       int error = -ENOMEM;
+> > @@ -241,26 +239,11 @@ int nfs_statfs(struct dentry *dentry, struct
+> > kstatfs *buf)
+> >
+> >       buf->f_type = NFS_SUPER_MAGIC;
+> >
+> > -     /*
+> > -      * Current versions of glibc do not correctly handle the
+> > -      * case where f_frsize != f_bsize.  Eventually we want to
+> > -      * report the value of wtmult in this field.
+> > -      */
+> > -     buf->f_frsize = dentry->d_sb->s_blocksize;
 > 
-> The previous commit should have just replaced the comment with a break
-> statement.
+> NACK. This comment and explicit setting is there to document why we're
+> not propagating the true value of the filesystem block size. Please do
+> not remove it.
 
-> If we consider implicit fallthrough to be a design mistake of C, then
-> all case statements should be terminated with one of the following
-> statements:
+It's a comment from 2006, which is a bit outdated. wtmult is an NFSv3
+value, and glibc hasn't had that issue for a while. Maybe the comment
+should be updated? I'm happy to not touch it, though - will leave that
+change out.
+
 > 
-> * break
-> * continue
-> * return
-> * __attribute__(__fallthrough__)
+> > -
+> > -     /*
+> > -      * On most *nix systems, f_blocks, f_bfree, and f_bavail
+> > -      * are reported in units of f_frsize.  Linux hasn't had
+> > -      * an f_frsize field in its statfs struct until recently,
+> > -      * thus historically Linux's sys_statfs reports these
+> > -      * fields in units of f_bsize.
+> > -      */
+> >       buf->f_bsize = dentry->d_sb->s_blocksize;
+> > -     blockbits = dentry->d_sb->s_blocksize_bits;
+> > -     blockres = (1 << blockbits) - 1;
+> > -     buf->f_blocks = (res.tbytes + blockres) >> blockbits;
+> > -     buf->f_bfree = (res.fbytes + blockres) >> blockbits;
+> > -     buf->f_bavail = (res.abytes + blockres) >> blockbits;
+> > +
+> > +     buf->f_blocks = res.tbytes / buf->f_bsize;
+> > +     buf->f_bfree = res.fbytes / buf->f_bsize;
+> > +     buf->f_bavail = res.abytes / buf->f_bsize;
+> >
+> >       buf->f_files = res.tfiles;
+> >       buf->f_ffree = res.afiles;
+> 
+> As far as I can tell, all we're doing here is changing rounding up to
+> rounding down, since dentry->d_sb->s_blocksize should always equal to
+> (1 << dentry->d_sb->s_blocksize_bits).
+> 
+> Otherwise, switching from a shift to division seems like it is just
+> making the calculation less efficient. Why?
 
-Just fallthrough.  __attribute__((__fallthrough__)
-is only used once in code for the #define.
+Well, my thinking here was that using a straight division made the code
+simpler, and it's not a code path that is performance-sensitive.
 
-And maybe add see: Documentation/process/deprecated.rst
+But, I forgot about needing a div64 macro for 32bit archs anyway, which
+kind of undoes the 'make the code simpler' argument a bit..
 
-> * goto (plz no)
+I'll change it to just rounding down (e.g. remove blockres from the
+equation).
 
-goto is a valid style inside a switch/case label block.
+Thanks,
 
-There are more than 1500 of these goto <label> uses in the
-kernel so the 'please no' here doesn't seem reasonable.
-
-> * (call of function with __attribute__(__noreturn__))
-
-I guess panic counts.  I count 11 of those.
-
-Are there any other uses of functions with __noreturn
-in switch/case label blocks?
-
-
+- Frank
