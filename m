@@ -4,52 +4,52 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 41D9BC43464
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 02:16:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 77441C43467
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 02:17:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0EA9C238E6
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 02:16:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E311238E6
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 02:17:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600395367;
-	bh=ffVmtk+MMzKg1ZNQEVX/lHavatGWRWr6XMVURgNQYTM=;
+	s=default; t=1600395462;
+	bh=SSaOXops64YH+iEYehZFdcf3MoI3XiQPJjZDXrL47MM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=10xG1Wm+2AbNzf5RPZYnEpdz1g0vvw543KzcYqEpbIfpjf5G3orOe6c3sTHRV3RzF
-	 NU3Tx+EFVKhmoHmDsRnH1WV9drmnPbna3bCtXNX9O5lcbZXW6mYeos5LsCDN8tSUGC
-	 2E7+e4Adj9b8V20g53jFdCe/hbEOFuCev9JKulhA=
+	b=MbWbJMyQdZxQL4ndys1y9BFcrrJ8fzEj6nVdxfY4awnEHlKz1uMQd9vaZBapZDTrf
+	 KGNtZxjb+KM84UUoPH6Ewgkp8QYGlK3IF+MIxlXXpIozZ7zmvEkfYS5OP2tLcw3AYp
+	 Xy7rAYnRxGNvA0GZl8PGoEqABR1gvLfD2HnIGCpE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729336AbgIRCQG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Sep 2020 22:16:06 -0400
-Received: from mail.kernel.org ([198.145.29.99]:45484 "EHLO mail.kernel.org"
+        id S1729265AbgIRCRl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Sep 2020 22:17:41 -0400
+Received: from mail.kernel.org ([198.145.29.99]:48014 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729026AbgIRCQF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 17 Sep 2020 22:16:05 -0400
+        id S1729539AbgIRCRa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 17 Sep 2020 22:17:30 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id EF19C2376F;
-        Fri, 18 Sep 2020 02:16:03 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C670F23787;
+        Fri, 18 Sep 2020 02:17:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600395364;
-        bh=ffVmtk+MMzKg1ZNQEVX/lHavatGWRWr6XMVURgNQYTM=;
+        s=default; t=1600395449;
+        bh=SSaOXops64YH+iEYehZFdcf3MoI3XiQPJjZDXrL47MM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=NzCSP728QuOzTPJCmIFFg6Q9Mz59BWT6P4g1am4anNvl4DZNyodgCDmAq2eUPHMMo
-         48DHUxxWxbQ68vnsmgKvufzJNPrXFObT7C6nzwYjihgXilazS9TZLAkF/LwGcdLiA0
-         RBRrJeAbv/pmxVwYJiXGu4cyZIp6oIqXeguJoSUs=
+        b=U+5nFVxuWgx4UckroKSHeuP89ddF1j4odLXPfGQrIcHtuWpDVsTFnsKawDVpuohnm
+         bGzi+mG3gkNkmK/R5UYuW/uR8FfwFeGdXQpGwUloWoME0dRX9dwgxUnmYCA0st9CiZ
+         Y9TaXrLpwmhXEjQ1NWIquIs/OeU1UH6+bvWe5DvY=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Christophe JAILLET <christophe.jaillet@wanadoo.fr>,
         Chuck Lever <chuck.lever@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 58/90] SUNRPC: Fix a potential buffer overflow in 'svc_print_xprts()'
-Date:   Thu, 17 Sep 2020 22:14:23 -0400
-Message-Id: <20200918021455.2067301-58-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 37/64] SUNRPC: Fix a potential buffer overflow in 'svc_print_xprts()'
+Date:   Thu, 17 Sep 2020 22:16:16 -0400
+Message-Id: <20200918021643.2067895-37-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200918021455.2067301-1-sashal@kernel.org>
-References: <20200918021455.2067301-1-sashal@kernel.org>
+In-Reply-To: <20200918021643.2067895-1-sashal@kernel.org>
+References: <20200918021643.2067895-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -89,10 +89,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 14 insertions(+), 5 deletions(-)
 
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 42ce3ed216376..56e4ac8e2e994 100644
+index 2b8e80c721db1..a7cd031656801 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -103,8 +103,17 @@ void svc_unreg_xprt_class(struct svc_xprt_class *xcl)
+@@ -97,8 +97,17 @@ void svc_unreg_xprt_class(struct svc_xprt_class *xcl)
  }
  EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
  
@@ -112,7 +112,7 @@ index 42ce3ed216376..56e4ac8e2e994 100644
   */
  int svc_print_xprts(char *buf, int maxlen)
  {
-@@ -117,9 +126,9 @@ int svc_print_xprts(char *buf, int maxlen)
+@@ -111,9 +120,9 @@ int svc_print_xprts(char *buf, int maxlen)
  	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
  		int slen;
  
