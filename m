@@ -2,114 +2,92 @@ Return-Path: <SRS0=ChQF=C3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BE7BC43464
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 03:11:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C710AC43463
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 15:00:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4855120678
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 03:11:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600398677;
-	bh=94AT0YPweooXiO7gK1/oiuOCZdrXc0s4UM0WFbWcmvc=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=SZBCEaUAz/e5MiM8cqhBvMyXki+4ZkKzvOrs8zwpZulgyNni952SKxZskdRBng1Ie
-	 H4gkQb+1td2Uw3GLHnK9EWYjL77br7E4omqaC/201hBPZyP8pdDlbe9GnVz4E8qPkL
-	 sousbIKoJUbmZjmzT0+cu933N6jEuxe7Ha8AfTgY=
+	by mail.kernel.org (Postfix) with ESMTP id 8CB81206D9
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Sep 2020 15:00:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726731AbgIRCCa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Sep 2020 22:02:30 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47700 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726748AbgIRCCa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 17 Sep 2020 22:02:30 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1CF2723600;
-        Fri, 18 Sep 2020 02:02:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600394543;
-        bh=94AT0YPweooXiO7gK1/oiuOCZdrXc0s4UM0WFbWcmvc=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=iS1Rxbc0CCY58xmRtYS5WrRfn0czB2PtDlF1nafb+/CDWODLtrsp6NhXS/0UkJVLR
-         rvVlzbU6IKFBfOxDrMgnnjdRJmqea2erbCi2TErmGZa0cexetY2nTWnoESx0PcX2mE
-         dgLPk3WAqIW1zWyFHPUj+AlWNMbkslPANvvorrXg=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 061/330] SUNRPC: Capture completion of all RPC tasks
-Date:   Thu, 17 Sep 2020 21:56:41 -0400
-Message-Id: <20200918020110.2063155-61-sashal@kernel.org>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200918020110.2063155-1-sashal@kernel.org>
-References: <20200918020110.2063155-1-sashal@kernel.org>
+        id S1726154AbgIRPA0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 18 Sep 2020 11:00:26 -0400
+Received: from mail1.windriver.com ([147.11.146.13]:61950 "EHLO
+        mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726130AbgIRPA0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Sep 2020 11:00:26 -0400
+X-Greylist: delayed 7316 seconds by postgrey-1.27 at vger.kernel.org; Fri, 18 Sep 2020 11:00:12 EDT
+Received: from ALA-HCB.corp.ad.wrs.com (ala-hcb.corp.ad.wrs.com [147.11.189.41])
+        by mail1.windriver.com (8.15.2/8.15.2) with ESMTPS id 08ICvm7X029634
+        (version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL);
+        Fri, 18 Sep 2020 05:57:49 -0700 (PDT)
+Received: from pek-lpg-core2.corp.ad.wrs.com (128.224.153.41) by
+ ALA-HCB.corp.ad.wrs.com (147.11.189.41) with Microsoft SMTP Server id
+ 14.3.487.0; Fri, 18 Sep 2020 05:57:27 -0700
+From:   <zhe.he@windriver.com>
+To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
+        <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>,
+        <davem@davemloft.net>, <kuba@kernel.org>,
+        <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <zhe.he@windriver.com>
+Subject: [PATCH] SUNRPC: Flush dcache only when receiving more seeking
+Date:   Fri, 18 Sep 2020 20:50:52 +0800
+Message-ID: <20200918125052.2493006-1-zhe.he@windriver.com>
+X-Mailer: git-send-email 2.17.1
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+From: He Zhe <zhe.he@windriver.com>
 
-[ Upstream commit a264abad51d8ecb7954a2f6d9f1885b38daffc74 ]
+commit ca07eda33e01 ("SUNRPC: Refactor svc_recvfrom()") introduces
+svc_flush_bvec to after sock_recvmsg, but sometimes we receive less than we
+seek, which triggers the following warning.
 
-RPC tasks on the backchannel never invoke xprt_complete_rqst(), so
-there is no way to report their tk_status at completion. Also, any
-RPC task that exits via rpc_exit_task() before it is replied to will
-also disappear without a trace.
+WARNING: CPU: 0 PID: 18266 at include/linux/bvec.h:101 bvec_iter_advance+0x44/0xa8
+Attempted to advance past end of bvec iter
+Modules linked in: sch_fq_codel openvswitch nsh nf_conncount nf_nat
+nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4
+CPU: 1 PID: 18266 Comm: nfsd Not tainted 5.9.0-rc5 #1
+Hardware name: Xilinx Zynq Platform
+[<80112ec0>] (unwind_backtrace) from [<8010c3a8>] (show_stack+0x18/0x1c)
+[<8010c3a8>] (show_stack) from [<80755214>] (dump_stack+0x9c/0xd0)
+[<80755214>] (dump_stack) from [<80125e64>] (__warn+0xdc/0xf4)
+[<80125e64>] (__warn) from [<80126244>] (warn_slowpath_fmt+0x84/0xac)
+[<80126244>] (warn_slowpath_fmt) from [<80c88514>] (bvec_iter_advance+0x44/0xa8)
+[<80c88514>] (bvec_iter_advance) from [<80c88940>] (svc_tcp_read_msg+0x10c/0x1bc)
+[<80c88940>] (svc_tcp_read_msg) from [<80c895d4>] (svc_tcp_recvfrom+0x98/0x63c)
+[<80c895d4>] (svc_tcp_recvfrom) from [<80c97bf4>] (svc_handle_xprt+0x48c/0x4f8)
+[<80c97bf4>] (svc_handle_xprt) from [<80c98038>] (svc_recv+0x94/0x1e0)
+[<80c98038>] (svc_recv) from [<804747cc>] (nfsd+0xf0/0x168)
+[<804747cc>] (nfsd) from [<80148a0c>] (kthread+0x144/0x154)
+[<80148a0c>] (kthread) from [<80100114>] (ret_from_fork+0x14/0x20)
 
-Introduce a trace point that is symmetrical with rpc_task_begin that
-captures the termination status of each RPC task.
-
-Sample trace output for callback requests initiated on the server:
-   kworker/u8:12-448   [003]   127.025240: rpc_task_end:         task:50@3 flags=ASYNC|DYNAMIC|SOFT|SOFTCONN|SENT runstate=RUNNING|ACTIVE status=0 action=rpc_exit_task
-   kworker/u8:12-448   [002]   127.567310: rpc_task_end:         task:51@3 flags=ASYNC|DYNAMIC|SOFT|SOFTCONN|SENT runstate=RUNNING|ACTIVE status=0 action=rpc_exit_task
-   kworker/u8:12-448   [001]   130.506817: rpc_task_end:         task:52@3 flags=ASYNC|DYNAMIC|SOFT|SOFTCONN|SENT runstate=RUNNING|ACTIVE status=0 action=rpc_exit_task
-
-Odd, though, that I never see trace_rpc_task_complete, either in the
-forward or backchannel. Should it be removed?
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Fixes: ca07eda33e01 ("SUNRPC: Refactor svc_recvfrom()")
+Cc: <stable@vger.kernel.org> # 5.8+
+Signed-off-by: He Zhe <zhe.he@windriver.com>
 ---
- include/trace/events/sunrpc.h | 1 +
- net/sunrpc/sched.c            | 1 +
- 2 files changed, 2 insertions(+)
+ net/sunrpc/svcsock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index ffa3c51dbb1a0..28df77a948e56 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -165,6 +165,7 @@ DECLARE_EVENT_CLASS(rpc_task_running,
- DEFINE_RPC_RUNNING_EVENT(begin);
- DEFINE_RPC_RUNNING_EVENT(run_action);
- DEFINE_RPC_RUNNING_EVENT(complete);
-+DEFINE_RPC_RUNNING_EVENT(end);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index d5805fa1d066..ea3bc9635448 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -277,7 +277,7 @@ static ssize_t svc_tcp_read_msg(struct svc_rqst *rqstp, size_t buflen,
+ 		buflen -= seek;
+ 	}
+ 	len = sock_recvmsg(svsk->sk_sock, &msg, MSG_DONTWAIT);
+-	if (len > 0)
++	if (len > (seek & PAGE_MASK))
+ 		svc_flush_bvec(bvec, len, seek);
  
- DECLARE_EVENT_CLASS(rpc_task_queued,
- 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 987c4b1f0b174..9c79548c68474 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -824,6 +824,7 @@ rpc_reset_task_statistics(struct rpc_task *task)
-  */
- void rpc_exit_task(struct rpc_task *task)
- {
-+	trace_rpc_task_end(task, task->tk_action);
- 	task->tk_action = NULL;
- 	if (task->tk_ops->rpc_count_stats)
- 		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
+ 	/* If we read a full record, then assume there may be more
 -- 
-2.25.1
+2.17.1
 
