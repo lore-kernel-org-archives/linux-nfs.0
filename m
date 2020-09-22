@@ -2,84 +2,97 @@ Return-Path: <SRS0=wC6f=C7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-11.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7A23C2D0E2
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Sep 2020 19:15:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B10B2C4727C
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Sep 2020 19:15:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 95B552071A
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Sep 2020 19:15:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5D980206FC
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Sep 2020 19:15:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="b0FnfKAz"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="KuECqbP/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726685AbgIVTP4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726573AbgIVTP4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 22 Sep 2020 15:15:56 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:28018 "EHLO
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:50792 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726573AbgIVTPz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2020 15:15:55 -0400
+        by vger.kernel.org with ESMTP id S1726676AbgIVTP4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Sep 2020 15:15:56 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1600802155;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=kTHxYjjMMjd1zufVAcVsjuvE3ib8kV1Z3b5giVcoY98=;
-        b=b0FnfKAz4CihOM3DZEA/HtS9/rmiI2cCTkcjuT/vC0s1OQ4OoGu+iYfaZB4+W34Xl/PkZ7
-        rYjzXyWIPRn4LF9eoCic5rTnegzIcnyrhQUp2CJ6oSsAfShe2X3cV9v1DApdWcZbUGLov8
-        MjvTe+YgGE8lwwEg+erfcqpAvHzWZlc=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=pdz9zJIsKhK20eDJMe62K7afKAWp0i6orrxBsn+rnUI=;
+        b=KuECqbP/WL1m3ElhWFrwrmyaAJO64jXiQuAo4VUo8gJ7AZMOb8QMIuqfKyzEoyNIXXa3Bg
+        Jrms+Im+5UQFORF8HnEF0SWQhi4mSyMnRGK7QBusqMxXJ+ygebZhRwdyachnsScBsasSaM
+        U6ASnGdENvuHlcH6sMMiFmhS/9nPWFA=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-210-MjJHfLOaMuqbvYwJH-BZ7g-1; Tue, 22 Sep 2020 15:15:51 -0400
-X-MC-Unique: MjJHfLOaMuqbvYwJH-BZ7g-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+ us-mta-167-2b9yaW8XN3-osWEAfsuFyQ-1; Tue, 22 Sep 2020 15:15:51 -0400
+X-MC-Unique: 2b9yaW8XN3-osWEAfsuFyQ-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 168931017DC3;
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 11EE5801AEA;
         Tue, 22 Sep 2020 19:15:50 +0000 (UTC)
 Received: from bcodding.csb (ovpn-64-66.rdu2.redhat.com [10.10.64.66])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C76A35C1A3;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C5C8D10013D7;
         Tue, 22 Sep 2020 19:15:49 +0000 (UTC)
 Received: by bcodding.csb (Postfix, from userid 24008)
-        id 543CB10C311B; Tue, 22 Sep 2020 15:15:49 -0400 (EDT)
+        id 6138E10C1261; Tue, 22 Sep 2020 15:15:49 -0400 (EDT)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2 v2] a stateid race and a cleanup
-Date:   Tue, 22 Sep 2020 15:15:47 -0400
-Message-Id: <cover.1600801124.git.bcodding@redhat.com>
+Subject: [PATCH 2/2 v2] NFSv4: cleanup unused zero_stateid copy
+Date:   Tue, 22 Sep 2020 15:15:49 -0400
+Message-Id: <df0b660cb13db18d1119bae41b800fbd647a19f5.1600801124.git.bcodding@redhat.com>
+In-Reply-To: <cover.1600801124.git.bcodding@redhat.com>
+References: <cover.1600801124.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Cover letter this time explaining the v2:  Anna helped me find that the
-first version's stable fix was wrong, but was fixed by the refactor patch
-that followed.
+Since commit d9aba2b40de6 ("NFSv4: Don't use the zero stateid with
+layoutget") the zero stateid will never be used.
 
-After putting in the logic to fix the stable version, it was messy enough
-that it made more sense to squash the two patches together.  So, this time
-the first patch does rewrite nfs_need_update_open_stateid a bit more in
-order to handle both cases:
-	- where two OPENs race to NFS_OPEN_STATE and the second wins
-	- where an OPEN and CLOSE+1 race to update nfs4_state and CLOSE+1 wins
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/nfs4state.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-The end result is that these two patches are code-equivalent to the first
-three.  (It is still getting one final run through my testing, but I haven't
-delayed posting for that).
-
-Benjamin Coddington (2):
-  NFSv4: Fix a livelock when CLOSE pre-emptively bumps state sequence
-  NFSv4: cleanup unused zero_stateid copy
-
- fs/nfs/nfs4proc.c  | 27 +++++++++++++++++----------
- fs/nfs/nfs4state.c |  8 ++------
- 2 files changed, 19 insertions(+), 16 deletions(-)
-
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 4bf10792cb5b..06bbe19c8b2c 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1018,18 +1018,14 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+ bool nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+ {
+ 	bool ret;
+-	const nfs4_stateid *src;
+ 	int seq;
+ 
+ 	do {
+ 		ret = false;
+-		src = &zero_stateid;
+ 		seq = read_seqbegin(&state->seqlock);
+-		if (test_bit(NFS_OPEN_STATE, &state->flags)) {
+-			src = &state->open_stateid;
++		if (test_bit(NFS_OPEN_STATE, &state->flags))
+ 			ret = true;
+-		}
+-		nfs4_stateid_copy(dst, src);
++		nfs4_stateid_copy(dst, &state->open_stateid);
+ 	} while (read_seqretry(&state->seqlock, seq));
+ 	return ret;
+ }
 -- 
 2.20.1
 
