@@ -2,113 +2,196 @@ Return-Path: <SRS0=5zCG=DA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.4 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C205CC47420
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 15:22:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EA38C2D0A8
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 17:07:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7BBF5221E7
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 15:22:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A76C20BED
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 17:07:36 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=reintjes.nrw header.i=@reintjes.nrw header.b="mKq3yxzI"
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="Sk7oj9Yc"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726864AbgIWPWn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Sep 2020 11:22:43 -0400
-Received: from mo4-p01-ob.smtp.rzone.de ([85.215.255.54]:34512 "EHLO
-        mo4-p01-ob.smtp.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726687AbgIWPWm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2020 11:22:42 -0400
-X-Greylist: delayed 713 seconds by postgrey-1.27 at vger.kernel.org; Wed, 23 Sep 2020 11:22:39 EDT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1600874558;
-        s=strato-dkim-0002; d=reintjes.nrw;
-        h=In-Reply-To:Date:Message-ID:From:References:Cc:To:Subject:
-        X-RZG-CLASS-ID:X-RZG-AUTH:From:Subject:Sender;
-        bh=R7hI6d/NmZuNcg1vUXN4expafaD5dS9k1NOlJgVsfQ0=;
-        b=mKq3yxzIBoK6eXKDjSaCRr3BwBIqpDKeJr75f5YQmPBPRRn9qdkRISKeudlw+eJUaN
-        i9j0YoD7Nd07ieGLh8UqSmYZ1Ccml4PGsZ2Mglopdz9Hz5rLCJkN670J1l7AKyk9w16x
-        a5x5cVcgZWQk6FXpa0G8mlW7WSJEKPFpozzrnE9Mqlay09jPyJDrOXyUKIYtt6nlhpnO
-        Iws66XTKRoaWIH3voDt0xHa2loKeKKkr2KuI9gRfjll43rW7LApn0Q1chdN5eLyO3daW
-        Z1KVrRhdU65Y8/6yfAJtnadI1+vhAkdCKhH0qGquacG5znElBXtRT3qPa76R5ygpIUbq
-        FhJQ==
-X-RZG-AUTH: ":IGUXYVP6Ne1lB7nQNv+YSUx4qaxF0YAcTeeZr8criwvl+4OoAsy1YB7b8FzONHo5ckdw3KGGkZZ/Zu8="
-X-RZG-CLASS-ID: mo00
-Received: from [192.168.0.198]
-        by smtp.strato.de (RZmta 46.10.7 DYNA|AUTH)
-        with ESMTPSA id Y04b60w8NFAYy22
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
-        (Client did not present a certificate);
-        Wed, 23 Sep 2020 17:10:34 +0200 (CEST)
-Subject: Re: [PATCH 00/14] drop double zeroing
-To:     Mark Brown <broonie@kernel.org>, linux-spi@vger.kernel.org,
-        Julia Lawall <Julia.Lawall@inria.fr>
-Cc:     linux-serial@vger.kernel.org, linux-scsi@vger.kernel.org,
-        target-devel@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-media@vger.kernel.org, linux-block@vger.kernel.org,
-        Yossi Leybovich <sleybo@amazon.com>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        dmaengine@vger.kernel.org, linux-pci@vger.kernel.org,
-        netdev@vger.kernel.org, linux-wireless@vger.kernel.org,
-        linux-rdma@vger.kernel.org,
-        Dan Williams <dan.j.williams@intel.com>,
-        rds-devel@oss.oracle.com
-References: <1600601186-7420-1-git-send-email-Julia.Lawall@inria.fr>
- <160070750168.56292.17961674601916397869.b4-ty@kernel.org>
-From:   Rolf Reintjes <lists2.rolf@reintjes.nrw>
-Message-ID: <c3b33526-936d-ffa4-c301-4d0485822be1@reintjes.nrw>
-Date:   Wed, 23 Sep 2020 17:10:33 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.12.0
+        id S1726634AbgIWRHg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Sep 2020 13:07:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57786 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726405AbgIWRHg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2020 13:07:36 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41C0AC0613D1
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2020 10:07:36 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 109FAC56; Wed, 23 Sep 2020 13:07:35 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 109FAC56
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1600880855;
+        bh=RuUaHIcD6ERJPmJEia7PDbV0GjJv4uex9CD9KVpU5N0=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Sk7oj9YcnbjgOrPArn23Eh7NpYIRviDguGFTkb6e55D+WjF6wwqdLttftBgvjqVQh
+         685eAUbbzzdDuNBD7bntCmc+TBwIgBPpcSt6xfysneLgx0XdFYhg/sPJrrsZv9GWO9
+         gwkvQywjNmTVWjeUSNgi4SyeEcJj4qwfVsj8EVQw=
+Date:   Wed, 23 Sep 2020 13:07:35 -0400
+From:   "bfields@fieldses.org" <bfields@fieldses.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "linux-cachefs@redhat.com" <linux-cachefs@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "daire@dneg.com" <daire@dneg.com>
+Subject: Re: Adventures in NFS re-exporting
+Message-ID: <20200923170735.GC4691@fieldses.org>
+References: <943482310.31162206.1599499860595.JavaMail.zimbra@dneg.com>
+ <1155061727.42788071.1600777874179.JavaMail.zimbra@dneg.com>
+ <ecd78fe32a1d5a3c6cf3c5a77b1841293b3f5cb1.camel@hammerspace.com>
+ <20200923124038.GA4691@fieldses.org>
+ <a47553497db7c9ae9f68cbe703a12a4e4051aef2.camel@hammerspace.com>
 MIME-Version: 1.0
-In-Reply-To: <160070750168.56292.17961674601916397869.b4-ty@kernel.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <a47553497db7c9ae9f68cbe703a12a4e4051aef2.camel@hammerspace.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello Mark,
+On Wed, Sep 23, 2020 at 01:09:01PM +0000, Trond Myklebust wrote:
+> On Wed, 2020-09-23 at 08:40 -0400, J. Bruce Fields wrote:
+> > On Tue, Sep 22, 2020 at 01:52:25PM +0000, Trond Myklebust wrote:
+> > > On Tue, 2020-09-22 at 13:31 +0100, Daire Byrne wrote:
+> > > > Hi, 
+> > > > 
+> > > > I just thought I'd flesh out the other two issues I have found
+> > > > with
+> > > > re-exporting that are ultimately responsible for the biggest
+> > > > performance bottlenecks. And both of them revolve around the
+> > > > caching
+> > > > of metadata file lookups in the NFS client.
+> > > > 
+> > > > Especially for the case where we are re-exporting a server many
+> > > > milliseconds away (i.e. on-premise -> cloud), we want to be able
+> > > > to
+> > > > control how much the client caches metadata and file data so that
+> > > > it's many LAN clients all benefit from the re-export server only
+> > > > having to do the WAN lookups once (within a specified coherency
+> > > > time).
+> > > > 
+> > > > Keeping the file data in the vfs page cache or on disk using
+> > > > fscache/cachefiles is fairly straightforward, but keeping the
+> > > > metadata cached is particularly difficult. And without the cached
+> > > > metadata we introduce long delays before we can serve the already
+> > > > present and locally cached file data to many waiting clients.
+> > > > 
+> > > > ----- On 7 Sep, 2020, at 18:31, Daire Byrne daire@dneg.com wrote:
+> > > > > 2) If we cache metadata on the re-export server using
+> > > > > actimeo=3600,nocto we can
+> > > > > cut the network packets back to the origin server to zero for
+> > > > > repeated lookups.
+> > > > > However, if a client of the re-export server walks paths and
+> > > > > memory
+> > > > > maps those
+> > > > > files (i.e. loading an application), the re-export server
+> > > > > starts
+> > > > > issuing
+> > > > > unexpected calls back to the origin server again,
+> > > > > ignoring/invalidating the
+> > > > > re-export server's NFS client cache. We worked around this this
+> > > > > by
+> > > > > patching an
+> > > > > inode/iversion validity check in inode.c so that the NFS client
+> > > > > cache on the
+> > > > > re-export server is used. I'm not sure about the correctness of
+> > > > > this patch but
+> > > > > it works for our corner case.
+> > > > 
+> > > > If we use actimeo=3600,nocto (say) to mount a remote software
+> > > > volume
+> > > > on the re-export server, we can successfully cache the loading of
+> > > > applications and walking of paths directly on the re-export
+> > > > server
+> > > > such that after a couple of runs, there are practically zero
+> > > > packets
+> > > > back to the originating NFS server (great!). But, if we then do
+> > > > the
+> > > > same thing on a client which is mounting that re-export server,
+> > > > the
+> > > > re-export server now starts issuing lots of calls back to the
+> > > > originating server and invalidating it's client cache (bad!).
+> > > > 
+> > > > I'm not exactly sure why, but the iversion of the inode gets
+> > > > changed
+> > > > locally (due to atime modification?) most likely via invocation
+> > > > of
+> > > > method inode_inc_iversion_raw. Each time it gets incremented the
+> > > > following call to validate attributes detects changes causing it
+> > > > to
+> > > > be reloaded from the originating server.
+> > > > 
+> > > > This patch helps to avoid this when applied to the re-export
+> > > > server
+> > > > but there may be other places where this happens too. I accept
+> > > > that
+> > > > this patch is probably not the right/general way to do this, but
+> > > > it
+> > > > helps to highlight the issue when re-exporting and it works well
+> > > > for
+> > > > our use case:
+> > > > 
+> > > > --- linux-5.5.0-1.el7.x86_64/fs/nfs/inode.c     2020-01-27
+> > > > 00:23:03.000000000 +0000
+> > > > +++ new/fs/nfs/inode.c  2020-02-13 16:32:09.013055074 +0000
+> > > > @@ -1869,7 +1869,7 @@
+> > > >  
+> > > >         /* More cache consistency checks */
+> > > >         if (fattr->valid & NFS_ATTR_FATTR_CHANGE) {
+> > > > -               if (!inode_eq_iversion_raw(inode, fattr-
+> > > > > change_attr)) {
+> > > > +               if (inode_peek_iversion_raw(inode) < fattr-
+> > > > > change_attr) {
+> > > >                         /* Could it be a race with writeback? */
+> > > >                         if (!(have_writers || have_delegation)) {
+> > > >                                 invalid |= NFS_INO_INVALID_DATA
+> > > 
+> > > There is nothing in the base NFSv4, and NFSv4.1 specs that allow
+> > > you to
+> > > make assumptions about how the change attribute behaves over time.
+> > > 
+> > > The only safe way to do something like the above is if the server
+> > > supports NFSv4.2 and also advertises support for the
+> > > 'change_attr_type'
+> > > attribute. In that case, you can check at mount time for whether or
+> > > not
+> > > the change attribute on this filesystem is one of the monotonic
+> > > types
+> > > which would allow the above optimisation.
+> > 
+> > Looking at https://tools.ietf.org/html/rfc7862#section-12.2.3 .... I
+> > think that would be anything but NFS4_CHANGE_TYPE_IS_UNDEFINED ?
+> > 
+> > The Linux server's ctime is monotonic and will advertise that with
+> > change_attr_type since 4.19.
+> > 
+> > So I think it would be easy to patch the client to check
+> > change_attr_type and set an NFS_CAP_MONOTONIC_CHANGE flag in
+> > server->caps, the hard part would be figuring out which optimisations
+> > are OK.
+> > 
+> 
+> The ctime is *not* monotonic. It can regress under server reboots and
+> it can regress if someone deliberately changes the time.
 
-On 21.09.20 18:58, Mark Brown wrote:
-> On Sun, 20 Sep 2020 13:26:12 +0200, Julia Lawall wrote:
->> sg_init_table zeroes its first argument, so the allocation of that argument
->> doesn't have to.
-> 
-> Applied to
-> 
->     https://git.kernel.org/pub/scm/linux/kernel/git/broonie/spi.git for-next
-> 
-> Thanks!
+So, anything other than IS_UNDEFINED or IS_TIME_METADATA?
 
-I do not understand which of the 14 patches you applied. Your mail 
-responds to the 00/14 mail.
+Though the linux server is susceptible to some of that even when it
+returns MONTONIC_INCR.  If the admin replaces the filesystem by an older
+snapshot, there's not much we can do.  I'm not sure what degree of
+gaurantee we need.
 
-Rolf
+--b.
 
-> 
-> [1/1] spi/topcliff-pch: drop double zeroing
->        commit: ca03dba30f2b8ff45a2972c6691e4c96d8c52b3b
-> 
-> All being well this means that it will be integrated into the linux-next
-> tree (usually sometime in the next 24 hours) and sent to Linus during
-> the next merge window (or sooner if it is a bug fix), however if
-> problems are discovered then the patch may be dropped or reverted.
-> 
-> You may get further e-mails resulting from automated or manual testing
-> and review of the tree, please engage with people reporting problems and
-> send followup patches addressing any issues that are reported if needed.
-> 
-> If any updates are required or you are submitting further changes they
-> should be sent as incremental updates against current git, existing
-> patches will not be replaced.
-> 
-> Please add any relevant lists and maintainers to the CCs when replying
-> to this mail.
-> 
-> Thanks,
-> Mark
-> 
+> We have code
+> that tries to handle all these issues (see fattr->gencount and nfsi-
+> >attr_gencount) because we've hit those issues before...
+
 
