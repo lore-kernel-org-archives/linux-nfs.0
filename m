@@ -2,196 +2,140 @@ Return-Path: <SRS0=5zCG=DA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EA38C2D0A8
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 17:07:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55BFBC2D0A8
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 17:37:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0A76C20BED
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 17:07:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 107F62065E
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Sep 2020 17:37:16 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="Sk7oj9Yc"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="JHBtGbEG"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726634AbgIWRHg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Sep 2020 13:07:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57786 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726405AbgIWRHg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2020 13:07:36 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41C0AC0613D1
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2020 10:07:36 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 109FAC56; Wed, 23 Sep 2020 13:07:35 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 109FAC56
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1600880855;
-        bh=RuUaHIcD6ERJPmJEia7PDbV0GjJv4uex9CD9KVpU5N0=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=Sk7oj9YcnbjgOrPArn23Eh7NpYIRviDguGFTkb6e55D+WjF6wwqdLttftBgvjqVQh
-         685eAUbbzzdDuNBD7bntCmc+TBwIgBPpcSt6xfysneLgx0XdFYhg/sPJrrsZv9GWO9
-         gwkvQywjNmTVWjeUSNgi4SyeEcJj4qwfVsj8EVQw=
-Date:   Wed, 23 Sep 2020 13:07:35 -0400
-From:   "bfields@fieldses.org" <bfields@fieldses.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "linux-cachefs@redhat.com" <linux-cachefs@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "daire@dneg.com" <daire@dneg.com>
-Subject: Re: Adventures in NFS re-exporting
-Message-ID: <20200923170735.GC4691@fieldses.org>
-References: <943482310.31162206.1599499860595.JavaMail.zimbra@dneg.com>
- <1155061727.42788071.1600777874179.JavaMail.zimbra@dneg.com>
- <ecd78fe32a1d5a3c6cf3c5a77b1841293b3f5cb1.camel@hammerspace.com>
- <20200923124038.GA4691@fieldses.org>
- <a47553497db7c9ae9f68cbe703a12a4e4051aef2.camel@hammerspace.com>
+        id S1726620AbgIWRhP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Sep 2020 13:37:15 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:30307 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726498AbgIWRhP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2020 13:37:15 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1600882634;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=NPNdDejQDjllbdUj51RyPOfu793kTt+QhR08kLI6cR4=;
+        b=JHBtGbEGPuaxMdwlDtokIhf9+KX+Cq4MvmgnK+WQbJHHECph8fAItNt+UoZ6mKY49+bNFs
+        R4hhmXUyDjm2xdCP9etXncNnA9GEWLikD0YzlxZiqvnhJ9uwjiypLk2T1DHDl9Yi2foGab
+        XJzQTdHA8U1ntsGPI7Yml9afqilMZHk=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-68-m1ffHZX2OPep6hWxbbgeMg-1; Wed, 23 Sep 2020 13:37:08 -0400
+X-MC-Unique: m1ffHZX2OPep6hWxbbgeMg-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 0907018C521D;
+        Wed, 23 Sep 2020 17:37:07 +0000 (UTC)
+Received: from bcodding.csb (ovpn-64-66.rdu2.redhat.com [10.10.64.66])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 9597A6198D;
+        Wed, 23 Sep 2020 17:37:06 +0000 (UTC)
+Received: by bcodding.csb (Postfix, from userid 24008)
+        id EF77710C1FA0; Wed, 23 Sep 2020 13:37:05 -0400 (EDT)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2 v3] NFSv4: Fix a livelock when CLOSE pre-emptively bumps state sequence
+Date:   Wed, 23 Sep 2020 13:37:04 -0400
+Message-Id: <787d0d4946efb286f4dc51051b048277c0dc697e.1600882430.git.bcodding@redhat.com>
+In-Reply-To: <cover.1600882430.git.bcodding@redhat.com>
+References: <cover.1600882430.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <a47553497db7c9ae9f68cbe703a12a4e4051aef2.camel@hammerspace.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Sep 23, 2020 at 01:09:01PM +0000, Trond Myklebust wrote:
-> On Wed, 2020-09-23 at 08:40 -0400, J. Bruce Fields wrote:
-> > On Tue, Sep 22, 2020 at 01:52:25PM +0000, Trond Myklebust wrote:
-> > > On Tue, 2020-09-22 at 13:31 +0100, Daire Byrne wrote:
-> > > > Hi, 
-> > > > 
-> > > > I just thought I'd flesh out the other two issues I have found
-> > > > with
-> > > > re-exporting that are ultimately responsible for the biggest
-> > > > performance bottlenecks. And both of them revolve around the
-> > > > caching
-> > > > of metadata file lookups in the NFS client.
-> > > > 
-> > > > Especially for the case where we are re-exporting a server many
-> > > > milliseconds away (i.e. on-premise -> cloud), we want to be able
-> > > > to
-> > > > control how much the client caches metadata and file data so that
-> > > > it's many LAN clients all benefit from the re-export server only
-> > > > having to do the WAN lookups once (within a specified coherency
-> > > > time).
-> > > > 
-> > > > Keeping the file data in the vfs page cache or on disk using
-> > > > fscache/cachefiles is fairly straightforward, but keeping the
-> > > > metadata cached is particularly difficult. And without the cached
-> > > > metadata we introduce long delays before we can serve the already
-> > > > present and locally cached file data to many waiting clients.
-> > > > 
-> > > > ----- On 7 Sep, 2020, at 18:31, Daire Byrne daire@dneg.com wrote:
-> > > > > 2) If we cache metadata on the re-export server using
-> > > > > actimeo=3600,nocto we can
-> > > > > cut the network packets back to the origin server to zero for
-> > > > > repeated lookups.
-> > > > > However, if a client of the re-export server walks paths and
-> > > > > memory
-> > > > > maps those
-> > > > > files (i.e. loading an application), the re-export server
-> > > > > starts
-> > > > > issuing
-> > > > > unexpected calls back to the origin server again,
-> > > > > ignoring/invalidating the
-> > > > > re-export server's NFS client cache. We worked around this this
-> > > > > by
-> > > > > patching an
-> > > > > inode/iversion validity check in inode.c so that the NFS client
-> > > > > cache on the
-> > > > > re-export server is used. I'm not sure about the correctness of
-> > > > > this patch but
-> > > > > it works for our corner case.
-> > > > 
-> > > > If we use actimeo=3600,nocto (say) to mount a remote software
-> > > > volume
-> > > > on the re-export server, we can successfully cache the loading of
-> > > > applications and walking of paths directly on the re-export
-> > > > server
-> > > > such that after a couple of runs, there are practically zero
-> > > > packets
-> > > > back to the originating NFS server (great!). But, if we then do
-> > > > the
-> > > > same thing on a client which is mounting that re-export server,
-> > > > the
-> > > > re-export server now starts issuing lots of calls back to the
-> > > > originating server and invalidating it's client cache (bad!).
-> > > > 
-> > > > I'm not exactly sure why, but the iversion of the inode gets
-> > > > changed
-> > > > locally (due to atime modification?) most likely via invocation
-> > > > of
-> > > > method inode_inc_iversion_raw. Each time it gets incremented the
-> > > > following call to validate attributes detects changes causing it
-> > > > to
-> > > > be reloaded from the originating server.
-> > > > 
-> > > > This patch helps to avoid this when applied to the re-export
-> > > > server
-> > > > but there may be other places where this happens too. I accept
-> > > > that
-> > > > this patch is probably not the right/general way to do this, but
-> > > > it
-> > > > helps to highlight the issue when re-exporting and it works well
-> > > > for
-> > > > our use case:
-> > > > 
-> > > > --- linux-5.5.0-1.el7.x86_64/fs/nfs/inode.c     2020-01-27
-> > > > 00:23:03.000000000 +0000
-> > > > +++ new/fs/nfs/inode.c  2020-02-13 16:32:09.013055074 +0000
-> > > > @@ -1869,7 +1869,7 @@
-> > > >  
-> > > >         /* More cache consistency checks */
-> > > >         if (fattr->valid & NFS_ATTR_FATTR_CHANGE) {
-> > > > -               if (!inode_eq_iversion_raw(inode, fattr-
-> > > > > change_attr)) {
-> > > > +               if (inode_peek_iversion_raw(inode) < fattr-
-> > > > > change_attr) {
-> > > >                         /* Could it be a race with writeback? */
-> > > >                         if (!(have_writers || have_delegation)) {
-> > > >                                 invalid |= NFS_INO_INVALID_DATA
-> > > 
-> > > There is nothing in the base NFSv4, and NFSv4.1 specs that allow
-> > > you to
-> > > make assumptions about how the change attribute behaves over time.
-> > > 
-> > > The only safe way to do something like the above is if the server
-> > > supports NFSv4.2 and also advertises support for the
-> > > 'change_attr_type'
-> > > attribute. In that case, you can check at mount time for whether or
-> > > not
-> > > the change attribute on this filesystem is one of the monotonic
-> > > types
-> > > which would allow the above optimisation.
-> > 
-> > Looking at https://tools.ietf.org/html/rfc7862#section-12.2.3 .... I
-> > think that would be anything but NFS4_CHANGE_TYPE_IS_UNDEFINED ?
-> > 
-> > The Linux server's ctime is monotonic and will advertise that with
-> > change_attr_type since 4.19.
-> > 
-> > So I think it would be easy to patch the client to check
-> > change_attr_type and set an NFS_CAP_MONOTONIC_CHANGE flag in
-> > server->caps, the hard part would be figuring out which optimisations
-> > are OK.
-> > 
-> 
-> The ctime is *not* monotonic. It can regress under server reboots and
-> it can regress if someone deliberately changes the time.
+Since commit 0e0cb35b417f ("NFSv4: Handle NFS4ERR_OLD_STATEID in
+CLOSE/OPEN_DOWNGRADE") the following livelock may occur if a CLOSE races
+with the update of the nfs_state:
 
-So, anything other than IS_UNDEFINED or IS_TIME_METADATA?
+Process 1           Process 2           Server
+=========           =========           ========
+ OPEN file
+                    OPEN file
+                                        Reply OPEN (1)
+                                        Reply OPEN (2)
+ Update state (1)
+ CLOSE file (1)
+                                        Reply OLD_STATEID (1)
+ CLOSE file (2)
+                                        Reply CLOSE (-1)
+                    Update state (2)
+                    wait for state change
+ OPEN file
+                    wake
+ CLOSE file
+ OPEN file
+                    wake
+ CLOSE file
+ ...
+                    ...
 
-Though the linux server is susceptible to some of that even when it
-returns MONTONIC_INCR.  If the admin replaces the filesystem by an older
-snapshot, there's not much we can do.  I'm not sure what degree of
-gaurantee we need.
+As long as the first process continues updating state, the second process
+will fail to exit the loop in nfs_set_open_stateid_locked().  This livelock
+has been observed in generic/168.
 
---b.
+Fix this by detecting the case in nfs_need_update_open_stateid() and
+then exit the loop if:
+ - the state is NFS_OPEN_STATE, and
+ - the stateid sequence is > 1, and
+ - the stateid doesn't match the current open stateid
 
-> We have code
-> that tries to handle all these issues (see fattr->gencount and nfsi-
-> >attr_gencount) because we've hit those issues before...
+Fixes: 0e0cb35b417f ("NFSv4: Handle NFS4ERR_OLD_STATEID in CLOSE/OPEN_DOWNGRADE")
+Cc: stable@vger.kernel.org # v5.4+
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/nfs4proc.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6e95c85fe395..8c2bb91127ee 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1588,19 +1588,21 @@ static void nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
+ static bool nfs_need_update_open_stateid(struct nfs4_state *state,
+ 		const nfs4_stateid *stateid)
+ {
+-	if (test_bit(NFS_OPEN_STATE, &state->flags) == 0 ||
+-	    !nfs4_stateid_match_other(stateid, &state->open_stateid)) {
++	if (test_bit(NFS_OPEN_STATE, &state->flags)) {
++		/* The common case - we're updating to a new sequence number */
++		if (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
++			nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
++			nfs_state_log_out_of_order_open_stateid(state, stateid);
++			return true;
++		}
++	} else {
++		/* This is the first OPEN */
+ 		if (stateid->seqid == cpu_to_be32(1))
+ 			nfs_state_log_update_open_stateid(state);
+ 		else
+ 			set_bit(NFS_STATE_CHANGE_WAIT, &state->flags);
+ 		return true;
+ 	}
+-
+-	if (nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
+-		nfs_state_log_out_of_order_open_stateid(state, stateid);
+-		return true;
+-	}
+ 	return false;
+ }
+ 
+-- 
+2.20.1
 
