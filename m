@@ -2,42 +2,48 @@ Return-Path: <SRS0=ZwDk=DB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94D86C4363D
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 17:41:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2310EC4363D
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:03:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 532FA2399A
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 17:41:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B222723A1B
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:03:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1600970604;
+	bh=I99kkXfpnCyP071qSXVnw/h6mfsDjUJARC4tb7ruJi8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=sq6kr0/h15RXiqeNtJmu/hbKBWa1GlJrEY/naMHLgpdaFkCF/1/gzLVA9NcXAY51g
+	 1JjMxUCgPgEDJAA2kasy3Ivpx98cIa5YLnkIP3wbiami+A0FpxAIn6SuKkgJp9Md8G
+	 b0vJScerWXQFBXusK1NJb1DdSadqYThYx46pu/fI=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728097AbgIXRlA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Sep 2020 13:41:00 -0400
-Received: from smtprelay0075.hostedemail.com ([216.40.44.75]:44430 "EHLO
-        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726477AbgIXRlA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2020 13:41:00 -0400
-Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
-        by smtprelay08.hostedemail.com (Postfix) with ESMTP id 50DFF182CED2A;
-        Thu, 24 Sep 2020 17:40:59 +0000 (UTC)
-X-Session-Marker: 6A6F6540706572636865732E636F6D
-X-HE-Tag: house52_2a01d1527160
-X-Filterd-Recvd-Size: 3569
-Received: from XPS-9350.home (unknown [47.151.133.149])
-        (Authenticated sender: joe@perches.com)
-        by omf04.hostedemail.com (Postfix) with ESMTPA;
-        Thu, 24 Sep 2020 17:40:57 +0000 (UTC)
-Message-ID: <ca629208707903da56823dd57540d677df2da283.camel@perches.com>
-Subject: Re: [PATCH v3] nfs: remove incorrect fallthrough label
-From:   Joe Perches <joe@perches.com>
-To:     Nick Desaulniers <ndesaulniers@google.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        id S1727823AbgIXSDY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Sep 2020 14:03:24 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52328 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727753AbgIXSDX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 Sep 2020 14:03:23 -0400
+Received: from embeddedor (187-162-31-110.static.axtel.net [187.162.31.110])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 3E09A2399A;
+        Thu, 24 Sep 2020 18:03:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1600970603;
+        bh=I99kkXfpnCyP071qSXVnw/h6mfsDjUJARC4tb7ruJi8=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=fykI5J7y49QDhZmE9E94V2RBH+sMrnZE6zq3lkLEmwltw8bBE91kf+EDBgh139SHo
+         /ZtlqorHr5jA1baMlqVuC2aJ2LpFKeGB0isCdBsr8aeqpk4wH5Joo/nO2Pnkp+3JBs
+         Kf5llzuwvpf0IMH5/SsGSc0Wofdde5NV3buyNx1Y=
+Date:   Thu, 24 Sep 2020 13:08:51 -0500
+From:   "Gustavo A. R. Silva" <gustavoars@kernel.org>
+To:     Nick Desaulniers <ndesaulniers@google.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
-        "Gustavo A . R . Silva" <gustavoars@kernel.org>,
+        "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
+        Joe Perches <joe@perches.com>,
         Miaohe Lin <linmiaohe@huawei.com>,
         Nathan Chancellor <natechancellor@gmail.com>,
         Hongxiang Lou <louhongxiang@huawei.com>,
@@ -45,79 +51,29 @@ Cc:     "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
         clang-built-linux <clang-built-linux@googlegroups.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Mark Brown <broonie@kernel.org>
-Date:   Thu, 24 Sep 2020 10:40:55 -0700
-In-Reply-To: <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
+Subject: Re: [PATCH v3] nfs: remove incorrect fallthrough label
+Message-ID: <20200924180851.GA2411@embeddedor>
 References: <ce28bb9bc25cb3f1197f75950a0cfe14947f9002.camel@perches.com>
-         <20200917214545.199463-1-ndesaulniers@google.com>
-         <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-User-Agent: Evolution 3.36.4-0ubuntu1 
+ <20200917214545.199463-1-ndesaulniers@google.com>
+ <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2020-09-24 at 10:19 -0700, Nick Desaulniers wrote:
+On Thu, Sep 24, 2020 at 10:19:08AM -0700, Nick Desaulniers wrote:
 > Hello maintainers,
 > Would you mind please picking up this patch?  KernelCI has been
 > erroring for over a week without it.
+>
 
-As it's trivial and necessary, why not go through Linus directly?
+I can add this to my -next tree and queue it up for the next merge window.
 
-https://lore.kernel.org/patchwork/patch/1307549/
-
-From: Nick Desaulniers <ndesaulniers@google.com>
-
-There is no case after the default from which to fallthrough to. Clang
-will error in this case (unhelpfully without context, see link below)
-and GCC will with -Wswitch-unreachable.
-
-The previous commit should have just replaced the comment with a break
-statement.
-
-If we consider implicit fallthrough to be a design mistake of C, then
-all case statements should be terminated with one of the following
-statements:
-* break
-* continue
-* return
-* fallthrough
-* goto
-* (call of function with __attribute__(__noreturn__))
-
-Fixes: 2a1390c95a69 ("nfs: Convert to use the preferred fallthrough macro")
-Link: https://bugs.llvm.org/show_bug.cgi?id=47539
-Acked-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-Reviewed-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-Reviewed-by: Miaohe Lin <linmiaohe@huawei.com>
-Reviewed-by: Nathan Chancellor <natechancellor@gmail.com>
-Suggested-by: Joe Perches <joe@perches.com>
-Signed-off-by: Nick Desaulniers <ndesaulniers@google.com>
----
-Changes v3:
-* update the commit message as per Joe.
-* collect tags.
-
-Changes v2:
-* add break rather than no terminating statement as per Joe.
-* add Joe's suggested by tag.
-* add blurb about acceptable terminal statements.
-
- fs/nfs/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d20326ee0475..eb2401079b04 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -889,7 +889,7 @@  static struct nfs_server *nfs_try_mount_request(struct fs_context *fc)
- 		default:
- 			if (rpcauth_get_gssinfo(flavor, &info) != 0)
- 				continue;
--			fallthrough;
-+			break;
- 		}
- 		dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", flavor);
- 		ctx->selected_flavor = flavor;
+Thanks
+--
+Gustavo
 
