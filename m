@@ -2,48 +2,41 @@ Return-Path: <SRS0=ZwDk=DB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2310EC4363D
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:03:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9244FC4363D
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:07:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B222723A1B
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:03:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600970604;
-	bh=I99kkXfpnCyP071qSXVnw/h6mfsDjUJARC4tb7ruJi8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=sq6kr0/h15RXiqeNtJmu/hbKBWa1GlJrEY/naMHLgpdaFkCF/1/gzLVA9NcXAY51g
-	 1JjMxUCgPgEDJAA2kasy3Ivpx98cIa5YLnkIP3wbiami+A0FpxAIn6SuKkgJp9Md8G
-	 b0vJScerWXQFBXusK1NJb1DdSadqYThYx46pu/fI=
+	by mail.kernel.org (Postfix) with ESMTP id 3A0BA22208
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:07:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727823AbgIXSDY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Sep 2020 14:03:24 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52328 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727753AbgIXSDX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 24 Sep 2020 14:03:23 -0400
-Received: from embeddedor (187-162-31-110.static.axtel.net [187.162.31.110])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3E09A2399A;
-        Thu, 24 Sep 2020 18:03:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600970603;
-        bh=I99kkXfpnCyP071qSXVnw/h6mfsDjUJARC4tb7ruJi8=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=fykI5J7y49QDhZmE9E94V2RBH+sMrnZE6zq3lkLEmwltw8bBE91kf+EDBgh139SHo
-         /ZtlqorHr5jA1baMlqVuC2aJ2LpFKeGB0isCdBsr8aeqpk4wH5Joo/nO2Pnkp+3JBs
-         Kf5llzuwvpf0IMH5/SsGSc0Wofdde5NV3buyNx1Y=
-Date:   Thu, 24 Sep 2020 13:08:51 -0500
-From:   "Gustavo A. R. Silva" <gustavoars@kernel.org>
-To:     Nick Desaulniers <ndesaulniers@google.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        id S1728592AbgIXSHz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Sep 2020 14:07:55 -0400
+Received: from smtprelay0224.hostedemail.com ([216.40.44.224]:60986 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728577AbgIXSHz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2020 14:07:55 -0400
+Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
+        by smtprelay01.hostedemail.com (Postfix) with ESMTP id 4FBFD100E7B4A;
+        Thu, 24 Sep 2020 18:07:54 +0000 (UTC)
+X-Session-Marker: 6A6F6540706572636865732E636F6D
+X-HE-Tag: flesh53_541162527161
+X-Filterd-Recvd-Size: 2054
+Received: from XPS-9350.home (unknown [47.151.133.149])
+        (Authenticated sender: joe@perches.com)
+        by omf03.hostedemail.com (Postfix) with ESMTPA;
+        Thu, 24 Sep 2020 18:07:51 +0000 (UTC)
+Message-ID: <734165bbee434a920f074940624bcef01fcd9d60.camel@perches.com>
+Subject: Re: [PATCH v3] nfs: remove incorrect fallthrough label
+From:   Joe Perches <joe@perches.com>
+To:     Nick Desaulniers <ndesaulniers@google.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
-        Joe Perches <joe@perches.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
+        "Gustavo A . R . Silva" <gustavoars@kernel.org>,
         Miaohe Lin <linmiaohe@huawei.com>,
         Nathan Chancellor <natechancellor@gmail.com>,
         Hongxiang Lou <louhongxiang@huawei.com>,
@@ -51,29 +44,34 @@ Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         clang-built-linux <clang-built-linux@googlegroups.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Mark Brown <broonie@kernel.org>
-Subject: Re: [PATCH v3] nfs: remove incorrect fallthrough label
-Message-ID: <20200924180851.GA2411@embeddedor>
+Date:   Thu, 24 Sep 2020 11:07:50 -0700
+In-Reply-To: <ca629208707903da56823dd57540d677df2da283.camel@perches.com>
 References: <ce28bb9bc25cb3f1197f75950a0cfe14947f9002.camel@perches.com>
- <20200917214545.199463-1-ndesaulniers@google.com>
- <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
+         <20200917214545.199463-1-ndesaulniers@google.com>
+         <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
+         <ca629208707903da56823dd57540d677df2da283.camel@perches.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+User-Agent: Evolution 3.36.4-0ubuntu1 
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
-User-Agent: Mutt/1.9.4 (2018-02-28)
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Sep 24, 2020 at 10:19:08AM -0700, Nick Desaulniers wrote:
-> Hello maintainers,
-> Would you mind please picking up this patch?  KernelCI has been
-> erroring for over a week without it.
->
+On Thu, 2020-09-24 at 10:40 -0700, Joe Perches wrote:
+> On Thu, 2020-09-24 at 10:19 -0700, Nick Desaulniers wrote:
+> > Hello maintainers,
+> > Would you mind please picking up this patch?  KernelCI has been
+> > erroring for over a week without it.
+> 
+> As it's trivial and necessary, why not go through Linus directly?
+[]
+> Fixes: 2a1390c95a69 ("nfs: Convert to use the preferred fallthrough macro")
 
-I can add this to my -next tree and queue it up for the next merge window.
+Real reason why not:
 
-Thanks
---
-Gustavo
+the commit to be fixed is not in Linus' tree.
+
+> https://lore.kernel.org/patchwork/patch/1307549/
+
 
