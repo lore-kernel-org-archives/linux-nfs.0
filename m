@@ -2,92 +2,163 @@ Return-Path: <SRS0=ZwDk=DB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.4 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61B1FC4363D
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:12:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F273C4727F
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 21:36:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CCBBE208E4
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 18:12:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B5A6520758
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Sep 2020 21:36:21 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="xIkJ7mso"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728577AbgIXSMS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Sep 2020 14:12:18 -0400
-Received: from mail-ej1-f66.google.com ([209.85.218.66]:39004 "EHLO
-        mail-ej1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728448AbgIXSMS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2020 14:12:18 -0400
-Received: by mail-ej1-f66.google.com with SMTP id p9so56532ejf.6;
-        Thu, 24 Sep 2020 11:12:16 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=xYnG1iB/+VP+FnkQe6ynNkYbfPZIYv55Z7D7cKAuirY=;
-        b=nYyExDxIBdfBWPZBrYFvktXWcP8Gums6YulqAl8cmVVK5Qp27WhXZXJSKPW3z3FK1m
-         cl4jMPl3JqJdaCySfS7KMvKljFovIa/9qwVGKEWR+gwJHjbU+XWNAni4BaxJPz+DFV8a
-         fbXIVsqEykelHuNiWn/Lj/YP/bSCeIUkPwAElRyn2aBC9DJiev2n5y8IfbQD2/9pi0JW
-         evWt7PhW3oA/9cJ8KUzAZw2gpcJmZalYwolJKp5h0N9TwCOSk71gfSl/JN3Hd6wKJuri
-         USUlDwhtwkPqqBm+5TO0cOuRBE8t5xO0Mf8jngs9bk/LJ2S0pW2i1wdKQtWSZfkCSDdS
-         MzyQ==
-X-Gm-Message-State: AOAM5312LUtUj9eyDm+Ia5eR2377VJjNsDUofRwPGZGM51UbjT7SW088
-        P4tl36yT237KjrYpXbrLytumEsUBl5w/FoBvyfs=
-X-Google-Smtp-Source: ABdhPJw67mpl4dPMlAO1h8sE0XUiFW3whFNOiXv35kQ7e9FvFvRFzpydTz05AWmonaMCaNWULt2WFCCx3wSUH4FraZk=
-X-Received: by 2002:a17:906:2dc1:: with SMTP id h1mr1214182eji.436.1600971135945;
- Thu, 24 Sep 2020 11:12:15 -0700 (PDT)
+        id S1726621AbgIXVgV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Sep 2020 17:36:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39098 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726487AbgIXVgT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2020 17:36:19 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 041C7C0613CE
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Sep 2020 14:36:19 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 8FB22C56; Thu, 24 Sep 2020 17:36:17 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 8FB22C56
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1600983377;
+        bh=BFaJcK18CtbE4vBse24BNdUGu+VsbVEXCvynMAwFkjs=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=xIkJ7msoHrvGxqzGeko/VarWihRZlyMMlUNVe2LVjneqUDjbJzz8sbyy17wmNVULh
+         ikIfbQC0Hdk1nR6Y6Go3ADPeVpPVHZnXOuZ3L3aUFXs5pwVFB9ItcBf8Uf9WRdKGXc
+         hwhvDjko0i0N/Z+tNcth7wkXpWCFmvv8fG9QJQUE=
+Date:   Thu, 24 Sep 2020 17:36:17 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Bill.Baker@oracle.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 00/27] NFSD operation monitoring tracepoints
+Message-ID: <20200924213617.GA12407@fieldses.org>
+References: <160071167664.1468.1365570508917640511.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-References: <ce28bb9bc25cb3f1197f75950a0cfe14947f9002.camel@perches.com>
- <20200917214545.199463-1-ndesaulniers@google.com> <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
- <ca629208707903da56823dd57540d677df2da283.camel@perches.com> <734165bbee434a920f074940624bcef01fcd9d60.camel@perches.com>
-In-Reply-To: <734165bbee434a920f074940624bcef01fcd9d60.camel@perches.com>
-From:   Anna Schumaker <anna.schumaker@netapp.com>
-Date:   Thu, 24 Sep 2020 14:11:59 -0400
-Message-ID: <CAFX2Jf=JjVOjDKj_rpst35a+fqbiq4OpVFjztaeKcbTSNapnCg@mail.gmail.com>
-Subject: Re: [PATCH v3] nfs: remove incorrect fallthrough label
-To:     Joe Perches <joe@perches.com>
-Cc:     Nick Desaulniers <ndesaulniers@google.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
-        "Gustavo A . R . Silva" <gustavoars@kernel.org>,
-        Miaohe Lin <linmiaohe@huawei.com>,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        Hongxiang Lou <louhongxiang@huawei.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        clang-built-linux <clang-built-linux@googlegroups.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mark Brown <broonie@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <160071167664.1468.1365570508917640511.stgit@klimt.1015granger.net>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Sep 24, 2020 at 2:08 PM Joe Perches <joe@perches.com> wrote:
->
-> On Thu, 2020-09-24 at 10:40 -0700, Joe Perches wrote:
-> > On Thu, 2020-09-24 at 10:19 -0700, Nick Desaulniers wrote:
-> > > Hello maintainers,
-> > > Would you mind please picking up this patch?  KernelCI has been
-> > > erroring for over a week without it.
-> >
-> > As it's trivial and necessary, why not go through Linus directly?
-> []
-> > Fixes: 2a1390c95a69 ("nfs: Convert to use the preferred fallthrough macro")
->
-> Real reason why not:
->
+On Mon, Sep 21, 2020 at 02:10:49PM -0400, Chuck Lever wrote:
+> As I've been working on various server bugs, I've been adding
+> tracepoints that record NFS operation arguments. Here's an updated
+> snapshot of this work for your review and comment.
+> 
+> The idea here is to provide a degree of NFS traffic observability
+> without needing network capture. Tracepoints are generally lighter-
+> weight than full network capture, allowing effective capture-time
+> data reduction:
 
-I'm planning to take this patch through the NFS tree for 5.10 (along
-with the patch that apparently causes the problem). I didn't think it
-was urgent so I haven't gotten around to pushing it out yet, but I'll
-do so in the next few hours.
+I do wonder when tracepoints seem to duplicate information you could get
+from network traces, so thanks for taking the time to explain this.  It
+makes sense to me.
 
-Anna
+The patches look fine.  The only one I'm I'm on the fence about is the
+last with the split up of the dispatch functions.  I'll ask some
+questions there....
 
-> the commit to be fixed is not in Linus' tree.
->
-> > https://lore.kernel.org/patchwork/patch/1307549/
->
->
+--b.
+
+> 
+> - One or a handful of these can be enabled at a time
+> - Each tracepoint records much less data per operation than capture
+> - Extra capture-time filtering can reduce data amount even further
+> - Some of these operations are infrequent enough that their
+>  tracepoint could be enabled persistently without a significant
+>  performance impact (for example, for security auditing)
+> 
+> The topic branch has been updated as well:
+> 
+> git://git.linux-nfs.org/projects/cel/cel-2.6.git nfsd-more-tracepoints
+> 
+> 
+> Changes since RFC:
+> * s/SPDK/SPDX and corrected the spelling of Christoph's surname
+> * Fixed a build error noticed by <lkp@intel.com>
+> * Introduced generic headers for VFS and NFS protocol display macros
+> * nfsd4_compoundstatus now displays NFS4ERR codes symbolically
+> * The svc_process tracepoint now displays the RPC procedure symbolically
+> * NFSD dispatcher now displays procedure names and status codes symbolically
+> * fh_verify tracepoint tentatively included; it adds a lot of noise, but perhaps not much value
+> * Cleaned up the remaining PROC() macros in the server code
+> * Removed trace_printk's that were introduced during the RFC series
+> * Removed redundant nfsd4_close tracepoint
+> 
+> ---
+> 
+> Chuck Lever (27):
+>       NFS: Move generic FS show macros to global header
+>       NFS: Move NFS protocol display macros to global header
+>       NFSD: Add SPDX header for fs/nfsd/trace.c
+>       SUNRPC: Move the svc_xdr_recvfrom() tracepoint
+>       SUNRPC: Add svc_xdr_authenticate tracepoint
+>       lockd: Replace PROC() macro with open code
+>       NFSACL: Replace PROC() macro with open code
+>       SUNRPC: Make trace_svc_process() display the RPC procedure symbolically
+>       NFSD: Clean up the show_nf_may macro
+>       NFSD: Remove extra "0x" in tracepoint format specifier
+>       NFSD: Constify @fh argument of knfsd_fh_hash()
+>       NFSD: Add tracepoint in nfsd_setattr()
+>       NFSD: Add tracepoint for nfsd_access()
+>       NFSD: nfsd_compound_status tracepoint should record XID
+>       NFSD: Add client ID lifetime tracepoints
+>       NFSD: Add tracepoints to report NFSv4 session state
+>       NFSD: Add a tracepoint to report the current filehandle
+>       NFSD: Add GETATTR tracepoint
+>       NFSD: Add tracepoint in nfsd4_stateid_preprocess()
+>       NFSD: Add tracepoint to report arguments to NFSv4 OPEN
+>       NFSD: Add a tracepoint for DELEGRETURN
+>       NFSD: Add a lookup tracepoint
+>       NFSD: Add lock and locku tracepoints
+>       NFSD: Add tracepoints to record the result of TEST_STATEID and FREE_STATEID
+>       NFSD: Rename nfsd_ tracepoints to nfsd4_
+>       NFSD: Add tracepoints in the NFS dispatcher
+>       NFSD: Replace dprintk callsites in fs/nfsd/nfsfh.c
+> 
+> 
+>  fs/lockd/svc4proc.c           | 263 +++++++++--
+>  fs/lockd/svcproc.c            | 265 +++++++++--
+>  fs/nfs/callback_xdr.c         |   2 +
+>  fs/nfs/nfs4trace.h            | 387 ++--------------
+>  fs/nfs/nfstrace.h             | 113 +----
+>  fs/nfs/pnfs.h                 |   4 -
+>  fs/nfsd/nfs2acl.c             |  79 +++-
+>  fs/nfsd/nfs3acl.c             |  54 ++-
+>  fs/nfsd/nfs3proc.c            |  25 +
+>  fs/nfsd/nfs4callback.c        |  28 +-
+>  fs/nfsd/nfs4layouts.c         |  16 +-
+>  fs/nfsd/nfs4proc.c            |  43 +-
+>  fs/nfsd/nfs4state.c           | 100 ++--
+>  fs/nfsd/nfsd.h                |   1 +
+>  fs/nfsd/nfsfh.c               |  36 +-
+>  fs/nfsd/nfsfh.h               |   7 +-
+>  fs/nfsd/nfsproc.c             |  21 +
+>  fs/nfsd/nfssvc.c              | 198 +++++---
+>  fs/nfsd/trace.c               |   1 +
+>  fs/nfsd/trace.h               | 844 ++++++++++++++++++++++++++++++----
+>  fs/nfsd/vfs.c                 |  18 +-
+>  fs/nfsd/xdr4.h                |   3 +-
+>  include/linux/nfs4.h          |   4 +
+>  include/linux/sunrpc/svc.h    |   1 +
+>  include/trace/events/fs.h     |  30 ++
+>  include/trace/events/nfs.h    | 511 ++++++++++++++++++++
+>  include/trace/events/sunrpc.h |  33 +-
+>  include/uapi/linux/nfsacl.h   |   2 +
+>  net/sunrpc/svc_xprt.c         |   4 +-
+>  net/sunrpc/svcauth.c          |   5 +-
+>  30 files changed, 2187 insertions(+), 911 deletions(-)
+>  create mode 100644 include/trace/events/nfs.h
+> 
+> --
+> Chuck Lever
