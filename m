@@ -2,109 +2,91 @@ Return-Path: <SRS0=IhtM=DC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-11.4 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA063C4363D
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Sep 2020 11:28:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 04E85C4363D
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Sep 2020 12:58:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 68A03221EB
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Sep 2020 11:28:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1601033301;
-	bh=0qBWR99wLEdw3Mdk8ebyUqm3qW4QtbL6m4S65p6z35M=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=rX9l6pCIASlpWF6/I2dnPhJK/C4zcJVa/VFeETRi5JiGlDQdtVJubxZLPzpRot41U
-	 zQHU1gcso17riiaEzXFMdAl5BtvY4ire55GePBvMjEKBS7qYFA8xv1fMRmXBiEOMh9
-	 fMw4hGUDeLbPwcNNQER7kJf8WqpSuOy5jAONqcKo=
+	by mail.kernel.org (Postfix) with ESMTP id B5E1D206DB
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Sep 2020 12:58:17 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="b1ab3B9j"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727044AbgIYL2T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Sep 2020 07:28:19 -0400
-Received: from mail.kernel.org ([198.145.29.99]:43578 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727290AbgIYL2S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 25 Sep 2020 07:28:18 -0400
-Received: from localhost (fw-tnat.cambridge.arm.com [217.140.96.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6EADE20717;
-        Fri, 25 Sep 2020 11:28:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1601033298;
-        bh=0qBWR99wLEdw3Mdk8ebyUqm3qW4QtbL6m4S65p6z35M=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=Jc3SKVW+FxNdmlp5Xxhb3DtrfvOgoiSfyY/pDUuYmedimLssoUNMDjP80yVqzX/pr
-         +s5kRKeekM98Xj+it3g8OerfS8kRF7h6Fl1d4mXkJKGgPZnO1Kp5lP7JEJdp5b+4d8
-         oIG6w+xbnn1gdPGOmLrkd95NDbFhLgvMYnHDYL7U=
-Date:   Fri, 25 Sep 2020 12:27:22 +0100
-From:   Mark Brown <broonie@kernel.org>
-To:     Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     Joe Perches <joe@perches.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "Gustavo A . R . Silva" <gustavo@embeddedor.com>,
-        "Gustavo A . R . Silva" <gustavoars@kernel.org>,
-        Miaohe Lin <linmiaohe@huawei.com>,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        Hongxiang Lou <louhongxiang@huawei.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        clang-built-linux <clang-built-linux@googlegroups.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v3] nfs: remove incorrect fallthrough label
-Message-ID: <20200925112722.GA4841@sirena.org.uk>
-References: <ce28bb9bc25cb3f1197f75950a0cfe14947f9002.camel@perches.com>
- <20200917214545.199463-1-ndesaulniers@google.com>
- <CAKwvOdnziDJbRAP77K+V885SCuORfV4SmHDnSLUxhUGSSLMq_Q@mail.gmail.com>
- <ca629208707903da56823dd57540d677df2da283.camel@perches.com>
- <734165bbee434a920f074940624bcef01fcd9d60.camel@perches.com>
- <CAFX2Jf=JjVOjDKj_rpst35a+fqbiq4OpVFjztaeKcbTSNapnCg@mail.gmail.com>
+        id S1728951AbgIYM6P (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Sep 2020 08:58:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39656 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728935AbgIYM6P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Sep 2020 08:58:15 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E033DC0613CE
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Sep 2020 05:58:14 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id C5766448D; Fri, 25 Sep 2020 08:58:13 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org C5766448D
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1601038693;
+        bh=gCCJxb/0DquHJNEPu1djqUX+jjr0NPycxUSjLaHNxjM=;
+        h=Date:To:Subject:From:From;
+        b=b1ab3B9j3hPkibXoPduB4XawuyqtaAN0LGOroFcSeSglKlZOruGPep868YPiUz5w9
+         FoeKv4Ytp4Xpjk0O+d3V22zKhwRYi+iwlq9GWEmVVeeb+2v3pkFlx6ucZtt9pJZSgn
+         QOgsv4FiZhaQcC+1LkWiZM1SU0GVZYSvhWYjrvy0=
+Date:   Fri, 25 Sep 2020 08:58:13 -0400
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc: simplify do_cache_clean
+Message-ID: <20200925125813.GA1096@fieldses.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-        protocol="application/pgp-signature"; boundary="J2SCkAp4GZ/dPZZf"
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAFX2Jf=JjVOjDKj_rpst35a+fqbiq4OpVFjztaeKcbTSNapnCg@mail.gmail.com>
-X-Cookie: Onward through the fog.
-User-Agent: Mutt/1.10.1 (2018-07-13)
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
---J2SCkAp4GZ/dPZZf
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Is it just me, or is the logic written in a slightly convoluted way?
 
-On Thu, Sep 24, 2020 at 02:11:59PM -0400, Anna Schumaker wrote:
-> On Thu, Sep 24, 2020 at 2:08 PM Joe Perches <joe@perches.com> wrote:
+I find it a little easier to read this way.
 
-> > Real reason why not:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/cache.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
-> I'm planning to take this patch through the NFS tree for 5.10 (along
-> with the patch that apparently causes the problem). I didn't think it
-> was urgent so I haven't gotten around to pushing it out yet, but I'll
-> do so in the next few hours.
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 9e68e443f497..2990a7ab9e2a 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -498,16 +498,17 @@ static int cache_clean(void)
+  */
+ static void do_cache_clean(struct work_struct *work)
+ {
+-	int delay = 5;
+-	if (cache_clean() == -1)
+-		delay = round_jiffies_relative(30*HZ);
++	int delay;
+ 
+ 	if (list_empty(&cache_list))
+-		delay = 0;
++		return;
++
++	if (cache_clean() == -1)
++		delay = round_jiffies_relative(30*HZ);
++	else
++		delay = 5;
+ 
+-	if (delay)
+-		queue_delayed_work(system_power_efficient_wq,
+-				   &cache_cleaner, delay);
++	queue_delayed_work(system_power_efficient_wq, &cache_cleaner, delay);
+ }
+ 
+ 
+-- 
+2.26.2
 
-FWIW NFS is quite widely used by CI systems so any build breaks with it
-in -next have a pretty big knock on effect on testing, even beyond the
-distruption people working on the build test side of things.
-
---J2SCkAp4GZ/dPZZf
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAABCgAdFiEEreZoqmdXGLWf4p/qJNaLcl1Uh9AFAl9t1BoACgkQJNaLcl1U
-h9AQfgf/QGhP/HeYW+S1uZwXjRE61tdtxw8+QQillMq6Sd9RuOXGNcbRKgJfQ7H2
-8Zt6U8pwlrPUGWpbrHzKM2dZ9qarLmCpqxdGWParPmJF6D1Hy8zo0R7tojGFQxA8
-kGQCzBlw0nYHitjwAEISJABPMJRugrKOXSFOZJ4jYN/XwJ1Hip+q4l6K8eVz24af
-QxpcMNdbpSYYBeMaPKI7JeHl6fAdTP9hdG9oMEf1yNJ7P8nfx35KZ3UilPMkUzMI
-yZrx4vNyWE0xXRE+xn4DKgwbTrXQZnAxbZvG8RE+ntoQa1I+52MKzfZ04FaqYnXz
-jsmdG833nCS8zVmHwt7nxNr8aqL2qQ==
-=CEEL
------END PGP SIGNATURE-----
-
---J2SCkAp4GZ/dPZZf--
