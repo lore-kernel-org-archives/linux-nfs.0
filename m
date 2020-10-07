@@ -2,101 +2,206 @@ Return-Path: <SRS0=1cAr=DO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0C3FC4727E
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 16:30:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F083C41604
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 16:50:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4FA6B20708
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 16:30:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1C52B20739
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 16:50:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="bjsK0aDx"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YOxHwf1q"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727997AbgJGQak (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Oct 2020 12:30:40 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:36186 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727990AbgJGQaj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2020 12:30:39 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1602088238;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=EnhQBerWUQ4B1SJXlk0CfeVXcWu6CUN1xfdJTyciM6A=;
-        b=bjsK0aDxcdUTEr2CWSmHkoxcoH89XZYHOgoLUSlVE6W7CB/2kfm83A2ZEWXtEC7Y8FpRVy
-        wcTOpsXKqzdH/VgyL7egJJ+msarbMPuNZPCGqWaKVBlk7O0rLG6L8xzNw3oJPCNz+QhFNx
-        rykLjjE5hnhPw+kc0i86GxtGa+ypA2o=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-495-rfEf73lmMKCcsCcKfhFZxw-1; Wed, 07 Oct 2020 12:30:36 -0400
-X-MC-Unique: rfEf73lmMKCcsCcKfhFZxw-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 202328797F0;
-        Wed,  7 Oct 2020 16:30:35 +0000 (UTC)
-Received: from [172.16.176.1] (ovpn-64-66.rdu2.redhat.com [10.10.64.66])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 964515DA76;
-        Wed,  7 Oct 2020 16:30:34 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Patrick Goetz" <pgoetz@math.utexas.edu>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+        id S1727888AbgJGQu1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 7 Oct 2020 12:50:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53684 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726388AbgJGQu1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Oct 2020 12:50:27 -0400
+Received: from mail-qt1-x841.google.com (mail-qt1-x841.google.com [IPv6:2607:f8b0:4864:20::841])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EFCF6C061755
+        for <linux-nfs@vger.kernel.org>; Wed,  7 Oct 2020 09:50:26 -0700 (PDT)
+Received: by mail-qt1-x841.google.com with SMTP id s47so2474966qth.4
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Oct 2020 09:50:26 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:message-id:subject:to:cc:in-reply-to:references:organization
+         :mime-version:date:user-agent:content-transfer-encoding;
+        bh=v5fkWWavFoMpc89w5iQzYCJZDfdv93KOFJLVoB5lsfQ=;
+        b=YOxHwf1q8BXWeIR9na20uVsU8BuayVoSyhqor2B7nBeNOL3IKr64cYa9mkRQ2zJxMg
+         a06Q8g1uQRQ5SsTo3jn1A+72qieAs0D8bipItWPdjaQFxDhSdFlrWcR05QjNIySL+a7N
+         Rtgr3qak9pKl+dSo310WrBBNmWx2SJw5b7vLAAjw671KAPRFvFPJACJVy3ivQLhs5Xt0
+         l+b5zX/ahG+SjtcgAmwbhEwEWjHLCx4cV2XYMkhR7xIL7DyyUXfJWrnEYk+pMHf/sfKt
+         BbpLL+xGzK9txtywImbuip2yArifgy8dDycYIkvGXIqxF9yRPVl8uLZ3e9f9KTV2JCJZ
+         Xbwg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:subject:to:cc:in-reply-to
+         :references:organization:mime-version:date:user-agent
+         :content-transfer-encoding;
+        bh=v5fkWWavFoMpc89w5iQzYCJZDfdv93KOFJLVoB5lsfQ=;
+        b=EkoFbZcPOKkaHJPjpdW1XW0Yx6P1RWvFnhS1bQJYCqNFZxZCrff4hcgISF3/CkABhZ
+         0hzpCkc9n/iVK39dzDImk1JoegjC97lGNkDxg85d2YlrlDjPiy5CMEnYO887iLYspwNW
+         CoPmQN/hHuT2rb08bg/AKnVf/9Nxp2j8wCfV7NuRnzwlKOozGJBXlNuHZ/7a57b1+C/h
+         XSVcPTL0jQ9tM19LdX+hRQh3/5yHNKRemrMRxPenFeW/eWbB+kBfGqhJJq1Ww+piUZVG
+         s3sl3tFwBrDGdAyALpq4oQu3zOzXdRP9kSeDKlw+CZ4y0skX7m7TbIAImCSlZzyMvNuR
+         TzWQ==
+X-Gm-Message-State: AOAM533pBwTo3fZezLGjEQgLiQA0RYLrJS5bAvf8x2YnFrThVFI2PbYN
+        Tmb4Wt9N/lYZ4iMzXwdmMA==
+X-Google-Smtp-Source: ABdhPJwMD+WSG/qR7aPmSwOoS9xi5fi46O7aTe2Q6YiSnNjLh0GXCgAu6RCSz1RCWr3ovZ1goasYKw==
+X-Received: by 2002:aed:25fc:: with SMTP id y57mr4032472qtc.199.1602089425743;
+        Wed, 07 Oct 2020 09:50:25 -0700 (PDT)
+Received: from leira (c-68-36-133-222.hsd1.mi.comcast.net. [68.36.133.222])
+        by smtp.gmail.com with ESMTPSA id d21sm1860873qtp.97.2020.10.07.09.50.24
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 07 Oct 2020 09:50:24 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trondmy@hammerspace.com>
+Message-ID: <6d9aee613e9fb25509c9317910189ee37a2e4b43.camel@hammerspace.com>
 Subject: Re: unsharing tcp connections from different NFS mounts
-Date:   Wed, 07 Oct 2020 12:30:33 -0400
-Message-ID: <A9A6D668-D40B-48F9-A578-E1BE1DCF25C4@redhat.com>
-In-Reply-To: <df7b7b26-c6a7-9e6f-edf6-e3c858623462@math.utexas.edu>
+To:     Bruce Fields <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     Benjamin Coddington <bcodding@redhat.com>,
+        Olga Kornievskaia <aglo@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <20201007160556.GE23452@fieldses.org>
 References: <20201006151335.GB28306@fieldses.org>
- <df7b7b26-c6a7-9e6f-edf6-e3c858623462@math.utexas.edu>
+         <95542179-0C20-4A1F-A835-77E73AD70DB8@redhat.com>
+         <CAN-5tyGDC0VQqjqUNzs_Ka+-G_1eCScVxuXvWsp7xe7QYj69Ww@mail.gmail.com>
+         <20201007001814.GA5138@fieldses.org>
+         <57E3293C-5C49-4A80-957B-E490E6A9B32E@redhat.com>
+         <5B5CF80C-494A-42D3-8D3F-51C0277D9E1B@redhat.com>
+         <8ED5511E-25DE-4C06-9E26-A1947383C86A@oracle.com>
+         <20201007140502.GC23452@fieldses.org>
+         <85F496CD-9AAC-451C-A224-FCD138BDC591@oracle.com>
+         <20201007160556.GE23452@fieldses.org>
+Organization: Hammerspace Inc
+Content-Type: text/plain; charset="UTF-8"
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+Date:   Wed, 07 Oct 2020 12:44:42 -0400
+User-Agent: Evolution 3.36.5 (3.36.5-1.fc32) 
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Wed, 2020-10-07 at 12:05 -0400, Bruce Fields wrote:
+> On Wed, Oct 07, 2020 at 10:15:39AM -0400, Chuck Lever wrote:
+> > 
+> > > On Oct 7, 2020, at 10:05 AM, Bruce Fields <bfields@fieldses.org>
+> > > wrote:
+> > > 
+> > > On Wed, Oct 07, 2020 at 09:45:50AM -0400, Chuck Lever wrote:
+> > > > 
+> > > > > On Oct 7, 2020, at 8:55 AM, Benjamin Coddington <
+> > > > > bcodding@redhat.com> wrote:
+> > > > > 
+> > > > > On 7 Oct 2020, at 7:27, Benjamin Coddington wrote:
+> > > > > 
+> > > > > > On 6 Oct 2020, at 20:18, J. Bruce Fields wrote:
+> > > > > > 
+> > > > > > > On Tue, Oct 06, 2020 at 05:46:11PM -0400, Olga
+> > > > > > > Kornievskaia wrote:
+> > > > > > > > On Tue, Oct 6, 2020 at 3:38 PM Benjamin Coddington <
+> > > > > > > > bcodding@redhat.com> wrote:
+> > > > > > > > > On 6 Oct 2020, at 11:13, J. Bruce Fields wrote:
+> > > > > > > Looks like nfs4_init_{non}uniform_client_string() stores
+> > > > > > > it in
+> > > > > > > cl_owner_id, and I was thinking that meant cl_owner_id
+> > > > > > > would be used
+> > > > > > > from then on....
+> > > > > > > 
+> > > > > > > But actually, I think it may run that again on recovery,
+> > > > > > > yes, so I bet
+> > > > > > > changing the nfs4_unique_id parameter midway like this
+> > > > > > > could cause bugs
+> > > > > > > on recovery.
+> > > > > > 
+> > > > > > Ah, that's what I thought as well.  Thanks for looking
+> > > > > > closer Olga!
+> > > > > 
+> > > > > Well, no -- it does indeed continue to use the original
+> > > > > cl_owner_id.  We
+> > > > > only jump through nfs4_init_uniquifier_client_string() if
+> > > > > cl_owner_id is
+> > > > > NULL:
+> > > > > 
+> > > > > 6087 static int
+> > > > > 6088 nfs4_init_uniform_client_string(struct nfs_client *clp)
+> > > > > 6089 {
+> > > > > 6090     size_t len;
+> > > > > 6091     char *str;
+> > > > > 6092
+> > > > > 6093     if (clp->cl_owner_id != NULL)
+> > > > > 6094         return 0;
+> > > > > 6095
+> > > > > 6096     if (nfs4_client_id_uniquifier[0] != '\0')
+> > > > > 6097         return nfs4_init_uniquifier_client_string(clp);
+> > > > > 6098
+> > > > > 
+> > > > > 
+> > > > > Testing proves this out as well for both EXCHANGE_ID and
+> > > > > SETCLIENTID.
+> > > > > 
+> > > > > Is there any precedent for stabilizing module parameters as
+> > > > > part of a
+> > > > > supported interface?  Maybe this ought to be a mount option,
+> > > > > so client can
+> > > > > set a uniquifier per-mount.
+> > > > 
+> > > > The protocol is designed as one client-ID per client. FreeBSD
+> > > > is
+> > > > the only client I know of that uses one client-ID per mount,
+> > > > fwiw.
+> > > > 
+> > > > You are suggesting each mount point would have its own lease.
+> > > > There
+> > > > would likely be deeper implementation changes needed than just
+> > > > specifying a unique client-ID for each mount point.
+> > > 
+> > > Huh, I thought that should do it.
+> > > 
+> > > Do you have something specific in mind?
+> > 
+> > The relationship between nfs_client and nfs_server structs comes to
+> > mind.
+> 
+> I'm not following.  Do you have a specific problem in mind?
+> 
+
+The problem that all locks etc are tied to the lease, so if you change
+the clientid (and hence change the lease) then you need to ensure that
+the client knows to which lease the locks belong, that it is able to
+respond appropriately to all delegation recalls, layout recalls, ...
+etc.
+This need to track things on a per-lease basis is why we have the
+struct nfs_client. Things that are tracked on a per-superblock basis
+are tracked by the struct nfs_server.
+
+However all this is moot as long as nobody can explain why we'd want to
+do all this.
+
+As far as I can tell, this thread started with a complaint that
+performance suffers when we don't allow setups that hack the client by
+pretending that a multi-homed server is actually multiple different
+servers.
+
+AFAICS Tom Talpey's question is the relevant one. Why is there a
+performance regression being seen by these setups when they share the
+same connection? Is it really the connection, or is it the fact that
+they all share the same fixed-slot session?
+
+I did see Igor's claim that there is a QoS issue (which afaics would
+also affect NFSv3), but why do I care about QoS as a per-mountpoint
+feature?
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, Hammerspace
+trond.myklebust@hammerspace.com
 
 
-On 7 Oct 2020, at 9:56, Patrick Goetz wrote:
-
-> On 10/6/20 10:13 AM, J. Bruce Fields wrote:
->> NFSv4.1+ differs from earlier versions in that it always performs
->> trunking discovery that results in mounts to the same server sharing a
->> TCP connection.
->>
->> It turns out this results in performance regressions for some users;
->> apparently the workload on one mount interferes with performance of
->> another mount, and they were previously able to work around the problem
->> by using different server IP addresses for the different mounts.
->>
->> Am I overlooking some hack that would reenable the previous behavior?
->> Or would people be averse to an "-o noshareconn" option?
->>
->> --b.
->>
->
->
-> I don't see how sharing a TCP connection can result in a performance
-> regression (the performance degradation of *not* sharing a TCP connection
-> is why HTTP 1.x is being replaced), or how using different IP addresses on
-> the same interface resolves anything.  Does anyone have an explanation?
-
-Well, I think the report we're getting may be using two different network
-interfaces on the server-side.  The user was previously doing one mount each
-to each ip address on each interface.
-
-Even if you don't have this arrangement, it may still be possible/desirable
-to have separate TCP connections if you want to prioritizes some NFS
-traffic.  Multi-CPU systems with modern NICs have a number of different ways
-to "steer" the traffic they receive to certain CPUs which may have a benefit
-or detrimental effect on performance.  You can prioritize wake-ups from the
-NIC based on throughput or latency, for example.
-
-I don't know for sure which of these specific details are coming into play,
-if any, though.
-
-Ben
 
