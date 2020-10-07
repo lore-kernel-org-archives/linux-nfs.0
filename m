@@ -2,100 +2,164 @@ Return-Path: <SRS0=1cAr=DO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.1 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00F6EC4363D
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 00:18:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1032FC41604
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 10:54:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 831D820739
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 00:18:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7780B212CC
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Oct 2020 10:54:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="eoxl4sNn"
+	dkim=fail reason="signature verification failed" (1024-bit key) header.d=kenjo.org header.i=@kenjo.org header.b="b8nfVHIs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726560AbgJGASQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 6 Oct 2020 20:18:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41690 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725972AbgJGASP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Oct 2020 20:18:15 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B9010C061755
-        for <linux-nfs@vger.kernel.org>; Tue,  6 Oct 2020 17:18:15 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 8EDC7367; Tue,  6 Oct 2020 20:18:14 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 8EDC7367
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1602029894;
-        bh=PBP3kZ0UmnFXH3VUn/gGdbjdMG+BcQaacF2gsZp143Y=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=eoxl4sNnGEhoPd3o7BIVNMO0nfXF8/7SjhuGqh/pAIdwBaPSvgL9H/Y8t83vxU3EM
-         9IEhCNhY/CUcgBw+tbaTByFw359ezYSUREkfpaALpuZzI6RSLoQ+Bofwk+BFcpaBFt
-         ZyhetgbCtBsdbsFZpLcWU4QL21Vw49r6OK/zYdr0=
-Date:   Tue, 6 Oct 2020 20:18:14 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Olga Kornievskaia <aglo@umich.edu>
-Cc:     Benjamin Coddington <bcodding@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: unsharing tcp connections from different NFS mounts
-Message-ID: <20201007001814.GA5138@fieldses.org>
-References: <20201006151335.GB28306@fieldses.org>
- <95542179-0C20-4A1F-A835-77E73AD70DB8@redhat.com>
- <CAN-5tyGDC0VQqjqUNzs_Ka+-G_1eCScVxuXvWsp7xe7QYj69Ww@mail.gmail.com>
+        id S1727334AbgJGKy4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 7 Oct 2020 06:54:56 -0400
+Received: from h-163-233.A498.priv.bahnhof.se ([155.4.163.233]:36248 "EHLO
+        mail.kenjo.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726637AbgJGKyz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Oct 2020 06:54:55 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=kenjo.org;
+         s=mail; h=Content-Transfer-Encoding:Content-Type:In-Reply-To:MIME-Version:
+        Date:Message-ID:From:References:Cc:To:Subject:Sender:Reply-To:Content-ID:
+        Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+        :Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
+        List-Post:List-Owner:List-Archive;
+        bh=ST6zA2FHu2XiB5XMX1hNyMrLkPDzTxm4dIvMss3P0KU=; b=b8nfVHIsVNmpJq/IYESbAN+TTe
+        2+iqcab+TzFyxyrvdzgap60f9KKQyxiQH8QGxBdNL5F83u4qDl507VGV2UKt+xP50xT1eRYiocjQ7
+        w8OlgUioi87Do95nwgknp8sG0+zEAgrVQOEwBPhC3q6ftG4rxhMkYMSmj0gxLHU2tK/o=;
+Received: from brix.kenjo.org ([172.16.2.16])
+        by mail.kenjo.org with esmtp (Exim 4.89)
+        (envelope-from <ken@kenjo.org>)
+        id 1kQ75v-00025s-8n; Wed, 07 Oct 2020 12:54:51 +0200
+Subject: Re: nfs home directory and google chrome.
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Patrick Goetz <pgoetz@math.utexas.edu>, linux-nfs@vger.kernel.org
+References: <0ba0cd0c-eccd-2362-9958-23cd1fa033df@kenjo.org>
+ <5326b6a3-0222-fc1a-6baa-ae2fbdaf209d@math.utexas.edu>
+ <923003de-7fcf-abee-07a2-0691b25673d8@kenjo.org>
+ <20201006181454.GB32640@fieldses.org>
+From:   Kenneth Johansson <ken@kenjo.org>
+Message-ID: <07f3684e-482e-dc73-5c9a-b7c9329fc410@kenjo.org>
+Date:   Wed, 7 Oct 2020 12:54:50 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.3.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAN-5tyGDC0VQqjqUNzs_Ka+-G_1eCScVxuXvWsp7xe7QYj69Ww@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <20201006181454.GB32640@fieldses.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Content-Language: en-US
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Oct 06, 2020 at 05:46:11PM -0400, Olga Kornievskaia wrote:
-> On Tue, Oct 6, 2020 at 3:38 PM Benjamin Coddington <bcodding@redhat.com> wrote:
-> >
-> > On 6 Oct 2020, at 11:13, J. Bruce Fields wrote:
-> >
-> > > NFSv4.1+ differs from earlier versions in that it always performs
-> > > trunking discovery that results in mounts to the same server sharing a
-> > > TCP connection.
-> > >
-> > > It turns out this results in performance regressions for some users;
-> > > apparently the workload on one mount interferes with performance of
-> > > another mount, and they were previously able to work around the
-> > > problem
-> > > by using different server IP addresses for the different mounts.
-> > >
-> > > Am I overlooking some hack that would reenable the previous behavior?
-> > > Or would people be averse to an "-o noshareconn" option?
-> >
-> > I suppose you could just toggle the nfs4_unique_id parameter.  This
-> > seems to
-> > work:
-> >
-> > flock /sys/module/nfs/parameters/nfs4_unique_id bash -c "OLD_ID=\$(cat
-> > /sys/module/nfs/parameters/nfs4_unique_id); echo imalittleteapot >
-> > /sys/module/nfs/parameters/nfs4_unique_id; mount -ov4,sec=sys
-> > 10.0.1.200:/exports /mnt/fedora2; echo \$OLD_ID >
-> > /sys/module/nfs/parameters/nfs4_unique_id"
-> >
-> > I'm trying to think of a reason why this is a bad idea, and not coming
-> > up
-> > with any.  Can we support users that have already found this solution?
-> >
-> 
-> What about reboot recovery? How will each mount recover its own state
-> (and present the same identifier it used before). Client only keeps
-> track of one?
+On 2020-10-06 20:14, J. Bruce Fields wrote:
+> On Mon, Oct 05, 2020 at 10:07:56PM +0200, Kenneth Johansson wrote:
+>> On 2020-10-05 18:46, Patrick Goetz wrote:
+>>> We had a similar problem with Firefox, most notably with Mac OSX
+>>> users who have NFS-mounted home directories. There's an
+>>> about:config solution for Firefox; namely set
+>>>
+>>>     storage.nfs_filesystem: true
+>>>
+>>> This forces a specific network file locking mechanism which makes
+>>> sqlite behave better. I'm guessing google chrome has something
+>>> similar.
+>>>
+>> Since I have used chrome for years without any problems my guess it
+>> that its something that changed with nfs in my setup.
+>>
+>> I did a strace and the first -EIO I get look like this
+>>
+>> fdatasync(94</home/kenjo/.config/google-chrome/Default/Login Data>)
+>> = -1 EIO (Input/output error)
+>>
+>> then the same thing happens for other files like
+>>
+>> fdatasync(83</home/kenjo/.config/google-chrome/Default/Web Data>) =
+>> -1 EIO (Input/output error)
+>>
+>> fdatasync(74</home/kenjo/.config/google-chrome/Default/History>) =
+>> -1 EIO (Input/output error)
+> Are you using soft mounts?
+>
+> (What are your mount options?)
 
-Looks like nfs4_init_{non}uniform_client_string() stores it in
-cl_owner_id, and I was thinking that meant cl_owner_id would be used
-from then on....
+auto.home /home autofs 
+rw,relatime,fd=18,pgrp=2682,timeout=300,minproto=5,maxproto=5,indirect,pipe_ino=67621 
+0 0
 
-But actually, I think it may run that again on recovery, yes, so I bet
-changing the nfs4_unique_id parameter midway like this could cause bugs
-on recovery.
+/home/kenjo nfs4 
+rw,noatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,acregmin=120,acregmax=120,acdirmin=120,acdirmax=120,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=172.16.2.16,fsc,local_lock=none,addr=172.16.2.6 
+0 0
 
---b.
+what I actualy set manually in auto.home is
+
+-tcp,fsc,noatime,ac,actimeo=120
+
+
+> --b.
+>
+>>
+>>
+>>
+>>> On 10/4/20 6:53 AM, Kenneth Johansson wrote:
+>>>> So I have had for a long time problems with google chrome and
+>>>> suspend resume causing it to mangle its sqlite database.
+>>>>
+>>>> it looks to only happen if I use nfs mounted home directory. I'm
+>>>> not sure exactly what is happening but lets first see if this
+>>>> happens to anybody else.
+>>>>
+>>>> How to get the error.
+>>>>
+>>>> 1. start google from a terminal with "google-chrome"
+>>>>
+>>>> 2. suspend the computer
+>>>>
+>>>> 3. wait a while. There is some type of minimum time here I do
+>>>> not know what its is but I basically get the error every time of
+>>>> I suspend in evening and resume in morning
+>>>>
+>>>> 4. look for printout that looks like something like this
+>>>>
+>>>> [16789:18181:1004/125852.529750:ERROR:database.cc(1692)]
+>>>> Passwords sqlite error 1034, errno 5: disk I/O error, sql:
+>>>> COMMIT
+>>>> [16789:16829:1004/125852.529744:ERROR:database.cc(1692)] Web
+>>>> sqlite error 1034, errno 5: disk I/O error, sql: COMMIT
+>>>> [16789:16829:1004/125852.530261:ERROR:database.cc(1692)] Web
+>>>> sqlite error 1034, errno 5: disk I/O error, sql: INSERT OR
+>>>> REPLACE INTO autofill_model_type_state (model_type, value)
+>>>> VALUES(?,?)
+>>>> [16789:16789:1004/125852.563571:ERROR:sync_metadata_store_change_list.cc(34)]
+>>>> Autofill datatype error was encountered: Failed to update
+>>>> ModelTypeState.
+>>>> [16789:19002:1004/125902.534103:ERROR:database.cc(1692)] History
+>>>> sqlite error 1034, errno 5: disk I/O error, sql: COMMIT
+>>>> [16789:19002:1004/125902.536903:ERROR:database.cc(1692)]
+>>>> Thumbnail sqlite error 778, errno 5: disk I/O error, sql: COMMIT
+>>>>
+>>>>
+>>>> [16789:19002:1004/130044.120379:ERROR:database.cc(1692)]
+>>>> Passwords sqlite error 1034, errno 5: disk I/O error, sql:
+>>>> INSERT OR REPLACE INTO sync_model_metadata (id, model_metadata)
+>>>> VALUES(1, ?)
+>>>> [16789:16829:1004/130044.120388:ERROR:database.cc(1692)] Web
+>>>> sqlite error 1034, errno 5: disk I/O error, sql: INSERT OR
+>>>> REPLACE INTO autofill_model_type_state (model_type, value)
+>>>> VALUES(?,?)
+>>>>
+>>>>
+>>>> and so on.  if you use google sync you can also check
+>>>> "chrome://sync-internals" to see if something is wrong with the
+>>>> database.
+>>>>
+>>>>
+>>>>
+>>>>>> This message is from an external sender. Learn more about why this <<
+>>>>>> matters at https://links.utexas.edu/rtyclf. <<
+
+
