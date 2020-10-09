@@ -7,42 +7,41 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C087C9DC86
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:54:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F31DFC832C2
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:54:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3CB4522B48
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:54:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C639D22B48
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:54:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391210AbgJITxv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Oct 2020 15:53:51 -0400
-Received: from mga18.intel.com ([134.134.136.126]:42487 "EHLO mga18.intel.com"
+        id S2391351AbgJITyu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Oct 2020 15:54:50 -0400
+Received: from mga12.intel.com ([192.55.52.136]:29419 "EHLO mga12.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391153AbgJITxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Oct 2020 15:53:42 -0400
-IronPort-SDR: BgWZnFJZdvaz1CZmvfS/7De+hsUMEUJdT4/u/BWCM6C97yea5FfZV7v30SZ47vZG/wo8aIdnwg
- re/Nlv5BC3sA==
-X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="153363823"
+        id S2391275AbgJITyL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Oct 2020 15:54:11 -0400
+IronPort-SDR: q1PZMJUmKFKlQ0BClGvwyzOjNwzGSo5B944T29UwXjVfp2YopDniYa7pTU6UFtwNvsti9h6T08
+ dfV2TT7Nz02w==
+X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="144851137"
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="153363823"
+   d="scan'208";a="144851137"
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga001.fm.intel.com ([10.253.24.23])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:41 -0700
-IronPort-SDR: t/zSGeR++7wfj+VtFM7nhfyp5h0blfdWqDlNHnP/5jl48Bm08GFuTiLpDu6MwkEQ7bZpMY8SQr
- l7ztZVCdgy3g==
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:54:10 -0700
+IronPort-SDR: LoljxrxdEbdUiebRGt6guGtjo6SPfpWGHMJuLgTgYB7BeDU8CJtiGau7DzbQyZ+Y5gpHVnCtT5
+ urTwCEpflSRg==
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="419537249"
+   d="scan'208";a="343972696"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga001-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:40 -0700
+  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:54:09 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Thomas Gleixner <tglx@linutronix.de>,
         Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>,
         Andy Lutomirski <luto@kernel.org>,
         Peter Zijlstra <peterz@infradead.org>
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        x86@kernel.org, Dave Hansen <dave.hansen@linux.intel.com>,
+Cc:     Ira Weiny <ira.weiny@intel.com>, x86@kernel.org,
+        Dave Hansen <dave.hansen@linux.intel.com>,
         Dan Williams <dan.j.williams@intel.com>,
         Fenghua Yu <fenghua.yu@intel.com>, linux-doc@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nvdimm@lists.01.org,
@@ -67,9 +66,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         drbd-dev@lists.linbit.com, linux-block@vger.kernel.org,
         xen-devel@lists.xenproject.org, linux-cachefs@redhat.com,
         samba-technical@lists.samba.org, intel-wired-lan@lists.osuosl.org
-Subject: [PATCH RFC PKS/PMEM 49/58] drivers/misc: Utilize new kmap_thread()
-Date:   Fri,  9 Oct 2020 12:50:24 -0700
-Message-Id: <20201009195033.3208459-50-ira.weiny@intel.com>
+Subject: [PATCH RFC PKS/PMEM 58/58] [dax|pmem]: Enable stray access protection
+Date:   Fri,  9 Oct 2020 12:50:33 -0700
+Message-Id: <20201009195033.3208459-59-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.28.0.rc0.12.gb6a658bd00c9
 In-Reply-To: <20201009195033.3208459-1-ira.weiny@intel.com>
 References: <20201009195033.3208459-1-ira.weiny@intel.com>
@@ -81,67 +80,52 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-These kmap() calls are localized to a single thread.  To avoid the over
-head of global PKRS updates use the new kmap_thread() call.
+Protecting against stray writes is particularly important for PMEM
+because, unlike writes to anonymous memory, writes to PMEM persists
+across a reboot.  Thus data corruption could result in permanent loss of
+data.
 
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+While stray writes are more serious than reads, protection is also
+enabled for reads.  This helps to detect bugs in code which would
+incorrectly access device memory and prevents a more serious machine
+checks should those bug reads from a poison page.
+
+Enable stray access protection by setting the flag in pgmap which
+requests it.  There is no option presented to the user.  If Zone Device
+Access Protection not be supported this flag will have no affect.
+
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- drivers/misc/vmw_vmci/vmci_queue_pair.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ drivers/dax/device.c  | 2 ++
+ drivers/nvdimm/pmem.c | 2 ++
+ 2 files changed, 4 insertions(+)
 
-diff --git a/drivers/misc/vmw_vmci/vmci_queue_pair.c b/drivers/misc/vmw_vmci/vmci_queue_pair.c
-index 8531ae781195..f308abb8ad03 100644
---- a/drivers/misc/vmw_vmci/vmci_queue_pair.c
-+++ b/drivers/misc/vmw_vmci/vmci_queue_pair.c
-@@ -343,7 +343,7 @@ static int qp_memcpy_to_queue_iter(struct vmci_queue *queue,
- 		size_t to_copy;
- 
- 		if (kernel_if->host)
--			va = kmap(kernel_if->u.h.page[page_index]);
-+			va = kmap_thread(kernel_if->u.h.page[page_index]);
- 		else
- 			va = kernel_if->u.g.vas[page_index + 1];
- 			/* Skip header. */
-@@ -357,12 +357,12 @@ static int qp_memcpy_to_queue_iter(struct vmci_queue *queue,
- 		if (!copy_from_iter_full((u8 *)va + page_offset, to_copy,
- 					 from)) {
- 			if (kernel_if->host)
--				kunmap(kernel_if->u.h.page[page_index]);
-+				kunmap_thread(kernel_if->u.h.page[page_index]);
- 			return VMCI_ERROR_INVALID_ARGS;
- 		}
- 		bytes_copied += to_copy;
- 		if (kernel_if->host)
--			kunmap(kernel_if->u.h.page[page_index]);
-+			kunmap_thread(kernel_if->u.h.page[page_index]);
+diff --git a/drivers/dax/device.c b/drivers/dax/device.c
+index 1e89513f3c59..e6fb35b4f0fb 100644
+--- a/drivers/dax/device.c
++++ b/drivers/dax/device.c
+@@ -430,6 +430,8 @@ int dev_dax_probe(struct device *dev)
  	}
  
- 	return VMCI_SUCCESS;
-@@ -391,7 +391,7 @@ static int qp_memcpy_from_queue_iter(struct iov_iter *to,
- 		int err;
- 
- 		if (kernel_if->host)
--			va = kmap(kernel_if->u.h.page[page_index]);
-+			va = kmap_thread(kernel_if->u.h.page[page_index]);
- 		else
- 			va = kernel_if->u.g.vas[page_index + 1];
- 			/* Skip header. */
-@@ -405,12 +405,12 @@ static int qp_memcpy_from_queue_iter(struct iov_iter *to,
- 		err = copy_to_iter((u8 *)va + page_offset, to_copy, to);
- 		if (err != to_copy) {
- 			if (kernel_if->host)
--				kunmap(kernel_if->u.h.page[page_index]);
-+				kunmap_thread(kernel_if->u.h.page[page_index]);
- 			return VMCI_ERROR_INVALID_ARGS;
- 		}
- 		bytes_copied += to_copy;
- 		if (kernel_if->host)
--			kunmap(kernel_if->u.h.page[page_index]);
-+			kunmap_thread(kernel_if->u.h.page[page_index]);
+ 	dev_dax->pgmap.type = MEMORY_DEVICE_GENERIC;
++	dev_dax->pgmap.flags |= PGMAP_PROT_ENABLED;
++
+ 	addr = devm_memremap_pages(dev, &dev_dax->pgmap);
+ 	if (IS_ERR(addr))
+ 		return PTR_ERR(addr);
+diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
+index e4dc1ae990fc..9fcd8338e23f 100644
+--- a/drivers/nvdimm/pmem.c
++++ b/drivers/nvdimm/pmem.c
+@@ -426,6 +426,8 @@ static int pmem_attach_disk(struct device *dev,
+ 		return -EBUSY;
  	}
  
- 	return VMCI_SUCCESS;
++	pmem->pgmap.flags |= PGMAP_PROT_ENABLED;
++
+ 	q = blk_alloc_queue(dev_to_node(dev));
+ 	if (!q)
+ 		return -ENOMEM;
 -- 
 2.28.0.rc0.12.gb6a658bd00c9
 
