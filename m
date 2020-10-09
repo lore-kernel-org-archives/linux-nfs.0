@@ -7,33 +7,33 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EEDD1C43467
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:06:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FE2BC43457
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:06:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A92E620732
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:06:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D7BED20732
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:06:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390965AbgJIUFk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Oct 2020 16:05:40 -0400
-Received: from mga01.intel.com ([192.55.52.88]:3555 "EHLO mga01.intel.com"
+        id S2391444AbgJIUG0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Oct 2020 16:06:26 -0400
+Received: from mga12.intel.com ([192.55.52.136]:29217 "EHLO mga12.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2389053AbgJITwO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Oct 2020 15:52:14 -0400
-IronPort-SDR: ZY1DEGETObfXdZFnoxsbKB7fzbzbRt8xd8bKb+YrYXtkHifcbpn+XQoZG1l3r2KlCKayB9JESb
- /9AfAPRZl62Q==
-X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="182976216"
+        id S2388470AbgJITwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Oct 2020 15:52:13 -0400
+IronPort-SDR: hgwRDFPMEy9cMXUfN0Yw/6uAAnvmeC6yf9qQgiFQaKECYh9Nrc+ugxAC9EbcOXEraZgvADmSBT
+ 8gykOvVZg+cA==
+X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="144850837"
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="182976216"
+   d="scan'208";a="144850837"
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:01 -0700
-IronPort-SDR: tVhE30/49ehqkoc80ZCcDXB4dMTZze5YTnWPIjaBRWP4P6o/AEUDuRNENWQluyt3yOqCx99fob
- q9C+vTCoMURQ==
+Received: from orsmga006.jf.intel.com ([10.7.209.51])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:10 -0700
+IronPort-SDR: zRSzmM1HZFGhzQcGhWxIWUdt7PON477D2ysFpCnQTUxdw9Z8VdaNQXVN+6ixBePqleDwfFxfgw
+ K58aOn7YePQQ==
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="519846944"
+   d="scan'208";a="317147210"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga005-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:01 -0700
+  by orsmga006-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:08 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Thomas Gleixner <tglx@linutronix.de>,
@@ -41,8 +41,7 @@ To:     Andrew Morton <akpm@linux-foundation.org>,
         Andy Lutomirski <luto@kernel.org>,
         Peter Zijlstra <peterz@infradead.org>
 Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>, x86@kernel.org,
+        Miklos Szeredi <miklos@szeredi.hu>, x86@kernel.org,
         Dave Hansen <dave.hansen@linux.intel.com>,
         Dan Williams <dan.j.williams@intel.com>,
         Fenghua Yu <fenghua.yu@intel.com>, linux-doc@vger.kernel.org,
@@ -68,9 +67,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         drbd-dev@lists.linbit.com, linux-block@vger.kernel.org,
         xen-devel@lists.xenproject.org, linux-cachefs@redhat.com,
         samba-technical@lists.samba.org, intel-wired-lan@lists.osuosl.org
-Subject: [PATCH RFC PKS/PMEM 21/58] fs/nfs: Utilize new kmap_thread()
-Date:   Fri,  9 Oct 2020 12:49:56 -0700
-Message-Id: <20201009195033.3208459-22-ira.weiny@intel.com>
+Subject: [PATCH RFC PKS/PMEM 23/58] fs/fuse: Utilize new kmap_thread()
+Date:   Fri,  9 Oct 2020 12:49:58 -0700
+Message-Id: <20201009195033.3208459-24-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.28.0.rc0.12.gb6a658bd00c9
 In-Reply-To: <20201009195033.3208459-1-ira.weiny@intel.com>
 References: <20201009195033.3208459-1-ira.weiny@intel.com>
@@ -85,102 +84,28 @@ From: Ira Weiny <ira.weiny@intel.com>
 The kmap() calls in this FS are localized to a single thread.  To avoid
 the over head of global PKRS updates use the new kmap_thread() call.
 
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: Miklos Szeredi <miklos@szeredi.hu>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- fs/nfs/dir.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ fs/fuse/readdir.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index cb52db9a0cfb..fee321acccb4 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -213,7 +213,7 @@ int nfs_readdir_make_qstr(struct qstr *string, const char *name, unsigned int le
- static
- int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
- {
--	struct nfs_cache_array *array = kmap(page);
-+	struct nfs_cache_array *array = kmap_thread(page);
- 	struct nfs_cache_array_entry *cache_entry;
- 	int ret;
- 
-@@ -235,7 +235,7 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
- 	if (entry->eof != 0)
- 		array->eof_index = array->size;
- out:
+diff --git a/fs/fuse/readdir.c b/fs/fuse/readdir.c
+index 90e3f01bd796..953ffe6f56e3 100644
+--- a/fs/fuse/readdir.c
++++ b/fs/fuse/readdir.c
+@@ -536,9 +536,9 @@ static int fuse_readdir_cached(struct file *file, struct dir_context *ctx)
+ 	 * Contents of the page are now protected against changing by holding
+ 	 * the page lock.
+ 	 */
+-	addr = kmap(page);
++	addr = kmap_thread(page);
+ 	res = fuse_parse_cache(ff, addr, size, ctx);
 -	kunmap(page);
 +	kunmap_thread(page);
- 	return ret;
- }
+ 	unlock_page(page);
+ 	put_page(page);
  
-@@ -347,7 +347,7 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 	struct nfs_cache_array *array;
- 	int status;
- 
--	array = kmap(desc->page);
-+	array = kmap_thread(desc->page);
- 
- 	if (*desc->dir_cookie == 0)
- 		status = nfs_readdir_search_for_pos(array, desc);
-@@ -359,7 +359,7 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 		desc->current_index += array->size;
- 		desc->page_index++;
- 	}
--	kunmap(desc->page);
-+	kunmap_thread(desc->page);
- 	return status;
- }
- 
-@@ -602,10 +602,10 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 
- out_nopages:
- 	if (count == 0 || (status == -EBADCOOKIE && entry->eof != 0)) {
--		array = kmap(page);
-+		array = kmap_thread(page);
- 		array->eof_index = array->size;
- 		status = 0;
--		kunmap(page);
-+		kunmap_thread(page);
- 	}
- 
- 	put_page(scratch);
-@@ -669,7 +669,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 		goto out;
- 	}
- 
--	array = kmap(page);
-+	array = kmap_thread(page);
- 
- 	status = nfs_readdir_alloc_pages(pages, array_size);
- 	if (status < 0)
-@@ -691,7 +691,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 
- 	nfs_readdir_free_pages(pages, array_size);
- out_release_array:
--	kunmap(page);
-+	kunmap_thread(page);
- 	nfs4_label_free(entry.label);
- out:
- 	nfs_free_fattr(entry.fattr);
-@@ -803,7 +803,7 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc)
- 	struct nfs_cache_array *array = NULL;
- 	struct nfs_open_dir_context *ctx = file->private_data;
- 
--	array = kmap(desc->page);
-+	array = kmap_thread(desc->page);
- 	for (i = desc->cache_entry_index; i < array->size; i++) {
- 		struct nfs_cache_array_entry *ent;
- 
-@@ -827,7 +827,7 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc)
- 	if (array->eof_index >= 0)
- 		desc->eof = true;
- 
--	kunmap(desc->page);
-+	kunmap_thread(desc->page);
- 	dfprintk(DIRCACHE, "NFS: nfs_do_filldir() filling ended @ cookie %Lu; returning = %d\n",
- 			(unsigned long long)*desc->dir_cookie, res);
- 	return res;
 -- 
 2.28.0.rc0.12.gb6a658bd00c9
 
