@@ -2,219 +2,122 @@ Return-Path: <SRS0=9Q28=DQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6B44C43457
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:10:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 262C0C433DF
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 21:35:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 94F862053B
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:10:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DE65D22247
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 21:35:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1602279326;
+	bh=af4HYKUXjfzQEnpRkoqrLOtb/VuZgD2GaaA85DESAB8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=shviXe8RmBWyxYkBYprlo+eXtyXOWBKIEFA3p1VIoIAIF1JGcQoXCMVuR8NFki6uc
+	 A49bqh1VezlZ8/qTjanUW0hUB0SVXDe25d67rnqHS3pyRSBeHFLVjOKknkKB6zrcuq
+	 Ed3d6IpM5kbNoTP0JoaIaBr/lcFWIpzJa9/+Xuxk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391926AbgJIUKo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Oct 2020 16:10:44 -0400
-Received: from mga17.intel.com ([192.55.52.151]:33872 "EHLO mga17.intel.com"
+        id S2391724AbgJIVfS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Oct 2020 17:35:18 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42006 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2403820AbgJITvD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Oct 2020 15:51:03 -0400
-IronPort-SDR: eqJBBpkrLGrKis4SJXQed/VSxmErjrdjeWymzKs05Z9O/Kb0aN689/V3XKJa5P7vgO3L6+mg6b
- 0K1uqxQQciVg==
-X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="145397219"
-X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="145397219"
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:50:59 -0700
-IronPort-SDR: /j9oTf64Lc/fwCVe0LT3Z3/pz5zJXnOJNQAbfqyJqoBSoEhIO3zt/eOhOuH8Xl1K1eBwx2q0zq
- 2edyiKrU43UQ==
-X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="519846797"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga005-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:50:59 -0700
-From:   ira.weiny@intel.com
-To:     Andrew Morton <akpm@linux-foundation.org>,
+        id S2388587AbgJIVei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Oct 2020 17:34:38 -0400
+Received: from sol.localdomain (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 44F7C21D6C;
+        Fri,  9 Oct 2020 21:34:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1602279277;
+        bh=af4HYKUXjfzQEnpRkoqrLOtb/VuZgD2GaaA85DESAB8=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=mAKgXcy5CifgRYN2i2C2c94+Jg5oLVaoZk49jTIFxseeqdMtEOOqP5cL66hXhKNTI
+         eNSQDBkgqgAc1Wd7XIXje+joGiBVI4yatMIDb1+kpBlSLeGvwRiFFGcw+A+0IeryZM
+         wi38bfOOqpr1rBlahq6SJoGGKG4xvvKCLXOhXA9s=
+Date:   Fri, 9 Oct 2020 14:34:34 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     ira.weiny@intel.com
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
         Thomas Gleixner <tglx@linutronix.de>,
         Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>,
         Andy Lutomirski <luto@kernel.org>,
-        Peter Zijlstra <peterz@infradead.org>
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Randy Dunlap <rdunlap@infradead.org>, x86@kernel.org,
+        Peter Zijlstra <peterz@infradead.org>, linux-aio@kvack.org,
+        linux-efi@vger.kernel.org, kvm@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-mmc@vger.kernel.org,
         Dave Hansen <dave.hansen@linux.intel.com>,
+        dri-devel@lists.freedesktop.org, linux-mm@kvack.org,
+        target-devel@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-kselftest@vger.kernel.org, samba-technical@lists.samba.org,
+        ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
+        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-nvdimm@lists.01.org, linux-rdma@vger.kernel.org,
+        x86@kernel.org, amd-gfx@lists.freedesktop.org,
+        linux-afs@lists.infradead.org, cluster-devel@redhat.com,
+        linux-cachefs@redhat.com, intel-wired-lan@lists.osuosl.org,
+        xen-devel@lists.xenproject.org, linux-ext4@vger.kernel.org,
+        Fenghua Yu <fenghua.yu@intel.com>, ecryptfs@vger.kernel.org,
+        linux-um@lists.infradead.org, intel-gfx@lists.freedesktop.org,
+        linux-erofs@lists.ozlabs.org, reiserfs-devel@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-bcache@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
         Dan Williams <dan.j.williams@intel.com>,
-        Fenghua Yu <fenghua.yu@intel.com>, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kselftest@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-        kvm@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org,
-        kexec@lists.infradead.org, linux-bcache@vger.kernel.org,
-        linux-mtd@lists.infradead.org, devel@driverdev.osuosl.org,
-        linux-efi@vger.kernel.org, linux-mmc@vger.kernel.org,
-        linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-aio@kvack.org,
-        io-uring@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-um@lists.infradead.org, linux-ntfs-dev@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org,
+        io-uring@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, netdev@vger.kernel.org,
+        kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
-        linux-nilfs@vger.kernel.org, cluster-devel@redhat.com,
-        ecryptfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-rdma@vger.kernel.org, amd-gfx@lists.freedesktop.org,
-        dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org,
-        drbd-dev@lists.linbit.com, linux-block@vger.kernel.org,
-        xen-devel@lists.xenproject.org, linux-cachefs@redhat.com,
-        samba-technical@lists.samba.org, intel-wired-lan@lists.osuosl.org
-Subject: [PATCH RFC PKS/PMEM 04/58] kmap: Add stray access protection for device pages
-Date:   Fri,  9 Oct 2020 12:49:39 -0700
-Message-Id: <20201009195033.3208459-5-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.28.0.rc0.12.gb6a658bd00c9
-In-Reply-To: <20201009195033.3208459-1-ira.weiny@intel.com>
+        linux-fsdevel@vger.kernel.org, bpf@vger.kernel.org,
+        linuxppc-dev@lists.ozlabs.org, linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH RFC PKS/PMEM 22/58] fs/f2fs: Utilize new kmap_thread()
+Message-ID: <20201009213434.GA839@sol.localdomain>
 References: <20201009195033.3208459-1-ira.weiny@intel.com>
+ <20201009195033.3208459-23-ira.weiny@intel.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201009195033.3208459-23-ira.weiny@intel.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+On Fri, Oct 09, 2020 at 12:49:57PM -0700, ira.weiny@intel.com wrote:
+> From: Ira Weiny <ira.weiny@intel.com>
+> 
+> The kmap() calls in this FS are localized to a single thread.  To avoid
+> the over head of global PKRS updates use the new kmap_thread() call.
+> 
+> Cc: Jaegeuk Kim <jaegeuk@kernel.org>
+> Cc: Chao Yu <chao@kernel.org>
+> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+> ---
+>  fs/f2fs/f2fs.h | 8 ++++----
+>  1 file changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+> index d9e52a7f3702..ff72a45a577e 100644
+> --- a/fs/f2fs/f2fs.h
+> +++ b/fs/f2fs/f2fs.h
+> @@ -2410,12 +2410,12 @@ static inline struct page *f2fs_pagecache_get_page(
+>  
+>  static inline void f2fs_copy_page(struct page *src, struct page *dst)
+>  {
+> -	char *src_kaddr = kmap(src);
+> -	char *dst_kaddr = kmap(dst);
+> +	char *src_kaddr = kmap_thread(src);
+> +	char *dst_kaddr = kmap_thread(dst);
+>  
+>  	memcpy(dst_kaddr, src_kaddr, PAGE_SIZE);
+> -	kunmap(dst);
+> -	kunmap(src);
+> +	kunmap_thread(dst);
+> +	kunmap_thread(src);
+>  }
 
-Device managed pages may have additional protections.  These protections
-need to be removed prior to valid use by kernel users.
+Wouldn't it make more sense to switch cases like this to kmap_atomic()?
+The pages are only mapped to do a memcpy(), then they're immediately unmapped.
 
-Check for special treatment of device managed pages in kmap and take
-action if needed.  We use kmap as an interface for generic kernel code
-because under normal circumstances it would be a bug for general kernel
-code to not use kmap prior to accessing kernel memory.  Therefore, this
-should allow any valid kernel users to seamlessly use these pages
-without issues.
-
-Because of the critical nature of kmap it must be pointed out that the
-over head on regular DRAM is carefully implemented to be as fast as
-possible.  Furthermore the underlying MSR write required on device pages
-when protected is better than a normal MSR write.
-
-Specifically, WRMSR(MSR_IA32_PKRS) is not serializing but still
-maintains ordering properties similar to WRPKRU.  The current SDM
-section on PKRS needs updating but should be the same as that of WRPKRU.
-So to quote from the WRPKRU text:
-
-	WRPKRU will never execute speculatively. Memory accesses
-	affected by PKRU register will not execute (even speculatively)
-	until all prior executions of WRPKRU have completed execution
-	and updated the PKRU register.
-
-Still this will make accessing pmem more expensive from the kernel but
-the overhead is minimized and many pmem users access this memory through
-user page mappings which are not affected at all.
-
-Cc: Randy Dunlap <rdunlap@infradead.org>
-Signed-off-by: Ira Weiny <ira.weiny@intel.com>
----
- include/linux/highmem.h | 32 +++++++++++++++++++++++++++++++-
- 1 file changed, 31 insertions(+), 1 deletion(-)
-
-diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-index 14e6202ce47f..2a9806e3b8d2 100644
---- a/include/linux/highmem.h
-+++ b/include/linux/highmem.h
-@@ -8,6 +8,7 @@
- #include <linux/mm.h>
- #include <linux/uaccess.h>
- #include <linux/hardirq.h>
-+#include <linux/memremap.h>
- 
- #include <asm/cacheflush.h>
- 
-@@ -31,6 +32,20 @@ static inline void invalidate_kernel_vmap_range(void *vaddr, int size)
- 
- #include <asm/kmap_types.h>
- 
-+static inline void dev_page_enable_access(struct page *page, bool global)
-+{
-+	if (!page_is_access_protected(page))
-+		return;
-+	dev_access_enable(global);
-+}
-+
-+static inline void dev_page_disable_access(struct page *page, bool global)
-+{
-+	if (!page_is_access_protected(page))
-+		return;
-+	dev_access_disable(global);
-+}
-+
- #ifdef CONFIG_HIGHMEM
- extern void *kmap_atomic_high_prot(struct page *page, pgprot_t prot);
- extern void kunmap_atomic_high(void *kvaddr);
-@@ -55,6 +70,11 @@ static inline void *kmap(struct page *page)
- 	else
- 		addr = kmap_high(page);
- 	kmap_flush_tlb((unsigned long)addr);
-+	/*
-+	 * Even non-highmem pages may have additional access protections which
-+	 * need to be checked and potentially enabled.
-+	 */
-+	dev_page_enable_access(page, true);
- 	return addr;
- }
- 
-@@ -63,6 +83,11 @@ void kunmap_high(struct page *page);
- static inline void kunmap(struct page *page)
- {
- 	might_sleep();
-+	/*
-+	 * Even non-highmem pages may have additional access protections which
-+	 * need to be checked and potentially disabled.
-+	 */
-+	dev_page_disable_access(page, true);
- 	if (!PageHighMem(page))
- 		return;
- 	kunmap_high(page);
-@@ -85,6 +110,7 @@ static inline void *kmap_atomic_prot(struct page *page, pgprot_t prot)
- {
- 	preempt_disable();
- 	pagefault_disable();
-+	dev_page_enable_access(page, false);
- 	if (!PageHighMem(page))
- 		return page_address(page);
- 	return kmap_atomic_high_prot(page, prot);
-@@ -137,6 +163,7 @@ static inline unsigned long totalhigh_pages(void) { return 0UL; }
- static inline void *kmap(struct page *page)
- {
- 	might_sleep();
-+	dev_page_enable_access(page, true);
- 	return page_address(page);
- }
- 
-@@ -146,6 +173,7 @@ static inline void kunmap_high(struct page *page)
- 
- static inline void kunmap(struct page *page)
- {
-+	dev_page_disable_access(page, true);
- #ifdef ARCH_HAS_FLUSH_ON_KUNMAP
- 	kunmap_flush_on_unmap(page_address(page));
- #endif
-@@ -155,6 +183,7 @@ static inline void *kmap_atomic(struct page *page)
- {
- 	preempt_disable();
- 	pagefault_disable();
-+	dev_page_enable_access(page, false);
- 	return page_address(page);
- }
- #define kmap_atomic_prot(page, prot)	kmap_atomic(page)
-@@ -216,7 +245,8 @@ static inline void kmap_atomic_idx_pop(void)
- #define kunmap_atomic(addr)                                     \
- do {                                                            \
- 	BUILD_BUG_ON(__same_type((addr), struct page *));       \
--	kunmap_atomic_high(addr);                                  \
-+	dev_page_disable_access(kmap_to_page(addr), false);     \
-+	kunmap_atomic_high(addr);                               \
- 	pagefault_enable();                                     \
- 	preempt_enable();                                       \
- } while (0)
--- 
-2.28.0.rc0.12.gb6a658bd00c9
-
+- Eric
