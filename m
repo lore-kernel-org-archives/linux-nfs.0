@@ -7,41 +7,42 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E53AC9DCA0
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:01:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8EAA4C2D0A1
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:02:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 11E1922403
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:01:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4A05F222C8
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 20:02:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390690AbgJIUBN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Oct 2020 16:01:13 -0400
-Received: from mga18.intel.com ([134.134.136.126]:42454 "EHLO mga18.intel.com"
+        id S2390921AbgJIUB7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Oct 2020 16:01:59 -0400
+Received: from mga07.intel.com ([134.134.136.100]:56812 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2389721AbgJITxQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Oct 2020 15:53:16 -0400
-IronPort-SDR: /0PxmQQKh9INXhqYDaA/qd0UIC/Ocy9AjDBS2exom/XczYR4EeFFQ0eDp921T8r9Qs7rCQoehA
- KURfPAOckKjQ==
-X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="153363728"
+        id S2390983AbgJITwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Oct 2020 15:52:55 -0400
+IronPort-SDR: Op9kc88PPdmQBPFTqx/+39WorDKjyG3ipU0g0nie1KwnkHl76GrMsKA5g1TH6J/GMtPSElTjiP
+ VPk0GASkFqkA==
+X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="229715275"
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="153363728"
+   d="scan'208";a="229715275"
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga004.jf.intel.com ([10.7.209.38])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:59 -0700
-IronPort-SDR: Wf0Bi1Gs1P3ZgILN9Dk8+ODZhbqXc7J3tJZabe+2AUx5fg/nQYQB2E9E/9NHNQgBhyfVAmIu+q
- D7ag8zQ3enrg==
+Received: from fmsmga008.fm.intel.com ([10.253.24.58])
+  by orsmga105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:51 -0700
+IronPort-SDR: raa31ON9t7yf3LIgfzeAsEKPUCppaesVfvBVJ2ruufMJvWsy9JzU1jTdgl2++U0w8tR7AuyOxm
+ Q4+3OjaqYbiw==
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="462300964"
+   d="scan'208";a="298531317"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga004-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:58 -0700
+  by fmsmga008-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:52:50 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Thomas Gleixner <tglx@linutronix.de>,
         Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>,
         Andy Lutomirski <luto@kernel.org>,
         Peter Zijlstra <peterz@infradead.org>
-Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.com>,
-        x86@kernel.org, Dave Hansen <dave.hansen@linux.intel.com>,
+Cc:     Ira Weiny <ira.weiny@intel.com>, Gao Xiang <xiang@kernel.org>,
+        Chao Yu <chao@kernel.org>, x86@kernel.org,
+        Dave Hansen <dave.hansen@linux.intel.com>,
         Dan Williams <dan.j.williams@intel.com>,
         Fenghua Yu <fenghua.yu@intel.com>, linux-doc@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nvdimm@lists.01.org,
@@ -66,9 +67,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.com>,
         drbd-dev@lists.linbit.com, linux-block@vger.kernel.org,
         xen-devel@lists.xenproject.org, linux-cachefs@redhat.com,
         samba-technical@lists.samba.org, intel-wired-lan@lists.osuosl.org
-Subject: [PATCH RFC PKS/PMEM 36/58] fs/ext2: Use ext2_put_page
-Date:   Fri,  9 Oct 2020 12:50:11 -0700
-Message-Id: <20201009195033.3208459-37-ira.weiny@intel.com>
+Subject: [PATCH RFC PKS/PMEM 34/58] fs/erofs: Utilize new kmap_thread()
+Date:   Fri,  9 Oct 2020 12:50:09 -0700
+Message-Id: <20201009195033.3208459-35-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.28.0.rc0.12.gb6a658bd00c9
 In-Reply-To: <20201009195033.3208459-1-ira.weiny@intel.com>
 References: <20201009195033.3208459-1-ira.weiny@intel.com>
@@ -80,97 +81,61 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-There are 3 places in namei.c where the equivalent of ext2_put_page() is
-open coded.  We want to use k[un]map_thread() instead of k[un]map() in
-ext2_[get|put]_page().
+The kmap() calls in this FS are localized to a single thread.  To avoid
+the over head of global PKRS updates use the new kmap_thread() call.
 
-Move ext2_put_page() to ext2.h and use it in namei.c in prep for
-converting the k[un]map() code.
-
-Cc: Jan Kara <jack@suse.com>
+Cc: Gao Xiang <xiang@kernel.org>
+Cc: Chao Yu <chao@kernel.org>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- fs/ext2/dir.c   |  6 ------
- fs/ext2/ext2.h  |  8 ++++++++
- fs/ext2/namei.c | 15 +++++----------
- 3 files changed, 13 insertions(+), 16 deletions(-)
+ fs/erofs/super.c | 4 ++--
+ fs/erofs/xattr.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 70355ab6740e..f3194bf20733 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -66,12 +66,6 @@ static inline unsigned ext2_chunk_size(struct inode *inode)
- 	return inode->i_sb->s_blocksize;
- }
+diff --git a/fs/erofs/super.c b/fs/erofs/super.c
+index ddaa516c008a..41696b60f1b3 100644
+--- a/fs/erofs/super.c
++++ b/fs/erofs/super.c
+@@ -139,7 +139,7 @@ static int erofs_read_superblock(struct super_block *sb)
  
--static inline void ext2_put_page(struct page *page)
--{
--	kunmap(page);
--	put_page(page);
--}
--
- /*
-  * Return the offset into page `page_nr' of the last valid
-  * byte in that page, plus one.
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 5136b7289e8d..021ec8b42ac3 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -16,6 +16,8 @@
- #include <linux/blockgroup_lock.h>
- #include <linux/percpu_counter.h>
- #include <linux/rbtree.h>
-+#include <linux/mm.h>
-+#include <linux/highmem.h>
+ 	sbi = EROFS_SB(sb);
  
- /* XXX Here for now... not interested in restructing headers JUST now */
+-	data = kmap(page);
++	data = kmap_thread(page);
+ 	dsb = (struct erofs_super_block *)(data + EROFS_SUPER_OFFSET);
  
-@@ -745,6 +747,12 @@ extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *);
- extern int ext2_empty_dir (struct inode *);
- extern struct ext2_dir_entry_2 * ext2_dotdot (struct inode *, struct page **);
- extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, struct page *, struct inode *, int);
-+static inline void ext2_put_page(struct page *page)
-+{
-+	kunmap(page);
-+	put_page(page);
-+}
-+
- 
- /* ialloc.c */
- extern struct inode * ext2_new_inode (struct inode *, umode_t, const struct qstr *);
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index 5bf2c145643b..ea980f1e2e99 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -389,23 +389,18 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 	if (dir_de) {
- 		if (old_dir != new_dir)
- 			ext2_set_link(old_inode, dir_de, dir_page, new_dir, 0);
--		else {
--			kunmap(dir_page);
--			put_page(dir_page);
--		}
-+		else
-+			ext2_put_page(dir_page);
- 		inode_dec_link_count(old_dir);
+ 	ret = -EINVAL;
+@@ -189,7 +189,7 @@ static int erofs_read_superblock(struct super_block *sb)
  	}
- 	return 0;
- 
- 
- out_dir:
--	if (dir_de) {
--		kunmap(dir_page);
--		put_page(dir_page);
--	}
-+	if (dir_de)
-+		ext2_put_page(dir_page);
- out_old:
--	kunmap(old_page);
--	put_page(old_page);
-+	ext2_put_page(old_page);
+ 	ret = 0;
  out:
- 	return err;
+-	kunmap(page);
++	kunmap_thread(page);
+ 	put_page(page);
+ 	return ret;
  }
+diff --git a/fs/erofs/xattr.c b/fs/erofs/xattr.c
+index c8c381eadcd6..1771baa99d77 100644
+--- a/fs/erofs/xattr.c
++++ b/fs/erofs/xattr.c
+@@ -20,7 +20,7 @@ static inline void xattr_iter_end(struct xattr_iter *it, bool atomic)
+ {
+ 	/* the only user of kunmap() is 'init_inode_xattrs' */
+ 	if (!atomic)
+-		kunmap(it->page);
++		kunmap_thread(it->page);
+ 	else
+ 		kunmap_atomic(it->kaddr);
+ 
+@@ -96,7 +96,7 @@ static int init_inode_xattrs(struct inode *inode)
+ 	}
+ 
+ 	/* read in shared xattr array (non-atomic, see kmalloc below) */
+-	it.kaddr = kmap(it.page);
++	it.kaddr = kmap_thread(it.page);
+ 	atomic_map = false;
+ 
+ 	ih = (struct erofs_xattr_ibody_header *)(it.kaddr + it.ofs);
 -- 
 2.28.0.rc0.12.gb6a658bd00c9
 
