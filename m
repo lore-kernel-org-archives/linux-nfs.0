@@ -7,33 +7,33 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 299E6C832E6
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:55:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B51C9C64E8A
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:55:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F227922B4B
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:55:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 80325225A9
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Oct 2020 19:55:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391257AbgJITyH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Oct 2020 15:54:07 -0400
-Received: from mga09.intel.com ([134.134.136.24]:28731 "EHLO mga09.intel.com"
+        id S2391452AbgJITzs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Oct 2020 15:55:48 -0400
+Received: from mga09.intel.com ([134.134.136.24]:28724 "EHLO mga09.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391236AbgJITyD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Oct 2020 15:54:03 -0400
-IronPort-SDR: rBsyJhOMb9UFhXYql3GLMUkKgqkgTDscbD99JyXrVAih+gm4OytoVCKEoMaLuveLaKTLTNgXBd
- qHkVHSzCQ6BA==
-X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="165643397"
+        id S2391234AbgJITx7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Oct 2020 15:53:59 -0400
+IronPort-SDR: 3iDe5NejxsDh9FOYg6KOLN9iu6KOFOJjJxeE0i5kD8Ld7EF88MErV+Y2f55npStNuALGtPOVmt
+ VstioKeBLamQ==
+X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="165643381"
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="165643397"
+   d="scan'208";a="165643381"
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:54:01 -0700
-IronPort-SDR: vscQ8/PPGEHFzlszF4epup1/yO0Zdiea6PUky2hcTMxo6TNU67DufPr1A76ntRogBKZEHAEf8L
- bsjRzl3g/9bQ==
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:57 -0700
+IronPort-SDR: I2dap8dqfU4jkUPjfDUEInlXytro00aRpG9kPai7q+149QpAXJ//5ZcvM1PB/3zTdLq6ZFWD0B
+ HAucu70KNsIA==
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="529054196"
+   d="scan'208";a="343972515"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:54:00 -0700
+  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:56 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Thomas Gleixner <tglx@linutronix.de>,
@@ -41,7 +41,8 @@ To:     Andrew Morton <akpm@linux-foundation.org>,
         Andy Lutomirski <luto@kernel.org>,
         Peter Zijlstra <peterz@infradead.org>
 Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Kirti Wankhede <kwankhede@nvidia.com>, x86@kernel.org,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        Paul Mackerras <paulus@samba.org>, x86@kernel.org,
         Dave Hansen <dave.hansen@linux.intel.com>,
         Dan Williams <dan.j.williams@intel.com>,
         Fenghua Yu <fenghua.yu@intel.com>, linux-doc@vger.kernel.org,
@@ -67,9 +68,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         drbd-dev@lists.linbit.com, linux-block@vger.kernel.org,
         xen-devel@lists.xenproject.org, linux-cachefs@redhat.com,
         samba-technical@lists.samba.org, intel-wired-lan@lists.osuosl.org
-Subject: [PATCH RFC PKS/PMEM 55/58] samples: Utilize new kmap_thread()
-Date:   Fri,  9 Oct 2020 12:50:30 -0700
-Message-Id: <20201009195033.3208459-56-ira.weiny@intel.com>
+Subject: [PATCH RFC PKS/PMEM 54/58] powerpc: Utilize new kmap_thread()
+Date:   Fri,  9 Oct 2020 12:50:29 -0700
+Message-Id: <20201009195033.3208459-55-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.28.0.rc0.12.gb6a658bd00c9
 In-Reply-To: <20201009195033.3208459-1-ira.weiny@intel.com>
 References: <20201009195033.3208459-1-ira.weiny@intel.com>
@@ -84,31 +85,29 @@ From: Ira Weiny <ira.weiny@intel.com>
 These kmap() calls are localized to a single thread.  To avoid the over
 head of global PKRS updates use the new kmap_thread() call.
 
-Cc: Kirti Wankhede <kwankhede@nvidia.com>
+Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Cc: Paul Mackerras <paulus@samba.org>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- samples/vfio-mdev/mbochs.c | 4 ++--
+ arch/powerpc/mm/mem.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/samples/vfio-mdev/mbochs.c b/samples/vfio-mdev/mbochs.c
-index 3cc5e5921682..6d95422c0b46 100644
---- a/samples/vfio-mdev/mbochs.c
-+++ b/samples/vfio-mdev/mbochs.c
-@@ -479,12 +479,12 @@ static ssize_t mdev_access(struct mdev_device *mdev, char *buf, size_t count,
- 		pos -= MBOCHS_MMIO_BAR_OFFSET;
- 		poff = pos & ~PAGE_MASK;
- 		pg = __mbochs_get_page(mdev_state, pos >> PAGE_SHIFT);
--		map = kmap(pg);
-+		map = kmap_thread(pg);
- 		if (is_write)
- 			memcpy(map + poff, buf, count);
- 		else
- 			memcpy(buf, map + poff, count);
--		kunmap(pg);
-+		kunmap_thread(pg);
- 		put_page(pg);
+diff --git a/arch/powerpc/mm/mem.c b/arch/powerpc/mm/mem.c
+index 42e25874f5a8..6ef557b8dda6 100644
+--- a/arch/powerpc/mm/mem.c
++++ b/arch/powerpc/mm/mem.c
+@@ -573,9 +573,9 @@ void flush_icache_user_page(struct vm_area_struct *vma, struct page *page,
+ {
+ 	unsigned long maddr;
  
- 	} else {
+-	maddr = (unsigned long) kmap(page) + (addr & ~PAGE_MASK);
++	maddr = (unsigned long) kmap_thread(page) + (addr & ~PAGE_MASK);
+ 	flush_icache_range(maddr, maddr + len);
+-	kunmap(page);
++	kunmap_thread(page);
+ }
+ 
+ /*
 -- 
 2.28.0.rc0.12.gb6a658bd00c9
 
