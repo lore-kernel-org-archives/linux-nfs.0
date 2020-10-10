@@ -2,83 +2,130 @@ Return-Path: <SRS0=ZnB3=DR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 05ED1C4363D
-	for <linux-nfs@archiver.kernel.org>; Sat, 10 Oct 2020 22:51:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E701C3279D
+	for <linux-nfs@archiver.kernel.org>; Sat, 10 Oct 2020 22:51:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A3F7B20795
-	for <linux-nfs@archiver.kernel.org>; Sat, 10 Oct 2020 22:51:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 06B17208E4
+	for <linux-nfs@archiver.kernel.org>; Sat, 10 Oct 2020 22:51:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="gquTklY7"
+	dkim=pass (2048-bit key) header.d=vastdata.com header.i=@vastdata.com header.b="jnkGkxSZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730789AbgJJWHL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 10 Oct 2020 18:07:11 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:41860 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1732152AbgJJTk3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Oct 2020 15:40:29 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1602358828;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=v7pyKuarLLRaj5zrWRImz6ki1MxllWFtClNsCnkPpu4=;
-        b=gquTklY7CoRDvmhx149hBuVsnVd6dHB/NWmpV0mTq7CkLMhIvCGpZTe7AwZfyLrQweRbwh
-        MFnXQUguHrB67GbY/83SGkrni6Wxl6lc4cIQr4ILWw4F0aeGOF7Xg5alM1tXxyt+Qrb4/p
-        igeYNveYAUOzZSpcIc4RbfryjUOiw6U=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-20-4DOrGxCTNKWtjt13WpJ6Sg-1; Sat, 10 Oct 2020 10:03:15 -0400
-X-MC-Unique: 4DOrGxCTNKWtjt13WpJ6Sg-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 19B6D1868403;
-        Sat, 10 Oct 2020 14:03:14 +0000 (UTC)
-Received: from aion.usersys.redhat.com (ovpn-116-12.rdu2.redhat.com [10.10.116.12])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id AEA455C1BB;
-        Sat, 10 Oct 2020 14:03:13 +0000 (UTC)
-Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
-        id C37A31A003C; Sat, 10 Oct 2020 10:03:12 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: add missing "posix" local_lock constant table definition
-Date:   Sat, 10 Oct 2020 10:03:12 -0400
-Message-Id: <20201010140312.136745-1-smayhew@redhat.com>
+        id S1730999AbgJJWLx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 10 Oct 2020 18:11:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49234 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387654AbgJJUjf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 10 Oct 2020 16:39:35 -0400
+Received: from mail-wr1-x442.google.com (mail-wr1-x442.google.com [IPv6:2a00:1450:4864:20::442])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F843C0613D0
+        for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2020 13:39:35 -0700 (PDT)
+Received: by mail-wr1-x442.google.com with SMTP id s9so2055224wro.8
+        for <linux-nfs@vger.kernel.org>; Sat, 10 Oct 2020 13:39:34 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=vastdata.com; s=google;
+        h=to:from:subject:message-id:date:user-agent:mime-version
+         :content-transfer-encoding:content-language;
+        bh=12k2hDhWLyws9DzSyc+7Hv2NIJg2U6RDEssCuiDOCno=;
+        b=jnkGkxSZ2jSehWMZPXZyJIoEjtcoWTX6HzyhEYirsNrMbew4HD+Ry5UdRsJJ/PVUYu
+         jxBTX7H94PYuKtQqqQ2KwOfRXPHcmIHY2tj2Vg9Bgm9mgfyyTbETZ3HKZRIC2vAYflOQ
+         DZfwGZsML9yA3pWbZuP7HxN/ZUjq9A+ObqXZE4hr1jJWJRdC5Dc+DUgjx2s0eEA3kv4l
+         zDtAoeGM/ymO8Gse6XA4qOjTQeYttns//JKYqgrntZ1kQCwgHEuDDlb6FmsgM1KDKvxK
+         NYWU/+z/3jxsNKbmzTANn2RGXUO2RAKqf9xNpvl35PEIeC/aBhWKGN6MNAOydnQQQcGF
+         oUAQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:to:from:subject:message-id:date:user-agent
+         :mime-version:content-transfer-encoding:content-language;
+        bh=12k2hDhWLyws9DzSyc+7Hv2NIJg2U6RDEssCuiDOCno=;
+        b=UzAaRz3Eb7IX44UXk1yas46r/y3YkB63g/7p6i9wMAe1/pOcFIMVh7N499bTOsL2sA
+         rUgihabRs5LqsCAj7KZVQLnmOVM+GPkxbhvBrSGzzfOqmJ6k8yM8S5hs8Wd7wVboSXNa
+         WiaPOsWDcY3mZNHA1xBMx+dzM7MSS3IHeAfbJ9wQ6eTLcXQ8nRk8Jq+ULPaxREx9y1jA
+         8BESW8BTDamE+q1uEowkuUSpnSDmZJGL5vkzZpbOLfXctmAvaVEE8BgeqNh57AuXBqQW
+         uDkw/pwXIktd0gTgVxXtSsz/SEKJ5th/p8gBsUS7da070MViLSQz+z2YR9qDEQb8/DYg
+         Q9CQ==
+X-Gm-Message-State: AOAM533m1rFJXV97wVgMYlckAf++7i0Kkp0MRfd63Zbe3PI/W11UAQFn
+        gd7tTqT5lj4zU742JGtTSpQLkKv5ygk+Vc/I
+X-Google-Smtp-Source: ABdhPJwX1SudMI4pTBTIMRY4DuU4JxSx5TPaqxGBmlNJRw7FxpXY1u07sl9cML8FwR3caWwoziwAIg==
+X-Received: by 2002:a5d:5083:: with SMTP id a3mr4763611wrt.93.1602362373163;
+        Sat, 10 Oct 2020 13:39:33 -0700 (PDT)
+Received: from [192.168.0.102] (line103-230.adsl.actcom.co.il. [192.117.103.230])
+        by smtp.gmail.com with ESMTPSA id w11sm17403123wrs.26.2020.10.10.13.39.32
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 10 Oct 2020 13:39:32 -0700 (PDT)
+To:     linux-nfs@vger.kernel.org
+From:   guy keren <guy@vastdata.com>
+Subject: questions about the linux NFS 4.1 client and persistent sessions
+Message-ID: <02b2121f-42d1-2587-6705-ca2aadb521bc@vastdata.com>
+Date:   Sat, 10 Oct 2020 23:39:30 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+Content-Language: en-GB
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-"mount -o local_lock=posix..." was broken by the mount API conversion
-due to the missing constant.
 
-Fixes: e38bb238ed8c ("NFS: Convert mount option parsing to use functionality from fs_parser.h")
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfs/fs_context.c | 1 +
- 1 file changed, 1 insertion(+)
+hi,
 
-diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
-index 524812984e2d..009987e69020 100644
---- a/fs/nfs/fs_context.c
-+++ b/fs/nfs/fs_context.c
-@@ -94,6 +94,7 @@ enum {
- static const struct constant_table nfs_param_enums_local_lock[] = {
- 	{ "all",		Opt_local_lock_all },
- 	{ "flock",	Opt_local_lock_flock },
-+	{ "posix",	Opt_local_lock_posix },
- 	{ "none",		Opt_local_lock_none },
- 	{}
- };
--- 
-2.26.2
+
+my name is guy keren, and the company i work at is looking at 
+implementing an NFS 4.1 server for our existing storage product.
+
+
+during the design, we encountered some issues with high-availability and 
+persistent sessions handling by the linux NFS client, and i would like 
+to understand a few things about the linux NFS client - i read all 
+relevant material on www.linux-nfs.org, and spent a while reading the 
+relevant recovery code in the nfs4.1 client kernel sources, but i am 
+missing some things (a pointer to the relevant part in the recovery code 
+will be appreciated as well):
+
+
+1. suppose there is a persistent session that got disconnected (because 
+of a server restart, for example). i see that the client is re-sending 
+all the in-flight commands as part of
+
+     the recovery. however, suppose that one of the commands was a 
+compound command containing 2 requests, and the reply to the first of 
+them was NFS4_OK, and to the 2nd it was NFS4ERR_DELAY - will the 
+client's code know that after it finishes recovery of the session - then 
+when it creates a new session, it needs to re-send the 2nd request in 
+this compound command? the broader question is about a compound with N 
+commands, where the first X have an NFS4_OK reply and the last N-X have 
+NFS4_DELAY - will the client re-send a new compound with the last N-X 
+commands after establishing a new session?
+
+
+2. if there is a non-persistent session, on which the client sent a 
+non-idempotent request (e.g. rename of a file into a different 
+directory), and the server restarted before the client received the 
+response - will the client just blindly re-send the same request again 
+after establishing a new session, or will it take some measures to 
+attempt to understand whether the command was already executed? i.e. if 
+the server already executed the rename, then re-sending it will return a 
+failure to locate the source file handle (because it moved to a new 
+directory). does the linux NFS client attempt to recover from this, or 
+will it simply return an error to the application layer?
+
+
+3. what NFS server with persistent sessions is used (or was used) when 
+testing the persistent sessions support in the linux NFS client? the 
+linux NFS server, as far as i understood, cannot support persistent 
+sessions (due to lack of assured persistent memory).
+
+
+thanks in advance,
+
+--guy keren
+
+Vast data.
 
