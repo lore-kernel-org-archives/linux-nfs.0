@@ -5,55 +5,55 @@ X-Spam-Level:
 X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 338B4C43457
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 12:38:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BE7AC43467
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 12:46:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CC96C21527
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 12:38:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1262A207E8
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 12:46:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="Fclu/Hcd"
+	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="rvvX9vjw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2394863AbgJPMiK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 16 Oct 2020 08:38:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36926 "EHLO
+        id S2407821AbgJPMqA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 16 Oct 2020 08:46:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38214 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2407659AbgJPMh6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2020 08:37:58 -0400
-Received: from mail-pl1-x641.google.com (mail-pl1-x641.google.com [IPv6:2607:f8b0:4864:20::641])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 85E14C0613D8
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:37:57 -0700 (PDT)
-Received: by mail-pl1-x641.google.com with SMTP id w11so1204216pll.8
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:37:57 -0700 (PDT)
+        with ESMTP id S2407594AbgJPMp7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2020 08:45:59 -0400
+Received: from mail-pg1-x541.google.com (mail-pg1-x541.google.com [IPv6:2607:f8b0:4864:20::541])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 25857C0613D8
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:45:58 -0700 (PDT)
+Received: by mail-pg1-x541.google.com with SMTP id g29so1393743pgl.2
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:45:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=sargun.me; s=google;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
         bh=rjQ1D5B+qargOyy25A8yvKQ0xoEiGNZxg2F9KkU+Vqc=;
-        b=Fclu/Hcd9RUYb5bhdLv7nP6MVmLHBec0xUHjiPj2P9iuLZ2oZ78cy16qzjTX1AnSF+
-         JWidmtD/NwsrtFvD4tYxFSvZbydhfqut8Mf3U44L72etGGSU0TvzgWeDJ5OMJKrvJRg8
-         BNykXmTdlVRYyBa5otSpqUSF2TAon2r3LN9GA=
+        b=rvvX9vjwBy6pgW5A1sZMeli8uVvshsQbi7OfAvSfKv+cfunjCEdoM9PDcEMZt6u8am
+         ti4utoFydxTM6dfWPQgNDQtqFZ5gJ1w7XEBLyAB08qriub02wS0nKi8WBk2Wl/GMt0+F
+         UMH6mHhxsp21/JqgdH6CdMU+2XaH7RpSHSDOE=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
         bh=rjQ1D5B+qargOyy25A8yvKQ0xoEiGNZxg2F9KkU+Vqc=;
-        b=cK0442WL9vaa3tSsaQLpZ+vFqGJWtt1Qn10Y4MlRs0kFqWvdT8T+/XP/lwRMxzhh8m
-         0ng82DLFSHm/pnqEv2q7WZ/Ya/CUd0BkiEXAnVXXukhFVZSFResZDsKRvvxDjp16qm5x
-         mKREBpbQFnyFRCyYkzTgFDUjmu0oIcyPnztffglNo5VwIXT/0J6aBp4SGqwxDkD/PB/d
-         53igCPKt0dNA7iUcqhqj/bCAcg729KKPyJQLBX+OfBO+aufPrFl5sHPNfnOXb/bORPjP
-         U7qBsgG/Vmaqzs1H3T1GZrQMLtaIabWCAsD7DU+4i2vxgxGc9/RrrJExL1h1/5DMftia
-         TPSw==
-X-Gm-Message-State: AOAM530iAUjjhaBp+aKSCgaRkKAdwoycmegyLN046DFu+nggF/VzfU9U
-        DB5dXEwRAINgYIosUdhpmJEozA==
-X-Google-Smtp-Source: ABdhPJxjDFChxVXxiEd7JKRNmQQO8e1xGCxiZnHvjAwWIP91ABczY49KhJpRTA3ABUSFrK6kuQvWzg==
-X-Received: by 2002:a17:90a:6984:: with SMTP id s4mr4042149pjj.206.1602851876951;
-        Fri, 16 Oct 2020 05:37:56 -0700 (PDT)
+        b=f9dHPYJDhOeIAZz9+H5FV6mdK6RwTgFMEBZPhlWfBLHuCEgXhBMZiG75VXufoQLqDc
+         Tg+GwN7T7rp/S57lAzC+M0aYAJdwkkcfY5/AN4h679CHLMbKdv0Ni3bxWxlT1ZHYt91S
+         APFle1ckMxQT3VA+QkKxjbdKt0vVGvDpl921KuDaFVsj711jQGBs1sw0AlLUozfz0boc
+         piv/Eaz3f76x27uX1Ly8ncDXB3azjjdc1mRhd9D8XtXFG6L9q5i4zo59biu78baaojmM
+         3785Oe4LWJtYliLIfk9clvbOJ1gT+NBBgwcCbgvvwDPtu5FwzCQ/3uXnUuEcNRIXYIcU
+         qKHQ==
+X-Gm-Message-State: AOAM530dAJC2yM3kGowHvXm618IHuUDsHasiZ2YJfnpzLXlRQznyM93o
+        IUt0WmOHEBzXQjqitciJ7X/0UA==
+X-Google-Smtp-Source: ABdhPJyGw5sBLcgSohIBCu2iy7zrVUgKUib9rZilW+TIEcZbkw0CflLpTDkjcXvAI0orCvPYxdnVmA==
+X-Received: by 2002:a62:e81a:0:b029:152:97f9:9775 with SMTP id c26-20020a62e81a0000b029015297f99775mr3374158pfi.29.1602852357318;
+        Fri, 16 Oct 2020 05:45:57 -0700 (PDT)
 Received: from ubuntu.netflix.com (203.20.25.136.in-addr.arpa. [136.25.20.203])
-        by smtp.gmail.com with ESMTPSA id q8sm2857216pfg.118.2020.10.16.05.37.55
+        by smtp.gmail.com with ESMTPSA id q123sm2906732pfq.56.2020.10.16.05.45.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 16 Oct 2020 05:37:56 -0700 (PDT)
+        Fri, 16 Oct 2020 05:45:56 -0700 (PDT)
 From:   Sargun Dhillon <sargun@sargun.me>
 To:     "J . Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -64,12 +64,12 @@ Cc:     Sargun Dhillon <sargun@sargun.me>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Al Viro <viro@zeniv.linux.org.uk>,
         Kyle Anderson <kylea@netflix.com>
-Subject: [PATCH v2 1/3] NFS: Use cred from fscontext during fsmount
-Date:   Fri, 16 Oct 2020 05:37:43 -0700
-Message-Id: <20201016123745.9510-2-sargun@sargun.me>
+Subject: [RESEND PATCH v2 1/3] NFS: Use cred from fscontext during fsmount
+Date:   Fri, 16 Oct 2020 05:45:48 -0700
+Message-Id: <20201016124550.10739-2-sargun@sargun.me>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20201016123745.9510-1-sargun@sargun.me>
-References: <20201016123745.9510-1-sargun@sargun.me>
+In-Reply-To: <20201016124550.10739-1-sargun@sargun.me>
+References: <20201016124550.10739-1-sargun@sargun.me>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
