@@ -1,297 +1,94 @@
-Return-Path: <SRS0=SxNz=DW=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=2kc2=DX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+X-Spam-Status: No, score=-9.5 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE491C433E7
-	for <linux-nfs@archiver.kernel.org>; Thu, 15 Oct 2020 20:16:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 636D9C43457
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 10:13:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4440D20725
-	for <linux-nfs@archiver.kernel.org>; Thu, 15 Oct 2020 20:16:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F242620848
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 10:13:10 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UnU7z8zN"
+	dkim=pass (1024-bit key) header.d=gmx.net header.i=@gmx.net header.b="lgYUm/IC"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730592AbgJOUQv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 15 Oct 2020 16:16:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54578 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2392167AbgJOUPw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Oct 2020 16:15:52 -0400
-Received: from mail-io1-xd42.google.com (mail-io1-xd42.google.com [IPv6:2607:f8b0:4864:20::d42])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CCDA2C061755;
-        Thu, 15 Oct 2020 13:15:51 -0700 (PDT)
-Received: by mail-io1-xd42.google.com with SMTP id d20so450794iop.10;
-        Thu, 15 Oct 2020 13:15:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=dfyv69/hE2Mzt7o+bG8wZqqFOxEL2IQN8/eu8px0Ojo=;
-        b=UnU7z8zN8I7e/PcBmEUGsJdUzM/RU/5QTOMTic0lvYx3Y2IeJX7YpMsjavwUnIIZ5Y
-         i+oJ5V50TasqbC9+6tLEDFv7bAAH21xIiuc4EAPIlbrydiqOIPaksnoQzUs/gdW7RLur
-         ssLdMCWevJStzWRFU31HCFgwC2CLkmWRCYnj1T4MP+j1nevW0AbmVkpOAORS4qC7cMOh
-         twztkOChWdT1OE8ZGI08KHqCjlVdLsy0xknAMeovFeZND5bFFdmGOXRC0kVtoIv0GzkA
-         m8SC7NSYHlHNwYF+lYHbAnEp+byOqydbXmhjmoV/cjfG4Is2EkPZPxSkb6zLTnNpMRcI
-         XINw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=dfyv69/hE2Mzt7o+bG8wZqqFOxEL2IQN8/eu8px0Ojo=;
-        b=R2MPevaC+U44RgNs71BYKLyxzmDji8K/u09i/H7LbMbRhwknlRQNxxEKW/b/daCs97
-         0N2oh/LYU81kcMLgHy8ZkqgkAbVJv/pRubhlK5A78RDV5mIUHNPjhePXExXY5G9IpjL2
-         tIgkt+L5EabLZYLdE6P9H5HbYH+SjF4Ws23Z4S+ce+d5dNA5CuJGnRg8MMNa1y4zvM80
-         HgVrb3az5IFFZqi+kEsrt2TllJPHxAJDj9WzPU9jOCTmeYSGDRNv18Wu9vdcoOXa/gNe
-         wQvDjtJ8FlN9WlOl3GXXoC8pjb+w4P1ae5uV9XaC83GneuqRT80D2dKblx5qgOb2WroS
-         Js1Q==
-X-Gm-Message-State: AOAM531SNch/oVTSU7DB87clXp1nwejM6BSnLijU64d02ABCl7QZvuSE
-        IP479EJWZuJJwtVw4LtBCwHU0EzySDCAOD66IxtGlaVF2ec=
-X-Google-Smtp-Source: ABdhPJyrEWlqJ+9vVf7Tix+AU8fXggw6isDMRnw0pm7nM6ZVPfw60OH6FozxsPWpW9y+IFr+1dXCVNnS44P1yG20w7w=
-X-Received: by 2002:a05:6638:dcc:: with SMTP id m12mr110957jaj.30.1602792950874;
- Thu, 15 Oct 2020 13:15:50 -0700 (PDT)
-MIME-Version: 1.0
-References: <20201006151456.20875-1-ashishsangwan2@gmail.com>
- <2d1ff3421a88ece2f1b7708cdbc9d34b00ad3e81.camel@hammerspace.com>
- <CAOiN93mh-ssTDuN1fAptECqc5JpUHtK=1V56jY_0MtWEcT=U2Q@mail.gmail.com>
- <622f03cd08acd861a5155a181191e9ce399bbb37.camel@hammerspace.com>
- <D4D63EB4-DA04-4AAA-8A39-91987AF90E9C@oracle.com> <a998d760a52f5a86343d608e34802c41977442f7.camel@hammerspace.com>
- <C0A500CC-E132-4E77-822C-60AE13504289@oracle.com>
-In-Reply-To: <C0A500CC-E132-4E77-822C-60AE13504289@oracle.com>
-From:   Ashish Sangwan <ashishsangwan2@gmail.com>
-Date:   Fri, 16 Oct 2020 01:45:39 +0530
-Message-ID: <CAOiN93kC-8S7auLpLMOoHCPXDuaoA3Uf9Lhfy7uoFi3=qurS9w@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Fix mode bits and nlink count for v4 referral dirs
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        id S2406601AbgJPKNK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 16 Oct 2020 06:13:10 -0400
+Received: from mout.gmx.net ([212.227.15.15]:60501 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2406596AbgJPKNJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Oct 2020 06:13:09 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=gmx.net;
+        s=badeba3b8450; t=1602843182;
+        bh=9nssCMMBv7tzELS+fUZMBow//rn3xu+MNXAU4tgsZ6A=;
+        h=X-UI-Sender-Class:Date:From:To:Cc:Subject;
+        b=lgYUm/ICOsAa06h00t0wQfL0ZaUune5jpNkiul8SqOcy1PMkbttWpcYoel1VsZOxI
+         2lAJ3DQXdKRRh2+FOQdug1VxRl7D4zNIP9Mx1uodr/zY+kX4L9kyTDjqJxPK7O9n1R
+         Uh1kfYi/4pt0lN2XnOXf0b7dZQIT+dE4Kj+D7PUk=
+X-UI-Sender-Class: 01bb95c1-4bf8-414a-932a-4f6e2808ef9c
+Received: from ls3530.fritz.box ([92.116.166.88]) by mail.gmx.com (mrgmx004
+ [212.227.17.190]) with ESMTPSA (Nemesis) id 1MnaoZ-1k3tvv2xBV-00jZbf; Fri, 16
+ Oct 2020 12:13:02 +0200
+Date:   Fri, 16 Oct 2020 12:13:00 +0200
+From:   Helge Deller <deller@gmx.de>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, linux-parisc@vger.kernel.org
+Subject: nfsroot: Default mount option should ask for built-in NFS version
+Message-ID: <20201016101300.GA364@ls3530.fritz.box>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+X-Provags-ID: V03:K1:AlTZQWUaumXyJzzN41d431uYsCxjdUZ5t3Om5Lmt6bsPgYwjkEZ
+ 25cJPeu1FdA4XF25wU3U0uKoCewHCo3Fjxy2zMflq8ilTFj3pKKO7dB/0ryxRwQm/eRxcO3
+ WsP3daEvD5r3jqatGoZ15duwLoQNems1XF88ocOvc3DssWXGtyH+R51Dqi4OeuFu9edb4K5
+ o8CR/hr1fWBxNf7F0t3Dg==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:nZInG/kunyg=:ObGxnqK3YeQorDogqRtBi/
+ D9LxOk7CkXKNcnFwDJXK/3JfBGZv6sw2MXge6cGXx/ii8tPycXHxgR4ST95MqlVx7AvjLS57Z
+ 6CW+zoiUy9NjifAKivAwtXOv+r8/MCQqbRX1F9bBdeaL4a256dUmqeumpAXo1f7BzyIsQ7IZI
+ 3ABlHHk5aPqZG3beBSQUheHXaEeFk8aW7H4FxcDZNjT790EMcebOYJ1bipj9+omTuB8YBiMif
+ l+Aef6GdSmxHtIO8C+sggy+GiaNNHg0Iy/MXYzHTV+z9JDSvr3VW1bOIdXz6lUaKr3N7jwlhG
+ 41Thl0xqkiP+ybDK61dx97gPYZow9uDE39jVL4tFZ0rNIvSX6av8QimpzPqLDwr5IUQQrCd2V
+ O69iobacj2n1NrQvb060dEFQOlAwO95JYEsNWtkq+cRMShlkbWuDnd3vIBBkKkT/3ii4n6Tvu
+ 0serhmZD5i6cVIHmKw5uLCIdQTbJyqNHagxS6InN6/HU8Tm+RBO/rCLZWweTDAipshEIAiP3y
+ t7U1dYIgP74YNpTeUE4lqm2BrrrS8I5/hlMX0LSzDzzFfalKopUWDAlazYLU0JAmnr4gxkZ+E
+ bVUZGRmX62vdIhwMumvHtPzI1NW5ykq2QlfyhLScwPYW6DQU2k5OpgG0fMBpxoZygqqmFjioB
+ n+pugxPQ2T4KyRkrvnHjoa0z8n6+VL83yoAdg8j6DuJKiqGwuaCxJVMSzJ3g4E6ZVvmw0CrgV
+ 8zLjE3iuOJ93TATzINZsLvpUpqMrrPPfRdFd+8oFDMjbTzeaP8QX2yNyO+TewIk6cIYlPurZS
+ +/k4su77qHwg0wVNYIkIAr7ehX9uWYmYoaa16ZLsHgynmEaR9SN/+tMyXB/8bgMRFipOi4Ahm
+ Ncx+4dm4T1ZPIuxNn8xg==
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Oct 15, 2020 at 7:38 PM Chuck Lever <chuck.lever@oracle.com> wrote:
->
->
->
-> > On Oct 15, 2020, at 9:59 AM, Trond Myklebust <trondmy@hammerspace.com> wrote:
-> >
-> > On Thu, 2020-10-15 at 09:36 -0400, Chuck Lever wrote:
-> >>> On Oct 15, 2020, at 8:06 AM, Trond Myklebust <
-> >>> trondmy@hammerspace.com> wrote:
-> >>>
-> >>> On Thu, 2020-10-15 at 00:39 +0530, Ashish Sangwan wrote:
-> >>>> On Wed, Oct 14, 2020 at 11:47 PM Trond Myklebust
-> >>>> <trondmy@hammerspace.com> wrote:
-> >>>>> On Tue, 2020-10-06 at 08:14 -0700, Ashish Sangwan wrote:
-> >>>>>> Request for mode bits and nlink count in the
-> >>>>>> nfs4_get_referral
-> >>>>>> call
-> >>>>>> and if server returns them use them instead of hard coded
-> >>>>>> values.
-> >>>>>>
-> >>>>>> CC: stable@vger.kernel.org
-> >>>>>> Signed-off-by: Ashish Sangwan <ashishsangwan2@gmail.com>
-> >>>>>> ---
-> >>>>>> fs/nfs/nfs4proc.c | 20 +++++++++++++++++---
-> >>>>>> 1 file changed, 17 insertions(+), 3 deletions(-)
-> >>>>>>
-> >>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >>>>>> index 6e95c85fe395..efec05c5f535 100644
-> >>>>>> --- a/fs/nfs/nfs4proc.c
-> >>>>>> +++ b/fs/nfs/nfs4proc.c
-> >>>>>> @@ -266,7 +266,9 @@ const u32 nfs4_fs_locations_bitmap[3] = {
-> >>>>>>     | FATTR4_WORD0_FSID
-> >>>>>>     | FATTR4_WORD0_FILEID
-> >>>>>>     | FATTR4_WORD0_FS_LOCATIONS,
-> >>>>>> -     FATTR4_WORD1_OWNER
-> >>>>>> +     FATTR4_WORD1_MODE
-> >>>>>> +     | FATTR4_WORD1_NUMLINKS
-> >>>>>> +     | FATTR4_WORD1_OWNER
-> >>>>>>     | FATTR4_WORD1_OWNER_GROUP
-> >>>>>>     | FATTR4_WORD1_RAWDEV
-> >>>>>>     | FATTR4_WORD1_SPACE_USED
-> >>>>>> @@ -7594,16 +7596,28 @@ nfs4_listxattr_nfs4_user(struct inode
-> >>>>>> *inode,
-> >>>>>> char *list, size_t list_len)
-> >>>>>> */
-> >>>>>> static void nfs_fixup_referral_attributes(struct nfs_fattr
-> >>>>>> *fattr)
-> >>>>>> {
-> >>>>>> +     bool fix_mode = true, fix_nlink = true;
-> >>>>>> +
-> >>>>>>     if (!(((fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
-> >>>>>> ||
-> >>>>>>            (fattr->valid & NFS_ATTR_FATTR_FILEID)) &&
-> >>>>>>           (fattr->valid & NFS_ATTR_FATTR_FSID) &&
-> >>>>>>           (fattr->valid & NFS_ATTR_FATTR_V4_LOCATIONS)))
-> >>>>>>             return;
-> >>>>>>
-> >>>>>> +     if (fattr->valid & NFS_ATTR_FATTR_MODE)
-> >>>>>> +             fix_mode = false;
-> >>>>>> +     if (fattr->valid & NFS_ATTR_FATTR_NLINK)
-> >>>>>> +             fix_nlink = false;
-> >>>>>>     fattr->valid |= NFS_ATTR_FATTR_TYPE |
-> >>>>>> NFS_ATTR_FATTR_MODE |
-> >>>>>>             NFS_ATTR_FATTR_NLINK |
-> >>>>>> NFS_ATTR_FATTR_V4_REFERRAL;
-> >>>>>> -     fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
-> >>>>>> -     fattr->nlink = 2;
-> >>>>>> +
-> >>>>>> +     if (fix_mode)
-> >>>>>> +             fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
-> >>>>>> +     else
-> >>>>>> +             fattr->mode |= S_IFDIR;
-> >>>>>> +
-> >>>>>> +     if (fix_nlink)
-> >>>>>> +             fattr->nlink = 2;
-> >>>>>> }
-> >>>>>>
-> >>>>>> static int _nfs4_proc_fs_locations(struct rpc_clnt *client,
-> >>>>>> struct
-> >>>>>> inode *dir,
-> >>>>>
-> >>>>> NACK to this patch. The whole point is that if the server has a
-> >>>>> referral, then it is not going to give us any attributes other
-> >>>>> than
-> >>>>> the
-> >>>>> ones we're already asking for because it may not even have a
-> >>>>> real
-> >>>>> directory. The client is required to fake up an inode, hence
-> >>>>> the
-> >>>>> existing code.
-> >>>>
-> >>>> Hi Trond, thanks for reviewing the patch!
-> >>>> Sorry but I didn't understand the reason to NACK it. Could you
-> >>>> please
-> >>>> elaborate your concern?
-> >>>> These are the current attributes we request from the server on a
-> >>>> referral:
-> >>>> FATTR4_WORD0_CHANGE
-> >>>>> FATTR4_WORD0_SIZE
-> >>>>> FATTR4_WORD0_FSID
-> >>>>> FATTR4_WORD0_FILEID
-> >>>>> FATTR4_WORD0_FS_LOCATIONS,
-> >>>> FATTR4_WORD1_OWNER
-> >>>>> FATTR4_WORD1_OWNER_GROUP
-> >>>>> FATTR4_WORD1_RAWDEV
-> >>>>> FATTR4_WORD1_SPACE_USED
-> >>>>> FATTR4_WORD1_TIME_ACCESS
-> >>>>> FATTR4_WORD1_TIME_METADATA
-> >>>>> FATTR4_WORD1_TIME_MODIFY
-> >>>>> FATTR4_WORD1_MOUNTED_ON_FILEID,
-> >>>>
-> >>>> So you are suggesting that it's ok to ask for SIZE, OWNER, OWNER
-> >>>> GROUP, SPACE USED, TIMESTAMPs etc but not ok to ask for mode bits
-> >>>> and
-> >>>> numlinks?
-> >>>
-> >>> No. We shouldn't be asking for any of that information for a
-> >>> referral
-> >>> because the server isn't supposed to return any values for it.
-> >>>
-> >>> Chuck and Anna, what's the deal with commit c05cefcc7241? That
-> >>> appears
-> >>> to have changed the original code to speculatively assume that the
-> >>> server will violate RFC5661 Section 11.3.1 and/or RFC7530 Section
-> >>> 8.3.1.
-> >>
-> >> The commit is an attempt to address the many complaints we've had
-> >> about the ugly appearance of referral anchors. The strange "special"
-> >> default values made the client appear to be broken, and was confusing
-> >> to some. I consider this to be a UX issue: the information displayed
-> >> in this case is not meant to be factual, but rather to prevent the
-> >> user concluding that something is wrong.
-> >>
-> >> I'm not attached to this particular solution, though. Does it make
-> >> sense to perform the referral mount before returning "ls" results
-> >> so that the target server has a chance to supply reasonable
-> >> attribute values for the mounted-on directory object? Just spit
-> >> balling here.
-> >>
-> >>
-> >>> Specifically, the paragraph that says:
-> >>>
-> >>> "
-> >>>  Other attributes SHOULD NOT be made available for absent file
-> >>>  systems, even when it is possible to provide them.  The server
-> >>> should
-> >>>  not assume that more information is always better and should
-> >>> avoid
-> >>>  gratuitously providing additional information."
-> >>>
-> >>> So why is the client asking for them?
-> >>
-> >> This paragraph (and it's most modern incarnation in RFC 8881 Section
-> >> 11.4.1) describes server behavior. The current client behavior is
-> >> spec-compliant because there is no explicit prohibition in the spec
-> >> language against a client requesting additional attributes in this
-> >> case.
-> >>
-> >> Either the server can clear those bitmap flags on the GETATTR reply
-> >> and not supply those attributes, and clients must be prepared for
-> >> that.
-> >>
-> >> Or, it's also possible to read this paragraph to mean that the
-> >> server can provide those attributes and the values should not
-> >> reflect attributes for the absent file system, but rather something
-> >> else (eg, server-manufactured defaults, or the attributes from the
-> >> object on the source server).
-> >>
-> >> And since this is a SHOULD NOT rather than a MUST NOT, servers are
-> >> still free to return information about the absent file system.
-> >> Clients are not guaranteed this will be the case, however.
-> >>
-> >> I don't think c05cefcc7241 makes any assumption about whether the
-> >> server is lying about the extra attributes. Perhaps the server has
-> >> no better values for these attributes than the client's defaults
-> >> were.
-> >>
-> >
-> > SHOULD / SHOULD NOT indicates actions that the server is required to
-> > take in the absence of a very good reason to do otherwise. In other
-> > words, the client should expect the majority of servers to behave in a
-> > certain manner.
-> >
-> > It doesn't matter that the client's behaviour is spec compliant. We're
-> > asking for information that is not supposed to be divulged by the
-> > majority of servers, Furthermore, that information is, quite frankly,
-> > utterly irrelevant to the client and application running on it. Any
-> > attempt to access that fake object will result in a submount of
-> > something completely different on top of that object.
-> >
-> > IOW: the only difference here is you're asking that the server provide
-> > us with a faked up object (which it is not supposed to do), whereas
-> > previously, we were faking that object up ourselves. What's the big
-> > deal here?
->
-> Right, that boils it down nicely.
->
-> The difference has been that by and large the server-provided values
-> don't look broken to users. Perhaps all we need to do is select better
-> defaults for these attributes on Linux clients. I haven't followed
-> Ashish's requirements, so I can't speak to them.
->
+Change the nfsroot default mount option to ask for NFSv2 only *if* the
+kernel was built with NFSv2 support.
+If not, default to NFSv3 or as last choice to NFSv4, depending on actual
+kernel config.
 
-The current patch only intended to fix the UX issue, it has no
-practical purpose.
-If it's breaking the RFC then I agree that the patch should not be included.
-Thanks a lot to both of you for explaining the issue in detail!
+Signed-off-by: Helge Deller <deller@gmx.de>
 
-> Here is some history.
->
-> https://lore.kernel.org/linux-nfs/CAD8zhTAAvTKhp6k0vYRMnhZW5pxjstpBiDKLgoXocfpAXNjKTg@mail.gmail.com/
->
->
-> --
-> Chuck Lever
->
->
->
+diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+index 8d3278805602..fa148308822c 100644
+=2D-- a/fs/nfs/nfsroot.c
++++ b/fs/nfs/nfsroot.c
+@@ -88,7 +88,13 @@
+ #define NFS_ROOT		"/tftpboot/%s"
+
+ /* Default NFSROOT mount options. */
++#if defined(CONFIG_NFS_V2)
+ #define NFS_DEF_OPTIONS		"vers=3D2,tcp,rsize=3D4096,wsize=3D4096"
++#elif defined(CONFIG_NFS_V3)
++#define NFS_DEF_OPTIONS		"vers=3D3,tcp,rsize=3D4096,wsize=3D4096"
++#else
++#define NFS_DEF_OPTIONS		"vers=3D4,tcp,rsize=3D4096,wsize=3D4096"
++#endif
+
+ /* Parameters passed from the kernel command line */
+ static char nfs_root_parms[NFS_MAXPATHLEN + 1] __initdata =3D "";
