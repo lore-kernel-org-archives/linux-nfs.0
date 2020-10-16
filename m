@@ -2,58 +2,58 @@ Return-Path: <SRS0=2kc2=DX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DA95C433E7
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D37D5C43457
 	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 12:46:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D76FB207E8
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 12:46:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6D573207E8
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Oct 2020 12:46:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="xCglPQVh"
+	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="zLSr0gdG"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2407809AbgJPMp7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 16 Oct 2020 08:45:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38198 "EHLO
+        id S2405534AbgJPMqG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 16 Oct 2020 08:46:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38220 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2407808AbgJPMp4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2020 08:45:56 -0400
-Received: from mail-pj1-x1030.google.com (mail-pj1-x1030.google.com [IPv6:2607:f8b0:4864:20::1030])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 504F7C0613D4
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:45:56 -0700 (PDT)
-Received: by mail-pj1-x1030.google.com with SMTP id hk7so1451247pjb.2
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:45:56 -0700 (PDT)
+        with ESMTP id S2407817AbgJPMqA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Oct 2020 08:46:00 -0400
+Received: from mail-pj1-x1043.google.com (mail-pj1-x1043.google.com [IPv6:2607:f8b0:4864:20::1043])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B78F7C0613D4
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:45:59 -0700 (PDT)
+Received: by mail-pj1-x1043.google.com with SMTP id g16so1331441pjv.3
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Oct 2020 05:45:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=sargun.me; s=google;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=O1evu/uCI+QRNY7SsK/no8njk1hcUqNItCkuJRC3dLc=;
-        b=xCglPQVh3uc2/EcXbuONJAMpl3eRtAkldgrib6XbBiKmiqFboP4mrxqB3XKvmyML2t
-         L9QK5x65jCp7F9T7lv7UfCAznFLwlyTRfJt2fM03kdhw1JI6DH6TVr5Lx6nBw5nljyTN
-         OdCnpsw2/yC6Ty1P8Muc2ds3bUZXgimXWmXi4=
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=zfpu2RY3BLQcacz+b5uN64wMjRtGFL0k4RIBY8oywBk=;
+        b=zLSr0gdG5dO5uL02lr6hhuWgPJuV+DhuryfJMwauvX/vNTPfarbu9cjvo3WOFkCkLo
+         heEsHVHcI3pREiOh1IKTstIV7vqySOCMyvmib8udbhXEbacXX0k5p3Xp6s/gYmIJu/Jr
+         DycwHU8agAL+X2PLKZMGkPBB6/H+WIAUXqN+M=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=O1evu/uCI+QRNY7SsK/no8njk1hcUqNItCkuJRC3dLc=;
-        b=cGQnVoHrWvPBy/tsyL/QYMd8+zzLqy5JghzYuWX975Mfqc7vthdf4kaZWvKMOWhOYR
-         Pg+xR7EA0VA+3DAJdDKugPrP7P3x6NB9qd39Ejt/u1TptM2VdkJ21trfEvcViIOGIv/A
-         bVnJt7RsWBObJvcDVMjo0KvbvbHRQS/OQG8tQtPmFe1w1ZmCTAmHeZpWvKi3FuNR3dQZ
-         MuWvYfP0DkE3ZcbCmkQ9wiRZrcdzIMXzPofrtC2Y0B1aaTbTrLcNQYbDbhcD0C3DOumB
-         SUGB7CeL+YqwvRdWYVjuJjRVCzSDv+qCJlx2Kt0FmdBpQcCYKp5U5RAA/k3JG47MrLGa
-         xZ3Q==
-X-Gm-Message-State: AOAM533mquYRtksKNM6ynXwzc2MeJhY3A0AOfbY1s/LE+0ODS81ugb+/
-        rNXA42tKWTlBIaui4+E4NEeyQw==
-X-Google-Smtp-Source: ABdhPJxo4t9bHKXFNNwhW4adl1rskGMnIohne6crnWi1t7gHuVBHRDAwqYw4qmZN/etpvhxC+f1MSw==
-X-Received: by 2002:a17:90a:318d:: with SMTP id j13mr3920577pjb.209.1602852355655;
-        Fri, 16 Oct 2020 05:45:55 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=zfpu2RY3BLQcacz+b5uN64wMjRtGFL0k4RIBY8oywBk=;
+        b=p26Aa03bs9PrJTztZzYKepAr7P/iZuIX+kAJU0f8eIpRQl40kYNpHDSbBcByRqXI67
+         in5LTuQCCpSaomYrvPTwifi5iqt7xw/H1NjZXNUz65xqKus6XlLaVCjgfo3MI/uAowB+
+         khjdHGfMZ0SADSeX5G8dx7ciiIXQznJzLZydH2wl2JRr3aqK7KHHoqAyYtXqNxQT0tgz
+         pmuEjT8uC+mHfQrNsT1JJCPplREiFtFxPqPQF1bTGbnzMAgFKr/m2aqi4a95f1tJIvFp
+         uYSvXpjvFWkaCFUmljrTQhOtcdnXIFJSIalTpxVKIup1fCGsgPp5qFzUsHQLHEY6pQ3W
+         rmuQ==
+X-Gm-Message-State: AOAM533bfCJL1I1nf/bUmCiWv3ZR8pbD35M8IE9Yp6I+8Ym34ARltcyj
+        43UeXXMn8j40Zs0HiON3UkCUig==
+X-Google-Smtp-Source: ABdhPJyeag97Mst00bO6+fLuoKv3MWaZDzeEJpTxt89tqvPlQVOhT9RhMDQgWCQDPaOaCeFY6zrizg==
+X-Received: by 2002:a17:90b:717:: with SMTP id s23mr4005616pjz.122.1602852359020;
+        Fri, 16 Oct 2020 05:45:59 -0700 (PDT)
 Received: from ubuntu.netflix.com (203.20.25.136.in-addr.arpa. [136.25.20.203])
-        by smtp.gmail.com with ESMTPSA id q123sm2906732pfq.56.2020.10.16.05.45.54
+        by smtp.gmail.com with ESMTPSA id q123sm2906732pfq.56.2020.10.16.05.45.57
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 16 Oct 2020 05:45:54 -0700 (PDT)
+        Fri, 16 Oct 2020 05:45:58 -0700 (PDT)
 From:   Sargun Dhillon <sargun@sargun.me>
 To:     "J . Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -61,43 +61,257 @@ To:     "J . Bruce Fields" <bfields@fieldses.org>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         David Howells <dhowells@redhat.com>
 Cc:     Sargun Dhillon <sargun@sargun.me>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [RESEND PATCH v2 0/3] NFS User Namespaces with new mount API
-Date:   Fri, 16 Oct 2020 05:45:47 -0700
-Message-Id: <20201016124550.10739-1-sargun@sargun.me>
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Kyle Anderson <kylea@netflix.com>
+Subject: [RESEND PATCH v2 2/3] samples/vfs: Split out common code for new syscall APIs
+Date:   Fri, 16 Oct 2020 05:45:49 -0700
+Message-Id: <20201016124550.10739-3-sargun@sargun.me>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20201016124550.10739-1-sargun@sargun.me>
+References: <20201016124550.10739-1-sargun@sargun.me>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patchset adds some functionality to allow NFS to be used from
-NFS namespaces (containers).
+There are a bunch of helper functions which make using the new
+mount APIs much easier. As we add examples of leveraging the
+new APIs, it probably makes sense to promote code reuse.
 
-Changes since v1:
-  * Added samples
-
-Sargun Dhillon (3):
-  NFS: Use cred from fscontext during fsmount
-  samples/vfs: Split out common code for new syscall APIs
-  samples/vfs: Add example leveraging NFS with new APIs and user
-    namespaces
-
- fs/nfs/client.c                        |   2 +-
- fs/nfs/flexfilelayout/flexfilelayout.c |   1 +
- fs/nfs/nfs4client.c                    |   2 +-
- samples/vfs/.gitignore                 |   2 +
- samples/vfs/Makefile                   |   5 +-
- samples/vfs/test-fsmount.c             |  86 +-----------
- samples/vfs/test-nfs-userns.c          | 181 +++++++++++++++++++++++++
- samples/vfs/vfs-helper.c               |  43 ++++++
- samples/vfs/vfs-helper.h               |  55 ++++++++
- 9 files changed, 289 insertions(+), 88 deletions(-)
- create mode 100644 samples/vfs/test-nfs-userns.c
+Signed-off-by: Sargun Dhillon <sargun@sargun.me>
+Cc: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Kyle Anderson <kylea@netflix.com>
+---
+ samples/vfs/Makefile       |  2 +
+ samples/vfs/test-fsmount.c | 86 +-------------------------------------
+ samples/vfs/vfs-helper.c   | 43 +++++++++++++++++++
+ samples/vfs/vfs-helper.h   | 55 ++++++++++++++++++++++++
+ 4 files changed, 101 insertions(+), 85 deletions(-)
  create mode 100644 samples/vfs/vfs-helper.c
  create mode 100644 samples/vfs/vfs-helper.h
 
+diff --git a/samples/vfs/Makefile b/samples/vfs/Makefile
+index 00b6824f9237..7f76875eaa70 100644
+--- a/samples/vfs/Makefile
++++ b/samples/vfs/Makefile
+@@ -1,5 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
++test-fsmount-objs := test-fsmount.o vfs-helper.o
+ userprogs := test-fsmount test-statx
++
+ always-y := $(userprogs)
+ 
+ userccflags += -I usr/include
+diff --git a/samples/vfs/test-fsmount.c b/samples/vfs/test-fsmount.c
+index 50f47b72e85f..36a4fa886200 100644
+--- a/samples/vfs/test-fsmount.c
++++ b/samples/vfs/test-fsmount.c
+@@ -14,91 +14,7 @@
+ #include <sys/wait.h>
+ #include <linux/mount.h>
+ #include <linux/unistd.h>
+-
+-#define E(x) do { if ((x) == -1) { perror(#x); exit(1); } } while(0)
+-
+-static void check_messages(int fd)
+-{
+-	char buf[4096];
+-	int err, n;
+-
+-	err = errno;
+-
+-	for (;;) {
+-		n = read(fd, buf, sizeof(buf));
+-		if (n < 0)
+-			break;
+-		n -= 2;
+-
+-		switch (buf[0]) {
+-		case 'e':
+-			fprintf(stderr, "Error: %*.*s\n", n, n, buf + 2);
+-			break;
+-		case 'w':
+-			fprintf(stderr, "Warning: %*.*s\n", n, n, buf + 2);
+-			break;
+-		case 'i':
+-			fprintf(stderr, "Info: %*.*s\n", n, n, buf + 2);
+-			break;
+-		}
+-	}
+-
+-	errno = err;
+-}
+-
+-static __attribute__((noreturn))
+-void mount_error(int fd, const char *s)
+-{
+-	check_messages(fd);
+-	fprintf(stderr, "%s: %m\n", s);
+-	exit(1);
+-}
+-
+-/* Hope -1 isn't a syscall */
+-#ifndef __NR_fsopen
+-#define __NR_fsopen -1
+-#endif
+-#ifndef __NR_fsmount
+-#define __NR_fsmount -1
+-#endif
+-#ifndef __NR_fsconfig
+-#define __NR_fsconfig -1
+-#endif
+-#ifndef __NR_move_mount
+-#define __NR_move_mount -1
+-#endif
+-
+-
+-static inline int fsopen(const char *fs_name, unsigned int flags)
+-{
+-	return syscall(__NR_fsopen, fs_name, flags);
+-}
+-
+-static inline int fsmount(int fsfd, unsigned int flags, unsigned int ms_flags)
+-{
+-	return syscall(__NR_fsmount, fsfd, flags, ms_flags);
+-}
+-
+-static inline int fsconfig(int fsfd, unsigned int cmd,
+-			   const char *key, const void *val, int aux)
+-{
+-	return syscall(__NR_fsconfig, fsfd, cmd, key, val, aux);
+-}
+-
+-static inline int move_mount(int from_dfd, const char *from_pathname,
+-			     int to_dfd, const char *to_pathname,
+-			     unsigned int flags)
+-{
+-	return syscall(__NR_move_mount,
+-		       from_dfd, from_pathname,
+-		       to_dfd, to_pathname, flags);
+-}
+-
+-#define E_fsconfig(fd, cmd, key, val, aux)				\
+-	do {								\
+-		if (fsconfig(fd, cmd, key, val, aux) == -1)		\
+-			mount_error(fd, key ?: "create");		\
+-	} while (0)
++#include "vfs-helper.h"
+ 
+ int main(int argc, char *argv[])
+ {
+diff --git a/samples/vfs/vfs-helper.c b/samples/vfs/vfs-helper.c
+new file mode 100644
+index 000000000000..136c6cb81540
+--- /dev/null
++++ b/samples/vfs/vfs-helper.c
+@@ -0,0 +1,43 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <errno.h>
++#include "vfs-helper.h"
++
++void check_messages(int fd)
++{
++	char buf[4096];
++	int err, n;
++
++	err = errno;
++
++	for (;;) {
++		n = read(fd, buf, sizeof(buf));
++		if (n < 0)
++			break;
++		n -= 2;
++
++		switch (buf[0]) {
++		case 'e':
++			fprintf(stderr, "Error: %*.*s\n", n, n, buf + 2);
++			break;
++		case 'w':
++			fprintf(stderr, "Warning: %*.*s\n", n, n, buf + 2);
++			break;
++		case 'i':
++			fprintf(stderr, "Info: %*.*s\n", n, n, buf + 2);
++			break;
++		}
++	}
++
++	errno = err;
++}
++
++__attribute__((noreturn))
++void mount_error(int fd, const char *s)
++{
++	check_messages(fd);
++	fprintf(stderr, "%s: %m\n", s);
++	exit(1);
++}
+diff --git a/samples/vfs/vfs-helper.h b/samples/vfs/vfs-helper.h
+new file mode 100644
+index 000000000000..28c441f2fcbf
+--- /dev/null
++++ b/samples/vfs/vfs-helper.h
+@@ -0,0 +1,55 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++#include <linux/unistd.h>
++#include <linux/mount.h>
++#include <sys/syscall.h>
++
++#define E(x) do { if ((x) == -1) { perror(#x); exit(1); } } while(0)
++
++/* Hope -1 isn't a syscall */
++#ifndef __NR_fsopen
++#define __NR_fsopen -1
++#endif
++#ifndef __NR_fsmount
++#define __NR_fsmount -1
++#endif
++#ifndef __NR_fsconfig
++#define __NR_fsconfig -1
++#endif
++#ifndef __NR_move_mount
++#define __NR_move_mount -1
++#endif
++
++#define E_fsconfig(fd, cmd, key, val, aux)				\
++	do {								\
++		if (fsconfig(fd, cmd, key, val, aux) == -1)		\
++			mount_error(fd, key ?: "create");		\
++	} while (0)
++
++static inline int fsopen(const char *fs_name, unsigned int flags)
++{
++	return syscall(__NR_fsopen, fs_name, flags);
++}
++
++static inline int fsmount(int fsfd, unsigned int flags, unsigned int ms_flags)
++{
++	return syscall(__NR_fsmount, fsfd, flags, ms_flags);
++}
++
++static inline int fsconfig(int fsfd, unsigned int cmd,
++			   const char *key, const void *val, int aux)
++{
++	return syscall(__NR_fsconfig, fsfd, cmd, key, val, aux);
++}
++
++static inline int move_mount(int from_dfd, const char *from_pathname,
++			     int to_dfd, const char *to_pathname,
++			     unsigned int flags)
++{
++	return syscall(__NR_move_mount,
++		       from_dfd, from_pathname,
++		       to_dfd, to_pathname, flags);
++}
++
++__attribute__((noreturn))
++void mount_error(int fd, const char *s);
++void check_messages(int fd);
 -- 
 2.25.1
 
