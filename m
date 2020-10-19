@@ -2,127 +2,105 @@ Return-Path: <SRS0=YoU0=D2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6DD8C43467
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Oct 2020 17:55:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02076C433E7
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Oct 2020 18:07:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 69B0B2224D
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Oct 2020 17:55:52 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1603130152;
-	bh=kzf1R9mZzvhB5acCKaCgu6TVdwehnQOvJGWaDELDaUU=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=PsrA8kAAgHr+s/0oAs/Nc+YoR1NA/vYLZmhxG0rNbNDv+IubSjgHJxsZZsiLKHif/
-	 /qPYSNGIDNshcDZlrveQHpgNtt+7Jgvnh1L/T1Jo2Tgi/84i7vJlTT/FRQHHp81Pvp
-	 55VcsNCcfe9JzCZUyXwHsDMyc4ans3FfjKL6V+Uo=
+	by mail.kernel.org (Postfix) with ESMTP id 5FE3C2225F
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Oct 2020 18:07:16 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="GwREMXbU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728540AbgJSRzv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 19 Oct 2020 13:55:51 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52416 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726005AbgJSRzv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Oct 2020 13:55:51 -0400
-Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7802C22276;
-        Mon, 19 Oct 2020 17:55:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603130150;
-        bh=kzf1R9mZzvhB5acCKaCgu6TVdwehnQOvJGWaDELDaUU=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=q+ah/iGS3pUhIyEPsqrPAXKjCq+YU42U1HPWHS3vLCIopXMhYdp1IbvZOh0IpY47W
-         /9xjXiMQlAo4dME8MLPA2By2ADsiUI2+5bmy5DgQ0zOQk0QupK0L3dTCDCOd1IWk+B
-         wMkzZN+adlw80kYuPcJ92HEA2RBTZQOGidMZFbx0=
-From:   trondmy@kernel.org
-To:     Daire Byrne <daire@dneg.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFSv3: Add emulation of the lookupp() operation
-Date:   Mon, 19 Oct 2020 13:53:30 -0400
-Message-Id: <20201019175330.595894-3-trondmy@kernel.org>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20201019175330.595894-2-trondmy@kernel.org>
-References: <279389889.68934777.1603124383614.JavaMail.zimbra@dneg.com>
- <20201019175330.595894-1-trondmy@kernel.org>
- <20201019175330.595894-2-trondmy@kernel.org>
+        id S1727681AbgJSSHP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 19 Oct 2020 14:07:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47822 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727293AbgJSSHP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Oct 2020 14:07:15 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88715C0613CE;
+        Mon, 19 Oct 2020 11:07:15 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 8F970AAD; Mon, 19 Oct 2020 14:07:14 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 8F970AAD
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1603130834;
+        bh=dco/WybpU/EqfvSvsH+XSa82NSYyQWrMNtM8NHtAqo8=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=GwREMXbUFIGpSf1Gsl88oP+3JCO5ZoWbw+JFj+3z86HxybGd/ID9RSNytKwfe4S3N
+         F7CHbMAgHPKgbcKjzJ8K1aYF9zD3lRddWW+NDiuuWfS9k8tFHbc2dUMZAii+dIZBSC
+         uDXzZ/mhfEqceOj0kg247FrZYqStB7yW+3H/a68M=
+Date:   Mon, 19 Oct 2020 14:07:14 -0400
+To:     David Howells <dhowells@redhat.com>
+Cc:     herbert@gondor.apana.org.au, davem@davemloft.net,
+        trond.myklebust@hammerspace.com, linux-crypto@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-afs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: gssapi, crypto and afs/rxrpc
+Message-ID: <20201019180714.GA6692@fieldses.org>
+References: <1444464.1602865106@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1444464.1602865106@warthog.procyon.org.uk>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Fri, Oct 16, 2020 at 05:18:26PM +0100, David Howells wrote:
+> Hi Herbert, Dave, Trond,
+> 
+> I've written basic gssapi-derived security support for AF_RXRPC:
+> 
+> 	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=rxrpc-rxgk
+> 
+> I've borrowed some bits from net/sunrpc/auth_gss/ but there's a lot in there
+> that is quite specific to the sunrpc module that makes it hard to use for
+> rxrpc (dprintk, struct xdr_buf).
+> 
+> Further, I've implemented some more enctypes that aren't supported yet by
+> gssapi (AES with sha256/sha384 and Camellia), and that requires some changes
+> to the handling as AES with sha384 has a 24-byte checksum size and a 24-byte
+> calculated key size for Kc and Ki but a 32-byte Ke.
+> 
+> Should I pull the core out and try to make it common?  If so, should I move it
+> to crypto/ or lib/, or perhaps put it in net/gssapi/?
+> 
+> There are two components to it:
+> 
+>  (1) Key derivation steps.
+> 
+>      My thought is to use xdr_netobj or something similar for to communicate
+>      between the steps (though I'd prefer to change .data to be a void* rather
+>      than u8*).
+> 
+>  (2) Encryption/checksumming.
+> 
+>      My thought is to make this interface use scattergather lists[*] since
+>      that's what the crypto encryption API requires (though not the hash API).
+> 
+> If I do this, should I create a "kerberos" crypto API for the data wrapping
+> functions?  I'm not sure that it quite matches the existing APIs because the
+> size of the input data will likely not match the size of the output data and
+> it's "one shot" as it needs to deal with a checksum.
+> 
+> Or I can just keep my implementation separate inside net/rxrpc/.
 
-In order to use the open_by_filehandle() operations on NFSv3, we need
-to be able to emulate lookupp() so that nfs_get_parent() can be used
-to convert disconnected dentries into connected ones.
+I'd love to share whatever we can, though I'm not really sure what's
+involved.  Certainly some careful testing at least.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/nfs3proc.c | 19 ++++++++++++++++---
- 1 file changed, 16 insertions(+), 3 deletions(-)
+It's been about 15 years since I really worked on that code.  I remember
+struggling with struct xdr_buf.  The client and server support
+zero-copy, so requests and replies are represented by a combination of a
+couple of linear buffers plus an array of pages.  My memory is that the
+(undocumented) meanings of the fields of the xdr_buf were different for
+request and replies and for server and client, and getting them right
+took some trial and error.
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index a6a222435e9b..63d1979933f3 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -155,7 +155,8 @@ nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 
- static int
- __nfs3_proc_lookup(struct inode *dir, const char *name, size_t len,
--		   struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+		   struct nfs_fh *fhandle, struct nfs_fattr *fattr,
-+		   unsigned short task_flags)
- {
- 	struct nfs3_diropargs	arg = {
- 		.fh		= NFS_FH(dir),
-@@ -172,7 +173,6 @@ __nfs3_proc_lookup(struct inode *dir, const char *name, size_t len,
- 		.rpc_resp	= &res,
- 	};
- 	int			status;
--	unsigned short task_flags = 0;
- 
- 	res.dir_attr = nfs_alloc_fattr();
- 	if (res.dir_attr == NULL)
-@@ -197,13 +197,25 @@ nfs3_proc_lookup(struct inode *dir, struct dentry *dentry,
- 		 struct nfs_fh *fhandle, struct nfs_fattr *fattr,
- 		 struct nfs4_label *label)
- {
-+	unsigned short task_flags = 0;
-+
- 	/* Is this is an attribute revalidation, subject to softreval? */
- 	if (nfs_lookup_is_soft_revalidate(dentry))
- 		task_flags |= RPC_TASK_TIMEOUT;
- 
- 	dprintk("NFS call  lookup %pd2\n", dentry);
- 	return __nfs3_proc_lookup(dir, dentry->d_name.name,
--				  dentry->d_name.len, fhandle, fattr);
-+				  dentry->d_name.len, fhandle, fattr,
-+				  task_flags);
-+}
-+
-+static int nfs3_proc_lookupp(struct inode *inode, struct nfs_fh *fhandle,
-+			     struct nfs_fattr *fattr, struct nfs4_label *label)
-+{
-+	const char *dotdot = "..";
-+	const size_t len = sizeof(dotdot) - 1;
-+
-+	return __nfs3_proc_lookup(inode, dotdot, len, fhandle, fattr, 0);
- }
- 
- static int nfs3_proc_access(struct inode *inode, struct nfs_access_entry *entry)
-@@ -1012,6 +1024,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.getattr	= nfs3_proc_getattr,
- 	.setattr	= nfs3_proc_setattr,
- 	.lookup		= nfs3_proc_lookup,
-+	.lookupp	= nfs3_proc_lookupp,
- 	.access		= nfs3_proc_access,
- 	.readlink	= nfs3_proc_readlink,
- 	.create		= nfs3_proc_create,
--- 
-2.26.2
-
+--b.
