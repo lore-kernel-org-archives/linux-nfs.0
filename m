@@ -7,63 +7,63 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 41186C4363A
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Oct 2020 18:54:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0CCF3C4363A
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Oct 2020 18:54:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E29702168B
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Oct 2020 18:54:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A0E782085B
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Oct 2020 18:54:19 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DTIoIjAF"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="thxQtmIE"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1790978AbgJZSyJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 26 Oct 2020 14:54:09 -0400
-Received: from mail-qv1-f68.google.com ([209.85.219.68]:36390 "EHLO
-        mail-qv1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1790972AbgJZSyG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2020 14:54:06 -0400
-Received: by mail-qv1-f68.google.com with SMTP id ev17so4819997qvb.3;
-        Mon, 26 Oct 2020 11:54:06 -0700 (PDT)
+        id S1781517AbgJZSyS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Oct 2020 14:54:18 -0400
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:35216 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1790986AbgJZSyS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Oct 2020 14:54:18 -0400
+Received: by mail-qt1-f194.google.com with SMTP id c15so7527335qtc.2;
+        Mon, 26 Oct 2020 11:54:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=sEDE7+ACL+xJFfG4qz46x0tNWG9y9S9DlLiy1LgVxXw=;
-        b=DTIoIjAFwkf5REDTKO4hGxNtQX2IqCp28VxAIQa8ATyCOdg06T7pmKA6GyygUBchvr
-         Xcl5BRHyaAIsj//r6vt4c2WRrOVl2U5zy+Eqozmcr6uqVTokoH1zBh9R0Gwr+sV7RMP7
-         +j7nJUesCoUcVudL/1kORVbB1uQLmI5MV4y+X8OBej/8k4BiTehx0m+3DpriPHCCteGC
-         j/trTUt94bu3ma6UwPLpwL1zBG+ncSlsG2S+eE8gUJIz8OiKOklNx2aaS/xdvBT0TjFQ
-         5xGzwKK8ZBjzJk77azqUR7114vQP2udPaAhXKjuaVzSr30xzGko1286CQJXJoyg/hLAr
-         wufw==
+        bh=/cB5PNF3Rd/l7UIrWtwLYYjC84a31izIF+s/sz3PIio=;
+        b=thxQtmIEx0zML83QeU4wVAs/gV+ZXecp9oPGchXDKBCPhDXwwXRcYWVDJPAHSRAfHo
+         3625LbWiMM1HKASvtdhViLWARVUf5dDTNr138QBJyjzAv6WQI0jDLN0u1HZ8C1/K9b40
+         83oL1tXPokKzPgY5hn0rLleUomlIGb3ozehnC7khbahex6/Yu8LNucM0S9X07Zc+TCvP
+         D3OaO6Ks5NTuYuS/EOcLT++i9Lm71YM31/ZlY/YpB+fhbvFu8/GDpeiXHDOgBEdnKF4J
+         aP0BuCgON9dPVMMxChomwvFFOJYXS1GIQHlzXJ+e6+bOosfyHBjqzNaQT792vVgbAMQy
+         CHZQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=sEDE7+ACL+xJFfG4qz46x0tNWG9y9S9DlLiy1LgVxXw=;
-        b=e6HMhjCz1Yo96f/R+OVLLE/OQIdzYUzNlAS0V7KGk6K88cCHbHWOMlzG/5yxqR+WYr
-         XQdCb29ulw8zJA5D7Kl3VLUOuwyvb5SWOlVH26GTrM1BytbX3ppz2eHK4fHyvyIT2sjq
-         LD/Yu2dj6O+grJYkYsJIGgVMmOJLU/JgGY8dPFPC3jBwZWH0rNBBXHv3K/1MmDYjX1dW
-         M2znNrcgaX1hEomB1mDSqO9xtsD6g8Y0r6PmOoYne2TSDuJl57H7N7LONeIhKuXwsX42
-         dvMVJ3Urax5K8BSTriou+pVwJh5wMtj1/vma2WUEA3QYtA2++rSKgSM/oTl4IysKRqhK
-         uZYA==
-X-Gm-Message-State: AOAM530wHLN4iRmUrH811xokdfrBjKPHC/eDU6j9kH/hMNJG9qsPKEPg
-        c1TX+DSc2qsmt/b2gE72oyN+QQasYmM=
-X-Google-Smtp-Source: ABdhPJwS0xdtI+/pG1erCjV8nwW7lK7gR8pk7s54k8P1HLMb077j+eEGW+xaRZcyta1OldWs2r6G3g==
-X-Received: by 2002:ad4:45ca:: with SMTP id v10mr15245143qvt.48.1603738445317;
-        Mon, 26 Oct 2020 11:54:05 -0700 (PDT)
+        bh=/cB5PNF3Rd/l7UIrWtwLYYjC84a31izIF+s/sz3PIio=;
+        b=E854h7zlcHUHq7pg9S2jJxecYbZkIGfUMy3XiaIKeQYfrR79ycqo6SRuAVywDFovb8
+         TVO+DcYhSndvx13LW3RwrbZS3/ZTAjQpIRsLcY8W9UvaF47VnFN8gQfB8RXu9Lv/AlJo
+         LbXub1uPLfEy5b1csIzlxv4MY2BTtA3SrhnmodrymLdsjED/HeYAOjKdexTHp9t125v+
+         A6oDlCU20wvDQfDQB0F0yZyPL4jZGdc2Uol1Ij+9RyCSu/cOFlknjcPQTqSIE0mm0++1
+         /v6g2Utcy8ZBWKGd55HJNtLIIkdL3vxV1KO2Up3ro1aEv+XjLEJPeEwnOLiBVYX3EoOC
+         DNWw==
+X-Gm-Message-State: AOAM530MFi8RCNwTh2avZu1cQUw9bHprAmFIsg3a5QLOXK/t7qXq+rt0
+        yN4bJDfVpsBJhB/jbav1pG/yOTVWiJE=
+X-Google-Smtp-Source: ABdhPJxxjyExSPqPNaErf/P/aGnK0dbeMogABnZMYsmYb4QHRuINfxk02L/YdgiD0F7Ku4s0d4fRXg==
+X-Received: by 2002:ac8:397a:: with SMTP id t55mr17510990qtb.105.1603738455934;
+        Mon, 26 Oct 2020 11:54:15 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id v14sm6996695qta.44.2020.10.26.11.54.04
+        by smtp.gmail.com with ESMTPSA id g11sm6943682qkl.30.2020.10.26.11.54.15
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 26 Oct 2020 11:54:04 -0700 (PDT)
+        Mon, 26 Oct 2020 11:54:15 -0700 (PDT)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 09QIs3Cu013619;
-        Mon, 26 Oct 2020 18:54:03 GMT
-Subject: [PATCH 02/20] svcrdma: Const-ify the xdr_buf arguments
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 09QIsELs013625;
+        Mon, 26 Oct 2020 18:54:14 GMT
+Subject: [PATCH 04/20] SUNRPC: Rename svc_encode_read_payload()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Mon, 26 Oct 2020 14:54:03 -0400
-Message-ID: <160373844359.1886.5240330169912563769.stgit@klimt.1015granger.net>
+Date:   Mon, 26 Oct 2020 14:54:14 -0400
+Message-ID: <160373845420.1886.3075276814923041440.stgit@klimt.1015granger.net>
 In-Reply-To: <160373843299.1886.12604782813896379719.stgit@klimt.1015granger.net>
 References: <160373843299.1886.12604782813896379719.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -74,35 +74,185 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up: Ensure the code in rw.c does not modify the argument, and
-enable callers to also use "const struct xdr_buf *".
+Clean up: "result payload" is a less confusing name for these
+payloads. "READ payload" reflects only the NFS usage.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_rw.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4xdr.c                        |    2 +-
+ include/linux/sunrpc/svc.h               |    6 +++---
+ include/linux/sunrpc/svc_rdma.h          |    4 ++--
+ include/linux/sunrpc/svc_xprt.h          |    4 ++--
+ net/sunrpc/svc.c                         |   11 ++++++-----
+ net/sunrpc/svcsock.c                     |    8 ++++----
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    8 ++++----
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+ 8 files changed, 23 insertions(+), 22 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 80a0c0e87590..d8b2e22c56c1 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -197,7 +197,7 @@ struct svc_rdma_write_info {
- 	__be32			*wi_segs;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 833a2c64dfe8..7e24fb3ca36e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3829,7 +3829,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	read->rd_length = maxcount;
+ 	if (nfserr)
+ 		return nfserr;
+-	if (svc_encode_read_payload(resp->rqstp, starting_len + 8, maxcount))
++	if (svc_encode_result_payload(resp->rqstp, starting_len + 8, maxcount))
+ 		return nfserr_io;
+ 	xdr_truncate_encode(xdr, starting_len + 8 + xdr_align_size(maxcount));
  
- 	/* SGL constructor arguments */
--	struct xdr_buf		*wi_xdr;
-+	const struct xdr_buf	*wi_xdr;
- 	unsigned char		*wi_base;
- 	unsigned int		wi_next_off;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 386628b36bc7..c220b734fa69 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -519,9 +519,9 @@ void		   svc_wake_up(struct svc_serv *);
+ void		   svc_reserve(struct svc_rqst *rqstp, int space);
+ struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
+ char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
+-int		   svc_encode_read_payload(struct svc_rqst *rqstp,
+-					   unsigned int offset,
+-					   unsigned int length);
++int		   svc_encode_result_payload(struct svc_rqst *rqstp,
++					     unsigned int offset,
++					     unsigned int length);
+ unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
+ 					 struct page **pages,
+ 					 struct kvec *first, size_t total);
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 9dc3a3b88391..2b870a3f391b 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -207,8 +207,8 @@ extern void svc_rdma_send_error_msg(struct svcxprt_rdma *rdma,
+ 				    struct svc_rdma_recv_ctxt *rctxt,
+ 				    int status);
+ extern int svc_rdma_sendto(struct svc_rqst *);
+-extern int svc_rdma_read_payload(struct svc_rqst *rqstp, unsigned int offset,
+-				 unsigned int length);
++extern int svc_rdma_result_payload(struct svc_rqst *rqstp, unsigned int offset,
++				   unsigned int length);
  
-@@ -405,7 +405,7 @@ static void svc_rdma_pagelist_to_sg(struct svc_rdma_write_info *info,
- 				    struct svc_rdma_rw_ctxt *ctxt)
+ /* svc_rdma_transport.c */
+ extern struct svc_xprt_class svc_rdma_class;
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index aca35ab5cff2..92455e0d5244 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -21,8 +21,8 @@ struct svc_xprt_ops {
+ 	int		(*xpo_has_wspace)(struct svc_xprt *);
+ 	int		(*xpo_recvfrom)(struct svc_rqst *);
+ 	int		(*xpo_sendto)(struct svc_rqst *);
+-	int		(*xpo_read_payload)(struct svc_rqst *, unsigned int,
+-					    unsigned int);
++	int		(*xpo_result_payload)(struct svc_rqst *, unsigned int,
++					      unsigned int);
+ 	void		(*xpo_release_rqst)(struct svc_rqst *);
+ 	void		(*xpo_detach)(struct svc_xprt *);
+ 	void		(*xpo_free)(struct svc_xprt *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index c211b607239e..b41500645c3f 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1622,7 +1622,7 @@ u32 svc_max_payload(const struct svc_rqst *rqstp)
+ EXPORT_SYMBOL_GPL(svc_max_payload);
+ 
+ /**
+- * svc_encode_read_payload - mark a range of bytes as a READ payload
++ * svc_encode_result_payload - mark a range of bytes as a result payload
+  * @rqstp: svc_rqst to operate on
+  * @offset: payload's byte offset in rqstp->rq_res
+  * @length: size of payload, in bytes
+@@ -1630,12 +1630,13 @@ EXPORT_SYMBOL_GPL(svc_max_payload);
+  * Returns zero on success, or a negative errno if a permanent
+  * error occurred.
+  */
+-int svc_encode_read_payload(struct svc_rqst *rqstp, unsigned int offset,
+-			    unsigned int length)
++int svc_encode_result_payload(struct svc_rqst *rqstp, unsigned int offset,
++			      unsigned int length)
  {
- 	unsigned int sge_no, sge_bytes, page_off, page_no;
--	struct xdr_buf *xdr = info->wi_xdr;
-+	const struct xdr_buf *xdr = info->wi_xdr;
- 	struct scatterlist *sg;
- 	struct page **page;
+-	return rqstp->rq_xprt->xpt_ops->xpo_read_payload(rqstp, offset, length);
++	return rqstp->rq_xprt->xpt_ops->xpo_result_payload(rqstp, offset,
++							   length);
+ }
+-EXPORT_SYMBOL_GPL(svc_encode_read_payload);
++EXPORT_SYMBOL_GPL(svc_encode_result_payload);
  
+ /**
+  * svc_fill_write_vector - Construct data argument for VFS write call
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index c2752e2b9ce3..b248f2349437 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -181,8 +181,8 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+ 	}
+ }
+ 
+-static int svc_sock_read_payload(struct svc_rqst *rqstp, unsigned int offset,
+-				 unsigned int length)
++static int svc_sock_result_payload(struct svc_rqst *rqstp, unsigned int offset,
++				   unsigned int length)
+ {
+ 	return 0;
+ }
+@@ -635,7 +635,7 @@ static const struct svc_xprt_ops svc_udp_ops = {
+ 	.xpo_create = svc_udp_create,
+ 	.xpo_recvfrom = svc_udp_recvfrom,
+ 	.xpo_sendto = svc_udp_sendto,
+-	.xpo_read_payload = svc_sock_read_payload,
++	.xpo_result_payload = svc_sock_result_payload,
+ 	.xpo_release_rqst = svc_udp_release_rqst,
+ 	.xpo_detach = svc_sock_detach,
+ 	.xpo_free = svc_sock_free,
+@@ -1123,7 +1123,7 @@ static const struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_create = svc_tcp_create,
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+-	.xpo_read_payload = svc_sock_read_payload,
++	.xpo_result_payload = svc_sock_result_payload,
+ 	.xpo_release_rqst = svc_tcp_release_rqst,
+ 	.xpo_detach = svc_tcp_sock_detach,
+ 	.xpo_free = svc_sock_free,
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index c3d588b149aa..c8411b4f3492 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -979,19 +979,19 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ }
+ 
+ /**
+- * svc_rdma_read_payload - special processing for a READ payload
++ * svc_rdma_result_payload - special processing for a result payload
+  * @rqstp: svc_rqst to operate on
+  * @offset: payload's byte offset in @xdr
+  * @length: size of payload, in bytes
+  *
+  * Returns zero on success.
+  *
+- * For the moment, just record the xdr_buf location of the READ
++ * For the moment, just record the xdr_buf location of the result
+  * payload. svc_rdma_sendto will use that location later when
+  * we actually send the payload.
+  */
+-int svc_rdma_read_payload(struct svc_rqst *rqstp, unsigned int offset,
+-			  unsigned int length)
++int svc_rdma_result_payload(struct svc_rqst *rqstp, unsigned int offset,
++			    unsigned int length)
+ {
+ 	struct svc_rdma_recv_ctxt *rctxt = rqstp->rq_xprt_ctxt;
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index fb044792b571..afba4e9d5425 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -80,7 +80,7 @@ static const struct svc_xprt_ops svc_rdma_ops = {
+ 	.xpo_create = svc_rdma_create,
+ 	.xpo_recvfrom = svc_rdma_recvfrom,
+ 	.xpo_sendto = svc_rdma_sendto,
+-	.xpo_read_payload = svc_rdma_read_payload,
++	.xpo_result_payload = svc_rdma_result_payload,
+ 	.xpo_release_rqst = svc_rdma_release_rqst,
+ 	.xpo_detach = svc_rdma_detach,
+ 	.xpo_free = svc_rdma_free,
 
 
