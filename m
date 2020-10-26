@@ -7,45 +7,45 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 80894C55178
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Oct 2020 00:23:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C8A1C5DF9D
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Oct 2020 00:30:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4849420759
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Oct 2020 00:23:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 003572151B
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Oct 2020 00:30:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1603758202;
-	bh=/yDi3gbshJFjAfad5LA1t5ZG6Qb0CXX2KU/HWcpfXSU=;
+	s=default; t=1603758659;
+	bh=M7m7F8XvewI0zgBxlsuaCVECm9BU7hsOxf77ZbhlsVM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=UZXCse9U4VPTkpno6hZKI5AbrJQFD8kNV3VmVdBofBfFsfYCtAKsv/W5I2+gPd0u0
-	 BRx1G92wthCuFTsLiTFIlFT9I94uEtSI6rkHOioP35KZJru3XznlCvCK62J6yV/mEp
-	 9w0p4MoBq42x4UhAQAxBfUIcVeHjD/6/LNVoqD8w=
+	b=UijBLnHci2fIi0R2WPQ+QuWrkreodI3nCeWk7A6pDr2/8Wuy5+1uoPv6UB8mo4Nqn
+	 4S7By1MlVnwXYYB7xLy/TYZoGt0LPrqUrpooBk+VP4jjZUfcXQIQohSE935EO2Md0g
+	 Jsj0snTYhk5yBxMGuYYKVWtww0v7q9g7/Id6t0F0=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2410379AbgJZXyP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 26 Oct 2020 19:54:15 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59816 "EHLO mail.kernel.org"
+        id S2409759AbgJZXwb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Oct 2020 19:52:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54926 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2410368AbgJZXyO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 26 Oct 2020 19:54:14 -0400
+        id S2409749AbgJZXw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 26 Oct 2020 19:52:29 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1923E221F8;
-        Mon, 26 Oct 2020 23:54:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 84B03221F8;
+        Mon, 26 Oct 2020 23:52:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603756453;
-        bh=/yDi3gbshJFjAfad5LA1t5ZG6Qb0CXX2KU/HWcpfXSU=;
+        s=default; t=1603756349;
+        bh=M7m7F8XvewI0zgBxlsuaCVECm9BU7hsOxf77ZbhlsVM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=zWAnFK+HLO2+hJ+SYWlpEHncHAzcZfGKYTb++laeeN3tNBdwFBxvbjb8QTysDz+SF
-         TPI7fgoq/BgFT3HH8Vg8L7J8H9Wl1Pop5+askc0axtuc6El06PRm9hkmdZcgIgo++a
-         S45fNMhH3o9x1iWDuxZK0YJKfDTzBcoqJnI1ts5I=
+        b=WwxSVKLNuGQEyeUFX71T9t768UzTQ5z8Xs43Plr7LlEA/bMCPwAK6DHg6r3c7gBMh
+         WKqaLeINo/xlBJBz3uevd711d+SPm7Ua1DPicHEU/MyCWYLdcBCoXd9jUuFNP2bi1v
+         IuqAGn/NjNyrV1mEQRGJXy5kkpo/nZ76HwDR9dSE=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Hou Tao <houtao1@huawei.com>, Chuck Lever <chuck.lever@oracle.com>,
-        "J . Bruce Fields" <bfields@redhat.com>,
+Cc:     Dave Wysochanski <dwysocha@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.8 104/132] nfsd: rename delegation related tracepoints to make them less confusing
-Date:   Mon, 26 Oct 2020 19:51:36 -0400
-Message-Id: <20201026235205.1023962-104-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.8 020/132] NFS4: Fix oops when copy_file_range is attempted with NFS4.0 source
+Date:   Mon, 26 Oct 2020 19:50:12 -0400
+Message-Id: <20201026235205.1023962-20-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20201026235205.1023962-1-sashal@kernel.org>
 References: <20201026235205.1023962-1-sashal@kernel.org>
@@ -57,73 +57,60 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Hou Tao <houtao1@huawei.com>
+From: Dave Wysochanski <dwysocha@redhat.com>
 
-[ Upstream commit 3caf91757ced158e6c4a44d8b105bd7b3e1767d8 ]
+[ Upstream commit d8a6ad913c286d4763ae20b14c02fe6f39d7cd9f ]
 
-Now when a read delegation is given, two delegation related traces
-will be printed:
+The following oops is seen during xfstest/565 when the 'test'
+(source of the copy) is NFS4.0 and 'scratch' (destination) is NFS4.2
+[   59.692458] run fstests generic/565 at 2020-08-01 05:50:35
+[   60.613588] BUG: kernel NULL pointer dereference, address: 0000000000000008
+[   60.624970] #PF: supervisor read access in kernel mode
+[   60.627671] #PF: error_code(0x0000) - not-present page
+[   60.630347] PGD 0 P4D 0
+[   60.631853] Oops: 0000 [#1] SMP PTI
+[   60.634086] CPU: 6 PID: 2828 Comm: xfs_io Kdump: loaded Not tainted 5.8.0-rc3 #1
+[   60.637676] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2011
+[   60.639901] RIP: 0010:nfs4_check_serverowner_major_id+0x5/0x30 [nfsv4]
+[   60.642719] Code: 89 ff e8 3e b3 b8 e1 e9 71 fe ff ff 41 bc da d8 ff ff e9 c3 fe ff ff e8 e9 9d 08 e2 66 0f 1f 84 00 00 00 00 00 66 66 66 66 90 <8b> 57 08 31 c0 3b 56 08 75 12 48 83 c6 0c 48 83 c7 0c e8 c4 97 bb
+[   60.652629] RSP: 0018:ffffc265417f7e10 EFLAGS: 00010287
+[   60.655379] RAX: ffffa0664b066400 RBX: 0000000000000000 RCX: 0000000000000001
+[   60.658754] RDX: ffffa066725fb000 RSI: ffffa066725fd000 RDI: 0000000000000000
+[   60.662292] RBP: 0000000000020000 R08: 0000000000020000 R09: 0000000000000000
+[   60.666189] R10: 0000000000000003 R11: 0000000000000000 R12: ffffa06648258d00
+[   60.669914] R13: 0000000000000000 R14: 0000000000000000 R15: ffffa06648258100
+[   60.673645] FS:  00007faa9fb35800(0000) GS:ffffa06677d80000(0000) knlGS:0000000000000000
+[   60.677698] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[   60.680773] CR2: 0000000000000008 CR3: 0000000203f14000 CR4: 00000000000406e0
+[   60.684476] Call Trace:
+[   60.685809]  nfs4_copy_file_range+0xfc/0x230 [nfsv4]
+[   60.688704]  vfs_copy_file_range+0x2ee/0x310
+[   60.691104]  __x64_sys_copy_file_range+0xd6/0x210
+[   60.693527]  do_syscall_64+0x4d/0x90
+[   60.695512]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+[   60.698006] RIP: 0033:0x7faa9febc1bd
 
-    nfsd_deleg_open: client 5f45b854:e6058001 stateid 00000030:00000001
-    nfsd_deleg_none: client 5f45b854:e6058001 stateid 0000002f:00000001
-
-Although the intention is to let developers know two stateid are
-returned, the traces are confusing about whether or not a read delegation
-is handled out. So renaming trace_nfsd_deleg_none() to trace_nfsd_open()
-and trace_nfsd_deleg_open() to trace_nfsd_deleg_read() to make
-the intension clearer.
-
-The patched traces will be:
-
-    nfsd_deleg_read: client 5f48a967:b55b21cd stateid 00000003:00000001
-    nfsd_open: client 5f48a967:b55b21cd stateid 00000002:00000001
-
-Suggested-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Hou Tao <houtao1@huawei.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 4 ++--
- fs/nfsd/trace.h     | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4file.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cea682ce8aa12..2d568d0e55f78 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5100,7 +5100,7 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
- 
- 	memcpy(&open->op_delegate_stateid, &dp->dl_stid.sc_stateid, sizeof(dp->dl_stid.sc_stateid));
- 
--	trace_nfsd_deleg_open(&dp->dl_stid.sc_stateid);
-+	trace_nfsd_deleg_read(&dp->dl_stid.sc_stateid);
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
- 	nfs4_put_stid(&dp->dl_stid);
- 	return;
-@@ -5217,7 +5217,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	nfs4_open_delegation(current_fh, open, stp);
- nodeleg:
- 	status = nfs_ok;
--	trace_nfsd_deleg_none(&stp->st_stid.sc_stateid);
-+	trace_nfsd_open(&stp->st_stid.sc_stateid);
- out:
- 	/* 4.1 client trying to upgrade/downgrade delegation? */
- 	if (open->op_delegate_type == NFS4_OPEN_DELEGATE_NONE && dp &&
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 1861db1bdc670..99bf07800cd09 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -289,8 +289,8 @@ DEFINE_STATEID_EVENT(layout_recall_done);
- DEFINE_STATEID_EVENT(layout_recall_fail);
- DEFINE_STATEID_EVENT(layout_recall_release);
- 
--DEFINE_STATEID_EVENT(deleg_open);
--DEFINE_STATEID_EVENT(deleg_none);
-+DEFINE_STATEID_EVENT(open);
-+DEFINE_STATEID_EVENT(deleg_read);
- DEFINE_STATEID_EVENT(deleg_break);
- DEFINE_STATEID_EVENT(deleg_recall);
- 
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index a339707654673..af84787aa0631 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -145,7 +145,8 @@ static ssize_t __nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	/* Only offload copy if superblock is the same */
+ 	if (file_in->f_op != &nfs4_file_operations)
+ 		return -EXDEV;
+-	if (!nfs_server_capable(file_inode(file_out), NFS_CAP_COPY))
++	if (!nfs_server_capable(file_inode(file_out), NFS_CAP_COPY) ||
++	    !nfs_server_capable(file_inode(file_in), NFS_CAP_COPY))
+ 		return -EOPNOTSUPP;
+ 	if (file_inode(file_in) == file_inode(file_out))
+ 		return -EOPNOTSUPP;
 -- 
 2.25.1
 
