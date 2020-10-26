@@ -1,55 +1,55 @@
-Return-Path: <SRS0=tZ+F=EB=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=QBgL=EC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE1E2C4363A
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Oct 2020 23:53:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C323CC2D0A3
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Oct 2020 00:03:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 91F6422242
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Oct 2020 23:53:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F05F2087C
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Oct 2020 00:03:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1603756416;
-	bh=jq3+6+vpC0K076l/7Ii6puB7IWw6g2F3iSVyX/FnC3s=;
+	s=default; t=1603757012;
+	bh=8GCNzbKpvsqLPIFyh/3q+gb2kOaXod3PBysi3b/Cp+A=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=1tcoIrc0UTHq7OdfmiZc2rQFNwCL+iADj2DHfE/TzakR6XMbgllAchnLh0Gr6uxKW
-	 52V81mtCE0Rb4giaG59ZVlsvis48tQ7PSXUiotlCknx/Vi/7H8qi97p8zRGe9mpNuk
-	 YRMOMHJwd+YZq4Q56FqvwKS7oiKxOqKqEIRyCftg=
+	b=HCuRGrgVALQqRI2dsJtr4wIEHEVyqOJEQrEX8ooqHgB24DwfFjt+1qucrECVnnkeR
+	 k7l4lroEGPEPOIdU+8nzR1pPEgI9TeElG6o4avJrfgvGAMWlFGLeVhqD3vM+kbo0Y+
+	 HYJHw99Dm6fsMMitMn4PSmHro0fDwPBH0jJmzR6o=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2410121AbgJZXxf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 26 Oct 2020 19:53:35 -0400
-Received: from mail.kernel.org ([198.145.29.99]:58150 "EHLO mail.kernel.org"
+        id S1728948AbgJ0ADU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Oct 2020 20:03:20 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34788 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2410115AbgJZXxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 26 Oct 2020 19:53:34 -0400
+        id S2411039AbgJZX4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 26 Oct 2020 19:56:08 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1A1A4221FC;
-        Mon, 26 Oct 2020 23:53:33 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1351522202;
+        Mon, 26 Oct 2020 23:56:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603756413;
-        bh=jq3+6+vpC0K076l/7Ii6puB7IWw6g2F3iSVyX/FnC3s=;
+        s=default; t=1603756567;
+        bh=8GCNzbKpvsqLPIFyh/3q+gb2kOaXod3PBysi3b/Cp+A=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=JXJlc2HIiBgMv9PlE33kWzrhBxYTdJiRjb2ASCJhJuv4GJMFCy1i5CGjLsHhoYe2G
-         /5mUzwSsH1fMfFww9xfYz+Gl6Nbhs8J9+saERjo8ZDlBfcZbr8Wu9lca5Xa2tS8UbC
-         etdoyUIHkAMevWgNU/yOHtluBJtrIxir8yYZNn1U=
+        b=cbLVt5nUlUe+Ig0rVJi8bRuNupOtttrWwnIx0lPgeD0TquK9iZmhlJuscF8AywIOm
+         +ovdo49Xwm6r2hx2IoL/ukgOVviLwOt25xdhk7IrZQp37K7R9v4WLwIN5iaJs4b85c
+         nOpBwRPXvxlk7+L16HfLBEPzyrgnTRRiJwXq8BRk=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.8 071/132] SUNRPC: Mitigate cond_resched() in xprt_transmit()
-Date:   Mon, 26 Oct 2020 19:51:03 -0400
-Message-Id: <20201026235205.1023962-71-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 42/80] SUNRPC: Mitigate cond_resched() in xprt_transmit()
+Date:   Mon, 26 Oct 2020 19:54:38 -0400
+Message-Id: <20201026235516.1025100-42-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20201026235205.1023962-1-sashal@kernel.org>
-References: <20201026235205.1023962-1-sashal@kernel.org>
+In-Reply-To: <20201026235516.1025100-1-sashal@kernel.org>
+References: <20201026235516.1025100-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -79,10 +79,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index d5cc5db9dbf39..b44099958c8bb 100644
+index 41df4c507193b..a6fee86f400ec 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -1511,10 +1511,13 @@ xprt_transmit(struct rpc_task *task)
+@@ -1503,10 +1503,13 @@ xprt_transmit(struct rpc_task *task)
  {
  	struct rpc_rqst *next, *req = task->tk_rqstp;
  	struct rpc_xprt	*xprt = req->rq_xprt;
@@ -97,7 +97,7 @@ index d5cc5db9dbf39..b44099958c8bb 100644
  		next = list_first_entry(&xprt->xmit_queue,
  				struct rpc_rqst, rq_xmit);
  		xprt_pin_rqst(next);
-@@ -1522,7 +1525,6 @@ xprt_transmit(struct rpc_task *task)
+@@ -1514,7 +1517,6 @@ xprt_transmit(struct rpc_task *task)
  		status = xprt_request_transmit(next, task);
  		if (status == -EBADMSG && next != req)
  			status = 0;
