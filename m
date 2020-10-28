@@ -2,94 +2,98 @@ Return-Path: <SRS0=eJj9=EE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9AB3C55179
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 00:56:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3A86C5DF9D
+	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 01:38:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5F20C20724
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 00:56:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1603933006;
-	bh=BSxR9G99QZZs9WQft0msIQGjwPYUjz+YA1ZtZ90swg4=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=Wi8FzspIpjrcyV/fSezSodlLPoBlWRG0w1y0TBPYLtSWrC90MWJ2o80njCy0u1cBk
-	 UNeykMGl9XuCfc0iTFqJhN8VYd0p1hlAe+PohcVBYe7UHKeQRNjTEoQAYZgi/+wf+n
-	 YzNoz6tzxMBF9pvs1doyDHWVF/+uGMj0JCWuTO/s=
+	by mail.kernel.org (Postfix) with ESMTP id 4F1EA2076C
+	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 01:38:31 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="CroS7KNh"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391012AbgJ2A4W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Oct 2020 20:56:22 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60520 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731617AbgJ1WRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Oct 2020 18:17:36 -0400
-Received: from localhost (unknown [213.57.247.131])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1729889AbgJ1WDB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Oct 2020 18:03:01 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:58440 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728160AbgJ1WBX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2020 18:01:23 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1603922482;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type;
+        bh=g7FLQO3CrpnwcCqIvFHtJHSQlfglx6THwuxYGSZJU7w=;
+        b=CroS7KNhlUzXqFE10HFqLcjjodqE+bgTO6lWsB75AGiZziUdA5tD84cg2C0vV8/3FXKBPg
+        91LgRp3jJ7dEOwDrFGN1y3O8O1DkYWrQ8jAjol2p43PR87HetraK0YNXN+Mu18QKeoDOS7
+        YENLx4m1n2ipFQhU8tT6+0alwTMkRSU=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-533-wBvUO6TbPdqkcVs2kwXzKg-1; Wed, 28 Oct 2020 08:59:19 -0400
+X-MC-Unique: wBvUO6TbPdqkcVs2kwXzKg-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 75ADC22275;
-        Wed, 28 Oct 2020 07:16:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603869365;
-        bh=BSxR9G99QZZs9WQft0msIQGjwPYUjz+YA1ZtZ90swg4=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=ztI4+WMUvZa0GWBnfKsmFMQgiwsXUHvSmBC0cGW2zG4/jBiYdYKeimxRCZUGVtSzY
-         NKX8OJOH0OC8jpwXKQEE570YqQVdwcjy+bJhU5rpVWZKm+OySoGTEKtYOuCbmWyfR9
-         X0M3K4XN+1qkqv+KA2ebktet80+pHQUHutl5NI5o=
-Date:   Wed, 28 Oct 2020 09:16:01 +0200
-From:   Leon Romanovsky <leon@kernel.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 00/20] NFSD support for multiple RPC/RDMA chunks
-Message-ID: <20201028071601.GA114054@unreal>
-References: <160373843299.1886.12604782813896379719.stgit@klimt.1015granger.net>
- <20201027060823.GF4821@unreal>
- <DAC657D8-D254-452C-9B21-3053F70C8C73@oracle.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7F013835BA7
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2020 12:59:18 +0000 (UTC)
+Received: from fedora.rsable.com (unknown [10.74.9.150])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 8138F19C4F;
+        Wed, 28 Oct 2020 12:59:16 +0000 (UTC)
+Date:   Wed, 28 Oct 2020 18:29:11 +0530
+From:   Rohan Sable <rsable@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     steved@redhat.com, rsable@redhat.com
+Subject: [PATCH v1] mountstats: handle KeyError in display_raw_stats
+Message-ID: <20201028125911.GA140323@fedora.rsable.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <DAC657D8-D254-452C-9B21-3053F70C8C73@oracle.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Oct 27, 2020 at 09:24:54AM -0400, Chuck Lever wrote:
-> Hi Leon-
->
-> > On Oct 27, 2020, at 2:08 AM, Leon Romanovsky <leon@kernel.org> wrote:
-> >
-> > On Mon, Oct 26, 2020 at 02:53:53PM -0400, Chuck Lever wrote:
-> >> This series implements support for multiple RPC/RDMA chunks per RPC
-> >> transaction. This is one of the few remaining generalities that the
-> >> Linux NFS/RDMA server implementation lacks.
-> >>
-> >> There is currently one known NFS/RDMA client implementation that can
-> >> send multiple chunks per RPC, and that is Solaris. Multiple chunks
-> >> are rare enough that the Linux NFS/RDMA implementation has been
-> >> successful without this support for many years.
-> >
-> > So why do we need it? Solaris is dead, and like you wrote Linux systems
-> > work without this feature just fine, what are the benefits? Who will use it?
->
-> The Linux NFS implementation is living. We can add the ability
-> to provision multiple chunks per RPC to the Linux NFS client at
-> any time.
->
-> Likewise any actively developed NFS/RDMA implementation can add
-> this feature. The RPC/RDMA version 1 protocol does not have the
-> ability to communicate the maximum number of chunks the server
-> will accept per RPC.
->
-> Other server implementations do support multiple chunks per RPC.
-> The Linux NFS/RDMA server implementation has always been incomplete
-> in this regard.
->
-> And the Linux NFS server implementation (the non-transport specific
-> part) already supports multiple data payloads per NFSv4 COMPOUND.
+While printing Nfsv4ops from older /proc/self/mountstats
+e.g. in 2.6.32-754.el6.x86_64 from RHEL 6.10,
+it will not have all the Keys present leading to a KeyError
+like below :
 
-Thanks, I just got different feeling then I read the cover letter.
-You presented it like no one needs this feature.
+Traceback (most recent call last):
+  File "nfs-utils/tools/mountstats/mountstats.py", line 1131, in <module>
+    res = main()
+  File "nfs-utils/tools/mountstats/mountstats.py", line 1120, in main
+    return args.func(args)
+  File "nfs-utils/tools/mountstats/mountstats.py", line 860, in mountstats_command
+    print_mountstats(stats, args.nfs_only, args.rpc_only, args.raw, args.xprt_only)
+  File "nfs-utils/tools/mountstats/mountstats.py", line 813, in print_mountstats
+    stats.display_raw_stats()
+  File "nfs-utils/tools/mountstats/mountstats.py", line 381, in display_raw_stats
+    print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+KeyError: 'FSID_PRESENT'
 
-Thanks
+Signed-off-by: Rohan Sable <rsable@redhat.com>
+---
+ tools/mountstats/mountstats.py | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index 25e92a19..23876fc4 100755
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -378,7 +378,10 @@ class DeviceData:
+                 print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+         elif vers == '4':
+             for op in Nfsv4ops:
+-                print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
++                try:
++                    print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
++                except KeyError:
++                    continue
+         else:
+             print('\tnot implemented for version %d' % vers)
+         print()
+-- 
+2.26.2
+
