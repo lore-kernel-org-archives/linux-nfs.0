@@ -2,126 +2,74 @@ Return-Path: <SRS0=ob+x=ED=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=BAYES_00,DATE_IN_PAST_12_24,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.2 required=3.0 tests=BAYES_00,DATE_IN_PAST_06_12,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E88B2C388F7
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 23:23:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90019C4363A
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 23:33:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8CD0C20796
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 23:23:39 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZHteILoK"
+	by mail.kernel.org (Postfix) with ESMTP id 420B3207BC
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 23:33:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390212AbgJ1XXh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Oct 2020 19:23:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36384 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390285AbgJ1XXY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2020 19:23:24 -0400
-Received: from mail-ej1-x643.google.com (mail-ej1-x643.google.com [IPv6:2a00:1450:4864:20::643])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 60E62C0613CF
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2020 16:23:24 -0700 (PDT)
-Received: by mail-ej1-x643.google.com with SMTP id s15so1279564ejf.8
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Oct 2020 16:23:24 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=00o1pI3dfKmHEdJBfQh/3tvt2bF/iiu0WFiZJ6SdfhQ=;
-        b=ZHteILoKyNndlTshxri2aLg+tGFsVYRkgxplRT1gkrRETDY6Ii2LcuWxMksBrkIDXj
-         kzS+a3mk9Y9rChLfO3amVN3WqtF497KjKrWk1X+poyPfOLRegbjG22oBotnT/c64FrwU
-         57a57pZ8u/xdVT1RZwzK0KV89GqBsyhTzlM7iRZ8Yjhpcvj+IrTDP8kAXkVFJkrErBjd
-         UHQyFUfRalXc/RENG7h0UHdAI6TpLKAbiiirhYmvI4wuj/zzVBD/8riLJ3bQfkprmBO6
-         ecolkLRmJFgPsxke/ADLfTlFk9PsH/dfjwaUgnysPvSWVm5Ig+rpgoA+QpRShE40AK/+
-         RjtQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=00o1pI3dfKmHEdJBfQh/3tvt2bF/iiu0WFiZJ6SdfhQ=;
-        b=XLrLqpcaz09+FXbcJ6zgok6yI/qqLbq702SnJfi8tNz5d6ExoILG8FhXCDzkml4un8
-         C8i/KtRYp0Flwk4LsLyjxek3eF+hSeOlsuo43BbnzZcDmcLVz9gtUi1mYj2019u+7P0U
-         sQEgtLarK/twbSp9o/V8q+kDsG/j/AR0z1MHa/ATa5wR1FZwPSMRNHOlpM9MOlp/eZJl
-         iPevhRolFSoXaS4MhXZGPMlT12OH8yhz/aR68c4UDGx7gmdQvaDtAfm4VaCdObJq70KK
-         xg2PoqJ/SRoaciesXKeQjAcojtmBfyUrKwFtvhd1YfoOkqISTY3UqQyOvwiOpnGOwhBX
-         fXEA==
-X-Gm-Message-State: AOAM531OYlwpIA10So6lGxiIA/apWTzXRRn/Eb03DZSaGnPjzMZlwYzm
-        ikeRPsxqOstm0NL1ceO/ezUhvVP39sdbkvDcR/1B0IvlI34=
-X-Google-Smtp-Source: ABdhPJyid69in67zCAvUISmjEYltAOvM4I/fgE3hToaY0OOVdeadp+KOT6OSCZ8+TBiV4DyV1ng357lLOJz/qxoRIgk=
-X-Received: by 2002:a05:6402:1684:: with SMTP id a4mr6880160edv.319.1603875212263;
- Wed, 28 Oct 2020 01:53:32 -0700 (PDT)
+        id S2390528AbgJ1XdH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Oct 2020 19:33:07 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:59476 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726859AbgJ1XdG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2020 19:33:06 -0400
+Received: from 1.general.cking.uk.vpn ([10.172.193.212] helo=localhost)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <colin.king@canonical.com>)
+        id 1kXjsA-0002fs-SB; Wed, 28 Oct 2020 11:44:10 +0000
+From:   Colin King <colin.king@canonical.com>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "David S . Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>,
+        Artur Molchanov <arturmolchanov@gmail.com>,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
+Cc:     kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH][next] net/sunrpc: fix unsigned size_t comparison to less than zero
+Date:   Wed, 28 Oct 2020 11:44:10 +0000
+Message-Id: <20201028114410.108759-1-colin.king@canonical.com>
+X-Mailer: git-send-email 2.27.0
 MIME-Version: 1.0
-References: <CAGj4m+5rpNqW=XnU2cxGmWiBi47w3XTvn9EGekVPjq74pHfFGA@mail.gmail.com>
- <20201027171240.GA1644@fieldses.org> <5dddc4b5-7777-859e-2730-28afc3067c57@math.utexas.edu>
-In-Reply-To: <5dddc4b5-7777-859e-2730-28afc3067c57@math.utexas.edu>
-From:   Vasyl Vavrychuk <vvavrychuk@gmail.com>
-Date:   Wed, 28 Oct 2020 10:53:20 +0200
-Message-ID: <CAGj4m+5j1ZK+=-4w6LpRLsnEPvi=UfpO3r8PruRtcJib9gbYyQ@mail.gmail.com>
-Subject: Re: Hard linking symlink does not work
-To:     Patrick Goetz <pgoetz@math.utexas.edu>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks for replies about my problem. It is actually a practical one...
+From: Colin Ian King <colin.king@canonical.com>
 
-I need to compile Yocto BSP which builds only under older
-distributions. For convenience I have established a Vagrant virtual
-machine which uses NFS to share workspace with the host machine.
+Currently the check for *lenp < 0 is always true since the type is a size_t
+and can never be negative. Fix this by casting it to ssize_t.
 
-Now coming back to hardlinking symlinks.
+Addresses-Coverity: ("Unsigned compared against 0")
+Fixes: c09f56b8f68d ("net/sunrpc: Fix return value for sysctl sunrpc.transports")
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+---
+ net/sunrpc/sysctl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Yocto build system uses hardlinks to prepare sysroot for packages, and
-symlinks are part of that sysroot provided by other packages.
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index a18b36b5422d..bb62badef6bc 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -72,7 +72,7 @@ static int proc_do_xprt(struct ctl_table *table, int write,
+ 	len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
+ 	*lenp = memory_read_from_buffer(buffer, *lenp, ppos, tmpbuf, len);
+ 
+-	if (*lenp < 0) {
++	if ((ssize_t)*lenp < 0) {
+ 		*lenp = 0;
+ 		return -EINVAL;
+ 	}
+-- 
+2.27.0
 
-On Tue, Oct 27, 2020 at 10:03 PM Patrick Goetz <pgoetz@math.utexas.edu> wrote:
->
->
->
-> On 10/27/20 12:12 PM, J. Bruce Fields wrote:
-> > On Fri, Oct 23, 2020 at 01:13:02PM +0300, Vasyl Vavrychuk wrote:
-> >> I have found that hard links for regular files works well for me over NFS:
-> >>
-> >> $ touch bar
-> >> $ ln bar tata
-> >>
-> >> But if I try to make hard link for symlink, then it fails:
-> >>
-> >> $ ln -s foo bar
-> >> $ ln bar tata
-> >> ln: failed to create hard link 'tata' => 'bar': Operation not permitted
-> >
-> > Huh.  I'm not sure I even realized it was possible to hardlink symlinks.
-> > Makes sense, I guess.
->
-> What's even the use case for hard linking a symlink?  That sounds like
-> asking for trouble...
->
->
-> >
-> > I think my first step debugging this would be to watch wireshark while
-> > attempting the "ln", and see what happens.  That should tell us whether
-> > it's the client or server that's failing the operation.
-> >
-> > --b.
-> >
-> >>
-> >> I am using NFSv4 with Vagrant, here is mount entry:
-> >>
-> >> 172.28.128.1:PATH on /vagrant type nfs4
-> >> (rw,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=IP,local_lock=none,addr=IP)
-> >>
-> >> I have also verified that rpc-statd is running on host.
-> >>
-> >> Host machine is Ubuntu 18.04 with NFS packages version 1:1.3.4-2.1ubuntu5.3.
-> >>
-> >> Will appreciate help on this.
-> >>
-> >> Thanks,
-> >> Vasyl
