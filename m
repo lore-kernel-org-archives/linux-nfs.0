@@ -2,95 +2,122 @@ Return-Path: <SRS0=ob+x=ED=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04EDEC5517A
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 01:38:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E240FC56201
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 22:02:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B866621D41
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 01:38:41 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="TFJiBvZi"
+	by mail.kernel.org (Postfix) with ESMTP id 8CD98247C6
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Oct 2020 22:02:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1603922552;
+	bh=3FnfY0fopTr59guGzwZGYaUN3BeAH2JnTh3KcqqaSWc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=uu7zKYxoPk9JyRxdKCjoORV32N2HFm7z0QvKQLV7160VOK7YgOY9gsNhICe5lQ0qH
+	 28RTL07pA0kfy+Zx84g/wa53DnUfYFI7tMB4KT2HOm+s/XQ3SMXBDYEbeKPTvssTEU
+	 EQvrU/TGzWEfCORaTfUDgCGgOYd6KUxCePDcLj3s=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726173AbgJ1Bij (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Oct 2020 21:38:39 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:52014 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1833049AbgJ0Xmf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Oct 2020 19:42:35 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 09RNdU5J033454;
-        Tue, 27 Oct 2020 23:42:30 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc : to : from :
- subject : message-id : date : mime-version : content-type :
- content-transfer-encoding; s=corp-2020-01-29;
- bh=rIHsVK2Oy3+HUfVyT3NQyvNdOPBUsBa0ax0zbtnybL8=;
- b=TFJiBvZigbKvtRAHuHGPt5V+TU6nGt0GZp3Sop1rZ0GHYmdfX+RfJQqqfTMMTKr5i3wF
- aXFcBQHgZiceXh+8Ymo/0jftwgoB7tho88tuBm3IQxJVFvxAnoXncNRmOapOeeT1RzDj
- 3B+ITf3WBfLkwSppYSquv4Z7KHL9YUL5UCv6ksthqSQYSkhDv9JAphHYFVY7J9Vm7hGk
- OjgZ13jz6+vhpVHi27rmPm+KBX3sR0Nh+eu+Mlg5Sbe4tbqZr1PRVQXCwj907q1B5yo/
- dROe/LT7bKDY1Gw+IY40ORaEAS5/GE7MFGCf473PrwLTnszfKybvsRJ/9cu999tXURyd yA== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by userp2120.oracle.com with ESMTP id 34dgm42cea-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Tue, 27 Oct 2020 23:42:30 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 09RNeIir070761;
-        Tue, 27 Oct 2020 23:42:30 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userp3020.oracle.com with ESMTP id 34cx1rb3g9-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 27 Oct 2020 23:42:30 +0000
-Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 09RNgTcG014364;
-        Tue, 27 Oct 2020 23:42:29 GMT
-Received: from [10.175.221.126] (/10.175.221.126)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 27 Oct 2020 16:42:28 -0700
-Cc:     linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.com>
-To:     stable@vger.kernel.org
-From:   Calum Mackay <calum.mackay@oracle.com>
-Subject: please cherry-pick for stable --- fd01b2597941 SUNRPC: ECONNREFUSED
- should cause a rebind.
-Organization: Oracle
-Message-ID: <380083cd-f5f5-73fa-33ff-c5dde2e7bd02@oracle.com>
-Date:   Tue, 27 Oct 2020 23:42:27 +0000
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.3.1
+        id S1729527AbgJ1WCa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Oct 2020 18:02:30 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50732 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729513AbgJ1WCY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Oct 2020 18:02:24 -0400
+Received: from localhost (fw-tnat.cambridge.arm.com [217.140.96.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id E1AA824806;
+        Wed, 28 Oct 2020 18:24:59 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1603909500;
+        bh=3FnfY0fopTr59guGzwZGYaUN3BeAH2JnTh3KcqqaSWc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=pB0UJvsTww9Cb4vodrmJCAzxjzi2PoTLOXTLTfQJYGLwxvuWCEzVoOUaK8yLQ0Gta
+         qwHGdjLx0+1jeYb5jaTQhIgO808j+07gw0LBEOVFqyL1z9xBMRC6kzsqP/73fOiJhQ
+         TN5Z4OEMNYJKBIk+RHT6NVXZyADftH5vwx0kaG0A=
+Date:   Wed, 28 Oct 2020 18:24:54 +0000
+From:   Mark Brown <broonie@kernel.org>
+To:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+Cc:     Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Jakub Kicinski <kuba@kernel.org>, linux-kernel@vger.kernel.org,
+        Jonathan Corbet <corbet@lwn.net>,
+        "David S. Miller" <davem@davemloft.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@kernel.org>,
+        Andrew Lunn <andrew@lunn.ch>, Andrii Nakryiko <andriin@fb.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Bartosz Golaszewski <bgolaszewski@baylibre.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Cong Wang <xiyou.wangcong@gmail.com>,
+        Eric Dumazet <edumazet@google.com>,
+        Florian Westphal <fw@strlen.de>,
+        Guillaume Nault <gnault@redhat.com>,
+        Heiner Kallweit <hkallweit1@gmail.com>,
+        Jiri Pirko <jiri@mellanox.com>,
+        Martin Varghese <martin.varghese@nokia.com>,
+        Maxim Mikityanskiy <maximmi@mellanox.com>,
+        Miaohe Lin <linmiaohe@huawei.com>,
+        Paolo Abeni <pabeni@redhat.com>,
+        Pravin B Shelar <pshelar@ovn.org>,
+        Russell King <linux@armlinux.org.uk>,
+        Sabrina Dubroca <sd@queasysnail.net>,
+        Steffen Klassert <steffen.klassert@secunet.com>,
+        Taehee Yoo <ap420073@gmail.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Vladimir Oltean <olteanv@gmail.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Yadu Kishore <kyk.segfault@gmail.com>,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
+Subject: Re: [PATCH RESEND 0/3] Fix wrong identifiers on kernel-doc markups
+Message-ID: <20201028182454.GA16143@sirena.org.uk>
+References: <cover.1603705472.git.mchehab+huawei@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9787 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 phishscore=0 bulkscore=0
- suspectscore=13 malwarescore=0 mlxlogscore=965 mlxscore=0 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2010270135
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9787 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 lowpriorityscore=0 impostorscore=0
- adultscore=0 bulkscore=0 spamscore=0 phishscore=0 mlxlogscore=999
- suspectscore=13 clxscore=1011 mlxscore=0 malwarescore=0 priorityscore=1501
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2010270135
+Content-Type: multipart/signed; micalg=pgp-sha512;
+        protocol="application/pgp-signature"; boundary="ikeVEW9yuYc//A+q"
+Content-Disposition: inline
+In-Reply-To: <cover.1603705472.git.mchehab+huawei@kernel.org>
+X-Cookie: They just buzzed and buzzed...buzzed.
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This commit:
 
-	fd01b2597941 SUNRPC: ECONNREFUSED should cause a rebind.
+--ikeVEW9yuYc//A+q
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-(originally applied to v4.14-rc1) didn't appear to get a stable cc, 
-perhaps because it wasn't considered a common problem at the time.
+On Mon, Oct 26, 2020 at 10:47:35AM +0100, Mauro Carvalho Chehab wrote:
+> Hi Mark/Jakub,
+>=20
+> As you requested, I'm resending the three -net patches
+> from the /56 patch series I sent last Friday:
 
-A patch I'm shortly about to post, cc stable, depends on the above, so 
-could it please be cherry-picked for stable?
+I was asking for you to do the same for the patches for my subsystems
+rather than resend the net patches to me - in general it's better to
+not to bundle things for multiple subsystems (or tangentially related
+changes in general) together like this.  Splitting things up makes it
+easier to find the relevant changes and means that automations that work
+with patch serieses don't have to deal with things that span multiple
+different trees when it's not required.
 
-It applies cleanly to both v4.4.240 & v4.9.240
+--ikeVEW9yuYc//A+q
+Content-Type: application/pgp-signature; name="signature.asc"
 
-thank you,
-calum.
+-----BEGIN PGP SIGNATURE-----
 
+iQEzBAABCgAdFiEEreZoqmdXGLWf4p/qJNaLcl1Uh9AFAl+Zt3UACgkQJNaLcl1U
+h9DjbAf/agKKFquaatNyS+9PsKXVvTKCZRLor3HaSfL2YuKiSVcuy9YH2azZEL+7
+CCbmpjmpsEKeKsGJqSgklV0iTDhpmjSRHcG7hvBdFyC2oHAoQOgQvl1sQ7+itktr
+Cjj6xWYMl9lBTxbdWXeI5m0cl3I+0LcJ5yB808GbpkpW6MoEUAyLvIOHBQjkfSMy
+FQC5359kfk65bfQjyIcHE+sgVc0+8j4zks5blibAQarOmpv5vF+z7TYd3OUrsnxJ
+KKZjxtwtTwzOQ7SRpz5NuX9gomuRDUNA0OTrsOQSMuxdYGlkPdeBlJoYnVNZZkD7
+ZIkRA2RvEZIZQTo7Z5BUtHYi7AEikQ==
+=a1MC
+-----END PGP SIGNATURE-----
+
+--ikeVEW9yuYc//A+q--
