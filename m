@@ -2,315 +2,154 @@ Return-Path: <SRS0=eJj9=EE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56244C388F7
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 00:18:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E962C55179
+	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 00:31:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 051F520780
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 00:18:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CDFBD207DE
+	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 00:31:52 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="yTlkqmuo"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="tDf73eeh"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389217AbgJ1Wq2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Oct 2020 18:46:28 -0400
-Received: from aserp2120.oracle.com ([141.146.126.78]:38418 "EHLO
+        id S1728272AbgJ2Abw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Oct 2020 20:31:52 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:48308 "EHLO
         aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731941AbgJ1WqS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2020 18:46:18 -0400
+        with ESMTP id S1728634AbgJ2Abv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Oct 2020 20:31:51 -0400
 Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 09SDF41u074989;
-        Wed, 28 Oct 2020 13:16:14 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=wQUg/GZkTUQAeSzoaSQ/B3TZAArCLD8hsniSi+QGrHs=;
- b=yTlkqmuoj3e6X3wHVKT8hten1EXXDRSdJuGHEwrpmzgXucY9bRrPTYkyDBMRm18y2bJ2
- bxD27HbXRD9EbRW/ils88WHhjsPJ4sgl63N2oE+gfmWQA9P5cwoeHXhqzCtwXWa/QD78
- Stw1FMCT4nz/heIsZaCrAv5wD8PytuhYr14TISt3bhDzihVTsTMzGoTXlRIPAn++QjGI
- ctvRCS3nKBPnJTuycYTV4tQo0/P4aL4DUagoXtCPJQttnsfHEv21Qn11Q7LSxmJsUptV
- GHW8/Xrw+OOk6qYwg9J8WZAtA35FTwh1EsIljAl1maIc3Gum9BGzeIptIHlBxlUU5zYB kQ== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by aserp2120.oracle.com with ESMTP id 34cc7kyb3p-1
+        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 09SKF8q9117431;
+        Wed, 28 Oct 2020 20:16:59 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id; s=corp-2020-01-29;
+ bh=KHS2bOkZkPvUFmHYXxnAj/cdE3emseY+aycgGjpeOk8=;
+ b=tDf73eehTbUIRPCCgM7jjUAYNaoeP3Qu/JXBF2uax2jqFL2rYxX5ncGOgMSbzfuNpU64
+ KBXrjFt9fKLUbxxwIJNFQL/p1JZok9tS4JvV6oL909qJYjyL05oC7IV8mu0e8SU+P8Dn
+ Sj8jQ62t7+EmKdJbeZkjqDatgQNtbRrSo2TKpxTRMdSawTuwA0wLd3VzJ6yOEzTTMMB2
+ Q6SFtMxDS2STaAZ+f/QffnrLN2f2ngYmhDuJHtBg0y9XRttDsvcT72IjAkJw3pHuJbfd
+ 03NkyYd4FKGzrl2q2teVkR3aeUklklKf33hvNlvl7jo7e0AGbo8uTF5dQaS3VKKHTAYd jw== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by aserp2120.oracle.com with ESMTP id 34cc7m1jww-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Wed, 28 Oct 2020 13:16:14 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 09SDAKGo179833;
-        Wed, 28 Oct 2020 13:16:13 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userp3020.oracle.com with ESMTP id 34cx1ryexu-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 28 Oct 2020 13:16:13 +0000
-Received: from abhmp0010.oracle.com (abhmp0010.oracle.com [141.146.116.16])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 09SDGCRj006626;
-        Wed, 28 Oct 2020 13:16:12 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Wed, 28 Oct 2020 06:16:12 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
-Subject: Re: [PATCH 04/20] SUNRPC: Rename svc_encode_read_payload()
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20201027205327.GC4697@fieldses.org>
-Date:   Wed, 28 Oct 2020 09:16:11 -0400
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <D74674A4-7296-4DB6-B66B-119150D1FC71@oracle.com>
-References: <160373843299.1886.12604782813896379719.stgit@klimt.1015granger.net>
- <160373845420.1886.3075276814923041440.stgit@klimt.1015granger.net>
- <20201027205327.GC4697@fieldses.org>
-To:     Bruce Fields <bfields@fieldses.org>
-X-Mailer: Apple Mail (2.3608.120.23.2.4)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9787 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 phishscore=0 bulkscore=0
- suspectscore=2 malwarescore=0 mlxlogscore=999 mlxscore=0 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2010280089
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9787 signatures=668682
+        Wed, 28 Oct 2020 20:16:59 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 09SKFOI6010258;
+        Wed, 28 Oct 2020 20:16:58 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3030.oracle.com with ESMTP id 34cx6xp1yt-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Wed, 28 Oct 2020 20:16:58 +0000
+Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 09SKGvMn014783;
+        Wed, 28 Oct 2020 20:16:57 GMT
+Received: from cdmvmol7.uk.oracle.com (dhcp-10-175-181-89.vpn.oracle.com [10.175.181.89])
+        by userp3030.oracle.com with ESMTP id 34cx6xp1wy-1;
+        Wed, 28 Oct 2020 20:16:57 +0000
+From:   Calum Mackay <calum.mackay@oracle.com>
+To:     trondmy@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] lockd: don't use interval-based rebinding over TCP
+Date:   Wed, 28 Oct 2020 20:16:27 +0000
+Message-Id: <20201028201627.23625-1-calum.mackay@oracle.com>
+X-Mailer: git-send-email 2.18.4
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9788 signatures=668682
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 lowpriorityscore=0 adultscore=0
- malwarescore=0 spamscore=0 clxscore=1015 mlxscore=0 suspectscore=2
+ malwarescore=0 spamscore=0 clxscore=1015 mlxscore=0 suspectscore=0
  priorityscore=1501 impostorscore=0 bulkscore=0 phishscore=0
  mlxlogscore=999 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2010280089
+ engine=8.12.0-2009150000 definitions=main-2010280126
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+NLM uses an interval-based rebinding, i.e. it clears the transport's
+binding under certain conditions if more than 60 seconds have elapsed
+since the connection was last bound.
 
+This rebinding is not necessary for an autobind RPC client over a
+connection-oriented protocol like TCP.
 
-> On Oct 27, 2020, at 4:53 PM, bfields@fieldses.org wrote:
->=20
-> On Mon, Oct 26, 2020 at 02:54:14PM -0400, Chuck Lever wrote:
->> Clean up: "result payload" is a less confusing name for these
->> payloads. "READ payload" reflects only the NFS usage.
->>=20
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> fs/nfsd/nfs4xdr.c                        |    2 +-
->> include/linux/sunrpc/svc.h               |    6 +++---
->> include/linux/sunrpc/svc_rdma.h          |    4 ++--
->> include/linux/sunrpc/svc_xprt.h          |    4 ++--
->> net/sunrpc/svc.c                         |   11 ++++++-----
->> net/sunrpc/svcsock.c                     |    8 ++++----
->> net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    8 ++++----
->> net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
->> 8 files changed, 23 insertions(+), 22 deletions(-)
->>=20
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 833a2c64dfe8..7e24fb3ca36e 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -3829,7 +3829,7 @@ static __be32 nfsd4_encode_readv(struct =
-nfsd4_compoundres *resp,
->> 	read->rd_length =3D maxcount;
->> 	if (nfserr)
->> 		return nfserr;
->> -	if (svc_encode_read_payload(resp->rqstp, starting_len + 8, =
-maxcount))
->> +	if (svc_encode_result_payload(resp->rqstp, starting_len + 8, =
-maxcount))
->> 		return nfserr_io;
->=20
-> Why does this call check for an error return while the
-> svc_encode_result_payload() calls in the next patch don't?
+It can also cause problems: it is possible for nlm_bind_host() to clear
+XPRT_BOUND whilst a connection worker is in the middle of trying to
+reconnect, after it had already been checked in xprt_connect().
 
-Very likely an oversight. I will ensure the next patch
-properly incorporates return code checking.
+When the connection worker notices that XPRT_BOUND has been cleared
+under it, in xs_tcp_finish_connecting(), that results in:
 
+	xs_tcp_setup_socket: connect returned unhandled error -107
 
->=20
-> --b.
->=20
->> 	xdr_truncate_encode(xdr, starting_len + 8 + =
-xdr_align_size(maxcount));
->>=20
->> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
->> index 386628b36bc7..c220b734fa69 100644
->> --- a/include/linux/sunrpc/svc.h
->> +++ b/include/linux/sunrpc/svc.h
->> @@ -519,9 +519,9 @@ void		   svc_wake_up(struct svc_serv =
-*);
->> void		   svc_reserve(struct svc_rqst *rqstp, int space);
->> struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
->> char *		   svc_print_addr(struct svc_rqst *, char *, =
-size_t);
->> -int		   svc_encode_read_payload(struct svc_rqst *rqstp,
->> -					   unsigned int offset,
->> -					   unsigned int length);
->> +int		   svc_encode_result_payload(struct svc_rqst *rqstp,
->> +					     unsigned int offset,
->> +					     unsigned int length);
->> unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
->> 					 struct page **pages,
->> 					 struct kvec *first, size_t =
-total);
->> diff --git a/include/linux/sunrpc/svc_rdma.h =
-b/include/linux/sunrpc/svc_rdma.h
->> index 9dc3a3b88391..2b870a3f391b 100644
->> --- a/include/linux/sunrpc/svc_rdma.h
->> +++ b/include/linux/sunrpc/svc_rdma.h
->> @@ -207,8 +207,8 @@ extern void svc_rdma_send_error_msg(struct =
-svcxprt_rdma *rdma,
->> 				    struct svc_rdma_recv_ctxt *rctxt,
->> 				    int status);
->> extern int svc_rdma_sendto(struct svc_rqst *);
->> -extern int svc_rdma_read_payload(struct svc_rqst *rqstp, unsigned =
-int offset,
->> -				 unsigned int length);
->> +extern int svc_rdma_result_payload(struct svc_rqst *rqstp, unsigned =
-int offset,
->> +				   unsigned int length);
->>=20
->> /* svc_rdma_transport.c */
->> extern struct svc_xprt_class svc_rdma_class;
->> diff --git a/include/linux/sunrpc/svc_xprt.h =
-b/include/linux/sunrpc/svc_xprt.h
->> index aca35ab5cff2..92455e0d5244 100644
->> --- a/include/linux/sunrpc/svc_xprt.h
->> +++ b/include/linux/sunrpc/svc_xprt.h
->> @@ -21,8 +21,8 @@ struct svc_xprt_ops {
->> 	int		(*xpo_has_wspace)(struct svc_xprt *);
->> 	int		(*xpo_recvfrom)(struct svc_rqst *);
->> 	int		(*xpo_sendto)(struct svc_rqst *);
->> -	int		(*xpo_read_payload)(struct svc_rqst *, unsigned =
-int,
->> -					    unsigned int);
->> +	int		(*xpo_result_payload)(struct svc_rqst *, =
-unsigned int,
->> +					      unsigned int);
->> 	void		(*xpo_release_rqst)(struct svc_rqst *);
->> 	void		(*xpo_detach)(struct svc_xprt *);
->> 	void		(*xpo_free)(struct svc_xprt *);
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index c211b607239e..b41500645c3f 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -1622,7 +1622,7 @@ u32 svc_max_payload(const struct svc_rqst =
-*rqstp)
->> EXPORT_SYMBOL_GPL(svc_max_payload);
->>=20
->> /**
->> - * svc_encode_read_payload - mark a range of bytes as a READ payload
->> + * svc_encode_result_payload - mark a range of bytes as a result =
-payload
->>  * @rqstp: svc_rqst to operate on
->>  * @offset: payload's byte offset in rqstp->rq_res
->>  * @length: size of payload, in bytes
->> @@ -1630,12 +1630,13 @@ EXPORT_SYMBOL_GPL(svc_max_payload);
->>  * Returns zero on success, or a negative errno if a permanent
->>  * error occurred.
->>  */
->> -int svc_encode_read_payload(struct svc_rqst *rqstp, unsigned int =
-offset,
->> -			    unsigned int length)
->> +int svc_encode_result_payload(struct svc_rqst *rqstp, unsigned int =
-offset,
->> +			      unsigned int length)
->> {
->> -	return rqstp->rq_xprt->xpt_ops->xpo_read_payload(rqstp, offset, =
-length);
->> +	return rqstp->rq_xprt->xpt_ops->xpo_result_payload(rqstp, =
-offset,
->> +							   length);
->> }
->> -EXPORT_SYMBOL_GPL(svc_encode_read_payload);
->> +EXPORT_SYMBOL_GPL(svc_encode_result_payload);
->>=20
->> /**
->>  * svc_fill_write_vector - Construct data argument for VFS write call
->> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->> index c2752e2b9ce3..b248f2349437 100644
->> --- a/net/sunrpc/svcsock.c
->> +++ b/net/sunrpc/svcsock.c
->> @@ -181,8 +181,8 @@ static void svc_set_cmsg_data(struct svc_rqst =
-*rqstp, struct cmsghdr *cmh)
->> 	}
->> }
->>=20
->> -static int svc_sock_read_payload(struct svc_rqst *rqstp, unsigned =
-int offset,
->> -				 unsigned int length)
->> +static int svc_sock_result_payload(struct svc_rqst *rqstp, unsigned =
-int offset,
->> +				   unsigned int length)
->> {
->> 	return 0;
->> }
->> @@ -635,7 +635,7 @@ static const struct svc_xprt_ops svc_udp_ops =3D =
-{
->> 	.xpo_create =3D svc_udp_create,
->> 	.xpo_recvfrom =3D svc_udp_recvfrom,
->> 	.xpo_sendto =3D svc_udp_sendto,
->> -	.xpo_read_payload =3D svc_sock_read_payload,
->> +	.xpo_result_payload =3D svc_sock_result_payload,
->> 	.xpo_release_rqst =3D svc_udp_release_rqst,
->> 	.xpo_detach =3D svc_sock_detach,
->> 	.xpo_free =3D svc_sock_free,
->> @@ -1123,7 +1123,7 @@ static const struct svc_xprt_ops svc_tcp_ops =3D =
-{
->> 	.xpo_create =3D svc_tcp_create,
->> 	.xpo_recvfrom =3D svc_tcp_recvfrom,
->> 	.xpo_sendto =3D svc_tcp_sendto,
->> -	.xpo_read_payload =3D svc_sock_read_payload,
->> +	.xpo_result_payload =3D svc_sock_result_payload,
->> 	.xpo_release_rqst =3D svc_tcp_release_rqst,
->> 	.xpo_detach =3D svc_tcp_sock_detach,
->> 	.xpo_free =3D svc_sock_free,
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c =
-b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> index c3d588b149aa..c8411b4f3492 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> @@ -979,19 +979,19 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
->> }
->>=20
->> /**
->> - * svc_rdma_read_payload - special processing for a READ payload
->> + * svc_rdma_result_payload - special processing for a result payload
->>  * @rqstp: svc_rqst to operate on
->>  * @offset: payload's byte offset in @xdr
->>  * @length: size of payload, in bytes
->>  *
->>  * Returns zero on success.
->>  *
->> - * For the moment, just record the xdr_buf location of the READ
->> + * For the moment, just record the xdr_buf location of the result
->>  * payload. svc_rdma_sendto will use that location later when
->>  * we actually send the payload.
->>  */
->> -int svc_rdma_read_payload(struct svc_rqst *rqstp, unsigned int =
-offset,
->> -			  unsigned int length)
->> +int svc_rdma_result_payload(struct svc_rqst *rqstp, unsigned int =
-offset,
->> +			    unsigned int length)
->> {
->> 	struct svc_rdma_recv_ctxt *rctxt =3D rqstp->rq_xprt_ctxt;
->>=20
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c =
-b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> index fb044792b571..afba4e9d5425 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->> @@ -80,7 +80,7 @@ static const struct svc_xprt_ops svc_rdma_ops =3D {
->> 	.xpo_create =3D svc_rdma_create,
->> 	.xpo_recvfrom =3D svc_rdma_recvfrom,
->> 	.xpo_sendto =3D svc_rdma_sendto,
->> -	.xpo_read_payload =3D svc_rdma_read_payload,
->> +	.xpo_result_payload =3D svc_rdma_result_payload,
->> 	.xpo_release_rqst =3D svc_rdma_release_rqst,
->> 	.xpo_detach =3D svc_rdma_detach,
->> 	.xpo_free =3D svc_rdma_free,
->>=20
+Worse, it's possible that the two can get into lockstep, resulting in
+the same behaviour repeated indefinitely, with the above error every
+300 seconds, without ever recovering, and the connection never being
+established. This has been seen in practice, with a large number of NLM
+client tasks, following a server restart.
 
---
-Chuck Lever
+The existing callers of nlm_bind_host & nlm_rebind_host should not need
+to force the rebind, for TCP, so restrict the interval-based rebinding
+to UDP only.
 
+For TCP, we will still rebind when needed, e.g. on timeout, and connection
+error (including closure), since connection-related errors on an existing
+connection, ECONNREFUSED when trying to connect, and rpc_check_timeout(),
+already unconditionally clear XPRT_BOUND.
 
+To avoid having to add the fix, and explanation, to both nlm_bind_host()
+and nlm_rebind_host(), remove the duplicate code from the former, and
+have it call the latter.
+
+Drop the dprintk, which adds no value over a trace.
+
+Signed-off-by: Calum Mackay <calum.mackay@oracle.com>
+---
+ fs/lockd/host.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 0afb6d59bad0..771c289f6df7 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -439,12 +439,7 @@ nlm_bind_host(struct nlm_host *host)
+ 	 * RPC rebind is required
+ 	 */
+ 	if ((clnt = host->h_rpcclnt) != NULL) {
+-		if (time_after_eq(jiffies, host->h_nextrebind)) {
+-			rpc_force_rebind(clnt);
+-			host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+-			dprintk("lockd: next rebind in %lu jiffies\n",
+-					host->h_nextrebind - jiffies);
+-		}
++		nlm_rebind_host(host);
+ 	} else {
+ 		unsigned long increment = nlmsvc_timeout;
+ 		struct rpc_timeout timeparms = {
+@@ -494,13 +489,20 @@ nlm_bind_host(struct nlm_host *host)
+ 	return clnt;
+ }
+ 
+-/*
+- * Force a portmap lookup of the remote lockd port
++/**
++ * nlm_rebind_host - If needed, force a portmap lookup of the peer's lockd port
++ * @host: NLM host handle for peer
++ *
++ * This is not needed when using a connection-oriented protocol, such as TCP.
++ * The existing autobind mechanism is sufficient to force a rebind when
++ * required, e.g. on connection state transitions.
+  */
+ void
+ nlm_rebind_host(struct nlm_host *host)
+ {
+-	dprintk("lockd: rebind host %s\n", host->h_name);
++	if (host->h_proto != IPPROTO_UDP)
++		return;
++
+ 	if (host->h_rpcclnt && time_after_eq(jiffies, host->h_nextrebind)) {
+ 		rpc_force_rebind(host->h_rpcclnt);
+ 		host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+-- 
+2.18.4
 
