@@ -1,93 +1,105 @@
-Return-Path: <SRS0=eJj9=EE=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=TAi6=EF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F05B8C4742C
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 21:29:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2811EC00A89
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Oct 2020 22:07:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A589D20731
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Oct 2020 21:29:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B97542087E
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Oct 2020 22:07:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1604095662;
+	bh=ScIdmztlvC5lGaF8OhAEJdAQTYeDvTVf/YgYH6yqrBA=;
+	h=From:To:Subject:Date:List-ID:From;
+	b=gCMcQQ32mjL4S5sxhJAcZDXFRrYAFAKzJx4qlfONCdJtYD9/vtsxhBxD4jjX7dAMj
+	 ApxzAkYvwOXlGIKCiEDacfWHnOE8G9Cslg5JnXtkhJOcgVnD7A86limRqb1TLhVAmu
+	 gCwdDusLsFH9SnVFjUf50amjiXm9rtKnhVuDccJ4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726190AbgJ2V3C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 29 Oct 2020 17:29:02 -0400
-Received: from mail.itouring.de ([85.10.202.141]:41520 "EHLO mail.itouring.de"
+        id S1725797AbgJ3WHm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Oct 2020 18:07:42 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58808 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725961AbgJ2V3B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 29 Oct 2020 17:29:01 -0400
-X-Greylist: delayed 601 seconds by postgrey-1.27 at vger.kernel.org; Thu, 29 Oct 2020 17:29:01 EDT
-Received: from tux.applied-asynchrony.com (p5b07e9c2.dip0.t-ipconnect.de [91.7.233.194])
-        by mail.itouring.de (Postfix) with ESMTPSA id AE355CC304D;
-        Thu, 29 Oct 2020 22:18:58 +0100 (CET)
-Received: from [192.168.100.223] (ragnarok.applied-asynchrony.com [192.168.100.223])
-        by tux.applied-asynchrony.com (Postfix) with ESMTP id 6D489F015C5;
-        Thu, 29 Oct 2020 22:18:58 +0100 (CET)
+        id S1725792AbgJ3WHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Oct 2020 18:07:42 -0400
+Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 57AEC2087E
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2020 22:07:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1604095661;
+        bh=ScIdmztlvC5lGaF8OhAEJdAQTYeDvTVf/YgYH6yqrBA=;
+        h=From:To:Subject:Date:From;
+        b=qwabaBBd/yaNsyAlGDinsHd8wDxbh4Q/tKgPToVHuOK0kjcOXLZKh680pL9XFeF4G
+         Pmgj87cBm+w4xbczOGSWdbT4kVljbtmbZHzsKDFn5B41fdHRTIjpxWgP+BymUVLqEQ
+         4D+kIXKuXp6GZCs/ld8yWZuDxaUZ79u1F7/qsKok=
+From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-From:   =?UTF-8?Q?Holger_Hoffst=c3=a4tte?= <holger@applied-asynchrony.com>
-Subject: [PATCH] nfs-utils: remove leftover debugging messages
-Organization: Applied Asynchrony, Inc.
-Cc:     Steve Dickson <steved@redhat.com>
-Message-ID: <eff057db-38f8-6c5f-7378-8ce1343f84fa@applied-asynchrony.com>
-Date:   Thu, 29 Oct 2020 22:18:58 +0100
+Subject: [PATCH 1/2] NFS: Remove unnecessary inode locking in nfs_llseek_dir()
+Date:   Fri, 30 Oct 2020 17:57:29 -0400
+Message-Id: <20201030215730.85147-1-trondmy@kernel.org>
+X-Mailer: git-send-email 2.28.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-After updating to nfs-utils-2.5.2 I noticed extra output on the console
-when exporting mounts. Apparently commit 482e72ba04 forgot to remove some
-debugging messages and accidentally committed them.
+Remove the contentious inode lock, and instead provide thread safety
+using the file->f_lock spinlock.
 
-Signed-off-by: Holger Hoffstätte <holger@applied-asynchrony.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
-  support/misc/nfsd_path.c  | 2 +-
-  utils/exportfs/exportfs.c | 3 ---
-  2 files changed, 1 insertion(+), 4 deletions(-)
+ fs/nfs/dir.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/support/misc/nfsd_path.c b/support/misc/nfsd_path.c
-index 8efbfcd3..65e53c13 100644
---- a/support/misc/nfsd_path.c
-+++ b/support/misc/nfsd_path.c
-@@ -110,7 +110,7 @@ nfsd_setup_workqueue(void)
-  
-  	if (!rootdir)
-  		return;
--printf("rootdir %s\n", rootdir);
-+
-  	nfsd_wq = xthread_workqueue_alloc();
-  	if (!nfsd_wq)
-  		return;
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 9d5e575b..cde5e517 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -176,10 +176,8 @@ main(int argc, char **argv)
-  		xlog(L_ERROR, "-r and -u are incompatible");
-  		return 1;
-  	}
--printf("point 1\n");
-  	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
-  		return 1;
--printf("point 2\n");
-  	if (optind == argc && ! f_all) {
-  		if (force_flush) {
-  			cache_flush(1);
-@@ -193,7 +191,6 @@ printf("point 2\n");
-  			return 0;
-  		}
-  	}
--printf("point 3\n");
-  
-  	/*
-  	 * Serialize things as best we can
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index cb52db9a0cfb..e56b1bd99537 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -955,7 +955,6 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 
+ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+ {
+-	struct inode *inode = file_inode(filp);
+ 	struct nfs_open_dir_context *dir_ctx = filp->private_data;
+ 
+ 	dfprintk(FILE, "NFS: llseek dir(%pD2, %lld, %d)\n",
+@@ -967,15 +966,15 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+ 	case SEEK_SET:
+ 		if (offset < 0)
+ 			return -EINVAL;
+-		inode_lock(inode);
++		spin_lock(&filp->f_lock);
+ 		break;
+ 	case SEEK_CUR:
+ 		if (offset == 0)
+ 			return filp->f_pos;
+-		inode_lock(inode);
++		spin_lock(&filp->f_lock);
+ 		offset += filp->f_pos;
+ 		if (offset < 0) {
+-			inode_unlock(inode);
++			spin_unlock(&filp->f_lock);
+ 			return -EINVAL;
+ 		}
+ 	}
+@@ -987,7 +986,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+ 			dir_ctx->dir_cookie = 0;
+ 		dir_ctx->duped = 0;
+ 	}
+-	inode_unlock(inode);
++	spin_unlock(&filp->f_lock);
+ 	return offset;
+ }
+ 
 -- 
-2.29.1
+2.28.0
 
