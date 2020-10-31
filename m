@@ -1,86 +1,113 @@
-Return-Path: <SRS0=TAi6=EF=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=CAZ2=EG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCB9EC388F9
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Oct 2020 22:07:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BBBDC388F7
+	for <linux-nfs@archiver.kernel.org>; Sat, 31 Oct 2020 16:16:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5A1FD2087E
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Oct 2020 22:07:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1604095663;
-	bh=MOBmL2uL4txSencAZUUeyuOlu/ZATH07W1xk5scpDbw=;
-	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=ofwrT1FvT/UkVnWupJsOWHb0OJwKMsuxdaZS3e/VuG6jVNiddGD5c3RB5RvmdAepv
-	 oWclQneq4vAfALY3sWvfnCDEflYBt3xllgM7HcKzzC7eFWjsLmwoTsrEFGsehhyt1B
-	 guh/A6wthhEBSGhxTPhVVatOD/9tKGkovZqTGoH0=
+	by mail.kernel.org (Postfix) with ESMTP id F3E4322255
+	for <linux-nfs@archiver.kernel.org>; Sat, 31 Oct 2020 16:16:47 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="VJCLZgQ7"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725914AbgJ3WHm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 30 Oct 2020 18:07:42 -0400
-Received: from mail.kernel.org ([198.145.29.99]:58810 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725792AbgJ3WHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Oct 2020 18:07:42 -0400
-Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1726647AbgJaQQr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 31 Oct 2020 12:16:47 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:46366 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726586AbgJaQQq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Oct 2020 12:16:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1604161004;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=EdDvgkZ0S9DwIkCEFa3vBakJ7UPa2euYsw+ts9gdC9k=;
+        b=VJCLZgQ7LHKlajY3NZasMpZ+1yiyuqvPySDV1pk70KWIe7Scfvsg9CulD0/ZCpFI+PICx1
+        nr5rbpA9IWYaO8JEDDUOoGl1312nCEMU4yghSageitdj+WALf5s5tV8A7aH/SBfIF2MQNM
+        fueNeqrO5zylaWjR/3ph44k/r99Ujww=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-568-Rx5xM9--NFe-d3fyETaupg-1; Sat, 31 Oct 2020 12:16:40 -0400
+X-MC-Unique: Rx5xM9--NFe-d3fyETaupg-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id D2B8322227
-        for <linux-nfs@vger.kernel.org>; Fri, 30 Oct 2020 22:07:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1604095662;
-        bh=MOBmL2uL4txSencAZUUeyuOlu/ZATH07W1xk5scpDbw=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=SR1kYCq4JgZuWtsceH5oAI/VbgCf4DMaX1P3n4E08iexNHd1Bwl6DUF5lUrMbc3BS
-         sgKPgNYH4KTtMrbdn3O/99MPWSt8ys0C9O0TS7LU/cosQO2NAGrYd2gsMbN5iCGI5g
-         aIXSyfaoL2C4SIIaArvBJ1pS7kz6ENIbJ/ddAlbE=
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFS: Remove unnecessary inode lock in nfs_fsync_dir()
-Date:   Fri, 30 Oct 2020 17:57:30 -0400
-Message-Id: <20201030215730.85147-2-trondmy@kernel.org>
-X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201030215730.85147-1-trondmy@kernel.org>
-References: <20201030215730.85147-1-trondmy@kernel.org>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id AE6708030B9
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Oct 2020 16:16:39 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-113-8.phx2.redhat.com [10.3.113.8])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 6368C5578C;
+        Sat, 31 Oct 2020 16:16:39 +0000 (UTC)
+Subject: Re: [PATCH v1] mountstats: handle KeyError in display_raw_stats
+To:     Rohan Sable <rsable@redhat.com>, linux-nfs@vger.kernel.org
+References: <20201028125911.GA140323@fedora.rsable.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <d640308c-cc4d-ef25-4cac-5754051f82e8@RedHat.com>
+Date:   Sat, 31 Oct 2020 12:16:38 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.3.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20201028125911.GA140323@fedora.rsable.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-nfs_inc_stats() is already thread-safe, and there are no other reasons
-to hold the inode lock here.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/dir.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+On 10/28/20 8:59 AM, Rohan Sable wrote:
+> While printing Nfsv4ops from older /proc/self/mountstats
+> e.g. in 2.6.32-754.el6.x86_64 from RHEL 6.10,
+> it will not have all the Keys present leading to a KeyError
+> like below :
+> 
+> Traceback (most recent call last):
+>   File "nfs-utils/tools/mountstats/mountstats.py", line 1131, in <module>
+>     res = main()
+>   File "nfs-utils/tools/mountstats/mountstats.py", line 1120, in main
+>     return args.func(args)
+>   File "nfs-utils/tools/mountstats/mountstats.py", line 860, in mountstats_command
+>     print_mountstats(stats, args.nfs_only, args.rpc_only, args.raw, args.xprt_only)
+>   File "nfs-utils/tools/mountstats/mountstats.py", line 813, in print_mountstats
+>     stats.display_raw_stats()
+>   File "nfs-utils/tools/mountstats/mountstats.py", line 381, in display_raw_stats
+>     print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+> KeyError: 'FSID_PRESENT'
+> 
+> Signed-off-by: Rohan Sable <rsable@redhat.com>
+I was not able to reproduce this on a RHEL6.10 box but it didn't make either. ;-) 
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e56b1bd99537..4e011adaf967 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -997,13 +997,9 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
- static int nfs_fsync_dir(struct file *filp, loff_t start, loff_t end,
- 			 int datasync)
- {
--	struct inode *inode = file_inode(filp);
--
- 	dfprintk(FILE, "NFS: fsync dir(%pD2) datasync %d\n", filp, datasync);
- 
--	inode_lock(inode);
--	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
--	inode_unlock(inode);
-+	nfs_inc_stats(file_inode(filp), NFSIOS_VFSFSYNC);
- 	return 0;
- }
- 
--- 
-2.28.0
+Committed... 
+
+steved.
+> ---
+>  tools/mountstats/mountstats.py | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
+> 
+> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+> index 25e92a19..23876fc4 100755
+> --- a/tools/mountstats/mountstats.py
+> +++ b/tools/mountstats/mountstats.py
+> @@ -378,7 +378,10 @@ class DeviceData:
+>                  print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+>          elif vers == '4':
+>              for op in Nfsv4ops:
+> -                print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+> +                try:
+> +                    print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+> +                except KeyError:
+> +                    continue
+>          else:
+>              print('\tnot implemented for version %d' % vers)
+>          print()
+> 
 
