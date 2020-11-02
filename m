@@ -2,59 +2,52 @@ Return-Path: <SRS0=KohJ=EI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70A78C4742C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3923CC388F9
 	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1BA1A20786
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DD35120731
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1604341049;
-	bh=/NZbFtpjQ9LNrTj2o/4jqBMF+yFXx0mmLcSITwPNazc=;
+	s=default; t=1604341048;
+	bh=3wr7BivWD8kq0r12G3AOEQsS0qQNPXTmf8wMwj8LqFE=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=qFJuKRsszmTsAsZtK4QeMO8uf9RTHB5ncNrr0upeeo2INKhqxzMK/SY6PcDmP1fc5
-	 C/v+ZhmA/OVxkkKNZTmqm9kMwbpT98dxmwGTnkRfLELdiSkK9WpT6kv39E+bGbqd88
-	 W67jlL2NIdl8WESIZFK7z/jCABBMbeNsPMq/Eh3E=
+	b=ei+Kfc2WjSBvZKKSBViUQQaWGEFpJDqq/jb8fa+iwtiFq1RKqLsmmkRIs2w/KzBnW
+	 ZMWH3ANXRfZp54OX4FYDEEf6xwcipTuyh/sjzZbjnWWXhI+3A0bG9Je9qf9Kugojz/
+	 5f6thrM1SzSoUcCxBSCaKLsA34yEZ1ratWC2Pq1s=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726171AbgKBSR1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726260AbgKBSR1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 2 Nov 2020 13:17:27 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40900 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:40860 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726283AbgKBSR0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 2 Nov 2020 13:17:26 -0500
+        id S1726171AbgKBSRW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 2 Nov 2020 13:17:22 -0500
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 64DB320786
-        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 18:17:25 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9985C22243
+        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 18:17:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1604341045;
-        bh=/NZbFtpjQ9LNrTj2o/4jqBMF+yFXx0mmLcSITwPNazc=;
+        s=default; t=1604341041;
+        bh=3wr7BivWD8kq0r12G3AOEQsS0qQNPXTmf8wMwj8LqFE=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Rc5WLURzTBSYUxbKS4aG8yfE2LJGozi/c7y498No8dl1Vg+xWyFuR74xpYdOVsLjf
-         Y+BInsLwi3swHrwb6tydPivovXQlYRBGhNEpEdxyE/MdyTREQ05+Yi8uea+UvFHEyF
-         nnJ/UIo5ne0EtxYariaA6KLDxOJx6W2UtKyshVn8=
+        b=y0Jp+bWLULLpU5p+z+VBZ8UWp+c3tt3jdFRgykpLVYev5mK5nqmZLBVV+sxV4LNKu
+         +Ht4cT3auxADK1NB63AMA7SFN79Suh82nNvaz++sRVB/YtGgaHW3QO4YxpY2G27QDY
+         upk7vCwQX0cygFo+gBKHL/Oukwp8Y8o5qGb5NnBY=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 10/12] NFS: More readdir cleanups
-Date:   Mon,  2 Nov 2020 13:06:56 -0500
-Message-Id: <20201102180658.6218-11-trondmy@kernel.org>
+Subject: [PATCH 03/12] NFS: Clean up nfs_readdir_page_filler()
+Date:   Mon,  2 Nov 2020 13:06:49 -0500
+Message-Id: <20201102180658.6218-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201102180658.6218-10-trondmy@kernel.org>
+In-Reply-To: <20201102180658.6218-3-trondmy@kernel.org>
 References: <20201102180658.6218-1-trondmy@kernel.org>
  <20201102180658.6218-2-trondmy@kernel.org>
  <20201102180658.6218-3-trondmy@kernel.org>
- <20201102180658.6218-4-trondmy@kernel.org>
- <20201102180658.6218-5-trondmy@kernel.org>
- <20201102180658.6218-6-trondmy@kernel.org>
- <20201102180658.6218-7-trondmy@kernel.org>
- <20201102180658.6218-8-trondmy@kernel.org>
- <20201102180658.6218-9-trondmy@kernel.org>
- <20201102180658.6218-10-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -63,114 +56,96 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Remove the redundant caching of the credential in struct
-nfs_open_dir_context.
-Pass the buffer size as an argument to nfs_readdir_xdr_filler().
+Clean up handling of the case where there are no entries in the readdir
+reply.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c           | 25 +++++++++++--------------
- include/linux/nfs_fs.h |  1 -
- 2 files changed, 11 insertions(+), 15 deletions(-)
+ fs/nfs/dir.c | 39 ++++++++++++++++++---------------------
+ 1 file changed, 18 insertions(+), 21 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 272b856147af..564e737ef93e 100644
+index 604ebe015387..68acbde3f914 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -68,7 +68,7 @@ const struct address_space_operations nfs_dir_aops = {
- 	.freepage = nfs_readdir_clear_array,
- };
+@@ -601,16 +601,12 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 	struct xdr_stream stream;
+ 	struct xdr_buf buf;
+ 	struct page *scratch;
+-	unsigned int count = 0;
+ 	int status;
  
--static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir, const struct cred *cred)
-+static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir)
- {
- 	struct nfs_inode *nfsi = NFS_I(dir);
- 	struct nfs_open_dir_context *ctx;
-@@ -78,7 +78,6 @@ static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir
- 		ctx->attr_gencount = nfsi->attr_gencount;
- 		ctx->dir_cookie = 0;
- 		ctx->dup_cookie = 0;
--		ctx->cred = get_cred(cred);
- 		spin_lock(&dir->i_lock);
- 		if (list_empty(&nfsi->open_files) &&
- 		    (nfsi->cache_validity & NFS_INO_DATA_INVAL_DEFER))
-@@ -96,7 +95,6 @@ static void put_nfs_open_dir_context(struct inode *dir, struct nfs_open_dir_cont
- 	spin_lock(&dir->i_lock);
- 	list_del(&ctx->list);
- 	spin_unlock(&dir->i_lock);
--	put_cred(ctx->cred);
- 	kfree(ctx);
- }
+ 	scratch = alloc_page(GFP_KERNEL);
+ 	if (scratch == NULL)
+ 		return -ENOMEM;
  
-@@ -113,7 +111,7 @@ nfs_opendir(struct inode *inode, struct file *filp)
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
- 
--	ctx = alloc_nfs_open_dir_context(inode, current_cred());
-+	ctx = alloc_nfs_open_dir_context(inode);
- 	if (IS_ERR(ctx)) {
- 		res = PTR_ERR(ctx);
- 		goto out;
-@@ -464,12 +462,12 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- }
- 
- /* Fill a page with xdr information before transferring to the cache page */
--static
--int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
--			struct nfs_entry *entry, struct file *file, struct inode *inode)
-+static int nfs_readdir_xdr_filler(struct nfs_readdir_descriptor *desc,
-+				  u64 cookie, struct page **pages,
-+				  size_t bufsize)
- {
--	struct nfs_open_dir_context *ctx = file->private_data;
--	const struct cred *cred = ctx->cred;
-+	struct file *file = desc->file;
-+	struct inode *inode = file_inode(file);
- 	unsigned long	timestamp, gencount;
- 	int		error;
- 
-@@ -477,8 +475,8 @@ int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
- 	timestamp = jiffies;
- 	gencount = nfs_inc_attr_generation_counter();
- 	desc->dir_verifier = nfs_save_change_attribute(inode);
--	error = NFS_PROTO(inode)->readdir(file_dentry(file), cred, entry->cookie, pages,
--					  NFS_SERVER(inode)->dtsize, desc->plus);
-+	error = NFS_PROTO(inode)->readdir(file_dentry(file), file->f_cred,
-+					  cookie, pages, bufsize, desc->plus);
- 	if (error < 0) {
- 		/* We requested READDIRPLUS, but the server doesn't grok it */
- 		if (error == -ENOTSUPP && desc->plus) {
-@@ -764,7 +762,6 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- {
- 	struct page **pages;
- 	struct nfs_entry entry;
--	struct file	*file = desc->file;
- 	size_t array_size;
- 	size_t dtsize = NFS_SERVER(inode)->dtsize;
- 	int status = -ENOMEM;
-@@ -791,8 +788,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 
- 	do {
- 		unsigned int pglen;
--		status = nfs_readdir_xdr_filler(pages, desc, &entry, file, inode);
+-	if (buflen == 0)
+-		goto out_nopages;
 -
-+		status = nfs_readdir_xdr_filler(desc, entry.cookie,
-+						pages, dtsize);
+ 	xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
+ 	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+ 
+@@ -619,27 +615,27 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 			entry->label->len = NFS4_MAXLABELLEN;
+ 
+ 		status = xdr_decode(desc, entry, &stream);
+-		if (status != 0) {
+-			if (status == -EAGAIN)
+-				status = 0;
++		if (status != 0)
+ 			break;
+-		}
+-
+-		count++;
+ 
+ 		if (desc->plus)
+ 			nfs_prime_dcache(file_dentry(desc->file), entry,
+ 					desc->dir_verifier);
+ 
+ 		status = nfs_readdir_add_to_array(entry, page);
+-		if (status != 0)
+-			break;
+-	} while (!entry->eof);
++	} while (!status && !entry->eof);
+ 
+-out_nopages:
+-	if (count == 0 || (status == -EBADCOOKIE && entry->eof != 0)) {
+-		nfs_readdir_page_set_eof(page);
++	switch (status) {
++	case -EBADCOOKIE:
++		if (entry->eof) {
++			nfs_readdir_page_set_eof(page);
++			status = 0;
++		}
++		break;
++	case -ENOSPC:
++	case -EAGAIN:
+ 		status = 0;
++		break;
+ 	}
+ 
+ 	put_page(scratch);
+@@ -714,14 +710,15 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 
  		if (status < 0)
  			break;
++
+ 		pglen = status;
+-		status = nfs_readdir_page_filler(desc, &entry, pages, page, pglen);
+-		if (status < 0) {
+-			if (status == -ENOSPC)
+-				status = 0;
++		if (pglen == 0) {
++			nfs_readdir_page_set_eof(page);
+ 			break;
+ 		}
+-	} while (!nfs_readdir_array_is_full(array));
++
++		status = nfs_readdir_page_filler(desc, &entry, pages, page, pglen);
++	} while (!status && !nfs_readdir_array_is_full(array));
  
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index a2c6455ea3fa..dd6b463dda80 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -88,7 +88,6 @@ struct nfs_open_context {
- 
- struct nfs_open_dir_context {
- 	struct list_head list;
--	const struct cred *cred;
- 	unsigned long attr_gencount;
- 	__u64 dir_cookie;
- 	__u64 dup_cookie;
+ 	nfs_readdir_free_pages(pages, array_size);
+ out_release_array:
 -- 
 2.28.0
 
