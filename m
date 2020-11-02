@@ -2,101 +2,202 @@ Return-Path: <SRS0=KohJ=EI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 912F3C00A89
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 16:25:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EC5A9C388F2
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 16:27:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4A46D208B6
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 16:25:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A963721556
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 16:27:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rsZz/krF"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ezgFcyI+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726878AbgKBQYy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Nov 2020 11:24:54 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38662 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726766AbgKBQYw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 11:24:52 -0500
-Received: from mail-pg1-x541.google.com (mail-pg1-x541.google.com [IPv6:2607:f8b0:4864:20::541])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F4B7C0617A6;
-        Mon,  2 Nov 2020 08:24:52 -0800 (PST)
-Received: by mail-pg1-x541.google.com with SMTP id r186so11235206pgr.0;
-        Mon, 02 Nov 2020 08:24:52 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=2ZBqQ4wCTpFo7JQ/+ZUdkertgFqpSFCteIYsSJlfASc=;
-        b=rsZz/krFx0jK9y6bXMs3iWIGx8wex+Sn7NY5d283V9Rf2EYiEjrs0pou22IPGHWbR1
-         618qd59AiNQh2F3ZocneQqEhu9Ru+zhmvig3PJM3v6YfrvMy6coywqr3yTN1S6tJz+B5
-         1sqq7vXRvE1U6nDZmVgCbEYPB8wF3b/YjlwPcZxLKCzt+QnX1sO6v5xMOf/txGt4CLVC
-         AXEPwTVS6eeNzoZs+ZCBz16h+y4QgG4ms8P/U/8paQ82bSbwAd+PxPdy/ZWGuZPiG3sz
-         27TWa644SJJx6AgU1bUNsh+n9inh/OBBCNClEVIXvE/VYZN82trXVURngWJZIOdHbG4h
-         0+6Q==
+        id S1727051AbgKBQ1Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Nov 2020 11:27:25 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:49139 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726633AbgKBQ1Z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 11:27:25 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1604334443;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=7958s1TJSviy3Ay04c6a1q5B7/0e/Cp6TphJsNH6Elk=;
+        b=ezgFcyI+s9d+ABpnglt2cU42NainYkTy63TArmtAYQeGcXnZHsZMe+qI3XLrT9cy1nMc1U
+        iebPBFKYyQW0bo0tmjNcuTFLGXrz3kktJjFSOJf2cQ90kMGHIgPyYPbEI+qU34U1lxC8a3
+        lLv/Biq/13/3xEv9DFKyf2kbxZ7efOI=
+Received: from mail-ej1-f72.google.com (mail-ej1-f72.google.com
+ [209.85.218.72]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-431-NP-hUdksMheMkRBw_zM0Fw-1; Mon, 02 Nov 2020 11:27:21 -0500
+X-MC-Unique: NP-hUdksMheMkRBw_zM0Fw-1
+Received: by mail-ej1-f72.google.com with SMTP id z9so4447670ejg.10
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2020 08:27:21 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=2ZBqQ4wCTpFo7JQ/+ZUdkertgFqpSFCteIYsSJlfASc=;
-        b=qRSMy+GfKFcVL5kKsH/uUrSOW4fOHMbqWKRcCRhn11dKTY5XROh1+nQefZFOc/PyfJ
-         Sr18ucfd7jgAwcsxEmUZaxgOrtDjNCXgJub3s7EpobIrieK2MgAh0TwiSTt5NLs2T8w/
-         8t6SoStGVDlpbxcu4uad82cAx7VfL0W7+uK4yopC9drKP8RBCEHWI1skUCRSw8whY0VR
-         U/KHBGHEGHRxhFgD6RJOKNAoAmCXS1D+mhOXVkHBwDU+fJwzFHdvmcUcrmrnh/AtCGy/
-         snTcdLFkdM4zbavT9IPMSMcxN2KGOczMuP2yrtitOXtAZ+nXvqOqpmUhvAXOWEnY+VoT
-         msXw==
-X-Gm-Message-State: AOAM531bFF2vKGL2fQupo1abuLxPlXLvkQBrvSxaO+MFHcpI7GOz7/WG
-        rA0wmbnFnvEtE/dWYcM+zrQ=
-X-Google-Smtp-Source: ABdhPJw3OFfZGzCC6bbK6rTbkBKAFDn39btr/v3RYXaunJQd/g8dMiQizc5Erh3vgL0ueVT4cZJHQA==
-X-Received: by 2002:a17:90b:17c7:: with SMTP id me7mr18575577pjb.127.1604334292212;
-        Mon, 02 Nov 2020 08:24:52 -0800 (PST)
-Received: from opensuse.lan (173.28.92.34.bc.googleusercontent.com. [34.92.28.173])
-        by smtp.googlemail.com with ESMTPSA id b29sm8379575pff.194.2020.11.02.08.24.50
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2020 08:24:51 -0800 (PST)
-From:   Wenle Chen <solomonchenclever@gmail.com>
-X-Google-Original-From: Wenle Chen <chenwenle@huawei.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        chenwenle@huawei.com, solachenclever@hotmail.com,
-        nixiaoming@huawei.com, solachenclever@gmail.com
-Subject: [PATCH 1/2] NFS: Reduce redundant comparison
-Date:   Tue,  3 Nov 2020 00:24:37 +0800
-Message-Id: <20201102162438.14034-2-chenwenle@huawei.com>
-X-Mailer: git-send-email 2.29.1
-In-Reply-To: <20201102162438.14034-1-chenwenle@huawei.com>
-References: <20201102162438.14034-1-chenwenle@huawei.com>
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=7958s1TJSviy3Ay04c6a1q5B7/0e/Cp6TphJsNH6Elk=;
+        b=AWlrbLoNNH1yjjwaa5oUnpoJ7XlM2SIOz84WdjhnBmy+ATQzpTuIK4SftyMsS5gO+W
+         LLMpBXonoVR9/0583azJ+2FtWMqf2Cx7nS5wzAGfM6rjzCSSCxI26PoQ1Jya86IFSCdR
+         o2kUD29nhG0P0NSE+P0+K/ZuEiDApfCHvYtewIlNYpFRb52bYsQNolF+FDa3ZPiY5v1w
+         AvfXmCwdld+4Ty3JVOpE2S2eU1HnjHDNSisIIO40qlke64VCvZbRxjMidpTZnIW1/oVy
+         WhpheXuYe1x4hLgcFbnk4CmRaSwdwaDaqmBfSseWYUOgLucjT2/5Hl4LfPCJZRd62XvM
+         ZFlw==
+X-Gm-Message-State: AOAM533aM4jzuNFedOzM9M0+QFXwrxVWZ1AI6RCIq61kZthECiatxyp/
+        qWK+u36ciGC4TK1rKXEvctmeggGLEYJKxCbyGN5lPp7kbWW/PH++GHfnyvq1ntYN2exN6mrAi4E
+        xJc3TppfUJ2P1iYhobN4WFSz6cQJ3hEBAm+SS
+X-Received: by 2002:a50:e705:: with SMTP id a5mr17508735edn.29.1604334440274;
+        Mon, 02 Nov 2020 08:27:20 -0800 (PST)
+X-Google-Smtp-Source: ABdhPJwAgollr1vcBirNc6UAwfMMhtoJ2Y8zeCAJ9S1+3ntlJJajdHY5Y9lQ79LqdoPN3tFUEBJy2L8oNsJ+m/h0wTk=
+X-Received: by 2002:a50:e705:: with SMTP id a5mr17508714edn.29.1604334440004;
+ Mon, 02 Nov 2020 08:27:20 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <1604325011-29427-1-git-send-email-dwysocha@redhat.com>
+ <1604325011-29427-10-git-send-email-dwysocha@redhat.com> <2af057425352e05315b53c5b9bbd7fd277175a13.camel@hammerspace.com>
+In-Reply-To: <2af057425352e05315b53c5b9bbd7fd277175a13.camel@hammerspace.com>
+From:   David Wysochanski <dwysocha@redhat.com>
+Date:   Mon, 2 Nov 2020 11:26:43 -0500
+Message-ID: <CALF+zOmK1RuwCZDYoSF=fuB-F=HxC+n4vNUFtxgW_Qo58Mk2_A@mail.gmail.com>
+Subject: Re: [PATCH 09/11] NFS: Improve performance of listing directories
+ being modified
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-  The err wouldn't be change after sleep. There is no need
-to compare err and -NFS4ERR_DELAY
+On Mon, Nov 2, 2020 at 11:22 AM Trond Myklebust <trondmy@hammerspace.com> wrote:
+>
+> On Mon, 2020-11-02 at 08:50 -0500, Dave Wysochanski wrote:
+> > A process can hang forever to 'ls -l' a directory while the directory
+> > is being modified such as another NFS client adding files to the
+> > directory.  The problem is seen specifically with larger directories
+> > (I tested with 1 million) and/or slower NFS server responses to
+> > READDIR.  If a combination of the NFS directory size, the NFS server
+> > responses to READDIR is such that the 'ls' process gets partially
+> > through the listing before the attribute cache expires (time
+> > exceeds acdirmax), we drop the pagecache and have to re-fill it,
+> > and as a result, the process may never complete.  One could argue
+> > for larger directories the acdirmin/acdirmax should be increased,
+> > but it's not always possible to tune this effectively.
+> >
+> > The root cause of this problem is due to how the NFS readdir cache
+> > currently works.  The main search function,
+> > readdir_search_pagecache(),
+> > always starts searching at page_index and cookie == 0, and for any
+> > page not in the cache, fills in the page with entries obtained in
+> > a READDIR NFS call.  If a page already exists, we proceed to
+> > nfs_readdir_search_for_cookie(), which searches for the cookie
+> > (pos) of the readdir call.  The search is O(n), where n is the
+> > directory size before the cookie in question is found, and every
+> > entry to nfs_readdir() pays this penalty, irrespective of the
+> > current directory position (dir_context.pos).  The search is
+> > expensive due to the opaque nature of readdir cookies, and the fact
+> > that no mapping (hash) exists from cookies to pages.  In the case
+> > of a directory being modified, the above behavior can become an
+> > excessive penalty, since the same process is forced to fill pages it
+> > may be no longer interested in (the entries were passed in a previous
+> > nfs_readdir call), and this can essentially lead no forward progress.
+> >
+> > To fix this problem, at the end of nfs_readdir(), save the page_index
+> > corresponding to the directory position (cookie) inside the process's
+> > nfs_open_dir_context.  Then at the next entry of nfs_readdir(), use
+> > the saved page_index as the starting search point rather than
+> > starting
+> > at page_index == 0.  Not only does this fix the problem of listing
+> > a directory being modified, it also significantly improves
+> > performance
+> > in the unmodified case since no extra search penalty is paid at each
+> > entry to nfs_readdir().
+> >
+> > In the case of lseek, since there is no hash or other mapping from a
+> > cookie value to the page->index, just reset
+> > nfs_open_dir_context.page_index
+> > to 0, which will reset the search to the old behavior.
+> >
+> > Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+> > ---
+> >  fs/nfs/dir.c           | 8 +++++++-
+> >  include/linux/nfs_fs.h | 1 +
+> >  2 files changed, 8 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> > index 52e06c8fc7cd..b266f505b521 100644
+> > --- a/fs/nfs/dir.c
+> > +++ b/fs/nfs/dir.c
+> > @@ -78,6 +78,7 @@ static struct nfs_open_dir_context
+> > *alloc_nfs_open_dir_context(struct inode *dir
+> >                 ctx->attr_gencount = nfsi->attr_gencount;
+> >                 ctx->dir_cookie = 0;
+> >                 ctx->dup_cookie = 0;
+> > +               ctx->page_index = 0;
+> >                 ctx->cred = get_cred(cred);
+> >                 spin_lock(&dir->i_lock);
+> >                 if (list_empty(&nfsi->open_files) &&
+> > @@ -763,7 +764,7 @@ int
+> > find_and_lock_cache_page(nfs_readdir_descriptor_t *desc)
+> >         return res;
+> >  }
+> >
+> > -/* Search for desc->dir_cookie from the beginning of the page cache
+> > */
+> > +/* Search for desc->dir_cookie starting at desc->page_index */
+> >  static inline
+> >  int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
+> >  {
+> > @@ -885,6 +886,8 @@ static int nfs_readdir(struct file *file, struct
+> > dir_context *ctx)
+> >                 .ctx = ctx,
+> >                 .dir_cookie = &dir_ctx->dir_cookie,
+> >                 .plus = nfs_use_readdirplus(inode, ctx),
+> > +               .page_index = dir_ctx->page_index,
+> > +               .last_cookie = nfs_readdir_use_cookie(file) ? ctx-
+> > >pos : 0,
+> >         },
+> >                         *desc = &my_desc;
+> >         int res = 0;
+> > @@ -938,6 +941,7 @@ static int nfs_readdir(struct file *file, struct
+> > dir_context *ctx)
+> >  out:
+> >         if (res > 0)
+> >                 res = 0;
+> > +       dir_ctx->page_index = desc->page_index;
+> >         trace_nfs_readdir_exit(inode, ctx->pos, dir_ctx->dir_cookie,
+> >                                NFS_SERVER(inode)->dtsize,
+> > my_desc.plus, res);
+> >         return res;
+> > @@ -975,6 +979,8 @@ static loff_t nfs_llseek_dir(struct file *filp,
+> > loff_t offset, int whence)
+> >                 else
+> >                         dir_ctx->dir_cookie = 0;
+> >                 dir_ctx->duped = 0;
+> > +               /* Force readdir_search_pagecache to start over */
+> > +               dir_ctx->page_index = 0;
+> >         }
+> >         inode_unlock(inode);
+> >         return offset;
+> > diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> > index a2c6455ea3fa..0e55c0154ccd 100644
+> > --- a/include/linux/nfs_fs.h
+> > +++ b/include/linux/nfs_fs.h
+> > @@ -93,6 +93,7 @@ struct nfs_open_dir_context {
+> >         __u64 dir_cookie;
+> >         __u64 dup_cookie;
+> >         signed char duped;
+> > +       unsigned long   page_index;
+> >  };
+> >
+> >  /*
+>
+> NACK. It makes no sense to store the page index as a cursor.
+>
 
-Signed-off-by: Wenle Chen <chenwenle@huawei.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9e0ca9b2b210..f6b5dc792b33 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7399,7 +7399,7 @@ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state,
- 		if (err != -NFS4ERR_DELAY)
- 			break;
- 		ssleep(1);
--	} while (err == -NFS4ERR_DELAY);
-+	} while (1);
- 	return nfs4_handle_delegation_recall_error(server, state, stateid, fl, err);
- }
- 
--- 
-2.29.1
+A similar thing was done recently with:
+227823d2074d nfs: optimise readdir cache page invalidation
 
