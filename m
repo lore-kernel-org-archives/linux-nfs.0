@@ -7,47 +7,47 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 628ACC4742C
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E5B4C388F2
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 125EC2231B
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 181832231B
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="IOUogRT4"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dgp36B/j"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725968AbgKBNvf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Nov 2020 08:51:35 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:38642 "EHLO
+        id S1725911AbgKBNve (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Nov 2020 08:51:34 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:23658 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725933AbgKBNuT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 08:50:19 -0500
+        by vger.kernel.org with ESMTP id S1725968AbgKBNuU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 08:50:20 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1604325017;
+        s=mimecast20190719; t=1604325019;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=IflCTAsCltnUeNlhT1ftLYsSS43K+h1sSKXdsRM3zSA=;
-        b=IOUogRT4bmLyIYCqBtFrTznLhcNttAm3Rx8T17FLr0w5kldhlikW0n9KVuJu46T5oqVKFz
-        2j8hJrrugUP4KeVd/C1B2cEOthf2G3QMDo68Dba0OAHzWbPtbcKwtaUxYqg19t5YfdpxkZ
-        zM1x5ySyjuYAQELKKzTLtmDvmUfyA8A=
+        bh=4Cx6K3ggHUBx5scQPf00PZiwB8K7VLCXD77JJTECjB0=;
+        b=dgp36B/jWz0Qd32quPUcqO7bHxEnUSsOS7vEZ9hJh+s7K7N+0towqxxJcI9dj0vW7pmpNw
+        SvguLO1nZD1HCMpxRbj8S2okIDbI+r0s5So0V5bubdSzZJ39AfUApbHQPTZHP37ZCfr0d5
+        ioaX1eemXBGT9cqDFSLNZemytavx+Bs=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-265-pYHksQS-Nj6ZCIx-up-inQ-1; Mon, 02 Nov 2020 08:50:16 -0500
-X-MC-Unique: pYHksQS-Nj6ZCIx-up-inQ-1
+ us-mta-309-LV8o6bEGOj-WUJ0SGxxqMw-1; Mon, 02 Nov 2020 08:50:17 -0500
+X-MC-Unique: LV8o6bEGOj-WUJ0SGxxqMw-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6C23557097;
-        Mon,  2 Nov 2020 13:50:15 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 674F8A42052;
+        Mon,  2 Nov 2020 13:50:16 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-113-255.rdu2.redhat.com [10.10.113.255])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 128BC5D9DD;
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 0E34C5D9DD;
         Mon,  2 Nov 2020 13:50:15 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 03/11] NFS: Move nfs_readdir_descriptor_t into internal header
-Date:   Mon,  2 Nov 2020 08:50:03 -0500
-Message-Id: <1604325011-29427-4-git-send-email-dwysocha@redhat.com>
+Subject: [PATCH 05/11] NFS: Add tracepoints for opendir, closedir, fsync_dir and llseek_dir
+Date:   Mon,  2 Nov 2020 08:50:05 -0500
+Message-Id: <1604325011-29427-6-git-send-email-dwysocha@redhat.com>
 In-Reply-To: <1604325011-29427-1-git-send-email-dwysocha@redhat.com>
 References: <1604325011-29427-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
@@ -55,89 +55,148 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In preparation for readdir tracing involving nfs_readdir_descriptor_t
-move the definition into the "internal.h" header file, and ensure
-internal.h is included before nfstrace.h to avoid build problems.
+Add a few more directory operation tracepoints and remove a few
+more dfprintks.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/dir.c      | 18 ------------------
- fs/nfs/internal.h | 18 ++++++++++++++++++
- fs/nfs/nfs3xdr.c  |  2 +-
- 3 files changed, 19 insertions(+), 19 deletions(-)
+ fs/nfs/dir.c      | 10 +++++---
+ fs/nfs/nfstrace.h | 73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 79 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 116493e66922..145393188f6a 100644
+index 227cddc12983..e4cd9789ebb5 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -144,24 +144,6 @@ struct nfs_cache_array {
- 	struct nfs_cache_array_entry array[];
- };
+@@ -109,7 +109,7 @@ static void put_nfs_open_dir_context(struct inode *dir, struct nfs_open_dir_cont
+ 	int res = 0;
+ 	struct nfs_open_dir_context *ctx;
  
--typedef struct {
--	struct file	*file;
--	struct page	*page;
--	struct dir_context *ctx;
--	unsigned long	page_index;
--	u64		*dir_cookie;
--	u64		last_cookie;
--	loff_t		current_index;
--	loff_t		prev_index;
--
--	unsigned long	dir_verifier;
--	unsigned long	timestamp;
--	unsigned long	gencount;
--	unsigned int	cache_entry_index;
--	bool plus;
--	bool eof;
--} nfs_readdir_descriptor_t;
--
- static
- void nfs_readdir_init_array(struct page *page)
+-	dfprintk(FILE, "NFS: open dir(%pD2)\n", filp);
++	trace_nfs_opendir_enter(file_inode(filp), file_dentry(filp));
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
+ 
+@@ -120,13 +120,16 @@ static void put_nfs_open_dir_context(struct inode *dir, struct nfs_open_dir_cont
+ 	}
+ 	filp->private_data = ctx;
+ out:
++	trace_nfs_opendir_exit(file_inode(filp), file_dentry(filp), res);
+ 	return res;
+ }
+ 
+ static int
+ nfs_closedir(struct inode *inode, struct file *filp)
  {
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6673a77884d9..68ade987370d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -62,6 +62,24 @@ static inline bool nfs_lookup_is_soft_revalidate(const struct dentry *dentry)
-  */
- #define NFS_MAX_READDIR_PAGES 8
++	trace_nfs_closedir_enter(file_inode(filp), file_dentry(filp));
+ 	put_nfs_open_dir_context(file_inode(filp), filp->private_data);
++	trace_nfs_closedir_exit(file_inode(filp), file_dentry(filp), 0);
+ 	return 0;
+ }
  
-+typedef struct {
-+	struct file	*file;
-+	struct page	*page;
-+	struct dir_context *ctx;
-+	unsigned long	page_index;
-+	u64		*dir_cookie;
-+	u64		last_cookie;
-+	loff_t		current_index;
-+	loff_t		prev_index;
+@@ -943,8 +946,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+ 	struct inode *inode = file_inode(filp);
+ 	struct nfs_open_dir_context *dir_ctx = filp->private_data;
+ 
+-	dfprintk(FILE, "NFS: llseek dir(%pD2, %lld, %d)\n",
+-			filp, offset, whence);
++	trace_nfs_llseek_dir_enter(inode, offset, whence);
+ 
+ 	switch (whence) {
+ 	default:
+@@ -985,7 +987,7 @@ static int nfs_fsync_dir(struct file *filp, loff_t start, loff_t end,
+ {
+ 	struct inode *inode = file_inode(filp);
+ 
+-	dfprintk(FILE, "NFS: fsync dir(%pD2) datasync %d\n", filp, datasync);
++	trace_nfs_fsync_dir_enter(inode, start, end, datasync);
+ 
+ 	inode_lock(inode);
+ 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index e6a946b83330..0ed330f323bb 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -667,6 +667,79 @@
+ DEFINE_NFS_DIRECTORY_EVENT_DONE(nfs_unlink_exit);
+ DEFINE_NFS_DIRECTORY_EVENT(nfs_symlink_enter);
+ DEFINE_NFS_DIRECTORY_EVENT_DONE(nfs_symlink_exit);
++DEFINE_NFS_DIRECTORY_EVENT(nfs_opendir_enter);
++DEFINE_NFS_DIRECTORY_EVENT_DONE(nfs_opendir_exit);
++DEFINE_NFS_DIRECTORY_EVENT(nfs_closedir_enter);
++DEFINE_NFS_DIRECTORY_EVENT_DONE(nfs_closedir_exit);
 +
-+	unsigned long	dir_verifier;
-+	unsigned long	timestamp;
-+	unsigned long	gencount;
-+	unsigned int	cache_entry_index;
-+	bool plus;
-+	bool eof;
-+} nfs_readdir_descriptor_t;
++TRACE_EVENT(nfs_llseek_dir_enter,
++		TP_PROTO(
++			const struct inode *inode,
++			u64 offset,
++			int whence
++		),
 +
- struct nfs_client_initdata {
- 	unsigned long init_flags;
- 	const char *hostname;			/* Hostname of the server */
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 69971f6c840d..972759325de0 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -21,8 +21,8 @@
- #include <linux/nfs3.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfsacl.h>
--#include "nfstrace.h"
- #include "internal.h"
-+#include "nfstrace.h"
++		TP_ARGS(inode, offset, whence),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(u64, offset)
++			__field(unsigned long, whence)
++		),
++
++		TP_fast_assign(
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->offset = offset;
++			__entry->whence = whence;
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu handle=0x%08x offset=0x%08llx whence=%lu",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle, __entry->offset, __entry->whence
++		)
++);
++
++TRACE_EVENT(nfs_fsync_dir_enter,
++		TP_PROTO(
++			const struct inode *inode,
++			u64 start,
++			u64 end,
++			int datasync
++		),
++
++		TP_ARGS(inode, start, end, datasync),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(u64, start)
++			__field(u64, end)
++			__field(unsigned long, datasync)
++		),
++
++		TP_fast_assign(
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->start = start;
++			__entry->end = end;
++			__entry->datasync = datasync;
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu handle=0x%08x start=0x%08llx end=0x%08llx datasync=%lu",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle, __entry->start, __entry->end, __entry->datasync
++		)
++);
  
- #define NFSDBG_FACILITY		NFSDBG_XDR
- 
+ TRACE_EVENT(nfs_readdir_enter,
+ 		TP_PROTO(
 -- 
 1.8.3.1
 
