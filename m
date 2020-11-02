@@ -2,47 +2,51 @@ Return-Path: <SRS0=KohJ=EI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C61C7C00A89
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AD40DC00A89
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7962D22226
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5F84F20731
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1604341041;
-	bh=fsr9Yq0aHB/8I0Sy6bV3PWBbhDZuWG8/RtIDy++KQaM=;
-	h=From:To:Subject:Date:List-ID:From;
-	b=x/ghpMJsUSFe78ae0wkB4g2xjJTZZo71AqNGu6VO0FgF7b/9nZ8CK49k2DJZXm1RF
-	 qi8mFwwLcN7uJut7T/C6IPqGK2xeX917ug0uW1LITeZ0AMSGzasOFakLH31goGqaYP
-	 5IjPJdW22ZravJ3sDzKHKQ4+3rnKU1h4V79k684I=
+	s=default; t=1604341044;
+	bh=qPfAPw7196hQ8nsK5eADV/nGuxh7pKO4LF0CbGIaxT8=;
+	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=Ct348+/6I+MCfH491fAEMw8XuLw7/rmJavlJv9g0oXFL9go45ofFTwk12Vk5QtuzA
+	 C8ni2u3Be03mHBFIlbnorxWzTHO8XbZfWHuCXeJeYDOpCq+Fb8mjXvFMTocR0BEQtB
+	 yVfFufSPjS72bOG53lhMUsnea2Tw+RKX40+bbayw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725836AbgKBSRU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Nov 2020 13:17:20 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40842 "EHLO mail.kernel.org"
+        id S1726255AbgKBSRW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Nov 2020 13:17:22 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40854 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726076AbgKBSRU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 2 Nov 2020 13:17:20 -0500
+        id S1726114AbgKBSRW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 2 Nov 2020 13:17:22 -0500
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 10A7120731
-        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 18:17:19 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1EBA520731
+        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 18:17:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1604341040;
-        bh=fsr9Yq0aHB/8I0Sy6bV3PWBbhDZuWG8/RtIDy++KQaM=;
-        h=From:To:Subject:Date:From;
-        b=wmJUPEBBt5NtauJxXmowaGnyylN8WqnUUAoLBg4VqEnyrOITnuIPCPaLk+IjNZ8HA
-         EpKWSfHblwAJ0msfmgf0NB4f961UK2nEG/BOaeR3+N/x6bBUET1fgUgp33thoVw3Cf
-         MAx4VF4eKhwiFUyAIO4EsZJtHzRyHmIupW3ILCyQ=
+        s=default; t=1604341041;
+        bh=qPfAPw7196hQ8nsK5eADV/nGuxh7pKO4LF0CbGIaxT8=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=HqZ1Isuluyntnf6/Hut58x0daOf5zs3gi6EutrVlbQ9nqERG8w6otCDLhdWwLI6lD
+         XZtBb3GywMS2T/2xwv7Xzp/u6+0GoTYPjuFdavLcrOL77tyJqvpYnsFsUo2eKKeh5o
+         K9hcVNJ/aTM+S8N7rsMyZ6QhbSQyaJsH6QCtbbPc=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 00/12] Readdir enhancements
-Date:   Mon,  2 Nov 2020 13:06:46 -0500
-Message-Id: <20201102180658.6218-1-trondmy@kernel.org>
+Subject: [PATCH 02/12] NFS: Clean up readdir struct nfs_cache_array
+Date:   Mon,  2 Nov 2020 13:06:48 -0500
+Message-Id: <20201102180658.6218-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
+In-Reply-To: <20201102180658.6218-2-trondmy@kernel.org>
+References: <20201102180658.6218-1-trondmy@kernel.org>
+ <20201102180658.6218-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -51,33 +55,177 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The following patch series performs a number of cleanups on the readdir
-code.
-It also adds support for 1MB readdir RPC calls on-the-wire, and modifies
-the caching code to ensure that we cache the entire contents of that
-1MB call (instead of discarding the data that doesn't fit into a single
-page).
+Since the 'eof_index' is only ever used as a flag, make it so.
+Also add a flag to detect if the page has been completely filled.
 
-Trond Myklebust (12):
-  NFS: Ensure contents of struct nfs_open_dir_context are consistent
-  NFS: Clean up readdir struct nfs_cache_array
-  NFS: Clean up nfs_readdir_page_filler()
-  NFS: Clean up directory array handling
-  NFS: Don't discard readdir results
-  NFS: Remove unnecessary kmap in nfs_readdir_xdr_to_array()
-  NFS: Replace kmap() with kmap_atomic() in nfs_readdir_search_array()
-  NFS: Simplify struct nfs_cache_array_entry
-  NFS: Support larger readdir buffers
-  NFS: More readdir cleanups
-  NFS: nfs_do_filldir() does not return a value
-  NFS: Reduce readdir stack usage
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/dir.c | 66 ++++++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 49 insertions(+), 17 deletions(-)
 
- fs/nfs/client.c        |   4 +-
- fs/nfs/dir.c           | 555 ++++++++++++++++++++++++-----------------
- fs/nfs/internal.h      |   6 -
- include/linux/nfs_fs.h |   1 -
- 4 files changed, 325 insertions(+), 241 deletions(-)
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 67d8595cd6e5..604ebe015387 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -138,9 +138,10 @@ struct nfs_cache_array_entry {
+ };
+ 
+ struct nfs_cache_array {
+-	int size;
+-	int eof_index;
+ 	u64 last_cookie;
++	unsigned int size;
++	unsigned char page_full : 1,
++		      page_is_eof : 1;
+ 	struct nfs_cache_array_entry array[];
+ };
+ 
+@@ -172,7 +173,6 @@ void nfs_readdir_init_array(struct page *page)
+ 
+ 	array = kmap_atomic(page);
+ 	memset(array, 0, sizeof(struct nfs_cache_array));
+-	array->eof_index = -1;
+ 	kunmap_atomic(array);
+ }
+ 
+@@ -192,6 +192,17 @@ void nfs_readdir_clear_array(struct page *page)
+ 	kunmap_atomic(array);
+ }
+ 
++static void nfs_readdir_array_set_eof(struct nfs_cache_array *array)
++{
++	array->page_is_eof = 1;
++	array->page_full = 1;
++}
++
++static bool nfs_readdir_array_is_full(struct nfs_cache_array *array)
++{
++	return array->page_full;
++}
++
+ /*
+  * the caller is responsible for freeing qstr.name
+  * when called by nfs_readdir_add_to_array, the strings will be freed in
+@@ -213,6 +224,23 @@ int nfs_readdir_make_qstr(struct qstr *string, const char *name, unsigned int le
+ 	return 0;
+ }
+ 
++/*
++ * Check that the next array entry lies entirely within the page bounds
++ */
++static int nfs_readdir_array_can_expand(struct nfs_cache_array *array)
++{
++	struct nfs_cache_array_entry *cache_entry;
++
++	if (array->page_full)
++		return -ENOSPC;
++	cache_entry = &array->array[array->size + 1];
++	if ((char *)cache_entry - (char *)array > PAGE_SIZE) {
++		array->page_full = 1;
++		return -ENOSPC;
++	}
++	return 0;
++}
++
+ static
+ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ {
+@@ -220,13 +248,11 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ 	struct nfs_cache_array_entry *cache_entry;
+ 	int ret;
+ 
+-	cache_entry = &array->array[array->size];
+-
+-	/* Check that this entry lies within the page bounds */
+-	ret = -ENOSPC;
+-	if ((char *)&cache_entry[1] - (char *)page_address(page) > PAGE_SIZE)
++	ret = nfs_readdir_array_can_expand(array);
++	if (ret)
+ 		goto out;
+ 
++	cache_entry = &array->array[array->size];
+ 	cache_entry->cookie = entry->prev_cookie;
+ 	cache_entry->ino = entry->ino;
+ 	cache_entry->d_type = entry->d_type;
+@@ -236,12 +262,21 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ 	array->last_cookie = entry->cookie;
+ 	array->size++;
+ 	if (entry->eof != 0)
+-		array->eof_index = array->size;
++		nfs_readdir_array_set_eof(array);
+ out:
+ 	kunmap(page);
+ 	return ret;
+ }
+ 
++static void nfs_readdir_page_set_eof(struct page *page)
++{
++	struct nfs_cache_array *array;
++
++	array = kmap_atomic(page);
++	nfs_readdir_array_set_eof(array);
++	kunmap_atomic(array);
++}
++
+ static inline
+ int is_32bit_api(void)
+ {
+@@ -270,7 +305,7 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
+ 	if (diff < 0)
+ 		goto out_eof;
+ 	if (diff >= array->size) {
+-		if (array->eof_index >= 0)
++		if (array->page_is_eof)
+ 			goto out_eof;
+ 		return -EAGAIN;
+ 	}
+@@ -334,7 +369,7 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
+ 			return 0;
+ 		}
+ 	}
+-	if (array->eof_index >= 0) {
++	if (array->page_is_eof) {
+ 		status = -EBADCOOKIE;
+ 		if (desc->dir_cookie == array->last_cookie)
+ 			desc->eof = true;
+@@ -566,7 +601,6 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 	struct xdr_stream stream;
+ 	struct xdr_buf buf;
+ 	struct page *scratch;
+-	struct nfs_cache_array *array;
+ 	unsigned int count = 0;
+ 	int status;
+ 
+@@ -604,10 +638,8 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 
+ out_nopages:
+ 	if (count == 0 || (status == -EBADCOOKIE && entry->eof != 0)) {
+-		array = kmap(page);
+-		array->eof_index = array->size;
++		nfs_readdir_page_set_eof(page);
+ 		status = 0;
+-		kunmap(page);
+ 	}
+ 
+ 	put_page(scratch);
+@@ -689,7 +721,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 				status = 0;
+ 			break;
+ 		}
+-	} while (array->eof_index < 0);
++	} while (!nfs_readdir_array_is_full(array));
+ 
+ 	nfs_readdir_free_pages(pages, array_size);
+ out_release_array:
+@@ -825,7 +857,7 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc)
+ 		if (desc->duped != 0)
+ 			desc->duped = 1;
+ 	}
+-	if (array->eof_index >= 0)
++	if (array->page_is_eof)
+ 		desc->eof = true;
+ 
+ 	kunmap(desc->page);
 -- 
 2.28.0
 
