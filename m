@@ -2,139 +2,82 @@ Return-Path: <SRS0=KohJ=EI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E26AC388F9
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 17:48:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C61C7C00A89
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3F75B21534
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 17:48:02 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="dg1q155m"
+	by mail.kernel.org (Postfix) with ESMTP id 7962D22226
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 18:17:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1604341041;
+	bh=fsr9Yq0aHB/8I0Sy6bV3PWBbhDZuWG8/RtIDy++KQaM=;
+	h=From:To:Subject:Date:List-ID:From;
+	b=x/ghpMJsUSFe78ae0wkB4g2xjJTZZo71AqNGu6VO0FgF7b/9nZ8CK49k2DJZXm1RF
+	 qi8mFwwLcN7uJut7T/C6IPqGK2xeX917ug0uW1LITeZ0AMSGzasOFakLH31goGqaYP
+	 5IjPJdW22ZravJ3sDzKHKQ4+3rnKU1h4V79k684I=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726058AbgKBRrs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Nov 2020 12:47:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51784 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725809AbgKBRrr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 12:47:47 -0500
-Received: from mail-pl1-x634.google.com (mail-pl1-x634.google.com [IPv6:2607:f8b0:4864:20::634])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6C997C061A48
-        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 09:47:47 -0800 (PST)
-Received: by mail-pl1-x634.google.com with SMTP id j5so7184058plk.7
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2020 09:47:47 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=sargun.me; s=google;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=Or3OrGmTCVsC6irW7Os1G3558l38zqrysNf3h0cfK5c=;
-        b=dg1q155mU4N5HJ5VxaD/IhrXeEbL95QkuqJG/mMnQ9E9Pqj28zeAGjVO3Fcass6f6Y
-         /sMvitvIVUaIpuwHSbAFnfyM1ISHwOZ3FN8TLQNpeB12VDQYqsbnNmQQq2jkk3weG/+O
-         Q2vLr4P5PTi3SCPWQGZh5DsRg0OR5wvHHpw7s=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=Or3OrGmTCVsC6irW7Os1G3558l38zqrysNf3h0cfK5c=;
-        b=UNvR1KEvM4KaZTEY3SrHaUyHP2uv4IlKVkZIx13Mt9yDoYB4b1q4Hu/2anvD9g/nOV
-         0wdE3NLKBcTd7bMyWc/jF++KEELKmeGr87MinGN8obAUkBZtQDMAB7tEcWfsm99LGszY
-         hSMmK7a+Ypovv1iqLPdLlfQKJZUyb8UNdZd7v6lIqQn9BygAvBhoFu26Pa7Al7cbixH9
-         kM/Yo3KGXJmXUwVUh8xvoLSr6p8cjJOhO3yDu3Yp4t5KHmKe5xDBxIumhMtEhaVhCKWk
-         IwmyxmB+mC3Z5SvJC8H+Nw6GDQXHHuHEQfMNEhyHZuSlTS2IXnEO822rUursLiY91oQ+
-         p+6Q==
-X-Gm-Message-State: AOAM533BcHIFEEG0coy0EqTfle6GPxW1Y8Si82ViqWoIMOZTIihLuOS3
-        14ub7I/UusQx9BluUnONRkSV5ftWcjcEm8AB4XI=
-X-Google-Smtp-Source: ABdhPJxlD6/ZAw8JNnTv3Awopgp4CRymm+nq4blgRU7ucki8OiClOD7a5hIT2vmxXr0RdtkyFpCNyA==
-X-Received: by 2002:a17:902:788a:b029:d6:b9f:820a with SMTP id q10-20020a170902788ab02900d60b9f820amr21461584pll.76.1604339266776;
-        Mon, 02 Nov 2020 09:47:46 -0800 (PST)
-Received: from ubuntu.netflix.com (203.20.25.136.in-addr.arpa. [136.25.20.203])
-        by smtp.gmail.com with ESMTPSA id f4sm115989pjs.8.2020.11.02.09.47.45
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2020 09:47:46 -0800 (PST)
-From:   Sargun Dhillon <sargun@sargun.me>
-To:     "J . Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        David Howells <dhowells@redhat.com>,
-        Scott Mayhew <smayhew@redhat.com>
-Cc:     Sargun Dhillon <sargun@sargun.me>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v4 1/2] NFS: NFSv2/NFSv3: Use cred from fs_context during mount
-Date:   Mon,  2 Nov 2020 09:47:36 -0800
-Message-Id: <20201102174737.2740-2-sargun@sargun.me>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20201102174737.2740-1-sargun@sargun.me>
-References: <20201102174737.2740-1-sargun@sargun.me>
+        id S1725836AbgKBSRU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Nov 2020 13:17:20 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40842 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726076AbgKBSRU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 2 Nov 2020 13:17:20 -0500
+Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 10A7120731
+        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 18:17:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1604341040;
+        bh=fsr9Yq0aHB/8I0Sy6bV3PWBbhDZuWG8/RtIDy++KQaM=;
+        h=From:To:Subject:Date:From;
+        b=wmJUPEBBt5NtauJxXmowaGnyylN8WqnUUAoLBg4VqEnyrOITnuIPCPaLk+IjNZ8HA
+         EpKWSfHblwAJ0msfmgf0NB4f961UK2nEG/BOaeR3+N/x6bBUET1fgUgp33thoVw3Cf
+         MAx4VF4eKhwiFUyAIO4EsZJtHzRyHmIupW3ILCyQ=
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 00/12] Readdir enhancements
+Date:   Mon,  2 Nov 2020 13:06:46 -0500
+Message-Id: <20201102180658.6218-1-trondmy@kernel.org>
+X-Mailer: git-send-email 2.28.0
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-There was refactoring done to use the fs_context for mounting done in:
-62a55d088cd87: NFS: Additional refactoring for fs_context conversion
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-This made it so that the net_ns is fetched from the fs_context (the netns
-that fsopen is called in). This change also makes it so that the credential
-fetched during fsopen is used as well as the net_ns.
+The following patch series performs a number of cleanups on the readdir
+code.
+It also adds support for 1MB readdir RPC calls on-the-wire, and modifies
+the caching code to ensure that we cache the entire contents of that
+1MB call (instead of discarding the data that doesn't fit into a single
+page).
 
-NFS has already had a number of changes to prepare it for user namespaces:
-1a58e8a0e5c1: NFS: Store the credential of the mount process in the nfs_server
-264d948ce7d0: NFS: Convert NFSv3 to use the container user namespace
-c207db2f5da5: NFS: Convert NFSv2 to use the container user namespace
+Trond Myklebust (12):
+  NFS: Ensure contents of struct nfs_open_dir_context are consistent
+  NFS: Clean up readdir struct nfs_cache_array
+  NFS: Clean up nfs_readdir_page_filler()
+  NFS: Clean up directory array handling
+  NFS: Don't discard readdir results
+  NFS: Remove unnecessary kmap in nfs_readdir_xdr_to_array()
+  NFS: Replace kmap() with kmap_atomic() in nfs_readdir_search_array()
+  NFS: Simplify struct nfs_cache_array_entry
+  NFS: Support larger readdir buffers
+  NFS: More readdir cleanups
+  NFS: nfs_do_filldir() does not return a value
+  NFS: Reduce readdir stack usage
 
-Previously, different credentials could be used for creation of the
-fs_context versus creation of the nfs_server, as FSCONFIG_CMD_CREATE did
-the actual credential check, and that's where current_creds() were fetched.
-This meant that the user namespace which fsopen was called in could be a
-non-init user namespace. This still requires that the user that calls
-FSCONFIG_CMD_CREATE has CAP_SYS_ADMIN in the init user ns.
+ fs/nfs/client.c        |   4 +-
+ fs/nfs/dir.c           | 555 ++++++++++++++++++++++++-----------------
+ fs/nfs/internal.h      |   6 -
+ include/linux/nfs_fs.h |   1 -
+ 4 files changed, 325 insertions(+), 241 deletions(-)
 
-This roughly allows a privileged user to mount on behalf of an unprivileged
-usernamespace, by forking off and calling fsopen in the unprivileged user
-namespace. It can then pass back that fsfd to the privileged process which
-can configure the NFS mount, and then it can call FSCONFIG_CMD_CREATE
-before switching back into the mount namespace of the container, and finish
-up the mounting process and call fsmount and move_mount.
-
-Signed-off-by: Sargun Dhillon <sargun@sargun.me>
----
- fs/nfs/client.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4b8cc93913f7..c3afe448a512 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -571,7 +571,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- 					1 : 0,
- 		.net		= clp->cl_net,
- 		.nlmclnt_ops 	= clp->cl_nfs_mod->rpc_ops->nlmclnt_ops,
--		.cred		= current_cred(),
-+		.cred		= server->cred,
- 	};
- 
- 	if (nlm_init.nfs_version > 3)
-@@ -985,7 +985,13 @@ struct nfs_server *nfs_create_server(struct fs_context *fc)
- 	if (!server)
- 		return ERR_PTR(-ENOMEM);
- 
--	server->cred = get_cred(current_cred());
-+	if (fc->cred->user_ns != &init_user_ns)
-+		dprintk("%s: Using creds from non-init userns\n", __func__);
-+	else if (fc->cred != current_cred())
-+		dprintk("%s: Using creds from fs_context which are different than current_creds\n",
-+			__func__);
-+
-+	server->cred = get_cred(fc->cred);
- 
- 	error = -ENOMEM;
- 	fattr = nfs_alloc_fattr();
 -- 
-2.25.1
+2.28.0
 
