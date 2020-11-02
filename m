@@ -2,52 +2,52 @@ Return-Path: <SRS0=KohJ=EI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EAF97C4742C
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86A99C00A89
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A6679223AB
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 403DE223C6
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="cFr5wC3P"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="XBnBADNx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725972AbgKBNvc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Nov 2020 08:51:32 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:50774 "EHLO
+        id S1725797AbgKBNvd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Nov 2020 08:51:33 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:24673 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725940AbgKBNuU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 08:50:20 -0500
+        by vger.kernel.org with ESMTP id S1725927AbgKBNuT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 08:50:19 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1604325018;
+        s=mimecast20190719; t=1604325017;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=HnkXIkWkSO1sjzbcqpAshdTprsfO8JyCeJtXHZkA5qI=;
-        b=cFr5wC3PKd/PwO2P89JrZNAijPIMlrseOM44Slq1dGxEqNyy9ilPk7AzsSQU+Mc13UOnXQ
-        pZkzRhHC8PAp9ePKBOIbfp4R/0mHqM6Y5HAawfQsbqopjD3OJnxpBuZmjkirAJcCIbjVfF
-        IXXSmCLd89RU3Xpf6pJVopTzbaL5ie4=
+        bh=MeH4WQdTlQCh8nJjD9N4/seSFRiZo6NmrVULAUIRh7g=;
+        b=XBnBADNxKWndU9cHl9BkKPZyZEY8mJm1Kc4kMn3XHoIuq0C0sA7dw/w9moOXotYdnyhfI6
+        LroPj4mx3ylAWWZ/fQe6dOa7I6M5Fd2mHNogCrY0jfDGGCMM6x8rXZSMlNLLasE6uZUhSG
+        0l0cqI42Jx0jNK0YHWFlugSNhPOcA40=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-269-txq02oJYNduriAKhY-L3Yg-1; Mon, 02 Nov 2020 08:50:17 -0500
-X-MC-Unique: txq02oJYNduriAKhY-L3Yg-1
+ us-mta-330-XNcaEiCEN6m1i3T_LW0wTA-1; Mon, 02 Nov 2020 08:50:16 -0500
+X-MC-Unique: XNcaEiCEN6m1i3T_LW0wTA-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id E402A191E2A0;
-        Mon,  2 Nov 2020 13:50:15 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id E835FA4206B;
+        Mon,  2 Nov 2020 13:50:14 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-113-255.rdu2.redhat.com [10.10.113.255])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 8A3D25D9DD;
-        Mon,  2 Nov 2020 13:50:15 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 8F8385D9DD;
+        Mon,  2 Nov 2020 13:50:14 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 04/11] NFS: Add tracepoints for functions involving nfs_readdir_descriptor_t
-Date:   Mon,  2 Nov 2020 08:50:04 -0500
-Message-Id: <1604325011-29427-5-git-send-email-dwysocha@redhat.com>
+Subject: [PATCH 02/11] NFS: Replace dfprintk statements with trace events in nfs_readdir
+Date:   Mon,  2 Nov 2020 08:50:02 -0500
+Message-Id: <1604325011-29427-3-git-send-email-dwysocha@redhat.com>
 In-Reply-To: <1604325011-29427-1-git-send-email-dwysocha@redhat.com>
 References: <1604325011-29427-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
@@ -55,181 +55,132 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add more tracepoints in the NFS readdir code to trace functions
-which change members of nfs_readdir_descriptor_t.  In the process,
-remove two more dfprintks inside uncached_readdir().
+Remove a couple dfprintks in nfs_readdir and replace them with
+trace events on entry/exit that contain more information.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/dir.c      |  10 +++---
- fs/nfs/nfstrace.h | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 108 insertions(+), 4 deletions(-)
+ fs/nfs/dir.c      |  7 +++--
+ fs/nfs/nfstrace.h | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 88 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 145393188f6a..227cddc12983 100644
+index cb52db9a0cfb..116493e66922 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -329,6 +329,7 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 	struct nfs_cache_array *array;
- 	int status;
+@@ -900,9 +900,9 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 			*desc = &my_desc;
+ 	int res = 0;
  
-+	trace_nfs_readdir_search_array_enter(desc);
- 	array = kmap(desc->page);
+-	dfprintk(FILE, "NFS: readdir(%pD2) starting at cookie %llu\n",
+-			file, (long long)ctx->pos);
+ 	nfs_inc_stats(inode, NFSIOS_VFSGETDENTS);
++	trace_nfs_readdir_enter(inode, ctx->pos, dir_ctx->dir_cookie,
++				NFS_SERVER(inode)->dtsize, my_desc.plus);
  
- 	if (*desc->dir_cookie == 0)
-@@ -342,6 +343,7 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 		desc->page_index++;
- 	}
- 	kunmap(desc->page);
-+	trace_nfs_readdir_search_array_exit(desc, status);
- 	return status;
- }
- 
-@@ -762,6 +764,7 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
- {
- 	int res;
- 
-+	trace_nfs_readdir_search_pagecache_enter(desc);
- 	if (desc->page_index == 0) {
- 		desc->current_index = 0;
- 		desc->prev_index = 0;
-@@ -770,6 +773,7 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
- 	do {
- 		res = find_and_lock_cache_page(desc);
- 	} while (res == -EAGAIN);
-+	trace_nfs_readdir_search_pagecache_exit(desc, res);
+ 	/*
+ 	 * ctx->pos points to the dirent entry number.
+@@ -949,7 +949,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ out:
+ 	if (res > 0)
+ 		res = 0;
+-	dfprintk(FILE, "NFS: readdir(%pD2) returns %d\n", file, res);
++	trace_nfs_readdir_exit(inode, ctx->pos, dir_ctx->dir_cookie,
++			       NFS_SERVER(inode)->dtsize, my_desc.plus, res);
  	return res;
  }
  
-@@ -835,8 +839,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc)
- 	struct inode *inode = file_inode(desc->file);
- 	struct nfs_open_dir_context *ctx = desc->file->private_data;
- 
--	dfprintk(DIRCACHE, "NFS: uncached_readdir() searching for cookie %Lu\n",
--			(unsigned long long)*desc->dir_cookie);
-+	trace_nfs_uncached_readdir_enter(desc);
- 
- 	page = alloc_page(GFP_HIGHUSER);
- 	if (!page) {
-@@ -859,8 +862,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc)
- 	nfs_readdir_clear_array(desc->page);
- 	cache_page_release(desc);
-  out:
--	dfprintk(DIRCACHE, "NFS: %s: returns %d\n",
--			__func__, status);
-+	trace_nfs_uncached_readdir_exit(desc, status);
- 	return status;
- }
- 
 diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 6bbe0aa221f2..e6a946b83330 100644
+index 5a59dcdce0b2..6bbe0aa221f2 100644
 --- a/fs/nfs/nfstrace.h
 +++ b/fs/nfs/nfstrace.h
-@@ -752,6 +752,108 @@
- 		)
- );
+@@ -668,6 +668,90 @@
+ DEFINE_NFS_DIRECTORY_EVENT(nfs_symlink_enter);
+ DEFINE_NFS_DIRECTORY_EVENT_DONE(nfs_symlink_exit);
  
-+DECLARE_EVENT_CLASS(nfs_readdir_descriptor_event_enter,
++TRACE_EVENT(nfs_readdir_enter,
 +		TP_PROTO(
-+				const nfs_readdir_descriptor_t *desc
-+			),
++			const struct inode *inode,
++			u64 cookie,
++			u64 dir_cookie,
++			unsigned int count,
++			bool plus
++		),
 +
-+		TP_ARGS(desc),
++		TP_ARGS(inode, cookie, dir_cookie, count, plus),
 +
 +		TP_STRUCT__entry(
 +			__field(dev_t, dev)
-+			__field(u64, fileid)
 +			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(u64, cookie)
 +			__field(u64, dir_cookie)
-+			__field(u64, page_index)
-+			__field(u64, last_cookie)
-+			__field(u64, current_index)
-+			__field(u64, prev_index)
++			__field(u64, count)
++			__field(bool, plus)
 +		),
 +
 +		TP_fast_assign(
-+			__entry->dev = file_inode(desc->file)->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(file_inode(desc->file));
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(file_inode(desc->file)));
-+			__entry->dir_cookie = *desc->dir_cookie;
-+			__entry->page_index = desc->page_index;
-+			__entry->last_cookie = desc->last_cookie;
-+			__entry->current_index = desc->current_index;
-+			__entry->prev_index = desc->prev_index;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
++			__entry->cookie = cookie;
++			__entry->dir_cookie = dir_cookie;
++			__entry->count = count;
++			__entry->plus = plus;
 +		),
 +
 +		TP_printk(
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x dir_cookie=0x%08llx last_cookie=0x%08llx page_index=0x%08llx current_index=0x%08llu prev_index=0x%08llu",
++			"fileid=%02x:%02x:%llu fhandle=0x%08x cookie=0x%08llx dir_cookie=0x%08llx count=%llu plus=%s",
 +			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid, __entry->fhandle,
-+			__entry->dir_cookie, __entry->last_cookie, __entry->page_index,
-+			__entry->current_index, __entry->prev_index
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle, __entry->cookie, __entry->dir_cookie,
++			__entry->count, __entry->plus ? "true" : "false"
 +		)
 +);
 +
-+#define DEFINE_NFS_READDIR_DESCRIPTOR_EVENT(name) \
-+	DEFINE_EVENT(nfs_readdir_descriptor_event_enter, name, \
-+			TP_PROTO( \
-+				const nfs_readdir_descriptor_t *desc \
-+			), \
-+			TP_ARGS(desc))
-+
-+DECLARE_EVENT_CLASS(nfs_readdir_descriptor_event_exit,
++TRACE_EVENT(nfs_readdir_exit,
 +		TP_PROTO(
-+				const nfs_readdir_descriptor_t *desc,
-+				int error
-+			),
++			const struct inode *inode,
++			u64 cookie,
++			u64 dir_cookie,
++			unsigned int count,
++			bool plus,
++			int error
++		),
 +
-+		TP_ARGS(desc, error),
++		TP_ARGS(inode, cookie, dir_cookie, count, plus, error),
 +
 +		TP_STRUCT__entry(
 +			__field(dev_t, dev)
-+			__field(u64, fileid)
 +			__field(u32, fhandle)
-+			__field(u64, dir_cookie)
++			__field(u64, fileid)
 +			__field(unsigned long, error)
-+			__field(u64, page_index)
-+			__field(u64, last_cookie)
-+			__field(u64, current_index)
-+			__field(u64, prev_index)
++			__field(u64, cookie)
++			__field(u64, dir_cookie)
++			__field(u64, count)
++			__field(bool, plus)
 +		),
 +
 +		TP_fast_assign(
-+			__entry->dev = file_inode(desc->file)->i_sb->s_dev;
-+			__entry->fileid = NFS_FILEID(file_inode(desc->file));
-+			__entry->fhandle = nfs_fhandle_hash(NFS_FH(file_inode(desc->file)));
-+			__entry->dir_cookie = *desc->dir_cookie;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = NFS_FILEID(inode);
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
 +			__entry->error = error;
-+			__entry->page_index = desc->page_index;
-+			__entry->last_cookie = desc->last_cookie;
-+			__entry->current_index = desc->current_index;
-+			__entry->prev_index = desc->prev_index;
++			__entry->cookie = cookie;
++			__entry->dir_cookie = dir_cookie;
++			__entry->count = count;
++			__entry->plus = plus;
 +		),
 +
 +		TP_printk(
-+			"error=%ld fileid=%02x:%02x:%llu fhandle=0x%08x dir_cookie=0x%08llx last_cookie=0x%08llx page_index=0x%08llx current_index=0x%08llu prev_index=0x%08llu",
++			"error=%ld fileid=%02x:%02x:%llu fhandle=0x%08x cookie=0x%08llx dir_cookie=0x%08llx count=%llu plus=%s",
 +			__entry->error,
 +			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid, __entry->fhandle,
-+			__entry->dir_cookie, __entry->last_cookie, __entry->page_index,
-+			__entry->current_index, __entry->prev_index
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle, __entry->cookie, __entry->dir_cookie,
++			__entry->count, __entry->plus ? "true" : "false"
 +		)
 +);
-+
-+#define DEFINE_NFS_READDIR_DESCRIPTOR_EVENT_EXIT(name) \
-+	DEFINE_EVENT(nfs_readdir_descriptor_event_exit, name, \
-+			TP_PROTO( \
-+				const nfs_readdir_descriptor_t *desc, \
-+				int error \
-+			), \
-+			TP_ARGS(desc, error))
-+
-+DEFINE_NFS_READDIR_DESCRIPTOR_EVENT(nfs_uncached_readdir_enter);
-+DEFINE_NFS_READDIR_DESCRIPTOR_EVENT_EXIT(nfs_uncached_readdir_exit);
-+DEFINE_NFS_READDIR_DESCRIPTOR_EVENT(nfs_readdir_search_pagecache_enter);
-+DEFINE_NFS_READDIR_DESCRIPTOR_EVENT_EXIT(nfs_readdir_search_pagecache_exit);
-+DEFINE_NFS_READDIR_DESCRIPTOR_EVENT(nfs_readdir_search_array_enter);
-+DEFINE_NFS_READDIR_DESCRIPTOR_EVENT_EXIT(nfs_readdir_search_array_exit);
 +
  TRACE_EVENT(nfs_link_enter,
  		TP_PROTO(
