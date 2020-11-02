@@ -2,127 +2,178 @@ Return-Path: <SRS0=KohJ=EI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 13E7EC00A89
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:24:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AC1BC55179
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B76DE22268
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:24:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 22798223AB
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 13:51:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="W7DcbAVB"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="i2IQmrHk"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728792AbgKBNY3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Nov 2020 08:24:29 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:54700 "EHLO
+        id S1726015AbgKBNvN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Nov 2020 08:51:13 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:34896 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726711AbgKBNY3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 08:24:29 -0500
+        by vger.kernel.org with ESMTP id S1725975AbgKBNuX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 08:50:23 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1604323467;
+        s=mimecast20190719; t=1604325022;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=OIqQcniaCA5bVJC2uQEYKX7+SB06PeZIPeELXiCExzs=;
-        b=W7DcbAVBhd8MKaulaBE6bs/Fnn8tcJUjIbcPd7XoLXQLs5ArjtZTrZjm8jcJW1X/tqs1VX
-        H1l0jhx9yAPjwEhgxY4VrhdgRzCSa1DCJkOiV0BfC7pGtZqYbeRURIFw+nvX0J8HMz9QSp
-        L8uMlVrf02lgHA8+cv6j8N67ZCiNdIg=
+         to:to:cc:cc:in-reply-to:in-reply-to:references:references;
+        bh=A5QAluO9jJjtQ1kbWIac7ykdsGFp0O5j0QiLabMsVe8=;
+        b=i2IQmrHkmvam9nHLZfgKp0fGxK4Irli8Ua8e1Ta1UYBw8Q7ym1Z2Toiehj/Qs3nOt8gLbu
+        TsbK7bkB7Ydg0iP9MM2wBDhxVIY0HwjjrYf/N3mzMZDq6iQtjJf54vYxvg08KntP7dLqJE
+        hxTKXJLAMURggcn23H+u5sduF1I2V/o=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-585-9laRq6_lMlSQ5IGL9slA8A-1; Mon, 02 Nov 2020 08:24:25 -0500
-X-MC-Unique: 9laRq6_lMlSQ5IGL9slA8A-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+ us-mta-381-vPWh2UqRN8q4CSiGzlSgpA-1; Mon, 02 Nov 2020 08:50:20 -0500
+X-MC-Unique: vPWh2UqRN8q4CSiGzlSgpA-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 3DD2A9CC02
-        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 13:24:24 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-113-8.phx2.redhat.com [10.3.113.8])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id EC5AC21E8E;
-        Mon,  2 Nov 2020 13:24:23 +0000 (UTC)
-Subject: Re: [RFC PATCH 0/1] Enable config.d directory to be processed.
-To:     Alice Mitchell <ajmitchell@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20201029210401.446244-1-steved@redhat.com>
- <338aeb795a31c2233016d225dc114e33d02eb0cb.camel@redhat.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <6f3caf91-296c-0aa8-ba41-bc35d500adaa@RedHat.com>
-Date:   Mon, 2 Nov 2020 08:24:23 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.3.1
-MIME-Version: 1.0
-In-Reply-To: <338aeb795a31c2233016d225dc114e33d02eb0cb.camel@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id DFE361099F7D;
+        Mon,  2 Nov 2020 13:50:18 +0000 (UTC)
+Received: from dwysocha.rdu.csb (ovpn-113-255.rdu2.redhat.com [10.10.113.255])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 832235D9DD;
+        Mon,  2 Nov 2020 13:50:18 +0000 (UTC)
+From:   Dave Wysochanski <dwysocha@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 10/11] NFS: Add page_index to nfs_readdir enter and exit tracepoints
+Date:   Mon,  2 Nov 2020 08:50:10 -0500
+Message-Id: <1604325011-29427-11-git-send-email-dwysocha@redhat.com>
+In-Reply-To: <1604325011-29427-1-git-send-email-dwysocha@redhat.com>
+References: <1604325011-29427-1-git-send-email-dwysocha@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Add nfs_open_dir_context.page_index to enter and exit tracepoints
+since this affects searching the cache.
 
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+---
+ fs/nfs/dir.c      |  2 ++
+ fs/nfs/nfstrace.h | 22 ++++++++++++++--------
+ 2 files changed, 16 insertions(+), 8 deletions(-)
 
-On 11/2/20 8:03 AM, Alice Mitchell wrote:
-> On Thu, 2020-10-29 at 17:04 -0400, Steve Dickson wrote:
->> The following patch looks for config.d directories
->> and configuration file in those directories will
->> be loaded. 
->>
->> For example if /etc/nfs.conf.d or /etc/nfsmount.conf.d 
->> exists and there are config files in those directories 
->> will be loaded, but not the actual /etc/nfs.conf or 
->> the /etc/nfsmount.conf files will not be.
->>
->> I do have a couple questions/concerns 
->>
->> 1) Is calling conf_load_file() more than once
->>    kosher... It appears variable will just be 
->>    over written. That does appear to happen
->>    with my testing. 
->>
->> 2) If conf.d file(s) do exist, should the give
->>    flat conf file also be loaded. At this point if 
->>    the conf.d file(s) do exist, then the given
->>    flat config file is not loaded. 
->>
->> 3) How to document this new feature.
->>
->> Steve Dickson (1):
->>   conffile: process config.d directory config files.
->>
->>  support/nfs/conffile.c | 78
->> +++++++++++++++++++++++++++++++++++++++++-
->>  1 file changed, 77 insertions(+), 1 deletion(-)
-> 
-> NAK.
-> 
-> Each call to conf_load_file() erases all existing config values from
-> memory via a call to conf_free_bindings() so this wont work as you
-> expect.
-I'm glad I asked.
-
-> 
-> You would need to write an equivalent of conf_load_file() that created
-> a new transaction id and read in all the files before committing them
-> to do it this way.
-I kinda do think we should be able to read in multiple files...
-If that free was not done until all the files are read in, would something
-like that work? I guess I'm ask how difficult would be to re-work
-the code to do something like this. 
-
-> 
-> I can't help but wonder if this would be better handled as an
-> improvement to the 'include' directive to support file globbing, we
-> could then retain the functionality of the master nfs.conf file but
-> tack on an 'include nfs.conf.d/*.conf' at the end which would go off
-> and load any files dropped in there by package management.
-Well... there is no include for /etc/nfsmount.conf although we 
-could probably add one. But I'm thinking most admins are expecting 
-to simply drop a config in a .d directory to have the configuration
-take effect. Editing a file is a bit more difficult... IMHO.
-
-steved. 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index b266f505b521..cbd74cbdbb9f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -894,6 +894,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSGETDENTS);
+ 	trace_nfs_readdir_enter(inode, ctx->pos, dir_ctx->dir_cookie,
++				dir_ctx->page_index,
+ 				NFS_SERVER(inode)->dtsize, my_desc.plus);
+ 
+ 	/*
+@@ -943,6 +944,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 		res = 0;
+ 	dir_ctx->page_index = desc->page_index;
+ 	trace_nfs_readdir_exit(inode, ctx->pos, dir_ctx->dir_cookie,
++			       dir_ctx->page_index,
+ 			       NFS_SERVER(inode)->dtsize, my_desc.plus, res);
+ 	return res;
+ }
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 06b301da85a2..12869b0c3f70 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -754,11 +754,12 @@
+ 			const struct inode *inode,
+ 			u64 cookie,
+ 			u64 dir_cookie,
++			unsigned long page_index,
+ 			unsigned int count,
+ 			bool plus
+ 		),
+ 
+-		TP_ARGS(inode, cookie, dir_cookie, count, plus),
++		TP_ARGS(inode, cookie, dir_cookie, page_index, count, plus),
+ 
+ 		TP_STRUCT__entry(
+ 			__field(dev_t, dev)
+@@ -766,6 +767,7 @@
+ 			__field(u64, fileid)
+ 			__field(u64, cookie)
+ 			__field(u64, dir_cookie)
++			__field(unsigned long, page_index)
+ 			__field(u64, count)
+ 			__field(bool, plus)
+ 		),
+@@ -776,15 +778,16 @@
+ 			__entry->fhandle = nfs_fhandle_hash(NFS_FH(inode));
+ 			__entry->cookie = cookie;
+ 			__entry->dir_cookie = dir_cookie;
++			__entry->page_index = page_index;
+ 			__entry->count = count;
+ 			__entry->plus = plus;
+ 		),
+ 
+ 		TP_printk(
+-			"fileid=%02x:%02x:%llu fhandle=0x%08x cookie=0x%08llx dir_cookie=0x%08llx count=%llu plus=%s",
++			"fileid=%02x:%02x:%llu fhandle=0x%08x cookie=0x%08llx dir_cookie=0x%08llx page_index=0x%08lx count=%llu plus=%s",
+ 			MAJOR(__entry->dev), MINOR(__entry->dev),
+-			(unsigned long long)__entry->fileid,
+-			__entry->fhandle, __entry->cookie, __entry->dir_cookie,
++			(unsigned long long)__entry->fileid, __entry->fhandle,
++			__entry->cookie, __entry->dir_cookie, __entry->page_index,
+ 			__entry->count, __entry->plus ? "true" : "false"
+ 		)
+ );
+@@ -794,12 +797,13 @@
+ 			const struct inode *inode,
+ 			u64 cookie,
+ 			u64 dir_cookie,
++			unsigned long page_index,
+ 			unsigned int count,
+ 			bool plus,
+ 			int error
+ 		),
+ 
+-		TP_ARGS(inode, cookie, dir_cookie, count, plus, error),
++		TP_ARGS(inode, cookie, dir_cookie, page_index, count, plus, error),
+ 
+ 		TP_STRUCT__entry(
+ 			__field(dev_t, dev)
+@@ -808,6 +812,7 @@
+ 			__field(unsigned long, error)
+ 			__field(u64, cookie)
+ 			__field(u64, dir_cookie)
++			__field(unsigned long, page_index)
+ 			__field(u64, count)
+ 			__field(bool, plus)
+ 		),
+@@ -819,16 +824,17 @@
+ 			__entry->error = error;
+ 			__entry->cookie = cookie;
+ 			__entry->dir_cookie = dir_cookie;
++			__entry->page_index = page_index;
+ 			__entry->count = count;
+ 			__entry->plus = plus;
+ 		),
+ 
+ 		TP_printk(
+-			"error=%ld fileid=%02x:%02x:%llu fhandle=0x%08x cookie=0x%08llx dir_cookie=0x%08llx count=%llu plus=%s",
++			"error=%ld fileid=%02x:%02x:%llu fhandle=0x%08x cookie=0x%08llx dir_cookie=0x%08llx page_index=0x%08lx count=%llu plus=%s",
+ 			__entry->error,
+ 			MAJOR(__entry->dev), MINOR(__entry->dev),
+-			(unsigned long long)__entry->fileid,
+-			__entry->fhandle, __entry->cookie, __entry->dir_cookie,
++			(unsigned long long)__entry->fileid, __entry->fhandle,
++			__entry->cookie, __entry->dir_cookie, __entry->page_index,
+ 			__entry->count, __entry->plus ? "true" : "false"
+ 		)
+ );
+-- 
+1.8.3.1
 
