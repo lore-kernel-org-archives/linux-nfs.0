@@ -2,58 +2,58 @@ Return-Path: <SRS0=KohJ=EI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00DB1C388F9
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 17:47:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45A41C55178
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 17:48:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A990C21534
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 17:47:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0268621D91
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Nov 2020 17:48:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="wWq2ykhX"
+	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="VMtzx0oP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726076AbgKBRrs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Nov 2020 12:47:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51774 "EHLO
+        id S1726312AbgKBRr7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Nov 2020 12:47:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51796 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725982AbgKBRrq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 12:47:46 -0500
-Received: from mail-pg1-x529.google.com (mail-pg1-x529.google.com [IPv6:2607:f8b0:4864:20::529])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 87D3EC061A04
-        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 09:47:45 -0800 (PST)
-Received: by mail-pg1-x529.google.com with SMTP id r186so11442322pgr.0
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2020 09:47:45 -0800 (PST)
+        with ESMTP id S1726166AbgKBRrt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Nov 2020 12:47:49 -0500
+Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4AD1FC061A04
+        for <linux-nfs@vger.kernel.org>; Mon,  2 Nov 2020 09:47:49 -0800 (PST)
+Received: by mail-pf1-x443.google.com with SMTP id x13so11737677pfa.9
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Nov 2020 09:47:49 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=sargun.me; s=google;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=Fgdp9Q5Ryos9FWUvwhnwrJKEhYJ+1M5L8BMrT6meyNY=;
-        b=wWq2ykhXi6fVitAbeMVisX3fyxKKKGyoNOTC1c0zV20h/DEuDmnjoaXg4y2VX4hdoC
-         FvBCsdTGS3ca52CRqIwng2Zqk/Jz7/JmR/lkXZnpPiqJAuFq6koEjyCC+nTXw5HBFMr6
-         zNqBe7GmyDQ8IAxRHg9MQmGEstUGKVn4a0Up0=
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=GPfV3EPWs4wkJt5zx6YlYB6T70PG6umvg/9zEQjZbrY=;
+        b=VMtzx0oPaEipf/zXI15cLmo/wvQA810qZ5FQdB4A1vQHTH2U0GQyKIXEIb2U+ged5J
+         1LZdN37vN1nTwjxbGD++9sExdTPJGNvH7/NLllhKAs+tfc4IdNgfMXFvymaigoTsbtU4
+         XAETqBFwFDt5LC9ddjux7sEwrNia7qxAjx9XE=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=Fgdp9Q5Ryos9FWUvwhnwrJKEhYJ+1M5L8BMrT6meyNY=;
-        b=aOoUxkFPJmizs3ZS209jmNjiiPVBE3znku5PbJArqfXw46tIe+DooQVfUhADZwZ6yi
-         /4zAYuh6LZrd8t+s/4vyR9SDQ5gZHs8nAaSCElJ4RhHw5ko8TOQTtQ5kXV0vq1zkTKA2
-         GWK74dFSwkJAp1VO2R5w1gcNVVYA2/YfMbvv0icKjfcKkHEOHq0X6XeFvHZceeCQesWo
-         zKsGvreEgpoRAZ13CdQ9iCdMassWC9eA0LEFl/yLcbG0dGnwWhLomGBMnBPJru179L75
-         Ed5bPHjzfdY+yuU2C8nCkC5Mx38CyeK2IoAg842tKgyAFe8wPSTG6fEG6mo44LuPrMFm
-         v3Qg==
-X-Gm-Message-State: AOAM531mVJiVOlj6tG8wfLXdsWKGeftbi/Ni4e5WNrDc1L4a2RN2qDPZ
-        b59nU2LeH7zcmwQj+zz9eKhjdw==
-X-Google-Smtp-Source: ABdhPJwJxojkON8BTRl7uxWAP/jj+ExC2FAQKTI1xauZE+CTwqlXP7ivXNS/9FOvx0XVp7+jhulgNg==
-X-Received: by 2002:a63:d456:: with SMTP id i22mr14208167pgj.440.1604339264860;
-        Mon, 02 Nov 2020 09:47:44 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=GPfV3EPWs4wkJt5zx6YlYB6T70PG6umvg/9zEQjZbrY=;
+        b=f/xFQf8cCSlPVvUGmvmyMt3+uubPp89yvfOR5xrmFAHn3UzgIQtQLuDHn31eizNET2
+         in9fQ5TAH50XxfxLtKJubFOZQzCjvsv1hccFkbAIpwVSIJp4HbZuzeUjADKYvmypP2eC
+         VCVpDQUHczENnUgOx8XjnbVreHjMF/4WyzWXWnU9e+IpofdQiFN3bSt5K6cA4l13Vn09
+         9DuRR2nMFPEe7FiYr9n7/hD2DZgttQCTlhGD0nNxlcqH5wQEwEsq3GKOJIlAk3YlBoV7
+         bi+IKaM+zbF17WHXC4fD7z1UJ1YNns73Llbw6ZDOotHXi+pvHNt/UBoXyWDYw3834Xor
+         dTmQ==
+X-Gm-Message-State: AOAM532t2/RCwH/7IjjoIHrvheJ/1pm1pPZtYFypV5FW0cNuerhPPjyD
+        BVdlav9elMRW770ESb5DrzDQCQ==
+X-Google-Smtp-Source: ABdhPJxTGQViefe+gy4MFUjnFJoxAayZBvl8kfrkYRMvylwQSrpXyZQLMpYp3SKDIU9x74fFwDsu4g==
+X-Received: by 2002:a17:90a:c917:: with SMTP id v23mr18235242pjt.235.1604339268689;
+        Mon, 02 Nov 2020 09:47:48 -0800 (PST)
 Received: from ubuntu.netflix.com (203.20.25.136.in-addr.arpa. [136.25.20.203])
-        by smtp.gmail.com with ESMTPSA id f4sm115989pjs.8.2020.11.02.09.47.42
+        by smtp.gmail.com with ESMTPSA id f4sm115989pjs.8.2020.11.02.09.47.46
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 02 Nov 2020 09:47:44 -0800 (PST)
+        Mon, 02 Nov 2020 09:47:48 -0800 (PST)
 From:   Sargun Dhillon <sargun@sargun.me>
 To:     "J . Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -64,53 +64,127 @@ To:     "J . Bruce Fields" <bfields@fieldses.org>,
         Scott Mayhew <smayhew@redhat.com>
 Cc:     Sargun Dhillon <sargun@sargun.me>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v4 0/2] NFS: Fix interaction between fs_context and user namespaces
-Date:   Mon,  2 Nov 2020 09:47:35 -0800
-Message-Id: <20201102174737.2740-1-sargun@sargun.me>
+Subject: [PATCH v4 2/2] NFSv4: Refactor NFS to use user namespaces
+Date:   Mon,  2 Nov 2020 09:47:37 -0800
+Message-Id: <20201102174737.2740-3-sargun@sargun.me>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20201102174737.2740-1-sargun@sargun.me>
+References: <20201102174737.2740-1-sargun@sargun.me>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is effectively a resend, but re-based atop Anna's current tree. I can
-add the samples back in an another patchset.
+In several patches work has been done to enable NFSv4 to use user namespaces:
+58002399da65: NFSv4: Convert the NFS client idmapper to use the container user namespace
+3b7eb5e35d0f: NFS: When mounting, don't share filesystems between different user namespaces
 
-Right now, it is possible to mount NFS with an non-matching super block
-user ns, and NFS sunrpc user ns. This (for the user) results in an awkward
-set of interactions if using anything other than auth_null, where the UIDs
-being sent to the server are different than the local UIDs being checked.
-This can cause "breakage", where if you try to communicate with the NFS
-server with any other set of mappings, it breaks.
+Unfortunately, the userspace APIs were only such that the userspace facing
+side of the filesystem (superblock s_user_ns) could be set to a non init
+user namespace. This furthers the fs_context related refactoring, and
+piggybacks on top of that logic, so the superblock user namespace, and the
+NFS user namespace are the same.
 
-This is after the initial v5.10 merge window, so hopefully this patchset
-can be reconsidered, and maybe we can make forward progress? I think that
-it takes a relatively conservative approach in enabling user namespaces,
-and it prevents the case where someone is using auth_gss (for now), as the
-mappings are non-trivial.
+This change only allows those users whom are not using ID mapping to use
+user namespaces because the upcall mechanism still needs to be made fully
+namespace aware. Currently, it is only network namespace aware (and this
+patch doesn't impede that behaviour). Also, there is currently a limitation
+that enabling / disabling ID mapping can only be done on a machine-wide
+basis.
 
-Changes since v3:
-  * Rebase atop Anna's tree
-Changes since v2:
-  * Removed samples
-  * Split out NFSv2/v3 patchset from NFSv4 patchset
-  * Added restrictions around use
-Changes since v1:
-  * Added samples
+Eventually, we will need to at least:
+  * Separate out the keyring cache by namespace
+  * Come up with an upcall mechanism that can be triggered inside of the container,
+    or safely triggered outside, with the requisite context to do the right mapping.
+  * Handle whatever refactoring needs to be done in net/sunrpc.
 
-Sargun Dhillon (2):
-  NFS: NFSv2/NFSv3: Use cred from fs_context during mount
-  NFSv4: Refactor NFS to use user namespaces
-
- fs/nfs/client.c     | 10 ++++++++--
+Signed-off-by: Sargun Dhillon <sargun@sargun.me>
+---
  fs/nfs/nfs4client.c | 27 ++++++++++++++++++++++++++-
  fs/nfs/nfs4idmap.c  |  2 +-
  fs/nfs/nfs4idmap.h  |  3 ++-
- 4 files changed, 37 insertions(+), 5 deletions(-)
+ 3 files changed, 29 insertions(+), 3 deletions(-)
 
-
-base-commit: 8c39076c276be0b31982e44654e2c2357473258a
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index be7915c861ce..c592f1881978 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -1153,7 +1153,19 @@ struct nfs_server *nfs4_create_server(struct fs_context *fc)
+ 	if (!server)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-	server->cred = get_cred(current_cred());
++	/*
++	 * current_cred() must have CAP_SYS_ADMIN in init_user_ns. All non
++	 * init user namespaces cannot mount NFS, but the fs_context
++	 * can be created in any user namespace.
++	 */
++	if (fc->cred->user_ns != &init_user_ns) {
++		dprintk("%s: Using creds from non-init userns\n", __func__);
++	} else if (fc->cred != current_cred()) {
++		dprintk("%s: Using creds from fs_context which are different than current_creds\n",
++			__func__);
++	}
++
++	server->cred = get_cred(fc->cred);
+ 
+ 	auth_probe = ctx->auth_info.flavor_len < 1;
+ 
+@@ -1166,6 +1178,19 @@ struct nfs_server *nfs4_create_server(struct fs_context *fc)
+ 	if (error < 0)
+ 		goto error;
+ 
++	/*
++	 * nfs4idmap is not fully isolated by user namespaces. It is currently
++	 * only network namespace aware. If upcalls never happen, we do not
++	 * need to worry as nfs_client instances aren't shared between
++	 * user namespaces.
++	 */
++	if (idmap_userns(server->nfs_client->cl_idmap) != &init_user_ns &&
++		!(server->caps & NFS_CAP_UIDGID_NOMAP)) {
++		error = -EINVAL;
++		errorf(fc, "Mount credentials are from non init user namespace and ID mapping is enabled. This is not allowed.");
++		goto error;
++	}
++
+ 	return server;
+ 
+ error:
+diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
+index 8d8aba305ecc..33dc9b76dc17 100644
+--- a/fs/nfs/nfs4idmap.c
++++ b/fs/nfs/nfs4idmap.c
+@@ -73,7 +73,7 @@ struct idmap {
+ 	struct user_namespace	*user_ns;
+ };
+ 
+-static struct user_namespace *idmap_userns(const struct idmap *idmap)
++struct user_namespace *idmap_userns(const struct idmap *idmap)
+ {
+ 	if (idmap && idmap->user_ns)
+ 		return idmap->user_ns;
+diff --git a/fs/nfs/nfs4idmap.h b/fs/nfs/nfs4idmap.h
+index de44d7330ab3..2f5296497887 100644
+--- a/fs/nfs/nfs4idmap.h
++++ b/fs/nfs/nfs4idmap.h
+@@ -38,7 +38,7 @@
+ 
+ #include <linux/uidgid.h>
+ #include <uapi/linux/nfs_idmap.h>
+-
++#include <linux/user_namespace.h>
+ 
+ /* Forward declaration to make this header independent of others */
+ struct nfs_client;
+@@ -50,6 +50,7 @@ int nfs_idmap_init(void);
+ void nfs_idmap_quit(void);
+ int nfs_idmap_new(struct nfs_client *);
+ void nfs_idmap_delete(struct nfs_client *);
++struct user_namespace *idmap_userns(const struct idmap *idmap);
+ 
+ void nfs_fattr_init_names(struct nfs_fattr *fattr,
+ 		struct nfs4_string *owner_name,
 -- 
 2.25.1
 
