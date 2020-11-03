@@ -7,44 +7,44 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 13252C55179
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Nov 2020 15:43:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 12133C388F7
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Nov 2020 15:43:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BC5C420780
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Nov 2020 15:43:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C6C88221FB
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Nov 2020 15:43:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1604418227;
-	bh=X9n2Y2uBvC68gRrTSu5kFasTGprhRhnvJD6t2J0uHzA=;
+	s=default; t=1604418228;
+	bh=fP8mF/QyWT8AjyqHoLygoPSmGXi5i/cnj5jFbOxXyKo=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=yrVytVVse2r32+/S8OJgEmw3xl28/gPFa4dKJ8igImvcgKQjyoipPRaCc/lStq61Y
-	 T7btyueenFy0nuUG2XE+tkbEmbi4HZHTwjD8mtUTr+2eXE1R3zN5gHcD0y6AgBVT2Y
-	 AzaF4w2vAOlBE88/lf8ec0qfpGGizwvFwMOqkmQA=
+	b=2Mn93YzAtnsd4/yk6LqhvGi9PTYD83TSQ1yPf+BHdd+pYUIPDVGzk+W9rQZVVNzAE
+	 YDMBfQelcHHI7E4PTKCSAAdPnkonemdu5N8EPKJfc3VGfr7GcTQFj3Yv7U025uGv0T
+	 7aYDxPxrnvcQEpRdgAjc3DTM7qG2P4vo13XpSY/A=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728307AbgKCPnq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 3 Nov 2020 10:43:46 -0500
-Received: from mail.kernel.org ([198.145.29.99]:39166 "EHLO mail.kernel.org"
+        id S1728366AbgKCPnr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 3 Nov 2020 10:43:47 -0500
+Received: from mail.kernel.org ([198.145.29.99]:39170 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728320AbgKCPnq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1728346AbgKCPnq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 3 Nov 2020 10:43:46 -0500
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id BD2632080D
-        for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2020 15:43:44 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id A23042236F
+        for <linux-nfs@vger.kernel.org>; Tue,  3 Nov 2020 15:43:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1604418225;
-        bh=X9n2Y2uBvC68gRrTSu5kFasTGprhRhnvJD6t2J0uHzA=;
+        bh=fP8mF/QyWT8AjyqHoLygoPSmGXi5i/cnj5jFbOxXyKo=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=E5g/n742JB8kUi5SHkH07/owQgKUW98IpGaZCVuhuw3C4aGp4+g8/uiEE6DBBl9gT
-         rDykRpAOGtaRtu0zhCbjyfu5LsW1VKOc0JGLQaseZ7NDTcu4yRWsEi+l5AaVXnUYHv
-         DFkO797VbfhvYu2MNapJVSinxssyXIPj48FnVV7s=
+        b=DfMSzZQPHIxOw9FQSL+Tn8SRJBexadWRLpZCyijtKgJM+vvGKRnzPWKzDMeTX2QNC
+         bDRVubf5yimq7uFvbR9jAI3rsdQ2R+UluyhYwUm9Fq5aCf4i8PFuvj8+wBJJnCwvxv
+         X4w8THJeDTYKw6z8Uh58IJ6s5o+GolkviF2HjkuQ=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 09/16] NFS: Support larger readdir buffers
-Date:   Tue,  3 Nov 2020 10:33:22 -0500
-Message-Id: <20201103153329.531942-10-trondmy@kernel.org>
+Subject: [PATCH v2 11/16] NFS: nfs_do_filldir() does not return a value
+Date:   Tue,  3 Nov 2020 10:33:24 -0500
+Message-Id: <20201103153329.531942-12-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201103153329.531942-9-trondmy@kernel.org>
+In-Reply-To: <20201103153329.531942-11-trondmy@kernel.org>
 References: <20201103153329.531942-1-trondmy@kernel.org>
  <20201103153329.531942-2-trondmy@kernel.org>
  <20201103153329.531942-3-trondmy@kernel.org>
@@ -54,6 +54,8 @@ References: <20201103153329.531942-1-trondmy@kernel.org>
  <20201103153329.531942-7-trondmy@kernel.org>
  <20201103153329.531942-8-trondmy@kernel.org>
  <20201103153329.531942-9-trondmy@kernel.org>
+ <20201103153329.531942-10-trondmy@kernel.org>
+ <20201103153329.531942-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -62,126 +64,76 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Support readdir buffers of up to 1MB in size so that we can read
-large directories using few RPC calls.
+Clean up nfs_do_filldir().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/client.c   |  4 ++--
- fs/nfs/dir.c      | 33 +++++++++++++++++++--------------
- fs/nfs/internal.h |  6 ------
- 3 files changed, 21 insertions(+), 22 deletions(-)
+ fs/nfs/dir.c | 21 +++++++--------------
+ 1 file changed, 7 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4b8cc93913f7..f6454ba53d05 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -781,8 +781,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
- 	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
--	if (server->dtsize > PAGE_SIZE * NFS_MAX_READDIR_PAGES)
--		server->dtsize = PAGE_SIZE * NFS_MAX_READDIR_PAGES;
-+	if (server->dtsize > NFS_MAX_FILE_IO_SIZE)
-+		server->dtsize = NFS_MAX_FILE_IO_SIZE;
- 	if (server->dtsize > server->rsize)
- 		server->dtsize = server->rsize;
- 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 1052c84d80cf..caa304807df2 100644
+index b09073afb51b..647585358901 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -728,44 +728,47 @@ static int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
- 	return status;
- }
- 
--static
--void nfs_readdir_free_pages(struct page **pages, unsigned int npages)
-+static void nfs_readdir_free_pages(struct page **pages, size_t npages)
+@@ -882,13 +882,11 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
+ /*
+  * Once we've found the start of the dirent within a page: fill 'er up...
+  */
+-static 
+-int nfs_do_filldir(nfs_readdir_descriptor_t *desc)
++static void nfs_do_filldir(struct nfs_readdir_descriptor *desc)
  {
--	unsigned int i;
--	for (i = 0; i < npages; i++)
--		put_page(pages[i]);
-+	while (npages--)
-+		put_page(pages[npages]);
-+	kfree(pages);
+ 	struct file	*file = desc->file;
+-	int i = 0;
+-	int res = 0;
+-	struct nfs_cache_array *array = NULL;
++	struct nfs_cache_array *array;
++	unsigned int i = 0;
+ 
+ 	array = kmap(desc->page);
+ 	for (i = desc->cache_entry_index; i < array->size; i++) {
+@@ -915,9 +913,8 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc)
+ 		desc->eof = true;
+ 
+ 	kunmap(desc->page);
+-	dfprintk(DIRCACHE, "NFS: nfs_do_filldir() filling ended @ cookie %Lu; returning = %d\n",
+-			(unsigned long long)desc->dir_cookie, res);
+-	return res;
++	dfprintk(DIRCACHE, "NFS: nfs_do_filldir() filling ended @ cookie %llu\n",
++			(unsigned long long)desc->dir_cookie);
  }
  
  /*
-  * nfs_readdir_alloc_pages() will allocate pages that must be freed with a call
-  * to nfs_readdir_free_pages()
-  */
--static
--int nfs_readdir_alloc_pages(struct page **pages, unsigned int npages)
-+static struct page **nfs_readdir_alloc_pages(size_t npages)
- {
--	unsigned int i;
-+	struct page **pages;
-+	size_t i;
+@@ -958,7 +955,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc)
+ 	if (status < 0)
+ 		goto out_release;
  
-+	pages = kmalloc_array(npages, sizeof(*pages), GFP_KERNEL);
-+	if (!pages)
-+		return NULL;
- 	for (i = 0; i < npages; i++) {
- 		struct page *page = alloc_page(GFP_KERNEL);
- 		if (page == NULL)
- 			goto out_freepages;
- 		pages[i] = page;
- 	}
--	return 0;
-+	return pages;
+-	status = nfs_do_filldir(desc);
++	nfs_do_filldir(desc);
  
- out_freepages:
- 	nfs_readdir_free_pages(pages, i);
--	return -ENOMEM;
-+	return NULL;
+  out_release:
+ 	nfs_readdir_clear_array(desc->page);
+@@ -1033,10 +1030,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 		if (res < 0)
+ 			break;
+ 
+-		res = nfs_do_filldir(desc);
++		nfs_do_filldir(desc);
+ 		nfs_readdir_page_unlock_and_put_cached(desc);
+-		if (res < 0)
+-			break;
+ 	} while (!desc->eof);
+ 
+ 	spin_lock(&file->f_lock);
+@@ -1047,8 +1042,6 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	spin_unlock(&file->f_lock);
+ 
+ out:
+-	if (res > 0)
+-		res = 0;
+ 	dfprintk(FILE, "NFS: readdir(%pD2) returns %d\n", file, res);
+ 	return res;
  }
- 
- static
- int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page, struct inode *inode)
- {
--	struct page *pages[NFS_MAX_READDIR_PAGES];
-+	struct page **pages;
- 	struct nfs_entry entry;
- 	struct file	*file = desc->file;
-+	size_t array_size;
-+	size_t dtsize = NFS_SERVER(inode)->dtsize;
- 	int status = -ENOMEM;
--	unsigned int array_size = ARRAY_SIZE(pages);
- 
- 	entry.prev_cookie = 0;
- 	entry.cookie = nfs_readdir_page_last_cookie(page);
-@@ -782,9 +785,11 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 		goto out;
- 	}
- 
--	status = nfs_readdir_alloc_pages(pages, array_size);
--	if (status < 0)
-+	array_size = (dtsize + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	pages = nfs_readdir_alloc_pages(array_size);
-+	if (!pages)
- 		goto out_release_label;
-+
- 	do {
- 		unsigned int pglen;
- 		status = nfs_readdir_xdr_filler(pages, desc, &entry, file, inode);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6673a77884d9..b840d0a91c9d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -56,12 +56,6 @@ static inline bool nfs_lookup_is_soft_revalidate(const struct dentry *dentry)
- #define NFS_UNSPEC_RETRANS	(UINT_MAX)
- #define NFS_UNSPEC_TIMEO	(UINT_MAX)
- 
--/*
-- * Maximum number of pages that readdir can use for creating
-- * a vmapped array of pages.
-- */
--#define NFS_MAX_READDIR_PAGES 8
--
- struct nfs_client_initdata {
- 	unsigned long init_flags;
- 	const char *hostname;			/* Hostname of the server */
 -- 
 2.28.0
 
