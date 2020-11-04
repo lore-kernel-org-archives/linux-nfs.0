@@ -2,325 +2,152 @@ Return-Path: <SRS0=n/TU=EK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EEB4C388F9
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Nov 2020 16:27:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 46E42C4741F
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Nov 2020 17:03:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 584E2206D4
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Nov 2020 16:27:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DB35E20732
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Nov 2020 17:03:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="R9rvG/lS"
+	dkim=pass (2048-bit key) header.d=paul-moore-com.20150623.gappssmtp.com header.i=@paul-moore-com.20150623.gappssmtp.com header.b="M7sTa4A3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731220AbgKDQ1W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Nov 2020 11:27:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36172 "EHLO
+        id S1731283AbgKDRC6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Nov 2020 12:02:58 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41912 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726344AbgKDQ1U (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2020 11:27:20 -0500
-Received: from mail-qt1-x841.google.com (mail-qt1-x841.google.com [IPv6:2607:f8b0:4864:20::841])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 46B9CC0613D3
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2020 08:27:20 -0800 (PST)
-Received: by mail-qt1-x841.google.com with SMTP id g17so4101542qts.5
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2020 08:27:20 -0800 (PST)
+        with ESMTP id S1731513AbgKDRC5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Nov 2020 12:02:57 -0500
+Received: from mail-ej1-x641.google.com (mail-ej1-x641.google.com [IPv6:2a00:1450:4864:20::641])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1349C0613D4
+        for <linux-nfs@vger.kernel.org>; Wed,  4 Nov 2020 09:02:55 -0800 (PST)
+Received: by mail-ej1-x641.google.com with SMTP id gn41so13486404ejc.4
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Nov 2020 09:02:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
-         :content-transfer-encoding;
-        bh=8EbaX/h/3RCq01aTlbpXpFc+qXn4adW1WPgCbxfQhE8=;
-        b=R9rvG/lS3IOKvgKuKmO5sWnHY/n/9bvPgxLbKRnqp2ROAXpav1qVX9707iZXgZOz4p
-         p6hd3Zrjf/J8/jZXlWvKvsx+ISoLc3TKSDr5TAz05KkRzMel6zgUdCj/JL32ih7wQeHN
-         w92IELNQ8l30MU859IwggHXlyxfNnDMQ225iq+i1cCw/Kpbhe0Zz8LnhFYL7uK+tMowb
-         OfFMDgklGb4gmMXwZ4/9zl8iHdmaalfINVpbnAdoLiT58lpIwyKp2L21/ty/DGboHmBC
-         G1RrUS6H2C7zt49Qc3QxwD62YMQsN7v3tcVGl2xNBKIW79mz5StbR9u+aD0LGU4NPhiO
-         0PCA==
+        d=paul-moore-com.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=x2M/mARoDzrcfFFiwEe2r6gawenXxInWJUsbPLXI4aU=;
+        b=M7sTa4A3JZbX13eK8mgywZ5kdDjq33XlU/mpL1bHzx7FoLS3ztmx9M9jWTjyj1wfCe
+         s4N1kwTO9+A0wg+7pPU5k95P7JqFWQN1hHzwrzWO+IpYNzYRFmYpzZAv5Kc5wjJia+wl
+         65vkjtjKE6b52MBX9xVcDRMRdlWj1Rw1clG+312fBrHk5k1tlLpWaibkbe2Z5Kqpq9+U
+         1EZn6bUY51uaVkjJtrchPAq6GJ7mOhY5N4M7DLhxQhxcPoiQ2VEJ6rrKF/Pj/PyAOW/z
+         lhhpy5AWmnZvME8LvXYIzSHyoaFgMnW45UfjiBWxz0X/tpkmusE8zKDNuh8d4jjde4Bg
+         v8Tw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=8EbaX/h/3RCq01aTlbpXpFc+qXn4adW1WPgCbxfQhE8=;
-        b=W78Z/RIFqhu5Szu+I+88usiz5ZUeHfWm4XUavxoZpqx+7omvAo1MAccbKH9t8X2GEm
-         fpxBkMGvYXPxrHjWaxEUW9ESnZOkoHIZkQqyjKtjUOxKLAb8ml0s9pYDb6ZNYT+MzjXT
-         gh8yiXYdzBwdm4+kEFsumwXVnO84SvmBh7TgJXvlq5WKIaE/AcPAMO3Ps0nrJkxKwiPp
-         e2FYcR/DfCZybDDpE9m3/8APg3oEX06Wr4hlmUSngiRreZYJtJTLFtYgCyoEvxDsIfR/
-         e+nwe8USdnIko/uTUSDJQ3eGFa+J0BgO/gZ68nt2FT6QBJPprv54aLaDCoJBGz0PVEt/
-         Jp4A==
-X-Gm-Message-State: AOAM532fjVZUdJ+IUX8I+Uo/IppTqgAj/ClD+G3h5rYrfni5qGe8c0Py
-        nMLXhH7hmXIjdmqtq/X5W6EZnGGOLOIw
-X-Google-Smtp-Source: ABdhPJwEGXzqiQHJ8x1eh0o9rP/z+Qq355grZlLW2ZHySyaKHThpDHGoqKXde2+FW7NMcRWTY7KmSg==
-X-Received: by 2002:aed:2d82:: with SMTP id i2mr10517509qtd.10.1604507239088;
-        Wed, 04 Nov 2020 08:27:19 -0800 (PST)
-Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net. [68.36.133.222])
-        by smtp.gmail.com with ESMTPSA id g78sm2896924qke.88.2020.11.04.08.27.18
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Nov 2020 08:27:18 -0800 (PST)
-From:   trondmy@gmail.com
-X-Google-Original-From: trond.myklebust@hammerspace.com
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 16/17] NFS: Improve handling of directory verifiers
-Date:   Wed,  4 Nov 2020 11:16:37 -0500
-Message-Id: <20201104161638.300324-17-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201104161638.300324-16-trond.myklebust@hammerspace.com>
-References: <20201104161638.300324-1-trond.myklebust@hammerspace.com>
- <20201104161638.300324-2-trond.myklebust@hammerspace.com>
- <20201104161638.300324-3-trond.myklebust@hammerspace.com>
- <20201104161638.300324-4-trond.myklebust@hammerspace.com>
- <20201104161638.300324-5-trond.myklebust@hammerspace.com>
- <20201104161638.300324-6-trond.myklebust@hammerspace.com>
- <20201104161638.300324-7-trond.myklebust@hammerspace.com>
- <20201104161638.300324-8-trond.myklebust@hammerspace.com>
- <20201104161638.300324-9-trond.myklebust@hammerspace.com>
- <20201104161638.300324-10-trond.myklebust@hammerspace.com>
- <20201104161638.300324-11-trond.myklebust@hammerspace.com>
- <20201104161638.300324-12-trond.myklebust@hammerspace.com>
- <20201104161638.300324-13-trond.myklebust@hammerspace.com>
- <20201104161638.300324-14-trond.myklebust@hammerspace.com>
- <20201104161638.300324-15-trond.myklebust@hammerspace.com>
- <20201104161638.300324-16-trond.myklebust@hammerspace.com>
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=x2M/mARoDzrcfFFiwEe2r6gawenXxInWJUsbPLXI4aU=;
+        b=cT+ZyTHXI/kDjr3dO7iYAr+HxSYAuu8pSR/NeO1Rf5twokLypJnDhwl/UIqQJKEX4x
+         e2DmUaFK6f8wNTsozfCxcweOiZgnEMdDKUd8v/dvMfrRFPHo1ah6PXqDiGdsI8sbj9JK
+         CDtJRDYqJKt42Ojk5NkHRU49M6QreVglGC4BJeT8XIi19lJ1hswzL+FGNJpGXZblyy1y
+         pMZDA2Qx2YG8VA322Hj/ScS4wlyz2iSyyAD7bvtbNymlOrKyz1cGU6XdgwH5jtHHYmRF
+         4eAIBGN/2MjDd816DFpBh4LLhSmvMILvVgb3STXUpAnt4dUoH7lKTtw9j4CgCI3wWunQ
+         yH2g==
+X-Gm-Message-State: AOAM531DBokLCPi1XT6fNoKQRcHhK5AGWVqnwugXtG4KDiajVtDw/tzo
+        qc67ctAzZFZr1MRiCzbq9G2VObSKAawWnKLhi9kN
+X-Google-Smtp-Source: ABdhPJwnz1UtFa7ZfNIrVWs1o+Tvv5+b2V30m/yWN9QZtdmkerlPloaXcjzTHxCBxaQbBdQJ58kX093S2c9nCvxtPDo=
+X-Received: by 2002:a17:906:1159:: with SMTP id i25mr5847474eja.398.1604509374270;
+ Wed, 04 Nov 2020 09:02:54 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAN-5tyETQWVphrgqWjcPrtTzHHyz5DGrRz741yPYRS9Byyd=3Q@mail.gmail.com>
+ <CAHC9VhRP2iJqLWiBg46zPKUqxzZoUOuaA6FPigxOw7qubophdw@mail.gmail.com>
+ <CAN-5tyFq775PeOOzqskFexdbCgK3Gk_XB2Yy80SRYSc7Pdj=CA@mail.gmail.com>
+ <CAHC9VhTzO1z6NmYz6cOLg5OvJiyQXdH_VmLh4=+h1MrGXx36JQ@mail.gmail.com>
+ <CAN-5tyGJxUZb5QdJ=fh+L-6rc2B-MhQbDcDkTZNAZAAJm9Q8YQ@mail.gmail.com>
+ <FB6C74CE-5D9F-4469-A49B-93CC8A51D7D5@gmail.com> <CAN-5tyFQbfkiuno07C6Azc7RcF3z3qF3PP0FutFMD3raBgnQmA@mail.gmail.com>
+ <CAEjxPJ7PoAG6f+gVdodx=6X8+_Z_WCFXAuxnpB8WmC1gTF4iQQ@mail.gmail.com>
+ <CAN-5tyEy57xoqEbZAThZKHriJywx-5DMKBD5tsXwo5ccGwuctw@mail.gmail.com>
+ <CAHC9VhQpCXFySZY42==KR57hfAkVLdS6mSAcp2UHn-GWjEfVLg@mail.gmail.com>
+ <bc766b2b-d1f1-d767-579c-02e10ae32a9a@schaufler-ca.com> <CAHC9VhS7UeCX9BXPrHNH90_sLHKGxTbbtjdm6GBOgDM9=T05FA@mail.gmail.com>
+ <CAN-5tyF_JTMr4+05_YH2VQGft4aXXon3ZjuiVuOn-Z-DLVvTQg@mail.gmail.com>
+In-Reply-To: <CAN-5tyF_JTMr4+05_YH2VQGft4aXXon3ZjuiVuOn-Z-DLVvTQg@mail.gmail.com>
+From:   Paul Moore <paul@paul-moore.com>
+Date:   Wed, 4 Nov 2020 12:02:41 -0500
+Message-ID: <CAHC9VhQgJ93LrEFBBJ-kz8C9b4RukODzRRRJVKgwGEL8jPVZaQ@mail.gmail.com>
+Subject: Re: selinux: how to query if selinux is enabled
+To:     Olga Kornievskaia <aglo@umich.edu>
+Cc:     Casey Schaufler <casey@schaufler-ca.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Chuck Lever <chucklever@gmail.com>,
+        Linux Security Module list 
+        <linux-security-module@vger.kernel.org>,
+        SElinux list <selinux@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Wed, Nov 4, 2020 at 9:21 AM Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Wed, Oct 14, 2020 at 8:11 PM Paul Moore <paul@paul-moore.com> wrote:
+> > On Wed, Oct 14, 2020 at 12:31 PM Casey Schaufler <casey@schaufler-ca.com> wrote:
+> > > On 10/14/2020 8:57 AM, Paul Moore wrote:
+> > > > On Wed, Oct 14, 2020 at 10:37 AM Olga Kornievskaia <aglo@umich.edu> wrote:
+> > > >> On Tue, Oct 13, 2020 at 7:51 PM Stephen Smalley wrote:
 
-If the server insists on using the readdir verifiers in order to allow
-cookies to expire, then we should ensure that we cache the verifier
-with the cookie, so that we can return an error if the application
-tries to use the expired cookie.
+...
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/dir.c           | 35 +++++++++++++++++++++++------------
- fs/nfs/inode.c         |  7 -------
- include/linux/nfs_fs.h |  8 +++++++-
- 3 files changed, 30 insertions(+), 20 deletions(-)
+> > > > To start the discussion I might suggest the following:
+> > > >
+> > > > #define LSM_FQUERY_VFS_NONE     0x00000000
+> > > > #define LSM_FQUERY_VFS_XATTRS   0x00000001
+> > > > int security_func_query_vfs(unsigned int flags);
+> > > >
+> > > > ... with an example SELinux implementation looks like this:
+> > > >
+> > > > int selinux_func_query_vfs(unsigned int flags)
+> > > > {
+> > > >     return !!(flags & LSM_FQUERY_VFS_XATTRS);
+> > > > }
+> > >
+> > > Not a bad start, but I see optimizations and issues.
+> > >
+> > > It would be really easy to collect the LSM features at module
+> > > initialization by adding the feature flags to struct lsm_info.
+> > > We could maintain a variable lsm_features in security.c that
+> > > has the cumulative feature set. Rather than have an LSM hook for
+> > > func_query_vfs we'd get
+> > >
+> > > int security_func_query_vfs(void)
+> > > {
+> > >         return !!(lsm_features & LSM_FQUERY_VFS_XATTRS);
+> > > }
+> >
+> > Works for me.
+> >
+> > > In either case there could be confusion in the case where more
+> > > than one security module provides the feature. NFS, for example,
+> > > cares about the SELinux "selinux" attribute, but probably not
+> > > about the Smack "SMACK64EXEC" attribute. It's entirely possible
+> > > that a bit isn't enough information to check about a "feature".
+> >
+> > In the LSM stacking world that shouldn't matter to callers, right?  Or
+> > perhaps more correctly, if it matters to the caller which individual
+> > LSM supports what feature then the caller is doing it wrong, right?
+>
+> Hi folks,
+>
+> I would like to resurrect this discussion and sorry for a delayed
+> response. I'm a little bit unsure about the suggested approach of
+> adding something like selinux_func_query_vfs() call where selinux has
+> such a function. What happens when selinux is configured to be
+> "disabled" wouldn't this call still return the same value as when it
+> is configured as "permissive or enforcing"?
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 3b44bef3a1b4..454377228167 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -155,6 +155,7 @@ struct nfs_readdir_descriptor {
- 	loff_t		current_index;
- 	loff_t		prev_index;
- 
-+	__be32		verf[NFS_DIR_VERIFIER_SIZE];
- 	unsigned long	dir_verifier;
- 	unsigned long	timestamp;
- 	unsigned long	gencount;
-@@ -466,15 +467,15 @@ static int nfs_readdir_search_array(struct nfs_readdir_descriptor *desc)
- 
- /* Fill a page with xdr information before transferring to the cache page */
- static int nfs_readdir_xdr_filler(struct nfs_readdir_descriptor *desc,
--				  u64 cookie, struct page **pages,
--				  size_t bufsize)
-+				  __be32 *verf, u64 cookie,
-+				  struct page **pages, size_t bufsize,
-+				  __be32 *verf_res)
- {
- 	struct inode *inode = file_inode(desc->file);
--	__be32 verf_res[2];
- 	struct nfs_readdir_arg arg = {
- 		.dentry = file_dentry(desc->file),
- 		.cred = desc->file->f_cred,
--		.verf = NFS_I(inode)->cookieverf,
-+		.verf = verf,
- 		.cookie = cookie,
- 		.pages = pages,
- 		.page_len = bufsize,
-@@ -503,8 +504,6 @@ static int nfs_readdir_xdr_filler(struct nfs_readdir_descriptor *desc,
- 	}
- 	desc->timestamp = timestamp;
- 	desc->gencount = gencount;
--	memcpy(NFS_I(inode)->cookieverf, res.verf,
--	       sizeof(NFS_I(inode)->cookieverf));
- error:
- 	return error;
- }
-@@ -770,11 +769,13 @@ static struct page **nfs_readdir_alloc_pages(size_t npages)
- }
- 
- static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
--				    struct page *page, struct inode *inode)
-+				    struct page *page, __be32 *verf_arg,
-+				    __be32 *verf_res)
- {
- 	struct page **pages;
- 	struct nfs_entry *entry;
- 	size_t array_size;
-+	struct inode *inode = file_inode(desc->file);
- 	size_t dtsize = NFS_SERVER(inode)->dtsize;
- 	int status = -ENOMEM;
- 
-@@ -801,8 +802,9 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
- 
- 	do {
- 		unsigned int pglen;
--		status = nfs_readdir_xdr_filler(desc, entry->cookie,
--						pages, dtsize);
-+		status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
-+						pages, dtsize,
-+						verf_res);
- 		if (status < 0)
- 			break;
- 
-@@ -854,13 +856,15 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
- {
- 	struct inode *inode = file_inode(desc->file);
- 	struct nfs_inode *nfsi = NFS_I(inode);
-+	__be32 verf[NFS_DIR_VERIFIER_SIZE];
- 	int res;
- 
- 	desc->page = nfs_readdir_page_get_cached(desc);
- 	if (!desc->page)
- 		return -ENOMEM;
- 	if (nfs_readdir_page_needs_filling(desc->page)) {
--		res = nfs_readdir_xdr_to_array(desc, desc->page, inode);
-+		res = nfs_readdir_xdr_to_array(desc, desc->page,
-+					       nfsi->cookieverf, verf);
- 		if (res < 0) {
- 			nfs_readdir_page_unlock_and_put_cached(desc);
- 			if (res == -EBADCOOKIE || res == -ENOTSYNC) {
-@@ -870,6 +874,7 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
- 			}
- 			return res;
- 		}
-+		memcpy(nfsi->cookieverf, verf, sizeof(nfsi->cookieverf));
- 	}
- 	res = nfs_readdir_search_array(desc);
- 	if (res == 0) {
-@@ -902,6 +907,7 @@ static int readdir_search_pagecache(struct nfs_readdir_descriptor *desc)
- static void nfs_do_filldir(struct nfs_readdir_descriptor *desc)
- {
- 	struct file	*file = desc->file;
-+	struct nfs_inode *nfsi = NFS_I(file_inode(file));
- 	struct nfs_cache_array *array;
- 	unsigned int i = 0;
- 
-@@ -915,6 +921,7 @@ static void nfs_do_filldir(struct nfs_readdir_descriptor *desc)
- 			desc->eof = true;
- 			break;
- 		}
-+		memcpy(desc->verf, nfsi->cookieverf, sizeof(desc->verf));
- 		if (i < (array->size-1))
- 			desc->dir_cookie = array->array[i+1].cookie;
- 		else
-@@ -949,8 +956,8 @@ static void nfs_do_filldir(struct nfs_readdir_descriptor *desc)
- static int uncached_readdir(struct nfs_readdir_descriptor *desc)
- {
- 	struct page	*page = NULL;
-+	__be32		verf[NFS_DIR_VERIFIER_SIZE];
- 	int		status;
--	struct inode *inode = file_inode(desc->file);
- 
- 	dfprintk(DIRCACHE, "NFS: uncached_readdir() searching for cookie %Lu\n",
- 			(unsigned long long)desc->dir_cookie);
-@@ -967,7 +974,7 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
- 	desc->duped = 0;
- 
- 	nfs_readdir_page_init_array(page, desc->dir_cookie);
--	status = nfs_readdir_xdr_to_array(desc, page, inode);
-+	status = nfs_readdir_xdr_to_array(desc, page, desc->verf, verf);
- 	if (status < 0)
- 		goto out_release;
- 
-@@ -1023,6 +1030,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	desc->dup_cookie = dir_ctx->dup_cookie;
- 	desc->duped = dir_ctx->duped;
- 	desc->attr_gencount = dir_ctx->attr_gencount;
-+	memcpy(desc->verf, dir_ctx->verf, sizeof(desc->verf));
- 	spin_unlock(&file->f_lock);
- 
- 	do {
-@@ -1061,6 +1069,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	dir_ctx->dup_cookie = desc->dup_cookie;
- 	dir_ctx->duped = desc->duped;
- 	dir_ctx->attr_gencount = desc->attr_gencount;
-+	memcpy(dir_ctx->verf, desc->verf, sizeof(dir_ctx->verf));
- 	spin_unlock(&file->f_lock);
- 
- 	kfree(desc);
-@@ -1101,6 +1110,8 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
- 			dir_ctx->dir_cookie = offset;
- 		else
- 			dir_ctx->dir_cookie = 0;
-+		if (offset == 0)
-+			memset(dir_ctx->verf, 0, sizeof(dir_ctx->verf));
- 		dir_ctx->duped = 0;
- 	}
- 	spin_unlock(&filp->f_lock);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index aa6493905bbe..9b765a900b28 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -229,7 +229,6 @@ static void nfs_zap_caches_locked(struct inode *inode)
- 	nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 	nfsi->attrtimeo_timestamp = jiffies;
- 
--	memset(NFS_I(inode)->cookieverf, 0, sizeof(NFS_I(inode)->cookieverf));
- 	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) {
- 		nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATTR
- 					| NFS_INO_INVALID_DATA
-@@ -1237,7 +1236,6 @@ EXPORT_SYMBOL_GPL(nfs_revalidate_inode);
- 
- static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
- {
--	struct nfs_inode *nfsi = NFS_I(inode);
- 	int ret;
- 
- 	if (mapping->nrpages != 0) {
-@@ -1250,11 +1248,6 @@ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *map
- 		if (ret < 0)
- 			return ret;
- 	}
--	if (S_ISDIR(inode->i_mode)) {
--		spin_lock(&inode->i_lock);
--		memset(nfsi->cookieverf, 0, sizeof(nfsi->cookieverf));
--		spin_unlock(&inode->i_lock);
--	}
- 	nfs_inc_stats(inode, NFSIOS_DATAINVALIDATE);
- 	nfs_fscache_wait_on_invalidate(inode);
- 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index dd6b463dda80..681ed98e4ba8 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -45,6 +45,11 @@
-  */
- #define NFS_RPC_SWAPFLAGS		(RPC_TASK_SWAPPER|RPC_TASK_ROOTCREDS)
- 
-+/*
-+ * Size of the NFS directory verifier
-+ */
-+#define NFS_DIR_VERIFIER_SIZE		2
-+
- /*
-  * NFSv3/v4 Access mode cache entry
-  */
-@@ -89,6 +94,7 @@ struct nfs_open_context {
- struct nfs_open_dir_context {
- 	struct list_head list;
- 	unsigned long attr_gencount;
-+	__be32	verf[NFS_DIR_VERIFIER_SIZE];
- 	__u64 dir_cookie;
- 	__u64 dup_cookie;
- 	signed char duped;
-@@ -156,7 +162,7 @@ struct nfs_inode {
- 	 * This is the cookie verifier used for NFSv3 readdir
- 	 * operations
- 	 */
--	__be32			cookieverf[2];
-+	__be32			cookieverf[NFS_DIR_VERIFIER_SIZE];
- 
- 	atomic_long_t		nrequests;
- 	struct nfs_mds_commit_info commit_info;
+Hello again.
+
+To start, the non-LSM portion of the kernel shouldn't be calling
+selinux_func_query_vfs() directly, it should call
+security_func_query_vfs(); it would be up to the individual LSMs to
+indicate to the LSM hooks layer what is required.  If SELinux wasn't
+built into the kernel, or was disabled at boot, I would expect that
+the security_func_query_vfs() function would adjust to exclude the
+SELinux requirements.
+
 -- 
-2.28.0
-
+paul moore
+www.paul-moore.com
