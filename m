@@ -2,126 +2,135 @@ Return-Path: <SRS0=hdvH=EM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F0A18C2D0A3
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 Nov 2020 14:29:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66DBEC4741F
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 Nov 2020 14:41:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7754020719
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 Nov 2020 14:29:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F0D85208B8
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 Nov 2020 14:41:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Dd39j+/x"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KMOXe1xu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727166AbgKFO3Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 6 Nov 2020 09:29:25 -0500
-Received: from aserp2130.oracle.com ([141.146.126.79]:51586 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726708AbgKFO3Z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Nov 2020 09:29:25 -0500
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0A6ENesH021034;
-        Fri, 6 Nov 2020 14:29:16 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=rUuKUtCppy6N7dcPp/iTA5mbc0TMv6fJgcRziHZpC20=;
- b=Dd39j+/xwBKyq/0IMT/7HHrHUm0IxZv6vO6qJfaG8WUqc0NmWgaB8AjwXX+yjD/c/QYC
- 0p+FbiPHjVdS4gpvymVPY1vP+IfLmsvr7l/4aO8JAHLnqIPikqQM7S2/JevA5RI0D79H
- Vc6XhEMMzaSkxw3SNYNTmUAfwkZOwUcyGGVR3V4tn8u8m5AsjJLjcaaa+T1Ap/5B3G5l
- 52elooT9ZkmFeTtln+OgnQ75FYzgVq7iZ/m3gxIuztdTknd9OtSRdj8MQ3zOqQD89Ujh
- soipQ4rK7cKM+cOE/Ga68o3QPGqrCxX1S+p+lwjajTuM40I3SFDwi5HXbNalajsNG4i0 nA== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by aserp2130.oracle.com with ESMTP id 34hhb2h5eb-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Fri, 06 Nov 2020 14:29:16 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0A6EOxAE069445;
-        Fri, 6 Nov 2020 14:29:16 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3030.oracle.com with ESMTP id 34jf4e25jm-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 06 Nov 2020 14:29:16 +0000
-Received: from abhmp0020.oracle.com (abhmp0020.oracle.com [141.146.116.26])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0A6ETE66006981;
-        Fri, 6 Nov 2020 14:29:14 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 06 Nov 2020 06:29:14 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
-Subject: Re: [PATCH] nfsd/nfs3: remove unused macro nfsd3_fhandleres
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1604641257-6159-1-git-send-email-alex.shi@linux.alibaba.com>
-Date:   Fri, 6 Nov 2020 09:29:11 -0500
-Cc:     Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-kernel@vger.kernel.org
-Content-Transfer-Encoding: 7bit
-Message-Id: <94040377-C2A4-47DF-BBA1-16573F69739D@oracle.com>
-References: <1604641257-6159-1-git-send-email-alex.shi@linux.alibaba.com>
-To:     Alex Shi <alex.shi@linux.alibaba.com>
-X-Mailer: Apple Mail (2.3608.120.23.2.4)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9796 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 suspectscore=0 mlxscore=0
- bulkscore=0 malwarescore=0 mlxlogscore=999 phishscore=0 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2011060104
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9796 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 phishscore=0 suspectscore=0
- clxscore=1011 mlxlogscore=999 impostorscore=0 malwarescore=0
- lowpriorityscore=0 adultscore=0 spamscore=0 priorityscore=1501 mlxscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2011060104
+        id S1726694AbgKFOl5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 6 Nov 2020 09:41:57 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45888 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726565AbgKFOl5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Nov 2020 09:41:57 -0500
+Received: from mail-il1-x12d.google.com (mail-il1-x12d.google.com [IPv6:2607:f8b0:4864:20::12d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 146FCC0613CF
+        for <linux-nfs@vger.kernel.org>; Fri,  6 Nov 2020 06:41:57 -0800 (PST)
+Received: by mail-il1-x12d.google.com with SMTP id a20so1237547ilk.13
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Nov 2020 06:41:57 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=O4pYSXpxD9NyE+W0LTzl1OZC1cUbHrJQNpHPUsBGUBI=;
+        b=KMOXe1xu8Apg3pG90O7Ujws637k+z9YFVFHOd4/CupXtBdKokGggn4yVUmdde8QmCI
+         gCuuHuENPq5XRLS6U4TeosL0Q8jkCN7RipgIPeDPO8xgaxDa388fHCyG2HG3vnG/6NJb
+         VYrqpJFkwst0GxX5b8JYVutfMU3BxCklZENee/rexPSK1ryWtPwwzSDE0mp72iHbhZ6n
+         h3FXvCBDJXl36UWtON81Qi4jLbgn6V0lJlope37k/KG2UmaY30ldYrnTRKF4faBU4sj/
+         IuxjvXePxL8xYm9JcS/vYO8p1oikXQQ/j3FLcGDJ7qf5V3GYmWr1e6VWh1R7fAvbAKye
+         LBtQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=O4pYSXpxD9NyE+W0LTzl1OZC1cUbHrJQNpHPUsBGUBI=;
+        b=e8+dYJFat5UxxziEcOmjX3MjHkT703+LOTod8gV36DqbPKcgv2B3TJCrW3GFy1Lucd
+         0hzc9eZQZJUbHsjorlTh7Ko+whQn86hBR6IJRplofZTHf63dN3FO1FS5P7W8SnVxzCGN
+         MBAYDajg4ZiaSSC/Qoyzo2KKNiWyDtEcGnRmrkL/THEJH6PZs14mfLl37bQHDTAMTiSi
+         r9UgRTuHmbpbKTnTYLsAiOQEWEE2GtZwrB99Bs5xOD0oSOvu4EvH8o6LDvbt8UFBhWC5
+         xneG45Yd4lReRl6SbeS8hQsvqlGP6rHiQsHHMkWrYt+bMNOhna99G0UbKfsZZ7mcaOLX
+         iWuQ==
+X-Gm-Message-State: AOAM532alSs00wj8K387Rh0MEzKU4qcaHifTITb05d5o3A79Nz3TDNlX
+        5V7NKTulGGPtCAQu699A6+o=
+X-Google-Smtp-Source: ABdhPJz7oSnGGjfvhFuZ0n/bYMtU11yGoxJfqK/VO+YhnPxkcEYa1wbVrjyCAazdCDSZmUiGvlYNWA==
+X-Received: by 2002:a05:6e02:112:: with SMTP id t18mr1575678ilm.299.1604673716347;
+        Fri, 06 Nov 2020 06:41:56 -0800 (PST)
+Received: from Olgas-MBP-377.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id c2sm994193iot.52.2020.11.06.06.41.55
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Fri, 06 Nov 2020 06:41:55 -0800 (PST)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org, omosnace@redhat.com
+Subject: [PATCH v3 1/1] NFSv4.2: condition READDIR's mask for security label based on LSM state
+Date:   Fri,  6 Nov 2020 09:41:54 -0500
+Message-Id: <20201106144154.3610-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: Olga Kornievskaia <kolga@netapp.com>
 
+Currently, the client will always ask for security_labels if the server
+returns that it supports that feature regardless of any LSM modules
+(such as Selinux) enforcing security policy. This adds performance
+penalty to the READDIR operation.
 
-> On Nov 6, 2020, at 12:40 AM, Alex Shi <alex.shi@linux.alibaba.com> wrote:
-> 
-> The macro is unused, remove it to tame gcc warning:
-> fs/nfsd/nfs3proc.c:702:0: warning: macro "nfsd3_fhandleres" is not used
-> [-Wunused-macros]
-> 
-> Signed-off-by: Alex Shi <alex.shi@linux.alibaba.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org> 
-> Cc: Chuck Lever <chuck.lever@oracle.com> 
-> Cc: linux-nfs@vger.kernel.org 
-> Cc: linux-kernel@vger.kernel.org 
-> ---
-> fs/nfsd/nfs3proc.c | 1 -
-> 1 file changed, 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-> index 781e265921aa..6e79bae0af4d 100644
-> --- a/fs/nfsd/nfs3proc.c
-> +++ b/fs/nfsd/nfs3proc.c
-> @@ -687,7 +687,6 @@
-> #define nfsd3_mkdirargs			nfsd3_createargs
-> #define nfsd3_readdirplusargs		nfsd3_readdirargs
-> #define nfsd3_fhandleargs		nfsd_fhandle
-> -#define nfsd3_fhandleres		nfsd3_attrstat
-> #define nfsd3_attrstatres		nfsd3_attrstat
-> #define nfsd3_wccstatres		nfsd3_attrstat
-> #define nfsd3_createres			nfsd3_diropres
-> -- 
-> 1.8.3.1
+Client adjusts superblock's support of the security_label based on
+the server's support but also current client's configuration of the
+LSM modules. Thus, prior to using the default bitmask in READDIR,
+this patch checks the server's capabilities and then instructs
+READDIR to remove FATTR4_WORD2_SECURITY_LABEL from the bitmask.
 
-Applied to cel-next, thanks Alex.
+v3: changing label's initialization per Ondrej's comment
+v2: dropping selinux hook and using the sb cap.
 
-The topic branch that collects patches for nfsd-5.11 is here:
+Suggested-by: Ondrej Mosnacek <omosnace@redhat.com>
+Suggested-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4proc.c       | 2 ++
+ fs/nfs/nfs4xdr.c        | 3 ++-
+ include/linux/nfs_xdr.h | 1 +
+ 3 files changed, 5 insertions(+), 1 deletion(-)
 
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=shortlog;h=refs/heads/cel-next
-
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9e0ca9b2b210..d85c78657ef4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4968,6 +4968,8 @@ static int _nfs4_proc_readdir(struct dentry *dentry, const struct cred *cred,
+ 		.count = count,
+ 		.bitmask = NFS_SERVER(d_inode(dentry))->attr_bitmask,
+ 		.plus = plus,
++		.labels = !!(NFS_SB(dentry->d_sb)->caps &
++				NFS_CAP_SECURITY_LABEL),
+ 	};
+ 	struct nfs4_readdir_res res;
+ 	struct rpc_message msg = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c6dbfcae7517..585d5b5cc3dc 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1605,7 +1605,8 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
+ 			FATTR4_WORD1_OWNER_GROUP|FATTR4_WORD1_RAWDEV|
+ 			FATTR4_WORD1_SPACE_USED|FATTR4_WORD1_TIME_ACCESS|
+ 			FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+-		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
++		if (readdir->labels)
++			attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
+ 		dircount >>= 1;
+ 	}
+ 	/* Use mounted_on_fileid only if the server supports it */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d63cb862d58e..95f648b26525 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1119,6 +1119,7 @@ struct nfs4_readdir_arg {
+ 	unsigned int			pgbase;	/* zero-copy data */
+ 	const u32 *			bitmask;
+ 	bool				plus;
++	bool				labels;
+ };
+ 
+ struct nfs4_readdir_res {
+-- 
+2.18.2
 
