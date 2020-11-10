@@ -7,39 +7,39 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28B4FC55ABD
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 98A47C388F7
 	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 21:48:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D052020781
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 21:48:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4308320781
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 21:48:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="XjlE4fDF"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="iF6tFE/A"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731962AbgKJVsF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1731910AbgKJVsF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 10 Nov 2020 16:48:05 -0500
-Received: from mail.kernel.org ([198.145.29.99]:43158 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:43188 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731910AbgKJVsB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 10 Nov 2020 16:48:01 -0500
+        id S1731985AbgKJVsE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 10 Nov 2020 16:48:04 -0500
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C461F20781
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 21:48:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id D891E20797
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 21:48:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1605044881;
-        bh=cMEWWMcCer6P+Uhg/Jcq2urGKl/+7vRQ6vchKX/BtHo=;
+        s=default; t=1605044883;
+        bh=Dv3p0VH/Q/wawpd5nxhWQO1H7aHmqx16Dr0Zk0sTKDw=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=XjlE4fDFtC2Z5ENHVbbyzLGm6kOGfLRC/UY1FK9D3f5qwgJbLLb2s2kQ8r7+5qbl+
-         6CdB8pClGvBYw+S1KWI5xzz9+/wIdf8UEldU8/mG5xUj+3WOjZvn8XV1mytTuc8cSG
-         bLC+/5JH6iXcN4KdSEZFHdGHRJFFv7WP1o2RKBNI=
+        b=iF6tFE/A/Hua+SKs1pB/umVW8MRXyjuULBVUNp7rlUWQW7kKjlRrIsYsvOxDrg9fx
+         axBeDRepdilJtEOqfEUVdRODK6YzunvRevqGvbHO3czMKzhUzCFyNSTXzKZMEJ2PfZ
+         DDpZuaTgTOVTMeP2G0ffWDcV2U8pgAwbcfI2pJpo=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v5 16/22] NFS: Cleanup to remove nfs_readdir_descriptor_t typedef
-Date:   Tue, 10 Nov 2020 16:37:35 -0500
-Message-Id: <20201110213741.860745-17-trondmy@kernel.org>
+Subject: [PATCH v5 20/22] NFS: Optimisations for monotonically increasing readdir cookies
+Date:   Tue, 10 Nov 2020 16:37:39 -0500
+Message-Id: <20201110213741.860745-21-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201110213741.860745-16-trondmy@kernel.org>
+In-Reply-To: <20201110213741.860745-20-trondmy@kernel.org>
 References: <20201110213741.860745-1-trondmy@kernel.org>
  <20201110213741.860745-2-trondmy@kernel.org>
  <20201110213741.860745-3-trondmy@kernel.org>
@@ -56,6 +56,10 @@ References: <20201110213741.860745-1-trondmy@kernel.org>
  <20201110213741.860745-14-trondmy@kernel.org>
  <20201110213741.860745-15-trondmy@kernel.org>
  <20201110213741.860745-16-trondmy@kernel.org>
+ <20201110213741.860745-17-trondmy@kernel.org>
+ <20201110213741.860745-18-trondmy@kernel.org>
+ <20201110213741.860745-19-trondmy@kernel.org>
+ <20201110213741.860745-20-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -64,117 +68,86 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
+If the server is handing out monotonically increasing readdir cookie values,
+then we can optimise away searches through pages that contain cookies that
+lie outside our search range.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
 Tested-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/dir.c | 30 +++++++++++++-----------------
- 1 file changed, 13 insertions(+), 17 deletions(-)
+ fs/nfs/dir.c | 23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c3af54640f6c..b226f6f3ae96 100644
+index 454377228167..b6c3501e8f61 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -144,7 +144,7 @@ struct nfs_cache_array {
+@@ -140,7 +140,8 @@ struct nfs_cache_array {
+ 	u64 last_cookie;
+ 	unsigned int size;
+ 	unsigned char page_full : 1,
+-		      page_is_eof : 1;
++		      page_is_eof : 1,
++		      cookies_are_ordered : 1;
  	struct nfs_cache_array_entry array[];
  };
  
--typedef struct nfs_readdir_descriptor {
-+struct nfs_readdir_descriptor {
- 	struct file	*file;
- 	struct page	*page;
- 	struct dir_context *ctx;
-@@ -163,7 +163,7 @@ typedef struct nfs_readdir_descriptor {
- 	signed char duped;
- 	bool plus;
- 	bool eof;
--} nfs_readdir_descriptor_t;
-+};
- 
- static void nfs_readdir_array_init(struct nfs_cache_array *array)
- {
-@@ -362,8 +362,8 @@ bool nfs_readdir_use_cookie(const struct file *filp)
- 	return true;
+@@ -178,6 +179,7 @@ static void nfs_readdir_page_init_array(struct page *page, u64 last_cookie)
+ 	array = kmap_atomic(page);
+ 	nfs_readdir_array_init(array);
+ 	array->last_cookie = last_cookie;
++	array->cookies_are_ordered = 1;
+ 	kunmap_atomic(array);
  }
  
--static
--int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
-+static int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
-+				      struct nfs_readdir_descriptor *desc)
- {
- 	loff_t diff = desc->ctx->pos - desc->current_index;
- 	unsigned int index;
-@@ -394,8 +394,8 @@ nfs_readdir_inode_mapping_valid(struct nfs_inode *nfsi)
+@@ -269,6 +271,8 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ 	cache_entry->name_len = entry->len;
+ 	cache_entry->name = name;
+ 	array->last_cookie = entry->cookie;
++	if (array->last_cookie <= cache_entry->cookie)
++		array->cookies_are_ordered = 0;
+ 	array->size++;
+ 	if (entry->eof != 0)
+ 		nfs_readdir_array_set_eof(array);
+@@ -395,6 +399,19 @@ nfs_readdir_inode_mapping_valid(struct nfs_inode *nfsi)
  	return !test_bit(NFS_INO_INVALIDATING, &nfsi->flags);
  }
  
--static
--int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
-+static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
-+					 struct nfs_readdir_descriptor *desc)
++static bool nfs_readdir_array_cookie_in_range(struct nfs_cache_array *array,
++					      u64 cookie)
++{
++	if (!array->cookies_are_ordered)
++		return true;
++	/* Optimisation for monotonically increasing cookies */
++	if (cookie >= array->last_cookie)
++		return false;
++	if (array->size && cookie < array->array[0].cookie)
++		return false;
++	return true;
++}
++
+ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
+ 					 struct nfs_readdir_descriptor *desc)
  {
- 	int i;
+@@ -402,6 +419,9 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
  	loff_t new_pos;
-@@ -443,8 +443,7 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
- 	return status;
- }
+ 	int status = -EAGAIN;
  
--static
--int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
-+static int nfs_readdir_search_array(struct nfs_readdir_descriptor *desc)
- {
- 	struct nfs_cache_array *array;
- 	int status;
-@@ -497,7 +496,7 @@ static int nfs_readdir_xdr_filler(struct nfs_readdir_descriptor *desc,
- 	return error;
- }
- 
--static int xdr_decode(nfs_readdir_descriptor_t *desc,
-+static int xdr_decode(struct nfs_readdir_descriptor *desc,
- 		      struct nfs_entry *entry, struct xdr_stream *xdr)
- {
- 	struct inode *inode = file_inode(desc->file);
-@@ -757,8 +756,8 @@ static struct page **nfs_readdir_alloc_pages(size_t npages)
- 	return NULL;
- }
- 
--static
--int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page, struct inode *inode)
-+static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
-+				    struct page *page, struct inode *inode)
- {
- 	struct page **pages;
- 	struct nfs_entry *entry;
-@@ -838,8 +837,7 @@ nfs_readdir_page_get_cached(struct nfs_readdir_descriptor *desc)
-  * Returns 0 if desc->dir_cookie was found on page desc->page_index
-  * and locks the page to prevent removal from the page cache.
-  */
--static
--int find_and_lock_cache_page(nfs_readdir_descriptor_t *desc)
-+static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
- {
- 	struct inode *inode = file_inode(desc->file);
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -864,8 +862,7 @@ int find_and_lock_cache_page(nfs_readdir_descriptor_t *desc)
- }
- 
- /* Search for desc->dir_cookie from the beginning of the page cache */
--static inline
--int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
-+static int readdir_search_pagecache(struct nfs_readdir_descriptor *desc)
- {
- 	int res;
- 
-@@ -930,8 +927,7 @@ static void nfs_do_filldir(struct nfs_readdir_descriptor *desc)
-  *	 we should already have a complete representation of the
-  *	 directory in the page cache by the time we get here.
-  */
--static inline
--int uncached_readdir(nfs_readdir_descriptor_t *desc)
-+static int uncached_readdir(struct nfs_readdir_descriptor *desc)
- {
- 	struct page	*page = NULL;
- 	int		status;
++	if (!nfs_readdir_array_cookie_in_range(array, desc->dir_cookie))
++		goto check_eof;
++
+ 	for (i = 0; i < array->size; i++) {
+ 		if (array->array[i].cookie == desc->dir_cookie) {
+ 			struct nfs_inode *nfsi = NFS_I(file_inode(desc->file));
+@@ -435,6 +455,7 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
+ 			return 0;
+ 		}
+ 	}
++check_eof:
+ 	if (array->page_is_eof) {
+ 		status = -EBADCOOKIE;
+ 		if (desc->dir_cookie == array->last_cookie)
 -- 
 2.28.0
 
