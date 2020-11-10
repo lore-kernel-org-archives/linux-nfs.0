@@ -2,45 +2,48 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10C56C4742C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7D0DC61DD8
 	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 23:29:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AFAAA2080A
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 23:29:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 68FE6207E8
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 23:29:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="PmMlanlj"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="saJwjPV+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726737AbgKJX3V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Nov 2020 18:29:21 -0500
-Received: from mail.kernel.org ([198.145.29.99]:39142 "EHLO mail.kernel.org"
+        id S1732052AbgKJX3W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Nov 2020 18:29:22 -0500
+Received: from mail.kernel.org ([198.145.29.99]:39164 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727275AbgKJX3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 10 Nov 2020 18:29:19 -0500
+        id S1731982AbgKJX3V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 10 Nov 2020 18:29:21 -0500
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 70FC7207BB
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 23:29:18 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 905352080A
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 23:29:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1605050958;
-        bh=em7z0a+ayOv2csAJKaei1xDrJ7Q9H8tax3tXxqIrrdo=;
+        s=default; t=1605050961;
+        bh=qf4KMfaV8KzGjVCK8mx8xTWaCJ7GabrbTSZkH8hH3HA=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=PmMlanljfRNcX5/hXza8Awgv5Ej6WLyYQcUtArFmegZV2bt8hcNZ45xZlocl2weWG
-         kSZaoOMpw37ngg10cIv7cEspyQX+Fy/DIsmFmBh0YuTW5FF5bnjkdWzTbkKcD/DbEk
-         dvMH21iQyhKJ/LMKE0g3R3zWT/xoNppDTPkERr4A=
+        b=saJwjPV+yDFbcxT9nPWDHcBxJNcgUcfnFz7XtwVAng//OcewDglW7h8oU7pY7pBpf
+         LzWDYe5z7m+otWgqiGFUy9Q7uB7GTtWUxx3XEywkQF1H3lv/LU8H84U6S3RCTrOSMA
+         drCX7f0UAG4BRQz9yDWxyUCqx20UJUMx+0Jf7eoY=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 01/11] SUNRPC: xprt_load_transport() needs to support the netid "rdma6"
-Date:   Tue, 10 Nov 2020 18:18:56 -0500
-Message-Id: <20201110231906.863446-2-trondmy@kernel.org>
+Subject: [PATCH v3 04/11] NFS: Switch mount code to use xprt_find_transport_ident()
+Date:   Tue, 10 Nov 2020 18:18:59 -0500
+Message-Id: <20201110231906.863446-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201110231906.863446-1-trondmy@kernel.org>
+In-Reply-To: <20201110231906.863446-4-trondmy@kernel.org>
 References: <20201110231906.863446-1-trondmy@kernel.org>
+ <20201110231906.863446-2-trondmy@kernel.org>
+ <20201110231906.863446-3-trondmy@kernel.org>
+ <20201110231906.863446-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -49,178 +52,71 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-According to RFC5666, the correct netid for an IPv6 addressed RDMA
-transport is "rdma6", which we've supported as a mount option since
-Linux-4.7. The problem is when we try to load the module "xprtrdma6",
-that will fail, since there is no modulealias of that name.
+Switch the mount code to use xprt_find_transport_ident() and to check
+the results before allowing the mount to proceed.
 
-Fixes: 181342c5ebe8 ("xprtrdma: Add rdma6 option to support NFS/RDMA IPv6")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/xprt.h     |  1 +
- net/sunrpc/xprt.c               | 65 +++++++++++++++++++++++++--------
- net/sunrpc/xprtrdma/module.c    |  1 +
- net/sunrpc/xprtrdma/transport.c |  1 +
- net/sunrpc/xprtsock.c           |  4 ++
- 5 files changed, 56 insertions(+), 16 deletions(-)
+ fs/nfs/fs_context.c | 21 ++++++++++++---------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index a603d48d2b2c..3ac5037d1c3d 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -330,6 +330,7 @@ struct xprt_class {
- 	struct rpc_xprt *	(*setup)(struct xprt_create *);
- 	struct module		*owner;
- 	char			name[32];
-+	const char *		netid[];
- };
+diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+index 29ec8b09a52d..06894bcdea2d 100644
+--- a/fs/nfs/fs_context.c
++++ b/fs/nfs/fs_context.c
+@@ -510,13 +510,12 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 		ctx->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+ 		break;
+ 	case Opt_tcp:
+-		ctx->flags |= NFS_MOUNT_TCP;
+-		ctx->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+-		break;
+ 	case Opt_rdma:
+ 		ctx->flags |= NFS_MOUNT_TCP; /* for side protocols */
+-		ctx->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
+-		xprt_load_transport(param->key);
++		ret = xprt_find_transport_ident(param->key);
++		if (ret < 0)
++			goto out_bad_transport;
++		ctx->nfs_server.protocol = ret;
+ 		break;
+ 	case Opt_acl:
+ 		if (result.negated)
+@@ -670,11 +669,13 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 		case Opt_xprt_rdma:
+ 			/* vector side protocols to TCP */
+ 			ctx->flags |= NFS_MOUNT_TCP;
+-			ctx->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
+-			xprt_load_transport(param->string);
++			ret = xprt_find_transport_ident(param->string);
++			if (ret < 0)
++				goto out_bad_transport;
++			ctx->nfs_server.protocol = ret;
+ 			break;
+ 		default:
+-			return nfs_invalf(fc, "NFS: Unrecognized transport protocol");
++			goto out_bad_transport;
+ 		}
+ 
+ 		ctx->protofamily = protofamily;
+@@ -697,7 +698,7 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 			break;
+ 		case Opt_xprt_rdma: /* not used for side protocols */
+ 		default:
+-			return nfs_invalf(fc, "NFS: Unrecognized transport protocol");
++			goto out_bad_transport;
+ 		}
+ 		ctx->mountfamily = mountfamily;
+ 		break;
+@@ -787,6 +788,8 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 	return nfs_invalf(fc, "NFS: Bad IP address specified");
+ out_of_bounds:
+ 	return nfs_invalf(fc, "NFS: Value for '%s' out of range", param->key);
++out_bad_transport:
++	return nfs_invalf(fc, "NFS: Unrecognized transport protocol");
+ }
  
  /*
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index f6c17e75f20e..1660a4b03352 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -151,31 +151,64 @@ int xprt_unregister_transport(struct xprt_class *transport)
- }
- EXPORT_SYMBOL_GPL(xprt_unregister_transport);
- 
-+static void
-+xprt_class_release(const struct xprt_class *t)
-+{
-+	module_put(t->owner);
-+}
-+
-+static const struct xprt_class *
-+xprt_class_find_by_netid_locked(const char *netid)
-+{
-+	const struct xprt_class *t;
-+	unsigned int i;
-+
-+	list_for_each_entry(t, &xprt_list, list) {
-+		for (i = 0; *t->netid[i] != '\0'; i++) {
-+			if (strcmp(t->netid[i], netid) != 0)
-+				continue;
-+			if (!try_module_get(t->owner))
-+				continue;
-+			return t;
-+		}
-+	}
-+	return NULL;
-+}
-+
-+static const struct xprt_class *
-+xprt_class_find_by_netid(const char *netid)
-+{
-+	const struct xprt_class *t;
-+
-+	spin_lock(&xprt_list_lock);
-+	t = xprt_class_find_by_netid_locked(netid);
-+	if (!t) {
-+		spin_unlock(&xprt_list_lock);
-+		request_module("rpc%s", netid);
-+		spin_lock(&xprt_list_lock);
-+		t = xprt_class_find_by_netid_locked(netid);
-+	}
-+	spin_unlock(&xprt_list_lock);
-+	return t;
-+}
-+
- /**
-  * xprt_load_transport - load a transport implementation
-- * @transport_name: transport to load
-+ * @netid: transport to load
-  *
-  * Returns:
-  * 0:		transport successfully loaded
-  * -ENOENT:	transport module not available
-  */
--int xprt_load_transport(const char *transport_name)
-+int xprt_load_transport(const char *netid)
- {
--	struct xprt_class *t;
--	int result;
-+	const struct xprt_class *t;
- 
--	result = 0;
--	spin_lock(&xprt_list_lock);
--	list_for_each_entry(t, &xprt_list, list) {
--		if (strcmp(t->name, transport_name) == 0) {
--			spin_unlock(&xprt_list_lock);
--			goto out;
--		}
--	}
--	spin_unlock(&xprt_list_lock);
--	result = request_module("xprt%s", transport_name);
--out:
--	return result;
-+	t = xprt_class_find_by_netid(netid);
-+	if (!t)
-+		return -ENOENT;
-+	xprt_class_release(t);
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(xprt_load_transport);
- 
-diff --git a/net/sunrpc/xprtrdma/module.c b/net/sunrpc/xprtrdma/module.c
-index 620327c01302..45c5b41ac8dc 100644
---- a/net/sunrpc/xprtrdma/module.c
-+++ b/net/sunrpc/xprtrdma/module.c
-@@ -24,6 +24,7 @@ MODULE_DESCRIPTION("RPC/RDMA Transport");
- MODULE_LICENSE("Dual BSD/GPL");
- MODULE_ALIAS("svcrdma");
- MODULE_ALIAS("xprtrdma");
-+MODULE_ALIAS("rpcrdma6");
- 
- static void __exit rpc_rdma_cleanup(void)
- {
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 8915e42240d3..035060c05fd5 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -768,6 +768,7 @@ static struct xprt_class xprt_rdma = {
- 	.owner			= THIS_MODULE,
- 	.ident			= XPRT_TRANSPORT_RDMA,
- 	.setup			= xprt_setup_rdma,
-+	.netid			= { "rdma", "rdma6", "" },
- };
- 
- void xprt_rdma_cleanup(void)
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 7090bbee0ec5..c93ff70da3f9 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -3059,6 +3059,7 @@ static struct xprt_class	xs_local_transport = {
- 	.owner		= THIS_MODULE,
- 	.ident		= XPRT_TRANSPORT_LOCAL,
- 	.setup		= xs_setup_local,
-+	.netid		= { "" },
- };
- 
- static struct xprt_class	xs_udp_transport = {
-@@ -3067,6 +3068,7 @@ static struct xprt_class	xs_udp_transport = {
- 	.owner		= THIS_MODULE,
- 	.ident		= XPRT_TRANSPORT_UDP,
- 	.setup		= xs_setup_udp,
-+	.netid		= { "udp", "udp6", "" },
- };
- 
- static struct xprt_class	xs_tcp_transport = {
-@@ -3075,6 +3077,7 @@ static struct xprt_class	xs_tcp_transport = {
- 	.owner		= THIS_MODULE,
- 	.ident		= XPRT_TRANSPORT_TCP,
- 	.setup		= xs_setup_tcp,
-+	.netid		= { "tcp", "tcp6", "" },
- };
- 
- static struct xprt_class	xs_bc_tcp_transport = {
-@@ -3083,6 +3086,7 @@ static struct xprt_class	xs_bc_tcp_transport = {
- 	.owner		= THIS_MODULE,
- 	.ident		= XPRT_TRANSPORT_BC_TCP,
- 	.setup		= xs_setup_bc_tcp,
-+	.netid		= { "" },
- };
- 
- /**
 -- 
 2.28.0
 
