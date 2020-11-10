@@ -2,45 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF8D8C388F7
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 21:47:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28838C56202
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 21:47:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 777AE20797
+	by mail.kernel.org (Postfix) with ESMTP id C3989207D3
 	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 21:47:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="PD6O4DyB"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="nZpG/mbt"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731854AbgKJVrx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Nov 2020 16:47:53 -0500
-Received: from mail.kernel.org ([198.145.29.99]:43080 "EHLO mail.kernel.org"
+        id S1731759AbgKJVry (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Nov 2020 16:47:54 -0500
+Received: from mail.kernel.org ([198.145.29.99]:43082 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726467AbgKJVrx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1731862AbgKJVrx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 10 Nov 2020 16:47:53 -0500
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id AF9FB20797
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 21:47:52 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 42AEC20781
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 21:47:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1605044873;
-        bh=ScIdmztlvC5lGaF8OhAEJdAQTYeDvTVf/YgYH6yqrBA=;
+        bh=MOBmL2uL4txSencAZUUeyuOlu/ZATH07W1xk5scpDbw=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=PD6O4DyB7NG8nw7jOm/lUimqHclo4QeR9QNSYCb69k/fI6Z2n4W8Weoce+tRyUJK2
-         WXMZX+3JNrZZnwzdbPuaMEgEG2jh4cG9ZxWX28uhhIJ8JaTzT4B2spDN9pmSMjxJGG
-         WhYd82A9dOBufFiR7OaRwHqFq4wW3gU0l58Gu9Ys=
+        b=nZpG/mbtkRbag54HedoHNds+n0ml9ZH6IDN5THGDhLQsGQIx6IO0UkG89nKZjnC3G
+         rrUhmf+8StvcTBbjsmRSoCEfx4iLzTXZB+KplCX1fWeqC1D4tBpK/jH2hl6LY1jcho
+         B5U8go2ONwdHRyl30a0dlftJ1rZv4zqvFG+jtSzk=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v5 01/22] NFS: Remove unnecessary inode locking in nfs_llseek_dir()
-Date:   Tue, 10 Nov 2020 16:37:20 -0500
-Message-Id: <20201110213741.860745-2-trondmy@kernel.org>
+Subject: [PATCH v5 02/22] NFS: Remove unnecessary inode lock in nfs_fsync_dir()
+Date:   Tue, 10 Nov 2020 16:37:21 -0500
+Message-Id: <20201110213741.860745-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201110213741.860745-1-trondmy@kernel.org>
+In-Reply-To: <20201110213741.860745-2-trondmy@kernel.org>
 References: <20201110213741.860745-1-trondmy@kernel.org>
+ <20201110213741.860745-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -49,52 +50,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Remove the contentious inode lock, and instead provide thread safety
-using the file->f_lock spinlock.
+nfs_inc_stats() is already thread-safe, and there are no other reasons
+to hold the inode lock here.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ fs/nfs/dir.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index cb52db9a0cfb..e56b1bd99537 100644
+index e56b1bd99537..4e011adaf967 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -955,7 +955,6 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 
- static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+@@ -997,13 +997,9 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+ static int nfs_fsync_dir(struct file *filp, loff_t start, loff_t end,
+ 			 int datasync)
  {
 -	struct inode *inode = file_inode(filp);
- 	struct nfs_open_dir_context *dir_ctx = filp->private_data;
+-
+ 	dfprintk(FILE, "NFS: fsync dir(%pD2) datasync %d\n", filp, datasync);
  
- 	dfprintk(FILE, "NFS: llseek dir(%pD2, %lld, %d)\n",
-@@ -967,15 +966,15 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
- 	case SEEK_SET:
- 		if (offset < 0)
- 			return -EINVAL;
--		inode_lock(inode);
-+		spin_lock(&filp->f_lock);
- 		break;
- 	case SEEK_CUR:
- 		if (offset == 0)
- 			return filp->f_pos;
--		inode_lock(inode);
-+		spin_lock(&filp->f_lock);
- 		offset += filp->f_pos;
- 		if (offset < 0) {
--			inode_unlock(inode);
-+			spin_unlock(&filp->f_lock);
- 			return -EINVAL;
- 		}
- 	}
-@@ -987,7 +986,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
- 			dir_ctx->dir_cookie = 0;
- 		dir_ctx->duped = 0;
- 	}
+-	inode_lock(inode);
+-	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
 -	inode_unlock(inode);
-+	spin_unlock(&filp->f_lock);
- 	return offset;
++	nfs_inc_stats(file_inode(filp), NFSIOS_VFSFSYNC);
+ 	return 0;
  }
  
 -- 
