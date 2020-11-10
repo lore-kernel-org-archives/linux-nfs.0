@@ -7,41 +7,44 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4221FC55ABD
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 23:29:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AB4CC63697
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 23:29:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E728E20809
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 23:29:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1E0A320809
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Nov 2020 23:29:24 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="Gu/FvZin"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="CWW9EF2w"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731954AbgKJX3V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Nov 2020 18:29:21 -0500
-Received: from mail.kernel.org ([198.145.29.99]:39148 "EHLO mail.kernel.org"
+        id S1731982AbgKJX3X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Nov 2020 18:29:23 -0500
+Received: from mail.kernel.org ([198.145.29.99]:39182 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730894AbgKJX3U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 10 Nov 2020 18:29:20 -0500
+        id S1730894AbgKJX3W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 10 Nov 2020 18:29:22 -0500
 Received: from localhost.localdomain (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 196D9207E8
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 23:29:18 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 71EE420781
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Nov 2020 23:29:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1605050959;
-        bh=3AgrCRS9cu4eXlK3NSXaYZ2fXESWqxnt3bb6UHVHQJU=;
+        s=default; t=1605050961;
+        bh=meypuo39sRui2/YKEKb9r1QSXStbQSXx9s+M+PX//8g=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Gu/FvZiniVEV2mcl7oOs7FHQXeTNxE0K0ZTaoIhPbOONU1OnYcdVr4gKoDPsEKSFc
-         fgf3obF8GdHdTkvwuouBdnXrCudQa6EJhT+h2pBrj/SibcnGuxQeSPAIbFh1Y/rIJN
-         pCir1pfnOGNODsWZW7Kg4fBkWezwkwUHD+0odQ+E=
+        b=CWW9EF2w/uxEe7E2eVBeu4ncW0CS9uFPM/1UAfJpNQ8mkPOQPinqAoYzyx5A0Hdre
+         IP+pP0khn5lTGIjAVQvO7bYFpcl+6eCwvJp8t5c/SKmbMTCq4XAVefSEB+67lyeOHJ
+         LeTZlvy9dN0CzBe40qA7Wb8aYiZhVlNezFid7Le0=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 02/11] SUNRPC: Close a race with transport setup and module put
-Date:   Tue, 10 Nov 2020 18:18:57 -0500
-Message-Id: <20201110231906.863446-3-trondmy@kernel.org>
+Subject: [PATCH v3 05/11] SUNRPC: Remove unused function xprt_load_transport()
+Date:   Tue, 10 Nov 2020 18:19:00 -0500
+Message-Id: <20201110231906.863446-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201110231906.863446-2-trondmy@kernel.org>
+In-Reply-To: <20201110231906.863446-5-trondmy@kernel.org>
 References: <20201110231906.863446-1-trondmy@kernel.org>
  <20201110231906.863446-2-trondmy@kernel.org>
+ <20201110231906.863446-3-trondmy@kernel.org>
+ <20201110231906.863446-4-trondmy@kernel.org>
+ <20201110231906.863446-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -50,80 +53,50 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-After we've looked up the transport module, we need to ensure it can't
-go away until we've finished running the transport setup code.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xprt.c | 44 +++++++++++++++++++++++++++++++++-----------
- 1 file changed, 33 insertions(+), 11 deletions(-)
+ include/linux/sunrpc/xprt.h |  1 -
+ net/sunrpc/xprt.c           | 15 ---------------
+ 2 files changed, 16 deletions(-)
 
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index f7b75c72f80e..d2e97ee802af 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -385,7 +385,6 @@ xprt_disable_swap(struct rpc_xprt *xprt)
+  */
+ int			xprt_register_transport(struct xprt_class *type);
+ int			xprt_unregister_transport(struct xprt_class *type);
+-int			xprt_load_transport(const char *);
+ int			xprt_find_transport_ident(const char *);
+ void			xprt_wait_for_reply_request_def(struct rpc_task *task);
+ void			xprt_wait_for_reply_request_rtt(struct rpc_task *task);
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 1660a4b03352..29de33ea53d6 100644
+index 1016265d5e53..9018d73575d6 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -157,6 +157,32 @@ xprt_class_release(const struct xprt_class *t)
- 	module_put(t->owner);
+@@ -240,21 +240,6 @@ int xprt_find_transport_ident(const char *netid)
  }
+ EXPORT_SYMBOL_GPL(xprt_find_transport_ident);
  
-+static const struct xprt_class *
-+xprt_class_find_by_ident_locked(int ident)
-+{
-+	const struct xprt_class *t;
-+
-+	list_for_each_entry(t, &xprt_list, list) {
-+		if (t->ident != ident)
-+			continue;
-+		if (!try_module_get(t->owner))
-+			continue;
-+		return t;
-+	}
-+	return NULL;
-+}
-+
-+static const struct xprt_class *
-+xprt_class_find_by_ident(int ident)
-+{
-+	const struct xprt_class *t;
-+
-+	spin_lock(&xprt_list_lock);
-+	t = xprt_class_find_by_ident_locked(ident);
-+	spin_unlock(&xprt_list_lock);
-+	return t;
-+}
-+
- static const struct xprt_class *
- xprt_class_find_by_netid_locked(const char *netid)
+-/**
+- * xprt_load_transport - load a transport implementation
+- * @netid: transport to load
+- *
+- * Returns:
+- * 0:		transport successfully loaded
+- * -ENOENT:	transport module not available
+- */
+-int xprt_load_transport(const char *netid)
+-{
+-	int ret = xprt_find_transport_ident(netid);
+-	return ret < 0 ? ret : 0;
+-}
+-EXPORT_SYMBOL_GPL(xprt_load_transport);
+-
+ static void xprt_clear_locked(struct rpc_xprt *xprt)
  {
-@@ -1929,21 +1955,17 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
- struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
- {
- 	struct rpc_xprt	*xprt;
--	struct xprt_class *t;
-+	const struct xprt_class *t;
- 
--	spin_lock(&xprt_list_lock);
--	list_for_each_entry(t, &xprt_list, list) {
--		if (t->ident == args->ident) {
--			spin_unlock(&xprt_list_lock);
--			goto found;
--		}
-+	t = xprt_class_find_by_ident(args->ident);
-+	if (!t) {
-+		dprintk("RPC: transport (%d) not supported\n", args->ident);
-+		return ERR_PTR(-EIO);
- 	}
--	spin_unlock(&xprt_list_lock);
--	dprintk("RPC: transport (%d) not supported\n", args->ident);
--	return ERR_PTR(-EIO);
- 
--found:
- 	xprt = t->setup(args);
-+	xprt_class_release(t);
-+
- 	if (IS_ERR(xprt))
- 		goto out;
- 	if (args->flags & XPRT_CREATE_NO_IDLE_TIMEOUT)
+ 	xprt->snd_task = NULL;
 -- 
 2.28.0
 
