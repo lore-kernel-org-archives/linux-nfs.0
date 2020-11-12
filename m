@@ -2,53 +2,52 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 876FFC388F7
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 13:00:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E1D31C61DD8
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 13:00:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0A01921D7F
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 13:00:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 89C0B21D7F
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 13:00:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="O0ufcpD3"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="g9szDoCb"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727035AbgKLNAS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Nov 2020 08:00:18 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:30874 "EHLO
+        id S1728234AbgKLNAn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Nov 2020 08:00:43 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:59332 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728510AbgKLNAQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2020 08:00:16 -0500
+        by vger.kernel.org with ESMTP id S1728490AbgKLM7u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2020 07:59:50 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1605186010;
+        s=mimecast20190719; t=1605185987;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VacggVq1NxiTEfCcpXQrk3CybU38633I0WB8KyzzIbg=;
-        b=O0ufcpD3Td/jYuVd4CHb0jJavoj0T8YpS4gkH94+uImlGmMOYtRjSZg+rjZtHZ+NNNFRP5
-        I7p7AtDJEkg9k6wjCJB8xNyCaWJJtdTbPL8tgIQtIEAtQAj8/gRq4ADptO/+82+tc0tKBO
-        caU5CJVpF2AFvNIc/KDQzcvjrHNUwEk=
+        bh=B5WvSEa2+oXzMRb5vYLYlFmIu/7LQYDhHpYTqPt6M5g=;
+        b=g9szDoCbEHqmiqrbbQZl4hff5yaMuARxdi8Go6NydJPbtDc/TAx5IvwvnPF2xAgb+mpM4e
+        zZkGeOK9latZtdXKU7WRZQy5V4It4fl8v9OV1Kr4hJt+aUTQVV3UHrM06bFP34np1uTZIV
+        1w4kVSH6LdqmMt5wqng04Okqtl8bdv8=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-463--7VXsiEvNyKULdskpphZjw-1; Thu, 12 Nov 2020 08:00:02 -0500
-X-MC-Unique: -7VXsiEvNyKULdskpphZjw-1
+ us-mta-567-vcD4p_K8Pfaf_iXTg1N6nA-1; Thu, 12 Nov 2020 07:59:44 -0500
+X-MC-Unique: vcD4p_K8Pfaf_iXTg1N6nA-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 269171017DD5;
-        Thu, 12 Nov 2020 13:00:00 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 52A72804753;
+        Thu, 12 Nov 2020 12:59:42 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-115-47.rdu2.redhat.com [10.10.115.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id B8DF05D98F;
-        Thu, 12 Nov 2020 12:59:56 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2FBFF5D9E4;
+        Thu, 12 Nov 2020 12:59:40 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 16/18] rxrpc: rxgk: Implement the yfs-rxgk security class
- (GSSAPI)
+Subject: [PATCH 14/18] rxrpc: Add YFS RxGK (GSSAPI) security class
 From:   David Howells <dhowells@redhat.com>
 To:     herbert@gondor.apana.org.au, bfields@fieldses.org
 Cc:     dhowells@redhat.com, trond.myklebust@hammerspace.com,
@@ -56,8 +55,8 @@ Cc:     dhowells@redhat.com, trond.myklebust@hammerspace.com,
         linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Date:   Thu, 12 Nov 2020 12:59:55 +0000
-Message-ID: <160518599595.2277919.13767473448752027378.stgit@warthog.procyon.org.uk>
+Date:   Thu, 12 Nov 2020 12:59:39 +0000
+Message-ID: <160518597935.2277919.239077296822909986.stgit@warthog.procyon.org.uk>
 In-Reply-To: <160518586534.2277919.14475638653680231924.stgit@warthog.procyon.org.uk>
 References: <160518586534.2277919.14475638653680231924.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
@@ -69,1611 +68,340 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Implement the basic parts of the yfs-rxgk security class (security index 6)
-to support GSSAPI-negotiated security.
+Add support for the YFS-variant RxGK security class to support
+GSSAPI-derived authentication.  This also allows the use of better crypto
+over the rxkad security class.
+
+The key payload is XDR encoded of the form:
+
+    typedef int64_t opr_time;
+
+    const AFSTOKEN_RK_TIX_MAX = 12000; 	/* Matches entry in rxkad.h */
+
+    struct token_rxkad {
+	afs_int32 viceid;
+	afs_int32 kvno;
+	afs_int64 key;
+	afs_int32 begintime;
+	afs_int32 endtime;
+	afs_int32 primary_flag;
+	opaque ticket<AFSTOKEN_RK_TIX_MAX>;
+    };
+
+    struct token_rxgk {
+	opr_time begintime;
+	opr_time endtime;
+	afs_int64 level;
+	afs_int64 lifetime;
+	afs_int64 bytelife;
+	afs_int64 enctype;
+	opaque key<>;
+	opaque ticket<>;
+    };
+
+    const AFSTOKEN_UNION_NOAUTH = 0;
+    const AFSTOKEN_UNION_KAD = 2;
+    const AFSTOKEN_UNION_YFSGK = 6;
+
+    union ktc_tokenUnion switch (afs_int32 type) {
+	case AFSTOKEN_UNION_KAD:
+	    token_rxkad kad;
+	case AFSTOKEN_UNION_YFSGK:
+	    token_rxgk  gk;
+    };
+
+    const AFSTOKEN_LENGTH_MAX = 16384;
+    typedef opaque token_opaque<AFSTOKEN_LENGTH_MAX>;
+
+    const AFSTOKEN_MAX = 8;
+    const AFSTOKEN_CELL_MAX = 64;
+
+    struct ktc_setTokenData {
+	afs_int32 flags;
+	string cell<AFSTOKEN_CELL_MAX>;
+	token_opaque tokens<AFSTOKEN_MAX>;
+    };
+
+The parser for the basic token struct is already present, as is the rxkad
+token type.  This adds a parser for the rxgk token type.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- include/trace/events/rxrpc.h |    4 
- net/rxrpc/Makefile           |    2 
- net/rxrpc/ar-internal.h      |   12 
- net/rxrpc/rxgk.c             | 1063 ++++++++++++++++++++++++++++++++++++++++++
- net/rxrpc/rxgk_app.c         |  289 +++++++++++
- net/rxrpc/rxgk_common.h      |  118 +++++
- net/rxrpc/security.c         |    3 
- 7 files changed, 1491 insertions(+)
- create mode 100644 net/rxrpc/rxgk.c
- create mode 100644 net/rxrpc/rxgk_app.c
+ include/keys/rxrpc-type.h |   17 ++++
+ net/rxrpc/key.c           |  183 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 200 insertions(+)
 
-diff --git a/include/trace/events/rxrpc.h b/include/trace/events/rxrpc.h
-index e70c90116eda..dd541c6d5ea3 100644
---- a/include/trace/events/rxrpc.h
-+++ b/include/trace/events/rxrpc.h
-@@ -210,6 +210,8 @@ enum rxrpc_tx_point {
- 	rxrpc_tx_point_call_data_nofrag,
- 	rxrpc_tx_point_call_final_resend,
- 	rxrpc_tx_point_conn_abort,
-+	rxrpc_tx_point_rxgk_challenge,
-+	rxrpc_tx_point_rxgk_response,
- 	rxrpc_tx_point_rxkad_challenge,
- 	rxrpc_tx_point_rxkad_response,
- 	rxrpc_tx_point_reject,
-@@ -440,6 +442,8 @@ enum rxrpc_tx_point {
- 	EM(rxrpc_tx_point_call_final_resend,	"CallFinalResend") \
- 	EM(rxrpc_tx_point_conn_abort,		"ConnAbort") \
- 	EM(rxrpc_tx_point_reject,		"Reject") \
-+	EM(rxrpc_tx_point_rxgk_challenge,	"RxGKChall") \
-+	EM(rxrpc_tx_point_rxgk_response,	"RxGKResp") \
- 	EM(rxrpc_tx_point_rxkad_challenge,	"RxkadChall") \
- 	EM(rxrpc_tx_point_rxkad_response,	"RxkadResp") \
- 	EM(rxrpc_tx_point_version_keepalive,	"VerKeepalive") \
-diff --git a/net/rxrpc/Makefile b/net/rxrpc/Makefile
-index 08636858e77f..4be98775dc7f 100644
---- a/net/rxrpc/Makefile
-+++ b/net/rxrpc/Makefile
-@@ -37,4 +37,6 @@ rxrpc-$(CONFIG_RXKAD) += rxkad.o
- rxrpc-$(CONFIG_SYSCTL) += sysctl.o
+diff --git a/include/keys/rxrpc-type.h b/include/keys/rxrpc-type.h
+index 333c0f49a9cd..0ddbe197a261 100644
+--- a/include/keys/rxrpc-type.h
++++ b/include/keys/rxrpc-type.h
+@@ -9,6 +9,7 @@
+ #define _KEYS_RXRPC_TYPE_H
  
- rxrpc-$(CONFIG_RXGK) += \
-+	rxgk.o \
-+	rxgk_app.o \
- 	rxgk_kdf.o
-diff --git a/net/rxrpc/ar-internal.h b/net/rxrpc/ar-internal.h
-index 4e0766b4a714..efdb3334ad88 100644
---- a/net/rxrpc/ar-internal.h
-+++ b/net/rxrpc/ar-internal.h
-@@ -37,6 +37,7 @@ struct rxrpc_crypt {
- 
- struct key_preparsed_payload;
- struct rxrpc_connection;
-+struct rxgk_context;
+ #include <linux/key.h>
++#include <crypto/krb5.h>
  
  /*
-  * Mark applied to socket buffers in skb->mark.  skb->priority is used
-@@ -264,6 +265,10 @@ struct rxrpc_security {
- 
- 	/* clear connection security */
- 	void (*clear)(struct rxrpc_connection *);
-+
-+	/* Default ticket -> key decoder */
-+	int (*default_decode_ticket)(struct sk_buff *, unsigned int, unsigned int,
-+				     u32 *, struct key **);
+  * key type for AF_RXRPC keys
+@@ -31,6 +32,21 @@ struct rxkad_key {
+ 	u8	ticket[];		/* the encrypted ticket */
  };
  
- /*
-@@ -457,7 +462,9 @@ struct rxrpc_connection {
- 			u32	nonce;		/* response re-use preventer */
- 		} rxkad;
- 		struct {
-+			struct rxgk_context *keys[1];
- 			u64	start_time;	/* The start time for TK derivation */
-+			u8	nonce[20];	/* Response re-use preventer */
- 		} rxgk;
- 	};
- 	unsigned long		flags;
-@@ -1056,6 +1063,11 @@ void rxrpc_peer_add_rtt(struct rxrpc_call *, enum rxrpc_rtt_rx_trace, int,
- unsigned long rxrpc_get_rto_backoff(struct rxrpc_peer *, bool);
- void rxrpc_peer_init_rtt(struct rxrpc_peer *);
- 
 +/*
-+ * rxgk.c
++ * RxRPC key for YFS-RxGK (type-6 security)
 + */
-+extern const struct rxrpc_security rxgk_yfs;
-+
- /*
-  * rxkad.c
-  */
-diff --git a/net/rxrpc/rxgk.c b/net/rxrpc/rxgk.c
-new file mode 100644
-index 000000000000..703e46e8b508
---- /dev/null
-+++ b/net/rxrpc/rxgk.c
-@@ -0,0 +1,1063 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/* GSSAPI-based RxRPC security
-+ *
-+ * Copyright (C) 2020 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-+
-+#include <linux/net.h>
-+#include <linux/skbuff.h>
-+#include <linux/slab.h>
-+#include <linux/key-type.h>
-+#include "ar-internal.h"
-+#include "rxgk_common.h"
-+
-+struct rxgk_header {
-+	__be32	epoch;
-+	__be32	cid;
-+	__be32	call_number;
-+	__be32	seq;
-+	__be32	sec_index;
-+	__be32	data_len;
-+} __packed;
-+
-+struct rxgk_response {
-+	__be64	start_time;
-+	__be32	token_len;
-+} __packed;
-+
-+/*
-+ * Parse the information from a server key
-+ */
-+static int rxgk_preparse_server_key(struct key_preparsed_payload *prep)
-+{
-+	const struct krb5_enctype *krb5;
-+	struct krb5_buffer *server_key = (void *)&prep->payload.data[2];
-+	unsigned int service, sec_class, kvno, enctype;
-+	int n = 0;
-+
-+	_enter("%zu", prep->datalen);
-+
-+	if (sscanf(prep->orig_description, "%u:%u:%u:%u%n",
-+		   &service, &sec_class, &kvno, &enctype, &n) != 4)
-+		return -EINVAL;
-+
-+	if (prep->orig_description[n])
-+		return -EINVAL;
-+
-+	krb5 = crypto_krb5_find_enctype(enctype);
-+	if (!krb5)
-+		return -ENOPKG;
-+
-+	prep->payload.data[0] = (struct krb5_enctype *)krb5;
-+
-+	if (prep->datalen != krb5->key_len)
-+		return -EKEYREJECTED;
-+
-+	server_key->len = prep->datalen;
-+	server_key->data = kmemdup(prep->data, prep->datalen, GFP_KERNEL);
-+	if (!server_key->data)
-+		return -ENOMEM;
-+
-+	_leave(" = 0");
-+	return 0;
-+}
-+
-+static void rxgk_free_server_key(union key_payload *payload)
-+{
-+	struct krb5_buffer *server_key = (void *)&payload->data[2];
-+
-+	kfree_sensitive(server_key->data);
-+}
-+
-+static void rxgk_free_preparse_server_key(struct key_preparsed_payload *prep)
-+{
-+	rxgk_free_server_key(&prep->payload);
-+}
-+
-+static void rxgk_destroy_server_key(struct key *key)
-+{
-+	rxgk_free_server_key(&key->payload);
-+}
-+
-+static void rxgk_describe_server_key(const struct key *key, struct seq_file *m)
-+{
-+	const struct krb5_enctype *krb5 = key->payload.data[0];
-+
-+	if (krb5)
-+		seq_printf(m, ": %s", krb5->name);
-+}
-+
-+static struct rxgk_context *rxgk_get_key(struct rxrpc_connection *conn,
-+					 u16 *specific_key_number)
-+{
-+	refcount_inc(&conn->rxgk.keys[0]->usage);
-+	return conn->rxgk.keys[0];
-+}
-+
-+/*
-+ * initialise connection security
-+ */
-+static int rxgk_init_connection_security(struct rxrpc_connection *conn,
-+					 struct rxrpc_key_token *token)
-+{
-+	struct rxgk_context *gk;
-+	int ret;
-+
-+	_enter("{%d},{%x}", conn->debug_id, key_serial(conn->params.key));
-+
-+	conn->security_ix = token->security_index;
-+	conn->params.security_level = token->rxgk->level;
-+
-+	if (rxrpc_conn_is_client(conn)) {
-+		conn->rxgk.start_time = ktime_get();
-+		do_div(conn->rxgk.start_time, 100);
-+	}
-+
-+	gk = rxgk_generate_transport_key(conn, token->rxgk, 0, GFP_NOFS);
-+	if (IS_ERR(gk))
-+		return PTR_ERR(gk);
-+	conn->rxgk.keys[0] = gk;
-+
-+	switch (conn->params.security_level) {
-+	case RXRPC_SECURITY_PLAIN:
-+		break;
-+	case RXRPC_SECURITY_AUTH:
-+		conn->security_size = gk->krb5->cksum_len;
-+		break;
-+	case RXRPC_SECURITY_ENCRYPT:
-+		if (gk->krb5->pad)
-+			conn->size_align = gk->krb5->block_len;
-+		conn->security_size = gk->krb5->conf_len + sizeof(struct rxgk_header);
-+		conn->security_trailer = gk->krb5->cksum_len;
-+		break;
-+	default:
-+		ret = -EKEYREJECTED;
-+		goto error;
-+	}
-+
-+	ret = 0;
-+error:
-+	_leave(" = %d", ret);
-+	return ret;
-+}
-+
-+/*
-+ * Clean up the crypto on a call.
-+ */
-+static void rxgk_free_call_crypto(struct rxrpc_call *call)
-+{
-+}
-+
-+/*
-+ * Integrity mode (sign a packet - level 1 security)
-+ */
-+static int rxgk_secure_packet_integrity(const struct rxrpc_call *call,
-+					struct rxgk_context *gk,
-+					struct sk_buff *skb, u32 data_size)
-+{
-+	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
-+	struct rxgk_header *hdr;
-+	struct krb5_buffer metadata;
-+	int ret = -ENOMEM;
-+
-+	_enter("");
-+
-+	hdr = kzalloc(sizeof(*hdr), GFP_NOFS);
-+	if (!hdr)
-+		goto error_gk;
-+
-+	hdr->epoch	= htonl(call->conn->proto.epoch);
-+	hdr->cid	= htonl(call->cid);
-+	hdr->call_number = htonl(call->call_id);
-+	hdr->seq	= htonl(sp->hdr.seq);
-+	hdr->sec_index	= htonl(call->security_ix);
-+	hdr->data_len	= htonl(data_size);
-+
-+	metadata.len = sizeof(*hdr);
-+	metadata.data = hdr;
-+	ret = rxgk_get_mic_skb(gk->krb5, gk->tx_Kc, &metadata, skb,
-+			       0, skb->len, gk->krb5->cksum_len, data_size);
-+	if (ret >= 0)
-+		gk->bytes_remaining -= ret;
-+	kfree(hdr);
-+error_gk:
-+	rxgk_put(gk);
-+	_leave(" = %d", ret);
-+	return ret;
-+}
-+
-+/*
-+ * wholly encrypt a packet (level 2 security)
-+ */
-+static int rxgk_secure_packet_encrypted(const struct rxrpc_call *call,
-+					struct rxgk_context *gk,
-+					struct sk_buff *skb, u32 data_size)
-+{
-+	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
-+	struct rxgk_header hdr;
-+	int ret;
-+
-+	_enter("%x,%x", skb->len, data_size);
-+
-+	/* Insert the header into the skb */
-+	hdr.epoch	= htonl(call->conn->proto.epoch);
-+	hdr.cid		= htonl(call->cid);
-+	hdr.call_number = htonl(call->call_id);
-+	hdr.seq		= htonl(sp->hdr.seq);
-+	hdr.sec_index	= htonl(call->security_ix);
-+	hdr.data_len	= htonl(data_size);
-+
-+	ret = skb_store_bits(skb, gk->krb5->conf_len, &hdr, sizeof(hdr));
-+	if (ret < 0)
-+		goto error;
-+
-+	/* Increase the buffer size to allow for the checksum to be written in */
-+	skb->len += gk->krb5->cksum_len;
-+
-+	ret = rxgk_encrypt_skb(gk->krb5, &gk->tx_enc, skb,
-+			       0, skb->len, gk->krb5->conf_len, sizeof(hdr) + data_size,
-+			       false);
-+	if (ret >= 0)
-+		gk->bytes_remaining -= ret;
-+
-+error:
-+	rxgk_put(gk);
-+	_leave(" = %d", ret);
-+	return ret;
-+}
-+
-+/*
-+ * checksum an RxRPC packet header
-+ */
-+static int rxgk_secure_packet(struct rxrpc_call *call,
-+			      struct sk_buff *skb,
-+			      size_t data_size)
-+{
-+	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
-+	struct rxgk_context *gk;
-+	int ret;
-+
-+	sp = rxrpc_skb(skb);
-+
-+	_enter("{%d{%x}},{#%u},%zu,",
-+	       call->debug_id, key_serial(call->conn->params.key),
-+	       sp->hdr.seq, data_size);
-+
-+	gk = rxgk_get_key(call->conn, NULL);
-+	if (IS_ERR(gk))
-+		return PTR_ERR(gk) == -ESTALE ? -EKEYREJECTED : PTR_ERR(gk);
-+
-+	ret = key_validate(call->conn->params.key);
-+	if (ret < 0)
-+		return ret;
-+
-+	sp->hdr.cksum = gk->key_number;
-+
-+	switch (call->conn->params.security_level) {
-+	case RXRPC_SECURITY_PLAIN:
-+		rxgk_put(gk);
-+		return 0;
-+	case RXRPC_SECURITY_AUTH:
-+		return rxgk_secure_packet_integrity(call, gk, skb, data_size);
-+	case RXRPC_SECURITY_ENCRYPT:
-+		return rxgk_secure_packet_encrypted(call, gk, skb, data_size);
-+	default:
-+		rxgk_put(gk);
-+		return -EPERM;
-+	}
-+}
-+
-+/*
-+ * Integrity mode (check the signature on a packet - level 1 security)
-+ */
-+static int rxgk_verify_packet_integrity(struct rxrpc_call *call,
-+					struct rxgk_context *gk,
-+					struct sk_buff *skb,
-+					unsigned int offset, unsigned int len,
-+					rxrpc_seq_t seq)
-+{
-+	struct rxgk_header *hdr;
-+	struct krb5_buffer metadata;
-+	bool aborted;
-+	u32 ac;
-+	int ret = -ENOMEM;
-+
-+	_enter("");
-+
-+	hdr = kzalloc(sizeof(*hdr), GFP_NOFS);
-+	if (!hdr)
-+		goto error;
-+
-+	hdr->epoch	= htonl(call->conn->proto.epoch);
-+	hdr->cid	= htonl(call->cid);
-+	hdr->call_number = htonl(call->call_id);
-+	hdr->seq	= htonl(seq);
-+	hdr->sec_index	= htonl(call->security_ix);
-+	hdr->data_len	= htonl(len - gk->krb5->cksum_len);
-+
-+	metadata.len = sizeof(*hdr);
-+	metadata.data = hdr;
-+	ret = rxgk_verify_mic_skb(gk->krb5, gk->rx_Kc, &metadata,
-+				  skb, &offset, &len, &ac);
-+	kfree(hdr);
-+	if (ret < 0) {
-+		if (ret == -EPROTO) {
-+			aborted = rxrpc_abort_eproto(call, skb, "rxgk_2_vfy",
-+						     "V1V", ac);
-+			goto protocol_error;
-+		}
-+		goto error;
-+	}
-+
-+error:
-+	rxgk_put(gk);
-+	_leave(" = %d", ret);
-+	return ret;
-+
-+protocol_error:
-+	if (aborted)
-+		rxrpc_send_abort_packet(call);
-+	ret = -EPROTO;
-+	goto error;
-+}
-+
-+/*
-+ * Decrypt an encrypted packet (level 2 security).
-+ */
-+static int rxgk_verify_packet_encrypted(struct rxrpc_call *call,
-+					struct rxgk_context *gk,
-+					struct sk_buff *skb,
-+					unsigned int offset, unsigned int len,
-+					rxrpc_seq_t seq)
-+{
-+	struct rxgk_header hdr;
-+	bool aborted;
-+	int ret;
-+	u32 ac;
-+
-+	_enter("");
-+
-+	ret = rxgk_decrypt_skb(gk->krb5, &gk->rx_enc, skb, &offset, &len, &ac);
-+	if (ret < 0) {
-+		if (ret == -EPROTO) {
-+			aborted = rxrpc_abort_eproto(call, skb, "rxgk_2_dec",
-+						     "V2D", ac);
-+			goto protocol_error;
-+		}
-+		goto error;
-+	}
-+
-+	if (len < sizeof(hdr)) {
-+		aborted = rxrpc_abort_eproto(call, skb, "rxgk_2_hdr",
-+					     "V2L", RXGK_PACKETSHORT);
-+		goto protocol_error;
-+	}
-+
-+	/* Extract the header from the skb */
-+	ret = skb_copy_bits(skb, offset, &hdr, sizeof(hdr));
-+	if (ret < 0)
-+		goto error;
-+	len -= sizeof(hdr);
-+
-+	if (ntohl(hdr.epoch)		!= call->conn->proto.epoch ||
-+	    ntohl(hdr.cid)		!= call->cid ||
-+	    ntohl(hdr.call_number)	!= call->call_id ||
-+	    ntohl(hdr.seq)		!= seq ||
-+	    ntohl(hdr.sec_index)	!= call->security_ix ||
-+	    ntohl(hdr.data_len)		> len) {
-+		aborted = rxrpc_abort_eproto(call, skb, "rxgk_2_hdr", "V2H",
-+					     RXGK_SEALED_INCON);
-+		goto protocol_error;
-+	}
-+
-+	ret = 0;
-+
-+error:
-+	rxgk_put(gk);
-+	_leave(" = %d", ret);
-+	return ret;
-+
-+protocol_error:
-+	if (aborted)
-+		rxrpc_send_abort_packet(call);
-+	ret = -EPROTO;
-+	goto error;
-+}
-+
-+/*
-+ * Verify the security on a received packet or subpacket (if part of a
-+ * jumbo packet).
-+ */
-+static int rxgk_verify_packet(struct rxrpc_call *call, struct sk_buff *skb,
-+			      unsigned int offset, unsigned int len,
-+			      rxrpc_seq_t seq, u16 key_number)
-+{
-+	struct rxgk_context *gk;
-+	bool aborted;
-+
-+	_enter("{%d{%x}},{#%u}",
-+	       call->debug_id, key_serial(call->conn->params.key), seq);
-+
-+	gk = rxgk_get_key(call->conn, &key_number);
-+	if (IS_ERR(gk)) {
-+		switch (PTR_ERR(gk)) {
-+		case -ESTALE:
-+			aborted = rxrpc_abort_eproto(call, skb, "rxgk_csum", "VKY",
-+						     RXGK_BADKEYNO);
-+			gk = NULL;
-+			goto protocol_error;
-+		default:
-+			return PTR_ERR(gk);
-+		}
-+	}
-+
-+	switch (call->conn->params.security_level) {
-+	case RXRPC_SECURITY_PLAIN:
-+		return 0;
-+	case RXRPC_SECURITY_AUTH:
-+		return rxgk_verify_packet_integrity(call, gk, skb, offset, len, seq);
-+	case RXRPC_SECURITY_ENCRYPT:
-+		return rxgk_verify_packet_encrypted(call, gk, skb, offset, len, seq);
-+	default:
-+		rxgk_put(gk);
-+		return -ENOANO;
-+	}
-+
-+protocol_error:
-+	if (aborted)
-+		rxrpc_send_abort_packet(call);
-+	rxgk_put(gk);
-+	return -EPROTO;
-+}
-+
-+/*
-+ * Locate the data contained in a packet that was partially encrypted.
-+ */
-+static void rxgk_locate_data_1(struct rxrpc_call *call, struct sk_buff *skb,
-+			       unsigned int *_offset, unsigned int *_len)
-+{
-+	*_offset += call->conn->security_size;
-+	*_len -= call->conn->security_size;
-+}
-+
-+/*
-+ * Locate the data contained in a packet that was completely encrypted.
-+ */
-+static void rxgk_locate_data_2(struct rxrpc_call *call, struct sk_buff *skb,
-+			       unsigned int *_offset, unsigned int *_len)
-+{
-+	unsigned int off = call->conn->security_size - sizeof(__be32);
-+	__be32 data_length_be;
-+	u32 data_length;
-+
-+	if (skb_copy_bits(skb, *_offset + off, &data_length_be, sizeof(u32)) < 0)
-+		BUG();
-+	data_length = ntohl(data_length_be);
-+	*_offset += call->conn->security_size;
-+	*_len = data_length;
-+}
-+
-+/*
-+ * Locate the data contained in an already decrypted packet.
-+ */
-+static void rxgk_locate_data(struct rxrpc_call *call, struct sk_buff *skb,
-+			     unsigned int *_offset, unsigned int *_len)
-+{
-+	switch (call->conn->params.security_level) {
-+	case RXRPC_SECURITY_AUTH:
-+		rxgk_locate_data_1(call, skb, _offset, _len);
-+		return;
-+	case RXRPC_SECURITY_ENCRYPT:
-+		rxgk_locate_data_2(call, skb, _offset, _len);
-+		return;
-+	default:
-+		return;
-+	}
-+}
-+
-+/*
-+ * issue a challenge
-+ */
-+static int rxgk_issue_challenge(struct rxrpc_connection *conn)
-+{
-+	struct rxrpc_wire_header whdr;
-+	struct msghdr msg;
-+	struct kvec iov[2];
-+	size_t len;
-+	u32 serial;
-+	int ret;
-+
-+	_enter("{%d}", conn->debug_id);
-+
-+	get_random_bytes(&conn->rxgk.nonce, sizeof(conn->rxgk.nonce));
-+
-+	msg.msg_name	= &conn->params.peer->srx.transport;
-+	msg.msg_namelen	= conn->params.peer->srx.transport_len;
-+	msg.msg_control	= NULL;
-+	msg.msg_controllen = 0;
-+	msg.msg_flags	= 0;
-+
-+	whdr.epoch	= htonl(conn->proto.epoch);
-+	whdr.cid	= htonl(conn->proto.cid);
-+	whdr.callNumber	= 0;
-+	whdr.seq	= 0;
-+	whdr.type	= RXRPC_PACKET_TYPE_CHALLENGE;
-+	whdr.flags	= conn->out_clientflag;
-+	whdr.userStatus	= 0;
-+	whdr.securityIndex = conn->security_ix;
-+	whdr._rsvd	= 0;
-+	whdr.serviceId	= htons(conn->service_id);
-+
-+	iov[0].iov_base	= &whdr;
-+	iov[0].iov_len	= sizeof(whdr);
-+	iov[1].iov_base	= conn->rxgk.nonce;
-+	iov[1].iov_len	= sizeof(conn->rxgk.nonce);
-+
-+	len = iov[0].iov_len + iov[1].iov_len;
-+
-+	serial = atomic_inc_return(&conn->serial);
-+	whdr.serial = htonl(serial);
-+	_proto("Tx CHALLENGE %%%u", serial);
-+
-+	ret = kernel_sendmsg(conn->params.local->socket, &msg, iov, 2, len);
-+	if (ret < 0) {
-+		trace_rxrpc_tx_fail(conn->debug_id, serial, ret,
-+				    rxrpc_tx_point_rxgk_challenge);
-+		return -EAGAIN;
-+	}
-+
-+	conn->params.peer->last_tx_at = ktime_get_seconds();
-+	trace_rxrpc_tx_packet(conn->debug_id, &whdr,
-+			      rxrpc_tx_point_rxgk_challenge);
-+	_leave(" = 0");
-+	return 0;
-+}
-+
-+/*
-+ * Send a response packet.
-+ */
-+static int rxgk_send_response(struct rxrpc_connection *conn,
-+			      struct sk_buff *skb)
-+{
-+	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
-+	struct rxrpc_wire_header whdr;
-+	struct msghdr msg;
-+	struct kvec iov[2];
-+	size_t len;
-+	u32 serial;
-+	int ret, i;
-+
-+	_enter("");
-+
-+	msg.msg_name	= &conn->params.peer->srx.transport;
-+	msg.msg_namelen	= conn->params.peer->srx.transport_len;
-+	msg.msg_control	= NULL;
-+	msg.msg_controllen = 0;
-+	msg.msg_flags	= 0;
-+
-+	memset(&whdr, 0, sizeof(whdr));
-+	whdr.epoch	= htonl(sp->hdr.epoch);
-+	whdr.cid	= htonl(sp->hdr.cid);
-+	whdr.type	= RXRPC_PACKET_TYPE_RESPONSE;
-+	whdr.flags	= sp->hdr.flags;
-+	whdr.securityIndex = sp->hdr.securityIndex;
-+	whdr.cksum	= htons(sp->hdr.cksum);
-+	whdr.serviceId	= htons(sp->hdr.serviceId);
-+
-+	iov[0].iov_base	= &whdr;
-+	iov[0].iov_len	= sizeof(whdr);
-+	iov[1].iov_base	= skb->head;
-+	iov[1].iov_len	= skb->len;
-+
-+	len = 0;
-+	for (i = 0; i < ARRAY_SIZE(iov); i++)
-+		len += iov[i].iov_len;
-+
-+	serial = atomic_inc_return(&conn->serial);
-+	whdr.serial = htonl(serial);
-+	_proto("Tx RESPONSE %%%u", serial);
-+
-+	ret = kernel_sendmsg(conn->params.local->socket, &msg,
-+			     iov, ARRAY_SIZE(iov), len);
-+	if (ret < 0) {
-+		trace_rxrpc_tx_fail(conn->debug_id, serial, ret,
-+				    rxrpc_tx_point_rxgk_response);
-+		return -EAGAIN;
-+	}
-+
-+	conn->params.peer->last_tx_at = ktime_get_seconds();
-+	_leave(" = 0");
-+	return 0;
-+}
-+
-+/*
-+ * Construct the authenticator to go in the response packet
-+ *
-+ * struct RXGK_Authenticator {
-+ *	opaque nonce[20];
-+ *	opaque appdata<>;
-+ *	RXGK_Level level;
-+ *	unsigned int epoch;
-+ *	unsigned int cid;
-+ *	unsigned int call_numbers<>;
-+ * };
-+ */
-+static void rxgk_construct_authenticator(struct rxrpc_connection *conn,
-+					 const u8 *nonce,
-+					 struct sk_buff *skb)
-+{
-+	__be32 xdr[9];
-+
-+	__skb_put_data(skb, nonce, 20);
-+
-+	xdr[0] = htonl(0); /* appdata len */
-+	xdr[1] = htonl(conn->params.security_level);
-+	xdr[2] = htonl(conn->proto.epoch);
-+	xdr[3] = htonl(conn->proto.cid);
-+	xdr[4] = htonl(4); /* # call_numbers */
-+	xdr[5] = htonl(conn->channels[0].call_counter);
-+	xdr[6] = htonl(conn->channels[1].call_counter);
-+	xdr[7] = htonl(conn->channels[2].call_counter);
-+	xdr[8] = htonl(conn->channels[3].call_counter);
-+
-+	__skb_put_data(skb, xdr, sizeof(xdr));
-+}
-+
-+/*
-+ * Construct the response.
-+ *
-+ * struct RXGK_Response {
-+ *	rxgkTime start_time;
-+ *	RXGK_Data token;
-+ *	opaque authenticator<RXGK_MAXAUTHENTICATOR>
-+ * };
-+ */
-+static int rxgk_construct_response(struct rxrpc_connection *conn,
-+				   struct sk_buff *challenge,
-+				   const u8 *nonce)
-+{
-+	struct rxrpc_skb_priv *csp = rxrpc_skb(challenge), *rsp;
-+	struct rxgk_context *gk;
-+	struct sk_buff *skb;
-+	unsigned short resp_len, auth_len, pad_len, enc_len, auth_pad_len, authx_len;
-+	unsigned short auth_offset, authx_offset;
-+	__be64 start_time;
-+	__be32 tmp;
-+	void *p;
-+	int ret;
-+
-+	gk = rxgk_get_key(conn, NULL);
-+	if (IS_ERR(gk))
-+		return PTR_ERR(gk);
-+
-+	auth_len = 20 + 4 /* appdatalen */ + 12 + (1 + 4) * 4;
-+	if (gk->krb5->pad) {
-+		enc_len = round_up(gk->krb5->conf_len + auth_len, gk->krb5->block_len);
-+		pad_len = enc_len - (gk->krb5->conf_len + auth_len);
-+	} else {
-+		enc_len = gk->krb5->conf_len + auth_len;
-+		pad_len = 0;
-+	}
-+	authx_len = enc_len + gk->krb5->cksum_len;
-+	auth_pad_len = xdr_round_up(authx_len) - authx_len;
-+
-+	resp_len  = 8;
-+	resp_len += 4 + xdr_round_up(gk->key->ticket.len);
-+	resp_len += 4 + xdr_round_up(authx_len);
-+
-+	ret = -ENOMEM;
-+	skb = alloc_skb(resp_len, GFP_NOFS);
-+	if (!skb)
-+		goto error_gk;
-+
-+	rsp = rxrpc_skb(skb);
-+	rsp->hdr = csp->hdr;
-+	rsp->hdr.flags = conn->out_clientflag;
-+	rsp->hdr.cksum = gk->key_number;
-+
-+	start_time = cpu_to_be64(conn->rxgk.start_time);
-+	p = __skb_put_data(skb, &start_time, 8);
-+
-+	tmp = htonl(gk->key->ticket.len);
-+	__skb_put_data(skb, &tmp, 4);
-+	__skb_put_data(skb, gk->key->ticket.data, xdr_round_up(gk->key->ticket.len));
-+	tmp = htonl(authx_len);
-+	__skb_put_data(skb, &tmp, 4);
-+	authx_offset = skb->len;
-+	__skb_put_zero(skb, gk->krb5->conf_len);
-+	auth_offset = skb->len;
-+	rxgk_construct_authenticator(conn, nonce, skb);
-+	__skb_put_zero(skb, pad_len + gk->krb5->cksum_len + auth_pad_len);
-+
-+	ret = rxgk_encrypt_skb(gk->krb5, &gk->resp_enc, skb,
-+			       authx_offset, authx_len,
-+			       auth_offset, auth_len, false);
-+	if (ret < 0)
-+		goto error;
-+
-+	ret = rxgk_send_response(conn, skb);
-+error:
-+	kfree_skb(skb);
-+error_gk:
-+	rxgk_put(gk);
-+	_leave(" = %d", ret);
-+	return ret;
-+}
-+
-+/*
-+ * Respond to a challenge packet
-+ */
-+static int rxgk_respond_to_challenge(struct rxrpc_connection *conn,
-+				     struct sk_buff *skb,
-+				     u32 *_abort_code)
-+{
-+	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
-+	const char *eproto;
-+	u32 abort_code;
-+	u8 nonce[20];
-+	int ret;
-+
-+	_enter("{%d,%x}", conn->debug_id, key_serial(conn->params.key));
-+
-+	eproto = tracepoint_string("chall_no_key");
-+	abort_code = RX_PROTOCOL_ERROR;
-+	if (!conn->params.key)
-+		goto protocol_error;
-+
-+	abort_code = RXGK_EXPIRED;
-+	ret = key_validate(conn->params.key);
-+	if (ret < 0)
-+		goto other_error;
-+
-+	eproto = tracepoint_string("chall_short");
-+	abort_code = RXGK_PACKETSHORT;
-+	if (skb_copy_bits(skb, sizeof(struct rxrpc_wire_header),
-+			  nonce, sizeof(nonce)) < 0)
-+		goto protocol_error;
-+
-+	_proto("Rx CHALLENGE %%%u { n=%20phN }", sp->hdr.serial, nonce);
-+
-+	ret = rxgk_construct_response(conn, skb, nonce);
-+	if (ret < 0)
-+		goto error;
-+	return ret;
-+
-+protocol_error:
-+	trace_rxrpc_rx_eproto(NULL, sp->hdr.serial, eproto);
-+	ret = -EPROTO;
-+other_error:
-+	*_abort_code = abort_code;
-+error:
-+	return ret;
-+}
-+
-+/*
-+ * Verify the authenticator.
-+ *
-+ * struct RXGK_Authenticator {
-+ *	opaque nonce[20];
-+ *	opaque appdata<>;
-+ *	RXGK_Level level;
-+ *	unsigned int epoch;
-+ *	unsigned int cid;
-+ *	unsigned int call_numbers<>;
-+ * };
-+ */
-+static int rxgk_verify_authenticator(struct rxrpc_connection *conn,
-+				     const struct krb5_enctype *krb5,
-+				     struct sk_buff *skb,
-+				     unsigned int auth_offset, unsigned int auth_len,
-+				     u32 *_abort_code, const char **_eproto)
-+{
-+	void *auth;
-+	__be32 *p, *end;
-+	u32 app_len, call_count, level, epoch, cid, i;
-+	int ret;
-+
-+	_enter("");
-+
-+	auth = kmalloc(auth_len, GFP_NOFS);
-+	if (!auth)
-+		return -ENOMEM;
-+
-+	ret = skb_copy_bits(skb, auth_offset, auth, auth_len);
-+	if (ret < 0)
-+		goto error;
-+
-+	*_eproto = tracepoint_string("rxgk_rsp_nonce");
-+	p = auth;
-+	end = auth + auth_len;
-+	if (memcmp(auth, conn->rxgk.nonce, 20) != 0)
-+		goto bad_auth;
-+	p += 20 / sizeof(__be32);
-+
-+	*_eproto = tracepoint_string("rxgk_rsp_applen");
-+	app_len	= ntohl(*p++);
-+	if (app_len > (end - p) * sizeof(__be32))
-+		goto bad_auth;
-+	p += xdr_round_up(app_len) / sizeof(__be32);
-+	if (end - p < 4)
-+		goto bad_auth;
-+	level	= ntohl(*p++);
-+	epoch	= ntohl(*p++);
-+	cid	= ntohl(*p++);
-+	call_count = ntohl(*p++);
-+
-+	*_eproto = tracepoint_string("rxgk_rsp_params");
-+	if (level	!= conn->params.security_level ||
-+	    epoch	!= conn->proto.epoch ||
-+	    cid		!= conn->proto.cid ||
-+	    call_count	> 4)
-+		goto bad_auth;
-+	if (end - p < call_count)
-+		goto bad_auth;
-+
-+	spin_lock(&conn->bundle->channel_lock);
-+	for (i = 0; i < call_count; i++) {
-+		struct rxrpc_call *call;
-+		u32 call_id = ntohl(*p++);
-+
-+		*_eproto = tracepoint_string("rxgk_rsp_callid");
-+		if (call_id > INT_MAX)
-+			goto bad_auth_unlock;
-+
-+		*_eproto = tracepoint_string("rxgk_rsp_callctr");
-+		if (call_id < conn->channels[i].call_counter)
-+			goto bad_auth_unlock;
-+
-+		*_eproto = tracepoint_string("rxgk_rsp_callst");
-+		if (call_id > conn->channels[i].call_counter) {
-+			call = rcu_dereference_protected(
-+				conn->channels[i].call,
-+				lockdep_is_held(&conn->bundle->channel_lock));
-+			if (call && call->state < RXRPC_CALL_COMPLETE)
-+				goto bad_auth_unlock;
-+			conn->channels[i].call_counter = call_id;
-+		}
-+	}
-+	spin_unlock(&conn->bundle->channel_lock);
-+	ret = 0;
-+error:
-+	kfree(auth);
-+	_leave(" = %d", ret);
-+	return ret;
-+
-+bad_auth_unlock:
-+	spin_unlock(&conn->bundle->channel_lock);
-+bad_auth:
-+	*_abort_code = RXGK_NOTAUTH;
-+	ret = -EPROTO;
-+	goto error;
-+}
-+
-+/*
-+ * Verify a response.
-+ *
-+ * struct RXGK_Response {
-+ *	rxgkTime	start_time;
-+ *	RXGK_Data	token;
-+ *	opaque		authenticator<RXGK_MAXAUTHENTICATOR>
-+ * };
-+ */
-+static int rxgk_verify_response(struct rxrpc_connection *conn,
-+				struct sk_buff *skb,
-+				u32 *_abort_code)
-+{
-+	const struct krb5_enctype *krb5;
-+	struct rxrpc_key_token *token;
-+	struct rxrpc_skb_priv *sp = rxrpc_skb(skb);
-+	struct krb5_enc_keys token_enc = {};
-+	struct rxgk_context *gk;
-+	struct key *key = NULL;
-+	const char *eproto;
-+	unsigned int offset = sizeof(struct rxrpc_wire_header);
-+	unsigned int len = skb->len - sizeof(struct rxrpc_wire_header);
-+	unsigned int token_offset, token_len;
-+	unsigned int auth_offset, auth_len;
-+	__be32 xauth_len;
-+	u32 abort_code;
-+	int ret;
-+
-+	struct rxgk_response rhdr;
-+
-+	_enter("{%d}", conn->debug_id);
-+
-+	/* Parse the RXGK_Response object */
-+	if (sizeof(rhdr) + sizeof(__be32) > len)
-+		goto short_packet;
-+
-+	if (skb_copy_bits(skb, offset, &rhdr, sizeof(rhdr)) < 0)
-+		goto short_packet;
-+	offset	+= sizeof(rhdr);
-+	len	-= sizeof(rhdr);
-+
-+	token_offset	= offset;
-+	token_len	= ntohl(rhdr.token_len);
-+	if (xdr_round_up(token_len) + sizeof(__be32) > len)
-+		goto short_packet;
-+
-+	offset	+= xdr_round_up(token_len);
-+	len	-= xdr_round_up(token_len);
-+
-+	if (skb_copy_bits(skb, offset, &xauth_len, sizeof(xauth_len)) < 0)
-+		goto short_packet;
-+	offset	+= sizeof(xauth_len);
-+	len	-= sizeof(xauth_len);
-+
-+	auth_offset	= offset;
-+	auth_len	= ntohl(xauth_len);
-+	if (auth_len < len)
-+		goto short_packet;
-+	if (auth_len & 3)
-+		goto inconsistent;
-+	if (auth_len < 20 + 9 * 4)
-+		goto auth_too_short;
-+
-+	/* We need to extract and decrypt the token and instantiate a session
-+	 * key for it.  This bit, however, is application-specific.  If
-+	 * possible, we use a default parser, but we might end up bumping this
-+	 * to the app to deal with - which might mean a round trip to
-+	 * userspace.
-+	 */
-+	ret = rxgk_extract_token(conn, skb, token_offset, token_len, &key,
-+				 &abort_code, &eproto);
-+	if (ret < 0)
-+		goto protocol_error;
-+
-+	/* We now have a key instantiated from the decrypted ticket.  We can
-+	 * pass this to the application so that they can parse the ticket
-+	 * content and we can use the session key it contains to derive the
-+	 * keys we need.
-+	 *
-+	 * Note that we have to switch enctype at this point as the enctype of
-+	 * the ticket doesn't necessarily match that of the transport.
-+	 */
-+	token = key->payload.data[0];
-+	conn->params.security_level = token->rxgk->level;
-+	conn->rxgk.start_time = __be64_to_cpu(rhdr.start_time);
-+
-+	gk = rxgk_generate_transport_key(conn, token->rxgk, sp->hdr.cksum, GFP_NOFS);
-+	if (IS_ERR(gk)) {
-+		ret = PTR_ERR(gk);
-+		goto cant_get_token;
-+	}
-+
-+	krb5 = gk->krb5;
-+
-+	/* Decrypt, parse and verify the authenticator. */
-+	eproto = tracepoint_string("rxgk_rsp_dec_auth");
-+	ret = rxgk_decrypt_skb(krb5, &gk->resp_enc, skb,
-+			       &auth_offset, &auth_len, &abort_code);
-+	if (ret < 0)
-+		goto protocol_error;
-+
-+	ret = rxgk_verify_authenticator(conn, krb5, skb, auth_offset, auth_len,
-+					&abort_code, &eproto);
-+	if (ret < 0)
-+		goto protocol_error;
-+
-+	conn->params.key = key;
-+	key = NULL;
-+	ret = 0;
-+out:
-+	key_put(key);
-+	crypto_krb5_free_enc_keys(&token_enc);
-+	_leave(" = %d", ret);
-+	return ret;
-+
-+inconsistent:
-+	eproto = tracepoint_string("rxgk_rsp_xdr_align");
-+	abort_code = RXGK_INCONSISTENCY;
-+	ret = -EPROTO;
-+	goto protocol_error;
-+auth_too_short:
-+	eproto = tracepoint_string("rxgk_rsp_short_auth");
-+	abort_code = RXGK_PACKETSHORT;
-+	ret = -EPROTO;
-+	goto protocol_error;
-+short_packet:
-+	eproto = tracepoint_string("rxgk_rsp_short");
-+	abort_code = RXGK_PACKETSHORT;
-+	ret = -EPROTO;
-+protocol_error:
-+	trace_rxrpc_rx_eproto(NULL, sp->hdr.serial, eproto);
-+	*_abort_code = abort_code;
-+	goto out;
-+
-+cant_get_token:
-+	switch (ret) {
-+	case -ENOMEM:
-+		goto temporary_error;
-+	case -EINVAL:
-+		eproto = tracepoint_string("rxgk_rsp_internal_error");
-+		abort_code = RXGK_NOTAUTH;
-+		ret = -EKEYREJECTED;
-+		goto protocol_error;
-+	case -ENOPKG:
-+		eproto = tracepoint_string("rxgk_rsp_nopkg");
-+		abort_code = RXGK_BADETYPE;
-+		ret = -EKEYREJECTED;
-+		goto protocol_error;
-+	}
-+
-+temporary_error:
-+	/* Ignore the response packet if we got a temporary error such as
-+	 * ENOMEM.  We just want to send the challenge again.  Note that we
-+	 * also come out this way if the ticket decryption fails.
-+	 */
-+	goto out;
-+}
-+
-+/*
-+ * clear the connection security
-+ */
-+static void rxgk_clear(struct rxrpc_connection *conn)
-+{
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(conn->rxgk.keys); i++)
-+		rxgk_put(conn->rxgk.keys[i]);
-+}
-+
-+/*
-+ * Initialise the RxGK security service.
-+ */
-+static int rxgk_init(void)
-+{
-+	return 0;
-+}
-+
-+/*
-+ * Clean up the RxGK security service.
-+ */
-+static void rxgk_exit(void)
-+{
-+}
-+
-+/*
-+ * RxRPC YFS GSSAPI-based security
-+ */
-+const struct rxrpc_security rxgk_yfs = {
-+	.name				= "yfs-rxgk",
-+	.security_index			= RXRPC_SECURITY_YFS_RXGK,
-+	.no_key_abort			= RXGK_NOTAUTH,
-+	.init				= rxgk_init,
-+	.exit				= rxgk_exit,
-+	.preparse_server_key		= rxgk_preparse_server_key,
-+	.free_preparse_server_key	= rxgk_free_preparse_server_key,
-+	.destroy_server_key		= rxgk_destroy_server_key,
-+	.describe_server_key		= rxgk_describe_server_key,
-+	.init_connection_security	= rxgk_init_connection_security,
-+	.secure_packet			= rxgk_secure_packet,
-+	.verify_packet			= rxgk_verify_packet,
-+	.free_call_crypto		= rxgk_free_call_crypto,
-+	.locate_data			= rxgk_locate_data,
-+	.issue_challenge		= rxgk_issue_challenge,
-+	.respond_to_challenge		= rxgk_respond_to_challenge,
-+	.verify_response		= rxgk_verify_response,
-+	.clear				= rxgk_clear,
-+	.default_decode_ticket		= rxgk_yfs_decode_ticket,
++struct rxgk_key {
++	s64		begintime;	/* Time at which the ticket starts */
++	s64		endtime;	/* Time at which the ticket ends */
++	u64		lifetime;	/* Maximum lifespan of a connection (seconds) */
++	u64		bytelife;	/* Maximum number of bytes on a connection */
++	unsigned int	enctype;	/* Encoding type */
++	s8		level;		/* Negotiated security RXRPC_SECURITY_PLAIN/AUTH/ENCRYPT */
++	struct krb5_buffer key;		/* Master key, K0 */
++	struct krb5_buffer ticket;	/* Ticket to be passed to server */
++	u8		_key[];		/* Key storage */
 +};
-diff --git a/net/rxrpc/rxgk_app.c b/net/rxrpc/rxgk_app.c
-new file mode 100644
-index 000000000000..895879f3acfb
---- /dev/null
-+++ b/net/rxrpc/rxgk_app.c
-@@ -0,0 +1,289 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/* Application-specific bits for GSSAPI-based RxRPC security
-+ *
-+ * Copyright (C) 2020 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-+
-+#include <linux/net.h>
-+#include <linux/skbuff.h>
-+#include <linux/slab.h>
-+#include <linux/key-type.h>
-+#include "ar-internal.h"
-+#include "rxgk_common.h"
-+
-+/*
-+ * Decode a default-style YFS ticket in a response and turn it into an
-+ * rxrpc-type key.
-+ *
-+ * struct rxgk_key {
-+ *	afs_uint32	enctype;
-+ *	opaque		key<>;
-+ * };
-+ *
-+ * struct RXGK_AuthName {
-+ *	afs_int32	kind;
-+ *	opaque		data<AUTHDATAMAX>;
-+ *	opaque		display<AUTHPRINTABLEMAX>;
-+ * };
-+ *
-+ * struct RXGK_Token {
-+ *	rxgk_key		K0;
-+ *	RXGK_Level		level;
-+ *	rxgkTime		starttime;
-+ *	afs_int32		lifetime;
-+ *	afs_int32		bytelife;
-+ *	rxgkTime		expirationtime;
-+ *	struct RXGK_AuthName	identities<>;
-+ * };
-+ */
-+int rxgk_yfs_decode_ticket(struct sk_buff *skb,
-+			   unsigned int ticket_offset, unsigned int ticket_len,
-+			   u32 *_abort_code,
-+			   struct key **_key)
-+{
-+	struct rxrpc_key_token *token;
-+	const struct cred *cred = current_cred(); // TODO - use socket creds
-+	struct key *key;
-+	size_t pre_ticket_len, payload_len;
-+	unsigned int klen, enctype;
-+	void *payload, *ticket;
-+	__be32 *t, *p, *q, tmp[2];
-+	int ret;
-+
-+	_enter("");
-+
-+	/* Get the session key length */
-+	ret = skb_copy_bits(skb, ticket_offset, tmp, sizeof(tmp));
-+	if (ret < 0)
-+		goto error_out;
-+	enctype = ntohl(tmp[0]);
-+	klen = ntohl(tmp[1]);
-+
-+	if (klen > ticket_len - 10 * sizeof(__be32)) {
-+		*_abort_code = RXGK_INCONSISTENCY;
-+		return -EPROTO;
-+	}
-+
-+	pre_ticket_len = ((5 + 14) * sizeof(__be32) +
-+			  xdr_round_up(klen) +
-+			  sizeof(__be32));
-+	payload_len = pre_ticket_len + xdr_round_up(ticket_len);
-+
-+	payload = kzalloc(payload_len, GFP_NOFS);
-+	if (!payload)
-+		return -ENOMEM;
-+
-+	/* We need to fill out the XDR form for a key payload that we can pass
-+	 * to add_key().  Start by copying in the ticket so that we can parse
-+	 * it.
-+	 */
-+	ticket = payload + pre_ticket_len;
-+	ret = skb_copy_bits(skb, ticket_offset, ticket, ticket_len);
-+	if (ret < 0)
-+		goto error;
-+
-+	/* Fill out the form header. */
-+	p = payload;
-+	p[0] = htonl(0); /* Flags */
-+	p[1] = htonl(1); /* len(cellname) */
-+	p[2] = htonl(0x20000000); /* Cellname " " */
-+	p[3] = htonl(1); /* #tokens */
-+	p[4] = htonl(15 * sizeof(__be32) + xdr_round_up(klen) + xdr_round_up(ticket_len)); /* Token len */
-+
-+	/* Now fill in the body.  Most of this we can just scrape directly from
-+	 * the ticket.
-+	 */
-+	t = ticket + sizeof(__be32) * 2 + xdr_round_up(klen);
-+	q = payload + 5 * sizeof(__be32);
-+	q[ 0] = htonl(RXRPC_SECURITY_YFS_RXGK);
-+	q[ 1] = t[1];		/* begintime - msw */
-+	q[ 2] = t[2];		/* - lsw */
-+	q[ 3] = t[5];		/* endtime - msw */
-+	q[ 4] = t[6];		/* - lsw */
-+	q[ 5] = 0;		/* level - msw */
-+	q[ 6] = t[0];		/* - lsw */
-+	q[ 7] = 0;		/* lifetime - msw */
-+	q[ 8] = t[3];		/* - lsw */
-+	q[ 9] = 0;		/* bytelife - msw */
-+	q[10] = t[4];		/* - lsw */
-+	q[11] = 0;		/* enctype - msw */
-+	q[12] = htonl(enctype);	/* - lsw */
-+	q[13] = htonl(klen);	/* Key length */
-+
-+	q += 14;
-+
-+	memcpy(q, ticket + sizeof(__be32) * 2, klen);
-+	q += xdr_round_up(klen) / 4;
-+	q[0] = ntohl(ticket_len);
-+	q++;
-+	if (WARN_ON((unsigned long)q != (unsigned long)ticket)) {
-+		ret = -EIO;
-+		goto error;
-+	}
-+
-+	/* Ticket read in with skb_copy_bits above */
-+	q += xdr_round_up(ticket_len) / 4;
-+	if (WARN_ON((unsigned long)q - (unsigned long)payload != payload_len)) {
-+		ret = -EIO;
-+		goto error;
-+	}
-+
-+	/* Now turn that into a key. */
-+	key = key_alloc(&key_type_rxrpc, "x",
-+			GLOBAL_ROOT_UID, GLOBAL_ROOT_GID, cred, 0, // TODO: Use socket owner
-+			KEY_ALLOC_NOT_IN_QUOTA, NULL);
-+	if (IS_ERR(key)) {
-+		_leave(" = -ENOMEM [alloc %ld]", PTR_ERR(key));
-+		goto error;
-+	}
-+
-+	_debug("key %d", key_serial(key));
-+
-+	ret = key_instantiate_and_link(key, payload, payload_len, NULL, NULL);
-+	if (ret < 0)
-+		goto error_key;
-+
-+	token = key->payload.data[0];
-+	token->no_leak_key = true;
-+	*_key = key;
-+	key = NULL;
-+	ret = 0;
-+	goto error;
-+
-+error_key:
-+	key_put(key);
-+error:
-+	kfree_sensitive(payload);
-+error_out:
-+	_leave(" = %d", ret);
-+	return ret;
-+}
-+
-+/*
-+ * Extract the token and set up a session key from the details.
-+ *
-+ * struct RXGK_TokenContainer {
-+ *	afs_int32	kvno;
-+ *	afs_int32	enctype;
-+ *	opaque		encrypted_token<>;
-+ * };
-+ *
-+ * [tools.ietf.org/html/draft-wilkinson-afs3-rxgk-afs-08 sec 6.1]
-+ */
-+int rxgk_extract_token(struct rxrpc_connection *conn,
-+		       struct sk_buff *skb,
-+		       unsigned int token_offset, unsigned int token_len,
-+		       struct key **_key,
-+		       u32 *_abort_code, const char **_eproto)
-+{
-+	const struct krb5_enctype *krb5;
-+	const struct krb5_buffer *server_secret;
-+	struct krb5_enc_keys token_enc = {};
-+	struct key *server_key;
-+	unsigned int ticket_offset, ticket_len;
-+	u32 kvno, enctype;
-+	int ret;
-+
-+	struct {
-+		__be32 kvno;
-+		__be32 enctype;
-+		__be32 token_len;
-+	} container;
-+
-+	/* Decode the RXGK_TokenContainer object.  This tells us which server
-+	 * key we should be using.  We can then fetch the key, get the secret
-+	 * and set up the crypto to extract the token.
-+	 */
-+	if (skb_copy_bits(skb, token_offset, &container, sizeof(container)) < 0)
-+		goto short_packet;
-+
-+	kvno		= ntohl(container.kvno);
-+	enctype		= ntohl(container.enctype);
-+	ticket_len	= ntohl(container.token_len);
-+	ticket_offset	= token_offset + sizeof(container);
-+
-+	if (xdr_round_up(ticket_len) > token_len - 3 * 4)
-+		goto short_packet;
-+
-+	_debug("KVNO %u", kvno);
-+	_debug("ENC  %u", enctype);
-+	_debug("TLEN %u", ticket_len);
-+
-+	server_key = rxrpc_look_up_server_security(conn, skb, kvno, enctype);
-+	if (IS_ERR(server_key))
-+		goto cant_get_server_key;
-+
-+	down_read(&server_key->sem);
-+	server_secret = (const void *)&server_key->payload.data[2];
-+	ret = rxgk_set_up_token_cipher(server_secret, &token_enc, enctype, &krb5, GFP_NOFS);
-+	up_read(&server_key->sem);
-+	key_put(server_key);
-+	if (ret < 0)
-+		goto cant_get_token;
-+
-+	/* We can now decrypt and parse the token/ticket.  This allows us to
-+	 * gain access to K0, from which we can derive the transport key and
-+	 * thence decode the authenticator.
-+	 */
-+	*_eproto = tracepoint_string("rxgk_rsp_dec_tkt");
-+	ret = rxgk_decrypt_skb(krb5, &token_enc, skb,
-+			       &ticket_offset, &ticket_len, _abort_code);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = conn->security->default_decode_ticket(skb, ticket_offset, ticket_len,
-+						    _abort_code, _key);
-+	if (ret < 0)
-+		goto cant_get_token;
-+
-+	_leave(" = 0");
-+	return ret;
-+
-+short_packet:
-+	*_eproto = tracepoint_string("rxgk_rsp_short");
-+	*_abort_code = RXGK_PACKETSHORT;
-+	return -EPROTO;
-+
-+cant_get_server_key:
-+	ret = PTR_ERR(server_key);
-+	switch (ret) {
-+	case -ENOMEM:
-+		goto temporary_error;
-+	case -ENOKEY:
-+	case -EKEYREJECTED:
-+	case -EKEYEXPIRED:
-+	case -EKEYREVOKED:
-+	case -EPERM:
-+		*_eproto = tracepoint_string("rxgk_rsp_nokey");
-+		*_abort_code = RXGK_BADKEYNO;
-+		return -EKEYREJECTED;
-+	default:
-+		*_eproto = tracepoint_string("rxgk_rsp_keyerr");
-+		*_abort_code = RXGK_NOTAUTH;
-+		return -EKEYREJECTED;
-+	}
-+
-+cant_get_token:
-+	switch (ret) {
-+	case -ENOMEM:
-+		goto temporary_error;
-+	case -EINVAL:
-+		*_eproto = tracepoint_string("rxgk_rsp_internal_error");
-+		*_abort_code = RXGK_NOTAUTH;
-+		return -EKEYREJECTED;
-+	case -ENOPKG:
-+		*_eproto = tracepoint_string("rxgk_rsp_nopkg");
-+		*_abort_code = RXGK_BADETYPE;
-+		return -EKEYREJECTED;
-+	}
-+
-+temporary_error:
-+	/* Ignore the response packet if we got a temporary error such as
-+	 * ENOMEM.  We just want to send the challenge again.  Note that we
-+	 * also come out this way if the ticket decryption fails.
-+	 */
-+	return ret;
-+}
-diff --git a/net/rxrpc/rxgk_common.h b/net/rxrpc/rxgk_common.h
-index 3047ad531877..38473b13e67d 100644
---- a/net/rxrpc/rxgk_common.h
-+++ b/net/rxrpc/rxgk_common.h
-@@ -33,6 +33,17 @@ struct rxgk_context {
- 	struct krb5_enc_keys	resp_enc;	/* Response packet enc key */
- };
- 
-+#define xdr_round_up(x) (round_up((x), sizeof(__be32)))
-+
-+/*
-+ * rxgk_app.c
-+ */
-+int rxgk_yfs_decode_ticket(struct sk_buff *, unsigned int, unsigned int,
-+			   u32 *, struct key **);
-+int rxgk_extract_token(struct rxrpc_connection *,
-+		       struct sk_buff *, unsigned int, unsigned int,
-+		       struct key **, u32 *, const char **);
 +
  /*
-  * rxgk_kdf.c
+  * list of tokens attached to an rxrpc key
   */
-@@ -42,3 +53,110 @@ int rxgk_set_up_token_cipher(const struct krb5_buffer *, struct krb5_enc_keys *,
- 			     unsigned int, const struct krb5_enctype **,
- 			     gfp_t);
- void rxgk_put(struct rxgk_context *);
-+
-+/*
-+ * Apply encryption and checksumming functions to part of an skbuff.
-+ */
-+static inline
-+int rxgk_encrypt_skb(const struct krb5_enctype *krb5,
-+		     struct krb5_enc_keys *keys,
-+		     struct sk_buff *skb,
-+		     u16 secure_offset, u16 secure_len,
-+		     u16 data_offset, u16 data_len,
-+		     bool preconfounded)
-+{
-+	struct scatterlist sg[16];
-+	int nr_sg;
-+
-+	sg_init_table(sg, ARRAY_SIZE(sg));
-+	nr_sg = skb_to_sgvec(skb, sg, secure_offset, secure_len);
-+	if (unlikely(nr_sg < 0))
-+		return nr_sg;
-+
-+	data_offset -= secure_offset;
-+	return crypto_krb5_encrypt(krb5, keys, sg, nr_sg, secure_len,
-+				   data_offset, data_len, preconfounded);
-+}
-+
-+/*
-+ * Apply decryption and checksumming functions to part of an skbuff.  The
-+ * offset and length are updated to reflect the actual content of the encrypted
-+ * region.
-+ */
-+static inline
-+int rxgk_decrypt_skb(const struct krb5_enctype *krb5,
-+		     struct krb5_enc_keys *keys,
-+		     struct sk_buff *skb,
-+		     unsigned int *_offset, unsigned int *_len,
-+		     int *_error_code)
-+{
-+	struct scatterlist sg[16];
-+	size_t offset = 0, len = *_len;
-+	int nr_sg, ret;
-+
-+	sg_init_table(sg, ARRAY_SIZE(sg));
-+	nr_sg = skb_to_sgvec(skb, sg, *_offset, len);
-+	if (unlikely(nr_sg < 0))
-+		return nr_sg;
-+
-+	ret = crypto_krb5_decrypt(krb5, keys, sg, nr_sg,
-+				  &offset, &len, _error_code);
-+
-+	*_offset += offset;
-+	*_len = len;
-+	return ret;
-+}
-+
-+/*
-+ * Generate a checksum over some metadata and part of an skbuff and insert the
-+ * MIC into the skbuff immediately prior to the data.
-+ */
-+static inline
-+int rxgk_get_mic_skb(const struct krb5_enctype *krb5,
-+		     struct crypto_shash *shash,
-+		     const struct krb5_buffer *metadata,
-+		     struct sk_buff *skb,
-+		     u16 secure_offset, u16 secure_len,
-+		     u16 data_offset, u16 data_len)
-+{
-+	struct scatterlist sg[16];
-+	int nr_sg;
-+
-+	sg_init_table(sg, ARRAY_SIZE(sg));
-+	nr_sg = skb_to_sgvec(skb, sg, secure_offset, secure_len);
-+	if (unlikely(nr_sg < 0))
-+		return nr_sg;
-+
-+	data_offset -= secure_offset;
-+	return crypto_krb5_get_mic(krb5, shash, metadata, sg, nr_sg, secure_len,
-+				   data_offset, data_len);
-+}
-+
-+/*
-+ * Check the MIC on a region of an skbuff.  The offset and length are updated
-+ * to reflect the actual content of the secure region.
-+ */
-+static inline
-+int rxgk_verify_mic_skb(const struct krb5_enctype *krb5,
-+			struct crypto_shash *shash,
-+			const struct krb5_buffer *metadata,
-+			struct sk_buff *skb,
-+			unsigned int *_offset, unsigned int *_len,
-+			u32 *_error_code)
-+{
-+	struct scatterlist sg[16];
-+	size_t offset = 0, len = *_len;
-+	int nr_sg, ret;
-+
-+	sg_init_table(sg, ARRAY_SIZE(sg));
-+	nr_sg = skb_to_sgvec(skb, sg, *_offset, len);
-+	if (unlikely(nr_sg < 0))
-+		return nr_sg;
-+
-+	ret = crypto_krb5_verify_mic(krb5, shash, metadata, sg, nr_sg,
-+				     &offset, &len, _error_code);
-+
-+	*_offset += offset;
-+	*_len = len;
-+	return 0;
-+}
-diff --git a/net/rxrpc/security.c b/net/rxrpc/security.c
-index 50cb5f1ee0c0..278a510b2956 100644
---- a/net/rxrpc/security.c
-+++ b/net/rxrpc/security.c
-@@ -20,6 +20,9 @@ static const struct rxrpc_security *rxrpc_security_types[] = {
- #ifdef CONFIG_RXKAD
- 	[RXRPC_SECURITY_RXKAD]	= &rxkad,
- #endif
-+#ifdef CONFIG_RXGK
-+	[RXRPC_SECURITY_YFS_RXGK] = &rxgk_yfs,
-+#endif
+@@ -40,6 +56,7 @@ struct rxrpc_key_token {
+ 	struct rxrpc_key_token *next;	/* the next token in the list */
+ 	union {
+ 		struct rxkad_key *kad;
++		struct rxgk_key *rxgk;
+ 	};
  };
  
- int __init rxrpc_init_security(void)
+diff --git a/net/rxrpc/key.c b/net/rxrpc/key.c
+index 9631aa8543b5..b7f154701d97 100644
+--- a/net/rxrpc/key.c
++++ b/net/rxrpc/key.c
+@@ -129,6 +129,158 @@ static int rxrpc_preparse_xdr_rxkad(struct key_preparsed_payload *prep,
+ 	return 0;
+ }
+ 
++static u64 xdr_dec64(const __be32 *xdr)
++{
++	return (u64)ntohl(xdr[0]) << 32 | (u64)ntohl(xdr[1]);
++}
++
++static time64_t rxrpc_s64_to_time64(s64 time_in_100ns)
++{
++	bool neg = false;
++	u64 tmp = time_in_100ns;
++
++	if (time_in_100ns < 0) {
++		tmp = -time_in_100ns;
++		neg = true;
++	}
++	do_div(tmp, 10000000);
++	return neg ? -tmp : tmp;
++}
++
++/*
++ * Parse a YFS-RxGK type XDR format token
++ * - the caller guarantees we have at least 4 words
++ *
++ * struct token_rxgk {
++ *	opr_time begintime;
++ *	opr_time endtime;
++ *	afs_int64 level;
++ *	afs_int64 lifetime;
++ *	afs_int64 bytelife;
++ *	afs_int64 enctype;
++ *	opaque key<>;
++ *	opaque ticket<>;
++ * };
++ */
++static int rxrpc_preparse_xdr_yfs_rxgk(struct key_preparsed_payload *prep,
++				       size_t datalen,
++				       const __be32 *xdr, unsigned int toklen)
++{
++	struct rxrpc_key_token *token, **pptoken;
++	time64_t expiry;
++	size_t plen;
++	const __be32 *ticket, *key;
++	s64 tmp;
++	u32 tktlen, keylen;
++
++	_enter(",{%x,%x,%x,%x},%x",
++	       ntohl(xdr[0]), ntohl(xdr[1]), ntohl(xdr[2]), ntohl(xdr[3]),
++	       toklen);
++
++	if (6 * 2 + 2 > toklen / 4)
++		goto reject;
++
++	key = xdr + (6 * 2 + 1);
++	keylen = ntohl(key[-1]);
++	_debug("keylen: %x", keylen);
++	keylen = round_up(keylen, 4);
++	if ((6 * 2 + 2) * 4 + keylen > toklen)
++		goto reject;
++
++	ticket = xdr + (6 * 2 + 1 + (keylen / 4) + 1);
++	tktlen = ntohl(ticket[-1]);
++	_debug("tktlen: %x", tktlen);
++	tktlen = round_up(tktlen, 4);
++	if ((6 * 2 + 2) * 4 + keylen + tktlen != toklen) {
++		kleave(" = -EKEYREJECTED [%x!=%x, %x,%x]",
++		       (6 * 2 + 2) * 4 + keylen + tktlen, toklen,
++		       keylen, tktlen);
++		goto reject;
++	}
++
++	plen = sizeof(*token) + sizeof(*token->rxgk) + tktlen + keylen;
++	prep->quotalen = datalen + plen;
++
++	plen -= sizeof(*token);
++	token = kzalloc(sizeof(*token), GFP_KERNEL);
++	if (!token)
++		goto nomem;
++
++	token->rxgk = kzalloc(sizeof(struct rxgk_key) + keylen, GFP_KERNEL);
++	if (!token->rxgk)
++		goto nomem_token;
++
++	token->security_index	= RXRPC_SECURITY_YFS_RXGK;
++	token->rxgk->begintime	= xdr_dec64(xdr + 0 * 2);
++	token->rxgk->endtime	= xdr_dec64(xdr + 1 * 2);
++	token->rxgk->level	= tmp = xdr_dec64(xdr + 2 * 2);
++	if (tmp < -1LL || tmp > RXRPC_SECURITY_ENCRYPT)
++		goto reject_token;
++	token->rxgk->lifetime	= xdr_dec64(xdr + 3 * 2);
++	token->rxgk->bytelife	= xdr_dec64(xdr + 4 * 2);
++	token->rxgk->enctype	= tmp = xdr_dec64(xdr + 5 * 2);
++	if (tmp < 0 || tmp > UINT_MAX)
++		goto reject_token;
++	token->rxgk->key.len	= ntohl(key[-1]);
++	token->rxgk->key.data	= token->rxgk->_key;
++	token->rxgk->ticket.len = ntohl(ticket[-1]);
++
++	expiry = rxrpc_s64_to_time64(token->rxgk->endtime);
++	if (expiry < 0)
++		goto expired;
++	if (expiry < prep->expiry)
++		prep->expiry = expiry;
++
++	memcpy(token->rxgk->key.data, key, token->rxgk->key.len);
++
++	/* Pad the ticket so that we can use it directly in XDR */
++	token->rxgk->ticket.data = kzalloc(round_up(token->rxgk->ticket.len, 4),
++					   GFP_KERNEL);
++	if (!token->rxgk->ticket.data)
++		goto nomem_yrxgk;
++	memcpy(token->rxgk->ticket.data, ticket, token->rxgk->ticket.len);
++
++	_debug("SCIX: %u",	token->security_index);
++	_debug("EXPY: %llx",	token->rxgk->endtime);
++	_debug("LIFE: %llx",	token->rxgk->lifetime);
++	_debug("BYTE: %llx",	token->rxgk->bytelife);
++	_debug("ENC : %u",	token->rxgk->enctype);
++	_debug("LEVL: %u",	token->rxgk->level);
++	_debug("KLEN: %u",	token->rxgk->key.len);
++	_debug("TLEN: %u",	token->rxgk->ticket.len);
++	_debug("KEY0: %*phN",	token->rxgk->key.len, token->rxgk->key.data);
++	_debug("TICK: %*phN",
++	       min_t(u32, token->rxgk->ticket.len, 32), token->rxgk->ticket.data);
++
++	/* count the number of tokens attached */
++	prep->payload.data[1] = (void *)((unsigned long)prep->payload.data[1] + 1);
++
++	/* attach the data */
++	for (pptoken = (struct rxrpc_key_token **)&prep->payload.data[0];
++	     *pptoken;
++	     pptoken = &(*pptoken)->next)
++		continue;
++	*pptoken = token;
++
++	_leave(" = 0");
++	return 0;
++
++nomem_yrxgk:
++	kfree(token->rxgk);
++nomem_token:
++	kfree(token);
++nomem:
++	return -ENOMEM;
++reject_token:
++	kfree(token);
++reject:
++	return -EKEYREJECTED;
++expired:
++	kfree(token->rxgk);
++	kfree(token);
++	return -EKEYEXPIRED;
++}
++
+ /*
+  * attempt to parse the data as the XDR format
+  * - the caller guarantees we have more than 7 words
+@@ -228,6 +380,9 @@ static int rxrpc_preparse_xdr(struct key_preparsed_payload *prep)
+ 		case RXRPC_SECURITY_RXKAD:
+ 			ret2 = rxrpc_preparse_xdr_rxkad(prep, datalen, token, toklen);
+ 			break;
++		case RXRPC_SECURITY_YFS_RXGK:
++			ret2 = rxrpc_preparse_xdr_yfs_rxgk(prep, datalen, token, toklen);
++			break;
+ 		default:
+ 			ret2 = -EPROTONOSUPPORT;
+ 			break;
+@@ -390,6 +545,10 @@ static void rxrpc_free_token_list(struct rxrpc_key_token *token)
+ 		case RXRPC_SECURITY_RXKAD:
+ 			kfree(token->kad);
+ 			break;
++		case RXRPC_SECURITY_YFS_RXGK:
++			kfree(token->rxgk->ticket.data);
++			kfree(token->rxgk);
++			break;
+ 		default:
+ 			pr_err("Unknown token type %x on rxrpc key\n",
+ 			       token->security_index);
+@@ -433,6 +592,9 @@ static void rxrpc_describe(const struct key *key, struct seq_file *m)
+ 		case RXRPC_SECURITY_RXKAD:
+ 			seq_puts(m, "ka");
+ 			break;
++		case RXRPC_SECURITY_YFS_RXGK:
++			seq_puts(m, "ygk");
++			break;
+ 		default: /* we have a ticket we can't encode */
+ 			seq_printf(m, "%u", token->security_index);
+ 			break;
+@@ -595,6 +757,13 @@ static long rxrpc_read(const struct key *key,
+ 				toksize += RND(token->kad->ticket_len);
+ 			break;
+ 
++		case RXRPC_SECURITY_YFS_RXGK:
++			toksize += 6 * 8 + 2 * 4;
++			if (!token->no_leak_key)
++				toksize += RND(token->rxgk->key.len);
++			toksize += RND(token->rxgk->ticket.len);
++			break;
++
+ 		default: /* we have a ticket we can't encode */
+ 			pr_err("Unsupported key token type (%u)\n",
+ 			       token->security_index);
+@@ -673,6 +842,20 @@ static long rxrpc_read(const struct key *key,
+ 				ENCODE_DATA(token->kad->ticket_len, token->kad->ticket);
+ 			break;
+ 
++		case RXRPC_SECURITY_YFS_RXGK:
++			ENCODE64(token->rxgk->begintime);
++			ENCODE64(token->rxgk->endtime);
++			ENCODE64(token->rxgk->level);
++			ENCODE64(token->rxgk->lifetime);
++			ENCODE64(token->rxgk->bytelife);
++			ENCODE64(token->rxgk->enctype);
++			ENCODE_DATA(token->rxgk->ticket.len, token->rxgk->ticket.data);
++			if (token->no_leak_key)
++				ENCODE(0);
++			else
++				ENCODE_DATA(token->rxgk->key.len, token->rxgk->key.data);
++			break;
++
+ 		default:
+ 			break;
+ 		}
 
 
