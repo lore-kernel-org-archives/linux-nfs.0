@@ -2,169 +2,161 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.4 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EF22C388F9
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Nov 2020 22:16:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 95771C4742C
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 01:32:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 331AD2087D
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Nov 2020 22:16:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3673320791
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 01:32:20 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="RT02KJaK"
+	dkim=pass (1024-bit key) header.d=sargun.me header.i=@sargun.me header.b="LNGJWwVJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726255AbgKKWQF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Nov 2020 17:16:05 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:34591 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725933AbgKKWQC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2020 17:16:02 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1605132960;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=r6aNe1Ae8qpcfbkD6nKYxaBIO+QpbabBldM5maHx0Jw=;
-        b=RT02KJaK2IPwdCjQbG7oz4ufPK/dcWQ7Msy9G1A6Zjbp4S4TLltEMHgWtOnxRSJda60v9k
-        mwlk65w1oLRGY5/1awWW2Bg9ucC850SQ1AwC0efWFp2isjAIIM12/PKD2nKMYHlLuuuT60
-        3hi1zCCT9xWUi3htskyUjNymwyh5zD8=
-Received: from mail-ej1-f72.google.com (mail-ej1-f72.google.com
- [209.85.218.72]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-35-x3_tBMKhO3uTgYUSoeBTCA-1; Wed, 11 Nov 2020 17:15:58 -0500
-X-MC-Unique: x3_tBMKhO3uTgYUSoeBTCA-1
-Received: by mail-ej1-f72.google.com with SMTP id 27so1162041ejy.8
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2020 14:15:58 -0800 (PST)
+        id S1728358AbgKLBcT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Nov 2020 20:32:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42578 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728067AbgKLAbA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Nov 2020 19:31:00 -0500
+Received: from mail-il1-x143.google.com (mail-il1-x143.google.com [IPv6:2607:f8b0:4864:20::143])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 411A1C0613D4
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2020 16:31:00 -0800 (PST)
+Received: by mail-il1-x143.google.com with SMTP id l12so3709159ilo.1
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Nov 2020 16:31:00 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=sargun.me; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:content-transfer-encoding:in-reply-to
+         :user-agent;
+        bh=8l0j+cAspJw3PKNvEwGXKQZgH357sPK1IXSg0Dm5rWM=;
+        b=LNGJWwVJv/+IA3kzIbW9fZVxxRU3l/QIh+VULZZbgiI0DBdOi/8sRaA3pP1V6rSXl4
+         x7epCo6q0RIQza7V/yhUR37RzB+Z0Jtj8mF+Mgw3foZIc29WoH4RyrBlX46WajyP/ptQ
+         pUDCbrrL6sPgMZeAN/TQqnhO2c0+Ar/MjfGls=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=r6aNe1Ae8qpcfbkD6nKYxaBIO+QpbabBldM5maHx0Jw=;
-        b=W4nEYD5YF3gNA2JDZeJT2KLdEkONfluipHrgkB/qgtHMqGoWsO3ZcW4K5vGGe9F+jd
-         jx2wTMlUkJCMTL9mrzRWkXa04MZGZHQhOVoY4vlRqgnr/PbG2SMhE0DFZ/9XSxhTeCwO
-         kzlw87EJ2DR+L5RYJjmzMkIE/73Os1siKrqgPL7J15zZLAx/HKDDh0pvxlW4Py1h7N9u
-         SB/mV/xCm8nGGURd7l+OTf243leCttsCmrY2QrocaFAY6PyunBBLh5n8Y4jRI3MXZ8FH
-         eOUPYb1p33uO7rluRMMzg1Am6QX0McdsSE8/5BAhan4nK5U8aXzPWdOloFA9VSejaQlf
-         PwSA==
-X-Gm-Message-State: AOAM531+5896BFURTj/hIAafkfIX4K3ZefMRF4/0oTnMaEGz5wfyG4DO
-        +e8rj4/JoHiN/PMP6ivFqKf8vcpvVbgD9OIX5nl/uHhNBOIHdBCiQ3P6q2B+oLZW7bcnYhQ4Ccz
-        JYkVIwOHt7usoVsLprE4acadfT++5wrelvCUd
-X-Received: by 2002:a50:e705:: with SMTP id a5mr1844884edn.29.1605132956909;
-        Wed, 11 Nov 2020 14:15:56 -0800 (PST)
-X-Google-Smtp-Source: ABdhPJwR8aPdx2ibCLm2kefHxUPraAxKY7thQRDwXxALwHrljf7ye0qDc7n474F37QQjkdQSkNEk7ocOj1V+sUqY62A=
-X-Received: by 2002:a50:e705:: with SMTP id a5mr1844872edn.29.1605132956708;
- Wed, 11 Nov 2020 14:15:56 -0800 (PST)
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:content-transfer-encoding
+         :in-reply-to:user-agent;
+        bh=8l0j+cAspJw3PKNvEwGXKQZgH357sPK1IXSg0Dm5rWM=;
+        b=nkUBl1oNynwigA45C7PY0oRffM96eyLjSPN3KZ9Pq37hrKN4giWdRxzrQXe8G1Lk5y
+         X8deARmCC7CORnlDJSj5IfzmsfT/LKoN5peGuKm38jiO4yULlgRET95+vTNksdtc3IPY
+         lCcovm5XKAcWjIEb5txpgV4Q7o00faivfUDHyE5iwuxrRBZhSjNw8n/zHMSeeQp/pK2v
+         1TsYpaxNOGj8fDKF5CMCI7wn5gA3UNDgZc5t0X9YXeM6US8xlfSQca+e0wDuGsVOnEZi
+         h9C/WMUac4reMxDemlqTWLUZDllP3yycmLUDk7yiVvb3nE3gKpd+4pxPE7yPIcqgGsVI
+         Jexg==
+X-Gm-Message-State: AOAM533Pus85ozU4yaZuIET1N3EcOL1C+lO223BqbV0yloA69e9ZE2/Y
+        YMn9xGRHamuJSwlXKGS27jiinw==
+X-Google-Smtp-Source: ABdhPJx1a97kaxKxxIObDOxrDXMR9vrr9lZfPgLuYHRngybHUM+LAZuPz2yhltqA1jFrW78j7RVysA==
+X-Received: by 2002:a92:3312:: with SMTP id a18mr21071286ilf.165.1605141059275;
+        Wed, 11 Nov 2020 16:30:59 -0800 (PST)
+Received: from ircssh-2.c.rugged-nimbus-611.internal (80.60.198.104.bc.googleusercontent.com. [104.198.60.80])
+        by smtp.gmail.com with ESMTPSA id m9sm1831941ioc.15.2020.11.11.16.30.58
+        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
+        Wed, 11 Nov 2020 16:30:58 -0800 (PST)
+Date:   Thu, 12 Nov 2020 00:30:57 +0000
+From:   Sargun Dhillon <sargun@sargun.me>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "smayhew@redhat.com" <smayhew@redhat.com>,
+        "dhowells@redhat.com" <dhowells@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
+        "alban.crequy@gmail.com" <alban.crequy@gmail.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "mauricio@kinvolk.io" <mauricio@kinvolk.io>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Subject: Re: [PATCH v4 0/2] NFS: Fix interaction between fs_context and user
+ namespaces
+Message-ID: <20201112003056.GA351@ircssh-2.c.rugged-nimbus-611.internal>
+References: <20201102174737.2740-1-sargun@sargun.me>
+ <CAMXgnP5cVoLKTGPOAO+aLEAGLpkjACy1e4iLBKkfp8Gv1U77xA@mail.gmail.com>
+ <f6d86006ccd19d4d101097de309eb21bbbf96e43.camel@hammerspace.com>
+ <20201111111233.GA21917@ircssh-2.c.rugged-nimbus-611.internal>
+ <8feccf45f6575a204da03e796391cc135283eb88.camel@hammerspace.com>
+ <20201111185727.GA27945@ircssh-2.c.rugged-nimbus-611.internal>
+ <17d0e6c2e30d5b28cc1cb0313822e5ca39a2245c.camel@hammerspace.com>
 MIME-Version: 1.0
-References: <20201110213741.860745-1-trondmy@kernel.org>
-In-Reply-To: <20201110213741.860745-1-trondmy@kernel.org>
-From:   David Wysochanski <dwysocha@redhat.com>
-Date:   Wed, 11 Nov 2020 17:15:20 -0500
-Message-ID: <CALF+zOkdXMDZ3TNGSNJQPtxy-ru_4iCYTz3U2uwkPAo3j55FZg@mail.gmail.com>
-Subject: Re: [PATCH v5 00/22] Readdir enhancements
-To:     trondmy@kernel.org
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <17d0e6c2e30d5b28cc1cb0313822e5ca39a2245c.camel@hammerspace.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Nov 10, 2020 at 4:48 PM <trondmy@kernel.org> wrote:
->
-> From: Trond Myklebust <trond.myklebust@hammerspace.com>
->
-> The following patch series performs a number of cleanups on the readdir
-> code.
-> It also adds support for 1MB readdir RPC calls on-the-wire, and modifies
-> the caching code to ensure that we cache the entire contents of that
-> 1MB call (instead of discarding the data that doesn't fit into a single
-> page).
-> For filesystems that use ordered readdir cookie schemes (e.g. XFS), it
-> optimises searching for cookies in the client's page cache by skipping
-> over pages that contain cookie values that are not in the range we are
-> searching for.
-> Finally, it improves scalability when dealing with very large
-> directories by turning off caching when those directories are changing,
-> so as to avoid the need for a linear search on the client of the entire
-> directory when looking for the first entry pointed to by the current
-> file descriptor offset.
->
-> v2: Fix the handling of the NFSv3/v4 directory verifier.
-> v3: Optimise searching when the readdir cookies are seen to be ordered.
-> v4: Optimise performance for large directories that are changing.
->     Add in llseek dependency patches.
-> v5: Integrate Olga's patch for the READDIR security label handling.
->     Record more entries in the uncached readdir case. Bump the max
->     number of pages to 512, but allocate them on demand in case the
->     readdir RPC call returns fewer entries.
->
-> Olga Kornievskaia (1):
->   NFSv4.2: condition READDIR's mask for security label based on LSM
->     state
->
-> Trond Myklebust (21):
->   NFS: Remove unnecessary inode locking in nfs_llseek_dir()
->   NFS: Remove unnecessary inode lock in nfs_fsync_dir()
->   NFS: Ensure contents of struct nfs_open_dir_context are consistent
->   NFS: Clean up readdir struct nfs_cache_array
->   NFS: Clean up nfs_readdir_page_filler()
->   NFS: Clean up directory array handling
->   NFS: Don't discard readdir results
->   NFS: Remove unnecessary kmap in nfs_readdir_xdr_to_array()
->   NFS: Replace kmap() with kmap_atomic() in nfs_readdir_search_array()
->   NFS: Simplify struct nfs_cache_array_entry
->   NFS: Support larger readdir buffers
->   NFS: More readdir cleanups
->   NFS: nfs_do_filldir() does not return a value
->   NFS: Reduce readdir stack usage
->   NFS: Cleanup to remove nfs_readdir_descriptor_t typedef
->   NFS: Allow the NFS generic code to pass in a verifier to readdir
->   NFS: Handle NFS4ERR_NOT_SAME and NFSERR_BADCOOKIE from readdir calls
->   NFS: Improve handling of directory verifiers
->   NFS: Optimisations for monotonically increasing readdir cookies
->   NFS: Reduce number of RPC calls when doing uncached readdir
->   NFS: Do uncached readdir when we're seeking a cookie in an empty page
->     cache
->
->  fs/nfs/client.c         |   4 +-
->  fs/nfs/dir.c            | 734 +++++++++++++++++++++++++---------------
->  fs/nfs/inode.c          |   7 -
->  fs/nfs/internal.h       |   6 -
->  fs/nfs/nfs3proc.c       |  35 +-
->  fs/nfs/nfs4proc.c       |  48 +--
->  fs/nfs/proc.c           |  18 +-
->  include/linux/nfs_fs.h  |   9 +-
->  include/linux/nfs_xdr.h |  17 +-
->  9 files changed, 541 insertions(+), 337 deletions(-)
->
-> --
-> 2.28.0
->
+On Wed, Nov 11, 2020 at 08:03:18PM +0000, Trond Myklebust wrote:
+> On Wed, 2020-11-11 at 18:57 +0000, Sargun Dhillon wrote:
+> > On Wed, Nov 11, 2020 at 02:38:11PM +0000, Trond Myklebust wrote:
+> > > On Wed, 2020-11-11 at 11:12 +0000, Sargun Dhillon wrote:
+> > > 
+> > > The current code for setting server->cred was developed
+> > > independently
+> > > of fsopen() (and predates it actually). I'm fine with the change to
+> > > have server->cred be the cred of the user that called fsopen().
+> > > That's
+> > > in line with what we used to do for sys_mount().
+> > > 
+> > Just curious, without FS_USERNS, how were you mounting NFSv4 in an
+> > unprivileged user ns?
+> 
+> The code was originally developed on a 5.1 kernel. So all my testing
+> has been with ordinary sys_mount() calls in a container that had
+> CAP_SYS_ADMIN privileges.
+> 
+> > > However all the other stuff to throw errors when the user namespace
+> > > is
+> > > not init_user_ns introduces massive regressions.
+> > > 
+> > 
+> > I can remove that and respin the patch. How do you feel about that? 
+> > I would 
+> > still like to keep the log lines though because it is a uapi change.
+> > I am 
+> > worried that someone might exercise this path with GSS and allow for
+> > upcalls 
+> > into the main namespaces by accident -- or be confused of why they're
+> > seeing 
+> > upcalls "in a different namespace".
+> > 
+> > Are you okay with picking up ("NFS: NFSv2/NFSv3: Use cred from
+> > fs_context during 
+> > mount") without any changes?
+> 
+> Why do we need the dprintk()s? It seems to me that either they should
+> be reporting something that the user needs to know (in which case they
+> should be real printk()s) or they are telling us something that we
+> should already know. To me they seem to fit more in the latter
+> category.
+> 
+> > 
+> > I can respin ("NFSv4: Refactor NFS to use user namespaces") without:
+> > /*
+> >  * nfs4idmap is not fully isolated by user namespaces. It is
+> > currently
+> >  * only network namespace aware. If upcalls never happen, we do not
+> >  * need to worry as nfs_client instances aren't shared between
+> >  * user namespaces.
+> >  */
+> > if (idmap_userns(server->nfs_client->cl_idmap) != &init_user_ns && 
+> >         !(server->caps & NFS_CAP_UIDGID_NOMAP)) {
+> >         error = -EINVAL;
+> >         errorf(fc, "Mount credentials are from non init user
+> > namespace and ID mapping is enabled. This is not allowed.");
+> >         goto error;
+> > }
+> > 
+> > (and making it so we can call idmap_userns)
+> > 
+> 
+> Yes. That would be acceptable. Again, though, I'd like to see the
+> dprintk()s gone.
+> 
 
-I wrote a test script and ran this patchset against 5.10-rc2 in a
-variety of scenarios listing 1 million files and various directory
-modification scenarios. The test checked ops, runtime and cookie
-resets (via tcpdump).
-
-All runs performed very well on all scenarios I threw at it on all NFS
-versions (I tested 3, 4.0, 4.1, and 4.2) with fairly dramatic
-improvements vs the same runs on 5.10-rc2.   One scenario I found
-where a single 'ls -l' could take a long time (about 5 minutes, but
-not unbounded time) was when the directory was being modified with
-both file adds and removed, but this seemed due to other ops unrelated
-to readdir performance.   A second scenario that this patchset does
-not fix is the scenario where the directory is large enough to exceed
-the acdirmax, is being modified (adds and removes), and _multiple_
-processes are listing it.  In this scenario a lister can still have
-unbounded time, but the existing readdir code also has this problem
-and fixing that probably requires another patch / approach (such as
-reworking the structure of the cache or an approach such as the flag
-on per-process dir context).
-
-I think these patches make NFS readdir dramatically better, and they
-fix a lot of underlying issues with the existing code, like the cookie
-resets when pagecache is dropped, single page rx data problem, etc.
-Thank you for doing these patches.
-
-Tested-by: Dave Wysochanski
-
+I can drop the dprintks, but given this is a uapi change, does it make sense to 
+pr_info_once? Especially, because this can have security impact?
