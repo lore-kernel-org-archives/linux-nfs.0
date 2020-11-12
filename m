@@ -7,47 +7,47 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ADA8FC56201
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 12:59:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B16EEC388F7
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 12:59:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4724021D91
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 12:59:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4507621D7F
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Nov 2020 12:59:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Hpufy3QU"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="hr35b+1i"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727762AbgKLM70 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Nov 2020 07:59:26 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:37005 "EHLO
+        id S1728422AbgKLM7P (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Nov 2020 07:59:15 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:44217 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728428AbgKLM70 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2020 07:59:26 -0500
+        by vger.kernel.org with ESMTP id S1728409AbgKLM7K (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Nov 2020 07:59:10 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1605185964;
+        s=mimecast20190719; t=1605185948;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=WoSb32kjs+HkCDM7/fcpglBleXtzkTO/HB6K14aykcc=;
-        b=Hpufy3QUUcwJ636DgUkR8ApvNJlqITrFZbgKQVbHgZpiT+GTSv+Pl7rfkMCe1VldmfqRGh
-        5g1N1NLfEM7Mi5l69ef5QzhEGsfEtkh+mnbRbhu7+REmz0KnD/VsFCHiuz5zgQ1pp9U76P
-        A5ljLYHrLGaDBk/WNYyOO1aXxB2Je54=
+        bh=SIMOin/av7q3MUxt47nGrwOjr3mQiZb4LuG2UAH2unI=;
+        b=hr35b+1ib6ExD2PEG9+3tneDFoqJAjHmNO/1ZqGdOxcVaqktU7KPx3nVHRrEwUyfW3iPUU
+        0SMnoVL0OwjQommqhy5/7MUKpqui9NZFGRi92LiQn+5xtjSfSwh4nueEcnQjb0lMiBA/pN
+        5xHbXgUGw25lhdaUmp68MTN9rJFVqFg=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-20-pfyv39bUNAampm5-fnZTTg-1; Thu, 12 Nov 2020 07:59:20 -0500
-X-MC-Unique: pfyv39bUNAampm5-fnZTTg-1
+ us-mta-7-jQGw346-PjuIWaBBSUW1BA-1; Thu, 12 Nov 2020 07:59:03 -0500
+X-MC-Unique: jQGw346-PjuIWaBBSUW1BA-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D68931016CE5;
-        Thu, 12 Nov 2020 12:59:17 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id A3C48801FDF;
+        Thu, 12 Nov 2020 12:59:01 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-115-47.rdu2.redhat.com [10.10.115.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id D55B35D9E4;
-        Thu, 12 Nov 2020 12:59:15 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A1C3B5D9E4;
+        Thu, 12 Nov 2020 12:58:59 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 11/18] crypto/krb5: Add the AES self-testing data from rfc8009
+Subject: [PATCH 09/18] crypto/krb5: Implement the AES enctypes from rfc8009
 From:   David Howells <dhowells@redhat.com>
 To:     herbert@gondor.apana.org.au, bfields@fieldses.org
 Cc:     dhowells@redhat.com, trond.myklebust@hammerspace.com,
@@ -55,8 +55,8 @@ Cc:     dhowells@redhat.com, trond.myklebust@hammerspace.com,
         linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Date:   Thu, 12 Nov 2020 12:59:15 +0000
-Message-ID: <160518595508.2277919.15065092736353629314.stgit@warthog.procyon.org.uk>
+Date:   Thu, 12 Nov 2020 12:58:58 +0000
+Message-ID: <160518593886.2277919.4740986612401034649.stgit@warthog.procyon.org.uk>
 In-Reply-To: <160518586534.2277919.14475638653680231924.stgit@warthog.procyon.org.uk>
 References: <160518586534.2277919.14475638653680231924.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
@@ -68,160 +68,345 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add the self-testing data from rfc8009 to test AES + HMAC-SHA2.
+Implement the aes128-cts-hmac-sha256-128 and aes256-cts-hmac-sha384-192
+enctypes from rfc8009, overriding the rfc3961 kerberos 5 simplified crypto
+scheme.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- crypto/krb5/selftest_data.c |  116 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 116 insertions(+)
+ crypto/krb5/Kconfig        |    2 
+ crypto/krb5/Makefile       |    3 -
+ crypto/krb5/internal.h     |    6 +
+ crypto/krb5/main.c         |    2 
+ crypto/krb5/rfc8009_aes2.c |  239 ++++++++++++++++++++++++++++++++++++++++++++
+ include/crypto/krb5.h      |    4 +
+ 6 files changed, 255 insertions(+), 1 deletion(-)
+ create mode 100644 crypto/krb5/rfc8009_aes2.c
 
-diff --git a/crypto/krb5/selftest_data.c b/crypto/krb5/selftest_data.c
-index 9085723b730b..00c3b38c01d8 100644
---- a/crypto/krb5/selftest_data.c
-+++ b/crypto/krb5/selftest_data.c
-@@ -13,6 +13,20 @@
-  * Pseudo-random function tests.
+diff --git a/crypto/krb5/Kconfig b/crypto/krb5/Kconfig
+index e2eba1d689ab..5607c0c81049 100644
+--- a/crypto/krb5/Kconfig
++++ b/crypto/krb5/Kconfig
+@@ -4,6 +4,8 @@ config CRYPTO_KRB5
+ 	select CRYPTO_SKCIPHER
+ 	select CRYPTO_HASH_INFO
+ 	select CRYPTO_SHA1
++	select CRYPTO_SHA256
++	select CRYPTO_SHA512
+ 	select CRYPTO_CBC
+ 	select CRYPTO_CTS
+ 	select CRYPTO_AES
+diff --git a/crypto/krb5/Makefile b/crypto/krb5/Makefile
+index b7da03cae6d1..85763131f7b6 100644
+--- a/crypto/krb5/Makefile
++++ b/crypto/krb5/Makefile
+@@ -7,7 +7,8 @@ krb5-y += \
+ 	kdf.o \
+ 	main.o \
+ 	rfc3961_simplified.o \
+-	rfc3962_aes.o
++	rfc3962_aes.o \
++	rfc8009_aes2.o
+ 
+ krb5-$(CONFIG_CRYPTO_KRB5_SELFTESTS) += \
+ 	selftest.o \
+diff --git a/crypto/krb5/internal.h b/crypto/krb5/internal.h
+index 47424b433778..e64f5e58199f 100644
+--- a/crypto/krb5/internal.h
++++ b/crypto/krb5/internal.h
+@@ -158,6 +158,12 @@ int rfc3961_verify_mic(const struct krb5_enctype *krb5,
+ extern const struct krb5_enctype krb5_aes128_cts_hmac_sha1_96;
+ extern const struct krb5_enctype krb5_aes256_cts_hmac_sha1_96;
+ 
++/*
++ * rfc8009_aes2.c
++ */
++extern const struct krb5_enctype krb5_aes128_cts_hmac_sha256_128;
++extern const struct krb5_enctype krb5_aes256_cts_hmac_sha384_192;
++
+ /*
+  * selftest.c
   */
- const struct krb5_prf_test krb5_prf_tests[] = {
-+	/* rfc8009 Appendix A */
-+	{
-+		.krb5	= &krb5_aes128_cts_hmac_sha256_128,
-+		.name	= "prf",
-+		.key	= "3705D96080C17728A0E800EAB6E0D23C",
-+		.octet	= "74657374",
-+		.prf	= "9D188616F63852FE86915BB840B4A886FF3E6BB0F819B49B893393D393854295",
-+	}, {
-+		.krb5	= &krb5_aes256_cts_hmac_sha384_192,
-+		.name	= "prf",
-+		.key	= "6D404D37FAF79F9DF0D33568D320669800EB4836472EA8A026D16B7182460C52",
-+		.octet	= "74657374",
-+		.prf	= "9801F69A368C2BF675E59521E177D9A07F67EFE1CFDE8D3C8D6F6A0256E3B17DB3C1B62AD1B8553360D17367EB1514D2",
-+	},
- 	{/* END */}
+diff --git a/crypto/krb5/main.c b/crypto/krb5/main.c
+index b79127027551..9914d3417c21 100644
+--- a/crypto/krb5/main.c
++++ b/crypto/krb5/main.c
+@@ -20,6 +20,8 @@ MODULE_LICENSE("GPL");
+ static const struct krb5_enctype *const krb5_supported_enctypes[] = {
+ 	&krb5_aes128_cts_hmac_sha1_96,
+ 	&krb5_aes256_cts_hmac_sha1_96,
++	&krb5_aes128_cts_hmac_sha256_128,
++	&krb5_aes256_cts_hmac_sha384_192,
  };
  
-@@ -20,6 +34,28 @@ const struct krb5_prf_test krb5_prf_tests[] = {
-  * Key derivation tests.
-  */
- const struct krb5_key_test krb5_key_tests[] = {
-+	/* rfc8009 Appendix A */
-+	{
-+		.krb5	= &krb5_aes128_cts_hmac_sha256_128,
-+		.name	= "key",
-+		.key	= "3705D96080C17728A0E800EAB6E0D23C",
-+		.Kc.use	= 0x00000002,
-+		.Kc.key	= "B31A018A48F54776F403E9A396325DC3",
-+		.Ke.use	= 0x00000002,
-+		.Ke.key	= "9B197DD1E8C5609D6E67C3E37C62C72E",
-+		.Ki.use	= 0x00000002,
-+		.Ki.key	= "9FDA0E56AB2D85E1569A688696C26A6C",
-+	}, {
-+		.krb5	= &krb5_aes256_cts_hmac_sha384_192,
-+		.name	= "key",
-+		.key	= "6D404D37FAF79F9DF0D33568D320669800EB4836472EA8A026D16B7182460C52",
-+		.Kc.use	= 0x00000002,
-+		.Kc.key	= "EF5718BE86CC84963D8BBB5031E9F5C4BA41F28FAF69E73D",
-+		.Ke.use	= 0x00000002,
-+		.Ke.key	= "56AB22BEE63D82D7BC5227F6773F8EA7A5EB1C825160C38312980C442E5C7E49",
-+		.Ki.use	= 0x00000002,
-+		.Ki.key	= "69B16514E3CD8E56B82010D5C73012B622C4D00FFC23ED1F",
-+	},
- 	{/* END */}
- };
+ /**
+diff --git a/crypto/krb5/rfc8009_aes2.c b/crypto/krb5/rfc8009_aes2.c
+new file mode 100644
+index 000000000000..9f0f0f410d91
+--- /dev/null
++++ b/crypto/krb5/rfc8009_aes2.c
+@@ -0,0 +1,239 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/* rfc8009 AES Encryption with HMAC-SHA2 for Kerberos 5
++ *
++ * Copyright (C) 2020 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ */
++
++#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++
++#include <crypto/skcipher.h>
++#include <crypto/hash.h>
++#include <linux/slab.h>
++#include "internal.h"
++
++static const struct krb5_buffer rfc8009_no_context = { .len = 0, .data = "" };
++
++/*
++ * Calculate the key derivation function KDF-HMAC-SHA2(key, label, [context,] k)
++ *
++ *	KDF-HMAC-SHA2(key, label, [context,] k) = k-truncate(K1)
++ *
++ *	Using the appropriate one of:
++ *		K1 = HMAC-SHA-256(key, 0x00000001 | label | 0x00 | k)
++ *		K1 = HMAC-SHA-384(key, 0x00000001 | label | 0x00 | k)
++ *		K1 = HMAC-SHA-256(key, 0x00000001 | label | 0x00 | context | k)
++ *		K1 = HMAC-SHA-384(key, 0x00000001 | label | 0x00 | context | k)
++ *	[rfc8009 sec 3]
++ */
++static int rfc8009_calc_KDF_HMAC_SHA2(const struct krb5_enctype *krb5,
++				      const struct krb5_buffer *key,
++				      const struct krb5_buffer *label,
++				      const struct krb5_buffer *context,
++				      unsigned int k,
++				      struct krb5_buffer *result,
++				      gfp_t gfp)
++{
++	struct crypto_shash *shash;
++	struct krb5_buffer K1, data;
++	struct shash_desc *desc;
++	__be32 tmp;
++	size_t bsize;
++	void *buffer;
++	u8 *p;
++	int ret = -ENOMEM;
++
++	if (WARN_ON(result->len != k / 8))
++		return -EINVAL;
++
++	shash = crypto_alloc_shash(krb5->cksum_name, 0, 0);
++	if (IS_ERR(shash))
++		return (PTR_ERR(shash) == -ENOENT) ? -ENOPKG : PTR_ERR(shash);
++	ret = crypto_shash_setkey(shash, key->data, key->len);
++	if (ret < 0)
++		goto error_shash;
++
++	ret = -EINVAL;
++	if (WARN_ON(crypto_shash_digestsize(shash) * 8 < k))
++		goto error_shash;
++
++	ret = -ENOMEM;
++	data.len = 4 + label->len + 1 + context->len + 4;
++	bsize = krb5_shash_size(shash) +
++		krb5_digest_size(shash) +
++		crypto_roundup(data.len);
++	buffer = kzalloc(bsize, GFP_NOFS);
++	if (!buffer)
++		goto error_shash;
++
++	desc = buffer;
++	desc->tfm = shash;
++	ret = crypto_shash_init(desc);
++	if (ret < 0)
++		goto error;
++
++	p = data.data = buffer +
++		krb5_shash_size(shash) +
++		krb5_digest_size(shash);
++	*(__be32 *)p = htonl(0x00000001);
++	p += 4;
++	memcpy(p, label->data, label->len);
++	p += label->len;
++	*p++ = 0;
++	memcpy(p, context->data, context->len);
++	p += context->len;
++	tmp = htonl(k);
++	memcpy(p, &tmp, 4);
++	p += 4;
++
++	ret = -EINVAL;
++	if (WARN_ON(p - (u8 *)data.data != data.len))
++		goto error;
++
++	K1.len = crypto_shash_digestsize(shash);
++	K1.data = buffer +
++		krb5_shash_size(shash);
++
++	ret = crypto_shash_finup(desc, data.data, data.len, K1.data);
++	if (ret < 0)
++		goto error;
++
++	memcpy(result->data, K1.data, result->len);
++
++error:
++	kfree_sensitive(buffer);
++error_shash:
++	crypto_free_shash(shash);
++	return ret;
++}
++
++/*
++ * Calculate the pseudo-random function, PRF().
++ *
++ *	PRF = KDF-HMAC-SHA2(input-key, "prf", octet-string, 256)
++ *	PRF = KDF-HMAC-SHA2(input-key, "prf", octet-string, 384)
++ *
++ *      The "prfconstant" used in the PRF operation is the three-octet string
++ *      "prf".
++ *      [rfc8009 sec 5]
++ */
++static int rfc8009_calc_PRF(const struct krb5_enctype *krb5,
++			    const struct krb5_buffer *input_key,
++			    const struct krb5_buffer *octet_string,
++			    struct krb5_buffer *result,
++			    gfp_t gfp)
++{
++	static const struct krb5_buffer prfconstant = { 3, "prf" };
++
++	return rfc8009_calc_KDF_HMAC_SHA2(krb5, input_key, &prfconstant,
++					  octet_string, krb5->prf_len * 8,
++					  result, gfp);
++}
++
++/*
++ * Derive Ke.
++ *	Ke = KDF-HMAC-SHA2(base-key, usage | 0xAA, 128)
++ *	Ke = KDF-HMAC-SHA2(base-key, usage | 0xAA, 256)
++ *      [rfc8009 sec 5]
++ */
++static int rfc8009_calc_Ke(const struct krb5_enctype *krb5,
++			   const struct krb5_buffer *base_key,
++			   const struct krb5_buffer *usage_constant,
++			   struct krb5_buffer *result,
++			   gfp_t gfp)
++{
++	return rfc8009_calc_KDF_HMAC_SHA2(krb5, base_key, usage_constant,
++					  &rfc8009_no_context, krb5->key_bytes * 8,
++					  result, gfp);
++}
++
++/*
++ * Derive Kc/Ki
++ *	Kc = KDF-HMAC-SHA2(base-key, usage | 0x99, 128)
++ *	Ki = KDF-HMAC-SHA2(base-key, usage | 0x55, 128)
++ *	Kc = KDF-HMAC-SHA2(base-key, usage | 0x99, 192)
++ *	Ki = KDF-HMAC-SHA2(base-key, usage | 0x55, 192)
++ *      [rfc8009 sec 5]
++ */
++static int rfc8009_calc_Ki(const struct krb5_enctype *krb5,
++			   const struct krb5_buffer *base_key,
++			   const struct krb5_buffer *usage_constant,
++			   struct krb5_buffer *result,
++			   gfp_t gfp)
++{
++	return rfc8009_calc_KDF_HMAC_SHA2(krb5, base_key, usage_constant,
++					  &rfc8009_no_context, krb5->cksum_len * 8,
++					  result, gfp);
++}
++
++/*
++ * AES random-to-key function.  For AES, this is an identity operation.
++ */
++static int rfc8009_random_to_key(const struct krb5_enctype *krb5,
++				 const struct krb5_buffer *randombits,
++				 struct krb5_buffer *result)
++{
++	if (randombits->len != 16 && randombits->len != 32)
++		return -EINVAL;
++
++	if (result->len != randombits->len)
++		return -EINVAL;
++
++	memcpy(result->data, randombits->data, randombits->len);
++	return 0;
++}
++
++static const struct krb5_crypto_profile rfc8009_crypto_profile = {
++	.calc_PRF	= rfc8009_calc_PRF,
++	.calc_Kc	= rfc8009_calc_Ki,
++	.calc_Ke	= rfc8009_calc_Ke,
++	.calc_Ki	= rfc8009_calc_Ki,
++	.encrypt	= NULL, //rfc8009_encrypt,
++	.decrypt	= NULL, //rfc8009_decrypt,
++	.get_mic	= rfc3961_get_mic,
++	.verify_mic	= rfc3961_verify_mic,
++};
++
++const struct krb5_enctype krb5_aes128_cts_hmac_sha256_128 = {
++	.etype		= KRB5_ENCTYPE_AES128_CTS_HMAC_SHA256_128,
++	.ctype		= KRB5_CKSUMTYPE_HMAC_SHA256_128_AES128,
++	.name		= "aes128-cts-hmac-sha256-128",
++	.encrypt_name	= "cts(cbc(aes))",
++	.cksum_name	= "hmac(sha256)",
++	.hash_name	= "sha256",
++	.key_bytes	= 16,
++	.key_len	= 16,
++	.Kc_len		= 16,
++	.Ke_len		= 16,
++	.Ki_len		= 16,
++	.block_len	= 16,
++	.conf_len	= 16,
++	.cksum_len	= 16,
++	.hash_len	= 20,
++	.prf_len	= 32,
++	.keyed_cksum	= true,
++	.random_to_key	= rfc8009_random_to_key,
++	.profile	= &rfc8009_crypto_profile,
++};
++
++const struct krb5_enctype krb5_aes256_cts_hmac_sha384_192 = {
++	.etype		= KRB5_ENCTYPE_AES256_CTS_HMAC_SHA384_192,
++	.ctype		= KRB5_CKSUMTYPE_HMAC_SHA384_192_AES256,
++	.name		= "aes256-cts-hmac-sha384-192",
++	.encrypt_name	= "cts(cbc(aes))",
++	.cksum_name	= "hmac(sha384)",
++	.hash_name	= "sha384",
++	.key_bytes	= 32,
++	.key_len	= 32,
++	.Kc_len		= 24,
++	.Ke_len		= 32,
++	.Ki_len		= 24,
++	.block_len	= 16,
++	.conf_len	= 16,
++	.cksum_len	= 24,
++	.hash_len	= 20,
++	.prf_len	= 48,
++	.keyed_cksum	= true,
++	.random_to_key	= rfc8009_random_to_key,
++	.profile	= &rfc8009_crypto_profile,
++};
+diff --git a/include/crypto/krb5.h b/include/crypto/krb5.h
+index b83d3d487753..f38a5b4d97ee 100644
+--- a/include/crypto/krb5.h
++++ b/include/crypto/krb5.h
+@@ -32,6 +32,8 @@ struct scatterlist;
+ #define KRB5_ENCTYPE_DES3_CBC_SHA1		0x0010
+ #define KRB5_ENCTYPE_AES128_CTS_HMAC_SHA1_96	0x0011
+ #define KRB5_ENCTYPE_AES256_CTS_HMAC_SHA1_96	0x0012
++#define KRB5_ENCTYPE_AES128_CTS_HMAC_SHA256_128	0x0013
++#define KRB5_ENCTYPE_AES256_CTS_HMAC_SHA384_192	0x0014
+ #define KRB5_ENCTYPE_ARCFOUR_HMAC		0x0017
+ #define KRB5_ENCTYPE_ARCFOUR_HMAC_EXP		0x0018
+ #define KRB5_ENCTYPE_UNKNOWN			0x01ff
+@@ -46,6 +48,8 @@ struct scatterlist;
+ #define KRB5_CKSUMTYPE_HMAC_SHA1_DES3		0x000c
+ #define KRB5_CKSUMTYPE_HMAC_SHA1_96_AES128	0x000f
+ #define KRB5_CKSUMTYPE_HMAC_SHA1_96_AES256	0x0010
++#define KRB5_CKSUMTYPE_HMAC_SHA256_128_AES128	0x0013
++#define KRB5_CKSUMTYPE_HMAC_SHA384_192_AES256	0x0014
+ #define KRB5_CKSUMTYPE_HMAC_MD5_ARCFOUR		-138 /* Microsoft md5 hmac cksumtype */
  
-@@ -27,6 +63,72 @@ const struct krb5_key_test krb5_key_tests[] = {
-  * Encryption tests.
-  */
- const struct krb5_enc_test krb5_enc_tests[] = {
-+	/* rfc8009 Appendix A */
-+	{
-+		.krb5	= &krb5_aes128_cts_hmac_sha256_128,
-+		.name	= "enc no plain",
-+		.plain	= "",
-+		.conf	= "7E5895EAF2672435BAD817F545A37148",
-+		.Ke	= "9B197DD1E8C5609D6E67C3E37C62C72E",
-+		.Ki	= "9FDA0E56AB2D85E1569A688696C26A6C",
-+		.ct	= "EF85FB890BB8472F4DAB20394DCA781DAD877EDA39D50C870C0D5A0A8E48C718",
-+	}, {
-+		.krb5	= &krb5_aes128_cts_hmac_sha256_128,
-+		.name	= "enc plain<block",
-+		.plain	= "000102030405",
-+		.conf	= "7BCA285E2FD4130FB55B1A5C83BC5B24",
-+		.Ke	= "9B197DD1E8C5609D6E67C3E37C62C72E",
-+		.Ki	= "9FDA0E56AB2D85E1569A688696C26A6C",
-+		.ct	= "84D7F30754ED987BAB0BF3506BEB09CFB55402CEF7E6877CE99E247E52D16ED4421DFDF8976C",
-+	}, {
-+		.krb5	= &krb5_aes128_cts_hmac_sha256_128,
-+		.name	= "enc plain==block",
-+		.plain	= "000102030405060708090A0B0C0D0E0F",
-+		.conf	= "56AB21713FF62C0A1457200F6FA9948F",
-+		.Ke	= "9B197DD1E8C5609D6E67C3E37C62C72E",
-+		.Ki	= "9FDA0E56AB2D85E1569A688696C26A6C",
-+		.ct	= "3517D640F50DDC8AD3628722B3569D2AE07493FA8263254080EA65C1008E8FC295FB4852E7D83E1E7C48C37EEBE6B0D3",
-+	}, {
-+		.krb5	= &krb5_aes128_cts_hmac_sha256_128,
-+		.name	= "enc plain>block",
-+		.plain	= "000102030405060708090A0B0C0D0E0F1011121314",
-+		.conf	= "A7A4E29A4728CE10664FB64E49AD3FAC",
-+		.Ke	= "9B197DD1E8C5609D6E67C3E37C62C72E",
-+		.Ki	= "9FDA0E56AB2D85E1569A688696C26A6C",
-+		.ct	= "720F73B18D9859CD6CCB4346115CD336C70F58EDC0C4437C5573544C31C813BCE1E6D072C186B39A413C2F92CA9B8334A287FFCBFC",
-+	}, {
-+		.krb5	= &krb5_aes256_cts_hmac_sha384_192,
-+		.name	= "enc no plain",
-+		.plain	= "",
-+		.conf	= "F764E9FA15C276478B2C7D0C4E5F58E4",
-+		.Ke	= "56AB22BEE63D82D7BC5227F6773F8EA7A5EB1C825160C38312980C442E5C7E49",
-+		.Ki	= "69B16514E3CD8E56B82010D5C73012B622C4D00FFC23ED1F",
-+		.ct	= "41F53FA5BFE7026D91FAF9BE959195A058707273A96A40F0A01960621AC612748B9BBFBE7EB4CE3C",
-+	}, {
-+		.krb5	= &krb5_aes256_cts_hmac_sha384_192,
-+		.name	= "enc plain<block",
-+		.plain	= "000102030405",
-+		.conf	= "B80D3251C1F6471494256FFE712D0B9A",
-+		.Ke	= "56AB22BEE63D82D7BC5227F6773F8EA7A5EB1C825160C38312980C442E5C7E49",
-+		.Ki	= "69B16514E3CD8E56B82010D5C73012B622C4D00FFC23ED1F",
-+		.ct	= "4ED7B37C2BCAC8F74F23C1CF07E62BC7B75FB3F637B9F559C7F664F69EAB7B6092237526EA0D1F61CB20D69D10F2",
-+	}, {
-+		.krb5	= &krb5_aes256_cts_hmac_sha384_192,
-+		.name	= "enc plain==block",
-+		.plain	= "000102030405060708090A0B0C0D0E0F",
-+		.conf	= "53BF8A0D105265D4E276428624CE5E63",
-+		.Ke	= "56AB22BEE63D82D7BC5227F6773F8EA7A5EB1C825160C38312980C442E5C7E49",
-+		.Ki	= "69B16514E3CD8E56B82010D5C73012B622C4D00FFC23ED1F",
-+		.ct	= "BC47FFEC7998EB91E8115CF8D19DAC4BBBE2E163E87DD37F49BECA92027764F68CF51F14D798C2273F35DF574D1F932E40C4FF255B36A266",
-+	}, {
-+		.krb5	= &krb5_aes256_cts_hmac_sha384_192,
-+		.name	= "enc plain>block",
-+		.plain	= "000102030405060708090A0B0C0D0E0F1011121314",
-+		.conf	= "763E65367E864F02F55153C7E3B58AF1",
-+		.Ke	= "56AB22BEE63D82D7BC5227F6773F8EA7A5EB1C825160C38312980C442E5C7E49",
-+		.Ki	= "69B16514E3CD8E56B82010D5C73012B622C4D00FFC23ED1F",
-+		.ct	= "40013E2DF58E8751957D2878BCD2D6FE101CCFD556CB1EAE79DB3C3EE86429F2B2A602AC86FEF6ECB647D6295FAE077A1FEB517508D2C16B4192E01F62",
-+	},
- 	{/* END */}
- };
- 
-@@ -34,5 +136,19 @@ const struct krb5_enc_test krb5_enc_tests[] = {
-  * Checksum generation tests.
-  */
- const struct krb5_mic_test krb5_mic_tests[] = {
-+	/* rfc8009 Appendix A */
-+	{
-+		.krb5	= &krb5_aes128_cts_hmac_sha256_128,
-+		.name	= "mic",
-+		.plain	= "000102030405060708090A0B0C0D0E0F1011121314",
-+		.Kc	= "B31A018A48F54776F403E9A396325DC3",
-+		.mic	= "D78367186643D67B411CBA9139FC1DEE",
-+	}, {
-+		.krb5	= &krb5_aes256_cts_hmac_sha384_192,
-+		.name	= "mic",
-+		.plain	= "000102030405060708090A0B0C0D0E0F1011121314",
-+		.Kc	= "EF5718BE86CC84963D8BBB5031E9F5C4BA41F28FAF69E73D",
-+		.mic	= "45EE791567EEFCA37F4AC1E0222DE80D43C3BFA06699672A",
-+	},
- 	{/* END */}
- };
+ /*
 
 
