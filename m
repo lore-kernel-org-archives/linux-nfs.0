@@ -7,68 +7,67 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BC6F5C55ABD
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Nov 2020 15:05:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 209A8C388F7
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Nov 2020 15:05:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 868EF22201
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Nov 2020 15:05:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D365F22201
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Nov 2020 15:05:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Fi9SQumT"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XBy0nV/L"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726837AbgKMPFl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Nov 2020 10:05:41 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36362 "EHLO
+        id S1726432AbgKMPFo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Nov 2020 10:05:44 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36316 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726560AbgKMPFk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Nov 2020 10:05:40 -0500
-Received: from mail-qk1-x743.google.com (mail-qk1-x743.google.com [IPv6:2607:f8b0:4864:20::743])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A0E3C0617A7
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:05:40 -0800 (PST)
-Received: by mail-qk1-x743.google.com with SMTP id d28so8994819qka.11
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:05:40 -0800 (PST)
+        with ESMTP id S1726560AbgKMPFn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Nov 2020 10:05:43 -0500
+Received: from mail-qt1-x843.google.com (mail-qt1-x843.google.com [IPv6:2607:f8b0:4864:20::843])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 507C2C0613D1
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:05:25 -0800 (PST)
+Received: by mail-qt1-x843.google.com with SMTP id t5so6856005qtp.2
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:05:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=r8Yab2+tDNnVlki6NOnGAygA7iZsesb/6/wOoAhA1Cc=;
-        b=Fi9SQumTgSMCTIxBhLte9oqVkAY4ajjuP+Trw1/fMTFyBP5TlNL4D9kRjok1M+J1f2
-         uNFMNIqot24jTfcZqb5W9ihlvx/KktIELifgBQShAtPMon6091RNuKQZtkk34CYz5x2q
-         FVlfBy4Et7yu2RVi5Zlo24nA7h9ZUQW/maJMbyIb1NcasLh//6tIw2hKSpFcdFYvS1lE
-         UKkG9rJfzZkhAiFwYXNFmfHafpq/N0FwzPPVlQ06fE9a+jnUdYvMRFJdPG/KPySCJhKV
-         E+FgPLJHYpTGKLQ5mD6q/Se9ciyUPF1bfgCXman6XpzyeN/1xDd6IPMxTjO3hVzOEkaX
-         xB0w==
+        bh=aPofqo6TKXej4EkUb4mQaZvqVuPfdjQqbGY1MEBKs/0=;
+        b=XBy0nV/LDp7BP5QX7g8YmcQIePKFTCV/rJ5q5xiBI72d2xBMf3gjdRzJYAB38N/46X
+         M0+owqRGuNh7dhbiMXgzBslOqtH1BiNFDwJF6srSGB/mnJIKAiPpQ/UJOO2vStw3Z5PP
+         gWfvwthgY54eQHjSb4ThNvOEogPSkSFLTdcuNDPBb2L4/Y0Xsyk45ok7avjw0MoESfqO
+         uhfZwb3u6UQOk797xeFDEr0wQzD8l0OlQ2GjKPC7jLkP0ZEvCsjlQguZ7oQzPZ72OoQC
+         EnG8pKfuuVoEh8gTW26lQRJ0Pbbzn8ozZC4GR7/UCU2hZaS9ZFeIqC6L4XDy9n9RZaQc
+         cjMA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=r8Yab2+tDNnVlki6NOnGAygA7iZsesb/6/wOoAhA1Cc=;
-        b=ZcochZDNQVInQ8rBeLNyTAZBYr8f/Vca9cpI/8lLAj0uFZn0GD7k5/Yh9qBijN6AMN
-         zRL5s0loTHfLhP3xYWtKz6s43JTqvGJ6bPYYUY0rFjS6kHMVk+2SZsRGr+u4PHpgnADP
-         4n/iLY7G7bh0o/LhlMJW4PF+Ge/ct8A280O5jBkgEb3kSfPMtA2qTtArnMXnoE4I+Kb1
-         CSAHQJnEu7R72+shaNistRECnMHVivGjk4aXhDRNhIVhaSoz/xlS/FJYuBRsQpz8DmGW
-         CFRd7h85lGoIHN0N64EWl0bGRfXQW6Owxy3tzvP+yNUMaOZJUPkZUJ5NQTVXi+fM3HiS
-         iNlQ==
-X-Gm-Message-State: AOAM531sO4RFKqyHCtQGUu1RyoIE7rc1j4sTkAVcmlRRPkG13b1HoEQA
-        5I4dE4DuFXAR2gjiMviFR5R43VOY0fA=
-X-Google-Smtp-Source: ABdhPJwJWWX5RYesOV2MKTWFJ8GXQ9jR5w4SIQqPDPfm5HhZhBqhfcEugF1BblriKrctAEMkhR2UQA==
-X-Received: by 2002:a37:6351:: with SMTP id x78mr2278032qkb.301.1605279939338;
-        Fri, 13 Nov 2020 07:05:39 -0800 (PST)
+        bh=aPofqo6TKXej4EkUb4mQaZvqVuPfdjQqbGY1MEBKs/0=;
+        b=Kds2PlO2gaPXmepCMFKSNxxmhHrZcfZqO6vq5dmok3oQaTzoAgaGL3zhOmllTCT8eg
+         Y+QoHuDqWrYomrfLh6Ab9gd5qOc9Y0t5b+mQIt4GG33cO7dsfp8wVbQANUATGxzWZSY2
+         G+o3BHqyW8lfNuQujlgXRC6kJNBrV0uqNK77LKL8QZW8TbH+gayhyyhlKiBcsB53722i
+         Wzv/55P+O29wLsd9B50gqbk3UsUx2osxe0frxuLn85xfxeEYi7gmNXD6cZugRivbIVcU
+         paps/c3AkHPmiREOvnP1AThcX6iXS3SqFd90XCGcDZMahddilZPWBUkJrtkfTJ/x+9AA
+         4hcQ==
+X-Gm-Message-State: AOAM530HSWnqEIEby6c/i5UqdOiudX2QMHclZtOcNOwLcPH5Iyw/iY/0
+        ylhGerDgvP4zR8baLzWu10ht5imPvbM=
+X-Google-Smtp-Source: ABdhPJwQFwtFpu1IsYHWqcGq0Pm1UTdjx6Cur8YqRKNmrZIptucKLTwn9r/PJFDeUFrWHFa553mGmQ==
+X-Received: by 2002:aed:2d02:: with SMTP id h2mr2246380qtd.96.1605279923492;
+        Fri, 13 Nov 2020 07:05:23 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id 9sm7050743qke.6.2020.11.13.07.05.38
+        by smtp.gmail.com with ESMTPSA id r19sm6496972qtm.4.2020.11.13.07.05.22
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 13 Nov 2020 07:05:38 -0800 (PST)
+        Fri, 13 Nov 2020 07:05:22 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ADF5bVh032748
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 15:05:37 GMT
-Subject: [PATCH v1 37/61] NFSD: Add a separate decoder to handle
- state_protect_ops
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ADF5L8I032739
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 15:05:21 GMT
+Subject: [PATCH v1 34/61] NFSD: Replace READ* macros in nfsd4_decode_cb_sec()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 13 Nov 2020 10:05:37 -0500
-Message-ID: <160527993774.6186.12332332687540138715.stgit@klimt.1015granger.net>
+Date:   Fri, 13 Nov 2020 10:05:21 -0500
+Message-ID: <160527992189.6186.5049295918269412471.stgit@klimt.1015granger.net>
 In-Reply-To: <160527962905.6186.17550620763636619885.stgit@klimt.1015granger.net>
 References: <160527962905.6186.17550620763636619885.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -79,80 +78,136 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Refactor for clarity and de-duplication of code.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   39 ++++++++++++++++++++++-----------------
- 1 file changed, 22 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4xdr.c |   73 +++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 45 insertions(+), 28 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 73a4b23849e2..ece4e8afe19e 100644
+index 4a71346dcd9a..2d2034d7f48e 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -1470,12 +1470,25 @@ static __be32 nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp,
- 	return nfserr_bad_xdr;
+@@ -570,24 +570,22 @@ nfsd4_decode_stateid4(struct nfsd4_compoundargs *argp, stateid_t *sid)
+ 
+ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_cb_sec *cbs)
+ {
+-	DECODE_HEAD;
+ 	struct user_namespace *userns = nfsd_user_namespace(argp->rqstp);
+-	u32 dummy, uid, gid;
++	u32 dummy, uid, gid, i, nr_secflavs;
+ 	char *machine_name;
+-	int i;
+-	int nr_secflavs;
++	__be32 *p;
+ 
+ 	/* callback_sec_params4 */
+-	READ_BUF(4);
+-	nr_secflavs = be32_to_cpup(p++);
++	if (xdr_stream_decode_u32(argp->xdr, &nr_secflavs) < 0)
++		goto xdr_error;
+ 	if (nr_secflavs)
+ 		cbs->flavor = (u32)(-1);
+ 	else
+ 		/* Is this legal? Be generous, take it to mean AUTH_NONE: */
+ 		cbs->flavor = 0;
+ 	for (i = 0; i < nr_secflavs; ++i) {
+-		READ_BUF(4);
+-		dummy = be32_to_cpup(p++);
++		if (xdr_stream_decode_u32(argp->xdr, &dummy) < 0)
++			goto xdr_error;
+ 		switch (dummy) {
+ 		case RPC_AUTH_NULL:
+ 			/* Nothing to read */
+@@ -595,24 +593,32 @@ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_
+ 				cbs->flavor = RPC_AUTH_NULL;
+ 			break;
+ 		case RPC_AUTH_UNIX:
+-			READ_BUF(8);
+ 			/* stamp */
+-			dummy = be32_to_cpup(p++);
++			if (xdr_stream_decode_u32(argp->xdr, &dummy) < 0)
++				goto xdr_error;
+ 
+ 			/* machine name */
+-			dummy = be32_to_cpup(p++);
+-			READ_BUF(dummy);
+-			SAVEMEM(machine_name, dummy);
++			if (xdr_stream_decode_u32(argp->xdr, &dummy) < 0)
++				goto xdr_error;
++			p = xdr_inline_decode(argp->xdr, dummy);
++			if (!p)
++				goto xdr_error;
++			machine_name = svcxdr_tmpalloc(argp, dummy);
++			if (!machine_name)
++				goto nomem;
++			memcpy(machine_name, p, dummy);
+ 
+-			/* uid, gid */
+-			READ_BUF(8);
++			/* uid, gid, gidcount */
++			p = xdr_inline_decode(argp->xdr, sizeof(__be32) * 3);
++			if (!p)
++				goto xdr_error;
+ 			uid = be32_to_cpup(p++);
+ 			gid = be32_to_cpup(p++);
+ 
+-			/* more gids */
+-			READ_BUF(4);
+-			dummy = be32_to_cpup(p++);
+-			READ_BUF(dummy * 4);
++			dummy = be32_to_cpup(p);
++			p = xdr_inline_decode(argp->xdr, dummy << 2);
++			if (!p)
++				goto xdr_error;
+ 			if (cbs->flavor == (u32)(-1)) {
+ 				kuid_t kuid = make_kuid(userns, uid);
+ 				kgid_t kgid = make_kgid(userns, gid);
+@@ -629,26 +635,37 @@ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_
+ 		case RPC_AUTH_GSS:
+ 			dprintk("RPC_AUTH_GSS callback secflavor "
+ 				"not supported!\n");
+-			READ_BUF(8);
++
+ 			/* gcbp_service */
+-			dummy = be32_to_cpup(p++);
++			if (xdr_stream_decode_u32(argp->xdr, &dummy) < 0)
++				goto xdr_error;
++
+ 			/* gcbp_handle_from_server */
+-			dummy = be32_to_cpup(p++);
+-			READ_BUF(dummy);
+-			p += XDR_QUADLEN(dummy);
++			if (xdr_stream_decode_u32(argp->xdr, &dummy) < 0)
++				goto xdr_error;
++			if (!xdr_inline_decode(argp->xdr, dummy))
++				goto xdr_error;
++
+ 			/* gcbp_handle_from_client */
+-			READ_BUF(4);
+-			dummy = be32_to_cpup(p++);
+-			READ_BUF(dummy);
++			if (xdr_stream_decode_u32(argp->xdr, &dummy) < 0)
++				goto xdr_error;
++			if (!xdr_inline_decode(argp->xdr, dummy))
++				goto xdr_error;
+ 			break;
+ 		default:
+ 			dprintk("Illegal callback secflavor\n");
+ 			return nfserr_inval;
+ 		}
+ 	}
+-	DECODE_TAIL;
++
++	return nfs_ok;
++xdr_error:
++	return nfserr_bad_xdr;
++nomem:
++	return nfserr_jukebox;
  }
  
-+static __be32 nfsd4_decode_state_protect_ops(struct nfsd4_compoundargs *argp,
-+					     u32 *must_enforce, u32 me_len,
-+					     u32 *must_allow, u32 ma_len)
-+{
-+	__be32 status;
 +
-+	status = nfsd4_decode_bitmap4(argp, must_enforce, me_len);
-+	if (status)
-+		return status;
-+	return nfsd4_decode_bitmap4(argp, must_allow, ma_len);
-+}
-+
- static __be32
- nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
- 			 struct nfsd4_exchange_id *exid)
- {
- 	int dummy, tmp;
- 	DECODE_HEAD;
-+	u32 bm[3];
- 
- 	READ_BUF(NFS4_VERIFIER_SIZE);
- 	COPYMEM(exid->verifier.data, NFS4_VERIFIER_SIZE);
-@@ -1494,28 +1507,20 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
- 	case SP4_NONE:
- 		break;
- 	case SP4_MACH_CRED:
--		/* spo_must_enforce */
--		status = nfsd4_decode_bitmap4(argp, exid->spo_must_enforce,
--					      ARRAY_SIZE(exid->spo_must_enforce));
--		if (status)
--			goto out;
--		/* spo_must_allow */
--		status = nfsd4_decode_bitmap4(argp, exid->spo_must_allow,
--					      ARRAY_SIZE(exid->spo_must_allow));
-+		status = nfsd4_decode_state_protect_ops(argp,
-+							exid->spo_must_enforce,
-+							ARRAY_SIZE(exid->spo_must_enforce),
-+							exid->spo_must_allow,
-+							ARRAY_SIZE(exid->spo_must_allow));
- 		if (status)
- 			goto out;
- 		break;
- 	case SP4_SSV:
- 		/* ssp_ops */
--		READ_BUF(4);
--		dummy = be32_to_cpup(p++);
--		READ_BUF(dummy * 4);
--		p += dummy;
--
--		READ_BUF(4);
--		dummy = be32_to_cpup(p++);
--		READ_BUF(dummy * 4);
--		p += dummy;
-+		status = nfsd4_decode_state_protect_ops(argp, bm, ARRAY_SIZE(bm),
-+							bm, ARRAY_SIZE(bm));
-+		if (status)
-+			goto out;
- 
- 		/* ssp_hash_algs<> */
- 		READ_BUF(4);
+ /*
+  * NFSv4 operation argument decoders
+  */
 
 
