@@ -7,67 +7,68 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E5FAC55ABD
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Nov 2020 15:04:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42863C61DD8
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Nov 2020 15:05:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 32B0C22201
+	by mail.kernel.org (Postfix) with ESMTP id F3E1D22201
 	for <linux-nfs@archiver.kernel.org>; Fri, 13 Nov 2020 15:04:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="V2g7zN87"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Bng5Wi8J"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726743AbgKMPE6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Nov 2020 10:04:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36186 "EHLO
+        id S1726823AbgKMPE7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Nov 2020 10:04:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36232 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
         with ESMTP id S1726336AbgKMPE6 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Nov 2020 10:04:58 -0500
-Received: from mail-qt1-x844.google.com (mail-qt1-x844.google.com [IPv6:2607:f8b0:4864:20::844])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ADAECC0617A6
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:04:42 -0800 (PST)
-Received: by mail-qt1-x844.google.com with SMTP id z3so3248944qtw.9
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:04:42 -0800 (PST)
+Received: from mail-qk1-x741.google.com (mail-qk1-x741.google.com [IPv6:2607:f8b0:4864:20::741])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BFF09C0613D1
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:04:58 -0800 (PST)
+Received: by mail-qk1-x741.google.com with SMTP id d28so8992364qka.11
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 07:04:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=Rez87ol9zstK3tdV5FRQ1lKZUrtn5RDRvFnEn9c16A0=;
-        b=V2g7zN87jZ06oABhXM2p8n/9N9n4OAZZtdA/l+Ji13hPtzBnshd5cxX2By8Z3c6dQ6
-         yTztoFKreigtILqEn7+77Sq0TP9+GcmHp/4Hl/oXI8nYAFQksedyFo8SuCC4AWQ1anvf
-         UEfAqQ16jxcP0V9FmjWUsXlS2Co0B6tWNZFmzGqI+3zPPVp8P4UnO6cBGlipj4AFYp2N
-         V2Rqsv7LO4Gm3KN7d/ObfiA0iMIdhX842s30TKegek+Hb1KIAE1KPUSEk5m57DcF+0yO
-         gcWCTwcsJBWcAAn8mQjgBJu4/vs1wQzojXn+PACbfVvq5UgsoWCmysstIJswZULYkZuT
-         5mbA==
+        bh=fOHEgvtZ5sJGF0ttmuJtyWaAjKqDGfg4lvaqpxotxao=;
+        b=Bng5Wi8J0FtY+GEg5bvCdKkeMCvZsYY5eW90kJCJwiZlO25mDlESh9OQck9HJANGdv
+         5U1b1jVJG+DpqvbyD2LmBJGBYwaQWbACv1b17/1PFhjRhUTiD2T+1gxOrbxIIOVidbux
+         mrCtHD0h2GPo3BHh7One/Km03sfHCkNyM5LIDAJRyHStHys0Q2vuAU6kjko6oxluVSYa
+         D2kHzn7XM7LN1BXZrfHAc5N/QMz/ErMOtuH2L6m+skaCgbFpQ/6Xxl7xH+JoRiXtcQBi
+         51VCiIWJrhMhE0a+a5RHN9voPT0KOdEE1Uq9U6MnYW+dcEFegofTIRdGsmdMOcS1WIVr
+         U25g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=Rez87ol9zstK3tdV5FRQ1lKZUrtn5RDRvFnEn9c16A0=;
-        b=bDaFVygzi5rbktDa5VjtL4YtqBg147ckeHCc7c1cvw3FxvZNGVVN3SRqjiE0PTEMlw
-         6MbO4oHO0au0trV3Z1yuYc/U/oRGAjFxjD+euo4q73yC2tBqQ+iEo5lXixgRBNr0cV6v
-         acFEiNyvM7vYNPudT/u4Vwcvq3KeaAKvEzZEXKn6t52u4D2IdSuuJAo8hqLwKAs3u5yM
-         TfKHKnigTyrGvVucqy0SNR8i03C+EiY5/zSmFesqkfEedKVg+xdXIFdVs6sZmpt94hrg
-         ttcp0sM33w3OvfmcwrKwbyyuba4ESRw2Zj0Nunb06f4g7jyT463zMydS3n1IYEMVR4Ui
-         6Hhw==
-X-Gm-Message-State: AOAM533xCjDqOA+2ZQEoaD30BoQdysmoPErQ2XMjAXbIW2Auh+gp+eSO
-        xrGe/XnBxkA2i+NKpLUk8IIovsriP14=
-X-Google-Smtp-Source: ABdhPJy8Wkfx9+mjraKBcbcNzVLD83p6v22JBw50yC2IZ7FX6dbnLpplbDcWzKfIxKE3h6j9eJbtdA==
-X-Received: by 2002:aed:26a7:: with SMTP id q36mr2375913qtd.134.1605279881554;
-        Fri, 13 Nov 2020 07:04:41 -0800 (PST)
+        bh=fOHEgvtZ5sJGF0ttmuJtyWaAjKqDGfg4lvaqpxotxao=;
+        b=Md5F9M5q6uVioAEN0zGKzmV6Qr9Cdp5u0hPGqawDL5lO9+8QRblMQW59EZ5hr4xWJM
+         OfDYCvczO9e1p3fRBcEn6GyuYNsf1vZ1fWVAdn6CeTAEkZ9x/HGDph2wutFG4X0Igiup
+         LGBF89joeuAPBYJ3AeWC5/lLOINt+STCpQiJeOeX00W/Wm9gITltBZIuYFHPmCJm39fG
+         WmSh05dF/KWsWa4kvRI2QiaJtPL2SMalZYq08lkdFVDI46lz+Tq4Z1QbD/krBF/w+bSx
+         iLPB6CMEixmsBiWdxdhhwoLTH2v/KRV+/fm7zoioVhkP7PdfSdwO7zkbKYMMJgw3Bofb
+         +q8Q==
+X-Gm-Message-State: AOAM530QtxxziLGssg5lffvZnHQwsWA/OJLWqH5PohfIqmcOeF3Kk0ua
+        iG6rtGWn8DwwgXxmoAcNi51qVO8DRwg=
+X-Google-Smtp-Source: ABdhPJxVZSR/c7WO/0BXFgS6t5lY2DueL+f1Dh1R7XLfTN5e5KOpOOUG18D2mJwABuHGKuQlTuSawA==
+X-Received: by 2002:a37:4782:: with SMTP id u124mr2362758qka.122.1605279897553;
+        Fri, 13 Nov 2020 07:04:57 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id u16sm7417098qth.42.2020.11.13.07.04.40
+        by smtp.gmail.com with ESMTPSA id d184sm6919073qkf.136.2020.11.13.07.04.56
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 13 Nov 2020 07:04:40 -0800 (PST)
+        Fri, 13 Nov 2020 07:04:56 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ADF4dLZ032715
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 15:04:39 GMT
-Subject: [PATCH v1 26/61] NFSD: Replace READ* macros in nfsd4_decode_rename()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ADF4toa032724
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Nov 2020 15:04:55 GMT
+Subject: [PATCH v1 29/61] NFSD: Replace READ* macros in
+ nfsd4_decode_setclientid()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 13 Nov 2020 10:04:39 -0500
-Message-ID: <160527987975.6186.4294661038410917726.stgit@klimt.1015granger.net>
+Date:   Fri, 13 Nov 2020 10:04:55 -0500
+Message-ID: <160527989583.6186.16688438933091997482.stgit@klimt.1015granger.net>
 In-Reply-To: <160527962905.6186.17550620763636619885.stgit@klimt.1015granger.net>
 References: <160527962905.6186.17550620763636619885.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -80,43 +81,80 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   24 ++++++++++--------------
- 1 file changed, 10 insertions(+), 14 deletions(-)
+ fs/nfsd/nfs4xdr.c |   55 +++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 38 insertions(+), 17 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 58342971fd6b..aa71baacabba 100644
+index bbae2b1726ac..82d599887f92 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -1229,22 +1229,18 @@ nfsd4_decode_remove(struct nfsd4_compoundargs *argp, struct nfsd4_remove *remove
+@@ -1284,31 +1284,52 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
  static __be32
- nfsd4_decode_rename(struct nfsd4_compoundargs *argp, struct nfsd4_rename *rename)
+ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclientid *setclientid)
  {
 -	DECODE_HEAD;
-+	__be32 status;
++	__be32 *p, status;
  
--	READ_BUF(4);
--	rename->rn_snamelen = be32_to_cpup(p++);
--	READ_BUF(rename->rn_snamelen);
--	SAVEMEM(rename->rn_sname, rename->rn_snamelen);
--	READ_BUF(4);
--	rename->rn_tnamelen = be32_to_cpup(p++);
--	READ_BUF(rename->rn_tnamelen);
--	SAVEMEM(rename->rn_tname, rename->rn_tnamelen);
--	if ((status = check_filename(rename->rn_sname, rename->rn_snamelen)))
--		return status;
--	if ((status = check_filename(rename->rn_tname, rename->rn_tnamelen)))
--		return status;
-+	status = nfsd4_decode_component4(argp, &rename->rn_sname, &rename->rn_snamelen);
+ 	if (argp->minorversion >= 1)
+ 		return nfserr_notsupp;
+ 
+-	READ_BUF(NFS4_VERIFIER_SIZE);
+-	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
+-
++	status = nfsd4_decode_verifier4(argp, &setclientid->se_verf);
 +	if (status)
 +		goto out;
-+	status = nfsd4_decode_component4(argp, &rename->rn_tname, &rename->rn_tnamelen);
-+	if (status)
+ 	status = nfsd4_decode_opaque(argp, &setclientid->se_name);
+ 	if (status)
+-		return nfserr_bad_xdr;
+-	READ_BUF(8);
+-	setclientid->se_callback_prog = be32_to_cpup(p++);
+-	setclientid->se_callback_netid_len = be32_to_cpup(p++);
+-	READ_BUF(setclientid->se_callback_netid_len);
+-	SAVEMEM(setclientid->se_callback_netid_val, setclientid->se_callback_netid_len);
+-	READ_BUF(4);
+-	setclientid->se_callback_addr_len = be32_to_cpup(p++);
 +		goto out;
++	if (xdr_stream_decode_u32(argp->xdr, &setclientid->se_callback_prog) < 0)
++		goto xdr_error;
++	if (xdr_stream_decode_u32(argp->xdr, &setclientid->se_callback_netid_len) < 0)
++		goto xdr_error;
++	p = xdr_inline_decode(argp->xdr, setclientid->se_callback_netid_len);
++	if (!p)
++		goto xdr_error;
++	setclientid->se_callback_netid_val = svcxdr_tmpalloc(argp,
++						setclientid->se_callback_netid_len);
++	if (!setclientid->se_callback_netid_val)
++		goto nomem;
++	memcpy(setclientid->se_callback_netid_val, p,
++	       setclientid->se_callback_netid_len);
+ 
+-	READ_BUF(setclientid->se_callback_addr_len);
+-	SAVEMEM(setclientid->se_callback_addr_val, setclientid->se_callback_addr_len);
+-	READ_BUF(4);
+-	setclientid->se_callback_ident = be32_to_cpup(p++);
++	if (xdr_stream_decode_u32(argp->xdr, &setclientid->se_callback_addr_len) < 0)
++		goto xdr_error;
++	p = xdr_inline_decode(argp->xdr, setclientid->se_callback_addr_len);
++	if (!p)
++		goto xdr_error;
++	setclientid->se_callback_addr_val = svcxdr_tmpalloc(argp,
++						setclientid->se_callback_addr_len);
++	if (!setclientid->se_callback_addr_val)
++		goto nomem;
++	memcpy(setclientid->se_callback_addr_val, p,
++	       setclientid->se_callback_addr_len);
++	if (xdr_stream_decode_u32(argp->xdr, &setclientid->se_callback_ident) < 0)
++		goto xdr_error;
  
 -	DECODE_TAIL;
 +	status = nfs_ok;
 +out:
 +	return status;
++xdr_error:
++	return nfserr_bad_xdr;
++nomem:
++	return nfserr_jukebox;
  }
  
  static __be32
