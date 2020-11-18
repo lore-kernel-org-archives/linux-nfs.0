@@ -2,64 +2,62 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E2617C5519F
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Nov 2020 15:15:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 34F65C6379D
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Nov 2020 20:13:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2BE9424749
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Nov 2020 15:15:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CF9082076C
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Nov 2020 20:13:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="KpmpzR1j"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="l+hL6FWg"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726296AbgKRPPO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Nov 2020 10:15:14 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46066 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726211AbgKRPPO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Nov 2020 10:15:14 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 406A5C0613D4;
-        Wed, 18 Nov 2020 07:15:14 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 1BCB720A8; Wed, 18 Nov 2020 10:15:13 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 1BCB720A8
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1605712513;
-        bh=mSxGFZ77x4zkqvjZTkBj8s+vuNZp2OuVj35/dlAfrCQ=;
-        h=Date:To:Cc:Subject:From:From;
-        b=KpmpzR1jOiLZydUe8HdKYUTyiOb9HYznc+vXGaiEUu8xCMI/FbP7/VuXvYJSjo55K
-         c3JK/EAgF9y7z7DT2A2rYxcEKD8mcr38zE2NlP3pfgCosHGr9lrgSNKdS/wf05ya2+
-         l14fn3ACHhrtyqtKInZebstVhDRw5VjF1nB/FTFk=
-Date:   Wed, 18 Nov 2020 10:15:13 -0500
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        id S1726915AbgKRUNz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Nov 2020 15:13:55 -0500
+Received: from mail.kernel.org ([198.145.29.99]:46708 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725782AbgKRUNy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 18 Nov 2020 15:13:54 -0500
+Subject: Re: [GIT PULL] nfsd bugfix for 5.10
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1605730434;
+        bh=tLbWWVsVbNP13mpIn0rfCT4xsjB4FKjy0g0G47H+PUU=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=l+hL6FWgzcoSoluidZBeMaq48fF4Wv/6QTLNzfXqH1epPWXPMPuxQJtfFS2lEavRg
+         ne8xpLKebuYUgFUjV8mkYoHtn4qTE/HPZRIfrcMd9ecice27bGVZXsKcc91X3PZD9u
+         kbaVsrEBeCqJBl6ZiS/rU/8MCxvMd31KoLsw9SU4=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20201118151513.GC7320@fieldses.org>
+References: <20201118151513.GC7320@fieldses.org>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20201118151513.GC7320@fieldses.org>
+X-PR-Tracked-Remote: git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.10-2
+X-PR-Tracked-Commit-Id: c3213d260a23e263ef85ba21ac68c9e7578020b5
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: ce228d45942492580968d698b0216d3356d75226
+Message-Id: <160573043437.16719.8380223673835473520.pr-tracker-bot@kernel.org>
+Date:   Wed, 18 Nov 2020 20:13:54 +0000
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: [GIT PULL] nfsd bugfix for 5.10
-Message-ID: <20201118151513.GC7320@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Please pull
+The pull request you sent on Wed, 18 Nov 2020 10:15:13 -0500:
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.10-2
+> git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.10-2
 
-Just one quick fix for a tracing oops.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/ce228d45942492580968d698b0216d3356d75226
 
---b.
+Thank you!
 
-----------------------------------------------------------------
-Scott Mayhew (1):
-      SUNRPC: Fix oops in the rpc_xdr_buf event class
-
- include/trace/events/sunrpc.h | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
