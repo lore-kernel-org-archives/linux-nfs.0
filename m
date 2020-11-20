@@ -7,68 +7,68 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C091C2D0E4
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:43:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 76864C6379D
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:44:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2E06B2223F
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:43:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2F9A42223F
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:44:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ThGSQdMo"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KddNm1Lg"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731735AbgKTUnS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 15:43:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34064 "EHLO
+        id S1728781AbgKTUne (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 15:43:34 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34110 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728928AbgKTUnS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:43:18 -0500
-Received: from mail-qt1-x843.google.com (mail-qt1-x843.google.com [IPv6:2607:f8b0:4864:20::843])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21558C0613CF
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:18 -0800 (PST)
-Received: by mail-qt1-x843.google.com with SMTP id z24so6110825qto.3
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:18 -0800 (PST)
+        with ESMTP id S1728476AbgKTUne (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:43:34 -0500
+Received: from mail-qk1-x744.google.com (mail-qk1-x744.google.com [IPv6:2607:f8b0:4864:20::744])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2017CC0613CF
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:34 -0800 (PST)
+Received: by mail-qk1-x744.google.com with SMTP id k4so10184407qko.13
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:34 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=7msy/n0JKvli6W7JM3p6GkoxmcF+GlMP4FBJdOeBya8=;
-        b=ThGSQdMoLVXWyJK/zLW8bqAbqXrz73BoylktVL0cVkD1bB8LH9cm0xTcmalYeU1+ih
-         BsiBzwO0kVCEdnbyfu/HrySTp6EBAfXldFbeQuHsUYUYNSOh+o45950wey89kJtuto74
-         9zwK8XpcYgGDk+G4COUPdOuIKCQwMgYPWi4oEDWjcIon1g1yoYlQxd1vt7cIQht1Am/0
-         Wve5g9oRdoHY16xlF+jKVp/n7J75aPYWw1kimgtX5fcwkp0+qEGTlG6YRRMPOIwmdl2q
-         37/qOCszDzJbpg9gWjG0LKo1+2FXP1dOh+nJmLcnRGfhgyMdyNTRbCpeqzUhpcnGMXt2
-         LwgA==
+        bh=DryE8JqL2omDj0I6iyrs9atF/pf66DBI88wfAvtzJl8=;
+        b=KddNm1LgPVWMLYAkrQav2kUTkO5b4w12Ac3z1PfSALYWtY7EEOV6kAQcPhMSxO1WW8
+         ZtuZAmbfM/uBFwhNl7sjVMlSvbW2bv38ze9GZQPfQS1B092rLkAgfgLtnfEFkKkOrtEU
+         UEMvmZ7ip1J0fE/38S2hEuL30tJdqAVAJPtE3PZlQr9lIkIrBNcO6tjF3JrSyDaH5TJ5
+         O//qvzGfhIAtWIUALyhvgbQMaoA9EqzjrZFqqN6Zw5LzG4LMrtV2L2TzV1BT8Ta+OW7k
+         cjrzSUvR+UPKwIVybsBbWrPh4yEkSGmTk5xVy3kw6fqvgw4y9sYaEt6Fw+Y05shFQqYO
+         +kOQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=7msy/n0JKvli6W7JM3p6GkoxmcF+GlMP4FBJdOeBya8=;
-        b=dskuDMpjRsGfVUBGGwx2qvqQF6L0ujUTTs1HDlP8pwnnqMxW8KtuQYp42i8HFsbI/H
-         if+ouPT2sRPW4SPj/SIU8ONpc/UL35HLrOiAtIXNmBFSQafdSu1CxoAaKHYakbAErOr5
-         OJRRuJidgvyAQtm+5LBB8jV294C32xn0uU951eQo8/BvEHVPuLk5g4zV27brOBMV5anh
-         6MfSiRX3elUNtqyuZ4qvbFyjoqWGKnpcEwEnvjcm75/1KmLEuuR6p4RAgRclWh8bf8Qy
-         5D0QbMtPjqntyxXjO8qMe/67etnWQqWZ6+zLdAWle4RZTLYXJxTPQ+mqAiiwRYMlX+HG
-         H6/w==
-X-Gm-Message-State: AOAM530UJhy+7v2m2/0Dy7lxNQGoSaGY2bz0E1dssSoBMkwuPXsGZaSC
-        3X5biQy70Fz52GQJQRkXFMruuLq9CKc=
-X-Google-Smtp-Source: ABdhPJxeIBbmEA53f/Xqxcy2N3syHNTq0GGz4Mrjaa9+JEzvMhJCun1bCctQbz2yStU0UsRRrm4OUg==
-X-Received: by 2002:ac8:4a01:: with SMTP id x1mr17441990qtq.276.1605904997070;
-        Fri, 20 Nov 2020 12:43:17 -0800 (PST)
+        bh=DryE8JqL2omDj0I6iyrs9atF/pf66DBI88wfAvtzJl8=;
+        b=YyFXDbRH/jggxY+Z0DmC/JqzgNP67CfJsMSxTyMiWBfJsHxNuky9j20IQwZRJ6AR+h
+         VuHVXTtCps6W+d8E0hGlvdj0H2lk4WZraebzO2Q/JoZZB+XnKhGhYUcekxAXmbx64nwh
+         X24nT01fz5j0d1GaJKthbg2HKhL/iJtUVdLTTV77ZwziHWsQZUi80dyQz6m636w/sq33
+         b5IPCGRds4pVAAj+5YGl+abP+l6IVG/gxeibm/LDbnSAppyQSJ7yfblvnVo4gfJCPGig
+         t6OdlQPM2NIu3Vk0RRekE+7fyC34QyxbqVJuSnaPtpOY7W3ZcSsyY6l+DwMj0Lt5B87r
+         wHjg==
+X-Gm-Message-State: AOAM532D6rNgL/Qt3KaCDHyYrETyRkttXSufEfyCOO/2QKRwtJO4nb7s
+        6h1FGmX+n2AVhIY53G/cZ/0imfoKGyc=
+X-Google-Smtp-Source: ABdhPJx/cVupKUwnoNDMT076ZSvWmPHp7McZ7iYx21Q+m763zNN5bbIED/xSCiYke2GKaBrZadcbXg==
+X-Received: by 2002:a37:78c:: with SMTP id 134mr18948371qkh.359.1605905013058;
+        Fri, 20 Nov 2020 12:43:33 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id v14sm2852189qkb.15.2020.11.20.12.43.16
+        by smtp.gmail.com with ESMTPSA id r190sm2623539qkf.101.2020.11.20.12.43.32
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 20 Nov 2020 12:43:16 -0800 (PST)
+        Fri, 20 Nov 2020 12:43:32 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKhFQe029535
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:43:15 GMT
-Subject: [PATCH v2 107/118] NFSD: Update the NFSv2 CREATE argument decoder to
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKhVba029544
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:43:31 GMT
+Subject: [PATCH v2 110/118] NFSD: Update the NFSv2 GETACL argument decoder to
  use struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 20 Nov 2020 15:43:15 -0500
-Message-ID: <160590499559.1340.7433767896526228380.stgit@klimt.1015granger.net>
+Date:   Fri, 20 Nov 2020 15:43:31 -0500
+Message-ID: <160590501137.1340.10261024050275031553.stgit@klimt.1015granger.net>
 In-Reply-To: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 References: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -81,31 +81,86 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsxdr.c |   10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs2acl.c |   12 ++++++------
+ fs/nfsd/nfsxdr.c  |   11 ++++++++++-
+ fs/nfsd/xdr.h     |    2 ++
+ fs/nfsd/xdr3.h    |    2 +-
+ 4 files changed, 19 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index c34446c650ca..f02fef8a805e 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -397,14 +397,12 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p)
- int
- nfssvc_decode_createargs(struct svc_rqst *rqstp, __be32 *p)
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index b0f66604532a..0e62c3b53a58 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -188,17 +188,17 @@ static __be32 nfsacld_proc_access(struct svc_rqst *rqstp)
+ 
+ static int nfsaclsvc_decode_getaclargs(struct svc_rqst *rqstp, __be32 *p)
  {
 +	struct xdr_stream *xdr = &rqstp->rq_xdr_stream;
- 	struct nfsd_createargs *args = rqstp->rq_argp;
+ 	struct nfsd3_getaclargs *argp = rqstp->rq_argp;
  
--	if (   !(p = decode_fh(p, &args->fh))
--	    || !(p = decode_filename(p, &args->name, &args->len)))
+-	p = nfs2svc_decode_fh(p, &argp->fh);
+-	if (!p)
 -		return 0;
--	p = decode_sattr(p, &args->attrs, nfsd_user_namespace(rqstp));
--
--	return xdr_argsize_check(rqstp, p);
-+	if (!svcxdr_decode_diropargs(xdr, &args->fh, &args->name, &args->len))
+-	argp->mask = ntohl(*p); p++;
++	if (!svcxdr_decode_fhandle(xdr, &argp->fh))
 +		return XDR_DECODE_FAILED;
-+	return svcxdr_decode_sattr(rqstp, xdr, &args->attrs);
++	if (xdr_stream_decode_u32(xdr, &argp->mask) < 0)
++		return XDR_DECODE_FAILED;
+ 
+-	return xdr_argsize_check(rqstp, p);
++	return XDR_DECODE_DONE;
  }
  
- int
+-
+ static int nfsaclsvc_decode_setaclargs(struct svc_rqst *rqstp, __be32 *p)
+ {
+ 	struct nfsd3_setaclargs *argp = rqstp->rq_argp;
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 92e9143842d3..efa2760316eb 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -38,7 +38,16 @@ decode_fh(__be32 *p, struct svc_fh *fhp)
+ 	return p + (NFS_FHSIZE >> 2);
+ }
+ 
+-static enum xdr_decode_result
++/**
++ * svcxdr_decode_fhandle - Decode an NFSv2 file handle
++ * @xdr: XDR stream positioned at an encoded NFSv2 FH
++ * @fhp: OUT: filled-in server file handle
++ *
++ * Return values:
++ *  %XDR_DECODE_FAILED: The encoded file handle was not valid
++ *  %XDR_DECODE_DONE: Success
++ */
++enum xdr_decode_result
+ svcxdr_decode_fhandle(struct xdr_stream *xdr, struct svc_fh *fhp)
+ {
+ 	__be32 *p;
+diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
+index d700838f6512..6d3fb133f366 100644
+--- a/fs/nfsd/xdr.h
++++ b/fs/nfsd/xdr.h
+@@ -165,5 +165,7 @@ void nfssvc_release_readres(struct svc_rqst *rqstp);
+ /* Helper functions for NFSv2 ACL code */
+ __be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp, struct kstat *stat);
+ __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh *fhp);
++enum xdr_decode_result
++svcxdr_decode_fhandle(struct xdr_stream *xdr, struct svc_fh *fhp);
+ 
+ #endif /* LINUX_NFSD_H */
+diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
+index 64af5b01c5d7..43db4206cd25 100644
+--- a/fs/nfsd/xdr3.h
++++ b/fs/nfsd/xdr3.h
+@@ -102,7 +102,7 @@ struct nfsd3_commitargs {
+ 
+ struct nfsd3_getaclargs {
+ 	struct svc_fh		fh;
+-	int			mask;
++	__u32			mask;
+ };
+ 
+ struct posix_acl;
 
 
