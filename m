@@ -7,68 +7,67 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD574C63777
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:35:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C415C6379F
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:35:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7E10A22464
+	by mail.kernel.org (Postfix) with ESMTP id EA3F822464
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:35:40 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pZM2DPi7"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MvWBNo+1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731384AbgKTUfW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 15:35:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60844 "EHLO
+        id S1729875AbgKTUfa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 15:35:30 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60872 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731095AbgKTUfV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:35:21 -0500
-Received: from mail-qt1-x842.google.com (mail-qt1-x842.google.com [IPv6:2607:f8b0:4864:20::842])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09752C0613CF
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:35:20 -0800 (PST)
-Received: by mail-qt1-x842.google.com with SMTP id g17so8121797qts.5
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:35:19 -0800 (PST)
+        with ESMTP id S1728360AbgKTUfa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:35:30 -0500
+Received: from mail-qt1-x843.google.com (mail-qt1-x843.google.com [IPv6:2607:f8b0:4864:20::843])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1EAEEC0613CF
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:35:30 -0800 (PST)
+Received: by mail-qt1-x843.google.com with SMTP id 7so8137773qtp.1
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:35:30 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=iWet+vPSrNLB7LqDQAsHb+el1qBFpeHaLrIvpWrnbDo=;
-        b=pZM2DPi7oUhzJAjU/X85VrPkYGVsgh5ajplC7um8qVCQ7h9WsPcUT6+r2xi5mKurWP
-         31ncTuYrRpg9CkIpTdnJUn8h7VcPrIk2Ci22qxyQRGnF15HwUlJ0Mt9pgWLYscbnGHP3
-         soM3XKmZdJ/AwEywj5P3PG3G0k46QIrqg6njQiDGltNdQi1paaex2/538barCHdiUXQF
-         UKx5Sy53XeHQTAbKKEj7upf+Es/l5QVDSNI3pYO3PsaQSOEofLZMWVvQlpDkg3yDTZ6Z
-         AcZQHzlssdOfKAXSP+ZqAoHqVbhKhW5udctt45qRJgiX4RbCtvBQ+IdmA/qBrBlC+kR+
-         WK/w==
+        bh=wXGqYk1Wmp5D9SNUetrzCSyiQfx+pQFcxJFauaq/ods=;
+        b=MvWBNo+1+dP4pd+c03XQoSdI6VtEN5RxWab5t9X3uBSOgPJMxdUI3EfJohtbSPy/JP
+         gfDlTBrpps6ourNKVuBeN+CkD+PN6rT3xlPeZEBJh4kw7DboNVV4KqrLjcJ8LuW5cNWG
+         vsn19s4QBZI+Ll/Hh2fnEZB8Zd2NIh7GgxSQQDaQzFAANpMcaCGeUP4Pud3eRvXo8fuT
+         0NN6ugPDoS0LFw8S4iMLXejHwgXbtSNg6QeAnVz4pRg84yhwMEeDqyzii6wfSveLC9Am
+         iiKCShYoF43gZnxMlk5/ccMXACxuSFy8guLW5Jyn4Qsq1IwgsbtrdUjBDT2lhYCdiWCx
+         xoXA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=iWet+vPSrNLB7LqDQAsHb+el1qBFpeHaLrIvpWrnbDo=;
-        b=MzlW5M6UvjcxtivGCR8zoQ68IT1rcAo9rGNoWtRrj8TI7llyPIc3Xo+JmxlZbe2/5P
-         TeUYFBHlnbNx3cMEuvfrzsNXh+0RRAY9fl5+DFeC6OUBXIfrhP6+OMsD3J4klJ4f8jA7
-         xOsP5IThNxJuXEIWqhc1YsY2JpJAajo/JAEatc2UtIjncKk2nxPLRbTnKzmyEJNaWuxG
-         EDLewnEvaB5Pt6Fh4eZdq5L3DCleHAL9vYCeOesUzvxsoiSaImtl0WLi1onOf/xkbBOe
-         7+28bASV0v9mtfPU1O5FE1nxhAQI0EzE6RyUaGebhQpg60sR+DuVh9hlxsYu2z99WC+T
-         sjGw==
-X-Gm-Message-State: AOAM533h7M+Ms0wbbledd2JWErnT4KrnYYXjEouiTUKZGw+cTO2ZAdLG
-        9xfHRHElb/A0iFyvgdGEW2lZcN1tH6c=
-X-Google-Smtp-Source: ABdhPJyZe4+Wyxva0NgmqpslSq09RayofZebM4QXkRTCg9oB9Gko4H8IqEp6CZmIGx/PvS61LqrRww==
-X-Received: by 2002:ac8:5351:: with SMTP id d17mr17970332qto.235.1605904518265;
-        Fri, 20 Nov 2020 12:35:18 -0800 (PST)
+        bh=wXGqYk1Wmp5D9SNUetrzCSyiQfx+pQFcxJFauaq/ods=;
+        b=Zbq3VGMaEsni5I3tdhC/DMrlvyJWjXi0KglL92h109vLMlJoqrOhOWUElNNz45bgoz
+         1O2KE1Q3kuCFcb4xc9x5hAFzQLdsxRsmVb/x6vyMV5AqjT7UDJhStbGI6KFJC+ASCY4V
+         dv9SkYyKjuW2kklfa9fJ8uAsn+bkgIMkd36jYA0cujO+EhtoEbpxRZgPEmySCFbljklC
+         06GD3oswWdcinUm9chbHbcTvP33xFGpJJgs63uWeFJzbmXPfMLJ6vXoEy+Wf4Owev5ky
+         Bd/ZPQaIJrPnYOUiPMf91SBZYS4P7BS82Yb9OHT6Fx5l16yFWDBNSmaVcb/FSb2gqB5d
+         PBfA==
+X-Gm-Message-State: AOAM530WbnlAUg9S9q8J/bwTbZTspvA0kcZtXR36Wqek81+CuhfdOzjV
+        c1gWThGMiKe24rn01EZQ2kDgVNkZEis=
+X-Google-Smtp-Source: ABdhPJxKSaDA2QuqFaOLo9PCCkLo8xOh2nO1kqvvVCjxEC9rwpTstXC6xrEAc2uNijSWva/MN4oE6w==
+X-Received: by 2002:ac8:46cf:: with SMTP id h15mr16036709qto.99.1605904529052;
+        Fri, 20 Nov 2020 12:35:29 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id t126sm2801936qkh.133.2020.11.20.12.35.17
+        by smtp.gmail.com with ESMTPSA id x4sm3001351qtm.48.2020.11.20.12.35.28
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 20 Nov 2020 12:35:17 -0800 (PST)
+        Fri, 20 Nov 2020 12:35:28 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKZGX5029253
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:35:16 GMT
-Subject: [PATCH v2 017/118] NFSD: Replace READ* macros that decode the fattr4
- security label attribute
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKZRko029259
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:35:27 GMT
+Subject: [PATCH v2 019/118] NFSD: Replace READ* macros in nfsd4_decode_fattr()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 20 Nov 2020 15:35:16 -0500
-Message-ID: <160590451655.1340.10481103107579048902.stgit@klimt.1015granger.net>
+Date:   Fri, 20 Nov 2020 15:35:27 -0500
+Message-ID: <160590452734.1340.16262869614648652550.stgit@klimt.1015granger.net>
 In-Reply-To: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 References: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -81,82 +80,100 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   46 ++++++++++++++++++++++++++++++----------------
- 1 file changed, 30 insertions(+), 16 deletions(-)
+ fs/nfsd/nfs4xdr.c |   41 +++++++++++++++++++++++------------------
+ 1 file changed, 23 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 16aded9bcf3a..a5207a36199c 100644
+index 046fe62bfa29..c7f14f0db432 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -322,6 +322,33 @@ nfsd4_decode_acl(struct nfsd4_compoundargs *argp, struct nfs4_acl **acl)
- 	return nfs_ok;
+@@ -350,17 +350,17 @@ nfsd4_decode_seclabel(struct nfsd4_compoundargs *argp,
  }
  
-+static noinline __be32
-+nfsd4_decode_seclabel(struct nfsd4_compoundargs *argp,
-+		      struct xdr_netobj *label)
-+{
-+	u32 lfs, pi, length;
-+	__be32 *p;
-+
-+	if (xdr_stream_decode_u32(argp->xdr, &lfs) < 0)
-+		return nfserr_bad_xdr;
-+	if (xdr_stream_decode_u32(argp->xdr, &pi) < 0)
-+		return nfserr_bad_xdr;
-+
-+	if (xdr_stream_decode_u32(argp->xdr, &length) < 0)
-+		return nfserr_bad_xdr;
-+	if (length > NFS4_MAXLABELLEN)
-+		return nfserr_badlabel;
-+	p = xdr_inline_decode(argp->xdr, length);
-+	if (!p)
-+		return nfserr_bad_xdr;
-+	label->len = length;
-+	label->data = svcxdr_dupstr(argp, p, length);
-+	if (!label->data)
-+		return nfserr_jukebox;
-+
-+	return nfs_ok;
-+}
-+
  static __be32
- nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		   struct iattr *iattr, struct nfs4_acl **acl,
-@@ -330,7 +357,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+-nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+-		   struct iattr *iattr, struct nfs4_acl **acl,
+-		   struct xdr_netobj *label, int *umask)
++nfsd4_decode_fattr4(struct nfsd4_compoundargs *argp, u32 *bmval, u32 bmlen,
++		    struct iattr *iattr, struct nfs4_acl **acl,
++		    struct xdr_netobj *label, int *umask)
+ {
  	unsigned int starting_pos;
  	u32 attrlist4_count;
- 	u32 dummy32;
--	char *buf;
++	__be32 *p, status;
  
- 	DECODE_HEAD;
+-	DECODE_HEAD;
  	iattr->ia_valid = 0;
-@@ -438,24 +464,12 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			return nfserr_bad_xdr;
- 		}
- 	}
--
- 	label->len = 0;
- 	if (IS_ENABLED(CONFIG_NFSD_V4_SECURITY_LABEL) &&
- 	    bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
--		READ_BUF(4);
--		dummy32 = be32_to_cpup(p++); /* lfs: we don't use it */
--		READ_BUF(4);
--		dummy32 = be32_to_cpup(p++); /* pi: we don't use it either */
--		READ_BUF(4);
--		dummy32 = be32_to_cpup(p++);
--		READ_BUF(dummy32);
--		if (dummy32 > NFS4_MAXLABELLEN)
--			return nfserr_badlabel;
--		READMEM(buf, dummy32);
--		label->len = dummy32;
--		label->data = svcxdr_dupstr(argp, buf, dummy32);
--		if (!label->data)
--			return nfserr_jukebox;
-+		status = nfsd4_decode_seclabel(argp, label);
-+		if (status)
-+			return status;
- 	}
- 	if (bmval[2] & FATTR4_WORD2_MODE_UMASK) {
- 		if (!umask)
+-	if ((status = nfsd4_decode_bitmap(argp, bmval)))
+-		return status;
++	if (xdr_stream_decode_uint32_array(argp->xdr, bmval, bmlen) < 0)
++		return nfserr_bad_xdr;
+ 
+ 	if (bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0
+ 	    || bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1
+@@ -488,7 +488,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 	if (attrlist4_count != xdr_stream_pos(argp->xdr) - starting_pos)
+ 		return nfserr_bad_xdr;
+ 
+-	DECODE_TAIL;
++	return nfs_ok;
+ }
+ 
+ static __be32
+@@ -676,9 +676,10 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+ 	if ((status = check_filename(create->cr_name, create->cr_namelen)))
+ 		return status;
+ 
+-	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
+-				    &create->cr_acl, &create->cr_label,
+-				    &create->cr_umask);
++	status = nfsd4_decode_fattr4(argp, create->cr_bmval,
++				    ARRAY_SIZE(create->cr_bmval),
++				    &create->cr_iattr, &create->cr_acl,
++				    &create->cr_label, &create->cr_umask);
+ 	if (status)
+ 		goto out;
+ 
+@@ -927,9 +928,10 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 		switch (open->op_createmode) {
+ 		case NFS4_CREATE_UNCHECKED:
+ 		case NFS4_CREATE_GUARDED:
+-			status = nfsd4_decode_fattr(argp, open->op_bmval,
+-				&open->op_iattr, &open->op_acl, &open->op_label,
+-				&open->op_umask);
++			status = nfsd4_decode_fattr4(argp, open->op_bmval,
++						     ARRAY_SIZE(open->op_bmval),
++						     &open->op_iattr, &open->op_acl,
++						     &open->op_label, &open->op_umask);
+ 			if (status)
+ 				goto out;
+ 			break;
+@@ -942,9 +944,10 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 				goto xdr_error;
+ 			READ_BUF(NFS4_VERIFIER_SIZE);
+ 			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
+-			status = nfsd4_decode_fattr(argp, open->op_bmval,
+-				&open->op_iattr, &open->op_acl, &open->op_label,
+-				&open->op_umask);
++			status = nfsd4_decode_fattr4(argp, open->op_bmval,
++						     ARRAY_SIZE(open->op_bmval),
++						     &open->op_iattr, &open->op_acl,
++						     &open->op_label, &open->op_umask);
+ 			if (status)
+ 				goto out;
+ 			break;
+@@ -1180,8 +1183,10 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
+ 	status = nfsd4_decode_stateid4(argp, &setattr->sa_stateid);
+ 	if (status)
+ 		return status;
+-	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
+-				  &setattr->sa_acl, &setattr->sa_label, NULL);
++	return nfsd4_decode_fattr4(argp, setattr->sa_bmval,
++				   ARRAY_SIZE(setattr->sa_bmval),
++				   &setattr->sa_iattr, &setattr->sa_acl,
++				   &setattr->sa_label, NULL);
+ }
+ 
+ static __be32
 
 
