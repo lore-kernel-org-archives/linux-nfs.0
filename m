@@ -7,68 +7,68 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1AF6C6379F
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:44:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F147C64E7B
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:44:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9FA132223F
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:44:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1C0D52223F
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:44:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XUMQvxom"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JkT6La3o"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729456AbgKTUnp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 15:43:45 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34144 "EHLO
+        id S1729608AbgKTUn5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 15:43:57 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34174 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729306AbgKTUnp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:43:45 -0500
-Received: from mail-qt1-x836.google.com (mail-qt1-x836.google.com [IPv6:2607:f8b0:4864:20::836])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04DA0C0613CF
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:45 -0800 (PST)
-Received: by mail-qt1-x836.google.com with SMTP id z24so6111712qto.3
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:44 -0800 (PST)
+        with ESMTP id S1729306AbgKTUn5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:43:57 -0500
+Received: from mail-qk1-x743.google.com (mail-qk1-x743.google.com [IPv6:2607:f8b0:4864:20::743])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF95BC0613CF
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:55 -0800 (PST)
+Received: by mail-qk1-x743.google.com with SMTP id n132so10263449qke.1
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:43:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=nEMrv+oXcuXrri8aG4ydWd0UUuh0YoSurn9CYn3jvk8=;
-        b=XUMQvxomGfzoQ0jDGXoNNxxNFFKt40N6ZhMKHFGVbnN9GsY30S+EryGUkPWWnk7lc6
-         AS0MbjaIaBpcn1rUa1uMqJfINcW3/p3Bfd4Zv09aFwW1UfkADD/qTdfVaF50wdIQuxuN
-         AgTM2YuqAlY4rA/S/2YZiXosal0YP8JHkPdHDVZcFobLDNuljXCoxLiVwV6rrxa2ed/P
-         weoQ1cC4GQ7uykOe0uLnb6FJ8HmWrU2nGGB/5uuL2EzUcQ5g/pRQTu0SiBck7ycDTdTO
-         9HBjWyIKEVNL1nrSdY/0WrYltkcKQ44I1jsWLtIa3H/EDrKlUqcutRwn1qlBHxtr71J8
-         HjLA==
+        bh=jPE4amyDK4g2Ujqay2CvxQr6Ju06D5HBawt7WO41Waw=;
+        b=JkT6La3oCSqsB6kNU+/CuSSEK8Wzo77JSMjCmWsmJ/CkTmplhh56YhhC1GZQ6+lwY1
+         ZHmOi388GCFyL8MB+3YBLr9LfecKWV2mSHnCRyq42RZ/imQUSs6wAQfn3AC0v7dLiZI8
+         o1XJ6TVA1XZfpcJAobBjbDwjW1FcyUIeUgrTh1XwC8wYjrYfyjErshJn82843KCg3t7Z
+         vwTaTlVbAJbqcAcOsEnIoqKVoUF7yjxd4ZJN2fwsA1rmm5v8BRtebfvIj5q89Duzs8Ze
+         UbShBXTiZ7BPy/vuCJ+D2Me+j2IDcVzwRF7y4pZCeetkYYPLWyT0RQ9AI8KIfSiwOqTc
+         3n1Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=nEMrv+oXcuXrri8aG4ydWd0UUuh0YoSurn9CYn3jvk8=;
-        b=P4Emx9Xt2WUg/rbADZiKOWjJ+lfK0XvC/penpgRfHqQ13uSC1jRCLlIq6tFWwcc0en
-         ZyBSQRHEf6QDjO3ouSLD+nKF16CpXhRHyoA6ZTdFDm+7YhQHx2Virhq96w1Qp9auDcIA
-         r1fvwSvVNGQI6q0E/lrHiswrYZcj9L6n/T/kbLhJ0hhwveC3u0anEaC+UxyVbRH6BP9s
-         ELFEVorv7xwoA+IJlirT2UheU4dW4+/mS8W1dQMnSIGgfbi0cyhK/R1ZNE6OI+hxO25g
-         nf43K4jSON8IAjSUr2HyPj3S9UDE9qXb5vxwxyjwdGDIWcxQe9vKgQpHHLgvWYrn/N8E
-         9J+Q==
-X-Gm-Message-State: AOAM532+Ul4VPBsFfbXKMpqD+Gjg0W9uaWc5LuGAzgngogE8SqxPaM7u
-        Wi2+e+8hc9BUZs4cV6Vg8pRaoHeD0wU=
-X-Google-Smtp-Source: ABdhPJwkFwBJrbrKMUZ4QNP8s8QW2VfzVZpSe6WOodBaGlREIl0NQPVqDeXFW1YuLpVKZoxiviA/4A==
-X-Received: by 2002:aed:38c8:: with SMTP id k66mr17692879qte.385.1605905023890;
-        Fri, 20 Nov 2020 12:43:43 -0800 (PST)
+        bh=jPE4amyDK4g2Ujqay2CvxQr6Ju06D5HBawt7WO41Waw=;
+        b=tJw/n+eeUxECcCuWGWfmFUbeTr+vIfCqbvXEhjkz1aI8EXDAFQyZaNwE7euzYZLp4Q
+         u+Iwyl0dlApnKrwOr3KbfzCmkFd0bE0DbhZL7vbWANmMNz1UCUts9YJu050en+/DQYqv
+         7FhIQJKruj4v0/vdb01+I1V7VU5VuvalXOYQUDPymxRCRXs5KlGvbNhoH8/ankzaXwOQ
+         yvQ4nmCVDAq1Vimc/XJN2CXLXPBC8R6SL14mqdFY5OJNYk7+bNHqVm3r8knkwTVgGFtL
+         Y9E1XcWaumWQXvSu7L3sVECj348qQ4ZePC9jZJJuh+fKiaTfLu/hCzkAPObi88uScm2+
+         B51w==
+X-Gm-Message-State: AOAM533sT9Ansk4TtggRSdn0p7gfMxqS88FCdm7T+ZDLbHvRXO9xkW7I
+        Il1AW3VPaMmDpyXBoIR5BhjZFQjyjUU=
+X-Google-Smtp-Source: ABdhPJxaDm7Jtzj/wzfbQQXefsHIsWQmN8glXAQkgAd8OH6kqLZ3QWr/RKcthZRYhBZa+0mvtamnng==
+X-Received: by 2002:a05:620a:11b7:: with SMTP id c23mr15744723qkk.156.1605905034855;
+        Fri, 20 Nov 2020 12:43:54 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id w138sm2756665qkb.130.2020.11.20.12.43.43
+        by smtp.gmail.com with ESMTPSA id 205sm2877851qki.50.2020.11.20.12.43.53
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 20 Nov 2020 12:43:43 -0800 (PST)
+        Fri, 20 Nov 2020 12:43:54 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKhghF029550
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:43:42 GMT
-Subject: [PATCH v2 112/118] NFSD: Update the NFSv2 SETACL argument decoder to
- use struct xdr_stream
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKhr9Q029556
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:43:53 GMT
+Subject: [PATCH v2 114/118] NFSD: Update the NFSv2 ACL ACCESS argument decoder
+ to use struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 20 Nov 2020 15:43:42 -0500
-Message-ID: <160590502218.1340.856421484434409408.stgit@klimt.1015granger.net>
+Date:   Fri, 20 Nov 2020 15:43:53 -0500
+Message-ID: <160590503308.1340.3406027763771152476.stgit@klimt.1015granger.net>
 In-Reply-To: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 References: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -81,69 +81,34 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs2acl.c |   33 ++++++++++++++-------------------
- fs/nfsd/xdr3.h    |    2 +-
- 2 files changed, 15 insertions(+), 20 deletions(-)
+ fs/nfsd/nfs2acl.c |   14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 0e62c3b53a58..2e44b56e33ad 100644
+index bc5303f654e5..fa8c2d746df2 100644
 --- a/fs/nfsd/nfs2acl.c
 +++ b/fs/nfsd/nfs2acl.c
-@@ -201,28 +201,23 @@ static int nfsaclsvc_decode_getaclargs(struct svc_rqst *rqstp, __be32 *p)
+@@ -222,14 +222,14 @@ static int nfsaclsvc_decode_setaclargs(struct svc_rqst *rqstp, __be32 *p)
  
- static int nfsaclsvc_decode_setaclargs(struct svc_rqst *rqstp, __be32 *p)
+ static int nfsaclsvc_decode_accessargs(struct svc_rqst *rqstp, __be32 *p)
  {
-+	struct xdr_stream *xdr = &rqstp->rq_xdr_stream;
- 	struct nfsd3_setaclargs *argp = rqstp->rq_argp;
--	struct kvec *head = rqstp->rq_arg.head;
--	unsigned int base;
--	int n;
- 
+-	struct nfsd3_accessargs *argp = rqstp->rq_argp;
+-
 -	p = nfs2svc_decode_fh(p, &argp->fh);
 -	if (!p)
 -		return 0;
--	argp->mask = ntohl(*p++);
--	if (argp->mask & ~NFS_ACL_MASK ||
--	    !xdr_argsize_check(rqstp, p))
--		return 0;
-+	if (!svcxdr_decode_fhandle(xdr, &argp->fh))
-+		return XDR_DECODE_FAILED;
-+	if (xdr_stream_decode_u32(xdr, &argp->mask) < 0)
-+		return XDR_DECODE_FAILED;
-+	if (argp->mask & ~NFS_ACL_MASK)
-+		return XDR_DECODE_FAILED;
-+	if (!nfs_stream_decode_acl(xdr, NULL, (argp->mask & NFS_ACL) ?
-+				   &argp->acl_access : NULL))
-+		return XDR_DECODE_FAILED;
-+	if (!nfs_stream_decode_acl(xdr, NULL, (argp->mask & NFS_DFACL) ?
-+				   &argp->acl_default : NULL))
-+		return XDR_DECODE_FAILED;
+-	argp->access = ntohl(*p++);
++	struct xdr_stream *xdr = &rqstp->rq_xdr_stream;
++	struct nfsd3_accessargs *args = rqstp->rq_argp;
  
--	base = (char *)p - (char *)head->iov_base;
--	n = nfsacl_decode(&rqstp->rq_arg, base, NULL,
--			  (argp->mask & NFS_ACL) ?
--			  &argp->acl_access : NULL);
--	if (n > 0)
--		n = nfsacl_decode(&rqstp->rq_arg, base + n, NULL,
--				  (argp->mask & NFS_DFACL) ?
--				  &argp->acl_default : NULL);
--	return (n > 0);
+-	return xdr_argsize_check(rqstp, p);
++	if (!svcxdr_decode_fhandle(xdr, &args->fh))
++		return XDR_DECODE_FAILED;
++	if (xdr_stream_decode_u32(xdr, &args->access) < 0)
++		return XDR_DECODE_FAILED;
 +	return XDR_DECODE_DONE;
  }
  
- static int nfsaclsvc_decode_fhandleargs(struct svc_rqst *rqstp, __be32 *p)
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 43db4206cd25..5afb3ce4f062 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -108,7 +108,7 @@ struct nfsd3_getaclargs {
- struct posix_acl;
- struct nfsd3_setaclargs {
- 	struct svc_fh		fh;
--	int			mask;
-+	__u32			mask;
- 	struct posix_acl	*acl_access;
- 	struct posix_acl	*acl_default;
- };
+ /*
 
 
