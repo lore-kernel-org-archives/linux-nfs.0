@@ -2,29 +2,29 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.0 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11056C63798
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 500D8C6379F
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D6D5322470
+	by mail.kernel.org (Postfix) with ESMTP id 0AE7D2242A
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726640AbgKTWjX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 17:39:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52030 "EHLO
+        id S1728885AbgKTWjY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 17:39:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52028 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728888AbgKTWjX (ORCPT
+        with ESMTP id S1728886AbgKTWjX (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 17:39:23 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CC36CC061A48
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88A52C061A47
         for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 14:39:22 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 2422E6E9C; Fri, 20 Nov 2020 17:39:22 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 2422E6E9C
+        id F083941A3; Fri, 20 Nov 2020 17:39:21 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org F083941A3
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>
 Cc:     Daire Byrne <daire@dneg.com>,
@@ -32,9 +32,9 @@ Cc:     Daire Byrne <daire@dneg.com>,
         linux-cachefs <linux-cachefs@redhat.com>,
         linux-nfs <linux-nfs@vger.kernel.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 7/8] nfsd: skip some unnecessary stats in the v4 case
-Date:   Fri, 20 Nov 2020 17:39:19 -0500
-Message-Id: <1605911960-12516-7-git-send-email-bfields@redhat.com>
+Subject: [PATCH 2/8] nfsd: simplify nfsd4_change_info
+Date:   Fri, 20 Nov 2020 17:39:14 -0500
+Message-Id: <1605911960-12516-2-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1605911960-12516-1-git-send-email-bfields@redhat.com>
 References: <20201120223831.GB7705@fieldses.org>
@@ -45,61 +45,106 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-In the typical case of v4 and a i_version-supporting filesystem, we can
-skip a stat which is only required to fake up a change attribute from
-ctime.
+It doesn't make sense to carry all these extra fields around.  Just
+make everything into change attribute from the start.
+
+This is just cleanup, there should be no change in behavior.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs3xdr.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4xdr.c        | 11 ++---------
+ fs/nfsd/xdr4.h           | 22 +++++++++-------------
+ include/linux/iversion.h | 13 +++++++++++++
+ 3 files changed, 24 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 2732b04d3878..8502a493be6d 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -265,19 +265,21 @@ void fill_pre_wcc(struct svc_fh *fhp)
- 	if (fhp->fh_pre_saved)
- 		return;
- 	inode = d_inode(fhp->fh_dentry);
--	err = fh_getattr(fhp, &stat);
--	if (err) {
--		/* Grab the times from inode anyway */
--		stat.mtime = inode->i_mtime;
--		stat.ctime = inode->i_ctime;
--		stat.size  = inode->i_size;
-+	if (!v4 || !inode->i_sb->s_export_op->fetch_iversion) {
-+		err = fh_getattr(fhp, &stat);
-+		if (err) {
-+			/* Grab the times from inode anyway */
-+			stat.mtime = inode->i_mtime;
-+			stat.ctime = inode->i_ctime;
-+			stat.size  = inode->i_size;
-+		}
-+		fhp->fh_pre_mtime = stat.mtime;
-+		fhp->fh_pre_ctime = stat.ctime;
-+		fhp->fh_pre_size  = stat.size;
- 	}
- 	if (v4)
- 		fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
- 
--	fhp->fh_pre_mtime = stat.mtime;
--	fhp->fh_pre_ctime = stat.ctime;
--	fhp->fh_pre_size  = stat.size;
- 	fhp->fh_pre_saved = true;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 56fd5f6d5c44..18c912930947 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2331,15 +2331,8 @@ static __be32 *encode_time_delta(__be32 *p, struct inode *inode)
+ static __be32 *encode_cinfo(__be32 *p, struct nfsd4_change_info *c)
+ {
+ 	*p++ = cpu_to_be32(c->atomic);
+-	if (c->change_supported) {
+-		p = xdr_encode_hyper(p, c->before_change);
+-		p = xdr_encode_hyper(p, c->after_change);
+-	} else {
+-		*p++ = cpu_to_be32(c->before_ctime_sec);
+-		*p++ = cpu_to_be32(c->before_ctime_nsec);
+-		*p++ = cpu_to_be32(c->after_ctime_sec);
+-		*p++ = cpu_to_be32(c->after_ctime_nsec);
+-	}
++	p = xdr_encode_hyper(p, c->before_change);
++	p = xdr_encode_hyper(p, c->after_change);
+ 	return p;
  }
  
-@@ -293,7 +295,9 @@ void fill_post_wcc(struct svc_fh *fhp)
- 	if (fhp->fh_post_saved)
- 		printk("nfsd: inode locked twice during operation.\n");
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 679d40af1bbb..9c2d942d055d 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -76,12 +76,7 @@ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
  
--	err = fh_getattr(fhp, &fhp->fh_post_attr);
+ struct nfsd4_change_info {
+ 	u32		atomic;
+-	bool		change_supported;
+-	u32		before_ctime_sec;
+-	u32		before_ctime_nsec;
+ 	u64		before_change;
+-	u32		after_ctime_sec;
+-	u32		after_ctime_nsec;
+ 	u64		after_change;
+ };
+ 
+@@ -768,15 +763,16 @@ set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
+ {
+ 	BUG_ON(!fhp->fh_pre_saved);
+ 	cinfo->atomic = (u32)fhp->fh_post_saved;
+-	cinfo->change_supported = IS_I_VERSION(d_inode(fhp->fh_dentry));
+-
+-	cinfo->before_change = fhp->fh_pre_change;
+-	cinfo->after_change = fhp->fh_post_change;
+-	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
+-	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
+-	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
+-	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+ 
++	if (IS_I_VERSION(d_inode(fhp->fh_dentry))) {
++		cinfo->before_change = fhp->fh_pre_change;
++		cinfo->after_change = fhp->fh_post_change;
++	} else {
++		cinfo->before_change =
++			time_to_chattr(&fhp->fh_pre_ctime);
++		cinfo->after_change =
++			time_to_chattr(&fhp->fh_post_attr.ctime);
++	}
+ }
+ 
+ 
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index 2917ef990d43..3bfebde5a1a6 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -328,6 +328,19 @@ inode_query_iversion(struct inode *inode)
+ 	return cur >> I_VERSION_QUERIED_SHIFT;
+ }
+ 
++/*
++ * For filesystems without any sort of change attribute, the best we can
++ * do is fake one up from the ctime:
++ */
++static inline u64 time_to_chattr(struct timespec64 *t)
++{
++	u64 chattr = t->tv_sec;
 +
-+	if (!v4 || !inode->i_sb->s_export_op->fetch_iversion)
-+		err = fh_getattr(fhp, &fhp->fh_post_attr);
- 	if (v4)
- 		fhp->fh_post_change =
- 			nfsd4_change_attribute(&fhp->fh_post_attr, inode);
++	chattr <<= 32;
++	chattr += t->tv_nsec;
++	return chattr;
++}
++
+ /**
+  * inode_eq_iversion_raw - check whether the raw i_version counter has changed
+  * @inode: inode to check
 -- 
 2.28.0
 
