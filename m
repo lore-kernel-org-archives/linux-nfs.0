@@ -7,24 +7,24 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A1C9C64E69
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D046C64E7A
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 343EE2408E
+	by mail.kernel.org (Postfix) with ESMTP id 5D60E22470
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728888AbgKTWjY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1728891AbgKTWjY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 20 Nov 2020 17:39:24 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52034 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52030 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728902AbgKTWjX (ORCPT
+        with ESMTP id S1728905AbgKTWjX (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 17:39:23 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 032B1C061A4A
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 14:39:22 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E33DC061A4C
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 14:39:23 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 6EB4B6E9B; Fri, 20 Nov 2020 17:39:22 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6EB4B6E9B
+        id 6D67E6E9F; Fri, 20 Nov 2020 17:39:22 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6D67E6E9F
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>
 Cc:     Daire Byrne <daire@dneg.com>,
@@ -32,9 +32,9 @@ Cc:     Daire Byrne <daire@dneg.com>,
         linux-cachefs <linux-cachefs@redhat.com>,
         linux-nfs <linux-nfs@vger.kernel.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 8/8] Revert "nfsd4: support change_attr_type attribute"
-Date:   Fri, 20 Nov 2020 17:39:20 -0500
-Message-Id: <1605911960-12516-8-git-send-email-bfields@redhat.com>
+Subject: [PATCH 4/8] nfsd4: don't query change attribute in v2/v3 case
+Date:   Fri, 20 Nov 2020 17:39:16 -0500
+Message-Id: <1605911960-12516-4-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1605911960-12516-1-git-send-email-bfields@redhat.com>
 References: <20201120223831.GB7705@fieldses.org>
@@ -45,85 +45,74 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-This reverts commit a85857633b04d57f4524cca0a2bfaf87b2543f9f.
+inode_query_iversion() has side effects, and there's no point calling it
+when we're not even going to use it.
 
-We're still factoring ctime into our change attribute even in the
-IS_I_VERSION case.  If someone sets the system time backwards, a client
-could see the change attribute go backwards.  Maybe we can just say
-"well, don't do that", but there's some question whether that's good
-enough, or whether we need a better guarantee.
-
-Also, the client still isn't actually using the attribute.
-
-While we're still figuring this out, let's just stop returning this
-attribute.
+We check whether we're currently processing a v4 request by checking
+fh_maxsize, which is arguably a little hacky; we could add a flag to
+svc_fh instead.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c    | 10 ----------
- fs/nfsd/nfsd.h       |  1 -
- include/linux/nfs4.h |  8 --------
- 3 files changed, 19 deletions(-)
+ fs/nfsd/nfs3xdr.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 182190684792..c33838caf8c6 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3183,16 +3183,6 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 			goto out;
- 	}
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 2277f83da250..2732b04d3878 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -259,11 +259,11 @@ void fill_pre_wcc(struct svc_fh *fhp)
+ {
+ 	struct inode    *inode;
+ 	struct kstat	stat;
++	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
+ 	__be32 err;
  
--	if (bmval2 & FATTR4_WORD2_CHANGE_ATTR_TYPE) {
--		p = xdr_reserve_space(xdr, 4);
--		if (!p)
--			goto out_resource;
--		if (IS_I_VERSION(d_inode(dentry))
--			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR);
--		else
--			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
--	}
+ 	if (fhp->fh_pre_saved)
+ 		return;
 -
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
- 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
- 		status = nfsd4_encode_security_label(xdr, rqstp, context,
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index cb742e17e04a..40cb40ac0a65 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -387,7 +387,6 @@ void		nfsd_lockd_shutdown(void);
+ 	inode = d_inode(fhp->fh_dentry);
+ 	err = fh_getattr(fhp, &stat);
+ 	if (err) {
+@@ -272,11 +272,12 @@ void fill_pre_wcc(struct svc_fh *fhp)
+ 		stat.ctime = inode->i_ctime;
+ 		stat.size  = inode->i_size;
+ 	}
++	if (v4)
++		fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
  
- #define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
--	FATTR4_WORD2_CHANGE_ATTR_TYPE | \
- 	FATTR4_WORD2_MODE_UMASK | \
- 	NFSD4_2_SECURITY_ATTRS | \
- 	FATTR4_WORD2_XATTR_SUPPORT)
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 9dc7eeac924f..5b4c67c91f56 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -385,13 +385,6 @@ enum lock_type4 {
- 	NFS4_WRITEW_LT = 4
- };
+ 	fhp->fh_pre_mtime = stat.mtime;
+ 	fhp->fh_pre_ctime = stat.ctime;
+ 	fhp->fh_pre_size  = stat.size;
+-	fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
+ 	fhp->fh_pre_saved = true;
+ }
  
--enum change_attr_type4 {
--	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR = 0,
--	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER = 1,
--	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS = 2,
--	NFS4_CHANGE_TYPE_IS_TIME_METADATA = 3,
--	NFS4_CHANGE_TYPE_IS_UNDEFINED = 4
--};
+@@ -285,18 +286,21 @@ void fill_pre_wcc(struct svc_fh *fhp)
+  */
+ void fill_post_wcc(struct svc_fh *fhp)
+ {
++	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
++	struct inode *inode = d_inode(fhp->fh_dentry);
+ 	__be32 err;
  
- /* Mandatory Attributes */
- #define FATTR4_WORD0_SUPPORTED_ATTRS    (1UL << 0)
-@@ -459,7 +452,6 @@ enum change_attr_type4 {
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- #define FATTR4_WORD2_CLONE_BLKSIZE	(1UL << 13)
--#define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
- #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
- #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
- #define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
+ 	if (fhp->fh_post_saved)
+ 		printk("nfsd: inode locked twice during operation.\n");
+ 
+ 	err = fh_getattr(fhp, &fhp->fh_post_attr);
+-	fhp->fh_post_change = nfsd4_change_attribute(&fhp->fh_post_attr,
+-						     d_inode(fhp->fh_dentry));
++	if (v4)
++		fhp->fh_post_change =
++			nfsd4_change_attribute(&fhp->fh_post_attr, inode);
+ 	if (err) {
+ 		fhp->fh_post_saved = false;
+ 		/* Grab the ctime anyway - set_change_info might use it */
+-		fhp->fh_post_attr.ctime = d_inode(fhp->fh_dentry)->i_ctime;
++		fhp->fh_post_attr.ctime = inode->i_ctime;
+ 	} else
+ 		fhp->fh_post_saved = true;
+ }
 -- 
 2.28.0
 
