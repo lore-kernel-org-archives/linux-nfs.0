@@ -7,68 +7,68 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 079DDC63777
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF9DEC64E69
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:34:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A84892223F
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:34:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5F8E922D0A
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:34:36 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OSinXrL9"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fXTgW6KV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731069AbgKTUeT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 15:34:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60658 "EHLO
+        id S1731375AbgKTUe0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 15:34:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60686 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731222AbgKTUeQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:34:16 -0500
-Received: from mail-qv1-xf44.google.com (mail-qv1-xf44.google.com [IPv6:2607:f8b0:4864:20::f44])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E9A52C0613CF
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:34:15 -0800 (PST)
-Received: by mail-qv1-xf44.google.com with SMTP id z17so5289348qvy.11
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:34:15 -0800 (PST)
+        with ESMTP id S1731207AbgKTUe0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:34:26 -0500
+Received: from mail-qt1-x842.google.com (mail-qt1-x842.google.com [IPv6:2607:f8b0:4864:20::842])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 01047C0613CF
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:34:26 -0800 (PST)
+Received: by mail-qt1-x842.google.com with SMTP id b16so8111704qtb.6
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:34:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=1SBh0PocqNOC2aNr3BzfT1K14SWz72rII+MBzjZbLgc=;
-        b=OSinXrL9v5VIsh1QB1RIwvPkkUtfbxizzxssQj/fW0MbVBpg80nKfbmmT6bQ8YnKML
-         jV5x2kHcgdQz5me5k4WR03Kvx35Y6gW7VTRYgK/jP0pJTmVF7J3dcQrUfxBl1NuNHEdh
-         aBKDe2KOuI3hJr0i61OSCq79W2v/05VihV8EH+y5rupomLZaYDdg08kqi70By06+jWQz
-         iFHEPlxCnmWg0U8sux7hmqzEt6dDv/58Gt93UQkBNPjXquH9jOUxDTJ7C8+3xYUs9EXl
-         MwsX4iSUqjUKySsj9jtI2fjAXvP14eiba/JDh7KvJDtR04PXyhgJnkOUAZpa0rHHBuu4
-         e9OQ==
+        bh=KZmzsQKEKT00RlpYJLgR749zMr7KPAOcy56jG6x7lwg=;
+        b=fXTgW6KVKeknarAkk7BsyMG0subZ6s31dNqitcD0nHbRUQTTKO6U8CC/aUOqYnOzjI
+         xyGnYML/82rK2SbwjFAz+V/NK6C55X5KGXn2kxDKrQ2Rt8q9K9ipSIS2G/aXFskgD95+
+         o937/Aq+OiRDlk7TRsNzuS7ELWiMcMQGddhDt4EUh3aNQmEA3+Xc5E8QOPXR6zPgd7FK
+         SHUNqGHFW0uMwCZ7YpFqvexL84IaoS20ygTOA8pDIQBscQZ4udGJ7pINc8wJQNXj2gsK
+         bA5zsdQY0VjRqS+HKWhmfYwUW6pwYuJAD5tu6fwz/XzYl8AHCIhhjcYqxLQA8zcGDTHX
+         +ClQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=1SBh0PocqNOC2aNr3BzfT1K14SWz72rII+MBzjZbLgc=;
-        b=HsNfn9TvIGEj7m/TtBKDUr0MPxqJD551z9t8bxcBSscUsHHxV7hnhfAdb5f2c2J+HK
-         l87D1SPyDsMv5v0AI4GoifZjJne9PDgHurmUCs1KZMIZfdzECUJjQ7iZ3eXdjDnccOcC
-         x0+q73z03ld6cs5XWyKpIx1xoEOC9JhqE4+mhAKiKSgCNnhs2uQp266zSyCHhUBwtOyJ
-         D1cOcaJ+boJLYiVJiskSJtmlQOSyujqFDQLZimBzVaaYAe4/oKLk66ck4MzuD9ZIsvHX
-         Yj2kknMlk79wU/VJ0L+gPhS7KF+1tfZAlv7gR22bv9OIfWH1r+BQWGUtKr0DJaRRRCG6
-         ug3w==
-X-Gm-Message-State: AOAM533VVwPRVbuzq20KvPHr/rG6Kg8ag0Zg9O1a5ekXxXpLRofJ3s7u
-        UAOF+9UK9RMaELDOsenY5gU0qBJ651c=
-X-Google-Smtp-Source: ABdhPJyb82nHAIXQDD1SYVABqAu2mMCxohmeYOyB8Er21HguOSJrx6FreGwwG/s6gXvY7HYxzFlq8A==
-X-Received: by 2002:a0c:a94b:: with SMTP id z11mr13773459qva.24.1605904454564;
-        Fri, 20 Nov 2020 12:34:14 -0800 (PST)
+        bh=KZmzsQKEKT00RlpYJLgR749zMr7KPAOcy56jG6x7lwg=;
+        b=b6qlLhIJCCgKKMS5WPkC8DejXS5HW214CwkFW7bvXeVwKlQbg7TpFZwUEADhUbk6Dt
+         j+Mbov/0BCHn1fzzFVog+0Ib0ysvHDHvT8mCX4a/4b6NgmD5v0nFX2KmxvGcd3fJ/QCN
+         mrLRaae/4y0s3SLSe4BDxLLMk6cluRA3NW6YJwqfFLfGSIjAED9CNDKTnwfIrEg7fQkr
+         T3IJwcDOYiZV0QdpLonZxdSfi+mITbx6PrpgudBMcmbNfKQpcsj//WJneK98S+3OmPLQ
+         nM/Jx6R6GMXS1qLi97n+3ySHSaRFB+wU+PQifmHZCxmtZ5yvKfHoWT4Y2yz7heVO/pPo
+         jV2g==
+X-Gm-Message-State: AOAM532mGINaGSltKQ49ltPkjqqTrTuyUVA+pKkPxVNesnIACtNYVV7H
+        N7+K/EDXZPPCHXiiywSjw1/0SiQvKRE=
+X-Google-Smtp-Source: ABdhPJyodKEN+QCq19ABOLG7LdKvkswzmzQE+icwEerfesPp+xJt9koGGxabWwLxcVJdc+Ru049p1g==
+X-Received: by 2002:ac8:3499:: with SMTP id w25mr17092230qtb.44.1605904464828;
+        Fri, 20 Nov 2020 12:34:24 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id h26sm2805197qkh.127.2020.11.20.12.34.13
+        by smtp.gmail.com with ESMTPSA id q20sm2712879qke.0.2020.11.20.12.34.23
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 20 Nov 2020 12:34:13 -0800 (PST)
+        Fri, 20 Nov 2020 12:34:24 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKYCKU029217
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:34:12 GMT
-Subject: [PATCH v2 005/118] NFSD: Replace the internals of the READ_BUF()
- macro
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKYNqC029223
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:34:23 GMT
+Subject: [PATCH v2 007/118] NFSD: Replace READ* macros in
+ nfsd4_decode_stateid()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 20 Nov 2020 15:34:12 -0500
-Message-ID: <160590445271.1340.9408337302317384948.stgit@klimt.1015granger.net>
+Date:   Fri, 20 Nov 2020 15:34:23 -0500
+Message-ID: <160590446314.1340.5000887327010395359.stgit@klimt.1015granger.net>
 In-Reply-To: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 References: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -79,402 +79,246 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Convert the READ_BUF macro in nfs4xdr.c from open code to instead
-use the new xdr_stream-style decoders already in use by the encode
-side (and by the in-kernel NFS client implementation). Once this
-conversion is done, each individual NFSv4 argument decoder can be
-independently cleaned up to replace these macros with C code.
+And also rename it to reflect the actual name of the stateid4 type
+defined in RFC 8881.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4proc.c         |    4 -
- fs/nfsd/nfs4xdr.c          |  181 ++++++--------------------------------------
- fs/nfsd/xdr4.h             |   10 --
- include/linux/sunrpc/xdr.h |    2 
- net/sunrpc/xdr.c           |   44 +++++++++++
- 5 files changed, 76 insertions(+), 165 deletions(-)
+ fs/nfsd/nfs4xdr.c |   61 +++++++++++++++++++++++++++--------------------------
+ 1 file changed, 31 insertions(+), 30 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9280740941db..dc5c9fb1888b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1023,8 +1023,8 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	write->wr_how_written = write->wr_stable_how;
- 
--	nvecs = svc_fill_write_vector(rqstp, write->wr_pagelist,
--				      &write->wr_head, write->wr_buflen);
-+	nvecs = svc_fill_write_vector(rqstp, write->wr_payload.pages,
-+				      write->wr_payload.head, write->wr_buflen);
- 	WARN_ON_ONCE(nvecs > ARRAY_SIZE(rqstp->rq_vec));
- 
- 	status = nfsd_vfs_write(rqstp, &cstate->current_fh, nf,
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 6c3d45f68b75..26265d649c39 100644
+index 5ef14c41fabe..027582d682ae 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -129,90 +129,13 @@ xdr_error:					\
- 	memcpy((x), p, nbytes);			\
- 	p += XDR_QUADLEN(nbytes);		\
- } while (0)
--
--/* READ_BUF, read_buf(): nbytes must be <= PAGE_SIZE */
--#define READ_BUF(nbytes)  do {			\
--	if (nbytes <= (u32)((char *)argp->end - (char *)argp->p)) {	\
--		p = argp->p;			\
--		argp->p += XDR_QUADLEN(nbytes);	\
--	} else if (!(p = read_buf(argp, nbytes))) { \
--		dprintk("NFSD: xdr error (%s:%d)\n", \
--				__FILE__, __LINE__); \
--		goto xdr_error;			\
--	}					\
--} while (0)
--
--static void next_decode_page(struct nfsd4_compoundargs *argp)
--{
--	argp->p = page_address(argp->pagelist[0]);
--	argp->pagelist++;
--	if (argp->pagelen < PAGE_SIZE) {
--		argp->end = argp->p + XDR_QUADLEN(argp->pagelen);
--		argp->pagelen = 0;
--	} else {
--		argp->end = argp->p + (PAGE_SIZE>>2);
--		argp->pagelen -= PAGE_SIZE;
--	}
--}
--
--static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
--{
--	/* We want more bytes than seem to be available.
--	 * Maybe we need a new page, maybe we have just run out
--	 */
--	unsigned int avail = (char *)argp->end - (char *)argp->p;
--	__be32 *p;
--
--	if (argp->pagelen == 0) {
--		struct kvec *vec = &argp->rqstp->rq_arg.tail[0];
--
--		if (!argp->tail) {
--			argp->tail = true;
--			avail = vec->iov_len;
--			argp->p = vec->iov_base;
--			argp->end = vec->iov_base + avail;
--		}
--
--		if (avail < nbytes)
--			return NULL;
--
--		p = argp->p;
--		argp->p += XDR_QUADLEN(nbytes);
--		return p;
--	}
--
--	if (avail + argp->pagelen < nbytes)
--		return NULL;
--	if (avail + PAGE_SIZE < nbytes) /* need more than a page !! */
--		return NULL;
--	/* ok, we can do it with the current plus the next page */
--	if (nbytes <= sizeof(argp->tmp))
--		p = argp->tmp;
--	else {
--		kfree(argp->tmpp);
--		p = argp->tmpp = kmalloc(nbytes, GFP_KERNEL);
--		if (!p)
--			return NULL;
--		
--	}
--	/*
--	 * The following memcpy is safe because read_buf is always
--	 * called with nbytes > avail, and the two cases above both
--	 * guarantee p points to at least nbytes bytes.
--	 */
--	memcpy(p, argp->p, avail);
--	next_decode_page(argp);
--	memcpy(((char*)p)+avail, argp->p, (nbytes - avail));
--	argp->p += XDR_QUADLEN(nbytes - avail);
--	return p;
--}
--
--static unsigned int compoundargs_bytes_left(struct nfsd4_compoundargs *argp)
--{
--	unsigned int this = (char *)argp->end - (char *)argp->p;
--
--	return this + argp->pagelen;
--}
-+#define READ_BUF(nbytes)			\
-+	do {					\
-+		p = xdr_inline_decode(argp->xdr,\
-+				      nbytes);	\
-+		if (!p)				\
-+			goto xdr_error;		\
-+	} while (0)
- 
- static int zero_clientid(clientid_t *clid)
- {
-@@ -259,44 +182,6 @@ svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
- 	return p;
- }
- 
--static __be32
--svcxdr_construct_vector(struct nfsd4_compoundargs *argp, struct kvec *head,
--			struct page ***pagelist, u32 buflen)
--{
--	int avail;
--	int len;
--	int pages;
--
--	/* Sorry .. no magic macros for this.. *
--	 * READ_BUF(write->wr_buflen);
--	 * SAVEMEM(write->wr_buf, write->wr_buflen);
--	 */
--	avail = (char *)argp->end - (char *)argp->p;
--	if (avail + argp->pagelen < buflen) {
--		dprintk("NFSD: xdr error (%s:%d)\n",
--			       __FILE__, __LINE__);
--		return nfserr_bad_xdr;
--	}
--	head->iov_base = argp->p;
--	head->iov_len = avail;
--	*pagelist = argp->pagelist;
--
--	len = XDR_QUADLEN(buflen) << 2;
--	if (len >= avail) {
--		len -= avail;
--
--		pages = len >> PAGE_SHIFT;
--		argp->pagelist += pages;
--		argp->pagelen -= pages * PAGE_SIZE;
--		len -= pages * PAGE_SIZE;
--
--		next_decode_page(argp);
--	}
--	argp->p += XDR_QUADLEN(len);
--
--	return 0;
--}
--
- /**
-  * savemem - duplicate a chunk of memory for later processing
-  * @argp: NFSv4 compound argument structure to be freed with
-@@ -396,7 +281,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		READ_BUF(4); len += 4;
- 		nace = be32_to_cpup(p++);
- 
--		if (nace > compoundargs_bytes_left(argp)/20)
-+		if (nace > xdr_stream_remaining(argp->xdr) / sizeof(struct nfs4_ace))
- 			/*
- 			 * Even with 4-byte names there wouldn't be
- 			 * space for that many aces; something fishy is
-@@ -927,7 +812,7 @@ static __be32 nfsd4_decode_share_deny(struct nfsd4_compoundargs *argp, u32 *x)
- 
- static __be32 nfsd4_decode_opaque(struct nfsd4_compoundargs *argp, struct xdr_netobj *o)
- {
--	__be32 *p;
-+	DECODE_HEAD;
- 
- 	READ_BUF(4);
- 	o->len = be32_to_cpup(p++);
-@@ -937,9 +822,8 @@ static __be32 nfsd4_decode_opaque(struct nfsd4_compoundargs *argp, struct xdr_ne
- 
- 	READ_BUF(o->len);
- 	SAVEMEM(o->data, o->len);
--	return nfs_ok;
--xdr_error:
--	return nfserr_bad_xdr;
-+
-+	DECODE_TAIL;
+@@ -426,15 +426,16 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
  }
  
  static __be32
-@@ -1317,10 +1201,8 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- 		goto xdr_error;
- 	write->wr_buflen = be32_to_cpup(p++);
+-nfsd4_decode_stateid(struct nfsd4_compoundargs *argp, stateid_t *sid)
++nfsd4_decode_stateid4(struct nfsd4_compoundargs *argp, stateid_t *sid)
+ {
+-	DECODE_HEAD;
++	__be32 *p;
  
--	status = svcxdr_construct_vector(argp, &write->wr_head,
--					 &write->wr_pagelist, write->wr_buflen);
--	if (status)
--		return status;
-+	if (!xdr_stream_subsegment(argp->xdr, &write->wr_payload, write->wr_buflen))
-+		goto xdr_error;
+-	READ_BUF(sizeof(stateid_t));
++	p = xdr_inline_decode(argp->xdr, NFS4_STATEID_SIZE);
++	if (!p)
++		return nfserr_bad_xdr;
+ 	sid->si_generation = be32_to_cpup(p++);
+-	COPYMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
+-
+-	DECODE_TAIL;
++	memcpy(&sid->si_opaque, p, sizeof(sid->si_opaque));
++	return nfs_ok;
+ }
+ 
+ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_cb_sec *cbs)
+@@ -561,7 +562,7 @@ nfsd4_decode_close(struct nfsd4_compoundargs *argp, struct nfsd4_close *close)
+ 
+ 	READ_BUF(4);
+ 	close->cl_seqid = be32_to_cpup(p++);
+-	return nfsd4_decode_stateid(argp, &close->cl_stateid);
++	return nfsd4_decode_stateid4(argp, &close->cl_stateid);
  
  	DECODE_TAIL;
  }
-@@ -1889,13 +1771,14 @@ nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
-  */
- 
- /*
-- * Decode data into buffer. Uses head and pages constructed by
-- * svcxdr_construct_vector.
-+ * Decode data into buffer.
-  */
- static __be32
--nfsd4_vbuf_from_vector(struct nfsd4_compoundargs *argp, struct kvec *head,
--		       struct page **pages, char **bufp, u32 buflen)
-+nfsd4_vbuf_from_vector(struct nfsd4_compoundargs *argp, struct xdr_buf *xdr,
-+		       char **bufp, u32 buflen)
+@@ -627,7 +628,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+ static inline __be32
+ nfsd4_decode_delegreturn(struct nfsd4_compoundargs *argp, struct nfsd4_delegreturn *dr)
  {
-+	struct page **pages = xdr->pages;
-+	struct kvec *head = xdr->head;
- 	char *tmp, *dp;
- 	u32 len;
+-	return nfsd4_decode_stateid(argp, &dr->dr_stateid);
++	return nfsd4_decode_stateid4(argp, &dr->dr_stateid);
+ }
  
-@@ -2010,8 +1893,6 @@ nfsd4_decode_setxattr(struct nfsd4_compoundargs *argp,
+ static inline __be32
+@@ -671,7 +672,7 @@ nfsd4_decode_lock(struct nfsd4_compoundargs *argp, struct nfsd4_lock *lock)
+ 	if (lock->lk_is_new) {
+ 		READ_BUF(4);
+ 		lock->lk_new_open_seqid = be32_to_cpup(p++);
+-		status = nfsd4_decode_stateid(argp, &lock->lk_new_open_stateid);
++		status = nfsd4_decode_stateid4(argp, &lock->lk_new_open_stateid);
+ 		if (status)
+ 			return status;
+ 		READ_BUF(8 + sizeof(clientid_t));
+@@ -681,7 +682,7 @@ nfsd4_decode_lock(struct nfsd4_compoundargs *argp, struct nfsd4_lock *lock)
+ 		READ_BUF(lock->lk_new_owner.len);
+ 		READMEM(lock->lk_new_owner.data, lock->lk_new_owner.len);
+ 	} else {
+-		status = nfsd4_decode_stateid(argp, &lock->lk_old_lock_stateid);
++		status = nfsd4_decode_stateid4(argp, &lock->lk_old_lock_stateid);
+ 		if (status)
+ 			return status;
+ 		READ_BUF(4);
+@@ -720,7 +721,7 @@ nfsd4_decode_locku(struct nfsd4_compoundargs *argp, struct nfsd4_locku *locku)
+ 	if ((locku->lu_type < NFS4_READ_LT) || (locku->lu_type > NFS4_WRITEW_LT))
+ 		goto xdr_error;
+ 	locku->lu_seqid = be32_to_cpup(p++);
+-	status = nfsd4_decode_stateid(argp, &locku->lu_stateid);
++	status = nfsd4_decode_stateid4(argp, &locku->lu_stateid);
+ 	if (status)
+ 		return status;
+ 	READ_BUF(16);
+@@ -913,7 +914,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 		open->op_delegate_type = be32_to_cpup(p++);
+ 		break;
+ 	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+-		status = nfsd4_decode_stateid(argp, &open->op_delegate_stateid);
++		status = nfsd4_decode_stateid4(argp, &open->op_delegate_stateid);
+ 		if (status)
+ 			return status;
+ 		READ_BUF(4);
+@@ -932,7 +933,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 	case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
+ 		if (argp->minorversion < 1)
+ 			goto xdr_error;
+-		status = nfsd4_decode_stateid(argp, &open->op_delegate_stateid);
++		status = nfsd4_decode_stateid4(argp, &open->op_delegate_stateid);
+ 		if (status)
+ 			return status;
+ 		break;
+@@ -951,7 +952,7 @@ nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_con
+ 	if (argp->minorversion >= 1)
+ 		return nfserr_notsupp;
+ 
+-	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
++	status = nfsd4_decode_stateid4(argp, &open_conf->oc_req_stateid);
+ 	if (status)
+ 		return status;
+ 	READ_BUF(4);
+@@ -965,7 +966,7 @@ nfsd4_decode_open_downgrade(struct nfsd4_compoundargs *argp, struct nfsd4_open_d
  {
  	DECODE_HEAD;
- 	u32 flags, maxcount, size;
--	struct kvec head;
--	struct page **pagelist;
- 
+ 		    
+-	status = nfsd4_decode_stateid(argp, &open_down->od_stateid);
++	status = nfsd4_decode_stateid4(argp, &open_down->od_stateid);
+ 	if (status)
+ 		return status;
  	READ_BUF(4);
- 	flags = be32_to_cpup(p++);
-@@ -2034,12 +1915,12 @@ nfsd4_decode_setxattr(struct nfsd4_compoundargs *argp,
- 
- 	setxattr->setxa_len = size;
- 	if (size > 0) {
--		status = svcxdr_construct_vector(argp, &head, &pagelist, size);
--		if (status)
--			return status;
-+		struct xdr_buf payload;
- 
--		status = nfsd4_vbuf_from_vector(argp, &head, pagelist,
--		    &setxattr->setxa_buf, size);
-+		if (!xdr_stream_subsegment(argp->xdr, &payload, size))
-+			goto xdr_error;
-+		status = nfsd4_vbuf_from_vector(argp, &payload,
-+						&setxattr->setxa_buf, size);
- 	}
- 
- 	DECODE_TAIL;
-@@ -5279,8 +5160,6 @@ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
- 		kfree(args->ops);
- 		args->ops = args->iops;
- 	}
--	kfree(args->tmpp);
--	args->tmpp = NULL;
- 	while (args->to_free) {
- 		struct svcxdr_tmpbuf *tb = args->to_free;
- 		args->to_free = tb->next;
-@@ -5293,19 +5172,11 @@ nfs4svc_decode_compoundargs(struct svc_rqst *rqstp, __be32 *p)
+@@ -1008,7 +1009,7 @@ nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
  {
- 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+ 	DECODE_HEAD;
  
--	if (rqstp->rq_arg.head[0].iov_len % 4) {
--		/* client is nuts */
--		dprintk("%s: compound not properly padded! (peeraddr=%pISc xid=0x%x)",
--			__func__, svc_addr(rqstp), be32_to_cpu(rqstp->rq_xid));
--		return 0;
--	}
--	args->p = p;
--	args->end = rqstp->rq_arg.head[0].iov_base + rqstp->rq_arg.head[0].iov_len;
--	args->pagelist = rqstp->rq_arg.pages;
--	args->pagelen = rqstp->rq_arg.page_len;
--	args->tail = false;
-+	/* svcxdr_tmp_alloc */
- 	args->tmpp = NULL;
- 	args->to_free = NULL;
-+
-+	args->xdr = &rqstp->rq_xdr_stream;
- 	args->ops = args->iops;
- 	args->rqstp = rqstp;
+-	status = nfsd4_decode_stateid(argp, &read->rd_stateid);
++	status = nfsd4_decode_stateid4(argp, &read->rd_stateid);
+ 	if (status)
+ 		return status;
+ 	READ_BUF(12);
+@@ -1116,7 +1117,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
+ {
+ 	__be32 status;
  
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 37f89ad5e992..0eb13bd603ea 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -419,8 +419,7 @@ struct nfsd4_write {
- 	u64		wr_offset;          /* request */
- 	u32		wr_stable_how;      /* request */
- 	u32		wr_buflen;          /* request */
--	struct kvec	wr_head;
--	struct page **	wr_pagelist;        /* request */
-+	struct xdr_buf	wr_payload;         /* request */
+-	status = nfsd4_decode_stateid(argp, &setattr->sa_stateid);
++	status = nfsd4_decode_stateid4(argp, &setattr->sa_stateid);
+ 	if (status)
+ 		return status;
+ 	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
+@@ -1193,7 +1194,7 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+ {
+ 	DECODE_HEAD;
  
- 	u32		wr_bytes_written;   /* response */
- 	u32		wr_how_written;     /* response */
-@@ -696,15 +695,10 @@ struct svcxdr_tmpbuf {
+-	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
++	status = nfsd4_decode_stateid4(argp, &write->wr_stateid);
+ 	if (status)
+ 		return status;
+ 	READ_BUF(16);
+@@ -1438,7 +1439,7 @@ nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_sta
+ 		INIT_LIST_HEAD(&stateid->ts_id_list);
+ 		list_add_tail(&stateid->ts_id_list, &test_stateid->ts_stateid_list);
  
- struct nfsd4_compoundargs {
- 	/* scratch variables for XDR decode */
--	__be32 *			p;
--	__be32 *			end;
--	struct page **			pagelist;
--	int				pagelen;
--	bool				tail;
- 	__be32				tmp[8];
- 	__be32 *			tmpp;
-+	struct xdr_stream		*xdr;
- 	struct svcxdr_tmpbuf		*to_free;
--
- 	struct svc_rqst			*rqstp;
+-		status = nfsd4_decode_stateid(argp, &stateid->ts_id_stateid);
++		status = nfsd4_decode_stateid4(argp, &stateid->ts_id_stateid);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -1514,7 +1515,7 @@ nfsd4_decode_layoutget(struct nfsd4_compoundargs *argp,
+ 	p = xdr_decode_hyper(p, &lgp->lg_seg.length);
+ 	p = xdr_decode_hyper(p, &lgp->lg_minlength);
  
- 	u32				taglen;
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index abbb032de4e8..8f458addfcf0 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -259,6 +259,8 @@ extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
- extern uint64_t xdr_align_data(struct xdr_stream *, uint64_t, uint32_t);
- extern uint64_t xdr_expand_hole(struct xdr_stream *, uint64_t, uint64_t);
-+extern bool xdr_stream_subsegment(struct xdr_stream *xdr, struct xdr_buf *subbuf,
-+				  unsigned int len);
+-	status = nfsd4_decode_stateid(argp, &lgp->lg_sid);
++	status = nfsd4_decode_stateid4(argp, &lgp->lg_sid);
+ 	if (status)
+ 		return status;
  
- /**
-  * xdr_set_scratch_buffer - Attach a scratch buffer for decoding data.
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index c607744b3ea8..272c9d566e6a 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1407,6 +1407,50 @@ int xdr_buf_subsegment(const struct xdr_buf *buf, struct xdr_buf *subbuf,
+@@ -1536,7 +1537,7 @@ nfsd4_decode_layoutcommit(struct nfsd4_compoundargs *argp,
+ 	p = xdr_decode_hyper(p, &lcp->lc_seg.length);
+ 	lcp->lc_reclaim = be32_to_cpup(p++);
+ 
+-	status = nfsd4_decode_stateid(argp, &lcp->lc_sid);
++	status = nfsd4_decode_stateid4(argp, &lcp->lc_sid);
+ 	if (status)
+ 		return status;
+ 
+@@ -1588,7 +1589,7 @@ nfsd4_decode_layoutreturn(struct nfsd4_compoundargs *argp,
+ 		p = xdr_decode_hyper(p, &lrp->lr_seg.offset);
+ 		p = xdr_decode_hyper(p, &lrp->lr_seg.length);
+ 
+-		status = nfsd4_decode_stateid(argp, &lrp->lr_sid);
++		status = nfsd4_decode_stateid4(argp, &lrp->lr_sid);
+ 		if (status)
+ 			return status;
+ 
+@@ -1613,7 +1614,7 @@ nfsd4_decode_fallocate(struct nfsd4_compoundargs *argp,
+ {
+ 	DECODE_HEAD;
+ 
+-	status = nfsd4_decode_stateid(argp, &fallocate->falloc_stateid);
++	status = nfsd4_decode_stateid4(argp, &fallocate->falloc_stateid);
+ 	if (status)
+ 		return status;
+ 
+@@ -1629,10 +1630,10 @@ nfsd4_decode_clone(struct nfsd4_compoundargs *argp, struct nfsd4_clone *clone)
+ {
+ 	DECODE_HEAD;
+ 
+-	status = nfsd4_decode_stateid(argp, &clone->cl_src_stateid);
++	status = nfsd4_decode_stateid4(argp, &clone->cl_src_stateid);
+ 	if (status)
+ 		return status;
+-	status = nfsd4_decode_stateid(argp, &clone->cl_dst_stateid);
++	status = nfsd4_decode_stateid4(argp, &clone->cl_dst_stateid);
+ 	if (status)
+ 		return status;
+ 
+@@ -1685,10 +1686,10 @@ nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
+ 	struct nl4_server *ns_dummy;
+ 	int i, count;
+ 
+-	status = nfsd4_decode_stateid(argp, &copy->cp_src_stateid);
++	status = nfsd4_decode_stateid4(argp, &copy->cp_src_stateid);
+ 	if (status)
+ 		return status;
+-	status = nfsd4_decode_stateid(argp, &copy->cp_dst_stateid);
++	status = nfsd4_decode_stateid4(argp, &copy->cp_dst_stateid);
+ 	if (status)
+ 		return status;
+ 
+@@ -1732,7 +1733,7 @@ static __be32
+ nfsd4_decode_offload_status(struct nfsd4_compoundargs *argp,
+ 			    struct nfsd4_offload_status *os)
+ {
+-	return nfsd4_decode_stateid(argp, &os->stateid);
++	return nfsd4_decode_stateid4(argp, &os->stateid);
  }
- EXPORT_SYMBOL_GPL(xdr_buf_subsegment);
  
-+/**
-+ * xdr_stream_subsegment - set @subbuf to a portion of @xdr
-+ * @xdr: an xdr_stream set up for decoding
-+ * @subbuf: the result buffer
-+ * @nbytes: length of @xdr to extract, in bytes
-+ *
-+ * Sets up @subbuf to represent a portion of @xdr. The portion
-+ * starts at the current offset in @xdr, and extends for a length
-+ * of @nbytes. If this is successful, @xdr is advanced to the next
-+ * position following that portion.
-+ *
-+ * Return values:
-+ *   %true: @subbuf has been initialized, and @xdr has been advanced.
-+ *   %false: a bounds error occurred; @xdr is unchanged.
-+ */
-+bool xdr_stream_subsegment(struct xdr_stream *xdr, struct xdr_buf *subbuf,
-+			   unsigned int nbytes)
-+{
-+	unsigned int len, remaining, offset;
-+
-+	if (xdr_buf_subsegment(xdr->buf, subbuf, xdr_stream_pos(xdr), nbytes))
-+		return false;
-+
-+	if (subbuf->head[0].iov_len)
-+		__xdr_inline_decode(xdr, subbuf->head[0].iov_len);
-+
-+	remaining = subbuf->page_len;
-+	offset = subbuf->page_base;
-+	while (remaining) {
-+		len = min_t(unsigned int, remaining, PAGE_SIZE);
-+		len -= offset;
-+
-+		if (xdr->p == xdr->end)
-+			xdr_set_next_buffer(xdr);
-+		__xdr_inline_decode(xdr, len);
-+
-+		remaining -= len;
-+		offset = 0;
-+	}
-+
-+	return true;
-+}
-+EXPORT_SYMBOL_GPL(xdr_stream_subsegment);
-+
- /**
-  * xdr_buf_trim - lop at most "len" bytes off the end of "buf"
-  * @buf: buf to be trimmed
+ static __be32
+@@ -1741,7 +1742,7 @@ nfsd4_decode_copy_notify(struct nfsd4_compoundargs *argp,
+ {
+ 	__be32 status;
+ 
+-	status = nfsd4_decode_stateid(argp, &cn->cpn_src_stateid);
++	status = nfsd4_decode_stateid4(argp, &cn->cpn_src_stateid);
+ 	if (status)
+ 		return status;
+ 	return nfsd4_decode_nl4_server(argp, &cn->cpn_dst);
+@@ -1752,7 +1753,7 @@ nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+ {
+ 	DECODE_HEAD;
+ 
+-	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
++	status = nfsd4_decode_stateid4(argp, &seek->seek_stateid);
+ 	if (status)
+ 		return status;
+ 
 
 
