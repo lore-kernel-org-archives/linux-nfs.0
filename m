@@ -7,24 +7,24 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 500D8C6379F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A1C9C64E69
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0AE7D2242A
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 343EE2408E
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728885AbgKTWjY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1728888AbgKTWjY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 20 Nov 2020 17:39:24 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52028 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52034 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728886AbgKTWjX (ORCPT
+        with ESMTP id S1728902AbgKTWjX (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 17:39:23 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88A52C061A47
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 032B1C061A4A
         for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 14:39:22 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id F083941A3; Fri, 20 Nov 2020 17:39:21 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org F083941A3
+        id 6EB4B6E9B; Fri, 20 Nov 2020 17:39:22 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6EB4B6E9B
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>
 Cc:     Daire Byrne <daire@dneg.com>,
@@ -32,9 +32,9 @@ Cc:     Daire Byrne <daire@dneg.com>,
         linux-cachefs <linux-cachefs@redhat.com>,
         linux-nfs <linux-nfs@vger.kernel.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/8] nfsd: simplify nfsd4_change_info
-Date:   Fri, 20 Nov 2020 17:39:14 -0500
-Message-Id: <1605911960-12516-2-git-send-email-bfields@redhat.com>
+Subject: [PATCH 8/8] Revert "nfsd4: support change_attr_type attribute"
+Date:   Fri, 20 Nov 2020 17:39:20 -0500
+Message-Id: <1605911960-12516-8-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1605911960-12516-1-git-send-email-bfields@redhat.com>
 References: <20201120223831.GB7705@fieldses.org>
@@ -45,106 +45,85 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-It doesn't make sense to carry all these extra fields around.  Just
-make everything into change attribute from the start.
+This reverts commit a85857633b04d57f4524cca0a2bfaf87b2543f9f.
 
-This is just cleanup, there should be no change in behavior.
+We're still factoring ctime into our change attribute even in the
+IS_I_VERSION case.  If someone sets the system time backwards, a client
+could see the change attribute go backwards.  Maybe we can just say
+"well, don't do that", but there's some question whether that's good
+enough, or whether we need a better guarantee.
+
+Also, the client still isn't actually using the attribute.
+
+While we're still figuring this out, let's just stop returning this
+attribute.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c        | 11 ++---------
- fs/nfsd/xdr4.h           | 22 +++++++++-------------
- include/linux/iversion.h | 13 +++++++++++++
- 3 files changed, 24 insertions(+), 22 deletions(-)
+ fs/nfsd/nfs4xdr.c    | 10 ----------
+ fs/nfsd/nfsd.h       |  1 -
+ include/linux/nfs4.h |  8 --------
+ 3 files changed, 19 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 56fd5f6d5c44..18c912930947 100644
+index 182190684792..c33838caf8c6 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -2331,15 +2331,8 @@ static __be32 *encode_time_delta(__be32 *p, struct inode *inode)
- static __be32 *encode_cinfo(__be32 *p, struct nfsd4_change_info *c)
- {
- 	*p++ = cpu_to_be32(c->atomic);
--	if (c->change_supported) {
--		p = xdr_encode_hyper(p, c->before_change);
--		p = xdr_encode_hyper(p, c->after_change);
--	} else {
--		*p++ = cpu_to_be32(c->before_ctime_sec);
--		*p++ = cpu_to_be32(c->before_ctime_nsec);
--		*p++ = cpu_to_be32(c->after_ctime_sec);
--		*p++ = cpu_to_be32(c->after_ctime_nsec);
+@@ -3183,16 +3183,6 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 
+-	if (bmval2 & FATTR4_WORD2_CHANGE_ATTR_TYPE) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		if (IS_I_VERSION(d_inode(dentry))
+-			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR);
+-		else
+-			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
 -	}
-+	p = xdr_encode_hyper(p, c->before_change);
-+	p = xdr_encode_hyper(p, c->after_change);
- 	return p;
- }
+-
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+ 		status = nfsd4_encode_security_label(xdr, rqstp, context,
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index cb742e17e04a..40cb40ac0a65 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -387,7 +387,6 @@ void		nfsd_lockd_shutdown(void);
  
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 679d40af1bbb..9c2d942d055d 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -76,12 +76,7 @@ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
- 
- struct nfsd4_change_info {
- 	u32		atomic;
--	bool		change_supported;
--	u32		before_ctime_sec;
--	u32		before_ctime_nsec;
- 	u64		before_change;
--	u32		after_ctime_sec;
--	u32		after_ctime_nsec;
- 	u64		after_change;
+ #define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
+ 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
+-	FATTR4_WORD2_CHANGE_ATTR_TYPE | \
+ 	FATTR4_WORD2_MODE_UMASK | \
+ 	NFSD4_2_SECURITY_ATTRS | \
+ 	FATTR4_WORD2_XATTR_SUPPORT)
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 9dc7eeac924f..5b4c67c91f56 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -385,13 +385,6 @@ enum lock_type4 {
+ 	NFS4_WRITEW_LT = 4
  };
  
-@@ -768,15 +763,16 @@ set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
- {
- 	BUG_ON(!fhp->fh_pre_saved);
- 	cinfo->atomic = (u32)fhp->fh_post_saved;
--	cinfo->change_supported = IS_I_VERSION(d_inode(fhp->fh_dentry));
--
--	cinfo->before_change = fhp->fh_pre_change;
--	cinfo->after_change = fhp->fh_post_change;
--	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
--	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
--	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
--	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+-enum change_attr_type4 {
+-	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR = 0,
+-	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER = 1,
+-	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS = 2,
+-	NFS4_CHANGE_TYPE_IS_TIME_METADATA = 3,
+-	NFS4_CHANGE_TYPE_IS_UNDEFINED = 4
+-};
  
-+	if (IS_I_VERSION(d_inode(fhp->fh_dentry))) {
-+		cinfo->before_change = fhp->fh_pre_change;
-+		cinfo->after_change = fhp->fh_post_change;
-+	} else {
-+		cinfo->before_change =
-+			time_to_chattr(&fhp->fh_pre_ctime);
-+		cinfo->after_change =
-+			time_to_chattr(&fhp->fh_post_attr.ctime);
-+	}
- }
- 
- 
-diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-index 2917ef990d43..3bfebde5a1a6 100644
---- a/include/linux/iversion.h
-+++ b/include/linux/iversion.h
-@@ -328,6 +328,19 @@ inode_query_iversion(struct inode *inode)
- 	return cur >> I_VERSION_QUERIED_SHIFT;
- }
- 
-+/*
-+ * For filesystems without any sort of change attribute, the best we can
-+ * do is fake one up from the ctime:
-+ */
-+static inline u64 time_to_chattr(struct timespec64 *t)
-+{
-+	u64 chattr = t->tv_sec;
-+
-+	chattr <<= 32;
-+	chattr += t->tv_nsec;
-+	return chattr;
-+}
-+
- /**
-  * inode_eq_iversion_raw - check whether the raw i_version counter has changed
-  * @inode: inode to check
+ /* Mandatory Attributes */
+ #define FATTR4_WORD0_SUPPORTED_ATTRS    (1UL << 0)
+@@ -459,7 +452,6 @@ enum change_attr_type4 {
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+ #define FATTR4_WORD2_CLONE_BLKSIZE	(1UL << 13)
+-#define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
+ #define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
 -- 
 2.28.0
 
