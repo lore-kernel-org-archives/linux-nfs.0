@@ -7,68 +7,68 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5418EC64E69
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:37:28 +0000 (UTC)
-Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EAD8D221EB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4218CC63798
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:37:27 +0000 (UTC)
+Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
+	by mail.kernel.org (Postfix) with ESMTP id E0CB72223F
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 20:37:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jboGwWzz"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OFB7lYBV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731332AbgKTUh1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 15:37:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32988 "EHLO
+        id S1731074AbgKTUhM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 15:37:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32938 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731284AbgKTUh1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:37:27 -0500
-Received: from mail-qt1-x844.google.com (mail-qt1-x844.google.com [IPv6:2607:f8b0:4864:20::844])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F02B1C0613CF
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:37:26 -0800 (PST)
-Received: by mail-qt1-x844.google.com with SMTP id e10so652998qte.4
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:37:26 -0800 (PST)
+        with ESMTP id S1729245AbgKTUhM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 15:37:12 -0500
+Received: from mail-qv1-xf43.google.com (mail-qv1-xf43.google.com [IPv6:2607:f8b0:4864:20::f43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B45F0C0613CF
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:37:10 -0800 (PST)
+Received: by mail-qv1-xf43.google.com with SMTP id q7so5286965qvt.12
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 12:37:10 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=WtXGxSYABNe5RS+FSzALJn3Qx1xwkenkkx4T2G1fPAI=;
-        b=jboGwWzz33IQuh71CyjLEz01+DVYF20YDhq7ac3WgU23SaYyCpM7dxgBFekTWKUdN5
-         +oWlfAYFnyWX3E3E5Pc0u3acBhQ2lzlwTEDDCHJiWnhCH3SgpT+wox2MWnplAWimKDvR
-         Fi6xreoNcHJNWnrzIvR6T86X8bYLTDy8ftkao/eEcICYPKxLdNh/XyN9M/UCnMM3G/KQ
-         jHgkZOrRgL7QSNtwpurz+B0egQRMq/I9w9SErh6i5wHIaanoEhgdpZSsCvm6xaUimruP
-         iXmZOuHpLVUqQTl+VYoLUVO7oUdecrbq3ywbUkibjCdXW23wiwSUxsNBZRB2ScdoRzna
-         RY3Q==
+        bh=mZ2D2E5bsx6w6oiDBSBCBu9VySnYX5U7grH9GcNeQzc=;
+        b=OFB7lYBV9owt+oqIqjH1jYY0Hsy/bRkudyKvy35yAWEe+Rje4K62R83U8Lcqjc85H6
+         LfVGK5XD+zjlXcXF/tzaTCSLAn/41X3ueFKUWSmIohmzgjFj4MtsAyuHbue2EBW+yKN7
+         EDd/x9oC/yHLoCdHNnsS6mvKIrwSTKu5YpYyGihbomUNgZ4L46ETcc6YPDrmmilhebvW
+         OFKs4ZeJJDyWt1Yy4ZD4sN5FMkG0VdGjYYDEHY4dB87bAECQGw27vw3/Gt7sCbnxIPde
+         CxocPDJp7+TQSU+HKGQDyXew3b/KOB+m8WBrGBIM1rZPX7ldLkOcDBOiuqE7DCYM1y/+
+         q2Cg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=WtXGxSYABNe5RS+FSzALJn3Qx1xwkenkkx4T2G1fPAI=;
-        b=DJ6+GDAEIc0dAT8AWf3ZyAcIsXJrv2uXPpNNg9hI4X4BeEsSF673r8B4xGy3KSkoZe
-         hbWWvxAmXtMFkUSCVNl/rhta8RDVH1p1iLZJDqFWDcPNfSr59JsHNDVaG3nQJLFoLxR3
-         8NYd11nLPj1uWhH4p3kkGKBBN72LxbBTiBQYeA01XI3bQEypY6ZZWzOsjl95sGEIGpZc
-         vVCBCAdNfnbMVYWkhOniYiO+uGupLtZLfaHsVs5F1MtwwRpM4D8UiufEN8z0CALMuhI3
-         gNKnSLsfJBRT7E69K3JFTMJn35qoVyvdoSok8LaZCnjv6kBWwAjs68enzSdQobrGSoEK
-         zq5A==
-X-Gm-Message-State: AOAM531d4/ox6AZPBSR/C/OLfpk7Tk42hylS4qdMEUdDiHFZVyJ/VG0d
-        aKgIYTruTjr2u8LT5PFxJhMLocuI3a4=
-X-Google-Smtp-Source: ABdhPJzcr1hFqm2RON9lMQ2TuoRnIkyf29ozNl0fduSTc8FTgqXaiYm/lRRgSOQzyUNQMF3ZJN4cPw==
-X-Received: by 2002:a05:622a:d4:: with SMTP id p20mr17827368qtw.172.1605904645939;
-        Fri, 20 Nov 2020 12:37:25 -0800 (PST)
+        bh=mZ2D2E5bsx6w6oiDBSBCBu9VySnYX5U7grH9GcNeQzc=;
+        b=ZS+CZdKOVB+M7aIKXUJap75tU/isi0hLWqenPgkTprMYZRhYSiO8Hl4rAaVeIozw+P
+         JjSJqehHKMxAQMDJXGAgiof9HbmIuPLCcIZiM7lQVAtDx/8JzFGbtszycLg05lDDCc4Q
+         yw0JDqXLtaiHm2Pw5NOmE5UgZKJO+1v2FlBjR3UhSQ5M1mPJje2+BSPqvCoWOm76vmUX
+         frJZ03XsfU5Z8yvuZ88Ns34RkyNN/iFuBUiZxrW4mjuBWaFHX+UtwzERGQfmuB3dZl8d
+         Su+vuIrb6K6QBuvSDTW9tkukN3PwfkXSYqzB+w3pojtBslONeDSgDMoYYU0vCJkUgloj
+         2t2A==
+X-Gm-Message-State: AOAM531qmRFm9WwcL1pCiZHcD/L9Yeixfi61QoDPHyeJ2F+ShPge396o
+        MLpsqTxB0+CTkcu7pmpF8jbfTzX+63w=
+X-Google-Smtp-Source: ABdhPJwxAq29EwCDSB9m21d53iYUIVFZXvAvyO0DvSZ6k6fMCZWCpbr1CYsazvIHoNIE4HD51zk9/w==
+X-Received: by 2002:a0c:a544:: with SMTP id y62mr18676854qvy.11.1605904629671;
+        Fri, 20 Nov 2020 12:37:09 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id 7sm2838526qko.106.2020.11.20.12.37.24
+        by smtp.gmail.com with ESMTPSA id q20sm2718399qke.0.2020.11.20.12.37.08
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 20 Nov 2020 12:37:25 -0800 (PST)
+        Fri, 20 Nov 2020 12:37:09 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKbO6R029325
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:37:24 GMT
-Subject: [PATCH v2 041/118] NFSD: Replace READ* macros in
- nfsd4_decode_readdir()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AKKb7Ml029316
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 20:37:07 GMT
+Subject: [PATCH v2 038/118] NFSD: Replace READ* macros in
+ nfsd4_decode_open_downgrade()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 20 Nov 2020 15:37:24 -0500
-Message-ID: <160590464406.1340.17161947753688573465.stgit@klimt.1015granger.net>
+Date:   Fri, 20 Nov 2020 15:37:07 -0500
+Message-ID: <160590462795.1340.9636735539087512954.stgit@klimt.1015granger.net>
 In-Reply-To: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 References: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -81,42 +81,37 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4xdr.c |   13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index ecc922cd5d29..3a7b615aef62 100644
+index ad3f392de382..fdc6ba702132 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -1180,17 +1180,22 @@ nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
+@@ -1119,21 +1119,18 @@ nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_con
  static __be32
- nfsd4_decode_readdir(struct nfsd4_compoundargs *argp, struct nfsd4_readdir *readdir)
+ nfsd4_decode_open_downgrade(struct nfsd4_compoundargs *argp, struct nfsd4_open_downgrade *open_down)
  {
 -	DECODE_HEAD;
+-		    
 +	__be32 status;
- 
--	READ_BUF(24);
--	p = xdr_decode_hyper(p, &readdir->rd_cookie);
--	COPYMEM(readdir->rd_verf.data, sizeof(readdir->rd_verf.data));
--	readdir->rd_dircount = be32_to_cpup(p++);
--	readdir->rd_maxcount = be32_to_cpup(p++);
--	if ((status = nfsd4_decode_bitmap(argp, readdir->rd_bmval)))
--		goto out;
-+	if (xdr_stream_decode_u64(argp->xdr, &readdir->rd_cookie) < 0)
++
+ 	status = nfsd4_decode_stateid4(argp, &open_down->od_stateid);
+ 	if (status)
+ 		return status;
+-	READ_BUF(4);
+-	open_down->od_seqid = be32_to_cpup(p++);
++	if (xdr_stream_decode_u32(argp->xdr, &open_down->od_seqid) < 0)
 +		return nfserr_bad_xdr;
-+	status = nfsd4_decode_verifier4(argp, &readdir->rd_verf);
-+	if (status)
-+		return status;
-+	if (xdr_stream_decode_u32(argp->xdr, &readdir->rd_dircount) < 0)
-+		return nfserr_bad_xdr;
-+	if (xdr_stream_decode_u32(argp->xdr, &readdir->rd_maxcount) < 0)
-+		return nfserr_bad_xdr;
-+	if (xdr_stream_decode_uint32_array(argp->xdr, readdir->rd_bmval,
-+					   ARRAY_SIZE(readdir->rd_bmval)) < 0)
-+		return nfserr_bad_xdr;
- 
+ 	status = nfsd4_decode_share_access(argp, &open_down->od_share_access,
+ 					   &open_down->od_deleg_want, NULL);
+ 	if (status)
+ 		return status;
+-	status = nfsd4_decode_share_deny(argp, &open_down->od_share_deny);
+-	if (status)
+-		return status;
 -	DECODE_TAIL;
-+	return nfs_ok;
++	return nfsd4_decode_share_deny(argp, &open_down->od_share_deny);
  }
  
  static __be32
