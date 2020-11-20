@@ -2,243 +2,121 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE2CBC64E7B
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 830E8C2D0E4
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:45:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ACF8522470
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:39:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DC73C2236F
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 22:44:59 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="iaWJ1kSw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728363AbgKTWjZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 17:39:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52028 "EHLO
+        id S1728730AbgKTWoj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 17:44:39 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52866 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728903AbgKTWjX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 17:39:23 -0500
+        with ESMTP id S1728698AbgKTWoj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 17:44:39 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C6C6C061A4B
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 14:39:23 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E23EEC0613CF
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2020 14:44:38 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 542176E9E; Fri, 20 Nov 2020 17:39:22 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 542176E9E
-From:   "J. Bruce Fields" <bfields@redhat.com>
+        id 44A836E9D; Fri, 20 Nov 2020 17:44:38 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 44A836E9D
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1605912278;
+        bh=iahjJpmb2a36itD0CZCcwaZpdndHSna/vFK2IWBbsfw=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=iaWJ1kSw/lP0zRUiO2skY2hvsXh6ZaOBzCpPCeTkI0eaKPqWEDRv+ddCosr15N4MF
+         GEiCgPCTOn40PGte7q54BBsVWoW5zKv1g+7FKcjvqO7xiuF/tWk62PJjVtJ3e53M1j
+         G25lxBgBIFGmaevV+ZMVZnwUIu6wtiKnjCD+/qUE=
+Date:   Fri, 20 Nov 2020 17:44:38 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
 To:     Jeff Layton <jlayton@kernel.org>
-Cc:     Daire Byrne <daire@dneg.com>,
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        Daire Byrne <daire@dneg.com>,
         Trond Myklebust <trondmy@hammerspace.com>,
         linux-cachefs <linux-cachefs@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 6/8] nfsd: move change attribute generation to filesystem
-Date:   Fri, 20 Nov 2020 17:39:18 -0500
-Message-Id: <1605911960-12516-6-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1605911960-12516-1-git-send-email-bfields@redhat.com>
-References: <20201120223831.GB7705@fieldses.org>
- <1605911960-12516-1-git-send-email-bfields@redhat.com>
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] nfsd: pre/post attr is using wrong change attribute
+Message-ID: <20201120224438.GC7705@fieldses.org>
+References: <20201117031601.GB10526@fieldses.org>
+ <1605583086-19869-1-git-send-email-bfields@redhat.com>
+ <1605583086-19869-2-git-send-email-bfields@redhat.com>
+ <a5704a8f7a6ebdfa60d4fa996a4d9ebaacc7daaf.camel@kernel.org>
+ <20201117152636.GC4556@fieldses.org>
+ <725499c144317aac1a03f0334a22005588dbdefc.camel@kernel.org>
+ <20201120223831.GB7705@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201120223831.GB7705@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, Nov 20, 2020 at 05:38:31PM -0500, J. Bruce Fields wrote:
+> On Tue, Nov 17, 2020 at 10:34:57AM -0500, Jeff Layton wrote:
+> > On Tue, 2020-11-17 at 10:26 -0500, J. Bruce Fields wrote:
+> > > On Tue, Nov 17, 2020 at 07:34:49AM -0500, Jeff Layton wrote:
+> > > > I don't think I described what I was thinking well. Let me try again...
+> > > > 
+> > > > There should be no need to change the code in iversion.h -- I think we
+> > > > can do this in a way that's confined to just nfsd/export code.
+> > > > 
+> > > > What I would suggest is to have nfsd4_change_attribute call the
+> > > > fetch_iversion op if it exists, instead of checking IS_I_VERSION and
+> > > > doing the stuff in that block. If fetch_iversion is NULL, then just use
+> > > > the ctime.
+> > > > 
+> > > > Then, you just need to make sure that the filesystems' export_ops have
+> > > > an appropriate fetch_iversion vector. xfs, ext4 and btrfs can just call
+> > > > inode_query_iversion, and NFS and Ceph can call inode_peek_iversion_raw.
+> > > > The rest of the filesystems can leave fetch_iversion as NULL (since we
+> > > > don't want to use it on them).
+> > > 
+> > > Thanks for your patience, that makes sense, I'll try it.
+> > > 
+> > 
+> > There is one gotcha in here though... ext4 needs to also handle the case
+> > where SB_I_VERSION is not set. The simple fix might be to just have
+> > different export ops for ext4 based on whether it was mounted with -o
+> > iversion or not, but maybe there is some better way to do it?
+> 
+> I was thinking ext4's export op could check for I_VERSION on its own and
+> vary behavior based on that.
+> 
+> I'll follow up with new patches in a moment.
+> 
+> I think the first one's all that's needed to fix the problem Daire
+> identified.  I'm a little less sure of the rest.
+> 
+> Lightly tested, just by running them through my usual regression tests
+> (which don't re-export) and then running connectathon on a 4.2 re-export
+> of a 4.2 mount.
+> 
+> The latter triggered a crash preceded by a KASAN use-after free warning.
+> Looks like it might be a problem with blocking lock notifications,
+> probably not related to these patches.
 
-After this, only filesystems lacking change attribute support will leave
-the fetch_iversion export op NULL.
+Another nit I ran across:
 
-This seems cleaner to me, and will allow some minor optimizations in the
-nfsd code.
+Some NFSv4 directory-modifying operations return pre- and post- change
+attributes together with an "atomic" flag that's supposed to indicate
+whether the change attributes were read atomically with the operation.
+It looks like we're setting the atomic flag under the assumptions that
+local vfs locks are sufficient to guarantee atomicity, which isn't right
+when we're exporting a distributed filesystem.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/btrfs/export.c        |  2 ++
- fs/ext4/super.c          |  9 +++++++++
- fs/nfsd/nfs4xdr.c        |  2 +-
- fs/nfsd/nfsfh.h          | 25 +++----------------------
- fs/nfsd/xdr4.h           |  4 +++-
- fs/xfs/xfs_export.c      |  2 ++
- include/linux/iversion.h | 26 ++++++++++++++++++++++++++
- 7 files changed, 46 insertions(+), 24 deletions(-)
+In the case we're reexporting NFS I guess ideal would be to use the pre-
+and post- attributes that the original server returned and also save
+having to do extra getattr calls.  Not sure how we'd do that,
+though--more export operations?  Maybe for now we could just figure out
+when to turn off the atomic bit.
 
-diff --git a/fs/btrfs/export.c b/fs/btrfs/export.c
-index 1a8d419d9e1f..ece32440999a 100644
---- a/fs/btrfs/export.c
-+++ b/fs/btrfs/export.c
-@@ -7,6 +7,7 @@
- #include "btrfs_inode.h"
- #include "print-tree.h"
- #include "export.h"
-+#include <linux/iversion.h>
- 
- #define BTRFS_FID_SIZE_NON_CONNECTABLE (offsetof(struct btrfs_fid, \
- 						 parent_objectid) / 4)
-@@ -279,4 +280,5 @@ const struct export_operations btrfs_export_ops = {
- 	.fh_to_parent	= btrfs_fh_to_parent,
- 	.get_parent	= btrfs_get_parent,
- 	.get_name	= btrfs_get_name,
-+	.fetch_iversion	= generic_fetch_iversion,
- };
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ef4734b40e2a..a4f48273d435 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1685,11 +1685,20 @@ static const struct super_operations ext4_sops = {
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
- };
- 
-+static u64 ext4_fetch_iversion(struct inode *inode)
-+{
-+	if (IS_I_VERSION(inode))
-+		return generic_fetch_iversion(inode);
-+	else
-+		return time_to_chattr(&inode->i_ctime);
-+}
-+
- static const struct export_operations ext4_export_ops = {
- 	.fh_to_dentry = ext4_fh_to_dentry,
- 	.fh_to_parent = ext4_fh_to_parent,
- 	.get_parent = ext4_get_parent,
- 	.commit_metadata = ext4_nfs_commit_metadata,
-+	.fetch_iversion = ext4_fetch_iversion,
- };
- 
- enum {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 18c912930947..182190684792 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3187,7 +3187,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		p = xdr_reserve_space(xdr, 4);
- 		if (!p)
- 			goto out_resource;
--		if (IS_I_VERSION(d_inode(dentry)))
-+		if (IS_I_VERSION(d_inode(dentry))
- 			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR);
- 		else
- 			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 2656a3464c6c..ac3e309d7339 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -46,8 +46,8 @@ typedef struct svc_fh {
- 	struct timespec64	fh_pre_mtime;	/* mtime before oper */
- 	struct timespec64	fh_pre_ctime;	/* ctime before oper */
- 	/*
--	 * pre-op nfsv4 change attr: note must check IS_I_VERSION(inode)
--	 *  to find out if it is valid.
-+	 * pre-op nfsv4 change attr: note must check for fetch_iversion
-+	 * op to find out if it is valid.
- 	 */
- 	u64			fh_pre_change;
- 
-@@ -246,31 +246,12 @@ fh_clear_wcc(struct svc_fh *fhp)
- 	fhp->fh_pre_saved = false;
- }
- 
--/*
-- * We could use i_version alone as the change attribute.  However,
-- * i_version can go backwards after a reboot.  On its own that doesn't
-- * necessarily cause a problem, but if i_version goes backwards and then
-- * is incremented again it could reuse a value that was previously used
-- * before boot, and a client who queried the two values might
-- * incorrectly assume nothing changed.
-- *
-- * By using both ctime and the i_version counter we guarantee that as
-- * long as time doesn't go backwards we never reuse an old value.
-- */
- static inline u64 nfsd4_change_attribute(struct kstat *stat,
- 					 struct inode *inode)
- {
- 	if (inode->i_sb->s_export_op->fetch_iversion)
- 		return inode->i_sb->s_export_op->fetch_iversion(inode);
--	else if (IS_I_VERSION(inode)) {
--		u64 chattr;
--
--		chattr =  stat->ctime.tv_sec;
--		chattr <<= 30;
--		chattr += stat->ctime.tv_nsec;
--		chattr += inode_query_iversion(inode);
--		return chattr;
--	} else
-+	else
- 		return time_to_chattr(&stat->ctime);
- }
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 9c2d942d055d..f0c8fbe704a2 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -761,10 +761,12 @@ void warn_on_nonidempotent_op(struct nfsd4_op *op);
- static inline void
- set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
- {
-+	struct inode *inode = d_inode(fhp->fh_dentry);
-+
- 	BUG_ON(!fhp->fh_pre_saved);
- 	cinfo->atomic = (u32)fhp->fh_post_saved;
- 
--	if (IS_I_VERSION(d_inode(fhp->fh_dentry))) {
-+	if (inode->i_sb->s_export_op->fetch_iversion) {
- 		cinfo->before_change = fhp->fh_pre_change;
- 		cinfo->after_change = fhp->fh_post_change;
- 	} else {
-diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
-index 465fd9e048d4..b950fac3d7df 100644
---- a/fs/xfs/xfs_export.c
-+++ b/fs/xfs/xfs_export.c
-@@ -16,6 +16,7 @@
- #include "xfs_inode_item.h"
- #include "xfs_icache.h"
- #include "xfs_pnfs.h"
-+#include <linux/iversion.h>
- 
- /*
-  * Note that we only accept fileids which are long enough rather than allow
-@@ -234,4 +235,5 @@ const struct export_operations xfs_export_operations = {
- 	.map_blocks		= xfs_fs_map_blocks,
- 	.commit_blocks		= xfs_fs_commit_blocks,
- #endif
-+	.fetch_iversion		= generic_fetch_iversion,
- };
-diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-index 3bfebde5a1a6..ded74523c8a6 100644
---- a/include/linux/iversion.h
-+++ b/include/linux/iversion.h
-@@ -328,6 +328,32 @@ inode_query_iversion(struct inode *inode)
- 	return cur >> I_VERSION_QUERIED_SHIFT;
- }
- 
-+/*
-+ * We could use i_version alone as the NFSv4 change attribute.  However,
-+ * i_version can go backwards after a reboot.  On its own that doesn't
-+ * necessarily cause a problem, but if i_version goes backwards and then
-+ * is incremented again it could reuse a value that was previously used
-+ * before boot, and a client who queried the two values might
-+ * incorrectly assume nothing changed.
-+ *
-+ * By using both ctime and the i_version counter we guarantee that as
-+ * long as time doesn't go backwards we never reuse an old value.
-+ *
-+ * A filesystem that has an on-disk boot counter or similar might prefer
-+ * to use that to avoid the risk of the change attribute going backwards
-+ * if system time is set backwards.
-+ */
-+static inline u64 generic_fetch_iversion(struct inode *inode)
-+{
-+	u64 chattr;
-+
-+	chattr =  inode->i_ctime.tv_sec;
-+	chattr <<= 30;
-+	chattr += inode->i_ctime.tv_nsec;
-+	chattr += inode_query_iversion(inode);
-+	return chattr;
-+}
-+
- /*
-  * For filesystems without any sort of change attribute, the best we can
-  * do is fake one up from the ctime:
--- 
-2.28.0
-
+--b.
