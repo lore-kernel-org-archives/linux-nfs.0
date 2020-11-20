@@ -5,49 +5,49 @@ X-Spam-Level:
 X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53D47C83017
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 15:05:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F212FC63798
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 15:06:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 06A6E22252
-	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 15:05:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9A9C8221F8
+	for <linux-nfs@archiver.kernel.org>; Fri, 20 Nov 2020 15:06:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="TSDR2+w8"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="HDIGe90D"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728596AbgKTPFA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Nov 2020 10:05:00 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:57024 "EHLO
+        id S1728202AbgKTPF2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Nov 2020 10:05:28 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:33500 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728591AbgKTPFA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 10:05:00 -0500
+        by vger.kernel.org with ESMTP id S1728610AbgKTPF1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Nov 2020 10:05:27 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1605884697;
+        s=mimecast20190719; t=1605884724;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=0x+RB40tGqBs9eY+a+QbcqZos81z+ES4knWY5yzXwgg=;
-        b=TSDR2+w8UxJm5//ihiMl0jw9UNSsS3H5VYTmp207G4RA9DJORKtTvWuK/TeVowW+9luDJ3
-        ZBOWc/wJf+yQG4tnAfRezG2KFehjdItxXaGIr+Nm0uTeIXg9RuwgXAIU0NPQYAf1B2imLZ
-        dNqoUP3RPlTpXHfitt92M0oGi8eigJ8=
+        bh=r9z/UlaDmok5OSTVt5zLdKIDTwGc8Xw7tD+bT8XCLuE=;
+        b=HDIGe90DIS9c57sKGr8EEMO9rq38OdH1BIQ22/omcL5h4MfDThEqtdoEC2hDMpjKo5mzqM
+        XQoUNLIXgn+XMafPrWfqpi+r/OHYbniZx+5iAlqDePDAq+fsaZXO6mzC6HPLdccMbehH4r
+        mJ/YJyz+yl5jkUtNz/PEdT4tJXYYmgs=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-382-G4rJUePFO_ymcfq8OOM2-Q-1; Fri, 20 Nov 2020 10:04:55 -0500
-X-MC-Unique: G4rJUePFO_ymcfq8OOM2-Q-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+ us-mta-367-HmEy75ZZOvaiRh-SmRBf_g-1; Fri, 20 Nov 2020 10:05:20 -0500
+X-MC-Unique: HmEy75ZZOvaiRh-SmRBf_g-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id CD49880EF83;
-        Fri, 20 Nov 2020 15:04:53 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 85548AFA81;
+        Fri, 20 Nov 2020 15:05:18 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-112-246.rdu2.redhat.com [10.10.112.246])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 8D70260C15;
-        Fri, 20 Nov 2020 15:04:47 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C0DFD19C46;
+        Fri, 20 Nov 2020 15:05:12 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [RFC PATCH 10/76] fscache: Remove fscache_attr_changed()
+Subject: [RFC PATCH 12/76] fscache: Remove old I/O tracepoints
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -60,257 +60,281 @@ Cc:     dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Fri, 20 Nov 2020 15:04:46 +0000
-Message-ID: <160588468676.3465195.6947215951308566547.stgit@warthog.procyon.org.uk>
+Date:   Fri, 20 Nov 2020 15:05:12 +0000
+Message-ID: <160588471199.3465195.6207399512338342767.stgit@warthog.procyon.org.uk>
 In-Reply-To: <160588455242.3465195.3214733858273019178.stgit@warthog.procyon.org.uk>
 References: <160588455242.3465195.3214733858273019178.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove fscache_attr_changed() as it's unused.
+Remove now-unused fscache tracepoints that have been obsoleted by the
+removal of the old I/O code.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/cachefiles/interface.c     |   13 ++---
- fs/fscache/Makefile           |    3 -
- fs/fscache/page.c             |   98 -----------------------------------------
- include/linux/fscache-cache.h |    4 --
- include/linux/fscache.h       |   21 ---------
- 5 files changed, 6 insertions(+), 133 deletions(-)
- delete mode 100644 fs/fscache/page.c
+ fs/fscache/object.c            |    1 
+ include/trace/events/fscache.h |  195 ----------------------------------------
+ 2 files changed, 196 deletions(-)
 
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index a3837ed090a8..81322e3acadd 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -10,7 +10,7 @@
- #include <linux/xattr.h>
- #include "internal.h"
+diff --git a/fs/fscache/object.c b/fs/fscache/object.c
+index e2e04ac2c0a1..e31164f0446b 100644
+--- a/fs/fscache/object.c
++++ b/fs/fscache/object.c
+@@ -942,7 +942,6 @@ static const struct fscache_state *_fscache_invalidate_object(struct fscache_obj
+ 	op->flags = FSCACHE_OP_ASYNC |
+ 		(1 << FSCACHE_OP_EXCLUSIVE) |
+ 		(1 << FSCACHE_OP_UNUSE_COOKIE);
+-	trace_fscache_page_op(cookie, NULL, op, fscache_page_op_invalidate);
  
--static int cachefiles_attr_changed(struct fscache_object *_object);
-+static int cachefiles_attr_changed(struct cachefiles_object *object);
+ 	spin_lock(&cookie->lock);
+ 	if (fscache_submit_exclusive_op(object, op) < 0)
+diff --git a/include/trace/events/fscache.h b/include/trace/events/fscache.h
+index 953e15fad063..2ebfd688a7c2 100644
+--- a/include/trace/events/fscache.h
++++ b/include/trace/events/fscache.h
+@@ -33,24 +33,6 @@ enum fscache_cookie_trace {
+ 	fscache_cookie_put_parent,
+ };
+ 
+-enum fscache_page_trace {
+-	fscache_page_cached,
+-	fscache_page_inval,
+-	fscache_page_maybe_release,
+-	fscache_page_radix_clear_store,
+-	fscache_page_radix_delete,
+-	fscache_page_radix_insert,
+-	fscache_page_radix_pend2store,
+-	fscache_page_radix_set_pend,
+-	fscache_page_uncache,
+-	fscache_page_write,
+-	fscache_page_write_end,
+-	fscache_page_write_end_pend,
+-	fscache_page_write_end_noc,
+-	fscache_page_write_wait,
+-	fscache_page_trace__nr
+-};
+-
+ enum fscache_op_trace {
+ 	fscache_op_cancel,
+ 	fscache_op_cancel_all,
+@@ -69,17 +51,6 @@ enum fscache_op_trace {
+ 	fscache_op_trace__nr
+ };
+ 
+-enum fscache_page_op_trace {
+-	fscache_page_op_alloc_one,
+-	fscache_page_op_attr_changed,
+-	fscache_page_op_check_consistency,
+-	fscache_page_op_invalidate,
+-	fscache_page_op_retr_multi,
+-	fscache_page_op_retr_one,
+-	fscache_page_op_write_one,
+-	fscache_page_op_trace__nr
+-};
+-
+ #endif
  
  /*
-  * allocate an object record for a cookie lookup and prepare the lookup data
-@@ -110,7 +110,7 @@ static int cachefiles_lookup_object(struct fscache_object *_object)
- 	/* polish off by setting the attributes of non-index files */
- 	if (ret == 0 &&
- 	    object->fscache.cookie->type != FSCACHE_COOKIE_TYPE_INDEX)
--		cachefiles_attr_changed(&object->fscache);
-+		cachefiles_attr_changed(object);
+@@ -98,22 +69,6 @@ enum fscache_page_op_trace {
+ 	EM(fscache_cookie_put_object,		"PUT obj")		\
+ 	E_(fscache_cookie_put_parent,		"PUT prn")
  
- 	if (ret < 0 && ret != -ETIMEDOUT) {
- 		if (ret != -ENOBUFS)
-@@ -324,9 +324,8 @@ static void cachefiles_sync_cache(struct fscache_cache *_cache)
-  * notification the attributes on an object have changed
-  * - called with reads/writes excluded by FS-Cache
+-#define fscache_page_traces						\
+-	EM(fscache_page_cached,			"Cached ")		\
+-	EM(fscache_page_inval,			"InvalPg")		\
+-	EM(fscache_page_maybe_release,		"MayRels")		\
+-	EM(fscache_page_uncache,		"Uncache")		\
+-	EM(fscache_page_radix_clear_store,	"RxCStr ")		\
+-	EM(fscache_page_radix_delete,		"RxDel  ")		\
+-	EM(fscache_page_radix_insert,		"RxIns  ")		\
+-	EM(fscache_page_radix_pend2store,	"RxP2S  ")		\
+-	EM(fscache_page_radix_set_pend,		"RxSPend ")		\
+-	EM(fscache_page_write,			"WritePg")		\
+-	EM(fscache_page_write_end,		"EndPgWr")		\
+-	EM(fscache_page_write_end_pend,		"EndPgWP")		\
+-	EM(fscache_page_write_end_noc,		"EndPgNC")		\
+-	E_(fscache_page_write_wait,		"WtOnWrt")
+-
+ #define fscache_op_traces						\
+ 	EM(fscache_op_cancel,			"Cancel1")		\
+ 	EM(fscache_op_cancel_all,		"CancelA")		\
+@@ -130,15 +85,6 @@ enum fscache_page_op_trace {
+ 	EM(fscache_op_submit_ex,		"SubmitX")		\
+ 	E_(fscache_op_work,			"Work   ")
+ 
+-#define fscache_page_op_traces						\
+-	EM(fscache_page_op_alloc_one,		"Alloc1 ")		\
+-	EM(fscache_page_op_attr_changed,	"AttrChg")		\
+-	EM(fscache_page_op_check_consistency,	"CheckCn")		\
+-	EM(fscache_page_op_invalidate,		"Inval  ")		\
+-	EM(fscache_page_op_retr_multi,		"RetrMul")		\
+-	EM(fscache_page_op_retr_one,		"Retr1  ")		\
+-	E_(fscache_page_op_write_one,		"Write1 ")
+-
+ /*
+  * Export enum symbols via userspace.
   */
--static int cachefiles_attr_changed(struct fscache_object *_object)
-+static int cachefiles_attr_changed(struct cachefiles_object *object)
- {
--	struct cachefiles_object *object;
- 	struct cachefiles_cache *cache;
- 	const struct cred *saved_cred;
- 	struct iattr newattrs;
-@@ -334,12 +333,11 @@ static int cachefiles_attr_changed(struct fscache_object *_object)
- 	loff_t oi_size;
- 	int ret;
+@@ -363,70 +309,6 @@ TRACE_EVENT(fscache_osm,
+ 		      __entry->event_num)
+ 	    );
  
--	ni_size = _object->cookie->object_size;
-+	ni_size = object->fscache.cookie->object_size;
+-TRACE_EVENT(fscache_page,
+-	    TP_PROTO(struct fscache_cookie *cookie, struct page *page,
+-		     enum fscache_page_trace why),
+-
+-	    TP_ARGS(cookie, page, why),
+-
+-	    TP_STRUCT__entry(
+-		    __field(unsigned int,		cookie		)
+-		    __field(pgoff_t,			page		)
+-		    __field(enum fscache_page_trace,	why		)
+-			     ),
+-
+-	    TP_fast_assign(
+-		    __entry->cookie		= cookie->debug_id;
+-		    __entry->page		= page->index;
+-		    __entry->why		= why;
+-			   ),
+-
+-	    TP_printk("c=%08x %s pg=%lx",
+-		      __entry->cookie,
+-		      __print_symbolic(__entry->why, fscache_page_traces),
+-		      __entry->page)
+-	    );
+-
+-TRACE_EVENT(fscache_check_page,
+-	    TP_PROTO(struct fscache_cookie *cookie, struct page *page,
+-		     void *val, int n),
+-
+-	    TP_ARGS(cookie, page, val, n),
+-
+-	    TP_STRUCT__entry(
+-		    __field(unsigned int,		cookie		)
+-		    __field(void *,			page		)
+-		    __field(void *,			val		)
+-		    __field(int,			n		)
+-			     ),
+-
+-	    TP_fast_assign(
+-		    __entry->cookie		= cookie->debug_id;
+-		    __entry->page		= page;
+-		    __entry->val		= val;
+-		    __entry->n			= n;
+-			   ),
+-
+-	    TP_printk("c=%08x pg=%p val=%p n=%d",
+-		      __entry->cookie, __entry->page, __entry->val, __entry->n)
+-	    );
+-
+-TRACE_EVENT(fscache_wake_cookie,
+-	    TP_PROTO(struct fscache_cookie *cookie),
+-
+-	    TP_ARGS(cookie),
+-
+-	    TP_STRUCT__entry(
+-		    __field(unsigned int,		cookie		)
+-			     ),
+-
+-	    TP_fast_assign(
+-		    __entry->cookie		= cookie->debug_id;
+-			   ),
+-
+-	    TP_printk("c=%08x", __entry->cookie)
+-	    );
+-
+ TRACE_EVENT(fscache_op,
+ 	    TP_PROTO(struct fscache_cookie *cookie, struct fscache_operation *op,
+ 		     enum fscache_op_trace why),
+@@ -450,83 +332,6 @@ TRACE_EVENT(fscache_op,
+ 		      __print_symbolic(__entry->why, fscache_op_traces))
+ 	    );
  
- 	_enter("{OBJ%x},[%llu]",
--	       _object->debug_id, (unsigned long long) ni_size);
-+	       object->fscache.debug_id, (unsigned long long) ni_size);
+-TRACE_EVENT(fscache_page_op,
+-	    TP_PROTO(struct fscache_cookie *cookie, struct page *page,
+-		     struct fscache_operation *op, enum fscache_page_op_trace what),
+-
+-	    TP_ARGS(cookie, page, op, what),
+-
+-	    TP_STRUCT__entry(
+-		    __field(unsigned int,		cookie		)
+-		    __field(unsigned int,		op		)
+-		    __field(pgoff_t,			page		)
+-		    __field(enum fscache_page_op_trace,	what		)
+-			     ),
+-
+-	    TP_fast_assign(
+-		    __entry->cookie		= cookie->debug_id;
+-		    __entry->page		= page ? page->index : 0;
+-		    __entry->op			= op->debug_id;
+-		    __entry->what		= what;
+-			   ),
+-
+-	    TP_printk("c=%08x %s pg=%lx op=%08x",
+-		      __entry->cookie,
+-		      __print_symbolic(__entry->what, fscache_page_op_traces),
+-		      __entry->page, __entry->op)
+-	    );
+-
+-TRACE_EVENT(fscache_wrote_page,
+-	    TP_PROTO(struct fscache_cookie *cookie, struct page *page,
+-		     struct fscache_operation *op, int ret),
+-
+-	    TP_ARGS(cookie, page, op, ret),
+-
+-	    TP_STRUCT__entry(
+-		    __field(unsigned int,		cookie		)
+-		    __field(unsigned int,		op		)
+-		    __field(pgoff_t,			page		)
+-		    __field(int,			ret		)
+-			     ),
+-
+-	    TP_fast_assign(
+-		    __entry->cookie		= cookie->debug_id;
+-		    __entry->page		= page->index;
+-		    __entry->op			= op->debug_id;
+-		    __entry->ret		= ret;
+-			   ),
+-
+-	    TP_printk("c=%08x pg=%lx op=%08x ret=%d",
+-		      __entry->cookie, __entry->page, __entry->op, __entry->ret)
+-	    );
+-
+-TRACE_EVENT(fscache_gang_lookup,
+-	    TP_PROTO(struct fscache_cookie *cookie, struct fscache_operation *op,
+-		     void **results, int n, pgoff_t store_limit),
+-
+-	    TP_ARGS(cookie, op, results, n, store_limit),
+-
+-	    TP_STRUCT__entry(
+-		    __field(unsigned int,		cookie		)
+-		    __field(unsigned int,		op		)
+-		    __field(pgoff_t,			results0	)
+-		    __field(int,			n		)
+-		    __field(pgoff_t,			store_limit	)
+-			     ),
+-
+-	    TP_fast_assign(
+-		    __entry->cookie		= cookie->debug_id;
+-		    __entry->op			= op->debug_id;
+-		    __entry->results0		= results[0] ? ((struct page *)results[0])->index : (pgoff_t)-1;
+-		    __entry->n			= n;
+-		    __entry->store_limit	= store_limit;
+-			   ),
+-
+-	    TP_printk("c=%08x op=%08x r0=%lx n=%d sl=%lx",
+-		      __entry->cookie, __entry->op, __entry->results0, __entry->n,
+-		      __entry->store_limit)
+-	    );
+-
+ #endif /* _TRACE_FSCACHE_H */
  
--	object = container_of(_object, struct cachefiles_object, fscache);
- 	cache = container_of(object->fscache.cache,
- 			     struct cachefiles_cache, cache);
- 
-@@ -442,5 +440,4 @@ const struct fscache_cache_ops cachefiles_cache_ops = {
- 	.drop_object		= cachefiles_drop_object,
- 	.put_object		= cachefiles_put_object,
- 	.sync_cache		= cachefiles_sync_cache,
--	.attr_changed		= cachefiles_attr_changed,
- };
-diff --git a/fs/fscache/Makefile b/fs/fscache/Makefile
-index 79e08e05ef84..565a3441d31d 100644
---- a/fs/fscache/Makefile
-+++ b/fs/fscache/Makefile
-@@ -10,8 +10,7 @@ fscache-y := \
- 	main.o \
- 	netfs.o \
- 	object.o \
--	operation.o \
--	page.o
-+	operation.o
- 
- fscache-$(CONFIG_PROC_FS) += proc.o
- fscache-$(CONFIG_FSCACHE_STATS) += stats.o
-diff --git a/fs/fscache/page.c b/fs/fscache/page.c
-deleted file mode 100644
-index 73636e9d652d..000000000000
---- a/fs/fscache/page.c
-+++ /dev/null
-@@ -1,98 +0,0 @@
--// SPDX-License-Identifier: GPL-2.0-or-later
--/* Cache page management and data I/O routines
-- *
-- * Copyright (C) 2004-2008 Red Hat, Inc. All Rights Reserved.
-- * Written by David Howells (dhowells@redhat.com)
-- */
--
--#define FSCACHE_DEBUG_LEVEL PAGE
--#include <linux/module.h>
--#include <linux/fscache-cache.h>
--#include <linux/buffer_head.h>
--#include <linux/pagevec.h>
--#include <linux/slab.h>
--#include "internal.h"
--
--/*
-- * actually apply the changed attributes to a cache object
-- */
--static void fscache_attr_changed_op(struct fscache_operation *op)
--{
--	struct fscache_object *object = op->object;
--	int ret;
--
--	_enter("{OBJ%x OP%x}", object->debug_id, op->debug_id);
--
--	fscache_stat(&fscache_n_attr_changed_calls);
--
--	if (fscache_object_is_active(object)) {
--		fscache_stat(&fscache_n_cop_attr_changed);
--		ret = object->cache->ops->attr_changed(object);
--		fscache_stat_d(&fscache_n_cop_attr_changed);
--		if (ret < 0)
--			fscache_abort_object(object);
--		fscache_op_complete(op, ret < 0);
--	} else {
--		fscache_op_complete(op, true);
--	}
--
--	_leave("");
--}
--
--/*
-- * notification that the attributes on an object have changed
-- */
--int __fscache_attr_changed(struct fscache_cookie *cookie)
--{
--	struct fscache_operation *op;
--	struct fscache_object *object;
--	bool wake_cookie = false;
--
--	_enter("%p", cookie);
--
--	ASSERTCMP(cookie->type, !=, FSCACHE_COOKIE_TYPE_INDEX);
--
--	fscache_stat(&fscache_n_attr_changed);
--
--	op = kzalloc(sizeof(*op), GFP_KERNEL);
--	if (!op) {
--		fscache_stat(&fscache_n_attr_changed_nomem);
--		_leave(" = -ENOMEM");
--		return -ENOMEM;
--	}
--
--	fscache_operation_init(cookie, op, fscache_attr_changed_op, NULL, NULL);
--	trace_fscache_page_op(cookie, NULL, op, fscache_page_op_attr_changed);
--	op->flags = FSCACHE_OP_ASYNC |
--		(1 << FSCACHE_OP_EXCLUSIVE) |
--		(1 << FSCACHE_OP_UNUSE_COOKIE);
--
--	spin_lock(&cookie->lock);
--
--	if (!fscache_cookie_enabled(cookie) ||
--	    hlist_empty(&cookie->backing_objects))
--		goto nobufs;
--	object = hlist_entry(cookie->backing_objects.first,
--			     struct fscache_object, cookie_link);
--
--	__fscache_use_cookie(cookie);
--	if (fscache_submit_exclusive_op(object, op) < 0)
--		goto nobufs_dec;
--	spin_unlock(&cookie->lock);
--	fscache_stat(&fscache_n_attr_changed_ok);
--	fscache_put_operation(op);
--	_leave(" = 0");
--	return 0;
--
--nobufs_dec:
--	wake_cookie = __fscache_unuse_cookie(cookie);
--nobufs:
--	spin_unlock(&cookie->lock);
--	fscache_put_operation(op);
--	if (wake_cookie)
--		__fscache_wake_unused_cookie(cookie);
--	fscache_stat(&fscache_n_attr_changed_nobufs);
--	_leave(" = %d", -ENOBUFS);
--	return -ENOBUFS;
--}
--EXPORT_SYMBOL(__fscache_attr_changed);
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index bd9411cd466f..60b2f8288668 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -184,10 +184,6 @@ struct fscache_cache_ops {
- 	/* sync a cache */
- 	void (*sync_cache)(struct fscache_cache *cache);
- 
--	/* notification that the attributes of a non-index object (such as
--	 * i_size) have changed */
--	int (*attr_changed)(struct fscache_object *object);
--
- 	/* reserve space for an object's data and associated metadata */
- 	int (*reserve_space)(struct fscache_object *object, loff_t i_size);
- };
-diff --git a/include/linux/fscache.h b/include/linux/fscache.h
-index 76cfec6868de..c62b62938c4d 100644
---- a/include/linux/fscache.h
-+++ b/include/linux/fscache.h
-@@ -140,7 +140,6 @@ extern struct fscache_cookie *__fscache_acquire_cookie(
- 	loff_t, bool);
- extern void __fscache_relinquish_cookie(struct fscache_cookie *, const void *, bool);
- extern void __fscache_update_cookie(struct fscache_cookie *, const void *);
--extern int __fscache_attr_changed(struct fscache_cookie *);
- extern void __fscache_invalidate(struct fscache_cookie *);
- extern void __fscache_wait_on_invalidate(struct fscache_cookie *);
- extern void __fscache_disable_cookie(struct fscache_cookie *, const void *, bool);
-@@ -337,26 +336,6 @@ void fscache_unpin_cookie(struct fscache_cookie *cookie)
- {
- }
- 
--/**
-- * fscache_attr_changed - Notify cache that an object's attributes changed
-- * @cookie: The cookie representing the cache object
-- *
-- * Send a notification to the cache indicating that an object's attributes have
-- * changed.  This includes the data size.  These attributes will be obtained
-- * through the get_attr() cookie definition op.
-- *
-- * See Documentation/filesystems/caching/netfs-api.rst for a complete
-- * description.
-- */
--static inline
--int fscache_attr_changed(struct fscache_cookie *cookie)
--{
--	if (fscache_cookie_valid(cookie) && fscache_cookie_enabled(cookie))
--		return __fscache_attr_changed(cookie);
--	else
--		return -ENOBUFS;
--}
--
- /**
-  * fscache_invalidate - Notify cache that an object needs invalidation
-  * @cookie: The cookie representing the cache object
+ /* This part must be outside protection */
 
 
