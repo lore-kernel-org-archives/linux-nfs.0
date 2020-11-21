@@ -7,113 +7,275 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB670C388F9
-	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31A1EC63697
+	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8D04F22206
-	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EBA8322206
+	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:36 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="UyhGKrFX"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dltqCOah"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727828AbgKUN3f (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 21 Nov 2020 08:29:35 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:41191 "EHLO
+        id S1727834AbgKUN3g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 21 Nov 2020 08:29:36 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:30378 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726175AbgKUN3e (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Nov 2020 08:29:34 -0500
+        by vger.kernel.org with ESMTP id S1727823AbgKUN3g (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Nov 2020 08:29:36 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1605965373;
+        s=mimecast20190719; t=1605965374;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc; bh=t6sT8eK0HKwBbciQaYAbZaxrD7klMu9hQd/5sSyOW/Q=;
-        b=UyhGKrFXbjG5upqYzKjtYsIBvGw2J3HDYZ/je2BJIlTpwcxO5dZz2TbpRMf842nxg2oh2X
-        +p6wKINriNL0Nwf+YLHezDRnOip9uWze7vbahHvFhYNI4LTI02xkGJ74rTwA9a8uN3CUBr
-        VjIG6k6AdwCIPX4czw9p4CUyixC8RGE=
+         to:to:cc:cc; bh=PyEqaw6kiks288ycj7lAIQMeFNdhXzO+mMgP9/ubAEs=;
+        b=dltqCOahQnAeumAzUePBKBeVIEGZSyM4np3r6oaLS08uEun8P7ViM/RpzXRHMFu0qhfCO7
+        hZKJHGvp0HkoJxhJd+l0FHmapKmqtXCfYKUh+ZBazB63BP8896yuG3u9UDMz2uyA7xx236
+        /wYf3V+0gLs1p0EEqryjWhqhMu5t6gU=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-445-7HubOquYPR6u9xprbWbIfA-1; Sat, 21 Nov 2020 08:29:30 -0500
-X-MC-Unique: 7HubOquYPR6u9xprbWbIfA-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+ us-mta-502-j78Q7oVGOKS9Z4qr8cZq7A-1; Sat, 21 Nov 2020 08:29:23 -0500
+X-MC-Unique: j78Q7oVGOKS9Z4qr8cZq7A-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id EC141814411;
-        Sat, 21 Nov 2020 13:29:28 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6B1081005D65;
+        Sat, 21 Nov 2020 13:29:22 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-112-41.rdu2.redhat.com [10.10.112.41])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 804A412D7E;
-        Sat, 21 Nov 2020 13:29:28 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id E60115C1D5;
+        Sat, 21 Nov 2020 13:29:21 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org, dhowells@redhat.com
-Subject: [PATCH v1 08/13] NFS: Convert fscache_enable_cookie and fscache_disable_cookie
-Date:   Sat, 21 Nov 2020 08:29:27 -0500
-Message-Id: <1605965367-24746-1-git-send-email-dwysocha@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+Subject: [PATCH v1 05/13] NFS: Add nfs_pageio_complete_read() and remove nfs_readpage_async()
+Date:   Sat, 21 Nov 2020 08:29:20 -0500
+Message-Id: <1605965360-24642-1-git-send-email-dwysocha@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The new FS-Cache API removes the fscache_enable_cookie() and
-fscache_disable_cookie() in favor of the new APIs
-fscache_use_cookie() and fscache_unuse_cookie(), so update these
-areas as needed.
-
-For NFS, we enable fscache on an inode only if the inode is open
-readonly and not if the inode is open for write.  Use the new
-APIs and change the existing logic slightly and make a decision
-whether to "use" an inode based fscache cookie one time, by gating
-the call to fscache_use_cookie() and fscache_unuse_cookie()
-by the NFS_INO_FSCACHE flag on the nfs_inode.
+Add nfs_pageio_complete_read() and call this from both nfs_readpage()
+and nfs_readpages(), since the submission and accounting is the same
+for both functions.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/fscache.c | 25 +++++++++++++------------
- 1 file changed, 13 insertions(+), 12 deletions(-)
+ fs/nfs/read.c          | 137 ++++++++++++++++++++++---------------------------
+ include/linux/nfs_fs.h |   1 -
+ 2 files changed, 61 insertions(+), 77 deletions(-)
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index 7ef711ca9592..d0477e40aa32 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -285,7 +285,10 @@ void nfs_fscache_clear_inode(struct inode *inode)
- 
- 	dfprintk(FSCACHE, "NFS: clear cookie (0x%p/0x%p)\n", nfsi, cookie);
- 
--	nfs_fscache_update_auxdata(&auxdata, nfsi);
-+	if (test_and_clear_bit(NFS_INO_FSCACHE, &NFS_I(inode)->flags)) {
-+		nfs_fscache_update_auxdata(&auxdata, nfsi);
-+		fscache_unuse_cookie(cookie, &auxdata, NULL);
-+	}
- 	fscache_relinquish_cookie(cookie, false);
- 	nfsi->fscache = NULL;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 1401f1c734c0..c2df4040f26c 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -74,6 +74,24 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
  }
-@@ -325,19 +328,17 @@ void nfs_fscache_open_file(struct inode *inode, struct file *filp)
- 	if (!fscache_cookie_valid(cookie))
- 		return;
+ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
  
--	nfs_fscache_update_auxdata(&auxdata, nfsi);
++static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
++				     struct inode *inode)
++{
++	struct nfs_pgio_mirror *pgm;
++	unsigned long npages;
++
++	nfs_pageio_complete(pgio);
++
++	/* It doesn't make sense to do mirrored reads! */
++	WARN_ON_ONCE(pgio->pg_mirror_count != 1);
++
++	pgm = &pgio->pg_mirrors[0];
++	NFS_I(inode)->read_io += pgm->pg_bytes_written;
++	npages = (pgm->pg_bytes_written + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
++}
++
++
+ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ {
+ 	struct nfs_pgio_mirror *mirror;
+@@ -119,36 +137,6 @@ struct nfs_readdesc {
+ 	struct nfs_open_context *ctx;
+ };
+ 
+-static int readpage_async_filler(void *data, struct page *page);
 -
- 	if (inode_is_open_for_write(inode)) {
--		dfprintk(FSCACHE, "NFS: nfsi 0x%p disabling cache\n", nfsi);
--		clear_bit(NFS_INO_FSCACHE, &nfsi->flags);
--		fscache_disable_cookie(cookie, &auxdata, true);
--		fscache_uncache_all_inode_pages(cookie, inode);
-+		if (test_and_clear_bit(NFS_INO_FSCACHE, &nfsi->flags)) {
-+			dfprintk(FSCACHE, "NFS: nfsi 0x%p disabling cache\n", nfsi);
-+			nfs_fscache_update_auxdata(&auxdata, nfsi);
-+			fscache_unuse_cookie(cookie, &auxdata, NULL);
-+		}
- 	} else {
--		dfprintk(FSCACHE, "NFS: nfsi 0x%p enabling cache\n", nfsi);
--		fscache_enable_cookie(cookie, &auxdata, nfsi->vfs_inode.i_size,
--				      nfs_fscache_can_enable, inode);
--		if (fscache_cookie_enabled(cookie))
--			set_bit(NFS_INO_FSCACHE, &NFS_I(inode)->flags);
-+		if (!test_and_set_bit(NFS_INO_FSCACHE, &nfsi->flags)) {
-+			dfprintk(FSCACHE, "NFS: nfsi 0x%p enabling cache\n", nfsi);
-+			fscache_use_cookie(cookie, false);
-+		}
- 	}
+-int nfs_readpage_async(void *data, struct inode *inode,
+-		       struct page *page)
+-{
+-	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
+-	struct nfs_pgio_mirror *pgm;
+-	int error;
+-
+-	nfs_pageio_init_read(&desc->pgio, inode, false,
+-			     &nfs_async_read_completion_ops);
+-
+-	error = readpage_async_filler(desc, page);
+-	if (error)
+-		goto out;
+-
+-	nfs_pageio_complete(&desc->pgio);
+-
+-	/* It doesn't make sense to do mirrored reads! */
+-	WARN_ON_ONCE(desc->pgio.pg_mirror_count != 1);
+-
+-	pgm = &desc->pgio.pg_mirrors[0];
+-	NFS_I(inode)->read_io += pgm->pg_bytes_written;
+-
+-	return desc->pgio.pg_error < 0 ? desc->pgio.pg_error : 0;
+-
+-out:
+-	return error;
+-}
+-
+ static void nfs_page_group_set_uptodate(struct nfs_page *req)
+ {
+ 	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
+@@ -170,8 +158,7 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+ 
+ 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+ 			/* note: regions of the page not covered by a
+-			 * request are zeroed in nfs_readpage_async /
+-			 * readpage_async_filler */
++			 * request are zeroed in readpage_async_filler */
+ 			if (bytes > hdr->good_bytes) {
+ 				/* nothing in this request was good, so zero
+ 				 * the full extent of the request */
+@@ -303,6 +290,38 @@ static void nfs_readpage_result(struct rpc_task *task,
+ 		nfs_readpage_retry(task, hdr);
  }
- EXPORT_SYMBOL_GPL(nfs_fscache_open_file);
+ 
++static int
++readpage_async_filler(void *data, struct page *page)
++{
++	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
++	struct nfs_page *new;
++	unsigned int len;
++	int error;
++
++	len = nfs_page_length(page);
++	if (len == 0)
++		return nfs_return_empty_page(page);
++
++	new = nfs_create_request(desc->ctx, page, 0, len);
++	if (IS_ERR(new))
++		goto out_error;
++
++	if (len < PAGE_SIZE)
++		zero_user_segment(page, len, PAGE_SIZE);
++	if (!nfs_pageio_add_request(&desc->pgio, new)) {
++		nfs_list_remove_request(new);
++		error = desc->pgio.pg_error;
++		nfs_readpage_release(new, error);
++		goto out;
++	}
++	return 0;
++out_error:
++	error = PTR_ERR(new);
++	unlock_page(page);
++out:
++	return error;
++}
++
+ /*
+  * Read a page over NFS.
+  * We read the page synchronously in the following case:
+@@ -351,13 +370,20 @@ int nfs_readpage(struct file *filp, struct page *page)
+ 	}
+ 
+ 	xchg(&desc.ctx->error, 0);
+-	ret = nfs_readpage_async(&desc, inode, page);
++	nfs_pageio_init_read(&desc.pgio, inode, false,
++			     &nfs_async_read_completion_ops);
++
++	ret = readpage_async_filler(&desc, page);
++
++	if (!ret)
++		nfs_pageio_complete_read(&desc.pgio, inode);
++
++	ret = desc.pgio.pg_error < 0 ? desc.pgio.pg_error : 0;
+ 	if (!ret) {
+ 		ret = wait_on_page_locked_killable(page);
+ 		if (!PageUptodate(page) && !ret)
+ 			ret = xchg(&desc.ctx->error, 0);
+ 	}
+-	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
+ out:
+ 	put_nfs_open_context(desc.ctx);
+ 	return ret;
+@@ -366,45 +392,11 @@ int nfs_readpage(struct file *filp, struct page *page)
+ 	return ret;
+ }
+ 
+-static int
+-readpage_async_filler(void *data, struct page *page)
+-{
+-	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
+-	struct nfs_page *new;
+-	unsigned int len;
+-	int error;
+-
+-	len = nfs_page_length(page);
+-	if (len == 0)
+-		return nfs_return_empty_page(page);
+-
+-	new = nfs_create_request(desc->ctx, page, 0, len);
+-	if (IS_ERR(new))
+-		goto out_error;
+-
+-	if (len < PAGE_SIZE)
+-		zero_user_segment(page, len, PAGE_SIZE);
+-	if (!nfs_pageio_add_request(&desc->pgio, new)) {
+-		nfs_list_remove_request(new);
+-		error = desc->pgio.pg_error;
+-		nfs_readpage_release(new, error);
+-		goto out;
+-	}
+-	return 0;
+-out_error:
+-	error = PTR_ERR(new);
+-	unlock_page(page);
+-out:
+-	return error;
+-}
+-
+ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 		struct list_head *pages, unsigned nr_pages)
+ {
+-	struct nfs_pgio_mirror *pgm;
+ 	struct nfs_readdesc desc;
+ 	struct inode *inode = mapping->host;
+-	unsigned long npages;
+ 	int ret;
+ 
+ 	dprintk("NFS: nfs_readpages (%s/%Lu %d)\n",
+@@ -437,16 +429,9 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 			     &nfs_async_read_completion_ops);
+ 
+ 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+-	nfs_pageio_complete(&desc.pgio);
+ 
+-	/* It doesn't make sense to do mirrored reads! */
+-	WARN_ON_ONCE(desc.pgio.pg_mirror_count != 1);
++	nfs_pageio_complete_read(&desc.pgio, inode);
+ 
+-	pgm = &desc.pgio.pg_mirrors[0];
+-	NFS_I(inode)->read_io += pgm->pg_bytes_written;
+-	npages = (pgm->pg_bytes_written + PAGE_SIZE - 1) >>
+-		 PAGE_SHIFT;
+-	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
+ read_complete:
+ 	put_nfs_open_context(desc.ctx);
+ out:
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 3cc42b5c7482..abe6416236c9 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -565,7 +565,6 @@ extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred, s
+ extern int  nfs_readpage(struct file *, struct page *);
+ extern int  nfs_readpages(struct file *, struct address_space *,
+ 		struct list_head *, unsigned);
+-extern int  nfs_readpage_async(void *, struct inode *, struct page *);
+ 
+ /*
+  * inline functions
 -- 
 1.8.3.1
 
