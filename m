@@ -7,275 +7,376 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31A1EC63697
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2BABC56202
 	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EBA8322206
-	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A32A22206
+	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dltqCOah"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WB8ceDoX"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727834AbgKUN3g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 21 Nov 2020 08:29:36 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:30378 "EHLO
+        id S1727823AbgKUN3h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 21 Nov 2020 08:29:37 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:59251 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727823AbgKUN3g (ORCPT
+        by vger.kernel.org with ESMTP id S1727827AbgKUN3g (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Nov 2020 08:29:36 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1605965374;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc; bh=PyEqaw6kiks288ycj7lAIQMeFNdhXzO+mMgP9/ubAEs=;
-        b=dltqCOahQnAeumAzUePBKBeVIEGZSyM4np3r6oaLS08uEun8P7ViM/RpzXRHMFu0qhfCO7
-        hZKJHGvp0HkoJxhJd+l0FHmapKmqtXCfYKUh+ZBazB63BP8896yuG3u9UDMz2uyA7xx236
-        /wYf3V+0gLs1p0EEqryjWhqhMu5t6gU=
+         to:to:cc:cc; bh=aIhNDUGmnqR3uHiXMsSBbOvLJ1UnCFBC9WvzLh9SNrg=;
+        b=WB8ceDoX9xiA2PAQxGrgkI+fETyzNLuU9ph4ldUgckAk3/6NCB2shinTDnvqhMPZezCnEV
+        F3d17m3u2CKMDJbcDSZJjTNzh81Ap08Yt+mfTKA0cUo1F6nWdqBy89vvXTdcbGJeLwf6mO
+        dEKGtBYIA41rl91BJsDSZhA/S4Acx+I=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-502-j78Q7oVGOKS9Z4qr8cZq7A-1; Sat, 21 Nov 2020 08:29:23 -0500
-X-MC-Unique: j78Q7oVGOKS9Z4qr8cZq7A-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+ us-mta-447-7sDlgxUVOASMjZbuuWp4dQ-1; Sat, 21 Nov 2020 08:29:32 -0500
+X-MC-Unique: 7sDlgxUVOASMjZbuuWp4dQ-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6B1081005D65;
-        Sat, 21 Nov 2020 13:29:22 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 1B4A61005D69;
+        Sat, 21 Nov 2020 13:29:31 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-112-41.rdu2.redhat.com [10.10.112.41])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id E60115C1D5;
-        Sat, 21 Nov 2020 13:29:21 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 90A585D6BA;
+        Sat, 21 Nov 2020 13:29:30 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org, dhowells@redhat.com
-Subject: [PATCH v1 05/13] NFS: Add nfs_pageio_complete_read() and remove nfs_readpage_async()
-Date:   Sat, 21 Nov 2020 08:29:20 -0500
-Message-Id: <1605965360-24642-1-git-send-email-dwysocha@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+Subject: [PATCH v1 09/13] NFS: Convert fscache invalidation and update aux_data and i_size
+Date:   Sat, 21 Nov 2020 08:29:29 -0500
+Message-Id: <1605965369-24781-1-git-send-email-dwysocha@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add nfs_pageio_complete_read() and call this from both nfs_readpage()
-and nfs_readpages(), since the submission and accounting is the same
-for both functions.
+Convert nfs_fscache_invalidate to the new FS-Cache API.  Also,
+now when invalidating an fscache cookie, be sure to pass the latest
+i_size as well as aux_data to fscache.
+
+A few APIs no longer exist so remove them.  We can call directly to
+wait_on_page_fscache() because it checks whether a page is an fscache
+page before waiting on it.
+
+Since the current NFS fscache implementation is only enabled when a
+file is open for read, handle writes with invalidation.  If a write
+extends the size of the file and fscache is enabled, we must invalidate
+the object with the new size.
+
+We must also invalidate fscache when doing a direct write to avoid
+issues seen specifically with NFSv4.x when direct writes are followed
+by non-direct (buffered) reads.  Note that we cannot call
+fscache_invalidate() while holding inode->i_lock.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/read.c          | 137 ++++++++++++++++++++++---------------------------
- include/linux/nfs_fs.h |   1 -
- 2 files changed, 61 insertions(+), 77 deletions(-)
+ fs/nfs/direct.c   |  2 ++
+ fs/nfs/file.c     | 20 ++++++++++------
+ fs/nfs/fscache.c  | 20 ----------------
+ fs/nfs/fscache.h  | 69 +++++++++++++++++++------------------------------------
+ fs/nfs/inode.c    |  4 ++--
+ fs/nfs/nfs4proc.c |  2 +-
+ fs/nfs/write.c    |  3 ++-
+ 7 files changed, 44 insertions(+), 76 deletions(-)
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 1401f1c734c0..c2df4040f26c 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -74,6 +74,24 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 2d30a4da49fa..8f920c1ad522 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -59,6 +59,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "pnfs.h"
++#include "fscache.h"
  
-+static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
-+				     struct inode *inode)
-+{
-+	struct nfs_pgio_mirror *pgm;
-+	unsigned long npages;
-+
-+	nfs_pageio_complete(pgio);
-+
-+	/* It doesn't make sense to do mirrored reads! */
-+	WARN_ON_ONCE(pgio->pg_mirror_count != 1);
-+
-+	pgm = &pgio->pg_mirrors[0];
-+	NFS_I(inode)->read_io += pgm->pg_bytes_written;
-+	npages = (pgm->pg_bytes_written + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
-+}
-+
-+
- void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
- {
- 	struct nfs_pgio_mirror *mirror;
-@@ -119,36 +137,6 @@ struct nfs_readdesc {
- 	struct nfs_open_context *ctx;
- };
+ #define NFSDBG_FACILITY		NFSDBG_VFS
  
--static int readpage_async_filler(void *data, struct page *page);
--
--int nfs_readpage_async(void *data, struct inode *inode,
--		       struct page *page)
--{
--	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
--	struct nfs_pgio_mirror *pgm;
--	int error;
--
--	nfs_pageio_init_read(&desc->pgio, inode, false,
--			     &nfs_async_read_completion_ops);
--
--	error = readpage_async_filler(desc, page);
--	if (error)
--		goto out;
--
--	nfs_pageio_complete(&desc->pgio);
--
--	/* It doesn't make sense to do mirrored reads! */
--	WARN_ON_ONCE(desc->pgio.pg_mirror_count != 1);
--
--	pgm = &desc->pgio.pg_mirrors[0];
--	NFS_I(inode)->read_io += pgm->pg_bytes_written;
--
--	return desc->pgio.pg_error < 0 ? desc->pgio.pg_error : 0;
--
--out:
--	return error;
--}
--
- static void nfs_page_group_set_uptodate(struct nfs_page *req)
- {
- 	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
-@@ -170,8 +158,7 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
- 
- 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
- 			/* note: regions of the page not covered by a
--			 * request are zeroed in nfs_readpage_async /
--			 * readpage_async_filler */
-+			 * request are zeroed in readpage_async_filler */
- 			if (bytes > hdr->good_bytes) {
- 				/* nothing in this request was good, so zero
- 				 * the full extent of the request */
-@@ -303,6 +290,38 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
- 
-+static int
-+readpage_async_filler(void *data, struct page *page)
-+{
-+	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
-+	struct nfs_page *new;
-+	unsigned int len;
-+	int error;
-+
-+	len = nfs_page_length(page);
-+	if (len == 0)
-+		return nfs_return_empty_page(page);
-+
-+	new = nfs_create_request(desc->ctx, page, 0, len);
-+	if (IS_ERR(new))
-+		goto out_error;
-+
-+	if (len < PAGE_SIZE)
-+		zero_user_segment(page, len, PAGE_SIZE);
-+	if (!nfs_pageio_add_request(&desc->pgio, new)) {
-+		nfs_list_remove_request(new);
-+		error = desc->pgio.pg_error;
-+		nfs_readpage_release(new, error);
-+		goto out;
-+	}
-+	return 0;
-+out_error:
-+	error = PTR_ERR(new);
-+	unlock_page(page);
-+out:
-+	return error;
-+}
-+
- /*
-  * Read a page over NFS.
-  * We read the page synchronously in the following case:
-@@ -351,13 +370,20 @@ int nfs_readpage(struct file *filp, struct page *page)
+@@ -962,6 +963,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
+ 	} else {
+ 		result = requested;
  	}
- 
- 	xchg(&desc.ctx->error, 0);
--	ret = nfs_readpage_async(&desc, inode, page);
-+	nfs_pageio_init_read(&desc.pgio, inode, false,
-+			     &nfs_async_read_completion_ops);
-+
-+	ret = readpage_async_filler(&desc, page);
-+
-+	if (!ret)
-+		nfs_pageio_complete_read(&desc.pgio, inode);
-+
-+	ret = desc.pgio.pg_error < 0 ? desc.pgio.pg_error : 0;
- 	if (!ret) {
- 		ret = wait_on_page_locked_killable(page);
- 		if (!PageUptodate(page) && !ret)
- 			ret = xchg(&desc.ctx->error, 0);
- 	}
--	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
++	nfs_fscache_invalidate(inode, FSCACHE_INVAL_DIO_WRITE);
+ out_release:
+ 	nfs_direct_req_release(dreq);
  out:
- 	put_nfs_open_context(desc.ctx);
- 	return ret;
-@@ -366,45 +392,11 @@ int nfs_readpage(struct file *filp, struct page *page)
- 	return ret;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 63940a7a70be..ba988e639037 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -415,8 +415,8 @@ static void nfs_invalidate_page(struct page *page, unsigned int offset,
+ 		return;
+ 	/* Cancel any unstarted writes on this page */
+ 	nfs_wb_page_cancel(page_file_mapping(page)->host, page);
+-
+-	nfs_fscache_invalidate_page(page, page->mapping->host);
++	wait_on_page_fscache(page);
++	nfs_fscache_invalidate(page_file_mapping(page)->host, 0);
  }
  
--static int
--readpage_async_filler(void *data, struct page *page)
+ /*
+@@ -431,8 +431,13 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ 
+ 	/* If PagePrivate() is set, then the page is not freeable */
+ 	if (PagePrivate(page))
+-		return 0;
+-	return nfs_fscache_release_page(page, gfp);
++		return false;
++	if (PageFsCache(page)) {
++		if (!(gfp & __GFP_DIRECT_RECLAIM) || !(gfp & __GFP_FS))
++			return false;
++		wait_on_page_fscache(page);
++	}
++	return true;
+ }
+ 
+ static void nfs_check_dirty_writeback(struct page *page,
+@@ -475,12 +480,11 @@ static void nfs_check_dirty_writeback(struct page *page,
+ static int nfs_launder_page(struct page *page)
+ {
+ 	struct inode *inode = page_file_mapping(page)->host;
+-	struct nfs_inode *nfsi = NFS_I(inode);
+ 
+ 	dfprintk(PAGECACHE, "NFS: launder_page(%ld, %llu)\n",
+ 		inode->i_ino, (long long)page_offset(page));
+ 
+-	nfs_fscache_wait_on_page_write(nfsi, page);
++	wait_on_page_fscache(page);
+ 	return nfs_wb_page(inode, page);
+ }
+ 
+@@ -555,7 +559,9 @@ static vm_fault_t nfs_vm_page_mkwrite(struct vm_fault *vmf)
+ 	sb_start_pagefault(inode->i_sb);
+ 
+ 	/* make sure the cache has finished storing the page */
+-	nfs_fscache_wait_on_page_write(NFS_I(inode), page);
++	if (PageFsCache(vmf->page) &&
++	    wait_on_page_bit_killable(vmf->page, PG_fscache) < 0)
++		return VM_FAULT_RETRY;
+ 
+ 	wait_on_bit_action(&NFS_I(inode)->flags, NFS_INO_INVALIDATING,
+ 			nfs_wait_bit_killable, TASK_KILLABLE);
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index d0477e40aa32..c1ca241381cb 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -234,19 +234,6 @@ void nfs_fscache_release_super_cookie(struct super_block *sb)
+ 	}
+ }
+ 
+-static void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *auxdata,
+-				  struct nfs_inode *nfsi)
 -{
--	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
--	struct nfs_page *new;
--	unsigned int len;
--	int error;
+-	memset(auxdata, 0, sizeof(*auxdata));
+-	auxdata->mtime_sec  = nfsi->vfs_inode.i_mtime.tv_sec;
+-	auxdata->mtime_nsec = nfsi->vfs_inode.i_mtime.tv_nsec;
+-	auxdata->ctime_sec  = nfsi->vfs_inode.i_ctime.tv_sec;
+-	auxdata->ctime_nsec = nfsi->vfs_inode.i_ctime.tv_nsec;
 -
--	len = nfs_page_length(page);
--	if (len == 0)
--		return nfs_return_empty_page(page);
--
--	new = nfs_create_request(desc->ctx, page, 0, len);
--	if (IS_ERR(new))
--		goto out_error;
--
--	if (len < PAGE_SIZE)
--		zero_user_segment(page, len, PAGE_SIZE);
--	if (!nfs_pageio_add_request(&desc->pgio, new)) {
--		nfs_list_remove_request(new);
--		error = desc->pgio.pg_error;
--		nfs_readpage_release(new, error);
--		goto out;
--	}
--	return 0;
--out_error:
--	error = PTR_ERR(new);
--	unlock_page(page);
--out:
--	return error;
+-	if (NFS_SERVER(&nfsi->vfs_inode)->nfs_client->rpc_ops->version == 4)
+-		auxdata->change_attr = inode_peek_iversion_raw(&nfsi->vfs_inode);
 -}
 -
- int nfs_readpages(struct file *filp, struct address_space *mapping,
- 		struct list_head *pages, unsigned nr_pages)
+ /*
+  * Initialise the per-inode cache cookie pointer for an NFS inode.
+  */
+@@ -293,13 +280,6 @@ void nfs_fscache_clear_inode(struct inode *inode)
+ 	nfsi->fscache = NULL;
+ }
+ 
+-static bool nfs_fscache_can_enable(void *data)
+-{
+-	struct inode *inode = data;
+-
+-	return !inode_is_open_for_write(inode);
+-}
+-
+ /*
+  * Enable or disable caching for a file that is being opened as appropriate.
+  * The cookie is allocated when the inode is initialised, but is not enabled at
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index 6e6d9971244a..9fcaa17584b6 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -12,6 +12,7 @@
+ #include <linux/nfs_mount.h>
+ #include <linux/nfs4_mount.h>
+ #include <linux/fscache.h>
++#include <linux/iversion.h>
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+ 
+@@ -90,37 +91,13 @@ struct nfs_fscache_inode_auxdata {
+ extern void nfs_fscache_clear_inode(struct inode *);
+ extern void nfs_fscache_open_file(struct inode *, struct file *);
+ 
+-extern void __nfs_fscache_invalidate_page(struct page *, struct inode *);
+-extern int nfs_fscache_release_page(struct page *, gfp_t);
+-
+ extern int __nfs_readpage_from_fscache(struct nfs_open_context *,
+ 				       struct inode *, struct page *);
+ extern int __nfs_readpages_from_fscache(struct nfs_open_context *,
+ 					struct inode *, struct address_space *,
+ 					struct list_head *, unsigned *);
+-extern void __nfs_readpage_to_fscache(struct inode *, struct page *, int);
+-
+-/*
+- * wait for a page to complete writing to the cache
+- */
+-static inline void nfs_fscache_wait_on_page_write(struct nfs_inode *nfsi,
+-						  struct page *page)
+-{
+-	if (PageFsCache(page))
+-		fscache_wait_on_page_write(nfsi->fscache, page);
+-}
+-
+-/*
+- * release the caching state associated with a page if undergoing complete page
+- * invalidation
+- */
+-static inline void nfs_fscache_invalidate_page(struct page *page,
+-					       struct inode *inode)
+-{
+-	if (PageFsCache(page))
+-		__nfs_fscache_invalidate_page(page, inode);
+-}
+-
++extern void __nfs_read_completion_to_fscache(struct nfs_pgio_header *hdr,
++					     unsigned long bytes);
+ /*
+  * Retrieve a page from an inode data storage object.
+  */
+@@ -160,20 +137,32 @@ static inline void nfs_readpage_to_fscache(struct inode *inode,
+ 		__nfs_readpage_to_fscache(inode, page, sync);
+ }
+ 
+-/*
+- * Invalidate the contents of fscache for this inode.  This will not sleep.
+- */
+-static inline void nfs_fscache_invalidate(struct inode *inode)
++static inline void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *auxdata,
++				  struct nfs_inode *nfsi)
  {
--	struct nfs_pgio_mirror *pgm;
- 	struct nfs_readdesc desc;
- 	struct inode *inode = mapping->host;
--	unsigned long npages;
+-	fscache_invalidate(NFS_I(inode)->fscache);
++	memset(auxdata, 0, sizeof(*auxdata));
++	auxdata->mtime_sec  = nfsi->vfs_inode.i_mtime.tv_sec;
++	auxdata->mtime_nsec = nfsi->vfs_inode.i_mtime.tv_nsec;
++	auxdata->ctime_sec  = nfsi->vfs_inode.i_ctime.tv_sec;
++	auxdata->ctime_nsec = nfsi->vfs_inode.i_ctime.tv_nsec;
++
++	if (NFS_SERVER(&nfsi->vfs_inode)->nfs_client->rpc_ops->version == 4)
++		auxdata->change_attr = inode_peek_iversion_raw(&nfsi->vfs_inode);
+ }
+ 
+ /*
+- * Wait for an object to finish being invalidated.
++ * Invalidate the contents of fscache for this inode.  This will not sleep.
+  */
+-static inline void nfs_fscache_wait_on_invalidate(struct inode *inode)
++static inline void nfs_fscache_invalidate(struct inode *inode, int flags)
+ {
+-	fscache_wait_on_invalidate(NFS_I(inode)->fscache);
++	struct nfs_fscache_inode_auxdata auxdata;
++	struct nfs_inode *nfsi = NFS_I(inode);
++
++	if (nfsi->fscache) {
++		nfs_fscache_update_auxdata(&auxdata, nfsi);
++		fscache_invalidate(nfsi->fscache, &auxdata,
++				   i_size_read(&nfsi->vfs_inode), flags);
++	}
+ }
+ 
+ /*
+@@ -200,15 +189,6 @@ static inline void nfs_fscache_clear_inode(struct inode *inode) {}
+ static inline void nfs_fscache_open_file(struct inode *inode,
+ 					 struct file *filp) {}
+ 
+-static inline int nfs_fscache_release_page(struct page *page, gfp_t gfp)
+-{
+-	return 1; /* True: may release page */
+-}
+-static inline void nfs_fscache_invalidate_page(struct page *page,
+-					       struct inode *inode) {}
+-static inline void nfs_fscache_wait_on_page_write(struct nfs_inode *nfsi,
+-						  struct page *page) {}
+-
+ static inline int nfs_readpage_from_fscache(struct nfs_open_context *ctx,
+ 					    struct inode *inode,
+ 					    struct page *page)
+@@ -227,8 +207,7 @@ static inline void nfs_readpage_to_fscache(struct inode *inode,
+ 					   struct page *page, int sync) {}
+ 
+ 
+-static inline void nfs_fscache_invalidate(struct inode *inode) {}
+-static inline void nfs_fscache_wait_on_invalidate(struct inode *inode) {}
++static inline void nfs_fscache_invalidate(struct inode *inode, int flags) {}
+ 
+ static inline const char *nfs_server_fscache_state(struct nfs_server *server)
+ {
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index aa6493905bbe..c525dea851c8 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -213,7 +213,7 @@ static void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
+ 		flags &= ~(NFS_INO_INVALID_DATA|NFS_INO_DATA_INVAL_DEFER);
+ 	nfsi->cache_validity |= flags;
+ 	if (flags & NFS_INO_INVALID_DATA)
+-		nfs_fscache_invalidate(inode);
++		nfs_fscache_invalidate(inode, 0);
+ }
+ 
+ /*
+@@ -1240,6 +1240,7 @@ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *map
+ 	struct nfs_inode *nfsi = NFS_I(inode);
  	int ret;
  
- 	dprintk("NFS: nfs_readpages (%s/%Lu %d)\n",
-@@ -437,16 +429,9 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 			     &nfs_async_read_completion_ops);
++	nfs_fscache_invalidate(inode, 0);
+ 	if (mapping->nrpages != 0) {
+ 		if (S_ISREG(inode->i_mode)) {
+ 			ret = nfs_sync_mapping(mapping);
+@@ -1256,7 +1257,6 @@ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *map
+ 		spin_unlock(&inode->i_lock);
+ 	}
+ 	nfs_inc_stats(inode, NFSIOS_DATAINVALIDATE);
+-	nfs_fscache_wait_on_invalidate(inode);
  
- 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
--	nfs_pageio_complete(&desc.pgio);
+ 	dfprintk(PAGECACHE, "NFS: (%s/%Lu) data cache invalidated\n",
+ 			inode->i_sb->s_id,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9e0ca9b2b210..9799f09f1540 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1217,7 +1217,7 @@ int nfs4_call_sync(struct rpc_clnt *clnt,
+ 	nfsi->cache_validity &= ~NFS_INO_INVALID_CHANGE;
  
--	/* It doesn't make sense to do mirrored reads! */
--	WARN_ON_ONCE(desc.pgio.pg_mirror_count != 1);
-+	nfs_pageio_complete_read(&desc.pgio, inode);
+ 	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
+-		nfs_fscache_invalidate(inode);
++		nfs_fscache_invalidate(inode, 0);
+ }
  
--	pgm = &desc.pgio.pg_mirrors[0];
--	NFS_I(inode)->read_io += pgm->pg_bytes_written;
--	npages = (pgm->pg_bytes_written + PAGE_SIZE - 1) >>
--		 PAGE_SHIFT;
--	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
- read_complete:
- 	put_nfs_open_context(desc.ctx);
+ void
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 639c34fec04a..4657ac0c68ac 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -293,6 +293,7 @@ static void nfs_grow_file(struct page *page, unsigned int offset, unsigned int c
+ 	nfs_inc_stats(inode, NFSIOS_EXTENDWRITE);
  out:
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 3cc42b5c7482..abe6416236c9 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -565,7 +565,6 @@ extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred, s
- extern int  nfs_readpage(struct file *, struct page *);
- extern int  nfs_readpages(struct file *, struct address_space *,
- 		struct list_head *, unsigned);
--extern int  nfs_readpage_async(void *, struct inode *, struct page *);
+ 	spin_unlock(&inode->i_lock);
++	nfs_fscache_invalidate(inode, 0);
+ }
  
- /*
-  * inline functions
+ /* A writeback failed: mark the page as bad, and invalidate the page cache */
+@@ -2112,7 +2113,7 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
+ 	if (PagePrivate(page))
+ 		return -EBUSY;
+ 
+-	if (!nfs_fscache_release_page(page, GFP_KERNEL))
++	if (PageFsCache(page))
+ 		return -EBUSY;
+ 
+ 	return migrate_page(mapping, newpage, page, mode);
 -- 
 1.8.3.1
 
