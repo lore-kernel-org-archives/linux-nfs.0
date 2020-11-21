@@ -4,87 +4,178 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BF99C56202
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 127E6C63697
 	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EB07E2224A
+	by mail.kernel.org (Postfix) with ESMTP id C2F2322206
 	for <linux-nfs@archiver.kernel.org>; Sat, 21 Nov 2020 13:29:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="TZzJoqIJ"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="S1jKD81Q"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727418AbgKUN3V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727794AbgKUN3V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 21 Nov 2020 08:29:21 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:57297 "EHLO
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:36623 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727702AbgKUN3T (ORCPT
+        by vger.kernel.org with ESMTP id S1727418AbgKUN3T (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Nov 2020 08:29:19 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1605965358;
+        s=mimecast20190719; t=1605965357;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc; bh=TmUm+FqsWNSGezib7++Wn5qxVEto0VOC87DhDKJ5c38=;
-        b=TZzJoqIJ5/5W2MU35dPepxQAidjzFejcjwHba/Lfow3aK0qv8UHqSLswT5UYAWA0+yTWUH
-        cax4CjrBk+JCkj2tMsOjDvwYiN7B/J5JuRgPu9QS9twUIfltRtlV8D0xYx1Zud47qAvGyh
-        EX9BiRysfRifiStXj1Z0aNra3jFpSeU=
+         to:to:cc:cc; bh=g4EvwRqKARLQ2449PToWbl+ABo+TcsAmc6gj28NBxt0=;
+        b=S1jKD81QREO34b5Kv3N58unMduSdmawg/RJ3GtjL6WSj1fzydHkGYU328GiXFCBCg4Xgzp
+        AoHRHTqbZqjkQuXT/mMUIZhoeFpS84GzU94c1ykqY1XbqbMxh7JpY+Iu3n2qXmhoR3brUT
+        H3RDwTTzh5IIMSCRrB+DPDw+f4a9aIw=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-437-7kPhSD1tP7mATZB1MMSQgA-1; Sat, 21 Nov 2020 08:29:17 -0500
-X-MC-Unique: 7kPhSD1tP7mATZB1MMSQgA-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+ us-mta-156-VgU7e7F6OMKdctxVKMVbBQ-1; Sat, 21 Nov 2020 08:29:12 -0500
+X-MC-Unique: VgU7e7F6OMKdctxVKMVbBQ-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id E8FF71DDE7;
-        Sat, 21 Nov 2020 13:29:15 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 5731E1842146;
+        Sat, 21 Nov 2020 13:29:11 +0000 (UTC)
 Received: from dwysocha.rdu.csb (ovpn-112-41.rdu2.redhat.com [10.10.112.41])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 700AA1002C10;
-        Sat, 21 Nov 2020 13:29:15 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id C41455D9D7;
+        Sat, 21 Nov 2020 13:29:10 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org, dhowells@redhat.com
-Subject: [PATCH v1 02/13] NFS: In nfs_readpage() only increment NFSIOS_READPAGES when read succeeds
-Date:   Sat, 21 Nov 2020 08:29:14 -0500
-Message-Id: <1605965354-24538-1-git-send-email-dwysocha@redhat.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+Subject: [PATCH v1 0/13] Convert NFS to new netfs and fscache APIs
+Date:   Sat, 21 Nov 2020 08:29:08 -0500
+Message-Id: <1605965348-24468-1-git-send-email-dwysocha@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-There is a small inconsistency with nfs_readpage() vs nfs_readpages() with
-regards to NFSIOS_READPAGES.  In readpage we unconditionally increment
-NFSIOS_READPAGES at the top, which means even if the read fails.  In
-readpages, we increment NFSIOS_READPAGES at the bottom based on how
-many pages were successfully read.  Change readpage to be consistent with
-readpages and so NFSIOS_READPAGES only reflects successful, non-fscache
-reads.
+These patches update the NFS client to use the new netfs and fscache
+APIs and are at:
+https://github.com/DaveWysochanskiRH/kernel.git
+https://github.com/DaveWysochanskiRH/kernel/commit/94e9633d98a5542ea384b1095290ac6f915fc917
+https://github.com/DaveWysochanskiRH/kernel/releases/tag/fscache-iter-nfs-20201120
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
----
- fs/nfs/read.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+The patches are based on David Howells fscache-iter tree at
+https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache-iter
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index a05fb3904ddf..1153c4e0a155 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -319,7 +319,6 @@ int nfs_readpage(struct file *filp, struct page *page)
- 	dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
- 		page, PAGE_SIZE, page_index(page));
- 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
--	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
- 
- 	/*
- 	 * Try to flush any pending writes to the file..
-@@ -359,6 +358,7 @@ int nfs_readpage(struct file *filp, struct page *page)
- 		if (!PageUptodate(page) && !ret)
- 			ret = xchg(&ctx->error, 0);
- 	}
-+	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
- out:
- 	put_nfs_open_context(ctx);
- 	return ret;
+The first 6 patches refactor some of the NFS read code to facilitate
+re-use, the next 6 patches do the conversion to the new API, and the
+last patch is a somewhat awkward fix for a problem seen in final
+testing.
+
+Per David Howell's recent post, note that the new fscache API is
+divided into two separate APIs, a 'netfs' API and an 'fscache' API.
+The netfs API was done to help simplify the IO paths of network
+filesystems, and can be called even when fscache is disabled, thus
+simplifing both readpage and readahead implementations.  However,
+for now these NFS conversion patches only call the netfs API when
+fscache is enabled, similar to the existing NFS code.
+
+Trond and Anna, I would appreciate your guidance on this patchset.
+At least I would like your feedback regarding the direction
+you would like these patches to go, in particular, the following
+items:
+
+1. Whether you are ok with using the netfs API unconditionally even
+when fscache is disabled, or prefer this "least invasive to NFS"
+approach.  Note the unconditional use of the netfs API is the
+recommended approach per David's post and the AFS and CEPH
+implementations, but I was unsure if you would accept this
+approach or would prefer to minimize changes to NFS.  Note if
+we keep the current approach to minimize NFS changes, we will
+have to address some problems with page unlocking such as with
+patch 13 in the series.
+
+2. Whether to keep the NFS fscache implementation as "read only"
+or if we add write through support.  Today we only enable fscache
+when a file is open read-only and disable / invalidate when a file
+is open for write.
+
+Still TODO
+1. Address known issues (lockdep, page unlocking), depending on
+what is decided as far as implementation direction
+  a) nfs_issue_op: takes rcu_read_lock but may calls nfs_page_alloc()
+  with GFP_KERNEL which may sleep (dhowells noted this in a review)
+  b) nfs_refresh_inode() takes inode->i_lock but may call
+  __fscache_invalidate() which may sleep (found with lockdep)
+2. Fixup NFS fscache stats (NFSIOS_FSCACHE_*)
+* Compare with netfs stats and determine if still needed
+3. Cleanup dfprintks and/or convert to tracepoints
+4. Further tests (see "Not tested yet")
+
+Checks run
+1. checkpatch: PASS*
+  * a few warnings, mostly trivial fixups, some unrelated to this set
+2. kernel builds with each patch: PASS
+  * each patch in series built cleanly which ensure bisection
+
+Tests run
+1. Custom NFS+fscache unit tests for basic operation: PASS*
+  * no oops or data corruptions
+  * Some op counts are a bit off but these are mostly due
+    to statistics not implemented properly (NFSIOS_FSCACHE_*)
+2. cthon04: PASS (test options "-b -g -s -l", fsc,vers=3,4.0,4.1,4.2,sec=sys)
+* No failures or oopses for any version or test options
+3. iozone tests (fsc,vers=3,4.0,4.1,4.2,sec=sys): PASS
+* No failures or oopses
+4. kernel build (fsc,vers=3,4.1,4.2): PASS*
+  * all builds finish without errors or data corruption
+  * one lockdep "scheduling while atomic" fired with NFS41 and
+    was due to one an fscache invalidation code path (known issue 'b' above)
+5. xfstests/generic (fsc,vers=4.2, nofsc,vers=4.2): PASS*
+   * generic/013 (pass but triggers i_lock lockdep warning known issue 'a' above)
+   * NOTE: The following tests failed with errors, but they
+     also fail on vanilla 5.10-rc4 so are not related to this
+     patchset
+     * generic/074 (lockep invalid wait context - nfs_free_request())
+     * generic/538 (short read)
+     * generic/551 (pread: Unknown error 524, Data verification fail)
+     * generic/568 (ERROR: File grew from 4096 B to 8192 B when writing to the fallocated range)
+
+Not tested yet:
+* error injections (for example, connection disruptions, server errors during IO, etc)
+* pNFS
+* many process mixed read/write on same file
+* performance
+Dave Wysochanski (13):
+  NFS: Clean up nfs_readpage() and nfs_readpages()
+  NFS: In nfs_readpage() only increment NFSIOS_READPAGES when read
+    succeeds
+  NFS: Refactor nfs_readpage() and nfs_readpage_async() to use
+    nfs_readdesc
+  NFS: Call readpage_async_filler() from nfs_readpage_async()
+  NFS: Add nfs_pageio_complete_read() and remove nfs_readpage_async()
+  NFS: Allow internal use of read structs and functions
+  NFS: Convert fscache_acquire_cookie and fscache_relinquish_cookie
+  NFS: Convert fscache_enable_cookie and fscache_disable_cookie
+  NFS: Convert fscache invalidation and update aux_data and i_size
+  NFS: Convert to the netfs API and nfs_readpage to use netfs_readpage
+  NFS: Convert readpage to readahead and use netfs_readahead for fscache
+  NFS: Allow NFS use of new fscache API in build
+  NFS: Ensure proper page unlocking when reads fail with retryable
+    errors
+
+ fs/nfs/Kconfig             |   2 +-
+ fs/nfs/direct.c            |   2 +
+ fs/nfs/file.c              |  22 ++--
+ fs/nfs/fscache-index.c     |  94 --------------
+ fs/nfs/fscache.c           | 315 ++++++++++++++++++++-------------------------
+ fs/nfs/fscache.h           | 132 +++++++------------
+ fs/nfs/inode.c             |   4 +-
+ fs/nfs/internal.h          |   8 ++
+ fs/nfs/nfs4proc.c          |   2 +-
+ fs/nfs/pagelist.c          |   2 +
+ fs/nfs/read.c              | 248 ++++++++++++++++-------------------
+ fs/nfs/write.c             |   3 +-
+ include/linux/nfs_fs.h     |   5 +-
+ include/linux/nfs_iostat.h |   2 +-
+ include/linux/nfs_page.h   |   1 +
+ include/linux/nfs_xdr.h    |   1 +
+ 16 files changed, 339 insertions(+), 504 deletions(-)
+
 -- 
 1.8.3.1
 
