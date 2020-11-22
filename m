@@ -2,80 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D74AC6379F
-	for <linux-nfs@archiver.kernel.org>; Sun, 22 Nov 2020 20:52:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 57169C83010
+	for <linux-nfs@archiver.kernel.org>; Sun, 22 Nov 2020 22:11:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4213A20782
-	for <linux-nfs@archiver.kernel.org>; Sun, 22 Nov 2020 20:52:56 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="uVmEXw4x"
+	by mail.kernel.org (Postfix) with ESMTP id 28C0520757
+	for <linux-nfs@archiver.kernel.org>; Sun, 22 Nov 2020 22:11:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727398AbgKVUwg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 22 Nov 2020 15:52:36 -0500
-Received: from mail.kernel.org ([198.145.29.99]:57582 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727418AbgKVUwg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 22 Nov 2020 15:52:36 -0500
-Received: from leira.hammer.space (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
+        id S1726533AbgKVWLB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 22 Nov 2020 17:11:01 -0500
+Received: from asavdk4.altibox.net ([109.247.116.15]:51724 "EHLO
+        asavdk4.altibox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725782AbgKVWK6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Nov 2020 17:10:58 -0500
+Received: from ravnborg.org (unknown [188.228.123.71])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E6CF220789
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Nov 2020 20:52:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1606078356;
-        bh=5gtozA03I7R/4JernBdR56cfYEcT9DxzMQL+zZ1AofY=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=uVmEXw4xNbc2hYTC4P2cY9um8Oi1nwg9vII1i+sJrdq3tpWhyv9YXKi8GVSQbaEhk
-         +qSMC0dbWA0rA/eTy3BfL9J8Xm0D2HjLMQUdbpyW9KB8MCiKOCFEnDa4VGnYi+w/Aq
-         eV8L35OzBvXueakmAkB8G8mUJvkWnPhJVa2j+ePs=
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 5/8] SUNRPC: Don't truncate tail in xdr_inline_pages()
-Date:   Sun, 22 Nov 2020 15:52:26 -0500
-Message-Id: <20201122205229.3826-6-trondmy@kernel.org>
-X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201122205229.3826-5-trondmy@kernel.org>
-References: <20201122205229.3826-1-trondmy@kernel.org>
- <20201122205229.3826-2-trondmy@kernel.org>
- <20201122205229.3826-3-trondmy@kernel.org>
- <20201122205229.3826-4-trondmy@kernel.org>
- <20201122205229.3826-5-trondmy@kernel.org>
+        by asavdk4.altibox.net (Postfix) with ESMTPS id 2C52280567;
+        Sun, 22 Nov 2020 23:10:42 +0100 (CET)
+Date:   Sun, 22 Nov 2020 23:10:40 +0100
+From:   Sam Ravnborg <sam@ravnborg.org>
+To:     James Bottomley <James.Bottomley@hansenpartnership.com>
+Cc:     Kees Cook <keescook@chromium.org>,
+        Jakub Kicinski <kuba@kernel.org>, alsa-devel@alsa-project.org,
+        linux-atm-general@lists.sourceforge.net,
+        reiserfs-devel@vger.kernel.org, linux-iio@vger.kernel.org,
+        linux-wireless@vger.kernel.org, linux-fbdev@vger.kernel.org,
+        dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org,
+        Nathan Chancellor <natechancellor@gmail.com>,
+        linux-ide@vger.kernel.org, dm-devel@redhat.com,
+        keyrings@vger.kernel.org, linux-mtd@lists.infradead.org,
+        GR-everest-linux-l2@marvell.com, wcn36xx@lists.infradead.org,
+        samba-technical@lists.samba.org, linux-i3c@lists.infradead.org,
+        linux1394-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org,
+        usb-storage@lists.one-eyed-alien.net, drbd-dev@lists.linbit.com,
+        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
+        rds-devel@oss.oracle.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
+        oss-drivers@netronome.com, bridge@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org,
+        linux-stm32@st-md-mailman.stormreply.com, cluster-devel@redhat.com,
+        linux-acpi@vger.kernel.org, coreteam@netfilter.org,
+        intel-wired-lan@lists.osuosl.org, linux-input@vger.kernel.org,
+        Miguel Ojeda <ojeda@kernel.org>,
+        tipc-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-media@vger.kernel.org, linux-watchdog@vger.kernel.org,
+        selinux@vger.kernel.org, linux-arm-msm@vger.kernel.org,
+        intel-gfx@lists.freedesktop.org, linux-geode@lists.infradead.org,
+        linux-can@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-gpio@vger.kernel.org, op-tee@lists.trustedfirmware.org,
+        linux-mediatek@lists.infradead.org, xen-devel@lists.xenproject.org,
+        nouveau@lists.freedesktop.org, linux-hams@vger.kernel.org,
+        ceph-devel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        target-devel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        linux-hwmon@vger.kernel.org, x86@kernel.org,
+        linux-nfs@vger.kernel.org, GR-Linux-NIC-Dev@marvell.com,
+        linux-mm@kvack.org, netdev@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net, linux-mmc@vger.kernel.org,
+        "Gustavo A. R. Silva" <gustavoars@kernel.org>,
+        linux-renesas-soc@vger.kernel.org, linux-sctp@vger.kernel.org,
+        linux-usb@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        linux-crypto@vger.kernel.org, patches@opensource.cirrus.com,
+        Joe Perches <joe@perches.com>, linux-integrity@vger.kernel.org,
+        linux-hardening@vger.kernel.org
+Subject: Re: [PATCH 000/141] Fix fall-through warnings for Clang
+Message-ID: <20201122221040.GD566387@ravnborg.org>
+References: <cover.1605896059.git.gustavoars@kernel.org>
+ <20201120105344.4345c14e@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+ <202011201129.B13FDB3C@keescook>
+ <20201120115142.292999b2@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+ <202011220816.8B6591A@keescook>
+ <9b57fd4914b46f38d54087d75e072d6e947cb56d.camel@HansenPartnership.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <9b57fd4914b46f38d54087d75e072d6e947cb56d.camel@HansenPartnership.com>
+X-CMAE-Score: 0
+X-CMAE-Analysis: v=2.3 cv=VafZwmh9 c=1 sm=1 tr=0
+        a=S6zTFyMACwkrwXSdXUNehg==:117 a=S6zTFyMACwkrwXSdXUNehg==:17
+        a=kj9zAlcOel0A:10 a=VwQbUJbxAAAA:8 a=pGLkceISAAAA:8
+        a=7T594MSkF3521FIrX4wA:9 a=CjuIK1q_8ugA:10 a=AjGcO6oz07-iQ99wixmX:22
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+Hi James.
 
-True that if the length of the pages[] array is not 4-byte aligned, then
-we will need to store the padding in the tail, but there is no need to
-truncate the total buffer length here.
+> > > If none of the 140 patches here fix a real bug, and there is no
+> > > change to machine code then it sounds to me like a W=2 kind of a
+> > > warning.
+> > 
+> > FWIW, this series has found at least one bug so far:
+> > https://lore.kernel.org/lkml/CAFCwf11izHF=g1mGry1fE5kvFFFrxzhPSM6qKAO8gxSp=Kr_CQ@mail.gmail.com/
+> 
+> 
+> Well, it's a problem in an error leg, sure, but it's not a really
+> compelling reason for a 141 patch series, is it?  All that fixing this
+> error will do is get the driver to print "oh dear there's a problem"
+> under four more conditions than it previously did.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/xdr.c | 3 ---
- 1 file changed, 3 deletions(-)
+You are asking the wrong question here.
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 3ce0a5daa9eb..5a450055469f 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -193,9 +193,6 @@ xdr_inline_pages(struct xdr_buf *xdr, unsigned int offset,
- 
- 	tail->iov_base = buf + offset;
- 	tail->iov_len = buflen - offset;
--	if ((xdr->page_len & 3) == 0)
--		tail->iov_len -= sizeof(__be32);
--
- 	xdr->buflen += len;
- }
- EXPORT_SYMBOL_GPL(xdr_inline_pages);
--- 
-2.28.0
+Yuo should ask  how many hours could have been saved by all the bugs
+people have been fighting with and then fixed *before* the code
+hit the kernel at all.
 
+My personal experience is that I, more than once, have had errors
+related to a missing break in my code. So this warnings is IMO a win.
+
+And if we are only ~100 patches to have it globally enabled then it is a
+no-brainer in my book.
+
+	Sam
