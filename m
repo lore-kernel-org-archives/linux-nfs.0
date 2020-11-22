@@ -7,45 +7,47 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C66AAC64E69
-	for <linux-nfs@archiver.kernel.org>; Sun, 22 Nov 2020 20:52:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BB83C64E7A
+	for <linux-nfs@archiver.kernel.org>; Sun, 22 Nov 2020 20:52:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 78F5A20789
+	by mail.kernel.org (Postfix) with ESMTP id D9BFD20789
 	for <linux-nfs@archiver.kernel.org>; Sun, 22 Nov 2020 20:52:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="hFSfur5n"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="1MGEYNDs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727445AbgKVUwh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 22 Nov 2020 15:52:37 -0500
-Received: from mail.kernel.org ([198.145.29.99]:57600 "EHLO mail.kernel.org"
+        id S1727459AbgKVUwi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 22 Nov 2020 15:52:38 -0500
+Received: from mail.kernel.org ([198.145.29.99]:57640 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727434AbgKVUwh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 22 Nov 2020 15:52:37 -0500
+        id S1727418AbgKVUwi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 22 Nov 2020 15:52:38 -0500
 Received: from leira.hammer.space (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6D8262078B
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Nov 2020 20:52:36 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 69B5020789
+        for <linux-nfs@vger.kernel.org>; Sun, 22 Nov 2020 20:52:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1606078356;
-        bh=81c8hXVAexxERZg1aSClqsGHLBDQbE4w7uJ52QJYrmA=;
+        s=default; t=1606078357;
+        bh=t7GJpaRh+lfiM3ldrzF95kY8lX4NRHi/lyj6Qbl2E3o=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=hFSfur5nOGjCu23vvjs2LoChnUIw7jYWz1Ox2yNZx3LNJK+DsmQa8S9bAg6CKkhxe
-         6xBcCCm/YzKVsM4InTGfXBaMHcV4G9Gi6H3O80xUxQ7J2aV6lEhGz4herq0WA1NJq8
-         MaJosCEa8U0QTbCx2d5bNuda2ux+SY+fS2gpcWNE=
+        b=1MGEYNDsumotVF/KfLFNMgIhV71MpcSvcV92IKcRdoSgqRI2Ta3Kdjrv/ftdXlU/p
+         H9jgvaRMEnY1ewjPo90JL4GD6jFROF4ySx0gwOyPcbuHtLrWtLhk2aMzul2urIPK2U
+         rR0aNpRNs3KthqRT5mKzTpPlcvNxiFh4331//kP8=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 6/8] SUNRPC: Fix up xdr_set_page()
-Date:   Sun, 22 Nov 2020 15:52:27 -0500
-Message-Id: <20201122205229.3826-7-trondmy@kernel.org>
+Subject: [PATCH 8/8] NFSv4: Fix open coded xdr_stream_remaining()
+Date:   Sun, 22 Nov 2020 15:52:29 -0500
+Message-Id: <20201122205229.3826-9-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201122205229.3826-6-trondmy@kernel.org>
+In-Reply-To: <20201122205229.3826-8-trondmy@kernel.org>
 References: <20201122205229.3826-1-trondmy@kernel.org>
  <20201122205229.3826-2-trondmy@kernel.org>
  <20201122205229.3826-3-trondmy@kernel.org>
  <20201122205229.3826-4-trondmy@kernel.org>
  <20201122205229.3826-5-trondmy@kernel.org>
  <20201122205229.3826-6-trondmy@kernel.org>
+ <20201122205229.3826-7-trondmy@kernel.org>
+ <20201122205229.3826-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -54,75 +56,30 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-While we always want to align to the next page and/or the beginning of
-the tail buffer when we call xdr_set_next_page(), the functions
-xdr_align_data() and xdr_expand_hole() really want to align to the next
-object in that next page or tail.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xdr.c | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+ fs/nfs/nfs4xdr.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 5a450055469f..ddd5cc2281ab 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1019,8 +1019,10 @@ static unsigned int xdr_set_page_base(struct xdr_stream *xdr,
- static void xdr_set_page(struct xdr_stream *xdr, unsigned int base,
- 			 unsigned int len)
- {
--	if (xdr_set_page_base(xdr, base, len) == 0)
--		xdr_set_iov(xdr, xdr->buf->tail, 0, xdr_stream_remaining(xdr));
-+	if (xdr_set_page_base(xdr, base, len) == 0) {
-+		base -= xdr->buf->page_len;
-+		xdr_set_iov(xdr, xdr->buf->tail, base, len);
-+	}
- }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 9913aec3ee32..910468c77c58 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5335,11 +5335,11 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 		res->acl_len = attrlen;
  
- static void xdr_set_next_page(struct xdr_stream *xdr)
-@@ -1029,17 +1031,18 @@ static void xdr_set_next_page(struct xdr_stream *xdr)
- 
- 	newbase = (1 + xdr->page_ptr - xdr->buf->pages) << PAGE_SHIFT;
- 	newbase -= xdr->buf->page_base;
--
--	xdr_set_page(xdr, newbase, PAGE_SIZE);
-+	if (newbase < xdr->buf->page_len)
-+		xdr_set_page_base(xdr, newbase, xdr_stream_remaining(xdr));
-+	else
-+		xdr_set_iov(xdr, xdr->buf->tail, 0, xdr_stream_remaining(xdr));
- }
- 
- static bool xdr_set_next_buffer(struct xdr_stream *xdr)
- {
- 	if (xdr->page_ptr != NULL)
- 		xdr_set_next_page(xdr);
--	else if (xdr->iov == xdr->buf->head) {
--		xdr_set_page(xdr, 0, PAGE_SIZE);
--	}
-+	else if (xdr->iov == xdr->buf->head)
-+		xdr_set_page(xdr, 0, xdr_stream_remaining(xdr));
- 	return xdr->p != xdr->end;
- }
- 
-@@ -1277,7 +1280,7 @@ uint64_t xdr_align_data(struct xdr_stream *xdr, uint64_t offset, uint32_t length
- 	}
- 
- 	xdr->nwords -= XDR_QUADLEN(length);
--	xdr_set_page(xdr, from + length, PAGE_SIZE);
-+	xdr_set_page(xdr, from + length, xdr_stream_remaining(xdr));
- 	return length;
- }
- EXPORT_SYMBOL_GPL(xdr_align_data);
-@@ -1314,7 +1317,7 @@ uint64_t xdr_expand_hole(struct xdr_stream *xdr, uint64_t offset, uint64_t lengt
- 	_zero_pages(buf->pages, buf->page_base + offset, length);
- 
- 	buf->len += length - (from - offset) - truncated;
--	xdr_set_page(xdr, offset + length, PAGE_SIZE);
-+	xdr_set_page(xdr, offset + length, xdr_stream_remaining(xdr));
- 	return length;
- }
- EXPORT_SYMBOL_GPL(xdr_expand_hole);
+ 		/* Check for receive buffer overflow */
+-		if (res->acl_len > (xdr->nwords << 2) ||
++		if (res->acl_len > xdr_stream_remaining(xdr) ||
+ 		    res->acl_len + res->acl_data_offset > xdr->buf->page_len) {
+ 			res->acl_flags |= NFS4_ACL_TRUNC;
+-			dprintk("NFS: acl reply: attrlen %u > page_len %u\n",
+-					attrlen, xdr->nwords << 2);
++			dprintk("NFS: acl reply: attrlen %u > page_len %zu\n",
++				attrlen, xdr_stream_remaining(xdr));
+ 		}
+ 	} else
+ 		status = -EOPNOTSUPP;
 -- 
 2.28.0
 
