@@ -7,68 +7,68 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E15E3C64E7D
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:05:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6FDB4C64E90
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:05:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A45CC20717
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:05:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1BDEE20717
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:05:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rFhwSk8u"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="O7GP10zZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728288AbgKWUF1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Nov 2020 15:05:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41632 "EHLO
+        id S1727079AbgKWUFg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Nov 2020 15:05:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41660 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728172AbgKWUF1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:05:27 -0500
+        with ESMTP id S1728038AbgKWUFg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:05:36 -0500
 Received: from mail-qt1-x842.google.com (mail-qt1-x842.google.com [IPv6:2607:f8b0:4864:20::842])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1A9BFC0613CF
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:05:26 -0800 (PST)
-Received: by mail-qt1-x842.google.com with SMTP id e10so6886173qte.4
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:05:26 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B41FC0613CF
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:05:36 -0800 (PST)
+Received: by mail-qt1-x842.google.com with SMTP id e10so6886734qte.4
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:05:36 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=3M88BWG2KaPxDVuMz2rPXZO7oeNufUPuQ1bPgNy0Z+A=;
-        b=rFhwSk8uDI+UZi2B/sy0cPUj1K2gPjuZLDSQ8GETM7SW9eSAkXzkqncbezy+RtJpVF
-         gTALmpyJmVnbwN+Q1n4huM6vyg0knqvzPApCMpgWMi1VuzYTLmMPMgZ+nUAaGW/jlKiZ
-         TjHLGUFnzZehAK4PQr0iYt3+1y3PhQdXwpoKC7ibUjpRjsT/yE4ZUE59r7PFO0G8fvPl
-         4fpBF13i6nwEd2vnG6pXBxVqZBrDxcrORTgnNDrNrJVSqjegR+d+PXNqd8mzN3zS3GLr
-         kQwPhQLlG+XIIB1OkXqpNAMciRhaU6hWHCiYMSR5vr2eoLfTRnwoGG1zHS+hGHJckd5L
-         shfA==
+        bh=xafRn5urN93n9LRvMuxvvqgG7plRSgQmc2iMcxZO/wY=;
+        b=O7GP10zZoXQ3p4XP/3xp135RncMCAhpR2Ptj/mk2oMuR2bgRgcuDHKU0Si7TXgyz2V
+         LnR70gQINwft4UCvMbmMxhVEohMqRqUyoTpdmPVrv1fs3N0q7HBnAjTR/dtVbIMm6/EH
+         KGkEc/YJHo0KNdVpXEnb7W7Eq4984SinuLjaiieu6Fd2MBkxMluMIKLlEBvTCdbBFiE/
+         ahaXkLzb34NggvRWSsgtafePjD7WMq3K+mkH4NM/NIqTbQ285zSqzZIOCBq+6NqSdb32
+         TKo/3XmvrRTfEbMFws/ZPGng23tsjFQW1NZ5i1XDUB0oTC4DL3WUwmOFOw18VvUiZvE7
+         yx/g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=3M88BWG2KaPxDVuMz2rPXZO7oeNufUPuQ1bPgNy0Z+A=;
-        b=L1FtOZo3Tyt/Calx5TAl4gCDOq7jW2PRS3Aclep9b0Hp0AOyqPOX/j6Al0giZuH0dc
-         w9a1h+40GBpuyxNEqe9lK2Qf5UKhph1W863Wy+HMLvlXxQcsUXHt3wAhtrnCgtW5BJe0
-         4LdZsMmIMx0y0zjy6HB4kgWR5TPeIubYcdyumQwQ6nQIb7LNDc5IjWn3TYhTKsfIx9yC
-         mMdvT+FD9yyCf28dnF2q3agSXWDrLmZLsvZdVcarHZyLsLW8BoKs1ou7TBi7P09hXHv+
-         5g/QD3Bva2YGOgWyz3jmG7hUTdHoNVq2lZGtmYtmuN7H4pW6i/4iV2tRrv5gubdn45aT
-         I+Kg==
-X-Gm-Message-State: AOAM532a+RvRY8HUf4lkHx6/uf38F6KXH9wqIa3R1NcR+KV3ga483/ac
-        zbOLlD+oSsZxmFnvoKO84fsUxgBL3wU=
-X-Google-Smtp-Source: ABdhPJyiiSERQJoPWQffdHGw5ugtd82izVIAJfHqu9jLKudoQ/QLutY0gNRJdSEbrLR9xlWTmqJ0ag==
-X-Received: by 2002:ac8:444b:: with SMTP id m11mr930454qtn.122.1606161924993;
-        Mon, 23 Nov 2020 12:05:24 -0800 (PST)
+        bh=xafRn5urN93n9LRvMuxvvqgG7plRSgQmc2iMcxZO/wY=;
+        b=qcJSQy66y56g13cc3i42vRvYwfVfJfeO3gtPSJx+qVabLqIDCFkHSCdB0N08tITJbr
+         N2+qFQNENHtcXi/NFgZsnIQsIlAFVo4fw/tL4uvk+QTYYbNRlM2Z2ePDkU1qdkK2iwRG
+         BkAooAvb1aMy+OpFpVHQ3Mw7vedBkYiuKamjaFwTB0z5PgfcJmwmim0xjn0xZd2ONj3+
+         Z+mjvoXR0J74lDbfcHaI5KVbg77hQQEQehdIt+TRK8q5HdH1tZaGTFHLNlxzV77Uo0nm
+         L0SQEpKx2XyONlc3ww55MckAe19KzNz1diTP1CGh/PdJUKke4D3BnU+CBiKwl79Ce71G
+         hFUg==
+X-Gm-Message-State: AOAM530+FQ3MzDJpfUXXJt62i/yerXsIFDoi6UYdQ6vMMj6+dGdZTlnD
+        os+ddWvdNbqYpfKcNUsOqZV2/y5lj8E=
+X-Google-Smtp-Source: ABdhPJxmszNDXjgomehHr5ZADQrG+exndiq1JGj1SyobWv7fZCfg41JKrrHGnmh3jlwi8FQJ/9VaiQ==
+X-Received: by 2002:ac8:47d0:: with SMTP id d16mr862424qtr.125.1606161935309;
+        Mon, 23 Nov 2020 12:05:35 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id q7sm2604044qkb.22.2020.11.23.12.05.24
+        by smtp.gmail.com with ESMTPSA id j17sm10103278qtn.2.2020.11.23.12.05.34
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 23 Nov 2020 12:05:24 -0800 (PST)
+        Mon, 23 Nov 2020 12:05:34 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ANK5N0H010316
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 20:05:23 GMT
-Subject: [PATCH v3 16/85] NFSD: Replace READ* macros that decode the fattr4
- time_set attributes
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ANK5X57010322
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 20:05:33 GMT
+Subject: [PATCH v3 18/85] NFSD: Replace READ* macros that decode the fattr4
+ umask attribute
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Mon, 23 Nov 2020 15:05:23 -0500
-Message-ID: <160616192333.51996.682877163956950323.stgit@klimt.1015granger.net>
+Date:   Mon, 23 Nov 2020 15:05:33 -0500
+Message-ID: <160616193368.51996.3435896308145544488.stgit@klimt.1015granger.net>
 In-Reply-To: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
 References: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -81,83 +81,42 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   39 +++++++++++++++++++++++++++++----------
- 1 file changed, 29 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4xdr.c |   16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e5f73bfc79dc..2668c150042e 100644
+index 3844bbb7aaa3..54481804a096 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -219,6 +219,21 @@ nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec64 *tv)
- 	DECODE_TAIL;
- }
- 
-+static __be32
-+nfsd4_decode_nfstime4(struct nfsd4_compoundargs *argp, struct timespec64 *tv)
-+{
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(argp->xdr, XDR_UNIT * 3);
-+	if (!p)
-+		return nfserr_bad_xdr;
-+	p = xdr_decode_hyper(p, &tv->tv_sec);
-+	tv->tv_nsec = be32_to_cpup(p++);
-+	if (tv->tv_nsec >= (u32)1000000000)
-+		return nfserr_inval;
-+	return nfs_ok;
-+}
-+
- static __be32
- nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+@@ -358,7 +358,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
  {
-@@ -388,11 +403,13 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		iattr->ia_valid |= ATTR_GID;
+ 	unsigned int starting_pos;
+ 	u32 attrlist4_count;
+-	u32 dummy32;
+ 
+ 	DECODE_HEAD;
+ 	iattr->ia_valid = 0;
+@@ -474,13 +473,16 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 			return status;
  	}
- 	if (bmval[1] & FATTR4_WORD1_TIME_ACCESS_SET) {
--		READ_BUF(4);
--		dummy32 = be32_to_cpup(p++);
--		switch (dummy32) {
-+		u32 set_it;
+ 	if (bmval[2] & FATTR4_WORD2_MODE_UMASK) {
++		u32 mode, mask;
 +
-+		if (xdr_stream_decode_u32(argp->xdr, &set_it) < 0)
-+			return nfserr_bad_xdr;
-+		switch (set_it) {
- 		case NFS4_SET_TO_CLIENT_TIME:
--			status = nfsd4_decode_time(argp, &iattr->ia_atime);
-+			status = nfsd4_decode_nfstime4(argp, &iattr->ia_atime);
- 			if (status)
- 				return status;
- 			iattr->ia_valid |= (ATTR_ATIME | ATTR_ATIME_SET);
-@@ -401,15 +418,17 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			iattr->ia_valid |= ATTR_ATIME;
- 			break;
- 		default:
+ 		if (!umask)
 -			goto xdr_error;
-+			return nfserr_bad_xdr;
- 		}
- 	}
- 	if (bmval[1] & FATTR4_WORD1_TIME_MODIFY_SET) {
--		READ_BUF(4);
+-		READ_BUF(8);
 -		dummy32 = be32_to_cpup(p++);
--		switch (dummy32) {
-+		u32 set_it;
-+
-+		if (xdr_stream_decode_u32(argp->xdr, &set_it) < 0)
+-		iattr->ia_mode = dummy32 & (S_IFMT | S_IALLUGO);
+-		dummy32 = be32_to_cpup(p++);
+-		*umask = dummy32 & S_IRWXUGO;
 +			return nfserr_bad_xdr;
-+		switch (set_it) {
- 		case NFS4_SET_TO_CLIENT_TIME:
--			status = nfsd4_decode_time(argp, &iattr->ia_mtime);
-+			status = nfsd4_decode_nfstime4(argp, &iattr->ia_mtime);
- 			if (status)
- 				return status;
- 			iattr->ia_valid |= (ATTR_MTIME | ATTR_MTIME_SET);
-@@ -418,7 +437,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			iattr->ia_valid |= ATTR_MTIME;
- 			break;
- 		default:
--			goto xdr_error;
++		if (xdr_stream_decode_u32(argp->xdr, &mode) < 0)
 +			return nfserr_bad_xdr;
- 		}
++		iattr->ia_mode = mode & (S_IFMT | S_IALLUGO);
++		if (xdr_stream_decode_u32(argp->xdr, &mask) < 0)
++			return nfserr_bad_xdr;
++		*umask = mask & S_IRWXUGO;
+ 		iattr->ia_valid |= ATTR_MODE;
  	}
  
 
