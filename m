@@ -2,72 +2,120 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53AD8C63697
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 19:18:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47DB3C63697
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 19:21:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A45362063A
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 19:18:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E7D022063A
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 19:21:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="ETHKjR/Z"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="kCKtKbcZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731346AbgKWTSl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Nov 2020 14:18:41 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34368 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729407AbgKWTSk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 14:18:40 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7B60C0613CF
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 11:18:40 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 136896E9E; Mon, 23 Nov 2020 14:18:40 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 136896E9E
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1606159120;
-        bh=zRTd0JW2WYfrCxNiuuBaQoEJkhlTooZf+VHyw2Vetfw=;
-        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
-        b=ETHKjR/ZqqgwSRZ/+izFiCGhc5CTjB92QIScT3p0b1xsGXNaYtBnyRgZD5/Phg5/z
-         RxJ7iOyC4zd3B0jILnP/rhpJIjd1dAx7IY0hprUcdPEW4hweObGK0oewXc8sALwvOO
-         KOYoNtzFmdWjr0vOtooZYPjFJrv3kF2/2boQbZd4=
-Date:   Mon, 23 Nov 2020 14:18:40 -0500
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
+        id S1729432AbgKWTVH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Nov 2020 14:21:07 -0500
+Received: from aserp2130.oracle.com ([141.146.126.79]:33330 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729183AbgKWTVH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 14:21:07 -0500
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ANJ8mew034712;
+        Mon, 23 Nov 2020 19:21:05 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=BVkAbxGBJdZwMgbg2CWg6P4E2P89xptBjRd+PqCYnWY=;
+ b=kCKtKbcZMOiUq6b+L3cwNFeVhI+6fL4Rd6npwip/aXfSRcec/ki9oQNXWcoFQXhEPkIB
+ FVCvvXWOtrpJLB37MppFMHr+/yfUE9BXH9CDfKZV8q4T6IYl5sr9mV6cOhD9x9Zejnyr
+ lmI/g8Anro+0EkcIs6KFQrDSUFvMGKRPdI80JuF9sBy+sbFfS8l+KnZmAdFDWOM0n4Zt
+ oXlvEBLQ0jQssY4GbXAWR/kPUTtg0wvCJhIauNcmYxUwIKdP/afMX8cSv+vQpycY00kD
+ HzLe0ig2KgKW/WRXHmVltDTKUoCksC602lnph360KZUsbDFuz08boSyylG4sTYFrPb7b 5w== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by aserp2130.oracle.com with ESMTP id 34xrdaq3tb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Mon, 23 Nov 2020 19:21:05 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ANJ9o5d140597;
+        Mon, 23 Nov 2020 19:21:04 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by userp3020.oracle.com with ESMTP id 34ycnrc4yb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 23 Nov 2020 19:21:04 +0000
+Received: from abhmp0003.oracle.com (abhmp0003.oracle.com [141.146.116.9])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0ANJL3ua014045;
+        Mon, 23 Nov 2020 19:21:03 GMT
+Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 23 Nov 2020 11:21:03 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
 Subject: Re: [PATCH v2 005/118] NFSD: Replace the internals of the READ_BUF()
  macro
-Message-ID: <20201123191840.GH32599@fieldses.org>
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20201123191840.GH32599@fieldses.org>
+Date:   Mon, 23 Nov 2020 14:21:02 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <6B66AC8A-F7E8-421C-ACDC-C6887CEEBB34@oracle.com>
 References: <160590425404.1340.8850646771948736468.stgit@klimt.1015granger.net>
  <160590445271.1340.9408337302317384948.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <160590445271.1340.9408337302317384948.stgit@klimt.1015granger.net>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+ <20201123191840.GH32599@fieldses.org>
+To:     Bruce Fields <bfields@fieldses.org>
+X-Mailer: Apple Mail (2.3608.120.23.2.4)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9814 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 suspectscore=0
+ mlxlogscore=999 phishscore=0 spamscore=0 malwarescore=0 adultscore=0
+ mlxscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2009150000 definitions=main-2011230125
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9814 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 impostorscore=0 mlxscore=0
+ mlxlogscore=999 spamscore=0 phishscore=0 clxscore=1015 malwarescore=0
+ lowpriorityscore=0 adultscore=0 suspectscore=0 priorityscore=1501
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2011230125
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 20, 2020 at 03:34:12PM -0500, Chuck Lever wrote:
-> @@ -396,7 +281,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  		READ_BUF(4); len += 4;
->  		nace = be32_to_cpup(p++);
->  
-> -		if (nace > compoundargs_bytes_left(argp)/20)
-> +		if (nace > xdr_stream_remaining(argp->xdr) / sizeof(struct nfs4_ace))
 
-Picky C question: is the compiler guaranteed to pack that struct in the
-obvious way?
 
-That aside, I'm not comfortable assuming the struct could never change
-to, say, include something that's useful during processing but doesn't
-appear on the wire.
+> On Nov 23, 2020, at 2:18 PM, bfields@fieldses.org wrote:
+>=20
+> On Fri, Nov 20, 2020 at 03:34:12PM -0500, Chuck Lever wrote:
+>> @@ -396,7 +281,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs =
+*argp, u32 *bmval,
+>> 		READ_BUF(4); len +=3D 4;
+>> 		nace =3D be32_to_cpup(p++);
+>>=20
+>> -		if (nace > compoundargs_bytes_left(argp)/20)
+>> +		if (nace > xdr_stream_remaining(argp->xdr) / =
+sizeof(struct nfs4_ace))
+>=20
+> Picky C question: is the compiler guaranteed to pack that struct in =
+the
+> obvious way?
+>=20
+> That aside, I'm not comfortable assuming the struct could never change
+> to, say, include something that's useful during processing but doesn't
+> appear on the wire.
 
-Also, that change isn't actually logically related to the rest of the
-patch, so it's the sort of thing I'd expect separated out.
+OK, but you also don't like naked integers without documentation.
+I can leave this as "xdr_stream_remaining() / 20" if you prefer.
+Or we could define a macro somewhere that makes this code a little
+more self-documenting.
 
---b.
+
+> Also, that change isn't actually logically related to the rest of the
+> patch, so it's the sort of thing I'd expect separated out.
+>=20
+> --b.
+
+--
+Chuck Lever
+
+
+
