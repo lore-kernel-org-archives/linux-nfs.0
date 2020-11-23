@@ -2,130 +2,132 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47824C63798
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 01:24:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1375BC2D0E4
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 04:30:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 07C1D20771
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 01:24:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8C7AE207FF
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 04:30:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="qGKUBEkk"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="XQHfdLcm"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726448AbgKWBYJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 22 Nov 2020 20:24:09 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:45708 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726302AbgKWBYI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Nov 2020 20:24:08 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0AN1O6Qu110016;
-        Mon, 23 Nov 2020 01:24:06 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=SfTYlJxogPV3K4+IQFVcQfu/ifZGhkNVB1nWRRmntz8=;
- b=qGKUBEkkXOBhdpHWJ2DKOmuq6tQGQ0MLwPgNSSZEHpcKDC+C+6Xn4YxKfPPNvTeoYxbm
- dInjUR5wYweFYNWnvjjLOJWmJIFZ68HHfpfB3OglYEUXzGQA96cYugMzdvii5CyZXAzq
- co+t7ahvq7mM0ASCqnxBdNVEnDVcpcoV4y2pQQQDq/GKUpSIh3EUPQBxD9pjOrRfr4HO
- Koq0vFEM1WGhor+qNQygkwBfI9ScUwbdku8au1LoBrIiQzrUyi2qIstnvtII7Pwpg0pJ
- fH7dZFOgkICCyK3Wo+pKpcTLHExwgmCYQz8HvWiDo2UCvm2MIECKC9tjhdT/76mMXsrv ZQ== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by userp2120.oracle.com with ESMTP id 34xuhmjxg0-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Mon, 23 Nov 2020 01:24:06 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0AN1JmAb095978;
-        Mon, 23 Nov 2020 01:24:05 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userp3020.oracle.com with ESMTP id 34ycnq31ay-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 23 Nov 2020 01:24:05 +0000
-Received: from abhmp0010.oracle.com (abhmp0010.oracle.com [141.146.116.16])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0AN1O49s031566;
-        Mon, 23 Nov 2020 01:24:05 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Sun, 22 Nov 2020 17:24:04 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
+        id S1727054AbgKWE3k (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 22 Nov 2020 23:29:40 -0500
+Received: from mail-co1nam11on2127.outbound.protection.outlook.com ([40.107.220.127]:37495
+        "EHLO NAM11-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726917AbgKWE3k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 22 Nov 2020 23:29:40 -0500
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=N9LXMByHYZ7BGyl5X/LdkJxgkqBIUsdWrm9M9pyd66XMBglEvsa+e285gceTjtpLBGmVZcsCM43fJspdMJvcMwn5srd9/S5TyIMpjCWzDANURLhUUP65J/Da3kUJXVJefbRpu+GnFNZI04dCzI6NnVN92DbAD4+onTeHP4QOeP2REWoP8NeC6qx/z5pdehchxerzfO5b5unR9wH0/SMbdSxRZr1KklDswVQz0krOXJLVP9PGk8Y/B7HNculyp+ihovQQ00Mci42//Zpc6awaWUOmKFCEOSqZExaTx9QAGR40w7nHFk6KtxEvv2ONRdPaHrLOa12+ejA5v2iuXKKQCg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=kMG7iHMJPpYrWLSMdmfmTwFS8fnr3+R9sQSKb/57wls=;
+ b=SHKuGi62RSNx1ZrXw9m/pw1GIPw1xWsL5gl1DJ4SPffM5NmH2bglLWknrEzb2JLAThlubh29QSlLNBC/p3FU5l7r31vUswOdGeAdDIu6CrwyocYYVvs2Gtc07KBJiwYq3Y7o+F5kY7FyTDNAkB8uMW8o9qxmPButuHYhqWuJOqT6KlK+xen7w45td9ee6/S06fWtLiojA7yUcGzabbfHa3m63+sOMJs4/7b1LPByu5P4KKFY/GjxvoNHLjZd92cM/8KXHkk7chkPNdIUNqS99MIjRfKu4YBlgbeUMzcmr299kPEiE/CKPTf7WRizEh0tB0JFjBdnoYXkH2KnulZfaw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=hammerspace.com; dmarc=pass action=none
+ header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=kMG7iHMJPpYrWLSMdmfmTwFS8fnr3+R9sQSKb/57wls=;
+ b=XQHfdLcmM1f5ZLRH2sAb3WhFnftBRYMtgaW/YKSC2K53dEedQ2jzn/o1DlbfCg4XPchUpGXWm+P6eH+Gp3JGcBaLWsfDov1fvuMaoNZKjxuCI4ln2ZtiDqdq9u/NdhBj1amTVn+w5jEi2yawZyyhLgqOj/d6h8jYQGePUxpniaE=
+Received: from MN2PR13MB3957.namprd13.prod.outlook.com (2603:10b6:208:263::11)
+ by MN2PR13MB3774.namprd13.prod.outlook.com (2603:10b6:208:1ed::21) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3611.14; Mon, 23 Nov
+ 2020 04:29:34 +0000
+Received: from MN2PR13MB3957.namprd13.prod.outlook.com
+ ([fe80::e989:f666:131a:e210]) by MN2PR13MB3957.namprd13.prod.outlook.com
+ ([fe80::e989:f666:131a:e210%9]) with mapi id 15.20.3611.020; Mon, 23 Nov 2020
+ 04:29:34 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "trondmy@kernel.org" <trondmy@kernel.org>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 5/8] SUNRPC: Don't truncate tail in xdr_inline_pages()
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20201122205229.3826-6-trondmy@kernel.org>
-Date:   Sun, 22 Nov 2020 20:24:03 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <0CB9471F-ACC6-42A1-8DCD-8A9E74BAF8F1@oracle.com>
+Thread-Topic: [PATCH 5/8] SUNRPC: Don't truncate tail in xdr_inline_pages()
+Thread-Index: AQHWwRF4yd6FYecdbUORATZ5zTbL+6nU7ISAgAAz1IA=
+Date:   Mon, 23 Nov 2020 04:29:34 +0000
+Message-ID: <614498c69c40421f8581fd8b25633e8668959581.camel@hammerspace.com>
 References: <20201122205229.3826-1-trondmy@kernel.org>
- <20201122205229.3826-2-trondmy@kernel.org>
- <20201122205229.3826-3-trondmy@kernel.org>
- <20201122205229.3826-4-trondmy@kernel.org>
- <20201122205229.3826-5-trondmy@kernel.org>
- <20201122205229.3826-6-trondmy@kernel.org>
-To:     trondmy@kernel.org
-X-Mailer: Apple Mail (2.3608.120.23.2.4)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9813 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 suspectscore=1
- mlxlogscore=999 phishscore=0 spamscore=0 malwarescore=0 adultscore=0
- mlxscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2011230006
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9813 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 mlxscore=0 bulkscore=0
- adultscore=0 phishscore=0 spamscore=0 impostorscore=0 lowpriorityscore=0
- suspectscore=1 priorityscore=1501 mlxlogscore=999 clxscore=1015
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2011230006
+         <20201122205229.3826-2-trondmy@kernel.org>
+         <20201122205229.3826-3-trondmy@kernel.org>
+         <20201122205229.3826-4-trondmy@kernel.org>
+         <20201122205229.3826-5-trondmy@kernel.org>
+         <20201122205229.3826-6-trondmy@kernel.org>
+         <0CB9471F-ACC6-42A1-8DCD-8A9E74BAF8F1@oracle.com>
+In-Reply-To: <0CB9471F-ACC6-42A1-8DCD-8A9E74BAF8F1@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: oracle.com; dkim=none (message not signed)
+ header.d=none;oracle.com; dmarc=none action=none header.from=hammerspace.com;
+x-originating-ip: [68.36.133.222]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: aede04ed-ea9c-4c8e-320f-08d88f68618f
+x-ms-traffictypediagnostic: MN2PR13MB3774:
+x-microsoft-antispam-prvs: <MN2PR13MB3774100F2294AFCB16B1A670B8FC0@MN2PR13MB3774.namprd13.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:9508;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: gEUDc0y0jSiLDb5uTdABpnYiq4NsxnXwdUwjwN5b2fPI9UeNF85cTYC9MZrgMnadH1k5YUwxbnuwJYqEFLAT1bl9zcm7Cc6CFpoxTLzUKyRlVmFPbA5vzuIO9vfRckS4MPY7F6iKdZ05oiNLHwtcLNI2EM5qodV8jV2d/GzHzUKUie5jvsBpx+4X/5RExuANAHIy5uvjbgauQDDB94tpVGx1QHcs3iJXO3cTxreuMCphngH+lJOQjr7Ia+WFMYLfMOcmHqKaYvOJH2S3AL0cfudldDyoLypzcY0vMgEzE/wVfEzCjAFaJvzzvse4Up8YJcZC4HsWdIiYFdut/aXXfA==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:MN2PR13MB3957.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(346002)(39830400003)(136003)(396003)(376002)(91956017)(5660300002)(8676002)(110136005)(8936002)(4001150100001)(316002)(26005)(66556008)(64756008)(66446008)(186003)(66476007)(66946007)(6486002)(2616005)(76116006)(6506007)(53546011)(71200400001)(4326008)(2906002)(86362001)(478600001)(6512007)(36756003)(83380400001);DIR:OUT;SFP:1102;
+x-ms-exchange-antispam-messagedata: GgzgxyX0lL1RTAZaVlLf5mBb/UXrFWXzDj/YsKd2kqzrsfChKg3I14O2JSX2hjbAjuWJegDz0bcfbug5FJdCO+Sni0hfmNZL5nsOL6/0ZHI5fa6KyqV52nQ0BBsfI9YIhCEUoi/zj0gM/lmCHEWRuaKshWIK5FswUwQ2iEdBgpika8RmNHk3RnBXmiJlsvk4isQ5NNKjpqJc1j40O/DsOHElwi7MRuA+V1TEbcTeyuEiFJorZAttzy/iQej3WL57bujAqIwJCwTW0Sh+ZTitO0A/j80hJVmJYRlGTWelEnKGCMfMqwDd34p6eaL+XFJbgYtQo3QYpnAWa6gbBNfgFCygn/J0JxzSl65a7q74BydId6UtNLYt+W1njmmM1qUaGhL0a1pOiBf7ZBLj24rAvGgAutXXlmSeuTY6I1bSSvAp2fsF+oBW0OIncVVvr2re8tS5UUo6EAq3wQ8WgioBJ7iXJDjhdFG8u4Xbibks4kAqONDSWOMNIVLLr1wD0zUccsNe7oAOexm7Rz2+D5ETEIECs6WjlPR3fBpbGcjZn0Js0YYJ/YCmJn0xViFrSS+oK6XhyssYNqYdbn0yfMNocLBo0zFvEeZP4yxXqTrS85nVJqRCQhsgKGPyZpXwobXVWQqOWBuSgy9vIX0gMfpvJg==
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <73B7F23F0C33DD4E9155FF5E4929F831@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: MN2PR13MB3957.namprd13.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: aede04ed-ea9c-4c8e-320f-08d88f68618f
+X-MS-Exchange-CrossTenant-originalarrivaltime: 23 Nov 2020 04:29:34.8283
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: cmDKSy4nN6j0VszLuVXdW8mm85RhLkyy+P3NNZG8pR0i2Voqr43P/Ir4gQWDnGXE7bdOhFUszsIUfhPrGvMZiA==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: MN2PR13MB3774
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Nov 22, 2020, at 3:52 PM, trondmy@kernel.org wrote:
->=20
-> From: Trond Myklebust <trond.myklebust@hammerspace.com>
->=20
-> True that if the length of the pages[] array is not 4-byte aligned, =
-then
-> we will need to store the padding in the tail, but there is no need to
-> truncate the total buffer length here.
-
-This description confuses me. The existing code reduces the length of
-the tail, not the "total buffer length." And what the removed logic is
-doing is taking out the length of the XDR pad for the pages array when
-it is not expected to be used.
-
-
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
-> net/sunrpc/xdr.c | 3 ---
-> 1 file changed, 3 deletions(-)
->=20
-> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-> index 3ce0a5daa9eb..5a450055469f 100644
-> --- a/net/sunrpc/xdr.c
-> +++ b/net/sunrpc/xdr.c
-> @@ -193,9 +193,6 @@ xdr_inline_pages(struct xdr_buf *xdr, unsigned int =
-offset,
->=20
-> 	tail->iov_base =3D buf + offset;
-> 	tail->iov_len =3D buflen - offset;
-> -	if ((xdr->page_len & 3) =3D=3D 0)
-> -		tail->iov_len -=3D sizeof(__be32);
-> -
-> 	xdr->buflen +=3D len;
-> }
-> EXPORT_SYMBOL_GPL(xdr_inline_pages);
-> --=20
-> 2.28.0
->=20
-
---
-Chuck Lever
-
-
-
+T24gU3VuLCAyMDIwLTExLTIyIGF0IDIwOjI0IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+DQo+IA0KPiA+IE9uIE5vdiAyMiwgMjAyMCwgYXQgMzo1MiBQTSwgdHJvbmRteUBrZXJuZWwub3Jn
+wqB3cm90ZToNCj4gPiANCj4gPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVz
+dEBoYW1tZXJzcGFjZS5jb20+DQo+ID4gDQo+ID4gVHJ1ZSB0aGF0IGlmIHRoZSBsZW5ndGggb2Yg
+dGhlIHBhZ2VzW10gYXJyYXkgaXMgbm90IDQtYnl0ZSBhbGlnbmVkLA0KPiA+IHRoZW4NCj4gPiB3
+ZSB3aWxsIG5lZWQgdG8gc3RvcmUgdGhlIHBhZGRpbmcgaW4gdGhlIHRhaWwsIGJ1dCB0aGVyZSBp
+cyBubyBuZWVkDQo+ID4gdG8NCj4gPiB0cnVuY2F0ZSB0aGUgdG90YWwgYnVmZmVyIGxlbmd0aCBo
+ZXJlLg0KPiANCj4gVGhpcyBkZXNjcmlwdGlvbiBjb25mdXNlcyBtZS4gVGhlIGV4aXN0aW5nIGNv
+ZGUgcmVkdWNlcyB0aGUgbGVuZ3RoIG9mDQo+IHRoZSB0YWlsLCBub3QgdGhlICJ0b3RhbCBidWZm
+ZXIgbGVuZ3RoLiIgQW5kIHdoYXQgdGhlIHJlbW92ZWQgbG9naWMNCj4gaXMNCj4gZG9pbmcgaXMg
+dGFraW5nIG91dCB0aGUgbGVuZ3RoIG9mIHRoZSBYRFIgcGFkIGZvciB0aGUgcGFnZXMgYXJyYXkN
+Cj4gd2hlbg0KPiBpdCBpcyBub3QgZXhwZWN0ZWQgdG8gYmUgdXNlZC4NCg0KV2h5IGFyZSB3ZSBi
+b3RoZXJpbmcgdG8gZG8gdGhhdD8gVGhlcmUgaXMgbm90aGluZyBwcm9ibGVtYXRpYyB3aXRoIGp1
+c3QNCmlnbm9yaW5nIHRoaXMgdGVzdCBhbmQgbGVhdmluZyB0aGUgdGFpbCBsZW5ndGggYXMgaXQg
+aXMsIG5vciBpcyB0aGVyZQ0KYW55dGhpbmcgdG8gYmUgZ2FpbmVkIGJ5IGFwcGx5aW5nIGl0Lg0K
+DQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAaGFt
+bWVyc3BhY2UuY29tPg0KPiA+IC0tLQ0KPiA+IG5ldC9zdW5ycGMveGRyLmMgfCAzIC0tLQ0KPiA+
+IDEgZmlsZSBjaGFuZ2VkLCAzIGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9u
+ZXQvc3VucnBjL3hkci5jIGIvbmV0L3N1bnJwYy94ZHIuYw0KPiA+IGluZGV4IDNjZTBhNWRhYTll
+Yi4uNWE0NTAwNTU0NjlmIDEwMDY0NA0KPiA+IC0tLSBhL25ldC9zdW5ycGMveGRyLmMNCj4gPiAr
+KysgYi9uZXQvc3VucnBjL3hkci5jDQo+ID4gQEAgLTE5Myw5ICsxOTMsNiBAQCB4ZHJfaW5saW5l
+X3BhZ2VzKHN0cnVjdCB4ZHJfYnVmICp4ZHIsIHVuc2lnbmVkDQo+ID4gaW50IG9mZnNldCwNCj4g
+PiANCj4gPiDCoMKgwqDCoMKgwqDCoMKgdGFpbC0+aW92X2Jhc2UgPSBidWYgKyBvZmZzZXQ7DQo+
+ID4gwqDCoMKgwqDCoMKgwqDCoHRhaWwtPmlvdl9sZW4gPSBidWZsZW4gLSBvZmZzZXQ7DQo+ID4g
+LcKgwqDCoMKgwqDCoMKgaWYgKCh4ZHItPnBhZ2VfbGVuICYgMykgPT0gMCkNCj4gPiAtwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgdGFpbC0+aW92X2xlbiAtPSBzaXplb2YoX19iZTMyKTsN
+Cj4gPiAtDQo+ID4gwqDCoMKgwqDCoMKgwqDCoHhkci0+YnVmbGVuICs9IGxlbjsNCj4gPiB9DQo+
+ID4gRVhQT1JUX1NZTUJPTF9HUEwoeGRyX2lubGluZV9wYWdlcyk7DQo+ID4gLS0gDQo+ID4gMi4y
+OC4wDQo+ID4gDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4gDQo+IA0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0K
+dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
