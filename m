@@ -2,140 +2,214 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MSGID_FROM_MTA_HEADER,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C635C71156
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D5A97C83013
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D6AA92071E
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7EE012071E
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=nvidia.com header.i=@nvidia.com header.b="Zr1EZlr7"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Tz68b0u3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728234AbgKWUD4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Nov 2020 15:03:56 -0500
-Received: from hqnvemgate25.nvidia.com ([216.228.121.64]:17000 "EHLO
-        hqnvemgate25.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726770AbgKWUDy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:03:54 -0500
-Received: from hqmail.nvidia.com (Not Verified[216.228.121.13]) by hqnvemgate25.nvidia.com (using TLS: TLSv1.2, AES256-SHA)
-        id <B5fbc15a70004>; Mon, 23 Nov 2020 12:03:51 -0800
-Received: from HQMAIL107.nvidia.com (172.20.187.13) by HQMAIL107.nvidia.com
- (172.20.187.13) with Microsoft SMTP Server (TLS) id 15.0.1473.3; Mon, 23 Nov
- 2020 20:03:49 +0000
-Received: from NAM10-DM6-obe.outbound.protection.outlook.com (104.47.58.103)
- by HQMAIL107.nvidia.com (172.20.187.13) with Microsoft SMTP Server (TLS) id
- 15.0.1473.3 via Frontend Transport; Mon, 23 Nov 2020 20:03:49 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=gITd84wMHHzcOptjQRg1Bi4wKYLoloErjGXTzbxbsYYxXpRm6DfDjP1G8JsqPPruG8n8djHpWT3ChykgCoTQdTlPHkj05TPw7WZ4Y46HlI8bprZC3XuF3n009Te/qaTwPxc9ef3s3wxgnUStlvtZrJvP5WQhh3MIKLFTGEWjhLXWcgs1VmoV9q6ndrBwWgPhsRBIC9rKh9qqm9cf9Ujr9sks/ml2cZ4bW16uPSJVifE1ke5RuUikXPZ60YcpNVw15sbmeBPfJ8v059YAkVfr8AOpsBgi+OymMySTg/JYVNFtVJ2pGo3M9pC5txLp474ztgTCR2D9RfvqUQOXT+42RA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=QophqWBVIGhmInjMMmoN1JCz5yEuED07MVw87J8AVUY=;
- b=dpOj+p56VpZQgFejSTc+TjZx9PpIbmIlWcJPfXyA8QiV6hyerQ1PNIg37pZm/OoPMM7dRNU+MPO2Sxmva5Z6iKtLQpQNkcM79tS52of8WjxHEmReB+Qc/VB0gzy26dU2FtXMoEzn5Rx6YHRp97uhlWeSk7Nsi1BUrieORD+G9yqkgKBmwQvC726s6EkJ0s32uNc7iMGffyCjKbyBtSLggJX9G9WEJ0m0GYQlYWRE7aVXL+Iy16bXoksvn7nW7YXP74v45GAqxPt7EElquzCZ4kXurFfWXXWM9ThsUobGLm/yb7wWVAmTEM+ttWZwc1mR7P3I+RsId2H9o2Xiqq+zAg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
- dkim=pass header.d=nvidia.com; arc=none
-Received: from DM6PR12MB3834.namprd12.prod.outlook.com (2603:10b6:5:14a::12)
- by DM6PR12MB4338.namprd12.prod.outlook.com (2603:10b6:5:2a2::21) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3589.21; Mon, 23 Nov
- 2020 20:03:48 +0000
-Received: from DM6PR12MB3834.namprd12.prod.outlook.com
- ([fe80::e40c:730c:156c:2ef9]) by DM6PR12MB3834.namprd12.prod.outlook.com
- ([fe80::e40c:730c:156c:2ef9%7]) with mapi id 15.20.3589.022; Mon, 23 Nov 2020
- 20:03:48 +0000
-Date:   Mon, 23 Nov 2020 16:03:45 -0400
-From:   Jason Gunthorpe <jgg@nvidia.com>
-To:     "Gustavo A. R. Silva" <gustavoars@kernel.org>
-CC:     <linux-kernel@vger.kernel.org>, <alsa-devel@alsa-project.org>,
-        <amd-gfx@lists.freedesktop.org>,
-        <bridge@lists.linux-foundation.org>, <ceph-devel@vger.kernel.org>,
-        <cluster-devel@redhat.com>, <coreteam@netfilter.org>,
-        <devel@driverdev.osuosl.org>, <dm-devel@redhat.com>,
-        <drbd-dev@lists.linbit.com>, <dri-devel@lists.freedesktop.org>,
-        <GR-everest-linux-l2@marvell.com>, <GR-Linux-NIC-Dev@marvell.com>,
-        <intel-gfx@lists.freedesktop.org>,
-        <intel-wired-lan@lists.osuosl.org>, <keyrings@vger.kernel.org>,
-        <linux1394-devel@lists.sourceforge.net>,
-        <linux-acpi@vger.kernel.org>, <linux-afs@lists.infradead.org>,
-        <linux-arm-kernel@lists.infradead.org>,
-        <linux-arm-msm@vger.kernel.org>,
-        <linux-atm-general@lists.sourceforge.net>,
-        <linux-block@vger.kernel.org>, <linux-can@vger.kernel.org>,
-        <linux-cifs@vger.kernel.org>, <linux-crypto@vger.kernel.org>,
-        <linux-decnet-user@lists.sourceforge.net>,
-        <linux-ext4@vger.kernel.org>, <linux-fbdev@vger.kernel.org>,
-        <linux-geode@lists.infradead.org>, <linux-gpio@vger.kernel.org>,
-        <linux-hams@vger.kernel.org>, <linux-hwmon@vger.kernel.org>,
-        <linux-i3c@lists.infradead.org>, <linux-ide@vger.kernel.org>,
-        <linux-iio@vger.kernel.org>, <linux-input@vger.kernel.org>,
-        <linux-integrity@vger.kernel.org>,
-        <linux-mediatek@lists.infradead.org>,
-        <linux-media@vger.kernel.org>, <linux-mmc@vger.kernel.org>,
-        <linux-mm@kvack.org>, <linux-mtd@lists.infradead.org>,
-        <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
-        <linux-renesas-soc@vger.kernel.org>, <linux-scsi@vger.kernel.org>,
-        <linux-sctp@vger.kernel.org>,
-        <linux-security-module@vger.kernel.org>,
-        <linux-stm32@st-md-mailman.stormreply.com>,
-        <linux-usb@vger.kernel.org>, <linux-watchdog@vger.kernel.org>,
-        <linux-wireless@vger.kernel.org>, <netdev@vger.kernel.org>,
-        <netfilter-devel@vger.kernel.org>, <nouveau@lists.freedesktop.org>,
-        <op-tee@lists.trustedfirmware.org>, <oss-drivers@netronome.com>,
-        <patches@opensource.cirrus.com>, <rds-devel@oss.oracle.com>,
-        <reiserfs-devel@vger.kernel.org>,
-        <samba-technical@lists.samba.org>, <selinux@vger.kernel.org>,
-        <target-devel@vger.kernel.org>,
-        <tipc-discussion@lists.sourceforge.net>,
-        <usb-storage@lists.one-eyed-alien.net>,
-        <virtualization@lists.linux-foundation.org>,
-        <wcn36xx@lists.infradead.org>, <x86@kernel.org>,
-        <xen-devel@lists.xenproject.org>,
-        <linux-hardening@vger.kernel.org>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        Miguel Ojeda <ojeda@kernel.org>, Joe Perches <joe@perches.com>,
-        Kees Cook <keescook@chromium.org>
-Subject: Re: [PATCH 000/141] Fix fall-through warnings for Clang
-Message-ID: <20201123200345.GA38546@nvidia.com>
-References: <cover.1605896059.git.gustavoars@kernel.org>
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-In-Reply-To: <cover.1605896059.git.gustavoars@kernel.org>
-X-ClientProxiedBy: MN2PR03CA0013.namprd03.prod.outlook.com
- (2603:10b6:208:23a::18) To DM6PR12MB3834.namprd12.prod.outlook.com
- (2603:10b6:5:14a::12)
+        id S1728456AbgKWUEX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Nov 2020 15:04:23 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41440 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726770AbgKWUEX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:04:23 -0500
+Received: from mail-qk1-x743.google.com (mail-qk1-x743.google.com [IPv6:2607:f8b0:4864:20::743])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72C62C0613CF
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:04:23 -0800 (PST)
+Received: by mail-qk1-x743.google.com with SMTP id z188so6803061qke.9
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:04:23 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:date:message-id:in-reply-to:references
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=tDjUj9OHG3MgWfymkB8Z0cJsQnH7QZk73EqARM1nLzM=;
+        b=Tz68b0u33h0YXFePiq90M+nmlkPuH/TGpX5itjL9S8BHJhBKJB2CB9dvUR1YODEJ93
+         8Y3m8o9DPTM4HeM7cAsUt+1PZtUBpqJPFxe/d8q8VqxAUJPWan4AdPy7iLct2BlgCD4v
+         bEBdFBTsgHgAxvyDZS2KAo5FtRjMnhVMSWS+2yDeT2WORgC686D//lVlufQvNSJjQl+E
+         BN6tbYswOUvyy4W/fD11ZCHHn9bMPEzRvwVKhddKamEOzl52IBlY3I/4GuAk8GJHmUaA
+         3uvvTuZi98afc+kR3ViZFEIgnu5x0uf7BYU3wGU1G2u1qAU+3BMQhKE0jDlXPueYnPWF
+         OrUQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :in-reply-to:references:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=tDjUj9OHG3MgWfymkB8Z0cJsQnH7QZk73EqARM1nLzM=;
+        b=ZRxOm9wtYNR+CRTvNzvUSdRfAzqwNa+S+C3O1nqNF2dyClMU06bdaXH83o/Jc+nbGt
+         Y7bE+y2aLZRGwI/KopWH7CTsbF243LQnZw+BEVz7J7Z9jiPAIEc1jKQ6z2C/wyeAohIg
+         XrtUw3PuvXFq2gV/mCnrnj9AdjoFrbwylArsMibDI4gknUwThhQUEsdRJgh1xF8pP02W
+         eYhj4zNYovqNtTlJc8D1beCaXjCjOByNhz4NuHGbqtUa7dIZc/1ZSMa57qiMDBo2pa3g
+         +EBfeifFAu6q1OSz9NWZck9SI7gjWcLkSO3X8yASQTR5YqFxGx2Rgc2hNmlPRnZIXXJ3
+         Imlw==
+X-Gm-Message-State: AOAM530TcjqeoNo3tkHuoqrlpZjRqvsuHJz9u4R+ppSVN62Qwb2PSvJr
+        sqqWaO+jO+FXGtBJRTzawRX3i3CsJNI=
+X-Google-Smtp-Source: ABdhPJzNEYav66oMngNQYkhB1l/CDpJIQkv6Ah8OjvYAnpKZLFq4y0s+dLO7RN5B8F7qwkwbbn31/Q==
+X-Received: by 2002:a37:b4e:: with SMTP id 75mr1165702qkl.78.1606161862038;
+        Mon, 23 Nov 2020 12:04:22 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id c9sm10257847qkm.116.2020.11.23.12.04.21
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 23 Nov 2020 12:04:21 -0800 (PST)
+Sender: Chuck Lever <chucklever@gmail.com>
+Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ANK4KDV010279
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 20:04:20 GMT
+Subject: [PATCH v3 04/85] NFSD: Add tracepoints in nfsd_dispatch()
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Date:   Mon, 23 Nov 2020 15:04:20 -0500
+Message-ID: <160616186042.51996.15361343804924022774.stgit@klimt.1015granger.net>
+In-Reply-To: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
+References: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
+User-Agent: StGit/0.23-29-ga622f1
 MIME-Version: 1.0
-X-MS-Exchange-MessageSentRepresentingType: 1
-Received: from mlx.ziepe.ca (156.34.48.30) by MN2PR03CA0013.namprd03.prod.outlook.com (2603:10b6:208:23a::18) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3589.20 via Frontend Transport; Mon, 23 Nov 2020 20:03:47 +0000
-Received: from jgg by mlx with local (Exim 4.94)        (envelope-from <jgg@nvidia.com>)        id 1khI3t-000A35-Tb; Mon, 23 Nov 2020 16:03:45 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nvidia.com; s=n1;
-        t=1606161831; bh=QophqWBVIGhmInjMMmoN1JCz5yEuED07MVw87J8AVUY=;
-        h=ARC-Seal:ARC-Message-Signature:ARC-Authentication-Results:Date:
-         From:To:CC:Subject:Message-ID:References:Content-Type:
-         Content-Disposition:In-Reply-To:X-ClientProxiedBy:MIME-Version:
-         X-MS-Exchange-MessageSentRepresentingType;
-        b=Zr1EZlr7FGouweCXJ2A3YJZ8lxsTazMwmiIDkNNgeYuPc4M3hA0h9guNHLXrnnLeX
-         Dp0jtpGLpYuZZsYit0m8+Y/3Pgk+U78P2KDuhjfei0oh+kHbQnRfzB2jD1Wu7rVyZ8
-         A2iuCgvA8hhwNVx8Bo/l4LfRAECKvf8eJj6um7c8+wyJ6oFgyijvPixB8Xcq6YNTLj
-         o7o09Zdo2SkPJV9Ld82VvGAW1KENwGx8qxL8L4kHw5xGizl/kk/4FLfOCs8mx17bXD
-         N2PIS7AsaPoH2bHogxWrZ7vcH6YOCMGYKk/oZQ1BhSoaDoH96AMZAs9BCirfcyYEMq
-         3EMRDyReptNPA==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 20, 2020 at 12:21:39PM -0600, Gustavo A. R. Silva wrote:
+For troubleshooting purposes, record GARBAGE_ARGS and CANT_ENCODE
+failures.
 
->   IB/hfi1: Fix fall-through warnings for Clang
->   IB/mlx4: Fix fall-through warnings for Clang
->   IB/qedr: Fix fall-through warnings for Clang
->   RDMA/mlx5: Fix fall-through warnings for Clang
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfssvc.c |   17 +++++----------
+ fs/nfsd/trace.h  |   60 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 65 insertions(+), 12 deletions(-)
 
-I picked these four to the rdma tree, thanks
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index c4c646f25f1c..7214e578c09c 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -29,6 +29,8 @@
+ #include "netns.h"
+ #include "filecache.h"
+ 
++#include "trace.h"
++
+ #define NFSDDBG_FACILITY	NFSDDBG_SVC
+ 
+ bool inter_copy_offload_enable;
+@@ -1009,11 +1011,8 @@ int nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+ 	struct kvec *resv = &rqstp->rq_res.head[0];
+ 	__be32 *p;
+ 
+-	dprintk("nfsd_dispatch: vers %d proc %d\n",
+-				rqstp->rq_vers, rqstp->rq_proc);
+-
+ 	if (nfs_request_too_big(rqstp, proc))
+-		goto out_too_large;
++		goto out_decode_err;
+ 
+ 	/*
+ 	 * Give the xdr decoder a chance to change this if it wants
+@@ -1052,24 +1051,18 @@ int nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+ out_cached_reply:
+ 	return 1;
+ 
+-out_too_large:
+-	dprintk("nfsd: NFSv%d argument too large\n", rqstp->rq_vers);
+-	*statp = rpc_garbage_args;
+-	return 1;
+-
+ out_decode_err:
+-	dprintk("nfsd: failed to decode arguments!\n");
++	trace_nfsd_garbage_args_err(rqstp);
+ 	*statp = rpc_garbage_args;
+ 	return 1;
+ 
+ out_update_drop:
+-	dprintk("nfsd: Dropping request; may be revisited later\n");
+ 	nfsd_cache_update(rqstp, RC_NOCACHE, NULL);
+ out_dropit:
+ 	return 0;
+ 
+ out_encode_err:
+-	dprintk("nfsd: failed to encode result!\n");
++	trace_nfsd_cant_encode_err(rqstp);
+ 	nfsd_cache_update(rqstp, RC_NOCACHE, NULL);
+ 	*statp = rpc_system_err;
+ 	return 1;
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index 89f218d0279c..0bf1707bd846 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -12,6 +12,66 @@
+ #include "export.h"
+ #include "nfsfh.h"
+ 
++#define NFSD_TRACE_PROC_ARG_FIELDS \
++		__field(unsigned int, netns_ino) \
++		__field(u32, xid) \
++		__array(unsigned char, server, sizeof(struct sockaddr_in6)) \
++		__array(unsigned char, client, sizeof(struct sockaddr_in6))
++
++#define NFSD_TRACE_PROC_ARG_ASSIGNMENTS \
++		do { \
++			__entry->netns_ino = SVC_NET(rqstp)->ns.inum; \
++			__entry->xid = be32_to_cpu(rqstp->rq_xid); \
++			memcpy(__entry->server, &rqstp->rq_xprt->xpt_local, \
++			       rqstp->rq_xprt->xpt_locallen); \
++			memcpy(__entry->client, &rqstp->rq_xprt->xpt_remote, \
++			       rqstp->rq_xprt->xpt_remotelen); \
++		} while (0);
++
++TRACE_EVENT(nfsd_garbage_args_err,
++	TP_PROTO(
++		const struct svc_rqst *rqstp
++	),
++	TP_ARGS(rqstp),
++	TP_STRUCT__entry(
++		NFSD_TRACE_PROC_ARG_FIELDS
++
++		__field(u32, vers)
++		__field(u32, proc)
++	),
++	TP_fast_assign(
++		NFSD_TRACE_PROC_ARG_ASSIGNMENTS
++
++		__entry->vers = rqstp->rq_vers;
++		__entry->proc = rqstp->rq_proc;
++	),
++	TP_printk("xid=0x%08x vers=%u proc=%u",
++		__entry->xid, __entry->vers, __entry->proc
++	)
++);
++
++TRACE_EVENT(nfsd_cant_encode_err,
++	TP_PROTO(
++		const struct svc_rqst *rqstp
++	),
++	TP_ARGS(rqstp),
++	TP_STRUCT__entry(
++		NFSD_TRACE_PROC_ARG_FIELDS
++
++		__field(u32, vers)
++		__field(u32, proc)
++	),
++	TP_fast_assign(
++		NFSD_TRACE_PROC_ARG_ASSIGNMENTS
++
++		__entry->vers = rqstp->rq_vers;
++		__entry->proc = rqstp->rq_proc;
++	),
++	TP_printk("xid=0x%08x vers=%u proc=%u",
++		__entry->xid, __entry->vers, __entry->proc
++	)
++);
++
+ #define show_nfsd_may_flags(x)						\
+ 	__print_flags(x, "|",						\
+ 		{ NFSD_MAY_EXEC,		"EXEC" },		\
 
-Jason
+
