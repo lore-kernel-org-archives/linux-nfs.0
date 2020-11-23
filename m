@@ -2,189 +2,231 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F0F91C83024
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 16:33:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 854C2C2D0E4
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 16:43:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B6CE720665
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 16:33:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1F14421D40
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 16:43:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="taYTQdLW";
-	dkim=pass (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="taYTQdLW"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YI55/TpW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389995AbgKWQc2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Nov 2020 11:32:28 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36830 "EHLO
+        id S2390170AbgKWQnA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Nov 2020 11:43:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38638 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730953AbgKWQbg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 11:31:36 -0500
-Received: from bedivere.hansenpartnership.com (bedivere.hansenpartnership.com [IPv6:2607:fcd0:100:8a00::2])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C0C8FC0613CF;
-        Mon, 23 Nov 2020 08:31:35 -0800 (PST)
-Received: from localhost (localhost [127.0.0.1])
-        by bedivere.hansenpartnership.com (Postfix) with ESMTP id 7AB3012808F4;
-        Mon, 23 Nov 2020 08:31:35 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-        d=hansenpartnership.com; s=20151216; t=1606149095;
-        bh=+IhPqZ/v6VfDyyXzj4lMu9axEsbedJZyqBpFfwsfG+g=;
-        h=Message-ID:Subject:From:To:Date:In-Reply-To:References:From;
-        b=taYTQdLWt1uKXwIt/3Ve/mEupTdq+Wcpdv+UXp5WQMTWxY34l98m0qHLcdAiwuo2t
-         gwBg46qri78QHRql74q8THMzP+7WPx9XqttvrPch20gBcYUMT4pLXQarcLhIoin1Gp
-         Z+ziweydBKwdaV8ZmrW12X55c5G6vUR8Kiznotik=
-Received: from bedivere.hansenpartnership.com ([127.0.0.1])
-        by localhost (bedivere.hansenpartnership.com [127.0.0.1]) (amavisd-new, port 10024)
-        with ESMTP id a5HoKkemyWLj; Mon, 23 Nov 2020 08:31:35 -0800 (PST)
-Received: from jarvis.int.hansenpartnership.com (unknown [IPv6:2601:600:8280:66d1::527])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by bedivere.hansenpartnership.com (Postfix) with ESMTPSA id 9FAA112808A8;
-        Mon, 23 Nov 2020 08:31:31 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-        d=hansenpartnership.com; s=20151216; t=1606149095;
-        bh=+IhPqZ/v6VfDyyXzj4lMu9axEsbedJZyqBpFfwsfG+g=;
-        h=Message-ID:Subject:From:To:Date:In-Reply-To:References:From;
-        b=taYTQdLWt1uKXwIt/3Ve/mEupTdq+Wcpdv+UXp5WQMTWxY34l98m0qHLcdAiwuo2t
-         gwBg46qri78QHRql74q8THMzP+7WPx9XqttvrPch20gBcYUMT4pLXQarcLhIoin1Gp
-         Z+ziweydBKwdaV8ZmrW12X55c5G6vUR8Kiznotik=
-Message-ID: <8f5611bb015e044fa1c0a48147293923c2d904e4.camel@HansenPartnership.com>
-Subject: Re: [Intel-wired-lan] [PATCH 000/141] Fix fall-through warnings for
- Clang
-From:   James Bottomley <James.Bottomley@HansenPartnership.com>
-To:     "Gustavo A. R. Silva" <gustavoars@kernel.org>
-Cc:     Joe Perches <joe@perches.com>, Kees Cook <keescook@chromium.org>,
-        Jakub Kicinski <kuba@kernel.org>, alsa-devel@alsa-project.org,
-        linux-atm-general@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org, linux-iio@vger.kernel.org,
-        linux-wireless@vger.kernel.org, linux-fbdev@vger.kernel.org,
-        dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        linux-ide@vger.kernel.org, dm-devel@redhat.com,
-        keyrings@vger.kernel.org, linux-mtd@lists.infradead.org,
-        GR-everest-linux-l2@marvell.com, wcn36xx@lists.infradead.org,
-        samba-technical@lists.samba.org, linux-i3c@lists.infradead.org,
-        linux1394-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org,
-        usb-storage@lists.one-eyed-alien.net, drbd-dev@lists.linbit.com,
-        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
-        rds-devel@oss.oracle.com,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
-        oss-drivers@netronome.com, bridge@lists.linux-foundation.org,
-        linux-security-module@vger.kernel.org,
-        amd-gfx@lists.freedesktop.org,
-        linux-stm32@st-md-mailman.stormreply.com, cluster-devel@redhat.com,
-        linux-acpi@vger.kernel.org, coreteam@netfilter.org,
-        intel-wired-lan@lists.osuosl.org, linux-input@vger.kernel.org,
-        Miguel Ojeda <ojeda@kernel.org>,
-        tipc-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        linux-media@vger.kernel.org, linux-watchdog@vger.kernel.org,
-        selinux@vger.kernel.org, linux-arm-msm@vger.kernel.org,
-        intel-gfx@lists.freedesktop.org, linux-geode@lists.infradead.org,
-        linux-can@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-gpio@vger.kernel.org, op-tee@lists.trustedfirmware.org,
-        linux-mediatek@lists.infradead.org, xen-devel@lists.xenproject.org,
-        nouveau@lists.freedesktop.org, linux-hams@vger.kernel.org,
-        ceph-devel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        linux-arm-kernel@lists.infradead.org, linux-hwmon@vger.kernel.org,
-        x86@kernel.org, linux-nfs@vger.kernel.org,
-        GR-Linux-NIC-Dev@marvell.com, linux-mm@kvack.org,
-        netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net,
-        linux-mmc@vger.kernel.org, linux-renesas-soc@vger.kernel.org,
-        linux-sctp@vger.kernel.org, linux-usb@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, linux-crypto@vger.kernel.org,
-        patches@opensource.cirrus.com, linux-integrity@vger.kernel.org,
-        target-devel@vger.kernel.org, linux-hardening@vger.kernel.org,
-        Jonathan Cameron <Jonathan.Cameron@huawei.com>,
-        Greg KH <gregkh@linuxfoundation.org>
-Date:   Mon, 23 Nov 2020 08:31:30 -0800
-In-Reply-To: <20201123130348.GA3119@embeddedor>
-References: <cover.1605896059.git.gustavoars@kernel.org>
-         <20201120105344.4345c14e@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-         <202011201129.B13FDB3C@keescook>
-         <20201120115142.292999b2@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-         <202011220816.8B6591A@keescook>
-         <9b57fd4914b46f38d54087d75e072d6e947cb56d.camel@HansenPartnership.com>
-         <ca071decb87cc7e905411423c05a48f9fd2f58d7.camel@perches.com>
-         <0147972a72bc13f3629de8a32dee6f1f308994b5.camel@HansenPartnership.com>
-         <d8d1e9add08cdd4158405e77762d4946037208f8.camel@perches.com>
-         <dbd2cb703ed9eefa7dde9281ea26ab0f7acc8afe.camel@HansenPartnership.com>
-         <20201123130348.GA3119@embeddedor>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.34.4 
+        with ESMTP id S2389975AbgKWQm7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 11:42:59 -0500
+Received: from mail-ej1-x643.google.com (mail-ej1-x643.google.com [IPv6:2a00:1450:4864:20::643])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 39C98C0613CF
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 08:42:59 -0800 (PST)
+Received: by mail-ej1-x643.google.com with SMTP id k9so9413485ejc.11
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 08:42:59 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=7jGMgHPcqG9Dok0jvc5pmiqDVwj1WN6GHZGMzF7Pefk=;
+        b=YI55/TpWVVfnkMOaxMB56nuQw20BPPvEI3LnO/6bPKpdjLH598YDA8f6ibX7sx54bO
+         O6cRnuGlkHG4F0wTMshX12C85VdBHJw7ldf89r0rJ8P74G9S87NQNDRT/b8Di0vxO2sD
+         XzUu9PStn2ezWHR7//f176rWNsuniD1PbxGUDJIOZ8iEKQZFlbwIFb7U3DnRYxkYTA68
+         1Pdl46tMu7a3bBTnaXWCDdhipdwuTs778Yh5+RF9LIKLejc4k8QKNBRW17y5LtAncWK1
+         bTERO9twwBJpSt2E2dF3N5iOl+sXiQF3JmOyT8idox+X68UbqahhTIELV2TuU0PN13Bp
+         +Vvg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=7jGMgHPcqG9Dok0jvc5pmiqDVwj1WN6GHZGMzF7Pefk=;
+        b=BH6Ri66+uTCfjCZDwOO6BXgn6ZbYKsEd+efEoNh+V/jF0sEhjsT+5p2UxwRYMz6/dR
+         HO7qfXFVI4L2EnOOYiwtCU5PbUYae9ZMdIFEI98DnGGGLoHMGdwIv/Y/G9Wy7VTcfsni
+         qTmH1yjWb8rdv2lOI02ilbHVNRodLW5I6W7dpM6YXNfSOEPHo2w9bAVS9zI694dsFX3k
+         I8pV/YZp0pKRp7ii4JKAj8iH2n5a4iIwIBcHnSqBvFB5KB1bqA/dBfoT/0kZ+gTH4CAD
+         QyCk0F/XLlYJ0HcNjzIqSTVUmsKPotNbtT+MsRd6pECuXlw1o8E17qIIHx06aK7opbQh
+         Qqkg==
+X-Gm-Message-State: AOAM532dfSwxlcyxbH0lOXBCyJNjTK6Rzoy3tmYQ6rMZrF3X58Oz9EUq
+        Xk+phNPHcz174sX9z8AzvSvXMOwEgpXEAzV+9p1KZO8mzVU=
+X-Google-Smtp-Source: ABdhPJx0o+CjSx4Qy7b2JZ9szHar4TB65xGDyE4NiM/JZ4Kr0X64xqFTlWNBokY0lqeX2pcrF+Cq9yF+NNScpmcLA/Q=
+X-Received: by 2002:a17:906:1918:: with SMTP id a24mr429611eje.432.1606149777853;
+ Mon, 23 Nov 2020 08:42:57 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+References: <20201113190851.7817-1-olga.kornievskaia@gmail.com>
+ <99874775-A18C-4832-A2F0-F2152BE5CE32@oracle.com> <CAN-5tyEyQbmc-oefF+-PdtdcS7GJ9zmJk71Dk8EED0upcorqaA@mail.gmail.com>
+ <07AF9A5C-BC42-4F66-A153-19A410D312E1@oracle.com> <CAN-5tyFpeVf0y67tJqvbqZmNMRzyvdj_33g9nJUNWW62Tx+thg@mail.gmail.com>
+ <7E0CD3F3-84F2-4D08-8D5A-37AA0FA4852D@oracle.com> <20201119232647.GA11369@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
+ <CAN-5tyH+ZCiqxKQEE9iGURP-71Xd2BqzHuWWPMzZURePKXirfQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyH+ZCiqxKQEE9iGURP-71Xd2BqzHuWWPMzZURePKXirfQ@mail.gmail.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Mon, 23 Nov 2020 11:42:46 -0500
+Message-ID: <CAN-5tyEJ4Lbf=Ht2P4gwd9y4EPvN=G6teAiaunL=Ayxox8MSdg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] NFSv4.2: fix LISTXATTR buffer receive size
+To:     Frank van der Linden <fllinden@amazon.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 2020-11-23 at 07:03 -0600, Gustavo A. R. Silva wrote:
-> On Sun, Nov 22, 2020 at 11:53:55AM -0800, James Bottomley wrote:
-> > On Sun, 2020-11-22 at 11:22 -0800, Joe Perches wrote:
-> > > On Sun, 2020-11-22 at 11:12 -0800, James Bottomley wrote:
-> > > > On Sun, 2020-11-22 at 10:25 -0800, Joe Perches wrote:
-> > > > > On Sun, 2020-11-22 at 10:21 -0800, James Bottomley wrote:
-> > > > > > Please tell me our reward for all this effort isn't a
-> > > > > > single missing error print.
-> > > > > 
-> > > > > There were quite literally dozens of logical defects found
-> > > > > by the fallthrough additions.  Very few were logging only.
-> > > > 
-> > > > So can you give us the best examples (or indeed all of them if
-> > > > someone is keeping score)?  hopefully this isn't a US election
-> > > > situation ...
-> > > 
-> > > Gustavo?  Are you running for congress now?
-> > > 
-> > > https://lwn.net/Articles/794944/
-> > 
-> > That's 21 reported fixes of which about 50% seem to produce no
-> > change in code behaviour at all, a quarter seem to have no user
-> > visible effect with the remaining quarter producing unexpected
-> > errors on obscure configuration parameters, which is why no-one
-> > really noticed them before.
-> 
-> The really important point here is the number of bugs this has
-> prevented and will prevent in the future. See an example of this,
-> below:
-> 
-> https://lore.kernel.org/linux-iio/20190813135802.GB27392@kroah.com/
+Hi Frank, Chuck,
 
-I think this falls into the same category as the other six bugs: it
-changes the output/input for parameters but no-one has really noticed,
-usually because the command is obscure or the bias effect is minor.
+I would like your option on how LISTXATTR is supposed to work over
+RDMA. Here's my current understanding of why the listxattr is not
+working over the RDMA.
 
-> This work is still relevant, even if the total number of issues/bugs
-> we find in the process is zero (which is not the case).
+This happens when the listxattr is called with a very small buffer
+size which RDMA wants to send an inline request. I really dont
+understand why, Chuck, you are not seeing any problems with hardware
+as far as I can tell it would have the same problem because the inline
+threshold size would still make this size inline.
+rcprdma_inline_fixup() is trying to write to pages that don't exist.
 
-Really, no ... something which produces no improvement has no value at
-all ... we really shouldn't be wasting maintainer time with it because
-it has a cost to merge.  I'm not sure we understand where the balance
-lies in value vs cost to merge but I am confident in the zero value
-case.
+When LISTXATTR sets this flag XDRBUF_SPARSE_PAGES there is code that
+will allocate pages in xs_alloc_sparse_pages() but this is ONLY for
+TCP. RDMA doesn't have anything like that.
 
-> "The sucky thing about doing hard work to deploy hardening is that
-> the result is totally invisible by definition (things not happening)
-> [..]"
-> - Dmitry Vyukov
+Question: Should there be code added to RDMA that will do something
+similar when it sees that flag set? Or, should LISTXATTR be re-written
+to be like READDIR which allocates pages before calling the code.
 
-Really, no.  Something that can't be measured at all doesn't exist.
-
-And actually hardening is one of those things you can measure (which I
-do have to admit isn't true for everything in the security space) ...
-it's number of exploitable bugs found before you did it vs number of
-exploitable bugs found after you did it.  Usually hardening eliminates
-a class of bug, so the way I've measured hardening before is to go
-through the CVE list for the last couple of years for product X, find
-all the bugs that are of the class we're looking to eliminate and say
-if we had hardened X against this class of bug we'd have eliminated Y%
-of the exploits.  It can be quite impressive if Y is a suitably big
-number.
-
-James
-
-
+On Fri, Nov 20, 2020 at 11:37 AM Olga Kornievskaia
+<olga.kornievskaia@gmail.com> wrote:
+>
+> On Thu, Nov 19, 2020 at 6:26 PM Frank van der Linden
+> <fllinden@amazon.com> wrote:
+> >
+> > On Thu, Nov 19, 2020 at 11:19:05AM -0500, Chuck Lever wrote:
+> > > > On Nov 19, 2020, at 10:09 AM, Olga Kornievskaia <olga.kornievskaia@gmail.com> wrote:
+> > > >
+> > > > On Thu, Nov 19, 2020 at 9:37 AM Chuck Lever <chuck.lever@oracle.com> wrote:
+> > > >>
+> > > >> Hi Olga-
+> > > >>
+> > > >>> On Nov 18, 2020, at 4:44 PM, Olga Kornievskaia <olga.kornievskaia@gmail.com> wrote:
+> > > >>>
+> > > >>> Hi Chuck,
+> > > >>>
+> > > >>> The first problem I found was from 5.10-rc3 testing was from the fact
+> > > >>> that tail's iov_len was set to -4 and reply_chunk was trying to call
+> > > >>> rpcrdma_convert_kvec() for a tail that didn't exist.
+> > > >>>
+> > > >>> Do you see issues with this fix?
+> > > >>>
+> > > >>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+> > > >>> index 71e03b930b70..2e6a228abb95 100644
+> > > >>> --- a/net/sunrpc/xdr.c
+> > > >>> +++ b/net/sunrpc/xdr.c
+> > > >>> @@ -193,7 +193,7 @@ xdr_inline_pages(struct xdr_buf *xdr, unsigned int offset,
+> > > >>>
+> > > >>>       tail->iov_base = buf + offset;
+> > > >>>       tail->iov_len = buflen - offset;
+> > > >>> -       if ((xdr->page_len & 3) == 0)
+> > > >>> +       if ((xdr->page_len & 3) == 0 && tail->iov_len)
+> > > >>>               tail->iov_len -= sizeof(__be32);
+> > > >>>
+> > > >>>       xdr->buflen += len;
+> > > >>
+> > > >> It's not clear to me whether only the listxattrs encoder is
+> > > >> not providing a receive tail kvec, or whether all the encoders
+> > > >> fail to provide a tail in this case.
+> > > >
+> > > > There is nothing specific that listxattr does, it just calls
+> > > > rpc_prepare_pages(). Isn't tail[0] always there (xdr_buf structure has
+> > > > tail[1] defined)?
+> > >
+> > > Flip the question on its head: Why does xdr_inline_pages() work
+> > > fine for all the other operations? That suggests the problem is
+> > > with listxattrs, not with generic code.
+> > >
+> > >
+> > > > But not all requests have data in the page. So as
+> > > > far as I understand, tail->iov_len can be 0 so not checking for it is
+> > > > wrong.
+> > >
+> > > The full context of the tail logic is:
+> > >
+> > >  194         tail->iov_base = buf + offset;
+> > >  195         tail->iov_len = buflen - offset;
+> > >  196         if ((xdr->page_len & 3) == 0)
+> > >  197                 tail->iov_len -= sizeof(__be32);
+> > >
+> > > tail->iov_len is set to buflen - offset right here. It should
+> > > /always/ be 4 or more. We can ensure that because the input
+> > > to this function is always provided by another kernel function
+> > > (in other words, we control all the callers).
+> > >
+> > > Why is buflen == offset for listxattrs? 6c2190b3fcbc ("NFS:
+> > > Fix listxattr receive buffer size") is trying to ensure
+> > > tail->iov_len is not zero -- that the math here gives us a
+> > > positive value every time.
+> > >
+> > > In nfs4_xdr_enc_listxattrs() we have:
+> > >
+> > > 1529         rpc_prepare_reply_pages(req, args->xattr_pages, 0, args->count,
+> > > 1530             hdr.replen);
+> > >
+> > > hdr.replen is set to NFS4_dec_listxattrs_sz.
+> > >
+> > > _nfs42_proc_listxattrs() sets args->count.
+> > >
+> > > I suspect the problem is the way _nfs42_proc_listxattrs() is
+> > > computing the length of xattr_pages. It includes the trailing
+> > > EOF boolean, but so does the decode_listxattrs_maxsz macro,
+> > > for instance.
+> > >
+> > > We need head->iov_len to always be one XDR_UNIT larger than
+> > > the position where the xattr_pages array starts. Then the
+> > > math in xdr_inline_pages() will work correctly. (sidebar:
+> > > perhaps the documenting comment for xdr_inline_pages() should
+> > > explain that assumption).
+> > >
+> > > So, now I agree with the assessment that 6c2190b3fcbc ("NFS:
+> > > Fix listxattr receive buffer size") is probably not adequate.
+> > > There is another subtlety to address in the way that
+> > > _nfs42_proc_listxattrs() computes args->count.
+> >
+> > The only thing I see wrong so far is that I believe that
+> > decode_listxattrs_maxsz is wrong - it shouldn't include the EOF
+> > word, which is accounted for in the page data part.
+> >
+> > But, it seems that this wouldn't cause the above problem. I'm
+> > also uncertain why this happens with RDMA, but not otherwise.
+> > Unfortunately, I can't test RDMA, but when I ran listxattr tests,
+> > I did so with KASAN enabled, and didn't see issues.
+>
+> There isn't nothing special to run tests on RDMA, you just need to
+> compile the RXE driver and the rdma-core package have everything you
+> need to run soft Roce (or soft iwarp). This is how I'm testing.
+>
+> > Obviously there could be a bug here, it could be that the code
+> > just gets lucky, but that the bug is exposed on RDMA.
+> >
+> > Is there a specific size passed to listxattr that this happens with?
+>
+> First let me answer the last question, I'm running xfstest generic/013.
+>
+> The latest update: updated to Trond's origing/testing which is now
+> based on 5.10-rc4.
+>
+> 1. I don't see the oops during the encoding of the listxattr
+> 2. I'm still seeing the oops during the rdma completion. This happens
+> in the following scenario. Normally, there is a request for listxattr
+> which passes in buflen of 65536. This translates into rdma request
+> with a reply chunk with 2 segments. But during failure there is a
+> request for listxattr which passes buflen of only 8bytes. This
+> translates into rdma inline request which later oops in
+> rpcrdma_inline_fixup.
+>
+> What I would like to know: (1) should _nf42_proc_listxattrs() be doing
+> some kind of sanity checking for passed in buflen? (2) but of course
+> I'm assuming even if passed in buffer is small the code shouldn't be
+> oops-ing.
+>
+> >
+> > - Frank
