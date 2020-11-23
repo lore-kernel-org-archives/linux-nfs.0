@@ -2,73 +2,73 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.0 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E3B6C64E8A
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8511CC83012
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 42D7620717
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 42E3620724
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:04:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZRGKBKpv"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DFcxJ1uO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728078AbgKWUEI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Nov 2020 15:04:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41396 "EHLO
+        id S1728419AbgKWUEU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Nov 2020 15:04:20 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41428 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726770AbgKWUEH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:04:07 -0500
-Received: from mail-qk1-x741.google.com (mail-qk1-x741.google.com [IPv6:2607:f8b0:4864:20::741])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A27F9C0613CF
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:04:07 -0800 (PST)
-Received: by mail-qk1-x741.google.com with SMTP id y18so1894569qki.11
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:04:07 -0800 (PST)
+        with ESMTP id S1726770AbgKWUES (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:04:18 -0500
+Received: from mail-qv1-xf43.google.com (mail-qv1-xf43.google.com [IPv6:2607:f8b0:4864:20::f43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 83E54C0613CF
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:04:18 -0800 (PST)
+Received: by mail-qv1-xf43.google.com with SMTP id p12so7252046qvj.13
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:04:18 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=HcSb6CUIyEdHtSUSeX0VbJSU8WnCONnxaJpo3aBIQQY=;
-        b=ZRGKBKpvOaO7lbpuBVybrzGv8L7rVLEpT8+09PK0PeMqXHEvSpp0tm7me9QHKYWBYe
-         hHbWmcuVujdVA+lWQFf/hl5jFljIRFkKzBjg3z1YWHh9AzS3VjkHHtVCxM5n3VfexeWu
-         Y5nUoIy3gdxPXPyl1A+QSMBrmzrOr5Ja5tT2xJ1vMegBRtOQ8w96IsgDtc2zJHDsQHLj
-         u7kGEt8eWtGayldKTWHRZtRofxcjq7OkqEx6xfCrKTme6Uyqmh1wiu3DINkDxlEK7+/N
-         3z6RnNcBBBHDjPhdSMoLcPQGjFOF0HSE9OjevoT/RY3uOOehiX/d82CQ+q3VdXXdIx6B
-         IG0Q==
+        bh=WqZPqx+yNlg7M39WK6DrTIRZO9hQ702+J8YXXZcD/o8=;
+        b=DFcxJ1uOfb54DdEpjgyJSNSSmeywbRZaxv0u4t04/4kCg8QPhBVtvoqzynoWXfVXBt
+         YD04JTPh/V33JMkRJiDu7VBIwxtI0u4fyqRIX8E2MRRJJxvdBnA7UOwfbAWrIVbWiyYu
+         81gwLKRIYw4wUKExMEfRZZAm99jup/xkEYY6QOfrMNiSOmT4ebMJoQRMz4JKGyapigRL
+         wydns8F2iFkVgkh/SB3V9pD3LNUJGmk+aWxkjdn/hOYI5GQVva2JdZ0t4aLTw3usbnEg
+         T6aW74ir/6rBfpNNzdEMhqXLSXrWJOfkbUQka5R/RXjwDxDiRwwx0aejpjeFFL32ga6O
+         qeUA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=HcSb6CUIyEdHtSUSeX0VbJSU8WnCONnxaJpo3aBIQQY=;
-        b=dCKB/o8z/2s8RvfMcLYkx92i1NFPvYdO9fOoDBpJ4PggygKIkfwHv5ZM0+G8A/6Hrq
-         4At43MTSS3LWXrkbRPcpLMKxnAAFjDGwULmXvdU10vYrZiMgv1vkJuPsiM9e5nh+c8T4
-         SvqIrLb+j/gkOpcU2yGY8diEKFiO9vfVBl/918vRNZDlAjRGG+VKqDuqm9L4M5umkTWj
-         2I3B5OeRgMvFJECMBEnKXFke86QqbAFZRWj9B83L3ZMgFCrnaUzVrT5BxfQWEWfRG6j5
-         M1ieziBa7P7j65Zc/z41iklxqTHm9QsVJmiPBYeKZ4RF3AlWTI/i7UEoyHVPD+aXqJJB
-         idNA==
-X-Gm-Message-State: AOAM533202lGKQZStk/2Fkn+RsDsm8xImg0GA7iRHNL8U65ehZWgTZt8
-        i16hvAvO5X0CcekOKMXcBqOjC5Mzk14=
-X-Google-Smtp-Source: ABdhPJwR/Ao+ThIGBQZ0CqxNB97j/JpJwScFyMpbifgEMU++rYWl7W1Oow1ZtidsV+WFEh5QTGwDVg==
-X-Received: by 2002:a37:6c41:: with SMTP id h62mr1209233qkc.401.1606161846273;
-        Mon, 23 Nov 2020 12:04:06 -0800 (PST)
+        bh=WqZPqx+yNlg7M39WK6DrTIRZO9hQ702+J8YXXZcD/o8=;
+        b=c3KF7b1o3X2WhTPOQvIpoEBhOCko6accjgrd5lUlah0Fuig/W7S6EH8eKzZsCEU6BO
+         Ur3NrjOfw8cFXqH81ZXRZsysBMKIyoKBdZ9RR+WqNH/LNAcFZu53TYB4XvtG1vmdaoX6
+         UFmQpX00b2lGBbkyOq/gLQRroxA/lyl2TaSEP+kueRVyJtiE2zdkKSAjzroZtg5/XOG9
+         iqit0LI9OiA9H/uYaFbRGgJzjbSXB7q1NTzBOohh0sZcsMAOkh9kdrhbejGMDuccA6sp
+         dQFw0IdRjUTabuy3amifMP5lckO4Swk0PshwCeACvEgQO1Oy2sH+qnHrczPe/oSCEVf7
+         +pgg==
+X-Gm-Message-State: AOAM531HN0f4fhbqkAgiCBZAA0QTzLbOVm+uoEo7kZ2CxtoHPcKcbrlM
+        OO5/TLbDTxj0nPEioxcSZNnnHQvY40k=
+X-Google-Smtp-Source: ABdhPJxL6D/TTukh4m4slOGagOu1Ga73udb/xcKkZ5uO8SnjHY7QzLLkUfMweEucRpHPPHMsLqwnBg==
+X-Received: by 2002:ad4:5762:: with SMTP id r2mr1000817qvx.45.1606161857206;
+        Mon, 23 Nov 2020 12:04:17 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id i21sm10243140qtm.1.2020.11.23.12.04.05
+        by smtp.gmail.com with ESMTPSA id p128sm6167476qkc.47.2020.11.23.12.04.15
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 23 Nov 2020 12:04:05 -0800 (PST)
+        Mon, 23 Nov 2020 12:04:16 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ANK44hl010269
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 20:04:04 GMT
-Subject: [PATCH v3 01/85] SUNRPC: Add xdr_set_scratch_page() and
- xdr_reset_scratch_buffer()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ANK4FsR010276
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 20:04:15 GMT
+Subject: [PATCH v3 03/85] NFSD: Add common helpers to decode void args and
+ encode void results
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Mon, 23 Nov 2020 15:04:04 -0500
-Message-ID: <160616184452.51996.9922379919062613933.stgit@klimt.1015granger.net>
+Date:   Mon, 23 Nov 2020 15:04:15 -0500
+Message-ID: <160616185513.51996.5294904003222661494.stgit@klimt.1015granger.net>
 In-Reply-To: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
 References: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -79,300 +79,398 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up: De-duplicate some frequently-used code.
+Start off the conversion to xdr_stream by de-duplicating the functions
+that decode void arguments and encode void results.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/blocklayout/blocklayout.c          |    2 +
- fs/nfs/blocklayout/dev.c                  |    2 +
- fs/nfs/dir.c                              |    2 +
- fs/nfs/filelayout/filelayout.c            |    2 +
- fs/nfs/filelayout/filelayoutdev.c         |    2 +
- fs/nfs/flexfilelayout/flexfilelayout.c    |    2 +
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |    2 +
- fs/nfs/nfs42xdr.c                         |    2 +
- fs/nfs/nfs4xdr.c                          |    6 +---
- fs/nfsd/nfs4proc.c                        |    2 +
- include/linux/sunrpc/xdr.h                |   44 ++++++++++++++++++++++++++++-
- net/sunrpc/auth_gss/gss_rpc_xdr.c         |    2 +
- net/sunrpc/xdr.c                          |   28 +++---------------
- 13 files changed, 59 insertions(+), 39 deletions(-)
+ fs/nfsd/nfs2acl.c  |   21 ++++-----------------
+ fs/nfsd/nfs3acl.c  |    8 ++++----
+ fs/nfsd/nfs3proc.c |   10 ++++------
+ fs/nfsd/nfs3xdr.c  |   11 -----------
+ fs/nfsd/nfs4proc.c |   11 ++++-------
+ fs/nfsd/nfs4xdr.c  |   12 ------------
+ fs/nfsd/nfsd.h     |    8 ++++++++
+ fs/nfsd/nfsproc.c  |   25 ++++++++++++-------------
+ fs/nfsd/nfssvc.c   |   28 ++++++++++++++++++++++++++++
+ fs/nfsd/nfsxdr.c   |   10 ----------
+ fs/nfsd/xdr.h      |    2 --
+ fs/nfsd/xdr3.h     |    2 --
+ fs/nfsd/xdr4.h     |    2 --
+ 13 files changed, 64 insertions(+), 86 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 08108b6d2fa1..3be6836074ae 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -697,7 +697,7 @@ bl_alloc_lseg(struct pnfs_layout_hdr *lo, struct nfs4_layoutget_res *lgr,
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 6a900f770dd2..b0f66604532a 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -185,10 +185,6 @@ static __be32 nfsacld_proc_access(struct svc_rqst *rqstp)
+ /*
+  * XDR decode functions
+  */
+-static int nfsaclsvc_decode_voidarg(struct svc_rqst *rqstp, __be32 *p)
+-{
+-	return 1;
+-}
  
- 	xdr_init_decode_pages(&xdr, &buf,
- 			lgr->layoutp->pages, lgr->layoutp->len);
--	xdr_set_scratch_buffer(&xdr, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(&xdr, scratch);
+ static int nfsaclsvc_decode_getaclargs(struct svc_rqst *rqstp, __be32 *p)
+ {
+@@ -255,15 +251,6 @@ static int nfsaclsvc_decode_accessargs(struct svc_rqst *rqstp, __be32 *p)
+  * XDR encode functions
+  */
  
- 	status = -EIO;
- 	p = xdr_inline_decode(&xdr, 4);
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index dec5880ac6de..acb1d22907da 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -510,7 +510,7 @@ bl_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
- 		goto out;
+-/*
+- * There must be an encoding function for void results so svc_process
+- * will work properly.
+- */
+-static int nfsaclsvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p)
+-{
+-	return xdr_ressize_check(rqstp, p);
+-}
+-
+ /* GETACL */
+ static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p)
+ {
+@@ -378,10 +365,10 @@ struct nfsd3_voidargs { int dummy; };
+ static const struct svc_procedure nfsd_acl_procedures2[5] = {
+ 	[ACLPROC2_NULL] = {
+ 		.pc_func = nfsacld_proc_null,
+-		.pc_decode = nfsaclsvc_decode_voidarg,
+-		.pc_encode = nfsaclsvc_encode_voidres,
+-		.pc_argsize = sizeof(struct nfsd3_voidargs),
+-		.pc_ressize = sizeof(struct nfsd3_voidargs),
++		.pc_decode = nfssvc_decode_voidarg,
++		.pc_encode = nfssvc_encode_voidres,
++		.pc_argsize = sizeof(struct nfsd_voidargs),
++		.pc_ressize = sizeof(struct nfsd_voidres),
+ 		.pc_cachetype = RC_NOCACHE,
+ 		.pc_xdrressize = ST,
+ 	},
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 34a394e50e1d..7c30876a31a1 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -245,10 +245,10 @@ struct nfsd3_voidargs { int dummy; };
+ static const struct svc_procedure nfsd_acl_procedures3[3] = {
+ 	[ACLPROC3_NULL] = {
+ 		.pc_func = nfsd3_proc_null,
+-		.pc_decode = nfs3svc_decode_voidarg,
+-		.pc_encode = nfs3svc_encode_voidres,
+-		.pc_argsize = sizeof(struct nfsd3_voidargs),
+-		.pc_ressize = sizeof(struct nfsd3_voidargs),
++		.pc_decode = nfssvc_decode_voidarg,
++		.pc_encode = nfssvc_encode_voidres,
++		.pc_argsize = sizeof(struct nfsd_voidargs),
++		.pc_ressize = sizeof(struct nfsd_voidres),
+ 		.pc_cachetype = RC_NOCACHE,
+ 		.pc_xdrressize = ST,
+ 	},
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index d9be589fed15..76931f4f57c3 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -692,8 +692,6 @@ nfsd3_proc_commit(struct svc_rqst *rqstp)
+ #define nfsd3_attrstatres		nfsd3_attrstat
+ #define nfsd3_wccstatres		nfsd3_attrstat
+ #define nfsd3_createres			nfsd3_diropres
+-#define nfsd3_voidres			nfsd3_voidargs
+-struct nfsd3_voidargs { int dummy; };
  
- 	xdr_init_decode_pages(&xdr, &buf, pdev->pages, pdev->pglen);
--	xdr_set_scratch_buffer(&xdr, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(&xdr, scratch);
+ #define ST 1		/* status*/
+ #define FH 17		/* filehandle with length */
+@@ -704,10 +702,10 @@ struct nfsd3_voidargs { int dummy; };
+ static const struct svc_procedure nfsd_procedures3[22] = {
+ 	[NFS3PROC_NULL] = {
+ 		.pc_func = nfsd3_proc_null,
+-		.pc_decode = nfs3svc_decode_voidarg,
+-		.pc_encode = nfs3svc_encode_voidres,
+-		.pc_argsize = sizeof(struct nfsd3_voidargs),
+-		.pc_ressize = sizeof(struct nfsd3_voidres),
++		.pc_decode = nfssvc_decode_voidarg,
++		.pc_encode = nfssvc_encode_voidres,
++		.pc_argsize = sizeof(struct nfsd_voidargs),
++		.pc_ressize = sizeof(struct nfsd_voidres),
+ 		.pc_cachetype = RC_NOCACHE,
+ 		.pc_xdrressize = ST,
+ 	},
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 186b07a72373..a6718b952975 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -304,11 +304,6 @@ void fill_post_wcc(struct svc_fh *fhp)
+ /*
+  * XDR decode functions
+  */
+-int
+-nfs3svc_decode_voidarg(struct svc_rqst *rqstp, __be32 *p)
+-{
+-	return 1;
+-}
  
- 	p = xdr_inline_decode(&xdr, sizeof(__be32));
- 	if (!p)
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4e011adaf967..8a24fe20dccf 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -576,7 +576,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 		goto out_nopages;
+ int
+ nfs3svc_decode_fhandle(struct svc_rqst *rqstp, __be32 *p)
+@@ -642,12 +637,6 @@ nfs3svc_decode_commitargs(struct svc_rqst *rqstp, __be32 *p)
+  * XDR encode functions
+  */
  
- 	xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
--	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(&stream, scratch);
- 
- 	do {
- 		if (entry->label)
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 7f5aa0403e16..d158a500c25c 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -666,7 +666,7 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
- 		return -ENOMEM;
- 
- 	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
--	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(&stream, scratch);
- 
- 	/* 20 = ufl_util (4), first_stripe_index (4), pattern_offset (8),
- 	 * num_fh (4) */
-diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-index d913e818858f..86c3f7e69ec4 100644
---- a/fs/nfs/filelayout/filelayoutdev.c
-+++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -82,7 +82,7 @@ nfs4_fl_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
- 		goto out_err;
- 
- 	xdr_init_decode_pages(&stream, &buf, pdev->pages, pdev->pglen);
--	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(&stream, scratch);
- 
- 	/* Get the stripe count (number of stripe index) */
- 	p = xdr_inline_decode(&stream, 4);
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index a163533446fa..d7010686d39a 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -378,7 +378,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 
- 	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages,
- 			      lgr->layoutp->len);
--	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(&stream, scratch);
- 
- 	/* stripe unit and mirror_array_cnt */
- 	rc = -EIO;
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 3eda40a320a5..c9b61b818ec1 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -69,7 +69,7 @@ nfs4_ff_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
- 	INIT_LIST_HEAD(&dsaddrs);
- 
- 	xdr_init_decode_pages(&stream, &buf, pdev->pages, pdev->pglen);
--	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(&stream, scratch);
- 
- 	/* multipath count */
- 	p = xdr_inline_decode(&stream, 4);
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 6e060a88f98c..cb5d4da2308f 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -1540,7 +1540,7 @@ static int nfs4_xdr_dec_listxattrs(struct rpc_rqst *rqstp,
- 	struct compound_hdr hdr;
- 	int status;
- 
--	xdr_set_scratch_buffer(xdr, page_address(res->scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(xdr, res->scratch);
- 
- 	status = decode_compound_hdr(xdr, &hdr);
- 	if (status)
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c6dbfcae7517..2eabe5add344 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -6403,10 +6403,8 @@ nfs4_xdr_dec_getacl(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	struct compound_hdr hdr;
- 	int status;
- 
--	if (res->acl_scratch != NULL) {
--		void *p = page_address(res->acl_scratch);
--		xdr_set_scratch_buffer(xdr, p, PAGE_SIZE);
--	}
-+	if (res->acl_scratch != NULL)
-+		xdr_set_scratch_page(xdr, res->acl_scratch);
- 	status = decode_compound_hdr(xdr, &hdr);
- 	if (status)
- 		goto out;
+-int
+-nfs3svc_encode_voidres(struct svc_rqst *rqstp, __be32 *p)
+-{
+-	return xdr_ressize_check(rqstp, p);
+-}
+-
+ /* GETATTR */
+ int
+ nfs3svc_encode_attrstat(struct svc_rqst *rqstp, __be32 *p)
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index e83b21778816..20772f6b0b2d 100644
+index 20772f6b0b2d..76300b0441f0 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -2276,7 +2276,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
- 	xdr->end = head->iov_base + PAGE_SIZE - rqstp->rq_auth_slack;
- 	/* Tail and page_len should be zero at this point: */
- 	buf->len = buf->head[0].iov_len;
--	xdr->scratch.iov_len = 0;
-+	xdr_reset_scratch_buffer(xdr);
- 	xdr->page_ptr = buf->pages - 1;
- 	buf->buflen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages)
- 		- rqstp->rq_auth_slack;
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index ec2a22ccdc2a..2729d2d6efce 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -248,7 +248,6 @@ extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf,
- 			    __be32 *p, struct rpc_rqst *rqst);
- extern void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
- 		struct page **pages, unsigned int len);
--extern void xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen);
- extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
- extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
-@@ -256,6 +255,49 @@ extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned in
- extern uint64_t xdr_align_data(struct xdr_stream *, uint64_t, uint32_t);
- extern uint64_t xdr_expand_hole(struct xdr_stream *, uint64_t, uint64_t);
- 
-+/**
-+ * xdr_set_scratch_buffer - Attach a scratch buffer for decoding data.
-+ * @xdr: pointer to xdr_stream struct
-+ * @buf: pointer to an empty buffer
-+ * @buflen: size of 'buf'
-+ *
-+ * The scratch buffer is used when decoding from an array of pages.
-+ * If an xdr_inline_decode() call spans across page boundaries, then
-+ * we copy the data into the scratch buffer in order to allow linear
-+ * access.
-+ */
-+static inline void
-+xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen)
-+{
-+	xdr->scratch.iov_base = buf;
-+	xdr->scratch.iov_len = buflen;
-+}
-+
-+/**
-+ * xdr_set_scratch_page - Attach a scratch buffer for decoding data
-+ * @xdr: pointer to xdr_stream struct
-+ * @page: an anonymous page
-+ *
-+ * See xdr_set_scratch_buffer().
-+ */
-+static inline void
-+xdr_set_scratch_page(struct xdr_stream *xdr, struct page *page)
-+{
-+	xdr_set_scratch_buffer(xdr, page_address(page), PAGE_SIZE);
-+}
-+
-+/**
-+ * xdr_reset_scratch_buffer - Clear scratch buffer information
-+ * @xdr: pointer to xdr_stream struct
-+ *
-+ * See xdr_set_scratch_buffer().
-+ */
-+static inline void
-+xdr_reset_scratch_buffer(struct xdr_stream *xdr)
-+{
-+	xdr_set_scratch_buffer(xdr, NULL, 0);
-+}
-+
- /**
-  * xdr_stream_remaining - Return the number of bytes remaining in the stream
-  * @xdr: pointer to struct xdr_stream
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 2ff7b7083eba..c636c648849b 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -789,7 +789,7 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
- 	scratch = alloc_page(GFP_KERNEL);
- 	if (!scratch)
- 		return -ENOMEM;
--	xdr_set_scratch_buffer(xdr, page_address(scratch), PAGE_SIZE);
-+	xdr_set_scratch_page(xdr, scratch);
- 
- 	/* res->status */
- 	err = gssx_dec_status(xdr, &res->status);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 28f81769a27c..c607744b3ea8 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -669,7 +669,7 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p,
- 	struct kvec *iov = buf->head;
- 	int scratch_len = buf->buflen - buf->page_len - buf->tail[0].iov_len;
- 
--	xdr_set_scratch_buffer(xdr, NULL, 0);
-+	xdr_reset_scratch_buffer(xdr);
- 	BUG_ON(scratch_len < 0);
- 	xdr->buf = buf;
- 	xdr->iov = iov;
-@@ -713,7 +713,7 @@ inline void xdr_commit_encode(struct xdr_stream *xdr)
- 	page = page_address(*xdr->page_ptr);
- 	memcpy(xdr->scratch.iov_base, page, shift);
- 	memmove(page, page + shift, (void *)xdr->p - page);
--	xdr->scratch.iov_len = 0;
-+	xdr_reset_scratch_buffer(xdr);
- }
- EXPORT_SYMBOL_GPL(xdr_commit_encode);
- 
-@@ -743,8 +743,7 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
- 	 * the "scratch" iov to track any temporarily unused fragment of
- 	 * space at the end of the previous buffer:
- 	 */
--	xdr->scratch.iov_base = xdr->p;
--	xdr->scratch.iov_len = frag1bytes;
-+	xdr_set_scratch_buffer(xdr, xdr->p, frag1bytes);
- 	p = page_address(*xdr->page_ptr);
- 	/*
- 	 * Note this is where the next encode will start after we've
-@@ -1052,8 +1051,7 @@ void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p,
- 		     struct rpc_rqst *rqst)
- {
- 	xdr->buf = buf;
--	xdr->scratch.iov_base = NULL;
--	xdr->scratch.iov_len = 0;
-+	xdr_reset_scratch_buffer(xdr);
- 	xdr->nwords = XDR_QUADLEN(buf->len);
- 	if (buf->head[0].iov_len != 0)
- 		xdr_set_iov(xdr, buf->head, buf->len);
-@@ -1101,24 +1099,6 @@ static __be32 * __xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
- 	return p;
+@@ -3295,16 +3295,13 @@ static const char *nfsd4_op_name(unsigned opnum)
+ 	return "unknown_operation";
  }
  
--/**
-- * xdr_set_scratch_buffer - Attach a scratch buffer for decoding data.
-- * @xdr: pointer to xdr_stream struct
-- * @buf: pointer to an empty buffer
-- * @buflen: size of 'buf'
-- *
-- * The scratch buffer is used when decoding from an array of pages.
-- * If an xdr_inline_decode() call spans across page boundaries, then
-- * we copy the data into the scratch buffer in order to allow linear
-- * access.
-- */
--void xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen)
--{
--	xdr->scratch.iov_base = buf;
--	xdr->scratch.iov_len = buflen;
--}
--EXPORT_SYMBOL_GPL(xdr_set_scratch_buffer);
+-#define nfsd4_voidres			nfsd4_voidargs
+-struct nfsd4_voidargs { int dummy; };
 -
- static __be32 *xdr_copy_to_scratch(struct xdr_stream *xdr, size_t nbytes)
+ static const struct svc_procedure nfsd_procedures4[2] = {
+ 	[NFSPROC4_NULL] = {
+ 		.pc_func = nfsd4_proc_null,
+-		.pc_decode = nfs4svc_decode_voidarg,
+-		.pc_encode = nfs4svc_encode_voidres,
+-		.pc_argsize = sizeof(struct nfsd4_voidargs),
+-		.pc_ressize = sizeof(struct nfsd4_voidres),
++		.pc_decode = nfssvc_decode_voidarg,
++		.pc_encode = nfssvc_encode_voidres,
++		.pc_argsize = sizeof(struct nfsd_voidargs),
++		.pc_ressize = sizeof(struct nfsd_voidres),
+ 		.pc_cachetype = RC_NOCACHE,
+ 		.pc_xdrressize = 1,
+ 	},
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e3c6bea83bd6..86a149ce0e84 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -5271,12 +5271,6 @@ nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op)
+ 	p = xdr_encode_opaque_fixed(p, rp->rp_buf, rp->rp_buflen);
+ }
+ 
+-int
+-nfs4svc_encode_voidres(struct svc_rqst *rqstp, __be32 *p)
+-{
+-        return xdr_ressize_check(rqstp, p);
+-}
+-
+ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
  {
- 	__be32 *p;
+ 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+@@ -5294,12 +5288,6 @@ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
+ 	}
+ }
+ 
+-int
+-nfs4svc_decode_voidarg(struct svc_rqst *rqstp, __be32 *p)
+-{
+-	return 1;
+-}
+-
+ int
+ nfs4svc_decode_compoundargs(struct svc_rqst *rqstp, __be32 *p)
+ {
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index cb742e17e04a..7907de3f2ee6 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -73,6 +73,14 @@ extern unsigned long		nfsd_drc_mem_used;
+ 
+ extern const struct seq_operations nfs_exports_op;
+ 
++/*
++ * Common void argument and result helpers
++ */
++struct nfsd_voidargs { };
++struct nfsd_voidres { };
++int		nfssvc_decode_voidarg(struct svc_rqst *rqstp, __be32 *p);
++int		nfssvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p);
++
+ /*
+  * Function prototypes.
+  */
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 0d71549f9d42..9473d048efec 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -609,7 +609,6 @@ nfsd_proc_statfs(struct svc_rqst *rqstp)
+  * NFSv2 Server procedures.
+  * Only the results of non-idempotent operations are cached.
+  */
+-struct nfsd_void { int dummy; };
+ 
+ #define ST 1		/* status */
+ #define FH 8		/* filehandle */
+@@ -618,10 +617,10 @@ struct nfsd_void { int dummy; };
+ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_NULL] = {
+ 		.pc_func = nfsd_proc_null,
+-		.pc_decode = nfssvc_decode_void,
+-		.pc_encode = nfssvc_encode_void,
+-		.pc_argsize = sizeof(struct nfsd_void),
+-		.pc_ressize = sizeof(struct nfsd_void),
++		.pc_decode = nfssvc_decode_voidarg,
++		.pc_encode = nfssvc_encode_voidres,
++		.pc_argsize = sizeof(struct nfsd_voidargs),
++		.pc_ressize = sizeof(struct nfsd_voidres),
+ 		.pc_cachetype = RC_NOCACHE,
+ 		.pc_xdrressize = 0,
+ 	},
+@@ -647,10 +646,10 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	},
+ 	[NFSPROC_ROOT] = {
+ 		.pc_func = nfsd_proc_root,
+-		.pc_decode = nfssvc_decode_void,
+-		.pc_encode = nfssvc_encode_void,
+-		.pc_argsize = sizeof(struct nfsd_void),
+-		.pc_ressize = sizeof(struct nfsd_void),
++		.pc_decode = nfssvc_decode_voidarg,
++		.pc_encode = nfssvc_encode_voidres,
++		.pc_argsize = sizeof(struct nfsd_voidargs),
++		.pc_ressize = sizeof(struct nfsd_voidres),
+ 		.pc_cachetype = RC_NOCACHE,
+ 		.pc_xdrressize = 0,
+ 	},
+@@ -685,10 +684,10 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	},
+ 	[NFSPROC_WRITECACHE] = {
+ 		.pc_func = nfsd_proc_writecache,
+-		.pc_decode = nfssvc_decode_void,
+-		.pc_encode = nfssvc_encode_void,
+-		.pc_argsize = sizeof(struct nfsd_void),
+-		.pc_ressize = sizeof(struct nfsd_void),
++		.pc_decode = nfssvc_decode_voidarg,
++		.pc_encode = nfssvc_encode_voidres,
++		.pc_argsize = sizeof(struct nfsd_voidargs),
++		.pc_ressize = sizeof(struct nfsd_voidres),
+ 		.pc_cachetype = RC_NOCACHE,
+ 		.pc_xdrressize = 0,
+ 	},
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 3fac172600ac..c4c646f25f1c 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -1075,6 +1075,34 @@ int nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+ 	return 1;
+ }
+ 
++/**
++ * nfssvc_decode_voidarg - Decode void arguments
++ * @rqstp: Server RPC transaction context
++ * @p: buffer containing arguments to decode
++ *
++ * Return values:
++ *   %0: Arguments were not valid
++ *   %1: Decoding was successful
++ */
++int nfssvc_decode_voidarg(struct svc_rqst *rqstp, __be32 *p)
++{
++	return 1;
++}
++
++/**
++ * nfssvc_encode_voidres - Encode void results
++ * @rqstp: Server RPC transaction context
++ * @p: buffer in which to encode results
++ *
++ * Return values:
++ *   %0: Local error while encoding
++ *   %1: Encoding was successful
++ */
++int nfssvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p)
++{
++        return xdr_ressize_check(rqstp, p);
++}
++
+ int nfsd_pool_stats_open(struct inode *inode, struct file *file)
+ {
+ 	int ret;
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 9e00a902113e..7aa6e8aca2c1 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -192,11 +192,6 @@ __be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *f
+ /*
+  * XDR decode functions
+  */
+-int
+-nfssvc_decode_void(struct svc_rqst *rqstp, __be32 *p)
+-{
+-	return xdr_argsize_check(rqstp, p);
+-}
+ 
+ int
+ nfssvc_decode_fhandle(struct svc_rqst *rqstp, __be32 *p)
+@@ -423,11 +418,6 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p)
+ /*
+  * XDR encode functions
+  */
+-int
+-nfssvc_encode_void(struct svc_rqst *rqstp, __be32 *p)
+-{
+-	return xdr_ressize_check(rqstp, p);
+-}
+ 
+ int
+ nfssvc_encode_stat(struct svc_rqst *rqstp, __be32 *p)
+diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
+index 0ff336b0b25f..ad77387734cc 100644
+--- a/fs/nfsd/xdr.h
++++ b/fs/nfsd/xdr.h
+@@ -144,7 +144,6 @@ union nfsd_xdrstore {
+ #define NFS2_SVC_XDRSIZE	sizeof(union nfsd_xdrstore)
+ 
+ 
+-int nfssvc_decode_void(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_fhandle(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_sattrargs(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_diropargs(struct svc_rqst *, __be32 *);
+@@ -156,7 +155,6 @@ int nfssvc_decode_readlinkargs(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_linkargs(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_symlinkargs(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_readdirargs(struct svc_rqst *, __be32 *);
+-int nfssvc_encode_void(struct svc_rqst *, __be32 *);
+ int nfssvc_encode_stat(struct svc_rqst *, __be32 *);
+ int nfssvc_encode_attrstat(struct svc_rqst *, __be32 *);
+ int nfssvc_encode_diropres(struct svc_rqst *, __be32 *);
+diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
+index ae6fa6c9cb46..456fcd7a1038 100644
+--- a/fs/nfsd/xdr3.h
++++ b/fs/nfsd/xdr3.h
+@@ -273,7 +273,6 @@ union nfsd3_xdrstore {
+ 
+ #define NFS3_SVC_XDRSIZE		sizeof(union nfsd3_xdrstore)
+ 
+-int nfs3svc_decode_voidarg(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_fhandle(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_sattrargs(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_diropargs(struct svc_rqst *, __be32 *);
+@@ -290,7 +289,6 @@ int nfs3svc_decode_symlinkargs(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_readdirargs(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_readdirplusargs(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_commitargs(struct svc_rqst *, __be32 *);
+-int nfs3svc_encode_voidres(struct svc_rqst *, __be32 *);
+ int nfs3svc_encode_attrstat(struct svc_rqst *, __be32 *);
+ int nfs3svc_encode_wccstat(struct svc_rqst *, __be32 *);
+ int nfs3svc_encode_diropres(struct svc_rqst *, __be32 *);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 679d40af1bbb..37f89ad5e992 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -781,8 +781,6 @@ set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
+ 
+ 
+ bool nfsd4_mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp);
+-int nfs4svc_decode_voidarg(struct svc_rqst *, __be32 *);
+-int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *);
+ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *);
+ int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *);
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
 
 
