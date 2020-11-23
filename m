@@ -2,106 +2,227 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF5CAC63777
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:13:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A363C63798
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:38:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B0F2020657
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:13:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2D87E204FD
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 20:38:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gOZbPCiC"
+	dkim=pass (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="Tyy0xQy0";
+	dkim=pass (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="Tyy0xQy0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731353AbgKWUJe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Nov 2020 15:09:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42422 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731389AbgKWUJd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:09:33 -0500
-Received: from mail-qt1-x843.google.com (mail-qt1-x843.google.com [IPv6:2607:f8b0:4864:20::843])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6AAA7C0613CF
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:09:33 -0800 (PST)
-Received: by mail-qt1-x843.google.com with SMTP id e10so6898245qte.4
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 12:09:33 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=U87VMX6PWpNDIh5Rr5x8DdmKsUeOe3Wv2RQH43fVpmo=;
-        b=gOZbPCiCb81ZJF6O5YbmLbgTaiHpQkzeFnLxZklG/bDbaVcuWbfaFn089LW7iRyyhh
-         EHhzEHl5h2QOTIw41LeH8azqvBliVizaCmzQJCW3b/VnHn3xJmzNfKuK6sfR7Xba2plq
-         VfghwhpMAOQHTyanFgLm+FsXSrOTmqjsZCc8DoNEXM7dT2jGI43nPD57s6fwyPuJirDX
-         ymB3NyWdWCqCupZ+OzDqI1RAkXYehSshBhITiP/JXTOgUEdeIxQqyhC4MNh2kAc6iZ8s
-         lksCkkEy+Kgo3Nl5e5r5V8Q/gfuc1XxkX26GpQ9n9WaSPI0s1oLrpPDiZ0H8JTtlKV8m
-         9MkQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=U87VMX6PWpNDIh5Rr5x8DdmKsUeOe3Wv2RQH43fVpmo=;
-        b=Tu9RmNUl/VgtoXkHt3bm9OrKGMpr6oNinHm4YgRZqZe7gJQB5fXD5dVcstqc2VJ+uq
-         bFNWlW6oMzrKN0N31+4tIJEHOLZVQrl3IhZ1jNs9bG+p8OyQKrK3uEhA76t21MDGLvWw
-         8xhqhw6wWfnI3ZKckEcKRne/+JW6PN1+WSeRilTqXBxqMDVktSHyeJQY+G75O0puHpfz
-         MrSHL4yIyCobVKvrVEEvmbKn2aZYEDTUdVHxllhEYN2hB7nD9fd/nDRNyE+Y6xBPg6Zg
-         /tCVd2z2RePlfnRAleJ91pBYA7V0Pts2ekh9+Hlegc+odj7o3gR010dh1BhLyljvR42k
-         Id4g==
-X-Gm-Message-State: AOAM5324RQOvqBP3HxzfJv8LZGZGDJlR1qX0oRufIq5rdURFbfP+PPY5
-        0PMtgdUVbQ0VZerT7nlHsivrTXO5+Lg=
-X-Google-Smtp-Source: ABdhPJzm9dTE6qQYFmOfhmt/WWREMPGZ2Szd/cpz51xYs2xG/nkw5GVoxndN+F2dvhHN2IvnGIZTSQ==
-X-Received: by 2002:ac8:6ec5:: with SMTP id f5mr939434qtv.56.1606162172383;
-        Mon, 23 Nov 2020 12:09:32 -0800 (PST)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id r14sm10494889qtu.25.2020.11.23.12.09.31
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 23 Nov 2020 12:09:31 -0800 (PST)
-Sender: Chuck Lever <chucklever@gmail.com>
-Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0ANK9UA3010465
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2020 20:09:30 GMT
-Subject: [PATCH v3 63/85] NFSD: Replace READ* macros in
- nfsd4_decode_free_stateid()
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Date:   Mon, 23 Nov 2020 15:09:30 -0500
-Message-ID: <160616217073.51996.17726050216615997950.stgit@klimt.1015granger.net>
-In-Reply-To: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
-References: <160616177104.51996.14915419165992024951.stgit@klimt.1015granger.net>
-User-Agent: StGit/0.23-29-ga622f1
+        id S1729712AbgKWUiG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Nov 2020 15:38:06 -0500
+Received: from bedivere.hansenpartnership.com ([96.44.175.130]:54984 "EHLO
+        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728669AbgKWUiE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 15:38:04 -0500
+Received: from localhost (localhost [127.0.0.1])
+        by bedivere.hansenpartnership.com (Postfix) with ESMTP id 7C3BA128091F;
+        Mon, 23 Nov 2020 12:38:03 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+        d=hansenpartnership.com; s=20151216; t=1606163883;
+        bh=+EDGs3PYzl3z47JpXWUueALZlElPDdJywkYLk/HcIjg=;
+        h=Message-ID:Subject:From:To:Date:In-Reply-To:References:From;
+        b=Tyy0xQy0htMQEdpfMUvFUuPG04g7ZXvYvYsCjWoq+QOlUp2WQfo8Vk+CnXXw5nkQT
+         a3Wz7+ONj/4K4WJ6m4qOiNdEl9e5tbHlW07s/zxEoMhv+eMdbQKfvYZ25zqNb6Olj/
+         onXIz2W3FBWOnXIoTYXwnsUNPzdRLL+aS2e3QsY4=
+Received: from bedivere.hansenpartnership.com ([127.0.0.1])
+        by localhost (bedivere.hansenpartnership.com [127.0.0.1]) (amavisd-new, port 10024)
+        with ESMTP id MaRt-fv30puO; Mon, 23 Nov 2020 12:38:03 -0800 (PST)
+Received: from jarvis.int.hansenpartnership.com (unknown [IPv6:2601:600:8280:66d1::527])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by bedivere.hansenpartnership.com (Postfix) with ESMTPSA id EBC5C128091E;
+        Mon, 23 Nov 2020 12:37:59 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+        d=hansenpartnership.com; s=20151216; t=1606163883;
+        bh=+EDGs3PYzl3z47JpXWUueALZlElPDdJywkYLk/HcIjg=;
+        h=Message-ID:Subject:From:To:Date:In-Reply-To:References:From;
+        b=Tyy0xQy0htMQEdpfMUvFUuPG04g7ZXvYvYsCjWoq+QOlUp2WQfo8Vk+CnXXw5nkQT
+         a3Wz7+ONj/4K4WJ6m4qOiNdEl9e5tbHlW07s/zxEoMhv+eMdbQKfvYZ25zqNb6Olj/
+         onXIz2W3FBWOnXIoTYXwnsUNPzdRLL+aS2e3QsY4=
+Message-ID: <4993259d01a0064f8bb22770503490f9252f3659.camel@HansenPartnership.com>
+Subject: Re: [PATCH 000/141] Fix fall-through warnings for Clang
+From:   James Bottomley <James.Bottomley@HansenPartnership.com>
+To:     Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc:     Kees Cook <keescook@chromium.org>,
+        Jakub Kicinski <kuba@kernel.org>,
+        "Gustavo A. R. Silva" <gustavoars@kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        alsa-devel@alsa-project.org, amd-gfx@lists.freedesktop.org,
+        bridge@lists.linux-foundation.org, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, coreteam@netfilter.org,
+        devel@driverdev.osuosl.org, dm-devel@redhat.com,
+        drbd-dev@lists.linbit.com, dri-devel@lists.freedesktop.org,
+        GR-everest-linux-l2@marvell.com, GR-Linux-NIC-Dev@marvell.com,
+        intel-gfx@lists.freedesktop.org, intel-wired-lan@lists.osuosl.org,
+        keyrings@vger.kernel.org, linux1394-devel@lists.sourceforge.net,
+        linux-acpi@vger.kernel.org, linux-afs@lists.infradead.org,
+        Linux ARM <linux-arm-kernel@lists.infradead.org>,
+        linux-arm-msm@vger.kernel.org,
+        linux-atm-general@lists.sourceforge.net,
+        linux-block@vger.kernel.org, linux-can@vger.kernel.org,
+        linux-cifs@vger.kernel.org,
+        Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
+        linux-decnet-user@lists.sourceforge.net,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-fbdev@vger.kernel.org, linux-geode@lists.infradead.org,
+        linux-gpio@vger.kernel.org, linux-hams@vger.kernel.org,
+        linux-hwmon@vger.kernel.org, linux-i3c@lists.infradead.org,
+        linux-ide@vger.kernel.org, linux-iio@vger.kernel.org,
+        linux-input <linux-input@vger.kernel.org>,
+        linux-integrity@vger.kernel.org,
+        linux-mediatek@lists.infradead.org,
+        Linux Media Mailing List <linux-media@vger.kernel.org>,
+        linux-mmc@vger.kernel.org, Linux-MM <linux-mm@kvack.org>,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-renesas-soc@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-stm32@st-md-mailman.stormreply.com,
+        linux-usb@vger.kernel.org, linux-watchdog@vger.kernel.org,
+        linux-wireless <linux-wireless@vger.kernel.org>,
+        Network Development <netdev@vger.kernel.org>,
+        netfilter-devel@vger.kernel.org, nouveau@lists.freedesktop.org,
+        op-tee@lists.trustedfirmware.org, oss-drivers@netronome.com,
+        patches@opensource.cirrus.com, rds-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org, samba-technical@lists.samba.org,
+        selinux@vger.kernel.org, target-devel@vger.kernel.org,
+        tipc-discussion@lists.sourceforge.net,
+        usb-storage@lists.one-eyed-alien.net,
+        virtualization@lists.linux-foundation.org,
+        wcn36xx@lists.infradead.org,
+        "maintainer:X86 ARCHITECTURE (32-BIT AND 64-BIT)" <x86@kernel.org>,
+        xen-devel@lists.xenproject.org, linux-hardening@vger.kernel.org,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Nathan Chancellor <natechancellor@gmail.com>,
+        Miguel Ojeda <ojeda@kernel.org>, Joe Perches <joe@perches.com>
+Date:   Mon, 23 Nov 2020 12:37:58 -0800
+In-Reply-To: <CANiq72k5tpDoDPmJ0ZWc1DGqm+81Gi-uEENAtvEs9v3SZcx6_Q@mail.gmail.com>
+References: <cover.1605896059.git.gustavoars@kernel.org>
+         <20201120105344.4345c14e@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+         <202011201129.B13FDB3C@keescook>
+         <20201120115142.292999b2@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+         <202011220816.8B6591A@keescook>
+         <9b57fd4914b46f38d54087d75e072d6e947cb56d.camel@HansenPartnership.com>
+         <CANiq72nZrHWTA4_Msg6MP9snTyenC6-eGfD27CyfNSu7QoVZbw@mail.gmail.com>
+         <1c7d7fde126bc0acf825766de64bf2f9b888f216.camel@HansenPartnership.com>
+         <CANiq72m22Jb5_+62NnwX8xds2iUdWDMAqD8PZw9cuxdHd95W0A@mail.gmail.com>
+         <fc45750b6d0277c401015b7aa11e16cd15f32ab2.camel@HansenPartnership.com>
+         <CANiq72k5tpDoDPmJ0ZWc1DGqm+81Gi-uEENAtvEs9v3SZcx6_Q@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.34.4 
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/nfs4xdr.c |    8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+On Mon, 2020-11-23 at 19:56 +0100, Miguel Ojeda wrote:
+> On Mon, Nov 23, 2020 at 4:58 PM James Bottomley
+> <James.Bottomley@hansenpartnership.com> wrote:
+> > Well, I used git.  It says that as of today in Linus' tree we have
+> > 889 patches related to fall throughs and the first series went in
+> > in october 2017 ... ignoring a couple of outliers back to February.
+> 
+> I can see ~10k insertions over ~1k commits and 15 years that mention
+> a fallthrough in the entire repo. That is including some commits
+> (like the biggest one, 960 insertions) that have nothing to do with C
+> fallthrough. A single kernel release has an order of magnitude more
+> changes than this...
+> 
+> But if we do the math, for an author, at even 1 minute per line
+> change and assuming nothing can be automated at all, it would take 1
+> month of work. For maintainers, a couple of trivial lines is noise
+> compared to many other patches.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index bde832994be4..b326d5b4e7f8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1685,13 +1685,7 @@ static __be32
- nfsd4_decode_free_stateid(struct nfsd4_compoundargs *argp,
- 			  struct nfsd4_free_stateid *free_stateid)
- {
--	DECODE_HEAD;
--
--	READ_BUF(sizeof(stateid_t));
--	free_stateid->fr_stateid.si_generation = be32_to_cpup(p++);
--	COPYMEM(&free_stateid->fr_stateid.si_opaque, sizeof(stateid_opaque_t));
--
--	DECODE_TAIL;
-+	return nfsd4_decode_stateid4(argp, &free_stateid->fr_stateid);
- }
- 
- static __be32
+So you think a one line patch should take one minute to produce ... I
+really don't think that's grounded in reality.  I suppose a one line
+patch only takes a minute to merge with b4 if no-one reviews or tests
+it, but that's not really desirable.
+
+> In fact, this discussion probably took more time than the time it
+> would take to review the 200 lines. :-)
+
+I'm framing the discussion in terms of the whole series of changes we
+have done for fall through, both what's in the tree currently (889
+patches) both in terms of the produce and the consumer.  That's what I
+used for my figures for cost.
+
+> > We're also complaining about the inability to recruit maintainers:
+> > 
+> > https://www.theregister.com/2020/06/30/hard_to_find_linux_maintainers_says_torvalds/
+> > 
+> > And burn out:
+> > 
+> > http://antirez.com/news/129
+> 
+> Accepting trivial and useful 1-line patches
+
+Part of what I'm trying to measure is the "and useful" bit because
+that's not a given.
+
+> is not what makes a voluntary maintainer quit...
+
+so the proverb "straw which broke the camel's back" uniquely doesn't
+apply to maintainers
+
+>  Thankless work with demanding deadlines is.
+
+That's another potential reason, but it doesn't may other reasons less
+valid.
+
+> > The whole crux of your argument seems to be maintainers' time isn't
+> > important so we should accept all trivial patches
+> 
+> I have not said that, at all. In fact, I am a voluntary one and I
+> welcome patches like this. It takes very little effort on my side to
+> review and it helps the kernel overall.
+
+Well, you know, subsystems are very different in terms of the amount of
+patches a maintainer has to process per release cycle of the kernel. 
+If a maintainer is close to capacity, additional patches, however
+trivial, become a problem.  If a maintainer has spare cycles, trivial
+patches may look easy.
+
+> Paid maintainers are the ones that can take care of big
+> features/reviews.
+> 
+> > What I'm actually trying to articulate is a way of measuring value
+> > of the patch vs cost ... it has nothing really to do with who foots
+> > the actual bill.
+> 
+> I understand your point, but you were the one putting it in terms of
+> a junior FTE.
+
+No, I evaluated the producer side in terms of an FTE.  What we're
+mostly arguing about here is the consumer side: the maintainers and
+people who have to rework their patch sets. I estimated that at 100h.
+
+>  In my view, 1 month-work (worst case) is very much worth
+> removing a class of errors from a critical codebase.
+> 
+> > One thesis I'm actually starting to formulate is that this
+> > continual devaluing of maintainers is why we have so much
+> > difficulty keeping and recruiting them.
+> 
+> That may very well be true, but I don't feel anybody has devalued
+> maintainers in this discussion.
+
+You seem to be saying that because you find it easy to merge trivial
+patches, everyone should.  I'm reminded of a friend long ago who
+thought being a Tees River Pilot was a sinecure because he could
+navigate the Tees blindfold.  What he forgot, of course, is that just
+because it's easy with a trawler doesn't mean it's easy with an oil
+tanker.  In fact it takes longer to qualify as a Tees River Pilot than
+it does to get a PhD.
+
+James
 
 
