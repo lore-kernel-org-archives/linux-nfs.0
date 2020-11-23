@@ -2,233 +2,132 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EEE5C2D0E4
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 15:49:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87B05C64E7C
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 15:52:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C7D8B221FC
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 15:49:24 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="ws1CGhg3"
+	by mail.kernel.org (Postfix) with ESMTP id 46AF420B1F
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Nov 2020 15:52:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729270AbgKWPtY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Nov 2020 10:49:24 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:59110 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727444AbgKWPtX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Nov 2020 10:49:23 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ANFjMJ7090877;
-        Mon, 23 Nov 2020 15:49:20 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=TSXmQLKs7FnshoLBNuBx8q9kEWasktzMFkbR4JyoilU=;
- b=ws1CGhg3VNBX/tbKZ7aJ1STOgp246h6S1jIhIxHgVFAahAYRmlCVmUJ1JL4jAO2hI3kT
- XwkhnAYniwPDBvXJRQNasL4Ryu8onu46gSBbzYRUZfLrD1oRhGztPyS10wLCbvCMUzSl
- bTxhTXrWnzczn68+1Zk9Z+ccYgt1pYi4VN2erc/okmAzPs0fscFCVvjkW0/PYKlfVnaF
- 5V/RebuOeiZxis87/d00fCMGVDZEG4rAjsrK3bCdVjrMehtxNMgyXlHKOtLRUgiEpuYB
- b4lUOqhuA5spoqNIYuAjv2Y6eNHdOlJE3umdNwsfv53PMAviZajN8QzsJZZLfwOzkXBh 8g== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by userp2130.oracle.com with ESMTP id 34xtaqhd3s-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Mon, 23 Nov 2020 15:49:20 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ANFTqQ5160110;
-        Mon, 23 Nov 2020 15:47:19 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3020.oracle.com with ESMTP id 34yx8hk64k-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 23 Nov 2020 15:47:19 +0000
-Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0ANFlFEw019654;
-        Mon, 23 Nov 2020 15:47:15 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 23 Nov 2020 07:47:15 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
-Subject: Re: [PATCH 5/8] SUNRPC: Don't truncate tail in xdr_inline_pages()
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <0d00e53170ade9685c3aa5b049e577450369d3f0.camel@hammerspace.com>
-Date:   Mon, 23 Nov 2020 10:47:13 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <A0165C8E-0CAE-4DF9-8EF8-DACFF210D38B@oracle.com>
-References: <20201122205229.3826-1-trondmy@kernel.org>
- <20201122205229.3826-2-trondmy@kernel.org>
- <20201122205229.3826-3-trondmy@kernel.org>
- <20201122205229.3826-4-trondmy@kernel.org>
- <20201122205229.3826-5-trondmy@kernel.org>
- <20201122205229.3826-6-trondmy@kernel.org>
- <0CB9471F-ACC6-42A1-8DCD-8A9E74BAF8F1@oracle.com>
- <614498c69c40421f8581fd8b25633e8668959581.camel@hammerspace.com>
- <4C120984-5A7B-4245-9B04-8E44C4370BC1@oracle.com>
- <0d00e53170ade9685c3aa5b049e577450369d3f0.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3608.120.23.2.4)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9813 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 spamscore=0 suspectscore=0
- bulkscore=0 mlxlogscore=999 malwarescore=0 adultscore=0 phishscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2011230106
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9813 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 spamscore=0 phishscore=0
- mlxlogscore=999 clxscore=1015 suspectscore=0 lowpriorityscore=0
- priorityscore=1501 bulkscore=0 impostorscore=0 adultscore=0 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2011230106
+        id S2387611AbgKWPwh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Nov 2020 10:52:37 -0500
+Received: from mga04.intel.com ([192.55.52.120]:3310 "EHLO mga04.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1732814AbgKWPwg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Nov 2020 10:52:36 -0500
+IronPort-SDR: wdIVWjG4qt3kkvZFlTfNHJ1qSha0XKAk2CxPFx4fu9uvtz0EoQNlcxjxuegxxUzv7XWLNMv6N9
+ dwo6ar0lSANA==
+X-IronPort-AV: E=McAfee;i="6000,8403,9813"; a="169224209"
+X-IronPort-AV: E=Sophos;i="5.78,363,1599548400"; 
+   d="scan'208";a="169224209"
+X-Amp-Result: SKIPPED(no attachment in message)
+X-Amp-File-Uploaded: False
+Received: from orsmga005.jf.intel.com ([10.7.209.41])
+  by fmsmga104.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 23 Nov 2020 07:52:35 -0800
+IronPort-SDR: o6LRPZSLFHblJ72nLIxI7QtuEJsSPQd11jVZTPC9b01xjBsR6V5ML2IOh4GsWUUm1pKbyVJ0KQ
+ V9qBxJqg/0zw==
+X-IronPort-AV: E=Sophos;i="5.78,363,1599548400"; 
+   d="scan'208";a="546463497"
+Received: from suygunge-mobl.ger.corp.intel.com (HELO localhost) ([10.249.40.108])
+  by orsmga005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 23 Nov 2020 07:52:23 -0800
+From:   Jani Nikula <jani.nikula@linux.intel.com>
+To:     James Bottomley <James.Bottomley@HansenPartnership.com>,
+        trix@redhat.com, joe@perches.com,
+        clang-built-linux@googlegroups.com
+Cc:     linux-hyperv@vger.kernel.org, kvm@vger.kernel.org,
+        linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
+        platform-driver-x86@vger.kernel.org,
+        ibm-acpi-devel@lists.sourceforge.net, keyrings@vger.kernel.org,
+        linux-mtd@lists.infradead.org, linux-scsi@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org, cluster-devel@redhat.com,
+        linux-acpi@vger.kernel.org, tboot-devel@lists.sourceforge.net,
+        coreteam@netfilter.org, xen-devel@lists.xenproject.org,
+        MPT-FusionLinux.pdl@broadcom.com, linux-media@vger.kernel.org,
+        alsa-devel@alsa-project.org, intel-gfx@lists.freedesktop.org,
+        ecryptfs@vger.kernel.org, linux-omap@vger.kernel.org,
+        devel@acpica.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-usb@vger.kernel.org,
+        linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-bluetooth@vger.kernel.org, netfilter-devel@vger.kernel.org,
+        linux-crypto@vger.kernel.org, patches@opensource.cirrus.com,
+        linux-fsdevel@vger.kernel.org, bpf@vger.kernel.org
+Subject: Re: [RFC] MAINTAINERS tag for cleanup robot
+In-Reply-To: <5843ef910b0e86c00d9c0143dec20f93823b016b.camel@HansenPartnership.com>
+Organization: Intel Finland Oy - BIC 0357606-4 - Westendinkatu 7, 02160 Espoo
+References: <20201121165058.1644182-1-trix@redhat.com> <5843ef910b0e86c00d9c0143dec20f93823b016b.camel@HansenPartnership.com>
+Date:   Mon, 23 Nov 2020 17:52:20 +0200
+Message-ID: <87y2ism5or.fsf@intel.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Sat, 21 Nov 2020, James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
+> On Sat, 2020-11-21 at 08:50 -0800, trix@redhat.com wrote:
+>> A difficult part of automating commits is composing the subsystem
+>> preamble in the commit log.  For the ongoing effort of a fixer
+>> producing
+>> one or two fixes a release the use of 'treewide:' does not seem
+>> appropriate.
+>> 
+>> It would be better if the normal prefix was used.  Unfortunately
+>> normal is
+>> not consistent across the tree.
+>> 
+>> 
+>> 	D: Commit subsystem prefix
+>> 
+>> ex/ for FPGA DFL DRIVERS
+>> 
+>> 	D: fpga: dfl:
+>> 
+>
+> I've got to bet this is going to cause more issues than it solves.
+
+Agreed.
+
+> SCSI uses scsi: <driver>: for drivers but not every driver has a
+> MAINTAINERS entry.  We use either scsi: or scsi: core: for mid layer
+> things, but we're not consistent.  Block uses blk-<something>: for all
+> of it's stuff but almost no <somtehing>s have a MAINTAINERS entry.  So
+> the next thing you're going to cause is an explosion of suggested
+> MAINTAINERs entries.
+
+On the one hand, adoption of new MAINTAINERS entries has been really
+slow. Look at B, C, or P, for instance. On the other hand, if this were
+to get adopted, you'll potentially get conflicting prefixes for patches
+touching multiple files. Then what?
+
+I'm guessing a script looking at git log could come up with better
+suggestions for prefixes via popularity contest than manually maintained
+MAINTAINERS entries. It might not always get it right, but then human
+outsiders aren't going to always get it right either.
+
+Now you'll only need Someone(tm) to write the script. ;)
+
+Something quick like this:
+
+git log --since={1year} --pretty=format:%s -- <FILES> |\
+	grep -v "^\(Merge\|Revert\)" |\
+        sed 's/:[^:]*$//' |\
+        sort | uniq -c | sort -rn | head -5
+
+already gives me results that really aren't worse than some of the
+prefixes invented by drive-by contributors.
+
+> Has anyone actually complained about treewide:?
+
+As Joe said, I'd feel silly applying patches to drivers with that
+prefix. If it gets applied by someone else higher up, literally
+treewide, then no complaints.
+
+BR,
+Jani.
 
 
-> On Nov 23, 2020, at 10:37 AM, Trond Myklebust =
-<trondmy@hammerspace.com> wrote:
->=20
-> On Mon, 2020-11-23 at 09:52 -0500, Chuck Lever wrote:
->>=20
->>=20
->>> On Nov 22, 2020, at 11:29 PM, Trond Myklebust <
->>> trondmy@hammerspace.com> wrote:
->>>=20
->>> On Sun, 2020-11-22 at 20:24 -0500, Chuck Lever wrote:
->>>>=20
->>>>=20
->>>>> On Nov 22, 2020, at 3:52 PM, trondmy@kernel.org wrote:
->>>>>=20
->>>>> From: Trond Myklebust <trond.myklebust@hammerspace.com>
->>>>>=20
->>>>> True that if the length of the pages[] array is not 4-byte
->>>>> aligned,
->>>>> then
->>>>> we will need to store the padding in the tail, but there is no
->>>>> need
->>>>> to
->>>>> truncate the total buffer length here.
->>>>=20
->>>> This description confuses me. The existing code reduces the
->>>> length of
->>>> the tail, not the "total buffer length." And what the removed
->>>> logic
->>>> is
->>>> doing is taking out the length of the XDR pad for the pages array
->>>> when
->>>> it is not expected to be used.
->>>=20
->>> Why are we bothering to do that? There is nothing problematic with
->>> just
->>> ignoring this test and leaving the tail length as it is, nor is
->>> there
->>> anything to be gained by applying it.
->>=20
->> You are correct that leaving the buffer a little long is not going
->> to harm normal operation. After all, we lived with a wildly over-
->> estimated slack length for years.
->>=20
->> The purpose of this code path is to prepare the receive buffer with
->> the memory resources and expected length of the Reply. The series
->> of patches that introduced this particular change was all about
->> ensuring that the estimated length of the reply message was exact.
->>=20
->> If the reply message size is overestimated, that moves the end-of-
->> message sentinel that is later set by xdr_init_decode(). We then
->> miss subtle problems like our fixed size estimates are incorrect
->> or a man-in-the-middle is extending the RPC message or the server
->> is malfunctioning.
->>=20
->> <scratches chin>
->>=20
->> After moving the ->pages pad into ->pages, I'm wondering if you
->> should revert 02ef04e432ba ("NFS: Account for XDR pad of buf->pages")
->> --
->> the maxsz macros don't need to account for the XDR pad of ->pages
->> any more. Then the below hunk makes sense. The patch description
->> still doesn't, though ;-)
->>=20
->=20
-> I don't think it needs to be reverted. I think you are right to =
-include
-> the padding in the buffer size that we use to set the value of task-
->> tk_rqstp->rq_rcvsize.
->=20
-> That said, it seems wrong to include that padding as part of the
-> 'hdrsize' argument in rpc_prepare_reply_pages(). That just causes
-> confusion, because the padding is not part of the header in front of
-> the array of pages. It is part of the tail data after the array of
-> pages. So I think a cleanup there may be warranted.
-
-Agreed, dealing with the tail size is confusing.
-
-
-> The other thing that I'm considering is that we may want to optimise =
-to
-> avoid setting up an RDMA SEND just for the padding if that is truly =
-the
-> last word in the RPC call (it matters less if there is other data that
-> requires us to set up such a SEND anyway). Not sure how to do that in =
-a
-> clean manner, though. Perhaps we'd have to pass in the padding size as
-> a separate argument to xdr_inline_pages() (and also to
-> rpc_prepare_reply_pages())?
-
-In the current version of RPC/RDMA, there's always exactly one RDMA
-Send per RPC message.
-
-The Linux client implementation is also careful to exclude XDR padding
-in both Read and Write chunks because the protocol makes the inclusion
-of padding on the wire optional.
-
-The only issue I see is that the upper layer needs to identify to the
-transport the exact size of the data item that is being transferred
-in a chunk so that the padding can be properly excluded. Currently
-rpcrdma makes some assumptions about how the data items are laid out
-in the xdr_buf when XDRBUF_READ/WRITE is set.
-
-
->> And then you should confirm that we are still getting the receive
->> buffer size estimate right for krb5i and krb5p.
->>=20
->>=20
->>>>> Signed-off-by: Trond Myklebust
->>>>> <trond.myklebust@hammerspace.com>
->>>>> ---
->>>>> net/sunrpc/xdr.c | 3 ---
->>>>> 1 file changed, 3 deletions(-)
->>>>>=20
->>>>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
->>>>> index 3ce0a5daa9eb..5a450055469f 100644
->>>>> --- a/net/sunrpc/xdr.c
->>>>> +++ b/net/sunrpc/xdr.c
->>>>> @@ -193,9 +193,6 @@ xdr_inline_pages(struct xdr_buf *xdr,
->>>>> unsigned
->>>>> int offset,
->>>>>=20
->>>>>         tail->iov_base =3D buf + offset;
->>>>>         tail->iov_len =3D buflen - offset;
->>>>> -       if ((xdr->page_len & 3) =3D=3D 0)
->>>>> -               tail->iov_len -=3D sizeof(__be32);
->>>>> -
->>>>>         xdr->buflen +=3D len;
->>>>> }
->>>>> EXPORT_SYMBOL_GPL(xdr_inline_pages);
->>>>> --=20
->>>>> 2.28.0
->>=20
->=20
-> --=20
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
-
---
-Chuck Lever
-
-
-
+-- 
+Jani Nikula, Intel Open Source Graphics Center
