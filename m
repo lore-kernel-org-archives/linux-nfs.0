@@ -7,45 +7,43 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E8CFC64E7C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02CD4C64E7A
 	for <linux-nfs@archiver.kernel.org>; Tue, 24 Nov 2020 13:50:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E08E620888
+	by mail.kernel.org (Postfix) with ESMTP id A1CF5208B8
 	for <linux-nfs@archiver.kernel.org>; Tue, 24 Nov 2020 13:50:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="vyMZSYcc"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="m3rDKXO3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388601AbgKXNub (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Nov 2020 08:50:31 -0500
-Received: from mail.kernel.org ([198.145.29.99]:44680 "EHLO mail.kernel.org"
+        id S2388589AbgKXNua (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Nov 2020 08:50:30 -0500
+Received: from mail.kernel.org ([198.145.29.99]:44676 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388575AbgKXNub (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Nov 2020 08:50:31 -0500
+        id S2388575AbgKXNua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Nov 2020 08:50:30 -0500
 Received: from leira.hammer.space (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3761520897
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2020 13:50:30 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1A52920888
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2020 13:50:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1606225830;
-        bh=81c8hXVAexxERZg1aSClqsGHLBDQbE4w7uJ52QJYrmA=;
+        s=default; t=1606225829;
+        bh=vVr7Ctb2zm7C6qsRF0nmjqqjxOoMzfEA86nB2IOr9+4=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=vyMZSYcce+9lV1XFygpjq7kKwuhmgqiKs9MQBdS6ib6/ZIljgM3/qK/IA4UwKDVlW
-         9e9zPWM+HfGboSUGa+BfRxHY+AunfOTWcp0OJQ+Es9aZ6FRO9w2sJtXKrUT3OZVXxj
-         XWgu8D3zeW53A0Fv7GYVwFBMJPHPmwQvTwbZFy4Y=
+        b=m3rDKXO3E9NcyWiQgZgsRaEiBMnYweeysBKoNLUXz2DADTVyE9NbGUDwYHgsFvUan
+         1YHUoaPbDRXxHEpZpo4qypJY0XMXJ4pY2QGQ21FpNfg137heKLgUtaItsYsjhUAQwz
+         7tIP62XTW67zI5bv63COgFy2G+En1XRWCqxmeIaQ=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 6/9] SUNRPC: Fix up xdr_set_page()
-Date:   Tue, 24 Nov 2020 08:50:22 -0500
-Message-Id: <20201124135025.1097571-7-trondmy@kernel.org>
+Subject: [PATCH v2 4/9] SUNRPC: Fix up xdr_read_pages() to take arbitrary object lengths
+Date:   Tue, 24 Nov 2020 08:50:20 -0500
+Message-Id: <20201124135025.1097571-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201124135025.1097571-6-trondmy@kernel.org>
+In-Reply-To: <20201124135025.1097571-4-trondmy@kernel.org>
 References: <20201124135025.1097571-1-trondmy@kernel.org>
  <20201124135025.1097571-2-trondmy@kernel.org>
  <20201124135025.1097571-3-trondmy@kernel.org>
  <20201124135025.1097571-4-trondmy@kernel.org>
- <20201124135025.1097571-5-trondmy@kernel.org>
- <20201124135025.1097571-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -54,75 +52,81 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-While we always want to align to the next page and/or the beginning of
-the tail buffer when we call xdr_set_next_page(), the functions
-xdr_align_data() and xdr_expand_hole() really want to align to the next
-object in that next page or tail.
+Fix up xdr_read_pages() so that it can handle object lengths that are
+larger than the page length, by simply aligning to the next object in
+the buffer tail.
+The function will continue to return the length of the truncate object
+data that actually fit into the pages.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xdr.c | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+ net/sunrpc/xdr.c | 41 +++++++++++++++--------------------------
+ 1 file changed, 15 insertions(+), 26 deletions(-)
 
 diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 5a450055469f..ddd5cc2281ab 100644
+index 394297ec1cb9..3ce0a5daa9eb 100644
 --- a/net/sunrpc/xdr.c
 +++ b/net/sunrpc/xdr.c
-@@ -1019,8 +1019,10 @@ static unsigned int xdr_set_page_base(struct xdr_stream *xdr,
- static void xdr_set_page(struct xdr_stream *xdr, unsigned int base,
- 			 unsigned int len)
+@@ -1219,44 +1219,33 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
+ }
+ 
+ /**
+- * xdr_read_pages - Ensure page-based XDR data to decode is aligned at current pointer position
++ * xdr_read_pages - align page-based XDR data to current pointer position
+  * @xdr: pointer to xdr_stream struct
+  * @len: number of bytes of page data
+  *
+  * Moves data beyond the current pointer position from the XDR head[] buffer
+- * into the page list. Any data that lies beyond current position + "len"
+- * bytes is moved into the XDR tail[].
++ * into the page list. Any data that lies beyond current position + @len
++ * bytes is moved into the XDR tail[]. The xdr_stream current position is
++ * then advanced past that data to align to the next XDR object in the tail.
+  *
+  * Returns the number of XDR encoded bytes now contained in the pages
+  */
+ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
  {
--	if (xdr_set_page_base(xdr, base, len) == 0)
--		xdr_set_iov(xdr, xdr->buf->tail, 0, xdr_stream_remaining(xdr));
-+	if (xdr_set_page_base(xdr, base, len) == 0) {
-+		base -= xdr->buf->page_len;
-+		xdr_set_iov(xdr, xdr->buf->tail, base, len);
-+	}
+-	struct xdr_buf *buf = xdr->buf;
+-	struct kvec *iov;
+-	unsigned int nwords;
+-	unsigned int end;
+-	unsigned int padding;
++	unsigned int nwords = XDR_QUADLEN(len);
++	unsigned int base, end, pglen;
+ 
+-	len = xdr_align_pages(xdr, len);
+-	if (len == 0)
++	pglen = xdr_align_pages(xdr, nwords << 2);
++	if (pglen == 0)
+ 		return 0;
+-	nwords = XDR_QUADLEN(len);
+-	padding = (nwords << 2) - len;
+-	xdr->iov = iov = buf->tail;
+-	/* Compute remaining message length.  */
+-	end = ((xdr->nwords - nwords) << 2) + padding;
+-	if (end > iov->iov_len)
+-		end = iov->iov_len;
+ 
+-	/*
+-	 * Position current pointer at beginning of tail, and
+-	 * set remaining message length.
+-	 */
+-	xdr->p = (__be32 *)((char *)iov->iov_base + padding);
+-	xdr->end = (__be32 *)((char *)iov->iov_base + end);
+-	xdr->page_ptr = NULL;
+-	xdr->nwords = XDR_QUADLEN(end - padding);
+-	return len;
++	xdr->nwords -= nwords;
++	base = (nwords << 2) - pglen;
++	end = xdr_stream_remaining(xdr) - pglen;
++
++	if (xdr_set_iov(xdr, xdr->buf->tail, base, end) == 0)
++		xdr->nwords = 0;
++	return len <= pglen ? len : pglen;
  }
+ EXPORT_SYMBOL_GPL(xdr_read_pages);
  
- static void xdr_set_next_page(struct xdr_stream *xdr)
-@@ -1029,17 +1031,18 @@ static void xdr_set_next_page(struct xdr_stream *xdr)
- 
- 	newbase = (1 + xdr->page_ptr - xdr->buf->pages) << PAGE_SHIFT;
- 	newbase -= xdr->buf->page_base;
--
--	xdr_set_page(xdr, newbase, PAGE_SIZE);
-+	if (newbase < xdr->buf->page_len)
-+		xdr_set_page_base(xdr, newbase, xdr_stream_remaining(xdr));
-+	else
-+		xdr_set_iov(xdr, xdr->buf->tail, 0, xdr_stream_remaining(xdr));
- }
- 
- static bool xdr_set_next_buffer(struct xdr_stream *xdr)
- {
- 	if (xdr->page_ptr != NULL)
- 		xdr_set_next_page(xdr);
--	else if (xdr->iov == xdr->buf->head) {
--		xdr_set_page(xdr, 0, PAGE_SIZE);
--	}
-+	else if (xdr->iov == xdr->buf->head)
-+		xdr_set_page(xdr, 0, xdr_stream_remaining(xdr));
- 	return xdr->p != xdr->end;
- }
- 
-@@ -1277,7 +1280,7 @@ uint64_t xdr_align_data(struct xdr_stream *xdr, uint64_t offset, uint32_t length
- 	}
- 
- 	xdr->nwords -= XDR_QUADLEN(length);
--	xdr_set_page(xdr, from + length, PAGE_SIZE);
-+	xdr_set_page(xdr, from + length, xdr_stream_remaining(xdr));
- 	return length;
- }
- EXPORT_SYMBOL_GPL(xdr_align_data);
-@@ -1314,7 +1317,7 @@ uint64_t xdr_expand_hole(struct xdr_stream *xdr, uint64_t offset, uint64_t lengt
- 	_zero_pages(buf->pages, buf->page_base + offset, length);
- 
- 	buf->len += length - (from - offset) - truncated;
--	xdr_set_page(xdr, offset + length, PAGE_SIZE);
-+	xdr_set_page(xdr, offset + length, xdr_stream_remaining(xdr));
- 	return length;
- }
- EXPORT_SYMBOL_GPL(xdr_expand_hole);
 -- 
 2.28.0
 
