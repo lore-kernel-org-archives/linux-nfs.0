@@ -7,39 +7,39 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77BFCC56201
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D794AC6379D
 	for <linux-nfs@archiver.kernel.org>; Tue, 24 Nov 2020 13:50:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1C24520872
+	by mail.kernel.org (Postfix) with ESMTP id 8C64820872
 	for <linux-nfs@archiver.kernel.org>; Tue, 24 Nov 2020 13:50:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="kVqk9EXb"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="Fynoa0WL"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388575AbgKXNub (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Nov 2020 08:50:31 -0500
+        id S2388603AbgKXNuc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Nov 2020 08:50:32 -0500
 Received: from mail.kernel.org ([198.145.29.99]:44702 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388591AbgKXNub (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Nov 2020 08:50:31 -0500
+        id S2388591AbgKXNuc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Nov 2020 08:50:32 -0500
 Received: from leira.hammer.space (c-68-36-133-222.hsd1.mi.comcast.net [68.36.133.222])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A64D6208C3
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2020 13:50:30 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 99BF520897
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2020 13:50:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1606225830;
-        bh=BYDboR5Cc+oCNShOsvGz1Dy+YDR9rdlwJoTlpNiF9uk=;
+        s=default; t=1606225831;
+        bh=lRdus7alrRq9J5OyXO6Oqs0+q/783G8MRItNfs6uru0=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=kVqk9EXbchekyJ7r2PqWDRQA5gSf1Zl9l4FCdEMVm5PveQEp+/8VypwcpyKLjn5mc
-         22PB4qzGVKtiO9qSDNHxkflF5ZR9/UJ8442sWShdslKTd0YGhISigmuz313uu7ZqD9
-         n8RV6T5QL73dJkagtcoA5MMZHrLcve5/gxavOnos=
+        b=Fynoa0WLc9PBicKj1dTnRdndE7EYUvs3LXUSBG2h2+q13aloO8CDhno5ZNQ/0nhMn
+         lcwzB/hudUKkSN6NV+Bg9O17kcLHYu6UFbwyStfmPff1xPs5wh/CFrOwF1PL38sDUh
+         1vezYaFlaUO+ocukgseLxEHczTtdPJ/+EQO7DjYs=
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 7/9] SUNRPC: Fix open coded xdr_stream_remaining()
-Date:   Tue, 24 Nov 2020 08:50:23 -0500
-Message-Id: <20201124135025.1097571-8-trondmy@kernel.org>
+Subject: [PATCH v2 9/9] NFSv4.2: Fix up read_plus() page alignment
+Date:   Tue, 24 Nov 2020 08:50:25 -0500
+Message-Id: <20201124135025.1097571-10-trondmy@kernel.org>
 X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201124135025.1097571-7-trondmy@kernel.org>
+In-Reply-To: <20201124135025.1097571-9-trondmy@kernel.org>
 References: <20201124135025.1097571-1-trondmy@kernel.org>
  <20201124135025.1097571-2-trondmy@kernel.org>
  <20201124135025.1097571-3-trondmy@kernel.org>
@@ -47,6 +47,8 @@ References: <20201124135025.1097571-1-trondmy@kernel.org>
  <20201124135025.1097571-5-trondmy@kernel.org>
  <20201124135025.1097571-6-trondmy@kernel.org>
  <20201124135025.1097571-7-trondmy@kernel.org>
+ <20201124135025.1097571-8-trondmy@kernel.org>
+ <20201124135025.1097571-9-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -55,33 +57,36 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
+Assume that the first record is a data record, and that we have to read
+the 8+4 first bytes of that record before the call to nfs_align_pages().
+
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xdr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/nfs42xdr.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index ddd5cc2281ab..c852d199c789 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1261,7 +1261,7 @@ uint64_t xdr_align_data(struct xdr_stream *xdr, uint64_t offset, uint32_t length
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 6e060a88f98c..f5abace015d7 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -760,14 +760,16 @@ static void nfs4_xdr_enc_read_plus(struct rpc_rqst *req,
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+ 	};
++	unsigned int replen;
  
- 	xdr_realign_pages(xdr);
- 	from = xdr_page_pos(xdr);
--	bytes = xdr->nwords << 2;
-+	bytes = xdr_stream_remaining(xdr);
- 	if (length < bytes)
- 		bytes = length;
+ 	encode_compound_hdr(xdr, req, &hdr);
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
++	replen = hdr.replen + op_decode_hdr_maxsz + 2 + 1 + 3;
+ 	encode_read_plus(xdr, args, &hdr);
  
-@@ -1298,7 +1298,7 @@ uint64_t xdr_expand_hole(struct xdr_stream *xdr, uint64_t offset, uint64_t lengt
+ 	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
+-				args->count, hdr.replen);
++				args->count, replen);
+ 	encode_nops(&hdr);
+ }
  
- 	xdr_realign_pages(xdr);
- 	from = xdr_page_pos(xdr);
--	bytes = xdr->nwords << 2;
-+	bytes = xdr_stream_remaining(xdr);
- 
- 	if (offset + length + bytes > buf->page_len) {
- 		unsigned int shift = (offset + length + bytes) - buf->page_len;
 -- 
 2.28.0
 
