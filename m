@@ -2,126 +2,183 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.2 required=3.0 tests=BAYES_00,DATE_IN_PAST_03_06,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	HK_RANDOM_FROM,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3917BC2D0E4
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Nov 2020 01:54:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2289C56201
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Nov 2020 07:06:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B1F8420708
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Nov 2020 01:54:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 612312075A
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Nov 2020 07:06:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=mindspring.com header.i=@mindspring.com header.b="X3KssIG/"
+	dkim=pass (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="DUjk2u5m";
+	dkim=pass (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="DUjk2u5m"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726684AbgKYByF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Nov 2020 20:54:05 -0500
-Received: from elasmtp-mealy.atl.sa.earthlink.net ([209.86.89.69]:48780 "EHLO
-        elasmtp-mealy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726298AbgKYByE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Nov 2020 20:54:04 -0500
-X-Greylist: delayed 13084 seconds by postgrey-1.27 at vger.kernel.org; Tue, 24 Nov 2020 20:54:04 EST
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mindspring.com;
-        s=dk12062016; t=1606269244; bh=migQkz81kWicdVymydTsI6/MV+Q/8ZBZ/8OO
-        M0bVADs=; h=Received:From:To:Cc:References:In-Reply-To:Subject:Date:
-         Message-ID:MIME-Version:Content-Type:Content-Transfer-Encoding:
-         X-Mailer:Thread-Index:Content-Language:X-ELNK-Trace:
-         X-Originating-IP; b=X3KssIG/UCNvznnHBX4t3JOIkRdmlJDBsQ3m2cxVsDFetA
-        +9QrsmibtX+O/XBAA8MVFGdwIqKc8NSOLbuk6eoqL28jCkIJkfTrgcb+zeNEFGVWyTP
-        C1JeUJysuv0ye2MDOTekGFIH4DbsmXNaGLdshs4By/n+auVwnRoLRjIdqWA5JdRh4L3
-        K7a86vsPHTQ8Bpg5mpYRocNDozyTSUM0+2PlwS64p/v8GzHxxIOc8V+cne5xmgGOmXj
-        IVBZBuHm1ApUZ7h8SPTW6C7lJqoeSVXkk8jWMqTWlOPR/tbADHwCpBkZWPvihx+K52M
-        wzK8EPhM4P93FU8oQ2jQ2k1NK0ag==
-DomainKey-Signature: a=rsa-sha1; q=dns; c=nofws;
-  s=dk12062016; d=mindspring.com;
-  b=RvDhKIIgbQUkWclDZl+V+s9PvPDXoAcDFXTSoteuWdvs1YuBQEzvf+xYqONNJ81vmQmFopSHXhVKISYl62DmAkTdHIpIpEoHbPn5wLxTBchNhuKeK8FrnfnU50AfRxh178CyPExdjhtHiOlXkmRAPFX6Tecwfcl19pQ1wvfUrS7tl33QSER3dgY2ce0I8LxXWGpJU5dK+rSa+to2b74OB3qTqFD1lgprZgWXbow0uSbXKcR2Vj0T8alW5BGTs3mE7eZjS1dGObpl7oWD8EkHz4cdptJ46XaSqdXUUtKbgx0sx+coQE9SYsMA7k3SEKp9vV9+Hkuh7HQwsFS4sy1z7A==;
-  h=Received:From:To:Cc:References:In-Reply-To:Subject:Date:Message-ID:MIME-Version:Content-Type:Content-Transfer-Encoding:X-Mailer:Thread-Index:Content-Language:X-ELNK-Trace:X-Originating-IP;
-Received: from [76.105.143.216] (helo=FRANKSTHINKPAD)
-        by elasmtp-mealy.atl.sa.earthlink.net with esmtpa (Exim 4)
-        (envelope-from <ffilzlnx@mindspring.com>)
-        id 1khgbN-000CgU-J5; Tue, 24 Nov 2020 17:15:57 -0500
-From:   "Frank Filz" <ffilzlnx@mindspring.com>
-To:     "'bfields'" <bfields@fieldses.org>,
-        "'Daire Byrne'" <daire@dneg.com>
-Cc:     "'Trond Myklebust'" <trondmy@hammerspace.com>,
-        "'linux-cachefs'" <linux-cachefs@redhat.com>,
-        "'linux-nfs'" <linux-nfs@vger.kernel.org>
-References: <943482310.31162206.1599499860595.JavaMail.zimbra@dneg.com> <20200915172140.GA32632@fieldses.org> <4d1d7cd0076d98973a56e89c92e4ff0474aa0e14.camel@hammerspace.com> <1188023047.38703514.1600272094778.JavaMail.zimbra@dneg.com> <279389889.68934777.1603124383614.JavaMail.zimbra@dneg.com> <635679406.70384074.1603272832846.JavaMail.zimbra@dneg.com> <20201109160256.GB11144@fieldses.org> <1744768451.86186596.1605186084252.JavaMail.zimbra@dneg.com> <1055884313.92996091.1606250106656.JavaMail.zimbra@dneg.com> <20201124211522.GC7173@fieldses.org>
-In-Reply-To: <20201124211522.GC7173@fieldses.org>
-Subject: RE: Adventures in NFS re-exporting
-Date:   Tue, 24 Nov 2020 14:15:57 -0800
-Message-ID: <0fc201d6c2af$62b039f0$2810add0$@mindspring.com>
+        id S1727461AbgKYHFp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Nov 2020 02:05:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55828 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726032AbgKYHFm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Nov 2020 02:05:42 -0500
+Received: from bedivere.hansenpartnership.com (bedivere.hansenpartnership.com [IPv6:2607:fcd0:100:8a00::2])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 571CDC0613D6;
+        Tue, 24 Nov 2020 23:05:42 -0800 (PST)
+Received: from localhost (localhost [127.0.0.1])
+        by bedivere.hansenpartnership.com (Postfix) with ESMTP id 2D9901280404;
+        Tue, 24 Nov 2020 23:05:40 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+        d=hansenpartnership.com; s=20151216; t=1606287940;
+        bh=PpyvloC8ztllb7q8ndtGKJRs78ChiB3jg6tteM0zYL0=;
+        h=Message-ID:Subject:From:To:Date:In-Reply-To:References:From;
+        b=DUjk2u5mMxkvusJZ7TUknDmT+9jEkjAK5Du54VYrLnX3ZVAsqbXKInJF3+bjbWxe1
+         sPTOm9Jo8O4FiM37EcbSbGJ09Z6i3toRLj70BanOqmx/doOouqQw1ofRfirJ315HKN
+         ACp6UaCD/rMf1rqLOvr/v7W+FqOYQZREI5LkhaoU=
+Received: from bedivere.hansenpartnership.com ([127.0.0.1])
+        by localhost (bedivere.hansenpartnership.com [127.0.0.1]) (amavisd-new, port 10024)
+        with ESMTP id 8h4rTuJEi-3j; Tue, 24 Nov 2020 23:05:40 -0800 (PST)
+Received: from jarvis.int.hansenpartnership.com (unknown [IPv6:2601:600:8280:66d1::527])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by bedivere.hansenpartnership.com (Postfix) with ESMTPSA id A873112803EC;
+        Tue, 24 Nov 2020 23:05:36 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+        d=hansenpartnership.com; s=20151216; t=1606287940;
+        bh=PpyvloC8ztllb7q8ndtGKJRs78ChiB3jg6tteM0zYL0=;
+        h=Message-ID:Subject:From:To:Date:In-Reply-To:References:From;
+        b=DUjk2u5mMxkvusJZ7TUknDmT+9jEkjAK5Du54VYrLnX3ZVAsqbXKInJF3+bjbWxe1
+         sPTOm9Jo8O4FiM37EcbSbGJ09Z6i3toRLj70BanOqmx/doOouqQw1ofRfirJ315HKN
+         ACp6UaCD/rMf1rqLOvr/v7W+FqOYQZREI5LkhaoU=
+Message-ID: <a841536fe65bb33f1c72ce2455a6eb47a0107565.camel@HansenPartnership.com>
+Subject: Re: [Intel-wired-lan] [PATCH 000/141] Fix fall-through warnings for
+ Clang
+From:   James Bottomley <James.Bottomley@HansenPartnership.com>
+To:     Kees Cook <keescook@chromium.org>
+Cc:     "Gustavo A. R. Silva" <gustavoars@kernel.org>,
+        Joe Perches <joe@perches.com>,
+        Jakub Kicinski <kuba@kernel.org>, alsa-devel@alsa-project.org,
+        linux-atm-general@lists.sourceforge.net,
+        reiserfs-devel@vger.kernel.org, linux-iio@vger.kernel.org,
+        linux-wireless@vger.kernel.org, linux-fbdev@vger.kernel.org,
+        dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org,
+        Nathan Chancellor <natechancellor@gmail.com>,
+        linux-ide@vger.kernel.org, dm-devel@redhat.com,
+        keyrings@vger.kernel.org, linux-mtd@lists.infradead.org,
+        GR-everest-linux-l2@marvell.com, wcn36xx@lists.infradead.org,
+        samba-technical@lists.samba.org, linux-i3c@lists.infradead.org,
+        linux1394-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org,
+        usb-storage@lists.one-eyed-alien.net, drbd-dev@lists.linbit.com,
+        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
+        rds-devel@oss.oracle.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
+        oss-drivers@netronome.com, bridge@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org,
+        linux-stm32@st-md-mailman.stormreply.com, cluster-devel@redhat.com,
+        linux-acpi@vger.kernel.org, coreteam@netfilter.org,
+        intel-wired-lan@lists.osuosl.org, linux-input@vger.kernel.org,
+        Miguel Ojeda <ojeda@kernel.org>,
+        tipc-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-media@vger.kernel.org, linux-watchdog@vger.kernel.org,
+        selinux@vger.kernel.org, linux-arm-msm@vger.kernel.org,
+        intel-gfx@lists.freedesktop.org, linux-geode@lists.infradead.org,
+        linux-can@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-gpio@vger.kernel.org, op-tee@lists.trustedfirmware.org,
+        linux-mediatek@lists.infradead.org, xen-devel@lists.xenproject.org,
+        nouveau@lists.freedesktop.org, linux-hams@vger.kernel.org,
+        ceph-devel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-arm-kernel@lists.infradead.org, linux-hwmon@vger.kernel.org,
+        x86@kernel.org, linux-nfs@vger.kernel.org,
+        GR-Linux-NIC-Dev@marvell.com, linux-mm@kvack.org,
+        netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net,
+        linux-mmc@vger.kernel.org, linux-renesas-soc@vger.kernel.org,
+        linux-sctp@vger.kernel.org, linux-usb@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, linux-crypto@vger.kernel.org,
+        patches@opensource.cirrus.com, linux-integrity@vger.kernel.org,
+        target-devel@vger.kernel.org, linux-hardening@vger.kernel.org,
+        Jonathan Cameron <Jonathan.Cameron@huawei.com>,
+        Greg KH <gregkh@linuxfoundation.org>
+Date:   Tue, 24 Nov 2020 23:05:35 -0800
+In-Reply-To: <202011241327.BB28F12F6@keescook>
+References: <202011201129.B13FDB3C@keescook>
+         <20201120115142.292999b2@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+         <202011220816.8B6591A@keescook>
+         <9b57fd4914b46f38d54087d75e072d6e947cb56d.camel@HansenPartnership.com>
+         <ca071decb87cc7e905411423c05a48f9fd2f58d7.camel@perches.com>
+         <0147972a72bc13f3629de8a32dee6f1f308994b5.camel@HansenPartnership.com>
+         <d8d1e9add08cdd4158405e77762d4946037208f8.camel@perches.com>
+         <dbd2cb703ed9eefa7dde9281ea26ab0f7acc8afe.camel@HansenPartnership.com>
+         <20201123130348.GA3119@embeddedor>
+         <8f5611bb015e044fa1c0a48147293923c2d904e4.camel@HansenPartnership.com>
+         <202011241327.BB28F12F6@keescook>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.34.4 
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-X-Mailer: Microsoft Outlook 15.0
-Thread-Index: AQFnsTuWEsgY2WPwTcQ0fYvcmUGZKgIMJHTNAj0KZ+kC20c0vQH6EgB+ATmqgtcBmvnx5gFd2itFAYsKXvUCY0qgxqor/wtQ
-Content-Language: en-us
-X-ELNK-Trace: 136157f01908a8929c7f779228e2f6aeda0071232e20db4d40750170795307db90ea33c32f0615bb350badd9bab72f9c350badd9bab72f9c350badd9bab72f9c
-X-Originating-IP: 76.105.143.216
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-> On Tue, Nov 24, 2020 at 08:35:06PM +0000, Daire Byrne wrote:
-> > Sometimes I have seen clusters of 16 GETATTRs for the same file on the
-> > wire with nothing else inbetween. So if the re-export server is the
-> > only "client" writing these files to the originating server, why do we
-> > need to do so many repeat GETATTR calls when using nconnect>1? And why
-> > are the COMMIT calls required when the writes are coming via nfsd but
-> > not from userspace on the re-export server? Is that due to some sort
-> > of memory pressure or locking?
-> >
-> > I picked the NFSv3 originating server case because my head starts to
-> > hurt tracking the equivalent packets, stateids and compound calls with
-> > NFSv4. But I think it's mostly the same for NFSv4. The writes through
-> > the re-export server lead to lots of COMMITs and (double) GETATTRs but
-> > using nconnect>1 at least doesn't seem to make it any worse like it
-> > does for NFSv3.
-> >
-> > But maybe you actually want all the extra COMMITs to help better
-> > guarantee your writes when putting a re-export server in the way?
-> > Perhaps all of this is by design...
+On Tue, 2020-11-24 at 13:32 -0800, Kees Cook wrote:
+> On Mon, Nov 23, 2020 at 08:31:30AM -0800, James Bottomley wrote:
+> > Really, no ... something which produces no improvement has no value
+> > at all ... we really shouldn't be wasting maintainer time with it
+> > because it has a cost to merge.  I'm not sure we understand where
+> > the balance lies in value vs cost to merge but I am confident in
+> > the zero value case.
 > 
-> Maybe that's close-to-open combined with the server's tendency to
-open/close
-> on every IO operation?  (Though the file cache should have helped with
-that, I
-> thought; as would using version >=4.0 on the final
-> client.)
-> 
-> Might be interesting to know whether the nocto mount option makes a
-> difference.  (So, add "nocto" to the mount options for the NFS mount that
-> you're re-exporting on the re-export server.)
-> 
-> By the way I made a start at a list of issues at
-> 
-> 	http://wiki.linux-nfs.org/wiki/index.php/NFS_re-export
-> 
-> but I was a little vague on which of your issues remained and didn't take
-much
-> time over it.
-> 
-> (If you want an account on that wiki BTW I seem to recall you just have to
-ask
-> Trond (for anti-spam reasons).)
+> What? We can't measure how many future bugs aren't introduced because
+> the kernel requires explicit case flow-control statements for all new
+> code.
 
-How much conversation about re-export has been had at the wider NFS
-community level? I have an interest because Ganesha  supports re-export via
-the PROXY_V3 and PROXY_V4 FSALs. We currently don't have a data cache though
-there has been discussion of such, we do have attribute and dirent caches.
+No but we can measure how vulnerable our current coding habits are to
+the mistake this warning would potentially prevent.  I don't think it's
+wrong to extrapolate that if we had no instances at all of prior coding
+problems we likely wouldn't have any in future either making adopting
+the changes needed to enable the warning valueless ... that's the zero
+value case I was referring to above.
 
-Looking over the wiki page, I have considered being able to specify a
-re-export of a Ganesha export without encapsulating handles. Ganesha
-encapsulates the export_fs handle in a way that could be coordinated between
-the original server and the re-export so they would both effectively have
-the same encapsulation layer.
+Now, what we have seems to be about 6 cases (at least what's been shown
+in this thread) where a missing break would cause potentially user
+visible issues.  That means the value of this isn't zero, but it's not
+a no-brainer massive win either.  That's why I think asking what we've
+invested vs the return isn't a useless exercise.
 
-I'd love to see some re-export best practices shared among server
-implementations, and also what we can do to improve things when two server
-implementations are interoperating via re-export.
+> We already enable -Wimplicit-fallthrough globally, so that's not the
+> discussion. The issue is that Clang is (correctly) even more strict
+> than GCC for this, so these are the remaining ones to fix for full
+> Clang coverage too.
+> 
+> People have spent more time debating this already than it would have
+> taken to apply the patches. :)
 
-Frank
+You mean we've already spent 90% of the effort to come this far so we
+might as well go the remaining 10% because then at least we get some
+return? It's certainly a clinching argument in defence procurement ...
+
+> This is about robustness and language wrangling. It's a big code-
+> base, and this is the price of our managing technical debt for
+> permanent robustness improvements. (The numbers I ran from Gustavo's
+> earlier patches were that about 10% of the places adjusted were
+> identified as legitimate bugs being fixed. This final series may be
+> lower, but there are still bugs being found from it -- we need to
+> finish this and shut the door on it for good.)
+
+I got my six patches by analyzing the lwn.net report of the fixes that
+was cited which had 21 of which 50% didn't actually change the emitted
+code, and 25% didn't have a user visible effect.
+
+But the broader point I'm making is just because the compiler people
+come up with a shiny new warning doesn't necessarily mean the problem
+it's detecting is one that causes us actual problems in the code base. 
+I'd really be happier if we had a theory about what classes of CVE or
+bug we could eliminate before we embrace the next new warning.
+
+James
+
+
 
