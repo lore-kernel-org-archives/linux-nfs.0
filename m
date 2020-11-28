@@ -2,187 +2,141 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-20.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C2C1C63777
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Nov 2020 22:43:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38938C8302C
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Nov 2020 22:08:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2576222228
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Nov 2020 22:43:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A75C20706
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Nov 2020 22:08:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="LEsNCNFY"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="EmosImKE"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732439AbgK0Wmr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 27 Nov 2020 17:42:47 -0500
-Received: from aserp2130.oracle.com ([141.146.126.79]:51908 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732251AbgK0WmY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Nov 2020 17:42:24 -0500
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ARJEmP5042268;
-        Fri, 27 Nov 2020 19:14:48 GMT
+        id S2389847AbgK1VuJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 28 Nov 2020 16:50:09 -0500
+Received: from aserp2120.oracle.com ([141.146.126.78]:35944 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730572AbgK1SmR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Nov 2020 13:42:17 -0500
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ASIeNnm056892;
+        Sat, 28 Nov 2020 18:41:29 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
  mime-version : subject : from : in-reply-to : date : cc :
  content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=CT5pAs2J3lrRhLGZpVn9LaNyTB4z1l53ogqxPyPXkss=;
- b=LEsNCNFYGwgrZMf+nDv7hFssfinlomDj6t1jr24jtF7wntVsjxu7ytaMuYLQiWFqBMzZ
- tK1zpL2AHVq8Zp78uGqVgZBGHDLKMW/vSJ0ddR5wiAwwG/X5aq4pKXBf2AU3/wdmskZK
- l7a1VBGWbnbR191T9yCPCWvtG72GO5tS36Ftgys+8Lj6uN55NC33YjtSdMlSEX3I0SR4
- aDiyfby4YsNBR9+CNX03h9dbk7cyRWuIpafNEBr22bpwIEhC2iTV/l+kUvH2bglyyHfT
- BT82lzShSj4EJu3YurGYuCGLQZiXYh8soBtfmKS5EjXgWKYwDGMBUuIptCWMuM7Ihb/9 nA== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by aserp2130.oracle.com with ESMTP id 351kwhjd4r-1
+ s=corp-2020-01-29; bh=PqZnLoBYIXrmlOxFoC5hoP7Cwqsbnc9iJzNAuuV8ylI=;
+ b=EmosImKEnAVUOaKvSB50+AmiZlaKJFUltKroUOe6tWZ8dT0IfbGFvn9hG+9iYM79x2AQ
+ OwV2FwQLs61+SwfmNjsHC9nyqDHajU74d8UA8r+BweTA3ccIYt0U6UUy8l8FXwD+Pykp
+ w87oem0Ww/TuCjINZ/S3gmoMWqFafQgYqCPUd0t/eNgKgTWqYz3r7Ewd3sieJLABXdaA
+ 2esisvspmIseCxZ9+3E3BgJW6IoYpipKH6bvquR4refHEZINsemYKnxAbdnLQ6+rdigt
+ cHylzxPmvBEj7krt7unjXlvRcVrgZO5zoO6sNNWx0wU9tqnpjyol74XLDaF/xjGGe788 sA== 
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
+        by aserp2120.oracle.com with ESMTP id 353egk94yc-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Fri, 27 Nov 2020 19:14:48 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ARJ6Afo029399;
-        Fri, 27 Nov 2020 19:14:47 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserp3030.oracle.com with ESMTP id 351n2mjrhf-1
+        Sat, 28 Nov 2020 18:41:29 +0000
+Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
+        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0ASIe4Tr062624;
+        Sat, 28 Nov 2020 18:41:29 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserp3020.oracle.com with ESMTP id 353ec0e3v3-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 27 Nov 2020 19:14:47 +0000
-Received: from abhmp0007.oracle.com (abhmp0007.oracle.com [141.146.116.13])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 0ARJEjre005676;
-        Fri, 27 Nov 2020 19:14:47 GMT
+        Sat, 28 Nov 2020 18:41:29 +0000
+Received: from abhmp0012.oracle.com (abhmp0012.oracle.com [141.146.116.18])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0ASIfPc2019459;
+        Sat, 28 Nov 2020 18:41:28 GMT
 Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 27 Nov 2020 11:14:45 -0800
+        with ESMTP ; Sat, 28 Nov 2020 10:41:24 -0800
 Content-Type: text/plain;
         charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
-Subject: Re: [PATCH v2] sunrpc: clean-up cache downcall
+Subject: Re: [PATCH] nfsd: Fix kernel test robot warning
 From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20201127183831.25012-1-rbergant@redhat.com>
-Date:   Fri, 27 Nov 2020 14:14:44 -0500
+In-Reply-To: <1606571451-3655-1-git-send-email-jrdr.linux@gmail.com>
+Date:   Sat, 28 Nov 2020 13:41:23 -0500
 Cc:     Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <1EE331A2-2E73-4B3F-8787-4DAC2EEAF078@oracle.com>
-References: <20201127183831.25012-1-rbergant@redhat.com>
-To:     Roberto Bergantinos Corpas <rbergant@redhat.com>
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-kernel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Message-Id: <F1972C21-8C1A-4B93-868F-2B849D224D0C@oracle.com>
+References: <1606571451-3655-1-git-send-email-jrdr.linux@gmail.com>
+To:     Souptick Joarder <jrdr.linux@gmail.com>
 X-Mailer: Apple Mail (2.3608.120.23.2.4)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9818 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 bulkscore=0
- mlxlogscore=999 spamscore=0 phishscore=0 malwarescore=0 adultscore=0
- mlxscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2011270112
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9818 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 mlxscore=0 impostorscore=0
- suspectscore=0 adultscore=0 bulkscore=0 phishscore=0 malwarescore=0
- lowpriorityscore=0 clxscore=1015 priorityscore=1501 mlxlogscore=999
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9819 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 phishscore=0 bulkscore=0
+ mlxlogscore=999 malwarescore=0 adultscore=0 mlxscore=0 spamscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2011270113
+ definitions=main-2011280117
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9819 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 bulkscore=0 suspectscore=0
+ phishscore=0 mlxlogscore=999 lowpriorityscore=0 malwarescore=0
+ priorityscore=1501 spamscore=0 impostorscore=0 clxscore=1011 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2011280117
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hello Souptick-
 
-> On Nov 27, 2020, at 1:38 PM, Roberto Bergantinos Corpas =
-<rbergant@redhat.com> wrote:
->=20
-> We can simplify code around cache_downcall unifying memory
-> allocations using kvmalloc. This has the benefit of getting rid of
-> cache_slow_downcall (and queue_io_mutex), and also matches userland
-> allocation size and limits
->=20
-> Signed-off-by: Roberto Bergantinos Corpas <rbergant@redhat.com>
+This looks like the same error that Coverity caught earlier this
+week. AFAIK Bruce intends to address this issue with a replacement
+patch:
+
+https://lore.kernel.org/linux-nfs/20201125164738.GA7049@fieldses.org/
 
 
-Thanks, Roberto.
-
-I see from linux-nfs history that Bruce explicitly asked for
-this change, so applied for the next merge window. See the
-cel-next topic branch in:
-
- git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-or
-
- https://git.linux-nfs.org/?p=3Dcel/cel-2.6.git;a=3Dsummary
-
-
+> On Nov 28, 2020, at 8:50 AM, Souptick Joarder <jrdr.linux@gmail.com> wrote:
+> 
+> Kernel test robot throws below warning -
+> 
+>>> fs/nfsd/nfs3xdr.c:299:6: warning: variable 'err' is used
+>>> uninitialized whenever 'if' condition is false
+>>> [-Wsometimes-uninitialized]
+>           if (!v4 || !inode->i_sb->s_export_op->fetch_iversion)
+>               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+>   fs/nfsd/nfs3xdr.c:304:6: note: uninitialized use occurs here
+>           if (err) {
+>               ^~~
+>   fs/nfsd/nfs3xdr.c:299:2: note: remove the 'if' if its condition is
+> always true
+>           if (!v4 || !inode->i_sb->s_export_op->fetch_iversion)
+>           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+>   fs/nfsd/nfs3xdr.c:293:12: note: initialize the variable 'err' to
+> silence this warning
+>           __be32 err;
+>                     ^
+>                      = 0
+>   1 warning generated.
+> 
+> Initialize err = 0 to silence this warning.
+> 
+> Reported-by: kernel test robot <lkp@intel.com>
+> Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
 > ---
-> net/sunrpc/cache.c | 41 +++++++++++------------------------------
-> 1 file changed, 11 insertions(+), 30 deletions(-)
->=20
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 20c93b68505e..1a2c1c44bb00 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -778,7 +778,6 @@ void cache_clean_deferred(void *owner)
->  */
->=20
-> static DEFINE_SPINLOCK(queue_lock);
-> -static DEFINE_MUTEX(queue_io_mutex);
->=20
-> struct cache_queue {
-> 	struct list_head	list;
-> @@ -906,44 +905,26 @@ static ssize_t cache_do_downcall(char *kaddr, =
-const char __user *buf,
-> 	return ret;
-> }
->=20
-> -static ssize_t cache_slow_downcall(const char __user *buf,
-> -				   size_t count, struct cache_detail =
-*cd)
-> -{
-> -	static char write_buf[32768]; /* protected by queue_io_mutex */
-> -	ssize_t ret =3D -EINVAL;
-> -
-> -	if (count >=3D sizeof(write_buf))
-> -		goto out;
-> -	mutex_lock(&queue_io_mutex);
-> -	ret =3D cache_do_downcall(write_buf, buf, count, cd);
-> -	mutex_unlock(&queue_io_mutex);
-> -out:
-> -	return ret;
-> -}
-> -
-> static ssize_t cache_downcall(struct address_space *mapping,
-> 			      const char __user *buf,
-> 			      size_t count, struct cache_detail *cd)
+> fs/nfsd/nfs3xdr.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index abb1608..47aeaee 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -290,7 +290,7 @@ void fill_post_wcc(struct svc_fh *fhp)
 > {
-> -	struct page *page;
-> -	char *kaddr;
-> +	char *write_buf;
-> 	ssize_t ret =3D -ENOMEM;
->=20
-> -	if (count >=3D PAGE_SIZE)
-> -		goto out_slow;
-> +	if (count >=3D 32768) { /* 32k is max userland buffer, lets =
-check anyway */
-> +		ret =3D -EINVAL;
-> +		goto out;
-> +	}
->=20
-> -	page =3D find_or_create_page(mapping, 0, GFP_KERNEL);
-> -	if (!page)
-> -		goto out_slow;
-> +	write_buf =3D kvmalloc(count + 1, GFP_KERNEL);
-> +	if (!write_buf)
-> +		goto out;
->=20
-> -	kaddr =3D kmap(page);
-> -	ret =3D cache_do_downcall(kaddr, buf, count, cd);
-> -	kunmap(page);
-> -	unlock_page(page);
-> -	put_page(page);
-> +	ret =3D cache_do_downcall(write_buf, buf, count, cd);
-> +	kvfree(write_buf);
-> +out:
-> 	return ret;
-> -out_slow:
-> -	return cache_slow_downcall(buf, count, cd);
-> }
->=20
-> static ssize_t cache_write(struct file *filp, const char __user *buf,
-> --=20
-> 2.21.0
->=20
+> 	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
+> 	struct inode *inode = d_inode(fhp->fh_dentry);
+> -	__be32 err;
+> +	__be32 err = 0;
+> 
+> 	if (fhp->fh_post_saved)
+> 		printk("nfsd: inode locked twice during operation.\n");
+> -- 
+> 1.9.1
+> 
 
 --
 Chuck Lever
