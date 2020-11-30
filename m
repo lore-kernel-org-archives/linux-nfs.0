@@ -2,123 +2,110 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-20.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2189C64E7B
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 21:20:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 979CDC64E7B
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 21:25:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6A4A62076A
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 21:20:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 24C082076A
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 21:25:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Fo6gus4T"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="ZyNqZ0eN"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387644AbgK3VUa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Nov 2020 16:20:30 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55324 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387531AbgK3VUa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2020 16:20:30 -0500
-Received: from mail-qv1-xf44.google.com (mail-qv1-xf44.google.com [IPv6:2607:f8b0:4864:20::f44])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 53A34C0613CF
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Nov 2020 13:19:50 -0800 (PST)
-Received: by mail-qv1-xf44.google.com with SMTP id dm12so6370347qvb.3
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Nov 2020 13:19:50 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=WUuu3niy0a46vL6lKIp4jenyi6JzxW4d95oFEmoMdi8=;
-        b=Fo6gus4T5MGxgY1lMOk24ezZlElX7hW6xa6y85v5jbEJa30nSeKRLRScVk5auSotva
-         X1QcV86Z7BCTTLArRtR98D/jjzlC4iA/ChJTuauursXs7YvkNXlpIDrQKNTp7YI0tJR4
-         x9WFauFsRFkfOyIpLp1oj9QC4M53BLl1rNg754G/VguDDmrNlq65dVLmx6wHTL8dJcdB
-         Xc3w5wZmX1s7pyfaCHbIQKdH8VAIPPS05bpR1+K12Nt10TGG43TB1cGu9d/Ve+CBEC26
-         re93dfeJMG4ZosnNhfxHPzimoxfS68GzsYLJ/HujIRbohh63jotC+MSx4ngNZhwhkt1j
-         EEbA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=WUuu3niy0a46vL6lKIp4jenyi6JzxW4d95oFEmoMdi8=;
-        b=BOU+xNihKgtbZSl7gdmvQQxBvsDzJLrCtJKvnTi9wdnGutpPL2HOLPX3pXuzzHFbPY
-         y7oLriVQK9zdycJYY1ap6StDfBluqfBJ6f2i8kXd2FPrjkb3vs/wAZ1mFpmY2WZFssJq
-         XFCPolsElHipJvtlfzAhRbs6pnLhJtsddMSK0QChdfM0mItqHoGB3snLXuX4Lkg9ZPiN
-         i72iS+AzGSfhRMljqBDWaGzzAgE9Qa2yJf/rrkN1NPvc1OC3RWdvvH1vP3h3w+gj4ui7
-         MF56UWDQ3RQtypekY3ZBWtIN2reLep3yXjiOo6AdSUCm3OoSMA+2zidGArZIHQ8tLOj6
-         4Nmw==
-X-Gm-Message-State: AOAM5320nFwDq4ZcqhkilLdlGchyrF2JWrbghIP2LpjMqm8WX6hYP6xO
-        0WDSOd1jT98POevBKzooEV4lK3Y6hys=
-X-Google-Smtp-Source: ABdhPJyfMlUwOxKo3oXZbsGPJF78EZ7ExwmIbILoK3TCFZpggTvqinUbxBYwBfUhyUehM3dd9rOp4Q==
-X-Received: by 2002:a0c:b79f:: with SMTP id l31mr24848880qve.32.1606771189299;
-        Mon, 30 Nov 2020 13:19:49 -0800 (PST)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id v15sm16782511qto.74.2020.11.30.13.19.48
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 30 Nov 2020 13:19:48 -0800 (PST)
-Sender: Chuck Lever <chucklever@gmail.com>
-Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 0AULJlex029492
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Nov 2020 21:19:47 GMT
-Subject: [PATCH v1] NFSD: Fix sparse warning in nfs4proc.c
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Date:   Mon, 30 Nov 2020 16:19:47 -0500
-Message-ID: <160677118711.395023.5957938985402771446.stgit@klimt.1015granger.net>
-User-Agent: StGit/0.23-29-ga622f1
+        id S2388603AbgK3VZk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Nov 2020 16:25:40 -0500
+Received: from aserp2130.oracle.com ([141.146.126.79]:56468 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388485AbgK3VZk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2020 16:25:40 -0500
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0AULOuZL037456;
+        Mon, 30 Nov 2020 21:24:57 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : mime-version : content-transfer-encoding;
+ s=corp-2020-01-29; bh=QEtlYwAEJ0y/Srt1QgY1gWVbGohu0qBfhstLusNaT1U=;
+ b=ZyNqZ0eNUmsgq8nBdBn/MWR9+wbeZtoXwLlEs9oPRnUiUZ6+SbavGkR57BhV2hvXI5VB
+ UMgI9IOUm1rdQitI8JCmhLh/JO5BK+PTHj7NKzRfE952uYfg5AFOZ5bjRp+8kAJMNmFm
+ SANFuF9LZglYCy/jAdvEOpOErI+yvTXvoQ724xdBuHNZmOKRM0PVHR4Macrs0SFSm5Go
+ GICRf1o17Q6PQca8ffEzxS9Osa+ogqAADgoenxaSMTycWmGxsUEdpnzIIlG4xenIYC1b
+ 5dtNHZiaIroX0gFIdUXR04MD9hPpjILIepx+aHeSWCq93++wv1yBjjU2IXtl7fql9mq9 Mw== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by aserp2130.oracle.com with ESMTP id 353c2aqjke-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Mon, 30 Nov 2020 21:24:57 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0AUL5HX8090373;
+        Mon, 30 Nov 2020 21:24:56 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3030.oracle.com with ESMTP id 3540fvs6xa-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Mon, 30 Nov 2020 21:24:56 +0000
+Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 0AULOuSj159539;
+        Mon, 30 Nov 2020 21:24:56 GMT
+Received: from aserp3030.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
+        by userp3030.oracle.com with ESMTP id 3540fvs6w0-1;
+        Mon, 30 Nov 2020 21:24:55 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     bfields@fieldses.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSD: Fix 5 seconds delay when doing inter server copy
+Date:   Mon, 30 Nov 2020 16:24:49 -0500
+Message-Id: <20201130212449.3470-1-dai.ngo@oracle.com>
+X-Mailer: git-send-email 2.20.1.1226.g1595ea5.dirty
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9821 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=1 lowpriorityscore=0
+ clxscore=1015 bulkscore=0 mlxlogscore=999 phishscore=0 malwarescore=0
+ spamscore=0 adultscore=0 mlxscore=0 priorityscore=1501 impostorscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2011300135
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-linux/fs/nfsd/nfs4proc.c:1542:24: warning: incorrect type in assignment (different base types)
-linux/fs/nfsd/nfs4proc.c:1542:24:    expected restricted __be32 [assigned] [usertype] status
-linux/fs/nfsd/nfs4proc.c:1542:24:    got int
+Since commit b4868b44c5628 ("NFSv4: Wait for stateid updates after
+CLOSE/OPEN_DOWNGRADE"), every inter server copy operation suffers 5
+seconds delay regardless of the size of the copy. The delay is from
+nfs_set_open_stateid_locked when the check by nfs_stateid_is_sequential
+fails because the seqid in both nfs4_state and nfs4_stateid are 0.
 
-Clean-up: The dup_copy_fields() function returns only zero, so make
-it return void for now, and get rid of the return code check.
+Fix by modifying nfs4_init_cp_state to return the stateid with seqid 1
+instead of 0. This is also to conform with section 4.8 of RFC 7862.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Here is the relevant paragraph from section 4.8 of RFC 7862:
+
+   A copy offload stateid's seqid MUST NOT be zero.  In the context of a
+   copy offload operation, it is inappropriate to indicate "the most
+   recent copy offload operation" using a stateid with a seqid of zero
+   (see Section 8.2.2 of [RFC5661]).  It is inappropriate because the
+   stateid refers to internal state in the server and there may be
+   several asynchronous COPY operations being performed in parallel on
+   the same file by the server.  Therefore, a copy offload stateid with
+   a seqid of zero MUST be considered invalid.
+
+Fixes: ce0887ac96d3 ("NFSD add nfs4 inter ssc to nfsd4_copy")
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/nfsd/nfs4proc.c |    8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 73e717609213..4727b7f03c5b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1425,7 +1425,7 @@ static __be32 nfsd4_do_copy(struct nfsd4_copy *copy, bool sync)
- 	return status;
- }
- 
--static int dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
-+static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
- {
- 	dst->cp_src_pos = src->cp_src_pos;
- 	dst->cp_dst_pos = src->cp_dst_pos;
-@@ -1444,8 +1444,6 @@ static int dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
- 	memcpy(&dst->stateid, &src->stateid, sizeof(src->stateid));
- 	memcpy(&dst->c_fh, &src->c_fh, sizeof(src->c_fh));
- 	dst->ss_mnt = src->ss_mnt;
--
--	return 0;
- }
- 
- static void cleanup_async_copy(struct nfsd4_copy *copy)
-@@ -1539,9 +1537,7 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		refcount_set(&async_copy->refcount, 1);
- 		memcpy(&copy->cp_res.cb_stateid, &copy->cp_stateid,
- 			sizeof(copy->cp_stateid));
--		status = dup_copy_fields(copy, async_copy);
--		if (status)
--			goto out_err;
-+		dup_copy_fields(copy, async_copy);
- 		async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
- 				async_copy, "%s", "copy thread");
- 		if (IS_ERR(async_copy->copy_task))
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d7f27ed6b794..47006eec724e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -769,6 +769,7 @@ static int nfs4_init_cp_state(struct nfsd_net *nn, copy_stateid_t *stid,
+ 	spin_lock(&nn->s2s_cp_lock);
+ 	new_id = idr_alloc_cyclic(&nn->s2s_cp_stateids, stid, 0, 0, GFP_NOWAIT);
+ 	stid->stid.si_opaque.so_id = new_id;
++	stid->stid.si_generation = 1;
+ 	spin_unlock(&nn->s2s_cp_lock);
+ 	idr_preload_end();
+ 	if (new_id < 0)
+-- 
+2.9.5
 
