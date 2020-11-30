@@ -2,121 +2,83 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DE13C64E7B
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 22:47:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6BD4C8301C
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 22:59:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DC9BA20725
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 22:47:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1CC2720725
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 22:59:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="DWZXlc/n"
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="p9V754Gs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729247AbgK3WrI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Nov 2020 17:47:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40476 "EHLO
+        id S2388816AbgK3W7I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Nov 2020 17:59:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42352 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729053AbgK3WrI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2020 17:47:08 -0500
+        with ESMTP id S2388811AbgK3W7H (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2020 17:59:07 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1422BC0617A6
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Nov 2020 14:46:21 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86A3BC0613D4
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Nov 2020 14:58:43 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 6D8D64EEA; Mon, 30 Nov 2020 17:46:20 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6D8D64EEA
+        id E77F46F4A; Mon, 30 Nov 2020 17:58:42 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org E77F46F4A
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1606776380;
-        bh=ZYD/zXHzIp8z2OpD1H0rkLMDIPS99GW8XcZxoCXi5vg=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=DWZXlc/nsrpMCiwo/DiXjUPnTkpb+ouvfFdNEYCra3VfrZW+QUcqRYsE6gHBmnEGE
-         dC8U1TJGaB3tFI78QzkzjeSy2hKK9Us2SGhn0cK5UP+QbmQ4taWOmQgPI3Znc4GsvE
-         2DzDyBe/oXjD9YAaclmWB4lcguu4mFibPi/Uw6/Q=
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/5] nfsd4: don't query change attribute in v2/v3 case
-Date:   Mon, 30 Nov 2020 17:46:17 -0500
-Message-Id: <1606776378-22381-4-git-send-email-bfields@fieldses.org>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1606776378-22381-1-git-send-email-bfields@fieldses.org>
-References: <1606776378-22381-1-git-send-email-bfields@fieldses.org>
+        s=default; t=1606777122;
+        bh=dOI/rdwtm9VxPcujK2qc8LigCNNactIcyohphNcEoU4=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=p9V754GsVSzGVkBn41RI5E1isEOrMl2g3h1odSlhGz6RHsvx+IgWuLSSgg334g9ji
+         /oDs1obMmwDgOlk/5+rQslFR5LPPn1w10CnbIPmH9auQQj0UPGuNB2F33y+CH8yFSZ
+         GcK73+6eHj7IXy4XnqtXt7AZPauY0NrvDiLKlV34=
+Date:   Mon, 30 Nov 2020 17:58:42 -0500
+To:     trondmy@kernel.org
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/6] nfsd: add a new EXPORT_OP_NOWCC flag to struct
+ export_operations
+Message-ID: <20201130225842.GA22446@fieldses.org>
+References: <20201130212455.254469-1-trondmy@kernel.org>
+ <20201130212455.254469-2-trondmy@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201130212455.254469-2-trondmy@kernel.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+This is great, thanks:
 
-inode_query_iversion() has side effects, and there's no point calling it
-when we're not even going to use it.
+On Mon, Nov 30, 2020 at 04:24:50PM -0500, trondmy@kernel.org wrote:
+> From: Jeff Layton <jeff.layton@primarydata.com>
+> 
+> With NFSv3 nfsd will always attempt to send along WCC data to the
+> client. This generally involves saving off the in-core inode information
+> prior to doing the operation on the given filehandle, and then issuing a
+> vfs_getattr to it after the op.
+> 
+> Some filesystems (particularly clustered or networked ones) have an
+> expensive ->getattr inode operation. Atomicitiy is also often difficult
+> or impossible to guarantee on such filesystems. For those, we're best
+> off not trying to provide WCC information to the client at all, and to
+> simply allow it to poll for that information as needed with a GETATTR
+> RPC.
+> 
+> This patch adds a new flags field to struct export_operations, and
+> defines a new EXPORT_OP_NOWCC flag that filesystems can use to indicate
+> that nfsd should not attempt to provide WCC info in NFSv3 replies. It
+> also adds a blurb about the new flags field and flag to the exporting
+> documentation.
 
-We check whether we're currently processing a v4 request by checking
-fh_maxsize, which is arguably a little hacky; we could add a flag to
-svc_fh instead.
+In the v4 case I think it should also turn off the "atomic" flag in the
+change_info4 structure that's returned by some operations.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs3xdr.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+(Out of curiosity: have you seen this cause actual bugs?)
 
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index dfbf390ff40c..f4fd54dc6965 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -259,11 +259,11 @@ void fill_pre_wcc(struct svc_fh *fhp)
- {
- 	struct inode    *inode;
- 	struct kstat	stat;
-+	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
- 	__be32 err;
- 
- 	if (fhp->fh_pre_saved)
- 		return;
--
- 	inode = d_inode(fhp->fh_dentry);
- 	err = fh_getattr(fhp, &stat);
- 	if (err) {
-@@ -272,11 +272,12 @@ void fill_pre_wcc(struct svc_fh *fhp)
- 		stat.ctime = inode->i_ctime;
- 		stat.size  = inode->i_size;
- 	}
-+	if (v4)
-+		fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
- 
- 	fhp->fh_pre_mtime = stat.mtime;
- 	fhp->fh_pre_ctime = stat.ctime;
- 	fhp->fh_pre_size  = stat.size;
--	fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
- 	fhp->fh_pre_saved = true;
- }
- 
-@@ -285,6 +286,8 @@ void fill_pre_wcc(struct svc_fh *fhp)
-  */
- void fill_post_wcc(struct svc_fh *fhp)
- {
-+	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
-+	struct inode *inode = d_inode(fhp->fh_dentry);
- 	__be32 err;
- 
- 	if (fhp->fh_post_saved)
-@@ -293,11 +296,12 @@ void fill_post_wcc(struct svc_fh *fhp)
- 	err = fh_getattr(fhp, &fhp->fh_post_attr);
- 	if (err) {
- 		fhp->fh_post_saved = false;
--		fhp->fh_post_attr.ctime = d_inode(fhp->fh_dentry)->i_ctime;
-+		fhp->fh_post_attr.ctime = inode->i_ctime;
- 	} else
- 		fhp->fh_post_saved = true;
--	fhp->fh_post_change = nfsd4_change_attribute(&fhp->fh_post_attr,
--						     d_inode(fhp->fh_dentry));
-+	if (v4)
-+		fhp->fh_post_change =
-+			nfsd4_change_attribute(&fhp->fh_post_attr, inode);
- }
- 
- /*
--- 
-2.28.0
-
+--b.
