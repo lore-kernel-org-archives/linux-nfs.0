@@ -7,39 +7,39 @@ X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A211C64E7B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F173C71155
 	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 22:47:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D8B002076C
+	by mail.kernel.org (Postfix) with ESMTP id A1CB020725
 	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 22:47:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="xzjXHdYb"
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="cRk8yni1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728635AbgK3WrB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726304AbgK3WrB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 30 Nov 2020 17:47:01 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40458 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40456 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729053AbgK3WrB (ORCPT
+        with ESMTP id S1728635AbgK3WrB (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2020 17:47:01 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 02B88C0613D6
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F1956C0613D4
         for <linux-nfs@vger.kernel.org>; Mon, 30 Nov 2020 14:46:20 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 47F276EAD; Mon, 30 Nov 2020 17:46:20 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 47F276EAD
+        id 5A0476F4A; Mon, 30 Nov 2020 17:46:20 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 5A0476F4A
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
         s=default; t=1606776380;
-        bh=j9hvBFu6mU+C0vE2Xvm/O/tMIXSDjLh4903hY8vcREo=;
+        bh=gWNV+o0XEYeIEdXXNmmNPy+FDGID8FCD43Eoi+bNcFs=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=xzjXHdYbEaz9tJDe4AgPaBgJ+k6VqQzNe2Nbeinifq3QYsahvWKwl+ejnlV7gRYPB
-         p9N77IA+K2hFSzaN/lkklScS6RknjZMiVgSv3OXg2iLV/MX73yViJ2JzFTO3cdkv8a
-         EQbrgn8tYgpOoQrslwCWWFE3m1vFMQqxV3sufWl0=
+        b=cRk8yni1ESm0eCxr7yxGQQOHqbQdp8BHKI0q3gs8m3yvdR9phSSQ0SxlYmjiFegzG
+         tkbUGSCM43usII9bgdvkNzkLeAsGWsfARn0ZXFWeagt3f0kNiFjqdBq08KySkRkT7O
+         /bVcrj6D1vLJ+7KXJYNfgXaHL7cS/E0ODGKOi2us=
 From:   "J. Bruce Fields" <bfields@fieldses.org>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/5] nfsd: minor nfsd4_change_attribute cleanup
-Date:   Mon, 30 Nov 2020 17:46:16 -0500
-Message-Id: <1606776378-22381-3-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 5/5] Revert "nfsd4: support change_attr_type attribute"
+Date:   Mon, 30 Nov 2020 17:46:18 -0500
+Message-Id: <1606776378-22381-5-git-send-email-bfields@fieldses.org>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1606776378-22381-1-git-send-email-bfields@fieldses.org>
 References: <1606776378-22381-1-git-send-email-bfields@fieldses.org>
@@ -49,69 +49,85 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Minor cleanup, no change in behavior.
+This reverts commit a85857633b04d57f4524cca0a2bfaf87b2543f9f.
 
-Also pull out a common helper that'll be useful elsewhere.
+We're still factoring ctime into our change attribute even in the
+IS_I_VERSION case.  If someone sets the system time backwards, a client
+could see the change attribute go backwards.  Maybe we can just say
+"well, don't do that", but there's some question whether that's good
+enough, or whether we need a better guarantee.
+
+Also, the client still isn't actually using the attribute.
+
+While we're still figuring this out, let's just stop returning this
+attribute.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfsfh.h          | 13 +++++--------
- include/linux/iversion.h | 13 +++++++++++++
- 2 files changed, 18 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4xdr.c    | 10 ----------
+ fs/nfsd/nfsd.h       |  1 -
+ include/linux/nfs4.h |  8 --------
+ 3 files changed, 19 deletions(-)
 
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 39d764b129fa..45bd776290d5 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -259,19 +259,16 @@ fh_clear_wcc(struct svc_fh *fhp)
- static inline u64 nfsd4_change_attribute(struct kstat *stat,
- 					 struct inode *inode)
- {
--	u64 chattr;
--
- 	if (IS_I_VERSION(inode)) {
-+		u64 chattr;
-+
- 		chattr =  stat->ctime.tv_sec;
- 		chattr <<= 30;
- 		chattr += stat->ctime.tv_nsec;
- 		chattr += inode_query_iversion(inode);
--	} else {
--		chattr = stat->ctime.tv_sec;
--		chattr <<= 32;
--		chattr += stat->ctime.tv_nsec;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 18c912930947..c33838caf8c6 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3183,16 +3183,6 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 
+-	if (bmval2 & FATTR4_WORD2_CHANGE_ATTR_TYPE) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		if (IS_I_VERSION(d_inode(dentry)))
+-			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR);
+-		else
+-			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
 -	}
--	return chattr;
-+		return chattr;
-+	} else
-+		return time_to_chattr(&stat->ctime);
- }
+-
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+ 		status = nfsd4_encode_security_label(xdr, rqstp, context,
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index cb742e17e04a..40cb40ac0a65 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -387,7 +387,6 @@ void		nfsd_lockd_shutdown(void);
  
- extern void fill_pre_wcc(struct svc_fh *fhp);
-diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-index 2917ef990d43..3bfebde5a1a6 100644
---- a/include/linux/iversion.h
-+++ b/include/linux/iversion.h
-@@ -328,6 +328,19 @@ inode_query_iversion(struct inode *inode)
- 	return cur >> I_VERSION_QUERIED_SHIFT;
- }
+ #define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
+ 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
+-	FATTR4_WORD2_CHANGE_ATTR_TYPE | \
+ 	FATTR4_WORD2_MODE_UMASK | \
+ 	NFSD4_2_SECURITY_ATTRS | \
+ 	FATTR4_WORD2_XATTR_SUPPORT)
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 9dc7eeac924f..5b4c67c91f56 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -385,13 +385,6 @@ enum lock_type4 {
+ 	NFS4_WRITEW_LT = 4
+ };
  
-+/*
-+ * For filesystems without any sort of change attribute, the best we can
-+ * do is fake one up from the ctime:
-+ */
-+static inline u64 time_to_chattr(struct timespec64 *t)
-+{
-+	u64 chattr = t->tv_sec;
-+
-+	chattr <<= 32;
-+	chattr += t->tv_nsec;
-+	return chattr;
-+}
-+
- /**
-  * inode_eq_iversion_raw - check whether the raw i_version counter has changed
-  * @inode: inode to check
+-enum change_attr_type4 {
+-	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR = 0,
+-	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER = 1,
+-	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS = 2,
+-	NFS4_CHANGE_TYPE_IS_TIME_METADATA = 3,
+-	NFS4_CHANGE_TYPE_IS_UNDEFINED = 4
+-};
+ 
+ /* Mandatory Attributes */
+ #define FATTR4_WORD0_SUPPORTED_ATTRS    (1UL << 0)
+@@ -459,7 +452,6 @@ enum change_attr_type4 {
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+ #define FATTR4_WORD2_CLONE_BLKSIZE	(1UL << 13)
+-#define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
+ #define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
 -- 
 2.28.0
 
