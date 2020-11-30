@@ -4,119 +4,140 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB393C71155
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81DE5C64E8A
 	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 19:39:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 648822076E
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 19:39:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D4739207F7
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Nov 2020 19:39:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="dYjpgKP+"
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="IxAqM29v"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729954AbgK3Tjk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1729608AbgK3Tjk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 30 Nov 2020 14:39:40 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39668 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39672 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728215AbgK3Tjk (ORCPT
+        with ESMTP id S1729952AbgK3Tjk (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Nov 2020 14:39:40 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA7E8C0613D2
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F0675C0613D4
         for <linux-nfs@vger.kernel.org>; Mon, 30 Nov 2020 11:38:59 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 776776EAD; Mon, 30 Nov 2020 14:38:58 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 776776EAD
+        id 5BCC742A8; Mon, 30 Nov 2020 14:38:58 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 5BCC742A8
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
         s=default; t=1606765138;
-        bh=ZYD/zXHzIp8z2OpD1H0rkLMDIPS99GW8XcZxoCXi5vg=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=dYjpgKP+SOfLt2IiWMH2bAVje8yLKAV846aoerR+E44CEyyNCk4oRwp20HvIsoEQc
-         0SMrUSgTzD4X8l+sQVP1e57L6TQc/OS7zq8/AbaRefXJZd+LqHnCJqGdfOnb390Jpm
-         015xnRnHdJmEoLqy/0oa1mKv1Z0ipz70Xc2xLOhs=
+        bh=8anUsUDZvLN0iJd/CpARwqjHQ4Ao21m65dIWFIirwd0=;
+        h=From:To:Cc:Subject:Date:From;
+        b=IxAqM29vw3R/UZXqm5eGOGQx5biYMAJFL+wOhRlkpOZL7c1gS5WvJlGEOWtxWjJeP
+         r3vpqnTyufwnz8uaIndatr0qM3oAJNGRYomgy61Wye9PRB4D+nzxFxYmlIM9FPNyh6
+         WUoNFMe2ephWID3uZ9pJU7X+09dkyIrAULR+j1lg=
 From:   "J. Bruce Fields" <bfields@fieldses.org>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/5] nfsd4: don't query change attribute in v2/v3 case
-Date:   Mon, 30 Nov 2020 14:38:56 -0500
-Message-Id: <1606765137-17257-4-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 1/5] nfsd: only call inode_query_iversion in the I_VERSION case
+Date:   Mon, 30 Nov 2020 14:38:53 -0500
+Message-Id: <1606765137-17257-1-git-send-email-bfields@fieldses.org>
 X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1606765137-17257-1-git-send-email-bfields@fieldses.org>
-References: <1606765137-17257-1-git-send-email-bfields@fieldses.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-inode_query_iversion() has side effects, and there's no point calling it
-when we're not even going to use it.
+inode_query_iversion() can modify i_version.  Depending on the exported
+filesystem, that may not be safe.  For example, if you're re-exporting
+NFS, NFS stores the server's change attribute in i_version and does not
+expect it to be modified locally.  This has been observed causing
+unnecessary cache invalidations.
 
-We check whether we're currently processing a v4 request by checking
-fh_maxsize, which is arguably a little hacky; we could add a flag to
-svc_fh instead.
+The way a filesystem indicates that it's OK to call
+inode_query_iverson() is by setting SB_I_VERSION.
 
+So, move the I_VERSION check out of encode_change(), where it's used
+only in FATTR responses, to nfsd4_changeattr(), which is also called for
+pre- and post- operation attributes.
+
+(Note we could also pull the NFSEXP_V4ROOT case into
+nfsd4_change_attribute as well.  That would actually be a no-op, since
+pre/post attrs are only used for metadata-modifying operations, and
+V4ROOT exports are read-only.  But we might make the change in the
+future just for simplicity.)
+
+Reported-by: Daire Byrne <daire@dneg.com>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs3xdr.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs3xdr.c |  5 ++---
+ fs/nfsd/nfs4xdr.c |  6 +-----
+ fs/nfsd/nfsfh.h   | 14 ++++++++++----
+ 3 files changed, 13 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index dfbf390ff40c..f4fd54dc6965 100644
+index 2277f83da250..dfbf390ff40c 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -259,11 +259,11 @@ void fill_pre_wcc(struct svc_fh *fhp)
- {
- 	struct inode    *inode;
- 	struct kstat	stat;
-+	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
- 	__be32 err;
+@@ -291,14 +291,13 @@ void fill_post_wcc(struct svc_fh *fhp)
+ 		printk("nfsd: inode locked twice during operation.\n");
  
- 	if (fhp->fh_pre_saved)
- 		return;
--
- 	inode = d_inode(fhp->fh_dentry);
- 	err = fh_getattr(fhp, &stat);
- 	if (err) {
-@@ -272,11 +272,12 @@ void fill_pre_wcc(struct svc_fh *fhp)
- 		stat.ctime = inode->i_ctime;
- 		stat.size  = inode->i_size;
- 	}
-+	if (v4)
-+		fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
- 
- 	fhp->fh_pre_mtime = stat.mtime;
- 	fhp->fh_pre_ctime = stat.ctime;
- 	fhp->fh_pre_size  = stat.size;
--	fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
- 	fhp->fh_pre_saved = true;
- }
- 
-@@ -285,6 +286,8 @@ void fill_pre_wcc(struct svc_fh *fhp)
-  */
- void fill_post_wcc(struct svc_fh *fhp)
- {
-+	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
-+	struct inode *inode = d_inode(fhp->fh_dentry);
- 	__be32 err;
- 
- 	if (fhp->fh_post_saved)
-@@ -293,11 +296,12 @@ void fill_post_wcc(struct svc_fh *fhp)
  	err = fh_getattr(fhp, &fhp->fh_post_attr);
- 	if (err) {
- 		fhp->fh_post_saved = false;
--		fhp->fh_post_attr.ctime = d_inode(fhp->fh_dentry)->i_ctime;
-+		fhp->fh_post_attr.ctime = inode->i_ctime;
- 	} else
- 		fhp->fh_post_saved = true;
 -	fhp->fh_post_change = nfsd4_change_attribute(&fhp->fh_post_attr,
 -						     d_inode(fhp->fh_dentry));
-+	if (v4)
-+		fhp->fh_post_change =
-+			nfsd4_change_attribute(&fhp->fh_post_attr, inode);
+ 	if (err) {
+ 		fhp->fh_post_saved = false;
+-		/* Grab the ctime anyway - set_change_info might use it */
+ 		fhp->fh_post_attr.ctime = d_inode(fhp->fh_dentry)->i_ctime;
+ 	} else
+ 		fhp->fh_post_saved = true;
++	fhp->fh_post_change = nfsd4_change_attribute(&fhp->fh_post_attr,
++						     d_inode(fhp->fh_dentry));
  }
  
  /*
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 833a2c64dfe8..56fd5f6d5c44 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2298,12 +2298,8 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+ 	if (exp->ex_flags & NFSEXP_V4ROOT) {
+ 		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
+ 		*p++ = 0;
+-	} else if (IS_I_VERSION(inode)) {
++	} else
+ 		p = xdr_encode_hyper(p, nfsd4_change_attribute(stat, inode));
+-	} else {
+-		*p++ = cpu_to_be32(stat->ctime.tv_sec);
+-		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
+-	}
+ 	return p;
+ }
+ 
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 56cfbc361561..3faf5974fa4e 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -261,10 +261,16 @@ static inline u64 nfsd4_change_attribute(struct kstat *stat,
+ {
+ 	u64 chattr;
+ 
+-	chattr =  stat->ctime.tv_sec;
+-	chattr <<= 30;
+-	chattr += stat->ctime.tv_nsec;
+-	chattr += inode_query_iversion(inode);
++	if (IS_I_VERSION(inode)) {
++		chattr =  stat->ctime.tv_sec;
++		chattr <<= 30;
++		chattr += stat->ctime.tv_nsec;
++		chattr += inode_query_iversion(inode);
++	} else {
++		chattr = cpu_to_be32(stat->ctime.tv_sec);
++		chattr <<= 32;
++		chattr += cpu_to_be32(stat->ctime.tv_nsec);
++	}
+ 	return chattr;
+ }
+ 
 -- 
 2.28.0
 
