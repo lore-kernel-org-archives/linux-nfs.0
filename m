@@ -2,63 +2,198 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-20.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4AB2EC64E7B
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:36:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9AFB9C64E7A
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:45:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A071B2085B
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:36:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 391682087C
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:45:22 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="w8HISBv5"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="EmJ94ytR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728578AbgLAVge (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Dec 2020 16:36:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56030 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727686AbgLAVge (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2020 16:36:34 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 913D5C0613D4
-        for <linux-nfs@vger.kernel.org>; Tue,  1 Dec 2020 13:35:54 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id B9C036F4B; Tue,  1 Dec 2020 16:35:53 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org B9C036F4B
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1606858553;
-        bh=rd57DXaZn/tD27RvgUT/8STAltzimjUbbZa5jPhiM6Q=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=w8HISBv5iWzaohfrEMfwhzxwXDo6ZTUhKJoX8YIufhjr7J8ox4vWmXcammOxPTQQy
-         6Tilkddt8gtZRXpQnkt09K4WwCPgPOoQvGL8ViRWkmZUBAEcBr8IKDk7OXX4cduTfd
-         bIU/Dm0Z0FLHJlTcmqWJtI+POiQ58TlteAsGCyUg=
-Date:   Tue, 1 Dec 2020 16:35:53 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH 1/5] nfsd: only call inode_query_iversion in the
- I_VERSION case
-Message-ID: <20201201213553.GF21355@fieldses.org>
-References: <1606776378-22381-1-git-send-email-bfields@fieldses.org>
- <01bad6aa8aa05bb9bafd010575866125f89c5f08.camel@kernel.org>
+        id S2387460AbgLAVpV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Dec 2020 16:45:21 -0500
+Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:63626 "EHLO
+        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387426AbgLAVpV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2020 16:45:21 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1606859120; x=1638395120;
+  h=from:to:cc:subject:date:message-id:mime-version;
+  bh=AXTwL0lJKMrT00SN16kiyCL8fhb0iCZEhg7+iIVh+pU=;
+  b=EmJ94ytRXI8kjPbOuZVzUsB9FJW5JGTRFs57ej1K+jb7tAhapF51kEDK
+   vUtCXiS5SFujkbId8qM/83lx+y+CJMTBkUJyRhGkE91ig6QKGSx81wle8
+   9+/zuHKDKkgtlmF68b49Hs5JEOgvlAlCC5wObpO6jMiZZYpgqSdpfemvO
+   Q=;
+X-IronPort-AV: E=Sophos;i="5.78,385,1599523200"; 
+   d="scan'208";a="68419752"
+Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-2b-c7131dcf.us-west-2.amazon.com) ([10.43.8.2])
+  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 01 Dec 2020 21:31:31 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (pdx1-ws-svc-p6-lb9-vlan2.pdx.amazon.com [10.236.137.194])
+        by email-inbound-relay-2b-c7131dcf.us-west-2.amazon.com (Postfix) with ESMTPS id 565DDA2226;
+        Tue,  1 Dec 2020 21:31:30 +0000 (UTC)
+Received: from EX13D13UWB002.ant.amazon.com (10.43.161.21) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Tue, 1 Dec 2020 21:31:29 +0000
+Received: from EX13MTAUEB002.ant.amazon.com (10.43.60.12) by
+ EX13D13UWB002.ant.amazon.com (10.43.161.21) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Tue, 1 Dec 2020 21:31:29 +0000
+Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
+ (172.23.141.97) by mail-relay.amazon.com (10.43.60.234) with Microsoft SMTP
+ Server id 15.0.1497.2 via Frontend Transport; Tue, 1 Dec 2020 21:31:28 +0000
+Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
+        id A4F38C133E; Tue,  1 Dec 2020 21:31:28 +0000 (UTC)
+From:   Frank van der Linden <fllinden@amazon.com>
+To:     <linux-nfs@vger.kernel.org>, <anna.schumaker@netapp.com>,
+        <trond.myklebust@hammerspace.com>
+CC:     <chuck.lever@oracle.com>, <aglo@umich.edu>,
+        Frank van der Linden <fllinden@amazon.com>
+Subject: [PATCH] NFSv4.2: improve page handling for GETXATTR
+Date:   Tue, 1 Dec 2020 21:31:28 +0000
+Message-ID: <20201201213128.13624-1-fllinden@amazon.com>
+X-Mailer: git-send-email 2.16.6
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <01bad6aa8aa05bb9bafd010575866125f89c5f08.camel@kernel.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Dec 01, 2020 at 11:43:31AM -0500, Jeff Layton wrote:
-> Are you planning to follow up with the series to add the fetch_iversion
-> op, or have you decided not to do that for now?
+XDRBUF_SPARSE_PAGES can cause problems for the RDMA transport,
+and it's easy enough to allocate enough pages for the request
+up front, so do that.
 
-I'm still interested.  I just figured it's not urgent, and it'll be
-easier to ask for fs-devel review after this other stuff is in, so it
-may as well wait till after the merge window.
+Also, since we've allocated the pages anyway, use the full
+page aligned length for the receive buffer. This will allow
+caching of valid replies that are too large for the caller,
+but that still fit in the allocated pages.
 
---b.
+Signed-off-by: Frank van der Linden <fllinden@amazon.com>
+---
+ fs/nfs/nfs42proc.c | 39 ++++++++++++++++++++++++++++++---------
+ fs/nfs/nfs42xdr.c  | 22 +++++++++++++++++-----
+ 2 files changed, 47 insertions(+), 14 deletions(-)
+
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 2b2211d1234e..bfe15ac77bd9 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -1176,11 +1176,9 @@ static ssize_t _nfs42_proc_getxattr(struct inode *inode, const char *name,
+ 				void *buf, size_t buflen)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+-	struct page *pages[NFS4XATTR_MAXPAGES] = {};
++	struct page **pages;
+ 	struct nfs42_getxattrargs arg = {
+ 		.fh		= NFS_FH(inode),
+-		.xattr_pages	= pages,
+-		.xattr_len	= buflen,
+ 		.xattr_name	= name,
+ 	};
+ 	struct nfs42_getxattrres res;
+@@ -1189,12 +1187,31 @@ static ssize_t _nfs42_proc_getxattr(struct inode *inode, const char *name,
+ 		.rpc_argp	= &arg,
+ 		.rpc_resp	= &res,
+ 	};
+-	int ret, np;
++	ssize_t ret, np, i;
++
++	arg.xattr_len = buflen ?: XATTR_SIZE_MAX;
++
++	ret = -ENOMEM;
++	np = DIV_ROUND_UP(arg.xattr_len, PAGE_SIZE);
++
++	pages = kcalloc(np, sizeof(struct page *), GFP_KERNEL);
++	if (pages == NULL)
++		return ret;
++
++	for (i = 0; i < np; i++) {
++		pages[i] = alloc_page(GFP_KERNEL);
++		if (!pages[i])
++			goto out_free;
++	}
++
++	arg.xattr_pages = pages;
+ 
+ 	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args,
+ 	    &res.seq_res, 0);
+ 	if (ret < 0)
+-		return ret;
++		goto out_free;
++
++	ret = res.xattr_len;
+ 
+ 	/*
+ 	 * Normally, the caching is done one layer up, but for successful
+@@ -1209,16 +1226,20 @@ static ssize_t _nfs42_proc_getxattr(struct inode *inode, const char *name,
+ 	nfs4_xattr_cache_add(inode, name, NULL, pages, res.xattr_len);
+ 
+ 	if (buflen) {
+-		if (res.xattr_len > buflen)
+-			return -ERANGE;
++		if (res.xattr_len > buflen) {
++			ret = -ERANGE;
++			goto out_free;
++		}
+ 		_copy_from_pages(buf, pages, 0, res.xattr_len);
+ 	}
+ 
+-	np = DIV_ROUND_UP(res.xattr_len, PAGE_SIZE);
++out_free:
+ 	while (--np >= 0)
+ 		__free_page(pages[np]);
+ 
+-	return res.xattr_len;
++	kfree(pages);
++
++	return ret;
+ }
+ 
+ static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 6e060a88f98c..8dfe674d1301 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -489,6 +489,12 @@ static int decode_getxattr(struct xdr_stream *xdr,
+ 		return -EIO;
+ 
+ 	len = be32_to_cpup(p);
++
++	/*
++	 * Only check against the page length here. The actual
++	 * requested length may be smaller, but that is only
++	 * checked against after possibly caching a valid reply.
++	 */
+ 	if (len > req->rq_rcv_buf.page_len)
+ 		return -ERANGE;
+ 
+@@ -1483,11 +1489,17 @@ static void nfs4_xdr_enc_getxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_getxattr(xdr, args->xattr_name, &hdr);
+ 
+-	plen = args->xattr_len ? args->xattr_len : XATTR_SIZE_MAX;
+-
+-	rpc_prepare_reply_pages(req, args->xattr_pages, 0, plen,
+-	    hdr.replen);
+-	req->rq_rcv_buf.flags |= XDRBUF_SPARSE_PAGES;
++	/*
++	 * The GETXATTR op has no length field in the call, and the
++	 * xattr data is at the end of the reply.
++	 *
++	 * Since the pages have already been allocated, there is no
++	 * downside in using the page-aligned length. It will allow
++	 * receiving and caching xattrs that are too large for the
++	 * caller but still fit in the page-rounded value.
++	 */
++	plen = round_up(args->xattr_len, PAGE_SIZE);
++	rpc_prepare_reply_pages(req, args->xattr_pages, 0, plen, hdr.replen);
+ 
+ 	encode_nops(&hdr);
+ }
+-- 
+2.23.3
+
