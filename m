@@ -4,101 +4,61 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D41EC64E7B
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:14:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4AB2EC64E7B
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:36:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A4D6620671
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:14:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A071B2085B
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:36:50 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="r3B9vgk7"
+	dkim=pass (1024-bit key) header.d=fieldses.org header.i=@fieldses.org header.b="w8HISBv5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389634AbgLAVOr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Dec 2020 16:14:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52636 "EHLO
+        id S1728578AbgLAVge (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Dec 2020 16:36:34 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56030 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389080AbgLAVOp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2020 16:14:45 -0500
+        with ESMTP id S1727686AbgLAVge (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2020 16:36:34 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0387C0613CF
-        for <linux-nfs@vger.kernel.org>; Tue,  1 Dec 2020 13:14:05 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 913D5C0613D4
+        for <linux-nfs@vger.kernel.org>; Tue,  1 Dec 2020 13:35:54 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 99A616EAD; Tue,  1 Dec 2020 16:14:04 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 99A616EAD
+        id B9C036F4B; Tue,  1 Dec 2020 16:35:53 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org B9C036F4B
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1606857244;
-        bh=mNkj+8URHhSHuTKaP/YJL0X7nI2mokw0QNd/WSwYqzc=;
+        s=default; t=1606858553;
+        bh=rd57DXaZn/tD27RvgUT/8STAltzimjUbbZa5jPhiM6Q=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=r3B9vgk7wW39uPmPR1Y0U5S8qQKMSDzh28JQ7UXqN70KF8vLsJfCIp6qdgCe+BD4z
-         Xz9wfd8n7npAs3+BES7ge+/izRBGtyRJlxAfwFjxkhgPafmfKvRnCqGGbqZ4bsvQfA
-         ZDNr+h8uT0iANG6O8IEyB/TOtKJ1ovIIsb/2xa2k=
-Date:   Tue, 1 Dec 2020 16:14:04 -0500
-From:   "bfields@fieldses.org" <bfields@fieldses.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/2] nfsd: Record NFSv4 pre/post-op attributes as
- non-atomic
-Message-ID: <20201201211404.GE21355@fieldses.org>
-References: <20201201041427.756749-1-trondmy@kernel.org>
- <20201201041427.756749-2-trondmy@kernel.org>
- <20201201193521.GA21355@fieldses.org>
- <63eaf3aab8814b2d65998123b6ba2e5b979a48d9.camel@hammerspace.com>
- <7181b1e7290dcfe4f92d9a8b00117a81b30f0cce.camel@hammerspace.com>
- <20201201205359.GC21355@fieldses.org>
- <34503d767cffb6b8ffc94dc80ae7632d38a7d68f.camel@hammerspace.com>
+        b=w8HISBv5iWzaohfrEMfwhzxwXDo6ZTUhKJoX8YIufhjr7J8ox4vWmXcammOxPTQQy
+         6Tilkddt8gtZRXpQnkt09K4WwCPgPOoQvGL8ViRWkmZUBAEcBr8IKDk7OXX4cduTfd
+         bIU/Dm0Z0FLHJlTcmqWJtI+POiQ58TlteAsGCyUg=
+Date:   Tue, 1 Dec 2020 16:35:53 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [PATCH 1/5] nfsd: only call inode_query_iversion in the
+ I_VERSION case
+Message-ID: <20201201213553.GF21355@fieldses.org>
+References: <1606776378-22381-1-git-send-email-bfields@fieldses.org>
+ <01bad6aa8aa05bb9bafd010575866125f89c5f08.camel@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <34503d767cffb6b8ffc94dc80ae7632d38a7d68f.camel@hammerspace.com>
+In-Reply-To: <01bad6aa8aa05bb9bafd010575866125f89c5f08.camel@kernel.org>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Dec 01, 2020 at 08:59:00PM +0000, Trond Myklebust wrote:
-> On Tue, 2020-12-01 at 15:53 -0500, bfields@fieldses.org wrote:
-> > On Tue, Dec 01, 2020 at 08:27:38PM +0000, Trond Myklebust wrote:
-> > > As far as I can tell, there is no need for it at all, since both
-> > > the
-> > > NFSv3 and NFSv4 client can supply atomic struct change_info4 in the
-> > > cases where it is relevant (those cases being recording the changes
-> > > to
-> > > the parent directory/ies when doing CREATE, OPEN(O_CREAT), LINK,
-> > > REMOVE
-> > > and RENAME).
-> > 
-> > I was wondering about that.  We'd need some additional interface to
-> > allow nfs to supply that stuff to nfsd, right?
-> 
-> The only problem is the pre-op attributes, since those are supplied by
-> the server but never recorded anywhere. Otherwise, all you really need
-> is to hold the inode lock on the directory to prevent the client from
-> making updates after the operation is done.
+On Tue, Dec 01, 2020 at 11:43:31AM -0500, Jeff Layton wrote:
+> Are you planning to follow up with the series to add the fetch_iversion
+> op, or have you decided not to do that for now?
 
-We already have the lock over all those operations.
-
-I was worried that wouldn't prevent a getattr in another thread from
-updating the change attribute.  Is that not possible?
-
-My only idea for returning extra information was a hack using
-kthread_data() as we're doing in nfsd_breaker_owns_lease(); nfs would
-call something like:
-
-	void nfsd_set_cinfo(struct nfs4_change_info *cinfo)
-	{
-		struct svc_rqst *rqst;
-
-		if (!i_am_nfsd())
-			return;
-		rqst = kthread_data(current);
-		rqst->cinfo = cinfo;
-	}
-
-Then nfsd fetches it afterwards.  Maybe there's a better way.
+I'm still interested.  I just figured it's not urgent, and it'll be
+easier to ask for fs-devel review after this other stuff is in, so it
+may as well wait till after the merge window.
 
 --b.
