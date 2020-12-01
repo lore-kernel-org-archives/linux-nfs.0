@@ -2,271 +2,239 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+	UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31214C64E7B
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:47:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F049C8301E
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 22:02:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B653F20C56
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 21:47:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E78E620709
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Dec 2020 22:02:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="eSoKOfME"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="aqvC4g1h"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387717AbgLAVr1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Dec 2020 16:47:27 -0500
-Received: from smtp-fw-6001.amazon.com ([52.95.48.154]:5116 "EHLO
-        smtp-fw-6001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389618AbgLAVr1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2020 16:47:27 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1606859245; x=1638395245;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:content-transfer-encoding:in-reply-to;
-  bh=Az2mfsFL8HnYL1b2KmTvEovv3iJ3hC5WgUkpLr/zeK4=;
-  b=eSoKOfME3NMljYvr0OT6/pMwmvmCAqKWWb0gSZ26C1i7W8fFRgLBgDWe
-   iVzb/NoB6Q8obTY5J8F+dtBRcy2qyVLlu7euSOeHbRoUExix6CaFkDjLR
-   NKLRq/gt7DDYVRgpDMJBDe/OMCwp3P9ZFX0XSg0M9kNiWw9ipdfWdR0zR
-   Y=;
-X-IronPort-AV: E=Sophos;i="5.78,385,1599523200"; 
-   d="scan'208";a="69863262"
-Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-1a-67b371d8.us-east-1.amazon.com) ([10.43.8.2])
-  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 01 Dec 2020 21:35:25 +0000
-Received: from EX13MTAUEA001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan3.iad.amazon.com [10.40.163.38])
-        by email-inbound-relay-1a-67b371d8.us-east-1.amazon.com (Postfix) with ESMTPS id 2EF2DA229A;
-        Tue,  1 Dec 2020 21:34:53 +0000 (UTC)
-Received: from EX13D12UEA001.ant.amazon.com (10.43.61.99) by
- EX13MTAUEA001.ant.amazon.com (10.43.61.82) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Tue, 1 Dec 2020 21:34:53 +0000
-Received: from EX13MTAUEA002.ant.amazon.com (10.43.61.77) by
- EX13D12UEA001.ant.amazon.com (10.43.61.99) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Tue, 1 Dec 2020 21:34:53 +0000
-Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.61.169) with Microsoft SMTP
- Server id 15.0.1497.2 via Frontend Transport; Tue, 1 Dec 2020 21:34:53 +0000
-Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id D5521C133E; Tue,  1 Dec 2020 21:34:52 +0000 (UTC)
-Date:   Tue, 1 Dec 2020 21:34:52 +0000
-From:   Frank van der Linden <fllinden@amazon.com>
-To:     Olga Kornievskaia <aglo@umich.edu>
-CC:     Chuck Lever <chuck.lever@oracle.com>,
-        "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [UNVERIFIED SENDER] Re: [PATCH v1] NFS: Fix
- rpcrdma_inline_fixup() crash with new LISTXATTRS operation
-Message-ID: <20201201213452.GA13681@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
-References: <160623862874.1534.4471924380357882531.stgit@manet.1015granger.net>
- <20201124200640.GA2476@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <B1CF6271-B168-4571-B8E4-0CAB0A0B40FB@netapp.com>
- <20201124211926.GB14140@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <5571DE63-1276-4AF6-BB8F-EE36878B06E5@netapp.com>
- <20201126002149.GA2339@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <B791B088-49C4-42F3-8721-A022027625D3@oracle.com>
- <20201126193248.GA6578@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
- <CAN-5tyFbC4dmRg4sXCPirp64qnYwN1Ykw4oRA+4sBsD+NG6Fiw@mail.gmail.com>
- <20201201202532.GA3723@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20201201202532.GA3723@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com>
-User-Agent: Mutt/1.11.4 (2019-03-13)
+        id S2389544AbgLAWCR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Dec 2020 17:02:17 -0500
+Received: from aserp2120.oracle.com ([141.146.126.78]:53964 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2391977AbgLAWCL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Dec 2020 17:02:11 -0500
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0B1LtcXi139905;
+        Tue, 1 Dec 2020 22:01:22 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=HTNa8+fBZQn8nIM+NU8f9Kr2bHjdFk28VtAzC2VWaqs=;
+ b=aqvC4g1hXrP1AUZMuoJqWnXvZnHsHxj7cRCCxLOfQMqTSquUgcqQ6AkjnS2l18JzyPIv
+ uGbU21QhDj5YFVY0WuE5Wz7asc96WoHDQVBnKs7Tg2LyhY4XbbCtjcicrRoSbKFt9vKd
+ Tw2p4ftfRt6W1c9TwcwhOCp1DJOW3cFXk+y4Wfstpm1E6qcu1OiBdirrMf2mnk3/h48H
+ b3VZdW+ts6TBYTuhquhM2YDCmcnCPmIk0eNB++CeVHQ1a9HEbr7ahvTf8Nahc8zSRn3Z
+ pwdcI4AoTQYeyCC7hBRHVoVhnOsdFSp16w30Nxoi06ye692Fna54xB5BIKL/6NOvROtN Og== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by aserp2120.oracle.com with ESMTP id 353egkn134-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Tue, 01 Dec 2020 22:01:22 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0B1LoWRX182265;
+        Tue, 1 Dec 2020 22:01:21 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userp3020.oracle.com with ESMTP id 3540at30gr-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 01 Dec 2020 22:01:21 +0000
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0B1M1HTd005786;
+        Tue, 1 Dec 2020 22:01:17 GMT
+Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Tue, 01 Dec 2020 14:01:16 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
+Subject: Re: [PATCH] NFSv4.2: improve page handling for GETXATTR
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20201201213128.13624-1-fllinden@amazon.com>
+Date:   Tue, 1 Dec 2020 17:01:15 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        trond.myklebust@hammerspace.com, Olga Kornievskaia <aglo@umich.edu>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <93373383-EA91-434A-97F7-ACC5E97711BD@oracle.com>
+References: <20201201213128.13624-1-fllinden@amazon.com>
+To:     Frank van der Linden <fllinden@amazon.com>
+X-Mailer: Apple Mail (2.3608.120.23.2.4)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9822 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 bulkscore=0
+ phishscore=0 mlxscore=0 adultscore=0 malwarescore=0 suspectscore=2
+ spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2009150000 definitions=main-2012010131
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9822 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 bulkscore=0 suspectscore=2
+ phishscore=0 mlxlogscore=999 lowpriorityscore=0 malwarescore=0
+ priorityscore=1501 spamscore=0 impostorscore=0 clxscore=1015 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2012010131
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Dec 01, 2020 at 08:25:32PM +0000, Frank van der Linden wrote:
-> On Tue, Dec 01, 2020 at 03:01:57PM -0500, Olga Kornievskaia wrote:
-> > 
-> > 
-> > On Fri, Nov 27, 2020 at 3:40 AM Frank van der Linden
-> > <fllinden@amazon.com> wrote:
-> > >
-> > > On Thu, Nov 26, 2020 at 12:10:21PM -0500, Chuck Lever wrote:
-> > > >
-> > > >
-> > > > > On Nov 25, 2020, at 7:21 PM, Frank van der Linden <fllinden@amazon.com> wrote:
-> > > > >
-> > > > > On Tue, Nov 24, 2020 at 10:40:25PM +0000, Kornievskaia, Olga wrote:
-> > > > >>
-> > > > >>
-> > > > >> ﻿On 11/24/20, 4:20 PM, "Frank van der Linden" <fllinden@amazon.com> wrote:
-> > > > >>
-> > > > >>    On Tue, Nov 24, 2020 at 08:50:36PM +0000, Kornievskaia, Olga wrote:
-> > > > >>>
-> > > > >>>
-> > > > >>> On 11/24/20, 3:06 PM, "Frank van der Linden" <fllinden@amazon.com> wrote:
-> > > > >>>
-> > > > >>>    On Tue, Nov 24, 2020 at 12:26:32PM -0500, Chuck Lever wrote:
-> > > > >>>>
-> > > > >>>>
-> > > > >>>>
-> > > > >>>> By switching to an XFS-backed export, I am able to reproduce the
-> > > > >>>> ibcomp worker crash on my client with xfstests generic/013.
-> > > > >>>>
-> > > > >>>> For the failing LISTXATTRS operation, xdr_inline_pages() is called
-> > > > >>>> with page_len=12 and buflen=128. Then:
-> > > > >>>>
-> > > > >>>> - Because buflen is small, rpcrdma_marshal_req will not set up a
-> > > > >>>>  Reply chunk and the rpcrdma's XDRBUF_SPARSE_PAGES logic does not
-> > > > >>>>  get invoked at all.
-> > > > >>>>
-> > > > >>>> - Because page_len is non-zero, rpcrdma_inline_fixup() tries to
-> > > > >>>>  copy received data into rq_rcv_buf->pages, but they're missing.
-> > > > >>>>
-> > > > >>>> The result is that the ibcomp worker faults and dies. Sometimes that
-> > > > >>>> causes a visible crash, and sometimes it results in a transport
-> > > > >>>> hang without other symptoms.
-> > > > >>>>
-> > > > >>>> RPC/RDMA's XDRBUF_SPARSE_PAGES support is not entirely correct, and
-> > > > >>>> should eventually be fixed or replaced. However, my preference is
-> > > > >>>> that upper-layer operations should explicitly allocate their receive
-> > > > >>>> buffers (using GFP_KERNEL) when possible, rather than relying on
-> > > > >>>> XDRBUF_SPARSE_PAGES.
-> > > > >>>>
-> > > > >>>> Reported-by: Olga kornievskaia <kolga@netapp.com>
-> > > > >>>> Suggested-by: Olga kornievskaia <kolga@netapp.com>
-> > > > >>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > > > >>>> ---
-> > > > >>>> fs/nfs/nfs42proc.c |   17 ++++++++++-------
-> > > > >>>> fs/nfs/nfs42xdr.c  |    1 -
-> > > > >>>> 2 files changed, 10 insertions(+), 8 deletions(-)
-> > > > >>>>
-> > > > >>>> Hi-
-> > > > >>>>
-> > > > >>>> I like Olga's proposed approach. What do you think of this patch?
-> > > > >>>>
-> > > > >>>>
-> > > > >>>> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> > > > >>>> index 2b2211d1234e..24810305ec1c 100644
-> > > > >>>> --- a/fs/nfs/nfs42proc.c
-> > > > >>>> +++ b/fs/nfs/nfs42proc.c
-> > > > >>>> @@ -1241,7 +1241,7 @@ static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
-> > > > >>>>                .rpc_resp       = &res,
-> > > > >>>>        };
-> > > > >>>>        u32 xdrlen;
-> > > > >>>> -       int ret, np;
-> > > > >>>> +       int ret, np, i;
-> > > > >>>>
-> > > > >>>>
-> > > > >>>>        res.scratch = alloc_page(GFP_KERNEL);
-> > > > >>>> @@ -1253,10 +1253,14 @@ static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
-> > > > >>>>                xdrlen = server->lxasize;
-> > > > >>>>        np = xdrlen / PAGE_SIZE + 1;
-> > > > >>>>
-> > > > >>>> +       ret = -ENOMEM;
-> > > > >>>>        pages = kcalloc(np, sizeof(struct page *), GFP_KERNEL);
-> > > > >>>> -       if (pages == NULL) {
-> > > > >>>> -               __free_page(res.scratch);
-> > > > >>>> -               return -ENOMEM;
-> > > > >>>> +       if (pages == NULL)
-> > > > >>>> +               goto out_free;
-> > > > >>>> +       for (i = 0; i < np; i++) {
-> > > > >>>> +               pages[i] = alloc_page(GFP_KERNEL);
-> > > > >>>> +               if (!pages[i])
-> > > > >>>> +                       goto out_free;
-> > > > >>>>        }
-> > > > >>>>
-> > > > >>>>        arg.xattr_pages = pages;
-> > > > >>>> @@ -1271,14 +1275,13 @@ static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
-> > > > >>>>                *eofp = res.eof;
-> > > > >>>>        }
-> > > > >>>>
-> > > > >>>> +out_free:
-> > > > >>>>        while (--np >= 0) {
-> > > > >>>>                if (pages[np])
-> > > > >>>>                        __free_page(pages[np]);
-> > > > >>>>        }
-> > > > >>>> -
-> > > > >>>> -       __free_page(res.scratch);
-> > > > >>>>        kfree(pages);
-> > > > >>>> -
-> > > > >>>> +       __free_page(res.scratch);
-> > > > >>>>        return ret;
-> > > > >>>>
-> > > > >>>> }
-> > > > >>>> diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-> > > > >>>> index 6e060a88f98c..8432bd6b95f0 100644
-> > > > >>>> --- a/fs/nfs/nfs42xdr.c
-> > > > >>>> +++ b/fs/nfs/nfs42xdr.c
-> > > > >>>> @@ -1528,7 +1528,6 @@ static void nfs4_xdr_enc_listxattrs(struct rpc_rqst *req,
-> > > > >>>>
-> > > > >>>>        rpc_prepare_reply_pages(req, args->xattr_pages, 0, args->count,
-> > > > >>>>            hdr.replen);
-> > > > >>>> -       req->rq_rcv_buf.flags |= XDRBUF_SPARSE_PAGES;
-> > > > >>>>
-> > > > >>>>        encode_nops(&hdr);
-> > > > >>>> }
-> > > > >>>>
-> > > > >>>>
-> > > > >>>
-> > > > >>>    I can see why this is the simplest and most pragmatic solution, so it's
-> > > > >>>    fine with me.
-> > > > >>>
-> > > > >>>    Why doesn't this happen with getxattr? Do we need to convert that too?
-> > > > >>>
-> > > > >>> [olga] I don't know if GETXATTR/SETXATTR works. I'm not sure what tests exercise those operations. I just ran into the fact that generic/013 wasn't passing. And I don't see that it's an xattr specific tests. I'm not sure how it ends up triggering is usage of xattr.
-> > > > >>
-> > > > >>    I'm attaching the test program I used, it should give things a better workout.
-> > > > >>
-> > > > >> [olga] I'm not sure if I'm doing something wrong but there are only 2 GETXATTR call on the network trace from running this application and both calls are returning an error (ERR_NOXATTR). Which btw might explain why no problems are seen since no decoding of data is happening. There are lots of SETXATTRs and REMOVEXATTR and there is a LISTXATTR (which btw network trace is marking as malformed so there might something bad there). Anyway...
-> > > > >>
-> > > > >> This is my initial report: no real exercise of the GETXATTR code as far as I can tell.
-> > > > >
-> > > > > True, the test is heavier on the setxattr / listxattr side. And with caching,
-> > > > > you're not going to see a lot of GETXATTR calls. I used the same test program
-> > > > > with caching off, and it works fine, though.
-> > > >
-> > > > I unintentionally broke GETXATTR while developing the LISTXATTRS fix,
-> > > > and generic/013 rather aggressively informed me that GETXATTR was no
-> > > > longer working. There is some test coverage there, fwiw.
-> > >
-> > > Oh, the coverage was good - in my testing I also used a collection of
-> > > small unit test programs, and I was the one who made the xattr tests
-> > > in xfstests work on NFS.
-> > 
-> > I have just oops-ed the kernel trying to send a getxattr when
-> > userspace provided a small buffer.
-> > 
-> > File with extended attributes was created using your application but
-> > modified to leave the file behind. Then I coded up this to get the
-> > extended attirbutes. Test coverage doesn't test for this.
-> > 
-> > int main(int argc, char *argv[]) {
-> > 
-> > int fd, len = 8;
-> > char buf[8];
-> > 
-> > fd = open("/mnt/test_xattr_probeJxfiVU", O_RDWR | O_CREAT, S_IRWXU);
-> > if (fd < 0) exit(0);
-> > 
-> > if (getxattr("/mnt/test_xattr_probeJxfiVU", "user.test_xattr_probe",
-> > buf, len) < 0) exit(0);
-> > 
-> > return 0;
-> > }
-> > 
-> > Which again produces the KASAN's
-> > [ 5915.393103] BUG: KASAN: wild-memory-access in
-> > rpcrdma_complete_rqst+0x41b/0x680 [rpcrdma]
-> > 
-> > 
-> > This is my proposed fix. Will send a proper patch if agreed:
-> 
-> I was just about to send a patch that does the pre-alloc, and rounds up
-> the inserted page_len to the page allocation so that it'll catch some
-> more replies to cache.
-> 
-> Let me send it..
 
-Ok, just sent the patch. I tested it with TCP and RDMA.
 
-I'll extend my test program a bit to take care of the uncached-
-getxattr-with-short-length case.
+> On Dec 1, 2020, at 4:31 PM, Frank van der Linden <fllinden@amazon.com> =
+wrote:
+>=20
+> XDRBUF_SPARSE_PAGES can cause problems for the RDMA transport,
+> and it's easy enough to allocate enough pages for the request
+> up front, so do that.
+>=20
+> Also, since we've allocated the pages anyway, use the full
+> page aligned length for the receive buffer. This will allow
+> caching of valid replies that are too large for the caller,
+> but that still fit in the allocated pages.
+>=20
+> Signed-off-by: Frank van der Linden <fllinden@amazon.com>
+> ---
+> fs/nfs/nfs42proc.c | 39 ++++++++++++++++++++++++++++++---------
+> fs/nfs/nfs42xdr.c  | 22 +++++++++++++++++-----
+> 2 files changed, 47 insertions(+), 14 deletions(-)
+>=20
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index 2b2211d1234e..bfe15ac77bd9 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -1176,11 +1176,9 @@ static ssize_t _nfs42_proc_getxattr(struct =
+inode *inode, const char *name,
+> 				void *buf, size_t buflen)
+> {
+> 	struct nfs_server *server =3D NFS_SERVER(inode);
+> -	struct page *pages[NFS4XATTR_MAXPAGES] =3D {};
+> +	struct page **pages;
 
-Thanks for looking at this.
+Taking this array of pointers off the stack is Goodness(tm).
 
-- Frank
+Thanks for doing this update!
+
+> 	struct nfs42_getxattrargs arg =3D {
+> 		.fh		=3D NFS_FH(inode),
+> -		.xattr_pages	=3D pages,
+> -		.xattr_len	=3D buflen,
+> 		.xattr_name	=3D name,
+> 	};
+> 	struct nfs42_getxattrres res;
+> @@ -1189,12 +1187,31 @@ static ssize_t _nfs42_proc_getxattr(struct =
+inode *inode, const char *name,
+> 		.rpc_argp	=3D &arg,
+> 		.rpc_resp	=3D &res,
+> 	};
+> -	int ret, np;
+> +	ssize_t ret, np, i;
+> +
+> +	arg.xattr_len =3D buflen ?: XATTR_SIZE_MAX;
+> +
+> +	ret =3D -ENOMEM;
+> +	np =3D DIV_ROUND_UP(arg.xattr_len, PAGE_SIZE);
+> +
+> +	pages =3D kcalloc(np, sizeof(struct page *), GFP_KERNEL);
+> +	if (pages =3D=3D NULL)
+> +		return ret;
+> +
+> +	for (i =3D 0; i < np; i++) {
+> +		pages[i] =3D alloc_page(GFP_KERNEL);
+> +		if (!pages[i])
+> +			goto out_free;
+> +	}
+> +
+> +	arg.xattr_pages =3D pages;
+>=20
+> 	ret =3D nfs4_call_sync(server->client, server, &msg, =
+&arg.seq_args,
+> 	    &res.seq_res, 0);
+> 	if (ret < 0)
+> -		return ret;
+> +		goto out_free;
+> +
+> +	ret =3D res.xattr_len;
+>=20
+> 	/*
+> 	 * Normally, the caching is done one layer up, but for =
+successful
+> @@ -1209,16 +1226,20 @@ static ssize_t _nfs42_proc_getxattr(struct =
+inode *inode, const char *name,
+> 	nfs4_xattr_cache_add(inode, name, NULL, pages, res.xattr_len);
+>=20
+> 	if (buflen) {
+> -		if (res.xattr_len > buflen)
+> -			return -ERANGE;
+> +		if (res.xattr_len > buflen) {
+> +			ret =3D -ERANGE;
+> +			goto out_free;
+> +		}
+> 		_copy_from_pages(buf, pages, 0, res.xattr_len);
+> 	}
+>=20
+> -	np =3D DIV_ROUND_UP(res.xattr_len, PAGE_SIZE);
+> +out_free:
+> 	while (--np >=3D 0)
+> 		__free_page(pages[np]);
+>=20
+> -	return res.xattr_len;
+> +	kfree(pages);
+> +
+> +	return ret;
+> }
+>=20
+> static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
+> diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+> index 6e060a88f98c..8dfe674d1301 100644
+> --- a/fs/nfs/nfs42xdr.c
+> +++ b/fs/nfs/nfs42xdr.c
+> @@ -489,6 +489,12 @@ static int decode_getxattr(struct xdr_stream =
+*xdr,
+> 		return -EIO;
+>=20
+> 	len =3D be32_to_cpup(p);
+> +
+> +	/*
+> +	 * Only check against the page length here. The actual
+> +	 * requested length may be smaller, but that is only
+> +	 * checked against after possibly caching a valid reply.
+> +	 */
+> 	if (len > req->rq_rcv_buf.page_len)
+> 		return -ERANGE;
+>=20
+> @@ -1483,11 +1489,17 @@ static void nfs4_xdr_enc_getxattr(struct =
+rpc_rqst *req, struct xdr_stream *xdr,
+> 	encode_putfh(xdr, args->fh, &hdr);
+> 	encode_getxattr(xdr, args->xattr_name, &hdr);
+>=20
+> -	plen =3D args->xattr_len ? args->xattr_len : XATTR_SIZE_MAX;
+> -
+> -	rpc_prepare_reply_pages(req, args->xattr_pages, 0, plen,
+> -	    hdr.replen);
+> -	req->rq_rcv_buf.flags |=3D XDRBUF_SPARSE_PAGES;
+> +	/*
+> +	 * The GETXATTR op has no length field in the call, and the
+> +	 * xattr data is at the end of the reply.
+> +	 *
+> +	 * Since the pages have already been allocated, there is no
+> +	 * downside in using the page-aligned length. It will allow
+> +	 * receiving and caching xattrs that are too large for the
+> +	 * caller but still fit in the page-rounded value.
+> +	 */
+> +	plen =3D round_up(args->xattr_len, PAGE_SIZE);
+> +	rpc_prepare_reply_pages(req, args->xattr_pages, 0, plen, =
+hdr.replen);
+>=20
+> 	encode_nops(&hdr);
+> }
+> --=20
+> 2.23.3
+>=20
+
+--
+Chuck Lever
+
+
+
