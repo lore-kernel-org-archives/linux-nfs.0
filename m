@@ -7,73 +7,89 @@ X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1209C64E7B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EB90C6369E
 	for <linux-nfs@archiver.kernel.org>; Wed,  2 Dec 2020 22:57:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7D52722201
+	by mail.kernel.org (Postfix) with ESMTP id 4F5A522203
 	for <linux-nfs@archiver.kernel.org>; Wed,  2 Dec 2020 22:57:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726254AbgLBW52 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Dec 2020 17:57:28 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37108 "EHLO
+        id S1726518AbgLBW51 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Dec 2020 17:57:27 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37110 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725985AbgLBW51 (ORCPT
+        with ESMTP id S1726254AbgLBW51 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2020 17:57:27 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E16CC0617A6
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E245C0617A7
         for <linux-nfs@vger.kernel.org>; Wed,  2 Dec 2020 14:56:47 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 3A92FBC8; Wed,  2 Dec 2020 17:56:46 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 3A92FBC8
+        id 26CC936E1; Wed,  2 Dec 2020 17:56:46 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 26CC936E1
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
         s=default; t=1606949806;
-        bh=4NzDPZA4mXxMik1ooI5NvPahkHk1d62zw4FBvIR/aTk=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=X/5j/iw5TQnkfcTvYGHNSy2td8yNVDnOzaPvqX3SXoJDgso41SeeZexTzOhgs9qPL
-         zeXzZBu/+xUGgDgg+pGJsc5V8E+pboklWs7HSvUee0OrUlyO/V8UL6aHs3GHgXp1YV
-         dwLeFexDnj42DCZ0H12uMBWrcwr7y4jpVirLEPlM=
+        bh=e23lMBrIqh6/a1IB0MTiMhnf/lgSgpVBGyI898DqklY=;
+        h=From:To:Cc:Subject:Date:From;
+        b=UFaKV5zFKjSMWHcImsYwj8KLX51BIpiqdYUhFTyWSz/FXaUG26rc50Lrm1+sFLhhz
+         e0NnOoSyW58sj9EO/2OBMNbl8kqUrgswF3LSzmKEbQKABdbRZ05F26Zzue0V5KO0bW
+         sbC2N1TS2D6K1jj+giuwBY90V847/zl4JJEFQBz8=
 From:   "J. Bruce Fields" <bfields@fieldses.org>
 To:     Steve Dickson <steved@redhat.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] mountd: always root squash on the pseudofs
-Date:   Wed,  2 Dec 2020 17:56:44 -0500
-Message-Id: <1606949804-31417-2-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 1/2] mountd: allow high ports on all pseudofs exports
+Date:   Wed,  2 Dec 2020 17:56:43 -0500
+Message-Id: <1606949804-31417-1-git-send-email-bfields@fieldses.org>
 X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1606949804-31417-1-git-send-email-bfields@fieldses.org>
-References: <1606949804-31417-1-git-send-email-bfields@fieldses.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-As with security flavors and "secure" ports, we tried to code this so
-that pseudofs directories would inherit root squashing from their
-children, but it doesn't really work as coded and I'm not sure it's
-useful.
+We originally tried to grant permissions on the v4 pseudoroot filesystem
+that were the absolute minimum required for a client to reach a given
+export.  This turns out to be complicated, and we've never gotten it
+quite right.  Also, the tradition from the MNT protocol was to allow
+anyone to browse the list of exports.
 
-Just root squash always.  If it turns out somebody's exporting
-directories that are only readable by root, I guess we can try to do
-something else here, but frankly that sounds like a pretty weird
-configuration.
+So, do as we already did with security flavors and just allow clients
+from high ports to access the whole pseudofilesystem.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- utils/mountd/v4root.c | 2 --
- 1 file changed, 2 deletions(-)
+ utils/mountd/v4root.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
 diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-index 2ac4e87898c0..36543401f296 100644
+index a9ea167a07e0..2ac4e87898c0 100644
 --- a/utils/mountd/v4root.c
 +++ b/utils/mountd/v4root.c
+@@ -36,7 +36,7 @@ static nfs_export pseudo_root = {
+ 		.e_path = "/",
+ 		.e_flags = NFSEXP_READONLY | NFSEXP_ROOTSQUASH
+ 				| NFSEXP_NOSUBTREECHECK | NFSEXP_FSID
+-				| NFSEXP_V4ROOT,
++				| NFSEXP_V4ROOT | NFSEXP_INSECURE_PORT,
+ 		.e_anonuid = 65534,
+ 		.e_anongid = 65534,
+ 		.e_squids = NULL,
 @@ -60,8 +60,6 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
  	struct flav_info *flav;
  	int i;
  
--	if ((flags & NFSEXP_ROOTSQUASH) == 0)
--		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
+-	if (flags & NFSEXP_INSECURE_PORT)
+-		pseudo->e_flags |= NFSEXP_INSECURE_PORT;
+ 	if ((flags & NFSEXP_ROOTSQUASH) == 0)
+ 		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
  	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
- 		struct sec_entry *new;
+@@ -70,8 +68,7 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
+ 		i = secinfo_addflavor(flav, pseudo);
+ 		new = &pseudo->e_secinfo[i];
+ 
+-		if (flags & NFSEXP_INSECURE_PORT)
+-			new->flags |= NFSEXP_INSECURE_PORT;
++		new->flags |= NFSEXP_INSECURE_PORT;
+ 	}
+ }
  
 -- 
 2.28.0
