@@ -2,95 +2,96 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EB90C6369E
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Dec 2020 22:57:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D75FC6369E
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Dec 2020 23:04:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4F5A522203
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Dec 2020 22:57:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C57DD221FB
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Dec 2020 23:04:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726518AbgLBW51 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Dec 2020 17:57:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37110 "EHLO
+        id S1728103AbgLBXEZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Dec 2020 18:04:25 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38230 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726254AbgLBW51 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2020 17:57:27 -0500
+        with ESMTP id S1726253AbgLBXEY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2020 18:04:24 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E245C0617A7
-        for <linux-nfs@vger.kernel.org>; Wed,  2 Dec 2020 14:56:47 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3F6FC0617A6
+        for <linux-nfs@vger.kernel.org>; Wed,  2 Dec 2020 15:03:44 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 26CC936E1; Wed,  2 Dec 2020 17:56:46 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 26CC936E1
+        id DC4E16F4B; Wed,  2 Dec 2020 18:03:42 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org DC4E16F4B
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1606949806;
-        bh=e23lMBrIqh6/a1IB0MTiMhnf/lgSgpVBGyI898DqklY=;
-        h=From:To:Cc:Subject:Date:From;
-        b=UFaKV5zFKjSMWHcImsYwj8KLX51BIpiqdYUhFTyWSz/FXaUG26rc50Lrm1+sFLhhz
-         e0NnOoSyW58sj9EO/2OBMNbl8kqUrgswF3LSzmKEbQKABdbRZ05F26Zzue0V5KO0bW
-         sbC2N1TS2D6K1jj+giuwBY90V847/zl4JJEFQBz8=
+        s=default; t=1606950222;
+        bh=BGYYI0dix7aaYcTj94e1Pfh1EJXZvap34bYc1btok5U=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=MtktlmBM+qqLEooXejBs2dOtsk/5dsFmpdYnWDBj/FY/XtjBAoH6U6rv1f5I/21A3
+         tCj9t4CtzOIoRiHJQGp9wJ5f4GJhKraIym/Qlg4N/4r+TI4F6EWpJME4NEhsGUgJDM
+         yVmnWkkM6gGfaggX9ZVDB0NKAjQCqyvEYQVbfyUc=
+Date:   Wed, 2 Dec 2020 18:03:42 -0500
 From:   "J. Bruce Fields" <bfields@fieldses.org>
 To:     Steve Dickson <steved@redhat.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] mountd: allow high ports on all pseudofs exports
-Date:   Wed,  2 Dec 2020 17:56:43 -0500
-Message-Id: <1606949804-31417-1-git-send-email-bfields@fieldses.org>
-X-Mailer: git-send-email 1.8.3.1
+Subject: Re: [PATCH 1/2] mountd: allow high ports on all pseudofs exports
+Message-ID: <20201202230342.GA31481@fieldses.org>
+References: <1606949804-31417-1-git-send-email-bfields@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1606949804-31417-1-git-send-email-bfields@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Dec 02, 2020 at 05:56:43PM -0500, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> We originally tried to grant permissions on the v4 pseudoroot filesystem
+> that were the absolute minimum required for a client to reach a given
+> export.  This turns out to be complicated, and we've never gotten it
+> quite right.  Also, the tradition from the MNT protocol was to allow
+> anyone to browse the list of exports.
+> 
+> So, do as we already did with security flavors and just allow clients
+> from high ports to access the whole pseudofilesystem.
 
-We originally tried to grant permissions on the v4 pseudoroot filesystem
-that were the absolute minimum required for a client to reach a given
-export.  This turns out to be complicated, and we've never gotten it
-quite right.  Also, the tradition from the MNT protocol was to allow
-anyone to browse the list of exports.
+Oh, except then we may as well also remove this "flags" parameter.
 
-So, do as we already did with security flavors and just allow clients
-from high ports to access the whole pseudofilesystem.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/v4root.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+--b.
 
 diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-index a9ea167a07e0..2ac4e87898c0 100644
+index 36543401f296..f6eb126660f3 100644
 --- a/utils/mountd/v4root.c
 +++ b/utils/mountd/v4root.c
-@@ -36,7 +36,7 @@ static nfs_export pseudo_root = {
- 		.e_path = "/",
- 		.e_flags = NFSEXP_READONLY | NFSEXP_ROOTSQUASH
- 				| NFSEXP_NOSUBTREECHECK | NFSEXP_FSID
--				| NFSEXP_V4ROOT,
-+				| NFSEXP_V4ROOT | NFSEXP_INSECURE_PORT,
- 		.e_anonuid = 65534,
- 		.e_anongid = 65534,
- 		.e_squids = NULL,
-@@ -60,8 +60,6 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
+@@ -55,7 +55,7 @@ static nfs_export pseudo_root = {
+ };
+ 
+ static void
+-set_pseudofs_security(struct exportent *pseudo, int flags)
++set_pseudofs_security(struct exportent *pseudo)
+ {
  	struct flav_info *flav;
  	int i;
- 
--	if (flags & NFSEXP_INSECURE_PORT)
--		pseudo->e_flags |= NFSEXP_INSECURE_PORT;
- 	if ((flags & NFSEXP_ROOTSQUASH) == 0)
- 		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
- 	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
-@@ -70,8 +68,7 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
- 		i = secinfo_addflavor(flav, pseudo);
- 		new = &pseudo->e_secinfo[i];
- 
--		if (flags & NFSEXP_INSECURE_PORT)
--			new->flags |= NFSEXP_INSECURE_PORT;
-+		new->flags |= NFSEXP_INSECURE_PORT;
+@@ -85,7 +85,7 @@ v4root_create(char *path, nfs_export *export)
+ 	strncpy(eep.e_path, path, sizeof(eep.e_path)-1);
+ 	if (strcmp(path, "/") != 0)
+ 		eep.e_flags &= ~NFSEXP_FSID;
+-	set_pseudofs_security(&eep, curexp->e_flags);
++	set_pseudofs_security(&eep);
+ 	exp = export_create(&eep, 0);
+ 	if (exp == NULL)
+ 		return NULL;
+@@ -133,7 +133,7 @@ pseudofs_update(char *hostname, char *path, nfs_export *source)
+ 		return 0;
  	}
+ 	/* Update an existing V4ROOT export: */
+-	set_pseudofs_security(&exp->m_export, source->m_export.e_flags);
++	set_pseudofs_security(&exp->m_export);
+ 	return 0;
  }
  
--- 
-2.28.0
-
