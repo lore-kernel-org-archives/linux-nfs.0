@@ -2,115 +2,89 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC607C6369E
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 01:07:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8161C6369E
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 01:15:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4B1DA208A9
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 01:07:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4D1F9221FB
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 01:15:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726931AbgLCBHR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Dec 2020 20:07:17 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:33071 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726410AbgLCBHR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2020 20:07:17 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1606957550;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=dLnRpQt2/4dYCjKr82ESG1mUkPFg3TzB3jEu0MimuwM=;
-        b=DZAZ/l24Tvp/Y4ZyhExX3u6NSY8/y72Jj4OUwnpb8npLQYBTBn8wW9AuWKW3h1+CPacqn2
-        K62n9lPGd4Dqnwn6Z5ezqLZ5UyCi7hh32jjJ299wdpWH5YDzOLEtCykahroHzX402JhpOT
-        A2QadodKsTSFTsA/CTRHZhMkxwOgvWo=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-262-LGcMAFr6NbSfaYvQ7HTxog-1; Wed, 02 Dec 2020 20:05:49 -0500
-X-MC-Unique: LGcMAFr6NbSfaYvQ7HTxog-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B94281007465;
-        Thu,  3 Dec 2020 01:05:47 +0000 (UTC)
-Received: from pick.fieldses.org (ovpn-113-223.rdu2.redhat.com [10.10.113.223])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 620FF60854;
-        Thu,  3 Dec 2020 01:05:47 +0000 (UTC)
-Received: by pick.fieldses.org (Postfix, from userid 2815)
-        id 83CB412037D; Wed,  2 Dec 2020 20:05:46 -0500 (EST)
-Date:   Wed, 2 Dec 2020 20:05:46 -0500
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] mountd: always root squash on the pseudofs
-Message-ID: <20201203010546.GB348347@pick.fieldses.org>
-References: <1606949804-31417-1-git-send-email-bfields@fieldses.org>
- <1606949804-31417-2-git-send-email-bfields@fieldses.org>
- <c9f91aa0ac98cd132fb212166aba01864c609939.camel@hammerspace.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <c9f91aa0ac98cd132fb212166aba01864c609939.camel@hammerspace.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+        id S1726839AbgLCBPt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Dec 2020 20:15:49 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58500 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726024AbgLCBPt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2020 20:15:49 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 57384C0613D6
+        for <linux-nfs@vger.kernel.org>; Wed,  2 Dec 2020 17:15:09 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id EFE041BE7; Wed,  2 Dec 2020 20:15:00 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org EFE041BE7
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1606958101;
+        bh=6Bi9Zq0zZLKu28AxyDSGdjngTwfi3CSIqfmJUr5KNqU=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=KZkR3XsScig5HR+HgK5DHKtHAI0FJ3yYvZ1v+1FIJjDrKQ09lQfnJRqJjAav7dz9P
+         PF2YwEA1iG2dzzVwpweFfTwn8a2BJyF60fyKxFlCTfZsddYlMGdmsbAYZ+RoL1PNEw
+         R770Jl8KlhFJGEp0yCZor1LC5+AWdFWWEIvYDEAw=
+From:   bfields@fieldses.org
+To:     Steve Dickson <steved@redhat.com>
+Cc:     linux-nfs@vger.kernel.org,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] mountd: never root squash on the pseudofs
+Date:   Wed,  2 Dec 2020 20:14:57 -0500
+Message-Id: <1606958097-9041-2-git-send-email-bfields@fieldses.org>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1606958097-9041-1-git-send-email-bfields@fieldses.org>
+References: <20201203010546.GB348347@pick.fieldses.org>
+ <1606958097-9041-1-git-send-email-bfields@fieldses.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Dec 03, 2020 at 12:54:53AM +0000, Trond Myklebust wrote:
-> On Wed, 2020-12-02 at 17:56 -0500, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > As with security flavors and "secure" ports, we tried to code this so
-> > that pseudofs directories would inherit root squashing from their
-> > children, but it doesn't really work as coded and I'm not sure it's
-> > useful.
-> > 
-> > Just root squash always.  If it turns out somebody's exporting
-> > directories that are only readable by root, I guess we can try to do
-> > something else here, but frankly that sounds like a pretty weird
-> > configuration.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  utils/mountd/v4root.c | 2 --
-> >  1 file changed, 2 deletions(-)
-> > 
-> > diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-> > index 2ac4e87898c0..36543401f296 100644
-> > --- a/utils/mountd/v4root.c
-> > +++ b/utils/mountd/v4root.c
-> > @@ -60,8 +60,6 @@ set_pseudofs_security(struct exportent *pseudo, int
-> > flags)
-> >         struct flav_info *flav;
-> >         int i;
-> >  
-> > -       if ((flags & NFSEXP_ROOTSQUASH) == 0)
-> > -               pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
-> >         for (flav = flav_map; flav < flav_map + flav_map_size;
-> > flav++) {
-> >                 struct sec_entry *new;
-> >  
-> 
-> Hmm... What is the harm in allowing root to be unsquashed here? Isn't
-> this really all about respecting lookup permissions, or could a user
-> actually modify something in the pseudofs? If the latter, then that
-> sounds like a bug (the pseudofs should always be read-only).
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Yeah, it should only be read-only.
+As with security flavors and "secure" ports, we tried to code this so
+that pseudofs directories would inherit root squashing from their
+children, but it doesn't really work as coded and I'm not sure it's
+useful.
 
-> The consequence of not being able to look up a directory in the
-> pseudofs is that the NFSv4 client will be completely unable to mount
-> that subtree, so squashing root could make a major difference.
+Let's just not root squash.  The risk is pretty low since the pseudofs
+is readonly, and we'd rather not risk failing a mount unnecessarily.
 
-Fair enough, I'll resend.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ utils/mountd/v4root.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
---b.
+diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
+index 39dd87a94e59..c42ba72380ea 100644
+--- a/utils/mountd/v4root.c
++++ b/utils/mountd/v4root.c
+@@ -34,7 +34,7 @@ static nfs_export pseudo_root = {
+ 	.m_export = {
+ 		.e_hostname = "*",
+ 		.e_path = "/",
+-		.e_flags = NFSEXP_READONLY | NFSEXP_ROOTSQUASH
++		.e_flags = NFSEXP_READONLY
+ 				| NFSEXP_NOSUBTREECHECK | NFSEXP_FSID
+ 				| NFSEXP_V4ROOT | NFSEXP_INSECURE_PORT,
+ 		.e_anonuid = 65534,
+@@ -60,8 +60,6 @@ set_pseudofs_security(struct exportent *pseudo)
+ 	struct flav_info *flav;
+ 	int i;
+ 
+-	if ((flags & NFSEXP_ROOTSQUASH) == 0)
+-		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
+ 	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
+ 		struct sec_entry *new;
+ 
+-- 
+2.28.0
 
