@@ -2,146 +2,177 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-22.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7819C4167B
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 20:19:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24602C433FE
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 20:27:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 64BB0221F4
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 20:19:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CC229221E3
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 20:27:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727773AbgLCUTd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Dec 2020 15:19:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38136 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726915AbgLCUTc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Dec 2020 15:19:32 -0500
-Received: from mail-qk1-x743.google.com (mail-qk1-x743.google.com [IPv6:2607:f8b0:4864:20::743])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 783C2C061A4F
-        for <linux-nfs@vger.kernel.org>; Thu,  3 Dec 2020 12:18:46 -0800 (PST)
-Received: by mail-qk1-x743.google.com with SMTP id n132so3427354qke.1
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Dec 2020 12:18:46 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=VpbzW1tJjXNLaoKcxIkBvS9VSfhDnefWLuqJQFG1IaQ=;
-        b=W+s96HL43gfE/BdEiVnEe7Y+Kh2Z2lHe0s0rOsGG/vc3xJ0AjnYNIL0orDRUh29om2
-         f4Xw2VBnnM3ZuD3wiJzfGcUibOhJFqZW0qq5ZZLQnRzLLKHlrHHofU82bVSYuynJeOd+
-         AsN1AJKKM7aPWncZU3Xx5bAzskJ04JZJYdwNmGFjp1Ns6kiKBVJyQsolSZYbBqgpEKgP
-         j9U2v+YWCbxX/DjF+ZhAlIFdyDWH9AThA7KLG9pND+78ODe1T8LWqEV2otlSMvx4MRJY
-         lsQdH7czMUeYMsb14mhgPbSBiMuyqj+xbnB7fMaVs34Utm4jN/LSBGWbFV1UzHD3UwKi
-         8n8g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=VpbzW1tJjXNLaoKcxIkBvS9VSfhDnefWLuqJQFG1IaQ=;
-        b=aB8tskonMc4YCNKAk1N9Fv0A3uOF59AIPW0byowZ7zEnQIdY/rDNpbbxkCTLxZj1gc
-         at+wBdSZh1HZBAOOGnxKwqzwBOgX/LPvMd7Wj4aFmRvEEilVu2qsgIn0Ib/N0kEp/WnD
-         4ib26QbFhLKvVSi4G6xB+W6apJToha6E4A0tjU7KP3qSMc9hxAiszYqlvXfmiOJQ+OmL
-         xU99BX7ByREy/DU2BftCjDjwWJ27Qoz8a93Vp1h+VUflj0sU/u+VA3WkGECVNXm70SqL
-         jMoBCFazOOiXnIpd8E12e2UF0+cB2kEChTTBalBQufiTk2NzMMMb/4qDuVrm7cvAMUrB
-         IDjA==
-X-Gm-Message-State: AOAM533cknPpVEtEXK3xGV2JLmKoZusiOwAMIYmeUC2s6I1zpdmqb3fd
-        Zd/sgMZ1RTbteRbksDVg02LGOAZw/jc=
-X-Google-Smtp-Source: ABdhPJybVxmZLbXk9DY2ORHjwGbQFh0OjLwVqo//nRluu7kJv796m0vUnIq4zIJfy6zTywAFW6wGnw==
-X-Received: by 2002:a05:620a:94d:: with SMTP id w13mr4489799qkw.194.1607026725466;
-        Thu, 03 Dec 2020 12:18:45 -0800 (PST)
-Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
-        by smtp.gmail.com with ESMTPSA id q20sm2194530qtn.80.2020.12.03.12.18.44
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 03 Dec 2020 12:18:44 -0800 (PST)
-Sender: Anna Schumaker <schumakeranna@gmail.com>
-From:   schumaker.anna@gmail.com
-X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     linux-nfs@vger.kernel.org
-Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH 2/3] NFS: Allocate a scratch page for READ_PLUS
-Date:   Thu,  3 Dec 2020 15:18:40 -0500
-Message-Id: <20201203201841.103294-3-Anna.Schumaker@Netapp.com>
-X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201203201841.103294-1-Anna.Schumaker@Netapp.com>
+        id S1726037AbgLCU14 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Dec 2020 15:27:56 -0500
+Received: from aserp2120.oracle.com ([141.146.126.78]:34596 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726187AbgLCU14 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Dec 2020 15:27:56 -0500
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0B3KPCSL015307;
+        Thu, 3 Dec 2020 20:27:12 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=lpE5CJ8s8t+V/PwiDfGpjRMVP56Y5pnzkBBdObetaO0=;
+ b=wqtfu5B5hcX8EqzwV8d1M7fHX+yg1J9EduGWlUZEuIcLVPlTJLldA4mZE6D2l4N0VrLL
+ wIGnYlgyyG5GwF1qHlq03rTDmB7zVds9udKWT7KEA3nQNHIli5oftzhWRUbcW3AhpZ3J
+ ZHvELpTlimyC0AynntcWpq3hVjD600OznFuKI48C+9pZZmFIv8dtL5Mp5vG0jUvNBddz
+ 6hH+F6sUy3xBRPftCSMpI6VYOsROT5ir6CnPtJ/p7piNMv1vxyRFC8sDYvQbzmTkJDur
+ g1lf6WdlMhYldu/E8QIEgiokQhqxkGp8akvrwDKCbjIbsAJBrwDBtnrUZ4EqxIiX2MCu RA== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by aserp2120.oracle.com with ESMTP id 353egm01g2-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Thu, 03 Dec 2020 20:27:12 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0B3KQNXK128919;
+        Thu, 3 Dec 2020 20:27:11 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userp3020.oracle.com with ESMTP id 3540awsqrk-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 03 Dec 2020 20:27:11 +0000
+Received: from abhmp0003.oracle.com (abhmp0003.oracle.com [141.146.116.9])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 0B3KRAQV022233;
+        Thu, 3 Dec 2020 20:27:10 GMT
+Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 03 Dec 2020 12:27:09 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
+Subject: Re: [PATCH 2/3] NFS: Allocate a scratch page for READ_PLUS
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20201203201841.103294-3-Anna.Schumaker@Netapp.com>
+Date:   Thu, 3 Dec 2020 15:27:08 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <8CE5CE8C-9301-4250-B077-ACE23969C19A@oracle.com>
 References: <20201203201841.103294-1-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+ <20201203201841.103294-3-Anna.Schumaker@Netapp.com>
+To:     Anna Schumaker <schumaker.anna@gmail.com>
+X-Mailer: Apple Mail (2.3608.120.23.2.4)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9824 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 bulkscore=0
+ phishscore=0 mlxscore=0 adultscore=0 malwarescore=0 suspectscore=0
+ spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2009150000 definitions=main-2012030119
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9824 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 bulkscore=0 suspectscore=0
+ phishscore=0 mlxlogscore=999 lowpriorityscore=0 malwarescore=0
+ priorityscore=1501 spamscore=0 impostorscore=0 clxscore=1011 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2012030119
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-We might need this to better handle shifting around data in the reply
-buffer.
 
-Suggested-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs42xdr.c       |  2 ++
- fs/nfs/read.c           | 13 +++++++++++--
- include/linux/nfs_xdr.h |  1 +
- 3 files changed, 14 insertions(+), 2 deletions(-)
+> On Dec 3, 2020, at 3:18 PM, schumaker.anna@gmail.com wrote:
+>=20
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>=20
+> We might need this to better handle shifting around data in the reply
+> buffer.
+>=20
+> Suggested-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+> fs/nfs/nfs42xdr.c       |  2 ++
+> fs/nfs/read.c           | 13 +++++++++++--
+> include/linux/nfs_xdr.h |  1 +
+> 3 files changed, 14 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+> index 8432bd6b95f0..ef095a5f86f7 100644
+> --- a/fs/nfs/nfs42xdr.c
+> +++ b/fs/nfs/nfs42xdr.c
+> @@ -1297,6 +1297,8 @@ static int nfs4_xdr_dec_read_plus(struct =
+rpc_rqst *rqstp,
+> 	struct compound_hdr hdr;
+> 	int status;
+>=20
+> +	xdr_set_scratch_buffer(xdr, page_address(res->scratch), =
+PAGE_SIZE);
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 8432bd6b95f0..ef095a5f86f7 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -1297,6 +1297,8 @@ static int nfs4_xdr_dec_read_plus(struct rpc_rqst *rqstp,
- 	struct compound_hdr hdr;
- 	int status;
- 
-+	xdr_set_scratch_buffer(xdr, page_address(res->scratch), PAGE_SIZE);
-+
- 	status = decode_compound_hdr(xdr, &hdr);
- 	if (status)
- 		goto out;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index eb854f1f86e2..012deb5a136f 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -37,15 +37,24 @@ static struct kmem_cache *nfs_rdata_cachep;
- 
- static struct nfs_pgio_header *nfs_readhdr_alloc(void)
- {
--	struct nfs_pgio_header *p = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
-+	struct nfs_pgio_header *p;
-+	struct page *page;
- 
--	if (p)
-+	page = alloc_page(GFP_KERNEL);
-+	if (!page)
-+		return ERR_PTR(-ENOMEM);
-+
-+	p = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
-+	if (p) {
- 		p->rw_mode = FMODE_READ;
-+		p->res.scratch = page;
-+	}
- 	return p;
- }
- 
- static void nfs_readhdr_free(struct nfs_pgio_header *rhdr)
- {
-+	__free_page(rhdr->res.scratch);
- 	kmem_cache_free(nfs_rdata_cachep, rhdr);
- }
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d63cb862d58e..e0a1c97f11a9 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -659,6 +659,7 @@ struct nfs_pgio_res {
- 	struct nfs_fattr *	fattr;
- 	__u64			count;
- 	__u32			op_status;
-+	struct page *		scratch;
- 	union {
- 		struct {
- 			unsigned int		replen;		/* used by read */
--- 
-2.29.2
+I intend to submit this for v5.11:
+
+=
+https://git.linux-nfs.org/?p=3Dcel/cel-2.6.git;a=3Dcommit;h=3D0ae4c3e8a64a=
+ce1b8d7de033b0751afe43024416
+
+But seems like enough callers need a scratch buffer that the XDR
+layer should set up it transparently for all requests.
+
+
+> +
+> 	status =3D decode_compound_hdr(xdr, &hdr);
+> 	if (status)
+> 		goto out;
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index eb854f1f86e2..012deb5a136f 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -37,15 +37,24 @@ static struct kmem_cache *nfs_rdata_cachep;
+>=20
+> static struct nfs_pgio_header *nfs_readhdr_alloc(void)
+> {
+> -	struct nfs_pgio_header *p =3D =
+kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
+> +	struct nfs_pgio_header *p;
+> +	struct page *page;
+>=20
+> -	if (p)
+> +	page =3D alloc_page(GFP_KERNEL);
+> +	if (!page)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	p =3D kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
+> +	if (p) {
+> 		p->rw_mode =3D FMODE_READ;
+> +		p->res.scratch =3D page;
+> +	}
+> 	return p;
+> }
+>=20
+> static void nfs_readhdr_free(struct nfs_pgio_header *rhdr)
+> {
+> +	__free_page(rhdr->res.scratch);
+> 	kmem_cache_free(nfs_rdata_cachep, rhdr);
+> }
+>=20
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index d63cb862d58e..e0a1c97f11a9 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -659,6 +659,7 @@ struct nfs_pgio_res {
+> 	struct nfs_fattr *	fattr;
+> 	__u64			count;
+> 	__u32			op_status;
+> +	struct page *		scratch;
+> 	union {
+> 		struct {
+> 			unsigned int		replen;		/* used =
+by read */
+> --=20
+> 2.29.2
+>=20
+
+--
+Chuck Lever
+
+
 
