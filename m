@@ -2,123 +2,114 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7A4CC64E7C
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 01:15:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B248C63777
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 08:21:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 78E9822201
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 01:15:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 04BF820BED
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Dec 2020 08:21:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726024AbgLCBPt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Dec 2020 20:15:49 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58502 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726479AbgLCBPt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Dec 2020 20:15:49 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58436C0617A6
-        for <linux-nfs@vger.kernel.org>; Wed,  2 Dec 2020 17:15:09 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 904294EEA; Wed,  2 Dec 2020 20:14:59 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 904294EEA
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1606958100;
-        bh=QQ0W++hr8SINJR4W2khxxE2YLaCAvJuzeiJRJFcF4eA=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ExVoVPhrxog5sjadXxrQ5+ltQmTlwMovw1XpQ8a7fzyhKsthXthZp2qCIjWnEaFOv
-         gE/UgPYmPxUO0THuhvc3sRxakMfLG0X06OwT6jAiGP6omcPNMzyGv+1V0aVnLVxt4R
-         f2tpN02rhPNl2JotUfagZTsgQUztNk5x2m6bzCXs=
-From:   bfields@fieldses.org
-To:     Steve Dickson <steved@redhat.com>
-Cc:     linux-nfs@vger.kernel.org,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] mountd: allow high ports on all pseudofs exports
-Date:   Wed,  2 Dec 2020 20:14:56 -0500
-Message-Id: <1606958097-9041-1-git-send-email-bfields@fieldses.org>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <20201203010546.GB348347@pick.fieldses.org>
-References: <20201203010546.GB348347@pick.fieldses.org>
+        id S2388301AbgLCIVh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Dec 2020 03:21:37 -0500
+Received: from smtp-o-3.desy.de ([131.169.56.156]:35651 "EHLO smtp-o-3.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2388286AbgLCIVh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 Dec 2020 03:21:37 -0500
+Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
+        by smtp-o-3.desy.de (Postfix) with ESMTP id CC41C60603
+        for <linux-nfs@vger.kernel.org>; Thu,  3 Dec 2020 09:20:53 +0100 (CET)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de CC41C60603
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
+        t=1606983653; bh=Cgy4bV9xVamfio8r7POePH4+PlmSw8fNGtq8UcEth0Y=;
+        h=Date:From:To:Cc:Subject:From;
+        b=E1PYjs510DovKu9WzezPMwKSNHId+6XN+YlWvoFXD5q85m3KJT/veJtYFtaGst24y
+         3RcMqU/FaMfyjm1bOTsjo1UNN/2kYdTR8WWKr9oPSBzP9h5FkPxePpTw6kWZKvrlrv
+         +i2Ba++6BLQf1L2FFy8weFdkOV9+AlMRyEE3SXiM=
+Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [IPv6:2001:638:700:1038::1:83])
+        by smtp-buf-3.desy.de (Postfix) with ESMTP id C6966A0586;
+        Thu,  3 Dec 2020 09:20:53 +0100 (CET)
+X-Virus-Scanned: amavisd-new at desy.de
+Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
+        by smtp-intra-2.desy.de (Postfix) with ESMTP id 9E05A1001A7;
+        Thu,  3 Dec 2020 09:20:53 +0100 (CET)
+Date:   Thu, 3 Dec 2020 09:20:53 +0100 (CET)
+From:   "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To:     linux-nfs <linux-nfs@vger.kernel.org>
+Cc:     trondmy <trondmy@hammerspace.com>,
+        Frank van der Linden <fllinden@amazon.com>
+Message-ID: <2137763922.1852883.1606983653611.JavaMail.zimbra@desy.de>
+Subject: Kernel OPS when using xattr
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+X-Mailer: Zimbra 8.8.15_GA_3980 (ZimbraWebClient - FF83 (Mac)/8.8.15_GA_3980)
+Thread-Index: Gy/PzTaHdY6Ui5eV5iBg9axQHgH8eg==
+Thread-Topic: Kernel OPS when using xattr
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-We originally tried to grant permissions on the v4 pseudoroot filesystem
-that were the absolute minimum required for a client to reach a given
-export.  This turns out to be complicated, and we've never gotten it
-quite right.  Also, the tradition from the MNT protocol was to allow
-anyone to browse the list of exports.
+Dear NFS folk,
 
-So, do as we already did with security flavors and just allow clients
-from high ports to access the whole pseudofilesystem.
+this is I got while accessing xattrs over NFS with 5.10.0-rc6 kernel
+from Trond's testing tree (8102e956f22e710eecb3913cdd236282213812cf).
+The 5.9 kernel works as expected.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- utils/mountd/v4root.c | 13 +++++--------
- 1 file changed, 5 insertions(+), 8 deletions(-)
+Tigran.
 
-diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-index a9ea167a07e0..39dd87a94e59 100644
---- a/utils/mountd/v4root.c
-+++ b/utils/mountd/v4root.c
-@@ -36,7 +36,7 @@ static nfs_export pseudo_root = {
- 		.e_path = "/",
- 		.e_flags = NFSEXP_READONLY | NFSEXP_ROOTSQUASH
- 				| NFSEXP_NOSUBTREECHECK | NFSEXP_FSID
--				| NFSEXP_V4ROOT,
-+				| NFSEXP_V4ROOT | NFSEXP_INSECURE_PORT,
- 		.e_anonuid = 65534,
- 		.e_anongid = 65534,
- 		.e_squids = NULL,
-@@ -55,13 +55,11 @@ static nfs_export pseudo_root = {
- };
- 
- static void
--set_pseudofs_security(struct exportent *pseudo, int flags)
-+set_pseudofs_security(struct exportent *pseudo)
- {
- 	struct flav_info *flav;
- 	int i;
- 
--	if (flags & NFSEXP_INSECURE_PORT)
--		pseudo->e_flags |= NFSEXP_INSECURE_PORT;
- 	if ((flags & NFSEXP_ROOTSQUASH) == 0)
- 		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
- 	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
-@@ -70,8 +68,7 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
- 		i = secinfo_addflavor(flav, pseudo);
- 		new = &pseudo->e_secinfo[i];
- 
--		if (flags & NFSEXP_INSECURE_PORT)
--			new->flags |= NFSEXP_INSECURE_PORT;
-+		new->flags |= NFSEXP_INSECURE_PORT;
- 	}
- }
- 
-@@ -90,7 +87,7 @@ v4root_create(char *path, nfs_export *export)
- 	strncpy(eep.e_path, path, sizeof(eep.e_path)-1);
- 	if (strcmp(path, "/") != 0)
- 		eep.e_flags &= ~NFSEXP_FSID;
--	set_pseudofs_security(&eep, curexp->e_flags);
-+	set_pseudofs_security(&eep);
- 	exp = export_create(&eep, 0);
- 	if (exp == NULL)
- 		return NULL;
-@@ -138,7 +135,7 @@ pseudofs_update(char *hostname, char *path, nfs_export *source)
- 		return 0;
- 	}
- 	/* Update an existing V4ROOT export: */
--	set_pseudofs_security(&exp->m_export, source->m_export.e_flags);
-+	set_pseudofs_security(&exp->m_export);
- 	return 0;
- }
- 
--- 
-2.28.0
-
+[ 2803.765467] nfs4flexfilelayout_init: NFSv4 Flexfile Layout Driver Registering...
+[59837.811426] general protection fault, probably for non-canonical address 0x5088000000ffc: 0000 [#1] SMP PTI
+[59837.811433] CPU: 3 PID: 3858 Comm: attr Not tainted 5.10.0-rc6+ #60
+[59837.811435] Hardware name: Dell Inc. Latitude E6520/0J4TFW, BIOS A06 07/11/2011
+[59837.811442] RIP: 0010:__memmove+0xe2/0x1a0
+[59837.811445] Code: 1f 84 00 00 00 00 00 90 48 83 fa 20 72 50 48 81 fa a8 02 00 00 72 05 40 38 fe 74 bc 48 01 d6 48 01 d7 48 83 ea 20 48 83 ea 20 <4c> 8b 5e f8 4c 8b 56 f0 4c 8b 4e e8 4c 8b 46 e0 48 8d 76 e0 4c 89
+[59837.811447] RSP: 0018:ffffc90002b4f870 EFLAGS: 00010202
+[59837.811451] RAX: 0005088000000004 RBX: 0000000000000000 RCX: 000000000000fffc
+[59837.811453] RDX: 0000000000000fbc RSI: 0005088000000ffc RDI: 0005088000001000
+[59837.811455] RBP: ffff88810be80000 R08: 0005088000000ffc R09: ffff888235aec550
+[59837.811457] R10: 0000000000000356 R11: 000000000000016c R12: 0000000000000004
+[59837.811459] R13: 000000000000fffc R14: ffff88810be80000 R15: ffffc90002b4fc58
+[59837.811462] FS:  00007fd9303ff740(0000) GS:ffff888235ac0000(0000) knlGS:0000000000000000
+[59837.811465] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[59837.811467] CR2: 00007fd9305d2000 CR3: 000000011fc10005 CR4: 00000000000606e0
+[59837.811469] Call Trace:
+[59837.811505]  _shift_data_right_pages+0x11e/0x150 [sunrpc]
+[59837.811531]  xdr_shrink_bufhead+0x151/0x170 [sunrpc]
+[59837.811555]  xdr_realign_pages+0x4c/0xa0 [sunrpc]
+[59837.811578]  xdr_align_pages+0x49/0x120 [sunrpc]
+[59837.811601]  xdr_read_pages+0x23/0xb0 [sunrpc]
+[59837.811626]  nfs4_xdr_dec_getxattr+0xfa/0x120 [nfsv4]
+[59837.811643]  call_decode+0x199/0x1f0 [sunrpc]
+[59837.811659]  ? rpc_decode_header+0x4e0/0x4e0 [sunrpc]
+[59837.811678]  __rpc_execute+0x71/0x420 [sunrpc]
+[59837.811700]  ? xprt_iter_default_rewind+0x10/0x10 [sunrpc]
+[59837.811721]  ? xprt_iter_get_next+0x4a/0x60 [sunrpc]
+[59837.811737]  rpc_run_task+0x14c/0x180 [sunrpc]
+[59837.811756]  nfs4_do_call_sync+0x6e/0xb0 [nfsv4]
+[59837.811785]  _nfs42_proc_getxattr+0xb7/0x170 [nfsv4]
+[59837.811809]  ? xprt_iter_get_next+0x4a/0x60 [sunrpc]
+[59837.811830]  nfs42_proc_getxattr+0x86/0xb0 [nfsv4]
+[59837.811844]  nfs4_xattr_get_nfs4_user+0xc9/0xe0 [nfsv4]
+[59837.811849]  vfs_getxattr+0x161/0x1a0
+[59837.811852]  getxattr+0x14f/0x230
+[59837.811856]  ? filename_lookup+0x123/0x1b0
+[59837.811861]  ? _cond_resched+0x16/0x40
+[59837.811864]  ? kmem_cache_alloc+0x3c4/0x4b0
+[59837.811866]  ? getname_flags.part.0+0x45/0x1a0
+[59837.811869]  path_getxattr+0x62/0xb0
+[59837.811873]  do_syscall_64+0x33/0x40
+[59837.811876]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+[59837.811879] RIP: 0033:0x7fd93050162e
+[59837.811883] Code: 48 8b 0d 4d 48 0c 00 f7 d8 64 89 01 48 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 90 f3 0f 1e fa 49 89 ca b8 c0 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 8b 0d 1a 48 0c 00 f7 d8 64 89 01 48
+[59837.811884] RSP: 002b:00007ffe178ad1c8 EFLAGS: 00000202 ORIG_RAX: 00000000000000c0
+[59837.811887] RAX: ffffffffffffffda RBX: 00007ffe178ad330 RCX: 00007fd93050162e
+[59837.811889] RDX: 0000000000000000 RSI: 00007ffe178ad330 RDI: 00007ffe178bf525
+[59837.811890] RBP: 0000000000000000 R08: 00007ffe178ad210 R09: 0000000000000000
+[59837.811892] R10: 0000000000000000 R11: 0000000000000202 R12: 0000000000000001
+[59837.811894] R13: 00007ffe178ad210 R14: 00007ffe178bf525 R15: 0000000000000000
+[59837.811896] Modules linked in: nfs_layout_flexfiles rpcsec_gss_krb5 auth_rpcgss nfsv4 dns_resolver nfs lockd grace nfs_ssc fscache nf_conntrack_netbios_ns nf_conntrack_broadcast nft_ct nf_tables ebtable_nat ebtable_broute ip6table_nat ip6table_mangle ip6table_raw ip6table_security iptable_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 iptable_mangle iptable_raw iptable_security ip_set nfnetlink ebtable_filter ebtables ip6table_filter ip6_tables sunrpc snd_hda_codec_idt snd_hda_codec_generic ledtrig_audio nouveau i915 iwldvm mac80211 btrfs snd_hda_codec_hdmi snd_hda_intel snd_intel_ds
