@@ -2,140 +2,116 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E648C433FE
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Dec 2020 22:51:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B09ADC4361A
+	for <linux-nfs@archiver.kernel.org>; Sat,  5 Dec 2020 09:30:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 149EF22C97
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Dec 2020 22:51:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7788F22E00
+	for <linux-nfs@archiver.kernel.org>; Sat,  5 Dec 2020 09:30:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726198AbgLDWvL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 4 Dec 2020 17:51:11 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58654 "EHLO
+        id S1727768AbgLEJ3s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 5 Dec 2020 04:29:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43168 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725885AbgLDWvL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Dec 2020 17:51:11 -0500
-Received: from smtp-o-1.desy.de (smtp-o-1.desy.de [IPv6:2001:638:700:1038::1:9a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB8E8C0613D1
-        for <linux-nfs@vger.kernel.org>; Fri,  4 Dec 2020 14:50:30 -0800 (PST)
-Received: from smtp-buf-1.desy.de (smtp-buf-1.desy.de [131.169.56.164])
-        by smtp-o-1.desy.de (Postfix) with ESMTP id 55F8AE081D
-        for <linux-nfs@vger.kernel.org>; Fri,  4 Dec 2020 23:50:28 +0100 (CET)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-1.desy.de 55F8AE081D
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1607122228; bh=wogYQ4GEi07pFNTte0xGD5q/kw+LRNG4GXLGj/0UFoI=;
-        h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-        b=gm4EgrqVsRLHMcmUYD5w6gPXMJKMiebXz0ErGfy11od8+ZN5sGOO4b61L2Un5tbaz
-         zS0dHMPEBAWau9VwnGFVCmjE1Z80Q8gCkYZIXoMahsmWEgkmZytxlmhyKdW/xYrr7X
-         UAoQhwuwGL9/Db4aMbKzz6dT8jXDUTO5Yt0zHLPo=
-Received: from smtp-m-1.desy.de (smtp-m-1.desy.de [131.169.56.129])
-        by smtp-buf-1.desy.de (Postfix) with ESMTP id 4BF401201E1;
-        Fri,  4 Dec 2020 23:50:28 +0100 (CET)
-X-Virus-Scanned: amavisd-new at desy.de
-Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
-        by smtp-intra-1.desy.de (Postfix) with ESMTP id 230B6C0177;
-        Fri,  4 Dec 2020 23:50:28 +0100 (CET)
-Date:   Fri, 4 Dec 2020 23:50:27 +0100 (CET)
-From:   "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To:     Olga Kornievskaia <aglo@umich.edu>
-Cc:     schumaker anna <schumaker.anna@gmail.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Message-ID: <1368097703.2347355.1607122227971.JavaMail.zimbra@desy.de>
-In-Reply-To: <CAN-5tyFJeLRyDUdtGkheGkmDE=i-FJprLFiav_mEPA35QeKLQA@mail.gmail.com>
-References: <20201203201841.103294-1-Anna.Schumaker@Netapp.com> <852166252.2305208.1607096860375.JavaMail.zimbra@desy.de> <CAN-5tyFJeLRyDUdtGkheGkmDE=i-FJprLFiav_mEPA35QeKLQA@mail.gmail.com>
-Subject: Re: [PATCH 0/3] NFS: Disable READ_PLUS by default
+        with ESMTP id S1728524AbgLEJ3X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Dec 2020 04:29:23 -0500
+Received: from mail-ej1-x643.google.com (mail-ej1-x643.google.com [IPv6:2a00:1450:4864:20::643])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B2CAC061A4F
+        for <linux-nfs@vger.kernel.org>; Sat,  5 Dec 2020 01:28:42 -0800 (PST)
+Received: by mail-ej1-x643.google.com with SMTP id ga15so12264991ejb.4
+        for <linux-nfs@vger.kernel.org>; Sat, 05 Dec 2020 01:28:41 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernelim-com.20150623.gappssmtp.com; s=20150623;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=bEUZDaoNveIa0V4ixRUsq6lVjVqGVVltPKp+yGY9TZw=;
+        b=xSrBABAVYm+bSjCCM+Lm2Aq4EkhbPMk0h8xtysUZKj86XIdSbNr9iVZqG46DLz4Q+A
+         I5UAi70TxxXOS+RoBYXJVtzuJND63rptR3Y7uc78npDQ+uk3Bkt5+n0uFN9cnzyaK93E
+         +9gag8vhDV5fwS3Sa5zPaD4q5z8e5SAAX4ZpopIKoUbcIfcKlkS0vwLS5Nadk6ZUAN0J
+         tEDlWwSHYQ6WEtxHKmKuZEWjo68tHReKz9xt4U3WW9lJKZPsaaH2FaWaEL8IPn1zwcju
+         xmZxMjCuN8TkWuT7mMarjVCJL/hs+ojKR9BPMIq0KtFK9oXPCV9P622wH4K0smIBijxv
+         Gf4g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=bEUZDaoNveIa0V4ixRUsq6lVjVqGVVltPKp+yGY9TZw=;
+        b=BTs19gw5W8yszO/bhhF9Mc4C7/QsHEqMcWRAqxlcHFRDljmUncuMHZjeS03Jm1/095
+         sacezyoVmqMZR9KeK/YoRe8U/EwWgpMZIADY9d//LT7Q+JeM3cntr0jsfEptjOEXFvuX
+         WH2ZzWB9Zub/2tsREPb7nNGmFVzrO1HVOrO2XByzvg88Aml0F3apGpV59PgTxvuRTGzj
+         swLWWit6luY0b8ulnoWUiA85DGDRtrRUB75hFN5UiPUIfFYzN1ICKRGcIlG3rWGOdXqx
+         b78P1O3IdFAOJIRJPU4z9IOFXEktJZCCbeq6Psi2donP5VpBSB5MmVGvQHHjoea9y+qv
+         7gcw==
+X-Gm-Message-State: AOAM530mK2QoooAdeAdBNga6r9Y0M2AUx7V2oAQAgfERqF4/lOWduW1S
+        BTPVuAs+Beiur40oLQHx+vVjgHQZW3sw5txw
+X-Google-Smtp-Source: ABdhPJwc279XW4TS0EzgUzSulMF0xNL6sgZ/BUQ1ZRNj+rySli9jGK+CPvtBDRqE3oywUc51GuaDDw==
+X-Received: by 2002:a17:906:f0c3:: with SMTP id dk3mr10686982ejb.366.1607160520568;
+        Sat, 05 Dec 2020 01:28:40 -0800 (PST)
+Received: from jupiter.home.aloni.org ([77.125.107.115])
+        by smtp.gmail.com with ESMTPSA id i90sm5251060edd.40.2020.12.05.01.28.39
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 05 Dec 2020 01:28:39 -0800 (PST)
+From:   Dan Aloni <dan@kernelim.com>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v2] sunrpc: fix xs_read_xdr_buf for partial pages receive
+Date:   Sat,  5 Dec 2020 11:28:35 +0200
+Message-Id: <20201205092835.2246185-1-dan@kernelim.com>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <528fd4a869f0757e0a60e9c733d4625067693588.camel@hammerspace.com>
+References: <528fd4a869f0757e0a60e9c733d4625067693588.camel@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Mailer: Zimbra 8.8.15_GA_3980 (ZimbraWebClient - FF83 (Mac)/8.8.15_GA_3980)
-Thread-Topic: Disable READ_PLUS by default
-Thread-Index: CVXkTobkLp+LUmxBgVQ7J6y9MaGlng==
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I agree with Olga, especially that disabling doesn't fixes my issue.
-Unfortunately I have no idea how kernel's vm works, but I am
-ready to test as many times as needed.
+When receiving pages data, return value 'ret' when positive includes
+`buf->page_base`, so we should subtract that before it is used for
+changing `offset` and comparing against `want`.
 
-Thanks,
-   Tigran.
+This was discovered on the very rare cases where the server returned a
+chunk of bytes that when added to the already received amount of bytes
+for the pages happened to match the current `recv.len`, for example
+on this case:
 
------ Original Message -----
-> From: "Olga Kornievskaia" <aglo@umich.edu>
-> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> Cc: "schumaker anna" <schumaker.anna@gmail.com>, "linux-nfs" <linux-nfs@vger.kernel.org>, "Anna Schumaker"
-> <Anna.Schumaker@netapp.com>
-> Sent: Friday, 4 December, 2020 21:00:32
-> Subject: Re: [PATCH 0/3] NFS: Disable READ_PLUS by default
+     buf->page_base : 258356
+     actually received from socket: 1740
+     ret : 260096
+     want : 260096
 
-> I object to putting the disable patch in, I think we need to fix the problem.
-> 
-> The current problem is generic/263 is failing because the end of the
-> buffer is corrupted since we lost the bytes when hole was expanded. I
-> don't know what the solution is: (1) hole expanding handling needs to
-> be fixed to not lose data or (2) we shouldnt be reporting that we read
-> the bytes we lost.
-> 
-> On Fri, Dec 4, 2020 at 10:49 AM Mkrtchyan, Tigran
-> <tigran.mkrtchyan@desy.de> wrote:
->>
->> Hi Anna,
->>
->> I see problems with gedeviceinfo and bisected it to
->> c567552612ece787b178e3b147b5854ad422a836.
->> The commit itself doesn't look that can break it, but might
->> be can help you find the problem.
->>
->> What I see, that after xdr_read_pages call the xdr stream points
->> to a some random point (or wrong page)
->>
->> Regards,
->>    Tigran.
->>
->>
->> ----- Original Message -----
->> > From: "schumaker anna" <schumaker.anna@gmail.com>
->> > To: "linux-nfs" <linux-nfs@vger.kernel.org>
->> > Cc: "Anna Schumaker" <Anna.Schumaker@Netapp.com>
->> > Sent: Thursday, 3 December, 2020 21:18:38
->> > Subject: [PATCH 0/3] NFS: Disable READ_PLUS by default
->>
->> > From: Anna Schumaker <Anna.Schumaker@Netapp.com>
->> >
->> > I've been scratching my head about what's going on with xfstests generic/091
->> > and generic/263, but I'm not sure what else to look at at this point.
->> > This patchset disables READ_PLUS by default by marking it as a
->> > developer-only kconfig option.
->> >
->> > I also included a couple of patches fixing some other issues that were
->> > noticed while inspecting the code. These patches don't help the tests
->> > pass, but they do fail later on after applying so it does feel like
->> > progress.
->> >
->> > I'm hopeful the remaning issues can be worked out in the future.
->> >
->> > Thanks,
->> > Anna
->> >
->> >
->> > Anna Schumaker (3):
->> >  NFS: Disable READ_PLUS by default
->> >  NFS: Allocate a scratch page for READ_PLUS
->> >  SUNRPC: Keep buf->len in sync with xdr->nwords when expanding holes
->> >
->> > fs/nfs/Kconfig          |  9 +++++++++
->> > fs/nfs/nfs42xdr.c       |  2 ++
->> > fs/nfs/nfs4proc.c       |  2 +-
->> > fs/nfs/read.c           | 13 +++++++++++--
->> > include/linux/nfs_xdr.h |  1 +
->> > net/sunrpc/xdr.c        |  3 ++-
->> > 6 files changed, 26 insertions(+), 4 deletions(-)
->> >
->> > --
-> > > 2.29.2
+In this case neither of the two 'if ... goto out' trigger, and we
+continue to tail parsing.
+
+Worth to mention that the ensuing EMSGSIZE from the continued execution of
+`xs_read_xdr_buf` may be observed by an application due to 4 superfluous
+bytes being added to the pages data.
+
+Fixes: 277e4ab7d53 ("SUNRPC: Simplify TCP receive code by switching to
+using iterators")
+Signed-off-by: Dan Aloni <dan@kernelim.com>
+---
+ net/sunrpc/xprtsock.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7090bbee0ec5..9a4300f07e4c 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -433,7 +433,8 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
+ 		if (ret <= 0)
+ 			goto sock_err;
+ 		xs_flush_bvec(buf->bvec, ret, seek + buf->page_base);
+-		offset += ret - buf->page_base;
++		ret -= buf->page_base;
++		offset += ret;
+ 		if (offset == count || msg->msg_flags & (MSG_EOR|MSG_TRUNC))
+ 			goto out;
+ 		if (ret != want)
+-- 
+2.26.2
+
