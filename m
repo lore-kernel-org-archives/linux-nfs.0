@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90364C2BBD5
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBB08C2D0E4
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6E49123406
+	by mail.kernel.org (Postfix) with ESMTP id 9FE88233EF
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733114AbgLIOtg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 9 Dec 2020 09:49:36 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50714 "EHLO mail.kernel.org"
+        id S1733105AbgLIOto (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 9 Dec 2020 09:49:44 -0500
+Received: from mail.kernel.org ([198.145.29.99]:50668 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733108AbgLIOtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 9 Dec 2020 09:49:35 -0500
+        id S1733107AbgLIOto (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 9 Dec 2020 09:49:44 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 13/16] NFSv4.2: Don't error when exiting early on a READ_PLUS buffer overflow
-Date:   Wed,  9 Dec 2020 09:47:58 -0500
-Message-Id: <20201209144801.700778-14-trondmy@kernel.org>
+Subject: [PATCH 16/16] nfsd: Don't set eof on a truncated READ_PLUS
+Date:   Wed,  9 Dec 2020 09:48:01 -0500
+Message-Id: <20201209144801.700778-17-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201209144801.700778-13-trondmy@kernel.org>
+In-Reply-To: <20201209144801.700778-16-trondmy@kernel.org>
 References: <20201209144801.700778-1-trondmy@kernel.org>
  <20201209144801.700778-2-trondmy@kernel.org>
  <20201209144801.700778-3-trondmy@kernel.org>
@@ -39,6 +39,9 @@ References: <20201209144801.700778-1-trondmy@kernel.org>
  <20201209144801.700778-11-trondmy@kernel.org>
  <20201209144801.700778-12-trondmy@kernel.org>
  <20201209144801.700778-13-trondmy@kernel.org>
+ <20201209144801.700778-14-trondmy@kernel.org>
+ <20201209144801.700778-15-trondmy@kernel.org>
+ <20201209144801.700778-16-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,112 +50,38 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Expanding the READ_PLUS extents can cause the read buffer to overflow.
-If it does, then don't error, but just exit early.
+If the READ_PLUS operation was truncated due to an error, then ensure we
+clear the 'eof' flag.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs42xdr.c | 36 +++++++++++++++++-------------------
- 1 file changed, 17 insertions(+), 19 deletions(-)
+ fs/nfsd/nfs4xdr.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 6ba2a28e7e03..9ef5261a1a70 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -1025,16 +1025,16 @@ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *re
- 	return decode_op_hdr(xdr, OP_DEALLOCATE);
- }
- 
--static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *res,
--				 uint32_t *eof)
-+static int decode_read_plus_data(struct xdr_stream *xdr,
-+				 struct nfs_pgio_res *res)
- {
- 	uint32_t count, recvd;
- 	uint64_t offset;
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, 8 + 4);
--	if (unlikely(!p))
--		return -EIO;
-+	if (!p)
-+		return 1;
- 
- 	p = xdr_decode_hyper(p, &offset);
- 	count = be32_to_cpup(p);
-@@ -1043,13 +1043,8 @@ static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *re
- 		recvd = count;
- 	res->count += recvd;
- 
--	if (count > recvd) {
--		dprintk("NFS: server cheating in read reply: "
--				"count %u > recvd %u\n", count, recvd);
--		*eof = 0;
-+	if (count > recvd)
- 		return 1;
--	}
--
- 	return 0;
- }
- 
-@@ -1061,8 +1056,8 @@ static int decode_read_plus_hole(struct xdr_stream *xdr,
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, 8 + 8);
--	if (unlikely(!p))
--		return -EIO;
-+	if (!p)
-+		return 1;
- 
- 	p = xdr_decode_hyper(p, &offset);
- 	p = xdr_decode_hyper(p, &length);
-@@ -1089,10 +1084,8 @@ static int decode_read_plus_hole(struct xdr_stream *xdr,
- 	recvd = xdr_expand_hole(xdr, res->count, length);
- 	res->count += recvd;
- 
--	if (recvd < length) {
--		*eof = 0;
-+	if (recvd < length)
- 		return 1;
--	}
- 	return 0;
- }
- 
-@@ -1121,12 +1114,12 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- 
- 	for (i = 0; i < segments; i++) {
- 		p = xdr_inline_decode(xdr, 4);
--		if (unlikely(!p))
--			return -EIO;
-+		if (!p)
-+			goto early_out;
- 
- 		type = be32_to_cpup(p++);
- 		if (type == NFS4_CONTENT_DATA)
--			status = decode_read_plus_data(xdr, res, &eof);
-+			status = decode_read_plus_data(xdr, res);
- 		else if (type == NFS4_CONTENT_HOLE)
- 			status = decode_read_plus_hole(xdr, args, res, &eof);
- 		else
-@@ -1135,12 +1128,17 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- 		if (status < 0)
- 			return status;
- 		if (status > 0)
--			break;
-+			goto early_out;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 26f6e277101d..5f5169b9c2e9 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4736,14 +4736,15 @@ nfsd4_encode_read_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	if (nfserr && segments == 0)
+ 		xdr_truncate_encode(xdr, starting_len);
+ 	else {
+-		tmp = htonl(eof);
+-		write_bytes_to_xdr_buf(xdr->buf, starting_len,     &tmp, 4);
+-		tmp = htonl(segments);
+-		write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
+ 		if (nfserr) {
+ 			xdr_truncate_encode(xdr, last_segment);
+ 			nfserr = nfs_ok;
++			eof = 0;
+ 		}
++		tmp = htonl(eof);
++		write_bytes_to_xdr_buf(xdr->buf, starting_len,     &tmp, 4);
++		tmp = htonl(segments);
++		write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
  	}
  
- out:
- 	res->eof = eof;
- 	return 0;
-+early_out:
-+	if (unlikely(!i))
-+		return -EIO;
-+	res->eof = 0;
-+	return 0;
- }
- 
- static int decode_seek(struct xdr_stream *xdr, struct nfs42_seek_res *res)
+ 	return nfserr;
 -- 
 2.29.2
 
