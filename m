@@ -6,29 +6,34 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DAF3BC19425
-	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2870C4361B
+	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A920A233EA
-	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 892DE23406
+	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733071AbgLIOtC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 9 Dec 2020 09:49:02 -0500
-Received: from mail.kernel.org ([198.145.29.99]:49228 "EHLO mail.kernel.org"
+        id S1733106AbgLIOt3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 9 Dec 2020 09:49:29 -0500
+Received: from mail.kernel.org ([198.145.29.99]:50666 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733221AbgLIOst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 9 Dec 2020 09:48:49 -0500
+        id S1733076AbgLIOt3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 9 Dec 2020 09:49:29 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 03/16] SUNRPC: Fix xdr_expand_hole()
-Date:   Wed,  9 Dec 2020 09:47:48 -0500
-Message-Id: <20201209144801.700778-4-trondmy@kernel.org>
+Subject: [PATCH 08/16] SUNRPC: Avoid unnecessary copies in xdr_buf_pages_copy_left/right()
+Date:   Wed,  9 Dec 2020 09:47:53 -0500
+Message-Id: <20201209144801.700778-9-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201209144801.700778-3-trondmy@kernel.org>
+In-Reply-To: <20201209144801.700778-8-trondmy@kernel.org>
 References: <20201209144801.700778-1-trondmy@kernel.org>
  <20201209144801.700778-2-trondmy@kernel.org>
  <20201209144801.700778-3-trondmy@kernel.org>
+ <20201209144801.700778-4-trondmy@kernel.org>
+ <20201209144801.700778-5-trondmy@kernel.org>
+ <20201209144801.700778-6-trondmy@kernel.org>
+ <20201209144801.700778-7-trondmy@kernel.org>
+ <20201209144801.700778-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -37,360 +42,61 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-We do want to try to grow the buffer if possible, but if that attempt
-fails, we still want to move the data and truncate the XDR message.
+Moving data in the XDR page arrays can be expensive, since it can
+involve touching up to a megabyte of data. Try to avoid doing so for the
+case where the server returned less data than we preallocated.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/xdr.h |   2 +-
- net/sunrpc/xdr.c           | 254 +++++++++++++++++++++++--------------
- 2 files changed, 160 insertions(+), 96 deletions(-)
+ net/sunrpc/xdr.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 2b4e44bb0654..178f499e2283 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -253,7 +253,7 @@ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
- extern unsigned int xdr_align_data(struct xdr_stream *, unsigned int offset, unsigned int length);
--extern uint64_t xdr_expand_hole(struct xdr_stream *, uint64_t, uint64_t);
-+extern unsigned int xdr_expand_hole(struct xdr_stream *, unsigned int offset, unsigned int length);
- 
- /**
-  * xdr_stream_remaining - Return the number of bytes remaining in the stream
 diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index deb2c5c2f12a..e19e89cbb6eb 100644
+index 7ca6208e7623..86a48c4cdcfc 100644
 --- a/net/sunrpc/xdr.c
 +++ b/net/sunrpc/xdr.c
-@@ -335,46 +335,6 @@ _shift_data_right_pages(struct page **pages, size_t pgto_base,
- 	} while ((len -= copy) != 0);
- }
- 
--static unsigned int
--_shift_data_right_tail(struct xdr_buf *buf, unsigned int pgfrom, size_t len)
--{
--	struct kvec *tail = buf->tail;
--	unsigned int tailbuf_len;
--	unsigned int result = 0;
--	size_t copy;
--
--	tailbuf_len = buf->buflen - buf->head->iov_len - buf->page_len;
--
--	/* Shift the tail first */
--	if (tailbuf_len != 0) {
--		unsigned int free_space = tailbuf_len - tail->iov_len;
--
--		if (len < free_space)
--			free_space = len;
--		if (len > free_space)
--			len = free_space;
--
--		tail->iov_len += free_space;
--		copy = len;
--
--		if (tail->iov_len > len) {
--			char *p = (char *)tail->iov_base + len;
--			memmove(p, tail->iov_base, tail->iov_len - free_space);
--			result += tail->iov_len - free_space;
--		} else
--			copy = tail->iov_len;
--
--		/* Copy from the inlined pages into the tail */
--		_copy_from_pages((char *)tail->iov_base,
--					 buf->pages,
--					 buf->page_base + pgfrom,
--					 copy);
--		result += copy;
--	}
--
--	return result;
--}
--
- /**
-  * _copy_to_pages
-  * @pages: array of pages
-@@ -465,18 +425,42 @@ _copy_from_pages(char *p, struct page **pages, size_t pgbase, size_t len)
- }
- EXPORT_SYMBOL_GPL(_copy_from_pages);
- 
-+static void xdr_buf_iov_zero(const struct kvec *iov, unsigned int base,
-+			     unsigned int len)
-+{
-+	if (base >= iov->iov_len)
-+		return;
-+	if (len > iov->iov_len - base)
-+		len = iov->iov_len - base;
-+	memset(iov->iov_base + base, 0, len);
-+}
-+
- /**
-- * _zero_pages
-- * @pages: array of pages
-- * @pgbase: beginning page vector address
-+ * xdr_buf_pages_zero
-+ * @buf: xdr_buf
-+ * @pgbase: beginning offset
-  * @len: length
-  */
--static void
--_zero_pages(struct page **pages, size_t pgbase, size_t len)
-+static void xdr_buf_pages_zero(const struct xdr_buf *buf, unsigned int pgbase,
-+			       unsigned int len)
+@@ -600,14 +600,20 @@ static void xdr_buf_tail_shift_right(const struct xdr_buf *buf,
+ static void xdr_buf_pages_shift_right(const struct xdr_buf *buf,
+ 				      unsigned int base, unsigned int shift)
  {
-+	struct page **pages = buf->pages;
- 	struct page **page;
- 	char *vpage;
--	size_t zero;
-+	unsigned int zero;
++	struct xdr_buf subbuf;
 +
-+	if (!len)
-+		return;
-+	if (pgbase >= buf->page_len) {
-+		xdr_buf_iov_zero(buf->tail, pgbase - buf->page_len, len);
-+		return;
-+	}
-+	if (pgbase + len > buf->page_len) {
-+		xdr_buf_iov_zero(buf->tail, 0, pgbase + len - buf->page_len);
-+		len = buf->page_len - pgbase;
-+	}
-+
-+	pgbase += buf->page_base;
- 
- 	page = pages + (pgbase >> PAGE_SHIFT);
- 	pgbase &= ~PAGE_MASK;
-@@ -497,6 +481,92 @@ _zero_pages(struct page **pages, size_t pgbase, size_t len)
- 	} while ((len -= zero) != 0);
- }
- 
-+static void xdr_buf_try_expand(struct xdr_buf *buf, unsigned int len)
-+{
-+	struct kvec *head = buf->head;
-+	struct kvec *tail = buf->tail;
-+	unsigned int sum = head->iov_len + buf->page_len + tail->iov_len;
-+	unsigned int free_space;
-+
-+	if (sum > buf->len) {
-+		free_space = min_t(unsigned int, sum - buf->len, len);
-+		buf->len += free_space;
-+		len -= free_space;
-+		if (!len)
-+			return;
-+	}
-+
-+	if (buf->buflen > sum) {
-+		/* Expand the tail buffer */
-+		free_space = min_t(unsigned int, buf->buflen - sum, len);
-+		tail->iov_len += free_space;
-+		buf->len += free_space;
-+	}
-+}
-+
-+static void xdr_buf_tail_copy_right(const struct xdr_buf *buf,
-+				    unsigned int base, unsigned int shift)
-+{
-+	const struct kvec *tail = buf->tail;
-+	unsigned int to = base + shift;
-+	unsigned int len = tail->iov_len - to;
-+
-+	if (to >= tail->iov_len)
-+		return;
-+	memmove(tail->iov_base + to, tail->iov_base + base, len);
-+}
-+
-+static void xdr_buf_pages_copy_right(const struct xdr_buf *buf,
-+				     unsigned int base, unsigned int shift)
-+{
-+	const struct kvec *tail = buf->tail;
-+	unsigned int to = base + shift;
-+	unsigned int pglen;
-+	unsigned int talen, tato;
-+
-+	if (base >= buf->page_len)
-+		return;
-+	if (buf->page_len > to) {
-+		tato = 0;
-+		talen = shift;
-+		pglen = buf->page_len - to;
-+	} else {
-+		tato = to - buf->page_len;
-+		talen = buf->page_len - base;
-+		pglen = 0;
-+	}
-+	if (talen + tato > tail->iov_len)
-+		talen = tail->iov_len > tato ? tail->iov_len - tato : 0;
-+
-+	_copy_from_pages(tail->iov_base + tato, buf->pages,
-+			 buf->page_base + base + pglen, talen);
-+	_shift_data_right_pages(buf->pages, buf->page_base + to,
-+				buf->page_base + base, pglen);
-+}
-+
-+static void xdr_buf_tail_shift_right(const struct xdr_buf *buf,
-+				     unsigned int base, unsigned int shift)
-+{
-+	const struct kvec *tail = buf->tail;
-+
-+	if (base >= tail->iov_len || !shift)
-+		return;
-+	xdr_buf_tail_copy_right(buf, base, shift);
-+}
-+
-+static void xdr_buf_pages_shift_right(const struct xdr_buf *buf,
-+				      unsigned int base, unsigned int shift)
-+{
-+	if (!shift)
-+		return;
-+	if (base >= buf->page_len) {
-+		xdr_buf_tail_shift_right(buf, base - buf->page_len, shift);
-+		return;
-+	}
-+	xdr_buf_tail_shift_right(buf, 0, shift);
-+	xdr_buf_pages_copy_right(buf, base, shift);
-+}
-+
- static void xdr_buf_tail_copy_left(const struct xdr_buf *buf, unsigned int base,
- 				   unsigned int shift)
- {
-@@ -678,30 +748,25 @@ xdr_shrink_bufhead(struct xdr_buf *buf, size_t len)
- }
- 
- /**
-- * xdr_shrink_pagelen - shrinks buf->pages by up to @len bytes
-+ * xdr_shrink_pagelen - shrinks buf->pages to @len bytes
-  * @buf: xdr_buf
-- * @len: bytes to remove from buf->pages
-+ * @len: new page buffer length
-  *
-  * The extra data is not lost, but is instead moved into buf->tail.
-  * Returns the actual number of bytes moved.
-  */
--static unsigned int
--xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
-+static unsigned int xdr_shrink_pagelen(struct xdr_buf *buf, unsigned int len)
- {
--	unsigned int pglen = buf->page_len;
--	unsigned int result;
--
--	if (len > buf->page_len)
--		len = buf-> page_len;
--
--	result = _shift_data_right_tail(buf, pglen - len, len);
--	buf->page_len -= len;
--	buf->buflen -= len;
--	/* Have we truncated the message? */
--	if (buf->len > buf->buflen)
--		buf->len = buf->buflen;
-+	unsigned int shift = buf->page_len - len;
- 
--	return result;
-+	if (len >= buf->page_len)
-+		return 0;
-+	xdr_buf_try_expand(buf, shift);
-+	xdr_buf_pages_shift_right(buf, len, shift);
-+	buf->page_len = len;
-+	buf->len -= shift;
-+	buf->buflen -= shift;
-+	return shift;
- }
- 
- void
-@@ -721,6 +786,18 @@ unsigned int xdr_stream_pos(const struct xdr_stream *xdr)
- }
- EXPORT_SYMBOL_GPL(xdr_stream_pos);
- 
-+static void xdr_stream_set_pos(struct xdr_stream *xdr, unsigned int pos)
-+{
-+	unsigned int blen = xdr->buf->len;
-+
-+	xdr->nwords = blen > pos ? XDR_QUADLEN(blen) - XDR_QUADLEN(pos) : 0;
-+}
-+
-+static void xdr_stream_page_set_pos(struct xdr_stream *xdr, unsigned int pos)
-+{
-+	xdr_stream_set_pos(xdr, pos + xdr->buf->head[0].iov_len);
-+}
-+
- /**
-  * xdr_page_pos - Return the current offset from the start of the xdr pages
-  * @xdr: pointer to struct xdr_stream
-@@ -1284,7 +1361,7 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
- 	struct xdr_buf *buf = xdr->buf;
- 	unsigned int nwords = XDR_QUADLEN(len);
- 	unsigned int cur = xdr_stream_pos(xdr);
--	unsigned int copied, offset;
-+	unsigned int copied;
- 
- 	if (xdr->nwords == 0)
- 		return 0;
-@@ -1298,9 +1375,8 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
- 		len = buf->page_len;
- 	else if (nwords < xdr->nwords) {
- 		/* Truncate page data and move it into the tail */
--		offset = buf->page_len - len;
--		copied = xdr_shrink_pagelen(buf, offset);
--		trace_rpc_xdr_alignment(xdr, offset, copied);
-+		copied = xdr_shrink_pagelen(buf, len);
-+		trace_rpc_xdr_alignment(xdr, len, copied);
- 		xdr->nwords = XDR_QUADLEN(buf->len - cur);
+ 	if (!shift)
+ 		return;
+ 	if (base >= buf->page_len) {
+ 		xdr_buf_tail_shift_right(buf, base - buf->page_len, shift);
+ 		return;
  	}
- 	return len;
-@@ -1376,39 +1452,27 @@ unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
+-	xdr_buf_tail_shift_right(buf, 0, shift);
+-	xdr_buf_pages_copy_right(buf, base, shift);
++	base += buf->head->iov_len;
++	if (base >= buf->len)
++		return;
++	xdr_buf_subsegment(buf, &subbuf, base, buf->len - base);
++	xdr_buf_tail_shift_right(&subbuf, 0, shift);
++	xdr_buf_pages_copy_right(&subbuf, 0, shift);
  }
- EXPORT_SYMBOL_GPL(xdr_align_data);
  
--uint64_t xdr_expand_hole(struct xdr_stream *xdr, uint64_t offset, uint64_t length)
-+unsigned int xdr_expand_hole(struct xdr_stream *xdr, unsigned int offset,
-+			     unsigned int length)
+ static void xdr_buf_head_shift_right(const struct xdr_buf *buf,
+@@ -710,14 +716,16 @@ static void xdr_buf_tail_shift_left(const struct xdr_buf *buf,
+ static void xdr_buf_pages_shift_left(const struct xdr_buf *buf,
+ 				     unsigned int base, unsigned int shift)
  {
- 	struct xdr_buf *buf = xdr->buf;
--	unsigned int bytes;
--	unsigned int from;
--	unsigned int truncated = 0;
--
--	if ((offset + length) < offset ||
--	    (offset + length) > buf->page_len)
--		length = buf->page_len - offset;
-+	unsigned int from, to, shift;
- 
- 	xdr_realign_pages(xdr);
- 	from = xdr_page_pos(xdr);
--	bytes = xdr_stream_remaining(xdr);
--
--	if (offset + length + bytes > buf->page_len) {
--		unsigned int shift = (offset + length + bytes) - buf->page_len;
--		unsigned int res = _shift_data_right_tail(buf, from + bytes - shift, shift);
--		truncated = shift - res;
--		xdr->nwords -= XDR_QUADLEN(truncated);
--		bytes -= shift;
--	}
--
--	/* Now move the page data over and zero pages */
--	if (bytes > 0)
--		_shift_data_right_pages(buf->pages,
--					buf->page_base + offset + length,
--					buf->page_base + from,
--					bytes);
--	_zero_pages(buf->pages, buf->page_base + offset, length);
--
--	buf->len += length - (from - offset) - truncated;
--	xdr_set_page(xdr, offset + length, xdr_stream_remaining(xdr));
-+	to = xdr_align_size(offset + length);
-+
-+	/* Could the hole be behind us? */
-+	if (to > from) {
-+		shift = to - from;
-+		xdr_buf_try_expand(buf, shift);
-+		xdr_buf_pages_shift_right(buf, from, shift);
-+		xdr_stream_page_set_pos(xdr, to);
-+	} else if (to != from)
-+		xdr_align_data(xdr, to, 0);
-+	xdr_buf_pages_zero(buf, offset, length);
-+
-+	xdr_set_page(xdr, to, xdr_stream_remaining(xdr));
- 	return length;
++	struct xdr_buf subbuf;
+ 	if (!shift)
+ 		return;
+ 	if (base >= buf->page_len) {
+ 		xdr_buf_tail_shift_left(buf, base - buf->page_len, shift);
+ 		return;
+ 	}
+-	xdr_buf_pages_copy_left(buf, base, shift);
+-	xdr_buf_tail_shift_left(buf, 0, shift);
++	xdr_buf_subsegment(buf, &subbuf, 0, buf->len);
++	xdr_buf_pages_copy_left(&subbuf, base, shift);
++	xdr_buf_tail_shift_left(&subbuf, 0, shift);
  }
- EXPORT_SYMBOL_GPL(xdr_expand_hole);
+ 
+ /**
 -- 
 2.29.2
 
