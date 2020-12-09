@@ -2,29 +2,34 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B6DA0C4167B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5EC5C2BB40
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 87CB8233EF
+	by mail.kernel.org (Postfix) with ESMTP id C2A9A233EF
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733073AbgLIOs7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 9 Dec 2020 09:48:59 -0500
-Received: from mail.kernel.org ([198.145.29.99]:49190 "EHLO mail.kernel.org"
+        id S1733072AbgLIOtD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 9 Dec 2020 09:49:03 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49244 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733204AbgLIOsr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 9 Dec 2020 09:48:47 -0500
+        id S1733222AbgLIOsu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 9 Dec 2020 09:48:50 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 00/16] Fixes for the NFSv4.2 READ_PLUS operation
-Date:   Wed,  9 Dec 2020 09:47:45 -0500
-Message-Id: <20201209144801.700778-1-trondmy@kernel.org>
+Subject: [PATCH 04/16] SUNRPC: Cleanup xdr_shrink_bufhead()
+Date:   Wed,  9 Dec 2020 09:47:49 -0500
+Message-Id: <20201209144801.700778-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20201209144801.700778-4-trondmy@kernel.org>
+References: <20201209144801.700778-1-trondmy@kernel.org>
+ <20201209144801.700778-2-trondmy@kernel.org>
+ <20201209144801.700778-3-trondmy@kernel.org>
+ <20201209144801.700778-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -33,45 +38,221 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The patches are divided into three parts:
-1) A set of SUNRPC patches to fix and clean up the XDR decoding
-operations that are used by READ_PLUS, READ and READDIR. The main focus
-is on the operations used to shift data left and right in pages.
-2) A set of patches to the NFSv4.2 READ_PLUS client code. These mainly
-try to fix issues around bounds checking, but also fix at least one
-protocol conformance problem.
-3) A couple of patches for the READ_PLUS server code. These fix issues
-when nfsd_readv() returns fewer bytes than the maximum requested, and
-when the READ_PLUS gets truncated.
+Clean up xdr_shrink_bufhead() to use the new helpers instead of doing
+its own thing.
 
-The patches are intended to apply on top of my existing 'testing' branch
-in git.linux-nfs.org.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ net/sunrpc/xdr.c | 160 +++++++++++++++++++++++------------------------
+ 1 file changed, 80 insertions(+), 80 deletions(-)
 
-Trond Myklebust (16):
-  SUNRPC: _shift_data_left/right_pages should check the shift length
-  SUNRPC: Fixes for xdr_align_data()
-  SUNRPC: Fix xdr_expand_hole()
-  SUNRPC: Cleanup xdr_shrink_bufhead()
-  SUNRPC: _copy_to/from_pages() now check for zero length
-  SUNRPC: Clean up open coded setting of the xdr_stream 'nwords' field
-  SUNRPC: Cleanup - constify a number of xdr_buf helpers
-  SUNRPC: Avoid unnecessary copies in xdr_buf_pages_copy_left/right()
-  NFSv4.2: Ensure we always reset the result->count in
-    decode_read_plus()
-  NFSv4.2: decode_read_plus_data() must skip padding after data segment
-  NFSv4.2: decode_read_plus_hole() needs to check the extent offset
-  NFSv4.2: Handle hole lengths that exceed the READ_PLUS read buffer
-  NFSv4.2: Don't error when exiting early on a READ_PLUS buffer overflow
-  NFSv4.2: Deal with potential READ_PLUS data extent buffer overflow
-  nfsd: Fixes for nfsd4_encode_read_plus_data()
-  nfsd: Don't set eof on a truncated READ_PLUS
-
- fs/nfs/nfs42xdr.c          |  78 +++--
- fs/nfsd/nfs4xdr.c          |  14 +-
- include/linux/sunrpc/xdr.h |  26 +-
- net/sunrpc/xdr.c           | 674 +++++++++++++++++++++++--------------
- 4 files changed, 493 insertions(+), 299 deletions(-)
-
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index e19e89cbb6eb..cbf1bccac4fc 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -544,6 +544,51 @@ static void xdr_buf_pages_copy_right(const struct xdr_buf *buf,
+ 				buf->page_base + base, pglen);
+ }
+ 
++static void xdr_buf_head_copy_right(const struct xdr_buf *buf,
++				    unsigned int base, unsigned int shift)
++{
++	const struct kvec *head = buf->head;
++	const struct kvec *tail = buf->tail;
++	unsigned int to = base + shift;
++	unsigned int len = head->iov_len - base;
++	unsigned int pglen = 0, pgto = 0;
++	unsigned int talen = 0, tato = 0;
++
++	if (base >= head->iov_len)
++		return;
++	if (head->iov_len > to) {
++		pglen = shift;
++		if (pglen > buf->page_len) {
++			talen = pglen - buf->page_len;
++			pglen = buf->page_len;
++		}
++	} else if (buf->page_len + head->iov_len > to) {
++		pgto = to - head->iov_len;
++		pglen = len;
++		if (pgto + pglen > buf->page_len) {
++			talen = pgto + pglen - buf->page_len;
++			pglen -= talen;
++		}
++	} else {
++		tato = to - buf->page_len - head->iov_len;
++		talen = len;
++	}
++
++	len -= talen;
++	base += len;
++	if (talen + tato > tail->iov_len)
++		talen = tail->iov_len > tato ? tail->iov_len - tato : 0;
++	memcpy(tail->iov_base + tato, head->iov_base + base, talen);
++
++	len -= pglen;
++	base -= pglen;
++	_copy_to_pages(buf->pages, buf->page_base + pgto, head->iov_base + base,
++		       pglen);
++
++	base -= len;
++	memmove(head->iov_base + to, head->iov_base + base, len);
++}
++
+ static void xdr_buf_tail_shift_right(const struct xdr_buf *buf,
+ 				     unsigned int base, unsigned int shift)
+ {
+@@ -567,6 +612,21 @@ static void xdr_buf_pages_shift_right(const struct xdr_buf *buf,
+ 	xdr_buf_pages_copy_right(buf, base, shift);
+ }
+ 
++static void xdr_buf_head_shift_right(const struct xdr_buf *buf,
++				     unsigned int base, unsigned int shift)
++{
++	const struct kvec *head = buf->head;
++
++	if (!shift)
++		return;
++	if (base >= head->iov_len) {
++		xdr_buf_pages_shift_right(buf, head->iov_len - base, shift);
++		return;
++	}
++	xdr_buf_pages_shift_right(buf, 0, shift);
++	xdr_buf_head_copy_right(buf, base, shift);
++}
++
+ static void xdr_buf_tail_copy_left(const struct xdr_buf *buf, unsigned int base,
+ 				   unsigned int shift)
+ {
+@@ -665,86 +725,27 @@ static void xdr_buf_pages_shift_left(const struct xdr_buf *buf,
+ /**
+  * xdr_shrink_bufhead
+  * @buf: xdr_buf
+- * @len: bytes to remove from buf->head[0]
++ * @len: new length of buf->head[0]
+  *
+- * Shrinks XDR buffer's header kvec buf->head[0] by
++ * Shrinks XDR buffer's header kvec buf->head[0], setting it to
+  * 'len' bytes. The extra data is not lost, but is instead
+  * moved into the inlined pages and/or the tail.
+  */
+-static unsigned int
+-xdr_shrink_bufhead(struct xdr_buf *buf, size_t len)
+-{
+-	struct kvec *head, *tail;
+-	size_t copy, offs;
+-	unsigned int pglen = buf->page_len;
+-	unsigned int result;
+-
+-	result = 0;
+-	tail = buf->tail;
+-	head = buf->head;
+-
+-	WARN_ON_ONCE(len > head->iov_len);
+-	if (len > head->iov_len)
+-		len = head->iov_len;
+-
+-	/* Shift the tail first */
+-	if (tail->iov_len != 0) {
+-		if (tail->iov_len > len) {
+-			copy = tail->iov_len - len;
+-			memmove((char *)tail->iov_base + len,
+-					tail->iov_base, copy);
+-			result += copy;
+-		}
+-		/* Copy from the inlined pages into the tail */
+-		copy = len;
+-		if (copy > pglen)
+-			copy = pglen;
+-		offs = len - copy;
+-		if (offs >= tail->iov_len)
+-			copy = 0;
+-		else if (copy > tail->iov_len - offs)
+-			copy = tail->iov_len - offs;
+-		if (copy != 0) {
+-			_copy_from_pages((char *)tail->iov_base + offs,
+-					buf->pages,
+-					buf->page_base + pglen + offs - len,
+-					copy);
+-			result += copy;
+-		}
+-		/* Do we also need to copy data from the head into the tail ? */
+-		if (len > pglen) {
+-			offs = copy = len - pglen;
+-			if (copy > tail->iov_len)
+-				copy = tail->iov_len;
+-			memcpy(tail->iov_base,
+-					(char *)head->iov_base +
+-					head->iov_len - offs,
+-					copy);
+-			result += copy;
+-		}
+-	}
+-	/* Now handle pages */
+-	if (pglen != 0) {
+-		if (pglen > len)
+-			_shift_data_right_pages(buf->pages,
+-					buf->page_base + len,
+-					buf->page_base,
+-					pglen - len);
+-		copy = len;
+-		if (len > pglen)
+-			copy = pglen;
+-		_copy_to_pages(buf->pages, buf->page_base,
+-				(char *)head->iov_base + head->iov_len - len,
+-				copy);
+-		result += copy;
+-	}
+-	head->iov_len -= len;
+-	buf->buflen -= len;
+-	/* Have we truncated the message? */
+-	if (buf->len > buf->buflen)
+-		buf->len = buf->buflen;
++static unsigned int xdr_shrink_bufhead(struct xdr_buf *buf, unsigned int len)
++{
++	struct kvec *head = buf->head;
++	unsigned int shift = head->iov_len - len;
+ 
+-	return result;
++	WARN_ON_ONCE(shift > head->iov_len);
++	if (len >= head->iov_len)
++		return 0;
++
++	xdr_buf_try_expand(buf, shift);
++	xdr_buf_head_shift_right(buf, len, shift);
++	head->iov_len = len;
++	buf->buflen -= shift;
++	buf->len -= shift;
++	return shift;
+ }
+ 
+ /**
+@@ -772,7 +773,7 @@ static unsigned int xdr_shrink_pagelen(struct xdr_buf *buf, unsigned int len)
+ void
+ xdr_shift_buf(struct xdr_buf *buf, size_t len)
+ {
+-	xdr_shrink_bufhead(buf, len);
++	xdr_shrink_bufhead(buf, buf->head->iov_len - len);
+ }
+ EXPORT_SYMBOL_GPL(xdr_shift_buf);
+ 
+@@ -1345,13 +1346,12 @@ static void xdr_realign_pages(struct xdr_stream *xdr)
+ 	struct xdr_buf *buf = xdr->buf;
+ 	struct kvec *iov = buf->head;
+ 	unsigned int cur = xdr_stream_pos(xdr);
+-	unsigned int copied, offset;
++	unsigned int copied;
+ 
+ 	/* Realign pages to current pointer position */
+ 	if (iov->iov_len > cur) {
+-		offset = iov->iov_len - cur;
+-		copied = xdr_shrink_bufhead(buf, offset);
+-		trace_rpc_xdr_alignment(xdr, offset, copied);
++		copied = xdr_shrink_bufhead(buf, cur);
++		trace_rpc_xdr_alignment(xdr, cur, copied);
+ 		xdr->nwords = XDR_QUADLEN(buf->len - cur);
+ 	}
+ }
 -- 
 2.29.2
 
