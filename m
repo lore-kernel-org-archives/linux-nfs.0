@@ -6,34 +6,31 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2870C4361B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2431C433FE
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 892DE23406
+	by mail.kernel.org (Postfix) with ESMTP id A2AFE23609
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733106AbgLIOt3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1733076AbgLIOt3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 9 Dec 2020 09:49:29 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50666 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:50668 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733076AbgLIOt3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1733077AbgLIOt3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 9 Dec 2020 09:49:29 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 08/16] SUNRPC: Avoid unnecessary copies in xdr_buf_pages_copy_left/right()
-Date:   Wed,  9 Dec 2020 09:47:53 -0500
-Message-Id: <20201209144801.700778-9-trondmy@kernel.org>
+Subject: [PATCH 05/16] SUNRPC: _copy_to/from_pages() now check for zero length
+Date:   Wed,  9 Dec 2020 09:47:50 -0500
+Message-Id: <20201209144801.700778-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201209144801.700778-8-trondmy@kernel.org>
+In-Reply-To: <20201209144801.700778-5-trondmy@kernel.org>
 References: <20201209144801.700778-1-trondmy@kernel.org>
  <20201209144801.700778-2-trondmy@kernel.org>
  <20201209144801.700778-3-trondmy@kernel.org>
  <20201209144801.700778-4-trondmy@kernel.org>
  <20201209144801.700778-5-trondmy@kernel.org>
- <20201209144801.700778-6-trondmy@kernel.org>
- <20201209144801.700778-7-trondmy@kernel.org>
- <20201209144801.700778-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -42,61 +39,38 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Moving data in the XDR page arrays can be expensive, since it can
-involve touching up to a megabyte of data. Try to avoid doing so for the
-case where the server returned less data than we preallocated.
+Clean up callers of _copy_to/from_pages() that still check for a zero
+length.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xdr.c | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
+ net/sunrpc/xdr.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 7ca6208e7623..86a48c4cdcfc 100644
+index cbf1bccac4fc..196a06d32312 100644
 --- a/net/sunrpc/xdr.c
 +++ b/net/sunrpc/xdr.c
-@@ -600,14 +600,20 @@ static void xdr_buf_tail_shift_right(const struct xdr_buf *buf,
- static void xdr_buf_pages_shift_right(const struct xdr_buf *buf,
- 				      unsigned int base, unsigned int shift)
- {
-+	struct xdr_buf subbuf;
-+
- 	if (!shift)
- 		return;
- 	if (base >= buf->page_len) {
- 		xdr_buf_tail_shift_right(buf, base - buf->page_len, shift);
- 		return;
- 	}
--	xdr_buf_tail_shift_right(buf, 0, shift);
--	xdr_buf_pages_copy_right(buf, base, shift);
-+	base += buf->head->iov_len;
-+	if (base >= buf->len)
-+		return;
-+	xdr_buf_subsegment(buf, &subbuf, base, buf->len - base);
-+	xdr_buf_tail_shift_right(&subbuf, 0, shift);
-+	xdr_buf_pages_copy_right(&subbuf, 0, shift);
- }
- 
- static void xdr_buf_head_shift_right(const struct xdr_buf *buf,
-@@ -710,14 +716,16 @@ static void xdr_buf_tail_shift_left(const struct xdr_buf *buf,
- static void xdr_buf_pages_shift_left(const struct xdr_buf *buf,
- 				     unsigned int base, unsigned int shift)
- {
-+	struct xdr_buf subbuf;
- 	if (!shift)
- 		return;
- 	if (base >= buf->page_len) {
- 		xdr_buf_tail_shift_left(buf, base - buf->page_len, shift);
- 		return;
- 	}
--	xdr_buf_pages_copy_left(buf, base, shift);
--	xdr_buf_tail_shift_left(buf, 0, shift);
-+	xdr_buf_subsegment(buf, &subbuf, 0, buf->len);
-+	xdr_buf_pages_copy_left(&subbuf, base, shift);
-+	xdr_buf_tail_shift_left(&subbuf, 0, shift);
- }
- 
- /**
+@@ -1624,8 +1624,7 @@ static void __read_bytes_from_xdr_buf(struct xdr_buf *subbuf, void *obj, unsigne
+ 	len -= this_len;
+ 	obj += this_len;
+ 	this_len = min_t(unsigned int, len, subbuf->page_len);
+-	if (this_len)
+-		_copy_from_pages(obj, subbuf->pages, subbuf->page_base, this_len);
++	_copy_from_pages(obj, subbuf->pages, subbuf->page_base, this_len);
+ 	len -= this_len;
+ 	obj += this_len;
+ 	this_len = min_t(unsigned int, len, subbuf->tail[0].iov_len);
+@@ -1655,8 +1654,7 @@ static void __write_bytes_to_xdr_buf(struct xdr_buf *subbuf, void *obj, unsigned
+ 	len -= this_len;
+ 	obj += this_len;
+ 	this_len = min_t(unsigned int, len, subbuf->page_len);
+-	if (this_len)
+-		_copy_to_pages(subbuf->pages, subbuf->page_base, obj, this_len);
++	_copy_to_pages(subbuf->pages, subbuf->page_base, obj, this_len);
+ 	len -= this_len;
+ 	obj += this_len;
+ 	this_len = min_t(unsigned int, len, subbuf->tail[0].iov_len);
 -- 
 2.29.2
 
