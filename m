@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 32AC0C2BB9A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C5F2C2BBCD
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 16A36233EF
+	by mail.kernel.org (Postfix) with ESMTP id 2C07A23406
 	for <linux-nfs@archiver.kernel.org>; Wed,  9 Dec 2020 14:49:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733112AbgLIOtf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1733109AbgLIOtf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 9 Dec 2020 09:49:35 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50710 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:50716 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733109AbgLIOtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1733113AbgLIOtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 9 Dec 2020 09:49:35 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 12/16] NFSv4.2: Handle hole lengths that exceed the READ_PLUS read buffer
-Date:   Wed,  9 Dec 2020 09:47:57 -0500
-Message-Id: <20201209144801.700778-13-trondmy@kernel.org>
+Subject: [PATCH 14/16] NFSv4.2: Deal with potential READ_PLUS data extent buffer overflow
+Date:   Wed,  9 Dec 2020 09:47:59 -0500
+Message-Id: <20201209144801.700778-15-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201209144801.700778-12-trondmy@kernel.org>
+In-Reply-To: <20201209144801.700778-14-trondmy@kernel.org>
 References: <20201209144801.700778-1-trondmy@kernel.org>
  <20201209144801.700778-2-trondmy@kernel.org>
  <20201209144801.700778-3-trondmy@kernel.org>
@@ -38,6 +38,8 @@ References: <20201209144801.700778-1-trondmy@kernel.org>
  <20201209144801.700778-10-trondmy@kernel.org>
  <20201209144801.700778-11-trondmy@kernel.org>
  <20201209144801.700778-12-trondmy@kernel.org>
+ <20201209144801.700778-13-trondmy@kernel.org>
+ <20201209144801.700778-14-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -46,31 +48,49 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If a hole extends beyond the READ_PLUS read buffer, then we want to fill
-just the remaining buffer with zeros. Also ignore eof...
+If the server returns more data than we have buffer space for, then
+we need to truncate and exit early.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs42xdr.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/nfs/nfs42xdr.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index f9faa131a4f5..6ba2a28e7e03 100644
+index 9ef5261a1a70..8386ca45a43f 100644
 --- a/fs/nfs/nfs42xdr.c
 +++ b/fs/nfs/nfs42xdr.c
-@@ -1080,6 +1080,12 @@ static int decode_read_plus_hole(struct xdr_stream *xdr,
- 		}
- 		length -= args->offset + res->count - offset;
- 	}
-+	if (length + res->count > args->count) {
-+		*eof = 0;
-+		if (unlikely(res->count >= args->count))
-+			return 1;
-+		length = args->count - res->count;
-+	}
- 	recvd = xdr_expand_hole(xdr, res->count, length);
- 	res->count += recvd;
+@@ -1026,6 +1026,7 @@ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *re
+ }
  
+ static int decode_read_plus_data(struct xdr_stream *xdr,
++				 struct nfs_pgio_args *args,
+ 				 struct nfs_pgio_res *res)
+ {
+ 	uint32_t count, recvd;
+@@ -1041,8 +1042,12 @@ static int decode_read_plus_data(struct xdr_stream *xdr,
+ 	recvd = xdr_align_data(xdr, res->count, xdr_align_size(count));
+ 	if (recvd > count)
+ 		recvd = count;
++	if (res->count + recvd > args->count) {
++		if (args->count > res->count)
++			res->count += args->count - res->count;
++		return 1;
++	}
+ 	res->count += recvd;
+-
+ 	if (count > recvd)
+ 		return 1;
+ 	return 0;
+@@ -1119,7 +1124,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ 
+ 		type = be32_to_cpup(p++);
+ 		if (type == NFS4_CONTENT_DATA)
+-			status = decode_read_plus_data(xdr, res);
++			status = decode_read_plus_data(xdr, args, res);
+ 		else if (type == NFS4_CONTENT_HOLE)
+ 			status = decode_read_plus_hole(xdr, args, res, &eof);
+ 		else
 -- 
 2.29.2
 
