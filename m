@@ -6,32 +6,40 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A927DC4361B
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06780C4361B
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6D64022D03
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B6F3922D03
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2403941AbgLKR1H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2395171AbgLKR1H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 11 Dec 2020 12:27:07 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50798 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:50816 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2395235AbgLKR0p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Dec 2020 12:26:45 -0500
+        id S2395254AbgLKR0q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Dec 2020 12:26:46 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/15] SUNRPC: Clean up open coded setting of the xdr_stream 'nwords' field
-Date:   Fri, 11 Dec 2020 12:25:12 -0500
-Message-Id: <20201211172521.5567-7-trondmy@kernel.org>
+Subject: [PATCH v2 14/15] NFSv4.2: Deal with potential READ_PLUS data extent buffer overflow
+Date:   Fri, 11 Dec 2020 12:25:20 -0500
+Message-Id: <20201211172521.5567-15-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201211172521.5567-6-trondmy@kernel.org>
+In-Reply-To: <20201211172521.5567-14-trondmy@kernel.org>
 References: <20201211172521.5567-1-trondmy@kernel.org>
  <20201211172521.5567-2-trondmy@kernel.org>
  <20201211172521.5567-3-trondmy@kernel.org>
  <20201211172521.5567-4-trondmy@kernel.org>
  <20201211172521.5567-5-trondmy@kernel.org>
  <20201211172521.5567-6-trondmy@kernel.org>
+ <20201211172521.5567-7-trondmy@kernel.org>
+ <20201211172521.5567-8-trondmy@kernel.org>
+ <20201211172521.5567-9-trondmy@kernel.org>
+ <20201211172521.5567-10-trondmy@kernel.org>
+ <20201211172521.5567-11-trondmy@kernel.org>
+ <20201211172521.5567-12-trondmy@kernel.org>
+ <20201211172521.5567-13-trondmy@kernel.org>
+ <20201211172521.5567-14-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -40,130 +48,49 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Move the setting of the xdr_stream 'nwords' field into the helpers that
-reset the xdr_stream cursor.
+If the server returns more data than we have buffer space for, then
+we need to truncate and exit early.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xdr.c | 29 ++++++++++++++++-------------
- 1 file changed, 16 insertions(+), 13 deletions(-)
+ fs/nfs/nfs42xdr.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 01918e60b67b..f0444bf5617c 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1183,6 +1183,15 @@ static unsigned int xdr_set_iov(struct xdr_stream *xdr, struct kvec *iov,
- 	return len - base;
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 9ef5261a1a70..8386ca45a43f 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -1026,6 +1026,7 @@ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *re
  }
  
-+static unsigned int xdr_set_tail_base(struct xdr_stream *xdr,
-+				      unsigned int base, unsigned int len)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+
-+	xdr_stream_set_pos(xdr, base + buf->page_len + buf->head->iov_len);
-+	return xdr_set_iov(xdr, buf->tail, base, len);
-+}
-+
- static unsigned int xdr_set_page_base(struct xdr_stream *xdr,
- 				      unsigned int base, unsigned int len)
+ static int decode_read_plus_data(struct xdr_stream *xdr,
++				 struct nfs_pgio_args *args,
+ 				 struct nfs_pgio_res *res)
  {
-@@ -1201,6 +1210,7 @@ static unsigned int xdr_set_page_base(struct xdr_stream *xdr,
- 	if (len > maxlen)
- 		len = maxlen;
+ 	uint32_t count, recvd;
+@@ -1041,8 +1042,12 @@ static int decode_read_plus_data(struct xdr_stream *xdr,
+ 	recvd = xdr_align_data(xdr, res->count, xdr_align_size(count));
+ 	if (recvd > count)
+ 		recvd = count;
++	if (res->count + recvd > args->count) {
++		if (args->count > res->count)
++			res->count += args->count - res->count;
++		return 1;
++	}
+ 	res->count += recvd;
+-
+ 	if (count > recvd)
+ 		return 1;
+ 	return 0;
+@@ -1119,7 +1124,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
  
-+	xdr_stream_page_set_pos(xdr, base);
- 	base += xdr->buf->page_base;
- 
- 	pgnr = base >> PAGE_SHIFT;
-@@ -1223,7 +1233,7 @@ static void xdr_set_page(struct xdr_stream *xdr, unsigned int base,
- {
- 	if (xdr_set_page_base(xdr, base, len) == 0) {
- 		base -= xdr->buf->page_len;
--		xdr_set_iov(xdr, xdr->buf->tail, base, len);
-+		xdr_set_tail_base(xdr, base, len);
- 	}
- }
- 
-@@ -1236,7 +1246,7 @@ static void xdr_set_next_page(struct xdr_stream *xdr)
- 	if (newbase < xdr->buf->page_len)
- 		xdr_set_page_base(xdr, newbase, xdr_stream_remaining(xdr));
- 	else
--		xdr_set_iov(xdr, xdr->buf->tail, 0, xdr_stream_remaining(xdr));
-+		xdr_set_tail_base(xdr, 0, xdr_stream_remaining(xdr));
- }
- 
- static bool xdr_set_next_buffer(struct xdr_stream *xdr)
-@@ -1388,7 +1398,7 @@ static void xdr_realign_pages(struct xdr_stream *xdr)
- 	if (iov->iov_len > cur) {
- 		copied = xdr_shrink_bufhead(buf, cur);
- 		trace_rpc_xdr_alignment(xdr, cur, copied);
--		xdr->nwords = XDR_QUADLEN(buf->len - cur);
-+		xdr_set_page(xdr, 0, buf->page_len);
- 	}
- }
- 
-@@ -1396,7 +1406,6 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
- {
- 	struct xdr_buf *buf = xdr->buf;
- 	unsigned int nwords = XDR_QUADLEN(len);
--	unsigned int cur = xdr_stream_pos(xdr);
- 	unsigned int copied;
- 
- 	if (xdr->nwords == 0)
-@@ -1413,7 +1422,6 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
- 		/* Truncate page data and move it into the tail */
- 		copied = xdr_shrink_pagelen(buf, len);
- 		trace_rpc_xdr_alignment(xdr, len, copied);
--		xdr->nwords = XDR_QUADLEN(buf->len - cur);
- 	}
- 	return len;
- }
-@@ -1439,12 +1447,10 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
- 	if (pglen == 0)
- 		return 0;
- 
--	xdr->nwords -= nwords;
- 	base = (nwords << 2) - pglen;
- 	end = xdr_stream_remaining(xdr) - pglen;
- 
--	if (xdr_set_iov(xdr, xdr->buf->tail, base, end) == 0)
--		xdr->nwords = 0;
-+	xdr_set_tail_base(xdr, base, end);
- 	return len <= pglen ? len : pglen;
- }
- EXPORT_SYMBOL_GPL(xdr_read_pages);
-@@ -1478,15 +1484,13 @@ unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
- 	/* Move page data to the left */
- 	shift = from - offset;
- 	xdr_buf_pages_shift_left(buf, from, len, shift);
--	xdr->buf->len -= shift;
--	xdr->nwords -= XDR_QUADLEN(shift);
- 
- 	bytes = xdr_stream_remaining(xdr);
- 	if (length > bytes)
- 		length = bytes;
- 	bytes -= length;
- 
--	xdr->nwords -= XDR_QUADLEN(length);
-+	xdr->buf->len -= shift;
- 	xdr_set_page(xdr, offset + length, bytes);
- 	return length;
- }
-@@ -1508,12 +1512,11 @@ unsigned int xdr_expand_hole(struct xdr_stream *xdr, unsigned int offset,
- 		shift = to - from;
- 		xdr_buf_try_expand(buf, shift);
- 		xdr_buf_pages_shift_right(buf, from, buflen, shift);
--		xdr_stream_page_set_pos(xdr, to);
-+		xdr_set_page(xdr, to, xdr_stream_remaining(xdr));
- 	} else if (to != from)
- 		xdr_align_data(xdr, to, 0);
- 	xdr_buf_pages_zero(buf, offset, length);
- 
--	xdr_set_page(xdr, to, xdr_stream_remaining(xdr));
- 	return length;
- }
- EXPORT_SYMBOL_GPL(xdr_expand_hole);
+ 		type = be32_to_cpup(p++);
+ 		if (type == NFS4_CONTENT_DATA)
+-			status = decode_read_plus_data(xdr, res);
++			status = decode_read_plus_data(xdr, args, res);
+ 		else if (type == NFS4_CONTENT_HOLE)
+ 			status = decode_read_plus_hole(xdr, args, res, &eof);
+ 		else
 -- 
 2.29.2
 
