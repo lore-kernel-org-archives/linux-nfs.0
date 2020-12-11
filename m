@@ -6,37 +6,32 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C100C4361B
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A927DC4361B
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2C82422D03
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6D64022D03
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2395253AbgLKR1H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2403941AbgLKR1H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 11 Dec 2020 12:27:07 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50810 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:50798 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2395246AbgLKR0q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Dec 2020 12:26:46 -0500
+        id S2395235AbgLKR0p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Dec 2020 12:26:45 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 11/15] NFSv4.2: decode_read_plus_hole() needs to check the extent offset
-Date:   Fri, 11 Dec 2020 12:25:17 -0500
-Message-Id: <20201211172521.5567-12-trondmy@kernel.org>
+Subject: [PATCH v2 06/15] SUNRPC: Clean up open coded setting of the xdr_stream 'nwords' field
+Date:   Fri, 11 Dec 2020 12:25:12 -0500
+Message-Id: <20201211172521.5567-7-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201211172521.5567-11-trondmy@kernel.org>
+In-Reply-To: <20201211172521.5567-6-trondmy@kernel.org>
 References: <20201211172521.5567-1-trondmy@kernel.org>
  <20201211172521.5567-2-trondmy@kernel.org>
  <20201211172521.5567-3-trondmy@kernel.org>
  <20201211172521.5567-4-trondmy@kernel.org>
  <20201211172521.5567-5-trondmy@kernel.org>
  <20201211172521.5567-6-trondmy@kernel.org>
- <20201211172521.5567-7-trondmy@kernel.org>
- <20201211172521.5567-8-trondmy@kernel.org>
- <20201211172521.5567-9-trondmy@kernel.org>
- <20201211172521.5567-10-trondmy@kernel.org>
- <20201211172521.5567-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -45,71 +40,130 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The server is allowed to return a hole extent with an offset that starts
-before the offset supplied in the READ_PLUS argument. Ensure that we
-support that case too.
+Move the setting of the xdr_stream 'nwords' field into the helpers that
+reset the xdr_stream cursor.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs42xdr.c | 24 +++++++++++++++++++++---
- 1 file changed, 21 insertions(+), 3 deletions(-)
+ net/sunrpc/xdr.c | 29 ++++++++++++++++-------------
+ 1 file changed, 16 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 4c6bce3dbaeb..f9faa131a4f5 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -1053,8 +1053,9 @@ static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *re
- 	return 0;
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 01918e60b67b..f0444bf5617c 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -1183,6 +1183,15 @@ static unsigned int xdr_set_iov(struct xdr_stream *xdr, struct kvec *iov,
+ 	return len - base;
  }
  
--static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *res,
--				 uint32_t *eof)
-+static int decode_read_plus_hole(struct xdr_stream *xdr,
-+				 struct nfs_pgio_args *args,
-+				 struct nfs_pgio_res *res, uint32_t *eof)
++static unsigned int xdr_set_tail_base(struct xdr_stream *xdr,
++				      unsigned int base, unsigned int len)
++{
++	struct xdr_buf *buf = xdr->buf;
++
++	xdr_stream_set_pos(xdr, base + buf->page_len + buf->head->iov_len);
++	return xdr_set_iov(xdr, buf->tail, base, len);
++}
++
+ static unsigned int xdr_set_page_base(struct xdr_stream *xdr,
+ 				      unsigned int base, unsigned int len)
  {
- 	uint64_t offset, length, recvd;
- 	__be32 *p;
-@@ -1065,6 +1066,20 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
+@@ -1201,6 +1210,7 @@ static unsigned int xdr_set_page_base(struct xdr_stream *xdr,
+ 	if (len > maxlen)
+ 		len = maxlen;
  
- 	p = xdr_decode_hyper(p, &offset);
- 	p = xdr_decode_hyper(p, &length);
-+	if (offset != args->offset + res->count) {
-+		/* Server returned an out-of-sequence extent */
-+		if (offset > args->offset + res->count ||
-+		    offset + length < args->offset + res->count) {
-+			dprintk("NFS: server returned out of sequence extent: "
-+				"offset/size = %llu/%llu != expected %llu\n",
-+				(unsigned long long)offset,
-+				(unsigned long long)length,
-+				(unsigned long long)(args->offset +
-+						     res->count));
-+			return 1;
-+		}
-+		length -= args->offset + res->count - offset;
-+	}
- 	recvd = xdr_expand_hole(xdr, res->count, length);
- 	res->count += recvd;
++	xdr_stream_page_set_pos(xdr, base);
+ 	base += xdr->buf->page_base;
  
-@@ -1077,6 +1092,9 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
- 
- static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ 	pgnr = base >> PAGE_SHIFT;
+@@ -1223,7 +1233,7 @@ static void xdr_set_page(struct xdr_stream *xdr, unsigned int base,
  {
-+	struct nfs_pgio_header *hdr =
-+		container_of(res, struct nfs_pgio_header, res);
-+	struct nfs_pgio_args *args = &hdr->args;
- 	uint32_t eof, segments, type;
- 	int status, i;
- 	__be32 *p;
-@@ -1104,7 +1122,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- 		if (type == NFS4_CONTENT_DATA)
- 			status = decode_read_plus_data(xdr, res, &eof);
- 		else if (type == NFS4_CONTENT_HOLE)
--			status = decode_read_plus_hole(xdr, res, &eof);
-+			status = decode_read_plus_hole(xdr, args, res, &eof);
- 		else
- 			return -EINVAL;
+ 	if (xdr_set_page_base(xdr, base, len) == 0) {
+ 		base -= xdr->buf->page_len;
+-		xdr_set_iov(xdr, xdr->buf->tail, base, len);
++		xdr_set_tail_base(xdr, base, len);
+ 	}
+ }
  
+@@ -1236,7 +1246,7 @@ static void xdr_set_next_page(struct xdr_stream *xdr)
+ 	if (newbase < xdr->buf->page_len)
+ 		xdr_set_page_base(xdr, newbase, xdr_stream_remaining(xdr));
+ 	else
+-		xdr_set_iov(xdr, xdr->buf->tail, 0, xdr_stream_remaining(xdr));
++		xdr_set_tail_base(xdr, 0, xdr_stream_remaining(xdr));
+ }
+ 
+ static bool xdr_set_next_buffer(struct xdr_stream *xdr)
+@@ -1388,7 +1398,7 @@ static void xdr_realign_pages(struct xdr_stream *xdr)
+ 	if (iov->iov_len > cur) {
+ 		copied = xdr_shrink_bufhead(buf, cur);
+ 		trace_rpc_xdr_alignment(xdr, cur, copied);
+-		xdr->nwords = XDR_QUADLEN(buf->len - cur);
++		xdr_set_page(xdr, 0, buf->page_len);
+ 	}
+ }
+ 
+@@ -1396,7 +1406,6 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
+ {
+ 	struct xdr_buf *buf = xdr->buf;
+ 	unsigned int nwords = XDR_QUADLEN(len);
+-	unsigned int cur = xdr_stream_pos(xdr);
+ 	unsigned int copied;
+ 
+ 	if (xdr->nwords == 0)
+@@ -1413,7 +1422,6 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
+ 		/* Truncate page data and move it into the tail */
+ 		copied = xdr_shrink_pagelen(buf, len);
+ 		trace_rpc_xdr_alignment(xdr, len, copied);
+-		xdr->nwords = XDR_QUADLEN(buf->len - cur);
+ 	}
+ 	return len;
+ }
+@@ -1439,12 +1447,10 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
+ 	if (pglen == 0)
+ 		return 0;
+ 
+-	xdr->nwords -= nwords;
+ 	base = (nwords << 2) - pglen;
+ 	end = xdr_stream_remaining(xdr) - pglen;
+ 
+-	if (xdr_set_iov(xdr, xdr->buf->tail, base, end) == 0)
+-		xdr->nwords = 0;
++	xdr_set_tail_base(xdr, base, end);
+ 	return len <= pglen ? len : pglen;
+ }
+ EXPORT_SYMBOL_GPL(xdr_read_pages);
+@@ -1478,15 +1484,13 @@ unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
+ 	/* Move page data to the left */
+ 	shift = from - offset;
+ 	xdr_buf_pages_shift_left(buf, from, len, shift);
+-	xdr->buf->len -= shift;
+-	xdr->nwords -= XDR_QUADLEN(shift);
+ 
+ 	bytes = xdr_stream_remaining(xdr);
+ 	if (length > bytes)
+ 		length = bytes;
+ 	bytes -= length;
+ 
+-	xdr->nwords -= XDR_QUADLEN(length);
++	xdr->buf->len -= shift;
+ 	xdr_set_page(xdr, offset + length, bytes);
+ 	return length;
+ }
+@@ -1508,12 +1512,11 @@ unsigned int xdr_expand_hole(struct xdr_stream *xdr, unsigned int offset,
+ 		shift = to - from;
+ 		xdr_buf_try_expand(buf, shift);
+ 		xdr_buf_pages_shift_right(buf, from, buflen, shift);
+-		xdr_stream_page_set_pos(xdr, to);
++		xdr_set_page(xdr, to, xdr_stream_remaining(xdr));
+ 	} else if (to != from)
+ 		xdr_align_data(xdr, to, 0);
+ 	xdr_buf_pages_zero(buf, offset, length);
+ 
+-	xdr_set_page(xdr, to, xdr_stream_remaining(xdr));
+ 	return length;
+ }
+ EXPORT_SYMBOL_GPL(xdr_expand_hole);
 -- 
 2.29.2
 
