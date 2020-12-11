@@ -6,31 +6,37 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3661BC433FE
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:09:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C100C4361B
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E655822D03
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:09:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2C82422D03
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Dec 2020 19:10:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2394884AbgLKR1F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 11 Dec 2020 12:27:05 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50800 "EHLO mail.kernel.org"
+        id S2395253AbgLKR1H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 11 Dec 2020 12:27:07 -0500
+Received: from mail.kernel.org ([198.145.29.99]:50810 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2395242AbgLKR0o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Dec 2020 12:26:44 -0500
+        id S2395246AbgLKR0q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Dec 2020 12:26:46 -0500
 From:   trondmy@kernel.org
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/15] SUNRPC: _copy_to/from_pages() now check for zero length
-Date:   Fri, 11 Dec 2020 12:25:11 -0500
-Message-Id: <20201211172521.5567-6-trondmy@kernel.org>
+Subject: [PATCH v2 11/15] NFSv4.2: decode_read_plus_hole() needs to check the extent offset
+Date:   Fri, 11 Dec 2020 12:25:17 -0500
+Message-Id: <20201211172521.5567-12-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201211172521.5567-5-trondmy@kernel.org>
+In-Reply-To: <20201211172521.5567-11-trondmy@kernel.org>
 References: <20201211172521.5567-1-trondmy@kernel.org>
  <20201211172521.5567-2-trondmy@kernel.org>
  <20201211172521.5567-3-trondmy@kernel.org>
  <20201211172521.5567-4-trondmy@kernel.org>
  <20201211172521.5567-5-trondmy@kernel.org>
+ <20201211172521.5567-6-trondmy@kernel.org>
+ <20201211172521.5567-7-trondmy@kernel.org>
+ <20201211172521.5567-8-trondmy@kernel.org>
+ <20201211172521.5567-9-trondmy@kernel.org>
+ <20201211172521.5567-10-trondmy@kernel.org>
+ <20201211172521.5567-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -39,38 +45,71 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Clean up callers of _copy_to/from_pages() that still check for a zero
-length.
+The server is allowed to return a hole extent with an offset that starts
+before the offset supplied in the READ_PLUS argument. Ensure that we
+support that case too.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xdr.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ fs/nfs/nfs42xdr.c | 24 +++++++++++++++++++++---
+ 1 file changed, 21 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 19eaa38f7d16..01918e60b67b 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1665,8 +1665,7 @@ static void __read_bytes_from_xdr_buf(struct xdr_buf *subbuf, void *obj, unsigne
- 	len -= this_len;
- 	obj += this_len;
- 	this_len = min_t(unsigned int, len, subbuf->page_len);
--	if (this_len)
--		_copy_from_pages(obj, subbuf->pages, subbuf->page_base, this_len);
-+	_copy_from_pages(obj, subbuf->pages, subbuf->page_base, this_len);
- 	len -= this_len;
- 	obj += this_len;
- 	this_len = min_t(unsigned int, len, subbuf->tail[0].iov_len);
-@@ -1696,8 +1695,7 @@ static void __write_bytes_to_xdr_buf(struct xdr_buf *subbuf, void *obj, unsigned
- 	len -= this_len;
- 	obj += this_len;
- 	this_len = min_t(unsigned int, len, subbuf->page_len);
--	if (this_len)
--		_copy_to_pages(subbuf->pages, subbuf->page_base, obj, this_len);
-+	_copy_to_pages(subbuf->pages, subbuf->page_base, obj, this_len);
- 	len -= this_len;
- 	obj += this_len;
- 	this_len = min_t(unsigned int, len, subbuf->tail[0].iov_len);
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 4c6bce3dbaeb..f9faa131a4f5 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -1053,8 +1053,9 @@ static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ 	return 0;
+ }
+ 
+-static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *res,
+-				 uint32_t *eof)
++static int decode_read_plus_hole(struct xdr_stream *xdr,
++				 struct nfs_pgio_args *args,
++				 struct nfs_pgio_res *res, uint32_t *eof)
+ {
+ 	uint64_t offset, length, recvd;
+ 	__be32 *p;
+@@ -1065,6 +1066,20 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ 
+ 	p = xdr_decode_hyper(p, &offset);
+ 	p = xdr_decode_hyper(p, &length);
++	if (offset != args->offset + res->count) {
++		/* Server returned an out-of-sequence extent */
++		if (offset > args->offset + res->count ||
++		    offset + length < args->offset + res->count) {
++			dprintk("NFS: server returned out of sequence extent: "
++				"offset/size = %llu/%llu != expected %llu\n",
++				(unsigned long long)offset,
++				(unsigned long long)length,
++				(unsigned long long)(args->offset +
++						     res->count));
++			return 1;
++		}
++		length -= args->offset + res->count - offset;
++	}
+ 	recvd = xdr_expand_hole(xdr, res->count, length);
+ 	res->count += recvd;
+ 
+@@ -1077,6 +1092,9 @@ static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *re
+ 
+ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ {
++	struct nfs_pgio_header *hdr =
++		container_of(res, struct nfs_pgio_header, res);
++	struct nfs_pgio_args *args = &hdr->args;
+ 	uint32_t eof, segments, type;
+ 	int status, i;
+ 	__be32 *p;
+@@ -1104,7 +1122,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ 		if (type == NFS4_CONTENT_DATA)
+ 			status = decode_read_plus_data(xdr, res, &eof);
+ 		else if (type == NFS4_CONTENT_HOLE)
+-			status = decode_read_plus_hole(xdr, res, &eof);
++			status = decode_read_plus_hole(xdr, args, res, &eof);
+ 		else
+ 			return -EINVAL;
+ 
 -- 
 2.29.2
 
