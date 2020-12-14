@@ -2,56 +2,56 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6B6CC4361B
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Dec 2020 02:54:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40DA9C1B0D9
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Dec 2020 02:54:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A8B4523787
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Dec 2020 02:54:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1417C23787
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Dec 2020 02:54:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2407077AbgLNCx6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 13 Dec 2020 21:53:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51134 "EHLO
+        id S2438068AbgLNCyn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 13 Dec 2020 21:54:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51258 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2407038AbgLNCx5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Dec 2020 21:53:57 -0500
-Received: from mail-pj1-x1043.google.com (mail-pj1-x1043.google.com [IPv6:2607:f8b0:4864:20::1043])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64C67C0613CF
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Dec 2020 18:53:12 -0800 (PST)
-Received: by mail-pj1-x1043.google.com with SMTP id lb18so5438490pjb.5
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Dec 2020 18:53:12 -0800 (PST)
+        with ESMTP id S2438109AbgLNCyi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Dec 2020 21:54:38 -0500
+Received: from mail-pf1-x444.google.com (mail-pf1-x444.google.com [IPv6:2607:f8b0:4864:20::444])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8526FC0617B0
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Dec 2020 18:53:15 -0800 (PST)
+Received: by mail-pf1-x444.google.com with SMTP id 11so11139110pfu.4
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Dec 2020 18:53:15 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=sargun.me; s=google;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KfQodhCI8ZuQp7YRRZQxpihD4EYNwbDWNGKzRDV3Rag=;
-        b=1KGzDS5u0//+69i40jGl8BDlvmqcrhtOGrim4gQ5ZvvqQHMirN53vp1rc+KQ2APQji
-         9Qd3c1wKn31jlea+mxfiu1w+7gInJ4ouz8qQcxMw5YKDSzVCmRaZx9YMvbNDmbwZydSl
-         61B+dCsaa8pDkz33W8h+7js6xg2xFV1aH8glo=
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=NXvCHpzC4yHknkYUeuKH4ChAz6pAIcFQihq+5IBCqGs=;
+        b=Fddofxw8GEI7/ddW41jojqQlbr3awy3c+LUjmqsgXOgCU2mPSYisSbooN9UQ5+XovY
+         ltcvS+KRyuLoQImh7pI1I2alBShPFBH8Nn6NEqRAeZ8ZKd0SZBD7cDvs3ECeNhHf2Fnk
+         vI45LPU46Kzcz4bMBPws1Os8P04vvjvgIz9UI=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KfQodhCI8ZuQp7YRRZQxpihD4EYNwbDWNGKzRDV3Rag=;
-        b=G5xwnwQJnejrL92gbRXBcHgdWyz2nCi+YMh4vevfjYwe9p38rlVw7WjzitP3OUATJh
-         YJjc5gPpSHI8QIsej69Fzvmrr6CaVICXKOIOCagB8olZ2JW9rPnY52Q0AQHlt5vWAhO6
-         pj8i22yZ2HbpCCsKE7yAFkdRS0KViGJDHl8TSBENUafDTDcRPtGiaNvv7Ok2NAjrBpB9
-         MMuzAzhovMqQLT7uQ/O4Spm/u72WFwaL//YkbsBztKxHpGV7qT8QYa4zPagfy/i4o9km
-         041RbixIR9uapMOVAArHm8dIRwd5SLTyPYBzyu2SU8VB1hcvqmpxHpoqkzKMcL5tF+/7
-         LUiA==
-X-Gm-Message-State: AOAM533Imx5wiig5G/edO4y02omDJb1kl7lOEQUTN+NKLAxNtmUV3OIo
-        mDhHCQTQ+opm6+NueFkit6xchQ==
-X-Google-Smtp-Source: ABdhPJxnGNsNFzFel27Bu+rpPuTScapWtzqvD2o5GTyqWhbGx2VaTCHkBQzQMWb/zF/JNETrpe05IA==
-X-Received: by 2002:a17:902:bf06:b029:dc:1f:ac61 with SMTP id bi6-20020a170902bf06b02900dc001fac61mr2372550plb.16.1607914391619;
-        Sun, 13 Dec 2020 18:53:11 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=NXvCHpzC4yHknkYUeuKH4ChAz6pAIcFQihq+5IBCqGs=;
+        b=R5+pMZeQGE4M1ysS6TVQhqpJen6S+u/dJHLyKYxW/zbpIfiYjc5uLKudVjSX96T+cZ
+         o0Ge8fo41+xmwmjn+BTfViuQ01Vy2MLYgxDV1YQ+NnZDfYWUmxPJZup2CpYzWB2nDMIY
+         ivqiZSjIgXI44rPChuDrKJRCqQvFrrE1jdzdOg+zEe8NhP0IlhrYHZz+Qe659ujEYhwr
+         ymLYczTl6BiN1QDIph67qDybbJkptGq3idXW+RVgEOVMgLtDx+pICRr9hNvXm8TfeaJL
+         Da5748+Ni6n176mC4O1yCM5LruN5WEUA8h8gq9uKvDIU5zU0VKMeE0b4wFidXNxO3pJi
+         FKPA==
+X-Gm-Message-State: AOAM531RSyjEThvmiu/GNckRvJRoyFHR38fkrwYqNXQ/hpLxIQcP1fUK
+        qkiJBmybR4ygBbr/L43Pksp3AQ==
+X-Google-Smtp-Source: ABdhPJximX80fxcq78BYwz5TJQ7tu7BbHSoBKBAOFQVEsxp9XuCENYTJEgjWvZOnf0LPVObh619vHQ==
+X-Received: by 2002:a63:4d12:: with SMTP id a18mr22071092pgb.17.1607914394956;
+        Sun, 13 Dec 2020 18:53:14 -0800 (PST)
 Received: from ubuntu.netflix.com (203.20.25.136.in-addr.arpa. [136.25.20.203])
-        by smtp.gmail.com with ESMTPSA id h20sm17102713pgv.23.2020.12.13.18.53.10
+        by smtp.gmail.com with ESMTPSA id h20sm17102713pgv.23.2020.12.13.18.53.13
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 13 Dec 2020 18:53:10 -0800 (PST)
+        Sun, 13 Dec 2020 18:53:14 -0800 (PST)
 From:   Sargun Dhillon <sargun@sargun.me>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <schumaker.anna@gmail.com>,
@@ -61,82 +61,57 @@ Cc:     Sargun Dhillon <sargun@sargun.me>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         mauricio@kinvolk.io, Alban Crequy <alban.crequy@gmail.com>,
         Christian Brauner <christian.brauner@ubuntu.com>
-Subject: [PATCH RESEND v5 0/2] NFS: Fix interaction between fs_context and user namespaces
-Date:   Sun, 13 Dec 2020 18:53:03 -0800
-Message-Id: <20201214025305.25984-1-sargun@sargun.me>
+Subject: [PATCH RESEND v5 2/2] NFSv4: Refactor to use user namespaces for nfs4idmap
+Date:   Sun, 13 Dec 2020 18:53:05 -0800
+Message-Id: <20201214025305.25984-3-sargun@sargun.me>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20201214025305.25984-1-sargun@sargun.me>
+References: <20201214025305.25984-1-sargun@sargun.me>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is a resend[2] for consideration into the next NFS client merge window.
+In several patches work has been done to enable NFSv4 to use user
+namespaces:
+58002399da65: NFSv4: Convert the NFS client idmapper to use the container user namespace
+3b7eb5e35d0f: NFS: When mounting, don't share filesystems between different user namespaces
 
-Right now, it is possible to mount NFS with an non-matching super block
-user ns, and NFS sunrpc user ns. This (for the user) results in an awkward
-set of interactions if using anything other than auth_null, where the UIDs
-being sent to the server are different than the local UIDs being checked.
-This can cause "breakage", where if you try to communicate with the NFS
-server with any other set of mappings, it breaks.
+Unfortunately, the userspace APIs were only such that the userspace facing
+side of the filesystem (superblock s_user_ns) could be set to a non init
+user namespace. This furthers the fs_context related refactoring, and
+piggybacks on top of that logic, so the superblock user namespace, and the
+NFS user namespace are the same.
 
-The reason for this is that you can call fsopen("nfs4") in the unprivileged
-namespace, and that configures fs_context with all the right information
-for that user namespace. In addition, it also keeps a gets a cred object
-associated with the caller -- which should match the user namespace.
-Unfortunately, the mount has to be finished in the init_user_ns because we
-currently require CAP_SYS_ADMIN in the init user namespace to call fsmount.
-This means that the superblock's user namespace is set "correctly" to the
-container, but there's absolutely no way nfs4idmap to consume an
-unprivileged user namespace because the cred / user_ns that's passed down
-to nfs4idmap is the one at fsmount.
+Users can still use rpc.idmapd if they choose to, but there are complexities
+with user namespaces and request-key that have yet to be addresssed.
 
-How this actually exhibits is let's say that the UID 0 in the user
-namespace is mapped to UID 1000 in the init user ns (and kuid space). What
-will happen is that nfs4idmap will translate the UID 1000 into UID 0 on the
-wire, even if the mount is in entirely in the mount / user namespace of the
-container.
+Eventually, we will need to at least:
+  * Separate out the keyring cache by namespace
+  * Come up with an upcall mechanism that can be triggered inside of the container,
+    or safely triggered outside, with the requisite context to do the right
+    mapping. * Handle whatever refactoring needs to be done in net/sunrpc.
 
-So, it looks something like this
-Client in unprivileged User NS (UID: 0, KUID: 0)
-	->Perform open()
-		...VFS / NFS bits...
-		nfs_map_uid_to_name ->
-			from_kuid_munged(init_user_ns, uid) (returns 0)
-				RPC with UID 0
-
-This behaviour happens "the other way" as well, where the UID in the
-container may be 0, but the corresponding kuid is 1000. When a response
-from an NFS server comes in we decode it according to the idmap userns.
-The way this exhibits is even more odd.
-
-Server responds with file attribute (UID: 0, GID: 0)
-	->nfs_map_name_to_uid(..., 0)
-		->make_kuid(init_user_ns, id) (returns 0)
-			....VFS / NFS Bits...
-			->from_kuid(container_ns, 0) -> invalid uid
-				-> EOVERFLOW
-
-This changes the nfs server to use the cred / userns from fs_context, which
-is how idmap is constructed. This subsequently is used in the above
-described flow of converting uids back-and-forth.
-
-Trond gave the feedback that this behaviour [implemented by this patch] is
-how the legacy sys_mount() behaviour worked[1], and that the intended
-behaviour is for UIDs to be plumbed through entirely, where the user
-namespaces UIDs are what is sent over the wire, and not the init user ns.
-
-[1]: https://lore.kernel.org/linux-nfs/8feccf45f6575a204da03e796391cc135283eb88.camel@hammerspace.com/
-[2]: https://lore.kernel.org/linux-nfs/20201112100952.3514-1-sargun@sargun.me/
-
-Sargun Dhillon (2):
-  NFS: NFSv2/NFSv3: Use cred from fs_context during mount
-  NFSv4: Refactor to use user namespaces for nfs4idmap
-
- fs/nfs/client.c     | 4 ++--
+Signed-off-by: Sargun Dhillon <sargun@sargun.me>
+Tested-by: Alban Crequy <alban.crequy@gmail.com>
+---
  fs/nfs/nfs4client.c | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index be7915c861ce..86acffe7335c 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -1153,7 +1153,7 @@ struct nfs_server *nfs4_create_server(struct fs_context *fc)
+ 	if (!server)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-	server->cred = get_cred(current_cred());
++	server->cred = get_cred(fc->cred);
+ 
+ 	auth_probe = ctx->auth_info.flavor_len < 1;
+ 
 -- 
 2.25.1
 
