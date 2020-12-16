@@ -7,30 +7,31 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D725BC3526E
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Dec 2020 04:44:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CAC7BC4361B
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Dec 2020 04:44:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BC6432313F
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Dec 2020 04:44:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 963F62312E
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Dec 2020 04:44:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725890AbgLPEo0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 15 Dec 2020 23:44:26 -0500
-Received: from mx2.suse.de ([195.135.220.15]:58562 "EHLO mx2.suse.de"
+        id S1725896AbgLPEof (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 15 Dec 2020 23:44:35 -0500
+Received: from mx2.suse.de ([195.135.220.15]:58756 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725889AbgLPEo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 Dec 2020 23:44:26 -0500
+        id S1725889AbgLPEof (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 Dec 2020 23:44:35 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 2EC92AD5A;
-        Wed, 16 Dec 2020 04:43:45 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id A8170AD87;
+        Wed, 16 Dec 2020 04:43:54 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
 To:     Steve Dickson <steved@redhat.com>
 Date:   Wed, 16 Dec 2020 15:43:03 +1100
-Subject: [PATCH 3/7] Revert "mount.nfs: merge in vers= and nfsvers= options"
+Subject: [PATCH 5/7] mount: options in config file shouldn't over-ride
+ command-line options.
 Cc:     Justin Mitchell <jumitche@redhat.com>,
         Benjamin Coddington <bcodding@redhat.com>,
         linux-nfs@vger.kernel.org
-Message-ID: <160809378307.7232.12486406696809312958.stgit@noble>
+Message-ID: <160809378308.7232.5025347167008614005.stgit@noble>
 In-Reply-To: <160809318571.7232.10427700322834760606.stgit@noble>
 References: <160809318571.7232.10427700322834760606.stgit@noble>
 User-Agent: StGit/0.23
@@ -41,56 +42,56 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This reverts commit 8110103404b35d9e86057ef0764f8aa87585f455.
+When reading from the config file, we already ignore options that exist
+on the command line, or that were already found earlier in the config
+file.  However this only works for exact matches of options.
 
-Using mnt_alias_tab[] to handle options which are synonyms isn't really
-a good fit.  This sort-of works, but in part only because 'strstr()'
-is used for matching so "vers=" is found when "nfsvers=" is present.
-This doesn't handle other version-setting options like v2, v3, v4.x.
+e.g. if "noac" is on the command line and "ac=true" is in the config file,
+then "ac" will be added, and this will be used.
 
-So remove this commit to make room for a better solution.
+Add tests for the "no" prefix, and also for "fg" vs "bg", so that if
+"fg" is set on the command line, a "bg" or "background" setting in the
+config file does not over-ride it.
+
+Note that this *doesn't* handle the different protocol version
+specifiers.  That will come later.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- utils/mount/configfile.c |    8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ utils/mount/configfile.c |   21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
 diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index 2470bc6a8bf6..e20aa73739fc 100644
+index 8c68ff2c1323..40378ab247fc 100644
 --- a/utils/mount/configfile.c
 +++ b/utils/mount/configfile.c
-@@ -70,7 +70,6 @@ struct mnt_alias {
- 	{"background", "bg", MNT_NOARG},
- 	{"foreground", "fg", MNT_NOARG},
- 	{"sloppy", "sloppy", MNT_NOARG},
--	{"nfsvers", "vers", MNT_UNSET},
- };
- int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
- 
-@@ -296,21 +295,20 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
- 
- 	list = conf_get_tag_list(section, arg);
- 	TAILQ_FOREACH(node, &list->fields, link) {
--		/* check first if this is an alias for another option */
--		field = mountopts_alias(node->field, &argtype);
- 		/*
- 		 * Do not overwrite options if already exists
- 		 */
--		snprintf(buf, BUFSIZ, "%s=", field);
-+		snprintf(buf, BUFSIZ, "%s=", node->field);
- 		if (opts && strcasestr(opts, buf) != NULL)
+@@ -204,6 +204,27 @@ conf_parse_mntopts(char *section, char *arg, struct mount_options *options)
+ 		field = mountopts_alias(node->field, &argtype);
+ 		if (po_contains(options, field) == PO_FOUND)
  			continue;
++		/* Some options can be inverted by a "no" prefix.
++		 * Check for these.
++		 * "no" prefixes are unlikely in the config file as
++		 * "option=false" is preferred, but still possible.
++		 */
++		if (strncmp(field, "no", 2) == 0 &&
++		    po_contains(options, field+2) == PO_FOUND)
++			continue;
++		if (strlen(field) < BUFSIZ-3) {
++			strcat(strcpy(buf, "no"), field);
++			if (po_contains(options, buf) == PO_FOUND)
++				continue;
++		}
++
++		/* If fg or bg already present, ignore bg or fg */
++		if (strcmp(field, "fg") == 0 &&
++		    po_contains(options, "bg") == PO_FOUND)
++			continue;
++		if (strcmp(field, "bg") == 0 &&
++		    po_contains(options, "fg") == PO_FOUND)
++			continue;
  
--		if (lookup_entry(field) != NULL)
-+		if (lookup_entry(node->field) != NULL)
- 			continue;
  		buf[0] = '\0';
  		value = conf_get_section(section, arg, node->field);
- 		if (value == NULL)
- 			continue;
-+		field = mountopts_alias(node->field, &argtype);
- 		if (strcasecmp(value, "false") == 0) {
- 			if (argtype != MNT_NOARG)
- 				snprintf(buf, BUFSIZ, "no%s", field);
 
 
