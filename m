@@ -2,147 +2,96 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BE6EC0018C
-	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 07:05:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CBDFEC3526D
+	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 18:31:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 57EE423B8C
-	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 07:05:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9691C233A2
+	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 18:31:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726346AbgLSHFH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 19 Dec 2020 02:05:07 -0500
-Received: from hqnvemgate25.nvidia.com ([216.228.121.64]:13548 "EHLO
-        hqnvemgate25.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726311AbgLSHFG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Dec 2020 02:05:06 -0500
-Received: from hqmail.nvidia.com (Not Verified[216.228.121.13]) by hqnvemgate25.nvidia.com (using TLS: TLSv1.2, AES256-SHA)
-        id <B5fdda5f80000>; Fri, 18 Dec 2020 23:04:24 -0800
-Received: from [10.2.61.104] (172.20.145.6) by HQMAIL107.nvidia.com
- (172.20.187.13) with Microsoft SMTP Server (TLS) id 15.0.1473.3; Sat, 19 Dec
- 2020 07:04:23 +0000
-Subject: Re: set_page_dirty vs truncate
-To:     Matthew Wilcox <willy@infradead.org>
-CC:     <linux-fsdevel@vger.kernel.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        <v9fs-developer@lists.sourceforge.net>,
-        Steve French <sfrench@samba.org>, <linux-cifs@vger.kernel.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Jeff Dike <jdike@addtoit.com>,
-        Richard Weinberger <richard@nod.at>,
-        <linux-um@lists.infradead.org>, Dave Kleikamp <shaggy@kernel.org>,
-        <jfs-discussion@lists.sourceforge.net>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        <linux-nfs@vger.kernel.org>, Anton Altaparmakov <anton@tuxera.com>,
-        <linux-ntfs-dev@lists.sourceforge.net>,
-        Mike Marshall <hubcap@omnibond.com>,
-        Martin Brandenburg <martin@omnibond.com>,
-        <devel@lists.orangefs.org>, Hans de Goede <hdegoede@redhat.com>
-References: <20201218160531.GL15600@casper.infradead.org>
- <20201218220316.GO15600@casper.infradead.org>
- <20201219051852.GP15600@casper.infradead.org>
- <7a7c3052-74c7-c63b-5fe3-65d692c1c5d1@nvidia.com>
- <20201219065057.GR15600@casper.infradead.org>
-From:   John Hubbard <jhubbard@nvidia.com>
-Message-ID: <43f05a8f-25ce-a400-5825-d8fa159ee7f6@nvidia.com>
-Date:   Fri, 18 Dec 2020 23:04:23 -0800
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101
- Thunderbird/84.0
+        id S1725562AbgLSSa6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 19 Dec 2020 13:30:58 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34596 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725960AbgLSSa5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Dec 2020 13:30:57 -0500
+Received: from mail-pf1-x42d.google.com (mail-pf1-x42d.google.com [IPv6:2607:f8b0:4864:20::42d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 68716C0617B0
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:17 -0800 (PST)
+Received: by mail-pf1-x42d.google.com with SMTP id c79so3592841pfc.2
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:17 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=VvrYI53ARyLNi47g0r3LKgEekytDQ9rhf7H5l0uRxuE=;
+        b=ejmtv9lSLpZjFCNpEe2h4SDXV6nzCEJnoqR4PCHRfMio13B36p4FOCespgD2L1MJHr
+         M2BLuBkvAqBgRv7u9IkQop/p16XMCKn6xAPojzl1UMcfsb5KV4oNTFU7z6KawvFVDvyT
+         6NZyegVP2cE9xm+MN1YgezJVMAInTxZ9p3wC+HinpgHA56VXQJA8jpCvSNk3m8nUuwZY
+         gfly3g5zbGTswBFMSxP77wwlW0zwsgqsvahVcJHcbm+n4ZvLCg6NJMdPA6UxHJJRm+9J
+         DoyufHKG8Jrdsux3TiKRvUJvn0VjssVL8//FDbCsp/vfepX43WpitfzfdNo45GH48+34
+         gHWw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=VvrYI53ARyLNi47g0r3LKgEekytDQ9rhf7H5l0uRxuE=;
+        b=dy+YbfEjvnZfs6j3y+mGXBzPKLbnmDV0Fm+F4QVB7ZQdfmUWKN+cJYz+5mQH77JR81
+         Cnr2gc2LbJGmlbYDxbBXjMMcqDBwKX6cdWb4+BO6Tj2e4ViKoQC/SeHJov3JIKwcsCF7
+         fsCYPKIbFHsanKW0QSOWTsjywEG15IE6MHIUxbTyw6iFF9SuJtQPZSEPj3LP3EQ+jcNn
+         45gCBEDG+z3J0H4rt1V4W/yBmPspCe5fHOOgWsUnliGcHeC/P7yMP1Tq6BShFDJxfDmP
+         LiRzhoMOaKUj4VEPki5FBkqF5o249mZ2XMlFQLd0dWkgSprvWkz16xSFJ14w2peSIn3h
+         1dng==
+X-Gm-Message-State: AOAM533RjU2FwRwaboPZ+F3nl5mX+LdWbpOEfp+a9Zlr+fM1ubZLcctc
+        BzcBlAghei0oLPfrKae7PDU=
+X-Google-Smtp-Source: ABdhPJw+KAXKaZkQRpAD9BYyBoJO2do5qIT5Nt+xLrGzqAI7wDvvNw9+bEgZezeqMpQuBsOR30lhAQ==
+X-Received: by 2002:a65:47c7:: with SMTP id f7mr5093026pgs.305.1608402617024;
+        Sat, 19 Dec 2020 10:30:17 -0800 (PST)
+Received: from garbo.localdomain (c-69-181-67-218.hsd1.ca.comcast.net. [69.181.67.218])
+        by smtp.gmail.com with ESMTPSA id l197sm12318471pfd.97.2020.12.19.10.30.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 19 Dec 2020 10:30:16 -0800 (PST)
+From:   Tom Haynes <loghyr@gmail.com>
+X-Google-Original-From: Tom Haynes <loghyr@hammerspace.com>
+To:     Bruce Fields <bfields@redhat.com>
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [pynfs python3 1/7] CB_LAYOUTRECALL: Make string a byte array
+Date:   Sat, 19 Dec 2020 10:29:42 -0800
+Message-Id: <20201219182948.83000-2-loghyr@hammerspace.com>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20201219182948.83000-1-loghyr@hammerspace.com>
+References: <20201219182948.83000-1-loghyr@hammerspace.com>
 MIME-Version: 1.0
-In-Reply-To: <20201219065057.GR15600@casper.infradead.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [172.20.145.6]
-X-ClientProxiedBy: HQMAIL105.nvidia.com (172.20.187.12) To
- HQMAIL107.nvidia.com (172.20.187.13)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nvidia.com; s=n1;
-        t=1608361464; bh=A9fBx0IN5qsLyTEaO2K4aLwibDOVSe+bKLpimCocLwU=;
-        h=Subject:To:CC:References:From:Message-ID:Date:User-Agent:
-         MIME-Version:In-Reply-To:Content-Type:Content-Language:
-         Content-Transfer-Encoding:X-Originating-IP:X-ClientProxiedBy;
-        b=Bgc3aR4z753YGJlW70WoLrtQ1KN8IbRzq31juKs6PfBN2zkSGHtinWPesncivbs4W
-         VzTsGi5zW6I314mN0sALuVKM7eV85d/U7RnCFRj/tuktF25zg4GPCpkEmzSS3hoUHK
-         PP07gVgvL8A0z77WSBOvwn20T/s6MvL8eDcowYD4Rs6BCV3hJUYhWaiMpxkCZoQAqY
-         RxKeghrOfimP4wXYxSRuO2xATbM6n5/MhNO06xr/el270Y+5EbFgXIlop0FK1iDT07
-         VWPAhXQlelzCRLSGyvDrtBjTpyiR5AjbZTqDfGwl3tId3hrMABj+K1hpMKyp1AXgv6
-         lwMu3rKNfv89A==
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 12/18/20 10:50 PM, Matthew Wilcox wrote:
-...
->>> Hmmm ... looks like __set_page_dirty_nobuffers() has a similar problem:
->>>
->>> {
->>>           lock_page_memcg(page);
->>>           if (!TestSetPageDirty(page)) {
->>>                   struct address_space *mapping = page_mapping(page);
->>>                   unsigned long flags;
->>>
->>>                   if (!mapping) {
->>>                           unlock_page_memcg(page);
->>>                           return 1;
->>>                   }
->>>
->>>                   xa_lock_irqsave(&mapping->i_pages, flags);
->>>                   BUG_ON(page_mapping(page) != mapping);
->>>
->>> sure, we check that the page wasn't truncated between set_page_dirty()
->>> and the call to TestSetPageDirty(), but we can truncate dirty pages
->>> with no problem.  So between the call to TestSetPageDirty() and
->>> the call to xa_lock_irqsave(), the page can be truncated, and the
->>> BUG_ON should fire.
->>>
->>> I haven't been able to find any examples of this, but maybe it's just a very
->>> narrow race.  Does anyone recognise this signature?  Adding the filesystems
->>> which use __set_page_dirty_nobuffers() directly without extra locking.
->>
->>
->> That sounds like the same *kind* of failure that Jan Kara and I were
->> seeing on live systems[1], that led eventually to the gup-to-pup
->> conversion exercise.
->>
->> That crash happened due to calling set_page_dirty() on pages that had no
->> buffers on them [2]. And that sounds like *exactly* the same thing as
->> calling __set_page_dirty_nobuffers() without extra locking. So I'd
->> expect that it's Just Wrong To Do, for the same reasons as Jan spells
->> out very clearly in [1].
-> 
-> Interesting.  It's a bit different, *but* Jan's race might be what's
-> causing this symptom.  The reason is that the backtrace contains
-> set_page_dirty_lock() which holds the page lock.  So there can't be
-> a truncation race because truncate holds the page lock when calling
-> ->invalidatepage.
-> 
-> That said, the syzbot reproducer doesn't have any O_DIRECT in it
-> either.  So maybe this is some other race?
+From: Tom Haynes <loghyr@excfb.com>
 
-Jan's race can be also be reproduced *without* O_DIRECT. I first saw
-it via a program that just did these steps on a normal ext4 filesystem:
+Signed-off-by: Tom Haynes <loghyr@excfb.com>
+---
+ nfs4.1/nfs4client.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-a) pin ext4 file-backed pages, via get_user_pages(). Actually the way
-it got here was due to using what *looked* like anonymous RAM to the
-program, but was really file-backed RAM, because the admin had it
-set up to mount ext4 on /tmp, instead of using tmpfs, to "save RAM",
-but I digress. :)
-
-b) wait a while, optionally do some DMA on the pages from a GPU, drink
-coffee...
-
-c) call set_pages_dirty()
-
-d) unpin the pages
-
-e) BUG_ON() in page_buffers().
-
-
-thanks,
+diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+index f06d9c5..df573d6 100644
+--- a/nfs4.1/nfs4client.py
++++ b/nfs4.1/nfs4client.py
+@@ -296,7 +296,7 @@ class NFS4Client(rpc.Client, rpc.Server):
+                       layoutreturn4(LAYOUTRETURN4_FILE,
+                                     layoutreturn_file4(rclayout.lor_offset,
+                                                        rclayout.lor_length, \
+-                                                       rclayout.lor_stateid, "")))]
++                                                       rclayout.lor_stateid, b"")))]
+             env.session.compound(ops)
+         elif lo_recalltype not in [LAYOUTRECALL4_FSID, LAYOUTRECALL4_ALL]:
+             res = NFS4ERR_NOTSUPP
 -- 
-John Hubbard
-NVIDIA
+2.26.2
+
