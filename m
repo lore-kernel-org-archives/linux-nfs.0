@@ -2,67 +2,67 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7281FC4361B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B901C3526C
 	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 18:31:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 38CDC23158
+	by mail.kernel.org (Postfix) with ESMTP id 4F59123372
 	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 18:31:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727287AbgLSSbi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727254AbgLSSbi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 19 Dec 2020 13:31:38 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34706 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34710 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727254AbgLSSbh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Dec 2020 13:31:37 -0500
-Received: from mail-pg1-x533.google.com (mail-pg1-x533.google.com [IPv6:2607:f8b0:4864:20::533])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 906B8C061257
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:22 -0800 (PST)
-Received: by mail-pg1-x533.google.com with SMTP id c22so3445088pgg.13
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:22 -0800 (PST)
+        with ESMTP id S1727280AbgLSSbi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Dec 2020 13:31:38 -0500
+Received: from mail-pj1-x1034.google.com (mail-pj1-x1034.google.com [IPv6:2607:f8b0:4864:20::1034])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0E121C0611CA
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:25 -0800 (PST)
+Received: by mail-pj1-x1034.google.com with SMTP id b5so3304974pjl.0
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=sQgD9OtFG7dCo48p/I3yqxvAtbo3rjfCH/WpeBOk0kI=;
-        b=gzFwUKuLvs0HT2kilg27FPUuh6/dLvh8ZAX0fTerqjyssTmoRw9ubb4V1qMVFPATGr
-         uR40VAWHgGA2/NpToYlVy/MOsGwWkCU7b9SvNYWWqjzhDpmh4qOz0bQ9aBr+YtH9SzxN
-         b+Aju4PKg38ZgkTcFe9BugX4XCab+6lOB3b2Trt+VXPrgo/0qziEBb3om0miYo9vPaj6
-         1yxjiFniaBTb8wuMHzCGyeuHBPJ1rbHxUmNmmOVbWVQFHZ9+AoIEo4erPg0SQXpEeVbm
-         mJGgVSTkg5yCXKp5bZBk35Ha8RjWUOLo1SfnfZHL9XLBQyyHmWMk0CE8rfAiDdpXOScz
-         LSuw==
+        bh=2dQ16zpkiKKpGEq/9mPVqRKfARPz8/ZOcbiS4ymT8+s=;
+        b=doz7o2Gx4PtUwUoD6tVeWgOhl6F4CQ1gIsNWFIIredy1w+/0XUKZLil35uRGtFSCts
+         kh0pMdEAJuzwlHgMIZNG8F1saqJuqL6XvH1v7QAeMBtDSCeVG9lRUUPPIaIOQiiMyrcy
+         Ub3wls8q5yCJ0VQVgCCHLNEy3sUFWPMaTjFUi8+9pS2F2dHGWkV86z4hPWaz/Sele6b3
+         U4SyxhM44MEGosTNpfAw+6Qf5N+pnXOqYlD6UaiMjs6R6by2V+Qd4+cYtA3FPB9iHKFh
+         ctJlF+u+9Xc4cWT8+yyg9rHTIIFL72BRMh9GexXRJmXLf8COM6RQPaqEHx7qQZgHioa9
+         ZHVQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=sQgD9OtFG7dCo48p/I3yqxvAtbo3rjfCH/WpeBOk0kI=;
-        b=nPqQIz5D20ZeWsYY82Kupxs2SkL64izFBmmDI7yNTtouuIX8pWtvAL2HebVJ318Mcu
-         AaHOCclXTAU4a0z8wtDzN3ldwOt58BohSVIDlCJglWqcQQDUQgw5GXVlp69RjKSp2+3X
-         PBByyUOaxojXxEIZvNwIQwlP8Qx0xVJFAz99MeFBS3yPddljjSFgunNna1jGhKOawbbu
-         6Z7Jajj05/4bLYFtI+F96JWb4iqq5DQ6H6w55s8+MO5uUvbjPKNuhVmBJirBlRyDuMco
-         tYwPtWXfloFO5Q5kw6Forp+zLaFTpk6+uMVdh2WmVXWq9R75NBvYbh+xFv4LgBnbk1zF
-         4+1g==
-X-Gm-Message-State: AOAM532gXsjlXNo4HS1+rDVJNcHyq6mNFFLRiaQgi8LCZLIw76pGgoJ6
-        JL/KQh0SgR1qBf4zj2gDueVm2Y3oyw5RPg==
-X-Google-Smtp-Source: ABdhPJzVlhpzV910oQp1Wt037wrr0A8eDbIWYKMkdfmLV19HWH0SDCSqSg1RhIGuGBV4P2UwLVQ7QQ==
-X-Received: by 2002:a05:6a00:1481:b029:197:fc39:f646 with SMTP id v1-20020a056a001481b0290197fc39f646mr9137291pfu.57.1608402622073;
-        Sat, 19 Dec 2020 10:30:22 -0800 (PST)
+        bh=2dQ16zpkiKKpGEq/9mPVqRKfARPz8/ZOcbiS4ymT8+s=;
+        b=L36bHELz6u59jNMr474TWRXy6ra5XS+6Ce7XzpjbNmv3dhbEGh31uKEFoz6ci9pnY8
+         Wt1vbt7aOnoo1ZkfnE+4edKeenYuX+ePB9vUb72gRjbFbcvAhn3+nBjtHDwQIEs9+knk
+         JxMADhkP2ijQxFKdhGechX1uGfDWxiDUpYtVWa7kTBAlBSnfg2qAdyMmUKtYt4L5lo0c
+         YMydrbVyoMjyUP9P8fu/BtrdrAIRBpLH2OECQ59E+XPkFBwd77b5NWNjbEcnEAVnyoMJ
+         MxuQZxU65xPfNfnU4biGE5lh9sttGN3yy2aLkHKwRNWupE0N640KO/l8+vghzaKWj7+J
+         oSpw==
+X-Gm-Message-State: AOAM531XgUbrHsYl6nk1U+3+4OYoHjNanv3ze8SSPruiPn9TGPIaVAy/
+        imi42r/hNyGm2qHT2k/EYHg=
+X-Google-Smtp-Source: ABdhPJyrVEG0Yc8yCmSh5oYd6vuH3M29AK4d6hGsxBA1QbEs8YdzFYGwZzNCOY+lwE2siYT5Lbj/Zg==
+X-Received: by 2002:a17:90a:193:: with SMTP id 19mr10020163pjc.45.1608402624645;
+        Sat, 19 Dec 2020 10:30:24 -0800 (PST)
 Received: from garbo.localdomain (c-69-181-67-218.hsd1.ca.comcast.net. [69.181.67.218])
-        by smtp.gmail.com with ESMTPSA id l197sm12318471pfd.97.2020.12.19.10.30.21
+        by smtp.gmail.com with ESMTPSA id l197sm12318471pfd.97.2020.12.19.10.30.23
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 19 Dec 2020 10:30:21 -0800 (PST)
+        Sat, 19 Dec 2020 10:30:24 -0800 (PST)
 From:   Tom Haynes <loghyr@gmail.com>
 X-Google-Original-From: Tom Haynes <loghyr@hammerspace.com>
 To:     Bruce Fields <bfields@redhat.com>
 Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [pynfs python3 5/7] st_flex: Test is now redundant
-Date:   Sat, 19 Dec 2020 10:29:46 -0800
-Message-Id: <20201219182948.83000-6-loghyr@hammerspace.com>
+Subject: [pynfs python3 7/7] st_flex: testFlexLayoutStatsSmall needed loving to pass python3
+Date:   Sat, 19 Dec 2020 10:29:48 -0800
+Message-Id: <20201219182948.83000-8-loghyr@hammerspace.com>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20201219182948.83000-1-loghyr@hammerspace.com>
 References: <20201219182948.83000-1-loghyr@hammerspace.com>
@@ -76,53 +76,33 @@ From: Tom Haynes <loghyr@excfb.com>
 
 Signed-off-by: Tom Haynes <loghyr@excfb.com>
 ---
- nfs4.1/server41tests/st_flex.py | 28 ----------------------------
- 1 file changed, 28 deletions(-)
+ nfs4.1/server41tests/st_flex.py | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/nfs4.1/server41tests/st_flex.py b/nfs4.1/server41tests/st_flex.py
-index 80f5a85..3aae441 100644
+index 2b1820c..169db69 100644
 --- a/nfs4.1/server41tests/st_flex.py
 +++ b/nfs4.1/server41tests/st_flex.py
-@@ -59,39 +59,11 @@ def testStateid1(t, env):
-     res = close_file(sess, fh, stateid=open_stateid)
-     check(res)
+@@ -8,7 +8,7 @@ from xdrdef.nfs4_pack import NFS4Packer as FlexPacker, \
+     NFS4Unpacker as FlexUnpacker
+ from nfs4lib import FancyNFS4Packer, get_nfstime
  
--def testFlexGetLayout(t, env):
--    """Verify layout handling
--
--    FLAGS: flex
--    CODE: FFGLO1
--    """
--    sess = env.c1.new_pnfs_client_session(env.testname(t))
--    # Create the file
--    res = create_file(sess, env.testname(t))
--    check(res)
--    # Get layout
--    fh = res.resarray[-1].object
--    open_stateid = res.resarray[-2].stateid
--    ops = [op.putfh(fh),
--           op.layoutget(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_READ,
--                        0, NFS4_MAXFILELEN, 4196, open_stateid, 0xffff)]
--    res = sess.compound(ops)
--    check(res)
--    # Parse opaque
--    for layout in res.resarray[-1].logr_layout:
--        if layout.loc_type == LAYOUT4_FLEX_FILES:
--            p = FlexUnpacker(layout.loc_body)
--            opaque = p.unpack_ff_layout4()
--            p.done()
--    res = close_file(sess, fh, stateid=open_stateid)
--    check(res)
--
- def testFlexLayoutReturnFile(t, env):
-     """
-     Return a file's layout
+-current_stateid = stateid4(1, '\0' * 12)
++current_stateid = stateid4(1, b'\0' * 12)
  
-     FLAGS: flex
--    DEPEND: FFGLO1
-     CODE: FFLOR1
-     """
+ empty_fflr = ff_layoutreturn4([], [])
+ 
+@@ -347,8 +347,8 @@ def testFlexLayoutStatsSmall(t, env):
      sess = env.c1.new_pnfs_client_session(env.testname(t))
+ 
+     for i in range(len(lats)):
+-        open_op = open_create_file_op(sess, env.testname(t) + str(i), open_create=OPEN4_CREATE)
+-        res = sess.compound( open_op +
++        open_op = open_create_file_op(sess, b'%s_%i' % (env.testname(t), i), open_create=OPEN4_CREATE)
++        res = sess.compound(open_op +
+                [op.layoutget(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_RW,
+                             0, NFS4_MAXFILELEN, 4196, current_stateid, 0xffff)])
+         check(res, NFS4_OK)
 -- 
 2.26.2
 
