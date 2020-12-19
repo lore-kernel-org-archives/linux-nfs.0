@@ -2,70 +2,68 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25A95C3526F
-	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 18:31:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BCD41C3526C
+	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 18:31:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F1D6823158
+	by mail.kernel.org (Postfix) with ESMTP id 80C5423372
 	for <linux-nfs@archiver.kernel.org>; Sat, 19 Dec 2020 18:31:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727250AbgLSSbB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 19 Dec 2020 13:31:01 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34612 "EHLO
+        id S1726753AbgLSSa6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 19 Dec 2020 13:30:58 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34592 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725960AbgLSSbB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Dec 2020 13:31:01 -0500
-Received: from mail-pj1-x1033.google.com (mail-pj1-x1033.google.com [IPv6:2607:f8b0:4864:20::1033])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3F393C061248
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:21 -0800 (PST)
-Received: by mail-pj1-x1033.google.com with SMTP id w1so6122992pjc.0
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:21 -0800 (PST)
+        with ESMTP id S1725562AbgLSSa5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Dec 2020 13:30:57 -0500
+Received: from mail-pg1-x52c.google.com (mail-pg1-x52c.google.com [IPv6:2607:f8b0:4864:20::52c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E79FDC0613CF
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:16 -0800 (PST)
+Received: by mail-pg1-x52c.google.com with SMTP id n7so3477297pgg.2
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Dec 2020 10:30:16 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=LcafcFsF3exuV6RQUfYdPbxwdszjLSZqLsrKlz4PxyY=;
-        b=NmhEesMHM3Uf17/pswG3ikkNe8UpQhBacEBwRCXkR6dXmhAN5LpBcw6rZIgJhZ30Y8
-         SOPk686FZrOhjZNqK9bI78FdA2aU688yeMk4lY6JA6g864KBjrEyHtEi8V0lCFGG3oD6
-         FMBesW9LHyHQIvxFmLWk+V6Q+Hphe2qv5/qMrBQYGT1GVCzfiXfUc5d6Yh44bUihv0s7
-         1hBcBJ6e4c3CPP317C2FdfNJqxN3mv2/BpjUOOVp5qIqacue4JF08xq5lW4RePfWT1E4
-         Y4JG6n2QtmlV9g2ke6iTIMuPsWVruQWMOHEfG7mWMcuPxUvSxBBWfW1S/7y1LmtsUH1B
-         XzvA==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=gLkUbAW5Ky9u2Q7hcwX+yAdv7hDsVChwtLFef0dGCjA=;
+        b=Rkc3eaXPaAfqJ7Wwin9q/LFkZaMJPgviebIdhnXy+/TFb54/JZ5BF/rsN4SgCh+u4u
+         WRo8szfHir2/0IQ9SiC/Uk6o8xW4HHXAJIUVprs5sr3G3mKdqcjY4hRBakhwGzc2s0un
+         VZncQ/MdWRvf65nnTGnyCUrBOvEbnKnw4OQektL63K9Zd7rOESQypeLL+yApqPwglO9r
+         O1XZZZrYutIhWPnQWHbR9lJLzHxea5UtZU2ftUwYTMv35fFIm6Ppeo88JoB9PTAiC429
+         J7GrI1qqiFQTw+lG/p07QJLLcZTh19e6gwZTKHsxPykUbACSjCSEgcmD2nvn0whk7cH3
+         bLhw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=LcafcFsF3exuV6RQUfYdPbxwdszjLSZqLsrKlz4PxyY=;
-        b=YcltKMMJyyojit/M6j27wA1QHWrCXTrtKdoOvNUfftmWCmDMrmuxH9u8nVkTMIeVhv
-         gmj72OtV1oOYKoaykKTqBhYQq1zCS7cW48cxD+r98IEb6wvV4UrndL4SzDBK28Tm1tJx
-         6a2+r72k+XhcGbJAsiChPL0o3NkQS7lt2tXnPdF6Bnu68KkQgAca2XN0nDJo45KnEqAQ
-         2WwO1I1BDrtUJgtT5lcFnyAU0If9+oYIjruFPLGLq0yG/+6FBaT/io8CT68M47jTmPd2
-         /AKPQyh0MdMW9q6aoHiW4144XC2m1qdN/SqYvPqjOEC/cg1VGmQPHbG411FthrbGF2rX
-         PVHA==
-X-Gm-Message-State: AOAM533cNeTi/VZWsGS5floiJM064zBEBAas5SfZEzcwMAvN/qjmpgFp
-        sr1NC7gTh8aeybqzEdT2Ic0=
-X-Google-Smtp-Source: ABdhPJwuQv2Xn5osCHGxVRGzfh/DZ3brOypeNmNGmdd+gSScu3NZbHdPspNtVEnTw/7TN8OzgWuFiA==
-X-Received: by 2002:a17:902:c584:b029:da:cc62:22f1 with SMTP id p4-20020a170902c584b02900dacc6222f1mr9895301plx.54.1608402620870;
-        Sat, 19 Dec 2020 10:30:20 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=gLkUbAW5Ky9u2Q7hcwX+yAdv7hDsVChwtLFef0dGCjA=;
+        b=FV84Ut4N6jEt+YQj2B7A3ZUuksXSGLotXz2JQjZxWAWfg7vLwY7prHTKNgsctXjdrN
+         TnfspajgEqXlkP5XfXDril9x1K7Ep8RWh4t+rP8hKtNFzVOdLNoEC7hVT98ww8+lcQXQ
+         2TIl2oidXrykdX/4EqHzmInU/69/9NA32pfgLbSgkfKcqLRnWggpIt0oVhVAE9p1Fv2H
+         by9VQ665kapGklQItUEz91vU/HGQ4V6XanXdgenX1381GKgisUPEatelCH+Nz0pz10AW
+         UjeYKTRC8mWf1kaUVsD9ZAlRGf0oDe/QgH+hHxQKLpvrLCNwpTdO8odoLuQRLsXjb4b1
+         rLHA==
+X-Gm-Message-State: AOAM5337Gbz/NW+7U/1Tgv82/kbYNEP1PW/qYUcJGRk7xS4ko8exZmnJ
+        5P6cxo+GIhh4YH5Mr2PH4ZLaWLTM6gR4QA==
+X-Google-Smtp-Source: ABdhPJy7ZIybOcRKcZTTgqV/Cov0rKJR2xjxrTMkjjmemM98mmlJy2p4i9rs57AKxzamHMdbbLawmg==
+X-Received: by 2002:a63:6442:: with SMTP id y63mr9242730pgb.35.1608402615632;
+        Sat, 19 Dec 2020 10:30:15 -0800 (PST)
 Received: from garbo.localdomain (c-69-181-67-218.hsd1.ca.comcast.net. [69.181.67.218])
-        by smtp.gmail.com with ESMTPSA id l197sm12318471pfd.97.2020.12.19.10.30.19
+        by smtp.gmail.com with ESMTPSA id l197sm12318471pfd.97.2020.12.19.10.30.14
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 19 Dec 2020 10:30:20 -0800 (PST)
+        Sat, 19 Dec 2020 10:30:14 -0800 (PST)
 From:   Tom Haynes <loghyr@gmail.com>
 X-Google-Original-From: Tom Haynes <loghyr@hammerspace.com>
 To:     Bruce Fields <bfields@redhat.com>
 Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [pynfs python3 4/7] st_flex: Use range instead of xrange for python3
-Date:   Sat, 19 Dec 2020 10:29:45 -0800
-Message-Id: <20201219182948.83000-5-loghyr@hammerspace.com>
+Subject: [pynfs python3 0/7] Python3 patches for st_flex.py
+Date:   Sat, 19 Dec 2020 10:29:41 -0800
+Message-Id: <20201219182948.83000-1-loghyr@hammerspace.com>
 X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20201219182948.83000-1-loghyr@hammerspace.com>
-References: <20201219182948.83000-1-loghyr@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -74,24 +72,35 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Tom Haynes <loghyr@excfb.com>
 
-Signed-off-by: Tom Haynes <loghyr@excfb.com>
----
- nfs4.1/server41tests/st_flex.py | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Hey Bruce,
 
-diff --git a/nfs4.1/server41tests/st_flex.py b/nfs4.1/server41tests/st_flex.py
-index 7036271..80f5a85 100644
---- a/nfs4.1/server41tests/st_flex.py
-+++ b/nfs4.1/server41tests/st_flex.py
-@@ -1106,7 +1106,7 @@ def testFlexLayoutReturn100(t, env):
-     fh = res.resarray[-1].object
-     open_stateid = res.resarray[-2].stateid
- 
--    for i in xrange(count):
-+    for i in range(count):
-         layout_error = None if i % layout_error_ratio else NFS4ERR_ACCESS
-         layoutget_return(sess, fh, open_stateid, layout_error=layout_error)
- 
+This applies on top of the previous patch set.
+
+This passes on my RHEL 8.2 client running python3 against a Hammerspace
+server.
+
+Thanks,
+Tom
+
+fwiw - In some of the error paths, the system would complain that the
+exception StandardError was not defined.
+
+I found this:
+https://portingguide.readthedocs.io/en/latest/exceptions.html#the-removed-standarderror
+
+Tom Haynes (7):
+  CB_LAYOUTRECALL: Make string a byte array
+  st_flex: Use NFS4_MAXFILELEN in layout calls
+  st_flex: Provide an empty ff_layoutreturn4 by default for LAYOUTRETURN
+  st_flex: Use range instead of xrange for python3
+  st_flex: Test is now redundant
+  st_flex: Return the layout before closing the file
+  st_flex: testFlexLayoutStatsSmall needed loving to pass python3
+
+ nfs4.1/nfs4client.py            |   2 +-
+ nfs4.1/server41tests/st_flex.py | 124 +++++++++++++++++---------------
+ 2 files changed, 68 insertions(+), 58 deletions(-)
+
 -- 
 2.26.2
 
