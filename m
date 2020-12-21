@@ -2,180 +2,84 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93AFBC4361B
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Dec 2020 15:57:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1CCEC4332E
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Dec 2020 02:56:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 51E942336F
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Dec 2020 15:57:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8596722EBD
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Dec 2020 02:56:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727647AbgLTP5c (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 20 Dec 2020 10:57:32 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33124 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727641AbgLTP5c (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Dec 2020 10:57:32 -0500
-Received: from smtp-o-2.desy.de (smtp-o-2.desy.de [IPv6:2001:638:700:1038::1:9b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 44C93C0613CF
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Dec 2020 07:56:51 -0800 (PST)
-Received: from smtp-buf-2.desy.de (smtp-buf-2.desy.de [131.169.56.165])
-        by smtp-o-2.desy.de (Postfix) with ESMTP id 893A6160FC0
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Dec 2020 16:56:46 +0100 (CET)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-2.desy.de 893A6160FC0
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1608479806; bh=3kK3mhw+useqdgx5jLgtA9QBVnohbfPTJ7e3YpNHCCk=;
-        h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-        b=z3+StjpRrwT+IC+9avFy6Kibg/zBZUybcLu4URJcK4tdnbC8zbONt1fxNvyRLevZn
-         U845Lv6oczrDGyjzFGXh0L1MGzedVFYzz2OdbRLp6YZEIRvwzeeBWgb0lA6JAF2oDh
-         UBiS24HbHRpsYZ36jCrO5MskatXysfWN4SWYP+Oc=
-Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [131.169.56.130])
-        by smtp-buf-2.desy.de (Postfix) with ESMTP id 7C3DF1A01C7;
-        Sun, 20 Dec 2020 16:56:46 +0100 (CET)
-X-Virus-Scanned: amavisd-new at desy.de
-Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
-        by smtp-intra-1.desy.de (Postfix) with ESMTP id 549D3C0177;
-        Sun, 20 Dec 2020 16:56:46 +0100 (CET)
-Date:   Sun, 20 Dec 2020 16:56:45 +0100 (CET)
-From:   "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To:     Tom Haynes <loghyr@gmail.com>
-Cc:     bfields <bfields@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <2110076167.5569939.1608479805678.JavaMail.zimbra@desy.de>
-In-Reply-To: <20201219182948.83000-7-loghyr@hammerspace.com>
-References: <20201219182948.83000-1-loghyr@hammerspace.com> <20201219182948.83000-7-loghyr@hammerspace.com>
-Subject: Re: [pynfs python3 6/7] st_flex: Return the layout before closing
- the file
+        id S1728510AbgLUC4P (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 20 Dec 2020 21:56:15 -0500
+Received: from fieldses.org ([173.255.197.46]:51700 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726550AbgLUC4P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 20 Dec 2020 21:56:15 -0500
+X-Greylist: delayed 552 seconds by postgrey-1.27 at vger.kernel.org; Sun, 20 Dec 2020 21:56:15 EST
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 70E977B71; Sun, 20 Dec 2020 21:46:19 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 70E977B71
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1608518779;
+        bh=5JE9TJllW3bfzd8TtKpTM/aSWIBfxU6Che9CmbiwEvs=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=t0re/AWPw4KF5LTGHYH4rPhMIDrf/IEP5uG0dN4CLrgA4Vux3e/OD2FKvarq7ar/r
+         u7ymt+T2oCIWJhZjJV5Z/PAPHbxjtRCba6AI942UEMAEbPNVcSkzIvG7rDCOQniUuZ
+         M6DnUx3DORFdt49toNfThyGo8BV3zVyTNMNf4384=
+Date:   Sun, 20 Dec 2020 21:46:19 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Thomas Haynes <loghyr@gmail.com>
+Cc:     Bruce Fields <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [pynfs 03/10] Close the file for SEQ10b
+Message-ID: <20201221024619.GE24298@fieldses.org>
+References: <20201217003516.75438-1-loghyr@hammerspace.com>
+ <20201217003516.75438-4-loghyr@hammerspace.com>
+ <20201218164325.GD1258@fieldses.org>
+ <C99E0C08-FEC2-4F5A-9467-7B96CA8E51F2@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Mailer: Zimbra 8.8.15_GA_3980 (ZimbraWebClient - FF83 (Linux)/8.8.15_GA_3980)
-Thread-Topic: st_flex: Return the layout before closing the file
-Thread-Index: 7wVd+MpsQbGPPzcZVDTEom3paTQXOw==
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <C99E0C08-FEC2-4F5A-9467-7B96CA8E51F2@gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Tom,
+On Sun, Dec 20, 2020 at 06:42:55PM -0800, Thomas Haynes wrote:
+> 
+> 
+> > On Dec 18, 2020, at 8:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Wed, Dec 16, 2020 at 04:35:09PM -0800, Tom Haynes wrote:
+> >> 
+> >>     close_file(sess1, fh, stateid=stateid)
+> >> 
+> >> +    # Cleanup
+> >> +    res = sess1.compound([op.putfh(fh), op.close(0, stateid)])
+> >> +    check(res)
+> >> +
+> > 
+> > This is giving me:
+> > 
+> > SEQ10b   st_sequence.testReplayCache007                           : FAILURE
+> >           OP_CLOSE should return NFS4_OK, instead got
+> > 	              NFS4ERR_BAD_STATEID
+> > 
+> > probably because the file was already closed just above.  I'm not sure
+> > whta was intended here.  Reverting for now.
+> > 
+> > —b
+> 
+> Ahh, that close is not there in the branch we have internally. And since git took the change, I thought it was still good.
+> 
+> Backing out is cool.
 
-works for me as well with fedora33 and dcache server.
+Oh, I see what happened, thanks for following up.
 
-Thanks,
-   Tigran.
-
------ Original Message -----
-> From: "Tom Haynes" <loghyr@gmail.com>
-> To: "bfields" <bfields@redhat.com>
-> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
-> Sent: Saturday, 19 December, 2020 19:29:47
-> Subject: [pynfs python3 6/7] st_flex: Return the layout before closing the file
-
-> From: Tom Haynes <loghyr@excfb.com>
-> 
-> Signed-off-by: Tom Haynes <loghyr@excfb.com>
-> ---
-> nfs4.1/server41tests/st_flex.py | 40 +++++++++++++++++++++++++++------
-> 1 file changed, 33 insertions(+), 7 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_flex.py b/nfs4.1/server41tests/st_flex.py
-> index 3aae441..2b1820c 100644
-> --- a/nfs4.1/server41tests/st_flex.py
-> +++ b/nfs4.1/server41tests/st_flex.py
-> @@ -56,6 +56,15 @@ def testStateid1(t, env):
->         # the server increments by one the value of the "seqid" in each
->         # subsequent LAYOUTGET and LAYOUTRETURN response,
->         check_seqid(lo_stateid, i + 2)
-> +
-> +    ops = [op.putfh(fh),
-> +           op.layoutreturn(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_ANY,
-> +                           layoutreturn4(LAYOUTRETURN4_FILE,
-> +                                         layoutreturn_file4(0, NFS4_MAXFILELEN,
-> +                                                            lo_stateid,
-> empty_p.get_buffer())))]
-> +    res = sess.compound(ops)
-> +    check(res)
-> +
->     res = close_file(sess, fh, stateid=open_stateid)
->     check(res)
-> 
-> @@ -79,13 +88,13 @@ def testFlexLayoutReturnFile(t, env):
->     res = sess.compound(ops)
->     check(res)
->     # Return layout
-> -    layout_stateid = res.resarray[-1].logr_stateid
-> +    lo_stateid = res.resarray[-1].logr_stateid
-> 
->     ops = [op.putfh(fh),
->            op.layoutreturn(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_ANY,
->                            layoutreturn4(LAYOUTRETURN4_FILE,
->                                          layoutreturn_file4(0, NFS4_MAXFILELEN,
-> -                                                            layout_stateid,
-> empty_p.get_buffer())))]
-> +                                                            lo_stateid,
-> empty_p.get_buffer())))]
->     res = sess.compound(ops)
->     check(res)
->     res = close_file(sess, fh, stateid=open_stateid)
-> @@ -150,6 +159,15 @@ def testFlexLayoutOldSeqid(t, env):
->                                                             lo_stateid, empty_p.get_buffer())))]
->     res = sess.compound(ops)
->     check(res, NFS4ERR_OLD_STATEID, "LAYOUTRETURN with an old stateid")
-> +
-> +    ops = [op.putfh(fh),
-> +           op.layoutreturn(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_ANY,
-> +                           layoutreturn4(LAYOUTRETURN4_FILE,
-> +                                         layoutreturn_file4(0, NFS4_MAXFILELEN,
-> +                                                            lo_stateid3,
-> empty_p.get_buffer())))]
-> +    res = sess.compound(ops)
-> +    check(res)
-> +
->     res = close_file(sess, fh, stateid=open_stateid)
->     check(res)
-> 
-> @@ -260,8 +278,8 @@ def testFlexLayoutTestAccess(t, env):
->                         0, NFS4_MAXFILELEN, 8192, open_stateid, 0xffff)]
->     res = sess.compound(ops)
->     check(res)
-> -    lo_stateid = res.resarray[-1].logr_stateid
-> -    check_seqid(lo_stateid, 1)
-> +    lo_stateid1 = res.resarray[-1].logr_stateid
-> +    check_seqid(lo_stateid1, 1)
-> 
->     layout = res.resarray[-1].logr_layout[-1]
->     p = FlexUnpacker(layout.loc_body)
-> @@ -277,11 +295,11 @@ def testFlexLayoutTestAccess(t, env):
->     ops = [op.putfh(fh),
->            op.layoutget(False, LAYOUT4_FLEX_FILES,
->                         LAYOUTIOMODE4_READ,
-> -                        0, NFS4_MAXFILELEN, 8192, lo_stateid, 0xffff)]
-> +                        0, NFS4_MAXFILELEN, 8192, lo_stateid1, 0xffff)]
->     res = sess.compound(ops)
->     check(res)
-> -    lo_stateid = res.resarray[-1].logr_stateid
-> -    check_seqid(lo_stateid, 2)
-> +    lo_stateid2 = res.resarray[-1].logr_stateid
-> +    check_seqid(lo_stateid2, 2)
-> 
->     layout = res.resarray[-1].logr_layout[-1]
->     p = FlexUnpacker(layout.loc_body)
-> @@ -300,6 +318,14 @@ def testFlexLayoutTestAccess(t, env):
->     if gid_rw != gid_rd:
->         fail("Expected gid_rd == %s, got %s" % (gid_rd, gid_rw))
-> 
-> +    ops = [op.putfh(fh),
-> +           op.layoutreturn(False, LAYOUT4_FLEX_FILES, LAYOUTIOMODE4_ANY,
-> +                           layoutreturn4(LAYOUTRETURN4_FILE,
-> +                                         layoutreturn_file4(0, NFS4_MAXFILELEN,
-> +                                                            lo_stateid2,
-> empty_p.get_buffer())))]
-> +    res = sess.compound(ops)
-> +    check(res)
-> +
->     res = close_file(sess, fh, stateid=open_stateid)
->     check(res)
-> 
-> --
-> 2.26.2
+--b.
