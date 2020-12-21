@@ -2,108 +2,87 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57934C433DB
-	for <linux-nfs@archiver.kernel.org>; Mon, 21 Dec 2020 05:07:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B1D7C433E0
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Dec 2020 20:00:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 260AE22C7B
-	for <linux-nfs@archiver.kernel.org>; Mon, 21 Dec 2020 05:07:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 16A0D22AAA
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Dec 2020 20:00:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726213AbgLUFHf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Dec 2020 00:07:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40678 "EHLO
+        id S1725947AbgLUUAw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Dec 2020 15:00:52 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38812 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726160AbgLUFHf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Dec 2020 00:07:35 -0500
-Received: from mail-oi1-x229.google.com (mail-oi1-x229.google.com [IPv6:2607:f8b0:4864:20::229])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F3869C0613D3
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Dec 2020 21:06:54 -0800 (PST)
-Received: by mail-oi1-x229.google.com with SMTP id q205so10111382oig.13
-        for <linux-nfs@vger.kernel.org>; Sun, 20 Dec 2020 21:06:54 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=frDUp5BTlrdnyAuh9TFV+2I6TGuU5Sk1/Bmgn4Jsk9M=;
-        b=uQCmbjjYDEiaeO7xrrGbZLKQFqiZPu2DoB6+7sSkegoZk9SDXA5O9YRQ7Tn/oJQuLu
-         AP2+ZJTe3e3XtDj2PWqeyZg78mzfkB4VCfandCZFVgZjKpMc1lQl7g++8PId6fONiPix
-         J9lQnkJS2W63WrVBbiaYVs54ZkgXVwpD/gmAJX3yj8DPzSNxjJB07v53OOt+vK7yCGrq
-         Q4bLaHvWw/kA9GYUqHwew5CPjQqbcxdiyOon2epodFmWo7VXQJO1T+X0l7i7NTZjhs7L
-         Y52KU22JC/btHgj/fP6cXfmHKop1wBvmcvDX1SkjgQfFhf1giCcXYDuEb33Mn3TafqFp
-         OPjg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=frDUp5BTlrdnyAuh9TFV+2I6TGuU5Sk1/Bmgn4Jsk9M=;
-        b=thTL4ACJi4KQAVa8DK6YPqUNd6eaPe04dXlcPHbrcEaefIO43Vr1hPaJ6GZ6uGcDrz
-         XN6XTbItXA84tq3mCXr8c6MSQItwW4hYT2SLUTYeoSbtxbULLwwQN23a74A8yhvOzQed
-         +g15nSZNscrazeMQy187pbf96JpElFIU5udZEfNNFhPqDxmFF0SXSIO6ZZ7vgcD0KI6L
-         U3t3zP4iBJM1a9rvta18sN0TB+DaaOGrRiHpvtEBeS/9K2+VS+gLMzRj0+BJa6j7s20g
-         oeFzZHcIp3xhAGDM0prlTRZOMfqC8sjKAmaSI4qnzPdbaXh+ThQsSvJdOIFYTQQuBgvy
-         bqjA==
-X-Gm-Message-State: AOAM530Jw0lCGRidx9iR6nO6SuNom+tGWSofIDUWea26TjaSbU0zy8uX
-        nypj/aRBfb0olT8iQ6M3Es9a3u+ZNNN/0g==
-X-Google-Smtp-Source: ABdhPJxPel2uBq/A3GWAsqm1yPfj7KP8+HaACg45RwlvWBJtGeKM9p6dJP1pxqVyRCGpg8Wbm+mH5g==
-X-Received: by 2002:a17:90a:d790:: with SMTP id z16mr15388320pju.88.1608518577576;
-        Sun, 20 Dec 2020 18:42:57 -0800 (PST)
-Received: from loghyr.internal.excfb.com (c-69-181-67-218.hsd1.ca.comcast.net. [69.181.67.218])
-        by smtp.gmail.com with ESMTPSA id bf3sm14214278pjb.45.2020.12.20.18.42.56
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Sun, 20 Dec 2020 18:42:57 -0800 (PST)
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
-Subject: Re: [pynfs 03/10] Close the file for SEQ10b
-From:   Thomas Haynes <loghyr@gmail.com>
-In-Reply-To: <20201218164325.GD1258@fieldses.org>
-Date:   Sun, 20 Dec 2020 18:42:55 -0800
+        with ESMTP id S1725908AbgLUUAw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Dec 2020 15:00:52 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B682C0613D3
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Dec 2020 12:00:11 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 16CB76EB8; Mon, 21 Dec 2020 15:00:11 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 16CB76EB8
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1608580811;
+        bh=/K1YichYRuhtFKjlXX0BOpzl5RPSJw643400eiyqhuc=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=WpdUjJY7h6IQFK6vv06GG+sdqtGwUJhfyeTtXFDKX99LhXOI48y0ya+cFH2AqCbSi
+         dBsFFu2k+jdXidfJPzMZk1E8RymWPVwJFzL5SQORyTG95kkFgu4OoQd5Cuu90/SBsw
+         Dk7Yp1b2c9IAuZCNIrn6mrvsG6nP4+6ml7c2fQlU=
+Date:   Mon, 21 Dec 2020 15:00:11 -0500
+To:     Tom Haynes <loghyr@gmail.com>
 Cc:     Bruce Fields <bfields@redhat.com>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <C99E0C08-FEC2-4F5A-9467-7B96CA8E51F2@gmail.com>
-References: <20201217003516.75438-1-loghyr@hammerspace.com>
- <20201217003516.75438-4-loghyr@hammerspace.com>
- <20201218164325.GD1258@fieldses.org>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-X-Mailer: Apple Mail (2.3608.120.23.2.4)
+Subject: Re: [pynfs python3 0/7] Python3 patches for st_flex.py
+Message-ID: <20201221200011.GB27606@fieldses.org>
+References: <20201219182948.83000-1-loghyr@hammerspace.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201219182948.83000-1-loghyr@hammerspace.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Sat, Dec 19, 2020 at 10:29:41AM -0800, Tom Haynes wrote:
+> From: Tom Haynes <loghyr@excfb.com>
+> 
+> Hey Bruce,
+> 
+> This applies on top of the previous patch set.
+> 
+> This passes on my RHEL 8.2 client running python3 against a Hammerspace
+> server.
 
+Thanks, and thanks to Tigran for testing; applied.--b.
 
-> On Dec 18, 2020, at 8:43 AM, J. Bruce Fields <bfields@fieldses.org> =
-wrote:
->=20
-> On Wed, Dec 16, 2020 at 04:35:09PM -0800, Tom Haynes wrote:
->>=20
->>     close_file(sess1, fh, stateid=3Dstateid)
->>=20
->> +    # Cleanup
->> +    res =3D sess1.compound([op.putfh(fh), op.close(0, stateid)])
->> +    check(res)
->> +
->=20
-> This is giving me:
->=20
-> SEQ10b   st_sequence.testReplayCache007                           : =
-FAILURE
->           OP_CLOSE should return NFS4_OK, instead got
-> 	              NFS4ERR_BAD_STATEID
->=20
-> probably because the file was already closed just above.  I'm not sure
-> whta was intended here.  Reverting for now.
->=20
-> =E2=80=94b
-
-Ahh, that close is not there in the branch we have internally. And since =
-git took the change, I thought it was still good.
-
-Backing out is cool.
-
-
+> 
+> Thanks,
+> Tom
+> 
+> fwiw - In some of the error paths, the system would complain that the
+> exception StandardError was not defined.
+> 
+> I found this:
+> https://portingguide.readthedocs.io/en/latest/exceptions.html#the-removed-standarderror
+> 
+> Tom Haynes (7):
+>   CB_LAYOUTRECALL: Make string a byte array
+>   st_flex: Use NFS4_MAXFILELEN in layout calls
+>   st_flex: Provide an empty ff_layoutreturn4 by default for LAYOUTRETURN
+>   st_flex: Use range instead of xrange for python3
+>   st_flex: Test is now redundant
+>   st_flex: Return the layout before closing the file
+>   st_flex: testFlexLayoutStatsSmall needed loving to pass python3
+> 
+>  nfs4.1/nfs4client.py            |   2 +-
+>  nfs4.1/server41tests/st_flex.py | 124 +++++++++++++++++---------------
+>  2 files changed, 68 insertions(+), 58 deletions(-)
+> 
+> -- 
+> 2.26.2
