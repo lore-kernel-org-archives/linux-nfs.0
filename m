@@ -7,40 +7,40 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 786C9C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Dec 2020 13:09:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD4ABC433E6
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Dec 2020 13:11:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3C126221FA
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Dec 2020 13:09:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 87F152220B
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Dec 2020 13:11:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727599AbgL3NJe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Dec 2020 08:09:34 -0500
-Received: from mail.kernel.org ([198.145.29.99]:53866 "EHLO mail.kernel.org"
+        id S1728097AbgL3NLH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Dec 2020 08:11:07 -0500
+Received: from mail.kernel.org ([198.145.29.99]:53760 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727316AbgL3NFF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 30 Dec 2020 08:05:05 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id D807C22287;
-        Wed, 30 Dec 2020 13:04:09 +0000 (UTC)
+        id S1727071AbgL3NEk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 30 Dec 2020 08:04:40 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 2DCF722262;
+        Wed, 30 Dec 2020 13:03:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609333450;
-        bh=sMyrdGaSkUI7HSmRU9MW0autRFm3hR4EuYecnD49Y8U=;
+        s=k20201202; t=1609333406;
+        bh=CzRYXEk9ZbdYqqv0mBK0IJg95yy1SokTxylsOXRqXIw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=uMkSDnWeZI3PGXjZ/p4EFiFK+WDgSHUQUOrE9zXOCOrCdAPwBue5v+rq8NFvuCEN5
-         CjEvB7s6HclHrzYPaSdA/5GXHecw4XHgh9PPqhvAOsgvZgm8rPbN2MIwO/BaLJCN7V
-         trVkCX4Nt0pR//WBeU4fJWAjtZg7LEHWZLgMyUpoAB42ajFsWqADwluv1paG1OAxI2
-         BFR6MkDFjwH1WeZNnEMnOalN9hRohnnmrYo/qM33TpNIMODoow9My+1HtiduOIgKEM
-         r5XewpwmscBVnDfRniIhgT6zCvcsNWiFkkT5btlJyF7rHeh1xkIE/ujFLXaBCizkO6
-         RviAuaW7gPMtQ==
+        b=QHJOsXHBSVIB10tsFgtImLiQw9Ng9BrQXM9JgiiNkbnAZzqFs4edoOzYYEDNWkTfM
+         rxBcMkCvozDZkoQEbMW5leBHERqb3IZCa5GVSJ05OBVPUlp0wNvX8EpUCXZc0/yu+y
+         nHHAidP4+fk3PrJOonqbp5uQHYpyFE3j9XEjMVswnuGDSxMfhRIZbQzUy2F8MaJ7Wc
+         a2SDp9HDsT6DlYQE43xBOGnNZfURXtvK2GHLbh5iPevXua+d9f5eOvxGdTb5eXBpi2
+         mdRXP8XT3lWaaekdzPshfixZosS++rG1TWk3kBs57CkX9T14V2wKV3JFkgfu16czji
+         4OkQQfnbxKU/Q==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 09/17] NFSv4: Fix a pNFS layout related use-after-free race when freeing the inode
-Date:   Wed, 30 Dec 2020 08:03:49 -0500
-Message-Id: <20201230130357.3637261-9-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 09/31] NFSv4: Fix a pNFS layout related use-after-free race when freeing the inode
+Date:   Wed, 30 Dec 2020 08:02:51 -0500
+Message-Id: <20201230130314.3636961-9-sashal@kernel.org>
 X-Mailer: git-send-email 2.27.0
-In-Reply-To: <20201230130357.3637261-1-sashal@kernel.org>
-References: <20201230130357.3637261-1-sashal@kernel.org>
+In-Reply-To: <20201230130314.3636961-1-sashal@kernel.org>
+References: <20201230130314.3636961-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -66,20 +66,20 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  3 files changed, 37 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 04c57066a11af..b90642b022eb9 100644
+index 93f5c1678ec29..984cc42ee54d8 100644
 --- a/fs/nfs/nfs4super.c
 +++ b/fs/nfs/nfs4super.c
-@@ -96,7 +96,7 @@ static void nfs4_evict_inode(struct inode *inode)
- 	nfs_inode_return_delegation_noreclaim(inode);
+@@ -67,7 +67,7 @@ static void nfs4_evict_inode(struct inode *inode)
+ 	nfs_inode_evict_delegation(inode);
  	/* Note that above delegreturn would trigger pnfs return-on-close */
  	pnfs_return_layout(inode);
 -	pnfs_destroy_layout(NFS_I(inode));
 +	pnfs_destroy_layout_final(NFS_I(inode));
  	/* First call standard NFS clear_inode() code */
  	nfs_clear_inode(inode);
- }
+ 	nfs4_xattr_cache_zap(inode);
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 9c2b07ce57b27..9fd115c4d0a2f 100644
+index 0e50b9d45c320..07f59dc8cb2e7 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
 @@ -294,6 +294,7 @@ void
@@ -103,7 +103,7 @@ index 9c2b07ce57b27..9fd115c4d0a2f 100644
  	}
  }
  
-@@ -723,8 +728,7 @@ pnfs_free_lseg_list(struct list_head *free_me)
+@@ -734,8 +739,7 @@ pnfs_free_lseg_list(struct list_head *free_me)
  	}
  }
  
@@ -113,7 +113,7 @@ index 9c2b07ce57b27..9fd115c4d0a2f 100644
  {
  	struct pnfs_layout_hdr *lo;
  	LIST_HEAD(tmp_list);
-@@ -742,9 +746,34 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+@@ -753,9 +757,34 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
  		pnfs_put_layout_hdr(lo);
  	} else
  		spin_unlock(&nfsi->vfs_inode.i_lock);
@@ -149,10 +149,10 @@ index 9c2b07ce57b27..9fd115c4d0a2f 100644
  pnfs_layout_add_bulk_destroy_list(struct inode *inode,
  		struct list_head *layout_list)
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index f8a38065c7e47..63da33a92d831 100644
+index 2661c44c62db4..78c3893918486 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -255,6 +255,7 @@ struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
+@@ -266,6 +266,7 @@ struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
  void pnfs_layoutget_free(struct nfs4_layoutget *lgp);
  void pnfs_free_lseg_list(struct list_head *tmp_list);
  void pnfs_destroy_layout(struct nfs_inode *);
@@ -160,7 +160,7 @@ index f8a38065c7e47..63da33a92d831 100644
  void pnfs_destroy_all_layouts(struct nfs_client *);
  int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
  		struct nfs_fsid *fsid,
-@@ -651,6 +652,10 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
+@@ -710,6 +711,10 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
  {
  }
  
