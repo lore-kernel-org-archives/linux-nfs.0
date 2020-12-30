@@ -2,106 +2,175 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7763C433E9
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Dec 2020 23:14:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BA780C4332B
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Dec 2020 13:07:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 711D82222A
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Dec 2020 23:14:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 82A8922227
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Dec 2020 13:07:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730561AbgL1Wzu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 28 Dec 2020 17:55:50 -0500
-Received: from aserp2120.oracle.com ([141.146.126.78]:40234 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729350AbgL1TyN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Dec 2020 14:54:13 -0500
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0BSJmlYG140030;
-        Mon, 28 Dec 2020 19:53:25 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2020-01-29; bh=JkxEpTInV7VH/7slk37crAAiKYmgGIWLoCtN265JWTo=;
- b=cI4auMbl7ttvbTKuSyCSVAqDlRKZ5JHee3fJlsqgmIr9fkxTYKStIi+pNNJm8dunYc0U
- Wc0i0WSmZkbU8Vr1f4FXSOSP2hnV5dt42xCHvujsSZYg1aVyQK9CPy3dAYqkZP5MyY/T
- 22DjMkzt+XsRhRM1tRXHeTUE805nHbiJ/B8CpwYsoVhEctGkXb+Z1EHAkX/TlIqRXa24
- 95xtjYZu9vJ+Buar7I9xmxOHT6Bnp67oKH/dFZQNQswpkAI0QEvIOLwYYTdZUlB9wEuA
- 1OyC4s7llP8063uSs/qmxTOFzbpprS9IClIj/uJds9CS1skEh/+9k4tvDkCArAgOTKbz 0A== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by aserp2120.oracle.com with ESMTP id 35phm1bequ-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Mon, 28 Dec 2020 19:53:25 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0BSJnvfO149107;
-        Mon, 28 Dec 2020 19:53:25 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3030.oracle.com with ESMTP id 35perkxgdn-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 28 Dec 2020 19:53:25 +0000
-Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0BSJrKRu017229;
-        Mon, 28 Dec 2020 19:53:23 GMT
-Received: from anon-dhcp-152.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 28 Dec 2020 11:53:20 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
-Subject: Re: [PATCH 1/2] nfsd: protect concurrent access to nfsd stats
- counters
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20201228170344.22867-2-amir73il@gmail.com>
-Date:   Mon, 28 Dec 2020 14:53:19 -0500
-Cc:     Bruce Fields <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: 7bit
-Message-Id: <39707AFE-4542-4016-A695-7D605A8B3CB5@oracle.com>
-References: <20201228170344.22867-1-amir73il@gmail.com>
- <20201228170344.22867-2-amir73il@gmail.com>
-To:     Amir Goldstein <amir73il@gmail.com>
-X-Mailer: Apple Mail (2.3608.120.23.2.4)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9848 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 adultscore=0
- mlxlogscore=999 mlxscore=0 malwarescore=0 bulkscore=0 phishscore=0
- spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2012280121
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9848 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 priorityscore=1501
- mlxscore=0 mlxlogscore=999 adultscore=0 bulkscore=0 malwarescore=0
- spamscore=0 impostorscore=0 phishscore=0 clxscore=1011 lowpriorityscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2012280121
+        id S1727835AbgL3NHN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Dec 2020 08:07:13 -0500
+Received: from mail.kernel.org ([198.145.29.99]:53736 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727446AbgL3NF2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 30 Dec 2020 08:05:28 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 8FA44225AC;
+        Wed, 30 Dec 2020 13:04:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1609333472;
+        bh=3kuHzY4yx1SVEHMeOsRR8JLpQJFo33DMO4NBlvtdluo=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=qoewPFnTQfcjh1tRTvO9X/FjCig4YkkfaW3WUcN/UHhSoGLGEe2W2mIROdVTL4esS
+         R4YzDPfB2HHMMGpW1hPNfjHpFpIc4YkV5xhk6L3GZzFTFHydI1VwTeQnaMks8FCf3C
+         /0CZYxjPEeqm+Vj4+PeJexgnoE0+Hq4fgrP9vMwe4xOGjV//PlO2K3MrpD+/qyAo64
+         VcD+weSDaizEl3LF598FKs9qOOMbmcqwAzUvQz8hQhl/mJR3lRn8Rq7CQgZ8O6Qviv
+         96ReA+drgYbET0XUpAey0wRkthy0NMpg9ZsXM+6tAoUd58ft1v0gQ6xsi9lAuY65zM
+         6RJsewIBts5MA==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 07/10] NFSv4: Fix a pNFS layout related use-after-free race when freeing the inode
+Date:   Wed, 30 Dec 2020 08:04:19 -0500
+Message-Id: <20201230130422.3637448-7-sashal@kernel.org>
+X-Mailer: git-send-email 2.27.0
+In-Reply-To: <20201230130422.3637448-1-sashal@kernel.org>
+References: <20201230130422.3637448-1-sashal@kernel.org>
+MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello Amir -
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-> On Dec 28, 2020, at 12:03 PM, Amir Goldstein <amir73il@gmail.com> wrote:
-> 
-> nfsd stats counters can be updated by concurrent nfsd threads without any
-> protection.
-> 
-> Convert some nfsd_stats and nfsd_net struct members to use percpu counters.
-> 
-> There are several members of struct nfsd_stats that are reported in file
-> /proc/net/rpc/nfsd by never updated. Those have been left untouched.
-> 
-> The longest_chain* members of struct nfsd_net remain unprotected.
+[ Upstream commit b6d49ecd1081740b6e632366428b960461f8158b ]
 
-I like the idea of converting these to per-CPU variables, and the
-use of standards kernel helpers is clean. I haven't looked closely
-at the NFSD-specific parts of 1/2 yet.
+When returning the layout in nfs4_evict_inode(), we need to ensure that
+the layout is actually done being freed before we can proceed to free the
+inode itself.
 
-Looking forward to Bruce and Jeff's commentary.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/nfs/nfs4super.c |  2 +-
+ fs/nfs/pnfs.c      | 33 +++++++++++++++++++++++++++++++--
+ fs/nfs/pnfs.h      |  5 +++++
+ 3 files changed, 37 insertions(+), 3 deletions(-)
 
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 6fb7cb6b3f4b0..e7a10f5f54057 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -95,7 +95,7 @@ static void nfs4_evict_inode(struct inode *inode)
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* Note that above delegreturn would trigger pnfs return-on-close */
+ 	pnfs_return_layout(inode);
+-	pnfs_destroy_layout(NFS_I(inode));
++	pnfs_destroy_layout_final(NFS_I(inode));
+ 	/* First call standard NFS clear_inode() code */
+ 	nfs_clear_inode(inode);
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2b9e139a29975..a253384a4710b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -294,6 +294,7 @@ void
+ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	struct inode *inode;
++	unsigned long i_state;
+ 
+ 	if (!lo)
+ 		return;
+@@ -304,8 +305,12 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 		if (!list_empty(&lo->plh_segs))
+ 			WARN_ONCE(1, "NFS: BUG unfreed layout segments.\n");
+ 		pnfs_detach_layout_hdr(lo);
++		i_state = inode->i_state;
+ 		spin_unlock(&inode->i_lock);
+ 		pnfs_free_layout_hdr(lo);
++		/* Notify pnfs_destroy_layout_final() that we're done */
++		if (i_state & (I_FREEING | I_CLEAR))
++			wake_up_var(lo);
+ 	}
+ }
+ 
+@@ -713,8 +718,7 @@ pnfs_free_lseg_list(struct list_head *free_me)
+ 	}
+ }
+ 
+-void
+-pnfs_destroy_layout(struct nfs_inode *nfsi)
++static struct pnfs_layout_hdr *__pnfs_destroy_layout(struct nfs_inode *nfsi)
+ {
+ 	struct pnfs_layout_hdr *lo;
+ 	LIST_HEAD(tmp_list);
+@@ -732,9 +736,34 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 		pnfs_put_layout_hdr(lo);
+ 	} else
+ 		spin_unlock(&nfsi->vfs_inode.i_lock);
++	return lo;
++}
++
++void pnfs_destroy_layout(struct nfs_inode *nfsi)
++{
++	__pnfs_destroy_layout(nfsi);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_destroy_layout);
+ 
++static bool pnfs_layout_removed(struct nfs_inode *nfsi,
++				struct pnfs_layout_hdr *lo)
++{
++	bool ret;
++
++	spin_lock(&nfsi->vfs_inode.i_lock);
++	ret = nfsi->layout != lo;
++	spin_unlock(&nfsi->vfs_inode.i_lock);
++	return ret;
++}
++
++void pnfs_destroy_layout_final(struct nfs_inode *nfsi)
++{
++	struct pnfs_layout_hdr *lo = __pnfs_destroy_layout(nfsi);
++
++	if (lo)
++		wait_var_event(lo, pnfs_layout_removed(nfsi, lo));
++}
++
+ static bool
+ pnfs_layout_add_bulk_destroy_list(struct inode *inode,
+ 		struct list_head *layout_list)
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 3ba44819a88ae..80fafa29e567a 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -254,6 +254,7 @@ struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_layoutget_free(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
++void pnfs_destroy_layout_final(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+ int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
+ 		struct nfs_fsid *fsid,
+@@ -645,6 +646,10 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
+ {
+ }
+ 
++static inline void pnfs_destroy_layout_final(struct nfs_inode *nfsi)
++{
++}
++
+ static inline struct pnfs_layout_segment *
+ pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+ {
+-- 
+2.27.0
 
