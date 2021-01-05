@@ -7,66 +7,65 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 03D7AC433DB
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:31:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33AA6C433E0
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:31:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CB46922AAA
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:31:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0CFDD22AAA
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:31:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727561AbhAEPbI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Jan 2021 10:31:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37978 "EHLO
+        id S1727795AbhAEPbM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Jan 2021 10:31:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37990 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727529AbhAEPbH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:31:07 -0500
-Received: from mail-qk1-x734.google.com (mail-qk1-x734.google.com [IPv6:2607:f8b0:4864:20::734])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 35801C061793
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:30:21 -0800 (PST)
-Received: by mail-qk1-x734.google.com with SMTP id 186so26795760qkj.3
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:30:21 -0800 (PST)
+        with ESMTP id S1727680AbhAEPbL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:31:11 -0500
+Received: from mail-qk1-x72a.google.com (mail-qk1-x72a.google.com [IPv6:2607:f8b0:4864:20::72a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D670C061574
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:30:31 -0800 (PST)
+Received: by mail-qk1-x72a.google.com with SMTP id c7so26778025qke.1
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:30:31 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=1pVZopU2CsbRndKPbGGCSJiKrCH8+GFDj1p4QPlGB8I=;
-        b=n63S6pmlZTGo4N1D/XJEmHMb9dZKqPYMafVdD+kO80cKgjZ5hhsYccfLNuAodTr4vC
-         E2nT6GCLFCLo8XPGIs+cQRrDvydFsBy1ifdRRY/RwX4Z1EWTDTFnxVWoZ2Z5WCLtZwXt
-         44/BFfur4MxVH/CyjsO8CatahzhdS1ybPbI4rJJcalDS1LL/ojLyHbgfs3R21DPtYYNb
-         Fjnu7U4GM2QJqDZ2CBKsvhpkzKUpT0CiU1d8Q0HXyPCZhHyXdarGAxCxMyUk9WJZgeLT
-         c2YnHYwRHc+JLWIJQzxMtZrixJl2ceNZ7Yj/cVnb1C4Nalc5gbxVlCDL84fhrXk5VaHd
-         ZHYQ==
+        bh=His8wXJJ6Md9Zao5EcfjkbJnoHe65nCQDA9M06KsFag=;
+        b=imlLuH14PuPSUUsMUMxDcbxAldovNPcJxBUYDpkU9qXg5SH8yhT1TTJzRzR928zknm
+         1UqNNuarg6bGtECF9o9ICDV9VUxxG1v1pLhHK4pSDc6G3zYlcxTIHq1t4AgCBnjFrlLb
+         l4i5J6oz8Eh7yGyq02ztwd52TtS5lkEiwHJtl/Uh9tCXShcmL8cUCnM2oO8JsMZpgnmY
+         3bE8p6J4ylFXzv39BVEKTfTO7tN2ApwEYKVZip/oO4XEoBf87xdK7FCFjZITo9SDhaB6
+         l0a3e5UFqlQb2U7GZZsSNPXaNit375JkO3XCbGk8GJXNW+TiUOQ0YB9iHZe64HBWL4Qh
+         kykw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=1pVZopU2CsbRndKPbGGCSJiKrCH8+GFDj1p4QPlGB8I=;
-        b=QaWJlnWQGHbdVObdZjuYpMtia9tcg+bnmpYPJmJVC/2RR9txUoP2FTkbX4YMC5xEFt
-         DvAgFYjqQTe9CswXErHXDAQXWTmlLx/ecmcKVF4en5KrcoEiCBbA0D9/462a/SplgaYg
-         uF9MCFCyemv76zE+dMpqWsNoRmPu6+BebU4zq51fG6oXj2+C8u8eqxRdAIueS3BufY4p
-         kQgtOLJvoZ4eJYinJdcqNgxVYRW7Xm/yf2jbjxLdisDH8sSDVm6t52zV5fCehtIjV6G9
-         uEwxc+6OwWMIBiKalwLNH+xqs/Czbs4MbAtghcI+kBoaGtT8vnLBuOCVcVyaW92ogEKu
-         25VA==
-X-Gm-Message-State: AOAM533KqKkdFQp3WgD57YRla9y3TocF7ZLp4MJLwDuBysBtvRMMy46O
-        TeCfXZZv9cbeFmqUi0Yx3B5NpKhqTgE=
-X-Google-Smtp-Source: ABdhPJwroRa0rc0tAT+yFWCeefyEikiDqCCg7Ccst7q436fithZ3E+kkoVZEHICAyM62WFxklkNTIQ==
-X-Received: by 2002:a37:76c6:: with SMTP id r189mr83210qkc.24.1609860620107;
-        Tue, 05 Jan 2021 07:30:20 -0800 (PST)
+        bh=His8wXJJ6Md9Zao5EcfjkbJnoHe65nCQDA9M06KsFag=;
+        b=q49mlQKw43SI4X4zKkdWV8+LuJostZqZiLEGgpsy5g4Q+/wLEoelXmRo2z+i1eU3UG
+         lk1GehDcn/TnEYIL5YQBYQKZNz/2h92DIF16AdeYjRjGIBhO2rg4YFnnSgOay60eaOfU
+         exT1dQ/YUtulIZqXGguXyzQKc2RmsCdu6FhfkxtBj4WKGg6gwkzvIGfm9Rf20QO7Nme6
+         zaYwK3xnRL7RH3g9RdbHKdXs3KBUDRiXctL57s/MpOo1sDtb70qSCvqpA6eqroSyB9uM
+         hN9fTyYAElrVIFNQa+x70KT7TTqogdscCrlzJrbi/OS1AjJtWwTWRc4KPyLTwbDRw1PS
+         Qxsg==
+X-Gm-Message-State: AOAM53336SPINUQYkKLEa+2LdCOHn67QO+XlruAL39iYts/ljtgkIaUk
+        GfC6aL0n8gjasE6LSxTjBKUDrh9h9Ns=
+X-Google-Smtp-Source: ABdhPJxYYsIO/EU+af78mPfT8/cFXHPfE98urosvaJxVPTx30fSC9YEonGMTOtpMbr7Ns0VMUS5ADg==
+X-Received: by 2002:a37:9c82:: with SMTP id f124mr2000qke.369.1609860630333;
+        Tue, 05 Jan 2021 07:30:30 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id n66sm117010qkn.136.2021.01.05.07.30.18
+        by smtp.gmail.com with ESMTPSA id b15sm27353qta.75.2021.01.05.07.30.29
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 05 Jan 2021 07:30:19 -0800 (PST)
+        Tue, 05 Jan 2021 07:30:29 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FUIxj020841
-        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:30:18 GMT
-Subject: [PATCH v1 07/42] NFSD: Update WRITE3arg decoder to use struct
- xdr_stream
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FUSOL020847
+        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:30:28 GMT
+Subject: [PATCH v1 09/42] NFSD: Fix returned READDIR offset cookie
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Tue, 05 Jan 2021 10:30:18 -0500
-Message-ID: <160986061812.5532.3122782251888690881.stgit@klimt.1015granger.net>
+Date:   Tue, 05 Jan 2021 10:30:28 -0500
+Message-ID: <160986062865.5532.2413664838273345962.stgit@klimt.1015granger.net>
 In-Reply-To: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 References: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -77,91 +76,49 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-As part of the update, open code that sanity-checks the size of the
-data payload against the length of the RPC Call message has to be
-re-implemented to use xdr_stream infrastructure.
+Code inspection shows that the server's NFSv3 READDIR implementation
+handles offset cookies slightly differently than the NFSv2 READDIR,
+NFSv3 READDIRPLUS, and NFSv4 READDIR implementations,
+and there doesn't seem to be any need for this difference.
+
+As a clean up, I copied the logic from nfsd3_proc_readdirplus().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3xdr.c |   51 ++++++++++++++++++++-------------------------------
- 1 file changed, 20 insertions(+), 31 deletions(-)
+ fs/nfsd/nfs3proc.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index ff98eae5db81..0aafb096de91 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -405,52 +405,41 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p)
- int
- nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p)
- {
-+	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
- 	struct nfsd3_writeargs *args = rqstp->rq_argp;
--	unsigned int len, hdr, dlen;
- 	u32 max_blocksize = svc_max_payload(rqstp);
- 	struct kvec *head = rqstp->rq_arg.head;
- 	struct kvec *tail = rqstp->rq_arg.tail;
-+	size_t remaining;
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 9e289e0f439b..7ea2fb127f6f 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -444,6 +444,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
+ 	struct nfsd3_readdirargs *argp = rqstp->rq_argp;
+ 	struct nfsd3_readdirres  *resp = rqstp->rq_resp;
+ 	int		count = 0;
++	loff_t		offset;
+ 	struct page	**p;
+ 	caddr_t		page_addr = NULL;
  
--	p = decode_fh(p, &args->fh);
--	if (!p)
-+	if (!svcxdr_decode_nfs_fh3(xdr, &args->fh))
- 		return 0;
--	p = xdr_decode_hyper(p, &args->offset);
--
--	args->count = ntohl(*p++);
--	args->stable = ntohl(*p++);
--	len = args->len = ntohl(*p++);
--	if ((void *)p > head->iov_base + head->iov_len)
-+	if (xdr_stream_decode_u64(xdr, &args->offset) < 0)
- 		return 0;
--	/*
--	 * The count must equal the amount of data passed.
--	 */
--	if (args->count != args->len)
-+	if (xdr_stream_decode_u32(xdr, &args->count) < 0)
-+		return 0;
-+	if (xdr_stream_decode_u32(xdr, &args->stable) < 0)
- 		return 0;
- 
--	/*
--	 * Check to make sure that we got the right number of
--	 * bytes.
--	 */
--	hdr = (void*)p - head->iov_base;
--	dlen = head->iov_len + rqstp->rq_arg.page_len + tail->iov_len - hdr;
--	/*
--	 * Round the length of the data which was specified up to
--	 * the next multiple of XDR units and then compare that
--	 * against the length which was actually received.
--	 * Note that when RPCSEC/GSS (for example) is used, the
--	 * data buffer can be padded so dlen might be larger
--	 * than required.  It must never be smaller.
--	 */
--	if (dlen < XDR_QUADLEN(len)*4)
-+	/* opaque data */
-+	if (xdr_stream_decode_u32(xdr, &args->len) < 0)
- 		return 0;
- 
-+	/* request sanity */
-+	if (args->count != args->len)
-+		return 0;
-+	remaining = head->iov_len + rqstp->rq_arg.page_len + tail->iov_len;
-+	remaining -= xdr_stream_pos(xdr);
-+	if (remaining < xdr_align_size(args->len))
-+		return 0;
- 	if (args->count > max_blocksize) {
- 		args->count = max_blocksize;
--		len = args->len = max_blocksize;
-+		args->len = max_blocksize;
- 	}
- 
--	args->first.iov_base = (void *)p;
--	args->first.iov_len = head->iov_len - hdr;
-+	args->first.iov_base = xdr->p;
-+	args->first.iov_len = head->iov_len - xdr_stream_pos(xdr);
+@@ -462,7 +463,9 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
+ 	resp->common.err = nfs_ok;
+ 	resp->buffer = argp->buffer;
+ 	resp->rqstp = rqstp;
+-	resp->status = nfsd_readdir(rqstp, &resp->fh, (loff_t *)&argp->cookie,
++	offset = argp->cookie;
 +
- 	return 1;
- }
- 
++	resp->status = nfsd_readdir(rqstp, &resp->fh, &offset,
+ 				    &resp->common, nfs3svc_encode_entry);
+ 	memcpy(resp->verf, argp->verf, 8);
+ 	count = 0;
+@@ -478,8 +481,6 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
+ 	}
+ 	resp->count = count >> 2;
+ 	if (resp->offset) {
+-		loff_t offset = argp->cookie;
+-
+ 		if (unlikely(resp->offset1)) {
+ 			/* we ended up with offset on a page boundary */
+ 			*resp->offset = htonl(offset >> 32);
 
 
