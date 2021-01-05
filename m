@@ -7,66 +7,66 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 690BDC4332B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A55BDC43331
 	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:32:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4138822AAA
+	by mail.kernel.org (Postfix) with ESMTP id 6C0D822B45
 	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:32:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728033AbhAEPch (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727994AbhAEPch (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 5 Jan 2021 10:32:37 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38210 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37872 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727994AbhAEPcg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:32:36 -0500
-Received: from mail-qv1-xf2d.google.com (mail-qv1-xf2d.google.com [IPv6:2607:f8b0:4864:20::f2d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7ED16C061798
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:31:56 -0800 (PST)
-Received: by mail-qv1-xf2d.google.com with SMTP id az16so14808724qvb.5
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:31:56 -0800 (PST)
+        with ESMTP id S1728032AbhAEPch (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:32:37 -0500
+Received: from mail-qk1-x730.google.com (mail-qk1-x730.google.com [IPv6:2607:f8b0:4864:20::730])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D8A46C061793
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:32:21 -0800 (PST)
+Received: by mail-qk1-x730.google.com with SMTP id 22so26752713qkf.9
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:32:21 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=qe/aD+xPugXqU3gg0YpNxbsKePZr14mVF6vn3CIw7xE=;
-        b=pSvCIS2er8hCVqNxCMmfoRtwqWn6DpKrzIPC0dKtRhuPSEx4pfwFAtdezSzQmCHxb2
-         lgIY1aKFFTZ8b4D/VgaQZ4R/hdsTw8ozJTQ7xA1o32grL0GTK8prAlZf+5ZSzQjX73Uh
-         kJlpKdZbUz58QigTMd8mo/dvKyrKJq5evHcKfNbP8TLaCpNWZLTnzXpmxNugvhYaDql/
-         vsdS2s+5ZOjrxTczkp/5sCf/UGts5mZsIior58Ogbbo7pFfRhUDHpTcfcZe5P3qzpVsJ
-         w/vuUITIvOxZNjA/iax+pY3O0bnUVC05Y4/1l8+pUP36bVAeBU/Ox79+yi9fLPy8XFlt
-         grPA==
+        bh=temuZmKg8BP/QtAx+9SL0bWe9hueqt1h36Kd+rp2CVY=;
+        b=Y4EjMgKiByI36krKwk1qYu3s29E7JMqGY6tWBCk0e7YG84ywtdKlIT/JJmPjZR2jXv
+         yhGFj1NVmbLvdLSu8PwLkX3lzhc4B7OEGAer/15KbO3+dPECAOpma7ZXaLwp8a+h5E7C
+         FzpELJyglTIK+ZQdd7VkwwKCMdFygsqrO4roi0vM+VZWa0Ouxgc4pLU7jkF/U8MTdXZ0
+         p/9vmW9Ul1pN+w3QdBIrXf/yyg1ME/ygNzr17Vvlil30RKrJe/sKJdlviQk9b45PY6hD
+         T5otWPKTwzAapSiCGfoLWYIgKpEkMJD3ebqSjUemiYYOkU5LPoFMjQHJdE1hh86p/wYQ
+         I4Qg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=qe/aD+xPugXqU3gg0YpNxbsKePZr14mVF6vn3CIw7xE=;
-        b=pejSMMcgYTDQE8tjafW9J4+SEpIr0PL+vC5Bd93f2uvWTzdpyc2164i1s8HiLmn8Y4
-         VT5RMQuBOGRUDIIYV3uI88I2GEAyrKafE+KnnQ2IIIoVwEspevw2gkSDOGgAB4CSnX30
-         vYpU2Uw4Uza1DtChniQiXXNB8Yb2i2HCE8jpU0DAq9HpxwBHnkvSjOx5uahxvysf7u1l
-         M45QlazFuZBgyZ1kX44mB1erPxEzWnmO+BKXvUQVEzD9N5pkaf1WKkkOfw4hBiHdlj/7
-         uRxzhzskW2WnzKg0+I1qB0VwOQ2gveI55faPF/VxIadgPcTmFMsB6pzeCwCvRHJdFcxR
-         ArNQ==
-X-Gm-Message-State: AOAM532sSp/MxuZivAq/d0Bg7ZdUwwtAWjvjOAuge4eZnbzVKSzGQYrn
-        MY5HGKsnfCpNTP1j7RK5NE5kNx7qyj0=
-X-Google-Smtp-Source: ABdhPJzPH3JO3V1yxgyBk2ZrRhElpz0+w85QJ2oNyZiC6hPq5Ow77afU/ybLyjIOUtihvlE0ENAkDQ==
-X-Received: by 2002:a05:6214:d4a:: with SMTP id 10mr137904qvr.62.1609860714361;
-        Tue, 05 Jan 2021 07:31:54 -0800 (PST)
+        bh=temuZmKg8BP/QtAx+9SL0bWe9hueqt1h36Kd+rp2CVY=;
+        b=sUwhgyRu/5Z0y6emwdx0pAK+pJ+ZmGAgrhuqMBI72qiJhBtGHUQkLZKMmvmSVZVlGU
+         svfpBpwXpdJTP97lfx7YuJJXp4huYM+PzZiPccAyTvlUSsPDcw3zFfe/Y8muOrev+uZF
+         eYk8IBkrOr2HtVH0ZO+6EZhycYfLSq1sedeOhpU0GDzTg/KM+6wRt/45kb+d3H/H9QfS
+         7rPvEQ4YolD5W3bBvhr2Ye+Szd7PSc5zuqkwT8uhrrhTIHYGHCfAPB6neHHMv7JcU4FO
+         mC30DqozyMDlPgSnTpGYBn88WnxboBsrkN/CoXdQhxIVrDqYGltjEm2wc68fQaeU1SSA
+         H4uA==
+X-Gm-Message-State: AOAM531NDd2Xl21MYYPZE6DMiiszLICTOiPUVIee5J0zS7jiWXlkg9FF
+        7qfR/A6YuRia9wxxitaPyS2TyhZj5wQ=
+X-Google-Smtp-Source: ABdhPJxaXBQGabZGoJQjRu6SMOutjKK4TVX5cV8bRxlcjPAqehggP17o9YufweSTN+xdKHXyxt2uEA==
+X-Received: by 2002:a37:4a4e:: with SMTP id x75mr39133qka.89.1609860740756;
+        Tue, 05 Jan 2021 07:32:20 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id z15sm131732qkz.103.2021.01.05.07.31.53
+        by smtp.gmail.com with ESMTPSA id h25sm24149qtp.80.2021.01.05.07.32.19
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 05 Jan 2021 07:31:53 -0800 (PST)
+        Tue, 05 Jan 2021 07:32:20 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FVqfq020895
-        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:31:52 GMT
-Subject: [PATCH v1 25/42] NFSD: Add helper to set up the pages where the
- dirlist is encoded
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FWJt3020910
+        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:32:19 GMT
+Subject: [PATCH v1 30/42] NFSD: Update the NFSv2 SETATTR argument decoder to
+ use struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Tue, 05 Jan 2021 10:31:52 -0500
-Message-ID: <160986071268.5532.3436167990107485019.stgit@klimt.1015granger.net>
+Date:   Tue, 05 Jan 2021 10:32:19 -0500
+Message-ID: <160986073909.5532.13408794874690782313.stgit@klimt.1015granger.net>
 In-Reply-To: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 References: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -77,100 +77,112 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper similar to nfsd3_init_dirlist_pages().
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsproc.c |   29 ++++++++++++++++++-----------
- fs/nfsd/nfsxdr.c  |    2 --
- fs/nfsd/xdr.h     |    1 -
- 3 files changed, 18 insertions(+), 14 deletions(-)
+ fs/nfsd/nfsxdr.c |   82 ++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 76 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index bdb47848f7fd..b2f8035f166b 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -553,6 +553,20 @@ nfsd_proc_rmdir(struct svc_rqst *rqstp)
- 	return rpc_success;
- }
- 
-+static void nfsd_init_dirlist_pages(struct svc_rqst *rqstp,
-+				    struct nfsd_readdirres *resp,
-+				    int count)
-+{
-+	count = min_t(u32, count, PAGE_SIZE);
-+
-+	/* Convert byte count to number of words (i.e. >> 2),
-+	 * and reserve room for the NULL ptr & eof flag (-2 words) */
-+	resp->buflen = (count >> 2) - 2;
-+
-+	resp->buffer = page_address(*rqstp->rq_next_page);
-+	rqstp->rq_next_page++;
-+}
-+
- /*
-  * Read a portion of a directory.
-  */
-@@ -561,31 +575,24 @@ nfsd_proc_readdir(struct svc_rqst *rqstp)
- {
- 	struct nfsd_readdirargs *argp = rqstp->rq_argp;
- 	struct nfsd_readdirres *resp = rqstp->rq_resp;
--	int		count;
- 	loff_t		offset;
-+	__be32		*buffer;
- 
- 	dprintk("nfsd: READDIR  %s %d bytes at %d\n",
- 		SVCFH_fmt(&argp->fh),		
- 		argp->count, argp->cookie);
- 
--	/* Shrink to the client read size */
--	count = (argp->count >> 2) - 2;
--
--	/* Make sure we've room for the NULL ptr & eof flag */
--	count -= 2;
--	if (count < 0)
--		count = 0;
-+	nfsd_init_dirlist_pages(rqstp, resp, argp->count);
-+	buffer = resp->buffer;
- 
--	resp->buffer = argp->buffer;
- 	resp->offset = NULL;
--	resp->buflen = count;
- 	resp->common.err = nfs_ok;
- 	/* Read directory and encode entries on the fly */
- 	offset = argp->cookie;
- 	resp->status = nfsd_readdir(rqstp, &argp->fh, &offset,
- 				    &resp->common, nfssvc_encode_entry);
- 
--	resp->count = resp->buffer - argp->buffer;
-+	resp->count = resp->buffer - buffer;
- 	if (resp->offset)
- 		*resp->offset = htonl(offset);
- 
 diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 02dd9888d93b..3d72334e1673 100644
+index 3d0fe03a3fb9..6c87ea8f3876 100644
 --- a/fs/nfsd/nfsxdr.c
 +++ b/fs/nfsd/nfsxdr.c
-@@ -388,8 +388,6 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p)
- 		return 0;
- 	args->cookie = ntohl(*p++);
- 	args->count  = ntohl(*p++);
--	args->count  = min_t(u32, args->count, PAGE_SIZE);
--	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
- 	return xdr_argsize_check(rqstp, p);
+@@ -173,6 +173,79 @@ decode_sattr(__be32 *p, struct iattr *iap, struct user_namespace *userns)
+ 	return p;
  }
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 288c29a999db..d700838f6512 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -73,7 +73,6 @@ struct nfsd_readdirargs {
- 	struct svc_fh		fh;
- 	__u32			cookie;
- 	__u32			count;
--	__be32 *		buffer;
- };
  
- struct nfsd_stat {
++static bool
++svcxdr_decode_sattr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
++		    struct iattr *iap)
++{
++	u32 tmp1, tmp2;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, XDR_UNIT * 8);
++	if (!p)
++		return false;
++
++	iap->ia_valid = 0;
++
++	/*
++	 * Some Sun clients put 0xffff in the mode field when they
++	 * mean 0xffffffff.
++	 */
++	tmp1 = be32_to_cpup(p++);
++	if (tmp1 != (u32)-1 && tmp1 != 0xffff) {
++		iap->ia_valid |= ATTR_MODE;
++		iap->ia_mode = tmp1;
++	}
++
++	tmp1 = be32_to_cpup(p++);
++	if (tmp1 != (u32)-1) {
++		iap->ia_uid = make_kuid(nfsd_user_namespace(rqstp), tmp1);
++		if (uid_valid(iap->ia_uid))
++			iap->ia_valid |= ATTR_UID;
++	}
++
++	tmp1 = be32_to_cpup(p++);
++	if (tmp1 != (u32)-1) {
++		iap->ia_gid = make_kgid(nfsd_user_namespace(rqstp), tmp1);
++		if (gid_valid(iap->ia_gid))
++			iap->ia_valid |= ATTR_GID;
++	}
++
++	tmp1 = be32_to_cpup(p++);
++	if (tmp1 != (u32)-1) {
++		iap->ia_valid |= ATTR_SIZE;
++		iap->ia_size = tmp1;
++	}
++
++	tmp1 = be32_to_cpup(p++);
++	tmp2 = be32_to_cpup(p++);
++	if (tmp1 != (u32)-1 && tmp2 != (u32)-1) {
++		iap->ia_valid |= ATTR_ATIME | ATTR_ATIME_SET;
++		iap->ia_atime.tv_sec = tmp1;
++		iap->ia_atime.tv_nsec = tmp2 * NSEC_PER_USEC;
++	}
++
++	tmp1 = be32_to_cpup(p++);
++	tmp2 = be32_to_cpup(p++);
++	if (tmp1 != (u32)-1 && tmp2 != (u32)-1) {
++		iap->ia_valid |= ATTR_MTIME | ATTR_MTIME_SET;
++		iap->ia_mtime.tv_sec = tmp1;
++		iap->ia_mtime.tv_nsec = tmp2 * NSEC_PER_USEC;
++		/*
++		 * Passing the invalid value useconds=1000000 for mtime
++		 * is a Sun convention for "set both mtime and atime to
++		 * current server time".  It's needed to make permissions
++		 * checks for the "touch" program across v2 mounts to
++		 * Solaris and Irix boxes work correctly. See description of
++		 * sattr in section 6.1 of "NFS Illustrated" by
++		 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
++		 */
++		if (tmp2 == 1000000)
++			iap->ia_valid &= ~(ATTR_ATIME_SET|ATTR_MTIME_SET);
++	}
++
++	return true;
++}
++
+ static __be32 *
+ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
+ 	     struct kstat *stat)
+@@ -253,14 +326,11 @@ nfssvc_decode_fhandleargs(struct svc_rqst *rqstp, __be32 *p)
+ int
+ nfssvc_decode_sattrargs(struct svc_rqst *rqstp, __be32 *p)
+ {
++	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
+ 	struct nfsd_sattrargs *args = rqstp->rq_argp;
+ 
+-	p = decode_fh(p, &args->fh);
+-	if (!p)
+-		return 0;
+-	p = decode_sattr(p, &args->attrs, nfsd_user_namespace(rqstp));
+-
+-	return xdr_argsize_check(rqstp, p);
++	return svcxdr_decode_fhandle(xdr, &args->fh) &&
++		svcxdr_decode_sattr(rqstp, xdr, &args->attrs);
+ }
+ 
+ int
 
 
