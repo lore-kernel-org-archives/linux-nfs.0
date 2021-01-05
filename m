@@ -7,65 +7,66 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33AA6C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:31:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F641C433DB
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:31:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0CFDD22AAA
+	by mail.kernel.org (Postfix) with ESMTP id EB27E22AAA
 	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:31:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727795AbhAEPbM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Jan 2021 10:31:12 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37990 "EHLO
+        id S1727414AbhAEPbN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Jan 2021 10:31:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37902 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727680AbhAEPbL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:31:11 -0500
-Received: from mail-qk1-x72a.google.com (mail-qk1-x72a.google.com [IPv6:2607:f8b0:4864:20::72a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D670C061574
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:30:31 -0800 (PST)
-Received: by mail-qk1-x72a.google.com with SMTP id c7so26778025qke.1
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:30:31 -0800 (PST)
+        with ESMTP id S1727529AbhAEPbM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:31:12 -0500
+Received: from mail-qv1-xf30.google.com (mail-qv1-xf30.google.com [IPv6:2607:f8b0:4864:20::f30])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24BA6C061795
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:30:57 -0800 (PST)
+Received: by mail-qv1-xf30.google.com with SMTP id et9so14816459qvb.10
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:30:57 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=His8wXJJ6Md9Zao5EcfjkbJnoHe65nCQDA9M06KsFag=;
-        b=imlLuH14PuPSUUsMUMxDcbxAldovNPcJxBUYDpkU9qXg5SH8yhT1TTJzRzR928zknm
-         1UqNNuarg6bGtECF9o9ICDV9VUxxG1v1pLhHK4pSDc6G3zYlcxTIHq1t4AgCBnjFrlLb
-         l4i5J6oz8Eh7yGyq02ztwd52TtS5lkEiwHJtl/Uh9tCXShcmL8cUCnM2oO8JsMZpgnmY
-         3bE8p6J4ylFXzv39BVEKTfTO7tN2ApwEYKVZip/oO4XEoBf87xdK7FCFjZITo9SDhaB6
-         l0a3e5UFqlQb2U7GZZsSNPXaNit375JkO3XCbGk8GJXNW+TiUOQ0YB9iHZe64HBWL4Qh
-         kykw==
+        bh=PUqZzFFjRPa9e7AkqA7LUtYdd4p21auipb3gQ5t02bU=;
+        b=Ga5Aex1TGlB5SRGuWXm/GdtHvi8BOj9zit1Lob7CLk4apyo2D+5PJtaGxTontQYUus
+         pQnTf0JorvM07DIga0MS3Z68HoDbbfAhPo+Xefase36Dui4WaoODvvx4rAvUneHjluQx
+         nNsIWjhroTijR28TMiIoZhul7PkoW5Ki87n2TYY/+gwgZwxIJ8gPiuPTQgxsBqURL6vz
+         GA4aEu5en77Dm4JX1HzHqI5b/EDFxruuS4gWB/5QmyMS+/zNUhK228KRvupGcxTLwy7f
+         TiMKZfXLx0Q0MiIYkxflHGXW88eepIPvdx4Bd4743wWAayltJ+3wZyOu8I+KGLxyz8Ay
+         bvQQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=His8wXJJ6Md9Zao5EcfjkbJnoHe65nCQDA9M06KsFag=;
-        b=q49mlQKw43SI4X4zKkdWV8+LuJostZqZiLEGgpsy5g4Q+/wLEoelXmRo2z+i1eU3UG
-         lk1GehDcn/TnEYIL5YQBYQKZNz/2h92DIF16AdeYjRjGIBhO2rg4YFnnSgOay60eaOfU
-         exT1dQ/YUtulIZqXGguXyzQKc2RmsCdu6FhfkxtBj4WKGg6gwkzvIGfm9Rf20QO7Nme6
-         zaYwK3xnRL7RH3g9RdbHKdXs3KBUDRiXctL57s/MpOo1sDtb70qSCvqpA6eqroSyB9uM
-         hN9fTyYAElrVIFNQa+x70KT7TTqogdscCrlzJrbi/OS1AjJtWwTWRc4KPyLTwbDRw1PS
-         Qxsg==
-X-Gm-Message-State: AOAM53336SPINUQYkKLEa+2LdCOHn67QO+XlruAL39iYts/ljtgkIaUk
-        GfC6aL0n8gjasE6LSxTjBKUDrh9h9Ns=
-X-Google-Smtp-Source: ABdhPJxYYsIO/EU+af78mPfT8/cFXHPfE98urosvaJxVPTx30fSC9YEonGMTOtpMbr7Ns0VMUS5ADg==
-X-Received: by 2002:a37:9c82:: with SMTP id f124mr2000qke.369.1609860630333;
-        Tue, 05 Jan 2021 07:30:30 -0800 (PST)
+        bh=PUqZzFFjRPa9e7AkqA7LUtYdd4p21auipb3gQ5t02bU=;
+        b=mmKnjdv5S+58etDqeU8LCQdd/PEt5tt4CCScwz64puqAGPKqwHNXkRnlYfV8dZlxo2
+         F54lGiRStHJZJrk7remNwoN9j2P5dNzkB5Np6mXk+8xoEqN0DEP1vwGSkq7XEA0eoTUg
+         0ws4ATa2H0Pk3fJOxuS3oxW05UwtZyLEUDnKZgMjlPk0DNfdTSpHy5xGfyKPMHPnun+l
+         QbOctgUeAz10UT1NCfPyR/Y1acO+DER9nJ11ncIn2aa4PedPpOXTWsO4ezBcLc6nd8TD
+         WlYG68cDdpt8u3W1OZ/wDcFBXWubjoXsFIYWBfZBZrz+iYpLi+xY+ETP27VOjXmuWJ3d
+         jUFw==
+X-Gm-Message-State: AOAM531l9ppMLU4l4KKeSEvKMSfT9CJ1EXvF0Z9rO1Zhced3sKuUtB15
+        dJ8TBpRl29h2UyvBsWb5wzTG1oj3o6s=
+X-Google-Smtp-Source: ABdhPJzVzHerZkuPS64cBeD1gccX397rDP0zq5rvux1fRwMzGqE0coTdRhlcQ2wCWq9pq8NDWqPQkQ==
+X-Received: by 2002:ad4:496c:: with SMTP id p12mr157621qvy.40.1609860656148;
+        Tue, 05 Jan 2021 07:30:56 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id b15sm27353qta.75.2021.01.05.07.30.29
+        by smtp.gmail.com with ESMTPSA id m65sm58568qtd.5.2021.01.05.07.30.55
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 05 Jan 2021 07:30:29 -0800 (PST)
+        Tue, 05 Jan 2021 07:30:55 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FUSOL020847
-        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:30:28 GMT
-Subject: [PATCH v1 09/42] NFSD: Fix returned READDIR offset cookie
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FUsII020862
+        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:30:54 GMT
+Subject: [PATCH v1 14/42] NFSD: Update the RENAME3args decoder to use struct
+ xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Tue, 05 Jan 2021 10:30:28 -0500
-Message-ID: <160986062865.5532.2413664838273345962.stgit@klimt.1015granger.net>
+Date:   Tue, 05 Jan 2021 10:30:54 -0500
+Message-ID: <160986065463.5532.8561383822279453786.stgit@klimt.1015granger.net>
 In-Reply-To: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 References: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -76,49 +77,35 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Code inspection shows that the server's NFSv3 READDIR implementation
-handles offset cookies slightly differently than the NFSv2 READDIR,
-NFSv3 READDIRPLUS, and NFSv4 READDIR implementations,
-and there doesn't seem to be any need for this difference.
-
-As a clean up, I copied the logic from nfsd3_proc_readdirplus().
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3proc.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs3xdr.c |   12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 9e289e0f439b..7ea2fb127f6f 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -444,6 +444,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 	struct nfsd3_readdirargs *argp = rqstp->rq_argp;
- 	struct nfsd3_readdirres  *resp = rqstp->rq_resp;
- 	int		count = 0;
-+	loff_t		offset;
- 	struct page	**p;
- 	caddr_t		page_addr = NULL;
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 7175b7315df0..a5bbf9571821 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -562,15 +562,13 @@ nfs3svc_decode_mknodargs(struct svc_rqst *rqstp, __be32 *p)
+ int
+ nfs3svc_decode_renameargs(struct svc_rqst *rqstp, __be32 *p)
+ {
++	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
+ 	struct nfsd3_renameargs *args = rqstp->rq_argp;
  
-@@ -462,7 +463,9 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 	resp->common.err = nfs_ok;
- 	resp->buffer = argp->buffer;
- 	resp->rqstp = rqstp;
--	resp->status = nfsd_readdir(rqstp, &resp->fh, (loff_t *)&argp->cookie,
-+	offset = argp->cookie;
-+
-+	resp->status = nfsd_readdir(rqstp, &resp->fh, &offset,
- 				    &resp->common, nfs3svc_encode_entry);
- 	memcpy(resp->verf, argp->verf, 8);
- 	count = 0;
-@@ -478,8 +481,6 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 	}
- 	resp->count = count >> 2;
- 	if (resp->offset) {
--		loff_t offset = argp->cookie;
+-	if (!(p = decode_fh(p, &args->ffh))
+-	 || !(p = decode_filename(p, &args->fname, &args->flen))
+-	 || !(p = decode_fh(p, &args->tfh))
+-	 || !(p = decode_filename(p, &args->tname, &args->tlen)))
+-		return 0;
 -
- 		if (unlikely(resp->offset1)) {
- 			/* we ended up with offset on a page boundary */
- 			*resp->offset = htonl(offset >> 32);
+-	return xdr_argsize_check(rqstp, p);
++	return svcxdr_decode_diropargs3(xdr, &args->ffh,
++					&args->fname, &args->flen) &&
++		svcxdr_decode_diropargs3(xdr, &args->tfh,
++					 &args->tname, &args->tlen);
+ }
+ 
+ int
 
 
