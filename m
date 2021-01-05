@@ -7,36 +7,40 @@ X-Spam-Status: No, score=-19.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42CACC433E6
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:27:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 50F31C43381
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:27:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0E3F222BEA
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:27:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1F19422B4B
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:27:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727665AbhAEP1D (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Jan 2021 10:27:03 -0500
-Received: from mail.kernel.org ([198.145.29.99]:59490 "EHLO mail.kernel.org"
+        id S1727171AbhAEP1E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Jan 2021 10:27:04 -0500
+Received: from mail.kernel.org ([198.145.29.99]:59500 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727171AbhAEP1C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Jan 2021 10:27:02 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 25B4222C7C
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 15:26:22 +0000 (UTC)
+        id S1727634AbhAEP1E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Jan 2021 10:27:04 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 7D97722B51
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 15:26:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609860382;
-        bh=JjIkLP/dA6Ql9bZFl5VTsjrxoq6BxOOb6ehdJqJMy0I=;
-        h=From:To:Subject:Date:From;
-        b=U+6UZjlVg+brSH/TZmVydz7zjF+5uboz6Kakk+lilanYIJy/F4Ms6J8Kxh+lUgj3j
-         T8oedHl6e6HUkcOH8b/0mJuXvkg9EahHxW4Q+jZBjaqtpSPoArniMkQkfzs6akoCT+
-         zVsc/PpQrGjlcRmXy/ELQAz1eL3x3oK8Fo4eq45NYGLwgnaMiRENqhvxU01/PUdD63
-         sQ3xdQPUXCekesRoCvkktGMqB+xvcFbsiimu723NQWjbgpKUEM1h+B2po7XJSz10gY
-         wtca1Y1uwpENJNuOHn2P1vHtwyLz2xiu59zsrfMRKX3rSvXN/yZdMf/VYIc6Ww2lRq
-         8pYbf434cphkQ==
+        s=k20201202; t=1609860383;
+        bh=D24Ib+4BY4IYY1PusSUnhNp3PP0Q13XBwl3Ko5G5194=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=pKOJsiWFO2IaeDRfNSRcR51QeqWqf3WEp5nRADdSW68km7iJXMPNWVkyI2uwgr9+p
+         vZxJWekdMWW6qrn0WMvSTfV39lblDQ7y6UOPt6CcOF9I+ni1iG5Tleer9gVFPcnzEz
+         JhO7VJxL1XpUyGmmxOYXV1zMPXccic+a9E6RC0GDwp8i5qKZFkDgB+VJqbsjrTq2Ih
+         18p6rh7Jv9WbnNZ5O2pdskimOI3GheUjIgRYnqWY9OqCnvrRnTY3O66CFpnrV1g9+F
+         HqBfviaqiA4Z9YvWxqWzg+XH0/R0rvi1ZwFkArHgp0U3k3vhiYscFHSZVlH3ZSkUSQ
+         PpJmD9pbjnhZg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] pNFS: Mark layout for return if return-on-close was not sent
-Date:   Tue,  5 Jan 2021 10:26:17 -0500
-Message-Id: <20210105152620.754453-1-trondmy@kernel.org>
+Subject: [PATCH 4/4] pNFS: Stricter ordering of layoutget and layoutreturn
+Date:   Tue,  5 Jan 2021 10:26:20 -0500
+Message-Id: <20210105152620.754453-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20210105152620.754453-3-trondmy@kernel.org>
+References: <20210105152620.754453-1-trondmy@kernel.org>
+ <20210105152620.754453-2-trondmy@kernel.org>
+ <20210105152620.754453-3-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -45,38 +49,76 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the layout return-on-close failed because the layoutreturn was never
-sent, then we should mark the layout for return again.
+If a layout return is in progress, we should wait for it to complete,
+in case the layout segment we are picking up gets returned too.
 
-Fixes: 9c47b18cf722 ("pNFS: Ensure we do clear the return-on-close layout stateid on fatal errors")
+Fixes: 30cb3ee299cb ("pNFS: Handle NFS4ERR_OLD_STATEID on layoutreturn by bumping the state seqid")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/nfs/pnfs.c | 43 +++++++++++++++++++++----------------------
+ 1 file changed, 21 insertions(+), 22 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 07f59dc8cb2e..ccc89fab1802 100644
+index a0d8a67a4dd9..e4a27afeee90 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1560,12 +1560,18 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
- 		int ret)
- {
- 	struct pnfs_layout_hdr *lo = args->layout;
-+	struct inode *inode = args->inode;
- 	const nfs4_stateid *arg_stateid = NULL;
- 	const nfs4_stateid *res_stateid = NULL;
- 	struct nfs4_xdr_opaque_data *ld_private = args->ld_private;
+@@ -2017,6 +2017,27 @@ pnfs_update_layout(struct inode *ino,
+ 		goto lookup_again;
+ 	}
  
- 	switch (ret) {
- 	case -NFS4ERR_NOMATCHING_LAYOUT:
-+		spin_lock(&inode->i_lock);
-+		if (pnfs_layout_is_valid(lo) &&
-+		    nfs4_stateid_match_other(&args->stateid, &lo->plh_stateid))
-+			pnfs_set_plh_return_info(lo, args->range.iomode, 0);
-+		spin_unlock(&inode->i_lock);
- 		break;
- 	case 0:
- 		if (res->lrs_present)
++	/*
++	 * Because we free lsegs when sending LAYOUTRETURN, we need to wait
++	 * for LAYOUTRETURN.
++	 */
++	if (test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags)) {
++		spin_unlock(&ino->i_lock);
++		dprintk("%s wait for layoutreturn\n", __func__);
++		lseg = ERR_PTR(pnfs_prepare_to_retry_layoutget(lo));
++		if (!IS_ERR(lseg)) {
++			pnfs_put_layout_hdr(lo);
++			dprintk("%s retrying\n", __func__);
++			trace_pnfs_update_layout(ino, pos, count, iomode, lo,
++						 lseg,
++						 PNFS_UPDATE_LAYOUT_RETRY);
++			goto lookup_again;
++		}
++		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
++					 PNFS_UPDATE_LAYOUT_RETURN);
++		goto out_put_layout_hdr;
++	}
++
+ 	lseg = pnfs_find_lseg(lo, &arg, strict_iomode);
+ 	if (lseg) {
+ 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+@@ -2069,28 +2090,6 @@ pnfs_update_layout(struct inode *ino,
+ 		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+ 	}
+ 
+-	/*
+-	 * Because we free lsegs before sending LAYOUTRETURN, we need to wait
+-	 * for LAYOUTRETURN even if first is true.
+-	 */
+-	if (test_bit(NFS_LAYOUT_RETURN, &lo->plh_flags)) {
+-		spin_unlock(&ino->i_lock);
+-		dprintk("%s wait for layoutreturn\n", __func__);
+-		lseg = ERR_PTR(pnfs_prepare_to_retry_layoutget(lo));
+-		if (!IS_ERR(lseg)) {
+-			if (first)
+-				pnfs_clear_first_layoutget(lo);
+-			pnfs_put_layout_hdr(lo);
+-			dprintk("%s retrying\n", __func__);
+-			trace_pnfs_update_layout(ino, pos, count, iomode, lo,
+-					lseg, PNFS_UPDATE_LAYOUT_RETRY);
+-			goto lookup_again;
+-		}
+-		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+-				PNFS_UPDATE_LAYOUT_RETURN);
+-		goto out_put_layout_hdr;
+-	}
+-
+ 	if (pnfs_layoutgets_blocked(lo)) {
+ 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+ 				PNFS_UPDATE_LAYOUT_BLOCKED);
 -- 
 2.29.2
 
