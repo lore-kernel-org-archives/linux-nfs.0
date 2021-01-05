@@ -7,66 +7,66 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B822C433E9
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:32:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A15A4C433DB
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:33:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E8C6222AAA
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:32:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 78F0922AAB
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Jan 2021 15:33:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728044AbhAEPcx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Jan 2021 10:32:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38210 "EHLO
+        id S1728056AbhAEPdD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Jan 2021 10:33:03 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37990 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728041AbhAEPcx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:32:53 -0500
-Received: from mail-qk1-x731.google.com (mail-qk1-x731.google.com [IPv6:2607:f8b0:4864:20::731])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8EF7AC061574
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:32:37 -0800 (PST)
-Received: by mail-qk1-x731.google.com with SMTP id h4so26816497qkk.4
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:32:37 -0800 (PST)
+        with ESMTP id S1727906AbhAEPdD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jan 2021 10:33:03 -0500
+Received: from mail-qk1-x72a.google.com (mail-qk1-x72a.google.com [IPv6:2607:f8b0:4864:20::72a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 10906C061798
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jan 2021 07:32:48 -0800 (PST)
+Received: by mail-qk1-x72a.google.com with SMTP id f26so26835123qka.0
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Jan 2021 07:32:48 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=eBDnHnNtbOsWQF3HME0FnBt2R9L4nyG4xusmfpl9RoY=;
-        b=WnZxgthLsW0fuGljFIef0KGPZe9kRO7pULZDhuwt/4xIwYrlbT9MtcXIzQgkx6EOlx
-         pABa4pqwdrZS4bvHFwAqK9TfFrSbL18xmZK6WiRDOuAiqUv+Rdl9I96w9QXul7c0tABE
-         +NUKZ0zw9uFBUCi9Da6CRE/vLodinfJm1NYles9yfJ8kLfwtRldlr4lyBm3rUPC6A39x
-         PD0/hA2Wdcj/2prAIhdtOCsP53N45qfguQCtEaBJkH9WPSDGf5iviB4mUHU+unLobtIz
-         6yoRDEZtMSPdxvi23XP9Svh+deXnPrIbMV9PDF+OAROX/9um+gD82zBvUdjcksPeEfvl
-         vXwQ==
+        bh=Qx5XLzqsdqZoy2l1sbxft7U1zWtg0T+upqt17SH16Xs=;
+        b=a1TCMQvSJP5dRuIjQyJWEbTstogXr+mO7kpckdpd5Loa4C/v3Qnck5sxetjzRJwfLk
+         30dWVjf4s5JODCrf9MbVR7ybJ58syzcGW4JlU4WNYEopSOTZ+d4Wp2SOT0mQfFZtGfOq
+         A54xiuxzL/XsZygnLH3BVQof9IJnbx8pbCDA+B2sNnOVrZfYeH5rRJOiuhwweb2yYcI7
+         V1EBFIAx5s2+j7O9In0XwIDVe7c10L7Owo2xT2eGoJ+WM60ntMQDZs24WyKVabW3RqEx
+         5we0qUN82MIqiR/Xv1b0W6pVcCA/3Z+1XfR0F7+WDDyTgSKLh/t4CXkSYqFTQhZFHeNW
+         yxVA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=eBDnHnNtbOsWQF3HME0FnBt2R9L4nyG4xusmfpl9RoY=;
-        b=cs0NQTmExPJqfykC/NPsixubZ0PNizXABV6yn4gnC2tMkkkLX53zcQooKwyvH1d1S1
-         vvA00N3+Xg7n+LZCf5VlkbUNdZKc6daio5JFLvhEtyXUqHRPD9mBAW6FMve7d83PQ+uL
-         ok0w+eeMLDK+rUgNRWy6AQMNTGhXtxJgJHu9xqVw6TueyDSV1dnVQlda+i/Bvtqvs9YK
-         vn/ljTxp+iQrY0btxQRqz7+0uqHxg15J0xBCXM+zzB9Biw1ltwpMlWfU2nqyHVFHpQzK
-         V9OycsluGth8uwVwMRqkGXSQrsN7UGQd+6GPUuCIYigawPYHNzoWzNRcwODn5894VQC2
-         K1+A==
-X-Gm-Message-State: AOAM532k77cZSa+g4tG+7ANB7voPAPi1lD8xXk3sFS0Dx0QKXqH+Dpk2
-        Rz1YFCmqQyEEALhaSl9WmfAb3dDQumM=
-X-Google-Smtp-Source: ABdhPJw29jBzdXx/HdINXG1Jt3EwpeoC0owDDpBVtVdpCJe3lUn3eoW/UtLlKyY4au0qRRZTsV0pLQ==
-X-Received: by 2002:a37:57c7:: with SMTP id l190mr829qkb.487.1609860756532;
-        Tue, 05 Jan 2021 07:32:36 -0800 (PST)
+        bh=Qx5XLzqsdqZoy2l1sbxft7U1zWtg0T+upqt17SH16Xs=;
+        b=HEwDKxURsUwPFe74ZqtGoaC8g+lMScVCuNOPMRyUUN8zLYf/51+Qj1ZCfy2hMAIlNh
+         v+8JIQBiCPWvtlRkVbapoPF32qPLFwTzH5XTZ1k5imCFbDt/dNP+i6HDWmWmP0Q8tD+q
+         q8do4cFTle4QFS1FJESsrgS4yzF34qU/gK2o+I2z2DJ6Z3to+ODS5AEy6G0z8fZHrV6b
+         wxu6/4o5OfSkR4o9gDd9sOCtsQiMPgZkHhvOjZ6+hIDAhClX/8yp9y6cL6bX19bt8uwp
+         mQ5LzHyzHDQA6ZdH8u3cMKtM95OTZKmML8zqTz7xcPVudU08Wnu6JINDlfsgWL63Dp0R
+         Cktg==
+X-Gm-Message-State: AOAM533/G0PHhMkTMi46HcvKkCN21BzBpHg99n4iiLYeg4pprtuCNeBq
+        +f3qQ4Yz4g/U213//OTNj0oRy4LVGgc=
+X-Google-Smtp-Source: ABdhPJy1RNTxv14vtQ4LGS33xcTujlnmBn6n1skQN4M8SuyaYQehLxeFzvpJMxoulebOnWCKabalYw==
+X-Received: by 2002:a37:a8a:: with SMTP id 132mr15832qkk.327.1609860766997;
+        Tue, 05 Jan 2021 07:32:46 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id k141sm157032qke.38.2021.01.05.07.32.35
+        by smtp.gmail.com with ESMTPSA id e10sm19389qtr.92.2021.01.05.07.32.46
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 05 Jan 2021 07:32:35 -0800 (PST)
+        Tue, 05 Jan 2021 07:32:46 -0800 (PST)
 Sender: Chuck Lever <chucklever@gmail.com>
 Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FWY9K020919
-        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:32:34 GMT
-Subject: [PATCH v1 33/42] NFSD: Remove argument length checking in
- nfsd_dispatch()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 105FWjkY020925
+        for <linux-nfs@vger.kernel.org>; Tue, 5 Jan 2021 15:32:45 GMT
+Subject: [PATCH v1 35/42] NFSD: Add an xdr_stream-based decoder for NFSv2/3
+ ACLs
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Tue, 05 Jan 2021 10:32:34 -0500
-Message-ID: <160986075477.5532.874590573395626610.stgit@klimt.1015granger.net>
+Date:   Tue, 05 Jan 2021 10:32:45 -0500
+Message-ID: <160986076534.5532.16229382857405416474.stgit@klimt.1015granger.net>
 In-Reply-To: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 References: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -77,66 +77,84 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Now that the argument decoders for NFSv2 and NFSv3 use the
-xdr_stream mechanism, the version-specific length checking logic in
-nfsd_dispatch() is no longer necessary.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfssvc.c |   34 ----------------------------------
- 1 file changed, 34 deletions(-)
+ fs/nfs_common/nfsacl.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfsacl.h |    3 +++
+ 2 files changed, 55 insertions(+)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index f9c9f4c63cc7..6de406322106 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -955,37 +955,6 @@ nfsd(void *vrqstp)
- 	return 0;
+diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
+index d056ad2fdefd..79c563c1a5e8 100644
+--- a/fs/nfs_common/nfsacl.c
++++ b/fs/nfs_common/nfsacl.c
+@@ -295,3 +295,55 @@ int nfsacl_decode(struct xdr_buf *buf, unsigned int base, unsigned int *aclcnt,
+ 		   nfsacl_desc.desc.array_len;
  }
+ EXPORT_SYMBOL_GPL(nfsacl_decode);
++
++/**
++ * nfs_stream_decode_acl - Decode an NFSv3 ACL
++ *
++ * @xdr: an xdr_stream positioned at an encoded ACL
++ * @aclcnt: OUT: count of ACEs in decoded posix_acl
++ * @pacl: OUT: a dynamically-allocated buffer containing the decoded posix_acl
++ *
++ * Return values:
++ *   %false: The encoded ACL is not valid
++ *   %true: @pacl contains a decoded ACL, and @xdr is advanced
++ *
++ * On a successful return, caller must release *pacl using posix_acl_release().
++ */
++bool nfs_stream_decode_acl(struct xdr_stream *xdr, unsigned int *aclcnt,
++			   struct posix_acl **pacl)
++{
++	const size_t elem_size = XDR_UNIT * 3;
++	struct nfsacl_decode_desc nfsacl_desc = {
++		.desc = {
++			.elem_size = elem_size,
++			.xcode = pacl ? xdr_nfsace_decode : NULL,
++		},
++	};
++	unsigned int base;
++	u32 entries;
++
++	if (xdr_stream_decode_u32(xdr, &entries) < 0)
++		return false;
++	if (entries > NFS_ACL_MAX_ENTRIES)
++		return false;
++
++	base = xdr_stream_pos(xdr);
++	if (!xdr_inline_decode(xdr, XDR_UNIT + elem_size * entries))
++		return false;
++	nfsacl_desc.desc.array_maxlen = entries;
++	if (xdr_decode_array2(xdr->buf, base, &nfsacl_desc.desc))
++		return false;
++
++	if (pacl) {
++		if (entries != nfsacl_desc.desc.array_len ||
++		    posix_acl_from_nfsacl(nfsacl_desc.acl) != 0) {
++			posix_acl_release(nfsacl_desc.acl);
++			return false;
++		}
++		*pacl = nfsacl_desc.acl;
++	}
++	if (aclcnt)
++		*aclcnt = entries;
++	return true;
++}
++EXPORT_SYMBOL_GPL(nfs_stream_decode_acl);
+diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
+index 103d44695323..0ba99c513649 100644
+--- a/include/linux/nfsacl.h
++++ b/include/linux/nfsacl.h
+@@ -38,5 +38,8 @@ nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
+ extern int
+ nfsacl_decode(struct xdr_buf *buf, unsigned int base, unsigned int *aclcnt,
+ 	      struct posix_acl **pacl);
++extern bool
++nfs_stream_decode_acl(struct xdr_stream *xdr, unsigned int *aclcnt,
++		      struct posix_acl **pacl);
  
--/*
-- * A write procedure can have a large argument, and a read procedure can
-- * have a large reply, but no NFSv2 or NFSv3 procedure has argument and
-- * reply that can both be larger than a page.  The xdr code has taken
-- * advantage of this assumption to be a sloppy about bounds checking in
-- * some cases.  Pending a rewrite of the NFSv2/v3 xdr code to fix that
-- * problem, we enforce these assumptions here:
-- */
--static bool nfs_request_too_big(struct svc_rqst *rqstp,
--				const struct svc_procedure *proc)
--{
--	/*
--	 * The ACL code has more careful bounds-checking and is not
--	 * susceptible to this problem:
--	 */
--	if (rqstp->rq_prog != NFS_PROGRAM)
--		return false;
--	/*
--	 * Ditto NFSv4 (which can in theory have argument and reply both
--	 * more than a page):
--	 */
--	if (rqstp->rq_vers >= 4)
--		return false;
--	/* The reply will be small, we're OK: */
--	if (proc->pc_xdrressize > 0 &&
--	    proc->pc_xdrressize < XDR_QUADLEN(PAGE_SIZE))
--		return false;
--
--	return rqstp->rq_arg.len > PAGE_SIZE;
--}
--
- /**
-  * nfsd_dispatch - Process an NFS or NFSACL Request
-  * @rqstp: incoming request
-@@ -1004,9 +973,6 @@ int nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
- 	struct kvec *resv = &rqstp->rq_res.head[0];
- 	__be32 *p;
- 
--	if (nfs_request_too_big(rqstp, proc))
--		goto out_decode_err;
--
- 	/*
- 	 * Give the xdr decoder a chance to change this if it wants
- 	 * (necessary in the NFSv4.0 compound case)
+ #endif  /* __LINUX_NFSACL_H */
 
 
