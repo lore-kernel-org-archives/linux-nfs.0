@@ -4,42 +4,44 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3212AC433E0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 539FFC433E6
 	for <linux-nfs@archiver.kernel.org>; Thu,  7 Jan 2021 05:32:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EF46F22DBF
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Jan 2021 05:32:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1D80622DD3
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Jan 2021 05:32:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725812AbhAGFcN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Jan 2021 00:32:13 -0500
-Received: from mail.kernel.org ([198.145.29.99]:47210 "EHLO mail.kernel.org"
+        id S1725862AbhAGFcO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Jan 2021 00:32:14 -0500
+Received: from mail.kernel.org ([198.145.29.99]:47214 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725821AbhAGFcM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Jan 2021 00:32:12 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 4A89722DD3
-        for <linux-nfs@vger.kernel.org>; Thu,  7 Jan 2021 05:31:32 +0000 (UTC)
+        id S1725792AbhAGFcN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 Jan 2021 00:32:13 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 322BD22E03
+        for <linux-nfs@vger.kernel.org>; Thu,  7 Jan 2021 05:31:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609997492;
-        bh=WCWFYJIzK+7gV1uOtwBlT+qX37HUdNpHq88GPcRrh5s=;
+        s=k20201202; t=1609997493;
+        bh=/R1M0T6Kd3g2Y/TZcD2GM9uO8zV8lOJ1cWbQeRN6kMo=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=cCgUyVAT8XbZ8W6TIz0pwGQ1bP67OOVn/2iGk03qMWWv+tadoJZOb+a5Jlv7Ua7ez
-         z/9JNECIpUcznvjakjaL7t351jzpz8BA9a5QM4asYkmjDCnRfOyS2shMyvBuxaYPvX
-         AdhkGIdtJL9W0io/OAaTt0KF/qz6u+B687Ewkb8AeZCPLbcZWVrNCVoh0mq++CChg1
-         vyYyK5goTvMWNEXuHejYnEPYNLhi1C+GZBkmlByC74jZcA+ibzHjOxhXEXKI+8+nwE
-         pIkEPdPkkYYY+4MrSM2M9RLj/JW5uqc+7sqxtpO5ACNm++nQN3lkjH8ZKh3XTdYwq1
-         ok0n6kkin1TEw==
+        b=CLUUGsl2eOHix6rDjVkBmpMfrFL3sFWBD1+juq286DbXMh6EFY4rrgnUOvMKk2PkU
+         +Kv7bFFXhpMlUdLn6NMoEFRD1h9CiggyhC9/tsDd/iz1he+MmBrlRlNjUi/6MM2qvX
+         VynQPudD/cP1wlLCS/qGxWPgV3w3kOkU2YIhT2wSF9rc6Aud2Dg2Hgo7TG5olHaaJJ
+         qXNNDdD59Mj2j9SauUYx6flZgHBw2BA6C2XgFwGq7Qk4OupttMhu0mZV6zC4COId9v
+         LwGVXM4A8woBz8uv4w6eBxAT1wO9JNdLPQW2T9TdGXcHidiKHroYWEmKlnNXT6yXv7
+         JHqODE9BXC2Tg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/7] pNFS: Clean up pnfs_layoutreturn_free_lsegs()
-Date:   Thu,  7 Jan 2021 00:31:26 -0500
-Message-Id: <20210107053130.20341-3-trondmy@kernel.org>
+Subject: [PATCH v2 5/7] NFS/pNFS: Don't call pnfs_free_bucket_lseg() before removing the request
+Date:   Thu,  7 Jan 2021 00:31:28 -0500
+Message-Id: <20210107053130.20341-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20210107053130.20341-2-trondmy@kernel.org>
+In-Reply-To: <20210107053130.20341-4-trondmy@kernel.org>
 References: <20210107053130.20341-1-trondmy@kernel.org>
  <20210107053130.20341-2-trondmy@kernel.org>
+ <20210107053130.20341-3-trondmy@kernel.org>
+ <20210107053130.20341-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -48,49 +50,49 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Remove the check for whether or not the stateid is NULL, and fix up the
-callers.
+In pnfs_generic_clear_request_commit(), we try calling
+pnfs_free_bucket_lseg() before we remove the request from the DS bucket.
+That will always fail, since the point is to test for whether or not
+that bucket is empty.
 
+Fixes: c84bea59449a ("NFS/pNFS: Simplify bucket layout segment reference counting")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ fs/nfs/pnfs_nfs.c | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 30802d45c99a..16a37214aba9 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1152,7 +1152,7 @@ void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
- 	LIST_HEAD(freeme);
- 
- 	spin_lock(&inode->i_lock);
--	if (!pnfs_layout_is_valid(lo) || !arg_stateid ||
-+	if (!pnfs_layout_is_valid(lo) ||
- 	    !nfs4_stateid_match_other(&lo->plh_stateid, arg_stateid))
- 		goto out_unlock;
- 	if (stateid) {
-@@ -1559,7 +1559,6 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 2efcfdd348a1..df20bbe8d15e 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -78,22 +78,18 @@ void
+ pnfs_generic_clear_request_commit(struct nfs_page *req,
+ 				  struct nfs_commit_info *cinfo)
  {
- 	struct pnfs_layout_hdr *lo = args->layout;
- 	struct inode *inode = args->inode;
--	const nfs4_stateid *arg_stateid = NULL;
- 	const nfs4_stateid *res_stateid = NULL;
- 	struct nfs4_xdr_opaque_data *ld_private = args->ld_private;
+-	struct pnfs_layout_segment *freeme = NULL;
++	struct pnfs_commit_bucket *bucket = NULL;
  
-@@ -1577,11 +1576,10 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
- 			res_stateid = &res->stateid;
- 		fallthrough;
- 	default:
--		arg_stateid = &args->stateid;
-+		pnfs_layoutreturn_free_lsegs(lo, &args->stateid, &args->range,
-+					     res_stateid);
- 	}
- 	trace_nfs4_layoutreturn_on_close(args->inode, &args->stateid, ret);
--	pnfs_layoutreturn_free_lsegs(lo, arg_stateid, &args->range,
--			res_stateid);
- 	if (ld_private && ld_private->ops && ld_private->ops->free)
- 		ld_private->ops->free(ld_private);
- 	pnfs_put_layout_hdr(lo);
+ 	if (!test_and_clear_bit(PG_COMMIT_TO_DS, &req->wb_flags))
+ 		goto out;
+ 	cinfo->ds->nwritten--;
+-	if (list_is_singular(&req->wb_list)) {
+-		struct pnfs_commit_bucket *bucket;
+-
++	if (list_is_singular(&req->wb_list))
+ 		bucket = list_first_entry(&req->wb_list,
+-					  struct pnfs_commit_bucket,
+-					  written);
+-		freeme = pnfs_free_bucket_lseg(bucket);
+-	}
++					  struct pnfs_commit_bucket, written);
+ out:
+ 	nfs_request_remove_commit_list(req, cinfo);
+-	pnfs_put_lseg(freeme);
++	if (bucket)
++		pnfs_put_lseg(pnfs_free_bucket_lseg(bucket));
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_clear_request_commit);
+ 
 -- 
 2.29.2
 
