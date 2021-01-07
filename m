@@ -7,41 +7,43 @@ X-Spam-Status: No, score=-19.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 539FFC433E6
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Jan 2021 05:32:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AE5E7C433DB
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Jan 2021 05:32:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1D80622DD3
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Jan 2021 05:32:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 80A782158C
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Jan 2021 05:32:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725862AbhAGFcO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Jan 2021 00:32:14 -0500
-Received: from mail.kernel.org ([198.145.29.99]:47214 "EHLO mail.kernel.org"
+        id S1725929AbhAGFcy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Jan 2021 00:32:54 -0500
+Received: from mail.kernel.org ([198.145.29.99]:47232 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725792AbhAGFcN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Jan 2021 00:32:13 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 322BD22E03
-        for <linux-nfs@vger.kernel.org>; Thu,  7 Jan 2021 05:31:33 +0000 (UTC)
+        id S1725763AbhAGFcx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 Jan 2021 00:32:53 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1B022230FC
+        for <linux-nfs@vger.kernel.org>; Thu,  7 Jan 2021 05:31:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609997493;
-        bh=/R1M0T6Kd3g2Y/TZcD2GM9uO8zV8lOJ1cWbQeRN6kMo=;
+        s=k20201202; t=1609997494;
+        bh=eCL/i9RusvUBL91JCyUUKmdSuOAuUCTyvSokp8dmNvA=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=CLUUGsl2eOHix6rDjVkBmpMfrFL3sFWBD1+juq286DbXMh6EFY4rrgnUOvMKk2PkU
-         +Kv7bFFXhpMlUdLn6NMoEFRD1h9CiggyhC9/tsDd/iz1he+MmBrlRlNjUi/6MM2qvX
-         VynQPudD/cP1wlLCS/qGxWPgV3w3kOkU2YIhT2wSF9rc6Aud2Dg2Hgo7TG5olHaaJJ
-         qXNNDdD59Mj2j9SauUYx6flZgHBw2BA6C2XgFwGq7Qk4OupttMhu0mZV6zC4COId9v
-         LwGVXM4A8woBz8uv4w6eBxAT1wO9JNdLPQW2T9TdGXcHidiKHroYWEmKlnNXT6yXv7
-         JHqODE9BXC2Tg==
+        b=DGlAAKWhKCt0Y3c+dtktNyw4P7SVGuDY2W2M2vTbxN9S7c1zqTQvr7CDuXDd39qps
+         x9/l/diW8dnQoojK1BXETOe5S0LBiFlFQcQdSQFqE/nr1FUth/I6THdZXL6w5JEzyt
+         b1b1WmWw36mdlVOj1b371NU7cKx3YwG6i8xm1uzAQOHr8m5H4s0Ud1B/iXWj5kYQao
+         I+Ayi3h2EzEGc0ekM1x/8eBNpFKG7me7xSaNjqoX7SQ7l4edYi3r7p8MaoA6A9EHvz
+         Jl9KyrsZdX5cemoE/R952EnJq3mCuB1T62v53DvZSxOnsd0lgN4+AC5uWiAzSNHWGD
+         mQbe5nVp2lwkw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/7] NFS/pNFS: Don't call pnfs_free_bucket_lseg() before removing the request
-Date:   Thu,  7 Jan 2021 00:31:28 -0500
-Message-Id: <20210107053130.20341-5-trondmy@kernel.org>
+Subject: [PATCH v2 7/7] NFS/pNFS: Fix a leak of the layout 'plh_outstanding' counter
+Date:   Thu,  7 Jan 2021 00:31:30 -0500
+Message-Id: <20210107053130.20341-7-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20210107053130.20341-4-trondmy@kernel.org>
+In-Reply-To: <20210107053130.20341-6-trondmy@kernel.org>
 References: <20210107053130.20341-1-trondmy@kernel.org>
  <20210107053130.20341-2-trondmy@kernel.org>
  <20210107053130.20341-3-trondmy@kernel.org>
  <20210107053130.20341-4-trondmy@kernel.org>
+ <20210107053130.20341-5-trondmy@kernel.org>
+ <20210107053130.20341-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -50,49 +52,27 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-In pnfs_generic_clear_request_commit(), we try calling
-pnfs_free_bucket_lseg() before we remove the request from the DS bucket.
-That will always fail, since the point is to test for whether or not
-that bucket is empty.
+If we exit _lgopen_prepare_attached() without setting a layout, we will
+currently leak the plh_outstanding counter.
 
-Fixes: c84bea59449a ("NFS/pNFS: Simplify bucket layout segment reference counting")
+Fixes: 411ae722d10a ("pNFS: Wait for stale layoutget calls to complete in pnfs_update_layout()")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs_nfs.c | 14 +++++---------
- 1 file changed, 5 insertions(+), 9 deletions(-)
+ fs/nfs/pnfs.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 2efcfdd348a1..df20bbe8d15e 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -78,22 +78,18 @@ void
- pnfs_generic_clear_request_commit(struct nfs_page *req,
- 				  struct nfs_commit_info *cinfo)
- {
--	struct pnfs_layout_segment *freeme = NULL;
-+	struct pnfs_commit_bucket *bucket = NULL;
- 
- 	if (!test_and_clear_bit(PG_COMMIT_TO_DS, &req->wb_flags))
- 		goto out;
- 	cinfo->ds->nwritten--;
--	if (list_is_singular(&req->wb_list)) {
--		struct pnfs_commit_bucket *bucket;
--
-+	if (list_is_singular(&req->wb_list))
- 		bucket = list_first_entry(&req->wb_list,
--					  struct pnfs_commit_bucket,
--					  written);
--		freeme = pnfs_free_bucket_lseg(bucket);
--	}
-+					  struct pnfs_commit_bucket, written);
- out:
- 	nfs_request_remove_commit_list(req, cinfo);
--	pnfs_put_lseg(freeme);
-+	if (bucket)
-+		pnfs_put_lseg(pnfs_free_bucket_lseg(bucket));
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_clear_request_commit);
- 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fc13a3c8bc48..4f274f21c4ab 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2244,6 +2244,7 @@ static void _lgopen_prepare_attached(struct nfs4_opendata *data,
+ 					     &rng, GFP_KERNEL);
+ 	if (!lgp) {
+ 		pnfs_clear_first_layoutget(lo);
++		nfs_layoutget_end(lo);
+ 		pnfs_put_layout_hdr(lo);
+ 		return;
+ 	}
 -- 
 2.29.2
 
