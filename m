@@ -2,29 +2,33 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DE03C433E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Jan 2021 16:23:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C25EC433E9
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Jan 2021 16:23:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4F5C823B44
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Jan 2021 16:23:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E3ED123B3E
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Jan 2021 16:23:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726683AbhANQXJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 14 Jan 2021 11:23:09 -0500
-Received: from mail.kernel.org ([198.145.29.99]:45764 "EHLO mail.kernel.org"
+        id S1726823AbhANQXQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 14 Jan 2021 11:23:16 -0500
+Received: from mail.kernel.org ([198.145.29.99]:45778 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726241AbhANQXJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Jan 2021 11:23:09 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 01D8C23B44;
-        Thu, 14 Jan 2021 16:22:28 +0000 (UTC)
-Subject: [PATCH v1 0/5] Convert svcrdma stats to per-CPU counters
+        id S1726241AbhANQXP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Jan 2021 11:23:15 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1298623B3E;
+        Thu, 14 Jan 2021 16:22:35 +0000 (UTC)
+Subject: [PATCH v1 1/5] svcrdma: Refactor svc_rdma_init() and
+ svc_rdma_clean_up()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Thu, 14 Jan 2021 11:22:28 -0500
-Message-ID: <161064114388.6061.6808790429789225779.stgit@klimt.1015granger.net>
+Date:   Thu, 14 Jan 2021 11:22:34 -0500
+Message-ID: <161064135435.6061.6371647855819015017.stgit@klimt.1015granger.net>
+In-Reply-To: <161064114388.6061.6808790429789225779.stgit@klimt.1015granger.net>
+References: <161064114388.6061.6808790429789225779.stgit@klimt.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -33,28 +37,67 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These follow on Amir's patches that did the same for the generic
-NFSD stats. See:
+Setting up the proc variables is about to get more complicated.
 
-https://lore.kernel.org/linux-nfs/20210106075236.4184-2-amir73il@gmail.com/T/
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/svc_rdma.c |   30 +++++++++++++++++++++++-------
+ 1 file changed, 23 insertions(+), 7 deletions(-)
 
-Chuck Lever (5):
-      svcrdma: Refactor svc_rdma_init() and svc_rdma_clean_up()
-      svcrdma: Convert rdma_stat_recv to a per-CPU counter
-      svcrdma: Convert rdma_stat_sq_starve to a per-CPU counter
-      svcrdma: Restore read and write stats
-      svcrdma: Deprecate stat variables that are no longer used
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+index 526da5d4710b..1fc1d5cbeb9b 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma.c
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -224,27 +224,43 @@ static struct ctl_table svcrdma_root_table[] = {
+ 	{ },
+ };
+ 
++static void svc_rdma_proc_cleanup(void)
++{
++	if (!svcrdma_table_header)
++		return;
++	unregister_sysctl_table(svcrdma_table_header);
++	svcrdma_table_header = NULL;
++}
++
++static int svc_rdma_proc_init(void)
++{
++	if (svcrdma_table_header)
++		return 0;
++
++	svcrdma_table_header = register_sysctl_table(svcrdma_root_table);
++	return 0;
++}
++
+ void svc_rdma_cleanup(void)
+ {
+ 	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
+-	if (svcrdma_table_header) {
+-		unregister_sysctl_table(svcrdma_table_header);
+-		svcrdma_table_header = NULL;
+-	}
+ 	svc_unreg_xprt_class(&svc_rdma_class);
++	svc_rdma_proc_cleanup();
+ }
+ 
+ int svc_rdma_init(void)
+ {
++	int rc;
++
+ 	dprintk("SVCRDMA Module Init, register RPC RDMA transport\n");
+ 	dprintk("\tsvcrdma_ord      : %d\n", svcrdma_ord);
+ 	dprintk("\tmax_requests     : %u\n", svcrdma_max_requests);
+ 	dprintk("\tmax_bc_requests  : %u\n", svcrdma_max_bc_requests);
+ 	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
+ 
+-	if (!svcrdma_table_header)
+-		svcrdma_table_header =
+-			register_sysctl_table(svcrdma_root_table);
++	rc = svc_rdma_proc_init();
++	if (rc)
++		return rc;
+ 
+ 	/* Register RDMA with the SVC transport switch */
+ 	svc_reg_xprt_class(&svc_rdma_class);
 
-
- include/linux/sunrpc/svc_rdma.h         |  14 +-
- net/sunrpc/xprtrdma/svc_rdma.c          | 164 ++++++++++++++----------
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   3 +-
- net/sunrpc/xprtrdma/svc_rdma_rw.c       |   3 +
- net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   2 +-
- 5 files changed, 108 insertions(+), 78 deletions(-)
-
---
-Chuck Lever
 
