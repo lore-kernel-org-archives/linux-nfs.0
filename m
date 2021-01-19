@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E0687C4332B
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 22:40:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7016C433E6
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 22:41:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A1EA323104
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 22:40:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F0CC22D08
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 22:41:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728277AbhASWgg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Jan 2021 17:36:36 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45072 "EHLO
+        id S1727734AbhASWkM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Jan 2021 17:40:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45212 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727535AbhASWgR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2021 17:36:17 -0500
+        with ESMTP id S1728496AbhASWgx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2021 17:36:53 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F1AE1C0613CF
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jan 2021 14:35:35 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4FA63C0613D6
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Jan 2021 14:35:36 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 5644FAA2; Tue, 19 Jan 2021 17:35:35 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 5644FAA2
+        id 6F9CA6EAD; Tue, 19 Jan 2021 17:35:35 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6F9CA6EAD
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/8] nfsd: find_cpntf_state cleanup
-Date:   Tue, 19 Jan 2021 17:35:26 -0500
-Message-Id: <1611095729-31104-6-git-send-email-bfields@redhat.com>
+Subject: [PATCH 3/8] nfsd: simplify nfsd_renew
+Date:   Tue, 19 Jan 2021 17:35:24 -0500
+Message-Id: <1611095729-31104-4-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1611095729-31104-1-git-send-email-bfields@redhat.com>
 References: <1611095729-31104-1-git-send-email-bfields@redhat.com>
@@ -40,60 +40,36 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-I think this unusual use of struct compound_state could cause confusion.
-
-It's not that much more complicated just to open-code this stateid
-lookup.
-
-The only change in behavior should be a different error return in the
-case the copy is using a source stateid that is a revoked delegation,
-but I doubt that matters.
+You can take the single-exit thing too far, I think.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 22 ++++++++++++++--------
- 1 file changed, 14 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4state.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d7128e16c86e..01191d2dddc8 100644
+index 7ea63d7cec4d..ba955bbf21df 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5812,21 +5812,27 @@ static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- {
- 	__be32 status;
- 	struct nfs4_cpntf_state *cps = NULL;
--	struct nfsd4_compound_state cstate;
-+	struct nfs4_client *found;
- 
- 	status = manage_cpntf_state(nn, st, NULL, &cps);
+@@ -5300,15 +5300,12 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	trace_nfsd_clid_renew(clid);
+ 	status = lookup_clientid(clid, cstate, nn, false);
  	if (status)
- 		return status;
+-		goto out;
++		return status;
+ 	clp = cstate->clp;
+-	status = nfserr_cb_path_down;
+ 	if (!list_empty(&clp->cl_delegations)
+ 			&& clp->cl_cb_state != NFSD4_CB_UP)
+-		goto out;
+-	status = nfs_ok;
+-out:
+-	return status;
++		return nfserr_cb_path_down;
++	return nfs_ok;
+ }
  
- 	cps->cpntf_time = ktime_get_boottime_seconds();
--	memset(&cstate, 0, sizeof(cstate));
--	status = set_clientid(&cps->cp_p_clid, &cstate, nn, true);
--	if (status)
-+
-+	status = nfserr_expired;
-+	found = lookup_clientid(&cps->cp_p_clid, true, nn);
-+	if (!found)
- 		goto out;
--	status = nfsd4_lookup_stateid(&cstate, &cps->cp_p_stateid,
--				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
--				stid, nn);
--	put_client_renew(cstate.clp);
-+
-+	*stid = find_stateid_by_type(found, &cps->cp_p_stateid,
-+			NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID);
-+	if (stid)
-+		status = nfs_ok;
-+	else
-+		status = nfserr_bad_stateid;
-+
-+	put_client_renew(found);
- out:
- 	nfs4_put_cpntf_state(nn, cps);
- 	return status;
+ void
 -- 
 2.29.2
 
