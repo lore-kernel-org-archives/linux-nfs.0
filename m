@@ -2,115 +2,224 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8568C28CFB
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 18:29:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D98CAC433E6
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 19:41:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A3CBA22AAA
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 18:29:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8797D23107
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 19:41:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404487AbhASSDr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Jan 2021 13:03:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42232 "EHLO
+        id S1729442AbhASTb6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Jan 2021 14:31:58 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60192 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727011AbhASSCp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2021 13:02:45 -0500
+        with ESMTP id S1729519AbhASTZk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2021 14:25:40 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B8641C061573
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jan 2021 10:02:05 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 80CACC061573;
+        Tue, 19 Jan 2021 11:25:00 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id B836C6C0D; Tue, 19 Jan 2021 13:02:04 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org B836C6C0D
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1611079324;
-        bh=YTYenTieYD2gyH+6H87D0FmX5wOOOaBTYACSTUl1A68=;
-        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
-        b=M08QKkUpwv+hNmf0D3xvhU+/IEpZs9I8+XFHLvDM75Ys1mPHXWhXcSvE9mgy8vzno
-         8/QYXgcCiB0/0d7TgxtrfkltgA0qAQ6T4JHdcaQCOiC+oRQ/i/2aVtA6/2UA08rpq+
-         aVM8+k49zafXht8QGk28ssYvdrdZsZB6uO411NRY=
-Date:   Tue, 19 Jan 2021 13:02:04 -0500
-To:     Benjamin Maynard <benmaynard@google.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: Linux 5.11 Kernel: NFS re-export errors with older nfs-utils
- package versions
-Message-ID: <20210119180204.GA24213@fieldses.org>
-References: <CA+QRt4vb=DjgcOqGLtfdfKiDaqKED825xNpNyQaaK-df5tCSRQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CA+QRt4vb=DjgcOqGLtfdfKiDaqKED825xNpNyQaaK-df5tCSRQ@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+        id AEA2E6C0D; Tue, 19 Jan 2021 14:24:59 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org AEA2E6C0D
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/3] nfsd: move change attribute generation to filesystem
+Date:   Tue, 19 Jan 2021 14:24:56 -0500
+Message-Id: <1611084297-27352-3-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1611084297-27352-1-git-send-email-bfields@redhat.com>
+References: <1611084297-27352-1-git-send-email-bfields@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Jan 18, 2021 at 05:57:54PM +0000, Benjamin Maynard wrote:
-> Hi,
-> 
-> I was recently experimenting with NFS re-exporting using the new patch
-> set that is in the Linux 5.11 kernel
-> (https://patchwork.kernel.org/project/linux-nfs/list/?series=393561).
-> 
-> After applying these patches, I consistently faced an error when
-> trying to perform a previously working NFS re-export: "exportfs:
-> /files does not support NFS export".
-> 
-> I (with help from some other interested parties) began troubleshooting
-> and after stepping through each patch individually we identified that
-> the error only occurred when the following patch was applied:
-> https://patchwork.kernel.org/project/linux-nfs/patch/20201130220319.501064-3-trond.myklebust@hammerspace.com/.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-That link isn't working for me for some reason.
+After this, only filesystems lacking change attribute support will leave
+the fetch_iversion export op NULL.
 
-Looks like we're talking about ba5e8187c555 "nfsd: allow filesystems to
-opt out of subtree checking".
+This seems cleaner to me, and will allow some minor optimizations in the
+nfsd code.
 
-> This patch prevents re-exporting if subtree checking is enabled on the
-> originating NFS server.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/btrfs/export.c        |  2 ++
+ fs/ext4/super.c          |  9 +++++++++
+ fs/nfsd/nfsfh.h          | 25 +++----------------------
+ fs/xfs/xfs_export.c      | 10 ++++++++++
+ include/linux/iversion.h | 26 ++++++++++++++++++++++++++
+ 5 files changed, 50 insertions(+), 22 deletions(-)
 
-That's not correct.
+diff --git a/fs/btrfs/export.c b/fs/btrfs/export.c
+index 1d4c2397d0d6..9f9fe24b29cc 100644
+--- a/fs/btrfs/export.c
++++ b/fs/btrfs/export.c
+@@ -7,6 +7,7 @@
+ #include "btrfs_inode.h"
+ #include "print-tree.h"
+ #include "export.h"
++#include <linux/iversion.h>
+ 
+ #define BTRFS_FID_SIZE_NON_CONNECTABLE (offsetof(struct btrfs_fid, \
+ 						 parent_objectid) / 4)
+@@ -278,4 +279,5 @@ const struct export_operations btrfs_export_ops = {
+ 	.fh_to_parent	= btrfs_fh_to_parent,
+ 	.get_parent	= btrfs_get_parent,
+ 	.get_name	= btrfs_get_name,
++	.fetch_iversion	= generic_fetch_iversion,
+ };
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 21121787c874..4a37b7fc55b6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1616,11 +1616,20 @@ static const struct super_operations ext4_sops = {
+ 	.bdev_try_to_free_page = bdev_try_to_free_page,
+ };
+ 
++static u64 ext4_fetch_iversion(struct inode *inode)
++{
++	if (IS_I_VERSION(inode))
++		return generic_fetch_iversion(inode);
++	else
++		return time_to_chattr(&inode->i_ctime);
++}
++
+ static const struct export_operations ext4_export_ops = {
+ 	.fh_to_dentry = ext4_fh_to_dentry,
+ 	.fh_to_parent = ext4_fh_to_parent,
+ 	.get_parent = ext4_get_parent,
+ 	.commit_metadata = ext4_nfs_commit_metadata,
++	.fetch_iversion = ext4_fetch_iversion,
+ };
+ 
+ enum {
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index f58933519f38..257ba5646239 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -52,8 +52,8 @@ typedef struct svc_fh {
+ 	struct timespec64	fh_pre_mtime;	/* mtime before oper */
+ 	struct timespec64	fh_pre_ctime;	/* ctime before oper */
+ 	/*
+-	 * pre-op nfsv4 change attr: note must check IS_I_VERSION(inode)
+-	 *  to find out if it is valid.
++	 * pre-op nfsv4 change attr: note must check for fetch_iversion
++	 * op to find out if it is valid.
+ 	 */
+ 	u64			fh_pre_change;
+ 
+@@ -251,31 +251,12 @@ fh_clear_wcc(struct svc_fh *fhp)
+ 	fhp->fh_pre_saved = false;
+ }
+ 
+-/*
+- * We could use i_version alone as the change attribute.  However,
+- * i_version can go backwards after a reboot.  On its own that doesn't
+- * necessarily cause a problem, but if i_version goes backwards and then
+- * is incremented again it could reuse a value that was previously used
+- * before boot, and a client who queried the two values might
+- * incorrectly assume nothing changed.
+- *
+- * By using both ctime and the i_version counter we guarantee that as
+- * long as time doesn't go backwards we never reuse an old value.
+- */
+ static inline u64 nfsd4_change_attribute(struct kstat *stat,
+ 					 struct inode *inode)
+ {
+ 	if (inode->i_sb->s_export_op->fetch_iversion)
+ 		return inode->i_sb->s_export_op->fetch_iversion(inode);
+-	else if (IS_I_VERSION(inode)) {
+-		u64 chattr;
+-
+-		chattr =  stat->ctime.tv_sec;
+-		chattr <<= 30;
+-		chattr += stat->ctime.tv_nsec;
+-		chattr += inode_query_iversion(inode);
+-		return chattr;
+-	} else
++	else
+ 		return time_to_chattr(&stat->ctime);
+ }
+ 
+diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
+index 465fd9e048d4..4a08b65c32aa 100644
+--- a/fs/xfs/xfs_export.c
++++ b/fs/xfs/xfs_export.c
+@@ -16,6 +16,7 @@
+ #include "xfs_inode_item.h"
+ #include "xfs_icache.h"
+ #include "xfs_pnfs.h"
++#include <linux/iversion.h>
+ 
+ /*
+  * Note that we only accept fileids which are long enough rather than allow
+@@ -223,6 +224,14 @@ xfs_fs_nfs_commit_metadata(
+ 	return xfs_log_force_inode(XFS_I(inode));
+ }
+ 
++static u64 xfs_fetch_iversion(struct inode *inode)
++{
++	if (IS_I_VERSION(inode))
++		return generic_fetch_iversion(inode);
++	else
++		return time_to_chattr(&inode->i_ctime);
++}
++
+ const struct export_operations xfs_export_operations = {
+ 	.encode_fh		= xfs_fs_encode_fh,
+ 	.fh_to_dentry		= xfs_fs_fh_to_dentry,
+@@ -234,4 +243,5 @@ const struct export_operations xfs_export_operations = {
+ 	.map_blocks		= xfs_fs_map_blocks,
+ 	.commit_blocks		= xfs_fs_commit_blocks,
+ #endif
++	.fetch_iversion		= xfs_fetch_iversion,
+ };
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index 3bfebde5a1a6..ded74523c8a6 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -328,6 +328,32 @@ inode_query_iversion(struct inode *inode)
+ 	return cur >> I_VERSION_QUERIED_SHIFT;
+ }
+ 
++/*
++ * We could use i_version alone as the NFSv4 change attribute.  However,
++ * i_version can go backwards after a reboot.  On its own that doesn't
++ * necessarily cause a problem, but if i_version goes backwards and then
++ * is incremented again it could reuse a value that was previously used
++ * before boot, and a client who queried the two values might
++ * incorrectly assume nothing changed.
++ *
++ * By using both ctime and the i_version counter we guarantee that as
++ * long as time doesn't go backwards we never reuse an old value.
++ *
++ * A filesystem that has an on-disk boot counter or similar might prefer
++ * to use that to avoid the risk of the change attribute going backwards
++ * if system time is set backwards.
++ */
++static inline u64 generic_fetch_iversion(struct inode *inode)
++{
++	u64 chattr;
++
++	chattr =  inode->i_ctime.tv_sec;
++	chattr <<= 30;
++	chattr += inode->i_ctime.tv_nsec;
++	chattr += inode_query_iversion(inode);
++	return chattr;
++}
++
+ /*
+  * For filesystems without any sort of change attribute, the best we can
+  * do is fake one up from the ctime:
+-- 
+2.29.2
 
-I'm assuming there are two servers: a reexporting server, which mounts
-the originating NFS server, which is mounting ext4 or xfs or some other
-local filesystem.
-
-It's hard for the reexporting server to even tell if the originating
-server is using subtree checking, so I'm surprised that would make a
-difference in behavior.
-
-> The strange thing was that no_subtree_check
-> export option was already set on the export from the originating NFS
-> Filer, but the error message persisted.
-
-So, this patch is only checks whether you've got no_subtree_check set on
-the reexporting server.
-
-> After lots of troubleshooting, eventually we tried updating NFS Utils
-> from 1.3.4 to 2.5.2 and we were able to successfully perform
-> re-export. It appears that the old version of the nfs-utils package
-> was the cause of the issue.
-
-I'm a little confused about what happened here.  Which server were you
-applying the above patches on?  Which server did you upgrade NFS utils
-on?
-
-Could be that you're actually running into some filehandle size limit or
-something.  (Subtree checking can make that problem worse.)  Hard to
-tell.
-
---b.
-
-> I appreciate that 1.3.4 is a very old version of nfs-utils, but it is
-> the default version that ships with Ubuntu and Debian and the error
-> message does not immediately point to the outdated version being the
-> cause of the problem.
-> 
-> I was wondering if it was possible to detail the requirement for a
-> more recent version of nfs-utils in the NFS Re-exporting section of
-> the Wiki (http://wiki.linux-nfs.org/wiki/index.php/NFS_re-export) to
-> help others who may encounter this problem in the future?
