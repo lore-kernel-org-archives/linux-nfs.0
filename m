@@ -2,28 +2,29 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FBB7C433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A23DCC433E6
 	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 19:41:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F3D1B22AAA
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 19:41:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5396E22AAA
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Jan 2021 19:41:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728892AbhASTbw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Jan 2021 14:31:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60198 "EHLO
+        id S1728782AbhASTbu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Jan 2021 14:31:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60196 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729553AbhASTZk (ORCPT
+        with ESMTP id S1729548AbhASTZk (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jan 2021 14:25:40 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 993DBC061757;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 991FAC061575;
         Tue, 19 Jan 2021 11:25:00 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 719F240CF; Tue, 19 Jan 2021 14:24:59 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 719F240CF
+        id 97B1A28E5; Tue, 19 Jan 2021 14:24:59 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 97B1A28E5
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org,
@@ -31,37 +32,97 @@ Cc:     linux-fsdevel@vger.kernel.org,
         Anna Schumaker <schumakeranna@gmail.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 0/3] NFS change attribute patches
-Date:   Tue, 19 Jan 2021 14:24:54 -0500
-Message-Id: <1611084297-27352-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 3/3] nfsd: skip some unnecessary stats in the v4 case
+Date:   Tue, 19 Jan 2021 14:24:57 -0500
+Message-Id: <1611084297-27352-4-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1611084297-27352-1-git-send-email-bfields@redhat.com>
+References: <1611084297-27352-1-git-send-email-bfields@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-These patches move a little more of the change attribute logic into the
-filesystems.  They should let us skip a few unnecessary stats, and use
-the source filesystem's change attribute in the NFS reexport case.
+In the typical case of v4 and an i_version-supporting filesystem, we can
+skip a stat which is only required to fake up a change attribute from
+ctime.
 
-Do this look reasonable to everyone else?
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs3xdr.c | 37 ++++++++++++++++++++-----------------
+ 1 file changed, 20 insertions(+), 17 deletions(-)
 
-J. Bruce Fields (3):
-  nfs: use change attribute for NFS re-exports
-  nfsd: move change attribute generation to filesystem
-  nfsd: skip some unnecessary stats in the v4 case
-
- fs/btrfs/export.c        |  2 ++
- fs/ext4/super.c          |  9 +++++++++
- fs/nfs/export.c          | 18 ++++++++++++++++++
- fs/nfsd/nfs3xdr.c        | 37 ++++++++++++++++++++-----------------
- fs/nfsd/nfsfh.h          | 28 ++++++----------------------
- fs/xfs/xfs_export.c      | 10 ++++++++++
- include/linux/exportfs.h |  1 +
- include/linux/iversion.h | 26 ++++++++++++++++++++++++++
- 8 files changed, 92 insertions(+), 39 deletions(-)
-
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 821db21ba072..e22d5d209d08 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -260,24 +260,25 @@ void fill_pre_wcc(struct svc_fh *fhp)
+ 	struct inode    *inode;
+ 	struct kstat	stat;
+ 	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
+-	__be32 err;
+ 
+ 	if (fhp->fh_no_wcc || fhp->fh_pre_saved)
+ 		return;
+ 	inode = d_inode(fhp->fh_dentry);
+-	err = fh_getattr(fhp, &stat);
+-	if (err) {
+-		/* Grab the times from inode anyway */
+-		stat.mtime = inode->i_mtime;
+-		stat.ctime = inode->i_ctime;
+-		stat.size  = inode->i_size;
++	if (!v4 || !inode->i_sb->s_export_op->fetch_iversion) {
++		__be32 err = fh_getattr(fhp, &stat);
++		if (err) {
++			/* Grab the times from inode anyway */
++			stat.mtime = inode->i_mtime;
++			stat.ctime = inode->i_ctime;
++			stat.size  = inode->i_size;
++		}
++		fhp->fh_pre_mtime = stat.mtime;
++		fhp->fh_pre_ctime = stat.ctime;
++		fhp->fh_pre_size  = stat.size;
+ 	}
+ 	if (v4)
+ 		fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
+ 
+-	fhp->fh_pre_mtime = stat.mtime;
+-	fhp->fh_pre_ctime = stat.ctime;
+-	fhp->fh_pre_size  = stat.size;
+ 	fhp->fh_pre_saved = true;
+ }
+ 
+@@ -288,7 +289,6 @@ void fill_post_wcc(struct svc_fh *fhp)
+ {
+ 	bool v4 = (fhp->fh_maxsize == NFS4_FHSIZE);
+ 	struct inode *inode = d_inode(fhp->fh_dentry);
+-	__be32 err;
+ 
+ 	if (fhp->fh_no_wcc)
+ 		return;
+@@ -296,12 +296,15 @@ void fill_post_wcc(struct svc_fh *fhp)
+ 	if (fhp->fh_post_saved)
+ 		printk("nfsd: inode locked twice during operation.\n");
+ 
+-	err = fh_getattr(fhp, &fhp->fh_post_attr);
+-	if (err) {
+-		fhp->fh_post_saved = false;
+-		fhp->fh_post_attr.ctime = inode->i_ctime;
+-	} else
+-		fhp->fh_post_saved = true;
++	fhp->fh_post_saved = true;
++
++	if (!v4 || !inode->i_sb->s_export_op->fetch_iversion) {
++		__be32 err = fh_getattr(fhp, &fhp->fh_post_attr);
++		if (err) {
++			fhp->fh_post_saved = false;
++			fhp->fh_post_attr.ctime = inode->i_ctime;
++		}
++	}
+ 	if (v4)
+ 		fhp->fh_post_change =
+ 			nfsd4_change_attribute(&fhp->fh_post_attr, inode);
 -- 
 2.29.2
 
