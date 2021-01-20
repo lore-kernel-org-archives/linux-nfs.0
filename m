@@ -4,54 +4,55 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-15.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE3E5C433DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 06:34:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 811F7C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 06:39:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 93612238EE
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 06:34:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2C3B5235E4
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 06:39:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730899AbhATXqX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Jan 2021 18:46:23 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:47941 "EHLO
+        id S1728192AbhATXqC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Jan 2021 18:46:02 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:58338 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1731696AbhATWYQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2021 17:24:16 -0500
+        by vger.kernel.org with ESMTP id S1730798AbhATWXl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2021 17:23:41 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1611181368;
+        s=mimecast20190719; t=1611181332;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=CNISbAF0U5wZ9m9Zrmun/ExJzPSZhngRnt467NlbyL4=;
-        b=Oi/X5BWvSwiePOyWiXoQfp+9glwDlxqYkrOPE4FcGN4mVjVlBR2IcHI5EeOyG3tmzqkaX+
-        RCMIvLgit1LshyocO9OAdyexnckY+y2Gfy41ZuriJhbpzfToU8Ba23OmeFe3qJ+LiZHwYY
-        YrGOsWAvp13NWA4miD+0mj1xDMu54+o=
+        bh=Ta1g480Zfhxsf7RxeAZRD47eVsihdAM3Ih4ZNeZrIos=;
+        b=YTj/88MRgp7aLxj6dwtNctQ18DnfdkgNtVleFrAFbKPIZMjUL+naqx/WwfGgD4Jp80C5vj
+        EZRFFb8v8+IESjxp+kHT1iUwZ4Dpp+4vxNLXueACfT8/gBPkNvo4JCAjVTXkVvw3ow3xhr
+        y58ZYJj+B9THYw2wU+NGge/odDbGptI=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-450-vWbQ_h3BO6WwPBpr04GqZA-1; Wed, 20 Jan 2021 17:22:45 -0500
-X-MC-Unique: vWbQ_h3BO6WwPBpr04GqZA-1
+ us-mta-453-PTgFw02xNYK4lmyXW2-Qvw-1; Wed, 20 Jan 2021 17:22:08 -0500
+X-MC-Unique: PTgFw02xNYK4lmyXW2-Qvw-1
 Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4720D107ACFE;
-        Wed, 20 Jan 2021 22:22:43 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D03E31922021;
+        Wed, 20 Jan 2021 22:22:06 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-115-23.rdu2.redhat.com [10.10.115.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 78AA710023BA;
-        Wed, 20 Jan 2021 22:22:37 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 75F5910023B5;
+        Wed, 20 Jan 2021 22:21:58 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 06/25] netfs: Make a netfs helper module
+Subject: [PATCH 03/25] mm: Implement readahead_control pageset expansion
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Steve French <sfrench@samba.org>,
         Dominique Martinet <asmadeus@codewreck.org>
-Cc:     dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
         David Wysochanski <dwysocha@redhat.com>,
         Matthew Wilcox <willy@infradead.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -59,8 +60,8 @@ Cc:     dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Wed, 20 Jan 2021 22:22:36 +0000
-Message-ID: <161118135638.1232039.1622182202673126285.stgit@warthog.procyon.org.uk>
+Date:   Wed, 20 Jan 2021 22:21:57 +0000
+Message-ID: <161118131787.1232039.4863969952441067985.stgit@warthog.procyon.org.uk>
 In-Reply-To: <161118128472.1232039.11746799833066425131.stgit@warthog.procyon.org.uk>
 References: <161118128472.1232039.11746799833066425131.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
@@ -72,30 +73,120 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Make a netfs helper module to manage read request segmentation, caching
-support and transparent huge page support on behalf of a network
-filesystem.
+Provide a function, readahead_expand(), that expands the set of pages
+specified by a readahead_control object to encompass a revised area with a
+proposed size and length.
 
+The proposed area must include all of the old area and may be expanded yet
+more by this function so that the edges align on (transparent huge) page
+boundaries as allocated.
+
+The expansion will be cut short if a page already exists in either of the
+areas being expanded into.  Note that any expansion made in such a case is
+not rolled back.
+
+This will be used by fscache so that reads can be expanded to cache granule
+boundaries, thereby allowing whole granules to be stored in the cache, but
+there are other potential users also.
+
+Suggested-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/netfs/Kconfig |    8 ++++++++
- 1 file changed, 8 insertions(+)
- create mode 100644 fs/netfs/Kconfig
+ include/linux/pagemap.h |    2 +
+ mm/readahead.c          |   70 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 72 insertions(+)
 
-diff --git a/fs/netfs/Kconfig b/fs/netfs/Kconfig
-new file mode 100644
-index 000000000000..2ebf90e6ca95
---- /dev/null
-+++ b/fs/netfs/Kconfig
-@@ -0,0 +1,8 @@
-+# SPDX-License-Identifier: GPL-2.0-only
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 1fa160e682fa..4935ad6171c1 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -774,6 +774,8 @@ extern void __delete_from_page_cache(struct page *page, void *shadow);
+ int replace_page_cache_page(struct page *old, struct page *new, gfp_t gfp_mask);
+ void delete_from_page_cache_batch(struct address_space *mapping,
+ 				  struct pagevec *pvec);
++void readahead_expand(struct readahead_control *ractl,
++		      loff_t new_start, size_t new_len);
+ 
+ /*
+  * Like add_to_page_cache_locked, but used to add newly allocated pages:
+diff --git a/mm/readahead.c b/mm/readahead.c
+index c5b0457415be..4446dada0bc2 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -638,3 +638,73 @@ SYSCALL_DEFINE3(readahead, int, fd, loff_t, offset, size_t, count)
+ {
+ 	return ksys_readahead(fd, offset, count);
+ }
 +
-+config NETFS_SUPPORT
-+	tristate "Support for network filesystem high-level I/O"
-+	help
-+	  This option enables support for network filesystems, including
-+	  helpers for high-level buffered I/O, abstracting out read
-+	  segmentation, local caching and transparent huge page support.
++/**
++ * readahead_expand - Expand a readahead request
++ * @ractl: The request to be expanded
++ * @new_start: The revised start
++ * @new_len: The revised size of the request
++ *
++ * Attempt to expand a readahead request outwards from the current size to the
++ * specified size by inserting locked pages before and after the current window
++ * to increase the size to the new window.  This may involve the insertion of
++ * THPs, in which case the window may get expanded even beyond what was
++ * requested.
++ *
++ * The algorithm will stop if it encounters a conflicting page already in the
++ * pagecache and leave a smaller expansion than requested.
++ *
++ * The caller must check for this by examining the revised @ractl object for a
++ * different expansion than was requested.
++ */
++void readahead_expand(struct readahead_control *ractl,
++		      loff_t new_start, size_t new_len)
++{
++	struct address_space *mapping = ractl->mapping;
++	pgoff_t new_index, new_nr_pages;
++	gfp_t gfp_mask = readahead_gfp_mask(mapping);
++
++	new_index = new_start / PAGE_SIZE;
++
++	/* Expand the leading edge downwards */
++	while (ractl->_index > new_index) {
++		unsigned long index = ractl->_index - 1;
++		struct page *page = xa_load(&mapping->i_pages, index);
++
++		if (page && !xa_is_value(page))
++			return; /* Page apparently present */
++
++		page = __page_cache_alloc(gfp_mask);
++		if (!page)
++			return;
++		if (add_to_page_cache_lru(page, mapping, index, gfp_mask) < 0) {
++			put_page(page);
++			return;
++		}
++
++		ractl->_nr_pages++;
++		ractl->_index = page->index;
++	}
++
++	new_len += new_start - readahead_pos(ractl);
++	new_nr_pages = DIV_ROUND_UP(new_len, PAGE_SIZE);
++
++	/* Expand the trailing edge upwards */
++	while (ractl->_nr_pages < new_nr_pages) {
++		unsigned long index = ractl->_index + ractl->_nr_pages;
++		struct page *page = xa_load(&mapping->i_pages, index);
++
++		if (page && !xa_is_value(page))
++			return; /* Page apparently present */
++
++		page = __page_cache_alloc(gfp_mask);
++		if (!page)
++			return;
++		if (add_to_page_cache_lru(page, mapping, index, gfp_mask) < 0) {
++			put_page(page);
++			return;
++		}
++		ractl->_nr_pages++;
++	}
++}
++EXPORT_SYMBOL(readahead_expand);
 
 
