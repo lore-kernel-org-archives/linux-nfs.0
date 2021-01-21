@@ -7,63 +7,70 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2543EC433DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:58:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D4EDC433E6
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:59:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D848C23A03
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:58:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BC1F723A03
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:58:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727051AbhAUW6z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Jan 2021 17:58:55 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49342 "EHLO
+        id S1727088AbhAUW64 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Jan 2021 17:58:56 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49340 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727123AbhAUW6v (ORCPT
+        with ESMTP id S1727112AbhAUW6v (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 17:58:51 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B2EF1C0617A9
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0514C0617A7
         for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 14:57:47 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 7413A3C33; Thu, 21 Jan 2021 17:57:46 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 7413A3C33
+        id 95AD968A6; Thu, 21 Jan 2021 17:57:46 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 95AD968A6
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH v3 1/9] nfsd4: simplify process_lookup1
-Date:   Thu, 21 Jan 2021 17:57:37 -0500
-Message-Id: <1611269865-30153-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH v3 3/9] nfsd: simplify nfsd_renew
+Date:   Thu, 21 Jan 2021 17:57:39 -0500
+Message-Id: <1611269865-30153-3-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <20210121204251.GB13298@pick.fieldses.org>
+In-Reply-To: <1611269865-30153-1-git-send-email-bfields@redhat.com>
 References: <20210121204251.GB13298@pick.fieldses.org>
+ <1611269865-30153-1-git-send-email-bfields@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-This STALE_CLIENTID check is redundant with the one in
-lookup_clientid().
-
-There's a difference in behavior is in case of memory allocation
-failure, which I think isn't a big deal.
+You can take the single-exit thing too far, I think.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/nfsd/nfs4state.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1d2cd6a88f61..f9f89229dba6 100644
+index 7ea63d7cec4d..ba955bbf21df 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4680,8 +4680,6 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *oo = NULL;
- 	__be32 status;
+@@ -5300,15 +5300,12 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	trace_nfsd_clid_renew(clid);
+ 	status = lookup_clientid(clid, cstate, nn, false);
+ 	if (status)
+-		goto out;
++		return status;
+ 	clp = cstate->clp;
+-	status = nfserr_cb_path_down;
+ 	if (!list_empty(&clp->cl_delegations)
+ 			&& clp->cl_cb_state != NFSD4_CB_UP)
+-		goto out;
+-	status = nfs_ok;
+-out:
+-	return status;
++		return nfserr_cb_path_down;
++	return nfs_ok;
+ }
  
--	if (STALE_CLIENTID(&open->op_clientid, nn))
--		return nfserr_stale_clientid;
- 	/*
- 	 * In case we need it later, after we've already created the
- 	 * file and don't want to risk a further failure:
+ void
 -- 
 2.29.2
 
