@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D4EDC433E6
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:59:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E72CCC43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:59:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BC1F723A03
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:58:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 96DB323A03
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 22:59:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727088AbhAUW64 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Jan 2021 17:58:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49340 "EHLO
+        id S1725274AbhAUW7M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Jan 2021 17:59:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49344 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727112AbhAUW6v (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 17:58:51 -0500
+        with ESMTP id S1727132AbhAUW6w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 17:58:52 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0514C0617A7
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB9F0C0617AA
         for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 14:57:47 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 95AD968A6; Thu, 21 Jan 2021 17:57:46 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 95AD968A6
+        id AC4A66EA0; Thu, 21 Jan 2021 17:57:46 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org AC4A66EA0
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH v3 3/9] nfsd: simplify nfsd_renew
-Date:   Thu, 21 Jan 2021 17:57:39 -0500
-Message-Id: <1611269865-30153-3-git-send-email-bfields@redhat.com>
+Subject: [PATCH v3 5/9] nfsd: refactor set_client
+Date:   Thu, 21 Jan 2021 17:57:41 -0500
+Message-Id: <1611269865-30153-5-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1611269865-30153-1-git-send-email-bfields@redhat.com>
 References: <20210121204251.GB13298@pick.fieldses.org>
@@ -41,36 +41,74 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-You can take the single-exit thing too far, I think.
+This'll be useful elsewhere.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7ea63d7cec4d..ba955bbf21df 100644
+index 4bdd90074e24..c74bf3b5b0de 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5300,15 +5300,12 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	trace_nfsd_clid_renew(clid);
- 	status = lookup_clientid(clid, cstate, nn, false);
- 	if (status)
--		goto out;
-+		return status;
- 	clp = cstate->clp;
--	status = nfserr_cb_path_down;
- 	if (!list_empty(&clp->cl_delegations)
- 			&& clp->cl_cb_state != NFSD4_CB_UP)
--		goto out;
--	status = nfs_ok;
--out:
--	return status;
-+		return nfserr_cb_path_down;
-+	return nfs_ok;
+@@ -4633,40 +4633,40 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
+ 	return nfserr_bad_seqid;
  }
  
- void
++static struct nfs4_client *lookup_clientid(clientid_t *clid, bool sessions,
++						struct nfsd_net *nn)
++{
++	struct nfs4_client *found;
++
++	spin_lock(&nn->client_lock);
++	found = find_confirmed_client(clid, sessions, nn);
++	if (found)
++		atomic_inc(&found->cl_rpc_users);
++	spin_unlock(&nn->client_lock);
++	return found;
++}
++
+ static __be32 set_client(clientid_t *clid,
+ 		struct nfsd4_compound_state *cstate,
+ 		struct nfsd_net *nn,
+ 		bool sessions)
+ {
+-	struct nfs4_client *found;
+-
+ 	if (cstate->clp) {
+-		found = cstate->clp;
+-		if (!same_clid(&found->cl_clientid, clid))
++		if (!same_clid(&cstate->clp->cl_clientid, clid))
+ 			return nfserr_stale_clientid;
+ 		return nfs_ok;
+ 	}
+-
+ 	if (STALE_CLIENTID(clid, nn))
+ 		return nfserr_stale_clientid;
+-
+ 	/*
+ 	 * For v4.1+ we get the client in the SEQUENCE op. If we don't have one
+ 	 * cached already then we know this is for is for v4.0 and "sessions"
+ 	 * will be false.
+ 	 */
+ 	WARN_ON_ONCE(cstate->session);
+-	spin_lock(&nn->client_lock);
+-	found = find_confirmed_client(clid, sessions, nn);
+-	if (!found) {
+-		spin_unlock(&nn->client_lock);
++	cstate->clp = lookup_clientid(clid, sessions, nn);
++	if (!cstate->clp)
+ 		return nfserr_expired;
+-	}
+-	atomic_inc(&found->cl_rpc_users);
+-	spin_unlock(&nn->client_lock);
+-
+-	/* Cache the nfs4_client in cstate! */
+-	cstate->clp = found;
+ 	return nfs_ok;
+ }
+ 
 -- 
 2.29.2
 
