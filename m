@@ -2,113 +2,101 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D18DAC433DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 18:52:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BE6FC433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 19:10:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8F0E023136
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 18:52:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3376923A1C
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 19:10:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726482AbhAUSwR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Jan 2021 13:52:17 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52628 "EHLO
+        id S1725883AbhAUTKd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Jan 2021 14:10:33 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56732 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725984AbhAUSux (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 13:50:53 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A32D8C06178C
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 10:49:59 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 898646EA0; Thu, 21 Jan 2021 13:49:58 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 898646EA0
-From:   "J. Bruce Fields" <bfields@redhat.com>
+        with ESMTP id S1726953AbhAUTJy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 14:09:54 -0500
+Received: from mail-wr1-x42e.google.com (mail-wr1-x42e.google.com [IPv6:2a00:1450:4864:20::42e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F210AC0613ED
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 10:58:18 -0800 (PST)
+Received: by mail-wr1-x42e.google.com with SMTP id a9so2790241wrt.5
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 10:58:18 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernelim-com.20150623.gappssmtp.com; s=20150623;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=OKw0ZYFzMtpOMM08Mm3InuewDzOdzcoJxbqdwYvyWfQ=;
+        b=mSViQzbBlhrFgwyRpbEBzfAgQ/hf6aqj9nOWcuLb8cKuXDRLyL9JVMQFuZJO4Ow9uP
+         02eSqaGtzOsX4aIOY8X6PTD6wtaQOwyxhArN/CntSYy0Ox0+xL51xh7DXPdMpUaIE5Wl
+         Say7XizujsCiWL52EHBGfec9C51pXeQozjEKyHMH1LYYWSIKp/EgFbv3JjZd9sLon8vn
+         cLxK22IwZ85Mao5e4yiZqmg3fXSitVgDaB3xDRKnZRvdGwfvsdtGwlM9D7/auxlRUXeu
+         t2JqKEmoqCjgPZ+ylluCRjZxqx76rQlsRuWMgBjoP0TP2LRHF0an3d+3OL45psteg2bp
+         axOA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=OKw0ZYFzMtpOMM08Mm3InuewDzOdzcoJxbqdwYvyWfQ=;
+        b=K4plr8iG7Dt+cHyjYMZfiAHzsZT4xlXEpQk7g71+ROxgwxgTaMREGr5jz7PMHVlqAH
+         dSrfJhFrUptlGb1zhAhVmu3iC/J5kmbKvgJI9NwKnx2+cTdn/F2GGsmt0f0sZAokjh9L
+         CBsUSYnrxqS6cnasd+9JZVkbta+c8J4DQcY2JlyAddyY6x1SLSYw+EMotQccS7EzjNxF
+         LiCvu8dd10xImyWq2DBMJxvMtvxMdlG3S6/Dwh1zbNqst+ymi5zCMbT6ndju/kTEDHUq
+         Bz2rnNXnuDAPGgTGW+kmCDlkMWVVOdgd9BE5YneVBL7D5zPJdgLxXDIfT34mh6tAsDKm
+         LWSg==
+X-Gm-Message-State: AOAM532zUxeSd/j6onL8EyQG1ncySnq2OxEpj2AJAxoa4JXjwHn75MJi
+        8CCmsrvXPM/fNFD65sd0JGvvhQ==
+X-Google-Smtp-Source: ABdhPJxlsvZHJSO4GeMwHFhBGPE/S6zqSZFKrAAlug0SzLoThgZK/5p0f70ZWnhnkqRSFIXLTe2O6A==
+X-Received: by 2002:adf:b781:: with SMTP id s1mr896988wre.290.1611255497693;
+        Thu, 21 Jan 2021 10:58:17 -0800 (PST)
+Received: from gmail.com ([77.124.84.167])
+        by smtp.gmail.com with ESMTPSA id v4sm9541391wrw.42.2021.01.21.10.58.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 21 Jan 2021 10:58:16 -0800 (PST)
+Date:   Thu, 21 Jan 2021 20:58:13 +0200
+From:   Dan Aloni <dan@kernelim.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/9] nfsd: refactor lookup_clientid
-Date:   Thu, 21 Jan 2021 13:49:51 -0500
-Message-Id: <1611254995-23131-5-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1611254995-23131-1-git-send-email-bfields@redhat.com>
-References: <6D288689-85E5-4E3E-9117-B71FB45FFABB@oracle.com>
- <1611254995-23131-1-git-send-email-bfields@redhat.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jim Foraker <foraker1@llnl.gov>,
+        Ben Woodard <woodard@redhat.com>
+Subject: Re: [RFC] NFSv3 RDMA multipath enhancements
+Message-ID: <20210121185813.GA3135951@gmail.com>
+References: <20210112141706.GA3146539@gmail.com>
+ <3AB7389B-2EA9-4894-9656-9C8512166E0E@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <3AB7389B-2EA9-4894-9656-9C8512166E0E@oracle.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Jan 13, 2021 at 09:59:58AM -0500, Chuck Lever wrote:
+> > To my understanding NFSv4.x with pNFS has advanced dynamic transport
+> > management logic along file layouts supporting stripe over file offsets,
+> > however there are cases in which we would like to achieve good
+> > performance even with the older protocol.
+>
+> Hi Dan, my curiosity is piqued about the RPC request dispatch changes
+> you have in mind. Can you post them here for review?
 
-This'll be useful elsewhere.
+These changes depend on the initial changes I'd like to contribute. The
+gist of them concerns the xprt multipath algorithm where in addition to
+round robin, we add further considerations regarding transport picking.
+For example, for data IOs, the NUMA node to which the memory pages
+attached to the RPC request may be used to pick a transport with an
+outgoing local port that is closer to that memory in the server
+architecture compared to the other local ports. So the idea is to lessen
+data transfer bottlenecks in hardware.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c | 32 ++++++++++++++++----------------
- 1 file changed, 16 insertions(+), 16 deletions(-)
+> Also, if you can tell us, what NFS server supports NFS/RDMA but not
+> NFSv4 ?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4bdd90074e24..c74bf3b5b0de 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4633,40 +4633,40 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
- 	return nfserr_bad_seqid;
- }
- 
-+static struct nfs4_client *lookup_clientid(clientid_t *clid, bool sessions,
-+						struct nfsd_net *nn)
-+{
-+	struct nfs4_client *found;
-+
-+	spin_lock(&nn->client_lock);
-+	found = find_confirmed_client(clid, sessions, nn);
-+	if (found)
-+		atomic_inc(&found->cl_rpc_users);
-+	spin_unlock(&nn->client_lock);
-+	return found;
-+}
-+
- static __be32 set_client(clientid_t *clid,
- 		struct nfsd4_compound_state *cstate,
- 		struct nfsd_net *nn,
- 		bool sessions)
- {
--	struct nfs4_client *found;
--
- 	if (cstate->clp) {
--		found = cstate->clp;
--		if (!same_clid(&found->cl_clientid, clid))
-+		if (!same_clid(&cstate->clp->cl_clientid, clid))
- 			return nfserr_stale_clientid;
- 		return nfs_ok;
- 	}
--
- 	if (STALE_CLIENTID(clid, nn))
- 		return nfserr_stale_clientid;
--
- 	/*
- 	 * For v4.1+ we get the client in the SEQUENCE op. If we don't have one
- 	 * cached already then we know this is for is for v4.0 and "sessions"
- 	 * will be false.
- 	 */
- 	WARN_ON_ONCE(cstate->session);
--	spin_lock(&nn->client_lock);
--	found = find_confirmed_client(clid, sessions, nn);
--	if (!found) {
--		spin_unlock(&nn->client_lock);
-+	cstate->clp = lookup_clientid(clid, sessions, nn);
-+	if (!cstate->clp)
- 		return nfserr_expired;
--	}
--	atomic_inc(&found->cl_rpc_users);
--	spin_unlock(&nn->client_lock);
--
--	/* Cache the nfs4_client in cstate! */
--	cstate->clp = found;
- 	return nfs_ok;
- }
- 
--- 
-2.29.2
+For example, there are VAST Data clusters currently supporting NFSv3 (as
+one logical server), with the NFSv4 support coming soon.
 
+--
+Dan Aloni
