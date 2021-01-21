@@ -2,101 +2,195 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BE6FC433DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 19:10:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E380C433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 19:11:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3376923A1C
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 19:10:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E878723A1C
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 19:11:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725883AbhAUTKd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Jan 2021 14:10:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56732 "EHLO
+        id S1727016AbhAUTLP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Jan 2021 14:11:15 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56992 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726953AbhAUTJy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 14:09:54 -0500
-Received: from mail-wr1-x42e.google.com (mail-wr1-x42e.google.com [IPv6:2a00:1450:4864:20::42e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F210AC0613ED
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 10:58:18 -0800 (PST)
-Received: by mail-wr1-x42e.google.com with SMTP id a9so2790241wrt.5
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 10:58:18 -0800 (PST)
+        with ESMTP id S1726419AbhAUTLG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 14:11:06 -0500
+Received: from mail-wm1-x32d.google.com (mail-wm1-x32d.google.com [IPv6:2a00:1450:4864:20::32d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1032EC061786
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 11:10:26 -0800 (PST)
+Received: by mail-wm1-x32d.google.com with SMTP id c128so2445212wme.2
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 11:10:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=kernelim-com.20150623.gappssmtp.com; s=20150623;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=OKw0ZYFzMtpOMM08Mm3InuewDzOdzcoJxbqdwYvyWfQ=;
-        b=mSViQzbBlhrFgwyRpbEBzfAgQ/hf6aqj9nOWcuLb8cKuXDRLyL9JVMQFuZJO4Ow9uP
-         02eSqaGtzOsX4aIOY8X6PTD6wtaQOwyxhArN/CntSYy0Ox0+xL51xh7DXPdMpUaIE5Wl
-         Say7XizujsCiWL52EHBGfec9C51pXeQozjEKyHMH1LYYWSIKp/EgFbv3JjZd9sLon8vn
-         cLxK22IwZ85Mao5e4yiZqmg3fXSitVgDaB3xDRKnZRvdGwfvsdtGwlM9D7/auxlRUXeu
-         t2JqKEmoqCjgPZ+ylluCRjZxqx76rQlsRuWMgBjoP0TP2LRHF0an3d+3OL45psteg2bp
-         axOA==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=uIv4doyMamsrAkZ+XiCAT/k8Wh6Lzr5DiAqhvZAFiGU=;
+        b=kG/RbXYvqpUzLqz5NEtIbmb58eS/WnaQSqsdjt1V80/cY+PAot2fvDeBkzjcA6F0/1
+         siLoG+LFqKeY1Z6j28ZgC7U9P3F1ElN7KTCe+jACH3dIfbrfirk59+gy+nyvhhr8lXX0
+         m8k/88JCkQ3KGsy4Tk0HZI38VuL+Gc1r4PvlziWX1wFYu1FYAbSHM387GWRJnLXMP0rq
+         cmW+KXaeqnWCKFnJ7lxWS7ER1s9tZucvlR4ksrdUyuz0KKXSoSfkUtXmu7J/3v24vw+H
+         Beaiwe0TSiDyp+lTRDLVW1dB4KURfIUC6QeN4ZxlBehPp4FEVaWRUjBdnIKEmvc3fUSb
+         7jBg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=OKw0ZYFzMtpOMM08Mm3InuewDzOdzcoJxbqdwYvyWfQ=;
-        b=K4plr8iG7Dt+cHyjYMZfiAHzsZT4xlXEpQk7g71+ROxgwxgTaMREGr5jz7PMHVlqAH
-         dSrfJhFrUptlGb1zhAhVmu3iC/J5kmbKvgJI9NwKnx2+cTdn/F2GGsmt0f0sZAokjh9L
-         CBsUSYnrxqS6cnasd+9JZVkbta+c8J4DQcY2JlyAddyY6x1SLSYw+EMotQccS7EzjNxF
-         LiCvu8dd10xImyWq2DBMJxvMtvxMdlG3S6/Dwh1zbNqst+ymi5zCMbT6ndju/kTEDHUq
-         Bz2rnNXnuDAPGgTGW+kmCDlkMWVVOdgd9BE5YneVBL7D5zPJdgLxXDIfT34mh6tAsDKm
-         LWSg==
-X-Gm-Message-State: AOAM532zUxeSd/j6onL8EyQG1ncySnq2OxEpj2AJAxoa4JXjwHn75MJi
-        8CCmsrvXPM/fNFD65sd0JGvvhQ==
-X-Google-Smtp-Source: ABdhPJxlsvZHJSO4GeMwHFhBGPE/S6zqSZFKrAAlug0SzLoThgZK/5p0f70ZWnhnkqRSFIXLTe2O6A==
-X-Received: by 2002:adf:b781:: with SMTP id s1mr896988wre.290.1611255497693;
-        Thu, 21 Jan 2021 10:58:17 -0800 (PST)
-Received: from gmail.com ([77.124.84.167])
-        by smtp.gmail.com with ESMTPSA id v4sm9541391wrw.42.2021.01.21.10.58.15
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=uIv4doyMamsrAkZ+XiCAT/k8Wh6Lzr5DiAqhvZAFiGU=;
+        b=as8erSpyzAyLbI3J4QKhEX2eHv8Rvb/7n81/TJA/dVRr/phX4jZEplM1dXCAiNNqY5
+         ZvbHrWN/MiKU7ZEl4g+UogPULkfmFdn/WtQAvX3U9osRZL2zo2Ur8y/lNoTu8BJg2GEb
+         EDycpkomi/U287PO0aIruBoAF74ZJduxCI14JjIKpKPjg5UzfyYYL8zUxIwmy24VcySs
+         XaLmEc54m3ZV61p3pyTCpN71FWgJJY2pwU5YfteTqnO5L4jQNlkAsI5yPmQGhy9s6QZX
+         riESO3a2MQ9I6CoRQFWdoKZ7jtdVvjpgzPqxd42Q1PnJ4Ke3BUlyCc84WCvyDYsjPM+Z
+         3BsA==
+X-Gm-Message-State: AOAM531GkwyK2/0FqDzpjTSBJ6NZBYEeHRufWFiF3+EhdrYH9Ui7N7XI
+        9okAQqyOGOGfJLoEj0IrC6+RKVWs2haK/7ja
+X-Google-Smtp-Source: ABdhPJx1E6tyGU/GLSdzcN47Ef0TBrFPZUrQ+w4h3tWDByHLflSPGNPv48ZgH2Y5E/E1zsrJl4aqPA==
+X-Received: by 2002:a1c:5456:: with SMTP id p22mr724938wmi.81.1611256224409;
+        Thu, 21 Jan 2021 11:10:24 -0800 (PST)
+Received: from jupiter.home.aloni.org ([77.124.84.167])
+        by smtp.gmail.com with ESMTPSA id d30sm11160353wrc.92.2021.01.21.11.10.23
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 21 Jan 2021 10:58:16 -0800 (PST)
-Date:   Thu, 21 Jan 2021 20:58:13 +0200
+        Thu, 21 Jan 2021 11:10:23 -0800 (PST)
 From:   Dan Aloni <dan@kernelim.com>
-To:     Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jim Foraker <foraker1@llnl.gov>,
-        Ben Woodard <woodard@redhat.com>
-Subject: Re: [RFC] NFSv3 RDMA multipath enhancements
-Message-ID: <20210121185813.GA3135951@gmail.com>
-References: <20210112141706.GA3146539@gmail.com>
- <3AB7389B-2EA9-4894-9656-9C8512166E0E@oracle.com>
+        Anna Schumaker <anna.schumaker@netapp.com>
+Subject: [PATCH v1 1/5] sunrpc: Allow specifying a vector of IP addresses for nconnect
+Date:   Thu, 21 Jan 2021 21:10:16 +0200
+Message-Id: <20210121191020.3144948-2-dan@kernelim.com>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210121191020.3144948-1-dan@kernelim.com>
+References: <20210121191020.3144948-1-dan@kernelim.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <3AB7389B-2EA9-4894-9656-9C8512166E0E@oracle.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Jan 13, 2021 at 09:59:58AM -0500, Chuck Lever wrote:
-> > To my understanding NFSv4.x with pNFS has advanced dynamic transport
-> > management logic along file layouts supporting stripe over file offsets,
-> > however there are cases in which we would like to achieve good
-> > performance even with the older protocol.
->
-> Hi Dan, my curiosity is piqued about the RPC request dispatch changes
-> you have in mind. Can you post them here for review?
+This adds an `rpc_portgroup` structure to describe a group of IP
+addresses comprising one logical server with multiple ports. The remote
+endpoint can be in a single server exposing multiple network interfaces,
+or multiple remote machines implementing a distributed server architecture.
 
-These changes depend on the initial changes I'd like to contribute. The
-gist of them concerns the xprt multipath algorithm where in addition to
-round robin, we add further considerations regarding transport picking.
-For example, for data IOs, the NUMA node to which the memory pages
-attached to the RPC request may be used to pick a transport with an
-outgoing local port that is closer to that memory in the server
-architecture compared to the other local ports. So the idea is to lessen
-data transfer bottlenecks in hardware.
+Combined with nconnect, the multiple transports try to make use of the
+multiple addresses given so that the connections are spread across the
+ports.
 
-> Also, if you can tell us, what NFS server supports NFS/RDMA but not
-> NFSv4 ?
+Signed-off-by: Dan Aloni <dan@kernelim.com>
+---
+ include/linux/sunrpc/clnt.h |  9 +++++++
+ net/sunrpc/clnt.c           | 47 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+)
 
-For example, there are VAST Data clusters currently supporting NFSv3 (as
-one logical server), with the NFSv4 support coming soon.
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 02e7a5863d28..f8c0c33281a8 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -115,12 +115,21 @@ struct rpc_procinfo {
+ 	const char *		p_name;		/* name of procedure */
+ };
+ 
++#define RPC_MAX_PORTS 64
++
++struct rpc_portgroup {
++	int nr;
++	struct sockaddr_storage addrs[RPC_MAX_PORTS];
++};
++
+ struct rpc_create_args {
+ 	struct net		*net;
+ 	int			protocol;
+ 	struct sockaddr		*address;
+ 	size_t			addrsize;
+ 	struct sockaddr		*saddress;
++	struct rpc_portgroup    *localports;    /* additional local addresses */
++	struct rpc_portgroup    *remoteports;   /* additional remote addresses */
+ 	const struct rpc_timeout *timeout;
+ 	const char		*servername;
+ 	const char		*nodename;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 612f0a641f4c..5f335a873f03 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -500,6 +500,44 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
+ 	return clnt;
+ }
+ 
++struct rpc_clnt_portgroup_iter {
++	struct rpc_portgroup *pg;
++	int idx;
++};
++
++static void take_iter_portgroup_addr(struct rpc_clnt_portgroup_iter *iter,
++				struct sockaddr	**address)
++{
++	struct rpc_portgroup *pg = iter->pg;
++	struct sockaddr	*existing = *address;
++	struct sockaddr	*new;
++
++	if (!pg || pg->nr == 0)
++		return;
++	if (iter->idx >= pg->nr)
++		iter->idx = 0;
++
++	/* Take port from existing address, or use autobind (0) */
++	new = (struct sockaddr *)&pg->addrs[iter->idx++];
++
++	switch (new->sa_family) {
++	case AF_INET:
++		((struct sockaddr_in *)new)->sin_port =
++			existing ? ((struct sockaddr_in *)existing)->sin_port
++			         : 0;
++		break;
++	case AF_INET6:
++		((struct sockaddr_in6 *)new)->sin6_port =
++			existing ? ((struct sockaddr_in6 *)existing)->sin6_port
++			         : 0;
++		break;
++	default:
++		return;
++	}
++
++	*address = new;
++}
++
+ /**
+  * rpc_create - create an RPC client and transport with one call
+  * @args: rpc_clnt create argument structure
+@@ -522,6 +560,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 		.servername = args->servername,
+ 		.bc_xprt = args->bc_xprt,
+ 	};
++	struct rpc_clnt_portgroup_iter iter_localports = { .pg = args->localports };
++	struct rpc_clnt_portgroup_iter iter_remoteports = { .pg = args->remoteports };
+ 	char servername[48];
+ 	struct rpc_clnt *clnt;
+ 	int i;
+@@ -573,6 +613,10 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 		xprtargs.servername = servername;
+ 	}
+ 
++	/* If localports or remoteports are specified, first entry overrides */
++	take_iter_portgroup_addr(&iter_localports, &xprtargs.srcaddr);
++	take_iter_portgroup_addr(&iter_remoteports, &xprtargs.dstaddr);
++
+ 	xprt = xprt_create_transport(&xprtargs);
+ 	if (IS_ERR(xprt))
+ 		return (struct rpc_clnt *)xprt;
+@@ -595,6 +639,9 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 		return clnt;
+ 
+ 	for (i = 0; i < args->nconnect - 1; i++) {
++		take_iter_portgroup_addr(&iter_localports, &xprtargs.srcaddr);
++		take_iter_portgroup_addr(&iter_remoteports, &xprtargs.dstaddr);
++
+ 		if (rpc_clnt_add_xprt(clnt, &xprtargs, NULL, NULL) < 0)
+ 			break;
+ 	}
+-- 
+2.26.2
 
---
-Dan Aloni
