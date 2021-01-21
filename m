@@ -2,120 +2,114 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DA67C433E6
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 18:00:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 108CAC433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 18:02:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DEC2823A03
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 18:00:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B859522CE3
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 18:02:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733269AbhAUR7T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Jan 2021 12:59:19 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:28489 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2389466AbhAUR6v (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 12:58:51 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1611251838;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=ldOFrN+medeAuQ19Km3Q/ag9cNAWn5zQXjM83eZLV2E=;
-        b=G2pa8U/DVXT7kbGOtdAdwW2f/dHVb3gyW0hnGPk5QOsVkEhOkEWck/UWvrPqo+Mi4ODgBl
-        zzNkY0B20fnWTGuCUp6I2+SvsUY/2yBMu9Qs/3Fs/LnKAqsrJOyVIQaaB4YbLLfCQWQ+Ui
-        UvI/VQ1gITeGYdrCHMH9hgY+bN65ijk=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-405-o7NLf_WUNTaTfNhfVsElzg-1; Thu, 21 Jan 2021 12:57:14 -0500
-X-MC-Unique: o7NLf_WUNTaTfNhfVsElzg-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id AC67715720;
-        Thu, 21 Jan 2021 17:57:13 +0000 (UTC)
-Received: from [172.16.176.1] (ovpn-64-130.rdu2.redhat.com [10.10.64.130])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 722465D9C6;
-        Thu, 21 Jan 2021 17:57:13 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Anna Schumaker" <schumaker.anna@gmail.com>
-Cc:     "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 07/10] NFS: Support headless readdir pagecache pages
-Date:   Thu, 21 Jan 2021 12:57:12 -0500
-Message-ID: <4DE5379B-E52D-4C94-8701-29FEFCE8C438@redhat.com>
-In-Reply-To: <CAFX2Jf=Kg+fbxSfgJ_Kzxe6LerQ8RcZu_8AYp2JFF4THDfy8fQ@mail.gmail.com>
-References: <cover.1611160120.git.bcodding@redhat.com>
- <7394b4d348d0c92b64cd0fb4fbf74bfa6e676d24.1611160121.git.bcodding@redhat.com>
- <CAFX2Jf=Kg+fbxSfgJ_Kzxe6LerQ8RcZu_8AYp2JFF4THDfy8fQ@mail.gmail.com>
+        id S2389074AbhAUSCC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Jan 2021 13:02:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42058 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389470AbhAUSBw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 13:01:52 -0500
+Received: from mail-io1-xd30.google.com (mail-io1-xd30.google.com [IPv6:2607:f8b0:4864:20::d30])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF101C061756
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 10:01:11 -0800 (PST)
+Received: by mail-io1-xd30.google.com with SMTP id p72so5723234iod.12
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 10:01:11 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linuxfoundation.org; s=google;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=j4qyNKroZf0PR1hUuEzsx/1WQ9PqO3whBh/bYKsXNk4=;
+        b=NwrMlXcOlysV4djOofPixbwvOb/eBpqs+bb7+bWOAoZNWmZReC52iZGxNDK9o01pX8
+         /qLR8LIa+yMXpxbfxe8xVuck43q5hxfGQ32mw0u9aNYHiQMhWh7cqAcCHltql3kPsNho
+         5ZYHbyKB6Vfoo1syuKP5tlH0NP7+iz4Y/xXjs=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=j4qyNKroZf0PR1hUuEzsx/1WQ9PqO3whBh/bYKsXNk4=;
+        b=abwhbajZu/FF1MUpcDoIfs6NkKMKHkLl5h2nkIEOjecE6O8N4AeKlp8RvwkwuG8aJU
+         kCrqGiqUPixBwh995VuCL8UyiwXmfDMg1g/vv3KaIyDzBKWNnPuFaLwJxibnfIh6p9tF
+         LEnV1jkYlHz0VKvU/ctplvVSCq2bnRQA8JyU30sF/Ud/9Eh41TvsegdjuoShObO4G8wy
+         2ONZ4yvwcOx0e317XedjIBKa3tlNI0hsLvqjYSGUNHMNjVX2uXORkdVTzoH1tkkRBFAK
+         71Bi/hna3QwTz8aQdMd6fYBR1mqW2/wQjRqxVLBwF8lB7k9CsrIqgjyvCxyUhSO6O0A7
+         /nWA==
+X-Gm-Message-State: AOAM530KLyEEGDlj3/s9704poZY5/4uNm1aXbo8onpNbfggzpFQU3EMD
+        f+/aXmU0a2mkB49PP8A1esDIeg==
+X-Google-Smtp-Source: ABdhPJznJJ/QBvTZQKHvjFLkKK9F4sWWxADtpcCtMpyGjJNm2zXjMNAkOgY6mRvBBmnE/WFugEH1Gw==
+X-Received: by 2002:a92:cb47:: with SMTP id f7mr778660ilq.169.1611252071329;
+        Thu, 21 Jan 2021 10:01:11 -0800 (PST)
+Received: from [192.168.1.112] (c-24-9-64-241.hsd1.co.comcast.net. [24.9.64.241])
+        by smtp.gmail.com with ESMTPSA id s10sm2888397iob.4.2021.01.21.10.01.10
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 21 Jan 2021 10:01:10 -0800 (PST)
+Subject: Re: rpc_xprt_debugfs_register() - atomic_inc_return() usage
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>
+Cc:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "kuba@kernel.org" <kuba@kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        Shuah Khan <skhan@linuxfoundation.org>
+References: <06c8f6ff-f821-e909-d40c-9de98657729f@linuxfoundation.org>
+ <020aee05c808b3725db5679967406a918840f86f.camel@hammerspace.com>
+From:   Shuah Khan <skhan@linuxfoundation.org>
+Message-ID: <5952caee-edb4-e9ec-6621-fb50cfe3384f@linuxfoundation.org>
+Date:   Thu, 21 Jan 2021 11:01:09 -0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+In-Reply-To: <020aee05c808b3725db5679967406a918840f86f.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 21 Jan 2021, at 12:24, Anna Schumaker wrote:
-
-> Hi Ben,
->
-> On Wed, Jan 20, 2021 at 12:04 PM Benjamin Coddington
-> <bcodding@redhat.com> wrote:
+On 1/21/21 10:56 AM, Trond Myklebust wrote:
+> On Wed, 2021-01-20 at 16:52 -0700, Shuah Khan wrote:
+>> Hi Anna and Trond,
 >>
->> It is now possible that a reader will resume a directory listing 
->> after an
->> invalidation and fill the rest of the pages with the offset left over 
->> from
->> the last partially-filled page.  These pages will then be recycled 
->> and
->> refilled by the next reader since their alignment is incorrect.
+>> I came across the following while reviewing atomic_inc_return()
+>> usages
+>> that cast return value to unsigned
 >>
->> Add an index to the nfs_cache_array that will indicate where the next 
->> entry
->> should be filled.  This allows partially-filled pages to have the 
->> best
->> alignment possible.  They are more likely to be useful to readers 
->> that
->> follow.
+>> rpc_xprt_debugfs_register()'s atomic_inc_return() usage looks a bit
+>> odd.
 >>
->> This optimization targets the case when there are multiple processes
->> listing the directory simultaneously.  Often the processes will 
->> collect and
->> block on the same page waiting for a READDIR call to fill the 
->> pagecache.
->> If the pagecache is invalidated, a partially-filled page will usually
->> result.  This partially-filled page can immediately be used by all
->> processes to emit entries rather than having to discard and refill it 
->> for
->> every process.
+>> - cur_id isn't initialized
+>> - id = (unsigned int)atomic_inc_return(&cur_id);
 >>
->> The addition of another integer to struct nfs_cache_array increases 
->> its
->> size to 24 bytes. We do not lose the original capacity of 127 entries 
->> per
->> page.
->
-> This patch causes cthon basic test #6 to start failing with unexpected
-> dir entries across all NFS versions:
->
->   ./test6: readdir
->   basic tests failed
->       ./test6: (/mnt/test/anna/Connectathon/cthon04) unexpected dir 
-> entry 'h'
+>> Please note that id is int. Is it expected that cur_id could
+>> overflow?
+>> Is there a maximum limit for this value?
+>>
+> 
+> Yes, we do expect cur_id to eventually overflow (once you have created
+> 2 billion RPC client instances), however the atomic increment
+> operations are expected to handle this correctly according to the
+> maintainers (I already asked them in a different context). Furthermore,
+> the code itself doesn't care about strict sequentiality. All it wants
+> from the counter is uniqueness, with that uniqueness condition actually
+> being enforced by the subsequent debugfs_create_file() call.
+> 
+> IOW: I don't think this is a real problem.
+> 
 
-Ah, yes -- because we /must/ revalidate before using any cached pages.  
-I
-think this test unlinks files and that would be a breakage.
+Great. Thank you for a detailed explanation.
 
-> Luckily, the next patch seems to resolve this issue. Could they maybe
-> be squashed together?
-
-Yes, they should be squashed - I'll do that in another pass.  I'd like 
-to
-get rid of uncached_readdir() altogether and then send another version.
-Thanks for the test!
-
-Ben
-
+-- Shuah
