@@ -2,210 +2,193 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-13.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_IN_DEF_DKIM_WL
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D8F1C433DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 06:40:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E24FC433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 11:38:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B8BD9238EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 06:40:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1498A20637
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 11:38:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725946AbhATXpX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Jan 2021 18:45:23 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:60792 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728259AbhATWXH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jan 2021 17:23:07 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1611181296;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=ZkCTUh6YIpz/AUkWavZvz8nrC1gxZflHJ+My0TUlYq8=;
-        b=IWTlpI18BdGNb8bCQlxL3IJuhfPpWpOhdBZ4nzBJXW0h2O/JRnmiHZJ89kDlSZBgpbABSz
-        fyo2o1kMWhVvbdgAeaQ2bTSbpFQHM4HDZm63wlce968NR2QuUO0pnPIAaTZE6doajpO6hC
-        JQzP6EKgRL48tfenENZRF9BQQJqyF/Y=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-468-4jyfIjAkMxSc_5pS-0UlJg-1; Wed, 20 Jan 2021 17:21:34 -0500
-X-MC-Unique: 4jyfIjAkMxSc_5pS-0UlJg-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id CA4DD800D55;
-        Wed, 20 Jan 2021 22:21:31 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-115-23.rdu2.redhat.com [10.10.115.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 61F231992D;
-        Wed, 20 Jan 2021 22:21:25 +0000 (UTC)
-Subject: [RFC][PATCH 00/25] Network fs helper library & fscache kiocb API
-From:   David Howells <dhowells@redhat.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>
-Cc:     Takashi Iwai <tiwai@suse.de>, Matthew Wilcox <willy@infradead.org>,
-        linux-afs@lists.infradead.org,
-        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Wed, 20 Jan 2021 22:21:24 +0000
-Message-ID: <161118128472.1232039.11746799833066425131.stgit@warthog.procyon.org.uk>
-User-Agent: StGit/0.23
+        id S1729880AbhAULim (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Jan 2021 06:38:42 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40282 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730356AbhAULXP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 06:23:15 -0500
+Received: from mail-lf1-x136.google.com (mail-lf1-x136.google.com [IPv6:2a00:1450:4864:20::136])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 82BE7C061757
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 03:22:34 -0800 (PST)
+Received: by mail-lf1-x136.google.com with SMTP id o17so2014113lfg.4
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jan 2021 03:22:34 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=5hFUyJXqwbukFsaI+Z+xn6Xv3D3xtO/+AtcCpzqs+Dg=;
+        b=q9dasez7anKwI0iSoJj3jd13LrO9P8iq88rm7ICgXz8+yId+iQa7NgxGfr69JyrKcI
+         Jins0Yw2JP1B8P6BFf1ZOFQZi8RM6qIUmc8ABWcB89Fw/fAM9yMMDZ9ZAxxRSRWRg8rG
+         10eFdpD8acMnleObz4i2ERXzg1maPiDfay7fLmSpZPrTsyjVJr+VCdr69ERR8XtAI58D
+         OKUcpea5I4/kw5maCNM2Jy1uZap3Lva+/1nOJBD7HNan6ujEN2f7M0LnRzvGmm9wTFVs
+         LXBNsD2SCOjicaBjGFgkMQzA8vsMs+ILDoL1MlbPtaUnE53Iu6tswfzXhPzKzm63dthg
+         OOiA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=5hFUyJXqwbukFsaI+Z+xn6Xv3D3xtO/+AtcCpzqs+Dg=;
+        b=WSvRDR9yly5zJdVA8r3ckUGY8WDhvdQS5tPS+GWTO26T/tKn2wTH14L8/x9Mad8SAi
+         rA814vnOcqXlkrD3fh+zrrzJ8ayOIPN713etixTOQ+5d/gh9OuCrpab9DYi6Zv2xkFwu
+         nZFTAj88KhZyQSdD1JMxRY20Rk9IH+XT4Q3h4eWmyTOLA646U7jUYTlhkOgPtR8iuW5Z
+         STnQb+StL25l5Wpr8BWxr6LFsGwJphypGAsS1rAcrWyw1eaf7balgh8DiYhTUWURKsu1
+         t6Qe+PRu/4CVZ0Z94asdwe/0fAL2wmsFi7yGNz4maFerQnM5QcNuYHRFUGxZrtX1MiUx
+         5Aiw==
+X-Gm-Message-State: AOAM530O6t4kMPXHGgnvEHZo3DkK6n5YbWsS3LwHd3lR5OU2gwwaP/Cs
+        GLpOMYYQDXO64lqpGdeQrAe7o2fEcD21EARuqiHjM8CN4qG4TvXu
+X-Google-Smtp-Source: ABdhPJzjG7ZAxT6lqAGLTakuB//n/SO3Miy898oEdfWLL4+ykPLxg87xbdabmOfzx3Vp80OqiP4xcs4bpQlZvBbcbZA=
+X-Received: by 2002:a19:f016:: with SMTP id p22mr2480742lfc.402.1611228152827;
+ Thu, 21 Jan 2021 03:22:32 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+References: <CA+QRt4vb=DjgcOqGLtfdfKiDaqKED825xNpNyQaaK-df5tCSRQ@mail.gmail.com>
+ <20210119180204.GA24213@fieldses.org>
+In-Reply-To: <20210119180204.GA24213@fieldses.org>
+From:   Benjamin Maynard <benmaynard@google.com>
+Date:   Thu, 21 Jan 2021 11:21:56 +0000
+Message-ID: <CA+QRt4sxwMTTWpropg=O=XdJ42P+2H=jbrwC8E1n=gt+je6iXQ@mail.gmail.com>
+Subject: Re: Linux 5.11 Kernel: NFS re-export errors with older nfs-utils
+ package versions
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Thanks for the response. Comments inline below.
 
-Here's a set of patches to do two things:
+On Tue, 19 Jan 2021 at 18:02, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Mon, Jan 18, 2021 at 05:57:54PM +0000, Benjamin Maynard wrote:
+> > Hi,
+> >
+> > I was recently experimenting with NFS re-exporting using the new patch
+> > set that is in the Linux 5.11 kernel
+> > (https://patchwork.kernel.org/project/linux-nfs/list/?series=3D393561).
+> >
+> > After applying these patches, I consistently faced an error when
+> > trying to perform a previously working NFS re-export: "exportfs:
+> > /files does not support NFS export".
+> >
+> > I (with help from some other interested parties) began troubleshooting
+> > and after stepping through each patch individually we identified that
+> > the error only occurred when the following patch was applied:
+> > https://patchwork.kernel.org/project/linux-nfs/patch/20201130220319.501=
+064-3-trond.myklebust@hammerspace.com/.
+>
+> That link isn't working for me for some reason.
+>
+> Looks like we're talking about ba5e8187c555 "nfsd: allow filesystems to
+> opt out of subtree checking".
+>
 
- (1) Add a helper library to handle the new VM readahead interface.  This
-     is intended to be used unconditionally by the filesystem (whether or
-     not caching is enabled) and provides a common framework for doing
-     caching, transparent huge pages and, in the future, possibly fscrypt
-     and read bandwidth maximisation.  It also allows the netfs and the
-     cache to align, expand and slice up a read request from the VM in
-     various ways; the netfs need only provide a function to read a stretch
-     of data to the pagecache and the helper takes care of the rest.
+Correct, this is the patch I am referencing.
 
- (2) Add an alternative fscache/cachfiles I/O API that uses the kiocb
-     facility to do async DIO to transfer data to/from the netfs's pages,
-     rather than using readpage with wait queue snooping on one side and
-     vfs_write() on the other.  It also uses less memory, since it doesn't
-     do buffered I/O on the backing file.
+> > This patch prevents re-exporting if subtree checking is enabled on the
+> > originating NFS server.
+>
+> That's not correct.
+>
+> I'm assuming there are two servers: a reexporting server, which mounts
+> the originating NFS server, which is mounting ext4 or xfs or some other
+> local filesystem.
+>
+> It's hard for the reexporting server to even tell if the originating
+> server is using subtree checking, so I'm surprised that would make a
+> difference in behavior.
+>
 
-     Note that this uses SEEK_HOLE/SEEK_DATA to locate the data available
-     to be read from the cache.  Whilst this is an improvement from the
-     bmap interface, it still has a problem with regard to a modern
-     extent-based filesystem inserting or removing bridging blocks of
-     zeros.  Fixing that requires a much greater overhaul.
+That is correct, there is an originating NFS Server (Ubuntu 20.04 -
+5.4.0-1034-gcp) that is exporting a directory from the local ext4
+filesystem. This is exported with the following options:
 
-This is a step towards overhauling the fscache API.  The change is opt-in
-on the part of the network filesystem.  A netfs should not try to mix the
-old and the new API because of conflicting ways of handling pages and the
-PG_fscache page flag and because it would be mixing DIO with buffered I/O.
-Further, the helper library can't be used with the old API.
+/files 10.0.0.0/8(rw,no_subtree_check,fsid=3D10)
 
-This does not change any of the fscache cookie handling APIs or the way
-invalidation is done.
+This is then mounted from the re-exporting server (export from /proc/mounts=
+):
 
-In the near term, I intend to deprecate and remove the old I/O API
-(fscache_allocate_page{,s}(), fscache_read_or_alloc_page{,s}(),
-fscache_write_page() and fscache_uncache_page()) and eventually replace
-most of fscache/cachefiles with something simpler and easier to follow.
+10.70.1.2:/files /files nfs
+rw,sync,noatime,vers=3D3,rsize=3D1048576,wsize=3D1048576,namlen=3D255,acreg=
+min=3D600,acregmax=3D600,acdirmin=3D600,acdirmax=3D600,hard,nocto,proto=3Dt=
+cp,nconnect=3D16,timeo=3D600,retrans=3D2,sec=3Dsys,mountaddr=3D10.70.1.2,mo=
+untvers=3D3,mountport=3D20048,mountproto=3Dudp,fsc,local_lock=3Dnone,addr=
+=3D10.70.1.2
+0 0
 
-The patchset contains four parts:
+We then attempt to re-export the mounted directory from the
+re-exporting server with the following entry in /etc/exports:
 
- (1) Some helper patches, including provision of an ITER_XARRAY iov
-     iterator and a function to do readahead expansion.
+/files   10.67.0.0/16(rw,wdelay,no_root_squash,no_subtree_check,fsid=3D10,s=
+ec=3Dsys,rw,secure,no_root_squash,no_all_squash)
 
- (2) Patches to add the netfs helper library.
+If you perform this set of steps with the 5.10 kernel with nfs-utils
+1.3.4 (Ubuntu & Debian default version), the re-export will work. If
+you perform the same set of steps with the ba5e8187c555 patch applied
+(still on nfs-utils 1.3.4) then the re-export will fail with the error
+message "exportfs: /files does not support NFS export". dmesg further
+reveals the cause "check_export: nfs does not support subtree
+checking!".
 
- (3) A patch to add the fscache/cachefiles kiocb API
+This message appears even though we have no_subtree_check set on both
+the exports of the originating NFS server, and the re-export server.
 
- (4) Patches to add support in AFS for this.
-
-With this, AFS without a cache passes all expected xfstests; with a cache,
-there's an extra failure, but that's also there before these patches.
-Fixing that probably requires a greater overhaul.
-
-These patches can be found also on:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache-netfs-lib
-
-David
----
-David Howells (24):
-      iov_iter: Add ITER_XARRAY
-      vm: Add wait/unlock functions for PG_fscache
-      mm: Implement readahead_control pageset expansion
-      vfs: Export rw_verify_area() for use by cachefiles
-      netfs: Make a netfs helper module
-      netfs: Provide readahead and readpage netfs helpers
-      netfs: Add tracepoints
-      netfs: Gather stats
-      netfs: Add write_begin helper
-      netfs: Define an interface to talk to a cache
-      fscache, cachefiles: Add alternate API to use kiocb for read/write to cache
-      afs: Disable use of the fscache I/O routines
-      afs: Pass page into dirty region helpers to provide THP size
-      afs: Print the operation debug_id when logging an unexpected data version
-      afs: Move key to afs_read struct
-      afs: Don't truncate iter during data fetch
-      afs: Log remote unmarshalling errors
-      afs: Set up the iov_iter before calling afs_extract_data()
-      afs: Use ITER_XARRAY for writing
-      afs: Wait on PG_fscache before modifying/releasing a page
-      afs: Extract writeback extension into its own function
-      afs: Prepare for use of THPs
-      afs: Use the fs operation ops to handle FetchData completion
-      afs: Use new fscache read helper API
-
-Takashi Iwai (1):
-      cachefiles: Drop superfluous readpages aops NULL check
+If you then upgrade nfs-utils to 2.5.2 on the re-export server, the
+re-export works as expected.
 
 
- fs/Kconfig                    |    1 +
- fs/Makefile                   |    1 +
- fs/afs/Kconfig                |    1 +
- fs/afs/dir.c                  |  225 ++++---
- fs/afs/file.c                 |  472 ++++----------
- fs/afs/fs_operation.c         |    4 +-
- fs/afs/fsclient.c             |  108 ++--
- fs/afs/inode.c                |    7 +-
- fs/afs/internal.h             |   57 +-
- fs/afs/rxrpc.c                |  150 ++---
- fs/afs/write.c                |  610 ++++++++++--------
- fs/afs/yfsclient.c            |   82 +--
- fs/cachefiles/Makefile        |    1 +
- fs/cachefiles/interface.c     |    5 +-
- fs/cachefiles/internal.h      |    9 +
- fs/cachefiles/rdwr.c          |    2 -
- fs/cachefiles/rdwr2.c         |  406 ++++++++++++
- fs/fscache/Makefile           |    3 +-
- fs/fscache/internal.h         |    3 +
- fs/fscache/page.c             |    2 +-
- fs/fscache/page2.c            |  116 ++++
- fs/fscache/stats.c            |    1 +
- fs/internal.h                 |    5 -
- fs/netfs/Kconfig              |   23 +
- fs/netfs/Makefile             |    5 +
- fs/netfs/internal.h           |   97 +++
- fs/netfs/read_helper.c        | 1142 +++++++++++++++++++++++++++++++++
- fs/netfs/stats.c              |   57 ++
- fs/read_write.c               |    1 +
- include/linux/fs.h            |    1 +
- include/linux/fscache-cache.h |    4 +
- include/linux/fscache.h       |   28 +-
- include/linux/netfs.h         |  167 +++++
- include/linux/pagemap.h       |   16 +
- include/net/af_rxrpc.h        |    2 +-
- include/trace/events/afs.h    |   74 +--
- include/trace/events/netfs.h  |  201 ++++++
- mm/filemap.c                  |   18 +
- mm/readahead.c                |   70 ++
- net/rxrpc/recvmsg.c           |    9 +-
- 40 files changed, 3171 insertions(+), 1015 deletions(-)
- create mode 100644 fs/cachefiles/rdwr2.c
- create mode 100644 fs/fscache/page2.c
- create mode 100644 fs/netfs/Kconfig
- create mode 100644 fs/netfs/Makefile
- create mode 100644 fs/netfs/internal.h
- create mode 100644 fs/netfs/read_helper.c
- create mode 100644 fs/netfs/stats.c
- create mode 100644 include/linux/netfs.h
- create mode 100644 include/trace/events/netfs.h
+> > The strange thing was that no_subtree_check
+> > export option was already set on the export from the originating NFS
+> > Filer, but the error message persisted.
+>
+> So, this patch is only checks whether you've got no_subtree_check set on
+> the reexporting server.
+>
+
+Thanks. I misunderstood and thought it checked the exports on the
+originating server. Regardless as detailed above no_subtree_check is
+also set on the re-export server and the error persists when using an
+older nfs-utils version.
+
+> > After lots of troubleshooting, eventually we tried updating NFS Utils
+> > from 1.3.4 to 2.5.2 and we were able to successfully perform
+> > re-export. It appears that the old version of the nfs-utils package
+> > was the cause of the issue.
+>
+> I'm a little confused about what happened here.  Which server were you
+> applying the above patches on?  Which server did you upgrade NFS utils
+> on?
+>
+
+The re-exporting server in both cases. The originating server is using
+an older, unmodified kernel and version of nfs-utils. See above for a
+more detailed overview.
 
 
+> Could be that you're actually running into some filehandle size limit or
+> something.  (Subtree checking can make that problem worse.)  Hard to
+> tell.
+>
+> --b.
+>
+> > I appreciate that 1.3.4 is a very old version of nfs-utils, but it is
+> > the default version that ships with Ubuntu and Debian and the error
+> > message does not immediately point to the outdated version being the
+> > cause of the problem.
+> >
+> > I was wondering if it was possible to detail the requirement for a
+> > more recent version of nfs-utils in the NFS Re-exporting section of
+> > the Wiki (http://wiki.linux-nfs.org/wiki/index.php/NFS_re-export) to
+> > help others who may encounter this problem in the future?
