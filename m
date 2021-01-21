@@ -2,201 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-15.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08FD7C433DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 21:18:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47F69C433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 21:23:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CC40923A53
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 21:18:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0F9E823A53
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Jan 2021 21:23:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726817AbhAUVSj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Jan 2021 16:18:39 -0500
-Received: from mail.kernel.org ([198.145.29.99]:32864 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727104AbhAUUyt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 21 Jan 2021 15:54:49 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 0834323A5E;
-        Thu, 21 Jan 2021 20:53:06 +0000 (UTC)
-Subject: [PATCH v1 1/2] svcrdma: Reduce Receive doorbell rate
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Thu, 21 Jan 2021 15:53:06 -0500
-Message-ID: <161126238612.8979.2073990353982116611.stgit@klimt.1015granger.net>
-In-Reply-To: <161126216710.8979.7145432546367265892.stgit@klimt.1015granger.net>
-References: <161126216710.8979.7145432546367265892.stgit@klimt.1015granger.net>
-User-Agent: StGit/0.23-29-ga622f1
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+        id S1726567AbhAUVW4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Jan 2021 16:22:56 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:44055 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726671AbhAUVWf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jan 2021 16:22:35 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1611264068;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:in-reply-to:in-reply-to:references:references;
+        bh=nmlaeCdoa0BZcKLUZS5EK1zvLPCf9pKWs7y5cLwzm54=;
+        b=TkyMUh2UXpqIAZMm/tH4IzDbOGZDwpFB9+2YRJ8xligz7X58STU8AvtD2DLB+AyBxXrXkm
+        XPkUlhNtnXAAV7Kc2PSKHmUBt70DfmLHU7VartmUBIaRuO5Q4PY04QfOWeVYHy+maWUxpX
+        C+1g4ewKznihgIcd672R/BoIoCs5YOU=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-349-cT8cOWFZOFySWoAW_ccHlg-1; Thu, 21 Jan 2021 16:17:39 -0500
+X-MC-Unique: cT8cOWFZOFySWoAW_ccHlg-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 93F4B800D55;
+        Thu, 21 Jan 2021 21:17:38 +0000 (UTC)
+Received: from dwysocha.rdu.csb (ovpn-113-28.rdu2.redhat.com [10.10.113.28])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 2E8515D749;
+        Thu, 21 Jan 2021 21:17:38 +0000 (UTC)
+From:   Dave Wysochanski <dwysocha@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v3 2/2] SUNRPC: Handle 0 length opaque XDR object data properly
+Date:   Thu, 21 Jan 2021 16:17:24 -0500
+Message-Id: <1611263844-32608-3-git-send-email-dwysocha@redhat.com>
+In-Reply-To: <1611263844-32608-1-git-send-email-dwysocha@redhat.com>
+References: <1611263844-32608-1-git-send-email-dwysocha@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is similar to commit e340c2d6ef2a ("xprtrdma: Reduce the
-doorbell rate (Receive)") which added Receive batching to the
-client.
+When handling an auth_gss downcall, it's possible to get 0-length
+opaque object for the acceptor.  In the case of a 0-length XDR
+object, make sure simple_get_netobj() fills in dest->data = NULL,
+and does not continue to kmemdup() which will set
+dest->data = ZERO_SIZE_PTR for the acceptor.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The trace event code can handle NULL but not ZERO_SIZE_PTR for a
+string, and so without this patch the rpcgss_context trace event
+will crash the kernel as follows:
+
+[  162.887992] BUG: kernel NULL pointer dereference, address: 0000000000000010
+[  162.898693] #PF: supervisor read access in kernel mode
+[  162.900830] #PF: error_code(0x0000) - not-present page
+[  162.902940] PGD 0 P4D 0
+[  162.904027] Oops: 0000 [#1] SMP PTI
+[  162.905493] CPU: 4 PID: 4321 Comm: rpc.gssd Kdump: loaded Not tainted 5.10.0 #133
+[  162.908548] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2011
+[  162.910978] RIP: 0010:strlen+0x0/0x20
+[  162.912505] Code: 48 89 f9 74 09 48 83 c1 01 80 39 00 75 f7 31 d2 44 0f b6 04 16 44 88 04 11 48 83 c2 01 45 84 c0 75 ee c3 0f 1f 80 00 00 00 00 <80> 3f 00 74 10 48 89 f8 48 83 c0 01 80 38 00 75 f7 48 29 f8 c3 31
+[  162.920101] RSP: 0018:ffffaec900c77d90 EFLAGS: 00010202
+[  162.922263] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 00000000fffde697
+[  162.925158] RDX: 000000000000002f RSI: 0000000000000080 RDI: 0000000000000010
+[  162.928073] RBP: 0000000000000010 R08: 0000000000000e10 R09: 0000000000000000
+[  162.930976] R10: ffff8e698a590cb8 R11: 0000000000000001 R12: 0000000000000e10
+[  162.933883] R13: 00000000fffde697 R14: 000000010034d517 R15: 0000000000070028
+[  162.936777] FS:  00007f1e1eb93700(0000) GS:ffff8e6ab7d00000(0000) knlGS:0000000000000000
+[  162.940067] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  162.942417] CR2: 0000000000000010 CR3: 0000000104eba000 CR4: 00000000000406e0
+[  162.945300] Call Trace:
+[  162.946428]  trace_event_raw_event_rpcgss_context+0x84/0x140 [auth_rpcgss]
+[  162.949308]  ? __kmalloc_track_caller+0x35/0x5a0
+[  162.951224]  ? gss_pipe_downcall+0x3a3/0x6a0 [auth_rpcgss]
+[  162.953484]  gss_pipe_downcall+0x585/0x6a0 [auth_rpcgss]
+[  162.955953]  rpc_pipe_write+0x58/0x70 [sunrpc]
+[  162.957849]  vfs_write+0xcb/0x2c0
+[  162.959264]  ksys_write+0x68/0xe0
+[  162.960706]  do_syscall_64+0x33/0x40
+[  162.962238]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+[  162.964346] RIP: 0033:0x7f1e1f1e57df
+
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- include/linux/sunrpc/svc_rdma.h         |    1 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   82 ++++++++++++++++---------------
- 2 files changed, 44 insertions(+), 39 deletions(-)
+ net/sunrpc/auth_gss/auth_gss_internal.h | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 1e76ed688044..7c693b31965e 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -104,6 +104,7 @@ struct svcxprt_rdma {
- 
- 	wait_queue_head_t    sc_send_wait;	/* SQ exhaustion waitlist */
- 	unsigned long	     sc_flags;
-+	u32		     sc_pending_recvs;
- 	struct list_head     sc_read_complete_q;
- 	struct work_struct   sc_work;
- 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 7d14a74df716..ab0b7e9777bc 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -266,33 +266,46 @@ void svc_rdma_release_rqst(struct svc_rqst *rqstp)
- 		svc_rdma_recv_ctxt_put(rdma, ctxt);
+diff --git a/net/sunrpc/auth_gss/auth_gss_internal.h b/net/sunrpc/auth_gss/auth_gss_internal.h
+index c5603242b54b..f6d9631bd9d0 100644
+--- a/net/sunrpc/auth_gss/auth_gss_internal.h
++++ b/net/sunrpc/auth_gss/auth_gss_internal.h
+@@ -34,9 +34,12 @@
+ 	q = (const void *)((const char *)p + len);
+ 	if (unlikely(q > end || q < p))
+ 		return ERR_PTR(-EFAULT);
+-	dest->data = kmemdup(p, len, GFP_NOFS);
+-	if (unlikely(dest->data == NULL))
+-		return ERR_PTR(-ENOMEM);
++	if (len) {
++		dest->data = kmemdup(p, len, GFP_NOFS);
++		if (unlikely(dest->data == NULL))
++			return ERR_PTR(-ENOMEM);
++	} else
++		dest->data = NULL;
+ 	dest->len = len;
+ 	return q;
  }
- 
--static int __svc_rdma_post_recv(struct svcxprt_rdma *rdma,
--				struct svc_rdma_recv_ctxt *ctxt)
-+static bool svc_rdma_refresh_recvs(struct svcxprt_rdma *rdma,
-+				   unsigned int wanted, bool temp)
- {
-+	const struct ib_recv_wr *bad_wr = NULL;
-+	struct svc_rdma_recv_ctxt *ctxt;
-+	struct ib_recv_wr *recv_chain;
- 	int ret;
- 
--	trace_svcrdma_post_recv(ctxt);
--	ret = ib_post_recv(rdma->sc_qp, &ctxt->rc_recv_wr, NULL);
-+	recv_chain = NULL;
-+	while (wanted--) {
-+		ctxt = svc_rdma_recv_ctxt_get(rdma);
-+		if (!ctxt)
-+			break;
-+
-+		trace_svcrdma_post_recv(ctxt);
-+		ctxt->rc_temp = temp;
-+		ctxt->rc_recv_wr.next = recv_chain;
-+		recv_chain = &ctxt->rc_recv_wr;
-+		rdma->sc_pending_recvs++;
-+	}
-+	if (!recv_chain)
-+		return false;
-+
-+	ret = ib_post_recv(rdma->sc_qp, recv_chain, &bad_wr);
- 	if (ret)
- 		goto err_post;
--	return 0;
-+	return true;
- 
- err_post:
--	trace_svcrdma_rq_post_err(rdma, ret);
--	svc_rdma_recv_ctxt_put(rdma, ctxt);
--	return ret;
--}
--
--static int svc_rdma_post_recv(struct svcxprt_rdma *rdma)
--{
--	struct svc_rdma_recv_ctxt *ctxt;
-+	while (bad_wr) {
-+		ctxt = container_of(bad_wr, struct svc_rdma_recv_ctxt,
-+				    rc_recv_wr);
-+		bad_wr = bad_wr->next;
-+		svc_rdma_recv_ctxt_put(rdma, ctxt);
-+	}
- 
--	if (test_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags))
--		return 0;
--	ctxt = svc_rdma_recv_ctxt_get(rdma);
--	if (!ctxt)
--		return -ENOMEM;
--	return __svc_rdma_post_recv(rdma, ctxt);
-+	trace_svcrdma_rq_post_err(rdma, ret);
-+	/* Since we're destroying the xprt, no need to reset
-+	 * sc_pending_recvs. */
-+	return false;
- }
- 
- /**
-@@ -303,20 +316,7 @@ static int svc_rdma_post_recv(struct svcxprt_rdma *rdma)
-  */
- bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma)
- {
--	struct svc_rdma_recv_ctxt *ctxt;
--	unsigned int i;
--	int ret;
--
--	for (i = 0; i < rdma->sc_max_requests; i++) {
--		ctxt = svc_rdma_recv_ctxt_get(rdma);
--		if (!ctxt)
--			return false;
--		ctxt->rc_temp = true;
--		ret = __svc_rdma_post_recv(rdma, ctxt);
--		if (ret)
--			return false;
--	}
--	return true;
-+	return svc_rdma_refresh_recvs(rdma, rdma->sc_max_requests, true);
- }
- 
- /**
-@@ -324,8 +324,6 @@ bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma)
-  * @cq: Completion Queue context
-  * @wc: Work Completion object
-  *
-- * NB: The svc_xprt/svcxprt_rdma is pinned whenever it's possible that
-- * the Receive completion handler could be running.
-  */
- static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- {
-@@ -333,6 +331,8 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- 	struct ib_cqe *cqe = wc->wr_cqe;
- 	struct svc_rdma_recv_ctxt *ctxt;
- 
-+	rdma->sc_pending_recvs--;
-+
- 	/* WARNING: Only wc->wr_cqe and wc->status are reliable */
- 	ctxt = container_of(cqe, struct svc_rdma_recv_ctxt, rc_cqe);
- 
-@@ -340,9 +340,6 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- 	if (wc->status != IB_WC_SUCCESS)
- 		goto flushed;
- 
--	if (svc_rdma_post_recv(rdma))
--		goto post_err;
--
- 	/* All wc fields are now known to be valid */
- 	ctxt->rc_byte_len = wc->byte_len;
- 	ib_dma_sync_single_for_cpu(rdma->sc_pd->device,
-@@ -356,11 +353,18 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- 	spin_unlock(&rdma->sc_rq_dto_lock);
- 	if (!test_bit(RDMAXPRT_CONN_PENDING, &rdma->sc_flags))
- 		svc_xprt_enqueue(&rdma->sc_xprt);
-+
-+	if (!test_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags) &&
-+	    rdma->sc_pending_recvs < rdma->sc_max_requests)
-+		if (!svc_rdma_refresh_recvs(rdma, RPCRDMA_MAX_RECV_BATCH,
-+					    false))
-+			goto post_err;
-+
- 	return;
- 
- flushed:
--post_err:
- 	svc_rdma_recv_ctxt_put(rdma, ctxt);
-+post_err:
- 	set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
- 	svc_xprt_enqueue(&rdma->sc_xprt);
- }
-
+-- 
+1.8.3.1
 
