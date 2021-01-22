@@ -2,144 +2,82 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EB50DC433E0
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 19:40:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 282C5C433E0
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 20:23:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AE5B923B01
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 19:40:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D830823AFC
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 20:23:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728890AbhAVThj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Jan 2021 14:37:39 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51542 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730189AbhAVSsf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2021 13:48:35 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 71E2EC061786
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2021 10:47:55 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 160576E97; Fri, 22 Jan 2021 13:47:54 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 160576E97
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1611341274;
-        bh=6qYDmKUQQN9uy1WwJye0hryd/s38VuaiUyV+IeNFclY=;
-        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
-        b=YtPfjUfIRfSiH/LTonIkLI+NoG0GA8pFUaJTZxC1sSU1XUEKfAdVPKPMfOXc0omCF
-         gf8L9qfGC0QOMJfQDoJoK204+JSvJ9u9m/plees479TxLBzxwJDLOp9ezAmfa150zD
-         KMWZ53e2Ym4IEj5a1le5/wY4/4ZRNfx823beJtKA=
-Date:   Fri, 22 Jan 2021 13:47:54 -0500
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 07/42] NFSD: Update WRITE3arg decoder to use struct
- xdr_stream
-Message-ID: <20210122184754.GC18583@fieldses.org>
-References: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
- <160986061812.5532.3122782251888690881.stgit@klimt.1015granger.net>
+        id S1730305AbhAVUWs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Jan 2021 15:22:48 -0500
+Received: from mail.kernel.org ([198.145.29.99]:42052 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728368AbhAVUVw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Jan 2021 15:21:52 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 5D21F23AFC
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Jan 2021 20:21:11 +0000 (UTC)
+Subject: [PATCH RFC] NFSD: Reduce svc_rqst::rq_pages churn during READDIR
+ operations
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Date:   Fri, 22 Jan 2021 15:21:10 -0500
+Message-ID: <161134687025.19311.4882007133082076189.stgit@klimt.1015granger.net>
+User-Agent: StGit/0.23-29-ga622f1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <160986061812.5532.3122782251888690881.stgit@klimt.1015granger.net>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Jan 05, 2021 at 10:30:18AM -0500, Chuck Lever wrote:
-> As part of the update, open code that sanity-checks the size of the
-> data payload against the length of the RPC Call message has to be
-> re-implemented to use xdr_stream infrastructure.
+During NFSv2 and NFSv3 READDIR/PLUS operations, NFSD advances
+rq_next_page to the full size of the client-requested buffer, then
+releases all those pages at the end of the request. The next request
+to use that nfsd thread has to refill the pages.
 
-I'm having a little trouble parsing that.  Did you mean "write code"?
+NFSD does this even when the dirlist in the reply is small. With
+NFSv3 clients that send READDIR operations with large buffer sizes,
+that can be 256 put_page/alloc_page pairs per READDIR request, even
+though those pages often remain unused.
 
---b.
+We can save some work by not releasing dirlist buffer pages that
+were not used to form the READDIR Reply. I've left the NFSv2 code
+alone since there are never more than three pages involved in an
+NFSv2 READDIR operation.
 
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/nfsd/nfs3xdr.c |   51 ++++++++++++++++++++-------------------------------
->  1 file changed, 20 insertions(+), 31 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index ff98eae5db81..0aafb096de91 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -405,52 +405,41 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p)
->  int
->  nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p)
->  {
-> +	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
->  	struct nfsd3_writeargs *args = rqstp->rq_argp;
-> -	unsigned int len, hdr, dlen;
->  	u32 max_blocksize = svc_max_payload(rqstp);
->  	struct kvec *head = rqstp->rq_arg.head;
->  	struct kvec *tail = rqstp->rq_arg.tail;
-> +	size_t remaining;
->  
-> -	p = decode_fh(p, &args->fh);
-> -	if (!p)
-> +	if (!svcxdr_decode_nfs_fh3(xdr, &args->fh))
->  		return 0;
-> -	p = xdr_decode_hyper(p, &args->offset);
-> -
-> -	args->count = ntohl(*p++);
-> -	args->stable = ntohl(*p++);
-> -	len = args->len = ntohl(*p++);
-> -	if ((void *)p > head->iov_base + head->iov_len)
-> +	if (xdr_stream_decode_u64(xdr, &args->offset) < 0)
->  		return 0;
-> -	/*
-> -	 * The count must equal the amount of data passed.
-> -	 */
-> -	if (args->count != args->len)
-> +	if (xdr_stream_decode_u32(xdr, &args->count) < 0)
-> +		return 0;
-> +	if (xdr_stream_decode_u32(xdr, &args->stable) < 0)
->  		return 0;
->  
-> -	/*
-> -	 * Check to make sure that we got the right number of
-> -	 * bytes.
-> -	 */
-> -	hdr = (void*)p - head->iov_base;
-> -	dlen = head->iov_len + rqstp->rq_arg.page_len + tail->iov_len - hdr;
-> -	/*
-> -	 * Round the length of the data which was specified up to
-> -	 * the next multiple of XDR units and then compare that
-> -	 * against the length which was actually received.
-> -	 * Note that when RPCSEC/GSS (for example) is used, the
-> -	 * data buffer can be padded so dlen might be larger
-> -	 * than required.  It must never be smaller.
-> -	 */
-> -	if (dlen < XDR_QUADLEN(len)*4)
-> +	/* opaque data */
-> +	if (xdr_stream_decode_u32(xdr, &args->len) < 0)
->  		return 0;
->  
-> +	/* request sanity */
-> +	if (args->count != args->len)
-> +		return 0;
-> +	remaining = head->iov_len + rqstp->rq_arg.page_len + tail->iov_len;
-> +	remaining -= xdr_stream_pos(xdr);
-> +	if (remaining < xdr_align_size(args->len))
-> +		return 0;
->  	if (args->count > max_blocksize) {
->  		args->count = max_blocksize;
-> -		len = args->len = max_blocksize;
-> +		args->len = max_blocksize;
->  	}
->  
-> -	args->first.iov_base = (void *)p;
-> -	args->first.iov_len = head->iov_len - hdr;
-> +	args->first.iov_base = xdr->p;
-> +	args->first.iov_len = head->iov_len - xdr_stream_pos(xdr);
-> +
->  	return 1;
->  }
->  
-> 
+Eventually we should nail down why these pages need to be released
+at all in order to avoid allocating and releasing pages
+unnecessarily.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfs3proc.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 8675851199f8..569bfff314f0 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -492,6 +492,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
+ 		}
+ 		count += PAGE_SIZE;
+ 	}
++	rqstp->rq_next_page = p;
+ 	resp->count = count >> 2;
+ 	if (resp->offset) {
+ 		if (unlikely(resp->offset1)) {
+@@ -557,6 +558,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
+ 		}
+ 		count += PAGE_SIZE;
+ 	}
++	rqstp->rq_next_page = p;
+ 	resp->count = count >> 2;
+ 	if (resp->offset) {
+ 		if (unlikely(resp->offset1)) {
+
+
