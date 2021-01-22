@@ -2,97 +2,87 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36FBFC433DB
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 16:10:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BB6FDC433DB
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 17:41:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0B3E122EBE
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 16:10:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7864323A79
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 17:41:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729466AbhAVQJy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Jan 2021 11:09:54 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:60749 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729550AbhAVQI1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2021 11:08:27 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1611331620;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=LxEIC8hGatT2o24RK/5B1chyfP2tF4vZvBCyA+dON/4=;
-        b=Y7hsAtYYnc/JZKobskOxYidVuXpQN6j3IN7ndP4R6BydWPRvYcm3Skf8pqdSDEXR4docl5
-        C+pNvBWbWEECx5m8walyTF6RTmA8ken3nXcA2tYq9w32NjBY+xZfmvFXBfs37URrPjVEEd
-        xU4RYIFGN2HBRB+5N6+IUlSS1WqbIx8=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-319-WxgM7MKlOBu2zSsKQiqVFw-1; Fri, 22 Jan 2021 11:06:58 -0500
-X-MC-Unique: WxgM7MKlOBu2zSsKQiqVFw-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 78A118144E0;
-        Fri, 22 Jan 2021 16:06:55 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-115-23.rdu2.redhat.com [10.10.115.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id A07F418993;
-        Fri, 22 Jan 2021 16:06:47 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <20210122160129.GB18583@fieldses.org>
-References: <20210122160129.GB18583@fieldses.org> <20210121190937.GE20964@fieldses.org> <20210121174306.GB20964@fieldses.org> <20210121164645.GA20964@fieldses.org> <161118128472.1232039.11746799833066425131.stgit@warthog.procyon.org.uk> <1794286.1611248577@warthog.procyon.org.uk> <1851804.1611255313@warthog.procyon.org.uk> <1856291.1611259704@warthog.procyon.org.uk>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Takashi Iwai <tiwai@suse.de>,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-afs@lists.infradead.org, Jeff Layton <jlayton@redhat.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-cachefs@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC][PATCH 00/25] Network fs helper library & fscache kiocb API
+        id S1729813AbhAVRgA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Jan 2021 12:36:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35330 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729552AbhAVRdk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2021 12:33:40 -0500
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6198C061786;
+        Fri, 22 Jan 2021 09:32:58 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=zejNF9PdUWUD58A5TE4kg12XP3Xr4LOy04O8OoxwuFE=; b=Mbs9MA1pDs4QRXJy9LAjLAJeqC
+        QQ6Bac+mJ0Jrq7b579w9H7JlOPPin7jEeFhJwD1eGdUrhYYr/HkCYTkQmh5z9EQLXxYTzrAqPaXuI
+        nekpAyiGU9uFeRXqI2DfC/04H/KM/JSqyF/esVXM4pF5saNjzdFyXT56P0x5YchkhR3Pp3djw1kLD
+        lgZ7BvYOXrBA71e/VoxjJGEKXbTzWFVYuuIlqT1frx7teQOCTcaoSqPnY5gWLX0jL6k5M9KlDxVu1
+        8xBjnIIcQh/RESsXhvj8LBSUA/C+6/A91enu49A2RaKoi5kJqHCDO6ej2w5yidz2hl4/qgq8xlVxo
+        zMBVcMxg==;
+Received: from hch by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
+        id 1l30Ii-0011Uv-4d; Fri, 22 Jan 2021 17:32:48 +0000
+Date:   Fri, 22 Jan 2021 17:32:48 +0000
+From:   Christoph Hellwig <hch@infradead.org>
+To:     "J. Bruce Fields" <bfields@redhat.com>
+Cc:     Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/3] nfsd: move change attribute generation to filesystem
+Message-ID: <20210122173248.GB241302@infradead.org>
+References: <1611084297-27352-1-git-send-email-bfields@redhat.com>
+ <1611084297-27352-3-git-send-email-bfields@redhat.com>
+ <20210120084638.GA3678536@infradead.org>
+ <20210121202756.GA13298@pick.fieldses.org>
+ <20210122082059.GA119852@infradead.org>
+ <20210122144753.GA52753@pick.fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <2085146.1611331606.1@warthog.procyon.org.uk>
-Content-Transfer-Encoding: quoted-printable
-Date:   Fri, 22 Jan 2021 16:06:46 +0000
-Message-ID: <2085147.1611331606@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210122144753.GA52753@pick.fieldses.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-J. Bruce Fields <bfields@fieldses.org> wrote:
+On Fri, Jan 22, 2021 at 09:47:53AM -0500, J. Bruce Fields wrote:
+> > > I also have a vague idea that some filesystem-specific improvements
+> > > might be possible.  (E.g., if a filesystem had some kind of boot count
+> > > in the superblock, maybe that would be a better way to prevent the
+> > > change attribute from going backwards on reboot than the thing
+> > > generic_fetch_iversion is currently doing with ctime.  But I have no
+> > > concrete plan there, maybe I'm dreaming.)
+> > 
+> > Even without the ctime i_version never goes backward, what is the
+> > problem here?
+> 
+> Suppose a modification bumps the change attribute, a client reads
+> the new value of the change attribute before it's committed to disk,
+> then the server crashes.  After the server comes back up, the client
+> requests the change attribute again and sees an older value.
 
-> > J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > So, I'm still confused: there must be some case where we know fscach=
-e
-> > > actually works reliably and doesn't corrupt your data, right?
-> > =
+So all metadata operations kicked off by nfsd are synchronous due
+to ->commit_metadata/sync_inode_metadata, so this could only happen
+for operations not kicked off by nfsd.  More importanly ctime will
+also be lost as i_version and the ctime are commited together.
 
-> > Using ext2/3, for example.  I don't know under what circumstances xfs,=
- ext4
-> > and btrfs might insert/remove blocks of zeros, but I'm told it can hap=
-pen.
-> =
+> 
+> That's actually not too bad.  What I'd mainly like to avoid is
+> incrementing the change attribute further and risking reuse of an old
+> value for a different new state of the file.
 
-> Do ext2/3 work well for fscache in other ways?
-
-Ext3 shouldn't be a problem.  That's what I used when developing it.  I'm =
-not
-sure if ext2 supports xattrs, though.
-
-David
-
+Ok but that is an issue if we need to deal with changes that did not
+come in through NFSD.
