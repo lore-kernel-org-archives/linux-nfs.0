@@ -2,123 +2,255 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-14.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,PDS_BAD_THREAD_QP_64,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 694E2C433DB
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 19:38:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 12AB0C433DB
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 19:40:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3650D2076E
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 19:38:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CEE1323B08
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jan 2021 19:40:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728278AbhAVTdh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Jan 2021 14:33:37 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:44904 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1730148AbhAVSsV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2021 13:48:21 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1611341214;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=DgZksRNGLKOso9EgtpnMOO8M2vQqiNnVtzZmopG4+kA=;
-        b=V8ADB3R3aL2R6XwZ3za1TxLhTx6hVcVYYwibYp4Q+l/vOElf+asSSOZ8KEa+zcarRBJjOY
-        Sgkia6zjHuZzhUHCNlhb+Av6pcavrlN9e0ZKVSNsN6snKW8VL/gIvr3MHk7VnqES9WpFDD
-        ZbPnoQ+/4bJOepxcEVJ1E/WRTTRg1bA=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-575-O781iRt_O3SMO4zdn1AXmA-1; Fri, 22 Jan 2021 13:46:52 -0500
-X-MC-Unique: O781iRt_O3SMO4zdn1AXmA-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C2775107ACE8;
-        Fri, 22 Jan 2021 18:46:50 +0000 (UTC)
-Received: from pick.fieldses.org (ovpn-118-99.rdu2.redhat.com [10.10.118.99])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5A0969CA0;
-        Fri, 22 Jan 2021 18:46:50 +0000 (UTC)
-Received: by pick.fieldses.org (Postfix, from userid 2815)
-        id EEBD81204EC; Fri, 22 Jan 2021 13:46:48 -0500 (EST)
-Date:   Fri, 22 Jan 2021 13:46:48 -0500
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/3] nfsd: move change attribute generation to filesystem
-Message-ID: <20210122184648.GD52753@pick.fieldses.org>
-References: <1611084297-27352-1-git-send-email-bfields@redhat.com>
- <1611084297-27352-3-git-send-email-bfields@redhat.com>
- <20210120084638.GA3678536@infradead.org>
- <20210121202756.GA13298@pick.fieldses.org>
- <20210122082059.GA119852@infradead.org>
- <20210122144753.GA52753@pick.fieldses.org>
- <20210122173248.GB241302@infradead.org>
+        id S1729197AbhAVThq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Jan 2021 14:37:46 -0500
+Received: from aserp2130.oracle.com ([141.146.126.79]:33228 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730568AbhAVS4M (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jan 2021 13:56:12 -0500
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 10MIsvhf049600;
+        Fri, 22 Jan 2021 18:55:26 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2020-01-29;
+ bh=TW2jfSLTf27aifCmZtVPJfwDayNPe50EhkYaE+2fJ/M=;
+ b=B8VzcdbdQ4g2nqYES4lxvL+h+fW/syicg6Pf+vBOi3wxEqprJNONNfwbFgBEV33nvDDD
+ cInbGZG9aFj9dNqo5gL6IUdT+xAh1HkcTgSuN/r+89nyRf3yR9ltqFAS/Uma0aEweY64
+ ztPDJV+p15xxzy/azdBPs4d0Pmtd6/dDr7/XMwP2CuByhWGMpBhIvCpQwOmUArCpAk1X
+ LRVt4TZpG3Tdf/No4z/yWrUBw0RI6bcjdCZxfJvxgCVym3tZoyScFRHh8yYGUrhdFH/7
+ zJTNojzRSXDxnlyznnpvEtyIjTP4jVO0wl1uiQYMO/Klsr4wa4gfZK2YFSyAGlXqryLd NA== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by aserp2130.oracle.com with ESMTP id 3668qrnm6t-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 22 Jan 2021 18:55:26 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 10MIjriM041664;
+        Fri, 22 Jan 2021 18:55:25 GMT
+Received: from nam10-bn7-obe.outbound.protection.outlook.com (mail-bn7nam10lp2107.outbound.protection.outlook.com [104.47.70.107])
+        by userp3030.oracle.com with ESMTP id 3668rhb90e-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 22 Jan 2021 18:55:25 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=J3KwGLMDaLhb+6WemPf+EiUL64Zdv84pbajtG1Hm+KhjDSse2Yr+iqSYeNHEKW+Be8oCVOPbyumOkS9xrGRe+K+c0a4/s5RDdZElQsOHvLwzyn1CitmvkAxnnrU1GuJYB0bUwzWSiteC4FjUDgIGBoJH9++va/CBvwvgIi36dbRSniXvlO3TqlPF84HGFc7h6c9ghwKNVympDRBloUYzep+QxqaUPAv/c2rcfUbC4uwTBQ/G5lScrgQybMTflFpgbUQL1u5D4Aw+q9+8PstOtwCt+CUw0SJRWnPVJ48Wdek3VQl/1rZLQdXTczfDYj5IJ5/1Qi/ZvmBioffuNPW3fA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=TW2jfSLTf27aifCmZtVPJfwDayNPe50EhkYaE+2fJ/M=;
+ b=nKYQLeNdyglX5Lr5F/I0cldQLP7PI2U0Hac6BzUQpiCMmQO0HwYx6cqbLgd4V8eWxzdPR7MowCG6EtSQWbkKJJ3vjzrD64j+oOYlMnnXcYmRQs7dHFNm6DKw0D0wpfIjgDh2UpY7vcgy6sfVReUrZwCOxj5CgU1uJQYotHcBqbqJYwjdfPs6roaVPBdYOoaWB1mPKQz19M+p3ozLkzwKvC2+uy3Sxq9m13QsCakRVTF6y7fo1+/pHbCS44XqL8YUnvqDCBbiDRpI1X7NCcm8DsDjy9LhzgmJFKZHnfG13QEJrSFu2g8Zl4rOC4aDIoyncc4LQRjjPSeqblRjK8appA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=TW2jfSLTf27aifCmZtVPJfwDayNPe50EhkYaE+2fJ/M=;
+ b=WGXRHK4zIbhcrcCRb99psw1xpWJrS5x4HMdDYLEFIcd7sDUk3wYpn+/oH4UGBV38JLqqCiwpHqsa03IVt8IZeheUjjdY3Y0HJrWkYAIChHP2eBYfjTST/V890nJaPJLIYVFYa1ESUExoJNqicO3yphUgpHrxIzWrDbR7j7Cx2b8=
+Received: from SJ0PR10MB4688.namprd10.prod.outlook.com (2603:10b6:a03:2db::24)
+ by BY5PR10MB4260.namprd10.prod.outlook.com (2603:10b6:a03:202::24) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3784.12; Fri, 22 Jan
+ 2021 18:55:23 +0000
+Received: from SJ0PR10MB4688.namprd10.prod.outlook.com
+ ([fe80::6da8:6d28:b83:702b]) by SJ0PR10MB4688.namprd10.prod.outlook.com
+ ([fe80::6da8:6d28:b83:702b%4]) with mapi id 15.20.3784.015; Fri, 22 Jan 2021
+ 18:55:23 +0000
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     Bruce Fields <bfields@fieldses.org>
+CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 07/42] NFSD: Update WRITE3arg decoder to use struct
+ xdr_stream
+Thread-Topic: [PATCH v1 07/42] NFSD: Update WRITE3arg decoder to use struct
+ xdr_stream
+Thread-Index: AQHW8O8XiOIeY47PXUyIyG1mP1wKvaoz/mcA
+Date:   Fri, 22 Jan 2021 18:55:23 +0000
+Message-ID: <C7B44F6C-0EE8-4920-AB1C-C2EF6A807861@oracle.com>
+References: <160986050640.5532.16498408936966394862.stgit@klimt.1015granger.net>
+ <160986061812.5532.3122782251888690881.stgit@klimt.1015granger.net>
+ <20210122184754.GC18583@fieldses.org>
+In-Reply-To: <20210122184754.GC18583@fieldses.org>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: fieldses.org; dkim=none (message not signed)
+ header.d=none;fieldses.org; dmarc=none action=none header.from=oracle.com;
+x-originating-ip: [68.61.232.219]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 3b02671d-ef91-4d85-c875-08d8bf074608
+x-ms-traffictypediagnostic: BY5PR10MB4260:
+x-microsoft-antispam-prvs: <BY5PR10MB4260A6DA32B7E3D8C069367493A09@BY5PR10MB4260.namprd10.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:849;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: pelrQtrJbFnMwDm4h7zOm6mmktx9D2lKr5zwjqiKUdW9KYbM//Vz7ntSYrA9q7kiNviHXFgI61nGm42XBjLYmZk+wMGxGciE4zPmur4cjDw+HQ37ugTuw8A/XQOH0Y6KJJYQr7O6/1fT9I6iem9j7ZrZVWa/oy7Z5pC6wisvvstEk6xmcmHlO3KiJyi2dZkgd1Zy4k55vu0ai++NrPrfbLNNZDbexqhSwUh10oxzhR8JLpnP+l8nTQjHHHfqCMnXkHcOiId3Sq+I0vKM2tdqvcsjbaPtpmytq6wF5ZMDBsVx9RP/6XrUcUxaaMt1AH0gf5YSdeLUuzKDmfZGKdyQs3QY0SM2o32A9vQwqs8VxKtcd4aVn/xYNj/9EXtk08/zeZqAC5vqSK63nv2mMnijozln7r6lq5JmGxJysuRNrJZ6qaDujpnWnV9Tgr5xhIhNswPFOldK3hOqR6Wzpzlh13+fSrK59PM8VDp8CieG2RI=
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(136003)(346002)(396003)(39860400002)(366004)(376002)(186003)(83380400001)(2616005)(44832011)(5660300002)(6506007)(33656002)(26005)(53546011)(15650500001)(478600001)(36756003)(66556008)(66476007)(66946007)(76116006)(91956017)(86362001)(8936002)(316002)(64756008)(8676002)(66446008)(4326008)(6486002)(2906002)(71200400001)(6512007)(6916009)(32563001)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata: =?us-ascii?Q?7swwIUxlUdZ1bB+kQJoXYgFaPTlGDfBKnyS5LtHr1Co50tOnK2VqbvxjRNxK?=
+ =?us-ascii?Q?YVlVZBpBzUIBGoiB7gKXSLSEkXdtcmkP7sbOY9zB5AIety1rorsx82EuiKT1?=
+ =?us-ascii?Q?WUWirPO86pRXjFlJH2T1wkv+gA6Kxrdtgj/nPX7xA5qMK7pt+Q1dpNNs8U+B?=
+ =?us-ascii?Q?oWGxbdc/DjhjJyeLrdaq2tYVG5/S01s1v6ZSTLvVjvJAk+Ki/5zNhWTHlXjJ?=
+ =?us-ascii?Q?5/iHwIqRo73fgv2ApkWy+nmRwdMfnMJEiyPs1qLpxgf0PFCL5A1BtxaKzJGZ?=
+ =?us-ascii?Q?7MZ8fLlfiBEzHcJenRerNPNKfWnZLF/0SiOwngEIwoao5rPUzf33PN7ZqpkG?=
+ =?us-ascii?Q?3Z6E8OH4rKAyPdKWNoiXshK3Yz+h6U55ynk2N5LzZ6bd/EeRYdFutHqY08aJ?=
+ =?us-ascii?Q?WIF+SMKMv2I9ATiJELd9hKA68Tb72JKOHGGriNAkTWBu4CuEOLsGNDJyhN/7?=
+ =?us-ascii?Q?zIS/fZ/p+hGofJqvFuZ1G37BRFQlazLiDfuQ7Z+FhQXqaM0/YUg/lfOx0UcO?=
+ =?us-ascii?Q?IQqbvp9MqX5IMZNWJFbBG0PhsPH8XbYF41uG/lL9/hN3X2ZLIQlh+lgyIJ19?=
+ =?us-ascii?Q?KKD+IKj7Z9ulBAoMU1tuocqjkSMhTblz6Gp5x1dHmUlKDN0sJ1iXdmoA/oUb?=
+ =?us-ascii?Q?/PmXyjdzZBeobF4GgY1fUwrC59ensl8cbxt5m1LmYVLVHh4DYlr66AWIGqSn?=
+ =?us-ascii?Q?RLmmC3dmauk3bKjOn6xN4DBkhMXu608d2vdrNjzhGH6cr/MIXnIUEfkPQULD?=
+ =?us-ascii?Q?9XMUQk/WJZPlovria3J/6ezFQqcGXgFvnh3gjpuQIJrlaLV/arGBGpUe5JhW?=
+ =?us-ascii?Q?N3YtkJQg8fViUEWifL+nHO1Rgf6G6ruGjyCkpdydHADx5BTPEXSZN4bNB1KH?=
+ =?us-ascii?Q?WbdJDLVlfHnZ2EOdCmAgi5xD5tlYWN+krXZsXVFZV10T8bmONxa0lAQwutQx?=
+ =?us-ascii?Q?30TLBtz7Zltn8q9bWGvJHs3lDH6z6hazgLPqyrl7G51pLxuLutVLkB0gcoOu?=
+ =?us-ascii?Q?yp1/?=
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <472DBBE70DE4C74D8C4743A04152C809@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210122173248.GB241302@infradead.org>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: SJ0PR10MB4688.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 3b02671d-ef91-4d85-c875-08d8bf074608
+X-MS-Exchange-CrossTenant-originalarrivaltime: 22 Jan 2021 18:55:23.2765
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: Pgnt051jTLNz35RIZUdA50dnk5v5ytSJwZb67gyrkPv9vhdDQTT9wW6jsngIxf8pfqiaVbqQwwDquB/Op34FLA==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BY5PR10MB4260
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9872 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 mlxscore=0 spamscore=0
+ suspectscore=0 phishscore=0 adultscore=0 mlxlogscore=999 bulkscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2101220096
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9872 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 mlxscore=0
+ suspectscore=0 lowpriorityscore=0 bulkscore=0 adultscore=0 spamscore=0
+ phishscore=0 priorityscore=1501 impostorscore=0 malwarescore=0
+ clxscore=1015 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2009150000 definitions=main-2101220097
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Jan 22, 2021 at 05:32:48PM +0000, Christoph Hellwig wrote:
-> On Fri, Jan 22, 2021 at 09:47:53AM -0500, J. Bruce Fields wrote:
-> > > > I also have a vague idea that some filesystem-specific improvements
-> > > > might be possible.  (E.g., if a filesystem had some kind of boot count
-> > > > in the superblock, maybe that would be a better way to prevent the
-> > > > change attribute from going backwards on reboot than the thing
-> > > > generic_fetch_iversion is currently doing with ctime.  But I have no
-> > > > concrete plan there, maybe I'm dreaming.)
-> > > 
-> > > Even without the ctime i_version never goes backward, what is the
-> > > problem here?
-> > 
-> > Suppose a modification bumps the change attribute, a client reads
-> > the new value of the change attribute before it's committed to disk,
-> > then the server crashes.  After the server comes back up, the client
-> > requests the change attribute again and sees an older value.
-> 
-> So all metadata operations kicked off by nfsd are synchronous due
-> to ->commit_metadata/sync_inode_metadata, so this could only happen
-> for operations not kicked off by nfsd.
 
-Plain old nfs write also bumps the change attribute.
 
-> More importanly ctime will
-> also be lost as i_version and the ctime are commited together.
+> On Jan 22, 2021, at 1:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote=
+:
+>=20
+> On Tue, Jan 05, 2021 at 10:30:18AM -0500, Chuck Lever wrote:
+>> As part of the update, open code that sanity-checks the size of the
+>> data payload against the length of the RPC Call message has to be
+>> re-implemented to use xdr_stream infrastructure.
+>=20
+> I'm having a little trouble parsing that.  Did you mean "write code"?
 
-That's not the reason for using ctime.
+The WRITE payload size sanity-checking code has to be re-implemented.
 
-The ctime is so that change attributes due to new changes that happen
-after the boot will not collide with change attributes used before.
 
-So:
+> --b.
+>=20
+>>=20
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> fs/nfsd/nfs3xdr.c |   51 ++++++++++++++++++++---------------------------=
+----
+>> 1 file changed, 20 insertions(+), 31 deletions(-)
+>>=20
+>> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+>> index ff98eae5db81..0aafb096de91 100644
+>> --- a/fs/nfsd/nfs3xdr.c
+>> +++ b/fs/nfsd/nfs3xdr.c
+>> @@ -405,52 +405,41 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __=
+be32 *p)
+>> int
+>> nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p)
+>> {
+>> +	struct xdr_stream *xdr =3D &rqstp->rq_arg_stream;
+>> 	struct nfsd3_writeargs *args =3D rqstp->rq_argp;
+>> -	unsigned int len, hdr, dlen;
+>> 	u32 max_blocksize =3D svc_max_payload(rqstp);
+>> 	struct kvec *head =3D rqstp->rq_arg.head;
+>> 	struct kvec *tail =3D rqstp->rq_arg.tail;
+>> +	size_t remaining;
+>>=20
+>> -	p =3D decode_fh(p, &args->fh);
+>> -	if (!p)
+>> +	if (!svcxdr_decode_nfs_fh3(xdr, &args->fh))
+>> 		return 0;
+>> -	p =3D xdr_decode_hyper(p, &args->offset);
+>> -
+>> -	args->count =3D ntohl(*p++);
+>> -	args->stable =3D ntohl(*p++);
+>> -	len =3D args->len =3D ntohl(*p++);
+>> -	if ((void *)p > head->iov_base + head->iov_len)
+>> +	if (xdr_stream_decode_u64(xdr, &args->offset) < 0)
+>> 		return 0;
+>> -	/*
+>> -	 * The count must equal the amount of data passed.
+>> -	 */
+>> -	if (args->count !=3D args->len)
+>> +	if (xdr_stream_decode_u32(xdr, &args->count) < 0)
+>> +		return 0;
+>> +	if (xdr_stream_decode_u32(xdr, &args->stable) < 0)
+>> 		return 0;
+>>=20
+>> -	/*
+>> -	 * Check to make sure that we got the right number of
+>> -	 * bytes.
+>> -	 */
+>> -	hdr =3D (void*)p - head->iov_base;
+>> -	dlen =3D head->iov_len + rqstp->rq_arg.page_len + tail->iov_len - hdr;
+>> -	/*
+>> -	 * Round the length of the data which was specified up to
+>> -	 * the next multiple of XDR units and then compare that
+>> -	 * against the length which was actually received.
+>> -	 * Note that when RPCSEC/GSS (for example) is used, the
+>> -	 * data buffer can be padded so dlen might be larger
+>> -	 * than required.  It must never be smaller.
+>> -	 */
+>> -	if (dlen < XDR_QUADLEN(len)*4)
+>> +	/* opaque data */
+>> +	if (xdr_stream_decode_u32(xdr, &args->len) < 0)
+>> 		return 0;
+>>=20
+>> +	/* request sanity */
+>> +	if (args->count !=3D args->len)
+>> +		return 0;
+>> +	remaining =3D head->iov_len + rqstp->rq_arg.page_len + tail->iov_len;
+>> +	remaining -=3D xdr_stream_pos(xdr);
+>> +	if (remaining < xdr_align_size(args->len))
+>> +		return 0;
+>> 	if (args->count > max_blocksize) {
+>> 		args->count =3D max_blocksize;
+>> -		len =3D args->len =3D max_blocksize;
+>> +		args->len =3D max_blocksize;
+>> 	}
+>>=20
+>> -	args->first.iov_base =3D (void *)p;
+>> -	args->first.iov_len =3D head->iov_len - hdr;
+>> +	args->first.iov_base =3D xdr->p;
+>> +	args->first.iov_len =3D head->iov_len - xdr_stream_pos(xdr);
+>> +
+>> 	return 1;
+>> }
+>>=20
+>>=20
 
-	0. file has change attribute i.
-	1. write bumps change attribute to i+1.
-	2. client fetches new data and change attribute i+1.
-	3. server crashes and comes back up.
-	4. a new write with different data bumps change attribute to i+1.
-	5. client fetches change attribute again, incorrectly concludes
-	   its data cache is still correct.
+--
+Chuck Lever
 
-Including the ctime ensures the change attributes at step 2 and 4 are no
-longer the same.
 
-> > That's actually not too bad.  What I'd mainly like to avoid is
-> > incrementing the change attribute further and risking reuse of an old
-> > value for a different new state of the file.
-> 
-> Ok but that is an issue if we need to deal with changes that did not
-> come in through NFSD.
-
-Those matter too, of course.
-
---b.
 
