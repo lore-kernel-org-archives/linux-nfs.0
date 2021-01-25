@@ -2,147 +2,101 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0775EC433DB
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 02:24:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0C0FC433DB
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 04:36:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CC7342168B
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 02:24:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B9A7322CAD
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 04:36:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726714AbhAYCYI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 24 Jan 2021 21:24:08 -0500
-Received: from mail.kernel.org ([198.145.29.99]:42402 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726929AbhAYBzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 24 Jan 2021 20:55:24 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id D2F25224DF
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jan 2021 01:54:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1611539679;
-        bh=pq9n19jsRZma9AVdKeOBUawVw72V5gU/vukPoUEihXM=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=PCH+rQs3ARfSu2QUDwCpbwJCFdlAKQsBarn5mhSH55Rt9BuZLjFKwo9qLiEyVLujS
-         l0sIXSSgWekpBheYI0t2yP00sRw93prgxuboYiqHYBZUnkaG5LC8YLKL82hvgJoT+x
-         BMfMy0qMsQAiBp1tHQQkAcyJlfRtvpij/uIa6aeTmepfZsM8BxFem5Nwe1X1AUFsrt
-         +ljjhfhXuLpr7HLNHQMlqO4NqeNQ62ngAWZ/3i3zKso3OS8ym9WpudFuXepdwav8xg
-         7Xjl0q1LBuxUIQli0FosuwA/2Bv9FsNN5AnUhx/mwaEZgrc8y0brNp04ka+HKGhCtR
-         eQxuQl4uBp6Mw==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] pNFS/NFSv4: Update the layout barrier when we schedule a layoutreturn
-Date:   Sun, 24 Jan 2021 20:54:34 -0500
-Message-Id: <20210125015435.45979-3-trondmy@kernel.org>
-X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20210125015435.45979-2-trondmy@kernel.org>
-References: <20210125015435.45979-1-trondmy@kernel.org>
- <20210125015435.45979-2-trondmy@kernel.org>
+        id S1726760AbhAYEgY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 24 Jan 2021 23:36:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58454 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726571AbhAYEgW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Jan 2021 23:36:22 -0500
+Received: from mail-pl1-x631.google.com (mail-pl1-x631.google.com [IPv6:2607:f8b0:4864:20::631])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0C39C061788
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jan 2021 20:35:12 -0800 (PST)
+Received: by mail-pl1-x631.google.com with SMTP id s15so6811061plr.9
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jan 2021 20:35:12 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=cloud.ionos.com; s=google;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=RF+U31mjU+vQtmYKwQP7k4EqO/12hyWNFfFTp846sxc=;
+        b=CfOwQ7limljMA7zl/lIAXVsTIKtNDlhwsicqotNl3TtlKhEjyZeIlEEJtHYW4c2U31
+         UY4hC8hbmTVMaTURi/h7AUevTqeIqn+Q1FFnUUJ35BV9ke4apIRUY5I8NbeB8KXYicfU
+         +trWj06hwAqSeMB9yfxG8wvJYR9/caMYTWeGkZl5KTSBZfynGCBz84SyjX0hbk7AWcGA
+         /222IeHt9HOYYROpDQ0wb25k1uTdAAL1nhrslb3U6So17SP9tJY8mfEDx1CUbEE7qC63
+         qpRcjNyJveRtr7uQu1UM1fJCkiAbkBaCmTSnXoAaT+i+isB4hYXJxGmrbyMs7d8MUbF7
+         BPGQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=RF+U31mjU+vQtmYKwQP7k4EqO/12hyWNFfFTp846sxc=;
+        b=s7AsU9Qvmpg6tc9b5dgkd8/vsozd+0+/2YgZAs1wQ0HHXq3OXtg5+Ck+oQYSovfVI5
+         Pj43vQEDdSzm2PnU3a5wtcDVIy5DXf/WuQro91TOvvuiQNIRk2ZRZp2QQrRUGTufeKYy
+         6NnciCcKF2CIjNM293hrHFb0mey73LPnNVlOLpPvuKxWBPD/t6vo8A63qahBbLhJRtJ+
+         W8nmToEaXUPSVjS/QP2nUORh5dId8PKgxvCmolMARhVEnZekZ6KsBrXLXAnLWkZN7UTJ
+         TlBMo+XlUjW6ULy4HgLhEyYBEpdFTPKgk9tbY7TXVxwIjA9VdSSU2AeunrqzlLHmmvpC
+         xxJw==
+X-Gm-Message-State: AOAM532oyr0JSSPX6Ukma7M9KaheHjxkC20SBVxMhbg/Najg4Rb3SqcU
+        fisQhsGUobOlasyrtRLRd+MRnA==
+X-Google-Smtp-Source: ABdhPJwcVIfcZhKpz36wBWgY9pEAr1Osy03vWby4EQev/6n4B5mRbyHylHT/8WSUq/UooHKSU12Q8g==
+X-Received: by 2002:a17:90a:1c09:: with SMTP id s9mr6518112pjs.83.1611549310994;
+        Sun, 24 Jan 2021 20:35:10 -0800 (PST)
+Received: from [10.8.2.15] ([185.125.207.232])
+        by smtp.gmail.com with ESMTPSA id x21sm15191515pgi.75.2021.01.24.20.35.02
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 24 Jan 2021 20:35:10 -0800 (PST)
+Subject: Re: [PATCH V2 0/2] remove unused argument from blk_execute_rq_nowait
+ and blk_execute_rq
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     linux-block@vger.kernel.org, target-devel@vger.kernel.org,
+        linux-scsi@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-ide@vger.kernel.org, linux-mmc@vger.kernel.org,
+        linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
+        hch@infradead.org
+References: <20210122092824.20971-1-guoqing.jiang@cloud.ionos.com>
+ <683e16be-1146-e60c-cfea-e4606844f080@kernel.dk>
+From:   Guoqing Jiang <guoqing.jiang@cloud.ionos.com>
+Message-ID: <73fd70be-90bc-9c6c-dcbe-7981f8fef4f5@cloud.ionos.com>
+Date:   Mon, 25 Jan 2021 05:34:52 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <683e16be-1146-e60c-cfea-e4606844f080@kernel.dk>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-When we're scheduling a layoutreturn, we need to ignore any further
-incoming layouts with sequence ids that are going to be affected by the
-layout return.
 
-Fixes: 44ea8dfce021 ("NFS/pnfs: Reference the layout cred in pnfs_prepare_layoutreturn()")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/pnfs.c | 39 +++++++++++++++++++++------------------
- 1 file changed, 21 insertions(+), 18 deletions(-)
+On 1/25/21 02:24, Jens Axboe wrote:
+> On 1/22/21 2:28 AM, Guoqing Jiang wrote:
+>> V2 changes:
+>> 1. update commit header per Christoph's comment.
+>>
+>> Hi Jens,
+>>
+>> This series remove unused 'q' from blk_execute_rq_nowait and blk_execute_rq.
+>> Also update the comment for blk_execute_rq_nowait.
+> 
+> What's this against? The lightnvm patch doesn't apply.
+> 
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d6262289cf4a..acb63ec00053 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -324,6 +324,21 @@ pnfs_grab_inode_layout_hdr(struct pnfs_layout_hdr *lo)
- 	return NULL;
- }
- 
-+/*
-+ * Compare 2 layout stateid sequence ids, to see which is newer,
-+ * taking into account wraparound issues.
-+ */
-+static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
-+{
-+	return (s32)(s1 - s2) > 0;
-+}
-+
-+static void pnfs_barrier_update(struct pnfs_layout_hdr *lo, u32 newseq)
-+{
-+	if (pnfs_seqid_is_newer(newseq, lo->plh_barrier))
-+		lo->plh_barrier = newseq;
-+}
-+
- static void
- pnfs_set_plh_return_info(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode,
- 			 u32 seq)
-@@ -335,6 +350,7 @@ pnfs_set_plh_return_info(struct pnfs_layout_hdr *lo, enum pnfs_iomode iomode,
- 	if (seq != 0) {
- 		WARN_ON_ONCE(lo->plh_return_seq != 0 && lo->plh_return_seq != seq);
- 		lo->plh_return_seq = seq;
-+		pnfs_barrier_update(lo, seq);
- 	}
- }
- 
-@@ -639,15 +655,6 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 	return rv;
- }
- 
--/*
-- * Compare 2 layout stateid sequence ids, to see which is newer,
-- * taking into account wraparound issues.
-- */
--static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
--{
--	return (s32)(s1 - s2) > 0;
--}
--
- static bool
- pnfs_should_free_range(const struct pnfs_layout_range *lseg_range,
- 		 const struct pnfs_layout_range *recall_range)
-@@ -984,8 +991,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
- 		new_barrier = be32_to_cpu(new->seqid);
- 	else if (new_barrier == 0)
- 		return;
--	if (pnfs_seqid_is_newer(new_barrier, lo->plh_barrier))
--		lo->plh_barrier = new_barrier;
-+	pnfs_barrier_update(lo, new_barrier);
- }
- 
- static bool
-@@ -1183,20 +1189,17 @@ pnfs_prepare_layoutreturn(struct pnfs_layout_hdr *lo,
- 		return false;
- 	set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
- 	pnfs_get_layout_hdr(lo);
-+	nfs4_stateid_copy(stateid, &lo->plh_stateid);
-+	*cred = get_cred(lo->plh_lc_cred);
- 	if (test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags)) {
--		nfs4_stateid_copy(stateid, &lo->plh_stateid);
--		*cred = get_cred(lo->plh_lc_cred);
- 		if (lo->plh_return_seq != 0)
- 			stateid->seqid = cpu_to_be32(lo->plh_return_seq);
- 		if (iomode != NULL)
- 			*iomode = lo->plh_return_iomode;
- 		pnfs_clear_layoutreturn_info(lo);
--		return true;
--	}
--	nfs4_stateid_copy(stateid, &lo->plh_stateid);
--	*cred = get_cred(lo->plh_lc_cred);
--	if (iomode != NULL)
-+	} else if (iomode != NULL)
- 		*iomode = IOMODE_ANY;
-+	pnfs_barrier_update(lo, be32_to_cpu(stateid->seqid));
- 	return true;
- }
- 
--- 
-2.29.2
+Sorry for that, will resend against for-5.12/block.
 
+Thanks,
+Guoqing
