@@ -2,264 +2,83 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-6.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2782C433E6
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 21:56:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5B6AC433DB
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 22:13:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AB49822510
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 21:56:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 95E062068D
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jan 2021 22:13:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732796AbhAYViE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 25 Jan 2021 16:38:04 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:55566 "EHLO
+        id S1726468AbhAYWNE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 25 Jan 2021 17:13:04 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:57122 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1733004AbhAYVhy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jan 2021 16:37:54 -0500
+        by vger.kernel.org with ESMTP id S1731936AbhAYWMZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jan 2021 17:12:25 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1611610587;
+        s=mimecast20190719; t=1611612659;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=9AGQ+mfuWZPgf1o7G9jfH2wEhkq5VbnMNcHJv95un4U=;
-        b=Om50DTCzizUvw71Prf2Pv/ks/IEzoP+EqfbcOMfgscnlhYLlwpDzsC5zR5IUtRNTCCcTTu
-        8SWyV0MXHnzJU56Hga3IxB5cMnwtlDAsdeJe++071LUp6J3Ia48DEPnzxeidIqxJVlZjsK
-        GaepwbDW+/W8oDmxucJkAGFsoWJJZME=
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type;
+        bh=XxzIZYfJbXzf8XFHtDGnmq7KPaRYstlqB3o28is+DnY=;
+        b=eL4a48pvNBMcEZxVKVTxxR4XFWzsCVQuiH2OgzpzOF/wiSMDtzMaG1zmPMqfTtL/PfwXds
+        f1R70+Aux+KcIYH/7TJj/jaHsVHaudpdo2dWfvkXh4AKzGHsl8t/4sOTyuuv+xuWoGW8uG
+        aegAVlCy31YiiKikYUcIugKYn+Wqm1c=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-34-_iuHzRAyM8qI7fQRD3qbTw-1; Mon, 25 Jan 2021 16:36:23 -0500
-X-MC-Unique: _iuHzRAyM8qI7fQRD3qbTw-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+ us-mta-579-H9LQIQ72MUOXzfe9Mxz5Bw-1; Mon, 25 Jan 2021 17:10:57 -0500
+X-MC-Unique: H9LQIQ72MUOXzfe9Mxz5Bw-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7081CCE64E;
-        Mon, 25 Jan 2021 21:36:20 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 0B9C118C8C01;
+        Mon, 25 Jan 2021 22:10:56 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-115-23.rdu2.redhat.com [10.10.115.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 6510A5C1C5;
-        Mon, 25 Jan 2021 21:36:14 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A714B5D9DB;
+        Mon, 25 Jan 2021 22:10:51 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 27/32] NFS: Refactor nfs_readpage() and nfs_readpage_async()
- to use nfs_readdesc
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>
-Cc:     Dave Wysochanski <dwysocha@redhat.com>, dhowells@redhat.com,
+        Anna Schumaker <anna.schumaker@netapp.com>
+cc:     dhowells@redhat.com, Dave Wysochanski <dwysocha@redhat.com>,
         Jeff Layton <jlayton@redhat.com>,
-        David Wysochanski <dwysocha@redhat.com>,
         Matthew Wilcox <willy@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 25 Jan 2021 21:36:13 +0000
-Message-ID: <161161057357.2537118.6542184374596533032.stgit@warthog.procyon.org.uk>
-In-Reply-To: <161161025063.2537118.2009249444682241405.stgit@warthog.procyon.org.uk>
-References: <161161025063.2537118.2009249444682241405.stgit@warthog.procyon.org.uk>
-User-Agent: StGit/0.23
+        linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
+Subject: How to handle NFS patches for fscache I/O partial rewrite?
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <2543103.1611612650.1@warthog.procyon.org.uk>
+Date:   Mon, 25 Jan 2021 22:10:50 +0000
+Message-ID: <2543104.1611612650@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Dave Wysochanski <dwysocha@redhat.com>
+Hi Trond, Anna,
 
-Both nfs_readpage() and nfs_readpages() use similar code.
-This patch should be no functional change, and refactors
-nfs_readpage_async() to use nfs_readdesc to enable future
-merging of nfs_readpage_async() and nfs_readpage_async_filler().
+As you may have seen, I've managed to cut down the fscache overhaul to add a
+glue layer to handle reads and switch to using async DIO through kiocbs rather
+than using sync write and async reads with page wait list snooping.  All the
+rest of the API is unchanged (for the moment).
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
----
+The glue layer (netfs helper library) handles the new VM readahead stuff and
+reading transparent huge pages on behalf of the netfs, plus read shaping,
+splitting and retrying.
 
- fs/nfs/read.c          |   62 +++++++++++++++++++++++-------------------------
- include/linux/nfs_fs.h |    3 +-
- 2 files changed, 31 insertions(+), 34 deletions(-)
+Dave Wysochanski created some NFS patches for it, which I posted as part of my
+branch.  I'd like to get them into linux-next with an eye to having them
+pulled by Linus in the next merge window, along with the rest of my branch.
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 1153c4e0a155..5fda30742a32 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -114,18 +114,23 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
- 	nfs_release_request(req);
- }
- 
--int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
-+struct nfs_readdesc {
-+	struct nfs_pageio_descriptor pgio;
-+	struct nfs_open_context *ctx;
-+};
-+
-+int nfs_readpage_async(void *data, struct inode *inode,
- 		       struct page *page)
- {
-+	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
- 	struct nfs_page	*new;
- 	unsigned int len;
--	struct nfs_pageio_descriptor pgio;
- 	struct nfs_pgio_mirror *pgm;
- 
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
--	new = nfs_create_request(ctx, page, 0, len);
-+	new = nfs_create_request(desc->ctx, page, 0, len);
- 	if (IS_ERR(new)) {
- 		unlock_page(page);
- 		return PTR_ERR(new);
-@@ -133,21 +138,21 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	if (len < PAGE_SIZE)
- 		zero_user_segment(page, len, PAGE_SIZE);
- 
--	nfs_pageio_init_read(&pgio, inode, false,
-+	nfs_pageio_init_read(&desc->pgio, inode, false,
- 			     &nfs_async_read_completion_ops);
--	if (!nfs_pageio_add_request(&pgio, new)) {
-+	if (!nfs_pageio_add_request(&desc->pgio, new)) {
- 		nfs_list_remove_request(new);
--		nfs_readpage_release(new, pgio.pg_error);
-+		nfs_readpage_release(new, desc->pgio.pg_error);
- 	}
--	nfs_pageio_complete(&pgio);
-+	nfs_pageio_complete(&desc->pgio);
- 
- 	/* It doesn't make sense to do mirrored reads! */
--	WARN_ON_ONCE(pgio.pg_mirror_count != 1);
-+	WARN_ON_ONCE(desc->pgio.pg_mirror_count != 1);
- 
--	pgm = &pgio.pg_mirrors[0];
-+	pgm = &desc->pgio.pg_mirrors[0];
- 	NFS_I(inode)->read_io += pgm->pg_bytes_written;
- 
--	return pgio.pg_error < 0 ? pgio.pg_error : 0;
-+	return desc->pgio.pg_error < 0 ? desc->pgio.pg_error : 0;
- }
- 
- static void nfs_page_group_set_uptodate(struct nfs_page *req)
-@@ -312,7 +317,7 @@ static void nfs_readpage_result(struct rpc_task *task,
-  */
- int nfs_readpage(struct file *filp, struct page *page)
- {
--	struct nfs_open_context *ctx;
-+	struct nfs_readdesc desc;
- 	struct inode *inode = page_file_mapping(page)->host;
- 	int ret;
- 
-@@ -339,39 +344,34 @@ int nfs_readpage(struct file *filp, struct page *page)
- 
- 	if (filp == NULL) {
- 		ret = -EBADF;
--		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
--		if (ctx == NULL)
-+		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
-+		if (desc.ctx == NULL)
- 			goto out_unlock;
- 	} else
--		ctx = get_nfs_open_context(nfs_file_open_context(filp));
-+		desc.ctx = get_nfs_open_context(nfs_file_open_context(filp));
- 
- 	if (!IS_SYNC(inode)) {
--		ret = nfs_readpage_from_fscache(ctx, inode, page);
-+		ret = nfs_readpage_from_fscache(desc.ctx, inode, page);
- 		if (ret == 0)
- 			goto out;
- 	}
- 
--	xchg(&ctx->error, 0);
--	ret = nfs_readpage_async(ctx, inode, page);
-+	xchg(&desc.ctx->error, 0);
-+	ret = nfs_readpage_async(&desc, inode, page);
- 	if (!ret) {
- 		ret = wait_on_page_locked_killable(page);
- 		if (!PageUptodate(page) && !ret)
--			ret = xchg(&ctx->error, 0);
-+			ret = xchg(&desc.ctx->error, 0);
- 	}
- 	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
- out:
--	put_nfs_open_context(ctx);
-+	put_nfs_open_context(desc.ctx);
- 	return ret;
- out_unlock:
- 	unlock_page(page);
- 	return ret;
- }
- 
--struct nfs_readdesc {
--	struct nfs_pageio_descriptor *pgio;
--	struct nfs_open_context *ctx;
--};
--
- static int
- readpage_async_filler(void *data, struct page *page)
- {
-@@ -390,9 +390,9 @@ readpage_async_filler(void *data, struct page *page)
- 
- 	if (len < PAGE_SIZE)
- 		zero_user_segment(page, len, PAGE_SIZE);
--	if (!nfs_pageio_add_request(desc->pgio, new)) {
-+	if (!nfs_pageio_add_request(&desc->pgio, new)) {
- 		nfs_list_remove_request(new);
--		error = desc->pgio->pg_error;
-+		error = desc->pgio.pg_error;
- 		nfs_readpage_release(new, error);
- 		goto out;
- 	}
-@@ -407,7 +407,6 @@ readpage_async_filler(void *data, struct page *page)
- int nfs_readpages(struct file *filp, struct address_space *mapping,
- 		struct list_head *pages, unsigned nr_pages)
- {
--	struct nfs_pageio_descriptor pgio;
- 	struct nfs_pgio_mirror *pgm;
- 	struct nfs_readdesc desc;
- 	struct inode *inode = mapping->host;
-@@ -440,17 +439,16 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	if (ret == 0)
- 		goto read_complete; /* all pages were read */
- 
--	desc.pgio = &pgio;
--	nfs_pageio_init_read(&pgio, inode, false,
-+	nfs_pageio_init_read(&desc.pgio, inode, false,
- 			     &nfs_async_read_completion_ops);
- 
- 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
--	nfs_pageio_complete(&pgio);
-+	nfs_pageio_complete(&desc.pgio);
- 
- 	/* It doesn't make sense to do mirrored reads! */
--	WARN_ON_ONCE(pgio.pg_mirror_count != 1);
-+	WARN_ON_ONCE(desc.pgio.pg_mirror_count != 1);
- 
--	pgm = &pgio.pg_mirrors[0];
-+	pgm = &desc.pgio.pg_mirrors[0];
- 	NFS_I(inode)->read_io += pgm->pg_bytes_written;
- 	npages = (pgm->pg_bytes_written + PAGE_SIZE - 1) >>
- 		 PAGE_SHIFT;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 681ed98e4ba8..cb0248a34518 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -570,8 +570,7 @@ nfs_have_writebacks(struct inode *inode)
- extern int  nfs_readpage(struct file *, struct page *);
- extern int  nfs_readpages(struct file *, struct address_space *,
- 		struct list_head *, unsigned);
--extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
--			       struct page *);
-+extern int  nfs_readpage_async(void *, struct inode *, struct page *);
- 
- /*
-  * inline functions
+Should I keep them in my branch and thence into linux-next, or do they need to
+go through one of your branches?
 
+Thanks,
+David
 
