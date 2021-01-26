@@ -2,233 +2,163 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	MAILING_LIST_MULTI,PDS_BAD_THREAD_QP_64,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 51B0DC433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8688C43381
 	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jan 2021 00:35:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 230752054F
+	by mail.kernel.org (Postfix) with ESMTP id 8AF5120679
 	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jan 2021 00:35:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389660AbhA0A14 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jan 2021 19:27:56 -0500
-Received: from sonic302-28.consmr.mail.ne1.yahoo.com ([66.163.186.154]:43545
-        "EHLO sonic302-28.consmr.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2389101AbhAZRNx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 12:13:53 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1611681186; bh=BDpZa6uDYOE05u5pBk0jLHUArgaNqV9t7H74QtOFt6Q=; h=From:To:Cc:Subject:Date:In-Reply-To:References:From:Subject:Reply-To; b=t3Iy5aSLPQcvGThkoFGRNq8eysuUfLusX1Wufam1X4wyFAmRDHh9Q46cRFQJSEIu4+qTPpRtf95DfPu2yIFshLGvJtr77awSPbnDJe6YLHVII2Z7gYoA/8KVDLOAeL9f3xOfoXinfslsQaH3sl9u5dhiMQCglZCmhlmdTs3pcduEKuIV/KbxCYAvQUqMbAgoIlNUebOatt5IoIXaszvwKa4mb4gh0rCM9rO9aRSYm6KwKuG4fabZDc8OF63CLnYCuh2CUWv+9gSjcnzHgo0gmYdmXsnMVPFc+ozGW/t8NuSPFwEFr2PM5jEebJLszfqNFbS09lPzBuAodT4P6s/ihA==
-X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1611681186; bh=qFWpAZxgsJb55Af7UzYFC7IAOoJYk+OBsDLuhIA2d/5=; h=From:To:Subject:Date:From:Subject:Reply-To; b=rbRdkm4iuJRj7oiInBa6XR8hioZb8KeL4EcGcyMQUMI7+mcpMQnsfuGdYVUuvMhsuJ04IA/9IqpqVRmU23WWVhcGgi2uXccX2nQepNYto/eql7RO3s6/62jAi+qnfeyP3m60lNV2y4veJ+4j12k1J8s90hI1Er/vWv3MHvel4EH8yVwgs0QFtOxYeW8eZzvoCcmh5oQciGH4cJ3MtTW0rTuDesuRMrdIAFAunUuyY9ZRPGUIkmPe3gkZF6x5fmmDjBTopv49elurvlGNi8uFcUAjXumj3pGXFeF+/2TxlzdrybDDHb7xNniFzR8fSeuQSBfL1hUlZ67wd1hMfwr7LA==
-X-YMail-OSG: VLVKbmgVM1m01P9Y9_afw3QuK9jJDTtjs6eCjC0NpBsEYrjrV2bosNpmZMLMLFe
- VK_a0Tz5QVMI8MerDRHZPI6iKBA83_yQhncoOa6sEkwvMf8GavV1WgxjiPzvLBGwCqzLgTptlKID
- i.C9EIVZ_4G8Kc0I5QN6VuGegQtCi5UJJXWVw.M.Ns1jdaT8_EfZltKodKBwkFQy4w4MmKeHhp8V
- D52azi.nVwZB7PB3w5PPxSieJ.TnQJFgZXxuJMdIy3xaaeEV0I3r0ASF3EXBtD2wl7rMlx.aXOzT
- 5ZjX70V3jcEvY.eY.1yjG5X.SeLDExt1.0mp3FSJgbIUukoCdO0RNHXYeNOw2XvdP4rtNJFCvcrI
- Y4dm57FVmdfYZsYsKSNSWr83H5BcCBSMZLxaHNI1UUS8o6nMxZF_bVDWkD3dx7b3b.VtyEhH.DFU
- Nrs1e7pZFpvM6V0.oq.oyx.wZXrwxypGSipcsXh3ii6a5d9uRjv9b_TJ.jF.jraeO0YDJIKQk35j
- P_vuWTwHfl4A_DrPQJ5GE5WH..O9sQQIo08Hszq5SL2Gx2r5DVXZIDLlBGbF6FeQbuuiefbgljTI
- RpETRk2n2LMdDkJ.XcEwR4wK2eL5Z.wtdxVS8gv3mf5GbgLRx34oamQFIr.anKnJ5kcFtIDTa3q4
- IKi3Zq9a_6XRJRq.iX90ExKztwFnYAh7QJ4KlZ7T3C19HWI9WeMUFYgkoL9aNz3CKnHnnrDeMe.K
- ihCdY8edOFXgNtOThdZUrEOLaV1AE6DXvL5GHjC6uEyrQ2WQI9D4Hx2lNOp8lpvbz2n0yiYl0bNp
- mvLCd_unoK5grSkRSXFO4rbnX4Oj2AWCrGgR4HM3iR3n_4fuNHmAhO4LbZDF4B.hCaXSUO6B0Ua3
- jJCyXNvZdfs9hkfo.CBSUh3yO6jg0ad8En1u4QbNSccD42hOVl1fQokXTA2EmjcYkLzSeqo7ibxw
- wmrMc2Y85EiAWWNLP8mymkPW4ZWqn1Tndh1mraYZMu9hIgCxUByAVQ3Qoydkiz9hPpQbBW_Hp8GP
- mdqaAIAPVwJwpq608wHGfHyjME3jIJpvAfa3eCL9SS1S.bt4jPAIFVVPmvYxaaWq8UjT__3vnsT3
- X5T6ApMOS3tWRBRIX6ZuXPjzncEXmOIR0ukgnbHIMruISNew4LFIrcF.g3Yv_KIVLDsydIrG.FEW
- OpdpECyPN.UjD72Iex9wMs3CDGw7cyOSpswCzW8MS6Wrv4n3oUpL7o0sBZ9hNRMiNK73YhW40kdy
- .CGdro9UE5eif_AQ0ZXFNn4bZbfQnoC5MmfnDDXanmZVpolQuoZV4VVQmi5sv_Vm1pAczR0wqOZm
- IvJgtuJZii2_.cnLLdnIcBd.J37v71cJjqaiNoycmUTSpC6tcafWQ1ru2jeyqMbyz.f19z2.B8ra
- qiBCM5TV7Zmc6EHQAKTpWLXmdxQcyfsoSLwLYfxwyOj.jk5KUBm77lEyLSaQ5BTXPXuLELnOaDGl
- 9RpuxEC6SAskw2163oXgPU3hNgHTPCM6grRtXgSnuIWF61iUWJkivqgpNhvPlIprSDNyj1C5mbaS
- wQcMrWjNiTUmPmIMD8lW8mHV9IB0PCWSdh.vWt1bl0_Q_uJeEPmZm.jWcZSd0r9rRg53ObfrUFsm
- 8NcmIqq04ZzwXRuzHo0JA0HJK0872zHiY7QHLMTRje5NBcypoyd6leYJTOx35LcrXWuZ6niYHWYY
- Ke8.cXiz5D3BYNLnOrTtinUdHatZT_pBLUDqwWN5K80E1lICAiRUoVvDZfMS6YmZowPYEUXUOyiU
- CEN7jbPkl9RjCyVlMm3zTVis1XBRuYuH4dwWRd5r3NHXO5t0ttNFQdIe.dWkP2YuEPBSeP9RoHKY
- db36aP7JGBGm05.h5zMSBHkyqeKjnhic3uVozaykMqEx2YiS6IpX4EGDqppI2l5RU0bT6W2iYmTU
- sF2AKkA1J99bQmLDWa0uSxyLhiuIjNZ.pT9Azq_q0KyA.rDgZZMwmYbbm1aBCS5fVhXyQD1J2ozw
- 47aIdnNEfuIy73EvJfMOB.vjqjFleTan4BshDX.9_uiOgw9K5YnVNIK6wsv4Ry9fPljlSHJIUhiA
- AGnod7jXncg7Da9ohSNYD27_ujwZD0A8ZWkG8vm0KI3X1HWeX0KO23I60CyfT79k9fCLthYJhxHn
- ngTRlsu1SzUqoW7_YSD6jrmOOEccsQZDwCxd8Vpe.Ttw.MOadIcVklGvHZbr06Ito1GQ3JuhXCLi
- fzGrffSsgtDbdz6MwNNFglsmMDQtie61OKCVWNcK5zTXWtz.n5bUOqHE0l.enNrRrDNtkVSwJjBG
- HQ_Zum.ZTDxDP7tpiHLYxrAnooMGdXfhmVlzxNaFITlB3SomE3n2fd_3N7SzM4bMxTjO8rVFYGcQ
- KICwgh8sXj5i4ysJ5UnF9QMOdr8Iu8K2KgCd7sckRDJ8kgSzY7IpAL62WbweiTBkZLIWqVnLhcvv
- ZMC4N1XIZSAXjzfrTIhR_.MHpW7EIbgP1_Vh.4saJG1TYFbfGlOEU4ikzrLoLj9HrAGlizjmxMrw
- VEmZoNLYzEqC9k06GhqzqNXunSod_66ToBfJYPNcYd3..LGWQRMWhQ4RUcUlwGnkpbM_AfagLjdd
- B6hrn57b.sPWUjqcQGz35p4c5QG9uTR.TwHcsLsCr_QtXWkDWwWVjhs3EhC4Lfls0qJDbixOnVVy
- dcX204NOVcZWnr9i26SFkxDgirRnUrkesdRbTIQ42kQccuPjUqJhk.TDQtTJdu9H3HZN3LshtQ_e
- 4EtwXD5xbqX5SinhTM5i0e9mHLgIyUb3aSxg.VTTPYz3j2LTML6Up2G3N6pNR1XE7dRcaqO.A96a
- PFdFv3.tS4cz.S8fi3bRaKFTsRC1r0dgDmoPp4GAD0ZHD_N74y4IyClCC5KecdHkRkbIOsQcAarX
- Uv2.tEpR.Mc6a5f3aI5VvhpFLtT_JuwlCsNawKiIKqBEVHGzmOluy1.y3Yl1W4oFLy0XO3qQiW4G
- x8VSKb4G8GnvGLzL3Zyqm1nUcSQ8rbN9_esmztUTxa.lCQ4o5BVFVSTqMHGzT21JUMmlc4lLVf_Q
- 932dtNBrucGSHdTPTIlWGBeqNVs8KeiBnlUY7kIEe0NqNq8BArlEMDIeAGqs3QxGRgcX4z007IL6
- jgA295Y7T_8oq2y4bmYV0jK1HadMYTXKd2Wg-
-Received: from sonic.gate.mail.ne1.yahoo.com by sonic302.consmr.mail.ne1.yahoo.com with HTTP; Tue, 26 Jan 2021 17:13:06 +0000
-Received: by smtp416.mail.bf1.yahoo.com (VZM Hermes SMTP Server) with ESMTPA ID 65f04a03bde3b39170d266c6e909c123;
-          Tue, 26 Jan 2021 17:00:15 +0000 (UTC)
-From:   Casey Schaufler <casey@schaufler-ca.com>
-To:     casey.schaufler@intel.com, jmorris@namei.org,
-        linux-security-module@vger.kernel.org, selinux@vger.kernel.org
-Cc:     casey@schaufler-ca.com, linux-audit@redhat.com,
-        keescook@chromium.org, john.johansen@canonical.com,
-        penguin-kernel@i-love.sakura.ne.jp, paul@paul-moore.com,
-        sds@tycho.nsa.gov, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v24 17/25] LSM: Use lsmcontext in security_inode_getsecctx
-Date:   Tue, 26 Jan 2021 08:41:00 -0800
-Message-Id: <20210126164108.1958-18-casey@schaufler-ca.com>
-X-Mailer: git-send-email 2.25.4
-In-Reply-To: <20210126164108.1958-1-casey@schaufler-ca.com>
-References: <20210126164108.1958-1-casey@schaufler-ca.com>
+        id S2388650AbhA0A20 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jan 2021 19:28:26 -0500
+Received: from esa6.hgst.iphmx.com ([216.71.154.45]:50956 "EHLO
+        esa6.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732414AbhAZTMd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 14:12:33 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
+  d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
+  t=1611688353; x=1643224353;
+  h=from:to:cc:subject:date:message-id:references:
+   content-transfer-encoding:mime-version;
+  bh=qycwswdKEkfSrfBGHipxmgVrIyfCcU42WNDTcdPx4d0=;
+  b=NTnzrB3ZxZn6U0sgYA6ixwWzgGO9J0I6t4jCC/N7eN49tuoIIT4zaOl+
+   dZ7KlpnZQ2Kb/wEM2xeWPZULB45z7CctY3jYRNMkkfhzc7bbKT8fEvokS
+   quD7t+NzYjWW+WVA8/k6VFQk7DH49xtm05lpAsoKzTlqTKXtt34+jaqnH
+   RqGZ98ih3l83+EfRARSs2t3PKLzybelZXDhLvdtBNbfKZqloGwSTQQ3MI
+   Oe44vB2L0XALOQuOIOJOAEJsAKaxd10O+s+eXz2tEyG1UJI5+AlTezhpD
+   uubTbmMdV7yCEXD3xKoX9kiWe7soKmIh/XbfSkQUsvIAHt50JN1CCbGsV
+   A==;
+IronPort-SDR: 9HrUbYLhXi0toG9lWlwQ111gEyZxDJnP776ZlBI/cre4cQGC66/tHZrdY7ZvWcqdOjH+D5ze95
+ TutGps+CGm7uVKGD0TBGMIxCHZaRwQ2282KRgGnO8QjYDXcobHE2JLuN3rLmPY26qVPY71dw2T
+ xqwzF7u4UA970Aq9SJcl+hjCqMuKKB/HnPRXjP5saZOGBNz3yhO/SfEQcgeExO4Kb7r+E+ykAQ
+ XGdNVbr1RVUUvi6jx8UTeQYFRxjs7dpADtExt4fiyOZFM46D3Ck3Dq5JvR6FXIld2yEROAKZYH
+ dzQ=
+X-IronPort-AV: E=Sophos;i="5.79,377,1602518400"; 
+   d="scan'208";a="159553899"
+Received: from mail-co1nam11lp2176.outbound.protection.outlook.com (HELO NAM11-CO1-obe.outbound.protection.outlook.com) ([104.47.56.176])
+  by ob1.hgst.iphmx.com with ESMTP; 27 Jan 2021 03:11:20 +0800
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=a1UdTxzrjUs4pfZi48MQJ6Pv/CbpbAa+Wh3SZ8JXHI2+1zKEKiuTx5IPbv3T9//EIWegRwhHfZAsNwMlAQTtd0BObrY3Mt2kTbTDnoLPL1Wmqxzlm26Ueiep1q/ifZIQnF1ZeqzfTnZMlFBJa93hAz6h4sVhByHprsF4OlJqB5UQU7FZ2P1Ahh4IT4JJRv+5Dh1+92jPwigb69Bd+qZJQ6JYnUehfFJGftte3T6EwlmBRxpd+qvFib61c63GPJpyTtnvazAD4QgoofKSwlkSDUx427HlzrfrxalJcDEN39FeVwlwzkJ8s0sERWS0FSQx1cBpdkVGjt6xSbTsZw8q7Q==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=qycwswdKEkfSrfBGHipxmgVrIyfCcU42WNDTcdPx4d0=;
+ b=PkBkS+/ZzTepagg6yZMWS21S2ogWWy0E94Lx2s6Ie2VfFSM36aNDIl29Rh401i0vSCR0EDF1sAZpMrgqOkm/GTEF94yE28M6mKFLXWlXtdzBx159eiygch6xD76XxOkvxTkaIL+/IXsEjlbJD8wZ49eFGpLhuB4HbpNj4L9BekYX8ppcdbQ1BllchLKJch7K7+uZbaxKFv1W/TJDVTOrAUxKLRKQK/RiD+RetBOYqrRY+UWWrz2fOuvLRPY+WXWGGunQtsk02Vvqu7q7PFEkMLrQGBEv/ZXfm/JFcX5AI7G8JIH43KVn/fkT4YSOVh43a410o6a0KqTvfK7Mv6WI7Q==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=wdc.com; dmarc=pass action=none header.from=wdc.com; dkim=pass
+ header.d=wdc.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=sharedspace.onmicrosoft.com; s=selector2-sharedspace-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=qycwswdKEkfSrfBGHipxmgVrIyfCcU42WNDTcdPx4d0=;
+ b=PrVh+41fYjjTea3vPDoMebpSZh/LOBX+Wy5D7i2YyXFwnEktcnu04SFNCPZgwromMFrPzERw99RGdu2i3N+UOCF33YF6Gnm289xkUWn7uihL6uhwqUolBOdp661zHcnM7MY+4INjSee6xVFJa4rizpquDOZIx8NDnbSCYPpAdfs=
+Received: from BYAPR04MB4965.namprd04.prod.outlook.com (2603:10b6:a03:4d::25)
+ by SJ0PR04MB7262.namprd04.prod.outlook.com (2603:10b6:a03:292::10) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3784.13; Tue, 26 Jan
+ 2021 19:11:18 +0000
+Received: from BYAPR04MB4965.namprd04.prod.outlook.com
+ ([fe80::1d83:38d9:143:4c9c]) by BYAPR04MB4965.namprd04.prod.outlook.com
+ ([fe80::1d83:38d9:143:4c9c%5]) with mapi id 15.20.3784.016; Tue, 26 Jan 2021
+ 19:11:18 +0000
+From:   Chaitanya Kulkarni <Chaitanya.Kulkarni@wdc.com>
+To:     Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        Song Liu <song@kernel.org>
+CC:     Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        Philipp Reisner <philipp.reisner@linbit.com>,
+        Lars Ellenberg <lars.ellenberg@linbit.com>,
+        Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        Damien Le Moal <Damien.LeMoal@wdc.com>,
+        Naohiro Aota <Naohiro.Aota@wdc.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        "linux-nilfs@vger.kernel.org" <linux-nilfs@vger.kernel.org>,
+        "dm-devel@redhat.com" <dm-devel@redhat.com>,
+        "linux-f2fs-devel@lists.sourceforge.net" 
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>,
+        "linux-bcache@vger.kernel.org" <linux-bcache@vger.kernel.org>,
+        "linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>
+Subject: Re: [PATCH 02/17] btrfs: use bio_kmalloc in __alloc_device
+Thread-Topic: [PATCH 02/17] btrfs: use bio_kmalloc in __alloc_device
+Thread-Index: AQHW8/R60f6RE8OXIUCkbvhVzCX0Mg==
+Date:   Tue, 26 Jan 2021 19:11:18 +0000
+Message-ID: <BYAPR04MB4965808085867317CEDE615186BC9@BYAPR04MB4965.namprd04.prod.outlook.com>
+References: <20210126145247.1964410-1-hch@lst.de>
+ <20210126145247.1964410-3-hch@lst.de>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: lst.de; dkim=none (message not signed)
+ header.d=none;lst.de; dmarc=none action=none header.from=wdc.com;
+x-originating-ip: [2600:8802:270c:4b00:b091:5edc:1473:bf45]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-ht: Tenant
+x-ms-office365-filtering-correlation-id: fa00d4b4-9e05-4e1e-33e9-08d8c22e28dc
+x-ms-traffictypediagnostic: SJ0PR04MB7262:
+x-ms-exchange-transport-forked: True
+x-microsoft-antispam-prvs: <SJ0PR04MB7262B19D21BE2A31F5E3BD6386BC9@SJ0PR04MB7262.namprd04.prod.outlook.com>
+wdcipoutbound: EOP-TRUE
+x-ms-oob-tlc-oobclassifiers: OLM:227;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: 2KZA1/rEr/W1lpsd1PINRSs1f7HpMDml5NjuyzUcogKy1mCT3fgeDTpF1FIazWAF8MR+Yd77vp/F11XUtpv4hlThBYYPia3DmQ3A0TjfFC3J2cJF+KKjRN2E9Tm8nWK52cTa6a7EPO7VSVnqQErVZjbOGFbPuWeUnlVkO0SJ8CYaG1DNLb21CabGvBVe3IsaV5GSQZBROQTlzVK8iza7zdXyXqkCCeOOhHuJzC1eVj2COw1C25soX+k/CX4rzrvgMO0TE64hT07HISuBgQPH/h7MD8gwNSXWJ7OlYni5WZxKiT7usYVgJNc3IxG5cjHtnTy89noCKjl1EqsF6pmTZ5Ai2ujRbw1TrlyHA+3XFnf1FpT/Qr+35LLAPDF1bM0Slawui5uIfyO9Zso13TkCpa2row9Nceqzhaqd9NlOxz9evZLDBqSN+GmxWoIUcnmqJSKRI+ifYMag5l+7vv51aEg8h7xD36SCxPYGVJJx5LKFwkUvdDykR3BcdLZ0yU2uTuTITD8PlslERMvihzVByw==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BYAPR04MB4965.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(39860400002)(396003)(376002)(136003)(366004)(346002)(558084003)(52536014)(186003)(33656002)(7696005)(8936002)(53546011)(6506007)(8676002)(110136005)(9686003)(316002)(64756008)(66556008)(5660300002)(55016002)(54906003)(66946007)(66476007)(66446008)(4326008)(76116006)(71200400001)(2906002)(7416002)(86362001)(478600001);DIR:OUT;SFP:1102;
+x-ms-exchange-antispam-messagedata: =?us-ascii?Q?d4ptxX6mZEPBGIZsteWKaLZjzSo1m+Lq7aENEzkgzE+r+P9kNQHhSVi1ehRM?=
+ =?us-ascii?Q?RMLcPq2hxicyKbHz+eg+N+ogzO9lhKeNRPhcPnLHWgdf7QfWGmIt2THZ8Fw3?=
+ =?us-ascii?Q?6S78Vl8duyVcvcecfD5nQy4TwkCdlwFeoBVONhhsfO7sK1cG880KqU9UTi/G?=
+ =?us-ascii?Q?oiatjNa4LLxdzYXulB5dVOrifgDo7omNXmOdISIK/wwGMWMzTUqBHftGHQqb?=
+ =?us-ascii?Q?zk3qx5Mh8mXAqrXa3W6ZFVuGW9TBRzJvPG1iOXRKAnArShWTbqDFhSXG1hoy?=
+ =?us-ascii?Q?WIZHCGn8KSyKiEZXkNVlSFKxV17kfwTXzKk7NNtP4gTf6U6n1zQS1dXSWkhn?=
+ =?us-ascii?Q?Yl0iClvJsO+6dqGmA6WYOKm/u9Zp5OedUru6UgVMKWYARWer7jvh4kpjLfVT?=
+ =?us-ascii?Q?jNNLn06mRoEVmZcG6rjqqf5+tpX7XpNEzc2yQ1+4R2gGH3p43HylRaDbOhl2?=
+ =?us-ascii?Q?Lb19ODYgIlpXUbk0tgTZ8jN0J50YN1EVSazlk6hjdC673/LMlx/MSYgI21zQ?=
+ =?us-ascii?Q?W/dvD6CTswOGwZ8vdTTq+/6F+plGhCuqfJobVaqyCjTVzpeWDWWvgb61/xTF?=
+ =?us-ascii?Q?O7ZU72VgeL0o+xyrwiSDlGEayXnCsivG3sH21/Gy589h8UI08L646cL6A/T4?=
+ =?us-ascii?Q?dHSPBbHgBX6fowOnMoN0YrgG87OzCbN4XxNm/ABh1QekfQ7l+9Zgjhe2mu5B?=
+ =?us-ascii?Q?/e2goxVgjfFAILuB79AinYBOwGSf9KVTlLwwPlJTh+IdW6+8o7QzJREpaIgH?=
+ =?us-ascii?Q?2IxE7UeVmoDOhw4GCxJR2Room/m20b+K15If9Brbnv5ETahJvVeT+4Fvga7k?=
+ =?us-ascii?Q?kFle1+xQ9qSBL3qCsR844RUQv+fmwkDLQxBcWJjW/uqnci5ls5Y9sA/Pq3u6?=
+ =?us-ascii?Q?Xe1bz6CLthQv1PiaZGp4jwHKU+riFE8/z6aGlKffeOiruP0v2pJapm00K23Z?=
+ =?us-ascii?Q?DMBCjL327szzR5Nku5yRBJZ1p8HSqozCpp32w8zzQwbpSRNJMKboeugOafYn?=
+ =?us-ascii?Q?iyDKdxmH4Eb1cuNL6Cf0b94NpxR2YdspdcERHuyLjyZzgoxcE/ENl5YsNLbp?=
+ =?us-ascii?Q?7G9h33NyV4Lir4m0h2OvTVl+59AmQe/tvhNz5aOqgQurle+SKteGNpSyVNLz?=
+ =?us-ascii?Q?hpWu2csTD3cO/KMFJSiB4RSVnIQ67Hb/Rg=3D=3D?=
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-OriginatorOrg: wdc.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BYAPR04MB4965.namprd04.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: fa00d4b4-9e05-4e1e-33e9-08d8c22e28dc
+X-MS-Exchange-CrossTenant-originalarrivaltime: 26 Jan 2021 19:11:18.1689
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: b61c8803-16f3-4c35-9b17-6f65f441df86
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: NW/d4FbXu1icGoh8C9XQmW4dRM0JEd+cBUzwUw/wAHLhcJ6XSs3gYponomIRJGMZ8CrpHOU6ygsZgtqzLCnAa5EXK3aXQckWIRUfscUiJ7o=
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR04MB7262
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Change the security_inode_getsecctx() interface to fill
-a lsmcontext structure instead of data and length pointers.
-This provides the information about which LSM created the
-context so that security_release_secctx() can use the
-correct hook.
-
-Acked-by: Stephen Smalley <sds@tycho.nsa.gov>
-Acked-by: Paul Moore <paul@paul-moore.com>
-Reviewed-by: John Johansen <john.johansen@canonical.com>
-Signed-off-by: Casey Schaufler <casey@schaufler-ca.com>
-Cc: linux-nfs@vger.kernel.org
----
- fs/nfsd/nfs4xdr.c        | 23 +++++++++--------------
- include/linux/security.h |  5 +++--
- security/security.c      | 13 +++++++++++--
- 3 files changed, 23 insertions(+), 18 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 43698f15a52b..ac855bf37869 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2717,11 +2717,11 @@ nfsd4_encode_layout_types(struct xdr_stream *xdr, u32 layout_types)
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
- static inline __be32
- nfsd4_encode_security_label(struct xdr_stream *xdr, struct svc_rqst *rqstp,
--			    void *context, int len)
-+			    struct lsmcontext *context)
- {
- 	__be32 *p;
- 
--	p = xdr_reserve_space(xdr, len + 4 + 4 + 4);
-+	p = xdr_reserve_space(xdr, context->len + 4 + 4 + 4);
- 	if (!p)
- 		return nfserr_resource;
- 
-@@ -2731,13 +2731,13 @@ nfsd4_encode_security_label(struct xdr_stream *xdr, struct svc_rqst *rqstp,
- 	 */
- 	*p++ = cpu_to_be32(0); /* lfs */
- 	*p++ = cpu_to_be32(0); /* pi */
--	p = xdr_encode_opaque(p, context, len);
-+	p = xdr_encode_opaque(p, context->context, context->len);
- 	return 0;
- }
- #else
- static inline __be32
- nfsd4_encode_security_label(struct xdr_stream *xdr, struct svc_rqst *rqstp,
--			    void *context, int len)
-+			    struct lsmcontext *context)
- { return 0; }
- #endif
- 
-@@ -2834,9 +2834,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 	int err;
- 	struct nfs4_acl *acl = NULL;
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
--	struct lsmcontext scaff; /* scaffolding */
--	void *context = NULL;
--	int contextlen;
-+	struct lsmcontext context = { };
- #endif
- 	bool contextsupport = false;
- 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
-@@ -2894,7 +2892,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 	     bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
- 		if (exp->ex_flags & NFSEXP_SECURITY_LABEL)
- 			err = security_inode_getsecctx(d_inode(dentry),
--						&context, &contextlen);
-+						       &context);
- 		else
- 			err = -EOPNOTSUPP;
- 		contextsupport = (err == 0);
-@@ -3314,8 +3312,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
- 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
--		status = nfsd4_encode_security_label(xdr, rqstp, context,
--								contextlen);
-+		status = nfsd4_encode_security_label(xdr, rqstp, &context);
- 		if (status)
- 			goto out;
- 	}
-@@ -3336,10 +3333,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 
- out:
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
--	if (context) {
--		lsmcontext_init(&scaff, context, contextlen, 0); /*scaffolding*/
--		security_release_secctx(&scaff);
--	}
-+	if (context.context)
-+		security_release_secctx(&context);
- #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
- 	kfree(acl);
- 	if (tempfh) {
-diff --git a/include/linux/security.h b/include/linux/security.h
-index ead44674cea2..e5740e08bc0c 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -571,7 +571,7 @@ void security_release_secctx(struct lsmcontext *cp);
- void security_inode_invalidate_secctx(struct inode *inode);
- int security_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen);
- int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen);
--int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen);
-+int security_inode_getsecctx(struct inode *inode, struct lsmcontext *cp);
- int security_locked_down(enum lockdown_reason what);
- #else /* CONFIG_SECURITY */
- 
-@@ -1418,7 +1418,8 @@ static inline int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32
- {
- 	return -EOPNOTSUPP;
- }
--static inline int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
-+static inline int security_inode_getsecctx(struct inode *inode,
-+					   struct lsmcontext *cp)
- {
- 	return -EOPNOTSUPP;
- }
-diff --git a/security/security.c b/security/security.c
-index aab6d3f86e4a..ba39b9b13e08 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -2324,9 +2324,18 @@ int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
- }
- EXPORT_SYMBOL(security_inode_setsecctx);
- 
--int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
-+int security_inode_getsecctx(struct inode *inode, struct lsmcontext *cp)
- {
--	return call_int_hook(inode_getsecctx, -EOPNOTSUPP, inode, ctx, ctxlen);
-+	struct security_hook_list *hp;
-+
-+	memset(cp, 0, sizeof(*cp));
-+
-+	hlist_for_each_entry(hp, &security_hook_heads.inode_getsecctx, list) {
-+		cp->slot = hp->lsmid->slot;
-+		return hp->hook.inode_getsecctx(inode, (void **)&cp->context,
-+						&cp->len);
-+	}
-+	return -EOPNOTSUPP;
- }
- EXPORT_SYMBOL(security_inode_getsecctx);
- 
--- 
-2.25.4
-
+On 1/26/21 7:04 AM, Christoph Hellwig wrote:=0A=
+> Use bio_kmalloc instead of open coding it.=0A=
+>=0A=
+> Signed-off-by: Christoph Hellwig <hch@lst.de>=0A=
+Looks good.=0A=
+=0A=
+Reviewed-by: Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>=0A=
+=0A=
