@@ -2,231 +2,191 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	PDS_BAD_THREAD_QP_64,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28FFFC433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D0125C4332D
 	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:28:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EE22122B51
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:28:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 983DE22D58
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:28:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2405770AbhAZP03 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jan 2021 10:26:29 -0500
-Received: from aserp2120.oracle.com ([141.146.126.78]:59180 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2403768AbhAZP0Q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:26:16 -0500
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 10QFOdtw032245;
-        Tue, 26 Jan 2021 15:24:39 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2020-01-29;
- bh=7Ing7VDRfrcAJonR1cdmpWR+P8/J9mhYFni0AC5d/EQ=;
- b=xcjP2kvZK/BtgCJ9Jaqr4/y/5Ed801beYgrby1EPkvRGEvL9oyIv/jAw1lrIzE5z30XW
- IPnAH66N0DK/ruYlyGCjcgxGCpiHfslEQgK22ln/yxYpsDYDadppL+VFBzu4cIjEPlZ3
- yQPQHgfpPA3o43qPwnz+ZHq9u52kkaVe4hg98N5E7eSugpsxTgyxq4wkGwBLoFDoaNU9
- HFPZsDydfL1/C51ues91MdI6s6hC8U0uVHrC2R++ICnwXf+VtBBuTEr5fwG0egvGqadq
- qtn8ohnnz7qR11jlP+56u+yawL4/ttByJ1CpmdDX77nC0WrtpS82H8tRcy0KWdbey9g8 tQ== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by aserp2120.oracle.com with ESMTP id 368brkjg46-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 26 Jan 2021 15:24:39 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 10QFKCMd172700;
-        Tue, 26 Jan 2021 15:24:34 GMT
-Received: from nam12-dm6-obe.outbound.protection.outlook.com (mail-dm6nam12lp2173.outbound.protection.outlook.com [104.47.59.173])
-        by userp3030.oracle.com with ESMTP id 368wqwhsdg-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 26 Jan 2021 15:24:34 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=LVnBZeVH/Dd53On8c4Dp5B6TzXnGVrzXD1D9dhah7IBu3+s3uXhEPDKMA7KodyWaakXGgwrd03DRl+BiWjjmhweqwdCfpURiF4rk9IGkxd7FJWs441u9ST0Z2okj+qZTVVxQGh1OBYmbfRehv+lxNmvQYcEDVoWolUrdwnFMSH/tPeJ4KnSDltaQ61sX3MzFN7cx7FgWAUJ3nD7l0XN/FPRLI2FOaFpm+ZdIOXvzPKzj1O6crWym9yjz9xPpcpaCe5W5Iq8LGfWtEGzRzoaJ6S+8dLH3ji4Vgohe0P3S2AuRdSiRVHxUZpgU9gdPY+5AJbM0/Fv1z7tZ18UJcvoXbA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=7Ing7VDRfrcAJonR1cdmpWR+P8/J9mhYFni0AC5d/EQ=;
- b=IAf9o5oZin/FiujCKpBxegpFqh7FjgVweWav8JbrHSLxsLKtJjx5uftJmEQKOjvUG6MSq3LeBhuv/eOcpyWJeB/skVFQI4Evl79aaVhVoJjyyqPFcj1CNDmKYlhJ8NVrtIJwXKAMzS1fr4Z2Hd2k88xa05uJV51hA6D9feMOtYmpaldy0DdMzyjIaWxK7YxLw/WO8SSm0NoxY1yfDySpYumMJXAhU5xY7rwAQcSChj9gAZ0kW+/MAgaMlxn1pleIM5ALE6MkfjqMvNzPZb/0q0uIJbQNbgwm+VCt22UMcdIYfNfloHZwji2XirzPHoBtEeqQXuT+pPLL4Qi6ThsLsA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=7Ing7VDRfrcAJonR1cdmpWR+P8/J9mhYFni0AC5d/EQ=;
- b=PeYtJKKhHJr74I3C+uDvFTJtvMv6KKUETZBPS1FWpVzdcatipq9Abt/Q4N9P7pk8rFecZR1lc1vmTV0t8Y7/6ykMvq4RwfrXqkTMAoMR01Bmdx7X67Aw7o5/ElIZm3alPjSJ1ALH6P0BkW2OvLucX9GxGbr3Za9FFgQtYthC+B0=
-Received: from SJ0PR10MB4688.namprd10.prod.outlook.com (2603:10b6:a03:2db::24)
- by BYAPR10MB2870.namprd10.prod.outlook.com (2603:10b6:a03:8d::26) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3784.13; Tue, 26 Jan
- 2021 15:24:32 +0000
-Received: from SJ0PR10MB4688.namprd10.prod.outlook.com
- ([fe80::6da8:6d28:b83:702b]) by SJ0PR10MB4688.namprd10.prod.outlook.com
- ([fe80::6da8:6d28:b83:702b%4]) with mapi id 15.20.3784.019; Tue, 26 Jan 2021
- 15:24:32 +0000
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     Matthew Wilcox <willy@infradead.org>,
-        David Howells <dhowells@redhat.com>,
-        Dave Wysochanski <dwysocha@redhat.com>
-CC:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-cachefs <linux-cachefs@redhat.com>,
-        "linux-afs@lists.infradead.org" <linux-afs@lists.infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "v9fs-developer@lists.sourceforge.net" 
-        <v9fs-developer@lists.sourceforge.net>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 32/32] NFS: Convert readpage to readahead and use
- netfs_readahead for fscache
-Thread-Topic: [PATCH 32/32] NFS: Convert readpage to readahead and use
- netfs_readahead for fscache
-Thread-Index: AQHW82MzEY7Udq3xF0mVxFQYNQk01w==
-Date:   Tue, 26 Jan 2021 15:24:31 +0000
-Message-ID: <D6C85B77-17CA-4BA6-9C2C-C63A8AF613AB@oracle.com>
-References: <161161025063.2537118.2009249444682241405.stgit@warthog.procyon.org.uk>
- <161161064956.2537118.3354798147866150631.stgit@warthog.procyon.org.uk>
- <20210126013611.GI308988@casper.infradead.org>
-In-Reply-To: <20210126013611.GI308988@casper.infradead.org>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: infradead.org; dkim=none (message not signed)
- header.d=none;infradead.org; dmarc=none action=none header.from=oracle.com;
-x-originating-ip: [68.61.232.219]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 04f828bb-8954-4996-f5ac-08d8c20e7afb
-x-ms-traffictypediagnostic: BYAPR10MB2870:
-x-microsoft-antispam-prvs: <BYAPR10MB2870DEB5FD262BCF64E6EE2193BC9@BYAPR10MB2870.namprd10.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:8882;
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: 6IhxpFKT2Muz2ZfUadsZPZr9bomlmXz8UbO/XOzhlZaxeEsyAlklY9dbdxDmAoStKxXs9THlZqP7nUiJyvZbKN4t5pp5YSZmMXgg2gfLzWVq0eaDiOXPW5Ei3jrk7YbicY1z4GyomqaMXoz1Xn5EjybFo8ZVnvyHEmxLfg9OGhdM+4vaq5EfjDT5j5jT2MZSZqWSLxRGBrKZDNZcmww5HyPEqptQMm8jMZ9O52hKRTFHADb1Tb9B+M2dsl5o3t9HxutN3lwuBMFIwdqYgOQqkgMO8DjsSqXmvwdr2l/Sl/Vn56e39915fSoDMf5AuisLU2MIb4uw9ArTFDCopCXjL8fVQu1oB8fZCOTWXyaBcjw3aDx/G2OIzfID5LGV8uhnfb5FlIAgiAvKQ8rhofrUSxln4H6yqC2M5mr5vOjNSjh6odgaMBCN+ObD0fN82O4FItMbXXZMMrXyVQfUo7/sB0fJ0Vn+Tzuog+elveBVeWzCUBn/DpISVjNfRsflFnz3L+hjyYGI7mYSIL1IeIdPcHEJVhcB8T8uLSdqtLnynVMAuv2B+2vPMj88zV544ZG331+Z7pKkQGatHkR0zyyhnA==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(39860400002)(366004)(376002)(136003)(396003)(346002)(7416002)(66946007)(33656002)(2616005)(6512007)(91956017)(76116006)(5660300002)(8676002)(186003)(4326008)(8936002)(2906002)(66556008)(54906003)(64756008)(478600001)(44832011)(66476007)(66446008)(110136005)(36756003)(86362001)(316002)(6506007)(53546011)(83380400001)(6486002)(26005)(71200400001)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata: =?us-ascii?Q?2C447poday5LjZJ/hFasOfwgDPkszhHhM6yTMIW7AHY7XsPQlW5Eo43r8sye?=
- =?us-ascii?Q?G8PvQ1EhofkmczOhLNqtyOot7Dk3xElj79l15k1wa5wlI6CEPApRxEq9cIxq?=
- =?us-ascii?Q?3Mi7bbPcOIhtyuu9l4O6/tCWcvBeo8GJ7C/b38/icKvr5yZv/IrqAJ2QVIy9?=
- =?us-ascii?Q?WmxlaftK+4kYxQrWAQnTNc8tXdGfGk2QT30Bx1HuZl1NdmBm2fFpoM9AGyTv?=
- =?us-ascii?Q?hD8vbRHtfFH4k7WBDDXZltdIdyvUZcZvG9PTgx9SKrxaM6C9GAv8BwLmrHso?=
- =?us-ascii?Q?lPXiHFOeHJwsZh8kCg0DyUyZF9EcX1H2CM0aUi8VovPCncBXbACLd0balOuP?=
- =?us-ascii?Q?ds0ADAue2ougxnz1gG5ir9wXIfYYrup6Rse42e17KdTmW4cyNU6rc/8KDU61?=
- =?us-ascii?Q?olY5aGzVjt1YVjU72PyjbZTz0mnIGT94CKlKrRwSbNUfSiWgqP98/Fw67xsc?=
- =?us-ascii?Q?lRjgxQ0fBSrtr/evOM2Wp25xSH/OyQ8vOYroVhU7owFQXuwULfySukMn8iKK?=
- =?us-ascii?Q?dl1hUwZPfMy061Li9rMUOHVDMxMT0NAD7EfsjY7vyJDRNnMdq3l0tAgxmc6R?=
- =?us-ascii?Q?QLSj3+vPchDCRL8WG9tCQ5Z4bGhVQ0iir22PrQua3EvxCwRvTbLu7IiuUQnv?=
- =?us-ascii?Q?PBfNoRFr02vy3yDUE53NH50+uR202bqWO+HMpzVXa7qgcDZlhMsG1hLhG2AV?=
- =?us-ascii?Q?lA6CAfT/hrd0JROfMA1c89Q//csmu98c3IxJ1l0L0xIhba33rZQH5Rzmw2t6?=
- =?us-ascii?Q?6DgUsOnZ+Apz0KSR44wHuHcCWIGHtJGNEp8wciw+AFBUcnC0NdVyMp4t1PIM?=
- =?us-ascii?Q?35vNAq/l/5ZY2g6+Z/FjzQ/c/pGZKF0uIt6SrrDsTE/0KusSvfc/JsRTKuWA?=
- =?us-ascii?Q?AiCSEwGkYaRa8wxOnGMGn0ParRLncAbHSZD2ZJk/xBXTjC+qowhzt24WC+3G?=
- =?us-ascii?Q?Mh1CNh9gd1Rh90nFQXE0nvebe24D8l21j74vGWQ0Idsqqb3YXhscoTsOd8HH?=
- =?us-ascii?Q?DTxeWFOc3HW3/d6YIiu8uKg1NaeWiI7wwS7qUAUP+RAgVbkvR/OwRO14A/LZ?=
- =?us-ascii?Q?vx36xwW7PEpOuWJBF+WhAx5RB6I7Lw=3D=3D?=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <DCC33538A9AE0E4E84CB4C014FB5E2A8@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        id S2392152AbhAZP2i (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jan 2021 10:28:38 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57902 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2405889AbhAZP03 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:26:29 -0500
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 201BEC061D73;
+        Tue, 26 Jan 2021 07:25:48 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=imDKE4404TVupECTT3CTRw+cqCPUxNPppd2/iiQCXMs=; b=aQgfKd6q628v0njktwMXtO+tpa
+        VQ6AN2ML+AjC9smASiy0wrdfS4sFFCnIEmcIXu/uC9Ta7v/gFWb+6z6PpQmY8jMFGWtYqV8VJSHA0
+        dXAF/4pi0+HC8kVchlMaU5GmAZa714wa2/luSOmABw0GZfAT6AU7MbJuMKkGL5tnR0JtqQacKoy8n
+        WCCfmaNoO8QrPSmsSJPHsjQGoOnH268uw3Hhya2Ewhml5arq/gCxUDMs/smtqApFBFC+qBFUve6kd
+        hWTlztN9lb5yJebq1pTZJuSmAUl3qDJDAbW4e+pnBNWS1tiUosnRkCm/5hJV/Kb0mS6xYMUviraAV
+        ixL6cw1Q==;
+Received: from [2001:4bb8:191:e347:5918:ac86:61cb:8801] (helo=localhost)
+        by casper.infradead.org with esmtpsa (Exim 4.94 #2 (Red Hat Linux))
+        id 1l4QAZ-005opo-7d; Tue, 26 Jan 2021 15:22:55 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Jens Axboe <axboe@kernel.dk>, Song Liu <song@kernel.org>
+Cc:     Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        Philipp Reisner <philipp.reisner@linbit.com>,
+        Lars Ellenberg <lars.ellenberg@linbit.com>,
+        Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        Naohiro Aota <naohiro.aota@wdc.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        linux-nilfs@vger.kernel.org, dm-devel@redhat.com,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-block@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-mm@kvack.org
+Subject: [PATCH 17/17] mm: remove get_swap_bio
+Date:   Tue, 26 Jan 2021 15:52:47 +0100
+Message-Id: <20210126145247.1964410-18-hch@lst.de>
+X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20210126145247.1964410-1-hch@lst.de>
+References: <20210126145247.1964410-1-hch@lst.de>
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: SJ0PR10MB4688.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 04f828bb-8954-4996-f5ac-08d8c20e7afb
-X-MS-Exchange-CrossTenant-originalarrivaltime: 26 Jan 2021 15:24:31.9657
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: oxUQfISdZn4Unci5ovLH412F+URCEp//5xGN6xRm2luk+WGfznX5C66iWC+RCO/UGh8VULsiK/HED4AvIj7ngw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR10MB2870
-X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9876 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 spamscore=0 phishscore=0
- adultscore=0 mlxlogscore=999 malwarescore=0 suspectscore=0 bulkscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
- definitions=main-2101260084
-X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9876 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 impostorscore=0
- phishscore=0 bulkscore=0 priorityscore=1501 mlxlogscore=999
- lowpriorityscore=0 spamscore=0 mlxscore=0 suspectscore=0 malwarescore=0
- clxscore=1011 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2101260084
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Just reuse the block_device and sector from the swap_info structure,
+just as used by the SWP_SYNCHRONOUS path.  Also remove the checks for
+NULL returns from bio_alloc as that can't happen for sleeping
+allocations.
 
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/swap.h |  1 -
+ mm/page_io.c         | 45 +++++++++++++-------------------------------
+ mm/swapfile.c        | 10 ----------
+ 3 files changed, 13 insertions(+), 43 deletions(-)
 
-> On Jan 25, 2021, at 8:36 PM, Matthew Wilcox <willy@infradead.org> wrote:
->=20
->=20
-> For Subject: s/readpage/readpages/
->=20
-> On Mon, Jan 25, 2021 at 09:37:29PM +0000, David Howells wrote:
->> +int __nfs_readahead_from_fscache(struct nfs_readdesc *desc,
->> +				 struct readahead_control *rac)
->=20
-> I thought you wanted it called ractl instead of rac?  That's what I've
-> been using in new code.
->=20
->> -	dfprintk(FSCACHE, "NFS: nfs_getpages_from_fscache (0x%p/%u/0x%p)\n",
->> -		 nfs_i_fscache(inode), npages, inode);
->> +	dfprintk(FSCACHE, "NFS: nfs_readahead_from_fscache (0x%p/0x%p)\n",
->> +		 nfs_i_fscache(inode), inode);
->=20
-> We do have readahead_count() if this is useful information to be logging.
-
-As a sidebar, the Linux NFS community is transitioning to tracepoints.
-It would be helpful (but not completely necessary) to use tracepoints
-in new code instead of printk.
-
-
->> +static inline int nfs_readahead_from_fscache(struct nfs_readdesc *desc,
->> +					     struct readahead_control *rac)
->> {
->> -	if (NFS_I(inode)->fscache)
->> -		return __nfs_readpages_from_fscache(ctx, inode, mapping, pages,
->> -						    nr_pages);
->> +	if (NFS_I(rac->mapping->host)->fscache)
->> +		return __nfs_readahead_from_fscache(desc, rac);
->> 	return -ENOBUFS;
->> }
->=20
-> Not entirely sure that it's worth having the two functions separated any =
-more.
->=20
->> 	/* attempt to read as many of the pages as possible from the cache
->> 	 * - this returns -ENOBUFS immediately if the cookie is negative
->> 	 */
->> -	ret =3D nfs_readpages_from_fscache(desc.ctx, inode, mapping,
->> -					 pages, &nr_pages);
->> +	ret =3D nfs_readahead_from_fscache(&desc, rac);
->> 	if (ret =3D=3D 0)
->> 		goto read_complete; /* all pages were read */
->>=20
->> 	nfs_pageio_init_read(&desc.pgio, inode, false,
->> 			     &nfs_async_read_completion_ops);
->>=20
->> -	ret =3D read_cache_pages(mapping, pages, readpage_async_filler, &desc)=
-;
->> +	while ((page =3D readahead_page(rac))) {
->> +		ret =3D readpage_async_filler(&desc, page);
->> +		put_page(page);
->> +	}
->=20
-> I thought with the new API we didn't need to do this kind of thing
-> any more?  ie no matter whether fscache is configured in or not, it'll
-> submit the I/Os.
-
---
-Chuck Lever
-
-
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 596bc2f4d9b03e..3f1f7ae0fbe9e1 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -468,7 +468,6 @@ extern int free_swap_and_cache(swp_entry_t);
+ int swap_type_of(dev_t device, sector_t offset);
+ int find_first_swap(dev_t *device);
+ extern unsigned int count_swap_pages(int, int);
+-extern sector_t map_swap_page(struct page *, struct block_device **);
+ extern sector_t swapdev_block(int, pgoff_t);
+ extern int page_swapcount(struct page *);
+ extern int __swap_count(swp_entry_t entry);
+diff --git a/mm/page_io.c b/mm/page_io.c
+index a75f35464a4e73..92f7941c6d018b 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -26,25 +26,6 @@
+ #include <linux/uio.h>
+ #include <linux/sched/task.h>
+ 
+-static struct bio *get_swap_bio(gfp_t gfp_flags,
+-				struct page *page, bio_end_io_t end_io)
+-{
+-	struct bio *bio;
+-
+-	bio = bio_alloc(gfp_flags, 1);
+-	if (bio) {
+-		struct block_device *bdev;
+-
+-		bio->bi_iter.bi_sector = map_swap_page(page, &bdev);
+-		bio_set_dev(bio, bdev);
+-		bio->bi_iter.bi_sector <<= PAGE_SHIFT - 9;
+-		bio->bi_end_io = end_io;
+-
+-		bio_add_page(bio, page, thp_size(page), 0);
+-	}
+-	return bio;
+-}
+-
+ void end_swap_bio_write(struct bio *bio)
+ {
+ 	struct page *page = bio_first_page_all(bio);
+@@ -361,13 +342,13 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
+ 		return 0;
+ 	}
+ 
+-	bio = get_swap_bio(GFP_NOIO, page, end_write_func);
+-	if (bio == NULL) {
+-		set_page_dirty(page);
+-		unlock_page(page);
+-		return -ENOMEM;
+-	}
++	bio = bio_alloc(GFP_NOIO, 1);
++	bio_set_dev(bio, sis->bdev);
++	bio->bi_iter.bi_sector = swap_page_sector(page);
+ 	bio->bi_opf = REQ_OP_WRITE | REQ_SWAP | wbc_to_write_flags(wbc);
++	bio->bi_end_io = end_write_func;
++	bio_add_page(bio, page, thp_size(page), 0);
++
+ 	bio_associate_blkg_from_page(bio, page);
+ 	count_swpout_vm_event(page);
+ 	set_page_writeback(page);
+@@ -427,18 +408,18 @@ int swap_readpage(struct page *page, bool synchronous)
+ 	}
+ 
+ 	ret = 0;
+-	bio = get_swap_bio(GFP_KERNEL, page, end_swap_bio_read);
+-	if (bio == NULL) {
+-		unlock_page(page);
+-		ret = -ENOMEM;
+-		goto out;
+-	}
++	bio = bio_alloc(GFP_KERNEL, 1);
++	bio_set_dev(bio, sis->bdev);
++	bio->bi_opf = REQ_OP_READ;
++	bio->bi_iter.bi_sector = swap_page_sector(page);
++	bio->bi_end_io = end_swap_bio_read;
++	bio_add_page(bio, page, thp_size(page), 0);
++
+ 	disk = bio->bi_bdev->bd_disk;
+ 	/*
+ 	 * Keep this task valid during swap readpage because the oom killer may
+ 	 * attempt to access it in the page fault retry time check.
+ 	 */
+-	bio_set_op_attrs(bio, REQ_OP_READ, 0);
+ 	if (synchronous) {
+ 		bio->bi_opf |= REQ_HIPRI;
+ 		get_task_struct(current);
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 9fffc5af29d1b9..bfa9e8b0c2ef61 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -2301,16 +2301,6 @@ static sector_t map_swap_entry(swp_entry_t entry, struct block_device **bdev)
+ 	return se->start_block + (offset - se->start_page);
+ }
+ 
+-/*
+- * Returns the page offset into bdev for the specified page's swap entry.
+- */
+-sector_t map_swap_page(struct page *page, struct block_device **bdev)
+-{
+-	swp_entry_t entry;
+-	entry.val = page_private(page);
+-	return map_swap_entry(entry, bdev);
+-}
+-
+ /*
+  * Free all of a swapdev's extent information
+  */
+-- 
+2.29.2
 
