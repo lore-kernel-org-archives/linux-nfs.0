@@ -2,92 +2,106 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72B7CC433E9
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:26:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BE11C433E0
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:27:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3F3DB23109
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:26:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0835922D58
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:27:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391246AbhAZPZy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jan 2021 10:25:54 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57688 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389908AbhAZPZc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:25:32 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18D26C061D73;
-        Tue, 26 Jan 2021 07:24:52 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=D/eDIBgr0QhzI/ySPX/2hbyfNquR7e3bfpvNVnt2JfU=; b=D0vECFFPgjNDQdJXrlwGlO9SXK
-        bqCpsr0IXEJRRcGpwx6o5eclpUuMr9hHDwI1bvP9dHmDZCFUvdFXs74twhireq6A3R0hjw3E27Nhq
-        gND3stVtzuc7AUN5QzdwSwuYTW+D6ywHC6ueGNxmoNigkTBe53X3elgpHHvEzb3YXnLWpSzS6cRY3
-        b+0bPbazRaqeOhh/6Ib7cYH6Q/rvQJcP32gM5YG6ZgJ9hUwYhUtMGEdDPzgQv3QJ5k9q3J/5gW/oc
-        SobtocU4AJ+ibrvafFyuDHBvtV8jwxST24FpYyK6VNjS7eabZ5oOXO7IlLknAN9gmIoy8gv7yJ8WG
-        rrOnQYxQ==;
-Received: from [2001:4bb8:191:e347:5918:ac86:61cb:8801] (helo=localhost)
-        by casper.infradead.org with esmtpsa (Exim 4.94 #2 (Red Hat Linux))
-        id 1l4Q8n-005ohh-NM; Tue, 26 Jan 2021 15:21:22 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Jens Axboe <axboe@kernel.dk>, Song Liu <song@kernel.org>
-Cc:     Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        Damien Le Moal <damien.lemoal@wdc.com>,
-        Naohiro Aota <naohiro.aota@wdc.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        linux-nilfs@vger.kernel.org, dm-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-block@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: [PATCH 16/17] nilfs2: remove cruft in nilfs_alloc_seg_bio
-Date:   Tue, 26 Jan 2021 15:52:46 +0100
-Message-Id: <20210126145247.1964410-17-hch@lst.de>
-X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20210126145247.1964410-1-hch@lst.de>
-References: <20210126145247.1964410-1-hch@lst.de>
+        id S2391999AbhAZP1R (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jan 2021 10:27:17 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:58327 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2406258AbhAZP1B (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:27:01 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1611674735;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=VJe0QMue+MrGLDqG9YMY3B8wc1OhQAcndv4QLZtzS5Q=;
+        b=XZ4XXj3RQLC1MO2SguWy4v0N70WOJeihrwJLp9EUo0FQGg6WKggxCwuXGWAbRj/NK7KvNM
+        iwefUJ3F/Vd7atA9uc4ZYFT8TB3DqCEy776Xvw1B7E14LwCX1X8qgI7bRONVnJyXEs9PA5
+        /25prPZfK8AAHBsW9+lbLL8upw+Ss3I=
+Received: from mail-ed1-f70.google.com (mail-ed1-f70.google.com
+ [209.85.208.70]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-473-J8DpR8iKP4iFixaai9FPgA-1; Tue, 26 Jan 2021 10:25:33 -0500
+X-MC-Unique: J8DpR8iKP4iFixaai9FPgA-1
+Received: by mail-ed1-f70.google.com with SMTP id a24so9516175eda.14
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jan 2021 07:25:32 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=VJe0QMue+MrGLDqG9YMY3B8wc1OhQAcndv4QLZtzS5Q=;
+        b=OT8YA1GDWb4Bbsc2YdC1a7ZA/HBL8MOIqxJjPszjB2abqxltfqjdbySu0YKJM2Bo3U
+         4++MqCLToQiwb0nYkG05QWnsTjLIa+tbZGIao+CfPug/9QP7cMPdGnkHwYFhlKXDvr7F
+         xqEnQIFKAgUYx0g+BSCQWWQiP0MwnkqFh0MN3x8CUXjquAtmdZWWcU1VT5lOE5UeVWm0
+         Ym4XRxAsVUTKgHL1OIrIASNbi9VNDzVjZkkYQpOPPo75XGqytlHs50GliQolEL31SvIt
+         yDSvG9rjLJ4dapPJJLBwQkOlLA0T04PHwDAICNOIt6nlykEyF8IPdYmRpqtg3NGV5zwf
+         HyfA==
+X-Gm-Message-State: AOAM531r+H3nkNSTL52lRILaxkaABEEAPfcMRFcZHR7Luv2cD68nBET6
+        sOME6Aagi9lvKqbBEls6ud469bgqKCgiN6xHSSBoF8JVkbMW7sOdbyLaR78VjOf4NKGK55A/Ga2
+        Vx383HJEbRxE2xXz854DKW7cvNqAzFjOROBQD
+X-Received: by 2002:a05:6402:3589:: with SMTP id y9mr5114908edc.344.1611674731921;
+        Tue, 26 Jan 2021 07:25:31 -0800 (PST)
+X-Google-Smtp-Source: ABdhPJzlAcqaq8CqekYAOTl5XTKJw4byUxjRunvP1wQKBAqraCVAKiDEx3Vt3nz1iiXtLgQBV8BZqw1Aaq6eAK2Q72M=
+X-Received: by 2002:a05:6402:3589:: with SMTP id y9mr5114888edc.344.1611674731765;
+ Tue, 26 Jan 2021 07:25:31 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
+References: <161161025063.2537118.2009249444682241405.stgit@warthog.procyon.org.uk>
+ <161161057357.2537118.6542184374596533032.stgit@warthog.procyon.org.uk> <20210126040540.GK308988@casper.infradead.org>
+In-Reply-To: <20210126040540.GK308988@casper.infradead.org>
+From:   David Wysochanski <dwysocha@redhat.com>
+Date:   Tue, 26 Jan 2021 10:24:55 -0500
+Message-ID: <CALF+zOn80NoeaBW8i9djC8qBCEng7riaHgz77uhxipaZ+RJ5ew@mail.gmail.com>
+Subject: Re: [PATCH 27/32] NFS: Refactor nfs_readpage() and
+ nfs_readpage_async() to use nfs_readdesc
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     David Howells <dhowells@redhat.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-bio_alloc never returns NULL when it can sleep.
+On Mon, Jan 25, 2021 at 11:06 PM Matthew Wilcox <willy@infradead.org> wrote:
+>
+> On Mon, Jan 25, 2021 at 09:36:13PM +0000, David Howells wrote:
+> > +int nfs_readpage_async(void *data, struct inode *inode,
+> >                      struct page *page)
+> >  {
+> > +     struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
+>
+> You don't need a cast to cast from void.
+>
+Right, fixing.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nilfs2/segbuf.c | 4 ----
- 1 file changed, 4 deletions(-)
-
-diff --git a/fs/nilfs2/segbuf.c b/fs/nilfs2/segbuf.c
-index 1a8729eded8b14..1e75417bfe6e52 100644
---- a/fs/nilfs2/segbuf.c
-+++ b/fs/nilfs2/segbuf.c
-@@ -386,10 +386,6 @@ static struct bio *nilfs_alloc_seg_bio(struct the_nilfs *nilfs, sector_t start,
- 	struct bio *bio;
- 
- 	bio = bio_alloc(GFP_NOIO, nr_vecs);
--	if (bio == NULL) {
--		while (!bio && (nr_vecs >>= 1))
--			bio = bio_alloc(GFP_NOIO, nr_vecs);
--	}
- 	if (likely(bio)) {
- 		bio_set_dev(bio, nilfs->ns_bdev);
- 		bio->bi_iter.bi_sector =
--- 
-2.29.2
+> > @@ -440,17 +439,16 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+> >       if (ret == 0)
+> >               goto read_complete; /* all pages were read */
+> >
+> > -     desc.pgio = &pgio;
+> > -     nfs_pageio_init_read(&pgio, inode, false,
+> > +     nfs_pageio_init_read(&desc.pgio, inode, false,
+>
+> I like what you've done here, embedding the pgio in the desc.
+>
+Thanks for the review!
 
