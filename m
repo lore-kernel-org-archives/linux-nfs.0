@@ -2,191 +2,92 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0125C4332D
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:28:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BBD4C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:54:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 983DE22D58
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:28:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ED02420829
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:54:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392152AbhAZP2i (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jan 2021 10:28:38 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57902 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2405889AbhAZP03 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:26:29 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 201BEC061D73;
-        Tue, 26 Jan 2021 07:25:48 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=imDKE4404TVupECTT3CTRw+cqCPUxNPppd2/iiQCXMs=; b=aQgfKd6q628v0njktwMXtO+tpa
-        VQ6AN2ML+AjC9smASiy0wrdfS4sFFCnIEmcIXu/uC9Ta7v/gFWb+6z6PpQmY8jMFGWtYqV8VJSHA0
-        dXAF/4pi0+HC8kVchlMaU5GmAZa714wa2/luSOmABw0GZfAT6AU7MbJuMKkGL5tnR0JtqQacKoy8n
-        WCCfmaNoO8QrPSmsSJPHsjQGoOnH268uw3Hhya2Ewhml5arq/gCxUDMs/smtqApFBFC+qBFUve6kd
-        hWTlztN9lb5yJebq1pTZJuSmAUl3qDJDAbW4e+pnBNWS1tiUosnRkCm/5hJV/Kb0mS6xYMUviraAV
-        ixL6cw1Q==;
-Received: from [2001:4bb8:191:e347:5918:ac86:61cb:8801] (helo=localhost)
-        by casper.infradead.org with esmtpsa (Exim 4.94 #2 (Red Hat Linux))
-        id 1l4QAZ-005opo-7d; Tue, 26 Jan 2021 15:22:55 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Jens Axboe <axboe@kernel.dk>, Song Liu <song@kernel.org>
-Cc:     Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        Damien Le Moal <damien.lemoal@wdc.com>,
-        Naohiro Aota <naohiro.aota@wdc.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        linux-nilfs@vger.kernel.org, dm-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-block@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: [PATCH 17/17] mm: remove get_swap_bio
-Date:   Tue, 26 Jan 2021 15:52:47 +0100
-Message-Id: <20210126145247.1964410-18-hch@lst.de>
-X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20210126145247.1964410-1-hch@lst.de>
-References: <20210126145247.1964410-1-hch@lst.de>
+        id S2391343AbhAZPlt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jan 2021 10:41:49 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:36677 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2391719AbhAZPgF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:36:05 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1611675278;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=+sg4yNwZrAUtqGjsjAIZF/lC9W6Hi56SguvTv3qRusA=;
+        b=AvAimHzoNnyt6HHce6CcX+chG4tX7GRBMoCQqfIxXhqI8JNTZLdVRQ5eCsiWDp3LoQW+Ll
+        BeRU+iGXcpfeyr40dWf/CDbUTRRooyC2d0rayKu4vV7JNCkHFFE87e7d5qPvPql+tPM8IL
+        LMZSLZtAFSNufeHw3Gm8odSA9k8MABg=
+Received: from mail-ed1-f70.google.com (mail-ed1-f70.google.com
+ [209.85.208.70]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-321-I4mLiNNJP62GVrXjZWaElQ-1; Tue, 26 Jan 2021 10:34:36 -0500
+X-MC-Unique: I4mLiNNJP62GVrXjZWaElQ-1
+Received: by mail-ed1-f70.google.com with SMTP id w4so9540601edu.0
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jan 2021 07:34:36 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=+sg4yNwZrAUtqGjsjAIZF/lC9W6Hi56SguvTv3qRusA=;
+        b=dB4xaMb6rFqvV1uA3FD4B2sazQCm1oUkMlVfRTK+xoj1n9lYhTTQUCzGg5Bdm7XrzY
+         /g2o8tdQ+6jhB05xrUsjX7Hf45n7TuFrI6y/sldzKbIZSPohgVJT2XieRbjVmIUMyEzQ
+         jJ7v6UUK8B/IHzXhYbJZBwr7JiSkK4QMBXjyQDkr4HLQyj89aG4xAH1C3dSIYBTyxdb2
+         mpcxQmzEcWl5ehpxsArbu39DlBZn9Mr1qkQvABGMWomDgzXJJvsxzHl5m8ffoQLN5BOz
+         i/5574ORCBI/+7XnaEuGI3LqNVt9pRrcS0s9EKE7jPz9vk7oioHaGvF8gjMwUeXg38OW
+         sjDw==
+X-Gm-Message-State: AOAM53152I8ESJuAhazB3xno/wPE8h0HnsydF1TEe/Ci2DoXywj1A9Kd
+        P4Uw8iZao0AyM+xyMI1C0JT/hq75fHFWfE8pWpBimLWnNUpz1tOsO/FvyDooSdS7DdLWrbsKG4e
+        I8CCO+334Ka2XliauDVQ2XXDv0GCCKbHQgr6l
+X-Received: by 2002:a17:906:4451:: with SMTP id i17mr2289508ejp.436.1611675275260;
+        Tue, 26 Jan 2021 07:34:35 -0800 (PST)
+X-Google-Smtp-Source: ABdhPJzSasZks4PL3NUJQfxg7We8UW4x28G54NbjOgDuCVAFpi7QKXrub9Pz5L3G6Ovg3Un+JLmrv6pQRbddbpD7RMI=
+X-Received: by 2002:a17:906:4451:: with SMTP id i17mr2289493ejp.436.1611675275099;
+ Tue, 26 Jan 2021 07:34:35 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
+References: <161161025063.2537118.2009249444682241405.stgit@warthog.procyon.org.uk>
+ <161161054970.2537118.5401048451896267742.stgit@warthog.procyon.org.uk> <20210126035928.GJ308988@casper.infradead.org>
+In-Reply-To: <20210126035928.GJ308988@casper.infradead.org>
+From:   David Wysochanski <dwysocha@redhat.com>
+Date:   Tue, 26 Jan 2021 10:33:59 -0500
+Message-ID: <CALF+zOkNMHjtH+cZrGQFqbH5dD5gUpV+y3k-Bt31E35d4kn1oA@mail.gmail.com>
+Subject: Re: [PATCH 25/32] NFS: Clean up nfs_readpage() and nfs_readpages()
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     David Howells <dhowells@redhat.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Just reuse the block_device and sector from the swap_info structure,
-just as used by the SWP_SYNCHRONOUS path.  Also remove the checks for
-NULL returns from bio_alloc as that can't happen for sleeping
-allocations.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- include/linux/swap.h |  1 -
- mm/page_io.c         | 45 +++++++++++++-------------------------------
- mm/swapfile.c        | 10 ----------
- 3 files changed, 13 insertions(+), 43 deletions(-)
-
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 596bc2f4d9b03e..3f1f7ae0fbe9e1 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -468,7 +468,6 @@ extern int free_swap_and_cache(swp_entry_t);
- int swap_type_of(dev_t device, sector_t offset);
- int find_first_swap(dev_t *device);
- extern unsigned int count_swap_pages(int, int);
--extern sector_t map_swap_page(struct page *, struct block_device **);
- extern sector_t swapdev_block(int, pgoff_t);
- extern int page_swapcount(struct page *);
- extern int __swap_count(swp_entry_t entry);
-diff --git a/mm/page_io.c b/mm/page_io.c
-index a75f35464a4e73..92f7941c6d018b 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -26,25 +26,6 @@
- #include <linux/uio.h>
- #include <linux/sched/task.h>
- 
--static struct bio *get_swap_bio(gfp_t gfp_flags,
--				struct page *page, bio_end_io_t end_io)
--{
--	struct bio *bio;
--
--	bio = bio_alloc(gfp_flags, 1);
--	if (bio) {
--		struct block_device *bdev;
--
--		bio->bi_iter.bi_sector = map_swap_page(page, &bdev);
--		bio_set_dev(bio, bdev);
--		bio->bi_iter.bi_sector <<= PAGE_SHIFT - 9;
--		bio->bi_end_io = end_io;
--
--		bio_add_page(bio, page, thp_size(page), 0);
--	}
--	return bio;
--}
--
- void end_swap_bio_write(struct bio *bio)
- {
- 	struct page *page = bio_first_page_all(bio);
-@@ -361,13 +342,13 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
- 		return 0;
- 	}
- 
--	bio = get_swap_bio(GFP_NOIO, page, end_write_func);
--	if (bio == NULL) {
--		set_page_dirty(page);
--		unlock_page(page);
--		return -ENOMEM;
--	}
-+	bio = bio_alloc(GFP_NOIO, 1);
-+	bio_set_dev(bio, sis->bdev);
-+	bio->bi_iter.bi_sector = swap_page_sector(page);
- 	bio->bi_opf = REQ_OP_WRITE | REQ_SWAP | wbc_to_write_flags(wbc);
-+	bio->bi_end_io = end_write_func;
-+	bio_add_page(bio, page, thp_size(page), 0);
-+
- 	bio_associate_blkg_from_page(bio, page);
- 	count_swpout_vm_event(page);
- 	set_page_writeback(page);
-@@ -427,18 +408,18 @@ int swap_readpage(struct page *page, bool synchronous)
- 	}
- 
- 	ret = 0;
--	bio = get_swap_bio(GFP_KERNEL, page, end_swap_bio_read);
--	if (bio == NULL) {
--		unlock_page(page);
--		ret = -ENOMEM;
--		goto out;
--	}
-+	bio = bio_alloc(GFP_KERNEL, 1);
-+	bio_set_dev(bio, sis->bdev);
-+	bio->bi_opf = REQ_OP_READ;
-+	bio->bi_iter.bi_sector = swap_page_sector(page);
-+	bio->bi_end_io = end_swap_bio_read;
-+	bio_add_page(bio, page, thp_size(page), 0);
-+
- 	disk = bio->bi_bdev->bd_disk;
- 	/*
- 	 * Keep this task valid during swap readpage because the oom killer may
- 	 * attempt to access it in the page fault retry time check.
- 	 */
--	bio_set_op_attrs(bio, REQ_OP_READ, 0);
- 	if (synchronous) {
- 		bio->bi_opf |= REQ_HIPRI;
- 		get_task_struct(current);
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 9fffc5af29d1b9..bfa9e8b0c2ef61 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -2301,16 +2301,6 @@ static sector_t map_swap_entry(swp_entry_t entry, struct block_device **bdev)
- 	return se->start_block + (offset - se->start_page);
- }
- 
--/*
-- * Returns the page offset into bdev for the specified page's swap entry.
-- */
--sector_t map_swap_page(struct page *page, struct block_device **bdev)
--{
--	swp_entry_t entry;
--	entry.val = page_private(page);
--	return map_swap_entry(entry, bdev);
--}
--
- /*
-  * Free all of a swapdev's extent information
-  */
--- 
-2.29.2
+On Mon, Jan 25, 2021 at 11:01 PM Matthew Wilcox <willy@infradead.org> wrote:
+>
+> On Mon, Jan 25, 2021 at 09:35:49PM +0000, David Howells wrote:
+> > -int nfs_readpage(struct file *file, struct page *page)
+> > +int nfs_readpage(struct file *filp, struct page *page)
+>
+> I appreciate we're inconsistent between file and filp, but we're actually
+> moving more towards file than filp.
+>
+Got it, easy enough to change.
 
