@@ -2,163 +2,91 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+X-Spam-Status: No, score=-16.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBB0EC4332B
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jan 2021 00:35:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 618DAC43332
+	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jan 2021 00:35:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A863C2054F
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jan 2021 00:35:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 32B912054F
+	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jan 2021 00:35:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390660AbhA0A2h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jan 2021 19:28:37 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:56665 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2389500AbhAZTMe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 14:12:34 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1611688267;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=dhSDWdgO45oMOw4U14ZD4IpWy4LqGlGQzgyJ+NX3F9s=;
-        b=RV5i8IOr+AD8PVlARWPcj/V3Aef7XJUDwmYp5eA/FXlu1pwjmupvJxXEwK1Uo16ilnfxLn
-        GcXdeVs+2L8BuReRVm+aybpV5CZvGOjSQTbXA2ASq2Q3e+CksGM9aM+gQU8WNiOL0okA5w
-        A4+2vLSlAQ2GZaVbrhEu56Ntl3ONE1M=
-Received: from mail-ed1-f72.google.com (mail-ed1-f72.google.com
- [209.85.208.72]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-277-JQGo7issMISUG2qOKuIKzQ-1; Tue, 26 Jan 2021 14:11:04 -0500
-X-MC-Unique: JQGo7issMISUG2qOKuIKzQ-1
-Received: by mail-ed1-f72.google.com with SMTP id q12so5033503edr.2
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jan 2021 11:11:04 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=dhSDWdgO45oMOw4U14ZD4IpWy4LqGlGQzgyJ+NX3F9s=;
-        b=YVojhRsPjM1THoQIEmHH+CBEm55eFxIsxtSx46TUuZS2U1Zhp/6+6AcQ6hT1FoIL7A
-         V7EwsI3nuvwyNQhlUbKaZsLpSoepeoALJsBpH42kUZJ+TDbNr7syy/MTQuUrfhg3Iwo0
-         mTL+zp0DtXamETiNIo2oRvztRSWMuJMCmqA27Njby+XJVVZmB73M4wrVcZnJCJLkeHKn
-         oxyLi+GrLYLyQ6Y4Z+xkgTEjZgIwAdQzg0/vKIitE3ikPZh2azZlUj/v0Xgoz8K5b75E
-         Xhnff3kt5UN24e+hxsthJ70LButtueCK3KhNVXChsb2fOjNtgiC4FHf/rUI9wg0E/q82
-         9R4A==
-X-Gm-Message-State: AOAM53175PwPnB8PutwFtxKgekLRlV3t9VMZ+KupH54R3uUOEhYQGu8c
-        E7EAX3yrRWThS8K40OB3fciKEX2dAq+fN/WmNOoo7coS96Q9jussg466GDKGQ0D/eCJJ2swCuA3
-        eXjGLwOk78D63SnB8YDaaZCQZS2c88+sgCx62
-X-Received: by 2002:aa7:ce87:: with SMTP id y7mr5760851edv.211.1611688263259;
-        Tue, 26 Jan 2021 11:11:03 -0800 (PST)
-X-Google-Smtp-Source: ABdhPJw9khL2OyLeDGiHbXxhgFxEoiQEWhWSGq0ZEPFvGyzCXtwZceNpjSLzAw970dmzg8NCnH9M4SKeWZSU2be3AaE=
-X-Received: by 2002:aa7:ce87:: with SMTP id y7mr5760842edv.211.1611688263103;
- Tue, 26 Jan 2021 11:11:03 -0800 (PST)
+        id S2390700AbhA0A25 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jan 2021 19:28:57 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49188 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726902AbhAZVvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Jan 2021 16:51:47 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id E0E7A20449;
+        Tue, 26 Jan 2021 21:51:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1611697866;
+        bh=uF4Zh493+gdGT/Bg0kWKqJydeGxsHWjFoA7xBs16rsw=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=lCGLIreDb/5Hwx8N2JmnAiiS0jiqRFkx5lWB+dYgajzTx5WDO2x1R1zbHYLyQO1UE
+         98ScSw7v1shjHJr3DWN8DeVEKxjccGxz8l94yiaaEhvMgOjW92D6rHh7wIPb+Z8Wcf
+         /WrH9o9CZLj9VLpBgdfMlPa9On6Ygs1IpZ1Ijf2DQsb5xhrrGFiJVmYaEU6R3mgkut
+         QaKR1+XYY5LF7MORkDaq36e+R/ZWRbwey+gnJIfZYHPT0K+eh+0B9d6nRjRnNDd/S0
+         dIZkNMAj/KUbyyLBEMzujKws37eYXRnxT13Nwk2S64RN7RIaBpTrze3+70kHOv4aD1
+         nwTbNcB4SZj3w==
+Date:   Tue, 26 Jan 2021 13:51:04 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jens Axboe <axboe@kernel.dk>, Song Liu <song@kernel.org>,
+        Mike Snitzer <snitzer@redhat.com>,
+        David Sterba <dsterba@suse.com>, dm-devel@redhat.com,
+        Naohiro Aota <naohiro.aota@wdc.com>,
+        linux-nilfs@vger.kernel.org, Josef Bacik <josef@toxicpanda.com>,
+        Chao Yu <chao@kernel.org>, linux-nfs@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-raid@vger.kernel.org,
+        linux-bcache@vger.kernel.org, drbd-dev@tron.linbit.com,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        linux-block@vger.kernel.org,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
+        Philipp Reisner <philipp.reisner@linbit.com>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org,
+        Lars Ellenberg <lars.ellenberg@linbit.com>,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH 03/17] blk-crypto: use bio_kmalloc in blk_crypto_clone_bio
+Message-ID: <YBCOyBxDnSsT4jzU@sol.localdomain>
+References: <20210126145247.1964410-1-hch@lst.de>
+ <20210126145247.1964410-4-hch@lst.de>
 MIME-Version: 1.0
-References: <161161025063.2537118.2009249444682241405.stgit@warthog.procyon.org.uk>
- <161161064956.2537118.3354798147866150631.stgit@warthog.procyon.org.uk>
- <20210126013611.GI308988@casper.infradead.org> <D6C85B77-17CA-4BA6-9C2C-C63A8AF613AB@oracle.com>
-In-Reply-To: <D6C85B77-17CA-4BA6-9C2C-C63A8AF613AB@oracle.com>
-From:   David Wysochanski <dwysocha@redhat.com>
-Date:   Tue, 26 Jan 2021 14:10:26 -0500
-Message-ID: <CALF+zOm++OzAebR4wu+Hdf8Aa8GpXZu8Am9eVajVUiDMBJE63w@mail.gmail.com>
-Subject: Re: [PATCH 32/32] NFS: Convert readpage to readahead and use
- netfs_readahead for fscache
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Matthew Wilcox <willy@infradead.org>,
-        David Howells <dhowells@redhat.com>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-cachefs <linux-cachefs@redhat.com>,
-        "linux-afs@lists.infradead.org" <linux-afs@lists.infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "v9fs-developer@lists.sourceforge.net" 
-        <v9fs-developer@lists.sourceforge.net>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210126145247.1964410-4-hch@lst.de>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Jan 26, 2021 at 10:25 AM Chuck Lever <chuck.lever@oracle.com> wrote:
->
->
->
-> > On Jan 25, 2021, at 8:36 PM, Matthew Wilcox <willy@infradead.org> wrote:
-> >
-> >
-> > For Subject: s/readpage/readpages/
-> >
-> > On Mon, Jan 25, 2021 at 09:37:29PM +0000, David Howells wrote:
-> >> +int __nfs_readahead_from_fscache(struct nfs_readdesc *desc,
-> >> +                             struct readahead_control *rac)
-> >
-> > I thought you wanted it called ractl instead of rac?  That's what I've
-> > been using in new code.
-> >
-> >> -    dfprintk(FSCACHE, "NFS: nfs_getpages_from_fscache (0x%p/%u/0x%p)\n",
-> >> -             nfs_i_fscache(inode), npages, inode);
-> >> +    dfprintk(FSCACHE, "NFS: nfs_readahead_from_fscache (0x%p/0x%p)\n",
-> >> +             nfs_i_fscache(inode), inode);
-> >
-> > We do have readahead_count() if this is useful information to be logging.
->
-> As a sidebar, the Linux NFS community is transitioning to tracepoints.
-> It would be helpful (but not completely necessary) to use tracepoints
-> in new code instead of printk.
->
+On Tue, Jan 26, 2021 at 03:52:33PM +0100, Christoph Hellwig wrote:
+> Use bio_kmalloc instead of open coding it.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  block/blk-crypto-fallback.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/block/blk-crypto-fallback.c b/block/blk-crypto-fallback.c
+> index 50c225398e4d60..e8327c50d7c9f4 100644
+> --- a/block/blk-crypto-fallback.c
+> +++ b/block/blk-crypto-fallback.c
+> @@ -164,7 +164,7 @@ static struct bio *blk_crypto_clone_bio(struct bio *bio_src)
+>  	struct bio_vec bv;
+>  	struct bio *bio;
+>  
+> -	bio = bio_alloc_bioset(GFP_NOIO, bio_segments(bio_src), NULL);
+> +	bio = bio_kmalloc(GFP_NOIO, bio_segments(bio_src));
+>  	if (!bio)
+>  		return NULL;
+>  	bio->bi_bdev		= bio_src->bi_bdev;
+> -- 
 
-The netfs API has a lot of good tracepoints and to be honest I think we can
-get rid of fscache's rpcdebug, but let me take a closer look to be
-sure.  I didn't use rpcdebug much, if at all, in the latest rounds of debugging.
+Looks good,
 
-
-
->
-> >> +static inline int nfs_readahead_from_fscache(struct nfs_readdesc *desc,
-> >> +                                         struct readahead_control *rac)
-> >> {
-> >> -    if (NFS_I(inode)->fscache)
-> >> -            return __nfs_readpages_from_fscache(ctx, inode, mapping, pages,
-> >> -                                                nr_pages);
-> >> +    if (NFS_I(rac->mapping->host)->fscache)
-> >> +            return __nfs_readahead_from_fscache(desc, rac);
-> >>      return -ENOBUFS;
-> >> }
-> >
-> > Not entirely sure that it's worth having the two functions separated any more.
-> >
-> >>      /* attempt to read as many of the pages as possible from the cache
-> >>       * - this returns -ENOBUFS immediately if the cookie is negative
-> >>       */
-> >> -    ret = nfs_readpages_from_fscache(desc.ctx, inode, mapping,
-> >> -                                     pages, &nr_pages);
-> >> +    ret = nfs_readahead_from_fscache(&desc, rac);
-> >>      if (ret == 0)
-> >>              goto read_complete; /* all pages were read */
-> >>
-> >>      nfs_pageio_init_read(&desc.pgio, inode, false,
-> >>                           &nfs_async_read_completion_ops);
-> >>
-> >> -    ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
-> >> +    while ((page = readahead_page(rac))) {
-> >> +            ret = readpage_async_filler(&desc, page);
-> >> +            put_page(page);
-> >> +    }
-> >
-> > I thought with the new API we didn't need to do this kind of thing
-> > any more?  ie no matter whether fscache is configured in or not, it'll
-> > submit the I/Os.
->
-> --
-> Chuck Lever
->
->
->
-
+Reviewed-by: Eric Biggers <ebiggers@google.com>
