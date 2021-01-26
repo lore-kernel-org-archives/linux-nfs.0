@@ -2,180 +2,171 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,PDS_BAD_THREAD_QP_64,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E135C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:10:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9582AC433E9
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:12:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 384CF22D58
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:10:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5FE3622D58
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jan 2021 15:12:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2405908AbhAZPKI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jan 2021 10:10:08 -0500
-Received: from esa4.hgst.iphmx.com ([216.71.154.42]:50242 "EHLO
-        esa4.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2406198AbhAZPJ0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:09:26 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
-  d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
-  t=1611673765; x=1643209765;
-  h=from:to:cc:subject:date:message-id:references:
-   content-transfer-encoding:mime-version;
-  bh=knd/vq/iKZ9ytSRXl4mzhKgn7bInmSzPGgY7pLGvF38=;
-  b=qDy/+s97YyX5BNNzY5TOjGb0pu6T3BSY81EouK9EXiQkG9FjFAmgJarO
-   d9Ei5ZrwfKFdczWqSjlQ2WB/35eBg5tr2jd4GVu+i7MnQtap5XzQyXP7n
-   +QFYvK+feNUL2544sYtPjkcaheDhaanFYeL19mGFDZL46t6R/gDSsinLt
-   Rt3M5RIXgDPwHiJ5Gz8Rm3ueOyNFxaHvLzBciBNGd2aqeaQQmTGLf1WiX
-   0VoeNdUhcfgSwFyvTNicMVaxU0nfELaMHyK66lXn4FZPJJH/KLDFyN54y
-   ZSTyOyqvvdfV9SeMJDECS+OWIF+KzC890TA80amOUbMps3PQDvAqeCMky
-   w==;
-IronPort-SDR: HcbuzBJm1u6RCEVGWBL1UbDszAA+554lNR+8jGCPOhUhrTc+pKHhEVvRzitrqKNbyKqgmM+S7Q
- G2Wdop8XSypkKCpBYBeBnooXwC2sfytvfQ3e0kVjrnwIIAQhYTSgzfyLoUcFGpu1+NQWyUaU4V
- 00pHs71QW1NGoBT6OqA+Zu/2Pfs1SKd24Xqi0IciCZDdaEipwIxhtHh7NQahTyhBluwWxtCjrd
- 5+ZDosG++y+NG5j75CXTMWBGV5iW1IbV1DAB57oUFFRAfht1GTG1zNuUCSQsu7bII6h0Ru2rUm
- vPE=
-X-IronPort-AV: E=Sophos;i="5.79,375,1602518400"; 
-   d="scan'208";a="158356113"
-Received: from mail-cys01nam02lp2058.outbound.protection.outlook.com (HELO NAM02-CY1-obe.outbound.protection.outlook.com) ([104.47.37.58])
-  by ob1.hgst.iphmx.com with ESMTP; 26 Jan 2021 23:08:14 +0800
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=kr7MYt6HY1xj8L+LAyIkdkkIyMxnqL7KgFGruOzTGEbXs1MTq/i0d8JuQafkDLJNCGVathGwHMGBqU2Nzs73TQo+asB3M0ZQnvfn3JaijafvJJKcxr/D5eSE2P8km8M/tnLOb+70lo8SQVTeTJyYW8z06B9x2he+SpSdhDQ9j1ebcs1jw19UbkO3gOOf3VDHQsE4RcthmA68ErNTA4XSo03kNKbmRpQDEkded5AY8OGHPbUPQG/G+FKxxAKCbIs2JpcrtZcdp14Ven0JVyp3IzwoKkgu0yiyIMHRGatpjHv/xqNrV5M3yvKTuDPZXnlpNFzankIRodxOGowBOi0C4w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=UWacF5Tz2aVg5M9uD2OwJG49WEBCvddRIk1yXegs3dI=;
- b=E8/sAzk92F7cU7QxqMQZPHSCP0nK0661Z4A6ndp/bjUFjDu5/Hqe2R8eQM91XdseGmERc59z/DS6xKHu2kzBwW6yvOWq1V9epD1sF14bAbCEZwfTp6w9PybI42184QvbwbFGu2hW9jL+sBOSY6fpEdJjIfGyD21tQM1HLngy13GyWkIkryEbyg5P9k+OcoBbMEliCN6Bb2tVpGfME/PuRd9aHNrPFdzs4v1l4Hse968CDqZ3C+lv+p3QyySNE49pWF5WgbIY4TZgSr6FjJs0CbmgmSy59gUtN+sQ+P7rahLY0nTQiS3HYpZ2tKRgrLVlCgjfVKXQeGITwN57ApSzpw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=wdc.com; dmarc=pass action=none header.from=wdc.com; dkim=pass
- header.d=wdc.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=sharedspace.onmicrosoft.com; s=selector2-sharedspace-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=UWacF5Tz2aVg5M9uD2OwJG49WEBCvddRIk1yXegs3dI=;
- b=OyB9pKxpw/++A0u7MtL8FBvL4Krc6a86nPbkjXtEEj/B8FKnbRYgPbDwMZI+uxyWV9W+FacbTqcgpAcFIP0sK/rduK8aIBmsAR6keDqvz/Ca4AfV+IeHY8WnvmWBlK5P7ddTslXUETCJhmEoe8MW6cipxzAMhhFTp+XqgpAXFjo=
-Received: from SN4PR0401MB3598.namprd04.prod.outlook.com
- (2603:10b6:803:47::21) by SN6PR04MB4928.namprd04.prod.outlook.com
- (2603:10b6:805:9d::28) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3784.15; Tue, 26 Jan
- 2021 15:08:13 +0000
-Received: from SN4PR0401MB3598.namprd04.prod.outlook.com
- ([fe80::c19b:805:20e0:6274]) by SN4PR0401MB3598.namprd04.prod.outlook.com
- ([fe80::c19b:805:20e0:6274%6]) with mapi id 15.20.3784.017; Tue, 26 Jan 2021
- 15:08:12 +0000
-From:   Johannes Thumshirn <Johannes.Thumshirn@wdc.com>
-To:     Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
-        Song Liu <song@kernel.org>
-CC:     Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        id S2406103AbhAZPLz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jan 2021 10:11:55 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54648 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2406065AbhAZPLq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jan 2021 10:11:46 -0500
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 475E6C061A31;
+        Tue, 26 Jan 2021 07:11:06 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=o7VUFbuCs40X37XHTmVmjDE9l+0qzfo+L5D5+3HB/Xs=; b=aV79kHDk99zhkL6s5WblnMsXYm
+        MUeYdtQAir6ZpBM6WxTX2uHNWa9GoJblM5+y9lvBViksx2RanhFgtOVoykjDrNKUAASUImAhQ2S9S
+        kCfJVL4xwzijj26ZqmZV0RNsrXFPbf4N+/Nr6bUnSe70GhYydpXzWfT1u3SDcEBkvvxsPZwC5/Opl
+        QrXnJfVNQdYsJMZo5rcHFwaYuDhpw+B9jZZ2qD3QFDvKwydp8nBngTufhjUIOGN8sMm7ejCwV76Ba
+        wQKngqSt6P9/gxTf3mYfoWEoeugpEM9qEEobeCMKiVADWZmeomcieNiE/g3oi2zy++X/iQc0gI0gY
+        x6aONCMg==;
+Received: from [2001:4bb8:191:e347:5918:ac86:61cb:8801] (helo=localhost)
+        by casper.infradead.org with esmtpsa (Exim 4.94 #2 (Red Hat Linux))
+        id 1l4PuS-005nI7-1q; Tue, 26 Jan 2021 15:06:07 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Jens Axboe <axboe@kernel.dk>, Song Liu <song@kernel.org>
+Cc:     Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
         Philipp Reisner <philipp.reisner@linbit.com>,
         Lars Ellenberg <lars.ellenberg@linbit.com>,
         Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         Josef Bacik <josef@toxicpanda.com>,
         David Sterba <dsterba@suse.com>,
-        Damien Le Moal <Damien.LeMoal@wdc.com>,
-        Naohiro Aota <Naohiro.Aota@wdc.com>,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        Naohiro Aota <naohiro.aota@wdc.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        "linux-nilfs@vger.kernel.org" <linux-nilfs@vger.kernel.org>,
-        "dm-devel@redhat.com" <dm-devel@redhat.com>,
-        "linux-f2fs-devel@lists.sourceforge.net" 
-        <linux-f2fs-devel@lists.sourceforge.net>,
-        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>,
-        "linux-bcache@vger.kernel.org" <linux-bcache@vger.kernel.org>,
-        "linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-mm@kvack.org" <linux-mm@kvack.org>
-Subject: Re: [PATCH 01/17] zonefs: use bio_alloc in zonefs_file_dio_append
-Thread-Topic: [PATCH 01/17] zonefs: use bio_alloc in zonefs_file_dio_append
-Thread-Index: AQHW8/Qrc+FuLwDd/k+CySi1dId/TA==
-Date:   Tue, 26 Jan 2021 15:08:12 +0000
-Message-ID: <SN4PR0401MB359852658B9D8F386CC7C76A9BBC9@SN4PR0401MB3598.namprd04.prod.outlook.com>
+        linux-nilfs@vger.kernel.org, dm-devel@redhat.com,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-block@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-mm@kvack.org
+Subject: [PATCH 08/17] f2fs: remove FAULT_ALLOC_BIO
+Date:   Tue, 26 Jan 2021 15:52:38 +0100
+Message-Id: <20210126145247.1964410-9-hch@lst.de>
+X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20210126145247.1964410-1-hch@lst.de>
 References: <20210126145247.1964410-1-hch@lst.de>
- <20210126145247.1964410-2-hch@lst.de>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: lst.de; dkim=none (message not signed)
- header.d=none;lst.de; dmarc=none action=none header.from=wdc.com;
-x-originating-ip: [62.216.203.141]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-ht: Tenant
-x-ms-office365-filtering-correlation-id: 0edb4c87-c068-4eca-1592-08d8c20c335c
-x-ms-traffictypediagnostic: SN6PR04MB4928:
-x-ms-exchange-transport-forked: True
-x-microsoft-antispam-prvs: <SN6PR04MB49288B3AD6F1136E28FA89949BBC9@SN6PR04MB4928.namprd04.prod.outlook.com>
-wdcipoutbound: EOP-TRUE
-x-ms-oob-tlc-oobclassifiers: OLM:660;
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: ExQuz7m9Z2JVMsakrHKGh0w8++Sxwbj8vy2sZznmg+RMf5rlwJ/ppA3m6/sEhNljkawHlpJht9TX5mm7If/bB/0EYB3U/pShUTwqr0LlFZ/NbtM0Ln3oVrpquJBYV7xQ4ktogxqG7S0n3864flZphyYvkvX9iZzIFpuM3eLUHBo8NGPquM1XIRl1mykcCLhZiMJyZ4kn60XiYBLIsVCyvXaU5Xfg2jKTQ0zrEx+HRmNNaXO9GdfTw6939Wxz5I+922JREaPlm4z5Kpr+Z3piocSgZjCYqw+Bp9XX+A0U5LxgP2jp4FEb+v1/w/BZnnt8LCTzNnLz8qjb9TKVensQrlig83ktPU8lKmds0gnH6PF/BVfPijaHLkvdw8tvGlYEG8kkAduxcBhD3dOXK8FHiA==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SN4PR0401MB3598.namprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(376002)(136003)(366004)(39860400002)(346002)(396003)(4326008)(86362001)(8936002)(9686003)(4744005)(8676002)(55016002)(83380400001)(76116006)(66946007)(66476007)(66556008)(6506007)(33656002)(2906002)(64756008)(478600001)(5660300002)(66446008)(316002)(26005)(52536014)(54906003)(7696005)(91956017)(71200400001)(53546011)(186003)(110136005)(7416002);DIR:OUT;SFP:1102;
-x-ms-exchange-antispam-messagedata: =?us-ascii?Q?JQM9L3OEQhlXD6MnYa/VUMRsZExwv8hBqCMxm7neHEOCgV/vnva2Jko4lwvn?=
- =?us-ascii?Q?6a5hV43yv20zlJHD4OiWZ7JqFrxjRCKRwi4D3aR8wFfWRpNdwzB+OtI1Tuqp?=
- =?us-ascii?Q?L7+NjWgG1GIONUMdtWnCZsT5fT3IaaxfjqRG2Hukzm4fzUIQtwwqCzWMBy2l?=
- =?us-ascii?Q?ydxkeNdzouh67olxMR/iIGc15/qRlXhVaWD6fOJWJf4trGiSm11hJjkcg2jL?=
- =?us-ascii?Q?vBWCuMJ30PTxTvvrpbOiSMiHe7Um+Ht0mx57HkwBsF3drQld0QIMd1lv+mKh?=
- =?us-ascii?Q?/EuvP+OPrq6A48BWYa10L1YtTUigufbDtErUVIZLXoHuMPk70FUCdzvW6JPY?=
- =?us-ascii?Q?b7CnDgnYfPUkdVGHxdTIT8w2/UKvSruMWsgRlEkX+UDSiuBhHich9z0kUJ4C?=
- =?us-ascii?Q?XvNaJtBj5Y1UXflXVz0UCnZNRprdvOPIQiyMslHkC/vAsSps+8HP3xAtxE17?=
- =?us-ascii?Q?gVKZ7CzAKybcpEIjO20BCHfCAyhZN0+/zPpdzd9N+pNqKUvDCyKnYdHhOQBV?=
- =?us-ascii?Q?sLYk/pcR+Xzw97zlXrZnI/WTKZ4x2CssnUE+4KMYDbQcoRB8sNAAvMTIrtG/?=
- =?us-ascii?Q?9BF8YKm0a9aNS/sXsL4FY3a+XjIL87rPhpI3HRdyN9aCAO53BJNFByy0TmV/?=
- =?us-ascii?Q?htJ3LGo1uzagc93ru67FZbKWgLnRUKbfq84XAMif6VxgPRj/1sId4wikimF2?=
- =?us-ascii?Q?8bWEuV8aMBb25XcVqg4EkJs9iQpc6BQtslQxVQdxYC7iUQf9I+79iFGUe/cE?=
- =?us-ascii?Q?qLr96pHL/9Hg2plPbC2nQdJWI0eUhbVxZWja8U7tgiuPZxCxMhx9G18TF6t1?=
- =?us-ascii?Q?BIWMu/BC4BMtyiiKlVhbsobqy4tp696zVUrWmLtmgH3bacZJw4a5yDug4avi?=
- =?us-ascii?Q?/MRJMmMOPkrD0TbEXErimf53cgaIDTba0ei/2knbuPboyxPnkFP4S15AegCh?=
- =?us-ascii?Q?LzqEe/GWZyoboUlIt/p0nbGkjX2vX8pDYeUfU+nBvD58Hk3HBag2BDpgCWIu?=
- =?us-ascii?Q?gdIi/PGTK0fWpr9ceKNt9APVCteH9F/etNlvGJTc87zZ3AyNgJBpo7K8N7bX?=
- =?us-ascii?Q?AnGwC++QZn0LXiYiYAgruyRLfkPajA=3D=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-X-OriginatorOrg: wdc.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: SN4PR0401MB3598.namprd04.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 0edb4c87-c068-4eca-1592-08d8c20c335c
-X-MS-Exchange-CrossTenant-originalarrivaltime: 26 Jan 2021 15:08:12.8135
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: b61c8803-16f3-4c35-9b17-6f65f441df86
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: Q0E+MnIjdP3+t2e6Q3SF/nPCtiVsfV+MwOfDhDYdKs+Gxw8i48xjhHtX6szGMutRVdsMhisZcVPNCbyiIQoF8KnrFdBgFcRxwbNEaS3pxFA=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR04MB4928
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 26/01/2021 16:01, Christoph Hellwig wrote:=0A=
-> Use bio_alloc instead of open coding it.=0A=
-> =0A=
-> Signed-off-by: Christoph Hellwig <hch@lst.de>=0A=
-> ---=0A=
->  fs/zonefs/super.c | 2 +-=0A=
->  1 file changed, 1 insertion(+), 1 deletion(-)=0A=
-> =0A=
-> diff --git a/fs/zonefs/super.c b/fs/zonefs/super.c=0A=
-> index bec47f2d074beb..faea2ed34b4a37 100644=0A=
-> --- a/fs/zonefs/super.c=0A=
-> +++ b/fs/zonefs/super.c=0A=
-> @@ -678,7 +678,7 @@ static ssize_t zonefs_file_dio_append(struct kiocb *i=
-ocb, struct iov_iter *from)=0A=
->  	if (!nr_pages)=0A=
->  		return 0;=0A=
->  =0A=
-> -	bio =3D bio_alloc_bioset(GFP_NOFS, nr_pages, &fs_bio_set);=0A=
-> +	bio =3D bio_alloc(GFP_NOFS, nr_pages);=0A=
->  	if (!bio)=0A=
->  		return -ENOMEM;=0A=
->  =0A=
-> =0A=
-=0A=
-Whoopsie my bad,=0A=
-Reviewed-by: Johannes Thumshirn <johannes.thumshirn@wdc.com>=0A=
+Sleeping bio allocations do not fail, which means that injecting an error
+into sleeping bio allocations is a little silly.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ Documentation/filesystems/f2fs.rst |  1 -
+ fs/f2fs/data.c                     | 29 ++++-------------------------
+ fs/f2fs/f2fs.h                     |  1 -
+ fs/f2fs/super.c                    |  1 -
+ 4 files changed, 4 insertions(+), 28 deletions(-)
+
+diff --git a/Documentation/filesystems/f2fs.rst b/Documentation/filesystems/f2fs.rst
+index dae15c96e659e2..624f5f3ed93e86 100644
+--- a/Documentation/filesystems/f2fs.rst
++++ b/Documentation/filesystems/f2fs.rst
+@@ -179,7 +179,6 @@ fault_type=%d		 Support configuring fault injection type, should be
+ 			 FAULT_KVMALLOC		  0x000000002
+ 			 FAULT_PAGE_ALLOC	  0x000000004
+ 			 FAULT_PAGE_GET		  0x000000008
+-			 FAULT_ALLOC_BIO	  0x000000010
+ 			 FAULT_ALLOC_NID	  0x000000020
+ 			 FAULT_ORPHAN		  0x000000040
+ 			 FAULT_BLOCK		  0x000000080
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 0cf0c605992431..9fb6be65592b1f 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -50,28 +50,6 @@ void f2fs_destroy_bioset(void)
+ 	bioset_exit(&f2fs_bioset);
+ }
+ 
+-static inline struct bio *__f2fs_bio_alloc(gfp_t gfp_mask,
+-						unsigned int nr_iovecs)
+-{
+-	return bio_alloc_bioset(gfp_mask, nr_iovecs, &f2fs_bioset);
+-}
+-
+-static struct bio *f2fs_bio_alloc(struct f2fs_sb_info *sbi, int npages,
+-		bool noio)
+-{
+-	if (noio) {
+-		/* No failure on bio allocation */
+-		return __f2fs_bio_alloc(GFP_NOIO, npages);
+-	}
+-
+-	if (time_to_inject(sbi, FAULT_ALLOC_BIO)) {
+-		f2fs_show_injection_info(sbi, FAULT_ALLOC_BIO);
+-		return NULL;
+-	}
+-
+-	return __f2fs_bio_alloc(GFP_KERNEL, npages);
+-}
+-
+ static bool __is_cp_guaranteed(struct page *page)
+ {
+ 	struct address_space *mapping = page->mapping;
+@@ -433,7 +411,7 @@ static struct bio *__bio_alloc(struct f2fs_io_info *fio, int npages)
+ 	struct f2fs_sb_info *sbi = fio->sbi;
+ 	struct bio *bio;
+ 
+-	bio = f2fs_bio_alloc(sbi, npages, true);
++	bio = bio_alloc_bioset(GFP_NOIO, npages, &f2fs_bioset);
+ 
+ 	f2fs_target_device(sbi, fio->new_blkaddr, bio);
+ 	if (is_read_io(fio->op)) {
+@@ -1029,8 +1007,9 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
+ 	struct bio_post_read_ctx *ctx;
+ 	unsigned int post_read_steps = 0;
+ 
+-	bio = f2fs_bio_alloc(sbi, min_t(int, nr_pages, BIO_MAX_PAGES),
+-								for_write);
++	bio = bio_alloc_bioset(for_write ? GFP_NOIO : GFP_KERNEL,
++			       min_t(int, nr_pages, BIO_MAX_PAGES),
++			       &f2fs_bioset);
+ 	if (!bio)
+ 		return ERR_PTR(-ENOMEM);
+ 
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 902bd3267c03e1..6c78365d80ceb5 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -43,7 +43,6 @@ enum {
+ 	FAULT_KVMALLOC,
+ 	FAULT_PAGE_ALLOC,
+ 	FAULT_PAGE_GET,
+-	FAULT_ALLOC_BIO,
+ 	FAULT_ALLOC_NID,
+ 	FAULT_ORPHAN,
+ 	FAULT_BLOCK,
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index b4a07fe62d1a58..3a312642907e86 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -45,7 +45,6 @@ const char *f2fs_fault_name[FAULT_MAX] = {
+ 	[FAULT_KVMALLOC]	= "kvmalloc",
+ 	[FAULT_PAGE_ALLOC]	= "page alloc",
+ 	[FAULT_PAGE_GET]	= "page get",
+-	[FAULT_ALLOC_BIO]	= "alloc bio",
+ 	[FAULT_ALLOC_NID]	= "alloc nid",
+ 	[FAULT_ORPHAN]		= "orphan",
+ 	[FAULT_BLOCK]		= "no more block",
+-- 
+2.29.2
+
