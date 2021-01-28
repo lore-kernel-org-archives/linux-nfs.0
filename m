@@ -2,173 +2,78 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34BF2C433E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Jan 2021 16:14:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2D1EC433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Jan 2021 18:56:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E8D9764E07
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Jan 2021 16:14:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 84DAD64E23
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Jan 2021 18:56:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232372AbhA1QNV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Jan 2021 11:13:21 -0500
-Received: from mail.kernel.org ([198.145.29.99]:37336 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232439AbhA1QML (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Jan 2021 11:12:11 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 15C7D64DE5;
-        Thu, 28 Jan 2021 16:11:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1611850291;
-        bh=l1fZVj6lNKrtqOWXBXFlHL9KLwU2deosKLGUjGIPhaQ=;
+        id S231454AbhA1S4J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Jan 2021 13:56:09 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42922 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232120AbhA1Sv0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jan 2021 13:51:26 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ED38FC06178B;
+        Thu, 28 Jan 2021 10:50:43 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id A2A634163; Thu, 28 Jan 2021 13:50:42 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org A2A634163
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1611859842;
+        bh=O2QhWKxUiDcf6x2ujs95u3iWaIVVJV2+uNn4cjNsIZk=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=Ae6xo2EqTNtPiMkPuwUBcZnLyMNEeIUX+7ThLWDfngvLkjuzBSsT7Pp5WbxiOPQho
-         O6jLUshdETUx1nN4PLVPFnCLafOw9dc+CXzttS8jN/C7hNRWXbzwJxsWaoyVHO2Zak
-         boAYycf/k6EsmAbrDlF+KkgSnuk0aRy1li4Y1jQCu0cqT5tL3yDWnu6TkthAWMZ7Dx
-         DC7+JL5QB88HCrDHygJRXveBJosYNKqjW8sNNn4SLZ0p6m6F4YaeXBueIVrn/8gnEY
-         BRgUeUzaBoReyjCxZvUdOjJysQUQlUOO/PKLFRuM9Cf/ybkQZOvsk0t6nN8lV4QP9L
-         vk5bWmlQu//Pg==
-Date:   Thu, 28 Jan 2021 08:11:28 -0800
-From:   Jaegeuk Kim <jaegeuk@kernel.org>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Jens Axboe <axboe@kernel.dk>, Song Liu <song@kernel.org>,
-        Chao Yu <chao@kernel.org>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        Damien Le Moal <damien.lemoal@wdc.com>,
-        Naohiro Aota <naohiro.aota@wdc.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        linux-nilfs@vger.kernel.org, dm-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-block@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 08/17] f2fs: remove FAULT_ALLOC_BIO
-Message-ID: <YBLiMN7zm44VWaBI@google.com>
-References: <20210126145247.1964410-1-hch@lst.de>
- <20210126145247.1964410-9-hch@lst.de>
+        b=DnFtCSnGXeQSWFAGogu4NtdJQorx/JwnTjo8DDlJKGQvtjpjEJdmOvO2mruqjuCmR
+         9WMMvdojVUSY4nWRQitFuNyo43M6acrmGb0bS459az3mLRiRvR567hgROU+8kmCdhJ
+         xKW9op6vkSZWaKLswRknRbf5LIezAf098S8+kOu4=
+Date:   Thu, 28 Jan 2021 13:50:42 -0500
+From:   Bruce Fields <bfields@fieldses.org>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Dan Carpenter <dan.carpenter@oracle.com>,
+        Colin King <colin.king@canonical.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH][next] nfsd: fix check of statid returned from call to
+ find_stateid_by_type
+Message-ID: <20210128185042.GB29887@fieldses.org>
+References: <20210128144935.640026-1-colin.king@canonical.com>
+ <793C88A3-B117-4138-B74A-845E0BD383C9@oracle.com>
+ <20210128153456.GI2696@kadam>
+ <80ACEDFA-B496-44E0-AABB-BD4A7826516B@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210126145247.1964410-9-hch@lst.de>
+In-Reply-To: <80ACEDFA-B496-44E0-AABB-BD4A7826516B@oracle.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 01/26, Christoph Hellwig wrote:
-> Sleeping bio allocations do not fail, which means that injecting an error
-> into sleeping bio allocations is a little silly.
+On Thu, Jan 28, 2021 at 03:53:36PM +0000, Chuck Lever wrote:
+> > On Jan 28, 2021, at 10:34 AM, Dan Carpenter <dan.carpenter@oracle.com> wrote:
+> > Fixes tags are used for a lot of different things:
+> > 1)  If there is a fixes tag, then you can tell it does *NOT* have to
+> >    be back ported because the original commit is not in the stable
+> >    tree.  It saves time for the stable maintainers.
+> > 2)  Metrics to figure out how quickly we are fixing bugs.
+> > 3)  Sometimes the Fixes tag helps because we want to review the original
+> >    patch to see what the intent was.
+> > 
+> > All sorts of stuff.  Etc.
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Yep, I'm a fan of all that. I just want to avoid poking the stable
+> automation bear when it's unnecessary.
 
-Already merged tho.
+I've routinely had patches with Fixes: lines referencing other queued-up
+patches, and I didn't get any stable mail about it.
 
-Acked-by: Jaegeuk Kim <jaegeuk@kernel.org>
+100% not something to worry about.
 
-> ---
->  Documentation/filesystems/f2fs.rst |  1 -
->  fs/f2fs/data.c                     | 29 ++++-------------------------
->  fs/f2fs/f2fs.h                     |  1 -
->  fs/f2fs/super.c                    |  1 -
->  4 files changed, 4 insertions(+), 28 deletions(-)
-> 
-> diff --git a/Documentation/filesystems/f2fs.rst b/Documentation/filesystems/f2fs.rst
-> index dae15c96e659e2..624f5f3ed93e86 100644
-> --- a/Documentation/filesystems/f2fs.rst
-> +++ b/Documentation/filesystems/f2fs.rst
-> @@ -179,7 +179,6 @@ fault_type=%d		 Support configuring fault injection type, should be
->  			 FAULT_KVMALLOC		  0x000000002
->  			 FAULT_PAGE_ALLOC	  0x000000004
->  			 FAULT_PAGE_GET		  0x000000008
-> -			 FAULT_ALLOC_BIO	  0x000000010
->  			 FAULT_ALLOC_NID	  0x000000020
->  			 FAULT_ORPHAN		  0x000000040
->  			 FAULT_BLOCK		  0x000000080
-> diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-> index 0cf0c605992431..9fb6be65592b1f 100644
-> --- a/fs/f2fs/data.c
-> +++ b/fs/f2fs/data.c
-> @@ -50,28 +50,6 @@ void f2fs_destroy_bioset(void)
->  	bioset_exit(&f2fs_bioset);
->  }
->  
-> -static inline struct bio *__f2fs_bio_alloc(gfp_t gfp_mask,
-> -						unsigned int nr_iovecs)
-> -{
-> -	return bio_alloc_bioset(gfp_mask, nr_iovecs, &f2fs_bioset);
-> -}
-> -
-> -static struct bio *f2fs_bio_alloc(struct f2fs_sb_info *sbi, int npages,
-> -		bool noio)
-> -{
-> -	if (noio) {
-> -		/* No failure on bio allocation */
-> -		return __f2fs_bio_alloc(GFP_NOIO, npages);
-> -	}
-> -
-> -	if (time_to_inject(sbi, FAULT_ALLOC_BIO)) {
-> -		f2fs_show_injection_info(sbi, FAULT_ALLOC_BIO);
-> -		return NULL;
-> -	}
-> -
-> -	return __f2fs_bio_alloc(GFP_KERNEL, npages);
-> -}
-> -
->  static bool __is_cp_guaranteed(struct page *page)
->  {
->  	struct address_space *mapping = page->mapping;
-> @@ -433,7 +411,7 @@ static struct bio *__bio_alloc(struct f2fs_io_info *fio, int npages)
->  	struct f2fs_sb_info *sbi = fio->sbi;
->  	struct bio *bio;
->  
-> -	bio = f2fs_bio_alloc(sbi, npages, true);
-> +	bio = bio_alloc_bioset(GFP_NOIO, npages, &f2fs_bioset);
->  
->  	f2fs_target_device(sbi, fio->new_blkaddr, bio);
->  	if (is_read_io(fio->op)) {
-> @@ -1029,8 +1007,9 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
->  	struct bio_post_read_ctx *ctx;
->  	unsigned int post_read_steps = 0;
->  
-> -	bio = f2fs_bio_alloc(sbi, min_t(int, nr_pages, BIO_MAX_PAGES),
-> -								for_write);
-> +	bio = bio_alloc_bioset(for_write ? GFP_NOIO : GFP_KERNEL,
-> +			       min_t(int, nr_pages, BIO_MAX_PAGES),
-> +			       &f2fs_bioset);
->  	if (!bio)
->  		return ERR_PTR(-ENOMEM);
->  
-> diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-> index 902bd3267c03e1..6c78365d80ceb5 100644
-> --- a/fs/f2fs/f2fs.h
-> +++ b/fs/f2fs/f2fs.h
-> @@ -43,7 +43,6 @@ enum {
->  	FAULT_KVMALLOC,
->  	FAULT_PAGE_ALLOC,
->  	FAULT_PAGE_GET,
-> -	FAULT_ALLOC_BIO,
->  	FAULT_ALLOC_NID,
->  	FAULT_ORPHAN,
->  	FAULT_BLOCK,
-> diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-> index b4a07fe62d1a58..3a312642907e86 100644
-> --- a/fs/f2fs/super.c
-> +++ b/fs/f2fs/super.c
-> @@ -45,7 +45,6 @@ const char *f2fs_fault_name[FAULT_MAX] = {
->  	[FAULT_KVMALLOC]	= "kvmalloc",
->  	[FAULT_PAGE_ALLOC]	= "page alloc",
->  	[FAULT_PAGE_GET]	= "page get",
-> -	[FAULT_ALLOC_BIO]	= "alloc bio",
->  	[FAULT_ALLOC_NID]	= "alloc nid",
->  	[FAULT_ORPHAN]		= "orphan",
->  	[FAULT_BLOCK]		= "no more block",
-> -- 
-> 2.29.2
+--b.
