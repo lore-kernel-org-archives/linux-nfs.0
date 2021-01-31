@@ -2,110 +2,155 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 320C2C433DB
-	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 22:03:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10CFAC433E0
+	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 23:46:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F11A264E11
-	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 22:03:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CF98C64E1F
+	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 23:46:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229483AbhAaWBj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 31 Jan 2021 17:01:39 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42534 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229535AbhAaV73 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2021 16:59:29 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 53196C061574
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2021 13:58:46 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id E1CC06EB8; Sun, 31 Jan 2021 16:58:43 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org E1CC06EB8
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1612130323;
-        bh=z3c/F0OlAPJvpVaFjwgd3c6btiTjSf0jrmg/MOuXFtA=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=oHsQmIqWCyV2bek1dZdbw2wOmjfDJVP89kavR7DXgmHHkYQ6p7CWrapdzO5V2UQQP
-         RvV/5rmYJynrzbj16tsq9Xrnl3x73M7wMVswt/0/zdUVQFkqiC44XDlL91vYnhcpYM
-         k5kIY9pibKI0bE06xGL2frMvOa/vf4mJxfGAvGtM=
-Date:   Sun, 31 Jan 2021 16:58:43 -0500
-From:   "bfields@fieldses.org" <bfields@fieldses.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "guy@vastdata.com" <guy@vastdata.com>,
-        "schumakeranna@gmail.com" <schumakeranna@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: we don't support removing system.nfs4_acl
-Message-ID: <20210131215843.GA9273@fieldses.org>
-References: <20210128223638.GE29887@fieldses.org>
- <95e5f9e4-76d4-08c4-ece3-35a10c06073b@vastdata.com>
- <cbc7115cc5d5aeb7ffb9e9b3880e453bf54ecbdb.camel@hammerspace.com>
- <20210129023527.GA11864@fieldses.org>
- <20210129025041.GA12151@fieldses.org>
- <7a078b4d22c8d769a42a0c2b47fd501479e47a7b.camel@hammerspace.com>
+        id S229506AbhAaXqX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 31 Jan 2021 18:46:23 -0500
+Received: from mx2.suse.de ([195.135.220.15]:60766 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S229495AbhAaXqT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 31 Jan 2021 18:46:19 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 5A490AC4F;
+        Sun, 31 Jan 2021 23:45:36 +0000 (UTC)
+From:   NeilBrown <neilb@suse.de>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon, 01 Feb 2021 10:45:31 +1100
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: releasing result pages in svc_xprt_release()
+In-Reply-To: <597824E7-3942-4F11-958F-A6E247330A9E@oracle.com>
+References: <811BE98B-F196-4EC1-899F-6B62F313640C@oracle.com>
+ <87im7ffjp0.fsf@notabene.neil.brown.name>
+ <597824E7-3942-4F11-958F-A6E247330A9E@oracle.com>
+Message-ID: <878s88fz6s.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <7a078b4d22c8d769a42a0c2b47fd501479e47a7b.camel@hammerspace.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, Jan 31, 2021 at 08:41:37PM +0000, Trond Myklebust wrote:
-> On Thu, 2021-01-28 at 21:50 -0500, bfields@fieldses.org wrote:
-> > On Thu, Jan 28, 2021 at 09:35:27PM -0500, bfields@fieldses.org wrote:
-> > > Note that this patch doesn't prevent an application from setting a
-> > > zero-length ACL.  The xattr format is XDR with the first four bytes
-> > > representing the number of ACEs, so you'd set a zero-length ACL by
-> > > passing down a 4-byte all-zero buffer as the new value of the
-> > > system.nfs4_acl xattr.
-> > > 
-> > > A zero-length NULL buffer is what's used to implement removexattr:
-> > > 
-> > > int
-> > > __vfs_removexattr(struct dentry *dentry, const char *name)
-> > > {
-> > >         ...
-> > >         return handler->set(handler, dentry, inode, name, NULL, 0,
-> > > XATTR_REPLACE);
-> > > }
-> > > 
-> > > That's the case this patch covers.
-> > 
-> > So, I should have said in the changelog, apologies--the behavior
-> > without
-> > this patch is that when it gets a removexattr, the client sends a
-> > SETATTR with a bitmap claiming there's an ACL attribute, but a
-> > zero-length attribute value list, and the server (correctly) returns
-> > BADXDR.
-> > 
-> 
-> I don't see anything in the spec that prohibits a zero length array
-> size for nfs41_aces<> or states that should return NFS4ERR_BADXDR. Why
-> shouldn't we allow that?
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Again: I agree.  And we do allow that, both before and after this patch.
+On Fri, Jan 29 2021, Chuck Lever wrote:
 
-There's a difference between a SETATTR with a zero-length body and a
-SETATTR with a body containing a zero-length ACL.  The former is bad
-protocol, the latter is, I agree, fine.
+>> On Jan 29, 2021, at 5:43 PM, NeilBrown <neilb@suse.de> wrote:
+>>=20
+>> On Fri, Jan 29 2021, Chuck Lever wrote:
+>>=20
+>>> Hi Neil-
+>>>=20
+>>> I'd like to reduce the amount of page allocation that NFSD does,
+>>> and was wondering about the release and reset of pages in
+>>> svc_xprt_release(). This logic was added when the socket transport
+>>> was converted to use kernel_sendpage() back in 2002. Do you
+>>> remember why releasing the result pages is necessary?
+>>>=20
+>>=20
+>> Hi Chuck,
+>> as I recall, kernel_sendpage() (or sock->ops->sendpage() as it was
+>> then) takes a reference to the page and will hold that reference until
+>> the content has been sent and ACKed.  nfsd has no way to know when the
+>> ACK comes, so cannot know when the page can be re-used, so it must
+>> release the page and allocate a new one.
+>>=20
+>> This is the price we pay for zero-copy, and I acknowledge that it is a
+>> real price.  I wouldn't be surprised if the trade-offs between
+>> zero-copy and single-copy change over time, and between different
+>> hardware.
+>
+> Very interesting, thanks for the history! Two observations:
+>
+> - I thought without MSG_DONTWAIT, the sendpage operation would be
+> total synchronous -- when the network layer was done with retransmissions,
+> it would unblock the caller. But that's likely a mistaken assumption
+> on my part. That could be why sendmsg is so much slower than sendpage
+> in this particular application.
+>
 
---b.
+On the "send" side, I think MSG_DONTWAIT is primarily about memory
+allocation.  send_msg() can only return when the message is queued.  If
+it needs to allocate memory (or wait for space in a restricted queue),
+then MSG_DONTWAIT says "fail instead".  It certainly doesn't wait for
+successful xmit and ack.
+On the "recv" side it is quite different of course.
 
-> 
-> Windows, for instance has explicit support for such an ACL:
-> https://docs.microsoft.com/en-us/windows/win32/secauthz/null-dacls-and-empty-dacls
-> 
-> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
-> 
-> 
+> - IIUC, nfsd_splice_read() replaces anonymous pages in rq_pages with
+> actual page cache pages. Those of course cannot be used to construct
+> subsequent RPC Replies, so that introduces a second release requirement.
+
+Yep.  I wonder if those pages are protected against concurrent updates
+.. so that a computed checksum will remain accurate.
+
+>
+> So I have a way to make the first case unnecessary for RPC/RDMA. It
+> has a reliable Send completion mechanism. Sounds like releasing is
+> still necessary for TCP, though; maybe that could be done in the
+> xpo_release_rqst callback.
+
+It isn't clear to me what particular cost you are trying to reduce.  Is
+handing a page back from RDMA to nfsd cheaper than nfsd calling
+alloc_page(), or do you hope to keep batches of pages together to avoid
+multi-page overheads, or is this about cache-hot pages, or ???
+
+>
+> As far as nfsd_splice_read(), I had thought of moving those pages to
+> a separate array which would always be released. That would need to
+> deal with the transport requirements above.
+>
+> If nothing else, I would like to add mention of these requirements
+> somewhere in the code too.
+
+Strongly agree with that.
+
+>
+> What's your opinion?
+
+To form a coherent opinion, I would need to know what that problem is.
+I certainly accept that there could be performance problems in releasing
+and re-allocating pages which might be resolved by batching, or by copying,
+or by better tracking.  But without knowing what hot-spot you want to
+cool down, I cannot think about how that fits into the big picture.
+So: what exactly is the problem that you see?
+
+Thanks,
+NeilBrown
+
+
+>
+>
+> --
+> Chuck Lever
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQJCBAEBCAAsFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAmAXQRwOHG5laWxiQHN1
+c2UuZGUACgkQOeye3VZigbm/5g//VnCiYNAm1U02K3RsE+30dsK9rKHYUsZC3YL0
+oqJRJ+xst4qgaF3/n3kPgu6w5tdVvr1G5hWK02+VJbm/yUkAkz8MI1nnfXzWqcjt
+atdnaAMfb2a9tGG1On7S1aH79E2P/tNUFrD6faki8lAmlCaeVbgNVjD6PvN2W8Ak
+hxuCAnGL1Ah54Ma3t4TFBfQ0fqII+NdUgwjpV3EBY8zIxNi43p7NzyZ8+U+9FhTZ
+q/pJI11Vm8JDWlQBOR/VBNJZlidAFLz8/HkBWgVB4cTs4VzSHkF7zzGP//H6pChl
+XHIOGU4x4IpuRdkEkRfGn4LkFlZpsw3DPCr/dkHasAITL63Y2t/HyMj9W20faCU0
+C1hWYGNqw/aQc44jardvV3nCpQwNusAUOI9fliZOh9BX/1wYi9PaxFJMXozSVS5n
+UWwhG5nWSYzI6/l0o4ArviBQw+SWFgul0v6mK8hDjWWJWbYt8iFls86SDU4rQFgt
+QeLu8ggx7c/33fnbtPvGbj7nyUFqwFTIC5eEXl0Qp2UM53tK2kNF69Wiol9WiZqX
+vP2wLNerAUoWvloKaS8fpZRYg7kBUQraO30/NqxKfXQZlm0iuzjB4sB+0BCf7+3C
+197SO6LX1oM4UWtJzBnP4ypEtDH8nmWoqt+FICELYl3MbboswqoajBeVNoxhTAL+
+LAEOuuU=
+=p+KS
+-----END PGP SIGNATURE-----
+--=-=-=--
