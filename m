@@ -2,55 +2,110 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=BAYES_20,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 924ECC433E6
-	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 20:47:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 320C2C433DB
+	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 22:03:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 61ABD64E0A
-	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 20:47:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F11A264E11
+	for <linux-nfs@archiver.kernel.org>; Sun, 31 Jan 2021 22:03:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229564AbhAaUri convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 31 Jan 2021 15:47:38 -0500
-Received: from 202-142-134-175.ca8e86.mel.static.aussiebb.net ([202.142.134.175]:48718
-        "EHLO mail.extremenerds.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229731AbhAaUrc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2021 15:47:32 -0500
-X-Greylist: delayed 4192 seconds by postgrey-1.27 at vger.kernel.org; Sun, 31 Jan 2021 15:47:32 EST
-Received: from [192.168.1.81] (unknown [192.168.1.81])
-        by mail.extremenerds.net (Postfix) with ESMTPS id A08994115B;
-        Mon,  1 Feb 2021 05:21:04 +1100 (AEDT)
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.17\))
-Subject: Re: nfsd issues in 5.10.11
-From:   "A. Duvnjak" <avian@extremenerds.net>
-In-Reply-To: <1CCCA2C2-BE78-4341-88C0-F8536AEBE41E@oracle.com>
-Date:   Mon, 1 Feb 2021 05:21:02 +1100
-Cc:     linux-nfs@vger.kernel.org
-Content-Transfer-Encoding: 8BIT
-Message-Id: <DCDE93FE-2DDC-41DA-8E3A-81E980F76096@extremenerds.net>
-References: <68D3109F-82A1-43BF-AA45-6E1C532D3BC4@extremenerds.net>
- <D7596D40-F549-4299-AC50-D81F6692FA13@oracle.com>
- <E154BD9D-3FA0-4EC0-B5A2-BA9DC88D9A4B@extremenerds.net>
- <92F1D388-52EC-4464-80FB-DBF9DDFB08F0@oracle.com>
- <110C9578-0B2B-465D-B1E6-76A6FCF9AC44@extremenerds.net>
- <BA2441C0-2E3E-4E5B-AD62-6ED5930FCDA5@extremenerds.net>
- <1CCCA2C2-BE78-4341-88C0-F8536AEBE41E@oracle.com>
-To:     Chuck Lever <chuck.lever@oracle.com>
-X-Mailer: Apple Mail (2.3445.104.17)
+        id S229483AbhAaWBj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 31 Jan 2021 17:01:39 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42534 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229535AbhAaV73 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Jan 2021 16:59:29 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 53196C061574
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Jan 2021 13:58:46 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id E1CC06EB8; Sun, 31 Jan 2021 16:58:43 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org E1CC06EB8
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1612130323;
+        bh=z3c/F0OlAPJvpVaFjwgd3c6btiTjSf0jrmg/MOuXFtA=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=oHsQmIqWCyV2bek1dZdbw2wOmjfDJVP89kavR7DXgmHHkYQ6p7CWrapdzO5V2UQQP
+         RvV/5rmYJynrzbj16tsq9Xrnl3x73M7wMVswt/0/zdUVQFkqiC44XDlL91vYnhcpYM
+         k5kIY9pibKI0bE06xGL2frMvOa/vf4mJxfGAvGtM=
+Date:   Sun, 31 Jan 2021 16:58:43 -0500
+From:   "bfields@fieldses.org" <bfields@fieldses.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "guy@vastdata.com" <guy@vastdata.com>,
+        "schumakeranna@gmail.com" <schumakeranna@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: we don't support removing system.nfs4_acl
+Message-ID: <20210131215843.GA9273@fieldses.org>
+References: <20210128223638.GE29887@fieldses.org>
+ <95e5f9e4-76d4-08c4-ece3-35a10c06073b@vastdata.com>
+ <cbc7115cc5d5aeb7ffb9e9b3880e453bf54ecbdb.camel@hammerspace.com>
+ <20210129023527.GA11864@fieldses.org>
+ <20210129025041.GA12151@fieldses.org>
+ <7a078b4d22c8d769a42a0c2b47fd501479e47a7b.camel@hammerspace.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <7a078b4d22c8d769a42a0c2b47fd501479e47a7b.camel@hammerspace.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-> Can you try v5.6 on your server?
+On Sun, Jan 31, 2021 at 08:41:37PM +0000, Trond Myklebust wrote:
+> On Thu, 2021-01-28 at 21:50 -0500, bfields@fieldses.org wrote:
+> > On Thu, Jan 28, 2021 at 09:35:27PM -0500, bfields@fieldses.org wrote:
+> > > Note that this patch doesn't prevent an application from setting a
+> > > zero-length ACL.  The xattr format is XDR with the first four bytes
+> > > representing the number of ACEs, so you'd set a zero-length ACL by
+> > > passing down a 4-byte all-zero buffer as the new value of the
+> > > system.nfs4_acl xattr.
+> > > 
+> > > A zero-length NULL buffer is what's used to implement removexattr:
+> > > 
+> > > int
+> > > __vfs_removexattr(struct dentry *dentry, const char *name)
+> > > {
+> > >         ...
+> > >         return handler->set(handler, dentry, inode, name, NULL, 0,
+> > > XATTR_REPLACE);
+> > > }
+> > > 
+> > > That's the case this patch covers.
+> > 
+> > So, I should have said in the changelog, apologies--the behavior
+> > without
+> > this patch is that when it gets a removexattr, the client sends a
+> > SETATTR with a bitmap claiming there's an ACL attribute, but a
+> > zero-length attribute value list, and the server (correctly) returns
+> > BADXDR.
+> > 
 > 
+> I don't see anything in the spec that prohibits a zero length array
+> size for nfs41_aces<> or states that should return NFS4ERR_BADXDR. Why
+> shouldn't we allow that?
 
-Sorry, not sure if you mean kernel v5.6.x or something else?  If you mean the kernel would v5.6.11 do as I have that handy and ready to go.
+Again: I agree.  And we do allow that, both before and after this patch.
 
-Cheers
-Anj
+There's a difference between a SETATTR with a zero-length body and a
+SETATTR with a body containing a zero-length ACL.  The former is bad
+protocol, the latter is, I agree, fine.
+
+--b.
+
+> 
+> Windows, for instance has explicit support for such an ACL:
+> https://docs.microsoft.com/en-us/windows/win32/secauthz/null-dacls-and-empty-dacls
+> 
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+> 
+> 
