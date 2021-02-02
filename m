@@ -2,135 +2,236 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46D2AC433E6
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 14:45:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31DF9C433E6
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 15:15:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1AA5264F51
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 14:45:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EBAB264F54
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 15:15:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234707AbhBBOpa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Feb 2021 09:45:30 -0500
-Received: from mail.kernel.org ([198.145.29.99]:57674 "EHLO mail.kernel.org"
+        id S235290AbhBBPPZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Feb 2021 10:15:25 -0500
+Received: from mail.kernel.org ([198.145.29.99]:39218 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S234431AbhBBOn3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Feb 2021 09:43:29 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C38A864F49;
-        Tue,  2 Feb 2021 14:42:48 +0000 (UTC)
-Subject: [PATCH v1] xprtrdma: Simplify rpcrdma_convert_kvec() and frwr_map()
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Tue, 02 Feb 2021 09:42:47 -0500
-Message-ID: <161227696787.3689758.305854118266206775.stgit@manet.1015granger.net>
-User-Agent: StGit/0.23-29-ga622f1
+        id S235102AbhBBPNN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 2 Feb 2021 10:13:13 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 419DF64F86;
+        Tue,  2 Feb 2021 15:07:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1612278430;
+        bh=m6i17RICMcagB3fjBK0ektXxTsN0a4iiNGXmiZNNTos=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=fz7zwml8HurzIafjNuFovltQo7VAiOaPBzEKyf/1DyQ7yRkN3Bz7j8ju7eSzfPbUh
+         rgq8LXnNSg2GCwdIqfcXWcpbdc3hTfN7qEWwX8pTnMX+2xOV/khJy6hthpooF8FuZu
+         v9P+SNQncwhf5wemXdN3c1ydp+8LwQf1+YeOJdhBY8zdRY1jRrC1KO4vkGMHaP1RzK
+         s4WLS3uR+wCMe4IH5xKztbKHvx174JHAAQl5AAMCOQOMLvlyIS0gEoruOcCWbIPzWS
+         IMsLgPMuo3Dt0Jy2QBbs7C0jbZhYkxVhwbquD3CjslcZThRFeuzeTJFdF9vy9vpXuE
+         VHtkSrkOVDkbw==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Dave Wysochanski <dwysocha@redhat.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 14/17] SUNRPC: Move simple_get_bytes and simple_get_netobj into private header
+Date:   Tue,  2 Feb 2021 10:06:48 -0500
+Message-Id: <20210202150651.1864426-14-sashal@kernel.org>
+X-Mailer: git-send-email 2.27.0
+In-Reply-To: <20210202150651.1864426-1-sashal@kernel.org>
+References: <20210202150651.1864426-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up.
+From: Dave Wysochanski <dwysocha@redhat.com>
 
-Support for FMR was removed by commit ba69cd122ece ("xprtrdma:
-Remove support for FMR memory registration") [Dec 2018]. That means
-the buffer-splitting behavior of rpcrdma_convert_kvec(), added by
-commit 821c791a0bde ("xprtrdma: Segment head and tail XDR buffers
-on page boundaries") [Mar 2016], is no longer necessary. FRWR
-memory registration handles this case with aplomb.
+[ Upstream commit ba6dfce47c4d002d96cd02a304132fca76981172 ]
 
-A related simplification removes an extra conditional branch from
-the SGL set-up loop in frwr_map(): Instead of using either
-sg_set_page() or sg_set_buf(), initialize the mr_page field properly
-when rpcrdma_convert_kvec() converts the kvec to an SGL entry.
-frwr_map() can then invoke sg_set_page() unconditionally.
+Remove duplicated helper functions to parse opaque XDR objects
+and place inside new file net/sunrpc/auth_gss/auth_gss_internal.h.
+In the new file carry the license and copyright from the source file
+net/sunrpc/auth_gss/auth_gss.c.  Finally, update the comment inside
+include/linux/sunrpc/xdr.h since lockd is not the only user of
+struct xdr_netobj.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |   10 ++--------
- net/sunrpc/xprtrdma/rpc_rdma.c  |   21 +++++----------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 8 insertions(+), 25 deletions(-)
+ include/linux/sunrpc/xdr.h              |  3 +-
+ net/sunrpc/auth_gss/auth_gss.c          | 30 +-----------------
+ net/sunrpc/auth_gss/auth_gss_internal.h | 42 +++++++++++++++++++++++++
+ net/sunrpc/auth_gss/gss_krb5_mech.c     | 31 ++----------------
+ 4 files changed, 46 insertions(+), 60 deletions(-)
+ create mode 100644 net/sunrpc/auth_gss/auth_gss_internal.h
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index baca49fe83af..5eb044a5f0be 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -306,14 +306,8 @@ struct rpcrdma_mr_seg *frwr_map(struct rpcrdma_xprt *r_xprt,
- 	if (nsegs > ep->re_max_fr_depth)
- 		nsegs = ep->re_max_fr_depth;
- 	for (i = 0; i < nsegs;) {
--		if (seg->mr_page)
--			sg_set_page(&mr->mr_sg[i],
--				    seg->mr_page,
--				    seg->mr_len,
--				    offset_in_page(seg->mr_offset));
--		else
--			sg_set_buf(&mr->mr_sg[i], seg->mr_offset,
--				   seg->mr_len);
-+		sg_set_page(&mr->mr_sg[i], seg->mr_page,
-+			    seg->mr_len, offset_in_page(seg->mr_offset));
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 9db6097c22c5d..a8d68c5a4ca61 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -27,8 +27,7 @@ struct rpc_rqst;
+ #define XDR_QUADLEN(l)		(((l) + 3) >> 2)
  
- 		++seg;
- 		++i;
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 8f5d0cb68360..529adb6ad4db 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -204,9 +204,7 @@ rpcrdma_alloc_sparse_pages(struct xdr_buf *buf)
- 	return 0;
+ /*
+- * Generic opaque `network object.' At the kernel level, this type
+- * is used only by lockd.
++ * Generic opaque `network object.'
+  */
+ #define XDR_MAX_NETOBJ		1024
+ struct xdr_netobj {
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 5fc6c028f89c0..b7a71578bd986 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -29,6 +29,7 @@
+ #include <linux/uaccess.h>
+ #include <linux/hashtable.h>
+ 
++#include "auth_gss_internal.h"
+ #include "../netns.h"
+ 
+ #include <trace/events/rpcgss.h>
+@@ -125,35 +126,6 @@ gss_cred_set_ctx(struct rpc_cred *cred, struct gss_cl_ctx *ctx)
+ 	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
  }
  
--/* Split @vec on page boundaries into SGEs. FMR registers pages, not
-- * a byte range. Other modes coalesce these SGEs into a single MR
-- * when they can.
-+/* Convert @vec to a single SGL element.
-  *
-  * Returns pointer to next available SGE, and bumps the total number
-  * of SGEs consumed.
-@@ -215,21 +213,12 @@ static struct rpcrdma_mr_seg *
- rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
- 		     unsigned int *n)
- {
--	u32 remaining, page_offset;
--	char *base;
+-static const void *
+-simple_get_bytes(const void *p, const void *end, void *res, size_t len)
+-{
+-	const void *q = (const void *)((const char *)p + len);
+-	if (unlikely(q > end || q < p))
+-		return ERR_PTR(-EFAULT);
+-	memcpy(res, p, len);
+-	return q;
+-}
 -
--	base = vec->iov_base;
--	page_offset = offset_in_page(base);
--	remaining = vec->iov_len;
--	while (remaining) {
--		seg->mr_page = NULL;
--		seg->mr_offset = base;
--		seg->mr_len = min_t(u32, PAGE_SIZE - page_offset, remaining);
--		remaining -= seg->mr_len;
--		base += seg->mr_len;
-+	if (vec->iov_len) {
-+		seg->mr_page = virt_to_page(vec->iov_base);
-+		seg->mr_offset = vec->iov_base;
-+		seg->mr_len = vec->iov_len;
- 		++seg;
- 		++(*n);
--		page_offset = 0;
- 	}
- 	return seg;
+-static inline const void *
+-simple_get_netobj(const void *p, const void *end, struct xdr_netobj *dest)
+-{
+-	const void *q;
+-	unsigned int len;
+-
+-	p = simple_get_bytes(p, end, &len, sizeof(len));
+-	if (IS_ERR(p))
+-		return p;
+-	q = (const void *)((const char *)p + len);
+-	if (unlikely(q > end || q < p))
+-		return ERR_PTR(-EFAULT);
+-	dest->data = kmemdup(p, len, GFP_NOFS);
+-	if (unlikely(dest->data == NULL))
+-		return ERR_PTR(-ENOMEM);
+-	dest->len = len;
+-	return q;
+-}
+-
+ static struct gss_cl_ctx *
+ gss_cred_get_ctx(struct rpc_cred *cred)
+ {
+diff --git a/net/sunrpc/auth_gss/auth_gss_internal.h b/net/sunrpc/auth_gss/auth_gss_internal.h
+new file mode 100644
+index 0000000000000..c5603242b54bf
+--- /dev/null
++++ b/net/sunrpc/auth_gss/auth_gss_internal.h
+@@ -0,0 +1,42 @@
++// SPDX-License-Identifier: BSD-3-Clause
++/*
++ * linux/net/sunrpc/auth_gss/auth_gss_internal.h
++ *
++ * Internal definitions for RPCSEC_GSS client authentication
++ *
++ * Copyright (c) 2000 The Regents of the University of Michigan.
++ * All rights reserved.
++ *
++ */
++#include <linux/err.h>
++#include <linux/string.h>
++#include <linux/sunrpc/xdr.h>
++
++static inline const void *
++simple_get_bytes(const void *p, const void *end, void *res, size_t len)
++{
++	const void *q = (const void *)((const char *)p + len);
++	if (unlikely(q > end || q < p))
++		return ERR_PTR(-EFAULT);
++	memcpy(res, p, len);
++	return q;
++}
++
++static inline const void *
++simple_get_netobj(const void *p, const void *end, struct xdr_netobj *dest)
++{
++	const void *q;
++	unsigned int len;
++
++	p = simple_get_bytes(p, end, &len, sizeof(len));
++	if (IS_ERR(p))
++		return p;
++	q = (const void *)((const char *)p + len);
++	if (unlikely(q > end || q < p))
++		return ERR_PTR(-EFAULT);
++	dest->data = kmemdup(p, len, GFP_NOFS);
++	if (unlikely(dest->data == NULL))
++		return ERR_PTR(-ENOMEM);
++	dest->len = len;
++	return q;
++}
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 6e5d6d2402158..b552dd4f32f80 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -21,6 +21,8 @@
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/gss_krb5_enctypes.h>
+ 
++#include "auth_gss_internal.h"
++
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+ #endif
+@@ -164,35 +166,6 @@ get_gss_krb5_enctype(int etype)
+ 	return NULL;
  }
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 94b28657aeeb..4a9fe6592795 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -285,7 +285,7 @@ enum {
  
- struct rpcrdma_mr_seg {		/* chunk descriptors */
- 	u32		mr_len;		/* length of chunk or segment */
--	struct page	*mr_page;	/* owning page, if any */
-+	struct page	*mr_page;	/* underlying struct page */
- 	char		*mr_offset;	/* kva if no page, else offset */
- };
- 
-
+-static const void *
+-simple_get_bytes(const void *p, const void *end, void *res, int len)
+-{
+-	const void *q = (const void *)((const char *)p + len);
+-	if (unlikely(q > end || q < p))
+-		return ERR_PTR(-EFAULT);
+-	memcpy(res, p, len);
+-	return q;
+-}
+-
+-static const void *
+-simple_get_netobj(const void *p, const void *end, struct xdr_netobj *res)
+-{
+-	const void *q;
+-	unsigned int len;
+-
+-	p = simple_get_bytes(p, end, &len, sizeof(len));
+-	if (IS_ERR(p))
+-		return p;
+-	q = (const void *)((const char *)p + len);
+-	if (unlikely(q > end || q < p))
+-		return ERR_PTR(-EFAULT);
+-	res->data = kmemdup(p, len, GFP_NOFS);
+-	if (unlikely(res->data == NULL))
+-		return ERR_PTR(-ENOMEM);
+-	res->len = len;
+-	return q;
+-}
+-
+ static inline const void *
+ get_key(const void *p, const void *end,
+ 	struct krb5_ctx *ctx, struct crypto_sync_skcipher **res)
+-- 
+2.27.0
 
