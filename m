@@ -5,44 +5,44 @@ X-Spam-Level:
 X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DB82C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 15:45:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C920CC433E6
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 15:49:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 16D9064F4B
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 15:45:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 94F1764F6B
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 15:49:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235474AbhBBPo3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Feb 2021 10:44:29 -0500
-Received: from mail.kernel.org ([198.145.29.99]:39436 "EHLO mail.kernel.org"
+        id S235557AbhBBPt3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Feb 2021 10:49:29 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38188 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S235257AbhBBPOk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Feb 2021 10:14:40 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id CB77F64F95;
-        Tue,  2 Feb 2021 15:07:27 +0000 (UTC)
+        id S235119AbhBBPNS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 2 Feb 2021 10:13:18 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 68E2D64F8D;
+        Tue,  2 Feb 2021 15:07:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612278448;
+        s=k20201202; t=1612278431;
         bh=7HAX9sU+l6BNdNYSlFXNawad2Tcj2aC8xHHqNBYP1s8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=nLg8/E7cbCttqYuegceGaXdvvds+8ttVFmqjQ+vZ/7Bnju+H1C3mXOuboXeBM+M/Q
-         JvoT5W2zNG3+0j63qsdUJ2i9Yp7Cs7aBTA3msZKEChVJT6xX07QKoYBmF8YBehv6FK
-         tefVvPupOVV5Iyn39DTbFp9HhupajVkpa+SUAVGlYl3zere01ZMkv+/+gjvfggsmmX
-         2vNYOLLxhq2MCk7J7eThJWUYHhbibEWdTAoHS6wXsV5EbFbVMnN6tu+O0ea0lzBwS1
-         N3r2XhZ5TpB1Sk02xhIgrE4tq8eYVUAT8Dfatgu8VFTlttTBH/M9K3GG0QcmILZ7AZ
-         4vw4sOdsVvIgA==
+        b=cfJF2q5y6mx9Kkc0zatpKb1q0azpClCI7nRNuKEAlpqM8HQP8c36FbRWG4PitVd50
+         gJCJEvPSChbtKIFBnbqxO3KdTi4H5KCrGuwI3bD/DRS0ho1v30/0hApPvrhKHP/5zE
+         CG6MBIlT3FlRWtmhmKPEuAmVgggl2Aj6OQYY+9i9hvAIy59K6BOoiiePPZK7GS5V0O
+         KRtBHp97sImVHIbcoD+b1pbF6rNXIJYaG+7jActLx7QE8aw89AODPUYyJSqgUOQdom
+         Av+wPNmialFhqynvP+Pgozvam3RYwkxnNm7xwqM0CSDazhV1pLeLyE95CqdmiDlOgj
+         5SW7qwejjtb9A==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Dave Wysochanski <dwysocha@redhat.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 10/10] SUNRPC: Handle 0 length opaque XDR object data properly
-Date:   Tue,  2 Feb 2021 10:07:14 -0500
-Message-Id: <20210202150715.1864614-10-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 15/17] SUNRPC: Handle 0 length opaque XDR object data properly
+Date:   Tue,  2 Feb 2021 10:06:49 -0500
+Message-Id: <20210202150651.1864426-15-sashal@kernel.org>
 X-Mailer: git-send-email 2.27.0
-In-Reply-To: <20210202150715.1864614-1-sashal@kernel.org>
-References: <20210202150715.1864614-1-sashal@kernel.org>
+In-Reply-To: <20210202150651.1864426-1-sashal@kernel.org>
+References: <20210202150651.1864426-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
