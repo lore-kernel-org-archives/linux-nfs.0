@@ -2,146 +2,118 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C57B2C433E6
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 17:10:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 433D2C433E0
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 18:45:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8262064E08
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 17:10:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 05D0164F4B
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 18:45:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233289AbhBBRKB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Feb 2021 12:10:01 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:37138 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S237041AbhBBRCa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Feb 2021 12:02:30 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1612285264;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Sh/kxFx7YvgC5J+H/GrC1fpCk40PBfelmGH6dEnlR7s=;
-        b=cvF27O0jYtaSu8o5hGBcIGBMcpH/xjy2F/OKDrAjG25I6Uuaq7lIh3Djggut5CSgtb3TwA
-        AEAXHvbISS5Y8F7q1AeedUDIX5JdvuOiqtRY7khqISe2NDmPVFU3p3tH30XHH9kFXI6B0c
-        3hRtx5+BH7QX+Mi/m+i9fhyea07gmEk=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-30-8_MKVoJnPQyKNDZ2ORXKBQ-1; Tue, 02 Feb 2021 12:01:02 -0500
-X-MC-Unique: 8_MKVoJnPQyKNDZ2ORXKBQ-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9884A801AC4
-        for <linux-nfs@vger.kernel.org>; Tue,  2 Feb 2021 17:01:01 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-114-82.phx2.redhat.com [10.3.114.82])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 660985D9C6
-        for <linux-nfs@vger.kernel.org>; Tue,  2 Feb 2021 17:01:01 +0000 (UTC)
-Subject: Re: [PATCH 1/2] mountd: Cleanup how config options are read in
-From:   Steve Dickson <SteveD@RedHat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20210201230147.45593-1-steved@redhat.com>
-Message-ID: <07eea6eb-2164-8076-5c82-6005d827ec1d@RedHat.com>
-Date:   Tue, 2 Feb 2021 12:02:27 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.7.0
+        id S238919AbhBBSoy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Feb 2021 13:44:54 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54006 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S238882AbhBBSn2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Feb 2021 13:43:28 -0500
+Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E1E85C061786
+        for <linux-nfs@vger.kernel.org>; Tue,  2 Feb 2021 10:42:47 -0800 (PST)
+Received: by mail-qk1-x733.google.com with SMTP id r77so20800119qka.12
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Feb 2021 10:42:47 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=15OHnxD+2xiRrqxd/g7CU3xZ31zwjreMRfj+4glkFD4=;
+        b=TNnN2Ddxlm/WrWL9/hnub+eoGDLAL7sJY5brWOBtTESEGTd+25h271je9/MPMSg8sN
+         KjAJJ6GN1B3IPjyuJOMMczKwTf3SGgeerL6J4Ee+vrJdz6LyAyQpQcoB4skG+i7TI3yZ
+         r9Ro6Y3MxosZpEcr7ko1mDQIK8jyyPP08EKry0TOSUu2zjqrDqfI9n/a2l2vDhvHW8JR
+         UmCWgeiXofhQ9tyuLafFhxwExYme0ueIlwlvcOFjYBfKA02DV/lX7LDzHCXwiCmosyWf
+         rE+t4D4g4gezSSP3ayzlZAqZgp6kUTbgyA2uaUv3Q65Y7jqTFXcgHBaBZ6ltNd+Seect
+         Zpww==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :mime-version:content-transfer-encoding;
+        bh=15OHnxD+2xiRrqxd/g7CU3xZ31zwjreMRfj+4glkFD4=;
+        b=GiblUQWAPlvvcw4AsARfqNnwgQDGUS0POMM8wkJfVf/sLkkk7d5Soo0tOK38tgWKYg
+         bSQU0IKqILA2Tf40DNs+brc1nXy+AkOCXC+RDHbEkIovTWGm+/5cYDjsZ3JskotSEKF1
+         1/AK51QQ96ybIZ5i/4T7klfUcP9bncUDO4uvWAZ1VzWeoHVGnya2InF97BvTcde2GRea
+         cndGCwDV0/tTC3A/bGuVtwjgqRKoqsCXUgSh6Vii3QLNqKhQDxaFMTWaeTRMlHKOL3ma
+         aYpc2KOrx7qDWhK3BF3l83qEVwbF1a/Xz+ip8Sl1AfCUOQ6wcRkTMRiaFMzR8lUpmFOJ
+         bf/A==
+X-Gm-Message-State: AOAM533+01EZQmKemiK+WBDgtDY+hOo1m8EWgHEfWUG2wpqLI2bhW7n7
+        urnzv9ofee9nnXK1awvntemmBZ+2juCwWQ==
+X-Google-Smtp-Source: ABdhPJy/sWUChY1Gt/R+QTOzIx65OuJtUEFBelAXvFwXphoIrDJPIKDuy62Cuggkb7N6lc4HuAn0Cw==
+X-Received: by 2002:a05:620a:b19:: with SMTP id t25mr21629031qkg.59.1612291366722;
+        Tue, 02 Feb 2021 10:42:46 -0800 (PST)
+Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
+        by smtp.gmail.com with ESMTPSA id k4sm7415906qtq.13.2021.02.02.10.42.45
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 02 Feb 2021 10:42:46 -0800 (PST)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v2 0/5] SUNRPC: Create sysfs files for changing IP
+Date:   Tue,  2 Feb 2021 13:42:39 -0500
+Message-Id: <20210202184244.288898-1-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.29.2
 MIME-Version: 1.0
-In-Reply-To: <20210201230147.45593-1-steved@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+
+It's possible for an NFS server to go down but come back up with a
+different IP address. These patches provide a way for administrators to
+handle this issue by providing a new IP address for xprt sockets to
+connect to.
+
+Chuck has suggested some ideas for future work that could also use this
+interface, such as:
+- srcaddr: To move between network devices on the client
+- type: "tcp", "rdma", "local"
+- bound: 0 for autobind, or the result of the most recent rpcbind query
+- connected: either true or false
+- last: read-only timestamp of the last operation to use the transport
+- device: A symlink to the physical network device
+
+Changes in v2:
+- Put files under /sys/kernel/sunrpc/ instead of /sys/net/sunrpc/
+- Rename file from "address" to "dstaddr"
+
+Thoughts?
+Anna
 
 
-On 2/1/21 6:01 PM, Steve Dickson wrote:
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... (tag: nfs-utils-2-5-3-rc5)
+Anna Schumaker (5):
+  sunrpc: Create a sunrpc directory under /sys/kernel/
+  sunrpc: Create a net/ subdirectory in the sunrpc sysfs
+  sunrpc: Create per-rpc_clnt sysfs kobjects
+  sunrpc: Prepare xs_connect() for taking NULL tasks
+  sunrpc: Create a per-rpc_clnt file for managing the destination IP
+    address
 
-steved.
-> ---
->  utils/mountd/mountd.c | 49 +++++++++++++++++++++++++------------------
->  1 file changed, 29 insertions(+), 20 deletions(-)
-> 
-> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-> index 07bcdc5a..988e51c5 100644
-> --- a/utils/mountd/mountd.c
-> +++ b/utils/mountd/mountd.c
-> @@ -661,30 +661,17 @@ get_exportlist(void)
->  	return elist;
->  }
->  
-> -int
-> -main(int argc, char **argv)
-> +int	vers;
-> +int	port = 0;
-> +int	descriptors = 0;
-> +
-> +inline static void 
-> +read_mount_conf(char **argv)
->  {
-> -	char	*progname;
->  	char	*s;
-> -	unsigned int listeners = 0;
-> -	int	foreground = 0;
-> -	int	port = 0;
-> -	int	descriptors = 0;
-> -	int	c;
-> -	int	vers;
-> -	struct sigaction sa;
-> -	struct rlimit rlim;
-> -
-> -	/* Set the basename */
-> -	if ((progname = strrchr(argv[0], '/')) != NULL)
-> -		progname++;
-> -	else
-> -		progname = argv[0];
-> -
-> -	/* Initialize logging. */
-> -	xlog_open(progname);
->  
->  	conf_init_file(NFS_CONFFILE);
-> +
->  	xlog_from_conffile("mountd");
->  	manage_gids = conf_get_bool("mountd", "manage-gids", manage_gids);
->  	descriptors = conf_get_num("mountd", "descriptors", descriptors);
-> @@ -714,7 +701,29 @@ main(int argc, char **argv)
->  		else
->  			NFSCTL_VERUNSET(nfs_version, vers);
->  	}
-> +}
-> +
-> +int
-> +main(int argc, char **argv)
-> +{
-> +	char	*progname;
-> +	unsigned int listeners = 0;
-> +	int	foreground = 0;
-> +	int	c;
-> +	struct sigaction sa;
-> +	struct rlimit rlim;
-> +
-> +	/* Set the basename */
-> +	if ((progname = strrchr(argv[0], '/')) != NULL)
-> +		progname++;
-> +	else
-> +		progname = argv[0];
-> +
-> +	/* Initialize logging. */
-> +	xlog_open(progname);
->  
-> +	/* Read in config setting */
-> +	read_mount_conf(argv);
->  
->  	/* Parse the command line options and arguments. */
->  	opterr = 0;
-> 
+ include/linux/sunrpc/clnt.h |   1 +
+ net/sunrpc/Makefile         |   2 +-
+ net/sunrpc/clnt.c           |   5 ++
+ net/sunrpc/sunrpc_syms.c    |   8 ++
+ net/sunrpc/sysfs.c          | 168 ++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sysfs.h          |  22 +++++
+ net/sunrpc/xprtsock.c       |   3 +-
+ 7 files changed, 207 insertions(+), 2 deletions(-)
+ create mode 100644 net/sunrpc/sysfs.c
+ create mode 100644 net/sunrpc/sysfs.h
+
+-- 
+2.29.2
 
