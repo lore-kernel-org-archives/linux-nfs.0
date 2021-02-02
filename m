@@ -2,164 +2,178 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-15.4 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20B3FC433DB
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 22:21:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D83FBC433DB
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 22:23:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E14AE64F53
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 22:21:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A352B64F63
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 22:23:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233788AbhBBWVE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Feb 2021 17:21:04 -0500
-Received: from mail-dm6nam10on2101.outbound.protection.outlook.com ([40.107.93.101]:46784
-        "EHLO NAM10-DM6-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S234084AbhBBWSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Feb 2021 17:18:45 -0500
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=GI/pag8ALIIqeDlWWzxsw3Gip1MiRJEcO+AUJfVHWIq9fd0mQyNzFMz6ReLES6hUWYGbQsLkjbbB/+L+NrjXVDktEpFVR9oLfSSxuQ42+6Eh2jROkhHCUQwCdOInm8UnFW6iSGqEQ2fh1yclSeUeW/t9yTjG22COISgT3YCBlAlul7mbrVBrwmhk++tpl+nH4YN586iBcc+MODNig83mJFzCCLbm9YH93OX7cmRmDJN2VIRs1WMNRKnWEezEC9uxtRghoQs6fitW+k9hnntyVJzxYRzjmnS9uAubdCbWd29Jg15+gs9lVsIjf5zjWdQimGlLZOFh5VUuW3lTL1KXgQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=If0Adnie16QPiCUqzukUxIOccNdsmsFUO1lAqfcD2Z8=;
- b=kDRlMdA2IhDPLX7PeCtea6CWZcjBwv8uO5Xk3+Kio3PDV5ZDEpeTm5mC1U8/SRusTUn5jsl1aQIqJz6c7L0Noe6Uw/vwOhzs9xSF+RN813/uThJ5FF4dSiHJF57EM4FHoGlzQrprLT1EK6rVDXwqUebkwIYqogzGuLPqOUftk9PDoVSqlRDQgDNQh8kbhwfN+mRteWLSFUcnOXr4aH01XOG+eSDj1w3Zlwano6ay5YxVTfWTfoIqij1OZ7Ji8nxGXFP3rKDFnhDvr4q0j+SdgihfbefNA4WM/D1pv/63r7lYjnLb15Tky7kFaI1SR3dWyT/A+rKv7JYE3qag3khjVA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=If0Adnie16QPiCUqzukUxIOccNdsmsFUO1lAqfcD2Z8=;
- b=dXTI0Jto24kz8U3DOGApWphg+bi/oDlQRWiQHTx5ms0Ck8UWqPa1Dy/tIELpDtCpUHxNuB2EFng7RqPpLrkK+PaVTTYpVGWwOTc5FqvWuZ8/Fo5iZvoR/Tea8dhIM359Byy9tvXYLAck8+hjxnnaSDzPEBEZOchgT4Z62TmbaNI=
-Received: from (2603:10b6:610:21::29) by
- CH2PR13MB3718.namprd13.prod.outlook.com (2603:10b6:610:9e::19) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.3825.19; Tue, 2 Feb 2021 22:17:52 +0000
-Received: from CH2PR13MB3525.namprd13.prod.outlook.com
- ([fe80::f453:2dd2:675:d063]) by CH2PR13MB3525.namprd13.prod.outlook.com
- ([fe80::f453:2dd2:675:d063%3]) with mapi id 15.20.3825.019; Tue, 2 Feb 2021
- 22:17:51 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "dan@kernelim.com" <dan@kernelim.com>,
-        "bcodding@redhat.com" <bcodding@redhat.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2 0/5] SUNRPC: Create sysfs files for changing IP
-Thread-Topic: [PATCH v2 0/5] SUNRPC: Create sysfs files for changing IP
-Thread-Index: AQHW+ZOgOm5dsTpDO0+RCMzuTmcxr6pFNttlgAAH/ICAAAcVAIAAKWWA
-Date:   Tue, 2 Feb 2021 22:17:51 +0000
-Message-ID: <7dfd7e3b9fb39da71f1654347ca2f2feba4fc04d.camel@hammerspace.com>
-References: <20210202184244.288898-1-Anna.Schumaker@Netapp.com>
-         <75F3F315-84AA-41A0-A43A-C531042A9C47@oracle.com>
-         <CAFX2JfktYGe4vDtXogFHurdyz4TJx5APj9pb-J5HmsDGC99kaA@mail.gmail.com>
-         <20210202192417.ug32gmuc2uciik54@gmail.com>
-         <8A686173-B3FF-4122-990C-6E8795D35161@redhat.com>
-In-Reply-To: <8A686173-B3FF-4122-990C-6E8795D35161@redhat.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: kernelim.com; dkim=none (message not signed)
- header.d=none;kernelim.com; dmarc=none action=none
- header.from=hammerspace.com;
-x-originating-ip: [68.36.133.222]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 6bea5661-3974-4fc8-b117-08d8c7c861b8
-x-ms-traffictypediagnostic: CH2PR13MB3718:
-x-microsoft-antispam-prvs: <CH2PR13MB371819AB8311C16A3CAB27AAB8B59@CH2PR13MB3718.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:10000;
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: 2rFFtFDfzMwmYD+shmNmxfoAsdRThGjJq67RzbTLtJZk+44e3dzW2laStWJEhIBgCMBZeuUcFLmD6RaMmIit+hl0x0LiIYSWoarzcCOplfTZuWxMrY+QrtHb0UFNQfpWTcfxa321Gy/SRRSdlbT3e4WySxxf1vhZ94EmZYhdG+AgV1PAih1lMqkH49V4vUJLBesQ6Yew4WMnRoKueG9beJDQgHlTyuX3/PudG0kPtiBLplDj3afqCCN5mjsiPOiUnmJo7t19HYpl1zUTEkeypPY8OcIRxXNX6oShitBPsumPiL8277oHDp7J22Vtj3tEHl1hizv7P30XxTMrkjTYa73Kwe1LucQpGVt0cNZWjhd5usetplev5UsdfiRQyg0l8k4SjkLyuqUZYISZjyQPf50gRyEaMk3mp2IMBdAioDEfl1OB8XX0ghG8vnaQjdB4u3LPJY3Vm1pwyUxddDn4NdEaIRD0jKV+vIS8Sap6uBOQmBYryHrCXAc20nXCi+q6YHY2kooe6uIOcI6Ccz2Jjg==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH2PR13MB3525.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(136003)(396003)(39840400004)(346002)(376002)(366004)(316002)(86362001)(76116006)(4326008)(6486002)(110136005)(66946007)(66476007)(66446008)(66556008)(64756008)(83380400001)(2906002)(8936002)(2616005)(54906003)(53546011)(36756003)(186003)(6506007)(71200400001)(478600001)(5660300002)(8676002)(26005)(6512007);DIR:OUT;SFP:1102;
-x-ms-exchange-antispam-messagedata: =?utf-8?B?K3hGWm1TcTkrK0xWL3oyZ1VpYjBnTHNaWGdoOEM3RzFYSEw3aGE2L083emM5?=
- =?utf-8?B?bFZCQXlBUDRtV2Vsd01YakNuSUtlWXo4aUJJd2pyWUxlb0RXb1Q1QnlGQWpp?=
- =?utf-8?B?RTQ3ZHgydEVEMDFERmRqeHo0cmk1M2l2clZKREMvMTJFSm5oNnR3bDk4QkpB?=
- =?utf-8?B?cXhzQUN2b0g2VE5wMFRoNWU2b2xsSDcyV2pCdUtJczR1LzZhc3phZEFvM1pK?=
- =?utf-8?B?TTE3QWZZRitncXE2RmJJcU1YRzNsN0Y5TVNEWEcrZXFNN1FxalkvVEh5Rm1J?=
- =?utf-8?B?ZGJ6OTM3dU1CWnRqbFdtWWdhWld2ODFVeTVPQnMvanFzU0hYdGJoU3JjU2dr?=
- =?utf-8?B?dFRWbDBhR0xOWEljWlNvVk82Ry90YXV5VXFJVU5ETFV6L3YwdkVTK2tFU2JL?=
- =?utf-8?B?ckNOTWpEVHQ4ZlUxMVpXam9lWmE0ZmxkNWhVM21QN0VKb21TUXZPaVVSVnI2?=
- =?utf-8?B?SGJBZnhkZU1OYWpKVE1KUkI3eXpEYU5MbjdYZy9Sa2tDWnVyOHNJZm0vMzNZ?=
- =?utf-8?B?THJ1OWRKaE1aRTI2aVplbTU3ZkI2T3JYQWp4Y2Z0MEptbDdSdEdqeTFrKzBL?=
- =?utf-8?B?eTFXV2FDU3FQcEFpN3ltOG9qS3k3UDhRSGcwRUw3NFU0Sy9BeG1XeTFpZGdn?=
- =?utf-8?B?ZHBERTByUDFscTdnNVZKZzMzVHhnRVY1WkN5Q2V5THlISHllMDZ3V1Q5WHor?=
- =?utf-8?B?WTQwVGxkZ3FjRWFuc0ZJK2NUdE84NS9OYWw4bWM5V3o5dTBUNEhONnpQZVo3?=
- =?utf-8?B?d20xVzB0YjNTYjRBQ1JvYWhvaWpTN2laa3l3aEhCc3NGTEJtR3YzaDF3TW5o?=
- =?utf-8?B?ejF6cjVEclczTlVjbkMwTnZqVk5MUkJtbzRLVDlkQUFLaU1NNzNsVFJWTUVG?=
- =?utf-8?B?TnprWGw5cnd4aGFKN2l6WUV2OEc2Y1ZjSGdwMVlPd1NsWnRUdkgrR3lRbDBF?=
- =?utf-8?B?MGNLbWwzZmZJZDh4bDZ1NktQcHpCRk5SL3lORWZqNk14dmFJYi9uV2l4OFhU?=
- =?utf-8?B?eGZLVEFWbGlIaVFvSkw5T3IrMzBtYW45aC9OOGZoQUNiZFRoSGJSenpzZ1cw?=
- =?utf-8?B?YngwUXdxWFR6SkhCWEN3UTVNU0dqS2ZXTFFGMEw2M1M0S1U5dnoyU0VKWXl2?=
- =?utf-8?B?TWhGaHE4VTVEVEUrMGRpbXU3TFhDL1prUzVPcm5EWXIzZkxwWFVUNEhDZFhP?=
- =?utf-8?B?YWxkMHlKSHZ6YUZVQnphRVlVTVF0YmdsVlZsRTQ5b25TQ0VmWmROb1dmZ2g2?=
- =?utf-8?B?cFdZdGg4eVhtV0krUnZTZkRTUXA3T3NaVlZudGhXWC9la2N2OVNWbUlVdldU?=
- =?utf-8?B?TVJydkViRkdsUFlxTnhoYzFwVFlDKzRZN0JvWTVZQU9PVGpXM1FVY2pFZEtm?=
- =?utf-8?B?RXlTMml0SDNIeGg4cFkxNmdLNDBlVHBXMzAxWGg5TytkeFVldDFWYnpNSVJO?=
- =?utf-8?B?VzlQTm44U1o4VGpVb3BUQkUyZE1MMGN5YTRIZVFnPT0=?=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <DFB26191A31C254AB69F20BA2ABCE335@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S233974AbhBBWWw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Feb 2021 17:22:52 -0500
+Received: from p3plsmtpa08-06.prod.phx3.secureserver.net ([173.201.193.107]:60371
+        "EHLO p3plsmtpa08-06.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S235325AbhBBWWV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Feb 2021 17:22:21 -0500
+Received: from [192.168.0.116] ([71.184.94.153])
+        by :SMTPAUTH: with ESMTPSA
+        id 743BldwjJyy0q743BlMOsL; Tue, 02 Feb 2021 15:21:34 -0700
+X-CMAE-Analysis: v=2.4 cv=AskrYMxP c=1 sm=1 tr=0 ts=6019d06e
+ a=vbvdVb1zh1xTTaY8rfQfKQ==:117 a=vbvdVb1zh1xTTaY8rfQfKQ==:17
+ a=IkcTkHD0fZMA:10 a=SEc3moZ4AAAA:8 a=yPCof4ZbAAAA:8 a=YQJfPKivPy9WdbG4OTUA:9
+ a=QEXdDO2ut3YA:10 a=5oRCH6oROnRZc2VpWJZ3:22
+X-SECURESERVER-ACCT: tom@talpey.com
+Subject: Re: [PATCH v1] xprtrdma: Simplify rpcrdma_convert_kvec() and
+ frwr_map()
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
+References: <161227696787.3689758.305854118266206775.stgit@manet.1015granger.net>
+ <e53cc3c2-2209-5f35-c487-9e59b9b9e526@talpey.com>
+ <B0EED542-086B-4E76-9348-FAB8EBA612AB@oracle.com>
+ <23f6893c-de31-0382-78a4-c09b1ceb2787@talpey.com>
+ <4A44C2FF-BFD6-423A-9FE5-F08CD2D75AA4@oracle.com>
+From:   Tom Talpey <tom@talpey.com>
+Message-ID: <78cd75d4-6fee-3b93-fa13-b5360fe0d45c@talpey.com>
+Date:   Tue, 2 Feb 2021 17:21:34 -0500
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101
+ Thunderbird/68.12.1
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: CH2PR13MB3525.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 6bea5661-3974-4fc8-b117-08d8c7c861b8
-X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Feb 2021 22:17:51.9076
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: Fznc/wmca2c5uCjQ0PG058IU6/shHbjKvsyZRK3dyatjbmVP8/GE71gbV0t6EIUlLpi0vwUTdHw3jEGm+TLH8A==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR13MB3718
+In-Reply-To: <4A44C2FF-BFD6-423A-9FE5-F08CD2D75AA4@oracle.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CMAE-Envelope: MS4xfN9+PzjR6CL+Drphjp8J7QdTU70V8HVdCFkpEXOKa7ltbDLn4SDtdUuZhJ6tXB5JXJFKmRTL9GHTxqA3ogVvG69IVIDZYt/qxLZuuO7WVDHj8OvA2sFq
+ zyfGTJgD/JiVXVHXh6qUHHuhw4gPT9UrbfxtZ22jzEjiqPZnrsitZndhWkg9aKK/ehqSi0nLHaFJ/k1mrZLzI1/S587MHFyNc4uuLY0j1GRTqVphkuMSOU9H
+ +yM49Wyu93Yjeqy16J6r2pi90K0G+OomOPEp6dSvR+YXf2CjGVU6cEIs7UpsbsBvG5sG9oD34heqWOX7ORTr9Q==
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVHVlLCAyMDIxLTAyLTAyIGF0IDE0OjQ5IC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBPbiAyIEZlYiAyMDIxLCBhdCAxNDoyNCwgRGFuIEFsb25pIHdyb3RlOg0KPiANCj4g
-PiBPbiBUdWUsIEZlYiAwMiwgMjAyMSBhdCAwMTo1MjoxMFBNIC0wNTAwLCBBbm5hIFNjaHVtYWtl
-ciB3cm90ZToNCj4gPiA+IFlvdSdyZSB3ZWxjb21lISBJJ2xsIHRyeSB0byByZW1lbWJlciB0byBD
-QyBoaW0gb24gZnV0dXJlIHZlcnNpb25zDQo+ID4gPiBPbiBUdWUsIEZlYiAyLCAyMDIxIGF0IDE6
-NTEgUE0gQ2h1Y2sgTGV2ZXINCj4gPiA+IDxjaHVjay5sZXZlckBvcmFjbGUuY29tPiB3cm90ZToN
-Cj4gPiA+ID4gDQo+ID4gPiA+IEkgd2FudCB0byBlbnN1cmUgRGFuIGlzIGF3YXJlIG9mIHRoaXMg
-d29yay4gVGhhbmtzIGZvciBwb3N0aW5nLA0KPiA+ID4gPiBBbm5hIQ0KPiA+IA0KPiA+IFRoYW5r
-cyBBbm5hIGFuZCBDaHVjay4gSSdtIGFjY2Vzc2luZyBhbmQgbW9uaXRvcmluZyB0aGUgbWFpbGlu
-Zw0KPiA+IGxpc3QgdmlhDQo+ID4gTk5UUCBhbmQgSSdtIGFsc28gb24gI2xpbnV4LW5mcyBmb3Ig
-Y2hhdHRpbmcgKGRhLXgpLg0KPiA+IA0KPiA+IEkgc2VlIHNyY2FkZHIgd2FzIGFscmVhZHkgZGlz
-Y3Vzc2VkLCBzbyB0aGUgcGF0Y2hlcyBJJ20gcGxhbm5pbmcgdG8NCj4gPiBzZW5kDQo+ID4gbmV4
-dCB3aWxsIGJlIGJhc2VkIG9uIHRoZSBsYXRlc3QgdmVyc2lvbiBvZiB5b3VyIHBhdGNoc2V0IGFu
-ZA0KPiA+IGNvbmNlcm4NCj4gPiBtdWx0aXBhdGguDQo+ID4gDQo+ID4gV2hhdCBJJ20gZ29pbmcg
-Zm9yIGlzIHRoZSBmb2xsb3dpbmc6DQo+ID4gDQo+ID4gLSBFeHBvc2UgdHJhbnNwb3J0cyB0aGF0
-IGFyZSByZWFjaGFibGUgZnJvbSB4cHJ0bXVsdGlwYXRoLiBFYWNoIGluDQo+ID4gaXRzDQo+ID4g
-wqAgb3duIHN1Yi1kaXJlY3RvcnksIHdpdGggYW4gaW50ZXJmYWNlIGFuZCBzdGF0dXMgcmVwcmVz
-ZW50YXRpb24NCj4gPiBzaW1pbGFyDQo+ID4gwqAgdG8gdGhlIHRvcCBkaXJlY3RvcnkuDQo+ID4g
-LSBBIHdheSB0byBhZGQvcmVtb3ZlIHRyYW5zcG9ydHMuDQo+ID4gLSBJbnNwaXJhdGlvbiBmb3Ig
-Y29kaW5nIHRoaXMgaXMgdmFyaW91cyBvdGhlciB0aGluZ3MgaW4gdGhlIGtlcm5lbA0KPiA+IHRo
-YXQNCj4gPiDCoCB1c2UgY29uZmlnZnMsIHBlcmhhcHMgaXQgY2FuIGJlIHVzZWQgaGVyZSB0b28u
-DQo+ID4gDQo+ID4gQWxzbywgd2hhdCBkbyB5b3UgdGhpbmsgd291bGQgYmUgYSBzdHJhaWdodGZv
-cndhcmQgd2F5IGZvciBhDQo+ID4gdXNlcnNwYWNlDQo+ID4gcHJvZ3JhbSB0byBmaW5kIHdoYXQg
-c3VucnBjIGNsaWVudCBpZCBzZXJ2ZXMgYSBtb3VudHBvaW50PyBJZiB3ZQ0KPiA+IGFkZCBhbg0K
-PiA+IGlvY3RsIGZvciB0aGUgbW91bnRkaXIgQUZBSUsgaXQgd291bGQgYmUgdGhlIGZpcnN0IG9u
-ZSB0aGF0IHRoZSBORlMNCj4gPiBjbGllbnQgc3VwcG9ydHMsIHNvIEkgd29uZGVyIGlmIHRoZXJl
-J3MgYSBiZXR0ZXIgaW50ZXJmYWNlIHRoYXQgY2FuDQo+ID4gd29yaw0KPiA+IGZvciB0aGF0Lg0K
-PiANCj4gSSdtIGEgZmFuIG9mIGFkZGluZyBhbiBpb2N0bCBpbnRlcmZhY2UgZm9yIHVzZXJzcGFj
-ZSwgYnV0IEkgdGhpbmsNCj4gd2UnZA0KPiBiZXR0ZXIgYXZvaWQgdXNpbmcgTkZTIGl0c2VsZiBi
-ZWNhdXNlIGl0IHdvdWxkIGJlIG5pY2UgdG8gc29tZWRheQ0KPiBpbXBsZW1lbnQNCj4gYW4gTkZT
-ICJzaHV0ZG93biIgZm9yIG5vbi1yZXNwb25zaXZlIHNlcnZlcnMsIGJ1dCBzZW5kaW5nIGFueSBp
-b2N0bA0KPiB0byB0aGUNCj4gbW91bnRwb2ludCBjb3VsZCByZXZhbGlkYXRlIGl0LCBhbmQgd2Un
-ZCBoYW5nIG9uIHRoZSBHRVRBVFRSLg0KPiANCj4gTWF5YmUgd2UgY2FuIGZpZ3VyZSBvdXQgYSB3
-YXkgdG8gZXhwb3NlIHRoZSBzdXBlcmJsb2NrIHZpYSBzeXNmcyBmb3INCj4gZWFjaA0KPiBtb3Vu
-dC4NCg0KUmlnaHQuIFRoZXJlIGlzIHBvdGVudGlhbCBmdW5jdGlvbmFsaXR5IGhlcmUgdGhhdCB3
-ZSBkbyBub3QgbmVlZCBvcg0KZXZlbiB3YW50IHRvIGV4cG9zZSB2aWEgdGhlIG1vdW50IGludGVy
-ZmFjZS4gQmVpbmcgYWJsZSB0byBjYW5jZWwgYWxsDQp0aGUgaHVuZyBSUEMgY2FsbHMgaW4gYW4g
-UlBDIHF1ZXVlLCBmb3IgaW5zdGFuY2UsIGlzIG5vdCBzb21ldGhpbmcgeW91DQp3YW50IHRvIGRv
-IHRocm91Z2ggZnNvcGVuKCkgYW5kIGZyaWVuZHMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
-aW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RA
-aGFtbWVyc3BhY2UuY29tDQoNCg0K
+On 2/2/2021 4:55 PM, Chuck Lever wrote:
+> 
+> 
+>> On Feb 2, 2021, at 4:50 PM, Tom Talpey <tom@talpey.com> wrote:
+>>
+>> On 2/2/2021 2:20 PM, Chuck Lever wrote:
+>>>> On Feb 2, 2021, at 2:18 PM, Tom Talpey <tom@talpey.com> wrote:
+>>>>
+>>>> What's not to like about a log that uses the words "with aplomb"? :)
+>>>>
+>>>> Minor related comment/question below.
+>>>>
+>>>> On 2/2/2021 9:42 AM, Chuck Lever wrote:
+>>>>> Clean up.
+>>>>> Support for FMR was removed by commit ba69cd122ece ("xprtrdma:
+>>>>> Remove support for FMR memory registration") [Dec 2018]. That means
+>>>>> the buffer-splitting behavior of rpcrdma_convert_kvec(), added by
+>>>>> commit 821c791a0bde ("xprtrdma: Segment head and tail XDR buffers
+>>>>> on page boundaries") [Mar 2016], is no longer necessary. FRWR
+>>>>> memory registration handles this case with aplomb.
+>>>>> A related simplification removes an extra conditional branch from
+>>>>> the SGL set-up loop in frwr_map(): Instead of using either
+>>>>> sg_set_page() or sg_set_buf(), initialize the mr_page field properly
+>>>>> when rpcrdma_convert_kvec() converts the kvec to an SGL entry.
+>>>>> frwr_map() can then invoke sg_set_page() unconditionally.
+>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>> ---
+>>>>>   net/sunrpc/xprtrdma/frwr_ops.c  |   10 ++--------
+>>>>>   net/sunrpc/xprtrdma/rpc_rdma.c  |   21 +++++----------------
+>>>>>   net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+>>>>>   3 files changed, 8 insertions(+), 25 deletions(-)
+>>>>> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+>>>>> index baca49fe83af..5eb044a5f0be 100644
+>>>>> --- a/net/sunrpc/xprtrdma/frwr_ops.c
+>>>>> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
+>>>>> @@ -306,14 +306,8 @@ struct rpcrdma_mr_seg *frwr_map(struct rpcrdma_xprt *r_xprt,
+>>>>>   	if (nsegs > ep->re_max_fr_depth)
+>>>>>   		nsegs = ep->re_max_fr_depth;
+>>>>>   	for (i = 0; i < nsegs;) {
+>>>>> -		if (seg->mr_page)
+>>>>> -			sg_set_page(&mr->mr_sg[i],
+>>>>> -				    seg->mr_page,
+>>>>> -				    seg->mr_len,
+>>>>> -				    offset_in_page(seg->mr_offset));
+>>>>> -		else
+>>>>> -			sg_set_buf(&mr->mr_sg[i], seg->mr_offset,
+>>>>> -				   seg->mr_len);
+>>>>> +		sg_set_page(&mr->mr_sg[i], seg->mr_page,
+>>>>> +			    seg->mr_len, offset_in_page(seg->mr_offset));
+>>>>>     		++seg;
+>>>>>   		++i;
+>>>>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+>>>>> index 8f5d0cb68360..529adb6ad4db 100644
+>>>>> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+>>>>> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+>>>>> @@ -204,9 +204,7 @@ rpcrdma_alloc_sparse_pages(struct xdr_buf *buf)
+>>>>>   	return 0;
+>>>>>   }
+>>>>>   -/* Split @vec on page boundaries into SGEs. FMR registers pages, not
+>>>>> - * a byte range. Other modes coalesce these SGEs into a single MR
+>>>>> - * when they can.
+>>>>> +/* Convert @vec to a single SGL element.
+>>>>>    *
+>>>>>    * Returns pointer to next available SGE, and bumps the total number
+>>>>>    * of SGEs consumed.
+>>>>> @@ -215,21 +213,12 @@ static struct rpcrdma_mr_seg *
+>>>>>   rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
+>>>>>   		     unsigned int *n)
+>>>>>   {
+>>>>> -	u32 remaining, page_offset;
+>>>>> -	char *base;
+>>>>> -
+>>>>> -	base = vec->iov_base;
+>>>>> -	page_offset = offset_in_page(base);
+>>>>> -	remaining = vec->iov_len;
+>>>>> -	while (remaining) {
+>>>>> -		seg->mr_page = NULL;
+>>>>> -		seg->mr_offset = base;
+>>>>> -		seg->mr_len = min_t(u32, PAGE_SIZE - page_offset, remaining);
+>>>>> -		remaining -= seg->mr_len;
+>>>>> -		base += seg->mr_len;
+>>>>> +	if (vec->iov_len) {
+>>>>> +		seg->mr_page = virt_to_page(vec->iov_base);
+>>>>> +		seg->mr_offset = vec->iov_base;
+>>>>> +		seg->mr_len = vec->iov_len;
+>>>>>   		++seg;
+>>>>>   		++(*n);
+>>>>> -		page_offset = 0;
+>>>>>   	}
+>>>>>   	return seg;
+>>>>>   }
+>>>>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>>> index 94b28657aeeb..4a9fe6592795 100644
+>>>>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>>> @@ -285,7 +285,7 @@ enum {
+>>>>>     struct rpcrdma_mr_seg {		/* chunk descriptors */
+>>>>>   	u32		mr_len;		/* length of chunk or segment */
+>>>>> -	struct page	*mr_page;	/* owning page, if any */
+>>>>> +	struct page	*mr_page;	/* underlying struct page */
+>>>>>   	char		*mr_offset;	/* kva if no page, else offset */
+>>>>
+>>>> Is this comment ("kva if no page") actually correct? The hunk just
+>>>> above is an example of a case where mr_page is set, yet mr_offset
+>>>> is an iov_base. Is iov_base not a kva?
+>>> Ah, well the "if no page" part is now obsolete.
+>>> I suppose it should be set to "offset_in_page(vec->iov_base)" ?
+>>
+>> Seems like it, yes. Assuming that only the first element in the sgl
+>> has a possibly non-zero offset ("FBO"). All others must be zero for
+>> the FRMR.
+>>
+>> Is it guaranteed that each kvec is at most one physical page? If not,
+>> then the length may span into a random physical page, that was not
+>> necessarily contiguous in the original KVA-addressed buffer.
+> 
+> IIUC kmalloc'd buffers are backed by physically contiguous pages.
+
+Indeed yes, kmalloc is heroic. If the kvec's are based on kmalloc'd
+buffers it's good for any iov_len.
+
+Tom.
