@@ -2,87 +2,130 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-17.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 91760C433DB
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 16:14:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B64AAC433DB
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 17:04:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 62B9064F55
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 16:14:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7B17064F86
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Feb 2021 17:04:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232034AbhBBQOG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Feb 2021 11:14:06 -0500
-Received: from mail.kernel.org ([198.145.29.99]:38140 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S235148AbhBBPJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Feb 2021 10:09:42 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 4462F64F54;
-        Tue,  2 Feb 2021 15:06:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612278386;
-        bh=F/psQyLY+nbOsPUKh+KYGIt8h2uncLnKEicsxK83SlI=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vPB+rNHuFUo5rEImpTJbRd/U7N/EA7Angm38exKTTo/6RbTeGfC2xHlTVlDet5wWP
-         bjUtPoXviAxZ7hHvTcqyKVoSqOUAg4cBt+i7ZwkY9NNp+eL1DqO61RSzuHW6Fkaerf
-         FyjfQfo3j9YFlcex92v4h4ArKSSpoTGC2ztNNGP/6+0SpmB2K3pyursl70W93sPMwn
-         tRGVIFT0ag7tGZDS7saxeFqgayZ7luOb/ALKtVaYE9jWd+rys6eR4/aTis2ycpiTDh
-         407evaIDvnopC4zBCRFjx1cqisPFMjcY7WNHWrEMXQNrM/FHgUKDRVQXJLvOrBQ+iY
-         TAvkOPuInwioA==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 08/25] pNFS/NFSv4: Try to return invalid layout in pnfs_layout_process()
-Date:   Tue,  2 Feb 2021 10:05:58 -0500
-Message-Id: <20210202150615.1864175-8-sashal@kernel.org>
-X-Mailer: git-send-email 2.27.0
-In-Reply-To: <20210202150615.1864175-1-sashal@kernel.org>
-References: <20210202150615.1864175-1-sashal@kernel.org>
+        id S237170AbhBBREd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Feb 2021 12:04:33 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:27565 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S236318AbhBBRAv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Feb 2021 12:00:51 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1612285162;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=LqPjowFOIhHHzFKRXTk+xJ9T1CMz1/doRKVSIXtmAf4=;
+        b=Rfc3diGilomWUNPFmyC3fFFc/L6KiArjheswMUcvpA8Rmj28tfR8iaBbG1g3f3unV71r7P
+        tryxExBOGYHGQoCWEHwtV+qVfagSyWa+aO7pnA7Ag7KIArjj/yLCbZ6U6rr52mBMPuRJfm
+        rwRvX1I0Nn19YH49PgCKySrrrEEcDN4=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-596-Qgg8fp4dORaQpbvmK-sJ0A-1; Tue, 02 Feb 2021 11:59:21 -0500
+X-MC-Unique: Qgg8fp4dORaQpbvmK-sJ0A-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 324DB804004;
+        Tue,  2 Feb 2021 16:59:20 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-114-82.phx2.redhat.com [10.3.114.82])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E00625C1CF;
+        Tue,  2 Feb 2021 16:59:19 +0000 (UTC)
+Subject: Re: [PATCH nfs-utils v2] mount: fix parsing of default options
+To:     NeilBrown <neilb@suse.de>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20210106184028.150925-1-steved@redhat.com>
+ <87o8h8fx7a.fsf@notabene.neil.brown.name>
+ <87lfccfx5t.fsf@notabene.neil.brown.name>
+ <875z3cfklw.fsf@notabene.neil.brown.name>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <6a5fc99d-90e7-b58b-7650-d1d294cad6ef@RedHat.com>
+Date:   Tue, 2 Feb 2021 12:00:45 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.7.0
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <875z3cfklw.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 08bd8dbe88825760e953759d7ec212903a026c75 ]
 
-If the server returns a new stateid that does not match the one in our
-cache, then try to return the one we hold instead of just invalidating
-it on the client side. This ensures that both client and server will
-agree that the stateid is invalid.
+On 2/1/21 12:00 AM, NeilBrown wrote:
+> 
+> A recent patch to change configfile.c to use parse_opt.c contained code
+> which was intended to remove all "default*" options from the list before
+> that could be passed to the kernel.  This code didn't work, so default*
+> options WERE passed to the kernel, and the kernel complained and failed
+> the mount attempt.
+> 
+> A more recent patch attempted to fix this by not including the
+> "default*" options in the option list at all.  This resulting in
+> global-default defaults over-riding per-mount or per-server defaults.
+> 
+> This patch reverse the "more recent" patch, and fixes the original patch
+> by providing correct code to remove all "default*" options before the
+> kernel can see them.
+> 
+> Fixes: 88c22f924f1b ("mount: convert configfile.c to use parse_opt.c")
+> Fixes: 8142542bda28 ("mount: parse default values correctly")
+> Signed-off-by: NeilBrown <neilb@suse.de>
+Committed.... (tag: nfs-utils-2-5-3-rc5)
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/nfs/pnfs.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 471bfa273dade..cbe7a82d55824 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2399,7 +2399,13 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 		 * We got an entirely new state ID.  Mark all segments for the
- 		 * inode invalid, and retry the layoutget
- 		 */
--		pnfs_mark_layout_stateid_invalid(lo, &free_me);
-+		struct pnfs_layout_range range = {
-+			.iomode = IOMODE_ANY,
-+			.length = NFS4_MAX_UINT64,
-+		};
-+		pnfs_set_plh_return_info(lo, IOMODE_ANY, 0);
-+		pnfs_mark_matching_lsegs_return(lo, &lo->plh_return_segs,
-+						&range, 0);
- 		goto out_forget;
- 	}
- 
--- 
-2.27.0
+steved.
+> ---
+> 
+> I realized that po_remove_all() could free 'ptr' and then compare it
+> against the next option, which would have undefined results.
+> So best to strdup and free it.
+> 
+> 
+>  utils/mount/configfile.c | 9 ++++++---
+>  1 file changed, 6 insertions(+), 3 deletions(-)
+> 
+> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> index e865998dd5a9..3d3684efa186 100644
+> --- a/utils/mount/configfile.c
+> +++ b/utils/mount/configfile.c
+> @@ -277,10 +277,9 @@ conf_parse_mntopts(char *section, char *arg, struct mount_options *options)
+>  		}
+>  		if (buf[0] == '\0')
+>  			continue;
+> -		if (default_value(buf))
+> -			continue;
+>  
+>  		po_append(options, buf);
+> +		default_value(buf);
+>  	}
+>  	conf_free_list(list);
+>  }
+> @@ -335,7 +334,11 @@ char *conf_get_mntopts(char *spec, char *mount_point,
+>  	 * Strip out defaults, which have already been handled,
+>  	 * then join the rest and return.
+>  	 */
+> -	po_remove_all(options, "default");
+> +	while (po_contains_prefix(options, "default", &ptr, 0) == PO_FOUND) {
+> +		ptr = strdup(ptr);
+> +		po_remove_all(options, ptr);
+> +		free(ptr);
+> +	}
+>  
+>  	po_join(options, &mount_opts);
+>  	po_destroy(options);
+> 
 
