@@ -4,29 +4,29 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FC94C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 16:24:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B411DC433DB
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 16:25:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 54ECC64F7C
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 16:24:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 67A4864E4D
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 16:25:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233573AbhBCQY5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Feb 2021 11:24:57 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40232 "EHLO mail.kernel.org"
+        id S233608AbhBCQZO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Feb 2021 11:25:14 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40288 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233560AbhBCQY4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 3 Feb 2021 11:24:56 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 285F464F8C;
-        Wed,  3 Feb 2021 16:24:14 +0000 (UTC)
-Subject: [PATCH v2 4/6] rpcrdma: Fix comments about reverse-direction
- operation
+        id S232507AbhBCQZL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 3 Feb 2021 11:25:11 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id BF76264E4D;
+        Wed,  3 Feb 2021 16:24:26 +0000 (UTC)
+Subject: [PATCH v2 6/6] rpcrdma: Capture bytes received in Receive completion
+ tracepoints
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Wed, 03 Feb 2021 11:24:13 -0500
-Message-ID: <161236945329.1030487.13444441650618425746.stgit@manet.1015granger.net>
+Date:   Wed, 03 Feb 2021 11:24:25 -0500
+Message-ID: <161236946591.1030487.17569515553232560373.stgit@manet.1015granger.net>
 In-Reply-To: <161236925476.1030487.10407536259816633879.stgit@manet.1015granger.net>
 References: <161236925476.1030487.10407536259816633879.stgit@manet.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -37,98 +37,85 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-During the final stages of publication of RFC 8167, reviewers
-requested that we use the term "reverse direction" rather than
-"backwards direction". Update comments to reflect this preference.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c          |    4 ++--
- net/sunrpc/xprtrdma/rpc_rdma.c             |    6 +-----
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    4 ++--
- net/sunrpc/xprtrdma/xprt_rdma.h            |    6 +++---
- 4 files changed, 8 insertions(+), 12 deletions(-)
+ include/trace/events/rpcrdma.h |   50 ++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 48 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index 946edf2db646..a249837d6a55 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -2,7 +2,7 @@
- /*
-  * Copyright (c) 2015-2020, Oracle and/or its affiliates.
-  *
-- * Support for backward direction RPCs on RPC/RDMA.
-+ * Support for reverse-direction RPCs on RPC/RDMA.
-  */
+diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+index 76e85e16854b..c838e7ac1c2d 100644
+--- a/include/trace/events/rpcrdma.h
++++ b/include/trace/events/rpcrdma.h
+@@ -60,6 +60,51 @@ DECLARE_EVENT_CLASS(rpcrdma_completion_class,
+ 				),					\
+ 				TP_ARGS(wc, cid))
  
- #include <linux/sunrpc/xprt.h>
-@@ -208,7 +208,7 @@ static struct rpc_rqst *rpcrdma_bc_rqst_get(struct rpcrdma_xprt *r_xprt)
- }
++DECLARE_EVENT_CLASS(rpcrdma_receive_completion_class,
++	TP_PROTO(
++		const struct ib_wc *wc,
++		const struct rpc_rdma_cid *cid
++	),
++
++	TP_ARGS(wc, cid),
++
++	TP_STRUCT__entry(
++		__field(u32, cq_id)
++		__field(int, completion_id)
++		__field(u32, received)
++		__field(unsigned long, status)
++		__field(unsigned int, vendor_err)
++	),
++
++	TP_fast_assign(
++		__entry->cq_id = cid->ci_queue_id;
++		__entry->completion_id = cid->ci_completion_id;
++		__entry->status = wc->status;
++		if (wc->status) {
++			__entry->received = 0;
++			__entry->vendor_err = wc->vendor_err;
++		} else {
++			__entry->received = wc->byte_len;
++			__entry->vendor_err = 0;
++		}
++	),
++
++	TP_printk("cq.id=%u cid=%d status=%s (%lu/0x%x) received=%u",
++		__entry->cq_id, __entry->completion_id,
++		rdma_show_wc_status(__entry->status),
++		__entry->status, __entry->vendor_err,
++		__entry->received
++	)
++);
++
++#define DEFINE_RECEIVE_COMPLETION_EVENT(name)				\
++		DEFINE_EVENT(rpcrdma_receive_completion_class, name,	\
++				TP_PROTO(				\
++					const struct ib_wc *wc,		\
++					const struct rpc_rdma_cid *cid	\
++				),					\
++				TP_ARGS(wc, cid))
++
+ DECLARE_EVENT_CLASS(xprtrdma_reply_class,
+ 	TP_PROTO(
+ 		const struct rpcrdma_rep *rep
+@@ -838,7 +883,8 @@ TRACE_EVENT(xprtrdma_post_linv_err,
+  ** Completion events
+  **/
  
- /**
-- * rpcrdma_bc_receive_call - Handle a backward direction call
-+ * rpcrdma_bc_receive_call - Handle a reverse-direction Call
-  * @r_xprt: transport receiving the call
-  * @rep: receive buffer containing the call
-  *
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index b3e66b8f65ab..f0af89a43efd 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1153,14 +1153,10 @@ rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
- 	 */
- 	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
- 	if (unlikely(!p))
--		goto out_short;
-+		return true;
+-DEFINE_COMPLETION_EVENT(xprtrdma_wc_receive);
++DEFINE_RECEIVE_COMPLETION_EVENT(xprtrdma_wc_receive);
++
+ DEFINE_COMPLETION_EVENT(xprtrdma_wc_send);
+ DEFINE_COMPLETION_EVENT(xprtrdma_wc_fastreg);
+ DEFINE_COMPLETION_EVENT(xprtrdma_wc_li);
+@@ -1790,7 +1836,7 @@ TRACE_EVENT(svcrdma_post_recv,
+ 	)
+ );
  
- 	rpcrdma_bc_receive_call(r_xprt, rep);
- 	return true;
--
--out_short:
--	pr_warn("RPC/RDMA short backward direction call\n");
--	return true;
- }
- #else	/* CONFIG_SUNRPC_BACKCHANNEL */
- {
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index 63f8be974df2..4a1edbb4028e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -2,7 +2,7 @@
- /*
-  * Copyright (c) 2015-2018 Oracle.  All rights reserved.
-  *
-- * Support for backward direction RPCs on RPC/RDMA (server-side).
-+ * Support for reverse-direction RPCs on RPC/RDMA (server-side).
-  */
+-DEFINE_COMPLETION_EVENT(svcrdma_wc_receive);
++DEFINE_RECEIVE_COMPLETION_EVENT(svcrdma_wc_receive);
  
- #include <linux/sunrpc/svc_rdma.h>
-@@ -59,7 +59,7 @@ void svc_rdma_handle_bc_reply(struct svc_rqst *rqstp,
- 	spin_unlock(&xprt->queue_lock);
- }
- 
--/* Send a backwards direction RPC call.
-+/* Send a reverse-direction RPC Call.
-  *
-  * Caller holds the connection's mutex and has already marshaled
-  * the RPC/RDMA request.
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index ed1c5444fb9d..fe3be985e239 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -98,9 +98,9 @@ struct rpcrdma_ep {
- 	atomic_t		re_completion_ids;
- };
- 
--/* Pre-allocate extra Work Requests for handling backward receives
-- * and sends. This is a fixed value because the Work Queues are
-- * allocated when the forward channel is set up, long before the
-+/* Pre-allocate extra Work Requests for handling reverse-direction
-+ * Receives and Sends. This is a fixed value because the Work Queues
-+ * are allocated when the forward channel is set up, long before the
-  * backchannel is provisioned. This value is two times
-  * NFS4_DEF_CB_SLOT_TABLE_SIZE.
-  */
+ TRACE_EVENT(svcrdma_rq_post_err,
+ 	TP_PROTO(
 
 
