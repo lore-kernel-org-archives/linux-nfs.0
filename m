@@ -2,104 +2,102 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A77CCC433E6
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 20:08:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE0ADC433DB
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 20:08:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5D91C64F78
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 20:08:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A77D64F74
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Feb 2021 20:08:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231710AbhBCUIL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Feb 2021 15:08:11 -0500
-Received: from mail.kernel.org ([198.145.29.99]:47810 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231742AbhBCUIG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 3 Feb 2021 15:08:06 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id CF53064F7E;
-        Wed,  3 Feb 2021 20:07:16 +0000 (UTC)
-Subject: [PATCH v3 5/6] xprtrdma: Pad optimization, revisited
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Wed, 03 Feb 2021 15:07:15 -0500
-Message-ID: <161238283595.946943.5865303378844229040.stgit@manet.1015granger.net>
-In-Reply-To: <161238257595.946943.6571271028482175652.stgit@manet.1015granger.net>
-References: <161238257595.946943.6571271028482175652.stgit@manet.1015granger.net>
-User-Agent: StGit/0.23-29-ga622f1
+        id S231879AbhBCUIm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Feb 2021 15:08:42 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43856 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231873AbhBCUIh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Feb 2021 15:08:37 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18BC3C061573
+        for <linux-nfs@vger.kernel.org>; Wed,  3 Feb 2021 12:07:57 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 246DC6EB8; Wed,  3 Feb 2021 15:07:56 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 246DC6EB8
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1612382876;
+        bh=pu2VPU3aIAT0BtDQJatlzHnNI8ERYChbCeLzIXlk06Y=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=a46SGtasuaRMRN0w3UzmA6Lv/H2/Es82OQeG0DcJqbuP56FACQfK+5V2r/icpt4aZ
+         kTlmNgEXgmQrpbcUJVupcOC/Sb22FsHJeI4VVZtRrGaXoAPehaQvwB90WbnZn6Zlgi
+         TUNYM+OHpqH1R2H8diT/OWqqHopsbmC4pwZBK80A=
+Date:   Wed, 3 Feb 2021 15:07:56 -0500
+From:   "bfields@fieldses.org" <bfields@fieldses.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "guy@vastdata.com" <guy@vastdata.com>,
+        "schumakeranna@gmail.com" <schumakeranna@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: we don't support removing system.nfs4_acl
+Message-ID: <20210203200756.GA30996@fieldses.org>
+References: <20210128223638.GE29887@fieldses.org>
+ <95e5f9e4-76d4-08c4-ece3-35a10c06073b@vastdata.com>
+ <cbc7115cc5d5aeb7ffb9e9b3880e453bf54ecbdb.camel@hammerspace.com>
+ <20210129023527.GA11864@fieldses.org>
+ <20210129025041.GA12151@fieldses.org>
+ <7a078b4d22c8d769a42a0c2b47fd501479e47a7b.camel@hammerspace.com>
+ <20210131215843.GA9273@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20210131215843.GA9273@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The NetApp Linux team discovered that with NFS/RDMA servers that do
-not support RFC 8797, the Linux client is forming NFSv4.x WRITE
-requests incorrectly.
+On Sun, Jan 31, 2021 at 04:58:43PM -0500, bfields@fieldses.org wrote:
+> On Sun, Jan 31, 2021 at 08:41:37PM +0000, Trond Myklebust wrote:
+> > On Thu, 2021-01-28 at 21:50 -0500, bfields@fieldses.org wrote:
+> > > On Thu, Jan 28, 2021 at 09:35:27PM -0500, bfields@fieldses.org wrote:
+> > > > Note that this patch doesn't prevent an application from setting a
+> > > > zero-length ACL.  The xattr format is XDR with the first four bytes
+> > > > representing the number of ACEs, so you'd set a zero-length ACL by
+> > > > passing down a 4-byte all-zero buffer as the new value of the
+> > > > system.nfs4_acl xattr.
+> > > > 
+> > > > A zero-length NULL buffer is what's used to implement removexattr:
+> > > > 
+> > > > int
+> > > > __vfs_removexattr(struct dentry *dentry, const char *name)
+> > > > {
+> > > >         ...
+> > > >         return handler->set(handler, dentry, inode, name, NULL, 0,
+> > > > XATTR_REPLACE);
+> > > > }
+> > > > 
+> > > > That's the case this patch covers.
+> > > 
+> > > So, I should have said in the changelog, apologies--the behavior
+> > > without
+> > > this patch is that when it gets a removexattr, the client sends a
+> > > SETATTR with a bitmap claiming there's an ACL attribute, but a
+> > > zero-length attribute value list, and the server (correctly) returns
+> > > BADXDR.
+> > > 
+> > 
+> > I don't see anything in the spec that prohibits a zero length array
+> > size for nfs41_aces<> or states that should return NFS4ERR_BADXDR. Why
+> > shouldn't we allow that?
+> 
+> Again: I agree.  And we do allow that, both before and after this patch.
+> 
+> There's a difference between a SETATTR with a zero-length body and a
+> SETATTR with a body containing a zero-length ACL.  The former is bad
+> protocol, the latter is, I agree, fine.
 
-In this case, the Linux NFS client disables implicit chunk round-up
-for odd-length Read and Write chunks. The goal was to support old
-servers that needed that padding to be sent explicitly by clients.
+Are we on the same page now?  Or should I update the changelog and
+resend?
 
-In that case the Linux NFS included the tail kvec in the Read chunk,
-since the tail contains any needed padding. That meant a separate
-memory registration is needed for the tail kvec, adding to the cost
-of forming such requests. To avoid that cost for a mere 3 bytes of
-zeroes that are always ignored by receivers, we try to use implicit
-roundup when possible.
-
-For NFSv4.x, the tail kvec also sometimes contains a trailing
-GETATTR operation. The Linux NFS client unintentionally includes
-that GETATTR operation in the Read chunk as well as inline.
-
-The fix is simply to /never/ include the tail kvec when forming a
-data payload Read chunk. The padding is thus now always present.
-
-Note that since commit 9ed5af268e88 ("SUNRPC: Clean up the handling
-of page padding in rpc_prepare_reply_pages()") [Dec 2020] the NFS
-client passes payload data to the transport with the padding in
-xdr->pages instead of in the send buffer's tail kvec. So now the
-Linux NFS client appends XDR padding to all odd-sized Read chunks.
-This shouldn't be a problem because:
-
- - RFC 8166-compliant servers are supposed to work with or without
-   that XDR padding in Read chunks.
-
- - Since the padding is now in the same memory region as the data
-   payload, a separate memory registration is not needed. In
-   addition, the link layer extends data in RDMA Read responses to
-   4-byte boundaries anyway. Thus there is now no savings when the
-   padding is not included.
-
-Because older kernels include the payload's XDR padding in the
-tail kvec, a fix there will be more complicated. Thus backporting
-this patch is not recommended.
-
-Reported by: Olga Kornievskaia <Olga.Kornievskaia@netapp.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Tom Talpey <tom@talpey.com>
----
- net/sunrpc/xprtrdma/rpc_rdma.c |    5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 6357ad5d0d3b..8a0571cb97ec 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -255,10 +255,7 @@ rpcrdma_convert_iovs(struct rpcrdma_xprt *r_xprt, struct xdr_buf *xdrbuf,
- 		page_base = 0;
- 	}
- 
--	/* When encoding a Read chunk, the tail iovec contains an
--	 * XDR pad and may be omitted.
--	 */
--	if (type == rpcrdma_readch && r_xprt->rx_ep->re_implicit_roundup)
-+	if (type == rpcrdma_readch)
- 		goto out;
- 
- 	/* When encoding a Write chunk, some servers need to see an
-
-
+--b.
