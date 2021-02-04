@@ -4,29 +4,30 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 791C2C433DB
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Feb 2021 17:00:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6FF75C433E9
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Feb 2021 17:01:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 41B4E64F44
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Feb 2021 17:00:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E40F64F44
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Feb 2021 17:01:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238285AbhBDRAL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 Feb 2021 12:00:11 -0500
-Received: from mail.kernel.org ([198.145.29.99]:54412 "EHLO mail.kernel.org"
+        id S238198AbhBDRA5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 4 Feb 2021 12:00:57 -0500
+Received: from mail.kernel.org ([198.145.29.99]:54424 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S238258AbhBDRAB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Feb 2021 12:00:01 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id CE8BF64F74;
-        Thu,  4 Feb 2021 16:59:01 +0000 (UTC)
-Subject: [PATCH v4 1/6] xprtrdma: Remove FMR support in rpcrdma_convert_iovs()
+        id S238272AbhBDRAD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 Feb 2021 12:00:03 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 7951864F77;
+        Thu,  4 Feb 2021 16:59:20 +0000 (UTC)
+Subject: [PATCH v4 4/6] rpcrdma: Fix comments about reverse-direction
+ operation
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Thu, 04 Feb 2021 11:59:01 -0500
-Message-ID: <161245794108.737759.13406954883302279304.stgit@manet.1015granger.net>
+Date:   Thu, 04 Feb 2021 11:59:19 -0500
+Message-ID: <161245795975.737759.7447460236438637578.stgit@manet.1015granger.net>
 In-Reply-To: <161245786674.737759.8361822825753388908.stgit@manet.1015granger.net>
 References: <161245786674.737759.8361822825753388908.stgit@manet.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -37,69 +38,99 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Support for FMR was removed by commit ba69cd122ece ("xprtrdma:
-Remove support for FMR memory registration") [Dec 2018]. That means
-the buffer-splitting behavior of rpcrdma_convert_kvec(), added by
-commit 821c791a0bde ("xprtrdma: Segment head and tail XDR buffers
-on page boundaries") [Mar 2016], is no longer necessary. FRWR
-memory registration handles this case with aplomb.
+During the final stages of publication of RFC 8167, reviewers
+requested that we use the term "reverse direction" rather than
+"backwards direction". Update comments to reflect this preference.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Tom Talpey <tom@talpey.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   27 +++++++--------------------
- 1 file changed, 7 insertions(+), 20 deletions(-)
+ net/sunrpc/xprtrdma/backchannel.c          |    4 ++--
+ net/sunrpc/xprtrdma/rpc_rdma.c             |    6 +-----
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    4 ++--
+ net/sunrpc/xprtrdma/xprt_rdma.h            |    6 +++---
+ 4 files changed, 8 insertions(+), 12 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index 946edf2db646..a249837d6a55 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (c) 2015-2020, Oracle and/or its affiliates.
+  *
+- * Support for backward direction RPCs on RPC/RDMA.
++ * Support for reverse-direction RPCs on RPC/RDMA.
+  */
+ 
+ #include <linux/sunrpc/xprt.h>
+@@ -208,7 +208,7 @@ static struct rpc_rqst *rpcrdma_bc_rqst_get(struct rpcrdma_xprt *r_xprt)
+ }
+ 
+ /**
+- * rpcrdma_bc_receive_call - Handle a backward direction call
++ * rpcrdma_bc_receive_call - Handle a reverse-direction Call
+  * @r_xprt: transport receiving the call
+  * @rep: receive buffer containing the call
+  *
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 8f5d0cb68360..57f9217048d8 100644
+index b2482d9328d1..283e9bfcab44 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -204,9 +204,7 @@ rpcrdma_alloc_sparse_pages(struct xdr_buf *buf)
- 	return 0;
- }
+@@ -1151,14 +1151,10 @@ rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
+ 	 */
+ 	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
+ 	if (unlikely(!p))
+-		goto out_short;
++		return true;
  
--/* Split @vec on page boundaries into SGEs. FMR registers pages, not
-- * a byte range. Other modes coalesce these SGEs into a single MR
-- * when they can.
-+/* Convert @vec to a single SGL element.
-  *
-  * Returns pointer to next available SGE, and bumps the total number
-  * of SGEs consumed.
-@@ -215,22 +213,11 @@ static struct rpcrdma_mr_seg *
- rpcrdma_convert_kvec(struct kvec *vec, struct rpcrdma_mr_seg *seg,
- 		     unsigned int *n)
- {
--	u32 remaining, page_offset;
--	char *base;
+ 	rpcrdma_bc_receive_call(r_xprt, rep);
+ 	return true;
 -
--	base = vec->iov_base;
--	page_offset = offset_in_page(base);
--	remaining = vec->iov_len;
--	while (remaining) {
--		seg->mr_page = NULL;
--		seg->mr_offset = base;
--		seg->mr_len = min_t(u32, PAGE_SIZE - page_offset, remaining);
--		remaining -= seg->mr_len;
--		base += seg->mr_len;
--		++seg;
--		++(*n);
--		page_offset = 0;
--	}
-+	seg->mr_page = NULL;
-+	seg->mr_offset = vec->iov_base;
-+	seg->mr_len = vec->iov_len;
-+	++seg;
-+	++(*n);
- 	return seg;
+-out_short:
+-	pr_warn("RPC/RDMA short backward direction call\n");
+-	return true;
+ }
+ #else	/* CONFIG_SUNRPC_BACKCHANNEL */
+ {
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index 63f8be974df2..4a1edbb4028e 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (c) 2015-2018 Oracle.  All rights reserved.
+  *
+- * Support for backward direction RPCs on RPC/RDMA (server-side).
++ * Support for reverse-direction RPCs on RPC/RDMA (server-side).
+  */
+ 
+ #include <linux/sunrpc/svc_rdma.h>
+@@ -59,7 +59,7 @@ void svc_rdma_handle_bc_reply(struct svc_rqst *rqstp,
+ 	spin_unlock(&xprt->queue_lock);
  }
  
-@@ -283,7 +270,7 @@ rpcrdma_convert_iovs(struct rpcrdma_xprt *r_xprt, struct xdr_buf *xdrbuf,
- 		goto out;
+-/* Send a backwards direction RPC call.
++/* Send a reverse-direction RPC Call.
+  *
+  * Caller holds the connection's mutex and has already marshaled
+  * the RPC/RDMA request.
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index ed1c5444fb9d..fe3be985e239 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -98,9 +98,9 @@ struct rpcrdma_ep {
+ 	atomic_t		re_completion_ids;
+ };
  
- 	if (xdrbuf->tail[0].iov_len)
--		seg = rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, &n);
-+		rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, &n);
- 
- out:
- 	if (unlikely(n > RPCRDMA_MAX_SEGS))
+-/* Pre-allocate extra Work Requests for handling backward receives
+- * and sends. This is a fixed value because the Work Queues are
+- * allocated when the forward channel is set up, long before the
++/* Pre-allocate extra Work Requests for handling reverse-direction
++ * Receives and Sends. This is a fixed value because the Work Queues
++ * are allocated when the forward channel is set up, long before the
+  * backchannel is provisioned. This value is two times
+  * NFS4_DEF_CB_SLOT_TABLE_SIZE.
+  */
 
 
