@@ -2,131 +2,111 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0DF6AC433E0
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Feb 2021 22:27:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 621AFC433E9
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Feb 2021 22:55:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C351B64DCF
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Feb 2021 22:27:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3066E64E02
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Feb 2021 22:55:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234334AbhBIW00 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 9 Feb 2021 17:26:26 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:47700 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233864AbhBIWJC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Feb 2021 17:09:02 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1612908421;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=taLLLwRVt+OrJ2ugscKx3k1QyDmonfZ/ZD7QCbLcsiw=;
-        b=VsWfCslerObqURgnHOa9GQTqmy26vON3ugT4LcFyzC4GvhJJ3Ogc0bIs4SYzB9pGybCuf2
-        KlhzsWgMlpgq3+0qPFzvGaXQbkSTyIbwoFNIZIwb90GrT86SSaTw8XUh7STUXGxVokgbeA
-        7EkS8jAR8kgxM/18Ou5smu8v8hCZBC0=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-143-HYf8FFuHN56PUumQRNO3wA-1; Tue, 09 Feb 2021 16:22:16 -0500
-X-MC-Unique: HYf8FFuHN56PUumQRNO3wA-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 3480C801965
-        for <linux-nfs@vger.kernel.org>; Tue,  9 Feb 2021 21:22:15 +0000 (UTC)
-Received: from madhat.home.dicksonnet.net (ovpn-113-50.phx2.redhat.com [10.3.113.50])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E83C92B394
-        for <linux-nfs@vger.kernel.org>; Tue,  9 Feb 2021 21:22:14 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/5 V1] exportd: The NFSv4 only mounting daemon.
-Date:   Tue,  9 Feb 2021 16:23:37 -0500
-Message-Id: <20210209212342.233111-1-steved@redhat.com>
+        id S233982AbhBIWz1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 9 Feb 2021 17:55:27 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60008 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234459AbhBIW1n (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Feb 2021 17:27:43 -0500
+Received: from mail-lj1-x22a.google.com (mail-lj1-x22a.google.com [IPv6:2a00:1450:4864:20::22a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D574DC061225
+        for <linux-nfs@vger.kernel.org>; Tue,  9 Feb 2021 13:27:18 -0800 (PST)
+Received: by mail-lj1-x22a.google.com with SMTP id a25so100033ljn.0
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Feb 2021 13:27:18 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=5NXrj70SaJJJRtMQWC0+3w4cmGywCfZjtndBL9rb8Bo=;
+        b=g8n7RWB/hph+MNS6KsfC0GffC4feoLtbwfzXkMDO5VGlvyK682yT02RPRIOW6hieUR
+         nxG1Mlzbyp5mtI1Do4dwBB4pr2NfNtLSNxuXGIfX+Az+7iAT6uxAH+/kuEuPZoNDiHrT
+         JX8A9+J4I4DIw7KDC1ACDk8XTP+nwuXWBZL+g=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=5NXrj70SaJJJRtMQWC0+3w4cmGywCfZjtndBL9rb8Bo=;
+        b=m6bpadRk96R4GcMMj6UPx3ysGKDdqyp6LqE3x50NWzSxyZLSheKMMLymyC9Uo4bXIs
+         3C0paAjE156RkO2YzdzFHLhzthzSvNqUjcoCGnyDtkkjMrk3LS4EHZ66LGOVGTVwyJhE
+         dozod/zbbq03MnSIDelAhMjcUtigklM2raIDX6XwkpbFs1X4iQVw1R821Sukr3Wbhy44
+         UroeYJfo8dyRCszwp+iV9A4y0bySueq1aT8s0WNRX7CCU92V0f48Gu1/E77y1G6JUeKx
+         1CXU/XUF1/KvRXhets8vXl0vOM+s05PJUb2bdIDmkhtNRGdDZhk6SS6qT7ff4YSGh/2p
+         T7gQ==
+X-Gm-Message-State: AOAM533maNFz9GzUGXpT5Wf0qWCkS/+NvJDfl3AoHuGlyM51mq/kkDV7
+        vn2p/e+UXJNgV0Kk9R2T99b9dnUvChHhvw==
+X-Google-Smtp-Source: ABdhPJz9Csl7PwOZh/I1hupbSnHHa+EGmC7BKOC/J6VJoovrhhco8mUVyVmjg/41E6LNL0ZS5IzHig==
+X-Received: by 2002:a2e:145d:: with SMTP id 29mr15526830lju.391.1612906037034;
+        Tue, 09 Feb 2021 13:27:17 -0800 (PST)
+Received: from mail-lf1-f43.google.com (mail-lf1-f43.google.com. [209.85.167.43])
+        by smtp.gmail.com with ESMTPSA id y10sm2693270lji.107.2021.02.09.13.27.16
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 09 Feb 2021 13:27:16 -0800 (PST)
+Received: by mail-lf1-f43.google.com with SMTP id f23so13528085lfk.9
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Feb 2021 13:27:16 -0800 (PST)
+X-Received: by 2002:a2e:b1c8:: with SMTP id e8mr15253931lja.251.1612905557284;
+ Tue, 09 Feb 2021 13:19:17 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+References: <591237.1612886997@warthog.procyon.org.uk> <CAHk-=wj-k86FOqAVQ4ScnBkX3YEKuMzqTEB2vixdHgovJpHc9w@mail.gmail.com>
+ <20210209202134.GA308988@casper.infradead.org>
+In-Reply-To: <20210209202134.GA308988@casper.infradead.org>
+From:   Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Tue, 9 Feb 2021 13:19:01 -0800
+X-Gmail-Original-Message-ID: <CAHk-=wh+2gbF7XEjYc=HV9w_2uVzVf7vs60BPz0gFA=+pUm3ww@mail.gmail.com>
+Message-ID: <CAHk-=wh+2gbF7XEjYc=HV9w_2uVzVf7vs60BPz0gFA=+pUm3ww@mail.gmail.com>
+Subject: Re: [GIT PULL] fscache: I/O API modernisation and netfs helper library
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     David Howells <dhowells@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        David Wysochanski <dwysocha@redhat.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Steve French <sfrench@samba.org>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        ceph-devel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-cachefs@redhat.com, CIFS <linux-cifs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        v9fs-developer@lists.sourceforge.net,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-exportd is a daemon that will listen for only v4 mount upcalls.
-The idea is to allow distros to build a v4 only package
-which will have a much smaller footprint than the
-entire nfs-utils package.
+On Tue, Feb 9, 2021 at 12:21 PM Matthew Wilcox <willy@infradead.org> wrote:
+>
+> Yeah, I have trouble with the private2 vs fscache bit too.  I've been
+> trying to persuade David that he doesn't actually need an fscache
+> bit at all; he can just increment the page's refcount to prevent it
+> from being freed while he writes data to the cache.
 
-exportd uses no RPC code, which means none of the 
-code or arguments that deal with v3 was ported, 
-this again, makes the footprint much smaller. 
+Does the code not hold a refcount already?
 
-The following options were ported:
-    * multiple threads
-    * state-directory-path option
-    * junction support (not tested)
+Honestly, the fact that writeback doesn't take a refcount, and then
+has magic "if writeback is set, don't free" code in other parts of the
+VM layer has been a problem already, when the wakeup ended up
+"leaking" from a previous page to a new allocation.
 
-The rest of the mountd options were v3 only options.
+I very much hope the fscache bit does not make similar mistakes,
+because the rest of the VM will _not_ have special "if fscache is set,
+then we won't do X" the way we do for writeback.
 
-Outstanding work that still needs be addressed:
-    * Should exportd also process mountd nfs.conf
-      sections, that exportd supports? This would 
-      make the current nfs.conf sections backward 
-      compatible but could cause confusion.
+So I think the fscache code needs to hold a refcount regardless, and
+that the fscache bit is set the page has to have a reference.
 
-    * How to make the current mountd work injunction
-      with exportd. Meaning how to stop mountd from 
-      listening for v4 upcalls when exportd is running. 
-      This would also allow a v3 only package. It would 
-      be nice if this was dynamic verse using a compile 
-      switch. Not sure how to do that.
+So what are the current lifetime rules for the fscache bit?
 
-    * Stopping rpc.nfsd from failing when rpc.bind is 
-      not running. A nfs.config.d/nfs.conf file was
-      used to turned off v3 for testing but that 
-      seems a bit clunky.
-    
-    * The exportd(8) man page could probably used some work.
-
-    * No systemd unit files exists. In theory the only processes
-      that would be needed are exportfs, rpc.nfsd and exportd.
-
-Steve Dickson (5):
-  exportd: the initial shell of the v4 export support
-  exportd: Moved cache upcalls routines into libexport.a
-  exportd: multiple threads
-  exportd/exportfs: Add the state-directory-path option
-  exportd: Enabled junction support
-
- .gitignore                                |   1 +
- configure.ac                              |   1 +
- nfs.conf                                  |   4 +
- support/export/Makefile.am                |   3 +-
- {utils/mountd => support/export}/auth.c   |   4 +-
- {utils/mountd => support/export}/cache.c  |  46 +++-
- support/export/export.h                   |  34 +++
- {utils/mountd => support/export}/fsloc.c  |   0
- {utils/mountd => support/export}/v4root.c |   0
- {utils/mountd => support/include}/fsloc.h |   0
- systemd/nfs.conf.man                      |  10 +
- utils/Makefile.am                         |   1 +
- utils/exportd/Makefile.am                 |  63 +++++
- utils/exportd/exportd.c                   | 276 ++++++++++++++++++++++
- utils/exportd/exportd.man                 |  81 +++++++
- utils/exportfs/exportfs.c                 |  25 +-
- utils/exportfs/exportfs.man               |   7 +-
- utils/mountd/Makefile.am                  |   5 +-
- 18 files changed, 543 insertions(+), 18 deletions(-)
- rename {utils/mountd => support/export}/auth.c (99%)
- rename {utils/mountd => support/export}/cache.c (98%)
- create mode 100644 support/export/export.h
- rename {utils/mountd => support/export}/fsloc.c (100%)
- rename {utils/mountd => support/export}/v4root.c (100%)
- rename {utils/mountd => support/include}/fsloc.h (100%)
- create mode 100644 utils/exportd/Makefile.am
- create mode 100644 utils/exportd/exportd.c
- create mode 100644 utils/exportd/exportd.man
-
--- 
-2.29.2
-
+             Linus
