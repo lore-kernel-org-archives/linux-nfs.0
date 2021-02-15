@@ -2,170 +2,105 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72C43C433E0
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 01:08:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7736CC433E6
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 12:02:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 35AED64DCF
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 01:08:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5158964E26
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 12:02:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229976AbhBOBID (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 14 Feb 2021 20:08:03 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52224 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229818AbhBOBIC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Feb 2021 20:08:02 -0500
-Received: from mail-ej1-x630.google.com (mail-ej1-x630.google.com [IPv6:2a00:1450:4864:20::630])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3B14C061756
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Feb 2021 17:07:21 -0800 (PST)
-Received: by mail-ej1-x630.google.com with SMTP id y26so8563555eju.13
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Feb 2021 17:07:21 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=8oLEqXUvdqy1QH/cRggvF58640ngzAUjBT8Tfk3Wjwg=;
-        b=eb+VDAyVwB6RZ6vXNDSIXjjY5/KGJonBZpcw4InpSNpoqcKC9wCYBknhMsgf9sPklg
-         GzCvnbIRKgTg7gtA7teRfKAGGFk9BR9qw3HHsG7GJ3+trFjsmHXqEUXRQMhyaGXIHFPG
-         +BYG0bBsO6r2Y7DOTssLQQLnPqsDN5e1ysQAo=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=8oLEqXUvdqy1QH/cRggvF58640ngzAUjBT8Tfk3Wjwg=;
-        b=agOkB5PiwlUYtGmtzs7ovVKwjjg7JZQVFQSubFI3Pmg8dE7Nt/d5WBInBwx8LPV5SD
-         kYbQxWt0G8fitTPtaRi3BGgowdgSzKpaK6FQbeJl1Yc4jYizq7wR0sWreV2NUaffu6wL
-         KHhTGUWBT0Vqwl5X5K7tjqvJeB7hhyFsxwTtMdodLGjrddGfG9z6Zb8Ph2Mun6FDtW33
-         qlU5Cet3t7yu33iky96DnidIUgR9TmlXTLhIGEFH2P94578rJBNjVOiBaO/57a+20B9T
-         v7OgBV9A4h7xHXkGqft2xonuXWk7DvzIm1aE5Hg3pdRFOrKZCBHCQg64doa790QkWX60
-         dfVA==
-X-Gm-Message-State: AOAM5304fHeO6tZWAFLkyNX6Eui8oA2DJk3yfZ0tiWw6TvQoipNkONJ/
-        W4yX0nvh3v8mla+x9GLu6gmnxVlE8OEKxA==
-X-Google-Smtp-Source: ABdhPJzpncvT63Oo056zhWqxmL3Dn529DQiDi2szpsbPEeYQco8xmrpYtF5Y9yv9afpiomDpd1PXWQ==
-X-Received: by 2002:a17:906:d10c:: with SMTP id b12mr3959985ejz.477.1613351240328;
-        Sun, 14 Feb 2021 17:07:20 -0800 (PST)
-Received: from mail-ed1-f53.google.com (mail-ed1-f53.google.com. [209.85.208.53])
-        by smtp.gmail.com with ESMTPSA id z2sm9655930ejd.44.2021.02.14.17.07.19
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sun, 14 Feb 2021 17:07:20 -0800 (PST)
-Received: by mail-ed1-f53.google.com with SMTP id q10so6252917edt.7
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Feb 2021 17:07:19 -0800 (PST)
-X-Received: by 2002:a05:651c:112:: with SMTP id a18mr8181174ljb.465.1613350911576;
- Sun, 14 Feb 2021 17:01:51 -0800 (PST)
+        id S229968AbhBOMB5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Feb 2021 07:01:57 -0500
+Received: from outbound-smtp24.blacknight.com ([81.17.249.192]:60140 "EHLO
+        outbound-smtp24.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S230190AbhBOMBw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 07:01:52 -0500
+Received: from mail.blacknight.com (pemlinmail03.blacknight.ie [81.17.254.16])
+        by outbound-smtp24.blacknight.com (Postfix) with ESMTPS id CAFAFC0B2A
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2021 12:00:57 +0000 (GMT)
+Received: (qmail 27872 invoked from network); 15 Feb 2021 12:00:57 -0000
+Received: from unknown (HELO techsingularity.net) (mgorman@techsingularity.net@[84.203.22.4])
+  by 81.17.254.9 with ESMTPSA (AES256-SHA encrypted, authenticated); 15 Feb 2021 12:00:57 -0000
+Date:   Mon, 15 Feb 2021 12:00:56 +0000
+From:   Mel Gorman <mgorman@techsingularity.net>
+To:     Jesper Dangaard Brouer <brouer@redhat.com>
+Cc:     Chuck Lever <chuck.lever@oracle.com>, Mel Gorman <mgorman@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        Jakub Kicinski <kuba@kernel.org>
+Subject: Re: alloc_pages_bulk()
+Message-ID: <20210215120056.GD3697@techsingularity.net>
+References: <2A0C36E7-8CB0-486F-A8DB-463CA28C5C5D@oracle.com>
+ <EEB0B974-6E63-41A0-9C01-F0DEA39FC4BF@oracle.com>
+ <20210209113108.1ca16cfa@carbon>
+ <20210210084155.GA3697@techsingularity.net>
+ <20210210124103.56ed1e95@carbon>
+ <20210210130705.GC3629@suse.de>
+ <B123FB11-661F-45A6-8235-2982BF3C4B83@oracle.com>
+ <20210211091235.GC3697@techsingularity.net>
+ <20210211132628.1fe4f10b@carbon>
 MIME-Version: 1.0
-References: <CAHk-=wj-k86FOqAVQ4ScnBkX3YEKuMzqTEB2vixdHgovJpHc9w@mail.gmail.com>
- <591237.1612886997@warthog.procyon.org.uk> <1330473.1612974547@warthog.procyon.org.uk>
- <1330751.1612974783@warthog.procyon.org.uk> <CAHk-=wjgA-74ddehziVk=XAEMTKswPu1Yw4uaro1R3ibs27ztw@mail.gmail.com>
- <27816.1613085646@warthog.procyon.org.uk> <CAHk-=wi68OpbwBm6RCodhNUyg6x8N7vi5ufjRtosQSPy_EYqLA@mail.gmail.com>
- <860729.1613348577@warthog.procyon.org.uk>
-In-Reply-To: <860729.1613348577@warthog.procyon.org.uk>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Sun, 14 Feb 2021 17:01:35 -0800
-X-Gmail-Original-Message-ID: <CAHk-=wh7xY3UF7zEc0BNVNjOox59jYBW-Gfi7=emm+BXPWc6nQ@mail.gmail.com>
-Message-ID: <CAHk-=wh7xY3UF7zEc0BNVNjOox59jYBW-Gfi7=emm+BXPWc6nQ@mail.gmail.com>
-Subject: Re: [GIT PULL] fscache: I/O API modernisation and netfs helper library
-To:     David Howells <dhowells@redhat.com>
-Cc:     Matthew Wilcox <willy@infradead.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        ceph-devel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-cachefs@redhat.com, CIFS <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        v9fs-developer@lists.sourceforge.net,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
+In-Reply-To: <20210211132628.1fe4f10b@carbon>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, Feb 14, 2021 at 4:23 PM David Howells <dhowells@redhat.com> wrote:
->
-> Anyway, I have posted my fscache modernisation patches multiple times for
-> public review, I have tried to involve the wider community in aspects of the
-> development on public mailing lists and I have been including the maintainers
-> in to/cc.
+On Thu, Feb 11, 2021 at 01:26:28PM +0100, Jesper Dangaard Brouer wrote:
+> > Parameters to __rmqueue_pcplist are garbage as the parameter order changed.
+> > I'm surprised it didn't blow up in a spectacular fashion. Again, this
+> > hasn't been near any testing and passing a list with high orders to
+> > free_pages_bulk() will corrupt lists too. Mostly it's a curiousity to see
+> > if there is justification for reworking the allocator to fundamentally
+> > deal in batches and then feed batches to pcp lists and the bulk allocator
+> > while leaving the normal GFP API as single page "batches". While that
+> > would be ideal, it's relatively high risk for regressions. There is still
+> > some scope for adding a basic bulk allocator before considering a major
+> > refactoring effort.
+> 
+> The alloc_flags reminds me that I have some asks around the semantics
+> of the API.  I'm concerned about the latency impact on preemption.  I
+> want us to avoid creating something that runs for too long with
+> IRQs/preempt disabled.
+> 
+> (With SLUB kmem_cache_free_bulk() we manage to run most of the time with
+> preempt and IRQs enabled.  So, I'm not worried about large slab bulk
+> free. For SLUB kmem_cache_alloc_bulk() we run with local_irq_disable(),
+> so I always recommend users not to do excessive bulk-alloc.)
+> 
 
-So then add those links and the cc's to the commit logs, so that I can
-*see* them.
+The length of time IRQs/preempt disabled are partially related to the
+bulk API but the deeper concern is how long the IRQs are disabled within
+the page allocator in general. Sometimes they are disabled for list
+manipulations but the duration is longer than it has to be for per-cpu
+stat updates and that may be unnecessary for all arches and
+configurations. Some may need IRQs disabled but others may only need
+preempt disabled for the counters. That's a more serious overall than
+just the bulk allocator.
 
-I'm done with this discussion.
+> For this page bulk alloc API, I'm fine with limiting it to only support
+> order-0 pages. (This will also fit nicely with the PCP system it think).
+> 
 
-If I see a pull request from you, I DO NOT WANT TO HAVE TO HAVE A
-WEEK-LONG EMAIL THREAD ABOUT HOW I CANNOT SEE THAT IT HAS EVER SEEN
-ANY REVIEW.
+Ok.
 
-So if all I see is "Signed-off-by:" from you, I will promptly throw
-that pull request into the garbage, because it's just not worth my
-time to try to have to get you kicking and screaming to show that
-others have been involved.
+> I also suggest the API can return less pages than requested. Because I
+> want to to "exit"/return if it need to go into an expensive code path
+> (like buddy allocator or compaction).  I'm assuming we have a flags to
+> give us this behavior (via gfp_flags or alloc_flags)?
+> 
 
-Can you not understand that?
+The API returns the number of pages returned on a list so policies
+around how aggressive it should be allocating the requested number of
+pages could be adjusted without changing the API. Passing in policy
+requests via gfp_flags may be problematic as most (all?) bits are
+already used.
 
-When I get that pull request, I need to see that yes, this has been
-reviewed, people have been involved, and yes, it's been in linux-next.
-
-I want to see "reviewed-by" and "tested-by", I want to see "cc", and I
-want to see links to submission threads with discussion showing that
-others actually were involved.
-
-I do *not* want to see just a single signed-off-by line from you, and
-then have to ask for "has anybody else actually seen this and reviewed
-it".
-
-Look, here's an entirely unrelated example from a single fairly recent
-trivial one-liner memory leak fix:
-
-    Fixes: 87c715dcde63 ("scsi: scsi_debug: Add per_host_store option")
-    Link: https://lore.kernel.org/r/20210208111734.34034-1-mlombard@redhat.com
-    Acked-by: Douglas Gilbert <dgilbert@interlog.com>
-    Signed-off-by: Maurizio Lombardi <mlombard@redhat.com>
-    Signed-off-by: Martin K. Petersen <martin.petersen@oracle.com>
-
-that's from a quite a trivial commit. Yes, it's trivial, but it could
-still be wrong, of course. And if somebody ever reports that it causes
-problems despite how simple it was, look at what I have: I have three
-people to contact, and I have a pointer to the actual original
-submission of the patch.
-
-Do we have that for all our commits? No. But it's also not at all
-unusual any more, and in fact many commits have even more, with
-testing etc.
-
-And yes, sometimes the test results and acks come back later after
-you've already pushed the changes out etc, and no, it's generally not
-worth rebasing for that - maybe others have now started to rely on
-whatever public branch you have. Which is why the "Link:" is useful,
-so that if things come in later, the discussion can still be found.
-But quite often, you shouldn't have pushed out some final branch
-before you've gotten at least *some* positive response from people, so
-I do kind of expect some "Acked-by" etc in the commit itself.
-
-THAT is what you need to aim for.
-
-And yes, I'm picking on you. Because we've had this problem before.
-I've complained when you've sent me pull requests that don't even
-build, that you in fact had been told by linux-next didn't build, and
-you still sent them to me.
-
-And as a result, I've asked for more involvement from other people before.
-
-So now I'm clarifying that requirement - I  absolutely need to see
-that it has actually seen testing, that it has seen other people being
-involved, and that it isn't just you throwing spaghetti at the wall to
-see what sticks.
-
-And I'm not going to do that for every pull request. I want to see
-that data *in* the pull request itself.
-
-            Linus
+-- 
+Mel Gorman
+SUSE Labs
