@@ -2,282 +2,131 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD0A8C4332D
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 15:59:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39045C43332
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 15:59:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A38DF64DDA
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 15:59:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1A19964DE0
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 15:59:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232112AbhBOP5N (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Feb 2021 10:57:13 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:44152 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231184AbhBOPtY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 10:49:24 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613404077;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Okh3IiQvaJnPM5Z6HbD91m2dX/ei2WMRM20qpacCjAs=;
-        b=F2aTNuXsdGYJWlSOxEWR76GfR3Z5qVFsLeo7h2oLKR52TCsIbTiO0yiIniy8lx4Km+453G
-        AKR60Zr/9LSSlxWYEnF1n9aL+cuKFWkRQ23N5JiDdymwKJhFlx6CFjh7toYJ5DaUzLpy4A
-        1iz7+CpnOMAoVVW5QV7sy/isJlF0CB4=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-86-XEoACLMQPvqEgt9Y1mqakQ-1; Mon, 15 Feb 2021 10:47:55 -0500
-X-MC-Unique: XEoACLMQPvqEgt9Y1mqakQ-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id CE84979EC0;
-        Mon, 15 Feb 2021 15:47:53 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-119-68.rdu2.redhat.com [10.10.119.68])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id A37775D9C0;
-        Mon, 15 Feb 2021 15:47:47 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 18/33] afs: Move key to afs_read struct
-From:   David Howells <dhowells@redhat.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>
-Cc:     linux-afs@lists.infradead.org, linux-cachefs@redhat.com,
-        linux-fsdevel@vger.kernel.org, dhowells@redhat.com,
-        Jeff Layton <jlayton@redhat.com>,
-        David Wysochanski <dwysocha@redhat.com>,
-        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 15 Feb 2021 15:47:46 +0000
-Message-ID: <161340406678.1303470.12676824086429446370.stgit@warthog.procyon.org.uk>
-In-Reply-To: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
-References: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
-User-Agent: StGit/0.23
+        id S231938AbhBOP5V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Feb 2021 10:57:21 -0500
+Received: from mail.kernel.org ([198.145.29.99]:53698 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S231947AbhBOPtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 Feb 2021 10:49:39 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id BEECF64DA8;
+        Mon, 15 Feb 2021 15:37:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1613403471;
+        bh=sBSEOLAnJ62Hx6hiipYHp/kHCqxkuFzCoexeJceJmjU=;
+        h=From:To:Cc:Subject:Date:From;
+        b=WjPuIG8rglUGX33h6UwbScOiSCvZmHWDOo29aCx8fEzJgLLG0Jg4tycrl/eJ+rGTC
+         WNN9FzoMjNJNuH56/7tLLAURqKXwXociYWewdnKTr+slozGe1j82JI7tdeBRv20R0q
+         kaRqMZT41zkhS9xB6VC2TLAt9UKETQhNn3EtctBT/eHSa/B7kXyVh9/oIpEoIcvAFj
+         SjWN65FPNcioSIwEzXtn76nfB3n2IuWg1YXqjnSYhLn8lA92OSW4OX/c1TS6ZlnMib
+         fckUJo9lUIIhZIF6oayey1U8W9yGHbi8utcVRZ2upZDNdCEA49//Uy20nYngJxJiZ5
+         fwJDb6sSJuawA==
+From:   trondmy@kernel.org
+To:     Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v2] SUNRPC: Set TCP_CORK until the transmit queue is empty
+Date:   Mon, 15 Feb 2021 10:37:46 -0500
+Message-Id: <20210215153746.6228-1-trondmy@kernel.org>
+X-Mailer: git-send-email 2.29.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Stash the key used to authenticate read operations in the afs_read struct.
-This will be necessary to reissue the operation against the server if a
-read from the cache fails in upcoming cache changes.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: linux-afs@lists.infradead.org
-cc: linux-cachefs@redhat.com
-cc: linux-fsdevel@vger.kernel.org
+When we have multiple RPC requests queued up, it makes sense to set the
+TCP_CORK option while the transmit queue is non-empty.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
+v2: Fix issue reported by Intel kernel test robot
 
- fs/afs/dir.c      |    3 ++-
- fs/afs/file.c     |   16 +++++++++-------
- fs/afs/internal.h |    3 ++-
- fs/afs/write.c    |   12 ++++++------
- 4 files changed, 19 insertions(+), 15 deletions(-)
+ include/linux/sunrpc/xprt.h | 1 +
+ net/sunrpc/xprt.c           | 2 ++
+ net/sunrpc/xprtsock.c       | 5 ++++-
+ 3 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index 7bd659ad959e..96e9e2e60d97 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -241,6 +241,7 @@ static struct afs_read *afs_read_dir(struct afs_vnode *dvnode, struct key *key)
- 		return ERR_PTR(-ENOMEM);
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index d2e97ee802af..d81fe8b364d0 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -247,6 +247,7 @@ struct rpc_xprt {
+ 	struct rpc_task *	snd_task;	/* Task blocked in send */
  
- 	refcount_set(&req->usage, 1);
-+	req->key = key_get(key);
- 	req->nr_pages = nr_pages;
- 	req->actual_len = i_size; /* May change */
- 	req->len = nr_pages * PAGE_SIZE; /* We can ask for more than there is */
-@@ -305,7 +306,7 @@ static struct afs_read *afs_read_dir(struct afs_vnode *dvnode, struct key *key)
+ 	struct list_head	xmit_queue;	/* Send queue */
++	atomic_long_t		xmit_queuelen;
  
- 	if (!test_bit(AFS_VNODE_DIR_VALID, &dvnode->flags)) {
- 		trace_afs_reload_dir(dvnode);
--		ret = afs_fetch_data(dvnode, key, req);
-+		ret = afs_fetch_data(dvnode, req);
- 		if (ret < 0)
- 			goto error_unlock;
- 
-diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 21868bfc3a44..d23192b3b933 100644
---- a/fs/afs/file.c
-+++ b/fs/afs/file.c
-@@ -199,6 +199,7 @@ void afs_put_read(struct afs_read *req)
- 			if (req->pages != req->array)
- 				kfree(req->pages);
+ 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 691ccf8049a4..a853f75d4968 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1352,6 +1352,7 @@ xprt_request_enqueue_transmit(struct rpc_task *task)
+ 		list_add_tail(&req->rq_xmit, &xprt->xmit_queue);
+ 		INIT_LIST_HEAD(&req->rq_xmit2);
+ out:
++		atomic_long_inc(&xprt->xmit_queuelen);
+ 		set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ 		spin_unlock(&xprt->queue_lock);
+ 	}
+@@ -1381,6 +1382,7 @@ xprt_request_dequeue_transmit_locked(struct rpc_task *task)
  		}
-+		key_put(req->key);
- 		kfree(req);
- 	}
+ 	} else
+ 		list_del(&req->rq_xmit2);
++	atomic_long_dec(&req->rq_xprt->xmit_queuelen);
  }
-@@ -229,7 +230,7 @@ static const struct afs_operation_ops afs_fetch_data_operation = {
- /*
-  * Fetch file data from the volume.
-  */
--int afs_fetch_data(struct afs_vnode *vnode, struct key *key, struct afs_read *req)
-+int afs_fetch_data(struct afs_vnode *vnode, struct afs_read *req)
- {
- 	struct afs_operation *op;
  
-@@ -238,9 +239,9 @@ int afs_fetch_data(struct afs_vnode *vnode, struct key *key, struct afs_read *re
- 	       vnode->fid.vid,
- 	       vnode->fid.vnode,
- 	       vnode->fid.unique,
--	       key_serial(key));
-+	       key_serial(req->key));
+ /**
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index c56a66cdf4ac..1e0a20c64ebd 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1018,6 +1018,7 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
+ 	 * to cope with writespace callbacks arriving _after_ we have
+ 	 * called sendmsg(). */
+ 	req->rq_xtime = ktime_get();
++	tcp_sock_set_cork(transport->inet, true);
+ 	while (1) {
+ 		status = xprt_sock_sendmsg(transport->sock, &msg, xdr,
+ 					   transport->xmit.offset, rm, &sent);
+@@ -1032,6 +1033,8 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
+ 		if (likely(req->rq_bytes_sent >= msglen)) {
+ 			req->rq_xmit_bytes_sent += transport->xmit.offset;
+ 			transport->xmit.offset = 0;
++			if (atomic_long_read(&xprt->xmit_queuelen) == 1)
++				tcp_sock_set_cork(transport->inet, false);
+ 			return 0;
+ 		}
  
--	op = afs_alloc_operation(key, vnode->volume);
-+	op = afs_alloc_operation(req->key, vnode->volume);
- 	if (IS_ERR(op))
- 		return PTR_ERR(op);
+@@ -2162,6 +2165,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+ 		}
  
-@@ -279,6 +280,7 @@ int afs_page_filler(void *data, struct page *page)
- 	 * unmarshalling code will clear the unfilled space.
- 	 */
- 	refcount_set(&req->usage, 1);
-+	req->key = key_get(key);
- 	req->pos = (loff_t)page->index << PAGE_SHIFT;
- 	req->len = PAGE_SIZE;
- 	req->nr_pages = 1;
-@@ -288,7 +290,7 @@ int afs_page_filler(void *data, struct page *page)
+ 		xs_tcp_set_socket_timeouts(xprt, sock);
++		tcp_sock_set_nodelay(sk);
  
- 	/* read the contents of the file from the server into the
- 	 * page */
--	ret = afs_fetch_data(vnode, key, req);
-+	ret = afs_fetch_data(vnode, req);
- 	afs_put_read(req);
+ 		write_lock_bh(&sk->sk_callback_lock);
  
- 	if (ret < 0) {
-@@ -373,7 +375,6 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
- 	struct afs_read *req;
- 	struct list_head *p;
- 	struct page *first, *page;
--	struct key *key = afs_file_key(file);
- 	pgoff_t index;
- 	int ret, n, i;
+@@ -2176,7 +2180,6 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
  
-@@ -397,6 +398,7 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
+ 		/* socket options */
+ 		sock_reset_flag(sk, SOCK_LINGER);
+-		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
  
- 	refcount_set(&req->usage, 1);
- 	req->vnode = vnode;
-+	req->key = key_get(afs_file_key(file));
- 	req->page_done = afs_readpages_page_done;
- 	req->pos = first->index;
- 	req->pos <<= PAGE_SHIFT;
-@@ -426,11 +428,11 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
- 	} while (req->nr_pages < n);
+ 		xprt_clear_connected(xprt);
  
- 	if (req->nr_pages == 0) {
--		kfree(req);
-+		afs_put_read(req);
- 		return 0;
- 	}
- 
--	ret = afs_fetch_data(vnode, key, req);
-+	ret = afs_fetch_data(vnode, req);
- 	if (ret < 0)
- 		goto error;
- 
-diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index cd545e7dbfb8..4b255d10f726 100644
---- a/fs/afs/internal.h
-+++ b/fs/afs/internal.h
-@@ -204,6 +204,7 @@ struct afs_read {
- 	loff_t			actual_len;	/* How much we're actually getting */
- 	loff_t			remain;		/* Amount remaining */
- 	loff_t			file_size;	/* File size returned by server */
-+	struct key		*key;		/* The key to use to reissue the read */
- 	afs_dataversion_t	data_version;	/* Version number returned by server */
- 	refcount_t		usage;
- 	unsigned int		index;		/* Which page we're reading into */
-@@ -1045,7 +1046,7 @@ extern int afs_cache_wb_key(struct afs_vnode *, struct afs_file *);
- extern void afs_put_wb_key(struct afs_wb_key *);
- extern int afs_open(struct inode *, struct file *);
- extern int afs_release(struct inode *, struct file *);
--extern int afs_fetch_data(struct afs_vnode *, struct key *, struct afs_read *);
-+extern int afs_fetch_data(struct afs_vnode *, struct afs_read *);
- extern int afs_page_filler(void *, struct page *);
- extern void afs_put_read(struct afs_read *);
- 
-diff --git a/fs/afs/write.c b/fs/afs/write.c
-index 9d0cef35ecba..7eba0d3201ba 100644
---- a/fs/afs/write.c
-+++ b/fs/afs/write.c
-@@ -25,9 +25,10 @@ int afs_set_page_dirty(struct page *page)
- /*
-  * partly or wholly fill a page that's under preparation for writing
-  */
--static int afs_fill_page(struct afs_vnode *vnode, struct key *key,
-+static int afs_fill_page(struct file *file,
- 			 loff_t pos, unsigned int len, struct page *page)
- {
-+	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
- 	struct afs_read *req;
- 	size_t p;
- 	void *data;
-@@ -49,6 +50,7 @@ static int afs_fill_page(struct afs_vnode *vnode, struct key *key,
- 		return -ENOMEM;
- 
- 	refcount_set(&req->usage, 1);
-+	req->key = key_get(afs_file_key(file));
- 	req->pos = pos;
- 	req->len = len;
- 	req->nr_pages = 1;
-@@ -56,7 +58,7 @@ static int afs_fill_page(struct afs_vnode *vnode, struct key *key,
- 	req->pages[0] = page;
- 	get_page(page);
- 
--	ret = afs_fetch_data(vnode, key, req);
-+	ret = afs_fetch_data(vnode, req);
- 	afs_put_read(req);
- 	if (ret < 0) {
- 		if (ret == -ENOENT) {
-@@ -80,7 +82,6 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
- {
- 	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
- 	struct page *page;
--	struct key *key = afs_file_key(file);
- 	unsigned long priv;
- 	unsigned f, from = pos & (PAGE_SIZE - 1);
- 	unsigned t, to = from + len;
-@@ -95,7 +96,7 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
- 		return -ENOMEM;
- 
- 	if (!PageUptodate(page) && len != PAGE_SIZE) {
--		ret = afs_fill_page(vnode, key, pos & PAGE_MASK, PAGE_SIZE, page);
-+		ret = afs_fill_page(file, pos & PAGE_MASK, PAGE_SIZE, page);
- 		if (ret < 0) {
- 			unlock_page(page);
- 			put_page(page);
-@@ -163,7 +164,6 @@ int afs_write_end(struct file *file, struct address_space *mapping,
- 		  struct page *page, void *fsdata)
- {
- 	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
--	struct key *key = afs_file_key(file);
- 	unsigned long priv;
- 	unsigned int f, from = pos & (PAGE_SIZE - 1);
- 	unsigned int t, to = from + copied;
-@@ -193,7 +193,7 @@ int afs_write_end(struct file *file, struct address_space *mapping,
- 			 * unmarshalling routine will take care of clearing any
- 			 * bits that are beyond the EOF.
- 			 */
--			ret = afs_fill_page(vnode, key, pos + copied,
-+			ret = afs_fill_page(file, pos + copied,
- 					    len - copied, page);
- 			if (ret < 0)
- 				goto out;
-
+-- 
+2.29.2
 
