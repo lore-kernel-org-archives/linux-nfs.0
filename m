@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 361D2C4332B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A0D90C43331
 	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 15:59:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0374864DE0
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 15:59:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 768E864DEB
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 15:59:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232333AbhBOP6J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Feb 2021 10:58:09 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:26144 "EHLO
+        id S232419AbhBOP6N (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Feb 2021 10:58:13 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:36355 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231830AbhBOPu1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 10:50:27 -0500
+        by vger.kernel.org with ESMTP id S232078AbhBOPvP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 10:51:15 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613404141;
+        s=mimecast20190719; t=1613404188;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=+Ma1jifx8c9sln++i63HLx2QkPzzZKsDVw7/yoiDNY0=;
-        b=HkaFAmiil/ZS3lUs0Spb7yjiWYfu//9m4hYw6djGeQiAogQG0ie6yDMU0zyIKfq0JCmSDL
-        f2ov7RDlLfCMdo88FyGboejBE5zSNo611KOy9idk9J2iLTM3URJ9tlA898BywXLxeZEYdf
-        F1hDkAW6l8jRuhteUJZZpJhigTixRP0=
+        bh=vuZXYEE8ytAOGmfVdwJVAq5rI3wrIYL1qJesDqmdOFg=;
+        b=bPj+BHaUTkNMLiFnV+quL4fr8FAwXD8qVngM3O93MB8IpHy+2wrwiRyvmS5bJw9C+Mr1Jn
+        J2IJZMmZemo27S3HJu4CDcs9j49QlmQeEOCdw3mv1wFnIQC6l7BcIEemPOYf7m4gmpvLrN
+        LTtZGV80J3mjjkCUqAt4fBGL7xiRGyw=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-269-y1a_94veNferUpBG-rne-Q-1; Mon, 15 Feb 2021 10:48:57 -0500
-X-MC-Unique: y1a_94veNferUpBG-rne-Q-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+ us-mta-509-ROeColdsMi66sMBRwjE3-A-1; Mon, 15 Feb 2021 10:49:44 -0500
+X-MC-Unique: ROeColdsMi66sMBRwjE3-A-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C45D7100A690;
-        Mon, 15 Feb 2021 15:48:55 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 292D9107ACE3;
+        Mon, 15 Feb 2021 15:49:42 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-119-68.rdu2.redhat.com [10.10.119.68])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E7E1E5B697;
-        Mon, 15 Feb 2021 15:48:49 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E67F719D9F;
+        Mon, 15 Feb 2021 15:49:31 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 23/33] afs: Wait on PG_fscache before modifying/releasing a
- page
+Subject: [PATCH 26/33] afs: Use the fs operation ops to handle FetchData
+ completion
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -62,24 +62,31 @@ Cc:     linux-afs@lists.infradead.org, linux-cachefs@redhat.com,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 15 Feb 2021 15:48:49 +0000
-Message-ID: <161340412903.1303470.6424701655031380012.stgit@warthog.procyon.org.uk>
+Date:   Mon, 15 Feb 2021 15:49:31 +0000
+Message-ID: <161340417106.1303470.3502017303898569631.stgit@warthog.procyon.org.uk>
 In-Reply-To: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
 References: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-PG_fscache is going to be used to indicate that a page is being written to
-the cache, and that the page should not be modified or released until it's
-finished.
+Use the 'success' and 'aborted' afs_operations_ops methods and add a
+'failed' method to handle the completion of an AFS.FetchData,
+AFS.FetchData64 or YFS.FetchData64 RPC operation rather than directly
+calling the done func pointed to by the afs_read struct from the call
+delivery handler.
 
-Make afs_invalidatepage() and afs_releasepage() wait for it.
+This means the done function will be called back on error also, not just on
+successful completion.
+
+This allows motion towards asynchronous data reception on data fetch calls
+and allows any error to be handed off to the fscache read helper in the
+same place as a successful completion.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: linux-afs@lists.infradead.org
@@ -87,70 +94,108 @@ cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 ---
 
- fs/afs/file.c  |    9 +++++++++
- fs/afs/write.c |   10 ++++++++++
- 2 files changed, 19 insertions(+)
+ fs/afs/file.c         |   15 +++++++++++++++
+ fs/afs/fs_operation.c |    4 +++-
+ fs/afs/fsclient.c     |    3 ---
+ fs/afs/internal.h     |    1 +
+ fs/afs/yfsclient.c    |    3 ---
+ 5 files changed, 19 insertions(+), 7 deletions(-)
 
 diff --git a/fs/afs/file.c b/fs/afs/file.c
-index f1bab69e99d4..acbc21a8c80e 100644
+index f6282ac0d222..231e9fd7882b 100644
 --- a/fs/afs/file.c
 +++ b/fs/afs/file.c
-@@ -594,6 +594,7 @@ static void afs_invalidatepage(struct page *page, unsigned int offset,
- 	if (PagePrivate(page))
- 		afs_invalidate_dirty(page, offset, length);
- 
-+	wait_on_page_fscache(page);
- 	_leave("");
+@@ -255,6 +255,19 @@ void afs_put_read(struct afs_read *req)
+ 	}
  }
  
-@@ -611,6 +612,14 @@ static int afs_releasepage(struct page *page, gfp_t gfp_flags)
- 
- 	/* deny if page is being written to the cache and the caller hasn't
- 	 * elected to wait */
-+#ifdef CONFIG_AFS_FSCACHE
-+	if (PageFsCache(page)) {
-+		if (!(gfp_flags & __GFP_DIRECT_RECLAIM) || !(gfp_flags & __GFP_FS))
-+			return false;
-+		wait_on_page_fscache(page);
-+	}
-+#endif
++static void afs_fetch_data_notify(struct afs_operation *op)
++{
++	struct afs_read *req = op->fetch.req;
++	int error = op->error;
 +
- 	if (PagePrivate(page)) {
- 		detach_page_private(page);
- 		trace_afs_page_dirty(vnode, tracepoint_string("rel"), page);
-diff --git a/fs/afs/write.c b/fs/afs/write.c
-index dd4dc1c868b5..e1791de90478 100644
---- a/fs/afs/write.c
-+++ b/fs/afs/write.c
-@@ -117,6 +117,10 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
- 		SetPageUptodate(page);
++	if (error == -ECONNABORTED)
++		error = afs_abort_to_error(op->ac.abort_code);
++	req->error = error;
++
++	if (req->done)
++		req->done(req);
++}
++
+ static void afs_fetch_data_success(struct afs_operation *op)
+ {
+ 	struct afs_vnode *vnode = op->file[0].vnode;
+@@ -263,6 +276,7 @@ static void afs_fetch_data_success(struct afs_operation *op)
+ 	afs_vnode_commit_status(op, &op->file[0]);
+ 	afs_stat_v(vnode, n_fetches);
+ 	atomic_long_add(op->fetch.req->actual_len, &op->net->n_fetch_bytes);
++	afs_fetch_data_notify(op);
+ }
+ 
+ static void afs_fetch_data_put(struct afs_operation *op)
+@@ -276,6 +290,7 @@ static const struct afs_operation_ops afs_fetch_data_operation = {
+ 	.issue_yfs_rpc	= yfs_fs_fetch_data,
+ 	.success	= afs_fetch_data_success,
+ 	.aborted	= afs_check_for_remote_deletion,
++	.failed		= afs_fetch_data_notify,
+ 	.put		= afs_fetch_data_put,
+ };
+ 
+diff --git a/fs/afs/fs_operation.c b/fs/afs/fs_operation.c
+index 97cab12b0a6c..938e28a00101 100644
+--- a/fs/afs/fs_operation.c
++++ b/fs/afs/fs_operation.c
+@@ -195,8 +195,10 @@ void afs_wait_for_operation(struct afs_operation *op)
+ 	case -ECONNABORTED:
+ 		if (op->ops->aborted)
+ 			op->ops->aborted(op);
+-		break;
++		fallthrough;
+ 	default:
++		if (op->ops->failed)
++			op->ops->failed(op);
+ 		break;
  	}
  
-+#ifdef CONFIG_AFS_FSCACHE
-+	wait_on_page_fscache(page);
-+#endif
-+
- try_again:
- 	/* See if this page is already partially written in a way that we can
- 	 * merge the new write with.
-@@ -857,6 +861,11 @@ vm_fault_t afs_page_mkwrite(struct vm_fault *vmf)
- 	/* Wait for the page to be written to the cache before we allow it to
- 	 * be modified.  We then assume the entire page will need writing back.
- 	 */
-+#ifdef CONFIG_AFS_FSCACHE
-+	if (PageFsCache(vmf->page) &&
-+	    wait_on_page_bit_killable(vmf->page, PG_fscache) < 0)
-+		return VM_FAULT_RETRY;
-+#endif
+diff --git a/fs/afs/fsclient.c b/fs/afs/fsclient.c
+index 31e6b3635541..5e34f4dbd385 100644
+--- a/fs/afs/fsclient.c
++++ b/fs/afs/fsclient.c
+@@ -392,9 +392,6 @@ static int afs_deliver_fs_fetch_data(struct afs_call *call)
+ 		break;
+ 	}
  
- 	if (PageWriteback(vmf->page) &&
- 	    wait_on_page_bit_killable(vmf->page, PG_writeback) < 0)
-@@ -948,5 +957,6 @@ int afs_launder_page(struct page *page)
+-	if (req->done)
+-		req->done(req);
+-
+ 	_leave(" = 0 [done]");
+ 	return 0;
+ }
+diff --git a/fs/afs/internal.h b/fs/afs/internal.h
+index daf5339ae316..d46389406021 100644
+--- a/fs/afs/internal.h
++++ b/fs/afs/internal.h
+@@ -742,6 +742,7 @@ struct afs_operation_ops {
+ 	void (*issue_yfs_rpc)(struct afs_operation *op);
+ 	void (*success)(struct afs_operation *op);
+ 	void (*aborted)(struct afs_operation *op);
++	void (*failed)(struct afs_operation *op);
+ 	void (*edit_dir)(struct afs_operation *op);
+ 	void (*put)(struct afs_operation *op);
+ };
+diff --git a/fs/afs/yfsclient.c b/fs/afs/yfsclient.c
+index 363d6dd276c0..2b35cba8ad62 100644
+--- a/fs/afs/yfsclient.c
++++ b/fs/afs/yfsclient.c
+@@ -449,9 +449,6 @@ static int yfs_deliver_fs_fetch_data64(struct afs_call *call)
+ 		break;
+ 	}
  
- 	detach_page_private(page);
- 	trace_afs_page_dirty(vnode, tracepoint_string("laundered"), page);
-+	wait_on_page_fscache(page);
- 	return ret;
+-	if (req->done)
+-		req->done(req);
+-
+ 	_leave(" = 0 [done]");
+ 	return 0;
  }
 
 
