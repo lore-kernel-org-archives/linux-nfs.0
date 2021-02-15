@@ -5,55 +5,59 @@ X-Spam-Level:
 X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34188C433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61DDDC433E6
 	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 16:01:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F2D9264DB1
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 16:01:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3539A64DEC
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 16:01:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231252AbhBOP7y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Feb 2021 10:59:54 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:24143 "EHLO
+        id S232004AbhBOQAZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Feb 2021 11:00:25 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:48990 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232161AbhBOPwR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 10:52:17 -0500
+        by vger.kernel.org with ESMTP id S231653AbhBOPsB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 10:48:01 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613404248;
+        s=mimecast20190719; t=1613403994;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=i23Y6XBbqwJr+Ohumn3S8L8ookBPJg2JgRa5YCIVlco=;
-        b=N9sRSM98QJG9rm36EDZzA8w6Kg9bC0joslsnCLiijkHxWA8KAP4WiDYNmXxes9naHYnSwY
-        B3Wf5x1i56m3fihdyCef9fNSC3vI878W/M6nL1hcc9JwyUIKbNI+bNphUUhFrZW8jx3/kS
-        jK8GcQZJs9J5RVe6+ffVRqYCVlv6xaA=
+        bh=1NvFOYT3VpnmCz9Zzl3doeruth2whDwdqaa9ZR5fTAA=;
+        b=dqurGN+WjiPwG+p+0cMMIeLxInYGCv6XIOcpEj6NkSJwqSvsdZr7wvOlnT2i+DN55FQ2j/
+        QI8JyfeFZS8CfyinqtrETzqp/OL0LbWAT8tDlgYqBbCRVUmOOt4z9dyaBqWImq662NWQDN
+        fBxJpcP1uCFBAHAkikKY6BNwF2Hcp5Y=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-202-n89a_FXhMS6-glZrfdazRg-1; Mon, 15 Feb 2021 10:50:46 -0500
-X-MC-Unique: n89a_FXhMS6-glZrfdazRg-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+ us-mta-154-dsAS2Yf_P8uiPynAvD7FjQ-1; Mon, 15 Feb 2021 10:46:32 -0500
+X-MC-Unique: dsAS2Yf_P8uiPynAvD7FjQ-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7A2F080196C;
-        Mon, 15 Feb 2021 15:50:44 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 71F2B18A08BF;
+        Mon, 15 Feb 2021 15:46:30 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-119-68.rdu2.redhat.com [10.10.119.68])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 8105F19D9F;
-        Mon, 15 Feb 2021 15:50:37 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8A90E5D9C0;
+        Mon, 15 Feb 2021 15:46:24 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 31/33] ceph: convert readpage to fscache read helper
+Subject: [PATCH 11/33] netfs: Add write_begin helper
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Steve French <sfrench@samba.org>,
         Dominique Martinet <asmadeus@codewreck.org>
-Cc:     Jeff Layton <jlayton@kernel.org>, ceph-devel@vger.kernel.org,
-        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
+Cc:     Jeff Layton <jlayton@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, dhowells@redhat.com,
+        Jeff Layton <jlayton@redhat.com>,
         David Wysochanski <dwysocha@redhat.com>,
         "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -61,295 +65,313 @@ Cc:     Jeff Layton <jlayton@kernel.org>, ceph-devel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 15 Feb 2021 15:50:36 +0000
-Message-ID: <161340423660.1303470.13303522357511686909.stgit@warthog.procyon.org.uk>
+Date:   Mon, 15 Feb 2021 15:46:23 +0000
+Message-ID: <161340398368.1303470.11242918276563276090.stgit@warthog.procyon.org.uk>
 In-Reply-To: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
 References: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Jeff Layton <jlayton@kernel.org>
+Add a helper to do the pre-reading work for the netfs write_begin address
+space op.
 
-Have the ceph KConfig select NETFS_SUPPORT. Add a new netfs ops
-structure and the operations for it. Convert ceph_readpage to use
-the new netfs_readpage helper.
-
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: ceph-devel@vger.kernel.org
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+cc: Matthew Wilcox <willy@infradead.org>
+cc: linux-mm@kvack.org
 cc: linux-cachefs@redhat.com
+cc: linux-afs@lists.infradead.org
+cc: linux-nfs@vger.kernel.org
+cc: linux-cifs@vger.kernel.org
+cc: ceph-devel@vger.kernel.org
+cc: v9fs-developer@lists.sourceforge.net
 cc: linux-fsdevel@vger.kernel.org
 ---
 
- fs/ceph/Kconfig |    1 
- fs/ceph/addr.c  |  149 +++++++++++++++++++++++++++++++++++++++++++++++++++----
- fs/ceph/cache.h |   36 +++++++++++++
- 3 files changed, 176 insertions(+), 10 deletions(-)
+ fs/netfs/internal.h          |    2 +
+ fs/netfs/read_helper.c       |  165 ++++++++++++++++++++++++++++++++++++++++++
+ fs/netfs/stats.c             |   10 ++-
+ include/linux/netfs.h        |    8 ++
+ include/trace/events/netfs.h |    4 +
+ 5 files changed, 185 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ceph/Kconfig b/fs/ceph/Kconfig
-index 471e40156065..94df854147d3 100644
---- a/fs/ceph/Kconfig
-+++ b/fs/ceph/Kconfig
-@@ -6,6 +6,7 @@ config CEPH_FS
- 	select LIBCRC32C
- 	select CRYPTO_AES
- 	select CRYPTO
-+	select NETFS_SUPPORT
- 	default n
- 	help
- 	  Choose Y or M here to include support for mounting the
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index fbfa49db06fd..95f39ff9bb24 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -12,6 +12,7 @@
- #include <linux/signal.h>
- #include <linux/iversion.h>
- #include <linux/ktime.h>
-+#include <linux/netfs.h>
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 98b6f4516da1..b7f2c4459f33 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -34,8 +34,10 @@ extern atomic_t netfs_n_rh_read_failed;
+ extern atomic_t netfs_n_rh_zero;
+ extern atomic_t netfs_n_rh_short_read;
+ extern atomic_t netfs_n_rh_write;
++extern atomic_t netfs_n_rh_write_begin;
+ extern atomic_t netfs_n_rh_write_done;
+ extern atomic_t netfs_n_rh_write_failed;
++extern atomic_t netfs_n_rh_write_zskip;
  
- #include "super.h"
- #include "mds_client.h"
-@@ -183,6 +184,144 @@ static int ceph_releasepage(struct page *page, gfp_t gfp_flags)
- 	return !PagePrivate(page);
+ 
+ static inline void netfs_stat(atomic_t *stat)
+diff --git a/fs/netfs/read_helper.c b/fs/netfs/read_helper.c
+index 4f6f708f8f18..d179a37b92fd 100644
+--- a/fs/netfs/read_helper.c
++++ b/fs/netfs/read_helper.c
+@@ -766,3 +766,168 @@ int netfs_readpage(struct file *file,
+ 	return ret;
  }
- 
-+static bool ceph_netfs_clamp_length(struct netfs_read_subrequest *subreq)
-+{
-+	struct inode *inode = subreq->rreq->mapping->host;
-+	struct ceph_inode_info *ci = ceph_inode(inode);
-+	u64 objno, objoff;
-+	u32 xlen;
+ EXPORT_SYMBOL(netfs_readpage);
 +
-+	/* Truncate the extent at the end of the current object */
-+	ceph_calc_file_object_mapping(&ci->i_layout, subreq->start, subreq->len,
-+				      &objno, &objoff, &xlen);
-+	subreq->len = xlen;
-+	return true;
++static void netfs_clear_thp(struct page *page)
++{
++	unsigned int i;
++
++	for (i = 0; i < thp_nr_pages(page); i++)
++		clear_highpage(page + i);
 +}
 +
-+static void finish_netfs_read(struct ceph_osd_request *req)
++/**
++ * netfs_write_begin - Helper to prepare for writing
++ * @file: The file to read from
++ * @mapping: The mapping to read from
++ * @pos: File position at which the write will begin
++ * @len: The length of the write in this page
++ * @flags: AOP_* flags
++ * @_page: Where to put the resultant page
++ * @_fsdata: Place for the netfs to store a cookie
++ * @ops: The network filesystem's operations for the helper to use
++ * @netfs_priv: Private netfs data to be retained in the request
++ *
++ * Pre-read data for a write-begin request by drawing data from the cache if
++ * possible, or the netfs if not.  Space beyond the EOF is zero-filled.
++ * Multiple I/O requests from different sources will get munged together.  If
++ * necessary, the readahead window can be expanded in either direction to a
++ * more convenient alighment for RPC efficiency or to make storage in the cache
++ * feasible.
++ *
++ * The calling netfs must provide a table of operations, only one of which,
++ * issue_op, is mandatory.
++ *
++ * The check_write_begin() operation can be provided to check for and flush
++ * conflicting writes once the page is grabbed and locked.  It is passed a
++ * pointer to the fsdata cookie that gets returned to the VM to be passed to
++ * write_end.  It is permitted to sleep.  It should return 0 if the request
++ * should go ahead; unlock the page and return -EAGAIN to cause the page to be
++ * regot; or return an error.
++ *
++ * This is usable whether or not caching is enabled.
++ */
++int netfs_write_begin(struct file *file, struct address_space *mapping,
++		      loff_t pos, unsigned int len, unsigned int flags,
++		      struct page **_page, void **_fsdata,
++		      const struct netfs_read_request_ops *ops,
++		      void *netfs_priv)
 +{
-+	struct ceph_fs_client *fsc = ceph_inode_to_client(req->r_inode);
-+	struct ceph_osd_data *osd_data = osd_req_op_extent_osd_data(req, 0);
-+	struct netfs_read_subrequest *subreq = req->r_priv;
-+	int num_pages;
-+	int err = req->r_result;
-+
-+	ceph_update_read_latency(&fsc->mdsc->metric, req->r_start_latency,
-+				 req->r_end_latency, err);
-+
-+	dout("%s: result %d subreq->len=%zu i_size=%lld\n", __func__, req->r_result,
-+	     subreq->len, i_size_read(req->r_inode));
-+
-+	/* no object means success but no data */
-+	if (err == -ENOENT)
-+		err = 0;
-+	else if (err == -EBLOCKLISTED)
-+		fsc->blocklisted = true;
-+
-+	if (err >= 0 && err < subreq->len)
-+		__set_bit(NETFS_SREQ_CLEAR_TAIL, &subreq->flags);
-+
-+	netfs_subreq_terminated(subreq, err);
-+
-+	num_pages = calc_pages_for(osd_data->alignment, osd_data->length);
-+	ceph_put_page_vector(osd_data->pages, num_pages, false);
-+	iput(req->r_inode);
-+}
-+
-+static void ceph_netfs_issue_op(struct netfs_read_subrequest *subreq)
-+{
-+	struct netfs_read_request *rreq = subreq->rreq;
-+	struct inode *inode = rreq->mapping->host;
-+	struct ceph_inode_info *ci = ceph_inode(inode);
-+	struct ceph_fs_client *fsc = ceph_inode_to_client(inode);
-+	struct ceph_osd_request *req;
-+	struct ceph_vino vino = ceph_vino(inode);
-+	struct iov_iter iter;
-+	struct page **pages;
-+	size_t page_off;
-+	int err = 0;
-+	u64 len = subreq->len;
-+
-+	req = ceph_osdc_new_request(&fsc->client->osdc, &ci->i_layout, vino, subreq->start, &len,
-+			0, 1, CEPH_OSD_OP_READ,
-+			CEPH_OSD_FLAG_READ | fsc->client->osdc.client->options->read_from_replica,
-+			NULL, ci->i_truncate_seq, ci->i_truncate_size, false);
-+	if (IS_ERR(req)) {
-+		err = PTR_ERR(req);
-+		req = NULL;
-+		goto out;
-+	}
-+
-+	dout("%s: pos=%llu orig_len=%zu len=%llu\n", __func__, subreq->start, subreq->len, len);
-+	iov_iter_xarray(&iter, READ, &rreq->mapping->i_pages, subreq->start, len);
-+	err = iov_iter_get_pages_alloc(&iter, &pages, len, &page_off);
-+	if (err < 0) {
-+		dout("%s: iov_ter_get_pages_alloc returned %d\n", __func__, err);
-+		goto out;
-+	}
-+
-+	/* should always give us a page-aligned read */
-+	WARN_ON_ONCE(page_off);
-+	len = err;
-+
-+	osd_req_op_extent_osd_data_pages(req, 0, pages, len, 0, false, false);
-+	req->r_callback = finish_netfs_read;
-+	req->r_priv = subreq;
-+	req->r_inode = inode;
-+	ihold(inode);
-+
-+	err = ceph_osdc_start_request(req->r_osdc, req, false);
-+	if (err)
-+		iput(inode);
-+out:
-+	ceph_osdc_put_request(req);
-+	if (err)
-+		netfs_subreq_terminated(subreq, err);
-+	dout("%s: result %d\n", __func__, err);
-+}
-+
-+static void ceph_init_rreq(struct netfs_read_request *rreq, struct file *file)
-+{
-+}
-+
-+const struct netfs_read_request_ops ceph_readpage_netfs_ops = {
-+	.init_rreq		= ceph_init_rreq,
-+	.is_cache_enabled	= ceph_is_cache_enabled,
-+	.begin_cache_operation	= ceph_begin_cache_operation,
-+	.issue_op		= ceph_netfs_issue_op,
-+	.clamp_length		= ceph_netfs_clamp_length,
-+};
-+
-+/* read a single page, without unlocking it. */
-+static int ceph_readpage(struct file *file, struct page *page)
-+{
++	struct netfs_read_request *rreq;
++	struct page *page, *xpage;
 +	struct inode *inode = file_inode(file);
-+	struct ceph_inode_info *ci = ceph_inode(inode);
-+	struct ceph_vino vino = ceph_vino(inode);
-+	u64 off = page_offset(page);
-+	u64 len = PAGE_SIZE;
++	unsigned int debug_index = 0;
++	pgoff_t index = pos >> PAGE_SHIFT;
++	int pos_in_page = pos & ~PAGE_MASK;
++	loff_t size;
++	int ret;
 +
-+	if (ci->i_inline_version != CEPH_INLINE_NONE) {
-+		/*
-+		 * Uptodate inline data should have been added
-+		 * into page cache while getting Fcr caps.
-+		 */
-+		if (off == 0) {
-+			unlock_page(page);
-+			return -EINVAL;
++	struct readahead_control ractl = {
++		.file		= file,
++		.mapping	= mapping,
++		._index		= index,
++		._nr_pages	= 0,
++	};
++
++retry:
++	page = grab_cache_page_write_begin(mapping, index, 0);
++	if (!page)
++		return -ENOMEM;
++
++	if (ops->check_write_begin) {
++		/* Allow the netfs (eg. ceph) to flush conflicts. */
++		ret = ops->check_write_begin(file, pos, len, page, _fsdata);
++		if (ret < 0) {
++			if (ret == -EAGAIN)
++				goto retry;
++			goto error;
 +		}
-+		zero_user_segment(page, 0, PAGE_SIZE);
-+		SetPageUptodate(page);
-+		unlock_page(page);
-+		return 0;
 +	}
 +
-+	dout("readpage ino %llx.%llx file %p off %llu len %llu page %p index %lu\n",
-+	     vino.ino, vino.snap, file, off, len, page, page->index);
++	if (PageUptodate(page))
++		goto have_page;
 +
-+	return netfs_readpage(file, page, &ceph_readpage_netfs_ops, NULL);
++	/* If the page is beyond the EOF, we want to clear it - unless it's
++	 * within the cache granule containing the EOF, in which case we need
++	 * to preload the granule.
++	 */
++	size = i_size_read(inode);
++	if (!ops->is_cache_enabled(inode) &&
++	    ((pos_in_page == 0 && len == thp_size(page)) ||
++	     (pos >= size) ||
++	     (pos_in_page == 0 && (pos + len) >= size))) {
++		netfs_clear_thp(page);
++		SetPageUptodate(page);
++		netfs_stat(&netfs_n_rh_write_zskip);
++		goto have_page_no_wait;
++	}
++
++	ret = -ENOMEM;
++	rreq = netfs_alloc_read_request(ops, netfs_priv, file);
++	if (!rreq)
++		goto error;
++	rreq->mapping		= page->mapping;
++	rreq->start		= page->index * PAGE_SIZE;
++	rreq->len		= thp_size(page);
++	rreq->no_unlock_page	= page->index;
++	__set_bit(NETFS_RREQ_NO_UNLOCK_PAGE, &rreq->flags);
++	netfs_priv = NULL;
++
++	netfs_stat(&netfs_n_rh_write_begin);
++	trace_netfs_read(rreq, pos, len, netfs_read_trace_write_begin);
++
++	/* Expand the request to meet caching requirements and download
++	 * preferences.
++	 */
++	ractl._nr_pages = thp_nr_pages(page);
++	netfs_rreq_expand(rreq, &ractl);
++	netfs_get_read_request(rreq);
++
++	/* We hold the page locks, so we can drop the references */
++	while ((xpage = readahead_page(&ractl)))
++		if (xpage != page)
++			put_page(xpage);
++
++	atomic_set(&rreq->nr_rd_ops, 1);
++	do {
++		if (!netfs_rreq_submit_slice(rreq, &debug_index))
++			break;
++
++	} while (rreq->submitted < rreq->len);
++
++	/* Keep nr_rd_ops incremented so that the ref always belongs to us, and
++	 * the service code isn't punted off to a random thread pool to
++	 * process.
++	 */
++	for (;;) {
++		wait_var_event(&rreq->nr_rd_ops, atomic_read(&rreq->nr_rd_ops) == 1);
++		netfs_rreq_assess(rreq);
++		if (!test_bit(NETFS_RREQ_IN_PROGRESS, &rreq->flags))
++			break;
++		cond_resched();
++	}
++
++	ret = rreq->error;
++	if (ret == 0 && rreq->submitted < rreq->len)
++		ret = -EIO;
++	netfs_put_read_request(rreq);
++	if (ret < 0)
++		goto error;
++
++have_page:
++	wait_on_page_fscache(page);
++have_page_no_wait:
++	if (netfs_priv)
++		ops->cleanup(netfs_priv, mapping);
++	*_page = page;
++	_leave(" = 0");
++	return 0;
++
++error:
++	unlock_page(page);
++	put_page(page);
++	if (netfs_priv)
++		ops->cleanup(netfs_priv, mapping);
++	_leave(" = %d", ret);
++	return ret;
 +}
-+
- /* read a single page, without unlocking it. */
- static int ceph_do_readpage(struct file *filp, struct page *page)
- {
-@@ -253,16 +392,6 @@ static int ceph_do_readpage(struct file *filp, struct page *page)
- 	return err < 0 ? err : 0;
- }
++EXPORT_SYMBOL(netfs_write_begin);
+diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
+index df6ff5718f25..dd7ad66ed07e 100644
+--- a/fs/netfs/stats.c
++++ b/fs/netfs/stats.c
+@@ -24,19 +24,23 @@ atomic_t netfs_n_rh_read_failed;
+ atomic_t netfs_n_rh_zero;
+ atomic_t netfs_n_rh_short_read;
+ atomic_t netfs_n_rh_write;
++atomic_t netfs_n_rh_write_begin;
+ atomic_t netfs_n_rh_write_done;
+ atomic_t netfs_n_rh_write_failed;
++atomic_t netfs_n_rh_write_zskip;
  
--static int ceph_readpage(struct file *filp, struct page *page)
--{
--	int r = ceph_do_readpage(filp, page);
--	if (r != -EINPROGRESS)
--		unlock_page(page);
--	else
--		r = 0;
--	return r;
--}
--
- /*
-  * Finish an async read(ahead) op.
+ void netfs_stats_show(struct seq_file *m)
+ {
+-	seq_printf(m, "RdHelp : RA=%u RP=%u rr=%u sr=%u\n",
++	seq_printf(m, "RdHelp : RA=%u RP=%u WB=%u rr=%u sr=%u\n",
+ 		   atomic_read(&netfs_n_rh_readahead),
+ 		   atomic_read(&netfs_n_rh_readpage),
++		   atomic_read(&netfs_n_rh_write_begin),
+ 		   atomic_read(&netfs_n_rh_rreq),
+ 		   atomic_read(&netfs_n_rh_sreq));
+-	seq_printf(m, "RdHelp : ZR=%u sh=%u\n",
++	seq_printf(m, "RdHelp : ZR=%u sh=%u sk=%u\n",
+ 		   atomic_read(&netfs_n_rh_zero),
+-		   atomic_read(&netfs_n_rh_short_read));
++		   atomic_read(&netfs_n_rh_short_read),
++		   atomic_read(&netfs_n_rh_write_zskip));
+ 	seq_printf(m, "RdHelp : DL=%u ds=%u df=%u di=%u\n",
+ 		   atomic_read(&netfs_n_rh_download),
+ 		   atomic_read(&netfs_n_rh_download_done),
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index b8237b6f17cb..ec9d1240ba49 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -115,11 +115,14 @@ struct netfs_read_request {
+  * Operations the network filesystem can/must provide to the helpers.
   */
-diff --git a/fs/ceph/cache.h b/fs/ceph/cache.h
-index 10c21317b62f..1409d6149281 100644
---- a/fs/ceph/cache.h
-+++ b/fs/ceph/cache.h
-@@ -9,6 +9,8 @@
- #ifndef _CEPH_CACHE_H
- #define _CEPH_CACHE_H
+ struct netfs_read_request_ops {
++	bool (*is_cache_enabled)(struct inode *inode);
+ 	void (*init_rreq)(struct netfs_read_request *rreq, struct file *file);
+ 	void (*expand_readahead)(struct netfs_read_request *rreq);
+ 	bool (*clamp_length)(struct netfs_read_subrequest *subreq);
+ 	void (*issue_op)(struct netfs_read_subrequest *subreq);
+ 	bool (*is_still_valid)(struct netfs_read_request *rreq);
++	int (*check_write_begin)(struct file *file, loff_t pos, unsigned len,
++				 struct page *page, void **_fsdata);
+ 	void (*done)(struct netfs_read_request *rreq);
+ 	void (*cleanup)(struct address_space *mapping, void *netfs_priv);
+ };
+@@ -132,6 +135,11 @@ extern int netfs_readpage(struct file *,
+ 			  struct page *,
+ 			  const struct netfs_read_request_ops *,
+ 			  void *);
++extern int netfs_write_begin(struct file *, struct address_space *,
++			     loff_t, unsigned int, unsigned int, struct page **,
++			     void **,
++			     const struct netfs_read_request_ops *,
++			     void *);
  
-+#include <linux/netfs.h>
-+
- #ifdef CONFIG_CEPH_FSCACHE
+ extern void netfs_subreq_terminated(struct netfs_read_subrequest *, ssize_t);
+ extern void netfs_stats_show(struct seq_file *);
+diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
+index 12ad382764c5..a2bf6cd84bd4 100644
+--- a/include/trace/events/netfs.h
++++ b/include/trace/events/netfs.h
+@@ -22,6 +22,7 @@ enum netfs_read_trace {
+ 	netfs_read_trace_expanded,
+ 	netfs_read_trace_readahead,
+ 	netfs_read_trace_readpage,
++	netfs_read_trace_write_begin,
+ };
  
- extern struct fscache_netfs ceph_cache_netfs;
-@@ -35,11 +37,31 @@ static inline void ceph_fscache_inode_init(struct ceph_inode_info *ci)
- 	ci->fscache = NULL;
- }
+ enum netfs_rreq_trace {
+@@ -50,7 +51,8 @@ enum netfs_sreq_trace {
+ #define netfs_read_traces					\
+ 	EM(netfs_read_trace_expanded,		"EXPANDED ")	\
+ 	EM(netfs_read_trace_readahead,		"READAHEAD")	\
+-	E_(netfs_read_trace_readpage,		"READPAGE ")
++	EM(netfs_read_trace_readpage,		"READPAGE ")	\
++	E_(netfs_read_trace_write_begin,	"WRITEBEGN")
  
-+static inline struct fscache_cookie *ceph_fscache_cookie(struct ceph_inode_info *ci)
-+{
-+	return ci->fscache;
-+}
-+
- static inline void ceph_fscache_invalidate(struct inode *inode)
- {
- 	fscache_invalidate(ceph_inode(inode)->fscache);
- }
- 
-+static inline bool ceph_is_cache_enabled(struct inode *inode)
-+{
-+	struct fscache_cookie *cookie = ceph_fscache_cookie(ceph_inode(inode));
-+
-+	if (!cookie)
-+		return false;
-+	return fscache_cookie_enabled(cookie);
-+}
-+
-+static inline int ceph_begin_cache_operation(struct netfs_read_request *rreq)
-+{
-+	struct fscache_cookie *cookie = ceph_fscache_cookie(ceph_inode(rreq->inode));
-+
-+	return fscache_begin_read_operation(rreq, cookie);
-+}
- #else
- 
- static inline int ceph_fscache_register(void)
-@@ -65,6 +87,11 @@ static inline void ceph_fscache_inode_init(struct ceph_inode_info *ci)
- {
- }
- 
-+static inline struct fscache_cookie *ceph_fscache_cookie(struct ceph_inode_info *ci)
-+{
-+	return NULL;
-+}
-+
- static inline void ceph_fscache_register_inode_cookie(struct inode *inode)
- {
- }
-@@ -82,6 +109,15 @@ static inline void ceph_fscache_invalidate(struct inode *inode)
- {
- }
- 
-+static inline bool ceph_is_cache_enabled(struct inode *inode)
-+{
-+	return false;
-+}
-+
-+static inline int ceph_begin_cache_operation(struct netfs_read_request *rreq)
-+{
-+	return -ENOBUFS;
-+}
- #endif
- 
- #endif /* _CEPH_CACHE_H */
+ #define netfs_rreq_traces					\
+ 	EM(netfs_rreq_trace_assess,		"ASSESS")	\
 
 
