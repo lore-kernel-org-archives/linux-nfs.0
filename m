@@ -7,61 +7,61 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 16A16C433DB
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:41:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2246C433DB
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:42:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DE4E064DEC
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:41:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F8BE64DEB
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:42:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231194AbhBORlp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Feb 2021 12:41:45 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38512 "EHLO
+        id S231192AbhBORlr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Feb 2021 12:41:47 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38502 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231192AbhBORld (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 12:41:33 -0500
-Received: from mail-ed1-x531.google.com (mail-ed1-x531.google.com [IPv6:2a00:1450:4864:20::531])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AD1BEC06178C
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2021 09:40:14 -0800 (PST)
-Received: by mail-ed1-x531.google.com with SMTP id z22so9061046edb.9
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2021 09:40:14 -0800 (PST)
+        with ESMTP id S230413AbhBORlb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 12:41:31 -0500
+Received: from mail-ej1-x632.google.com (mail-ej1-x632.google.com [IPv6:2a00:1450:4864:20::632])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7FAA0C06178A
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2021 09:40:12 -0800 (PST)
+Received: by mail-ej1-x632.google.com with SMTP id y26so12462535eju.13
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2021 09:40:12 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=kernelim-com.20150623.gappssmtp.com; s=20150623;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=HxL4xgluh2lEgYgmCoXEb71nIHVpJpsiBxGVUgUXHxk=;
-        b=ydpIb8BdWIvZQJDen7oaUJC36KrToEq/CzAiqC+wy0M5WKzYu7SDurbOI6LC7mpvep
-         w7x1dsw9wCN+Nr0BXrsZNux1+kC/VNeNQROa7e5wN8BzlM+FLo+ymVnf1DdwLQuo9xrJ
-         wxjmRjCCmo3mtAPeBoB55qdd99iicafhp+Ysaxk8Q+YvEqpaszkuKGK8x2XPf1J/MiUJ
-         0C3PLou6WZWf3aGCHJyIOARGoF1ca9zqVlkMrqmnxhX3CasvSGhRIMsXuisYcD8eBnqK
-         TW3EjPsWTUEsBfrwncuS+8sWgCXjtJ7GxVlZHaCeYT9nY5o3P7HF/Dx4Xf0I95Xjz5lC
-         uu3g==
+        bh=ZTkj77Ym7544w3Cv1HEeqhGGGNI3jkJddVNjSgF5JSM=;
+        b=aBhRRxYEGjKIVnW+nFZ2F9hmFqHwnugVFPEzBWtK1AmuexsqeIe9A+M6EPrlISuvoz
+         XjOm8hCocShBgUcZqwAl6syKi9vIYRc0Ctu6/ZgraGGAP7rin8fimBdmJUGIM+NI15jj
+         ovHFtHo/tXILWDfdW5OMc8xMf8/vcpaSPMoHdalEZKve0IJdWICotjWXgcT6NyQnoqLl
+         ZDMQ0kjJEVvq39FCtNm1vP5uXQNbQJOVufIMlVqjjb4Zzi9yoZZqOmmZYuoliHaqDhtQ
+         SxCCfNwMoHF01krCcHEwetBDaTu327TxoCi7tMlcFDqC9D9w256RfTYl+/jaWIbxrHEu
+         uMUw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=HxL4xgluh2lEgYgmCoXEb71nIHVpJpsiBxGVUgUXHxk=;
-        b=EslLba2WFjeKaWKrsvgdP+jEn6x79qpNGuCHRnp2l7LCVh7M1j5HLNW7yFDRhOtCpw
-         yRVaYP9dH6NZ0+FP+cRuUDC+tKg0X8oFVCdlanu+Cuz6HheVc/LPFQ8L1OKumSCGwYx7
-         GPZ5RvowcMZTBYCSAzfsvQTnzSho+iq+V0k4IJuGUXIX7KSTDzkdu9I2LH67m0XxwAG/
-         35gRQHu/LcgnmAjy5mklBoSOTxlau2LWcfHX87F+h6N4gXM1WuyWQ4GBi7PpWt8DMI4C
-         toYYk/wALT6QwGYHOKiQSGHdnh4I1HemUoansAEC5qMMIQrshXy70D+42S53ZYkucE+1
-         qtxw==
-X-Gm-Message-State: AOAM533x33Z7DKOtQhy9vIl1vQQz9cE5XjDjRZY9H5TSvdeiTbUfk6KY
-        p81Ws3iwhjUktZn3IW81ZI6lH9OlDW9MBw==
-X-Google-Smtp-Source: ABdhPJzIYmhG4MTsWYZ680kXyYpv/yNY2SURiPGw9kW3zTYJwSKRkrfGOkmsBn88Bc+Y5v8b5oMmeg==
-X-Received: by 2002:aa7:d849:: with SMTP id f9mr3619350eds.76.1613410813165;
-        Mon, 15 Feb 2021 09:40:13 -0800 (PST)
+        bh=ZTkj77Ym7544w3Cv1HEeqhGGGNI3jkJddVNjSgF5JSM=;
+        b=Tk18dftFzxGK7G+qY0h/er18zgw3/J8YVT19FyM09OhOVR8B/n896SLVJNEYkv5VjR
+         zenrqkgS0IW3LrMqU1K8ts5KkvA3lE7UCWsSksA27x1G9e3TSwD44JFgs0Yxx2Y8trfe
+         yrcVHRuMJBCDXxXAULIK6Uo0Xh7olf1vK6p3Sn2CJRdUi2CfK4OrSHpx0bMq5vduKBEZ
+         MZAG0Y5J6nn6YEDdQ1GmFB8oIqogY6eCEcLAeyeCYYYTOL3zHwNXA7O07SS6S/T570Hy
+         zTH5gfm2dhiVns8+sfUPmlBe4AxeWTzTVGauuugFYO9rF0otvPa98+DgtdRQMj5y2z3D
+         TYbQ==
+X-Gm-Message-State: AOAM5336u8xU7kgb6MNu/eYD11NSZwtIYC+Wjj/rxk54zt22n4AoPvg+
+        VrzC97QE2C05r0xYLLzYOkSNDuLlxmqN6Q==
+X-Google-Smtp-Source: ABdhPJwDB4FmKOP6iI9YzsZTgSoPqQs9AlvQqocxmvtjcKoFD9C2teTbegtNDfOj3XbAMldL6dhmWw==
+X-Received: by 2002:a17:906:1d51:: with SMTP id o17mr16852474ejh.85.1613410810984;
+        Mon, 15 Feb 2021 09:40:10 -0800 (PST)
 Received: from jupiter.home.aloni.org ([77.124.84.167])
-        by smtp.gmail.com with ESMTPSA id e11sm11257485ejz.94.2021.02.15.09.40.12
+        by smtp.gmail.com with ESMTPSA id e11sm11257485ejz.94.2021.02.15.09.40.10
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 15 Feb 2021 09:40:12 -0800 (PST)
+        Mon, 15 Feb 2021 09:40:10 -0800 (PST)
 From:   Dan Aloni <dan@kernelim.com>
 To:     linux-nfs@vger.kernel.org,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>
-Subject: [PATCH v1 7/8] sunrpc: change rpc_clnt_add_xprt() to rpc_add_xprt()
-Date:   Mon, 15 Feb 2021 19:40:01 +0200
-Message-Id: <20210215174002.2376333-8-dan@kernelim.com>
+Subject: [PATCH v1 5/8] sunrpc: add IDs to multipath
+Date:   Mon, 15 Feb 2021 19:39:59 +0200
+Message-Id: <20210215174002.2376333-6-dan@kernelim.com>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210215174002.2376333-1-dan@kernelim.com>
 References: <20210215174002.2376333-1-dan@kernelim.com>
@@ -71,170 +71,99 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This change of API allows adding transports without holding a reference
-to an rpc client.
+This is used to uniquely identify sunrpc multipath objects in /sys.
 
 Signed-off-by: Dan Aloni <dan@kernelim.com>
 ---
- fs/nfs/pnfs_nfs.c           | 12 +++++++-----
- include/linux/sunrpc/clnt.h | 12 +++++++-----
- net/sunrpc/clnt.c           | 31 +++++++++++++++++--------------
- 3 files changed, 31 insertions(+), 24 deletions(-)
+ include/linux/sunrpc/xprtmultipath.h |  4 ++++
+ net/sunrpc/sunrpc_syms.c             |  1 +
+ net/sunrpc/xprtmultipath.c           | 27 +++++++++++++++++++++++++++
+ 3 files changed, 32 insertions(+)
 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 49d3389bd813..1e61626bd0fa 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -878,8 +878,9 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
- 			if (da->da_addr.ss_family != clp->cl_addr.ss_family)
- 				continue;
- 			/* Add this address as an alias */
--			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
--					rpc_clnt_test_and_add_xprt, NULL);
-+			rpc_add_xprt(&clp->cl_rpcclient->cl_xpi,
-+				     clp->cl_rpcclient, &xprt_args,
-+				     rpc_clnt_test_and_add_xprt, NULL);
- 			continue;
- 		}
- 		clp = get_v3_ds_connect(mds_srv,
-@@ -945,9 +946,10 @@ static int _nfs4_pnfs_v4_ds_connect(struct nfs_server *mds_srv,
- 			* add as an alias
- 			*/
- 			xprtdata.cred = nfs4_get_clid_cred(clp),
--			rpc_clnt_add_xprt(clp->cl_rpcclient, &xprt_args,
--					  rpc_clnt_setup_test_and_add_xprt,
--					  &rpcdata);
-+			rpc_add_xprt(&clp->cl_rpcclient->cl_xpi,
-+				     clp->cl_rpcclient, &xprt_args,
-+				     rpc_clnt_setup_test_and_add_xprt,
-+				     &rpcdata);
- 			if (xprtdata.cred)
- 				put_cred(xprtdata.cred);
- 		} else {
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 503653720e18..19bb23143eef 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -210,21 +210,23 @@ int 		rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
- 			int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
- 			void *data);
+diff --git a/include/linux/sunrpc/xprtmultipath.h b/include/linux/sunrpc/xprtmultipath.h
+index c6cce3fbf29d..ef95a6f18ccf 100644
+--- a/include/linux/sunrpc/xprtmultipath.h
++++ b/include/linux/sunrpc/xprtmultipath.h
+@@ -14,6 +14,7 @@ struct rpc_xprt_switch {
+ 	spinlock_t		xps_lock;
+ 	struct kref		xps_kref;
  
--int 		rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
-+int 		rpc_clnt_test_and_add_xprt(void *clnt,
- 			struct rpc_xprt_switch *xps,
- 			struct rpc_xprt *xprt,
- 			void *dummy);
--int		rpc_clnt_add_xprt(struct rpc_clnt *, struct xprt_create *,
--			int (*setup)(struct rpc_clnt *,
-+int		rpc_add_xprt(struct rpc_xprt_iter *iter,
-+		        void *ctx,
-+		        struct xprt_create *xprtargs,
-+		        int (*setup)(void *ctx,
- 				struct rpc_xprt_switch *,
- 				struct rpc_xprt *,
- 				void *),
--			void *data);
-+		        void *data);
- void		rpc_set_connect_timeout(struct rpc_clnt *clnt,
- 			unsigned long connect_timeout,
- 			unsigned long reconnect_timeout);
++	unsigned int		xps_id;
+ 	unsigned int		xps_nxprts;
+ 	unsigned int		xps_nactive;
+ 	atomic_long_t		xps_queuelen;
+@@ -71,4 +72,7 @@ extern struct rpc_xprt *xprt_iter_get_next(struct rpc_xprt_iter *xpi);
  
--int		rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *,
-+int		rpc_clnt_setup_test_and_add_xprt(void *,
- 			struct rpc_xprt_switch *,
- 			struct rpc_xprt *,
- 			void *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 0a4811be01cd..b94d274a5446 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -598,7 +598,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 		return clnt;
- 
- 	for (i = 0; i < args->nconnect - 1; i++) {
--		if (rpc_clnt_add_xprt(clnt, &xprtargs, NULL, NULL) < 0)
-+		if (rpc_add_xprt(&clnt->cl_xpi, NULL, &xprtargs, NULL, NULL) < 0)
- 			break;
- 	}
- 	return clnt;
-@@ -2751,10 +2751,11 @@ static const struct rpc_call_ops rpc_cb_add_xprt_call_ops = {
-  * @xprt: pointer struct rpc_xprt
-  * @dummy: unused
-  */
--int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
-+int rpc_clnt_test_and_add_xprt(void *ptr,
- 		struct rpc_xprt_switch *xps, struct rpc_xprt *xprt,
- 		void *dummy)
- {
-+	struct rpc_clnt *clnt = ptr;
- 	struct rpc_cb_add_xprt_calldata *data;
- 	struct rpc_task *task;
- 
-@@ -2795,11 +2796,12 @@ EXPORT_SYMBOL_GPL(rpc_clnt_test_and_add_xprt);
-  * @data: a struct rpc_add_xprt_test pointer that holds the test function
-  *        and test function call data
-  */
--int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
-+int rpc_clnt_setup_test_and_add_xprt(void *ptr,
- 				     struct rpc_xprt_switch *xps,
- 				     struct rpc_xprt *xprt,
- 				     void *data)
- {
-+	struct rpc_clnt *clnt = ptr;
- 	struct rpc_task *task;
- 	struct rpc_add_xprt_test *xtest = (struct rpc_add_xprt_test *)data;
- 	int status = -EADDRINUSE;
-@@ -2852,13 +2854,14 @@ EXPORT_SYMBOL_GPL(rpc_clnt_setup_test_and_add_xprt);
-  * adding the new transport.
-  *
-  */
--int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
--		struct xprt_create *xprtargs,
--		int (*setup)(struct rpc_clnt *,
--			struct rpc_xprt_switch *,
--			struct rpc_xprt *,
--			void *),
--		void *data)
-+int rpc_add_xprt(struct rpc_xprt_iter *iter,
-+		 void *ctx,
-+		 struct xprt_create *xprtargs,
-+		 int (*setup)(void *ctx,
-+			      struct rpc_xprt_switch *,
-+			      struct rpc_xprt *,
-+			      void *),
-+		 void *data)
- {
- 	struct rpc_xprt_switch *xps;
- 	struct rpc_xprt *xprt;
-@@ -2868,8 +2871,8 @@ int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
- 	int ret = 0;
- 
- 	rcu_read_lock();
--	xps = xprt_switch_get(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
--	xprt = xprt_iter_xprt(&clnt->cl_xpi);
-+	xps = xprt_switch_get(rcu_dereference(iter->xpi_xpswitch));
-+	xprt = xprt_iter_xprt(iter);
- 	if (xps == NULL || xprt == NULL) {
- 		rcu_read_unlock();
- 		xprt_switch_put(xps);
-@@ -2895,7 +2898,7 @@ int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
- 
- 	rpc_xprt_switch_set_roundrobin(xps);
- 	if (setup) {
--		ret = setup(clnt, xps, xprt, data);
-+		ret = setup(ctx, xps, xprt, data);
- 		if (ret != 0)
- 			goto out_put_xprt;
- 	}
-@@ -2906,7 +2909,7 @@ int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
- 	xprt_switch_put(xps);
- 	return ret;
+ extern bool rpc_xprt_switch_has_addr(struct rpc_xprt_switch *xps,
+ 		const struct sockaddr *sap);
++
++extern void xprt_multipath_cleanup_ids(void);
++
+ #endif
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index b61b74c00483..691c0000e9ea 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -134,6 +134,7 @@ cleanup_sunrpc(void)
+ 	rpc_sysfs_exit();
+ 	rpc_cleanup_clids();
+ 	xprt_cleanup_ids();
++	xprt_multipath_cleanup_ids();
+ 	rpcauth_remove_module();
+ 	cleanup_socket_xprt();
+ 	svc_cleanup_xprt_sock();
+diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+index 78c075a68c04..52a9584b23af 100644
+--- a/net/sunrpc/xprtmultipath.c
++++ b/net/sunrpc/xprtmultipath.c
+@@ -86,6 +86,31 @@ void rpc_xprt_switch_remove_xprt(struct rpc_xprt_switch *xps,
+ 	xprt_put(xprt);
  }
--EXPORT_SYMBOL_GPL(rpc_clnt_add_xprt);
-+EXPORT_SYMBOL_GPL(rpc_add_xprt);
  
- struct connect_timeout_data {
- 	unsigned long connect_timeout;
++static DEFINE_IDA(rpc_xprtswitch_ids);
++
++void xprt_multipath_cleanup_ids(void)
++{
++       ida_destroy(&rpc_xprtswitch_ids);
++}
++
++static int xprt_switch_alloc_id(struct rpc_xprt_switch *xps)
++{
++       int id;
++
++       id = ida_simple_get(&rpc_xprtswitch_ids, 0, 0, GFP_KERNEL);
++       if (id < 0)
++               return id;
++
++       xps->xps_id = id;
++       return 0;
++}
++
++static void xprt_switch_free_id(struct rpc_xprt_switch *xps)
++{
++       ida_simple_remove(&rpc_xprtswitch_ids, xps->xps_id);
++}
++
++
+ /**
+  * xprt_switch_alloc - Allocate a new struct rpc_xprt_switch
+  * @xprt: pointer to struct rpc_xprt
+@@ -103,6 +128,7 @@ struct rpc_xprt_switch *xprt_switch_alloc(struct rpc_xprt *xprt,
+ 	if (xps != NULL) {
+ 		spin_lock_init(&xps->xps_lock);
+ 		kref_init(&xps->xps_kref);
++		xprt_switch_alloc_id(xps);
+ 		xps->xps_nxprts = xps->xps_nactive = 0;
+ 		atomic_long_set(&xps->xps_queuelen, 0);
+ 		xps->xps_net = NULL;
+@@ -136,6 +162,7 @@ static void xprt_switch_free(struct kref *kref)
+ 			struct rpc_xprt_switch, xps_kref);
+ 
+ 	xprt_switch_free_entries(xps);
++	xprt_switch_free_id(xps);
+ 	kfree_rcu(xps, xps_rcu);
+ }
+ 
 -- 
 2.26.2
 
