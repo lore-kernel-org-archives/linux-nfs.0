@@ -2,156 +2,211 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F20CC43332
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:27:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8482C43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:41:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3EF9764E34
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:27:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C79F464E37
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 17:41:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232490AbhBOR06 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Feb 2021 12:26:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35038 "EHLO
+        id S230097AbhBORkz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Feb 2021 12:40:55 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38344 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230470AbhBORZ0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 12:25:26 -0500
-Received: from mail-il1-x12e.google.com (mail-il1-x12e.google.com [IPv6:2607:f8b0:4864:20::12e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50D0EC061788;
-        Mon, 15 Feb 2021 09:24:44 -0800 (PST)
-Received: by mail-il1-x12e.google.com with SMTP id e7so6086957ile.7;
-        Mon, 15 Feb 2021 09:24:44 -0800 (PST)
+        with ESMTP id S231817AbhBORks (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 12:40:48 -0500
+Received: from mail-ed1-x532.google.com (mail-ed1-x532.google.com [IPv6:2a00:1450:4864:20::532])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51882C061756
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2021 09:40:08 -0800 (PST)
+Received: by mail-ed1-x532.google.com with SMTP id y18so9034325edw.13
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Feb 2021 09:40:08 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=As9syGKeS8VicVqj8x+9+NIbGNI174mKBlFqRorjxMU=;
-        b=Nj7vSYL8CgpybKQ+Q9LX7Ux9NuBxbcmlsUwaWY2aB+oPm9yzHNYdxWC8ElT4jg5lep
-         Ktx3PvLCKOBUWeGkILBZoh3J1YA4dkVN821auLypTNmuts+BTA+v0uGmkqf+QdxFxHfP
-         +Rs+bS+1ue0KttvzcmYgt/MjjnonsjvO8wGdPrOAeudhgZtUzuuj2lcrWOl0JQVwZcKm
-         aqeJFdyp6BIHmpDrs9Td1wsqx97DgcYO2JD6TYMZr2yV2NC5jpovL5Ja+Ywgwur/JeDW
-         qyNnyTSxdPpvEMwgb2HlMC+BF3ljnP0PlBcihGbtJbnt+YsknChbiXK5/vN0txOQ7B/m
-         oN6g==
+        d=kernelim-com.20150623.gappssmtp.com; s=20150623;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=niMm2T2Ds/z5dELiVAItbXe2qBqmyEJ1FhyXGa6auzQ=;
+        b=bfPc3KoKEpJsCeibzLgmJfNGtZ/wskMzK2b7wlQAeVoH9IUc5JrG0i4qQuJX2P0RM1
+         QWBz7LJ+1pQMzp4/5xn88Hb2fxMVcJoo3O8lKL+4wxB02rI9CRi5clBjbrGWuLBW+YAp
+         crZcNFDq1kUlRtRNNx+R8SyXqvcIPmIs+vpowbP0bkdcZ+TnT6mbba1dq6hBMd5xZhCm
+         eWAo6r4dU/voZ9yfA+OINKbzz3x8Vslwc4l8I7hWYd390L3ehEQbayAHtH1EQsX+qtkG
+         emGweGW2Rt1g1odANd5CvD4ETmsuc9aLWKacMhxRc9z8l3VYbNgtmMYdEO5J0XJas4ts
+         upkA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=As9syGKeS8VicVqj8x+9+NIbGNI174mKBlFqRorjxMU=;
-        b=hZbxmh43BqH2fziCaaqix68fK6uQerLDCcnhbjjnYrpqP1VRtGnuVznmqBwcN+FhpN
-         /kthe84iRkaIp4k+XRsCW7HDpqUkasuWUw2VjMaSIw5GKHt9CekWOMFHa5ae7TWYx5O+
-         trBK5IFOWJbCWyHQrQD2vaYy2KZGfj6+AArs+bnrjk+Us5nxlGx5DNrm2sL5p/v8uu/h
-         E1wXcKmPwch+mBQXp0gXu1VUpO6AonD998uJ8ZH55slfmE7FGUXsKyr1d1RxlFeI6O+6
-         7Qak2tCRVgepPTORtyB1bsyj6FY/94Zj5Lvqp1IgIIWoKINhSnEzRWbWb9tog/ZZoV9N
-         pXNg==
-X-Gm-Message-State: AOAM533UjiBC/sX28qJejp95HNHDWFfzRqJQtA7ZQ4jUCFnR7G58k4ZV
-        F4duMcIdRjyG07tRi9vLpX/kLXJUHptRACCQJag=
-X-Google-Smtp-Source: ABdhPJyS0gg9wa1MhtvivwZaHgvvfmhIjg4ematsrIzr026LqeDgZZJICHfG2UVQFit/iYOcTM0dnl0qk6xqffDOJmI=
-X-Received: by 2002:a92:c90b:: with SMTP id t11mr14031289ilp.275.1613409883706;
- Mon, 15 Feb 2021 09:24:43 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=niMm2T2Ds/z5dELiVAItbXe2qBqmyEJ1FhyXGa6auzQ=;
+        b=HDhwzUMCBW7KTIXF6sH021LlId+d9/PDYcQbxgFVnZ/+LNj1HNpFDMabawSxhDh9pM
+         kMJ9Mq24obki6X0Rk2z2ykGREnSmsZ1YVBLIFWgpSFHK3cN0QySPQUpX3QpE5rZEpn/f
+         bCHa4cRklFeZ1DaU6WrchWNDeUv+UY4/6RvucfWIu7p+ZE828+Ci5OVyHIUdFa9nvWx/
+         LnQbKmHzhL1eCyu4mjN8GZkFZ5ngYAkZzurG3uIl5k+X2feGlh0XM8JHlQgklR5YT+QO
+         ICoipSgZtD1i4cue4/o1DkNP+kfcp5KXjmZADB4epDOdogEpI7biCClOGnhIoLrZ7q+V
+         8Qrw==
+X-Gm-Message-State: AOAM530iB1IBnlKKazBsJA9+oID57mMx79t86cKOpBhC2QJ4O+zzqh0e
+        Wi/r/UlxkDqxISc/gcIyPBfVw5/SAdklGw==
+X-Google-Smtp-Source: ABdhPJzc6iVX3aaPcHjDgERrkl5u5tk2AmZr6EgyGADtSmM7QvYtrJAsLy0v9pYLUNB3aKhRFqeZzw==
+X-Received: by 2002:a05:6402:22b0:: with SMTP id cx16mr16627948edb.255.1613410806719;
+        Mon, 15 Feb 2021 09:40:06 -0800 (PST)
+Received: from jupiter.home.aloni.org ([77.124.84.167])
+        by smtp.gmail.com with ESMTPSA id e11sm11257485ejz.94.2021.02.15.09.40.05
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 15 Feb 2021 09:40:06 -0800 (PST)
+From:   Dan Aloni <dan@kernelim.com>
+To:     linux-nfs@vger.kernel.org,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>
+Subject: [PATCH v1 1/8] sunrpc: rename 'net' to 'client'
+Date:   Mon, 15 Feb 2021 19:39:55 +0200
+Message-Id: <20210215174002.2376333-2-dan@kernelim.com>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210215174002.2376333-1-dan@kernelim.com>
+References: <20210215174002.2376333-1-dan@kernelim.com>
 MIME-Version: 1.0
-References: <CAOQ4uxiFGjdvX2-zh5o46pn7RZhvbGHH0wpzLPuPOom91FwWeQ@mail.gmail.com>
- <20210215154317.8590-1-lhenriques@suse.de> <CAOQ4uxgjcCrzDkj-0ukhvHRgQ-D+A3zU5EAe0A=s1Gw2dnTJSA@mail.gmail.com>
- <73ab4951f48d69f0183548c7a82f7ae37e286d1c.camel@hammerspace.com>
-In-Reply-To: <73ab4951f48d69f0183548c7a82f7ae37e286d1c.camel@hammerspace.com>
-From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Mon, 15 Feb 2021 19:24:32 +0200
-Message-ID: <CAOQ4uxgPtqG6eTi2AnAV4jTAaNDbeez+Xi2858mz1KLGMFntfg@mail.gmail.com>
-Subject: Re: [PATCH v2] vfs: prevent copy_file_range to copy across devices
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "lhenriques@suse.de" <lhenriques@suse.de>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "drinkcat@chromium.org" <drinkcat@chromium.org>,
-        "iant@google.com" <iant@google.com>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "darrick.wong@oracle.com" <darrick.wong@oracle.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "llozano@chromium.org" <llozano@chromium.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "dchinner@redhat.com" <dchinner@redhat.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "sfrench@samba.org" <sfrench@samba.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Feb 15, 2021 at 6:53 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
->
-> On Mon, 2021-02-15 at 18:34 +0200, Amir Goldstein wrote:
-> > On Mon, Feb 15, 2021 at 5:42 PM Luis Henriques <lhenriques@suse.de>
-> > wrote:
-> > >
-> > > Nicolas Boichat reported an issue when trying to use the
-> > > copy_file_range
-> > > syscall on a tracefs file.  It failed silently because the file
-> > > content is
-> > > generated on-the-fly (reporting a size of zero) and copy_file_range
-> > > needs
-> > > to know in advance how much data is present.
-> > >
-> > > This commit restores the cross-fs restrictions that existed prior
-> > > to
-> > > 5dae222a5ff0 ("vfs: allow copy_file_range to copy across devices")
-> > > and
-> > > removes generic_copy_file_range() calls from ceph, cifs, fuse, and
-> > > nfs.
-> > >
-> > > Fixes: 5dae222a5ff0 ("vfs: allow copy_file_range to copy across
-> > > devices")
-> > > Link:
-> > > https://lore.kernel.org/linux-fsdevel/20210212044405.4120619-1-drinkcat@chromium.org/
-> > > Cc: Nicolas Boichat <drinkcat@chromium.org>
-> > > Signed-off-by: Luis Henriques <lhenriques@suse.de>
-> >
-> > Code looks ok.
-> > You may add:
-> >
-> > Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-> >
-> > I agree with Trond that the first paragraph of the commit message
-> > could
-> > be improved.
-> > The purpose of this change is to fix the change of behavior that
-> > caused the regression.
-> >
-> > Before v5.3, behavior was -EXDEV and userspace could fallback to
-> > read.
-> > After v5.3, behavior is zero size copy.
-> >
-> > It does not matter so much what makes sense for CFR to do in this
-> > case (generic cross-fs copy).  What matters is that nobody asked for
-> > this change and that it caused problems.
-> >
->
-> No. I'm saying that this patch should be NACKed unless there is a real
-> explanation for why we give crap about this tracefs corner case and why
-> it can't be fixed.
->
-> There are plenty of reasons why copy offload across filesystems makes
-> sense, and particularly when you're doing NAS. Clone just doesn't cut
-> it when it comes to disaster recovery (whereas backup to a different
-> storage unit does). If the client has to do the copy, then you're
-> effectively doubling the load on the server, and you're adding
-> potentially unnecessary network traffic (or at the very least you are
-> doubling that traffic).
->
+This is in preparation to adding a second directory to keep track
+of each transport.
 
-I don't understand the use case you are describing.
+Signed-off-by: Dan Aloni <dan@kernelim.com>
+---
+ net/sunrpc/clnt.c  |  8 ++++----
+ net/sunrpc/sysfs.c | 22 +++++++++++-----------
+ net/sunrpc/sysfs.h |  4 ++--
+ 3 files changed, 17 insertions(+), 17 deletions(-)
 
-Which filesystem types are you talking about for source and target
-of copy_file_range()?
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 02905eae5c0a..0a4811be01cd 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -301,7 +301,7 @@ static int rpc_client_register(struct rpc_clnt *clnt,
+ 	int err;
+ 
+ 	rpc_clnt_debugfs_register(clnt);
+-	rpc_netns_sysfs_setup(clnt, net);
++	rpc_netns_client_sysfs_setup(clnt, net);
+ 
+ 	pipefs_sb = rpc_get_sb_net(net);
+ 	if (pipefs_sb) {
+@@ -329,7 +329,7 @@ static int rpc_client_register(struct rpc_clnt *clnt,
+ out:
+ 	if (pipefs_sb)
+ 		rpc_put_sb_net(net);
+-	rpc_netns_sysfs_destroy(clnt);
++	rpc_netns_client_sysfs_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 	return err;
+ }
+@@ -736,7 +736,7 @@ int rpc_switch_client_transport(struct rpc_clnt *clnt,
+ 
+ 	rpc_unregister_client(clnt);
+ 	__rpc_clnt_remove_pipedir(clnt);
+-	rpc_netns_sysfs_destroy(clnt);
++	rpc_netns_client_sysfs_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 
+ 	/*
+@@ -883,7 +883,7 @@ static void rpc_free_client_work(struct work_struct *work)
+ 	 * so they cannot be called in rpciod, so they are handled separately
+ 	 * here.
+ 	 */
+-	rpc_netns_sysfs_destroy(clnt);
++	rpc_netns_client_sysfs_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 	rpc_free_clid(clnt);
+ 	rpc_clnt_remove_pipedir(clnt);
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 8b01b4df64ee..3fe814795ed9 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -9,7 +9,7 @@
+ #include "sysfs.h"
+ 
+ struct kobject *rpc_client_kobj;
+-static struct kset *rpc_client_kset;
++static struct kset *rpc_sunrpc_kset;
+ 
+ static void rpc_netns_object_release(struct kobject *kobj)
+ {
+@@ -45,13 +45,13 @@ static struct kobject *rpc_netns_object_alloc(const char *name,
+ 
+ int rpc_sysfs_init(void)
+ {
+-	rpc_client_kset = kset_create_and_add("sunrpc", NULL, kernel_kobj);
+-	if (!rpc_client_kset)
++	rpc_sunrpc_kset = kset_create_and_add("sunrpc", NULL, kernel_kobj);
++	if (!rpc_sunrpc_kset)
+ 		return -ENOMEM;
+-	rpc_client_kobj = rpc_netns_object_alloc("net", rpc_client_kset, NULL);
++	rpc_client_kobj = rpc_netns_object_alloc("client", rpc_sunrpc_kset, NULL);
+ 	if (!rpc_client_kobj) {
+-		kset_unregister(rpc_client_kset);
+-		rpc_client_kset = NULL;
++		kset_unregister(rpc_sunrpc_kset);
++		rpc_sunrpc_kset = NULL;
+ 		return -ENOMEM;
+ 	}
+ 	return 0;
+@@ -119,18 +119,18 @@ static struct kobj_type rpc_netns_client_type = {
+ void rpc_sysfs_exit(void)
+ {
+ 	kobject_put(rpc_client_kobj);
+-	kset_unregister(rpc_client_kset);
++	kset_unregister(rpc_sunrpc_kset);
+ }
+ 
+ static struct rpc_netns_client *rpc_netns_client_alloc(struct kobject *parent,
+-						struct net *net, int clid)
++						       struct net *net, int clid)
+ {
+ 	struct rpc_netns_client *p;
+ 
+ 	p = kzalloc(sizeof(*p), GFP_KERNEL);
+ 	if (p) {
+ 		p->net = net;
+-		p->kobject.kset = rpc_client_kset;
++		p->kobject.kset = rpc_sunrpc_kset;
+ 		if (kobject_init_and_add(&p->kobject, &rpc_netns_client_type,
+ 					parent, "%d", clid) == 0)
+ 			return p;
+@@ -139,7 +139,7 @@ static struct rpc_netns_client *rpc_netns_client_alloc(struct kobject *parent,
+ 	return NULL;
+ }
+ 
+-void rpc_netns_sysfs_setup(struct rpc_clnt *clnt, struct net *net)
++void rpc_netns_client_sysfs_setup(struct rpc_clnt *clnt, struct net *net)
+ {
+ 	struct rpc_netns_client *rpc_client;
+ 	struct rpc_xprt *xprt = rcu_dereference(clnt->cl_xprt);
+@@ -155,7 +155,7 @@ void rpc_netns_sysfs_setup(struct rpc_clnt *clnt, struct net *net)
+ 	}
+ }
+ 
+-void rpc_netns_sysfs_destroy(struct rpc_clnt *clnt)
++void rpc_netns_client_sysfs_destroy(struct rpc_clnt *clnt)
+ {
+ 	struct rpc_netns_client *rpc_client = clnt->cl_sysfs;
+ 
+diff --git a/net/sunrpc/sysfs.h b/net/sunrpc/sysfs.h
+index 137a12c87954..ab75c3cc91b6 100644
+--- a/net/sunrpc/sysfs.h
++++ b/net/sunrpc/sysfs.h
+@@ -16,7 +16,7 @@ extern struct kobject *rpc_client_kobj;
+ extern int rpc_sysfs_init(void);
+ extern void rpc_sysfs_exit(void);
+ 
+-void rpc_netns_sysfs_setup(struct rpc_clnt *clnt, struct net *net);
+-void rpc_netns_sysfs_destroy(struct rpc_clnt *clnt);
++void rpc_netns_client_sysfs_setup(struct rpc_clnt *clnt, struct net *net);
++void rpc_netns_client_sysfs_destroy(struct rpc_clnt *clnt);
+ 
+ #endif
+-- 
+2.26.2
 
-To be clear, the original change was done to support NFS/CIFS server-side
-copy and those should not be affected by this change.
-
-Thanks,
-Amir.
