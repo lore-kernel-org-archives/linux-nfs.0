@@ -2,109 +2,159 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA25FC433E6
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 16:16:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D243AC433DB
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 16:20:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9B11364DF0
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 16:16:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A246264DEE
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Feb 2021 16:20:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230383AbhBOQP7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Feb 2021 11:15:59 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:29896 "EHLO
+        id S231285AbhBOQTg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Feb 2021 11:19:36 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:58244 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231948AbhBOQMR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 11:12:17 -0500
+        by vger.kernel.org with ESMTP id S231422AbhBOPqU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Feb 2021 10:46:20 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613405450;
+        s=mimecast20190719; t=1613403892;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=wGz5aMZ2jUE7VsZQ0p6DHdAUwcF8yoK7x2FH4KaV5ws=;
-        b=NKYlTdy8uzaenOkMO2jRgxysmPl2yrK9ctqnsV3+EALcZtFKgyVuu7mLaoFDpXYmZGoPzt
-        MeeVMSjaOg7dxoTV7Gffd93nPgBu6V2kcmK5qQ126yFKWEKC4x6ou9qhSsNrvBgAPidnWr
-        hfFhm9/PeEl2Lv6zhhGm/yI8ZQq4q7g=
+        bh=eRjZtsA5zhSS/WW5VYasjVbQdw0rYUOiOpY9AmwMNHQ=;
+        b=AIMvB0T0e74s2QkMDjHDTN5H6FeyUCtSxz6ru0xGb1uysQJKX82SQc15ys10NGi5ynfmYU
+        hpegw3DcS17uuWesu5hb+913PFFyvrmF+8ughiWRQEaM32KKMLhat3CiSQxm6xzuIfh7DQ
+        7KGRr4CRbF9ALEqD5HoP64xd0j607fE=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-286-QWwqF1qcM4as0fDR0HtNpg-1; Mon, 15 Feb 2021 11:10:46 -0500
-X-MC-Unique: QWwqF1qcM4as0fDR0HtNpg-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+ us-mta-448-MqlpGAkWNeC56cKekoPN7Q-1; Mon, 15 Feb 2021 10:44:49 -0500
+X-MC-Unique: MqlpGAkWNeC56cKekoPN7Q-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 0B02B801962;
-        Mon, 15 Feb 2021 16:10:45 +0000 (UTC)
-Received: from carbon (unknown [10.36.110.45])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 498B45D9C0;
-        Mon, 15 Feb 2021 16:10:39 +0000 (UTC)
-Date:   Mon, 15 Feb 2021 17:10:38 +0100
-From:   Jesper Dangaard Brouer <brouer@redhat.com>
-To:     Mel Gorman <mgorman@techsingularity.net>
-Cc:     Chuck Lever <chuck.lever@oracle.com>, Mel Gorman <mgorman@suse.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-mm@kvack.org" <linux-mm@kvack.org>,
-        Jakub Kicinski <kuba@kernel.org>, brouer@redhat.com
-Subject: Re: alloc_pages_bulk()
-Message-ID: <20210215171038.42f62438@carbon>
-In-Reply-To: <20210215120056.GD3697@techsingularity.net>
-References: <2A0C36E7-8CB0-486F-A8DB-463CA28C5C5D@oracle.com>
-        <EEB0B974-6E63-41A0-9C01-F0DEA39FC4BF@oracle.com>
-        <20210209113108.1ca16cfa@carbon>
-        <20210210084155.GA3697@techsingularity.net>
-        <20210210124103.56ed1e95@carbon>
-        <20210210130705.GC3629@suse.de>
-        <B123FB11-661F-45A6-8235-2982BF3C4B83@oracle.com>
-        <20210211091235.GC3697@techsingularity.net>
-        <20210211132628.1fe4f10b@carbon>
-        <20210215120056.GD3697@techsingularity.net>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id BFEF1107ACC7;
+        Mon, 15 Feb 2021 15:44:46 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-119-68.rdu2.redhat.com [10.10.119.68])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 462C060CEF;
+        Mon, 15 Feb 2021 15:44:40 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+Subject: [PATCH 02/33] mm: Add an unlock function for PG_private_2/PG_fscache
+From:   David Howells <dhowells@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>,
+        Dominique Martinet <asmadeus@codewreck.org>
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-mm@kvack.org,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, dhowells@redhat.com,
+        Jeff Layton <jlayton@redhat.com>,
+        David Wysochanski <dwysocha@redhat.com>,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Date:   Mon, 15 Feb 2021 15:44:39 +0000
+Message-ID: <161340387944.1303470.7944159520278177652.stgit@warthog.procyon.org.uk>
+In-Reply-To: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
+References: <161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Add a function, unlock_page_private_2(), to unlock PG_private_2 analogous
+to that of PG_lock.  Add a kerneldoc banner to that indicating the example
+usage case.
 
-On Mon, 15 Feb 2021 12:00:56 +0000
-Mel Gorman <mgorman@techsingularity.net> wrote:
+A wrapper will need to be placed in the netfs header in the patch that adds
+that.
 
-> On Thu, Feb 11, 2021 at 01:26:28PM +0100, Jesper Dangaard Brouer wrote:
-[...]
-> 
-> > I also suggest the API can return less pages than requested. Because I
-> > want to to "exit"/return if it need to go into an expensive code path
-> > (like buddy allocator or compaction).  I'm assuming we have a flags to
-> > give us this behavior (via gfp_flags or alloc_flags)?
-> >   
-> 
-> The API returns the number of pages returned on a list so policies
-> around how aggressive it should be allocating the requested number of
-> pages could be adjusted without changing the API. Passing in policy
-> requests via gfp_flags may be problematic as most (all?) bits are
-> already used.
+[This implements a suggestion by Linus to not mix the terminology of
+ PG_private_2 and PG_fscache in the mm core function]
 
-Well, I was just thinking that I would use GFP_ATOMIC instead of
-GFP_KERNEL to "communicate" that I don't want this call to take too
-long (like sleeping).  I'm not requesting any fancy policy :-)
+Suggested-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Linus Torvalds <torvalds@linux-foundation.org>
+cc: Matthew Wilcox (Oracle) <willy@infradead.org>
+cc: Alexander Viro <viro@zeniv.linux.org.uk>
+cc: Christoph Hellwig <hch@lst.de>
+cc: linux-mm@kvack.org
+cc: linux-cachefs@redhat.com
+cc: linux-afs@lists.infradead.org
+cc: linux-nfs@vger.kernel.org
+cc: linux-cifs@vger.kernel.org
+cc: ceph-devel@vger.kernel.org
+cc: v9fs-developer@lists.sourceforge.net
+cc: linux-fsdevel@vger.kernel.org
+Link: https://lore.kernel.org/linux-fsdevel/1330473.1612974547@warthog.procyon.org.uk/
+Link: https://lore.kernel.org/linux-fsdevel/CAHk-=wjgA-74ddehziVk=XAEMTKswPu1Yw4uaro1R3ibs27ztw@mail.gmail.com/
+---
 
+ include/linux/pagemap.h |    1 +
+ mm/filemap.c            |   20 ++++++++++++++++++++
+ 2 files changed, 21 insertions(+)
 
-For page_pool use case we use (GFP_ATOMIC | __GFP_NOWARN) flags.
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index d5570deff400..365a28ece763 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -591,6 +591,7 @@ extern int __lock_page_async(struct page *page, struct wait_page_queue *wait);
+ extern int __lock_page_or_retry(struct page *page, struct mm_struct *mm,
+ 				unsigned int flags);
+ extern void unlock_page(struct page *page);
++extern void unlock_page_private_2(struct page *page);
+ 
+ /*
+  * Return true if the page was successfully locked
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 5c9d564317a5..7d321152d579 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1466,6 +1466,26 @@ void unlock_page(struct page *page)
+ }
+ EXPORT_SYMBOL(unlock_page);
+ 
++/**
++ * unlock_page_private_2 - Unlock a page that's locked with PG_private_2
++ * @page: The page
++ *
++ * Unlocks a page that's locked with PG_private_2 and wakes up sleepers in
++ * wait_on_page_private_2().
++ *
++ * This is, for example, used when a netfs page is being written to a local
++ * disk cache, thereby allowing writes to the cache for the same page to be
++ * serialised.
++ */
++void unlock_page_private_2(struct page *page)
++{
++	page = compound_head(page);
++	VM_BUG_ON_PAGE(!PagePrivate2(page), page);
++	clear_bit_unlock(PG_private_2, &page->flags);
++	wake_up_page_bit(page, PG_private_2);
++}
++EXPORT_SYMBOL(unlock_page_private_2);
++
+ /**
+  * end_page_writeback - end writeback against a page
+  * @page: the page
 
-static inline struct page *page_pool_dev_alloc_pages(struct page_pool *pool)
-{
-	gfp_t gfp = (GFP_ATOMIC | __GFP_NOWARN);
-
-	return page_pool_alloc_pages(pool, gfp);
-}
-
--- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
 
