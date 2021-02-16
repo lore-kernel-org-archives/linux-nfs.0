@@ -2,218 +2,140 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19414C433DB
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Feb 2021 18:55:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15238C433E0
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Feb 2021 19:20:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D859464E2B
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Feb 2021 18:55:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C3E7F64E65
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Feb 2021 19:20:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231182AbhBPSzF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Feb 2021 13:55:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52064 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230471AbhBPSyx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Feb 2021 13:54:53 -0500
-Received: from mail-pl1-x630.google.com (mail-pl1-x630.google.com [IPv6:2607:f8b0:4864:20::630])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B094C061786
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Feb 2021 10:54:13 -0800 (PST)
-Received: by mail-pl1-x630.google.com with SMTP id s16so2087580plr.9
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Feb 2021 10:54:13 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=LSS7VeTFf1sWhJY5fyJQl0KheTd9K60JF6FeH3GCxrg=;
-        b=bDyDPQV7jxm9AC9Kbej44nUyO7e9ikQAVBWHWuCf6m4SsjoZkV9pWHXIsx06dO+ak6
-         8aSM2SymVDyYuub9YyXC8OmIBO5oFcqGvwGNepwlZ7ccyJfhcO8QIBql9JI3pqiX2Fuw
-         j1klif/eeC82LALv7vbfEOF36jgpMBTsgIysLtIYOy5/V/AMnw+vobQiVIkTJp1UWc9w
-         DBJpDEAjqFxxbKednKjcTl1kcQJ9o42fsCnjttKtraIjnebn0Gpj+GPYsAe4P1dvBQTx
-         +Yu/ej7/HAC1/mff1R/7rpIBIU7G2uz6/1mHBZKRW2iyUUsEXYKiqiR/s+gFdY9x4S4k
-         7DDA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=LSS7VeTFf1sWhJY5fyJQl0KheTd9K60JF6FeH3GCxrg=;
-        b=jaseRdnB+wJtpsdS7KBse22FS6k88hnWN8MhWEbZE0ukORJOWuTcZ9yDXJrqN5jOZp
-         WnXgkDfPllOES5B8GPhb1zUtvRFyLHK6eesFe9i5m3js++uZZPW+xr1+/6Lq5uGOr4H2
-         GYop6+UYEDCwRe4N1ZIPgVMEAcEA8vKx2AvXDlTLplC1msb2LIVWLSKaXtfA6OC74PDz
-         hcB4gidYv7sQju3hP/vQ8JfRIkQnqGmmjcZKrL0SWGxiwn0T0Auj2OUa7kTvYZU0hB1N
-         n3wtfu0F0kLTfMr+wk9PqJ+WIcguqVr0dhHrSbl0k/+YYve1FCnHlyHLPxYfgjJ5YLiz
-         96rA==
-X-Gm-Message-State: AOAM531A+oRx8uvF2lHOu8K6ToTNiGASZ0uNA+TyU8aLyJ4bgSx8ovck
-        N9wrg9r7/YmGev+lA9mAeyazUQ==
-X-Google-Smtp-Source: ABdhPJxyRsttVKac8oS/Pd9KoKHSh+xsMkH7Er01IU3KQLXF2h+YHf7b4VIqO16SNNmhxdX/VS2yig==
-X-Received: by 2002:a17:90b:46cd:: with SMTP id jx13mr5383279pjb.217.1613501652606;
-        Tue, 16 Feb 2021 10:54:12 -0800 (PST)
-Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
-        by smtp.gmail.com with ESMTPSA id g8sm3820005pjj.41.2021.02.16.10.54.10
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 16 Feb 2021 10:54:11 -0800 (PST)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <13583117-59D4-4294-BB23-9D4802E4B8A3@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_E4D2691F-0BAD-4906-899A-C3AF7AC4FEB5";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v2] vfs: prevent copy_file_range to copy across devices
-Date:   Tue, 16 Feb 2021 11:54:07 -0700
-In-Reply-To: <CAOQ4uxgucdN8hi=wkcvnFhBoZ=L5=ZDc7-6SwKVHYaRODdcFkg@mail.gmail.com>
-Cc:     Luis Henriques <lhenriques@suse.de>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
-        "drinkcat@chromium.org" <drinkcat@chromium.org>,
-        "iant@google.com" <iant@google.com>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        "darrick.wong@oracle.com" <darrick.wong@oracle.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "llozano@chromium.org" <llozano@chromium.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "dchinner@redhat.com" <dchinner@redhat.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "sfrench@samba.org" <sfrench@samba.org>,
-        James Simmons <jsimmons@infradead.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>
-To:     Amir Goldstein <amir73il@gmail.com>
-References: <CAOQ4uxiFGjdvX2-zh5o46pn7RZhvbGHH0wpzLPuPOom91FwWeQ@mail.gmail.com>
- <20210215154317.8590-1-lhenriques@suse.de>
- <CAOQ4uxgjcCrzDkj-0ukhvHRgQ-D+A3zU5EAe0A=s1Gw2dnTJSA@mail.gmail.com>
- <73ab4951f48d69f0183548c7a82f7ae37e286d1c.camel@hammerspace.com>
- <CAOQ4uxgPtqG6eTi2AnAV4jTAaNDbeez+Xi2858mz1KLGMFntfg@mail.gmail.com>
- <92d27397479984b95883197d90318ee76995b42e.camel@hammerspace.com>
- <CAOQ4uxjUf15fDjz11pCzT3GkFmw=2ySXR_6XF-Bf-TfUwpj77Q@mail.gmail.com>
- <87r1lgjm7l.fsf@suse.de>
- <CAOQ4uxgucdN8hi=wkcvnFhBoZ=L5=ZDc7-6SwKVHYaRODdcFkg@mail.gmail.com>
-X-Mailer: Apple Mail (2.3273)
+        id S229780AbhBPTU0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Feb 2021 14:20:26 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:49434 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229879AbhBPTUS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Feb 2021 14:20:18 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1613503130;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=odB8fmKBAfP7x7ngeg8HM7YEzmJw+ADo5ztVFfxgle0=;
+        b=eBdyXZcaDixY8C732v9Hx6gsAA1BpeWnoSFPYkgYZFYYDfmJUFXc80ArlyHdV7I5gQQB6L
+        NjoQvzA45DW6nVxE8PHRwEBmBTE3jIL6nUulLqntrq6d1ZQstFWE7uYsVBihqKp+8kddz+
+        E66MttlUN+jY6kD2r6xcAqd3VMWJM18=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-442-ygxC5js_OP-BsqT-w6RPvQ-1; Tue, 16 Feb 2021 14:18:46 -0500
+X-MC-Unique: ygxC5js_OP-BsqT-w6RPvQ-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 00E748030C1;
+        Tue, 16 Feb 2021 19:18:45 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-108.phx2.redhat.com [10.3.112.108])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 93EB160C6B;
+        Tue, 16 Feb 2021 19:18:43 +0000 (UTC)
+Subject: Fwd: [nfsv4] VBAT: The 1st Virtual Bakeaton
+References: <86e6ffdd-cbc3-594c-5199-016c61bd7912@RedHat.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+To:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc:     NFSv4 <nfsv4@ietf.org>
+X-Forwarded-Message-Id: <86e6ffdd-cbc3-594c-5199-016c61bd7912@RedHat.com>
+Message-ID: <68bd1d3a-d1d5-4dee-8e3b-0b89baf6ef22@RedHat.com>
+Date:   Tue, 16 Feb 2021 14:20:20 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.7.0
+MIME-Version: 1.0
+In-Reply-To: <86e6ffdd-cbc3-594c-5199-016c61bd7912@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hello,
 
---Apple-Mail=_E4D2691F-0BAD-4906-899A-C3AF7AC4FEB5
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+The official start of the VBAT is next Monday 
+but the network is up and running and some problems
+have already been found!
 
-On Feb 16, 2021, at 6:51 AM, Amir Goldstein <amir73il@gmail.com> wrote:
->>=20
->>> This is easy to solve with a flag COPY_FILE_SPLICE (or something) =
-that
->>> is internal to kernel users.
->>>=20
->>> FWIW, you may want to look at the loop in ovl_copy_up_data()
->>> for improvements to nfsd_copy_file_range().
->>>=20
->>> We can move the check out to copy_file_range syscall:
->>>=20
->>>        if (flags !=3D 0)
->>>                return -EINVAL;
->>>=20
->>> Leave the fallback from all filesystems and check for the
->>> COPY_FILE_SPLICE flag inside generic_copy_file_range().
->>=20
->> Ok, the diff bellow is just to make sure I understood your =
-suggestion.
->>=20
->> The patch will also need to:
->>=20
->> - change nfs and overlayfs calls to vfs_copy_file_range() so that =
-they
->>   use the new flag.
->>=20
->> - check flags in generic_copy_file_checks() to make sure only valid =
-flags
->>   are used (COPY_FILE_SPLICE at the moment).
->>=20
->> Also, where should this flag be defined?  include/uapi/linux/fs.h?
->>=20
->> Cheers,
->> --
->> Luis
->>=20
->> diff --git a/fs/read_write.c b/fs/read_write.c
->> index 75f764b43418..341d315d2a96 100644
->> --- a/fs/read_write.c
->> +++ b/fs/read_write.c
->> @@ -1383,6 +1383,13 @@ ssize_t generic_copy_file_range(struct file =
-*file_in, loff_t pos_in,
->>                                struct file *file_out, loff_t pos_out,
->>                                size_t len, unsigned int flags)
->> {
->> +       if (!(flags & COPY_FILE_SPLICE)) {
->> +               if (!file_out->f_op->copy_file_range)
->> +                       return -EOPNOTSUPP;
->> +               else if (file_out->f_op->copy_file_range !=3D
->> +                        file_in->f_op->copy_file_range)
->> +                       return -EXDEV;
->> +       }
->=20
-> That looks strange, because you are duplicating the logic in
-> do_copy_file_range(). Maybe better:
->=20
-> if (WARN_ON_ONCE(flags & ~COPY_FILE_SPLICE))
->        return -EINVAL;
-> if (flags & COPY_FILE_SPLICE)
->       return do_splice_direct(file_in, &pos_in, file_out, &pos_out,
->                                 len > MAX_RW_COUNT ? MAX_RW_COUNT : =
-len, 0);
-> if (!file_out->f_op->copy_file_range)
->        return -EOPNOTSUPP;
-> return -EXDEV;
+Please feel free to reach out to Me or Ben 
+for any help on get hooked up to the VBAT network!
 
-This shouldn't return -EINVAL to userspace if the flag is not set.
+All the details are at: http://www.nfsv4bat.org/Events/2021/Feb/BAT/index.html
 
-That implies there *is* some valid way for userspace to call this
-function, which is AFAICS not possible if COPY_FILE_SPLICE is only
-available to in-kernel callers.  Instead, it should continue
-to return -EOPNOTSUPP to userspace if copy_file_range() is not valid
-for this combination of file descriptors, so that applications will
-fall back to the non-CFR implementation.
+Hope to (virtually) see you there!
 
-The WARN_ON_ONCE(ret =3D=3D -EOPNOTSUPP) in vfs_copy_file_range() would
-also need to be removed if this will be triggered from userspace.
+steved.
 
+-------- Forwarded Message --------
+Subject: [nfsv4] VBAT: The 1st Virtual Bakeaton
+Date: Wed, 13 Jan 2021 18:45:02 -0500
+From: Steve Dickson <SteveD@RedHat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+CC: NFSv4 <nfsv4@ietf.org>
 
-Cheers, Andreas
+Hello,
 
+Happy New Years!
 
+Ben started the conversations about virtual bakeathon 
+and built a network we can use for a VBAT.
 
+We were floated the idea of having it on the last week 
+of Feb (Mon 22ed to Fri 26th) which people seems to
+agree with... so... 
 
+Lets have a virtual Bakeathon at the end of Feb!!!
 
+I've update the nfsv4bat.org site [1] with
+all the details on how to register and 
+enable a host to used the VBAT network.
 
---Apple-Mail=_E4D2691F-0BAD-4906-899A-C3AF7AC4FEB5
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
+The VBAT network consists of VPN connections 
+using IPv6 address to do the routing. Again
+all the details are on [1].
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+Participant's communications will be run through a 
+Discord server [2], which supports both audio and IRC
+capabilities... Meaning we can talk and type 
+to each other... Again the details are on [1].
 
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmAsFM8ACgkQcqXauRfM
-H+DISQ//Xk8r1HWGp6aO3uH6f50bZtArBkbhRdX1p7E8ijkTPN+2mMwXY8F8Ac0N
-K7wowllKCKlCS3puz1g22oidllG07sA84OAzYvj+keWgxmcdr8LiT1+FmVrlwAJW
-yl7uwuVty3n0hVX3V1uP6k48l+6kNKHfLgEv0pryuKxsSJwgxK0lU7f/kxw3TBBx
-cLl2b126NjEeWasNilay55SGX6XlbecnhTg6sTqH4aSjYJrCOAeSe0owrB9pC1ks
-g2TyCDarbyGHgTiO9WqSQqF7rCzZ1DWaI9iivJgM7UCUO5WfYHKfNUWteiMr7i/7
-wZF4DYBawPFGYuv1mCbel/PuXN3/HQZ2r2UK3mHazf3jbTAgYEmoG9f4keebeGZb
-llGyvrvH9xKAjExhrmJbk/9ztbmwBlWl5QFpmpQRfUZmp92eXhdBJ1/yleXw9syJ
-SCy60rPj38mFYGpprUDF0j1nP4JJGKFz2uSAzgOHdh+ggXA8gLXWmHuM6eCFG3/j
-2CWcXAhFj4DKWvJxFFlcH1tsNuCjlyxo5I/ITpDDGlFNxUG9ebroVuOP3LWt+7uY
-RWKvH6dr2ImHuiN/9s0iL03HHULOvCPYNvfMIrLw1XWcBENBWZVDyWOOxYUu1a5O
-KHIHuK4OEiDJcKXchTH4pZ0MhzeTBL7dYXsHp21XzPRZMRA0+Kw=
-=ExqG
------END PGP SIGNATURE-----
+This is the first attempt at a virtual event
+so there are going to be bumps in the road,
+but as a community I'm sure we can make this
+work. Point being... if you find problems please 
+try to come up with a solutions... not a complaint ;-)
 
---Apple-Mail=_E4D2691F-0BAD-4906-899A-C3AF7AC4FEB5--
+The official testing start end of Feb but 
+the network is up and running right now! 
+
+So I *strongly* suggest you try and build a
+host to used the network well be for the
+end of Feb... (aka ASAP!)
+
+Finally, I'm working on getting VBAT t-shirts
+for registered participants to order...
+free of charge... So registering early would 
+definitely help the effort out
+
+Let make this happen!!!
+
+steved.
+
+[1] http://www.nfsv4bat.org/Events/2021/Feb/BAT/index.html
+[2] https://discord.com/
+
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
+
