@@ -4,48 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 333F8C43381
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 450E5C4332B
 	for <linux-nfs@archiver.kernel.org>; Wed, 17 Feb 2021 19:42:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0293B64E4A
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Feb 2021 19:42:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1FC9864E4B
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Feb 2021 19:42:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232666AbhBQTmg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 17 Feb 2021 14:42:36 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:59219 "EHLO
+        id S233375AbhBQTmh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 17 Feb 2021 14:42:37 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:56241 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233375AbhBQTmf (ORCPT
+        by vger.kernel.org with ESMTP id S233086AbhBQTmf (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2021 14:42:35 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613590868;
+        s=mimecast20190719; t=1613590867;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=0E8nZ22o3M8b/EgiluGmjSKJ6QV1F4Bgh48NBBVf/oQ=;
-        b=PYWe7AX00RqOjgTH7XhXTGynQSDQynFo39nEh9s/tXDlbDBh2i2E+C+rFsQyVxkrgrwr7j
-        TFUsvesQAR2V48MIAVWiZKhaJtIUFEPIGZ3oZBG4LYXbbVZiD+xNlTWCsT7shIwJFeezNu
-        CKbokD11ylBo3l45FmuJDEktkg3X5Nw=
+        bh=n7NQKgJX4XQpaJi8oU1NvVcqib/eFjVUY7xJ+uTcqK0=;
+        b=EMqGdQtEOFzj1HQQXqHcHTOGR2PsnARKsWxaXqkDinAEWhqtk5xeB7ZfpvGjDQXkELZDnm
+        D3OPVl0dnuxCnQUqSvkN+MZ00/cwemZVIXtCwrSyZUISWPxmdlwfR5HSFzCmDXipY6ECib
+        mMx9c7dTV41qq23whixSCKLd2Zfh3Bg=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-291-3tfAr9QQM12eRUcELJnzCQ-1; Wed, 17 Feb 2021 14:41:06 -0500
-X-MC-Unique: 3tfAr9QQM12eRUcELJnzCQ-1
+ us-mta-503-q6g_qSd-NsCNt_QS-Iab9w-1; Wed, 17 Feb 2021 14:41:05 -0500
+X-MC-Unique: q6g_qSd-NsCNt_QS-Iab9w-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 97D3DEC1A2
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 19:41:05 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C331380196C
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 19:41:04 +0000 (UTC)
 Received: from madhat.home.dicksonnet.net (ovpn-112-108.phx2.redhat.com [10.3.112.108])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 56E5418B5E
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 19:41:05 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 82B5B18B5E
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 19:41:04 +0000 (UTC)
 From:   Steve Dickson <steved@redhat.com>
 To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/6] exportd/exportfs: Add the state-directory-path option
-Date:   Wed, 17 Feb 2021 14:42:38 -0500
-Message-Id: <20210217194240.79915-5-steved@redhat.com>
+Subject: [PATCH 2/6] exportd: Moved cache upcalls routines into libexport.a
+Date:   Wed, 17 Feb 2021 14:42:36 -0500
+Message-Id: <20210217194240.79915-3-steved@redhat.com>
 In-Reply-To: <20210217194240.79915-1-steved@redhat.com>
 References: <20210217194240.79915-1-steved@redhat.com>
 MIME-Version: 1.0
@@ -55,240 +55,314 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Ported state-directory-path option from mountd (commit a15bd948)
+Move the cache management code into libexport.a
+so both mountd and exportd can use it.
+
+Introduce cache_proccess_loop() which will
+be used by exportd, instead of my_svc_run().
+
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- nfs.conf                    |  1 +
- systemd/nfs.conf.man        |  3 ++-
- utils/exportd/exportd.c     | 35 +++++++++++++++++++++++++++--------
- utils/exportfs/exportfs.c   | 25 +++++++++++++++++--------
- utils/exportfs/exportfs.man |  7 +++++--
- 5 files changed, 52 insertions(+), 19 deletions(-)
+ support/export/Makefile.am                |  3 +-
+ {utils/mountd => support/export}/auth.c   |  4 +-
+ {utils/mountd => support/export}/cache.c  | 46 +++++++++++++++++++++--
+ support/export/export.h                   | 34 +++++++++++++++++
+ {utils/mountd => support/export}/v4root.c |  0
+ utils/exportd/Makefile.am                 | 12 ++++--
+ utils/exportd/exportd.c                   | 30 ++++++++++++++-
+ utils/mountd/Makefile.am                  |  4 +-
+ 8 files changed, 120 insertions(+), 13 deletions(-)
+ rename {utils/mountd => support/export}/auth.c (99%)
+ rename {utils/mountd => support/export}/cache.c (98%)
+ create mode 100644 support/export/export.h
+ rename {utils/mountd => support/export}/v4root.c (100%)
 
-diff --git a/nfs.conf b/nfs.conf
-index 4b344fa..bebb2e3 100644
---- a/nfs.conf
-+++ b/nfs.conf
-@@ -31,6 +31,7 @@
- #
- [exportd]
- # debug="all|auth|call|general|parse"
-+# state-directory-path=/var/lib/nfs
- # threads=1
- [mountd]
- # debug="all|auth|call|general|parse"
-diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index a4379fd..d2187f8 100644
---- a/systemd/nfs.conf.man
-+++ b/systemd/nfs.conf.man
-@@ -131,7 +131,8 @@ but on the server, this will resolve to the path
- .TP
- .B exportd
- Recognized values:
--.B threads
-+.BR threads ,
-+.BR state-directory-path
+diff --git a/support/export/Makefile.am b/support/export/Makefile.am
+index 13f7a49..7de82a8 100644
+--- a/support/export/Makefile.am
++++ b/support/export/Makefile.am
+@@ -11,7 +11,8 @@ EXTRA_DIST	= mount.x
  
- See
- .BR exportd (8)
-diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
-index bf5f431..be6a2a5 100644
---- a/utils/exportd/exportd.c
-+++ b/utils/exportd/exportd.c
-@@ -26,7 +26,6 @@
- extern void my_svc_run(void);
+ noinst_LIBRARIES = libexport.a
+ libexport_a_SOURCES = client.c export.c hostname.c \
+-		      xtab.c mount_clnt.c mount_xdr.c
++		      xtab.c mount_clnt.c mount_xdr.c \
++			  cache.c auth.c v4root.c
+ BUILT_SOURCES 	= $(GENFILES)
  
- struct state_paths etab;
--struct state_paths rmtab;
+ noinst_HEADERS = mount.h
+diff --git a/utils/mountd/auth.c b/support/export/auth.c
+similarity index 99%
+rename from utils/mountd/auth.c
+rename to support/export/auth.c
+index 67627f7..0bfa77d 100644
+--- a/utils/mountd/auth.c
++++ b/support/export/auth.c
+@@ -22,7 +22,7 @@
+ #include "misc.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+-#include "mountd.h"
++#include "export.h"
+ #include "v4root.h"
  
- /* Number of mountd threads to start.   Default is 1 and
-  * that's probably enough unless you need hundreds of
-@@ -80,6 +79,12 @@ wait_for_workers (void)
- 	}
+ enum auth_error
+@@ -43,11 +43,13 @@ extern int use_ipaddr;
+ 
+ extern struct state_paths etab;
+ 
++/*
+ void
+ auth_init(void)
+ {
+ 	auth_reload();
+ }
++*/
+ 
+ /*
+  * A client can match many different netgroups and it's tough to know
+diff --git a/utils/mountd/cache.c b/support/export/cache.c
+similarity index 98%
+rename from utils/mountd/cache.c
+rename to support/export/cache.c
+index a81e820..f1569af 100644
+--- a/utils/mountd/cache.c
++++ b/support/export/cache.c
+@@ -30,11 +30,14 @@
+ #include "nfsd_path.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+-#include "mountd.h"
+-#include "fsloc.h"
++#include "export.h"
+ #include "pseudoflavors.h"
+ #include "xcommon.h"
+ 
++#ifdef HAVE_JUNCTION_SUPPORT
++#include "fsloc.h"
++#endif
++
+ #ifdef USE_BLKID
+ #include "blkid/blkid.h"
+ #endif
+@@ -44,6 +47,7 @@
+  */
+ void	cache_set_fds(fd_set *fdset);
+ int	cache_process_req(fd_set *readfds);
++void cache_process_loop(void);
+ 
+ enum nfsd_fsid {
+ 	FSID_DEV = 0,
+@@ -909,6 +913,7 @@ out:
+ 	xlog(D_CALL, "nfsd_fh: found %p path %s", found, found ? found->e_path : NULL);
  }
  
-+inline void
-+cleanup_lockfiles (void)
++#ifdef HAVE_JUNCTION_SUPPORT
+ static void write_fsloc(char **bp, int *blen, struct exportent *ep)
+ {
+ 	struct servers *servers;
+@@ -931,7 +936,7 @@ static void write_fsloc(char **bp, int *blen, struct exportent *ep)
+ 	qword_addint(bp, blen, servers->h_referral);
+ 	release_replicas(servers);
+ }
+-
++#endif
+ static void write_secinfo(char **bp, int *blen, struct exportent *ep, int flag_mask)
+ {
+ 	struct sec_entry *p;
+@@ -974,7 +979,10 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
+ 		qword_addint(&bp, &blen, exp->e_anonuid);
+ 		qword_addint(&bp, &blen, exp->e_anongid);
+ 		qword_addint(&bp, &blen, exp->e_fsid);
++
++#ifdef HAVE_JUNCTION_SUPPORT
+ 		write_fsloc(&bp, &blen, exp);
++#endif
+ 		write_secinfo(&bp, &blen, exp, flag_mask);
+ 		if (exp->e_uuid == NULL || different_fs) {
+ 			char u[16];
+@@ -1509,6 +1517,38 @@ int cache_process_req(fd_set *readfds)
+ 	return cnt;
+ }
+ 
++/**
++ * cache_process_loop - process incoming upcalls
++ */
++void cache_process_loop(void)
 +{
-+	unlink(etab.lockfn);
++	fd_set	readfds;
++	int	selret;
++
++	FD_ZERO(&readfds);
++
++	for (;;) {
++
++		cache_set_fds(&readfds);
++
++		selret = select(FD_SETSIZE, &readfds,
++				(void *) 0, (void *) 0, (struct timeval *) 0);
++
++
++		switch (selret) {
++		case -1:
++			if (errno == EINTR || errno == ECONNREFUSED
++			 || errno == ENETUNREACH || errno == EHOSTUNREACH)
++				continue;
++			xlog(L_ERROR, "my_svc_run() - select: %m");
++			return;
++
++		default:
++			cache_process_req(&readfds);
++		}
++	}
 +}
 +
- /* Fork num_threads worker children and wait for them */
- static void
- fork_workers(void)
-@@ -117,6 +122,8 @@ fork_workers(void)
  
- 	/* in parent */
- 	wait_for_workers();
-+	cleanup_lockfiles();
-+	free_state_path_names(&etab);
- 	xlog(L_NOTICE, "exportd: no more workers, exiting\n");
- 	exit(0);
- }
-@@ -129,6 +136,8 @@ killer (int sig)
- 		kill(0, SIGTERM);
- 		wait_for_workers();
- 	}
-+	cleanup_lockfiles();
-+	free_state_path_names(&etab);
- 	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
- 
- 	exit(0);
-@@ -159,24 +168,33 @@ set_signals(void)
- 	sa.sa_handler = sig_hup;
- 	sigaction(SIGHUP, &sa, NULL);
- }
+ /*
+  * Give IP->domain and domain+path->options to kernel
+diff --git a/support/export/export.h b/support/export/export.h
+new file mode 100644
+index 0000000..4296db1
+--- /dev/null
++++ b/support/export/export.h
+@@ -0,0 +1,34 @@
++/*
++ * Copyright (C) 2021 Red Hat <nfs@redhat.com>
++ *
++ * support/export/export.h
++ *
++ * Declarations for export support 
++ */
 +
- static void
- usage(const char *prog, int n)
- {
- 	fprintf(stderr,
- 		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
-+"	[-s|--state-directory-path path]\n"
- "	[-t num|--num-threads=num]\n", prog);
- 	exit(n);
- }
- 
- inline static void 
--read_exportd_conf(char *progname)
-+read_exportd_conf(char *progname, char **argv)
- {
-+	char *s;
++#ifndef EXPORT_H
++#define EXPORT_H
 +
- 	conf_init_file(NFS_CONFFILE);
- 
- 	xlog_from_conffile(progname);
- 
- 	num_threads = conf_get_num("exportd", "threads", num_threads);
++#include "nfslib.h"
 +
-+	s = conf_get_str("exportd", "state-directory-path");
-+	if (s && !state_setup_basedir(argv[0], s))
-+		exit(1);
- }
++unsigned int	auth_reload(void);
++nfs_export *	auth_authenticate(const char *what,
++					const struct sockaddr *caller,
++					const char *path);
 +
- int
- main(int argc, char **argv)
- {
-@@ -194,9 +212,9 @@ main(int argc, char **argv)
- 	xlog_open(progname);
++void		cache_open(void);
++void		cache_process_loop(void);
++
++struct nfs_fh_len *
++		cache_get_filehandle(nfs_export *exp, int len, char *p);
++int		cache_export(nfs_export *exp, char *path);
++
++bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
++bool namelist_client_matches(nfs_export *exp, char *dom);
++bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
++
++static inline bool is_ipaddr_client(char *dom)
++{
++	return dom[0] == '$';
++}
++#endif /* EXPORT__H */
+diff --git a/utils/mountd/v4root.c b/support/export/v4root.c
+similarity index 100%
+rename from utils/mountd/v4root.c
+rename to support/export/v4root.c
+diff --git a/utils/exportd/Makefile.am b/utils/exportd/Makefile.am
+index 2314d32..0fcd92f 100644
+--- a/utils/exportd/Makefile.am
++++ b/utils/exportd/Makefile.am
+@@ -7,10 +7,14 @@ EXTRA_DIST  = $(man8_MANS)
  
- 	/* Read in config setting */
--	read_exportd_conf(progname);
-+	read_exportd_conf(progname, argv);
+ sbin_PROGRAMS	=	exportd
  
--	while ((c = getopt_long(argc, argv, "d:fht:", longopts, NULL)) != EOF) {
-+	while ((c = getopt_long(argc, argv, "d:fhs:t:", longopts, NULL)) != EOF) {
- 		switch (c) {
- 		case 'd':
- 			xlog_sconfig(optarg, 1);
-@@ -207,6 +225,10 @@ main(int argc, char **argv)
- 		case 'h':
- 			usage(progname, 0);
- 			break;
-+		case 's':
-+			if (!state_setup_basedir(argv[0], optarg))
-+				exit(1);
-+			break;
- 		case 't':
- 			num_threads = atoi (optarg);
- 			break;
-@@ -219,9 +241,7 @@ main(int argc, char **argv)
- 
- 	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
- 		return 1;
--	if (!setup_state_path_names(progname, RMTAB, RMTABTMP, RMTABLCK, &rmtab))
--		return 1;
+-exportd_SOURCES = exportd.c 
+-exportd_LDADD = ../../support/nfs/libnfs.la
 -
-+	
+-exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
++exportd_SOURCES = exportd.c
++exportd_LDADD = ../../support/export/libexport.a \
++			../../support/nfs/libnfs.la \
++			../../support/misc/libmisc.a \
++			$(OPTLIBS) $(LIBBLKID) $(LIBPTHREAD) 
++
++exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
++		-I$(top_srcdir)/support/export
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
+index 53712fa..150938c 100644
+--- a/utils/exportd/exportd.c
++++ b/utils/exportd/exportd.c
+@@ -18,7 +18,16 @@
+ 
+ #include "nfslib.h"
+ #include "conffile.h"
++#include "exportfs.h"
++#include "export.h"
+ 
++extern void my_svc_run(void);
++
++struct state_paths etab;
++struct state_paths rmtab;
++
++int manage_gids;
++int use_ipaddr = -1;
+ 
+ static struct option longopts[] =
+ {
+@@ -36,7 +45,7 @@ inline static void set_signals(void);
+ static void 
+ killer (int sig)
+ {
+-	xlog (L_NOTICE, "Caught signal %d, un-registering and exiting.", sig);
++	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
+ 	exit(0);
+ }
+ static void
+@@ -110,12 +119,29 @@ main(int argc, char **argv)
+ 
+ 	}
+ 
++	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
++		return 1;
++	if (!setup_state_path_names(progname, RMTAB, RMTABTMP, RMTABLCK, &rmtab))
++		return 1;
++
  	if (!foreground) 
  		xlog_stderr(0);
  
-@@ -252,6 +272,5 @@ main(int argc, char **argv)
- 		progname);
+ 	daemon_init(foreground);
  
- 	free_state_path_names(&etab);
--	free_state_path_names(&rmtab);
- 	exit(1);
- }
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 9fcae0b..fcab3b1 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -91,7 +91,23 @@ release_lockfile()
- 		_lockfd = -1;
- 	}
- }
-+inline static void 
-+read_exportfs_conf(char **argv)
-+{
-+	char *s;
+ 	set_signals();
+-	
+ 	daemon_ready();
 +
-+	conf_init_file(NFS_CONFFILE);
-+	xlog_from_conffile("exportfs");
++	/* Open files now to avoid sharing descriptors among forked processes */
++	cache_open();
 +
-+	/* NOTE: following uses "mountd" section of nfs.conf !!!! */
-+	s = conf_get_str("mountd", "state-directory-path");
-+	/* Also look in the exportd section */
-+	if (s == NULL)
-+		s = conf_get_str("exportd", "state-directory-path");
-+	if (s && !state_setup_basedir(argv[0], s))
-+		exit(1);
++	/* Process incoming upcalls */
++	cache_process_loop();
++
++	xlog(L_ERROR, "%s: process loop terminated unexpectedly. Exiting...\n",
++		progname);
++
++	free_state_path_names(&etab);
++	free_state_path_names(&rmtab);
++	exit(1);
+ }
+diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
+index 18610f1..cac3275 100644
+--- a/utils/mountd/Makefile.am
++++ b/utils/mountd/Makefile.am
+@@ -13,8 +13,8 @@ KPREFIX		= @kprefix@
+ sbin_PROGRAMS	= mountd
  
-+}
- int
- main(int argc, char **argv)
- {
-@@ -105,7 +121,6 @@ main(int argc, char **argv)
- 	int	f_ignore = 0;
- 	int	i, c;
- 	int	force_flush = 0;
--	char	*s;
- 
- 	if ((progname = strrchr(argv[0], '/')) != NULL)
- 		progname++;
-@@ -116,15 +131,9 @@ main(int argc, char **argv)
- 	xlog_stderr(1);
- 	xlog_syslog(0);
- 
--	conf_init_file(NFS_CONFFILE);
--	xlog_from_conffile("exportfs");
-+	read_exportfs_conf(argv);
- 	nfsd_path_init();
- 
--	/* NOTE: following uses "mountd" section of nfs.conf !!!! */
--	s = conf_get_str("mountd", "state-directory-path");
--	if (s && !state_setup_basedir(argv[0], s))
--		exit(1);
--
- 	while ((c = getopt(argc, argv, "ad:fhio:ruvs")) != EOF) {
- 		switch(c) {
- 		case 'a':
-diff --git a/utils/exportfs/exportfs.man b/utils/exportfs/exportfs.man
-index 91d3589..6d417a7 100644
---- a/utils/exportfs/exportfs.man
-+++ b/utils/exportfs/exportfs.man
-@@ -167,9 +167,11 @@ When a list is given, the members should be comma-separated.
- .B exportfs
- will also recognize the
- .B state-directory-path
--value from the
-+value from both the 
- .B [mountd]
--section.
-+section and the
-+.B [exportd]
-+section
- 
- .SH DISCUSSION
- .SS Exporting Directories
-@@ -327,6 +329,7 @@ table of clients accessing server's exports
- .BR exports (5),
- .BR nfs.conf (5),
- .BR rpc.mountd (8),
-+.BR exportd (8),
- .BR netgroup (5)
- .SH AUTHORS
- Olaf Kirch <okir@monad.swb.de>
+ noinst_HEADERS = fsloc.h
+-mountd_SOURCES = mountd.c mount_dispatch.c auth.c rmtab.c cache.c \
+-		 svc_run.c fsloc.c v4root.c mountd.h
++mountd_SOURCES = mountd.c mount_dispatch.c rmtab.c \
++		 svc_run.c fsloc.c mountd.h
+ mountd_LDADD = ../../support/export/libexport.a \
+ 	       ../../support/nfs/libnfs.la \
+ 	       ../../support/misc/libmisc.a \
 -- 
 2.29.2
 
