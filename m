@@ -2,108 +2,307 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15BDFC433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Feb 2021 19:02:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C573C433E6
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Feb 2021 19:42:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D1A6564DE0
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Feb 2021 19:02:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC53364E45
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Feb 2021 19:42:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231976AbhBQTCd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 17 Feb 2021 14:02:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50616 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229752AbhBQTCc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2021 14:02:32 -0500
-Received: from mail-ed1-x534.google.com (mail-ed1-x534.google.com [IPv6:2a00:1450:4864:20::534])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1FC9AC061574
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 11:01:52 -0800 (PST)
-Received: by mail-ed1-x534.google.com with SMTP id l12so17898675edt.3
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 11:01:51 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=kernelim-com.20150623.gappssmtp.com; s=20150623;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=TCo+YNJ4/itDDlR0170lhTKFf8mNEKh93PYPg809NQM=;
-        b=ooojZqF4omD/L6Hs89uYdNcQ0+VEGyiIP56vH+tzjk4yiU/Bf5+5gkEyWWmILmGG4z
-         /BwNiD2qhcgdK/81gh95tIt7YjFxKdM5lAGRLfvecXDOPxyzGZB2M3SIVZLoLj6SmKO1
-         FPNOg3ZaoFca3sVSUuwf/kfw8t1AwEhBYCTn6Zg2r7FAaUdDe1MU7+ZaKoy6+HviFCnM
-         F5gvm+X2mwhPflGiDvO8aB3Ii2JWmAIIkHC0BaB+hfbCRurS9EaP0OID/VEpOlTATO79
-         dcseKiQ0ZiE+5yfTGDRhBEy1E5dJPdm+b1wn+SB2vWXlTxjJo/QoMSa1MFkPfLIXRq/O
-         eXkQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=TCo+YNJ4/itDDlR0170lhTKFf8mNEKh93PYPg809NQM=;
-        b=aZn0vlpuO18rLm15ouhDbWhtzzqAuUSAAQvVsxurtYXoKKqaaaco7Q7wF+dxD7r/aF
-         8WWfvbqVoLubqCHDWA2L5/yqUnqxeegCG3dYZyJ9ZcDroN4b5GHR+0xDw/0UE4VfdRq5
-         BWajMYU6jNNrNu4Bn8FaDaOula8cxMHcfCGxb93gIcUjgNEZA+l4SRC2PGjsWftSIHnF
-         KJ/XIgXup4ssaNyWoLFjH3JO567YqMT8XEICpvs1B4gSh5BGczrnIS6Y+HcpubnYoB50
-         mHZ36FY33Xx+gFOirDU7FdYl8U+K4idCq5KHcwyDXCVjkmiUm5unZY1wYlQbEEQaBekk
-         ryXg==
-X-Gm-Message-State: AOAM532BN1ZAh5/U2GequyIbU4TlStUMxLbQlqiv31ZTQRvr7yQQEHJQ
-        BT9ZFw5Jh1d7bVTl6kSKKtRuN1PE7PBnaw==
-X-Google-Smtp-Source: ABdhPJxfHTcsbOigOfcP0yPsJwSzi4JVMVTk+3bSGm7i+5kMs2/cpDRx/zz9bw1ecEaqLFickKNlLQ==
-X-Received: by 2002:a50:fa91:: with SMTP id w17mr249004edr.195.1613588510654;
-        Wed, 17 Feb 2021 11:01:50 -0800 (PST)
-Received: from gmail.com ([77.124.84.167])
-        by smtp.gmail.com with ESMTPSA id e19sm904196eds.10.2021.02.17.11.01.49
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 17 Feb 2021 11:01:50 -0800 (PST)
-Date:   Wed, 17 Feb 2021 21:01:47 +0200
-From:   Dan Aloni <dan@kernelim.com>
-To:     Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-Subject: Re: [PATCH v1 3/8] sunrpc: add a directory per sunrpc xprt
-Message-ID: <20210217190147.d4xbhlkyk4in3qlc@gmail.com>
-References: <20210215174002.2376333-1-dan@kernelim.com>
- <20210215174002.2376333-4-dan@kernelim.com>
- <CAFX2JfkkYA=6gg9UzyT1=nuKrYJ+0c+Jd4BhasAgCR=T5Rgokw@mail.gmail.com>
+        id S231803AbhBQTmf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 17 Feb 2021 14:42:35 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:50583 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S233374AbhBQTme (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Feb 2021 14:42:34 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1613590867;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=wE+fMXUcVEsuXdUx1P7iy+Wcubauj8G6lDryuKeSjH4=;
+        b=PrM+KWklUflep9tJGHJbdw5pf1eFFeifCEHkZaoWqrWcJ8dSRV8KBAI7zAYAndQlk/PzcA
+        6fAL+35sEdHQw2I2HmLe8guCN9t3tfAtow/252TAfXu+/HIOK70Np2/I5oCYX+UCyz7jGZ
+        a5WTM71cEeVaen7H4IxGhImKWCmRFY8=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-174-ksiN4iT-NPmjpv1M5nUzvQ-1; Wed, 17 Feb 2021 14:41:06 -0500
+X-MC-Unique: ksiN4iT-NPmjpv1M5nUzvQ-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 33F32107ACE3
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 19:41:05 +0000 (UTC)
+Received: from madhat.home.dicksonnet.net (ovpn-112-108.phx2.redhat.com [10.3.112.108])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E783618B5E
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Feb 2021 19:41:04 +0000 (UTC)
+From:   Steve Dickson <steved@redhat.com>
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/6] exportd: multiple threads
+Date:   Wed, 17 Feb 2021 14:42:37 -0500
+Message-Id: <20210217194240.79915-4-steved@redhat.com>
+In-Reply-To: <20210217194240.79915-1-steved@redhat.com>
+References: <20210217194240.79915-1-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAFX2JfkkYA=6gg9UzyT1=nuKrYJ+0c+Jd4BhasAgCR=T5Rgokw@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Feb 16, 2021 at 04:46:55PM -0500, Anna Schumaker wrote:
-> > +static ssize_t rpc_netns_xprt_dstaddr_show(struct kobject *kobj,
-> > +               struct kobj_attribute *attr, char *buf)
-> > +{
-> > +       struct rpc_netns_xprt *c = container_of(kobj,
-> > +                               struct rpc_netns_xprt, kobject);
-> > +       struct rpc_xprt *xprt = c->xprt;
-> > +
-> > +       if (!(xprt->prot & (IPPROTO_TCP | XPRT_TRANSPORT_RDMA))) {
-> 
-> We might want to change these restrictions later on, so if we're going
-> to put this into each function then maybe it would make sense to have
-> a quick inline to check protocol support?
+Ported the multiple thread code from mountd (commit 11d34d11)
 
-Yeah, I agree.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ nfs.conf                  |   3 +
+ systemd/nfs.conf.man      |   9 +++
+ utils/exportd/exportd.c   | 118 ++++++++++++++++++++++++++++++++++++--
+ utils/exportd/exportd.man |   7 +++
+ 4 files changed, 133 insertions(+), 4 deletions(-)
 
-> I do the same check in the setup function for my patches, so if you
-> want I can add the inline function and then it'll just be there for
-> you to use.
-
-Sure, go ahead.
-
-> 
-> > +               sprintf(buf, "N/A");
-> > +               return 0;
-> 
-> I'm guessing the point of putting "N/A" here is so userspace tools
-> don't have to guess which files exist or not for each protocol type?
-> Should I change my patches to match this style too?
-
-Yes, though I'm not sure what are the common kernel convention here.
-Maybe a "-" string is sufficient?
-
+diff --git a/nfs.conf b/nfs.conf
+index 9fcf1bf..4b344fa 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -29,6 +29,9 @@
+ # port=0
+ # udp-port=0
+ #
++[exportd]
++# debug="all|auth|call|general|parse"
++# threads=1
+ [mountd]
+ # debug="all|auth|call|general|parse"
+ # manage-gids=n
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index 16e0ec4..a4379fd 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -128,6 +128,15 @@ then the client will be able to mount the path as
+ but on the server, this will resolve to the path
+ .BR /my/root/filesystem .
+ 
++.TP
++.B exportd
++Recognized values:
++.B threads
++
++See
++.BR exportd (8)
++for details.
++
+ .TP
+ .B nfsdcltrack
+ Recognized values:
+diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
+index 150938c..bf5f431 100644
+--- a/utils/exportd/exportd.c
++++ b/utils/exportd/exportd.c
+@@ -15,6 +15,8 @@
+ #include <signal.h>
+ #include <string.h>
+ #include <getopt.h>
++#include <errno.h>
++#include <wait.h>
+ 
+ #include "nfslib.h"
+ #include "conffile.h"
+@@ -26,6 +28,13 @@ extern void my_svc_run(void);
+ struct state_paths etab;
+ struct state_paths rmtab;
+ 
++/* Number of mountd threads to start.   Default is 1 and
++ * that's probably enough unless you need hundreds of
++ * clients to be able to mount at once.  */
++static int num_threads = 1;
++/* Arbitrary limit on number of threads */
++#define MAX_THREADS 64
++
+ int manage_gids;
+ int use_ipaddr = -1;
+ 
+@@ -34,6 +43,7 @@ static struct option longopts[] =
+ 	{ "foreground", 0, 0, 'F' },
+ 	{ "debug", 1, 0, 'd' },
+ 	{ "help", 0, 0, 'h' },
++	{ "num-threads", 1, 0, 't' },
+ 	{ NULL, 0, 0, 0 }
+ };
+ 
+@@ -42,10 +52,85 @@ static struct option longopts[] =
+  */
+ inline static void set_signals(void);
+ 
++/* Wait for all worker child processes to exit and reap them */
++static void
++wait_for_workers (void)
++{
++	int status;
++	pid_t pid;
++
++	for (;;) {
++
++		pid = waitpid(0, &status, 0);
++
++		if (pid < 0) {
++			if (errno == ECHILD)
++				return; /* no more children */
++			xlog(L_FATAL, "mountd: can't wait: %s\n",
++					strerror(errno));
++		}
++
++		/* Note: because we SIG_IGN'd SIGCHLD earlier, this
++		 * does not happen on 2.6 kernels, and waitpid() blocks
++		 * until all the children are dead then returns with
++		 * -ECHILD.  But, we don't need to do anything on the
++		 * death of individual workers, so we don't care. */
++		xlog(L_NOTICE, "mountd: reaped child %d, status %d\n",
++				(int)pid, status);
++	}
++}
++
++/* Fork num_threads worker children and wait for them */
++static void
++fork_workers(void)
++{
++	int i;
++	pid_t pid;
++
++	xlog(L_NOTICE, "mountd: starting %d threads\n", num_threads);
++
++	for (i = 0 ; i < num_threads ; i++) {
++		pid = fork();
++		if (pid < 0) {
++			xlog(L_FATAL, "mountd: cannot fork: %s\n",
++					strerror(errno));
++		}
++		if (pid == 0) {
++			/* worker child */
++
++			/* Re-enable the default action on SIGTERM et al
++			 * so that workers die naturally when sent them.
++			 * Only the parent unregisters with pmap and
++			 * hence needs to do special SIGTERM handling. */
++			struct sigaction sa;
++			sa.sa_handler = SIG_DFL;
++			sa.sa_flags = 0;
++			sigemptyset(&sa.sa_mask);
++			sigaction(SIGHUP, &sa, NULL);
++			sigaction(SIGINT, &sa, NULL);
++			sigaction(SIGTERM, &sa, NULL);
++
++			/* fall into my_svc_run in caller */
++			return;
++		}
++	}
++
++	/* in parent */
++	wait_for_workers();
++	xlog(L_NOTICE, "exportd: no more workers, exiting\n");
++	exit(0);
++}
++
+ static void 
+ killer (int sig)
+ {
++	if (num_threads > 1) {
++		/* play Kronos and eat our children */
++		kill(0, SIGTERM);
++		wait_for_workers();
++	}
+ 	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
++
+ 	exit(0);
+ }
+ static void
+@@ -78,10 +163,20 @@ static void
+ usage(const char *prog, int n)
+ {
+ 	fprintf(stderr,
+-		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n", prog);
++		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
++"	[-t num|--num-threads=num]\n", prog);
+ 	exit(n);
+ }
+ 
++inline static void 
++read_exportd_conf(char *progname)
++{
++	conf_init_file(NFS_CONFFILE);
++
++	xlog_from_conffile(progname);
++
++	num_threads = conf_get_num("exportd", "threads", num_threads);
++}
+ int
+ main(int argc, char **argv)
+ {
+@@ -98,10 +193,10 @@ main(int argc, char **argv)
+ 	/* Initialize logging. */
+ 	xlog_open(progname);
+ 
+-	conf_init_file(NFS_CONFFILE);
+-	xlog_from_conffile(progname);
++	/* Read in config setting */
++	read_exportd_conf(progname);
+ 
+-	while ((c = getopt_long(argc, argv, "d:fh", longopts, NULL)) != EOF) {
++	while ((c = getopt_long(argc, argv, "d:fht:", longopts, NULL)) != EOF) {
+ 		switch (c) {
+ 		case 'd':
+ 			xlog_sconfig(optarg, 1);
+@@ -112,6 +207,9 @@ main(int argc, char **argv)
+ 		case 'h':
+ 			usage(progname, 0);
+ 			break;
++		case 't':
++			num_threads = atoi (optarg);
++			break;
+ 		case '?':
+ 		default:
+ 			usage(progname, 1);
+@@ -132,6 +230,18 @@ main(int argc, char **argv)
+ 	set_signals();
+ 	daemon_ready();
+ 
++	/* silently bounds check num_threads */
++	if (foreground)
++		num_threads = 1;
++	else if (num_threads < 1)
++		num_threads = 1;
++	else if (num_threads > MAX_THREADS)
++		num_threads = MAX_THREADS;
++
++	if (num_threads > 1)
++		fork_workers();
++
++
+ 	/* Open files now to avoid sharing descriptors among forked processes */
+ 	cache_open();
+ 
+diff --git a/utils/exportd/exportd.man b/utils/exportd/exportd.man
+index 96e133c..fae47d0 100644
+--- a/utils/exportd/exportd.man
++++ b/utils/exportd/exportd.man
+@@ -44,6 +44,13 @@ Run in foreground (do not daemonize)
+ .TP
+ .B \-h " or " \-\-help
+ Display usage message.
++.TP
++.BR "\-t N" " or " "\-\-num\-threads=N " or  " \-\-num\-threads N "
++This option specifies the number of worker threads that rpc.mountd
++spawns.  The default is 1 thread, which is probably enough.  More
++threads are usually only needed for NFS servers which need to handle
++mount storms of hundreds of NFS mounts in a few seconds, or when
++your DNS server is slow or unreliable.
+ .SH CONFIGURATION FILE
+ Many of the options that can be set on the command line can also be
+ controlled through values set in the
 -- 
-Dan Aloni
+2.29.2
+
