@@ -4,28 +4,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5CAE9C433E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Feb 2021 12:56:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A967C433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Feb 2021 12:56:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1549E64E3E
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Feb 2021 12:56:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 05F1D64E2F
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Feb 2021 12:56:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229879AbhBRMzd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 18 Feb 2021 07:55:33 -0500
-Received: from mx2.suse.de ([195.135.220.15]:59146 "EHLO mx2.suse.de"
+        id S232917AbhBRM4N (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 18 Feb 2021 07:56:13 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41568 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232406AbhBRKb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Feb 2021 05:31:26 -0500
+        id S231915AbhBRMPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Feb 2021 07:15:15 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 693E2AD2B;
-        Thu, 18 Feb 2021 10:28:06 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id 121FCACE5;
+        Thu, 18 Feb 2021 12:14:06 +0000 (UTC)
 Received: from localhost (brahms [local])
-        by brahms (OpenSMTPD) with ESMTPA id c89a0fc7;
-        Thu, 18 Feb 2021 10:29:09 +0000 (UTC)
+        by brahms (OpenSMTPD) with ESMTPA id e471242a;
+        Thu, 18 Feb 2021 12:15:08 +0000 (UTC)
 From:   Luis Henriques <lhenriques@suse.de>
 To:     Amir Goldstein <amir73il@gmail.com>
 Cc:     Christoph Hellwig <hch@infradead.org>,
@@ -52,38 +52,66 @@ References: <CAOQ4uxiFGjdvX2-zh5o46pn7RZhvbGHH0wpzLPuPOom91FwWeQ@mail.gmail.com>
         <20210215154317.8590-1-lhenriques@suse.de>
         <20210218074207.GA329605@infradead.org>
         <CAOQ4uxgreB=TywvWQXfcHYMBcFm5OKSdwUC8YJY1WuVja6PccQ@mail.gmail.com>
-Date:   Thu, 18 Feb 2021 10:29:08 +0000
-In-Reply-To: <CAOQ4uxgreB=TywvWQXfcHYMBcFm5OKSdwUC8YJY1WuVja6PccQ@mail.gmail.com>
-        (Amir Goldstein's message of "Thu, 18 Feb 2021 11:10:00 +0200")
-Message-ID: <87v9apis97.fsf@suse.de>
+        <87v9apis97.fsf@suse.de>
+Date:   Thu, 18 Feb 2021 12:15:08 +0000
+In-Reply-To: <87v9apis97.fsf@suse.de> (Luis Henriques's message of "Thu, 18
+        Feb 2021 10:29:08 +0000")
+Message-ID: <87mtw1incj.fsf@suse.de>
 MIME-Version: 1.0
 Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Amir Goldstein <amir73il@gmail.com> writes:
+Luis Henriques <lhenriques@suse.de> writes:
 
-> On Thu, Feb 18, 2021 at 9:42 AM Christoph Hellwig <hch@infradead.org> wrote:
->>
->> Looks good:
->>
->> Reviewed-by: Christoph Hellwig <hch@lst.de>
->>
->> This whole idea of cross-device copie has always been a horrible idea,
->> and I've been arguing against it since the patches were posted.
+> Amir Goldstein <amir73il@gmail.com> writes:
 >
-> Ok. I'm good with this v2 as well, but need to add the fallback to
-> do_splice_direct()
-> in nfsd_copy_file_range(), because this patch breaks it.
+>> On Thu, Feb 18, 2021 at 9:42 AM Christoph Hellwig <hch@infradead.org> wrote:
+>>>
+>>> Looks good:
+>>>
+>>> Reviewed-by: Christoph Hellwig <hch@lst.de>
+>>>
+>>> This whole idea of cross-device copie has always been a horrible idea,
+>>> and I've been arguing against it since the patches were posted.
+>>
+>> Ok. I'm good with this v2 as well, but need to add the fallback to
+>> do_splice_direct()
+>> in nfsd_copy_file_range(), because this patch breaks it.
+>>
+>> And the commit message of v3 is better in describing the reported issue.
 >
-> And the commit message of v3 is better in describing the reported issue.
+> Except that, as I said in a previous email, v2 doesn't really fix the
+> issue: all the checks need to be done earlier in generic_copy_file_checks().
+>
+> I'll work on getting v4, based on v2 and but moving the checks and
+> implementing your review suggestions to v3 (plus this nfs change).
 
-Except that, as I said in a previous email, v2 doesn't really fix the
-issue: all the checks need to be done earlier in generic_copy_file_checks().
+There's something else:
 
-I'll work on getting v4, based on v2 and but moving the checks and
-implementing your review suggestions to v3 (plus this nfs change).
+The filesystems (nfs, ceph, cifs, fuse) rely on the fallback to
+generic_copy_file_range() if something's wrong.  And this "something's
+wrong" is fs specific.  For example: in ceph it is possible to offload the
+file copy to the OSDs even if the files are in different filesystems as
+long as these filesystems are on the *same* ceph cluster.  If the copy
+being done is across two different clusters, then the copy reverts to
+splice.  This means that the boilerplate code being removed in v2 of this
+patch needs to be restored and replace by:
+
+	ret = __ceph_copy_file_range(src_file, src_off, dst_file, dst_off,
+				     len, flags);
+
+	if (ret == -EOPNOTSUPP || ret == -EXDEV)
+		ret = do_splice_direct(src_file, &src_off, dst_file, &dst_off,
+				       len > MAX_RW_COUNT ? MAX_RW_COUNT : len,
+				       flags);
+	return ret;
+
+A quick look at the other filesystems code indicate similar patterns.
+Since at this point we've gone through all the syscall checks already,
+calling do_splice_direct() shouldn't be a huge change.  But I may be
+missing something.  Again.  Which is quite likely :-)
 
 Cheers,
 -- 
