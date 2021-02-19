@@ -2,166 +2,95 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,INCLUDES_PULL_REQUEST,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 330C9C433DB
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 22:21:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3951FC433E0
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 22:23:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F0FF560C3E
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 22:20:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E7AFA60C3E
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 22:23:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229577AbhBSWUn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Feb 2021 17:20:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59284 "EHLO
+        id S229722AbhBSWXQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Feb 2021 17:23:16 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59816 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229515AbhBSWUm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 17:20:42 -0500
-Received: from mail-ed1-x532.google.com (mail-ed1-x532.google.com [IPv6:2a00:1450:4864:20::532])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C3ABC061574
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 14:20:02 -0800 (PST)
-Received: by mail-ed1-x532.google.com with SMTP id n1so12398492edv.2
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 14:20:02 -0800 (PST)
+        with ESMTP id S229689AbhBSWXN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 17:23:13 -0500
+Received: from mail-il1-x12e.google.com (mail-il1-x12e.google.com [IPv6:2607:f8b0:4864:20::12e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B573C06178A;
+        Fri, 19 Feb 2021 14:22:33 -0800 (PST)
+Received: by mail-il1-x12e.google.com with SMTP id e2so5814372ilu.0;
+        Fri, 19 Feb 2021 14:22:33 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=nbHA4iC4EUOT+QLsUXHkjW3bne4PQ5OWrJDYNh6xJ0E=;
-        b=Lz4ZSF8+GkiGgYMdao6EbxoC0Xy2NeZQkT0bmQkbSB10k4QYHh8VEGmPmH3p0NdV+V
-         Ac/t6KvnaLDjbYCRoDjSXuxbOGjhUnVb+dqzk1HrUJ1Kc6EiYUPvdIURGR5rCGM03OP9
-         2XX9Ifa8VbyjyJDbQvd54UbhulSd1W/BB55UxZF1yo7nQHJLtlwLv3HXztzPp4DTHxqb
-         k2S+detuGMs/JlPPJe1zhacZF79EoqlnT/nf05LT8MKK9eO6IVl1vsRionPStmLJm9YD
-         asxjMNjtxJNGoKABBDMbGHyuuB46Z6LUwPqrx5hRRga0vY6ApZBWw1gK3KWsZ7dN2FJ6
-         lsyA==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references;
+        bh=tUiXt38vszTo/8I4Tq05S3DKXWtyC93gf//69MCl9bI=;
+        b=WmUBk1i1WxpKzqh/WrjSTcH2JYceqpG2GkbZmLLj5LnN4S+lj2KbHF4iWF2zpDBG/m
+         x4VE+XrmKOO/OMzP3QS7T+lizbjJCJ2w6D2zx0V21YrjHlMMfHX0nNQr+arBgUSLg3B1
+         lWbpALH3uD2JAAqRYfv1HTQDAuAfrl/4+0rqfByael5ypUdwaDmTbco2W1Wztn2Bapr7
+         FHbdDo4xeYIJiHNFdB0rLnagg3FziBNQaiiRX4K2yu2sgBh8x6Uepi88mrsOf1VyQTUf
+         XjDPZyYPmjPep0z8DAMkX0gnjt3pAyrUbhu+8fDh/UgaDJ4c2AMB/6EBWKYiypL7I/1i
+         8XqA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=nbHA4iC4EUOT+QLsUXHkjW3bne4PQ5OWrJDYNh6xJ0E=;
-        b=m3LBzNVEo13lZxLQjhfO9jXS7+WcMVm3Q6hYxZ0wSYvqLURSbdoTMD7X1aCKJtJVeV
-         yxNVM5c2IyLksOW2YiUxoJvFYv1vBhFDHxX43uaBCEnT3jSs+Rz+bOwCE+sd7vi2C5Rj
-         aWBHdB9hRUq+sQXPxzoyJDJknjA0ORdSIc6EyPfKI7JKB12xXky7hPAeM6pflz+TKg5F
-         uBAZFRzy/otTgnqEGqXOVgqVjO/7MJerUebqdJW9Y3xKYcibn7U+RHw1HRumK5v2LMFY
-         yf0Q+DeYMRrEZmjppKty9mQC75C09HUkxy7Udu3oQwAlcVI97r+YwFqVjrA+rqMLh1w8
-         mC5w==
-X-Gm-Message-State: AOAM530cEWUYfdfRkvaE1X2EYMVXQ0dEFHc3gkquIzzGp39ctzb3DeLO
-        85Odh0qdc0P11zS290SKLwFZCADynpBVC1bylAbaLAqKoZvHIA==
-X-Google-Smtp-Source: ABdhPJwSgzBKdrW36xx2FDasEKG8Hm9xWqlJ3abkV1d04beRehm/hgsQVdAXlzTLVx3R5ejEmFnmS1rkZ2UhITd+Dt0=
-X-Received: by 2002:a05:6402:26d5:: with SMTP id x21mr11446092edd.50.1613773201193;
- Fri, 19 Feb 2021 14:20:01 -0800 (PST)
-MIME-Version: 1.0
-From:   Anna Schumaker <schumaker.anna@gmail.com>
-Date:   Fri, 19 Feb 2021 17:19:45 -0500
-Message-ID: <CAFX2JfnuPuE7Bd5nAwgwrVQQ84vAMVwpPf0SFZFTwpX0rib+Hg@mail.gmail.com>
-Subject: [GIT PULL] Please pull NFS Client Updates for Linux 5.12
-To:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references;
+        bh=tUiXt38vszTo/8I4Tq05S3DKXWtyC93gf//69MCl9bI=;
+        b=SlqnnaOeui7lIZNLIRonrHwLsDEn/Oss2w0A1VfR3AZ7LKbu4CFmz1XeabtdXI4kBg
+         wWqGBxKKKvV0fl4iaIJYbAipiecgcpbVAsAktNrLKEBfhsMpYp89x/Gq/8DsVzmUI9nb
+         iCw6TWKZn/ttRYXA5359exYqfoDz8/x+AhHtR+hsBxNECpU1Rc+XJazg6xrHDPylLeDK
+         0YWVNVCIoKmm1k4U1tEHqUNw5y3XDgAu15ogVCMhHXS8nJ0byWj4NImJG0SYC7yx7xuf
+         +eA7Rt1sEPUn6TgIknZBT+n56w++NYgon78fHbRV//2J3BNGTd5UuwlGYP9k/KemeiQ9
+         g7Vg==
+X-Gm-Message-State: AOAM533NGSDxGmGwOcjIH0VvkfYUR4zSmAzEI6u0wvK+VJBFYNr07KEZ
+        mX3khNhcdmwmVupEQrDBTnbOj6OJW4lPxPjD
+X-Google-Smtp-Source: ABdhPJxTF2eOPiEl6F/rr9pQp0bg1FYrCXk7F6h87MBYJtpsmB9Y7beiMatGH4ghXMNRjFP5Ar7plw==
+X-Received: by 2002:a92:cd8a:: with SMTP id r10mr5614069ilb.110.1613773352889;
+        Fri, 19 Feb 2021 14:22:32 -0800 (PST)
+Received: from Olgas-MBP-470.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id b19sm8456290ioj.50.2021.02.19.14.22.32
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Fri, 19 Feb 2021 14:22:32 -0800 (PST)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@vger.kernel.org
+Subject: [PATCH v3 2/3] [NFS] cleanup: remove unneeded null check in nfs_fill_super()
+Date:   Fri, 19 Feb 2021 17:22:32 -0500
+Message-Id: <20210219222233.20748-2-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
+In-Reply-To: <20210219222233.20748-1-olga.kornievskaia@gmail.com>
+References: <20210219222233.20748-1-olga.kornievskaia@gmail.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Linus,
+From: Olga Kornievskaia <kolga@netapp.com>
 
-The following changes since commit 1048ba83fb1c00cd24172e23e8263972f6b5d9ac:
+In nfs_fill_super() passed in nfs_fs_context can never be NULL.
 
-  Linux 5.11-rc6 (2021-01-31 13:50:09 -0800)
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-are available in the Git repository at:
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4034102010f0..59d846d7830f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1026,7 +1026,7 @@ static void nfs_fill_super(struct super_block *sb, struct nfs_fs_context *ctx)
+ 	sb->s_blocksize = 0;
+ 	sb->s_xattr = server->nfs_client->cl_nfs_mod->xattr;
+ 	sb->s_op = server->nfs_client->cl_nfs_mod->sops;
+-	if (ctx && ctx->bsize)
++	if (ctx->bsize)
+ 		sb->s_blocksize = nfs_block_size(ctx->bsize, &sb->s_blocksize_bits);
+ 
+ 	if (server->nfs_client->rpc_ops->version != 2) {
+-- 
+2.27.0
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.12-1
-
-for you to fetch changes up to 7ae017c7322e2b12472033e65a48aa25cde2fb22:
-
-  NFS: Support the '-owrite=' option in /proc/self/mounts and
-mountinfo (2021-02-17 15:36:03 -0500)
-
-----------------------------------------------------------------
-- New Features:
-  - Support for eager writes, and the write=eager and write=wait mount options
-
-- Other Bugfixes and Cleanups:
-  - Fix typos in some comments
-  - Fix up fall-through warnings for Clang
-  - Cleanups to the NFS readpage codepath
-  - Remove FMR support in rpcrdma_convert_iovs()
-  - Various other cleanups to xprtrdma
-  - Fix xprtrdma pad optimization for servers that don't support RFC 8797
-  - Improvements to rpcrdma tracepoints
-  - Fix up nfs4_bitmask_adjust()
-  - Optimize sparse writes past the end of files
-
-Thanks,
-Anna
-----------------------------------------------------------------
-Bhaskar Chowdhury (1):
-      net: sunrpc: xprtsock.c: Corrected few spellings ,in comments
-
-Calum Mackay (1):
-      SUNRPC: correct error code comment in xs_tcp_setup_socket()
-
-Chuck Lever (7):
-      xprtrdma: Remove FMR support in rpcrdma_convert_iovs()
-      xprtrdma: Simplify rpcrdma_convert_kvec() and frwr_map()
-      xprtrdma: Refactor invocations of offset_in_page()
-      rpcrdma: Fix comments about reverse-direction operation
-      xprtrdma: Pad optimization, revisited
-      rpcrdma: Capture bytes received in Receive completion tracepoints
-      xprtrdma: Clean up rpcrdma_prepare_readch()
-
-Dave Wysochanski (5):
-      NFS: Clean up nfs_readpage() and nfs_readpages()
-      NFS: In nfs_readpage() only increment NFSIOS_READPAGES when read succeeds
-      NFS: Refactor nfs_readpage() and nfs_readpage_async() to use nfs_readdesc
-      NFS: Call readpage_async_filler() from nfs_readpage_async()
-      NFS: Add nfs_pageio_complete_read() and remove nfs_readpage_async()
-
-Gustavo A. R. Silva (2):
-      SUNRPC: Fix fall-through warnings for Clang
-      nfs: Fix fall-through warnings for Clang
-
-Menglong Dong (1):
-      fs/nfs: remove duplicate include
-
-Trond Myklebust (10):
-      NFSv4: Fixes for nfs4_bitmask_adjust()
-      NFS: Fix documenting comment for nfs_revalidate_file_size()
-      NFS: Optimise sparse writes past the end of file
-      NFS: Always clear an invalid mapping when attempting a buffered write
-      NFS: Don't set NFS_INO_INVALID_XATTR if there is no xattr cache
-      NFS: 'flags' field should be unsigned in struct nfs_server
-      NFS: Add support for eager writes
-      NFS: Add mount options supporting eager writes
-      NFS: Set the stable writes flag when initialising the super block
-      NFS: Support the '-owrite=' option in /proc/self/mounts and mountinfo
-
- fs/nfs/file.c                              |  27 +++++++++++++++++++++------
- fs/nfs/fs_context.c                        |  35
-+++++++++++++++++++++++++++++++++++
- fs/nfs/fscache.c                           |   4 ----
- fs/nfs/inode.c                             | 111
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------
- fs/nfs/nfs3acl.c                           |   1 +
- fs/nfs/nfs4client.c                        |   1 +
- fs/nfs/nfs4proc.c                          |  21 ++++++++++-----------
- fs/nfs/nfs4state.c                         |   1 +
- fs/nfs/pnfs.c                              |   2 ++
- fs/nfs/read.c                              | 206
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------------------------------------
- fs/nfs/super.c                             |   7 +++++++
- fs/nfs/write.c                             |  37
-++++++++++++++++++++++++-------------
- include/linux/nfs_fs.h                     |   3 +--
- include/linux/nfs_fs_sb.h                  |   4 +++-
- include/trace/events/rpcrdma.h             |  50
-++++++++++++++++++++++++++++++++++++++++++++++++--
- net/sunrpc/rpc_pipe.c                      |   1 +
- net/sunrpc/xprtrdma/backchannel.c          |   4 ++--
- net/sunrpc/xprtrdma/frwr_ops.c             |  12 +++---------
- net/sunrpc/xprtrdma/rpc_rdma.c             |  67
-+++++++++++++++++++------------------------------------------------
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   4 ++--
- net/sunrpc/xprtrdma/xprt_rdma.h            |  15 ++++++++-------
- net/sunrpc/xprtsock.c                      |  17 ++++++++---------
- 22 files changed, 357 insertions(+), 273 deletions(-)
