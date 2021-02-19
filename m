@@ -2,364 +2,152 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92EF0C4332E
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AEECC43333
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5EF5C64D9C
+	by mail.kernel.org (Postfix) with ESMTP id CDCAB64EAF
 	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230014AbhBSUIO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Feb 2021 15:08:14 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:47459 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229726AbhBSUIL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:08:11 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613765203;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=YLwgB55zz6wz0rZn1ajTGbZqejrcEaFo9EnSSyYIBok=;
-        b=TexIm7gC+lOICZxnK0jwxj+SZbDAmrUaihe/y+o5hzvmh5w3idNvaVXGRpgsFy6CQUouWT
-        l9YnTYJtP2EL+gnhItO1074l1qzqgnGZ/BRZPikK2HJ2qXbuJPhZsjq7EpUISF1pOX2aPZ
-        PG8AtSbn8vneJBc6DYimpehrkJZsmwc=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-471-dPyEdxKcNDKUDc1MXwLKKw-1; Fri, 19 Feb 2021 15:06:40 -0500
-X-MC-Unique: dPyEdxKcNDKUDc1MXwLKKw-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B2DF080402C
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:39 +0000 (UTC)
-Received: from madhat.home.dicksonnet.net (ovpn-112-108.phx2.redhat.com [10.3.112.108])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 723BF19801
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:39 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/7] exportd: Moved cache upcalls routines into libexport.a
-Date:   Fri, 19 Feb 2021 15:08:10 -0500
-Message-Id: <20210219200815.792667-3-steved@redhat.com>
-In-Reply-To: <20210219200815.792667-1-steved@redhat.com>
-References: <20210219200815.792667-1-steved@redhat.com>
+        id S229726AbhBSUIS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Feb 2021 15:08:18 -0500
+Received: from mail-mw2nam10on2113.outbound.protection.outlook.com ([40.107.94.113]:44449
+        "EHLO NAM10-MW2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S229555AbhBSUIP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 Feb 2021 15:08:15 -0500
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=iMSiB3ll5WxT+KRfCWYrafWja0+cPu5KxPJvm8NpmsbWTeeCqxJhj5K4gylG/KDy+/aIuNMyzqpk4aKfNnsLmx7/jh5/29XruwISQTmvG1RWX44q3/w43l10cw1MgfSNn99g/4azx5aIa8/skcbxLlgW7/tmwTyGb1rrBL09EWRwCx/2km58vE2OSjS7YzDsig6YEnxrFGuQE6Nfnwg99P24/XFa1i3srduDzUaOlAnbE92kWXPv+WIpXzhYfRZ2Fm2LJ/C2iSNI1oiDHjML//tQT6pa02pCM/2fpCS/pljceZOLIvEDTTU+7JhdhG8XcQXyDlIf864b81Dcu5SPqw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=k0ybscqcnMLaYFF4VCo3oaj8TyffdXh5wdC06aa5rYY=;
+ b=Wzz55sQWUBD4ROu8rP0JIe7jhsfMneWDVZ8DrSl93qCGvaUxo5bPJzZ//zgi0gN3/GHcW3zouqt0Jrgrp80nud+gw6+kzUgiA5U0HB4a1kHovsYOvYw3NzsO3mJAReDXLdAK9B9kKHdDs1gSjJtY0fIqHkFDNxQ0DhK04SJYLI2BZ1Fog47G2JYE/Rr0zQ+5x8beKK1ozlUS7DQHrXvvKJbOFDIJ3E+0at0q2+OW/7K0o05f+7ZOGPGMXpRLRr8JcBZmx2E5YZne4HRNLhyZWJ319l7Gmvxh7XUQlMfQB/5mhvd5lQmWuvWRcPjZw9azcTkz12uWVv23d2OVXCAJxQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=hammerspace.com; dmarc=pass action=none
+ header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=k0ybscqcnMLaYFF4VCo3oaj8TyffdXh5wdC06aa5rYY=;
+ b=UxcNaoFzIawPAH2WZGyl5sI5S3u+eBbWqAwIcpmpclUx8AYK2NzpjngQW3liT4mWJPGtNUgsFTHMpuMGV2H4eaQsq0sruK8p4puzwxUL1L7xtgt1QpRhQylhmW4QW+dj3orT/utyjDDy/gvXbWplzis6Dcu0g5csS1uTsWQ3ljw=
+Received: from CH2PR13MB3525.namprd13.prod.outlook.com (2603:10b6:610:21::29)
+ by CH2PR13MB3623.namprd13.prod.outlook.com (2603:10b6:610:98::16) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3868.11; Fri, 19 Feb
+ 2021 20:07:20 +0000
+Received: from CH2PR13MB3525.namprd13.prod.outlook.com
+ ([fe80::f453:2dd2:675:d063]) by CH2PR13MB3525.namprd13.prod.outlook.com
+ ([fe80::f453:2dd2:675:d063%3]) with mapi id 15.20.3868.025; Fri, 19 Feb 2021
+ 20:07:20 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "dan.carpenter@oracle.com" <dan.carpenter@oracle.com>,
+        "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
+CC:     "kbuild-all@lists.01.org" <kbuild-all@lists.01.org>,
+        "selinux@vger.kernel.org" <selinux@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-security-module@vger.kernel.org" 
+        <linux-security-module@vger.kernel.org>,
+        "kbuild@lists.01.org" <kbuild@lists.01.org>,
+        "lkp@intel.com" <lkp@intel.com>
+Subject: Re: [PATCH v2 2/2] NFSv4 account for selinux security context when
+ deciding to share superblock
+Thread-Topic: [PATCH v2 2/2] NFSv4 account for selinux security context when
+ deciding to share superblock
+Thread-Index: AQHXBi9e6cNIt3rRBUGTinwY+Y3SlKpfI2oAgACXVQCAAC6HAA==
+Date:   Fri, 19 Feb 2021 20:07:19 +0000
+Message-ID: <9fa77d94ac515e4318877607ec9e65a4eee2856c.camel@hammerspace.com>
+References: <20210218195046.19280-2-olga.kornievskaia@gmail.com>
+         <20210219081908.GQ2087@kadam>
+         <CAN-5tyGrDtfLBXg42XLzp2med482QWPKN_KGXwNH_SP3V5buew@mail.gmail.com>
+In-Reply-To: <CAN-5tyGrDtfLBXg42XLzp2med482QWPKN_KGXwNH_SP3V5buew@mail.gmail.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: oracle.com; dkim=none (message not signed)
+ header.d=none;oracle.com; dmarc=none action=none header.from=hammerspace.com;
+x-originating-ip: [68.36.133.222]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: ec82cd6b-92cb-4499-70a8-08d8d511f6a4
+x-ms-traffictypediagnostic: CH2PR13MB3623:
+x-microsoft-antispam-prvs: <CH2PR13MB36233E855777D153880EBC9CB8849@CH2PR13MB3623.namprd13.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:10000;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: y2yDh0cQjxxiSaANl8nH4fkBMkpSh1T88vXoluOfkbV4FdlPOPdutJhfJFZfThLgMvwI2GsaQvx2weY17Yw27s4rDQkxRFu2NvOF8gjutvql/8M4ZC5wWpvQggGrgpw3sMCHmp+DoRMj1SUycmH7HSd0iA499Y3UULh+iKaOnyy7iat5pIROA8lJbKArN7oJUcJ55DAIFrE8jVe0aefGB1cXaojNOpnSVdPRxf2A4CdwjzSzKG+DK8SQPuUK5gKehJAReeBbSjElFDuGo8ka71dwRfIB7g2X9DfkK4kMkH6i5u/p81+lzPwEteEo7XDqm5a03FtViNlgkFqKXp20IKrJ2ZfFfcWWIMk23Qyz2g6LjF1lSnQM2gUNQdAwiDkx4I/Q5V90U5hMGD15oPLUbioN95XirBlnS2lbwz7rkwUOr/nU7gFoFshtG5ikZbZcAswvb1H5C0kM8q7PzpbjjeXxe7e7GUJjZPGJD6HvnbuZ3cXca/bt82/j6Btyc6PuGhHl6Uy69z8rLnqUfm1ZQQ==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH2PR13MB3525.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(136003)(39840400004)(366004)(376002)(346002)(396003)(478600001)(66446008)(6512007)(66556008)(36756003)(4326008)(316002)(8936002)(66946007)(54906003)(6506007)(110136005)(8676002)(186003)(76116006)(26005)(2906002)(2616005)(6486002)(5660300002)(71200400001)(66476007)(64756008)(86362001);DIR:OUT;SFP:1102;
+x-ms-exchange-antispam-messagedata: =?utf-8?B?cWNYbzRHT3cvU29Vc2M5UGFDejRMRnBnamRPZ0t5cVFLY3hLZGpEc0NEN1NK?=
+ =?utf-8?B?L1hDeS9obHBnVGdzdi9qNmVQUHpJTWozZkRIQWprRGI3LzBCQVpBb0s2Tnlm?=
+ =?utf-8?B?VGJJbHdycjVSNnZtSnZOUGNPQkRwaDB5N09IY05XNENGTzRiZFRVeVc4cXRS?=
+ =?utf-8?B?aWxvc0hFRFliWHdkVmN6RFJRNC9TWXpwbk0rTm03V283K2Z3dGd2VGFBSEV6?=
+ =?utf-8?B?LzlCL2lNT3VxRENXWG56aDYzL2Y2Nk9yRUN0VWtIbHAzMHQ0cllPMkhuUmN4?=
+ =?utf-8?B?WDJoVUJKZnpsSmFYR2U1ZHZIYjF2MWVrMzYyalE4Z1NQdGZHbFd4TkxEL3Vz?=
+ =?utf-8?B?b2NleENjeWNkcTdEd0ZZUEdSZE16bnRJUDVUOU84YnFTVDBndnVXdDdzemZG?=
+ =?utf-8?B?RnE1bjE2SmxYaDhDalhZdzIrSlhKYzI5YlhDbnBVVjVHSHN3SjlySGZEcTFs?=
+ =?utf-8?B?d2xXWU16SllMblFEMzVmRG1uZjI5eXk1OUN1OG9kTnp2VTV0VVBXcGJVY3Zn?=
+ =?utf-8?B?VlFXTSs4M3Vzd09ZZUZ4RTdhNUQvVVVOc2pwZlVmL0hHZkptd0VobXRjR1pW?=
+ =?utf-8?B?bFhKOTdPTVIxa2hNemh1SlRUYmVCWU54R09LdEk5aUU5V2ppZjJqNU5UcUor?=
+ =?utf-8?B?T0JGK2VRV2xEVlJrYUhVWVhaTFFTZVdHSktNOXNhZGNnTm55Q3lMbk84UnJr?=
+ =?utf-8?B?T0VBNkdybFFjYXFCSFE0MGxCbkszWlk4QUxMb2xNcERnUHRTRlIxOHBxME5L?=
+ =?utf-8?B?UTBkd09CMFpmbnJ6cnIwYUVmd2kzOTZsTDhuazFCbkxTeGJkMmU3aHRNWVhC?=
+ =?utf-8?B?dlo1Y1ZRR1ZWeEtwVE9uc3B1NGtTZzBlU2hwMC9DNHAyMi85aTR6R2l2YVN4?=
+ =?utf-8?B?TDVwRDd2c3JNRTRSVTYyYkdzYmV2ZHJPVXhlRU1DbFFldzJkSjZDNUlRa0M4?=
+ =?utf-8?B?NENxc1RWMzhDRFc2NVV5Z0IwZTUxVTBrVzcwRStpSFg0YmY1d0Jnd2JTck81?=
+ =?utf-8?B?Y1RYUXYwRyt3Nzg0dVVpYVo4Z0N0anJwRGlUdnYvc3V2d1BSM3VFWVpia1ZW?=
+ =?utf-8?B?Y0t6VG16SG0rdWtIVGZLcWJpTEN5eHUrL1hNUmxSYlhtZjRLY3ZYZ2VxakdX?=
+ =?utf-8?B?SGxDcG9vTGxFZnVCT3NQQ3dPMnFITUFtVGJmdzRLNGtaeGw1VjhYWTFSanpu?=
+ =?utf-8?B?UjlUOUJraGZCeEpvYmZHajRVang5RE4yYlVmaGhZQ3dVWDBBcXp4UEkydVV2?=
+ =?utf-8?B?bDlLK1VZM3VIcDg2VFFDUWJYUlRORGRwVS9SdXUzU1ZoTTBCdzlXR3M4aVc5?=
+ =?utf-8?B?MzZvRW5oNk9JR0MzN29naUJIamo4dFV1MlVWUkJ4UTVDQ0NKNGpXcWhTaCtW?=
+ =?utf-8?B?bUhBV21OdmIyaTU3dEpESGdIZDhXaWxtNVh0eU5STDk2ZldhZEVUMXhXWlps?=
+ =?utf-8?B?bFpHNDdQTFFYaC9pcjgrM3ZVV0JwNDRoVEY0amZYdnhZVFBiOUl1UUNhV0s4?=
+ =?utf-8?B?TTkwVXVaci91VG9oeTN5UEZaSmNKRmZpdEhXNjI2RnpHK0lsd20yc2lTbTBU?=
+ =?utf-8?B?YUZnc1M0RWw0c1BNYmRMSWt3S0NTUFphdlE1d3ZIei9PN3RlbnRrTEV6bnJV?=
+ =?utf-8?B?elJsb3FCczd4NjNaLzJTZ3FDSWM0Qzd1aThlODVNanBSVDZPcnUrS0VkdldO?=
+ =?utf-8?B?Z2lnWVZmNWFLcGxGZzNzQXorcHhLdnRHNnhsckQvaHlTQjF1dFBnVTE0L3ZV?=
+ =?utf-8?Q?IANJt5bLDTqIZZWCIx1kZbgW3NyHcw908ex+9I2?=
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <5DE7654C7CBE4548BA656C7BF99DEB24@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: CH2PR13MB3525.namprd13.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: ec82cd6b-92cb-4499-70a8-08d8d511f6a4
+X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Feb 2021 20:07:20.0608
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: wPtkhK93mj4tZof9KxyKs1YL0tcF83+SPDOQhMEVs81298V/0q6GZDxP0yWg6biGRC1dbgjOcG0MAvt4uQX/2w==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR13MB3623
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Move the cache management code into libexport.a
-so both mountd and exportd can use it.
-
-Introduce cache_proccess_loop() which will
-be used by exportd, instead of my_svc_run().
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- support/export/Makefile.am                |  3 +-
- {utils/mountd => support/export}/auth.c   |  4 +-
- {utils/mountd => support/export}/cache.c  | 46 +++++++++++++++++++++--
- support/export/export.h                   | 34 +++++++++++++++++
- {utils/mountd => support/export}/v4root.c |  0
- utils/exportd/Makefile.am                 |  8 +++-
- utils/exportd/exportd.c                   | 30 ++++++++++++++-
- utils/mountd/Makefile.am                  |  4 +-
- 8 files changed, 118 insertions(+), 11 deletions(-)
- rename {utils/mountd => support/export}/auth.c (99%)
- rename {utils/mountd => support/export}/cache.c (98%)
- create mode 100644 support/export/export.h
- rename {utils/mountd => support/export}/v4root.c (100%)
-
-diff --git a/support/export/Makefile.am b/support/export/Makefile.am
-index 13f7a49..7de82a8 100644
---- a/support/export/Makefile.am
-+++ b/support/export/Makefile.am
-@@ -11,7 +11,8 @@ EXTRA_DIST	= mount.x
- 
- noinst_LIBRARIES = libexport.a
- libexport_a_SOURCES = client.c export.c hostname.c \
--		      xtab.c mount_clnt.c mount_xdr.c
-+		      xtab.c mount_clnt.c mount_xdr.c \
-+			  cache.c auth.c v4root.c
- BUILT_SOURCES 	= $(GENFILES)
- 
- noinst_HEADERS = mount.h
-diff --git a/utils/mountd/auth.c b/support/export/auth.c
-similarity index 99%
-rename from utils/mountd/auth.c
-rename to support/export/auth.c
-index 67627f7..0bfa77d 100644
---- a/utils/mountd/auth.c
-+++ b/support/export/auth.c
-@@ -22,7 +22,7 @@
- #include "misc.h"
- #include "nfslib.h"
- #include "exportfs.h"
--#include "mountd.h"
-+#include "export.h"
- #include "v4root.h"
- 
- enum auth_error
-@@ -43,11 +43,13 @@ extern int use_ipaddr;
- 
- extern struct state_paths etab;
- 
-+/*
- void
- auth_init(void)
- {
- 	auth_reload();
- }
-+*/
- 
- /*
-  * A client can match many different netgroups and it's tough to know
-diff --git a/utils/mountd/cache.c b/support/export/cache.c
-similarity index 98%
-rename from utils/mountd/cache.c
-rename to support/export/cache.c
-index a81e820..f1569af 100644
---- a/utils/mountd/cache.c
-+++ b/support/export/cache.c
-@@ -30,11 +30,14 @@
- #include "nfsd_path.h"
- #include "nfslib.h"
- #include "exportfs.h"
--#include "mountd.h"
--#include "fsloc.h"
-+#include "export.h"
- #include "pseudoflavors.h"
- #include "xcommon.h"
- 
-+#ifdef HAVE_JUNCTION_SUPPORT
-+#include "fsloc.h"
-+#endif
-+
- #ifdef USE_BLKID
- #include "blkid/blkid.h"
- #endif
-@@ -44,6 +47,7 @@
-  */
- void	cache_set_fds(fd_set *fdset);
- int	cache_process_req(fd_set *readfds);
-+void cache_process_loop(void);
- 
- enum nfsd_fsid {
- 	FSID_DEV = 0,
-@@ -909,6 +913,7 @@ out:
- 	xlog(D_CALL, "nfsd_fh: found %p path %s", found, found ? found->e_path : NULL);
- }
- 
-+#ifdef HAVE_JUNCTION_SUPPORT
- static void write_fsloc(char **bp, int *blen, struct exportent *ep)
- {
- 	struct servers *servers;
-@@ -931,7 +936,7 @@ static void write_fsloc(char **bp, int *blen, struct exportent *ep)
- 	qword_addint(bp, blen, servers->h_referral);
- 	release_replicas(servers);
- }
--
-+#endif
- static void write_secinfo(char **bp, int *blen, struct exportent *ep, int flag_mask)
- {
- 	struct sec_entry *p;
-@@ -974,7 +979,10 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
- 		qword_addint(&bp, &blen, exp->e_anonuid);
- 		qword_addint(&bp, &blen, exp->e_anongid);
- 		qword_addint(&bp, &blen, exp->e_fsid);
-+
-+#ifdef HAVE_JUNCTION_SUPPORT
- 		write_fsloc(&bp, &blen, exp);
-+#endif
- 		write_secinfo(&bp, &blen, exp, flag_mask);
- 		if (exp->e_uuid == NULL || different_fs) {
- 			char u[16];
-@@ -1509,6 +1517,38 @@ int cache_process_req(fd_set *readfds)
- 	return cnt;
- }
- 
-+/**
-+ * cache_process_loop - process incoming upcalls
-+ */
-+void cache_process_loop(void)
-+{
-+	fd_set	readfds;
-+	int	selret;
-+
-+	FD_ZERO(&readfds);
-+
-+	for (;;) {
-+
-+		cache_set_fds(&readfds);
-+
-+		selret = select(FD_SETSIZE, &readfds,
-+				(void *) 0, (void *) 0, (struct timeval *) 0);
-+
-+
-+		switch (selret) {
-+		case -1:
-+			if (errno == EINTR || errno == ECONNREFUSED
-+			 || errno == ENETUNREACH || errno == EHOSTUNREACH)
-+				continue;
-+			xlog(L_ERROR, "my_svc_run() - select: %m");
-+			return;
-+
-+		default:
-+			cache_process_req(&readfds);
-+		}
-+	}
-+}
-+
- 
- /*
-  * Give IP->domain and domain+path->options to kernel
-diff --git a/support/export/export.h b/support/export/export.h
-new file mode 100644
-index 0000000..4296db1
---- /dev/null
-+++ b/support/export/export.h
-@@ -0,0 +1,34 @@
-+/*
-+ * Copyright (C) 2021 Red Hat <nfs@redhat.com>
-+ *
-+ * support/export/export.h
-+ *
-+ * Declarations for export support 
-+ */
-+
-+#ifndef EXPORT_H
-+#define EXPORT_H
-+
-+#include "nfslib.h"
-+
-+unsigned int	auth_reload(void);
-+nfs_export *	auth_authenticate(const char *what,
-+					const struct sockaddr *caller,
-+					const char *path);
-+
-+void		cache_open(void);
-+void		cache_process_loop(void);
-+
-+struct nfs_fh_len *
-+		cache_get_filehandle(nfs_export *exp, int len, char *p);
-+int		cache_export(nfs_export *exp, char *path);
-+
-+bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
-+bool namelist_client_matches(nfs_export *exp, char *dom);
-+bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
-+
-+static inline bool is_ipaddr_client(char *dom)
-+{
-+	return dom[0] == '$';
-+}
-+#endif /* EXPORT__H */
-diff --git a/utils/mountd/v4root.c b/support/export/v4root.c
-similarity index 100%
-rename from utils/mountd/v4root.c
-rename to support/export/v4root.c
-diff --git a/utils/exportd/Makefile.am b/utils/exportd/Makefile.am
-index 6e61267..eb0f0a8 100644
---- a/utils/exportd/Makefile.am
-+++ b/utils/exportd/Makefile.am
-@@ -10,9 +10,13 @@ KPREFIX		= @kprefix@
- sbin_PROGRAMS	= exportd
- 
- exportd_SOURCES = exportd.c
--exportd_LDADD = ../../support/nfs/libnfs.la
-+exportd_LDADD = ../../support/export/libexport.a \
-+			../../support/nfs/libnfs.la \
-+			../../support/misc/libmisc.a \
-+			$(OPTLIBS) $(LIBBLKID) $(LIBPTHREAD) 
- 
--exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
-+exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
-+		-I$(top_srcdir)/support/export
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
-index 3a3dea6..2f67e3b 100644
---- a/utils/exportd/exportd.c
-+++ b/utils/exportd/exportd.c
-@@ -18,7 +18,16 @@
- 
- #include "nfslib.h"
- #include "conffile.h"
-+#include "exportfs.h"
-+#include "export.h"
- 
-+extern void my_svc_run(void);
-+
-+struct state_paths etab;
-+struct state_paths rmtab;
-+
-+int manage_gids;
-+int use_ipaddr = -1;
- 
- static struct option longopts[] =
- {
-@@ -36,7 +45,7 @@ inline static void set_signals(void);
- static void 
- killer (int sig)
- {
--	xlog (L_NOTICE, "Caught signal %d, un-registering and exiting.", sig);
-+	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
- 	exit(0);
- }
- static void
-@@ -110,12 +119,29 @@ main(int argc, char **argv)
- 
- 	}
- 
-+	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
-+		return 1;
-+	if (!setup_state_path_names(progname, RMTAB, RMTABTMP, RMTABLCK, &rmtab))
-+		return 1;
-+
- 	if (!foreground) 
- 		xlog_stderr(0);
- 
- 	daemon_init(foreground);
- 
- 	set_signals();
--	
- 	daemon_ready();
-+
-+	/* Open files now to avoid sharing descriptors among forked processes */
-+	cache_open();
-+
-+	/* Process incoming upcalls */
-+	cache_process_loop();
-+
-+	xlog(L_ERROR, "%s: process loop terminated unexpectedly. Exiting...\n",
-+		progname);
-+
-+	free_state_path_names(&etab);
-+	free_state_path_names(&rmtab);
-+	exit(1);
- }
-diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
-index 18610f1..cac3275 100644
---- a/utils/mountd/Makefile.am
-+++ b/utils/mountd/Makefile.am
-@@ -13,8 +13,8 @@ KPREFIX		= @kprefix@
- sbin_PROGRAMS	= mountd
- 
- noinst_HEADERS = fsloc.h
--mountd_SOURCES = mountd.c mount_dispatch.c auth.c rmtab.c cache.c \
--		 svc_run.c fsloc.c v4root.c mountd.h
-+mountd_SOURCES = mountd.c mount_dispatch.c rmtab.c \
-+		 svc_run.c fsloc.c mountd.h
- mountd_LDADD = ../../support/export/libexport.a \
- 	       ../../support/nfs/libnfs.la \
- 	       ../../support/misc/libmisc.a \
--- 
-2.29.2
-
+T24gRnJpLCAyMDIxLTAyLTE5IGF0IDEyOjIwIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gVHJvbmQvQW5uYSwNCj4gDQo+IEknZCBsaWtlIHlvdXIgb3BpbmlvbiBoZXJlLiBTb21l
+IHN0YXRpYyBjaGVja2luZyBmbGFncyBhICJjdHgiDQo+IGFzc2lnbm1lbnQgaW4gbmZzX2ZpbGxf
+c3VwZXIoKSBpbiB0aGUgbmV3IHBhdGNoLiBJbiBhbiBleGlzdGluZyBjb2RlDQo+IHRoZXJlIGlz
+IGEgY2hlY2sgZm9yIGl0IGlzIE5VTEwgYmVmb3JlIGRlcmVmZXJlbmNpbmcuIEhvd2V2ZXIsICJj
+dHgiDQo+IGNhbiBuZXZlciBiZSBudWxsLiBuZnNfZ2V0X3RyZWVfY29tbW9uKCkgd2hpY2ggY2Fs
+bHMgbmZzX2ZpbGxfc3VwZXIoKQ0KPiBhbmQgcGFzc2VzIGluICJjdHgiIGdldHMgaXQgZnJvbSB0
+aGUgcGFzc2VkIGluICJmc19jb250ZXh0Ii4gSWYgdGhlDQo+IHBhc3NlZCBpbiBhcmcgY2FuIGJl
+IG51bGwgdGhlbiB3ZSBhcmUgZGVyZWZlcmVuY2luZyBpbiB2YXIgYXNzaWdubWVudA0KPiBzbyB0
+aGluZ3Mgd291bGQgYmxvdyB1cCB0aGVyZS4gU28gImN0eCIgY2FuIG5ldmVyIGJlIG51bGwuDQo+
+IA0KPiBTaG91bGQgSSBjcmVhdGUgYW5vdGhlciBjbGVhbiB1cCBwYXRjaCB0byByZW1vdmUgdGhl
+IGNoZWNrIGZvciBudWxsDQo+IGN0eCBpbiBuZnNfZmlsbF9zdXBlcigpIHRvIG1ha2Ugc3RhdGlj
+IGFuYWx5emVycyBoYXBweT8NCj4gDQoNClllcywgYXQgdGhpcyBwb2ludCwgbmZzX2ZpbGxfc3Vw
+ZXIoKSBpcyBvbmx5IGNhbGxlZCBmcm9tDQpuZnNfZ2V0X3RyZWVfY29tbW9uKCksIHdoaWNoIHdv
+dWxkIGNyYXNoIGFuZCBidXJuIHdlbGwgYmVmb3JlIGlmIGN0eA0Kd2VyZSBhbiBpbnZhbGlkIHBv
+aW50ZXIuDQoNClNvIHBsZWFzZSBnbyBhaGVhZCwgYW5kIHJlbW92ZSB0aGUgY2hlY2sgZm9yIGN0
+eCBiZWluZyBOVUxMIGluDQpuZnNfZmlsbF9zdXBlcigpLg0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVi
+dXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
