@@ -2,52 +2,49 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65D25C4332D
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB6F9C433E0
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 42CCA64EAF
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 84F0364EAF
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229991AbhBSUIO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Feb 2021 15:08:14 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:60026 "EHLO
+        id S229774AbhBSUIJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Feb 2021 15:08:09 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:49697 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230014AbhBSUIL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:08:11 -0500
+        by vger.kernel.org with ESMTP id S229555AbhBSUII (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:08:08 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613765205;
+        s=mimecast20190719; t=1613765202;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=NzQQb8nP4MSONXmH6WTKRS6V21jggC4bDPddfn6VaX0=;
-        b=EIoFLuLt+9Dd9OkWkJ0JudF9NkeXYCYoLFUEqJ778Ig8lueZ7s96JafF3K7I9ugQzd1USQ
-        nZ5Ws+toiLfUDBHHQLbC0AVre0H8Km9Axt/PaAAiy9i5WWt5S2+78SvnKpKpCCoVRHx2m0
-        Xo7IbAV0TlbQyunIwL0GmIpg2fwW2WE=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=dke6Ew//Wwj0+Y0Kfw992n2a528wpjFvkzgjyBWWrvU=;
+        b=Pbkc4IHMGvoOQnvigo1VTJwgwlXwEWJPHCvb7itxhqm6sVT+8ypP/w3WxOeQst74aoqw60
+        fXy+sZTmtJvENkCErtj3w3fTozb1joQJw8ImbMpy/o1OoVm+JvJbKWDFJSN01FrEdE3b6Z
+        yuPaEWUPNlAwPg6KNQdB/uzmaX0Pb7I=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-106-UATHkmA5OMqrrtUVoSJAYw-1; Fri, 19 Feb 2021 15:06:42 -0500
-X-MC-Unique: UATHkmA5OMqrrtUVoSJAYw-1
+ us-mta-523-F6pGHDgDM_mXZCyV_2_eOA-1; Fri, 19 Feb 2021 15:06:39 -0500
+X-MC-Unique: F6pGHDgDM_mXZCyV_2_eOA-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 60E20804023
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:41 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id AACCA80196C
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:38 +0000 (UTC)
 Received: from madhat.home.dicksonnet.net (ovpn-112-108.phx2.redhat.com [10.3.112.108])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 1E48C189C4
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:41 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 6742019801
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:38 +0000 (UTC)
 From:   Steve Dickson <steved@redhat.com>
 To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 6/7] exportd: systemd unit files
-Date:   Fri, 19 Feb 2021 15:08:14 -0500
-Message-Id: <20210219200815.792667-7-steved@redhat.com>
-In-Reply-To: <20210219200815.792667-1-steved@redhat.com>
-References: <20210219200815.792667-1-steved@redhat.com>
+Subject: [PATCH 0/7 V4]  The NFSv4 only mounting daemon.
+Date:   Fri, 19 Feb 2021 15:08:08 -0500
+Message-Id: <20210219200815.792667-1-steved@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
@@ -55,88 +52,73 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Created two new systemd unit services
-based on nfs-mountd and nfs-service
+nfsv4.exportd is a daemon that will listen for only v4 mount upcalls.
+The idea is to allow distros to build a v4 only package
+which will have a much smaller footprint than the
+entire nfs-utils package.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- systemd/Makefile.am           |  4 +++-
- systemd/nfsv4-exportd.service | 12 ++++++++++++
- systemd/nfsv4-server.service  | 31 +++++++++++++++++++++++++++++++
- 3 files changed, 46 insertions(+), 1 deletion(-)
+exportd uses no RPC code, which means none of the 
+code or arguments that deal with v3 was ported, 
+this again, makes the footprint much smaller. 
+
+The following options were ported:
+    * multiple threads
+    * state-directory-path option
+    * junction support (not tested)
+
+The rest of the mountd options were v3 only options.
+
+V2:
+  * Added two systemd services: nfsv4-exportd and nfsv4-server
+  * nfsv4-server starts rpc.nfsd -N 3, so nfs.conf mod not needed.
+
+V3: Changed the name from exportd to nfsv4.exportd
+
+V4: Added compile flag that will compile in the NFSv4 only server
+
+Steve Dickson (7):
+  exportd: the initial shell of the v4 export support
+  exportd: Moved cache upcalls routines into libexport.a
+  exportd: multiple threads
+  exportd/exportfs: Add the state-directory-path option
+  exportd: Enabled junction support
+  exportd: systemd unit files
+  exportd: Added config variable to compile in the NFSv4 only server.
+
+ .gitignore                                |   1 +
+ configure.ac                              |  14 ++
+ nfs.conf                                  |   4 +
+ support/export/Makefile.am                |   3 +-
+ {utils/mountd => support/export}/auth.c   |   4 +-
+ {utils/mountd => support/export}/cache.c  |  46 +++-
+ support/export/export.h                   |  34 +++
+ {utils/mountd => support/export}/fsloc.c  |   0
+ {utils/mountd => support/export}/v4root.c |   0
+ {utils/mountd => support/include}/fsloc.h |   0
+ systemd/Makefile.am                       |   6 +
+ systemd/nfs.conf.man                      |  10 +
+ systemd/nfsv4-exportd.service             |  12 +
+ systemd/nfsv4-server.service              |  31 +++
+ utils/Makefile.am                         |   4 +
+ utils/exportd/Makefile.am                 |  65 +++++
+ utils/exportd/exportd.c                   | 276 ++++++++++++++++++++++
+ utils/exportd/exportd.man                 |  81 +++++++
+ utils/exportfs/exportfs.c                 |  21 +-
+ utils/exportfs/exportfs.man               |   7 +-
+ utils/mountd/Makefile.am                  |   5 +-
+ 21 files changed, 606 insertions(+), 18 deletions(-)
+ rename {utils/mountd => support/export}/auth.c (99%)
+ rename {utils/mountd => support/export}/cache.c (98%)
+ create mode 100644 support/export/export.h
+ rename {utils/mountd => support/export}/fsloc.c (100%)
+ rename {utils/mountd => support/export}/v4root.c (100%)
+ rename {utils/mountd => support/include}/fsloc.h (100%)
  create mode 100644 systemd/nfsv4-exportd.service
  create mode 100644 systemd/nfsv4-server.service
+ create mode 100644 utils/exportd/Makefile.am
+ create mode 100644 utils/exportd/exportd.c
+ create mode 100644 utils/exportd/exportd.man
 
-diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index 75cdd9f..5251f23 100644
---- a/systemd/Makefile.am
-+++ b/systemd/Makefile.am
-@@ -17,7 +17,9 @@ unit_files =  \
- 
- if CONFIG_NFSV4
- unit_files += \
--    nfs-idmapd.service
-+    nfs-idmapd.service \
-+    nfsv4-exportd.service \
-+    nfsv4-server.service
- endif
- 
- if CONFIG_NFSV41
-diff --git a/systemd/nfsv4-exportd.service b/systemd/nfsv4-exportd.service
-new file mode 100644
-index 0000000..11d663a
---- /dev/null
-+++ b/systemd/nfsv4-exportd.service
-@@ -0,0 +1,12 @@
-+[Unit]
-+Description=NFSv4 Mount Daemon
-+DefaultDependencies=no
-+Requires=proc-fs-nfsd.mount
-+Wants=network-online.target
-+After=proc-fs-nfsd.mount
-+After=network-online.target local-fs.target
-+BindsTo=nfsv4-server.service
-+
-+[Service]
-+Type=forking
-+ExecStart=/usr/sbin/nfsv4.exportd
-diff --git a/systemd/nfsv4-server.service b/systemd/nfsv4-server.service
-new file mode 100644
-index 0000000..6497568
---- /dev/null
-+++ b/systemd/nfsv4-server.service
-@@ -0,0 +1,31 @@
-+[Unit]
-+Description=NFSv4 server and services
-+DefaultDependencies=no
-+Requires=network.target proc-fs-nfsd.mount
-+Requires=nfsv4-exportd.service
-+Wants=network-online.target
-+Wants=nfs-idmapd.service
-+Wants=nfsdcld.service
-+
-+After=network-online.target local-fs.target
-+After=proc-fs-nfsd.mount nfsv4-exportd.service
-+After=nfs-idmapd.service
-+After=nfsdcld.service
-+
-+# GSS services dependencies and ordering
-+Wants=auth-rpcgss-module.service
-+After=rpc-gssd.service gssproxy.service rpc-svcgssd.service
-+
-+[Service]
-+Type=oneshot
-+RemainAfterExit=yes
-+ExecStartPre=-/usr/sbin/exportfs -r
-+ExecStart=/usr/sbin/rpc.nfsd -N 3
-+ExecStop=/usr/sbin/rpc.nfsd 0
-+ExecStopPost=/usr/sbin/exportfs -au
-+ExecStopPost=/usr/sbin/exportfs -f
-+
-+ExecReload=-/usr/sbin/exportfs -r
-+
-+[Install]
-+WantedBy=multi-user.target
 -- 
 2.29.2
 
