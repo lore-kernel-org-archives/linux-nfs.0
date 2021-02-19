@@ -4,48 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4D2FC433DB
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 388EBC43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A6E5964EB3
+	by mail.kernel.org (Postfix) with ESMTP id 064D264EB3
 	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230073AbhBSUIK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Feb 2021 15:08:10 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:21580 "EHLO
+        id S229623AbhBSUIM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Feb 2021 15:08:12 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:46174 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229649AbhBSUIJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:08:09 -0500
+        by vger.kernel.org with ESMTP id S229862AbhBSUIK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:08:10 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613765202;
+        s=mimecast20190719; t=1613765204;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=fFODysaqX4A8EM2/2WwDkgJzlhOBo7iP0CWKIr428fU=;
-        b=Uqfo3ecb9uNNvfwBOe0eYFzTgLZpGCuFBT+FgCbH4x6LChR/+LNKyDTX6QpEftjjx6cq0A
-        LI8hJ+DL3RVQ0pTAlsjR5Dg7wkehNceIjlI1hrK5WeT/Pti1Upol8mlLRUV4ETcUsaOvVv
-        U/r8JGfl/aV9uUMmTe+IdE3uwx+Q7uY=
+        bh=YJgva8VIb7R0wtpwx6NfXF+idOe/+K3Eke2LA+rB6H8=;
+        b=Z4nEZwSZJjZCrvHJ4hXWqN2vg1etpfjfUwEDFmeYxTVIwF5AFwa6bwpmESUOlOtsLCKkxZ
+        2kO/KaFh383n8d2orm6+aj1DCZFA/ZbeGJiSHrlGDFLtxCUB59gGmD4hZ6y873RAsUCW7l
+        RAsfcIi0jb5GRMSShX4aonw01etN8lA=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-278-o6mOoZj5P2e-WMN_rDpsIQ-1; Fri, 19 Feb 2021 15:06:41 -0500
-X-MC-Unique: o6mOoZj5P2e-WMN_rDpsIQ-1
+ us-mta-132-1TLDOl-eNfCNZX8WDD5tSg-1; Fri, 19 Feb 2021 15:06:42 -0500
+X-MC-Unique: 1TLDOl-eNfCNZX8WDD5tSg-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 24AA41005501
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:40 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C5B9780402C
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:41 +0000 (UTC)
 Received: from madhat.home.dicksonnet.net (ovpn-112-108.phx2.redhat.com [10.3.112.108])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id D7ED3189C4
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:39 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8402E189C4
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:41 +0000 (UTC)
 From:   Steve Dickson <steved@redhat.com>
 To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/7] exportd: multiple threads
-Date:   Fri, 19 Feb 2021 15:08:11 -0500
-Message-Id: <20210219200815.792667-4-steved@redhat.com>
+Subject: [PATCH 7/7] exportd: Added config variable to compile in the NFSv4 only server.
+Date:   Fri, 19 Feb 2021 15:08:15 -0500
+Message-Id: <20210219200815.792667-8-steved@redhat.com>
 In-Reply-To: <20210219200815.792667-1-steved@redhat.com>
 References: <20210219200815.792667-1-steved@redhat.com>
 MIME-Version: 1.0
@@ -55,254 +55,72 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Ported the multiple thread code from mountd (commit 11d34d11)
+Added the --enable-nfsv4server configuration flag
+that will compile/install nfsv4.exportd and
+install the systemd unit files.
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- nfs.conf                  |   3 +
- systemd/nfs.conf.man      |   9 +++
- utils/exportd/exportd.c   | 118 ++++++++++++++++++++++++++++++++++++--
- utils/exportd/exportd.man |   7 +++
- 4 files changed, 133 insertions(+), 4 deletions(-)
+ configure.ac        | 13 +++++++++++++
+ systemd/Makefile.am |  6 +++++-
+ utils/Makefile.am   |  3 +++
+ 3 files changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/nfs.conf b/nfs.conf
-index 9fcf1bf..4b344fa 100644
---- a/nfs.conf
-+++ b/nfs.conf
-@@ -29,6 +29,9 @@
- # port=0
- # udp-port=0
- #
-+[exportd]
-+# debug="all|auth|call|general|parse"
-+# threads=1
- [mountd]
- # debug="all|auth|call|general|parse"
- # manage-gids=n
-diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index 16e0ec4..a4379fd 100644
---- a/systemd/nfs.conf.man
-+++ b/systemd/nfs.conf.man
-@@ -128,6 +128,15 @@ then the client will be able to mount the path as
- but on the server, this will resolve to the path
- .BR /my/root/filesystem .
+diff --git a/configure.ac b/configure.ac
+index ffd6247..40fb802 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -257,6 +257,19 @@ AC_ARG_ENABLE(nfsdcltrack,
+ 	enable_nfsdcltrack=$enableval,
+ 	enable_nfsdcltrack="yes")
  
-+.TP
-+.B exportd
-+Recognized values:
-+.B threads
++if test "$enable_nfsv4" = yes; then
++AC_ARG_ENABLE(nfsv4server,
++	[AC_HELP_STRING([--enable-nfsv4server],
++			[enable support for NFSv4 only server  @<:@default=no@:>@])],
++	enable_nfsv4server=$enableval,
++	enable_nfsv4server="no")
++	if test "$enable_nfsv4server" = yes; then
++		AC_DEFINE(HAVE_NFSV4SERVER_SUPPORT, 1,
++                          [Define this if you want NFSv4 server only support compiled in])
++	fi
++	AM_CONDITIONAL(CONFIG_NFSV4SERVER, [test "$enable_nfsv4server" = "yes" ])
++fi
 +
-+See
-+.BR exportd (8)
-+for details.
-+
- .TP
- .B nfsdcltrack
- Recognized values:
-diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
-index 2f67e3b..c814503 100644
---- a/utils/exportd/exportd.c
-+++ b/utils/exportd/exportd.c
-@@ -15,6 +15,8 @@
- #include <signal.h>
- #include <string.h>
- #include <getopt.h>
-+#include <errno.h>
-+#include <wait.h>
+ dnl Check for TI-RPC library and headers
+ AC_LIBTIRPC
  
- #include "nfslib.h"
- #include "conffile.h"
-@@ -26,6 +28,13 @@ extern void my_svc_run(void);
- struct state_paths etab;
- struct state_paths rmtab;
+diff --git a/systemd/Makefile.am b/systemd/Makefile.am
+index 5251f23..650ad25 100644
+--- a/systemd/Makefile.am
++++ b/systemd/Makefile.am
+@@ -17,7 +17,11 @@ unit_files =  \
  
-+/* Number of mountd threads to start.   Default is 1 and
-+ * that's probably enough unless you need hundreds of
-+ * clients to be able to mount at once.  */
-+static int num_threads = 1;
-+/* Arbitrary limit on number of threads */
-+#define MAX_THREADS 64
+ if CONFIG_NFSV4
+ unit_files += \
+-    nfs-idmapd.service \
++    nfs-idmapd.service
++endif
 +
- int manage_gids;
- int use_ipaddr = -1;
++if CONFIG_NFSV4SERVER
++unit_files += \
+     nfsv4-exportd.service \
+     nfsv4-server.service
+ endif
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index 2a54b90..ab58419 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -5,6 +5,9 @@ OPTDIRS =
+ if CONFIG_NFSV4
+ OPTDIRS += idmapd
+ OPTDIRS += nfsidmap
++endif
++
++if CONFIG_NFSV4SERVER
+ OPTDIRS += exportd
+ endif
  
-@@ -34,6 +43,7 @@ static struct option longopts[] =
- 	{ "foreground", 0, 0, 'F' },
- 	{ "debug", 1, 0, 'd' },
- 	{ "help", 0, 0, 'h' },
-+	{ "num-threads", 1, 0, 't' },
- 	{ NULL, 0, 0, 0 }
- };
- 
-@@ -42,10 +52,85 @@ static struct option longopts[] =
-  */
- inline static void set_signals(void);
- 
-+/* Wait for all worker child processes to exit and reap them */
-+static void
-+wait_for_workers (void)
-+{
-+	int status;
-+	pid_t pid;
-+
-+	for (;;) {
-+
-+		pid = waitpid(0, &status, 0);
-+
-+		if (pid < 0) {
-+			if (errno == ECHILD)
-+				return; /* no more children */
-+			xlog(L_FATAL, "mountd: can't wait: %s\n",
-+					strerror(errno));
-+		}
-+
-+		/* Note: because we SIG_IGN'd SIGCHLD earlier, this
-+		 * does not happen on 2.6 kernels, and waitpid() blocks
-+		 * until all the children are dead then returns with
-+		 * -ECHILD.  But, we don't need to do anything on the
-+		 * death of individual workers, so we don't care. */
-+		xlog(L_NOTICE, "mountd: reaped child %d, status %d\n",
-+				(int)pid, status);
-+	}
-+}
-+
-+/* Fork num_threads worker children and wait for them */
-+static void
-+fork_workers(void)
-+{
-+	int i;
-+	pid_t pid;
-+
-+	xlog(L_NOTICE, "mountd: starting %d threads\n", num_threads);
-+
-+	for (i = 0 ; i < num_threads ; i++) {
-+		pid = fork();
-+		if (pid < 0) {
-+			xlog(L_FATAL, "mountd: cannot fork: %s\n",
-+					strerror(errno));
-+		}
-+		if (pid == 0) {
-+			/* worker child */
-+
-+			/* Re-enable the default action on SIGTERM et al
-+			 * so that workers die naturally when sent them.
-+			 * Only the parent unregisters with pmap and
-+			 * hence needs to do special SIGTERM handling. */
-+			struct sigaction sa;
-+			sa.sa_handler = SIG_DFL;
-+			sa.sa_flags = 0;
-+			sigemptyset(&sa.sa_mask);
-+			sigaction(SIGHUP, &sa, NULL);
-+			sigaction(SIGINT, &sa, NULL);
-+			sigaction(SIGTERM, &sa, NULL);
-+
-+			/* fall into my_svc_run in caller */
-+			return;
-+		}
-+	}
-+
-+	/* in parent */
-+	wait_for_workers();
-+	xlog(L_NOTICE, "exportd: no more workers, exiting\n");
-+	exit(0);
-+}
-+
- static void 
- killer (int sig)
- {
-+	if (num_threads > 1) {
-+		/* play Kronos and eat our children */
-+		kill(0, SIGTERM);
-+		wait_for_workers();
-+	}
- 	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
-+
- 	exit(0);
- }
- static void
-@@ -78,10 +163,20 @@ static void
- usage(const char *prog, int n)
- {
- 	fprintf(stderr,
--		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n", prog);
-+		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
-+"	[-t num|--num-threads=num]\n", prog);
- 	exit(n);
- }
- 
-+inline static void 
-+read_exportd_conf(char *progname)
-+{
-+	conf_init_file(NFS_CONFFILE);
-+
-+	xlog_set_debug(progname);
-+
-+	num_threads = conf_get_num("exportd", "threads", num_threads);
-+}
- int
- main(int argc, char **argv)
- {
-@@ -98,10 +193,10 @@ main(int argc, char **argv)
- 	/* Initialize logging. */
- 	xlog_open(progname);
- 
--	conf_init_file(NFS_CONFFILE);
--	xlog_set_debug(progname);
-+	/* Read in config setting */
-+	read_exportd_conf(progname);
- 
--	while ((c = getopt_long(argc, argv, "d:fh", longopts, NULL)) != EOF) {
-+	while ((c = getopt_long(argc, argv, "d:fht:", longopts, NULL)) != EOF) {
- 		switch (c) {
- 		case 'd':
- 			xlog_sconfig(optarg, 1);
-@@ -112,6 +207,9 @@ main(int argc, char **argv)
- 		case 'h':
- 			usage(progname, 0);
- 			break;
-+		case 't':
-+			num_threads = atoi (optarg);
-+			break;
- 		case '?':
- 		default:
- 			usage(progname, 1);
-@@ -132,6 +230,18 @@ main(int argc, char **argv)
- 	set_signals();
- 	daemon_ready();
- 
-+	/* silently bounds check num_threads */
-+	if (foreground)
-+		num_threads = 1;
-+	else if (num_threads < 1)
-+		num_threads = 1;
-+	else if (num_threads > MAX_THREADS)
-+		num_threads = MAX_THREADS;
-+
-+	if (num_threads > 1)
-+		fork_workers();
-+
-+
- 	/* Open files now to avoid sharing descriptors among forked processes */
- 	cache_open();
- 
-diff --git a/utils/exportd/exportd.man b/utils/exportd/exportd.man
-index d786e57..1d65b5e 100644
---- a/utils/exportd/exportd.man
-+++ b/utils/exportd/exportd.man
-@@ -44,6 +44,13 @@ Run in foreground (do not daemonize)
- .TP
- .B \-h " or " \-\-help
- Display usage message.
-+.TP
-+.BR "\-t N" " or " "\-\-num\-threads=N " or  " \-\-num\-threads N "
-+This option specifies the number of worker threads that rpc.mountd
-+spawns.  The default is 1 thread, which is probably enough.  More
-+threads are usually only needed for NFS servers which need to handle
-+mount storms of hundreds of NFS mounts in a few seconds, or when
-+your DNS server is slow or unreliable.
- .SH CONFIGURATION FILE
- Many of the options that can be set on the command line can also be
- controlled through values set in the
 -- 
 2.29.2
 
