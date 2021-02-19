@@ -2,379 +2,256 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 23EC9C433E9
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6547FC433E6
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:27:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E014A64EAF
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3320D64EBF
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:27:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229722AbhBSUIM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Feb 2021 15:08:12 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:41097 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229623AbhBSUIJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:08:09 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613765202;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ktjIfm0wbpWrOkylT3NrSSvWBYPpllwBUbdQgtij/Jw=;
-        b=P/yOCOnWByYXFHSCn1yDydGcXskgafSbO9MzzLGx324gUKzchetEqKBBJzJCz5XEPQ4mIe
-        8rZR+7SNOiXw3zqM1n9l3zAJVJkQToow56N5k7/23s5HwzchGsySfAt4Vz765x13yj9n7L
-        z8i/lTCVuKy6+xdGKqGmedwV2Rk0l9E=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-565-3L2gavSTOwSy_MgNRJbzwQ-1; Fri, 19 Feb 2021 15:06:40 -0500
-X-MC-Unique: 3L2gavSTOwSy_MgNRJbzwQ-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2F7CA1E561
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:39 +0000 (UTC)
-Received: from madhat.home.dicksonnet.net (ovpn-112-108.phx2.redhat.com [10.3.112.108])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id CE1312B161
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:38 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/7] exportd: the initial shell of the v4 export support
-Date:   Fri, 19 Feb 2021 15:08:09 -0500
-Message-Id: <20210219200815.792667-2-steved@redhat.com>
-In-Reply-To: <20210219200815.792667-1-steved@redhat.com>
-References: <20210219200815.792667-1-steved@redhat.com>
+        id S229959AbhBSU07 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Feb 2021 15:26:59 -0500
+Received: from sonic303-28.consmr.mail.ne1.yahoo.com ([66.163.188.154]:43374
+        "EHLO sonic303-28.consmr.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229914AbhBSU06 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:26:58 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1613766371; bh=IKuo6OOdcvCBqIRNFVpCh2aYhI2cAAckb5YXBk5ByP4=; h=Subject:To:Cc:References:From:Date:In-Reply-To:From:Subject:Reply-To; b=WnSnhU0p+Nqxw60pGyjYDg97PdBSLaW503MQ6hhgdlwEUWxgeaPHEaUULIWvDpznSZARu95j705+ijyyb49tDWjNRi9tH5VCrOY8Bh7UrYyUEpbM4wyHl0/RphlbFAjSVUDxNe3pQMjx8ZOp5G/CD+kpkVTgCJmwxgbuz9zFnAHR3TGVyBZx2py4sL/oCpLxiCX+u66OuGJlCQlysESIDQxfr0FrA+GP1ohS4Tm7U3JbAw7ZfWKolq1AEJ0EF+CoBW2xpxYkHAUT/Gx8RHcRzKfa5qxsLD5xYvK+1R0dxWPiMXUKTa/n8RkvNoIBWebyFw9iUB9o1GpoPFghiLYhqg==
+X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1613766371; bh=EhlzZ2mabVIucQIUaWkqNtaBlg4yTUx0j1jToKtlXbp=; h=X-Sonic-MF:Subject:To:From:Date:From:Subject; b=NYB8y9C9w93NAmtMVAdxo/ygHIuASfSrp5b5Mk6BSU9cjEpS/yiM9Ktb6elkp6q3+4rbuZ5xAfWA4HvRkAwnswk+Zmt82LpSqCaBwXipkoJFusq2U7A9/8nQ07/zK+BPUU3F253eFm9rT642xkJ2diGsGhdp2Kb96ypgZDTKigxIg61iv9w722SWtJ7DCtZRbMDNgd+KfZuB7aF651+iZq5pHHI99Bhj4d3ucVI3UnarjS/C1x/D2w2dMRnYY00oj1+WGcg/xK9E3xL/eo2DSmLV6njzu3nxCvPk3I7P1NkZeXfTof9mdo+XVv0IcjV7NMWKpnjARfyvEEDLI/3+hg==
+X-YMail-OSG: 0TKq0g4VM1nLfAIDEPFHpOSrVU3F4rLWeWjzU6tQQ19iUC0YNGTzxdnh_5hfSiR
+ oCEHTaXbt3bokIDrI3OKq58wcEpGpTcFhzudKIKcxSuZWwJAqa0kNY8UmC0mWevWWDABAR5sQW4M
+ FskvdyrhpYNXUOvdXZl4Ne_BqIEr4tlNJoh_lw8E8Y5ZdEwwCZvmzs2dH234uVehW_Pp7HBiYXEk
+ ueVdZhxSlumTZcmpLnrlq4z_j4VTodtzL94H8WVbvE2T5GzFp12ykn4HRzPeqV_ZkQiXZzDHkGPN
+ baLDPKKkjdbhS4EMtn9E9Jd2Xm8WL7VDp2Yu9oHzEaGTDcUtAcgdFH6QT0yz0XayUeifAs98yV18
+ u6lyRYRBl.2nw0IWJarwX0ao.SpH4sOCmaYsq2yTDw6KG_gQbRTylodOmY92GWhrYRGo3.Xc4wfI
+ RC6diQKBQgQCCJEDk5HroLGb0Po6u8dm5Q.NMP_eLfv1JI6yK2KAFpJTs6q2IVv8glIwDhtMoKWi
+ 6SRAhE33wRMP2RYhyR3y.kVwll4h8Icm_wf.KhzI2_ehMjRFN7fIYokH8B3mW6a6FcQokJf9hIoD
+ fh0.8IrqB30OoZLbIbNT7TLL6Ym7GytKU.uB01S0_nOa3EK8kl6qusP5.wo6XXt.yJ.Mbr46VeYh
+ Ivabdg7w0hqCIjZ.Vcy3GX0C4mn1O8nmTu1e04nYtEDLn2zkUqf66llW4VFBUWYFGFef0WZmc1y4
+ zkHMkTakAoD5z3f8sMODEl5QvTg_i2BwGW7bMHvCGw3EQdDAPjPaIeUxoF3IM3n5n7irOqcORlmS
+ 64oSEormRqAaDhzNiSTaYmZ5uhZV39Msv8bs4TpKjD2U_DRuCFKX9HZCAv4btXITmKEvxIrUTkP9
+ 0ycqw4P0s8ecn4gDowFPvhSC3425N9XFSlsEb2lEbsD3H5fIjA73LbRircwFkXtdEAdm3dsX5KdR
+ hfNLBhpgw17lehFk5OPiWHW30Q9eFK5kdYtOfFAbm_mvp3bzAYCspajVAo6UwNsfw2lE.xFCvp_p
+ Lo5i1ZZpNKTPaA26KMHqnEmZzx7vjzpPlpWAL6n.YPN8Bzox0.vJ..gRUuBBp5l7UNad3O5EhjiI
+ aC6p1qSNBduAnDzpoe7c6TrlciBC39lFevSLA_gUEv3VDdgc_voCjIAVb1rY9EKpNI3sXrrYcfPi
+ KLzQdEwvvQQ0_xDx79zP8eGYLfusAXH_47_JIWj7_UNcaU41L0mNZuH5vGlO_EqiFw0xT.ysOpVk
+ RkyQ.khQRVniy03ejmnmViFSQhqkQxAlKCcvHrRxs01kRpEm38E90WEPQd2N8bQJvgO26T0f5qy1
+ 4dnpvzPnJQJrsDThUrhehGeVTzjNDzm1viMjCgizUbPdrJnjPfFNlBVc_6yeMTSiUgEOzIEg6ggn
+ NQ20RIa39P8Po9gAsq1hlyygwMVx4h9_8q5dwv8ngYGX6eeNeKtgKWsF3WaLaVCjQIGAjuv167MW
+ mzXETHgbzzNpoOVJ5B7J75lwN89pIZeo8vA5xKNWUnZGt3nqpvnggiTXtEmIknrxiAXz4NOouK.V
+ ix0uSIpkxqpznMm4hJVUE9hHNsNDHm83cX3FKaOBlnRmcNnzgkvmL7m0_MdyCl8BttEl2PUx4Lzy
+ RlBrtEo6Tnv.2lUD2ou.aWOstYq.LWnRhnw_0r5i15Q98HDJApOeVjRnXil1BEYPMdG53rYr4rDJ
+ 48qLT4HdJQ1QLIiU9_hDkdMUeN1v7FeGylFNWakrnnlHtDajJBhaW.ZMbzTVqIzkCtOnrKJGsCyt
+ KCsjZ9uPhGt8tDj._GPUVpY0oDHqC4ERWgll_pseM94aSFAREWS5c5UQjziWZMdYnh4GO7YexO7G
+ lsxSFkQrdUR91UMSFmZvKFPJ79xBlKY3HQdKddrHezMapfmM1xKg_bCXE_crRYTiAW.5oNSKkv1D
+ MrSk.smEIBgaUan6R2rnawYMwkZoA0v.DEwI8t1xHCCVuhVNIKTDm1iAOx.k3vL.sUKF1TzBUFpi
+ OKYjyR0NxFoUONzi2u_v2EO6wnI8KfbI1L.3YpL0CBb6FhNvzlJCF4F7wqCpJ.cuz.3og8_Ssn34
+ v86Bm4iIP258YlNWJh5jxzlyaqMXWuOLnDcxhAUSy4oFgGTzFMzncB9PvGZrmj_QXTq9JiaE_UBi
+ 4fsra3Fwc43fdX2vNdb0BnJj1UfJ.iCtpp4AhqBvyb7GZ7K47wde7FIaoROoSacSGKsYG.2Zz6iA
+ 3bPgCEAeq9XOLN0RBLg.4tvk0LY3So7K7bXdz6v5O9pLj9mhRB3EMHPPOyZMXZw9oRPMFTuFrSAJ
+ 7UzKxyEfSvKOVxCpbO1UOYsEWFb8xbJ9MwAOV3UwlvAef3MIg2mm9YU4iVGcsq55OA.L7XtCGDgP
+ Rr6IiSR1tUkk_spqr1S1K4NUqGIW1eEK_kIj1UVIUvh.VK51qwZdPn2SwPStCv5MLDROKL5IMU23
+ bIrS1ZnyFQTVamfmiRAKv2MKQYwz2icjkGlCwNth1Ioud83A0ssVEtaOOkY0TwSEM.rJe_pZ_LaI
+ P2ZldfV.34lDEIECFswrwyMX7fKzyqMymKLR9A6p.0U7eJPQhxWMVmtid3.qTge7cbNcyPr3WRx6
+ l4NUV_WfE_prRjKPfYCVJ6KgAfr3ugkBBm_LBEdLbUNXLk.gNjtr.tlQXlsZPUEyKzuG4.szhw18
+ uqQyMVnbziDtUegClKaKuDvZ_ceAkygfXPpdBoRQk0PwHBu2jjGFX_foHjl7.goNtevgDiZ7clru
+ HL61X4OyqSAddN91t77L.nZRUC5Bh90njwwjTduFC8ONEZKUIuSWJDicXvVouRyUFl6GTOSdzAO0
+ WOwUQHjd7LTBtamA__N2S0qolojNAQjzEjwURFXEhms1h
+X-Sonic-MF: <casey@schaufler-ca.com>
+Received: from sonic.gate.mail.ne1.yahoo.com by sonic303.consmr.mail.ne1.yahoo.com with HTTP; Fri, 19 Feb 2021 20:26:11 +0000
+Received: by smtp418.mail.bf1.yahoo.com (VZM Hermes SMTP Server) with ESMTPA ID e32411f50db2e330209c3093d2d00d84;
+          Fri, 19 Feb 2021 20:26:09 +0000 (UTC)
+Subject: Re: [PATCH v3 1/2] [security] Add new hook to compare new mount to an
+ existing mount
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@vger.kernel.org, Casey Schaufler <casey@schaufler-ca.com>
+References: <20210219165715.20324-1-olga.kornievskaia@gmail.com>
+From:   Casey Schaufler <casey@schaufler-ca.com>
+Message-ID: <86bcc61a-fdd6-1a6a-d478-c8ce2bc01aa7@schaufler-ca.com>
+Date:   Fri, 19 Feb 2021 12:26:07 -0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.7.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+In-Reply-To: <20210219165715.20324-1-olga.kornievskaia@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
+X-Mailer: WebService/1.1.17712 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo Apache-HttpAsyncClient/4.1.4 (Java/11.0.9.1)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- .gitignore                |   1 +
- configure.ac              |   1 +
- utils/Makefile.am         |   1 +
- utils/exportd/Makefile.am |  58 ++++++++++++++++++
- utils/exportd/exportd.c   | 121 ++++++++++++++++++++++++++++++++++++++
- utils/exportd/exportd.man |  74 +++++++++++++++++++++++
- 6 files changed, 256 insertions(+)
- create mode 100644 utils/exportd/Makefile.am
- create mode 100644 utils/exportd/exportd.c
- create mode 100644 utils/exportd/exportd.man
+On 2/19/2021 8:57 AM, Olga Kornievskaia wrote:
+> From: Olga Kornievskaia <kolga@netapp.com>
+>
+> Add a new hook that takes an existing super block and a new mount
+> with new options and determines if new options confict with an
+> existing mount or not.
+>
+> A filesystem can use this new hook to determine if it can share
+> the an existing superblock with a new superblock for the new mount.
+>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  include/linux/lsm_hook_defs.h |  1 +
+>  include/linux/lsm_hooks.h     |  6 ++++
+>  include/linux/security.h      |  8 +++++
+>  security/security.c           |  7 +++++
+>  security/selinux/hooks.c      | 56 +++++++++++++++++++++++++++++++++++
+>  5 files changed, 78 insertions(+)
+>
+> diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+> index 7aaa753b8608..1b12a5266a51 100644
+> --- a/include/linux/lsm_hook_defs.h
+> +++ b/include/linux/lsm_hook_defs.h
+> @@ -62,6 +62,7 @@ LSM_HOOK(int, 0, sb_alloc_security, struct super_block *sb)
+>  LSM_HOOK(void, LSM_RET_VOID, sb_free_security, struct super_block *sb)
+>  LSM_HOOK(void, LSM_RET_VOID, sb_free_mnt_opts, void *mnt_opts)
+>  LSM_HOOK(int, 0, sb_eat_lsm_opts, char *orig, void **mnt_opts)
+> +LSM_HOOK(int, 0, sb_mnt_opts_compat, struct super_block *sb, void *mnt_opts)
+>  LSM_HOOK(int, 0, sb_remount, struct super_block *sb, void *mnt_opts)
+>  LSM_HOOK(int, 0, sb_kern_mount, struct super_block *sb)
+>  LSM_HOOK(int, 0, sb_show_options, struct seq_file *m, struct super_block *sb)
+> diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
+> index a19adef1f088..e2519adccb74 100644
+> --- a/include/linux/lsm_hooks.h
+> +++ b/include/linux/lsm_hooks.h
+> @@ -142,6 +142,12 @@
+>   *	@orig the original mount data copied from userspace.
+>   *	@copy copied data which will be passed to the security module.
+>   *	Returns 0 if the copy was successful.
+> + * @sb_mnt_opts_compat:
+> + *	Determine if the existing mount options are compatible with the new
+> + *	mount options being used.
+> + *	@sb superblock being compared
+> + *	@mnt_opts new mount options
+> + *	Return 0 if options are the compatible.
 
-diff --git a/.gitignore b/.gitignore
-index e97b31f..c89d1cd 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -47,6 +47,7 @@ utils/idmapd/idmapd
- utils/lockd/lockd
- utils/mount/mount.nfs
- utils/mountd/mountd
-+utils/exportd/exportd
- utils/nfsd/nfsd
- utils/nfsstat/nfsstat
- utils/nhfsstone/nhfsstone
-diff --git a/configure.ac b/configure.ac
-index 50847d8..ffd6247 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -706,6 +706,7 @@ AC_CONFIG_FILES([
- 	utils/idmapd/Makefile
- 	utils/mount/Makefile
- 	utils/mountd/Makefile
-+	utils/exportd/Makefile
- 	utils/nfsd/Makefile
- 	utils/nfsref/Makefile
- 	utils/nfsstat/Makefile
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index 4c930a4..2a54b90 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -5,6 +5,7 @@ OPTDIRS =
- if CONFIG_NFSV4
- OPTDIRS += idmapd
- OPTDIRS += nfsidmap
-+OPTDIRS += exportd
- endif
- 
- if CONFIG_NFSV41
-diff --git a/utils/exportd/Makefile.am b/utils/exportd/Makefile.am
-new file mode 100644
-index 0000000..6e61267
---- /dev/null
-+++ b/utils/exportd/Makefile.am
-@@ -0,0 +1,58 @@
-+## Process this file with automake to produce Makefile.in
-+
-+OPTLIBS		=
-+
-+man8_MANS	= exportd.man
-+EXTRA_DIST	= $(man8_MANS)
-+
-+NFSPREFIX	= nfsv4.
-+KPREFIX		= @kprefix@
-+sbin_PROGRAMS	= exportd
-+
-+exportd_SOURCES = exportd.c
-+exportd_LDADD = ../../support/nfs/libnfs.la
-+
-+exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
-+
-+MAINTAINERCLEANFILES = Makefile.in
-+
-+#######################################################################
-+# The following allows the current practice of having
-+# daemons renamed during the install to include NFSPREFIX
-+# and the KPREFIX
-+# This could all be done much easier with program_transform_name
-+# ( program_transform_name = s/^/$(NFSPREFIX)$(KPREFIX)/ )
-+# but that also renames the man pages, which the current
-+# practice does not do.
-+install-exec-hook:
-+	(cd $(DESTDIR)$(sbindir) && \
-+	  for p in $(sbin_PROGRAMS); do \
-+	    mv -f $$p$(EXEEXT) $(NFSPREFIX)$(KPREFIX)$$p$(EXEEXT) ;\
-+	  done)
-+uninstall-hook:
-+	(cd $(DESTDIR)$(sbindir) && \
-+	  for p in $(sbin_PROGRAMS); do \
-+	    rm -f $(NFSPREFIX)$(KPREFIX)$$p$(EXEEXT) ;\
-+	  done)
-+
-+
-+# XXX This makes some assumptions about what automake does.
-+# XXX But there is no install-man-hook or install-man-local.
-+install-man: install-man8 install-man-links
-+uninstall-man: uninstall-man8 uninstall-man-links
-+
-+install-man-links:
-+	(cd $(DESTDIR)$(man8dir) && \
-+	  for m in $(man8_MANS) $(dist_man8_MANS) $(nodist_man8_MANS); do \
-+	    inst=`echo $$m | sed -e 's/man$$/8/'`; \
-+	    rm -f $(NFSPREFIX)$$inst ; \
-+	    $(LN_S) $$inst $(NFSPREFIX)$$inst ; \
-+	  done)
-+
-+uninstall-man-links:
-+	(cd $(DESTDIR)$(man8dir) && \
-+	  for m in $(man8_MANS) $(dist_man8_MANS) $(nodist_man8_MANS); do \
-+	    inst=`echo $$m | sed -e 's/man$$/8/'`; \
-+	    rm -f $(NFSPREFIX)$$inst ; \
-+	  done)
-+
-diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
-new file mode 100644
-index 0000000..3a3dea6
---- /dev/null
-+++ b/utils/exportd/exportd.c
-@@ -0,0 +1,121 @@
-+/*
-+ * Copyright (C) 2021 Red Hat <nfs@redhat.com>
-+ *
-+ * support/exportd/exportd.c
-+ *
-+ * Routines used to support NFSv4 exports
-+ *
-+ */
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <stddef.h>
-+#include <unistd.h>
-+#include <signal.h>
-+#include <string.h>
-+#include <getopt.h>
-+
-+#include "nfslib.h"
-+#include "conffile.h"
-+
-+
-+static struct option longopts[] =
-+{
-+	{ "foreground", 0, 0, 'F' },
-+	{ "debug", 1, 0, 'd' },
-+	{ "help", 0, 0, 'h' },
-+	{ NULL, 0, 0, 0 }
-+};
-+
-+/*
-+ * Signal handlers.
-+ */
-+inline static void set_signals(void);
-+
-+static void 
-+killer (int sig)
-+{
-+	xlog (L_NOTICE, "Caught signal %d, un-registering and exiting.", sig);
-+	exit(0);
-+}
-+static void
-+sig_hup (int UNUSED(sig))
-+{
-+	/* don't exit on SIGHUP */
-+	xlog (L_NOTICE, "Received SIGHUP... Ignoring.\n");
-+	return;
-+}
-+inline static void 
-+set_signals(void) 
-+{
-+	struct sigaction sa;
-+
-+	sa.sa_handler = SIG_IGN;
-+	sa.sa_flags = 0;
-+	sigemptyset(&sa.sa_mask);
-+	sigaction(SIGPIPE, &sa, NULL);
-+	/* WARNING: the following works on Linux and SysV, but not BSD! */
-+	sigaction(SIGCHLD, &sa, NULL);
-+
-+	sa.sa_handler = killer;
-+	sigaction(SIGINT, &sa, NULL);
-+	sigaction(SIGTERM, &sa, NULL);
-+
-+	sa.sa_handler = sig_hup;
-+	sigaction(SIGHUP, &sa, NULL);
-+}
-+static void
-+usage(const char *prog, int n)
-+{
-+	fprintf(stderr,
-+		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n", prog);
-+	exit(n);
-+}
-+
-+int
-+main(int argc, char **argv)
-+{
-+	char *progname;
-+	int	foreground = 0;
-+	int	 c;
-+
-+	/* Set the basename */
-+	if ((progname = strrchr(argv[0], '/')) != NULL)
-+		progname++;
-+	else
-+		progname = argv[0];
-+
-+	/* Initialize logging. */
-+	xlog_open(progname);
-+
-+	conf_init_file(NFS_CONFFILE);
-+	xlog_set_debug(progname);
-+
-+	while ((c = getopt_long(argc, argv, "d:fh", longopts, NULL)) != EOF) {
-+		switch (c) {
-+		case 'd':
-+			xlog_sconfig(optarg, 1);
-+			break;
-+		case 'f':
-+			foreground++;
-+			break;
-+		case 'h':
-+			usage(progname, 0);
-+			break;
-+		case '?':
-+		default:
-+			usage(progname, 1);
-+		}
-+
-+	}
-+
-+	if (!foreground) 
-+		xlog_stderr(0);
-+
-+	daemon_init(foreground);
-+
-+	set_signals();
-+	
-+	daemon_ready();
-+}
-diff --git a/utils/exportd/exportd.man b/utils/exportd/exportd.man
-new file mode 100644
-index 0000000..d786e57
---- /dev/null
-+++ b/utils/exportd/exportd.man
-@@ -0,0 +1,74 @@
-+.\"@(#)nfsv4.exportd.8"
-+.\"
-+.\" Copyright (C) 2021 Red Hat <nfs@redhat.com>
-+.\"
-+.TH nfsv4.exportd 8 "02 Feb 2021"
-+.SH NAME
-+nfsv4.exportd \- NFSv4 Server Mount Daemon
-+.SH SYNOPSIS
-+.BI "/usr/sbin/nfsv4.exportd [" options "]"
-+.SH DESCRIPTION
-+The
-+.B nfsv4.exportd
-+is used to manage NFSv4 exports. The NFSv4 server
-+receives a mount request from a client and pass it up to 
-+.B nfsv4.exportd. 
-+.B nfsv4.exportd 
-+then uses the exports(5) export
-+table to verify the validity of the mount request.
-+.PP
-+An NFS server maintains a table of local physical file systems
-+that are accessible to NFS clients.
-+Each file system in this table is referred to as an
-+.IR "exported file system" ,
-+or
-+.IR export ,
-+for short.
-+.PP
-+Each file system in the export table has an access control list.
-+.B nfsv4.exportd
-+uses these access control lists to determine
-+whether an NFS client is permitted to access a given file system.
-+For details on how to manage your NFS server's export table, see the
-+.BR exports (5)
-+and
-+.BR exportfs (8)
-+man pages.
-+.SH OPTIONS
-+.TP
-+.B \-d kind " or " \-\-debug kind
-+Turn on debugging. Valid kinds are: all, auth, call, general and parse.
-+.TP
-+.B \-F " or " \-\-foreground
-+Run in foreground (do not daemonize)
-+.TP
-+.B \-h " or " \-\-help
-+Display usage message.
-+.SH CONFIGURATION FILE
-+Many of the options that can be set on the command line can also be
-+controlled through values set in the
-+.B [exportd]
-+or, in some cases, the
-+.B [nfsd]
-+sections of the
-+.I /etc/nfs.conf
-+configuration file.
-+Values recognized in the
-+.B [exportd]
-+section include 
-+.B debug 
-+which each have the same effect as the option with the same name.
-+.SH FILES
-+.TP 2.5i
-+.I /etc/exports
-+input file for
-+.BR exportfs ,
-+listing exports, export options, and access control lists
-+.SH SEE ALSO
-+.BR exportfs (8),
-+.BR exports (5),
-+.BR showmount (8),
-+.BR nfs.conf (5),
-+.BR firwall-cmd (1),
-+.sp
-+RFC 3530 - "Network File System (NFS) version 4 Protocol"
--- 
-2.29.2
+s/the //
 
+>   * @sb_remount:
+>   *	Extracts security system specific mount options and verifies no changes
+>   *	are being made to those options.
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index c35ea0ffccd9..50db3d5d1608 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -291,6 +291,7 @@ int security_sb_alloc(struct super_block *sb);
+>  void security_sb_free(struct super_block *sb);
+>  void security_free_mnt_opts(void **mnt_opts);
+>  int security_sb_eat_lsm_opts(char *options, void **mnt_opts);
+> +int security_sb_mnt_opts_compat(struct super_block *sb, void *mnt_opts);
+>  int security_sb_remount(struct super_block *sb, void *mnt_opts);
+>  int security_sb_kern_mount(struct super_block *sb);
+>  int security_sb_show_options(struct seq_file *m, struct super_block *sb);
+> @@ -635,6 +636,13 @@ static inline int security_sb_remount(struct super_block *sb,
+>  	return 0;
+>  }
+>  
+> +static inline int security_sb_mnt_opts_compat(struct super_block *sb,
+> +					      void *mnt_opts)
+> +{
+> +	return 0;
+> +}
+> +
+> +
+>  static inline int security_sb_kern_mount(struct super_block *sb)
+>  {
+>  	return 0;
+> diff --git a/security/security.c b/security/security.c
+> index 7b09cfbae94f..56cf5563efde 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -890,6 +890,13 @@ int security_sb_eat_lsm_opts(char *options, void **mnt_opts)
+>  }
+>  EXPORT_SYMBOL(security_sb_eat_lsm_opts);
+>  
+> +int security_sb_mnt_opts_compat(struct super_block *sb,
+> +				void *mnt_opts)
+> +{
+> +	return call_int_hook(sb_mnt_opts_compat, 0, sb, mnt_opts);
+> +}
+> +EXPORT_SYMBOL(security_sb_mnt_opts_compat);
+> +
+>  int security_sb_remount(struct super_block *sb,
+>  			void *mnt_opts)
+>  {
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 644b17ec9e63..afee3a222a0e 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -2656,6 +2656,61 @@ static int selinux_sb_eat_lsm_opts(char *options, void **mnt_opts)
+>  	return rc;
+>  }
+>  
+> +static int selinux_sb_mnt_opts_compat(struct super_block *sb, void *mnt_opts)
+> +{
+> +	struct selinux_mnt_opts *opts = mnt_opts;
+> +	struct superblock_security_struct *sbsec = sb->s_security;
+> +	u32 sid;
+> +	int rc;
+> +
+> +	/*
+> +	 * Superblock not initialized (i.e. no options) - reject if any
+> +	 * options specified, otherwise accept.
+> +	 */
+> +	if (!(sbsec->flags & SE_SBINITIALIZED))
+> +		return opts ? 1 : 0;
+> +
+> +	/*
+> +	 * Superblock initialized and no options specified - reject if
+> +	 * superblock has any options set, otherwise accept.
+> +	 */
+> +	if (!opts)
+> +		return (sbsec->flags & SE_MNTMASK) ? 1 : 0;
+> +
+> +	if (opts->fscontext) {
+> +		rc = parse_sid(sb, opts->fscontext, &sid);
+> +		if (rc)
+> +			return 1;
+> +		if (bad_option(sbsec, FSCONTEXT_MNT, sbsec->sid, sid))
+> +			return 1;
+> +	}
+> +	if (opts->context) {
+> +		rc = parse_sid(sb, opts->context, &sid);
+> +		if (rc)
+> +			return 1;
+> +		if (bad_option(sbsec, CONTEXT_MNT, sbsec->mntpoint_sid, sid))
+> +			return 1;
+> +	}
+> +	if (opts->rootcontext) {
+> +		struct inode_security_struct *root_isec;
+> +
+> +		root_isec = backing_inode_security(sb->s_root);
+> +		rc = parse_sid(sb, opts->rootcontext, &sid);
+> +		if (rc)
+> +			return 1;
+> +		if (bad_option(sbsec, ROOTCONTEXT_MNT, root_isec->sid, sid))
+> +			return 1;
+> +	}
+> +	if (opts->defcontext) {
+> +		rc = parse_sid(sb, opts->defcontext, &sid);
+> +		if (rc)
+> +			return 1;
+> +		if (bad_option(sbsec, DEFCONTEXT_MNT, sbsec->def_sid, sid))
+> +			return 1;
+> +	}
+> +	return 0;
+> +}
+> +
+>  static int selinux_sb_remount(struct super_block *sb, void *mnt_opts)
+>  {
+>  	struct selinux_mnt_opts *opts = mnt_opts;
+> @@ -6984,6 +7039,7 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
+>  
+>  	LSM_HOOK_INIT(sb_free_security, selinux_sb_free_security),
+>  	LSM_HOOK_INIT(sb_free_mnt_opts, selinux_free_mnt_opts),
+> +	LSM_HOOK_INIT(sb_mnt_opts_compat, selinux_sb_mnt_opts_compat),
+>  	LSM_HOOK_INIT(sb_remount, selinux_sb_remount),
+>  	LSM_HOOK_INIT(sb_kern_mount, selinux_sb_kern_mount),
+>  	LSM_HOOK_INIT(sb_show_options, selinux_sb_show_options),
