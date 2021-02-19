@@ -2,152 +2,379 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AEECC43333
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:27 +0000 (UTC)
-Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CDCAB64EAF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 23EC9C433E9
 	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:26 +0000 (UTC)
+Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
+	by mail.kernel.org (Postfix) with ESMTP id E014A64EAF
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Feb 2021 20:08:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229726AbhBSUIS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Feb 2021 15:08:18 -0500
-Received: from mail-mw2nam10on2113.outbound.protection.outlook.com ([40.107.94.113]:44449
-        "EHLO NAM10-MW2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S229555AbhBSUIP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Feb 2021 15:08:15 -0500
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=iMSiB3ll5WxT+KRfCWYrafWja0+cPu5KxPJvm8NpmsbWTeeCqxJhj5K4gylG/KDy+/aIuNMyzqpk4aKfNnsLmx7/jh5/29XruwISQTmvG1RWX44q3/w43l10cw1MgfSNn99g/4azx5aIa8/skcbxLlgW7/tmwTyGb1rrBL09EWRwCx/2km58vE2OSjS7YzDsig6YEnxrFGuQE6Nfnwg99P24/XFa1i3srduDzUaOlAnbE92kWXPv+WIpXzhYfRZ2Fm2LJ/C2iSNI1oiDHjML//tQT6pa02pCM/2fpCS/pljceZOLIvEDTTU+7JhdhG8XcQXyDlIf864b81Dcu5SPqw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=k0ybscqcnMLaYFF4VCo3oaj8TyffdXh5wdC06aa5rYY=;
- b=Wzz55sQWUBD4ROu8rP0JIe7jhsfMneWDVZ8DrSl93qCGvaUxo5bPJzZ//zgi0gN3/GHcW3zouqt0Jrgrp80nud+gw6+kzUgiA5U0HB4a1kHovsYOvYw3NzsO3mJAReDXLdAK9B9kKHdDs1gSjJtY0fIqHkFDNxQ0DhK04SJYLI2BZ1Fog47G2JYE/Rr0zQ+5x8beKK1ozlUS7DQHrXvvKJbOFDIJ3E+0at0q2+OW/7K0o05f+7ZOGPGMXpRLRr8JcBZmx2E5YZne4HRNLhyZWJ319l7Gmvxh7XUQlMfQB/5mhvd5lQmWuvWRcPjZw9azcTkz12uWVv23d2OVXCAJxQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=k0ybscqcnMLaYFF4VCo3oaj8TyffdXh5wdC06aa5rYY=;
- b=UxcNaoFzIawPAH2WZGyl5sI5S3u+eBbWqAwIcpmpclUx8AYK2NzpjngQW3liT4mWJPGtNUgsFTHMpuMGV2H4eaQsq0sruK8p4puzwxUL1L7xtgt1QpRhQylhmW4QW+dj3orT/utyjDDy/gvXbWplzis6Dcu0g5csS1uTsWQ3ljw=
-Received: from CH2PR13MB3525.namprd13.prod.outlook.com (2603:10b6:610:21::29)
- by CH2PR13MB3623.namprd13.prod.outlook.com (2603:10b6:610:98::16) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3868.11; Fri, 19 Feb
- 2021 20:07:20 +0000
-Received: from CH2PR13MB3525.namprd13.prod.outlook.com
- ([fe80::f453:2dd2:675:d063]) by CH2PR13MB3525.namprd13.prod.outlook.com
- ([fe80::f453:2dd2:675:d063%3]) with mapi id 15.20.3868.025; Fri, 19 Feb 2021
- 20:07:20 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "dan.carpenter@oracle.com" <dan.carpenter@oracle.com>,
-        "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-CC:     "kbuild-all@lists.01.org" <kbuild-all@lists.01.org>,
-        "selinux@vger.kernel.org" <selinux@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-security-module@vger.kernel.org" 
-        <linux-security-module@vger.kernel.org>,
-        "kbuild@lists.01.org" <kbuild@lists.01.org>,
-        "lkp@intel.com" <lkp@intel.com>
-Subject: Re: [PATCH v2 2/2] NFSv4 account for selinux security context when
- deciding to share superblock
-Thread-Topic: [PATCH v2 2/2] NFSv4 account for selinux security context when
- deciding to share superblock
-Thread-Index: AQHXBi9e6cNIt3rRBUGTinwY+Y3SlKpfI2oAgACXVQCAAC6HAA==
-Date:   Fri, 19 Feb 2021 20:07:19 +0000
-Message-ID: <9fa77d94ac515e4318877607ec9e65a4eee2856c.camel@hammerspace.com>
-References: <20210218195046.19280-2-olga.kornievskaia@gmail.com>
-         <20210219081908.GQ2087@kadam>
-         <CAN-5tyGrDtfLBXg42XLzp2med482QWPKN_KGXwNH_SP3V5buew@mail.gmail.com>
-In-Reply-To: <CAN-5tyGrDtfLBXg42XLzp2med482QWPKN_KGXwNH_SP3V5buew@mail.gmail.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: oracle.com; dkim=none (message not signed)
- header.d=none;oracle.com; dmarc=none action=none header.from=hammerspace.com;
-x-originating-ip: [68.36.133.222]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: ec82cd6b-92cb-4499-70a8-08d8d511f6a4
-x-ms-traffictypediagnostic: CH2PR13MB3623:
-x-microsoft-antispam-prvs: <CH2PR13MB36233E855777D153880EBC9CB8849@CH2PR13MB3623.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:10000;
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: y2yDh0cQjxxiSaANl8nH4fkBMkpSh1T88vXoluOfkbV4FdlPOPdutJhfJFZfThLgMvwI2GsaQvx2weY17Yw27s4rDQkxRFu2NvOF8gjutvql/8M4ZC5wWpvQggGrgpw3sMCHmp+DoRMj1SUycmH7HSd0iA499Y3UULh+iKaOnyy7iat5pIROA8lJbKArN7oJUcJ55DAIFrE8jVe0aefGB1cXaojNOpnSVdPRxf2A4CdwjzSzKG+DK8SQPuUK5gKehJAReeBbSjElFDuGo8ka71dwRfIB7g2X9DfkK4kMkH6i5u/p81+lzPwEteEo7XDqm5a03FtViNlgkFqKXp20IKrJ2ZfFfcWWIMk23Qyz2g6LjF1lSnQM2gUNQdAwiDkx4I/Q5V90U5hMGD15oPLUbioN95XirBlnS2lbwz7rkwUOr/nU7gFoFshtG5ikZbZcAswvb1H5C0kM8q7PzpbjjeXxe7e7GUJjZPGJD6HvnbuZ3cXca/bt82/j6Btyc6PuGhHl6Uy69z8rLnqUfm1ZQQ==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH2PR13MB3525.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(136003)(39840400004)(366004)(376002)(346002)(396003)(478600001)(66446008)(6512007)(66556008)(36756003)(4326008)(316002)(8936002)(66946007)(54906003)(6506007)(110136005)(8676002)(186003)(76116006)(26005)(2906002)(2616005)(6486002)(5660300002)(71200400001)(66476007)(64756008)(86362001);DIR:OUT;SFP:1102;
-x-ms-exchange-antispam-messagedata: =?utf-8?B?cWNYbzRHT3cvU29Vc2M5UGFDejRMRnBnamRPZ0t5cVFLY3hLZGpEc0NEN1NK?=
- =?utf-8?B?L1hDeS9obHBnVGdzdi9qNmVQUHpJTWozZkRIQWprRGI3LzBCQVpBb0s2Tnlm?=
- =?utf-8?B?VGJJbHdycjVSNnZtSnZOUGNPQkRwaDB5N09IY05XNENGTzRiZFRVeVc4cXRS?=
- =?utf-8?B?aWxvc0hFRFliWHdkVmN6RFJRNC9TWXpwbk0rTm03V283K2Z3dGd2VGFBSEV6?=
- =?utf-8?B?LzlCL2lNT3VxRENXWG56aDYzL2Y2Nk9yRUN0VWtIbHAzMHQ0cllPMkhuUmN4?=
- =?utf-8?B?WDJoVUJKZnpsSmFYR2U1ZHZIYjF2MWVrMzYyalE4Z1NQdGZHbFd4TkxEL3Vz?=
- =?utf-8?B?b2NleENjeWNkcTdEd0ZZUEdSZE16bnRJUDVUOU84YnFTVDBndnVXdDdzemZG?=
- =?utf-8?B?RnE1bjE2SmxYaDhDalhZdzIrSlhKYzI5YlhDbnBVVjVHSHN3SjlySGZEcTFs?=
- =?utf-8?B?d2xXWU16SllMblFEMzVmRG1uZjI5eXk1OUN1OG9kTnp2VTV0VVBXcGJVY3Zn?=
- =?utf-8?B?VlFXTSs4M3Vzd09ZZUZ4RTdhNUQvVVVOc2pwZlVmL0hHZkptd0VobXRjR1pW?=
- =?utf-8?B?bFhKOTdPTVIxa2hNemh1SlRUYmVCWU54R09LdEk5aUU5V2ppZjJqNU5UcUor?=
- =?utf-8?B?T0JGK2VRV2xEVlJrYUhVWVhaTFFTZVdHSktNOXNhZGNnTm55Q3lMbk84UnJr?=
- =?utf-8?B?T0VBNkdybFFjYXFCSFE0MGxCbkszWlk4QUxMb2xNcERnUHRTRlIxOHBxME5L?=
- =?utf-8?B?UTBkd09CMFpmbnJ6cnIwYUVmd2kzOTZsTDhuazFCbkxTeGJkMmU3aHRNWVhC?=
- =?utf-8?B?dlo1Y1ZRR1ZWeEtwVE9uc3B1NGtTZzBlU2hwMC9DNHAyMi85aTR6R2l2YVN4?=
- =?utf-8?B?TDVwRDd2c3JNRTRSVTYyYkdzYmV2ZHJPVXhlRU1DbFFldzJkSjZDNUlRa0M4?=
- =?utf-8?B?NENxc1RWMzhDRFc2NVV5Z0IwZTUxVTBrVzcwRStpSFg0YmY1d0Jnd2JTck81?=
- =?utf-8?B?Y1RYUXYwRyt3Nzg0dVVpYVo4Z0N0anJwRGlUdnYvc3V2d1BSM3VFWVpia1ZW?=
- =?utf-8?B?Y0t6VG16SG0rdWtIVGZLcWJpTEN5eHUrL1hNUmxSYlhtZjRLY3ZYZ2VxakdX?=
- =?utf-8?B?SGxDcG9vTGxFZnVCT3NQQ3dPMnFITUFtVGJmdzRLNGtaeGw1VjhYWTFSanpu?=
- =?utf-8?B?UjlUOUJraGZCeEpvYmZHajRVang5RE4yYlVmaGhZQ3dVWDBBcXp4UEkydVV2?=
- =?utf-8?B?bDlLK1VZM3VIcDg2VFFDUWJYUlRORGRwVS9SdXUzU1ZoTTBCdzlXR3M4aVc5?=
- =?utf-8?B?MzZvRW5oNk9JR0MzN29naUJIamo4dFV1MlVWUkJ4UTVDQ0NKNGpXcWhTaCtW?=
- =?utf-8?B?bUhBV21OdmIyaTU3dEpESGdIZDhXaWxtNVh0eU5STDk2ZldhZEVUMXhXWlps?=
- =?utf-8?B?bFpHNDdQTFFYaC9pcjgrM3ZVV0JwNDRoVEY0amZYdnhZVFBiOUl1UUNhV0s4?=
- =?utf-8?B?TTkwVXVaci91VG9oeTN5UEZaSmNKRmZpdEhXNjI2RnpHK0lsd20yc2lTbTBU?=
- =?utf-8?B?YUZnc1M0RWw0c1BNYmRMSWt3S0NTUFphdlE1d3ZIei9PN3RlbnRrTEV6bnJV?=
- =?utf-8?B?elJsb3FCczd4NjNaLzJTZ3FDSWM0Qzd1aThlODVNanBSVDZPcnUrS0VkdldO?=
- =?utf-8?B?Z2lnWVZmNWFLcGxGZzNzQXorcHhLdnRHNnhsckQvaHlTQjF1dFBnVTE0L3ZV?=
- =?utf-8?Q?IANJt5bLDTqIZZWCIx1kZbgW3NyHcw908ex+9I2?=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <5DE7654C7CBE4548BA656C7BF99DEB24@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S229722AbhBSUIM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Feb 2021 15:08:12 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:41097 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229623AbhBSUIJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Feb 2021 15:08:09 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1613765202;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ktjIfm0wbpWrOkylT3NrSSvWBYPpllwBUbdQgtij/Jw=;
+        b=P/yOCOnWByYXFHSCn1yDydGcXskgafSbO9MzzLGx324gUKzchetEqKBBJzJCz5XEPQ4mIe
+        8rZR+7SNOiXw3zqM1n9l3zAJVJkQToow56N5k7/23s5HwzchGsySfAt4Vz765x13yj9n7L
+        z8i/lTCVuKy6+xdGKqGmedwV2Rk0l9E=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-565-3L2gavSTOwSy_MgNRJbzwQ-1; Fri, 19 Feb 2021 15:06:40 -0500
+X-MC-Unique: 3L2gavSTOwSy_MgNRJbzwQ-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2F7CA1E561
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:39 +0000 (UTC)
+Received: from madhat.home.dicksonnet.net (ovpn-112-108.phx2.redhat.com [10.3.112.108])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id CE1312B161
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Feb 2021 20:06:38 +0000 (UTC)
+From:   Steve Dickson <steved@redhat.com>
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/7] exportd: the initial shell of the v4 export support
+Date:   Fri, 19 Feb 2021 15:08:09 -0500
+Message-Id: <20210219200815.792667-2-steved@redhat.com>
+In-Reply-To: <20210219200815.792667-1-steved@redhat.com>
+References: <20210219200815.792667-1-steved@redhat.com>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: CH2PR13MB3525.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ec82cd6b-92cb-4499-70a8-08d8d511f6a4
-X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Feb 2021 20:07:20.0608
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: wPtkhK93mj4tZof9KxyKs1YL0tcF83+SPDOQhMEVs81298V/0q6GZDxP0yWg6biGRC1dbgjOcG0MAvt4uQX/2w==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR13MB3623
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gRnJpLCAyMDIxLTAyLTE5IGF0IDEyOjIwIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gVHJvbmQvQW5uYSwNCj4gDQo+IEknZCBsaWtlIHlvdXIgb3BpbmlvbiBoZXJlLiBTb21l
-IHN0YXRpYyBjaGVja2luZyBmbGFncyBhICJjdHgiDQo+IGFzc2lnbm1lbnQgaW4gbmZzX2ZpbGxf
-c3VwZXIoKSBpbiB0aGUgbmV3IHBhdGNoLiBJbiBhbiBleGlzdGluZyBjb2RlDQo+IHRoZXJlIGlz
-IGEgY2hlY2sgZm9yIGl0IGlzIE5VTEwgYmVmb3JlIGRlcmVmZXJlbmNpbmcuIEhvd2V2ZXIsICJj
-dHgiDQo+IGNhbiBuZXZlciBiZSBudWxsLiBuZnNfZ2V0X3RyZWVfY29tbW9uKCkgd2hpY2ggY2Fs
-bHMgbmZzX2ZpbGxfc3VwZXIoKQ0KPiBhbmQgcGFzc2VzIGluICJjdHgiIGdldHMgaXQgZnJvbSB0
-aGUgcGFzc2VkIGluICJmc19jb250ZXh0Ii4gSWYgdGhlDQo+IHBhc3NlZCBpbiBhcmcgY2FuIGJl
-IG51bGwgdGhlbiB3ZSBhcmUgZGVyZWZlcmVuY2luZyBpbiB2YXIgYXNzaWdubWVudA0KPiBzbyB0
-aGluZ3Mgd291bGQgYmxvdyB1cCB0aGVyZS4gU28gImN0eCIgY2FuIG5ldmVyIGJlIG51bGwuDQo+
-IA0KPiBTaG91bGQgSSBjcmVhdGUgYW5vdGhlciBjbGVhbiB1cCBwYXRjaCB0byByZW1vdmUgdGhl
-IGNoZWNrIGZvciBudWxsDQo+IGN0eCBpbiBuZnNfZmlsbF9zdXBlcigpIHRvIG1ha2Ugc3RhdGlj
-IGFuYWx5emVycyBoYXBweT8NCj4gDQoNClllcywgYXQgdGhpcyBwb2ludCwgbmZzX2ZpbGxfc3Vw
-ZXIoKSBpcyBvbmx5IGNhbGxlZCBmcm9tDQpuZnNfZ2V0X3RyZWVfY29tbW9uKCksIHdoaWNoIHdv
-dWxkIGNyYXNoIGFuZCBidXJuIHdlbGwgYmVmb3JlIGlmIGN0eA0Kd2VyZSBhbiBpbnZhbGlkIHBv
-aW50ZXIuDQoNClNvIHBsZWFzZSBnbyBhaGVhZCwgYW5kIHJlbW92ZSB0aGUgY2hlY2sgZm9yIGN0
-eCBiZWluZyBOVUxMIGluDQpuZnNfZmlsbF9zdXBlcigpLg0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVi
-dXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ .gitignore                |   1 +
+ configure.ac              |   1 +
+ utils/Makefile.am         |   1 +
+ utils/exportd/Makefile.am |  58 ++++++++++++++++++
+ utils/exportd/exportd.c   | 121 ++++++++++++++++++++++++++++++++++++++
+ utils/exportd/exportd.man |  74 +++++++++++++++++++++++
+ 6 files changed, 256 insertions(+)
+ create mode 100644 utils/exportd/Makefile.am
+ create mode 100644 utils/exportd/exportd.c
+ create mode 100644 utils/exportd/exportd.man
+
+diff --git a/.gitignore b/.gitignore
+index e97b31f..c89d1cd 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -47,6 +47,7 @@ utils/idmapd/idmapd
+ utils/lockd/lockd
+ utils/mount/mount.nfs
+ utils/mountd/mountd
++utils/exportd/exportd
+ utils/nfsd/nfsd
+ utils/nfsstat/nfsstat
+ utils/nhfsstone/nhfsstone
+diff --git a/configure.ac b/configure.ac
+index 50847d8..ffd6247 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -706,6 +706,7 @@ AC_CONFIG_FILES([
+ 	utils/idmapd/Makefile
+ 	utils/mount/Makefile
+ 	utils/mountd/Makefile
++	utils/exportd/Makefile
+ 	utils/nfsd/Makefile
+ 	utils/nfsref/Makefile
+ 	utils/nfsstat/Makefile
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index 4c930a4..2a54b90 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -5,6 +5,7 @@ OPTDIRS =
+ if CONFIG_NFSV4
+ OPTDIRS += idmapd
+ OPTDIRS += nfsidmap
++OPTDIRS += exportd
+ endif
+ 
+ if CONFIG_NFSV41
+diff --git a/utils/exportd/Makefile.am b/utils/exportd/Makefile.am
+new file mode 100644
+index 0000000..6e61267
+--- /dev/null
++++ b/utils/exportd/Makefile.am
+@@ -0,0 +1,58 @@
++## Process this file with automake to produce Makefile.in
++
++OPTLIBS		=
++
++man8_MANS	= exportd.man
++EXTRA_DIST	= $(man8_MANS)
++
++NFSPREFIX	= nfsv4.
++KPREFIX		= @kprefix@
++sbin_PROGRAMS	= exportd
++
++exportd_SOURCES = exportd.c
++exportd_LDADD = ../../support/nfs/libnfs.la
++
++exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
++
++MAINTAINERCLEANFILES = Makefile.in
++
++#######################################################################
++# The following allows the current practice of having
++# daemons renamed during the install to include NFSPREFIX
++# and the KPREFIX
++# This could all be done much easier with program_transform_name
++# ( program_transform_name = s/^/$(NFSPREFIX)$(KPREFIX)/ )
++# but that also renames the man pages, which the current
++# practice does not do.
++install-exec-hook:
++	(cd $(DESTDIR)$(sbindir) && \
++	  for p in $(sbin_PROGRAMS); do \
++	    mv -f $$p$(EXEEXT) $(NFSPREFIX)$(KPREFIX)$$p$(EXEEXT) ;\
++	  done)
++uninstall-hook:
++	(cd $(DESTDIR)$(sbindir) && \
++	  for p in $(sbin_PROGRAMS); do \
++	    rm -f $(NFSPREFIX)$(KPREFIX)$$p$(EXEEXT) ;\
++	  done)
++
++
++# XXX This makes some assumptions about what automake does.
++# XXX But there is no install-man-hook or install-man-local.
++install-man: install-man8 install-man-links
++uninstall-man: uninstall-man8 uninstall-man-links
++
++install-man-links:
++	(cd $(DESTDIR)$(man8dir) && \
++	  for m in $(man8_MANS) $(dist_man8_MANS) $(nodist_man8_MANS); do \
++	    inst=`echo $$m | sed -e 's/man$$/8/'`; \
++	    rm -f $(NFSPREFIX)$$inst ; \
++	    $(LN_S) $$inst $(NFSPREFIX)$$inst ; \
++	  done)
++
++uninstall-man-links:
++	(cd $(DESTDIR)$(man8dir) && \
++	  for m in $(man8_MANS) $(dist_man8_MANS) $(nodist_man8_MANS); do \
++	    inst=`echo $$m | sed -e 's/man$$/8/'`; \
++	    rm -f $(NFSPREFIX)$$inst ; \
++	  done)
++
+diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
+new file mode 100644
+index 0000000..3a3dea6
+--- /dev/null
++++ b/utils/exportd/exportd.c
+@@ -0,0 +1,121 @@
++/*
++ * Copyright (C) 2021 Red Hat <nfs@redhat.com>
++ *
++ * support/exportd/exportd.c
++ *
++ * Routines used to support NFSv4 exports
++ *
++ */
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <stddef.h>
++#include <unistd.h>
++#include <signal.h>
++#include <string.h>
++#include <getopt.h>
++
++#include "nfslib.h"
++#include "conffile.h"
++
++
++static struct option longopts[] =
++{
++	{ "foreground", 0, 0, 'F' },
++	{ "debug", 1, 0, 'd' },
++	{ "help", 0, 0, 'h' },
++	{ NULL, 0, 0, 0 }
++};
++
++/*
++ * Signal handlers.
++ */
++inline static void set_signals(void);
++
++static void 
++killer (int sig)
++{
++	xlog (L_NOTICE, "Caught signal %d, un-registering and exiting.", sig);
++	exit(0);
++}
++static void
++sig_hup (int UNUSED(sig))
++{
++	/* don't exit on SIGHUP */
++	xlog (L_NOTICE, "Received SIGHUP... Ignoring.\n");
++	return;
++}
++inline static void 
++set_signals(void) 
++{
++	struct sigaction sa;
++
++	sa.sa_handler = SIG_IGN;
++	sa.sa_flags = 0;
++	sigemptyset(&sa.sa_mask);
++	sigaction(SIGPIPE, &sa, NULL);
++	/* WARNING: the following works on Linux and SysV, but not BSD! */
++	sigaction(SIGCHLD, &sa, NULL);
++
++	sa.sa_handler = killer;
++	sigaction(SIGINT, &sa, NULL);
++	sigaction(SIGTERM, &sa, NULL);
++
++	sa.sa_handler = sig_hup;
++	sigaction(SIGHUP, &sa, NULL);
++}
++static void
++usage(const char *prog, int n)
++{
++	fprintf(stderr,
++		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n", prog);
++	exit(n);
++}
++
++int
++main(int argc, char **argv)
++{
++	char *progname;
++	int	foreground = 0;
++	int	 c;
++
++	/* Set the basename */
++	if ((progname = strrchr(argv[0], '/')) != NULL)
++		progname++;
++	else
++		progname = argv[0];
++
++	/* Initialize logging. */
++	xlog_open(progname);
++
++	conf_init_file(NFS_CONFFILE);
++	xlog_set_debug(progname);
++
++	while ((c = getopt_long(argc, argv, "d:fh", longopts, NULL)) != EOF) {
++		switch (c) {
++		case 'd':
++			xlog_sconfig(optarg, 1);
++			break;
++		case 'f':
++			foreground++;
++			break;
++		case 'h':
++			usage(progname, 0);
++			break;
++		case '?':
++		default:
++			usage(progname, 1);
++		}
++
++	}
++
++	if (!foreground) 
++		xlog_stderr(0);
++
++	daemon_init(foreground);
++
++	set_signals();
++	
++	daemon_ready();
++}
+diff --git a/utils/exportd/exportd.man b/utils/exportd/exportd.man
+new file mode 100644
+index 0000000..d786e57
+--- /dev/null
++++ b/utils/exportd/exportd.man
+@@ -0,0 +1,74 @@
++.\"@(#)nfsv4.exportd.8"
++.\"
++.\" Copyright (C) 2021 Red Hat <nfs@redhat.com>
++.\"
++.TH nfsv4.exportd 8 "02 Feb 2021"
++.SH NAME
++nfsv4.exportd \- NFSv4 Server Mount Daemon
++.SH SYNOPSIS
++.BI "/usr/sbin/nfsv4.exportd [" options "]"
++.SH DESCRIPTION
++The
++.B nfsv4.exportd
++is used to manage NFSv4 exports. The NFSv4 server
++receives a mount request from a client and pass it up to 
++.B nfsv4.exportd. 
++.B nfsv4.exportd 
++then uses the exports(5) export
++table to verify the validity of the mount request.
++.PP
++An NFS server maintains a table of local physical file systems
++that are accessible to NFS clients.
++Each file system in this table is referred to as an
++.IR "exported file system" ,
++or
++.IR export ,
++for short.
++.PP
++Each file system in the export table has an access control list.
++.B nfsv4.exportd
++uses these access control lists to determine
++whether an NFS client is permitted to access a given file system.
++For details on how to manage your NFS server's export table, see the
++.BR exports (5)
++and
++.BR exportfs (8)
++man pages.
++.SH OPTIONS
++.TP
++.B \-d kind " or " \-\-debug kind
++Turn on debugging. Valid kinds are: all, auth, call, general and parse.
++.TP
++.B \-F " or " \-\-foreground
++Run in foreground (do not daemonize)
++.TP
++.B \-h " or " \-\-help
++Display usage message.
++.SH CONFIGURATION FILE
++Many of the options that can be set on the command line can also be
++controlled through values set in the
++.B [exportd]
++or, in some cases, the
++.B [nfsd]
++sections of the
++.I /etc/nfs.conf
++configuration file.
++Values recognized in the
++.B [exportd]
++section include 
++.B debug 
++which each have the same effect as the option with the same name.
++.SH FILES
++.TP 2.5i
++.I /etc/exports
++input file for
++.BR exportfs ,
++listing exports, export options, and access control lists
++.SH SEE ALSO
++.BR exportfs (8),
++.BR exports (5),
++.BR showmount (8),
++.BR nfs.conf (5),
++.BR firwall-cmd (1),
++.sp
++RFC 3530 - "Network File System (NFS) version 4 Protocol"
+-- 
+2.29.2
+
