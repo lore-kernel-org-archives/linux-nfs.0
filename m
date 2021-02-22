@@ -2,121 +2,220 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.2 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43486C433E0
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Feb 2021 09:45:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E691C433E0
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Feb 2021 10:24:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E967A64E92
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Feb 2021 09:45:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3C94564E31
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Feb 2021 10:24:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230122AbhBVJoq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Feb 2021 04:44:46 -0500
-Received: from outbound-smtp48.blacknight.com ([46.22.136.219]:35019 "EHLO
-        outbound-smtp48.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230340AbhBVJoh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Feb 2021 04:44:37 -0500
-X-Greylist: delayed 510 seconds by postgrey-1.27 at vger.kernel.org; Mon, 22 Feb 2021 04:44:36 EST
-Received: from mail.blacknight.com (pemlinmail06.blacknight.ie [81.17.255.152])
-        by outbound-smtp48.blacknight.com (Postfix) with ESMTPS id A3920FA9C3
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Feb 2021 09:35:06 +0000 (GMT)
-Received: (qmail 3587 invoked from network); 22 Feb 2021 09:35:06 -0000
-Received: from unknown (HELO techsingularity.net) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPSA (AES256-SHA encrypted, authenticated); 22 Feb 2021 09:35:06 -0000
-Date:   Mon, 22 Feb 2021 09:35:05 +0000
-From:   Mel Gorman <mgorman@techsingularity.net>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org, kuba@kernel.org
-Subject: Re: [PATCH RFC] SUNRPC: Refresh rq_pages using a bulk page allocator
-Message-ID: <20210222093505.GG3697@techsingularity.net>
-References: <161340498400.7780.962495219428962117.stgit@klimt.1015granger.net>
+        id S230131AbhBVKYh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 Feb 2021 05:24:37 -0500
+Received: from mx2.suse.de ([195.135.220.15]:50768 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S230063AbhBVKYh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 Feb 2021 05:24:37 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 366C0B02A;
+        Mon, 22 Feb 2021 10:23:54 +0000 (UTC)
+Received: from localhost (brahms [local])
+        by brahms (OpenSMTPD) with ESMTPA id f6f7d930;
+        Mon, 22 Feb 2021 10:24:58 +0000 (UTC)
+From:   Luis Henriques <lhenriques@suse.de>
+To:     Amir Goldstein <amir73il@gmail.com>,
+        Jeff Layton <jlayton@kernel.org>,
+        Steve French <sfrench@samba.org>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dave Chinner <dchinner@redhat.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Nicolas Boichat <drinkcat@chromium.org>,
+        Ian Lance Taylor <iant@google.com>,
+        Luis Lozano <llozano@chromium.org>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Olga Kornievskaia <aglo@umich.edu>,
+        Christoph Hellwig <hch@infradead.org>
+Cc:     ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Luis Henriques <lhenriques@suse.de>
+Subject: [PATCH v8] vfs: fix copy_file_range regression in cross-fs copies
+Date:   Mon, 22 Feb 2021 10:24:56 +0000
+Message-Id: <20210222102456.6692-1-lhenriques@suse.de>
+In-Reply-To: <20210221195833.23828-1-lhenriques@suse.de>
+References: <20210221195833.23828-1-lhenriques@suse.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
-In-Reply-To: <161340498400.7780.962495219428962117.stgit@klimt.1015granger.net>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Feb 15, 2021 at 11:06:07AM -0500, Chuck Lever wrote:
-> Reduce the rate at which nfsd threads hammer on the page allocator.
-> This improves throughput scalability by enabling the nfsd threads to
-> run more independently of each other.
-> 
+A regression has been reported by Nicolas Boichat, found while using the
+copy_file_range syscall to copy a tracefs file.  Before commit
+5dae222a5ff0 ("vfs: allow copy_file_range to copy across devices") the
+kernel would return -EXDEV to userspace when trying to copy a file across
+different filesystems.  After this commit, the syscall doesn't fail anymore
+and instead returns zero (zero bytes copied), as this file's content is
+generated on-the-fly and thus reports a size of zero.
 
-Sorry this is taking so long, there is a lot going on.
+This patch restores some cross-filesystem copy restrictions that existed
+prior to commit 5dae222a5ff0 ("vfs: allow copy_file_range to copy across
+devices").  Filesystems are still allowed to fall-back to the VFS
+generic_copy_file_range() implementation, but that has now to be done
+explicitly.
 
-This patch has pre-requisites that are not in mainline which makes it
-harder to evaluate what the semantics of the API should be.
+nfsd is also modified to fall-back into generic_copy_file_range() in case
+vfs_copy_file_range() fails with -EOPNOTSUPP or -EXDEV.
 
-> @@ -659,19 +659,33 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
->  		/* use as many pages as possible */
->  		pages = RPCSVC_MAXPAGES;
->  	}
-> -	for (i = 0; i < pages ; i++)
-> -		while (rqstp->rq_pages[i] == NULL) {
-> -			struct page *p = alloc_page(GFP_KERNEL);
-> -			if (!p) {
-> -				set_current_state(TASK_INTERRUPTIBLE);
-> -				if (signalled() || kthread_should_stop()) {
-> -					set_current_state(TASK_RUNNING);
-> -					return -EINTR;
-> -				}
-> -				schedule_timeout(msecs_to_jiffies(500));
-> +
-> +	for (needed = 0, i = 0; i < pages ; i++)
-> +		if (!rqstp->rq_pages[i])
-> +			needed++;
-> +	if (needed) {
-> +		LIST_HEAD(list);
-> +
-> +retry:
-> +		alloc_pages_bulk(GFP_KERNEL, 0,
-> +				 /* to test the retry logic: */
-> +				 min_t(unsigned long, needed, 13),
-> +				 &list);
-> +		for (i = 0; i < pages; i++) {
-> +			if (!rqstp->rq_pages[i]) {
-> +				struct page *page;
-> +
-> +				page = list_first_entry_or_null(&list,
-> +								struct page,
-> +								lru);
-> +				if (unlikely(!page))
-> +					goto empty_list;
-> +				list_del(&page->lru);
-> +				rqstp->rq_pages[i] = page;
-> +				needed--;
->  			}
-> -			rqstp->rq_pages[i] = p;
->  		}
-> +	}
->  	rqstp->rq_page_end = &rqstp->rq_pages[pages];
->  	rqstp->rq_pages[pages] = NULL; /* this might be seen in nfsd_splice_actor() */
->  
+Fixes: 5dae222a5ff0 ("vfs: allow copy_file_range to copy across devices")
+Link: https://lore.kernel.org/linux-fsdevel/20210212044405.4120619-1-drinkcat@chromium.org/
+Link: https://lore.kernel.org/linux-fsdevel/CANMq1KDZuxir2LM5jOTm0xx+BnvW=ZmpsG47CyHFJwnw7zSX6Q@mail.gmail.com/
+Link: https://lore.kernel.org/linux-fsdevel/20210126135012.1.If45b7cdc3ff707bc1efa17f5366057d60603c45f@changeid/
+Reported-by: Nicolas Boichat <drinkcat@chromium.org>
+Signed-off-by: Luis Henriques <lhenriques@suse.de>
+---
+Changes since v7
+- set 'ret' to '-EOPNOTSUPP' before the clone 'if' statement so that the
+  error returned is always related to the 'copy' operation
+Changes since v6
+- restored i_sb checks for the clone operation
+Changes since v5
+- check if ->copy_file_range is NULL before calling it
+Changes since v4
+- nfsd falls-back to generic_copy_file_range() only *if* it gets -EOPNOTSUPP
+  or -EXDEV.
+Changes since v3
+- dropped the COPY_FILE_SPLICE flag
+- kept the f_op's checks early in generic_copy_file_checks, implementing
+  Amir's suggestions
+- modified nfsd to use generic_copy_file_range()
+Changes since v2
+- do all the required checks earlier, in generic_copy_file_checks(),
+  adding new checks for ->remap_file_range
+- new COPY_FILE_SPLICE flag
+- don't remove filesystem's fallback to generic_copy_file_range()
+- updated commit changelog (and subject)
+Changes since v1 (after Amir review)
+- restored do_copy_file_range() helper
+- return -EOPNOTSUPP if fs doesn't implement CFR
+- updated commit description
 
-There is a conflict at the end where rq_page_end gets updated. The 5.11
-code assumes that the loop around the allocator definitely gets all
-the required pages. What tree is this patch based on and is it going in
-during this merge window? While the conflict is "trivial" to resolve,
-it would be buggy because on retry, "i" will be pointing to the wrong
-index and pages potentially leak. Rather than guessing, I'd prefer to
-base a series on code you've tested.
+ fs/nfsd/vfs.c   |  8 +++++++-
+ fs/read_write.c | 49 ++++++++++++++++++++++++-------------------------
+ 2 files changed, 31 insertions(+), 26 deletions(-)
 
-The slowpath for the bulk allocator also sucks a bit for the semantics
-required by this caller. As the bulk allocator does not walk the zonelist,
-it can return failures prematurely -- fine for an optimistic bulk allocator
-that can return a subset of pages but not for this caller which really
-wants those pages. The allocator may need NOFAIL-like semantics to walk
-the zonelist if the caller really requires success or at least walk the
-zonelist if the preferred zone is low on pages. This patch would also
-need to preserve the schedule_timeout behaviour so it does not use a lot
-of CPU time retrying allocations in the presense of memory pressure.
-
--- 
-Mel Gorman
-SUSE Labs
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 04937e51de56..23dab0fa9087 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -568,6 +568,7 @@ __be32 nfsd4_clone_file_range(struct nfsd_file *nf_src, u64 src_pos,
+ ssize_t nfsd_copy_file_range(struct file *src, u64 src_pos, struct file *dst,
+ 			     u64 dst_pos, u64 count)
+ {
++	ssize_t ret;
+ 
+ 	/*
+ 	 * Limit copy to 4MB to prevent indefinitely blocking an nfsd
+@@ -578,7 +579,12 @@ ssize_t nfsd_copy_file_range(struct file *src, u64 src_pos, struct file *dst,
+ 	 * limit like this and pipeline multiple COPY requests.
+ 	 */
+ 	count = min_t(u64, count, 1 << 22);
+-	return vfs_copy_file_range(src, src_pos, dst, dst_pos, count, 0);
++	ret = vfs_copy_file_range(src, src_pos, dst, dst_pos, count, 0);
++
++	if (ret == -EOPNOTSUPP || ret == -EXDEV)
++		ret = generic_copy_file_range(src, src_pos, dst, dst_pos,
++					      count, 0);
++	return ret;
+ }
+ 
+ __be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh *fhp,
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 75f764b43418..5a26297fd410 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1388,28 +1388,6 @@ ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
+ }
+ EXPORT_SYMBOL(generic_copy_file_range);
+ 
+-static ssize_t do_copy_file_range(struct file *file_in, loff_t pos_in,
+-				  struct file *file_out, loff_t pos_out,
+-				  size_t len, unsigned int flags)
+-{
+-	/*
+-	 * Although we now allow filesystems to handle cross sb copy, passing
+-	 * a file of the wrong filesystem type to filesystem driver can result
+-	 * in an attempt to dereference the wrong type of ->private_data, so
+-	 * avoid doing that until we really have a good reason.  NFS defines
+-	 * several different file_system_type structures, but they all end up
+-	 * using the same ->copy_file_range() function pointer.
+-	 */
+-	if (file_out->f_op->copy_file_range &&
+-	    file_out->f_op->copy_file_range == file_in->f_op->copy_file_range)
+-		return file_out->f_op->copy_file_range(file_in, pos_in,
+-						       file_out, pos_out,
+-						       len, flags);
+-
+-	return generic_copy_file_range(file_in, pos_in, file_out, pos_out, len,
+-				       flags);
+-}
+-
+ /*
+  * Performs necessary checks before doing a file copy
+  *
+@@ -1427,6 +1405,25 @@ static int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
+ 	loff_t size_in;
+ 	int ret;
+ 
++	/*
++	 * Although we now allow filesystems to handle cross sb copy, passing
++	 * a file of the wrong filesystem type to filesystem driver can result
++	 * in an attempt to dereference the wrong type of ->private_data, so
++	 * avoid doing that until we really have a good reason.  NFS defines
++	 * several different file_system_type structures, but they all end up
++	 * using the same ->copy_file_range() function pointer.
++	 */
++	if (file_out->f_op->copy_file_range) {
++		if (file_in->f_op->copy_file_range !=
++		    file_out->f_op->copy_file_range)
++			return -EXDEV;
++	} else if (file_in->f_op->remap_file_range) {
++		if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
++			return -EXDEV;
++	} else {
++                return -EOPNOTSUPP;
++	}
++
+ 	ret = generic_file_rw_checks(file_in, file_out);
+ 	if (ret)
+ 		return ret;
+@@ -1495,6 +1492,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 
+ 	file_start_write(file_out);
+ 
++	ret = -EOPNOTSUPP;
+ 	/*
+ 	 * Try cloning first, this is supported by more file systems, and
+ 	 * more efficient if both clone and copy are supported (e.g. NFS).
+@@ -1513,9 +1511,10 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		}
+ 	}
+ 
+-	ret = do_copy_file_range(file_in, pos_in, file_out, pos_out, len,
+-				flags);
+-	WARN_ON_ONCE(ret == -EOPNOTSUPP);
++	if (file_out->f_op->copy_file_range)
++		ret = file_out->f_op->copy_file_range(file_in, pos_in,
++						      file_out, pos_out,
++						      len, flags);
+ done:
+ 	if (ret > 0) {
+ 		fsnotify_access(file_in);
