@@ -2,28 +2,29 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD625C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:26:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B913C433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:27:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 610AA60241
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:26:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BF41060241
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:27:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233374AbhBXK05 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Feb 2021 05:26:57 -0500
-Received: from outbound-smtp35.blacknight.com ([46.22.139.218]:48079 "EHLO
-        outbound-smtp35.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S234344AbhBXK04 (ORCPT
+        id S234276AbhBXK06 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Feb 2021 05:26:58 -0500
+Received: from outbound-smtp02.blacknight.com ([81.17.249.8]:56930 "EHLO
+        outbound-smtp02.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S234715AbhBXK04 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2021 05:26:56 -0500
 Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
-        by outbound-smtp35.blacknight.com (Postfix) with ESMTPS id 2ACF11E23
+        by outbound-smtp02.blacknight.com (Postfix) with ESMTPS id 95519BAAD2
         for <linux-nfs@vger.kernel.org>; Wed, 24 Feb 2021 10:26:04 +0000 (GMT)
-Received: (qmail 23429 invoked from network); 24 Feb 2021 10:26:04 -0000
+Received: (qmail 23478 invoked from network); 24 Feb 2021 10:26:04 -0000
 Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPA; 24 Feb 2021 10:26:03 -0000
+  by 81.17.254.9 with ESMTPA; 24 Feb 2021 10:26:04 -0000
 From:   Mel Gorman <mgorman@techsingularity.net>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Jesper Dangaard Brouer <brouer@redhat.com>
@@ -32,57 +33,104 @@ Cc:     LKML <linux-kernel@vger.kernel.org>,
         Linux-MM <linux-mm@kvack.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         Mel Gorman <mgorman@techsingularity.net>
-Subject: [RFC PATCH 0/3] Introduce a bulk order-0 page allocator for sunrpc
-Date:   Wed, 24 Feb 2021 10:26:00 +0000
-Message-Id: <20210224102603.19524-1-mgorman@techsingularity.net>
+Subject: [PATCH 3/3] SUNRPC: Refresh rq_pages using a bulk page allocator
+Date:   Wed, 24 Feb 2021 10:26:03 +0000
+Message-Id: <20210224102603.19524-4-mgorman@techsingularity.net>
 X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210224102603.19524-1-mgorman@techsingularity.net>
+References: <20210224102603.19524-1-mgorman@techsingularity.net>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is a prototype series that introduces a bulk order-0 page allocator
-with sunrpc being the first user. The implementation is not particularly
-efficient and the intention is to iron out what the semantics of the API
-should be. That said, sunrpc was reported to have reduced allocation
-latency when refilling a pool.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-As a side-note, while the implementation could be more efficient, it
-would require fairly deep surgery in numerous places. The lock scope would
-need to be significantly reduced, particularly as vmstat, per-cpu and the
-buddy allocator have different locking protocol that overal -- e.g. all
-partially depend on irqs being disabled at various points. Secondly,
-the core of the allocator deals with single pages where as both the bulk
-allocator and per-cpu allocator operate in batches. All of that has to
-be reconciled with all the existing users and their constraints (memory
-offline, CMA and cpusets being the trickiest).
+Reduce the rate at which nfsd threads hammer on the page allocator.
+This improve throughput scalability by enabling the threads to run
+more independently of each other.
 
-In terms of semantics required by new users, my preference is that a pair
-of patches be applied -- the first which adds the required semantic to
-the bulk allocator and the second which adds the new user.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
+---
+ net/sunrpc/svc_xprt.c | 43 +++++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 12 deletions(-)
 
-Patch 1 of this series is a cleanup to sunrpc, it could be merged
-	separately but is included here for convenience.
-
-Patch 2 is the prototype bulk allocator
-
-Patch 3 is the sunrpc user. Chuck also has a patch which further caches
-	pages but is not included in this series. It's not directly
-	related to the bulk allocator and as it caches pages, it might
-	have other concerns (e.g. does it need a shrinker?)
-
-This has only been lightly tested on a low-end NFS server. It did not break
-but would benefit from an evaluation to see how much, if any, the headline
-performance changes. The biggest concern is that a light test case showed
-that there are a *lot* of bulk requests for 1 page which gets delegated to
-the normal allocator.  The same criteria should apply to any other users.
-
- include/linux/gfp.h   |  13 +++++
- mm/page_alloc.c       | 113 +++++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/svc_xprt.c |  47 ++++++++++++------
- 3 files changed, 157 insertions(+), 16 deletions(-)
-
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index cfa7e4776d0e..38a8d6283801 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -642,11 +642,12 @@ static void svc_check_conn_limits(struct svc_serv *serv)
+ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ {
+ 	struct svc_serv *serv = rqstp->rq_server;
++	unsigned long needed;
+ 	struct xdr_buf *arg;
++	struct page *page;
+ 	int pages;
+ 	int i;
+ 
+-	/* now allocate needed pages.  If we get a failure, sleep briefly */
+ 	pages = (serv->sv_max_mesg + 2 * PAGE_SIZE) >> PAGE_SHIFT;
+ 	if (pages > RPCSVC_MAXPAGES) {
+ 		pr_warn_once("svc: warning: pages=%u > RPCSVC_MAXPAGES=%lu\n",
+@@ -654,19 +655,28 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 		/* use as many pages as possible */
+ 		pages = RPCSVC_MAXPAGES;
+ 	}
+-	for (i = 0; i < pages ; i++)
+-		while (rqstp->rq_pages[i] == NULL) {
+-			struct page *p = alloc_page(GFP_KERNEL);
+-			if (!p) {
+-				set_current_state(TASK_INTERRUPTIBLE);
+-				if (signalled() || kthread_should_stop()) {
+-					set_current_state(TASK_RUNNING);
+-					return -EINTR;
+-				}
+-				schedule_timeout(msecs_to_jiffies(500));
++
++	for (needed = 0, i = 0; i < pages ; i++)
++		if (!rqstp->rq_pages[i])
++			needed++;
++	if (needed) {
++		LIST_HEAD(list);
++
++retry:
++		alloc_pages_bulk(GFP_KERNEL, needed, &list);
++		for (i = 0; i < pages; i++) {
++			if (!rqstp->rq_pages[i]) {
++				page = list_first_entry_or_null(&list,
++								struct page,
++								lru);
++				if (unlikely(!page))
++					goto empty_list;
++				list_del(&page->lru);
++				rqstp->rq_pages[i] = page;
++				needed--;
+ 			}
+-			rqstp->rq_pages[i] = p;
+ 		}
++	}
+ 	rqstp->rq_page_end = &rqstp->rq_pages[pages];
+ 	rqstp->rq_pages[pages] = NULL; /* this might be seen in nfsd_splice_actor() */
+ 
+@@ -681,6 +691,15 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 	arg->len = (pages-1)*PAGE_SIZE;
+ 	arg->tail[0].iov_len = 0;
+ 	return 0;
++
++empty_list:
++	set_current_state(TASK_INTERRUPTIBLE);
++	if (signalled() || kthread_should_stop()) {
++		set_current_state(TASK_RUNNING);
++		return -EINTR;
++	}
++	schedule_timeout(msecs_to_jiffies(500));
++	goto retry;
+ }
+ 
+ static bool
 -- 
 2.26.2
 
