@@ -2,102 +2,84 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A708C433DB
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:23:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0895FC433DB
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:26:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B487E60C3E
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:23:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 92FB264EC9
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:26:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234374AbhBXKXM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Feb 2021 05:23:12 -0500
-Received: from mx2.suse.de ([195.135.220.15]:51778 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S234650AbhBXKXD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 24 Feb 2021 05:23:03 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 92C26B03A;
-        Wed, 24 Feb 2021 10:22:20 +0000 (UTC)
-Received: from localhost (brahms [local])
-        by brahms (OpenSMTPD) with ESMTPA id 4d05c3a6;
-        Wed, 24 Feb 2021 10:23:26 +0000 (UTC)
-Date:   Wed, 24 Feb 2021 10:23:25 +0000
-From:   Luis Henriques <lhenriques@suse.de>
-To:     Olga Kornievskaia <aglo@umich.edu>
-Cc:     Amir Goldstein <amir73il@gmail.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Steve French <sfrench@samba.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Nicolas Boichat <drinkcat@chromium.org>,
-        Ian Lance Taylor <iant@google.com>,
-        Luis Lozano <llozano@chromium.org>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Christoph Hellwig <hch@infradead.org>,
-        ceph-devel <ceph-devel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>,
-        samba-technical <samba-technical@lists.samba.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v8] vfs: fix copy_file_range regression in cross-fs copies
-Message-ID: <YDYpHccgM7agpdTQ@suse.de>
-References: <20210221195833.23828-1-lhenriques@suse.de>
- <20210222102456.6692-1-lhenriques@suse.de>
- <CAN-5tyELMY7b7CKO-+an47ydq8r_4+SOyhuvdH0qE0-JmdZ44Q@mail.gmail.com>
+        id S233148AbhBXK04 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Feb 2021 05:26:56 -0500
+Received: from outbound-smtp17.blacknight.com ([46.22.139.234]:58735 "EHLO
+        outbound-smtp17.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S234276AbhBXK04 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2021 05:26:56 -0500
+Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
+        by outbound-smtp17.blacknight.com (Postfix) with ESMTPS id 50A421C436F
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Feb 2021 10:26:04 +0000 (GMT)
+Received: (qmail 23446 invoked from network); 24 Feb 2021 10:26:04 -0000
+Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
+  by 81.17.254.9 with ESMTPA; 24 Feb 2021 10:26:04 -0000
+From:   Mel Gorman <mgorman@techsingularity.net>
+To:     Chuck Lever <chuck.lever@oracle.com>,
+        Jesper Dangaard Brouer <brouer@redhat.com>
+Cc:     LKML <linux-kernel@vger.kernel.org>,
+        Linux-Net <netdev@vger.kernel.org>,
+        Linux-MM <linux-mm@kvack.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>,
+        Mel Gorman <mgorman@techsingularity.net>
+Subject: [PATCH 1/3] SUNRPC: Set rq_page_end differently
+Date:   Wed, 24 Feb 2021 10:26:01 +0000
+Message-Id: <20210224102603.19524-2-mgorman@techsingularity.net>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210224102603.19524-1-mgorman@techsingularity.net>
+References: <20210224102603.19524-1-mgorman@techsingularity.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAN-5tyELMY7b7CKO-+an47ydq8r_4+SOyhuvdH0qE0-JmdZ44Q@mail.gmail.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Feb 23, 2021 at 08:00:54PM -0500, Olga Kornievskaia wrote:
-> On Mon, Feb 22, 2021 at 5:25 AM Luis Henriques <lhenriques@suse.de> wrote:
-> >
-> > A regression has been reported by Nicolas Boichat, found while using the
-> > copy_file_range syscall to copy a tracefs file.  Before commit
-> > 5dae222a5ff0 ("vfs: allow copy_file_range to copy across devices") the
-> > kernel would return -EXDEV to userspace when trying to copy a file across
-> > different filesystems.  After this commit, the syscall doesn't fail anymore
-> > and instead returns zero (zero bytes copied), as this file's content is
-> > generated on-the-fly and thus reports a size of zero.
-> >
-> > This patch restores some cross-filesystem copy restrictions that existed
-> > prior to commit 5dae222a5ff0 ("vfs: allow copy_file_range to copy across
-> > devices").  Filesystems are still allowed to fall-back to the VFS
-> > generic_copy_file_range() implementation, but that has now to be done
-> > explicitly.
-> >
-> > nfsd is also modified to fall-back into generic_copy_file_range() in case
-> > vfs_copy_file_range() fails with -EOPNOTSUPP or -EXDEV.
-> >
-> > Fixes: 5dae222a5ff0 ("vfs: allow copy_file_range to copy across devices")
-> > Link: https://lore.kernel.org/linux-fsdevel/20210212044405.4120619-1-drinkcat@chromium.org/
-> > Link: https://lore.kernel.org/linux-fsdevel/CANMq1KDZuxir2LM5jOTm0xx+BnvW=ZmpsG47CyHFJwnw7zSX6Q@mail.gmail.com/
-> > Link: https://lore.kernel.org/linux-fsdevel/20210126135012.1.If45b7cdc3ff707bc1efa17f5366057d60603c45f@changeid/
-> > Reported-by: Nicolas Boichat <drinkcat@chromium.org>
-> > Signed-off-by: Luis Henriques <lhenriques@suse.de>
-> 
-> I tested v8 and I believe it works for NFS.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Thanks a lot for the testing.  And to everyone else for reviews,
-feedback,... and patience.
+Refactor:
 
-I'll now go look into the manpage and see what needs to be changed.
+I'm about to use the loop variable @i for something else.
 
-Cheers,
---
-Luís
+As far as the "i++" is concerned, that is a post-increment. The
+value of @i is not used subsequently, so the increment operator
+is unnecessary and can be removed.
+
+Also note that nfsd_read_actor() was renamed nfsd_splice_actor()
+by commit cf8208d0eabd ("sendfile: convert nfsd to
+splice_direct_to_actor()").
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
+---
+ net/sunrpc/svc_xprt.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index dcc50ae54550..cfa7e4776d0e 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -667,8 +667,8 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 			}
+ 			rqstp->rq_pages[i] = p;
+ 		}
+-	rqstp->rq_page_end = &rqstp->rq_pages[i];
+-	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
++	rqstp->rq_page_end = &rqstp->rq_pages[pages];
++	rqstp->rq_pages[pages] = NULL; /* this might be seen in nfsd_splice_actor() */
+ 
+ 	/* Make arg->head point to first page and arg->pages point to rest */
+ 	arg = &rqstp->rq_arg;
+-- 
+2.26.2
+
