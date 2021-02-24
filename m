@@ -2,470 +2,674 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,MSGID_FROM_MTA_HEADER,NICE_REPLY_A,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable
+X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F2664C433E0
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 01:21:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A86DC433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 02:02:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A2C9A64E4D
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 01:21:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A993064E7C
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 02:02:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233852AbhBXBVO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Feb 2021 20:21:14 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:53474 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233037AbhBXBQA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Feb 2021 20:16:00 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 11O08UX6004592;
-        Wed, 24 Feb 2021 00:13:09 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : to : cc :
- references : from : message-id : date : in-reply-to : content-type :
- content-transfer-encoding : mime-version; s=corp-2020-01-29;
- bh=+Ne8CYPzPQdf5wdDrRYtSqZ8q7MyyTT/Unft49OssfA=;
- b=EEGe1LHG6n7TAeUw+8iPsxlsuM/jQlAZz6nJsoYGdMv2Y87I7TV/DZ1SrQw5hLpVk3Sc
- RHRKgY8i90THMT8mNt6i5w0fHrj+0M0f4W1mq6EYu7aePyEwjlHAGGqoEq67+ZO0Y/7I
- vfkxuSq59jhmGzfARVetwbq5Sbd5r08viJdoVbuibo6tMz8jbmrPE1jHVYy5tSTLwLiv
- /EH/yU4YjFhZzm96bf3AEI4bMBXqvsm7EzFIDR+eihisuLRu4zqlasf58Zlo6h6cWb/5
- /LQ28gov+UbG2STk11nyuZyW8FnHPav1SpeYGAatU2+O0Ke++jLh7lCzBP3lA5VJr0rz NA== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by userp2120.oracle.com with ESMTP id 36ugq3g3wr-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 24 Feb 2021 00:13:09 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 11O0AZ6w033855;
-        Wed, 24 Feb 2021 00:13:08 GMT
-Received: from nam11-co1-obe.outbound.protection.outlook.com (mail-co1nam11lp2174.outbound.protection.outlook.com [104.47.56.174])
-        by aserp3020.oracle.com with ESMTP id 36ucb02f6h-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 24 Feb 2021 00:13:08 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=WNc94tI4ve0zUNb9+hJRg4Q3l/zFcWPORNWyz3bAhPgdcUKNuvqkCHsez+GD44VtJH2iE512/P2Z0fX+QO//wN70U9/zVEc0pXPnD2o8onfG25QWEMGf0L1AdZOQX/NE1JAvv2UisX7M+5EPWcI0ZfH5uZc4zaDXgratYAzYtcnqpl9ttUJqvAoJgBU8oHVB+ZeAANRo5x+KQi87wAMv3OrY+eMu+2WsfgvhCvu8uztg7lk4usKJ0ot/yYXV2Ota9kij6lfPaJyWm3LTOLO/JN2ldNKISW1aAfj1+M8Y8rTntHZsI0u9IhMBIOAuLnrOtAa1PNRR9XQmiiSSEEwKBA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=+Ne8CYPzPQdf5wdDrRYtSqZ8q7MyyTT/Unft49OssfA=;
- b=gOjqcSGHoxTpF/4CbJ54tB7nXCRm/9iYeEYolSw92OhOoZwqDhrpYgMp51GaM9aSK2VCvK+7oSsK9dHdumSgrndL1b+Ukx5aS2BWq7r3+jXZ6UgOOcZQ2/isue4TH7y4Ovh2ixc257bTC2SngZ9+pEpJp54u1lCMUSowmKEgtj7HvH7l4aQoFGmuUTuZcg/Yywj8dnWld1Njwj9T3GmagiJ++LXJ31u0msbv5V7x3198MzgIscax3Nzcumq21/uDjZWZmYVF9c+nWcD7uAVHCc4PagucIXbCbKy8ZnuZQeYpf9n4l1DHZQM9kJ1QWmQqm0WZEl85j/+QOCKfG1OGhw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=+Ne8CYPzPQdf5wdDrRYtSqZ8q7MyyTT/Unft49OssfA=;
- b=Yr28eUdnWbg0aQVvRUevdcLtgM6PUgoveBXy96szHySD7CET2CzP0wwssUlg+LXW+1p9ZU8Tm5qVRUs+Pgk4PCATGst8vhMZch8iaqreV0PmRUyV7SNRi/g/PA7983VDJR87cO6LDPlSNRFsw+Jo9MYy3KVskQ/8++maB4kX8jQ=
-Authentication-Results: vger.kernel.org; dkim=none (message not signed)
- header.d=none;vger.kernel.org; dmarc=none action=none header.from=oracle.com;
-Received: from BY5PR10MB4257.namprd10.prod.outlook.com (2603:10b6:a03:211::21)
- by SJ0PR10MB4558.namprd10.prod.outlook.com (2603:10b6:a03:2d8::6) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3868.32; Wed, 24 Feb
- 2021 00:13:04 +0000
-Received: from BY5PR10MB4257.namprd10.prod.outlook.com
- ([fe80::a5bc:c1ab:3bf1:1fe8]) by BY5PR10MB4257.namprd10.prod.outlook.com
- ([fe80::a5bc:c1ab:3bf1:1fe8%6]) with mapi id 15.20.3868.033; Wed, 24 Feb 2021
- 00:13:04 +0000
-Subject: Re: [PATCH v8] vfs: fix copy_file_range regression in cross-fs copies
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     Luis Henriques <lhenriques@suse.de>,
-        Jeff Layton <jlayton@kernel.org>,
-        Steve French <sfrench@samba.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Nicolas Boichat <drinkcat@chromium.org>,
-        Ian Lance Taylor <iant@google.com>,
-        Luis Lozano <llozano@chromium.org>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Olga Kornievskaia <aglo@umich.edu>,
-        Christoph Hellwig <hch@infradead.org>,
-        ceph-devel <ceph-devel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>,
-        samba-technical <samba-technical@lists.samba.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <20210221195833.23828-1-lhenriques@suse.de>
- <20210222102456.6692-1-lhenriques@suse.de>
- <26a22719-427a-75cf-92eb-dda10d442ded@oracle.com> <YDTZwH7xv41Wimax@suse.de>
- <7cc69c24-80dd-0053-24b9-3a28b0153f7e@oracle.com>
- <7c12e6a3-e4a6-5210-1b57-09072eac3270@oracle.com>
- <CAOQ4uxh2E2oJjHoOBY3GU__6UcjE67E7qR1uMus7f_xhQyM54g@mail.gmail.com>
- <72c41310-85e4-16fe-8d9c-d42abe0566a9@oracle.com>
- <e3eed18b-fc7e-e687-608b-7f662017329c@oracle.com>
- <CAOQ4uxg4diJwpdhUydZ4rtCo2vv0uKwXmr1QiybLt0XVFOB8Eg@mail.gmail.com>
-From:   dai.ngo@oracle.com
-Message-ID: <55606452-b4f6-a42e-faff-796fdd295730@oracle.com>
-Date:   Tue, 23 Feb 2021 16:13:01 -0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
- Gecko/20100101 Thunderbird/78.7.1
-In-Reply-To: <CAOQ4uxg4diJwpdhUydZ4rtCo2vv0uKwXmr1QiybLt0XVFOB8Eg@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Language: en-US
-X-Originating-IP: [72.219.112.78]
-X-ClientProxiedBy: SJ0PR05CA0132.namprd05.prod.outlook.com
- (2603:10b6:a03:33d::17) To BY5PR10MB4257.namprd10.prod.outlook.com
- (2603:10b6:a03:211::21)
+        id S232165AbhBXCCX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Feb 2021 21:02:23 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36794 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232136AbhBXCCW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Feb 2021 21:02:22 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA28BC061574
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Feb 2021 18:01:41 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 32B0021DD; Tue, 23 Feb 2021 21:01:40 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 32B0021DD
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1614132100;
+        bh=laXYYhYqcmR26DemhwyNRvdggm60W85YfBCmDL97WNA=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=fJZlkKJOnfJy9YmypYVOp4rJUmDDX6qXmNuIljMkH/CQswPJ2P2A47k+qjAOzBhcc
+         38AGx1Ak6kabf2W/ZcZREbLONRy7vq3XpqjgaS/NAy+HuRBcsTLkwg9hCLxCflipRe
+         6OjkRq3D12uEV10asTzRJZkvo2/j58fK4OfU2FRY=
+Date:   Tue, 23 Feb 2021 21:01:40 -0500
+From:   "bfields@fieldses.org" <bfields@fieldses.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "nix@esperi.org.uk" <nix@esperi.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: steam-associated reproducible hard NFSv4.2 client hang (5.9,
+ 5.10)
+Message-ID: <20210224020140.GA26848@fieldses.org>
+References: <877dourt7c.fsf@esperi.org.uk>
+ <20210223225701.GD8042@fieldses.org>
+ <fde7a43ac9b61a1aff53381d0ab7b48b78cb79db.camel@hammerspace.com>
 MIME-Version: 1.0
-X-MS-Exchange-MessageSentRepresentingType: 1
-Received: from dhcp-10-154-141-126.vpn.oracle.com (72.219.112.78) by SJ0PR05CA0132.namprd05.prod.outlook.com (2603:10b6:a03:33d::17) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3890.13 via Frontend Transport; Wed, 24 Feb 2021 00:13:02 +0000
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: a7489838-15d0-47dc-4be2-08d8d858f415
-X-MS-TrafficTypeDiagnostic: SJ0PR10MB4558:
-X-MS-Exchange-Transport-Forked: True
-X-Microsoft-Antispam-PRVS: <SJ0PR10MB4558D43A157E5B0159F977A4879F9@SJ0PR10MB4558.namprd10.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:9508;
-X-MS-Exchange-SenderADCheck: 1
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: Do+Pt6cAINzZGGryimNoYo1w1YQrMVPM1KpQZ2xXeXA6pqyjCQj+xQaGc5GQRrDiFwx+Mict3w86SAOh9C4SC8f4ySDs8XUu8nn/tfPH7NjG748j3kg0gkBkRreg95fXcqNY/kTZSYVq7JEqCTc49Js5q2R7klDxofCzQOp2vjyKmymscAa86z5sJaskELFpEA8gclE0UnSyy6BsGAy6D8RWyEdslX7g9t+HflbNJi58HXryIW4CRHB5jlVRf+/ymLyrBzUs3/R6kQtaOMP+peBayKKHUB+ehGtGq85XLeuYPh6jjG/hH6gqbCdsXax/iyLRkAP9eZVaYSNvDyF9YuI45xF1xu+g4a8a6Nj98TnRhA0HED0bByzm+BnsrgceWetDHlnKZNoTklvgUn6hWpR+GcaiqqvmU5VpSOh2D9IXxx9HlvU4lQEJVPes0OKyB9sEo6nf09rRcaBUiLaCQueYISwD9VbuclIjQdbNfqgAFzp2oASODI1t5Fi6ua/aiFV2kKGZc/SYCgRpK8TWq1mLnx5PEPC73vG+8PSG7yDH9o/wWozJQOLsf3nuzY/qEXL5RW8T/EfT3Avp1C/lB1gj5jXojthUXMosJQ4jz8XBn96SzPnbTXNbdCJGUkqsXChLClLffq5PefdYH5QyTraV+JP1vUuqXcSKSSAHlQM=
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BY5PR10MB4257.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(376002)(39860400002)(396003)(136003)(346002)(366004)(8676002)(53546011)(8936002)(6486002)(16526019)(9686003)(4326008)(5660300002)(478600001)(186003)(26005)(966005)(54906003)(956004)(2616005)(66946007)(66556008)(36756003)(30864003)(7696005)(66476007)(31686004)(86362001)(316002)(7416002)(2906002)(83380400001)(31696002)(6916009)(43740500002);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData: =?utf-8?B?YmNxVi9HWG14QXB3VXJrY2xaVm1DNmEwYTR5bHpqeVRMVHk2MVZ6WjFjSlIv?=
- =?utf-8?B?RXZZWGtZS2Mvem5UU09aRWl6ZUNOdTRTNTdqTU4rblZJNzJlSW9IclliZUxD?=
- =?utf-8?B?bGV2blNRWUZ2NU0rczFpc3h6anVBbnlYMDdYM3pqZnphRVluQ3dxSmhpY1dP?=
- =?utf-8?B?aEZLcktuTUZHT3VnbkdZY1hyckN1TE8vUGljQ2VOdHNqNVJVZFE2YlBaYjh5?=
- =?utf-8?B?d2FKbFdsUFU3d3RLcnU5dmREYStqd1FyZ1YySDdTWmxkNDl1RmwzZnV5dUlk?=
- =?utf-8?B?UVluNzR3WS9UQ2NJbkl1L0dEZW54UGlkZm5ibXFQMGxjcnhWOXNheUQwQVVm?=
- =?utf-8?B?dFFxTjRhcnV1NHVqbE5DNTlPNXU0Vmh1bm9qMUt4UVo1NjBKVjdYK2JTTGg0?=
- =?utf-8?B?cFBBSW5JOVJWOTMxR0NqTGVBZHhua2JNSGVSdTBmWnN5M3RSU1Zrbkc0aW9S?=
- =?utf-8?B?L1Q3MTRiY2VkQzVjdWR3UmVRYXFyaFhHU29najhsSzZlRkp4VnJUekMvcWtz?=
- =?utf-8?B?ckhDOVpjVXFib3lXUGNBbUs4T1NiMDV3NGZ3Z0hlcVhvUDUwUVhEdU0zNW5F?=
- =?utf-8?B?Y1czNHJld2huL0Q3TW9OMDhaVWtrYW1DdlQ5bzc4TnpSUVB4UFEzZjRUaEhl?=
- =?utf-8?B?QmhrTThwNU5wSVBWbmkvcnUxVkpEMFNKK2R4SlMzaG1EdExPbXNoSnZralk3?=
- =?utf-8?B?MFZWNFNKWXZCNDFnREttVnlFUXkvYzhzMEViTWxhTmtHbUhWNTZzbVRrcVF5?=
- =?utf-8?B?dFdUU3NqRlE1ZldkcEFXNjVVcnFZa1pCN2ZQQnVVaExoVEVURHhFeUJLbmI2?=
- =?utf-8?B?TXJ0Z010UWoxWDRZQ0VZUFNMWC94V3ByYmZKMU40NnJkMWNTelBwekpZWmN0?=
- =?utf-8?B?SVdVMFNpVGRRblpZY1B3cjN1RVR6cVhXbm5hbXV3NEdGOFRHZi94TkUwYUJN?=
- =?utf-8?B?WjNMU3JzaUpQU0xodUsrZWc3TDBQY3B0eHB6R09BWW5UUjdrTnJJTldkdGxa?=
- =?utf-8?B?WW5BVU4zUitVRlp3UElhc2YxT1hWdEFnN2FzdVJBNE1jL2N6T25QSUk2VkZQ?=
- =?utf-8?B?ZldaSkFwNHJsNXYvSXU5aGxzZDE2cVdERXczSFV0Y2NqUzZsYzExTDNjY096?=
- =?utf-8?B?VjlqMUtOSUNRdDZ4UG13T0Q5NW9obDlGY1J4ZWNnbnpVUlpUWW41cVMxMWh0?=
- =?utf-8?B?WkhWVUdKN3pSWnQ1YXhxQkRyUURGbEM5NEpCSDZ6cnFsMnA5d3htM3JySG1P?=
- =?utf-8?B?NXJwdDZwL0pQQnR4SHBwWlN6eEdZanZOS1VJakV1c0FaeXFrVHFIL0ttRHZD?=
- =?utf-8?B?TUkwa3FuZmhYTFE2V3NaeEVrUURoUUpsQmc3eSswSTRKSXNMdjlmdlhVODJ2?=
- =?utf-8?B?cVV1OFVWTStOR3hjWjZRVlNabEp5Y05aeGZ3ekZueVVMdFhVVWU2T01YaUxV?=
- =?utf-8?B?SUtOVjBxd0VKZmFxc05Ua3BtQWJCd0QwdS9ydlFpUHRJdUVqR213NTF5Vlpa?=
- =?utf-8?B?LzNPTW0xS1RaUzhJMWFtaVJkYUpwNUN6c1NER0lkenAvbXpvTmJMaVJvRE5M?=
- =?utf-8?B?RzhqNkdZQWp4aVJLMUV5RHFCVk1YcXoxaXNYUU9iZ3B6SkpMSnBzbVd4cG5l?=
- =?utf-8?B?Z0xiRVhSa244dmV2cUJiT1ZnWXdGVDdENy9vbnlCN2JKNjlnUmVqVFpzR3M0?=
- =?utf-8?B?TkFnM1FHZ3d4Vm16MDFhUXdFd25nOHFMTFpWVmNOckE0REVmZFIxWkx3TGtV?=
- =?utf-8?Q?1Wpp3oX9RxYSpjhwRs2Gfhyrv0U6ppGwsVsilDh?=
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: a7489838-15d0-47dc-4be2-08d8d858f415
-X-MS-Exchange-CrossTenant-AuthSource: BY5PR10MB4257.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 24 Feb 2021 00:13:03.9998
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: 9smeMEWDlLbEHFoskgH83GhobxRTplVSUfM00N7sTkbw9o4wjDXU9vcGCY0FEE/uXgzNh8R23xPorEyqAQpymg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR10MB4558
-X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9904 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 suspectscore=0
- malwarescore=0 mlxlogscore=999 adultscore=0 bulkscore=0 mlxscore=0
- phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2102240000
-X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9904 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 phishscore=0
- malwarescore=0 spamscore=0 mlxscore=0 suspectscore=0 priorityscore=1501
- clxscore=1015 impostorscore=0 lowpriorityscore=0 mlxlogscore=999
- bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2102240000
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <fde7a43ac9b61a1aff53381d0ab7b48b78cb79db.camel@hammerspace.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 2/23/21 9:33 AM, Amir Goldstein wrote:
-> On Tue, Feb 23, 2021 at 7:31 PM <dai.ngo@oracle.com> wrote:
->> On 2/23/21 8:57 AM, dai.ngo@oracle.com wrote:
->>
->>
->> On 2/23/21 8:47 AM, Amir Goldstein wrote:
->>
->> On Tue, Feb 23, 2021 at 6:02 PM <dai.ngo@oracle.com> wrote:
->>
->>
->> On 2/23/21 7:29 AM, dai.ngo@oracle.com wrote:
->>
->> On 2/23/21 2:32 AM, Luis Henriques wrote:
->>
->> On Mon, Feb 22, 2021 at 08:25:27AM -0800, dai.ngo@oracle.com wrote:
->>
->> On 2/22/21 2:24 AM, Luis Henriques wrote:
->>
->> A regression has been reported by Nicolas Boichat, found while
->> using the
->> copy_file_range syscall to copy a tracefs file.  Before commit
->> 5dae222a5ff0 ("vfs: allow copy_file_range to copy across devices") the
->> kernel would return -EXDEV to userspace when trying to copy a file
->> across
->> different filesystems.  After this commit, the syscall doesn't fail
->> anymore
->> and instead returns zero (zero bytes copied), as this file's
->> content is
->> generated on-the-fly and thus reports a size of zero.
->>
->> This patch restores some cross-filesystem copy restrictions that
->> existed
->> prior to commit 5dae222a5ff0 ("vfs: allow copy_file_range to copy
->> across
->> devices").  Filesystems are still allowed to fall-back to the VFS
->> generic_copy_file_range() implementation, but that has now to be done
->> explicitly.
->>
->> nfsd is also modified to fall-back into generic_copy_file_range()
->> in case
->> vfs_copy_file_range() fails with -EOPNOTSUPP or -EXDEV.
->>
->> Fixes: 5dae222a5ff0 ("vfs: allow copy_file_range to copy across
->> devices")
->> Link:
->> https://urldefense.com/v3/__https://lore.kernel.org/linux-fsdevel/20210212044405.4120619-1-drinkcat@chromium.org/__;!!GqivPVa7Brio!P1UWThiSkxbjfjFQWNYJmCxGEkiLFyvHjH6cS-G1ZTt1z-TeqwGQgQmi49dC6w$
->> Link:
->> https://urldefense.com/v3/__https://lore.kernel.org/linux-fsdevel/CANMq1KDZuxir2LM5jOTm0xx*BnvW=ZmpsG47CyHFJwnw7zSX6Q@mail.gmail.com/__;Kw!!GqivPVa7Brio!P1UWThiSkxbjfjFQWNYJmCxGEkiLFyvHjH6cS-G1ZTt1z-TeqwGQgQmgCmMHzA$
->> Link:
->> https://urldefense.com/v3/__https://lore.kernel.org/linux-fsdevel/20210126135012.1.If45b7cdc3ff707bc1efa17f5366057d60603c45f@changeid/__;!!GqivPVa7Brio!P1UWThiSkxbjfjFQWNYJmCxGEkiLFyvHjH6cS-G1ZTt1z-TeqwGQgQmzqItkrQ$
->> Reported-by: Nicolas Boichat <drinkcat@chromium.org>
->> Signed-off-by: Luis Henriques <lhenriques@suse.de>
->> ---
->> Changes since v7
->> - set 'ret' to '-EOPNOTSUPP' before the clone 'if' statement so
->> that the
->>       error returned is always related to the 'copy' operation
->> Changes since v6
->> - restored i_sb checks for the clone operation
->> Changes since v5
->> - check if ->copy_file_range is NULL before calling it
->> Changes since v4
->> - nfsd falls-back to generic_copy_file_range() only *if* it gets
->> -EOPNOTSUPP
->>       or -EXDEV.
->> Changes since v3
->> - dropped the COPY_FILE_SPLICE flag
->> - kept the f_op's checks early in generic_copy_file_checks,
->> implementing
->>       Amir's suggestions
->> - modified nfsd to use generic_copy_file_range()
->> Changes since v2
->> - do all the required checks earlier, in generic_copy_file_checks(),
->>       adding new checks for ->remap_file_range
->> - new COPY_FILE_SPLICE flag
->> - don't remove filesystem's fallback to generic_copy_file_range()
->> - updated commit changelog (and subject)
->> Changes since v1 (after Amir review)
->> - restored do_copy_file_range() helper
->> - return -EOPNOTSUPP if fs doesn't implement CFR
->> - updated commit description
->>
->>      fs/nfsd/vfs.c   |  8 +++++++-
->>      fs/read_write.c | 49
->> ++++++++++++++++++++++++-------------------------
->>      2 files changed, 31 insertions(+), 26 deletions(-)
->>
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 04937e51de56..23dab0fa9087 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -568,6 +568,7 @@ __be32 nfsd4_clone_file_range(struct nfsd_file
->> *nf_src, u64 src_pos,
->>      ssize_t nfsd_copy_file_range(struct file *src, u64 src_pos,
->> struct file *dst,
->>                       u64 dst_pos, u64 count)
->>      {
->> +    ssize_t ret;
->>          /*
->>           * Limit copy to 4MB to prevent indefinitely blocking an nfsd
->> @@ -578,7 +579,12 @@ ssize_t nfsd_copy_file_range(struct file *src,
->> u64 src_pos, struct file *dst,
->>           * limit like this and pipeline multiple COPY requests.
->>           */
->>          count = min_t(u64, count, 1 << 22);
->> -    return vfs_copy_file_range(src, src_pos, dst, dst_pos, count, 0);
->> +    ret = vfs_copy_file_range(src, src_pos, dst, dst_pos, count, 0);
->> +
->> +    if (ret == -EOPNOTSUPP || ret == -EXDEV)
->> +        ret = generic_copy_file_range(src, src_pos, dst, dst_pos,
->> +                          count, 0);
->> +    return ret;
->>      }
->>      __be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh
->> *fhp,
->> diff --git a/fs/read_write.c b/fs/read_write.c
->> index 75f764b43418..5a26297fd410 100644
->> --- a/fs/read_write.c
->> +++ b/fs/read_write.c
->> @@ -1388,28 +1388,6 @@ ssize_t generic_copy_file_range(struct file
->> *file_in, loff_t pos_in,
->>      }
->>      EXPORT_SYMBOL(generic_copy_file_range);
->> -static ssize_t do_copy_file_range(struct file *file_in, loff_t
->> pos_in,
->> -                  struct file *file_out, loff_t pos_out,
->> -                  size_t len, unsigned int flags)
->> -{
->> -    /*
->> -     * Although we now allow filesystems to handle cross sb copy,
->> passing
->> -     * a file of the wrong filesystem type to filesystem driver
->> can result
->> -     * in an attempt to dereference the wrong type of
->> ->private_data, so
->> -     * avoid doing that until we really have a good reason.  NFS
->> defines
->> -     * several different file_system_type structures, but they all
->> end up
->> -     * using the same ->copy_file_range() function pointer.
->> -     */
->> -    if (file_out->f_op->copy_file_range &&
->> -        file_out->f_op->copy_file_range ==
->> file_in->f_op->copy_file_range)
->> -        return file_out->f_op->copy_file_range(file_in, pos_in,
->> -                               file_out, pos_out,
->> -                               len, flags);
->> -
->> -    return generic_copy_file_range(file_in, pos_in, file_out,
->> pos_out, len,
->> -                       flags);
->> -}
->> -
->>      /*
->>       * Performs necessary checks before doing a file copy
->>       *
->> @@ -1427,6 +1405,25 @@ static int generic_copy_file_checks(struct
->> file *file_in, loff_t pos_in,
->>          loff_t size_in;
->>          int ret;
->> +    /*
->> +     * Although we now allow filesystems to handle cross sb copy,
->> passing
->> +     * a file of the wrong filesystem type to filesystem driver
->> can result
->> +     * in an attempt to dereference the wrong type of
->> ->private_data, so
->> +     * avoid doing that until we really have a good reason.  NFS
->> defines
->> +     * several different file_system_type structures, but they all
->> end up
->> +     * using the same ->copy_file_range() function pointer.
->> +     */
->> +    if (file_out->f_op->copy_file_range) {
->> +        if (file_in->f_op->copy_file_range !=
->> +            file_out->f_op->copy_file_range)
->> +            return -EXDEV;
->> +    } else if (file_in->f_op->remap_file_range) {
->> +        if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
->> +            return -EXDEV;
->>
->> I think this check is redundant, it's done in vfs_copy_file_range.
->> If this check is removed then the else clause below should be removed
->> also. Once this check and the else clause are removed then might as
->> well move the the check of copy_file_range from here to
->> vfs_copy_file_range.
->>
->> I don't think it's really redundant, although I agree is messy due to
->> the
->> fact we try to clone first instead of copying them.
->>
->> So, in the clone path, this is the only place where we return -EXDEV if:
->>
->> 1) we don't have ->copy_file_range *and*
->> 2) we have ->remap_file_range but the i_sb are different.
->>
->> The check in vfs_copy_file_range() is only executed if:
->>
->> 1) we have *valid* ->copy_file_range ops and/or
->> 2) we have *valid* ->remap_file_range
->>
->> So... if we remove the check in generic_copy_file_checks() as you
->> suggest
->> and:
->> - we don't have ->copy_file_range,
->> - we have ->remap_file_range but
->> - the i_sb are different
->>
->> we'll return the -EOPNOTSUPP (the one set in line "ret =
->> -EOPNOTSUPP;" in
->> function vfs_copy_file_range() ) instead of -EXDEV.
->>
->> Yes, this is the different.The NFS code handles both -EOPNOTSUPP and
->> -EXDEVV by doing generic_copy_file_range.  Do any other consumers of
->> vfs_copy_file_range rely on -EXDEV and not -EOPNOTSUPP and which is
->> the correct error code for this case? It seems to me that -EOPNOTSUPP
->> is more appropriate than EXDEV when (sb1 != sb2).
->>
->> EXDEV is the right code for:
->> filesystem supports the operation but not for sb1 != sb1.
->>
->> So with the current patch, for a clone operation across 2 filesystems:
->>
->>      . if src and dst filesystem support both copy_file_range and
->>        map_file_range then the code returns -ENOTSUPPORT.
->>
->> Why do you say that?
->> Which code are you referring to exactly?
->>
->>
->> If the filesystems support both copy_file_range and map_file_range,
->> it passes the check in generic_file_check but it fails with the
->> check in vfs_copy_file_range and returns -ENOTSUPPORT (added by
->> the v8 patch)
->>
->> Ok, I misread the code here. If it passes the check in generic_copy_file_checks
->> and it fails the sb check in vfs_copy_file_range then it tries copy_file_range
->> so it's ok.
->>
->> I think having the check in both generic_copy_file_checks and vfs_copy_file_range
->> making the code hard to read. What's the reason not to do the check only in
->> vfs_copy_file_range?
->>
-> You are going in circles.
-> I already answered that.
-> Please re-read the entire thread on all patch versions before commenting.
+On Tue, Feb 23, 2021 at 11:58:51PM +0000, Trond Myklebust wrote:
+> On Tue, 2021-02-23 at 17:57 -0500, J. Bruce Fields wrote:
+> > On Sun, Jan 03, 2021 at 02:27:51PM +0000, Nick Alcock wrote:
+> > > Relevant exports, from /proc/fs/nfs/exports:
+> > > 
+> > > /       192.168.16.0/24,silk.wkstn.nix(ro,insecure,no_root_squash,s
+> > > ync,no_wdelay,no_subtree_check,v4root,fsid=0,uuid=0a4a4563:00764033
+> > > :8c827c0e:989cf534,sec=390003:390004:390005:1)
+> > > /home/.loom.srvr.nix    *.srvr.nix,fold.srvr.nix(rw,root_squash,syn
+> > > c,wdelay,no_subtree_check,uuid=0a4a4563:00764033:8c827c0e:989cf534,
+> > > sec=1)
+> 
+> Isn't that trying to export the same filesystem as '/' on the line
+> above using conflicting export options?
 
-I'm fine with the patch as it is, as long as it does not break NFS.
+Yes, and exporting something on the root filesystem is generally a bad
+idea for the usual reasons.
 
-I just think it's easier to read if the checks are done in
-vfs_copy_file_range such as:
+I don't see any explanation for the write hang there, though.
 
-@@ -1495,6 +1473,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
-  
-         file_start_write(file_out);
-  
-+       if (file_out->f_op->copy_file_range == NULL &&
-+           file_in->f_op->remap_file_range == NULL)
-+               return -EOPNOTSUPP;     /* not sure this error is needed */
-+
-+       ret = -EXDEV;
-         /*
-          * Try cloning first, this is supported by more file systems, and
-          * more efficient if both clone and copy are supported (e.g. NFS).
-@@ -1513,9 +1496,10 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
-                 }
-         }
-  
--       ret = do_copy_file_range(file_in, pos_in, file_out, pos_out, len,
--                               flags);
--       WARN_ON_ONCE(ret == -EOPNOTSUPP);
-+       if (file_out->f_op->copy_file_range &&
-+           file_out->f_op->copy_file_range == file_in->f_op->copy_file_range) {
-+               ret = file_out->f_op->copy_file_range(file_in, pos_in,
-+                               file_out, pos_out, len, flags);
-  done:
-         if (ret > 0) {
-                 fsnotify_access(file_in);
+Unless maybe if it leaves mountd unable to answer an upcall for some
+reason, hm.
 
-Thanks,
--Dai
+I think that would show up in /proc/net/rpc/nfsd.fh/content.  Try
+cat'ing that file after 'rpcdebug -m rpc -s cache' and that should show
+if there's an upcall that's not getting answered.
 
->
-> Thanks,
-> Amir.
+--b.
+
+> 
+> 
+> > > /pkg/non-
+> > > free/steam     192.168.16.0/24,silk.wkstn.nix(rw,root_squash,sync,w
+> > > delay,uuid=11b94016:cb6e4b64:beb6c134:9ea3d6b3,sec=1)
+> > > 
+> > > Blocked tasks after the hang suggest that the client is hung
+> > > waiting
+> > > indefinitely for the server to reply, and I'd guess the server
+> > > doesn't
+> > > think it needs to. (I can do some server-side debugging dumps too
+> > > if you
+> > > think the problem might be there.)
+> > 
+> > I seem to remember there have been some subtle changes to how dropped
+> > replies are handled.  If I remember right: a v4 server is never
+> > supposed
+> > to drop a reply without also closing the tcp connection, but it may
+> > have
+> > done so in the past.  (I *think* all those cases are fixed?)
+> > 
+> > And the client may have been changed to be more unforgiving about
+> > that
+> > requirement in recent years.
+> > 
+> > But I don't know if that's where the issue is.
+> > 
+> > I'm not sure how best to go about debugging.  I suppose you could try
+> > to
+> > capture a network trace and work out if there's an RPC that isn't
+> > getting a reply.
+> > 
+> > Maybe turning on server debugging and looking for "svc: svc_process
+> > dropit" messages timed with the start of the hang.  I think what you
+> > want is "rpdebug -m rpc -s svcdsp".
+> > 
+> > Does rpc.mountd look healthy?
+> > 
+> > --b.
+> > 
+> > 
+> > > 
+> > > [  322.843962] sysrq: Show Blocked State
+> > > [  322.844058] task:tee             state:D stack:    0 pid: 1176
+> > > ppid:  1173 flags:0x00000000
+> > > [  322.844064] Call Trace:
+> > > [  322.844074]  __schedule+0x3db/0x7ee
+> > > [  322.844079]  ? io_schedule+0x70/0x6d
+> > > [  322.844082]  schedule+0x68/0xdc
+> > > [  322.844085]  io_schedule+0x46/0x6d
+> > > [  322.844089]  bit_wait_io+0x11/0x52
+> > > [  322.844092]  __wait_on_bit+0x31/0x90
+> > > [  322.844096]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.844100]  ? var_wake_function+0x30/0x27
+> > > [  322.844104]  nfs_wait_on_request.part.0+0x31/0x33
+> > > [  322.844107]  nfs_page_group_lock_head+0x31/0x78
+> > > [  322.844110]  nfs_lock_and_join_requests+0x9d/0x26e
+> > > [  322.844114]  nfs_updatepage+0x1be/0x985
+> > > [  322.844118]  nfs_write_end+0x128/0x52a
+> > > [  322.844122]  ? iov_iter_copy_from_user_atomic+0xe8/0x3ce
+> > > [  322.844127]  generic_perform_write+0xed/0x17c
+> > > [  322.844131]  nfs_file_write+0x14a/0x29f
+> > > [  322.844135]  new_sync_write+0xfb/0x16b
+> > > [  322.844139]  vfs_write+0x1ee/0x29a
+> > > [  322.844142]  ? vfs_read+0x17b/0x198
+> > > [  322.844145]  ksys_write+0x61/0xd0
+> > > [  322.844148]  __x64_sys_write+0x1a/0x1c
+> > > [  322.844151]  do_syscall_64+0x32/0x45
+> > > [  322.844154]  entry_SYSCALL_64_after_hwframe+0x44/0x0
+> > > [  322.844158] RIP: 0033:0x7f4781f323a3
+> > > [  322.844160] RSP: 002b:00007ffcf8220408 EFLAGS: 00000246
+> > > ORIG_RAX: 0000000000000001
+> > > [  322.844164] RAX: ffffffffffffffda RBX: 0000000000000092 RCX:
+> > > 00007f4781f323a3
+> > > [  322.844166] RDX: 0000000000000092 RSI: 00007ffcf8220530 RDI:
+> > > 0000000000000003
+> > > [  322.844168] RBP: 00007ffcf8220530 R08: 0000000000000000 R09:
+> > > 0000000000000001
+> > > [  322.844170] R10: 0000000000400ad2 R11: 0000000000000246 R12:
+> > > 0000000000000092
+> > > [  322.844172] R13: 0000000002361580 R14: 0000000000000092 R15:
+> > > 00007f4782201720
+> > > [  322.844202] task:CIPCServer::Thr state:D stack:    0 pid: 1801
+> > > ppid:  1540 flags:0x20020000
+> > > [  322.844207] Call Trace:
+> > > [  322.844212]  __schedule+0x3db/0x7ee
+> > > [  322.844219]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.844222]  schedule+0x68/0xdc
+> > > [  322.844227]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.844230]  __wait_on_bit+0x31/0x90
+> > > [  322.844235]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.844238]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.844242]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.844246]  ? var_wake_function+0x30/0x27
+> > > [  322.844250]  __rpc_execute+0xe5/0x485
+> > > [  322.844254]  ? sugov_get_util+0xf0/0xeb
+> > > [  322.844258]  rpc_execute+0xa5/0xaa
+> > > [  322.844263]  rpc_run_task+0x148/0x187
+> > > [  322.844267]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.844272]  _nfs4_proc_getattr+0x10a/0x120
+> > > [  322.844278]  nfs4_proc_getattr+0x67/0xee
+> > > [  322.844283]  __nfs_revalidate_inode+0xb7/0x2df
+> > > [  322.844287]  nfs_access_get_cached+0x14d/0x1df
+> > > [  322.844291]  nfs_do_access+0x48/0x28e
+> > > [  322.844296]  ? step_into+0x2bc/0x6a1
+> > > [  322.844301]  nfs_permission+0xa2/0x1b8
+> > > [  322.844305]  inode_permission+0x96/0xca
+> > > [  322.844308]  ? unlazy_walk+0x4c/0x80
+> > > [  322.844312]  link_path_walk.part.0+0x2a5/0x320
+> > > [  322.844315]  ? path_init+0x2c2/0x3e5
+> > > [  322.844318]  path_lookupat+0x3f/0x1b1
+> > > [  322.844322]  filename_lookup+0x97/0x17f
+> > > [  322.844326]  ? kmem_cache_alloc+0x32/0x200
+> > > [  322.844331]  user_path_at_empty+0x59/0x8a
+> > > [  322.844333]  do_faccessat+0x70/0x227
+> > > [  322.844337]  __ia32_sys_access+0x1c/0x1e
+> > > [  322.844340]  __do_fast_syscall_32+0x5f/0x8e
+> > > [  322.844342]  do_fast_syscall_32+0x3d/0x80
+> > > [  322.844346]  entry_SYSCALL_compat_after_hwframe+0x45/0x0
+> > > [  322.844348] RIP: 0023:0xf7ee6549
+> > > [  322.844350] RSP: 002b:00000000eb763b28 EFLAGS: 00200292
+> > > ORIG_RAX: 0000000000000021
+> > > [  322.844353] RAX: ffffffffffffffda RBX: 000000005754d9e0 RCX:
+> > > 0000000000000004
+> > > [  322.844355] RDX: 00000000f7ab3e1c RSI: 000000005754d9e0 RDI:
+> > > 00000000eb763bc8
+> > > [  322.844357] RBP: 00000000f78a91c0 R08: 0000000000000000 R09:
+> > > 0000000000000000
+> > > [  322.844359] R10: 0000000000000000 R11: 0000000000000000 R12:
+> > > 0000000000000000
+> > > [  322.844360] R13: 0000000000000000 R14: 0000000000000000 R15:
+> > > 0000000000000000
+> > > [  322.844364] task:CFileWriterThre state:D stack:    0 pid: 1810
+> > > ppid:  1540 flags:0x20024000
+> > > [  322.844367] Call Trace:
+> > > [  322.844371]  __schedule+0x3db/0x7ee
+> > > [  322.844375]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.844379]  schedule+0x68/0xdc
+> > > [  322.844382]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.844385]  __wait_on_bit+0x31/0x90
+> > > [  322.844389]  ? call_reserveresult+0xa0/0x9f
+> > > [  322.844391]  ? call_transmit_status+0x160/0x159
+> > > [  322.844395]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.844398]  ? var_wake_function+0x30/0x27
+> > > [  322.844401]  __rpc_execute+0xe5/0x485
+> > > [  322.844404]  ? nfs_check_verifier+0x5b/0xa4
+> > > [  322.844407]  rpc_execute+0xa5/0xaa
+> > > [  322.844410]  rpc_run_task+0x148/0x187
+> > > [  322.844414]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.844417]  _nfs4_proc_getattr+0x10a/0x120
+> > > [  322.844422]  nfs4_proc_getattr+0x67/0xee
+> > > [  322.844426]  __nfs_revalidate_inode+0xb7/0x2df
+> > > [  322.844430]  nfs_getattr+0x159/0x374
+> > > [  322.844433]  vfs_getattr_nosec+0x96/0xa4
+> > > [  322.844435]  vfs_statx+0x7a/0xe5
+> > > [  322.844438]  vfs_fstatat+0x1f/0x21
+> > > [  322.844443]  __do_compat_sys_ia32_lstat64+0x2b/0x4e
+> > > [  322.844448]  __ia32_compat_sys_ia32_lstat64+0x14/0x16
+> > > [  322.844450]  __do_fast_syscall_32+0x5f/0x8e
+> > > [  322.844453]  do_fast_syscall_32+0x3d/0x80
+> > > [  322.844457]  entry_SYSCALL_compat_after_hwframe+0x45/0x0
+> > > [  322.844459] RIP: 0023:0xf7ee6549
+> > > [  322.844460] RSP: 002b:00000000eb561be8 EFLAGS: 00000292
+> > > ORIG_RAX: 00000000000000c4
+> > > [  322.844463] RAX: ffffffffffffffda RBX: 00000000c521bf60 RCX:
+> > > 00000000eb561e70
+> > > [  322.844465] RDX: 00000000f7ab3e1c RSI: 00000000eb561e70 RDI:
+> > > 00000000c521bf60
+> > > [  322.844467] RBP: 0000000000000000 R08: 0000000000000000 R09:
+> > > 0000000000000000
+> > > [  322.844468] R10: 0000000000000000 R11: 0000000000000000 R12:
+> > > 0000000000000000
+> > > [  322.844470] R13: 0000000000000000 R14: 0000000000000000 R15:
+> > > 0000000000000000
+> > > [  322.844477] task:Steam - DirWatc state:D stack:    0 pid: 1924
+> > > ppid:  1540 flags:0x20024000
+> > > [  322.844480] Call Trace:
+> > > [  322.844484]  __schedule+0x3db/0x7ee
+> > > [  322.844488]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.844492]  schedule+0x68/0xdc
+> > > [  322.844495]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.844498]  __wait_on_bit+0x31/0x90
+> > > [  322.844501]  ? rpc_sleep_on_timeout+0x64/0x9c
+> > > [  322.844504]  ? rpc_check_timeout+0x1e0/0x1e0
+> > > [  322.844507]  ? call_connect_status+0x180/0x17a
+> > > [  322.844511]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.844513]  ? var_wake_function+0x30/0x27
+> > > [  322.844516]  __rpc_execute+0xe5/0x485
+> > > [  322.844520]  rpc_execute+0xa5/0xaa
+> > > [  322.844523]  rpc_run_task+0x148/0x187
+> > > [  322.844526]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.844530]  _nfs4_proc_getattr+0x10a/0x120
+> > > [  322.844534]  nfs4_proc_getattr+0x67/0xee
+> > > [  322.844538]  __nfs_revalidate_inode+0xb7/0x2df
+> > > [  322.844542]  nfs_lookup_verify_inode+0x67/0x82
+> > > [  322.844545]  nfs_do_lookup_revalidate+0x19b/0x29c
+> > > [  322.844548]  nfs4_do_lookup_revalidate+0x5d/0xc5
+> > > [  322.844552]  nfs4_lookup_revalidate+0x6a/0x8d
+> > > [  322.844555]  lookup_fast+0xb8/0x122
+> > > [  322.844559]  path_openat+0xfd/0xfd8
+> > > [  322.844562]  ? unlazy_walk+0x4c/0x80
+> > > [  322.844565]  ? terminate_walk+0x62/0xed
+> > > [  322.844569]  ? putname+0x4b/0x53
+> > > [  322.844572]  do_filp_open+0x86/0x110
+> > > [  322.844576]  ? kmem_cache_alloc+0x32/0x200
+> > > [  322.844579]  ? __alloc_fd+0xb2/0x143
+> > > [  322.844583]  do_sys_openat2+0x8d/0x13a
+> > > [  322.844585]  ? do_faccessat+0x108/0x227
+> > > [  322.844588]  __ia32_compat_sys_openat+0x48/0x63
+> > > [  322.844591]  __do_fast_syscall_32+0x5f/0x8e
+> > > [  322.844594]  do_fast_syscall_32+0x3d/0x80
+> > > [  322.844597]  entry_SYSCALL_compat_after_hwframe+0x45/0x0
+> > > [  322.844600] RIP: 0023:0xf7ee6549
+> > > [  322.844601] RSP: 002b:000000008c8fbcb0 EFLAGS: 00200287
+> > > ORIG_RAX: 0000000000000127
+> > > [  322.844604] RAX: ffffffffffffffda RBX: 00000000ffffff9c RCX:
+> > > 000000008c8fbffc
+> > > [  322.844606] RDX: 0000000000098800 RSI: 0000000000000000 RDI:
+> > > 00000000f7ab3e1c
+> > > [  322.844608] RBP: 0000000000000000 R08: 0000000000000000 R09:
+> > > 0000000000000000
+> > > [  322.844609] R10: 0000000000000000 R11: 0000000000000000 R12:
+> > > 0000000000000000
+> > > [  322.844611] R13: 0000000000000000 R14: 0000000000000000 R15:
+> > > 0000000000000000
+> > > [  322.844614] task:CGenericAsyncFi state:D stack:    0 pid: 1927
+> > > ppid:  1540 flags:0x20020000
+> > > [  322.844617] Call Trace:
+> > > [  322.844621]  __schedule+0x3db/0x7ee
+> > > [  322.844625]  schedule+0x68/0xdc
+> > > [  322.844628]  io_schedule+0x46/0x6d
+> > > [  322.844631]  wait_on_page_bit_common+0xf8/0x325
+> > > [  322.844634]  ?
+> > > trace_raw_output_file_check_and_advance_wb_err+0x80/0x7d
+> > > [  322.844638]  wait_on_page_bit+0x3f/0x41
+> > > [  322.844642]  wait_on_page_writeback.part.0+0x35/0x80
+> > > [  322.844645]  wait_on_page_writeback+0x27/0x29
+> > > [  322.844647]  __filemap_fdatawait_range+0x88/0xd9
+> > > [  322.844651]  filemap_write_and_wait_range+0x45/0x80
+> > > [  322.844655]  nfs_wb_all+0x30/0x13d
+> > > [  322.844658]  nfs4_file_flush+0x85/0xc0
+> > > [  322.844661]  filp_close+0x3e/0x78
+> > > [  322.844664]  __close_fd+0x23/0x30
+> > > [  322.844667]  __ia32_sys_close+0x22/0x50
+> > > [  322.844670]  __do_fast_syscall_32+0x5f/0x8e
+> > > [  322.844673]  do_fast_syscall_32+0x3d/0x80
+> > > [  322.844676]  entry_SYSCALL_compat_after_hwframe+0x45/0x0
+> > > [  322.844678] RIP: 0023:0xf7ee6549
+> > > [  322.844680] RSP: 002b:000000008c5fddb0 EFLAGS: 00200286
+> > > ORIG_RAX: 0000000000000006
+> > > [  322.844682] RAX: ffffffffffffffda RBX: 000000000000004d RCX:
+> > > 0000000000000002
+> > > [  322.844684] RDX: 0000000000000000 RSI: 00000000f7d02e70 RDI:
+> > > 000000000000004d
+> > > [  322.844686] RBP: 000000008c5fe110 R08: 0000000000000000 R09:
+> > > 0000000000000000
+> > > [  322.844688] R10: 0000000000000000 R11: 0000000000000000 R12:
+> > > 0000000000000000
+> > > [  322.844689] R13: 0000000000000000 R14: 0000000000000000 R15:
+> > > 0000000000000000
+> > > [  322.844699] task:ThreadPoolForeg state:D stack:    0 pid: 1768
+> > > ppid:  1735 flags:0x00004000
+> > > [  322.844702] Call Trace:
+> > > [  322.844705]  __schedule+0x3db/0x7ee
+> > > [  322.844709]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.844712]  schedule+0x68/0xdc
+> > > [  322.844716]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.844719]  __wait_on_bit+0x31/0x90
+> > > [  322.844722]  ? rpc_sleep_on_timeout+0x64/0x9c
+> > > [  322.844725]  ? rpc_check_timeout+0x1e0/0x1e0
+> > > [  322.844728]  ? call_connect_status+0x180/0x17a
+> > > [  322.844731]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.844734]  ? var_wake_function+0x30/0x27
+> > > [  322.844737]  __rpc_execute+0xe5/0x485
+> > > [  322.844740]  ? nfs_check_verifier+0x5b/0xa4
+> > > [  322.844743]  rpc_execute+0xa5/0xaa
+> > > [  322.844746]  rpc_run_task+0x148/0x187
+> > > [  322.844750]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.844753]  _nfs4_proc_getattr+0x10a/0x120
+> > > [  322.844758]  nfs4_proc_getattr+0x67/0xee
+> > > [  322.844762]  __nfs_revalidate_inode+0xb7/0x2df
+> > > [  322.844766]  nfs_getattr+0x159/0x374
+> > > [  322.844769]  vfs_getattr_nosec+0x96/0xa4
+> > > [  322.844771]  vfs_statx+0x7a/0xe5
+> > > [  322.844774]  __do_sys_newstat+0x31/0x4c
+> > > [  322.844778]  __x64_sys_newstat+0x16/0x18
+> > > [  322.844781]  do_syscall_64+0x32/0x45
+> > > [  322.844783]  entry_SYSCALL_64_after_hwframe+0x44/0x0
+> > > [  322.844786] RIP: 0033:0x7fe70ebf19e6
+> > > [  322.844787] RSP: 002b:00007fe6c15b2068 EFLAGS: 00000246
+> > > ORIG_RAX: 0000000000000004
+> > > [  322.844790] RAX: ffffffffffffffda RBX: 00000bd4193e1910 RCX:
+> > > 00007fe70ebf19e6
+> > > [  322.844792] RDX: 00007fe6c15b2078 RSI: 00007fe6c15b2078 RDI:
+> > > 00000bd4193e1910
+> > > [  322.844794] RBP: 00007fe6c15b2160 R08: 0000000000000001 R09:
+> > > 00007ffd971ed090
+> > > [  322.844796] R10: 0000000000056764 R11: 0000000000000246 R12:
+> > > 00007fe6c15b2078
+> > > [  322.844797] R13: 00000bd4192f6f60 R14: 00007fe6c15b2108 R15:
+> > > 00007fe6c15b2120
+> > > [  322.844801] task:ThreadPoolForeg state:D stack:    0 pid: 1769
+> > > ppid:  1735 flags:0x00000000
+> > > [  322.844804] Call Trace:
+> > > [  322.844807]  __schedule+0x3db/0x7ee
+> > > [  322.844811]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.844814]  schedule+0x68/0xdc
+> > > [  322.844817]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.844820]  __wait_on_bit+0x31/0x90
+> > > [  322.844823]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.844826]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.844829]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.844831]  ? var_wake_function+0x30/0x27
+> > > [  322.844834]  __rpc_execute+0xe5/0x485
+> > > [  322.844837]  ? update_cfs_group+0x9a/0x9e
+> > > [  322.844840]  rpc_execute+0xa5/0xaa
+> > > [  322.844842]  rpc_run_task+0x148/0x187
+> > > [  322.844845]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.844849]  _nfs4_proc_getattr+0x10a/0x120
+> > > [  322.844853]  nfs4_proc_getattr+0x67/0xee
+> > > [  322.844856]  __nfs_revalidate_inode+0xb7/0x2df
+> > > [  322.844859]  nfs_file_write+0xfc/0x29f
+> > > [  322.844862]  new_sync_write+0xfb/0x16b
+> > > [  322.844866]  vfs_write+0x1ee/0x29a
+> > > [  322.844868]  ? __fget_light+0x31/0x72
+> > > [  322.844871]  ksys_write+0x61/0xd0
+> > > [  322.844874]  __x64_sys_write+0x1a/0x1c
+> > > [  322.844877]  do_syscall_64+0x32/0x45
+> > > [  322.844880]  entry_SYSCALL_64_after_hwframe+0x44/0x0
+> > > [  322.844881] RIP: 0033:0x7fe71859ab7f
+> > > [  322.844883] RSP: 002b:00007fe6bd5b0d30 EFLAGS: 00000293
+> > > ORIG_RAX: 0000000000000001
+> > > [  322.844885] RAX: ffffffffffffffda RBX: 00007fe6bd5b0d68 RCX:
+> > > 00007fe71859ab7f
+> > > [  322.844887] RDX: 0000000000000007 RSI: 00007fe6bd5b1090 RDI:
+> > > 000000000000005b
+> > > [  322.844888] RBP: 00007fe6bd5b0de0 R08: 0000000000000000 R09:
+> > > 00007ffd971ed090
+> > > [  322.844890] R10: 0000000000065fd2 R11: 0000000000000293 R12:
+> > > 00000bd418d95020
+> > > [  322.844891] R13: 00007fe6bd5b1090 R14: 0000000000000007 R15:
+> > > 0000000000000000
+> > > [  322.844900] task:ThreadPoolForeg state:D stack:    0 pid: 1807
+> > > ppid:  1773 flags:0x00000000
+> > > [  322.844902] Call Trace:
+> > > [  322.844904]  __schedule+0x3db/0x7ee
+> > > [  322.844907]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.844908]  schedule+0x68/0xdc
+> > > [  322.844911]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.844913]  __wait_on_bit+0x31/0x90
+> > > [  322.844915]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.844916]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.844918]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.844920]  ? var_wake_function+0x30/0x27
+> > > [  322.844922]  __rpc_execute+0xe5/0x485
+> > > [  322.844924]  rpc_execute+0xa5/0xaa
+> > > [  322.844926]  rpc_run_task+0x148/0x187
+> > > [  322.844928]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.844930]  _nfs4_proc_getattr+0x10a/0x120
+> > > [  322.844933]  nfs4_proc_getattr+0x67/0xee
+> > > [  322.844936]  __nfs_revalidate_inode+0xb7/0x2df
+> > > [  322.844938]  nfs_access_get_cached+0x14d/0x1df
+> > > [  322.844940]  nfs_do_access+0x48/0x28e
+> > > [  322.844942]  ? nfs4_lookup_revalidate+0x38/0x8d
+> > > [  322.844944]  nfs_permission+0xa2/0x1b8
+> > > [  322.844946]  inode_permission+0x96/0xca
+> > > [  322.844948]  ? unlazy_walk+0x4c/0x80
+> > > [  322.844950]  link_path_walk.part.0+0x2a5/0x320
+> > > [  322.844952]  ? path_init+0x2c2/0x3e5
+> > > [  322.844954]  path_lookupat+0x3f/0x1b1
+> > > [  322.844956]  filename_lookup+0x97/0x17f
+> > > [  322.844959]  ? do_unlk+0x9a/0xca
+> > > [  322.844960]  ? kmem_cache_alloc+0x32/0x200
+> > > [  322.844963]  user_path_at_empty+0x59/0x8a
+> > > [  322.844965]  vfs_statx+0x64/0xe5
+> > > [  322.844967]  __do_sys_newstat+0x31/0x4c
+> > > [  322.844968]  ? do_fcntl+0x113/0x582
+> > > [  322.844971]  ? fput+0x13/0x15
+> > > [  322.844972]  ? __x64_sys_fcntl+0x81/0xa8
+> > > [  322.844974]  __x64_sys_newstat+0x16/0x18
+> > > [  322.844976]  do_syscall_64+0x32/0x45
+> > > [  322.844977]  entry_SYSCALL_64_after_hwframe+0x44/0x0
+> > > [  322.844979] RIP: 0033:0x7f0d1fd0c9e6
+> > > [  322.844980] RSP: 002b:00007f0d08e12e18 EFLAGS: 00000246
+> > > ORIG_RAX: 0000000000000004
+> > > [  322.844981] RAX: ffffffffffffffda RBX: 00007f0d08e12edc RCX:
+> > > 00007f0d1fd0c9e6
+> > > [  322.844983] RDX: 00007f0d08e12e28 RSI: 00007f0d08e12e28 RDI:
+> > > 00001605c2ff1169
+> > > [  322.844984] RBP: 00007f0d08e12ec0 R08: 0000000000000001 R09:
+> > > 00007fffaddd9090
+> > > [  322.844985] R10: 00001605c3133480 R11: 0000000000000246 R12:
+> > > 0000000000000000
+> > > [  322.844986] R13: 0000000000000000 R14: 00001605c2ff0f00 R15:
+> > > 0000000000000000
+> > > [  322.844988] task:ThreadPoolForeg state:D stack:    0 pid: 2031
+> > > ppid:  1773 flags:0x00004000
+> > > [  322.844990] Call Trace:
+> > > [  322.844992]  __schedule+0x3db/0x7ee
+> > > [  322.844995]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.844997]  schedule+0x68/0xdc
+> > > [  322.844999]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.845001]  __wait_on_bit+0x31/0x90
+> > > [  322.845003]  ? rpc_sleep_on_timeout+0x64/0x9c
+> > > [  322.845005]  ? rpc_check_timeout+0x1e0/0x1e0
+> > > [  322.845006]  ? call_connect_status+0x180/0x17a
+> > > [  322.845009]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.845010]  ? var_wake_function+0x30/0x27
+> > > [  322.845012]  __rpc_execute+0xe5/0x485
+> > > [  322.845014]  rpc_execute+0xa5/0xaa
+> > > [  322.845016]  rpc_run_task+0x148/0x187
+> > > [  322.845018]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.845020]  _nfs4_proc_getattr+0x10a/0x120
+> > > [  322.845023]  nfs4_proc_getattr+0x67/0xee
+> > > [  322.845026]  __nfs_revalidate_inode+0xb7/0x2df
+> > > [  322.845028]  nfs_access_get_cached+0x14d/0x1df
+> > > [  322.845030]  nfs_do_access+0x48/0x28e
+> > > [  322.845032]  ? nfs4_lookup_revalidate+0x38/0x8d
+> > > [  322.845034]  nfs_permission+0xa2/0x1b8
+> > > [  322.845036]  inode_permission+0x96/0xca
+> > > [  322.845038]  ? unlazy_walk+0x4c/0x80
+> > > [  322.845040]  link_path_walk.part.0+0x2a5/0x320
+> > > [  322.845042]  ? path_init+0x2c2/0x3e5
+> > > [  322.845044]  path_lookupat+0x3f/0x1b1
+> > > [  322.845046]  filename_lookup+0x97/0x17f
+> > > [  322.845049]  ? kmem_cache_alloc+0x32/0x200
+> > > [  322.845051]  user_path_at_empty+0x59/0x8a
+> > > [  322.845054]  ? mntput_no_expire+0x4f/0x264
+> > > [  322.845055]  vfs_statx+0x64/0xe5
+> > > [  322.845057]  ? putname+0x4b/0x53
+> > > [  322.845059]  __do_sys_newstat+0x31/0x4c
+> > > [  322.845062]  ? __x64_sys_futex+0x13a/0x159
+> > > [  322.845064]  ? switch_fpu_return+0x58/0xf2
+> > > [  322.845066]  __x64_sys_newstat+0x16/0x18
+> > > [  322.845068]  do_syscall_64+0x32/0x45
+> > > [  322.845069]  entry_SYSCALL_64_after_hwframe+0x44/0x0
+> > > [  322.845071] RIP: 0033:0x7f0d1fd0c9e6
+> > > [  322.845072] RSP: 002b:00007f0d00331108 EFLAGS: 00000246
+> > > ORIG_RAX: 0000000000000004
+> > > [  322.845073] RAX: ffffffffffffffda RBX: 00001605c2fdc0a0 RCX:
+> > > 00007f0d1fd0c9e6
+> > > [  322.845074] RDX: 00007f0d00331118 RSI: 00007f0d00331118 RDI:
+> > > 00001605c2fdc0a0
+> > > [  322.845076] RBP: 00007f0d00331200 R08: 0000000000000001 R09:
+> > > 00007fffaddd9090
+> > > [  322.845077] R10: 000000000005771c R11: 0000000000000246 R12:
+> > > 00007f0d00331118
+> > > [  322.845078] R13: 00001605c3309c40 R14: 00007f0d003311a8 R15:
+> > > 00007f0d003311c0
+> > > [  322.845087] task:192.168.16.8-ma state:D stack:    0 pid: 2044
+> > > ppid:     2 flags:0x00004000
+> > > [  322.845089] Call Trace:
+> > > [  322.845091]  __schedule+0x3db/0x7ee
+> > > [  322.845094]  ?
+> > > trace_event_raw_event_rpc_xdr_overflow+0x280/0x27e
+> > > [  322.845095]  schedule+0x68/0xdc
+> > > [  322.845098]  rpc_wait_bit_killable+0x11/0x52
+> > > [  322.845100]  __wait_on_bit+0x31/0x90
+> > > [  322.845102]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.845103]  ? __rpc_atrun+0x20/0x1a
+> > > [  322.845105]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  322.845107]  ? var_wake_function+0x30/0x27
+> > > [  322.845109]  __rpc_execute+0xe5/0x485
+> > > [  322.845111]  rpc_execute+0xa5/0xaa
+> > > [  322.845113]  rpc_run_task+0x148/0x187
+> > > [  322.845115]  nfs4_do_call_sync+0x61/0x81
+> > > [  322.845117]  _nfs4_proc_statfs+0xc1/0xcf
+> > > [  322.845120]  nfs4_proc_statfs+0x55/0x74
+> > > [  322.845122]  nfs_statfs+0x65/0x152
+> > > [  322.845124]  ? _nfs4_proc_delegreturn+0x21e/0x2e5
+> > > [  322.845127]  statfs_by_dentry+0x55/0x74
+> > > [  322.845129]  vfs_statfs+0x24/0x43
+> > > [  322.845132]  check_free_space+0x3c/0xe5
+> > > [  322.845135]  do_acct_process+0x5d/0x5e1
+> > > [  322.845136]  ? nfs_end_delegation_return+0x1cb/0x3aa
+> > > [  322.845138]  ? complete+0x49/0x57
+> > > [  322.845141]  acct_process+0xe5/0x105
+> > > [  322.845143]  do_exit+0x781/0xa1b
+> > > [  322.845145]  ? refcount_dec_and_lock+0x22/0x8c
+> > > [  322.845148]  __module_put_and_exit+0x1b/0x1b
+> > > [  322.845150]  nfs4_run_state_manager+0x293/0x933
+> > > [  322.845152]  ? nfs4_do_reclaim+0x820/0x81c
+> > > [  322.845155]  kthread+0x142/0x15f
+> > > [  322.845157]  ? __kthread_create_worker+0x130/0x122
+> > > [  322.845159]  ret_from_fork+0x1f/0x2a
+> > > [  369.859385] INFO: task tee:1176 blocked for more than 122
+> > > seconds.
+> > > [  369.859391]       Not tainted 5.10.4-00021-gde017294a539-dirty
+> > > #3
+> > > [  369.859393] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+> > > disables this message.
+> > > [  369.859395] task:tee             state:D stack:    0 pid: 1176
+> > > ppid:  1173 flags:0x00000000
+> > > [  369.859399] Call Trace:
+> > > [  369.859407]  __schedule+0x3db/0x7ee
+> > > [  369.859410]  ? io_schedule+0x70/0x6d
+> > > [  369.859412]  schedule+0x68/0xdc
+> > > [  369.859415]  io_schedule+0x46/0x6d
+> > > [  369.859417]  bit_wait_io+0x11/0x52
+> > > [  369.859420]  __wait_on_bit+0x31/0x90
+> > > [  369.859422]  out_of_line_wait_on_bit+0x7e/0x80
+> > > [  369.859426]  ? var_wake_function+0x30/0x27
+> > > [  369.859429]  nfs_wait_on_request.part.0+0x31/0x33
+> > > [  369.859431]  nfs_page_group_lock_head+0x31/0x78
+> > > [  369.859433]  nfs_lock_and_join_requests+0x9d/0x26e
+> > > [  369.859436]  nfs_updatepage+0x1be/0x985
+> > > [  369.859439]  nfs_write_end+0x128/0x52a
+> > > [  369.859443]  ? iov_iter_copy_from_user_atomic+0xe8/0x3ce
+> > > [  369.859446]  generic_perform_write+0xed/0x17c
+> > > [  369.859449]  nfs_file_write+0x14a/0x29f
+> > > [  369.859452]  new_sync_write+0xfb/0x16b
+> > > [  369.859455]  vfs_write+0x1ee/0x29a
+> > > [  369.859457]  ? vfs_read+0x17b/0x198
+> > > [  369.859459]  ksys_write+0x61/0xd0
+> > > [  369.859462]  __x64_sys_write+0x1a/0x1c
+> > > [  369.859464]  do_syscall_64+0x32/0x45
+> > > [  369.859467]  entry_SYSCALL_64_after_hwframe+0x44/0x0
+> > > [  369.859469] RIP: 0033:0x7f4781f323a3
+> > > [  369.859471] RSP: 002b:00007ffcf8220408 EFLAGS: 00000246
+> > > ORIG_RAX: 0000000000000001
+> > > [  369.859474] RAX: ffffffffffffffda RBX: 0000000000000092 RCX:
+> > > 00007f4781f323a3
+> > > [  369.859475] RDX: 0000000000000092 RSI: 00007ffcf8220530 RDI:
+> > > 0000000000000003
+> > > [  369.859477] RBP: 00007ffcf8220530 R08: 0000000000000000 R09:
+> > > 0000000000000001
+> > > [  369.859478] R10: 0000000000400ad2 R11: 0000000000000246 R12:
+> > > 0000000000000092
+> > > [  369.859480] R13: 0000000002361580 R14: 0000000000000092 R15:
+> > > 00007f4782201720
+> > > [  369.859495] INFO: task CGenericAsyncFi:1927 blocked for more
+> > > than 122 seconds.
+> > > [  369.859497]       Not tainted 5.10.4-00021-gde017294a539-dirty
+> > > #3
+> > > [  369.859498] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+> > > disables this message.
+> > > [  369.859499] task:CGenericAsyncFi state:D stack:    0 pid: 1927
+> > > ppid:  1540 flags:0x20020000
+> > > [  369.859501] Call Trace:
+> > > [  369.859504]  __schedule+0x3db/0x7ee
+> > > [  369.859506]  schedule+0x68/0xdc
+> > > [  369.859508]  io_schedule+0x46/0x6d
+> > > [  369.859510]  wait_on_page_bit_common+0xf8/0x325
+> > > [  369.859512]  ?
+> > > trace_raw_output_file_check_and_advance_wb_err+0x80/0x7d
+> > > [  369.859515]  wait_on_page_bit+0x3f/0x41
+> > > [  369.859517]  wait_on_page_writeback.part.0+0x35/0x80
+> > > [  369.859519]  wait_on_page_writeback+0x27/0x29
+> > > [  369.859521]  __filemap_fdatawait_range+0x88/0xd9
+> > > [  369.859523]  filemap_write_and_wait_range+0x45/0x80
+> > > [  369.859525]  nfs_wb_all+0x30/0x13d
+> > > [  369.859528]  nfs4_file_flush+0x85/0xc0
+> > > [  369.859530]  filp_close+0x3e/0x78
+> > > [  369.859532]  __close_fd+0x23/0x30
+> > > [  369.859534]  __ia32_sys_close+0x22/0x50
+> > > [  369.859536]  __do_fast_syscall_32+0x5f/0x8e
+> > > [  369.859538]  do_fast_syscall_32+0x3d/0x80
+> > > [  369.859540]  entry_SYSCALL_compat_after_hwframe+0x45/0x0
+> > > [  369.859541] RIP: 0023:0xf7ee6549
+> > > [  369.859543] RSP: 002b:000000008c5fddb0 EFLAGS: 00200286
+> > > ORIG_RAX: 0000000000000006
+> > > [  369.859545] RAX: ffffffffffffffda RBX: 000000000000004d RCX:
+> > > 0000000000000002
+> > > [  369.859546] RDX: 0000000000000000 RSI: 00000000f7d02e70 RDI:
+> > > 000000000000004d
+> > > [  369.859547] RBP: 000000008c5fe110 R08: 0000000000000000 R09:
+> > > 0000000000000000
+> > > [  369.859548] R10: 0000000000000000 R11: 0000000000000000 R12:
+> > > 0000000000000000
+> > > [  369.859549] R13: 0000000000000000 R14: 0000000000000000 R15:
+> > > 0000000000000000
+> > > [  394.423093] nfs: server loom not responding, still trying
+> > > 
+> > > -- 
+> > > NULL && (void)
+> 
+> -- 
+> Trond Myklebust
+> CTO, Hammerspace Inc
+> 4984 El Camino Real, Suite 208
+> Los Altos, CA 94022
+> ​
+> www.hammer.space
+> 
