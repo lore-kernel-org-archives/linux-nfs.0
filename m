@@ -2,254 +2,143 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7EB85C433DB
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:27:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D38BC433DB
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:46:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3333B60241
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:27:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DEC6764EC9
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Feb 2021 10:46:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234754AbhBXK1E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Feb 2021 05:27:04 -0500
-Received: from outbound-smtp20.blacknight.com ([46.22.139.247]:55213 "EHLO
-        outbound-smtp20.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S234679AbhBXK05 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2021 05:26:57 -0500
-Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
-        by outbound-smtp20.blacknight.com (Postfix) with ESMTPS id 75B1F1C4371
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Feb 2021 10:26:04 +0000 (GMT)
-Received: (qmail 23463 invoked from network); 24 Feb 2021 10:26:04 -0000
-Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPA; 24 Feb 2021 10:26:04 -0000
-From:   Mel Gorman <mgorman@techsingularity.net>
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        Jesper Dangaard Brouer <brouer@redhat.com>
-Cc:     LKML <linux-kernel@vger.kernel.org>,
-        Linux-Net <netdev@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 2/3] mm, page_alloc: Add a bulk page allocator
-Date:   Wed, 24 Feb 2021 10:26:02 +0000
-Message-Id: <20210224102603.19524-3-mgorman@techsingularity.net>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210224102603.19524-1-mgorman@techsingularity.net>
-References: <20210224102603.19524-1-mgorman@techsingularity.net>
+        id S234870AbhBXKp7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Feb 2021 05:45:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35556 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234920AbhBXKpb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Feb 2021 05:45:31 -0500
+Received: from mail-vk1-xa2a.google.com (mail-vk1-xa2a.google.com [IPv6:2607:f8b0:4864:20::a2a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05621C06178B
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Feb 2021 02:44:50 -0800 (PST)
+Received: by mail-vk1-xa2a.google.com with SMTP id q17so290585vkd.3
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Feb 2021 02:44:50 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=7IeVrluan2r2kYEdEBttnfq/zM9jcQl9nm+rI5Hkr4o=;
+        b=av1wcjABNicK94u3ElvqGuVPfJykZiudez3NH0qMVLgXPS7gyUY6TPG5Uu5OEuYCsM
+         sJ+9LQeebUu6iRayXoqXLEhXxqLpGm8ar+uwgnNpWp0YFFIi9vPezL7VykoxNJrLW9Zo
+         QcwhNWs8X3Gx/1fqCcCv+wtkuRdJHjiuy7qW8=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=7IeVrluan2r2kYEdEBttnfq/zM9jcQl9nm+rI5Hkr4o=;
+        b=IW/W6khjVm7NhrxrzggmqeRAR49CzBUmo52/1M4OJzwIs43OoHfm787eNt98wsIebw
+         Ez0dhx8++vTxi5XlCAHgDpaHi5pVmwj4iwvr728X2VGkEfVhRaICmnpBt5g1gTKhBDtt
+         BUGhiPxllhO0mJgAB0P989OQ4daW1BrvjfV3nm1WuY5Gwk0nrhocKcM+L+R3EIGxk41o
+         LBBFydQPCvEwDbocfsonJcjhkS7N5W7KKOVr64FjvV4nS5a5K7R8Kehv7bnWPjf62lNF
+         8BrwAWhlQt8UHHxHQUTa7NkMJi/vz80EAk6Z7c1xWarD8Xb6Xbnc4KcJubHhcboMwox9
+         dTrQ==
+X-Gm-Message-State: AOAM530hI5PWVPm3/EHwad+BxYZfPIjIFgjfocRLye7CQQR6jU5bXBZ0
+        /MS3YkPZ6YSXt8/bEyz/Lxm4ZwyTE6SC4LEfEaPi5w==
+X-Google-Smtp-Source: ABdhPJwcNF1awAfqI71jc+osdOvaKBSAu3tcjeQYXjwNeU8VD31ZIj0UmTyh4zCeNoXqu9c1BxTl4zi+NBhRQ2wYoTw=
+X-Received: by 2002:a1f:ab52:: with SMTP id u79mr19791797vke.9.1614163489899;
+ Wed, 24 Feb 2021 02:44:49 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20210221195833.23828-1-lhenriques@suse.de> <20210222102456.6692-1-lhenriques@suse.de>
+ <CAN-5tyELMY7b7CKO-+an47ydq8r_4+SOyhuvdH0qE0-JmdZ44Q@mail.gmail.com> <YDYpHccgM7agpdTQ@suse.de>
+In-Reply-To: <YDYpHccgM7agpdTQ@suse.de>
+From:   Nicolas Boichat <drinkcat@chromium.org>
+Date:   Wed, 24 Feb 2021 18:44:38 +0800
+Message-ID: <CANMq1KBgwEXFh8AxpPW2t1SA0NVsyR45m0paLEU4D4w80dc_fA@mail.gmail.com>
+Subject: Re: [PATCH v8] vfs: fix copy_file_range regression in cross-fs copies
+To:     Luis Henriques <lhenriques@suse.de>
+Cc:     Olga Kornievskaia <aglo@umich.edu>,
+        Amir Goldstein <amir73il@gmail.com>,
+        Jeff Layton <jlayton@kernel.org>,
+        Steve French <sfrench@samba.org>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dave Chinner <dchinner@redhat.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Ian Lance Taylor <iant@google.com>,
+        Luis Lozano <llozano@chromium.org>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Christoph Hellwig <hch@infradead.org>,
+        ceph-devel <ceph-devel@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        CIFS <linux-cifs@vger.kernel.org>,
+        samba-technical <samba-technical@lists.samba.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch adds a new page allocator interface via alloc_pages_bulk,
-and __alloc_pages_bulk_nodemask. A caller requests a number of pages
-to be allocated and added to a list. They can be freed in bulk using
-free_pages_bulk().
+On Wed, Feb 24, 2021 at 6:22 PM Luis Henriques <lhenriques@suse.de> wrote:
+>
+> On Tue, Feb 23, 2021 at 08:00:54PM -0500, Olga Kornievskaia wrote:
+> > On Mon, Feb 22, 2021 at 5:25 AM Luis Henriques <lhenriques@suse.de> wro=
+te:
+> > >
+> > > A regression has been reported by Nicolas Boichat, found while using =
+the
+> > > copy_file_range syscall to copy a tracefs file.  Before commit
+> > > 5dae222a5ff0 ("vfs: allow copy_file_range to copy across devices") th=
+e
+> > > kernel would return -EXDEV to userspace when trying to copy a file ac=
+ross
+> > > different filesystems.  After this commit, the syscall doesn't fail a=
+nymore
+> > > and instead returns zero (zero bytes copied), as this file's content =
+is
+> > > generated on-the-fly and thus reports a size of zero.
+> > >
+> > > This patch restores some cross-filesystem copy restrictions that exis=
+ted
+> > > prior to commit 5dae222a5ff0 ("vfs: allow copy_file_range to copy acr=
+oss
+> > > devices").  Filesystems are still allowed to fall-back to the VFS
+> > > generic_copy_file_range() implementation, but that has now to be done
+> > > explicitly.
+> > >
+> > > nfsd is also modified to fall-back into generic_copy_file_range() in =
+case
+> > > vfs_copy_file_range() fails with -EOPNOTSUPP or -EXDEV.
+> > >
+> > > Fixes: 5dae222a5ff0 ("vfs: allow copy_file_range to copy across devic=
+es")
+> > > Link: https://lore.kernel.org/linux-fsdevel/20210212044405.4120619-1-=
+drinkcat@chromium.org/
+> > > Link: https://lore.kernel.org/linux-fsdevel/CANMq1KDZuxir2LM5jOTm0xx+=
+BnvW=3DZmpsG47CyHFJwnw7zSX6Q@mail.gmail.com/
+> > > Link: https://lore.kernel.org/linux-fsdevel/20210126135012.1.If45b7cd=
+c3ff707bc1efa17f5366057d60603c45f@changeid/
+> > > Reported-by: Nicolas Boichat <drinkcat@chromium.org>
+> > > Signed-off-by: Luis Henriques <lhenriques@suse.de>
+> >
+> > I tested v8 and I believe it works for NFS.
+>
+> Thanks a lot for the testing.  And to everyone else for reviews,
+> feedback,... and patience.
 
-The API is not guaranteed to return the requested number of pages and
-may fail if the preferred allocation zone has limited free memory, the
-cpuset changes during the allocation or page debugging decides to fail
-an allocation. It's up to the caller to request more pages in batch
-if necessary.
+Thanks so much to you!!!
 
-Note that this implementation is not very efficient and could be improved
-but it would require refactoring. The intent is to make it available early
-to determine what semantics are required by different callers. Once the
-full semantics are nailed down, it can be refactored.
+Works here, you can add my
+Tested-by: Nicolas Boichat <drinkcat@chromium.org>
 
-Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
----
- include/linux/gfp.h |  13 +++++
- mm/page_alloc.c     | 113 +++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 124 insertions(+), 2 deletions(-)
-
-diff --git a/include/linux/gfp.h b/include/linux/gfp.h
-index 6e479e9c48ce..f2a1ae4b95b9 100644
---- a/include/linux/gfp.h
-+++ b/include/linux/gfp.h
-@@ -501,6 +501,10 @@ static inline int arch_make_page_accessible(struct page *page)
- }
- #endif
- 
-+int __alloc_pages_bulk_nodemask(gfp_t gfp_mask, int preferred_nid,
-+				nodemask_t *nodemask, int nr_pages,
-+				struct list_head *list);
-+
- struct page *
- __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
- 							nodemask_t *nodemask);
-@@ -511,6 +515,14 @@ __alloc_pages(gfp_t gfp_mask, unsigned int order, int preferred_nid)
- 	return __alloc_pages_nodemask(gfp_mask, order, preferred_nid, NULL);
- }
- 
-+/* Bulk allocate order-0 pages */
-+static inline unsigned long
-+alloc_pages_bulk(gfp_t gfp_mask, unsigned long nr_pages, struct list_head *list)
-+{
-+	return __alloc_pages_bulk_nodemask(gfp_mask, numa_mem_id(), NULL,
-+							nr_pages, list);
-+}
-+
- /*
-  * Allocate pages, preferring the node given as nid. The node must be valid and
-  * online. For more general interface, see alloc_pages_node().
-@@ -580,6 +592,7 @@ void * __meminit alloc_pages_exact_nid(int nid, size_t size, gfp_t gfp_mask);
- 
- extern void __free_pages(struct page *page, unsigned int order);
- extern void free_pages(unsigned long addr, unsigned int order);
-+extern void free_pages_bulk(struct list_head *list);
- 
- struct page_frag_cache;
- extern void __page_frag_cache_drain(struct page *page, unsigned int count);
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 519a60d5b6f7..a36344bc1045 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -4435,6 +4435,21 @@ static void wake_all_kswapds(unsigned int order, gfp_t gfp_mask,
- 	}
- }
- 
-+/* Drop reference counts and free order-0 pages from a list. */
-+void free_pages_bulk(struct list_head *list)
-+{
-+	struct page *page, *next;
-+
-+	list_for_each_entry_safe(page, next, list, lru) {
-+		trace_mm_page_free_batched(page);
-+		if (put_page_testzero(page)) {
-+			list_del(&page->lru);
-+			__free_pages_ok(page, 0, FPI_NONE);
-+		}
-+	}
-+}
-+EXPORT_SYMBOL_GPL(free_pages_bulk);
-+
- static inline unsigned int
- gfp_to_alloc_flags(gfp_t gfp_mask)
- {
-@@ -4918,6 +4933,9 @@ static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
- 		struct alloc_context *ac, gfp_t *alloc_mask,
- 		unsigned int *alloc_flags)
- {
-+	gfp_mask &= gfp_allowed_mask;
-+	*alloc_mask = gfp_mask;
-+
- 	ac->highest_zoneidx = gfp_zone(gfp_mask);
- 	ac->zonelist = node_zonelist(preferred_nid, gfp_mask);
- 	ac->nodemask = nodemask;
-@@ -4959,6 +4977,99 @@ static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
- 	return true;
- }
- 
-+/*
-+ * This is a batched version of the page allocator that attempts to
-+ * allocate nr_pages quickly from the preferred zone and add them to list.
-+ */
-+int __alloc_pages_bulk_nodemask(gfp_t gfp_mask, int preferred_nid,
-+			nodemask_t *nodemask, int nr_pages,
-+			struct list_head *alloc_list)
-+{
-+	struct page *page;
-+	unsigned long flags;
-+	struct zone *zone;
-+	struct zoneref *z;
-+	struct per_cpu_pages *pcp;
-+	struct list_head *pcp_list;
-+	struct alloc_context ac;
-+	gfp_t alloc_mask;
-+	unsigned int alloc_flags;
-+	int alloced = 0;
-+
-+	if (nr_pages == 1)
-+		goto failed;
-+
-+	/* May set ALLOC_NOFRAGMENT, fragmentation will return 1 page. */
-+	if (!prepare_alloc_pages(gfp_mask, 0, preferred_nid, nodemask, &ac, &alloc_mask, &alloc_flags))
-+		return 0;
-+	gfp_mask = alloc_mask;
-+
-+	/* Find an allowed local zone that meets the high watermark. */
-+	for_each_zone_zonelist_nodemask(zone, z, ac.zonelist, ac.highest_zoneidx, ac.nodemask) {
-+		unsigned long mark;
-+
-+		if (cpusets_enabled() && (alloc_flags & ALLOC_CPUSET) &&
-+		    !__cpuset_zone_allowed(zone, gfp_mask)) {
-+			continue;
-+		}
-+
-+		if (nr_online_nodes > 1 && zone != ac.preferred_zoneref->zone &&
-+		    zone_to_nid(zone) != zone_to_nid(ac.preferred_zoneref->zone)) {
-+			goto failed;
-+		}
-+
-+		mark = wmark_pages(zone, alloc_flags & ALLOC_WMARK_MASK) + nr_pages;
-+		if (zone_watermark_fast(zone, 0,  mark,
-+				zonelist_zone_idx(ac.preferred_zoneref),
-+				alloc_flags, gfp_mask)) {
-+			break;
-+		}
-+	}
-+	if (!zone)
-+		return 0;
-+
-+	/* Attempt the batch allocation */
-+	local_irq_save(flags);
-+	pcp = &this_cpu_ptr(zone->pageset)->pcp;
-+	pcp_list = &pcp->lists[ac.migratetype];
-+
-+	while (alloced < nr_pages) {
-+		page = __rmqueue_pcplist(zone, ac.migratetype, alloc_flags,
-+								pcp, pcp_list);
-+		if (!page)
-+			break;
-+
-+		prep_new_page(page, 0, gfp_mask, 0);
-+		list_add(&page->lru, alloc_list);
-+		alloced++;
-+	}
-+
-+	if (!alloced)
-+		goto failed_irq;
-+
-+	if (alloced) {
-+		__count_zid_vm_events(PGALLOC, zone_idx(zone), alloced);
-+		zone_statistics(zone, zone);
-+	}
-+
-+	local_irq_restore(flags);
-+
-+	return alloced;
-+
-+failed_irq:
-+	local_irq_restore(flags);
-+
-+failed:
-+	page = __alloc_pages_nodemask(gfp_mask, 0, preferred_nid, nodemask);
-+	if (page) {
-+		alloced++;
-+		list_add(&page->lru, alloc_list);
-+	}
-+
-+	return alloced;
-+}
-+EXPORT_SYMBOL_GPL(__alloc_pages_bulk_nodemask);
-+
- /*
-  * This is the 'heart' of the zoned buddy allocator.
-  */
-@@ -4980,8 +5091,6 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
- 		return NULL;
- 	}
- 
--	gfp_mask &= gfp_allowed_mask;
--	alloc_mask = gfp_mask;
- 	if (!prepare_alloc_pages(gfp_mask, order, preferred_nid, nodemask, &ac, &alloc_mask, &alloc_flags))
- 		return NULL;
- 
--- 
-2.26.2
-
+>
+> I'll now go look into the manpage and see what needs to be changed.
+>
+> Cheers,
+> --
+> Lu=C3=ADs
