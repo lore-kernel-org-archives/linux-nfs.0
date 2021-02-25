@@ -2,35 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8ED0C433E6
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D597BC433DB
 	for <linux-nfs@archiver.kernel.org>; Thu, 25 Feb 2021 02:44:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AA7AD6146B
+	by mail.kernel.org (Postfix) with ESMTP id 8163864ECF
 	for <linux-nfs@archiver.kernel.org>; Thu, 25 Feb 2021 02:44:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236802AbhBYCn5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Feb 2021 21:43:57 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41946 "EHLO mx2.suse.de"
+        id S236765AbhBYCny (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Feb 2021 21:43:54 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41930 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S234384AbhBYCn4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 24 Feb 2021 21:43:56 -0500
+        id S234384AbhBYCnx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 24 Feb 2021 21:43:53 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 227B2AE05;
-        Thu, 25 Feb 2021 02:43:15 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id A73E5AD5C;
+        Thu, 25 Feb 2021 02:43:10 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
 To:     Steve Dickson <SteveD@RedHat.com>
 Date:   Thu, 25 Feb 2021 13:42:47 +1100
-Subject: [PATCH 1/5] mountd: reject unknown client IP when !use_ipaddr.
+Subject: [PATCH 0/5] nfs-utils: provide audit-logging of NFSv4 access
 Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <161422096786.28256.16255172827545591674.stgit@noble>
-In-Reply-To: <161422077024.28256.15543036625096419495.stgit@noble>
-References: <161422077024.28256.15543036625096419495.stgit@noble>
+Message-ID: <161422077024.28256.15543036625096419495.stgit@noble>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -39,64 +36,40 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: NeilBrown <neil@brown.name>
+When NFSv3 is used mountd provides logs of successful and failed mount
+attempts which can be used for auditing.
+When NFSv4 is used there are no such logs as NFSv4 does not have a
+distinct "mount" request.
 
-When use_ipaddr is not in effect, an auth_unix_ip lookup request from
-the kernel for an unknown client will be rejected.
-When it IS in effect, these requests are always granted with the IP
-address being mapped to a string form of the address, preceded by a '$'.
+However mountd still knows about which filesysytems are being accessed
+from which clients, and can actually provide more reliable logs than it
+currently does, though they must be more verbose - with periodic "is
+being accessed" message replacing a single "was mounted" message.
 
-This is inconsistent behaviour and could present a small information
-leak.
-It means that, for example, a SETCLIENT NFSv4 request may or may not
-succeed depending on an internal setting in rpc.mountd.
+This series adds support for that logging, and adds some related
+improvements to make the logs as useful as possible.
 
-This is easily rectified by always checking if the client is known.
+NeilBrown
 
-Signed-off-by: NeilBrown <neil@brown.name>
 ---
- support/export/cache.c |   17 +++++++----------
- 1 file changed, 7 insertions(+), 10 deletions(-)
 
-diff --git a/support/export/cache.c b/support/export/cache.c
-index f1569afb558c..156ebfd4087c 100644
---- a/support/export/cache.c
-+++ b/support/export/cache.c
-@@ -114,6 +114,7 @@ static void auth_unix_ip(int f)
- 	char class[20];
- 	char ipaddr[INET6_ADDRSTRLEN + 1];
- 	char *client = NULL;
-+	struct addrinfo *ai = NULL;
- 	struct addrinfo *tmp = NULL;
- 	char buf[RPC_CHAN_BUF_SIZE], *bp;
- 	int blen;
-@@ -139,21 +140,17 @@ static void auth_unix_ip(int f)
- 
- 	auth_reload();
- 
--	/* addr is a valid, interesting address, find the domain name... */
--	if (!use_ipaddr) {
--		struct addrinfo *ai = NULL;
--
--		ai = client_resolve(tmp->ai_addr);
--		if (ai) {
--			client = client_compose(ai);
--			nfs_freeaddrinfo(ai);
--		}
-+	/* addr is a valid address, find the domain name... */
-+	ai = client_resolve(tmp->ai_addr);
-+	if (ai) {
-+		client = client_compose(ai);
-+		nfs_freeaddrinfo(ai);
- 	}
- 	bp = buf; blen = sizeof(buf);
- 	qword_add(&bp, &blen, "nfsd");
- 	qword_add(&bp, &blen, ipaddr);
- 	qword_adduint(&bp, &blen, time(0) + DEFAULT_TTL);
--	if (use_ipaddr) {
-+	if (use_ipaddr && client) {
- 		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
- 		ipaddr[0] = '$';
- 		qword_add(&bp, &blen, ipaddr);
+NeilBrown (5):
+      mountd: reject unknown client IP when !use_ipaddr.
+      mountd: Don't proactively add export info when fh info is requested.
+      mountd: add logging for authentication results for accesses.
+      mountd: add --cache-use-ipaddr option to force use_ipaddr
+      mountd: make default ttl settable by option
 
+
+ support/export/auth.c      |  4 +++
+ support/export/cache.c     | 32 +++++++++++------
+ support/export/v4root.c    |  3 +-
+ support/include/exportfs.h |  3 +-
+ support/nfs/exports.c      |  4 ++-
+ utils/mountd/mountd.c      | 29 +++++++++++++++-
+ utils/mountd/mountd.man    | 70 ++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 130 insertions(+), 15 deletions(-)
+
+--
+Signature
 
