@@ -7,29 +7,28 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2987C433E6
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 02:18:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C6320C43381
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 02:18:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7EA2164DF5
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 02:18:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9844B64DF5
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 02:18:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231806AbhCACSa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 28 Feb 2021 21:18:30 -0500
-Received: from mx2.suse.de ([195.135.220.15]:58482 "EHLO mx2.suse.de"
+        id S231808AbhCACSi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 28 Feb 2021 21:18:38 -0500
+Received: from mx2.suse.de ([195.135.220.15]:58506 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231802AbhCACS3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 28 Feb 2021 21:18:29 -0500
+        id S231802AbhCACSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 28 Feb 2021 21:18:37 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id E73D5AF77;
-        Mon,  1 Mar 2021 02:17:47 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id 45C0AAF7F;
+        Mon,  1 Mar 2021 02:17:56 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
 To:     Steve Dickson <SteveD@RedHat.com>
 Date:   Mon, 01 Mar 2021 13:17:15 +1100
-Subject: [PATCH 2/5] mountd: Don't proactively add export info when fh info is
- requested.
+Subject: [PATCH 4/5] mountd: add --cache-use-ipaddr option to force use_ipaddr
 Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <161456503508.22801.10952444290383474947.stgit@noble>
+Message-ID: <161456503509.22801.5697064120235155947.stgit@noble>
 In-Reply-To: <161456493684.22801.323431390819102360.stgit@noble>
 References: <161456493684.22801.323431390819102360.stgit@noble>
 User-Agent: StGit/0.23
@@ -42,62 +41,114 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: NeilBrown <neil@brown.name>
 
-When an "nfsd.fh" request is received from the kernel, we map the
-file-handle prefix to a path name and report that (as required) and then
-also add "nfsd.export" information with export flags applicable to that
-path.
+When logging authentication requests, it can be easier to read the logs
+if clients are always identified by IP address, not intermediate names
+like netgroups or subnets.
 
-This is not necessary and was added as a perceived optimisation.
-When updating data already in the kernel, it is unlikely to help as the
-kernel can be expected to ask for both details at much the same time.
-With NFSv3, new information is normally added by a MOUNT rpc request, so
-this is irrelevant.
-With NFSv4, the kernel requests the "nfsd.export" information when
-walking down from ROOT, *before* requesting the nfsd.fh information, so
-this "optimisation" causes unnecessary work.
-
-A future patch will add logging of authentication requests, and this
-double-handling would result in extra unnecessary log messages.
-
-As this "optimisation" appears to have no practical value and some
-(small) cost, let's remove it.
+To allow this, add --cache-use-ipaddr or -i which tell mountd to always
+enable use_ipaddr.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- support/export/cache.c |    8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+ support/export/auth.c   |    4 ++++
+ utils/mountd/mountd.c   |   10 ++++++++--
+ utils/mountd/mountd.man |   18 ++++++++++++++++++
+ 3 files changed, 30 insertions(+), 2 deletions(-)
 
-diff --git a/support/export/cache.c b/support/export/cache.c
-index 156ebfd4087c..49a761749ec6 100644
---- a/support/export/cache.c
-+++ b/support/export/cache.c
-@@ -96,7 +96,6 @@ static bool path_lookup_error(int err)
-  * Record is terminated with newline.
-  *
-  */
--static int cache_export_ent(char *buf, int buflen, char *domain, struct exportent *exp, char *path);
+diff --git a/support/export/auth.c b/support/export/auth.c
+index 0bfa77d18469..cea376300d01 100644
+--- a/support/export/auth.c
++++ b/support/export/auth.c
+@@ -66,6 +66,10 @@ check_useipaddr(void)
+ 	int old_use_ipaddr = use_ipaddr;
+ 	unsigned int len = 0;
  
- #define INITIAL_MANAGED_GROUPS 100
++	if (use_ipaddr > 1)
++		/* fixed - don't check */
++		return;
++
+ 	/* add length of m_hostname + 1 for the comma */
+ 	for (clp = clientlist[MCL_NETGROUP]; clp; clp = clp->m_next)
+ 		len += (strlen(clp->m_hostname) + 1);
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 9fecf2f04c3b..b9260aeb86a3 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -75,9 +75,10 @@ static struct option longopts[] =
+ 	{ "manage-gids", 0, 0, 'g' },
+ 	{ "no-udp", 0, 0, 'u' },
+ 	{ "log-auth", 0, 0, 'l'},
++	{ "cache-use-ipaddr", 0, 0, 'i'},
+ 	{ NULL, 0, 0, 0 }
+ };
+-static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gl";
++static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gli";
  
-@@ -870,18 +869,13 @@ static void nfsd_fh(int f)
- 	    !is_mountpoint(found->e_mountpoint[0]?
- 			   found->e_mountpoint:
- 			   found->e_path)) {
--		/* Cannot export this yet 
-+		/* Cannot export this yet
- 		 * should log a warning, but need to rate limit
- 		   xlog(L_WARNING, "%s not exported as %d not a mountpoint",
- 		   found->e_path, found->e_mountpoint);
- 		 */
- 		/* FIXME we need to make sure we re-visit this later */
- 		goto out;
--	} else if (cache_export_ent(buf, sizeof(buf), dom, found, found_path) < 0) {
--		if (!path_lookup_error(errno))
--			goto out;
--		/* The kernel is saying the path is unexportable */
--		found = NULL;
- 	}
+ #define NFSVERSBIT(vers)	(0x1 << (vers - 1))
+ #define NFSVERSBIT_ALL		(NFSVERSBIT(2) | NFSVERSBIT(3) | NFSVERSBIT(4))
+@@ -681,6 +682,8 @@ read_mountd_conf(char **argv)
+ 	num_threads = conf_get_num("mountd", "threads", num_threads);
+ 	reverse_resolve = conf_get_bool("mountd", "reverse-lookup", reverse_resolve);
+ 	ha_callout_prog = conf_get_str("mountd", "ha-callout");
++	if (conf_get_bool("mountd", "cache-use-ipaddr", 0))
++		use_ipaddr = 2;
  
- 	bp = buf; blen = sizeof(buf);
+ 	s = conf_get_str("mountd", "state-directory-path");
+ 	if (s && !state_setup_basedir(argv[0], s))
+@@ -803,6 +806,9 @@ main(int argc, char **argv)
+ 		case 'l':
+ 			xlog_sconfig("auth", 1);
+ 			break;
++		case 'i':
++			use_ipaddr = 2;
++			break;
+ 		case 0:
+ 			break;
+ 		case '?':
+@@ -918,7 +924,7 @@ usage(const char *prog, int n)
+ {
+ 	fprintf(stderr,
+ "Usage: %s [-F|--foreground] [-h|--help] [-v|--version] [-d kind|--debug kind]\n"
+-"	[-l|--log-auth]\n"
++"	[-l|--log-auth] [-i|--cache-use-ipaddr]\n"
+ "	[-o num|--descriptors num]\n"
+ "	[-p|--port port] [-V version|--nfs-version version]\n"
+ "	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"
+diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
+index df4e5356cb05..44d237e56110 100644
+--- a/utils/mountd/mountd.man
++++ b/utils/mountd/mountd.man
+@@ -118,6 +118,23 @@ section.
+ will always log authentication responses to MOUNT requests when NFSv3 is
+ used, but to get similar logs for NFSv4, this option is required.
+ .TP
++.BR \-i " or " \-\-cache\-use\-ipaddr
++Normally each client IP address is matched against each host identifier
++(name, wildcard, netgroup etc) found in
++.B /etc/exports
++and a combined identity is formed from all matching identifiers.
++Often many clients will map to the same combined identity so performing
++this mapping reduces the number of distinct access details that the
++kernel needs to store.
++Specifying the
++.B \-i
++option suppresses this mapping so that access to each filesystem is
++requested and cached separately for each client IP address.  Doing this
++can increase the burden of updating the cache slightly, but can make the
++log messages produced by the
++.B -l
++option easier to read.
++.TP
+ .B \-F " or " \-\-foreground
+ Run in foreground (do not daemonize)
+ .TP
+@@ -248,6 +265,7 @@ Values recognized in the
+ .B [mountd]
+ section include
+ .BR manage-gids ,
++.BR cache\-use\-ipaddr ,
+ .BR descriptors ,
+ .BR port ,
+ .BR threads ,
 
 
