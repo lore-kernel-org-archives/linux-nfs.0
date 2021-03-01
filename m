@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 530B2C433E0
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F347C433E0
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 308C264E38
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6603B64E12
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236463AbhCAPSS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 1 Mar 2021 10:18:18 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40886 "EHLO mail.kernel.org"
+        id S237084AbhCAPSX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 1 Mar 2021 10:18:23 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40900 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S237119AbhCAPR5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 1 Mar 2021 10:17:57 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C57B464E42
-        for <linux-nfs@vger.kernel.org>; Mon,  1 Mar 2021 15:17:01 +0000 (UTC)
-Subject: [PATCH v1 17/42] NFSD: Count bytes instead of pages in the NFSv3
- READDIR encoder
+        id S237139AbhCAPSB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 1 Mar 2021 10:18:01 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id C48DE64E01
+        for <linux-nfs@vger.kernel.org>; Mon,  1 Mar 2021 15:17:13 +0000 (UTC)
+Subject: [PATCH v1 19/42] SUNRPC: Fix xdr_get_next_encode_buffer() page
+ boundary handling
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Mon, 01 Mar 2021 10:17:01 -0500
-Message-ID: <161461182108.8508.1449976990501801347.stgit@klimt.1015granger.net>
+Date:   Mon, 01 Mar 2021 10:17:13 -0500
+Message-ID: <161461183307.8508.17196295994390119297.stgit@klimt.1015granger.net>
 In-Reply-To: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
 References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -37,106 +37,40 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up: Counting the bytes used by each returned directory entry
-seems less brittle to me than trying to measure consumed pages after
-the fact.
+The description of commit 2825a7f90753 ("nfsd4: allow encoding
+across page boundaries") states:
 
+> Also we can't handle a new operation starting close to the end of
+> a page.
+
+But does not detail why this is the case.
+
+Subtracting the scratch buffer's "shift" value from the remaining
+stream space seems to make reserving space close to the end of the
+buf->pages array reliable.
+
+This change is needed to make entry encoding with struct xdr_stream,
+introduced in a subsequent patch, work correctly when it approaches
+the end of the dirlist buffer.
+
+Fixes: 2825a7f90753 ("nfsd4: allow encoding across page boundaries")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3proc.c |   31 ++-----------------------------
- fs/nfsd/nfs3xdr.c  |    1 +
- 2 files changed, 3 insertions(+), 29 deletions(-)
+ net/sunrpc/xdr.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 90566cd01bdc..791d77363acd 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -462,10 +462,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- {
- 	struct nfsd3_readdirargs *argp = rqstp->rq_argp;
- 	struct nfsd3_readdirres  *resp = rqstp->rq_resp;
--	int		count = 0;
- 	loff_t		offset;
--	struct page	**p;
--	caddr_t		page_addr = NULL;
- 
- 	dprintk("nfsd: READDIR(3)  %s %d bytes at %d\n",
- 				SVCFH_fmt(&argp->fh),
-@@ -476,6 +473,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 	/* Read directory and encode entries on the fly */
- 	fh_copy(&resp->fh, &argp->fh);
- 
-+	resp->count = 0;
- 	resp->common.err = nfs_ok;
- 	resp->rqstp = rqstp;
- 	offset = argp->cookie;
-@@ -483,18 +481,6 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 	resp->status = nfsd_readdir(rqstp, &resp->fh, &offset,
- 				    &resp->common, nfs3svc_encode_entry);
- 	memcpy(resp->verf, argp->verf, 8);
--	count = 0;
--	for (p = rqstp->rq_respages + 1; p < rqstp->rq_next_page; p++) {
--		page_addr = page_address(*p);
--
--		if (((caddr_t)resp->buffer >= page_addr) &&
--		    ((caddr_t)resp->buffer < page_addr + PAGE_SIZE)) {
--			count += (caddr_t)resp->buffer - page_addr;
--			break;
--		}
--		count += PAGE_SIZE;
--	}
--	resp->count = count >> 2;
- 	nfs3svc_encode_cookie3(resp, offset);
- 
- 	return rpc_success;
-@@ -509,10 +495,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
- {
- 	struct nfsd3_readdirargs *argp = rqstp->rq_argp;
- 	struct nfsd3_readdirres  *resp = rqstp->rq_resp;
--	int	count = 0;
- 	loff_t	offset;
--	struct page **p;
--	caddr_t	page_addr = NULL;
- 
- 	dprintk("nfsd: READDIR+(3) %s %d bytes at %d\n",
- 				SVCFH_fmt(&argp->fh),
-@@ -523,6 +506,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
- 	/* Read directory and encode entries on the fly */
- 	fh_copy(&resp->fh, &argp->fh);
- 
-+	resp->count = 0;
- 	resp->common.err = nfs_ok;
- 	resp->rqstp = rqstp;
- 	offset = argp->cookie;
-@@ -539,17 +523,6 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
- 	resp->status = nfsd_readdir(rqstp, &resp->fh, &offset,
- 				    &resp->common, nfs3svc_encode_entry_plus);
- 	memcpy(resp->verf, argp->verf, 8);
--	for (p = rqstp->rq_respages + 1; p < rqstp->rq_next_page; p++) {
--		page_addr = page_address(*p);
--
--		if (((caddr_t)resp->buffer >= page_addr) &&
--		    ((caddr_t)resp->buffer < page_addr + PAGE_SIZE)) {
--			count += (caddr_t)resp->buffer - page_addr;
--			break;
--		}
--		count += PAGE_SIZE;
--	}
--	resp->count = count >> 2;
- 	nfs3svc_encode_cookie3(resp, offset);
- 
- out:
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index aef72d00d5a9..9f8afc5b126b 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -1364,6 +1364,7 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
- 		return -EINVAL;
- 	}
- 
-+	cd->count += num_entry_words;
- 	cd->buflen -= num_entry_words;
- 	cd->buffer = p;
- 	cd->common.err = nfs_ok;
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 3964ff74ee51..043b67229792 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -978,7 +978,7 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
+ 	 * shifted this one back:
+ 	 */
+ 	xdr->p = (void *)p + frag2bytes;
+-	space_left = xdr->buf->buflen - xdr->buf->len;
++	space_left = xdr->buf->buflen - xdr->buf->len - frag1bytes;
+ 	xdr->end = (void *)p + min_t(int, space_left, PAGE_SIZE);
+ 	xdr->buf->page_len += frag2bytes;
+ 	xdr->buf->len += nbytes;
 
 
