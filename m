@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 789ABC433DB
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72B81C433E0
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 505BC614A5
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E77764E2E
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:18:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237080AbhCAPSG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 1 Mar 2021 10:18:06 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40870 "EHLO mail.kernel.org"
+        id S236981AbhCAPSM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 1 Mar 2021 10:18:12 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40706 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S237082AbhCAPRx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S237084AbhCAPRx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Mon, 1 Mar 2021 10:17:53 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C663164DF5
-        for <linux-nfs@vger.kernel.org>; Mon,  1 Mar 2021 15:16:49 +0000 (UTC)
-Subject: [PATCH v1 15/42] NFSD: Update the NFSv3 COMMIT3res encoder to use
- struct xdr_stream
+Received: by mail.kernel.org (Postfix) with ESMTPSA id D45AC64E04
+        for <linux-nfs@vger.kernel.org>; Mon,  1 Mar 2021 15:17:37 +0000 (UTC)
+Subject: [PATCH v1 23/42] NFSD: Update the NFSv2 stat encoder to use struct
+ xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Mon, 01 Mar 2021 10:16:49 -0500
-Message-ID: <161461180906.8508.14864464258075736210.stgit@klimt.1015granger.net>
+Date:   Mon, 01 Mar 2021 10:17:37 -0500
+Message-ID: <161461185712.8508.3276231253261055719.stgit@klimt.1015granger.net>
 In-Reply-To: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
 References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -37,95 +37,114 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-As an additional clean up, encode_wcc_data() is removed because it
-is now no longer used.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3xdr.c |   54 +++++++++++++++--------------------------------------
- 1 file changed, 15 insertions(+), 39 deletions(-)
+ fs/nfsd/nfsproc.c |   10 +++++-----
+ fs/nfsd/nfsxdr.c  |   19 ++++++++++++++++---
+ fs/nfsd/xdr.h     |    2 +-
+ 3 files changed, 22 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 8485ab50ff3f..034e18d9b040 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -432,14 +432,6 @@ encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	return p;
- }
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index a8d5449dd0e9..59080e6793b9 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -736,7 +736,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_REMOVE] = {
+ 		.pc_func = nfsd_proc_remove,
+ 		.pc_decode = nfssvc_decode_diropargs,
+-		.pc_encode = nfssvc_encode_stat,
++		.pc_encode = nfssvc_encode_statres,
+ 		.pc_argsize = sizeof(struct nfsd_diropargs),
+ 		.pc_ressize = sizeof(struct nfsd_stat),
+ 		.pc_cachetype = RC_REPLSTAT,
+@@ -746,7 +746,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_RENAME] = {
+ 		.pc_func = nfsd_proc_rename,
+ 		.pc_decode = nfssvc_decode_renameargs,
+-		.pc_encode = nfssvc_encode_stat,
++		.pc_encode = nfssvc_encode_statres,
+ 		.pc_argsize = sizeof(struct nfsd_renameargs),
+ 		.pc_ressize = sizeof(struct nfsd_stat),
+ 		.pc_cachetype = RC_REPLSTAT,
+@@ -756,7 +756,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_LINK] = {
+ 		.pc_func = nfsd_proc_link,
+ 		.pc_decode = nfssvc_decode_linkargs,
+-		.pc_encode = nfssvc_encode_stat,
++		.pc_encode = nfssvc_encode_statres,
+ 		.pc_argsize = sizeof(struct nfsd_linkargs),
+ 		.pc_ressize = sizeof(struct nfsd_stat),
+ 		.pc_cachetype = RC_REPLSTAT,
+@@ -766,7 +766,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_SYMLINK] = {
+ 		.pc_func = nfsd_proc_symlink,
+ 		.pc_decode = nfssvc_decode_symlinkargs,
+-		.pc_encode = nfssvc_encode_stat,
++		.pc_encode = nfssvc_encode_statres,
+ 		.pc_argsize = sizeof(struct nfsd_symlinkargs),
+ 		.pc_ressize = sizeof(struct nfsd_stat),
+ 		.pc_cachetype = RC_REPLSTAT,
+@@ -787,7 +787,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_RMDIR] = {
+ 		.pc_func = nfsd_proc_rmdir,
+ 		.pc_decode = nfssvc_decode_diropargs,
+-		.pc_encode = nfssvc_encode_stat,
++		.pc_encode = nfssvc_encode_statres,
+ 		.pc_argsize = sizeof(struct nfsd_diropargs),
+ 		.pc_ressize = sizeof(struct nfsd_stat),
+ 		.pc_cachetype = RC_REPLSTAT,
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 5d79ef6a0c7f..10cd120044b3 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -26,6 +26,19 @@ static u32	nfs_ftypes[] = {
+  * Basic NFSv2 data types (RFC 1094 Section 2.3)
+  */
  
--static __be32 *
--encode_saved_post_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
--{
--	/* Attributes to follow */
--	*p++ = xdr_one;
--	return encode_fattr3(rqstp, p, fhp, &fhp->fh_post_attr);
--}
--
- static bool
- svcxdr_encode_wcc_attr(struct xdr_stream *xdr, const struct svc_fh *fhp)
- {
-@@ -562,30 +554,6 @@ svcxdr_encode_wcc_data(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 	return true;
- }
++static bool
++svcxdr_encode_stat(struct xdr_stream *xdr, __be32 status)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, sizeof(status));
++	if (!p)
++		return false;
++	*p = status;
++
++	return true;
++}
++
+ /**
+  * svcxdr_decode_fhandle - Decode an NFSv2 file handle
+  * @xdr: XDR stream positioned at an encoded NFSv2 FH
+@@ -390,12 +403,12 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p)
+  */
  
--/*
-- * Enocde weak cache consistency data
-- */
--static __be32 *
--encode_wcc_data(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
--{
--	struct dentry	*dentry = fhp->fh_dentry;
--
--	if (dentry && d_really_is_positive(dentry) && fhp->fh_post_saved) {
--		if (fhp->fh_pre_saved) {
--			*p++ = xdr_one;
--			p = xdr_encode_hyper(p, (u64) fhp->fh_pre_size);
--			p = encode_time3(p, &fhp->fh_pre_mtime);
--			p = encode_time3(p, &fhp->fh_pre_ctime);
--		} else {
--			*p++ = xdr_zero;
--		}
--		return encode_saved_post_attr(rqstp, p, fhp);
--	}
--	/* no pre- or post-attrs */
--	*p++ = xdr_zero;
--	return encode_post_op_attr(rqstp, p, fhp);
--}
--
- static bool fs_supports_change_attribute(struct super_block *sb)
- {
- 	return sb->s_flags & SB_I_VERSION || sb->s_export_op->fetch_iversion;
-@@ -1548,16 +1516,24 @@ nfs3svc_encode_pathconfres(struct svc_rqst *rqstp, __be32 *p)
  int
- nfs3svc_encode_commitres(struct svc_rqst *rqstp, __be32 *p)
+-nfssvc_encode_stat(struct svc_rqst *rqstp, __be32 *p)
++nfssvc_encode_statres(struct svc_rqst *rqstp, __be32 *p)
  {
 +	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd3_commitres *resp = rqstp->rq_resp;
+ 	struct nfsd_stat *resp = rqstp->rq_resp;
  
 -	*p++ = resp->status;
--	p = encode_wcc_data(rqstp, p, &resp->fh);
--	/* Write verifier */
--	if (resp->status == 0) {
--		*p++ = resp->verf[0];
--		*p++ = resp->verf[1];
-+	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
-+		return 0;
-+	switch (resp->status) {
-+	case nfs_ok:
-+		if (!svcxdr_encode_wcc_data(rqstp, xdr, &resp->fh))
-+			return 0;
-+		if (!svcxdr_encode_writeverf3(xdr, resp->verf))
-+			return 0;
-+		break;
-+	default:
-+		if (!svcxdr_encode_wcc_data(rqstp, xdr, &resp->fh))
-+			return 0;
- 	}
 -	return xdr_ressize_check(rqstp, p);
-+
-+	return 1;
++	return svcxdr_encode_stat(xdr, resp->status);
  }
  
- /*
+ int
+diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
+index 3018b52b6d5e..a74ffcf8b9c6 100644
+--- a/fs/nfsd/xdr.h
++++ b/fs/nfsd/xdr.h
+@@ -147,7 +147,7 @@ int nfssvc_decode_renameargs(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_linkargs(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_symlinkargs(struct svc_rqst *, __be32 *);
+ int nfssvc_decode_readdirargs(struct svc_rqst *, __be32 *);
+-int nfssvc_encode_stat(struct svc_rqst *, __be32 *);
++int nfssvc_encode_statres(struct svc_rqst *, __be32 *);
+ int nfssvc_encode_attrstat(struct svc_rqst *, __be32 *);
+ int nfssvc_encode_diropres(struct svc_rqst *, __be32 *);
+ int nfssvc_encode_readlinkres(struct svc_rqst *, __be32 *);
 
 
