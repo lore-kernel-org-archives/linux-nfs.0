@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19ED1C433DB
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:17:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37E44C433E6
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:17:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DC70C64E12
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:17:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A41364E12
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Mar 2021 15:17:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236997AbhCAPRh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 1 Mar 2021 10:17:37 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40782 "EHLO mail.kernel.org"
+        id S237020AbhCAPRj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 1 Mar 2021 10:17:39 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40672 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S237033AbhCAPRa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 1 Mar 2021 10:17:30 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id BA36D600CC
-        for <linux-nfs@vger.kernel.org>; Mon,  1 Mar 2021 15:16:31 +0000 (UTC)
-Subject: [PATCH v1 12/42] NFSD: Update the NFSv3 FSSTAT3res encoder to use
- struct xdr_stream
+        id S237039AbhCAPRc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 1 Mar 2021 10:17:32 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id C7A7664E12
+        for <linux-nfs@vger.kernel.org>; Mon,  1 Mar 2021 15:16:55 +0000 (UTC)
+Subject: [PATCH v1 16/42] NFSD: Add a helper that encodes NFSv3 directory
+ offset cookies
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Mon, 01 Mar 2021 10:16:31 -0500
-Message-ID: <161461179102.8508.11890812651210896607.stgit@klimt.1015granger.net>
+Date:   Mon, 01 Mar 2021 10:16:55 -0500
+Message-ID: <161461181507.8508.7185607597181053733.stgit@klimt.1015granger.net>
 In-Reply-To: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
 References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -37,93 +37,124 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Refactor: De-duplicate identical code that handles encoding of
+directory offset cookies across page boundaries.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3xdr.c |   58 ++++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 44 insertions(+), 14 deletions(-)
+ fs/nfsd/nfs3proc.c |   24 ++----------------------
+ fs/nfsd/nfs3xdr.c  |   36 +++++++++++++++++++++++-------------
+ fs/nfsd/xdr3.h     |    2 ++
+ 3 files changed, 27 insertions(+), 35 deletions(-)
 
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 93d196752f87..90566cd01bdc 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -495,17 +495,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
+ 		count += PAGE_SIZE;
+ 	}
+ 	resp->count = count >> 2;
+-	if (resp->offset) {
+-		if (unlikely(resp->offset1)) {
+-			/* we ended up with offset on a page boundary */
+-			*resp->offset = htonl(offset >> 32);
+-			*resp->offset1 = htonl(offset & 0xffffffff);
+-			resp->offset1 = NULL;
+-		} else {
+-			xdr_encode_hyper(resp->offset, offset);
+-		}
+-		resp->offset = NULL;
+-	}
++	nfs3svc_encode_cookie3(resp, offset);
+ 
+ 	return rpc_success;
+ }
+@@ -560,17 +550,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
+ 		count += PAGE_SIZE;
+ 	}
+ 	resp->count = count >> 2;
+-	if (resp->offset) {
+-		if (unlikely(resp->offset1)) {
+-			/* we ended up with offset on a page boundary */
+-			*resp->offset = htonl(offset >> 32);
+-			*resp->offset1 = htonl(offset & 0xffffffff);
+-			resp->offset1 = NULL;
+-		} else {
+-			xdr_encode_hyper(resp->offset, offset);
+-		}
+-		resp->offset = NULL;
+-	}
++	nfs3svc_encode_cookie3(resp, offset);
+ 
+ out:
+ 	return rpc_success;
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index e159e4557428..e4a569e7216d 100644
+index 034e18d9b040..aef72d00d5a9 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -17,6 +17,13 @@
- #define NFSDDBG_FACILITY		NFSDDBG_XDR
- 
- 
-+/*
-+ * Force construction of an empty post-op attr
-+ */
-+static const struct svc_fh nfs3svc_null_fh = {
-+	.fh_no_wcc	= true,
-+};
-+
- /*
-  * Mapping of S_IF* types to NFS file types
-  */
-@@ -1392,27 +1399,50 @@ nfs3svc_encode_entry_plus(void *cd, const char *name,
- 	return encode_entry(cd, name, namlen, offset, ino, d_type, 1);
+@@ -1219,6 +1219,28 @@ static __be32 *encode_entryplus_baggage(struct nfsd3_readdirres *cd, __be32 *p,
+ 	return p;
  }
  
-+static bool
-+svcxdr_encode_fsstat3resok(struct xdr_stream *xdr,
-+			   const struct nfsd3_fsstatres *resp)
++/**
++ * nfs3svc_encode_cookie3 - Encode a directory offset cookie
++ * @resp: readdir result context
++ * @offset: offset cookie to encode
++ *
++ */
++void nfs3svc_encode_cookie3(struct nfsd3_readdirres *resp, u64 offset)
 +{
-+	const struct kstatfs *s = &resp->stats;
-+	u64 bs = s->f_bsize;
-+	__be32 *p;
++	if (!resp->offset)
++		return;
 +
-+	p = xdr_reserve_space(xdr, XDR_UNIT * 13);
-+	if (!p)
-+		return false;
-+	p = xdr_encode_hyper(p, bs * s->f_blocks);	/* total bytes */
-+	p = xdr_encode_hyper(p, bs * s->f_bfree);	/* free bytes */
-+	p = xdr_encode_hyper(p, bs * s->f_bavail);	/* user available bytes */
-+	p = xdr_encode_hyper(p, s->f_files);		/* total inodes */
-+	p = xdr_encode_hyper(p, s->f_ffree);		/* free inodes */
-+	p = xdr_encode_hyper(p, s->f_ffree);		/* user available inodes */
-+	*p = cpu_to_be32(resp->invarsec);		/* mean unchanged time */
-+
-+	return true;
++	if (resp->offset1) {
++		/* we ended up with offset on a page boundary */
++		*resp->offset = cpu_to_be32(offset >> 32);
++		*resp->offset1 = cpu_to_be32(offset & 0xffffffff);
++		resp->offset1 = NULL;
++	} else {
++		xdr_encode_hyper(resp->offset, offset);
++	}
++	resp->offset = NULL;
 +}
 +
- /* FSSTAT */
- int
- nfs3svc_encode_fsstatres(struct svc_rqst *rqstp, __be32 *p)
- {
-+	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd3_fsstatres *resp = rqstp->rq_resp;
--	struct kstatfs	*s = &resp->stats;
--	u64		bs = s->f_bsize;
+ /*
+  * Encode a directory entry. This one works for both normal readdir
+  * and readdirplus.
+@@ -1244,19 +1266,7 @@ encode_entry(struct readdir_cd *ccd, const char *name, int namlen,
+ 	int		elen;		/* estimated entry length in words */
+ 	int		num_entry_words = 0;	/* actual number of words */
  
--	*p++ = resp->status;
--	*p++ = xdr_zero;	/* no post_op_attr */
+-	if (cd->offset) {
+-		u64 offset64 = offset;
 -
--	if (resp->status == 0) {
--		p = xdr_encode_hyper(p, bs * s->f_blocks);	/* total bytes */
--		p = xdr_encode_hyper(p, bs * s->f_bfree);	/* free bytes */
--		p = xdr_encode_hyper(p, bs * s->f_bavail);	/* user available bytes */
--		p = xdr_encode_hyper(p, s->f_files);	/* total inodes */
--		p = xdr_encode_hyper(p, s->f_ffree);	/* free inodes */
--		p = xdr_encode_hyper(p, s->f_ffree);	/* user available inodes */
--		*p++ = htonl(resp->invarsec);	/* mean unchanged time */
-+	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
-+		return 0;
-+	switch (resp->status) {
-+	case nfs_ok:
-+		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &nfs3svc_null_fh))
-+			return 0;
-+		if (!svcxdr_encode_fsstat3resok(xdr, resp))
-+			return 0;
-+		break;
-+	default:
-+		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &nfs3svc_null_fh))
-+			return 0;
- 	}
--	return xdr_ressize_check(rqstp, p);
-+
-+	return 1;
- }
+-		if (unlikely(cd->offset1)) {
+-			/* we ended up with offset on a page boundary */
+-			*cd->offset = htonl(offset64 >> 32);
+-			*cd->offset1 = htonl(offset64 & 0xffffffff);
+-			cd->offset1 = NULL;
+-		} else {
+-			xdr_encode_hyper(cd->offset, offset64);
+-		}
+-		cd->offset = NULL;
+-	}
++	nfs3svc_encode_cookie3(cd, offset);
  
- /* FSINFO */
+ 	/*
+ 	dprintk("encode_entry(%.*s @%ld%s)\n",
+diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
+index 8073350418ae..e76e9230827e 100644
+--- a/fs/nfsd/xdr3.h
++++ b/fs/nfsd/xdr3.h
+@@ -300,6 +300,8 @@ int nfs3svc_encode_commitres(struct svc_rqst *, __be32 *);
+ 
+ void nfs3svc_release_fhandle(struct svc_rqst *);
+ void nfs3svc_release_fhandle2(struct svc_rqst *);
++
++void nfs3svc_encode_cookie3(struct nfsd3_readdirres *resp, u64 offset);
+ int nfs3svc_encode_entry(void *, const char *name,
+ 				int namlen, loff_t offset, u64 ino,
+ 				unsigned int);
 
 
