@@ -2,135 +2,84 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6DC67C433DB
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Mar 2021 19:45:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06DFEC433E0
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Mar 2021 19:45:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2246264F2C
-	for <linux-nfs@archiver.kernel.org>; Tue,  2 Mar 2021 19:45:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B3EB864F2C
+	for <linux-nfs@archiver.kernel.org>; Tue,  2 Mar 2021 19:45:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244632AbhCBSPj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Mar 2021 13:15:39 -0500
-Received: from mx2.suse.de ([195.135.220.15]:49194 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1444718AbhCBCoT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 1 Mar 2021 21:44:19 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id B079CABF4;
-        Tue,  2 Mar 2021 02:26:23 +0000 (UTC)
-From:   NeilBrown <neilb@suse.de>
-To:     Yongcheng Yang <yoyang@redhat.com>
-Date:   Tue, 02 Mar 2021 13:26:18 +1100
-Cc:     Steve Dickson <SteveD@redhat.com>,
+        id S1352144AbhCBSRN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Mar 2021 13:17:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37140 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1573909AbhCBD2P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Mar 2021 22:28:15 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 00CF5C061756
+        for <linux-nfs@vger.kernel.org>; Mon,  1 Mar 2021 19:27:34 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 6DBEF2501; Mon,  1 Mar 2021 22:27:33 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6DBEF2501
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1614655653;
+        bh=9HBFXOOrXbANcO931Pqx56oVgID/LiNT2qjHGnB9S1Q=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=IhYwmnv9pp0ZpT2wt7IxKX0jvR0znxHcNgJ34nx/wsmE05zajN7NGIN9ZqSWOwgdP
+         imx3JeOu6ob0e5WzbOgP+HcCdJQSntt6kdVJWaIgwuhv/4KsRuYWRdWqjNrYANekAd
+         Z7P3WHYbJzaGDx4ebnX4lUIftmtiYg7IUL66WwL0=
+Date:   Mon, 1 Mar 2021 22:27:33 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     NeilBrown <neilb@suse.de>
+Cc:     Steve Dickson <SteveD@RedHat.com>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 0/5 v2] nfs-utils: provide audit-logging of NFSv4 access
-In-Reply-To: <20210301034312.GA12690@yoyang-pc.usersys.redhat.com>
+Message-ID: <20210302032733.GC16303@fieldses.org>
 References: <161456493684.22801.323431390819102360.stgit@noble>
- <20210301034312.GA12690@yoyang-pc.usersys.redhat.com>
-Message-ID: <877dmqi94l.fsf@notabene.neil.brown.name>
+ <20210301185037.GB14881@fieldses.org>
+ <874khui7hr.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <874khui7hr.fsf@notabene.neil.brown.name>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Tue, Mar 02, 2021 at 02:01:36PM +1100, NeilBrown wrote:
+> On Mon, Mar 01 2021, J. Bruce Fields wrote:
+> 
+> > I've gotten requests for similar functionality, and intended to
+> > implement it using directory notifications on /proc/fs/nfsd/clients.
+> 
+> I've been exploring this a bit.
+> When I mount a filesystem, 2 clients get created.
+> With NFSv4.0, the second client is immediately deleted, and the first
+> client is deleted one grace period after the filesystem is unmounted.
+> With NFSv4.1 and 4.2, the first client is immediately deleted, and the
+> second client is deleted immediately after the unmount.
 
-On Mon, Mar 01 2021, Yongcheng Yang wrote:
+Yeah, internally it's creating an "unconfirmed client" on SETCLIENTID
+(or EXCHANGE_ID) and then a new "confirmed client" on
+SETCLIENTID_CONFIRM (or CREATE_SESSION).
 
-> Hi NeilBrown,
->
-> Shall we further add these 2 options (cache-use-ipaddr & ttl) with
-> their default values to the file /etc/nfs.conf under section [mountd]?
-> By which the users can find it easier to configure them.
->
-> Also someone may check the mountd "Recognized values" from
-> nfs.conf(5), the file systemd/nfs.conf.man may also needs to be
-> updated mentioning "cache-use-ipaddr" and "ttl" IMHO.=20
+I'm not sure why the ordering's a little different between the 4.0/4.1+
+cases.
 
-Excellent suggestion, thanks.
+The difference on unmount is because 4.1+ clients immediately send a
+DESTROY_CLIENTID on unmount, but that op was new to 4.1.
 
-I've made those changes and will resend the series.
+(Note of course this isn't precisely mount/unmount, as the same client
+can be used for multiple filesystems.)
 
-Thanks,
-NeilBrown
+Honestly, I think this is exposing an implementation detail and it's
+dumb.  I'll look into fixing it.
 
->
-> Thanks,
-> Yongcheng
->
->
-> On Mon, Mar 01, 2021 at 01:17:15PM +1100, NeilBrown wrote:
->> V1 of this series didn't update the usage() message for mountd,
->> and omited the required ':' after the 'T' sort-option.  This=20
->> series fixes those two omissions.
->>=20
->> Original series comment:
->>=20
->> When NFSv3 is used mountd provides logs of successful and failed mount
->> attempts which can be used for auditing.
->> When NFSv4 is used there are no such logs as NFSv4 does not have a
->> distinct "mount" request.
->>=20
->> However mountd still knows about which filesysytems are being accessed
->> from which clients, and can actually provide more reliable logs than it
->> currently does, though they must be more verbose - with periodic "is
->> being accessed" message replacing a single "was mounted" message.
->>=20
->> This series adds support for that logging, and adds some related
->> improvements to make the logs as useful as possible.
->>=20
->> NeilBrown
->>=20
->> ---
->>=20
->> NeilBrown (5):
->>       mountd: reject unknown client IP when !use_ipaddr.
->>       mountd: Don't proactively add export info when fh info is requeste=
-d.
->>       mountd: add logging for authentication results for accesses.
->>       mountd: add --cache-use-ipaddr option to force use_ipaddr
->>       mountd: make default ttl settable by option
->>=20
->>=20
->>  support/export/auth.c      |  4 +++
->>  support/export/cache.c     | 32 +++++++++++------
->>  support/export/v4root.c    |  3 +-
->>  support/include/exportfs.h |  3 +-
->>  support/nfs/exports.c      |  4 ++-
->>  utils/mountd/mountd.c      | 30 +++++++++++++++-
->>  utils/mountd/mountd.man    | 70 ++++++++++++++++++++++++++++++++++++++
->>  7 files changed, 131 insertions(+), 15 deletions(-)
->>=20
->> --
->> Signature
->>=20
+(I don't know if that change itself would cause additional difficulty.)
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQJCBAEBCAAsFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAmA9oksOHG5laWxiQHN1
-c2UuZGUACgkQOeye3VZigbljsQ/+P8sYq4w/PVHoJHPSSWBSRrJRiXc14bG7ivlN
-EbBRywI1PrhrGUvu5vrTR1EV8PV4HPXYz8ZbSKUZ6oweDy/7n7MaMZTtpvrZIR3V
-bz7g8ctjZh6VOb6OxpoDjQgw3fx3ow+X3nQkQCYdYCWnOATlozPvd988XaXtBq7V
-mWD3CCb9xQ32YiyhUDTxi0Awdnfo6iM0r8iuy1QfTV7YcluiVCtrZPZdXL7Gl9fk
-XnSI29wPQ95TxZMSnVumWF0VPuhufaJaw0dK99LYKVr1zUlORgCWBdLJi1PEDVkG
-B+DuqRVR/yPKQsyhEMacOTqmANKooSG/SVL8oRBDpOMqbPSZ/EEA/qLWA+hEpNyy
-aAUnnAav6/6X6Ldxo25th+sz0EtiiKJfsn0GZahPuPPpGJh6zpCzHMUJY3N+P/ST
-xCC581YOZGSxbb8qiJyqGR8Q8mXlgJnyu5NCFhVOmCiOv45cyAlltizxbZzSD1IX
-+rChgis0j8r+VALxvwc06XZYwuk2hezqijj3QQKGJ4vp/m6rkYQhxd6fmyCWGQ8Q
-iESGFOjmhgyYwJ0vVacCke4VlxJ86KRvlNNhn5OCk0YWECQ9tsmx5oI2r9cQpKlY
-w0npk753dJdLZm1brxjq8wuvsLn8orF5nFVrSCt4kxCFnlXeJ0EhXttnTw96Cbj+
-Ff3WHVY=
-=H6IU
------END PGP SIGNATURE-----
---=-=-=--
+--b.
