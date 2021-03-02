@@ -2,314 +2,728 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-22.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,NICE_REPLY_A,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
-	autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53FE6C4332E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2680C4321A
 	for <linux-nfs@archiver.kernel.org>; Tue,  2 Mar 2021 19:46:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1E7A664F2E
+	by mail.kernel.org (Postfix) with ESMTP id C99A264F2C
 	for <linux-nfs@archiver.kernel.org>; Tue,  2 Mar 2021 19:46:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1580754AbhCBSUB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Mar 2021 13:20:01 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34072 "EHLO
+        id S1580797AbhCBSUb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Mar 2021 13:20:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47304 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244388AbhCBMBf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 07:01:35 -0500
-Received: from mail-ed1-x52c.google.com (mail-ed1-x52c.google.com [IPv6:2a00:1450:4864:20::52c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 53879C06178B
-        for <linux-nfs@vger.kernel.org>; Tue,  2 Mar 2021 03:50:55 -0800 (PST)
-Received: by mail-ed1-x52c.google.com with SMTP id c6so24838401ede.0
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Mar 2021 03:50:55 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=puzzle-itc.de; s=google;
-        h=subject:to:cc:references:from:autocrypt:organization:message-id
-         :date:user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=AVkjDE4pXjK48gn1OzuIA1JB4gXrRMLHglrmzybvuKI=;
-        b=f4VB/zjFAkzdqc6kRQkx80XKsOIt10dV/FwaQuDMU4gvcAZhhRZEdoiLQb2Mkx8AGV
-         s8OG2MgkNn5FgBxzatha6EDK6VmCgpoHeV8rH6r/zEgLYa5Itkq8TUI6mYj2rw/o3pv8
-         YtDeKbciK0Hzp14uw61sV+EN9vFz/icKlnplI=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:autocrypt
-         :organization:message-id:date:user-agent:mime-version:in-reply-to
-         :content-language:content-transfer-encoding;
-        bh=AVkjDE4pXjK48gn1OzuIA1JB4gXrRMLHglrmzybvuKI=;
-        b=TrV2bhgbjQJuNToepQmjo7oWhhmjT3lC2baC6s+mDDL9l4lZR/eV+5yX/y2M50osWM
-         mrt/P6NJAMBeoYAS+BcajVViTgE7gin2LhE03QxgQnJtDyHkHlMa7B2d+fJPs5PBKmx5
-         Vfu8LTq6YF2uV5haTpjjePBbu8zy+NS2Hncl+6APc+DSp44zSso4YEkQ3mr7vdihgjKk
-         a+mbXaopMeHGQu8S8ujOfqmPE55uvvgqjSNK003GSo1pPLzn7H2jJkIPbsOyiQDtb59H
-         7mF47JTmPuAFHaDmmQYuycwq1NuLMLSH31gIMY7O/xtS698L8jr4TagNwhLF6V1aU0sT
-         mITA==
-X-Gm-Message-State: AOAM533ZFJXUNzS34uNcBe3BXBL6DK5AP4AEwGXGy5dMRQskr/esz/et
-        Fxbw8PRMfWrrxn8crAAtavsLclQkhNKzDzxyBF51yhw8zE9kyX/7d5cuicqq5gCfUH5kiff0jkb
-        sRE549741b82Bb4nyPhHZnw==
-X-Google-Smtp-Source: ABdhPJwU0HZi8dWr9+QNHzGrUG4p1uEClrRQpogInUJU0JdtGci4gYciTS4+W3NaAsdDJ5iav0+CFQ==
-X-Received: by 2002:a05:6402:4252:: with SMTP id g18mr20753189edb.231.1614685853854;
-        Tue, 02 Mar 2021 03:50:53 -0800 (PST)
-Received: from tuedko18.puzzle-itc.de ([2a02:8070:88b7:3700:cd8b:c6f5:660b:7492])
-        by smtp.gmail.com with ESMTPSA id g2sm18023385ejk.108.2021.03.02.03.50.53
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 02 Mar 2021 03:50:53 -0800 (PST)
-Subject: Re: [PATCH] sunrpc: fix refcount leak for rpc auth modules
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        Bruce Fields <bfields@fieldses.org>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <20210226230437.jfgagcq5magzlrtv@tuedko18.puzzle-itc.de>
- <C2704113-2581-4B58-806B-BB65148AC14B@oracle.com>
- <20210301162820.GB11772@fieldses.org>
- <F2DE890D-C2D7-476A-AF6F-949B105728E9@oracle.com>
-From:   Daniel Kobras <kobras@puzzle-itc.de>
-Autocrypt: addr=kobras@puzzle-itc.de; keydata=
- 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
- p63U1j1sBdH4lyrWIu/HHjYDEL8+XTvqMCBEHuI=
-Organization: Puzzle ITC Deutschland GmbH
-Message-ID: <61920dd6-31d6-b12a-9a9b-7e7a662a12c3@puzzle-itc.de>
-Date:   Tue, 2 Mar 2021 12:50:52 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.10.0
+        with ESMTP id S1345941AbhCBRXs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 12:23:48 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18330C0617A7
+        for <linux-nfs@vger.kernel.org>; Tue,  2 Mar 2021 08:47:50 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id EF9191E3B; Tue,  2 Mar 2021 11:47:47 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org EF9191E3B
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1614703667;
+        bh=QDBn2TGMp6cpPlOX8eaUbRYgcjoj7Qm/o+4ym2aLio4=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=JQFIz/HbTEQjzw/xVB5z8PtCV8ia5aRMYUTTpGQ0kPVmkVm+Tzwz6x3QeZmeT8iWc
+         DcsMp5Uel4ElD0uOlhYsZLddiC5RjcLxnol8Eo9XlboGwC6UdMbdTtQaphYcLZI7Rw
+         1J+cb9gyYJ3MuwAkK+W6XQUZuIQTZxemeHLIw81A=
+Date:   Tue, 2 Mar 2021 11:47:47 -0500
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 01/42] NFSD: Extract the svcxdr_init_encode() helper
+Message-ID: <20210302164747.GA3400@fieldses.org>
+References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
+ <161461172449.8508.5387365342766187229.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <F2DE890D-C2D7-476A-AF6F-949B105728E9@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Language: en-US
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <161461172449.8508.5387365342766187229.stgit@klimt.1015granger.net>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi all!
+On Mon, Mar 01, 2021 at 10:15:24AM -0500, Chuck Lever wrote:
+> NFSD initializes an encode xdr_stream only after the RPC layer has
+> already inserted the RPC Reply header.
 
-Am 01.03.21 um 18:44 schrieb Chuck Lever:
->> On Mar 1, 2021, at 11:28 AM, Bruce Fields <bfields@fieldses.org> wrote:
->>
->> On Mon, Mar 01, 2021 at 03:20:24PM +0000, Chuck Lever wrote:
->>>
->>>> On Feb 26, 2021, at 6:04 PM, Daniel Kobras <kobras@puzzle-itc.de> wrot=
-e:
->>>>
->>>> If an auth module's accept op returns SVC_CLOSE, svc_process_common()
->>>> enters a call path that does not call svc_authorise() before leaving t=
-he
->>>> function, and thus leaks a reference on the auth module's refcount. He=
-nce,
->>>> make sure calls to svc_authenticate() and svc_authorise() are paired f=
-or
->>>> all call paths, to make sure rpc auth modules can be unloaded.
->>>>
->>>> Fixes: 4d712ef1db05 ("svcauth_gss: Close connection when dropping an i=
-ncoming message")
->>>> Signed-off-by: Daniel Kobras <kobras@puzzle-itc.de>
->>>> ---
->>>> Hi!
->>>>
->>>> While debugging NFS on a system with misconfigured krb5 settings, we n=
-oticed
->>>> a suspiciously high refcount on the auth_rpcgss module, despite all of=
- its
->>>> consumers already unloaded. I wasn't able to analyze any further on th=
-e live
->>>> system, but had a look at the code afterwards, and found a path that s=
-eems
->>>> to leak references if the mechanism's accept() op shuts down a connect=
-ion
->>>> early. Although I couldn't verify, this seem to be a plausible fix.
->>>>
->>>> Kind regards,
->>>>
->>>> Daniel
->>>
->>> Hi Daniel-
->>>
->>> I've provisionally included your patch in my NFSD for-rc topic branch
->>> here:
->>>
->>> git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
->>>
->>> Your bug report seems plausible, but I need to take a closer look at th=
-at
->>> code and your proposed change. Would very much like to hear from others=
-,
->>> too.
->>
->> So, the effect of this is to call svc_authorise more often.  I think
->> that's always safe, because svc_authorise is a no-op unless rq_authops
->> is set, it clears rq_authops itself, and rq_authops being set is a
->> guarantee that ->accept() already ran.
->>
->> It's harder to know if this solves the problem, as I see a lot of other
->> mentions of THIS_MODULE in svcauth_gss.c.
->=20
-> Perhaps a deeper audit is necessary.
->=20
-> A small code change to inject SVC_CLOSE returns at random would enable
-> a more dynamic analysis.
+Out of curiosity: does it need to be this way?
 
-I've managed to come up with simple reproducer for this bug:
+--b.
 
-On a working krb5 NFS mount from a test client, check which enctype is
-used in the ticket for the NFS service. Then unmount, and exclude this
-enctype from permitted_enctypes in the server's /etc/krb5.conf.[*]
-Trying to mount again from the test client should now fail (EPERM), and
-each mount attempt increases the refcount of the server's auth_rpcgss
-module (by 22 in my test).
-
-Exchanging sunrpc.ko for a version with the patch applied, and
-re-running the same test, the refcount remains constant instead. This
-confirms the initial analysis, and indicates the fix is actually correct.
-
-[*] For a quick test in a standard setup, I've used
-      [libdefaults]
-      permitted_enctypes =3D aes128-cts-hmac-sha1-96
-      (...)
-    to make the normal AES256 tickets fail. A more realistic scenario
-    would be a client that's restricted to RC4, and a server with
-    RC4 keys on the KDC, but only AES allowed in krb5.conf. Default
-    behaviour of typical AD join tools makes it easy to end up in a
-    situation like this.
-
->> Possibly orthogonal to this problem, but: svcauth_gss_release
->> unconditionally dereferences rqstp->rq_auth_data.  Isn't that a NULL
->> dereference if the kmalloc at the start of svcauth_gss_accept() fails?
->>
->> Finally, should we care about module reference leaks?
->=20
-> I would prefer that module reference counting work as expected. When it
-> doesn't that tends to lead to people (say, me) hunting for bugs that
-> might actually be serious.
-
-The refcount leak is the easily visible consequence, but the skipped
-call to svcauth_gss_release() probably also leaks a small amount of
-memory for each request. Repeating the test case above for a longer
-period of time (eg. by throwing an automounter into the mix), this might
-eventually become noticeable.
-
->> Does anyone really *need* to unload modules?
->=20
-> Anyone who wants to replace the module with a newer build that fixes a
-> bug. It avoids a full reboot, and for some that's important.
-
-Switching from rpc.svcgssd to gssproxy without taking down the machine
-as a whole was the situation that originally prompted me to look into
-this, but I admit that's a rather rare use case.
-
->> And will bad stuff happen when the
->> count overflows, or does the module code fail safely somehow in the
->> overflow case?  I know, bugs are bugs, I should care about fixing all of
->> them, shame on me....
->>
->> --b.
->>
->>>
->>>
->>>> net/sunrpc/svc.c | 6 ++++--
->>>> 1 file changed, 4 insertions(+), 2 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->>>> index 61fb8a18552c..d76dc9d95d16 100644
->>>> --- a/net/sunrpc/svc.c
->>>> +++ b/net/sunrpc/svc.c
->>>> @@ -1413,7 +1413,7 @@ svc_process_common(struct svc_rqst *rqstp, struc=
-t kvec *argv, struct kvec *resv)
->>>>
->>>> sendit:
->>>> 	if (svc_authorise(rqstp))
->>>> -		goto close;
->>>> +		goto close_xprt;
->>>> 	return 1;		/* Caller can now send it */
->>>>
->>>> release_dropit:
->>>> @@ -1425,6 +1425,8 @@ svc_process_common(struct svc_rqst *rqstp, struc=
-t kvec *argv, struct kvec *resv)
->>>> 	return 0;
->>>>
->>>> close:
->>>> +	svc_authorise(rqstp);
->>>> +close_xprt:
->>>> 	if (rqstp->rq_xprt && test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
->>>> 		svc_close_xprt(rqstp->rq_xprt);
->>>> 	dprintk("svc: svc_process close\n");
->>>> @@ -1433,7 +1435,7 @@ svc_process_common(struct svc_rqst *rqstp, struc=
-t kvec *argv, struct kvec *resv)
->>>> err_short_len:
->>>> 	svc_printk(rqstp, "short len %zd, dropping request\n",
->>>> 			argv->iov_len);
->>>> -	goto close;
->>>> +	goto close_xprt;
->>>>
->>>> err_bad_rpc:
->>>> 	serv->sv_stats->rpcbadfmt++;
->>>> --=20
->>>> 2.25.1
->>>>
->>>>
->>>> --=20
->>>> Puzzle ITC Deutschland GmbH
->>>> Sitz der Gesellschaft: Eisenbahnstra=C3=9Fe 1, 72072=20
->>>> T=C3=BCbingen
->>>>
->>>> Eingetragen am Amtsgericht Stuttgart HRB 765802
->>>> Gesch=C3=A4ftsf=C3=BChrer:=20
->>>> Lukas Kallies, Daniel Kobras, Mark Pr=C3=B6hl
->>>>
->>>
->>> --
->>> Chuck Lever
->=20
-> --
-> Chuck Lever
-
-Kind regards,
-
-Daniel
---=20
-Daniel Kobras
-Principal Architect
-Puzzle ITC Deutschland
-+49 7071 14316 0
-www.puzzle-itc.de
-
---=20
-Puzzle ITC Deutschland GmbH
-Sitz der Gesellschaft: Eisenbahnstra=C3=9Fe 1, 72072=20
-T=C3=BCbingen
-
-Eingetragen am Amtsgericht Stuttgart HRB 765802
-Gesch=C3=A4ftsf=C3=BChrer:=20
-Lukas Kallies, Daniel Kobras, Mark Pr=C3=B6hl
-
+> Thus it behaves differently
+> than xdr_init_encode does, which assumes the passed-in xdr_buf is
+> entirely devoid of content.
+> 
+> nfs4proc.c has this server-side stream initialization helper, but
+> it is visible only to the NFSv4 code. Move this helper to a place
+> that can be accessed by NFSv2 and NFSv3 server XDR functions.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/nfs4proc.c         |   31 +++---------
+>  fs/nfsd/nfs4state.c        |    6 +-
+>  fs/nfsd/nfs4xdr.c          |  110 ++++++++++++++++++++++----------------------
+>  fs/nfsd/nfssvc.c           |    4 +-
+>  fs/nfsd/xdr4.h             |    2 -
+>  include/linux/sunrpc/svc.h |   25 ++++++++++
+>  6 files changed, 94 insertions(+), 84 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index acdb3cd806a1..b749033e467f 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -2262,25 +2262,6 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+>  	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
+>  }
+>  
+> -static void svcxdr_init_encode(struct svc_rqst *rqstp,
+> -			       struct nfsd4_compoundres *resp)
+> -{
+> -	struct xdr_stream *xdr = &resp->xdr;
+> -	struct xdr_buf *buf = &rqstp->rq_res;
+> -	struct kvec *head = buf->head;
+> -
+> -	xdr->buf = buf;
+> -	xdr->iov = head;
+> -	xdr->p   = head->iov_base + head->iov_len;
+> -	xdr->end = head->iov_base + PAGE_SIZE - rqstp->rq_auth_slack;
+> -	/* Tail and page_len should be zero at this point: */
+> -	buf->len = buf->head[0].iov_len;
+> -	xdr_reset_scratch_buffer(xdr);
+> -	xdr->page_ptr = buf->pages - 1;
+> -	buf->buflen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages)
+> -		- rqstp->rq_auth_slack;
+> -}
+> -
+>  #ifdef CONFIG_NFSD_V4_2_INTER_SSC
+>  static void
+>  check_if_stalefh_allowed(struct nfsd4_compoundargs *args)
+> @@ -2335,10 +2316,14 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+>  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+>  	__be32		status;
+>  
+> -	svcxdr_init_encode(rqstp, resp);
+> -	resp->tagp = resp->xdr.p;
+> +	resp->xdr = &rqstp->rq_res_stream;
+> +
+> +	/* reserve space for: NFS status code */
+> +	xdr_reserve_space(resp->xdr, XDR_UNIT);
+> +
+> +	resp->tagp = resp->xdr->p;
+>  	/* reserve space for: taglen, tag, and opcnt */
+> -	xdr_reserve_space(&resp->xdr, 8 + args->taglen);
+> +	xdr_reserve_space(resp->xdr, XDR_UNIT * 2 + args->taglen);
+>  	resp->taglen = args->taglen;
+>  	resp->tag = args->tag;
+>  	resp->rqstp = rqstp;
+> @@ -2444,7 +2429,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+>  encode_op:
+>  		if (op->status == nfserr_replay_me) {
+>  			op->replay = &cstate->replay_owner->so_replay;
+> -			nfsd4_encode_replay(&resp->xdr, op);
+> +			nfsd4_encode_replay(resp->xdr, op);
+>  			status = op->status = op->replay->rp_status;
+>  		} else {
+>  			nfsd4_encode_operation(resp, op);
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 61552e89bd89..83a498ccab19 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2903,7 +2903,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
+>  static void
+>  nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+>  {
+> -	struct xdr_buf *buf = resp->xdr.buf;
+> +	struct xdr_buf *buf = resp->xdr->buf;
+>  	struct nfsd4_slot *slot = resp->cstate.slot;
+>  	unsigned int base;
+>  
+> @@ -2973,7 +2973,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+>  			 struct nfsd4_sequence *seq)
+>  {
+>  	struct nfsd4_slot *slot = resp->cstate.slot;
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  	__be32 status;
+>  
+> @@ -3708,7 +3708,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  {
+>  	struct nfsd4_sequence *seq = &u->sequence;
+>  	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct nfsd4_session *session;
+>  	struct nfs4_client *clp;
+>  	struct nfsd4_slot *slot;
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index eaaa1605b5b5..e0f06d3cbd44 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3581,7 +3581,7 @@ nfsd4_encode_stateid(struct xdr_stream *xdr, stateid_t *sid)
+>  static __be32
+>  nfsd4_encode_access(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_access *access)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 8);
+> @@ -3594,7 +3594,7 @@ nfsd4_encode_access(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+>  
+>  static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_bind_conn_to_session *bcts)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, NFS4_MAX_SESSIONID_LEN + 8);
+> @@ -3611,7 +3611,7 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+>  static __be32
+>  nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_close *close)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	return nfsd4_encode_stateid(xdr, &close->cl_stateid);
+>  }
+> @@ -3620,7 +3620,7 @@ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_c
+>  static __be32
+>  nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_commit *commit)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
+> @@ -3634,7 +3634,7 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+>  static __be32
+>  nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_create *create)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 20);
+> @@ -3649,7 +3649,7 @@ static __be32
+>  nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_getattr *getattr)
+>  {
+>  	struct svc_fh *fhp = getattr->ga_fhp;
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	return nfsd4_encode_fattr(xdr, fhp, fhp->fh_export, fhp->fh_dentry,
+>  				    getattr->ga_bmval, resp->rqstp, 0);
+> @@ -3658,7 +3658,7 @@ nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  static __be32
+>  nfsd4_encode_getfh(struct nfsd4_compoundres *resp, __be32 nfserr, struct svc_fh **fhpp)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct svc_fh *fhp = *fhpp;
+>  	unsigned int len;
+>  	__be32 *p;
+> @@ -3713,7 +3713,7 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
+>  static __be32
+>  nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lock *lock)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	if (!nfserr)
+>  		nfserr = nfsd4_encode_stateid(xdr, &lock->lk_resp_stateid);
+> @@ -3726,7 +3726,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
+>  static __be32
+>  nfsd4_encode_lockt(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lockt *lockt)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	if (nfserr == nfserr_denied)
+>  		nfsd4_encode_lock_denied(xdr, &lockt->lt_denied);
+> @@ -3736,7 +3736,7 @@ nfsd4_encode_lockt(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
+>  static __be32
+>  nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_locku *locku)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	return nfsd4_encode_stateid(xdr, &locku->lu_stateid);
+>  }
+> @@ -3745,7 +3745,7 @@ nfsd4_encode_locku(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_l
+>  static __be32
+>  nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_link *link)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 20);
+> @@ -3759,7 +3759,7 @@ nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_li
+>  static __be32
+>  nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_open *open)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	nfserr = nfsd4_encode_stateid(xdr, &open->op_stateid);
+> @@ -3853,7 +3853,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+>  static __be32
+>  nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_open_confirm *oc)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	return nfsd4_encode_stateid(xdr, &oc->oc_resp_stateid);
+>  }
+> @@ -3861,7 +3861,7 @@ nfsd4_encode_open_confirm(struct nfsd4_compoundres *resp, __be32 nfserr, struct
+>  static __be32
+>  nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_open_downgrade *od)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	return nfsd4_encode_stateid(xdr, &od->od_stateid);
+>  }
+> @@ -3871,7 +3871,7 @@ static __be32 nfsd4_encode_splice_read(
+>  				struct nfsd4_read *read,
+>  				struct file *file, unsigned long maxcount)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct xdr_buf *buf = xdr->buf;
+>  	int status, space_left;
+>  	u32 eof;
+> @@ -3937,7 +3937,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+>  				 struct nfsd4_read *read,
+>  				 struct file *file, unsigned long maxcount)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	u32 eof;
+>  	int starting_len = xdr->buf->len - 8;
+>  	__be32 nfserr;
+> @@ -3976,7 +3976,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		  struct nfsd4_read *read)
+>  {
+>  	unsigned long maxcount;
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct file *file;
+>  	int starting_len = xdr->buf->len;
+>  	__be32 *p;
+> @@ -3990,7 +3990,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		WARN_ON_ONCE(test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags));
+>  		return nfserr_resource;
+>  	}
+> -	if (resp->xdr.buf->page_len &&
+> +	if (resp->xdr->buf->page_len &&
+>  	    test_bit(RQ_SPLICE_OK, &resp->rqstp->rq_flags)) {
+>  		WARN_ON_ONCE(1);
+>  		return nfserr_resource;
+> @@ -4020,7 +4020,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+>  	int maxcount;
+>  	__be32 wire_count;
+>  	int zero = 0;
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	int length_offset = xdr->buf->len;
+>  	int status;
+>  	__be32 *p;
+> @@ -4072,7 +4072,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  	int bytes_left;
+>  	loff_t offset;
+>  	__be64 wire_offset;
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	int starting_len = xdr->buf->len;
+>  	__be32 *p;
+>  
+> @@ -4083,8 +4083,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
+>  	*p++ = cpu_to_be32(0);
+>  	*p++ = cpu_to_be32(0);
+> -	resp->xdr.buf->head[0].iov_len = ((char *)resp->xdr.p)
+> -				- (char *)resp->xdr.buf->head[0].iov_base;
+> +	xdr->buf->head[0].iov_len = (char *)xdr->p -
+> +				    (char *)xdr->buf->head[0].iov_base;
+>  
+>  	/*
+>  	 * Number of bytes left for directory entries allowing for the
+> @@ -4159,7 +4159,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  static __be32
+>  nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_remove *remove)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 20);
+> @@ -4172,7 +4172,7 @@ nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+>  static __be32
+>  nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_rename *rename)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 40);
+> @@ -4255,7 +4255,7 @@ static __be32
+>  nfsd4_encode_secinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		     struct nfsd4_secinfo *secinfo)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	return nfsd4_do_encode_secinfo(xdr, secinfo->si_exp);
+>  }
+> @@ -4264,7 +4264,7 @@ static __be32
+>  nfsd4_encode_secinfo_no_name(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		     struct nfsd4_secinfo_no_name *secinfo)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  
+>  	return nfsd4_do_encode_secinfo(xdr, secinfo->sin_exp);
+>  }
+> @@ -4276,7 +4276,7 @@ nfsd4_encode_secinfo_no_name(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  static __be32
+>  nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_setattr *setattr)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 16);
+> @@ -4300,7 +4300,7 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  static __be32
+>  nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_setclientid *scd)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	if (!nfserr) {
+> @@ -4324,7 +4324,7 @@ nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct n
+>  static __be32
+>  nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_write *write)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 16);
+> @@ -4341,7 +4341,7 @@ static __be32
+>  nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			 struct nfsd4_exchange_id *exid)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  	char *major_id;
+>  	char *server_scope;
+> @@ -4419,7 +4419,7 @@ static __be32
+>  nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			    struct nfsd4_create_session *sess)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 24);
+> @@ -4472,7 +4472,7 @@ static __be32
+>  nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		      struct nfsd4_sequence *seq)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, NFS4_MAX_SESSIONID_LEN + 20);
+> @@ -4495,7 +4495,7 @@ static __be32
+>  nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			  struct nfsd4_test_stateid *test_stateid)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct nfsd4_test_stateid_id *stateid, *next;
+>  	__be32 *p;
+>  
+> @@ -4516,7 +4516,7 @@ static __be32
+>  nfsd4_encode_getdeviceinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		struct nfsd4_getdeviceinfo *gdev)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	const struct nfsd4_layout_ops *ops;
+>  	u32 starting_len = xdr->buf->len, needed_len;
+>  	__be32 *p;
+> @@ -4572,7 +4572,7 @@ static __be32
+>  nfsd4_encode_layoutget(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		struct nfsd4_layoutget *lgp)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	const struct nfsd4_layout_ops *ops;
+>  	__be32 *p;
+>  
+> @@ -4599,7 +4599,7 @@ static __be32
+>  nfsd4_encode_layoutcommit(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			  struct nfsd4_layoutcommit *lcp)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 4);
+> @@ -4620,7 +4620,7 @@ static __be32
+>  nfsd4_encode_layoutreturn(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		struct nfsd4_layoutreturn *lrp)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 4);
+> @@ -4638,7 +4638,7 @@ nfsd42_encode_write_res(struct nfsd4_compoundres *resp,
+>  		struct nfsd42_write_res *write, bool sync)
+>  {
+>  	__be32 *p;
+> -	p = xdr_reserve_space(&resp->xdr, 4);
+> +	p = xdr_reserve_space(resp->xdr, 4);
+>  	if (!p)
+>  		return nfserr_resource;
+>  
+> @@ -4647,11 +4647,11 @@ nfsd42_encode_write_res(struct nfsd4_compoundres *resp,
+>  	else {
+>  		__be32 nfserr;
+>  		*p++ = cpu_to_be32(1);
+> -		nfserr = nfsd4_encode_stateid(&resp->xdr, &write->cb_stateid);
+> +		nfserr = nfsd4_encode_stateid(resp->xdr, &write->cb_stateid);
+>  		if (nfserr)
+>  			return nfserr;
+>  	}
+> -	p = xdr_reserve_space(&resp->xdr, 8 + 4 + NFS4_VERIFIER_SIZE);
+> +	p = xdr_reserve_space(resp->xdr, 8 + 4 + NFS4_VERIFIER_SIZE);
+>  	if (!p)
+>  		return nfserr_resource;
+>  
+> @@ -4665,7 +4665,7 @@ nfsd42_encode_write_res(struct nfsd4_compoundres *resp,
+>  static __be32
+>  nfsd42_encode_nl4_server(struct nfsd4_compoundres *resp, struct nl4_server *ns)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct nfs42_netaddr *addr;
+>  	__be32 *p;
+>  
+> @@ -4713,7 +4713,7 @@ nfsd4_encode_copy(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  	if (nfserr)
+>  		return nfserr;
+>  
+> -	p = xdr_reserve_space(&resp->xdr, 4 + 4);
+> +	p = xdr_reserve_space(resp->xdr, 4 + 4);
+>  	*p++ = xdr_one; /* cr_consecutive */
+>  	*p++ = cpu_to_be32(copy->cp_synchronous);
+>  	return 0;
+> @@ -4723,7 +4723,7 @@ static __be32
+>  nfsd4_encode_offload_status(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			    struct nfsd4_offload_status *os)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 8 + 4);
+> @@ -4740,7 +4740,7 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres *resp,
+>  			    unsigned long *maxcount, u32 *eof,
+>  			    loff_t *pos)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct file *file = read->rd_nf->nf_file;
+>  	int starting_len = xdr->buf->len;
+>  	loff_t hole_pos;
+> @@ -4799,7 +4799,7 @@ nfsd4_encode_read_plus_hole(struct nfsd4_compoundres *resp,
+>  	count = data_pos - read->rd_offset;
+>  
+>  	/* Content type, offset, byte count */
+> -	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 8);
+> +	p = xdr_reserve_space(resp->xdr, 4 + 8 + 8);
+>  	if (!p)
+>  		return nfserr_resource;
+>  
+> @@ -4817,7 +4817,7 @@ nfsd4_encode_read_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		       struct nfsd4_read *read)
+>  {
+>  	unsigned long maxcount, count;
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct file *file;
+>  	int starting_len = xdr->buf->len;
+>  	int last_segment = xdr->buf->len;
+> @@ -4888,7 +4888,7 @@ static __be32
+>  nfsd4_encode_copy_notify(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			 struct nfsd4_copy_notify *cn)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	if (nfserr)
+> @@ -4924,7 +4924,7 @@ nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  {
+>  	__be32 *p;
+>  
+> -	p = xdr_reserve_space(&resp->xdr, 4 + 8);
+> +	p = xdr_reserve_space(resp->xdr, 4 + 8);
+>  	*p++ = cpu_to_be32(seek->seek_eof);
+>  	p = xdr_encode_hyper(p, seek->seek_pos);
+>  
+> @@ -4985,7 +4985,7 @@ static __be32
+>  nfsd4_encode_getxattr(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		      struct nfsd4_getxattr *getxattr)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p, err;
+>  
+>  	p = xdr_reserve_space(xdr, 4);
+> @@ -5009,7 +5009,7 @@ static __be32
+>  nfsd4_encode_setxattr(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		      struct nfsd4_setxattr *setxattr)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 20);
+> @@ -5050,7 +5050,7 @@ static __be32
+>  nfsd4_encode_listxattrs(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			struct nfsd4_listxattrs *listxattrs)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	u32 cookie_offset, count_offset, eof;
+>  	u32 left, xdrleft, slen, count;
+>  	u32 xdrlen, offset;
+> @@ -5161,7 +5161,7 @@ static __be32
+>  nfsd4_encode_removexattr(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  			 struct nfsd4_removexattr *removexattr)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	__be32 *p;
+>  
+>  	p = xdr_reserve_space(xdr, 20);
+> @@ -5301,7 +5301,7 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+>  void
+>  nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+>  {
+> -	struct xdr_stream *xdr = &resp->xdr;
+> +	struct xdr_stream *xdr = resp->xdr;
+>  	struct nfs4_stateowner *so = resp->cstate.replay_owner;
+>  	struct svc_rqst *rqstp = resp->rqstp;
+>  	const struct nfsd4_operation *opdesc = op->opdesc;
+> @@ -5430,14 +5430,14 @@ int
+>  nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p)
+>  {
+>  	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> -	struct xdr_buf *buf = resp->xdr.buf;
+> +	struct xdr_buf *buf = resp->xdr->buf;
+>  
+>  	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
+>  				 buf->tail[0].iov_len);
+>  
+>  	*p = resp->cstate.status;
+>  
+> -	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
+> +	rqstp->rq_next_page = resp->xdr->page_ptr + 1;
+>  
+>  	p = resp->tagp;
+>  	*p++ = htonl(resp->taglen);
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 6de406322106..d909e4956244 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -997,7 +997,7 @@ int nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+>  	 * NFSv4 does some encoding while processing
+>  	 */
+>  	p = resv->iov_base + resv->iov_len;
+> -	resv->iov_len += sizeof(__be32);
+> +	svcxdr_init_encode(rqstp);
+>  
+>  	*statp = proc->pc_func(rqstp);
+>  	if (*statp == rpc_drop_reply || test_bit(RQ_DROPME, &rqstp->rq_flags))
+> @@ -1052,7 +1052,7 @@ int nfssvc_decode_voidarg(struct svc_rqst *rqstp, __be32 *p)
+>   */
+>  int nfssvc_encode_voidres(struct svc_rqst *rqstp, __be32 *p)
+>  {
+> -        return xdr_ressize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  int nfsd_pool_stats_open(struct inode *inode, struct file *file)
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index c300885ae75d..fe540a3415c6 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -698,7 +698,7 @@ struct nfsd4_compoundargs {
+>  
+>  struct nfsd4_compoundres {
+>  	/* scratch variables for XDR encode */
+> -	struct xdr_stream		xdr;
+> +	struct xdr_stream		*xdr;
+>  	struct svc_rqst *		rqstp;
+>  
+>  	u32				taglen;
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 31ee3b6047c3..e91d51ea028b 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -248,6 +248,7 @@ struct svc_rqst {
+>  	size_t			rq_xprt_hlen;	/* xprt header len */
+>  	struct xdr_buf		rq_arg;
+>  	struct xdr_stream	rq_arg_stream;
+> +	struct xdr_stream	rq_res_stream;
+>  	struct page		*rq_scratch_page;
+>  	struct xdr_buf		rq_res;
+>  	struct page		*rq_pages[RPCSVC_MAXPAGES + 1];
+> @@ -574,4 +575,28 @@ static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
+>  	xdr_set_scratch_page(xdr, rqstp->rq_scratch_page);
+>  }
+>  
+> +/**
+> + * svcxdr_init_encode - Prepare an xdr_stream for svc Reply encoding
+> + * @rqstp: controlling server RPC transaction context
+> + *
+> + */
+> +static inline void svcxdr_init_encode(struct svc_rqst *rqstp)
+> +{
+> +	struct xdr_stream *xdr = &rqstp->rq_res_stream;
+> +	struct xdr_buf *buf = &rqstp->rq_res;
+> +	struct kvec *resv = buf->head;
+> +
+> +	xdr_reset_scratch_buffer(xdr);
+> +
+> +	xdr->buf = buf;
+> +	xdr->iov = resv;
+> +	xdr->p   = resv->iov_base + resv->iov_len;
+> +	xdr->end = resv->iov_base + PAGE_SIZE - rqstp->rq_auth_slack;
+> +	buf->len = resv->iov_len;
+> +	xdr->page_ptr = buf->pages - 1;
+> +	buf->buflen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages);
+> +	buf->buflen -= rqstp->rq_auth_slack;
+> +	xdr->rqst = NULL;
+> +}
+> +
+>  #endif /* SUNRPC_SVC_H */
+> 
