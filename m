@@ -7,151 +7,106 @@ X-Spam-Status: No, score=-17.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48F25C28D15
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DAAADC282E0
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C9F6D64EF8
+	by mail.kernel.org (Postfix) with ESMTP id 4E3F864EDF
 	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241441AbhCCKyd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 05:54:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34518 "EHLO
+        id S238013AbhCCKwp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 05:52:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45662 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1376371AbhCBUqK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 15:46:10 -0500
+        with ESMTP id S1581832AbhCBT1O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 14:27:14 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0049DC061788
-        for <linux-nfs@vger.kernel.org>; Tue,  2 Mar 2021 12:45:21 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB774C061756
+        for <linux-nfs@vger.kernel.org>; Tue,  2 Mar 2021 07:48:38 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 120D41E3B; Tue,  2 Mar 2021 15:45:20 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 120D41E3B
+        id 59F651C81; Tue,  2 Mar 2021 10:48:38 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 59F651C81
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1614717920;
-        bh=zhdvxoHmaTycKDht8GvGbvKV9sBC6veJjiiJx44KJEY=;
-        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
-        b=jxWDB2gwCN1+g6qiAkMXW5w31rquzHmdH99dPszHITo14d2lJqp36lEtq5fqnP6gl
-         b6tg6KOhIBfrMxf2qBAKIjpbYx80fVgtzJrfaTAvjnMnt9yu6p49g4D3xi4a7yZJ75
-         mdSu2uQlm3He3NDREHxt4tylkTiFsZn4L2gutpZE=
-Date:   Tue, 2 Mar 2021 15:45:20 -0500
+        s=default; t=1614700118;
+        bh=PoU6Jm21uiDYByZZf+xG78ujmB2iDcWgJjiajIuG1Uo=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=C72+yKsWu/GIDurlAHT/fmdM4HJQmtHnO7IzycvYY9vXxCCb/zmfdIRqrfbYBVb0A
+         jbkOjBTjLLTESF4NHhKsTtWzTYHqK76jnbdGURQnm64YvnvTVdtHl5DPmUufFOwIzX
+         C6NXdBO5XPzejH6c3/Qq+l1S8EgkWwF0d0rGRdUs=
+Date:   Tue, 2 Mar 2021 10:48:38 -0500
+From:   Bruce Fields <bfields@fieldses.org>
 To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 12/42] NFSD: Update the NFSv3 FSSTAT3res encoder to
- use struct xdr_stream
-Message-ID: <20210302204520.GF3400@fieldses.org>
-References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
- <161461179102.8508.11890812651210896607.stgit@klimt.1015granger.net>
+Cc:     Daniel Kobras <kobras@puzzle-itc.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpc: fix NULL dereference on kmalloc failure
+Message-ID: <20210302154838.GB2263@fieldses.org>
+References: <20210226230437.jfgagcq5magzlrtv@tuedko18.puzzle-itc.de>
+ <C2704113-2581-4B58-806B-BB65148AC14B@oracle.com>
+ <20210301162820.GB11772@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <161461179102.8508.11890812651210896607.stgit@klimt.1015granger.net>
+In-Reply-To: <20210301162820.GB11772@fieldses.org>
 User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Mar 01, 2021 at 10:16:31AM -0500, Chuck Lever wrote:
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/nfsd/nfs3xdr.c |   58 ++++++++++++++++++++++++++++++++++++++++-------------
->  1 file changed, 44 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index e159e4557428..e4a569e7216d 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -17,6 +17,13 @@
->  #define NFSDDBG_FACILITY		NFSDDBG_XDR
->  
->  
-> +/*
-> + * Force construction of an empty post-op attr
-> + */
-> +static const struct svc_fh nfs3svc_null_fh = {
-> +	.fh_no_wcc	= true,
-> +};
-> +
->  /*
->   * Mapping of S_IF* types to NFS file types
->   */
-> @@ -1392,27 +1399,50 @@ nfs3svc_encode_entry_plus(void *cd, const char *name,
->  	return encode_entry(cd, name, namlen, offset, ino, d_type, 1);
->  }
->  
-> +static bool
-> +svcxdr_encode_fsstat3resok(struct xdr_stream *xdr,
-> +			   const struct nfsd3_fsstatres *resp)
-> +{
-> +	const struct kstatfs *s = &resp->stats;
-> +	u64 bs = s->f_bsize;
-> +	__be32 *p;
-> +
-> +	p = xdr_reserve_space(xdr, XDR_UNIT * 13);
-> +	if (!p)
-> +		return false;
-> +	p = xdr_encode_hyper(p, bs * s->f_blocks);	/* total bytes */
-> +	p = xdr_encode_hyper(p, bs * s->f_bfree);	/* free bytes */
-> +	p = xdr_encode_hyper(p, bs * s->f_bavail);	/* user available bytes */
-> +	p = xdr_encode_hyper(p, s->f_files);		/* total inodes */
-> +	p = xdr_encode_hyper(p, s->f_ffree);		/* free inodes */
-> +	p = xdr_encode_hyper(p, s->f_ffree);		/* user available inodes */
-> +	*p = cpu_to_be32(resp->invarsec);		/* mean unchanged time */
-> +
-> +	return true;
-> +}
-> +
->  /* FSSTAT */
->  int
->  nfs3svc_encode_fsstatres(struct svc_rqst *rqstp, __be32 *p)
->  {
-> +	struct xdr_stream *xdr = &rqstp->rq_res_stream;
->  	struct nfsd3_fsstatres *resp = rqstp->rq_resp;
-> -	struct kstatfs	*s = &resp->stats;
-> -	u64		bs = s->f_bsize;
->  
-> -	*p++ = resp->status;
-> -	*p++ = xdr_zero;	/* no post_op_attr */
-> -
-> -	if (resp->status == 0) {
-> -		p = xdr_encode_hyper(p, bs * s->f_blocks);	/* total bytes */
-> -		p = xdr_encode_hyper(p, bs * s->f_bfree);	/* free bytes */
-> -		p = xdr_encode_hyper(p, bs * s->f_bavail);	/* user available bytes */
-> -		p = xdr_encode_hyper(p, s->f_files);	/* total inodes */
-> -		p = xdr_encode_hyper(p, s->f_ffree);	/* free inodes */
-> -		p = xdr_encode_hyper(p, s->f_ffree);	/* user available inodes */
-> -		*p++ = htonl(resp->invarsec);	/* mean unchanged time */
-> +	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
-> +		return 0;
-> +	switch (resp->status) {
-> +	case nfs_ok:
-> +		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &nfs3svc_null_fh))
-> +			return 0;
-> +		if (!svcxdr_encode_fsstat3resok(xdr, resp))
-> +			return 0;
-> +		break;
-> +	default:
-> +		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &nfs3svc_null_fh))
-> +			return 0;
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Dumb question: will this result in the same xdr on the wire as the above
-that just hard-coded xdr_zero?
+I think this is unlikely but possible:
 
-I feel like there's a lot of biolerplate error handling.  In the v4 case
-I centralized some of it after a fuzzer found an oops in some of that
-copy-pasted boilerplate:
+svc_authenticate sets rq_authop and calls svcauth_gss_accept.  The
+kmalloc(sizeof(*svcdata), GFP_KERNEL) fails, leaving rq_auth_data NULL,
+and returning SVC_DENIED.
 
-	b7571e4cd39a nfsd4: skip encoder in trivial error cases
-	bac966d60652 nfsd4: individual encoders no longer see error cases
+This causes svc_process_common to go to err_bad_auth, and eventually
+call svc_authorise.  That calls ->release == svcauth_gss_release, which
+tries to dereference rq_auth_data.
 
-I dunno, maybe that was overkill.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
---b.
+On Mon, Mar 01, 2021 at 11:28:20AM -0500, Bruce Fields wrote:
+> Possibly orthogonal to this problem, but: svcauth_gss_release
+> unconditionally dereferences rqstp->rq_auth_data.  Isn't that a NULL
+> dereference if the kmalloc at the start of svcauth_gss_accept() fails?
 
->  	}
-> -	return xdr_ressize_check(rqstp, p);
-> +
-> +	return 1;
->  }
->  
->  /* FSINFO */
-> 
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index bd4678db9d76..6dff64374bfe 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1825,11 +1825,14 @@ static int
+ svcauth_gss_release(struct svc_rqst *rqstp)
+ {
+ 	struct gss_svc_data *gsd = (struct gss_svc_data *)rqstp->rq_auth_data;
+-	struct rpc_gss_wire_cred *gc = &gsd->clcred;
++	struct rpc_gss_wire_cred *gc;
+ 	struct xdr_buf *resbuf = &rqstp->rq_res;
+ 	int stat = -EINVAL;
+ 	struct sunrpc_net *sn = net_generic(SVC_NET(rqstp), sunrpc_net_id);
+ 
++	if (!gsd)
++		goto out;
++	gc = &gsd->clcred;
+ 	if (gc->gc_proc != RPC_GSS_PROC_DATA)
+ 		goto out;
+ 	/* Release can be called twice, but we only wrap once. */
+@@ -1870,10 +1873,10 @@ svcauth_gss_release(struct svc_rqst *rqstp)
+ 	if (rqstp->rq_cred.cr_group_info)
+ 		put_group_info(rqstp->rq_cred.cr_group_info);
+ 	rqstp->rq_cred.cr_group_info = NULL;
+-	if (gsd->rsci)
++	if (gsd && gsd->rsci) {
+ 		cache_put(&gsd->rsci->h, sn->rsc_cache);
+-	gsd->rsci = NULL;
+-
++		gsd->rsci = NULL;
++	}
+ 	return stat;
+ }
+ 
+-- 
+2.29.2
+
