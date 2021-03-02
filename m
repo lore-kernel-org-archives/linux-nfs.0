@@ -2,197 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-20.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E115CC4160E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5653C433DB
 	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F41D364EF6
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9ECEF64F10
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237769AbhCCKwe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 05:52:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41364 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1835413AbhCBTGF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 14:06:05 -0500
-Received: from mail-ed1-x52b.google.com (mail-ed1-x52b.google.com [IPv6:2a00:1450:4864:20::52b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2CE2AC06178B
-        for <linux-nfs@vger.kernel.org>; Tue,  2 Mar 2021 11:05:25 -0800 (PST)
-Received: by mail-ed1-x52b.google.com with SMTP id v13so10186236edw.9
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Mar 2021 11:05:25 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=IWjRxM3BJNSSNLSyfa3eh6ihqC0CKmNble6MwHX7TZ8=;
-        b=WNobh3ZSAAuczykbptnYIagUpVUuoYwaIhIs+hCxctsa1jVqcqN38dAgfrLg/cV4Al
-         mHWS7EWkl12Dy14obEMW4+TZfzlHweWbSo7WZgiZaJAxT31osiodYBNNdN0bIcLFk2yl
-         W+Ngl+peQvuOuahiX9clEkm0Ukvzb5LU6cAeug14zU3NrJ5RJ4QDy51nr89EJY57uXoO
-         vCj1jQvQ0H3b3FH6ZmYH97IdGS/79/yt+NfhA6qcBVLjEKrdbhfdaAh/ujrz9ZLuC8Kc
-         45lA4zp2i7WxI5iwms9448AEI0azMUTdzbwQMaxfpBiHWwR1Y2F3Hyil/9ow0TOFq96J
-         NVUA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=IWjRxM3BJNSSNLSyfa3eh6ihqC0CKmNble6MwHX7TZ8=;
-        b=B7jtIzxmkjypU3opuDeYE5vG4RdC2AhH9MPvv8qd6W61d80q4uxzyD0VjlmlJGwysF
-         xeGjmZUpMDkbfSUBYj+HEAGH68Hq0cunzxPW5vx0S3jm2K0Ix22l/qU3IjgPCPJn+2lM
-         Xs2dVCZSGnyiCH6/wSmcDNCSDGU9ypoWz/efB/Frem4RfLH6tPEX94ZNIlH8LtlpaOuK
-         mu+PjY569EYHMDT3TIt39T8oPio2c2J5GOl4w3sYCQFNWi0jOM7Zpw+s0JQGJyy52BuA
-         YXioTpmCNGuSXJBRPk7K58nSNgTJPB8jOPdjtBtP9sl3EYJ7ZZgh1oscKaEDHyDCjY/t
-         U9oQ==
-X-Gm-Message-State: AOAM531sa+JzZ3c7TLmpBh1/JfVl2U1r4AeT3/Gca1se06CQTn1/QZIc
-        HaEhoGSBoALUmlMaiTsB0rnA6w==
-X-Google-Smtp-Source: ABdhPJxy8NRAbw0sZbUArpeN9STepv29hrNXbBmKuZrs1/zaW7I4nPiBtikZu+nXHWjP5fludKaUKg==
-X-Received: by 2002:a05:6402:10ce:: with SMTP id p14mr21754174edu.348.1614711923840;
-        Tue, 02 Mar 2021 11:05:23 -0800 (PST)
-Received: from enceladus (ppp-94-64-113-158.home.otenet.gr. [94.64.113.158])
-        by smtp.gmail.com with ESMTPSA id l1sm18218405eje.12.2021.03.02.11.05.22
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 02 Mar 2021 11:05:23 -0800 (PST)
-Date:   Tue, 2 Mar 2021 21:05:20 +0200
-From:   Ilias Apalodimas <ilias.apalodimas@linaro.org>
-To:     Mel Gorman <mgorman@techsingularity.net>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jesper Dangaard Brouer <brouer@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux-Net <netdev@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/5] net: page_pool: use alloc_pages_bulk in refill code
- path
-Message-ID: <YD6McJNYbMqeu3pR@enceladus>
-References: <20210301161200.18852-1-mgorman@techsingularity.net>
- <20210301161200.18852-6-mgorman@techsingularity.net>
+        id S232251AbhCCKxm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 05:53:42 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:59424 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1837203AbhCBUmM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 15:42:12 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1614717618;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=1QUj+Y9o7dRxSWO8Ms6naDUBACIl8HtsOCJpskTcmpg=;
+        b=IyDsZr+SWzTKFj408CSfkrALaJsBVfAOwQrqtOfhuTq/dV7nGXGl1+aJONVfBW8FgHezKA
+        h7ftFkfusDdJUyX9+NUuBaP1Iy0jpj7fjEgGFIfu8U9Y1ZG7vFuww7WNYrFNRA6qKfZTff
+        AIM5wyLbGiEMtDdY8N4fgAPrwT/0N9A=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-276-QhnBmbehMy-TshuMF5oJUg-1; Tue, 02 Mar 2021 15:40:14 -0500
+X-MC-Unique: QhnBmbehMy-TshuMF5oJUg-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 50E8E100979F;
+        Tue,  2 Mar 2021 20:39:28 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-24.phx2.redhat.com [10.3.112.24])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 0BE9B19C93;
+        Tue,  2 Mar 2021 20:39:27 +0000 (UTC)
+Subject: Re: [PATCH 0/5] nfs-utils: provide audit-logging of NFSv4 access
+To:     NeilBrown <neilb@suse.de>
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <161422077024.28256.15543036625096419495.stgit@noble>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <6ddbe801-d107-5cbd-7362-c3e84321f203@RedHat.com>
+Date:   Tue, 2 Mar 2021 15:41:14 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210301161200.18852-6-mgorman@techsingularity.net>
+In-Reply-To: <161422077024.28256.15543036625096419495.stgit@noble>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Mar 01, 2021 at 04:12:00PM +0000, Mel Gorman wrote:
-> From: Jesper Dangaard Brouer <brouer@redhat.com>
+Hey!
+
+A couple comments... 
+
+On 2/24/21 9:42 PM, NeilBrown wrote:
+> When NFSv3 is used mountd provides logs of successful and failed mount
+> attempts which can be used for auditing.
+> When NFSv4 is used there are no such logs as NFSv4 does not have a
+> distinct "mount" request.
 > 
-> There are cases where the page_pool need to refill with pages from the
-> page allocator. Some workloads cause the page_pool to release pages
-> instead of recycling these pages.
+> However mountd still knows about which filesysytems are being accessed
+> from which clients, and can actually provide more reliable logs than it
+> currently does, though they must be more verbose - with periodic "is
+> being accessed" message replacing a single "was mounted" message.
 > 
-> For these workload it can improve performance to bulk alloc pages from
-> the page-allocator to refill the alloc cache.
+> This series adds support for that logging, and adds some related
+> improvements to make the logs as useful as possible.
 > 
-> For XDP-redirect workload with 100G mlx5 driver (that use page_pool)
-> redirecting xdp_frame packets into a veth, that does XDP_PASS to create
-> an SKB from the xdp_frame, which then cannot return the page to the
-> page_pool. In this case, we saw[1] an improvement of 18.8% from using
-> the alloc_pages_bulk API (3,677,958 pps -> 4,368,926 pps).
+> NeilBrown
 > 
-> [1] https://github.com/xdp-project/xdp-project/blob/master/areas/mem/page_pool06_alloc_pages_bulk.org
-> 
-> Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
-> Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
 > ---
->  net/core/page_pool.c | 63 ++++++++++++++++++++++++++++----------------
->  1 file changed, 40 insertions(+), 23 deletions(-)
 > 
-> diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-> index a26f2ceb6a87..567680bd91c4 100644
-> --- a/net/core/page_pool.c
-> +++ b/net/core/page_pool.c
-> @@ -208,44 +208,61 @@ noinline
->  static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
->  						 gfp_t _gfp)
->  {
-> +	const int bulk = PP_ALLOC_CACHE_REFILL;
-> +	struct page *page, *next, *first_page;
->  	unsigned int pp_flags = pool->p.flags;
-> -	struct page *page;
-> +	unsigned int pp_order = pool->p.order;
-> +	int pp_nid = pool->p.nid;
-> +	LIST_HEAD(page_list);
->  	gfp_t gfp = _gfp;
->  
-> -	/* We could always set __GFP_COMP, and avoid this branch, as
-> -	 * prep_new_page() can handle order-0 with __GFP_COMP.
-> -	 */
-> -	if (pool->p.order)
-> +	/* Don't support bulk alloc for high-order pages */
-> +	if (unlikely(pp_order)) {
->  		gfp |= __GFP_COMP;
-> +		first_page = alloc_pages_node(pp_nid, gfp, pp_order);
-> +		if (unlikely(!first_page))
-> +			return NULL;
-> +		goto out;
-> +	}
->  
-> -	/* FUTURE development:
-> -	 *
-> -	 * Current slow-path essentially falls back to single page
-> -	 * allocations, which doesn't improve performance.  This code
-> -	 * need bulk allocation support from the page allocator code.
-> -	 */
-> -
-> -	/* Cache was empty, do real allocation */
-> -#ifdef CONFIG_NUMA
-> -	page = alloc_pages_node(pool->p.nid, gfp, pool->p.order);
-> -#else
-> -	page = alloc_pages(gfp, pool->p.order);
-> -#endif
-> -	if (!page)
-> +	if (unlikely(!__alloc_pages_bulk_nodemask(gfp, pp_nid, NULL,
-> +						  bulk, &page_list)))
->  		return NULL;
->  
-> +	/* First page is extracted and returned to caller */
-> +	first_page = list_first_entry(&page_list, struct page, lru);
-> +	list_del(&first_page->lru);
-> +
-> +	/* Remaining pages store in alloc.cache */
-> +	list_for_each_entry_safe(page, next, &page_list, lru) {
-> +		list_del(&page->lru);
-> +		if (pp_flags & PP_FLAG_DMA_MAP &&
-> +		    unlikely(!page_pool_dma_map(pool, page))) {
-> +			put_page(page);
-> +			continue;
-> +		}
-> +		if (likely(pool->alloc.count < PP_ALLOC_CACHE_SIZE)) {
-> +			pool->alloc.cache[pool->alloc.count++] = page;
-> +			pool->pages_state_hold_cnt++;
-> +			trace_page_pool_state_hold(pool, page,
-> +						   pool->pages_state_hold_cnt);
-> +		} else {
-> +			put_page(page);
-> +		}
-> +	}
-> +out:
->  	if (pp_flags & PP_FLAG_DMA_MAP &&
-> -	    unlikely(!page_pool_dma_map(pool, page))) {
-> -		put_page(page);
-> +	    unlikely(!page_pool_dma_map(pool, first_page))) {
-> +		put_page(first_page);
->  		return NULL;
->  	}
->  
->  	/* Track how many pages are held 'in-flight' */
->  	pool->pages_state_hold_cnt++;
-> -	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
-> +	trace_page_pool_state_hold(pool, first_page, pool->pages_state_hold_cnt);
->  
->  	/* When page just alloc'ed is should/must have refcnt 1. */
-> -	return page;
-> +	return first_page;
->  }
->  
->  /* For using page_pool replace: alloc_pages() API calls, but provide
-> -- 
-> 2.26.2
+> NeilBrown (5):
+>       mountd: reject unknown client IP when !use_ipaddr.
+>       mountd: Don't proactively add export info when fh info is requested.
+>       mountd: add logging for authentication results for accesses.
+I wonder if we should mention setting "debug=auth" enables
+this logging in the mountd manpage 
+
+>       mountd: add --cache-use-ipaddr option to force use_ipaddr
+>       mountd: make default ttl settable by option
+These two probably need to be put into the nfs.conf file 
+and the nfs.conf man page since the conf_get_num()
+and conf_get_bool() calls were added.
+
+Finally, I'll add this to my plate, but I'm thinking
+the new log-auth and ttl flags probably should be 
+introduce into nfsv4.exported.
+
+I didn't port over the use-ipaddr flag to exportd,
+since I though it was only used in the v3 mount path
+but may that was an oversight on my part. 
+
+Thoughts?
+
+steved.
+> 
+> 
+>  support/export/auth.c      |  4 +++
+>  support/export/cache.c     | 32 +++++++++++------
+>  support/export/v4root.c    |  3 +-
+>  support/include/exportfs.h |  3 +-
+>  support/nfs/exports.c      |  4 ++-
+>  utils/mountd/mountd.c      | 29 +++++++++++++++-
+>  utils/mountd/mountd.man    | 70 ++++++++++++++++++++++++++++++++++++++
+>  7 files changed, 130 insertions(+), 15 deletions(-)
+> 
+> --
+> Signature
 > 
 
-Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
