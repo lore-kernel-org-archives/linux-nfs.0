@@ -2,146 +2,118 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 80353C43603
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 10:39:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9C6AC433E9
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 48D8F64EE9
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 10:39:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 78E1C64EE9
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233524AbhCCKf7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 05:35:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36792 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1577328AbhCBSuV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 13:50:21 -0500
-Received: from mail-ej1-x62e.google.com (mail-ej1-x62e.google.com [IPv6:2a00:1450:4864:20::62e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB3B0C061BC3
-        for <linux-nfs@vger.kernel.org>; Tue,  2 Mar 2021 10:49:10 -0800 (PST)
-Received: by mail-ej1-x62e.google.com with SMTP id gt32so25716913ejc.6
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Mar 2021 10:49:10 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=GO9uM42GAO9SsEmJ1Ud/XfdUbUemfb0O0igeT0Ei1wY=;
-        b=t+mQ5V1ZRGfRvpmCdmHEuOP/59c00rtGZORfMYX7HKfUuez4VJ7P/g2stb8yyUNxst
-         3ZAjAlPey5b3CJ3WR9ZbMsryiwCGUNYW/0V8k9FMVnjy6hJjBWpzfjjD5WpEm6YYL4Ab
-         VDVjDBBF9XKN9hploWg3HlOF7IJYNs9JpTZHCCfJCqxXUQNTQhM9W/yR+CCle7AFglTR
-         JwLV/77YC40As4lBp9/jzI2lXuADBhVnmmb+HnWiJk2/vGhM19JJYzR+iTV/3LAzusQI
-         oiynfHyWGcjdPd9LU0vnZFJxy701IOZKSClNV6a/o2PekNWwL2Y9/I8/ZykzPbqZDnFy
-         ynbw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=GO9uM42GAO9SsEmJ1Ud/XfdUbUemfb0O0igeT0Ei1wY=;
-        b=r6twJ3HfvMSm5SJGPjLw93iqHvdhuC2kknfVFWzAvR8Wlw+HLbGVGUZoR2qEIh8HMS
-         Z3oH17Yk5OsMqArZg44r74BaNNWcrdOE/z5Pec6/djGZgYkN3MzvOmcv5uvCXVsXqGfg
-         GMoFkJ6KuLCvbhVaYsL/BmBsBm3+zRdx1WQLPOvZW9w13J+BDxqLDDhi/LukHIdpMhl+
-         709XKo95KXUsGMZaQ6kJG4PgoTubpCbVRwVlFo3FEUCxAERb6IxsiNvyzEiSPvfoaQgW
-         3gzJF6uq4HcfFtx9EiPSDLKathd8uRPm3aNsORvjXbHGWTNeC35DhnQ148Mqx5LtFsjk
-         Mx+Q==
-X-Gm-Message-State: AOAM533a487IXELyBiPlJJX+9bcikbMIhvn8a9chn9AoaCoh6kQmCULz
-        KLegCnZM+SrReiwtliLA1BdoNA==
-X-Google-Smtp-Source: ABdhPJwb8YWbEvP6/92V8OGZy5T5rSbr0v1ooPw/xvrT+z5mCXBhQ92a6NJ3tpmWPZhGNU0QVNj88Q==
-X-Received: by 2002:a17:906:a157:: with SMTP id bu23mr21374870ejb.491.1614710949643;
-        Tue, 02 Mar 2021 10:49:09 -0800 (PST)
-Received: from enceladus (ppp-94-64-113-158.home.otenet.gr. [94.64.113.158])
-        by smtp.gmail.com with ESMTPSA id w24sm1645164edt.44.2021.03.02.10.49.08
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 02 Mar 2021 10:49:09 -0800 (PST)
-Date:   Tue, 2 Mar 2021 20:49:06 +0200
-From:   Ilias Apalodimas <ilias.apalodimas@linaro.org>
-To:     Mel Gorman <mgorman@techsingularity.net>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jesper Dangaard Brouer <brouer@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux-Net <netdev@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/5] net: page_pool: refactor dma_map into own function
- page_pool_dma_map
-Message-ID: <YD6IosORkdRN9B2x@enceladus>
-References: <20210301161200.18852-1-mgorman@techsingularity.net>
- <20210301161200.18852-5-mgorman@techsingularity.net>
+        id S238143AbhCCKxQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 05:53:16 -0500
+Received: from aserp2130.oracle.com ([141.146.126.79]:41292 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1837196AbhCBUli (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Mar 2021 15:41:38 -0500
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 122Jd4jf192660;
+        Tue, 2 Mar 2021 19:48:49 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : mime-version : content-transfer-encoding;
+ s=corp-2020-01-29; bh=9sLSpxsUta9Tj7ZOmJnbpVtOOdZRnzp2T6bUBBHIf48=;
+ b=zDiK2RhD0BbcfFu7CQb2CubydPzHxNB8ike91u7S27Q9NfC4R41WAY0Q6hCJ56zsDhN6
+ 32JFOJAkLn6n4DP3K8s4wAET8BW3YqZWQcQZpUJe4+ipSecmcx5jDty0bvWc2kWbxCDF
+ Vh0fj5C8Vc3HpSzg1s+hPI+IYeNtXJsV+YF1DAr56XaI2QLvdrX2dUGF6bLUjXycP4GM
+ S2YG7f4lN86aWfsgNCsa9NAlTkjtOZcGLc6VzpPPqsrE7IRqKbr2nQ6gi0tK0n3d3Xcf
+ Q8DTrVZfz2MNJexFq7LzEqqg0Vo4WQ+gtxRwH6/9GGU4VIBnX/hA/CurNmpIFuK67Vi3 qA== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by aserp2130.oracle.com with ESMTP id 36ybkb9243-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 02 Mar 2021 19:48:49 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 122Jj08Z043509;
+        Tue, 2 Mar 2021 19:48:48 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by aserp3030.oracle.com with ESMTP id 36yynpmb4y-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 02 Mar 2021 19:48:48 +0000
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 122JmmTg057657;
+        Tue, 2 Mar 2021 19:48:48 GMT
+Received: from aserp3020.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
+        by aserp3030.oracle.com with ESMTP id 36yynpmb4n-1;
+        Tue, 02 Mar 2021 19:48:48 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     olga.kornievskaia@gmail.com
+Cc:     bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSD: dst server needs to unmount src server's export after copy is done.
+Date:   Tue,  2 Mar 2021 14:48:43 -0500
+Message-Id: <20210302194843.98612-1-dai.ngo@oracle.com>
+X-Mailer: git-send-email 2.20.1.1226.g1595ea5.dirty
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210301161200.18852-5-mgorman@techsingularity.net>
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9911 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 impostorscore=0
+ suspectscore=0 phishscore=0 bulkscore=0 mlxscore=0 lowpriorityscore=0
+ clxscore=1015 mlxlogscore=999 adultscore=0 malwarescore=0
+ priorityscore=1501 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2009150000 definitions=main-2103020148
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Mel,
+Currently the destination server leaves the source server's export
+intact on the destination after copy is done. This patch fixes this
+by doing ssc disconnect from nfsd4_do_async_copy after copy is done.
 
-Can you please CC me in future revisions. I almost missed that!
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/nfs4proc.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-On Mon, Mar 01, 2021 at 04:11:59PM +0000, Mel Gorman wrote:
-> From: Jesper Dangaard Brouer <brouer@redhat.com>
-> 
-> In preparation for next patch, move the dma mapping into its own
-> function, as this will make it easier to follow the changes.
-> 
-> V2: make page_pool_dma_map return boolean (Ilias)
-> 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 8d6d2678abad..d3d864b8ee4f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1306,7 +1306,6 @@ nfsd4_cleanup_inter_ssc(struct vfsmount *ss_mnt, struct nfsd_file *src,
+ 	nfs42_ssc_close(src->nf_file);
+ 	/* 'src' is freed by nfsd4_do_async_copy */
+ 	nfsd_file_put(dst);
+-	mntput(ss_mnt);
+ }
+ 
+ #else /* CONFIG_NFSD_V4_2_INTER_SSC */
+@@ -1472,14 +1471,12 @@ static int nfsd4_do_async_copy(void *data)
+ 		copy->nf_src = kzalloc(sizeof(struct nfsd_file), GFP_KERNEL);
+ 		if (!copy->nf_src) {
+ 			copy->nfserr = nfserr_serverfault;
+-			nfsd4_interssc_disconnect(copy->ss_mnt);
+ 			goto do_callback;
+ 		}
+ 		copy->nf_src->nf_file = nfs42_ssc_open(copy->ss_mnt, &copy->c_fh,
+ 					      &copy->stateid);
+ 		if (IS_ERR(copy->nf_src->nf_file)) {
+ 			copy->nfserr = nfserr_offload_denied;
+-			nfsd4_interssc_disconnect(copy->ss_mnt);
+ 			goto do_callback;
+ 		}
+ 	}
+@@ -1498,8 +1495,10 @@ static int nfsd4_do_async_copy(void *data)
+ 			&nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
+ 	nfsd4_run_cb(&cb_copy->cp_cb);
+ out:
+-	if (!copy->cp_intra)
++	if (!copy->cp_intra) {
++		nfsd4_interssc_disconnect(copy->ss_mnt);
+ 		kfree(copy->nf_src);
++	}
+ 	cleanup_async_copy(copy);
+ 	return 0;
+ }
+-- 
+2.9.5
 
-[...]
-
->  static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
->  						 gfp_t _gfp)
->  {
-> +	unsigned int pp_flags = pool->p.flags;
->  	struct page *page;
->  	gfp_t gfp = _gfp;
-> -	dma_addr_t dma;
->  
->  	/* We could always set __GFP_COMP, and avoid this branch, as
->  	 * prep_new_page() can handle order-0 with __GFP_COMP.
-> @@ -211,30 +234,14 @@ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
->  	if (!page)
->  		return NULL;
->  
-> -	if (!(pool->p.flags & PP_FLAG_DMA_MAP))
-> -		goto skip_dma_map;
-> -
-> -	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
-> -	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
-> -	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
-> -	 * This mapping is kept for lifetime of page, until leaving pool.
-> -	 */
-> -	dma = dma_map_page_attrs(pool->p.dev, page, 0,
-> -				 (PAGE_SIZE << pool->p.order),
-> -				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
-> -	if (dma_mapping_error(pool->p.dev, dma)) {
-> +	if (pp_flags & PP_FLAG_DMA_MAP &&
-
-Nit pick but can we have if ((pp_flags & PP_FLAG_DMA_MAP) && ...
-
-> +	    unlikely(!page_pool_dma_map(pool, page))) {
->  		put_page(page);
->  		return NULL;
->  	}
-> -	page->dma_addr = dma;
->  
-> -	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
-> -		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
-> -
-> -skip_dma_map:
->  	/* Track how many pages are held 'in-flight' */
->  	pool->pages_state_hold_cnt++;
-> -
->  	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
->  
->  	/* When page just alloc'ed is should/must have refcnt 1. */
-> -- 
-> 2.26.2
-> 
-
-Otherwise 
-Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org> 
