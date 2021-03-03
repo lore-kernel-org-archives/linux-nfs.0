@@ -2,105 +2,218 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A0FCC001C7
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1637C15500
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EC44D64EA4
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A6D5B64EC0
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1451072AbhCDA3r (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 19:29:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60112 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239064AbhCCSjF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 13:39:05 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C47E9C06175F
-        for <linux-nfs@vger.kernel.org>; Wed,  3 Mar 2021 10:38:23 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 127DA2824; Wed,  3 Mar 2021 13:38:23 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 127DA2824
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1614796703;
-        bh=uE6y/NN26t2PtuXvWcwN+Rv+MpWB2IrYuaEcnV6QzmU=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=dG5NLtKz1a0wGWpdCxUSXqC/EXSsE4xK3dWcLW8ZeTWFaYLuLro37MPL1TJESbJbf
-         fBx4UI7QSUZOKI+jB1i9JtdF7H+CVcXm8oxaMAVEpxoFtkfEllKBJCrXSpyF41ZD56
-         bHMuT5tNaMRh7bX+K5CIsh1hitDlbMV1LFNk35+U=
-Date:   Wed, 3 Mar 2021 13:38:23 -0500
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 19/42] SUNRPC: Fix xdr_get_next_encode_buffer() page
- boundary handling
-Message-ID: <20210303183823.GD1282@fieldses.org>
-References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
- <161461183307.8508.17196295994390119297.stgit@klimt.1015granger.net>
- <20210302221130.GG3400@fieldses.org>
- <592A34CB-C178-4272-8905-F3BA95BCE299@oracle.com>
- <20210303165251.GB1282@fieldses.org>
- <D8625219-C758-44C0-A74E-272019E12C2E@oracle.com>
- <20210303182546.GC1282@fieldses.org>
- <FB4626C1-C2C1-4927-971B-8937420F963A@oracle.com>
- <0908A838-D518-4F81-B6EA-8C088D5538E9@oracle.com>
+        id S1346642AbhCDA3u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 19:29:50 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:49813 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1347139AbhCCVWW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 16:22:22 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1614806443;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=5aZpNHDO/X8w5gn+hdH2+/UUIs4Troz4+mS1I12x8jA=;
+        b=C3RpgtAYhApUjB1t5h4WElyGJC5J53dVnRGp96mkqsNEaQGp1L/mdZjZJjR/exiQSxW+u7
+        wA57VANmKnjP/op70PjDBLC2ucG5IfdU6auqObEc8EaHE8uDbNKRRwDJMS53TR+E1hyQdm
+        JpgpnO54o2CPZRgPeFrx8IgVMkD/QL4=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-28-gy4sFE4-MUypVNC7ncP8sg-1; Wed, 03 Mar 2021 16:20:40 -0500
+X-MC-Unique: gy4sFE4-MUypVNC7ncP8sg-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7372A100A8E9;
+        Wed,  3 Mar 2021 21:20:39 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-45.phx2.redhat.com [10.3.112.45])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id BEB0E61F49;
+        Wed,  3 Mar 2021 21:20:38 +0000 (UTC)
+Subject: Re: [PATCH 0/7 V4] The NFSv4 only mounting daemon.
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20210219200815.792667-1-steved@redhat.com>
+ <20210224203053.GF11591@fieldses.org>
+ <1553fb2d-9b8e-f8eb-8c72-edcd14a2ad08@RedHat.com>
+ <20210303152342.GA1282@fieldses.org>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <376b6b0a-5679-4692-cfdb-b8c7919393a5@RedHat.com>
+Date:   Wed, 3 Mar 2021 16:22:28 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <0908A838-D518-4F81-B6EA-8C088D5538E9@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <20210303152342.GA1282@fieldses.org>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 03, 2021 at 06:30:40PM +0000, Chuck Lever wrote:
-> 
-> 
-> > On Mar 3, 2021, at 1:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > 
-> > 
-> >> On Mar 3, 2021, at 1:25 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> >> 
-> >> On Wed, Mar 03, 2021 at 06:19:33PM +0000, Chuck Lever wrote:
-> >>> 
-> >>> 
-> >>>> On Mar 3, 2021, at 11:52 AM, Bruce Fields <bfields@fieldses.org> wrote:
-> >>>> 
-> >>>> On Wed, Mar 03, 2021 at 03:43:28PM +0000, Chuck Lever wrote:
-> >>>>> Why would that not be OK? the next call to xdr_get_next_encode_buffer()
-> >>>>> should do the right thing and bounce the new encoded data from the
-> >>>>> next page into this one again.
-> >>>>> 
-> >>>>> So far I have not encountered any problems. Would such a problem show
-> >>>>> up with some frequency under normal use, or would it be especially
-> >>>>> subtle?
-> >>>> 
-> >>>> I mainly just want to make sure we've got a coherent idea what this code
-> >>>> is doing....
-> >>> 
-> >>> Agreed, that's a good thing.
-> >> 
-> >> I'm also a little vague on what exactly the problem is you're running
-> >> into.  (Probably because I haven't really looked at the v3 readdir
-> >> encoding.)
-> >> 
-> >> Is it approaching the end of a page, or is it running out of buflen?
-> >> How exactly does it fail?
-> > 
-> > I don't recall exactly, it was a late last summer when I wrote all these.
-> > 
-> > Approaching the end of a page, IIRC, the unpatched code would leave
-> > a gap in the directory entry stream.
-> 
-> Well, when I converted the entry encoders to use xdr_stream, it would
-> have a problem around the end of a page. The existing encoders are
-> open-coded to deal with this case.
+Hey!
 
-We're not seeing v4 readdir bugs, though, I wonder what's different?
+On 3/3/21 10:23 AM, J. Bruce Fields wrote:
+> On Tue, Mar 02, 2021 at 05:33:23PM -0500, Steve Dickson wrote:
+>>
+>>
+>> On 2/24/21 3:30 PM, J. Bruce Fields wrote:
+>>> On Fri, Feb 19, 2021 at 03:08:08PM -0500, Steve Dickson wrote:
+>>>> nfsv4.exportd is a daemon that will listen for only v4 mount upcalls.
+>>>> The idea is to allow distros to build a v4 only package
+>>>> which will have a much smaller footprint than the
+>>>> entire nfs-utils package.
+>>>>
+>>>> exportd uses no RPC code, which means none of the 
+>>>> code or arguments that deal with v3 was ported, 
+>>>> this again, makes the footprint much smaller. 
+>>>
+>>> How much smaller?
+>> Will a bit smaller... but a number of daemons like nfsd[cld,clddb,cldnts]
+>> need to also come a long. 
+> 
+> Could we get some numbers?
+> 
+> Looks like nfs-utils in F33 is about 1.2M:
+> 
+> $ rpm -qi nfs-utils|grep ^Size
+> Size        : 1243512
+> 
+> $ strip utils/mountd/mountd
+> $ ls -lh utils/mountd/mountd
+> -rwxrwxr-x. 1 bfields bfields 128K Mar  3 10:12 utils/mountd/mountd
+> $ strip utils/exportd/exportd
+> $ ls -lh utils/exportd/exportd
+> -rwxrwxr-x. 1 bfields bfields 106K Mar  3 10:12 utils/exportd/exportd
+> 
+> So replacing mountd by exportd saves us about 20K out of 1.2M.  Is it
+> worth it?
+In smaller foot print I guess I meant no v3 daemons, esp rpcbind. 
 
---b.
+It is not surprising mountd and exportd are similar size since
+they are using the same code to do the same thing. With the only
+exception is exportd does not have any RPC code. It only handles 
+upcalls from the kernel.
+
+> 
+>>>> The following options were ported:
+>>>>     * multiple threads
+>>>>     * state-directory-path option
+>>>>     * junction support (not tested)
+>>>>
+>>>> The rest of the mountd options were v3 only options.
+>>>
+>>> There's also --manage-gids.
+>> Right... a patch was posted... 
+>>
+>>>
+>>> If you want nfsv4-only at runtime, you can always run rpc.mountd with
+>>> -N2 -N3 to turn off the MOUNT protocol support.
+>> The end game is not to run mountd at all... 
+>>
+>>>
+>>> If you don't even want v2/f3 code on your system, then you may have to
+>>> do something like this, but why is that important?
+>> Container friendly... Not bring in all the extra daemons v3
+>> needs is a good thing... esp rpcbind. 
+> 
+> Looking at the output of
+> $ for f in $(rpm -ql nfs-utils); do if [ -f $f ]; then ls -ls $f; fi; done|sort -n
+> 
+> It looks like removing statd, sm-notify, showount and their man pages
+> would free about another 170K.
+And rpcbind and rpcinfo... But thanks for taking a look.
+
+> 
+> I think that's about how much we'd save by seperating out a separate
+> documentation package.
+hmm... interesting idea.
+
+> 
+> I don't know, what sort of gains are container folks asking for?
+It is my understanding rpcbind and containers do not play nicely. 
+
+Plus I don't think it is a bad idea to be able just install
+and nfsv4 client or just install an nfsv4 server.
+Maybe I'm wrong??
+
+steved.
+
+> 
+> --b.
+> 
+>>
+>> steved.
+>>
+>>>
+>>> --b.
+>>>
+>>>>
+>>>> V2:
+>>>>   * Added two systemd services: nfsv4-exportd and nfsv4-server
+>>>>   * nfsv4-server starts rpc.nfsd -N 3, so nfs.conf mod not needed.
+>>>>
+>>>> V3: Changed the name from exportd to nfsv4.exportd
+>>>>
+>>>> V4: Added compile flag that will compile in the NFSv4 only server
+>>>>
+>>>> Steve Dickson (7):
+>>>>   exportd: the initial shell of the v4 export support
+>>>>   exportd: Moved cache upcalls routines into libexport.a
+>>>>   exportd: multiple threads
+>>>>   exportd/exportfs: Add the state-directory-path option
+>>>>   exportd: Enabled junction support
+>>>>   exportd: systemd unit files
+>>>>   exportd: Added config variable to compile in the NFSv4 only server.
+>>>>
+>>>>  .gitignore                                |   1 +
+>>>>  configure.ac                              |  14 ++
+>>>>  nfs.conf                                  |   4 +
+>>>>  support/export/Makefile.am                |   3 +-
+>>>>  {utils/mountd => support/export}/auth.c   |   4 +-
+>>>>  {utils/mountd => support/export}/cache.c  |  46 +++-
+>>>>  support/export/export.h                   |  34 +++
+>>>>  {utils/mountd => support/export}/fsloc.c  |   0
+>>>>  {utils/mountd => support/export}/v4root.c |   0
+>>>>  {utils/mountd => support/include}/fsloc.h |   0
+>>>>  systemd/Makefile.am                       |   6 +
+>>>>  systemd/nfs.conf.man                      |  10 +
+>>>>  systemd/nfsv4-exportd.service             |  12 +
+>>>>  systemd/nfsv4-server.service              |  31 +++
+>>>>  utils/Makefile.am                         |   4 +
+>>>>  utils/exportd/Makefile.am                 |  65 +++++
+>>>>  utils/exportd/exportd.c                   | 276 ++++++++++++++++++++++
+>>>>  utils/exportd/exportd.man                 |  81 +++++++
+>>>>  utils/exportfs/exportfs.c                 |  21 +-
+>>>>  utils/exportfs/exportfs.man               |   7 +-
+>>>>  utils/mountd/Makefile.am                  |   5 +-
+>>>>  21 files changed, 606 insertions(+), 18 deletions(-)
+>>>>  rename {utils/mountd => support/export}/auth.c (99%)
+>>>>  rename {utils/mountd => support/export}/cache.c (98%)
+>>>>  create mode 100644 support/export/export.h
+>>>>  rename {utils/mountd => support/export}/fsloc.c (100%)
+>>>>  rename {utils/mountd => support/export}/v4root.c (100%)
+>>>>  rename {utils/mountd => support/include}/fsloc.h (100%)
+>>>>  create mode 100644 systemd/nfsv4-exportd.service
+>>>>  create mode 100644 systemd/nfsv4-server.service
+>>>>  create mode 100644 utils/exportd/Makefile.am
+>>>>  create mode 100644 utils/exportd/exportd.c
+>>>>  create mode 100644 utils/exportd/exportd.man
+>>>>
+>>>> -- 
+>>>> 2.29.2
+>>>
+> 
+
