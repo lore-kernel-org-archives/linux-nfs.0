@@ -2,120 +2,100 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-22.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A2BFC15506
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF9C8C43619
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 479EC6023B
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B5D5364EDF
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233875AbhCDA34 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1383820AbhCDA34 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 3 Mar 2021 19:29:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47034 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47984 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1390256AbhCCWCA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 17:02:00 -0500
+        with ESMTP id S234218AbhCCWHF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 17:07:05 -0500
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05F6EC0613DB
-        for <linux-nfs@vger.kernel.org>; Wed,  3 Mar 2021 14:01:16 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99B0BC061762
+        for <linux-nfs@vger.kernel.org>; Wed,  3 Mar 2021 13:54:16 -0800 (PST)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 96E1135DC; Wed,  3 Mar 2021 17:01:15 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 96E1135DC
+        id 67EA62501; Wed,  3 Mar 2021 16:54:15 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 67EA62501
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1614808875;
-        bh=YxY7BWjFzN6yGXi44CnJ6vfTbdcgVfhuu8G5kKVZmac=;
+        s=default; t=1614808455;
+        bh=ri7s28idYapONB9zU07hgPQ8M9PhnxzUEcb/M2L7ij4=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=qEaT0NvZOSDsTdYXf0ZQ9VHBSpJiEk60aOHae7V5bhVCx5mp2eTa16kw2a7JK/FOV
-         FRfy+EPPFqzqCI4EkMvv6bkGV5Ib++fX3U+s/HQDo528lpviYHAaD1/uVkTfEkgX+v
-         p2m1ZGK6u4KlGUM+8MbHVKuKjiXgwg7I2WvtQmRI=
-Date:   Wed, 3 Mar 2021 17:01:15 -0500
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: helper for laundromat expiry calculations
-Message-ID: <20210303220115.GG3949@fieldses.org>
-References: <20210302154623.GA2263@fieldses.org>
- <AC0F5679-8B32-4D75-B28B-67171027B70D@oracle.com>
- <20210303215515.GF3949@fieldses.org>
- <63E16B3E-2524-4257-BB70-F685330554F3@oracle.com>
+        b=RjgaSLkOM69M/24hSLcQ3tzeS62UPSAUgkc7WPpxibHYbPfbaDABsGGMITfLjuD+t
+         9Gn7Gho99PTP9neWILx7gIU0MZ4iJn/txnCngqYRDetMgUCg3/V4UsHRmn0zQxEIZj
+         0dkEimcyaj4gdGft+p5d73d7pgqdA0DOhemN5dUk=
+Date:   Wed, 3 Mar 2021 16:54:15 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Steve Dickson <SteveD@RedHat.com>
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/7 V4] The NFSv4 only mounting daemon.
+Message-ID: <20210303215415.GE3949@fieldses.org>
+References: <20210219200815.792667-1-steved@redhat.com>
+ <20210224203053.GF11591@fieldses.org>
+ <1553fb2d-9b8e-f8eb-8c72-edcd14a2ad08@RedHat.com>
+ <20210303152342.GA1282@fieldses.org>
+ <376b6b0a-5679-4692-cfdb-b8c7919393a5@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <63E16B3E-2524-4257-BB70-F685330554F3@oracle.com>
+In-Reply-To: <376b6b0a-5679-4692-cfdb-b8c7919393a5@RedHat.com>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 03, 2021 at 09:59:48PM +0000, Chuck Lever wrote:
+On Wed, Mar 03, 2021 at 04:22:28PM -0500, Steve Dickson wrote:
+> Hey!
 > 
-> 
-> > On Mar 3, 2021, at 4:55 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> On 3/3/21 10:23 AM, J. Bruce Fields wrote:
+> > On Tue, Mar 02, 2021 at 05:33:23PM -0500, Steve Dickson wrote:
+> >>
+> >>
+> >> On 2/24/21 3:30 PM, J. Bruce Fields wrote:
+> >>> On Fri, Feb 19, 2021 at 03:08:08PM -0500, Steve Dickson wrote:
+> >>>> nfsv4.exportd is a daemon that will listen for only v4 mount upcalls.
+> >>>> The idea is to allow distros to build a v4 only package
+> >>>> which will have a much smaller footprint than the
+> >>>> entire nfs-utils package.
+> >>>>
+> >>>> exportd uses no RPC code, which means none of the 
+> >>>> code or arguments that deal with v3 was ported, 
+> >>>> this again, makes the footprint much smaller. 
+> >>>
+> >>> How much smaller?
+> >> Will a bit smaller... but a number of daemons like nfsd[cld,clddb,cldnts]
+> >> need to also come a long. 
 > > 
-> > On Wed, Mar 03, 2021 at 09:35:18PM +0000, Chuck Lever wrote:
-> >> 
-> >> 
-> >>> On Mar 2, 2021, at 10:46 AM, Bruce Fields <bfields@fieldses.org> wrote:
-> >>> 
-> >>> From: "J. Bruce Fields" <bfields@redhat.com>
-> >>> 
-> >>> We do this same logic repeatedly, and it's easy to get the sense of the
-> >>> comparison wrong.
-> >>> 
-> >>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >>> ---
-> >>> fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++--------------------
-> >>> 1 file changed, 27 insertions(+), 22 deletions(-)
-> >>> 
-> >>> My original version of this patch... actually got the sense of the
-> >>> comparison wrong!
-> >>> 
-> >>> Now actually tested.
-> >>> 
-> >>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >>> index 61552e89bd89..8e6938902b49 100644
-> >>> --- a/fs/nfsd/nfs4state.c
-> >>> +++ b/fs/nfsd/nfs4state.c
-> >>> @@ -5363,6 +5363,22 @@ static bool clients_still_reclaiming(struct nfsd_net *nn)
-> >>> 	return true;
-> >>> }
-> >>> 
-> >>> +struct laundry_time {
-> >>> +	time64_t cutoff;
-> >>> +	time64_t new_timeo;
-> >>> +};
-> >>> +
-> >>> +bool state_expired(struct laundry_time *lt, time64_t last_refresh)
-> >>> +{
-> >>> +	time64_t time_remaining;
-> >>> +
-> >>> +	if (last_refresh < lt->cutoff)
-> >>> +		return true;
-> >>> +	time_remaining = last_refresh - lt->cutoff;
-> >>> +	lt->new_timeo = min(lt->new_timeo, time_remaining);
-> >>> +	return false;
-> >>> +}
-> >>> +
-> >> 
-> >> /home/cel/src/linux/linux/fs/nfsd/nfs4state.c:5371:6: warning: no previous prototype for ‘state_expired’ [-Wmissing-prototypes]
-> >> 5371 | bool state_expired(struct laundry_time *lt, time64_t last_refresh)
-> >>      |      ^~~~~~~~~~~~~
-> >> 
-> >> Should this new helper be static, or instead perhaps these items
-> >> should be defined in a header file.
+> > Could we get some numbers?
 > > 
-> > Whoops, should have been static, yes, do you want to fix it up or should
-> > I resend?
-> 
-> I've corrected it in the for-next topic branch in
-> 
-> git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
+> > Looks like nfs-utils in F33 is about 1.2M:
+> > 
+> > $ rpm -qi nfs-utils|grep ^Size
+> > Size        : 1243512
+> > 
+> > $ strip utils/mountd/mountd
+> > $ ls -lh utils/mountd/mountd
+> > -rwxrwxr-x. 1 bfields bfields 128K Mar  3 10:12 utils/mountd/mountd
+> > $ strip utils/exportd/exportd
+> > $ ls -lh utils/exportd/exportd
+> > -rwxrwxr-x. 1 bfields bfields 106K Mar  3 10:12 utils/exportd/exportd
+> > 
+> > So replacing mountd by exportd saves us about 20K out of 1.2M.  Is it
+> > worth it?
+> In smaller foot print I guess I meant no v3 daemons, esp rpcbind. 
 
-Thank you!
+The rpcbind rpm is 120K installed, so if the new v4-only rpm has no
+dependency on rpcbind then we save 120K.
+
+So, for stuff needed in both v4-only and full cases, would we package
+that in a common rpm that they both depend on?
 
 --b.
