@@ -2,70 +2,70 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	PDS_BAD_THREAD_QP_64,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,PDS_BAD_THREAD_QP_64,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 89EECC4361A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F27FC433DB
 	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6821964EC0
+	by mail.kernel.org (Postfix) with ESMTP id 2C00764E62
 	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1449436AbhCDA3m (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 19:29:42 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:33138 "EHLO
+        id S232896AbhCDA3i (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 19:29:38 -0500
+Received: from userp2120.oracle.com ([156.151.31.85]:46176 "EHLO
         userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1378968AbhCCS2k (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 13:28:40 -0500
+        with ESMTP id S1449436AbhCCPoO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 10:44:14 -0500
 Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 123IP7jD011461;
-        Wed, 3 Mar 2021 18:27:57 GMT
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 123FTZA8130518;
+        Wed, 3 Mar 2021 15:43:32 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : references : in-reply-to : content-type :
  content-id : content-transfer-encoding : mime-version; s=corp-2020-01-29;
- bh=MsHbBalW9zYYA8Pl8dcNsCBYVZLSQ8D9AhewCkvG5BI=;
- b=FjcYVdO8MbDoT0O90bfNsA+Zjl5EVgVh2zVYJooI6QHVCC79lMwVTjWlLhzmIKY3uh0w
- PZ8O1tHzwLkxf6pOa7yzNUClgKs9mN413ssLK5VCz2MV7UC8NXX9S7Fzcc/6r/ozv8bh
- JWwINpFRUKWGjAax/BoxL/AtXH8TVcUCbrrWTo39hSlr741K8Aq771AAl5BscYarMTEb
- YDuZvyepnsjwjBJBb17+/EntyOfqj6JCpcXRF4TZLb7gsAxZnplTRhJk9utbCGT4pzTe
- LkSYTwm8DQ9n6a25nuL9Jt6q7ACIkoMv2YsY6Dfm5TMR5S/2+ylSled5xs9RcPnDRsnf dw== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by userp2120.oracle.com with ESMTP id 36yeqn4e6b-1
+ bh=GHMIdB2az8GcW2m6Io3T2djycE+m9wtVCwWPJcjU/BM=;
+ b=mE+hDnGF0C5D7k077bVpsQf0WC+//lp3ueaBdBXTEj+BZzr1LkO56O9A/Ec9bVEa7+TN
+ imWbUiQMA/3MUzHhFelvP7U3Dzt+vI+rMJLtwwRVcCaqHjARrAa3wYNAP50dm6BEwzY5
+ vlVL0y48Lot25T6qQc9xEpnHgd67Dp6uERm8CMkm59k1IbpfIYOUcHQ1oduhwzaLZ9tW
+ ffS2J9f19aQJsxLG5IgnlYk24XMMnwU26UNOC438wuSu64l8UtC8b4e855KOZHmq5wcZ
+ HRHuh1Jt85LTrlfezbkyC8O/OD7fAulE6abCVfGXFRAT8WNKVvOAzzypSysSQ7Fei0U6 OQ== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by userp2120.oracle.com with ESMTP id 36yeqn3tkg-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 03 Mar 2021 18:27:57 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 123IP5pL156770;
-        Wed, 3 Mar 2021 18:27:56 GMT
-Received: from nam12-bn8-obe.outbound.protection.outlook.com (mail-bn8nam12lp2174.outbound.protection.outlook.com [104.47.55.174])
-        by aserp3020.oracle.com with ESMTP id 370001mtga-1
+        Wed, 03 Mar 2021 15:43:31 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 123FV3u1162810;
+        Wed, 3 Mar 2021 15:43:31 GMT
+Received: from nam12-mw2-obe.outbound.protection.outlook.com (mail-mw2nam12lp2048.outbound.protection.outlook.com [104.47.66.48])
+        by aserp3030.oracle.com with ESMTP id 36yynqpwjs-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 03 Mar 2021 18:27:56 +0000
+        Wed, 03 Mar 2021 15:43:31 +0000
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=PyURS/b0VQpjzJYSxHKSBDxQqSZ4lOiqag2uiH33szVgFMIHyHCRsR4Q9gfJtLe0/E8zcd+kPEGpLrANA5n5ZTzC/n/pLRwnoKeGGUFylr7ukdUpld3ihbUgurpeA1Qbcy6CVb+83Oog+703ol9z8LqsIMkeCAt2Pt7NtEhYRZTMEYqZNYbIGnCqoN/dQ1wh4r5X0dwgF4PQJO5RV78nJDLFX5E/MXG3/ou57AJhVRFyNeYGmFyXQCr1MenGsLO5VoHl/GtsNuwXR5XpNDvmh4yvTGUjtOqmSliyrPG+DGogdQ66nRRUV/eI1pvGq4SYwDerRmfGa6Sgq8UxcDgQNA==
+ b=ZhUA5XonOJIas302RpnbasKGQ8D6P4KR11CYS1yk9eGt+JCD8vVNmEBFGjb27RuMPbUOtZGCn4bzm+SO34rb1Ha2u4pSU/w22SpIdB6At7H1btogB/lx77JOAube7leVgPhXbZZhK3HUcSpzFiLqbreWwm07pD/hk7t36JM/j+htudcKmPC+Ny9ffhFba4dFYVAW5FlV0XvWwjWx+1ih5zE2o1BW3O7uCLodt6kJeG2/7piDS7qYqB/mc7NRoblZKrrANbv/sCScXfZWX7J3mKkv5u+8W5jJLG6CNySJv95V0iB/DlA5uWeqC4rKpHaaZG02u3bCH5o9uilgrx96Iw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=MsHbBalW9zYYA8Pl8dcNsCBYVZLSQ8D9AhewCkvG5BI=;
- b=Q1Cg7uKJW1XCsftVQUu6zLun9Y8d1ubRQ4YVkHTXtd0ErNJZZhwlgFampXYE/RuNnMHpmkp5Ia5K+8xLOOExWm3XtnwJ4vhqbHxfRz8pMpgRLU8sP65Sy4ySQGYGDI7K2XZVg9n4uWwiE2xzsS1kmUptM86xVcob9hDw54+96q1xFIWEFLuFpXp87/0w9RMUtYx9b6IBCUza6hIZIXGeYNkrlo6xtSRw9IuTI8WC5+gplSzPPntUYmNvKT2n/Iuq/TEx/ychy9MNg5d9byP1hEfQfpUbZQdpXFICaoN36YWDjm1NiM8P5CIHhOrT3DEZPBVU2p/1/BY0SoChtEVUUg==
+ bh=GHMIdB2az8GcW2m6Io3T2djycE+m9wtVCwWPJcjU/BM=;
+ b=JaV4WxEvnfFAkyqKRru0BQfq9lCIjTKqKP6bMOrG2qHOtCy7OvNVB26f2I2vjLiEr0hS1W8CV5+gaXc64kaDAmqu3la1fdoJqpy/fjov95woOb5zDWxmSQ5bVx3FVzjfcD209FQ0sj/XOpOn6iwVY+BnPjMlcZlOh4brWbcxLjUeBbyjIaQMyzzRIRgevTlQQ8AUKko9XkfXQBPy4QAZaUkyA72AaQk1a4pIFSFP58SNrhQU1s1kzN8T3jnYpH/taJKl5dLxz2xKAny8OmtlfGHLK2tnDjA7V+ZtOwp3lTJWKmfOWg7+QCTcYOWGVjYw20YCaJ1nVPf/FukNvgGq4g==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
  dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
  d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=MsHbBalW9zYYA8Pl8dcNsCBYVZLSQ8D9AhewCkvG5BI=;
- b=li3t+imatYR7oL7CXuuoZUifugshGn17lwA/WO/pzFyhTSObC3SdGvmgXpWfhgkZSroTkqSIz00URZhuuTANFhSoTmuQQyrhuYAv/xobVr4Svc7RF2Jmc0wdrISvSXrg4vfjiUcb8EmMxFyXM6/9ARbV1NcVPvP3NMcT3GA4yvI=
+ bh=GHMIdB2az8GcW2m6Io3T2djycE+m9wtVCwWPJcjU/BM=;
+ b=hhC5jKh1ywx0kpiADj84RW4MJCvXM2tUAEUURUmDr3aMk3WGg7wrT7h3dpH/kS9RNJ8zLCsOaOnC3SaaPMZzcNXNy8O9BztOsV65d1F0c6OHi318poSxZN57Ct2LcZt7PI+EYi79klsW8zv833F/oOLnZnHJzGaOEjgaqvCnD+w=
 Received: from SJ0PR10MB4688.namprd10.prod.outlook.com (2603:10b6:a03:2db::24)
- by BYAPR10MB2439.namprd10.prod.outlook.com (2603:10b6:a02:ba::11) with
+ by BYAPR10MB2872.namprd10.prod.outlook.com (2603:10b6:a03:89::30) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3912.17; Wed, 3 Mar
- 2021 18:27:54 +0000
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3890.19; Wed, 3 Mar
+ 2021 15:43:28 +0000
 Received: from SJ0PR10MB4688.namprd10.prod.outlook.com
  ([fe80::6da8:6d28:b83:702b]) by SJ0PR10MB4688.namprd10.prod.outlook.com
  ([fe80::6da8:6d28:b83:702b%4]) with mapi id 15.20.3912.017; Wed, 3 Mar 2021
- 18:27:54 +0000
+ 15:43:28 +0000
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     Bruce Fields <bfields@fieldses.org>
 CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
@@ -73,17 +73,13 @@ Subject: Re: [PATCH v1 19/42] SUNRPC: Fix xdr_get_next_encode_buffer() page
  boundary handling
 Thread-Topic: [PATCH v1 19/42] SUNRPC: Fix xdr_get_next_encode_buffer() page
  boundary handling
-Thread-Index: AQHXDq5E9L4cYzCeI0iQSySXwa3yeapxRKEAgAEl6oCAABNjgIAAGDkAgAABvQCAAACYgA==
-Date:   Wed, 3 Mar 2021 18:27:54 +0000
-Message-ID: <FB4626C1-C2C1-4927-971B-8937420F963A@oracle.com>
+Thread-Index: AQHXDq5E9L4cYzCeI0iQSySXwa3yeapxRKEAgAEl6oA=
+Date:   Wed, 3 Mar 2021 15:43:28 +0000
+Message-ID: <592A34CB-C178-4272-8905-F3BA95BCE299@oracle.com>
 References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
  <161461183307.8508.17196295994390119297.stgit@klimt.1015granger.net>
  <20210302221130.GG3400@fieldses.org>
- <592A34CB-C178-4272-8905-F3BA95BCE299@oracle.com>
- <20210303165251.GB1282@fieldses.org>
- <D8625219-C758-44C0-A74E-272019E12C2E@oracle.com>
- <20210303182546.GC1282@fieldses.org>
-In-Reply-To: <20210303182546.GC1282@fieldses.org>
+In-Reply-To: <20210302221130.GG3400@fieldses.org>
 Accept-Language: en-US
 Content-Language: en-US
 X-MS-Has-Attach: 
@@ -92,133 +88,146 @@ authentication-results: fieldses.org; dkim=none (message not signed)
  header.d=none;fieldses.org; dmarc=none action=none header.from=oracle.com;
 x-originating-ip: [68.61.232.219]
 x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 10f9460d-59df-4aca-837b-08d8de720fcd
-x-ms-traffictypediagnostic: BYAPR10MB2439:
-x-microsoft-antispam-prvs: <BYAPR10MB24390EEB4E6A6EF48C0DA5F293989@BYAPR10MB2439.namprd10.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:5236;
+x-ms-office365-filtering-correlation-id: f0ec52a4-7613-479a-f70e-08d8de5b1710
+x-ms-traffictypediagnostic: BYAPR10MB2872:
+x-microsoft-antispam-prvs: <BYAPR10MB2872EEDC8DF112EDF346693893989@BYAPR10MB2872.namprd10.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:6108;
 x-ms-exchange-senderadcheck: 1
 x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: L3/XVmLJfwvygLNogyUKRR2MILcVUdurQzjVtNXd9vc0zXDJMU7V2+1Go8Yqvx23zLxHFE0fcbyIW+g1PWQtqN0DeT1L0ZBxTyCq6iriU7kXMz2HCOETTl0J7iJMQvRevxN+pHbrwvtIcssbzCPpNhIH8aKjR+JYBbUYwUXiL1arBmGcfaO4wasFQzWHl1qfHEAVy6jwQsLW2RkHIkIVJIRZQ2RODXLHlGyJy8Z1TopXdNFKpkHs0dsQG4giyAtkXfi6404QPpaeVneNPg7COsflRMWOqMhqyWNDz4+z0vIf1kmyNwdS3KGldD9obaNkH3zNotWQAVedl4faHbu9U7PhKrsKxWWAonmcwbMNPmfD2I4U6SBMMioUm/flETtOJCqlLX3vhXUVZ2PcblSftRQ5lGK1Q2eIbWQoWfvkP4ucVCUwy9oV2rQ+r/E32opXBXa9Ilv6sL0sLNC8EPut+MqSTltfXX7jeTskzvfX6K21GlTP3kSWTv4KkpwVNOzPqkHR2Y2KiXVeqgsSkUbXUTaP0nVfvCLuy1vt2xdpqebT11DSBTP6ILqvrRf5f0guDdgp9uyx9CrG39Dx+HOGmQ==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(136003)(346002)(39860400002)(376002)(366004)(396003)(86362001)(478600001)(66556008)(71200400001)(36756003)(53546011)(6486002)(6506007)(4326008)(8936002)(44832011)(2616005)(6916009)(33656002)(316002)(2906002)(6512007)(186003)(26005)(5660300002)(91956017)(76116006)(66946007)(66476007)(64756008)(66446008)(8676002)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata: =?us-ascii?Q?QX0M5SmJSiLQJINVb9Tlsi4b+N5KTNcVvkmg591pPL+v+9J8VhjO+54+KJsT?=
- =?us-ascii?Q?H4xHgF9UA/Pilf16kvolVLEozieOdaErpRKT1rsbV2a4R4PnnoIKK9zAkoIs?=
- =?us-ascii?Q?jElEQvqI3Vbirqy0QTT6DfuuO40TGD/peXf7UTkX9wvn2werEU3wYGn7dHlZ?=
- =?us-ascii?Q?4LPtSOtRI7E8S/qclzfTHKlzmLeRAnVzK1APsv+pVj3iqsh3ieDtjXE1Z4kZ?=
- =?us-ascii?Q?mkU/aNm4UPYKh82r1tu4SjOSqznptB+1h9YviTOoRtI6Q8+xeb+0LUpFcFJN?=
- =?us-ascii?Q?ObK/N6eaLXAbJ6mKBgGCA84CuALGN5mIKrzAOtgzr/Z4wYtw303NtqDwiOxo?=
- =?us-ascii?Q?q8XiCfppo14rr6MA3J0RUfhXlmNgfDvaPA75jEnW0DFs4WpIN/ALPqmvdX1Y?=
- =?us-ascii?Q?sqD8X4YeuDD2KQrL3zXI3aCFYv4/nbqIMSUnfLgBZLiOoze8Q8YG+yW0NsXH?=
- =?us-ascii?Q?HU5jS1qhMdMqpXHuyVzJE/c26SCD7sXo3ZhbcnLNVHeCCOlDt7oKnXsSgXH4?=
- =?us-ascii?Q?ILdPcP6VYgLgBDkjRXnCKFyYtCEPEDUsO7qWc1BjzepUaAAd9U8U449tQIXB?=
- =?us-ascii?Q?BGni0dMpqfE5vSgmTl0u/oNC0YU/zIkRv23CeZQ/67t+30tzr/7zcD2BZdOq?=
- =?us-ascii?Q?P4MSnDn2YbKNEBNevnNnP1gaQWFm2+jBEduQ2VWd35L0gzySiw9Ip+wNS7h6?=
- =?us-ascii?Q?z1znhByoBJKcD66GOqlTXAblzwS/fmUq7kugq5rqfg4ycmvcijjHhjSBYjHd?=
- =?us-ascii?Q?2RvNpdgsWw5n7us8seC6VF44xScKhMaApYgMGvccCQcamiLKSpUZi5L0Klro?=
- =?us-ascii?Q?J5Og5ZFpnA+wVK5spfJqeover4t5+79nwSQPRFvdR9ly1wAVEsaMtMtpiRzf?=
- =?us-ascii?Q?CiDY3wNYB0nOZYylbJHiKlhj3/Tkt3W+GwK1SkcQaQ7lG1/2YYnAvXQr4hrm?=
- =?us-ascii?Q?1VEwVe4/2vJIVSjbukZq8lIbC/5C5BY1UjOMhTodgKGdm5IoHykKIWRihhfK?=
- =?us-ascii?Q?w/EWfOZ6M82yOtlEuqomkoFSbdb/b59FumzL4wEKOimT4IvhRTPzgaCYQ2e2?=
- =?us-ascii?Q?exi5pP3i0uxtJ1KhtAZV5ZBE1lprPqOokLzBY8HhM9pcxzUZqSp+jO22VRj7?=
- =?us-ascii?Q?YgOpp2gXCO9aSZHQXkqIHg5d2Qk6fLCH/mynrzVIk9PNMOtQqYbqYiujmGBF?=
- =?us-ascii?Q?tofAeIzeiesvZ6PHimDUvFAJgc1K+DUQ5E7Z5pCl8diHaaWmHjKX86g6HSyp?=
- =?us-ascii?Q?Ip9hB7auUx1h9DI/TIDiPLiwl8LlbtRoEVev543aiDmQ2P8W13YW/HtExlE7?=
- =?us-ascii?Q?CV4QLAFuYnZFOgR6CjkCp3XlHssmhQQO22yXEVwuiVA2pg=3D=3D?=
+x-microsoft-antispam-message-info: UM/k/ec0DYsFf4eDG0K9hZtbGLZLwavXJ20pF3pydwE01tHZPbkDNHnNsDlxmDz6uojaEaT2kqqSigppltafl1HOhCmi/MgUeZfR/e0beQ+1yfljzv3twnEZiw5fTITKzKXrQKtgILXzXZj+v7bbip3091d6rt1r7y9xKWwsXn+nFblnEslIWe/AXt0t/ZWPUomBAxMbDxTcXI06fmhFEHnvIFaakxGsPNM15RJsaCZ2gO7vsoDdpf1laiecMj95dnmQ6xk89Y+ELA806ZWLiV6uA2aAfNL/W65tPJcy3CIuUbODNA8P+3TdJDXORjpAVgjsgfJtYVHqYyllrXkZKmsEcfKNigPAH4YgBp+3yIEaBZ/efjunUcNE8Ahy9sBnRfkSElfxv6h/dt8MevhN4Zk8+MZnMQFgMjp3lJCM9PSgzC8T1YLGVTuyDa2/iGEkRJkLHnKxfaMssQafLfvfmkV7pMQFf9x/dxzMDGVzSJrgkemllLYABcZXA0lAITKpa26X9aExALPM/zlsTg4bTrlTtKTtF6Y98yLBbeHAase1QuIYA1NWld/9I+y3TxTw8M/uQV9iFRnXE7Fm+VUgfNiQNyUDRJL+Hmfo/5fxzWQ=
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(136003)(376002)(396003)(366004)(39860400002)(346002)(8936002)(83380400001)(71200400001)(316002)(8676002)(186003)(2906002)(26005)(53546011)(66946007)(5660300002)(4326008)(6506007)(6512007)(86362001)(66446008)(2616005)(6916009)(66556008)(36756003)(33656002)(6486002)(478600001)(66476007)(44832011)(76116006)(91956017)(64756008)(45980500001)(473944003);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata: =?us-ascii?Q?wQSRD8K7XEf7TscHMxSCLs5iyiWcvxpAHuFppXnIVvFJJZQ4jhILaDdgE+Rv?=
+ =?us-ascii?Q?CRUU79OohtzSXSwCYBhIS05hZ+DUIroBrHijv6MC8MsIzc3eBkIKaweUBsxl?=
+ =?us-ascii?Q?mHBeX6TQdKVD/6EM/eqV1QP2WncYBvemtWic0IjuqTbJacXLM5fUNc6WmGPG?=
+ =?us-ascii?Q?+RK4JjDDx+jqD/pHq/bZ79gV/mw/o3tO3WrmGzMZ/ln/db02L5TZNzmu2GEK?=
+ =?us-ascii?Q?kuqXsIVZdbC1xyrOHr2vYjdATig9zGnuvpi6gBs2fFAd+Z12Cv1DMYBwp/2j?=
+ =?us-ascii?Q?KOnpeItkjLsciMByjmD5Wq/tISx5l0gnVLxNFJkd53A0IvZ1YruNCguM+pkZ?=
+ =?us-ascii?Q?euW7HxxSYrTtdIpCbOkWN5kLzccKqHrqZ5bsfTkX/tuz74M+eq9r5mkKlBi0?=
+ =?us-ascii?Q?3u8NZ06/U6TZgzI4h6EDs4VcABMuZ3y/Ta+54tngVrl7XztMgs9UShTB30LV?=
+ =?us-ascii?Q?dIH1E2txF+28uzn8/6Fgyd/Oq5IoWWYc6M/sOWucLMN7p6/o9bG95BWROs+v?=
+ =?us-ascii?Q?UVaBqGjF9kj20HoSZ6mo/gPCRCW++fqdfpIfP2DDR5N8gaaoc5sh1ehjpb04?=
+ =?us-ascii?Q?GZ/+maEUF3m/UnARU/DcaNQHz2RElgrlXqsT7pf5FvLU3i0DP6XKaDa03teY?=
+ =?us-ascii?Q?Pl/71lgzCbNChiJqYGUnl+NUnsokOAslawR5tJ5+Ne1VOW/s9rSfw/mKU80z?=
+ =?us-ascii?Q?XzB+E7kP2jUfISHAgR/Z+uT4s83RHkqpByK31QySWk7gKJizMyPY33duoIkv?=
+ =?us-ascii?Q?jdktWUcwEJ/uZWuv5k23qSAyqXYEKgqdmSYLQjTRWarygRYnU6XsE5vpvvMD?=
+ =?us-ascii?Q?YMtq6pwSNA/tHna1W6l9qoAACK9DNfcgbLyqyh924VEGa7rNKfdHbkgl2xfH?=
+ =?us-ascii?Q?RX61waTQR1Kvu+hP2EgYGQtE0YGYatz+IU3idCyapsPrf1W+Nu19xcCVicAr?=
+ =?us-ascii?Q?Jkmf5HS3Eza6KPuktrsKZ5K1hcjxlx8eQ+zLN9Yg4oHCxdOu52TZ4w/qwPlJ?=
+ =?us-ascii?Q?jYGFe6vse/4s0yWCVHx4u4GZEMyEPaiqnkLeUp3A+w6g/S/vbl2bFsmWRcmc?=
+ =?us-ascii?Q?FksEGYym2L5e2TA59G6Dicx3+X8wF+AEgE8xuleLj0iZPKleVfafT6qeTuwB?=
+ =?us-ascii?Q?Y3H87pZg55CziPnp1NBzWcf03udaUtxNyDC8q6L+CXP0LFQqh5ylutisZj/8?=
+ =?us-ascii?Q?q5Ec3bkpp+Fbe3yQ0h/MmSRh+BqMW26tHhLNMBDwNErsZlMqmJFJ/+UXeuFJ?=
+ =?us-ascii?Q?QiDopOFk3zJgHDkqrL78JPIeZV3yTlHZ84KOJvVXT6FzZ2j5H6PzvBWXu4Ih?=
+ =?us-ascii?Q?SaR6D43G1fws/7iSDSfrzjMF0E+a+y+NbSfPwwFgxKbCVg=3D=3D?=
 x-ms-exchange-transport-forked: True
 Content-Type: text/plain; charset="us-ascii"
-Content-ID: <86FC6FE73920B54E9881191E9BB322E4@namprd10.prod.outlook.com>
+Content-ID: <6107BDEE2F91D14DBF75E5C1D56C75B7@namprd10.prod.outlook.com>
 Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
 X-OriginatorOrg: oracle.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
 X-MS-Exchange-CrossTenant-AuthSource: SJ0PR10MB4688.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 10f9460d-59df-4aca-837b-08d8de720fcd
-X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Mar 2021 18:27:54.4574
+X-MS-Exchange-CrossTenant-Network-Message-Id: f0ec52a4-7613-479a-f70e-08d8de5b1710
+X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Mar 2021 15:43:28.2626
  (UTC)
 X-MS-Exchange-CrossTenant-fromentityheader: Hosted
 X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
 X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: ZgupNYi49KT7KfYbMnqLGz2wAEX+OHulVfbrWus7QZQy+qzEt6+GQ8UlfboXKx/d7onXLEnY6J/A36dZTzdK9A==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR10MB2439
+X-MS-Exchange-CrossTenant-userprincipalname: UiBKIJlRf46a/RpGZIzoruH5RaOXH6u6ABuJ1GHMeFn7x7KIZy+k8nfqM2SFsDk3HAOsfQu+J57l1SOW/CZAJw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR10MB2872
 X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9912 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 mlxlogscore=999
- phishscore=0 bulkscore=0 mlxscore=0 spamscore=0 suspectscore=0
- malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2103030129
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 mlxscore=0 spamscore=0
+ bulkscore=0 suspectscore=0 mlxlogscore=999 phishscore=0 malwarescore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2103030119
 X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9912 signatures=668683
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 lowpriorityscore=0 clxscore=1015
  priorityscore=1501 mlxlogscore=999 suspectscore=0 malwarescore=0
  impostorscore=0 bulkscore=0 adultscore=0 mlxscore=0 phishscore=0
  spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2009150000 definitions=main-2103030129
+ engine=8.12.0-2009150000 definitions=main-2103030119
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Bruce-
+
+Thanks for your careful review of this series!
 
 
-> On Mar 3, 2021, at 1:25 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> On Mar 2, 2021, at 5:11 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 >=20
-> On Wed, Mar 03, 2021 at 06:19:33PM +0000, Chuck Lever wrote:
+> On Mon, Mar 01, 2021 at 10:17:13AM -0500, Chuck Lever wrote:
+>> The description of commit 2825a7f90753 ("nfsd4: allow encoding
+>> across page boundaries") states:
 >>=20
+>>> Also we can't handle a new operation starting close to the end of
+>>> a page.
 >>=20
->>> On Mar 3, 2021, at 11:52 AM, Bruce Fields <bfields@fieldses.org> wrote:
->>>=20
->>> On Wed, Mar 03, 2021 at 03:43:28PM +0000, Chuck Lever wrote:
->>>> Why would that not be OK? the next call to xdr_get_next_encode_buffer(=
-)
->>>> should do the right thing and bounce the new encoded data from the
->>>> next page into this one again.
->>>>=20
->>>> So far I have not encountered any problems. Would such a problem show
->>>> up with some frequency under normal use, or would it be especially
->>>> subtle?
->>>=20
->>> I mainly just want to make sure we've got a coherent idea what this cod=
-e
->>> is doing....
->>=20
->> Agreed, that's a good thing.
+>> But does not detail why this is the case.
 >=20
-> I'm also a little vague on what exactly the problem is you're running
-> into.  (Probably because I haven't really looked at the v3 readdir
-> encoding.)
+> That wasn't every helpful of me, sorry.
 >=20
-> Is it approaching the end of a page, or is it running out of buflen?
-> How exactly does it fail?
+>> Subtracting the scratch buffer's "shift" value from the remaining
+>> stream space seems to make reserving space close to the end of the
+>> buf->pages array reliable.
+>=20
+> So, why is that?
+>=20
+> Thinking this through:
+>=20
+> When somebody asks for a buffer that would straddle a page boundary,
+> with frag1bytes at the end of this page and frag2bytes at the start of
+> the next page, we instead give them a buffer starting at start of the
+> next page.  That gives them a nice contiguous buffer to write into.
+> When they're done using it, we fix things up by copying what they wrote
+> back to where it should be.
+>=20
+> That means we're temporarily wasting frag1bytes of space.  So, I don't
+> know, maybe that's the logic behind subtracing frag1bytes from
+> space_left.
+>=20
+> It means you may end up with xdr->end frag1bytes short of the next page.
+> I'm not sure that's right.
 
-I don't recall exactly, it was a late last summer when I wrote all these.
+Why would that not be OK? the next call to xdr_get_next_encode_buffer()
+should do the right thing and bounce the new encoded data from the
+next page into this one again.
 
-Approaching the end of a page, IIRC, the unpatched code would leave
-a gap in the directory entry stream.
+So far I have not encountered any problems. Would such a problem show
+up with some frequency under normal use, or would it be especially
+subtle?
 
 
 > --b.
 >=20
+>=20
 >>=20
+>> This change is needed to make entry encoding with struct xdr_stream,
+>> introduced in a subsequent patch, work correctly when it approaches
+>> the end of the dirlist buffer.
 >>=20
->>> For testing: large replies that aren't just read data are readdir and
->>> getacl.  So reading large directories with lots of variably-named files
->>> might be good. Also pynfs could easily send a single compound with lots
->>> of variable-sized reads, that might be interesting.
+>> Fixes: 2825a7f90753 ("nfsd4: allow encoding across page boundaries")
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> net/sunrpc/xdr.c |    2 +-
+>> 1 file changed, 1 insertion(+), 1 deletion(-)
 >>=20
->> I've run the full git regression suite over NFSv3 many many times with
->> this patch applied. That includes unpacking via tar, a full build from
->> scratch, and then running thousands of individual tests.
+>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+>> index 3964ff74ee51..043b67229792 100644
+>> --- a/net/sunrpc/xdr.c
+>> +++ b/net/sunrpc/xdr.c
+>> @@ -978,7 +978,7 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr=
+_stream *xdr,
+>> 	 * shifted this one back:
+>> 	 */
+>> 	xdr->p =3D (void *)p + frag2bytes;
+>> -	space_left =3D xdr->buf->buflen - xdr->buf->len;
+>> +	space_left =3D xdr->buf->buflen - xdr->buf->len - frag1bytes;
+>> 	xdr->end =3D (void *)p + min_t(int, space_left, PAGE_SIZE);
+>> 	xdr->buf->page_len +=3D frag2bytes;
+>> 	xdr->buf->len +=3D nbytes;
 >>=20
->> So that doesn't exercise a particular corner case, but it does reflect
->> a broad variety of directory operations.
->>=20
->>=20
->>> Constructing a compound that will result in xdr_reserve_space calls tha=
-t
->>> exactly hit the various corner cases may be hard.  But maybe if we just
->>> send a bunch of compounds that vary over some range we can still
->>> guarantee hitting those cases.
->>>=20
->>> --b.
->>=20
->> --
->> Chuck Lever
 
 --
 Chuck Lever
