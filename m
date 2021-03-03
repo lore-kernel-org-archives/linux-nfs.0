@@ -2,60 +2,105 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0816C4646B
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6AC8C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A88DA64EEC
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Mar 2021 11:03:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C3BA26023B
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346472AbhCCK7C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 05:59:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56498 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1347723AbhCCHOa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 02:14:30 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6AECC061756
-        for <linux-nfs@vger.kernel.org>; Tue,  2 Mar 2021 23:13:48 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=deBjUIw7o+5FrL5cMAMC5oZOFMRRuWN1/zCIz0A/P5I=; b=bL53yZ+p2+y9M/j7v7JtBh5Cqk
-        ZTAflsO4MCaAffr+25sUsXEOLdiwHpH4XQJY+lv0jZDkot4r2puiJACddPSskVpUceUgNd3yt5EK+
-        hvWgtLaxESzTAcQolUoJUCqWOzjStgLCJ0lvgFgrWK/uwD6eLhg9EmLUVhhuAc2wYD36lFKqQLpFK
-        CPH02xx99TKjPFMMX1n76xzaWcjA8Cy42/oaW5EQye0ulygkII6/0oOhZZR/jDOP/UKAwdyunX3O3
-        HovfW6tOLL+0FtbpijStng55BjNPtBMdcyX/my+vz+IVueX+hXCOeZsscLcFvkAXvC8+5Arwb1C+t
-        VVdiCtYw==;
-Received: from hch by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1lHLhZ-001eDF-LO; Wed, 03 Mar 2021 07:13:45 +0000
-Date:   Wed, 3 Mar 2021 07:13:45 +0000
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 14/42] NFSD: Update the NFSv3 PATHCONF3res encoder to
- use struct xdr_stream
-Message-ID: <20210303071345.GA388507@infradead.org>
-References: <161461145466.8508.13379815439337754427.stgit@klimt.1015granger.net>
- <161461180307.8508.9954286154242416300.stgit@klimt.1015granger.net>
+        id S1346211AbhCDA3K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 19:29:10 -0500
+Received: from outbound-smtp01.blacknight.com ([81.17.249.7]:45666 "EHLO
+        outbound-smtp01.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S243249AbhCCLrK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 06:47:10 -0500
+Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
+        by outbound-smtp01.blacknight.com (Postfix) with ESMTPS id C0533C4A8B
+        for <linux-nfs@vger.kernel.org>; Wed,  3 Mar 2021 09:18:28 +0000 (GMT)
+Received: (qmail 8195 invoked from network); 3 Mar 2021 09:18:28 -0000
+Received: from unknown (HELO techsingularity.net) (mgorman@techsingularity.net@[84.203.22.4])
+  by 81.17.254.9 with ESMTPSA (AES256-SHA encrypted, authenticated); 3 Mar 2021 09:18:28 -0000
+Date:   Wed, 3 Mar 2021 09:18:25 +0000
+From:   Mel Gorman <mgorman@techsingularity.net>
+To:     Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Jesper Dangaard Brouer <brouer@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Linux-Net <netdev@vger.kernel.org>,
+        Linux-MM <linux-mm@kvack.org>,
+        Linux-NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/5] net: page_pool: refactor dma_map into own function
+ page_pool_dma_map
+Message-ID: <20210303091825.GO3697@techsingularity.net>
+References: <20210301161200.18852-1-mgorman@techsingularity.net>
+ <20210301161200.18852-5-mgorman@techsingularity.net>
+ <YD6IosORkdRN9B2x@enceladus>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-15
 Content-Disposition: inline
-In-Reply-To: <161461180307.8508.9954286154242416300.stgit@klimt.1015granger.net>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <YD6IosORkdRN9B2x@enceladus>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Mar 01, 2021 at 10:16:43AM -0500, Chuck Lever wrote:
-> +	*p++ = resp->p_no_trunc ? xdr_one : xdr_zero;
-> +	*p++ = resp->p_chown_restricted ? xdr_one : xdr_zero;
-> +	*p++ = resp->p_case_insensitive ? xdr_one : xdr_zero;
-> +	*p = resp->p_case_preserving ? xdr_one : xdr_zero;
+On Tue, Mar 02, 2021 at 08:49:06PM +0200, Ilias Apalodimas wrote:
+> Hi Mel,
+> 
+> Can you please CC me in future revisions. I almost missed that!
+> 
 
-Wouldn't a little xdr_encode_bool helper for this common pattern be
-nice?
+Will do.
+
+> On Mon, Mar 01, 2021 at 04:11:59PM +0000, Mel Gorman wrote:
+> > From: Jesper Dangaard Brouer <brouer@redhat.com>
+> > 
+> > In preparation for next patch, move the dma mapping into its own
+> > function, as this will make it easier to follow the changes.
+> > 
+> > V2: make page_pool_dma_map return boolean (Ilias)
+> > 
+> 
+> [...]
+> 
+> > @@ -211,30 +234,14 @@ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
+> >  	if (!page)
+> >  		return NULL;
+> >  
+> > -	if (!(pool->p.flags & PP_FLAG_DMA_MAP))
+> > -		goto skip_dma_map;
+> > -
+> > -	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
+> > -	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
+> > -	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
+> > -	 * This mapping is kept for lifetime of page, until leaving pool.
+> > -	 */
+> > -	dma = dma_map_page_attrs(pool->p.dev, page, 0,
+> > -				 (PAGE_SIZE << pool->p.order),
+> > -				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
+> > -	if (dma_mapping_error(pool->p.dev, dma)) {
+> > +	if (pp_flags & PP_FLAG_DMA_MAP &&
+> 
+> Nit pick but can we have if ((pp_flags & PP_FLAG_DMA_MAP) && ...
+> 
+
+Done.
+
+> [...]
+>
+> > 
+> 
+> Otherwise 
+> Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org> 
+
+Thanks. I'll wait for other review feedback before sending a V2.
+
+-- 
+Mel Gorman
+SUSE Labs
