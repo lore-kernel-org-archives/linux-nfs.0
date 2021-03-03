@@ -2,218 +2,151 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D1637C15500
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 08515C15502
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A6D5B64EC0
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CC45A64EDF
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346642AbhCDA3u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 19:29:50 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:49813 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1347139AbhCCVWW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 16:22:22 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1614806443;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=5aZpNHDO/X8w5gn+hdH2+/UUIs4Troz4+mS1I12x8jA=;
-        b=C3RpgtAYhApUjB1t5h4WElyGJC5J53dVnRGp96mkqsNEaQGp1L/mdZjZJjR/exiQSxW+u7
-        wA57VANmKnjP/op70PjDBLC2ucG5IfdU6auqObEc8EaHE8uDbNKRRwDJMS53TR+E1hyQdm
-        JpgpnO54o2CPZRgPeFrx8IgVMkD/QL4=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-28-gy4sFE4-MUypVNC7ncP8sg-1; Wed, 03 Mar 2021 16:20:40 -0500
-X-MC-Unique: gy4sFE4-MUypVNC7ncP8sg-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7372A100A8E9;
-        Wed,  3 Mar 2021 21:20:39 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-112-45.phx2.redhat.com [10.3.112.45])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BEB0E61F49;
-        Wed,  3 Mar 2021 21:20:38 +0000 (UTC)
-Subject: Re: [PATCH 0/7 V4] The NFSv4 only mounting daemon.
-To:     "J. Bruce Fields" <bfields@fieldses.org>
+        id S1390852AbhCDA37 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 19:29:59 -0500
+Received: from mx2.suse.de ([195.135.220.15]:33192 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1346978AbhCCWa0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 3 Mar 2021 17:30:26 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id A473CADDB;
+        Wed,  3 Mar 2021 22:28:39 +0000 (UTC)
+From:   NeilBrown <neilb@suse.de>
+To:     Steve Dickson <SteveD@RedHat.com>
+Date:   Thu, 04 Mar 2021 09:28:35 +1100
 Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20210219200815.792667-1-steved@redhat.com>
- <20210224203053.GF11591@fieldses.org>
- <1553fb2d-9b8e-f8eb-8c72-edcd14a2ad08@RedHat.com>
- <20210303152342.GA1282@fieldses.org>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <376b6b0a-5679-4692-cfdb-b8c7919393a5@RedHat.com>
-Date:   Wed, 3 Mar 2021 16:22:28 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.8.0
+Subject: Re: [PATCH 0/5] nfs-utils: provide audit-logging of NFSv4 access
+In-Reply-To: <6ddbe801-d107-5cbd-7362-c3e84321f203@RedHat.com>
+References: <161422077024.28256.15543036625096419495.stgit@noble>
+ <6ddbe801-d107-5cbd-7362-c3e84321f203@RedHat.com>
+Message-ID: <87pn0fhnxo.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <20210303152342.GA1282@fieldses.org>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hey!
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-On 3/3/21 10:23 AM, J. Bruce Fields wrote:
-> On Tue, Mar 02, 2021 at 05:33:23PM -0500, Steve Dickson wrote:
->>
->>
->> On 2/24/21 3:30 PM, J. Bruce Fields wrote:
->>> On Fri, Feb 19, 2021 at 03:08:08PM -0500, Steve Dickson wrote:
->>>> nfsv4.exportd is a daemon that will listen for only v4 mount upcalls.
->>>> The idea is to allow distros to build a v4 only package
->>>> which will have a much smaller footprint than the
->>>> entire nfs-utils package.
->>>>
->>>> exportd uses no RPC code, which means none of the 
->>>> code or arguments that deal with v3 was ported, 
->>>> this again, makes the footprint much smaller. 
->>>
->>> How much smaller?
->> Will a bit smaller... but a number of daemons like nfsd[cld,clddb,cldnts]
->> need to also come a long. 
-> 
-> Could we get some numbers?
-> 
-> Looks like nfs-utils in F33 is about 1.2M:
-> 
-> $ rpm -qi nfs-utils|grep ^Size
-> Size        : 1243512
-> 
-> $ strip utils/mountd/mountd
-> $ ls -lh utils/mountd/mountd
-> -rwxrwxr-x. 1 bfields bfields 128K Mar  3 10:12 utils/mountd/mountd
-> $ strip utils/exportd/exportd
-> $ ls -lh utils/exportd/exportd
-> -rwxrwxr-x. 1 bfields bfields 106K Mar  3 10:12 utils/exportd/exportd
-> 
-> So replacing mountd by exportd saves us about 20K out of 1.2M.  Is it
-> worth it?
-In smaller foot print I guess I meant no v3 daemons, esp rpcbind. 
+On Tue, Mar 02 2021, Steve Dickson wrote:
 
-It is not surprising mountd and exportd are similar size since
-they are using the same code to do the same thing. With the only
-exception is exportd does not have any RPC code. It only handles 
-upcalls from the kernel.
+> Hey!
+>
+> A couple comments...=20
+>
+> On 2/24/21 9:42 PM, NeilBrown wrote:
+>> When NFSv3 is used mountd provides logs of successful and failed mount
+>> attempts which can be used for auditing.
+>> When NFSv4 is used there are no such logs as NFSv4 does not have a
+>> distinct "mount" request.
+>>=20
+>> However mountd still knows about which filesysytems are being accessed
+>> from which clients, and can actually provide more reliable logs than it
+>> currently does, though they must be more verbose - with periodic "is
+>> being accessed" message replacing a single "was mounted" message.
+>>=20
+>> This series adds support for that logging, and adds some related
+>> improvements to make the logs as useful as possible.
+>>=20
+>> NeilBrown
+>>=20
+>> ---
+>>=20
+>> NeilBrown (5):
+>>       mountd: reject unknown client IP when !use_ipaddr.
+>>       mountd: Don't proactively add export info when fh info is requeste=
+d.
+>>       mountd: add logging for authentication results for accesses.
+> I wonder if we should mention setting "debug=3Dauth" enables
+> this logging in the mountd manpage=20
 
-> 
->>>> The following options were ported:
->>>>     * multiple threads
->>>>     * state-directory-path option
->>>>     * junction support (not tested)
->>>>
->>>> The rest of the mountd options were v3 only options.
->>>
->>> There's also --manage-gids.
->> Right... a patch was posted... 
->>
->>>
->>> If you want nfsv4-only at runtime, you can always run rpc.mountd with
->>> -N2 -N3 to turn off the MOUNT protocol support.
->> The end game is not to run mountd at all... 
->>
->>>
->>> If you don't even want v2/f3 code on your system, then you may have to
->>> do something like this, but why is that important?
->> Container friendly... Not bring in all the extra daemons v3
->> needs is a good thing... esp rpcbind. 
-> 
-> Looking at the output of
-> $ for f in $(rpm -ql nfs-utils); do if [ -f $f ]; then ls -ls $f; fi; done|sort -n
-> 
-> It looks like removing statd, sm-notify, showount and their man pages
-> would free about another 170K.
-And rpcbind and rpcinfo... But thanks for taking a look.
+That is already in the mountd man page :-)
 
-> 
-> I think that's about how much we'd save by seperating out a separate
-> documentation package.
-hmm... interesting idea.
+>
+>>       mountd: add --cache-use-ipaddr option to force use_ipaddr
+>>       mountd: make default ttl settable by option
+> These two probably need to be put into the nfs.conf file=20
+> and the nfs.conf man page since the conf_get_num()
+> and conf_get_bool() calls were added.
 
-> 
-> I don't know, what sort of gains are container folks asking for?
-It is my understanding rpcbind and containers do not play nicely. 
+That's done now too.
 
-Plus I don't think it is a bad idea to be able just install
-and nfsv4 client or just install an nfsv4 server.
-Maybe I'm wrong??
+>
+> Finally, I'll add this to my plate, but I'm thinking
+> the new log-auth and ttl flags probably should be=20
+> introduce into nfsv4.exported.
+>
 
-steved.
+I'll add that to my patches before resubmitting.
 
-> 
-> --b.
-> 
->>
->> steved.
->>
->>>
->>> --b.
->>>
->>>>
->>>> V2:
->>>>   * Added two systemd services: nfsv4-exportd and nfsv4-server
->>>>   * nfsv4-server starts rpc.nfsd -N 3, so nfs.conf mod not needed.
->>>>
->>>> V3: Changed the name from exportd to nfsv4.exportd
->>>>
->>>> V4: Added compile flag that will compile in the NFSv4 only server
->>>>
->>>> Steve Dickson (7):
->>>>   exportd: the initial shell of the v4 export support
->>>>   exportd: Moved cache upcalls routines into libexport.a
->>>>   exportd: multiple threads
->>>>   exportd/exportfs: Add the state-directory-path option
->>>>   exportd: Enabled junction support
->>>>   exportd: systemd unit files
->>>>   exportd: Added config variable to compile in the NFSv4 only server.
->>>>
->>>>  .gitignore                                |   1 +
->>>>  configure.ac                              |  14 ++
->>>>  nfs.conf                                  |   4 +
->>>>  support/export/Makefile.am                |   3 +-
->>>>  {utils/mountd => support/export}/auth.c   |   4 +-
->>>>  {utils/mountd => support/export}/cache.c  |  46 +++-
->>>>  support/export/export.h                   |  34 +++
->>>>  {utils/mountd => support/export}/fsloc.c  |   0
->>>>  {utils/mountd => support/export}/v4root.c |   0
->>>>  {utils/mountd => support/include}/fsloc.h |   0
->>>>  systemd/Makefile.am                       |   6 +
->>>>  systemd/nfs.conf.man                      |  10 +
->>>>  systemd/nfsv4-exportd.service             |  12 +
->>>>  systemd/nfsv4-server.service              |  31 +++
->>>>  utils/Makefile.am                         |   4 +
->>>>  utils/exportd/Makefile.am                 |  65 +++++
->>>>  utils/exportd/exportd.c                   | 276 ++++++++++++++++++++++
->>>>  utils/exportd/exportd.man                 |  81 +++++++
->>>>  utils/exportfs/exportfs.c                 |  21 +-
->>>>  utils/exportfs/exportfs.man               |   7 +-
->>>>  utils/mountd/Makefile.am                  |   5 +-
->>>>  21 files changed, 606 insertions(+), 18 deletions(-)
->>>>  rename {utils/mountd => support/export}/auth.c (99%)
->>>>  rename {utils/mountd => support/export}/cache.c (98%)
->>>>  create mode 100644 support/export/export.h
->>>>  rename {utils/mountd => support/export}/fsloc.c (100%)
->>>>  rename {utils/mountd => support/export}/v4root.c (100%)
->>>>  rename {utils/mountd => support/include}/fsloc.h (100%)
->>>>  create mode 100644 systemd/nfsv4-exportd.service
->>>>  create mode 100644 systemd/nfsv4-server.service
->>>>  create mode 100644 utils/exportd/Makefile.am
->>>>  create mode 100644 utils/exportd/exportd.c
->>>>  create mode 100644 utils/exportd/exportd.man
->>>>
->>>> -- 
->>>> 2.29.2
->>>
-> 
+> I didn't port over the use-ipaddr flag to exportd,
+> since I though it was only used in the v3 mount path
+> but may that was an oversight on my part.=20
 
+use-ipaddr it not at all v3 specific.
+It was originally introduced to handle the fact that a single host could
+be in a large number of netgroups, and concatenating the names of all
+those netgroups could produce a "domain" name that is too long.
+The new option to force it on is useful for access logging, particularly
+with NFSv4.
+
+I'll add that to my patches too.
+
+Thanks,
+NeilBrown
+
+
+>
+> Thoughts?
+>
+> steved.
+>>=20
+>>=20
+>>  support/export/auth.c      |  4 +++
+>>  support/export/cache.c     | 32 +++++++++++------
+>>  support/export/v4root.c    |  3 +-
+>>  support/include/exportfs.h |  3 +-
+>>  support/nfs/exports.c      |  4 ++-
+>>  utils/mountd/mountd.c      | 29 +++++++++++++++-
+>>  utils/mountd/mountd.man    | 70 ++++++++++++++++++++++++++++++++++++++
+>>  7 files changed, 130 insertions(+), 15 deletions(-)
+>>=20
+>> --
+>> Signature
+>>=20
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQJCBAEBCAAsFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAmBADZMOHG5laWxiQHN1
+c2UuZGUACgkQOeye3VZigbmktw/+Mc3JJcKpDD5QKTTwG24dQZYNK251QvPKxA5n
+CVA9Iev6l4ZaLp4J3ffriPswW77sSJ4vuoAAXJmTLbABeT8KetkmcpQ+xblgj5ZW
+gqlLKObyXwFqVFz0lxYuEIoSAqRv95W5J6vxJsHqj6cPxDZj6UfqmzmqP/kb2qn/
+dsuCA2VqlDqDwa269kM5AavcSVu3hbu27NTo9MD7naklviAB3XoT3NoN2J5W/k00
+Z0e4ncsjiphdl5zfynKqWGYMorA+EHJXnyQYeT+cDCly3G8kq+zxR5gwKFsEIQhy
+YgBpji8Nvs5mdx7WSscQGNjAkZSah7/u9VnVAiOGisgQ8yHTYULoHyPtrBtMVsvb
+HFCAPtsQf/LKJyRr7L0UR4x62CTssJEyjXCpc/rznlzUx6rLT2Tj4V3FZC6VPLuF
+/OSfP2eBNEdo1qURsF0/VJZ0cg2HJX66aprxXjq80siAtXrXepJ812mscZ65Mwa6
+bvhuRxHm9PRGXv37jrVpFHZ008KXFOTFAWBy/SlxwgnMLqDVBtMfgM9AQGyrK9JZ
+vbItMhNkWwtKqONnvwPAstZOZDqQscsTiVHnkGtCt4j7yM5qQm9frYIPH0diaueB
+pV13XA6Pl5xRUUGTvdv+jT9TWSIf9oNJQvfak5Rd72yVKwNR+BpH7Vju3mzr2dJH
+A6KuVl8=
+=Qjw5
+-----END PGP SIGNATURE-----
+--=-=-=--
