@@ -2,181 +2,230 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D21EC432C3
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B68D0C4332B
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 610DD64EA4
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:29:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8E6FD6023B
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 00:30:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1356165AbhCDA3V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 Mar 2021 19:29:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46594 "EHLO
+        id S1451107AbhCDAaA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Mar 2021 19:30:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44264 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1448227AbhCCPYf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 10:24:35 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C020C0613DC
-        for <linux-nfs@vger.kernel.org>; Wed,  3 Mar 2021 07:23:49 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id CBF0F2824; Wed,  3 Mar 2021 10:23:42 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org CBF0F2824
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1614785022;
-        bh=ZecVwdAF2q3Qu4UOjZtHg1fZFYa3SMTpiMF2Qtw6RpY=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=hUGIVFLH/oxFgYcHA0JgFe9HUQ28MbQSB+sdQBZbXhhRuGYfp9mv1XyYBmt2m3ifF
-         gviK59LH4fLehDcu9C56cIHKtoPo6o9axTx8aLkLZaTS5vN/QiKbVWIdgK981sQGK3
-         PZfiPZ0NZ1lSiy1R5fCvXdblzy/F0rh+1IRva7a4=
-Date:   Wed, 3 Mar 2021 10:23:42 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Steve Dickson <SteveD@RedHat.com>
-Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/7 V4] The NFSv4 only mounting daemon.
-Message-ID: <20210303152342.GA1282@fieldses.org>
-References: <20210219200815.792667-1-steved@redhat.com>
- <20210224203053.GF11591@fieldses.org>
- <1553fb2d-9b8e-f8eb-8c72-edcd14a2ad08@RedHat.com>
+        with ESMTP id S1353613AbhCDAFN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Mar 2021 19:05:13 -0500
+Received: from mail-il1-x133.google.com (mail-il1-x133.google.com [IPv6:2607:f8b0:4864:20::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B90D3C061760
+        for <linux-nfs@vger.kernel.org>; Wed,  3 Mar 2021 16:00:34 -0800 (PST)
+Received: by mail-il1-x133.google.com with SMTP id z9so12847265iln.1
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Mar 2021 16:00:34 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=INn4N7TSacThyy6y9bvC2AzMj4/LZgFs6XrxoTSw1sg=;
+        b=S2cVInFEaRt1ylgS5jhHEQASul1sj7qeTIk7YVjpeTWrxMb7BMmqiu1tqkiD2D0/+O
+         DFaUpvmg8fOfHk/rsIdMDxGcCw1mJZp2JDUOlLEY5gP8B0PxjG3VF1D5jNyQJaUivtg+
+         NI2Mod8Iv45BmBw42+NuG755uDQ/KZIe9lRB1bgN8gYUVPj/1WwEdEVRmPmOTXgFI+Kj
+         fwZDjggYfK+N/stGASYgX2ZZl2E/+LDszeXiumLqojqehTV5IasswpG496UB1Ucjftrw
+         ejkrtFd1qEC93fKbOQpfPUpWxG5ZVrFuPpuC+skxn/JclIZgCxrgHmMiPC2Nfvl2Smi8
+         DNPA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=INn4N7TSacThyy6y9bvC2AzMj4/LZgFs6XrxoTSw1sg=;
+        b=ql6j6ypFRkfOUzEgxhUV5ekwyYfSBQGDCeyF/nQzx6f8kOYuDVZZ1sxr8P0GffCBIe
+         cc1HVoFBKDzZ0d9uJwwBBuv4gBUac2PS+k8EpPtVarfLQP2I+AcQ4+8vlkACUiLMdNgI
+         L61FZKtzh6j7uEHR+4KdyNiXGalfy4g5XNDKJWtBF0Cs3wIMaBHh0j2IdnIUqjsS7Mto
+         Y5gN0+vGfoerXOLY1A/Q8A/PtIw1FBvkBcw9Dy86ondOBrZlZBojILIBfuoYWxzRJxeD
+         sENZjDwSZ5+JAG+3fX+YS4a6kxfQJCRnHOB37VAP9tV4otedRGPBJxVyUcsMXiwxlNCh
+         dtBQ==
+X-Gm-Message-State: AOAM531W3zvKPfb8PlmNpBwgaLKKCjy5nHePq44vxZWZyI7HEl4gt+FP
+        sFgIEdDFX10VqHKkMUVr3sFMi1Rtc/WSAxEE8PyZzGgfV/sBig==
+X-Google-Smtp-Source: ABdhPJzygbOCE4IfJY/kiolM2s00W6NjD30JpL54WrNUTkqM7yWhXiNm0jJidF18GSb6pQFfTLUg0lybC6J/T9U33OM=
+X-Received: by 2002:a05:6e02:1154:: with SMTP id o20mr1734053ill.236.1614816033855;
+ Wed, 03 Mar 2021 16:00:33 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1553fb2d-9b8e-f8eb-8c72-edcd14a2ad08@RedHat.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   Prasanna T R <prasannabanumathi@gmail.com>
+Date:   Wed, 3 Mar 2021 17:00:23 -0700
+Message-ID: <CAJBpUND1UHkHzvE_nhX2bhT3MiT-DModyC2CUc54MGV0xTBDSA@mail.gmail.com>
+Subject: Concurrent non-overlapping pwrite() to a file on storage mounted on
+ NFS using multiple MPI processes
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Mar 02, 2021 at 05:33:23PM -0500, Steve Dickson wrote:
-> 
-> 
-> On 2/24/21 3:30 PM, J. Bruce Fields wrote:
-> > On Fri, Feb 19, 2021 at 03:08:08PM -0500, Steve Dickson wrote:
-> >> nfsv4.exportd is a daemon that will listen for only v4 mount upcalls.
-> >> The idea is to allow distros to build a v4 only package
-> >> which will have a much smaller footprint than the
-> >> entire nfs-utils package.
-> >>
-> >> exportd uses no RPC code, which means none of the 
-> >> code or arguments that deal with v3 was ported, 
-> >> this again, makes the footprint much smaller. 
-> > 
-> > How much smaller?
-> Will a bit smaller... but a number of daemons like nfsd[cld,clddb,cldnts]
-> need to also come a long. 
+Dear all,
 
-Could we get some numbers?
+I am sorry for reposting this verbatim from stack overflow, but I need
+help understanding what is going on. I have a computational fluid
+dynamic code where I am coding a parallel read and write
+implementation. What I want to achieve is for multiple MPI processes
+to open the same file and write data to it (there is no overlap of
+data, I use pwrite() with offset information). This seems to be
+working fine when the two MPI processes are on the same computing
+node. However, when I use 2 or more computing nodes, some of the data
+does not reach the hard-drive (there are holes in the files) and I
+suspect this has something to do with NFS. To demonstrate this, I have
+written the following example C program which I compile using mpicc
+(my MPI distribution is MPICH):
+```
+#include <mpi.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-Looks like nfs-utils in F33 is about 1.2M:
+long _numbering(long i,long j,long k, long N) {
+  return (((i-1)*N+(j-1))*N+(k-1));
+}
 
-$ rpm -qi nfs-utils|grep ^Size
-Size        : 1243512
+int main(int argc, char **argv)
+{
+  int   numranks, rank,fd,dd;
+  long i,j,k,offset,N;
+  double value=1.0;
+  MPI_Init(NULL,NULL);
+  MPI_Comm_size(MPI_COMM_WORLD, &numranks);
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  N=10;
+  offset=rank*N*N*N*sizeof(double);
+  fd=-1;
+  printf("Opening file datasetparallel.dat\n");
+  //while(fd==-1) {fd = open("datasetparallel.dat", O_RDWR | O_CREAT |
+O_SYNC,0666);}
+  while(fd==-1) {fd = open("datasetparallel.dat", O_RDWR | O_CREAT,0666);}
+  //while(dd==-1) {fd = open("/homeA/Desktop/", O_RDWR ,0666);}
 
-$ strip utils/mountd/mountd
-$ ls -lh utils/mountd/mountd
--rwxrwxr-x. 1 bfields bfields 128K Mar  3 10:12 utils/mountd/mountd
-$ strip utils/exportd/exportd
-$ ls -lh utils/exportd/exportd
--rwxrwxr-x. 1 bfields bfields 106K Mar  3 10:12 utils/exportd/exportd
+  for(i=1;i<=N;i++) {
+    for(j=1;j<=N;j++) {
+      for(k=1;k<=N;k++) {
+        if(pwrite(fd,&value,sizeof(double),_numbering(i,j,k,N)*sizeof(double)+offset)!=8)
+perror("datasetparallel.dat");
+        //pwrite(fd,&value,sizeof(double),_numbering(i,j,k,N)*sizeof(double)+offset);
+        value=value+1.0;
+      }
+    }
+  }
+  //if(close(fd)==-1) perror("datasetparallel.dat");
+  fsync(fd); //fsync(dd);
+  close(fd); //close(dd);
 
-So replacing mountd by exportd saves us about 20K out of 1.2M.  Is it
-worth it?
+  printf("Done writing in parallel\n");
+  if(rank==0) {
+    printf("Beginning serial write\n");
+    int ranknum;
+    fd=-1;
+    value=1.0;
+    while(fd==-1) {fd = open("datasetserial.dat", O_RDWR | O_CREAT,0666);}
+    for(ranknum=0;ranknum<numranks;ranknum++){
+      offset=ranknum*N*N*N*sizeof(double); printf("Offset for rank %d
+is %ld\n",ranknum,offset);
+      printf("writing for rank=%d\n",ranknum);
+      for(i=1;i<=N;i++) {
+        for(j=1;j<=N;j++) {
+          for(k=1;k<=N;k++) {
+            if(pwrite(fd,&value,sizeof(double),_numbering(i,j,k,N)*sizeof(double)+offset)!=8)
+perror("datasetserial.dat");
+            //pwrite(fd,&value,sizeof(double),_numbering(i,j,k,N)*sizeof(double)+offset);
+            value=value+1.0;
+          }
+        }
+      }
+      value=1.0;
+    }
+    //if(close(fd)==-1) perror("datasetserial.dat");
+    fsync(fd);
+    close(fd);
+    printf("Done writing in serial\n");
+  }
+  MPI_Finalize();
+  return 0;
+}
+```
+The above program writes doubles in ascending sequence to a file. Each
+MPI process writes the same numbers(1.0 to 1000.0) but to different
+regions of the file. For example, rank 0 writes 1.0 to 1000.0, and
+rank 1 writes 1.0 to 1000.0 beginning from the location just after
+rank 0 wrote 1000.0 . The program outputs a file named
+datasetparallel.dat which has been written through concurrent
+pwrite()s. It also outputs datasetserial.dat for reference to compare
+with the datasetparallel.dat file to check its integrity (I do this by
+using the cmp command in the terminal). When a discrepancy is found
+using cmp, I check the contents of the files using the od command:
+```
+od -N <byte_number> -tfD <file_name>
+```
+For example, I found some missing data (holes in the file) using the
+above program. In the parallelly written file, the output using `od`
+command :
+```
+.
+.
+.
+0007660                      503                      504
+0007700                      505                      506
+0007720                      507                      508
+0007740                      509                      510
+0007760                      511                      512
+0010000                        0                        0
+*
+0010620                        0
+0010624
+```
+while in the reference file written in serial, the output from the `od` command:
+```
+.
+.
+.
+0007760                      511                      512
+0010000                      513                      514
+0010020                      515                      516
+0010040                      517                      518
+0010060                      519                      520
+0010100                      521                      522
+0010120                      523                      524
+0010140                      525                      526
+0010160                      527                      528
+0010200                      529                      530
+0010220                      531                      532
+0010240                      533                      534
+0010260                      535                      536
+0010300                      537                      538
+0010320                      539                      540
+0010340                      541                      542
+0010360                      543                      544
+0010400                      545                      546
+0010420                      547                      548
+0010440                      549                      550
+0010460                      551                      552
+0010500                      553                      554
+0010520                      555                      556
+0010540                      557                      558
+0010560                      559                      560
+0010600                      561                      562
+0010620                      563                      564
+.
+.
+.
+```
+So far, one of the few ways to fix the issue seems to be to use the
+POSIX open() function with the O_SYNC flag, which ensures that file is
+written physically to the hard drive, but this seems to be
+impractically slow. A second way seems to be to call fsync() after
+each write() which is also slow. An ever slower approach seems to be
+using the MPI I/O/ ROMIO commands. The storage has been mounted on NFS
+using the following flags:
+`rw,nohide,insecure,no_subtree_check,sync,no_wdelay` . For performance
+reasons, I have tried calling fsync() on the file and the directory
+just before close(), but this doesn't seem to work. Thus, I need
+advice on understanding why there are holes in the files and if there
+is a way to fix this.
 
-> >> The following options were ported:
-> >>     * multiple threads
-> >>     * state-directory-path option
-> >>     * junction support (not tested)
-> >>
-> >> The rest of the mountd options were v3 only options.
-> > 
-> > There's also --manage-gids.
-> Right... a patch was posted... 
-> 
-> > 
-> > If you want nfsv4-only at runtime, you can always run rpc.mountd with
-> > -N2 -N3 to turn off the MOUNT protocol support.
-> The end game is not to run mountd at all... 
-> 
-> > 
-> > If you don't even want v2/f3 code on your system, then you may have to
-> > do something like this, but why is that important?
-> Container friendly... Not bring in all the extra daemons v3
-> needs is a good thing... esp rpcbind. 
-
-Looking at the output of
-$ for f in $(rpm -ql nfs-utils); do if [ -f $f ]; then ls -ls $f; fi; done|sort -n
-
-It looks like removing statd, sm-notify, showount and their man pages
-would free about another 170K.
-
-I think that's about how much we'd save by seperating out a separate
-documentation package.
-
-I don't know, what sort of gains are container folks asking for?
-
---b.
-
-> 
-> steved.
-> 
-> > 
-> > --b.
-> > 
-> >>
-> >> V2:
-> >>   * Added two systemd services: nfsv4-exportd and nfsv4-server
-> >>   * nfsv4-server starts rpc.nfsd -N 3, so nfs.conf mod not needed.
-> >>
-> >> V3: Changed the name from exportd to nfsv4.exportd
-> >>
-> >> V4: Added compile flag that will compile in the NFSv4 only server
-> >>
-> >> Steve Dickson (7):
-> >>   exportd: the initial shell of the v4 export support
-> >>   exportd: Moved cache upcalls routines into libexport.a
-> >>   exportd: multiple threads
-> >>   exportd/exportfs: Add the state-directory-path option
-> >>   exportd: Enabled junction support
-> >>   exportd: systemd unit files
-> >>   exportd: Added config variable to compile in the NFSv4 only server.
-> >>
-> >>  .gitignore                                |   1 +
-> >>  configure.ac                              |  14 ++
-> >>  nfs.conf                                  |   4 +
-> >>  support/export/Makefile.am                |   3 +-
-> >>  {utils/mountd => support/export}/auth.c   |   4 +-
-> >>  {utils/mountd => support/export}/cache.c  |  46 +++-
-> >>  support/export/export.h                   |  34 +++
-> >>  {utils/mountd => support/export}/fsloc.c  |   0
-> >>  {utils/mountd => support/export}/v4root.c |   0
-> >>  {utils/mountd => support/include}/fsloc.h |   0
-> >>  systemd/Makefile.am                       |   6 +
-> >>  systemd/nfs.conf.man                      |  10 +
-> >>  systemd/nfsv4-exportd.service             |  12 +
-> >>  systemd/nfsv4-server.service              |  31 +++
-> >>  utils/Makefile.am                         |   4 +
-> >>  utils/exportd/Makefile.am                 |  65 +++++
-> >>  utils/exportd/exportd.c                   | 276 ++++++++++++++++++++++
-> >>  utils/exportd/exportd.man                 |  81 +++++++
-> >>  utils/exportfs/exportfs.c                 |  21 +-
-> >>  utils/exportfs/exportfs.man               |   7 +-
-> >>  utils/mountd/Makefile.am                  |   5 +-
-> >>  21 files changed, 606 insertions(+), 18 deletions(-)
-> >>  rename {utils/mountd => support/export}/auth.c (99%)
-> >>  rename {utils/mountd => support/export}/cache.c (98%)
-> >>  create mode 100644 support/export/export.h
-> >>  rename {utils/mountd => support/export}/fsloc.c (100%)
-> >>  rename {utils/mountd => support/export}/v4root.c (100%)
-> >>  rename {utils/mountd => support/include}/fsloc.h (100%)
-> >>  create mode 100644 systemd/nfsv4-exportd.service
-> >>  create mode 100644 systemd/nfsv4-server.service
-> >>  create mode 100644 utils/exportd/Makefile.am
-> >>  create mode 100644 utils/exportd/exportd.c
-> >>  create mode 100644 utils/exportd/exportd.man
-> >>
-> >> -- 
-> >> 2.29.2
-> > 
+Sincerely,
+Prasanna
