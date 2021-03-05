@@ -2,121 +2,111 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F2E76C433E0
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 23:50:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E382C433DB
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Mar 2021 00:44:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CA6EC64FF9
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Mar 2021 23:50:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F2C2464F59
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Mar 2021 00:44:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233295AbhCDXuL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 Mar 2021 18:50:11 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50612 "EHLO mail.kernel.org"
+        id S231325AbhCEAob (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 4 Mar 2021 19:44:31 -0500
+Received: from mx2.suse.de ([195.135.220.15]:39092 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232543AbhCDXuK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Mar 2021 18:50:10 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id A8F7F64FEA;
-        Thu,  4 Mar 2021 23:50:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1614901809;
-        bh=la+/LlUFeQYvhLySDR4vAFpG+8JYc37BPuVHhh/Xkwo=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=AKCe315TTti7vXaDkftIB9RAiJKo7klEiBS5CoaUGufcb2RT0N6rraHjbpFBjG670
-         zodPbs7P67fX4UvV0tbq0GuaoGMl+f1YGJH0AEnJlMT0VvH9OaDMjs0G7F+djIB13h
-         a0QayLF3Cc7bYfl/Z5x44VhKF8ijlhkS0SIFIfcYQF0tTzhgzvM3R806Sptq/7AztU
-         cSeOmck9FCU63eeS3robzcrzFCv5XDlbI2/l9MdYA8V6nKY80KiwbQ5zc0waiij5NO
-         TkD8cNwNDDV3xmipHZWxB8s3i4hBiAdk6vwUDsVQrT1O3ZqiSHDlshsRU2xFJoEbjj
-         pT3Qz5nwZR4SQ==
-Date:   Thu, 4 Mar 2021 15:50:06 -0800
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     "Alejandro Colomar (man-pages)" <alx.manpages@gmail.com>
-Cc:     linux-man@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
-        Michael Kerrisk <mtk.manpages@gmail.com>,
-        Luis Henriques <lhenriques@suse.de>,
-        Steve French <sfrench@samba.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Nicolas Boichat <drinkcat@chromium.org>,
-        Ian Lance Taylor <iant@google.com>,
-        Luis Lozano <llozano@chromium.org>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Olga Kornievskaia <aglo@umich.edu>,
-        Christoph Hellwig <hch@infradead.org>,
-        ceph-devel <ceph-devel@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>,
-        samba-technical <samba-technical@lists.samba.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Walter Harms <wharms@bfs.de>
-Subject: Re: [RFC v4] copy_file_range.2: Update cross-filesystem support for
- 5.12
-Message-ID: <20210304235006.GW7269@magnolia>
-References: <20210224142307.7284-1-lhenriques@suse.de>
- <20210304093806.10589-1-alx.manpages@gmail.com>
- <20210304171350.GC7267@magnolia>
- <37df00f9-a88e-3f16-d0b4-3297248aee66@gmail.com>
+        id S230408AbhCEAob (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 Mar 2021 19:44:31 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id E7154AD72;
+        Fri,  5 Mar 2021 00:44:29 +0000 (UTC)
+From:   NeilBrown <neilb@suse.de>
+To:     Steve Dickson <SteveD@RedHat.com>
+Date:   Fri, 05 Mar 2021 11:43:23 +1100
+Subject: [PATCH 0/7 v2] nfs-utils: provide audit-logging of NFSv4 access
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <161490464823.15291.13358214486203434566.stgit@noble>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <37df00f9-a88e-3f16-d0b4-3297248aee66@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 04, 2021 at 07:24:02PM +0100, Alejandro Colomar (man-pages) wrote:
-> Hi Darrick,
-> 
-> On 3/4/21 6:13 PM, Darrick J. Wong wrote:
-> > On Thu, Mar 04, 2021 at 10:38:07AM +0100, Alejandro Colomar wrote:
-> > > +However, on some virtual filesystems,
-> > > +the call failed to copy, while still reporting success.
-> > 
-> > ...success, or merely a short copy?
-> 
-> Okay.
-> 
-> > 
-> > (The rest looks reasonable (at least by c_f_r standards) to me.)
-> 
-> I'm curious, what does "c_f_r standards" mean? :)
+This version improves the man-pages, usage messages, etc and
+adds a new feature: logging client attach/detach based on
+/proc/fs/nfsd/clients/
+That feature is in patch 7 and should be considered RFC at this point.
+i.e. patches 1-6 are ready to apply, patch 7 isn't.
 
-c_f_r is shorthand for "copy_file_range".
+A problem with patch7 is double-reporting due to the extra transient
+entries in the clients directory.  I'm wondering if we could add a
+"Confirmed: Y" line for confirmed clients, so that the code could
+ignore any clients which are not confirmed.
+Maybe those clients should just not appear, but I'd like something
+that will not produce noise on old kernels, and I'm happy if it
+doesn't produce any log messages without a backport of a small
+kernel patch.
 
-As for standards... well... I'll just say that this being the /second/
-major shift in behavior reflects our poor community development
-processes.  The door to general cross-fs copies should not have been
-thrown open with as little testing as it did.  There are legendary
-dchinner rants about how obviously broken the generic fallback was when
-it was introduced.
+Comments?
 
-There's a reason why we usually wire up new kernel functionality on an
-opt-in basis, and that is to foster gradual enablement as QA resources
-permit.  It's one thing for maintainers to blow up their own subsystems
-in isolation, and an entirely different thing to do it between projects
-with no coordination.
+V2 series comment:
 
-Did c_f_r work between an ext4 and an xfs?  I have no idea.  It seemed
-to work between xfses of a similar vintage and featureset, at least, but
-that's about as much testing as I have ever managed.
+V1 of this series didn't update the usage() message for mountd,
+and omited the required ':' after the 'T' sort-option.  This
+series fixes those two omissions.
 
---D
+Original series comment:
 
-> 
-> Cheers,
-> 
-> Alex
-> 
-> -- 
-> Alejandro Colomar
-> Linux man-pages comaintainer; https://www.kernel.org/doc/man-pages/
-> http://www.alejandro-colomar.es/
+When NFSv3 is used mountd provides logs of successful and failed mount
+attempts which can be used for auditing.
+When NFSv4 is used there are no such logs as NFSv4 does not have a
+distinct "mount" request.
+
+However mountd still knows about which filesysytems are being accessed
+from which clients, and can actually provide more reliable logs than it
+currently does, though they must be more verbose - with periodic "is
+being accessed" message replacing a single "was mounted" message.
+
+This series adds support for that logging, and adds some related
+improvements to make the logs as useful as possible.
+
+NeilBrown
+
+---
+
+NeilBrown (7):
+      mountd: reject unknown client IP when !use_ipaddr.
+      mountd: Don't proactively add export info when fh info is requested.
+      mountd/exports: update man page
+      mountd: add logging for authentication results for accesses.
+      mountd: add --cache-use-ipaddr option to force use_ipaddr
+      mountd: make default ttl settable by option
+      mountd: add logging of NFSv4 clients attaching and detaching.
+
+
+ nfs.conf                   |   4 +
+ support/export/Makefile.am |   3 +-
+ support/export/auth.c      |   4 +
+ support/export/cache.c     |  41 +++++----
+ support/export/export.h    |   9 +-
+ support/export/v4clients.c | 177 +++++++++++++++++++++++++++++++++++++
+ support/export/v4root.c    |   3 +-
+ support/include/exportfs.h |   3 +-
+ support/nfs/exports.c      |   4 +-
+ systemd/nfs.conf.man       |  20 +++++
+ utils/exportd/exportd.c    |  42 +++++++--
+ utils/exportd/exportd.man  |  94 ++++++++++++++------
+ utils/mountd/mountd.c      |  32 ++++++-
+ utils/mountd/mountd.h      |   5 --
+ utils/mountd/mountd.man    |  98 ++++++++++++++++----
+ utils/mountd/svc_run.c     |   5 +-
+ 16 files changed, 464 insertions(+), 80 deletions(-)
+ create mode 100644 support/export/v4clients.c
+
+--
+Signature
+
