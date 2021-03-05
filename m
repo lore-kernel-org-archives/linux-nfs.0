@@ -4,31 +4,32 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93BB6C433E0
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Mar 2021 00:44:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8B15C433DB
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Mar 2021 00:45:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 544E664F59
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Mar 2021 00:44:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AB7DF64F6A
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Mar 2021 00:45:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231406AbhCEAo5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 Mar 2021 19:44:57 -0500
-Received: from mx2.suse.de ([195.135.220.15]:39646 "EHLO mx2.suse.de"
+        id S231419AbhCEApB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 4 Mar 2021 19:45:01 -0500
+Received: from mx2.suse.de ([195.135.220.15]:39694 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230408AbhCEAo4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Mar 2021 19:44:56 -0500
+        id S230408AbhCEApB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 Mar 2021 19:45:01 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 9D152AD29;
-        Fri,  5 Mar 2021 00:44:55 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id BD55AAD2B;
+        Fri,  5 Mar 2021 00:44:59 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
 To:     Steve Dickson <SteveD@RedHat.com>
 Date:   Fri, 05 Mar 2021 11:43:24 +1100
-Subject: [PATCH 6/7] mountd: make default ttl settable by option
+Subject: [PATCH 7/7] mountd: add logging of NFSv4 clients attaching and
+ detaching.
 Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <161490500401.15291.14891353075011682454.stgit@noble>
+Message-ID: <161490500401.15291.5928922406076481746.stgit@noble>
 In-Reply-To: <161490464823.15291.13358214486203434566.stgit@noble>
 References: <161490464823.15291.13358214486203434566.stgit@noble>
 User-Agent: StGit/0.23
@@ -39,383 +40,381 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: NeilBrown <neil@brown.name>
+NFSv4 does not have a MOUNT request like NFSv3 does (via the MOUNT
+protocol).  So these cannot be logged.
+NFSv4 does have SETCLIENTID and EXCHANGE_ID.  These are indirectly
+visible though changes in /proc/fs/nfsd/clients.
+When a new client attaches, a directory appears.  When the client
+detaches, through a timeout (v4.0) or DESTROY_SESSION (v4.1+)
+the directory disappears.
 
-The DEFAULT_TTL affects the rate at which authentication messages are
-logged.  So it is useful to make it settable.
+This patch adds tracking of these changes using inotify, with log
+messages when a client attaches or detaches.
 
-Add "-ttl" and "-T", and add clear statement in the documentation of
-both the benefits and the possible negative effects of choosing a larger
-value
+Unfortuantely clients are created in two steps, the second being a
+confirmation.  This results in a temporary client appearing and
+disappearing.  It is not possible (in Linux 5.10) to detect the
+unconfirmed client, so extra attach/detach messages are generated.
 
-Signed-off-by: NeilBrown <neil@brown.name>
+This patch also moves some cache* function declarations into a header
+file, and makes a few related changes to #includes.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- nfs.conf                   |    2 ++
- support/export/cache.c     |    6 +++---
- support/export/v4root.c    |    3 ++-
- support/include/exportfs.h |    3 ++-
- support/nfs/exports.c      |    4 +++-
- systemd/nfs.conf.man       |    2 ++
- utils/exportd/exportd.c    |   24 ++++++++++++++++++++----
- utils/exportd/exportd.man  |   19 ++++++++++++++++---
- utils/mountd/mountd.c      |   20 ++++++++++++++++++--
- utils/mountd/mountd.man    |   19 ++++++++++++++++---
- 10 files changed, 84 insertions(+), 18 deletions(-)
+ support/export/Makefile.am |    3 -
+ support/export/cache.c     |    9 --
+ support/export/export.h    |    9 ++
+ support/export/v4clients.c |  177 ++++++++++++++++++++++++++++++++++++++++++++
+ utils/exportd/exportd.c    |    1 
+ utils/mountd/mountd.c      |    2 
+ utils/mountd/mountd.h      |    5 -
+ utils/mountd/svc_run.c     |    5 +
+ 8 files changed, 195 insertions(+), 16 deletions(-)
+ create mode 100644 support/export/v4clients.c
 
-diff --git a/nfs.conf b/nfs.conf
-index 0c32eed1a5be..8b0da7aa47da 100644
---- a/nfs.conf
-+++ b/nfs.conf
-@@ -35,6 +35,7 @@
- # state-directory-path=/var/lib/nfs
- # threads=1
- # cache-use-ipaddr=n
-+# ttl=1800
- [mountd]
- # debug="all|auth|call|general|parse"
- # manage-gids=n
-@@ -45,6 +46,7 @@
- # state-directory-path=/var/lib/nfs
- # ha-callout=
- # cache-use-ipaddr=n
-+# ttl=1800
- #
- [nfsdcld]
- # debug=0
+diff --git a/support/export/Makefile.am b/support/export/Makefile.am
+index a9e710c00ae8..eec737f66149 100644
+--- a/support/export/Makefile.am
++++ b/support/export/Makefile.am
+@@ -12,7 +12,8 @@ EXTRA_DIST	= mount.x
+ noinst_LIBRARIES = libexport.a
+ libexport_a_SOURCES = client.c export.c hostname.c \
+ 		      xtab.c mount_clnt.c mount_xdr.c \
+-			  cache.c auth.c v4root.c fsloc.c
++		      cache.c auth.c v4root.c fsloc.c \
++		      v4clients.c
+ BUILT_SOURCES 	= $(GENFILES)
+ 
+ noinst_HEADERS = mount.h
 diff --git a/support/export/cache.c b/support/export/cache.c
-index 50f7c7a15ceb..c0848c3e437b 100644
+index c0848c3e437b..3e4f53c0a32e 100644
 --- a/support/export/cache.c
 +++ b/support/export/cache.c
-@@ -157,7 +157,7 @@ static void auth_unix_ip(int f)
- 	bp = buf; blen = sizeof(buf);
- 	qword_add(&bp, &blen, "nfsd");
- 	qword_add(&bp, &blen, ipaddr);
--	qword_adduint(&bp, &blen, time(0) + DEFAULT_TTL);
-+	qword_adduint(&bp, &blen, time(0) + default_ttl);
- 	if (use_ipaddr && client) {
- 		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
- 		ipaddr[0] = '$';
-@@ -230,7 +230,7 @@ static void auth_unix_gid(int f)
+@@ -42,13 +42,6 @@
+ #include "blkid/blkid.h"
+ #endif
  
- 	bp = buf; blen = sizeof(buf);
- 	qword_adduint(&bp, &blen, uid);
--	qword_adduint(&bp, &blen, time(0) + DEFAULT_TTL);
-+	qword_adduint(&bp, &blen, time(0) + default_ttl);
- 	if (rv >= 0) {
- 		qword_adduint(&bp, &blen, ngroups);
- 		for (i=0; i<ngroups; i++)
-@@ -968,7 +968,7 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
- 	ssize_t err;
+-/*
+- * Invoked by RPC service loop
+- */
+-void	cache_set_fds(fd_set *fdset);
+-int	cache_process_req(fd_set *readfds);
+-void cache_process_loop(void);
+-
+ enum nfsd_fsid {
+ 	FSID_DEV = 0,
+ 	FSID_NUM,
+@@ -1537,6 +1530,7 @@ void cache_process_loop(void)
+ 	for (;;) {
  
- 	if (ttl <= 1)
--		ttl = DEFAULT_TTL;
-+		ttl = default_ttl;
+ 		cache_set_fds(&readfds);
++		v4clients_set_fds(&readfds);
  
- 	qword_add(&bp, &blen, domain);
- 	qword_add(&bp, &blen, path);
-diff --git a/support/export/v4root.c b/support/export/v4root.c
-index 6f640aa9aa3f..3654bd7c10c0 100644
---- a/support/export/v4root.c
-+++ b/support/export/v4root.c
-@@ -45,7 +45,7 @@ static nfs_export pseudo_root = {
- 		.e_nsqgids = 0,
- 		.e_fsid = 0,
- 		.e_mountpoint = NULL,
--		.e_ttl = DEFAULT_TTL,
-+		.e_ttl = 0,
- 	},
- 	.m_exported = 0,
- 	.m_xtabent = 1,
-@@ -84,6 +84,7 @@ v4root_create(char *path, nfs_export *export)
- 	struct exportent *curexp = &export->m_export;
+ 		selret = select(FD_SETSIZE, &readfds,
+ 				(void *) 0, (void *) 0, (struct timeval *) 0);
+@@ -1552,6 +1546,7 @@ void cache_process_loop(void)
  
- 	dupexportent(&eep, &pseudo_root.m_export);
-+	eep.e_ttl = default_ttl;
- 	eep.e_hostname = curexp->e_hostname;
- 	strncpy(eep.e_path, path, sizeof(eep.e_path)-1);
- 	if (strcmp(path, "/") != 0)
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index daa7e2a06d82..81d137210862 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -105,7 +105,8 @@ typedef struct mexport {
- } nfs_export;
- 
- #define HASH_TABLE_SIZE 1021
--#define DEFAULT_TTL	(30 * 60)
-+
-+extern int default_ttl;
- 
- typedef struct _exp_hash_entry {
- 	nfs_export * p_first;
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index 037febd08d9b..2c8f0752ad9d 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -47,6 +47,8 @@ struct flav_info flav_map[] = {
- 
- const int flav_map_size = sizeof(flav_map)/sizeof(flav_map[0]);
- 
-+int default_ttl = 30 * 60;
-+
- static char	*efname = NULL;
- static XFILE	*efp = NULL;
- static int	first;
-@@ -100,7 +102,7 @@ static void init_exportent (struct exportent *ee, int fromkernel)
- 	ee->e_nsquids = 0;
- 	ee->e_nsqgids = 0;
- 	ee->e_uuid = NULL;
--	ee->e_ttl = DEFAULT_TTL;
-+	ee->e_ttl = default_ttl;
+ 		default:
+ 			cache_process_req(&readfds);
++			v4clients_process(&readfds);
+ 		}
+ 	}
  }
+diff --git a/support/export/export.h b/support/export/export.h
+index 4296db1ad9b1..8d5a0d3004ef 100644
+--- a/support/export/export.h
++++ b/support/export/export.h
+@@ -3,13 +3,14 @@
+  *
+  * support/export/export.h
+  *
+- * Declarations for export support 
++ * Declarations for export support
+  */
  
- struct exportent *
-diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index 8af4445d49c9..4dfb9293ca37 100644
---- a/systemd/nfs.conf.man
-+++ b/systemd/nfs.conf.man
-@@ -133,6 +133,7 @@ but on the server, this will resolve to the path
- Recognized values:
- .BR threads ,
- .BR cache-use-upaddr ,
-+.BR ttl ,
- .BR state-directory-path
+ #ifndef EXPORT_H
+ #define EXPORT_H
  
- See
-@@ -198,6 +199,7 @@ Recognized values:
- .BR threads ,
- .BR reverse-lookup ,
- .BR cache-use-upaddr ,
-+.BR ttl ,
- .BR state-directory-path ,
- .BR ha-callout .
+ #include "nfslib.h"
++#include "exportfs.h"
  
+ unsigned int	auth_reload(void);
+ nfs_export *	auth_authenticate(const char *what,
+@@ -17,8 +18,14 @@ nfs_export *	auth_authenticate(const char *what,
+ 					const char *path);
+ 
+ void		cache_open(void);
++void		cache_set_fds(fd_set *fdset);
++int		cache_process_req(fd_set *readfds);
+ void		cache_process_loop(void);
+ 
++void		v4clients_init(void);
++void		v4clients_set_fds(fd_set *fdset);
++int		v4clients_process(fd_set *fdset);
++
+ struct nfs_fh_len *
+ 		cache_get_filehandle(nfs_export *exp, int len, char *p);
+ int		cache_export(nfs_export *exp, char *path);
+diff --git a/support/export/v4clients.c b/support/export/v4clients.c
+new file mode 100644
+index 000000000000..ab1454e4c34e
+--- /dev/null
++++ b/support/export/v4clients.c
+@@ -0,0 +1,177 @@
++/*
++ * support/export/v4clients.c
++ *
++ * Montior clients appearing in, and disappearing from, /proc/fs/nfsd/clients
++ * and log relevant information.
++ */
++
++#include <unistd.h>
++#include <stdlib.h>
++#include <sys/inotify.h>
++#include <errno.h>
++#include "export.h"
++
++/* search.h declares 'struct entry' and nfs_prot.h
++ * does too.  Easiest fix is to trick search.h into
++ * calling its struct "struct Entry".
++ */
++#define entry Entry
++#include <search.h>
++#undef entry
++
++static int clients_fd = -1;
++
++void v4clients_init(void)
++{
++	if (clients_fd >= 0)
++		return;
++	clients_fd = inotify_init1(IN_NONBLOCK);
++	if (clients_fd < 0) {
++		xlog_err("Unable to initialise v4clients watcher: %s\n",
++			 strerror(errno));
++		return;
++	}
++	if (inotify_add_watch(clients_fd, "/proc/fs/nfsd/clients",
++			      IN_CREATE | IN_DELETE) < 0) {
++		xlog_err("Unable to watch /proc/fs/nfsd/clients: %s\n",
++			 strerror(errno));
++		close(clients_fd);
++		clients_fd = -1;
++		return;
++	}
++}
++
++void v4clients_set_fds(fd_set *fdset)
++{
++	if (clients_fd >= 0)
++		FD_SET(clients_fd, fdset);
++}
++
++static void *tree_root;
++
++struct ent {
++	unsigned long num;
++	char *clientid;
++	char *addr;
++	int vers;
++};
++
++static int ent_cmp(const void *av, const void *bv)
++{
++	const struct ent *a = av;
++	const struct ent *b = bv;
++
++	if (a->num < b->num)
++		return -1;
++	if (a->num > b->num)
++		return 1;
++	return 0;
++}
++
++static void free_ent(struct ent *ent)
++{
++	free(ent->clientid);
++	free(ent->addr);
++	free(ent);
++}
++
++static char *dup_line(char *line)
++{
++	char *ret;
++	char *e = strchr(line, '\n');
++	if (!e)
++		e = line + strlen(line);
++	ret = malloc(e - line + 1);
++	if (ret) {
++		memcpy(ret, line, e - line);
++		ret[e-line] = 0;
++	}
++	return ret;
++}
++
++static void add_id(int id)
++{
++	char buf[2048];
++	struct ent **ent;
++	struct ent *key;
++	char *path;
++	FILE *f;
++
++	asprintf(&path, "/proc/fs/nfsd/clients/%d/info", id);
++	f = fopen(path, "r");
++	if (!f) {
++		free(path);
++		return;
++	}
++	key = calloc(1, sizeof(*key));
++	if (!key) {
++		fclose(f);
++		free(path);
++		return;
++	}
++	key->num = id;
++	while (fgets(buf, sizeof(buf), f)) {
++		if (strncmp(buf, "clientid: ", 10) == 0)
++			key->clientid = dup_line(buf+10);
++		if (strncmp(buf, "address: ", 9) == 0)
++			key->addr = dup_line(buf+9);
++		if (strncmp(buf, "minor version: ", 15) == 0)
++			key->vers = atoi(buf+15);
++	}
++	fclose(f);
++	free(path);
++
++	xlog(L_NOTICE, "v4.%d client attached: %s from %s",
++	     key->vers, key->clientid, key->addr);
++
++	ent = tsearch(key, &tree_root, ent_cmp);
++
++	if (!ent || *ent != key)
++		/* Already existed, or insertion failed */
++		free_ent(key);
++}
++
++static void del_id(int id)
++{
++	struct ent key = {.num = id};
++	struct ent **e, *ent;
++
++	e = tfind(&key, &tree_root, ent_cmp);
++	if (!e || !*e)
++		return;
++	ent = *e;
++	tdelete(ent, &tree_root, ent_cmp);
++	xlog(L_NOTICE, "v4.%d client detached: %s from %s",
++	     ent->vers, ent->clientid, ent->addr);
++	free_ent(ent);
++}
++
++int v4clients_process(fd_set *fdset)
++{
++	char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
++	const struct inotify_event *ev;
++	ssize_t len;
++	char *ptr;
++
++	if (clients_fd < 0 ||
++	    !FD_ISSET(clients_fd, fdset))
++		return 0;
++
++	while ((len = read(clients_fd, buf, sizeof(buf))) > 0) {
++		for (ptr = buf; ptr < buf + len;
++		     ptr += sizeof(struct inotify_event) + ev->len) {
++			int id;
++			ev = (const struct inotify_event *)ptr;
++
++			id = atoi(ev->name);
++			if (id <= 0)
++				continue;
++			if (ev->mask & IN_CREATE)
++				add_id(id);
++			if (ev->mask & IN_DELETE)
++				del_id(id);
++		}
++	}
++	return 1;
++}
++
 diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
-index f2f209028284..76aad97375dc 100644
+index 76aad97375dc..25c41be6bc77 100644
 --- a/utils/exportd/exportd.c
 +++ b/utils/exportd/exportd.c
-@@ -46,9 +46,10 @@ static struct option longopts[] =
- 	{ "num-threads", 1, 0, 't' },
- 	{ "log-auth", 0, 0, 'l' },
- 	{ "cache-use-ipaddr", 0, 0, 'i'},
-+	{ "ttl", 1, 0, 'T'},
- 	{ NULL, 0, 0, 0 }
- };
--static char shortopts[] = "d:fghs:t:li"
-+static char shortopts[] = "d:fghs:t:liT:"
+@@ -297,6 +297,7 @@ main(int argc, char **argv)
  
- /*
-  * Signal handlers.
-@@ -178,7 +179,7 @@ usage(const char *prog, int n)
- {
- 	fprintf(stderr,
- 		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
--"	[-g|--manage-gids] [-l|--log-auth] [-i|--cache-use-ipaddr]\n"
-+"	[-g|--manage-gids] [-l|--log-auth] [-i|--cache-use-ipaddr] [-T|--ttl ttl]\n"
- "	[-s|--state-directory-path path]\n"
- "	[-t num|--num-threads=num]\n", prog);
- 	exit(n);
-@@ -188,6 +189,7 @@ inline static void
- read_exportd_conf(char *progname, char **argv)
- {
- 	char *s;
-+	int ttl;
+ 	/* Open files now to avoid sharing descriptors among forked processes */
+ 	cache_open();
++	v4clients_init();
  
- 	conf_init_file(NFS_CONFFILE);
- 
-@@ -201,14 +203,19 @@ read_exportd_conf(char *progname, char **argv)
- 	s = conf_get_str("exportd", "state-directory-path");
- 	if (s && !state_setup_basedir(argv[0], s))
- 		exit(1);
-+
-+	ttl = conf_get_num("mountd", "ttl", default_ttl);
-+	if (ttl > 0)
-+		default_ttl = ttl;
- }
- 
- int
- main(int argc, char **argv)
- {
- 	char *progname;
--	int	foreground = 0;
--	int	 c;
-+	int foreground = 0;
-+	int c;
-+	int ttl;
- 
- 	/* Set the basename */
- 	if ((progname = strrchr(argv[0], '/')) != NULL)
-@@ -242,6 +249,15 @@ main(int argc, char **argv)
- 		case 'i':
- 			use_ipaddr = 2;
- 			break;
-+		case 'T':
-+			ttl = atoi(optarg);
-+			if (ttl <= 0) {
-+				fprintf(stderr, "%s: bad ttl number of seconds: %s\n",
-+					argv[0], optarg);
-+				usage(argv[0], 1);
-+			}
-+			default_ttl = ttl;
-+			break;
- 		case 's':
- 			if (!state_setup_basedir(argv[0], optarg))
- 				exit(1);
-diff --git a/utils/exportd/exportd.man b/utils/exportd/exportd.man
-index a4e659f5fa4a..b238ff053272 100644
---- a/utils/exportd/exportd.man
-+++ b/utils/exportd/exportd.man
-@@ -34,9 +34,10 @@ Turn on debugging. Valid kinds are: all, auth, call, general and parse.
- .TP
- .BR \-l " or " \-\-log\-auth
- Enable logging of responses to authentication and access requests from
--nfsd.  Each response is then cached by the kernel for 30 minutes, and
--will be refreshed after 15 minutes if the relevant client remains
--active.
-+nfsd.  Each response is then cached by the kernel for 30 minutes (or as set by
-+.B \-\-ttl
-+below), and will be refreshed after 15 minutes (half the ttl time) if
-+the relevant client remains active.
- Note that
- .B -l
- is equivalent to
-@@ -66,6 +67,17 @@ log messages produced by the
- .B -l
- option easier to read.
- .TP
-+.B \-T " or " \-\-ttl
-+Provide a time-to-live (TTL) for cached information given to the kernel.
-+The kernel will normally request an update if the information is needed
-+after half of this time has expired.  Increasing the provided number,
-+which is in seconds, reduces the rate of cache update requests, and this
-+is particularly noticeable when these requests are logged with
-+.BR \-l .
-+However increasing also means that changes to hostname to address
-+mappings can take longer to be noticed.
-+The default TTL is 1800 (30 minutes).
-+.TP
- .B \-F " or " \-\-foreground
- Run in foreground (do not daemonize)
- .TP
-@@ -107,6 +119,7 @@ Values recognized in the
- .B [exportd]
- section include 
- .B cache\-use\-ipaddr ,
-+.BR ttl ,
- .BR manage-gids ", and"
- .B debug 
- which each have the same effect as the option with the same name.
+ 	/* Process incoming upcalls */
+ 	cache_process_loop();
 diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index b9260aeb86a3..fce389661e7a 100644
+index fce389661e7a..39e85fd53a87 100644
 --- a/utils/mountd/mountd.c
 +++ b/utils/mountd/mountd.c
-@@ -76,9 +76,10 @@ static struct option longopts[] =
- 	{ "no-udp", 0, 0, 'u' },
- 	{ "log-auth", 0, 0, 'l'},
- 	{ "cache-use-ipaddr", 0, 0, 'i'},
-+	{ "ttl", 1, 0, 'T'},
- 	{ NULL, 0, 0, 0 }
- };
--static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gli";
-+static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gliT:";
+@@ -31,6 +31,7 @@
+ #include "pseudoflavors.h"
+ #include "nfsd_path.h"
+ #include "nfslib.h"
++#include "export.h"
  
- #define NFSVERSBIT(vers)	(0x1 << (vers - 1))
- #define NFSVERSBIT_ALL		(NFSVERSBIT(2) | NFSVERSBIT(3) | NFSVERSBIT(4))
-@@ -672,6 +673,7 @@ inline static void
- read_mountd_conf(char **argv)
- {
- 	char	*s;
-+	int	ttl;
+ extern void my_svc_run(void);
  
- 	conf_init_file(NFS_CONFFILE);
+@@ -924,6 +925,7 @@ main(int argc, char **argv)
+ 	nfsd_path_init();
+ 	/* Open files now to avoid sharing descriptors among forked processes */
+ 	cache_open();
++	v4clients_init();
  
-@@ -706,6 +708,10 @@ read_mountd_conf(char **argv)
- 		else
- 			NFSCTL_VERUNSET(nfs_version, vers);
- 	}
-+
-+	ttl = conf_get_num("mountd", "ttl", default_ttl);
-+	if (ttl > 0)
-+		default_ttl = ttl;
- }
+ 	xlog(L_NOTICE, "Version " VERSION " starting");
+ 	my_svc_run();
+diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
+index f058f01d3584..d30775313f66 100644
+--- a/utils/mountd/mountd.h
++++ b/utils/mountd/mountd.h
+@@ -60,9 +60,4 @@ bool ipaddr_client_matches(nfs_export *exp, struct addrinfo *ai);
+ bool namelist_client_matches(nfs_export *exp, char *dom);
+ bool client_matches(nfs_export *exp, char *dom, struct addrinfo *ai);
  
- int
-@@ -715,6 +721,7 @@ main(int argc, char **argv)
- 	unsigned int listeners = 0;
- 	int	foreground = 0;
- 	int	c;
-+	int	ttl;
- 	struct sigaction sa;
- 	struct rlimit rlim;
+-static inline bool is_ipaddr_client(char *dom)
+-{
+-	return dom[0] == '$';
+-}
+-
+ #endif /* MOUNTD_H */
+diff --git a/utils/mountd/svc_run.c b/utils/mountd/svc_run.c
+index 41b96d7fd1c3..167b9757bde2 100644
+--- a/utils/mountd/svc_run.c
++++ b/utils/mountd/svc_run.c
+@@ -56,10 +56,9 @@
+ #ifdef HAVE_LIBTIRPC
+ #include <rpc/rpc_com.h>
+ #endif
++#include "export.h"
  
-@@ -809,6 +816,15 @@ main(int argc, char **argv)
- 		case 'i':
- 			use_ipaddr = 2;
- 			break;
-+		case 'T':
-+			ttl = atoi(optarg);
-+			if (ttl <= 0) {
-+				fprintf(stderr, "%s: bad ttl number of seconds: %s\n",
-+					argv[0], optarg);
-+				usage(argv[0], 1);
-+			}
-+			default_ttl = ttl;
-+			break;
- 		case 0:
- 			break;
- 		case '?':
-@@ -924,7 +940,7 @@ usage(const char *prog, int n)
- {
- 	fprintf(stderr,
- "Usage: %s [-F|--foreground] [-h|--help] [-v|--version] [-d kind|--debug kind]\n"
--"	[-l|--log-auth] [-i|--cache-use-ipaddr]\n"
-+"	[-l|--log-auth] [-i|--cache-use-ipaddr] [-T|--ttl ttl]\n"
- "	[-o num|--descriptors num]\n"
- "	[-p|--port port] [-V version|--nfs-version version]\n"
- "	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"
-diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-index 97d4518fa2e6..1155cf94d35f 100644
---- a/utils/mountd/mountd.man
-+++ b/utils/mountd/mountd.man
-@@ -93,9 +93,10 @@ Turn on debugging. Valid kinds are: all, auth, call, general and parse.
- .TP
- .BR \-l " or " \-\-log\-auth
- Enable logging of responses to authentication and access requests from
--nfsd.  Each response is then cached by the kernel for 30 minutes, and
--will be refreshed after 15 minutes if the relevant client remains
--active.
-+nfsd.  Each response is then cached by the kernel for 30 minutes (or as set by
-+.B \-\-ttl
-+below), and will be refreshed after 15 minutes (half the ttl time) if
-+the relevant client remains active.
- Note that
- .B -l
- is equivalent to
-@@ -129,6 +130,17 @@ log messages produced by the
- .B -l
- option easier to read.
- .TP
-+.B \-T " or " \-\-ttl
-+Provide a time-to-live (TTL) for cached information given to the kernel.
-+The kernel will normally request an update if the information is needed
-+after half of this time has expired.  Increasing the provided number,
-+which is in seconds, reduces the rate of cache update requests, and this
-+is particularly noticeable when these requests are logged with
-+.BR \-l .
-+However increasing also means that changes to hostname to address
-+mappings can take longer to be noticed.
-+The default TTL is 1800 (30 minutes).
-+.TP
- .B \-F " or " \-\-foreground
- Run in foreground (do not daemonize)
- .TP
-@@ -263,6 +275,7 @@ section include
- .BR descriptors ,
- .BR port ,
- .BR threads ,
-+.BR ttl ,
- .BR reverse-lookup ", and"
- .BR state-directory-path ,
- .B ha-callout
+ void my_svc_run(void);
+-void cache_set_fds(fd_set *fdset);
+-int cache_process_req(fd_set *readfds);
+ 
+ #if defined(__GLIBC__) && LONG_MAX != INT_MAX
+ /* bug in glibc 2.3.6 and earlier, we need
+@@ -101,6 +100,7 @@ my_svc_run(void)
+ 
+ 		readfds = svc_fdset;
+ 		cache_set_fds(&readfds);
++		v4clients_set_fds(&readfds);
+ 
+ 		selret = select(FD_SETSIZE, &readfds,
+ 				(void *) 0, (void *) 0, (struct timeval *) 0);
+@@ -116,6 +116,7 @@ my_svc_run(void)
+ 
+ 		default:
+ 			selret -= cache_process_req(&readfds);
++			selret -= v4clients_process(&readfds);
+ 			if (selret)
+ 				svc_getreqset(&readfds);
+ 		}
 
 
