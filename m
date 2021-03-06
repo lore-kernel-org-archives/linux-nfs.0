@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5D24C433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E095CC43381
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:31:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8CBD7650D7
+	by mail.kernel.org (Postfix) with ESMTP id CB338650D9
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:31:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229869AbhCFWad (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 6 Mar 2021 17:30:33 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34224 "EHLO mail.kernel.org"
+        id S229839AbhCFWac (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 6 Mar 2021 17:30:32 -0500
+Received: from mail.kernel.org ([198.145.29.99]:34178 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229709AbhCFWaZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:30:25 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id A410A650D0
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:30:25 +0000 (UTC)
-Subject: [PATCH v2 12/43] NFSD: Update the NFSv3 FSSTAT3res encoder to use
- struct xdr_stream
+        id S229854AbhCFWaH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:30:07 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 9C4F96509D
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:30:07 +0000 (UTC)
+Subject: [PATCH v2 09/43] NFSD: Update the NFSv3 CREATE family of encoders to
+ use struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:30:24 -0500
-Message-ID: <161506982492.4312.8260794246057487731.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:30:06 -0500
+Message-ID: <161506980679.4312.9985790938132109031.stgit@klimt.1015granger.net>
 In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -39,91 +39,64 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3xdr.c |   58 ++++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 44 insertions(+), 14 deletions(-)
+ fs/nfsd/nfs3xdr.c |   35 ++++++++++++++++++++++++++++-------
+ 1 file changed, 28 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index e159e4557428..e4a569e7216d 100644
+index 0191cbfc486b..052376a65f72 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -17,6 +17,13 @@
- #define NFSDDBG_FACILITY		NFSDDBG_XDR
- 
- 
-+/*
-+ * Force construction of an empty post-op attr
-+ */
-+static const struct svc_fh nfs3svc_null_fh = {
-+	.fh_no_wcc	= true,
-+};
-+
- /*
-  * Mapping of S_IF* types to NFS file types
-  */
-@@ -1392,27 +1399,50 @@ nfs3svc_encode_entry_plus(void *cd, const char *name,
- 	return encode_entry(cd, name, namlen, offset, ino, d_type, 1);
+@@ -121,6 +121,17 @@ svcxdr_encode_nfs_fh3(struct xdr_stream *xdr, const struct svc_fh *fhp)
+ 	return true;
  }
  
 +static bool
-+svcxdr_encode_fsstat3resok(struct xdr_stream *xdr,
-+			   const struct nfsd3_fsstatres *resp)
++svcxdr_encode_post_op_fh3(struct xdr_stream *xdr, const struct svc_fh *fhp)
 +{
-+	const struct kstatfs *s = &resp->stats;
-+	u64 bs = s->f_bsize;
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, XDR_UNIT * 13);
-+	if (!p)
++	if (xdr_stream_encode_item_present(xdr) < 0)
 +		return false;
-+	p = xdr_encode_hyper(p, bs * s->f_blocks);	/* total bytes */
-+	p = xdr_encode_hyper(p, bs * s->f_bfree);	/* free bytes */
-+	p = xdr_encode_hyper(p, bs * s->f_bavail);	/* user available bytes */
-+	p = xdr_encode_hyper(p, s->f_files);		/* total inodes */
-+	p = xdr_encode_hyper(p, s->f_ffree);		/* free inodes */
-+	p = xdr_encode_hyper(p, s->f_ffree);		/* user available inodes */
-+	*p = cpu_to_be32(resp->invarsec);		/* mean unchanged time */
++	if (!svcxdr_encode_nfs_fh3(xdr, fhp))
++		return false;
 +
 +	return true;
 +}
 +
- /* FSSTAT */
+ static __be32 *
+ encode_fh(__be32 *p, struct svc_fh *fhp)
+ {
+@@ -1079,16 +1090,26 @@ nfs3svc_encode_writeres(struct svc_rqst *rqstp, __be32 *p)
  int
- nfs3svc_encode_fsstatres(struct svc_rqst *rqstp, __be32 *p)
+ nfs3svc_encode_createres(struct svc_rqst *rqstp, __be32 *p)
  {
 +	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd3_fsstatres *resp = rqstp->rq_resp;
--	struct kstatfs	*s = &resp->stats;
--	u64		bs = s->f_bsize;
+ 	struct nfsd3_diropres *resp = rqstp->rq_resp;
  
 -	*p++ = resp->status;
--	*p++ = xdr_zero;	/* no post_op_attr */
--
 -	if (resp->status == 0) {
--		p = xdr_encode_hyper(p, bs * s->f_blocks);	/* total bytes */
--		p = xdr_encode_hyper(p, bs * s->f_bfree);	/* free bytes */
--		p = xdr_encode_hyper(p, bs * s->f_bavail);	/* user available bytes */
--		p = xdr_encode_hyper(p, s->f_files);	/* total inodes */
--		p = xdr_encode_hyper(p, s->f_ffree);	/* free inodes */
--		p = xdr_encode_hyper(p, s->f_ffree);	/* user available inodes */
--		*p++ = htonl(resp->invarsec);	/* mean unchanged time */
+-		*p++ = xdr_one;
+-		p = encode_fh(p, &resp->fh);
+-		p = encode_post_op_attr(rqstp, p, &resp->fh);
 +	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
 +		return 0;
 +	switch (resp->status) {
 +	case nfs_ok:
-+		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &nfs3svc_null_fh))
++		if (!svcxdr_encode_post_op_fh3(xdr, &resp->fh))
 +			return 0;
-+		if (!svcxdr_encode_fsstat3resok(xdr, resp))
++		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++			return 0;
++		if (!svcxdr_encode_wcc_data(rqstp, xdr, &resp->dirfh))
 +			return 0;
 +		break;
 +	default:
-+		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &nfs3svc_null_fh))
++		if (!svcxdr_encode_wcc_data(rqstp, xdr, &resp->dirfh))
 +			return 0;
  	}
+-	p = encode_wcc_data(rqstp, p, &resp->dirfh);
 -	return xdr_ressize_check(rqstp, p);
 +
 +	return 1;
  }
  
- /* FSINFO */
+ /* RENAME */
 
 
