@@ -7,25 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B24CC433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB6EDC43381
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:33:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 53DA7650D0
+	by mail.kernel.org (Postfix) with ESMTP id 7E541650DA
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:33:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229718AbhCFWcr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 6 Mar 2021 17:32:47 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34566 "EHLO mail.kernel.org"
+        id S229978AbhCFWcq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 6 Mar 2021 17:32:46 -0500
+Received: from mail.kernel.org ([198.145.29.99]:34538 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229733AbhCFWc0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:32:26 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 64B80650D0
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:32:26 +0000 (UTC)
-Subject: [PATCH v2 32/43] NFSD: Remove unused NFSv2 directory entry encoders
+        id S229965AbhCFWcO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:32:14 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 5C3C86509D
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:32:14 +0000 (UTC)
+Subject: [PATCH v2 30/43] NFSD: Update the NFSv2 READDIR result encoder to use
+ struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:32:25 -0500
-Message-ID: <161506994566.4312.662261331993437842.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:32:13 -0500
+Message-ID: <161506993352.4312.12460936676589779500.stgit@klimt.1015granger.net>
 In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -36,131 +37,58 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsproc.c |    2 +-
- fs/nfsd/nfsxdr.c  |   51 +++------------------------------------------------
- fs/nfsd/xdr.h     |   10 ++--------
- 3 files changed, 6 insertions(+), 57 deletions(-)
+ fs/nfsd/nfsxdr.c |   22 +++++++++++++---------
+ fs/nfsd/xdr.h    |    1 +
+ 2 files changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 86d438fbd576..c2cd2984e41d 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -602,7 +602,7 @@ nfsd_proc_readdir(struct svc_rqst *rqstp)
- 	resp->cookie_offset = 0;
- 	offset = argp->cookie;
- 	resp->status = nfsd_readdir(rqstp, &argp->fh, &offset,
--				    &resp->common, nfs2svc_encode_entry);
-+				    &resp->common, nfssvc_encode_entry);
- 	nfssvc_encode_nfscookie(resp, offset);
- 
- 	fh_put(&argp->fh);
 diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 1102d40ded03..5df6f00d76fd 100644
+index 8ae23ed6dc5d..9522e5c5f49d 100644
 --- a/fs/nfsd/nfsxdr.c
 +++ b/fs/nfsd/nfsxdr.c
-@@ -663,7 +663,7 @@ svcxdr_encode_entry_common(struct nfsd_readdirres *resp, const char *name,
- }
- 
- /**
-- * nfs2svc_encode_entry - encode one NFSv2 READDIR entry
-+ * nfssvc_encode_entry - encode one NFSv2 READDIR entry
-  * @data: directory context
-  * @name: name of the object to be encoded
-  * @namlen: length of that name, in bytes
-@@ -680,8 +680,8 @@ svcxdr_encode_entry_common(struct nfsd_readdirres *resp, const char *name,
-  *   - resp->common.err
-  *   - resp->cookie_offset
-  */
--int nfs2svc_encode_entry(void *data, const char *name, int namlen,
--			 loff_t offset, u64 ino, unsigned int d_type)
-+int nfssvc_encode_entry(void *data, const char *name, int namlen,
-+			loff_t offset, u64 ino, unsigned int d_type)
+@@ -574,17 +574,21 @@ nfssvc_encode_readres(struct svc_rqst *rqstp, __be32 *p)
+ int
+ nfssvc_encode_readdirres(struct svc_rqst *rqstp, __be32 *p)
  {
- 	struct readdir_cd *ccd = data;
- 	struct nfsd_readdirres *resp = container_of(ccd,
-@@ -706,51 +706,6 @@ int nfs2svc_encode_entry(void *data, const char *name, int namlen,
- 	return -EINVAL;
- }
++	struct xdr_stream *xdr = &rqstp->rq_res_stream;
+ 	struct nfsd_readdirres *resp = rqstp->rq_resp;
  
--int
--nfssvc_encode_entry(void *ccdv, const char *name,
--		    int namlen, loff_t offset, u64 ino, unsigned int d_type)
--{
--	struct readdir_cd *ccd = ccdv;
--	struct nfsd_readdirres *cd = container_of(ccd, struct nfsd_readdirres, common);
--	__be32	*p = cd->buffer;
--	int	buflen, slen;
+-	*p++ = resp->status;
+-	if (resp->status != nfs_ok)
+-		return xdr_ressize_check(rqstp, p);
 -
--	/*
--	dprintk("nfsd: entry(%.*s off %ld ino %ld)\n",
--			namlen, name, offset, ino);
--	 */
--
--	if (offset > ~((u32) 0)) {
--		cd->common.err = nfserr_fbig;
--		return -EINVAL;
--	}
--	nfssvc_encode_nfscookie(cd, offset);
--
--	/* truncate filename */
--	namlen = min(namlen, NFS2_MAXNAMLEN);
--	slen = XDR_QUADLEN(namlen);
--
--	if ((buflen = cd->buflen - slen - 4) < 0) {
--		cd->common.err = nfserr_toosmall;
--		return -EINVAL;
--	}
--	if (ino > ~((u32) 0)) {
--		cd->common.err = nfserr_fbig;
--		return -EINVAL;
--	}
--	*p++ = xdr_one;				/* mark entry present */
--	*p++ = htonl((u32) ino);		/* file id */
--	p    = xdr_encode_array(p, name, namlen);/* name length & name */
--	cd->offset = p;			/* remember pointer */
--	*p++ = htonl(~0U);		/* offset of next entry */
--
--	cd->count += p - cd->buffer;
--	cd->buflen = buflen;
--	cd->buffer = p;
--	cd->common.err = nfs_ok;
--	return 0;
--}
--
- /*
-  * XDR release functions
-  */
+-	xdr_ressize_check(rqstp, p);
+-	p = resp->buffer;
+-	*p++ = 0;			/* no more entries */
+-	*p++ = htonl((resp->common.err == nfserr_eof));
+-	rqstp->rq_res.page_len = resp->count << 2;
++	if (!svcxdr_encode_stat(xdr, resp->status))
++		return 0;
++	switch (resp->status) {
++	case nfs_ok:
++		xdr_write_pages(xdr, &resp->page, 0, resp->count << 2);
++		/* no more entries */
++		if (xdr_stream_encode_item_absent(xdr) < 0)
++			return 0;
++		if (xdr_stream_encode_bool(xdr, resp->common.err == nfserr_eof) < 0)
++			return 0;
++		break;
++	}
+ 
+ 	return 1;
+ }
 diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 082f262a1bf9..bfffcb70a5f8 100644
+index 651de13e62fe..69a6efc71ecb 100644
 --- a/fs/nfsd/xdr.h
 +++ b/fs/nfsd/xdr.h
-@@ -115,10 +115,6 @@ struct nfsd_readdirres {
- 	struct xdr_stream	xdr;
- 	struct xdr_buf		dirlist;
- 	struct readdir_cd	common;
--	__be32 *		buffer;
--	int			buflen;
--	__be32 *		offset;
--	struct page		*page;
- 	unsigned int		cookie_offset;
+@@ -114,6 +114,7 @@ struct nfsd_readdirres {
+ 	__be32 *		buffer;
+ 	int			buflen;
+ 	__be32 *		offset;
++	struct page		*page;
  };
  
-@@ -164,10 +160,8 @@ int nfssvc_encode_statfsres(struct svc_rqst *, __be32 *);
- int nfssvc_encode_readdirres(struct svc_rqst *, __be32 *);
- 
- void nfssvc_encode_nfscookie(struct nfsd_readdirres *resp, u32 offset);
--int nfs2svc_encode_entry(void *data, const char *name, int namlen,
--			 loff_t offset, u64 ino, unsigned int d_type);
--int nfssvc_encode_entry(void *, const char *name,
--			int namlen, loff_t offset, u64 ino, unsigned int);
-+int nfssvc_encode_entry(void *data, const char *name, int namlen,
-+			loff_t offset, u64 ino, unsigned int d_type);
- 
- void nfssvc_release_attrstat(struct svc_rqst *rqstp);
- void nfssvc_release_diropres(struct svc_rqst *rqstp);
+ struct nfsd_statfsres {
 
 
