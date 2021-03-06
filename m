@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44999C43381
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:32:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 502D8C433E0
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:33:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1C7646509D
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:32:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 135596509D
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:33:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229971AbhCFWcN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 6 Mar 2021 17:32:13 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34442 "EHLO mail.kernel.org"
+        id S229733AbhCFWcr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 6 Mar 2021 17:32:47 -0500
+Received: from mail.kernel.org ([198.145.29.99]:34590 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229948AbhCFWbo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:31:44 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 2060B650D0
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:31:44 +0000 (UTC)
-Subject: [PATCH v2 25/43] NFSD: Update the NFSv2 READLINK result encoder to
- use struct xdr_stream
+        id S229955AbhCFWcc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:32:32 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 6D7186509D
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:32:32 +0000 (UTC)
+Subject: [PATCH v2 33/43] NFSD: Add an xdr_stream-based encoder for NFSv2/3
+ ACLs
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:31:43 -0500
-Message-ID: <161506990338.4312.11719706096635719984.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:32:31 -0500
+Message-ID: <161506995167.4312.487114288405058622.stgit@klimt.1015granger.net>
 In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -39,84 +39,104 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsproc.c |    5 +++--
- fs/nfsd/nfsxdr.c  |   26 ++++++++++++--------------
- fs/nfsd/xdr.h     |    1 +
- 3 files changed, 16 insertions(+), 16 deletions(-)
+ fs/nfs_common/nfsacl.c |   71 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfsacl.h |    3 ++
+ 2 files changed, 74 insertions(+)
 
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 2ae6409ee39e..f55080482997 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -151,13 +151,14 @@ nfsd_proc_readlink(struct svc_rqst *rqstp)
- {
- 	struct nfsd_fhandle *argp = rqstp->rq_argp;
- 	struct nfsd_readlinkres *resp = rqstp->rq_resp;
--	char *buffer = page_address(*(rqstp->rq_next_page++));
+diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
+index 79c563c1a5e8..5a5bd85d08f8 100644
+--- a/fs/nfs_common/nfsacl.c
++++ b/fs/nfs_common/nfsacl.c
+@@ -136,6 +136,77 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
+ }
+ EXPORT_SYMBOL_GPL(nfsacl_encode);
  
- 	dprintk("nfsd: READLINK %s\n", SVCFH_fmt(&argp->fh));
- 
- 	/* Read the symlink. */
- 	resp->len = NFS_MAXPATHLEN;
--	resp->status = nfsd_readlink(rqstp, &argp->fh, buffer, &resp->len);
-+	resp->page = *(rqstp->rq_next_page++);
-+	resp->status = nfsd_readlink(rqstp, &argp->fh,
-+				     page_address(resp->page), &resp->len);
- 
- 	fh_put(&argp->fh);
- 	return rpc_success;
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 989144b0d5be..74d9d11949c6 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -527,24 +527,22 @@ nfssvc_encode_diropres(struct svc_rqst *rqstp, __be32 *p)
- int
- nfssvc_encode_readlinkres(struct svc_rqst *rqstp, __be32 *p)
- {
-+	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd_readlinkres *resp = rqstp->rq_resp;
- 	struct kvec *head = rqstp->rq_res.head;
- 
--	*p++ = resp->status;
--	if (resp->status != nfs_ok)
--		return xdr_ressize_check(rqstp, p);
--
--	*p++ = htonl(resp->len);
--	xdr_ressize_check(rqstp, p);
--	rqstp->rq_res.page_len = resp->len;
--	if (resp->len & 3) {
--		/* need to pad the tail */
--		rqstp->rq_res.tail[0].iov_base = p;
--		*p = 0;
--		rqstp->rq_res.tail[0].iov_len = 4 - (resp->len&3);
--	}
--	if (svc_encode_result_payload(rqstp, head->iov_len, resp->len))
-+	if (!svcxdr_encode_stat(xdr, resp->status))
- 		return 0;
-+	switch (resp->status) {
-+	case nfs_ok:
-+		if (xdr_stream_encode_u32(xdr, resp->len) < 0)
-+			return 0;
-+		xdr_write_pages(xdr, &resp->page, 0, resp->len);
-+		if (svc_encode_result_payload(rqstp, head->iov_len, resp->len) < 0)
-+			return 0;
-+		break;
++/**
++ * nfs_stream_encode_acl - Encode an NFSv3 ACL
++ *
++ * @xdr: an xdr_stream positioned to receive an encoded ACL
++ * @inode: inode of file whose ACL this is
++ * @acl: posix_acl to encode
++ * @encode_entries: whether to encode ACEs as well
++ * @typeflag: ACL type: NFS_ACL_DEFAULT or zero
++ *
++ * Return values:
++ *   %false: The ACL could not be encoded
++ *   %true: @xdr is advanced to the next available position
++ */
++bool nfs_stream_encode_acl(struct xdr_stream *xdr, struct inode *inode,
++			   struct posix_acl *acl, int encode_entries,
++			   int typeflag)
++{
++	const size_t elem_size = XDR_UNIT * 3;
++	u32 entries = (acl && acl->a_count) ? max_t(int, acl->a_count, 4) : 0;
++	struct nfsacl_encode_desc nfsacl_desc = {
++		.desc = {
++			.elem_size = elem_size,
++			.array_len = encode_entries ? entries : 0,
++			.xcode = xdr_nfsace_encode,
++		},
++		.acl = acl,
++		.typeflag = typeflag,
++		.uid = inode->i_uid,
++		.gid = inode->i_gid,
++	};
++	struct nfsacl_simple_acl aclbuf;
++	unsigned int base;
++	int err;
++
++	if (entries > NFS_ACL_MAX_ENTRIES)
++		return false;
++	if (xdr_stream_encode_u32(xdr, entries) < 0)
++		return false;
++
++	if (encode_entries && acl && acl->a_count == 3) {
++		struct posix_acl *acl2 = &aclbuf.acl;
++
++		/* Avoid the use of posix_acl_alloc().  nfsacl_encode() is
++		 * invoked in contexts where a memory allocation failure is
++		 * fatal.  Fortunately this fake ACL is small enough to
++		 * construct on the stack. */
++		posix_acl_init(acl2, 4);
++
++		/* Insert entries in canonical order: other orders seem
++		 to confuse Solaris VxFS. */
++		acl2->a_entries[0] = acl->a_entries[0];  /* ACL_USER_OBJ */
++		acl2->a_entries[1] = acl->a_entries[1];  /* ACL_GROUP_OBJ */
++		acl2->a_entries[2] = acl->a_entries[1];  /* ACL_MASK */
++		acl2->a_entries[2].e_tag = ACL_MASK;
++		acl2->a_entries[3] = acl->a_entries[2];  /* ACL_OTHER */
++		nfsacl_desc.acl = acl2;
 +	}
 +
- 	return 1;
- }
++	base = xdr_stream_pos(xdr);
++	if (!xdr_reserve_space(xdr, XDR_UNIT +
++			       elem_size * nfsacl_desc.desc.array_len))
++		return false;
++	err = xdr_encode_array2(xdr->buf, base, &nfsacl_desc.desc);
++	if (err)
++		return false;
++
++	return true;
++}
++EXPORT_SYMBOL_GPL(nfs_stream_encode_acl);
++
++
+ struct nfsacl_decode_desc {
+ 	struct xdr_array2_desc desc;
+ 	unsigned int count;
+diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
+index 0ba99c513649..8e76a79cdc6a 100644
+--- a/include/linux/nfsacl.h
++++ b/include/linux/nfsacl.h
+@@ -41,5 +41,8 @@ nfsacl_decode(struct xdr_buf *buf, unsigned int base, unsigned int *aclcnt,
+ extern bool
+ nfs_stream_decode_acl(struct xdr_stream *xdr, unsigned int *aclcnt,
+ 		      struct posix_acl **pacl);
++extern bool
++nfs_stream_encode_acl(struct xdr_stream *xdr, struct inode *inode,
++		      struct posix_acl *acl, int encode_entries, int typeflag);
  
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index a9b4ee6d098b..b868565c471f 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -94,6 +94,7 @@ struct nfsd_diropres  {
- struct nfsd_readlinkres {
- 	__be32			status;
- 	int			len;
-+	struct page		*page;
- };
- 
- struct nfsd_readres {
+ #endif  /* __LINUX_NFSACL_H */
 
 
