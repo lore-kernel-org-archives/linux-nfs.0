@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34E9FC433E9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A9E3C4332B
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:32:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D5D54650DA
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:32:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 37E36650D0
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:32:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229788AbhCFWbl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229928AbhCFWbl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 6 Mar 2021 17:31:41 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34404 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:34372 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229935AbhCFWbc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:31:32 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 1CE29650D0
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:31:32 +0000 (UTC)
-Subject: [PATCH v2 23/43] NFSD: Update the NFSv2 attrstat encoder to use
- struct xdr_stream
+        id S229781AbhCFWbU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:31:20 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 17B1A650D0
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:31:20 +0000 (UTC)
+Subject: [PATCH v2 21/43] NFSD: Reduce svc_rqst::rq_pages churn during READDIR
+ operations
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:31:31 -0500
-Message-ID: <161506989136.4312.6302946335554101457.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:31:19 -0500
+Message-ID: <161506987935.4312.16815120468186275834.stgit@klimt.1015granger.net>
 In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -37,181 +37,53 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+During NFSv2 and NFSv3 READDIR/PLUS operations, NFSD advances
+rq_next_page to the full size of the client-requested buffer, then
+releases all those pages at the end of the request. The next request
+to use that nfsd thread has to refill the pages.
+
+NFSD does this even when the dirlist in the reply is small. With
+NFSv3 clients that send READDIR operations with large buffer sizes,
+that can be 256 put_page/alloc_page pairs per READDIR request, even
+though those pages often remain unused.
+
+We can save some work by not releasing dirlist buffer pages that
+were not used to form the READDIR Reply. I've left the NFSv2 code
+alone since there are never more than three pages involved in an
+NFSv2 READDIR Reply.
+
+Eventually we should nail down why these pages need to be released
+at all in order to avoid allocating and releasing pages
+unnecessarily.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsproc.c |    6 ++--
- fs/nfsd/nfsxdr.c  |   90 ++++++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/xdr.h     |    2 +
- 3 files changed, 86 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs3proc.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 59080e6793b9..2ae6409ee39e 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -640,7 +640,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
- 	[NFSPROC_GETATTR] = {
- 		.pc_func = nfsd_proc_getattr,
- 		.pc_decode = nfssvc_decode_fhandleargs,
--		.pc_encode = nfssvc_encode_attrstat,
-+		.pc_encode = nfssvc_encode_attrstatres,
- 		.pc_release = nfssvc_release_attrstat,
- 		.pc_argsize = sizeof(struct nfsd_fhandle),
- 		.pc_ressize = sizeof(struct nfsd_attrstat),
-@@ -651,7 +651,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
- 	[NFSPROC_SETATTR] = {
- 		.pc_func = nfsd_proc_setattr,
- 		.pc_decode = nfssvc_decode_sattrargs,
--		.pc_encode = nfssvc_encode_attrstat,
-+		.pc_encode = nfssvc_encode_attrstatres,
- 		.pc_release = nfssvc_release_attrstat,
- 		.pc_argsize = sizeof(struct nfsd_sattrargs),
- 		.pc_ressize = sizeof(struct nfsd_attrstat),
-@@ -714,7 +714,7 @@ static const struct svc_procedure nfsd_procedures2[18] = {
- 	[NFSPROC_WRITE] = {
- 		.pc_func = nfsd_proc_write,
- 		.pc_decode = nfssvc_decode_writeargs,
--		.pc_encode = nfssvc_encode_attrstat,
-+		.pc_encode = nfssvc_encode_attrstatres,
- 		.pc_release = nfssvc_release_attrstat,
- 		.pc_argsize = sizeof(struct nfsd_writeargs),
- 		.pc_ressize = sizeof(struct nfsd_attrstat),
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 10cd120044b3..65c8f8f31444 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -14,7 +14,7 @@
- /*
-  * Mapping of S_IF* types to NFS file types
-  */
--static u32	nfs_ftypes[] = {
-+static const u32 nfs_ftypes[] = {
- 	NFNON,  NFCHR,  NFCHR, NFBAD,
- 	NFDIR,  NFBAD,  NFBLK, NFBAD,
- 	NFREG,  NFBAD,  NFLNK, NFBAD,
-@@ -70,6 +70,17 @@ encode_fh(__be32 *p, struct svc_fh *fhp)
- 	return p + (NFS_FHSIZE>> 2);
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index bc64e95a168d..17715a6c7a40 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -493,6 +493,9 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
+ 	memcpy(resp->verf, argp->verf, 8);
+ 	nfs3svc_encode_cookie3(resp, offset);
+ 
++	/* Recycle only pages that were part of the reply */
++	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
++
+ 	return rpc_success;
  }
  
-+static __be32 *
-+encode_timeval(__be32 *p, const struct timespec64 *time)
-+{
-+	*p++ = cpu_to_be32((u32)time->tv_sec);
-+	if (time->tv_nsec)
-+		*p++ = cpu_to_be32(time->tv_nsec / NSEC_PER_USEC);
-+	else
-+		*p++ = xdr_zero;
-+	return p;
-+}
+@@ -533,6 +536,9 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
+ 	memcpy(resp->verf, argp->verf, 8);
+ 	nfs3svc_encode_cookie3(resp, offset);
+ 
++	/* Recycle only pages that were part of the reply */
++	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
 +
- static bool
- svcxdr_decode_filename(struct xdr_stream *xdr, char **name, unsigned int *len)
- {
-@@ -233,6 +244,64 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	return p;
+ out:
+ 	return rpc_success;
  }
- 
-+static int
-+svcxdr_encode_fattr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
-+		    const struct svc_fh *fhp, const struct kstat *stat)
-+{
-+	struct user_namespace *userns = nfsd_user_namespace(rqstp);
-+	struct dentry *dentry = fhp->fh_dentry;
-+	int type = stat->mode & S_IFMT;
-+	struct timespec64 time;
-+	__be32 *p;
-+	u32 fsid;
-+
-+	p = xdr_reserve_space(xdr, XDR_UNIT * 17);
-+	if (!p)
-+		return 0;
-+
-+	*p++ = cpu_to_be32(nfs_ftypes[type >> 12]);
-+	*p++ = cpu_to_be32((u32)stat->mode);
-+	*p++ = cpu_to_be32((u32)stat->nlink);
-+	*p++ = cpu_to_be32((u32)from_kuid_munged(userns, stat->uid));
-+	*p++ = cpu_to_be32((u32)from_kgid_munged(userns, stat->gid));
-+
-+	if (S_ISLNK(type) && stat->size > NFS_MAXPATHLEN)
-+		*p++ = cpu_to_be32(NFS_MAXPATHLEN);
-+	else
-+		*p++ = cpu_to_be32((u32) stat->size);
-+	*p++ = cpu_to_be32((u32) stat->blksize);
-+	if (S_ISCHR(type) || S_ISBLK(type))
-+		*p++ = cpu_to_be32(new_encode_dev(stat->rdev));
-+	else
-+		*p++ = cpu_to_be32(0xffffffff);
-+	*p++ = cpu_to_be32((u32)stat->blocks);
-+
-+	switch (fsid_source(fhp)) {
-+	case FSIDSOURCE_FSID:
-+		fsid = (u32)fhp->fh_export->ex_fsid;
-+		break;
-+	case FSIDSOURCE_UUID:
-+		fsid = ((u32 *)fhp->fh_export->ex_uuid)[0];
-+		fsid ^= ((u32 *)fhp->fh_export->ex_uuid)[1];
-+		fsid ^= ((u32 *)fhp->fh_export->ex_uuid)[2];
-+		fsid ^= ((u32 *)fhp->fh_export->ex_uuid)[3];
-+		break;
-+	default:
-+		fsid = new_encode_dev(stat->dev);
-+		break;
-+	}
-+	*p++ = cpu_to_be32(fsid);
-+
-+	*p++ = cpu_to_be32((u32)stat->ino);
-+	p = encode_timeval(p, &stat->atime);
-+	time = stat->mtime;
-+	lease_get_mtime(d_inode(dentry), &time);
-+	p = encode_timeval(p, &time);
-+	encode_timeval(p, &stat->ctime);
-+
-+	return 1;
-+}
-+
- /* Helper function for NFSv2 ACL code */
- __be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp, struct kstat *stat)
- {
-@@ -412,16 +481,21 @@ nfssvc_encode_statres(struct svc_rqst *rqstp, __be32 *p)
- }
- 
- int
--nfssvc_encode_attrstat(struct svc_rqst *rqstp, __be32 *p)
-+nfssvc_encode_attrstatres(struct svc_rqst *rqstp, __be32 *p)
- {
-+	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd_attrstat *resp = rqstp->rq_resp;
- 
--	*p++ = resp->status;
--	if (resp->status != nfs_ok)
--		goto out;
--	p = encode_fattr(rqstp, p, &resp->fh, &resp->stat);
--out:
--	return xdr_ressize_check(rqstp, p);
-+	if (!svcxdr_encode_stat(xdr, resp->status))
-+		return 0;
-+	switch (resp->status) {
-+	case nfs_ok:
-+		if (!svcxdr_encode_fattr(rqstp, xdr, &resp->fh, &resp->stat))
-+			return 0;
-+		break;
-+	}
-+
-+	return 1;
- }
- 
- int
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index a74ffcf8b9c6..a9b4ee6d098b 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -148,7 +148,7 @@ int nfssvc_decode_linkargs(struct svc_rqst *, __be32 *);
- int nfssvc_decode_symlinkargs(struct svc_rqst *, __be32 *);
- int nfssvc_decode_readdirargs(struct svc_rqst *, __be32 *);
- int nfssvc_encode_statres(struct svc_rqst *, __be32 *);
--int nfssvc_encode_attrstat(struct svc_rqst *, __be32 *);
-+int nfssvc_encode_attrstatres(struct svc_rqst *, __be32 *);
- int nfssvc_encode_diropres(struct svc_rqst *, __be32 *);
- int nfssvc_encode_readlinkres(struct svc_rqst *, __be32 *);
- int nfssvc_encode_readres(struct svc_rqst *, __be32 *);
 
 
