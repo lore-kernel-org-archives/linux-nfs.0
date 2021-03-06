@@ -3,29 +3,32 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 035CBC433E9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 320B1C4332B
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C07CD650DA
+	by mail.kernel.org (Postfix) with ESMTP id EA9F1650D7
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229781AbhCFW30 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229718AbhCFW30 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 6 Mar 2021 17:29:26 -0500
-Received: from mail.kernel.org ([198.145.29.99]:33966 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:33992 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229719AbhCFW3N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:29:13 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 15D266509D
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:29:13 +0000 (UTC)
-Subject: [PATCH v2 00/43] NFSv2/3 XDR encoder overhaul
+        id S229758AbhCFW3Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:29:25 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 6BF9D6509D
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:29:25 +0000 (UTC)
+Subject: [PATCH v2 02/43] NFSD: Update the GETATTR3res encoder to use struct
+ xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:29:12 -0500
-Message-ID: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:29:24 -0500
+Message-ID: <161506976468.4312.7522524451044395902.stgit@klimt.1015granger.net>
+In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
+References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -34,88 +37,208 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi-
+As an additional clean up, some renaming is done to more closely
+reflect the data type and variable names used in the NFSv3 XDR
+definition provided in RFC 1813. "attrstat" is an NFSv2 thingie.
 
-This patch series updates the server-side XDR encoder functions for
-NFS versions 2 and 3. The series was available on both test servers
-I maintained at last week's virtual bake-a-thon event.
-
-This series is available in the for-next topic branch here:
-
-git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
-
-Changes since v1:
-- Added an xdr_encode_bool() helper
-- Dropped "SUNRPC: Fix xdr_get_next_encode_buffer() page boundary handling"
-- Added a generic tracepoint to report directory entry decoding
-- Removed NFSDBG macro - no longer needed
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ fs/nfsd/nfs3proc.c |    2 +
+ fs/nfsd/nfs3xdr.c  |   95 ++++++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfsfh.c    |    2 +
+ fs/nfsd/nfsfh.h    |    2 +
+ fs/nfsd/xdr3.h     |    2 +
+ 5 files changed, 91 insertions(+), 12 deletions(-)
 
-Chuck Lever (43):
-      NFSD: Extract the svcxdr_init_encode() helper
-      NFSD: Update the GETATTR3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 ACCESS3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 LOOKUP3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 wccstat result encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 READLINK3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 READ3res encode to use struct xdr_stream
-      NFSD: Update the NFSv3 WRITE3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 CREATE family of encoders to use struct xdr_stream
-      NFSD: Update the NFSv3 RENAMEv3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 LINK3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 FSSTAT3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 FSINFO3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 PATHCONF3res encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 COMMIT3res encoder to use struct xdr_stream
-      NFSD: Add a helper that encodes NFSv3 directory offset cookies
-      NFSD: Count bytes instead of pages in the NFSv3 READDIR encoder
-      NFSD: Update the NFSv3 READDIR3res encoder to use struct xdr_stream
-      NFSD: Update NFSv3 READDIR entry encoders to use struct xdr_stream
-      NFSD: Remove unused NFSv3 directory entry encoders
-      NFSD: Reduce svc_rqst::rq_pages churn during READDIR operations
-      NFSD: Update the NFSv2 stat encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 attrstat encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 diropres encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 READLINK result encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 READ result encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 STATFS result encoder to use struct xdr_stream
-      NFSD: Add a helper that encodes NFSv3 directory offset cookies
-      NFSD: Count bytes instead of pages in the NFSv2 READDIR encoder
-      NFSD: Update the NFSv2 READDIR result encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 READDIR entry encoder to use struct xdr_stream
-      NFSD: Remove unused NFSv2 directory entry encoders
-      NFSD: Add an xdr_stream-based encoder for NFSv2/3 ACLs
-      NFSD: Update the NFSv2 GETACL result encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 SETACL result encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 ACL GETATTR result encoder to use struct xdr_stream
-      NFSD: Update the NFSv2 ACL ACCESS result encoder to use struct xdr_stream
-      NFSD: Clean up after updating NFSv2 ACL encoders
-      NFSD: Update the NFSv3 GETACL result encoder to use struct xdr_stream
-      NFSD: Update the NFSv3 SETACL result encoder to use struct xdr_stream
-      NFSD: Clean up after updating NFSv3 ACL encoders
-      NFSD: Add a tracepoint to record directory entry encoding
-      NFSD: Clean up NFSDDBG_FACILITY macro
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 8675851199f8..76a84481d526 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -736,7 +736,7 @@ static const struct svc_procedure nfsd_procedures3[22] = {
+ 	[NFS3PROC_GETATTR] = {
+ 		.pc_func = nfsd3_proc_getattr,
+ 		.pc_decode = nfs3svc_decode_fhandleargs,
+-		.pc_encode = nfs3svc_encode_attrstatres,
++		.pc_encode = nfs3svc_encode_getattrres,
+ 		.pc_release = nfs3svc_release_fhandle,
+ 		.pc_argsize = sizeof(struct nfsd_fhandle),
+ 		.pc_ressize = sizeof(struct nfsd3_attrstatres),
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 9d9a01ce0b27..75739861d235 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -20,7 +20,7 @@
+ /*
+  * Mapping of S_IF* types to NFS file types
+  */
+-static u32	nfs3_ftypes[] = {
++static const u32 nfs3_ftypes[] = {
+ 	NF3NON,  NF3FIFO, NF3CHR, NF3BAD,
+ 	NF3DIR,  NF3BAD,  NF3BLK, NF3BAD,
+ 	NF3REG,  NF3BAD,  NF3LNK, NF3BAD,
+@@ -39,6 +39,15 @@ encode_time3(__be32 *p, struct timespec64 *time)
+ 	return p;
+ }
+ 
++static __be32 *
++encode_nfstime3(__be32 *p, const struct timespec64 *time)
++{
++	*p++ = cpu_to_be32((u32)time->tv_sec);
++	*p++ = cpu_to_be32(time->tv_nsec);
++
++	return p;
++}
++
+ static bool
+ svcxdr_decode_nfstime3(struct xdr_stream *xdr, struct timespec64 *timep)
+ {
+@@ -82,6 +91,19 @@ svcxdr_decode_nfs_fh3(struct xdr_stream *xdr, struct svc_fh *fhp)
+ 	return true;
+ }
+ 
++static bool
++svcxdr_encode_nfsstat3(struct xdr_stream *xdr, __be32 status)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, sizeof(status));
++	if (!p)
++		return false;
++	*p = status;
++
++	return true;
++}
++
+ static __be32 *
+ encode_fh(__be32 *p, struct svc_fh *fhp)
+ {
+@@ -253,6 +275,58 @@ svcxdr_decode_devicedata3(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 		svcxdr_decode_specdata3(xdr, args);
+ }
+ 
++static bool
++svcxdr_encode_fattr3(struct svc_rqst *rqstp, struct xdr_stream *xdr,
++		     const struct svc_fh *fhp, const struct kstat *stat)
++{
++	struct user_namespace *userns = nfsd_user_namespace(rqstp);
++	__be32 *p;
++	u64 fsid;
++
++	p = xdr_reserve_space(xdr, XDR_UNIT * 21);
++	if (!p)
++		return false;
++
++	*p++ = cpu_to_be32(nfs3_ftypes[(stat->mode & S_IFMT) >> 12]);
++	*p++ = cpu_to_be32((u32)(stat->mode & S_IALLUGO));
++	*p++ = cpu_to_be32((u32)stat->nlink);
++	*p++ = cpu_to_be32((u32)from_kuid_munged(userns, stat->uid));
++	*p++ = cpu_to_be32((u32)from_kgid_munged(userns, stat->gid));
++	if (S_ISLNK(stat->mode) && stat->size > NFS3_MAXPATHLEN)
++		p = xdr_encode_hyper(p, (u64)NFS3_MAXPATHLEN);
++	else
++		p = xdr_encode_hyper(p, (u64)stat->size);
++
++	/* used */
++	p = xdr_encode_hyper(p, ((u64)stat->blocks) << 9);
++
++	/* rdev */
++	*p++ = cpu_to_be32((u32)MAJOR(stat->rdev));
++	*p++ = cpu_to_be32((u32)MINOR(stat->rdev));
++
++	switch(fsid_source(fhp)) {
++	case FSIDSOURCE_FSID:
++		fsid = (u64)fhp->fh_export->ex_fsid;
++		break;
++	case FSIDSOURCE_UUID:
++		fsid = ((u64 *)fhp->fh_export->ex_uuid)[0];
++		fsid ^= ((u64 *)fhp->fh_export->ex_uuid)[1];
++		break;
++	default:
++		fsid = (u64)huge_encode_dev(fhp->fh_dentry->d_sb->s_dev);
++	}
++	p = xdr_encode_hyper(p, fsid);
++
++	/* fileid */
++	p = xdr_encode_hyper(p, stat->ino);
++
++	p = encode_nfstime3(p, &stat->atime);
++	p = encode_nfstime3(p, &stat->mtime);
++	encode_nfstime3(p, &stat->ctime);
++
++	return true;
++}
++
+ static __be32 *encode_fsid(__be32 *p, struct svc_fh *fhp)
+ {
+ 	u64 f;
+@@ -713,17 +787,22 @@ nfs3svc_decode_commitargs(struct svc_rqst *rqstp, __be32 *p)
+ 
+ /* GETATTR */
+ int
+-nfs3svc_encode_attrstat(struct svc_rqst *rqstp, __be32 *p)
++nfs3svc_encode_getattrres(struct svc_rqst *rqstp, __be32 *p)
+ {
++	struct xdr_stream *xdr = &rqstp->rq_res_stream;
+ 	struct nfsd3_attrstat *resp = rqstp->rq_resp;
+ 
+-	*p++ = resp->status;
+-	if (resp->status == 0) {
+-		lease_get_mtime(d_inode(resp->fh.fh_dentry),
+-				&resp->stat.mtime);
+-		p = encode_fattr3(rqstp, p, &resp->fh, &resp->stat);
++	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
++		return 0;
++	switch (resp->status) {
++	case nfs_ok:
++		lease_get_mtime(d_inode(resp->fh.fh_dentry), &resp->stat.mtime);
++		if (!svcxdr_encode_fattr3(rqstp, xdr, &resp->fh, &resp->stat))
++			return 0;
++		break;
+ 	}
+-	return xdr_ressize_check(rqstp, p);
++
++	return 1;
+ }
+ 
+ /* SETATTR, REMOVE, RMDIR */
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 10b44421eace..c475d2271f9c 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -711,7 +711,7 @@ char * SVCFH_fmt(struct svc_fh *fhp)
+ 	return buf;
+ }
+ 
+-enum fsid_source fsid_source(struct svc_fh *fhp)
++enum fsid_source fsid_source(const struct svc_fh *fhp)
+ {
+ 	if (fhp->fh_handle.fh_version != 1)
+ 		return FSIDSOURCE_DEV;
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index f58933519f38..aff2cda5c6c3 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -82,7 +82,7 @@ enum fsid_source {
+ 	FSIDSOURCE_FSID,
+ 	FSIDSOURCE_UUID,
+ };
+-extern enum fsid_source fsid_source(struct svc_fh *fhp);
++extern enum fsid_source fsid_source(const struct svc_fh *fhp);
+ 
+ 
+ /*
+diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
+index 3e1578953f54..0822981c61b9 100644
+--- a/fs/nfsd/xdr3.h
++++ b/fs/nfsd/xdr3.h
+@@ -280,7 +280,7 @@ int nfs3svc_decode_symlinkargs(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_readdirargs(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_readdirplusargs(struct svc_rqst *, __be32 *);
+ int nfs3svc_decode_commitargs(struct svc_rqst *, __be32 *);
+-int nfs3svc_encode_attrstat(struct svc_rqst *, __be32 *);
++int nfs3svc_encode_getattrres(struct svc_rqst *, __be32 *);
+ int nfs3svc_encode_wccstat(struct svc_rqst *, __be32 *);
+ int nfs3svc_encode_diropres(struct svc_rqst *, __be32 *);
+ int nfs3svc_encode_accessres(struct svc_rqst *, __be32 *);
 
-
- fs/nfs_common/nfsacl.c     |   71 +++
- fs/nfsd/nfs2acl.c          |   87 ++-
- fs/nfsd/nfs3acl.c          |   39 +-
- fs/nfsd/nfs3proc.c         |   97 ++--
- fs/nfsd/nfs3xdr.c          | 1043 ++++++++++++++++++++++--------------
- fs/nfsd/nfsfh.c            |    2 +-
- fs/nfsd/nfsfh.h            |    2 +-
- fs/nfsd/nfsproc.c          |   53 +-
- fs/nfsd/nfsxdr.c           |  413 ++++++++------
- fs/nfsd/trace.h            |   24 +
- fs/nfsd/vfs.c              |    9 +-
- fs/nfsd/vfs.h              |    2 +-
- fs/nfsd/xdr.h              |   23 +-
- fs/nfsd/xdr3.h             |   37 +-
- include/linux/nfsacl.h     |    3 +
- include/linux/sunrpc/xdr.h |   34 ++
- 16 files changed, 1184 insertions(+), 755 deletions(-)
-
---
-Chuck Lever
 
