@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 35934C43381
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6E9FC433E9
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 006B3650D7
+	by mail.kernel.org (Postfix) with ESMTP id C21C5650D9
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229758AbhCFWaA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 6 Mar 2021 17:30:00 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34032 "EHLO mail.kernel.org"
+        id S229818AbhCFWaB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 6 Mar 2021 17:30:01 -0500
+Received: from mail.kernel.org ([198.145.29.99]:34062 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229816AbhCFW3n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:29:43 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 73B196509D
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:29:43 +0000 (UTC)
-Subject: [PATCH v2 05/43] NFSD: Update the NFSv3 wccstat result encoder to use
- struct xdr_stream
+        id S229839AbhCFW3z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:29:55 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 79AE1650D0
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:29:55 +0000 (UTC)
+Subject: [PATCH v2 07/43] NFSD: Update the NFSv3 READ3res encode to use struct
+ xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:29:42 -0500
-Message-ID: <161506978272.4312.2434883797859306769.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:29:54 -0500
+Message-ID: <161506979475.4312.3022208108344236730.stgit@klimt.1015granger.net>
 In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -39,103 +39,124 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3xdr.c |   68 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 65 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs3proc.c         |    1 +
+ fs/nfsd/nfs3xdr.c          |   43 +++++++++++++++++++++++--------------------
+ fs/nfsd/xdr3.h             |    1 +
+ include/linux/sunrpc/xdr.h |   20 ++++++++++++++++++++
+ 4 files changed, 45 insertions(+), 20 deletions(-)
 
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index e55a1d14ede2..93d196752f87 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -159,6 +159,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp)
+ 
+ 	v = 0;
+ 	len = argp->count;
++	resp->pages = rqstp->rq_next_page;
+ 	while (len > 0) {
+ 		struct page *page = *(rqstp->rq_next_page++);
+ 
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 2bb998b3834b..29b923a497f4 100644
+index 352691c3e246..859cc6c51c1a 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -400,6 +400,35 @@ encode_saved_post_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
- 	return encode_fattr3(rqstp, p, fhp, &fhp->fh_post_attr);
- }
- 
-+static bool
-+svcxdr_encode_wcc_attr(struct xdr_stream *xdr, const struct svc_fh *fhp)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, XDR_UNIT * 6);
-+	if (!p)
-+		return false;
-+	p = xdr_encode_hyper(p, (u64)fhp->fh_pre_size);
-+	p = encode_nfstime3(p, &fhp->fh_pre_mtime);
-+	encode_nfstime3(p, &fhp->fh_pre_ctime);
-+
-+	return true;
-+}
-+
-+static bool
-+svcxdr_encode_pre_op_attr(struct xdr_stream *xdr, const struct svc_fh *fhp)
-+{
-+	if (!fhp->fh_pre_saved) {
-+		if (xdr_stream_encode_item_absent(xdr) < 0)
-+			return false;
-+		return true;
-+	}
-+
-+	if (xdr_stream_encode_item_present(xdr) < 0)
-+		return false;
-+	return svcxdr_encode_wcc_attr(xdr, fhp);
-+}
-+
- static bool
- svcxdr_encode_post_op_attr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 			   const struct svc_fh *fhp)
-@@ -460,6 +489,39 @@ nfs3svc_encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fh
- 	return encode_post_op_attr(rqstp, p, fhp);
- }
- 
-+/*
-+ * Encode weak cache consistency data
-+ */
-+static bool
-+svcxdr_encode_wcc_data(struct svc_rqst *rqstp, struct xdr_stream *xdr,
-+		       const struct svc_fh *fhp)
-+{
-+	struct dentry *dentry = fhp->fh_dentry;
-+
-+	if (!dentry || !d_really_is_positive(dentry) || !fhp->fh_post_saved)
-+		goto neither;
-+
-+	/* before */
-+	if (!svcxdr_encode_pre_op_attr(xdr, fhp))
-+		return false;
-+
-+	/* after */
-+	if (xdr_stream_encode_item_present(xdr) < 0)
-+		return false;
-+	if (!svcxdr_encode_fattr3(rqstp, xdr, fhp, &fhp->fh_post_attr))
-+		return false;
-+
-+	return true;
-+
-+neither:
-+	if (xdr_stream_encode_item_absent(xdr) < 0)
-+		return false;
-+	if (!svcxdr_encode_post_op_attr(rqstp, xdr, fhp))
-+		return false;
-+
-+	return true;
-+}
-+
- /*
-  * Enocde weak cache consistency data
-  */
-@@ -855,11 +917,11 @@ nfs3svc_encode_getattrres(struct svc_rqst *rqstp, __be32 *p)
+@@ -1005,30 +1005,33 @@ nfs3svc_encode_readlinkres(struct svc_rqst *rqstp, __be32 *p)
  int
- nfs3svc_encode_wccstat(struct svc_rqst *rqstp, __be32 *p)
+ nfs3svc_encode_readres(struct svc_rqst *rqstp, __be32 *p)
  {
 +	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd3_attrstat *resp = rqstp->rq_resp;
+ 	struct nfsd3_readres *resp = rqstp->rq_resp;
+ 	struct kvec *head = rqstp->rq_res.head;
  
 -	*p++ = resp->status;
--	p = encode_wcc_data(rqstp, p, &resp->fh);
--	return xdr_ressize_check(rqstp, p);
-+	return svcxdr_encode_nfsstat3(xdr, resp->status) &&
-+		svcxdr_encode_wcc_data(rqstp, xdr, &resp->fh);
+-	p = encode_post_op_attr(rqstp, p, &resp->fh);
+-	if (resp->status == 0) {
+-		*p++ = htonl(resp->count);
+-		*p++ = htonl(resp->eof);
+-		*p++ = htonl(resp->count);	/* xdr opaque count */
+-		xdr_ressize_check(rqstp, p);
+-		/* now update rqstp->rq_res to reflect data as well */
+-		rqstp->rq_res.page_len = resp->count;
+-		if (resp->count & 3) {
+-			/* need to pad the tail */
+-			rqstp->rq_res.tail[0].iov_base = p;
+-			*p = 0;
+-			rqstp->rq_res.tail[0].iov_len = 4 - (resp->count & 3);
+-		}
+-		if (svc_encode_result_payload(rqstp, head->iov_len,
+-					      resp->count))
++	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
++		return 0;
++	switch (resp->status) {
++	case nfs_ok:
++		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
+ 			return 0;
+-		return 1;
+-	} else
+-		return xdr_ressize_check(rqstp, p);
++		if (xdr_stream_encode_u32(xdr, resp->count) < 0)
++			return 0;
++		if (xdr_stream_encode_bool(xdr, resp->eof) < 0)
++			return 0;
++		if (xdr_stream_encode_u32(xdr, resp->count) < 0)
++			return 0;
++		xdr_write_pages(xdr, resp->pages, rqstp->rq_res.page_base,
++				resp->count);
++		if (svc_encode_result_payload(rqstp, head->iov_len, resp->count) < 0)
++			return 0;
++		break;
++	default:
++		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++			return 0;
++	}
++
++	return 1;
  }
  
- /* LOOKUP */
+ /* WRITE */
+diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
+index 1d633c5d5fa2..8073350418ae 100644
+--- a/fs/nfsd/xdr3.h
++++ b/fs/nfsd/xdr3.h
+@@ -145,6 +145,7 @@ struct nfsd3_readres {
+ 	struct svc_fh		fh;
+ 	unsigned long		count;
+ 	__u32			eof;
++	struct page		**pages;
+ };
+ 
+ struct nfsd3_writeres {
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 2bc75c167f00..9dda7171b7b4 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -394,6 +394,26 @@ static inline int xdr_stream_encode_item_absent(struct xdr_stream *xdr)
+ 	return len;
+ }
+ 
++/**
++ * xdr_stream_encode_bool - Encode a "not present" list item
++ * @xdr: pointer to xdr_stream
++ * @n: boolean value to encode
++ *
++ * Return values:
++ *   On success, returns length in bytes of XDR buffer consumed
++ *   %-EMSGSIZE on XDR buffer overflow
++ */
++static inline int xdr_stream_encode_bool(struct xdr_stream *xdr, __u32 n)
++{
++	const size_t len = XDR_UNIT;
++	__be32 *p = xdr_reserve_space(xdr, len);
++
++	if (unlikely(!p))
++		return -EMSGSIZE;
++	*p = n ? xdr_one : xdr_zero;
++	return len;
++}
++
+ /**
+  * xdr_stream_encode_u32 - Encode a 32-bit integer
+  * @xdr: pointer to xdr_stream
 
 
