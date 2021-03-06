@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF9ADC433DB
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F530C433E6
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 860426509D
+	by mail.kernel.org (Postfix) with ESMTP id D39206509D
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:30:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229733AbhCFWaA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229816AbhCFWaA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 6 Mar 2021 17:30:00 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34018 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:34050 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229758AbhCFW3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:29:37 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 70555650D0
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:29:37 +0000 (UTC)
-Subject: [PATCH v2 04/43] NFSD: Update the NFSv3 LOOKUP3res encoder to use
+        id S229818AbhCFW3t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:29:49 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 76B546509D
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:29:49 +0000 (UTC)
+Subject: [PATCH v2 06/43] NFSD: Update the NFSv3 READLINK3res encoder to use
  struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:29:36 -0500
-Message-ID: <161506977671.4312.16159773032368839275.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:29:48 -0500
+Message-ID: <161506978873.4312.7189036930987633968.stgit@klimt.1015granger.net>
 In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -37,107 +37,95 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Also, clean up: Rename the encoder function to match the name of
-the result structure in RFC 1813, consistent with other encoder
-function names in nfs3xdr.c. "diropres" is an NFSv2 thingie.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs3proc.c |    2 +-
- fs/nfsd/nfs3xdr.c  |   43 +++++++++++++++++++++++++++++++++++--------
- fs/nfsd/xdr3.h     |    2 +-
- 3 files changed, 37 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs3proc.c |    5 +++--
+ fs/nfsd/nfs3xdr.c  |   34 ++++++++++++++++++----------------
+ fs/nfsd/xdr3.h     |    1 +
+ 3 files changed, 22 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 76a84481d526..49b018afc6ea 100644
+index 49b018afc6ea..e55a1d14ede2 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -758,7 +758,7 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 	[NFS3PROC_LOOKUP] = {
- 		.pc_func = nfsd3_proc_lookup,
- 		.pc_decode = nfs3svc_decode_diropargs,
--		.pc_encode = nfs3svc_encode_diropres,
-+		.pc_encode = nfs3svc_encode_lookupres,
- 		.pc_release = nfs3svc_release_fhandle2,
- 		.pc_argsize = sizeof(struct nfsd3_diropargs),
- 		.pc_ressize = sizeof(struct nfsd3_diropres),
+@@ -126,14 +126,15 @@ nfsd3_proc_readlink(struct svc_rqst *rqstp)
+ {
+ 	struct nfsd_fhandle *argp = rqstp->rq_argp;
+ 	struct nfsd3_readlinkres *resp = rqstp->rq_resp;
+-	char *buffer = page_address(*(rqstp->rq_next_page++));
+ 
+ 	dprintk("nfsd: READLINK(3) %s\n", SVCFH_fmt(&argp->fh));
+ 
+ 	/* Read the symlink. */
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	resp->len = NFS3_MAXPATHLEN;
+-	resp->status = nfsd_readlink(rqstp, &resp->fh, buffer, &resp->len);
++	resp->pages = rqstp->rq_next_page++;
++	resp->status = nfsd_readlink(rqstp, &resp->fh,
++				     page_address(*resp->pages), &resp->len);
+ 	return rpc_success;
+ }
+ 
 diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 9d6c989df6d8..2bb998b3834b 100644
+index 29b923a497f4..352691c3e246 100644
 --- a/fs/nfsd/nfs3xdr.c
 +++ b/fs/nfsd/nfs3xdr.c
-@@ -104,6 +104,23 @@ svcxdr_encode_nfsstat3(struct xdr_stream *xdr, __be32 status)
- 	return true;
- }
- 
-+static bool
-+svcxdr_encode_nfs_fh3(struct xdr_stream *xdr, const struct svc_fh *fhp)
-+{
-+	u32 size = fhp->fh_handle.fh_size;
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, XDR_UNIT + size);
-+	if (!p)
-+		return false;
-+	*p++ = cpu_to_be32(size);
-+	if (size)
-+		p[XDR_QUADLEN(size) - 1] = 0;
-+	memcpy(p, &fhp->fh_handle.fh_base, size);
-+
-+	return true;
-+}
-+
- static __be32 *
- encode_fh(__be32 *p, struct svc_fh *fhp)
- {
-@@ -846,18 +863,28 @@ nfs3svc_encode_wccstat(struct svc_rqst *rqstp, __be32 *p)
- }
- 
- /* LOOKUP */
--int
--nfs3svc_encode_diropres(struct svc_rqst *rqstp, __be32 *p)
-+int nfs3svc_encode_lookupres(struct svc_rqst *rqstp, __be32 *p)
+@@ -977,26 +977,28 @@ nfs3svc_encode_accessres(struct svc_rqst *rqstp, __be32 *p)
+ int
+ nfs3svc_encode_readlinkres(struct svc_rqst *rqstp, __be32 *p)
  {
 +	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd3_diropres *resp = rqstp->rq_resp;
+ 	struct nfsd3_readlinkres *resp = rqstp->rq_resp;
+ 	struct kvec *head = rqstp->rq_res.head;
  
 -	*p++ = resp->status;
+-	p = encode_post_op_attr(rqstp, p, &resp->fh);
 -	if (resp->status == 0) {
--		p = encode_fh(p, &resp->fh);
--		p = encode_post_op_attr(rqstp, p, &resp->fh);
+-		*p++ = htonl(resp->len);
+-		xdr_ressize_check(rqstp, p);
+-		rqstp->rq_res.page_len = resp->len;
+-		if (resp->len & 3) {
+-			/* need to pad the tail */
+-			rqstp->rq_res.tail[0].iov_base = p;
+-			*p = 0;
+-			rqstp->rq_res.tail[0].iov_len = 4 - (resp->len&3);
+-		}
+-		if (svc_encode_result_payload(rqstp, head->iov_len, resp->len))
 +	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
 +		return 0;
 +	switch (resp->status) {
 +	case nfs_ok:
-+		if (!svcxdr_encode_nfs_fh3(xdr, &resp->fh))
-+			return 0;
 +		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
+ 			return 0;
+-		return 1;
+-	} else
+-		return xdr_ressize_check(rqstp, p);
++		if (xdr_stream_encode_u32(xdr, resp->len) < 0)
 +			return 0;
-+		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
++		xdr_write_pages(xdr, resp->pages, 0, resp->len);
++		if (svc_encode_result_payload(rqstp, head->iov_len, resp->len) < 0)
 +			return 0;
 +		break;
 +	default:
-+		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
++		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
 +			return 0;
- 	}
--	p = encode_post_op_attr(rqstp, p, &resp->dirfh);
--	return xdr_ressize_check(rqstp, p);
++	}
 +
 +	return 1;
  }
  
- /* ACCESS */
+ /* READ */
 diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 0822981c61b9..7db4ee17aa20 100644
+index 7db4ee17aa20..1d633c5d5fa2 100644
 --- a/fs/nfsd/xdr3.h
 +++ b/fs/nfsd/xdr3.h
-@@ -282,7 +282,7 @@ int nfs3svc_decode_readdirplusargs(struct svc_rqst *, __be32 *);
- int nfs3svc_decode_commitargs(struct svc_rqst *, __be32 *);
- int nfs3svc_encode_getattrres(struct svc_rqst *, __be32 *);
- int nfs3svc_encode_wccstat(struct svc_rqst *, __be32 *);
--int nfs3svc_encode_diropres(struct svc_rqst *, __be32 *);
-+int nfs3svc_encode_lookupres(struct svc_rqst *, __be32 *);
- int nfs3svc_encode_accessres(struct svc_rqst *, __be32 *);
- int nfs3svc_encode_readlinkres(struct svc_rqst *, __be32 *);
- int nfs3svc_encode_readres(struct svc_rqst *, __be32 *);
+@@ -137,6 +137,7 @@ struct nfsd3_readlinkres {
+ 	__be32			status;
+ 	struct svc_fh		fh;
+ 	__u32			len;
++	struct page		**pages;
+ };
+ 
+ struct nfsd3_readres {
 
 
