@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB6EDC43381
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B78A0C433E9
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:33:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7E541650DA
+	by mail.kernel.org (Postfix) with ESMTP id 968D16509D
 	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:33:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229978AbhCFWcq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 6 Mar 2021 17:32:46 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34538 "EHLO mail.kernel.org"
+        id S229853AbhCFWcr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 6 Mar 2021 17:32:47 -0500
+Received: from mail.kernel.org ([198.145.29.99]:34630 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229965AbhCFWcO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:32:14 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 5C3C86509D
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:32:14 +0000 (UTC)
-Subject: [PATCH v2 30/43] NFSD: Update the NFSv2 READDIR result encoder to use
+        id S229977AbhCFWco (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Mar 2021 17:32:44 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 7941F650D0
+        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:32:44 +0000 (UTC)
+Subject: [PATCH v2 35/43] NFSD: Update the NFSv2 SETACL result encoder to use
  struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:32:13 -0500
-Message-ID: <161506993352.4312.12460936676589779500.stgit@klimt.1015granger.net>
+Date:   Sat, 06 Mar 2021 17:32:43 -0500
+Message-ID: <161506996373.4312.5185301493220008587.stgit@klimt.1015granger.net>
 In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -37,58 +37,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+The SETACL result encoder is exactly the same as the NFSv2
+attrstatres decoder.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsxdr.c |   22 +++++++++++++---------
- fs/nfsd/xdr.h    |    1 +
- 2 files changed, 14 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs2acl.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 8ae23ed6dc5d..9522e5c5f49d 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -574,17 +574,21 @@ nfssvc_encode_readres(struct svc_rqst *rqstp, __be32 *p)
- int
- nfssvc_encode_readdirres(struct svc_rqst *rqstp, __be32 *p)
- {
-+	struct xdr_stream *xdr = &rqstp->rq_res_stream;
- 	struct nfsd_readdirres *resp = rqstp->rq_resp;
- 
--	*p++ = resp->status;
--	if (resp->status != nfs_ok)
--		return xdr_ressize_check(rqstp, p);
--
--	xdr_ressize_check(rqstp, p);
--	p = resp->buffer;
--	*p++ = 0;			/* no more entries */
--	*p++ = htonl((resp->common.err == nfserr_eof));
--	rqstp->rq_res.page_len = resp->count << 2;
-+	if (!svcxdr_encode_stat(xdr, resp->status))
-+		return 0;
-+	switch (resp->status) {
-+	case nfs_ok:
-+		xdr_write_pages(xdr, &resp->page, 0, resp->count << 2);
-+		/* no more entries */
-+		if (xdr_stream_encode_item_absent(xdr) < 0)
-+			return 0;
-+		if (xdr_stream_encode_bool(xdr, resp->common.err == nfserr_eof) < 0)
-+			return 0;
-+		break;
-+	}
- 
- 	return 1;
- }
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 651de13e62fe..69a6efc71ecb 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -114,6 +114,7 @@ struct nfsd_readdirres {
- 	__be32 *		buffer;
- 	int			buflen;
- 	__be32 *		offset;
-+	struct page		*page;
- };
- 
- struct nfsd_statfsres {
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 4a15ae6fdbc2..9c572ffa5e7b 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -365,8 +365,8 @@ static const struct svc_procedure nfsd_acl_procedures2[5] = {
+ 	[ACLPROC2_SETACL] = {
+ 		.pc_func = nfsacld_proc_setacl,
+ 		.pc_decode = nfsaclsvc_decode_setaclargs,
+-		.pc_encode = nfsaclsvc_encode_attrstatres,
+-		.pc_release = nfsaclsvc_release_attrstat,
++		.pc_encode = nfssvc_encode_attrstatres,
++		.pc_release = nfssvc_release_attrstat,
+ 		.pc_argsize = sizeof(struct nfsd3_setaclargs),
+ 		.pc_ressize = sizeof(struct nfsd_attrstat),
+ 		.pc_cachetype = RC_NOCACHE,
 
 
