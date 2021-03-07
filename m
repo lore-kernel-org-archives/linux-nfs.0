@@ -1,130 +1,134 @@
-Return-Path: <SRS0=I+ZC=IE=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=RGq/=IF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C0424C433DB
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:34:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A76C9C433DB
+	for <linux-nfs@archiver.kernel.org>; Sun,  7 Mar 2021 18:31:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 967E7650CF
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Mar 2021 22:34:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A273650CC
+	for <linux-nfs@archiver.kernel.org>; Sun,  7 Mar 2021 18:31:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229758AbhCFWdy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 6 Mar 2021 17:33:54 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34816 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229839AbhCFWd0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 6 Mar 2021 17:33:26 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 8AF896509D
-        for <linux-nfs@vger.kernel.org>; Sat,  6 Mar 2021 22:33:26 +0000 (UTC)
-Subject: [PATCH v2 42/43] NFSD: Add a tracepoint to record directory entry
- encoding
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Date:   Sat, 06 Mar 2021 17:33:25 -0500
-Message-ID: <161507000581.4312.9786948538926639585.stgit@klimt.1015granger.net>
-In-Reply-To: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
-References: <161506956174.4312.17478383686779759287.stgit@klimt.1015granger.net>
-User-Agent: StGit/1.0-5-g755c
+        id S231430AbhCGSap (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 7 Mar 2021 13:30:45 -0500
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:43459 "EHLO mx1.molgen.mpg.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S231464AbhCGSaZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 7 Mar 2021 13:30:25 -0500
+Received: from [192.168.0.5] (ip5f5aea7c.dynamic.kabel-deutschland.de [95.90.234.124])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        (Authenticated sender: buczek)
+        by mx.molgen.mpg.de (Postfix) with ESMTPSA id D7FAF206446A2;
+        Sun,  7 Mar 2021 19:30:16 +0100 (CET)
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From:   Donald Buczek <buczek@molgen.mpg.de>
+Subject: [BUG] nfs-utils: mountd doesn't work with elder glibc versions
+Message-ID: <ed75ac87-04ca-c1fe-ad70-7e9f47eef456@molgen.mpg.de>
+Date:   Sun, 7 Mar 2021 19:30:16 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Enable watching the progress of directory encoding to capture the
-timing of any issues with reading or encoding a directory. The
-new tracepoint captures dirent encoding for all NFS versions.
+Hi,
 
-For example, here's what a few NFSv4 directory entries might look
-like:
+we noticed that our exports don't work with nfs-utils 2.5.3.
 
-nfsd-989   [002]   468.596265: nfsd_dirent:          fh_hash=0x5d162594 ino=2 name=.
-nfsd-989   [002]   468.596267: nfsd_dirent:          fh_hash=0x5d162594 ino=1 name=..
-nfsd-989   [002]   468.596299: nfsd_dirent:          fh_hash=0x5d162594 ino=3827 name=zlib.c
-nfsd-989   [002]   468.596325: nfsd_dirent:          fh_hash=0x5d162594 ino=3811 name=xdiff
-nfsd-989   [002]   468.596351: nfsd_dirent:          fh_hash=0x5d162594 ino=3810 name=xdiff-interface.h
-nfsd-989   [002]   468.596377: nfsd_dirent:          fh_hash=0x5d162594 ino=3809 name=xdiff-interface.c
+The reason is, that 76c21e3f ("mountd: Check the stat() return values in match_fsid()") added a new error handling. It sets errno to 0 and assumes that it is stable when there are no errors. However, this conflicts with the logic in support/misc/xstat.c, which sets errno to ENOSYS if glibc doesn't support statx() or has an incomplete emulation.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/trace.h |   24 ++++++++++++++++++++++++
- fs/nfsd/vfs.c   |    9 ++++++---
- 2 files changed, 30 insertions(+), 3 deletions(-)
+We have glibc 2.27 which doesn't support statx().
 
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 92a0973dd671..27a93ebd1d80 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -391,6 +391,30 @@ DEFINE_EVENT(nfsd_err_class, nfsd_##name,	\
- DEFINE_NFSD_ERR_EVENT(read_err);
- DEFINE_NFSD_ERR_EVENT(write_err);
- 
-+TRACE_EVENT(nfsd_dirent,
-+	TP_PROTO(struct svc_fh *fhp,
-+		 u64 ino,
-+		 const char *name,
-+		 int namlen),
-+	TP_ARGS(fhp, ino, name, namlen),
-+	TP_STRUCT__entry(
-+		__field(u32, fh_hash)
-+		__field(u64, ino)
-+		__field(int, len)
-+		__dynamic_array(unsigned char, name, namlen)
-+	),
-+	TP_fast_assign(
-+		__entry->fh_hash = fhp ? knfsd_fh_hash(&fhp->fh_handle) : 0;
-+		__entry->ino = ino;
-+		__entry->len = namlen;
-+		memcpy(__get_str(name), name, namlen);
-+		__assign_str(name, name);
-+	),
-+	TP_printk("fh_hash=0x%08x ino=%llu name=%.*s",
-+		__entry->fh_hash, __entry->ino,
-+		__entry->len, __get_str(name))
-+)
-+
- #include "state.h"
- #include "filecache.h"
- #include "vfs.h"
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fd6be35a1642..15adf1f6ab21 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1968,8 +1968,9 @@ static int nfsd_buffered_filldir(struct dir_context *ctx, const char *name,
- 	return 0;
- }
- 
--static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
--				    struct readdir_cd *cdp, loff_t *offsetp)
-+static __be32 nfsd_buffered_readdir(struct file *file, struct svc_fh *fhp,
-+				    nfsd_filldir_t func, struct readdir_cd *cdp,
-+				    loff_t *offsetp)
- {
- 	struct buffered_dirent *de;
- 	int host_err;
-@@ -2015,6 +2016,8 @@ static __be32 nfsd_buffered_readdir(struct file *file, nfsd_filldir_t func,
- 			if (cdp->err != nfs_ok)
- 				break;
- 
-+			trace_nfsd_dirent(fhp, de->ino, de->name, de->namlen);
-+
- 			reclen = ALIGN(sizeof(*de) + de->namlen,
- 				       sizeof(u64));
- 			size -= reclen;
-@@ -2062,7 +2065,7 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
- 		goto out_close;
- 	}
- 
--	err = nfsd_buffered_readdir(file, func, cdp, offsetp);
-+	err = nfsd_buffered_readdir(file, fhp, func, cdp, offsetp);
- 
- 	if (err == nfserr_eof || err == nfserr_toosmall)
- 		err = nfs_ok; /* can still be found in ->err */
+root@dose:~# findmnt /amd/dose/0
+TARGET      SOURCE    FSTYPE OPTIONS
+/amd/dose/0 /dev/vda2 xfs    rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota
+root@dose:~# /usr/sbin/rpc.mountd --foreground --manage-gids -d all &
+[1] 26777
+root@dose:~# rpc.mountd: Version 2.5.3 starting
+root@dose:~# exportfs dose:/amd/dose/0
+root@dose:~# mount dose:/amd/dose/0 /mnt
+rpc.mountd: auth_unix_ip: inbuf 'nfsd 141.14.17.51'
+rpc.mountd: auth_unix_ip: inbuf 'nfsd 141.14.17.51'
+rpc.mountd: auth_unix_ip: client 0x459850 'dose.molgen.mpg.de'
+rpc.mountd: v4root_create: path '/' flags 0x12403
+rpc.mountd: auth_unix_ip: inbuf 'nfsd 141.14.17.51'
+rpc.mountd: auth_unix_ip: client 0x459850 'dose.molgen.mpg.de'
+rpc.mountd: v4root_create: path '/amd' flags 0x10403
+rpc.mountd: v4root_create: path '/amd/dose' flags 0x10403
+rpc.mountd: auth_unix_ip: client 0x451010 'dose.molgen.mpg.de'
+rpc.mountd: rpc.mountd: nfsd_fh: inbuf 'dose.molgen.mpg.de 1 \x00000000'nfsd_fh: inbuf 'dose.molgen.mpg.de 1 \x00000000'
 
+rpc.mountd: nfsd_fh: found 0x45b1c0 path /
+rpc.mountd: nfsd_fh: found 0x45c070 path /
+rpc.mountd: nfsd_export: inbuf 'dose.molgen.mpg.de /amd'rpc.mountd:
+nfsd_export: inbuf 'dose.molgen.mpg.de /amd'
+rpc.mountd: nfsd_export: found 0x442eb0 path /amdrpc.mountd:
+nfsd_export: found 0x45b6d0 path /amd
+rpc.mountd: rpc.mountd: nfsd_fh: inbuf 'dose.molgen.mpg.de 7 \x83000000000000005e2eaee859174457bcd564e9512178dc'nfsd_fh: inbuf 'dose.molgen.mpg.de 7 \x83000000000000005e2eaee859174457bcd564e9512178dc'
 
+rpc.mountd: nfsd_fh: found 0x442ec0 path /amdrpc.mountd:
+nfsd_fh: found 0x45b6e0 path /amd
+rpc.mountd: nfsd_export: inbuf 'dose.molgen.mpg.de /amd/dose'
+rpc.mountd: nfsd_export: inbuf 'dose.molgen.mpg.de /amd/dose'
+rpc.mountd: rpc.mountd: nfsd_export: found 0x4433d0 path /amd/dosenfsd_export: found 0x45bbf0 path /amd/dose
+
+rpc.mountd: nfsd_fh: inbuf 'dose.molgen.mpg.de 7 \x81000820000000005e2eaee859174457bcd564e9512178dc'rpc.mountd:
+nfsd_fh: inbuf 'dose.molgen.mpg.de 7 \x81000820000000005e2eaee859174457bcd564e9512178dc'
+rpc.mountd: nfsd_fh: found 0x4433e0 path /amd/dose
+rpc.mountd: nfsd_fh: found 0x45bc00 path /amd/dose
+rpc.mountd: nfsd_export: inbuf 'dose.molgen.mpg.de /amd/dose/0'
+rpc.mountd: nfsd_export: inbuf 'dose.molgen.mpg.de /amd/dose/0'
+rpc.mountd: nfsd_export: found 0x443550 path /amd/dose/0
+rpc.mountd: nfsd_fh: inbuf 'dose.molgen.mpg.de 6 \xa7287020bece44b09df5b577a4b82823'
+rpc.mountd: nfsd_export: found 0x45bb40 path /amd/dose/0
+rpc.mountd: nfsd_fh: found (nil) path (null)rpc.mountd:
+nfsd_fh: inbuf 'dose.molgen.mpg.de 6 \xa7287020bece44b09df5b577a4b82823'
+rpc.mountd: nfsd_fh: found (nil) path (null)
+
+( mount hangs until interrupted )
+
+With the following workaround, things works again:
+
+diff --git a/support/export/cache.c b/support/export/cache.c
+index f1569afb..1b671c32 100644
+--- a/support/export/cache.c
++++ b/support/export/cache.c
+@@ -722,7 +722,7 @@ match:
+  path_error:
+         if (path_lookup_error(errno))
+                 goto nomatch;
+-       return -1;
++       return 0;
+  }
+  
+  static struct addrinfo *lookup_client_addr(char *dom)
+
+Another minor one, I noticed when searching for the above:
+
+diff --git a/support/misc/mountpoint.c b/support/misc/mountpoint.c
+index 14d6731d..ae664d6a 100644
+--- a/support/misc/mountpoint.c
++++ b/support/misc/mountpoint.c
+@@ -37,7 +37,7 @@ check_is_mountpoint(const char *path, int (mystat)(const char *, struct stat *))
+                 rv = 0;
+         else
+                 if (stb.st_dev != pstb.st_dev ||
+-                   stb.st_ino == pstb.st_ino)
++                   stb.st_ino != pstb.st_ino)
+                         rv = 1;
+                 else
+                         rv = 0;
+
+I just assume, this would be right and might be relevant to exported bind mounts. But I didn't try to trigger the assumed bug here.
+
+Best
+   Donald
