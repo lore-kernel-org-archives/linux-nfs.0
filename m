@@ -7,39 +7,36 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 854E3C433E9
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Mar 2021 19:43:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD53AC433E9
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Mar 2021 19:44:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5B726652AB
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Mar 2021 19:43:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 899DE652B1
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Mar 2021 19:44:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230517AbhCHTnM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 8 Mar 2021 14:43:12 -0500
-Received: from mail.kernel.org ([198.145.29.99]:51012 "EHLO mail.kernel.org"
+        id S231263AbhCHTno (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 8 Mar 2021 14:43:44 -0500
+Received: from mail.kernel.org ([198.145.29.99]:51098 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230173AbhCHTm5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Mar 2021 14:42:57 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 1979E652B3;
-        Mon,  8 Mar 2021 19:42:57 +0000 (UTC)
+        id S231219AbhCHTn3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 8 Mar 2021 14:43:29 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id CBD66652B2
+        for <linux-nfs@vger.kernel.org>; Mon,  8 Mar 2021 19:43:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1615232577;
-        bh=8y1DWKatjPA48Z1tsHvNCvxIvoci0f18KkuAVxomkR8=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=bmgA8jc66viJmW0TbhMx6zZ2obE/ndGygJ6APf990OKdTgbur5UWi8r0gRYgLm+Re
-         Znsvq0CyZVq3gnpIYMxfsKX9YCPKtFpul3uX34MsnV14rfyXv4wo1U7ka8vXGtIc8G
-         rnpYjhtna3JUbd8X/mrWO9TY6nQGbOQ+TAFAjh5c4HLk3Nuy1irDYo2kX6rwExqqGT
-         5RST1X6pNSLaBlPWXISRDsLQ3d2ywMaaVLs7LmQgnruagiNCK4CBwpsIBUq2+ung5F
-         hAxlIzuI6dobUW9yrQl/z5RKWQFzQJhVXBcofJynfAnwN7PA66H756AEG/OlU+pAMk
-         IVS1O/EpK9J4Q==
+        s=k20201202; t=1615232609;
+        bh=3dls5Lehj3HTNjGCPSxEDhbMyenje5Grp4Pgb6i4Nn4=;
+        h=From:To:Subject:Date:From;
+        b=pW4ehFUhoYsXBXaSr8SZfP395aTsmxW7MC0gpBxXtarcbCUWzIO2qzoNWyEt/dT+n
+         M+tDiYwbYDeVA66by6z1UZgngv9f4k28w6hMb46Oq+zBwOz5iz2k8TiWvlEawFJqS1
+         GIbodV9Rxvgp1ENb8w15VAzc7Itv5jnZwjTQ38aHcI6hQdfRj8fHwyKtbuvRU9z+/x
+         3u7tWFaRY+TKazv9lbg/uwdPpVepi85j5XiKvYiETLLAYlCb2imYR1lD0UJNiahTHL
+         P3EJzfZG5zXOVZ0kEHJj0bkux3IRRIIwq0fNdU/UpvdcMf/Dm4DSpjqFvrBaXRmk10
+         yKoduE3mHQzeA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Cc:     Geert Jansen <gerardu@amazon.com>
-Subject: [PATCH v2 2/5] NFS: Don't gratuitously clear the inode cache when lookup failed
-Date:   Mon,  8 Mar 2021 14:42:52 -0500
-Message-Id: <20210308194255.7873-2-trondmy@kernel.org>
+Subject: [PATCH] NFS: Fix up incorrect documentation
+Date:   Mon,  8 Mar 2021 14:43:27 -0500
+Message-Id: <20210308194327.7969-1-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20210308194255.7873-1-trondmy@kernel.org>
-References: <20210308194255.7873-1-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -48,46 +45,102 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The fact that the lookup revalidation failed, does not mean that the
-inode contents have changed.
-
-Fixes: 5ceb9d7fdaaf ("NFS: Refactor nfs_lookup_revalidate()")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 20 ++++++++------------
- 1 file changed, 8 insertions(+), 12 deletions(-)
+ fs/nfs/delegation.c | 8 ++++----
+ fs/nfs/io.c         | 2 +-
+ fs/nfs/nfs4state.c  | 2 +-
+ fs/nfs/pagelist.c   | 4 ++--
+ 4 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 08b162de627f..a91f324cca49 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1444,18 +1444,14 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
- 			__func__, dentry);
- 		return 1;
- 	case 0:
--		if (inode && S_ISDIR(inode->i_mode)) {
--			/* Purge readdir caches. */
--			nfs_zap_caches(inode);
--			/*
--			 * We can't d_drop the root of a disconnected tree:
--			 * its d_hash is on the s_anon list and d_drop() would hide
--			 * it from shrink_dcache_for_unmount(), leading to busy
--			 * inodes on unmount and further oopses.
--			 */
--			if (IS_ROOT(dentry))
--				return 1;
--		}
-+		/*
-+		 * We can't d_drop the root of a disconnected tree:
-+		 * its d_hash is on the s_anon list and d_drop() would hide
-+		 * it from shrink_dcache_for_unmount(), leading to busy
-+		 * inodes on unmount and further oopses.
-+		 */
-+		if (inode && IS_ROOT(dentry))
-+			return 1;
- 		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is invalid\n",
- 				__func__, dentry);
- 		return 0;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 04bf8066980c..6a29de964268 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -114,7 +114,7 @@ nfs4_do_check_delegation(struct inode *inode, fmode_t flags, bool mark)
+ 	return ret;
+ }
+ /**
+- * nfs_have_delegation - check if inode has a delegation, mark it
++ * nfs4_have_delegation - check if inode has a delegation, mark it
+  * NFS_DELEGATION_REFERENCED if there is one.
+  * @inode: inode to check
+  * @flags: delegation types to check for
+@@ -674,7 +674,7 @@ void nfs_inode_evict_delegation(struct inode *inode)
+ }
+ 
+ /**
+- * nfs_inode_return_delegation - synchronously return a delegation
++ * nfs4_inode_return_delegation - synchronously return a delegation
+  * @inode: inode to process
+  *
+  * This routine will always flush any dirty data to disk on the
+@@ -697,7 +697,7 @@ int nfs4_inode_return_delegation(struct inode *inode)
+ }
+ 
+ /**
+- * nfs_inode_return_delegation_on_close - asynchronously return a delegation
++ * nfs4_inode_return_delegation_on_close - asynchronously return a delegation
+  * @inode: inode to process
+  *
+  * This routine is called on file close in order to determine if the
+@@ -811,7 +811,7 @@ void nfs_expire_all_delegations(struct nfs_client *clp)
+ }
+ 
+ /**
+- * nfs_super_return_all_delegations - return delegations for one superblock
++ * nfs_server_return_all_delegations - return delegations for one superblock
+  * @server: pointer to nfs_server to process
+  *
+  */
+diff --git a/fs/nfs/io.c b/fs/nfs/io.c
+index 5088fda9b453..b5551ed8f648 100644
+--- a/fs/nfs/io.c
++++ b/fs/nfs/io.c
+@@ -104,7 +104,7 @@ static void nfs_block_buffered(struct nfs_inode *nfsi, struct inode *inode)
+ }
+ 
+ /**
+- * nfs_end_io_direct - declare the file is being used for direct i/o
++ * nfs_start_io_direct - declare the file is being used for direct i/o
+  * @inode: file inode
+  *
+  * Declare that a direct I/O operation is about to start, and ensure
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 3a51351bdc6a..9db9b11acb2a 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -645,7 +645,7 @@ void nfs4_purge_state_owners(struct nfs_server *server, struct list_head *head)
+ }
+ 
+ /**
+- * nfs4_purge_state_owners - Release all cached state owners
++ * nfs4_free_state_owners - Release all cached state owners
+  * @head: resulting list of state owners
+  *
+  * Frees a list of state owners that was generated by
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 78c9c4bdef2b..6c20b28d9d7c 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -577,7 +577,7 @@ static void nfs_clear_request(struct nfs_page *req)
+ }
+ 
+ /**
+- * nfs_release_request - Release the count on an NFS read/write request
++ * nfs_free_request - Release the count on an NFS read/write request
+  * @req: request to release
+  *
+  * Note: Should never be called with the spinlock held!
+@@ -1152,7 +1152,7 @@ nfs_pageio_cleanup_request(struct nfs_pageio_descriptor *desc,
+ }
+ 
+ /**
+- * nfs_pageio_add_request - Attempt to coalesce a request into a page list.
++ * __nfs_pageio_add_request - Attempt to coalesce a request into a page list.
+  * @desc: destination io descriptor
+  * @req: request
+  *
 -- 
 2.29.2
 
