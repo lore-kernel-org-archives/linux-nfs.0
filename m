@@ -7,42 +7,39 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A18DBC433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 854E3C433E9
 	for <linux-nfs@archiver.kernel.org>; Mon,  8 Mar 2021 19:43:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 76B34652AC
+	by mail.kernel.org (Postfix) with ESMTP id 5B726652AB
 	for <linux-nfs@archiver.kernel.org>; Mon,  8 Mar 2021 19:43:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230250AbhCHTnM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S230517AbhCHTnM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 8 Mar 2021 14:43:12 -0500
-Received: from mail.kernel.org ([198.145.29.99]:51026 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:51012 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230342AbhCHTm7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Mar 2021 14:42:59 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id B55BA652B5;
-        Mon,  8 Mar 2021 19:42:58 +0000 (UTC)
+        id S230173AbhCHTm5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 8 Mar 2021 14:42:57 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1979E652B3;
+        Mon,  8 Mar 2021 19:42:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1615232579;
-        bh=wF7CqdMQYwmdlB5JCqNIxSPxz4U5thdgyXyv83AMSwY=;
+        s=k20201202; t=1615232577;
+        bh=8y1DWKatjPA48Z1tsHvNCvxIvoci0f18KkuAVxomkR8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=VahfjflxUur9YXgMP+0WZNDboMrVQPwdnt3be9u6uAtluhq6Cfl7RVV47OwZ1qor1
-         ATXqUdPYk8kE/nLQ/2RyvG3+E02jR99iZo3gcyKNGYKviGw02BzzX3CFBllP65zPZK
-         1YpvX8etdPB1/QwzYbUZ9UqxP8ogmZVHd3aV8yOzYJFbasGTftk2v/9yxPVvUB6tQw
-         GivmdpGtijwT3iPsDrbNKzwQQYIu2X92jn+u72NmQqB+Wj0XjXb0N9c70gbwVUUVY3
-         6G989DrD9RHDVaQxPXDaMZ54ACno5tN1F4mv7q6qe58O0eakb43xSD1T4TPJTcJoGf
-         llocpMNBb/YGA==
+        b=bmgA8jc66viJmW0TbhMx6zZ2obE/ndGygJ6APf990OKdTgbur5UWi8r0gRYgLm+Re
+         Znsvq0CyZVq3gnpIYMxfsKX9YCPKtFpul3uX34MsnV14rfyXv4wo1U7ka8vXGtIc8G
+         rnpYjhtna3JUbd8X/mrWO9TY6nQGbOQ+TAFAjh5c4HLk3Nuy1irDYo2kX6rwExqqGT
+         5RST1X6pNSLaBlPWXISRDsLQ3d2ywMaaVLs7LmQgnruagiNCK4CBwpsIBUq2+ung5F
+         hAxlIzuI6dobUW9yrQl/z5RKWQFzQJhVXBcofJynfAnwN7PA66H756AEG/OlU+pAMk
+         IVS1O/EpK9J4Q==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Cc:     Geert Jansen <gerardu@amazon.com>
-Subject: [PATCH v2 5/5] NFS: Fix open coded versions of nfs_set_cache_invalid() in NFSv4
-Date:   Mon,  8 Mar 2021 14:42:55 -0500
-Message-Id: <20210308194255.7873-5-trondmy@kernel.org>
+Subject: [PATCH v2 2/5] NFS: Don't gratuitously clear the inode cache when lookup failed
+Date:   Mon,  8 Mar 2021 14:42:52 -0500
+Message-Id: <20210308194255.7873-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20210308194255.7873-4-trondmy@kernel.org>
+In-Reply-To: <20210308194255.7873-1-trondmy@kernel.org>
 References: <20210308194255.7873-1-trondmy@kernel.org>
- <20210308194255.7873-2-trondmy@kernel.org>
- <20210308194255.7873-3-trondmy@kernel.org>
- <20210308194255.7873-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -51,130 +48,46 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-nfs_set_cache_invalid() has code to handle delegations, and other
-optimisations, so let's use it when appropriate.
+The fact that the lookup revalidation failed, does not mean that the
+inode contents have changed.
 
+Fixes: 5ceb9d7fdaaf ("NFS: Refactor nfs_lookup_revalidate()")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c     |  1 +
- fs/nfs/nfs42proc.c | 12 +++++++-----
- fs/nfs/nfs4proc.c  | 28 ++++++++++++----------------
- 3 files changed, 20 insertions(+), 21 deletions(-)
+ fs/nfs/dir.c | 20 ++++++++------------
+ 1 file changed, 8 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index eb1ae77f411a..a7fb076a5f44 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -229,6 +229,7 @@ void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
- 	if (flags & NFS_INO_INVALID_DATA)
- 		nfs_fscache_invalidate(inode);
- }
-+EXPORT_SYMBOL_GPL(nfs_set_cache_invalid);
- 
- /*
-  * Invalidate the local caches
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index f3fd935620fc..094024b0aca1 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -357,13 +357,15 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 	truncate_pagecache_range(dst_inode, pos_dst,
- 				 pos_dst + res->write_res.count);
- 	spin_lock(&dst_inode->i_lock);
--	NFS_I(dst_inode)->cache_validity |= (NFS_INO_REVAL_PAGECACHE |
--			NFS_INO_REVAL_FORCED | NFS_INO_INVALID_SIZE |
--			NFS_INO_INVALID_ATTR | NFS_INO_INVALID_DATA);
-+	nfs_set_cache_invalid(
-+		dst_inode, NFS_INO_REVAL_PAGECACHE | NFS_INO_REVAL_FORCED |
-+				   NFS_INO_INVALID_SIZE | NFS_INO_INVALID_ATTR |
-+				   NFS_INO_INVALID_DATA);
- 	spin_unlock(&dst_inode->i_lock);
- 	spin_lock(&src_inode->i_lock);
--	NFS_I(src_inode)->cache_validity |= (NFS_INO_REVAL_PAGECACHE |
--			NFS_INO_REVAL_FORCED | NFS_INO_INVALID_ATIME);
-+	nfs_set_cache_invalid(src_inode, NFS_INO_REVAL_PAGECACHE |
-+						 NFS_INO_REVAL_FORCED |
-+						 NFS_INO_INVALID_ATIME);
- 	spin_unlock(&src_inode->i_lock);
- 	status = res->write_res.count;
- out:
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2c8fdb911361..39d9552b7495 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1169,14 +1169,14 @@ int nfs4_call_sync(struct rpc_clnt *clnt,
- static void
- nfs4_inc_nlink_locked(struct inode *inode)
- {
--	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_OTHER;
-+	nfs_set_cache_invalid(inode, NFS_INO_INVALID_OTHER);
- 	inc_nlink(inode);
- }
- 
- static void
- nfs4_dec_nlink_locked(struct inode *inode)
- {
--	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_OTHER;
-+	nfs_set_cache_invalid(inode, NFS_INO_INVALID_OTHER);
- 	drop_nlink(inode);
- }
- 
-@@ -1187,35 +1187,31 @@ nfs4_update_changeattr_locked(struct inode *inode,
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 
--	nfsi->cache_validity |= NFS_INO_INVALID_CTIME
--		| NFS_INO_INVALID_MTIME
--		| cache_validity;
-+	cache_validity |= NFS_INO_INVALID_CTIME | NFS_INO_INVALID_MTIME;
- 
- 	if (cinfo->atomic && cinfo->before == inode_peek_iversion_raw(inode)) {
- 		nfsi->cache_validity &= ~NFS_INO_REVAL_PAGECACHE;
- 		nfsi->attrtimeo_timestamp = jiffies;
- 	} else {
- 		if (S_ISDIR(inode->i_mode)) {
--			nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+			cache_validity |= NFS_INO_INVALID_DATA;
- 			nfs_force_lookup_revalidate(inode);
- 		} else {
- 			if (!NFS_PROTO(inode)->have_delegation(inode,
- 							       FMODE_READ))
--				nfsi->cache_validity |= NFS_INO_REVAL_PAGECACHE;
-+				cache_validity |= NFS_INO_REVAL_PAGECACHE;
- 		}
- 
- 		if (cinfo->before != inode_peek_iversion_raw(inode))
--			nfsi->cache_validity |= NFS_INO_INVALID_ACCESS |
--						NFS_INO_INVALID_ACL |
--						NFS_INO_INVALID_XATTR;
-+			cache_validity |= NFS_INO_INVALID_ACCESS |
-+					  NFS_INO_INVALID_ACL |
-+					  NFS_INO_INVALID_XATTR;
- 	}
- 	inode_set_iversion_raw(inode, cinfo->after);
- 	nfsi->read_cache_jiffies = timestamp;
- 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
-+	nfs_set_cache_invalid(inode, cache_validity);
- 	nfsi->cache_validity &= ~NFS_INO_INVALID_CHANGE;
--
--	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
--		nfs_fscache_invalidate(inode);
- }
- 
- void
-@@ -5915,9 +5911,9 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	 * so mark the attribute cache invalid.
- 	 */
- 	spin_lock(&inode->i_lock);
--	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_CHANGE
--		| NFS_INO_INVALID_CTIME
--		| NFS_INO_REVAL_FORCED;
-+	nfs_set_cache_invalid(inode, NFS_INO_INVALID_CHANGE |
-+					     NFS_INO_INVALID_CTIME |
-+					     NFS_INO_REVAL_FORCED);
- 	spin_unlock(&inode->i_lock);
- 	nfs_access_zap_cache(inode);
- 	nfs_zap_acl_cache(inode);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 08b162de627f..a91f324cca49 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1444,18 +1444,14 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
+ 			__func__, dentry);
+ 		return 1;
+ 	case 0:
+-		if (inode && S_ISDIR(inode->i_mode)) {
+-			/* Purge readdir caches. */
+-			nfs_zap_caches(inode);
+-			/*
+-			 * We can't d_drop the root of a disconnected tree:
+-			 * its d_hash is on the s_anon list and d_drop() would hide
+-			 * it from shrink_dcache_for_unmount(), leading to busy
+-			 * inodes on unmount and further oopses.
+-			 */
+-			if (IS_ROOT(dentry))
+-				return 1;
+-		}
++		/*
++		 * We can't d_drop the root of a disconnected tree:
++		 * its d_hash is on the s_anon list and d_drop() would hide
++		 * it from shrink_dcache_for_unmount(), leading to busy
++		 * inodes on unmount and further oopses.
++		 */
++		if (inode && IS_ROOT(dentry))
++			return 1;
+ 		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is invalid\n",
+ 				__func__, dentry);
+ 		return 0;
 -- 
 2.29.2
 
