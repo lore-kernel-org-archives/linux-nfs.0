@@ -2,27 +2,27 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-21.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F5A0C4332D
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 10:47:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E4AB6C433E6
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 10:47:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 55FE864FE7
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 10:47:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ADBB864F7F
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 10:47:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232244AbhCJKqm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Mar 2021 05:46:42 -0500
-Received: from outbound-smtp15.blacknight.com ([46.22.139.232]:55851 "EHLO
-        outbound-smtp15.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232459AbhCJKqY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 05:46:24 -0500
+        id S231987AbhCJKql (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Mar 2021 05:46:41 -0500
+Received: from outbound-smtp55.blacknight.com ([46.22.136.239]:38775 "EHLO
+        outbound-smtp55.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232349AbhCJKqV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 05:46:21 -0500
 Received: from mail.blacknight.com (pemlinmail04.blacknight.ie [81.17.254.17])
-        by outbound-smtp15.blacknight.com (Postfix) with ESMTPS id ED0191C3E24
+        by outbound-smtp55.blacknight.com (Postfix) with ESMTPS id A61C8FA888
         for <linux-nfs@vger.kernel.org>; Wed, 10 Mar 2021 10:46:19 +0000 (GMT)
-Received: (qmail 23960 invoked from network); 10 Mar 2021 10:46:19 -0000
+Received: (qmail 23890 invoked from network); 10 Mar 2021 10:46:19 -0000
 Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
   by 81.17.254.9 with ESMTPA; 10 Mar 2021 10:46:19 -0000
 From:   Mel Gorman <mgorman@techsingularity.net>
@@ -35,9 +35,9 @@ Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Linux-MM <linux-mm@kvack.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 5/5] net: page_pool: use alloc_pages_bulk in refill code path
-Date:   Wed, 10 Mar 2021 10:46:18 +0000
-Message-Id: <20210310104618.22750-6-mgorman@techsingularity.net>
+Subject: [PATCH 3/5] SUNRPC: Refresh rq_pages using a bulk page allocator
+Date:   Wed, 10 Mar 2021 10:46:16 +0000
+Message-Id: <20210310104618.22750-4-mgorman@techsingularity.net>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210310104618.22750-1-mgorman@techsingularity.net>
 References: <20210310104618.22750-1-mgorman@techsingularity.net>
@@ -47,120 +47,92 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 
-There are cases where the page_pool need to refill with pages from the
-page allocator. Some workloads cause the page_pool to release pages
-instead of recycling these pages.
+Reduce the rate at which nfsd threads hammer on the page allocator.
+This improve throughput scalability by enabling the threads to run
+more independently of each other.
 
-For these workload it can improve performance to bulk alloc pages from
-the page-allocator to refill the alloc cache.
-
-For XDP-redirect workload with 100G mlx5 driver (that use page_pool)
-redirecting xdp_frame packets into a veth, that does XDP_PASS to create
-an SKB from the xdp_frame, which then cannot return the page to the
-page_pool. In this case, we saw[1] an improvement of 18.8% from using
-the alloc_pages_bulk API (3,677,958 pps -> 4,368,926 pps).
-
-[1] https://github.com/xdp-project/xdp-project/blob/master/areas/mem/page_pool06_alloc_pages_bulk.org
-
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
-Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
 ---
- net/core/page_pool.c | 65 ++++++++++++++++++++++++++++----------------
- 1 file changed, 41 insertions(+), 24 deletions(-)
+ net/sunrpc/svc_xprt.c | 43 +++++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 12 deletions(-)
 
-diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index 40e1b2beaa6c..ec51bd9454e2 100644
---- a/net/core/page_pool.c
-+++ b/net/core/page_pool.c
-@@ -208,44 +208,61 @@ noinline
- static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
- 						 gfp_t _gfp)
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index cfa7e4776d0e..38a8d6283801 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -642,11 +642,12 @@ static void svc_check_conn_limits(struct svc_serv *serv)
+ static int svc_alloc_arg(struct svc_rqst *rqstp)
  {
-+	const int bulk = PP_ALLOC_CACHE_REFILL;
-+	struct page *page, *next, *first_page;
- 	unsigned int pp_flags = pool->p.flags;
--	struct page *page;
-+	unsigned int pp_order = pool->p.order;
-+	int pp_nid = pool->p.nid;
-+	LIST_HEAD(page_list);
- 	gfp_t gfp = _gfp;
+ 	struct svc_serv *serv = rqstp->rq_server;
++	unsigned long needed;
+ 	struct xdr_buf *arg;
++	struct page *page;
+ 	int pages;
+ 	int i;
  
--	/* We could always set __GFP_COMP, and avoid this branch, as
--	 * prep_new_page() can handle order-0 with __GFP_COMP.
--	 */
--	if (pool->p.order)
-+	/* Don't support bulk alloc for high-order pages */
-+	if (unlikely(pp_order)) {
- 		gfp |= __GFP_COMP;
-+		first_page = alloc_pages_node(pp_nid, gfp, pp_order);
-+		if (unlikely(!first_page))
-+			return NULL;
-+		goto out;
-+	}
- 
--	/* FUTURE development:
--	 *
--	 * Current slow-path essentially falls back to single page
--	 * allocations, which doesn't improve performance.  This code
--	 * need bulk allocation support from the page allocator code.
--	 */
--
--	/* Cache was empty, do real allocation */
--#ifdef CONFIG_NUMA
--	page = alloc_pages_node(pool->p.nid, gfp, pool->p.order);
--#else
--	page = alloc_pages(gfp, pool->p.order);
--#endif
--	if (!page)
-+	if (unlikely(!__alloc_pages_bulk_nodemask(gfp, pp_nid, NULL,
-+						  bulk, &page_list)))
- 		return NULL;
- 
--	if ((pp_flags & PP_FLAG_DMA_MAP) &&
--	    unlikely(!page_pool_dma_map(pool, page))) {
--		put_page(page);
-+	/* First page is extracted and returned to caller */
-+	first_page = list_first_entry(&page_list, struct page, lru);
-+	list_del(&first_page->lru);
-+
-+	/* Remaining pages store in alloc.cache */
-+	list_for_each_entry_safe(page, next, &page_list, lru) {
-+		list_del(&page->lru);
-+		if ((pp_flags & PP_FLAG_DMA_MAP) &&
-+		    unlikely(!page_pool_dma_map(pool, page))) {
-+			put_page(page);
-+			continue;
-+		}
-+		if (likely(pool->alloc.count < PP_ALLOC_CACHE_SIZE)) {
-+			pool->alloc.cache[pool->alloc.count++] = page;
-+			pool->pages_state_hold_cnt++;
-+			trace_page_pool_state_hold(pool, page,
-+						   pool->pages_state_hold_cnt);
-+		} else {
-+			put_page(page);
-+		}
-+	}
-+out:
-+	if (pp_flags & PP_FLAG_DMA_MAP &&
-+	    unlikely(!page_pool_dma_map(pool, first_page))) {
-+		put_page(first_page);
- 		return NULL;
+-	/* now allocate needed pages.  If we get a failure, sleep briefly */
+ 	pages = (serv->sv_max_mesg + 2 * PAGE_SIZE) >> PAGE_SHIFT;
+ 	if (pages > RPCSVC_MAXPAGES) {
+ 		pr_warn_once("svc: warning: pages=%u > RPCSVC_MAXPAGES=%lu\n",
+@@ -654,19 +655,28 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 		/* use as many pages as possible */
+ 		pages = RPCSVC_MAXPAGES;
  	}
+-	for (i = 0; i < pages ; i++)
+-		while (rqstp->rq_pages[i] == NULL) {
+-			struct page *p = alloc_page(GFP_KERNEL);
+-			if (!p) {
+-				set_current_state(TASK_INTERRUPTIBLE);
+-				if (signalled() || kthread_should_stop()) {
+-					set_current_state(TASK_RUNNING);
+-					return -EINTR;
+-				}
+-				schedule_timeout(msecs_to_jiffies(500));
++
++	for (needed = 0, i = 0; i < pages ; i++)
++		if (!rqstp->rq_pages[i])
++			needed++;
++	if (needed) {
++		LIST_HEAD(list);
++
++retry:
++		alloc_pages_bulk(GFP_KERNEL, needed, &list);
++		for (i = 0; i < pages; i++) {
++			if (!rqstp->rq_pages[i]) {
++				page = list_first_entry_or_null(&list,
++								struct page,
++								lru);
++				if (unlikely(!page))
++					goto empty_list;
++				list_del(&page->lru);
++				rqstp->rq_pages[i] = page;
++				needed--;
+ 			}
+-			rqstp->rq_pages[i] = p;
+ 		}
++	}
+ 	rqstp->rq_page_end = &rqstp->rq_pages[pages];
+ 	rqstp->rq_pages[pages] = NULL; /* this might be seen in nfsd_splice_actor() */
  
- 	/* Track how many pages are held 'in-flight' */
- 	pool->pages_state_hold_cnt++;
--	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
-+	trace_page_pool_state_hold(pool, first_page, pool->pages_state_hold_cnt);
- 
- 	/* When page just alloc'ed is should/must have refcnt 1. */
--	return page;
-+	return first_page;
+@@ -681,6 +691,15 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 	arg->len = (pages-1)*PAGE_SIZE;
+ 	arg->tail[0].iov_len = 0;
+ 	return 0;
++
++empty_list:
++	set_current_state(TASK_INTERRUPTIBLE);
++	if (signalled() || kthread_should_stop()) {
++		set_current_state(TASK_RUNNING);
++		return -EINTR;
++	}
++	schedule_timeout(msecs_to_jiffies(500));
++	goto retry;
  }
  
- /* For using page_pool replace: alloc_pages() API calls, but provide
+ static bool
 -- 
 2.26.2
 
