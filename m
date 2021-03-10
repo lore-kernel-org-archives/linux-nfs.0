@@ -2,165 +2,172 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-16.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0DA0C433E9
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 11:40:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F96CC433E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 14:47:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5D55364FFB
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 11:40:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F121164EF9
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 14:47:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230260AbhCJLkM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Mar 2021 06:40:12 -0500
-Received: from outbound-smtp62.blacknight.com ([46.22.136.251]:60897 "EHLO
-        outbound-smtp62.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231187AbhCJLjL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 06:39:11 -0500
-Received: from mail.blacknight.com (pemlinmail05.blacknight.ie [81.17.254.26])
-        by outbound-smtp62.blacknight.com (Postfix) with ESMTPS id DD4FEFA899
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Mar 2021 11:38:37 +0000 (GMT)
-Received: (qmail 6934 invoked from network); 10 Mar 2021 11:38:37 -0000
-Received: from unknown (HELO techsingularity.net) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPSA (AES256-SHA encrypted, authenticated); 10 Mar 2021 11:38:37 -0000
-Date:   Wed, 10 Mar 2021 11:38:36 +0000
-From:   Mel Gorman <mgorman@techsingularity.net>
-To:     Shay Agroskin <shayagr@amazon.com>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jesper Dangaard Brouer <brouer@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux-Net <netdev@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/5] mm/page_alloc: Add a bulk page allocator
-Message-ID: <20210310113836.GQ3697@techsingularity.net>
-References: <20210301161200.18852-1-mgorman@techsingularity.net>
- <20210301161200.18852-3-mgorman@techsingularity.net>
- <pj41zl7dmfnuby.fsf@u570694869fb251.ant.amazon.com>
+        id S231867AbhCJOrX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Mar 2021 09:47:23 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:57945 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S230504AbhCJOrW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 09:47:22 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1615387642;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=1yse06IDXDdTdrFItsyDXeTzizLR4KmSFj4+ybwtom4=;
+        b=Dg4gktJhHMJi2AhJRbJ5aYPv3hO2SttFMp0Jn9HxyztalitZT4xp7XryZlfkU0/zr6PUX1
+        14sV+q1EGC/l4YBwVtFR7TXQqiHKyVt68kShOJCs9ifiu7kaxed8VPjsOHcnRd/uSiCM+y
+        27izNkdnTVyGvwC0/CPpCEhHN7Oftcs=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-25-Qdev7vN6MmSJvbDkV9z7mg-1; Wed, 10 Mar 2021 09:47:20 -0500
+X-MC-Unique: Qdev7vN6MmSJvbDkV9z7mg-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D352284BA59;
+        Wed, 10 Mar 2021 14:47:18 +0000 (UTC)
+Received: from pick.fieldses.org (ovpn-114-124.rdu2.redhat.com [10.10.114.124])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 676D95B6A8;
+        Wed, 10 Mar 2021 14:47:18 +0000 (UTC)
+Received: by pick.fieldses.org (Postfix, from userid 2815)
+        id 9D6A6120769; Wed, 10 Mar 2021 09:47:17 -0500 (EST)
+Date:   Wed, 10 Mar 2021 09:47:17 -0500
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/1] NFSD: fix error handling in callbacks
+Message-ID: <YEjb9ZadFqa9Vu9O@pick.fieldses.org>
+References: <20210309144127.57833-1-olga.kornievskaia@gmail.com>
+ <YEeWK+gs4c8O7k0u@pick.fieldses.org>
+ <4ca27c770577376b0a39f0cfcfb529b96d6d5aae.camel@hammerspace.com>
+ <CAN-5tyFttTHRdnELORJwCER_KPGBNk4W3eLwG0Z=QkwmPQh1UQ@mail.gmail.com>
+ <d205a6a77273534666b3c33065934b9f66e7b103.camel@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-In-Reply-To: <pj41zl7dmfnuby.fsf@u570694869fb251.ant.amazon.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <d205a6a77273534666b3c33065934b9f66e7b103.camel@hammerspace.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 10, 2021 at 01:04:17PM +0200, Shay Agroskin wrote:
+On Tue, Mar 09, 2021 at 08:59:51PM +0000, Trond Myklebust wrote:
+> On Tue, 2021-03-09 at 15:41 -0500, Olga Kornievskaia wrote:
+> > On Tue, Mar 9, 2021 at 3:22 PM Trond Myklebust <
+> > trondmy@hammerspace.com> wrote:
+> > > 
+> > > On Tue, 2021-03-09 at 10:37 -0500, J. Bruce Fields wrote:
+> > > > On Tue, Mar 09, 2021 at 09:41:27AM -0500, Olga Kornievskaia
+> > > > wrote:
+> > > > > From: Olga Kornievskaia <kolga@netapp.com>
+> > > > > 
+> > > > > When the server tries to do a callback and a client fails it
+> > > > > due to
+> > > > > authentication problems, we need the server to set callback
+> > > > > down
+> > > > > flag in RENEW so that client can recover.
+> > > > 
+> > > > I was looking at this.  It looks to me like this should really be
+> > > > just:
+> > > > 
+> > > >         case 1:
+> > > >                 if (task->tk_status)
+> > > >                         nfsd4_mark_cb_down(clp, task->tk_status);
+> > > > 
+> > > > If tk_status showed an error, and the ->done method doesn't
+> > > > return 0
+> > > > to
+> > > > tell us it something worth retrying, then the callback failed
+> > > > permanently, so we should mark the callback path down, regardless
+> > > > of
+> > > > the
+> > > > exact error.
+> > > 
+> > > I disagree. task->tk_status could be an unhandled NFSv4 error (see
+> > > nfsd4_cb_recall_done()). The client might, for instance, be in the
+> > > process of returning the delegation being recalled. Why should that
+> > > result in the callback channel being marked as down?
+> > > 
+> > 
+> > Are you talking about say the connection going down and server should
+> > just reconnect instead of recovering the callback channel. I assumed
+> > that connection break is something that's not  recoverable by the
+> > callback but perhaps I'm wrong.
 > 
-> Mel Gorman <mgorman@techsingularity.net> writes:
+> No. I'm saying that nfsd4_cb_recall_done() will return a value of '1'
+> for both task->tk_status == -EBADHANDLE and -NFS4ERR_BAD_STATEID. I'm
+> not seeing why either of those errors should be handled by marking the
+> callback channel as being down.
+> 
+> Looking further, it seems that the same function will also return '1'
+> without checking the value of task->tk_status if the delegation has
+> been revoked or returned. So that would mean that even NFS4ERR_DELAY
+> could trigger the call to nfsd4_mark_cb_down() with the above change.
+
+Yeah, OK, that's wrong, apologies.
+
+I'm just a little worried about the attempt to enumerate transport level
+errors in nfsd4_cb_done().  Are we sure that EIO, ETIMEDOUT, EACCESS is
+the right list?
+
+--b.
+
 > 
 > > 
-> > diff --git a/include/linux/gfp.h b/include/linux/gfp.h
-> > index 8572a1474e16..4903d1cc48dc 100644
-> > --- a/include/linux/gfp.h
-> > +++ b/include/linux/gfp.h
-> > @@ -515,6 +515,10 @@ static inline int arch_make_page_accessible(struct
-> > page *page)
-> >  }
-> >  #endif
-> >   +int __alloc_pages_bulk_nodemask(gfp_t gfp_mask, int preferred_nid,
-> > +				nodemask_t *nodemask, int nr_pages,
-> > +				struct list_head *list);
-> > +
-> >  struct page *
-> >  __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int
-> > preferred_nid,
-> >  							nodemask_t  *nodemask);
-> > @@ -525,6 +529,14 @@ __alloc_pages(gfp_t gfp_mask, unsigned int order,
-> > int preferred_nid)
-> >  	return __alloc_pages_nodemask(gfp_mask, order,  preferred_nid, NULL);
-> >  }
-> > +/* Bulk allocate order-0 pages */
-> > +static inline unsigned long
-> > +alloc_pages_bulk(gfp_t gfp_mask, unsigned long nr_pages, struct
-> > list_head *list)
-> > +{
-> > +	return __alloc_pages_bulk_nodemask(gfp_mask, numa_mem_id(), NULL,
-> > +							nr_pages, list);
+> > > > 
+> > > > --b.
+> > > > 
+> > > > > 
+> > > > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> > > > > ---
+> > > > >  fs/nfsd/nfs4callback.c | 1 +
+> > > > >  1 file changed, 1 insertion(+)
+> > > > > 
+> > > > > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> > > > > index 052be5bf9ef5..7325592b456e 100644
+> > > > > --- a/fs/nfsd/nfs4callback.c
+> > > > > +++ b/fs/nfsd/nfs4callback.c
+> > > > > @@ -1189,6 +1189,7 @@ static void nfsd4_cb_done(struct rpc_task
+> > > > > *task, void *calldata)
+> > > > >                 switch (task->tk_status) {
+> > > > >                 case -EIO:
+> > > > >                 case -ETIMEDOUT:
+> > > > > +               case -EACCES:
+> > > > >                         nfsd4_mark_cb_down(clp, task-
+> > > > > >tk_status);
+> > > > >                 }
+> > > > >                 break;
+> > > > > --
+> > > > > 2.27.0
+> > > > > 
+> > > > 
+> > > 
+> > > --
+> > > Trond Myklebust
+> > > Linux NFS client maintainer, Hammerspace
+> > > trond.myklebust@hammerspace.com
+> > > 
+> > > 
 > 
-> Is the second line indentation intentional ? Why not align it to the first
-> argument (gfp_mask) ?
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
 > 
-
-No particular reason. I usually pick this as it's visually clearer to me
-that it's part of the same line when the multi-line is part of an if block.
-
-> > +}
-> > +
-> >  /*
-> >   * Allocate pages, preferring the node given as nid. The node   must be
-> > valid and
-> >   * online. For more general interface, see alloc_pages_node().
-> > @@ -594,6 +606,7 @@ void * __meminit alloc_pages_exact_nid(int nid,
-> > size_t size, gfp_t gfp_mask);
-> >    extern void __free_pages(struct page *page, unsigned int  order);
-> >  extern void free_pages(unsigned long addr, unsigned int order);
-> > +extern void free_pages_bulk(struct list_head *list);
-> >  struct page_frag_cache;
-> >  extern void __page_frag_cache_drain(struct page *page, unsigned  int
-> > count);
-> > diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-> > index 3e4b29ee2b1e..ff1e55793786 100644
-> > --- a/mm/page_alloc.c
-> > +++ b/mm/page_alloc.c
-> > @@ -4436,6 +4436,21 @@ static void wake_all_kswapds(unsigned int order,
-> > gfp_t gfp_mask,
-> >  	}
-> >  }
-> > ...
-> > +/*
-> > + * This is a batched version of the page allocator that attempts to
-> > + * allocate nr_pages quickly from the preferred zone and add them to
-> > list.
-> > + */
-> > +int __alloc_pages_bulk_nodemask(gfp_t gfp_mask, int preferred_nid,
-> > +			nodemask_t *nodemask, int nr_pages,
-> > +			struct list_head *alloc_list)
-> > +{
-> > +	struct page *page;
-> > +	unsigned long flags;
-> > +	struct zone *zone;
-> > +	struct zoneref *z;
-> > +	struct per_cpu_pages *pcp;
-> > +	struct list_head *pcp_list;
-> > +	struct alloc_context ac;
-> > +	gfp_t alloc_mask;
-> > +	unsigned int alloc_flags;
-> > +	int alloced = 0;
-> 
-> Does alloced count the number of allocated pages ?
-
-Yes.
-
-> Do you mind renaming it to 'allocated' ?
-
-I will if there is another version as I do not feel particularly strongly
-about alloced vs allocated. alloc was to match the function name and I
-don't think the change makes it much clearer.
-
-
-> > <SNIP>
-> > +	/* Attempt the batch allocation */
-> > +	local_irq_save(flags);
-> > +	pcp = &this_cpu_ptr(zone->pageset)->pcp;
-> > +	pcp_list = &pcp->lists[ac.migratetype];
-> > +
-> > +	while (alloced < nr_pages) {
-> > +		page = __rmqueue_pcplist(zone, ac.migratetype, alloc_flags,
-> > + pcp, pcp_list);
-> 
-> Same indentation comment as before
 > 
 
-Again, simple personal perference to avoid any possibility it's mixed
-up with a later line. There has not been consistent code styling
-enforcement of what indentation style should be used for a multi-line
-within mm/page_alloc.c
-
--- 
-Mel Gorman
-SUSE Labs
