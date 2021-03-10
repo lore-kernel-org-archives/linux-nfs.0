@@ -4,48 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C083C433E0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B0199C433E6
 	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 16:59:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6D6AE64FC7
+	by mail.kernel.org (Postfix) with ESMTP id 8316364FCD
 	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 16:59:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231263AbhCJQ7H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Mar 2021 11:59:07 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:36056 "EHLO
+        id S233411AbhCJQ7I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Mar 2021 11:59:08 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:55056 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233514AbhCJQ6g (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 11:58:36 -0500
+        by vger.kernel.org with ESMTP id S233513AbhCJQ7E (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 11:59:04 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1615395515;
+        s=mimecast20190719; t=1615395543;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=gPWltm5R5JyUJmPKgfMLd6XG8DedG8luCkEzn607pSE=;
-        b=OLDk6iOVHOjnEqzLYsQxCx+kNS5FYuYv4uTgT35qKTj6Nm5mnweufWoTmF23dOHBUNYSab
-        MRHbOMLQklbBFc+N+1bBEozIHcxMbjqjThzJ9qKeunFQaRT/XtTnRoSwRKhbEVKuChPbjn
-        wxGKhx4guo08QlLPyFQQgjHcgYSYAbg=
+        bh=IgML5J+3iCW02sw2/JrZqpg8EYlST+NuVTNG9PnWres=;
+        b=YnA8Jqezs7JXr2ENlmFkpBQp/86dUDDHCatJR/8A0WYBBLJ/21MFBYk5Qy/QYOp0ubHPZm
+        pkLg9BafSqFfulNsm76nmco79sg5uaoic1+LuwpjZOiPjXfyymgJLVQU/6nS8TnMCi5et8
+        sj4T9Qk0jfRloGIVlMdhtHV6YkqYXUk=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-60-RCwqnQW8NQOV-mp51v112g-1; Wed, 10 Mar 2021 11:58:33 -0500
-X-MC-Unique: RCwqnQW8NQOV-mp51v112g-1
+ us-mta-78-bSljcV4KPuKoG8O7vz6E4A-1; Wed, 10 Mar 2021 11:58:58 -0500
+X-MC-Unique: bSljcV4KPuKoG8O7vz6E4A-1
 Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 001701005D4F;
-        Wed, 10 Mar 2021 16:58:31 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9FFA31005D50;
+        Wed, 10 Mar 2021 16:58:56 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-118-152.rdu2.redhat.com [10.10.118.152])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 014405B6BF;
-        Wed, 10 Mar 2021 16:58:28 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A22755B6A8;
+        Wed, 10 Mar 2021 16:58:50 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH v4 18/28] afs: Move key to afs_read struct
+Subject: [PATCH v4 20/28] afs: Log remote unmarshalling errors
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -61,8 +61,8 @@ Cc:     linux-afs@lists.infradead.org, linux-cachefs@redhat.com,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Wed, 10 Mar 2021 16:58:28 +0000
-Message-ID: <161539550819.286939.1268332875889175195.stgit@warthog.procyon.org.uk>
+Date:   Wed, 10 Mar 2021 16:58:49 +0000
+Message-ID: <161539552964.286939.16503232687974398308.stgit@warthog.procyon.org.uk>
 In-Reply-To: <161539526152.286939.8589700175877370401.stgit@warthog.procyon.org.uk>
 References: <161539526152.286939.8589700175877370401.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
@@ -74,216 +74,74 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Stash the key used to authenticate read operations in the afs_read struct.
-This will be necessary to reissue the operation against the server if a
-read from the cache fails in upcoming cache changes.
+Log unmarshalling errors reported by the peer (ie. it can't parse what we
+sent it).  Limit the maximum number of messages to 3.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: linux-afs@lists.infradead.org
 cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
-Link: https://lore.kernel.org/r/158861248336.340223.1851189950710196001.stgit@warthog.procyon.org.uk/ # rfc
-Link: https://lore.kernel.org/r/159465823899.1377938.11925978022348532049.stgit@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/160588529557.3465195.7303323479305254243.stgit@warthog.procyon.org.uk/ # rfc
-Link: https://lore.kernel.org/r/161118147693.1232039.13780672951838643842.stgit@warthog.procyon.org.uk/ # rfc
-Link: https://lore.kernel.org/r/161161043340.2537118.511899217704140722.stgit@warthog.procyon.org.uk/ # v2
-Link: https://lore.kernel.org/r/161340406678.1303470.12676824086429446370.stgit@warthog.procyon.org.uk/ # v3
+Link: https://lore.kernel.org/r/159465826250.1377938.16372395422217583913.stgit@warthog.procyon.org.uk/
+Link: https://lore.kernel.org/r/160588532584.3465195.15618385466614028590.stgit@warthog.procyon.org.uk/ # rfc
+Link: https://lore.kernel.org/r/161118149739.1232039.208060911149801695.stgit@warthog.procyon.org.uk/ # rfc
+Link: https://lore.kernel.org/r/161161046033.2537118.7779717661044373273.stgit@warthog.procyon.org.uk/ # v2
+Link: https://lore.kernel.org/r/161340409118.1303470.17812607349396199116.stgit@warthog.procyon.org.uk/ # v3
 ---
 
- fs/afs/dir.c      |    3 ++-
- fs/afs/file.c     |   16 +++++++++-------
- fs/afs/internal.h |    3 ++-
- fs/afs/write.c    |   12 ++++++------
- 4 files changed, 19 insertions(+), 15 deletions(-)
+ fs/afs/rxrpc.c |   34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index 714fcca9af99..30c769efee26 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -242,6 +242,7 @@ static struct afs_read *afs_read_dir(struct afs_vnode *dvnode, struct key *key)
- 		return ERR_PTR(-ENOMEM);
- 
- 	refcount_set(&req->usage, 1);
-+	req->key = key_get(key);
- 	req->nr_pages = nr_pages;
- 	req->actual_len = i_size; /* May change */
- 	req->len = nr_pages * PAGE_SIZE; /* We can ask for more than there is */
-@@ -306,7 +307,7 @@ static struct afs_read *afs_read_dir(struct afs_vnode *dvnode, struct key *key)
- 
- 	if (!test_bit(AFS_VNODE_DIR_VALID, &dvnode->flags)) {
- 		trace_afs_reload_dir(dvnode);
--		ret = afs_fetch_data(dvnode, key, req);
-+		ret = afs_fetch_data(dvnode, req);
- 		if (ret < 0)
- 			goto error_unlock;
- 
-diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 21868bfc3a44..d23192b3b933 100644
---- a/fs/afs/file.c
-+++ b/fs/afs/file.c
-@@ -199,6 +199,7 @@ void afs_put_read(struct afs_read *req)
- 			if (req->pages != req->array)
- 				kfree(req->pages);
- 		}
-+		key_put(req->key);
- 		kfree(req);
- 	}
+diff --git a/fs/afs/rxrpc.c b/fs/afs/rxrpc.c
+index 0ec38b758f29..ae68576f822f 100644
+--- a/fs/afs/rxrpc.c
++++ b/fs/afs/rxrpc.c
+@@ -500,6 +500,39 @@ void afs_make_call(struct afs_addr_cursor *ac, struct afs_call *call, gfp_t gfp)
+ 	_leave(" = %d", ret);
  }
-@@ -229,7 +230,7 @@ static const struct afs_operation_ops afs_fetch_data_operation = {
+ 
++/*
++ * Log remote abort codes that indicate that we have a protocol disagreement
++ * with the server.
++ */
++static void afs_log_error(struct afs_call *call, s32 remote_abort)
++{
++	static int max = 0;
++	const char *msg;
++	int m;
++
++	switch (remote_abort) {
++	case RX_EOF:		 msg = "unexpected EOF";	break;
++	case RXGEN_CC_MARSHAL:	 msg = "client marshalling";	break;
++	case RXGEN_CC_UNMARSHAL: msg = "client unmarshalling";	break;
++	case RXGEN_SS_MARSHAL:	 msg = "server marshalling";	break;
++	case RXGEN_SS_UNMARSHAL: msg = "server unmarshalling";	break;
++	case RXGEN_DECODE:	 msg = "opcode decode";		break;
++	case RXGEN_SS_XDRFREE:	 msg = "server XDR cleanup";	break;
++	case RXGEN_CC_XDRFREE:	 msg = "client XDR cleanup";	break;
++	case -32:		 msg = "insufficient data";	break;
++	default:
++		return;
++	}
++
++	m = max;
++	if (m < 3) {
++		max = m + 1;
++		pr_notice("kAFS: Peer reported %s failure on %s [%pISp]\n",
++			  msg, call->type->name,
++			  &call->alist->addrs[call->addr_ix].transport);
++	}
++}
++
  /*
-  * Fetch file data from the volume.
+  * deliver messages to a call
   */
--int afs_fetch_data(struct afs_vnode *vnode, struct key *key, struct afs_read *req)
-+int afs_fetch_data(struct afs_vnode *vnode, struct afs_read *req)
- {
- 	struct afs_operation *op;
- 
-@@ -238,9 +239,9 @@ int afs_fetch_data(struct afs_vnode *vnode, struct key *key, struct afs_read *re
- 	       vnode->fid.vid,
- 	       vnode->fid.vnode,
- 	       vnode->fid.unique,
--	       key_serial(key));
-+	       key_serial(req->key));
- 
--	op = afs_alloc_operation(key, vnode->volume);
-+	op = afs_alloc_operation(req->key, vnode->volume);
- 	if (IS_ERR(op))
- 		return PTR_ERR(op);
- 
-@@ -279,6 +280,7 @@ int afs_page_filler(void *data, struct page *page)
- 	 * unmarshalling code will clear the unfilled space.
- 	 */
- 	refcount_set(&req->usage, 1);
-+	req->key = key_get(key);
- 	req->pos = (loff_t)page->index << PAGE_SHIFT;
- 	req->len = PAGE_SIZE;
- 	req->nr_pages = 1;
-@@ -288,7 +290,7 @@ int afs_page_filler(void *data, struct page *page)
- 
- 	/* read the contents of the file from the server into the
- 	 * page */
--	ret = afs_fetch_data(vnode, key, req);
-+	ret = afs_fetch_data(vnode, req);
- 	afs_put_read(req);
- 
- 	if (ret < 0) {
-@@ -373,7 +375,6 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
- 	struct afs_read *req;
- 	struct list_head *p;
- 	struct page *first, *page;
--	struct key *key = afs_file_key(file);
- 	pgoff_t index;
- 	int ret, n, i;
- 
-@@ -397,6 +398,7 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
- 
- 	refcount_set(&req->usage, 1);
- 	req->vnode = vnode;
-+	req->key = key_get(afs_file_key(file));
- 	req->page_done = afs_readpages_page_done;
- 	req->pos = first->index;
- 	req->pos <<= PAGE_SHIFT;
-@@ -426,11 +428,11 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
- 	} while (req->nr_pages < n);
- 
- 	if (req->nr_pages == 0) {
--		kfree(req);
-+		afs_put_read(req);
- 		return 0;
- 	}
- 
--	ret = afs_fetch_data(vnode, key, req);
-+	ret = afs_fetch_data(vnode, req);
- 	if (ret < 0)
- 		goto error;
- 
-diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index 180eae8134da..921e7d3b2cfa 100644
---- a/fs/afs/internal.h
-+++ b/fs/afs/internal.h
-@@ -204,6 +204,7 @@ struct afs_read {
- 	loff_t			actual_len;	/* How much we're actually getting */
- 	loff_t			remain;		/* Amount remaining */
- 	loff_t			file_size;	/* File size returned by server */
-+	struct key		*key;		/* The key to use to reissue the read */
- 	afs_dataversion_t	data_version;	/* Version number returned by server */
- 	refcount_t		usage;
- 	unsigned int		index;		/* Which page we're reading into */
-@@ -1045,7 +1046,7 @@ extern int afs_cache_wb_key(struct afs_vnode *, struct afs_file *);
- extern void afs_put_wb_key(struct afs_wb_key *);
- extern int afs_open(struct inode *, struct file *);
- extern int afs_release(struct inode *, struct file *);
--extern int afs_fetch_data(struct afs_vnode *, struct key *, struct afs_read *);
-+extern int afs_fetch_data(struct afs_vnode *, struct afs_read *);
- extern int afs_page_filler(void *, struct page *);
- extern void afs_put_read(struct afs_read *);
- 
-diff --git a/fs/afs/write.c b/fs/afs/write.c
-index 9d0cef35ecba..7eba0d3201ba 100644
---- a/fs/afs/write.c
-+++ b/fs/afs/write.c
-@@ -25,9 +25,10 @@ int afs_set_page_dirty(struct page *page)
- /*
-  * partly or wholly fill a page that's under preparation for writing
-  */
--static int afs_fill_page(struct afs_vnode *vnode, struct key *key,
-+static int afs_fill_page(struct file *file,
- 			 loff_t pos, unsigned int len, struct page *page)
- {
-+	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
- 	struct afs_read *req;
- 	size_t p;
- 	void *data;
-@@ -49,6 +50,7 @@ static int afs_fill_page(struct afs_vnode *vnode, struct key *key,
- 		return -ENOMEM;
- 
- 	refcount_set(&req->usage, 1);
-+	req->key = key_get(afs_file_key(file));
- 	req->pos = pos;
- 	req->len = len;
- 	req->nr_pages = 1;
-@@ -56,7 +58,7 @@ static int afs_fill_page(struct afs_vnode *vnode, struct key *key,
- 	req->pages[0] = page;
- 	get_page(page);
- 
--	ret = afs_fetch_data(vnode, key, req);
-+	ret = afs_fetch_data(vnode, req);
- 	afs_put_read(req);
- 	if (ret < 0) {
- 		if (ret == -ENOENT) {
-@@ -80,7 +82,6 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
- {
- 	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
- 	struct page *page;
--	struct key *key = afs_file_key(file);
- 	unsigned long priv;
- 	unsigned f, from = pos & (PAGE_SIZE - 1);
- 	unsigned t, to = from + len;
-@@ -95,7 +96,7 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
- 		return -ENOMEM;
- 
- 	if (!PageUptodate(page) && len != PAGE_SIZE) {
--		ret = afs_fill_page(vnode, key, pos & PAGE_MASK, PAGE_SIZE, page);
-+		ret = afs_fill_page(file, pos & PAGE_MASK, PAGE_SIZE, page);
- 		if (ret < 0) {
- 			unlock_page(page);
- 			put_page(page);
-@@ -163,7 +164,6 @@ int afs_write_end(struct file *file, struct address_space *mapping,
- 		  struct page *page, void *fsdata)
- {
- 	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
--	struct key *key = afs_file_key(file);
- 	unsigned long priv;
- 	unsigned int f, from = pos & (PAGE_SIZE - 1);
- 	unsigned int t, to = from + copied;
-@@ -193,7 +193,7 @@ int afs_write_end(struct file *file, struct address_space *mapping,
- 			 * unmarshalling routine will take care of clearing any
- 			 * bits that are beyond the EOF.
- 			 */
--			ret = afs_fill_page(vnode, key, pos + copied,
-+			ret = afs_fill_page(file, pos + copied,
- 					    len - copied, page);
- 			if (ret < 0)
- 				goto out;
+@@ -563,6 +596,7 @@ static void afs_deliver_to_call(struct afs_call *call)
+ 			goto out;
+ 		case -ECONNABORTED:
+ 			ASSERTCMP(state, ==, AFS_CALL_COMPLETE);
++			afs_log_error(call, call->abort_code);
+ 			goto done;
+ 		case -ENOTSUPP:
+ 			abort_code = RXGEN_OPCODE;
 
 
