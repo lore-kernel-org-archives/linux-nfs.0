@@ -4,25 +4,25 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F496C4361A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2247C4361B
 	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 10:47:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4B1CC64F7F
+	by mail.kernel.org (Postfix) with ESMTP id 8994364F7F
 	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 10:47:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232557AbhCJKqm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Mar 2021 05:46:42 -0500
-Received: from outbound-smtp29.blacknight.com ([81.17.249.32]:49622 "EHLO
-        outbound-smtp29.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232438AbhCJKqV (ORCPT
+        id S232049AbhCJKqk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Mar 2021 05:46:40 -0500
+Received: from outbound-smtp02.blacknight.com ([81.17.249.8]:45950 "EHLO
+        outbound-smtp02.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232261AbhCJKqV (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 05:46:21 -0500
 Received: from mail.blacknight.com (pemlinmail04.blacknight.ie [81.17.254.17])
-        by outbound-smtp29.blacknight.com (Postfix) with ESMTPS id C8D36BECAE
+        by outbound-smtp02.blacknight.com (Postfix) with ESMTPS id 825CABAC89
         for <linux-nfs@vger.kernel.org>; Wed, 10 Mar 2021 10:46:19 +0000 (GMT)
-Received: (qmail 23916 invoked from network); 10 Mar 2021 10:46:19 -0000
+Received: (qmail 23816 invoked from network); 10 Mar 2021 10:46:19 -0000
 Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
   by 81.17.254.9 with ESMTPA; 10 Mar 2021 10:46:19 -0000
 From:   Mel Gorman <mgorman@techsingularity.net>
@@ -35,9 +35,9 @@ Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Linux-MM <linux-mm@kvack.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 4/5] net: page_pool: refactor dma_map into own function page_pool_dma_map
-Date:   Wed, 10 Mar 2021 10:46:17 +0000
-Message-Id: <20210310104618.22750-5-mgorman@techsingularity.net>
+Subject: [PATCH 2/5] mm/page_alloc: Add a bulk page allocator
+Date:   Wed, 10 Mar 2021 10:46:15 +0000
+Message-Id: <20210310104618.22750-3-mgorman@techsingularity.net>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210310104618.22750-1-mgorman@techsingularity.net>
 References: <20210310104618.22750-1-mgorman@techsingularity.net>
@@ -47,96 +47,211 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+This patch adds a new page allocator interface via alloc_pages_bulk,
+and __alloc_pages_bulk_nodemask. A caller requests a number of pages
+to be allocated and added to a list. They can be freed in bulk using
+free_pages_bulk().
 
-In preparation for next patch, move the dma mapping into its own
-function, as this will make it easier to follow the changes.
+The API is not guaranteed to return the requested number of pages and
+may fail if the preferred allocation zone has limited free memory, the
+cpuset changes during the allocation or page debugging decides to fail
+an allocation. It's up to the caller to request more pages in batch
+if necessary.
 
-V2: make page_pool_dma_map return boolean (Ilias)
+Note that this implementation is not very efficient and could be improved
+but it would require refactoring. The intent is to make it available early
+to determine what semantics are required by different callers. Once the
+full semantics are nailed down, it can be refactored.
 
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
-Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
 ---
- net/core/page_pool.c | 45 +++++++++++++++++++++++++-------------------
- 1 file changed, 26 insertions(+), 19 deletions(-)
+ include/linux/gfp.h |  13 +++++
+ mm/page_alloc.c     | 113 +++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 124 insertions(+), 2 deletions(-)
 
-diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index ad8b0707af04..40e1b2beaa6c 100644
---- a/net/core/page_pool.c
-+++ b/net/core/page_pool.c
-@@ -180,14 +180,37 @@ static void page_pool_dma_sync_for_device(struct page_pool *pool,
- 					 pool->p.dma_dir);
+diff --git a/include/linux/gfp.h b/include/linux/gfp.h
+index 8572a1474e16..4903d1cc48dc 100644
+--- a/include/linux/gfp.h
++++ b/include/linux/gfp.h
+@@ -515,6 +515,10 @@ static inline int arch_make_page_accessible(struct page *page)
+ }
+ #endif
+ 
++int __alloc_pages_bulk_nodemask(gfp_t gfp_mask, int preferred_nid,
++				nodemask_t *nodemask, int nr_pages,
++				struct list_head *list);
++
+ struct page *
+ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
+ 							nodemask_t *nodemask);
+@@ -525,6 +529,14 @@ __alloc_pages(gfp_t gfp_mask, unsigned int order, int preferred_nid)
+ 	return __alloc_pages_nodemask(gfp_mask, order, preferred_nid, NULL);
  }
  
-+static bool page_pool_dma_map(struct page_pool *pool, struct page *page)
++/* Bulk allocate order-0 pages */
++static inline unsigned long
++alloc_pages_bulk(gfp_t gfp_mask, unsigned long nr_pages, struct list_head *list)
 +{
-+	dma_addr_t dma;
-+
-+	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
-+	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
-+	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
-+	 * This mapping is kept for lifetime of page, until leaving pool.
-+	 */
-+	dma = dma_map_page_attrs(pool->p.dev, page, 0,
-+				 (PAGE_SIZE << pool->p.order),
-+				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
-+	if (dma_mapping_error(pool->p.dev, dma))
-+		return false;
-+
-+	page->dma_addr = dma;
-+
-+	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
-+		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
-+
-+	return true;
++	return __alloc_pages_bulk_nodemask(gfp_mask, numa_mem_id(), NULL,
++							nr_pages, list);
 +}
 +
- /* slow path */
- noinline
- static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
- 						 gfp_t _gfp)
+ /*
+  * Allocate pages, preferring the node given as nid. The node must be valid and
+  * online. For more general interface, see alloc_pages_node().
+@@ -594,6 +606,7 @@ void * __meminit alloc_pages_exact_nid(int nid, size_t size, gfp_t gfp_mask);
+ 
+ extern void __free_pages(struct page *page, unsigned int order);
+ extern void free_pages(unsigned long addr, unsigned int order);
++extern void free_pages_bulk(struct list_head *list);
+ 
+ struct page_frag_cache;
+ extern void __page_frag_cache_drain(struct page *page, unsigned int count);
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 3e4b29ee2b1e..ff1e55793786 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -4436,6 +4436,21 @@ static void wake_all_kswapds(unsigned int order, gfp_t gfp_mask,
+ 	}
+ }
+ 
++/* Drop reference counts and free order-0 pages from a list. */
++void free_pages_bulk(struct list_head *list)
++{
++	struct page *page, *next;
++
++	list_for_each_entry_safe(page, next, list, lru) {
++		trace_mm_page_free_batched(page);
++		if (put_page_testzero(page)) {
++			list_del(&page->lru);
++			__free_pages_ok(page, 0, FPI_NONE);
++		}
++	}
++}
++EXPORT_SYMBOL_GPL(free_pages_bulk);
++
+ static inline unsigned int
+ gfp_to_alloc_flags(gfp_t gfp_mask)
  {
-+	unsigned int pp_flags = pool->p.flags;
- 	struct page *page;
- 	gfp_t gfp = _gfp;
--	dma_addr_t dma;
+@@ -4919,6 +4934,9 @@ static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
+ 		struct alloc_context *ac, gfp_t *alloc_mask,
+ 		unsigned int *alloc_flags)
+ {
++	gfp_mask &= gfp_allowed_mask;
++	*alloc_mask = gfp_mask;
++
+ 	ac->highest_zoneidx = gfp_zone(gfp_mask);
+ 	ac->zonelist = node_zonelist(preferred_nid, gfp_mask);
+ 	ac->nodemask = nodemask;
+@@ -4960,6 +4978,99 @@ static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
+ 	return true;
+ }
  
- 	/* We could always set __GFP_COMP, and avoid this branch, as
- 	 * prep_new_page() can handle order-0 with __GFP_COMP.
-@@ -211,30 +234,14 @@ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
- 	if (!page)
- 		return NULL;
- 
--	if (!(pool->p.flags & PP_FLAG_DMA_MAP))
--		goto skip_dma_map;
--
--	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
--	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
--	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
--	 * This mapping is kept for lifetime of page, until leaving pool.
--	 */
--	dma = dma_map_page_attrs(pool->p.dev, page, 0,
--				 (PAGE_SIZE << pool->p.order),
--				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
--	if (dma_mapping_error(pool->p.dev, dma)) {
-+	if ((pp_flags & PP_FLAG_DMA_MAP) &&
-+	    unlikely(!page_pool_dma_map(pool, page))) {
- 		put_page(page);
++/*
++ * This is a batched version of the page allocator that attempts to
++ * allocate nr_pages quickly from the preferred zone and add them to list.
++ */
++int __alloc_pages_bulk_nodemask(gfp_t gfp_mask, int preferred_nid,
++			nodemask_t *nodemask, int nr_pages,
++			struct list_head *alloc_list)
++{
++	struct page *page;
++	unsigned long flags;
++	struct zone *zone;
++	struct zoneref *z;
++	struct per_cpu_pages *pcp;
++	struct list_head *pcp_list;
++	struct alloc_context ac;
++	gfp_t alloc_mask;
++	unsigned int alloc_flags;
++	int alloced = 0;
++
++	if (nr_pages == 1)
++		goto failed;
++
++	/* May set ALLOC_NOFRAGMENT, fragmentation will return 1 page. */
++	if (!prepare_alloc_pages(gfp_mask, 0, preferred_nid, nodemask, &ac, &alloc_mask, &alloc_flags))
++		return 0;
++	gfp_mask = alloc_mask;
++
++	/* Find an allowed local zone that meets the high watermark. */
++	for_each_zone_zonelist_nodemask(zone, z, ac.zonelist, ac.highest_zoneidx, ac.nodemask) {
++		unsigned long mark;
++
++		if (cpusets_enabled() && (alloc_flags & ALLOC_CPUSET) &&
++		    !__cpuset_zone_allowed(zone, gfp_mask)) {
++			continue;
++		}
++
++		if (nr_online_nodes > 1 && zone != ac.preferred_zoneref->zone &&
++		    zone_to_nid(zone) != zone_to_nid(ac.preferred_zoneref->zone)) {
++			goto failed;
++		}
++
++		mark = wmark_pages(zone, alloc_flags & ALLOC_WMARK_MASK) + nr_pages;
++		if (zone_watermark_fast(zone, 0,  mark,
++				zonelist_zone_idx(ac.preferred_zoneref),
++				alloc_flags, gfp_mask)) {
++			break;
++		}
++	}
++	if (!zone)
++		return 0;
++
++	/* Attempt the batch allocation */
++	local_irq_save(flags);
++	pcp = &this_cpu_ptr(zone->pageset)->pcp;
++	pcp_list = &pcp->lists[ac.migratetype];
++
++	while (alloced < nr_pages) {
++		page = __rmqueue_pcplist(zone, ac.migratetype, alloc_flags,
++								pcp, pcp_list);
++		if (!page)
++			break;
++
++		prep_new_page(page, 0, gfp_mask, 0);
++		list_add(&page->lru, alloc_list);
++		alloced++;
++	}
++
++	if (!alloced)
++		goto failed_irq;
++
++	if (alloced) {
++		__count_zid_vm_events(PGALLOC, zone_idx(zone), alloced);
++		zone_statistics(zone, zone);
++	}
++
++	local_irq_restore(flags);
++
++	return alloced;
++
++failed_irq:
++	local_irq_restore(flags);
++
++failed:
++	page = __alloc_pages_nodemask(gfp_mask, 0, preferred_nid, nodemask);
++	if (page) {
++		alloced++;
++		list_add(&page->lru, alloc_list);
++	}
++
++	return alloced;
++}
++EXPORT_SYMBOL_GPL(__alloc_pages_bulk_nodemask);
++
+ /*
+  * This is the 'heart' of the zoned buddy allocator.
+  */
+@@ -4981,8 +5092,6 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
  		return NULL;
  	}
--	page->dma_addr = dma;
  
--	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
--		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
--
--skip_dma_map:
- 	/* Track how many pages are held 'in-flight' */
- 	pool->pages_state_hold_cnt++;
--
- 	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
+-	gfp_mask &= gfp_allowed_mask;
+-	alloc_mask = gfp_mask;
+ 	if (!prepare_alloc_pages(gfp_mask, order, preferred_nid, nodemask, &ac, &alloc_mask, &alloc_flags))
+ 		return NULL;
  
- 	/* When page just alloc'ed is should/must have refcnt 1. */
 -- 
 2.26.2
 
