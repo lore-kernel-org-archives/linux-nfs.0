@@ -4,58 +4,61 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C7DCDC4361B
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 16:55:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90B60C43332
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 16:55:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B32F364FD9
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 16:55:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7F12E64FD2
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Mar 2021 16:55:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233313AbhCJQyx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Mar 2021 11:54:53 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:54038 "EHLO
+        id S233524AbhCJQz2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Mar 2021 11:55:28 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:33183 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233193AbhCJQyj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 11:54:39 -0500
+        by vger.kernel.org with ESMTP id S233506AbhCJQzP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Mar 2021 11:55:15 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1615395279;
+        s=mimecast20190719; t=1615395314;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=8wYdk4E0mxGt/3DIcLar+e9p4o0Cw/KyMbJSt2HmlgQ=;
-        b=LPGzDIF+Z9RLYJEMXIKv6cpUXbo6BEXlGM5NRqXXd4dFMbhIDUbntlRsBpEPhBh65TJbCZ
-        lTzWvmTM4jnMIJ3DGwZEjhA82Ul1UGh/+DH7Jv7fkAXEBj9P05o9bETULA+zgD2GevEQbt
-        Q6avyIR2Vpfjx4hu2nPRUenQUw3If8s=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=uVKrir/E2mYwb0N659VVvjNlhgvQd6dn5f4tWZkQLtk=;
+        b=OO3aXp0ymWIOleIXfd876C+YEGD7/JlmTKnFG9Kv6DN309fUwa+t+tQKsK/U/9gsYWLFF9
+        XedW1w1KJyWU3EpBTNcRmdZtzpJW6iOgBAdiEOHmfIc0+1qHcCA2Bm3mCb77umARbGFdBp
+        1ImC7lgaLuThPXahm83N0tDOh6clXb0=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-214-UL-gcQQgMh-Y__VaulDlsQ-1; Wed, 10 Mar 2021 11:54:35 -0500
-X-MC-Unique: UL-gcQQgMh-Y__VaulDlsQ-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+ us-mta-183-lW15TNIWNVCptwrkSDAfDw-1; Wed, 10 Mar 2021 11:55:12 -0500
+X-MC-Unique: lW15TNIWNVCptwrkSDAfDw-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id E38821018F76;
-        Wed, 10 Mar 2021 16:54:32 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7204084B7DF;
+        Wed, 10 Mar 2021 16:55:10 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-118-152.rdu2.redhat.com [10.10.118.152])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 1408462467;
-        Wed, 10 Mar 2021 16:54:22 +0000 (UTC)
-Subject: [PATCH v4 00/28] Network fs helper library & fscache kiocb API
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C20C15945E;
+        Wed, 10 Mar 2021 16:55:06 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+Subject: [PATCH v4 03/28] mm: Implement readahead_control pageset expansion
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Steve French <sfrench@samba.org>,
         Dominique Martinet <asmadeus@codewreck.org>
-Cc:     linux-cachefs@redhat.com, Christoph Hellwig <hch@lst.de>,
-        Matthew Wilcox <willy@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        ceph-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-afs@lists.infradead.org,
-        v9fs-developer@lists.sourceforge.net,
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-cifs@vger.kernel.org, dhowells@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-mm@kvack.org,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, dhowells@redhat.com,
         Jeff Layton <jlayton@redhat.com>,
         David Wysochanski <dwysocha@redhat.com>,
         "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -64,248 +67,153 @@ Cc:     linux-cachefs@redhat.com, Christoph Hellwig <hch@lst.de>,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Wed, 10 Mar 2021 16:54:21 +0000
-Message-ID: <161539526152.286939.8589700175877370401.stgit@warthog.procyon.org.uk>
+Date:   Wed, 10 Mar 2021 16:55:04 +0000
+Message-ID: <161539530488.286939.18085961677838089157.stgit@warthog.procyon.org.uk>
+In-Reply-To: <161539526152.286939.8589700175877370401.stgit@warthog.procyon.org.uk>
+References: <161539526152.286939.8589700175877370401.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Provide a function, readahead_expand(), that expands the set of pages
+specified by a readahead_control object to encompass a revised area with a
+proposed size and length.
 
-Here's a set of patches to do two things:
+The proposed area must include all of the old area and may be expanded yet
+more by this function so that the edges align on (transparent huge) page
+boundaries as allocated.
 
- (1) Add a helper library to handle the new VM readahead interface.  This
-     is intended to be used unconditionally by the filesystem (whether or
-     not caching is enabled) and provides a common framework for doing
-     caching, transparent huge pages and, in the future, possibly fscrypt
-     and read bandwidth maximisation.  It also allows the netfs and the
-     cache to align, expand and slice up a read request from the VM in
-     various ways; the netfs need only provide a function to read a stretch
-     of data to the pagecache and the helper takes care of the rest.
+The expansion will be cut short if a page already exists in either of the
+areas being expanded into.  Note that any expansion made in such a case is
+not rolled back.
 
- (2) Add an alternative fscache/cachfiles I/O API that uses the kiocb
-     facility to do async DIO to transfer data to/from the netfs's pages,
-     rather than using readpage with wait queue snooping on one side and
-     vfs_write() on the other.  It also uses less memory, since it doesn't
-     do buffered I/O on the backing file.
+This will be used by fscache so that reads can be expanded to cache granule
+boundaries, thereby allowing whole granules to be stored in the cache, but
+there are other potential users also.
 
-     Note that this uses SEEK_HOLE/SEEK_DATA to locate the data available
-     to be read from the cache.  Whilst this is an improvement from the
-     bmap interface, it still has a problem with regard to a modern
-     extent-based filesystem inserting or removing bridging blocks of
-     zeros.  Fixing that requires a much greater overhaul.
+Changes:
+- Moved the declaration of readahead_expand() to a better place[1].
 
-This is a step towards overhauling the fscache API.  The change is opt-in
-on the part of the network filesystem.  A netfs should not try to mix the
-old and the new API because of conflicting ways of handling pages and the
-PG_fscache page flag and because it would be mixing DIO with buffered I/O.
-Further, the helper library can't be used with the old API.
-
-This does not change any of the fscache cookie handling APIs or the way
-invalidation is done.
-
-In the near term, I intend to deprecate and remove the old I/O API
-(fscache_allocate_page{,s}(), fscache_read_or_alloc_page{,s}(),
-fscache_write_page() and fscache_uncache_page()) and eventually replace
-most of fscache/cachefiles with something simpler and easier to follow.
-
-The patchset contains the following parts:
-
- (1) Some helper patches, including provision of an ITER_XARRAY iov
-     iterator and a function to do readahead expansion.
-
- (2) Patches to add the netfs helper library.
-
- (3) A patch to add the fscache/cachefiles kiocb API.
-
- (4) Patches to add support in AFS for this.
-
-Jeff Layton has patches to add support in Ceph for this.
-
-Dave Wysochanski also has patches for NFS for this, though they're not
-included on this branch as there's an issue with PNFS.
-
-With this, AFS without a cache passes all expected xfstests; with a cache,
-there's an extra failure, but that's also there before these patches.
-Fixing that probably requires a greater overhaul.  Ceph and NFS also pass
-the expected tests.
-
-These patches can be found also on:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache-netfs-lib
-
-
-Changes
-=======
-
-ver #4:
-      Fixed some review comments from Christoph Hellwig, including dropping
-      the export of rw_verify_area()[3] and some minor stuff[4].
-
-      Moved the declaration of readahead_expand() to a better location[5].
-
-      Rebased to v5.12-rc2 and added a bunch of references into individual
-      commits.
-
-      Dropped Ceph support - that will go through the maintainer's tree.
-
-      Added interface documentation for the netfs helper library.
-
-ver #3:
-      Rolled in the bug fixes.
-
-      Adjusted the functions that unlock and wait for PG_fscache according
-      to Linus's suggestion[1].
-
-      Hold a ref on a page when PG_fscache is set as per Linus's
-      suggestion[2].
-
-      Dropped NFS support and added Ceph support.
-
-ver #2:
-      Fixed some bugs and added NFS support.
-
-Link: https://lore.kernel.org/r/CAHk-=wh+2gbF7XEjYc=HV9w_2uVzVf7vs60BPz0gFA=+pUm3ww@mail.gmail.com/ [1]
-Link: https://lore.kernel.org/r/CAHk-=wjgA-74ddehziVk=XAEMTKswPu1Yw4uaro1R3ibs27ztw@mail.gmail.com/ [2]
-Link: https://lore.kernel.org/r/20210216102614.GA27555@lst.de/ [3]
-Link: https://lore.kernel.org/r/20210216084230.GA23669@lst.de/ [4]
-Link: https://lore.kernel.org/r/20210217161358.GM2858050@casper.infradead.org/ [5]
-
-
-References
-==========
-
-These patches have been published for review before, firstly as part of a
-larger set:
-
-Link: https://lore.kernel.org/r/158861203563.340223.7585359869938129395.stgit@warthog.procyon.org.uk/
-
-Link: https://lore.kernel.org/r/159465766378.1376105.11619976251039287525.stgit@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/159465784033.1376674.18106463693989811037.stgit@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/159465821598.1377938.2046362270225008168.stgit@warthog.procyon.org.uk/
-
-Link: https://lore.kernel.org/r/160588455242.3465195.3214733858273019178.stgit@warthog.procyon.org.uk/
-
-Then as a cut-down set:
-
-Link: https://lore.kernel.org/r/161118128472.1232039.11746799833066425131.stgit@warthog.procyon.org.uk/ # v1
-
-Link: https://lore.kernel.org/r/161161025063.2537118.2009249444682241405.stgit@warthog.procyon.org.uk/ # v2
-
-Link: https://lore.kernel.org/r/161340385320.1303470.2392622971006879777.stgit@warthog.procyon.org.uk/ # v3
-
-
-Proposals/information about the design has been published here:
-
-Link: https://lore.kernel.org/r/24942.1573667720@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/2758811.1610621106@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/1441311.1598547738@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/160655.1611012999@warthog.procyon.org.uk/
-
-And requests for information:
-
-Link: https://lore.kernel.org/r/3326.1579019665@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/4467.1579020509@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/3577430.1579705075@warthog.procyon.org.uk/
-
-The NFS parts, though not included here, have been tested by someone who's
-using fscache in production:
-
-Link: https://listman.redhat.com/archives/linux-cachefs/2020-December/msg00000.html
-
-I've posted partial patches to try and help 9p and cifs along:
-
-Link: https://lore.kernel.org/r/1514086.1605697347@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/1794123.1605713481@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/241017.1612263863@warthog.procyon.org.uk/
-Link: https://lore.kernel.org/r/270998.1612265397@warthog.procyon.org.uk/
-
-David
+Suggested-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Matthew Wilcox (Oracle) <willy@infradead.org>
+cc: Alexander Viro <viro@zeniv.linux.org.uk>
+cc: Christoph Hellwig <hch@lst.de>
+cc: linux-mm@kvack.org
+cc: linux-cachefs@redhat.com
+cc: linux-afs@lists.infradead.org
+cc: linux-nfs@vger.kernel.org
+cc: linux-cifs@vger.kernel.org
+cc: ceph-devel@vger.kernel.org
+cc: v9fs-developer@lists.sourceforge.net
+cc: linux-fsdevel@vger.kernel.org
+Link: https://lore.kernel.org/r/20210217161358.GM2858050@casper.infradead.org/ [1]
+Link: https://lore.kernel.org/r/159974633888.2094769.8326206446358128373.stgit@warthog.procyon.org.uk/
+Link: https://lore.kernel.org/r/160588479816.3465195.553952688795241765.stgit@warthog.procyon.org.uk/ # rfc
+Link: https://lore.kernel.org/r/161118131787.1232039.4863969952441067985.stgit@warthog.procyon.org.uk/ # rfc
+Link: https://lore.kernel.org/r/161161028670.2537118.13831420617039766044.stgit@warthog.procyon.org.uk/ # v2
+Link: https://lore.kernel.org/r/161340389201.1303470.14353807284546854878.stgit@warthog.procyon.org.uk/ # v3
 ---
-David Howells (28):
-      iov_iter: Add ITER_XARRAY
-      mm: Add an unlock function for PG_private_2/PG_fscache
-      mm: Implement readahead_control pageset expansion
-      netfs: Make a netfs helper module
-      netfs: Documentation for helper library
-      netfs, mm: Move PG_fscache helper funcs to linux/netfs.h
-      netfs, mm: Add unlock_page_fscache() and wait_on_page_fscache()
-      netfs: Provide readahead and readpage netfs helpers
-      netfs: Add tracepoints
-      netfs: Gather stats
-      netfs: Add write_begin helper
-      netfs: Define an interface to talk to a cache
-      netfs: Hold a ref on a page when PG_private_2 is set
-      fscache, cachefiles: Add alternate API to use kiocb for read/write to cache
-      afs: Disable use of the fscache I/O routines
-      afs: Pass page into dirty region helpers to provide THP size
-      afs: Print the operation debug_id when logging an unexpected data version
-      afs: Move key to afs_read struct
-      afs: Don't truncate iter during data fetch
-      afs: Log remote unmarshalling errors
-      afs: Set up the iov_iter before calling afs_extract_data()
-      afs: Use ITER_XARRAY for writing
-      afs: Wait on PG_fscache before modifying/releasing a page
-      afs: Extract writeback extension into its own function
-      afs: Prepare for use of THPs
-      afs: Use the fs operation ops to handle FetchData completion
-      afs: Use new fscache read helper API
-      afs: Use the fscache_write_begin() helper
 
+ include/linux/pagemap.h |    2 +
+ mm/readahead.c          |   70 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 72 insertions(+)
 
- Documentation/filesystems/index.rst         |    1 +
- Documentation/filesystems/netfs_library.rst |  526 +++++++++
- fs/Kconfig                                  |    1 +
- fs/Makefile                                 |    1 +
- fs/afs/Kconfig                              |    1 +
- fs/afs/dir.c                                |  225 ++--
- fs/afs/file.c                               |  483 ++------
- fs/afs/fs_operation.c                       |    4 +-
- fs/afs/fsclient.c                           |  108 +-
- fs/afs/inode.c                              |    7 +-
- fs/afs/internal.h                           |   59 +-
- fs/afs/rxrpc.c                              |  150 +--
- fs/afs/write.c                              |  656 +++++------
- fs/afs/yfsclient.c                          |   82 +-
- fs/cachefiles/Makefile                      |    1 +
- fs/cachefiles/interface.c                   |    5 +-
- fs/cachefiles/internal.h                    |    9 +
- fs/cachefiles/rdwr2.c                       |  403 +++++++
- fs/fscache/Kconfig                          |    1 +
- fs/fscache/Makefile                         |    1 +
- fs/fscache/internal.h                       |    4 +
- fs/fscache/io.c                             |  116 ++
- fs/fscache/page.c                           |    2 +-
- fs/fscache/stats.c                          |    1 +
- fs/netfs/Kconfig                            |   23 +
- fs/netfs/Makefile                           |    5 +
- fs/netfs/internal.h                         |   97 ++
- fs/netfs/read_helper.c                      | 1180 +++++++++++++++++++
- fs/netfs/stats.c                            |   59 +
- include/linux/fscache-cache.h               |    4 +
- include/linux/fscache.h                     |   50 +-
- include/linux/netfs.h                       |  200 ++++
- include/linux/pagemap.h                     |    3 +
- include/net/af_rxrpc.h                      |    2 +-
- include/trace/events/afs.h                  |   74 +-
- include/trace/events/netfs.h                |  201 ++++
- mm/filemap.c                                |   20 +
- mm/readahead.c                              |   70 ++
- net/rxrpc/recvmsg.c                         |    9 +-
- 39 files changed, 3774 insertions(+), 1070 deletions(-)
- create mode 100644 Documentation/filesystems/netfs_library.rst
- create mode 100644 fs/cachefiles/rdwr2.c
- create mode 100644 fs/fscache/io.c
- create mode 100644 fs/netfs/Kconfig
- create mode 100644 fs/netfs/Makefile
- create mode 100644 fs/netfs/internal.h
- create mode 100644 fs/netfs/read_helper.c
- create mode 100644 fs/netfs/stats.c
- create mode 100644 include/linux/netfs.h
- create mode 100644 include/trace/events/netfs.h
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index ac91b33f3873..bf05e99ce588 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -818,6 +818,8 @@ void page_cache_sync_ra(struct readahead_control *, struct file_ra_state *,
+ 		unsigned long req_count);
+ void page_cache_async_ra(struct readahead_control *, struct file_ra_state *,
+ 		struct page *, unsigned long req_count);
++void readahead_expand(struct readahead_control *ractl,
++		      loff_t new_start, size_t new_len);
+ 
+ /**
+  * page_cache_sync_readahead - generic file readahead
+diff --git a/mm/readahead.c b/mm/readahead.c
+index c5b0457415be..4446dada0bc2 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -638,3 +638,73 @@ SYSCALL_DEFINE3(readahead, int, fd, loff_t, offset, size_t, count)
+ {
+ 	return ksys_readahead(fd, offset, count);
+ }
++
++/**
++ * readahead_expand - Expand a readahead request
++ * @ractl: The request to be expanded
++ * @new_start: The revised start
++ * @new_len: The revised size of the request
++ *
++ * Attempt to expand a readahead request outwards from the current size to the
++ * specified size by inserting locked pages before and after the current window
++ * to increase the size to the new window.  This may involve the insertion of
++ * THPs, in which case the window may get expanded even beyond what was
++ * requested.
++ *
++ * The algorithm will stop if it encounters a conflicting page already in the
++ * pagecache and leave a smaller expansion than requested.
++ *
++ * The caller must check for this by examining the revised @ractl object for a
++ * different expansion than was requested.
++ */
++void readahead_expand(struct readahead_control *ractl,
++		      loff_t new_start, size_t new_len)
++{
++	struct address_space *mapping = ractl->mapping;
++	pgoff_t new_index, new_nr_pages;
++	gfp_t gfp_mask = readahead_gfp_mask(mapping);
++
++	new_index = new_start / PAGE_SIZE;
++
++	/* Expand the leading edge downwards */
++	while (ractl->_index > new_index) {
++		unsigned long index = ractl->_index - 1;
++		struct page *page = xa_load(&mapping->i_pages, index);
++
++		if (page && !xa_is_value(page))
++			return; /* Page apparently present */
++
++		page = __page_cache_alloc(gfp_mask);
++		if (!page)
++			return;
++		if (add_to_page_cache_lru(page, mapping, index, gfp_mask) < 0) {
++			put_page(page);
++			return;
++		}
++
++		ractl->_nr_pages++;
++		ractl->_index = page->index;
++	}
++
++	new_len += new_start - readahead_pos(ractl);
++	new_nr_pages = DIV_ROUND_UP(new_len, PAGE_SIZE);
++
++	/* Expand the trailing edge upwards */
++	while (ractl->_nr_pages < new_nr_pages) {
++		unsigned long index = ractl->_index + ractl->_nr_pages;
++		struct page *page = xa_load(&mapping->i_pages, index);
++
++		if (page && !xa_is_value(page))
++			return; /* Page apparently present */
++
++		page = __page_cache_alloc(gfp_mask);
++		if (!page)
++			return;
++		if (add_to_page_cache_lru(page, mapping, index, gfp_mask) < 0) {
++			put_page(page);
++			return;
++		}
++		ractl->_nr_pages++;
++	}
++}
++EXPORT_SYMBOL(readahead_expand);
 
 
