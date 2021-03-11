@@ -2,27 +2,27 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-21.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A07D0C433E0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EFA87C433E9
 	for <linux-nfs@archiver.kernel.org>; Thu, 11 Mar 2021 11:50:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4C97D64FC0
-	for <linux-nfs@archiver.kernel.org>; Thu, 11 Mar 2021 11:50:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A29CC64FC9
+	for <linux-nfs@archiver.kernel.org>; Thu, 11 Mar 2021 11:50:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232787AbhCKLuB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232519AbhCKLuB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 11 Mar 2021 06:50:01 -0500
-Received: from outbound-smtp56.blacknight.com ([46.22.136.240]:59445 "EHLO
-        outbound-smtp56.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232837AbhCKLt6 (ORCPT
+Received: from outbound-smtp57.blacknight.com ([46.22.136.241]:40427 "EHLO
+        outbound-smtp57.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232835AbhCKLt6 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Mar 2021 06:49:58 -0500
 Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
-        by outbound-smtp56.blacknight.com (Postfix) with ESMTPS id 909CAFAAD3
+        by outbound-smtp57.blacknight.com (Postfix) with ESMTPS id 6777BFAACA
         for <linux-nfs@vger.kernel.org>; Thu, 11 Mar 2021 11:49:36 +0000 (GMT)
-Received: (qmail 21642 invoked from network); 11 Mar 2021 11:49:36 -0000
+Received: (qmail 21611 invoked from network); 11 Mar 2021 11:49:36 -0000
 Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
   by 81.17.254.9 with ESMTPA; 11 Mar 2021 11:49:36 -0000
 From:   Mel Gorman <mgorman@techsingularity.net>
@@ -35,9 +35,9 @@ Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Linux-MM <linux-mm@kvack.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 5/5] net: page_pool: use alloc_pages_bulk in refill code path
-Date:   Thu, 11 Mar 2021 11:49:35 +0000
-Message-Id: <20210311114935.11379-6-mgorman@techsingularity.net>
+Subject: [PATCH 4/5] net: page_pool: refactor dma_map into own function page_pool_dma_map
+Date:   Thu, 11 Mar 2021 11:49:34 +0000
+Message-Id: <20210311114935.11379-5-mgorman@techsingularity.net>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210311114935.11379-1-mgorman@techsingularity.net>
 References: <20210311114935.11379-1-mgorman@techsingularity.net>
@@ -49,117 +49,94 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Jesper Dangaard Brouer <brouer@redhat.com>
 
-There are cases where the page_pool need to refill with pages from the
-page allocator. Some workloads cause the page_pool to release pages
-instead of recycling these pages.
+In preparation for next patch, move the dma mapping into its own
+function, as this will make it easier to follow the changes.
 
-For these workload it can improve performance to bulk alloc pages from
-the page-allocator to refill the alloc cache.
-
-For XDP-redirect workload with 100G mlx5 driver (that use page_pool)
-redirecting xdp_frame packets into a veth, that does XDP_PASS to create
-an SKB from the xdp_frame, which then cannot return the page to the
-page_pool. In this case, we saw[1] an improvement of 18.8% from using
-the alloc_pages_bulk API (3,677,958 pps -> 4,368,926 pps).
-
-[1] https://github.com/xdp-project/xdp-project/blob/master/areas/mem/page_pool06_alloc_pages_bulk.org
+V2: make page_pool_dma_map return boolean (Ilias)
 
 Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
 Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
 Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
 ---
- net/core/page_pool.c | 63 ++++++++++++++++++++++++++++----------------
- 1 file changed, 40 insertions(+), 23 deletions(-)
+ net/core/page_pool.c | 45 +++++++++++++++++++++++++-------------------
+ 1 file changed, 26 insertions(+), 19 deletions(-)
 
 diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index 40e1b2beaa6c..7b9b56bcfd7e 100644
+index ad8b0707af04..40e1b2beaa6c 100644
 --- a/net/core/page_pool.c
 +++ b/net/core/page_pool.c
-@@ -208,44 +208,61 @@ noinline
+@@ -180,14 +180,37 @@ static void page_pool_dma_sync_for_device(struct page_pool *pool,
+ 					 pool->p.dma_dir);
+ }
+ 
++static bool page_pool_dma_map(struct page_pool *pool, struct page *page)
++{
++	dma_addr_t dma;
++
++	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
++	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
++	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
++	 * This mapping is kept for lifetime of page, until leaving pool.
++	 */
++	dma = dma_map_page_attrs(pool->p.dev, page, 0,
++				 (PAGE_SIZE << pool->p.order),
++				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
++	if (dma_mapping_error(pool->p.dev, dma))
++		return false;
++
++	page->dma_addr = dma;
++
++	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
++		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
++
++	return true;
++}
++
+ /* slow path */
+ noinline
  static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
  						 gfp_t _gfp)
  {
-+	const int bulk = PP_ALLOC_CACHE_REFILL;
-+	struct page *page, *next, *first_page;
- 	unsigned int pp_flags = pool->p.flags;
--	struct page *page;
-+	unsigned int pp_order = pool->p.order;
-+	int pp_nid = pool->p.nid;
-+	LIST_HEAD(page_list);
++	unsigned int pp_flags = pool->p.flags;
+ 	struct page *page;
  	gfp_t gfp = _gfp;
+-	dma_addr_t dma;
  
--	/* We could always set __GFP_COMP, and avoid this branch, as
--	 * prep_new_page() can handle order-0 with __GFP_COMP.
--	 */
--	if (pool->p.order)
-+	/* Don't support bulk alloc for high-order pages */
-+	if (unlikely(pp_order)) {
- 		gfp |= __GFP_COMP;
-+		first_page = alloc_pages_node(pp_nid, gfp, pp_order);
-+		if (unlikely(!first_page))
-+			return NULL;
-+		goto out;
-+	}
- 
--	/* FUTURE development:
--	 *
--	 * Current slow-path essentially falls back to single page
--	 * allocations, which doesn't improve performance.  This code
--	 * need bulk allocation support from the page allocator code.
--	 */
--
--	/* Cache was empty, do real allocation */
--#ifdef CONFIG_NUMA
--	page = alloc_pages_node(pool->p.nid, gfp, pool->p.order);
--#else
--	page = alloc_pages(gfp, pool->p.order);
--#endif
--	if (!page)
-+	if (unlikely(!__alloc_pages_bulk_nodemask(gfp, pp_nid, NULL,
-+						  bulk, &page_list)))
+ 	/* We could always set __GFP_COMP, and avoid this branch, as
+ 	 * prep_new_page() can handle order-0 with __GFP_COMP.
+@@ -211,30 +234,14 @@ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
+ 	if (!page)
  		return NULL;
  
-+	/* First page is extracted and returned to caller */
-+	first_page = list_first_entry(&page_list, struct page, lru);
-+	list_del(&first_page->lru);
-+
-+	/* Remaining pages store in alloc.cache */
-+	list_for_each_entry_safe(page, next, &page_list, lru) {
-+		list_del(&page->lru);
-+		if ((pp_flags & PP_FLAG_DMA_MAP) &&
-+		    unlikely(!page_pool_dma_map(pool, page))) {
-+			put_page(page);
-+			continue;
-+		}
-+		if (likely(pool->alloc.count < PP_ALLOC_CACHE_SIZE)) {
-+			pool->alloc.cache[pool->alloc.count++] = page;
-+			pool->pages_state_hold_cnt++;
-+			trace_page_pool_state_hold(pool, page,
-+						   pool->pages_state_hold_cnt);
-+		} else {
-+			put_page(page);
-+		}
-+	}
-+out:
- 	if ((pp_flags & PP_FLAG_DMA_MAP) &&
--	    unlikely(!page_pool_dma_map(pool, page))) {
--		put_page(page);
-+	    unlikely(!page_pool_dma_map(pool, first_page))) {
-+		put_page(first_page);
+-	if (!(pool->p.flags & PP_FLAG_DMA_MAP))
+-		goto skip_dma_map;
+-
+-	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
+-	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
+-	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
+-	 * This mapping is kept for lifetime of page, until leaving pool.
+-	 */
+-	dma = dma_map_page_attrs(pool->p.dev, page, 0,
+-				 (PAGE_SIZE << pool->p.order),
+-				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
+-	if (dma_mapping_error(pool->p.dev, dma)) {
++	if ((pp_flags & PP_FLAG_DMA_MAP) &&
++	    unlikely(!page_pool_dma_map(pool, page))) {
+ 		put_page(page);
  		return NULL;
  	}
+-	page->dma_addr = dma;
  
+-	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
+-		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
+-
+-skip_dma_map:
  	/* Track how many pages are held 'in-flight' */
  	pool->pages_state_hold_cnt++;
--	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
-+	trace_page_pool_state_hold(pool, first_page, pool->pages_state_hold_cnt);
+-
+ 	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
  
  	/* When page just alloc'ed is should/must have refcnt 1. */
--	return page;
-+	return first_page;
- }
- 
- /* For using page_pool replace: alloc_pages() API calls, but provide
 -- 
 2.26.2
 
