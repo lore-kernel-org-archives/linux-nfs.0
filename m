@@ -2,239 +2,150 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B1BEC433E9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 80E58C4332E
 	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EA6D664FEE
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5FE1A64FDD
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232132AbhCLPoC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 12 Mar 2021 10:44:02 -0500
-Received: from outbound-smtp29.blacknight.com ([81.17.249.32]:54663 "EHLO
-        outbound-smtp29.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231827AbhCLPnd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 10:43:33 -0500
-Received: from mail.blacknight.com (pemlinmail06.blacknight.ie [81.17.255.152])
-        by outbound-smtp29.blacknight.com (Postfix) with ESMTPS id 5AECEBECAB
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 15:43:32 +0000 (GMT)
-Received: (qmail 19821 invoked from network); 12 Mar 2021 15:43:32 -0000
-Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPA; 12 Mar 2021 15:43:32 -0000
-From:   Mel Gorman <mgorman@techsingularity.net>
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Jesper Dangaard Brouer <brouer@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Alexander Duyck <alexander.duyck@gmail.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux-Net <netdev@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 3/7] mm/page_alloc: Add a bulk page allocator
-Date:   Fri, 12 Mar 2021 15:43:27 +0000
-Message-Id: <20210312154331.32229-4-mgorman@techsingularity.net>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210312154331.32229-1-mgorman@techsingularity.net>
-References: <20210312154331.32229-1-mgorman@techsingularity.net>
+        id S232334AbhCLPoG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 12 Mar 2021 10:44:06 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46964 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232020AbhCLPn7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 10:43:59 -0500
+Received: from mail-ej1-x62e.google.com (mail-ej1-x62e.google.com [IPv6:2a00:1450:4864:20::62e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 08E1DC061574
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 07:43:59 -0800 (PST)
+Received: by mail-ej1-x62e.google.com with SMTP id k16so672235ejx.1
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 07:43:58 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=+1kUnnL0O4N2cXdE1HqPvJg6HjXrUtNq/T/BfMnv3aA=;
+        b=K0nf8gQ2nre0A6/R/UJbQCXVTZRS7vnxZFkf6fdlQvK4uFSPa7j3Hjiv4mRJ1iYH4f
+         A+nV7ui31Ujw8fXpqfNpoBP6312nwpmV4PbNR/Ah4fqrDwZff5tN0f64b7i2Y1TO9W8l
+         fXuloNzF2mEP1i/sMOWdjbVpapt8JS4z6aI81QEOLsU9GkGqoCwGGqN2s0VsUUgGIcQo
+         h3Mk9fa+nEmkZX8hdeVss55hPdya29LlNFZq1RUCkpYzk73+afFf3/Ql1djOSUB2XdDq
+         PWkD/LsUUiiIdOhthEowiF9RGIrvuaVGQlTGO8maIYHPb4LhXsdlsdGHrR25zrq0pU4l
+         x0pg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=+1kUnnL0O4N2cXdE1HqPvJg6HjXrUtNq/T/BfMnv3aA=;
+        b=C7ldjbbDxZpIkAYjQBNOgVTfX+OXYPSemeUjCNJe+Mw+vDzhvKrZ5HeT7d1lJ1hCOH
+         VAuXHTLT/vZQITjxXMX5oycQ6ljE9bpxs1DixS8cQ5KzH/VdtB3tZrmdLO7/q0PmMZGB
+         t5qTq95qDlO7GOkJsHIZEQr6LbmtrBkt9QKoYYw5Ur5UpWzVa/3iNDSP2H4wTtSTeyqm
+         Pag1xvxjwZ2QY+v3cT3bNeQ9NLsrdaKYpVfZG3+1cAwN42LwRx3+xiu/3iavX8Bvv2Za
+         +Rw9rlHUpZxq5dwPY4hKQLmQE18JPVA0MOYqNE48ZLljHol/GNpT9cgWYIs142UgYarp
+         Bz+Q==
+X-Gm-Message-State: AOAM533G8sDIdAMKXwHzrsvOTcHewnoaoRBAG0Vnn332EZnjVEIvQdMD
+        7rAi1O2ADO+B3v8x+Q47wYAGRbXUzyPEvDkI+pE=
+X-Google-Smtp-Source: ABdhPJyFVwr9UPFmJgCxzZ0FSTgABoIxlyVRSXfOiI2+qHdWtWFGXb0Y4jUj8d9JlLOox0N+UpKjGD157NBKw4za+84=
+X-Received: by 2002:a17:906:4e17:: with SMTP id z23mr9308725eju.439.1615563837727;
+ Fri, 12 Mar 2021 07:43:57 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20210128223638.GE29887@fieldses.org> <95e5f9e4-76d4-08c4-ece3-35a10c06073b@vastdata.com>
+ <cbc7115cc5d5aeb7ffb9e9b3880e453bf54ecbdb.camel@hammerspace.com>
+ <20210129023527.GA11864@fieldses.org> <20210129025041.GA12151@fieldses.org>
+ <7a078b4d22c8d769a42a0c2b47fd501479e47a7b.camel@hammerspace.com>
+ <20210131215843.GA9273@fieldses.org> <20210203200756.GA30996@fieldses.org>
+ <6dc98a594a21b86316bf77000dc620d6cca70be6.camel@hammerspace.com>
+ <20210208220855.GA15116@fieldses.org> <20210211185444.GA6048@fieldses.org> <CADJHv_vH5Ocf8D4hXNSKc4PcdwJWCeXe+nvwiOqRWVQ7HOoNfg@mail.gmail.com>
+In-Reply-To: <CADJHv_vH5Ocf8D4hXNSKc4PcdwJWCeXe+nvwiOqRWVQ7HOoNfg@mail.gmail.com>
+From:   Anna Schumaker <schumakeranna@gmail.com>
+Date:   Fri, 12 Mar 2021 10:43:41 -0500
+Message-ID: <CAFX2JfnH1JWBWS5zm03mnvHDAfMAqmNKCH9fsjWu2u8sGvGO1g@mail.gmail.com>
+Subject: Re: [PATCH] nfs: we don't support removing system.nfs4_acl
+To:     Murphy Zhou <jencce.kernel@gmail.com>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        "guy@vastdata.com" <guy@vastdata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch adds a new page allocator interface via alloc_pages_bulk,
-and __alloc_pages_bulk_nodemask. A caller requests a number of pages
-to be allocated and added to a list. They can be freed in bulk using
-free_pages_bulk().
+Hi Murphy,
 
-The API is not guaranteed to return the requested number of pages and
-may fail if the preferred allocation zone has limited free memory, the
-cpuset changes during the allocation or page debugging decides to fail
-an allocation. It's up to the caller to request more pages in batch
-if necessary.
+On Wed, Mar 3, 2021 at 9:30 PM Murphy Zhou <jencce.kernel@gmail.com> wrote:
+>
+> Hi,
+>
+> On Fri, Feb 12, 2021 at 2:58 AM bfields@fieldses.org
+> <bfields@fieldses.org> wrote:
+> >
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> >
+> > The contents of the system.nfs4_acl xattr are literally just the
+> > xdr-encoded ACL attribute.  That attribute starts with a 4-byte integer
+> > representing the number of ACEs in the ACL.  So even a zero-ACE ACL will
+> > be at least 4 bytes.
+> >
+> > We've never actually bothered to sanity-check the ACL encoding that
+> > userspace gives us.  The only problem that causes is that we return an
+> > error that's probably wrong.  (The server will return BADXDR, which
+> > we'll translate to EIO, when EINVAL would make more sense.)
+> >
+> > It's not much a problem in practice since the standard utilities give us
+> > well-formed XDR.  The one case we're likely to see from userspace in
+> > practice is a set of a zero-length xattr since that's how
+> >
+> >         removexattr(path, "system.nfs4_acl")
+> >
+> > is implemented.  It's worth trying to give a better error for that case.
+> >
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfs/nfs4proc.c | 6 ++++++
+> >  1 file changed, 6 insertions(+)
+> >
+> > On Mon, Feb 08, 2021 at 05:08:55PM -0500, bfields@fieldses.org wrote:
+> > > On Mon, Feb 08, 2021 at 07:31:38PM +0000, Trond Myklebust wrote:
+> > > > OK. So you're not really saying that the SETATTR has a zero length
+> > > > body, but that the ACL attribute in this case has a zero length body,
+> > > > whereas in the 'empty acl' case, it is supposed to have a body
+> > > > containing a zero-length nfsace4<> array. Fair enough.
+> > >
+> > > Yep!  I'll see if I can think of a helpful concise comment, and resend.
+> >
+> > Oops, forgot about this, here you go.--b.
+> >
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index 2f4679a62712..86e87f7d7686 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -5895,6 +5895,12 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+> >         unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
+> >         int ret, i;
+> >
+> > +       /*
+> > +        * We don't support removing system.nfs4_acl, and even a
+> > +        * 0-length ACL needs at least 4 bytes for the number of ACEs:
+> > +        */
+> > +       if (buflen < 4)
+> > +               return -EINVAL;
+> >         if (!nfs4_server_supports_acls(server))
+> >                 return -EOPNOTSUPP;
+> >         if (npages > ARRAY_SIZE(pages))
+> > --
+> > 2.29.2
+> >
+>
+> Has this queued up for the next RC ?
 
-Note that this implementation is not very efficient and could be improved
-but it would require refactoring. The intent is to make it available early
-to determine what semantics are required by different callers. Once the
-full semantics are nailed down, it can be refactored.
+Yeah, I have this queued up for the next bugfixes pull request.
 
-Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
----
- include/linux/gfp.h |  12 +++++
- mm/page_alloc.c     | 116 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 128 insertions(+)
-
-diff --git a/include/linux/gfp.h b/include/linux/gfp.h
-index 0a88f84b08f4..e2cd98dba72e 100644
---- a/include/linux/gfp.h
-+++ b/include/linux/gfp.h
-@@ -518,6 +518,17 @@ static inline int arch_make_page_accessible(struct page *page)
- struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
- 		nodemask_t *nodemask);
- 
-+int __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
-+				nodemask_t *nodemask, int nr_pages,
-+				struct list_head *list);
-+
-+/* Bulk allocate order-0 pages */
-+static inline unsigned long
-+alloc_pages_bulk(gfp_t gfp, unsigned long nr_pages, struct list_head *list)
-+{
-+	return __alloc_pages_bulk(gfp, numa_mem_id(), NULL, nr_pages, list);
-+}
-+
- /*
-  * Allocate pages, preferring the node given as nid. The node must be valid and
-  * online. For more general interface, see alloc_pages_node().
-@@ -581,6 +592,7 @@ void * __meminit alloc_pages_exact_nid(int nid, size_t size, gfp_t gfp_mask);
- 
- extern void __free_pages(struct page *page, unsigned int order);
- extern void free_pages(unsigned long addr, unsigned int order);
-+extern void free_pages_bulk(struct list_head *list);
- 
- struct page_frag_cache;
- extern void __page_frag_cache_drain(struct page *page, unsigned int count);
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 880b1d6368bd..f48f94375b66 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -4436,6 +4436,21 @@ static void wake_all_kswapds(unsigned int order, gfp_t gfp_mask,
- 	}
- }
- 
-+/* Drop reference counts and free order-0 pages from a list. */
-+void free_pages_bulk(struct list_head *list)
-+{
-+	struct page *page, *next;
-+
-+	list_for_each_entry_safe(page, next, list, lru) {
-+		trace_mm_page_free_batched(page);
-+		if (put_page_testzero(page)) {
-+			list_del(&page->lru);
-+			__free_pages_ok(page, 0, FPI_NONE);
-+		}
-+	}
-+}
-+EXPORT_SYMBOL_GPL(free_pages_bulk);
-+
- static inline unsigned int
- gfp_to_alloc_flags(gfp_t gfp_mask)
- {
-@@ -4963,6 +4978,107 @@ static inline bool prepare_alloc_pages(gfp_t gfp, unsigned int order,
- 	return true;
- }
- 
-+/*
-+ * This is a batched version of the page allocator that attempts to
-+ * allocate nr_pages quickly from the preferred zone and add them to list.
-+ *
-+ * Returns the number of pages allocated.
-+ */
-+int __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
-+			nodemask_t *nodemask, int nr_pages,
-+			struct list_head *alloc_list)
-+{
-+	struct page *page;
-+	unsigned long flags;
-+	struct zone *zone;
-+	struct zoneref *z;
-+	struct per_cpu_pages *pcp;
-+	struct list_head *pcp_list;
-+	struct alloc_context ac;
-+	gfp_t alloc_gfp;
-+	unsigned int alloc_flags;
-+	int allocated = 0;
-+
-+	if (WARN_ON_ONCE(nr_pages <= 0))
-+		return 0;
-+
-+	if (nr_pages == 1)
-+		goto failed;
-+
-+	/* May set ALLOC_NOFRAGMENT, fragmentation will return 1 page. */
-+	if (!prepare_alloc_pages(gfp, 0, preferred_nid, nodemask, &ac,
-+	&alloc_gfp, &alloc_flags))
-+		return 0;
-+	gfp = alloc_gfp;
-+
-+	/* Find an allowed local zone that meets the high watermark. */
-+	for_each_zone_zonelist_nodemask(zone, z, ac.zonelist, ac.highest_zoneidx, ac.nodemask) {
-+		unsigned long mark;
-+
-+		if (cpusets_enabled() && (alloc_flags & ALLOC_CPUSET) &&
-+		    !__cpuset_zone_allowed(zone, gfp)) {
-+			continue;
-+		}
-+
-+		if (nr_online_nodes > 1 && zone != ac.preferred_zoneref->zone &&
-+		    zone_to_nid(zone) != zone_to_nid(ac.preferred_zoneref->zone)) {
-+			goto failed;
-+		}
-+
-+		mark = wmark_pages(zone, alloc_flags & ALLOC_WMARK_MASK) + nr_pages;
-+		if (zone_watermark_fast(zone, 0,  mark,
-+				zonelist_zone_idx(ac.preferred_zoneref),
-+				alloc_flags, gfp)) {
-+			break;
-+		}
-+	}
-+	if (!zone)
-+		return 0;
-+
-+	/* Attempt the batch allocation */
-+	local_irq_save(flags);
-+	pcp = &this_cpu_ptr(zone->pageset)->pcp;
-+	pcp_list = &pcp->lists[ac.migratetype];
-+
-+	while (allocated < nr_pages) {
-+		page = __rmqueue_pcplist(zone, ac.migratetype, alloc_flags,
-+								pcp, pcp_list);
-+		if (!page) {
-+			/* Try and get at least one page */
-+			if (!allocated)
-+				goto failed_irq;
-+			break;
-+		}
-+
-+		list_add(&page->lru, alloc_list);
-+		allocated++;
-+	}
-+
-+	__count_zid_vm_events(PGALLOC, zone_idx(zone), allocated);
-+	zone_statistics(zone, zone);
-+
-+	local_irq_restore(flags);
-+
-+	/* Prep page with IRQs enabled to reduce disabled times */
-+	list_for_each_entry(page, alloc_list, lru)
-+		prep_new_page(page, 0, gfp, 0);
-+
-+	return allocated;
-+
-+failed_irq:
-+	local_irq_restore(flags);
-+
-+failed:
-+	page = __alloc_pages(gfp, 0, preferred_nid, nodemask);
-+	if (page) {
-+		list_add(&page->lru, alloc_list);
-+		allocated = 1;
-+	}
-+
-+	return allocated;
-+}
-+EXPORT_SYMBOL_GPL(__alloc_pages_bulk);
-+
- /*
-  * This is the 'heart' of the zoned buddy allocator.
-  */
--- 
-2.26.2
-
+Anna
+>
+>
+> Thanks,
