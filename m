@@ -2,68 +2,68 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 67057C433DB
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C7D6C43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3161B64F8D
+	by mail.kernel.org (Postfix) with ESMTP id D7A0664FA8
 	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235126AbhCLVSx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 12 Mar 2021 16:18:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34850 "EHLO
+        id S235188AbhCLVSy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 12 Mar 2021 16:18:54 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34860 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235193AbhCLVSa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:18:30 -0500
-Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 65612C061761
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:30 -0800 (PST)
-Received: by mail-qk1-x733.google.com with SMTP id s7so25842742qkg.4
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:30 -0800 (PST)
+        with ESMTP id S235195AbhCLVSc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:18:32 -0500
+Received: from mail-qt1-x834.google.com (mail-qt1-x834.google.com [IPv6:2607:f8b0:4864:20::834])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1278EC061761
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:32 -0800 (PST)
+Received: by mail-qt1-x834.google.com with SMTP id c6so4945685qtc.1
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:32 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=LHEMWnG1httaOebjxzUSCMi4EC2eLwY/EEbXQn1DhtE=;
-        b=VaLTxi4hY8L7b+nSzaLY3VWgQl5sp7Cgp73MASVuf0kC1YMXOVBVlA/IWphS3Xuj1E
-         SzNAmBpIGQO4KBrlEXELH5MogSjhnMPSuCnOFceZDqStWwlmz6AsEGSePX9ULU4edZ+l
-         v/VIX2s2BMGHG6ExMuThYgg4oHvT6BHrablQSOMvkRfpEQ1Jx3v6m7zoKvMmKmr7VPSE
-         vLPI9rdHa1y0/bGvyrvYzTyODYUCU1+ONW1OjTVFZN3rphKO5+aC1mGGc7iqmT0fIeRj
-         GRh+RDzm/XhVpJQbR76d4zmXI2xgFEuICtl+KOlqJ9x8QZLFW3SjSeX+53f+L1ZvuPbz
-         PoGw==
+        bh=UfkFeuznbyUeMLAdXzQfCMKQ7LUVIH0VFpprUP+sLXE=;
+        b=BLvrj3KUQ9ZPewxE50/zk6aJ5RQFwaCVvN1umKwxmG6AkjvKPYVjsRGXoPhVAa2R0Q
+         BNjNgi6g/1befK5si2SJJNMQotGaAaaCzGUHy8QRZqa2nmu2GxQIAgjiBECfNnqxznB6
+         Shp0ETB1afnVlRn4gkKMBmf3fskQDnXQS5g6FBuN2BneVRyalIJJ14rbdCRKgen+2Di2
+         wlP39uh4miS+04I6xOk3bE7KLfaLNrZ9KXn2D+xbBSRUClvi1a/64W9l4a6vnmaBCL68
+         +cTkkdwO8LQRTa8Z98A8Nu1xGZaN2IW6wdL7yGR2IOTCuMgYPuot74eE8VxJihjS85bE
+         7qMQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=LHEMWnG1httaOebjxzUSCMi4EC2eLwY/EEbXQn1DhtE=;
-        b=H6LPUSNJUCpqU4/Y+fryg/sh0OTwG6cmir/ocapMC0wgolAeVkt59qkJrsLm4YCKkq
-         aIMQAmtNKUUmigRxt23ewHdZ46VnRjjhcR3usHyltke7Phvl4MeRO/yTkLuttUWBIq21
-         HprT/YwKbbJSWdGFT3o6DHasfDsBZWZsBU8OGpgT2dWHKi3JF9sx4yuqYR/8TAO45PiM
-         W734vNmITscEXBGFflN8YAzfFjzdlk12a+Rokrcc8W7dznrDEZP2ZR5RY0t5NEwoHvqy
-         6R8Ro+FcrOhzWqBzlqG/YM9OM/Hgm2vj7KiZ3KgauLBqvD3VcIo5zlfkL3vL0K8dTs0T
-         5d0A==
-X-Gm-Message-State: AOAM531MPSbirSFGFxSnHuQsdUTJpLaRET/iACgnTTKYhsjj4odZnWDX
-        9oNoS09L83QXBBUI7qnPqU34UZlWGBlvBQ==
-X-Google-Smtp-Source: ABdhPJxZKpXAYHg+OdrMnyW8F/TN97edYCATUGCQu47aC4Go5pP8tye2t2Kpdz3qnEpv37UEp59/eA==
-X-Received: by 2002:a05:620a:49a:: with SMTP id 26mr14536830qkr.436.1615583909408;
-        Fri, 12 Mar 2021 13:18:29 -0800 (PST)
+        bh=UfkFeuznbyUeMLAdXzQfCMKQ7LUVIH0VFpprUP+sLXE=;
+        b=JOVsdG7sfFhDlFGkGsWT0gdfkKFndQE/H6dFs1FVtksSlHiUY/kBa4t1B2xno3/38A
+         BOKqb/tSi/fiWxuCDLjgN126Uin3VRC9Iplsz33glKbKeb15dwuEBBfNEFxoFbPXmrZk
+         OhfM2zGRpkoOxTJg/bDg+qIHYxcFttXxzdIJhA0csAc2gPshANI1+5ByeUgdZKx36Elu
+         x17mozaQ7qkPhhgUBqRRDP9PSNABQ8h/1Zhwb51XxdyhaZo6bMHZtQHAipyyqXreqfGg
+         rGFRpc+HLlDfSe+Ar0mxNsdBSaaR33ulZUWlb9hNMU1Z9d2/rlJCVyJC2vRfK5Fyf9VA
+         OiCw==
+X-Gm-Message-State: AOAM530GJ0IkTGohaBWSUHtqL5gMcL+SEqNu0wCOTkn/mFXGaIBfa/Po
+        WvA9tGlsiNsI0mZjVJ6bNTJRF4ZpP5OKIQ==
+X-Google-Smtp-Source: ABdhPJwhdsX2ItLn+yr26T6EXKhAWYFmueP51dS3QCsVG9zgN+hxBCvHVlnFYTTG2HYGJBvc8n1wVw==
+X-Received: by 2002:ac8:7b23:: with SMTP id l3mr13631161qtu.165.1615583911028;
+        Fri, 12 Mar 2021 13:18:31 -0800 (PST)
 Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
-        by smtp.gmail.com with ESMTPSA id d24sm5177490qko.54.2021.03.12.13.18.28
+        by smtp.gmail.com with ESMTPSA id d24sm5177490qko.54.2021.03.12.13.18.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 12 Mar 2021 13:18:29 -0800 (PST)
+        Fri, 12 Mar 2021 13:18:30 -0800 (PST)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v3 1/5] sunrpc: Create a sunrpc directory under /sys/kernel/
-Date:   Fri, 12 Mar 2021 16:18:22 -0500
-Message-Id: <20210312211826.360959-2-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 3/5] sunrpc: Create per-rpc_clnt sysfs kobjects
+Date:   Fri, 12 Mar 2021 16:18:24 -0500
+Message-Id: <20210312211826.360959-4-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
 References: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
@@ -75,117 +75,174 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This is where we'll put per-rpc_client related files
+These will eventually have files placed under them for sysfs operations.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
-v3: Rename kset object to rpc_sunrpc_kset
-v2: Move directory from /sys/net/sunrpc/ to /sys/kernel/sunrpc/
+v3: s/netns/sysfs/
 ---
- net/sunrpc/Makefile      |  2 +-
- net/sunrpc/sunrpc_syms.c |  8 ++++++++
- net/sunrpc/sysfs.c       | 20 ++++++++++++++++++++
- net/sunrpc/sysfs.h       | 11 +++++++++++
- 4 files changed, 40 insertions(+), 1 deletion(-)
- create mode 100644 net/sunrpc/sysfs.c
- create mode 100644 net/sunrpc/sysfs.h
+ include/linux/sunrpc/clnt.h |  1 +
+ net/sunrpc/clnt.c           |  5 ++++
+ net/sunrpc/sysfs.c          | 60 +++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sysfs.h          |  8 +++++
+ 4 files changed, 74 insertions(+)
 
-diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-index 9488600451e8..1c8de397d6ad 100644
---- a/net/sunrpc/Makefile
-+++ b/net/sunrpc/Makefile
-@@ -12,7 +12,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
- 	    auth.o auth_null.o auth_unix.o \
- 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
- 	    addr.o rpcb_clnt.o timer.o xdr.o \
--	    sunrpc_syms.o cache.o rpc_pipe.o \
-+	    sunrpc_syms.o cache.o rpc_pipe.o sysfs.o \
- 	    svc_xprt.o \
- 	    xprtmultipath.o
- sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 236fadc4a439..3b57efc692ec 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -24,6 +24,7 @@
- #include <linux/sunrpc/xprtsock.h>
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 02e7a5863d28..503653720e18 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -71,6 +71,7 @@ struct rpc_clnt {
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	struct dentry		*cl_debugfs;	/* debugfs directory */
+ #endif
++	void			*cl_sysfs;	/* sysfs directory */
+ 	/* cl_work is only needed after cl_xpi is no longer used,
+ 	 * and that are of similar size
+ 	 */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 612f0a641f4c..ceb8d19d4cb4 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -41,6 +41,7 @@
+ #include <trace/events/sunrpc.h>
  
  #include "sunrpc.h"
 +#include "sysfs.h"
  #include "netns.h"
  
- unsigned int sunrpc_net_id;
-@@ -103,6 +104,10 @@ init_sunrpc(void)
- 	if (err)
- 		goto out4;
- 
-+	err = rpc_sysfs_init();
-+	if (err)
-+		goto out5;
-+
- 	sunrpc_debugfs_init();
  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	rpc_register_sysctl();
-@@ -111,6 +116,8 @@ init_sunrpc(void)
- 	init_socket_xprt();	/* clnt sock transport */
- 	return 0;
+@@ -300,6 +301,7 @@ static int rpc_client_register(struct rpc_clnt *clnt,
+ 	int err;
  
-+out5:
-+	unregister_rpc_pipefs();
- out4:
- 	unregister_pernet_subsys(&sunrpc_net_ops);
- out3:
-@@ -124,6 +131,7 @@ init_sunrpc(void)
- static void __exit
- cleanup_sunrpc(void)
- {
-+	rpc_sysfs_exit();
- 	rpc_cleanup_clids();
- 	rpcauth_remove_module();
- 	cleanup_socket_xprt();
+ 	rpc_clnt_debugfs_register(clnt);
++	rpc_sysfs_client_setup(clnt, net);
+ 
+ 	pipefs_sb = rpc_get_sb_net(net);
+ 	if (pipefs_sb) {
+@@ -327,6 +329,7 @@ static int rpc_client_register(struct rpc_clnt *clnt,
+ out:
+ 	if (pipefs_sb)
+ 		rpc_put_sb_net(net);
++	rpc_sysfs_client_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 	return err;
+ }
+@@ -733,6 +736,7 @@ int rpc_switch_client_transport(struct rpc_clnt *clnt,
+ 
+ 	rpc_unregister_client(clnt);
+ 	__rpc_clnt_remove_pipedir(clnt);
++	rpc_sysfs_client_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 
+ 	/*
+@@ -879,6 +883,7 @@ static void rpc_free_client_work(struct work_struct *work)
+ 	 * so they cannot be called in rpciod, so they are handled separately
+ 	 * here.
+ 	 */
++	rpc_sysfs_client_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 	rpc_free_clid(clnt);
+ 	rpc_clnt_remove_pipedir(clnt);
 diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-new file mode 100644
-index 000000000000..27eda180ac5e
---- /dev/null
+index 350b2b1628e7..abfe8c0b3108 100644
+--- a/net/sunrpc/sysfs.c
 +++ b/net/sunrpc/sysfs.c
-@@ -0,0 +1,20 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2020 Anna Schumaker <Anna.Schumaker@Netapp.com>
-+ */
-+#include <linux/kobject.h>
-+
-+static struct kset *rpc_sunrpc_kset;
-+
-+int rpc_sysfs_init(void)
+@@ -4,6 +4,7 @@
+  */
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/kobject.h>
++#include "sysfs.h"
+ 
+ static struct kset *rpc_sunrpc_kset;
+ static struct kobject *rpc_sunrpc_client_kobj;
+@@ -54,8 +55,67 @@ int rpc_sysfs_init(void)
+ 	return 0;
+ }
+ 
++static void rpc_sysfs_client_release(struct kobject *kobj)
 +{
-+	rpc_sunrpc_kset = kset_create_and_add("sunrpc", NULL, kernel_kobj);
-+	if (!rpc_sunrpc_kset)
-+		return -ENOMEM;
-+	return 0;
++	struct rpc_sysfs_client *c;
++
++	c = container_of(kobj, struct rpc_sysfs_client, kobject);
++	kfree(c);
 +}
 +
-+void rpc_sysfs_exit(void)
++static const void *rpc_sysfs_client_namespace(struct kobject *kobj)
 +{
-+	kset_unregister(rpc_sunrpc_kset);
++	return container_of(kobj, struct rpc_sysfs_client, kobject)->net;
++}
++
++static struct kobj_type rpc_sysfs_client_type = {
++	.release = rpc_sysfs_client_release,
++	.sysfs_ops = &kobj_sysfs_ops,
++	.namespace = rpc_sysfs_client_namespace,
++};
++
+ void rpc_sysfs_exit(void)
+ {
+ 	kobject_put(rpc_sunrpc_client_kobj);
+ 	kset_unregister(rpc_sunrpc_kset);
+ }
++
++static struct rpc_sysfs_client *rpc_sysfs_client_alloc(struct kobject *parent,
++						struct net *net, int clid)
++{
++	struct rpc_sysfs_client *p;
++
++	p = kzalloc(sizeof(*p), GFP_KERNEL);
++	if (p) {
++		p->net = net;
++		p->kobject.kset = rpc_sunrpc_kset;
++		if (kobject_init_and_add(&p->kobject, &rpc_sysfs_client_type,
++					parent, "%d", clid) == 0)
++			return p;
++		kobject_put(&p->kobject);
++	}
++	return NULL;
++}
++
++void rpc_sysfs_client_setup(struct rpc_clnt *clnt, struct net *net)
++{
++	struct rpc_sysfs_client *rpc_client;
++
++	rpc_client = rpc_sysfs_client_alloc(rpc_sunrpc_client_kobj, net, clnt->cl_clid);
++	if (rpc_client) {
++		clnt->cl_sysfs = rpc_client;
++		kobject_uevent(&rpc_client->kobject, KOBJ_ADD);
++	}
++}
++
++void rpc_sysfs_client_destroy(struct rpc_clnt *clnt)
++{
++	struct rpc_sysfs_client *rpc_client = clnt->cl_sysfs;
++
++	if (rpc_client) {
++		kobject_uevent(&rpc_client->kobject, KOBJ_REMOVE);
++		kobject_del(&rpc_client->kobject);
++		kobject_put(&rpc_client->kobject);
++		clnt->cl_sysfs = NULL;
++	}
 +}
 diff --git a/net/sunrpc/sysfs.h b/net/sunrpc/sysfs.h
-new file mode 100644
-index 000000000000..c9d9918e87ee
---- /dev/null
+index c9d9918e87ee..443679d71f38 100644
+--- a/net/sunrpc/sysfs.h
 +++ b/net/sunrpc/sysfs.h
-@@ -0,0 +1,11 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2020 Anna Schumaker <Anna.Schumaker@Netapp.com>
-+ */
-+#ifndef __SUNRPC_SYSFS_H
-+#define __SUNRPC_SYSFS_H
+@@ -5,7 +5,15 @@
+ #ifndef __SUNRPC_SYSFS_H
+ #define __SUNRPC_SYSFS_H
+ 
++struct rpc_sysfs_client {
++	struct kobject kobject;
++	struct net *net;
++};
 +
-+extern int rpc_sysfs_init(void);
-+extern void rpc_sysfs_exit(void);
+ extern int rpc_sysfs_init(void);
+ extern void rpc_sysfs_exit(void);
+ 
++void rpc_sysfs_client_setup(struct rpc_clnt *clnt, struct net *net);
++void rpc_sysfs_client_destroy(struct rpc_clnt *clnt);
 +
-+#endif
+ #endif
 -- 
 2.29.2
 
