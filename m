@@ -7,22 +7,22 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E9D7C28E82
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4C1EC43142
 	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 577F565004
+	by mail.kernel.org (Postfix) with ESMTP id 8902A65006
 	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232296AbhCLPoF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 12 Mar 2021 10:44:05 -0500
-Received: from outbound-smtp14.blacknight.com ([46.22.139.231]:35185 "EHLO
-        outbound-smtp14.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232030AbhCLPnh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 10:43:37 -0500
+        id S232262AbhCLPoE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 12 Mar 2021 10:44:04 -0500
+Received: from outbound-smtp32.blacknight.com ([81.17.249.64]:47238 "EHLO
+        outbound-smtp32.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S231922AbhCLPng (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 10:43:36 -0500
 Received: from mail.blacknight.com (pemlinmail06.blacknight.ie [81.17.255.152])
-        by outbound-smtp14.blacknight.com (Postfix) with ESMTPS id B7F631C3FFC
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 15:43:33 +0000 (GMT)
-Received: (qmail 19893 invoked from network); 12 Mar 2021 15:43:32 -0000
+        by outbound-smtp32.blacknight.com (Postfix) with ESMTPS id A3426BECB1
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 15:43:32 +0000 (GMT)
+Received: (qmail 19847 invoked from network); 12 Mar 2021 15:43:32 -0000
 Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
   by 81.17.254.9 with ESMTPA; 12 Mar 2021 15:43:32 -0000
 From:   Mel Gorman <mgorman@techsingularity.net>
@@ -37,9 +37,9 @@ Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Linux-MM <linux-mm@kvack.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 6/7] net: page_pool: refactor dma_map into own function page_pool_dma_map
-Date:   Fri, 12 Mar 2021 15:43:30 +0000
-Message-Id: <20210312154331.32229-7-mgorman@techsingularity.net>
+Subject: [PATCH 4/7] SUNRPC: Set rq_page_end differently
+Date:   Fri, 12 Mar 2021 15:43:28 +0000
+Message-Id: <20210312154331.32229-5-mgorman@techsingularity.net>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210312154331.32229-1-mgorman@techsingularity.net>
 References: <20210312154331.32229-1-mgorman@techsingularity.net>
@@ -49,96 +49,41 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Jesper Dangaard Brouer <brouer@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 
-In preparation for next patch, move the dma mapping into its own
-function, as this will make it easier to follow the changes.
+Refactor:
 
-V2: make page_pool_dma_map return boolean (Ilias)
+I'm about to use the loop variable @i for something else.
 
-Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+As far as the "i++" is concerned, that is a post-increment. The
+value of @i is not used subsequently, so the increment operator
+is unnecessary and can be removed.
+
+Also note that nfsd_read_actor() was renamed nfsd_splice_actor()
+by commit cf8208d0eabd ("sendfile: convert nfsd to
+splice_direct_to_actor()").
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
-Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
 ---
- net/core/page_pool.c | 45 +++++++++++++++++++++++++-------------------
- 1 file changed, 26 insertions(+), 19 deletions(-)
+ net/sunrpc/svc_xprt.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index ad8b0707af04..40e1b2beaa6c 100644
---- a/net/core/page_pool.c
-+++ b/net/core/page_pool.c
-@@ -180,14 +180,37 @@ static void page_pool_dma_sync_for_device(struct page_pool *pool,
- 					 pool->p.dma_dir);
- }
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index dcc50ae54550..cfa7e4776d0e 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -667,8 +667,8 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 			}
+ 			rqstp->rq_pages[i] = p;
+ 		}
+-	rqstp->rq_page_end = &rqstp->rq_pages[i];
+-	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
++	rqstp->rq_page_end = &rqstp->rq_pages[pages];
++	rqstp->rq_pages[pages] = NULL; /* this might be seen in nfsd_splice_actor() */
  
-+static bool page_pool_dma_map(struct page_pool *pool, struct page *page)
-+{
-+	dma_addr_t dma;
-+
-+	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
-+	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
-+	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
-+	 * This mapping is kept for lifetime of page, until leaving pool.
-+	 */
-+	dma = dma_map_page_attrs(pool->p.dev, page, 0,
-+				 (PAGE_SIZE << pool->p.order),
-+				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
-+	if (dma_mapping_error(pool->p.dev, dma))
-+		return false;
-+
-+	page->dma_addr = dma;
-+
-+	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
-+		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
-+
-+	return true;
-+}
-+
- /* slow path */
- noinline
- static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
- 						 gfp_t _gfp)
- {
-+	unsigned int pp_flags = pool->p.flags;
- 	struct page *page;
- 	gfp_t gfp = _gfp;
--	dma_addr_t dma;
- 
- 	/* We could always set __GFP_COMP, and avoid this branch, as
- 	 * prep_new_page() can handle order-0 with __GFP_COMP.
-@@ -211,30 +234,14 @@ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
- 	if (!page)
- 		return NULL;
- 
--	if (!(pool->p.flags & PP_FLAG_DMA_MAP))
--		goto skip_dma_map;
--
--	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
--	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
--	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
--	 * This mapping is kept for lifetime of page, until leaving pool.
--	 */
--	dma = dma_map_page_attrs(pool->p.dev, page, 0,
--				 (PAGE_SIZE << pool->p.order),
--				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
--	if (dma_mapping_error(pool->p.dev, dma)) {
-+	if ((pp_flags & PP_FLAG_DMA_MAP) &&
-+	    unlikely(!page_pool_dma_map(pool, page))) {
- 		put_page(page);
- 		return NULL;
- 	}
--	page->dma_addr = dma;
- 
--	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
--		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
--
--skip_dma_map:
- 	/* Track how many pages are held 'in-flight' */
- 	pool->pages_state_hold_cnt++;
--
- 	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
- 
- 	/* When page just alloc'ed is should/must have refcnt 1. */
+ 	/* Make arg->head point to first page and arg->pages point to rest */
+ 	arg = &rqstp->rq_arg;
 -- 
 2.26.2
 
