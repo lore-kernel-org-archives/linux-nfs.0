@@ -2,139 +2,112 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8F07C28E85
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D210DC433E6
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:46:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A4BF064FDC
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A823664FDC
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:46:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232225AbhCLPoE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 12 Mar 2021 10:44:04 -0500
-Received: from outbound-smtp47.blacknight.com ([46.22.136.64]:35539 "EHLO
-        outbound-smtp47.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232005AbhCLPng (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 10:43:36 -0500
-Received: from mail.blacknight.com (pemlinmail06.blacknight.ie [81.17.255.152])
-        by outbound-smtp47.blacknight.com (Postfix) with ESMTPS id E23B8FB0C6
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 15:43:32 +0000 (GMT)
-Received: (qmail 19870 invoked from network); 12 Mar 2021 15:43:32 -0000
-Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPA; 12 Mar 2021 15:43:32 -0000
-From:   Mel Gorman <mgorman@techsingularity.net>
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Jesper Dangaard Brouer <brouer@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Alexander Duyck <alexander.duyck@gmail.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux-Net <netdev@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>,
-        Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 5/7] SUNRPC: Refresh rq_pages using a bulk page allocator
-Date:   Fri, 12 Mar 2021 15:43:29 +0000
-Message-Id: <20210312154331.32229-6-mgorman@techsingularity.net>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210312154331.32229-1-mgorman@techsingularity.net>
-References: <20210312154331.32229-1-mgorman@techsingularity.net>
+        id S231601AbhCLPqJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 12 Mar 2021 10:46:09 -0500
+Received: from mail-ej1-f51.google.com ([209.85.218.51]:42968 "EHLO
+        mail-ej1-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233410AbhCLPqA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 10:46:00 -0500
+Received: by mail-ej1-f51.google.com with SMTP id c10so54125251ejx.9;
+        Fri, 12 Mar 2021 07:45:59 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=X1HpxgHYTFg/Fiy9HzFnN5aYrg8PdK4Zz6eNMkByZOQ=;
+        b=ZrAPaEwWBHF9ZTjyxisxeO6fCV9jOuA4NbZcM8ejc9lZsVgK/66NJ9rSn7ZHk5sWZz
+         g4b9GEnFWtbZh+mtWkphj+bI934MoBwfUVaeX+LAQ177w7/j4j3nbQihlDVgsMXsI4ZW
+         GRgzeHjGE41oMhGJEh4pS1TMtpg7Ahn2aDKu2pCJLzvVb9gSy5h2xF6e61latQvM9qB/
+         qtlNfxjDpGIQESkC2vRP16emnaQekGQmQabdJCgEKL0kyFwdWVbNLt2Y5VBtmwjkOAHS
+         cSrcPTiwEEyix/DK8tNnhi2/id6ZWLDEFn85t6oOYgkO02MREaeNFCOeJkhl5j+/HSBF
+         u23w==
+X-Gm-Message-State: AOAM531hM0dom4lp2WJsLg0VI/KiX1SMYYvo3qZLRU0VbJIm3Tbw3091
+        CZaOB8bZK8S8/IhQWnO+2uno6NusmF0OMyAdTltPHtjtGh8=
+X-Google-Smtp-Source: ABdhPJzSxuuHpVvuY/3fx7VuVAza8CeQXKqJM7E6/bn3Tg/YFxUIAenXMt+sKbScJmPABZa6Duhd/VeUZoKutXD5WHI=
+X-Received: by 2002:a17:906:4e17:: with SMTP id z23mr9318713eju.439.1615563958756;
+ Fri, 12 Mar 2021 07:45:58 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAN-5tyGuV-gs0KzVbKSj42ZMx553zy9wOfVb1SoHoE-WCoN1_w@mail.gmail.com>
+ <20210227033755.24460-1-olga.kornievskaia@gmail.com> <CAFX2Jfk--KwkAss1gqTPnQt-bKvUUapNdHbuicu=m+jOtjrMyQ@mail.gmail.com>
+ <f8f5323c-cdfd-92e8-b359-43caaf9d7490@schaufler-ca.com> <CAHC9VhR=+uwN8U17JhYWKcXSc9=ExCrG4O9-y+DPJg6xZ=WoYA@mail.gmail.com>
+In-Reply-To: <CAHC9VhR=+uwN8U17JhYWKcXSc9=ExCrG4O9-y+DPJg6xZ=WoYA@mail.gmail.com>
+From:   Anna Schumaker <anna.schumaker@netapp.com>
+Date:   Fri, 12 Mar 2021 10:45:42 -0500
+Message-ID: <CAFX2JfnT49o-CkaAE3=c0KW9SDS1U+scP0RD++nmWwyKoBDWkA@mail.gmail.com>
+Subject: Re: [PATCH v4 1/3] [security] Add new hook to compare new mount to an
+ existing mount
+To:     Paul Moore <paul@paul-moore.com>
+Cc:     Casey Schaufler <casey@schaufler-ca.com>,
+        Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Security Module list 
+        <linux-security-module@vger.kernel.org>,
+        SElinux list <selinux@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On Thu, Mar 4, 2021 at 8:34 PM Paul Moore <paul@paul-moore.com> wrote:
+>
+> On Tue, Mar 2, 2021 at 10:53 PM Casey Schaufler <casey@schaufler-ca.com> wrote:
+> > On 3/2/2021 10:20 AM, Anna Schumaker wrote:
+> > > Hi Casey,
+> > >
+> > > On Fri, Feb 26, 2021 at 10:40 PM Olga Kornievskaia
+> > > <olga.kornievskaia@gmail.com> wrote:
+> > >> From: Olga Kornievskaia <kolga@netapp.com>
+> > >>
+> > >> Add a new hook that takes an existing super block and a new mount
+> > >> with new options and determines if new options confict with an
+> > >> existing mount or not.
+> > >>
+> > >> A filesystem can use this new hook to determine if it can share
+> > >> the an existing superblock with a new superblock for the new mount.
+> > >>
+> > >> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> > > Do you have any other thoughts on this patch? I'm also wondering how
+> > > you want to handle sending it upstream.
+> >
+> > James Morris is the maintainer for the security sub-system,
+> > so you'll want to send this through him. He will want you to
+> > have an ACK from Paul Moore, who is the SELinux maintainer.
+>
+> In the past I've pulled patches such as this (new LSM hook, with only
+> a SELinux implementation of the new hook) in via the selinux/next tree
+> after the other LSMs have ACK'd the new hook.  This helps limit merge
+> problems with other SELinux changes and allows us (the SELinux folks)
+> to include it in the ongoing testing that we do during the -rcX
+> releases.
+>
+> So Anna, if you or anyone else on the NFS side of the house want to
+> add your ACKs/REVIEWs/etc. please do so as I don't like merging
+> patches that cross subsystem boundaries without having all the
+> associated ACKs.  Casey, James, and other LSM folks please do the
+> same.
 
-Reduce the rate at which nfsd threads hammer on the page allocator.
-This improves throughput scalability by enabling the threads to run
-more independently of each other.
+Sure:
+Acked-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
----
- net/sunrpc/svc_xprt.c | 43 +++++++++++++++++++++++++++++++------------
- 1 file changed, 31 insertions(+), 12 deletions(-)
+Are you also going to take patch 3/3 that uses the new hook, or should
+that go through the NFS tree? Patch 2/3 is a cleanup that can go
+through the NFS tree.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index cfa7e4776d0e..38a8d6283801 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -642,11 +642,12 @@ static void svc_check_conn_limits(struct svc_serv *serv)
- static int svc_alloc_arg(struct svc_rqst *rqstp)
- {
- 	struct svc_serv *serv = rqstp->rq_server;
-+	unsigned long needed;
- 	struct xdr_buf *arg;
-+	struct page *page;
- 	int pages;
- 	int i;
- 
--	/* now allocate needed pages.  If we get a failure, sleep briefly */
- 	pages = (serv->sv_max_mesg + 2 * PAGE_SIZE) >> PAGE_SHIFT;
- 	if (pages > RPCSVC_MAXPAGES) {
- 		pr_warn_once("svc: warning: pages=%u > RPCSVC_MAXPAGES=%lu\n",
-@@ -654,19 +655,28 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
- 		/* use as many pages as possible */
- 		pages = RPCSVC_MAXPAGES;
- 	}
--	for (i = 0; i < pages ; i++)
--		while (rqstp->rq_pages[i] == NULL) {
--			struct page *p = alloc_page(GFP_KERNEL);
--			if (!p) {
--				set_current_state(TASK_INTERRUPTIBLE);
--				if (signalled() || kthread_should_stop()) {
--					set_current_state(TASK_RUNNING);
--					return -EINTR;
--				}
--				schedule_timeout(msecs_to_jiffies(500));
-+
-+	for (needed = 0, i = 0; i < pages ; i++)
-+		if (!rqstp->rq_pages[i])
-+			needed++;
-+	if (needed) {
-+		LIST_HEAD(list);
-+
-+retry:
-+		alloc_pages_bulk(GFP_KERNEL, needed, &list);
-+		for (i = 0; i < pages; i++) {
-+			if (!rqstp->rq_pages[i]) {
-+				page = list_first_entry_or_null(&list,
-+								struct page,
-+								lru);
-+				if (unlikely(!page))
-+					goto empty_list;
-+				list_del(&page->lru);
-+				rqstp->rq_pages[i] = page;
-+				needed--;
- 			}
--			rqstp->rq_pages[i] = p;
- 		}
-+	}
- 	rqstp->rq_page_end = &rqstp->rq_pages[pages];
- 	rqstp->rq_pages[pages] = NULL; /* this might be seen in nfsd_splice_actor() */
- 
-@@ -681,6 +691,15 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
- 	arg->len = (pages-1)*PAGE_SIZE;
- 	arg->tail[0].iov_len = 0;
- 	return 0;
-+
-+empty_list:
-+	set_current_state(TASK_INTERRUPTIBLE);
-+	if (signalled() || kthread_should_stop()) {
-+		set_current_state(TASK_RUNNING);
-+		return -EINTR;
-+	}
-+	schedule_timeout(msecs_to_jiffies(500));
-+	goto retry;
- }
- 
- static bool
--- 
-2.26.2
+Anna
 
+>
+> --
+> paul moore
+> www.paul-moore.com
