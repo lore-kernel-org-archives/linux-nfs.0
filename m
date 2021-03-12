@@ -2,69 +2,71 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE6C0C433E9
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CCC7C4332D
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C271164FA7
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 07D4F64FA7
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235193AbhCLVSx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 12 Mar 2021 16:18:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34844 "EHLO
+        id S235194AbhCLVS4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 12 Mar 2021 16:18:56 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34870 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235188AbhCLVS3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:18:29 -0500
-Received: from mail-qk1-x72c.google.com (mail-qk1-x72c.google.com [IPv6:2607:f8b0:4864:20::72c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B4E5C061574
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:29 -0800 (PST)
-Received: by mail-qk1-x72c.google.com with SMTP id a9so25816528qkn.13
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:29 -0800 (PST)
+        with ESMTP id S235196AbhCLVSe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:18:34 -0500
+Received: from mail-qk1-x72e.google.com (mail-qk1-x72e.google.com [IPv6:2607:f8b0:4864:20::72e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4C46C061574
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:32 -0800 (PST)
+Received: by mail-qk1-x72e.google.com with SMTP id 130so25821225qkh.11
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:32 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=pexP4mVl44dmpNSvH5jw+yzpSOkSXifs2rh/5/wpp0o=;
-        b=cL/h8OokxXU19zEWNDuwdf5PFQ5tveaxKxzeI9joARFFNmd5ewL3EJAUbSOMvOK5Gr
-         iXbz8GwQS3FdnkZ+EUN16bVdCpzCXrY8O46rz6kIIZfXqW2loP1cjsS3WQJBiA0PhBPJ
-         0KbdD11xtInpxzGo2Fkv3JWC8DaEIM6gVRyclIYwsJVISQSTpE3ijEWtDFpMBQGh46gl
-         s4BSJYDRVaP3kA/KNFygPoKTJoZYIq4xIl5tbU6GBK6VhUkndeiNTapvgobibrdX3mm1
-         p0df5/ypK3A62h4ETPlxFXJOWi584DwJMnsPmJuiTtljXC1/aKO5SjpgEj/uj56280hN
-         oPZw==
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=FxeqY0lbRXBBNFSL0hGXRSL8HmbSfYX5sIzVJ3Lknl0=;
+        b=DIKfVXYUUlX0L8Du8/KwHTAzCJMzKuTp7rsxQwPXdB62WcS+Ljqlf+7M1gDcGhzMdu
+         xE1VmlHUVCkWLKJl+pm5BldobYsflq/uaI9iTU5DJM5NylYRz8A32lHDwTvIUVzOvQQ1
+         QFY/HjFbT6mkKu22deR5bo4zsCwbrhoi58CPAWJ6zxzlWFmruANREIvQoqyaZx+FTHbi
+         VKHKLQVW4zXylvyXxcruI6xs3lwsjBNgpUgZUZrE7pBdEsTFpCYufR8E5EspGPYdTQsp
+         c7qb6My8fmK/NVPI01bvRGjmy7Q2GQBwojZPC1pKx/imFLxeZI65oXm7W0d3Qs5EZFE8
+         IBGQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :mime-version:content-transfer-encoding;
-        bh=pexP4mVl44dmpNSvH5jw+yzpSOkSXifs2rh/5/wpp0o=;
-        b=lAHmEgdS0UrViCpDLTXJWLWWN6m16Go87BOnCvppsHBAslXHdjUxUdnMooIJHgsxjK
-         9hKHvxkBJAgcd7xUobfs4Dj7n2KEcts3MSB9+PnC5S2WdLsrvTXN5exI7xilywd7+GPV
-         jetoXmGNQpYYhlt/Xpz9CoJOQiUsM5esVLb8dRJcSd7bmXqa/sL0wzebZQ93kWgb8lf8
-         dve1fSOFbJ0jElG/ePFIjztjdgw0DGPZY9p+zAKfcwhsgTbpaiIE76lHFLasqGH1GD25
-         5JkiFa4oIFtl7L619Z2TTS2GUmZSG7n99oM0qte7mWIm3hBCrFfDmIZnfdjffltqkjHj
-         2qow==
-X-Gm-Message-State: AOAM533SKGcC0k2eOElOwavMMTwnyQMB4rHQ0lw2A86sjkeHnB5PkLRe
-        xCMZ6dNdS2uNVEXq///Fu85/muQb2BLAfA==
-X-Google-Smtp-Source: ABdhPJyPqMQ4fX5LJTeCGdRRmHf+I0MclB+nG/9RycuMSxiXhXmRZIoP01jF4su/H1F5Ahi+wIsG6A==
-X-Received: by 2002:a37:584:: with SMTP id 126mr14036592qkf.274.1615583908469;
-        Fri, 12 Mar 2021 13:18:28 -0800 (PST)
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=FxeqY0lbRXBBNFSL0hGXRSL8HmbSfYX5sIzVJ3Lknl0=;
+        b=EUDsx6yJ7l1XMuAUL96cIk1MGDECwWpbZNX4rhdqdwWQNeEQf9NASo04Qm69uyqj16
+         O/kJm7FVa/2PKSOisfxO6g/hjRJGB6YfUC8rvE+fKHvjYIplBP6l66YEIynVKBNOV22G
+         oRT/pDx9EWwZVQ7d+eeQw4Wjkpyv79uSOPXsL7frrn2/EGNtNmSVMWQSirw2kaH2P/rF
+         053KGzkVxkX4ZrKOTBHJx3xHR1U2d1B3WgES645uCQX2oOm3zK4odaXEOS4D73AqUwqu
+         aFL/qNJc86jpFg6rC1geqAkjCeSKcJGD1HQNOGptBXvFNXYNTFHjaEo7fMYFoMYOycEw
+         xbLg==
+X-Gm-Message-State: AOAM533fuJhJX4+ieMkqc2gqE+Jo5yNP2KFpse6s0DUJw05BKNt4Rnkq
+        +OEQoifCwMUHv1/L4Ojc17LTkx0I0LKD9Q==
+X-Google-Smtp-Source: ABdhPJzZNZ+oElIuD8hyAJsCRojd7E9P5s7T4v1j25FnAa9WEt4lxUh2f2/byzpW7g2RvL9nkFmg5A==
+X-Received: by 2002:a37:40d5:: with SMTP id n204mr6611748qka.79.1615583911835;
+        Fri, 12 Mar 2021 13:18:31 -0800 (PST)
 Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
-        by smtp.gmail.com with ESMTPSA id d24sm5177490qko.54.2021.03.12.13.18.27
+        by smtp.gmail.com with ESMTPSA id d24sm5177490qko.54.2021.03.12.13.18.31
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 12 Mar 2021 13:18:28 -0800 (PST)
+        Fri, 12 Mar 2021 13:18:31 -0800 (PST)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v3 0/5] SUNRPC: Create sysfs files for changing IP address
-Date:   Fri, 12 Mar 2021 16:18:21 -0500
-Message-Id: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 4/5] sunrpc: Prepare xs_connect() for taking NULL tasks
+Date:   Fri, 12 Mar 2021 16:18:25 -0500
+Message-Id: <20210312211826.360959-5-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
+References: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -73,56 +75,29 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-It's possible for an NFS server to go down but come back up with a
-different IP address. These patches provide a way for administrators to
-handle this issue by providing a new IP address for xprt sockets to
-connect to.
+We won't have a task structure when we go to change IP addresses, so
+check for one before calling the WARN_ON() to avoid crashing.
 
-Chuck has suggested some ideas for future work that could also use this
-interface, such as:
-- srcaddr: To move between network devices on the client
-- type: "tcp", "rdma", "local"
-- bound: 0 for autobind, or the result of the most recent rpcbind query
-- connected: either true or false
-- last: read-only timestamp of the last operation to use the transport
-- device: A symlink to the physical network device
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+v3: Clean up WARN_ON_ONCE() to avoid a new if
+---
+ net/sunrpc/xprtsock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v3:
-- Rename functions and objects to make future expansion easier
-- Put files under /sys/kernel/sunrpc/client/ instead of
-  /sys/kernel/sunrpc/net/, again for future expansions
-- Clean up use of WARN_ON_ONCE() in xs_connect()
-- Fix up locking, reference counting, and RCU usage
-- Unconditionally create files so userspace tools don't need to guess
-  what is supported (We return an error message now instead)
-
-Changes in v2:
-- Put files under /sys/kernel/sunrpc/ instead of /sys/net/sunrpc/
-- Rename file from "address" to "dstaddr"
-
-Thoughts?
-Anna
-
-
-Anna Schumaker (5):
-  sunrpc: Create a sunrpc directory under /sys/kernel/
-  sunrpc: Create a client/ subdirectory in the sunrpc sysfs
-  sunrpc: Create per-rpc_clnt sysfs kobjects
-  sunrpc: Prepare xs_connect() for taking NULL tasks
-  sunrpc: Create a per-rpc_clnt file for managing the destination IP
-    address
-
- include/linux/sunrpc/clnt.h |   1 +
- net/sunrpc/Makefile         |   2 +-
- net/sunrpc/clnt.c           |   5 +
- net/sunrpc/sunrpc_syms.c    |   8 ++
- net/sunrpc/sysfs.c          | 191 ++++++++++++++++++++++++++++++++++++
- net/sunrpc/sysfs.h          |  20 ++++
- net/sunrpc/xprtsock.c       |   2 +-
- 7 files changed, 227 insertions(+), 2 deletions(-)
- create mode 100644 net/sunrpc/sysfs.c
- create mode 100644 net/sunrpc/sysfs.h
-
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index e35760f238a4..eb8df10aac9c 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2310,7 +2310,7 @@ static void xs_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	unsigned long delay = 0;
+ 
+-	WARN_ON_ONCE(!xprt_lock_connect(xprt, task, transport));
++	WARN_ON_ONCE(task && !xprt_lock_connect(xprt, task, transport));
+ 
+ 	if (transport->sock != NULL) {
+ 		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
 -- 
 2.29.2
 
