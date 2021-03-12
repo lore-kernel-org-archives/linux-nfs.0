@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CCC7C4332D
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D270C4332B
 	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 07D4F64FA7
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E8DCD64F16
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235194AbhCLVS4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 12 Mar 2021 16:18:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34870 "EHLO
+        id S235195AbhCLVSz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 12 Mar 2021 16:18:55 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34858 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235196AbhCLVSe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:18:34 -0500
-Received: from mail-qk1-x72e.google.com (mail-qk1-x72e.google.com [IPv6:2607:f8b0:4864:20::72e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4C46C061574
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:32 -0800 (PST)
-Received: by mail-qk1-x72e.google.com with SMTP id 130so25821225qkh.11
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:32 -0800 (PST)
+        with ESMTP id S235194AbhCLVSc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:18:32 -0500
+Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B0AFC061574
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:31 -0800 (PST)
+Received: by mail-qk1-x733.google.com with SMTP id l4so25867389qkl.0
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:31 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=FxeqY0lbRXBBNFSL0hGXRSL8HmbSfYX5sIzVJ3Lknl0=;
-        b=DIKfVXYUUlX0L8Du8/KwHTAzCJMzKuTp7rsxQwPXdB62WcS+Ljqlf+7M1gDcGhzMdu
-         xE1VmlHUVCkWLKJl+pm5BldobYsflq/uaI9iTU5DJM5NylYRz8A32lHDwTvIUVzOvQQ1
-         QFY/HjFbT6mkKu22deR5bo4zsCwbrhoi58CPAWJ6zxzlWFmruANREIvQoqyaZx+FTHbi
-         VKHKLQVW4zXylvyXxcruI6xs3lwsjBNgpUgZUZrE7pBdEsTFpCYufR8E5EspGPYdTQsp
-         c7qb6My8fmK/NVPI01bvRGjmy7Q2GQBwojZPC1pKx/imFLxeZI65oXm7W0d3Qs5EZFE8
-         IBGQ==
+        bh=RtzjEJB5ms/fI+WQZNcMRSa9eOpSN3/2cnTyDn6MbtE=;
+        b=GuhMspjYbQ7uwOjDBLSA9IHXS/hjOWvlH4/ZLcWVgFzxJ5l1Kcvnz1CArZTqPvsvSj
+         7Dv0+Its/1WcNBzSKpZxXs8UpOLGFfsou9MDSMMsBJUgpoFng/ze3NlhCAHcQlzDqdI/
+         wy+34IC6uQCRV9j8tRWJW/PenZ9qBut1ME2ZZvdA8e1Ped/ZlAl5IfrrvI6V1rRisqlI
+         MABSHEEqLDeaJ1oj5oLpIeCX6vWRutE+pkABrWR0q2g43wv4bKh3bqgbyHFGDmLv199n
+         KiUp+YHWFvkNpTxra6t8lEeRloBjZoKZBuoFFFhiE1JPfJOXL2DsAMvk5lfEsPZoQ1Og
+         AzAg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=FxeqY0lbRXBBNFSL0hGXRSL8HmbSfYX5sIzVJ3Lknl0=;
-        b=EUDsx6yJ7l1XMuAUL96cIk1MGDECwWpbZNX4rhdqdwWQNeEQf9NASo04Qm69uyqj16
-         O/kJm7FVa/2PKSOisfxO6g/hjRJGB6YfUC8rvE+fKHvjYIplBP6l66YEIynVKBNOV22G
-         oRT/pDx9EWwZVQ7d+eeQw4Wjkpyv79uSOPXsL7frrn2/EGNtNmSVMWQSirw2kaH2P/rF
-         053KGzkVxkX4ZrKOTBHJx3xHR1U2d1B3WgES645uCQX2oOm3zK4odaXEOS4D73AqUwqu
-         aFL/qNJc86jpFg6rC1geqAkjCeSKcJGD1HQNOGptBXvFNXYNTFHjaEo7fMYFoMYOycEw
-         xbLg==
-X-Gm-Message-State: AOAM533fuJhJX4+ieMkqc2gqE+Jo5yNP2KFpse6s0DUJw05BKNt4Rnkq
-        +OEQoifCwMUHv1/L4Ojc17LTkx0I0LKD9Q==
-X-Google-Smtp-Source: ABdhPJzZNZ+oElIuD8hyAJsCRojd7E9P5s7T4v1j25FnAa9WEt4lxUh2f2/byzpW7g2RvL9nkFmg5A==
-X-Received: by 2002:a37:40d5:: with SMTP id n204mr6611748qka.79.1615583911835;
-        Fri, 12 Mar 2021 13:18:31 -0800 (PST)
+        bh=RtzjEJB5ms/fI+WQZNcMRSa9eOpSN3/2cnTyDn6MbtE=;
+        b=gW2vLXAoFmhLuGjVEuJI7gPTWs+3l4Cob6XZRDbC3pVTgQPaiyvKzvwWZQvlwRAmJQ
+         uSXVoQulK5TRWC91H4Okj0LI0V82NHjLSJQMy4J37CO/wfWKNuh7ekUy4Burb8dR8xvk
+         BKtTQDWpI3v4Zs0nHKbUFjOfH2NBdULFgYEnJlPUBruEdMRjuzKGdTwjkQzMUgl7j1av
+         HdWRHUvINH25PVXRdei1MnbLc52POPOqHTHHV7YFyBKJ7dFpInhc36bVfK0ZEzJVh5i1
+         nYFcAHX4uAi3ZsPDTGusn+wag76ZEtfuOn/7ZfJ9FE27hJAMICIATk08/sd7yCxjIVhx
+         G0Sw==
+X-Gm-Message-State: AOAM533zYG6fnYeNgR44bZAW7UuPLC/1P3BIPOZsbKCFyNTiAP8+fxp5
+        3098lS67B2Lo0gnE5UinrUGnf8rZtV7oCA==
+X-Google-Smtp-Source: ABdhPJyq6qIPT8oGhkjhLnovxC9hp1G7gOOCo9sp7PXGSH7pvdq0qWGlConIYdOYBjc8PRw6E1pF/Q==
+X-Received: by 2002:a37:2e46:: with SMTP id u67mr14947053qkh.488.1615583910304;
+        Fri, 12 Mar 2021 13:18:30 -0800 (PST)
 Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
-        by smtp.gmail.com with ESMTPSA id d24sm5177490qko.54.2021.03.12.13.18.31
+        by smtp.gmail.com with ESMTPSA id d24sm5177490qko.54.2021.03.12.13.18.29
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 12 Mar 2021 13:18:31 -0800 (PST)
+        Fri, 12 Mar 2021 13:18:30 -0800 (PST)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v3 4/5] sunrpc: Prepare xs_connect() for taking NULL tasks
-Date:   Fri, 12 Mar 2021 16:18:25 -0500
-Message-Id: <20210312211826.360959-5-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 2/5] sunrpc: Create a client/ subdirectory in the sunrpc sysfs
+Date:   Fri, 12 Mar 2021 16:18:23 -0500
+Message-Id: <20210312211826.360959-3-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
 References: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
@@ -75,29 +75,82 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-We won't have a task structure when we go to change IP addresses, so
-check for one before calling the WARN_ON() to avoid crashing.
+For network namespace separation.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
-v3: Clean up WARN_ON_ONCE() to avoid a new if
+v3: Rename net/ directory to client/
+    Rename rpc_client_kobj to rpc_sunrpc_client_kobj
+    s/netns/sysfs/
 ---
- net/sunrpc/xprtsock.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/sysfs.c | 41 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index e35760f238a4..eb8df10aac9c 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2310,7 +2310,7 @@ static void xs_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	unsigned long delay = 0;
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 27eda180ac5e..350b2b1628e7 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -2,19 +2,60 @@
+ /*
+  * Copyright (c) 2020 Anna Schumaker <Anna.Schumaker@Netapp.com>
+  */
++#include <linux/sunrpc/clnt.h>
+ #include <linux/kobject.h>
  
--	WARN_ON_ONCE(!xprt_lock_connect(xprt, task, transport));
-+	WARN_ON_ONCE(task && !xprt_lock_connect(xprt, task, transport));
+ static struct kset *rpc_sunrpc_kset;
++static struct kobject *rpc_sunrpc_client_kobj;
++
++static void rpc_sysfs_object_release(struct kobject *kobj)
++{
++	kfree(kobj);
++}
++
++static const struct kobj_ns_type_operations *rpc_sysfs_object_child_ns_type(
++		struct kobject *kobj)
++{
++	return &net_ns_type_operations;
++}
++
++static struct kobj_type rpc_sysfs_object_type = {
++	.release = rpc_sysfs_object_release,
++	.sysfs_ops = &kobj_sysfs_ops,
++	.child_ns_type = rpc_sysfs_object_child_ns_type,
++};
++
++static struct kobject *rpc_sysfs_object_alloc(const char *name,
++		struct kset *kset, struct kobject *parent)
++{
++	struct kobject *kobj;
++	kobj = kzalloc(sizeof(*kobj), GFP_KERNEL);
++	if (kobj) {
++		kobj->kset = kset;
++		if (kobject_init_and_add(kobj, &rpc_sysfs_object_type,
++					parent, "%s", name) == 0)
++			return kobj;
++		kobject_put(kobj);
++	}
++	return NULL;
++}
  
- 	if (transport->sock != NULL) {
- 		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+ int rpc_sysfs_init(void)
+ {
+ 	rpc_sunrpc_kset = kset_create_and_add("sunrpc", NULL, kernel_kobj);
+ 	if (!rpc_sunrpc_kset)
+ 		return -ENOMEM;
++	rpc_sunrpc_client_kobj = rpc_sysfs_object_alloc("client", rpc_sunrpc_kset, NULL);
++	if (!rpc_sunrpc_client_kobj) {
++		kset_unregister(rpc_sunrpc_kset);
++		rpc_sunrpc_client_kobj = NULL;
++		return -ENOMEM;
++	}
+ 	return 0;
+ }
+ 
+ void rpc_sysfs_exit(void)
+ {
++	kobject_put(rpc_sunrpc_client_kobj);
+ 	kset_unregister(rpc_sunrpc_kset);
+ }
 -- 
 2.29.2
 
