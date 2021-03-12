@@ -2,128 +2,190 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D509FC433E6
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:09:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67057C433DB
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9789A64F8E
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:09:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3161B64F8D
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 21:19:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234933AbhCLVIp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 12 Mar 2021 16:08:45 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60956 "EHLO
+        id S235126AbhCLVSx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 12 Mar 2021 16:18:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34850 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234931AbhCLVIk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:08:40 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B9AA1C061574;
-        Fri, 12 Mar 2021 13:08:39 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=qeUU8gseO1+9GvKOOhLbMMDeusl5vJ4s6E+Z3Jay+5k=; b=jUk9D/Vgorg6jE/9pkqJ71pR3+
-        CQLlU+KoRXWxd0N2u6MfZfpgeA7nODC5qb8MsoittFLBhdeTZYhceNOA2vkq4azcWTzKH8KMmoMdV
-        jIYm7xWfCrZ8q/4el4onN9UH00wTIj10T2ajgiBaxDvRzEn/4ZzGH02T3+uuKK/O2Q3ldhauL//Sp
-        bpv1veqprczJEXm8bXp64B/dJgqNreyYwKriT9OrtWSZP+8//Z+ZxXJk+0NHhxN1nlr1J92/o20N5
-        1Cyu8e+66jB7GK/q0jZt8s/dLFftHoCqSj+63WgezbRRDz2nUmospOvxEZJCR0Vq0cc3f0+F/VMY2
-        FRCXFvjw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1lKp1D-00Bmz5-Om; Fri, 12 Mar 2021 21:08:27 +0000
-Date:   Fri, 12 Mar 2021 21:08:23 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Mel Gorman <mgorman@techsingularity.net>
-Cc:     Jesper Dangaard Brouer <brouer@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux-Net <netdev@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/5] mm/page_alloc: Add a bulk page allocator
-Message-ID: <20210312210823.GE2577561@casper.infradead.org>
-References: <20210310104618.22750-1-mgorman@techsingularity.net>
- <20210310104618.22750-3-mgorman@techsingularity.net>
- <20210310154650.ad9760cd7cb9ac4acccf77ee@linux-foundation.org>
- <20210311084200.GR3697@techsingularity.net>
- <20210312124609.33d4d4ba@carbon>
- <20210312145814.GA2577561@casper.infradead.org>
- <20210312160350.GW3697@techsingularity.net>
+        with ESMTP id S235193AbhCLVSa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 16:18:30 -0500
+Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 65612C061761
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:30 -0800 (PST)
+Received: by mail-qk1-x733.google.com with SMTP id s7so25842742qkg.4
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 13:18:30 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=LHEMWnG1httaOebjxzUSCMi4EC2eLwY/EEbXQn1DhtE=;
+        b=VaLTxi4hY8L7b+nSzaLY3VWgQl5sp7Cgp73MASVuf0kC1YMXOVBVlA/IWphS3Xuj1E
+         SzNAmBpIGQO4KBrlEXELH5MogSjhnMPSuCnOFceZDqStWwlmz6AsEGSePX9ULU4edZ+l
+         v/VIX2s2BMGHG6ExMuThYgg4oHvT6BHrablQSOMvkRfpEQ1Jx3v6m7zoKvMmKmr7VPSE
+         vLPI9rdHa1y0/bGvyrvYzTyODYUCU1+ONW1OjTVFZN3rphKO5+aC1mGGc7iqmT0fIeRj
+         GRh+RDzm/XhVpJQbR76d4zmXI2xgFEuICtl+KOlqJ9x8QZLFW3SjSeX+53f+L1ZvuPbz
+         PoGw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=LHEMWnG1httaOebjxzUSCMi4EC2eLwY/EEbXQn1DhtE=;
+        b=H6LPUSNJUCpqU4/Y+fryg/sh0OTwG6cmir/ocapMC0wgolAeVkt59qkJrsLm4YCKkq
+         aIMQAmtNKUUmigRxt23ewHdZ46VnRjjhcR3usHyltke7Phvl4MeRO/yTkLuttUWBIq21
+         HprT/YwKbbJSWdGFT3o6DHasfDsBZWZsBU8OGpgT2dWHKi3JF9sx4yuqYR/8TAO45PiM
+         W734vNmITscEXBGFflN8YAzfFjzdlk12a+Rokrcc8W7dznrDEZP2ZR5RY0t5NEwoHvqy
+         6R8Ro+FcrOhzWqBzlqG/YM9OM/Hgm2vj7KiZ3KgauLBqvD3VcIo5zlfkL3vL0K8dTs0T
+         5d0A==
+X-Gm-Message-State: AOAM531MPSbirSFGFxSnHuQsdUTJpLaRET/iACgnTTKYhsjj4odZnWDX
+        9oNoS09L83QXBBUI7qnPqU34UZlWGBlvBQ==
+X-Google-Smtp-Source: ABdhPJxZKpXAYHg+OdrMnyW8F/TN97edYCATUGCQu47aC4Go5pP8tye2t2Kpdz3qnEpv37UEp59/eA==
+X-Received: by 2002:a05:620a:49a:: with SMTP id 26mr14536830qkr.436.1615583909408;
+        Fri, 12 Mar 2021 13:18:29 -0800 (PST)
+Received: from gouda.nowheycreamery.com (c-68-32-74-190.hsd1.mi.comcast.net. [68.32.74.190])
+        by smtp.gmail.com with ESMTPSA id d24sm5177490qko.54.2021.03.12.13.18.28
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 12 Mar 2021 13:18:29 -0800 (PST)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v3 1/5] sunrpc: Create a sunrpc directory under /sys/kernel/
+Date:   Fri, 12 Mar 2021 16:18:22 -0500
+Message-Id: <20210312211826.360959-2-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
+References: <20210312211826.360959-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210312160350.GW3697@techsingularity.net>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Mar 12, 2021 at 04:03:50PM +0000, Mel Gorman wrote:
-> On Fri, Mar 12, 2021 at 02:58:14PM +0000, Matthew Wilcox wrote:
-> > On Fri, Mar 12, 2021 at 12:46:09PM +0100, Jesper Dangaard Brouer wrote:
-> > > In my page_pool patch I'm bulk allocating 64 pages. I wanted to ask if
-> > > this is too much? (PP_ALLOC_CACHE_REFILL=64).
-> > > 
-> > > The mlx5 driver have a while loop for allocation 64 pages, which it
-> > > used in this case, that is why 64 is chosen.  If we choose a lower
-> > > bulk number, then the bulk-alloc will just be called more times.
-> > 
-> > The thing about batching is that smaller batches are often better.
-> > Let's suppose you need to allocate 100 pages for something, and the page
-> > allocator takes up 90% of your latency budget.  Batching just ten pages
-> > at a time is going to reduce the overhead to 9%.  Going to 64 pages
-> > reduces the overhead from 9% to 2% -- maybe that's important, but
-> > possibly not.
-> > 
-> 
-> I do not think that something like that can be properly accessed in
-> advance. It heavily depends on whether the caller is willing to amortise
-> the cost of the batch allocation or if the timing of the bulk request is
-> critical every single time.
-> 
-> > > The result of the API is to deliver pages as a double-linked list via
-> > > LRU (page->lru member).  If you are planning to use llist, then how to
-> > > handle this API change later?
-> > > 
-> > > Have you notice that the two users store the struct-page pointers in an
-> > > array?  We could have the caller provide the array to store struct-page
-> > > pointers, like we do with kmem_cache_alloc_bulk API.
-> > 
-> > My preference would be for a pagevec.  That does limit you to 15 pages
-> > per call [1], but I do think that might be enough.  And the overhead of
-> > manipulating a linked list isn't free.
-> > 
-> 
-> I'm opposed to a pagevec because it unnecessarily limits the caller.  The
-> sunrpc user for example knows how many pages it needs at the time the bulk
-> allocator is called but it's not the same value every time.  When tracing,
-> I found it sometimes requested 1 page (most common request actually) and
-> other times requested 200+ pages. Forcing it to call the batch allocator
-> in chunks of 15 means the caller incurs the cost of multiple allocation
-> requests which is almost as bad as calling __alloc_pages in a loop.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Well, no.  It reduces the cost by a factor of 15 -- or by 93%.  200 is
-an interesting example because putting 200 pages on a list costs 200 *
-64 bytes of dirty cachelines, or 12KiB.  That's larger than some CPU L1
-caches (mine's 48KB, 12-way set associative), but I think it's safe to say
-some of those 200 cache lines are going to force others out into L2 cache.
-Compared to a smaller batch of 15 pages in a pagevec, it'll dirty two cache
-lines (admittedly the 15 struct pages are also going to get dirtied by being
-allocated and then by being set up for whatever use they're getting, but
-they should stay in L1 cache while that's happening).
+This is where we'll put per-rpc_client related files
 
-I'm not claiming the pagevec is definitely a win, but it's very
-unclear which tradeoff is actually going to lead to better performance.
-Hopefully Jesper or Chuck can do some tests and figure out what actually
-works better with their hardware & usage patterns.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+v3: Rename kset object to rpc_sunrpc_kset
+v2: Move directory from /sys/net/sunrpc/ to /sys/kernel/sunrpc/
+---
+ net/sunrpc/Makefile      |  2 +-
+ net/sunrpc/sunrpc_syms.c |  8 ++++++++
+ net/sunrpc/sysfs.c       | 20 ++++++++++++++++++++
+ net/sunrpc/sysfs.h       | 11 +++++++++++
+ 4 files changed, 40 insertions(+), 1 deletion(-)
+ create mode 100644 net/sunrpc/sysfs.c
+ create mode 100644 net/sunrpc/sysfs.h
 
-> I think the first version should have an easy API to start with. Optimise
-> the implementation if it is a bottleneck. Only make the API harder to
-> use if the callers are really willing to always allocate and size the
-> array in advance and it's shown that it really makes a big difference
-> performance-wise.
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index 9488600451e8..1c8de397d6ad 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -12,7 +12,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+ 	    auth.o auth_null.o auth_unix.o \
+ 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
+ 	    addr.o rpcb_clnt.o timer.o xdr.o \
+-	    sunrpc_syms.o cache.o rpc_pipe.o \
++	    sunrpc_syms.o cache.o rpc_pipe.o sysfs.o \
+ 	    svc_xprt.o \
+ 	    xprtmultipath.o
+ sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 236fadc4a439..3b57efc692ec 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -24,6 +24,7 @@
+ #include <linux/sunrpc/xprtsock.h>
+ 
+ #include "sunrpc.h"
++#include "sysfs.h"
+ #include "netns.h"
+ 
+ unsigned int sunrpc_net_id;
+@@ -103,6 +104,10 @@ init_sunrpc(void)
+ 	if (err)
+ 		goto out4;
+ 
++	err = rpc_sysfs_init();
++	if (err)
++		goto out5;
++
+ 	sunrpc_debugfs_init();
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	rpc_register_sysctl();
+@@ -111,6 +116,8 @@ init_sunrpc(void)
+ 	init_socket_xprt();	/* clnt sock transport */
+ 	return 0;
+ 
++out5:
++	unregister_rpc_pipefs();
+ out4:
+ 	unregister_pernet_subsys(&sunrpc_net_ops);
+ out3:
+@@ -124,6 +131,7 @@ init_sunrpc(void)
+ static void __exit
+ cleanup_sunrpc(void)
+ {
++	rpc_sysfs_exit();
+ 	rpc_cleanup_clids();
+ 	rpcauth_remove_module();
+ 	cleanup_socket_xprt();
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+new file mode 100644
+index 000000000000..27eda180ac5e
+--- /dev/null
++++ b/net/sunrpc/sysfs.c
+@@ -0,0 +1,20 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2020 Anna Schumaker <Anna.Schumaker@Netapp.com>
++ */
++#include <linux/kobject.h>
++
++static struct kset *rpc_sunrpc_kset;
++
++int rpc_sysfs_init(void)
++{
++	rpc_sunrpc_kset = kset_create_and_add("sunrpc", NULL, kernel_kobj);
++	if (!rpc_sunrpc_kset)
++		return -ENOMEM;
++	return 0;
++}
++
++void rpc_sysfs_exit(void)
++{
++	kset_unregister(rpc_sunrpc_kset);
++}
+diff --git a/net/sunrpc/sysfs.h b/net/sunrpc/sysfs.h
+new file mode 100644
+index 000000000000..c9d9918e87ee
+--- /dev/null
++++ b/net/sunrpc/sysfs.h
+@@ -0,0 +1,11 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Copyright (c) 2020 Anna Schumaker <Anna.Schumaker@Netapp.com>
++ */
++#ifndef __SUNRPC_SYSFS_H
++#define __SUNRPC_SYSFS_H
++
++extern int rpc_sysfs_init(void);
++extern void rpc_sysfs_exit(void);
++
++#endif
+-- 
+2.29.2
 
-I'm not entirely sure that a pagevec is harder to use than a list_head.
