@@ -3,28 +3,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D37EC43381
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B1BEC433E9
 	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 074F764FE0
-	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EA6D664FEE
+	for <linux-nfs@archiver.kernel.org>; Fri, 12 Mar 2021 15:44:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232176AbhCLPoC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232132AbhCLPoC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 12 Mar 2021 10:44:02 -0500
-Received: from outbound-smtp27.blacknight.com ([81.17.249.195]:38549 "EHLO
-        outbound-smtp27.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231733AbhCLPnd (ORCPT
+Received: from outbound-smtp29.blacknight.com ([81.17.249.32]:54663 "EHLO
+        outbound-smtp29.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S231827AbhCLPnd (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Mar 2021 10:43:33 -0500
 Received: from mail.blacknight.com (pemlinmail06.blacknight.ie [81.17.255.152])
-        by outbound-smtp27.blacknight.com (Postfix) with ESMTPS id 9F898CAB1F
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 15:43:31 +0000 (GMT)
-Received: (qmail 19736 invoked from network); 12 Mar 2021 15:43:31 -0000
+        by outbound-smtp29.blacknight.com (Postfix) with ESMTPS id 5AECEBECAB
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Mar 2021 15:43:32 +0000 (GMT)
+Received: (qmail 19821 invoked from network); 12 Mar 2021 15:43:32 -0000
 Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPA; 12 Mar 2021 15:43:31 -0000
+  by 81.17.254.9 with ESMTPA; 12 Mar 2021 15:43:32 -0000
 From:   Mel Gorman <mgorman@techsingularity.net>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
@@ -37,101 +37,204 @@ Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Linux-MM <linux-mm@kvack.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 0/7 v4] Introduce a bulk order-0 page allocator with two in-tree users
-Date:   Fri, 12 Mar 2021 15:43:24 +0000
-Message-Id: <20210312154331.32229-1-mgorman@techsingularity.net>
+Subject: [PATCH 3/7] mm/page_alloc: Add a bulk page allocator
+Date:   Fri, 12 Mar 2021 15:43:27 +0000
+Message-Id: <20210312154331.32229-4-mgorman@techsingularity.net>
 X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210312154331.32229-1-mgorman@techsingularity.net>
+References: <20210312154331.32229-1-mgorman@techsingularity.net>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This series is based on top of Matthew Wilcox's series "Rationalise
-__alloc_pages wrapper" and does not apply to 5.12-rc2. If you want to
-test and are not using Andrew's tree as a baseline, I suggest using the
-following git tree
+This patch adds a new page allocator interface via alloc_pages_bulk,
+and __alloc_pages_bulk_nodemask. A caller requests a number of pages
+to be allocated and added to a list. They can be freed in bulk using
+free_pages_bulk().
 
-git://git.kernel.org/pub/scm/linux/kernel/git/mel/linux.git mm-bulk-rebase-v4r2
+The API is not guaranteed to return the requested number of pages and
+may fail if the preferred allocation zone has limited free memory, the
+cpuset changes during the allocation or page debugging decides to fail
+an allocation. It's up to the caller to request more pages in batch
+if necessary.
 
-Note to Chuck and Jesper -- as this is a cross-subsystem series, you may
-want to send the sunrpc and page_pool pre-requisites (patches 4 and 6)
-directly to the subsystem maintainers. While sunrpc is low-risk, I'm
-vaguely aware that there are other prototype series on netdev that affect
-page_pool. The conflict should be obvious in linux-next.
+Note that this implementation is not very efficient and could be improved
+but it would require refactoring. The intent is to make it available early
+to determine what semantics are required by different callers. Once the
+full semantics are nailed down, it can be refactored.
 
-Changelog since v3
-o Rebase on top of Matthew's series consolidating the alloc_pages API
-o Rename alloced to allocated
-o Split out preparation patch for prepare_alloc_pages
-o Defensive check for bulk allocation or <= 0 pages
-o Call single page allocation path only if no pages were allocated
-o Minor cosmetic cleanups
-o Reorder patch dependencies by subsystem. As this is a cross-subsystem
-  series, the mm patches have to be merged before the sunrpc and net
-  users.
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
+---
+ include/linux/gfp.h |  12 +++++
+ mm/page_alloc.c     | 116 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 128 insertions(+)
 
-Changelog since v2
-o Prep new pages with IRQs enabled
-o Minor documentation update
-
-Changelog since v1
-o Parenthesise binary and boolean comparisons
-o Add reviewed-bys
-o Rebase to 5.12-rc2
-
-This series introduces a bulk order-0 page allocator with sunrpc and
-the network page pool being the first users. The implementation is not
-particularly efficient and the intention is to iron out what the semantics
-of the API should have for users. Once the semantics are ironed out, it
-can be made more efficient. Despite that, this is a performance-related
-for users that require multiple pages for an operation without multiple
-round-trips to the page allocator. Quoting the last patch for the
-high-speed networking use-case.
-
-    For XDP-redirect workload with 100G mlx5 driver (that use page_pool)
-    redirecting xdp_frame packets into a veth, that does XDP_PASS to
-    create an SKB from the xdp_frame, which then cannot return the page
-    to the page_pool. In this case, we saw[1] an improvement of 18.8%
-    from using the alloc_pages_bulk API (3,677,958 pps -> 4,368,926 pps).
-
-Both users in this series are corner cases (NFS and high-speed networks)
-so it is unlikely that most users will see any benefit in the short
-term. Potential other users are batch allocations for page cache
-readahead, fault around and SLUB allocations when high-order pages are
-unavailable. It's unknown how much benefit would be seen by converting
-multiple page allocation calls to a single batch or what difference it may
-make to headline performance. It's a chicken and egg problem given that
-the potential benefit cannot be investigated without an implementation
-to test against.
-
-Light testing passed, I'm relying on Chuck and Jesper to test the target
-users more aggressively but both report performance improvements with
-the initial RFC.
-
-Patch 1 moves GFP flag initialision to prepare_alloc_pages
-
-Patch 2 renames a variable name that is particularly unpopular
-
-Patch 3 adds a bulk page allocator
-
-Patch 4 is a sunrpc cleanup that is a pre-requisite.
-
-Patch 5 is the sunrpc user. Chuck also has a patch which further caches
-	pages but is not included in this series. It's not directly
-	related to the bulk allocator and as it caches pages, it might
-	have other concerns (e.g. does it need a shrinker?)
-
-Patch 6 is a preparation patch only for the network user
-
-Patch 7 converts the net page pool to the bulk allocator for order-0 pages.
-
- include/linux/gfp.h   |  12 ++++
- mm/page_alloc.c       | 149 +++++++++++++++++++++++++++++++++++++-----
- net/core/page_pool.c  | 101 +++++++++++++++++-----------
- net/sunrpc/svc_xprt.c |  47 +++++++++----
- 4 files changed, 240 insertions(+), 69 deletions(-)
-
+diff --git a/include/linux/gfp.h b/include/linux/gfp.h
+index 0a88f84b08f4..e2cd98dba72e 100644
+--- a/include/linux/gfp.h
++++ b/include/linux/gfp.h
+@@ -518,6 +518,17 @@ static inline int arch_make_page_accessible(struct page *page)
+ struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
+ 		nodemask_t *nodemask);
+ 
++int __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
++				nodemask_t *nodemask, int nr_pages,
++				struct list_head *list);
++
++/* Bulk allocate order-0 pages */
++static inline unsigned long
++alloc_pages_bulk(gfp_t gfp, unsigned long nr_pages, struct list_head *list)
++{
++	return __alloc_pages_bulk(gfp, numa_mem_id(), NULL, nr_pages, list);
++}
++
+ /*
+  * Allocate pages, preferring the node given as nid. The node must be valid and
+  * online. For more general interface, see alloc_pages_node().
+@@ -581,6 +592,7 @@ void * __meminit alloc_pages_exact_nid(int nid, size_t size, gfp_t gfp_mask);
+ 
+ extern void __free_pages(struct page *page, unsigned int order);
+ extern void free_pages(unsigned long addr, unsigned int order);
++extern void free_pages_bulk(struct list_head *list);
+ 
+ struct page_frag_cache;
+ extern void __page_frag_cache_drain(struct page *page, unsigned int count);
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index 880b1d6368bd..f48f94375b66 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -4436,6 +4436,21 @@ static void wake_all_kswapds(unsigned int order, gfp_t gfp_mask,
+ 	}
+ }
+ 
++/* Drop reference counts and free order-0 pages from a list. */
++void free_pages_bulk(struct list_head *list)
++{
++	struct page *page, *next;
++
++	list_for_each_entry_safe(page, next, list, lru) {
++		trace_mm_page_free_batched(page);
++		if (put_page_testzero(page)) {
++			list_del(&page->lru);
++			__free_pages_ok(page, 0, FPI_NONE);
++		}
++	}
++}
++EXPORT_SYMBOL_GPL(free_pages_bulk);
++
+ static inline unsigned int
+ gfp_to_alloc_flags(gfp_t gfp_mask)
+ {
+@@ -4963,6 +4978,107 @@ static inline bool prepare_alloc_pages(gfp_t gfp, unsigned int order,
+ 	return true;
+ }
+ 
++/*
++ * This is a batched version of the page allocator that attempts to
++ * allocate nr_pages quickly from the preferred zone and add them to list.
++ *
++ * Returns the number of pages allocated.
++ */
++int __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
++			nodemask_t *nodemask, int nr_pages,
++			struct list_head *alloc_list)
++{
++	struct page *page;
++	unsigned long flags;
++	struct zone *zone;
++	struct zoneref *z;
++	struct per_cpu_pages *pcp;
++	struct list_head *pcp_list;
++	struct alloc_context ac;
++	gfp_t alloc_gfp;
++	unsigned int alloc_flags;
++	int allocated = 0;
++
++	if (WARN_ON_ONCE(nr_pages <= 0))
++		return 0;
++
++	if (nr_pages == 1)
++		goto failed;
++
++	/* May set ALLOC_NOFRAGMENT, fragmentation will return 1 page. */
++	if (!prepare_alloc_pages(gfp, 0, preferred_nid, nodemask, &ac,
++	&alloc_gfp, &alloc_flags))
++		return 0;
++	gfp = alloc_gfp;
++
++	/* Find an allowed local zone that meets the high watermark. */
++	for_each_zone_zonelist_nodemask(zone, z, ac.zonelist, ac.highest_zoneidx, ac.nodemask) {
++		unsigned long mark;
++
++		if (cpusets_enabled() && (alloc_flags & ALLOC_CPUSET) &&
++		    !__cpuset_zone_allowed(zone, gfp)) {
++			continue;
++		}
++
++		if (nr_online_nodes > 1 && zone != ac.preferred_zoneref->zone &&
++		    zone_to_nid(zone) != zone_to_nid(ac.preferred_zoneref->zone)) {
++			goto failed;
++		}
++
++		mark = wmark_pages(zone, alloc_flags & ALLOC_WMARK_MASK) + nr_pages;
++		if (zone_watermark_fast(zone, 0,  mark,
++				zonelist_zone_idx(ac.preferred_zoneref),
++				alloc_flags, gfp)) {
++			break;
++		}
++	}
++	if (!zone)
++		return 0;
++
++	/* Attempt the batch allocation */
++	local_irq_save(flags);
++	pcp = &this_cpu_ptr(zone->pageset)->pcp;
++	pcp_list = &pcp->lists[ac.migratetype];
++
++	while (allocated < nr_pages) {
++		page = __rmqueue_pcplist(zone, ac.migratetype, alloc_flags,
++								pcp, pcp_list);
++		if (!page) {
++			/* Try and get at least one page */
++			if (!allocated)
++				goto failed_irq;
++			break;
++		}
++
++		list_add(&page->lru, alloc_list);
++		allocated++;
++	}
++
++	__count_zid_vm_events(PGALLOC, zone_idx(zone), allocated);
++	zone_statistics(zone, zone);
++
++	local_irq_restore(flags);
++
++	/* Prep page with IRQs enabled to reduce disabled times */
++	list_for_each_entry(page, alloc_list, lru)
++		prep_new_page(page, 0, gfp, 0);
++
++	return allocated;
++
++failed_irq:
++	local_irq_restore(flags);
++
++failed:
++	page = __alloc_pages(gfp, 0, preferred_nid, nodemask);
++	if (page) {
++		list_add(&page->lru, alloc_list);
++		allocated = 1;
++	}
++
++	return allocated;
++}
++EXPORT_SYMBOL_GPL(__alloc_pages_bulk);
++
+ /*
+  * This is the 'heart' of the zoned buddy allocator.
+  */
 -- 
 2.26.2
 
