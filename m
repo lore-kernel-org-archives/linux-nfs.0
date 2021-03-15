@@ -2,114 +2,109 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F5F1C4332B
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Mar 2021 08:41:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 83083C433DB
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Mar 2021 10:42:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1AD9C64EC3
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Mar 2021 08:41:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 57A6064E12
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Mar 2021 10:42:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229540AbhCOIlE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Mar 2021 04:41:04 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:43160 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229518AbhCOIkw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2021 04:40:52 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1615797652;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=YPPOlhAj1o8Bjr5m9KBGd7ssNyhGXUk+iULC8T743WI=;
-        b=XDL+dbamYSqgfRoqriCz8kEdX4OUgQ/Qb6uYNZtltiLVLeO/NxfAUaOqazvIxp8MMAPTAG
-        FLAwu6ILKVRCyhw9oJVm01rra/rVy2zBJqiAqZ8W8D2G0uBgmYGjnrhqxfs4MIEemT51OA
-        5RmmF8MlDX1hnOt/FyRJrf7XpabUiaY=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-170-stEjHMdbP6auVPr4NLcJ5Q-1; Mon, 15 Mar 2021 04:40:48 -0400
-X-MC-Unique: stEjHMdbP6auVPr4NLcJ5Q-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 12C55192D787;
-        Mon, 15 Mar 2021 08:40:46 +0000 (UTC)
-Received: from carbon (unknown [10.36.110.30])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 64DC85C5E0;
-        Mon, 15 Mar 2021 08:40:39 +0000 (UTC)
-Date:   Mon, 15 Mar 2021 09:40:38 +0100
-From:   Jesper Dangaard Brouer <brouer@redhat.com>
-To:     Mel Gorman <mgorman@techsingularity.net>
-Cc:     Alexander Duyck <alexander.duyck@gmail.com>,
+        id S229931AbhCOKmS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Mar 2021 06:42:18 -0400
+Received: from outbound-smtp09.blacknight.com ([46.22.139.14]:56701 "EHLO
+        outbound-smtp09.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229923AbhCOKmI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Mar 2021 06:42:08 -0400
+Received: from mail.blacknight.com (pemlinmail04.blacknight.ie [81.17.254.17])
+        by outbound-smtp09.blacknight.com (Postfix) with ESMTPS id 7B1341C34BE
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Mar 2021 10:42:06 +0000 (GMT)
+Received: (qmail 9896 invoked from network); 15 Mar 2021 10:42:06 -0000
+Received: from unknown (HELO techsingularity.net) (mgorman@techsingularity.net@[84.203.22.4])
+  by 81.17.254.9 with ESMTPSA (AES256-SHA encrypted, authenticated); 15 Mar 2021 10:42:06 -0000
+Date:   Mon, 15 Mar 2021 10:42:05 +0000
+From:   Mel Gorman <mgorman@techsingularity.net>
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Matthew Wilcox <willy@infradead.org>,
+        Jesper Dangaard Brouer <brouer@redhat.com>,
         Andrew Morton <akpm@linux-foundation.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
         Christoph Hellwig <hch@infradead.org>,
-        Matthew Wilcox <willy@infradead.org>,
         LKML <linux-kernel@vger.kernel.org>,
         Linux-Net <netdev@vger.kernel.org>,
         Linux-MM <linux-mm@kvack.org>,
-        Linux-NFS <linux-nfs@vger.kernel.org>, brouer@redhat.com
-Subject: Re: [PATCH 7/7] net: page_pool: use alloc_pages_bulk in refill code
- path
-Message-ID: <20210315094038.22d6d79a@carbon>
-In-Reply-To: <20210313133058.GZ3697@techsingularity.net>
-References: <20210312154331.32229-1-mgorman@techsingularity.net>
-        <20210312154331.32229-8-mgorman@techsingularity.net>
-        <CAKgT0UebK=mMwDV+UH8CqBRt0E0Koc7EB42kwgf0hYHDT_2OfQ@mail.gmail.com>
-        <20210313133058.GZ3697@techsingularity.net>
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/5] mm/page_alloc: Add a bulk page allocator
+Message-ID: <20210315104204.GB3697@techsingularity.net>
+References: <20210312124609.33d4d4ba@carbon>
+ <20210312145814.GA2577561@casper.infradead.org>
+ <20210312160350.GW3697@techsingularity.net>
+ <20210312210823.GE2577561@casper.infradead.org>
+ <20210313131648.GY3697@techsingularity.net>
+ <20210313163949.GI2577561@casper.infradead.org>
+ <7D8C62E1-77FD-4B41-90D7-253D13715A6F@oracle.com>
+ <20210313193343.GJ2577561@casper.infradead.org>
+ <20210314125231.GA3697@techsingularity.net>
+ <325875A2-A98A-4ECF-AFDF-0B70BCCB79AD@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+Content-Type: text/plain; charset=iso-8859-15
+Content-Disposition: inline
+In-Reply-To: <325875A2-A98A-4ECF-AFDF-0B70BCCB79AD@oracle.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sat, 13 Mar 2021 13:30:58 +0000
-Mel Gorman <mgorman@techsingularity.net> wrote:
-
-> On Fri, Mar 12, 2021 at 11:44:09AM -0800, Alexander Duyck wrote:
-> > > -       /* FUTURE development:
-> > > -        *
-> > > -        * Current slow-path essentially falls back to single page
-> > > -        * allocations, which doesn't improve performance.  This code
-> > > -        * need bulk allocation support from the page allocator code.
-> > > -        */
-> > > -
-> > > -       /* Cache was empty, do real allocation */
-> > > -#ifdef CONFIG_NUMA
-> > > -       page = alloc_pages_node(pool->p.nid, gfp, pool->p.order);
-> > > -#else
-> > > -       page = alloc_pages(gfp, pool->p.order);
-> > > -#endif
-> > > -       if (!page)
-> > > +       if (unlikely(!__alloc_pages_bulk(gfp, pp_nid, NULL, bulk, &page_list)))
-> > >                 return NULL;
-> > >
-> > > +       /* First page is extracted and returned to caller */
-> > > +       first_page = list_first_entry(&page_list, struct page, lru);
-> > > +       list_del(&first_page->lru);
-> > > +  
+On Sun, Mar 14, 2021 at 03:22:02PM +0000, Chuck Lever III wrote:
+> >> Anyway, I'm not arguing against a bulk allocator, nor even saying this
+> >> is a bad interface.  It just maybe could be better.
+> >> 
 > > 
-> > This seems kind of broken to me. If you pull the first page and then
-> > cannot map it you end up returning NULL even if you placed a number of
-> > pages in the cache.
-> >   
+> > I think it puts more responsibility on the caller to use the API correctly
+> > but I also see no value in arguing about it further because there is no
+> > supporting data either way (I don't have routine access to a sufficiently
+> > fast network to generate the data). I can add the following patch and let
+> > callers figure out which interface is preferred. If one of the interfaces
+> > is dead in a year, it can be removed.
+> > 
+> > As there are a couple of ways the arrays could be used, I'm leaving it
+> > up to Jesper and Chuck which interface they want to use. In particular,
+> > it would be preferred if the array has no valid struct pages in it but
+> > it's up to them to judge how practical that is.
 > 
-> I think you're right but I'm punting this to Jesper to fix. He's more
-> familiar with this particular code and can verify the performance is
-> still ok for high speed networks.
+> I'm interested to hear from Jesper.
+> 
+> My two cents (US):
+> 
+> If svc_alloc_arg() is the /only/ consumer that wants to fill
+> a partially populated array of page pointers, then there's no
+> code-duplication benefit to changing the synopsis of
+> alloc_pages_bulk() at this point.
+> 
+> Also, if the consumers still have to pass in the number of
+> pages the array needs, rather than having the bulk allocator
+> figure it out, then there's not much additional benefit, IMO.
+> 
+> Ideally (for SUNRPC) alloc_pages_bulk() would take a pointer
+> to a sparsely-populated array and the total number of elements
+> in that array, and fill in the NULL elements. The return value
+> would be "success -- all elements are populated" or "failure --
+> some elements remain NULL".
+> 
 
-Yes, I'll take a look at this, and updated the patch accordingly (and re-run
-the performance tests).
+If the array API interface was expected to handle sparse arrays, it would
+make sense to define nr_pages are the number of pages that need to be
+in the array instead of the number of pages to allocate. The preamble
+would skip the first N number of allocated pages and decrement nr_pages
+accordingly before the watermark check. The return value would then be the
+last populated array element and the caller decides if that is enough to
+proceed or if the API needs to be called again. There is a slight risk
+that with a spare array that only needed 1 page in reality would fail
+the watermark check but on low memory, allocations take more work anyway.
+That definition of nr_pages would avoid the potential buffer overrun but
+both you and Jesper would need to agree that it's an appropriate API.
 
 -- 
-Best regards,
-  Jesper Dangaard Brouer
-  MSc.CS, Principal Kernel Engineer at Red Hat
-  LinkedIn: http://www.linkedin.com/in/brouer
-
+Mel Gorman
+SUSE Labs
