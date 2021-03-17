@@ -7,41 +7,41 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB3FBC2BB56
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 01:00:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9E47C41620
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 01:00:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9BE1364F8F
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 01:00:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8DDB964F8F
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 01:00:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231996AbhCQBAE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Mar 2021 21:00:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36062 "EHLO mail.kernel.org"
+        id S232401AbhCQBAb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Mar 2021 21:00:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40838 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232305AbhCQA7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Mar 2021 20:59:08 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C5B0164F06;
-        Wed, 17 Mar 2021 00:59:04 +0000 (UTC)
+        id S231304AbhCQA7e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 Mar 2021 20:59:34 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 162BA64FB2;
+        Wed, 17 Mar 2021 00:59:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1615942745;
-        bh=MV/3/qb1PE/vzEFEs3JRSELdMgkH0lcziOW1fw2UHGE=;
+        s=k20201202; t=1615942774;
+        bh=ohiOF/8XY/nQljM9J8ufEBUI1rh4ND1W69aAsA9HhxY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=YDk7Ng2hZVdB08UOpWHSy5aQBW1vKoM2eWcKrPfg2EjxVcWzooghQf4aN0793Ypbs
-         JyI6tLO9od/IEAOXFIVkeIr+aBLvcdhIB2fUgfxzpUxAWxAIF4+CBDNNGpsz06DAh1
-         EBch7VfOZMY0niraQdM7D0A4n2+5ldNP2n7+tFkkn09JUFX/BylWDP+tYNcwnEEtsb
-         3f/6hpSSzKOCJdnH9mhDzaqpUW++POw96ccCp8XEqmY5E1zBH6/mUWMnlnm1uef+EM
-         /YGm2mS05+xPumOGT+AC14iNCyo9LKRtwZbxYE8Qo9RzOAX82XFp39fmmCtTiVfg9G
-         4x9exrzVTfdRQ==
+        b=gWP9iqg9Nu/9KgzMEVzI2xF4jQpBHpXZ8LL6eaijGwClYF2/rJZVIL8iRMJQodl2+
+         hcbis1Nbw6SDyAmXTz4ll++CBEtJid4UnESoOY7UPxmUJE8okF/4XQzkOKo3tnPN3y
+         GIcB1IyPKbbOaplXcZ/5DCHZVxfVbA7A/Q1R004QpK1cw6XKt9BLzSnl3TEn5TZ+Sl
+         RRRl/v0JmV51wqfwu2vDjeo2heBnZXKLuA25HZKFKKCdI8R+cfQ41JNiIZfcHyozSR
+         /AMBP98lBfvM3/m6NwseDl8V/LIWwudCaxVDfX3abh/9yDewbyxNm1+hSlgtVJHODP
+         Hxcq8JZzMBsJg==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Frank Sorenson <sorenson@redhat.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 12/23] NFS: Correct size calculation for create reply length
-Date:   Tue, 16 Mar 2021 20:58:38 -0400
-Message-Id: <20210317005850.726479-12-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 11/21] NFS: Correct size calculation for create reply length
+Date:   Tue, 16 Mar 2021 20:59:10 -0400
+Message-Id: <20210317005920.726931-11-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
-In-Reply-To: <20210317005850.726479-1-sashal@kernel.org>
-References: <20210317005850.726479-1-sashal@kernel.org>
+In-Reply-To: <20210317005920.726931-1-sashal@kernel.org>
+References: <20210317005920.726931-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -71,7 +71,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 9956453aa6ff..0ed419bb02b0 100644
+index f1cb0b7eb05f..be666aee28cc 100644
 --- a/fs/nfs/nfs3xdr.c
 +++ b/fs/nfs/nfs3xdr.c
 @@ -34,6 +34,7 @@
