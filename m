@@ -7,41 +7,41 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9892C43142
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 00:57:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 69C12C433E9
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 00:58:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AA1226500D
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 00:57:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4087764FFD
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Mar 2021 00:58:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229883AbhCQA5K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Mar 2021 20:57:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34450 "EHLO mail.kernel.org"
+        id S231958AbhCQA6M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Mar 2021 20:58:12 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35238 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231240AbhCQA4r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Mar 2021 20:56:47 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 43B2C64FB4;
-        Wed, 17 Mar 2021 00:56:45 +0000 (UTC)
+        id S231607AbhCQA5V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 Mar 2021 20:57:21 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 6720664FA8;
+        Wed, 17 Mar 2021 00:57:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1615942605;
-        bh=nV3ayq95eKEymLPuLam7wmH8009qcnNKR9AP8PNetRU=;
+        s=k20201202; t=1615942641;
+        bh=F+/1jRtl4oh8fKzC81jYd6ay7UwsjSgYDTNsZApfhJ4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=by7Wz0rtUe23BC96qIKRl5B3Mbave+A49NYtYvZ2P9KBmxw6uatAoW1tMuK2HscK1
-         riLdeYVhm1zQPyTBkeYYfXk25s6emMInLDJ4jcoL2kwAl050RL8EteZ8zwn//r7vxj
-         0xto9U7PdH4twEGZuwOFlq8NoE5MvaKT9zjg1Eqqs5luNpmCllGkEKGIR1wyb/BdA7
-         XMvKG0EQfZMtBioNjvHrX7cX0lg6JowwLGi+K0V1iDoiTmHiJqCtEosTFKNoU2JqKr
-         93sWdYevo5wWtZsAyTE2fB7xT3nIDn9TZJavu3yR9oRc+KLiqJSIR4NLSz7gJlQQII
-         g42fs5wdWytpA==
+        b=qzDxjrQsV3MzdDxwAsfQiVLK6IcIHdAdEZDG4v8DPSy6WQzjwWRRYylO2dIjxkz9J
+         Dj5CSqzBx6Fj4hzN8jCWLTgFDXKYlAZqcY6hBEbVKjMIomxMwtH/1ZuU4M2kxKTZ84
+         SowY7f+RDYYVwemvWmFbuUyKrM8NHAMzl421N1mBTH2G3SpwEyEHwkjQORYGl26swE
+         VkG7Pg8Rmrgh1Rbsu4wnrqUbGrI25f3fzvwg52wDl5kfS5DDcjH+0SoqgwbVSzZ5Kk
+         rtHjvau/mFPoNgG2IJ7Q6dmMEH5Yfhqfj2MEWdpprKHbtD9dVvIiUR5joG8Fv9iton
+         BajSFENghLNmw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+Cc:     Frank Sorenson <sorenson@redhat.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.11 56/61] nfs: we don't support removing system.nfs4_acl
-Date:   Tue, 16 Mar 2021 20:55:30 -0400
-Message-Id: <20210317005536.724046-56-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 21/54] NFS: Correct size calculation for create reply length
+Date:   Tue, 16 Mar 2021 20:56:20 -0400
+Message-Id: <20210317005654.724862-21-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
-In-Reply-To: <20210317005536.724046-1-sashal@kernel.org>
-References: <20210317005536.724046-1-sashal@kernel.org>
+In-Reply-To: <20210317005654.724862-1-sashal@kernel.org>
+References: <20210317005654.724862-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -50,38 +50,47 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Frank Sorenson <sorenson@redhat.com>
 
-[ Upstream commit 4f8be1f53bf615102d103c0509ffa9596f65b718 ]
+[ Upstream commit ad3dbe35c833c2d4d0bbf3f04c785d32f931e7c9 ]
 
-The NFSv4 protocol doesn't have any notion of reomoving an attribute, so
-removexattr(path,"system.nfs4_acl") doesn't make sense.
+CREATE requests return a post_op_fh3, rather than nfs_fh3. The
+post_op_fh3 includes an extra word to indicate 'handle_follows'.
 
-There's no documented return value.  Arguably it could be EOPNOTSUPP but
-I'm a little worried an application might take that to mean that we
-don't support ACLs or xattrs.  How about EINVAL?
+Without that additional word, create fails when full 64-byte
+filehandles are in use.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Add NFS3_post_op_fh_sz, and correct the size calculation for
+NFS3_createres_sz.
+
+Signed-off-by: Frank Sorenson <sorenson@redhat.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4proc.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/nfs/nfs3xdr.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index fc8bbfd9beb3..2bd64bfcc11a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5896,6 +5896,9 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
- 	int ret, i;
- 
-+	/* You can't remove system.nfs4_acl: */
-+	if (buflen == 0)
-+		return -EINVAL;
- 	if (!nfs4_server_supports_acls(server))
- 		return -EOPNOTSUPP;
- 	if (npages > ARRAY_SIZE(pages))
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 69971f6c840d..dff6b52d26a8 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -35,6 +35,7 @@
+  */
+ #define NFS3_fhandle_sz		(1+16)
+ #define NFS3_fh_sz		(NFS3_fhandle_sz)	/* shorthand */
++#define NFS3_post_op_fh_sz	(1+NFS3_fh_sz)
+ #define NFS3_sattr_sz		(15)
+ #define NFS3_filename_sz	(1+(NFS3_MAXNAMLEN>>2))
+ #define NFS3_path_sz		(1+(NFS3_MAXPATHLEN>>2))
+@@ -72,7 +73,7 @@
+ #define NFS3_readlinkres_sz	(1+NFS3_post_op_attr_sz+1+1)
+ #define NFS3_readres_sz		(1+NFS3_post_op_attr_sz+3+1)
+ #define NFS3_writeres_sz	(1+NFS3_wcc_data_sz+4)
+-#define NFS3_createres_sz	(1+NFS3_fh_sz+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
++#define NFS3_createres_sz	(1+NFS3_post_op_fh_sz+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+ #define NFS3_renameres_sz	(1+(2 * NFS3_wcc_data_sz))
+ #define NFS3_linkres_sz		(1+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+ #define NFS3_readdirres_sz	(1+NFS3_post_op_attr_sz+2+1)
 -- 
 2.30.1
 
