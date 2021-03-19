@@ -7,25 +7,25 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FE2BC43381
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DD390C43331
 	for <linux-nfs@archiver.kernel.org>; Fri, 19 Mar 2021 14:32:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6205964F18
+	by mail.kernel.org (Postfix) with ESMTP id B011A64F18
 	for <linux-nfs@archiver.kernel.org>; Fri, 19 Mar 2021 14:32:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230047AbhCSOcH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Mar 2021 10:32:07 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35506 "EHLO mail.kernel.org"
+        id S229785AbhCSOcI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Mar 2021 10:32:08 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35546 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229994AbhCSObh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Mar 2021 10:31:37 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id A844764F18;
-        Fri, 19 Mar 2021 14:31:36 +0000 (UTC)
-Subject: [PATCH v1 4/6] svcrdma: Add a batch Receive posting mechanism
+        id S229973AbhCSObt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 Mar 2021 10:31:49 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id DB89964F1F;
+        Fri, 19 Mar 2021 14:31:48 +0000 (UTC)
+Subject: [PATCH v1 6/6] svcrdma: Maintain a Receive water mark
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Fri, 19 Mar 2021 10:31:35 -0400
-Message-ID: <161616429593.173092.14052996014785354959.stgit@klimt.1015granger.net>
+Date:   Fri, 19 Mar 2021 10:31:48 -0400
+Message-ID: <161616430811.173092.1562692181119108782.stgit@klimt.1015granger.net>
 In-Reply-To: <161616413550.173092.13403865110684484953.stgit@klimt.1015granger.net>
 References: <161616413550.173092.13403865110684484953.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -36,88 +36,91 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Introduce a server-side mechanism similar to commit e340c2d6ef2a
-("xprtrdma: Reduce the doorbell rate (Receive)") to post Receive
-WRs in batch. It's first consumer is svc_rdma_post_recvs().
+Post more Receives when the number of pending Receives drops below
+a water mark. The batch mechanism is disabled if the underlying
+device cannot support a reasonably-sized Receive Queue.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   56 +++++++++++++++++++++++--------
- 1 file changed, 42 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    2 ++
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   10 ++++++++--
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 ++++-
+ 3 files changed, 14 insertions(+), 3 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 1e76ed688044..722fc7c48725 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -94,6 +94,8 @@ struct svcxprt_rdma {
+ 	spinlock_t	     sc_rw_ctxt_lock;
+ 	struct list_head     sc_rw_ctxts;
+ 
++	u32		     sc_pending_recvs;
++	u32		     sc_recv_batch;
+ 	struct list_head     sc_rq_dto_q;
+ 	spinlock_t	     sc_rq_dto_lock;
+ 	struct ib_qp         *sc_qp;
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 04148a656b2a..0c6aa8693f20 100644
+index 1e7381ff948b..2571188ef7f2 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -264,6 +264,47 @@ void svc_rdma_release_rqst(struct svc_rqst *rqstp)
+@@ -285,6 +285,7 @@ static bool svc_rdma_refresh_recvs(struct svcxprt_rdma *rdma,
+ 		ctxt->rc_temp = temp;
+ 		ctxt->rc_recv_wr.next = recv_chain;
+ 		recv_chain = &ctxt->rc_recv_wr;
++		rdma->sc_pending_recvs++;
+ 	}
+ 	if (!recv_chain)
+ 		return false;
+@@ -302,6 +303,8 @@ static bool svc_rdma_refresh_recvs(struct svcxprt_rdma *rdma,
+ 		bad_wr = bad_wr->next;
  		svc_rdma_recv_ctxt_put(rdma, ctxt);
+ 	}
++	/* Since we're destroying the xprt, no need to reset
++	 * sc_pending_recvs. */
+ 	return false;
  }
  
-+static bool svc_rdma_refresh_recvs(struct svcxprt_rdma *rdma,
-+				   unsigned int wanted, bool temp)
-+{
-+	const struct ib_recv_wr *bad_wr = NULL;
-+	struct svc_rdma_recv_ctxt *ctxt;
-+	struct ib_recv_wr *recv_chain;
-+	int ret;
-+
-+	if (test_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags))
-+		return false;
-+
-+	recv_chain = NULL;
-+	while (wanted--) {
-+		ctxt = svc_rdma_recv_ctxt_get(rdma);
-+		if (!ctxt)
-+			break;
-+
-+		trace_svcrdma_post_recv(ctxt);
-+		ctxt->rc_temp = temp;
-+		ctxt->rc_recv_wr.next = recv_chain;
-+		recv_chain = &ctxt->rc_recv_wr;
-+	}
-+	if (!recv_chain)
-+		return false;
-+
-+	ret = ib_post_recv(rdma->sc_qp, recv_chain, &bad_wr);
-+	if (ret)
-+		goto err_free;
-+	return true;
-+
-+err_free:
-+	trace_svcrdma_rq_post_err(rdma, ret);
-+	while (bad_wr) {
-+		ctxt = container_of(bad_wr, struct svc_rdma_recv_ctxt,
-+				    rc_recv_wr);
-+		bad_wr = bad_wr->next;
-+		svc_rdma_recv_ctxt_put(rdma, ctxt);
-+	}
-+	return false;
-+}
-+
- static int __svc_rdma_post_recv(struct svcxprt_rdma *rdma,
- 				struct svc_rdma_recv_ctxt *ctxt)
- {
-@@ -301,20 +342,7 @@ static int svc_rdma_post_recv(struct svcxprt_rdma *rdma)
-  */
- bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma)
- {
--	struct svc_rdma_recv_ctxt *ctxt;
--	unsigned int i;
--	int ret;
--
--	for (i = 0; i < rdma->sc_max_requests; i++) {
--		ctxt = svc_rdma_recv_ctxt_get(rdma);
--		if (!ctxt)
--			return false;
--		ctxt->rc_temp = true;
--		ret = __svc_rdma_post_recv(rdma, ctxt);
--		if (ret)
--			return false;
--	}
--	return true;
-+	return svc_rdma_refresh_recvs(rdma, rdma->sc_max_requests, true);
- }
+@@ -328,6 +331,8 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+ 	struct ib_cqe *cqe = wc->wr_cqe;
+ 	struct svc_rdma_recv_ctxt *ctxt;
  
- /**
++	rdma->sc_pending_recvs--;
++
+ 	/* WARNING: Only wc->wr_cqe and wc->status are reliable */
+ 	ctxt = container_of(cqe, struct svc_rdma_recv_ctxt, rc_cqe);
+ 
+@@ -344,8 +349,9 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+ 	 * to reduce the likelihood of replayed requests once the
+ 	 * client reconnects.
+ 	 */
+-	if (!svc_rdma_refresh_recvs(rdma, 1, false))
+-		goto flushed;
++	if (rdma->sc_pending_recvs < rdma->sc_max_requests)
++		if (!svc_rdma_refresh_recvs(rdma, rdma->sc_recv_batch, false))
++			goto flushed;
+ 
+ 	/* All wc fields are now known to be valid */
+ 	ctxt->rc_byte_len = wc->byte_len;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 046a07da5cf9..e629eacfedfc 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -407,11 +407,14 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	newxprt->sc_max_req_size = svcrdma_max_req_size;
+ 	newxprt->sc_max_requests = svcrdma_max_requests;
+ 	newxprt->sc_max_bc_requests = svcrdma_max_bc_requests;
+-	rq_depth = newxprt->sc_max_requests + newxprt->sc_max_bc_requests;
++	newxprt->sc_recv_batch = RPCRDMA_MAX_RECV_BATCH;
++	rq_depth = newxprt->sc_max_requests + newxprt->sc_max_bc_requests +
++		   newxprt->sc_recv_batch;
+ 	if (rq_depth > dev->attrs.max_qp_wr) {
+ 		pr_warn("svcrdma: reducing receive depth to %d\n",
+ 			dev->attrs.max_qp_wr);
+ 		rq_depth = dev->attrs.max_qp_wr;
++		newxprt->sc_recv_batch = 1;
+ 		newxprt->sc_max_requests = rq_depth - 2;
+ 		newxprt->sc_max_bc_requests = 2;
+ 	}
 
 
