@@ -4,29 +4,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2ADCFC4332B
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Mar 2021 14:32:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F406C433E9
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Mar 2021 14:32:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0525764F4D
-	for <linux-nfs@archiver.kernel.org>; Fri, 19 Mar 2021 14:32:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2B57C64F65
+	for <linux-nfs@archiver.kernel.org>; Fri, 19 Mar 2021 14:32:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229965AbhCSObg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 19 Mar 2021 10:31:36 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35424 "EHLO mail.kernel.org"
+        id S229994AbhCSOcH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 19 Mar 2021 10:32:07 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35530 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230047AbhCSObb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Mar 2021 10:31:31 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 94F3364F18;
-        Fri, 19 Mar 2021 14:31:30 +0000 (UTC)
-Subject: [PATCH v1 3/6] svcrdma: Remove stale comment for
- svc_rdma_wc_receive()
+        id S229995AbhCSObn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 Mar 2021 10:31:43 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id BCC6A64F1F;
+        Fri, 19 Mar 2021 14:31:42 +0000 (UTC)
+Subject: [PATCH v1 5/6] svcrdma: Use svc_rdma_refresh_recvs() in wc_receive
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Fri, 19 Mar 2021 10:31:29 -0400
-Message-ID: <161616428984.173092.14541275971597200933.stgit@klimt.1015granger.net>
+Date:   Fri, 19 Mar 2021 10:31:42 -0400
+Message-ID: <161616430202.173092.9774953105592702082.stgit@klimt.1015granger.net>
 In-Reply-To: <161616413550.173092.13403865110684484953.stgit@klimt.1015granger.net>
 References: <161616413550.173092.13403865110684484953.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -37,27 +36,85 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-xprt pinning was removed in commit 365e9992b90f ("svcrdma: Remove
-transport reference counting"), but this comment was not updated
-to reflect that change.
+Replace svc_rdma_post_recv() with the new batch receive mechanism.
+For the moment it is posting just a single Receive WR at a time,
+so no change in behavior is expected.
+
+Since svc_rdma_wc_receive() was the last call site for
+svc_rdma_post_recv(), it is removed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 --
- 1 file changed, 2 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   43 ++++++++-----------------------
+ 1 file changed, 11 insertions(+), 32 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 215d2adadbdd..04148a656b2a 100644
+index 0c6aa8693f20..1e7381ff948b 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -322,8 +322,6 @@ bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma)
-  * @cq: Completion Queue context
-  * @wc: Work Completion object
-  *
-- * NB: The svc_xprt/svcxprt_rdma is pinned whenever it's possible that
-- * the Receive completion handler could be running.
-  */
- static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- {
+@@ -305,35 +305,6 @@ static bool svc_rdma_refresh_recvs(struct svcxprt_rdma *rdma,
+ 	return false;
+ }
+ 
+-static int __svc_rdma_post_recv(struct svcxprt_rdma *rdma,
+-				struct svc_rdma_recv_ctxt *ctxt)
+-{
+-	int ret;
+-
+-	trace_svcrdma_post_recv(ctxt);
+-	ret = ib_post_recv(rdma->sc_qp, &ctxt->rc_recv_wr, NULL);
+-	if (ret)
+-		goto err_post;
+-	return 0;
+-
+-err_post:
+-	trace_svcrdma_rq_post_err(rdma, ret);
+-	svc_rdma_recv_ctxt_put(rdma, ctxt);
+-	return ret;
+-}
+-
+-static int svc_rdma_post_recv(struct svcxprt_rdma *rdma)
+-{
+-	struct svc_rdma_recv_ctxt *ctxt;
+-
+-	if (test_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags))
+-		return 0;
+-	ctxt = svc_rdma_recv_ctxt_get(rdma);
+-	if (!ctxt)
+-		return -ENOMEM;
+-	return __svc_rdma_post_recv(rdma, ctxt);
+-}
+-
+ /**
+  * svc_rdma_post_recvs - Post initial set of Recv WRs
+  * @rdma: fresh svcxprt_rdma
+@@ -364,8 +335,17 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+ 	if (wc->status != IB_WC_SUCCESS)
+ 		goto flushed;
+ 
+-	if (svc_rdma_post_recv(rdma))
+-		goto post_err;
++	/* If receive posting fails, the connection is about to be
++	 * lost anyway. The server will not be able to send a reply
++	 * for this RPC, and the client will retransmit this RPC
++	 * anyway when it reconnects.
++	 *
++	 * Therefore we drop the Receive, even if status was SUCCESS
++	 * to reduce the likelihood of replayed requests once the
++	 * client reconnects.
++	 */
++	if (!svc_rdma_refresh_recvs(rdma, 1, false))
++		goto flushed;
+ 
+ 	/* All wc fields are now known to be valid */
+ 	ctxt->rc_byte_len = wc->byte_len;
+@@ -380,7 +360,6 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+ 	return;
+ 
+ flushed:
+-post_err:
+ 	svc_rdma_recv_ctxt_put(rdma, ctxt);
+ 	set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+ 	svc_xprt_enqueue(&rdma->sc_xprt);
 
 
