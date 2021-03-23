@@ -2,179 +2,252 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL autolearn=no
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EB081C433E0
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Mar 2021 20:09:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5B06C433E0
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Mar 2021 20:37:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B336B619D0
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Mar 2021 20:09:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BEE01619BA
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Mar 2021 20:37:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231213AbhCWUJU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Mar 2021 16:09:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38280 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230434AbhCWUJQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Mar 2021 16:09:16 -0400
-Received: from mail-lf1-x12c.google.com (mail-lf1-x12c.google.com [IPv6:2a00:1450:4864:20::12c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 52BAEC061574
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Mar 2021 13:09:16 -0700 (PDT)
-Received: by mail-lf1-x12c.google.com with SMTP id b4so4585990lfi.6
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Mar 2021 13:09:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=Z+VSUun7UW8wI5cY9MF29WsXwPI9fW+U4LbQ5d8Hk0w=;
-        b=WpFACYjbs3wcHAjDq5LEbotNXK7hohiHc+BnMCiPApXodhibpuFogUJ45Dfm5peFil
-         18HPmDZIVgnS37BHCuNcLsV2qFvgPR9MAXgqiqYx4tvJYniVi1kPywjOXPZo6+VgA/d6
-         OXBDfuknJY1YmaXy/hHJi+k6u/nMm4IHxOIm85mWI0AqHtFOGlBmyrsCBdkgr+ueRUmU
-         zZDq9M3WuN7QpcO8c3rq8WJQKLvdvHmr7bSlo0p4Xna4fICOyixEoJf8c2DCFAaQy2mM
-         OgIqut+MqswgGPflWaaZxE7wd8E0QVoDcF7SfhpqM/PstRlLhIQYWriROaT00A8atwqr
-         p7wg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=Z+VSUun7UW8wI5cY9MF29WsXwPI9fW+U4LbQ5d8Hk0w=;
-        b=ddq3E7ikkLPVu4wOHd7HPEwuumwR3EA8Cpo0HgmlZC/HRipw1DXm0IK0V5KdxZHK5L
-         xq2Oi3YwxWdwLDVsqC+p6YSOoZv5d5npHTtJIstCv+vRmYpciJF5hq96upues4ixgmUg
-         zR9fGi8NODyYrb3xmMARn58+TH9QvmSG7abjhvpu/ecAN4t2DAmQUA4HCPIP0iVtbLtp
-         EuJYTxk1vuuSxmm9FOi9mB0qAG/yxvMAqx9vj4S25BE5nm/CLr0cV7d+QpxK8f+exCjA
-         T/vygq1u9t4mlK5mzD0om5GecO2AxuGmqgPJ6gfbL1wwutMzghfbEVNGJ+aoZjTKJTHd
-         ocIQ==
-X-Gm-Message-State: AOAM533N7kIvuMZmt0rWtrV4PC2+3blYZjgg0mlxosoobS4LxFAdMUDl
-        eiJYFiGR60Vgj5B49/7xDOLdq2OORZV+QtnHT203U+F/a+2/Qojd
-X-Google-Smtp-Source: ABdhPJws4b0EwIJW00FQyc+5wXmV6YgnaKOqmUrfV0z08yxMwQrbBEMewROeSXCWNdezJmIPyufF1h4p/9HYzPgTCIw=
-X-Received: by 2002:a19:c20e:: with SMTP id l14mr3277309lfc.402.1616530154279;
- Tue, 23 Mar 2021 13:09:14 -0700 (PDT)
+        id S233419AbhCWUhO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Mar 2021 16:37:14 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49112 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S233389AbhCWUhK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 23 Mar 2021 16:37:10 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 87A93619BA;
+        Tue, 23 Mar 2021 20:37:09 +0000 (UTC)
+Subject: [PATCH 1 1/4] svcrdma: Add a "deferred close" helper
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date:   Tue, 23 Mar 2021 16:37:08 -0400
+Message-ID: <161653182869.1499.13690697391581140635.stgit@klimt.1015granger.net>
+In-Reply-To: <161653161669.1499.11923816743962834540.stgit@klimt.1015granger.net>
+References: <161653161669.1499.11923816743962834540.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.0-5-g755c
 MIME-Version: 1.0
-From:   Benjamin Maynard <benmaynard@google.com>
-Date:   Tue, 23 Mar 2021 20:08:38 +0000
-Message-ID: <CA+QRt4vr+CUgP-4xkVQwLWNZMHo-w6TwU8bFwzuZcUc1RPi-RA@mail.gmail.com>
-Subject: Input/output errors when mounting re-exported directories that use crossmounts
-To:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Linux NFS Mailing List,
+Refactor a bit of commonly used logic so that every site that wants
+a close deferred to an nfsd thread does all the right things
+(set_bit(XPT_CLOSE) then enqueue).
 
-Please excuse any incorrect terminology - I'm not an expert in this
-space but am learning :).
+Also, once XPT_CLOSE is set on a transport, it is never cleared. If
+XPT_CLOSE is already set, then the close is already being handled
+and the enqueue can be skipped.
 
-I have recently been experimenting with NFS re-exporting in the 5.11
-kernel and have come across an interesting quirk when re-exporting a
-directory that has subdirectories on different filesystems. I'll do my
-best to give a concise overview of my setup and the issue I am seeing
-below.
-
-I'll use the following terms to describe the components from here on out:
-
-Source NFS Filer: Refers to the originating NFS Server that contains
-the exports that we want to re-export (Ubuntu 20.04.2 /
-5.4.0-1038-gcp).
-Re-exporting NFS Filer: Refers to the NFS Server that is mounting and
-re-exporting the Source NFS Filer (Ubuntu 20.10 /
-5.11.0-051100-generic).
-NFS Client: Refers to the server that is mounting the re-exported
-directories on the Re-exporting NFS Filer (Ubuntu 18.04 /
-5.4.0-1036-gcp).
-
-(Source NFS Filer <-- Re-exporting NFS Filer <-- NFS Client)
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-Source NFS Filer:
+ include/linux/sunrpc/svc_xprt.h          |    1 +
+ net/sunrpc/svc_xprt.c                    |   14 ++++++++++++++
+ net/sunrpc/svcsock.c                     |   15 ++++++---------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    3 +--
+ net/sunrpc/xprtrdma/svc_rdma_rw.c        |    5 ++---
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   10 ++++------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 ++----
+ 7 files changed, 30 insertions(+), 24 deletions(-)
 
-The source NFS Filer consists of two directories that are each mounted
-to filesystems on different disks:
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 92455e0d5244..34dacadfe517 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -143,6 +143,7 @@ struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+ int	svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen);
+ void	svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *xprt);
+ void	svc_age_temp_xprts_now(struct svc_serv *, struct sockaddr *);
++void	svc_xprt_deferred_close(struct svc_xprt *xprt);
+ 
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
+ {
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 3cdd71a8df1e..b134fc5f3b8d 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -139,6 +139,20 @@ int svc_print_xprts(char *buf, int maxlen)
+ 	return len;
+ }
+ 
++/**
++ * svc_xprt_deferred_close - Close a transport
++ * @xprt: transport instance
++ *
++ * Used in contexts that need to defer the work of shutting down
++ * the transport to an nfsd thread.
++ */
++void svc_xprt_deferred_close(struct svc_xprt *xprt)
++{
++	if (!test_and_set_bit(XPT_CLOSE, &xprt->xpt_flags))
++		svc_xprt_enqueue(xprt);
++}
++EXPORT_SYMBOL_GPL(svc_xprt_deferred_close);
++
+ static void svc_xprt_free(struct kref *kref)
+ {
+ 	struct svc_xprt *xprt =
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 2e2f007dfc9f..22454b2df5be 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -728,10 +728,8 @@ static void svc_tcp_state_change(struct sock *sk)
+ 		rmb();
+ 		svsk->sk_ostate(sk);
+ 		trace_svcsock_tcp_state(&svsk->sk_xprt, svsk->sk_sock);
+-		if (sk->sk_state != TCP_ESTABLISHED) {
+-			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-			svc_xprt_enqueue(&svsk->sk_xprt);
+-		}
++		if (sk->sk_state != TCP_ESTABLISHED)
++			svc_xprt_deferred_close(&svsk->sk_xprt);
+ 	}
+ }
+ 
+@@ -901,7 +899,7 @@ static ssize_t svc_tcp_read_marker(struct svc_sock *svsk,
+ 	net_notice_ratelimited("svc: %s %s RPC fragment too large: %d\n",
+ 			       __func__, svsk->sk_xprt.xpt_server->sv_name,
+ 			       svc_sock_reclen(svsk));
+-	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
++	svc_xprt_deferred_close(&svsk->sk_xprt);
+ err_short:
+ 	return -EAGAIN;
+ }
+@@ -1057,7 +1055,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	svsk->sk_datalen = 0;
+ err_delete:
+ 	trace_svcsock_tcp_recv_err(&svsk->sk_xprt, len);
+-	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
++	svc_xprt_deferred_close(&svsk->sk_xprt);
+ err_noclose:
+ 	return 0;	/* record not complete */
+ }
+@@ -1188,8 +1186,7 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+ 		  xprt->xpt_server->sv_name,
+ 		  (err < 0) ? "got error" : "sent",
+ 		  (err < 0) ? err : sent, xdr->len);
+-	set_bit(XPT_CLOSE, &xprt->xpt_flags);
+-	svc_xprt_enqueue(xprt);
++	svc_xprt_deferred_close(xprt);
+ 	atomic_dec(&svsk->sk_sendqlen);
+ 	mutex_unlock(&xprt->xpt_mutex);
+ 	return -EAGAIN;
+@@ -1268,7 +1265,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 		case TCP_ESTABLISHED:
+ 			break;
+ 		default:
+-			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
++			svc_xprt_deferred_close(&svsk->sk_xprt);
+ 		}
+ 	}
+ }
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 2571188ef7f2..8d93d26e0318 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -367,8 +367,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+ 
+ flushed:
+ 	svc_rdma_recv_ctxt_put(rdma, ctxt);
+-	set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+-	svc_xprt_enqueue(&rdma->sc_xprt);
++	svc_xprt_deferred_close(&rdma->sc_xprt);
+ }
+ 
+ /**
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+index 693d139a8633..d7054e3a8e33 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+@@ -250,7 +250,7 @@ static void svc_rdma_write_done(struct ib_cq *cq, struct ib_wc *wc)
+ 	wake_up(&rdma->sc_send_wait);
+ 
+ 	if (unlikely(wc->status != IB_WC_SUCCESS))
+-		set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
++		svc_xprt_deferred_close(&rdma->sc_xprt);
+ 
+ 	svc_rdma_write_info_free(info);
+ }
+@@ -334,7 +334,6 @@ static void svc_rdma_wc_read_done(struct ib_cq *cq, struct ib_wc *wc)
+ static int svc_rdma_post_chunk_ctxt(struct svc_rdma_chunk_ctxt *cc)
+ {
+ 	struct svcxprt_rdma *rdma = cc->cc_rdma;
+-	struct svc_xprt *xprt = &rdma->sc_xprt;
+ 	struct ib_send_wr *first_wr;
+ 	const struct ib_send_wr *bad_wr;
+ 	struct list_head *tmp;
+@@ -373,7 +372,7 @@ static int svc_rdma_post_chunk_ctxt(struct svc_rdma_chunk_ctxt *cc)
+ 	} while (1);
+ 
+ 	trace_svcrdma_sq_post_err(rdma, ret);
+-	set_bit(XPT_CLOSE, &xprt->xpt_flags);
++	svc_xprt_deferred_close(&rdma->sc_xprt);
+ 
+ 	/* If even one was posted, there will be a completion. */
+ 	if (bad_wr != first_wr)
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index e6fab5dd20d0..4471a0fcd3a3 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -285,10 +285,8 @@ static void svc_rdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
+ 
+ 	svc_rdma_send_ctxt_put(rdma, ctxt);
+ 
+-	if (unlikely(wc->status != IB_WC_SUCCESS)) {
+-		set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+-		svc_xprt_enqueue(&rdma->sc_xprt);
+-	}
++	if (unlikely(wc->status != IB_WC_SUCCESS))
++		svc_xprt_deferred_close(&rdma->sc_xprt);
+ }
+ 
+ /**
+@@ -334,7 +332,7 @@ int svc_rdma_send(struct svcxprt_rdma *rdma, struct svc_rdma_send_ctxt *ctxt)
+ 	}
+ 
+ 	trace_svcrdma_sq_post_err(rdma, ret);
+-	set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
++	svc_xprt_deferred_close(&rdma->sc_xprt);
+ 	wake_up(&rdma->sc_send_wait);
+ 	return ret;
+ }
+@@ -994,7 +992,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	svc_rdma_send_ctxt_put(rdma, sctxt);
+  err0:
+ 	trace_svcrdma_send_err(rqstp, ret);
+-	set_bit(XPT_CLOSE, &xprt->xpt_flags);
++	svc_xprt_deferred_close(&rdma->sc_xprt);
+ 	return -ENOTCONN;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index e629eacfedfc..3646216211c5 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -119,8 +119,7 @@ static void qp_event_handler(struct ib_event *event, void *context)
+ 	case IB_EVENT_QP_ACCESS_ERR:
+ 	case IB_EVENT_DEVICE_FATAL:
+ 	default:
+-		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+-		svc_xprt_enqueue(xprt);
++		svc_xprt_deferred_close(xprt);
+ 		break;
+ 	}
+ }
+@@ -286,8 +285,7 @@ static int svc_rdma_cma_handler(struct rdma_cm_id *cma_id,
+ 		break;
+ 	case RDMA_CM_EVENT_DISCONNECTED:
+ 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
+-		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+-		svc_xprt_enqueue(xprt);
++		svc_xprt_deferred_close(xprt);
+ 		break;
+ 	default:
+ 		break;
 
-root@demo-nfs-filer-kernel-community:/home/benmaynard# lsblk
-NAME MAJ:MIN RM SIZE RO TYPE MOUNTPOINT
-sdb 8:16 0 100G 0 disk /files
-sdc 8:32 0 100G 0 disk /files/disk2
 
-The /files directory is then exported from the source filer, with the
-crossmnt option set so that clients can move to the child filesystems:
-
-root@demo-nfs-filer-kernel-community:/files# cat /etc/exports
-/files 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=10,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
-
--- 
-Re-exporting NFS Filer:
-
-From the Re-exporting NFS Filer, I can then mount this exported directory:
-
-root@reexport-server:/home/benmaynard# mount -t nfs -o vers=3,sync
-10.67.10.54:/files /files
-
-I am able to successfully list the contents of both the /files and
-/files/disk2 directories:
-
-root@reexport-server:/home/benmaynard# ls /files/
-a_file disk2 lost+found
-
-root@reexport-server:/home/benmaynard# ls /files/disk2/
-b_file lost+found
-
-Now time to re-export (using the same options as the Source NFS Filer
-including crossmnt):
-
-root@reexport-server:/home/benmaynard# cat /etc/exports
-/files 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=10,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
-
---
-NFS Client:
-
-I now want to mount the re-exported directory from my NFS Client:
-root@client-vm:/home/benmaynard# mount -t nfs -o vers=3,sync
-10.67.10.51:/files /files
-
-The mount completes successfully, but when listing the contents of the
-directory I receive a Input/output error for the directory that is on
-a different filesystem:
-
-root@client-vm:/home/benmaynard# ls /files
-ls: cannot access '/files/disk2': Input/output error
-a_file disk2 lost+found
-
-
-root@client-vm:/home/benmaynard# ls /files/disk2
-ls: cannot access '/files/disk2': Input/output error
-
-If I unmount and mount the Source NFS Filer directly, I am able to
-read all of the files. The problem seems to be caused by the
-re-export.
-
-In my efforts to resolve this I tried a number of different options,
-and the only way I was able to get things working was to explicitly
-re-export the directories that are on different filesystems from the
-Re-Exporting NFS Filer (Source NFS Filer exports and NFS Client mount
-command remains unchanged):
-
-root@reexport-server:/home/benmaynard# cat /etc/exports
-/files 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=10,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
-/files/disk2 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=20,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
-
-With these export options I can successfully mount the Re-exporting
-NFS filer and browse both directores:
-
-root@client-vm:/home/benmaynard# mount -t nfs -o vers=3,sync
-10.67.10.51:/files /files
-root@client-vm:/home/benmaynard# ls /files
-a_file disk2 lost+found
-root@client-vm:/home/benmaynard# ls /files/disk2/
-b_file lost+found
-
-It appears as if the issue is something to do with the re-export, but
-I am struggling to track down the actual cause.
-
-This is causing some challenges as the source NFS filer that I am
-using in production has 1000's of subdirectories on different volumes.
-Manually re-exporting each of these from our re-export server is a
-challenge.
-
-I have a lab environment configured so happy to do some more testing
-or run commands if it helps with troubleshooting.
