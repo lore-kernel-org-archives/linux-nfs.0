@@ -4,134 +4,154 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0CA35C433C1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D15BC433E0
 	for <linux-nfs@archiver.kernel.org>; Wed, 24 Mar 2021 21:35:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C752B61A01
+	by mail.kernel.org (Postfix) with ESMTP id DD10561A1E
 	for <linux-nfs@archiver.kernel.org>; Wed, 24 Mar 2021 21:35:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233985AbhCXVfZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Mar 2021 17:35:25 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:42161 "EHLO
+        id S234155AbhCXVfY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Mar 2021 17:35:24 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:25395 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S234036AbhCXVfI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Mar 2021 17:35:08 -0400
+        by vger.kernel.org with ESMTP id S233903AbhCXVe7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Mar 2021 17:34:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1616621707;
+        s=mimecast20190719; t=1616621699;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=6BnFLXKVdKYd+FoHFgU/6B9JS5Q/kAb0dewwrIr5OVo=;
-        b=GVHrNuml0fxIswC3UNeJMDR0Kzi7+zG+f5nM9XQhg5wiDBNmycgNbzQt9tjYEut7y26SK/
-        AiuZxMlE9YFYYgS6Iu4LIDnS8dHVewBbb2Fid6o66Kax04r2mao/JOGj/bNZvMRHMLJoXY
-        0k8+YaIDFJlMHMXGAUE50pLwTbkZIp8=
+        bh=UfGrVeHEI0sce0qvVh5BuQBoPgz+S960/h6BqEQEhUA=;
+        b=Q7b15qK0LnNPKLBeL7v101Rvz9niVB92QqjCy/1BxLtrcLm0YlgT+Op8dbh6NLyTYm+av6
+        mfG3yRjwkPziGGAbx/gKY1ZP7r7qkjtqcJ3jTlDFIJgqn/Y5xHUx3mA8QwUTj1j6Lz9fxt
+        mjZCX0DsJD7jr0l5uMG1tvtXZ1QvhkE=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-40-u3BcfBy3OJWg78JhInYkYQ-1; Wed, 24 Mar 2021 17:35:05 -0400
-X-MC-Unique: u3BcfBy3OJWg78JhInYkYQ-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+ us-mta-339-SdPLb4OhPCStBnI5K1dcdA-1; Wed, 24 Mar 2021 17:34:55 -0400
+X-MC-Unique: SdPLb4OhPCStBnI5K1dcdA-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 254FF801817;
-        Wed, 24 Mar 2021 21:35:04 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4FC30185302D;
+        Wed, 24 Mar 2021 21:34:53 +0000 (UTC)
 Received: from firesoul.localdomain (unknown [10.40.208.69])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 5E1E65D9DE;
-        Wed, 24 Mar 2021 21:35:00 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 452EB6A8F1;
+        Wed, 24 Mar 2021 21:34:50 +0000 (UTC)
 Received: from [10.1.1.1] (localhost [IPv6:::1])
-        by firesoul.localdomain (Postfix) with ESMTP id 4E956300A2A79;
-        Wed, 24 Mar 2021 22:34:59 +0100 (CET)
-Subject: [PATCH mel-git 3/3] net: page_pool: convert to use
- alloc_pages_bulk_array variant
+        by firesoul.localdomain (Postfix) with ESMTP id 2CC8E300A2A79;
+        Wed, 24 Mar 2021 22:34:49 +0100 (CET)
+Subject: [PATCH mel-git 1/3] net: page_pool: refactor dma_map into own
+ function page_pool_dma_map
 From:   Jesper Dangaard Brouer <brouer@redhat.com>
 To:     Mel Gorman <mgorman@techsingularity.net>, linux-mm@kvack.org
 Cc:     Jesper Dangaard Brouer <brouer@redhat.com>, chuck.lever@oracle.com,
         Alexander Duyck <alexander.duyck@gmail.com>,
         netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Date:   Wed, 24 Mar 2021 22:34:59 +0100
-Message-ID: <161662169926.940814.10878534922009676003.stgit@firesoul>
+Date:   Wed, 24 Mar 2021 22:34:49 +0100
+Message-ID: <161662168912.940814.14561278459325120343.stgit@firesoul>
 In-Reply-To: <161662166301.940814.9765023867613542235.stgit@firesoul>
 References: <161662166301.940814.9765023867613542235.stgit@firesoul>
 User-Agent: StGit/0.19
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Using the API variant alloc_pages_bulk_array from page_pool
-was done in a separate patch to ease benchmarking the
-variants separately.  Maintainers can squash patch if preferred.
+In preparation for next patch, move the dma mapping into its own
+function, as this will make it easier to follow the changes.
+
+V2: make page_pool_dma_map return boolean (Ilias)
 
 Signed-off-by: Jesper Dangaard Brouer <brouer@redhat.com>
+Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
+Reviewed-by: Ilias Apalodimas <ilias.apalodimas@linaro.org>
 ---
- include/net/page_pool.h |    2 +-
- net/core/page_pool.c    |   22 ++++++++++++++++------
- 2 files changed, 17 insertions(+), 7 deletions(-)
+ net/core/page_pool.c |   45 ++++++++++++++++++++++++++-------------------
+ 1 file changed, 26 insertions(+), 19 deletions(-)
 
-diff --git a/include/net/page_pool.h b/include/net/page_pool.h
-index b5b195305346..6d517a37c18b 100644
---- a/include/net/page_pool.h
-+++ b/include/net/page_pool.h
-@@ -65,7 +65,7 @@
- #define PP_ALLOC_CACHE_REFILL	64
- struct pp_alloc_cache {
- 	u32 count;
--	void *cache[PP_ALLOC_CACHE_SIZE];
-+	struct page *cache[PP_ALLOC_CACHE_SIZE];
- };
- 
- struct page_pool_params {
 diff --git a/net/core/page_pool.c b/net/core/page_pool.c
-index 3bf6e7f5fc89..9ec1aa9640ad 100644
+index ad8b0707af04..40e1b2beaa6c 100644
 --- a/net/core/page_pool.c
 +++ b/net/core/page_pool.c
-@@ -233,24 +233,34 @@ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
- 	const int bulk = PP_ALLOC_CACHE_REFILL;
- 	unsigned int pp_flags = pool->p.flags;
- 	unsigned int pp_order = pool->p.order;
--	struct page *page, *next;
--	LIST_HEAD(page_list);
-+	struct page *page;
-+	int i, nr_pages;
+@@ -180,14 +180,37 @@ static void page_pool_dma_sync_for_device(struct page_pool *pool,
+ 					 pool->p.dma_dir);
+ }
  
- 	/* Don't support bulk alloc for high-order pages */
- 	if (unlikely(pp_order))
- 		return __page_pool_alloc_page_order(pool, gfp);
++static bool page_pool_dma_map(struct page_pool *pool, struct page *page)
++{
++	dma_addr_t dma;
++
++	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
++	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
++	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
++	 * This mapping is kept for lifetime of page, until leaving pool.
++	 */
++	dma = dma_map_page_attrs(pool->p.dev, page, 0,
++				 (PAGE_SIZE << pool->p.order),
++				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
++	if (dma_mapping_error(pool->p.dev, dma))
++		return false;
++
++	page->dma_addr = dma;
++
++	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
++		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
++
++	return true;
++}
++
+ /* slow path */
+ noinline
+ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
+ 						 gfp_t _gfp)
+ {
++	unsigned int pp_flags = pool->p.flags;
+ 	struct page *page;
+ 	gfp_t gfp = _gfp;
+-	dma_addr_t dma;
  
--	if (unlikely(!alloc_pages_bulk_list(gfp, bulk, &page_list)))
-+	/* Unnecessary as alloc cache is empty, but guarantees zero count */
-+	if (unlikely(pool->alloc.count > 0))
-+		return pool->alloc.cache[--pool->alloc.count];
-+
-+	/* Mark empty alloc.cache slots "empty" for alloc_pages_bulk_array */
-+	memset(&pool->alloc.cache, 0, sizeof(void *) * bulk);
-+
-+	nr_pages = alloc_pages_bulk_array(gfp, bulk, pool->alloc.cache);
-+	if (unlikely(!nr_pages))
+ 	/* We could always set __GFP_COMP, and avoid this branch, as
+ 	 * prep_new_page() can handle order-0 with __GFP_COMP.
+@@ -211,30 +234,14 @@ static struct page *__page_pool_alloc_pages_slow(struct page_pool *pool,
+ 	if (!page)
  		return NULL;
  
--	list_for_each_entry_safe(page, next, &page_list, lru) {
--		list_del(&page->lru);
-+	/* Pages have been filled into alloc.cache array, but count is zero and
-+	 * page element have not been (possibly) DMA mapped.
-+	 */
-+	for (i = 0; i < nr_pages; i++) {
-+		page = pool->alloc.cache[i];
- 		if ((pp_flags & PP_FLAG_DMA_MAP) &&
- 		    unlikely(!page_pool_dma_map(pool, page))) {
- 			put_page(page);
- 			continue;
- 		}
--		/* Alloc cache have room as it is empty on function call */
- 		pool->alloc.cache[pool->alloc.count++] = page;
- 		/* Track how many pages are held 'in-flight' */
- 		pool->pages_state_hold_cnt++;
+-	if (!(pool->p.flags & PP_FLAG_DMA_MAP))
+-		goto skip_dma_map;
+-
+-	/* Setup DMA mapping: use 'struct page' area for storing DMA-addr
+-	 * since dma_addr_t can be either 32 or 64 bits and does not always fit
+-	 * into page private data (i.e 32bit cpu with 64bit DMA caps)
+-	 * This mapping is kept for lifetime of page, until leaving pool.
+-	 */
+-	dma = dma_map_page_attrs(pool->p.dev, page, 0,
+-				 (PAGE_SIZE << pool->p.order),
+-				 pool->p.dma_dir, DMA_ATTR_SKIP_CPU_SYNC);
+-	if (dma_mapping_error(pool->p.dev, dma)) {
++	if ((pp_flags & PP_FLAG_DMA_MAP) &&
++	    unlikely(!page_pool_dma_map(pool, page))) {
+ 		put_page(page);
+ 		return NULL;
+ 	}
+-	page->dma_addr = dma;
+ 
+-	if (pool->p.flags & PP_FLAG_DMA_SYNC_DEV)
+-		page_pool_dma_sync_for_device(pool, page, pool->p.max_len);
+-
+-skip_dma_map:
+ 	/* Track how many pages are held 'in-flight' */
+ 	pool->pages_state_hold_cnt++;
+-
+ 	trace_page_pool_state_hold(pool, page, pool->pages_state_hold_cnt);
+ 
+ 	/* When page just alloc'ed is should/must have refcnt 1. */
 
 
