@@ -2,110 +2,155 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,MSGID_FROM_MTA_HEADER,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F2E4C433E0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDC31C433E1
 	for <linux-nfs@archiver.kernel.org>; Wed, 24 Mar 2021 01:47:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 697BD619E9
+	by mail.kernel.org (Postfix) with ESMTP id 8ECD5619EB
 	for <linux-nfs@archiver.kernel.org>; Wed, 24 Mar 2021 01:47:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231803AbhCXBr0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Mar 2021 21:47:26 -0400
-Received: from smtp-fw-9103.amazon.com ([207.171.188.200]:30436 "EHLO
-        smtp-fw-9103.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231688AbhCXBrR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Mar 2021 21:47:17 -0400
+        id S231818AbhCXBrZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Mar 2021 21:47:25 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:54842 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231819AbhCXBq4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Mar 2021 21:46:56 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 12O1eTYo032800;
+        Wed, 24 Mar 2021 01:46:54 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : content-transfer-encoding : content-type :
+ mime-version; s=corp-2020-01-29;
+ bh=o1M/O6HO9DrmvTfG0RzEr8W2uYRZXMrjnLhz7ivuJOU=;
+ b=YlbOJyHiPRJ54yjlkCBIF1+P4u1GEELulVx6zlDr1pqOUImKGc+AIWZIkGDULkPHihHI
+ ZEVP9q+0vrfeMAcKTNUE2QCgq53Fnyus4ExqZTe2zVhxhl1GubhfgE6esxyEhKbwXLqs
+ z5qabCUIfup3jtwj9F7QG0ArYrRlfGcV8/jdsGvPbCnYQNZbLcK5i5/FupO0zLYvACIJ
+ MCdToX2cOrL0GZtiMHUdamsiqGxVqlO6RQlhBmOf6ZnQFYTimu/bbT+0MtxnUA+Rkku7
+ hqDykoQ7dk+KrjPC/9TbKCPSDLHOFriCcdLdNAG8gw13aBMQP0e6ea3Exa/nqzbi4wjA NA== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by userp2120.oracle.com with ESMTP id 37d9pn13ye-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 24 Mar 2021 01:46:54 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 12O1il3b093711;
+        Wed, 24 Mar 2021 01:46:53 GMT
+Received: from nam02-sn1-obe.outbound.protection.outlook.com (mail-sn1nam02lp2055.outbound.protection.outlook.com [104.47.36.55])
+        by userp3030.oracle.com with ESMTP id 37dtyy7mxr-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 24 Mar 2021 01:46:53 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=WuElO96GSaSW7pMisrKZaB+FJkupFtv0/YYDkG/EiXYmFZ8JwPfe+oyererJ5mwHe5I6D/nTy0WFS5BA3s9kYX9niAAYLhr99V+v6PevI6UtCEb71zCYK7bSB0x0vG836F/7ukvjV1sO2/J9wwbw31areO90odOwmVeNxnmEKqtU4iVOHymvcbWNizdglpD5NzH9ltb2o+4qerNXHmsimjq8llcb0y7y1P7Pp6TwNwYRA0KXWlzFss/98jKtxR3PHAy1SPVUE+ds4yRc/Ge01lFpk7J7jhtMR4zMkmC0LSRqmYCkUfUYohDfe0hTyi5DBeIs/plThXAK+DtGfM+JEQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=o1M/O6HO9DrmvTfG0RzEr8W2uYRZXMrjnLhz7ivuJOU=;
+ b=nSNmULPLO4ECu43sB9hOQHIE8FIuxa2rCG1DFY+xi7DOQ4ba15dJmxiOwEIyVYg+0AIdHmEod4yUoMVtZJwwQM2E7u6K1WKrwAr9/ydx+9bjlxoDGQZNDvcOoF71ulYJtxK3vClNUDYGKLijLKyLtAi+26wqErBmp8Xx11SBnkFaeKcoqmH5WhaQH2wYOPYCp+MzBTG7rtZffNMYaTDb87lqmo2we/zkfrihtWAP3hoaDp94HoBXrhzbQvokSljIkbbo17RxWQLmV3nFa/NkhcStLpKGSlD/FZ9u8NX1FrWczBY83V8wrCgayiYXrUQlMtS5CzKTeyfszhTDS/NXKA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1616550437; x=1648086437;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=Yru4cZYSXHFe3Epzftgw0uYtzR/zz5/kotLVlvodWBA=;
-  b=wGysh0ASbQocM2XM2+XBoDqv2jM2As1eu6sIOxPKFqD3OXCSuOauTEqR
-   cXOZ+wtdSna4yY2KRqkdthjrPgQAfBLnEHYK6sG1sPN256g96mjpUEns6
-   JpJBNPEMnguSTJY4mtYJFWF6Q0DcSVnBeuLkBcQfPXhr1tJzvbmxs7QZX
-   c=;
-X-IronPort-AV: E=Sophos;i="5.81,272,1610409600"; 
-   d="scan'208";a="921026729"
-Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-2b-4e24fd92.us-west-2.amazon.com) ([10.43.8.6])
-  by smtp-border-fw-out-9103.sea19.amazon.com with ESMTP; 24 Mar 2021 01:47:16 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (pdx1-ws-svc-p6-lb9-vlan2.pdx.amazon.com [10.236.137.194])
-        by email-inbound-relay-2b-4e24fd92.us-west-2.amazon.com (Postfix) with ESMTPS id E06A9A1CC5;
-        Wed, 24 Mar 2021 01:47:15 +0000 (UTC)
-Received: from EX13D13UWB003.ant.amazon.com (10.43.161.233) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Wed, 24 Mar 2021 01:47:15 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
- EX13D13UWB003.ant.amazon.com (10.43.161.233) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Wed, 24 Mar 2021 01:47:15 +0000
-Received: from dev-dsk-gerardu-1d-3da90cb4.us-east-1.amazon.com
- (10.200.231.78) by mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP
- Server id 15.0.1497.2 via Frontend Transport; Wed, 24 Mar 2021 01:47:14 +0000
-Received: by dev-dsk-gerardu-1d-3da90cb4.us-east-1.amazon.com (Postfix, from userid 5408343)
-        id E89EB1EE9; Wed, 24 Mar 2021 01:47:14 +0000 (UTC)
-Date:   Wed, 24 Mar 2021 01:47:14 +0000
-From:   Geert Jansen <gerardu@amazon.com>
-To:     Chuck Lever III <chuck.lever@oracle.com>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: RFC: return d_type for non-plus READDIR
-Message-ID: <20210324014713.GA44499@gerardu>
-References: <20210323010057.GA129497@dev-dsk-gerardu-1d-3da90cb4.us-east-1.amazon.com>
- <689DD4DF-17C0-4776-BE53-7F10F7FFE720@oracle.com>
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=o1M/O6HO9DrmvTfG0RzEr8W2uYRZXMrjnLhz7ivuJOU=;
+ b=zGLO+2zxpP2xjZHrhhfOeQIXUaUhzBKoeoiOfPHfD29KBEdl/KhmspO6VLVxWUcRLW6+xEveUAZ74nUnN14ApZz0sp3gLtYeqU37C3DJw62ot4rZiZMIJ0GWjnxvgUDvQs2nWl9Kht/DZi7evizBNPOdP2MzeOUYlwGabTCtyoE=
+Authentication-Results: redhat.com; dkim=none (message not signed)
+ header.d=none;redhat.com; dmarc=none action=none header.from=oracle.com;
+Received: from CY4PR1001MB2119.namprd10.prod.outlook.com
+ (2603:10b6:910:3f::15) by CY4PR10MB1304.namprd10.prod.outlook.com
+ (2603:10b6:903:26::16) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3977.24; Wed, 24 Mar
+ 2021 01:46:51 +0000
+Received: from CY4PR1001MB2119.namprd10.prod.outlook.com
+ ([fe80::848c:1057:dabd:55b2]) by CY4PR1001MB2119.namprd10.prod.outlook.com
+ ([fe80::848c:1057:dabd:55b2%6]) with mapi id 15.20.3955.025; Wed, 24 Mar 2021
+ 01:46:50 +0000
+From:   Calum Mackay <calum.mackay@oracle.com>
+To:     bfields@redhat.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] add another courteous server test
+Date:   Wed, 24 Mar 2021 01:46:28 +0000
+Message-Id: <20210324014630.2454-1-calum.mackay@oracle.com>
+X-Mailer: git-send-email 2.27.0
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Originating-IP: [141.143.213.46]
+X-ClientProxiedBy: AM3PR07CA0065.eurprd07.prod.outlook.com
+ (2603:10a6:207:4::23) To CY4PR1001MB2119.namprd10.prod.outlook.com
+ (2603:10b6:910:3f::15)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-In-Reply-To: <689DD4DF-17C0-4776-BE53-7F10F7FFE720@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+X-MS-Exchange-MessageSentRepresentingType: 1
+Received: from cdmvmol7.uk.oracle.com (141.143.213.46) by AM3PR07CA0065.eurprd07.prod.outlook.com (2603:10a6:207:4::23) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3977.9 via Frontend Transport; Wed, 24 Mar 2021 01:46:49 +0000
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: 94ec9893-1883-4c57-4c30-08d8ee66b169
+X-MS-TrafficTypeDiagnostic: CY4PR10MB1304:
+X-MS-Exchange-Transport-Forked: True
+X-Microsoft-Antispam-PRVS: <CY4PR10MB13049E684ABCF8FB3FBEBD4AE7639@CY4PR10MB1304.namprd10.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:4303;
+X-MS-Exchange-SenderADCheck: 1
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: AuZ6jZdLgyjkMWSZnyTOuCMRvU8+Pvd0zHEQzhlE7IR7SlAb5FC8310cb0Azu2VXQfXg6nzcDa8BIfhqxDBIcvc7qCBCO13EKobK7RzpCMe9czflYgS6lL+w+8eabFuKTCmZ6Q/iPuQPnHyeNJgUHsiQotujc/8peE8WVQq1nA6AORxJwy8apL6/+bX4J5fDL0EyuIkpNFkXAzo6eSC1LAbG4pD0D1AJsbEaegn1gl9qzf55SEnt6A4KhoGJtQ/tGXDlbATwDlNaZV5zPLL2hqv7iQJg0sfrv2efXC/ojKJjfJu5Fg+NHDyz/qUjf9pVYaAIO4cxJWRM7f//jLF48Y77eIjVxvjeV6LUA8R0sO343THZ2PXhgOxgXO0DOIrSpW6MNaeqbMzSLL5JxP7eZQNmqO0oDe797cs2nnp/SkUErxiVSATgs6+GJWFa3AdCK0ADJ8lBMgT2BtCxcuA6Lk1Oai0SxhZR/Y5mNgIRGXhB314+utzNm7dqmn8ZnT6CqfALT3IJvVuYW03NpYvxUX9Tygx/eIWFUbMght1+1vjQbGqqbM6lVwf4ObS1ujZ0Z5F8n1lFuiR/bSFqC5YlGw9TqPzOOqTyM6aKC+gVp4ijlvpyuEPPArETbvU/ax+WvtlQRnS1zTfErvvvjPWwow==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CY4PR1001MB2119.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(346002)(376002)(136003)(366004)(396003)(39860400002)(956004)(8936002)(6486002)(2616005)(7696005)(4744005)(66946007)(6916009)(478600001)(66476007)(66556008)(6666004)(4326008)(26005)(38100700001)(83380400001)(2906002)(5660300002)(186003)(86362001)(16526019)(316002)(44832011)(36756003)(1076003)(52116002)(8676002);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData: =?us-ascii?Q?dK+LR5QybAn5MozoY9cHG2gKFxytlJa3C1pwMKAxKtWxuo3iXHoc/tO/qJ+e?=
+ =?us-ascii?Q?gxIfnF5YuGnZMPoHfDS3Uu296x6Xmtd9jg9rH1B43U8JYgBaZZcFfzdPiYTF?=
+ =?us-ascii?Q?nTso/NKNSJ7cDHkYPZB004NOqQMWErwx/yy8h5q6ejP3kf732qv2prYpZudT?=
+ =?us-ascii?Q?NJgp/03xDrZUzQyXGo87q+oqO30FMkOb8PBydKnQLKtFhLD6hB4ZemiAPxQs?=
+ =?us-ascii?Q?pFQGVfd84yi2j3VTgGmF8g3efgMA73AT+mqEMcSSmT8z7YIpxGqjnMFV8pZ/?=
+ =?us-ascii?Q?uqGX5XnrfKbSkvvM4NzNECCMvgAC20iky0I0nmHnsJcWiQOit91BREeTP/bq?=
+ =?us-ascii?Q?RNRUBFBRUr5XwUJYYU1TzW9mRMYKUnWIZCkDXZWdqfOtSxT/IrN42gRsOcUb?=
+ =?us-ascii?Q?PKP+yDGbmYlRgsO7YPIZ7AYik739TipfjZubIdcKjwnjIib8phJfnSoSo4mx?=
+ =?us-ascii?Q?8nR+2Ngil2uwnWQmav+/se55mycPfKKwJ+zdRiGsGSidAZh9cDASEbJ+dpg3?=
+ =?us-ascii?Q?KFhMse/NRbY1jUJb5pACdNAK/z49yphs4TMhOpz6H5N2KbbymQt1sQoD0NT3?=
+ =?us-ascii?Q?cVx2d6jBc9X1aKqbNhG/OMM3yEepKe9fMwG+fR5p6JhsWeA8sizqBTKdoa1w?=
+ =?us-ascii?Q?6mlmn0/YNxEY3YXAivNzN9lyCuD6mLLYOQVUYLY2GmkmCc0XEa2iTl9ibWV+?=
+ =?us-ascii?Q?anGd8fAZUXW11fDrlx9NehRypgrEWh5a8vLuZKKOOA19ca0gWznykvDr+moE?=
+ =?us-ascii?Q?ROLqtyyBzi7QX+lsnVaSWWK08DB27nh9kbAm/eEzyQXFHMCfCp981mJC8oFv?=
+ =?us-ascii?Q?A1Ci7q5kLOKjwpO4Jtk4kG0JIJR5fQkDkEZTucCXmNVHjFOFkR6iTq2f+xHx?=
+ =?us-ascii?Q?3ZKdKPRL3Jm7OqBLNfLPOXSqCkzV32qfA+lM/78vm4QXJCKF3FJB2jVXlP12?=
+ =?us-ascii?Q?WdV7fKoVbJFVj6EyMJLmJiovEySxYKgekTWD8IT5cGfjz2Il0XXqeNCCCj95?=
+ =?us-ascii?Q?GR4LopAcBmwNyG5VfgV6oVGr349oDye2eloFLhKEFDrECZzFSG2qVb0lwGG9?=
+ =?us-ascii?Q?+K3GT59cjcAd+D72LKjyMDgRz0htObTQYWNn7gM8NPmtfnHy9tlXalkRr2Zq?=
+ =?us-ascii?Q?thrICcT/91ZjSI8bkmjkqrdiDDDR8ibij3kfHfh08vP7F+ikx17fgx+kU7NT?=
+ =?us-ascii?Q?aVKwsxj8qZOuDBwW0oi9H2n0QJdl1SHXzO5P/fz3Cj0Nx/ddnMG4U4B8wOQe?=
+ =?us-ascii?Q?TOJx44gxqMGFR6zQV+boMmOkR0SZvVQjCXUNuiHySVbNtTjceX1UpZbZ9q8G?=
+ =?us-ascii?Q?CYzJT/kB8nVxnk0OezZeSih5?=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 94ec9893-1883-4c57-4c30-08d8ee66b169
+X-MS-Exchange-CrossTenant-AuthSource: CY4PR1001MB2119.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 24 Mar 2021 01:46:50.7625
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: 8qQKDXV8gs57gCz2GEr6XAA/9m5rBYP3uTAmahfSiZEzh0J+j7xiRAWh3ZLuu8+mrbrDDh5p3HIl+1Oq+NQIVg==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY4PR10MB1304
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9932 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 bulkscore=0 phishscore=0
+ mlxlogscore=888 suspectscore=0 spamscore=0 malwarescore=0 mlxscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2103240011
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9932 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 lowpriorityscore=0 phishscore=0
+ mlxlogscore=999 priorityscore=1501 impostorscore=0 bulkscore=0 spamscore=0
+ adultscore=0 clxscore=1011 malwarescore=0 mlxscore=0 suspectscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2103240010
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Mar 23, 2021 at 03:26:02PM +0000, Chuck Lever III wrote:
+This adds a second test of courteous server functionality.
 
-> > Since not all file servers may be able to produce the directory entry type
-> > efficiently, this could be implemented as a mount option that defaults off.
-> 
-> Can you say more about the impact of requesting this attribute
-> from servers that cannot efficiently provide it? Which servers
-> and filesystems find it a problem, and how much of a problem is
-> it?
+ nfs4.1/server41tests/st_courtesy.py | 44 +++++++++++++++++++++++++++++---
+ 1 file changed, 40 insertions(+), 4 deletions(-)
 
-The ability to satisfy a non-plus READDIR by reading just the directory
-pages, instead of having to read all dirent inodes as well, can be worth it
-for certain use cases (especially those with large directories). If a file
-system does not store d_type in the directory, and the client would always
-request the type attribute even for non-plus READDIR, then you lose the
-ability to make this optimization.
+Calum Mackay (2):
+      pynfs: courtesy: use a helper function to prepare the lock op args
+      pynfs: courtesy: add a test to ensure server releases state appropriately
 
-From a review of the man pages, most local file systems appear to be able to
-store d_type within the directory, including ext4, xfs and zfs. Both ext4
-and xfs have options to turn this behavior off. If you'd export such a file
-system using nfsd, then this would cause additional IO on the file system if
-we would always request the type attribute.
 
-I do not know how other commercial servers handle this.
 
-> I'd rather avoid adding another administrative knob unless it is
-> absolutely necessary... are there other options for controlling
-> whether the client requests this attribute?
-> 
-> For example, is there a way for a server to decide not to provide
-> it if it would be burdensome to do so? ie, the client always asks,
-> but it would be up to the server to provide it if it can do so.
-
-I looked in the RFCs but I am not sure if there is a way today? Both 4.0 and
-4.1 define "type" as a required attribute that needs to be returned if the
-client asks for it. There also does not appear to be an enum value
-corresponding to DT_UNKNOWN. Were you thinking about something specifically?
-
-If there's no way to do this today, then I guess a per-file system attribute
-that indicates support for "can produce file type efficient when reading a
-directory" would would be a relatively clean solution. I presume it would
-require an RFC to define this attribute. Would you have a recommendation given
-your your experience with the RFC process?
-
-Geert
