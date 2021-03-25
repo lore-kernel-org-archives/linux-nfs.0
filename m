@@ -7,39 +7,38 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2A79C433C1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB47DC433E3
 	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 60C2061A41
+	by mail.kernel.org (Postfix) with ESMTP id A8AEE61A48
 	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230134AbhCYLZ3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:25:29 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33606 "EHLO mail.kernel.org"
+        id S230113AbhCYLZ1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:25:27 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33586 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229948AbhCYLZJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:25:09 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 9F98161A24;
-        Thu, 25 Mar 2021 11:25:08 +0000 (UTC)
+        id S229869AbhCYLZI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:25:08 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 7C8FA61A2E;
+        Thu, 25 Mar 2021 11:25:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671509;
-        bh=+Osgp3BwPhN458vMwDW2wPQlrcTN99xc3KHloFf73qY=;
+        s=k20201202; t=1616671508;
+        bh=xuUmS80t1X4JLO/dQPmcfEov7ygVrHQ0Zbrwlc7eCRo=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=gfNHA3Ap1rMZy5Ak1st7GdM+P/6LqeNy3J+bxoe33wZLe3yYPU4FzTNA4ID+d1iT2
-         RdFSoLKiGTimNKBhgiERVQEdgqSJ8+xP6Rvaiv3XfAEYNo8dkJ0m1XonKqCmWUg1Ee
-         Qc3s7z8Y7mqlXWGgRj/nLtb7GJJx34Txv0RfITReXoBkoEwWm1icNnJdzrMg+p6UJL
-         XPQUQHd+5uoV0m+1XX3jRkIthQnR0F7QBX1Ad+tkK1qBOZxAUWwbfi463VsCyIsCQ9
-         cE6Gl6fZJNc7HO6ZsrP5zQcGOUcYWx1J1Bx7oHYzIAxyNe5CVklSILNHtRHj4a0drQ
-         58uLau9lRYomA==
+        b=dLKYO19q6O0UFQRvgp+24d92q/C0utg2d7Uu4JkpRzfsXrDZGHjkWcNb2PABOPv9Y
+         cnjcq2EdYyPMEO/DFW5QWnUAG/3WEYEIoM51wOB0u/noQa3yL2POfbdpOXNrlPHZDw
+         fMgQqSpPpVeb0usu6kIxK+GguqRqvMhd09kgCtDTNXcI4Q4cHxGPsVkdkq0NDSsuli
+         A1paA4NKlKCtAXn47YoiyQlRuKYvgNWAp34KlXpQWDKwAumO4DSHF8KvCrX2ymP0xP
+         kaCvui86ydpI1B/A+unUz8jqDF2bGzvgbb+VFOCUo6Zo1Q+qsH0D8kt/KQ6ff/0TDn
+         KwbTmmI9BgwDA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+Cc:     Julian Braha <julianbraha@gmail.com>,
         Chuck Lever <chuck.lever@oracle.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.11 07/44] rpc: fix NULL dereference on kmalloc failure
-Date:   Thu, 25 Mar 2021 07:24:22 -0400
-Message-Id: <20210325112459.1926846-7-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.11 06/44] fs: nfsd: fix kconfig dependency warning for NFSD_V4
+Date:   Thu, 25 Mar 2021 07:24:21 -0400
+Message-Id: <20210325112459.1926846-6-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
 In-Reply-To: <20210325112459.1926846-1-sashal@kernel.org>
 References: <20210325112459.1926846-1-sashal@kernel.org>
@@ -51,62 +50,46 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Julian Braha <julianbraha@gmail.com>
 
-[ Upstream commit 0ddc942394013f08992fc379ca04cffacbbe3dae ]
+[ Upstream commit 7005227369079963d25fb2d5d736d0feb2c44cf6 ]
 
-I think this is unlikely but possible:
+When NFSD_V4 is enabled and CRYPTO is disabled,
+Kbuild gives the following warning:
 
-svc_authenticate sets rq_authop and calls svcauth_gss_accept.  The
-kmalloc(sizeof(*svcdata), GFP_KERNEL) fails, leaving rq_auth_data NULL,
-and returning SVC_DENIED.
+WARNING: unmet direct dependencies detected for CRYPTO_SHA256
+  Depends on [n]: CRYPTO [=n]
+  Selected by [y]:
+  - NFSD_V4 [=y] && NETWORK_FILESYSTEMS [=y] && NFSD [=y] && PROC_FS [=y]
 
-This causes svc_process_common to go to err_bad_auth, and eventually
-call svc_authorise.  That calls ->release == svcauth_gss_release, which
-tries to dereference rq_auth_data.
+WARNING: unmet direct dependencies detected for CRYPTO_MD5
+  Depends on [n]: CRYPTO [=n]
+  Selected by [y]:
+  - NFSD_V4 [=y] && NETWORK_FILESYSTEMS [=y] && NFSD [=y] && PROC_FS [=y]
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Link: https://lore.kernel.org/linux-nfs/3F1B347F-B809-478F-A1E9-0BE98E22B0F0@oracle.com/T/#t
+This is because NFSD_V4 selects CRYPTO_MD5 and CRYPTO_SHA256,
+without depending on or selecting CRYPTO, despite those config options
+being subordinate to CRYPTO.
+
+Signed-off-by: Julian Braha <julianbraha@gmail.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ fs/nfsd/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index bd4678db9d76..6dff64374bfe 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1825,11 +1825,14 @@ static int
- svcauth_gss_release(struct svc_rqst *rqstp)
- {
- 	struct gss_svc_data *gsd = (struct gss_svc_data *)rqstp->rq_auth_data;
--	struct rpc_gss_wire_cred *gc = &gsd->clcred;
-+	struct rpc_gss_wire_cred *gc;
- 	struct xdr_buf *resbuf = &rqstp->rq_res;
- 	int stat = -EINVAL;
- 	struct sunrpc_net *sn = net_generic(SVC_NET(rqstp), sunrpc_net_id);
- 
-+	if (!gsd)
-+		goto out;
-+	gc = &gsd->clcred;
- 	if (gc->gc_proc != RPC_GSS_PROC_DATA)
- 		goto out;
- 	/* Release can be called twice, but we only wrap once. */
-@@ -1870,10 +1873,10 @@ svcauth_gss_release(struct svc_rqst *rqstp)
- 	if (rqstp->rq_cred.cr_group_info)
- 		put_group_info(rqstp->rq_cred.cr_group_info);
- 	rqstp->rq_cred.cr_group_info = NULL;
--	if (gsd->rsci)
-+	if (gsd && gsd->rsci) {
- 		cache_put(&gsd->rsci->h, sn->rsc_cache);
--	gsd->rsci = NULL;
--
-+		gsd->rsci = NULL;
-+	}
- 	return stat;
- }
- 
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index dbbc583d6273..248f1459c039 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -73,6 +73,7 @@ config NFSD_V4
+ 	select NFSD_V3
+ 	select FS_POSIX_ACL
+ 	select SUNRPC_GSS
++	select CRYPTO
+ 	select CRYPTO_MD5
+ 	select CRYPTO_SHA256
+ 	select GRACE_PERIOD
 -- 
 2.30.1
 
