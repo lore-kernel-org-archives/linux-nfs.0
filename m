@@ -2,122 +2,198 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FFD5C433C1
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 20:10:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22DE2C433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 21:35:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1F4A761A36
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 20:10:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D7D9E61A1E
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 21:35:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230009AbhCYUJf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 16:09:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40544 "EHLO
+        id S230468AbhCYVed (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 17:34:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58764 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229576AbhCYUJ1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Mar 2021 16:09:27 -0400
+        with ESMTP id S230483AbhCYVeW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Mar 2021 17:34:22 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8268AC06174A
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Mar 2021 13:09:27 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF198C06174A
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Mar 2021 14:34:22 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 680FE6D18; Thu, 25 Mar 2021 16:09:26 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 680FE6D18
+        id C26566D16; Thu, 25 Mar 2021 17:34:21 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org C26566D16
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1616702966;
-        bh=+zf/AwflHb+wUTy9m4OXGAJWxxRZvXgH601Os6n4K/U=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=rqiSQ91hhCFDzJ+imD9FFmC7i8Rv0udO+zDy/ppbGs8Sn3TxYdd0PJC/ecbUqGO9I
-         MSOZECXaZilne0jWfy/SboTCPE4rtzBX+ospUdnnX6hur4S0P4fSWk9ebnL6qTqkNP
-         CSo9sj5EFIv/TnylTjvJjloP+g7+kbW7uNvolBks=
-Date:   Thu, 25 Mar 2021 16:09:26 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Ondrej Mosnacek <omosnace@redhat.com>
-Cc:     Steve Dickson <steved@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] exportfs: fix unexporting of '/'
-Message-ID: <20210325200926.GB18351@fieldses.org>
-References: <20210322210238.96915-1-omosnace@redhat.com>
- <20210325191903.GA18351@fieldses.org>
- <CAFqZXNsg7XTEbzxEz+7oO9DLFTu=6-LzwXJpOdTZTzj5Td_2Ng@mail.gmail.com>
+        s=default; t=1616708061;
+        bh=5KrUTVgQrTVlUzS34jfxzrAzcye/x4HcoSBTBwe3eCI=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=b8niUMIFyXR+Bn2453A4GoM/fvXiNuOhPhMoiO8SdgVunuYMIknxepT/t+DYDdCTH
+         ppMfCzycUwziTVeXPk0K9x0rZBY3Oz3jP+Cef/tBTgnhvwqbwWqzYqQi1LDqCaXhkx
+         4+u5UrYElQol0NnTjjDG8Vf+phHBV9ehv6Off5LU=
+Date:   Thu, 25 Mar 2021 17:34:21 -0400
+To:     Benjamin Maynard <benmaynard@google.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: Input/output errors when mounting re-exported directories that
+ use crossmounts
+Message-ID: <20210325213421.GC18351@fieldses.org>
+References: <CA+QRt4vr+CUgP-4xkVQwLWNZMHo-w6TwU8bFwzuZcUc1RPi-RA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAFqZXNsg7XTEbzxEz+7oO9DLFTu=6-LzwXJpOdTZTzj5Td_2Ng@mail.gmail.com>
+In-Reply-To: <CA+QRt4vr+CUgP-4xkVQwLWNZMHo-w6TwU8bFwzuZcUc1RPi-RA@mail.gmail.com>
 User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 25, 2021 at 08:48:57PM +0100, Ondrej Mosnacek wrote:
-> On Thu, Mar 25, 2021 at 8:27 PM J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Mon, Mar 22, 2021 at 10:02:38PM +0100, Ondrej Mosnacek wrote:
-> > > The code that has been added to strip trailing slashes from path in
-> > > unexportfs_parsed() forgot to account for the case of the root
-> > > directory, which is simply '/'. In that case it accesses path[-1] and
-> > > reduces the path to an empty string, which then fails to match any
-> > > export.
-> > >
-> > > Fix it by stopping the stripping when the path is just a single
-> > > character - it doesn't matter if it's a '/' or not, we want to keep it
-> > > either way in that case.
-> >
-> > Makes sense to me.
-> >
-> > (Note nfs-exporting / is often a bad idea.  I assume you had some good
-> > reason in this case.)
+On Tue, Mar 23, 2021 at 08:08:38PM +0000, Benjamin Maynard wrote:
+> Hi Linux NFS Mailing List,
 > 
-> I hit it in a test, so if the only issue is that it exposes more than
-> necessary, then I guess it's fine in this case :)
+> Please excuse any incorrect terminology - I'm not an expert in this
+> space but am learning :).
+> 
+> I have recently been experimenting with NFS re-exporting in the 5.11
+> kernel and have come across an interesting quirk when re-exporting a
+> directory that has subdirectories on different filesystems. I'll do my
+> best to give a concise overview of my setup and the issue I am seeing
+> below.
 
-Yes, in a lot of typical setups, exporting "/" would expose files to the
-network that you don't really want to.
+I bet you're encountering a special case of the rule that the "fsid="
+option is required on any export of an NFS filesystem.
 
-But, anyway, it should work.  Looks like a good fix.
+The "fsid=" option on the parent export doesn't help us with any
+children found underneath that export, different filesystems have to
+have different fsids.
+
+So, you probably hit the first -EINVAL in fs/nfsd/export.c
+check_export().  You could confirm that by turning on some debugging on
+the re-exporting server (rpcdebug -m nfsd -s export) and checking the
+logs, which should get "exp_export: export of non-dev fs without fsid"
+when you hit the IO error.
+
+The re-export server wants to encode into each filehandle something that
+identifies the specific filesystem being exported.  Otherwise it's stuck
+when it gets a filehandle back from the client--the operation it uses to
+map the incoming filehandle to a dentry can't work without a superblock.
+
+In theory, if it can at least determine that the filehandle is for an
+object on an NFS filesystem, and figure out which server the
+filesystem's from, it could (given some new interface) ask the NFS
+client to work out the rest....  I've got only vague ideas here and no
+real plan for a fix.
+
+So, for now at least, this just doesn't work.
 
 --b.
 
 > 
-> >
-> > --b.
-> >
-> > >
-> > > Reproducer:
-> > >
-> > >     exportfs localhost:/
-> > >     exportfs -u localhost:/
-> > >
-> > > Without this patch, the unexport step fails with "exportfs: Could not
-> > > find 'localhost:/' to unexport."
-> > >
-> > > Fixes: a9a7728d8743 ("exportfs: Deal with path's trailing "/" in unexportfs_parsed()")
-> > > Link: https://bugzilla.redhat.com/show_bug.cgi?id=1941171
-> > > Signed-off-by: Ondrej Mosnacek <omosnace@redhat.com>
-> > > ---
-> > >  utils/exportfs/exportfs.c | 2 +-
-> > >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > >
-> > > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> > > index 262dd19a..1aedd3d6 100644
-> > > --- a/utils/exportfs/exportfs.c
-> > > +++ b/utils/exportfs/exportfs.c
-> > > @@ -383,7 +383,7 @@ unexportfs_parsed(char *hname, char *path, int verbose)
-> > >        * so need to deal with it.
-> > >       */
-> > >       size_t nlen = strlen(path);
-> > > -     while (path[nlen - 1] == '/')
-> > > +     while (nlen > 1 && path[nlen - 1] == '/')
-> > >               nlen--;
-> > >
-> > >       for (exp = exportlist[htype].p_head; exp; exp = exp->m_next) {
-> > > --
-> > > 2.30.2
-> >
+> I'll use the following terms to describe the components from here on out:
 > 
+> Source NFS Filer: Refers to the originating NFS Server that contains
+> the exports that we want to re-export (Ubuntu 20.04.2 /
+> 5.4.0-1038-gcp).
+> Re-exporting NFS Filer: Refers to the NFS Server that is mounting and
+> re-exporting the Source NFS Filer (Ubuntu 20.10 /
+> 5.11.0-051100-generic).
+> NFS Client: Refers to the server that is mounting the re-exported
+> directories on the Re-exporting NFS Filer (Ubuntu 18.04 /
+> 5.4.0-1036-gcp).
+> 
+> (Source NFS Filer <-- Re-exporting NFS Filer <-- NFS Client)
+> 
+> ---
+> Source NFS Filer:
+> 
+> The source NFS Filer consists of two directories that are each mounted
+> to filesystems on different disks:
+> 
+> root@demo-nfs-filer-kernel-community:/home/benmaynard# lsblk
+> NAME MAJ:MIN RM SIZE RO TYPE MOUNTPOINT
+> sdb 8:16 0 100G 0 disk /files
+> sdc 8:32 0 100G 0 disk /files/disk2
+> 
+> The /files directory is then exported from the source filer, with the
+> crossmnt option set so that clients can move to the child filesystems:
+> 
+> root@demo-nfs-filer-kernel-community:/files# cat /etc/exports
+> /files 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=10,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
+> 
+> -- 
+> Re-exporting NFS Filer:
+> 
+> >From the Re-exporting NFS Filer, I can then mount this exported directory:
+> 
+> root@reexport-server:/home/benmaynard# mount -t nfs -o vers=3,sync
+> 10.67.10.54:/files /files
+> 
+> I am able to successfully list the contents of both the /files and
+> /files/disk2 directories:
+> 
+> root@reexport-server:/home/benmaynard# ls /files/
+> a_file disk2 lost+found
+> 
+> root@reexport-server:/home/benmaynard# ls /files/disk2/
+> b_file lost+found
+> 
+> Now time to re-export (using the same options as the Source NFS Filer
+> including crossmnt):
+> 
+> root@reexport-server:/home/benmaynard# cat /etc/exports
+> /files 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=10,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
 > 
 > --
-> Ondrej Mosnacek
-> Software Engineer, Linux Security - SELinux kernel
-> Red Hat, Inc.
+> NFS Client:
+> 
+> I now want to mount the re-exported directory from my NFS Client:
+> root@client-vm:/home/benmaynard# mount -t nfs -o vers=3,sync
+> 10.67.10.51:/files /files
+> 
+> The mount completes successfully, but when listing the contents of the
+> directory I receive a Input/output error for the directory that is on
+> a different filesystem:
+> 
+> root@client-vm:/home/benmaynard# ls /files
+> ls: cannot access '/files/disk2': Input/output error
+> a_file disk2 lost+found
+> 
+> 
+> root@client-vm:/home/benmaynard# ls /files/disk2
+> ls: cannot access '/files/disk2': Input/output error
+> 
+> If I unmount and mount the Source NFS Filer directly, I am able to
+> read all of the files. The problem seems to be caused by the
+> re-export.
+> 
+> In my efforts to resolve this I tried a number of different options,
+> and the only way I was able to get things working was to explicitly
+> re-export the directories that are on different filesystems from the
+> Re-Exporting NFS Filer (Source NFS Filer exports and NFS Client mount
+> command remains unchanged):
+> 
+> root@reexport-server:/home/benmaynard# cat /etc/exports
+> /files 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=10,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
+> /files/disk2 10.0.0.0/8(rw,wdelay,no_root_squash,no_subtree_check,fsid=20,sec=sys,rw,secure,no_root_squash,no_all_squash,crossmnt)
+> 
+> With these export options I can successfully mount the Re-exporting
+> NFS filer and browse both directores:
+> 
+> root@client-vm:/home/benmaynard# mount -t nfs -o vers=3,sync
+> 10.67.10.51:/files /files
+> root@client-vm:/home/benmaynard# ls /files
+> a_file disk2 lost+found
+> root@client-vm:/home/benmaynard# ls /files/disk2/
+> b_file lost+found
+> 
+> It appears as if the issue is something to do with the re-export, but
+> I am struggling to track down the actual cause.
+> 
+> This is causing some challenges as the source NFS filer that I am
+> using in production has 1000's of subdirectories on different volumes.
+> Manually re-exporting each of these from our re-export server is a
+> challenge.
+> 
+> I have a lab environment configured so happy to do some more testing
+> or run commands if it helps with troubleshooting.
