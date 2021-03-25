@@ -7,42 +7,42 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7D32C433C1
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:31:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D023C433E5
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:33:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9F23B61A2E
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:31:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CC8E861A41
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:33:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230346AbhCYLbY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:31:24 -0400
+        id S230337AbhCYLdD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:33:03 -0400
 Received: from mail.kernel.org ([198.145.29.99]:35460 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231352AbhCYL3V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:29:21 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id E98C661A3B;
-        Thu, 25 Mar 2021 11:27:26 +0000 (UTC)
+        id S230417AbhCYLau (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:30:50 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 3AD1161A61;
+        Thu, 25 Mar 2021 11:27:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671647;
-        bh=Y0ZCc5Bmanmc/FIOXXPlkJRrjauYRsPgoYbUy4EQJ90=;
+        s=k20201202; t=1616671675;
+        bh=7+/xmXOtKBsHg7XwHtan05NXhF776FAi9Srk7V44K+Y=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=YWffYd9ocFP8oVaLmIA8+JUvNwWvmNPhZy9fEjtdWdFj6Shle/9o+rRYC5p6YpCs8
-         UbnCD89js+ZkyWRtya6S0xyOJosZsGK+61542SB1eCqUwhapYq9C18lZsEW64mA9ML
-         62sdFc7rgXdul0BqESswW8QnnC1Q3hG9iQEwOrn67bTtLDLAfZZdTpKZ1DE1tWuTC8
-         hZ2MRgrfe/Ab1y1/eROYj0AwhQgosQzh+pn9dtU7hDY6iQ5mSGBgf6yow+tD2pq+Mb
-         wBb1Q/gWqiyKZszxm30dp1mQp4sc2RgE45yQ9V1vCxAEtYX/xq6O/uTbW9c9qd5KiA
-         vEjJ54RmLibZw==
+        b=TmEuajCdvMdRvDiM0v01X3O3euFRpFj2dYedupDdnjh/OwJmsuih89DUgCgWosSUP
+         5W5s/5ebZr0UrMG/h6h5abuZ+GX2lQiqlkpzuePffve3Y6145Ym74yymrsTsnZYQ3u
+         iFTarb0bda9WSONcJgojZSYlN2UtbHSLiydmbOZ36WTvIFRJPfmrYLvbxTFbj5SQsR
+         WVhFxsYvSIigGJhhmxvBDVW4AS6O48oIuSQGxfd1RHOY2h4vV1XEXMmC0EdFIBTzpY
+         NYMHdArh3NI/MWZ3rIQeyl7BDjworGNIuG7i+825CGjsCGvoq0HyEn4zMvxKxcXtbc
+         n1XTXsa79ZUEQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 02/20] rpc: fix NULL dereference on kmalloc failure
-Date:   Thu, 25 Mar 2021 07:27:06 -0400
-Message-Id: <20210325112724.1928174-2-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 02/16] rpc: fix NULL dereference on kmalloc failure
+Date:   Thu, 25 Mar 2021 07:27:37 -0400
+Message-Id: <20210325112751.1928421-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
-In-Reply-To: <20210325112724.1928174-1-sashal@kernel.org>
-References: <20210325112724.1928174-1-sashal@kernel.org>
+In-Reply-To: <20210325112751.1928421-1-sashal@kernel.org>
+References: <20210325112751.1928421-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -74,10 +74,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index ab086081be9c..a85d78d2bdb7 100644
+index 03043d5221e9..27dfd85830d8 100644
 --- a/net/sunrpc/auth_gss/svcauth_gss.c
 +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1766,11 +1766,14 @@ static int
+@@ -1713,11 +1713,14 @@ static int
  svcauth_gss_release(struct svc_rqst *rqstp)
  {
  	struct gss_svc_data *gsd = (struct gss_svc_data *)rqstp->rq_auth_data;
@@ -93,7 +93,7 @@ index ab086081be9c..a85d78d2bdb7 100644
  	if (gc->gc_proc != RPC_GSS_PROC_DATA)
  		goto out;
  	/* Release can be called twice, but we only wrap once. */
-@@ -1811,10 +1814,10 @@ svcauth_gss_release(struct svc_rqst *rqstp)
+@@ -1758,10 +1761,10 @@ svcauth_gss_release(struct svc_rqst *rqstp)
  	if (rqstp->rq_cred.cr_group_info)
  		put_group_info(rqstp->rq_cred.cr_group_info);
  	rqstp->rq_cred.cr_group_info = NULL;
