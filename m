@@ -2,29 +2,29 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-21.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4ED5DC433C1
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:44:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E57B8C433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:44:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2C1EA619FF
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:44:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B7D8C61A0A
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:44:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230341AbhCYLng (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:43:36 -0400
-Received: from outbound-smtp32.blacknight.com ([81.17.249.64]:43423 "EHLO
-        outbound-smtp32.blacknight.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230284AbhCYLnB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Mar 2021 07:43:01 -0400
+        id S230185AbhCYLoF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:44:05 -0400
+Received: from outbound-smtp26.blacknight.com ([81.17.249.194]:56019 "EHLO
+        outbound-smtp26.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S231488AbhCYLnn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Mar 2021 07:43:43 -0400
 Received: from mail.blacknight.com (pemlinmail01.blacknight.ie [81.17.254.10])
-        by outbound-smtp32.blacknight.com (Postfix) with ESMTPS id 1584FBEB83
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Mar 2021 11:43:00 +0000 (GMT)
-Received: (qmail 15945 invoked from network); 25 Mar 2021 11:42:59 -0000
+        by outbound-smtp26.blacknight.com (Postfix) with ESMTPS id 0A662CAB58
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Mar 2021 11:43:41 +0000 (GMT)
+Received: (qmail 18382 invoked from network); 25 Mar 2021 11:43:40 -0000
 Received: from unknown (HELO stampy.112glenside.lan) (mgorman@techsingularity.net@[84.203.22.4])
-  by 81.17.254.9 with ESMTPA; 25 Mar 2021 11:42:59 -0000
+  by 81.17.254.9 with ESMTPA; 25 Mar 2021 11:43:40 -0000
 From:   Mel Gorman <mgorman@techsingularity.net>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
@@ -39,9 +39,9 @@ Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Linux-MM <linux-mm@kvack.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>,
         Mel Gorman <mgorman@techsingularity.net>
-Subject: [PATCH 2/9] mm/page_alloc: Add a bulk page allocator
-Date:   Thu, 25 Mar 2021 11:42:21 +0000
-Message-Id: <20210325114228.27719-3-mgorman@techsingularity.net>
+Subject: [PATCH 6/9] SUNRPC: Set rq_page_end differently
+Date:   Thu, 25 Mar 2021 11:42:25 +0000
+Message-Id: <20210325114228.27719-7-mgorman@techsingularity.net>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210325114228.27719-1-mgorman@techsingularity.net>
 References: <20210325114228.27719-1-mgorman@techsingularity.net>
@@ -51,179 +51,78 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch adds a new page allocator interface via alloc_pages_bulk,
-and __alloc_pages_bulk_nodemask. A caller requests a number of pages
-to be allocated and added to a list.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-The API is not guaranteed to return the requested number of pages and
-may fail if the preferred allocation zone has limited free memory, the
-cpuset changes during the allocation or page debugging decides to fail
-an allocation. It's up to the caller to request more pages in batch
-if necessary.
+Patch series "SUNRPC consumer for the bulk page allocator"
 
-Note that this implementation is not very efficient and could be improved
-but it would require refactoring. The intent is to make it available early
-to determine what semantics are required by different callers. Once the
-full semantics are nailed down, it can be refactored.
+This patch set and the measurements below are based on yesterday's
+bulk allocator series:
 
+git://git.kernel.org/pub/scm/linux/kernel/git/mel/linux.git mm-bulk-rebase-v5r9
+
+The patches change SUNRPC to invoke the array-based bulk allocator
+instead of alloc_page().
+
+The micro-benchmark results are promising. I ran a mixture of 256KB
+reads and writes over NFSv3. The server's kernel is built with KASAN
+enabled, so the comparison is exaggerated but I believe it is still
+valid.
+
+I instrumented svc_recv() to measure the latency of each call to
+svc_alloc_arg() and report it via a trace point. The following
+results are averages across the trace events.
+
+Single page: 25.007 us per call over 532,571 calls
+Bulk list:    6.258 us per call over 517,034 calls
+Bulk array:   4.590 us per call over 517,442 calls
+
+This patch (of 2)
+
+Refactor:
+
+I'm about to use the loop variable @i for something else.
+
+As far as the "i++" is concerned, that is a post-increment. The
+value of @i is not used subsequently, so the increment operator
+is unnecessary and can be removed.
+
+Also note that nfsd_read_actor() was renamed nfsd_splice_actor()
+by commit cf8208d0eabd ("sendfile: convert nfsd to
+splice_direct_to_actor()").
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Mel Gorman <mgorman@techsingularity.net>
-Acked-by: Vlastimil Babka <vbabka@suse.cz>
 ---
- include/linux/gfp.h |  11 +++++
- mm/page_alloc.c     | 118 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 129 insertions(+)
+ net/sunrpc/svc_xprt.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/gfp.h b/include/linux/gfp.h
-index 0a88f84b08f4..4a304fd39916 100644
---- a/include/linux/gfp.h
-+++ b/include/linux/gfp.h
-@@ -518,6 +518,17 @@ static inline int arch_make_page_accessible(struct page *page)
- struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
- 		nodemask_t *nodemask);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 3cdd71a8df1e..609bda97d4ae 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -642,7 +642,7 @@ static void svc_check_conn_limits(struct svc_serv *serv)
+ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ {
+ 	struct svc_serv *serv = rqstp->rq_server;
+-	struct xdr_buf *arg;
++	struct xdr_buf *arg = &rqstp->rq_arg;
+ 	int pages;
+ 	int i;
  
-+int __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
-+				nodemask_t *nodemask, int nr_pages,
-+				struct list_head *list);
-+
-+/* Bulk allocate order-0 pages */
-+static inline unsigned long
-+alloc_pages_bulk(gfp_t gfp, unsigned long nr_pages, struct list_head *list)
-+{
-+	return __alloc_pages_bulk(gfp, numa_mem_id(), NULL, nr_pages, list);
-+}
-+
- /*
-  * Allocate pages, preferring the node given as nid. The node must be valid and
-  * online. For more general interface, see alloc_pages_node().
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index 8a3e13277e22..eb547470a7e4 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -4965,6 +4965,124 @@ static inline bool prepare_alloc_pages(gfp_t gfp_mask, unsigned int order,
- 	return true;
- }
+@@ -667,11 +667,10 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 			}
+ 			rqstp->rq_pages[i] = p;
+ 		}
+-	rqstp->rq_page_end = &rqstp->rq_pages[i];
+-	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
++	rqstp->rq_page_end = &rqstp->rq_pages[pages];
++	rqstp->rq_pages[pages] = NULL; /* this might be seen in nfsd_splice_actor() */
  
-+/*
-+ * __alloc_pages_bulk - Allocate a number of order-0 pages to a list
-+ * @gfp: GFP flags for the allocation
-+ * @preferred_nid: The preferred NUMA node ID to allocate from
-+ * @nodemask: Set of nodes to allocate from, may be NULL
-+ * @nr_pages: The number of pages desired on the list
-+ * @page_list: List to store the allocated pages
-+ *
-+ * This is a batched version of the page allocator that attempts to
-+ * allocate nr_pages quickly and add them to a list.
-+ *
-+ * Returns the number of pages on the list.
-+ */
-+int __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
-+			nodemask_t *nodemask, int nr_pages,
-+			struct list_head *page_list)
-+{
-+	struct page *page;
-+	unsigned long flags;
-+	struct zone *zone;
-+	struct zoneref *z;
-+	struct per_cpu_pages *pcp;
-+	struct list_head *pcp_list;
-+	struct alloc_context ac;
-+	gfp_t alloc_gfp;
-+	unsigned int alloc_flags;
-+	int allocated = 0;
-+
-+	if (WARN_ON_ONCE(nr_pages <= 0))
-+		return 0;
-+
-+	/* Use the single page allocator for one page. */
-+	if (nr_pages == 1)
-+		goto failed;
-+
-+	/* May set ALLOC_NOFRAGMENT, fragmentation will return 1 page. */
-+	gfp &= gfp_allowed_mask;
-+	alloc_gfp = gfp;
-+	if (!prepare_alloc_pages(gfp, 0, preferred_nid, nodemask, &ac, &alloc_gfp, &alloc_flags))
-+		return 0;
-+	gfp = alloc_gfp;
-+
-+	/* Find an allowed local zone that meets the high watermark. */
-+	for_each_zone_zonelist_nodemask(zone, z, ac.zonelist, ac.highest_zoneidx, ac.nodemask) {
-+		unsigned long mark;
-+
-+		if (cpusets_enabled() && (alloc_flags & ALLOC_CPUSET) &&
-+		    !__cpuset_zone_allowed(zone, gfp)) {
-+			continue;
-+		}
-+
-+		if (nr_online_nodes > 1 && zone != ac.preferred_zoneref->zone &&
-+		    zone_to_nid(zone) != zone_to_nid(ac.preferred_zoneref->zone)) {
-+			goto failed;
-+		}
-+
-+		mark = wmark_pages(zone, alloc_flags & ALLOC_WMARK_MASK) + nr_pages;
-+		if (zone_watermark_fast(zone, 0,  mark,
-+				zonelist_zone_idx(ac.preferred_zoneref),
-+				alloc_flags, gfp)) {
-+			break;
-+		}
-+	}
-+
-+	/*
-+	 * If there are no allowed local zones that meets the watermarks then
-+	 * try to allocate a single page and reclaim if necessary.
-+	 */
-+	if (!zone)
-+		goto failed;
-+
-+	/* Attempt the batch allocation */
-+	local_irq_save(flags);
-+	pcp = &this_cpu_ptr(zone->pageset)->pcp;
-+	pcp_list = &pcp->lists[ac.migratetype];
-+
-+	while (allocated < nr_pages) {
-+		page = __rmqueue_pcplist(zone, ac.migratetype, alloc_flags,
-+								pcp, pcp_list);
-+		if (!page) {
-+			/* Try and get at least one page */
-+			if (!allocated)
-+				goto failed_irq;
-+			break;
-+		}
-+
-+		/*
-+		 * Ideally this would be batched but the best way to do
-+		 * that cheaply is to first convert zone_statistics to
-+		 * be inaccurate per-cpu counter like vm_events to avoid
-+		 * a RMW cycle then do the accounting with IRQs enabled.
-+		 */
-+		__count_zid_vm_events(PGALLOC, zone_idx(zone), 1);
-+		zone_statistics(ac.preferred_zoneref->zone, zone);
-+
-+		prep_new_page(page, 0, gfp, 0);
-+		list_add(&page->lru, page_list);
-+		allocated++;
-+	}
-+
-+	local_irq_restore(flags);
-+
-+	return allocated;
-+
-+failed_irq:
-+	local_irq_restore(flags);
-+
-+failed:
-+	page = __alloc_pages(gfp, 0, preferred_nid, nodemask);
-+	if (page) {
-+		list_add(&page->lru, page_list);
-+		allocated = 1;
-+	}
-+
-+	return allocated;
-+}
-+EXPORT_SYMBOL_GPL(__alloc_pages_bulk);
-+
- /*
-  * This is the 'heart' of the zoned buddy allocator.
-  */
+ 	/* Make arg->head point to first page and arg->pages point to rest */
+-	arg = &rqstp->rq_arg;
+ 	arg->head[0].iov_base = page_address(rqstp->rq_pages[0]);
+ 	arg->head[0].iov_len = PAGE_SIZE;
+ 	arg->pages = rqstp->rq_pages + 1;
 -- 
 2.26.2
 
