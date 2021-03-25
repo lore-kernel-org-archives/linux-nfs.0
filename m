@@ -4,41 +4,43 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 39089C433EB
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 94A3EC433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 07DC161A7B
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5932D61A6E
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231420AbhCYL1L (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:27:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35166 "EHLO mail.kernel.org"
+        id S231429AbhCYL1M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:27:12 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35302 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230474AbhCYL0Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:26:16 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 61ED461A3B;
-        Thu, 25 Mar 2021 11:26:07 +0000 (UTC)
+        id S231142AbhCYL0Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:26:25 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 0D64A61A41;
+        Thu, 25 Mar 2021 11:26:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671568;
-        bh=xuUmS80t1X4JLO/dQPmcfEov7ygVrHQ0Zbrwlc7eCRo=;
+        s=k20201202; t=1616671585;
+        bh=5YJl6L9oXrrCDxxPTrxzhW1TMVxXP40JoRhfG+XLU+g=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=EsLDv/SgP+EqlleYbfRADLNHrd/VNeq5ODy/RFWAAzvZW8qxheHcVchdfrzOdLzGf
-         XjFdHc0xB/YPLcYA/JHwjBfSi9XYoysw61vTAlyHd8JBKRRIuxLIVR/CbPMczkViJE
-         Y2As6CfqTw3xh7E5TBsOLvnM8y5kOfYJBeDiD8cSaYueVZ2Q7u1YEqcKtaG/A2EYfC
-         z7UZ79jVv1aY61tAy6YQADb2zLx9HaWsyu4fpLw0DjHiLTAosxeqyztnHwQKkN4U+8
-         H2GwT6QiAi8Q6Au8DlMq5AtLMOiyvwpiLKC2bZCMDL17ObdyuZmrydVWNJseFbpbnq
-         H5ICrEWdTvujQ==
+        b=poy4RdFHxS465vPovLeP+2EquYJKlrUPZK//lUxuXP6ILcdnaRldWW+j0crSxUdgi
+         trf0nfYsuZwYZ0naTCdj1oMv1RFOCPAJ5lomXGw9w3z6VBVNvv9gB4f5x5tbjqHC1+
+         +TclXDdQFcfj551YE/hPBmlz07jG4Rj1gqzDaxSUOud6F6qOirwTMsZ/AwUNXHIccD
+         VvFEqABL1dYdD3ofqC91MOksW5oUkXTztzf6lNJSGAaB0Vcvfody94vgWIW9kz/zML
+         AkGQfpQeUvYEYLrHkmyFEfc+m839ZJQqw0BX4SoEVmszVw3kMd0JsVMm4+5rvn71S8
+         rSMoZOgEuCB2A==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Julian Braha <julianbraha@gmail.com>,
+Cc:     Olga Kornievskaia <kolga@netapp.com>,
+        Bruce Fields <bfields@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
+        Benjamin Coddington <bcodding@redhat.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 06/39] fs: nfsd: fix kconfig dependency warning for NFSD_V4
-Date:   Thu, 25 Mar 2021 07:25:25 -0400
-Message-Id: <20210325112558.1927423-6-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 19/39] NFSD: fix error handling in NFSv4.0 callbacks
+Date:   Thu, 25 Mar 2021 07:25:38 -0400
+Message-Id: <20210325112558.1927423-19-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
 In-Reply-To: <20210325112558.1927423-1-sashal@kernel.org>
 References: <20210325112558.1927423-1-sashal@kernel.org>
@@ -50,46 +52,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Julian Braha <julianbraha@gmail.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-[ Upstream commit 7005227369079963d25fb2d5d736d0feb2c44cf6 ]
+[ Upstream commit b4250dd868d1b42c0a65de11ef3afbee67ba5d2f ]
 
-When NFSD_V4 is enabled and CRYPTO is disabled,
-Kbuild gives the following warning:
+When the server tries to do a callback and a client fails it due to
+authentication problems, we need the server to set callback down
+flag in RENEW so that client can recover.
 
-WARNING: unmet direct dependencies detected for CRYPTO_SHA256
-  Depends on [n]: CRYPTO [=n]
-  Selected by [y]:
-  - NFSD_V4 [=y] && NETWORK_FILESYSTEMS [=y] && NFSD [=y] && PROC_FS [=y]
-
-WARNING: unmet direct dependencies detected for CRYPTO_MD5
-  Depends on [n]: CRYPTO [=n]
-  Selected by [y]:
-  - NFSD_V4 [=y] && NETWORK_FILESYSTEMS [=y] && NFSD [=y] && PROC_FS [=y]
-
-This is because NFSD_V4 selects CRYPTO_MD5 and CRYPTO_SHA256,
-without depending on or selecting CRYPTO, despite those config options
-being subordinate to CRYPTO.
-
-Signed-off-by: Julian Braha <julianbraha@gmail.com>
+Suggested-by: Bruce Fields <bfields@redhat.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Benjamin Coddington <bcodding@redhat.com>
+Link: https://lore.kernel.org/linux-nfs/FB84E90A-1A03-48B3-8BF7-D9D10AC2C9FE@oracle.com/T/#t
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/Kconfig | 1 +
+ fs/nfsd/nfs4callback.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index dbbc583d6273..248f1459c039 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -73,6 +73,7 @@ config NFSD_V4
- 	select NFSD_V3
- 	select FS_POSIX_ACL
- 	select SUNRPC_GSS
-+	select CRYPTO
- 	select CRYPTO_MD5
- 	select CRYPTO_SHA256
- 	select GRACE_PERIOD
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 052be5bf9ef5..7325592b456e 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1189,6 +1189,7 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ 		switch (task->tk_status) {
+ 		case -EIO:
+ 		case -ETIMEDOUT:
++		case -EACCES:
+ 			nfsd4_mark_cb_down(clp, task->tk_status);
+ 		}
+ 		break;
 -- 
 2.30.1
 
