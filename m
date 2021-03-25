@@ -7,38 +7,40 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DB47DC433E3
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E39FBC433C1
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A8AEE61A48
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BA09061A5E
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230113AbhCYLZ1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:25:27 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33586 "EHLO mail.kernel.org"
+        id S230381AbhCYLZ7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:25:59 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33840 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229869AbhCYLZI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:25:08 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 7C8FA61A2E;
-        Thu, 25 Mar 2021 11:25:07 +0000 (UTC)
+        id S230095AbhCYLZZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:25:25 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id C104961A31;
+        Thu, 25 Mar 2021 11:25:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671508;
-        bh=xuUmS80t1X4JLO/dQPmcfEov7ygVrHQ0Zbrwlc7eCRo=;
+        s=k20201202; t=1616671524;
+        bh=5YJl6L9oXrrCDxxPTrxzhW1TMVxXP40JoRhfG+XLU+g=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=dLKYO19q6O0UFQRvgp+24d92q/C0utg2d7Uu4JkpRzfsXrDZGHjkWcNb2PABOPv9Y
-         cnjcq2EdYyPMEO/DFW5QWnUAG/3WEYEIoM51wOB0u/noQa3yL2POfbdpOXNrlPHZDw
-         fMgQqSpPpVeb0usu6kIxK+GguqRqvMhd09kgCtDTNXcI4Q4cHxGPsVkdkq0NDSsuli
-         A1paA4NKlKCtAXn47YoiyQlRuKYvgNWAp34KlXpQWDKwAumO4DSHF8KvCrX2ymP0xP
-         kaCvui86ydpI1B/A+unUz8jqDF2bGzvgbb+VFOCUo6Zo1Q+qsH0D8kt/KQ6ff/0TDn
-         KwbTmmI9BgwDA==
+        b=M64e/dJsDf7Q3JWkmSib8SaZJVEpPcVUY980IZ66K3SP9YWv/nA80wbS+XgWmrjHi
+         Wj5+B4fqXiKPmCv/ogwjmBhGe3xNWJT7hZMeU0XZqnmkIp/d0k0fINm0BScVye9ZpQ
+         iqs5zQ8Xr8DW3otUoaztKu/8tDl079L5DprBPpkPQjFvxGpGSIuuguuYJHbxRuSqRh
+         MaLJH15KG5uY36ykqoX9cT9ctf/CvlMv9YZ0+SsRFzL5itGksv/WOFFcK5VMYew7Nx
+         xln2SEeEOYeh3oNSV6BzpmFsVUKc6S8Jpt/nDDlH0h4xcsmFmBxHU8ae9wk7yyt7YS
+         hyFk2MwnkRgFg==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Julian Braha <julianbraha@gmail.com>,
+Cc:     Olga Kornievskaia <kolga@netapp.com>,
+        Bruce Fields <bfields@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
+        Benjamin Coddington <bcodding@redhat.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.11 06/44] fs: nfsd: fix kconfig dependency warning for NFSD_V4
-Date:   Thu, 25 Mar 2021 07:24:21 -0400
-Message-Id: <20210325112459.1926846-6-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.11 19/44] NFSD: fix error handling in NFSv4.0 callbacks
+Date:   Thu, 25 Mar 2021 07:24:34 -0400
+Message-Id: <20210325112459.1926846-19-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
 In-Reply-To: <20210325112459.1926846-1-sashal@kernel.org>
 References: <20210325112459.1926846-1-sashal@kernel.org>
@@ -50,46 +52,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Julian Braha <julianbraha@gmail.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-[ Upstream commit 7005227369079963d25fb2d5d736d0feb2c44cf6 ]
+[ Upstream commit b4250dd868d1b42c0a65de11ef3afbee67ba5d2f ]
 
-When NFSD_V4 is enabled and CRYPTO is disabled,
-Kbuild gives the following warning:
+When the server tries to do a callback and a client fails it due to
+authentication problems, we need the server to set callback down
+flag in RENEW so that client can recover.
 
-WARNING: unmet direct dependencies detected for CRYPTO_SHA256
-  Depends on [n]: CRYPTO [=n]
-  Selected by [y]:
-  - NFSD_V4 [=y] && NETWORK_FILESYSTEMS [=y] && NFSD [=y] && PROC_FS [=y]
-
-WARNING: unmet direct dependencies detected for CRYPTO_MD5
-  Depends on [n]: CRYPTO [=n]
-  Selected by [y]:
-  - NFSD_V4 [=y] && NETWORK_FILESYSTEMS [=y] && NFSD [=y] && PROC_FS [=y]
-
-This is because NFSD_V4 selects CRYPTO_MD5 and CRYPTO_SHA256,
-without depending on or selecting CRYPTO, despite those config options
-being subordinate to CRYPTO.
-
-Signed-off-by: Julian Braha <julianbraha@gmail.com>
+Suggested-by: Bruce Fields <bfields@redhat.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Benjamin Coddington <bcodding@redhat.com>
+Link: https://lore.kernel.org/linux-nfs/FB84E90A-1A03-48B3-8BF7-D9D10AC2C9FE@oracle.com/T/#t
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/Kconfig | 1 +
+ fs/nfsd/nfs4callback.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index dbbc583d6273..248f1459c039 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -73,6 +73,7 @@ config NFSD_V4
- 	select NFSD_V3
- 	select FS_POSIX_ACL
- 	select SUNRPC_GSS
-+	select CRYPTO
- 	select CRYPTO_MD5
- 	select CRYPTO_SHA256
- 	select GRACE_PERIOD
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 052be5bf9ef5..7325592b456e 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1189,6 +1189,7 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ 		switch (task->tk_status) {
+ 		case -EIO:
+ 		case -ETIMEDOUT:
++		case -EACCES:
+ 			nfsd4_mark_cb_down(clp, task->tk_status);
+ 		}
+ 		break;
 -- 
 2.30.1
 
