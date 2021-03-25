@@ -7,43 +7,42 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94A3EC433E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CC281C433E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:30:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5932D61A6E
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 852D861A91
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 11:30:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231429AbhCYL1M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:27:12 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35302 "EHLO mail.kernel.org"
+        id S231466AbhCYL3s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:29:48 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35196 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231142AbhCYL0Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:26:25 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 0D64A61A41;
-        Thu, 25 Mar 2021 11:26:23 +0000 (UTC)
+        id S230156AbhCYL1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:27:23 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 3EE0661A4D;
+        Thu, 25 Mar 2021 11:26:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671585;
-        bh=5YJl6L9oXrrCDxxPTrxzhW1TMVxXP40JoRhfG+XLU+g=;
+        s=k20201202; t=1616671617;
+        bh=aSsv+3NmE3Tzx3SVHv1jckw8Y0Vuo4ZP0QyKCcKjMAk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=poy4RdFHxS465vPovLeP+2EquYJKlrUPZK//lUxuXP6ILcdnaRldWW+j0crSxUdgi
-         trf0nfYsuZwYZ0naTCdj1oMv1RFOCPAJ5lomXGw9w3z6VBVNvv9gB4f5x5tbjqHC1+
-         +TclXDdQFcfj551YE/hPBmlz07jG4Rj1gqzDaxSUOud6F6qOirwTMsZ/AwUNXHIccD
-         VvFEqABL1dYdD3ofqC91MOksW5oUkXTztzf6lNJSGAaB0Vcvfody94vgWIW9kz/zML
-         AkGQfpQeUvYEYLrHkmyFEfc+m839ZJQqw0BX4SoEVmszVw3kMd0JsVMm4+5rvn71S8
-         rSMoZOgEuCB2A==
+        b=B3zeBR1uM+4lu3hMPs5tCqAdlOTeW52v6UiHYpi0PA5Boou52l/Q1h3q3EvRa4JhN
+         2eQBB1VSsuBdy/zVTJ3mfmiIWg8PyK2DS9z/OQ9j/ozG+hrq1zvDQkU04zw2VdlUfv
+         /y+Z4ZJMii9H+e6U+S2O3xdM0Od9opzCfLfFZm9Z89WfdtWXN5SH/Dj5+ApPOX3ba4
+         0UstjqxtrhqBIVpd3JzOdgRtae2OUKGcAx2lQir2Oruqa0Y/VzStTxhTkT6xj0dFwv
+         RI8mqyY3RZK1IgbhKt3Rqu08VaqlRL4MWD1qFry/FZayIAAc5b4WC2YUzDdIAtl/a4
+         Z2C+qiEVayrrg==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
-        Bruce Fields <bfields@redhat.com>,
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
-        Benjamin Coddington <bcodding@redhat.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 19/39] NFSD: fix error handling in NFSv4.0 callbacks
-Date:   Thu, 25 Mar 2021 07:25:38 -0400
-Message-Id: <20210325112558.1927423-19-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 04/24] rpc: fix NULL dereference on kmalloc failure
+Date:   Thu, 25 Mar 2021 07:26:30 -0400
+Message-Id: <20210325112651.1927828-4-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
-In-Reply-To: <20210325112558.1927423-1-sashal@kernel.org>
-References: <20210325112558.1927423-1-sashal@kernel.org>
+In-Reply-To: <20210325112651.1927828-1-sashal@kernel.org>
+References: <20210325112651.1927828-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -52,36 +51,62 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-[ Upstream commit b4250dd868d1b42c0a65de11ef3afbee67ba5d2f ]
+[ Upstream commit 0ddc942394013f08992fc379ca04cffacbbe3dae ]
 
-When the server tries to do a callback and a client fails it due to
-authentication problems, we need the server to set callback down
-flag in RENEW so that client can recover.
+I think this is unlikely but possible:
 
-Suggested-by: Bruce Fields <bfields@redhat.com>
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+svc_authenticate sets rq_authop and calls svcauth_gss_accept.  The
+kmalloc(sizeof(*svcdata), GFP_KERNEL) fails, leaving rq_auth_data NULL,
+and returning SVC_DENIED.
+
+This causes svc_process_common to go to err_bad_auth, and eventually
+call svc_authorise.  That calls ->release == svcauth_gss_release, which
+tries to dereference rq_auth_data.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Link: https://lore.kernel.org/linux-nfs/3F1B347F-B809-478F-A1E9-0BE98E22B0F0@oracle.com/T/#t
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Benjamin Coddington <bcodding@redhat.com>
-Link: https://lore.kernel.org/linux-nfs/FB84E90A-1A03-48B3-8BF7-D9D10AC2C9FE@oracle.com/T/#t
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/nfs4callback.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/auth_gss/svcauth_gss.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 052be5bf9ef5..7325592b456e 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1189,6 +1189,7 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- 		switch (task->tk_status) {
- 		case -EIO:
- 		case -ETIMEDOUT:
-+		case -EACCES:
- 			nfsd4_mark_cb_down(clp, task->tk_status);
- 		}
- 		break;
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index cf4d6d7e7282..d5470c7fe879 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1782,11 +1782,14 @@ static int
+ svcauth_gss_release(struct svc_rqst *rqstp)
+ {
+ 	struct gss_svc_data *gsd = (struct gss_svc_data *)rqstp->rq_auth_data;
+-	struct rpc_gss_wire_cred *gc = &gsd->clcred;
++	struct rpc_gss_wire_cred *gc;
+ 	struct xdr_buf *resbuf = &rqstp->rq_res;
+ 	int stat = -EINVAL;
+ 	struct sunrpc_net *sn = net_generic(SVC_NET(rqstp), sunrpc_net_id);
+ 
++	if (!gsd)
++		goto out;
++	gc = &gsd->clcred;
+ 	if (gc->gc_proc != RPC_GSS_PROC_DATA)
+ 		goto out;
+ 	/* Release can be called twice, but we only wrap once. */
+@@ -1827,10 +1830,10 @@ svcauth_gss_release(struct svc_rqst *rqstp)
+ 	if (rqstp->rq_cred.cr_group_info)
+ 		put_group_info(rqstp->rq_cred.cr_group_info);
+ 	rqstp->rq_cred.cr_group_info = NULL;
+-	if (gsd->rsci)
++	if (gsd && gsd->rsci) {
+ 		cache_put(&gsd->rsci->h, sn->rsc_cache);
+-	gsd->rsci = NULL;
+-
++		gsd->rsci = NULL;
++	}
+ 	return stat;
+ }
+ 
 -- 
 2.30.1
 
