@@ -2,41 +2,33 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A74F1C433DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 12:52:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BB6B4C433DB
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 13:26:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5F75161A1E
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 12:52:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 888A161A1E
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Mar 2021 13:26:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230231AbhCYMwZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Mar 2021 08:52:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57978 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230322AbhCYMwJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Mar 2021 08:52:09 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 31285C06174A;
-        Thu, 25 Mar 2021 05:52:09 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=+fJyRPjPHNtlghEko2J6bkm8lY/1dD+5carH2dkRuBY=; b=A54uDjel/l4krSoFnRy/JdfLER
-        qeJhhESqagjhx8b7io6lqkwGBhhoSEta5dPJoijGsTJ0QwK1EKxLi2XKv0eUa2pMdj4M+VKv+9+Ss
-        LxU8E8mh9hzYI+tc3wU29i6e1QG9eHMFADnARRDg93i7elTemxwP/hccNuc0Gm5lP1GKlgiBbfEUi
-        gj0+meXzcXIQFpV7zrYlhAESkDdpOStg40WFVeRPGJuCQGeia/ftJrH0e2v3Fe5oQd0uBcr2PK5EN
-        LgAG8CK2bXfnHT0XBAfIniFa/xDR53t9k2btD6RNVC7ajWgpu34wRUY4aOk5LvnpkPvH8uRc8CZwH
-        0Oa5ybVw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1lPPR3-00Cv3Q-IW; Thu, 25 Mar 2021 12:50:42 +0000
-Date:   Thu, 25 Mar 2021 12:50:01 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Mel Gorman <mgorman@techsingularity.net>
+        id S230093AbhCYN01 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Mar 2021 09:26:27 -0400
+Received: from outbound-smtp48.blacknight.com ([46.22.136.219]:35167 "EHLO
+        outbound-smtp48.blacknight.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229731AbhCYN0A (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Mar 2021 09:26:00 -0400
+Received: from mail.blacknight.com (pemlinmail04.blacknight.ie [81.17.254.17])
+        by outbound-smtp48.blacknight.com (Postfix) with ESMTPS id 66751FA89D
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Mar 2021 13:25:58 +0000 (GMT)
+Received: (qmail 25209 invoked from network); 25 Mar 2021 13:25:58 -0000
+Received: from unknown (HELO techsingularity.net) (mgorman@techsingularity.net@[84.203.22.4])
+  by 81.17.254.9 with ESMTPSA (AES256-SHA encrypted, authenticated); 25 Mar 2021 13:25:58 -0000
+Date:   Thu, 25 Mar 2021 13:25:56 +0000
+From:   Mel Gorman <mgorman@techsingularity.net>
+To:     Matthew Wilcox <willy@infradead.org>
 Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        Uladzislau Rezki <urezki@gmail.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Jesper Dangaard Brouer <brouer@redhat.com>,
         Christoph Hellwig <hch@infradead.org>,
@@ -49,50 +41,65 @@ Cc:     Andrew Morton <akpm@linux-foundation.org>,
         Linux-NFS <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 0/9 v6] Introduce a bulk order-0 page allocator with two
  in-tree users
-Message-ID: <20210325125001.GW1719932@casper.infradead.org>
+Message-ID: <20210325132556.GS3697@techsingularity.net>
 References: <20210325114228.27719-1-mgorman@techsingularity.net>
+ <20210325125001.GW1719932@casper.infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-15
 Content-Disposition: inline
-In-Reply-To: <20210325114228.27719-1-mgorman@techsingularity.net>
+In-Reply-To: <20210325125001.GW1719932@casper.infradead.org>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 25, 2021 at 11:42:19AM +0000, Mel Gorman wrote:
-> This series introduces a bulk order-0 page allocator with sunrpc and
-> the network page pool being the first users. The implementation is not
-> efficient as semantics needed to be ironed out first. If no other semantic
-> changes are needed, it can be made more efficient.  Despite that, this
-> is a performance-related for users that require multiple pages for an
-> operation without multiple round-trips to the page allocator. Quoting
-> the last patch for the high-speed networking use-case
+On Thu, Mar 25, 2021 at 12:50:01PM +0000, Matthew Wilcox wrote:
+> On Thu, Mar 25, 2021 at 11:42:19AM +0000, Mel Gorman wrote:
+> > This series introduces a bulk order-0 page allocator with sunrpc and
+> > the network page pool being the first users. The implementation is not
+> > efficient as semantics needed to be ironed out first. If no other semantic
+> > changes are needed, it can be made more efficient.  Despite that, this
+> > is a performance-related for users that require multiple pages for an
+> > operation without multiple round-trips to the page allocator. Quoting
+> > the last patch for the high-speed networking use-case
+> > 
+> >             Kernel          XDP stats       CPU     pps           Delta
+> >             Baseline        XDP-RX CPU      total   3,771,046       n/a
+> >             List            XDP-RX CPU      total   3,940,242    +4.49%
+> >             Array           XDP-RX CPU      total   4,249,224   +12.68%
+> > 
+> > >From the SUNRPC traces of svc_alloc_arg()
+> > 
+> > 	Single page: 25.007 us per call over 532,571 calls
+> > 	Bulk list:    6.258 us per call over 517,034 calls
+> > 	Bulk array:   4.590 us per call over 517,442 calls
+> > 
+> > Both potential users in this series are corner cases (NFS and high-speed
+> > networks) so it is unlikely that most users will see any benefit in the
+> > short term. Other potential other users are batch allocations for page
+> > cache readahead, fault around and SLUB allocations when high-order pages
+> > are unavailable. It's unknown how much benefit would be seen by converting
+> > multiple page allocation calls to a single batch or what difference it may
+> > make to headline performance.
 > 
->             Kernel          XDP stats       CPU     pps           Delta
->             Baseline        XDP-RX CPU      total   3,771,046       n/a
->             List            XDP-RX CPU      total   3,940,242    +4.49%
->             Array           XDP-RX CPU      total   4,249,224   +12.68%
+> We have a third user, vmalloc(), with a 16% perf improvement.  I know the
+> email says 21% but that includes the 5% improvement from switching to
+> kvmalloc() to allocate area->pages.
 > 
-> >From the SUNRPC traces of svc_alloc_arg()
+> https://lore.kernel.org/linux-mm/20210323133948.GA10046@pc638.lan/
 > 
-> 	Single page: 25.007 us per call over 532,571 calls
-> 	Bulk list:    6.258 us per call over 517,034 calls
-> 	Bulk array:   4.590 us per call over 517,442 calls
-> 
-> Both potential users in this series are corner cases (NFS and high-speed
-> networks) so it is unlikely that most users will see any benefit in the
-> short term. Other potential other users are batch allocations for page
-> cache readahead, fault around and SLUB allocations when high-order pages
-> are unavailable. It's unknown how much benefit would be seen by converting
-> multiple page allocation calls to a single batch or what difference it may
-> make to headline performance.
 
-We have a third user, vmalloc(), with a 16% perf improvement.  I know the
-email says 21% but that includes the 5% improvement from switching to
-kvmalloc() to allocate area->pages.
+That's fairly promising. Assuming the bulk allocator gets merged, it would
+make sense to add vmalloc on top. That's for bringing it to my attention
+because it's far more relevant than my imaginary potential use cases.
 
-https://lore.kernel.org/linux-mm/20210323133948.GA10046@pc638.lan/
+> I don't know how many _frequent_ vmalloc users we have that will benefit
+> from this, but it's probably more than will benefit from improvements
+> to 200Gbit networking performance.
 
-I don't know how many _frequent_ vmalloc users we have that will benefit
-from this, but it's probably more than will benefit from improvements
-to 200Gbit networking performance.
+I think it was 100Gbit being looked at but your point is still valid and
+there is no harm in incrementally improving over time.
+
+-- 
+Mel Gorman
+SUSE Labs
