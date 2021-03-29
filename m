@@ -2,112 +2,194 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A04CDC433E1
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:41:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F0FBC433E3
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:58:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7AC8161959
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:41:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5B3C361969
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:58:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231184AbhC2Okp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Mar 2021 10:40:45 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40492 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230424AbhC2OkS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Mar 2021 10:40:18 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 457E461933;
-        Mon, 29 Mar 2021 14:40:18 +0000 (UTC)
-Subject: [PATCH v1 5/6] svcrdma: Remove svc_rdma_recv_ctxt::rc_pages and
- ::rc_arg
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Mon, 29 Mar 2021 10:40:17 -0400
-Message-ID: <161702881750.5937.13910113536504150681.stgit@klimt.1015granger.net>
-In-Reply-To: <161702808762.5937.3596341039481819410.stgit@klimt.1015granger.net>
-References: <161702808762.5937.3596341039481819410.stgit@klimt.1015granger.net>
-User-Agent: StGit/1.0-5-g755c
+        id S230271AbhC2O6Y convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Mar 2021 10:58:24 -0400
+Received: from mail-lf1-f46.google.com ([209.85.167.46]:36572 "EHLO
+        mail-lf1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229750AbhC2O6G (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Mar 2021 10:58:06 -0400
+Received: by mail-lf1-f46.google.com with SMTP id n138so18916926lfa.3;
+        Mon, 29 Mar 2021 07:58:05 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:reply-to
+         :from:date:message-id:subject:to:cc:content-transfer-encoding;
+        bh=faG4TU2vNgmCikSBekGZBz25Hr88VzPfl/YRL0OakNk=;
+        b=GuFQwncG8RT/REvulOWuUFBt8BHPb+/FwvRBN2gGQr/dlVrc/4N6s1D1wxyX2xcZZ8
+         OYxWgwEoeoO2+A05V1lR3hOo4nivfnj5YbNdqEAuRzXk/50X3V2XYGjEPK516qj7NKLE
+         RH/qTt5lZxVz5mnLgvApwbwjwLhpcLu7ItbJhlC7hmGwqGt3QHVTqyVL0tUpzFP3cmeo
+         BP9ToP/9ar5/3kg4Rz7LNkZYzjFXBLiUKT8qDnEDP9Wa2auFjBhpN+7dYPMLNERuflKy
+         QKJton/ElFP3Yyf1R2J7TAnFmPhpQ63wLLJGjdmxoEoZDfrzMcdvTPlueMHWjf1PLJFV
+         1YZg==
+X-Gm-Message-State: AOAM532Gb6Jug2/3FeFBkubrfP20OZXmlfChfNZfKdpehjGkqE2uRwuY
+        zfk8vQ0XfDTebbtbQkdG/WWTdS3WboCLGV7muutrJpDgEdyaEw==
+X-Google-Smtp-Source: ABdhPJxCgX195e5PeWrEnM6BVpuIityMdSJCA2H/BXYHo3e0Vq6ecNuGbpojxy9Cin10bzIL+xdZBJBo/8Yuj9zVPaE=
+X-Received: by 2002:a05:6512:33ca:: with SMTP id d10mr16376219lfg.170.1617029885141;
+ Mon, 29 Mar 2021 07:58:05 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+References: <20210323224858.GA293698@embeddedor>
+In-Reply-To: <20210323224858.GA293698@embeddedor>
+Reply-To: chucklever@gmail.com
+From:   Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon, 29 Mar 2021 10:57:54 -0400
+Message-ID: <CAFMMQGtZLNt-jsFFEJVGZaOQyVxckXEGbtan8oDZ-WUNSHkGWg@mail.gmail.com>
+Subject: Re: [PATCH][next] UAPI: nfsfh.h: Replace one-element array with
+ flexible-array member
+To:     "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-hardening@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These fields are no longer used.
+Sorry for the reply via gmail, the original patch did not show up in
+my Oracle mailbox.
 
-The size of struct svc_rdma_recv_ctxt is now less than 300 bytes on
-x86_64, down from 2440 bytes.
+I've been waiting for a resolution of this thread (and perhaps a
+Reviewed-by). But in
+the meantime I've committed this, provisionally, to the for-next topic branch in
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/svc_rdma.h         |    3 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    5 -----
- net/sunrpc/xprtrdma/svc_rdma_rw.c       |   12 ------------
- 3 files changed, 20 deletions(-)
+git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index b72f75091404..3184465de3a0 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -134,7 +134,6 @@ struct svc_rdma_recv_ctxt {
- 	struct rpc_rdma_cid	rc_cid;
- 	struct ib_sge		rc_recv_sge;
- 	void			*rc_recv_buf;
--	struct xdr_buf		rc_arg;
- 	struct xdr_stream	rc_stream;
- 	bool			rc_temp;
- 	u32			rc_byte_len;
-@@ -148,8 +147,6 @@ struct svc_rdma_recv_ctxt {
- 	struct svc_rdma_chunk	*rc_cur_result_payload;
- 	struct svc_rdma_pcl	rc_write_pcl;
- 	struct svc_rdma_pcl	rc_reply_pcl;
--
--	struct page		*rc_pages[RPCSVC_MAXPAGES];
- };
- 
- struct svc_rdma_send_ctxt {
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 7c7eca07b965..357e3ae01991 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -227,11 +227,6 @@ struct svc_rdma_recv_ctxt *svc_rdma_recv_ctxt_get(struct svcxprt_rdma *rdma)
- void svc_rdma_recv_ctxt_put(struct svcxprt_rdma *rdma,
- 			    struct svc_rdma_recv_ctxt *ctxt)
- {
--	unsigned int i;
--
--	for (i = 0; i < ctxt->rc_page_count; i++)
--		put_page(ctxt->rc_pages[i]);
--
- 	pcl_free(&ctxt->rc_call_pcl);
- 	pcl_free(&ctxt->rc_read_pcl);
- 	pcl_free(&ctxt->rc_write_pcl);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 9163ab690288..11a7d4b6209e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -1083,18 +1083,6 @@ int svc_rdma_process_read_list(struct svcxprt_rdma *rdma,
- 	struct svc_rdma_chunk_ctxt *cc;
- 	int ret;
- 
--	/* The request (with page list) is constructed in
--	 * head->rc_arg. Pages involved with RDMA Read I/O are
--	 * transferred there.
--	 */
--	head->rc_arg.head[0] = rqstp->rq_arg.head[0];
--	head->rc_arg.tail[0] = rqstp->rq_arg.tail[0];
--	head->rc_arg.pages = head->rc_pages;
--	head->rc_arg.page_base = 0;
--	head->rc_arg.page_len = 0;
--	head->rc_arg.len = rqstp->rq_arg.len;
--	head->rc_arg.buflen = rqstp->rq_arg.buflen;
--
- 	info = svc_rdma_read_info_alloc(rdma);
- 	if (!info)
- 		return -ENOMEM;
+On Wed, Mar 24, 2021 at 4:39 AM Gustavo A. R. Silva
+<gustavoars@kernel.org> wrote:
+>
+> There is a regular need in the kernel to provide a way to declare having
+> a dynamically sized set of trailing elements in a structure. Kernel code
+> should always use “flexible array members”[1] for these cases. The older
+> style of one-element or zero-length arrays should no longer be used[2].
+>
+> Use an anonymous union with a couple of anonymous structs in order to
+> keep userspace unchanged:
+>
+> $ pahole -C nfs_fhbase_new fs/nfsd/nfsfh.o
+> struct nfs_fhbase_new {
+>         union {
+>                 struct {
+>                         __u8       fb_version_aux;       /*     0     1 */
+>                         __u8       fb_auth_type_aux;     /*     1     1 */
+>                         __u8       fb_fsid_type_aux;     /*     2     1 */
+>                         __u8       fb_fileid_type_aux;   /*     3     1 */
+>                         __u32      fb_auth[1];           /*     4     4 */
+>                 };                                       /*     0     8 */
+>                 struct {
+>                         __u8       fb_version;           /*     0     1 */
+>                         __u8       fb_auth_type;         /*     1     1 */
+>                         __u8       fb_fsid_type;         /*     2     1 */
+>                         __u8       fb_fileid_type;       /*     3     1 */
+>                         __u32      fb_auth_flex[0];      /*     4     0 */
+>                 };                                       /*     0     4 */
+>         };                                               /*     0     8 */
+>
+>         /* size: 8, cachelines: 1, members: 1 */
+>         /* last cacheline: 8 bytes */
+> };
+>
+> Also, this helps with the ongoing efforts to enable -Warray-bounds by
+> fixing the following warnings:
+>
+> fs/nfsd/nfsfh.c: In function ‘nfsd_set_fh_dentry’:
+> fs/nfsd/nfsfh.c:191:41: warning: array subscript 1 is above array bounds of ‘__u32[1]’ {aka ‘unsigned int[1]’} [-Warray-bounds]
+>   191 |        ntohl((__force __be32)fh->fh_fsid[1])));
+>       |                              ~~~~~~~~~~~^~~
+> ./include/linux/kdev_t.h:12:46: note: in definition of macro ‘MKDEV’
+>    12 | #define MKDEV(ma,mi) (((ma) << MINORBITS) | (mi))
+>       |                                              ^~
+> ./include/uapi/linux/byteorder/little_endian.h:40:26: note: in expansion of macro ‘__swab32’
+>    40 | #define __be32_to_cpu(x) __swab32((__force __u32)(__be32)(x))
+>       |                          ^~~~~~~~
+> ./include/linux/byteorder/generic.h:136:21: note: in expansion of macro ‘__be32_to_cpu’
+>   136 | #define ___ntohl(x) __be32_to_cpu(x)
+>       |                     ^~~~~~~~~~~~~
+> ./include/linux/byteorder/generic.h:140:18: note: in expansion of macro ‘___ntohl’
+>   140 | #define ntohl(x) ___ntohl(x)
+>       |                  ^~~~~~~~
+> fs/nfsd/nfsfh.c:191:8: note: in expansion of macro ‘ntohl’
+>   191 |        ntohl((__force __be32)fh->fh_fsid[1])));
+>       |        ^~~~~
+> fs/nfsd/nfsfh.c:192:32: warning: array subscript 2 is above array bounds of ‘__u32[1]’ {aka ‘unsigned int[1]’} [-Warray-bounds]
+>   192 |    fh->fh_fsid[1] = fh->fh_fsid[2];
+>       |                     ~~~~~~~~~~~^~~
+> fs/nfsd/nfsfh.c:192:15: warning: array subscript 1 is above array bounds of ‘__u32[1]’ {aka ‘unsigned int[1]’} [-Warray-bounds]
+>   192 |    fh->fh_fsid[1] = fh->fh_fsid[2];
+>       |    ~~~~~~~~~~~^~~
+>
+> [1] https://en.wikipedia.org/wiki/Flexible_array_member
+> [2] https://www.kernel.org/doc/html/v5.10/process/deprecated.html#zero-length-and-one-element-arrays
+>
+> Link: https://github.com/KSPP/linux/issues/79
+> Link: https://github.com/KSPP/linux/issues/109
+> Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
+> ---
+>  include/uapi/linux/nfsd/nfsfh.h | 27 +++++++++++++++++++--------
+>  1 file changed, 19 insertions(+), 8 deletions(-)
+>
+> diff --git a/include/uapi/linux/nfsd/nfsfh.h b/include/uapi/linux/nfsd/nfsfh.h
+> index ff0ca88b1c8f..427294dd56a1 100644
+> --- a/include/uapi/linux/nfsd/nfsfh.h
+> +++ b/include/uapi/linux/nfsd/nfsfh.h
+> @@ -64,13 +64,24 @@ struct nfs_fhbase_old {
+>   *   in include/linux/exportfs.h for currently registered values.
+>   */
+>  struct nfs_fhbase_new {
+> -       __u8            fb_version;     /* == 1, even => nfs_fhbase_old */
+> -       __u8            fb_auth_type;
+> -       __u8            fb_fsid_type;
+> -       __u8            fb_fileid_type;
+> -       __u32           fb_auth[1];
+> -/*     __u32           fb_fsid[0]; floating */
+> -/*     __u32           fb_fileid[0]; floating */
+> +       union {
+> +               struct {
+> +                       __u8            fb_version_aux; /* == 1, even => nfs_fhbase_old */
+> +                       __u8            fb_auth_type_aux;
+> +                       __u8            fb_fsid_type_aux;
+> +                       __u8            fb_fileid_type_aux;
+> +                       __u32           fb_auth[1];
+> +                       /*      __u32           fb_fsid[0]; floating */
+> +                       /*      __u32           fb_fileid[0]; floating */
+> +               };
+> +               struct {
+> +                       __u8            fb_version;     /* == 1, even => nfs_fhbase_old */
+> +                       __u8            fb_auth_type;
+> +                       __u8            fb_fsid_type;
+> +                       __u8            fb_fileid_type;
+> +                       __u32           fb_auth_flex[]; /* flexible-array member */
+> +               };
+> +       };
+>  };
+>
+>  struct knfsd_fh {
+> @@ -97,7 +108,7 @@ struct knfsd_fh {
+>  #define        fh_fsid_type            fh_base.fh_new.fb_fsid_type
+>  #define        fh_auth_type            fh_base.fh_new.fb_auth_type
+>  #define        fh_fileid_type          fh_base.fh_new.fb_fileid_type
+> -#define        fh_fsid                 fh_base.fh_new.fb_auth
+> +#define        fh_fsid                 fh_base.fh_new.fb_auth_flex
+>
+>  /* Do not use, provided for userspace compatiblity. */
+>  #define        fh_auth                 fh_base.fh_new.fb_auth
+> --
+> 2.27.0
+>
 
 
+-- 
+When the world is being engulfed by a comet, go ahead and excrete
+where you want to.
