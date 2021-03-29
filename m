@@ -2,29 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8509CC433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB882C433E1
 	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:40:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 42FB661864
+	by mail.kernel.org (Postfix) with ESMTP id 64D2661933
 	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:40:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231124AbhC2OkN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Mar 2021 10:40:13 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40386 "EHLO mail.kernel.org"
+        id S230305AbhC2OkO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Mar 2021 10:40:14 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40420 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230401AbhC2Ojr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Mar 2021 10:39:47 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 54FC56192C;
-        Mon, 29 Mar 2021 14:39:47 +0000 (UTC)
-Subject: [PATCH v1 0/6] Restructure how svcrdma handles RDMA Read
+        id S230297AbhC2OkA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 29 Mar 2021 10:40:00 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id C37E861933;
+        Mon, 29 Mar 2021 14:39:59 +0000 (UTC)
+Subject: [PATCH v1 2/6] SUNRPC: Move svc_xprt_received() call sites
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Mon, 29 Mar 2021 10:39:46 -0400
-Message-ID: <161702808762.5937.3596341039481819410.stgit@klimt.1015granger.net>
+Date:   Mon, 29 Mar 2021 10:39:59 -0400
+Message-ID: <161702879897.5937.2121487527673071137.stgit@klimt.1015granger.net>
+In-Reply-To: <161702808762.5937.3596341039481819410.stgit@klimt.1015granger.net>
+References: <161702808762.5937.3596341039481819410.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -33,74 +36,159 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi-
+Currently, XPT_BUSY is not cleared until xpo_recvfrom returns.
+That effectively blocks the receipt and handling of the next RPC
+message until the current one has been taken off the transport.
+This strict ordering is a requirement for socket transports.
 
-I'm on a "mission" to reduce the amount of page allocator churn
-that happens during server-side RPC call processing.
+For our kernel RPC/RDMA transport implementation, however, dequeuing
+an ingress message is nothing more than a list_del(). The transport
+can safely be marked un-busy as soon as that is done.
 
-In the case where svcrdma needs to perform an RDMA Read to pull
-Read chunks from a client, currently two calls to svc_rdma_recvfrom
-are necessary:
+To keep the changes simpler, this patch just moves the
+svc_xprt_received() call site from svc_handle_xprt() into the
+transports, so that the actual optimization can be done in a
+subsequent patch.
 
-Call 1:
-
-An ingress Receive is processed. If there are Read chunks, the
-transport strips the pages out of the passed-in svc_rqst, sets up
-the RDMA Read with those pages and posts the Read, then returns
-the svc_rqst with missing pages. Return value of zero means no
-RPC Call is ready yet.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/svc_xprt.c                   |    7 ++++---
+ net/sunrpc/svcsock.c                    |    9 +++++++--
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    6 ++++++
+ 3 files changed, 17 insertions(+), 5 deletions(-)
 
-Meanwhile svc has to refill those pages in the svc_rqst to
-prepare it for the next incoming RPC.
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 9d1374e82e90..42565f0c7d5a 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -820,8 +820,10 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 			newxpt->xpt_cred = get_cred(xprt->xpt_cred);
+ 			svc_add_new_temp_xprt(serv, newxpt);
+ 			trace_svc_xprt_accept(newxpt, serv->sv_name);
+-		} else
++		} else {
+ 			module_put(xprt->xpt_class->xcl_owner);
++		}
++		svc_xprt_received(xprt);
+ 	} else if (svc_xprt_reserve_slot(rqstp, xprt)) {
+ 		/* XPT_DATA|XPT_DEFERRED case: */
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+@@ -836,8 +838,6 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 	}
+-	/* clear XPT_BUSY: */
+-	svc_xprt_received(xprt);
+ out:
+ 	trace_svc_handle_xprt(xprt, len);
+ 	return len;
+@@ -1248,6 +1248,7 @@ static noinline int svc_deferred_recv(struct svc_rqst *rqstp)
+ 	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
+ 	rqstp->rq_daddr       = dr->daddr;
+ 	rqstp->rq_respages    = rqstp->rq_pages;
++	svc_xprt_received(rqstp->rq_xprt);
+ 	return (dr->argslen<<2) - dr->xprt_hlen;
+ }
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 22454b2df5be..9eb5b6b89077 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -519,6 +519,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->netudpcnt++;
+ 
++	svc_xprt_received(rqstp->rq_xprt);
+ 	return len;
+ 
+ out_recv_err:
+@@ -527,7 +528,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 	}
+ 	trace_svcsock_udp_recv_err(&svsk->sk_xprt, err);
+-	return 0;
++	goto out_clear_busy;
+ out_cmsg_err:
+ 	net_warn_ratelimited("svc: received unknown control message %d/%d; dropping RPC reply datagram\n",
+ 			     cmh->cmsg_level, cmh->cmsg_type);
+@@ -536,6 +537,8 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	local_bh_enable();
+ out_free:
+ 	kfree_skb(skb);
++out_clear_busy:
++	svc_xprt_received(rqstp->rq_xprt);
+ 	return 0;
+ }
+ 
+@@ -1033,6 +1036,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpcnt++;
+ 
++	svc_xprt_received(rqstp->rq_xprt);
+ 	return rqstp->rq_arg.len;
+ 
+ err_incomplete:
+@@ -1050,13 +1054,14 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	if (len != -EAGAIN)
+ 		goto err_delete;
+ 	trace_svcsock_tcp_recv_eagain(&svsk->sk_xprt, 0);
+-	return 0;
++	goto err_noclose;
+ err_nuts:
+ 	svsk->sk_datalen = 0;
+ err_delete:
+ 	trace_svcsock_tcp_recv_err(&svsk->sk_xprt, len);
+ 	svc_xprt_deferred_close(&svsk->sk_xprt);
+ err_noclose:
++	svc_xprt_received(rqstp->rq_xprt);
+ 	return 0;	/* record not complete */
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 8d93d26e0318..9cb5a09c4a01 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -846,6 +846,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 		/* No new incoming requests, terminate the loop */
+ 		clear_bit(XPT_DATA, &xprt->xpt_flags);
+ 		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
++		svc_xprt_received(xprt);
+ 		return 0;
+ 	}
+ 	list_del(&ctxt->rc_list);
+@@ -883,28 +884,33 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 	rqstp->rq_xprt_ctxt = ctxt;
+ 	rqstp->rq_prot = IPPROTO_MAX;
+ 	svc_xprt_copy_addrs(rqstp, xprt);
++	svc_xprt_received(xprt);
+ 	return rqstp->rq_arg.len;
+ 
+ out_readlist:
+ 	ret = svc_rdma_process_read_list(rdma_xprt, rqstp, ctxt);
+ 	if (ret < 0)
+ 		goto out_readfail;
++	svc_xprt_received(xprt);
+ 	return 0;
+ 
+ out_err:
+ 	svc_rdma_send_error(rdma_xprt, ctxt, ret);
+ 	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
++	svc_xprt_received(xprt);
+ 	return 0;
+ 
+ out_readfail:
+ 	if (ret == -EINVAL)
+ 		svc_rdma_send_error(rdma_xprt, ctxt, ret);
+ 	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
++	svc_xprt_received(xprt);
+ 	return ret;
+ 
+ out_backchannel:
+ 	svc_rdma_handle_bc_reply(rqstp, ctxt);
+ out_drop:
+ 	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
++	svc_xprt_received(xprt);
+ 	return 0;
+ }
 
----
-
-Call 2:
-
-The Read completion has occurred. The transport strips the pages
-out of the passed-in svc_rqst and frees them. It copies the
-pages from the Read sink buffer into the svc_rqst, and returns
-the completed RPC.
-
----
-
-
-Instead, let's do the RDMA Reads synchronously with a single call to
-svc_rdma_recvfrom(). When svc_rdma_recvfrom() handles an ingress
-Receive with Read chunks, set up the RDMA Read sink buffer using the
-available pages in the svc_rqst, and wait right there for
-completion.
-
-For large Read chunks, this avoids freeing a bunch of pages and then
-allocating them again. Fewer trips to the page allocator means less
-time with IRQs disabled, and measurably faster turn-around for the
-next RPC.
-
-Also, now that XPT_BUSY is cleared immediately when a Receive is
-dequeued, the transport can handle a higher rate of incoming RPCs.
-
-
----
-
-Chuck Lever (6):
-      SUNRPC: Export svc_xprt_received()
-      SUNRPC: Move svc_xprt_received() call sites
-      svcrdma: Single-stage RDMA Read
-      svcrdma: Remove sc_read_complete_q
-      svcrdma: Remove svc_rdma_recv_ctxt::rc_pages and ::rc_arg
-      svcrdma: Clean up dto_q critical section in svc_rdma_recvfrom()
-
-
- include/linux/sunrpc/svc_rdma.h          |   5 --
- net/sunrpc/svc_xprt.c                    |   7 +-
- net/sunrpc/svcsock.c                     |   9 +-
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  76 +++-------------
- net/sunrpc/xprtrdma/svc_rdma_rw.c        | 108 ++++++++---------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   1 -
- 6 files changed, 60 insertions(+), 146 deletions(-)
-
---
-Chuck Lever
 
