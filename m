@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-11.0 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A3ECC433E4
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67119C433E8
 	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:40:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 002E76192C
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:40:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4981361864
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Mar 2021 14:40:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229955AbhC2OkN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Mar 2021 10:40:13 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40400 "EHLO mail.kernel.org"
+        id S230503AbhC2OkP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Mar 2021 10:40:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40476 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230305AbhC2Ojy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Mar 2021 10:39:54 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 9471D6192C;
-        Mon, 29 Mar 2021 14:39:53 +0000 (UTC)
-Subject: [PATCH v1 1/6] SUNRPC: Export svc_xprt_received()
+        id S230504AbhC2OkM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 29 Mar 2021 10:40:12 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 2378A61933;
+        Mon, 29 Mar 2021 14:40:12 +0000 (UTC)
+Subject: [PATCH v1 4/6] svcrdma: Remove sc_read_complete_q
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date:   Mon, 29 Mar 2021 10:39:52 -0400
-Message-ID: <161702879275.5937.4133334295352322345.stgit@klimt.1015granger.net>
+Date:   Mon, 29 Mar 2021 10:40:11 -0400
+Message-ID: <161702881132.5937.1618694752019390220.stgit@klimt.1015granger.net>
 In-Reply-To: <161702808762.5937.3596341039481819410.stgit@klimt.1015granger.net>
 References: <161702808762.5937.3596341039481819410.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.0-5-g755c
@@ -36,81 +36,149 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Prepare svc_xprt_received() to be called from transport code instead
-of from generic RPC server code.
+Now that svc_rdma_recvfrom() waits for Read completion,
+sc_read_complete_q is no longer used.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc_xprt.h |    1 +
- include/trace/events/sunrpc.h   |    1 +
- net/sunrpc/svc_xprt.c           |   13 +++++++++----
- 3 files changed, 11 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    2 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   57 +++---------------------------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 -
+ 3 files changed, 6 insertions(+), 54 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 34dacadfe517..571f605bc91e 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -130,6 +130,7 @@ void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
- int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
- 			const int, const unsigned short, int,
- 			const struct cred *);
-+void	svc_xprt_received(struct svc_xprt *xprt);
- void	svc_xprt_do_enqueue(struct svc_xprt *xprt);
- void	svc_xprt_enqueue(struct svc_xprt *xprt);
- void	svc_xprt_put(struct svc_xprt *xprt);
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 036eb1f5c133..bda16e9e6ba7 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -1781,6 +1781,7 @@ DECLARE_EVENT_CLASS(svc_xprt_event,
- 			), \
- 			TP_ARGS(xprt))
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 6e621e1f56b8..b72f75091404 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -106,7 +106,6 @@ struct svcxprt_rdma {
  
-+DEFINE_SVC_XPRT_EVENT(received);
- DEFINE_SVC_XPRT_EVENT(no_write_space);
- DEFINE_SVC_XPRT_EVENT(close);
- DEFINE_SVC_XPRT_EVENT(detach);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b134fc5f3b8d..9d1374e82e90 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -247,21 +247,25 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 	return xprt;
- }
+ 	wait_queue_head_t    sc_send_wait;	/* SQ exhaustion waitlist */
+ 	unsigned long	     sc_flags;
+-	struct list_head     sc_read_complete_q;
+ 	struct work_struct   sc_work;
  
--/*
-- * svc_xprt_received conditionally queues the transport for processing
-- * by another thread. The caller must hold the XPT_BUSY bit and must
-+/**
-+ * svc_xprt_received - start next receiver thread
-+ * @xprt: controlling transport
-+ *
-+ * The caller must hold the XPT_BUSY bit and must
-  * not thereafter touch transport data.
+ 	struct llist_head    sc_recv_ctxts;
+@@ -140,7 +139,6 @@ struct svc_rdma_recv_ctxt {
+ 	bool			rc_temp;
+ 	u32			rc_byte_len;
+ 	unsigned int		rc_page_count;
+-	unsigned int		rc_hdr_count;
+ 	u32			rc_inv_rkey;
+ 	__be32			rc_msgtype;
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index b857a6805e95..7c7eca07b965 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -89,8 +89,7 @@
+  * svc_rdma_recvfrom call returns.
   *
-  * Note: XPT_DATA only gets cleared when a read-attempt finds no (or
-  * insufficient) data.
+  * During the second svc_rdma_recvfrom call, RDMA Read sink pages
+- * are transferred from the svc_rdma_recv_ctxt to the second svc_rqst
+- * (see rdma_read_complete() below).
++ * are transferred from the svc_rdma_recv_ctxt to the second svc_rqst.
   */
--static void svc_xprt_received(struct svc_xprt *xprt)
-+void svc_xprt_received(struct svc_xprt *xprt)
- {
- 	if (!test_bit(XPT_BUSY, &xprt->xpt_flags)) {
- 		WARN_ONCE(1, "xprt=0x%p already busy!", xprt);
- 		return;
- 	}
  
-+	trace_svc_xprt_received(xprt);
-+
- 	/* As soon as we clear busy, the xprt could be closed and
- 	 * 'put', so we need a reference to call svc_enqueue_xprt with:
- 	 */
-@@ -271,6 +275,7 @@ static void svc_xprt_received(struct svc_xprt *xprt)
- 	xprt->xpt_server->sv_ops->svo_enqueue_xprt(xprt);
- 	svc_xprt_put(xprt);
+ #include <linux/slab.h>
+@@ -379,10 +378,6 @@ void svc_rdma_flush_recv_queues(struct svcxprt_rdma *rdma)
+ {
+ 	struct svc_rdma_recv_ctxt *ctxt;
+ 
+-	while ((ctxt = svc_rdma_next_recv_ctxt(&rdma->sc_read_complete_q))) {
+-		list_del(&ctxt->rc_list);
+-		svc_rdma_recv_ctxt_put(rdma, ctxt);
+-	}
+ 	while ((ctxt = svc_rdma_next_recv_ctxt(&rdma->sc_rq_dto_q))) {
+ 		list_del(&ctxt->rc_list);
+ 		svc_rdma_recv_ctxt_put(rdma, ctxt);
+@@ -720,35 +715,6 @@ static int svc_rdma_xdr_decode_req(struct xdr_buf *rq_arg,
+ 	return -EINVAL;
  }
-+EXPORT_SYMBOL_GPL(svc_xprt_received);
  
- void svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *new)
- {
+-static void rdma_read_complete(struct svc_rqst *rqstp,
+-			       struct svc_rdma_recv_ctxt *head)
+-{
+-	int page_no;
+-
+-	/* Move Read chunk pages to rqstp so that they will be released
+-	 * when svc_process is done with them.
+-	 */
+-	for (page_no = 0; page_no < head->rc_page_count; page_no++) {
+-		put_page(rqstp->rq_pages[page_no]);
+-		rqstp->rq_pages[page_no] = head->rc_pages[page_no];
+-	}
+-	head->rc_page_count = 0;
+-
+-	/* Point rq_arg.pages past header */
+-	rqstp->rq_arg.pages = &rqstp->rq_pages[head->rc_hdr_count];
+-	rqstp->rq_arg.page_len = head->rc_arg.page_len;
+-
+-	/* rq_respages starts after the last arg page */
+-	rqstp->rq_respages = &rqstp->rq_pages[page_no];
+-	rqstp->rq_next_page = rqstp->rq_respages + 1;
+-
+-	/* Rebuild rq_arg head and tail. */
+-	rqstp->rq_arg.head[0] = head->rc_arg.head[0];
+-	rqstp->rq_arg.tail[0] = head->rc_arg.tail[0];
+-	rqstp->rq_arg.len = head->rc_arg.len;
+-	rqstp->rq_arg.buflen = head->rc_arg.buflen;
+-}
+-
+ static void svc_rdma_send_error(struct svcxprt_rdma *rdma,
+ 				struct svc_rdma_recv_ctxt *rctxt,
+ 				int status)
+@@ -834,13 +800,6 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 	rqstp->rq_xprt_ctxt = NULL;
+ 
+ 	spin_lock(&rdma_xprt->sc_rq_dto_lock);
+-	ctxt = svc_rdma_next_recv_ctxt(&rdma_xprt->sc_read_complete_q);
+-	if (ctxt) {
+-		list_del(&ctxt->rc_list);
+-		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
+-		rdma_read_complete(rqstp, ctxt);
+-		goto complete;
+-	}
+ 	ctxt = svc_rdma_next_recv_ctxt(&rdma_xprt->sc_rq_dto_q);
+ 	if (!ctxt) {
+ 		/* No new incoming requests, terminate the loop */
+@@ -880,21 +839,17 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 	svc_rdma_get_inv_rkey(rdma_xprt, ctxt);
+ 
+ 	if (!pcl_is_empty(&ctxt->rc_read_pcl) ||
+-	    !pcl_is_empty(&ctxt->rc_call_pcl))
+-		goto out_readlist;
++	    !pcl_is_empty(&ctxt->rc_call_pcl)) {
++		ret = svc_rdma_process_read_list(rdma_xprt, rqstp, ctxt);
++		if (ret < 0)
++			goto out_readfail;
++	}
+ 
+-complete:
+ 	rqstp->rq_xprt_ctxt = ctxt;
+ 	rqstp->rq_prot = IPPROTO_MAX;
+ 	svc_xprt_copy_addrs(rqstp, xprt);
+ 	return rqstp->rq_arg.len;
+ 
+-out_readlist:
+-	ret = svc_rdma_process_read_list(rdma_xprt, rqstp, ctxt);
+-	if (ret < 0)
+-		goto out_readfail;
+-	goto complete;
+-
+ out_err:
+ 	svc_rdma_send_error(rdma_xprt, ctxt, ret);
+ 	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 3646216211c5..d94b7759ada1 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -136,7 +136,6 @@ static struct svcxprt_rdma *svc_rdma_create_xprt(struct svc_serv *serv,
+ 	svc_xprt_init(net, &svc_rdma_class, &cma_xprt->sc_xprt, serv);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_accept_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+-	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_send_ctxts);
+ 	init_llist_head(&cma_xprt->sc_recv_ctxts);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_rw_ctxts);
 
 
