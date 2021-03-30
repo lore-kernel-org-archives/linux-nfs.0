@@ -2,41 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43CF9C433DB
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24029C433E0
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 093AB61920
+	by mail.kernel.org (Postfix) with ESMTP id CB880619AA
 	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229483AbhC3ATL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229441AbhC3ATL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 29 Mar 2021 20:19:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50352 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:50362 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229628AbhC3ASk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S229750AbhC3ASk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Mon, 29 Mar 2021 20:18:40 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 47CEF6192F
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:38 +0000 (UTC)
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 5AE7F61990
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617063518;
-        bh=17Sdv0UHrHj1HQcB3o9ACYAI3AJuBdsIRa90SZWxKQ0=;
-        h=From:To:Subject:Date:From;
-        b=H6eRmQer24YNOHIVcPOwDMl/7qHRFoBTJlVO8Q1NbZo0qEGDrJveL1Uw4qL5Ifwl9
-         JrMhsTd0IDWBMQF1Bw+zduWDQDocMZ0AAJQxhPVj106X9CLXlgE7Zbb4GuS71H5hMh
-         TWfJC8kBYw2KL/fdf3cYdI/gyDhevkfAiytC64D+pdU87brHRehgNtuh3NU/s+qaqC
-         uey6Jt5QJFmfHfZeU94II6YHYaNkyrovc3qAKh2o3AEFyXFL+aX/YNK+BRaG8euXbR
-         85I/V7wO/BcWBUpFmzowXuXJjJcdDyt0X4L3Nor+47xb1dGT8V410JeiGHBB7K8mIM
-         8hykGz760MP5w==
+        s=k20201202; t=1617063520;
+        bh=uXmtav0HD1YHoLdGD1OavpObIiaLKCCy08ovhHhtnaY=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=H2N8PnowH+GYZEwjyU2YZyjTbvb6s1wXQvxpwV/cW0sVNNsVJHLGUKgJp623DqzDy
+         jl+rQzil+e8E3Jt2iNtAo3m2Bb/sN/54/N00AVwTnMnK4HK5HV/BrwacFOYHHSTOix
+         wuH8M4LttdCyI0SmKs0cfnWdqZdHX4vElGAlvgu5vD+6eZrU0/m5hcP7fLL9/3YlM5
+         LqfExp+q7ZIPRHcvpoy6sLDGygp40Mu5ybsf74XM5aMKGTC3FWlmoiiedmaPHRQ8yH
+         yuK7QCu7A65zgtorGX2WjiWybMJi7WCyTf2LlRwGkO77x+ODVgAl3cstl9ZWVcG8Ys
+         4BLZHN16JIc6A==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 00/17] Attribute revalidation updates
-Date:   Mon, 29 Mar 2021 20:18:18 -0400
-Message-Id: <20210330001835.41914-1-trondmy@kernel.org>
+Subject: [PATCH 04/17] NFS: NFS_INO_REVAL_PAGECACHE should mark the change attribute invalid
+Date:   Mon, 29 Mar 2021 20:18:22 -0400
+Message-Id: <20210330001835.41914-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210330001835.41914-4-trondmy@kernel.org>
+References: <20210330001835.41914-1-trondmy@kernel.org>
+ <20210330001835.41914-2-trondmy@kernel.org>
+ <20210330001835.41914-3-trondmy@kernel.org>
+ <20210330001835.41914-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -45,66 +50,28 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The following updates try to simplify some of the attribute caching, and
-further split out the attribute cache tracking. In particular, we want
-to make use of the fact that NFSv4.x doesn't always need to retrieve all
-the attributes to optimise the way we use the GETATTR call.
+When we're looking to revalidate the page cache, we should just ensure
+that we mark the change attribute invalid.
 
-Before this patch set, when I run xfstests, I see
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/inode.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-NFSv3::   getattr: 444656, lookup: 144117, access: 112148
-NFSv4.1:: getattr: 898027, lookup: 68847,  access: 14766, open: 111409
-NFSv4.2:: getattr: 593422, lookup: 72488,  access: 16647, open: 113056
-
-after application of the patch set:
-
-NFSv3::   getattr: 399324, lookup: 142331, access: 112444
-NFSv4.1:: getattr: 134778, lookup: 70673,  access: 15059, open: 112192
-NFSv4.2:: getattr: 139080, lookup: 70722,  access: 16563, open: 113601
-
-Note that these numbers are against a knfsd server that does not support
-the "change_attr_type" attribute. I'd expect further improvements once
-we re-introduce that server support.
-
-Trond Myklebust (17):
-  NFS: Deal correctly with attribute generation counter overflow
-  NFS: Fix up inode cache tracing
-  NFS: Mask out unsupported attributes in nfs_getattr()
-  NFS: NFS_INO_REVAL_PAGECACHE should mark the change attribute invalid
-  NFS: Fix up revalidation of space used
-  NFS: Don't revalidate attributes that are not being asked for
-  NFS: Fix up statx() results
-  NFS: Add a cache validity flag argument to nfs_revalidate_inode()
-  NFS: Replace use of NFS_INO_REVAL_PAGECACHE when checking cache
-    validity
-  NFS: Don't set NFS_INO_REVAL_PAGECACHE in the inode cache validity
-  NFS: Separate tracking of file nlinks cache validity from the
-    mode/uid/gid
-  NFS: Fix up handling of outstanding layoutcommit in nfs_update_inode()
-  NFS: Remove a line of code that has no effect in nfs_update_inode()
-  NFS: Simplify cache consistency in nfs_check_inode_attributes()
-  NFSv4: Fix value of decode_fsinfo_maxsz
-  NFSv4: Add support for the NFSv4.2 "change_attr_type" attribute
-  NFS: Use information about the change attribute to optimise updates
-
- fs/nfs/client.c           |   3 +
- fs/nfs/dir.c              |   4 +-
- fs/nfs/export.c           |   6 +-
- fs/nfs/file.c             |   2 +-
- fs/nfs/inode.c            | 246 +++++++++++++++++++++++++++-----------
- fs/nfs/nfs3acl.c          |   2 +-
- fs/nfs/nfs3xdr.c          |   1 +
- fs/nfs/nfs4proc.c         |  45 ++++---
- fs/nfs/nfs4xdr.c          |  43 ++++++-
- fs/nfs/nfstrace.h         |   9 +-
- fs/nfs/proc.c             |   1 +
- fs/nfs/write.c            |   2 +-
- include/linux/nfs4.h      |   9 ++
- include/linux/nfs_fs.h    |   4 +-
- include/linux/nfs_fs_sb.h |   3 +
- include/linux/nfs_xdr.h   |   2 +
- 16 files changed, 283 insertions(+), 99 deletions(-)
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 93f487c15663..f0c983151f3c 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -219,7 +219,8 @@ void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
+ 				| NFS_INO_INVALID_SIZE
+ 				| NFS_INO_REVAL_PAGECACHE
+ 				| NFS_INO_INVALID_XATTR);
+-	}
++	} else if (flags & NFS_INO_REVAL_PAGECACHE)
++		flags |= NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_SIZE;
+ 
+ 	if (!nfs_has_xattr_cache(nfsi))
+ 		flags &= ~NFS_INO_INVALID_XATTR;
 -- 
 2.30.2
 
