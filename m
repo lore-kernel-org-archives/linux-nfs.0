@@ -2,55 +2,45 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-16.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
+	UPPERCASE_50_75,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5754EC433EC
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 997A1C433E3
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 333D261985
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 58E1061985
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229842AbhC3ATO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Mar 2021 20:19:14 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50394 "EHLO mail.kernel.org"
+        id S229655AbhC3ATM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Mar 2021 20:19:12 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50356 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230212AbhC3ASq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Mar 2021 20:18:46 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 03DCB60C41
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:45 +0000 (UTC)
+        id S229630AbhC3ASk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 29 Mar 2021 20:18:40 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 28B7361985
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617063526;
-        bh=ASkvzzUzy0Zf2PWTjOBspbGyEGYU1xCptK2jhysUhRQ=;
+        s=k20201202; t=1617063519;
+        bh=V5X6yA3MN6KRnuZ82v7bhzecoijFgN0fpVDH5KVCCl0=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=eMmOCF97mjLl9RmIEhwK0+dWi5EiDZlSTT5VKEcpxFjJtk0ApwhRiiANbJXNTScu1
-         Lzg9CI8Iz+upURGdVu/PzZQUKS+O6Wk2WGgAzjIffNdThK3sF9pObWDGkktoP4wJ6g
-         7YHBCddBBX4J6p7ekTByuEkGfzPRGsGp8Ho6/8CvE8u2nbZbE9LTKFsSS99DXDFEkq
-         VBhBPKzoUdFa2SywxIonDSsUb76atp6oc7Vt6Q1dwhn/n2/a6quVCvdBu3dsHTMxY7
-         9hItBqtF09wPS6jEue+KRlEJlVxjmLDzP66OLJA6xrsO2ArP8ZcYZCkKtwRSpyQtf0
-         owadfq7kQdEfQ==
+        b=m6cJHcr/h4+U9oe73ajDtX7vY+XViZk+wyssnO/4o693QjoTr2xulUUd7Tu4vhXAm
+         Ur+YQ7ukri4Map0oXFMcIxWsDaJGij4WNxnsgfcwHJFgUnwHVI6hqUCi/YrGTooC5X
+         u5PBolUBdPGuLbpdFvN5nxMBJ3kc4KHVX/hQMJ1uxRATyOron6I3bX9bCfyRY1p+FH
+         CEzUYNYETxo3J0eRVC2un0NdXKOPz2i2SSeSJC7BGw2PL5hgzEavhEDXB/I504BMmU
+         GPZLZr1JKiOEFNxl2WS0ISt9Oj2IXJaTokNeM2And1iW5pA89biWbmlmVNZFtccdhT
+         QEOjA2wyNAyeA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 13/17] NFS: Remove a line of code that has no effect in nfs_update_inode()
-Date:   Mon, 29 Mar 2021 20:18:31 -0400
-Message-Id: <20210330001835.41914-14-trondmy@kernel.org>
+Subject: [PATCH 02/17] NFS: Fix up inode cache tracing
+Date:   Mon, 29 Mar 2021 20:18:20 -0400
+Message-Id: <20210330001835.41914-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210330001835.41914-13-trondmy@kernel.org>
+In-Reply-To: <20210330001835.41914-2-trondmy@kernel.org>
 References: <20210330001835.41914-1-trondmy@kernel.org>
  <20210330001835.41914-2-trondmy@kernel.org>
- <20210330001835.41914-3-trondmy@kernel.org>
- <20210330001835.41914-4-trondmy@kernel.org>
- <20210330001835.41914-5-trondmy@kernel.org>
- <20210330001835.41914-6-trondmy@kernel.org>
- <20210330001835.41914-7-trondmy@kernel.org>
- <20210330001835.41914-8-trondmy@kernel.org>
- <20210330001835.41914-9-trondmy@kernel.org>
- <20210330001835.41914-10-trondmy@kernel.org>
- <20210330001835.41914-11-trondmy@kernel.org>
- <20210330001835.41914-12-trondmy@kernel.org>
- <20210330001835.41914-13-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -59,27 +49,37 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Commit 0b467264d0db ("NFS: Fix attribute revalidation") changed the way
-we populate the 'invalid' attribute, and made the line that strips away
-the NFS_INO_INVALID_ATTR bits redundant.
+Add missing enum definitions and missing entries for
+nfs_show_cache_validity().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/nfs/nfstrace.h | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e57cd490bc4d..f60dc562e84b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -2115,7 +2115,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 5a59dcdce0b2..cdba6eebe3cb 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -45,6 +45,9 @@ TRACE_DEFINE_ENUM(NFS_INO_INVALID_CTIME);
+ TRACE_DEFINE_ENUM(NFS_INO_INVALID_MTIME);
+ TRACE_DEFINE_ENUM(NFS_INO_INVALID_SIZE);
+ TRACE_DEFINE_ENUM(NFS_INO_INVALID_OTHER);
++TRACE_DEFINE_ENUM(NFS_INO_DATA_INVAL_DEFER);
++TRACE_DEFINE_ENUM(NFS_INO_INVALID_BLOCKS);
++TRACE_DEFINE_ENUM(NFS_INO_INVALID_XATTR);
  
- 	/* Update attrtimeo value if we're out of the unstable period */
- 	if (attr_changed) {
--		invalid &= ~NFS_INO_INVALID_ATTR;
- 		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
- 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 		nfsi->attrtimeo_timestamp = now;
+ #define nfs_show_cache_validity(v) \
+ 	__print_flags(v, "|", \
+@@ -60,6 +63,8 @@ TRACE_DEFINE_ENUM(NFS_INO_INVALID_OTHER);
+ 			{ NFS_INO_INVALID_MTIME, "INVALID_MTIME" }, \
+ 			{ NFS_INO_INVALID_SIZE, "INVALID_SIZE" }, \
+ 			{ NFS_INO_INVALID_OTHER, "INVALID_OTHER" }, \
++			{ NFS_INO_DATA_INVAL_DEFER, "DATA_INVAL_DEFER" }, \
++			{ NFS_INO_INVALID_BLOCKS, "INVALID_BLOCKS" }, \
+ 			{ NFS_INO_INVALID_XATTR, "INVALID_XATTR" })
+ 
+ TRACE_DEFINE_ENUM(NFS_INO_ADVISE_RDPLUS);
 -- 
 2.30.2
 
