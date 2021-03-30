@@ -7,51 +7,43 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 87F8CC433F1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F152C433EA
 	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 687DF61985
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EBB4F61996
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230204AbhC3ATP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Mar 2021 20:19:15 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50404 "EHLO mail.kernel.org"
+        id S229750AbhC3ATN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Mar 2021 20:19:13 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50374 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230213AbhC3ASq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Mar 2021 20:18:46 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 6CA0861920
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:46 +0000 (UTC)
+        id S229861AbhC3ASo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 29 Mar 2021 20:18:44 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id F2B346192F
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617063526;
-        bh=cfANOpvP4YscWX/TxFZ4ROep2D2a2g1tUs6mzeVJXck=;
+        s=k20201202; t=1617063522;
+        bh=fR9gaySojGjKUIgSpbAC5NqSIhTOudtIW2k4bOTQ4Y4=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=f8U9NLszGRRC2rtemUwbzfC6V1lIf9wtDbTAoLnpaG87BEg4DSw1eocRBBsqyCeP+
-         rFHc+eIPzMUD+EhRA4E56oz7RcgxF5HujkVg1A/t1cvUYXmY/WnnWLaboE9lUTLHyK
-         Ipri+S8y8fjp762juqhIzzyr3VK33Z5btA4nZ9azl3BOQcdcKhVniWJf2Xa0JAUJ7C
-         y5qQ23lBxOzRIabth1MnnDrexAUXehNq2zA7RDe4mnP2wNQ7ooKa2OwLfiBd5Ph5nh
-         3v5fXeqQUR/xGRpHumvLWnvmwQY4+o4RQQZdp+EK6u43x6tIZhGQvMH9C2EBd63gR3
-         +UfGOs6z70ebQ==
+        b=VYaiQNyF+xio92GJl/zaT/cMM30gHUBN5Cjnbvc7lWUa5oL576I3WVql9ZkO3mxpf
+         X2Zt/W6ZRSnwEB9LF/KrU6dPh66N+NU+gH890X431mSaPj2xwEEoqZXRiOT5H1F6h0
+         zQjwyMQc4NEJsTdGXUm7aPLpVfIQ4zWDZPc2ecTppRHh9f4ERYcp445c8vPomThLTs
+         OiLJ/IYyzkmWB0ziCwRYkPCJ3jRB4PILgvf/Xx6F3vhvncoNmgrdb1avsiNwbHgweQ
+         KE/sLrWJod92wfYq5Zf1e9ywLA/JfdnJWpeq70W482TwLKKf8kkDTwkoUh1UONKDSS
+         547S6z0WSrqXg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 14/17] NFS: Simplify cache consistency in nfs_check_inode_attributes()
-Date:   Mon, 29 Mar 2021 20:18:32 -0400
-Message-Id: <20210330001835.41914-15-trondmy@kernel.org>
+Subject: [PATCH 06/17] NFS: Don't revalidate attributes that are not being asked for
+Date:   Mon, 29 Mar 2021 20:18:24 -0400
+Message-Id: <20210330001835.41914-7-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210330001835.41914-14-trondmy@kernel.org>
+In-Reply-To: <20210330001835.41914-6-trondmy@kernel.org>
 References: <20210330001835.41914-1-trondmy@kernel.org>
  <20210330001835.41914-2-trondmy@kernel.org>
  <20210330001835.41914-3-trondmy@kernel.org>
  <20210330001835.41914-4-trondmy@kernel.org>
  <20210330001835.41914-5-trondmy@kernel.org>
  <20210330001835.41914-6-trondmy@kernel.org>
- <20210330001835.41914-7-trondmy@kernel.org>
- <20210330001835.41914-8-trondmy@kernel.org>
- <20210330001835.41914-9-trondmy@kernel.org>
- <20210330001835.41914-10-trondmy@kernel.org>
- <20210330001835.41914-11-trondmy@kernel.org>
- <20210330001835.41914-12-trondmy@kernel.org>
- <20210330001835.41914-13-trondmy@kernel.org>
- <20210330001835.41914-14-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -60,58 +52,40 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-We should not be invalidating the access or acl caches in
-nfs_check_inode_attributes(), since the point is we're unsure about
-whether the contents of the struct nfs_fattr are fully up to date.
+If the user doesn't set STATX_UID/GID/MODE, then don't care if they are
+known to be stale. Ditto if we're not being asked for the file size.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 18 +++++-------------
- 1 file changed, 5 insertions(+), 13 deletions(-)
+ fs/nfs/inode.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index f60dc562e84b..e1a1322599b8 100644
+index 138d0998fd91..5280f28a67a7 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -1497,8 +1497,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 	if (!nfs_file_has_buffered_writers(nfsi)) {
- 		/* Verify a few of the more important attributes */
- 		if ((fattr->valid & NFS_ATTR_FATTR_CHANGE) != 0 && !inode_eq_iversion_raw(inode, fattr->change_attr))
--			invalid |= NFS_INO_INVALID_CHANGE
--				| NFS_INO_REVAL_PAGECACHE;
-+			invalid |= NFS_INO_INVALID_CHANGE;
- 
- 		ts = inode->i_mtime;
- 		if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec64_equal(&ts, &fattr->mtime))
-@@ -1512,24 +1511,17 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 			cur_size = i_size_read(inode);
- 			new_isize = nfs_size_to_loff_t(fattr->size);
- 			if (cur_size != new_isize)
--				invalid |= NFS_INO_INVALID_SIZE
--					| NFS_INO_REVAL_PAGECACHE;
-+				invalid |= NFS_INO_INVALID_SIZE;
- 		}
- 	}
- 
- 	/* Have any file permissions changed? */
- 	if ((fattr->valid & NFS_ATTR_FATTR_MODE) && (inode->i_mode & S_IALLUGO) != (fattr->mode & S_IALLUGO))
--		invalid |= NFS_INO_INVALID_ACCESS
--			| NFS_INO_INVALID_ACL
--			| NFS_INO_INVALID_OTHER;
-+		invalid |= NFS_INO_INVALID_OTHER;
- 	if ((fattr->valid & NFS_ATTR_FATTR_OWNER) && !uid_eq(inode->i_uid, fattr->uid))
--		invalid |= NFS_INO_INVALID_ACCESS
--			| NFS_INO_INVALID_ACL
--			| NFS_INO_INVALID_OTHER;
-+		invalid |= NFS_INO_INVALID_OTHER;
- 	if ((fattr->valid & NFS_ATTR_FATTR_GROUP) && !gid_eq(inode->i_gid, fattr->gid))
--		invalid |= NFS_INO_INVALID_ACCESS
--			| NFS_INO_INVALID_ACL
--			| NFS_INO_INVALID_OTHER;
-+		invalid |= NFS_INO_INVALID_OTHER;
- 
- 	/* Has the link count changed? */
- 	if ((fattr->valid & NFS_ATTR_FATTR_NLINK) && inode->i_nlink != fattr->nlink)
+@@ -857,12 +857,17 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	/* Check whether the cached attributes are stale */
+ 	do_update |= force_sync || nfs_attribute_cache_expired(inode);
+ 	cache_validity = READ_ONCE(NFS_I(inode)->cache_validity);
+-	do_update |= cache_validity &
+-		(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL);
++	do_update |= cache_validity & NFS_INO_INVALID_CHANGE;
+ 	if (request_mask & STATX_ATIME)
+ 		do_update |= cache_validity & NFS_INO_INVALID_ATIME;
+-	if (request_mask & (STATX_CTIME|STATX_MTIME))
+-		do_update |= cache_validity & NFS_INO_REVAL_PAGECACHE;
++	if (request_mask & STATX_CTIME)
++		do_update |= cache_validity & NFS_INO_INVALID_CTIME;
++	if (request_mask & STATX_MTIME)
++		do_update |= cache_validity & NFS_INO_INVALID_MTIME;
++	if (request_mask & STATX_SIZE)
++		do_update |= cache_validity & NFS_INO_INVALID_SIZE;
++	if (request_mask & (STATX_UID | STATX_GID | STATX_MODE | STATX_NLINK))
++		do_update |= cache_validity & NFS_INO_INVALID_OTHER;
+ 	if (request_mask & STATX_BLOCKS)
+ 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+ 	if (do_update) {
 -- 
 2.30.2
 
