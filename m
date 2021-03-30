@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 723D3C433EB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC769C433F4
 	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4E4B061996
+	by mail.kernel.org (Postfix) with ESMTP id 9A0F761920
 	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230089AbhC3ATO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Mar 2021 20:19:14 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50380 "EHLO mail.kernel.org"
+        id S230209AbhC3ATP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Mar 2021 20:19:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50398 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229842AbhC3ASo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Mar 2021 20:18:44 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id B915C61920
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:43 +0000 (UTC)
+        id S230204AbhC3ASp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 29 Mar 2021 20:18:45 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 2567860C41
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617063524;
-        bh=cuE11MYMmsbKElwSsTR5WgwLFT2SbAOVL1mXV3h5aSI=;
+        s=k20201202; t=1617063525;
+        bh=WQIOev9Zy3UKdhTxeV4r5MBA9M0yKkMiqLxOwKpvlac=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=SYJbzj0uQn9Qo4uWqFVxutfDnXP1GWvcToI/5v9+jQpN0wKsyFH9YUUUF7bVdLa5P
-         DRnvrVYNJwAChXS+X49GYChiBGIyCND9H5B8W+lCbWXW2FZhdiPE0EprCimKux80Li
-         n0VRpOPggRKeJWyfKpEILQnPEh13WQacDksXfn+HudS82hKRKuGu0i+dnEI3VnbDi4
-         kqrnR7j6XBSBrp9dnUyAArF6U7vKWTOWF7IOqwqLMlqRS2P7VzzYo5DiKJfj2IgpGj
-         Wz61LHx6xsbBZiVW0CyFwO0Ke5A191R/a7YfCoP5Fc+IcuAadC3IVuUAX8qeKBFSgu
-         QB1D5jfyNA/eg==
+        b=jpNy+AP+TBMhWh8iNFtU6FhSYKHOFyVNTSPp3+qACWsa7Dg+vPLdURcZhM4WXNpHS
+         YdmHLtpQCM8RclrLR+vwRDRlPWXyBxar+cgE6BMaY4jakXfTHwMkuCBmkeaGg0qlQr
+         8gHHdaBaPvE6YNR8AKBeVJ9g7LNkkQbO9X/dnP7fXaW2bl2qWleLxG6mCa5I+tl89H
+         G1VXfn4ayo4xqzp1adBLhrRriCUeg0hFlbmO2PDgeG+2ZIZ6BGpFGVHhs1OZPXmHCr
+         Ok75sy5V8NLJ8GLTTAnCuEsq/pEx3sGyi7xpuwUpIF5RJfeIFC4wIb74Zy57fQ2lEj
+         mkfaKH4TCTxkA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 08/17] NFS: Add a cache validity flag argument to nfs_revalidate_inode()
-Date:   Mon, 29 Mar 2021 20:18:26 -0400
-Message-Id: <20210330001835.41914-9-trondmy@kernel.org>
+Subject: [PATCH 11/17] NFS: Separate tracking of file nlinks cache validity from the mode/uid/gid
+Date:   Mon, 29 Mar 2021 20:18:29 -0400
+Message-Id: <20210330001835.41914-12-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210330001835.41914-8-trondmy@kernel.org>
+In-Reply-To: <20210330001835.41914-11-trondmy@kernel.org>
 References: <20210330001835.41914-1-trondmy@kernel.org>
  <20210330001835.41914-2-trondmy@kernel.org>
  <20210330001835.41914-3-trondmy@kernel.org>
@@ -46,6 +46,9 @@ References: <20210330001835.41914-1-trondmy@kernel.org>
  <20210330001835.41914-6-trondmy@kernel.org>
  <20210330001835.41914-7-trondmy@kernel.org>
  <20210330001835.41914-8-trondmy@kernel.org>
+ <20210330001835.41914-9-trondmy@kernel.org>
+ <20210330001835.41914-10-trondmy@kernel.org>
+ <20210330001835.41914-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -54,170 +57,190 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Add an argument to nfs_revalidate_inode() to allow callers to specify
-which attributes they need to check for validity.
+Rename can cause us to revalidate the access cache, so lets track the
+nlinks separately from the mode/uid/gid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
  fs/nfs/dir.c           |  2 +-
- fs/nfs/export.c        |  6 +-----
- fs/nfs/inode.c         | 25 +++++++------------------
- fs/nfs/nfs3acl.c       |  2 +-
- fs/nfs/nfs4proc.c      |  6 +++---
- include/linux/nfs_fs.h |  2 +-
- 6 files changed, 14 insertions(+), 29 deletions(-)
+ fs/nfs/inode.c         | 18 ++++++++++++------
+ fs/nfs/nfs4proc.c      | 13 +++++++------
+ fs/nfs/nfstrace.h      |  4 +++-
+ include/linux/nfs_fs.h |  2 ++
+ 5 files changed, 25 insertions(+), 14 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 0cd7c59a6601..e924d65c125e 100644
+index e924d65c125e..f748d2294261 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -3006,7 +3006,7 @@ int nfs_permission(struct user_namespace *mnt_userns,
- 	if (mask & MAY_NOT_BLOCK)
- 		return -ECHILD;
- 
--	res = nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+	res = nfs_revalidate_inode(inode, NFS_INO_INVALID_OTHER);
- 	if (res == 0)
- 		res = generic_permission(&init_user_ns, inode, mask);
- 	goto out;
-diff --git a/fs/nfs/export.c b/fs/nfs/export.c
-index b347e3ce0cc8..37a1a88df771 100644
---- a/fs/nfs/export.c
-+++ b/fs/nfs/export.c
-@@ -169,11 +169,7 @@ nfs_get_parent(struct dentry *dentry)
- 
- static u64 nfs_fetch_iversion(struct inode *inode)
- {
--	struct nfs_server *server = NFS_SERVER(inode);
--
--	if (nfs_check_cache_invalid(inode, NFS_INO_INVALID_CHANGE |
--						   NFS_INO_REVAL_PAGECACHE))
--		__nfs_revalidate_inode(server, inode);
-+	nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
- 	return inode_peek_iversion_raw(inode);
+@@ -1711,7 +1711,7 @@ static void nfs_drop_nlink(struct inode *inode)
+ 	NFS_I(inode)->attr_gencount = nfs_inc_attr_generation_counter();
+ 	nfs_set_cache_invalid(
+ 		inode, NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_CTIME |
+-			       NFS_INO_INVALID_OTHER | NFS_INO_REVAL_FORCED);
++			       NFS_INO_INVALID_NLINK | NFS_INO_REVAL_FORCED);
+ 	spin_unlock(&inode->i_lock);
  }
  
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 538ea8a0e171..be014c492c8a 100644
+index 25dc70adab87..c9386981d210 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -796,16 +796,6 @@ static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
- 	dput(parent);
- }
+@@ -215,7 +215,8 @@ void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
  
--static bool nfs_need_revalidate_inode(struct inode *inode)
--{
--	if (NFS_I(inode)->cache_validity &
--			(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL))
--		return true;
--	if (nfs_attribute_cache_expired(inode))
--		return true;
--	return false;
--}
--
- static u32 nfs_get_valid_attrmask(struct inode *inode)
- {
- 	unsigned long cache_validity = READ_ONCE(NFS_I(inode)->cache_validity);
-@@ -998,7 +988,6 @@ void nfs_close_context(struct nfs_open_context *ctx, int is_sync)
- {
- 	struct nfs_inode *nfsi;
- 	struct inode *inode;
--	struct nfs_server *server;
+ 	if (have_delegation) {
+ 		if (!(flags & NFS_INO_REVAL_FORCED))
+-			flags &= ~NFS_INO_INVALID_OTHER;
++			flags &= ~(NFS_INO_INVALID_OTHER |
++				   NFS_INO_INVALID_NLINK);
+ 		flags &= ~(NFS_INO_INVALID_CHANGE
+ 				| NFS_INO_INVALID_SIZE
+ 				| NFS_INO_INVALID_XATTR);
+@@ -554,7 +555,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
+ 		if (fattr->valid & NFS_ATTR_FATTR_NLINK)
+ 			set_nlink(inode, fattr->nlink);
+ 		else if (nfs_server_capable(inode, NFS_CAP_NLINK))
+-			nfs_set_cache_invalid(inode, NFS_INO_INVALID_OTHER);
++			nfs_set_cache_invalid(inode, NFS_INO_INVALID_NLINK);
+ 		if (fattr->valid & NFS_ATTR_FATTR_OWNER)
+ 			inode->i_uid = fattr->uid;
+ 		else if (nfs_server_capable(inode, NFS_CAP_OWNER))
+@@ -811,8 +812,10 @@ static u32 nfs_get_valid_attrmask(struct inode *inode)
+ 		reply_mask |= STATX_MTIME;
+ 	if (!(cache_validity & NFS_INO_INVALID_SIZE))
+ 		reply_mask |= STATX_SIZE;
++	if (!(cache_validity & NFS_INO_INVALID_NLINK))
++		reply_mask |= STATX_NLINK;
+ 	if (!(cache_validity & NFS_INO_INVALID_OTHER))
+-		reply_mask |= STATX_UID | STATX_GID | STATX_MODE | STATX_NLINK;
++		reply_mask |= STATX_UID | STATX_GID | STATX_MODE;
+ 	if (!(cache_validity & NFS_INO_INVALID_BLOCKS))
+ 		reply_mask |= STATX_BLOCKS;
+ 	return reply_mask;
+@@ -878,7 +881,9 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 		do_update |= cache_validity & NFS_INO_INVALID_MTIME;
+ 	if (request_mask & STATX_SIZE)
+ 		do_update |= cache_validity & NFS_INO_INVALID_SIZE;
+-	if (request_mask & (STATX_UID | STATX_GID | STATX_MODE | STATX_NLINK))
++	if (request_mask & STATX_NLINK)
++		do_update |= cache_validity & NFS_INO_INVALID_NLINK;
++	if (request_mask & (STATX_UID | STATX_GID | STATX_MODE))
+ 		do_update |= cache_validity & NFS_INO_INVALID_OTHER;
+ 	if (request_mask & STATX_BLOCKS)
+ 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+@@ -1528,7 +1533,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
  
- 	if (!(ctx->mode & FMODE_WRITE))
- 		return;
-@@ -1014,10 +1003,10 @@ void nfs_close_context(struct nfs_open_context *ctx, int is_sync)
- 		return;
- 	if (!list_empty(&nfsi->open_files))
- 		return;
--	server = NFS_SERVER(inode);
--	if (server->flags & NFS_MOUNT_NOCTO)
-+	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NOCTO)
- 		return;
--	nfs_revalidate_inode(server, inode);
-+	nfs_revalidate_inode(inode,
-+			     NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_SIZE);
- }
- EXPORT_SYMBOL_GPL(nfs_close_context);
+ 	/* Has the link count changed? */
+ 	if ((fattr->valid & NFS_ATTR_FATTR_NLINK) && inode->i_nlink != fattr->nlink)
+-		invalid |= NFS_INO_INVALID_OTHER;
++		invalid |= NFS_INO_INVALID_NLINK;
  
-@@ -1272,16 +1261,16 @@ int nfs_attribute_cache_expired(struct inode *inode)
- 
- /**
-  * nfs_revalidate_inode - Revalidate the inode attributes
-- * @server: pointer to nfs_server struct
-  * @inode: pointer to inode struct
-+ * @flags: cache flags to check
-  *
-  * Updates inode attribute information by retrieving the data from the server.
-  */
--int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
-+int nfs_revalidate_inode(struct inode *inode, unsigned long flags)
- {
--	if (!nfs_need_revalidate_inode(inode))
-+	if (!nfs_check_cache_invalid(inode, flags))
- 		return NFS_STALE(inode) ? -ESTALE : 0;
--	return __nfs_revalidate_inode(server, inode);
-+	return __nfs_revalidate_inode(NFS_SERVER(inode), inode);
- }
- EXPORT_SYMBOL_GPL(nfs_revalidate_inode);
- 
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index bb386a691e69..9ec560aa4a50 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -65,7 +65,7 @@ struct posix_acl *nfs3_get_acl(struct inode *inode, int type)
- 	if (!nfs_server_capable(inode, NFS_CAP_ACLS))
- 		return ERR_PTR(-EOPNOTSUPP);
- 
--	status = nfs_revalidate_inode(server, inode);
-+	status = nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
- 	if (status < 0)
- 		return ERR_PTR(status);
- 
+ 	ts = inode->i_atime;
+ 	if ((fattr->valid & NFS_ATTR_FATTR_ATIME) && !timespec64_equal(&ts, &fattr->atime))
+@@ -1952,6 +1957,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 					| NFS_INO_INVALID_MTIME
+ 					| NFS_INO_INVALID_SIZE
+ 					| NFS_INO_INVALID_BLOCKS
++					| NFS_INO_INVALID_NLINK
+ 					| NFS_INO_INVALID_OTHER;
+ 				if (S_ISDIR(inode->i_mode))
+ 					nfs_force_lookup_revalidate(inode);
+@@ -2084,7 +2090,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		}
+ 	} else if (server->caps & NFS_CAP_NLINK) {
+ 		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_OTHER
++				(NFS_INO_INVALID_NLINK
+ 				| NFS_INO_REVAL_FORCED);
+ 		cache_revalidated = false;
+ 	}
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index cfd13cca91cf..b53c312fc982 100644
+index 64b3438aed78..d0ca1d51be33 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -5871,7 +5871,7 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+@@ -1170,14 +1170,14 @@ int nfs4_call_sync(struct rpc_clnt *clnt,
+ static void
+ nfs4_inc_nlink_locked(struct inode *inode)
+ {
+-	nfs_set_cache_invalid(inode, NFS_INO_INVALID_OTHER);
++	nfs_set_cache_invalid(inode, NFS_INO_INVALID_NLINK);
+ 	inc_nlink(inode);
+ }
  
- 	if (!nfs4_server_supports_acls(server))
- 		return -EOPNOTSUPP;
--	ret = nfs_revalidate_inode(server, inode);
-+	ret = nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
- 	if (ret < 0)
- 		return ret;
- 	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
-@@ -7622,7 +7622,7 @@ static int nfs4_xattr_get_nfs4_user(const struct xattr_handler *handler,
- 			return -EACCES;
- 	}
+ static void
+ nfs4_dec_nlink_locked(struct inode *inode)
+ {
+-	nfs_set_cache_invalid(inode, NFS_INO_INVALID_OTHER);
++	nfs_set_cache_invalid(inode, NFS_INO_INVALID_NLINK);
+ 	drop_nlink(inode);
+ }
  
--	ret = nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+	ret = nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
- 	if (ret)
- 		return ret;
+@@ -4719,11 +4719,11 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
+ 			/* Note: If we moved a directory, nlink will change */
+ 			nfs4_update_changeattr(old_dir, &res->old_cinfo,
+ 					res->old_fattr->time_start,
+-					NFS_INO_INVALID_OTHER |
++					NFS_INO_INVALID_NLINK |
+ 					    NFS_INO_INVALID_DATA);
+ 			nfs4_update_changeattr(new_dir, &res->new_cinfo,
+ 					res->new_fattr->time_start,
+-					NFS_INO_INVALID_OTHER |
++					NFS_INO_INVALID_NLINK |
+ 					    NFS_INO_INVALID_DATA);
+ 		} else
+ 			nfs4_update_changeattr(old_dir, &res->old_cinfo,
+@@ -5433,8 +5433,9 @@ static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ], const __u32 *src,
+ 		bitmask[1] |= FATTR4_WORD1_TIME_ACCESS;
+ 	if (cache_validity & NFS_INO_INVALID_OTHER)
+ 		bitmask[1] |= FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER |
+-				FATTR4_WORD1_OWNER_GROUP |
+-				FATTR4_WORD1_NUMLINKS;
++				FATTR4_WORD1_OWNER_GROUP;
++	if (cache_validity & NFS_INO_INVALID_NLINK)
++		bitmask[1] |= FATTR4_WORD1_NUMLINKS;
+ 	if (label && label->len && cache_validity & NFS_INO_INVALID_LABEL)
+ 		bitmask[2] |= FATTR4_WORD2_SECURITY_LABEL;
+ 	if (cache_validity & NFS_INO_INVALID_CTIME)
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index cdba6eebe3cb..a0ebc53160dd 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -48,6 +48,7 @@ TRACE_DEFINE_ENUM(NFS_INO_INVALID_OTHER);
+ TRACE_DEFINE_ENUM(NFS_INO_DATA_INVAL_DEFER);
+ TRACE_DEFINE_ENUM(NFS_INO_INVALID_BLOCKS);
+ TRACE_DEFINE_ENUM(NFS_INO_INVALID_XATTR);
++TRACE_DEFINE_ENUM(NFS_INO_INVALID_NLINK);
  
-@@ -7653,7 +7653,7 @@ nfs4_listxattr_nfs4_user(struct inode *inode, char *list, size_t list_len)
- 			return 0;
- 	}
+ #define nfs_show_cache_validity(v) \
+ 	__print_flags(v, "|", \
+@@ -65,7 +66,8 @@ TRACE_DEFINE_ENUM(NFS_INO_INVALID_XATTR);
+ 			{ NFS_INO_INVALID_OTHER, "INVALID_OTHER" }, \
+ 			{ NFS_INO_DATA_INVAL_DEFER, "DATA_INVAL_DEFER" }, \
+ 			{ NFS_INO_INVALID_BLOCKS, "INVALID_BLOCKS" }, \
+-			{ NFS_INO_INVALID_XATTR, "INVALID_XATTR" })
++			{ NFS_INO_INVALID_XATTR, "INVALID_XATTR" }, \
++			{ NFS_INO_INVALID_NLINK, "INVALID_NLINK" })
  
--	ret = nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+	ret = nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
- 	if (ret)
- 		return ret;
- 
+ TRACE_DEFINE_ENUM(NFS_INO_ADVISE_RDPLUS);
+ TRACE_DEFINE_ENUM(NFS_INO_STALE);
 diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index eadaabd18dc7..624ffd47a9d4 100644
+index 624ffd47a9d4..41165b988dfb 100644
 --- a/include/linux/nfs_fs.h
 +++ b/include/linux/nfs_fs.h
-@@ -386,7 +386,7 @@ extern void nfs_access_set_mask(struct nfs_access_entry *, u32);
- extern int nfs_permission(struct user_namespace *, struct inode *, int);
- extern int nfs_open(struct inode *, struct file *);
- extern int nfs_attribute_cache_expired(struct inode *inode);
--extern int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode);
-+extern int nfs_revalidate_inode(struct inode *inode, unsigned long flags);
- extern int __nfs_revalidate_inode(struct nfs_server *, struct inode *);
- extern int nfs_clear_invalid_mapping(struct address_space *mapping);
- extern bool nfs_mapping_need_revalidate_inode(struct inode *inode);
+@@ -246,11 +246,13 @@ struct nfs4_copy_state {
+ 				BIT(13)		/* Deferred cache invalidation */
+ #define NFS_INO_INVALID_BLOCKS	BIT(14)         /* cached blocks are invalid */
+ #define NFS_INO_INVALID_XATTR	BIT(15)		/* xattrs are invalid */
++#define NFS_INO_INVALID_NLINK	BIT(16)		/* cached nlinks is invalid */
+ 
+ #define NFS_INO_INVALID_ATTR	(NFS_INO_INVALID_CHANGE \
+ 		| NFS_INO_INVALID_CTIME \
+ 		| NFS_INO_INVALID_MTIME \
+ 		| NFS_INO_INVALID_SIZE \
++		| NFS_INO_INVALID_NLINK \
+ 		| NFS_INO_INVALID_OTHER)	/* inode metadata is invalid */
+ 
+ /*
 -- 
 2.30.2
 
