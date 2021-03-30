@@ -2,45 +2,47 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-16.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 793A9C433E2
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59758C433C1
 	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 32EC361997
+	by mail.kernel.org (Postfix) with ESMTP id 1A824619AE
 	for <linux-nfs@archiver.kernel.org>; Tue, 30 Mar 2021 00:19:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229630AbhC3ATM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Mar 2021 20:19:12 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50360 "EHLO mail.kernel.org"
+        id S229656AbhC3ATN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Mar 2021 20:19:13 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50364 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229656AbhC3ASk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Mar 2021 20:18:40 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 935A661996
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:39 +0000 (UTC)
+        id S229763AbhC3ASl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 29 Mar 2021 20:18:41 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1D25A61985
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Mar 2021 00:18:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617063519;
-        bh=sKgXKWMaferrfB6lSm0CMcZnwhLSUOM7E2zrhQfQOmY=;
+        s=k20201202; t=1617063521;
+        bh=YMkKdjIqZ+UcrLWPBS4GKFp/4y3/49NdX+nTfAZKSDA=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=MxwYrWFGb6KczU6raDG3S/HaPz7p4GJ/FTeBtVECVLI9wIvaf+pZx3OwglcbBs6jC
-         ulugLQB1b9DkERcBs6NMYa8zXejKJydp+kszZ4bW7k+3Yxjrjv54QFIUzhEqIqSAu6
-         XFRD5R5F9c1tcT70IorbuFnKNwVWK5NANBj9gntx+C6ZUiZj3ZKvCpud+FwIuXZ+pg
-         c7AMgGwNWccWeIIh9whY+h1OYY+NPIyGc4ClfvQfYE6kj+hnhe+IuhDZC9ara35Afs
-         gGbVLVSsm8w8EVAPQf00oOsopVHxBKBweZR5PvC9djOSghINSsoEBn4VNJvXfwzhHo
-         Qp6cGln/5VC2Q==
+        b=fvHxFLJ6jFSHlE7f+YEg+33kdEDryb8CvnYp6EyyivPAkkNKEcVgpTDN0UYYxi14B
+         +4w3ZX3rq22ZPh0GdKGx+Lr1gfy39zR49LMRU8H8AmJPwRhdiYl97NyjXN7dms4L84
+         06PYX/CZGHmBngVzW3UfuXNI6jbR9YxjtMp3T5Um9Be0vYWl53MovlPRTHz42UHfUS
+         9j6vs0dcupeyVsarapVaUSKBjBFNWzWReVwLj//s2autaycpwSmmFkrTd43Ql2+S9l
+         AWADwWcwv1gccCs2SxMKdpIidofm+Nckh+lLryRJGG52XQzU0yPnelMAwHTpJC/zrC
+         gaTK+XEvo5ZPQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 03/17] NFS: Mask out unsupported attributes in nfs_getattr()
-Date:   Mon, 29 Mar 2021 20:18:21 -0400
-Message-Id: <20210330001835.41914-4-trondmy@kernel.org>
+Subject: [PATCH 05/17] NFS: Fix up revalidation of space used
+Date:   Mon, 29 Mar 2021 20:18:23 -0400
+Message-Id: <20210330001835.41914-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210330001835.41914-3-trondmy@kernel.org>
+In-Reply-To: <20210330001835.41914-5-trondmy@kernel.org>
 References: <20210330001835.41914-1-trondmy@kernel.org>
  <20210330001835.41914-2-trondmy@kernel.org>
  <20210330001835.41914-3-trondmy@kernel.org>
+ <20210330001835.41914-4-trondmy@kernel.org>
+ <20210330001835.41914-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -49,29 +51,65 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-We don't currently support STATX_BTIME, so don't advertise it in the
-return values for nfs_getattr().
+Ensure that when the change attribute or the size change, we also
+remember to revalidate the space used.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/nfs/inode.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 8de5b3b9da91..93f487c15663 100644
+index f0c983151f3c..138d0998fd91 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -815,6 +815,10 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+@@ -565,12 +565,13 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_XATTR);
+ 		if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
+ 			inode->i_blocks = fattr->du.nfs2.blocks;
+-		if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
++		else if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
+ 			/*
+ 			 * report the blocks in 512byte units
+ 			 */
+ 			inode->i_blocks = nfs_calc_block_size(fattr->du.nfs3.used);
+-		}
++		} else if (fattr->size != 0)
++			nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
  
- 	trace_nfs_getattr_enter(inode);
- 
-+	request_mask &= ~(STATX_TYPE | STATX_MODE | STATX_NLINK | STATX_UID |
-+			  STATX_GID | STATX_ATIME | STATX_MTIME | STATX_CTIME |
-+			  STATX_INO | STATX_SIZE | STATX_BLOCKS);
-+
- 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
- 		nfs_readdirplus_parent_cache_hit(path->dentry);
- 		goto out_no_update;
+ 		if (nfsi->cache_validity != 0)
+ 			nfsi->cache_validity |= NFS_INO_REVAL_FORCED;
+@@ -711,7 +712,8 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
+ 	spin_lock(&inode->i_lock);
+ 	NFS_I(inode)->attr_gencount = fattr->gencount;
+ 	if ((attr->ia_valid & ATTR_SIZE) != 0) {
+-		nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
++		nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME |
++						     NFS_INO_INVALID_BLOCKS);
+ 		nfs_inc_stats(inode, NFSIOS_SETATTRTRUNC);
+ 		nfs_vmtruncate(inode, attr->ia_size);
+ 	}
+@@ -1933,6 +1935,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 				save_cache_validity |= NFS_INO_INVALID_CTIME
+ 					| NFS_INO_INVALID_MTIME
+ 					| NFS_INO_INVALID_SIZE
++					| NFS_INO_INVALID_BLOCKS
+ 					| NFS_INO_INVALID_OTHER;
+ 				if (S_ISDIR(inode->i_mode))
+ 					nfs_force_lookup_revalidate(inode);
+@@ -1990,6 +1993,12 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 					(long long)cur_isize,
+ 					(long long)new_isize);
+ 		}
++		if (new_isize == 0 &&
++		    !(fattr->valid & (NFS_ATTR_FATTR_SPACE_USED |
++				      NFS_ATTR_FATTR_BLOCKS_USED))) {
++			fattr->du.nfs3.used = 0;
++			fattr->valid |= NFS_ATTR_FATTR_SPACE_USED;
++		}
+ 	} else {
+ 		nfsi->cache_validity |= save_cache_validity &
+ 				(NFS_INO_INVALID_SIZE
 -- 
 2.30.2
 
