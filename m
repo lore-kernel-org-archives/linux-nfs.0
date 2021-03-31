@@ -2,119 +2,87 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.3 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 518DAC433B4
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 20:00:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DEA39C43462
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 20:03:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0D60861057
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 20:00:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 91CCE6105A
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 20:03:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236177AbhCaT77 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 Mar 2021 15:59:59 -0400
-Received: from p3plsmtpa06-05.prod.phx3.secureserver.net ([173.201.192.106]:56637
-        "EHLO p3plsmtpa06-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S235928AbhCaT7g (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Mar 2021 15:59:36 -0400
-Received: from [192.168.0.116] ([71.184.94.153])
-        by :SMTPAUTH: with ESMTPSA
-        id Rh03lkYVn3MqERh03lWTBA; Wed, 31 Mar 2021 12:59:36 -0700
-X-CMAE-Analysis: v=2.4 cv=Ztool/3G c=1 sm=1 tr=0 ts=6064d4a8
- a=vbvdVb1zh1xTTaY8rfQfKQ==:117 a=vbvdVb1zh1xTTaY8rfQfKQ==:17
- a=IkcTkHD0fZMA:10 a=VwQbUJbxAAAA:8 a=yPCof4ZbAAAA:8 a=-yyDqTV712QqOYf6p0kA:9
- a=QEXdDO2ut3YA:10 a=AjGcO6oz07-iQ99wixmX:22
-X-SECURESERVER-ACCT: tom@talpey.com
-Subject: Re: [PATCH v1 2/8] xprtrdma: Do not post Receives after disconnect
-To:     Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-References: <161721926778.515226.9805598788670386587.stgit@manet.1015granger.net>
- <161721937122.515226.14731175629421422152.stgit@manet.1015granger.net>
-From:   Tom Talpey <tom@talpey.com>
-Message-ID: <4004f56f-3603-f56c-aea9-651230b3181e@talpey.com>
-Date:   Wed, 31 Mar 2021 15:59:35 -0400
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101
- Thunderbird/68.12.1
+        id S235933AbhCaUDS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Mar 2021 16:03:18 -0400
+Received: from mail.kernel.org ([198.145.29.99]:51158 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S236346AbhCaUDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Mar 2021 16:03:10 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 91A5B6105A;
+        Wed, 31 Mar 2021 20:03:09 +0000 (UTC)
+Subject: [PATCH v2] SUNRPC: Remove trace_xprt_transmit_queued
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     trondmy@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Date:   Wed, 31 Mar 2021 16:03:08 -0400
+Message-ID: <161722098849.517262.13413717161456033651.stgit@manet.1015granger.net>
+User-Agent: StGit/0.23-29-ga622f1
 MIME-Version: 1.0
-In-Reply-To: <161721937122.515226.14731175629421422152.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4xfHL4QpGp8w02/M/TI+jzRUynLsI47otmVQAFtqp87BK+CacGBmd9OajTNo90p6cZLh/QbA1DGuYmngU0S/m4h2hl5yBB08qb4+kJHNeU5JdWRed6STrT
- ZxNafpbaGmfRyaZ2r8Sa8QLL4lksXNVQYIoLMioNIVmSyqyssP2p/ZZNNE6gXaDrYVT6CUTMpD3L3DAK9JDF3mgbFm3PXKQebt5mbXcMhL54p1f4xuFbomuA
- 14WuRFBCDoLCqyXznCDfqkxT7EHnxH90SehJKYMvloo=
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 3/31/2021 3:36 PM, Chuck Lever wrote:
-> Currently the Receive completion handler refreshes the Receive Queue
-> whenever a successful Receive completion occurs.
-> 
-> On disconnect, xprtrdma drains the Receive Queue. The first few
-> Receive completions after a disconnect are typically successful,
-> until the first flushed Receive.
-> 
-> This means the Receive completion handler continues to post more
-> Receive WRs after the drain sentinel has been posted. The late-
-> posted Receives flush after the drain sentinel has completed,
-> leading to a crash later in rpcrdma_xprt_disconnect().
-> 
-> To prevent this crash, xprtrdma has to ensure that the Receive
-> handler stops posting Receives before ib_drain_rq() posts its
-> drain sentinel.
-> 
-> This patch is probably not sufficient to fully close that window,
+This tracepoint can crash when dereferencing snd_task because
+when some transports connect, they put a cookie in that field
+instead of a pointer to an rpc_task.
 
-"Probably" is not a word I'd like to use in a stable:cc...
+BUG: KASAN: use-after-free in trace_event_raw_event_xprt_writelock_event+0x141/0x18e [sunrpc]
+Read of size 2 at addr ffff8881a83bd3a0 by task git/331872
 
-> but does significantly reduce the opportunity for a crash to
-> occur without incurring undue performance overhead.
-> 
-> Cc: stable@vger.kernel.org # v5.7
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->   net/sunrpc/xprtrdma/verbs.c |    7 +++++++
->   1 file changed, 7 insertions(+)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index ec912cf9c618..1d88685badbe 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -1371,8 +1371,10 @@ void rpcrdma_post_recvs(struct rpcrdma_xprt *r_xprt, bool temp)
->   {
->   	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
->   	struct rpcrdma_ep *ep = r_xprt->rx_ep;
-> +	struct ib_qp_init_attr init_attr;
->   	struct ib_recv_wr *wr, *bad_wr;
->   	struct rpcrdma_rep *rep;
-> +	struct ib_qp_attr attr;
->   	int needed, count, rc;
->   
->   	rc = 0;
-> @@ -1385,6 +1387,11 @@ void rpcrdma_post_recvs(struct rpcrdma_xprt *r_xprt, bool temp)
->   	if (!temp)
->   		needed += RPCRDMA_MAX_RECV_BATCH;
->   
-> +	if (ib_query_qp(ep->re_id->qp, &attr, IB_QP_STATE, &init_attr))
-> +		goto out;
+CPU: 11 PID: 331872 Comm: git Tainted: G S                5.12.0-rc2-00007-g3ab6e585a7f9 #1453
+Hardware name: Supermicro SYS-6028R-T/X10DRi, BIOS 1.1a 10/16/2015
+Call Trace:
+ dump_stack+0x9c/0xcf
+ print_address_description.constprop.0+0x18/0x239
+ kasan_report+0x174/0x1b0
+ trace_event_raw_event_xprt_writelock_event+0x141/0x18e [sunrpc]
+ xprt_prepare_transmit+0x8e/0xc1 [sunrpc]
+ call_transmit+0x4d/0xc6 [sunrpc]
 
-This call isn't completely cheap.
+Fixes: 9ce07ae5eb1d ("SUNRPC: Replace dprintk() call site in xprt_prepare_transmit")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ include/trace/events/sunrpc.h |    1 -
+ net/sunrpc/xprt.c             |    2 --
+ 2 files changed, 3 deletions(-)
 
-> +	if (attr.qp_state == IB_QPS_ERR)
-> +		goto out;
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 036eb1f5c133..2f01314de73a 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -1141,7 +1141,6 @@ DECLARE_EVENT_CLASS(xprt_writelock_event,
+ 
+ DEFINE_WRITELOCK_EVENT(reserve_xprt);
+ DEFINE_WRITELOCK_EVENT(release_xprt);
+-DEFINE_WRITELOCK_EVENT(transmit_queued);
+ 
+ DECLARE_EVENT_CLASS(xprt_cong_event,
+ 	TP_PROTO(
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index d616b93751d8..11ebe8a127b8 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1469,8 +1469,6 @@ bool xprt_prepare_transmit(struct rpc_task *task)
+ 	struct rpc_xprt	*xprt = req->rq_xprt;
+ 
+ 	if (!xprt_lock_write(xprt, task)) {
+-		trace_xprt_transmit_queued(xprt, task);
+-
+ 		/* Race breaker: someone may have transmitted us */
+ 		if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
+ 			rpc_wake_up_queued_task_set_status(&xprt->sending,
 
-But the QP is free to disconnect or go to error right now. This approach
-just reduces the timing hole. Is it not possible to mark the WRs as
-being part of a batch, and allowing them to flush? You could borrow a
-bit in the completion cookie, and check it when the CQE pops out. Maybe.
 
-> +
->   	/* fast path: all needed reps can be found on the free list */
->   	wr = NULL;
->   	while (needed) {
-> 
-> 
-> 
