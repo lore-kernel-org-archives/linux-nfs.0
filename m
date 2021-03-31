@@ -4,29 +4,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6CCAC43616
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 19:37:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 186B0C43618
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 19:37:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9A10161073
+	by mail.kernel.org (Postfix) with ESMTP id EDA5C6105A
 	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 19:37:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236228AbhCaTg2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S236157AbhCaTg2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 31 Mar 2021 15:36:28 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44502 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:44448 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S236084AbhCaTgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 Mar 2021 15:36:24 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 2EC1C61056;
-        Wed, 31 Mar 2021 19:36:24 +0000 (UTC)
-Subject: [PATCH v1 4/8] xprtrdma: Improve locking around rpcrdma_rep
- destruction
+        id S235991AbhCaTgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Mar 2021 15:36:12 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 02A566100C;
+        Wed, 31 Mar 2021 19:36:11 +0000 (UTC)
+Subject: [PATCH v1 2/8] xprtrdma: Do not post Receives after disconnect
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 31 Mar 2021 15:36:23 -0400
-Message-ID: <161721938342.515226.14847295549827213112.stgit@manet.1015granger.net>
+Date:   Wed, 31 Mar 2021 15:36:11 -0400
+Message-ID: <161721937122.515226.14731175629421422152.stgit@manet.1015granger.net>
 In-Reply-To: <161721926778.515226.9805598788670386587.stgit@manet.1015granger.net>
 References: <161721926778.515226.9805598788670386587.stgit@manet.1015granger.net>
 User-Agent: StGit/0.23-29-ga622f1
@@ -37,75 +36,58 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Currently rpcrdma_reps_destroy() assumes that, at transport
-tear-down, the content of the rb_free_reps list is the same as the
-content of the rb_all_reps list. Although that is usually true,
-using the rb_all_reps list should be more reliable because of
-the way it's managed. And, rpcrdma_reps_unmap() uses rb_all_reps;
-these two should both traverse the "all" list.
+Currently the Receive completion handler refreshes the Receive Queue
+whenever a successful Receive completion occurs.
 
-Instead, ensure that all rpcrdma_reps are always destroyed whether
-they are on the rep free list or not. Also ensure that rpcrdma_rep
-destruction logic is protected by the rb_lock.
+On disconnect, xprtrdma drains the Receive Queue. The first few
+Receive completions after a disconnect are typically successful,
+until the first flushed Receive.
 
+This means the Receive completion handler continues to post more
+Receive WRs after the drain sentinel has been posted. The late-
+posted Receives flush after the drain sentinel has completed,
+leading to a crash later in rpcrdma_xprt_disconnect().
+
+To prevent this crash, xprtrdma has to ensure that the Receive
+handler stops posting Receives before ib_drain_rq() posts its
+drain sentinel.
+
+This patch is probably not sufficient to fully close that window,
+but does significantly reduce the opportunity for a crash to
+occur without incurring undue performance overhead.
+
+Cc: stable@vger.kernel.org # v5.7
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   31 ++++++++++++++++++++++++-------
- 1 file changed, 24 insertions(+), 7 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 92af272f9cc9..fe250d554695 100644
+index ec912cf9c618..1d88685badbe 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1000,16 +1000,23 @@ struct rpcrdma_rep *rpcrdma_rep_create(struct rpcrdma_xprt *r_xprt,
- 	return NULL;
- }
- 
--/* No locking needed here. This function is invoked only by the
-- * Receive completion handler, or during transport shutdown.
-- */
--static void rpcrdma_rep_destroy(struct rpcrdma_rep *rep)
-+static void rpcrdma_rep_destroy_locked(struct rpcrdma_rep *rep)
+@@ -1371,8 +1371,10 @@ void rpcrdma_post_recvs(struct rpcrdma_xprt *r_xprt, bool temp)
  {
--	list_del(&rep->rr_all);
- 	rpcrdma_regbuf_free(rep->rr_rdmabuf);
- 	kfree(rep);
- }
- 
-+static void rpcrdma_rep_destroy(struct rpcrdma_rep *rep)
-+{
-+	struct rpcrdma_buffer *buf = &rep->rr_rxprt->rx_buf;
-+
-+	spin_lock(&buf->rb_lock);
-+	list_del(&rep->rr_all);
-+	spin_unlock(&buf->rb_lock);
-+
-+	rpcrdma_rep_destroy_locked(rep);
-+}
-+
- static struct rpcrdma_rep *rpcrdma_rep_get_locked(struct rpcrdma_buffer *buf)
- {
- 	struct llist_node *node;
-@@ -1042,8 +1049,18 @@ static void rpcrdma_reps_destroy(struct rpcrdma_buffer *buf)
- {
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct rpcrdma_ep *ep = r_xprt->rx_ep;
++	struct ib_qp_init_attr init_attr;
+ 	struct ib_recv_wr *wr, *bad_wr;
  	struct rpcrdma_rep *rep;
++	struct ib_qp_attr attr;
+ 	int needed, count, rc;
  
--	while ((rep = rpcrdma_rep_get_locked(buf)) != NULL)
--		rpcrdma_rep_destroy(rep);
-+	spin_lock(&buf->rb_lock);
-+	while ((rep = list_first_entry_or_null(&buf->rb_all_reps,
-+					       struct rpcrdma_rep,
-+					       rr_all)) != NULL) {
-+		list_del(&rep->rr_all);
-+		spin_unlock(&buf->rb_lock);
-+
-+		rpcrdma_rep_destroy_locked(rep);
-+
-+		spin_lock(&buf->rb_lock);
-+	}
-+	spin_unlock(&buf->rb_lock);
- }
+ 	rc = 0;
+@@ -1385,6 +1387,11 @@ void rpcrdma_post_recvs(struct rpcrdma_xprt *r_xprt, bool temp)
+ 	if (!temp)
+ 		needed += RPCRDMA_MAX_RECV_BATCH;
  
- /**
++	if (ib_query_qp(ep->re_id->qp, &attr, IB_QP_STATE, &init_attr))
++		goto out;
++	if (attr.qp_state == IB_QPS_ERR)
++		goto out;
++
+ 	/* fast path: all needed reps can be found on the free list */
+ 	wr = NULL;
+ 	while (needed) {
 
 
