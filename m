@@ -2,123 +2,156 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BB69C433ED
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 17:23:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62500C433B4
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 17:50:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DEE5A60551
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 17:23:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2B75160FE3
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Mar 2021 17:50:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233610AbhCaRW4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 Mar 2021 13:22:56 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36394 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233867AbhCaRWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 Mar 2021 13:22:22 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C977861042;
-        Wed, 31 Mar 2021 17:22:21 +0000 (UTC)
-Subject: [PATCH 2/3] SUNRPC: Fix trace_xprt_transmit_queued()
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     trondmy@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Date:   Wed, 31 Mar 2021 13:22:20 -0400
-Message-ID: <161721134086.515091.16531400209127881709.stgit@manet.1015granger.net>
-In-Reply-To: <161721133412.515091.3634995666026759187.stgit@manet.1015granger.net>
-References: <161721133412.515091.3634995666026759187.stgit@manet.1015granger.net>
-User-Agent: StGit/0.23-29-ga622f1
+        id S229615AbhCaRuK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Mar 2021 13:50:10 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:48126 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S233900AbhCaRuF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Mar 2021 13:50:05 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1617213005;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type;
+        bh=1kLRw3PLsW5h2WLyoKl9ALHfqtN3vklo6I6SGpMLWpo=;
+        b=Wm/xxBnTB5xjJJ8Iiku2Ikxxx3DmMubhlKOANI9bAm7OMGbuMj5Jg7QgC6QTtgIw8c2HM7
+        sf+lp9hEllA9GCo4zbMqeSSbpnPzSvCyFih0uGd8koWplYjYN9Jirt+bINkk9NNCYwqIuu
+        aAkb54Dg2wMPQBsQvdrIG+MG7JhGlM0=
+Received: from mail-yb1-f199.google.com (mail-yb1-f199.google.com
+ [209.85.219.199]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-62-1nFT-Y0eOES6oPpngc6uFw-1; Wed, 31 Mar 2021 13:50:03 -0400
+X-MC-Unique: 1nFT-Y0eOES6oPpngc6uFw-1
+Received: by mail-yb1-f199.google.com with SMTP id u128so3047359ybf.12
+        for <linux-nfs@vger.kernel.org>; Wed, 31 Mar 2021 10:50:03 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to:cc;
+        bh=1kLRw3PLsW5h2WLyoKl9ALHfqtN3vklo6I6SGpMLWpo=;
+        b=n+9UiWHAPl7OBOUoEdgnAbDDFeHcZj868PYsCYOY2b4ZGaNx7cfFDFODmGSkk+fVDQ
+         0AR8VJ39Razdmn8I3iwPCI0At20+Vz2Jl133O4SzyJnj/uwGT9AJDjMm5KXCiSeQGVLc
+         Qn7qLAo7gKPg9KxHmh46U9HPmsSDRMxIZZ8a8lva41s7ibcVGh9Pnrc42OLfXIprrgDO
+         RjTQdyWgJlUloAbG1vc+61nu/6C9DCJnHvqNTKaN13d9gx5m8O4BOgzTvlMgML/kuJrZ
+         s1ZGTJgKPpk2p4eYnauYaqKoWLPjs4NWUIXP8xO/Gr8ayO9CM/SJdrJXBWICqqhfc39A
+         /eMw==
+X-Gm-Message-State: AOAM533Kmeoe/vh5MT7m2KAyzVbakvNTin3ifgOp5DtoV7nnPFAZai/1
+        Uarj+L5jt5C9/lZk6pXAzxyE0LUj/O9EZPMPjhWRQmQOs9r3yNA2WhJ6v47WbCywxyhgE2UmQwO
+        7A9VmESoDmNDU2VDveuh1NZnb8Gf1rlvSjFX9
+X-Received: by 2002:a25:d40f:: with SMTP id m15mr5841197ybf.30.1617213002496;
+        Wed, 31 Mar 2021 10:50:02 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJyNet8v/Z6XZGlCvX6wU20t/Gjjzzp/DyLUUT75mZgL9j8F20j4EuzDm7mU3r1Hmo/uhROuQpDBeV8ZzNw9ELU=
+X-Received: by 2002:a25:d40f:: with SMTP id m15mr5841178ybf.30.1617213002245;
+ Wed, 31 Mar 2021 10:50:02 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+From:   David Wysochanski <dwysocha@redhat.com>
+Date:   Wed, 31 Mar 2021 13:49:26 -0400
+Message-ID: <CALF+zOnCisFWTubWEHhTLpt6=CUb7n86YvrNX3nreCYS73_v_Q@mail.gmail.com>
+Subject: RFC: Approaches to resolve netfs API interface to NFS multiple
+ completions problem
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     David Howells <dhowells@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This tracepoint can crash when dereferencing snd_task because
-when some transports connect, they put a cookie in that field
-instead of a pointer to an rpc_task.
+Trond,
 
-BUG: KASAN: use-after-free in trace_event_raw_event_xprt_writelock_event+0x141/0x18e [sunrpc]
-Read of size 2 at addr ffff8881a83bd3a0 by task git/331872
+I've been working on getting NFS converted to dhowells new fscache and
+netfs APIs and running into a problem with how NFS is designed and it
+involves the NFS pagelist.c / pgio API.  I'd appreciate it if you
+could review and give your thoughts on possible approaches.  I've
+tried to outline some of the possibilities below.  I tried coding
+option #3 and ran into some problems, and it has a serialization
+limitation.  At this point I'm leaning towards option 2, so I'll
+probably try that approach if you don't have time for review or have
+strong thoughts on it.
 
-CPU: 11 PID: 331872 Comm: git Tainted: G S                5.12.0-rc2-00007-g3ab6e585a7f9 #1453
-Hardware name: Supermicro SYS-6028R-T/X10DRi, BIOS 1.1a 10/16/2015
-Call Trace:
- dump_stack+0x9c/0xcf
- print_address_description.constprop.0+0x18/0x239
- kasan_report+0x174/0x1b0
- trace_event_raw_event_xprt_writelock_event+0x141/0x18e [sunrpc]
- xprt_prepare_transmit+0x8e/0xc1 [sunrpc]
- call_transmit+0x4d/0xc6 [sunrpc]
+Thanks.
 
-Fixes: 9ce07ae5eb1d ("SUNRPC: Replace dprintk() call site in xprt_prepare_transmit")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/trace/events/sunrpc.h |   35 ++++++++++++++++++++++++++++++++++-
- net/sunrpc/xprt.c             |    2 +-
- 2 files changed, 35 insertions(+), 2 deletions(-)
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 036eb1f5c133..690988530d60 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -1141,7 +1141,40 @@ DECLARE_EVENT_CLASS(xprt_writelock_event,
- 
- DEFINE_WRITELOCK_EVENT(reserve_xprt);
- DEFINE_WRITELOCK_EVENT(release_xprt);
--DEFINE_WRITELOCK_EVENT(transmit_queued);
-+
-+TRACE_EVENT(xprt_transmit_queued,
-+	TP_PROTO(
-+		const struct rpc_task *task
-+	),
-+
-+	TP_ARGS(task),
-+
-+	TP_STRUCT__entry(
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
-+		__field(unsigned long, runstate)
-+		__field(u32, xid)
-+		__field(int, status)
-+		__field(unsigned short, flags)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task_id = task->tk_pid;
-+		__entry->client_id =
-+			task->tk_client ? task->tk_client->cl_clid : -1;
-+		__entry->runstate = task->tk_runstate;
-+		__entry->xid = be32_to_cpu(task->tk_rqstp->rq_xid);
-+		__entry->status = task->tk_status;
-+		__entry->flags = task->tk_flags;
-+	),
-+
-+	TP_printk("task:%u@%u xid=0x%08x flags=%s runstate=%s status=%d",
-+		__entry->task_id, __entry->client_id, __entry->xid,
-+		rpc_show_task_flags(__entry->flags),
-+		rpc_show_runstate(__entry->runstate),
-+		__entry->status
-+	)
-+);
- 
- DECLARE_EVENT_CLASS(xprt_cong_event,
- 	TP_PROTO(
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index d616b93751d8..b694af4504c4 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1469,7 +1469,7 @@ bool xprt_prepare_transmit(struct rpc_task *task)
- 	struct rpc_xprt	*xprt = req->rq_xprt;
- 
- 	if (!xprt_lock_write(xprt, task)) {
--		trace_xprt_transmit_queued(xprt, task);
-+		trace_xprt_transmit_queued(task);
- 
- 		/* Race breaker: someone may have transmitted us */
- 		if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
+Problem: The NFS pageio interface does not expose a max read length that
+we can easily use inside netfs clamp_length() function.  As a result, when
+issue_op() is called indicating a single netfs subrequest, this can be
+split into
+multiple NFS subrequests / RPCs inside guts of NFS pageio code.  Multiple
+NFS subrequests requests leads to multiple completions, and the netfs
+API expects a 1:1 mapping between issue_op() and
+netfs_subreq_terminated() calls.
 
+Details of the NFS pageio API (see include/linux/nfs_page.h and
+fs/nfs/pagelist.c)
+Details of the netfs API (see include/linux/netfs.h and fs/netfs/read_helper.c)
+
+The NFS pageio API 3 main calls are as follows:
+1. nfs_pageio_init(): initialize a pageio structure (R/W IO of N pages)
+2. nfs_pageio_add_request(): called for each page to add to an IO
+* Calls nfs_pageio_add_request_mirror -> __nfs_pageio_add_request
+  * __nfs_pageio_add_request may call nfs_pageio_doio() which actually
+    sends an RPC over the wire if page cannot be added to the request
+    ("coalesced") due to various factors.  For more details, see
+    nfs_pageio_do_add_request() and all underlying code it calls such
+    as nfs_coalesce_size() and subsequent pgio->pg_ops->pg_test() calls
+3. nfs_pageio_complete() - "complete" the pageio
+* calls nfs_pageio_complete_mirror -> nfs_pageio_doio()
+
+The NFS pageio API thus may generate multiple over the wire RPCs
+and thus multiple completions even though at the high level only
+one call to nfs_pageio_complete() is made.
+
+Option 1: Just use NFS pageio API as is, and deal with possible multiple
+completions.
+- Inconsistent with netfs design intent
+- Need to keep track of the RPC completion status, and for example,
+if one completes with success and one an error, probably call
+netfs_subreq_terminated() with the error.
+- There's no way for the caller of the NFS pageio API to know how
+many RPCs and thus completions may occur.  Thus, it's unclear how
+one would distinguish between a READ that resulted in a single RPC
+over the wire that completed as a short read, and a READ that
+resulted in multiple RPCs that would each complete separately,
+but would eventually complete
+
+Option 2: Create a more complex 'clamp_length()' function for NFS,
+taking into account all ways NFS / pNFS code can split a read.
++ Consistent with netfs design intent
++ Multiple "split" requests would be called in parallel (see loop
+inside netfs_readahead, which repeatedly calls netfs_rreq_submit_slice)
+- Looks impossible without refactoring of NFS pgio API.  We need
+to prevent nfs_pageio_add_request() from calling nfs_pagio_doio(),
+and return some indication coalesce failed.  In addition, it may
+run into problems with fallback from DS to MDS for example (see
+commit d9156f9f364897e93bdd98b4ad22138de18f7c24).
+
+Option 3: Utilize NETFS_SREQ_SHORT_READ flag as needed.
++ Consistent with netfs design intent
+- Multiple "split" requests would be serialized (see code
+paths inside netfs_subreq_terminated that check for this flag).
+- Looks impossible without some refactoring of NFS pgio API.
+* Notes: Terminate NFS pageio page based loop at the first call
+to nfs_pageio_doio().  When a READ completes, NFS calls
+netfs_subreq_terminated() with NETFS_SREQ_SHORT_READ
+and is prepared to have the rest of the subrequest be resubmitted.
+Need to somehow fail early or avoid entirely subsequent calls to
+nfs_pagio_doio() for the original request though, and handle
+error status only from the first RPC.
+
+Option 4: Add some final completion routine to be called near
+bottom of nfs_pageio_complete() and would pass in at least
+netfs_read_subrequest(), possibly nfs_pageio_descriptor.
++ Inconsistent with netfs design intent
+- Would be a new NFS API or call on top of everything
+- Need to handle the "multiple completion with different
+status" problem (see #1).
 
