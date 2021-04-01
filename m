@@ -2,133 +2,195 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-14.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,PDS_BAD_THREAD_QP_64,SPF_HELO_NONE,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CF16C43619
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:11:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 71497C43461
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:11:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4C50B60FE6
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:11:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E6B160FE6
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:11:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235355AbhDASLE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Apr 2021 14:11:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35368 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238170AbhDASFi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 14:05:38 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AD5F1C08EC3D
-        for <linux-nfs@vger.kernel.org>; Thu,  1 Apr 2021 06:44:43 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 7893E6D19; Thu,  1 Apr 2021 09:44:42 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 7893E6D19
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1617284682;
-        bh=o7/zNVLaslc33ZPtpR4CWCWsbUS2OhkHiVpqWm3INJs=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=EkBLvBrQTSTrmeXd6tW6iHIh1LT3sb58lWttmiYMe4tkIWw3cyr+sC0tKjpZ+RXrG
-         EimY3amhAqYrIP9BKFzkvrCSJCmFKAxrMOq7TdhK59/Ycea7Jxi64nEG1+guKeIMNP
-         GDjv0zSNk7cEGis01MHz4Pod40LXx7y80Iqv0qZE=
-Date:   Thu, 1 Apr 2021 09:44:42 -0400
-From:   "bfields@fieldses.org" <bfields@fieldses.org>
-To:     Nix <nix@esperi.org.uk>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: steam-associated reproducible hard NFSv4.2 client hang (5.9,
- 5.10)
-Message-ID: <20210401134442.GB13277@fieldses.org>
-References: <877dourt7c.fsf@esperi.org.uk>
- <20210223225701.GD8042@fieldses.org>
- <fde7a43ac9b61a1aff53381d0ab7b48b78cb79db.camel@hammerspace.com>
- <20210224020140.GA26848@fieldses.org>
- <875z16m8oh.fsf@esperi.org.uk>
+        id S236283AbhDASLF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Apr 2021 14:11:05 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:60124 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S236010AbhDASG4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 14:06:56 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131DOS1k077725;
+        Thu, 1 Apr 2021 13:32:50 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2020-01-29;
+ bh=XqtggANkVxbeQNAs10MX6o1dwYngg877bWAXK/UVVJM=;
+ b=M0KTayXsHmAU+mlbq0q/WVRm1p2gudsHr7hnFQ421c2/gldtLQcKgq0HAzf7A8hLxnz2
+ eShVLZBH+acByGvvO+2DnWHPJnBJnAI3LJsZjvfn96G4oCbBfSX8X0bs9d9utulBBcbM
+ PAPoO5gvEwoZtvjvDCVjCsBJlGrzR3dYmmN/0JJrIl+XSqJh/vXOgNsSW1oSPO7quIw5
+ Cc/HqD4HPw/jPBBjy1wrFDLldT0eE2szYXhHDi0oEW5oHN8C0TuuNdTZ/cti3S7oItK4
+ 5MqtlWE1sXkm15GkHiIARvXNWLfRmGoxIUOy/n9eLl5rFpPRXcwvVERRWBi/ioJ+CsAz BQ== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by userp2120.oracle.com with ESMTP id 37n2a01t9c-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 01 Apr 2021 13:32:49 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131DPbT0143349;
+        Thu, 1 Apr 2021 13:32:49 GMT
+Received: from nam12-dm6-obe.outbound.protection.outlook.com (mail-dm6nam12lp2174.outbound.protection.outlook.com [104.47.59.174])
+        by userp3030.oracle.com with ESMTP id 37n2astp2x-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 01 Apr 2021 13:32:49 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=ejspjpm4ZS+u2mz7VjeBYZ0UOxePuki9DHTxiATNPkVaz3QkzlPyG09i1nxKNnUkdq0pGWA/v88YFd3ayyUomKAaHUDG0gaz23LketWAVlULTZI7kHMtzLU3KCt16LeERT2/WFDJQ5N50YQIKolXZnyEFKF23H+Wn8uoXmOKP9ejloRKsUvD1oD0q3DAcPZpVkvHxDPf+up0qybXWHK12zi+P3U54QPNa8cqq8CXueQA0h6/eB295vM+Bg9SM6oJhXBmkSZI2FnQ+5e7Wzpy8KEsv2RtxvSj+DfTtC6lTRaMA5JZUIwto3fWPIqI/eLEZ65s6ybo3uQxsSx/72/rEw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=XqtggANkVxbeQNAs10MX6o1dwYngg877bWAXK/UVVJM=;
+ b=eHlyAKXlU/xy/ry15jKjx748ZJ8r7QAoRSFsvFiWD32Tr74oWhHvNO0aSDPwhYFlOKjDtxMjKo8NXyBJxoTlFfGqd7jAO/CmpxJQyXWvHE5YWcaQjgaEf8nRxccvzbvEvQhnerVlUsvgSVUn4HE1xuyzsBzubGsO6Pz3nkIPx63/nPhZyU7tcL48dkJkHKBSGvkddgOU5+UkllxDA1EVqNX32cGVIqfOBHK7O/MdtEjBembiwTmaScV48HlJxgjobLPQPF008k0OmM7BnVzokk7d+fmbMqG8cmWwlEs5/BhBeH91foYVs7m/TY9GSCvmwWJ7siEClRygwsDqXoqUqQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=XqtggANkVxbeQNAs10MX6o1dwYngg877bWAXK/UVVJM=;
+ b=x9fz4+r6OP3MhKZNmERdyJUW85NfD/TUK1NE+WaN0Co6xuDiHu6CsrjH4qAXjpXrH4B6nsR52AeY1zcJIk+DuWXqIqWJ7pSPFEgkjJGzbudk6HcvOWZsl5HhdwkyT6hbVOvqoVAYKv/1XWn7I0gsoB7tDi+EGTAiphln8cj+0bE=
+Received: from SJ0PR10MB4688.namprd10.prod.outlook.com (2603:10b6:a03:2db::24)
+ by BYAPR10MB2757.namprd10.prod.outlook.com (2603:10b6:a02:aa::32) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3999.28; Thu, 1 Apr
+ 2021 13:32:47 +0000
+Received: from SJ0PR10MB4688.namprd10.prod.outlook.com
+ ([fe80::50bf:7319:321c:96c9]) by SJ0PR10MB4688.namprd10.prod.outlook.com
+ ([fe80::50bf:7319:321c:96c9%4]) with mapi id 15.20.3999.029; Thu, 1 Apr 2021
+ 13:32:47 +0000
+From:   Chuck Lever III <chuck.lever@oracle.com>
+To:     Wan Jiabing <wanjiabing@vivo.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+CC:     Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "kael_w@yeah.net" <kael_w@yeah.net>
+Subject: Re: [PATCH] sunrpc: xprtrdma: Remove repeated struct declaration
+Thread-Topic: [PATCH] sunrpc: xprtrdma: Remove repeated struct declaration
+Thread-Index: AQHXJt1tLMsicTn0z0C3EtS8D4Tr3aqfqUUA
+Date:   Thu, 1 Apr 2021 13:32:47 +0000
+Message-ID: <82C3737A-E6CA-469E-B159-85DBE3657221@oracle.com>
+References: <20210401095658.1006341-1-wanjiabing@vivo.com>
+In-Reply-To: <20210401095658.1006341-1-wanjiabing@vivo.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: vivo.com; dkim=none (message not signed)
+ header.d=none;vivo.com; dmarc=none action=none header.from=oracle.com;
+x-originating-ip: [68.61.232.219]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: ff4671ff-2d5a-4c13-6f6b-08d8f512a38d
+x-ms-traffictypediagnostic: BYAPR10MB2757:
+x-microsoft-antispam-prvs: <BYAPR10MB275773AE7D70596B13786057937B9@BYAPR10MB2757.namprd10.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:663;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: Tus5RmgCM7eaRyXlc33paOWQ9wCLHM5lLBwaQvNJXfiOsW8xH8Fs2YfZX1MIv9BVOlsrQabeM8d6yWDTI/3iwyh1gM2rqJxObSej0+Kn79Zc2yt/FwdVsRnJAlX11s+Pe24ltpWA8sTazG60uVGdCpUPOS5+jvGXpLtrYyxUHmlVr4ryy+Ix7FGDJ8TT8hzobFLs/X4d4UC5Vvwk7HSc9bGsXyWJgcJyLOI4w458mjL8Eo7Wmpdld4ciCXNAky63uZWhfIbIbKTGsggcKkSTA7NlabZHKgUItusq0aqGsLZaP7P99811XvxztVD10l7zC6qNL30Inx9qwNVoiEpQGiGUn++os9etMrlTb4cMYGagBOFfkzLpMGPpNl0iaQ+7SAWwTacoLeQAjJ+teu6z0NY8hz9hjjmFaFuCQpkxbqOvUpVPTkOYB66QLP+tjMJt6HKskKWD9/W+qqZR/wDib323jhyd/2+ZgflCpn5ZobZ8f61FAge7HR3e3VsypYKcyEy3bKCHGSsQVTtcHiqkERl1+YlulQuKTr/oIcgDnZy87xs3riHI/+9T9FdyFDM6G6z3N2XrGSOnhESvLgJuyCo9sGEsmq2N5u1xguFIxutdaetu+vEX2Lv0GTkbiPjMpvB2JMhlHiuy71lOPZ3fDm/1ClRB4/bFm6PvOKUFLycC3PdsPTophAFOBsuxFNAG
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(376002)(366004)(396003)(39860400002)(346002)(136003)(6486002)(66446008)(8676002)(86362001)(64756008)(2906002)(186003)(83380400001)(53546011)(66556008)(66476007)(6506007)(6512007)(66946007)(76116006)(478600001)(110136005)(26005)(316002)(33656002)(8936002)(5660300002)(54906003)(36756003)(2616005)(4744005)(4326008)(38100700001)(71200400001)(91956017)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata: =?us-ascii?Q?Pi6TqPQ44OC67CvvnYWM63fm/vzmIwDZ6Rk4PV0ZOa5OjF0ycWFjV0WR1Y9/?=
+ =?us-ascii?Q?yaUKUAt4cfH5HDkpfE2DMWilYOio15ZkZnCpT8iRnlvDxCOhzdyjfOEZyB5T?=
+ =?us-ascii?Q?Rl9WnmYTfTwcEZ8u+XhvSIru34i5dAhVWdjZ+p1zbL6A8IkWGeddji5vT9iN?=
+ =?us-ascii?Q?b4yZcYXDl1SlQZOEJLvOeFWvT9lmt2TbH4vQGwIlaRW0j+Gtzkei6eXmuL2D?=
+ =?us-ascii?Q?XczaAysWAVMTWkjyCMwWdcrzo/UGpEjg0DsU0siD6VTndzj4mrCn2VqYTsCJ?=
+ =?us-ascii?Q?e4oCuBI5a2+sA2b8nSagojU2aV6GySSw5Upr3yMyTctszhirY5ykBygSmrZ5?=
+ =?us-ascii?Q?jTaEDazPgGEyAoHKve4INkZ1Qk6PNhYnajofJHW11X9o6jKLSNOus5+/2l9k?=
+ =?us-ascii?Q?jq2nWO2CCA75URt0erTj0YgayLk0cDqbf25nckh+RlcrEhcBO7bl8B6wvLPj?=
+ =?us-ascii?Q?X2DNGojSikKW6YSYuV4YLL0S1Sl0tFqdHnF4gq8iC8OMBiQNCEFw2D7J91L9?=
+ =?us-ascii?Q?zThsdcxngmM5pT0UGN1ghN91jbgRMsg5QUhCY/OwqHGDOVjqTHGfRwKl/sye?=
+ =?us-ascii?Q?SuGmEbvB0Of30a+wuKKiWDVQcfSMLdJTs/ZdEg/tsAHwbBWQff4Pr67TCU5y?=
+ =?us-ascii?Q?9lHedGC0HiV4uyNnRd5CUSvwt8ULpRMLFrf/v2myEcB7Rq/Mv3GJhCV/eitJ?=
+ =?us-ascii?Q?hXnRZ6R5WBgZtE+HLDLYtUWFAPvgcoQCvAWao3GsQZoC5uXiij7Kn48Pk4HL?=
+ =?us-ascii?Q?P2hKAIMchtWGYkwfK5qzrbvYz+Vuwo2KvDpIJ0jdarMqs4PRf9+FFSf+cKH4?=
+ =?us-ascii?Q?XPpzAssbTHNGatKqGZPcacPJfC5kb7MYxiepe8EsKL12qhViRWxj0aEy9/Fl?=
+ =?us-ascii?Q?dEPxznLCmhWd0skPVZrhfeiiMPo+fNJFsiIHqEYoa5ZSh4cCrF0slM6AVLv0?=
+ =?us-ascii?Q?++lA82JlCf20b6Rx/xsgk7Ok7XsilrozZ8SpUvcK+vafJzW4E4kcwFkqjsLr?=
+ =?us-ascii?Q?l8pV4w7jl3rM+V5CJJhfrUSuPqR9fwN588xkZsrCg3ohxCJ6+N29ErmOVaT4?=
+ =?us-ascii?Q?Rc8s0ZrXOb2mrO+SmQ7wEnq3FxSDpKpVaeQiIAMbUQXBrdUtLq+pbStgb7c3?=
+ =?us-ascii?Q?tSZNOkTwtxmQXtlRf5MbJtLSFPf2OhIjIK18/5vA+U+VrZ3YGjFvGMihHQRp?=
+ =?us-ascii?Q?Z+ikGW0lbLCH6NpXyZq0+7nUP8rLYhiYQ93MgcC1mnVOGrf0hJj3VIguNtRx?=
+ =?us-ascii?Q?9eQnjYuYctmfjl8j91bMJrKvluHi3yR0MKCYCRdXNjoH0O1oJ7t1IEMoUHhu?=
+ =?us-ascii?Q?n4cHL0iNmihEVaNaDARPu3/B?=
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <D9D94FABC7700542AF3FBE31696FF086@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <875z16m8oh.fsf@esperi.org.uk>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: SJ0PR10MB4688.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: ff4671ff-2d5a-4c13-6f6b-08d8f512a38d
+X-MS-Exchange-CrossTenant-originalarrivaltime: 01 Apr 2021 13:32:47.4439
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: LRZEB9HQpSQuaX89+3mvywQmFW8cseWV4npZBviWT5/joqx3m/3Tk8HEppHi3ORlTZhz67RSLxMCWh1tzCTGWQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR10MB2757
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9941 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 phishscore=0 spamscore=0
+ mlxscore=0 mlxlogscore=999 bulkscore=0 adultscore=0 suspectscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2103310000
+ definitions=main-2104010093
+X-Proofpoint-GUID: C2VwmGDcXK9Qh-1l3lCnxQwRqX3XqeVr
+X-Proofpoint-ORIG-GUID: C2VwmGDcXK9Qh-1l3lCnxQwRqX3XqeVr
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9941 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 impostorscore=0 adultscore=0
+ clxscore=1011 mlxlogscore=999 phishscore=0 bulkscore=0 priorityscore=1501
+ spamscore=0 malwarescore=0 mlxscore=0 lowpriorityscore=0 suspectscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2103310000
+ definitions=main-2104010093
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Apr 01, 2021 at 02:33:02PM +0100, Nix wrote:
-> [Sorry about the huge delay: your replies got accidentally marked as
->  read in a MUA snafu. I'll be getting some more debugging dumps -- and
->  seeing if this still happens! -- when I reboot into 5.11 this weekend.]
-> 
-> On 24 Feb 2021, bfields@fieldses.org said:
-> 
-> > On Tue, Feb 23, 2021 at 11:58:51PM +0000, Trond Myklebust wrote:
-> >> On Tue, 2021-02-23 at 17:57 -0500, J. Bruce Fields wrote:
-> >> > On Sun, Jan 03, 2021 at 02:27:51PM +0000, Nick Alcock wrote:
-> >> > > Relevant exports, from /proc/fs/nfs/exports:
-> >> > > 
-> >> > > /       192.168.16.0/24,silk.wkstn.nix(ro,insecure,no_root_squash,s
-> >> > > ync,no_wdelay,no_subtree_check,v4root,fsid=0,uuid=0a4a4563:00764033
-> >> > > :8c827c0e:989cf534,sec=390003:390004:390005:1)
-> >> > > /home/.loom.srvr.nix    *.srvr.nix,fold.srvr.nix(rw,root_squash,syn
-> >> > > c,wdelay,no_subtree_check,uuid=0a4a4563:00764033:8c827c0e:989cf534,
-> >> > > sec=1)
-> >> 
-> >> Isn't that trying to export the same filesystem as '/' on the line
-> >> above using conflicting export options?
-> 
-> Hmm. I don't actually have a / mount in /etc/exports (and haven't had
-> one since I finished building this machine, last year), and looking at
-> /proc/fs/nfs/exports on the server now, it's not there.
+Hi -
 
-Right, but even though you're not exporting /, you're exporting
-/home/.loom.srvr.nix, and that's on the same filesystem as /, isn't it?
+> On Apr 1, 2021, at 5:56 AM, Wan Jiabing <wanjiabing@vivo.com> wrote:
+>=20
+> struct rpcrdma_req is declared twice. One is declared at 216th line.
+> The blew one is not needed. Remove the duplicate.
 
---b.
+s/blew/below/
 
-> 
-> The 'v4root' makes me wonder if this was automatically synthesised?
-> 
-> Exports explicitly named in /etc/exports for that machine are:
-> 
-> /home/.loom.srvr.nix -rw,no_subtree_check,sync fold.srvr.nix(root_squash) mutilate(no_root_squash) silk(no_root_squash)
-> /.nfs/nix/Graphics/Private -no_root_squash,sync,no_subtree_check mutilate(rw) silk(rw)
-> /.nfs/nix/share/phones -root_squash,async,no_subtree_check fold.srvr.nix(rw) mutilate(rw) silk(rw)
-> /.nfs/nix/.cache -root_squash,async,no_subtree_check fold.srvr.nix(rw) mutilate(rw) silk(rw)
-> /.nfs/nix/Mail/nnmh -root_squash,async,no_subtree_check fold.srvr.nix(ro) mutilate(rw) silk(rw)
-> /.nfs/compiler/.ccache -root_squash,async,no_subtree_check mutilate(rw) silk(rw)
-> /.nfs/compiler/.cache -root_squash,async,no_subtree_check fold.srvr.nix(rw) mutilate(rw) silk(rw)
-> /usr/doc -root_squash,no_subtree_check,async mutilate(ro) silk(ro)
-> /usr/info -root_squash,no_subtree_check,async mutilate(ro) silk(ro)
-> /usr/share/texlive -no_root_squash,no_subtree_check,async mutilate(rw) silk(rw)
-> /usr/share/xemacs -no_root_squash,no_subtree_check,async mutilate(rw) silk(rw)
-> /usr/share/xplanet -root_squash,no_subtree_check,async mutilate(ro) silk(ro)
-> /usr/share/nethack -root_squash,no_subtree_check,async mutilate(rw) silk(rw)
-> /pkg/non-free -no_root_squash,no_subtree_check,async mutilate(rw) chronix.wkstn.nix(rw) silk(rw)
-> /usr/lib/X11/fonts -root_squash,no_subtree_check,async mutilate(ro) silk(ro)
-> /usr/share/wine -root_squash,no_subtree_check,async mutilate(rw) silk(rw)
-> /usr/share/clamav -root_squash,no_subtree_check,async mutilate(ro) silk(ro)
-> /usr/share/emacs/site-lisp -no_root_squash,no_subtree_check,async mutilate(rw) silk(rw)
-> /usr/archive -root_squash,async,subtree_check mutilate(rw,root_squash,insecure) cinema.srvr.nix(ro,root_squash,insecure) chronix.wkstn.nix(ro) silk(rw,root_squash,insecure)
-> /usr/archive/music/Pete -root_squash,async,subtree_check mutilate(rw,root_squash,insecure) cinema.srvr.nix(ro,root_squash,insecure) chronix.wkstn.nix(ro) silk(rw,root_squash,insecure)
-> /var/log.real -root_squash,no_subtree_check,async mutilate(ro) silk(ro)
-> /etc/shai-hulud -no_root_squash,no_subtree_check,async mutilate(rw) silk(rw)
-> /usr/src -no_root_squash,no_subtree_check,async mutilate(rw) oracle.vm.nix(rw) 192.168.20.0/24(ro) scratch.vm.nix(rw) ubuntu.vm.nix(rw) cinema.srvr.nix(rw,root_squash) chronix.wkstn.nix(rw,root_squash) silk(rw)
-> /var/cache/CPAN -no_root_squash,no_subtree_check,async mutilate(rw) silk(rw)
-> /usr/share/flightgear -root_squash,async,no_subtree_check mutilate(ro) silk(ro)
-> /usr/local/tmp/encoding/mkv -no_subtree_check,root_squash,ro mutilate.wkstn.nix silk.wkstn.nix
-> /pkg/non-free/steam -rw,subtree_check,root_squash mutilate.wkstn.nix loom.srvr.nix chronix.wkstn.nix silk.wkstn.nix(insecure)
-> /.transient/workstations/silk -no_root_squash,async,subtree_check silk(rw)
-> /trees/mirrors/mutilate silk.wkstn.nix(no_root_squash,async,no_subtree_check,rw)
-> /trees/mirrors/silk silk.wkstn.nix(no_root_squash,async,no_subtree_check,rw)
-> 
-> ... and, well, it's a bit of a mess and there are a lot of them, but
-> there are no nested mounts there, at least, not outside /usr/archive
-> which is probably not relevant for this. (The /.nfs stuff is
-> particularly ugly: if I try to export e.g. /home/nix/.cache rather than
-> /.nfs/nix/.cache the export simply never appears: /.nfs/$foo is just
-> built out of bind mounts for this purpose, but then /home/$name is also
-> a bind mount from /home/.loom.srvr.nix/$name on this network in any
-> case. /nfs/$foo is usually bind-mounted *back* under /home on the
-> client, too, but still from NFS's perspective I guess this means they
-> are distinct? I hope so...)
+>=20
+> Signed-off-by: Wan Jiabing <wanjiabing@vivo.com>
+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+
+Thanks! This one goes to Anna.
+
+
+> ---
+> net/sunrpc/xprtrdma/xprt_rdma.h | 1 -
+> 1 file changed, 1 deletion(-)
+>=20
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_r=
+dma.h
+> index fe3be985e239..11e5fbfc642c 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -239,7 +239,6 @@ struct rpcrdma_frwr {
+> 	};
+> };
+>=20
+> -struct rpcrdma_req;
+> struct rpcrdma_mr {
+> 	struct list_head	mr_list;
+> 	struct rpcrdma_req	*mr_req;
+> --=20
+> 2.25.1
+>=20
+
+--
+Chuck Lever
+
+
+
