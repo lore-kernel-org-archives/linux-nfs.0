@@ -2,66 +2,63 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CBD7C43461
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 23:13:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97D86C43460
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 23:13:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5989F6108B
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 23:13:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 620276108B
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 23:13:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234807AbhDAXNO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Apr 2021 19:13:14 -0400
-Received: from aserp2130.oracle.com ([141.146.126.79]:55050 "EHLO
+        id S234814AbhDAXNQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Apr 2021 19:13:16 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:55052 "EHLO
         aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233974AbhDAXNO (ORCPT
+        with ESMTP id S234374AbhDAXNO (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 19:13:14 -0400
 Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131N8uJm135133;
-        Thu, 1 Apr 2021 23:13:04 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : in-reply-to : references : mime-version :
- content-transfer-encoding; s=corp-2020-01-29;
- bh=8juw05n9USKVXWHoj4+6Hm2JGOgeBvMKxjqyvoiMRzg=;
- b=GXv5bCDD7RFUBoiNhjet/W0XhJts2bS1Edwh+cdLmgKLCKpzHOzKsGvaa5y7p2+f2tyX
- gmg/d085JC/qdnioPti32vT8XiP68sCteFKnSk6erdzivcsYsANrTU5UX8jnOQjOksKS
- QTnfApaqpQZpreCzMIM5G1pXy13qgt377R+EoHmnGiwzehW7lWkzkXAOZWDOsQAOAOhG
- XQw9M21IR0T7y5myNHTi2DrRXUxbqo4Ky0t7GvI+PNJ/zvPooRg42zLpjbEiTUsppE59
- 2Og6iYmYN8XAD+nI/zkYUT4WJ6aqGb+l/ZGbAkGEBmJEs1ell4FHfQjD6re1/YAzlfe1 GA== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by aserp2130.oracle.com with ESMTP id 37n33dub4f-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 01 Apr 2021 23:13:04 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131N9b9O119153;
-        Thu, 1 Apr 2021 23:13:04 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by userp3030.oracle.com with ESMTP id 37n2ate1vt-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 01 Apr 2021 23:13:04 +0000
-Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 131ND15G130727;
+        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131N8uJl135133;
         Thu, 1 Apr 2021 23:13:03 GMT
-Received: from aserp3020.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
-        by userp3030.oracle.com with ESMTP id 37n2ate1u4-3;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : mime-version : content-transfer-encoding;
+ s=corp-2020-01-29; bh=cBjF5N5yXbH6S3vsiLx/EWjDheZxJt2AyjLo+M5b8Hk=;
+ b=V3V2TWdgkS+Kr2NJXxYVM6adelzOLKu+rIQgB05yI1ri4CqWbg02+wjOyJULzfxDMBmx
+ 1ifk3CsS9Vi8YcyCQi1/hhNehAfbBRIRWFwCZALLFLJ9H+i5tthMbzidGcCI8dyPQy+3
+ afH2mpkhlKS2NAwSGW2t3U0NzhdmQ7AtlstErALAlfs9HZsn1E4ZJgdKl6rLAy/LxBmB
+ PTp8h8mOWZXp8wwcniQOpRUGSBWnA2QEB1Swiz+z0P9Nmv6K+L4lsOTuD4i9krZgYMhP
+ IpIIEte/rj9QlKcz80yyxIbC/1fmUtTTKJrHXNeXa1U29I/Lk28Bs0dx7sAcMhtiAhjN lQ== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by aserp2130.oracle.com with ESMTP id 37n33dub49-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
         Thu, 01 Apr 2021 23:13:03 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131N9ccJ119346;
+        Thu, 1 Apr 2021 23:13:02 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3030.oracle.com with ESMTP id 37n2ate1ut-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 01 Apr 2021 23:13:02 +0000
+Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 131ND15C130727;
+        Thu, 1 Apr 2021 23:13:01 GMT
+Received: from aserp3020.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
+        by userp3030.oracle.com with ESMTP id 37n2ate1u4-1;
+        Thu, 01 Apr 2021 23:13:01 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     olga.kornievskaia@gmail.com
 Cc:     linux-nfs@vger.kernel.org, trondmy@hammerspace.com,
         bfields@fieldses.org, chuck.lever@oracle.com
-Subject: [PATCH 2/2] NFSv4.2: mount overhead should not be used as threshold for inter-server copy
-Date:   Thu,  1 Apr 2021 19:12:58 -0400
-Message-Id: <20210401231258.63292-3-dai.ngo@oracle.com>
+Subject: [PATCH 0/2] enhance NFSv4.2 SSC to delay unmount source's export.
+Date:   Thu,  1 Apr 2021 19:12:56 -0400
+Message-Id: <20210401231258.63292-1-dai.ngo@oracle.com>
 X-Mailer: git-send-email 2.20.1.1226.g1595ea5.dirty
-In-Reply-To: <20210401231258.63292-1-dai.ngo@oracle.com>
-References: <20210401231258.63292-1-dai.ngo@oracle.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Proofpoint-GUID: Nzof5K0h-JFTQORimzU5cJPy3F6wEKLH
-X-Proofpoint-ORIG-GUID: Nzof5K0h-JFTQORimzU5cJPy3F6wEKLH
+X-Proofpoint-GUID: FkUMdQn_XRStymlqbmom_MRy9S4lDNkA
+X-Proofpoint-ORIG-GUID: FkUMdQn_XRStymlqbmom_MRy9S4lDNkA
 X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9941 signatures=668683
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 mlxlogscore=999 mlxscore=0
  lowpriorityscore=0 suspectscore=0 priorityscore=1501 phishscore=0
@@ -72,38 +69,23 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Since mount and unmount are not done on each copy request, its overhead
-should not be considered as the threshold for doing inter-server copy.
-The threshold used to determine sync or async copy is also used to decide
-whether copy is done with inter-server copy or generic copy.
+Hi,
 
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
----
- fs/nfs/nfs4file.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+Currently the source's export is mounted and unmounted on every
+inter-server copy operation. This causes unnecessary overhead
+for each copy.
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 441a2fa073c8..67ca798a1a79 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -158,13 +158,11 @@ static ssize_t __nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 		sync = true;
- retry:
- 	if (!nfs42_files_from_same_server(file_in, file_out)) {
--		/* for inter copy, if copy size if smaller than 12 RPC
--		 * payloads, fallback to traditional copy. There are
--		 * 14 RPCs during an NFSv4.x mount between source/dest
--		 * servers.
-+		/*
-+		 * for inter copy, if copy size is small enough
-+		 * for sync copy then fallback to traditional copy.
- 		 */
--		if (sync ||
--			count <= 14 * NFS_SERVER(file_inode(file_in))->rsize)
-+		if (sync)
- 			return -EOPNOTSUPP;
- 		cn_resp = kzalloc(sizeof(struct nfs42_copy_notify_res),
- 				GFP_NOFS);
--- 
-2.9.5
+This patch series is an enhancement to allow the export to remain
+mounted for a configurable period (default to 15 minutes). If the 
+export is not being used for the configured time it will be unmounted
+by a delayed task. If it's used again then its expiration time is
+extended for another period.
+
+Since mount and unmount are no longer done on each copy request,
+this overhead is no longer used to decide whether the copy should
+be done with inter-server copy or generic copy. The threshold used
+to determine sync or async copy is now used for this decision.
+
+-Dai
+
 
