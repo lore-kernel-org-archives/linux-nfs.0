@@ -2,85 +2,108 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 86577C433B4
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 21:52:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CBD7C43461
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 23:13:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2819C610E8
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 21:52:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5989F6108B
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 23:13:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234047AbhDAVws (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Apr 2021 17:52:48 -0400
-Received: from icebox.esperi.org.uk ([81.187.191.129]:40730 "EHLO
-        mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233974AbhDAVws (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 17:52:48 -0400
-Received: from loom (nix@sidle.srvr.nix [192.168.14.8])
-        by mail.esperi.org.uk (8.16.1/8.16.1) with ESMTP id 131Lqlqh000324;
-        Thu, 1 Apr 2021 22:52:47 +0100
-From:   Nix <nix@esperi.org.uk>
-To:     "bfields\@fieldses.org" <bfields@fieldses.org>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: steam-associated reproducible hard NFSv4.2 client hang (5.9, 5.10)
-References: <877dourt7c.fsf@esperi.org.uk>
-        <20210223225701.GD8042@fieldses.org>
-        <fde7a43ac9b61a1aff53381d0ab7b48b78cb79db.camel@hammerspace.com>
-        <20210224020140.GA26848@fieldses.org> <875z16m8oh.fsf@esperi.org.uk>
-        <20210401134442.GB13277@fieldses.org>
-Emacs:  if SIGINT doesn't work, try a tranquilizer.
-Date:   Thu, 01 Apr 2021 22:52:47 +0100
-In-Reply-To: <20210401134442.GB13277@fieldses.org> (bfields@fieldses.org's
-        message of "Thu, 1 Apr 2021 09:44:42 -0400")
-Message-ID: <87eeftlljk.fsf@esperi.org.uk>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.3.50 (gnu/linux)
+        id S234807AbhDAXNO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Apr 2021 19:13:14 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:55050 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233974AbhDAXNO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 19:13:14 -0400
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131N8uJm135133;
+        Thu, 1 Apr 2021 23:13:04 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=corp-2020-01-29;
+ bh=8juw05n9USKVXWHoj4+6Hm2JGOgeBvMKxjqyvoiMRzg=;
+ b=GXv5bCDD7RFUBoiNhjet/W0XhJts2bS1Edwh+cdLmgKLCKpzHOzKsGvaa5y7p2+f2tyX
+ gmg/d085JC/qdnioPti32vT8XiP68sCteFKnSk6erdzivcsYsANrTU5UX8jnOQjOksKS
+ QTnfApaqpQZpreCzMIM5G1pXy13qgt377R+EoHmnGiwzehW7lWkzkXAOZWDOsQAOAOhG
+ XQw9M21IR0T7y5myNHTi2DrRXUxbqo4Ky0t7GvI+PNJ/zvPooRg42zLpjbEiTUsppE59
+ 2Og6iYmYN8XAD+nI/zkYUT4WJ6aqGb+l/ZGbAkGEBmJEs1ell4FHfQjD6re1/YAzlfe1 GA== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by aserp2130.oracle.com with ESMTP id 37n33dub4f-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 01 Apr 2021 23:13:04 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131N9b9O119153;
+        Thu, 1 Apr 2021 23:13:04 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3030.oracle.com with ESMTP id 37n2ate1vt-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 01 Apr 2021 23:13:04 +0000
+Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 131ND15G130727;
+        Thu, 1 Apr 2021 23:13:03 GMT
+Received: from aserp3020.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
+        by userp3030.oracle.com with ESMTP id 37n2ate1u4-3;
+        Thu, 01 Apr 2021 23:13:03 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     olga.kornievskaia@gmail.com
+Cc:     linux-nfs@vger.kernel.org, trondmy@hammerspace.com,
+        bfields@fieldses.org, chuck.lever@oracle.com
+Subject: [PATCH 2/2] NFSv4.2: mount overhead should not be used as threshold for inter-server copy
+Date:   Thu,  1 Apr 2021 19:12:58 -0400
+Message-Id: <20210401231258.63292-3-dai.ngo@oracle.com>
+X-Mailer: git-send-email 2.20.1.1226.g1595ea5.dirty
+In-Reply-To: <20210401231258.63292-1-dai.ngo@oracle.com>
+References: <20210401231258.63292-1-dai.ngo@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 8bit
-X-DCC--Metrics: loom 1480; Body=3 Fuz1=3 Fuz2=3
+X-Proofpoint-GUID: Nzof5K0h-JFTQORimzU5cJPy3F6wEKLH
+X-Proofpoint-ORIG-GUID: Nzof5K0h-JFTQORimzU5cJPy3F6wEKLH
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9941 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 mlxlogscore=999 mlxscore=0
+ lowpriorityscore=0 suspectscore=0 priorityscore=1501 phishscore=0
+ clxscore=1015 impostorscore=0 malwarescore=0 bulkscore=0 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2103310000
+ definitions=main-2104010149
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 1 Apr 2021, bfields@fieldses.org outgrape:
+Since mount and unmount are not done on each copy request, its overhead
+should not be considered as the threshold for doing inter-server copy.
+The threshold used to determine sync or async copy is also used to decide
+whether copy is done with inter-server copy or generic copy.
 
-> On Thu, Apr 01, 2021 at 02:33:02PM +0100, Nix wrote:
->> [Sorry about the huge delay: your replies got accidentally marked as
->>  read in a MUA snafu. I'll be getting some more debugging dumps -- and
->>  seeing if this still happens! -- when I reboot into 5.11 this weekend.]
->> 
->> On 24 Feb 2021, bfields@fieldses.org said:
->> 
->> > On Tue, Feb 23, 2021 at 11:58:51PM +0000, Trond Myklebust wrote:
->> >> On Tue, 2021-02-23 at 17:57 -0500, J. Bruce Fields wrote:
->> >> > On Sun, Jan 03, 2021 at 02:27:51PM +0000, Nick Alcock wrote:
->> >> > > Relevant exports, from /proc/fs/nfs/exports:
->> >> > > 
->> >> > > /       192.168.16.0/24,silk.wkstn.nix(ro,insecure,no_root_squash,s
->> >> > > ync,no_wdelay,no_subtree_check,v4root,fsid=0,uuid=0a4a4563:00764033
->> >> > > :8c827c0e:989cf534,sec=390003:390004:390005:1)
->> >> > > /home/.loom.srvr.nix    *.srvr.nix,fold.srvr.nix(rw,root_squash,syn
->> >> > > c,wdelay,no_subtree_check,uuid=0a4a4563:00764033:8c827c0e:989cf534,
->> >> > > sec=1)
->> >> 
->> >> Isn't that trying to export the same filesystem as '/' on the line
->> >> above using conflicting export options?
->> 
->> Hmm. I don't actually have a / mount in /etc/exports (and haven't had
->> one since I finished building this machine, last year), and looking at
->> /proc/fs/nfs/exports on the server now, it's not there.
->
-> Right, but even though you're not exporting /, you're exporting
-> /home/.loom.srvr.nix, and that's on the same filesystem as /, isn't it?
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfs/nfs4file.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-Yes, but I'm *not* exporting /. (I just checked my backups, and no such
-export existed at the time I sent the original mail, nor was I importing
-it on the client).
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 441a2fa073c8..67ca798a1a79 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -158,13 +158,11 @@ static ssize_t __nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		sync = true;
+ retry:
+ 	if (!nfs42_files_from_same_server(file_in, file_out)) {
+-		/* for inter copy, if copy size if smaller than 12 RPC
+-		 * payloads, fallback to traditional copy. There are
+-		 * 14 RPCs during an NFSv4.x mount between source/dest
+-		 * servers.
++		/*
++		 * for inter copy, if copy size is small enough
++		 * for sync copy then fallback to traditional copy.
+ 		 */
+-		if (sync ||
+-			count <= 14 * NFS_SERVER(file_inode(file_in))->rsize)
++		if (sync)
+ 			return -EOPNOTSUPP;
+ 		cn_resp = kzalloc(sizeof(struct nfs42_copy_notify_res),
+ 				GFP_NOFS);
+-- 
+2.9.5
 
-This export is prsumably automatically generated, and likely indicates
-nothing more than that I am exporting from different subtrees off the
-root (which I am: various subdirectories of /home, /usr, /trees,
-/.transient, /.nfs, and /pkg are exported).
