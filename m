@@ -7,82 +7,143 @@ X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9AAA1C433B4
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:47:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9480EC433B4
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:56:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 306886112E
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:47:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6BA2D610A0
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:56:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234912AbhDARrj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Apr 2021 13:47:39 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:51308 "EHLO
+        id S234381AbhDAR45 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Apr 2021 13:56:57 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:51301 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S234276AbhDARmQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 13:42:16 -0400
+        by vger.kernel.org with ESMTP id S234651AbhDARwT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 13:52:19 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1617298936;
+        s=mimecast20190719; t=1617299538;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=WvQa+OFrW5Va5fKOaEC+GHMYXi23ytEjTAR9F/0dm5w=;
-        b=dS5/st8LlnzfBjdUjhyQjDAxhP3/ADkgUncgvw2cral1oyyOKTv7+v46rGXun0mUaYbfnR
-        f/BYLE4Wpliti/PXLkd1brJvuBRSiL3d5Oe6VcenO6j98AadAhvkhRUCceDzkvVSAiZWUw
-        pxCR8i/7wl4KaG/qfDoc2/pPfLOl4Ro=
+        bh=67Er4MV/wJhUyvFI71H33Z16SnubDGfMvDZkluV+Vw0=;
+        b=hdDgzIM6mVKiZPvoUko4I9gfGwap8QbV2KI5ujAceS5Gp6s0PpDCZLy4RwmnBy1MZOnRfB
+        Es6ONQ1V7jQ+ADVgPvhM2s4U5m1hkBtmcN+3J+eD0zZrhGnOKqrlrLYKOmewBUGSmqOUo8
+        Jo5WipaHYk+eIOfavE3Ne2fvo+ooOY8=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-561-1JSlI9TwOUazfMMSGAgqbA-1; Thu, 01 Apr 2021 11:41:45 -0400
-X-MC-Unique: 1JSlI9TwOUazfMMSGAgqbA-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+ us-mta-594-v7_FZzn1OqWifiNC8_qtQg-1; Thu, 01 Apr 2021 09:51:10 -0400
+X-MC-Unique: v7_FZzn1OqWifiNC8_qtQg-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 0188F108BD06;
-        Thu,  1 Apr 2021 15:41:44 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 74D46108BD06;
+        Thu,  1 Apr 2021 13:51:09 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-112-58.rdu2.redhat.com [10.10.112.58])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 6006D5C237;
-        Thu,  1 Apr 2021 15:41:42 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 5D814614FC;
+        Thu,  1 Apr 2021 13:51:07 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
 From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <20210401151339.GE351017@casper.infradead.org>
-References: <20210401151339.GE351017@casper.infradead.org> <49e123c6702cb6b27f114dfa64157d9a73463fad.camel@hammerspace.com> <CALF+zOnCisFWTubWEHhTLpt6=CUb7n86YvrNX3nreCYS73_v_Q@mail.gmail.com> <3727198.1617285066@warthog.procyon.org.uk>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
-        "dwysocha@redhat.com" <dwysocha@redhat.com>,
+In-Reply-To: <49e123c6702cb6b27f114dfa64157d9a73463fad.camel@hammerspace.com>
+References: <49e123c6702cb6b27f114dfa64157d9a73463fad.camel@hammerspace.com> <CALF+zOnCisFWTubWEHhTLpt6=CUb7n86YvrNX3nreCYS73_v_Q@mail.gmail.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     dhowells@redhat.com, "dwysocha@redhat.com" <dwysocha@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        jlayton@kernel.org, Steve French <sfrench@samba.org>
+        Matthew Wilcox <willy@infradead.org>, jlayton@kernel.org,
+        Steve French <sfrench@samba.org>
 Subject: Re: RFC: Approaches to resolve netfs API interface to NFS multiple completions problem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-ID: <3737151.1617291701.1@warthog.procyon.org.uk>
-Date:   Thu, 01 Apr 2021 16:41:41 +0100
-Message-ID: <3737152.1617291701@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+Content-ID: <3727197.1617285066.1@warthog.procyon.org.uk>
+Date:   Thu, 01 Apr 2021 14:51:06 +0100
+Message-ID: <3727198.1617285066@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Matthew Wilcox <willy@infradead.org> wrote:
+Trond Myklebust <trondmy@hammerspace.com> wrote:
 
->  - I don't understand how a folio gets to be partially cached.  Cached
->    should be tracked on a per-folio basis (like dirty or uptodate), not
->    on a per-page basis.  The point of the folio work is that managing
->    memory in page-sized chunks is now too small for good performance.
+> > I've been working on getting NFS converted to dhowells new fscache
+> > and
+> > netfs APIs and running into a problem with how NFS is designed and it
+> > involves the NFS pagelist.c / pgio API.  I'd appreciate it if you
+> > could review and give your thoughts on possible approaches.  I've
+> > tried to outline some of the possibilities below.  I tried coding
+> > option #3 and ran into some problems, and it has a serialization
+> > limitation.  At this point I'm leaning towards option 2, so I'll
+> > probably try that approach if you don't have time for review or have
+> > strong thoughts on it.
+>
+> I am not going through another redesign of the NFS code in order to
+> accommodate another cachefs design. If netfs needs a refactoring or
+> redesign of the I/O code then it will be immediately NACKed.
+>
+> Why does netfs need to know these details about the NFS code anyway?
 
-Consider the following scenario:
+There are some issues we have to deal with in fscache - and some
+opportunities.
 
- (1) You read two 256K chunks from an nfs file.  These are downloaded from the
-     server and cached.
+ (1) The way cachefiles reads data from the cache is very hacky (calling
+     readpage on the backing filesystem and then installing an interceptor on
+     the waitqueue for the PG_locked page flag on that page, then memcpying
+     the page in a worker thread) - but it was the only way to do it at the
+     time.  Unfortunately, it's fragile and it seems just occasionally the
+     wake event is missed.
 
- (2) The nfs inode is dropped from the cache.
+     Since then, kiocb has come along.  I really want to switch to using this
+     to read/write the cache.  It's a lot more robust and also allows async
+     DIO to be performed, also cutting out the memcpy.
 
- (3) You do a 1M read that includes both 256K chunks.
+     Changing the fscache IO part of API would make this easier.
 
-The VM might create a 1M folio to handle (3) that covers the entire read, but
-only half of the data is in the cache; the other half has to be fetched from
-the server.
+ (2) The way cachefiles finds out whether data is present (using bmap) is not
+     viable on ext4 or xfs and has to be changed.  This means I have to keep
+     track of the presence of data myself, separately from the backing
+     filesystem's own metadata.
+
+     To reduce the amount of metadata I need to keep track of and store, I
+     want to increase the cache granularity - that is I will only store, say,
+     blocks of 256K.  But that needs to feed back up to the filesystem so that
+     it can ask the VM to expand the readahead.
+
+ (3) VM changes are coming that affect the filesystem address space
+     operations.  THP is already here, though not rolled out into all
+     filesystems yet.  Folios are (probably) on their way.  These manage with
+     page aggregation.  There's a new readahead interface function too.
+
+     This means, however, that you might get an aggregate page that is
+     partially cached.  In addition, the current fscache IO API cannot deal
+     with these.  I think only 9p, afs, ceph, cifs, nfs plus orangefs don't
+     support THPs yet.  The first five Willy has held off on because fscache
+     is a complication and there's an opportunity to make a single solution
+     that fits all five.
+
+     Also to this end, I'm trying to make it so that fscache doesn't retain
+     any pointers back into the network filesystem structures, beyond the info
+     provided to perform a cache op - and that is only required on a transient
+     basis.
+
+ (4) I'd like to be able to encrypt the data stored in the local cache and
+     Jeff Layton is adding support for fscrypt to ceph.  It would be nice if
+     we could share the solution with all of the aforementioned bunch of five
+     filesystems by putting it into the common library.
+
+So with the above, there is an opportunity to abstract handling of the VM I/O
+ops for network filesystems - 9p, afs, ceph, cifs and nfs - into a common
+library that handles VM I/O ops and translates them to RPC calls, cache reads
+and cache writes.  The thought is that we should be able to push the
+aggregation of pages into RPC calls there, handle rsize/wsize and allow
+requests to be sliced up and so that they can be distributed to multiple
+servers (works for ceph) so that all five filesystems can get the same
+benefits in one go.
+
+Btw, I'm also looking at changing the way indexing works, though that should
+only very minorly alter the nfs code and doesn't require any restructuring.
+I've simplified things a lot and I'm hoping to remove a couple of thousand
+lines from fscache and cachefiles.
 
 David
 
