@@ -2,116 +2,87 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,URIBL_BLOCKED autolearn=no
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EACD4C43616
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:42:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9AAA1C433B4
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:47:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9981461287
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:42:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 306886112E
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 17:47:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234658AbhDARl7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Apr 2021 13:41:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57170 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234856AbhDARky (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 13:40:54 -0400
-Received: from mail-lj1-x236.google.com (mail-lj1-x236.google.com [IPv6:2a00:1450:4864:20::236])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04F54C03116E;
-        Thu,  1 Apr 2021 09:56:30 -0700 (PDT)
-Received: by mail-lj1-x236.google.com with SMTP id u4so2983841ljo.6;
-        Thu, 01 Apr 2021 09:56:29 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=wO8Dojv7wME+ubk+Yh3ZKiafoFd7I1oLkJMSO3Y31sI=;
-        b=F3O2zCAbbReZgeHKtbw0aXK2qQlf7F/t03hUelxOfQugiFwprHSLhgAmndLRyhp1eu
-         xD+huyb1UwBnI2IhJFwFLD6bC3DFEp/nV2VqnXwz4Z+UQ9gPjcwRk/qHtnBWHLf/mAMU
-         27lOxowYfM7hfYr4eaYwmbJFgQXm+U9xHJAhoHR0YQpG46pKHL86lxLTvIRkQHbyP68r
-         E+GCoG8AHmtjN5znoQ1bqMrOapzAotTU4Ieze/dDFVTUmF9lXtwLP0DdTEKHBpgWLksF
-         UDQGQ4y7zcArnQk5FyBtctEj/9vPtSB9cmWmtVjWGRr9hKsl17dWe7xH0XvSuTV5nGs4
-         uE7g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=wO8Dojv7wME+ubk+Yh3ZKiafoFd7I1oLkJMSO3Y31sI=;
-        b=cteK/QAZMNsuYjC5c5iw6fUc43fgZlIEFFKwQuLbvWdYK9MZBzRR379AJL9Be+K6ZE
-         3WUyuYoNxpiaJu8V/iHxUygJdAkRTS3FSRo4ubUBNMk3ns5iQt1PsLDKyo3F9+WK/UBo
-         Sl6ENjP1BOVAy4qbZtddvH41PeYvoWsBLFllr6LOccBYioUHDXIUBCO1AH0H19N3mfTd
-         6wlGnb4w5lHPePzXSRvBVUyGFat9RElfGfU6SgE9qOCPBRD7UCQUyxFV+sMMnOe9rtCE
-         +fMX2z0+v+IlEY/0yois0tKVgJCuXLIhka+KLN9luiqFXRkuexbmLe8Yo6GqLVOwyNCo
-         mjKQ==
-X-Gm-Message-State: AOAM5329jokitcDXaqKBSuVThIyjb3wuT0T9sec5bJHVluEKrB6Sx7yO
-        VpVBYTIuh8qhJE6Gb8sALkTrco4HnjwSTbtB1V0=
-X-Google-Smtp-Source: ABdhPJzQOEEhimvWy6pd+h2jmQJE81piAskC48n/tc82P3AeVvjS9zpEJwTHf4VvbdGu+F2ZVrpUh6DxCyq/L8TTpnI=
-X-Received: by 2002:a2e:a0cf:: with SMTP id f15mr6281590ljm.29.1617296188589;
- Thu, 01 Apr 2021 09:56:28 -0700 (PDT)
+        id S234912AbhDARrj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Apr 2021 13:47:39 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:51308 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S234276AbhDARmQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 13:42:16 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1617298936;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=WvQa+OFrW5Va5fKOaEC+GHMYXi23ytEjTAR9F/0dm5w=;
+        b=dS5/st8LlnzfBjdUjhyQjDAxhP3/ADkgUncgvw2cral1oyyOKTv7+v46rGXun0mUaYbfnR
+        f/BYLE4Wpliti/PXLkd1brJvuBRSiL3d5Oe6VcenO6j98AadAhvkhRUCceDzkvVSAiZWUw
+        pxCR8i/7wl4KaG/qfDoc2/pPfLOl4Ro=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-561-1JSlI9TwOUazfMMSGAgqbA-1; Thu, 01 Apr 2021 11:41:45 -0400
+X-MC-Unique: 1JSlI9TwOUazfMMSGAgqbA-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 0188F108BD06;
+        Thu,  1 Apr 2021 15:41:44 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-112-58.rdu2.redhat.com [10.10.112.58])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 6006D5C237;
+        Thu,  1 Apr 2021 15:41:42 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+From:   David Howells <dhowells@redhat.com>
+In-Reply-To: <20210401151339.GE351017@casper.infradead.org>
+References: <20210401151339.GE351017@casper.infradead.org> <49e123c6702cb6b27f114dfa64157d9a73463fad.camel@hammerspace.com> <CALF+zOnCisFWTubWEHhTLpt6=CUb7n86YvrNX3nreCYS73_v_Q@mail.gmail.com> <3727198.1617285066@warthog.procyon.org.uk>
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
+        "dwysocha@redhat.com" <dwysocha@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        jlayton@kernel.org, Steve French <sfrench@samba.org>
+Subject: Re: RFC: Approaches to resolve netfs API interface to NFS multiple completions problem
 MIME-Version: 1.0
-References: <161721926778.515226.9805598788670386587.stgit@manet.1015granger.net>
- <161721937122.515226.14731175629421422152.stgit@manet.1015granger.net>
- <4004f56f-3603-f56c-aea9-651230b3181e@talpey.com> <CAFMMQGvortADqgmAzskZKcnyHDzsTEW0FtR501wpP+deUM57FA@mail.gmail.com>
- <b5286b3f-439a-ef7c-cd7c-6cebfbccb02d@talpey.com>
-In-Reply-To: <b5286b3f-439a-ef7c-cd7c-6cebfbccb02d@talpey.com>
-From:   Chuck Lever <chucklever@gmail.com>
-Date:   Thu, 1 Apr 2021 12:56:17 -0400
-Message-ID: <CAFMMQGuo6=Leymd++YBtAwQzptzp+rcynM6EXosu20vG67jrMw@mail.gmail.com>
-Subject: Re: [PATCH v1 2/8] xprtrdma: Do not post Receives after disconnect
-To:     Tom Talpey <tom@talpey.com>
-Cc:     linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <3737151.1617291701.1@warthog.procyon.org.uk>
+Date:   Thu, 01 Apr 2021 16:41:41 +0100
+Message-ID: <3737152.1617291701@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 31, 2021 at 5:22 PM Tom Talpey <tom@talpey.com> wrote:
->
-> On 3/31/2021 4:31 PM, Chuck Lever wrote:
-> > On Wed, Mar 31, 2021 at 4:01 PM Tom Talpey <tom@talpey.com> wrote:
-> >>
-> >> On 3/31/2021 3:36 PM, Chuck Lever wrote:
-> >>> Currently the Receive completion handler refreshes the Receive Queue
-> >>> whenever a successful Receive completion occurs.
-> >>>
-> >>> On disconnect, xprtrdma drains the Receive Queue. The first few
-> >>> Receive completions after a disconnect are typically successful,
-> >>> until the first flushed Receive.
-> snip
-> >> Is it not possible to mark the WRs as
-> >> being part of a batch, and allowing them to flush? You could borrow a
-> >> bit in the completion cookie, and check it when the CQE pops out. Maybe.
-> >
-> > It's not an issue with batching, it's an issue with posting Receives from the
-> > Receive completion handler. I'd think that any of the ULPs that post Receives
-> > in their completion handler would have the same issue.
-> >
-> > The purpose of the QP drain in rpcrdma_xprt_disconnect() is to ensure there
-> > are no more WRs in flight so that the hardware resources can be safely
-> > destroyed. If the Receive completion handler continues to post Receive WRs
-> > after the drain sentinel has been posted, leaks and crashes become possible.
+Matthew Wilcox <willy@infradead.org> wrote:
 
-> Well, why not do an atomic_set() of a flag just before posting the
-> sentinel, and check it with atomic_get() before any other RQ post?
+>  - I don't understand how a folio gets to be partially cached.  Cached
+>    should be tracked on a per-folio basis (like dirty or uptodate), not
+>    on a per-page basis.  The point of the folio work is that managing
+>    memory in page-sized chunks is now too small for good performance.
 
-After a couple of private exchanges, Tom and I agree that doing an
-ib_query_qp() in rpcrdma_post_recvs() has some drawbacks and
-does not fully close the race window.
+Consider the following scenario:
 
-There is nothing that prevents rpcrdma_xprt_disconnect() from starting
-the RQ drain while rpcrdma_post_recvs is still running. There needs to
-be serialization between ib_drain_rq() and rpcrdma_post_recvs() so
-that the drain sentinel is guaranteed to be the final Receive WR posted
-on the RQ.
+ (1) You read two 256K chunks from an nfs file.  These are downloaded from the
+     server and cached.
 
-It would be great if the core ib_drain_rq() API itself could handle the
-exclusion.
+ (2) The nfs inode is dropped from the cache.
 
+ (3) You do a 1M read that includes both 256K chunks.
 
--- 
-"We cannot take our next breath without the exhale."
- -- Ellen Scott Grable
+The VM might create a 1M folio to handle (3) that covers the entire read, but
+only half of the data is in the cache; the other half has to be fetched from
+the server.
+
+David
+
