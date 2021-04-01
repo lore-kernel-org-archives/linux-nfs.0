@@ -2,127 +2,223 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,PDS_BAD_THREAD_QP_64,
+	SPF_HELO_NONE,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53F04C43462
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:03:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BFE2C4361B
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:11:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1E28F61001
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:03:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5D9036112E
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Apr 2021 18:11:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237144AbhDASDZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Apr 2021 14:03:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60866 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235597AbhDAR5b (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 13:57:31 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B819C00F7F2
-        for <linux-nfs@vger.kernel.org>; Thu,  1 Apr 2021 08:13:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=12WYSnn0W09slxpXb2C2FEV1qgEU3cY44OdksaN4OnU=; b=d8PQmNEsNTzawK2fK3tEH7lLxf
-        ts7iJ/t5euG6ac64QlBk4QLKCjmwmupI/4N/CYNVG4s0RQxjmys1ZRpkPt4md8Ty4DKudzCikcGSa
-        Hbqnw4cZToCbdYPwafq1icjvN/2V/1dSLwMW+/jV2Dp2esgK2D/8fKcF5R6ylMMDJX4QYOJGMJlqE
-        5NBC5qmwZcgoaSrRJ336IREJXeICK16dX8u13N4QW71J4Sg16Zi5xSYq0za9rmfhp3PtLdqrOV9pc
-        E6LSBt/IEq1zK0o+hurvivsh1S08jPs5nPNUnW4Ua4LF2X1XJJaKcSyWtj1B98rTFVLcn7QoTW7m5
-        jGxyC9Ew==;
-Received: from willy by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1lRz0t-006HD0-4x; Thu, 01 Apr 2021 15:13:40 +0000
-Date:   Thu, 1 Apr 2021 16:13:39 +0100
-From:   Matthew Wilcox <willy@infradead.org>
-To:     David Howells <dhowells@redhat.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "dwysocha@redhat.com" <dwysocha@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        jlayton@kernel.org, Steve French <sfrench@samba.org>
-Subject: Re: RFC: Approaches to resolve netfs API interface to NFS multiple
- completions problem
-Message-ID: <20210401151339.GE351017@casper.infradead.org>
-References: <49e123c6702cb6b27f114dfa64157d9a73463fad.camel@hammerspace.com>
- <CALF+zOnCisFWTubWEHhTLpt6=CUb7n86YvrNX3nreCYS73_v_Q@mail.gmail.com>
- <3727198.1617285066@warthog.procyon.org.uk>
+        id S235500AbhDASLD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Apr 2021 14:11:03 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:58610 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S235355AbhDASDw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Apr 2021 14:03:52 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131DYSlF095814;
+        Thu, 1 Apr 2021 13:35:22 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2020-01-29;
+ bh=DFC5OajthiEKpBawUIB+cUFW/fSCw5JZGUglPqN5LHI=;
+ b=ocxlPnjW2/9uC9dyE+8REE+JPjbdyjXlCTBVJpinCPCQz/jA/dW+fvAcS0tMbElfKEyM
+ k8S8aBCO+NGUELyQNHrM5oZqGz9/bQWzzAcajhLgPeeOhhjkSG0fAXIY8koQDxMZVTfq
+ slDAWUUqvdEZzV62t+CVVJiciti7zVHG/AwWj8Tm56IUlXI+O83IpFnbT0/5voXl52fi
+ LsCb0D20GK6hm13IcbEQzjbJQ5sM5cou2kM6N65rcZwzFOw9olUdTsnFeYe/uIadf5+I
+ /xBFyFy6ecIn/53E3GM/XkAtoe0dEglONT6yTcCjCEAGEDvHpTD/gp8bJCWcpkgM9thF 8w== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by userp2120.oracle.com with ESMTP id 37n2a01thg-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 01 Apr 2021 13:35:22 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 131DPip3109979;
+        Thu, 1 Apr 2021 13:35:21 GMT
+Received: from nam12-dm6-obe.outbound.protection.outlook.com (mail-dm6nam12lp2177.outbound.protection.outlook.com [104.47.59.177])
+        by aserp3030.oracle.com with ESMTP id 37n2as9uck-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 01 Apr 2021 13:35:21 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=QK+G058mgFu35E90qbLtp+piuEqgqm/+nnMePgRAIWFHy1ZMkWirgZ903RDG8l3/E04Ca0hvP8K9wWbcO1pcz7gZo56t9/N9HPzyY8TJBmy48kKNI1H9CkwGbKhOY8yJik/IOL41Ed5KWVHa/SoxOCiOW7e2FqwndOWYMm/TJB/gdvgWnbnRdRMLMCDkBPVX3H9MEMI6ypWKiTs1UVcXHdrTsOXAOZ45dWZGrqRZgYaQzpw6D0MTFhDb8+l0ye/prgEN5vNAxbZ/EZfmm5c/c+ZJGMjsSHOkoZnCuQ8je2WfoW9hzxOuYByXbpF2Mpdk1zn9nNOw9wu6gQUJPur+zQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=DFC5OajthiEKpBawUIB+cUFW/fSCw5JZGUglPqN5LHI=;
+ b=AY3Qnh0E9hQCMxju3SpHkn5Txy0vJe7yQMJGnEgjeqp6oe8lzY/aZQy0SmZun4grFqVYvuBzCut6rxrQ3JgtmZVMLVD1eOa8tXAed92eLSFV9NjoYP2l2gYTK0tDi3Ya2Kkk0BspECekji1anT679BP6ry6PfnZa4mZWt/fUspSVQobuj0gKcxtw4xtheWkpdlrEO6GwgxcN1jM2D+iGxAISWW82nu4TqEuxAGsGjN/+cMcMDbVWFRXKU5Sx4iC16K2YEmGeES/Zs7+eGgnA71Cq1BKlwiyAT85Y50tRVG33dqz3sIbiBTKqCx9q9LJHdxp+v8b2I4CUkEox20jiUw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=DFC5OajthiEKpBawUIB+cUFW/fSCw5JZGUglPqN5LHI=;
+ b=tkX4yduqVqabrkP8XGirwHZqx40nl6Wm9rv/tCMKdusuUqex5bi4iz8deBJMEbsRGtD20S5O37TDh+rSd6a+BXWmE1ZWwH0gIODbMrlvVPsfuMr2ACi0E5S2B81gWjpmfvAU0jHJl8PVEXk19b5elgP27yvuFOm4eepw8gDIn9c=
+Received: from SJ0PR10MB4688.namprd10.prod.outlook.com (2603:10b6:a03:2db::24)
+ by SJ0PR10MB4495.namprd10.prod.outlook.com (2603:10b6:a03:2d6::5) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3999.28; Thu, 1 Apr
+ 2021 13:35:19 +0000
+Received: from SJ0PR10MB4688.namprd10.prod.outlook.com
+ ([fe80::50bf:7319:321c:96c9]) by SJ0PR10MB4688.namprd10.prod.outlook.com
+ ([fe80::50bf:7319:321c:96c9%4]) with mapi id 15.20.3999.029; Thu, 1 Apr 2021
+ 13:35:19 +0000
+From:   Chuck Lever III <chuck.lever@oracle.com>
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+CC:     Bruce Fields <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.2: fix copy stateid copying for the async copy
+Thread-Topic: [PATCH 1/1] NFSv4.2: fix copy stateid copying for the async copy
+Thread-Index: AQHXJZd18veVkGmMdESYIByvSvllAaqeTagAgABHT4CAAReQgA==
+Date:   Thu, 1 Apr 2021 13:35:19 +0000
+Message-ID: <858F499A-0687-43E8-A67F-BFC462623EE4@oracle.com>
+References: <20210330190359.13057-1-olga.kornievskaia@gmail.com>
+ <AAB69ABA-6AD8-4623-A823-B1B3FF8BA1FB@oracle.com>
+ <CAN-5tyHL4s9=Gaf=DzA3H2ZcMzMn00Lqqw+h-ZgSrogVUHJ1Rg@mail.gmail.com>
+In-Reply-To: <CAN-5tyHL4s9=Gaf=DzA3H2ZcMzMn00Lqqw+h-ZgSrogVUHJ1Rg@mail.gmail.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: gmail.com; dkim=none (message not signed)
+ header.d=none;gmail.com; dmarc=none action=none header.from=oracle.com;
+x-originating-ip: [68.61.232.219]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: b6f415a8-cde6-46e2-301e-08d8f512fe63
+x-ms-traffictypediagnostic: SJ0PR10MB4495:
+x-microsoft-antispam-prvs: <SJ0PR10MB44958FA415367C0964FBC163937B9@SJ0PR10MB4495.namprd10.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:9508;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: fHhZ6OzDPWidbT0n3BWTBlkkeBZBLNHiIcnlSzEYhy2GnsnIIKk2Ni8TSAwYUJ2Zdp30ilFuItsl/nVwqbQY8L7Dw4LVPBkzSNCBRCaZqCQSovr/ShfslP9KVs1An68PuhdwGTO2mN90OgvKZPn9nBZHIu+lpQ3W2BUOnGR+fHSicTsZ4kmcZNhBD3v7UWzN2fCoSWlcYPSsnP1kvPTRaLzSmaG8G5wrc6TQRoM8OVyJpIKZElf3qrM4I0s1GKu7Bo39K2/bfHFWTVIpyNtz6LDG3a9ORyut5+HEVjWzSlxaluLSXDDEr+JewqWSCp4XaxsOxByR9dwnr/QK3hmbSPJqBtVJpR+BVht3OyAzezAVtkvTLg/VnIuGzcD9slJocMexmJXad0fEsBUsW5ZVlzBSpU975vX5Ket19bx9Q1mlUtptIs29ie2WCZ71h93iKNnKWW9fz6vMCg+VoUmspFVz7ClooPncgYabO4g6lfcj6vA+qjKwg2K97ueC08PuQg7WCBBGau/At0uJEjq2wQ5Ocw/Hy4gElFvjs7B5xGFFfpN/JzWC/Z3nBEtvTIrpFJxrI8BVOwFdJUM6ucLwyftRVDqnFIJEoPhflaZB9MOqi3ETz3kURxhdyUszMY8h+GIoqhvIhoJ9ITM3dV96sYHCTKsYhureRjHAbzxFrYhOgnbCTtbb566Ofa5AXtKr
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(396003)(346002)(39860400002)(136003)(376002)(86362001)(8936002)(8676002)(2616005)(6916009)(6486002)(186003)(6512007)(26005)(91956017)(76116006)(83380400001)(66946007)(66476007)(64756008)(5660300002)(478600001)(54906003)(71200400001)(4326008)(36756003)(53546011)(6506007)(316002)(38100700001)(2906002)(66556008)(66446008)(33656002)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata: =?us-ascii?Q?TQSAhEvhceepxBrnJLVdwKtYzxP77eVxFxiQZQnGLMxXnega0DPVjVN3H4Uv?=
+ =?us-ascii?Q?Q6XsXli1ScliKXU96MnO5WAGNgXlQuEtsXF1nLzeiBZeh2X0seoy/iIRoA26?=
+ =?us-ascii?Q?GQI3KUXjp6+yKlRYeEx4kualJ8Qn3hB9GxDa0Rl2NI/kHoreuZdCuaZVCBJn?=
+ =?us-ascii?Q?iazy5qxkfG72z36ywu3UiInMfjBCNkrxHaLFRXFXxcrP3VdxWRXJtKtfhhVu?=
+ =?us-ascii?Q?OKCSrk2LRt7vlbnIBvcd1NshLF1j5QXmFGQzNAmTQR6YCwSOh6BqBVU40Mql?=
+ =?us-ascii?Q?Gty46PSPRmXEqQiS6RS9sFJMlQiOWnLA/HFkbrCBclk18pK+bjFEQ2MJ/4er?=
+ =?us-ascii?Q?J+oAgM8o2GubSvjQ4Du/Wj/PYHam4A+Mjzn5hA8YIzZ/mVPjzyDkj6ei7qU5?=
+ =?us-ascii?Q?wJ1NZG5yljPueFGj8bR4sIWqz61OcdJYv2HfFiuR35tmlBM/vLQ7cvr1tf5M?=
+ =?us-ascii?Q?fMUmlBksQ99HxHo+rkj3/XyNHoc4VUK84Ae9KOkQ4FOQGd2zPXowW+HSZAbu?=
+ =?us-ascii?Q?s9CS0ANkNRnCdJjgS0+2IkP5CSlZE2nQq0ZdoNnRYa6Bc+XVLmef9LZIXi8Z?=
+ =?us-ascii?Q?icGGPajgR0Sxw7ABySKCE9Fpa/mZDq5d/83a4ud3+WOYs1riCGPKBS6J9vUk?=
+ =?us-ascii?Q?/5qIOf+ZfpprxNOvW1StZ6a0avfstBDQqDQ21twLLNuAdI6aaQoMDDcOm0U3?=
+ =?us-ascii?Q?lfT6Vdn1ZHvkG59EzMnuw6QXgo0MG2viF39ZuwkfGRP46ZHbUifs0+9QI1LN?=
+ =?us-ascii?Q?osqkhXGFVBRQJuavljZl2/uIckzD+dM/MiYutg3soL0H2NO3jk44sJztyTKK?=
+ =?us-ascii?Q?gXP/mJC86J/jFG7Uzb9eh0I0C0jnsTVXGeC3OrIF3A7uHycSR0cLiHiyndRW?=
+ =?us-ascii?Q?xDa9VvqVeVZ25YgZK91foDPYr2woikaPMx+mpM6EW7/30KzMyIJXL954f3E8?=
+ =?us-ascii?Q?OsR33kAi/NyGJNBtE+cCB89UUACpezyvX/CFcKU8hfzZmdFrsGp4U+S5eZHE?=
+ =?us-ascii?Q?pu+NM21ZjmuDIgkYflZ+W+L7WKEj/G3IpCgWOQiwFyrxNdHL6jyAAzu5l55h?=
+ =?us-ascii?Q?qcFSXEA7ki9GzJUadPuenSzhCtnIeN+BHEw8c7fSYyxhXPPC3hfBXluyVe0M?=
+ =?us-ascii?Q?bNkbM2gGOKv0yiagdkfq8ZBRHadWBf63rkBkZgt1PC5jt2nTInkV8Lgbp6M7?=
+ =?us-ascii?Q?aCe4eWiWm/OAtnpcjpcpqj4Tiim3VyeXXKu1A9FTmxW1UMGSU/Fdd2XmDJdQ?=
+ =?us-ascii?Q?twvm0lAF5HUwh0n+suoBXTHArM/H+58LAiPoy96ma6h64dkrWOUBTf+5LSof?=
+ =?us-ascii?Q?fog/ENtv//eKfLjyQSAglc2m?=
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <B1AC2AEE671334489F32B58A85830B0B@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <3727198.1617285066@warthog.procyon.org.uk>
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: SJ0PR10MB4688.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: b6f415a8-cde6-46e2-301e-08d8f512fe63
+X-MS-Exchange-CrossTenant-originalarrivaltime: 01 Apr 2021 13:35:19.8069
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: PGgvtdtuPdgqKYzFh3SiJLJA8aOw7x0VO5BlTYZ+UB7qaNVGE5NMQhkJs2umar6PflKimLJWQT1w5UXXyRu+8Q==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ0PR10MB4495
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9941 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 spamscore=0
+ suspectscore=0 bulkscore=0 mlxscore=0 adultscore=0 malwarescore=0
+ phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2103310000 definitions=main-2104010093
+X-Proofpoint-GUID: A1abaENLP4xFVrV1dLRXlmTSSy43zXqB
+X-Proofpoint-ORIG-GUID: A1abaENLP4xFVrV1dLRXlmTSSy43zXqB
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9941 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 impostorscore=0 adultscore=0
+ clxscore=1015 mlxlogscore=999 phishscore=0 bulkscore=0 priorityscore=1501
+ spamscore=0 malwarescore=0 mlxscore=0 lowpriorityscore=0 suspectscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2103310000
+ definitions=main-2104010094
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Apr 01, 2021 at 02:51:06PM +0100, David Howells wrote:
->  (1) The way cachefiles reads data from the cache is very hacky (calling
->      readpage on the backing filesystem and then installing an interceptor on
->      the waitqueue for the PG_locked page flag on that page, then memcpying
->      the page in a worker thread) - but it was the only way to do it at the
->      time.  Unfortunately, it's fragile and it seems just occasionally the
->      wake event is missed.
-> 
->      Since then, kiocb has come along.  I really want to switch to using this
->      to read/write the cache.  It's a lot more robust and also allows async
->      DIO to be performed, also cutting out the memcpy.
-> 
->      Changing the fscache IO part of API would make this easier.
 
-I agree with this.  The current way that fscache works is grotesque.
-It knows far too much about the inner workings of, well, everything.
 
->  (3) VM changes are coming that affect the filesystem address space
->      operations.  THP is already here, though not rolled out into all
->      filesystems yet.  Folios are (probably) on their way.  These manage with
->      page aggregation.  There's a new readahead interface function too.
-> 
->      This means, however, that you might get an aggregate page that is
->      partially cached.  In addition, the current fscache IO API cannot deal
->      with these.  I think only 9p, afs, ceph, cifs, nfs plus orangefs don't
->      support THPs yet.  The first five Willy has held off on because fscache
->      is a complication and there's an opportunity to make a single solution
->      that fits all five.
+> On Mar 31, 2021, at 4:54 PM, Olga Kornievskaia <olga.kornievskaia@gmail.c=
+om> wrote:
+>=20
+> On Wed, Mar 31, 2021 at 12:39 PM Chuck Lever III <chuck.lever@oracle.com>=
+ wrote:
+>>=20
+>> Hi Olga-
+>>=20
+>>> On Mar 30, 2021, at 3:03 PM, Olga Kornievskaia <olga.kornievskaia@gmail=
+.com> wrote:
+>>>=20
+>>> From: Olga Kornievskaia <kolga@netapp.com>
+>>>=20
+>>> This patch fixes Dan Carpenter's report that the static checker
+>>> found a problem where memcpy() was copying into too small of a buffer.
+>>>=20
+>>> Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+>>> Fixes: e0639dc5805a: "NFSD introduce async copy feature"
+>>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>>=20
+>> Thanks! Pushed to the for-next topic branch in:
+>>=20
+>> git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
+>>=20
+>> With a Reviewed-by: from Dai.
+>=20
+> Thank you Chuck. It was pointed out that I messed up the "Fixes" line.
 
-This isn't quite uptodate:
+Interesting that checkpatch.pl did not catch this.
 
- - The new readahead interface went into Linux in June 2020.
-   All filesystems were converted from readpages to readahead except
-   for the five above that use fscache.  It would be nice to remove the
-   readpages operation, but I'm trying not to get in anyone's way here,
-   and the fscache->netfs transition was already underway.
- - THPs in Linux today are available to precisely one filesystem --
-   shmem/tmpfs.  There are problems all over the place with using THPs
-   for non-in-memory filesystems.
- - My THP work achieved POC status.  I got some of the prerequistite
-   bits in, but have now stopped working on it (see next point).  It works
-   pretty darned well on XFS only.  I did do some work towards enabling
-   it on NFS, but never tested it.  There's a per-filesystem enable bit,
-   so in theory NFS never needs to be converted.  In practice, you're
-   going to want to for the performance boost.
- - I'm taking the lessons learned as part of the THP work (it's confusing
-   when a struct page may refer to part of a large memory allocation or
-   all of a large memory allocation) and introducing a new data type
-   (the struct folio) to refer to chunks of memory in the page cache.
-   All filesystems are going to have to be converted to the new API,
-   so the fewer places that filesystems actually deal with struct page,
-   the easier this makes the transition.
- - I don't understand how a folio gets to be partially cached.  Cached
-   should be tracked on a per-folio basis (like dirty or uptodate), not
-   on a per-page basis.  The point of the folio work is that managing
-   memory in page-sized chunks is now too small for good performance.
 
-> So with the above, there is an opportunity to abstract handling of the VM I/O
-> ops for network filesystems - 9p, afs, ceph, cifs and nfs - into a common
-> library that handles VM I/O ops and translates them to RPC calls, cache reads
-> and cache writes.  The thought is that we should be able to push the
-> aggregation of pages into RPC calls there, handle rsize/wsize and allow
-> requests to be sliced up and so that they can be distributed to multiple
-> servers (works for ceph) so that all five filesystems can get the same
-> benefits in one go.
+> Do you want me to send another or can you fix it locally?
 
-If NFS wants to do its own handling of rsize/wsize, could it?  That is,
-if the VM passes it a 2MB page and says "read it", and the server has
-an rsize of 256kB, could NFS split it up and send its own stream of 8
-requests, or does it have to use fscache to do that?
+I'll take care of it. The tag change is entirely mechanical.
+
+
+>>> ---
+>>> fs/nfsd/nfs4proc.c | 4 ++--
+>>> 1 file changed, 2 insertions(+), 2 deletions(-)
+>>>=20
+>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>>> index dd9f38d072dd..e13c4c81fb89 100644
+>>> --- a/fs/nfsd/nfs4proc.c
+>>> +++ b/fs/nfsd/nfs4proc.c
+>>> @@ -1538,8 +1538,8 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_c=
+ompound_state *cstate,
+>>>              if (!nfs4_init_copy_state(nn, copy))
+>>>                      goto out_err;
+>>>              refcount_set(&async_copy->refcount, 1);
+>>> -             memcpy(&copy->cp_res.cb_stateid, &copy->cp_stateid,
+>>> -                     sizeof(copy->cp_stateid));
+>>> +             memcpy(&copy->cp_res.cb_stateid, &copy->cp_stateid.stid,
+>>> +                     sizeof(copy->cp_res.cb_stateid));
+>>>              dup_copy_fields(copy, async_copy);
+>>>              async_copy->copy_task =3D kthread_create(nfsd4_do_async_co=
+py,
+>>>                              async_copy, "%s", "copy thread");
+>>> --
+>>> 2.18.2
+>>>=20
+>>=20
+>> --
+>> Chuck Lever
+
+--
+Chuck Lever
+
+
 
