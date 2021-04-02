@@ -2,85 +2,108 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D68CC433B4
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Apr 2021 21:01:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3C90C433ED
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Apr 2021 23:30:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E8A3D610CC
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Apr 2021 21:01:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A67661158
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Apr 2021 23:30:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234207AbhDBVB7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Apr 2021 17:01:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46630 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231149AbhDBVB7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Apr 2021 17:01:59 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B71DC0613E6
-        for <linux-nfs@vger.kernel.org>; Fri,  2 Apr 2021 14:01:57 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 1F20A6D18; Fri,  2 Apr 2021 17:01:57 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 1F20A6D18
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1617397317;
-        bh=d/6+d8HxagUFpp9zzz8c7tCG2YWkT2ICiCAOlw+roG8=;
-        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
-        b=ptXNxZufnAErXUWRikXxUVKtmyYi1iiZLlpaPA4MKxNpE5QzYgJ2b1D7N/UvpMB2K
-         JNaqNOwcIxvihZSFFCzf1QYGpc8yjtTf9YxXgs9oQ6NqQOpr2KjfdCKa8nwBxs2+yg
-         H+m3o0SCe+B0pjjhZ6DQ4NmdpO7HPY3tLB4brNI4=
-Date:   Fri, 2 Apr 2021 17:01:57 -0400
-To:     Rick Macklem <rmacklem@uoguelph.ca>
-Cc:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>, nfsv4@ietf.org
-Subject: Re: [PATCH 1/1] NFSD fix handling of NFSv4.2 SEEK for data within
- the last hole
-Message-ID: <20210402210157.GC16427@fieldses.org>
-References: <20210331192819.25637-1-olga.kornievskaia@gmail.com>
- <YGUm7/HE3HqVJik2@pick.fieldses.org>
- <CAN-5tyETvKvUq_X7+2E0o=9GjJ628DC=QJW5xKA2-X7UHc_DOw@mail.gmail.com>
- <YQXPR0101MB0968C9AB372DC12408F496D8DD7B9@YQXPR0101MB0968.CANPRD01.PROD.OUTLOOK.COM>
+        id S235228AbhDBXao (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Apr 2021 19:30:44 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:41052 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S235473AbhDBXan (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Apr 2021 19:30:43 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 132NUaE3004034;
+        Fri, 2 Apr 2021 23:30:36 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=corp-2020-01-29;
+ bh=8juw05n9USKVXWHoj4+6Hm2JGOgeBvMKxjqyvoiMRzg=;
+ b=B69vCrDUxdDxMefm5Anzly4eLyzNQUxxPJIiM9whAJxmU4YkL2rgiYLL6adfWWnHHBui
+ UPlks9c3vSw4NNgN89Us8myG5NA7ZZpkXEh/wFTW+LlzeRwHM/+Db+dBiiuozvzslrKA
+ wRJTJ677G8M2LPb6MQA/Yo1cOltYU6cil8/dDmFIczL6AepuAk3X+pan3tlGqn5fhc2y
+ AlOkzB1SAJ/ndvpvzujZAiNafk+qZDZoReUMBY0IePfJwbeEtKHpr+deV4HQ7la4dtOA
+ DmGeCNVtFJlms0FtjsEdZA5iCsZjBbOG25YhmwXve49C7Iu3IBGcDNJs/lSOY1r7vB8A aA== 
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
+        by aserp2120.oracle.com with ESMTP id 37n2aknrgs-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 02 Apr 2021 23:30:36 +0000
+Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
+        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 132NP4L8033715;
+        Fri, 2 Apr 2021 23:30:36 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by aserp3020.oracle.com with ESMTP id 37n2acxbt9-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 02 Apr 2021 23:30:36 +0000
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 132NPvWM035088;
+        Fri, 2 Apr 2021 23:30:36 GMT
+Received: from aserp3030.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
+        by aserp3020.oracle.com with ESMTP id 37n2acxbsh-3;
+        Fri, 02 Apr 2021 23:30:35 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     olga.kornievskaia@gmail.com
+Cc:     linux-nfs@vger.kernel.org, trondmy@hammerspace.com,
+        bfields@fieldses.org, chuck.lever@oracle.com
+Subject: [PATCH v2 2/2] NFSv4.2: mount overhead should not be used as threshold for inter-server copy
+Date:   Fri,  2 Apr 2021 19:30:31 -0400
+Message-Id: <20210402233031.36731-3-dai.ngo@oracle.com>
+X-Mailer: git-send-email 2.20.1.1226.g1595ea5.dirty
+In-Reply-To: <20210402233031.36731-1-dai.ngo@oracle.com>
+References: <20210402233031.36731-1-dai.ngo@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YQXPR0101MB0968C9AB372DC12408F496D8DD7B9@YQXPR0101MB0968.CANPRD01.PROD.OUTLOOK.COM>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-ORIG-GUID: _wOxAX_Qykqu9oRlGmBkttmO2NDfBF5p
+X-Proofpoint-GUID: _wOxAX_Qykqu9oRlGmBkttmO2NDfBF5p
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9942 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 impostorscore=0 phishscore=0
+ bulkscore=0 adultscore=0 clxscore=1015 malwarescore=0 priorityscore=1501
+ suspectscore=0 spamscore=0 mlxlogscore=999 lowpriorityscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2103310000
+ definitions=main-2104020158
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Adding nfsv4@ietf.org:
+Since mount and unmount are not done on each copy request, its overhead
+should not be considered as the threshold for doing inter-server copy.
+The threshold used to determine sync or async copy is also used to decide
+whether copy is done with inter-server copy or generic copy.
 
-On Thu, Apr 01, 2021 at 09:32:05PM +0000, Rick Macklem wrote:
-> I discussed this on nfsv4@ietf.org some time ago.
-> The problem with "fixing" the server is that it breaks
-> the unpatched Linux client.
-> 
-> If the client is careful, it can work correctly for both a Linux
-> and RFC5661 conformant server. That's what the FreeBSD
-> client tries to do.
-> --> I'd suggest that be your main goal.
-> 
-> The FreeBSD server ships "Linux compatible", but there is
-> a switch to make it RFC5661 compatible.
-> --> I wouldn't make it default the RFC compatible for
->       quite a while after the client that handles RFC compatible
->       ships.
-> 
-> I tried to convince folks to "errata" the RFC to Linux
-> compatible (since Linux was the only shipping 4.2 at
-> the time, but they did not consider it an "errata").
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfs/nfs4file.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-Previous discussion here:
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 441a2fa073c8..67ca798a1a79 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -158,13 +158,11 @@ static ssize_t __nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		sync = true;
+ retry:
+ 	if (!nfs42_files_from_same_server(file_in, file_out)) {
+-		/* for inter copy, if copy size if smaller than 12 RPC
+-		 * payloads, fallback to traditional copy. There are
+-		 * 14 RPCs during an NFSv4.x mount between source/dest
+-		 * servers.
++		/*
++		 * for inter copy, if copy size is small enough
++		 * for sync copy then fallback to traditional copy.
+ 		 */
+-		if (sync ||
+-			count <= 14 * NFS_SERVER(file_inode(file_in))->rsize)
++		if (sync)
+ 			return -EOPNOTSUPP;
+ 		cn_resp = kzalloc(sizeof(struct nfs42_copy_notify_res),
+ 				GFP_NOFS);
+-- 
+2.9.5
 
-	https://mailarchive.ietf.org/arch/msg/nfsv4/bPLFnywt1wZ4kolMkzeSYca0qIM/
-
-There's no rejection on that thread, was it elsewhere?
-
---b.
