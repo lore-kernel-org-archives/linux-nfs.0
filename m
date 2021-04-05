@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F6CBC43603
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3BD0C43616
 	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F21E6613B1
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 85D6F613AE
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232186AbhDEFYf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 5 Apr 2021 01:24:35 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57056 "EHLO mail.kernel.org"
+        id S232191AbhDEFYm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 5 Apr 2021 01:24:42 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57314 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232148AbhDEFYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 5 Apr 2021 01:24:32 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 30A2E613A4;
-        Mon,  5 Apr 2021 05:24:25 +0000 (UTC)
+        id S232218AbhDEFYj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Apr 2021 01:24:39 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id D3E3C6139F;
+        Mon,  5 Apr 2021 05:24:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617600266;
-        bh=imvbyn97thI9yWumE7pEl40IQe358kCagE2ZGNMZU9U=;
+        s=k20201202; t=1617600272;
+        bh=H8VyokLLj861miN6eL/BS/iydH8X5tcb3ZsH8b+Rr3E=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=HZEzb+U8Ry5BOtN1qNr3CelJoI40xG7feEOzNwXvuXUEOQO3t+IeULIAKlg0xq4Ps
-         J5AcD6+++TL27oFLWK80YU2XPT8zCB6J+XRulPpz9MTDdcSIGNm6PGnK3hChgNsqVr
-         8CDSLtsMRaDgk291G4zGT7zeU9k3R5bQ4k/K1kx+Z1h6TXYqxyqz4+DzkAdIiK+l+r
-         SMXkJnWjg3vbf+UY4oiB57JeZa/Xg2MeojDuvo1VBrKI3DFPfAKqJBIeAyiLOZFCDP
-         dCJYSeTmHUXmoR1Ihh5FvuyelpHmTPzXJhngHA6OGcoDWelbwKJWvTYXfx6QoH0SMl
-         AxUWR/QpJ9f5Q==
+        b=Pc2AL8IA2ENJh5d/e1ATkUHiXYZJp3c0RoiDrukP7UR18XgRnLUPOt455aETZDgD+
+         9tN6dCnr71sF7xwuEtUhcHtpYZv9kBVm2hXs5G4KU8C43sJeLHi9n4p2Yca+o1XWUm
+         4x87/gYWytjWu5929v6HulHxqQmQQA+kzbo5WGRzXAT/mfUU28J4IoUVN36S0olB1C
+         SSiN6RrpurpK+3g49qd79KBJ73uiaGztbXchONgqfNrwuB6SP1tsCLgjB4KFzTjLHK
+         0DkCmaVePHL7WmR8f37thwoi/35+N1BSlEBQDZAZbwzNsjvUBXpKze2FWem04y6aEO
+         Jk8f5lhdh17MQ==
 From:   Leon Romanovsky <leon@kernel.org>
 To:     Doug Ledford <dledford@redhat.com>,
         Jason Gunthorpe <jgg@nvidia.com>
@@ -76,9 +76,9 @@ Cc:     Avihai Horon <avihaih@nvidia.com>,
         Weihang Li <liweihang@huawei.com>,
         Yishai Hadas <yishaih@nvidia.com>,
         Zhu Yanjun <zyjzyj2000@gmail.com>
-Subject: [PATCH rdma-next 05/10] RDMA/srp: Enable Relaxed Ordering
-Date:   Mon,  5 Apr 2021 08:23:59 +0300
-Message-Id: <20210405052404.213889-6-leon@kernel.org>
+Subject: [PATCH rdma-next 07/10] cifs: smbd: Enable Relaxed Ordering
+Date:   Mon,  5 Apr 2021 08:24:01 +0300
+Message-Id: <20210405052404.213889-8-leon@kernel.org>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210405052404.213889-1-leon@kernel.org>
 References: <20210405052404.213889-1-leon@kernel.org>
@@ -90,45 +90,59 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Avihai Horon <avihaih@nvidia.com>
 
-Enable Relaxed Ordering for srp.
+Enable Relaxed Ordering for smbd.
 
 Relaxed Ordering is an optional access flag and as such, it is ignored
 by vendors that don't support it.
 
 Signed-off-by: Avihai Horon <avihaih@nvidia.com>
-Reviewed-by: Max Gurtovoy <maxg@mellanox.com>
 Reviewed-by: Michael Guralnik <michaelgur@nvidia.com>
 Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
 ---
- drivers/infiniband/ulp/srp/ib_srp.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/cifs/smbdirect.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/infiniband/ulp/srp/ib_srp.c b/drivers/infiniband/ulp/srp/ib_srp.c
-index 8481ad769ba4..0026660c3ead 100644
---- a/drivers/infiniband/ulp/srp/ib_srp.c
-+++ b/drivers/infiniband/ulp/srp/ib_srp.c
-@@ -436,7 +436,8 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
- 		mr_type = IB_MR_TYPE_MEM_REG;
+diff --git a/fs/cifs/smbdirect.c b/fs/cifs/smbdirect.c
+index 647098a5cf3b..1e86dc8bbe85 100644
+--- a/fs/cifs/smbdirect.c
++++ b/fs/cifs/smbdirect.c
+@@ -2178,8 +2178,10 @@ static void smbd_mr_recovery_work(struct work_struct *work)
+ 				continue;
+ 			}
  
- 	for (i = 0, d = &pool->desc[0]; i < pool->size; i++, d++) {
--		mr = ib_alloc_mr(pd, mr_type, max_page_list_len, 0);
-+		mr = ib_alloc_mr(pd, mr_type, max_page_list_len,
-+				 IB_ACCESS_RELAXED_ORDERING);
- 		if (IS_ERR(mr)) {
- 			ret = PTR_ERR(mr);
- 			if (ret == -ENOMEM)
-@@ -1487,9 +1488,8 @@ static int srp_map_finish_fr(struct srp_map_state *state,
- 	wr.wr.send_flags = 0;
- 	wr.mr = desc->mr;
- 	wr.key = desc->mr->rkey;
--	wr.access = (IB_ACCESS_LOCAL_WRITE |
--		     IB_ACCESS_REMOTE_READ |
--		     IB_ACCESS_REMOTE_WRITE);
-+	wr.access = (IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_READ |
-+		     IB_ACCESS_REMOTE_WRITE | IB_ACCESS_RELAXED_ORDERING);
+-			smbdirect_mr->mr = ib_alloc_mr(info->pd, info->mr_type,
+-						       info->max_frmr_depth, 0);
++			smbdirect_mr->mr =
++				ib_alloc_mr(info->pd, info->mr_type,
++					    info->max_frmr_depth,
++					    IB_ACCESS_RELAXED_ORDERING);
+ 			if (IS_ERR(smbdirect_mr->mr)) {
+ 				log_rdma_mr(ERR, "ib_alloc_mr failed mr_type=%x max_frmr_depth=%x\n",
+ 					    info->mr_type,
+@@ -2244,7 +2246,8 @@ static int allocate_mr_list(struct smbd_connection *info)
+ 		if (!smbdirect_mr)
+ 			goto out;
+ 		smbdirect_mr->mr = ib_alloc_mr(info->pd, info->mr_type,
+-					       info->max_frmr_depth, 0);
++					       info->max_frmr_depth,
++					       IB_ACCESS_RELAXED_ORDERING);
+ 		if (IS_ERR(smbdirect_mr->mr)) {
+ 			log_rdma_mr(ERR, "ib_alloc_mr failed mr_type=%x max_frmr_depth=%x\n",
+ 				    info->mr_type, info->max_frmr_depth);
+@@ -2406,9 +2409,10 @@ struct smbd_mr *smbd_register_mr(
+ 	reg_wr->wr.send_flags = IB_SEND_SIGNALED;
+ 	reg_wr->mr = smbdirect_mr->mr;
+ 	reg_wr->key = smbdirect_mr->mr->rkey;
+-	reg_wr->access = writing ?
+-			IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+-			IB_ACCESS_REMOTE_READ;
++	reg_wr->access =
++		(writing ? IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
++			   IB_ACCESS_REMOTE_READ) |
++		IB_ACCESS_RELAXED_ORDERING;
  
- 	*state->fr.next++ = desc;
- 	state->nmdesc++;
+ 	/*
+ 	 * There is no need for waiting for complemtion on ib_post_send
 -- 
 2.30.2
 
