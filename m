@@ -5,32 +5,32 @@ X-Spam-Level:
 X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F0A6C433ED
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F6CBC43603
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 17BC4613A5
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F21E6613B1
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232216AbhDEFYi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 5 Apr 2021 01:24:38 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57206 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232184AbhDEFYf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S232186AbhDEFYf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 5 Apr 2021 01:24:35 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 8480761399;
-        Mon,  5 Apr 2021 05:24:28 +0000 (UTC)
+Received: from mail.kernel.org ([198.145.29.99]:57056 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S232148AbhDEFYc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Apr 2021 01:24:32 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 30A2E613A4;
+        Mon,  5 Apr 2021 05:24:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617600269;
-        bh=p/hww5IZwUmzeql1CaZSwd9MbMxjAL9Py3kRE/ZWykI=;
+        s=k20201202; t=1617600266;
+        bh=imvbyn97thI9yWumE7pEl40IQe358kCagE2ZGNMZU9U=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=uLDgHWnJZEA57dXtfbUnnMoN/P65nZ62XVceMV0PYewnSGtXpa1kEmCn/aU7YHKau
-         MhUfd5vWeGLxn/LMJ/EQN9Ip3pQqBTuSZ4m4km9tfyG5RTzN1ZyYU4QixYyzJsDqzO
-         XlL7M6JX3pBDqjeArPmtC8gPieGD6EFcnV3lbqgZy/pXahBL3gbinib+Mw87e/3tPi
-         lUExqbfEvV9NXPic6DXti8R2W9MHIurmzIhR9VkfDoD3I7ceB2DjwrJt2aH2/L45n6
-         2VPIPu5r6tPNnG0JsUIAp3gBDb6CDio6PV6WPJ8inYhOWZ/yUfGECBUUE2tCamY992
-         hR0HSc24y6wsw==
+        b=HZEzb+U8Ry5BOtN1qNr3CelJoI40xG7feEOzNwXvuXUEOQO3t+IeULIAKlg0xq4Ps
+         J5AcD6+++TL27oFLWK80YU2XPT8zCB6J+XRulPpz9MTDdcSIGNm6PGnK3hChgNsqVr
+         8CDSLtsMRaDgk291G4zGT7zeU9k3R5bQ4k/K1kx+Z1h6TXYqxyqz4+DzkAdIiK+l+r
+         SMXkJnWjg3vbf+UY4oiB57JeZa/Xg2MeojDuvo1VBrKI3DFPfAKqJBIeAyiLOZFCDP
+         dCJYSeTmHUXmoR1Ihh5FvuyelpHmTPzXJhngHA6OGcoDWelbwKJWvTYXfx6QoH0SMl
+         AxUWR/QpJ9f5Q==
 From:   Leon Romanovsky <leon@kernel.org>
 To:     Doug Ledford <dledford@redhat.com>,
         Jason Gunthorpe <jgg@nvidia.com>
@@ -76,9 +76,9 @@ Cc:     Avihai Horon <avihaih@nvidia.com>,
         Weihang Li <liweihang@huawei.com>,
         Yishai Hadas <yishaih@nvidia.com>,
         Zhu Yanjun <zyjzyj2000@gmail.com>
-Subject: [PATCH rdma-next 02/10] RDMA/core: Enable Relaxed Ordering in __ib_alloc_pd()
-Date:   Mon,  5 Apr 2021 08:23:56 +0300
-Message-Id: <20210405052404.213889-3-leon@kernel.org>
+Subject: [PATCH rdma-next 05/10] RDMA/srp: Enable Relaxed Ordering
+Date:   Mon,  5 Apr 2021 08:23:59 +0300
+Message-Id: <20210405052404.213889-6-leon@kernel.org>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210405052404.213889-1-leon@kernel.org>
 References: <20210405052404.213889-1-leon@kernel.org>
@@ -90,46 +90,45 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Avihai Horon <avihaih@nvidia.com>
 
-Enable Relaxed Ordering in __ib_alloc_pd() allocation of the
-local_dma_lkey.
+Enable Relaxed Ordering for srp.
 
-This will take effect only for devices that don't pre-allocate the lkey
-but allocate it per PD allocation.
+Relaxed Ordering is an optional access flag and as such, it is ignored
+by vendors that don't support it.
 
 Signed-off-by: Avihai Horon <avihaih@nvidia.com>
+Reviewed-by: Max Gurtovoy <maxg@mellanox.com>
 Reviewed-by: Michael Guralnik <michaelgur@nvidia.com>
 Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
 ---
- drivers/infiniband/core/verbs.c              | 3 ++-
- drivers/infiniband/hw/vmw_pvrdma/pvrdma_mr.c | 1 +
- 2 files changed, 3 insertions(+), 1 deletion(-)
+ drivers/infiniband/ulp/srp/ib_srp.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/infiniband/core/verbs.c b/drivers/infiniband/core/verbs.c
-index a1782f8a6ca0..9b719f7d6fd5 100644
---- a/drivers/infiniband/core/verbs.c
-+++ b/drivers/infiniband/core/verbs.c
-@@ -287,7 +287,8 @@ struct ib_pd *__ib_alloc_pd(struct ib_device *device, unsigned int flags,
- 	if (device->attrs.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)
- 		pd->local_dma_lkey = device->local_dma_lkey;
- 	else
--		mr_access_flags |= IB_ACCESS_LOCAL_WRITE;
-+		mr_access_flags |=
-+			IB_ACCESS_LOCAL_WRITE | IB_ACCESS_RELAXED_ORDERING;
+diff --git a/drivers/infiniband/ulp/srp/ib_srp.c b/drivers/infiniband/ulp/srp/ib_srp.c
+index 8481ad769ba4..0026660c3ead 100644
+--- a/drivers/infiniband/ulp/srp/ib_srp.c
++++ b/drivers/infiniband/ulp/srp/ib_srp.c
+@@ -436,7 +436,8 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
+ 		mr_type = IB_MR_TYPE_MEM_REG;
  
- 	if (flags & IB_PD_UNSAFE_GLOBAL_RKEY) {
- 		pr_warn("%s: enabling unsafe global rkey\n", caller);
-diff --git a/drivers/infiniband/hw/vmw_pvrdma/pvrdma_mr.c b/drivers/infiniband/hw/vmw_pvrdma/pvrdma_mr.c
-index b3fa783698a0..d74827694f92 100644
---- a/drivers/infiniband/hw/vmw_pvrdma/pvrdma_mr.c
-+++ b/drivers/infiniband/hw/vmw_pvrdma/pvrdma_mr.c
-@@ -66,6 +66,7 @@ struct ib_mr *pvrdma_get_dma_mr(struct ib_pd *pd, int acc)
- 	int ret;
+ 	for (i = 0, d = &pool->desc[0]; i < pool->size; i++, d++) {
+-		mr = ib_alloc_mr(pd, mr_type, max_page_list_len, 0);
++		mr = ib_alloc_mr(pd, mr_type, max_page_list_len,
++				 IB_ACCESS_RELAXED_ORDERING);
+ 		if (IS_ERR(mr)) {
+ 			ret = PTR_ERR(mr);
+ 			if (ret == -ENOMEM)
+@@ -1487,9 +1488,8 @@ static int srp_map_finish_fr(struct srp_map_state *state,
+ 	wr.wr.send_flags = 0;
+ 	wr.mr = desc->mr;
+ 	wr.key = desc->mr->rkey;
+-	wr.access = (IB_ACCESS_LOCAL_WRITE |
+-		     IB_ACCESS_REMOTE_READ |
+-		     IB_ACCESS_REMOTE_WRITE);
++	wr.access = (IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_READ |
++		     IB_ACCESS_REMOTE_WRITE | IB_ACCESS_RELAXED_ORDERING);
  
- 	/* Support only LOCAL_WRITE flag for DMA MRs */
-+	acc &= ~IB_ACCESS_RELAXED_ORDERING;
- 	if (acc & ~IB_ACCESS_LOCAL_WRITE) {
- 		dev_warn(&dev->pdev->dev,
- 			 "unsupported dma mr access flags %#x\n", acc);
+ 	*state->fr.next++ = desc;
+ 	state->nmdesc++;
 -- 
 2.30.2
 
