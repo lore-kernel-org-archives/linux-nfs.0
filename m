@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C6E3C43460
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B481DC433B4
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3120C613A8
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7DB49613AC
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Apr 2021 05:24:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232274AbhDEFYv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 5 Apr 2021 01:24:51 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57662 "EHLO mail.kernel.org"
+        id S232330AbhDEFYy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 5 Apr 2021 01:24:54 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57808 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232269AbhDEFYp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 5 Apr 2021 01:24:45 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id E7DCD613AE;
-        Mon,  5 Apr 2021 05:24:38 +0000 (UTC)
+        id S232296AbhDEFYt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Apr 2021 01:24:49 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 98D37613A5;
+        Mon,  5 Apr 2021 05:24:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1617600279;
-        bh=kgFeNEGqbN9WM+uS4TOUKfA2KjjvWH4Sn9QKyrs2Esc=;
+        s=k20201202; t=1617600283;
+        bh=dMWjVf2aUxdb7ZrnGVveey6nby3LeCk61fbfNTM9fl4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=H/LrR2eygKEWxFLckWrWCNTnD6kKtvMcLmftsZoTnWCqk/rgGjPILP1O9Sb/m2viK
-         unVBfkwguZGE9J6jSmdfrppM0HIlMce2I1CMFt3b8rq3SQaGOSdUrmAdgRZOndp/VF
-         zIYWDg6Ge7lvfxKr803oVG0AT8FhZZ2x5c5l0N3hBRcjqBiaRPlr+4xs3g3l3XdBJF
-         XvOyzE85/pRqLznPmdWpEyLjjT8s0HbLGGqxpaxyrGJxkVqP+3zTrUzHF9bbDXflGB
-         pGiGbDaDmxBdvgIZL3qNem0va+qf59TNStPrQAG9mmWUREFLPlkFkrT/UVlRflsgKH
-         ir0e3t698GSvQ==
+        b=gTxgWIVArORnsJVcmrlN8d/R5yi5c6bOrNBzElohC5vaA3tthZxAmBXekzQxLPZt1
+         znzexk81BrDTA5rsNCCVYOvwwlFDnzS86wc5yRwGWJWRt2aJNEqlhMh8X3Yin5MnUg
+         egYUxDlxiP5r1F4WaDRJYqPSPkYbHdcFvkPU39s/4JSgSFdlIFeQGgL/MD/zmAqfpV
+         quoKIMb/Ra/cj5B4Sy7YeCi7JhHJGHVrBLPV05lfGEptIVl6j3TYWFL1RzMBwdrQlr
+         KEGiPPxsxY/9/6wsL1nkOvjaFxpOYMEgu7CPBdfRPgPfo6Fuhy9FxKi4vnWqOGX83B
+         98mrg+Kp01FKw==
 From:   Leon Romanovsky <leon@kernel.org>
 To:     Doug Ledford <dledford@redhat.com>,
         Jason Gunthorpe <jgg@nvidia.com>
@@ -76,9 +76,9 @@ Cc:     Avihai Horon <avihaih@nvidia.com>,
         Weihang Li <liweihang@huawei.com>,
         Yishai Hadas <yishaih@nvidia.com>,
         Zhu Yanjun <zyjzyj2000@gmail.com>
-Subject: [PATCH rdma-next 06/10] nvme-rdma: Enable Relaxed Ordering
-Date:   Mon,  5 Apr 2021 08:24:00 +0300
-Message-Id: <20210405052404.213889-7-leon@kernel.org>
+Subject: [PATCH rdma-next 10/10] xprtrdma: Enable Relaxed Ordering
+Date:   Mon,  5 Apr 2021 08:24:04 +0300
+Message-Id: <20210405052404.213889-11-leon@kernel.org>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210405052404.213889-1-leon@kernel.org>
 References: <20210405052404.213889-1-leon@kernel.org>
@@ -90,70 +90,46 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Avihai Horon <avihaih@nvidia.com>
 
-Enable Relaxed Ordering for nvme.
+Enable Relaxed Ordering for xprtrdma.
 
 Relaxed Ordering is an optional access flag and as such, it is ignored
 by vendors that don't support it.
 
 Signed-off-by: Avihai Horon <avihaih@nvidia.com>
-Reviewed-by: Max Gurtovoy <maxg@mellanox.com>
 Reviewed-by: Michael Guralnik <michaelgur@nvidia.com>
 Signed-off-by: Leon Romanovsky <leonro@nvidia.com>
 ---
- drivers/nvme/host/rdma.c | 19 +++++++++----------
- 1 file changed, 9 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/nvme/host/rdma.c b/drivers/nvme/host/rdma.c
-index 4dbc17311e0b..8f106b20b39c 100644
---- a/drivers/nvme/host/rdma.c
-+++ b/drivers/nvme/host/rdma.c
-@@ -532,9 +532,8 @@ static int nvme_rdma_create_queue_ib(struct nvme_rdma_queue *queue)
- 	 */
- 	pages_per_mr = nvme_rdma_get_max_fr_pages(ibdev, queue->pi_support) + 1;
- 	ret = ib_mr_pool_init(queue->qp, &queue->qp->rdma_mrs,
--			      queue->queue_size,
--			      IB_MR_TYPE_MEM_REG,
--			      pages_per_mr, 0, 0);
-+			      queue->queue_size, IB_MR_TYPE_MEM_REG,
-+			      pages_per_mr, 0, IB_ACCESS_RELAXED_ORDERING);
- 	if (ret) {
- 		dev_err(queue->ctrl->ctrl.device,
- 			"failed to initialize MR pool sized %d for QID %d\n",
-@@ -545,7 +544,8 @@ static int nvme_rdma_create_queue_ib(struct nvme_rdma_queue *queue)
- 	if (queue->pi_support) {
- 		ret = ib_mr_pool_init(queue->qp, &queue->qp->sig_mrs,
- 				      queue->queue_size, IB_MR_TYPE_INTEGRITY,
--				      pages_per_mr, pages_per_mr, 0);
-+				      pages_per_mr, pages_per_mr,
-+				      IB_ACCESS_RELAXED_ORDERING);
- 		if (ret) {
- 			dev_err(queue->ctrl->ctrl.device,
- 				"failed to initialize PI MR pool sized %d for QID %d\n",
-@@ -1382,9 +1382,9 @@ static int nvme_rdma_map_sg_fr(struct nvme_rdma_queue *queue,
- 	req->reg_wr.wr.num_sge = 0;
- 	req->reg_wr.mr = req->mr;
- 	req->reg_wr.key = req->mr->rkey;
--	req->reg_wr.access = IB_ACCESS_LOCAL_WRITE |
--			     IB_ACCESS_REMOTE_READ |
--			     IB_ACCESS_REMOTE_WRITE;
-+	req->reg_wr.access = IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_READ |
-+			     IB_ACCESS_REMOTE_WRITE |
-+			     IB_ACCESS_RELAXED_ORDERING;
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index cfbdd197cdfe..f9334c0a1a13 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -135,7 +135,8 @@ int frwr_mr_init(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr *mr)
+ 	struct ib_mr *frmr;
+ 	int rc;
  
- 	sg->addr = cpu_to_le64(req->mr->iova);
- 	put_unaligned_le24(req->mr->length, sg->length);
-@@ -1488,9 +1488,8 @@ static int nvme_rdma_map_sg_pi(struct nvme_rdma_queue *queue,
- 	wr->wr.send_flags = 0;
- 	wr->mr = req->mr;
- 	wr->key = req->mr->rkey;
--	wr->access = IB_ACCESS_LOCAL_WRITE |
--		     IB_ACCESS_REMOTE_READ |
--		     IB_ACCESS_REMOTE_WRITE;
-+	wr->access = IB_ACCESS_LOCAL_WRITE | IB_ACCESS_REMOTE_READ |
-+		     IB_ACCESS_REMOTE_WRITE | IB_ACCESS_RELAXED_ORDERING;
+-	frmr = ib_alloc_mr(ep->re_pd, ep->re_mrtype, depth, 0);
++	frmr = ib_alloc_mr(ep->re_pd, ep->re_mrtype, depth,
++			   IB_ACCESS_RELAXED_ORDERING);
+ 	if (IS_ERR(frmr))
+ 		goto out_mr_err;
  
- 	sg->addr = cpu_to_le64(req->mr->iova);
- 	put_unaligned_le24(req->mr->length, sg->length);
+@@ -339,9 +340,10 @@ struct rpcrdma_mr_seg *frwr_map(struct rpcrdma_xprt *r_xprt,
+ 	reg_wr = &mr->frwr.fr_regwr;
+ 	reg_wr->mr = ibmr;
+ 	reg_wr->key = ibmr->rkey;
+-	reg_wr->access = writing ?
+-			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+-			 IB_ACCESS_REMOTE_READ;
++	reg_wr->access =
++		(writing ? IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
++			   IB_ACCESS_REMOTE_READ) |
++		IB_ACCESS_RELAXED_ORDERING;
+ 
+ 	mr->mr_handle = ibmr->rkey;
+ 	mr->mr_length = ibmr->length;
 -- 
 2.30.2
 
