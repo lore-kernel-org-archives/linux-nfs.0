@@ -2,197 +2,255 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MSGID_FROM_MTA_HEADER,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 32795C43461
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Apr 2021 18:28:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6FC39C433B4
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Apr 2021 19:01:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0C70F6124C
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Apr 2021 18:28:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4044061245
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Apr 2021 19:01:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1355322AbhDGS21 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Apr 2021 14:28:27 -0400
-Received: from mail-dm6nam11on2089.outbound.protection.outlook.com ([40.107.223.89]:56800
-        "EHLO NAM11-DM6-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1355308AbhDGS2Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Apr 2021 14:28:24 -0400
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=hbdqMlJiqDwHT7oBQ7xqfK+BzjMi7YvPldlx1ud2NVaWFtff5g1u+cers8BEptxxgctGbDW0I9K9fUwJRZ5nC7hqL9vcy0CZMUu3reavQSchzpb80TOdjDfMAkbDQFFCBNwOew5hktTRAzbVdRB+Y4xbvR9Ns8Kb7vPdkMFVTSkHxJM+Dd9GGcYyd5BiU3JoWTzwKPwaPas4FpY2Fy8VJw8XT8GyugrVywHwOZPQLEQManxvT4F6qPLv71qK9763uvLZqdlJr5Bo3pLdNuwRHU7NdQzMO8MQpsd0LIWiK3hxbECevFmrfQmus1Xne5LyPKHmYLhTI9U69/nIHWUCPg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=LyChI4sBAPKWAco1y0aOEOq/jAQhfrRkYEYsfoKCIq4=;
- b=FVADORiA4wTJu0KJoq5cfIhCfk6euoV/wk4o5ZQkQbqFlKgDkEX1um/hmCOcoVIeujqpDYx/On9PF4iOfrnBHH/qxG/Mk+Ppcn38rUTjzr+I+9p15mG0f927O5uurUvjbACa6g+zvrDFtEURrTq0Zu2433WkO4y05rOzpbux++X5uhwNVJduT3vnOiwPz0ZriwJ9BzVUh/qf8n6kAikKd8L2CLymwFsQxNLDRSwPFfJO2oXSJxfO8ELzCD1R2Zk/qCgwErKwTgrbCePr0+WwFa3F8VscU9eLEemCKIHAbBpn1YNcCulrCljDqURLOSAtd+0TBiNgJ4Del4kFiNvVKQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
- dkim=pass header.d=nvidia.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=LyChI4sBAPKWAco1y0aOEOq/jAQhfrRkYEYsfoKCIq4=;
- b=g/o3Em73EUVZw9g/HkcMD/obeLRVmsfXGJEJRyRPmIJujc3P3a2sdVzTqFjAFvc/YvLUuudw/cHd+bTo6XQEBnuP9j8CN4Zh4hn+21P+d+DQW2+QYi2AEgE+WY51I9rkjACFPdw7D+NhwJKq4lDSZMLv0TpJ7WiTN4/4rNaAcl6S7uuKKLa1uh3ZeOBTVqEYBy2DCIhCmAoIkIwlWF7YVxld9Y1LXOw8SK1iq6IBZEbJvjWDk0+HPUubc7EOstrSapY7itNkbzhH22xnISO5GwRJA/DtVbv70bOEXEXMHkFiAwBctQZ+40mmnXGqhL1RK+lGWkG072ziSZ3P/PO8XA==
-Authentication-Results: lst.de; dkim=none (message not signed)
- header.d=none;lst.de; dmarc=none action=none header.from=nvidia.com;
-Received: from DM6PR12MB3834.namprd12.prod.outlook.com (2603:10b6:5:14a::12)
- by DM5PR12MB2437.namprd12.prod.outlook.com (2603:10b6:4:ba::13) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3999.28; Wed, 7 Apr
- 2021 18:28:13 +0000
-Received: from DM6PR12MB3834.namprd12.prod.outlook.com
- ([fe80::1c62:7fa3:617b:ab87]) by DM6PR12MB3834.namprd12.prod.outlook.com
- ([fe80::1c62:7fa3:617b:ab87%6]) with mapi id 15.20.3999.032; Wed, 7 Apr 2021
- 18:28:13 +0000
-Date:   Wed, 7 Apr 2021 15:28:11 -0300
-From:   Jason Gunthorpe <jgg@nvidia.com>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Leon Romanovsky <leon@kernel.org>,
-        Bart Van Assche <bvanassche@acm.org>,
-        Doug Ledford <dledford@redhat.com>,
-        Avihai Horon <avihaih@nvidia.com>,
-        Adit Ranadive <aditr@vmware.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Ariel Elior <aelior@marvell.com>,
-        Bernard Metzler <bmt@zurich.ibm.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Dennis Dalessandro <dennis.dalessandro@cornelisnetworks.com>,
-        Devesh Sharma <devesh.sharma@broadcom.com>,
-        Faisal Latif <faisal.latif@intel.com>,
-        Jack Wang <jinpu.wang@ionos.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jens Axboe <axboe@fb.com>,
-        Karsten Graul <kgraul@linux.ibm.com>,
-        Keith Busch <kbusch@kernel.org>, Lijun Ou <oulijun@huawei.com>,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-nvme@lists.infradead.org,
-        linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org,
-        Max Gurtovoy <maxg@mellanox.com>,
-        Max Gurtovoy <mgurtovoy@nvidia.com>,
-        "Md. Haris Iqbal" <haris.iqbal@ionos.com>,
-        Michael Guralnik <michaelgur@nvidia.com>,
-        Michal Kalderon <mkalderon@marvell.com>,
-        Mike Marciniszyn <mike.marciniszyn@cornelisnetworks.com>,
-        Naresh Kumar PBS <nareshkumar.pbs@broadcom.com>,
-        netdev@vger.kernel.org, Potnuri Bharat Teja <bharat@chelsio.com>,
-        rds-devel@oss.oracle.com, Sagi Grimberg <sagi@grimberg.me>,
-        samba-technical@lists.samba.org,
-        Santosh Shilimkar <santosh.shilimkar@oracle.com>,
-        Selvin Xavier <selvin.xavier@broadcom.com>,
-        Shiraz Saleem <shiraz.saleem@intel.com>,
-        Somnath Kotur <somnath.kotur@broadcom.com>,
-        Sriharsha Basavapatna <sriharsha.basavapatna@broadcom.com>,
-        Steve French <sfrench@samba.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        VMware PV-Drivers <pv-drivers@vmware.com>,
-        Weihang Li <liweihang@huawei.com>,
-        Yishai Hadas <yishaih@nvidia.com>,
-        Zhu Yanjun <zyjzyj2000@gmail.com>
-Subject: Re: [PATCH rdma-next 01/10] RDMA: Add access flags to ib_alloc_mr()
- and ib_mr_pool_init()
-Message-ID: <20210407182811.GK7405@nvidia.com>
-References: <c21edd64-396c-4c7c-86f8-79045321a528@acm.org>
- <YGvwUI022t/rJy5U@unreal>
- <20210406052717.GA4835@lst.de>
- <YGv4niuc31WnqpEJ@unreal>
- <20210406121312.GK7405@nvidia.com>
- <20210406123034.GA28930@lst.de>
- <20210406140437.GR7405@nvidia.com>
- <20210406141552.GA4936@lst.de>
- <20210406144039.GS7405@nvidia.com>
- <20210406145457.GA7790@lst.de>
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210406145457.GA7790@lst.de>
-X-Originating-IP: [142.162.115.133]
-X-ClientProxiedBy: MN2PR22CA0016.namprd22.prod.outlook.com
- (2603:10b6:208:238::21) To DM6PR12MB3834.namprd12.prod.outlook.com
- (2603:10b6:5:14a::12)
+        id S240702AbhDGTB1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 7 Apr 2021 15:01:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51722 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229603AbhDGTB0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Apr 2021 15:01:26 -0400
+Received: from mail-ej1-x635.google.com (mail-ej1-x635.google.com [IPv6:2a00:1450:4864:20::635])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F2CF8C06175F
+        for <linux-nfs@vger.kernel.org>; Wed,  7 Apr 2021 12:01:15 -0700 (PDT)
+Received: by mail-ej1-x635.google.com with SMTP id u17so23161712ejk.2
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Apr 2021 12:01:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=XhbzJE/e9LNUbvfG6FV+JWqc/8sb9rS90tW9STZj8Ug=;
+        b=EMSz9JA9yHVRIwstGiDzH1V2CED2MQD4fGOSEWLFMeiUV1tPcrL6sYMWZ/A2hoGuhn
+         Y79fl+Ew32CBqrY2D8vCMRkayqAfiURK7svKaHirOm38tPUoVKwFPvY3ScW1PWpMGsY8
+         A07NPs0XMZD4rwoyrGGaBlKmzSx5fv5ZiWFOhxNHGX7TUUUetiC4augOQTIJbJUuX5IO
+         qhOPH4cJIUVrKiWxTIQFdN5yg+7Wsb+JY5jokQ9y5fTBKZDno+LNP0vCoqSUaCxXUuFu
+         WTqoYBCL9NlRdAvD2UdVi9XEZKDVaVtGENtso1m5gMBuBQbJenVrFs4qQ2t0mN/iUMzK
+         5Dew==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=XhbzJE/e9LNUbvfG6FV+JWqc/8sb9rS90tW9STZj8Ug=;
+        b=C/yFC1EXSbZwSYGDPK9Pp99TuMiGlrHCU6QtUFyeJHurCXzSkHKDppDpQ5LyJZvFj/
+         u/BpGjt2pE2GEwDcbkbyzZ+Dj/7xI/qtIQ99cp/ABI1uSOne4rZSgeV4HQbLGEeDiCjj
+         31edXSXdnI9xE+U1WA8rz2mqoGkkaP4il3MElOoV0w5lU0RDcc1eGLoOOg7Zin8SSIEK
+         MCcrLDi6Ezpe+XcoJGJqKG7+DHmo7oTvJ3gMwKuu+HmN6/Sgs0HxSjtAarF0DMQiZUE1
+         LQFeh6RDGiqdjMFqKvj3li7CSV0G93rIReIvbgUb8SKZypIGUcZYtMQf7mknrM+rOsj1
+         Z7+w==
+X-Gm-Message-State: AOAM531DI8Ny2Y5GIMLuwCmkFfKeOf71teTA3G2Acp/S5Au/4IbW1UbI
+        E2zYkR66nXrKUowouJSCTGUceSQM9ukjhXtKFzCSxj47
+X-Google-Smtp-Source: ABdhPJz/t8Y1ghHzqxf8GWH//6DC1pZR4qaDZNNYl58h1vORA+4Z1qSNC0Y774JVmhhCdaEHwxLrL5S2rITiqPaEPo8=
+X-Received: by 2002:a17:906:a0d4:: with SMTP id bh20mr5491951ejb.348.1617822074581;
+ Wed, 07 Apr 2021 12:01:14 -0700 (PDT)
 MIME-Version: 1.0
-X-MS-Exchange-MessageSentRepresentingType: 1
-Received: from mlx.ziepe.ca (142.162.115.133) by MN2PR22CA0016.namprd22.prod.outlook.com (2603:10b6:208:238::21) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4020.16 via Frontend Transport; Wed, 7 Apr 2021 18:28:12 +0000
-Received: from jgg by mlx with local (Exim 4.94)        (envelope-from <jgg@nvidia.com>)        id 1lUCuR-002JI4-8y; Wed, 07 Apr 2021 15:28:11 -0300
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: ea7aca26-63a2-4526-8350-08d8f9f2e700
-X-MS-TrafficTypeDiagnostic: DM5PR12MB2437:
-X-MS-Exchange-Transport-Forked: True
-X-Microsoft-Antispam-PRVS: <DM5PR12MB24378F89F3B6CF65D4B15844C2759@DM5PR12MB2437.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:8273;
-X-MS-Exchange-SenderADCheck: 1
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: heawpVH7Az1lMCa8K6SHeDrJb+PHSxrGthL37q97MPNj4nGhMTVwhip2EjQ2yunaKBPoxBxwpVGeu9Uma2K/oa9pbI/MYIvWE+kFrxnuIbXzNDNCBdFVb99LHUUzHC2C6OIIDkDBL0KsXF9P1Zx8HfY2Xci92pbdygHTdxxd2ZVEhLE8iD5UPVdh5P/qJagYzBq3sJdKgORIzl/UzgGl2MEz+nr/2aOE8zPD8XhI09FJiyVbcMIk21bcsqvdrmC3LYeh5ugQ60zo7BW+c7+Es9vian2CaOUp0yziqU5bzs+T3toBUpdr4Z4FpOdg/0QkTyAbNEN/zsvn+zB2KIHHNjpZZchxcZJbTD/7Bqh6mRFQGveIixKnhTSe+gvoz4cTPn97I7EcMeHgEQ6Ru+3mQZLHKNMgtAO7LPOoQ1TlYksBGLaxvROQnIUCTw2BPJKr/Ykc+9RNtTjvVk3E8dphjL05IkoO98Mq+TBtMtDw6pKTR0R4Vg36le1G6nvHI2kDq6kKoYG7R1QVtJctwwKBRpWIhESk99qrMXaDZtYUQqOZuuuTR07dyJWwmINImvOTu51n6hbI2DQheByaUt4sj1x4BMzDDunN3HQtWUkLN3smB3xBtGwfETLhXoBPeD8FqAwzXM4y/D8EUKwOJnDqUe2Tzmxy/hRxynepkaVJrZo=
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR12MB3834.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(376002)(136003)(346002)(39860400002)(366004)(396003)(66556008)(66476007)(66946007)(5660300002)(38100700001)(426003)(2616005)(186003)(33656002)(2906002)(26005)(316002)(4326008)(8936002)(8676002)(9746002)(9786002)(83380400001)(7416002)(1076003)(478600001)(86362001)(6916009)(54906003)(7406005)(36756003);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData: =?us-ascii?Q?UlpmIgywqzKR97WnD6m/PfU4j8Ke1pwl4QrpBbZMnG8q/YkYGhAitD8Q0UNI?=
- =?us-ascii?Q?vNRBMOrsc3PgLfGA8xTr9Z366XfLRqy0G3TMldjunempZcMHkArd7DjtTSYp?=
- =?us-ascii?Q?hbF9PWuh3ILjskJTkDXyFbUtVwoaXoK55idxgA38TkzNvUN+frGPzoPHJqx2?=
- =?us-ascii?Q?oyOyYoANzi1Y/9Z6dbTT5o3DRAC98PlbK1GdOiq+nyKaqvcxWe1Ao0B1axt0?=
- =?us-ascii?Q?jFo2hjTvZeOUipEM1zxCzu2+ruVTH4Xisya5h0jRmKdTmQGuBdsd+Tc9c7GV?=
- =?us-ascii?Q?iOyeZTgJZlBJogvqiFzLmt+3oBT4OPyP4jrHETUC3+flPKrDprqH4y602pIV?=
- =?us-ascii?Q?AJ3qJjpeJOvnrfmnS1euGfXf4WxTclOfNJWk+5ohUHTiuZ0knzmHwrSHqGWy?=
- =?us-ascii?Q?VyJ9cn52yMRWIETgw0JdVOqZJwmHBTgd7Bup0rzL9qwXMlG78btRVuAVSVnr?=
- =?us-ascii?Q?OR7VqjcnC9TmLufAim18DFqa8y9R1SNbnfixKSfuEhi4Ybn2WmwnrE6HHLwT?=
- =?us-ascii?Q?5yNuCMSmGjz1FaPigF1vNbB1yD3kIJrNBqeYEt2xqhJ77fRQu0i+y5uUp0Rs?=
- =?us-ascii?Q?AtlLaRR6PcPjmsJvHrBmc6TEeEExyinTvRD8elOUl9pWbxe+gEBOVV8fiPiY?=
- =?us-ascii?Q?6WIyagV+DdgLMswTD0ZpUT2hCwvWFkBIBGE8FxMSU+EMBQGDJO2J2RBW96p2?=
- =?us-ascii?Q?cG41bpwB9fjS1p5ICLydR8tpijIjhqxRTTZ092kFcB6cgHXUnvm/AxmooTY7?=
- =?us-ascii?Q?/fetj7Sm6xufkO5o8+cm2iur/0NEct0885BIEsS66b//4MJbfjc2GR3ANwWP?=
- =?us-ascii?Q?/+WrMx2IcVVeDEDgOU6L4tAXc+zrpUXQwQTog69q67PmCvA771wdkINdM1jI?=
- =?us-ascii?Q?ZDDoxJ5hvm2hne5wXlLEZmZSpsSjQL8KtVHWa/qwnaGP75mKloMpW5p7SQSh?=
- =?us-ascii?Q?dcHEVS5cXTeQKF6fSFHocRulYxexaR9aDFFfDs/Q4HMHFB0FoElkTwO3de/z?=
- =?us-ascii?Q?r7v0oJXCc+YFO24PhASAjrEyth0DOxLBokNW4ZP7zszPXnR98BfwlBj7ckT1?=
- =?us-ascii?Q?aE80t5SU10eTfo1jN+55VxI1EV55M8Y0LvDPofCwmmRX/Fw9tyZvALP+fwqf?=
- =?us-ascii?Q?rxFM17l63g6CQMbh9Kmxia8qba53qKig6ZIZAESqgIudG2zNIBs3p7sJuUVh?=
- =?us-ascii?Q?aYF/cft+nEdPsle/jGfv6rSduhM+y1sI2l0gHhgt56LGXk37FrjRvd9XZYna?=
- =?us-ascii?Q?khLc0JlbW0LlOpp34NIg8dFkpJnDPkgqp/N3b9zbTIWOAxUZcFL3x6ej062r?=
- =?us-ascii?Q?BbtScPAproyFIBfwC2mAaZKhK17VDTXTaWeYu7z/bCa0Pg=3D=3D?=
-X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ea7aca26-63a2-4526-8350-08d8f9f2e700
-X-MS-Exchange-CrossTenant-AuthSource: DM6PR12MB3834.namprd12.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 07 Apr 2021 18:28:12.9585
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: qcw8OKlhnWWqiigIafiMjQ5WuWwRNwWrx2rJbMN76jOotAkWPPjc5DNaj2zYri+S
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR12MB2437
+References: <20210402233031.36731-1-dai.ngo@oracle.com> <D85FBDD3-5397-4D47-932D-159AFE2A5E0F@oracle.com>
+ <CAN-5tyHVOEr7zZM92PVS0GYJQ2M6rSs6_zqZwuioumQQm7zzUQ@mail.gmail.com>
+ <7BED2160-1052-49EE-BB62-6ACF6F84C91C@oracle.com> <CAN-5tyEKqNHmwiMfCpkZrCVYeaO-FH69v5L4Tk_8EsoTfytpVA@mail.gmail.com>
+ <01CD778D-57A0-442A-8D1D-5084F0FC2497@oracle.com> <CAN-5tyFEXBiWVbCq0Hgh01W=OVZkdYYAEujSug6biBaU=Ny8Og@mail.gmail.com>
+ <99a1f327-ce69-e6eb-39fc-77991bec5b4c@oracle.com> <c16b4437-a554-be60-3c04-fd578b9f88ff@oracle.com>
+ <CAN-5tyGS0ZO4PtTseLSmC4=fYQCUwMs6FB509g2PSCg1v+jySg@mail.gmail.com> <0b0c7c79-d593-c4ae-db9b-46600f2cea28@oracle.com>
+In-Reply-To: <0b0c7c79-d593-c4ae-db9b-46600f2cea28@oracle.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Wed, 7 Apr 2021 15:01:03 -0400
+Message-ID: <CAN-5tyGw8_xOfMM4PNUCvo_wKEHs5NgLo3ZQf-sTGb6FHJ_r8Q@mail.gmail.com>
+Subject: Re: [PATCH v2 0/2] enhance NFSv4.2 SSC to delay unmount source's export.
+To:     Dai Ngo <dai.ngo@oracle.com>
+Cc:     Chuck Lever III <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Bruce Fields <bfields@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Apr 06, 2021 at 04:54:57PM +0200, Christoph Hellwig wrote:
-> On Tue, Apr 06, 2021 at 11:40:39AM -0300, Jason Gunthorpe wrote:
-> > Yes, but the complexity is how the drivers are constructed they are
-> > designed to reject flags they don't know about..
-> > 
-> > Hum, it looks like someone has already been in here and we now have a
-> > IB_ACCESS_OPTIONAL concept. 
-> > 
-> > Something like this would be the starting point:
-> >
-> > [...]
-> >
-> > However I see only EFA actually uses IB_ACCESS_OPTIONAL, so the lead
-> > up would be to audit all the drivers to process optional access_flags
-> > properly. Maybe this was done, but I don't see much evidence of it..
-> >
-> > Sigh. It is a big mess cleaning adventure in drivers really.
-> 
-> Yes.  When passing flags to drivers we need to have a good pattern
-> in place for distinguishing between mandatory and optional flags.
-> That is something everyone gets wrong at first (yourself included)
-> and which then later needs painful untangling.  So I think we need
-> to do that anyway.
+On Wed, Apr 7, 2021 at 1:13 PM <dai.ngo@oracle.com> wrote:
+>
+>
+> On 4/7/21 9:30 AM, Olga Kornievskaia wrote:
+> > On Tue, Apr 6, 2021 at 9:23 PM <dai.ngo@oracle.com> wrote:
+> >>
+> >> On 4/6/21 6:12 PM, dai.ngo@oracle.com wrote:
+> >>> On 4/6/21 1:43 PM, Olga Kornievskaia wrote:
+> >>>> On Tue, Apr 6, 2021 at 3:58 PM Chuck Lever III
+> >>>> <chuck.lever@oracle.com> wrote:
+> >>>>>
+> >>>>>> On Apr 6, 2021, at 3:57 PM, Olga Kornievskaia
+> >>>>>> <olga.kornievskaia@gmail.com> wrote:
+> >>>>>>
+> >>>>>> On Tue, Apr 6, 2021 at 3:43 PM Chuck Lever III
+> >>>>>> <chuck.lever@oracle.com> wrote:
+> >>>>>>>
+> >>>>>>>> On Apr 6, 2021, at 3:41 PM, Olga Kornievskaia
+> >>>>>>>> <olga.kornievskaia@gmail.com> wrote:
+> >>>>>>>>
+> >>>>>>>> On Tue, Apr 6, 2021 at 12:33 PM Chuck Lever III
+> >>>>>>>> <chuck.lever@oracle.com> wrote:
+> >>>>>>>>>
+> >>>>>>>>>> On Apr 2, 2021, at 7:30 PM, Dai Ngo <dai.ngo@oracle.com> wrote:
+> >>>>>>>>>>
+> >>>>>>>>>> Hi,
+> >>>>>>>>>>
+> >>>>>>>>>> Currently the source's export is mounted and unmounted on every
+> >>>>>>>>>> inter-server copy operation. This causes unnecessary overhead
+> >>>>>>>>>> for each copy.
+> >>>>>>>>>>
+> >>>>>>>>>> This patch series is an enhancement to allow the export to remain
+> >>>>>>>>>> mounted for a configurable period (default to 15 minutes). If the
+> >>>>>>>>>> export is not being used for the configured time it will be
+> >>>>>>>>>> unmounted
+> >>>>>>>>>> by a delayed task. If it's used again then its expiration time is
+> >>>>>>>>>> extended for another period.
+> >>>>>>>>>>
+> >>>>>>>>>> Since mount and unmount are no longer done on each copy request,
+> >>>>>>>>>> this overhead is no longer used to decide whether the copy should
+> >>>>>>>>>> be done with inter-server copy or generic copy. The threshold used
+> >>>>>>>>>> to determine sync or async copy is now used for this decision.
+> >>>>>>>>>>
+> >>>>>>>>>> -Dai
+> >>>>>>>>>>
+> >>>>>>>>>> v2: fix compiler warning of missing prototype.
+> >>>>>>>>> Hi Olga-
+> >>>>>>>>>
+> >>>>>>>>> I'm getting ready to shrink-wrap the initial NFSD v5.13 pull
+> >>>>>>>>> request.
+> >>>>>>>>> Have you had a chance to review Dai's patches?
+> >>>>>>>> Hi Chuck,
+> >>>>>>>>
+> >>>>>>>> I apologize I haven't had the chance to review/test it yet. Can I
+> >>>>>>>> have
+> >>>>>>>> until tomorrow evening to do so?
+> >>>>>>> Next couple of days will be fine. Thanks!
+> >>>>>>>
+> >>>>>> I also assumed there would be a v2 given that kbot complained about
+> >>>>>> the NFSD patch.
+> >>>>> This is the v2 (see Subject: )
+> >>>> Sigh. Thank you. I somehow missed v2 patches themselves and only saw
+> >>>> the originals. Again I'll test/review the v2 by the end of the day
+> >>>> tomorrow!
+> >>>>
+> >>>> Actually a question for Dai: have you done performance tests with your
+> >>>> patches and can show that small copies still perform? Can you please
+> >>>> post your numbers with the patch series? When we posted the original
+> >>>> patch set we did provide performance numbers to support the choices we
+> >>>> made (ie, not hurting performance of small copies).
+> >>> Currently the source and destination export was mounted with default
+> >>> rsize of 524288 and the patch uses threshold of (rsize * 2 = 1048576)
+> >>> to decide whether to do inter-server copy or generic copy.
+> >>>
+> >>> I ran performance tests on my test VMs, with and without the patch,
+> >>> using 4 file sizes 1048576, 1049490, 2048000 and 7341056 bytes. I ran
+> >>> each test 5 times and took the average. I include the results of 'cp'
+> >>> for reference:
+> >>>
+> >>> size            cp          with patch                  without patch
+> >>> ----------------------------------------------------------------
+> >>> 1048576  0.031    0.032 (generic)             0.029 (generic)
+> >>> 1049490  0.032    0.042 (inter-server)      0.037 (generic)
+> >>> 2048000  0.051    0.047 (inter-server)      0.053 (generic)
+> >>> 7341056  0.157    0.074 (inter-server)      0.185 (inter-server)
+> >>> ----------------------------------------------------------------
+> >> Sorry, times are in seconds.
+> > Thank you for the numbers. #2 case is what I'm worried about.
+>
+> Regarding performance numbers, the patch does better than the original
+> code in #3 and #4 and worse then original code in #1 and #2. #4 run
+> shows the benefit of the patch when doing inter-copy. The #2 case can
+> be mitigated by using a configurable threshold. In general, I think it's
+> more important to have good performance on large files than small files
+> when using inter-server copy.  Note that the original code does not
+> do well with small files either as shown above.
 
-It looks like we did actually do this right here, when the
-RELAXED_ORDERING was originally added it was done as an optional flag
-and a range of bits were set aside in the uAPI for future optional
-flags.
+I think the current approach tries to be very conservative to achieve
+the goal of never being worse than the cp. I'm not sure what you mean
+that current code doesn't do well with small files. For small files it
+falls back to the generic copy.
 
-This should be quite easy to do then
+> > I don't believe the code works. In my 1st test doing "nfstest_ssc
+> > --runtest inter01" and then doing it again. What I see from inspecting
+> > the traces is that indeed unmount doesn't happen but for the 2nd copy
+> > the mount happens again.
+> >
+> > I'm attaching the trace. my servers are .114 (dest), .110 (src). my
+> > client .68. The first run of "inter01" places a copy in frame 364.
+> > frame 367 has the beginning of the "mount" between .114 and .110. then
+> > read happens. then a copy offload callback happens. No unmount happens
+> > as expected. inter01 continues with its verification and clean up. By
+> > frame 768 the test is done. I'm waiting a bit. So there is a heatbeat
+> > between the .114 and .110 in frame 769. Then the next run of the
+> > "inter01", COPY is placed in frame 1110. The next thing that happens
+> > are PUTROOTFH+bunch of GETATTRs that are part of the mount. So what is
+> > the saving here? a single EXCHANGE_ID? Either the code doesn't work or
+> > however it works provides no savings.
+>
+> The saving are EXCHANGE_ID, CREATE_SESSION, RECLAIM COMPLETE,
+> DESTROY_SESSION and DESTROY_CLIENTID for *every* inter-copy request.
+> The saving is reflected in the number of #4 test run above.
 
-Jason
+Can't we do better than that? Since you are keeping a list of umounts,
+can't they be searched before doing the vfs_mount() and instead get
+the mount structure from the list (and not call the vfs_mount at all)
+and remove it from the umount list (wouldn't that save all the calls)?
+
+> Note that the overhead of the copy in the current code includes mount
+> *and* unmount. However the threshold computed in __nfs4_copy_file_range
+> includes only the guesstimated mount overhead and not the unmount
+> overhead so it not correct.
+>
+> -Dai
+>
+>
+> >
+> > Honestly I don't understand the whole need of a semaphore and all.
+>
+> The semaphore is to prevent the export to be unmounted while it's
+> being used.
+>
+> -Dai
+>
+> > My
+> > approach that I tried before was to create a delayed work item but I
+> > don't recall why I dropped it.
+> > https://urldefense.com/v3/__https://patchwork.kernel.org/project/linux-nfs/patch/20170711164416.1982-43-kolga@netapp.com/__;!!GqivPVa7Brio!Jl5Wq7nrFUsaUQjgLJoSuV-cDlvbPaav3x8nXQcRhAdxjVEoWvK24sNgoE82Zg$
+> >
+> >
+> >> -Dai
+> >>
+> >>> Note that without the patch, the threshold to do inter-server
+> >>> copy is (524288 * 14 = 7340032) bytes. With the patch, the threshold
+> >>> to do inter-server is (524288 * 2 = 1048576) bytes, same as
+> >>> threshold to decide to sync/async for intra-copy.
+> >>>
+> >>>> While I agree that delaying the unmount on the server is beneficial
+> >>>> I'm not so sure that dropping the client restriction is wise because
+> >>>> the small (singular) copy would suffer the setup cost of the initial
+> >>>> mount.
+> >>> Right, but only the 1st copy. The export remains to be mounted for
+> >>> 15 mins so subsequent small copies do not incur the mount and unmount
+> >>> overhead.
+> >>>
+> >>> I think ideally we want the server to do inter-copy only if it's faster
+> >>> than the generic copy. We can probably come up with a number after some
+> >>> testing and that number can not be based on the rsize as it is now since
+> >>> the rsize can be changed by mount option. This can be a fixed number,
+> >>> 1M/2M/etc, and it should be configurable. What do you think? I'm open
+> >>> to any other options.
+> >>>
+> >>>>    Just my initial thoughts...
+> >>> Thanks,
+> >>> -Dai
+> >>>
+> >>>>> --
+> >>>>> Chuck Lever
+> >>>>>
+> >>>>>
+> >>>>>
