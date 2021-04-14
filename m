@@ -7,44 +7,43 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EB8FC43600
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87918C43603
 	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F31B0611B0
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6C810611AD
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347403AbhDNNog (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1347092AbhDNNog (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 14 Apr 2021 09:44:36 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52158 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:52156 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1351591AbhDNNoU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Apr 2021 09:44:20 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 1F2DB611C9
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:43:58 +0000 (UTC)
+        id S1351589AbhDNNoT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Apr 2021 09:44:19 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id A7F33611F0
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:43:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1618407838;
-        bh=Pzcw2Ix0QUqNjfS77IWr1o1qt0+dmj2vkUZSzC0GNzE=;
+        s=k20201202; t=1618407837;
+        bh=TVBBJuVLaph3mqMkHTUHDQCga93LuyNRMUNB+JcsDRY=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=ffI5Z7i/EK7MR8VotoWtgD4tQ5ICJBCbeYStraJcoShHpyckdXAopYlmalSruI8gG
-         xBrpGP2C3C+ojjtfgZ4sd/h/dMqECD7TZ39wddkIqH+H3T3IG0hOyw0QuwqJ3K4+IP
-         6fCdtWDrGuh6xPXg0qo4NUpT+Lt2Lee2LhHDVjX7qgyo00HCfz6O1l8ixboEodFljN
-         nIsM2qfbLQNWPrMKABEDZerhxEYRoZm/cuQzyupUNAdmM4/KS2LxmDm4pquf+u5GEj
-         bf7WO1nmznAYT3vN/3Go9cwCa11N4ljQ1wPXsOTraaVidLAs8Rd7t/yhq0BmFF6TRn
-         N/IDNXYmYKA8Q==
+        b=ZOw/GJ05IAaScxQdMZ7KSeQsy9V9yvWCHsZUw0NzYeZfCBiDSaKc2u+hpOsZ479xz
+         UoJW0IFmd4TPP6KjxvMhJBkePUKdpbRZ6G6ZNU50N0WYWNdEMmv/bc7FCasYvU4m5n
+         gQr18DmygW9iJStT914L1hGkN511cs4fa7XHExTAS8WLMnqG9KYtVDWiDqXRTZ0sF9
+         1MzGyu4kUkBcf0pZqzHvC0DiSwrqQh9PgHLhLutVYd+ovr4dfwvO6tcKL4jmZiK58d
+         ZUrJmiLH8E+6byOEzLViWuWOSsvQDDDnAW14Lxff80aPkR1aBBcfG2zsmR89jbSYOP
+         4E2wyxrlsBySw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/26] NFS: Fix up statx() results
-Date:   Wed, 14 Apr 2021 09:43:34 -0400
-Message-Id: <20210414134353.11860-8-trondmy@kernel.org>
+Subject: [PATCH v2 06/26] NFS: Don't revalidate attributes that are not being asked for
+Date:   Wed, 14 Apr 2021 09:43:33 -0400
+Message-Id: <20210414134353.11860-7-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210414134353.11860-7-trondmy@kernel.org>
+In-Reply-To: <20210414134353.11860-6-trondmy@kernel.org>
 References: <20210414134353.11860-1-trondmy@kernel.org>
  <20210414134353.11860-2-trondmy@kernel.org>
  <20210414134353.11860-3-trondmy@kernel.org>
  <20210414134353.11860-4-trondmy@kernel.org>
  <20210414134353.11860-5-trondmy@kernel.org>
  <20210414134353.11860-6-trondmy@kernel.org>
- <20210414134353.11860-7-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -53,75 +52,40 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If statx has valid attributes available that weren't asked for, then
-return them and set the result mask appropriately.
+If the user doesn't set STATX_UID/GID/MODE, then don't care if they are
+known to be stale. Ditto if we're not being asked for the file size.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 29 ++++++++++++++++++++++++++---
- 1 file changed, 26 insertions(+), 3 deletions(-)
+ fs/nfs/inode.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 4982bc18ee26..8c2d5f333e81 100644
+index 8b2f4a5eaa42..4982bc18ee26 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -806,6 +806,28 @@ static bool nfs_need_revalidate_inode(struct inode *inode)
- 	return false;
- }
- 
-+static u32 nfs_get_valid_attrmask(struct inode *inode)
-+{
-+	unsigned long cache_validity = READ_ONCE(NFS_I(inode)->cache_validity);
-+	u32 reply_mask = STATX_INO | STATX_TYPE;
-+
-+	if (!(cache_validity & NFS_INO_INVALID_ATIME))
-+		reply_mask |= STATX_ATIME;
-+	if (!(cache_validity & NFS_INO_REVAL_PAGECACHE)) {
-+		if (!(cache_validity & NFS_INO_INVALID_CTIME))
-+			reply_mask |= STATX_CTIME;
-+		if (!(cache_validity & NFS_INO_INVALID_MTIME))
-+			reply_mask |= STATX_MTIME;
-+		if (!(cache_validity & NFS_INO_INVALID_SIZE))
-+			reply_mask |= STATX_SIZE;
-+	}
-+	if (!(cache_validity & NFS_INO_INVALID_OTHER))
-+		reply_mask |= STATX_UID | STATX_GID | STATX_MODE | STATX_NLINK;
-+	if (!(cache_validity & NFS_INO_INVALID_BLOCKS))
-+		reply_mask |= STATX_BLOCKS;
-+	return reply_mask;
-+}
-+
- int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		struct kstat *stat, u32 request_mask, unsigned int query_flags)
- {
-@@ -824,7 +846,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 
- 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
- 		nfs_readdirplus_parent_cache_hit(path->dentry);
--		goto out_no_update;
-+		goto out_no_revalidate;
- 	}
- 
- 	/* Flush out writes to the server in order to update c/mtime.  */
-@@ -870,6 +892,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		do_update |= cache_validity & NFS_INO_INVALID_OTHER;
+@@ -857,12 +857,17 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	/* Check whether the cached attributes are stale */
+ 	do_update |= force_sync || nfs_attribute_cache_expired(inode);
+ 	cache_validity = READ_ONCE(NFS_I(inode)->cache_validity);
+-	do_update |= cache_validity &
+-		(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL);
++	do_update |= cache_validity & NFS_INO_INVALID_CHANGE;
+ 	if (request_mask & STATX_ATIME)
+ 		do_update |= cache_validity & NFS_INO_INVALID_ATIME;
+-	if (request_mask & (STATX_CTIME|STATX_MTIME))
+-		do_update |= cache_validity & NFS_INO_REVAL_PAGECACHE;
++	if (request_mask & STATX_CTIME)
++		do_update |= cache_validity & NFS_INO_INVALID_CTIME;
++	if (request_mask & STATX_MTIME)
++		do_update |= cache_validity & NFS_INO_INVALID_MTIME;
++	if (request_mask & STATX_SIZE)
++		do_update |= cache_validity & NFS_INO_INVALID_SIZE;
++	if (request_mask & (STATX_UID | STATX_GID | STATX_MODE | STATX_NLINK))
++		do_update |= cache_validity & NFS_INO_INVALID_OTHER;
  	if (request_mask & STATX_BLOCKS)
  		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
-+
  	if (do_update) {
- 		/* Update the attribute cache */
- 		if (!(server->flags & NFS_MOUNT_NOAC))
-@@ -883,8 +906,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		nfs_readdirplus_parent_cache_hit(path->dentry);
- out_no_revalidate:
- 	/* Only return attributes that were revalidated. */
--	stat->result_mask &= request_mask;
--out_no_update:
-+	stat->result_mask = nfs_get_valid_attrmask(inode) | request_mask;
-+
- 	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
- 	if (S_ISDIR(inode->i_mode))
 -- 
 2.30.2
 
