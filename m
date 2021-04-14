@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE8B5C4361A
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15B99C4363C
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7FF2561139
+	by mail.kernel.org (Postfix) with ESMTP id E8607611AD
 	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351574AbhDNNoi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:44:38 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52156 "EHLO mail.kernel.org"
+        id S1351576AbhDNNoj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Apr 2021 09:44:39 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52168 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1351607AbhDNNoX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Apr 2021 09:44:23 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 9FF34611CC
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:44:01 +0000 (UTC)
+        id S1351612AbhDNNoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Apr 2021 09:44:24 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 618B36120E
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:44:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1618407841;
-        bh=XA96E3yetjCfwmoZqOjRxO7wvK+Th6Drpffd8XFm6sc=;
+        s=k20201202; t=1618407843;
+        bh=9VuDnCFm3maQ+Cqaa143l09LCyEAuunSAc2xZV4yGlc=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=fb+s38p3Y0n6X433oLULMzkrV+D8sM3IQ6d82v0WvmT29gOTvkpZ+vJNAIg5MkttH
-         kG2UD5t7HuzA3BCH1ALPv6sQ/VQwpGBK0kjLoYPzABJDT+r0wX8czfJ7uxKreNtJgR
-         JTaW4YH/mgZM2XMoFZeXs7M5+9ulzvrpdvlY0RrMnP6/obvpPdNQSu63TnDT38j590
-         p/Rf4K3mXD4Dsu6gpl5M3aQ1khiEVWDxy7oK3D8MnlqWGHImwAI2j5oDeBScVtl2cO
-         CRJd8WoS6yWaBe60/H2YkWjmw1XCZMRYMP0yJOcjHldD4Do9RpMSuJOnILpwa4vniX
-         G3HxhBMy9LViw==
+        b=YXKnSvmlTzExCDkXqAFxIjjmdRL6tr9JcxJTJlJwmgnsTRVhMVmF8hd8k0qm9dGNC
+         hQHhKI9nOj27eK79K6w9mozP3W+Oxp085Vce55kQcOOLI8sFDddKVpqtr44NpcrJiK
+         CucXyGdHjPwhTMAffgUE8uMw6bHdKfsDlCvELGjnrkMlBR2KfdD0CiPHleaGdrjftd
+         wmnIXuHgqBYqW8HWcP8CbRmT9kkzmwKwMM2oP8UuMpHsspiDZtRi0n97M/2ILIs1Kp
+         w419aVg4No6ihjFj3iTm+iWHnfHJ7wHfWTU9yx9lL7UrU7QI0UT+JDXOaQAytMkmPs
+         RKa+HZWKQm89A==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 15/26] NFS: Fix up handling of outstanding layoutcommit in nfs_update_inode()
-Date:   Wed, 14 Apr 2021 09:43:42 -0400
-Message-Id: <20210414134353.11860-16-trondmy@kernel.org>
+Subject: [PATCH v2 19/26] NFSv4: Don't modify the change attribute cached in the inode
+Date:   Wed, 14 Apr 2021 09:43:46 -0400
+Message-Id: <20210414134353.11860-20-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210414134353.11860-15-trondmy@kernel.org>
+In-Reply-To: <20210414134353.11860-19-trondmy@kernel.org>
 References: <20210414134353.11860-1-trondmy@kernel.org>
  <20210414134353.11860-2-trondmy@kernel.org>
  <20210414134353.11860-3-trondmy@kernel.org>
@@ -53,6 +53,10 @@ References: <20210414134353.11860-1-trondmy@kernel.org>
  <20210414134353.11860-13-trondmy@kernel.org>
  <20210414134353.11860-14-trondmy@kernel.org>
  <20210414134353.11860-15-trondmy@kernel.org>
+ <20210414134353.11860-16-trondmy@kernel.org>
+ <20210414134353.11860-17-trondmy@kernel.org>
+ <20210414134353.11860-18-trondmy@kernel.org>
+ <20210414134353.11860-19-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -61,32 +65,32 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If there is an outstanding layoutcommit, then the list of attributes
-whose values are expected to change is not the full set. So let's
-be explicit about the full list.
+When the client is caching data and a write delegation is held, then the
+server may send a CB_GETATTR to query the attributes. When this happens,
+the client is supposed to bump the change attribute value that it
+returns if it holds cached data.
+However that process uses a value that is stored in the delegation. We
+do not want to bump the change attribute held in the inode.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/nfs/write.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 81e3e140e923..18c7277d17a8 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1933,7 +1933,11 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	nfs_wcc_update_inode(inode, fattr);
- 
- 	if (pnfs_layoutcommit_outstanding(inode)) {
--		nfsi->cache_validity |= save_cache_validity & NFS_INO_INVALID_ATTR;
-+		nfsi->cache_validity |=
-+			save_cache_validity &
-+			(NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_CTIME |
-+			 NFS_INO_INVALID_MTIME | NFS_INO_INVALID_SIZE |
-+			 NFS_INO_REVAL_FORCED);
- 		cache_revalidated = false;
- 	}
- 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 61d1174935b6..3bf82178166a 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -764,9 +764,6 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 	 * with invalidate/truncate.
+ 	 */
+ 	spin_lock(&mapping->private_lock);
+-	if (!nfs_have_writebacks(inode) &&
+-	    NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
+-		inode_inc_iversion_raw(inode);
+ 	if (likely(!PageSwapCache(req->wb_page))) {
+ 		set_bit(PG_MAPPED, &req->wb_flags);
+ 		SetPagePrivate(req->wb_page);
 -- 
 2.30.2
 
