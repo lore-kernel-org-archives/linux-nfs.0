@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C0F78C4361B
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0EEE6C001E5
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 96A33611AD
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 04127611B0
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351575AbhDNNoj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:44:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52152 "EHLO mail.kernel.org"
+        id S1351584AbhDNNol (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Apr 2021 09:44:41 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52166 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1351614AbhDNNoZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Apr 2021 09:44:25 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id CC5EE611B0
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:44:03 +0000 (UTC)
+        id S1351621AbhDNNo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Apr 2021 09:44:27 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 0D073611F0
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:44:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1618407844;
-        bh=dY1TAALyeP8SE0xKxibXz1C+F7HcSHRO0NJpJMGsXng=;
+        s=k20201202; t=1618407846;
+        bh=yJ9Xuu16tbWfzBp7dc2oRgFD+fE+CFKf/gXZDjUiuf8=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=obmCAAv+sm2QmfYFPT+RDI7QDwtX/hOAXM3olhXESIx3OXq88kQVTErc17cYnVeDk
-         eoiJAA0AJy9/Sha54huNCPwXSyk15HcuGtY67TiVcFMHdAZnTradn0nT+QbskfoF8c
-         strNcpDE4gLs3UUQMlgw5OmmtMIw3BaxAEUKyi+w1nV0KI+BZOE1pTXTwPZbEVdZC6
-         mZv++Svhxt9AWAvuv8yKlQpVGIV3GHOeTyPqkijacm1nzlkmIdSujxqlxRopI+M7I8
-         Io/zPsrPkKVaTyE36vs3JIjsdWhjQiMiiSr2/Y57sWMQDluQ+TlSaCXCwqa4XPDlC/
-         cPJrlT6S2aPRw==
+        b=hkekkEk7izDgQyDN+Zt4Ieo37cMPQfeIyDWLuO6rpMGWvrbrFUS7KPL5FsZSrqPc/
+         rWsJB7DgZ/svkfvD0aOkh4hl+MS52FHnHzP8ZU5GUhfmj/S5LxPw38ZUZ6DN/W1SR8
+         yiB+7Kdjm6xWX3xMUfRjYGaGycSqQTGWn85B1W5QE4fzGaBy2SbxSpJFQqikHO+2+U
+         Yf9ZfrBia2Yrc6MQo7KbLqr6PS5sGViKDahe9/1rMK0HTpkskdHOYw+EMRRt/xUx+1
+         NPk5e1sPlP1UEpsbgzvHZ5XfiKPlAyCDorIZTJJexSWrSnV9rexww5IdnLQIFI2srA
+         uZJA/CdLh86AA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 20/26] NFSv4: Add support for the NFSv4.2 "change_attr_type" attribute
-Date:   Wed, 14 Apr 2021 09:43:47 -0400
-Message-Id: <20210414134353.11860-21-trondmy@kernel.org>
+Subject: [PATCH v2 25/26] NFS: Don't store NFS_INO_REVAL_FORCED
+Date:   Wed, 14 Apr 2021 09:43:52 -0400
+Message-Id: <20210414134353.11860-26-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210414134353.11860-20-trondmy@kernel.org>
+In-Reply-To: <20210414134353.11860-25-trondmy@kernel.org>
 References: <20210414134353.11860-1-trondmy@kernel.org>
  <20210414134353.11860-2-trondmy@kernel.org>
  <20210414134353.11860-3-trondmy@kernel.org>
@@ -58,6 +58,11 @@ References: <20210414134353.11860-1-trondmy@kernel.org>
  <20210414134353.11860-18-trondmy@kernel.org>
  <20210414134353.11860-19-trondmy@kernel.org>
  <20210414134353.11860-20-trondmy@kernel.org>
+ <20210414134353.11860-21-trondmy@kernel.org>
+ <20210414134353.11860-22-trondmy@kernel.org>
+ <20210414134353.11860-23-trondmy@kernel.org>
+ <20210414134353.11860-24-trondmy@kernel.org>
+ <20210414134353.11860-25-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -66,190 +71,254 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The change_attr_type allows the server to provide a description of how
-the change attribute will behave. This again will allow the client to
-optimise its behaviour w.r.t. attribute revalidation.
+NFS_INO_REVAL_FORCED is intended to tell us that the cache needs
+revalidation despite the fact that we hold a delegation. We shouldn't
+need to store it anymore, though.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/client.c           |  3 +++
- fs/nfs/nfs3xdr.c          |  1 +
- fs/nfs/nfs4proc.c         |  1 +
- fs/nfs/nfs4xdr.c          | 32 ++++++++++++++++++++++++++++++++
- fs/nfs/proc.c             |  1 +
- include/linux/nfs4.h      |  9 +++++++++
- include/linux/nfs_fs_sb.h |  3 +++
- include/linux/nfs_xdr.h   |  2 ++
- 8 files changed, 52 insertions(+)
+ fs/nfs/delegation.c | 21 +++++++++++----
+ fs/nfs/delegation.h |  3 +--
+ fs/nfs/inode.c      | 66 +++++++++++++++++----------------------------
+ fs/nfs/nfs4proc.c   |  5 +---
+ 4 files changed, 43 insertions(+), 52 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 399a8eb15397..2aeb4e52a4f1 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -792,6 +792,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- 	server->maxfilesize = fsinfo->maxfilesize;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 6a29de964268..e6ec6f09ac6e 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -481,6 +481,22 @@ int nfs_inode_set_delegation(struct inode *inode, const struct cred *cred,
+ 	if (freeme == NULL)
+ 		goto out;
+ add_new:
++	/*
++	 * If we didn't revalidate the change attribute before setting
++	 * the delegation, then pre-emptively ask for a full attribute
++	 * cache revalidation.
++	 */
++	spin_lock(&inode->i_lock);
++	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_CHANGE)
++		nfs_set_cache_invalid(inode,
++			NFS_INO_INVALID_ATIME | NFS_INO_INVALID_CTIME |
++			NFS_INO_INVALID_MTIME | NFS_INO_INVALID_SIZE |
++			NFS_INO_INVALID_BLOCKS | NFS_INO_INVALID_NLINK |
++			NFS_INO_INVALID_OTHER | NFS_INO_INVALID_DATA |
++			NFS_INO_INVALID_ACCESS | NFS_INO_INVALID_ACL |
++			NFS_INO_INVALID_XATTR);
++	spin_unlock(&inode->i_lock);
++
+ 	list_add_tail_rcu(&delegation->super_list, &server->delegations);
+ 	rcu_assign_pointer(nfsi->delegation, delegation);
+ 	delegation = NULL;
+@@ -488,11 +504,6 @@ int nfs_inode_set_delegation(struct inode *inode, const struct cred *cred,
+ 	atomic_long_inc(&nfs_active_delegations);
  
- 	server->time_delta = fsinfo->time_delta;
-+	server->change_attr_type = fsinfo->change_attr_type;
+ 	trace_nfs4_set_delegation(inode, type);
+-
+-	spin_lock(&inode->i_lock);
+-	if (NFS_I(inode)->cache_validity & (NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ATIME))
+-		NFS_I(inode)->cache_validity |= NFS_INO_REVAL_FORCED;
+-	spin_unlock(&inode->i_lock);
+ out:
+ 	spin_unlock(&clp->cl_lock);
+ 	if (delegation != NULL)
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index 9b00a0b7f832..c19b4fd20781 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -84,8 +84,7 @@ int nfs4_inode_make_writeable(struct inode *inode);
  
- 	server->clone_blksize = fsinfo->clone_blksize;
- 	/* We're airborne Set socket buffersize */
-@@ -933,6 +934,8 @@ struct nfs_server *nfs_alloc_server(void)
- 		return NULL;
+ static inline int nfs_have_delegated_attributes(struct inode *inode)
+ {
+-	return NFS_PROTO(inode)->have_delegation(inode, FMODE_READ) &&
+-		!(NFS_I(inode)->cache_validity & NFS_INO_REVAL_FORCED);
++	return NFS_PROTO(inode)->have_delegation(inode, FMODE_READ);
+ }
+ 
+ #endif
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index b88e9dc72eec..7fa914e24fc4 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -200,21 +200,19 @@ void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
+ 	if (have_delegation) {
+ 		if (!(flags & NFS_INO_REVAL_FORCED))
+ 			flags &= ~(NFS_INO_INVALID_MODE |
+-				   NFS_INO_INVALID_OTHER);
+-		flags &= ~(NFS_INO_INVALID_CHANGE
+-				| NFS_INO_INVALID_SIZE
+-				| NFS_INO_INVALID_XATTR);
++				   NFS_INO_INVALID_OTHER |
++				   NFS_INO_INVALID_XATTR);
++		flags &= ~(NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_SIZE);
+ 	} else if (flags & NFS_INO_REVAL_PAGECACHE)
+ 		flags |= NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_SIZE;
+ 
+-	flags &= ~NFS_INO_REVAL_PAGECACHE;
+-
+ 	if (!nfs_has_xattr_cache(nfsi))
+ 		flags &= ~NFS_INO_INVALID_XATTR;
+ 	if (flags & NFS_INO_INVALID_DATA)
+ 		nfs_fscache_invalidate(inode);
+ 	if (inode->i_mapping->nrpages == 0)
+ 		flags &= ~(NFS_INO_INVALID_DATA|NFS_INO_DATA_INVAL_DEFER);
++	flags &= ~(NFS_INO_REVAL_PAGECACHE | NFS_INO_REVAL_FORCED);
+ 	nfsi->cache_validity |= flags;
+ }
+ EXPORT_SYMBOL_GPL(nfs_set_cache_invalid);
+@@ -560,9 +558,6 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
+ 		} else if (fattr->size != 0)
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
+ 
+-		if (nfsi->cache_validity != 0)
+-			nfsi->cache_validity |= NFS_INO_REVAL_FORCED;
+-
+ 		nfs_setsecurity(inode, fattr, label);
+ 
+ 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
+@@ -2032,7 +2027,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			save_cache_validity &
+ 			(NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_CTIME |
+ 			 NFS_INO_INVALID_MTIME | NFS_INO_INVALID_SIZE |
+-			 NFS_INO_REVAL_FORCED);
++			 NFS_INO_INVALID_BLOCKS);
+ 		cache_revalidated = false;
  	}
  
-+	server->change_attr_type = NFS4_CHANGE_TYPE_IS_UNDEFINED;
-+
- 	ida_init(&server->openowner_id);
- 	ida_init(&server->lockowner_id);
- 	pnfs_init_server(server);
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index ed1c83738c30..83ad62c81fc7 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -2227,6 +2227,7 @@ static int decode_fsinfo3resok(struct xdr_stream *xdr,
+@@ -2064,27 +2059,24 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			attr_changed = true;
+ 		}
+ 	} else {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_CHANGE
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_CHANGE;
+ 		cache_revalidated = false;
+ 	}
  
- 	/* ignore properties */
- 	result->lease_time = 0;
-+	result->change_attr_type = NFS4_CHANGE_TYPE_IS_TIME_METADATA;
- 	return 0;
- }
+ 	if (fattr->valid & NFS_ATTR_FATTR_MTIME) {
+ 		inode->i_mtime = fattr->mtime;
+ 	} else if (server->caps & NFS_CAP_MTIME) {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_MTIME
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_MTIME;
+ 		cache_revalidated = false;
+ 	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
+ 		inode->i_ctime = fattr->ctime;
+ 	} else if (server->caps & NFS_CAP_CTIME) {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_CTIME
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_CTIME;
+ 		cache_revalidated = false;
+ 	}
+ 
+@@ -2115,19 +2107,16 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			fattr->valid |= NFS_ATTR_FATTR_SPACE_USED;
+ 		}
+ 	} else {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_SIZE
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_SIZE;
+ 		cache_revalidated = false;
+ 	}
+ 
+-
+ 	if (fattr->valid & NFS_ATTR_FATTR_ATIME)
+ 		inode->i_atime = fattr->atime;
+ 	else if (server->caps & NFS_CAP_ATIME) {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_ATIME
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_ATIME;
+ 		cache_revalidated = false;
+ 	}
+ 
+@@ -2141,9 +2130,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			attr_changed = true;
+ 		}
+ 	} else if (server->caps & NFS_CAP_MODE) {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_MODE
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_MODE;
+ 		cache_revalidated = false;
+ 	}
+ 
+@@ -2155,9 +2143,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			attr_changed = true;
+ 		}
+ 	} else if (server->caps & NFS_CAP_OWNER) {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_OTHER
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_OTHER;
+ 		cache_revalidated = false;
+ 	}
+ 
+@@ -2169,9 +2156,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			attr_changed = true;
+ 		}
+ 	} else if (server->caps & NFS_CAP_OWNER_GROUP) {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_OTHER
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_OTHER;
+ 		cache_revalidated = false;
+ 	}
+ 
+@@ -2183,9 +2169,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			attr_changed = true;
+ 		}
+ 	} else if (server->caps & NFS_CAP_NLINK) {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_NLINK
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_NLINK;
+ 		cache_revalidated = false;
+ 	}
+ 
+@@ -2197,9 +2182,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	} else if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
+ 		inode->i_blocks = fattr->du.nfs2.blocks;
+ 	else {
+-		nfsi->cache_validity |= save_cache_validity &
+-				(NFS_INO_INVALID_BLOCKS
+-				| NFS_INO_REVAL_FORCED);
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_BLOCKS;
+ 		cache_revalidated = false;
+ 	}
  
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bc90f2a12d5d..6992c88a25e7 100644
+index 2215f20e0e78..bcbb057d5529 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -264,6 +264,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			| FATTR4_WORD1_FS_LAYOUT_TYPES,
- 			FATTR4_WORD2_LAYOUT_BLKSIZE
- 			| FATTR4_WORD2_CLONE_BLKSIZE
-+			| FATTR4_WORD2_CHANGE_ATTR_TYPE
- 			| FATTR4_WORD2_XATTR_SUPPORT
- };
+@@ -5477,10 +5477,7 @@ static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ], const __u32 *src,
+ 	if (cache_validity & NFS_INO_INVALID_BLOCKS)
+ 		bitmask[1] |= FATTR4_WORD1_SPACE_USED;
  
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d8a1911dd39e..edac4718dec1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -153,6 +153,7 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
- 				 5 /* fs layout types */ + \
- 				 1 /* layout blksize */ + \
- 				 1 /* clone blksize */ + \
-+				 1 /* change attr type */ + \
- 				 1 /* xattr support */)
- #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
- #define decode_renew_maxsz	(op_decode_hdr_maxsz)
-@@ -4846,6 +4847,32 @@ static int decode_attr_clone_blksize(struct xdr_stream *xdr, uint32_t *bitmap,
- 	return 0;
- }
+-	if (nfs4_have_delegation(inode, FMODE_READ) &&
+-	    !(cache_validity & NFS_INO_REVAL_FORCED))
+-		bitmask[0] &= ~FATTR4_WORD0_SIZE;
+-	else if (cache_validity & NFS_INO_INVALID_SIZE)
++	if (cache_validity & NFS_INO_INVALID_SIZE)
+ 		bitmask[0] |= FATTR4_WORD0_SIZE;
  
-+static int decode_attr_change_attr_type(struct xdr_stream *xdr,
-+					uint32_t *bitmap,
-+					enum nfs4_change_attr_type *res)
-+{
-+	u32 tmp = NFS4_CHANGE_TYPE_IS_UNDEFINED;
-+
-+	dprintk("%s: bitmap is %x\n", __func__, bitmap[2]);
-+	if (bitmap[2] & FATTR4_WORD2_CHANGE_ATTR_TYPE) {
-+		if (xdr_stream_decode_u32(xdr, &tmp))
-+			return -EIO;
-+		bitmap[2] &= ~FATTR4_WORD2_CHANGE_ATTR_TYPE;
-+	}
-+
-+	switch(tmp) {
-+	case NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR:
-+	case NFS4_CHANGE_TYPE_IS_VERSION_COUNTER:
-+	case NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS:
-+	case NFS4_CHANGE_TYPE_IS_TIME_METADATA:
-+		*res = tmp;
-+		break;
-+	default:
-+		*res = NFS4_CHANGE_TYPE_IS_UNDEFINED;
-+	}
-+	return 0;
-+}
-+
- static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- {
- 	unsigned int savep;
-@@ -4894,6 +4921,11 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 	if (status)
- 		goto xdr_error;
- 
-+	status = decode_attr_change_attr_type(xdr, bitmap,
-+					      &fsinfo->change_attr_type);
-+	if (status)
-+		goto xdr_error;
-+
- 	status = decode_attr_xattrsupport(xdr, bitmap,
- 					  &fsinfo->xattr_support);
- 	if (status)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 73ab7c59d3a7..ea19dbf12301 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -91,6 +91,7 @@ nfs_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	info->dtpref = fsinfo.tsize;
- 	info->maxfilesize = 0x7FFFFFFF;
- 	info->lease_time = 0;
-+	info->change_attr_type = NFS4_CHANGE_TYPE_IS_TIME_METADATA;
- 	return 0;
- }
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 5b4c67c91f56..15004c469807 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -452,6 +452,7 @@ enum lock_type4 {
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- #define FATTR4_WORD2_CLONE_BLKSIZE	(1UL << 13)
-+#define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
- #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
- #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
- #define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
-@@ -709,6 +710,14 @@ struct nl4_server {
- 	} u;
- };
- 
-+enum nfs4_change_attr_type {
-+	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR = 0,
-+	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER = 1,
-+	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS = 2,
-+	NFS4_CHANGE_TYPE_IS_TIME_METADATA = 3,
-+	NFS4_CHANGE_TYPE_IS_UNDEFINED = 4,
-+};
-+
- /*
-  * Options for setxattr. These match the flags for setxattr(2).
-  */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6f76b32a0238..fbcdfd9f7a7f 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -180,6 +180,9 @@ struct nfs_server {
- #define NFS_OPTION_FSCACHE	0x00000001	/* - local caching enabled */
- #define NFS_OPTION_MIGRATION	0x00000002	/* - NFSv4 migration enabled */
- 
-+	enum nfs4_change_attr_type
-+				change_attr_type;/* Description of change attribute */
-+
- 	struct nfs_fsid		fsid;
- 	__u64			maxfilesize;	/* maximum file size */
- 	struct timespec64	time_delta;	/* smallest time granularity */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index cc29dee508f7..717ecc87c9e7 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -152,6 +152,8 @@ struct nfs_fsinfo {
- 	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout driver */
- 	__u32			blksize; /* preferred pnfs io block size */
- 	__u32			clone_blksize; /* granularity of a CLONE operation */
-+	enum nfs4_change_attr_type
-+				change_attr_type; /* Info about change attr */
- 	__u32			xattr_support; /* User xattrs supported */
- };
- 
+ 	for (i = 0; i < NFS4_BITMASK_SZ; i++)
 -- 
 2.30.2
 
