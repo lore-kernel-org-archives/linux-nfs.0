@@ -7,41 +7,38 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2325BC433B4
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BAEE0C43470
 	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DC38461139
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9CF9F611B0
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231669AbhDNNoe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:44:34 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52152 "EHLO mail.kernel.org"
+        id S243282AbhDNNog (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Apr 2021 09:44:36 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52142 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1351587AbhDNNoS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Apr 2021 09:44:18 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C702361139
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:43:56 +0000 (UTC)
+        id S1351583AbhDNNoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Apr 2021 09:44:16 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 743B3611AD
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:43:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1618407837;
-        bh=sT2d/on1CAyHGgslMALW6hr1OubO7FU6tJB89rV5Prs=;
+        s=k20201202; t=1618407835;
+        bh=Av2mTAvTPBRR6n/iApvQ7Kz11QtjqJfgvAB+6CQmYVc=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=N+Gyy3UAu9E8hLiLDZ0AOYzOsV09sem0z5CW5u8iuMtdqlPoA99aOYGKpGMn3yfpw
-         A7q4/+Hb/+irdb3KnYqhQQP2Wpaiwzdm78t/UycGTXuzi8SOO2GBshGj8f84TxXoZX
-         4Hj6LwCSusnfnQCbibxnha+ukp2oHbXxS2pIRxf3MO2CUGtdpm1STE+Uf3kn84Yi9C
-         WIHceqPgteoCVa+R7W5sE+3pYbZ1S4P/3Qs6Nlc2xIJX63QP80WTnUv6fhKhYAfLgZ
-         GkB6MymkMqEFhbgL0O1CwwZTou4Ai57ejkON25l6lPgrPCbRyrjNMrL/m9LcXaqUCd
-         FMnhBp6DQBZ5A==
+        b=TjuBtKfF6UZmeYec22E+IRiwo+tLTZ4bHY1yZU81S/+aCdHSUb5GF3JfUPA4w9eri
+         ljX+72EAmyyZpUPfBSn68Vx9Milia8afMA9tRGzOeh77nqYNDNEFYgREu6JThvxnYj
+         WTV+3g+v5C3n6j1TbVVX6i+ATSfbM0gurQ6e6fwHcolrzRbS7vVKiNU+obtrL+uGvi
+         LD3TIuZ3IukTvrvfh7orRzf/HBet5pECzJdkn+VhjnLMQpv2U12NjcEHS0Sm+4Dyj1
+         D1OvtSRxywDeR/pl6C29zfROUj1KbP46QwhXChK8x/nrQVFlK+ByrNMfFC+ro+IHVg
+         bg6d9kZB3tYWA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 04/26] NFS: NFS_INO_REVAL_PAGECACHE should mark the change attribute invalid
-Date:   Wed, 14 Apr 2021 09:43:31 -0400
-Message-Id: <20210414134353.11860-5-trondmy@kernel.org>
+Subject: [PATCH v2 01/26] NFS: Deal correctly with attribute generation counter overflow
+Date:   Wed, 14 Apr 2021 09:43:28 -0400
+Message-Id: <20210414134353.11860-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210414134353.11860-4-trondmy@kernel.org>
+In-Reply-To: <20210414134353.11860-1-trondmy@kernel.org>
 References: <20210414134353.11860-1-trondmy@kernel.org>
- <20210414134353.11860-2-trondmy@kernel.org>
- <20210414134353.11860-3-trondmy@kernel.org>
- <20210414134353.11860-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -50,28 +47,42 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-When we're looking to revalidate the page cache, we should just ensure
-that we mark the change attribute invalid.
+We need to use unsigned long subtraction and then convert to signed in
+order to deal correcly with C overflow rules.
 
+Fixes: f5062003465c ("NFS: Set an attribute barrier on all updates")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/inode.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c429a5375b92..a9b302b389a7 100644
+index ff737be559dc..8de5b3b9da91 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -219,7 +219,8 @@ void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
- 				| NFS_INO_INVALID_SIZE
- 				| NFS_INO_REVAL_PAGECACHE
- 				| NFS_INO_INVALID_XATTR);
--	}
-+	} else if (flags & NFS_INO_REVAL_PAGECACHE)
-+		flags |= NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_SIZE;
+@@ -1662,10 +1662,10 @@ EXPORT_SYMBOL_GPL(_nfs_display_fhandle);
+  */
+ static int nfs_inode_attrs_need_update(const struct inode *inode, const struct nfs_fattr *fattr)
+ {
+-	const struct nfs_inode *nfsi = NFS_I(inode);
++	unsigned long attr_gencount = NFS_I(inode)->attr_gencount;
  
- 	if (!nfs_has_xattr_cache(nfsi))
- 		flags &= ~NFS_INO_INVALID_XATTR;
+-	return ((long)fattr->gencount - (long)nfsi->attr_gencount) > 0 ||
+-		((long)nfsi->attr_gencount - (long)nfs_read_attr_generation_counter() > 0);
++	return (long)(fattr->gencount - attr_gencount) > 0 ||
++	       (long)(attr_gencount - nfs_read_attr_generation_counter()) > 0;
+ }
+ 
+ static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
+@@ -2094,7 +2094,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			nfsi->attrtimeo_timestamp = now;
+ 		}
+ 		/* Set the barrier to be more recent than this fattr */
+-		if ((long)fattr->gencount - (long)nfsi->attr_gencount > 0)
++		if ((long)(fattr->gencount - nfsi->attr_gencount) > 0)
+ 			nfsi->attr_gencount = fattr->gencount;
+ 	}
+ 
 -- 
 2.30.2
 
