@@ -2,98 +2,116 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FEABC43460
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:51:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E629C433ED
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 14:04:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 162E061139
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E48161166
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 14:04:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351577AbhDNNoj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:44:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52150 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1351611AbhDNNoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Apr 2021 09:44:24 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id EB437611F2
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:44:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1618407843;
-        bh=q48Ky1nmUGHIcEwWxnjWjx302h1CqIWJtkjhILW9cRg=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=VahL8dUEqpHO0tu1pFExulwvsjiVE3gcE3SnZlJ4kSNIlLC97NkpIwlC4UXsUtc+5
-         uhl7+ftsWjg8YDFREAig80cVPHN3UHaOapzKYMKJxEEjWLr2f9SKq0+NYEOQZY7D/o
-         P41Lx684c1z+D4+cu4rl9BK4PMmhwwZIgHvv+wWzsvP6iPV9gQzJ+MI6Q4BwsaKGkZ
-         aetNPGBiw1wVh6WV/X5U+7JYcOd0hf8kGLOKbdqaBfyabGkt4/q0AM/94C10WL+Ua0
-         aOXcxPfFcBry85oJfrpcX8rNMlJOdJivUAnULNcGDt3Xs459zxe8jlUAG0bN2LWV1Q
-         saVALbctB74EQ==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 18/26] NFSv4: Fix value of decode_fsinfo_maxsz
-Date:   Wed, 14 Apr 2021 09:43:45 -0400
-Message-Id: <20210414134353.11860-19-trondmy@kernel.org>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210414134353.11860-18-trondmy@kernel.org>
-References: <20210414134353.11860-1-trondmy@kernel.org>
- <20210414134353.11860-2-trondmy@kernel.org>
- <20210414134353.11860-3-trondmy@kernel.org>
- <20210414134353.11860-4-trondmy@kernel.org>
- <20210414134353.11860-5-trondmy@kernel.org>
- <20210414134353.11860-6-trondmy@kernel.org>
- <20210414134353.11860-7-trondmy@kernel.org>
- <20210414134353.11860-8-trondmy@kernel.org>
- <20210414134353.11860-9-trondmy@kernel.org>
- <20210414134353.11860-10-trondmy@kernel.org>
- <20210414134353.11860-11-trondmy@kernel.org>
- <20210414134353.11860-12-trondmy@kernel.org>
- <20210414134353.11860-13-trondmy@kernel.org>
- <20210414134353.11860-14-trondmy@kernel.org>
- <20210414134353.11860-15-trondmy@kernel.org>
- <20210414134353.11860-16-trondmy@kernel.org>
- <20210414134353.11860-17-trondmy@kernel.org>
- <20210414134353.11860-18-trondmy@kernel.org>
+        id S1351726AbhDNOEk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Apr 2021 10:04:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56886 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1351739AbhDNOEX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2021 10:04:23 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE631C061574
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 07:04:01 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 50A1A724B; Wed, 14 Apr 2021 10:04:01 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 50A1A724B
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1618409041;
+        bh=kit5Q+fmMpUlugVCcEl/uFMS1EoXvVUMm9zLx2UPaH4=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=LTgREo6UmAD56lUWBWX7Y+fprlaTTUl/tloM86mcvH1I3rpkjJcwbxq23v5iw9nEu
+         dHlNYYMitrh2BfbSMQ9fVYmfewxsaBXJpwu0dLjsmN81sq08gDLNLDPvPbtJjObs4D
+         Z4hmDgbv6jh5pAb8xJhEiEMP07iANvTdcCch+6vY=
+Date:   Wed, 14 Apr 2021 10:04:01 -0400
+From:   "bfields@fieldses.org" <bfields@fieldses.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "kolga@netapp.com" <kolga@netapp.com>
+Subject: Re: generic/430 COPY/delegation caching regression
+Message-ID: <20210414140401.GB16800@fieldses.org>
+References: <20210413231958.GB31058@fieldses.org>
+ <603d9d38a421b190a89254461e01625718ec5fcc.camel@hammerspace.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <603d9d38a421b190a89254461e01625718ec5fcc.camel@hammerspace.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Wed, Apr 14, 2021 at 03:09:18AM +0000, Trond Myklebust wrote:
+> On Tue, 2021-04-13 at 19:19 -0400, J. Bruce Fields wrote:
+> > generic/430 started failing in 4.12-rc3, as of 7c1d1dcc24b3 "nfsd:
+> > grant
+> > read delegations to clients holding writes".
+> > 
+> > Looks like that reintroduced the problem fixed by 16abd2a0c124
+> > "NFSv4.2:
+> > fix client's attribute cache management for copy_file_range": the
+> > client
+> > needs to invalidate its cache of the destination of a copy even when it
+> > holds a delegation.
+> > 
+> > --b.
+> 
+> Hmm.. The only thing I see that could be causing an issue is the fact
+> that we're relying on cache invalidation to change the file size. 
+> 
+>         nfs_set_cache_invalid(
+>                 dst_inode, NFS_INO_REVAL_PAGECACHE | NFS_INO_REVAL_FORCED |
+>                                    NFS_INO_INVALID_SIZE | NFS_INO_INVALID_ATTR |
+>                                    NFS_INO_INVALID_DATA);
+> 
+> The only problem there is that nfs_set_cache_invalid() will clobber the
+> NFS_INO_INVALID_SIZE because if we hold a delegation, then our client
+> is the sole authority for the size attribute (hence we don't allow it
+> to be invalidated). We therefore expect a call to i_size_write(), if
+> the file size grew.
+> 
+> Otherwise, the setting of NFS_INO_INVALID_DATA should be redundant
+> because we've already punched a hole with truncate_pagecache_range().
 
-At least two extra fields have been added to fsinfo since this was last
-updated.
+Looks like it's just copying a file and finding the destination still empty;
+expected/actual output diff from xfstests is:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/nfs4xdr.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+     e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-430/file
+     e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-430/copy
+     Copy beginning of original file
+    +cmp: EOF on /mnt/test-430/beginning which is empty
+     md5sums after copying beginning:
+     e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-430/file
+    -cabe45dcc9ae5b66ba86600cca6b8ba8  TEST_DIR/test-430/beginning
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ac6b79ee9355..d8a1911dd39e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -144,7 +144,16 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
-  * layout types will be returned.
-  */
- #define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + \
--				 nfs4_fattr_bitmap_maxsz + 4 + 8 + 5)
-+				 nfs4_fattr_bitmap_maxsz + 1 + \
-+				 1 /* lease time */ + \
-+				 2 /* max filesize */ + \
-+				 2 /* max read */ + \
-+				 2 /* max write */ + \
-+				 nfstime4_maxsz /* time delta */ + \
-+				 5 /* fs layout types */ + \
-+				 1 /* layout blksize */ + \
-+				 1 /* clone blksize */ + \
-+				 1 /* xattr support */)
- #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
- #define decode_renew_maxsz	(op_decode_hdr_maxsz)
- #define encode_setclientid_maxsz \
--- 
-2.30.2
+The test script there is:
 
+echo "Create the original file and then copy"
+$XFS_IO_PROG -f -c 'pwrite -S 0x61 0    1000' $testdir/file >> $seqres.full 2>&1
+$XFS_IO_PROG -f -c 'pwrite -S 0x62 1000 1000' $testdir/file >> $seqres.full 2>&1
+$XFS_IO_PROG -f -c 'pwrite -S 0x63 2000 1000' $testdir/file >> $seqres.full 2>&1
+$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
+$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
+$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
+cmp $testdir/file $testdir/copy
+echo "Original md5sums:"
+md5sum $testdir/{file,copy} | _filter_test_dir
+
+echo "Copy beginning of original file"
+$XFS_IO_PROG -f -c "copy_range -l 1000 $testdir/file" "$testdir/beginning"
+cmp -n 1000 $testdir/file $testdir/beginning
+
+If the client is just failing to notice when a newly created file's size is
+grown as the result of a COPY, then I wonder why the first copy (of "file" to
+"copy") didn't also fail.
+
+--b.
