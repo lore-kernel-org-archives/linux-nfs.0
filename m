@@ -2,131 +2,385 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46305C433ED
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 17:28:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2734C433ED
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 18:09:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 246756117A
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 17:28:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BDE1161153
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 18:09:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233556AbhDNR2s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Apr 2021 13:28:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45406 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232040AbhDNR2s (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2021 13:28:48 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 414AFC061574
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 10:28:27 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 94BC0724A; Wed, 14 Apr 2021 13:28:25 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 94BC0724A
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1618421305;
-        bh=LjGVxJ+ciEy7fc7/CLKLe8ZGwCj0RQ3YRSTgYcIBUn4=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=dmbPRDplTGuAAZx8rt5acrUeYJJEzcN+GtO+sY+AhSnCexKtVERcQL6CvHuTiBhWm
-         ZaWyn2FrKSb3bohhEJ1P6CQh4FLN2GFWK2esfBW3ljhgjvkdjlEQPCEP0+TR/zEN+a
-         I0VO4imKjuMYdQ4v0bAVApsWsNWA3JxzGRq6hdB0=
-Date:   Wed, 14 Apr 2021 13:28:25 -0400
-From:   "bfields@fieldses.org" <bfields@fieldses.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "trondmy@kernel.org" <trondmy@kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "kolga@netapp.com" <kolga@netapp.com>,
-        "bfields@redhat.com" <bfields@redhat.com>
-Subject: Re: [PATCH 2/2] NFSv42: Don't force attribute revalidation of the
- copy offload source
-Message-ID: <20210414172825.GE16800@fieldses.org>
-References: <20210414143138.15192-1-trondmy@kernel.org>
- <20210414143138.15192-2-trondmy@kernel.org>
- <20210414144033.GC16800@fieldses.org>
- <20210414170519.GD16800@fieldses.org>
- <608b1babd125f72517a5116c4ed1e39e8104ae52.camel@hammerspace.com>
+        id S1351719AbhDNSJA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Apr 2021 14:09:00 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:36249 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S234472AbhDNSI7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Apr 2021 14:08:59 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1618423717;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=TsouOU8zyOOx+wxkCbPTK0hBOcc15DhOMQfLZVoHO2g=;
+        b=eFW03uva37Sgd81wrGzkYp2zNQbR4TFagkX8hyGtYZfpJ52Nr/Qv9IwmOTFM97aBqb6rps
+        1lw54vuDZmprjyVa3oQBEoK2gexSowI+9/s1xtTEe7d72/DZVJo5Zm+9NOk8iuqb+Jbqkm
+        Cb92omBHg2xEHhjWneZIeJaW9u36F8U=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-223-vxF9mEIeMGCwAnrviJT-Wg-1; Wed, 14 Apr 2021 14:08:34 -0400
+X-MC-Unique: vxF9mEIeMGCwAnrviJT-Wg-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6BADB801814
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 18:08:33 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-83.phx2.redhat.com [10.3.112.83])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 29E0860862
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 18:08:33 +0000 (UTC)
+From:   Steve Dickson <steved@redhat.com>
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/3] nfs-utils: Add support for further ${variable} expansions in nfs.conf
+Date:   Wed, 14 Apr 2021 14:10:39 -0400
+Message-Id: <20210414181040.7108-3-steved@redhat.com>
+In-Reply-To: <20210414181040.7108-1-steved@redhat.com>
+References: <20210414181040.7108-1-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <608b1babd125f72517a5116c4ed1e39e8104ae52.camel@hammerspace.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Apr 14, 2021 at 05:23:53PM +0000, Trond Myklebust wrote:
-> On Wed, 2021-04-14 at 13:05 -0400, J. Bruce Fields wrote:
-> > On Wed, Apr 14, 2021 at 10:40:33AM -0400, bfields wrote:
-> > > Thanks!  Testing....
-> > 
-> > ... and, test results back with these two patches applied, looks
-> > good!
-> 
-> So, just out of curiosity. With which backing filesystem were you
-> testing? If it was XFS, then note that you may have been testing the
-> CLONE functionality instead of copy offload. As you saw, I added the
-> same fix for both clone and copy offload because they have the same
-> requirements for how the page and attribute caches are handled, so the
-> end result should be the same. However the unpatched code is very
-> different for the two methods, and clone may have been missing more
-> functionality than the actual copy-offload was.
+From: Alice Mitchell <ajmitchell@redhat.com>
 
-I think it was actually xfs, but I did look at a trace and my memory is
-it was trying a CLONE and falling back on COPY.  I'll double check....
+This adds support for substituting in the systems machine_id or
+the hostname as the unique id, and caches the results
 
---b.
+Signed-off-by: Alice Mitchell <ajmitchell@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ support/nfs/conffile.c | 260 +++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 249 insertions(+), 11 deletions(-)
 
-> 
-> > 
-> > --b.
-> > 
-> > > 
-> > > --b.
-> > > 
-> > > On Wed, Apr 14, 2021 at 10:31:38AM -0400, trondmy@kernel.org wrote:
-> > > > From: Trond Myklebust <trond.myklebust@hammerspace.com>
-> > > > 
-> > > > When a copy offload is performed, we do not expect the source
-> > > > file to
-> > > > change other than perhaps to see the atime be updated.
-> > > > 
-> > > > Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> > > > ---
-> > > >  fs/nfs/nfs42proc.c | 7 +------
-> > > >  1 file changed, 1 insertion(+), 6 deletions(-)
-> > > > 
-> > > > diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> > > > index 3875120ef3ef..a24349512ffe 100644
-> > > > --- a/fs/nfs/nfs42proc.c
-> > > > +++ b/fs/nfs/nfs42proc.c
-> > > > @@ -390,12 +390,7 @@ static ssize_t _nfs42_proc_copy(struct file
-> > > > *src,
-> > > >         }
-> > > >  
-> > > >         nfs42_copy_dest_done(dst_inode, pos_dst, res-
-> > > > >write_res.count);
-> > > > -
-> > > > -       spin_lock(&src_inode->i_lock);
-> > > > -       nfs_set_cache_invalid(src_inode, NFS_INO_REVAL_PAGECACHE
-> > > > |
-> > > > -                                               
-> > > > NFS_INO_REVAL_FORCED |
-> > > > -                                               
-> > > > NFS_INO_INVALID_ATIME);
-> > > > -       spin_unlock(&src_inode->i_lock);
-> > > > +       nfs_invalidate_atime(src_inode);
-> > > >         status = res->write_res.count;
-> > > >  out:
-> > > >         if (args->sync)
-> > > > -- 
-> > > > 2.30.2
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
-> 
-> 
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index fd4a17ad..d03de012 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -40,6 +40,7 @@
+ #include <sys/stat.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
++#include <linux/if_alg.h>
+ #include <ctype.h>
+ #include <fcntl.h>
+ #include <stdio.h>
+@@ -114,12 +115,66 @@ struct conf_binding {
+   char *tag;
+   char *value;
+   int is_default;
++  char *cache;
+ };
+ 
+ LIST_HEAD (conf_bindings, conf_binding) conf_bindings[256];
+ 
++typedef char * (*expand_fn_t)(void);
++struct expansion_types {
++	const char *name;
++	expand_fn_t func;
++};
++
++typedef struct {
++	uint8_t bytes[16];
++} id128_t;
++
++/*
++ * Application ID for use with generating a machine-id string
++ */
++static id128_t nfs_appid = {.bytes = {0xff,0x3b,0xf0,0x0f,0x34,0xa6,0x43,0xc5, \
++                                       0x93,0xdd,0x16,0xdc,0x7c,0xeb,0x88,0xc8}};
++
+ const char *modified_by = NULL;
+ 
++static __inline__ char
++hexchar(int x) {
++	static const char table[16] = "0123456789abcdef";
++	return table[x & 15];
++}
++
++static __inline__ int
++unhexchar(char h)
++{
++	if (h >= '0' && h <= '9')
++		return h - '0';
++	if (h >= 'a' && h <= 'f')
++		return h - 'a' + 10;
++	if (h >= 'A' && h <= 'F')
++		return h - 'A' + 10;
++	return -1;
++}
++
++static char *
++tohexstr(const unsigned char *data, int len)
++{
++	int i;
++	char *result = NULL;
++
++	result = calloc(1, (len*2)+1);
++	if (!result) {
++		xlog(L_ERROR, "malloc error formatting string");
++		return NULL;
++	}
++
++	for (i = 0; i < len; i++) {
++		result[i*2] = hexchar(data[i] >> 4);
++		result[i*2+1] = hexchar(data[i] & 0x0F);
++	}
++	return result;
++}
++
+ static __inline__ uint8_t
+ conf_hash(const char *s)
+ {
+@@ -132,6 +187,193 @@ conf_hash(const char *s)
+ 	return hash;
+ }
+ 
++static int
++id128_from_string(const char s[], id128_t *ret)
++{
++	id128_t t;
++	unsigned int n, i;
++	for (n=0, i=0; n<16; ) {
++		int a, b;
++		a = unhexchar(s[i++]);
++		if (a < 0)
++			return 1;
++		b = unhexchar(s[i++]);
++		if (b < 0)
++			return 1;
++
++		t.bytes[n++] = (a << 4) | b;
++	}
++	if (s[i] != 0)
++		return 1;
++	if (ret)
++		*ret = t;
++	return 0;
++}
++
++/*
++ * cryptographic hash (sha256) data into a hex encoded string
++ */
++static char *
++strhash(unsigned char *key, size_t keylen, unsigned char *data, size_t dlen)
++{
++	union {
++		struct sockaddr sa;
++		struct sockaddr_alg alg;
++	} sa;
++	int sock = -1;
++	int hfd = -1;
++	uint8_t digest[129];
++	int n;
++	char *result = NULL;
++
++	memset(&sa, 0, sizeof(sa));
++	sa.alg.salg_family = AF_ALG;
++	strcpy((char *)sa.alg.salg_type, "hash");
++	strcpy((char *)sa.alg.salg_name, "hmac(sha256)");
++
++	sock = socket(AF_ALG, SOCK_SEQPACKET|SOCK_CLOEXEC, 0);
++	if (sock < 0) {
++		xlog(L_ERROR, "error creating socket");
++		goto cleanup;
++	}
++
++	if (bind(sock, (struct sockaddr *)&sa.sa, sizeof(sa)) < 0) {
++		xlog(L_ERROR, "error opening khash interface");
++		goto cleanup;
++	}
++
++	if (key && keylen > 0) {
++		if (setsockopt(sock, SOL_ALG, ALG_SET_KEY, key, keylen) < 0) {
++			xlog(L_ERROR, "Error setting key: %s", strerror(errno));
++			goto cleanup;
++		}
++	}
++
++	hfd = accept4(sock, NULL, 0, SOCK_CLOEXEC);
++	if (hfd < 0) {
++		xlog(L_ERROR, "Error initiating khash: %s", strerror(errno));
++		goto cleanup;
++	}
++
++	n = send(hfd, data, dlen, 0);
++	if (n < 0) {
++		xlog(L_ERROR, "Error updating khash: %s", strerror(errno));
++		goto cleanup;
++	}
++
++	n = recv(hfd, digest, sizeof(digest), 0);
++	if (n < 0) {
++		xlog(L_ERROR, "Error fetching khash: %s", strerror(errno));
++		goto cleanup;
++	}
++
++	result = tohexstr(digest, n);
++cleanup:
++	if (sock != -1)
++		close(sock);
++	if (hfd != -1)
++		close(hfd);
++	if (hfd != -1)
++		close(hfd);
++
++	return result;
++}
++
++/*
++ * Read one line of content from a file
++ */
++static char *
++read_oneline(const char *filename)
++{
++	char *content = conf_readfile(filename);
++	char *end;
++
++	if (content == NULL)
++		return NULL;
++
++	/* trim to only the first line */
++	end = strchr(content, '\n');
++	if (end != NULL)
++		*end = '\0';
++	end = strchr(content, '\r');
++	if (end != NULL)
++		*end = '\0';
++
++	return content;
++}
++
++static char *
++expand_machine_id(void)
++{
++	char *key = read_oneline("/etc/machine-id");
++	id128_t mid;
++	char * result = NULL;
++	size_t idlen = 0;
++
++	if (key == NULL)
++		return NULL;
++
++	idlen = strlen(key);
++	if (!id128_from_string(key, &mid)) {
++		result = strhash(mid.bytes, sizeof(mid), nfs_appid.bytes, sizeof(nfs_appid));
++		if (result && strlen(result) > idlen)
++			result[idlen]=0;
++	}
++	free(key);
++	return result;
++}
++
++static char *
++expand_hostname(void)
++{
++	int maxlen = HOST_NAME_MAX + 1;
++	char * hostname = calloc(1, maxlen);
++
++	if (!hostname)
++		return NULL;
++	if ((gethostname(hostname, maxlen)) == -1) {
++		free(hostname);
++		return NULL;
++	}
++	return hostname;
++}
++
++static struct expansion_types  var_expansions[] = {
++	{ "machine-id", expand_machine_id },
++	{ "hostname", expand_hostname },
++};
++
++/* Deal with more complex variable substitutions */
++static char *
++expand_variable(const char *name)
++{
++	size_t len;
++
++	if (name == NULL || name[0] != '$')
++		return NULL;
++
++	len = strlen(name);
++	if (name[1] == '{' && name[len-1] == '}') {
++		char *varname = strndupa(&name[2], len-3);
++
++		for (size_t i=0; i<sizeof(var_expansions); i++) {
++			if (!strcasecmp(varname, var_expansions[i].name)) {
++				return var_expansions[i].func();
++			}
++		}
++		xlog_warn("get_conf: Unknown variable ${%s}", varname);
++	} else {
++		/* expand $name from [environment] section,
++		* or from environment
++		*/
++		char *env = getenv(&name[1]);
++		if (env == NULL || *env == 0)
++			env = conf_get_section("environment", NULL, &name[1]);
++		return env;
++	}
++	return NULL;
++}
++
+ /*
+  * free all the component parts of a conf_binding struct
+  */
+@@ -147,6 +389,8 @@ static void free_confbind(struct conf_binding *cb)
+ 		free(cb->tag);
+ 	if (cb->value)
+ 		free(cb->value);
++	if (cb->cache)
++		free(cb->cache);
+ 	free(cb);
+ }
+ 
+@@ -921,7 +1165,7 @@ char *
+ conf_get_section(const char *section, const char *arg, const char *tag)
+ {
+ 	struct conf_binding *cb;
+-retry:
++
+ 	cb = LIST_FIRST (&conf_bindings[conf_hash (section)]);
+ 	for (; cb; cb = LIST_NEXT (cb, link)) {
+ 		if (strcasecmp(section, cb->section) != 0)
+@@ -933,19 +1177,13 @@ retry:
+ 		if (strcasecmp(tag, cb->tag) != 0)
+ 			continue;
+ 		if (cb->value[0] == '$') {
+-			/* expand $name from [environment] section,
+-			 * or from environment
+-			 */
+-			char *env = getenv(cb->value+1);
+-			if (env && *env)
+-				return env;
+-			section = "environment";
+-			tag = cb->value + 1;
+-			goto retry;
++			if (!cb->cache)
++				cb->cache = expand_variable(cb->value);
++			return cb->cache;
+ 		}
+ 		return cb->value;
+ 	}
+-	return 0;
++	return NULL;
+ }
+ 
+ /*
+-- 
+2.30.2
+
