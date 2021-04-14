@@ -7,38 +7,40 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BAEE0C43470
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60EBAC43461
 	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9CF9F611B0
+	by mail.kernel.org (Postfix) with ESMTP id 2AC45611B0
 	for <linux-nfs@archiver.kernel.org>; Wed, 14 Apr 2021 13:44:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243282AbhDNNog (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:44:36 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52142 "EHLO mail.kernel.org"
+        id S230400AbhDNNof (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Apr 2021 09:44:35 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52150 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1351583AbhDNNoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Apr 2021 09:44:16 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 743B3611AD
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:43:55 +0000 (UTC)
+        id S1351586AbhDNNoR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Apr 2021 09:44:17 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 56E03611CC
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Apr 2021 13:43:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1618407835;
-        bh=Av2mTAvTPBRR6n/iApvQ7Kz11QtjqJfgvAB+6CQmYVc=;
+        s=k20201202; t=1618407836;
+        bh=lakbWgi8LMZGSSz5LueXhFvQkt6vz8GjyIYagQB0XB8=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=TjuBtKfF6UZmeYec22E+IRiwo+tLTZ4bHY1yZU81S/+aCdHSUb5GF3JfUPA4w9eri
-         ljX+72EAmyyZpUPfBSn68Vx9Milia8afMA9tRGzOeh77nqYNDNEFYgREu6JThvxnYj
-         WTV+3g+v5C3n6j1TbVVX6i+ATSfbM0gurQ6e6fwHcolrzRbS7vVKiNU+obtrL+uGvi
-         LD3TIuZ3IukTvrvfh7orRzf/HBet5pECzJdkn+VhjnLMQpv2U12NjcEHS0Sm+4Dyj1
-         D1OvtSRxywDeR/pl6C29zfROUj1KbP46QwhXChK8x/nrQVFlK+ByrNMfFC+ro+IHVg
-         bg6d9kZB3tYWA==
+        b=dIlyvhoOz6K2+5nYbahVhJTu80YAi8Aur2wDJyP/8E1ovr92+0I4cJSpUl00Qmie4
+         oL45nyOnmTHrPoGkeUJCszU+SszN19P3PVEmNNgcIosKV64aK9zdB6s1yGQEDbv8jD
+         SejJcBZ3ofoDG4y5WT38zS4Q0zq8DQ31hoSi0vI3GnlxGnWEWXVRF4Oqaft8s6TC77
+         2G8pySkPzUCom7SOpovbSmfOqO7s4zGgB7Se4o5AvfWNPFsg9easAcJDeEqaRCWikE
+         p4WcSYBDgxnMxttI6J4W5H92fo3NPCbuXihP0nKLzMK9AZqCyNRfzuXnbJ6Xu64drk
+         y4i3nXb+rcYDQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/26] NFS: Deal correctly with attribute generation counter overflow
-Date:   Wed, 14 Apr 2021 09:43:28 -0400
-Message-Id: <20210414134353.11860-2-trondmy@kernel.org>
+Subject: [PATCH v2 03/26] NFS: Mask out unsupported attributes in nfs_getattr()
+Date:   Wed, 14 Apr 2021 09:43:30 -0400
+Message-Id: <20210414134353.11860-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210414134353.11860-1-trondmy@kernel.org>
+In-Reply-To: <20210414134353.11860-3-trondmy@kernel.org>
 References: <20210414134353.11860-1-trondmy@kernel.org>
+ <20210414134353.11860-2-trondmy@kernel.org>
+ <20210414134353.11860-3-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,42 +49,29 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-We need to use unsigned long subtraction and then convert to signed in
-order to deal correcly with C overflow rules.
+We don't currently support STATX_BTIME, so don't advertise it in the
+return values for nfs_getattr().
 
-Fixes: f5062003465c ("NFS: Set an attribute barrier on all updates")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/inode.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index ff737be559dc..8de5b3b9da91 100644
+index 8de5b3b9da91..c429a5375b92 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -1662,10 +1662,10 @@ EXPORT_SYMBOL_GPL(_nfs_display_fhandle);
-  */
- static int nfs_inode_attrs_need_update(const struct inode *inode, const struct nfs_fattr *fattr)
- {
--	const struct nfs_inode *nfsi = NFS_I(inode);
-+	unsigned long attr_gencount = NFS_I(inode)->attr_gencount;
+@@ -815,6 +815,10 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
  
--	return ((long)fattr->gencount - (long)nfsi->attr_gencount) > 0 ||
--		((long)nfsi->attr_gencount - (long)nfs_read_attr_generation_counter() > 0);
-+	return (long)(fattr->gencount - attr_gencount) > 0 ||
-+	       (long)(attr_gencount - nfs_read_attr_generation_counter()) > 0;
- }
+ 	trace_nfs_getattr_enter(inode);
  
- static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
-@@ -2094,7 +2094,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			nfsi->attrtimeo_timestamp = now;
- 		}
- 		/* Set the barrier to be more recent than this fattr */
--		if ((long)fattr->gencount - (long)nfsi->attr_gencount > 0)
-+		if ((long)(fattr->gencount - nfsi->attr_gencount) > 0)
- 			nfsi->attr_gencount = fattr->gencount;
- 	}
- 
++	request_mask &= STATX_TYPE | STATX_MODE | STATX_NLINK | STATX_UID |
++			STATX_GID | STATX_ATIME | STATX_MTIME | STATX_CTIME |
++			STATX_INO | STATX_SIZE | STATX_BLOCKS;
++
+ 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
+ 		nfs_readdirplus_parent_cache_hit(path->dentry);
+ 		goto out_no_update;
 -- 
 2.30.2
 
