@@ -2,161 +2,154 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C19CC43461
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 03:52:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FC64C4363F
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 09:01:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EBB0361153
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 03:52:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC7DF611AB
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 09:01:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236724AbhDPDxJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 15 Apr 2021 23:53:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43952 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238330AbhDPDxI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Apr 2021 23:53:08 -0400
-Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9AE2DC061574
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Apr 2021 20:52:43 -0700 (PDT)
-Received: by mail-qk1-x733.google.com with SMTP id 130so13399715qkm.4
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Apr 2021 20:52:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=IvIGbq9ssctXnwv6tZgOI2Y2lz7KazuLx7B7Qa8Jcx8=;
-        b=tBNVBFaE+FZQpcjDaDkTNayUw9w0xrTrN12wq+zSLl+jwg0Dfmyw69xoZRfAapqJAa
-         ddaOFbPhqO8ZMrqplSXRfIgwNpNR7gZEH08s0l+86fSgloPC3PcMj3C6kDwD+wzUtcyg
-         cd7Tzw+GGWa4CzTqAt/ma7e/EtR8QMVjozfIlF3iDjwot4nfgPXx5tckWG6GQ1lbQyzX
-         2ukWMghxb4e5skCUzoS9UKSzb7xXvqkp4ViqbCKL5fYZVTN81jw3q7Vn7hfCxcmXbEVe
-         VSiHI8TYFQDDRpeDu+Yo7IDSUgX+4x3hVNpxJN8vONNx1Rc4myoEx9iqanFIev43lDgQ
-         qFcA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=IvIGbq9ssctXnwv6tZgOI2Y2lz7KazuLx7B7Qa8Jcx8=;
-        b=oCD8FeAsh4VSd7AIAr7DpQJ8AyFuYVeDxa9OjZlD9qUqa2+SY5cAmEsbKRvqUkFZux
-         cmPvtU/fcSsykAr3FQds2fZMFr8HTqfGJXP4b8pEPpe4Jb9ksPmWDfc0RQgnTgC/amfT
-         NIgDA3Ck8ccwuMXfGoxr3kNhxCVyZCvHv+nnlYUT3JJluy2hX6rAgJOUvJhKSnXF/0UE
-         b3KzUU977TKx0flZVDsfI93wR3Ad6+WG+Z7a+rvvy3bIt7DEi/1PsPSfq42pIS4mWEds
-         bh2S+8NirvDva2HIVNzvWIVPA7h9nTKpofXfqrmOmqCNMifwZIHlO8ShDfUpExeGPpgM
-         RjbA==
-X-Gm-Message-State: AOAM533ZAuE86O30T6GHpMTFHnfVkldrpWffWXoFKGNXYmu1O1ROQJxB
-        8N8W+FnsruLkzkUfAYCTaOob/v/2ur8=
-X-Google-Smtp-Source: ABdhPJwYaWls7/00rwhtUFTxI1jFGxjP0CQB4d9phjRXnbT1OQU3RAN+6lYYSOPU9g8ztIwgbXrPIQ==
-X-Received: by 2002:a37:6756:: with SMTP id b83mr6868145qkc.385.1618545162883;
-        Thu, 15 Apr 2021 20:52:42 -0700 (PDT)
-Received: from kolga-mac-1.vpn.netapp.com (nat-216-240-30-25.netapp.com. [216.240.30.25])
-        by smtp.gmail.com with ESMTPSA id x82sm3500913qkb.0.2021.04.15.20.52.41
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 15 Apr 2021 20:52:42 -0700 (PDT)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 12/13] sunrpc: provide transport info in the sysfs directory
-Date:   Thu, 15 Apr 2021 23:52:25 -0400
-Message-Id: <20210416035226.53588-13-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.24.3 (Apple Git-128)
-In-Reply-To: <20210416035226.53588-1-olga.kornievskaia@gmail.com>
-References: <20210416035226.53588-1-olga.kornievskaia@gmail.com>
+        id S240811AbhDPJB2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 16 Apr 2021 05:01:28 -0400
+Received: from out5-smtp.messagingengine.com ([66.111.4.29]:47315 "EHLO
+        out5-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S240742AbhDPJB2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Apr 2021 05:01:28 -0400
+Received: from compute3.internal (compute3.nyi.internal [10.202.2.43])
+        by mailout.nyi.internal (Postfix) with ESMTP id 7EAF35C0091;
+        Fri, 16 Apr 2021 05:00:59 -0400 (EDT)
+Received: from mailfrontend2 ([10.202.2.163])
+  by compute3.internal (MEProxy); Fri, 16 Apr 2021 05:00:59 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pks.im; h=date
+        :from:to:cc:subject:message-id:mime-version:content-type; s=fm3;
+         bh=4G80WgmZrbsLqASm8aHcQf2WuAVQOoavTsGWfKDN3yk=; b=jU6jt2ExiDvQ
+        nPE+WGQvl9IioVFiy3faviG50IBqiTC69YPcZBP6FSvLVhCy7NT1pCRNzCy5n09X
+        0QKma1nPsSLokgARrp8iEGLDrESPFGJICASgpY9GIEuiyvycvp1q0mhnqiba3lOn
+        zyIAF579zCBNgivB+/iP1MHGEQGB3Hnp0hVLBkpC4kGtLJ/VnRzg8uhniVpVDEJW
+        zaOeSn2NT5JJekhDXyqGdAQJziFzVTBYpgirwCjlYZntRKglNuJX0YGks6ja5NHX
+        ZPWfL9Pli+D5n8KNmT0i2fyNC3L2MIWUfcQRk/Kz2Gf/ZzpBKwuRyjyr1sV3ZkAj
+        B58LsDlI/Q==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-type:date:from:message-id
+        :mime-version:subject:to:x-me-proxy:x-me-proxy:x-me-sender
+        :x-me-sender:x-sasl-enc; s=fm2; bh=4G80WgmZrbsLqASm8aHcQf2WuAVQO
+        oavTsGWfKDN3yk=; b=tsKzSGoJrffLkr2/D3X8Wy/k8yNGMBiAS8q2AltvU30Ym
+        wU7UtjORbi7daZBsZOfWsZ63oWkn/f3sqkguYsQJQ4FoqlRnCcDi3w/TuA4eaD4U
+        ErmEPv/PibBY2GVR1KVYXFEY1oP3qJAcu4PWwOkhC5R1gsiNYID/koV5ghlUDjQS
+        sbfoFLeyrs1KAr878MKQu8VBMGFgv/S9WT7BTD6pIbuvbdsgBgyltmsr3X4NNM8b
+        ED7xYse0GcZYUt73IkS2HUqJ7k67GArzw9zQYsJOQatcIy1Nsed39ufXqYrd3YXX
+        IwCvlPRbmiwwjcQI8Yo5cNoIqirjnruDLK8XQwW6A==
+X-ME-Sender: <xms:S1J5YOPbTlioY2W-C5ebStspZjDUD0THKWISzEskqUdqBWRT4nYBSA>
+    <xme:S1J5YK7ZnlgGRE759jm6YAm1DTz1zsvog4zaCGPteACqiD1Fq7OrI0Zs5ckxUiYY1
+    wawYG6QguE043vb8g>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeduledrudelhedgudduucetufdoteggodetrfdotf
+    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfqfgfvpdfurfetoffkrfgpnffqhgen
+    uceurghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmne
+    cujfgurhepfffhvffukfggtggusehgtderredttddvnecuhfhrohhmpefrrghtrhhitghk
+    ucfuthgvihhnhhgrrhguthcuoehpshesphhkshdrihhmqeenucggtffrrghtthgvrhhnpe
+    ejieefvdeuleffgfejudffvdeghfeigfejgfdvvdefudevffefveffhffgkeeiffenucfk
+    phepkeelrdduvddrfedtrddvfeeknecuvehluhhsthgvrhfuihiivgeptdenucfrrghrrg
+    hmpehmrghilhhfrhhomhepphhssehpkhhsrdhimh
+X-ME-Proxy: <xmx:S1J5YHlEDvu1ROt80StRsHEZZvzGWFxikM4dFPgpKCqKCaccT4bbaw>
+    <xmx:S1J5YDQ45wxgDX1mG7Aw9BocOcClDp8LkUhXN-m4bEsF2T09JNGbWg>
+    <xmx:S1J5YOEVzwYfo18qSdYvghYrGVLZb1bW0-jNPczrMDPBWaMXTQtemA>
+    <xmx:S1J5YD86jA6s3xL0nZIt6Sw8dCFoREB4G6UXPVwOjidgUw-5Z1KObg>
+Received: from vm-mail.pks.im (dynamic-089-012-030-238.89.12.pool.telefonica.de [89.12.30.238])
+        by mail.messagingengine.com (Postfix) with ESMTPA id 9ECDA108005B;
+        Fri, 16 Apr 2021 05:00:58 -0400 (EDT)
+Received: from localhost (ncase [10.192.0.11])
+        by vm-mail.pks.im (OpenSMTPD) with ESMTPSA id cfb4c39e (TLSv1.3:TLS_AES_256_GCM_SHA384:256:NO);
+        Fri, 16 Apr 2021 09:00:50 +0000 (UTC)
+Date:   Fri, 16 Apr 2021 11:00:49 +0200
+From:   Patrick Steinhardt <ps@pks.im>
+To:     linux-nfs@vger.kernel.org
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>
+Subject: [PATCH] Fix `statx()` emulation breaking exports
+Message-ID: <a5547a1af1dc90d65100c873204a5b0912ecb9a8.1618563564.git.ps@pks.im>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/signed; micalg=pgp-sha512;
+        protocol="application/pgp-signature"; boundary="7cL/wszOrT/+3VUS"
+Content-Disposition: inline
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
 
-Allow to query transport's attributes. Currently showing following
-fields of the rpc_xprt structure: state, last_used, cong, cwnd,
-max_reqs, min_reqs, num_reqs, sizes of queues binding, sending,
-pending, backlog.
+--7cL/wszOrT/+3VUS
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Ever since commit 76c21e3f (mountd: Check the stat() return values in
+match_fsid(), 2020-05-08), it wasn't possible to export filesystems
+on my musl based system anymore.
+
+The root cause of this is the innocuous-looking change to decide based
+on `errno` whether `is_mountpoint()` raised a real error or whether it
+simply didn't match. The issue is that `is_mountpoint()` transitively
+calls into our `xlstat()` wrapper, which either executes `statx()` if
+the system supports it or otherwise falls back to `fstatat()`. But if
+`statx()` is not supported, then we'll always first set `errno =3D ENOSYS`
+before calling `fstatat()`. So effectively, all systems which do not
+have `statx()` and whose `fstatat()` doesn't reset `errno` will cause us
+to end up with errno set to `ENOSYS`.
+
+Fix the issue by resetting `errno` before calling `fstatat()` in both
+`xlstat()` and `xstat()`.
+
+Fixes: 76c21e3f (mountd: Check the stat() return values in match_fsid(), 20=
+20-05-08)
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
 ---
- net/sunrpc/sysfs.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 54 insertions(+)
+ support/misc/xstat.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 20c622c3330e..e7a728da8e9c 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -72,6 +72,56 @@ static ssize_t rpc_sysfs_xprt_dstaddr_show(struct kobject *kobj,
- 	return ret + 1;
+diff --git a/support/misc/xstat.c b/support/misc/xstat.c
+index a438fbcc..6f751f7f 100644
+--- a/support/misc/xstat.c
++++ b/support/misc/xstat.c
+@@ -85,6 +85,7 @@ int xlstat(const char *pathname, struct stat *statbuf)
+ 		return 0;
+ 	else if (errno !=3D ENOSYS)
+ 		return -1;
++	errno =3D 0;
+ 	return fstatat(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT |
+ 			AT_SYMLINK_NOFOLLOW);
  }
- 
-+static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
-+					struct kobj_attribute *attr,
-+					char *buf)
-+{
-+	struct rpc_xprt *xprt = rpc_sysfs_xprt_kobj_get_xprt(kobj);
-+	ssize_t ret;
-+	int locked, connected, connecting, close_wait, bound, binding,
-+	    closing, congested, cwnd_wait, write_space;
-+
-+	if (!xprt)
-+		return 0;
-+
-+	if (!xprt->state) {
-+		ret = sprintf(buf, "state=CLOSED\n");
-+	} else {
-+		locked = test_bit(XPRT_LOCKED, &xprt->state);
-+		connected = test_bit(XPRT_CONNECTED, &xprt->state);
-+		connecting = test_bit(XPRT_CONNECTING, &xprt->state);
-+		close_wait = test_bit(XPRT_CLOSE_WAIT, &xprt->state);
-+		bound = test_bit(XPRT_BOUND, &xprt->state);
-+		binding = test_bit(XPRT_BINDING, &xprt->state);
-+		closing = test_bit(XPRT_CLOSING, &xprt->state);
-+		congested = test_bit(XPRT_CONGESTED, &xprt->state);
-+		cwnd_wait = test_bit(XPRT_CWND_WAIT, &xprt->state);
-+		write_space = test_bit(XPRT_WRITE_SPACE, &xprt->state);
-+
-+		ret = sprintf(buf, "state=%s %s %s %s %s %s %s %s %s %s\n",
-+			      locked ? "LOCKED" : "",
-+			      connected ? "CONNECTED" : "",
-+			      connecting ? "CONNECTING" : "",
-+			      close_wait ? "CLOSE_WAIT" : "",
-+			      bound ? "BOUND" : "",
-+			      binding ? "BOUNDING" : "",
-+			      closing ? "CLOSING" : "",
-+			      congested ? "CONGESTED" : "",
-+			      cwnd_wait ? "CWND_WAIT" : "",
-+			      write_space ? "WRITE_SPACE" : "");
-+	}
-+	ret += sprintf(buf + ret, "last_used=%lu\ncur_cong=%lu\ncong_win=%lu\n"
-+		       "max_num_slots=%u\nmin_num_slots=%u\nnum_reqs=%u\n"
-+		       "binding_q_len=%u\nsending_q_len=%u\npending_q_len=%u\n"
-+		       "backlog_q_len=%u", xprt->last_used, xprt->cong,
-+		       xprt->cwnd, xprt->max_reqs, xprt->min_reqs,
-+		       xprt->num_reqs, xprt->binding.qlen, xprt->sending.qlen,
-+		       xprt->pending.qlen, xprt->backlog.qlen);
-+	buf[ret] = '\n';
-+	xprt_put(xprt);
-+	return ret + 1;
-+}
-+
- static ssize_t rpc_sysfs_xprt_dstaddr_store(struct kobject *kobj,
- 					    struct kobj_attribute *attr,
- 					    const char *buf, size_t count)
-@@ -171,8 +221,12 @@ static const void *rpc_sysfs_xprt_switch_xprt_namespace(struct kobject *kobj)
- static struct kobj_attribute rpc_sysfs_xprt_dstaddr = __ATTR(dstaddr,
- 	0644, rpc_sysfs_xprt_dstaddr_show, rpc_sysfs_xprt_dstaddr_store);
- 
-+static struct kobj_attribute rpc_sysfs_xprt_info = __ATTR(xprt_info,
-+	0444, rpc_sysfs_xprt_info_show, NULL);
-+
- static struct attribute *rpc_sysfs_xprt_attrs[] = {
- 	&rpc_sysfs_xprt_dstaddr.attr,
-+	&rpc_sysfs_xprt_info.attr,
- 	NULL,
- };
- 
--- 
-2.27.0
+@@ -95,6 +96,7 @@ int xstat(const char *pathname, struct stat *statbuf)
+ 		return 0;
+ 	else if (errno !=3D ENOSYS)
+ 		return -1;
++	errno =3D 0;
+ 	return fstatat(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT);
+ }
+=20
+--=20
+2.31.1
 
+
+--7cL/wszOrT/+3VUS
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAABCgAdFiEEF9hrgiFbCdvenl/rVbJhu7ckPpQFAmB5UkAACgkQVbJhu7ck
+PpQMPA//Y2sf85kEDNzNNhFKT8NdE8SMSRQuPByhHTAQ3pXxfJVZ6D+A5AD6SCWj
+1yxru+xCtIZsdRQ5K7sJtNgiwF3bbAqzCv/uVVXBxz+l/wK5Dv8qN0/IvlYgIJ+N
+Dd0yfRXIMXRjXMZG1Zre2hGn5AtVLTzRsOC3AxwesdztOAVo+9bUlNa35kGEvKQy
+D/wfiwPKT0F6J6tYMx704j2eJ3LUiFv/G4H3sgfLVOjeftWTLh33PcCWfNvlDfGS
+QrNWX26QZ1bvSbQlZKj3m0boTwyzt0PI067H4bPd3n5pyAO0u9dnk4gOPTodMZ72
+2YnfqHhXsACXZ9tVj0d+u2dPetmRuIUWAVgfqVxSMVfQw3AB5zaJbWkYB4qCspXw
+b4WyURcjkQ1tO8AO1loxdZy426XmRrBE/6JdFFBHDcu1KfiSBALx9F/72NH07lJB
+gkpN8tIc0yhnnHE1eKtvwlc48zWmKhYEswPZzeiXvZd069FXunHz8wnjwG/GWP9F
++RuZHmLK4wnxxSoYntssdOGxsRCEb3yAOk6h35lwRql+H0f7LREuUPvIRo42pYYM
+fGyLzISCqMn30R2paKuhFWGJTuNlD8D4XLfhhhTFF/K8IhbnzqNwSiIoYMKrLVks
+G33Z8GBG0zm+KxyvSThF4PUC9NuF12s3fKIvp6luw3UBYHP4hpE=
+=zDdZ
+-----END PGP SIGNATURE-----
+
+--7cL/wszOrT/+3VUS--
