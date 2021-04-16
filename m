@@ -7,94 +7,309 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B5D1C43461
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4F7FC43460
 	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 18:00:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E8C15610CD
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 18:00:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A57BF611AB
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 18:00:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236045AbhDPSAs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 16 Apr 2021 14:00:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34556 "EHLO
+        id S235905AbhDPSAt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 16 Apr 2021 14:00:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34562 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235905AbhDPSAr (ORCPT
+        with ESMTP id S236062AbhDPSAr (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Apr 2021 14:00:47 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 968C2C061574
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E2CCC061760
         for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2021 11:00:21 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id E05F16D1C; Fri, 16 Apr 2021 14:00:19 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org E05F16D1C
+        id 1ABAC7CC; Fri, 16 Apr 2021 14:00:19 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 1ABAC7CC
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/5] nfsd: ensure new clients break delegations
-Date:   Fri, 16 Apr 2021 14:00:14 -0400
-Message-Id: <1618596018-9899-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 4/5] nfsd: reshuffle some code
+Date:   Fri, 16 Apr 2021 14:00:17 -0400
+Message-Id: <1618596018-9899-4-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1618596018-9899-1-git-send-email-bfields@redhat.com>
+References: <1618596018-9899-1-git-send-email-bfields@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-If nfsd already has an open file that it plans to use for IO from
-another, it may not need to do another vfs open, but it still may need
-to break any delegations in case the existing opens are for another
-client.
+No change in behavior, I'm just moving some code around to avoid forward
+references in a following patch.
 
-Symptoms are that we may incorrectly fail to break a delegation on a
-write open from a different client, when the delegation-holding client
-already has a write open.
+(To do someday: figure out how to split up nfs4state.c.  It's big and
+disorganized.)
 
-Fixes: 28df3d1539de ("nfsd: clients don't need to break their own delegations")
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 24 +++++++++++++++++++-----
- 1 file changed, 19 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 234 ++++++++++++++++++++++----------------------
+ 1 file changed, 117 insertions(+), 117 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 97447a64bad0..886e50ed07c2 100644
+index c1ba60db671a..dfe3e39c891c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4869,6 +4869,11 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 	if (nf)
- 		nfsd_file_put(nf);
+@@ -353,6 +353,123 @@ static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops = {
+ 	.release	= nfsd4_cb_notify_lock_release,
+ };
  
-+	status = nfserrno(nfsd_open_break_lease(cur_fh->fh_dentry->d_inode,
-+								access));
-+	if (status)
-+		goto out_put_access;
++/*
++ * We store the NONE, READ, WRITE, and BOTH bits separately in the
++ * st_{access,deny}_bmap field of the stateid, in order to track not
++ * only what share bits are currently in force, but also what
++ * combinations of share bits previous opens have used.  This allows us
++ * to enforce the recommendation of rfc 3530 14.2.19 that the server
++ * return an error if the client attempt to downgrade to a combination
++ * of share bits not explicable by closing some of its previous opens.
++ *
++ * XXX: This enforcement is actually incomplete, since we don't keep
++ * track of access/deny bit combinations; so, e.g., we allow:
++ *
++ *	OPEN allow read, deny write
++ *	OPEN allow both, deny none
++ *	DOWNGRADE allow read, deny none
++ *
++ * which we should reject.
++ */
++static unsigned int
++bmap_to_share_mode(unsigned long bmap) {
++	int i;
++	unsigned int access = 0;
 +
- 	status = nfsd4_truncate(rqstp, cur_fh, open);
- 	if (status)
- 		goto out_put_access;
-@@ -6849,11 +6854,20 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- static __be32 nfsd_test_lock(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file_lock *lock)
++	for (i = 1; i < 4; i++) {
++		if (test_bit(i, &bmap))
++			access |= i;
++	}
++	return access;
++}
++
++/* set share access for a given stateid */
++static inline void
++set_access(u32 access, struct nfs4_ol_stateid *stp)
++{
++	unsigned char mask = 1 << access;
++
++	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
++	stp->st_access_bmap |= mask;
++}
++
++/* clear share access for a given stateid */
++static inline void
++clear_access(u32 access, struct nfs4_ol_stateid *stp)
++{
++	unsigned char mask = 1 << access;
++
++	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
++	stp->st_access_bmap &= ~mask;
++}
++
++/* test whether a given stateid has access */
++static inline bool
++test_access(u32 access, struct nfs4_ol_stateid *stp)
++{
++	unsigned char mask = 1 << access;
++
++	return (bool)(stp->st_access_bmap & mask);
++}
++
++/* set share deny for a given stateid */
++static inline void
++set_deny(u32 deny, struct nfs4_ol_stateid *stp)
++{
++	unsigned char mask = 1 << deny;
++
++	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
++	stp->st_deny_bmap |= mask;
++}
++
++/* clear share deny for a given stateid */
++static inline void
++clear_deny(u32 deny, struct nfs4_ol_stateid *stp)
++{
++	unsigned char mask = 1 << deny;
++
++	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
++	stp->st_deny_bmap &= ~mask;
++}
++
++/* test whether a given stateid is denying specific access */
++static inline bool
++test_deny(u32 deny, struct nfs4_ol_stateid *stp)
++{
++	unsigned char mask = 1 << deny;
++
++	return (bool)(stp->st_deny_bmap & mask);
++}
++
++static int nfs4_access_to_omode(u32 access)
++{
++	switch (access & NFS4_SHARE_ACCESS_BOTH) {
++	case NFS4_SHARE_ACCESS_READ:
++		return O_RDONLY;
++	case NFS4_SHARE_ACCESS_WRITE:
++		return O_WRONLY;
++	case NFS4_SHARE_ACCESS_BOTH:
++		return O_RDWR;
++	}
++	WARN_ON_ONCE(1);
++	return O_RDONLY;
++}
++
++static inline int
++access_permit_read(struct nfs4_ol_stateid *stp)
++{
++	return test_access(NFS4_SHARE_ACCESS_READ, stp) ||
++		test_access(NFS4_SHARE_ACCESS_BOTH, stp) ||
++		test_access(NFS4_SHARE_ACCESS_WRITE, stp);
++}
++
++static inline int
++access_permit_write(struct nfs4_ol_stateid *stp)
++{
++	return test_access(NFS4_SHARE_ACCESS_WRITE, stp) ||
++		test_access(NFS4_SHARE_ACCESS_BOTH, stp);
++}
++
+ static inline struct nfs4_stateowner *
+ nfs4_get_stateowner(struct nfs4_stateowner *sop)
  {
- 	struct nfsd_file *nf;
--	__be32 err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
--	if (!err) {
--		err = nfserrno(vfs_test_lock(nf->nf_file, lock));
--		nfsd_file_put(nf);
--	}
-+	__be32 err;
-+
-+	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
-+	if (err)
-+		return err;
-+	fh_lock(fhp); /* to block new leases till after test_lock: */
-+	err = nfserrno(nfsd_open_break_lease(fhp->fh_dentry->d_inode,
-+							NFSD_MAY_READ));
-+	if (err)
-+		goto out;
-+	err = nfserrno(vfs_test_lock(nf->nf_file, lock));
-+out:
-+	fh_unlock(fhp);
-+	nfsd_file_put(nf);
- 	return err;
+@@ -1149,108 +1266,6 @@ static unsigned int clientstr_hashval(struct xdr_netobj name)
+ 	return opaque_hashval(name.data, 8) & CLIENT_HASH_MASK;
  }
  
+-/*
+- * We store the NONE, READ, WRITE, and BOTH bits separately in the
+- * st_{access,deny}_bmap field of the stateid, in order to track not
+- * only what share bits are currently in force, but also what
+- * combinations of share bits previous opens have used.  This allows us
+- * to enforce the recommendation of rfc 3530 14.2.19 that the server
+- * return an error if the client attempt to downgrade to a combination
+- * of share bits not explicable by closing some of its previous opens.
+- *
+- * XXX: This enforcement is actually incomplete, since we don't keep
+- * track of access/deny bit combinations; so, e.g., we allow:
+- *
+- *	OPEN allow read, deny write
+- *	OPEN allow both, deny none
+- *	DOWNGRADE allow read, deny none
+- *
+- * which we should reject.
+- */
+-static unsigned int
+-bmap_to_share_mode(unsigned long bmap) {
+-	int i;
+-	unsigned int access = 0;
+-
+-	for (i = 1; i < 4; i++) {
+-		if (test_bit(i, &bmap))
+-			access |= i;
+-	}
+-	return access;
+-}
+-
+-/* set share access for a given stateid */
+-static inline void
+-set_access(u32 access, struct nfs4_ol_stateid *stp)
+-{
+-	unsigned char mask = 1 << access;
+-
+-	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
+-	stp->st_access_bmap |= mask;
+-}
+-
+-/* clear share access for a given stateid */
+-static inline void
+-clear_access(u32 access, struct nfs4_ol_stateid *stp)
+-{
+-	unsigned char mask = 1 << access;
+-
+-	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
+-	stp->st_access_bmap &= ~mask;
+-}
+-
+-/* test whether a given stateid has access */
+-static inline bool
+-test_access(u32 access, struct nfs4_ol_stateid *stp)
+-{
+-	unsigned char mask = 1 << access;
+-
+-	return (bool)(stp->st_access_bmap & mask);
+-}
+-
+-/* set share deny for a given stateid */
+-static inline void
+-set_deny(u32 deny, struct nfs4_ol_stateid *stp)
+-{
+-	unsigned char mask = 1 << deny;
+-
+-	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
+-	stp->st_deny_bmap |= mask;
+-}
+-
+-/* clear share deny for a given stateid */
+-static inline void
+-clear_deny(u32 deny, struct nfs4_ol_stateid *stp)
+-{
+-	unsigned char mask = 1 << deny;
+-
+-	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
+-	stp->st_deny_bmap &= ~mask;
+-}
+-
+-/* test whether a given stateid is denying specific access */
+-static inline bool
+-test_deny(u32 deny, struct nfs4_ol_stateid *stp)
+-{
+-	unsigned char mask = 1 << deny;
+-
+-	return (bool)(stp->st_deny_bmap & mask);
+-}
+-
+-static int nfs4_access_to_omode(u32 access)
+-{
+-	switch (access & NFS4_SHARE_ACCESS_BOTH) {
+-	case NFS4_SHARE_ACCESS_READ:
+-		return O_RDONLY;
+-	case NFS4_SHARE_ACCESS_WRITE:
+-		return O_WRONLY;
+-	case NFS4_SHARE_ACCESS_BOTH:
+-		return O_RDWR;
+-	}
+-	WARN_ON_ONCE(1);
+-	return O_RDONLY;
+-}
+-
+ /*
+  * A stateid that had a deny mode associated with it is being released
+  * or downgraded. Recalculate the deny mode on the file.
+@@ -5507,21 +5522,6 @@ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
+ 	return nfs_ok;
+ }
+ 
+-static inline int
+-access_permit_read(struct nfs4_ol_stateid *stp)
+-{
+-	return test_access(NFS4_SHARE_ACCESS_READ, stp) ||
+-		test_access(NFS4_SHARE_ACCESS_BOTH, stp) ||
+-		test_access(NFS4_SHARE_ACCESS_WRITE, stp);
+-}
+-
+-static inline int
+-access_permit_write(struct nfs4_ol_stateid *stp)
+-{
+-	return test_access(NFS4_SHARE_ACCESS_WRITE, stp) ||
+-		test_access(NFS4_SHARE_ACCESS_BOTH, stp);
+-}
+-
+ static
+ __be32 nfs4_check_openmode(struct nfs4_ol_stateid *stp, int flags)
+ {
 -- 
 2.30.2
 
