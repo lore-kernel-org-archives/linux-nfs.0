@@ -7,127 +7,94 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E353C433B4
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 18:00:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B5D1C43461
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 18:00:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1732B611AB
+	by mail.kernel.org (Postfix) with ESMTP id E8C15610CD
 	for <linux-nfs@archiver.kernel.org>; Fri, 16 Apr 2021 18:00:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235514AbhDPSAs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S236045AbhDPSAs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 16 Apr 2021 14:00:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34558 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34556 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236045AbhDPSAr (ORCPT
+        with ESMTP id S235905AbhDPSAr (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Apr 2021 14:00:47 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 96950C061756
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 968C2C061574
         for <linux-nfs@vger.kernel.org>; Fri, 16 Apr 2021 11:00:21 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 0559B6D25; Fri, 16 Apr 2021 14:00:19 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 0559B6D25
+        id E05F16D1C; Fri, 16 Apr 2021 14:00:19 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org E05F16D1C
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/5] nfsd: track filehandle aliasing in nfs4_files
-Date:   Fri, 16 Apr 2021 14:00:16 -0400
-Message-Id: <1618596018-9899-3-git-send-email-bfields@redhat.com>
+Subject: [PATCH 1/5] nfsd: ensure new clients break delegations
+Date:   Fri, 16 Apr 2021 14:00:14 -0400
+Message-Id: <1618596018-9899-1-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1618596018-9899-1-git-send-email-bfields@redhat.com>
-References: <1618596018-9899-1-git-send-email-bfields@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-It's unusual but possible for multiple filehandles to point to the same
-file.  In that case, we may end up with multiple nfs4_files referencing
-the same inode.
+If nfsd already has an open file that it plans to use for IO from
+another, it may not need to do another vfs open, but it still may need
+to break any delegations in case the existing opens are for another
+client.
 
-For delegation purposes it will turn out to be useful to flag those
-cases.
+Symptoms are that we may incorrectly fail to break a delegation on a
+write open from a different client, when the delegation-holding client
+already has a write open.
 
+Fixes: 28df3d1539de ("nfsd: clients don't need to break their own delegations")
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 37 ++++++++++++++++++++++++++++---------
- fs/nfsd/state.h     |  2 ++
- 2 files changed, 30 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4state.c | 24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b0c74dbde07b..c1ba60db671a 100644
+index 97447a64bad0..886e50ed07c2 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4075,6 +4075,8 @@ static void nfsd4_init_file(struct svc_fh *fh, unsigned int hashval,
- 	fp->fi_share_deny = 0;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
-+	fp->fi_aliased = false;
-+	fp->fi_inode = d_inode(fh->fh_dentry);
- #ifdef CONFIG_NFSD_PNFS
- 	INIT_LIST_HEAD(&fp->fi_lo_states);
- 	atomic_set(&fp->fi_lo_recalls, 0);
-@@ -4427,6 +4429,31 @@ find_file_locked(struct svc_fh *fh, unsigned int hashval)
- 	return NULL;
- }
+@@ -4869,6 +4869,11 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 	if (nf)
+ 		nfsd_file_put(nf);
  
-+static struct nfs4_file *insert_file(struct nfs4_file *new, struct svc_fh *fh,
-+				     unsigned int hashval)
-+{
-+	struct nfs4_file *fp;
-+	struct nfs4_file *ret = NULL;
-+	bool alias_found = false;
++	status = nfserrno(nfsd_open_break_lease(cur_fh->fh_dentry->d_inode,
++								access));
++	if (status)
++		goto out_put_access;
 +
-+	spin_lock(&state_lock);
-+	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash,
-+				 lockdep_is_held(&state_lock)) {
-+		if (fh_match(&fp->fi_fhandle, &fh->fh_handle)) {
-+			if (refcount_inc_not_zero(&fp->fi_ref))
-+				ret = fp;
-+		} else if (d_inode(fh->fh_dentry) == fp->fi_inode)
-+			fp->fi_aliased = alias_found = true;
-+	}
-+	if (likely(ret == NULL)) {
-+		nfsd4_init_file(fh, hashval, new);
-+		new->fi_aliased = alias_found;
-+		ret = new;
-+	}
-+	spin_unlock(&state_lock);
-+	return ret;
-+}
-+
- static struct nfs4_file * find_file(struct svc_fh *fh)
+ 	status = nfsd4_truncate(rqstp, cur_fh, open);
+ 	if (status)
+ 		goto out_put_access;
+@@ -6849,11 +6854,20 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ static __be32 nfsd_test_lock(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file_lock *lock)
  {
- 	struct nfs4_file *fp;
-@@ -4450,15 +4477,7 @@ find_or_add_file(struct nfs4_file *new, struct svc_fh *fh)
- 	if (fp)
- 		return fp;
- 
--	spin_lock(&state_lock);
--	fp = find_file_locked(fh, hashval);
--	if (likely(fp == NULL)) {
--		nfsd4_init_file(fh, hashval, new);
--		fp = new;
+ 	struct nfsd_file *nf;
+-	__be32 err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
+-	if (!err) {
+-		err = nfserrno(vfs_test_lock(nf->nf_file, lock));
+-		nfsd_file_put(nf);
 -	}
--	spin_unlock(&state_lock);
--
--	return fp;
-+	return insert_file(new, fh, hashval);
++	__be32 err;
++
++	err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
++	if (err)
++		return err;
++	fh_lock(fhp); /* to block new leases till after test_lock: */
++	err = nfserrno(nfsd_open_break_lease(fhp->fh_dentry->d_inode,
++							NFSD_MAY_READ));
++	if (err)
++		goto out;
++	err = nfserrno(vfs_test_lock(nf->nf_file, lock));
++out:
++	fh_unlock(fhp);
++	nfsd_file_put(nf);
+ 	return err;
  }
  
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index af1d9f2e373e..7b10b3eaaa5c 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -512,6 +512,8 @@ struct nfs4_clnt_odstate {
-  */
- struct nfs4_file {
- 	refcount_t		fi_ref;
-+	struct inode *		fi_inode;
-+	bool			fi_aliased;
- 	spinlock_t		fi_lock;
- 	struct hlist_node       fi_hash;	/* hash on fi_fhandle */
- 	struct list_head        fi_stateids;
 -- 
 2.30.2
 
