@@ -7,66 +7,83 @@ X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0572C433ED
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Apr 2021 17:10:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5DE3C433ED
+	for <linux-nfs@archiver.kernel.org>; Tue, 20 Apr 2021 17:18:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 91359613B2
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Apr 2021 17:10:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ACF1F613B2
+	for <linux-nfs@archiver.kernel.org>; Tue, 20 Apr 2021 17:18:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233141AbhDTRKl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 20 Apr 2021 13:10:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59252 "EHLO
+        id S233362AbhDTRSi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 20 Apr 2021 13:18:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32848 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232473AbhDTRKl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Apr 2021 13:10:41 -0400
+        with ESMTP id S233352AbhDTRSi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Apr 2021 13:18:38 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 176F9C06174A;
-        Tue, 20 Apr 2021 10:10:10 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D3951C06174A
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Apr 2021 10:18:06 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 071357274; Tue, 20 Apr 2021 13:10:09 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 071357274
+        id 48F107274; Tue, 20 Apr 2021 13:18:06 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 48F107274
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1618938609;
-        bh=G1/bkGfCnN9BPCT+BTU7MH0Yx34TK2JeYk5pORVadAI=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=KXISL/jW2QvgORlWjBxAsoDlR0c7cjzlxQQCTF8hnO7vcZli+avWDUiFkhADSppri
-         yZn0yt6Q2pubbQ5DcOS71LH6AzDXbvA1WS/bK2rkwQZTHsS36e/8mipekMJVC1EutB
-         DXqZZk5ui9yYhopMKJ4eyomdzY7QRdECGcu+DJuU=
-Date:   Tue, 20 Apr 2021 13:10:08 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Greg KH <gregkh@linuxfoundation.org>
-Cc:     Aditya Pakki <pakki001@umn.edu>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Dave Wysochanski <dwysocha@redhat.com>,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Add a check for gss_release_msg
-Message-ID: <20210420171008.GB4017@fieldses.org>
-References: <20210407001658.2208535-1-pakki001@umn.edu>
- <YH5/i7OvsjSmqADv@kroah.com>
+        s=default; t=1618939086;
+        bh=5Gzb3i+PfObe7fBLgtIfVyXGFHLcpBiFHvZyKBaqIRA=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=Q/TO5JPLV5DYkXnhBEuYXjOCYlV9wGAnLeK+GjIywcj9OALw8trP1jH27J9rr7TdC
+         VArvoN/gpZ0PL+DYgQg8Uxi5PQgtYJ/xFXZQuTFulEIKrp7LCVr01V2YjU368SUs7+
+         WHRyB7bPN5VX1P3DED/FrpabryFeMhx0fL56xFU0=
+Date:   Tue, 20 Apr 2021 13:18:06 -0400
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "SteveD@RedHat.com" <SteveD@RedHat.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "ajmitchell@redhat.com" <ajmitchell@redhat.com>
+Subject: Re: [PATCH 0/3] Enable the setting of a kernel module parameter from
+ nfs.conf
+Message-ID: <20210420171806.GC4017@fieldses.org>
+References: <AA442C15-5ED3-4DF5-B23A-9C63429B64BE@oracle.com>
+ <5adff402-5636-3153-2d9f-d912d83038fc@RedHat.com>
+ <366FA143-AB3E-4320-8329-7EA247ADB22B@oracle.com>
+ <77a6e5a4-7f14-c920-0277-2284983e6814@RedHat.com>
+ <2F7FBCA0-7C8D-41F0-AC39-0C3233772E31@oracle.com>
+ <c13f792a-71e8-494f-3156-3ff2ac7a0281@RedHat.com>
+ <DAFAF7B1-5C56-4DA7-B7F9-4F544CCDA031@oracle.com>
+ <f0525973-a32c-32d4-4ccc-827acaa3c125@RedHat.com>
+ <20A43DDA-C08E-4E39-A83C-24E326768ADE@oracle.com>
+ <2d7d391802a3984b68aa8b3e7f360b0b6cb733dc.camel@hammerspace.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <YH5/i7OvsjSmqADv@kroah.com>
+In-Reply-To: <2d7d391802a3984b68aa8b3e7f360b0b6cb733dc.camel@hammerspace.com>
 User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Apr 20, 2021 at 09:15:23AM +0200, Greg KH wrote:
-> If you look at the code, this is impossible to have happen.
+On Tue, Apr 20, 2021 at 02:31:58PM +0000, Trond Myklebust wrote:
+> I think the important thing is, as Chuck said, that the setting of the
+> uniquifier has to be automated. There are too many instances out there
+> of people who get confused because they are using a default hostname,
+> such as 'localhost.localdomain' and are setting no uniquifier.
 > 
-> Please stop submitting known-invalid patches.  Your professor is playing
-> around with the review process in order to achieve a paper in some
-> strange and bizarre way.
+> So the point is that it needs to be persisted by an automated script if
+> unset.
 > 
-> This is not ok, it is wasting our time, and we will have to report this,
-> AGAIN, to your university...
+> While that script could use nfsconf to get/set the persisted
+> uniquifier, the worry is that such an automated change might be made
+> while the user is performing some other edit of nfs.conf. What happens
+> then?
 
-What's the story here?
+The one thing I'm a little uneasy about is ignoring /etc/machine-id.
+Seems like distros *should* be creating it for us.  And it would be
+convenient to have one source of machine identity rather than separate
+ones for different subsystems.
+
+Maybe we could use that if it exists, and fall back on generating our
+own only if it doesn't?
+
+(Well, where "use it" actually means take a hash of it, as explained in
+machine-id(5).)
 
 --b.
