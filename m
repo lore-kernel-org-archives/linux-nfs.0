@@ -2,110 +2,118 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31481C433ED
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Apr 2021 21:10:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DB66C433B4
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Apr 2021 21:32:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0C2EA61073
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Apr 2021 21:10:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D74926143F
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Apr 2021 21:32:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239055AbhD0VL3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Apr 2021 17:11:29 -0400
-Received: from gaia.bitwizard.nl ([149.210.166.240]:34104 "EHLO
-        gaia.bitwizard.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236994AbhD0VL3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Apr 2021 17:11:29 -0400
-Received: from abra2.bitwizard.nl (unknown [10.8.0.6])
-        by gaia.bitwizard.nl (Postfix) with ESMTPS id 8FAAF5A0058;
-        Tue, 27 Apr 2021 23:10:44 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=bitwizard.nl;
-        s=default; t=1619557844;
-        bh=/EukPnU+lB0aLMe1uASTF5COl8QSgbnoTFlZNoQ9DtU=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=O4hhPHK+tcbi6Twz2FWZc4T7j0wKqC2jGqXYHLDYzvYqZH1rQSE+e2uNqcIBU3H6z
-         k3VleB26kbwTzdWoAf7BM3sBjUhqXTwIknWRPO5U9Rrm25/ihpHv3WE7rFcIslOVmR
-         IK7PpQBaIUkgQzjWZYPKL87+hDJAp8QGVPZzW9npB3yUGyjvB+f2aehbLMMf6Ssxb4
-         sCatH8wsU4t44cGlcyGQ8v+G+HqPxvvAB6HaCXzm4GxiW/ru2c2O8hae6nH7VAVUqo
-         kFusAKIOJce8769h33pEaqygT8CVDnDSXOYtjjQOa3cBhBKUov+wc+jbCr35o3GRXA
-         3coIcstAGoUUA==
-Received: by abra2.bitwizard.nl (Postfix, from userid 1000)
-        id 6437CE42624; Tue, 27 Apr 2021 23:10:44 +0200 (CEST)
-Date:   Tue, 27 Apr 2021 23:10:44 +0200
-From:   Rogier Wolff <R.E.Wolff@BitWizard.nl>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: Re: Lockd error message is unclear.
-Message-ID: <20210427211044.vxvgieqe4ud5lh7o@BitWizard.nl>
-Organization: BitWizard B.V.
-References: <20210427190311.cjjzeded7hl3fkew@BitWizard.nl>
- <20210427193452.GA11361@fieldses.org>
+        id S230131AbhD1Vc6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Apr 2021 17:32:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43088 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229718AbhD1Vcy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Apr 2021 17:32:54 -0400
+Received: from mail-qk1-x736.google.com (mail-qk1-x736.google.com [IPv6:2607:f8b0:4864:20::736])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 60D08C06138B
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Apr 2021 14:32:07 -0700 (PDT)
+Received: by mail-qk1-x736.google.com with SMTP id 66so25633875qkf.2
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Apr 2021 14:32:07 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=znbi2V1G9+lh5SWQ2wjhUpCMQOWdAW5F7lv8aepc2rY=;
+        b=YklskzmMmLoe2KdMZABggFADunJICwf4yMzFKgUGx4TZVbYl1KqirA2+KBDwB5uCfO
+         9VwNlwR+pnlSoO6IXKDt6Jm2h3OCEEpOPiMjI7OPlsKg83bhvp4hUQut/DlZkvsECCCQ
+         7wsjDCSzIyCeXG3/FzSTe0hBz3YiRgVFhoHObp0jmlaNhsX5t2jP2vNIEram+ipHtRmX
+         tKCvtz42h2/1IEI2GsXSbxUvYnQ50K4PKPaDEVgTWD4wFjZFOUj3kkQwWC8L7z0qtH4/
+         jDFa7V2LqGjMqn5Ni+7gPP+q1Lxq/s0M2ljdzxPwYqkXd9C2FU1NJxEsJYhFR0bKrR72
+         ykVw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=znbi2V1G9+lh5SWQ2wjhUpCMQOWdAW5F7lv8aepc2rY=;
+        b=DddJk5yThfgX//UkRG+cpQmSYExcTrwQu2GLc11pn+gP62k1Nj997drA8sG4YE6SKx
+         3qItexYr4i1ykLNKS+Qg3gXpd0yG89i8PuJ8yEq02EG85w0bTgJZd5EvFv80zd76/Sbp
+         /ZAshzmjRSY05fLD9hcpHmYLNm1WpYTm3/DcxaStAb6HJoBkykh/BQrxH1rQ8HXhZ5gd
+         458EjBTFtCPWa+DqPEYxU+ogp8UWSX7DRnnNf1bcE/7q6A9Cbp5uE0vbwQ4Zqr+CJOJR
+         bHBfsJU1ir1aoivMMOZx4FlKTjn883Yneg4E3LXxUwTAaNsGJ//TXN4sBQQxhxVTtabe
+         9gAw==
+X-Gm-Message-State: AOAM53003NdIWKH7SQtEZ7oFJVcg3T/L+EMv4MEA5tc+85bCsSmrTbek
+        yGGMB80Tck8GSD1tfUkQGc53zfhlZv60Lw==
+X-Google-Smtp-Source: ABdhPJzEVfWj5Ec81wqzMM1aQ267vKZybu5/uudeo4kVaZe+IU4QawSBeGqMpepqrapO5SH8nZtmjA==
+X-Received: by 2002:a05:620a:ece:: with SMTP id x14mr32010589qkm.98.1619645526489;
+        Wed, 28 Apr 2021 14:32:06 -0700 (PDT)
+Received: from kolga-mac-1.vpn.netapp.com (nat-216-240-30-11.netapp.com. [216.240.30.11])
+        by smtp.gmail.com with ESMTPSA id v3sm710269qkb.124.2021.04.28.14.32.05
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 28 Apr 2021 14:32:05 -0700 (PDT)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v4 00/13] create sysfs files for changing IP address
+Date:   Wed, 28 Apr 2021 17:31:50 -0400
+Message-Id: <20210428213203.40059-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210427193452.GA11361@fieldses.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Apr 27, 2021 at 03:34:52PM -0400, J. Bruce Fields wrote:
-> On Tue, Apr 27, 2021 at 09:03:11PM +0200, Rogier Wolff wrote:
-> > 
-> > Hi, 
-> > 
-> > Two things..... 
-> > 
-> > I got: 
-> > 
-> >    lockd: cannot monitor <client> 
-> > 
-> > in the logfile and the client was terrily slow/not working at all.
-> > 
-> > everything pointed to a lockd problem... 
-> > 
-> > In the end... it turns out that my rpc.statd stopped working.  I had
-> > to go and download the sources to figure this out... I would firstly
-> > suggest to improve the error message to give others running into this
-> > more hints as to where to look.
-> > 
-> > The erorr message on line 169 of lockd.c could read: 
-> > 
-> > 	lockd: Error in the rpc to rpc.statd to monitor %s\n
-> > 
-> > Would it be an idea to print the res.status error code? 
-> 
-> I'm not sure about the wording, but including the error code sounds like
-> a good idea.  (Would that have made a difference in your case?)
+From: Olga Kornievskaia <kolga@netapp.com>
 
-Not sure. Of course I was just "looking for a solution". So once I
-figured out that rpc.statd was missing I went looking for how that
-came about. 
+v4: addresses the latest comments:
+--- void sysfs pointers are changed to pointers to structures
+--- removed the xprt_get/xprt_switch_get() before calling setup
+--- using xprt->address_strings[RPC_DISPLAY_PROTO] instead of creating
+adhoc labels for type of transport
+--- addressing the switching of xprt->address_strings[RPC_DISPLAY_ADDR]
+by using rcu_assign_pointer and freeing the old pointer using call_rcu()
 
-But as it was the prime culprit was "lockd is misbehaving". With a
-better error message you can shift the blame away from your part of
-the system. :-)
 
-> > second?) timeout in nsm_mon_unmon and the big backlog of requests that
-> > result in the same call and timeout that frustrate the client... )
-> 
-> The -ECONNREFUSED case?
-> 
-> I'm not sure why it retries there.  Maybe just to allow stopping and
-> starting rpc.statd (e.g. for upgrades) without failing operations?
+Anna Schumaker (4):
+  sunrpc: Prepare xs_connect() for taking NULL tasks
+  sunrpc: Create a sunrpc directory under /sys/kernel/
+  sunrpc: Create a client/ subdirectory in the sunrpc sysfs
+  sunrpc: Create per-rpc_clnt sysfs kobjects
 
-Not sure IF it was retrying. Maybe not. But starting "google-chrome"
-with 40 open tabs didn't progress to any tabs loading inside the half
-hour that I was looking for why this was happening (unable to google
-for a solution).... So in the meantime it was constantly spewing the
-error message, rate limited to 10 per minute....
+Dan Aloni (2):
+  sunrpc: add xprt id
+  sunrpc: add IDs to multipath
 
-	Roger.
+Olga Kornievskaia (7):
+  sunrpc: keep track of the xprt_class in rpc_xprt structure
+  sunrpc: add xprt_switch direcotry to sunrpc's sysfs
+  sunrpc: add a symlink from rpc-client directory to the xprt_switch
+  sunrpc: add add sysfs directory per xprt under each xprt_switch
+  sunrpc: add dst_attr attributes to the sysfs xprt directory
+  sunrpc: provide transport info in the sysfs directory
+  sunrpc: provide multipath info in the sysfs directory
+
+ include/linux/sunrpc/clnt.h          |   2 +
+ include/linux/sunrpc/xprt.h          |   6 +
+ include/linux/sunrpc/xprtmultipath.h |   6 +
+ net/sunrpc/Makefile                  |   2 +-
+ net/sunrpc/clnt.c                    |   5 +
+ net/sunrpc/sunrpc_syms.c             |  10 +
+ net/sunrpc/sysfs.c                   | 472 +++++++++++++++++++++++++++
+ net/sunrpc/sysfs.h                   |  41 +++
+ net/sunrpc/xprt.c                    |  26 ++
+ net/sunrpc/xprtmultipath.c           |  34 ++
+ net/sunrpc/xprtrdma/transport.c      |   2 +
+ net/sunrpc/xprtsock.c                |  11 +-
+ 12 files changed, 615 insertions(+), 2 deletions(-)
+ create mode 100644 net/sunrpc/sysfs.c
+ create mode 100644 net/sunrpc/sysfs.h
 
 -- 
-** R.E.Wolff@BitWizard.nl ** https://www.BitWizard.nl/ ** +31-15-2049110 **
-**    Delftechpark 11 2628 XJ  Delft, The Netherlands.  KVK: 27239233    **
-f equals m times a. When your f is steady, and your m is going down
-your a is going up.  -- Chris Hadfield about flying up the space shuttle.
+2.27.0
+
