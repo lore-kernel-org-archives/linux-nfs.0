@@ -2,121 +2,106 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F972C433B4
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Apr 2021 14:04:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB7D7C43460
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Apr 2021 05:09:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CB21C61411
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Apr 2021 14:04:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9B60961006
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Apr 2021 05:09:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237392AbhD2OFl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 29 Apr 2021 10:05:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34860 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237419AbhD2OFl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Apr 2021 10:05:41 -0400
-Received: from mail-ed1-x535.google.com (mail-ed1-x535.google.com [IPv6:2a00:1450:4864:20::535])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6FA3DC06138B
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Apr 2021 07:04:54 -0700 (PDT)
-Received: by mail-ed1-x535.google.com with SMTP id h8so38602215edb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Apr 2021 07:04:54 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=HyBaqH38NGBV7Fdk/ZXaaW22G2J3zQ8RZMPvTlKZHac=;
-        b=cQMB2YEcXqrCPNolimsvNpFSH14kJsvdKs0sZbhX3sSY4Yn6IUybD//cBosXsyo9Qi
-         5jsft2UnHed54vBoxW5Lb4iTQzo18ob/XGKcdTfSQotl8LN+mtrtgLM+iXIZvGtk1FZr
-         k7dGEWLataD2jRSoUgRSjEFL94fHrrVOrZGUZAKMO11D4uAD358JP3ixpnLro0vHX0Ry
-         oC2vt1UB9mZR96/ix3ItkoDrqF+r+prSurw9DVxwy70fgWmTb92urtgmiJ2KYpGTdcr5
-         Cxkn7HE/3Arsczww80/Z1/+ZTTE22MTeONn3kttxjwPIVXaItS1hoZ5o6woAAblxMGPV
-         Gmtw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=HyBaqH38NGBV7Fdk/ZXaaW22G2J3zQ8RZMPvTlKZHac=;
-        b=Nxna5EbE800IARGMIya/MWsEB8GP2ab3vi0/ePsyMRfS0Gycz5vIozV4o5nmF1QVkj
-         hZV7MXpqJmoghTj8BhuA+hotwYw5zNuuHGgbT0IUukU41rc5NKCpBjOBJp/b87ckeCVJ
-         sHY1PLFBt9jNXSF8jVfTkaYpiQLFkmQ8GJFzcpDNqZJ5yM7QB1abMW7LXDQn7oDNGSMq
-         U5YVsFqPvtoGqRckxl1GNjIDfj+ST6CDeBO5I9Yzo+OoNSu72SpGrjMyXlDwLc2xkSsD
-         ijkE+gPMRy+loKcZoNuTGTm5atn73aHnquigqIQJx0AA9RD5bwUwTkRkMcpSebO5pDwo
-         7Abg==
-X-Gm-Message-State: AOAM530fzvDE+2ZHhuM0sipNpl5Jy7Nnx7gywefZ0cveLOETcKryjX5I
-        ygS2lGfb4eAB69B4PSrVdSBIV6yiXO2ZN2XuYYO4KS7iyJQ=
-X-Google-Smtp-Source: ABdhPJz+HaBxAg4UJ/cvAnAbmW/thNTpuX39QphwC2k8h6Y5hhrSTRV8fmDKMlizERx44+VRY0dHogwbsX+1wOVQzY8=
-X-Received: by 2002:a05:6402:3591:: with SMTP id y17mr18320750edc.67.1619705092855;
- Thu, 29 Apr 2021 07:04:52 -0700 (PDT)
+        id S229581AbhD3FJ7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Apr 2021 01:09:59 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:41310 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229482AbhD3FJ7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Apr 2021 01:09:59 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 13U54WhV128717;
+        Fri, 30 Apr 2021 05:09:06 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : mime-version : content-transfer-encoding;
+ s=corp-2020-01-29; bh=/1CeB9u0dIOPgCNAFspnXXn17VTmQ1bKeso4x4kIPr8=;
+ b=hoq9Z7fLXuu8dqs+3OkXu6BKpJbF+IfjU0ELAO/PhSsgfkuwFge7aelHELtGSR4gg2gl
+ TmH5FQ8uUDJI54ZCwaFARF+RhJqSOEnqeIHXIYEJnQgnkBTrQSGr3sD+iG/UsgChxYpX
+ yXMBvLN9WnhamFC/dE7ZoNbxg/FY0Na6YhSzXN1qW5sjILbDzaNIYLDgOIXzh7sZ2tvj
+ 8CWV00LIpU78AZqT0b0RyL1yuphqh3ZW8NT67AqmjV4R9ZzJPD3p7QPqOn1lIXbm+MTY
+ DfY7VIsg5O7xvjRYwlQzOj90eQvvD6gujS3IbBoSPZUDbcFNdtPU/RJt3Z/D6k16P+Vd HA== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by userp2120.oracle.com with ESMTP id 385aeq6f09-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 30 Apr 2021 05:09:06 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 13U54uAh036067;
+        Fri, 30 Apr 2021 05:09:05 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by aserp3030.oracle.com with ESMTP id 3874d4gc7a-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 30 Apr 2021 05:09:05 +0000
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 13U595ok047549;
+        Fri, 30 Apr 2021 05:09:05 GMT
+Received: from userp3020.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
+        by aserp3030.oracle.com with ESMTP id 3874d4gc6v-1;
+        Fri, 30 Apr 2021 05:09:05 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     trondmy@hammerspace.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFSv4: can_open_cached needs to be called with so_lock
+Date:   Fri, 30 Apr 2021 01:09:00 -0400
+Message-Id: <20210430050900.106851-1-dai.ngo@oracle.com>
+X-Mailer: git-send-email 2.20.1.1226.g1595ea5.dirty
 MIME-Version: 1.0
-References: <20210428213203.40059-1-olga.kornievskaia@gmail.com>
-In-Reply-To: <20210428213203.40059-1-olga.kornievskaia@gmail.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Thu, 29 Apr 2021 10:04:41 -0400
-Message-ID: <CAN-5tyFSOppGwzMHS6EqYTi7Dwa+Etp_Zi04-mDqaArCVsJ=dg@mail.gmail.com>
-Subject: Re: [PATCH v4 00/13] create sysfs files for changing IP address
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-ORIG-GUID: 4KZFg2J8HIWk-4c_eR7nuZVUqiIUJsPc
+X-Proofpoint-GUID: 4KZFg2J8HIWk-4c_eR7nuZVUqiIUJsPc
+X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=9969 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 impostorscore=0
+ phishscore=0 spamscore=0 bulkscore=0 mlxscore=0 lowpriorityscore=0
+ clxscore=1015 suspectscore=0 malwarescore=0 mlxlogscore=999
+ priorityscore=1501 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2104060000 definitions=main-2104300034
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Apr 28, 2021 at 5:32 PM Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
->
-> From: Olga Kornievskaia <kolga@netapp.com>
->
-> v4: addresses the latest comments:
-> --- void sysfs pointers are changed to pointers to structures
-> --- removed the xprt_get/xprt_switch_get() before calling setup
-> --- using xprt->address_strings[RPC_DISPLAY_PROTO] instead of creating
-> adhoc labels for type of transport
-> --- addressing the switching of xprt->address_strings[RPC_DISPLAY_ADDR]
-> by using rcu_assign_pointer and freeing the old pointer using call_rcu()
+Currently can_open_cached accesses the openstate's flags without the
+so_lock and also does not update the flags of the cached state. This
+results in the openstate's flags be out of sync which can cause the
+file to be closed prematurely.
 
-Please hold off reviewing this patch series. Further testing revealed
-an issue. Thank you.
+This patch adds the missing so_lock around the call to can_open_cached
+and also updates the openstate's flags if the cached openstate is used.
 
-> Anna Schumaker (4):
->   sunrpc: Prepare xs_connect() for taking NULL tasks
->   sunrpc: Create a sunrpc directory under /sys/kernel/
->   sunrpc: Create a client/ subdirectory in the sunrpc sysfs
->   sunrpc: Create per-rpc_clnt sysfs kobjects
->
-> Dan Aloni (2):
->   sunrpc: add xprt id
->   sunrpc: add IDs to multipath
->
-> Olga Kornievskaia (7):
->   sunrpc: keep track of the xprt_class in rpc_xprt structure
->   sunrpc: add xprt_switch direcotry to sunrpc's sysfs
->   sunrpc: add a symlink from rpc-client directory to the xprt_switch
->   sunrpc: add add sysfs directory per xprt under each xprt_switch
->   sunrpc: add dst_attr attributes to the sysfs xprt directory
->   sunrpc: provide transport info in the sysfs directory
->   sunrpc: provide multipath info in the sysfs directory
->
->  include/linux/sunrpc/clnt.h          |   2 +
->  include/linux/sunrpc/xprt.h          |   6 +
->  include/linux/sunrpc/xprtmultipath.h |   6 +
->  net/sunrpc/Makefile                  |   2 +-
->  net/sunrpc/clnt.c                    |   5 +
->  net/sunrpc/sunrpc_syms.c             |  10 +
->  net/sunrpc/sysfs.c                   | 472 +++++++++++++++++++++++++++
->  net/sunrpc/sysfs.h                   |  41 +++
->  net/sunrpc/xprt.c                    |  26 ++
->  net/sunrpc/xprtmultipath.c           |  34 ++
->  net/sunrpc/xprtrdma/transport.c      |   2 +
->  net/sunrpc/xprtsock.c                |  11 +-
->  12 files changed, 615 insertions(+), 2 deletions(-)
->  create mode 100644 net/sunrpc/sysfs.c
->  create mode 100644 net/sunrpc/sysfs.h
->
-> --
-> 2.27.0
->
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfs/nfs4proc.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c65c4b41e2c1..2464e77c51f9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2410,9 +2410,15 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 	if (data->state != NULL) {
+ 		struct nfs_delegation *delegation;
+ 
++		spin_lock(&data->state->owner->so_lock);
+ 		if (can_open_cached(data->state, data->o_arg.fmode,
+-					data->o_arg.open_flags, claim))
++				data->o_arg.open_flags, claim)) {
++			update_open_stateflags(data->state, data->o_arg.fmode);
++			spin_unlock(&data->state->owner->so_lock);
+ 			goto out_no_action;
++		}
++		spin_unlock(&data->state->owner->so_lock);
++
+ 		rcu_read_lock();
+ 		delegation = nfs4_get_valid_delegation(data->state->inode);
+ 		if (can_open_delegated(delegation, data->o_arg.fmode, claim))
+-- 
+2.9.5
+
