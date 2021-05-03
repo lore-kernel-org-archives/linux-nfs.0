@@ -2,149 +2,117 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94FABC433B4
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:09:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B5F5C43460
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:48:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6247A611AB
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:09:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 520EC611EE
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:48:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229497AbhECUKs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 May 2021 16:10:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41830 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229472AbhECUKr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2021 16:10:47 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F0601C06174A
-        for <linux-nfs@vger.kernel.org>; Mon,  3 May 2021 13:09:53 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id BFD9E4183; Mon,  3 May 2021 16:09:52 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org BFD9E4183
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1620072592;
-        bh=MHFegGsp7gBkk6hj1OHeZy+/5FxuTdpXRuG55FJ0QxU=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=XGv/WlmSLraqxOCwArD52Jn2+iHY1OoYCBCB3H24jaz3619ca7A9LaZ6DKwQhdHCq
-         Da7Y7c/qCTVxjhtTYyRGrPRhGCZ4pjhWV7k6eZk02V9Li1UKlOcVE7zB/J+jLcLYjJ
-         6HtMgiUYAYnpFiMSH1nalJV/p/vR9hpPvN5OScH0=
-Date:   Mon, 3 May 2021 16:09:52 -0400
-From:   "bfields@fieldses.org" <bfields@fieldses.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "fsorenso@redhat.com" <fsorenso@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "aglo@umich.edu" <aglo@umich.edu>,
-        "bcodding@redhat.com" <bcodding@redhat.com>,
-        "jshivers@redhat.com" <jshivers@redhat.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: unsharing tcp connections from different NFS mounts
-Message-ID: <20210503200952.GB18779@fieldses.org>
-References: <57E3293C-5C49-4A80-957B-E490E6A9B32E@redhat.com>
- <5B5CF80C-494A-42D3-8D3F-51C0277D9E1B@redhat.com>
- <8ED5511E-25DE-4C06-9E26-A1947383C86A@oracle.com>
- <20201007140502.GC23452@fieldses.org>
- <85F496CD-9AAC-451C-A224-FCD138BDC591@oracle.com>
- <20201007160556.GE23452@fieldses.org>
- <e06c31e4211cefda52091c7710d871f44dc9160e.camel@hammerspace.com>
- <20210119222229.GA29488@fieldses.org>
- <2d77534fb8be557c6883c8c386ebf4175f64454a.camel@hammerspace.com>
- <20210120150737.GA17548@fieldses.org>
+        id S229623AbhECUtt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 May 2021 16:49:49 -0400
+Received: from mga05.intel.com ([192.55.52.43]:26371 "EHLO mga05.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S229472AbhECUts (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 May 2021 16:49:48 -0400
+IronPort-SDR: 054u6P5WHDNb4O9904cCcQqZO/DLA5ShG0Io2iFCAKD7NGDPqVk+LYt7wzqE1oM5JItbd0TuxB
+ FTlHwDnkhoOg==
+X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="283233154"
+X-IronPort-AV: E=Sophos;i="5.82,271,1613462400"; 
+   d="scan'208";a="283233154"
+Received: from fmsmga001.fm.intel.com ([10.253.24.23])
+  by fmsmga105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 03 May 2021 13:48:54 -0700
+IronPort-SDR: z++Zk3yzgBDiMw5br4atQ4zGLgqIaLPoJyAifHQQxqiKMSAoNvnu5BMEMps1YnHEAshbnGHc85
+ Rkv5/Ieb/VXw==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.82,271,1613462400"; 
+   d="scan'208";a="530694807"
+Received: from black.fi.intel.com ([10.237.72.28])
+  by fmsmga001.fm.intel.com with ESMTP; 03 May 2021 13:48:51 -0700
+Received: by black.fi.intel.com (Postfix, from userid 1003)
+        id 2F54B29A; Mon,  3 May 2021 23:49:11 +0300 (EEST)
+From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+To:     "J. Bruce Fields" <bfields@redhat.com>,
+        Kefeng Wang <wangkefeng.wang@huawei.com>,
+        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andy Shevchenko <andy@kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+Subject: [PATCH v1 02/12] lib/string_helpers: Move ESCAPE_NP check inside 'else' branch in a loop
+Date:   Mon,  3 May 2021 23:48:57 +0300
+Message-Id: <20210503204907.34013-3-andriy.shevchenko@linux.intel.com>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210503204907.34013-1-andriy.shevchenko@linux.intel.com>
+References: <20210503204907.34013-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <20210120150737.GA17548@fieldses.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Jan 20, 2021 at 10:07:37AM -0500, bfields@fieldses.org wrote:
-> On Tue, Jan 19, 2021 at 11:09:55PM +0000, Trond Myklebust wrote:
-> > On Tue, 2021-01-19 at 17:22 -0500, bfields@fieldses.org wrote:
-> > > On Wed, Oct 07, 2020 at 04:50:26PM +0000, Trond Myklebust wrote:
-> > > > As far as I can tell, this thread started with a complaint that
-> > > > performance suffers when we don't allow setups that hack the client
-> > > > by
-> > > > pretending that a multi-homed server is actually multiple different
-> > > > servers.
-> > > > 
-> > > > AFAICS Tom Talpey's question is the relevant one. Why is there a
-> > > > performance regression being seen by these setups when they share
-> > > > the
-> > > > same connection? Is it really the connection, or is it the fact
-> > > > that
-> > > > they all share the same fixed-slot session?
-> > > > 
-> > > > I did see Igor's claim that there is a QoS issue (which afaics
-> > > > would
-> > > > also affect NFSv3), but why do I care about QoS as a per-mountpoint
-> > > > feature?
-> > > 
-> > > Sorry for being slow to get back to this.
-> > > 
-> > > Some more details:
-> > > 
-> > > Say an NFS server exports /data1 and /data2.
-> > > 
-> > > A client mounts both.  Process 'large' starts creating 10G+ files in
-> > > /data1, queuing up a lot of nfs WRITE rpc_tasks.
-> > > 
-> > > Process 'small' creates a lot of small files in /data2, which
-> > > requires a
-> > > lot of synchronous rpc_tasks, each of which wait in line with the
-> > > large
-> > > WRITE tasks.
-> > > 
-> > > The 'small' process makes painfully slow progress.
-> > > 
-> > > The customer previously made things work for them by mounting two
-> > > different server IP addresses, so the "small" and "large" processes
-> > > effectively end up with their own queues.
-> > > 
-> > > Frank Sorenson has a test showing the difference; see
-> > > 
-> > >         https://bugzilla.redhat.com/show_bug.cgi?id=1703850#c42
-> > >         https://bugzilla.redhat.com/show_bug.cgi?id=1703850#c43
-> > > 
-> > > In that test, the "small" process creates files at a rate thousands
-> > > of
-> > > times slower when the "large" process is also running.
-> > > 
-> > > Any suggestions?
-> > > 
-> > 
-> > I don't see how this answers my questions above?
-> 
-> So mainly:
-> 
-> > > > Why is there a performance regression being seen by these setups
-> > > > when they share the same connection? Is it really the connection,
-> > > > or is it the fact that they all share the same fixed-slot session?
-> 
-> I don't know.  Any pointers how we might go about finding the answer?
+Refactor code to have better readability by moving ESCAPE_NP handling
+inside 'else' branch in the loop.
 
-I set this aside and then get bugged about it again.
+No functional change intended.
 
-I apologize, I don't understand what you're asking for here, but it
-seemed obvious to you and Tom, so I'm sure the problem is me.  Are you
-free for a call sometime maybe?  Or do you have any suggestions for how
-you'd go about investigating this?
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ lib/string_helpers.c | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
-Would it be worth experimenting with giving some sort of advantage to
-readers?  (E.g., reserving a few slots for reads and getattrs and such?)
+diff --git a/lib/string_helpers.c b/lib/string_helpers.c
+index 7f2d5fbaf243..b10a18b4663b 100644
+--- a/lib/string_helpers.c
++++ b/lib/string_helpers.c
+@@ -452,10 +452,10 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
+  * The process of escaping byte buffer includes several parts. They are applied
+  * in the following sequence.
+  *
+- *	1. The character is matched to the printable class, if asked, and in
+- *	   case of match it passes through to the output.
+- *	2. The character is not matched to the one from @only string and thus
++ *	1. The character is not matched to the one from @only string and thus
+  *	   must go as-is to the output.
++ *	2. The character is matched to the printable class, if asked, and in
++ *	   case of match it passes through to the output.
+  *	3. The character is checked if it falls into the class given by @flags.
+  *	   %ESCAPE_OCTAL and %ESCAPE_HEX are going last since they cover any
+  *	   character. Note that they actually can't go together, otherwise
+@@ -506,19 +506,22 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 
+ 		/*
+ 		 * Apply rules in the following sequence:
+-		 *	- the character is printable, when @flags has
+-		 *	  %ESCAPE_NP bit set
+ 		 *	- the @only string is supplied and does not contain a
+ 		 *	  character under question
++		 *	- the character is printable, when @flags has
++		 *	  %ESCAPE_NP bit set
+ 		 *	- the character doesn't fall into a class of symbols
+ 		 *	  defined by given @flags
+ 		 * In these cases we just pass through a character to the
+ 		 * output buffer.
+ 		 */
+-		if ((flags & ESCAPE_NP && isprint(c)) ||
+-		    (is_dict && !strchr(only, c))) {
++		if (is_dict && !strchr(only, c)) {
+ 			/* do nothing */
+ 		} else {
++			if (isprint(c) &&
++			    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
++				continue;
++
+ 			if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
+ 				continue;
+ 
+-- 
+2.30.2
 
---b.
-
-> It's easy to test the case of entirely seperate state & tcp connections.
-> 
-> If we want to test with a shared connection but separate slots I guess
-> we'd need to create a separate session for each nfs4_server, and a lot
-> of functions that currently take an nfs4_client would need to take an
-> nfs4_server?
-> 
-> --b.
