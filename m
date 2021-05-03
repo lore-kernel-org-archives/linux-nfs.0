@@ -2,92 +2,62 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2912BC43460
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:49:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DCF4C433B4
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:54:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 034E661139
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:49:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 06FFF611EE
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:54:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229926AbhECUuE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 May 2021 16:50:04 -0400
-Received: from mga17.intel.com ([192.55.52.151]:37488 "EHLO mga17.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229869AbhECUt4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 May 2021 16:49:56 -0400
-IronPort-SDR: kdsxvwmAZrpOQJVuCJU+YhRKw03Bn7WbXGUQQO9UNnI9vjIHXup8+Vo5Vm7W0vbNWbVY+ga80n
- KtHNMBXjTnaA==
-X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="178040335"
-X-IronPort-AV: E=Sophos;i="5.82,271,1613462400"; 
-   d="scan'208";a="178040335"
-Received: from orsmga008.jf.intel.com ([10.7.209.65])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 03 May 2021 13:48:58 -0700
-IronPort-SDR: wxkmPQKQe+fGdU417U8JD9bWknTs03m8kq/DHNeBNfSpFJZyxRaCPwPRB+RJWGRQoWX6Sz7T1a
- ZydjXVIdwDQA==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.82,271,1613462400"; 
-   d="scan'208";a="432922886"
-Received: from black.fi.intel.com ([10.237.72.28])
-  by orsmga008.jf.intel.com with ESMTP; 03 May 2021 13:48:55 -0700
-Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 826C861D; Mon,  3 May 2021 23:49:11 +0300 (EEST)
-From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To:     "J. Bruce Fields" <bfields@redhat.com>,
+        id S229700AbhECUy5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 May 2021 16:54:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51762 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229472AbhECUy4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 May 2021 16:54:56 -0400
+Received: from zeniv-ca.linux.org.uk (zeniv-ca.linux.org.uk [IPv6:2607:5300:60:148a::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF64BC061573;
+        Mon,  3 May 2021 13:54:02 -0700 (PDT)
+Received: from viro by zeniv-ca.linux.org.uk with local (Exim 4.94 #2 (Red Hat Linux))
+        id 1ldfZk-00AkGr-7J; Mon, 03 May 2021 20:53:56 +0000
+Date:   Mon, 3 May 2021 20:53:56 +0000
+From:   Al Viro <viro@zeniv.linux.org.uk>
+To:     Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
         Kefeng Wang <wangkefeng.wang@huawei.com>,
-        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
         linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v1 10/12] nfsd: Avoid non-flexible API in seq_quote_mem()
-Date:   Mon,  3 May 2021 23:49:05 +0300
-Message-Id: <20210503204907.34013-11-andriy.shevchenko@linux.intel.com>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210503204907.34013-1-andriy.shevchenko@linux.intel.com>
+Subject: Re: [PATCH v1 10/12] nfsd: Avoid non-flexible API in seq_quote_mem()
+Message-ID: <YJBi5NU2WmZPYbBG@zeniv-ca.linux.org.uk>
 References: <20210503204907.34013-1-andriy.shevchenko@linux.intel.com>
+ <20210503204907.34013-11-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210503204907.34013-11-andriy.shevchenko@linux.intel.com>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-string_escape_mem_ascii() followed by seq_escape_mem_ascii() is completely
-non-flexible and shouldn't be exist from day 1.
+On Mon, May 03, 2021 at 11:49:05PM +0300, Andy Shevchenko wrote:
+> string_escape_mem_ascii() followed by seq_escape_mem_ascii() is completely
+> non-flexible and shouldn't be exist from day 1.
+> 
+> Replace it with properly called string_escape_mem().
 
-Replace it with properly called string_escape_mem().
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
----
- fs/nfsd/nfs4state.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+NAKed-by: Al Viro <viro@zeniv.linux.org.uk>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b517a8794400..15535589e5e4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2350,8 +2350,14 @@ static struct nfs4_client *get_nfsdfs_clp(struct inode *inode)
- 
- static void seq_quote_mem(struct seq_file *m, char *data, int len)
- {
-+	char *buf;
-+	size_t size = seq_get_buf(m, &buf);
-+	const char *only = "\"\\";
-+	int ret;
-+
- 	seq_printf(m, "\"");
--	seq_escape_mem_ascii(m, data, len);
-+	ret = string_escape_mem(data, len, buf, size, ESCAPE_HEX | ESCAPE_APPEND, only);
-+	seq_commit(m, ret < size ? ret : -1);
- 	seq_printf(m, "\"");
- }
- 
--- 
-2.30.2
+Reason: use of seq_get_buf().  Which should have been static inline in
+fs/seq_file.c, to start with.
 
+Again, any new uses of seq_get_buf()/seq_commit() are grounds for automatic
+NAK.  These interfaces *will* be withdrawn.
