@@ -2,39 +2,38 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A732FC43461
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:48:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 119ABC43470
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:48:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 78FF061208
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:48:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E49F0613B3
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 May 2021 20:48:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229665AbhECUtt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 May 2021 16:49:49 -0400
-Received: from mga04.intel.com ([192.55.52.120]:35564 "EHLO mga04.intel.com"
+        id S229766AbhECUtu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 May 2021 16:49:50 -0400
+Received: from mga03.intel.com ([134.134.136.65]:53596 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229570AbhECUts (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 May 2021 16:49:48 -0400
-IronPort-SDR: rJiO/4bn18wrX+zTSjlfreowAGDkkXjG2Bw3QSDP0wcvgI7pfiObh4oXHsA4/bh+2VjTxg0O+v
- AEVUEIDZXWzg==
-X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="195776776"
+        id S229576AbhECUtt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 May 2021 16:49:49 -0400
+IronPort-SDR: YcVajbMePFOVsBM3LbJOX44iaEGchYCjcD+gu3pI3krHu5RCYxHG9/EfmbicnA38fnjoj5xYmz
+ VE/tUU36AJSg==
+X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="197888950"
 X-IronPort-AV: E=Sophos;i="5.82,271,1613462400"; 
-   d="scan'208";a="195776776"
-Received: from fmsmga007.fm.intel.com ([10.253.24.52])
-  by fmsmga104.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 03 May 2021 13:48:54 -0700
-IronPort-SDR: lSnbKxnbqiusRydXvYTHRe9q5c8K2IVbTxgE8fxCpq3Ck6W5/SMp0FUmyeLwU9Fd9jOI9nzgkg
- 6NeRo8NATIiw==
+   d="scan'208";a="197888950"
+Received: from orsmga003.jf.intel.com ([10.7.209.27])
+  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 03 May 2021 13:48:54 -0700
+IronPort-SDR: tnjWwfmLZU67Se0Tsk1xCFkgIUHlD9fFCrc1V2r3gWWcsYz/AFZwcSuyTvXVq7fg62CpkRNpjA
+ I7xb/lFDL9FA==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,271,1613462400"; 
-   d="scan'208";a="395864973"
+   d="scan'208";a="388536668"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga007.fm.intel.com with ESMTP; 03 May 2021 13:48:51 -0700
+  by orsmga003.jf.intel.com with ESMTP; 03 May 2021 13:48:51 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 3DB432A7; Mon,  3 May 2021 23:49:11 +0300 (EEST)
+        id 1295AD9; Mon,  3 May 2021 23:49:10 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Kefeng Wang <wangkefeng.wang@huawei.com>,
@@ -46,103 +45,50 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v1 03/12] lib/string_helpers: Introduce ESCAPE_NA for escaping non-ASCII
-Date:   Mon,  3 May 2021 23:48:58 +0300
-Message-Id: <20210503204907.34013-4-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v1 00/12] lib/string_helpers: get rid of ugly *_escape_mem_ascii() API
+Date:   Mon,  3 May 2021 23:48:55 +0300
+Message-Id: <20210503204907.34013-1-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210503204907.34013-1-andriy.shevchenko@linux.intel.com>
-References: <20210503204907.34013-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Some users may want to have an ASCII based filter, provided by
-isascii() function. Here is the addition of a such.
+Get rid of ugly *_escape_mem_ascii() API since it's not flexible and
+has the only single user. Provide better approach based on usage of the
+string_escape_mem() with appropriate flags.
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
----
- include/linux/string_helpers.h |  1 +
- lib/string_helpers.c           | 21 +++++++++++++++++----
- 2 files changed, 18 insertions(+), 4 deletions(-)
+Test cases has been expanded accordingly to cover new functionality.
 
-diff --git a/include/linux/string_helpers.h b/include/linux/string_helpers.h
-index bf01e24edd89..d6cf6fe10f74 100644
---- a/include/linux/string_helpers.h
-+++ b/include/linux/string_helpers.h
-@@ -52,6 +52,7 @@ static inline int string_unescape_any_inplace(char *buf)
- #define ESCAPE_NP		BIT(4)
- #define ESCAPE_ANY_NP		(ESCAPE_ANY | ESCAPE_NP)
- #define ESCAPE_HEX		BIT(5)
-+#define ESCAPE_NA		BIT(6)
- 
- int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- 		unsigned int flags, const char *only);
-diff --git a/lib/string_helpers.c b/lib/string_helpers.c
-index b10a18b4663b..d426163cb446 100644
---- a/lib/string_helpers.c
-+++ b/lib/string_helpers.c
-@@ -454,8 +454,8 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
-  *
-  *	1. The character is not matched to the one from @only string and thus
-  *	   must go as-is to the output.
-- *	2. The character is matched to the printable class, if asked, and in
-- *	   case of match it passes through to the output.
-+ *	2. The character is matched to the printable or ASCII class, if asked,
-+ *	   and in case of match it passes through to the output.
-  *	3. The character is checked if it falls into the class given by @flags.
-  *	   %ESCAPE_OCTAL and %ESCAPE_HEX are going last since they cover any
-  *	   character. Note that they actually can't go together, otherwise
-@@ -463,7 +463,7 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
-  *
-  * Caller must provide valid source and destination pointers. Be aware that
-  * destination buffer will not be NULL-terminated, thus caller have to append
-- * it if needs.   The supported flags are::
-+ * it if needs. The supported flags are::
-  *
-  *	%ESCAPE_SPACE: (special white space, not space itself)
-  *		'\f' - form feed
-@@ -482,11 +482,18 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
-  *	%ESCAPE_ANY:
-  *		all previous together
-  *	%ESCAPE_NP:
-- *		escape only non-printable characters (checked by isprint)
-+ *		escape only non-printable characters, checked by isprint()
-  *	%ESCAPE_ANY_NP:
-  *		all previous together
-  *	%ESCAPE_HEX:
-  *		'\xHH' - byte with hexadecimal value HH (2 digits)
-+ *	%ESCAPE_NA:
-+ *		escape only non-ascii characters, checked by isascii()
-+ *
-+ * One notable caveat, the %ESCAPE_NP and %ESCAPE_NA have higher priority
-+ * than the rest of the flags (%ESCAPE_NP is higher than %ESCAPE_NA).
-+ * It doesn't make much sense to use either of them without %ESCAPE_OCTAL
-+ * or %ESCAPE_HEX, because they cover most of the other character classes.
-  *
-  * Return:
-  * The total size of the escaped output that would be generated for
-@@ -510,6 +517,8 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- 		 *	  character under question
- 		 *	- the character is printable, when @flags has
- 		 *	  %ESCAPE_NP bit set
-+		 *	- the character is ASCII, when @flags has
-+		 *	  %ESCAPE_NA bit set
- 		 *	- the character doesn't fall into a class of symbols
- 		 *	  defined by given @flags
- 		 * In these cases we just pass through a character to the
-@@ -522,6 +531,10 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- 			    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
- 				continue;
- 
-+			if (isascii(c) &&
-+			    flags & ESCAPE_NA && escape_passthrough(c, &p, end))
-+				continue;
-+
- 			if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
- 				continue;
- 
+Andy Shevchenko (12):
+  lib/string_helpers: Switch to use BIT() macro
+  lib/string_helpers: Move ESCAPE_NP check inside 'else' branch in a
+    loop
+  lib/string_helpers: Introduce ESCAPE_NA for escaping non-ASCII
+  lib/string_helpers: Introduce ESCAPE_NAP to escape non-ASCII and
+    non-printable
+  lib/string_helpers: Drop indentation level in string_escape_mem()
+  lib/string_helpers: Allow to append additional characters to be
+    escaped
+  lib/test-string_helpers: Print flags in hexadecimal format
+  lib/test-string_helpers: Get rid of trailing comma in terminators
+  lib/test-string_helpers: Add test cases for new features
+  nfsd: Avoid non-flexible API in seq_quote_mem()
+  lib/string_helpers: Drop unused *_escape_mem_ascii()
+  MAINTAINERS: Add myself as designated reviewer for generic string
+    library
+
+ MAINTAINERS                    |   8 ++
+ fs/nfsd/nfs4state.c            |   8 +-
+ fs/seq_file.c                  |  11 ---
+ include/linux/seq_file.h       |   1 -
+ include/linux/string_helpers.h |  31 ++++---
+ lib/string_helpers.c           | 102 ++++++++++++---------
+ lib/test-string_helpers.c      | 157 +++++++++++++++++++++++++++++----
+ 7 files changed, 235 insertions(+), 83 deletions(-)
+
 -- 
 2.30.2
 
