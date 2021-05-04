@@ -4,37 +4,37 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7843C43616
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45313C43462
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9FAD6613DB
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2251B613D2
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232312AbhEDSJJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 14:09:09 -0400
-Received: from mga01.intel.com ([192.55.52.88]:28420 "EHLO mga01.intel.com"
+        id S232335AbhEDSJM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 14:09:12 -0400
+Received: from mga07.intel.com ([134.134.136.100]:41081 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232267AbhEDSJG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 May 2021 14:09:06 -0400
-IronPort-SDR: fm3jybSWohfVVDpvhBA+f1akfGYg57wQraqGEWUqYa5HnKsdJYS/ne8cXUWeKymMHLfA9z03ao
- RCnK/9iegIhQ==
-X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="218864648"
+        id S232296AbhEDSJH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 14:09:07 -0400
+IronPort-SDR: 7gsjRJ41jfpITRFnOQox4Rgx6k66lEev+zxbrEza+IalF0XXzWoZB7H4mbgDpcAXGO7J2JLrV4
+ 8/YdXgNHHLmw==
+X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="261993809"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="218864648"
-Received: from fmsmga001.fm.intel.com ([10.253.24.23])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:09 -0700
-IronPort-SDR: CuN3mk7g592TEkv5mnDdkSFQ7/9Yjm8bcg2KC+zYpzsQMgg2WqvZVKNDEabM8dykdsM5tRBnN8
- /PilxZRWDtpw==
+   d="scan'208";a="261993809"
+Received: from fmsmga002.fm.intel.com ([10.253.24.26])
+  by orsmga105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:11 -0700
+IronPort-SDR: PQOMb/9wLk+RMgypUdybc+z8/u++MCkNQYwFCu20hVNz/5+FbuIgq3z5eGEEQchCh+FTvOZ28l
+ 2vCHiang+sHA==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="531265726"
+   d="scan'208";a="463341899"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga001.fm.intel.com with ESMTP; 04 May 2021 11:08:07 -0700
+  by fmsmga002.fm.intel.com with ESMTP; 04 May 2021 11:08:08 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 1A2F79A1; Tue,  4 May 2021 21:08:24 +0300 (EEST)
+        id 2EBC89FA; Tue,  4 May 2021 21:08:24 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -45,9 +45,9 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v3 11/15] seq_file: Introduce seq_escape_mem()
-Date:   Tue,  4 May 2021 21:08:15 +0300
-Message-Id: <20210504180819.73127-12-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v3 13/15] seq_file: Convert seq_escape() to use seq_escape_str()
+Date:   Tue,  4 May 2021 21:08:17 +0300
+Message-Id: <20210504180819.73127-14-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
 References: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
@@ -57,64 +57,33 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Introduce seq_escape_mem() to allow users to pass additional parameters
-to string_escape_mem().
+Convert seq_escape() to use seq_escape_str() rather than open coding it.
 
-Suggested-by: Al Viro <viro@zeniv.linux.org.uk>
+Note, for now we leave it as an exported symbol due to some old code
+that can't tolerate ctype.h being (indirectly) included.
+
 Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 ---
- fs/seq_file.c            | 25 +++++++++++++++++++++++++
- include/linux/seq_file.h |  2 ++
- 2 files changed, 27 insertions(+)
+ fs/seq_file.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
 
 diff --git a/fs/seq_file.c b/fs/seq_file.c
-index 5059248f2d64..532cac2eae0f 100644
+index 532cac2eae0f..08f54029c2b1 100644
 --- a/fs/seq_file.c
 +++ b/fs/seq_file.c
-@@ -355,6 +355,31 @@ int seq_release(struct inode *inode, struct file *file)
+@@ -392,12 +392,7 @@ EXPORT_SYMBOL(seq_escape_mem);
+  */
+ void seq_escape(struct seq_file *m, const char *s, const char *esc)
+ {
+-	char *buf;
+-	size_t size = seq_get_buf(m, &buf);
+-	int ret;
+-
+-	ret = string_escape_str(s, buf, size, ESCAPE_OCTAL, esc);
+-	seq_commit(m, ret < size ? ret : -1);
++	seq_escape_str(m, s, ESCAPE_OCTAL, esc);
  }
- EXPORT_SYMBOL(seq_release);
- 
-+/**
-+ * seq_escape_mem - print data into buffer, escaping some characters
-+ * @m: target buffer
-+ * @src: source buffer
-+ * @len: size of source buffer
-+ * @flags: flags to pass to string_escape_mem()
-+ * @esc: set of characters that need escaping
-+ *
-+ * Puts data into buffer, replacing each occurrence of character from
-+ * given class (defined by @flags and @esc) with printable escaped sequence.
-+ *
-+ * Use seq_has_overflowed() to check for errors.
-+ */
-+void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
-+		    unsigned int flags, const char *esc)
-+{
-+	char *buf;
-+	size_t size = seq_get_buf(m, &buf);
-+	int ret;
-+
-+	ret = string_escape_mem(src, len, buf, size, flags, esc);
-+	seq_commit(m, ret < size ? ret : -1);
-+}
-+EXPORT_SYMBOL(seq_escape_mem);
-+
- /**
-  *	seq_escape -	print string into buffer, escaping some characters
-  *	@m:	target buffer
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index 723b1fa1177e..6de442182784 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -126,6 +126,8 @@ void seq_put_decimal_ll(struct seq_file *m, const char *delimiter, long long num
- void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
- 		    unsigned long long v, unsigned int width);
- 
-+void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
-+		    unsigned int flags, const char *esc);
- void seq_escape(struct seq_file *m, const char *s, const char *esc);
- void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz);
+ EXPORT_SYMBOL(seq_escape);
  
 -- 
 2.30.2
