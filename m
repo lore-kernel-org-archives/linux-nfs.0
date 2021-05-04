@@ -2,61 +2,116 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCE8FC433ED
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 03:34:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 92633C433ED
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 85E3561153
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 03:34:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 63AD5611C0
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229658AbhEDDfl convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 May 2021 23:35:41 -0400
-Received: from mx2.suse.de ([195.135.220.15]:39740 "EHLO mx2.suse.de"
+        id S230369AbhEDK1z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 06:27:55 -0400
+Received: from mga05.intel.com ([192.55.52.43]:42156 "EHLO mga05.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229499AbhEDDfl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 May 2021 23:35:41 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-X-Amavis-Alert: BAD HEADER SECTION, Duplicate header field: "Cc"
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 27D28B14E;
-        Tue,  4 May 2021 03:34:46 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8BIT
+        id S230328AbhEDK1y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 06:27:54 -0400
+IronPort-SDR: 2cYYoYfxNTC26ayvWvflYCd5aXufBmgGIHSPv4zd9ldAi0rGCc2tj4Yp49zSNEm/4JPXfqXz9i
+ zR7qhG2v8MvQ==
+X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="283356644"
+X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
+   d="scan'208";a="283356644"
+Received: from fmsmga008.fm.intel.com ([10.253.24.58])
+  by fmsmga105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:00 -0700
+IronPort-SDR: LIwYMv7BUEA9VuYGTG046Vd5PnGND78cVido1jlj30DY0tztuVj5m2TlhDdyb/+Z4l2MyOXUHt
+ nk9SrB5Y3NXQ==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
+   d="scan'208";a="428858436"
+Received: from black.fi.intel.com ([10.237.72.28])
+  by fmsmga008.fm.intel.com with ESMTP; 04 May 2021 03:26:57 -0700
+Received: by black.fi.intel.com (Postfix, from userid 1003)
+        id 71EE1348; Tue,  4 May 2021 13:27:17 +0300 (EEST)
+From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+To:     "J. Bruce Fields" <bfields@redhat.com>,
+        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andy Shevchenko <andy@kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+Subject: [PATCH v2 02/14] lib/string_helpers: Move ESCAPE_NP check inside 'else' branch in a loop
+Date:   Tue,  4 May 2021 13:26:36 +0300
+Message-Id: <20210504102648.88057-3-andriy.shevchenko@linux.intel.com>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
+References: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Yongcheng Yang" <yoyang@redhat.com>
-Cc:     "Steve Dickson" <steved@redhat.com>
-Cc:     "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>,
-        "Yongcheng Yang" <yoyang@redhat.com>,
-        "Petr Pisar" <ppisar@redhat.com>
-Subject: Re: [PATCH] systemd: nfs-server.service add "Wants" dependency on
- rpc-rquotad.service
-In-reply-to: <20210430065601.16523-1-yoyang@redhat.com>
-References: <20210430065601.16523-1-yoyang@redhat.com>
-Date:   Tue, 04 May 2021 13:34:41 +1000
-Message-id: <162009928153.6582.2032158868104502300@noble.neil.brown.name>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 30 Apr 2021, Yongcheng Yang wrote:
-> The RPC quota service was part of nfs-utils and started together
-> with nfs-server before it was splitting out from nfs-utils.
-> 
-> It would be convenient to preserve the behavior: Let nfs-server
-> start rpc-rquotad automatically.
-> 
-> Signed-off-by: Petr Pisar <ppisar@redhat.com>
-> Signed-off-by: Yongcheng Yang <yoyang@redhat.com>
+Refactor code to have better readability by moving ESCAPE_NP handling
+inside 'else' branch in the loop.
 
-I would prefer that whatever package provides rpc-rquotad should take
-care of this.
-It can provide a "wants" symlink
+No functional change intended.
 
-  .../systemd/system/nfs-server.wants/rpc-rquotad.service -> .../rpc-rquotad.service
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ lib/string_helpers.c | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
-NeilBrown
+diff --git a/lib/string_helpers.c b/lib/string_helpers.c
+index 7f2d5fbaf243..b10a18b4663b 100644
+--- a/lib/string_helpers.c
++++ b/lib/string_helpers.c
+@@ -452,10 +452,10 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
+  * The process of escaping byte buffer includes several parts. They are applied
+  * in the following sequence.
+  *
+- *	1. The character is matched to the printable class, if asked, and in
+- *	   case of match it passes through to the output.
+- *	2. The character is not matched to the one from @only string and thus
++ *	1. The character is not matched to the one from @only string and thus
+  *	   must go as-is to the output.
++ *	2. The character is matched to the printable class, if asked, and in
++ *	   case of match it passes through to the output.
+  *	3. The character is checked if it falls into the class given by @flags.
+  *	   %ESCAPE_OCTAL and %ESCAPE_HEX are going last since they cover any
+  *	   character. Note that they actually can't go together, otherwise
+@@ -506,19 +506,22 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 
+ 		/*
+ 		 * Apply rules in the following sequence:
+-		 *	- the character is printable, when @flags has
+-		 *	  %ESCAPE_NP bit set
+ 		 *	- the @only string is supplied and does not contain a
+ 		 *	  character under question
++		 *	- the character is printable, when @flags has
++		 *	  %ESCAPE_NP bit set
+ 		 *	- the character doesn't fall into a class of symbols
+ 		 *	  defined by given @flags
+ 		 * In these cases we just pass through a character to the
+ 		 * output buffer.
+ 		 */
+-		if ((flags & ESCAPE_NP && isprint(c)) ||
+-		    (is_dict && !strchr(only, c))) {
++		if (is_dict && !strchr(only, c)) {
+ 			/* do nothing */
+ 		} else {
++			if (isprint(c) &&
++			    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
++				continue;
++
+ 			if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
+ 				continue;
+ 
+-- 
+2.30.2
+
