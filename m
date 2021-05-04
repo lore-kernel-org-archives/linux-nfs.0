@@ -7,34 +7,34 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DAF0C43618
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1204C43470
 	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E6117613BE
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AFFF7613C1
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230475AbhEDK2E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S230481AbhEDK2E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 4 May 2021 06:28:04 -0400
-Received: from mga02.intel.com ([134.134.136.20]:1448 "EHLO mga02.intel.com"
+Received: from mga01.intel.com ([192.55.52.88]:52975 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230413AbhEDK17 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S230417AbhEDK17 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 4 May 2021 06:27:59 -0400
-IronPort-SDR: Vwy+z/8xAiaWaiX5aDhMo91akQRS9VoOyaYr+DVbOjeYxU8UqCJPKkIZn2n0uyH/7J638hO12i
- YyXoC/b1s8FQ==
-X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="185082613"
+IronPort-SDR: 8aOh2HHEkGcRm1N6ETlfyv6ydCDVU784a9zh9qY3YhA+PYO41lPcmzf6dr5iAQ8ZIRAap3p7AK
+ SrHU6AdKzvOg==
+X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="218751818"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="185082613"
-Received: from fmsmga001.fm.intel.com ([10.253.24.23])
-  by orsmga101.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:03 -0700
-IronPort-SDR: soTq5s9u9+xxmt/XDYhC1pbx84VAyjk6ufyOi0jqBYfR77G7WoTuA326FuHZbjr3lTFsNl+zjW
- fGy3Xs2+dmyg==
+   d="scan'208";a="218751818"
+Received: from fmsmga002.fm.intel.com ([10.253.24.26])
+  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:03 -0700
+IronPort-SDR: FxqCF/4lZfeo80U71BKBGIfPaVN0A3WEB40KDO3oScvIw3/utreFwOc82YqZrR5+TcXC2JL1vf
+ DRqllTo4PGxw==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="530959143"
+   d="scan'208";a="463102607"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga001.fm.intel.com with ESMTP; 04 May 2021 03:27:01 -0700
+  by fmsmga002.fm.intel.com with ESMTP; 04 May 2021 03:27:01 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 98839461; Tue,  4 May 2021 13:27:17 +0300 (EEST)
+        id 0258DB4C; Tue,  4 May 2021 13:27:17 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -45,96 +45,111 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v2 06/14] lib/string_helpers: Allow to append additional characters to be escaped
-Date:   Tue,  4 May 2021 13:26:40 +0300
-Message-Id: <20210504102648.88057-7-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v2 14/14] seq_file: Drop unused *_escape_mem_ascii()
+Date:   Tue,  4 May 2021 13:26:48 +0300
+Message-Id: <20210504102648.88057-15-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
 References: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Introduce a new flag to append additional characters, passed in 'only'
-parameter, to be escaped if they fall in the corresponding class.
+There are no more users of the seq_escape_mem_ascii()
+followed by string_escape_mem_ascii().
+
+Remove them for good.
 
 Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 ---
- include/linux/string_helpers.h |  1 +
- lib/string_helpers.c           | 19 +++++++++++++++----
- 2 files changed, 16 insertions(+), 4 deletions(-)
+ fs/seq_file.c                  | 11 -----------
+ include/linux/seq_file.h       |  2 --
+ include/linux/string_helpers.h |  3 ---
+ lib/string_helpers.c           | 19 -------------------
+ 4 files changed, 35 deletions(-)
 
+diff --git a/fs/seq_file.c b/fs/seq_file.c
+index d78801403a2f..f8335e5a0ce5 100644
+--- a/fs/seq_file.c
++++ b/fs/seq_file.c
+@@ -380,17 +380,6 @@ void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
+ }
+ EXPORT_SYMBOL(seq_escape_mem);
+ 
+-void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz)
+-{
+-	char *buf;
+-	size_t size = seq_get_buf(m, &buf);
+-	int ret;
+-
+-	ret = string_escape_mem_ascii(src, isz, buf, size);
+-	seq_commit(m, ret < size ? ret : -1);
+-}
+-EXPORT_SYMBOL(seq_escape_mem_ascii);
+-
+ void seq_vprintf(struct seq_file *m, const char *f, va_list args)
+ {
+ 	int len;
+diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
+index 0b3a6096bed3..c79fffe0f1e1 100644
+--- a/include/linux/seq_file.h
++++ b/include/linux/seq_file.h
+@@ -146,8 +146,6 @@ static inline void seq_escape(struct seq_file *m, const char *s, const char *esc
+ 	seq_escape_mem(m, s, strlen(s), ESCAPE_OCTAL, esc);
+ }
+ 
+-void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz);
+-
+ void seq_hex_dump(struct seq_file *m, const char *prefix_str, int prefix_type,
+ 		  int rowsize, int groupsize, const void *buf, size_t len,
+ 		  bool ascii);
 diff --git a/include/linux/string_helpers.h b/include/linux/string_helpers.h
-index 811c6a627620..f8728ed4d563 100644
+index 9b0eca2badf2..68189c4a2eb1 100644
 --- a/include/linux/string_helpers.h
 +++ b/include/linux/string_helpers.h
-@@ -54,6 +54,7 @@ static inline int string_unescape_any_inplace(char *buf)
- #define ESCAPE_HEX		BIT(5)
- #define ESCAPE_NA		BIT(6)
- #define ESCAPE_NAP		BIT(7)
-+#define ESCAPE_APPEND		BIT(8)
- 
+@@ -63,9 +63,6 @@ static inline int string_unescape_any_inplace(char *buf)
  int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
  		unsigned int flags, const char *only);
+ 
+-int string_escape_mem_ascii(const char *src, size_t isz, char *dst,
+-					size_t osz);
+-
+ static inline int string_escape_mem_any_np(const char *src, size_t isz,
+ 		char *dst, size_t osz, const char *only)
+ {
 diff --git a/lib/string_helpers.c b/lib/string_helpers.c
-index ceca5fbbd92c..c15aea7a82e9 100644
+index c15aea7a82e9..5a35c7e16e96 100644
 --- a/lib/string_helpers.c
 +++ b/lib/string_helpers.c
-@@ -493,6 +493,11 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
-  *		escape only non-ascii characters, checked by isascii()
-  *	%ESCAPE_NAP:
-  *		escape only non-printable or non-ascii characters
-+ *	%ESCAPE_APPEND:
-+ *		append characters from @only to be escaped by the given classes
-+ *
-+ * %ESCAPE_APPEND would help to pass additional characters to the escaped, when
-+ * one of %ESCAPE_NP, %ESCAPE_NA, or %ESCAPE_NAP is provided.
-  *
-  * One notable caveat, the %ESCAPE_NAP, %ESCAPE_NP and %ESCAPE_NA have the
-  * higher priority than the rest of the flags (%ESCAPE_NAP is the highest).
-@@ -513,9 +518,11 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- 	char *p = dst;
- 	char *end = p + osz;
- 	bool is_dict = only && *only;
-+	bool is_append = flags & ESCAPE_APPEND;
+@@ -582,25 +582,6 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ }
+ EXPORT_SYMBOL(string_escape_mem);
  
- 	while (isz--) {
- 		unsigned char c = *src++;
-+		bool in_dict = is_dict && strchr(only, c);
- 
- 		/*
- 		 * Apply rules in the following sequence:
-@@ -531,20 +538,24 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- 		 *	  defined by given @flags
- 		 * In these cases we just pass through a character to the
- 		 * output buffer.
-+		 *
-+		 * When %ESCAPE_APPEND is passed, the characters from @only
-+		 * have been excluded from the %ESCAPE_NAP, %ESCAPE_NP, and
-+		 * %ESCAPE_NA cases.
- 		 */
--		if (is_dict && !strchr(only, c) &&
-+		if (!(is_append || in_dict) && is_dict &&
- 					  escape_passthrough(c, &p, end))
- 			continue;
- 
--		if (isascii(c) && isprint(c) &&
-+		if (!(is_append && in_dict) && isascii(c) && isprint(c) &&
- 		    flags & ESCAPE_NAP && escape_passthrough(c, &p, end))
- 			continue;
- 
--		if (isprint(c) &&
-+		if (!(is_append && in_dict) && isprint(c) &&
- 		    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
- 			continue;
- 
--		if (isascii(c) &&
-+		if (!(is_append && in_dict) && isascii(c) &&
- 		    flags & ESCAPE_NA && escape_passthrough(c, &p, end))
- 			continue;
- 
+-int string_escape_mem_ascii(const char *src, size_t isz, char *dst,
+-					size_t osz)
+-{
+-	char *p = dst;
+-	char *end = p + osz;
+-
+-	while (isz--) {
+-		unsigned char c = *src++;
+-
+-		if (!isprint(c) || !isascii(c) || c == '"' || c == '\\')
+-			escape_hex(c, &p, end);
+-		else
+-			escape_passthrough(c, &p, end);
+-	}
+-
+-	return p - dst;
+-}
+-EXPORT_SYMBOL(string_escape_mem_ascii);
+-
+ /*
+  * Return an allocated string that has been escaped of special characters
+  * and double quotes, making it safe to log in quotes.
 -- 
 2.30.2
 
