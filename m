@@ -2,38 +2,39 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.0 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 54CE3C43462
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63324C433B4
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 394B8613D2
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 41D2A61177
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230285AbhEDSJI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 14:09:08 -0400
-Received: from mga17.intel.com ([192.55.52.151]:33853 "EHLO mga17.intel.com"
+        id S232320AbhEDSJJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 14:09:09 -0400
+Received: from mga03.intel.com ([134.134.136.65]:4503 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232231AbhEDSJE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 May 2021 14:09:04 -0400
-IronPort-SDR: EtqPIFhkmxZpVOklW3qUZwqjaVZiiDYeo14YQZueU69EXiiTcSIH17MKZNZ5zrt6zu6mzaRtA0
- GbEN18llBAdA==
-X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="178258326"
+        id S232273AbhEDSJG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 14:09:06 -0400
+IronPort-SDR: zpOihsyrWo3MCdhbJr3xH8kkMUVJsh+gX0bXIfcwFd8G9zMrI4aOoalVuVQr0eXtAH+MTdj8eM
+ hEFwiI32Nv/w==
+X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="198102786"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="178258326"
-Received: from orsmga006.jf.intel.com ([10.7.209.51])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:07 -0700
-IronPort-SDR: ZOs4ravY0piKUp1Ka0hKuPCSa0FsG4d+sIwdq8iHZsIv7Ywcdvic0fX9hSZV2YKNaTG3fhnDCx
- LGiOBLNNpqoQ==
+   d="scan'208";a="198102786"
+Received: from orsmga004.jf.intel.com ([10.7.209.38])
+  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:10 -0700
+IronPort-SDR: tV6c1J8jOO09UiO212iYCFlXnUv8Zfdkt9vVVSuIJiOxO30kZVlYeZ8ziy3iZg3P3Ozx9pEOwY
+ Klb8aY9BDT/Q==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="390052739"
+   d="scan'208";a="539267692"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by orsmga006.jf.intel.com with ESMTP; 04 May 2021 11:08:05 -0700
+  by orsmga004.jf.intel.com with ESMTP; 04 May 2021 11:08:08 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 8CDC714B; Tue,  4 May 2021 21:08:23 +0300 (EEST)
+        id 375F3AFA; Tue,  4 May 2021 21:08:24 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -44,70 +45,39 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v3 00/15] lib/string_helpers: get rid of ugly *_escape_mem_ascii()
-Date:   Tue,  4 May 2021 21:08:04 +0300
-Message-Id: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v3 14/15] nfsd: Avoid non-flexible API in seq_quote_mem()
+Date:   Tue,  4 May 2021 21:08:18 +0300
+Message-Id: <20210504180819.73127-15-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
+References: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Get rid of ugly *_escape_mem_ascii() API since it's not flexible and
-has the only single user. Provide better approach based on usage of the
-string_escape_mem() with appropriate flags.
+The seq_escape_mem_ascii() is completely non-flexible and shouldn't be used.
+Replace it with properly called seq_escape_mem().
 
-Test cases has been expanded accordingly to cover new functionality.
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ fs/nfsd/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-This is assumed to go either thru VFS or Andrew's tree. I don't expect
-too many changes in string_helpers.
-
-Changelog v3:
-- dropped moving seq_escape() to the header due to a lot of complaints from
-  the (very) old code
-- added seq_escape_str() inliner
-- converted seq_escape() to use seq_escape_str() instead of seq_escape_mem()
-
-Changelog v2:
-- introduced seq_escape_mem() instead of poking seq_get_buf() (Al)
-- to keep balance of seq_get_buf() usage, convert seq_escape() to use above
-- added missed ESCAPE_APPEND flag in NFSv4 patch
-- moved indentation patch closer to the beginning of the series
-- reshuffled series to be in two groups: generic library extension
-  followed by seq_file updates
-
-Andy Shevchenko (15):
-  lib/string_helpers: Switch to use BIT() macro
-  lib/string_helpers: Move ESCAPE_NP check inside 'else' branch in a
-    loop
-  lib/string_helpers: Drop indentation level in string_escape_mem()
-  lib/string_helpers: Introduce ESCAPE_NA for escaping non-ASCII
-  lib/string_helpers: Introduce ESCAPE_NAP to escape non-ASCII and
-    non-printable
-  lib/string_helpers: Allow to append additional characters to be
-    escaped
-  lib/test-string_helpers: Print flags in hexadecimal format
-  lib/test-string_helpers: Get rid of trailing comma in terminators
-  lib/test-string_helpers: Add test cases for new features
-  MAINTAINERS: Add myself as designated reviewer for generic string
-    library
-  seq_file: Introduce seq_escape_mem()
-  seq_file: Add seq_escape_str() as replica of string_escape_str()
-  seq_file: Convert seq_escape() to use seq_escape_str()
-  nfsd: Avoid non-flexible API in seq_quote_mem()
-  seq_file: Drop unused *_escape_mem_ascii()
-
- MAINTAINERS                    |   8 ++
- fs/nfsd/nfs4state.c            |   2 +-
- fs/seq_file.c                  |  43 +++++----
- include/linux/seq_file.h       |  10 ++-
- include/linux/string_helpers.h |  31 ++++---
- lib/string_helpers.c           | 102 ++++++++++++---------
- lib/test-string_helpers.c      | 157 +++++++++++++++++++++++++++++----
- 7 files changed, 264 insertions(+), 89 deletions(-)
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b517a8794400..cd5eac2ba054 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2351,7 +2351,7 @@ static struct nfs4_client *get_nfsdfs_clp(struct inode *inode)
+ static void seq_quote_mem(struct seq_file *m, char *data, int len)
+ {
+ 	seq_printf(m, "\"");
+-	seq_escape_mem_ascii(m, data, len);
++	seq_escape_mem(m, data, len, ESCAPE_HEX | ESCAPE_NAP | ESCAPE_APPEND, "\"\\");
+ 	seq_printf(m, "\"");
+ }
+ 
 -- 
 2.30.2
 
