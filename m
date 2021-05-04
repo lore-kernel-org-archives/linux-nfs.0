@@ -2,39 +2,39 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.0 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C21BEC43617
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38EC6C433B4
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A8F6E61177
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EE6BA61177
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232351AbhEDSJN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 14:09:13 -0400
-Received: from mga07.intel.com ([134.134.136.100]:41081 "EHLO mga07.intel.com"
+        id S232361AbhEDSJP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 14:09:15 -0400
+Received: from mga06.intel.com ([134.134.136.31]:23654 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232286AbhEDSJG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 May 2021 14:09:06 -0400
-IronPort-SDR: xt4R20iKklfn+UN88ubuUX3TkOtz1VjODboRKDSFH55jdh7QPue4W53AzAh9iRv6asPdKifc1A
- WNSj4kua+F/Q==
-X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="261993802"
+        id S232353AbhEDSJO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 14:09:14 -0400
+IronPort-SDR: SvrfwNgfJcaTWwYhgUuTWPlLUViULPlSZOw/s1rl4qPY6rD00+jpkayZi4X4O2zCG2E8sBmnfO
+ hD+zwoOtHPhg==
+X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="259327453"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="261993802"
-Received: from fmsmga003.fm.intel.com ([10.253.24.29])
-  by orsmga105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:11 -0700
-IronPort-SDR: DvOmjqsFX3DiL+jZvB6kmSBzISvZE+VtSnslgISxcDhuFmYjqSA3jCEK7r7IufzlrGUk9PEgen
- 4jc36wd6d4ag==
+   d="scan'208";a="259327453"
+Received: from orsmga005.jf.intel.com ([10.7.209.41])
+  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:09 -0700
+IronPort-SDR: lm1jmOQnp2N6r3SL4Ml+gjPFVwU87oAQWMPL6B8s40k1uQZ6eNvcRtz1aI/YIupG0PFLbxZRue
+ 9RJ/237k5yUg==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="458141116"
+   d="scan'208";a="607105035"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by FMSMGA003.fm.intel.com with ESMTP; 04 May 2021 11:08:07 -0700
+  by orsmga005.jf.intel.com with ESMTP; 04 May 2021 11:08:07 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 0E595934; Tue,  4 May 2021 21:08:24 +0300 (EEST)
+        id EA636461; Tue,  4 May 2021 21:08:23 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -45,9 +45,9 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v3 10/15] MAINTAINERS: Add myself as designated reviewer for generic string library
-Date:   Tue,  4 May 2021 21:08:14 +0300
-Message-Id: <20210504180819.73127-11-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v3 08/15] lib/test-string_helpers: Get rid of trailing comma in terminators
+Date:   Tue,  4 May 2021 21:08:12 +0300
+Message-Id: <20210504180819.73127-9-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
 References: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
@@ -57,32 +57,72 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add myself as designated reviewer for generic string library.
+Terminators by definition shouldn't accept anything behind.
+Make them robust by removing trailing commas.
 
 Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 ---
- MAINTAINERS | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ lib/test-string_helpers.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 1783372a608a..2c5797fc462c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -7650,6 +7650,14 @@ L:	linux-input@vger.kernel.org
- S:	Maintained
- F:	drivers/input/touchscreen/resistive-adc-touch.c
- 
-+GENERIC STRING LIBRARY
-+R:	Andy Shevchenko <andy@kernel.org>
-+S:	Maintained
-+F:	lib/string.c
-+F:	lib/string_helpers.c
-+F:	lib/test_string.c
-+F:	lib/test-string_helpers.c
-+
- GENERIC UIO DRIVER FOR PCI DEVICES
- M:	"Michael S. Tsirkin" <mst@redhat.com>
- L:	kvm@vger.kernel.org
+diff --git a/lib/test-string_helpers.c b/lib/test-string_helpers.c
+index 079fb12d59cc..3e2def9ccfac 100644
+--- a/lib/test-string_helpers.c
++++ b/lib/test-string_helpers.c
+@@ -136,7 +136,7 @@ static const struct test_string_2 escape0[] __initconst = {{
+ 		.flags = ESCAPE_SPACE | ESCAPE_HEX,
+ 	},{
+ 		/* terminator */
+-	}},
++	}}
+ },{
+ 	.in = "\\h\\\"\a\e\\",
+ 	.s1 = {{
+@@ -150,7 +150,7 @@ static const struct test_string_2 escape0[] __initconst = {{
+ 		.flags = ESCAPE_SPECIAL | ESCAPE_HEX,
+ 	},{
+ 		/* terminator */
+-	}},
++	}}
+ },{
+ 	.in = "\eb \\C\007\"\x90\r]",
+ 	.s1 = {{
+@@ -201,7 +201,7 @@ static const struct test_string_2 escape0[] __initconst = {{
+ 		.flags = ESCAPE_NP | ESCAPE_HEX,
+ 	},{
+ 		/* terminator */
+-	}},
++	}}
+ },{
+ 	/* terminator */
+ }};
+@@ -217,7 +217,7 @@ static const struct test_string_2 escape1[] __initconst = {{
+ 		.flags = ESCAPE_HEX,
+ 	},{
+ 		/* terminator */
+-	}},
++	}}
+ },{
+ 	.in = "\\h\\\"\a\e\\",
+ 	.s1 = {{
+@@ -225,7 +225,7 @@ static const struct test_string_2 escape1[] __initconst = {{
+ 		.flags = ESCAPE_OCTAL,
+ 	},{
+ 		/* terminator */
+-	}},
++	}}
+ },{
+ 	.in = "\eb \\C\007\"\x90\r]",
+ 	.s1 = {{
+@@ -233,7 +233,7 @@ static const struct test_string_2 escape1[] __initconst = {{
+ 		.flags = ESCAPE_OCTAL,
+ 	},{
+ 		/* terminator */
+-	}},
++	}}
+ },{
+ 	/* terminator */
+ }};
 -- 
 2.30.2
 
