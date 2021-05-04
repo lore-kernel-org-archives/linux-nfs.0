@@ -7,34 +7,34 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 371D4C433ED
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37771C43460
 	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DE714613C0
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4C9FF613C4
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230425AbhEDK17 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 06:27:59 -0400
-Received: from mga01.intel.com ([192.55.52.88]:52973 "EHLO mga01.intel.com"
+        id S230402AbhEDK15 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 06:27:57 -0400
+Received: from mga03.intel.com ([134.134.136.65]:31284 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230405AbhEDK16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 May 2021 06:27:58 -0400
-IronPort-SDR: bsURY5XRSkKoe2ngRgM7p9NDVAcFhkTt3t7fkVwyg9o/RuPNswO9JEA3BVCrQ9GhIYykRpnQC3
- T+EatPEGVjYA==
-X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="218751816"
+        id S230382AbhEDK1z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 06:27:55 -0400
+IronPort-SDR: nvD4mv+B57wNXi5EpQE4v0XA9nNyCHPP4OqK4Ct4sFfhQ6dwzEo1wt2Als6V2aebRPIo645sD9
+ xlvhOTKHj97g==
+X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="198001095"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="218751816"
-Received: from fmsmga002.fm.intel.com ([10.253.24.26])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:03 -0700
-IronPort-SDR: RYhX4NRHke3w/KIPa7RQ84PlUZjhSDeSOg+2MBIUiFnLM2y8Z+JrHROFTpFXcgBPJ9VmXSl0sy
- sNhSkTOLFmOw==
+   d="scan'208";a="198001095"
+Received: from fmsmga007.fm.intel.com ([10.253.24.52])
+  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:00 -0700
+IronPort-SDR: RPf0CfIh4/cHrx/dfr/pOTqqVbQvvdvmtmcXxNsVlI+nymVp4iHe7U5HbfTnkDWBQQAlVUmtnx
+ mDXaf+rPsl4g==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="463102606"
+   d="scan'208";a="396079650"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga002.fm.intel.com with ESMTP; 04 May 2021 03:27:01 -0700
+  by fmsmga007.fm.intel.com with ESMTP; 04 May 2021 03:26:58 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id D1F449FA; Tue,  4 May 2021 13:27:17 +0300 (EEST)
+        id 82ADC35E; Tue,  4 May 2021 13:27:17 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -45,9 +45,9 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v2 11/14] seq_file: Introduce seq_escape_mem()
-Date:   Tue,  4 May 2021 13:26:45 +0300
-Message-Id: <20210504102648.88057-12-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v2 04/14] lib/string_helpers: Introduce ESCAPE_NA for escaping non-ASCII
+Date:   Tue,  4 May 2021 13:26:38 +0300
+Message-Id: <20210504102648.88057-5-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
 References: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
@@ -57,64 +57,90 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Introduce seq_escape_mem() to allow users to pass additional parameters
-to string_escape_mem().
+Some users may want to have an ASCII based filter, provided by
+isascii() function. Here is the addition of a such.
 
-Suggested-by: Al Viro <viro@zeniv.linux.org.uk>
 Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 ---
- fs/seq_file.c            | 25 +++++++++++++++++++++++++
- include/linux/seq_file.h |  2 ++
- 2 files changed, 27 insertions(+)
+ include/linux/string_helpers.h |  1 +
+ lib/string_helpers.c           | 21 +++++++++++++++++----
+ 2 files changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/fs/seq_file.c b/fs/seq_file.c
-index 5059248f2d64..532cac2eae0f 100644
---- a/fs/seq_file.c
-+++ b/fs/seq_file.c
-@@ -355,6 +355,31 @@ int seq_release(struct inode *inode, struct file *file)
- }
- EXPORT_SYMBOL(seq_release);
+diff --git a/include/linux/string_helpers.h b/include/linux/string_helpers.h
+index bf01e24edd89..d6cf6fe10f74 100644
+--- a/include/linux/string_helpers.h
++++ b/include/linux/string_helpers.h
+@@ -52,6 +52,7 @@ static inline int string_unescape_any_inplace(char *buf)
+ #define ESCAPE_NP		BIT(4)
+ #define ESCAPE_ANY_NP		(ESCAPE_ANY | ESCAPE_NP)
+ #define ESCAPE_HEX		BIT(5)
++#define ESCAPE_NA		BIT(6)
  
-+/**
-+ * seq_escape_mem - print data into buffer, escaping some characters
-+ * @m: target buffer
-+ * @src: source buffer
-+ * @len: size of source buffer
-+ * @flags: flags to pass to string_escape_mem()
-+ * @esc: set of characters that need escaping
+ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 		unsigned int flags, const char *only);
+diff --git a/lib/string_helpers.c b/lib/string_helpers.c
+index e3ef9f86cc34..a963404b8c16 100644
+--- a/lib/string_helpers.c
++++ b/lib/string_helpers.c
+@@ -454,8 +454,8 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
+  *
+  *	1. The character is not matched to the one from @only string and thus
+  *	   must go as-is to the output.
+- *	2. The character is matched to the printable class, if asked, and in
+- *	   case of match it passes through to the output.
++ *	2. The character is matched to the printable or ASCII class, if asked,
++ *	   and in case of match it passes through to the output.
+  *	3. The character is checked if it falls into the class given by @flags.
+  *	   %ESCAPE_OCTAL and %ESCAPE_HEX are going last since they cover any
+  *	   character. Note that they actually can't go together, otherwise
+@@ -463,7 +463,7 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
+  *
+  * Caller must provide valid source and destination pointers. Be aware that
+  * destination buffer will not be NULL-terminated, thus caller have to append
+- * it if needs.   The supported flags are::
++ * it if needs. The supported flags are::
+  *
+  *	%ESCAPE_SPACE: (special white space, not space itself)
+  *		'\f' - form feed
+@@ -482,11 +482,18 @@ static bool escape_hex(unsigned char c, char **dst, char *end)
+  *	%ESCAPE_ANY:
+  *		all previous together
+  *	%ESCAPE_NP:
+- *		escape only non-printable characters (checked by isprint)
++ *		escape only non-printable characters, checked by isprint()
+  *	%ESCAPE_ANY_NP:
+  *		all previous together
+  *	%ESCAPE_HEX:
+  *		'\xHH' - byte with hexadecimal value HH (2 digits)
++ *	%ESCAPE_NA:
++ *		escape only non-ascii characters, checked by isascii()
 + *
-+ * Puts data into buffer, replacing each occurrence of character from
-+ * given class (defined by @flags and @esc) with printable escaped sequence.
-+ *
-+ * Use seq_has_overflowed() to check for errors.
-+ */
-+void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
-+		    unsigned int flags, const char *esc)
-+{
-+	char *buf;
-+	size_t size = seq_get_buf(m, &buf);
-+	int ret;
-+
-+	ret = string_escape_mem(src, len, buf, size, flags, esc);
-+	seq_commit(m, ret < size ? ret : -1);
-+}
-+EXPORT_SYMBOL(seq_escape_mem);
-+
- /**
-  *	seq_escape -	print string into buffer, escaping some characters
-  *	@m:	target buffer
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index 723b1fa1177e..6de442182784 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -126,6 +126,8 @@ void seq_put_decimal_ll(struct seq_file *m, const char *delimiter, long long num
- void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
- 		    unsigned long long v, unsigned int width);
++ * One notable caveat, the %ESCAPE_NP and %ESCAPE_NA have higher priority
++ * than the rest of the flags (%ESCAPE_NP is higher than %ESCAPE_NA).
++ * It doesn't make much sense to use either of them without %ESCAPE_OCTAL
++ * or %ESCAPE_HEX, because they cover most of the other character classes.
+  *
+  * Return:
+  * The total size of the escaped output that would be generated for
+@@ -510,6 +517,8 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 		 *	  character under question
+ 		 *	- the character is printable, when @flags has
+ 		 *	  %ESCAPE_NP bit set
++		 *	- the character is ASCII, when @flags has
++		 *	  %ESCAPE_NA bit set
+ 		 *	- the character doesn't fall into a class of symbols
+ 		 *	  defined by given @flags
+ 		 * In these cases we just pass through a character to the
+@@ -523,6 +532,10 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 		    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
+ 			continue;
  
-+void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
-+		    unsigned int flags, const char *esc);
- void seq_escape(struct seq_file *m, const char *s, const char *esc);
- void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz);
++		if (isascii(c) &&
++		    flags & ESCAPE_NA && escape_passthrough(c, &p, end))
++			continue;
++
+ 		if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
+ 			continue;
  
 -- 
 2.30.2
