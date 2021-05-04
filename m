@@ -7,34 +7,34 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 38EC6C433B4
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F09DC4360C
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EE6BA61177
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4CE98613DB
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:08:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232361AbhEDSJP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 14:09:15 -0400
+        id S232302AbhEDSJU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 14:09:20 -0400
 Received: from mga06.intel.com ([134.134.136.31]:23654 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232353AbhEDSJO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 May 2021 14:09:14 -0400
-IronPort-SDR: SvrfwNgfJcaTWwYhgUuTWPlLUViULPlSZOw/s1rl4qPY6rD00+jpkayZi4X4O2zCG2E8sBmnfO
- hD+zwoOtHPhg==
-X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="259327453"
+        id S232340AbhEDSJP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 14:09:15 -0400
+IronPort-SDR: c6fUU7CZB4xOjZDtH/txRIu7j3hvim8iIzMnQvtiAjpYKCMQjU7EocNLA9OrRfg5nAqWY2sMU6
+ 7WOpanFb27IA==
+X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="259327438"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="259327453"
+   d="scan'208";a="259327438"
 Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:09 -0700
-IronPort-SDR: lm1jmOQnp2N6r3SL4Ml+gjPFVwU87oAQWMPL6B8s40k1uQZ6eNvcRtz1aI/YIupG0PFLbxZRue
- 9RJ/237k5yUg==
+  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:06 -0700
+IronPort-SDR: 6MbDAXXNIOyXh4YlcR4bicmAxwiyVfOwmJ3NMlnyfgLTG0vHrxvVOoK9RbDAd7dlhd8JpCrNnl
+ j2MVD0AWqjnA==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="607105035"
+   d="scan'208";a="607105009"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by orsmga005.jf.intel.com with ESMTP; 04 May 2021 11:08:07 -0700
+  by orsmga005.jf.intel.com with ESMTP; 04 May 2021 11:08:04 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id EA636461; Tue,  4 May 2021 21:08:23 +0300 (EEST)
+        id AFA872E4; Tue,  4 May 2021 21:08:23 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -45,9 +45,9 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v3 08/15] lib/test-string_helpers: Get rid of trailing comma in terminators
-Date:   Tue,  4 May 2021 21:08:12 +0300
-Message-Id: <20210504180819.73127-9-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v3 03/15] lib/string_helpers: Drop indentation level in string_escape_mem()
+Date:   Tue,  4 May 2021 21:08:07 +0300
+Message-Id: <20210504180819.73127-4-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
 References: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
@@ -57,72 +57,66 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Terminators by definition shouldn't accept anything behind.
-Make them robust by removing trailing commas.
+The only one conditional is left on the upper level, move the rest
+to the same level and drop indentation level. No functional changes.
 
 Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 ---
- lib/test-string_helpers.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ lib/string_helpers.c | 36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/lib/test-string_helpers.c b/lib/test-string_helpers.c
-index 079fb12d59cc..3e2def9ccfac 100644
---- a/lib/test-string_helpers.c
-+++ b/lib/test-string_helpers.c
-@@ -136,7 +136,7 @@ static const struct test_string_2 escape0[] __initconst = {{
- 		.flags = ESCAPE_SPACE | ESCAPE_HEX,
- 	},{
- 		/* terminator */
--	}},
-+	}}
- },{
- 	.in = "\\h\\\"\a\e\\",
- 	.s1 = {{
-@@ -150,7 +150,7 @@ static const struct test_string_2 escape0[] __initconst = {{
- 		.flags = ESCAPE_SPECIAL | ESCAPE_HEX,
- 	},{
- 		/* terminator */
--	}},
-+	}}
- },{
- 	.in = "\eb \\C\007\"\x90\r]",
- 	.s1 = {{
-@@ -201,7 +201,7 @@ static const struct test_string_2 escape0[] __initconst = {{
- 		.flags = ESCAPE_NP | ESCAPE_HEX,
- 	},{
- 		/* terminator */
--	}},
-+	}}
- },{
- 	/* terminator */
- }};
-@@ -217,7 +217,7 @@ static const struct test_string_2 escape1[] __initconst = {{
- 		.flags = ESCAPE_HEX,
- 	},{
- 		/* terminator */
--	}},
-+	}}
- },{
- 	.in = "\\h\\\"\a\e\\",
- 	.s1 = {{
-@@ -225,7 +225,7 @@ static const struct test_string_2 escape1[] __initconst = {{
- 		.flags = ESCAPE_OCTAL,
- 	},{
- 		/* terminator */
--	}},
-+	}}
- },{
- 	.in = "\eb \\C\007\"\x90\r]",
- 	.s1 = {{
-@@ -233,7 +233,7 @@ static const struct test_string_2 escape1[] __initconst = {{
- 		.flags = ESCAPE_OCTAL,
- 	},{
- 		/* terminator */
--	}},
-+	}}
- },{
- 	/* terminator */
- }};
+diff --git a/lib/string_helpers.c b/lib/string_helpers.c
+index b10a18b4663b..e3ef9f86cc34 100644
+--- a/lib/string_helpers.c
++++ b/lib/string_helpers.c
+@@ -515,29 +515,29 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 		 * In these cases we just pass through a character to the
+ 		 * output buffer.
+ 		 */
+-		if (is_dict && !strchr(only, c)) {
+-			/* do nothing */
+-		} else {
+-			if (isprint(c) &&
+-			    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
+-				continue;
++		if (is_dict && !strchr(only, c) &&
++					  escape_passthrough(c, &p, end))
++			continue;
+ 
+-			if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
+-				continue;
++		if (isprint(c) &&
++		    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
++			continue;
+ 
+-			if (flags & ESCAPE_SPECIAL && escape_special(c, &p, end))
+-				continue;
++		if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
++			continue;
+ 
+-			if (flags & ESCAPE_NULL && escape_null(c, &p, end))
+-				continue;
++		if (flags & ESCAPE_SPECIAL && escape_special(c, &p, end))
++			continue;
+ 
+-			/* ESCAPE_OCTAL and ESCAPE_HEX always go last */
+-			if (flags & ESCAPE_OCTAL && escape_octal(c, &p, end))
+-				continue;
++		if (flags & ESCAPE_NULL && escape_null(c, &p, end))
++			continue;
+ 
+-			if (flags & ESCAPE_HEX && escape_hex(c, &p, end))
+-				continue;
+-		}
++		/* ESCAPE_OCTAL and ESCAPE_HEX always go last */
++		if (flags & ESCAPE_OCTAL && escape_octal(c, &p, end))
++			continue;
++
++		if (flags & ESCAPE_HEX && escape_hex(c, &p, end))
++			continue;
+ 
+ 		escape_passthrough(c, &p, end);
+ 	}
 -- 
 2.30.2
 
