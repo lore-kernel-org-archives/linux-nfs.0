@@ -2,87 +2,239 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 916DBC43600
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:09:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48D81C433ED
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 21:39:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 722DA613F6
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 18:09:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 199DD613D4
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 21:39:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232286AbhEDSKq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 14:10:46 -0400
-Received: from mga03.intel.com ([134.134.136.65]:4512 "EHLO mga03.intel.com"
+        id S232874AbhEDVk2 convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 17:40:28 -0400
+Received: from natter.dneg.com ([193.203.89.68]:49048 "EHLO natter.dneg.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232283AbhEDSJG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 May 2021 14:09:06 -0400
-IronPort-SDR: DLKSIfnjA28kP/9JLP3S4RiEmZgqpFtxbk8kLwtTuJ98gdr2kHddsvU+E7xZYO0ObQQo9jRMEr
- muNBb8WxJxsw==
-X-IronPort-AV: E=McAfee;i="6200,9189,9974"; a="198102793"
-X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="198102793"
-Received: from fmsmga006.fm.intel.com ([10.253.24.20])
-  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 11:08:11 -0700
-IronPort-SDR: JNFpGkilIQ16ds4+KDGVzPEhaSbBgzpRaPHchsRrldhf1fNEBRVRKrVtpiZJbi65Rq3pVRJHFK
- +qrka7NrIlxg==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="618574585"
-Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga006.fm.intel.com with ESMTP; 04 May 2021 11:08:07 -0700
-Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 259529EB; Tue,  4 May 2021 21:08:24 +0300 (EEST)
-From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To:     "J. Bruce Fields" <bfields@redhat.com>,
-        Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andy Shevchenko <andy@kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v3 12/15] seq_file: Add seq_escape_str() as replica of string_escape_str()
-Date:   Tue,  4 May 2021 21:08:16 +0300
-Message-Id: <20210504180819.73127-13-andriy.shevchenko@linux.intel.com>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
-References: <20210504180819.73127-1-andriy.shevchenko@linux.intel.com>
+        id S232803AbhEDVk1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 17:40:27 -0400
+X-Greylist: delayed 415 seconds by postgrey-1.27 at vger.kernel.org; Tue, 04 May 2021 17:40:27 EDT
+Received: from localhost (localhost [127.0.0.1])
+        by natter.dneg.com (Postfix) with ESMTP id 9362E776F644;
+        Tue,  4 May 2021 22:32:36 +0100 (BST)
+X-Virus-Scanned: amavisd-new at mx-dneg
+Received: from natter.dneg.com ([127.0.0.1])
+        by localhost (natter.dneg.com [127.0.0.1]) (amavisd-new, port 10024)
+        with LMTP id oigTSRQ-oaIM; Tue,  4 May 2021 22:32:36 +0100 (BST)
+Received: from zrozimbrai.dneg.com (zrozimbrai.dneg.com [10.11.20.12])
+        by natter.dneg.com (Postfix) with ESMTPS id 6BEFD776858E;
+        Tue,  4 May 2021 22:32:36 +0100 (BST)
+Received: from localhost (localhost [127.0.0.1])
+        by zrozimbrai.dneg.com (Postfix) with ESMTP id 58CC189C7200;
+        Tue,  4 May 2021 22:32:36 +0100 (BST)
+Received: from zrozimbrai.dneg.com ([127.0.0.1])
+        by localhost (zrozimbrai.dneg.com [127.0.0.1]) (amavisd-new, port 10032)
+        with ESMTP id eQyWuZvEZJBH; Tue,  4 May 2021 22:32:36 +0100 (BST)
+Received: from localhost (localhost [127.0.0.1])
+        by zrozimbrai.dneg.com (Postfix) with ESMTP id 386A289C721D;
+        Tue,  4 May 2021 22:32:36 +0100 (BST)
+X-Virus-Scanned: amavisd-new at zrozimbrai.dneg.com
+Received: from zrozimbrai.dneg.com ([127.0.0.1])
+        by localhost (zrozimbrai.dneg.com [127.0.0.1]) (amavisd-new, port 10026)
+        with ESMTP id SeLDgeu75cdh; Tue,  4 May 2021 22:32:36 +0100 (BST)
+Received: from zrozimbra1.dneg.com (zrozimbra1.dneg.com [10.11.16.16])
+        by zrozimbrai.dneg.com (Postfix) with ESMTP id 1880389C720E;
+        Tue,  4 May 2021 22:32:36 +0100 (BST)
+Date:   Tue, 4 May 2021 22:32:35 +0100 (BST)
+From:   Daire Byrne <daire@dneg.com>
+To:     bfields <bfields@fieldses.org>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>, neilb@suse.de,
+        fsorenso@redhat.com, linux-nfs <linux-nfs@vger.kernel.org>,
+        aglo@umich.edu, bcodding@redhat.com, jshivers@redhat.com,
+        Chuck Lever <chuck.lever@oracle.com>
+Message-ID: <1449034832.11389942.1620163955863.JavaMail.zimbra@dneg.com>
+In-Reply-To: <20210504165120.GA18746@fieldses.org>
+References: <20201007140502.GC23452@fieldses.org> <20210119222229.GA29488@fieldses.org> <2d77534fb8be557c6883c8c386ebf4175f64454a.camel@hammerspace.com> <20210120150737.GA17548@fieldses.org> <20210503200952.GB18779@fieldses.org> <162009412979.28954.17703105649506010394@noble.neil.brown.name> <4033e1e8b52c27503abe5855f81b7d12b2e46eec.camel@hammerspace.com> <20210504165120.GA18746@fieldses.org>
+Subject: Re: unsharing tcp connections from different NFS mounts
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+X-Mailer: Zimbra 9.0.0_GA_3990 (ZimbraWebClient - GC78 (Linux)/9.0.0_GA_3990)
+Thread-Topic: unsharing tcp connections from different NFS mounts
+Thread-Index: 9tJvXxXuAZdm+t5VWLUO3PyPPWuGQQ==
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In some cases we want to escape characters from NULL-terminated strings.
-Add seq_escape_str() as replica of string_escape_str() for that.
+Hi,
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
----
- include/linux/seq_file.h | 7 +++++++
- 1 file changed, 7 insertions(+)
+For what it's worth, I mentioned this on the associated redhat bugzilla but I'll replicate it here - I *think* this issue (bulk reads/writes starving getattrs etc) is one of the issues I was trying to describe in my re-export thread:
 
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index 6de442182784..63f021cb1b12 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -128,6 +128,13 @@ void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
- 
- void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
- 		    unsigned int flags, const char *esc);
-+
-+static inline void seq_escape_str(struct seq_file *m, const char *src,
-+				  unsigned int flags, const char *esc)
-+{
-+	seq_escape_mem(m, src, strlen(src), flags, esc);
-+}
-+
- void seq_escape(struct seq_file *m, const char *s, const char *esc);
- void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz);
- 
--- 
-2.30.2
+https://marc.info/?l=linux-nfs&m=160077787901987&w=4
 
+Long story short, when we have already read lots of data into a client's pagecache (or fscache/cachefiles), you can't reuse it again later until you do some metadata lookups to re-validate. But if we are also continually filling the client cache with new data (lots of reads) as fast as possible, we starve the other processes (in my case - knfsd re-export threads) from processing the re-validate lookups/getattrs in a timely manner.
+
+We have lots of previously cached data but we can't use it for a long time because we can't get the getattrs out and replied to quickly.
+
+When I was testing the client behaviour, it didn't seem like nconnect or NFSv3/NFSv4.2 made much difference to the behaviour - metadata lookups from another client process to the same mountpoint slowed to a crawl when a process had reads dominating the network pipe.
+
+I also found that maxing out the client's network bandwidth really showed this effect best. Either by saturating a client's physical network link or, in the case of reads, using an ingress qdisc + htb on the client to simulate a saturated low speed network.
+
+In all cases where the client's network is (read) saturated (physically or using a qdisc), the metadata performance from another process becomes really poor. If I mount a completely different server on the same client, the metadata performance to that new second server is much better despite the ongoing network saturation caused by the continuing reads from the first server.
+
+I don't know if that helps much, but it was my observation when I last looked at this.
+
+I'd really love to see any kind of improvement to this behaviour as it's a real shame we can't serve cached data quickly when all the cache re-validations (getattrs) are stuck behind bulk IO that just seems to plow through everything else.
+
+Daire
+
+----- On 4 May, 2021, at 17:51, bfields bfields@fieldses.org wrote:
+
+> Thanks very much to all of you for the explanations and concrete
+> suggestions for things to look at, I feel much less stuck!
+> 
+> --b.
+> 
+> On Tue, May 04, 2021 at 02:27:04PM +0000, Trond Myklebust wrote:
+>> On Tue, 2021-05-04 at 12:08 +1000, NeilBrown wrote:
+>> > On Tue, 04 May 2021, bfields@fieldses.org wrote:
+>> > > On Wed, Jan 20, 2021 at 10:07:37AM -0500, bfields@fieldses.org wrote:
+>> > > > 
+>> > > > So mainly:
+>> > > > 
+>> > > > > > > Why is there a performance regression being seen by these
+>> > > > > > > setups
+>> > > > > > > when they share the same connection? Is it really the
+>> > > > > > > connection,
+>> > > > > > > or is it the fact that they all share the same fixed-slot
+>> > > > > > > session?
+>> > > > 
+>> > > > I don't know.  Any pointers how we might go about finding the
+>> > > > answer?
+>> > > 
+>> > > I set this aside and then get bugged about it again.
+>> > > 
+>> > > I apologize, I don't understand what you're asking for here, but it
+>> > > seemed obvious to you and Tom, so I'm sure the problem is me.  Are
+>> > > you
+>> > > free for a call sometime maybe?  Or do you have any suggestions for
+>> > > how
+>> > > you'd go about investigating this?
+>> > 
+>> > I think a useful first step would be to understand what is getting in
+>> > the way of the small requests.
+>> >  - are they in the client waiting for slots which are all consumed by
+>> >    large writes?
+>> >  - are they in TCP stream behind megabytes of writes that need to be
+>> >    consumed before they can even be seen by the server?
+>> >  - are they in a socket buffer on the server waiting to be served
+>> >    while all the nfsd thread are busy handling writes?
+>> > 
+>> > I cannot see an easy way to measure which it is.
+>> 
+>> The nfs4_sequence_done tracepoint will give you a running count of the
+>> highest slot id in use.
+>> 
+>> The mountstats 'execute time' will give you the time between the
+>> request being created and the time a reply was received. That time
+>> includes the time spent waiting for a NFSv4 session slot.
+>> 
+>> The mountstats 'backlog wait' will tell you the time spent waiting for
+>> an RPC slot after obtaining the NFSv4 session slot.
+>> 
+>> The mountstats 'RTT' will give you the time spend waiting for the RPC
+>> request to be received, processed and replied to by the server.
+>> 
+>> Finally, the mountstats also tell you average per-op bytes sent/bytes
+>> received.
+>> 
+>> IOW: The mountstats really gives you almost all the information you
+>> need here, particularly if you use it in the 'interval reporting' mode.
+>> The only thing it does not tell you is whether or not the NFSv4 session
+>> slot table is full (which is why you want the tracepoint).
+>> 
+>> > I guess monitoring how much of the time that the client has no free
+>> > slots might give hints about the first.  If there are always free
+>> > slots,
+>> > the first case cannot be the problem.
+>> > 
+>> > With NFSv3, the slot management happened at the RPC layer and there
+>> > were
+>> > several queues (RPC_PRIORITY_LOW/NORMAL/HIGH/PRIVILEGED) where requests
+>> > could wait for a free slot.  Since we gained dynamic slot allocation -
+>> > up to 65536 by default - I wonder if that has much effect any more.
+>> > 
+>> > For NFSv4.1+ the slot management is at the NFS level.  The server sets
+>> > a
+>> > maximum which defaults to (maybe is limited to) 1024 by the Linux
+>> > server.
+>> > So there are always free rpc slots.
+>> > The Linux client only has a single queue for each slot table, and I
+>> > think there is one slot table for the forward channel of a session.
+>> > So it seems we no longer get any priority management (sync writes used
+>> > to get priority over async writes).
+>> > 
+>> > Increasing the number of slots advertised by the server might be
+>> > interesting.  It is unlikely to fix anything, but it might move the
+>> > bottle-neck.
+>> > 
+>> > Decreasing the maximum of number of tcp slots might also be interesting
+>> > (below the number of NFS slots at least).
+>> > That would allow the RPC priority infrastructure to work, and if the
+>> > large-file writes are async, they might gets slowed down.
+>> > 
+>> > If the problem is in the TCP stream (which is possible if the relevant
+>> > network buffers are bloated), then you'd really need multiple TCP
+>> > streams
+>> > (which can certainly improve throughput in some cases).  That is what
+>> > nconnect give you.  nconnect does minimal balancing.  It general it
+>> > will
+>> > round-robin, but if the number of requests (not bytes) queued on one
+>> > socket is below average, that socket is likely to get the next request.
+>> 
+>> It's not round-robin. Transports are allocated to a new RPC request
+>> based on a measure of their queue length in order to skip over those
+>> that show signs of above average congestion.
+>> 
+>> > So just adding more connections with nconnect is unlikely to help.
+>> > You
+>> > would need to add a policy engine (struct rpc_xpr_iter_ops) which
+>> > reserves some connections for small requests.  That should be fairly
+>> > easy to write a proof-of-concept for.
+>> 
+>> Ideally we would want to tie into cgroups as the control mechanism so
+>> that NFS can be treated like any other I/O resource.
+>> 
+>> > 
+>> > NeilBrown
+>> > 
+>> > 
+>> > > 
+>> > > Would it be worth experimenting with giving some sort of advantage
+>> > > to
+>> > > readers?  (E.g., reserving a few slots for reads and getattrs and
+>> > > such?)
+>> > > 
+>> > > --b.
+>> > > 
+>> > > > It's easy to test the case of entirely seperate state & tcp
+>> > > > connections.
+>> > > > 
+>> > > > If we want to test with a shared connection but separate slots I
+>> > > > guess
+>> > > > we'd need to create a separate session for each nfs4_server, and
+>> > > > a lot
+>> > > > of functions that currently take an nfs4_client would need to
+>> > > > take an
+>> > > > nfs4_server?
+>> > > > 
+>> > > > --b.
+>> > > 
+>> > > 
+>> 
+>> --
+>> Trond Myklebust
+>> Linux NFS client maintainer, Hammerspace
+>> trond.myklebust@hammerspace.com
+>> 
