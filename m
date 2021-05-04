@@ -2,38 +2,39 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2F10C43462
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 371D4C433ED
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A4584613C1
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DE714613C0
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230400AbhEDK15 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 06:27:57 -0400
-Received: from mga18.intel.com ([134.134.136.126]:14053 "EHLO mga18.intel.com"
+        id S230425AbhEDK17 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 May 2021 06:27:59 -0400
+Received: from mga01.intel.com ([192.55.52.88]:52973 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230377AbhEDK1z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 May 2021 06:27:55 -0400
-IronPort-SDR: gbY+O5WLdaF4fnY0JTB3FiKxgB3cYZjt0hK5VY6WtmBNNj0slaNC9m3tb+9j5LuHmN2R0GSqcA
- NUgmC1dWPMpQ==
-X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="185417066"
+        id S230405AbhEDK16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 06:27:58 -0400
+IronPort-SDR: bsURY5XRSkKoe2ngRgM7p9NDVAcFhkTt3t7fkVwyg9o/RuPNswO9JEA3BVCrQ9GhIYykRpnQC3
+ T+EatPEGVjYA==
+X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="218751816"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="185417066"
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:00 -0700
-IronPort-SDR: 2cOYoTWdNRu0BqEvVitCL1AyawKZNkhwAs5fzO9185Wi1skQfrjzlq2gOWoe4jfa4CHoLeJnQR
- Vb8e5z4M6TDg==
+   d="scan'208";a="218751816"
+Received: from fmsmga002.fm.intel.com ([10.253.24.26])
+  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:03 -0700
+IronPort-SDR: RYhX4NRHke3w/KIPa7RQ84PlUZjhSDeSOg+2MBIUiFnLM2y8Z+JrHROFTpFXcgBPJ9VmXSl0sy
+ sNhSkTOLFmOw==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="621478726"
+   d="scan'208";a="463102606"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga005.fm.intel.com with ESMTP; 04 May 2021 03:26:57 -0700
+  by fmsmga002.fm.intel.com with ESMTP; 04 May 2021 03:27:01 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 58C3F2A7; Tue,  4 May 2021 13:27:17 +0300 (EEST)
+        id D1F449FA; Tue,  4 May 2021 13:27:17 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -44,63 +45,77 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v2 00/14] lib/string_helpers: get rid of ugly *_escape_mem_ascii()
-Date:   Tue,  4 May 2021 13:26:34 +0300
-Message-Id: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v2 11/14] seq_file: Introduce seq_escape_mem()
+Date:   Tue,  4 May 2021 13:26:45 +0300
+Message-Id: <20210504102648.88057-12-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
+References: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Get rid of ugly *_escape_mem_ascii() API since it's not flexible and
-has the only single user. Provide better approach based on usage of the
-string_escape_mem() with appropriate flags.
+Introduce seq_escape_mem() to allow users to pass additional parameters
+to string_escape_mem().
 
-Test cases has been expanded accordingly to cover new functionality.
+Suggested-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+---
+ fs/seq_file.c            | 25 +++++++++++++++++++++++++
+ include/linux/seq_file.h |  2 ++
+ 2 files changed, 27 insertions(+)
 
-This is assumed to go either thru VFS or Andrew's tree. I don't expect
-too many changes in string_helpers.
-
-Changelog v2:
-- introduced seq_escape_mem() instead of poking seq_get_buf() (Al)
-- to keep balance of seq_get_buf() usage, convert seq_escape() to use above
-- added missed ESCAPE_APPEND flag in NFSv4 patch
-- moved indentation patch closer to the beginning of the series
-- reshuffled series to be in two groups: generic library extension
-  followed by seq_file updates
-
-Andy Shevchenko (14):
-  lib/string_helpers: Switch to use BIT() macro
-  lib/string_helpers: Move ESCAPE_NP check inside 'else' branch in a
-    loop
-  lib/string_helpers: Drop indentation level in string_escape_mem()
-  lib/string_helpers: Introduce ESCAPE_NA for escaping non-ASCII
-  lib/string_helpers: Introduce ESCAPE_NAP to escape non-ASCII and
-    non-printable
-  lib/string_helpers: Allow to append additional characters to be
-    escaped
-  lib/test-string_helpers: Print flags in hexadecimal format
-  lib/test-string_helpers: Get rid of trailing comma in terminators
-  lib/test-string_helpers: Add test cases for new features
-  MAINTAINERS: Add myself as designated reviewer for generic string
-    library
-  seq_file: Introduce seq_escape_mem()
-  seq_file: Replace seq_escape() with inliner
-  nfsd: Avoid non-flexible API in seq_quote_mem()
-  seq_file: Drop unused *_escape_mem_ascii()
-
- MAINTAINERS                    |   8 ++
- fs/nfsd/nfs4state.c            |   2 +-
- fs/seq_file.c                  |  35 +++-----
- include/linux/seq_file.h       |  21 ++++-
- include/linux/string_helpers.h |  31 ++++---
- lib/string_helpers.c           | 102 ++++++++++++---------
- lib/test-string_helpers.c      | 157 +++++++++++++++++++++++++++++----
- 7 files changed, 262 insertions(+), 94 deletions(-)
-
+diff --git a/fs/seq_file.c b/fs/seq_file.c
+index 5059248f2d64..532cac2eae0f 100644
+--- a/fs/seq_file.c
++++ b/fs/seq_file.c
+@@ -355,6 +355,31 @@ int seq_release(struct inode *inode, struct file *file)
+ }
+ EXPORT_SYMBOL(seq_release);
+ 
++/**
++ * seq_escape_mem - print data into buffer, escaping some characters
++ * @m: target buffer
++ * @src: source buffer
++ * @len: size of source buffer
++ * @flags: flags to pass to string_escape_mem()
++ * @esc: set of characters that need escaping
++ *
++ * Puts data into buffer, replacing each occurrence of character from
++ * given class (defined by @flags and @esc) with printable escaped sequence.
++ *
++ * Use seq_has_overflowed() to check for errors.
++ */
++void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
++		    unsigned int flags, const char *esc)
++{
++	char *buf;
++	size_t size = seq_get_buf(m, &buf);
++	int ret;
++
++	ret = string_escape_mem(src, len, buf, size, flags, esc);
++	seq_commit(m, ret < size ? ret : -1);
++}
++EXPORT_SYMBOL(seq_escape_mem);
++
+ /**
+  *	seq_escape -	print string into buffer, escaping some characters
+  *	@m:	target buffer
+diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
+index 723b1fa1177e..6de442182784 100644
+--- a/include/linux/seq_file.h
++++ b/include/linux/seq_file.h
+@@ -126,6 +126,8 @@ void seq_put_decimal_ll(struct seq_file *m, const char *delimiter, long long num
+ void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
+ 		    unsigned long long v, unsigned int width);
+ 
++void seq_escape_mem(struct seq_file *m, const char *src, size_t len,
++		    unsigned int flags, const char *esc);
+ void seq_escape(struct seq_file *m, const char *s, const char *esc);
+ void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz);
+ 
 -- 
 2.30.2
 
