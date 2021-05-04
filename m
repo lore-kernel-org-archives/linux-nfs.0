@@ -7,34 +7,34 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B33DCC43470
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72B52C43461
 	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 96F7A611C0
+	by mail.kernel.org (Postfix) with ESMTP id 58594611C0
 	for <linux-nfs@archiver.kernel.org>; Tue,  4 May 2021 10:27:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230328AbhEDK14 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 May 2021 06:27:56 -0400
-Received: from mga03.intel.com ([134.134.136.65]:31284 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230372AbhEDK1z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S230379AbhEDK1z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 4 May 2021 06:27:55 -0400
-IronPort-SDR: jov+n4u5TMk2kX2cHyNtLO/2il9ufHkGhn7fXmvvFo+3ebNnZ3wu7Fir+qIJD0DkOUeI7mrphy
- ArY5UkGbaE1A==
-X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="198001091"
+Received: from mga17.intel.com ([192.55.52.151]:59878 "EHLO mga17.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S230251AbhEDK1y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 May 2021 06:27:54 -0400
+IronPort-SDR: AHXr5iImVKPIC1iVMXSwg9o0IKOd9uZFrgdP9+NJ0FJEtNUzeQBjJ8UBXmNrQr1EksxvrdCiNw
+ h5ohwkE0Shqw==
+X-IronPort-AV: E=McAfee;i="6200,9189,9973"; a="178157696"
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="198001091"
-Received: from fmsmga007.fm.intel.com ([10.253.24.52])
-  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:00 -0700
-IronPort-SDR: t+9PNJmu7DOwEhtuJLh/oPGjs+47jlLS8GQMhyX4/obku7jw9S6N/OtfNs+QI/3B5fjcBofq4C
- Uc0dWD9OalJg==
+   d="scan'208";a="178157696"
+Received: from fmsmga003.fm.intel.com ([10.253.24.29])
+  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 May 2021 03:27:00 -0700
+IronPort-SDR: j7ZC+jX07h0wB53DTfEwXv5sxfiCt2JbdpveInKFyKbwWtcg5q1bqhzjyyvY7K8nG0xBqzcrMl
+ BOW2taLZGzNg==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.82,272,1613462400"; 
-   d="scan'208";a="396079648"
+   d="scan'208";a="457836648"
 Received: from black.fi.intel.com ([10.237.72.28])
-  by fmsmga007.fm.intel.com with ESMTP; 04 May 2021 03:26:57 -0700
+  by FMSMGA003.fm.intel.com with ESMTP; 04 May 2021 03:26:57 -0700
 Received: by black.fi.intel.com (Postfix, from userid 1003)
-        id 7A7CB34F; Tue,  4 May 2021 13:27:17 +0300 (EEST)
+        id 6697229A; Tue,  4 May 2021 13:27:17 +0300 (EEST)
 From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
@@ -45,9 +45,9 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andy Shevchenko <andy@kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>
-Subject: [PATCH v2 03/14] lib/string_helpers: Drop indentation level in string_escape_mem()
-Date:   Tue,  4 May 2021 13:26:37 +0300
-Message-Id: <20210504102648.88057-4-andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v2 01/14] lib/string_helpers: Switch to use BIT() macro
+Date:   Tue,  4 May 2021 13:26:35 +0300
+Message-Id: <20210504102648.88057-2-andriy.shevchenko@linux.intel.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
 References: <20210504102648.88057-1-andriy.shevchenko@linux.intel.com>
@@ -57,66 +57,62 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The only one conditional is left on the upper level, move the rest
-to the same level and drop indentation level. No functional changes.
+Switch to use BIT() macro for flag definitions. No changes implied.
 
 Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 ---
- lib/string_helpers.c | 36 ++++++++++++++++++------------------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+ include/linux/string_helpers.h | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/lib/string_helpers.c b/lib/string_helpers.c
-index b10a18b4663b..e3ef9f86cc34 100644
---- a/lib/string_helpers.c
-+++ b/lib/string_helpers.c
-@@ -515,29 +515,29 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- 		 * In these cases we just pass through a character to the
- 		 * output buffer.
- 		 */
--		if (is_dict && !strchr(only, c)) {
--			/* do nothing */
--		} else {
--			if (isprint(c) &&
--			    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
--				continue;
-+		if (is_dict && !strchr(only, c) &&
-+					  escape_passthrough(c, &p, end))
-+			continue;
+diff --git a/include/linux/string_helpers.h b/include/linux/string_helpers.h
+index fa06dcdc481e..bf01e24edd89 100644
+--- a/include/linux/string_helpers.h
++++ b/include/linux/string_helpers.h
+@@ -2,6 +2,7 @@
+ #ifndef _LINUX_STRING_HELPERS_H_
+ #define _LINUX_STRING_HELPERS_H_
  
--			if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
--				continue;
-+		if (isprint(c) &&
-+		    flags & ESCAPE_NP && escape_passthrough(c, &p, end))
-+			continue;
++#include <linux/bits.h>
+ #include <linux/ctype.h>
+ #include <linux/types.h>
  
--			if (flags & ESCAPE_SPECIAL && escape_special(c, &p, end))
--				continue;
-+		if (flags & ESCAPE_SPACE && escape_space(c, &p, end))
-+			continue;
+@@ -18,10 +19,10 @@ enum string_size_units {
+ void string_get_size(u64 size, u64 blk_size, enum string_size_units units,
+ 		     char *buf, int len);
  
--			if (flags & ESCAPE_NULL && escape_null(c, &p, end))
--				continue;
-+		if (flags & ESCAPE_SPECIAL && escape_special(c, &p, end))
-+			continue;
+-#define UNESCAPE_SPACE		0x01
+-#define UNESCAPE_OCTAL		0x02
+-#define UNESCAPE_HEX		0x04
+-#define UNESCAPE_SPECIAL	0x08
++#define UNESCAPE_SPACE		BIT(0)
++#define UNESCAPE_OCTAL		BIT(1)
++#define UNESCAPE_HEX		BIT(2)
++#define UNESCAPE_SPECIAL	BIT(3)
+ #define UNESCAPE_ANY		\
+ 	(UNESCAPE_SPACE | UNESCAPE_OCTAL | UNESCAPE_HEX | UNESCAPE_SPECIAL)
  
--			/* ESCAPE_OCTAL and ESCAPE_HEX always go last */
--			if (flags & ESCAPE_OCTAL && escape_octal(c, &p, end))
--				continue;
-+		if (flags & ESCAPE_NULL && escape_null(c, &p, end))
-+			continue;
+@@ -42,15 +43,15 @@ static inline int string_unescape_any_inplace(char *buf)
+ 	return string_unescape_any(buf, buf, 0);
+ }
  
--			if (flags & ESCAPE_HEX && escape_hex(c, &p, end))
--				continue;
--		}
-+		/* ESCAPE_OCTAL and ESCAPE_HEX always go last */
-+		if (flags & ESCAPE_OCTAL && escape_octal(c, &p, end))
-+			continue;
-+
-+		if (flags & ESCAPE_HEX && escape_hex(c, &p, end))
-+			continue;
+-#define ESCAPE_SPACE		0x01
+-#define ESCAPE_SPECIAL		0x02
+-#define ESCAPE_NULL		0x04
+-#define ESCAPE_OCTAL		0x08
++#define ESCAPE_SPACE		BIT(0)
++#define ESCAPE_SPECIAL		BIT(1)
++#define ESCAPE_NULL		BIT(2)
++#define ESCAPE_OCTAL		BIT(3)
+ #define ESCAPE_ANY		\
+ 	(ESCAPE_SPACE | ESCAPE_OCTAL | ESCAPE_SPECIAL | ESCAPE_NULL)
+-#define ESCAPE_NP		0x10
++#define ESCAPE_NP		BIT(4)
+ #define ESCAPE_ANY_NP		(ESCAPE_ANY | ESCAPE_NP)
+-#define ESCAPE_HEX		0x20
++#define ESCAPE_HEX		BIT(5)
  
- 		escape_passthrough(c, &p, end);
- 	}
+ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 		unsigned int flags, const char *only);
 -- 
 2.30.2
 
