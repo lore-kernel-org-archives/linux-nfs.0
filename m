@@ -4,30 +4,30 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_NONE,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C4EDC43460
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 May 2021 10:52:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1396EC4708B
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 May 2021 11:21:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5735761C65
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 May 2021 10:52:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0AFE260FE8
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 May 2021 11:21:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232851AbhEJKyA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 10 May 2021 06:54:00 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41454 "EHLO mail.kernel.org"
+        id S233955AbhEJLV5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 10 May 2021 07:21:57 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34304 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233253AbhEJKwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 May 2021 06:52:13 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 71FDD61876;
-        Mon, 10 May 2021 10:40:53 +0000 (UTC)
+        id S234204AbhEJLCa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 10 May 2021 07:02:30 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 3695F61C58;
+        Mon, 10 May 2021 10:54:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-        s=korg; t=1620643254;
-        bh=SqM/N6JzNeVkkCEtOVfKCgRU/lkUPfSXPQSHx4t8blo=;
+        s=korg; t=1620644043;
+        bh=vilD/NhNhxVHwOqy0EVvW3IzXtsRYJyK1DbRLXetq2U=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=tl1wi8pcg2zcxMzIkIUxD7b5ml4BmEEJvZjQKXhkuPtJ1N0M6Aaw0wvyi2SUtM3t1
-         zsB+BDKWFoUf9RUab1eROh3/KXwGoRlw/PcFBwuK9OIQO/YZALKpTUjxr+qzaO4mrv
-         KvZPTBaN2jarxa0lANnHl8inAKJfqSDqOQeB9Me0=
+        b=mekWRATYlRCc0WvWRARy/DFvCKf/g0CWlHPvbbh3FrGMP16djt8xyqUg1vaifrhU4
+         Kl3fsGZYf1zyT+SEwMT4M7lS5zOpYfA3emWPQHDvxCcijJC3qKPnunxo/vjz/a7SZ3
+         lMC3D/l+JJs1ICLGW9zSz4WOHnWdtUvVww5njhMY=
 From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
@@ -39,12 +39,12 @@ Cc:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         linux-nfs@vger.kernel.org, David Howells <dhowells@redhat.com>,
         Al Viro <viro@zeniv.linux.org.uk>
-Subject: [PATCH 5.10 233/299] NFS: fs_context: validate UDP retrans to prevent shift out-of-bounds
-Date:   Mon, 10 May 2021 12:20:30 +0200
-Message-Id: <20210510102012.656313062@linuxfoundation.org>
+Subject: [PATCH 5.11 265/342] NFS: fs_context: validate UDP retrans to prevent shift out-of-bounds
+Date:   Mon, 10 May 2021 12:20:55 +0200
+Message-Id: <20210510102018.854477314@linuxfoundation.org>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210510102004.821838356@linuxfoundation.org>
-References: <20210510102004.821838356@linuxfoundation.org>
+In-Reply-To: <20210510102010.096403571@linuxfoundation.org>
+References: <20210510102010.096403571@linuxfoundation.org>
 User-Agent: quilt/0.66
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -83,7 +83,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 
 --- a/fs/nfs/fs_context.c
 +++ b/fs/nfs/fs_context.c
-@@ -938,6 +938,15 @@ static int nfs23_parse_monolithic(struct
+@@ -941,6 +941,15 @@ static int nfs23_parse_monolithic(struct
  			       sizeof(mntfh->data) - mntfh->size);
  
  		/*
@@ -99,7 +99,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
  		 * Translate to nfs_fs_context, which nfs_fill_super
  		 * can deal with.
  		 */
-@@ -1037,6 +1046,9 @@ out_no_address:
+@@ -1040,6 +1049,9 @@ out_no_address:
  
  out_invalid_fh:
  	return nfs_invalf(fc, "NFS: invalid root filehandle");
