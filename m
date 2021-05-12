@@ -2,94 +2,94 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBB79C2BD0B
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 19:57:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A8D5C433ED
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 22:41:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B3E8B61430
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 19:57:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4095C611CC
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 22:41:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237998AbhELT6v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 May 2021 15:58:51 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50292 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1352111AbhELSCc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 May 2021 14:02:32 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C0ACF6142C;
-        Wed, 12 May 2021 18:01:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1620842483;
-        bh=tUlpM3DQBjSnWR7vaADyD1QCt5Vsf2xpNC/talcvKrk=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=WzPD2UsPwNAF9HosVo0fpFRfO09xJLSmsu4PcBhIBt2RPqRds3kHvWBGMh1+tGwmI
-         Bnr6yulq1cU3lXq6eJl4rbaVrGYDWbgl1X7vQ1cE+lVS8WcoPRbc203T6zZwyQn8kU
-         61imPXW2yw+fBgMLykETDQqwLrj43nAeo0K1fzoVQmn1JZ023JFa5d1PnFRdYLrnzL
-         LDe3cLZ6pU+mIjFzwqJjmwxba9exLfAoY7tQLxCcDP48tDWkUUybmRHx139rvHnUBo
-         WQ3af7xIjGjpOeUxxMNZXy9cjb09OrLiW25c5PO8DMKpHtNQI6oV3Q2hjdHVu9DiC0
-         CsVl5/gomhLhw==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.12 13/37] svcrdma: Don't leak send_ctxt on Send errors
-Date:   Wed, 12 May 2021 14:00:40 -0400
-Message-Id: <20210512180104.664121-13-sashal@kernel.org>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210512180104.664121-1-sashal@kernel.org>
-References: <20210512180104.664121-1-sashal@kernel.org>
+        id S232137AbhELWlz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 May 2021 18:41:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44428 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1392620AbhELViE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 May 2021 17:38:04 -0400
+Received: from nautica.notk.org (ipv6.notk.org [IPv6:2001:41d0:1:7a93::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C2A7C061761;
+        Wed, 12 May 2021 14:24:32 -0700 (PDT)
+Received: by nautica.notk.org (Postfix, from userid 108)
+        id 70BC5C009; Wed, 12 May 2021 23:24:31 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=codewreck.org; s=2;
+        t=1620854671; bh=iu3EAcBcCCyh2dvMo7i/UfETwu/cAjPrs9y/9IF/rzg=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=GqFP10EOCURuFkF2xT3PfYLIY2J/Vt5P+TKC+LR86EYnDVWOiW1p0DaJC80tMytf1
+         5gN1vjC8t9tFEqHpcBzo3MjbeWnOyCsh8VwxR5wFwId+U1nHFIRPH6eGU0XnRQ4jGI
+         /SsgIMi1W6qyOOjrlalZ0AkA2TawlTgrts/qqk1u1tjlJlAt9rRxfyrsKFQdSmvLLf
+         60gftBiNyOvw241iDw7Ixc/ONci3OhTq0SqB2Hha0ZnGEU8kohnF+cJ0zDC9kYAG5Q
+         lc4JRWj/hSOa3rKODk9l9X+dxBTJt4b/LxGbsKWpas3N+o/AEZ0xIdPNB8szmgh/1g
+         RaInV+L3PfTbA==
+Received: from odin.codewreck.org (localhost [127.0.0.1])
+        by nautica.notk.org (Postfix) with ESMTPS id 63EE0C009;
+        Wed, 12 May 2021 23:24:29 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=codewreck.org; s=2;
+        t=1620854671; bh=iu3EAcBcCCyh2dvMo7i/UfETwu/cAjPrs9y/9IF/rzg=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=GqFP10EOCURuFkF2xT3PfYLIY2J/Vt5P+TKC+LR86EYnDVWOiW1p0DaJC80tMytf1
+         5gN1vjC8t9tFEqHpcBzo3MjbeWnOyCsh8VwxR5wFwId+U1nHFIRPH6eGU0XnRQ4jGI
+         /SsgIMi1W6qyOOjrlalZ0AkA2TawlTgrts/qqk1u1tjlJlAt9rRxfyrsKFQdSmvLLf
+         60gftBiNyOvw241iDw7Ixc/ONci3OhTq0SqB2Hha0ZnGEU8kohnF+cJ0zDC9kYAG5Q
+         lc4JRWj/hSOa3rKODk9l9X+dxBTJt4b/LxGbsKWpas3N+o/AEZ0xIdPNB8szmgh/1g
+         RaInV+L3PfTbA==
+Received: from localhost (odin.codewreck.org [local])
+        by odin.codewreck.org (OpenSMTPD) with ESMTPA id af7d1893;
+        Wed, 12 May 2021 21:24:26 +0000 (UTC)
+Date:   Thu, 13 May 2021 06:24:11 +0900
+From:   Dominique Martinet <asmadeus@codewreck.org>
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net, linux-fsdevel@vger.kernel.org
+Subject: Re: [V9fs-developer] Removing readpages aop
+Message-ID: <YJxHe+8qn6yYLld3@codewreck.org>
+References: <YJvwVq3Gl35RQrIe@casper.infradead.org>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <YJvwVq3Gl35RQrIe@casper.infradead.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Matthew Wilcox wrote on Wed, May 12, 2021 at 04:12:22PM +0100:
+> In Linus' current tree, there are just three filesystems left using the
+> readpages address_space_operation:
+> 
+> $ git grep '\.readpages'
+> fs/9p/vfs_addr.c:       .readpages = v9fs_vfs_readpages,
+> fs/cifs/file.c: .readpages = cifs_readpages,
+> fs/nfs/file.c:  .readpages = nfs_readpages,
+> 
+> I'd love to finish getting rid of ->readpages as it would simplify
+> the VFS.  AFS and Ceph were both converted since 5.12 to use
+> netfs_readahead().  Is there any chance we might get the remaining three
+> filesystems converted in the next merge window?
 
-[ Upstream commit 351461f332db5670056a9c6bce6916027f91072f ]
+David sent me a mostly-working implementation for netfs and it does get
+rid of readpages, so it's just a matter of finding time for thorough
+tests and cleanups...
+I'd also like to let it sit in -next for a while (let's say at least one
+month), so realistically I need to look at it within the next few weeks
+and I honestly probably won't have time with my current schedule... But
+it'll definitely be done for 5.15 (next's next merge window), and
+probably in -next in ~2ish months if that's good enough for you.
 
-Address a rare send_ctxt leak in the svc_rdma_sendto() error paths.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- net/sunrpc/xprtrdma/svc_rdma_sendto.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+If you can convince me both cifs and nfs will get it done before then I
+might reconsider priorities :-D
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 52c759a8543e..3669661457c1 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -958,7 +958,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	p = xdr_reserve_space(&sctxt->sc_stream,
- 			      rpcrdma_fixed_maxsz * sizeof(*p));
- 	if (!p)
--		goto err0;
-+		goto err1;
- 
- 	ret = svc_rdma_send_reply_chunk(rdma, rctxt, &rqstp->rq_res);
- 	if (ret < 0)
-@@ -970,11 +970,11 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	*p = pcl_is_empty(&rctxt->rc_reply_pcl) ? rdma_msg : rdma_nomsg;
- 
- 	if (svc_rdma_encode_read_list(sctxt) < 0)
--		goto err0;
-+		goto err1;
- 	if (svc_rdma_encode_write_list(rctxt, sctxt) < 0)
--		goto err0;
-+		goto err1;
- 	if (svc_rdma_encode_reply_chunk(rctxt, sctxt, ret) < 0)
--		goto err0;
-+		goto err1;
- 
- 	ret = svc_rdma_send_reply_msg(rdma, sctxt, rctxt, rqstp);
- 	if (ret < 0)
 -- 
-2.30.2
-
+Dominique
