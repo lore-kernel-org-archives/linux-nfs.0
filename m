@@ -7,27 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FE80C2D0DD
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D659C43462
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4D81461370
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1FA3861352
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236885AbhELQcW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 May 2021 12:32:22 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34834 "EHLO mail.kernel.org"
+        id S237409AbhELQc3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 May 2021 12:32:29 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36524 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S238774AbhELQGR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 May 2021 12:06:17 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 0D0F161CF0;
-        Wed, 12 May 2021 15:35:09 +0000 (UTC)
-Subject: [PATCH v2 02/25] NFSD: Fix TP_printk() format specifier in
- nfsd_clid_class
+        id S238994AbhELQG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 May 2021 12:06:59 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id BA97661D04;
+        Wed, 12 May 2021 15:35:29 +0000 (UTC)
+Subject: [PATCH v2 05/25] NFSD: Remove trace_nfsd_clid_inuse_err
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     dwysocha@redhat.com, bfields@fieldses.org, rostedt@goodmis.org
-Date:   Wed, 12 May 2021 11:35:09 -0400
-Message-ID: <162083370909.3108.7574236781139213561.stgit@klimt.1015granger.net>
+Date:   Wed, 12 May 2021 11:35:28 -0400
+Message-ID: <162083372885.3108.2212428008275286184.stgit@klimt.1015granger.net>
 In-Reply-To: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 References: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.1
@@ -42,77 +41,51 @@ Since commit 9a6944fee68e ("tracing: Add a verifier to check string
 pointers for trace events"), which was merged in v5.13-rc1,
 TP_printk() no longer tacitly supports the "%.*s" format specifier.
 
-These are low value tracepoints, so just remove them.
+This tracepoint has been replaced by nfsd_clid_cred_mismatch and
+nfsd_clid_verf_mismatch, and can simply be removed.
 
 Reported-by: David Wysochanski <dwysocha@redhat.com>
 Fixes: dd5e3fbc1f47 ("NFSD: Add tracepoints to the NFSD state management code")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Cc: Steven Rostedt <rostedt@goodmis.org>
 ---
- fs/nfsd/nfs4state.c |    3 ---
- fs/nfsd/trace.h     |   29 -----------------------------
- 2 files changed, 32 deletions(-)
+ fs/nfsd/trace.h |   24 ------------------------
+ 1 file changed, 24 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b517a8794400..6abe48dee6ed 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7229,7 +7229,6 @@ nfs4_client_to_reclaim(struct xdr_netobj name, struct xdr_netobj princhash,
- 	unsigned int strhashval;
- 	struct nfs4_client_reclaim *crp;
- 
--	trace_nfsd_clid_reclaim(nn, name.len, name.data);
- 	crp = alloc_reclaim();
- 	if (crp) {
- 		strhashval = clientstr_hashval(name);
-@@ -7279,8 +7278,6 @@ nfsd4_find_reclaim_client(struct xdr_netobj name, struct nfsd_net *nn)
- 	unsigned int strhashval;
- 	struct nfs4_client_reclaim *crp = NULL;
- 
--	trace_nfsd_clid_find(nn, name.len, name.data);
--
- 	strhashval = clientstr_hashval(name);
- 	list_for_each_entry(crp, &nn->reclaim_str_hashtbl[strhashval], cr_strhash) {
- 		if (compare_blob(&crp->cr_name, &name) == 0) {
 diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 781af519b40c..f0ee18202de0 100644
+index 7e2fce504a2d..b5bf792575d5 100644
 --- a/fs/nfsd/trace.h
 +++ b/fs/nfsd/trace.h
-@@ -534,35 +534,6 @@ DEFINE_EVENT(nfsd_net_class, nfsd_##name, \
- DEFINE_NET_EVENT(grace_start);
- DEFINE_NET_EVENT(grace_complete);
+@@ -594,30 +594,6 @@ TRACE_EVENT(nfsd_clid_verf_mismatch,
+ 	)
+ );
  
--DECLARE_EVENT_CLASS(nfsd_clid_class,
--	TP_PROTO(const struct nfsd_net *nn,
--		 unsigned int namelen,
--		 const unsigned char *namedata),
--	TP_ARGS(nn, namelen, namedata),
+-TRACE_EVENT(nfsd_clid_inuse_err,
+-	TP_PROTO(const struct nfs4_client *clp),
+-	TP_ARGS(clp),
 -	TP_STRUCT__entry(
--		__field(unsigned long long, boot_time)
+-		__field(u32, cl_boot)
+-		__field(u32, cl_id)
+-		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
 -		__field(unsigned int, namelen)
--		__dynamic_array(unsigned char,  name, namelen)
+-		__dynamic_array(unsigned char, name, clp->cl_name.len)
 -	),
 -	TP_fast_assign(
--		__entry->boot_time = nn->boot_time;
--		__entry->namelen = namelen;
--		memcpy(__get_dynamic_array(name), namedata, namelen);
+-		__entry->cl_boot = clp->cl_clientid.cl_boot;
+-		__entry->cl_id = clp->cl_clientid.cl_id;
+-		memcpy(__entry->addr, &clp->cl_addr,
+-			sizeof(struct sockaddr_in6));
+-		__entry->namelen = clp->cl_name.len;
+-		memcpy(__get_dynamic_array(name), clp->cl_name.data,
+-			clp->cl_name.len);
 -	),
--	TP_printk("boot_time=%16llx nfs4_clientid=%.*s",
--		__entry->boot_time, __entry->namelen, __get_str(name))
+-	TP_printk("nfs4_clientid %.*s already in use by %pISpc, client %08x:%08x",
+-		__entry->namelen, __get_str(name), __entry->addr,
+-		__entry->cl_boot, __entry->cl_id)
 -)
 -
--#define DEFINE_CLID_EVENT(name) \
--DEFINE_EVENT(nfsd_clid_class, nfsd_clid_##name, \
--	TP_PROTO(const struct nfsd_net *nn, \
--		 unsigned int namelen, \
--		 const unsigned char *namedata), \
--	TP_ARGS(nn, namelen, namedata))
--
--DEFINE_CLID_EVENT(find);
--DEFINE_CLID_EVENT(reclaim);
--
- TRACE_EVENT(nfsd_clid_inuse_err,
- 	TP_PROTO(const struct nfs4_client *clp),
- 	TP_ARGS(clp),
+ /*
+  * from fs/nfsd/filecache.h
+  */
 
 
