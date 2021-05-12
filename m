@@ -2,140 +2,55 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_NONE,
+	USER_AGENT_SANE_2 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A195C2B9F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:36:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 093C7C2BD0F
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 17:41:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 17183611BE
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:36:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D5F5461465
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 17:41:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241029AbhELQdx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 May 2021 12:33:53 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34834 "EHLO mail.kernel.org"
+        id S231367AbhELRmz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 May 2021 13:42:55 -0400
+Received: from mail.kernel.org ([198.145.29.99]:48156 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S239342AbhELQHy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 May 2021 12:07:54 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id A4AEB61D21;
-        Wed, 12 May 2021 15:37:33 +0000 (UTC)
-Subject: [PATCH v2 24/25] NFSD: Remove the nfsd_cb_work and nfsd_cb_done
- tracepoints
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     dwysocha@redhat.com, bfields@fieldses.org, rostedt@goodmis.org
-Date:   Wed, 12 May 2021 11:37:32 -0400
-Message-ID: <162083385276.3108.18272305035511948728.stgit@klimt.1015granger.net>
-In-Reply-To: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
+        id S244885AbhELQvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 May 2021 12:51:21 -0400
+Received: from gandalf.local.home (cpe-66-24-58-225.stny.res.rr.com [66.24.58.225])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id E95F661002;
+        Wed, 12 May 2021 16:26:24 +0000 (UTC)
+Date:   Wed, 12 May 2021 12:26:23 -0400
+From:   Steven Rostedt <rostedt@goodmis.org>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-nfs@vger.kernel.org, dwysocha@redhat.com,
+        bfields@fieldses.org
+Subject: Re: [PATCH v2 01/25] NFSD: Fix TP_printk() format specifier in
+ trace_nfsd_dirent()
+Message-ID: <20210512122623.79ee0dda@gandalf.local.home>
+In-Reply-To: <162083370248.3108.7424008399973918267.stgit@klimt.1015granger.net>
 References: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
-User-Agent: StGit/1.1
+        <162083370248.3108.7424008399973918267.stgit@klimt.1015granger.net>
+X-Mailer: Claws Mail 3.17.8 (GTK+ 2.24.33; x86_64-pc-linux-gnu)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up: These are noise in properly working systems. If you really
-need to observe the operation of the callback mechanism, use the
-sunrpc:rpc\* tracepoints along with the workqueue tracepoints.
+On Wed, 12 May 2021 11:35:02 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/nfs4callback.c |    5 -----
- fs/nfsd/trace.h        |   48 ------------------------------------------------
- 2 files changed, 53 deletions(-)
+> Since commit 9a6944fee68e ("tracing: Add a verifier to check string
+> pointers for trace events"), which was merged in v5.13-rc1,
+> TP_printk() no longer tacitly supports the "%.*s" format specifier.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index ddab969d7865..84401ca04705 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -970,7 +970,6 @@ static void nfsd4_cb_probe_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_client *clp = container_of(calldata, struct nfs4_client, cl_cb_null);
- 
--	trace_nfsd_cb_done(clp, task->tk_status);
- 	if (task->tk_status)
- 		nfsd4_mark_cb_down(clp, task->tk_status);
- 	else
-@@ -1172,8 +1171,6 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- 	struct nfsd4_callback *cb = calldata;
- 	struct nfs4_client *clp = cb->cb_clp;
- 
--	trace_nfsd_cb_done(clp, task->tk_status);
--
- 	if (!nfsd4_cb_sequence_done(task, cb))
- 		return;
- 
-@@ -1326,8 +1323,6 @@ nfsd4_run_cb_work(struct work_struct *work)
- 	struct rpc_clnt *clnt;
- 	int flags;
- 
--	trace_nfsd_cb_work(clp, cb->cb_msg.rpc_proc->p_name);
--
- 	if (cb->cb_need_restart) {
- 		cb->cb_need_restart = false;
- 	} else {
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index da8e7a5a9c61..4b916fb4a388 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -976,54 +976,6 @@ TRACE_EVENT(nfsd_cb_setup_err,
- 		__entry->addr, __entry->cl_boot, __entry->cl_id, __entry->error)
- );
- 
--TRACE_EVENT(nfsd_cb_work,
--	TP_PROTO(
--		const struct nfs4_client *clp,
--		const char *procedure
--	),
--	TP_ARGS(clp, procedure),
--	TP_STRUCT__entry(
--		__field(u32, cl_boot)
--		__field(u32, cl_id)
--		__string(procedure, procedure)
--		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
--	),
--	TP_fast_assign(
--		__entry->cl_boot = clp->cl_clientid.cl_boot;
--		__entry->cl_id = clp->cl_clientid.cl_id;
--		__assign_str(procedure, procedure)
--		memcpy(__entry->addr, &clp->cl_cb_conn.cb_addr,
--			sizeof(struct sockaddr_in6));
--	),
--	TP_printk("addr=%pISpc client %08x:%08x procedure=%s",
--		__entry->addr, __entry->cl_boot, __entry->cl_id,
--		__get_str(procedure))
--);
--
--TRACE_EVENT(nfsd_cb_done,
--	TP_PROTO(
--		const struct nfs4_client *clp,
--		int status
--	),
--	TP_ARGS(clp, status),
--	TP_STRUCT__entry(
--		__field(u32, cl_boot)
--		__field(u32, cl_id)
--		__field(int, status)
--		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
--	),
--	TP_fast_assign(
--		__entry->cl_boot = clp->cl_clientid.cl_boot;
--		__entry->cl_id = clp->cl_clientid.cl_id;
--		__entry->status = status;
--		memcpy(__entry->addr, &clp->cl_cb_conn.cb_addr,
--			sizeof(struct sockaddr_in6));
--	),
--	TP_printk("addr=%pISpc client %08x:%08x status=%d",
--		__entry->addr, __entry->cl_boot, __entry->cl_id,
--		__entry->status)
--);
--
- TRACE_EVENT(nfsd_cb_recall,
- 	TP_PROTO(
- 		const struct nfs4_stid *stid
+Hmm, this looks like a bug. I should allow the %.*s notation.
 
+I probably should fix that.
 
+-- Steve
