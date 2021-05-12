@@ -7,27 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25702C2D0DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 891EEC2D0DC
 	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 01C0361370
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7492160FEE
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236853AbhELQcV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 May 2021 12:32:21 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34570 "EHLO mail.kernel.org"
+        id S237012AbhELQcY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 May 2021 12:32:24 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33528 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S238719AbhELQGI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 May 2021 12:06:08 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 78CF261CEA;
-        Wed, 12 May 2021 15:35:03 +0000 (UTC)
-Subject: [PATCH v2 01/25] NFSD: Fix TP_printk() format specifier in
- trace_nfsd_dirent()
+        id S238937AbhELQGu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 May 2021 12:06:50 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 8A8A461CF8;
+        Wed, 12 May 2021 15:35:16 +0000 (UTC)
+Subject: [PATCH v2 03/25] NFSD: Add nfsd_clid_cred_mismatch tracepoint
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     dwysocha@redhat.com, bfields@fieldses.org, rostedt@goodmis.org
-Date:   Wed, 12 May 2021 11:35:02 -0400
-Message-ID: <162083370248.3108.7424008399973918267.stgit@klimt.1015granger.net>
+Date:   Wed, 12 May 2021 11:35:15 -0400
+Message-ID: <162083371563.3108.13309642693256783022.stgit@klimt.1015granger.net>
 In-Reply-To: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 References: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.1
@@ -38,54 +37,104 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Since commit 9a6944fee68e ("tracing: Add a verifier to check string
-pointers for trace events"), which was merged in v5.13-rc1,
-TP_printk() no longer tacitly supports the "%.*s" format specifier.
+Record when a client tries to establish a lease record but uses an
+unexpected credential. This is often a sign of a configuration
+problem.
 
-Note that __string() and __assign_str() cannot be used for
-non-NUL-terminated C strings because they perform a strlen() on
-the string that is to be copied.
-
-Instead, memcpy the whole file name into the record, but display
-just the part up to the first NUL. In almost every case that will
-show the whole file name.
-
-Reported-by: David Wysochanski <dwysocha@redhat.com>
-Fixes: 6019ce0742ca ("NFSD: Add a tracepoint to record directory entry encoding")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steven Rostedt <rostedt@goodmis.org>
 ---
- fs/nfsd/trace.h |   12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c |   14 ++++++++++----
+ fs/nfsd/trace.h     |   28 ++++++++++++++++++++++++++++
+ 2 files changed, 38 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6abe48dee6ed..84c4021b3826 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3181,6 +3181,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		if (!creds_match) { /* case 3 */
+ 			if (client_has_state(conf)) {
+ 				status = nfserr_clid_inuse;
++				trace_nfsd_clid_cred_mismatch(conf, rqstp);
+ 				goto out;
+ 			}
+ 			goto out_new;
+@@ -3425,9 +3426,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 			goto out_free_conn;
+ 		}
+ 	} else if (unconf) {
++		status = nfserr_clid_inuse;
+ 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+ 		    !rpc_cmp_addr(sa, (struct sockaddr *) &unconf->cl_addr)) {
+-			status = nfserr_clid_inuse;
++			trace_nfsd_clid_cred_mismatch(unconf, rqstp);
+ 			goto out_free_conn;
+ 		}
+ 		status = nfserr_wrong_cred;
+@@ -3976,7 +3978,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		if (clp_used_exchangeid(conf))
+ 			goto out;
+ 		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
+-			trace_nfsd_clid_inuse_err(conf);
++			trace_nfsd_clid_cred_mismatch(conf, rqstp);
+ 			goto out;
+ 		}
+ 	}
+@@ -4034,10 +4036,14 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 	 * Nevertheless, RFC 7530 recommends INUSE for this case:
+ 	 */
+ 	status = nfserr_clid_inuse;
+-	if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred))
++	if (unconf && !same_creds(&unconf->cl_cred, &rqstp->rq_cred)) {
++		trace_nfsd_clid_cred_mismatch(unconf, rqstp);
+ 		goto out;
+-	if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred))
++	}
++	if (conf && !same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
++		trace_nfsd_clid_cred_mismatch(conf, rqstp);
+ 		goto out;
++	}
+ 	/* cases below refer to rfc 3530 section 14.2.34: */
+ 	if (!unconf || !same_verf(&confirm, &unconf->cl_confirm)) {
+ 		if (conf && same_verf(&confirm, &conf->cl_confirm)) {
 diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 27a93ebd1d80..781af519b40c 100644
+index f0ee18202de0..25ed99220c7b 100644
 --- a/fs/nfsd/trace.h
 +++ b/fs/nfsd/trace.h
-@@ -400,19 +400,17 @@ TRACE_EVENT(nfsd_dirent,
- 	TP_STRUCT__entry(
- 		__field(u32, fh_hash)
- 		__field(u64, ino)
--		__field(int, len)
--		__dynamic_array(unsigned char, name, namlen)
-+		__dynamic_array(char, name, namlen + 1)
- 	),
- 	TP_fast_assign(
- 		__entry->fh_hash = fhp ? knfsd_fh_hash(&fhp->fh_handle) : 0;
- 		__entry->ino = ino;
--		__entry->len = namlen;
- 		memcpy(__get_str(name), name, namlen);
--		__assign_str(name, name);
-+		__get_str(name)[namlen] = '\0';
- 	),
--	TP_printk("fh_hash=0x%08x ino=%llu name=%.*s",
--		__entry->fh_hash, __entry->ino,
--		__entry->len, __get_str(name))
-+	TP_printk("fh_hash=0x%08x ino=%llu name=%s",
-+		__entry->fh_hash, __entry->ino, __get_str(name)
-+	)
- )
+@@ -534,6 +534,34 @@ DEFINE_EVENT(nfsd_net_class, nfsd_##name, \
+ DEFINE_NET_EVENT(grace_start);
+ DEFINE_NET_EVENT(grace_complete);
  
- #include "state.h"
++TRACE_EVENT(nfsd_clid_cred_mismatch,
++	TP_PROTO(
++		const struct nfs4_client *clp,
++		const struct svc_rqst *rqstp
++	),
++	TP_ARGS(clp, rqstp),
++	TP_STRUCT__entry(
++		__field(u32, cl_boot)
++		__field(u32, cl_id)
++		__field(unsigned long, cl_flavor)
++		__field(unsigned long, new_flavor)
++		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
++	),
++	TP_fast_assign(
++		__entry->cl_boot = clp->cl_clientid.cl_boot;
++		__entry->cl_id = clp->cl_clientid.cl_id;
++		__entry->cl_flavor = clp->cl_cred.cr_flavor;
++		__entry->new_flavor = rqstp->rq_cred.cr_flavor;
++		memcpy(__entry->addr, &rqstp->rq_xprt->xpt_remote,
++			sizeof(struct sockaddr_in6));
++	),
++	TP_printk("client %08x:%08x flavor=%s, conflict=%s from addr=%pISpc",
++		__entry->cl_boot, __entry->cl_id,
++		show_nfsd_authflavor(__entry->cl_flavor),
++		show_nfsd_authflavor(__entry->new_flavor), __entry->addr
++	)
++)
++
+ TRACE_EVENT(nfsd_clid_inuse_err,
+ 	TP_PROTO(const struct nfs4_client *clp),
+ 	TP_ARGS(clp),
 
 
