@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70A11C43611
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B68C2C43616
 	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:36:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4EBF1611BE
+	by mail.kernel.org (Postfix) with ESMTP id 9EF3461285
 	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:36:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239058AbhELQdI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 May 2021 12:33:08 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34478 "EHLO mail.kernel.org"
+        id S241000AbhELQdS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 May 2021 12:33:18 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33530 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S239184AbhELQHe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 May 2021 12:07:34 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 1554961C48;
-        Wed, 12 May 2021 15:36:47 +0000 (UTC)
-Subject: [PATCH v2 17/25] NFSD: Adjust cb_shutdown tracepoint
+        id S239265AbhELQHi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 May 2021 12:07:38 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1A5CB61C55;
+        Wed, 12 May 2021 15:37:01 +0000 (UTC)
+Subject: [PATCH v2 19/25] NFSD: Enhance the nfsd_cb_setup tracepoint
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     dwysocha@redhat.com, bfields@fieldses.org, rostedt@goodmis.org
-Date:   Wed, 12 May 2021 11:36:47 -0400
-Message-ID: <162083380716.3108.17518146733497794928.stgit@klimt.1015granger.net>
+Date:   Wed, 12 May 2021 11:37:00 -0400
+Message-ID: <162083382016.3108.5599267167676970582.stgit@klimt.1015granger.net>
 In-Reply-To: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 References: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.1
@@ -37,35 +37,73 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Show when the upper layer requested a shutdown. RPC tracepoints can
-already show when rpc_shutdown_client() is called.
+Display the transport protocol and authentication flavor so admins
+can see what they might be getting wrong.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4callback.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4callback.c |    3 ++-
+ fs/nfsd/trace.h        |   27 ++++++++++++++++++++++++++-
+ 2 files changed, 28 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index b6cc51a9f37c..ab1836381e22 100644
+index 15ba16c54793..c2a2a58b3581 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -1233,6 +1233,9 @@ void nfsd4_destroy_callback_queue(void)
- /* must be called under the state lock */
- void nfsd4_shutdown_callback(struct nfs4_client *clp)
- {
-+	if (clp->cl_cb_state != NFSD4_CB_UNKNOWN)
-+		trace_nfsd_cb_shutdown(clp);
+@@ -939,7 +939,8 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 	}
+ 	clp->cl_cb_client = client;
+ 	clp->cl_cb_cred = cred;
+-	trace_nfsd_cb_setup(clp);
++	trace_nfsd_cb_setup(clp, rpc_peeraddr2str(client, RPC_DISPLAY_NETID),
++			    args.authflavor);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index bd683523b052..a0d010d6e135 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -907,7 +907,6 @@ DEFINE_EVENT(nfsd_cb_class, nfsd_cb_##name,		\
+ 	TP_PROTO(const struct nfs4_client *clp),	\
+ 	TP_ARGS(clp))
+ 
+-DEFINE_NFSD_CB_EVENT(setup);
+ DEFINE_NFSD_CB_EVENT(state);
+ DEFINE_NFSD_CB_EVENT(lost);
+ DEFINE_NFSD_CB_EVENT(shutdown);
+@@ -928,6 +927,32 @@ TRACE_DEFINE_ENUM(RPC_AUTH_GSS_KRB5P);
+ 		{ RPC_AUTH_GSS_KRB5I,		"krb5i" },		\
+ 		{ RPC_AUTH_GSS_KRB5P,		"krb5p" })
+ 
++TRACE_EVENT(nfsd_cb_setup,
++	TP_PROTO(const struct nfs4_client *clp,
++		 const char *netid,
++		 rpc_authflavor_t authflavor
++	),
++	TP_ARGS(clp, netid, authflavor),
++	TP_STRUCT__entry(
++		__field(u32, cl_boot)
++		__field(u32, cl_id)
++		__field(unsigned long, authflavor)
++		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
++		__array(unsigned char, netid, 8)
++	),
++	TP_fast_assign(
++		__entry->cl_boot = clp->cl_clientid.cl_boot;
++		__entry->cl_id = clp->cl_clientid.cl_id;
++		strlcpy(__entry->netid, netid, sizeof(__entry->netid));
++		__entry->authflavor = authflavor;
++		memcpy(__entry->addr, &clp->cl_cb_conn.cb_addr,
++			sizeof(struct sockaddr_in6));
++	),
++	TP_printk("addr=%pISpc client %08x:%08x proto=%s flavor=%s",
++		__entry->addr, __entry->cl_boot, __entry->cl_id,
++		__entry->netid, show_nfsd_authflavor(__entry->authflavor))
++);
 +
- 	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
- 	/*
- 	 * Note this won't actually result in a null callback;
-@@ -1278,7 +1281,6 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 	 * kill the old client:
- 	 */
- 	if (clp->cl_cb_client) {
--		trace_nfsd_cb_shutdown(clp);
- 		rpc_shutdown_client(clp->cl_cb_client);
- 		clp->cl_cb_client = NULL;
- 		put_cred(clp->cl_cb_cred);
+ TRACE_EVENT(nfsd_cb_setup_err,
+ 	TP_PROTO(
+ 		const struct nfs4_client *clp,
 
 
