@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D384C4361B
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:32:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9AE8C43603
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0722C61285
+	by mail.kernel.org (Postfix) with ESMTP id 9D1D761370
 	for <linux-nfs@archiver.kernel.org>; Wed, 12 May 2021 16:31:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237541AbhELQcn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 May 2021 12:32:43 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33530 "EHLO mail.kernel.org"
+        id S237510AbhELQck (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 May 2021 12:32:40 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34634 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S239069AbhELQHP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 May 2021 12:07:15 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 5FD5461D10;
-        Wed, 12 May 2021 15:35:49 +0000 (UTC)
-Subject: [PATCH v2 08/25] NFSD: Add nfsd_clid_destroyed tracepoint
+        id S239015AbhELQHD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 May 2021 12:07:03 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id D035061D0C;
+        Wed, 12 May 2021 15:35:42 +0000 (UTC)
+Subject: [PATCH v2 07/25] NFSD: Add nfsd_clid_reclaim_complete tracepoint
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     dwysocha@redhat.com, bfields@fieldses.org, rostedt@goodmis.org
-Date:   Wed, 12 May 2021 11:35:48 -0400
-Message-ID: <162083374844.3108.17696441537458161964.stgit@klimt.1015granger.net>
+Date:   Wed, 12 May 2021 11:35:41 -0400
+Message-ID: <162083374190.3108.9986810991492118231.stgit@klimt.1015granger.net>
 In-Reply-To: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 References: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.1
@@ -37,8 +37,6 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Record client-requested termination of client IDs.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
  fs/nfsd/nfs4state.c |    1 +
@@ -46,28 +44,28 @@ Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
  2 files changed, 2 insertions(+)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 03f2770c815f..08ff643e96fb 100644
+index 37cef1f498e1..03f2770c815f 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3907,6 +3907,7 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp,
- 		status = nfserr_wrong_cred;
+@@ -3949,6 +3949,7 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp,
  		goto out;
- 	}
-+	trace_nfsd_clid_destroyed(&clp->cl_clientid);
- 	unhash_client_locked(clp);
+ 
+ 	status = nfs_ok;
++	trace_nfsd_clid_reclaim_complete(&clp->cl_clientid);
+ 	nfsd4_client_record_create(clp);
+ 	inc_reclaim_complete(clp);
  out:
- 	spin_unlock(&nn->client_lock);
 diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 2f7d111461d0..cef826f64575 100644
+index c0cf98f6da63..2f7d111461d0 100644
 --- a/fs/nfsd/trace.h
 +++ b/fs/nfsd/trace.h
-@@ -511,6 +511,7 @@ DEFINE_EVENT(nfsd_clientid_class, nfsd_clid_##name, \
+@@ -509,6 +509,7 @@ DEFINE_EVENT(nfsd_clientid_class, nfsd_clid_##name, \
+ 	TP_PROTO(const clientid_t *clid), \
+ 	TP_ARGS(clid))
  
- DEFINE_CLIENTID_EVENT(reclaim_complete);
++DEFINE_CLIENTID_EVENT(reclaim_complete);
  DEFINE_CLIENTID_EVENT(confirmed);
-+DEFINE_CLIENTID_EVENT(destroyed);
  DEFINE_CLIENTID_EVENT(expired);
  DEFINE_CLIENTID_EVENT(purged);
- DEFINE_CLIENTID_EVENT(renew);
 
 
