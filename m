@@ -2,243 +2,117 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C34E0C433B4
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 May 2021 15:53:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A1B0DC433B4
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 May 2021 16:43:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8E16661408
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 May 2021 15:53:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 813526143B
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 May 2021 16:43:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232055AbhEMPzH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 13 May 2021 11:55:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34192 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231771AbhEMPzH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 13 May 2021 11:55:07 -0400
-Received: from mail-ed1-x52d.google.com (mail-ed1-x52d.google.com [IPv6:2a00:1450:4864:20::52d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB70DC061574
-        for <linux-nfs@vger.kernel.org>; Thu, 13 May 2021 08:53:48 -0700 (PDT)
-Received: by mail-ed1-x52d.google.com with SMTP id g14so31543333edy.6
-        for <linux-nfs@vger.kernel.org>; Thu, 13 May 2021 08:53:48 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=O2OqIHjGtm/MuFrvbcQprR00WCbj+k3KRo69L4HEcCo=;
-        b=OYgK5z1uycEkr7E+lf86+gABZXS1nV7lmJSzstaWEXDkryjOc3eTsDINKOP/TWfgof
-         1wnRpbl3vMBNpZROzNYEubP48JnxrdFH/XiZL6YtZGRRuSYpx4H/1I4VPuzG9IF1nNgt
-         TL0GVX2p6VF8uOn7Md/rrApkkVTzb91rsydLj0Q29PlShvINfuCqAr01F773Ond4Yump
-         8lvp/LcVRdaouk6D6WjMWcKl21yc3RmW1ULyQ/30yPdJegQicxSt9eFMIpd8A5bu6ONR
-         HhxL9im6QifoatscJc2Hmy+EVkGe4hH6x1kSMhxghOaEcvSZUqH7CdJP5guYkAOYd1Ip
-         bRMA==
+        id S234471AbhEMQoa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 13 May 2021 12:44:30 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:23182 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S234417AbhEMQo1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 13 May 2021 12:44:27 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1620924196;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=u4S1WWBl+Kegd6xLD9awLjI+y8LQ2txbSj6xIK9Y9Xg=;
+        b=BNJvttZaWtD8IGkyZ/rC8DEzA+TEa5nDeMiQs9BhA93NtVHsiSx7Kk71cYyAq8UvYxXssg
+        E/lhaabefnXKs8lIcQvGP4cHjhu8AoWDw0QMbE7fpv8pKo9t2LnCGzvM9a8KBNLy8Hqd5x
+        bKAjSP5esGVurEBym9Oib7Az7yzSJCA=
+Received: from mail-yb1-f200.google.com (mail-yb1-f200.google.com
+ [209.85.219.200]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-8-27IB3sCuO8SP40YXtz_XWg-1; Thu, 13 May 2021 12:43:14 -0400
+X-MC-Unique: 27IB3sCuO8SP40YXtz_XWg-1
+Received: by mail-yb1-f200.google.com with SMTP id c9-20020a2580c90000b02904f86395a96dso26939752ybm.19
+        for <linux-nfs@vger.kernel.org>; Thu, 13 May 2021 09:43:14 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=O2OqIHjGtm/MuFrvbcQprR00WCbj+k3KRo69L4HEcCo=;
-        b=Ya0rmDOh8I1fGbOMaVcahdGjM0mq51ECgio3QTF85bw/Zel6ri5ZFx+fudnflGliCc
-         P0/Xz8X7sL5W7Dx8fc3v9FUj59H9ofX5E8VoshK68Issd9zP5PAdRJDnU7jRNWjtBooo
-         5ezvybdP5Uh4wIiIYnV98WzI7lsidRHLuL8zIUTrjmWONMcJfMF5v0Z+pH5qp6PVEFVo
-         ZnTT5fUmJsLua7slAU+ZadxwqvmKITuZWLr0HdZUeGT3Allxkay43ZkVFnxDsJdNMScW
-         jYmJf7J8TJJh8slNyIQ1b43akguNFhEQbd9pbGgDQ3sHWccNS+Xut7D2JpWCxjrIAmjE
-         4M2Q==
-X-Gm-Message-State: AOAM532VZ+pj/rb5cGypRTamlV8HA/bpV6TMSpGyT3uLVw32W6uzFxel
-        YMGeLdCOchq+pGqnB/vrp1QrU+eS5ri/u3Pvr6M=
-X-Google-Smtp-Source: ABdhPJxEMEZ7T0M3MatwAZFpbesvP3C6z9jUnkPvTzzaNySnWeDtDqudF1cH07AM+16cJnUeFxvhlGtJqazrGE/NxLw=
-X-Received: by 2002:a05:6402:199:: with SMTP id r25mr50718441edv.128.1620921227430;
- Thu, 13 May 2021 08:53:47 -0700 (PDT)
+        bh=u4S1WWBl+Kegd6xLD9awLjI+y8LQ2txbSj6xIK9Y9Xg=;
+        b=B7OgPHWXHJ1Biak8lz7XCJjP+4yukkVLQkJ+jJY3ccxA4I6IHkkOv/sVQ7qD7mLiuX
+         d6m+hGk2T+uwdRH9a/30P+Ze8gTZP6hIP5N9Kj4q5JaRuyfJc9DjPWFiJ3VtYoURzF6b
+         wSG0GZvik1o6dxGzwBr6pNXbIVjz1rBbx/zaHl7YR4phfQ40vufJNt3mejWjDLzdy6jo
+         XITLdDmCowpxnsCeDfQwjOCRtFW3UoM0EVG0sIV2Ig61YCT6w3SK75ssqgv6n1CXSmus
+         ndY360CztIrVquSsKRXkZo1Mq3x9xxXmHVsuG1O1uka7Z1yGItWZam7fG/yA3Rukfgz3
+         QLvw==
+X-Gm-Message-State: AOAM533TyVapJx285uPbtG8Vv6hx+gSCJ2rlw+9QlMUXut5CXtlMQlxw
+        Vpl3jdILiQA+CgeC8D3aFS7bAZPMnoGa/y8q8M+yJIMiS57wxpt4tdfedC91urZxfecn5HAZdvh
+        b5DHqdsgrqn0NS+JMd9lbsx32WpO6i68wN5Eo
+X-Received: by 2002:a25:6557:: with SMTP id z84mr39938013ybb.88.1620924194020;
+        Thu, 13 May 2021 09:43:14 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJyXZ/SrUg0yiF0CoRZZ+OR/cTP3uNS4JFWXaiisuVksr+LqjF4uuu/beuZcm4aETmWeeJh9O/1FL9HB7kT4D9Q=
+X-Received: by 2002:a25:6557:: with SMTP id z84mr39937985ybb.88.1620924193769;
+ Thu, 13 May 2021 09:43:13 -0700 (PDT)
 MIME-Version: 1.0
-References: <20210426171947.99233-1-olga.kornievskaia@gmail.com>
- <20210426171947.99233-10-olga.kornievskaia@gmail.com> <20210427044214.vlbmbfdh5dpq4vhl@gmail.com>
- <CAN-5tyHPHk891-NkHt=6o+OuxRB+0ZqQRKqJ=hFThE=oYM0V7Q@mail.gmail.com>
- <20210512104205.hblxgfiagbod6pis@gmail.com> <CAN-5tyEoaKseyjOLA+ni7rCXG7=MnDKPCC3YN68=SHm9NaC_4A@mail.gmail.com>
- <CAN-5tyHy8VR4apVCH0kFgmvceWynx5ZwngdT3_V6abDXZnmDgg@mail.gmail.com>
- <CAN-5tyG68pQwW_0+GqqF1w+CmCOUU8ncN6++jAA7i_wqibturw@mail.gmail.com>
- <20210512141623.qovczudkan5h6kjz@gmail.com> <c85066f64c19e751c1bdef9344a43037bb674712.camel@hammerspace.com>
- <6F49DAEE-F51F-40D5-866D-A7452126CF41@oracle.com>
-In-Reply-To: <6F49DAEE-F51F-40D5-866D-A7452126CF41@oracle.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Thu, 13 May 2021 11:53:36 -0400
-Message-ID: <CAN-5tyGu53inEh7p=DmxVzRoN6gbqOj8jfD8VqGQqk5ahnxZxw@mail.gmail.com>
-Subject: Re: [PATCH v3 09/13] sunrpc: add a symlink from rpc-client directory
- to the xprt_switch
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "dan@kernelim.com" <dan@kernelim.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>
+References: <162083366966.3108.12581818416105328952.stgit@klimt.1015granger.net>
+ <162083375498.3108.14242612463783055564.stgit@klimt.1015granger.net>
+In-Reply-To: <162083375498.3108.14242612463783055564.stgit@klimt.1015granger.net>
+From:   David Wysochanski <dwysocha@redhat.com>
+Date:   Thu, 13 May 2021 12:42:37 -0400
+Message-ID: <CALF+zOkZYg7RzayueKGwFaE-8sHKTB6g4q_Ej-+u=MkH35Dnqw@mail.gmail.com>
+Subject: Re: [PATCH v2 09/25] NFSD: Add a couple more nfsd_clid_expired call sites
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, rostedt@goodmis.org
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, May 13, 2021 at 11:18 AM Chuck Lever III <chuck.lever@oracle.com> wrote:
+On Wed, May 12, 2021 at 11:36 AM Chuck Lever <chuck.lever@oracle.com> wrote:
 >
+> Improve observation of NFSv4 lease expiry.
 >
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/nfs4state.c |    3 +++
+>  1 file changed, 3 insertions(+)
 >
-> > On May 13, 2021, at 11:13 AM, Trond Myklebust <trondmy@hammerspace.com> wrote:
-> >
-> > On Wed, 2021-05-12 at 17:16 +0300, Dan Aloni wrote:
-> >> On Wed, May 12, 2021 at 09:49:01AM -0400, Olga Kornievskaia wrote:
-> >>> On Wed, May 12, 2021 at 9:40 AM Olga Kornievskaia <
-> >>> olga.kornievskaia@gmail.com> wrote:
-> >>>
-> >>>> On Wed, May 12, 2021 at 9:37 AM Olga Kornievskaia
-> >>>> <olga.kornievskaia@gmail.com> wrote:
-> >>>>> On Wed, May 12, 2021 at 6:42 AM Dan Aloni <dan@kernelim.com>
-> >>>>> wrote:
-> >>>>>> On Tue, Apr 27, 2021 at 08:12:53AM -0400, Olga Kornievskaia
-> >>>>>> wrote:
-> >>>>>>> On Tue, Apr 27, 2021 at 12:42 AM Dan Aloni <
-> >>>>>>> dan@kernelim.com> wrote:
-> >>>>>>>> On Mon, Apr 26, 2021 at 01:19:43PM -0400, Olga
-> >>>>>>>> Kornievskaia wrote:
-> >>>>>>>>> From: Olga Kornievskaia <kolga@netapp.com>
-> >>>>>>>>>
-> >>>>>>>>> An rpc client uses a transport switch and one ore more
-> >>>>>>>>> transports
-> >>>>>>>>> associated with that switch. Since transports are
-> >>>>>>>>> shared among
-> >>>>>>>>> rpc clients, create a symlink into the xprt_switch
-> >>>>>>>>> directory
-> >>>>>>>>> instead of duplicating entries under each rpc client.
-> >>>>>>>>>
-> >>>>>>>>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> >>>>>>>>>
-> >>>>>>>>> ..
-> >>>>>>>>> @@ -188,6 +204,11 @@ void
-> >>>>>>>>> rpc_sysfs_client_destroy(struct
-> >>>> rpc_clnt *clnt)
-> >>>>>>>>>       struct rpc_sysfs_client *rpc_client = clnt-
-> >>>>>>>>>> cl_sysfs;
-> >>>>>>>>>
-> >>>>>>>>>       if (rpc_client) {
-> >>>>>>>>> +             char name[23];
-> >>>>>>>>> +
-> >>>>>>>>> +             snprintf(name, sizeof(name), "switch-%d",
-> >>>>>>>>> +                      rpc_client->xprt_switch-
-> >>>>>>>>>> xps_id);
-> >>>>>>>>> +             sysfs_remove_link(&rpc_client->kobject,
-> >>>>>>>>> name);
-> >>>>>>>>
-> >>>>>>>> Hi Olga,
-> >>>>>>>>
-> >>>>>>>> If a client can use a single switch, shouldn't the name
-> >>>>>>>> of the
-> >>>> symlink
-> >>>>>>>> be just "switch"? This is to be consistent with other
-> >>>>>>>> symlinks in
-> >>>>>>>> `sysfs` such as the ones in block layer, for example in
-> >>>>>>>> my
-> >>>>>>>> `/sys/block/sda`:
-> >>>>>>>>
-> >>>>>>>>     bdi ->
-> >>>>>>>> ../../../../../../../../../../../virtual/bdi/8:0
-> >>>>>>>>     device -> ../../../5:0:0:0
-> >>>>>>>
-> >>>>>>> I think the client is written so that in the future it
-> >>>>>>> might have more
-> >>>>>>> than one switch?
-> >>>>>>
-> >>>>>> I wonder what would be the use for that, as a switch is
-> >>>>>> already
-> >>>> collection of
-> >>>>>> xprts. Which would determine the switch to use per a new task
-> >>>>>> IO?
-> >>>>>
-> >>>>>
-> >>>>> I thought the switch is a collection of xprts of the same type.
-> >>>>> And if
-> >>>> you wanted to have an RDMA connection and a TCP connection to the
-> >>>> same
-> >>>> server, then it would be stored under different switches? For
-> >>>> instance we
-> >>>> round-robin thru the transports but I don't see why we would be
-> >>>> doing so
-> >>>> between a TCP and an RDMA transport. But I see how a client can
-> >>>> totally
-> >>>> switch from an TCP based transport to an RDMA one (or a set of
-> >>>> transports
-> >>>> and round-robin among that set). But perhaps I'm wrong in how I'm
-> >>>> thinking
-> >>>> about xprt_switch and multipathing.
-> >>>>
-> >>>> <looks like my reply bounced so trying to resend>
-> >>>>
-> >>>
-> >>> And more to answer your question, we don't have a method to switch
-> >>> between
-> >>> different xprt switches. But we don't have a way to specify how to
-> >>> mount
-> >>> with multiple types of transports. Perhaps sysfs could be/would be
-> >>> a way to
-> >>> switch between the two. Perhaps during session trunking discovery,
-> >>> the
-> >>> server can return back a list of IPs and types of transports. Say
-> >>> all IPs
-> >>> would be available via TCP and RDMA, then the client can create a
-> >>> switch
-> >>> with RDMA transports and another with TCP transports, then perhaps
-> >>> there
-> >>> will be a policy engine that would decide which one to choose to
-> >>> use to
-> >>> begin with. And then with sysfs interface would be a way to switch
-> >>> between
-> >>> the two if there are problems.
-> >>
-> >> You raise a good point, also relevant to the ability to dynamically
-> >> add
-> >> new transports on the fly with the sysfs interface - their protocol
-> >> type
-> >> may be different.
-> >>
-> >> Returning to the topic of multiple switches per client, I recall that
-> >> a
-> >> few times it was hinted that there is an intention to have the
-> >> implementation details of xprtswitch be modified to be loadable and
-> >> pluggable with custom algorithms.  And if we are going in that
-> >> direction, I'd expect the advanced transport management and request
-> >> routing can be below the RPC client level, where we have example
-> >> uses:
-> >>
-> >> 1) Optimizations in request routing that I've previously written
-> >> about
-> >> (based on request data memory).
-> >>
-> >> 2) If we lift the restriction of multiple protocol types on the same
-> >> xprtswitch on one switch, then we can also allow for the
-> >> implementation
-> >> 'RDMA-by-default with TCP failover on standby' similar to what you
-> >> suggest, but with one switch maintaining two lists behind the scenes.
-> >>
-> >
-> > I'm not that interested in supporting multiple switches per client, or
-> > any setup that is asymmetric w.r.t. transport characteristics at this
-> > time.
-> >
-> > Any such setup is going to need a policy engine in order to decide
-> > which RPC calls can be placed on which set of transports. That again
-> > will end up adding a lot of complexity in the kernel itself. I've yet
-> > to see any compelling justification for doing so.
->
-> I agree -- SMB multi-channel allows TCP+RDMA configurations, and its
-> tough to decide how to distribute work across connections and NICs
-> that have such vastly different performance characteristics.
->
-> I would like to see us crawling and walking before trying to run.
 
-Sounds good folks. I'll remove the multiple switches from the sysfs
-infrastructure. v7 coming up.
+How about adding a parameter to explain the location of the expiry to
+make it more slightly more readable?
+Below is an attempt at the two added here, I think there's one more
+not shown though in nfs4_laundromat, which you could just use
+"laundromat".
 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 08ff643e96fb..7fa90a3177fa 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2665,6 +2665,8 @@ static void force_expire_client(struct nfs4_client *clp)
+>         struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+>         bool already_expired;
+>
+> +       trace_nfsd_clid_expired(&clp->cl_clientid);
+> +
+
+trace_nfsd_clid_expired(..., "admin forced");
+
+>         spin_lock(&clp->cl_lock);
+>         clp->cl_time = 0;
+>         spin_unlock(&clp->cl_lock);
+> @@ -4075,6 +4077,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>                                 goto out;
+>                         status = mark_client_expired_locked(old);
+>                         if (status) {
+> +                               trace_nfsd_clid_expired(&old->cl_clientid);
+
+trace_nfsd_clid_expired(..., "setclientid_confirm existing"); /* found
+an existing confirmed clientid by name */
+
+>                                 old = NULL;
+>                                 goto out;
+>                         }
 >
 >
-> --
-> Chuck Lever
->
->
->
+
