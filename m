@@ -2,314 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-6.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 114C6C43462
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 May 2021 13:42:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B147C43462
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 May 2021 13:46:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E44A8611BD
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 May 2021 13:42:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0D0AD611C2
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 May 2021 13:46:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237449AbhEQNn2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 May 2021 09:43:28 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:24575 "EHLO
+        id S237482AbhEQNrg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 May 2021 09:47:36 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:33300 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S237452AbhEQNn0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 May 2021 09:43:26 -0400
+        by vger.kernel.org with ESMTP id S235085AbhEQNrf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 May 2021 09:47:35 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1621258930;
+        s=mimecast20190719; t=1621259179;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=twfsLPEKFgNum8AA5vaaUbq3d4tpMWc4MmkXXQv+4Yw=;
-        b=grtL1MY/qImCjWiVXuEL5z8/xS+ryUjg71P5oqkWzs/TOGCBaaSDGY4w0LIf6OQ57jJBlW
-        bLE2R8POQT6i7i3tp/zE6y4ZzzaA1PwsNhx2JsILat/Sp02FcWCgJXoR94j4VeZ4BNasVW
-        jrFbe/A/K4uyLR9EH10ECZa+m/3bsQ4=
-Received: from mail-ej1-f70.google.com (mail-ej1-f70.google.com
- [209.85.218.70]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-315-FPX8l-9uMomi3XetOqyeFg-1; Mon, 17 May 2021 09:42:07 -0400
-X-MC-Unique: FPX8l-9uMomi3XetOqyeFg-1
-Received: by mail-ej1-f70.google.com with SMTP id z1-20020a1709068141b02903cd421d7803so1040496ejw.22
-        for <linux-nfs@vger.kernel.org>; Mon, 17 May 2021 06:42:07 -0700 (PDT)
+        bh=O6gr94SKde4B9VQO2zKDR9PV8wUiJnB7z5q1aL8r6mE=;
+        b=g6tnM7mXjTreJhnuhfR+kd5FMMVZoBuDUyt0tCcQfrnIL40c8n6YxnYnSHx8JoCkVWnKHP
+        AAIUdkKsZnPyOM00f0bG+boBkRSpDGU4jUaANt43lB5/GUuEQuUHaX5ml7znnEv2jSLrrt
+        0v/tkL8NMmOs6aBD+JNH3EZmC3j0kls=
+Received: from mail-yb1-f200.google.com (mail-yb1-f200.google.com
+ [209.85.219.200]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-559-bh_HXi5iNC20Arm8nR1vpQ-1; Mon, 17 May 2021 09:46:17 -0400
+X-MC-Unique: bh_HXi5iNC20Arm8nR1vpQ-1
+Received: by mail-yb1-f200.google.com with SMTP id b66-20020a25cb450000b02905076ea039f1so8473607ybg.1
+        for <linux-nfs@vger.kernel.org>; Mon, 17 May 2021 06:46:17 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=twfsLPEKFgNum8AA5vaaUbq3d4tpMWc4MmkXXQv+4Yw=;
-        b=YWGCImakHIDxUwv1ewnRHqQ60mjZzzk3V1LE33KdfxJRslwvWMlJZ+dS7KerUXzZfx
-         l8+FE6tlrGi4/9L3A/XIyqqIWDvkV/YcVXOhRJrLjKmFa+MlUvh4Rnw+UChvk9PPRv8b
-         McB4lyVE+enqapILraK+J2pMaOKefK0L59gz/P477j5TRdUmd/ja48cof3bmj5nvyZa9
-         f3cV2MeLjxvrf+qfCpLXPKpa7shpvg/dAWBpZ7TaqtSdibByOIHlg7FiUCSlx8zdkfLG
-         ns1uhbCm7g0V3pRKqJ6tcHSJaIXDJx5tf94zImt4MR1Q56Q/XQTEzPRKD9OdIqQq0uZP
-         cmow==
-X-Gm-Message-State: AOAM531GIcSzCFFUDxsS03TJEP+WerxdJl1UTQCRxgSjs/ws9xBB7d4b
-        dIeGNCtF+MKpbhthGWkiRGggGsZGCmOvUHBG+0QHixRi1PAzTrx5XTZE+ppzKX4Qm7EHV1Yqwkp
-        4CA/Q0c+jYZJTbVVi4tV/
-X-Received: by 2002:a17:906:f42:: with SMTP id h2mr64182370ejj.317.1621258926501;
-        Mon, 17 May 2021 06:42:06 -0700 (PDT)
-X-Google-Smtp-Source: ABdhPJw/TXNfS7hrsXTejWGwZFUb7ADqFT+NBbJ8RGm5mhZDhJwKqzjaRjEb0LxdQjAcP74Co5oq5g==
-X-Received: by 2002:a17:906:f42:: with SMTP id h2mr64182351ejj.317.1621258926237;
-        Mon, 17 May 2021 06:42:06 -0700 (PDT)
-Received: from localhost.localdomain ([2a02:8308:b105:dd00:277b:6436:24db:9466])
-        by smtp.gmail.com with ESMTPSA id f7sm11302466edd.5.2021.05.17.06.42.04
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 17 May 2021 06:42:05 -0700 (PDT)
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=O6gr94SKde4B9VQO2zKDR9PV8wUiJnB7z5q1aL8r6mE=;
+        b=BGbNLA4UtoFCZFe2V6TIxJqKae3NQSD61veTYfooKushHnaFM0oln1v+mwRKToOnoo
+         SzbX6T2VSOawBqGjFVB8CmbnXrh4Ek82s/oclu1iSSTr5P6cFysLMXFGCXDYNwbKwtZl
+         my9Sruqv44sDIIfpHnaLIUTt+85jby+Zt7Pkid9o0PqacIZ33W11COq+CyvPqxy2/bOD
+         r5kcZXnv5L/exuBnfYGOBCa2yEqpNxD+Lib5JxNElPEV1AJhKUxzmMohb+9xae7oUfrP
+         d0RT3JYYhU81VBGwChkFEPCY7EuZtMI/269QCw9MS5AGDoMz1uhHGN3u5Rt7EoE637dZ
+         umWQ==
+X-Gm-Message-State: AOAM532QMFlJwvn8l37jwgSii358c/4FRSP2FE27nE6N+0IktShf1FYb
+        63I69Wve1SzAoH5RtiqkqytyrgpSm+FM/nmQbKbn/ksF6cUnmsWk3RVaA3v+MZXQhM133aTrsvW
+        SwGxdfsCWjTV5WxChmIlLheOPR+A31FphUGKd
+X-Received: by 2002:a25:ed12:: with SMTP id k18mr18195723ybh.340.1621259177100;
+        Mon, 17 May 2021 06:46:17 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJzwK+KojIQGBbY/tivk0bWRjrdOpNQ4CP1gdoVKuvMZGWmwJCCUScXooFAbY7pwFCMtgUCp0ALpfKPY3u5ezt4=
+X-Received: by 2002:a25:ed12:: with SMTP id k18mr18195683ybh.340.1621259176769;
+ Mon, 17 May 2021 06:46:16 -0700 (PDT)
+MIME-Version: 1.0
+References: <20210409111254.271800-1-omosnace@redhat.com> <YHBITqlAfOk8IV5w@zeniv-ca.linux.org.uk>
+ <CAFqZXNuhog5YfaG9CBVmZ+C3mSzAEgZkSC-mrQGOD4vyLEz4Xw@mail.gmail.com>
+In-Reply-To: <CAFqZXNuhog5YfaG9CBVmZ+C3mSzAEgZkSC-mrQGOD4vyLEz4Xw@mail.gmail.com>
 From:   Ondrej Mosnacek <omosnace@redhat.com>
-To:     linux-security-module@vger.kernel.org, selinux@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+Date:   Mon, 17 May 2021 15:46:04 +0200
+Message-ID: <CAFqZXNs6dVkAj4GYme1-COU-EvmTxRXAgS6oTUQpxxjNiamyzg@mail.gmail.com>
+Subject: Re: [PATCH 0/2] vfs/security/NFS/btrfs: clean up and fix LSM option handling
+To:     Al Viro <viro@zeniv.linux.org.uk>
+Cc:     Linux Security Module list 
+        <linux-security-module@vger.kernel.org>,
+        SElinux list <selinux@vger.kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
         linux-btrfs@vger.kernel.org, Paul Moore <paul@paul-moore.com>,
         Olga Kornievskaia <aglo@umich.edu>,
-        Al Viro <viro@zeniv.linux.org.uk>,
         David Howells <dhowells@redhat.com>,
-        Stephen Smalley <stephen.smalley.work@gmail.com>,
-        Richard Haines <richard_c_haines@btinternet.com>
-Subject: [PATCH v2 1/2] vfs,LSM: introduce the FS_HANDLES_LSM_OPTS flag
-Date:   Mon, 17 May 2021 15:42:00 +0200
-Message-Id: <20210517134201.29271-2-omosnace@redhat.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210517134201.29271-1-omosnace@redhat.com>
-References: <20210517134201.29271-1-omosnace@redhat.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        Stephen Smalley <stephen.smalley.work@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a new FS_HANDLES_LSM_OPTS filesystem flag to singal to VFS that the
-filesystem does LSM option setting for the given mount on its own, so
-the security_sb_set_mnt_opts() call in vfs_get_tree() can be skipped.
+On Fri, Apr 9, 2021 at 7:39 PM Ondrej Mosnacek <omosnace@redhat.com> wrote:
+> On Fri, Apr 9, 2021 at 2:28 PM Al Viro <viro@zeniv.linux.org.uk> wrote:
+> > On Fri, Apr 09, 2021 at 01:12:52PM +0200, Ondrej Mosnacek wrote:
+> > > This series attempts to clean up part of the mess that has grown around
+> > > the LSM mount option handling across different subsystems.
+> >
+> > I would not describe growing another FS_... flag
+>
+> Why is that necessarily a bad thing?
+>
+> > *AND* spreading the
+> > FS_BINARY_MOUNTDATA further, with rather weird semantics at that,
+> > as a cleanup of any sort.
+>
+> How is this spreading it further? The patches remove one (rather bad)
+> use of it in SELinux and somewhat reduce its use in btrfs.
+>
+> Hold on... actually I just realized that with FS_HANDLES_LSM_OPTS it
+> is possible to do btrfs without FS_BINARY_MOUNTDATA and also eliminate
+> the need for the workaround in vfs_parse_fs_param() (i.e. [2]).
+>
+> Basically instead of setting FS_BINARY_MOUNTDATA | FS_HANDLES_LSM_OPTS
+> in btrfs_fs_type and neither in btrfs_root_fs_type, it is enough to
+> set neither in btrfs_fs_type and only FS_HANDLES_LSM_OPTS in
+> btrfs_root_fs_type. The security opts are then applied in the outer
+> vfs_get_tree() call instead of the inner one, but the net effect is
+> the same.
+>
+> That should pretty much do away with both the non-legit users of
+> FS_BINARY_MOUNTDATA (selinux_set_mnt_opts() and btrfs). All the rest
+> seem to be in line with the semantic.
+>
+> Would [something like] the above stand any chance of getting your approval?
 
-This allows the following simplifications:
-1. Removal of explicit LSM option handling from BTRFS.
+So I posted this variant as v2 now:
+https://lore.kernel.org/selinux/20210517134201.29271-1-omosnace@redhat.com/T/
 
-   This exists only because of the double-layer mount that BTRFS is
-   doing for its subvolume support. Setting FS_HANDLES_LSM_OPTS on the
-   inner layer (btrfs_root_fs_type) and unsetting FS_BINARY_MOUNTDATA
-   from both layers allows us to leave the LSM option handling entirely
-   on VFS as part of the outer vfs_get_tree() call.
+>
+> [2] https://lore.kernel.org/selinux/20210401065403.GA1363493@infradead.org/T/
 
-2. Removal of FS_BINARY_MOUNTDATA flags from BTRFS's fs_types.
-
-   After applying (1.), we can let VFS eat away LSM opts at the outer
-   mount layer and then do selinux_set_mnt_opts() with these opts, so
-   setting the flag is no longer needed neither for preserving the LSM
-   opts, nor for the SELinux double-set_mnt_opts exception.
-
-3. Removal of the ugly FS_BINARY_MOUNTDATA special case from
-   selinux_set_mnt_opts().
-
-   Applying (1.) and also setting FS_HANDLES_LSM_OPTS on NFS fs_types
-   (which needs to unavoidably do the LSM options handling on its own
-   due to the SECURITY_LSM_NATIVE_LABELS flag usage) gets us to the
-   state where there is an exactly one security_sb_set_mnt_opts() or
-   security_sb_clone_mnt_opts() call for each superblock, so the rather
-   hacky FS_BINARY_MOUNTDATA special case can be finally removed from
-   security_sb_set_mnt_opts().
-
-The only other filesystem that sets FS_BINARY_MOUNTDATA is coda, which
-is also the only one that has binary mount data && doesn't do its own
-LSM options handling. So for coda we leave FS_HANDLES_LSM_OPTS unset and
-the behavior remains unchanged - with fsconfig(2) it (probably) won't
-even mount and with mount(2) it still won't support LSM options (and the
-security_sb_set_mnt_opts() will be always performed with empty LSM
-options as before).
-
-AFAICT, this shouldn't negatively affect the other LSMs. In fact, I
-think AppArmor will now gain the ability to do its DFA matching on BTRFS
-mount options, which was prevented before due to FS_BINARY_MOUNTDATA
-being set on both its fs_types.
-
-Signed-off-by: Ondrej Mosnacek <omosnace@redhat.com>
----
- fs/btrfs/super.c         | 34 +++++-----------------------------
- fs/nfs/fs_context.c      |  6 ++++--
- fs/super.c               | 10 ++++++----
- include/linux/fs.h       |  3 ++-
- security/selinux/hooks.c | 15 ---------------
- 5 files changed, 17 insertions(+), 51 deletions(-)
-
-diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
-index 4a396c1147f1..80716ead1cde 100644
---- a/fs/btrfs/super.c
-+++ b/fs/btrfs/super.c
-@@ -1666,19 +1666,12 @@ static struct dentry *btrfs_mount_root(struct file_system_type *fs_type,
- 	struct btrfs_device *device = NULL;
- 	struct btrfs_fs_devices *fs_devices = NULL;
- 	struct btrfs_fs_info *fs_info = NULL;
--	void *new_sec_opts = NULL;
- 	fmode_t mode = FMODE_READ;
- 	int error = 0;
- 
- 	if (!(flags & SB_RDONLY))
- 		mode |= FMODE_WRITE;
- 
--	if (data) {
--		error = security_sb_eat_lsm_opts(data, &new_sec_opts);
--		if (error)
--			return ERR_PTR(error);
--	}
--
- 	/*
- 	 * Setup a dummy root and fs_info for test/set super.  This is because
- 	 * we don't actually fill this stuff out until open_ctree, but we need
-@@ -1688,10 +1681,9 @@ static struct dentry *btrfs_mount_root(struct file_system_type *fs_type,
- 	 * superblock with our given fs_devices later on at sget() time.
- 	 */
- 	fs_info = kvzalloc(sizeof(struct btrfs_fs_info), GFP_KERNEL);
--	if (!fs_info) {
--		error = -ENOMEM;
--		goto error_sec_opts;
--	}
-+	if (!fs_info)
-+		return ERR_PTR(-ENOMEM);
-+
- 	btrfs_init_fs_info(fs_info);
- 
- 	fs_info->super_copy = kzalloc(BTRFS_SUPER_INFO_SIZE, GFP_KERNEL);
-@@ -1748,9 +1740,6 @@ static struct dentry *btrfs_mount_root(struct file_system_type *fs_type,
- 			set_bit(BTRFS_FS_CSUM_IMPL_FAST, &fs_info->flags);
- 		error = btrfs_fill_super(s, fs_devices, data);
- 	}
--	if (!error)
--		error = security_sb_set_mnt_opts(s, new_sec_opts, 0, NULL);
--	security_free_mnt_opts(&new_sec_opts);
- 	if (error) {
- 		deactivate_locked_super(s);
- 		return ERR_PTR(error);
-@@ -1762,8 +1751,6 @@ error_close_devices:
- 	btrfs_close_devices(fs_devices);
- error_fs_info:
- 	btrfs_free_fs_info(fs_info);
--error_sec_opts:
--	security_free_mnt_opts(&new_sec_opts);
- 	return ERR_PTR(error);
- }
- 
-@@ -1925,17 +1912,6 @@ static int btrfs_remount(struct super_block *sb, int *flags, char *data)
- 	sync_filesystem(sb);
- 	set_bit(BTRFS_FS_STATE_REMOUNTING, &fs_info->fs_state);
- 
--	if (data) {
--		void *new_sec_opts = NULL;
--
--		ret = security_sb_eat_lsm_opts(data, &new_sec_opts);
--		if (!ret)
--			ret = security_sb_remount(sb, new_sec_opts);
--		security_free_mnt_opts(&new_sec_opts);
--		if (ret)
--			goto restore;
--	}
--
- 	ret = btrfs_parse_options(fs_info, data, *flags);
- 	if (ret)
- 		goto restore;
-@@ -2385,7 +2361,7 @@ static struct file_system_type btrfs_fs_type = {
- 	.name		= "btrfs",
- 	.mount		= btrfs_mount,
- 	.kill_sb	= btrfs_kill_super,
--	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_REQUIRES_DEV,
- };
- 
- static struct file_system_type btrfs_root_fs_type = {
-@@ -2393,7 +2369,7 @@ static struct file_system_type btrfs_root_fs_type = {
- 	.name		= "btrfs",
- 	.mount		= btrfs_mount_root,
- 	.kill_sb	= btrfs_kill_super,
--	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_REQUIRES_DEV | FS_HANDLES_LSM_OPTS,
- };
- 
- MODULE_ALIAS_FS("btrfs");
-diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
-index d95c9a39bc70..b5db4160e89b 100644
---- a/fs/nfs/fs_context.c
-+++ b/fs/nfs/fs_context.c
-@@ -1557,7 +1557,8 @@ struct file_system_type nfs_fs_type = {
- 	.init_fs_context	= nfs_init_fs_context,
- 	.parameters		= nfs_fs_parameters,
- 	.kill_sb		= nfs_kill_super,
--	.fs_flags		= FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA,
-+	.fs_flags		= FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA|
-+				  FS_HANDLES_LSM_OPTS,
- };
- MODULE_ALIAS_FS("nfs");
- EXPORT_SYMBOL_GPL(nfs_fs_type);
-@@ -1569,7 +1570,8 @@ struct file_system_type nfs4_fs_type = {
- 	.init_fs_context	= nfs_init_fs_context,
- 	.parameters		= nfs_fs_parameters,
- 	.kill_sb		= nfs_kill_super,
--	.fs_flags		= FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA,
-+	.fs_flags		= FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA|
-+				  FS_HANDLES_LSM_OPTS,
- };
- MODULE_ALIAS_FS("nfs4");
- MODULE_ALIAS("nfs4");
-diff --git a/fs/super.c b/fs/super.c
-index 11b7e7213fd1..918c77b8c161 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -1520,10 +1520,12 @@ int vfs_get_tree(struct fs_context *fc)
- 	smp_wmb();
- 	sb->s_flags |= SB_BORN;
- 
--	error = security_sb_set_mnt_opts(sb, fc->security, 0, NULL);
--	if (unlikely(error)) {
--		fc_drop_locked(fc);
--		return error;
-+	if (!(fc->fs_type->fs_flags & FS_HANDLES_LSM_OPTS)) {
-+		error = security_sb_set_mnt_opts(sb, fc->security, 0, NULL);
-+		if (unlikely(error)) {
-+			fc_drop_locked(fc);
-+			return error;
-+		}
- 	}
- 
- 	/*
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index c3c88fdb9b2a..36f9cd37bc83 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2469,7 +2469,8 @@ struct file_system_type {
- #define FS_HAS_SUBTYPE		4
- #define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
- #define FS_DISALLOW_NOTIFY_PERM	16	/* Disable fanotify permission events */
--#define FS_ALLOW_IDMAP         32      /* FS has been updated to handle vfs idmappings. */
-+#define FS_ALLOW_IDMAP		32	/* FS has been updated to handle vfs idmappings. */
-+#define FS_HANDLES_LSM_OPTS	64	/* FS handles LSM opts on its own - skip it in VFS */
- #define FS_THP_SUPPORT		8192	/* Remove once all fs converted */
- #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
- 	int (*init_fs_context)(struct fs_context *);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index eaea837d89d1..041529cbf214 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -684,21 +684,6 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 		goto out;
- 	}
- 
--	/*
--	 * Binary mount data FS will come through this function twice.  Once
--	 * from an explicit call and once from the generic calls from the vfs.
--	 * Since the generic VFS calls will not contain any security mount data
--	 * we need to skip the double mount verification.
--	 *
--	 * This does open a hole in which we will not notice if the first
--	 * mount using this sb set explict options and a second mount using
--	 * this sb does not set any security options.  (The first options
--	 * will be used for both mounts)
--	 */
--	if ((sbsec->flags & SE_SBINITIALIZED) && (sb->s_type->fs_flags & FS_BINARY_MOUNTDATA)
--	    && !opts)
--		goto out;
--
- 	root_isec = backing_inode_security_novalidate(root);
- 
- 	/*
 -- 
-2.31.1
+Ondrej Mosnacek
+Software Engineer, Linux Security - SELinux kernel
+Red Hat, Inc.
 
