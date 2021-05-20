@@ -2,125 +2,355 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-17.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C0913C43460
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 May 2021 16:39:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24FB6C433B4
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 May 2021 17:35:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A4C5D6101E
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 May 2021 16:39:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0607C6023D
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 May 2021 17:35:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231775AbhETQk2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 May 2021 12:40:28 -0400
-Received: from mail.kernel.org ([198.145.29.99]:39204 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231810AbhETQk0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 May 2021 12:40:26 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C83FF61019
-        for <linux-nfs@vger.kernel.org>; Thu, 20 May 2021 16:39:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1621528745;
-        bh=KrWfKNGaBxAF9AHeINJ20QjbxFcNOq2KGpuCeMAdj4M=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=C0KpuDE072Nvv2CGaJjMMa6M4/c8p49+gUn11qb3tqJeBHEvFRIJMNYKh5stV66DR
-         i1UKpW8/KIWelJzP4pixINmasAGboyYzfuN6GB9yf/31rxXYpu4FiecZwnjVCWL7pR
-         cl8cCZG9nDdEiowT/GaWENs5yWYxO4h08S7M7tKXNRh+YFdAcP/E3JJYixV24tLsW5
-         4JTvFLqLcEdnncQSFYU9rGVbbvYxfZqW3z5Uih+RrH+zeZWkE1LIbpMsRyju6NoK5n
-         SbLa9xEq1t4yMff80JGE0tqmnmfe0lLYkh/RgcnS7G3Krzw/MMRvbI8RYFx1mZHKkL
-         9KB0tA/+shUgQ==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] NFSv4: Add lease breakpoints in case of a delegation recall or return
-Date:   Thu, 20 May 2021 12:39:00 -0400
-Message-Id: <20210520163902.215745-3-trondmy@kernel.org>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210520163902.215745-2-trondmy@kernel.org>
-References: <20210520163902.215745-1-trondmy@kernel.org>
- <20210520163902.215745-2-trondmy@kernel.org>
+        id S234037AbhETRg4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 May 2021 13:36:56 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:29846 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S231537AbhETRgz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 May 2021 13:36:55 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1621532133;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=NnZLvkp3p3wtSCRgDJ02bR7bLvrK5+SbWEXd6CA1ubA=;
+        b=S8N3o7SiJKmUDz4ApfKH78AiI5TWjAWrqdJCpO+tfIYoa/85jpfd+Vh54rqa9zT0LHlyag
+        CPGkyECQv/4wnTQg6I3tFuX87LOjQSJzS/7G2Fi0Da+iQZyoSYhCD+7I1M8z0QPGs3wOiv
+        7e3rH7ol9PRQwEtCz4pcd1XX66JEfgE=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-433-X9IH3skFPEqdwL1Fv0DByg-1; Thu, 20 May 2021 13:35:31 -0400
+X-MC-Unique: X9IH3skFPEqdwL1Fv0DByg-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 01B978CDCA4;
+        Thu, 20 May 2021 17:35:07 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-112-61.phx2.redhat.com [10.3.112.61])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id EC0455C233;
+        Thu, 20 May 2021 17:35:05 +0000 (UTC)
+Subject: Re: [PATCH/RFC v2 nfs-utils] Fix NFSv4 export of tmpfs filesystems.
+To:     NeilBrown <neilb@suse.de>, Petr Vorel <pvorel@suse.cz>
+Cc:     "J . Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
+        Alexey Kodanev <alexey.kodanev@oracle.com>
+References: <20210422191803.31511-1-pvorel@suse.cz>
+ <20210422202334.GB25415@fieldses.org> <YILQip3nAxhpXP9+@pevik>
+ <162035212343.24322.12361160756597283121@noble.neil.brown.name>
+ <162122673178.19062.96081788305923933@noble.neil.brown.name>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <289c5819-917a-39a7-9aa4-2a27ae7248c0@RedHat.com>
+Date:   Thu, 20 May 2021 13:37:33 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.8.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <162122673178.19062.96081788305923933@noble.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+Hey!
 
-When we add support for application level leases and knfsd delegations
-to the NFS client, we we want to have them safely underpinned by a
-"real" delegation to provide the caching guarantees. If that real
-delegation is recalled, then we need to ensure that the application
-leases/delegations are recalled too.
+On 5/17/21 12:45 AM, NeilBrown wrote:
+> 
+> Some filesystems cannot be exported without an fsid or uuid.
+> tmpfs is the main example.
+> 
+> When mountd (or exportd) creates nfsv4 pseudo-root exports for the path
+> leading down to an export point it exports each directory without any
+> fsid or uuid.  If one of these directories is on tmp, that will fail.
+> 
+> The net result is that exporting a subdirectory of a tmpfs filesystem
+> will not work over NFSv4 as the parents within the filesystem cannot be
+> exported.  It will either fail, or fall-back to NFSv3 (depending on the
+> version of the mount.nfs program).
+> 
+> To fix this we need to provide an fsid or uuid for these pseudo-root
+> exports.  This patch does that by creating an RFC-4122 V5 compatible
+> UUID based on an arbitrary seed and the path to the export.
+> 
+> To check if an export needs a uuid, text_export() is moved from exportfs
+> to libexport.a, modified slightly and renamed to export_test().
+Well.... it appears you guys did not compile with the --with-systemd
+config flag... Because if you did you would have seeing this compile error
+the in systemd code: 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/delegation.c | 23 +++++++++++++++++------
- 1 file changed, 17 insertions(+), 6 deletions(-)
+/usr/bin/ld: ../support/nfs/.libs/libnfs.a(cacheio.o): in function `stat':
+/usr/include/sys/stat.h:455: undefined reference to `etab'
+collect2: error: ld returned 1 exit status
+make[1]: *** [Makefile:560: nfs-server-generator] Error 1
+make[1]: Leaving directory '/home/src/up/nfs-utils/systemd'
+make: *** [Makefile:479: all-recursive] Error 1
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 7c45ac3c3b0b..11118398f495 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -530,11 +530,18 @@ int nfs_inode_set_delegation(struct inode *inode, const struct cred *cred,
- static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation *delegation, int issync)
- {
- 	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
-+	unsigned int mode = O_WRONLY | O_RDWR;
- 	int err = 0;
- 
- 	if (delegation == NULL)
- 		return 0;
--	do {
-+
-+	if (!issync)
-+		mode |= O_NONBLOCK;
-+	/* Recall of any remaining application leases */
-+	err = break_lease(inode, mode);
-+
-+	while (err == 0) {
- 		if (test_bit(NFS_DELEGATION_REVOKED, &delegation->flags))
- 			break;
- 		err = nfs_delegation_claim_opens(inode, &delegation->stateid,
-@@ -545,7 +552,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
- 		 * Guard against state recovery
- 		 */
- 		err = nfs4_wait_clnt_recover(clp);
--	} while (err == 0);
-+	}
- 
- 	if (err) {
- 		nfs_abort_delegation_return(delegation, clp, err);
-@@ -746,13 +753,14 @@ int nfs4_inode_return_delegation(struct inode *inode)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_delegation *delegation;
--	int err = 0;
- 
--	nfs_wb_all(inode);
- 	delegation = nfs_start_delegation_return(nfsi);
-+	/* Synchronous recall of any application leases */
-+	break_lease(inode, O_WRONLY | O_RDWR);
-+	nfs_wb_all(inode);
- 	if (delegation != NULL)
--		err = nfs_end_delegation_return(inode, delegation, 1);
--	return err;
-+		return nfs_end_delegation_return(inode, delegation, 1);
-+	return 0;
- }
- 
- /**
-@@ -1051,6 +1059,9 @@ int nfs_async_inode_return_delegation(struct inode *inode,
- 	nfs_mark_return_delegation(server, delegation);
- 	rcu_read_unlock();
- 
-+	/* If there are any application leases or delegations, recall them */
-+	break_lease(inode, O_WRONLY | O_RDWR | O_NONBLOCK);
-+
- 	nfs_delegation_run_state_manager(clp);
- 	return 0;
- out_enoent:
--- 
-2.31.1
+It turns out the moving of export_test() in to the libexport.a
+is causing any binary linking with libexport.a to have a 
+global definition of struct state_paths etab;
+
+The reason is export_test() calls qword_add(). Now qword_add()
+does not use an etab, but the file qword_add() lives in is
+cacheio.c which does have a extern struct state_paths etab
+which is the reason libnfs.a(cacheio.o) is mentioned in
+the error. At least that is what I *think* is going on... 
+The extern came from  commit a15bd94.
+
+Now the work around is to simply define a  
+struct state_paths etab; in nfs-server-generator.c
+which will not be used at least by the systemd code.
+
+Now is that something we want continue doing... make any
+binaries linking with libexport.a define a global etab.
+
+It seems a little messy but the interface is not documented
+and the alternative, moving a bunch of code around see a lot
+more messy that simple adding one definition.
+
+Other than not compiling... Things looks good! ;-) 
+
+Thoughts?
+
+steved.
+
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+> 
+> This version contains Chuck's suggestion for improving the uuid, and
+> general clean-up.
+> 
+>  support/export/cache.c     |  3 ++-
+>  support/export/export.c    | 29 +++++++++++++++++++++++++++++
+>  support/export/v4root.c    | 23 ++++++++++++++++++++++-
+>  support/include/exportfs.h |  1 +
+>  utils/exportd/Makefile.am  |  2 +-
+>  utils/exportfs/exportfs.c  | 38 +++-----------------------------------
+>  utils/mountd/Makefile.am   |  2 +-
+>  7 files changed, 59 insertions(+), 39 deletions(-)
+> 
+> diff --git a/support/export/cache.c b/support/export/cache.c
+> index 3e4f53c0a32e..a5823e92e9f2 100644
+> --- a/support/export/cache.c
+> +++ b/support/export/cache.c
+> @@ -981,7 +981,8 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
+>  		write_secinfo(&bp, &blen, exp, flag_mask);
+>  		if (exp->e_uuid == NULL || different_fs) {
+>  			char u[16];
+> -			if (uuid_by_path(path, 0, 16, u)) {
+> +			if ((exp->e_flags & flag_mask & NFSEXP_FSID) == 0 &&
+> +			    uuid_by_path(path, 0, 16, u)) {
+>  				qword_add(&bp, &blen, "uuid");
+>  				qword_addhex(&bp, &blen, u, 16);
+>  			}
+> diff --git a/support/export/export.c b/support/export/export.c
+> index c753f68e4d63..03390dfc1de8 100644
+> --- a/support/export/export.c
+> +++ b/support/export/export.c
+> @@ -10,9 +10,11 @@
+>  #include <config.h>
+>  #endif
+>  
+> +#include <unistd.h>
+>  #include <string.h>
+>  #include <sys/types.h>
+>  #include <sys/param.h>
+> +#include <fcntl.h>
+>  #include <netinet/in.h>
+>  #include <limits.h>
+>  #include <stdlib.h>
+> @@ -420,3 +422,30 @@ export_hash(char *str)
+>  
+>  	return num % HASH_TABLE_SIZE;
+>  }
+> +
+> +int export_test(struct exportent *eep, int with_fsid)
+> +{
+> +	char *path = eep->e_path;
+> +	int flags = eep->e_flags | (with_fsid ? NFSEXP_FSID : 0);
+> +	/* beside max path, buf size should take protocol str into account */
+> +	char buf[NFS_MAXPATHLEN+1+64] = { 0 };
+> +	char *bp = buf;
+> +	int len = sizeof(buf);
+> +	int fd, n;
+> +
+> +	n = snprintf(buf, len, "-test-client- ");
+> +	bp += n;
+> +	len -= n;
+> +	qword_add(&bp, &len, path);
+> +	if (len < 1)
+> +		return 0;
+> +	snprintf(bp, len, " 3 %d 65534 65534 0\n", flags);
+> +	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+> +	if (fd < 0)
+> +		return 0;
+> +	n = nfsd_path_write(fd, buf, strlen(buf));
+> +	close(fd);
+> +	if (n < 0)
+> +		return 0;
+> +	return 1;
+> +}
+> diff --git a/support/export/v4root.c b/support/export/v4root.c
+> index 3654bd7c10c0..c12a7d8562b2 100644
+> --- a/support/export/v4root.c
+> +++ b/support/export/v4root.c
+> @@ -20,6 +20,7 @@
+>  
+>  #include <unistd.h>
+>  #include <errno.h>
+> +#include <uuid/uuid.h>
+>  
+>  #include "xlog.h"
+>  #include "exportfs.h"
+> @@ -89,11 +90,31 @@ v4root_create(char *path, nfs_export *export)
+>  	strncpy(eep.e_path, path, sizeof(eep.e_path)-1);
+>  	if (strcmp(path, "/") != 0)
+>  		eep.e_flags &= ~NFSEXP_FSID;
+> +
+> +	if (strcmp(path, "/") != 0 &&
+> +	    !export_test(&eep, 0)) {
+> +		/* Need a uuid - base it on path using a fixed seed that
+> +		 * was generated randomly.
+> +		 */
+> +		const char seed_s[] = "39c6b5c1-3f24-4f4e-977c-7fe6546b8a25";
+> +		uuid_t seed, uuid;
+> +		char uuid_s[UUID_STR_LEN];
+> +		unsigned int i, j;
+> +
+> +		uuid_parse(seed_s, seed);
+> +		uuid_generate_sha1(uuid, seed, path, strlen(path));
+> +		uuid_unparse_upper(uuid, uuid_s);
+> +		/* strip hyhens */
+> +		for (i = j = 0; uuid_s[i]; i++)
+> +			if (uuid_s[i] != '-')
+> +				uuid_s[j++] = uuid_s[i];
+> +		eep.e_uuid = uuid_s;
+> +	}
+>  	set_pseudofs_security(&eep);
+>  	exp = export_create(&eep, 0);
+>  	if (exp == NULL)
+>  		return NULL;
+> -	xlog(D_CALL, "v4root_create: path '%s' flags 0x%x", 
+> +	xlog(D_CALL, "v4root_create: path '%s' flags 0x%x",
+>  		exp->m_export.e_path, exp->m_export.e_flags);
+>  	return &exp->m_export;
+>  }
+> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+> index 81d137210862..7c1b74537186 100644
+> --- a/support/include/exportfs.h
+> +++ b/support/include/exportfs.h
+> @@ -173,5 +173,6 @@ struct export_features {
+>  struct export_features *get_export_features(void);
+>  void fix_pseudoflavor_flags(struct exportent *ep);
+>  char *exportent_realpath(struct exportent *eep);
+> +int export_test(struct exportent *eep, int with_fsid);
+>  
+>  #endif /* EXPORTFS_H */
+> diff --git a/utils/exportd/Makefile.am b/utils/exportd/Makefile.am
+> index eb521f15032d..c95bdee76d3f 100644
+> --- a/utils/exportd/Makefile.am
+> +++ b/utils/exportd/Makefile.am
+> @@ -16,7 +16,7 @@ exportd_SOURCES = exportd.c
+>  exportd_LDADD = ../../support/export/libexport.a \
+>  			../../support/nfs/libnfs.la \
+>  			../../support/misc/libmisc.a \
+> -			$(OPTLIBS) $(LIBBLKID) $(LIBPTHREAD) 
+> +			$(OPTLIBS) $(LIBBLKID) $(LIBPTHREAD) -luuid
+>  
+>  exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+>  		-I$(top_srcdir)/support/export
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 25d757d8b4b4..bc76aaaf8714 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -54,11 +54,6 @@ static int _lockfd = -1;
+>  
+>  struct state_paths etab;
+>  
+> -static ssize_t exportfs_write(int fd, const char *buf, size_t len)
+> -{
+> -	return nfsd_path_write(fd, buf, len);
+> -}
+> -
+>  /*
+>   * If we aren't careful, changes made by exportfs can be lost
+>   * when multiple exports process run at once:
+> @@ -510,33 +505,6 @@ static int can_test(void)
+>  	return 1;
+>  }
+>  
+> -static int test_export(nfs_export *exp, int with_fsid)
+> -{
+> -	char *path = exp->m_export.e_path;
+> -	int flags = exp->m_export.e_flags | (with_fsid ? NFSEXP_FSID : 0);
+> -	/* beside max path, buf size should take protocol str into account */
+> -	char buf[NFS_MAXPATHLEN+1+64] = { 0 };
+> -	char *bp = buf;
+> -	int len = sizeof(buf);
+> -	int fd, n;
+> -
+> -	n = snprintf(buf, len, "-test-client- ");
+> -	bp += n;
+> -	len -= n;
+> -	qword_add(&bp, &len, path);
+> -	if (len < 1)
+> -		return 0;
+> -	snprintf(bp, len, " 3 %d 65534 65534 0\n", flags);
+> -	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+> -	if (fd < 0)
+> -		return 0;
+> -	n = exportfs_write(fd, buf, strlen(buf));
+> -	close(fd);
+> -	if (n < 0)
+> -		return 0;
+> -	return 1;
+> -}
+> -
+>  static void
+>  validate_export(nfs_export *exp)
+>  {
+> @@ -568,12 +536,12 @@ validate_export(nfs_export *exp)
+>  
+>  	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid ||
+>  	    fs_has_fsid) {
+> -		if ( !test_export(exp, 1)) {
+> +		if ( !export_test(&exp->m_export, 1)) {
+>  			xlog(L_ERROR, "%s does not support NFS export", path);
+>  			return;
+>  		}
+> -	} else if ( !test_export(exp, 0)) {
+> -		if (test_export(exp, 1))
+> +	} else if ( !export_test(&exp->m_export, 0)) {
+> +		if (export_test(&exp->m_export, 1))
+>  			xlog(L_ERROR, "%s requires fsid= for NFS export", path);
+>  		else
+>  			xlog(L_ERROR, "%s does not support NFS export", path);
+> diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
+> index 859f28ecd6f3..13b25c90f06e 100644
+> --- a/utils/mountd/Makefile.am
+> +++ b/utils/mountd/Makefile.am
+> @@ -18,7 +18,7 @@ mountd_LDADD = ../../support/export/libexport.a \
+>  	       ../../support/nfs/libnfs.la \
+>  	       ../../support/misc/libmisc.a \
+>  	       $(OPTLIBS) \
+> -	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC) \
+> +	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) -luuid $(LIBTIRPC) \
+>  	       $(LIBPTHREAD)
+>  mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+>  		  -I$(top_builddir)/support/include \
+> 
 
