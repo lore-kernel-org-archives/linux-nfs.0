@@ -2,65 +2,184 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1F9DC04FF3
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 May 2021 11:30:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7CF03C47085
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 May 2021 14:43:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CEF4C611CD
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 May 2021 11:30:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 61960613B6
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 May 2021 14:43:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232118AbhEXLb7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 May 2021 07:31:59 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:33875 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232070AbhEXLb7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 May 2021 07:31:59 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1621855830;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+        id S233026AbhEXOo1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 May 2021 10:44:27 -0400
+Received: from mx2.suse.de ([195.135.220.15]:40622 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S233022AbhEXOo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 May 2021 10:44:26 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1621867377; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=r1jPoCyFjv6h1Pb9likRFn4mzU5mAIFLhUsNx0MigOY=;
-        b=azNTmN3I7GNGE290n5GVntAeZ+fNmtll2qnc8Q/8HO52G1I5oHDzEsFx6fEKNnbn30Anra
-        cZslDVdMvHofpe/CWJ5RiTWLeT4mk5CJh8QMNBORhUZt24+KluQw20mJn4vmqwxeyBzPzt
-        NPsD6ODsUfO7Bqwh4UdcrQRv9Hk3hOg=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-48-RC0bheiAO12NXaMjH8DA7g-1; Mon, 24 May 2021 07:30:28 -0400
-X-MC-Unique: RC0bheiAO12NXaMjH8DA7g-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B3434180FD65;
-        Mon, 24 May 2021 11:30:26 +0000 (UTC)
-Received: from [10.10.66.2] (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 68CB11724D;
-        Mon, 24 May 2021 11:30:26 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Jason Keltz" <jas@eecs.yorku.ca>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: ksu problem with sec=krb5 and nfs
-Date:   Mon, 24 May 2021 07:30:25 -0400
-Message-ID: <7714ABF4-E9CD-424B-BF7F-6F1B91F58C2B@redhat.com>
-In-Reply-To: <abbd93ac-4a68-a471-fbb4-a9baf05b89c9@eecs.yorku.ca>
-References: <abbd93ac-4a68-a471-fbb4-a9baf05b89c9@eecs.yorku.ca>
+        bh=oyCraAAtXrZ48Fn8CBGwDhVCjV34QqFZgAv/Uzo73YY=;
+        b=rAkeVdqswKxyWqd7oM7OEksPPKu5zirDkANuUfGEO0oHGvpOHr/ASLuDORHM33xnBB9j/+
+        j6QfVfrkkUoOndrsxnO/rrRHjFH+cqxNZgaAJVHc6dFhqty2Jl0VC3LeOaOevvh9EcjD7f
+        clweAIaGcWn+Zih0708RCYSZ/IZQlus=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1621867377;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=oyCraAAtXrZ48Fn8CBGwDhVCjV34QqFZgAv/Uzo73YY=;
+        b=C5fP2dT01D287XZGS3Xkd8MlV7/hbsWxDWhkaTopPGGSnYt8KKTEZsyksmLwS2Ke0w9JLl
+        Bk7rIV2m/lPwSqAA==
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id B625BADE7;
+        Mon, 24 May 2021 14:42:57 +0000 (UTC)
+From:   Petr Vorel <pvorel@suse.cz>
+To:     linux-nfs@vger.kernel.org
+Cc:     Petr Vorel <pvorel@suse.cz>,
+        "J . Bruce Fields" <bfields@redhat.com>,
+        "Yong Sun (Sero)" <yosun@suse.com>
+Subject: [PATCH pynfs 2/3] server: Allow to print JSON format
+Date:   Mon, 24 May 2021 16:42:50 +0200
+Message-Id: <20210524144251.30196-2-pvorel@suse.cz>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20210524144251.30196-1-pvorel@suse.cz>
+References: <20210524144251.30196-1-pvorel@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 22 May 2021, at 10:47, Jason Keltz wrote:
+Signed-off-by: Petr Vorel <pvorel@suse.cz>
+---
+ nfs4.0/testserver.py |  7 ++++++-
+ nfs4.1/testmod.py    | 40 +++++++++++++++++++++++++++++++++++++++-
+ nfs4.1/testserver.py |  6 +++++-
+ 3 files changed, 50 insertions(+), 3 deletions(-)
 
-> Can someone help me understand the issue, and whether there is a solution?
-
-Don't you want ksu to write its target cache to /tmp/krb5cc_1011 so rpc.gssd
-can find it?  Why isn't that happening?
-
-Ben
+diff --git a/nfs4.0/testserver.py b/nfs4.0/testserver.py
+index 0ef010a..f2c4156 100755
+--- a/nfs4.0/testserver.py
++++ b/nfs4.0/testserver.py
+@@ -85,6 +85,8 @@ def scan_options(p):
+                  help="Skip final cleanup of test directory")
+     p.add_option("--outfile", "--out", default=None, metavar="FILE",
+                  help="Store test results in FILE [%default]")
++    p.add_option("--jsonout", "--json", default=None, metavar="FILE",
++                 help="Store test results in JSON format [%default]")
+     p.add_option("--xmlout", "--xml", default=None, metavar="FILE",
+                  help="Store test results in xml format [%default]")
+     p.add_option("--debug_fail", action="store_true", default=False,
+@@ -378,8 +380,11 @@ def main():
+     if fail:
+         print("\nWARNING: could not clean testdir due to:\n%s\n" % err)
+ 
+-    if opt.xmlout is not None:
++    if opt.jsonout is not None:
++        testmod.json_printresults(tests, opt.jsonout)
++    elif opt.xmlout is not None:
+         testmod.xml_printresults(tests, opt.xmlout)
++
+     if nfail < 0:
+         sys.exit(3)
+     if nfail > 0:
+diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+index e368853..4b4ed24 100644
+--- a/nfs4.1/testmod.py
++++ b/nfs4.1/testmod.py
+@@ -13,6 +13,7 @@ import re
+ import sys
+ import time
+ from traceback import format_exception, print_exc
++import json
+ import xml.dom.minidom
+ import datetime
+ 
+@@ -467,6 +468,43 @@ def printresults(tests, opts, file=None):
+           (count[SKIP], count[FAIL], count[WARN], count[PASS]), file=file)
+     return count[FAIL]
+ 
++def json_printresults(tests, file_name, suite='all'):
++    with open(file_name, 'w') as fd:
++        failures = 0
++        skipped = 0
++        total_time = 0
++        data = {}
++        data["tests"] = len(tests)
++        data["errors"] = 0
++        data["timestamp"] = str(datetime.datetime.now())
++        data["name"] = suite
++        data["testcase"] = []
++        for t in tests:
++            test = {
++                "name": t.name,
++                "classname": t.suite,
++                "time": str(t.time_taken),
++            }
++
++            total_time += t.time_taken
++            if t.result == TEST_FAIL:
++                failures += 1
++                test["failure"] = {
++                        "message" : t.result.msg,
++                        "err" : ''.join(t.result.tb)
++                }
++            elif t.result == TEST_OMIT:
++                skipped += 1
++                test["skipped"] = 1
++
++            data["testcase"].append(test)
++
++        data["failures"] = failures
++        data["skipped"] = skipped
++        data["time"] = total_time
++
++        fd.write(json.dumps(data, indent=4, sort_keys=True))
++
+ def xml_printresults(tests, file_name, suite='all'):
+     with open(file_name, 'w') as fd:
+         failures = 0
+@@ -484,7 +522,7 @@ def xml_printresults(tests, file_name, suite='all'):
+             testsuite.appendChild(testcase)
+             testcase.setAttribute("name", t.name)
+             testcase.setAttribute("classname", t.suite)
+-            testcase.setAttribute("time", str(t.time_taken))
++            testcase.setAttribute("time", t.time_taken)
+ 
+             total_time += t.time_taken
+             if t.result == TEST_FAIL:
+diff --git a/nfs4.1/testserver.py b/nfs4.1/testserver.py
+index d3c44c7..085f007 100755
+--- a/nfs4.1/testserver.py
++++ b/nfs4.1/testserver.py
+@@ -68,6 +68,8 @@ def scan_options(p):
+                  help="Skip final cleanup of test directory")
+     p.add_option("--outfile", "--out", default=None, metavar="FILE",
+                  help="Store test results in FILE [%default]")
++    p.add_option("--jsonout", "--json", default=None, metavar="FILE",
++                 help="Store test results in JSON format [%default]")
+     p.add_option("--xmlout", "--xml", default=None, metavar="FILE",
+                  help="Store test results in xml format [%default]")
+     p.add_option("--debug_fail", action="store_true", default=False,
+@@ -363,7 +365,9 @@ def main():
+     if fail:
+         print("\nWARNING: could not clean testdir due to:\n%s\n" % err)
+ 
+-    if opt.xmlout is not None:
++    if opt.jsonout is not None:
++        testmod.json_printresults(tests, opt.jsonout)
++    elif opt.xmlout is not None:
+         testmod.xml_printresults(tests, opt.xmlout)
+ 
+ if __name__ == "__main__":
+-- 
+2.31.1
 
