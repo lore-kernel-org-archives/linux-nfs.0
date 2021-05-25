@@ -2,68 +2,483 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C898C47084
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 17:36:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E9933C2B9F8
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 18:00:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 52E6B61423
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 17:36:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C9ACA613F1
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 18:00:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233595AbhEYRiE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 25 May 2021 13:38:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59956 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S234125AbhEYRhx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 25 May 2021 13:37:53 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPS id D808E61157;
-        Tue, 25 May 2021 17:36:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1621964182;
-        bh=LskCapKtyB8RvSvFDfob6jRHdNLRDzxTgT9OF4bwRiI=;
-        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
-        b=Ny9MBHfnFRBWDZ5MaAeHH23HUW1HtoA9ZG0uLesxIxrOzDxzq5Gadxv2HQz/Yhqh0
-         pusvJG8wsNSJq0TglpUrg1uQbQmSGfZ4dnLomTqhchJRsIYOQF7LMUGyvDx71bWGa5
-         PETGfYUjgVBZiAog9xmPRfGhn/0IDwEYA4LEisITlNPo9vN/0Mp/RI/nqE/Ejxzkcm
-         oCK0BqSAQr6i5ety5eL3kWRNgq7DGhnSgtra3Sch8HOHDbBeAc31ruhd1S+rOyx9/N
-         cX/pi3MeCA4BSGwcfwDcjuUA+DiO9bvQkVYAqCGHHYtkzymrl8QwzqKS7x/rDi+whW
-         vGZhk8ikkDIww==
-Subject: Re: [GIT PULL] netfs: Fixes
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <4007708.1621947662@warthog.procyon.org.uk>
-References: <4007708.1621947662@warthog.procyon.org.uk>
-X-PR-Tracked-List-Id: <ceph-devel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <4007708.1621947662@warthog.procyon.org.uk>
-X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/netfs-lib-fixes-20200525
-X-PR-Tracked-Commit-Id: b71c791254ff5e78a124c8949585dccd9e225e06
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: ad9f25d338605d26acedcaf3ba5fab5ca26f1c10
-Message-Id: <162196418275.15660.9511112826045891745.pr-tracker-bot@kernel.org>
-Date:   Tue, 25 May 2021 17:36:22 +0000
-To:     David Howells <dhowells@redhat.com>
-Cc:     torvalds@linux-foundation.org, dhowells@redhat.com,
-        geert@linux-m68k.org, willy@infradead.org,
-        ceph-devel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-cachefs@redhat.com, linux-cifs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net
+        id S234264AbhEYSCI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 May 2021 14:02:08 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:57723 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S233235AbhEYSCH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2021 14:02:07 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1621965637;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=Pv46Sd06C6A6wedcr5X+ZCUWp56Fj+gd7Ub/wDGQ4D0=;
+        b=OKc/eizw1wCc/qHzPawzVmkRp8MQGAViYXsErCqr4KBIBy3SEEA/ZSL+m34L4+UoihC4XS
+        tq4ipohwWkuhZV9H8TFeCNB+QRyIttYoIAwFo333q0fkLCsQVgaJvQAsVoikJh8SEaYcbN
+        xL4EFCYRXn1ADsBME/kbppQElDR2JwU=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-470-EBMS07PlOSyJj7W-z7N3XQ-1; Tue, 25 May 2021 14:00:35 -0400
+X-MC-Unique: EBMS07PlOSyJj7W-z7N3XQ-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D201C6D5D1
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2021 18:00:34 +0000 (UTC)
+Received: from aion.usersys.redhat.com (ovpn-114-18.rdu2.redhat.com [10.10.114.18])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id A28395D9D0
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2021 18:00:34 +0000 (UTC)
+Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
+        id EA1D01A0026; Tue, 25 May 2021 14:00:33 -0400 (EDT)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 1/2] gssd: deal with failed thread creation
+Date:   Tue, 25 May 2021 14:00:32 -0400
+Message-Id: <20210525180033.200404-2-smayhew@redhat.com>
+In-Reply-To: <20210525180033.200404-1-smayhew@redhat.com>
+References: <20210525180033.200404-1-smayhew@redhat.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The pull request you sent on Tue, 25 May 2021 14:01:02 +0100:
+If we fail to create a thread to handle an upcall, we still need to do a
+downcall to tell the kernel about the failure, otherwise the process
+that is trying to establish gss credentials will hang.
 
-> git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/netfs-lib-fixes-20200525
+This patch shifts the thread creation down a level in the call chain so
+now the main thread does a little more work up front (reading & parsing
+the data from the pipefs file) so it has the info it needs to be able
+to do the error downcall.
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/ad9f25d338605d26acedcaf3ba5fab5ca26f1c10
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/gssd/gssd.c      |  83 +-----------------
+ utils/gssd/gssd.h      |  11 ++-
+ utils/gssd/gssd_proc.c | 190 +++++++++++++++++++++++++++++++++--------
+ 3 files changed, 166 insertions(+), 118 deletions(-)
 
-Thank you!
-
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 1541d371..eb440470 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -364,7 +364,7 @@ out:
+ /* Actually frees clp and fields that might be used from other
+  * threads if was last reference.
+  */
+-static void
++void
+ gssd_free_client(struct clnt_info *clp)
+ {
+ 	int refcnt;
+@@ -416,55 +416,6 @@ gssd_destroy_client(struct clnt_info *clp)
+ 
+ static void gssd_scan(void);
+ 
+-static int
+-start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
+-{
+-	pthread_attr_t attr;
+-	pthread_t th;
+-	int ret;
+-
+-	ret = pthread_attr_init(&attr);
+-	if (ret != 0) {
+-		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
+-			 ret, strerror(errno));
+-		return ret;
+-	}
+-	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+-	if (ret != 0) {
+-		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
+-			 "%s\n", ret, strerror(errno));
+-		return ret;
+-	}
+-
+-	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
+-	if (ret != 0)
+-		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+-			 ret, strerror(errno));
+-	return ret;
+-}
+-
+-static struct clnt_upcall_info *alloc_upcall_info(struct clnt_info *clp)
+-{
+-	struct clnt_upcall_info *info;
+-
+-	info = malloc(sizeof(struct clnt_upcall_info));
+-	if (info == NULL)
+-		return NULL;
+-
+-	pthread_mutex_lock(&clp_lock);
+-	clp->refcount++;
+-	pthread_mutex_unlock(&clp_lock);
+-	info->clp = clp;
+-
+-	return info;
+-}
+-
+-void free_upcall_info(struct clnt_upcall_info *info)
+-{
+-	gssd_free_client(info->clp);
+-	free(info);
+-}
+-
+ /* For each upcall read the upcall info into the buffer, then create a
+  * thread in a detached state so that resources are released back into
+  * the system without the need for a join.
+@@ -473,44 +424,16 @@ static void
+ gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
+ {
+ 	struct clnt_info *clp = data;
+-	struct clnt_upcall_info *info;
+-
+-	info = alloc_upcall_info(clp);
+-	if (info == NULL)
+-		return;
+ 
+-	info->lbuflen = read(clp->gssd_fd, info->lbuf, sizeof(info->lbuf));
+-	if (info->lbuflen <= 0 || info->lbuf[info->lbuflen-1] != '\n') {
+-		printerr(0, "WARNING: %s: failed reading request\n", __func__);
+-		free_upcall_info(info);
+-		return;
+-	}
+-	info->lbuf[info->lbuflen-1] = 0;
+-
+-	if (start_upcall_thread(handle_gssd_upcall, info))
+-		free_upcall_info(info);
++	handle_gssd_upcall(clp);
+ }
+ 
+ static void
+ gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
+ {
+ 	struct clnt_info *clp = data;
+-	struct clnt_upcall_info *info;
+-
+-	info = alloc_upcall_info(clp);
+-	if (info == NULL)
+-		return;
+-
+-	if (read(clp->krb5_fd, &info->uid,
+-			sizeof(info->uid)) < (ssize_t)sizeof(info->uid)) {
+-		printerr(0, "WARNING: %s: failed reading uid from krb5 "
+-			 "upcall pipe: %s\n", __func__, strerror(errno));
+-		free_upcall_info(info);
+-		return;
+-	}
+ 
+-	if (start_upcall_thread(handle_krb5_upcall, info))
+-		free_upcall_info(info);
++	handle_krb5_upcall(clp);
+ }
+ 
+ static struct clnt_info *
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index 1e8c58d4..6d53647e 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -84,14 +84,17 @@ struct clnt_info {
+ 
+ struct clnt_upcall_info {
+ 	struct clnt_info 	*clp;
+-	char			lbuf[RPC_CHAN_BUF_SIZE];
+-	int			lbuflen;
+ 	uid_t			uid;
++	int			fd;
++	char			*srchost;
++	char			*target;
++	char			*service;
+ };
+ 
+-void handle_krb5_upcall(struct clnt_upcall_info *clp);
+-void handle_gssd_upcall(struct clnt_upcall_info *clp);
++void handle_krb5_upcall(struct clnt_info *clp);
++void handle_gssd_upcall(struct clnt_info *clp);
+ void free_upcall_info(struct clnt_upcall_info *info);
++void gssd_free_client(struct clnt_info *clp);
+ 
+ 
+ #endif /* _RPC_GSSD_H_ */
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index e830f497..ba508b30 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -80,6 +80,8 @@
+ #include "nfslib.h"
+ #include "gss_names.h"
+ 
++extern pthread_mutex_t clp_lock;
++
+ /* Encryption types supported by the kernel rpcsec_gss code */
+ int num_krb5_enctypes = 0;
+ krb5_enctype *krb5_enctypes = NULL;
+@@ -723,22 +725,135 @@ out_return_error:
+ 	goto out;
+ }
+ 
+-void
+-handle_krb5_upcall(struct clnt_upcall_info *info)
++static struct clnt_upcall_info *
++alloc_upcall_info(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
++		  char *target, char *service)
+ {
+-	struct clnt_info *clp = info->clp;
++	struct clnt_upcall_info *info;
++
++	info = malloc(sizeof(struct clnt_upcall_info));
++	if (info == NULL)
++		return NULL;
++
++	memset(info, 0, sizeof(*info));
++	pthread_mutex_lock(&clp_lock);
++	clp->refcount++;
++	pthread_mutex_unlock(&clp_lock);
++	info->clp = clp;
++	info->uid = uid;
++	info->fd = fd;
++	if (srchost) {
++		info->srchost = strdup(srchost);
++		if (info->srchost == NULL)
++			goto out_info;
++	}
++	if (target) {
++		info->target = strdup(target);
++		if (info->target == NULL)
++			goto out_srchost;
++	}
++	if (service) {
++		info->service = strdup(service);
++		if (info->service == NULL)
++			goto out_target;
++	}
++
++out:
++	return info;
++
++out_target:
++	if (info->target)
++		free(info->target);
++out_srchost:
++	if (info->srchost)
++		free(info->srchost);
++out_info:
++	free(info);
++	info = NULL;
++	goto out;
++}
+ 
+-	printerr(2, "\n%s: uid %d (%s)\n", __func__, info->uid, clp->relpath);
++void free_upcall_info(struct clnt_upcall_info *info)
++{
++	gssd_free_client(info->clp);
++	if (info->service)
++		free(info->service);
++	if (info->target)
++		free(info->target);
++	if (info->srchost)
++		free(info->srchost);
++	free(info);
++}
+ 
+-	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL, NULL);
++static void
++gssd_work_thread_fn(struct clnt_upcall_info *info)
++{
++	process_krb5_upcall(info->clp, info->uid, info->fd, info->srchost, info->target, info->service);
+ 	free_upcall_info(info);
+ }
+ 
++static int
++start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
++{
++	pthread_attr_t attr;
++	pthread_t th;
++	int ret;
++
++	ret = pthread_attr_init(&attr);
++	if (ret != 0) {
++		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
++			 ret, strerror(errno));
++		return ret;
++	}
++	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
++	if (ret != 0) {
++		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
++			 "%s\n", ret, strerror(errno));
++		return ret;
++	}
++
++	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
++	if (ret != 0)
++		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
++			 ret, strerror(errno));
++	else
++		printerr(0, "created thread id 0x%lx\n", th);
++	return ret;
++}
++
++void
++handle_krb5_upcall(struct clnt_info *clp)
++{
++	uid_t			uid;
++	struct clnt_upcall_info	*info;
++	int			err;
++
++	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
++		printerr(0, "WARNING: failed reading uid from krb5 "
++			    "upcall pipe: %s\n", strerror(errno));
++		return;
++	}
++	printerr(2, "\n%s: uid %d (%s)\n", __func__, uid, clp->relpath);
++
++	info = alloc_upcall_info(clp, uid, clp->krb5_fd, NULL, NULL, NULL);
++	if (info == NULL) {
++		printerr(0, "%s: failed to allocate clnt_upcall_info\n", __func__);
++		do_error_downcall(clp->krb5_fd, uid, -EACCES);
++		return;
++	}
++	err = start_upcall_thread(gssd_work_thread_fn, info);
++	if (err != 0) {
++		do_error_downcall(clp->krb5_fd, uid, -EACCES);
++		free_upcall_info(info);
++	}
++}
++
+ void
+-handle_gssd_upcall(struct clnt_upcall_info *info)
++handle_gssd_upcall(struct clnt_info *clp)
+ {
+-	struct clnt_info	*clp = info->clp;
+ 	uid_t			uid;
++	char			lbuf[RPC_CHAN_BUF_SIZE];
++	int			lbuflen = 0;
+ 	char			*p;
+ 	char			*mech = NULL;
+ 	char			*uidstr = NULL;
+@@ -746,20 +861,22 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+ 	char			*service = NULL;
+ 	char			*srchost = NULL;
+ 	char			*enctypes = NULL;
+-	char			*upcall_str;
+-	char			*pbuf = info->lbuf;
+ 	pthread_t tid = pthread_self();
++	struct clnt_upcall_info	*info;
++	int			err;
+ 
+-	printerr(2, "\n%s(0x%x): '%s' (%s)\n", __func__, tid, 
+-		info->lbuf, clp->relpath);
+-
+-	upcall_str = strdup(info->lbuf);
+-	if (upcall_str == NULL) {
+-		printerr(0, "ERROR: malloc failure\n");
+-		goto out_nomem;
++	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
++	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
++		printerr(0, "WARNING: handle_gssd_upcall: "
++			    "failed reading request\n");
++		return;
+ 	}
++	lbuf[lbuflen-1] = 0;
++
++	printerr(2, "\n%s(0x%x): '%s' (%s)\n", __func__, tid,
++		 lbuf, clp->relpath);
+ 
+-	while ((p = strsep(&pbuf, " "))) {
++	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
+ 		if (!strncmp(p, "mech=", strlen("mech=")))
+ 			mech = p + strlen("mech=");
+ 		else if (!strncmp(p, "uid=", strlen("uid=")))
+@@ -777,8 +894,8 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+ 	if (!mech || strlen(mech) < 1) {
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			    "failed to find gss mechanism name "
+-			    "in upcall string '%s'\n", upcall_str);
+-		goto out;
++			    "in upcall string '%s'\n", lbuf);
++		return;
+ 	}
+ 
+ 	if (uidstr) {
+@@ -790,21 +907,21 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+ 	if (!uidstr) {
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			    "failed to find uid "
+-			    "in upcall string '%s'\n", upcall_str);
+-		goto out;
++			    "in upcall string '%s'\n", lbuf);
++		return;
+ 	}
+ 
+ 	if (enctypes && parse_enctypes(enctypes) != 0) {
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			 "parsing encryption types failed: errno %d\n", errno);
+-		goto out;
++		return;
+ 	}
+ 
+ 	if (target && strlen(target) < 1) {
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			 "failed to parse target name "
+-			 "in upcall string '%s'\n", upcall_str);
+-		goto out;
++			 "in upcall string '%s'\n", lbuf);
++		return;
+ 	}
+ 
+ 	/*
+@@ -818,21 +935,26 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+ 	if (service && strlen(service) < 1) {
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			 "failed to parse service type "
+-			 "in upcall string '%s'\n", upcall_str);
+-		goto out;
++			 "in upcall string '%s'\n", lbuf);
++		return;
+ 	}
+ 
+-	if (strcmp(mech, "krb5") == 0 && clp->servername)
+-		process_krb5_upcall(clp, uid, clp->gssd_fd, srchost, target, service);
+-	else {
++	if (strcmp(mech, "krb5") == 0 && clp->servername) {
++		info = alloc_upcall_info(clp, uid, clp->gssd_fd, srchost, target, service);
++		if (info == NULL) {
++			printerr(0, "%s: failed to allocate clnt_upcall_info\n", __func__);
++			do_error_downcall(clp->gssd_fd, uid, -EACCES);
++			return;
++		}
++		err = start_upcall_thread(gssd_work_thread_fn, info);
++		if (err != 0) {
++			do_error_downcall(clp->gssd_fd, uid, -EACCES);
++			free_upcall_info(info);
++		}
++	} else {
+ 		if (clp->servername)
+ 			printerr(0, "WARNING: handle_gssd_upcall: "
+ 				 "received unknown gss mech '%s'\n", mech);
+ 		do_error_downcall(clp->gssd_fd, uid, -EACCES);
+ 	}
+-out:
+-	free(upcall_str);
+-out_nomem:
+-	free_upcall_info(info);
+-	return;
+ }
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
+2.30.2
+
