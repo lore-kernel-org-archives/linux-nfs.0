@@ -2,168 +2,86 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D7F2C47085
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 18:00:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48A12C47084
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 18:02:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 45799613CC
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 18:00:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2DC28613F1
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 18:02:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232544AbhEYSCL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 25 May 2021 14:02:11 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:43298 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233221AbhEYSCI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2021 14:02:08 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1621965638;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=T5yPn7uM4AZ1kLoH52uxiHQunkVmThGl3hrrbd4m3Ys=;
-        b=AyiCj3FQ1ZzbU2cmnHWAbLimTGWwYXhmTRfu96muwJkWRkLXkiXZ88fQmclpVLOzA/tDf1
-        CdXuHnngEeoNFCyCudYWUEJDBCKAnfQgyKMIbZ+OhUhXC63b39YI3kikVKxbra8I6Arf0x
-        RaqjOryyN+KOkfvzDS72IjJI1lIZYbo=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-41-wMEwYBubNmOGNmC2LvyoaQ-1; Tue, 25 May 2021 14:00:35 -0400
-X-MC-Unique: wMEwYBubNmOGNmC2LvyoaQ-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id CBC6D6D5C1
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2021 18:00:34 +0000 (UTC)
-Received: from aion.usersys.redhat.com (ovpn-114-18.rdu2.redhat.com [10.10.114.18])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id B19945C1C2
-        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2021 18:00:34 +0000 (UTC)
-Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
-        id E6C601A003D; Tue, 25 May 2021 14:00:33 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
+        id S232514AbhEYSEP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 May 2021 14:04:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:37488 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S232250AbhEYSEN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 25 May 2021 14:04:13 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1E1E661400
+        for <linux-nfs@vger.kernel.org>; Tue, 25 May 2021 18:02:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1621965763;
+        bh=0na1AlFE4jd/lqYuo0yx4bg5RtgbvVJ+BoYv9SezeAY=;
+        h=From:To:Subject:Date:From;
+        b=RfispvswovGG3jW4J0HTUmChr+FKn3mnxjBBaMlLXD+gE8I2zOVcrX0m+8F+hAFpB
+         L5XpaG0NN+g3jER5RhDG7obx1V3KNsCAGjLrvNMFxSMWZXCf9DSte3t65EH15HQG3l
+         I6ViaE5nYT0wR9yM320atZfzD+zrQVSX7dC5e3crrcFZwdl0lGiI1pwCO2b9pr3MR/
+         LQPH6iyO8l4WlS5A60HBsa6MgR84AzOd7msLb7q+UbSesb860kJcIRJG239J6QEPpE
+         QpL7rzfCFOFoTxZTlW6xmiWhq2N2nF6wcIKlhHCl01qlaMx5cMlK3lEsbDNpp0TgDq
+         3tEQFwMsIcuAw==
+From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils RFC PATCH 0/2] Two rpc.gssd improvements
-Date:   Tue, 25 May 2021 14:00:31 -0400
-Message-Id: <20210525180033.200404-1-smayhew@redhat.com>
+Subject: [PATCH v2 1/3] NFS: Fix an Oopsable condition in __nfs_pageio_add_request()
+Date:   Tue, 25 May 2021 14:02:39 -0400
+Message-Id: <20210525180241.261090-1-trondmy@kernel.org>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These patches provide the following improvements for rpc.gssd:
-1) deal with failed thread creation
-2) add a timeout for upcall threads
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Both of these issues can leave kernel mount processes hanging
-indefinitely.  A timeout was originally proposed in the kernel
-(https://lore.kernel.org/linux-nfs/20180618172542.45519-1-steved@redhat.com/)
-but this approach was rejected by Trond:
+Ensure that nfs_pageio_error_cleanup() resets the mirror array contents,
+so that the structure reflects the fact that it is now empty.
+Also change the test in nfs_pageio_do_add_request() to be more robust by
+checking whether or not the list is empty rather than relying on the
+value of pg_count.
 
-    I'm saying that we can do this entirely in userland without any kernel
-    changes. As long as that hasn't been attempted and proven to be flawed,
-    then there is no reason to accept any kernel patches.
+Fixes: a7d42ddb3099 ("nfs: add mirroring support to pgio layer")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/pagelist.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-So this is my attempt at doing the timeout in userland.
-
-The first patch was tested using a program that intercepts clone() and
-changes the return code to -EAGAIN.
-
-For the second patch, I have two different tests I've been running:
-
-1) In an IPA domain in our lab, I have a server running 100 kerberized
-nfsd containers.  The client has mountpoints to all 100 of those servers
-defined in its /etc/fstab.  I run 'systemctl start remote-fs.target' to
-kick off all those mounts in parallel, while running the following
-systemtap script to periodically mess with the mount processes:
-
----8<---
-global i
-
-probe begin { i=0 }
-
-probe process("/lib64/libgssapi_krb5.so.2").function("gss_acquire_cred")
-{
-        if (++i % 100 == 0) {
-                printf("delay (i=%d)\n", i)
-                mdelay(30000)
-        }
-}
----8<---
-
-I actually run the test in a loop... the driver script looks like this:
-
----8<---
-#!/bin/bash
-let i=1
-while :; do
-        echo "Round $i"
-        echo "Mounting"
-        systemctl start remote-fs.target
-        echo -n "Waiting on mount.nfs processes to complete "
-        while pgrep mount.nfs >/dev/null; do
-                echo -n "."
-                sleep 1
-        done
-        echo -e "\nNumber of nfs4 mounts: $(grep -c nfs4 /proc/mounts)"
-        echo -e "Unmounting"
-        umount -a -t nfs4
-        if ! pgrep gssd >/dev/null; then
-                echo "gssd is not running - check for crash"
-                break
-        fi
-        echo "Sleeping 5 seconds"
-        sleep 5
-        let i=$i+1
-done
----8<---
-
-2) In an AD environment in our lab, I added 1000 test users.  On a
-client machine I have all those users run a script that writes to files
-on a NetApp SVM and while that script is running I trigger a LIF
-migration on the filer.  That forces all those users to establish new
-creds with the SVM.
-
-That test looks basically like this
-# for i in `seq 1 1000`; do su - testuser$i -c "echo 'PASSWORD'|kinit"; done
-# for i in `seq 1 1000`; do su - testuser$i -c "date >/mnt/t/tmp/testuser$i-testfile" & done
-# for i in `seq 1 1000`; do su - testuser$i -c test.sh & done
-
-where test.sh is a simple script that writes the date to a file in a
-loop:
-
----8<---
-#!/bin/bash
-filename=/mnt/t/tmp/$(whoami)-testfile
-for i in $(seq 1 300)
-do
-	date >$filename
-	sleep 1
-done
----8<---
-
-While the test users are running the script I run one of the following
-commands on the NetApp filer:
-
-network interface migrate -vserver VSERVER -lif LIF -destination-node NODE
-network interface revert -vserver VSERVER -lif LIF
-
--Scott
-
-Scott Mayhew (2):
-  gssd: deal with failed thread creation
-  gssd: add timeout for upcall threads
-
- nfs.conf               |   2 +
- utils/gssd/gssd.c      | 202 +++++++++++++++++-----------
- utils/gssd/gssd.h      |  26 +++-
- utils/gssd/gssd.man    |  31 ++++-
- utils/gssd/gssd_proc.c | 293 ++++++++++++++++++++++++++++++++++-------
- 5 files changed, 421 insertions(+), 133 deletions(-)
-
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6c20b28d9d7c..d35c84af44e0 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -1094,15 +1094,16 @@ nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+ 	struct nfs_page *prev = NULL;
+ 	unsigned int size;
+ 
+-	if (mirror->pg_count != 0) {
+-		prev = nfs_list_entry(mirror->pg_list.prev);
+-	} else {
++	if (list_empty(&mirror->pg_list)) {
+ 		if (desc->pg_ops->pg_init)
+ 			desc->pg_ops->pg_init(desc, req);
+ 		if (desc->pg_error < 0)
+ 			return 0;
+ 		mirror->pg_base = req->wb_pgbase;
+-	}
++		mirror->pg_count = 0;
++		mirror->pg_recoalesce = 0;
++	} else
++		prev = nfs_list_entry(mirror->pg_list.prev);
+ 
+ 	if (desc->pg_maxretrans && req->wb_nio > desc->pg_maxretrans) {
+ 		if (NFS_SERVER(desc->pg_inode)->flags & NFS_MOUNT_SOFTERR)
 -- 
-2.30.2
+2.31.1
 
