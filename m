@@ -6,44 +6,43 @@ X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7987AC2B9F8
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 16:17:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F794C2B9F8
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 16:18:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5790C61408
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 16:17:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5191C61408
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 May 2021 16:18:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230305AbhEYQTY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 25 May 2021 12:19:24 -0400
-Received: from p-impout006aa.msg.pkvw.co.charter.net ([47.43.26.137]:33786
-        "EHLO p-impout006.msg.pkvw.co.charter.net" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S229989AbhEYQTY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2021 12:19:24 -0400
-X-Greylist: delayed 398 seconds by postgrey-1.27 at vger.kernel.org; Tue, 25 May 2021 12:19:23 EDT
+        id S229989AbhEYQTy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 May 2021 12:19:54 -0400
+Received: from p-impout002aa.msg.pkvw.co.charter.net ([47.43.26.133]:45002
+        "EHLO p-impout002.msg.pkvw.co.charter.net" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S231419AbhEYQTx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 May 2021 12:19:53 -0400
 Received: from server.example.org ([76.181.116.208])
         by cmsmtp with ESMTP
-        id lZh2l2ztTB5K5lZh3l0oAV; Tue, 25 May 2021 16:14:09 +0000
-X-Authority-Analysis: v=2.4 cv=ZqIol/3G c=1 sm=1 tr=0 ts=60ad2251
+        id lZeFlbIkhmSYAlZeFl0x6v; Tue, 25 May 2021 16:11:15 +0000
+X-Authority-Analysis: v=2.4 cv=NIEQR22g c=1 sm=1 tr=0 ts=60ad21a3
  a=KaGAbI3NK5LSFXnSxylTDA==:117 a=KaGAbI3NK5LSFXnSxylTDA==:17
  a=IkcTkHD0fZMA:10 a=5FLXtPjwQuUA:10 a=dDymh7n3NiNWNMwGO1UA:9 a=QEXdDO2ut3YA:10
 Received: from [192.168.1.31]
         by server.example.org with esmtps  (TLS1.3) tls TLS_AES_128_GCM_SHA256
         (Exim 4.94)
         (envelope-from <scott.andrews@columbus.rr.com>)
-        id 1llZh2-0000VL-Eh
-        for linux-nfs@vger.kernel.org; Tue, 25 May 2021 12:14:08 -0400
+        id 1llZWy-0000RA-Mi
+        for linux-nfs@vger.kernel.org; Tue, 25 May 2021 12:03:44 -0400
+To:     linux-nfs@vger.kernel.org
 From:   Scott Andrews <scott.andrews@columbus.rr.com>
 Subject: mount.nfs: Stale file handle
-To:     linux-nfs@vger.kernel.org
-Message-ID: <82edf12a-a9fa-49a7-bdd0-1689c70a3a5f@columbus.rr.com>
-Date:   Tue, 25 May 2021 12:14:07 -0400
+Message-ID: <1531a16c-e118-6ca5-45c4-c88bbd2f09d0@columbus.rr.com>
+Date:   Tue, 25 May 2021 12:03:43 -0400
 User-Agent: Mozilla/5.0 (X11; Linux aarch64; rv:78.0) Gecko/20100101
  Thunderbird/78.10.0
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
 Content-Transfer-Encoding: 8bit
-X-CMAE-Envelope: MS4xfIkHaUazhEcyHW5y/tMTunLeeY3+ugjQ51BGO1JjSzqRqY+Lb2IWNfKBCkQAVtyzJlo9UYlYr3VIMI/cxOJoMvtWbT4v/gH12sQfp8UMiJJdIg4B8QCs
- J8I6OBoAvWns637R9jJpTHov8USDql4i3ye5R3HjJGOPm7OuT0ne4AmTpZc7i2W5FriO/cLHs4N4ZLyYZFybJJOwMHEoh/Lj+g4g3pxmdDkoz7k1LFIzP/UX
+Content-Language: en-US
+X-CMAE-Envelope: MS4xfACsygCmrq5C5uS9ljiURn2hmqHgkSP67q1vAl1ScrAv3AZWUldETMi9ygALmcjAnszGpC4j/2ZEnFuTqHqXQDXY7BUqLw6Df+vHftV7YQgmrPGbuSxO
+ FrRRmo3OKApliJGqvab0MFjJcypxAcCMDXe1AuAqHBp21wvjTImqao+NJud4WziGSQ/VP0DUylJ4X+PTXn+Cz1ujUFdfAetU572WbFX7BTbiavwZJO0Do4x8
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -70,8 +69,11 @@ systemV init script
                  log_info_msg "Starting NFS statd..."
                  start_daemon /sbin/rpc.statd --no-notify
                  evaluate_retval
+
                  log_info_msg "Starting NFS nfsd..."
+
                  start_daemon /sbin/rpc.nfsd 8
+
                  evaluate_retval
 
 
@@ -171,4 +173,6 @@ cat /proc/fs/nfs/exports
 
 Can someone help with this issue?
 
-Thanks for any help/direction you may have
+Thanks for any help/direction  you may have
+
+
