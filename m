@@ -8,60 +8,57 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 21F63C47082
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 22:59:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61717C47096
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 23:00:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 04A4F6109F
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 22:59:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 356786109F
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 23:00:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229721AbhFCXA6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Jun 2021 19:00:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42960 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229610AbhFCXA6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2021 19:00:58 -0400
-Received: from mail-qv1-xf34.google.com (mail-qv1-xf34.google.com [IPv6:2607:f8b0:4864:20::f34])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21130C06174A
-        for <linux-nfs@vger.kernel.org>; Thu,  3 Jun 2021 15:59:13 -0700 (PDT)
-Received: by mail-qv1-xf34.google.com with SMTP id m6so4089048qvg.1
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jun 2021 15:59:13 -0700 (PDT)
+        id S229675AbhFCXB7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Jun 2021 19:01:59 -0400
+Received: from mail-qt1-f180.google.com ([209.85.160.180]:37491 "EHLO
+        mail-qt1-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229610AbhFCXB7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jun 2021 19:01:59 -0400
+Received: by mail-qt1-f180.google.com with SMTP id z4so2609547qts.4
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Jun 2021 16:00:13 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=UlQsP7v7vMM8cBzMOBEgavYrD1ix6NnsgDsDx9brgZ0=;
-        b=KDmjBNE/tjG1d7egD0GKdOAlvqxfmV4y5qmwAeLUeKNy32rhfPfXykYM8zyScd9RyI
-         gsIln/0ZgPjOYG45Kw8KXvHZ9CZJct+TGXSa17K71y9/y3/9qeKadCnmT1GoT2YoLQCS
-         Heo/odmb9h3qXi5lzW8jKm6O4AdnzDLLXkEQE6onjYCZKXPfNbUVhqEnHLVDZAbZigiQ
-         QzHcuh8rHAVJsMx2kHQ/YFt62nVcBrdAWQDhoxE6/V28cqXNcjFLOLtEkqHNraCzlvt9
-         EvUoKw0Zd9mfdLety4IZNRJA7/Rk47xCv8NmVnkh6UZ5pekH1YX1ip+YNmHF8tokZ/iL
-         oiZg==
+        bh=f9/bK+BrZI+CvpPuTxzlZKcrMOYWFH6TlB5Awi0+0VI=;
+        b=VrwvoBxZtI1n5fYafcK2MWgadthXtzHCnbDMXsDog704vjWW4ydK9ec3cli7YsfQRo
+         esN3jUz/d5rt6JhQs09UYlooeRokGYYTO4uMVNMolB3VrxxKw5W2o6cv/XPwg6DHKpZz
+         3vzqPF73Ho8htMvgIC5CVxb2/WguhRaB9c67CkqpqB0tyQIQnUMixdvOjVSnumiijcZT
+         Nd1ov7M2sVgXj+F6eYO+RU0vKM4tPWDm3fajNNVcdo18V80XGaQ3TwdTFsRSH7Mwrp+Q
+         lq7tFTimbZCPW63hs7SVQus1n6iXH210Fk3JSHOfVwCUwjnKdKL5qLHR3jJfSTAvJdvi
+         mTqw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=UlQsP7v7vMM8cBzMOBEgavYrD1ix6NnsgDsDx9brgZ0=;
-        b=QNGa0KOLD1rjGY7lvboglnTLV2BspgpS7Vk2QD1y+JNbpIGNmq6bcThglTIY6nt/TX
-         Tjrq6u6cqOTQVyIOVqLJpKdOjrveBB7Zh12jfviXpGyVGfczd7tTYfp9vW046HeHDluZ
-         3Ep5KiVOvpCM2v73YRZghZAv1FeJbwp6qUs7oUIP5wU9YVamd1G87TA3TBUBwuN9b80D
-         cFFaTRBjjO7Gq+Vp/kJZhjC4artWTDl45wS45XWqrjY9uQw1oAk2GWLUPgsNL1J4Xfau
-         Cgc/4R0qTCFJwlGFQHRe1N6VGwWeeybplDP6b6TiOIO3tlIoP52cjQR2sHxMfC9lZ79u
-         ChqQ==
-X-Gm-Message-State: AOAM533Y6MuQRm5tytILfTqbzUAYnqndtbWQL1ezJ9ghU7XPQBOT5aYx
-        VQEZL+eXCWmm+EL6rTDbQsQgz6rrAF0=
-X-Google-Smtp-Source: ABdhPJwfBngg2oVDG4OdjS+Sa8NffJhgAdQ+fbbUB3x8zauv2gkNUSOIUXDeCVpBmuoLyjUc6VGR6w==
-X-Received: by 2002:a05:6214:c2d:: with SMTP id a13mr1970952qvd.37.1622761151260;
-        Thu, 03 Jun 2021 15:59:11 -0700 (PDT)
+        bh=f9/bK+BrZI+CvpPuTxzlZKcrMOYWFH6TlB5Awi0+0VI=;
+        b=GfS5LefX0WtkahEMPSwI78T1QoUvQmJYWyEzt3HTunCrZ8M8D3DSVbpNQXRREGN+py
+         8WVxBnM8AG3mIQPpqx3f75ZfhDoJeqDKs2SVM5C+HVmKIrZl6Mh276aJztXj3gtXzZM7
+         Ldo5SbIds491KvqNgInYR3Z6ssLAlv1fNYIVYxdY2ffWGlGwgRToE3EnpKbPiQMUEWNW
+         ls+3QyNCGuhSjuaWC0O8VQ8xwI2zqumaXrwlTpcXaX9+wWz2YEOqLLx+ghRAa9Hi7jh7
+         Ilxc5t1U9VoLSGqMKEqOYA2OIQ2b3j/yEIn6ejLr1PHCQ/PeQ0lkjaSEfY+2/n3j4rEN
+         bsMA==
+X-Gm-Message-State: AOAM532kYTw5nAp7kguD+PKKddovSDvZXsKn+IbvMkq+oUoCUG7OC2eS
+        EKS07YG3X9V8rizhoyAKC3aepaojnv0=
+X-Google-Smtp-Source: ABdhPJxO+b7TeKGCbKTUIgxK+Se3ffVISCipesrFKl52FGXazWEeQGF90/GUq6LyAaALa4rDjgu0sQ==
+X-Received: by 2002:ac8:5c8e:: with SMTP id r14mr1896687qta.248.1622761153575;
+        Thu, 03 Jun 2021 15:59:13 -0700 (PDT)
 Received: from kolga-mac-1.vpn.netapp.com (nat-216-240-30-23.netapp.com. [216.240.30.23])
-        by smtp.gmail.com with ESMTPSA id h19sm1479497qtq.5.2021.06.03.15.59.10
+        by smtp.gmail.com with ESMTPSA id h19sm1479497qtq.5.2021.06.03.15.59.12
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 03 Jun 2021 15:59:10 -0700 (PDT)
+        Thu, 03 Jun 2021 15:59:13 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v1 1/3] sunrpc: take a xprt offline using sysfs
-Date:   Thu,  3 Jun 2021 18:59:05 -0400
-Message-Id: <20210603225907.19981-2-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 3/3] sunrpc: remove an offlined xprt using sysfs
+Date:   Thu,  3 Jun 2021 18:59:07 -0400
+Message-Id: <20210603225907.19981-4-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20210603225907.19981-1-olga.kornievskaia@gmail.com>
 References: <20210603225907.19981-1-olga.kornievskaia@gmail.com>
@@ -73,147 +70,126 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Using sysfs's xprt_state attribute, mark a particular transport offline.
-It will not be picked during the round-robin selection. It's not allowed
-to take the main (1st created transport associated with the rpc_client)
-offline.
+Once a transport has been put offline, this transport can be also
+removed from the list of transports. Any tasks that have been stuck
+on this transport would find the next available active transport
+and be re-tried. This transport would be removed from the xprt_switch
+list and freed.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- include/linux/sunrpc/xprt.h |  2 ++
- net/sunrpc/clnt.c           |  1 +
- net/sunrpc/sysfs.c          | 42 +++++++++++++++++++++++++++++++++----
- net/sunrpc/xprtmultipath.c  |  3 ++-
- 4 files changed, 43 insertions(+), 5 deletions(-)
+ include/linux/sunrpc/xprt.h |  1 +
+ net/sunrpc/clnt.c           | 20 ++++++++++++++++++++
+ net/sunrpc/sysfs.c          | 18 ++++++++++++++----
+ 3 files changed, 35 insertions(+), 4 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 13a4eaf385cf..72a858f032c7 100644
+index 72a858f032c7..c2ecf5cc3802 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -293,6 +293,7 @@ struct rpc_xprt {
- 	struct rcu_head		rcu;
- 	const struct xprt_class	*xprt_class;
- 	struct rpc_sysfs_xprt	*xprt_sysfs;
-+	bool			main; /* marked if it's the 1st transport */
- };
- 
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
-@@ -426,6 +427,7 @@ void			xprt_release_write(struct rpc_xprt *, struct rpc_task *);
- #define XPRT_BOUND		(4)
+@@ -428,6 +428,7 @@ void			xprt_release_write(struct rpc_xprt *, struct rpc_task *);
  #define XPRT_BINDING		(5)
  #define XPRT_CLOSING		(6)
-+#define XPRT_OFFLINE		(7)
+ #define XPRT_OFFLINE		(7)
++#define XPRT_REMOVE		(8)
  #define XPRT_CONGESTED		(9)
  #define XPRT_CWND_WAIT		(10)
  #define XPRT_WRITE_SPACE	(11)
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 9bf820bad84c..408618765aa5 100644
+index 408618765aa5..36040ec53404 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -412,6 +412,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- 	}
- 
- 	rpc_clnt_set_transport(clnt, xprt, timeout);
-+	xprt->main = true;
- 	xprt_iter_init(&clnt->cl_xpi, xps);
- 	xprt_switch_put(xps);
- 
+@@ -2106,6 +2106,26 @@ call_connect_status(struct rpc_task *task)
+ 	case -ENOTCONN:
+ 	case -EAGAIN:
+ 	case -ETIMEDOUT:
++		if (!(task->tk_flags & RPC_TASK_NO_ROUND_ROBIN) &&
++		    (task->tk_flags & RPC_TASK_MOVEABLE) &&
++		    test_bit(XPRT_REMOVE, &xprt->state)) {
++			struct rpc_xprt *saved = task->tk_xprt;
++			struct rpc_xprt_switch *xps;
++
++			rcu_read_lock();
++			xps = xprt_switch_get(rcu_dereference(clnt->cl_xpi.xpi_xpswitch));
++			rcu_read_unlock();
++			if (xps->xps_nactive > 1) {
++				xprt_release(task);
++				xprt_put(saved);
++				rpc_xprt_switch_remove_xprt(xps, saved);
++				task->tk_xprt = NULL;
++				task->tk_action = call_start;
++			}
++			xprt_switch_put(xps);
++			if (!task->tk_xprt)
++				return;
++		}
+ 		goto out_retry;
+ 	case -ENOBUFS:
+ 		rpc_delay(task, HZ >> 2);
 diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index ec06c9257c07..02c918c5061b 100644
+index 02c918c5061b..44a69638c55f 100644
 --- a/net/sunrpc/sysfs.c
 +++ b/net/sunrpc/sysfs.c
 @@ -118,7 +118,7 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
  	struct rpc_xprt *xprt = rpc_sysfs_xprt_kobj_get_xprt(kobj);
  	ssize_t ret;
  	int locked, connected, connecting, close_wait, bound, binding,
--	    closing, congested, cwnd_wait, write_space;
-+	    closing, congested, cwnd_wait, write_space, offline;
+-	    closing, congested, cwnd_wait, write_space, offline;
++	    closing, congested, cwnd_wait, write_space, offline, remove;
  
  	if (!xprt)
  		return 0;
-@@ -136,8 +136,9 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
- 		congested = test_bit(XPRT_CONGESTED, &xprt->state);
+@@ -137,8 +137,9 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
  		cwnd_wait = test_bit(XPRT_CWND_WAIT, &xprt->state);
  		write_space = test_bit(XPRT_WRITE_SPACE, &xprt->state);
-+		offline = test_bit(XPRT_OFFLINE, &xprt->state);
+ 		offline = test_bit(XPRT_OFFLINE, &xprt->state);
++		remove = test_bit(XPRT_REMOVE, &xprt->state);
  
--		ret = sprintf(buf, "state=%s %s %s %s %s %s %s %s %s %s\n",
-+		ret = sprintf(buf, "state=%s %s %s %s %s %s %s %s %s %s %s\n",
+-		ret = sprintf(buf, "state=%s %s %s %s %s %s %s %s %s %s %s\n",
++		ret = sprintf(buf, "state=%s %s %s %s %s %s %s %s %s %s %s %s\n",
  			      locked ? "LOCKED" : "",
  			      connected ? "CONNECTED" : "",
  			      connecting ? "CONNECTING" : "",
-@@ -147,7 +148,8 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
- 			      closing ? "CLOSING" : "",
+@@ -149,7 +150,8 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
  			      congested ? "CONGESTED" : "",
  			      cwnd_wait ? "CWND_WAIT" : "",
--			      write_space ? "WRITE_SPACE" : "");
-+			      write_space ? "WRITE_SPACE" : "",
-+			      offline ? "OFFLINE" : "");
+ 			      write_space ? "WRITE_SPACE" : "",
+-			      offline ? "OFFLINE" : "");
++			      offline ? "OFFLINE" : "",
++			      remove ? "REMOVE" : "");
  	}
  
  	xprt_put(xprt);
-@@ -223,6 +225,38 @@ static ssize_t rpc_sysfs_xprt_dstaddr_store(struct kobject *kobj,
- 	goto out;
- }
+@@ -230,13 +232,15 @@ static ssize_t rpc_sysfs_xprt_state_change(struct kobject *kobj,
+ 					   const char *buf, size_t count)
+ {
+ 	struct rpc_xprt *xprt = rpc_sysfs_xprt_kobj_get_xprt(kobj);
+-	int offline = 0;
++	int offline = 0, remove = 0;
  
-+static ssize_t rpc_sysfs_xprt_state_change(struct kobject *kobj,
-+					   struct kobj_attribute *attr,
-+					   const char *buf, size_t count)
-+{
-+	struct rpc_xprt *xprt = rpc_sysfs_xprt_kobj_get_xprt(kobj);
-+	int offline = 0;
-+
-+	if (!xprt)
-+		return 0;
-+
-+	if (!strncmp(buf, "offline", 7))
-+		offline = 1;
-+	else
-+		return -EINVAL;
-+
-+	if (wait_on_bit_lock(&xprt->state, XPRT_LOCKED, TASK_KILLABLE)) {
-+		count = -EINTR;
-+		goto out_put;
-+	}
-+	if (offline) {
-+		if (xprt->main)
-+			count = -EINVAL;
+ 	if (!xprt)
+ 		return 0;
+ 
+ 	if (!strncmp(buf, "offline", 7))
+ 		offline = 1;
++	else if (!strncmp(buf, "remove", 6))
++		remove = 1;
+ 	else
+ 		return -EINVAL;
+ 
+@@ -249,6 +253,12 @@ static ssize_t rpc_sysfs_xprt_state_change(struct kobject *kobj,
+ 			count = -EINVAL;
+ 		else
+ 			set_bit(XPRT_OFFLINE, &xprt->state);
++	} else if (remove) {
++		if (!test_bit(XPRT_CONNECTED, &xprt->state) &&
++		    test_bit(XPRT_OFFLINE, &xprt->state))
++			set_bit(XPRT_REMOVE, &xprt->state);
 +		else
-+			set_bit(XPRT_OFFLINE, &xprt->state);
-+	}
-+
-+	xprt_release_write(xprt, NULL);
-+out_put:
-+	xprt_put(xprt);
-+	return count;
-+}
-+
- int rpc_sysfs_init(void)
- {
- 	rpc_sunrpc_kset = kset_create_and_add("sunrpc", NULL, kernel_kobj);
-@@ -293,7 +327,7 @@ static struct kobj_attribute rpc_sysfs_xprt_info = __ATTR(xprt_info,
- 	0444, rpc_sysfs_xprt_info_show, NULL);
++			count = -EINVAL;
+ 	}
  
- static struct kobj_attribute rpc_sysfs_xprt_change_state = __ATTR(xprt_state,
--	0644, rpc_sysfs_xprt_state_show, NULL);
-+	0644, rpc_sysfs_xprt_state_show, rpc_sysfs_xprt_state_change);
- 
- static struct attribute *rpc_sysfs_xprt_attrs[] = {
- 	&rpc_sysfs_xprt_dstaddr.attr,
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index 07e76ae1028a..39551b794b80 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -230,7 +230,8 @@ void xprt_iter_default_rewind(struct rpc_xprt_iter *xpi)
- static
- bool xprt_is_active(const struct rpc_xprt *xprt)
- {
--	return kref_read(&xprt->kref) != 0;
-+	return (kref_read(&xprt->kref) != 0 &&
-+		!test_bit(XPRT_OFFLINE, &xprt->state));
- }
- 
- static
+ 	xprt_release_write(xprt, NULL);
 -- 
 2.27.0
 
