@@ -7,27 +7,27 @@ X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6FF16C47096
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 20:51:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D729C47082
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 20:51:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5D55C61263
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 20:51:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2649460FD8
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jun 2021 20:51:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229790AbhFCUxO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Jun 2021 16:53:14 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44760 "EHLO mail.kernel.org"
+        id S229924AbhFCUxU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Jun 2021 16:53:20 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44794 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229576AbhFCUxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 Jun 2021 16:53:14 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 140D361263;
-        Thu,  3 Jun 2021 20:51:29 +0000 (UTC)
-Subject: [PATCH 09/29] lockd: Update the NLMv1 nlm_res arguments decoder to
+        id S229576AbhFCUxU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 Jun 2021 16:53:20 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1F4F760C3D;
+        Thu,  3 Jun 2021 20:51:35 +0000 (UTC)
+Subject: [PATCH 10/29] lockd: Update the NLMv1 SM_NOTIFY arguments decoder to
  use struct xdr_stream
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     bfields@fieldses.org
 Cc:     linux-nfs@vger.kernel.org
-Date:   Thu, 03 Jun 2021 16:51:28 -0400
-Message-ID: <162275348837.32691.4312188122466636960.stgit@klimt.1015granger.net>
+Date:   Thu, 03 Jun 2021 16:51:34 -0400
+Message-ID: <162275349441.32691.6246136814695884016.stgit@klimt.1015granger.net>
 In-Reply-To: <162275337584.32691.3943139351165347555.stgit@klimt.1015granger.net>
 References: <162275337584.32691.3943139351165347555.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.1
@@ -40,27 +40,39 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/lockd/xdr.c |   25 ++++++++++++++-----------
- 1 file changed, 14 insertions(+), 11 deletions(-)
+ fs/lockd/xdr.c |   39 ++++++++++++++++++++++++++-------------
+ 1 file changed, 26 insertions(+), 13 deletions(-)
 
 diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index b59e02b4417c..911b6377a6da 100644
+index 911b6377a6da..421613170e5f 100644
 --- a/fs/lockd/xdr.c
 +++ b/fs/lockd/xdr.c
-@@ -299,6 +299,20 @@ nlmsvc_decode_unlockargs(struct svc_rqst *rqstp, __be32 *p)
+@@ -313,6 +313,32 @@ nlmsvc_decode_res(struct svc_rqst *rqstp, __be32 *p)
  	return 1;
  }
  
 +int
-+nlmsvc_decode_res(struct svc_rqst *rqstp, __be32 *p)
++nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p)
 +{
 +	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
-+	struct nlm_res *resp = rqstp->rq_argp;
++	struct nlm_reboot *argp = rqstp->rq_argp;
++	u32 len;
 +
-+	if (!svcxdr_decode_cookie(xdr, &resp->cookie))
++	if (xdr_stream_decode_u32(xdr, &len) < 0)
 +		return 0;
-+	if (!svcxdr_decode_stats(xdr, &resp->status))
++	if (len > SM_MAXSTRLEN)
 +		return 0;
++	p = xdr_inline_decode(xdr, len);
++	if (!p)
++		return 0;
++	argp->len = len;
++	argp->mon = (char *)p;
++	if (xdr_stream_decode_u32(xdr, &argp->state) < 0)
++		return 0;
++	p = xdr_inline_decode(xdr, SM_PRIV_SIZE);
++	if (!p)
++		return 0;
++	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
 +
 +	return 1;
 +}
@@ -68,18 +80,20 @@ index b59e02b4417c..911b6377a6da 100644
  int
  nlmsvc_encode_testres(struct svc_rqst *rqstp, __be32 *p)
  {
-@@ -379,17 +393,6 @@ nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p)
+@@ -380,19 +406,6 @@ nlmsvc_decode_notify(struct svc_rqst *rqstp, __be32 *p)
  	return xdr_argsize_check(rqstp, p);
  }
  
 -int
--nlmsvc_decode_res(struct svc_rqst *rqstp, __be32 *p)
+-nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p)
 -{
--	struct nlm_res *resp = rqstp->rq_argp;
+-	struct nlm_reboot *argp = rqstp->rq_argp;
 -
--	if (!(p = nlm_decode_cookie(p, &resp->cookie)))
+-	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
 -		return 0;
--	resp->status = *p++;
+-	argp->state = ntohl(*p++);
+-	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
+-	p += XDR_QUADLEN(SM_PRIV_SIZE);
 -	return xdr_argsize_check(rqstp, p);
 -}
 -
