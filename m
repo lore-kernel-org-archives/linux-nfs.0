@@ -2,74 +2,113 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+X-Spam-Status: No, score=-5.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70046C4743F
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:59:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6B4CC47082
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 21:03:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5186C611BD
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:59:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8C4336128A
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 21:03:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230344AbhFHVA5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Jun 2021 17:00:57 -0400
-Received: from novek.ru ([213.148.174.62]:60402 "EHLO novek.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233988AbhFHVA5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 8 Jun 2021 17:00:57 -0400
-X-Greylist: delayed 441 seconds by postgrey-1.27 at vger.kernel.org; Tue, 08 Jun 2021 17:00:56 EDT
-Received: from [192.168.0.18] (unknown [37.228.234.253])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by novek.ru (Postfix) with ESMTPSA id 0F43B50048B;
-        Tue,  8 Jun 2021 23:49:58 +0300 (MSK)
-DKIM-Filter: OpenDKIM Filter v2.11.0 novek.ru 0F43B50048B
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=novek.ru; s=mail;
-        t=1623185400; bh=gDD54G8wjksTjk2nvyCoV1yuxaYYJHATQuKZyY57tz4=;
-        h=Subject:To:Cc:References:From:Date:In-Reply-To:From;
-        b=LIxGfllljjWPr4Yp9zzKCDOQA3Tl3ueOR3vhYBFQIrGmJYgkg65j/HTZqrAOWq91V
-         1ToFRtsXFlZ7uOvNlMaGKVRxzSh1H0HzpuOrofBbQAvGeWOGy+udaOCBYvFh3TGUNh
-         5uoxb6VtiWGx4xxaFTaqx01Z8qlrZCczo74eYHmw=
-Subject: Re: quic in-kernel implementation?
-To:     Alexander Ahring Oder Aring <aahringo@redhat.com>,
-        netdev@vger.kernel.org
-Cc:     linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        smfrench@gmail.com, Leif Sahlberg <lsahlber@redhat.com>,
-        Steven Whitehouse <swhiteho@redhat.com>
-References: <CAK-6q+hS29yoTF4tKq+Xt3G=_PPDi9vmFVwGPmutbsQyD2i=CA@mail.gmail.com>
-From:   Vadim Fedorenko <vfedorenko@novek.ru>
-Message-ID: <6b4027c4-7c25-fa98-42bc-f5b3a55e1d5a@novek.ru>
-Date:   Tue, 8 Jun 2021 21:51:38 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.8.1
+        id S234032AbhFHVFX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Jun 2021 17:05:23 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:46232 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S233959AbhFHVFX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 17:05:23 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1623186209;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=wgwzQeYzF2U3DxVcbwq7elji6MiiyMu51zrQBJinESg=;
+        b=iXPOg87w3hZGkHzdqs29dIjpeOa8sQ31PZ8B9NpTf+8GvK7jMBiVaAe3B8Ga8vfJXinm6s
+        tsamB2eRc8Auy8GmlT0Pxx6ioyV0BijbbB7tULDxb7wtfJ2xN/A4a7r3XzF6xr9EwWujQb
+        P1GGmRFsGgcjtN88xYfGA/b12e9VEL4=
+Received: from mail-il1-f199.google.com (mail-il1-f199.google.com
+ [209.85.166.199]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-150-9XXNWIMsPjyhFdn4CZAmSQ-1; Tue, 08 Jun 2021 17:03:28 -0400
+X-MC-Unique: 9XXNWIMsPjyhFdn4CZAmSQ-1
+Received: by mail-il1-f199.google.com with SMTP id g12-20020a056e021a2cb02901dfc46878d8so16127954ile.4
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 14:03:28 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=wgwzQeYzF2U3DxVcbwq7elji6MiiyMu51zrQBJinESg=;
+        b=dcR8HrHvKjPag5qJJajDWk5daL3if4jj4FmwxTlywPXy/+EbTXvRN17eiQ865i8ySG
+         U+Wk4VSooLWtPqtHR1cjlpShuvRCwMFty2UkhOn9SA+q/uIUfJm4LvAwUiGKmslOVRsO
+         R5B38dImEHST+FGiaTIUoTRFyb2AjoTA5p93X7vjHNGUI+OeDD+YNmSjX5NRV2ZkUp52
+         nGXM4xK8kn3QQhpqpqHv7pZXPaWAyN6LOQQUNs1RpmJ8aZqjIMchZo1ZxSDJA5/tVw/D
+         1YeveSqpPamwlS1YYVnUXFfDxJgdvB7BYFva1JuqRt8qXv8YqL61IcuzPtes5Z9gyZ5x
+         4wzQ==
+X-Gm-Message-State: AOAM530MrftUPCm2g/LpYzlbxXAD9lj5jq/1EMs5u28XtwoVWzBCkDMB
+        5sMawx/A6dGjY5yU/fkHon8ToCxDsLoH6FW4uGI2w9LLD0S9rGROfQpKqs+my0wGQMGjm7cHNxS
+        OPhCf7CmpKUJJCthpIha86nitTMiLvPPdldyM
+X-Received: by 2002:a5d:948f:: with SMTP id v15mr20684494ioj.28.1623186207677;
+        Tue, 08 Jun 2021 14:03:27 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJxwfNmW3upGXJ5Dve4Ej9WBccBXA4QinwdWTxjQZOfwjWS64lkmPpJPrRs/IwQ0cW8sqNkKdXyXf3uAs6HhDcY=
+X-Received: by 2002:a5d:948f:: with SMTP id v15mr20684477ioj.28.1623186207488;
+ Tue, 08 Jun 2021 14:03:27 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAK-6q+hS29yoTF4tKq+Xt3G=_PPDi9vmFVwGPmutbsQyD2i=CA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <CAK-6q+hS29yoTF4tKq+Xt3G=_PPDi9vmFVwGPmutbsQyD2i=CA@mail.gmail.com>
+ <87pmwxsjxm.fsf@suse.com> <CAH2r5msMBZ5AYQcfK=-xrOASzVC0SgoHdPnyqEPRcfd-tzUstw@mail.gmail.com>
+ <35352ef0-86ed-aaa5-4a49-b2b08dc3674d@samba.org>
+In-Reply-To: <35352ef0-86ed-aaa5-4a49-b2b08dc3674d@samba.org>
+From:   Alexander Aring <aahringo@redhat.com>
+Date:   Tue, 8 Jun 2021 17:03:16 -0400
+Message-ID: <CAK-6q+g3_9g++wQGbhzBhk2cp=0fb3aVL9GoAoYNPq6M4QnCdQ@mail.gmail.com>
+Subject: Re: quic in-kernel implementation?
+To:     Stefan Metzmacher <metze@samba.org>
+Cc:     Steve French <smfrench@gmail.com>,
+        =?UTF-8?Q?Aur=C3=A9lien_Aptel?= <aaptel@suse.com>,
+        Network Development <netdev@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        CIFS <linux-cifs@vger.kernel.org>,
+        Leif Sahlberg <lsahlber@redhat.com>,
+        Steven Whitehouse <swhiteho@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 07.06.2021 16:25, Alexander Ahring Oder Aring wrote:
-> Hi,
-> 
-> as I notice there exists several quic user space implementations, is
-> there any interest or process of doing an in-kernel implementation? I
-> am asking because I would like to try out quic with an in-kernel
-> application protocol like DLM. Besides DLM I've heard that the SMB
-> community is also interested into such implementation.
-> 
-> - Alex
-> 
+Hi,
 
-Hi!
-I'm working on test in-kernel implementation of quic. It's based on the
-kernel-tls work and uses the same ULP approach to setup connection
-configuration. It's mostly about offload crypto operations of short header
-to kernel and use user-space implementation to deal with any other types
-of packets. Hope to test it till the end of June with some help from
-Jakub.
-Vadim
+On Tue, Jun 8, 2021 at 3:36 AM Stefan Metzmacher <metze@samba.org> wrote:
+...
+>
+> > 2) then switch focus to porting a smaller C userspace implementation of
+> > QUIC to Linux (probably not msquic since it is larger and doesn't
+> > follow kernel style)
+> > to kernel in fs/cifs  (since currently SMB3.1.1 is the only protocol
+> > that uses QUIC,
+> > and the Windows server target is quite stable and can be used to test against)> 3) use the userspace upcall example from step 1 for
+> > comparison/testing/debugging etc.
+> > since we know the userspace version is stable
+>
+> With having the fuse-like socket before it should be trivial to switch
+> between the implementations.
+
+So a good starting point would be to have such a "fuse-like socket"
+component? What about having a simple example for that at first
+without having quic involved. The kernel calls some POSIX-like socket
+interface which triggers a communication to a user space application.
+This user space application will then map everything to a user space
+generated socket. This would be a map from socket struct
+"proto/proto_ops" to user space and vice versa. The kernel application
+probably can use the kernel_FOO() (e.g. kernel_recvmsg()) socket api
+directly then. Exactly like "fuse" as you mentioned just for sockets.
+
+I think two veth interfaces can help to test something like that,
+either with a "fuse-like socket" on the other end or an user space
+application. Just doing a ping-pong example.
+
+Afterwards we can look at how to replace the user generated socket
+application with any $LIBQUIC e.g. msquic implementation as second
+step.
+
+- Alex
+
