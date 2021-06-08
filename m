@@ -2,71 +2,66 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E008C47082
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:47:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9192AC47082
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:48:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 180C361370
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:47:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 73E02610E5
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:48:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232246AbhFHRtO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Jun 2021 13:49:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47078 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232152AbhFHRtO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 13:49:14 -0400
-Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DDCEDC061789
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2021 10:47:04 -0700 (PDT)
-Received: by mail-qk1-x733.google.com with SMTP id c124so21025423qkd.8
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 10:47:04 -0700 (PDT)
+        id S232728AbhFHRtx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Jun 2021 13:49:53 -0400
+Received: from mail-qk1-f182.google.com ([209.85.222.182]:34415 "EHLO
+        mail-qk1-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233025AbhFHRtw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 13:49:52 -0400
+Received: by mail-qk1-f182.google.com with SMTP id k11so19400164qkk.1
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 10:47:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=l3qsx1hJN4Ap0lnfTXiXGiNo7EkyOjgXvMFg3+Yut7o=;
-        b=F0ruDejcrs5RFshNAjQFktssQ80D+Sac0aTt88+eXaTQ08EL6jQirlNbcs4IXqkMSd
-         mP+KUidnpAqu/lXhnSX+ue74w4bK2ypF+v3WZEkXyUg3BekgHuOvitEthOd0shbUYaLi
-         +PgC289lZsB8UMZISo9oRR8lhoQqcNDk/+kpeXvSzQLm5KWqoEig+X5tmTAvsehEaBIh
-         LlABj/7w9+bTYhP4RzJCuHGwP9fqqMVNvN36kC7hyHJjf0ZsJPQCeUB7rehooHLESEz1
-         Li/QtGMmKbQRdEbdW+J7etE0Uan7/20jbtK/lSB0XilesPuE64MbrrGfCw8zTHjhCnd1
-         BMRw==
+        h=sender:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=Y5PH1kHYVukczRtGwzpchLXB+yyOyEkDWOUj/XoULME=;
+        b=BczJTHkD3+yZ6uQT/jkFGUNN8iua3TVu/R9WtoBTtDcylZHJ7D1OXPW/TUU+SQwDql
+         Z/lwuVpYoa/AKl96X9xeFsfUj1PB2sKNyzhwb7vwmNYXWh05S6jDkupRak0SXb60gqKb
+         ajO8gukr5xmA4aDApA/UyWvsnjLARvW3HY7Jl5+BDRblwHzvTJnYYd1e8bHkeJeZRz/0
+         AUFE6DR5iv2QP9h/fCVl3Wcadd+YE4KXDH2EVQPPy2SKVYS5bke135hIYLbnf3YN/BQD
+         GQ/1pmfqJ1cyAo2MBZbFs6LqLJjMpKY/3i5w4pGrTAey/cCYf9YL4nlw1SGGIZ4Bwuzn
+         1kNA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=l3qsx1hJN4Ap0lnfTXiXGiNo7EkyOjgXvMFg3+Yut7o=;
-        b=OjVrPutDO4hu6Hc+v1cllPnHRsm4c3MYl+CvdOlEyqrypFdar08pGSo0kITH9HAQri
-         N4AordmV0h3hTypzdUs66PMOcLLAjRe5+WHUQiv9qJSiqrPSEWmw5k+/duL1ESB3cHwf
-         5YzCS9iPWr3E1m5IBobC3NWbXZBVu8eTUVrwznqHOLvXlgUQYoFN0lwC+q0gH4GZP0SE
-         cpf1vJft7Ssdf1OwRC5MLhGAUAaQLVRtPa0FvhvQWd2osAiBHDqmsRTo/M0Yr79IeOCK
-         rdQiQXy3CQNJ0KbeUW3agNj0xgNfrMWnFwCOg2YpUrsAzEp6XJCknD2nLEGryN9O+uQ/
-         sB+g==
-X-Gm-Message-State: AOAM531vqFIL1I2MRoiVRIU6O+uaE/F3s/NWuk5VDWOxZjL9mj98sMm8
-        YH6HbxDVdNLG7+dGuXTmlYCsftLRt40=
-X-Google-Smtp-Source: ABdhPJwCqUDdpg+7gUnL/ZS/eXl/FXcuYLnuibXEJAuVJPEjM/vEOFV6TIkrsGWk54tv1pbHA1Qg/Q==
-X-Received: by 2002:a05:620a:20d7:: with SMTP id f23mr22138037qka.484.1623174423786;
-        Tue, 08 Jun 2021 10:47:03 -0700 (PDT)
+         :mime-version:content-transfer-encoding;
+        bh=Y5PH1kHYVukczRtGwzpchLXB+yyOyEkDWOUj/XoULME=;
+        b=ZsU3waxHIX0m/N98+ArUyzRWfz209Su8ylIjzMS6K7k1cdnwrwnvHfE7d9J+dru2jj
+         qAym27WvbABForLMJ6Yj2l2EOet42W8wXnKABP4rgSs7Qs3yAgdKbfQGmsu0/R4YlPl4
+         pSmyP4KhkueKV0hA3je+jmz85mFoOjtuHV5B4wh9EmXZ2CzBE49+jhSfqYUd6Ft/JSEG
+         qJoz6VuhEHLzB0hFKbLEtuqNtb93vZEbXFw72JRKWkqczNLft07jDT8BehemwqIzbnS3
+         pW283UmCSbpGTuvZYOwAKefhz2xWCPQ0/K4TDiaZl24rSNU/pu/ipwIrwnOP+DRAroqI
+         5xtA==
+X-Gm-Message-State: AOAM532ymy8JI2h/zhb6qvl4kdV8vr+NSQzhg1x/xhgO3UhGWczqVuqQ
+        gGOIAElDdaF814vVj5es4xw/MJ0ne+k=
+X-Google-Smtp-Source: ABdhPJwQvFvXKm1fB3LQAApz6QQKi10ryqg9gZknFjDWUszKgBx/1Cr9tJLyy8/E8gsQEcenTSn5vA==
+X-Received: by 2002:a05:620a:219b:: with SMTP id g27mr8308029qka.399.1623174418992;
+        Tue, 08 Jun 2021 10:46:58 -0700 (PDT)
 Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id h2sm12963080qkf.106.2021.06.08.10.47.03
+        by smtp.gmail.com with ESMTPSA id h2sm12963080qkf.106.2021.06.08.10.46.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 08 Jun 2021 10:47:03 -0700 (PDT)
+        Tue, 08 Jun 2021 10:46:58 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [RFC PATCH 6/6] nfs-sysfs.py: Add a command for changing xprt-switch dstaddrs
-Date:   Tue,  8 Jun 2021 13:46:57 -0400
-Message-Id: <20210608174657.603256-7-Anna.Schumaker@Netapp.com>
+Subject: [RFC PATCH 0/6] Add a tool for using the new sysfs files
+Date:   Tue,  8 Jun 2021 13:46:51 -0400
+Message-Id: <20210608174657.603256-1-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.32.0
-In-Reply-To: <20210608174657.603256-1-Anna.Schumaker@Netapp.com>
-References: <20210608174657.603256-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -75,41 +70,115 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This is basically the same as for xprts, but it iterates through all
-xprts attached to the switch to apply the new address.
+These patches implement a tool that can be used to read and write the
+sysfs files, with subcommands! They need Olga's most recent patches to
+run.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- tools/nfs-sysfs/switch.py | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+The following subcommands are implemented:
+  nfs-sysfs.py rpc-client
+  nfs-sysfs.py xprt
+  nfs-sysfs.py xprt set
+  nfs-sysfs.py xprt-switch
+  nfs-sysfs.py xprt-switch set
 
-diff --git a/tools/nfs-sysfs/switch.py b/tools/nfs-sysfs/switch.py
-index 5384f970235c..859b82e07895 100644
---- a/tools/nfs-sysfs/switch.py
-+++ b/tools/nfs-sysfs/switch.py
-@@ -30,7 +30,22 @@ def list_xprt_switches(args):
-         if args.id == None or xs.id == args.id[0]:
-             print(xs)
- 
-+def set_xprt_switch_property(args):
-+    switch = XprtSwitch(sysfs.SUNRPC / "xprt-switches" / f"switch-{args.id[0]}")
-+    try:
-+        for xprt in switch.xprts:
-+            xprt.set_dstaddr(args.dstaddr[0])
-+        print(switch)
-+    except Exception as e:
-+        print(e)
-+
- def add_command(subparser):
-     parser = subparser.add_parser("xprt-switch", help="Commands for xprt switches")
-     parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt-switch to show")
-     parser.set_defaults(func=list_xprt_switches)
-+
-+    subparser = parser.add_subparsers()
-+    parser = subparser.add_parser("set", help="Set an xprt switch property")
-+    parser.add_argument("--id", metavar="ID", nargs=1, type=int, required=True, help="Id of an xprt-switch to modify")
-+    parser.add_argument("--dstaddr", metavar="dstaddr", nargs=1, type=str, help="New dstaddr to set")
-+    parser.set_defaults(func=set_xprt_switch_property)
+So you can print out information about every xprt-switch with:
+	anna@client % ./nfs-sysfs.py xprt-switch
+	switch 0: num_xprts 1, num_active 1, queue_len 0
+		xprt 0: local, /var/run/gssproxy.sock
+	switch 1: num_xprts 1, num_active 1, queue_len 0
+		xprt 1: local, /var/run/rpcbind.sock
+	switch 2: num_xprts 4, num_active 4, queue_len 0
+		xprt 2: tcp, 192.168.111.188
+		xprt 3: tcp, 192.168.111.188
+		xprt 5: tcp, 192.168.111.188
+		xprt 6: tcp, 192.168.111.188
+	switch 3: num_xprts 1, num_active 1, queue_len 0
+		xprt 7: tcp, 192.168.111.1
+	switch 4: num_xprts 1, num_active 1, queue_len 0
+		xprt 4: tcp, 192.168.111.188
+
+And information about each xprt:
+	anna@client % ./nfs-sysfs.py xprt
+	xprt 0: local, /var/run/gssproxy.sock, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	xprt 1: local, /var/run/rpcbind.sock, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	xprt 2: tcp, 192.168.111.188, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	xprt 3: tcp, 192.168.111.188, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	xprt 4: tcp, 192.168.111.188, state <BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	xprt 5: tcp, 192.168.111.188, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	xprt 6: tcp, 192.168.111.188, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	xprt 7: tcp, 192.168.111.1, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+
+You can use the `set` subcommand to change the dstaddr of individual xprts:
+	anna@client % ./nfs-sysfs.py xprt --id 2
+	xprt 2: tcp, 192.168.111.188, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+	anna@client % sudo ./nfs-sysfs.py xprt set --id 2 --dstaddr server2.nowheycreamery.vm
+	xprt 2: tcp, 192.168.111.186, state <CONNECTED,BOUND>, num_reqs 2
+		cur_cong 0, cong_win 256, min_num_slots 2, max_num_slots 65536
+		binding_q_len 0, sending_q_len 0, pending_q_len 0, backlog_q_len 0
+
+Or for changing the dstaddr of all xprts attached to a switch:
+	anna@client % ./nfs-sysfs.py xprt-switch --id 2
+	switch 2: num_xprts 4, num_active 4, queue_len 0
+		xprt 2: tcp, 192.168.111.188
+		xprt 3: tcp, 192.168.111.188
+		xprt 5: tcp, 192.168.111.188
+		xprt 6: tcp, 192.168.111.188
+	anna@client % sudo ./nfs-sysfs.py xprt-switch set --id 2 --dstaddr server2.nowheycreamery.vm
+	switch 2: num_xprts 4, num_active 4, queue_len 0
+		xprt 2: tcp, 192.168.111.186
+		xprt 3: tcp, 192.168.111.186
+		xprt 5: tcp, 192.168.111.186
+		xprt 6: tcp, 192.168.111.186
+
+
+I'm sure this needs lots of polish before it's ready for inclusion,
+along with needing a Makefile so it can be installed (I've just been
+running it out of the nfs-utils/tools/nfs-sysfs/ directory). But it's
+still a start, and I wanted to post it before going on New Baby Leave
+Part 2 (June 12 - July 11).
+
+What does everybody think?
+Anna
+
+
+Anna Schumaker (6):
+  nfs-sysfs: Add an nfs-sysfs.py tool
+  nfs-sysfs.py: Add a command for printing xprt switch information
+  nfs-sysfs.py: Add a command for printing individual xprts
+  nfs-sysfs.py: Add a command for printing rpc-client information
+  nfs-sysfs.py: Add a command for changing xprt dstaddr
+  nfs-sysfs.py: Add a command for changing xprt-switch dstaddrs
+
+ tools/nfs-sysfs/client.py    | 27 ++++++++++++++
+ tools/nfs-sysfs/nfs-sysfs.py | 23 ++++++++++++
+ tools/nfs-sysfs/switch.py    | 51 +++++++++++++++++++++++++++
+ tools/nfs-sysfs/sysfs.py     | 28 +++++++++++++++
+ tools/nfs-sysfs/xprt.py      | 68 ++++++++++++++++++++++++++++++++++++
+ 5 files changed, 197 insertions(+)
+ create mode 100644 tools/nfs-sysfs/client.py
+ create mode 100755 tools/nfs-sysfs/nfs-sysfs.py
+ create mode 100644 tools/nfs-sysfs/switch.py
+ create mode 100644 tools/nfs-sysfs/sysfs.py
+ create mode 100644 tools/nfs-sysfs/xprt.py
+
 -- 
 2.32.0
 
