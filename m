@@ -8,57 +8,57 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D6CFC47082
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25A88C4743F
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 836726024A
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 08AE96024A
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234380AbhFHUC3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Jun 2021 16:02:29 -0400
-Received: from mail-qv1-f47.google.com ([209.85.219.47]:45031 "EHLO
-        mail-qv1-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234339AbhFHUC1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 16:02:27 -0400
-Received: by mail-qv1-f47.google.com with SMTP id w4so4080685qvr.11
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 13:00:34 -0700 (PDT)
+        id S234078AbhFHUCb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Jun 2021 16:02:31 -0400
+Received: from mail-qk1-f181.google.com ([209.85.222.181]:33695 "EHLO
+        mail-qk1-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234339AbhFHUCa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 16:02:30 -0400
+Received: by mail-qk1-f181.google.com with SMTP id k4so21530613qkd.0
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 13:00:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=1eLaAiQvGuNoMxbAdj78LO7Lm9Pb6c7fvLRSowTJkC0=;
-        b=Lsf2d11SjiVFkj6bM2AM7AFqC6TXaLA9DrdTmUw3tX+sA+nlLpw1b1jGIeA7iPS5Qh
-         s1fSXuy6gs/Ji8l8EhyZTKE7Wyepunea5GvPfsmxnHMG+y3P2U90mJ59x7Qg+hUx/Sw2
-         0VImQD5y9HbxGyOblZachsi9E688FJz2V+k5XvFLodJRQECTy5YPEcCQFybzkO/bZWDZ
-         j5/q+YQLw0U3BhUmlLVGGeeqdEQ08bzve9INGA/Gb3bB/TsSxTksbTRroda2tEW12r6S
-         8gyTelH1poZFHK1Bb/Y3QTGm4VY2mzbmR5dubcSm6g+lZYfEK0aKaFbaitSI+Per47JK
-         +qFw==
+        bh=94soqXL6YeuBIGDbnyeIBNAXPOYxIGr0JRdKAVfQ/L8=;
+        b=i62AFISOAOTzU2tXaztfcfkxRKVl+nq3jH8+pF4iXYqIq3kGYvQfXIt1YxzwUrHR50
+         dPdYp9urqkJapYVChJ6VlGUvtPciCRx9C9a5ZtQd+K0pqaymt7+u6ULgNbFMIGOHMJpO
+         PXIczCLn/mU1cELdlAD7EWd5eN4eoeIhPwrq34vufiiNG7CYD9+UOT4KWpvRQ+YIxSoo
+         ZG852jnesKG0ruB0xrWbB51ol47ZwHFKtfspAIRgQUAVfLFP/oB7IFQjhuv1evi1P5Cf
+         N2hY1E7uw6YdCcxFqFFAElQJ9C96w4FXgTRq2+H8gmGG6LljmFwzPzVXEW+Y3bg5NuPN
+         xLxQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=1eLaAiQvGuNoMxbAdj78LO7Lm9Pb6c7fvLRSowTJkC0=;
-        b=aSmYbu6rHaiOxbzx6dM4qfDqN2+NNm/jyCY2eWzZvXPzq8Er4vLpcyhLJd0bKIfoWg
-         dqbJLB17WLLOmwAUgv98uFtbRG/CtxXeFHeR0N7n6pJQ6xPeXSKvzioiSNPKPSZSGuZJ
-         P0KoDPCpl1itwT5ncv9M8IMn+g8fUJqarlZoqpzJtdvIZEasXfZhYlGV4326agsPljLw
-         ES1heNBYRSI0ueq/ingVFIccok1oW9U8Ar29NIQjp2Fu5uXIHcXSeiypwsGooNPKBMX8
-         7Gka6KNHMENWadP66e6HooEAdgc5zc09k57CGEy6sjPaz5RlQ6CmRFCgXHST/a9Tqqef
-         JWlg==
-X-Gm-Message-State: AOAM533geDkMKcINUsePbuQe8Jr636u6QELcHOX5tNFazVtPCtasSBwE
-        4jdleMRCKfnhTr0yl6/VDX7AIQZkrD0=
-X-Google-Smtp-Source: ABdhPJw+Dj0I4iH9pHHN98jnXUreo8If+bJPK378HqCs1dP2YZp9nE3qylCl24efgRzhs6aP8q9Tgw==
-X-Received: by 2002:ad4:45a6:: with SMTP id y6mr1668163qvu.54.1623182374027;
-        Tue, 08 Jun 2021 12:59:34 -0700 (PDT)
+        bh=94soqXL6YeuBIGDbnyeIBNAXPOYxIGr0JRdKAVfQ/L8=;
+        b=dtBk1hwNNwxxhS2AhP+ocMAx80JSxuVpXzO15zvEZypjvzdl6HHm3EUnZXf07rkCbO
+         yVVgFC+INfqc25izOt7wmxJRhM7SLZZ4c4pKfNUtP032xrWLauOqg7O0XA111Z4V4DBz
+         lEVYAYo+h8R4EZMlb/uSbOe94UqN++6CC+I2q7ly877eSOA0GAll+FAc1PKeh7C46nOV
+         3BMSpNyycDP/c0nDvY0yQybLhRgzkqGhhaRXFbusD8BbBbKnzXagZ8sub9GhBlKJCDV2
+         pC0T7S1deRTrOVflb8R/LnQUraCoXVL4N8davrNj6ibBgEFY9Bf04TRcO+jQ6oSisxMl
+         +YNQ==
+X-Gm-Message-State: AOAM5317XqibkGiryeHYSmHcdXILhVwXJVDAzSKypDU/rogwSpBsRzoH
+        qdP9k72ky6HbzkIM/4e5z38Dm5qERow=
+X-Google-Smtp-Source: ABdhPJxC+HYA2RfP+twxn5AXPzJTtq5copJJkIB4CreAnAjAvKvGtK68tXEzgVjbdrZ15CX3AcSPhg==
+X-Received: by 2002:a37:a548:: with SMTP id o69mr17517430qke.376.1623182376345;
+        Tue, 08 Jun 2021 12:59:36 -0700 (PDT)
 Received: from kolga-mac-1.vpn.netapp.com (nat-216-240-30-25.netapp.com. [216.240.30.25])
-        by smtp.gmail.com with ESMTPSA id j127sm12952765qke.90.2021.06.08.12.59.33
+        by smtp.gmail.com with ESMTPSA id j127sm12952765qke.90.2021.06.08.12.59.35
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 08 Jun 2021 12:59:33 -0700 (PDT)
+        Tue, 08 Jun 2021 12:59:35 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v10 06/13] sunrpc: keep track of the xprt_class in rpc_xprt structure
-Date:   Tue,  8 Jun 2021 15:59:15 -0400
-Message-Id: <20210608195922.88655-7-olga.kornievskaia@gmail.com>
+Subject: [PATCH v10 08/13] sunrpc: add a symlink from rpc-client directory to the xprt_switch
+Date:   Tue,  8 Jun 2021 15:59:17 -0400
+Message-Id: <20210608195922.88655-9-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20210608195922.88655-1-olga.kornievskaia@gmail.com>
 References: <20210608195922.88655-1-olga.kornievskaia@gmail.com>
@@ -70,103 +70,108 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-We need to keep track of the type for a given transport.
+An rpc client uses a transport switch and one ore more transports
+associated with that switch. Since transports are shared among
+rpc clients, create a symlink into the xprt_switch directory
+instead of duplicating entries under each rpc client.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- include/linux/sunrpc/xprt.h     | 2 ++
- net/sunrpc/xprtrdma/transport.c | 2 ++
- net/sunrpc/xprtsock.c           | 9 +++++++++
- 3 files changed, 13 insertions(+)
+ net/sunrpc/clnt.c  |  2 +-
+ net/sunrpc/sysfs.c | 22 ++++++++++++++++++++--
+ net/sunrpc/sysfs.h |  6 +++++-
+ 3 files changed, 26 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 1fbc470ce205..7efc6c0a5455 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -53,6 +53,7 @@ enum rpc_display_format_t {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 6f3f840a2ea3..9bf820bad84c 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -301,7 +301,6 @@ static int rpc_client_register(struct rpc_clnt *clnt,
+ 	int err;
  
- struct rpc_task;
- struct rpc_xprt;
-+struct xprt_class;
- struct seq_file;
- struct svc_serv;
- struct net;
-@@ -289,6 +290,7 @@ struct rpc_xprt {
- 	atomic_t		inject_disconnect;
- #endif
- 	struct rcu_head		rcu;
-+	const struct xprt_class	*xprt_class;
+ 	rpc_clnt_debugfs_register(clnt);
+-	rpc_sysfs_client_setup(clnt, net);
+ 
+ 	pipefs_sb = rpc_get_sb_net(net);
+ 	if (pipefs_sb) {
+@@ -426,6 +425,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
+ 	/* save the nodename */
+ 	rpc_clnt_set_nodename(clnt, nodename);
+ 
++	rpc_sysfs_client_setup(clnt, xps, rpc_net_ns(clnt));
+ 	err = rpc_client_register(clnt, args->authflavor, args->client_name);
+ 	if (err)
+ 		goto out_no_path;
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index ed9f7131543f..0aa63747f496 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -151,14 +151,29 @@ rpc_sysfs_xprt_switch_alloc(struct kobject *parent,
+ 	return NULL;
+ }
+ 
+-void rpc_sysfs_client_setup(struct rpc_clnt *clnt, struct net *net)
++void rpc_sysfs_client_setup(struct rpc_clnt *clnt,
++			    struct rpc_xprt_switch *xprt_switch,
++			    struct net *net)
+ {
+ 	struct rpc_sysfs_client *rpc_client;
+ 
+-	rpc_client = rpc_sysfs_client_alloc(rpc_sunrpc_client_kobj, net, clnt->cl_clid);
++	rpc_client = rpc_sysfs_client_alloc(rpc_sunrpc_client_kobj,
++					    net, clnt->cl_clid);
+ 	if (rpc_client) {
++		char name[] = "switch";
++		struct rpc_sysfs_xprt_switch *xswitch =
++			(struct rpc_sysfs_xprt_switch *)xprt_switch->xps_sysfs;
++		int ret;
++
+ 		clnt->cl_sysfs = rpc_client;
++		rpc_client->clnt = clnt;
++		rpc_client->xprt_switch = xprt_switch;
+ 		kobject_uevent(&rpc_client->kobject, KOBJ_ADD);
++		ret = sysfs_create_link_nowarn(&rpc_client->kobject,
++					       &xswitch->kobject, name);
++		if (ret)
++			pr_warn("can't create link to %s in sysfs (%d)\n",
++				name, ret);
+ 	}
+ }
+ 
+@@ -189,6 +204,9 @@ void rpc_sysfs_client_destroy(struct rpc_clnt *clnt)
+ 	struct rpc_sysfs_client *rpc_client = clnt->cl_sysfs;
+ 
+ 	if (rpc_client) {
++		char name[] = "switch";
++
++		sysfs_remove_link(&rpc_client->kobject, name);
+ 		kobject_uevent(&rpc_client->kobject, KOBJ_REMOVE);
+ 		kobject_del(&rpc_client->kobject);
+ 		kobject_put(&rpc_client->kobject);
+diff --git a/net/sunrpc/sysfs.h b/net/sunrpc/sysfs.h
+index 52ec472bd4a9..760f0582aee5 100644
+--- a/net/sunrpc/sysfs.h
++++ b/net/sunrpc/sysfs.h
+@@ -8,6 +8,8 @@
+ struct rpc_sysfs_client {
+ 	struct kobject kobject;
+ 	struct net *net;
++	struct rpc_clnt *clnt;
++	struct rpc_xprt_switch *xprt_switch;
  };
  
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 19a49d26b1e4..9c2ffc67c0fd 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -73,6 +73,7 @@ unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
- unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- unsigned int xprt_rdma_memreg_strategy		= RPCRDMA_FRWR;
- int xprt_rdma_pad_optimize;
-+static struct xprt_class xprt_rdma;
+ struct rpc_sysfs_xprt_switch {
+@@ -20,7 +22,9 @@ struct rpc_sysfs_xprt_switch {
+ int rpc_sysfs_init(void);
+ void rpc_sysfs_exit(void);
  
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 
-@@ -349,6 +350,7 @@ xprt_setup_rdma(struct xprt_create *args)
- 	/* Ensure xprt->addr holds valid server TCP (not RDMA)
- 	 * address, for any side protocols which peek at it */
- 	xprt->prot = IPPROTO_TCP;
-+	xprt->xprt_class = &xprt_rdma;
- 	xprt->addrlen = args->addrlen;
- 	memcpy(&xprt->addr, sap, xprt->addrlen);
- 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 316d04945587..2ad4d0df45fe 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -91,6 +91,11 @@ static unsigned int xprt_max_resvport_limit = RPC_MAX_RESVPORT;
- 
- static struct ctl_table_header *sunrpc_table_header;
- 
-+static struct xprt_class xs_local_transport;
-+static struct xprt_class xs_udp_transport;
-+static struct xprt_class xs_tcp_transport;
-+static struct xprt_class xs_bc_tcp_transport;
-+
- /*
-  * FIXME: changing the UDP slot table size should also resize the UDP
-  *        socket buffers for existing UDP transports
-@@ -2779,6 +2784,7 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = 0;
-+	xprt->xprt_class = &xs_local_transport;
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
- 	xprt->bind_timeout = XS_BIND_TO;
-@@ -2848,6 +2854,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_UDP;
-+	xprt->xprt_class = &xs_udp_transport;
- 	/* XXX: header size can vary due to auth type, IPv6, etc. */
- 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
- 
-@@ -2928,6 +2935,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_TCP;
-+	xprt->xprt_class = &xs_tcp_transport;
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
- 	xprt->bind_timeout = XS_BIND_TO;
-@@ -3001,6 +3009,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_TCP;
-+	xprt->xprt_class = &xs_bc_tcp_transport;
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 	xprt->timeout = &xs_tcp_default_timeout;
- 
+-void rpc_sysfs_client_setup(struct rpc_clnt *clnt, struct net *net);
++void rpc_sysfs_client_setup(struct rpc_clnt *clnt,
++			    struct rpc_xprt_switch *xprt_switch,
++			    struct net *net);
+ void rpc_sysfs_client_destroy(struct rpc_clnt *clnt);
+ void rpc_sysfs_xprt_switch_setup(struct rpc_xprt_switch *xprt_switch,
+ 				 struct rpc_xprt *xprt, gfp_t gfp_flags);
 -- 
 2.27.0
 
