@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 58C52C47082
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:47:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E008C47082
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:47:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3691061370
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:47:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 180C361370
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:47:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233583AbhFHRs6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Jun 2021 13:48:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47066 "EHLO
+        id S232246AbhFHRtO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Jun 2021 13:49:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47078 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233887AbhFHRs4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 13:48:56 -0400
-Received: from mail-qt1-x82a.google.com (mail-qt1-x82a.google.com [IPv6:2607:f8b0:4864:20::82a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ED3BAC061574
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2021 10:47:02 -0700 (PDT)
-Received: by mail-qt1-x82a.google.com with SMTP id u20so7682172qtx.1
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 10:47:02 -0700 (PDT)
+        with ESMTP id S232152AbhFHRtO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 13:49:14 -0400
+Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DDCEDC061789
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Jun 2021 10:47:04 -0700 (PDT)
+Received: by mail-qk1-x733.google.com with SMTP id c124so21025423qkd.8
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 10:47:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=z6FZgD22GFRX+KNepHUoNKIvyYh3M6iGZgZLu1+bisQ=;
-        b=G7J/a9HzfPh8GmRG24DmjIadU54IYP4T1yjoC80GqhH3nbPPrgo8G1Qsl64QtfII/A
-         nhe2diAmZujWcPEi0QyxuVrXqSpyZ9vHR5SDgpP6T2kFlkIYE9edVZIooWVRIAGSzAUd
-         gHfxdsHcSLZD2XQxFGU/td00MkwTeOtEY89nEgP22APJbkBZjD2e2g1o8Ki7RJSwKFoM
-         B+aURHSmb/8UBuiUa8f8PPRDSt/dJblWYe7EVDNfcseEVoIZ+l6t1JX5oyV4hAv2csV9
-         CO4qZyjDodpa6Tz2FGVO825ANgDXxUBAQdwUmrmSD5B5jbkUlN4xcp8Car2TqVsBmFCi
-         aSeA==
+        bh=l3qsx1hJN4Ap0lnfTXiXGiNo7EkyOjgXvMFg3+Yut7o=;
+        b=F0ruDejcrs5RFshNAjQFktssQ80D+Sac0aTt88+eXaTQ08EL6jQirlNbcs4IXqkMSd
+         mP+KUidnpAqu/lXhnSX+ue74w4bK2ypF+v3WZEkXyUg3BekgHuOvitEthOd0shbUYaLi
+         +PgC289lZsB8UMZISo9oRR8lhoQqcNDk/+kpeXvSzQLm5KWqoEig+X5tmTAvsehEaBIh
+         LlABj/7w9+bTYhP4RzJCuHGwP9fqqMVNvN36kC7hyHJjf0ZsJPQCeUB7rehooHLESEz1
+         Li/QtGMmKbQRdEbdW+J7etE0Uan7/20jbtK/lSB0XilesPuE64MbrrGfCw8zTHjhCnd1
+         BMRw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=z6FZgD22GFRX+KNepHUoNKIvyYh3M6iGZgZLu1+bisQ=;
-        b=aocFBus165vitwvjLy7Xfi4KxtJyp4wtgTX3jVjOTp5Irms8KnvWQPw3Lq4Gr09BZk
-         5E5E2ZNDf1/jGOtHtrrrRupwHcu/MxyDweVDA0XckMeDsWMGy35Mw6DBamxWnZYUqcR0
-         gTo2825y5xIlTDKw6AQUlg02+ZH59UEmvr3ukGnemS5h7tnt517qtoj2egmVE1SGu8Ew
-         55u7XWVQB1Pnr5y4QXCeHSNgezhE+TaOLu1HrsWNhLAlXdvM9CQ7n4FrKELbZqDjMLT4
-         fTjq6fWsIprKolEX81FqEpa4YQY5sNulfPGNyAGRGJH9sIqRBSU9QEZ2nv7ZWS5nQ1Ex
-         OWEg==
-X-Gm-Message-State: AOAM532uKeJrEHpGZFxklk+L9H9x//CjHU0jPZwLd3up11Ry6IoSuuzx
-        MuEm5XJvxNp5QYmD2VKm1xtPJ4G1d90=
-X-Google-Smtp-Source: ABdhPJwm3Ce+6Q5xZ27vkKO48t1JQcMkhua2BFg/dKCaMslNsqjtLbGLsqKtkwU8Lno/ycjWj7uWYA==
-X-Received: by 2002:a05:622a:100e:: with SMTP id d14mr1874630qte.254.1623174421494;
-        Tue, 08 Jun 2021 10:47:01 -0700 (PDT)
+        bh=l3qsx1hJN4Ap0lnfTXiXGiNo7EkyOjgXvMFg3+Yut7o=;
+        b=OjVrPutDO4hu6Hc+v1cllPnHRsm4c3MYl+CvdOlEyqrypFdar08pGSo0kITH9HAQri
+         N4AordmV0h3hTypzdUs66PMOcLLAjRe5+WHUQiv9qJSiqrPSEWmw5k+/duL1ESB3cHwf
+         5YzCS9iPWr3E1m5IBobC3NWbXZBVu8eTUVrwznqHOLvXlgUQYoFN0lwC+q0gH4GZP0SE
+         cpf1vJft7Ssdf1OwRC5MLhGAUAaQLVRtPa0FvhvQWd2osAiBHDqmsRTo/M0Yr79IeOCK
+         rdQiQXy3CQNJ0KbeUW3agNj0xgNfrMWnFwCOg2YpUrsAzEp6XJCknD2nLEGryN9O+uQ/
+         sB+g==
+X-Gm-Message-State: AOAM531vqFIL1I2MRoiVRIU6O+uaE/F3s/NWuk5VDWOxZjL9mj98sMm8
+        YH6HbxDVdNLG7+dGuXTmlYCsftLRt40=
+X-Google-Smtp-Source: ABdhPJwCqUDdpg+7gUnL/ZS/eXl/FXcuYLnuibXEJAuVJPEjM/vEOFV6TIkrsGWk54tv1pbHA1Qg/Q==
+X-Received: by 2002:a05:620a:20d7:: with SMTP id f23mr22138037qka.484.1623174423786;
+        Tue, 08 Jun 2021 10:47:03 -0700 (PDT)
 Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id h2sm12963080qkf.106.2021.06.08.10.47.00
+        by smtp.gmail.com with ESMTPSA id h2sm12963080qkf.106.2021.06.08.10.47.03
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 08 Jun 2021 10:47:01 -0700 (PDT)
+        Tue, 08 Jun 2021 10:47:03 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [RFC PATCH 3/6] nfs-sysfs.py: Add a command for printing individual xprts
-Date:   Tue,  8 Jun 2021 13:46:54 -0400
-Message-Id: <20210608174657.603256-4-Anna.Schumaker@Netapp.com>
+Subject: [RFC PATCH 6/6] nfs-sysfs.py: Add a command for changing xprt-switch dstaddrs
+Date:   Tue,  8 Jun 2021 13:46:57 -0400
+Message-Id: <20210608174657.603256-7-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210608174657.603256-1-Anna.Schumaker@Netapp.com>
 References: <20210608174657.603256-1-Anna.Schumaker@Netapp.com>
@@ -75,75 +75,41 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This shows more detailed information than what is presented with xprt
-switches.
+This is basically the same as for xprts, but it iterates through all
+xprts attached to the switch to apply the new address.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tools/nfs-sysfs/nfs-sysfs.py |  2 ++
- tools/nfs-sysfs/xprt.py      | 28 ++++++++++++++++++++++++++++
- 2 files changed, 30 insertions(+)
+ tools/nfs-sysfs/switch.py | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/tools/nfs-sysfs/nfs-sysfs.py b/tools/nfs-sysfs/nfs-sysfs.py
-index 90efcbed7ac8..dfad6ac08fa0 100755
---- a/tools/nfs-sysfs/nfs-sysfs.py
-+++ b/tools/nfs-sysfs/nfs-sysfs.py
-@@ -11,8 +11,10 @@ parser.set_defaults(func=show_small_help)
+diff --git a/tools/nfs-sysfs/switch.py b/tools/nfs-sysfs/switch.py
+index 5384f970235c..859b82e07895 100644
+--- a/tools/nfs-sysfs/switch.py
++++ b/tools/nfs-sysfs/switch.py
+@@ -30,7 +30,22 @@ def list_xprt_switches(args):
+         if args.id == None or xs.id == args.id[0]:
+             print(xs)
  
- 
- import switch
-+import xprt
- subparser = parser.add_subparsers(title="commands")
- switch.add_command(subparser)
-+xprt.add_command(subparser)
- 
- 
- args = parser.parse_args()
-diff --git a/tools/nfs-sysfs/xprt.py b/tools/nfs-sysfs/xprt.py
-index d37537771c1d..b95fb2d48829 100644
---- a/tools/nfs-sysfs/xprt.py
-+++ b/tools/nfs-sysfs/xprt.py
-@@ -1,3 +1,5 @@
-+import sysfs
++def set_xprt_switch_property(args):
++    switch = XprtSwitch(sysfs.SUNRPC / "xprt-switches" / f"switch-{args.id[0]}")
++    try:
++        for xprt in switch.xprts:
++            xprt.set_dstaddr(args.dstaddr[0])
++        print(switch)
++    except Exception as e:
++        print(e)
 +
- class Xprt:
-     def __init__(self, path):
-         self.path = path
-@@ -5,8 +7,34 @@ class Xprt:
-         self.type = str(path).rsplit("-", 2)[2]
-         self.dstaddr = open(path / "dstaddr", 'r').readline().strip()
- 
-+        with open(path / "xprt_state") as f:
-+            self.state = ','.join(f.readline().split()[1:])
-+        self.__dict__.update(sysfs.read_info_file(path / "xprt_info"))
+ def add_command(subparser):
+     parser = subparser.add_parser("xprt-switch", help="Commands for xprt switches")
+     parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt-switch to show")
+     parser.set_defaults(func=list_xprt_switches)
 +
-     def __lt__(self, rhs):
-         return self.id < rhs.id
- 
-+    def __str__(self):
-+        line = "xprt %s: %s, %s, state <%s>, num_reqs %s" % \
-+                (self.id, self.type, self.dstaddr, self.state, self.num_reqs)
-+        line += "\n	cur_cong %s, cong_win %s, min_num_slots %s, max_num_slots %s" % \
-+                (self.cur_cong, self.cong_win, self.min_num_slots, self.max_num_slots)
-+        line += "\n	binding_q_len %s, sending_q_len %s, pending_q_len %s, backlog_q_len %s" % \
-+                (self.binding_q_len, self.sending_q_len, self.pending_q_len, self.backlog_q_len)
-+        return line
-+
-     def small_str(self):
-         return "xprt %s: %s, %s" % (self.id, self.type, self.dstaddr)
-+
-+
-+def list_xprts(args):
-+    xprts = [ Xprt(f) for f in (sysfs.SUNRPC / "xprt-switches").glob("**/xprt-*") ]
-+    xprts.sort()
-+    for xprt in xprts:
-+        if args.id == None or xprt.id == args.id[0]:
-+            print(xprt)
-+
-+def add_command(subparser):
-+    parser = subparser.add_parser("xprt", help="Commands for individual xprts")
-+    parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt to show")
-+    parser.set_defaults(func=list_xprts)
++    subparser = parser.add_subparsers()
++    parser = subparser.add_parser("set", help="Set an xprt switch property")
++    parser.add_argument("--id", metavar="ID", nargs=1, type=int, required=True, help="Id of an xprt-switch to modify")
++    parser.add_argument("--dstaddr", metavar="dstaddr", nargs=1, type=str, help="New dstaddr to set")
++    parser.set_defaults(func=set_xprt_switch_property)
 -- 
 2.32.0
 
