@@ -2,63 +2,63 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A576EC47082
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EBD2AC4743D
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8F61561375
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D08176024A
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 20:00:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234339AbhFHUCg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Jun 2021 16:02:36 -0400
-Received: from mail-qt1-f176.google.com ([209.85.160.176]:39508 "EHLO
-        mail-qt1-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234510AbhFHUCe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 16:02:34 -0400
-Received: by mail-qt1-f176.google.com with SMTP id p21so4500704qtw.6
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 13:00:27 -0700 (PDT)
+        id S234511AbhFHUCi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Jun 2021 16:02:38 -0400
+Received: from mail-qt1-f170.google.com ([209.85.160.170]:34646 "EHLO
+        mail-qt1-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234216AbhFHUCf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 16:02:35 -0400
+Received: by mail-qt1-f170.google.com with SMTP id u20so7996480qtx.1
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 13:00:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=gf/HTiMOF7lEE7p7o4BD7uDS+joARQgZSioVyNny/f4=;
-        b=DIAHWVj45dREIVdkhLKJO3c8T8LLmmcu49AWaKPb/wKliKe0tRkA2tAMMZY3nQOXok
-         ikCZ9Mr/f6oUwHQFY0p/nUXR5AgKBZNklmZ0cvb1od5TKgJgSp57SenGKt4ursuGS9TI
-         pgLlUX//QwwN6bjsLdhjgGtjGRYz59FflwPz8R19whAUNMSBJo4DnhO/1gKD+rgOUb3t
-         70Cu0vA7pjC2Hsj97JkSSYXKRHL13UXdnpV+PUTO7pPI/TihNJZyGDPEdOm8OGCxdFuq
-         lXq2i+6xYOfgyEb1hc+ieTZqYws50RUnPAbX1Q9UOxvzMFOqyCwMvMysd1gigH0cmp+H
-         NmKg==
+        bh=Xh8YD1h4jEJTMPL/eZU+PJKfx8xJoHmKgCA8iRzN8/k=;
+        b=npCErfHeF3JWFBlsgL2e60IuYjU/5DuNMCfxi7tZ8n3U7T/9Z0HEbJmFs3OkcIVWGA
+         Dq24Gdc+jNVutjJ8mobcab2EvUrIToyMNZi1TjYRGZoW7gYjJM6Ae251+genqJrOCK4/
+         HPHyi2Yp0gnxGN4ZxMMzKWW35mUGxe2JYfm0cRmtbHogTEzJEQV2LYBqIICkEHn/02OW
+         jl+WuETVYUexthyHQ8UGZC5bdf/85+TYsZJf5ydA42ryJkOe/S4ZndhxKhFu1E2sj/Dg
+         bFMhQbUWHyLR3WDmEM0IcmqIRA46Dhw2C5CaPttpiUa4eZ2v2l6fX5/h1JPV+R14J29h
+         GAIw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=gf/HTiMOF7lEE7p7o4BD7uDS+joARQgZSioVyNny/f4=;
-        b=ftsr6ASZ9JksHf0k13V0q3Mc1abS8cb8x3onq4Fx47BSXAp6AsZcO1akcfuTeXIdiY
-         sopE+AOboBDodb3hzELTemIUj3azfGjkk5ibeI7ZAVzYg6BzMjgwiI+l8ap2fF4BZQX/
-         mTvXVme1+Fm04sr5R+PmIDwwyA1+Zw/3du4Ci9YfG1/Rv1xZ+2hSTbmrP1dRPbZOWFpJ
-         M/Qd0i6MCYZLwrfjnBwbdtstdUlYztWpkyU3UNgkHNSowVVaxnrIxRINippxf/7jNGhI
-         A+AyUV3EQNmvV/Ga6LRHvSpR1GqV6Q6nizvVH77JrUyGcjIxWHpRj6nEFYGjmKcBpLjm
-         bqWg==
-X-Gm-Message-State: AOAM531XgzjCLPMV5LvFF07DWD79+IIHWceBtxS6nHVIzgn0KucV5ylM
-        QqyVvslZ6BtoygafM+U3Z48PPSAMyvg=
-X-Google-Smtp-Source: ABdhPJzl1nhtzfJzR3ZTzimW0nTaT1K0Jf1voCbhDbJ+SX5kZlZqGYU9r/x1eYBSM2Mw/h/kGKirSw==
-X-Received: by 2002:a05:622a:356:: with SMTP id r22mr22656437qtw.363.1623182366695;
-        Tue, 08 Jun 2021 12:59:26 -0700 (PDT)
+        bh=Xh8YD1h4jEJTMPL/eZU+PJKfx8xJoHmKgCA8iRzN8/k=;
+        b=HYk2YEmtfjZWXLsH8+BaTuiQN610wJXzl7JDGXTvPXnIX53Uja8bwoxRjLKzgoHUTF
+         gYlju0Ucb6Mf6gRtPHhX1rGY4WUxortQPpaa31REnIa+ERb4qIsmhDIAYO4FF2m8CveW
+         MqtGxpZJgzFwyudpXaMvc6ZwSjFYbOTTBaetDn6kpq6mLzoTIlhcyf0HRwe9N+/CWGfW
+         y9Lovfxz9alQLKW5neQwfWzHD1TF98asxfDHTTPYBFdwKSn7SjnKHg+TzMdF9LxP3X3w
+         QNLBK5B7fJyQU1hei+tPh0LUDfj6e1QGlkHOyWQ2M7QCRz0LhXv+x43/QbdYYS3PeuoO
+         ezOw==
+X-Gm-Message-State: AOAM531YgIiT2uBOMFZjxvFgLWW644odGCqGWFvpkBRwILd6Z2rbGvRU
+        PJBNOe76jhM7lOAVVICbQHKnhv84Pqk=
+X-Google-Smtp-Source: ABdhPJzhqS7x3C4OhSc7Kh/42qasqb6IRdMcONMlwgUuchn9ykUQT75MJCkWHFo7iq0+y9SYp4N2og==
+X-Received: by 2002:a05:622a:4a:: with SMTP id y10mr5771219qtw.294.1623182370614;
+        Tue, 08 Jun 2021 12:59:30 -0700 (PDT)
 Received: from kolga-mac-1.vpn.netapp.com (nat-216-240-30-25.netapp.com. [216.240.30.25])
-        by smtp.gmail.com with ESMTPSA id j127sm12952765qke.90.2021.06.08.12.59.25
+        by smtp.gmail.com with ESMTPSA id j127sm12952765qke.90.2021.06.08.12.59.29
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 08 Jun 2021 12:59:26 -0700 (PDT)
+        Tue, 08 Jun 2021 12:59:30 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v10 01/13] sunrpc: Create a sunrpc directory under /sys/kernel/
-Date:   Tue,  8 Jun 2021 15:59:10 -0400
-Message-Id: <20210608195922.88655-2-olga.kornievskaia@gmail.com>
+Subject: [PATCH v10 03/13] sunrpc: Create per-rpc_clnt sysfs kobjects
+Date:   Tue,  8 Jun 2021 15:59:12 -0400
+Message-Id: <20210608195922.88655-4-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20210608195922.88655-1-olga.kornievskaia@gmail.com>
 References: <20210608195922.88655-1-olga.kornievskaia@gmail.com>
@@ -70,115 +70,182 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-This is where we'll put per-rpc_client related files
+These will eventually have files placed under them for sysfs operations.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- net/sunrpc/Makefile      |  2 +-
- net/sunrpc/sunrpc_syms.c |  8 ++++++++
- net/sunrpc/sysfs.c       | 20 ++++++++++++++++++++
- net/sunrpc/sysfs.h       | 11 +++++++++++
- 4 files changed, 40 insertions(+), 1 deletion(-)
- create mode 100644 net/sunrpc/sysfs.c
- create mode 100644 net/sunrpc/sysfs.h
+ include/linux/sunrpc/clnt.h |  2 ++
+ net/sunrpc/clnt.c           |  5 +++
+ net/sunrpc/sysfs.c          | 61 +++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sysfs.h          |  8 +++++
+ 4 files changed, 76 insertions(+)
 
-diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-index 9488600451e8..1c8de397d6ad 100644
---- a/net/sunrpc/Makefile
-+++ b/net/sunrpc/Makefile
-@@ -12,7 +12,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
- 	    auth.o auth_null.o auth_unix.o \
- 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
- 	    addr.o rpcb_clnt.o timer.o xdr.o \
--	    sunrpc_syms.o cache.o rpc_pipe.o \
-+	    sunrpc_syms.o cache.o rpc_pipe.o sysfs.o \
- 	    svc_xprt.o \
- 	    xprtmultipath.o
- sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 236fadc4a439..3b57efc692ec 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -24,6 +24,7 @@
- #include <linux/sunrpc/xprtsock.h>
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 02e7a5863d28..8b5d5c97553e 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -29,6 +29,7 @@
+ #include <linux/sunrpc/xprtmultipath.h>
+ 
+ struct rpc_inode;
++struct rpc_sysfs_client;
+ 
+ /*
+  * The high-level client handle
+@@ -71,6 +72,7 @@ struct rpc_clnt {
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	struct dentry		*cl_debugfs;	/* debugfs directory */
+ #endif
++	struct rpc_sysfs_client *cl_sysfs;	/* sysfs directory */
+ 	/* cl_work is only needed after cl_xpi is no longer used,
+ 	 * and that are of similar size
+ 	 */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 42623d6b8f0e..6f3f840a2ea3 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -41,6 +41,7 @@
+ #include <trace/events/sunrpc.h>
  
  #include "sunrpc.h"
 +#include "sysfs.h"
  #include "netns.h"
  
- unsigned int sunrpc_net_id;
-@@ -103,6 +104,10 @@ init_sunrpc(void)
- 	if (err)
- 		goto out4;
- 
-+	err = rpc_sysfs_init();
-+	if (err)
-+		goto out5;
-+
- 	sunrpc_debugfs_init();
  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	rpc_register_sysctl();
-@@ -111,6 +116,8 @@ init_sunrpc(void)
- 	init_socket_xprt();	/* clnt sock transport */
- 	return 0;
+@@ -300,6 +301,7 @@ static int rpc_client_register(struct rpc_clnt *clnt,
+ 	int err;
  
-+out5:
-+	unregister_rpc_pipefs();
- out4:
- 	unregister_pernet_subsys(&sunrpc_net_ops);
- out3:
-@@ -124,6 +131,7 @@ init_sunrpc(void)
- static void __exit
- cleanup_sunrpc(void)
- {
-+	rpc_sysfs_exit();
- 	rpc_cleanup_clids();
- 	rpcauth_remove_module();
- 	cleanup_socket_xprt();
+ 	rpc_clnt_debugfs_register(clnt);
++	rpc_sysfs_client_setup(clnt, net);
+ 
+ 	pipefs_sb = rpc_get_sb_net(net);
+ 	if (pipefs_sb) {
+@@ -327,6 +329,7 @@ static int rpc_client_register(struct rpc_clnt *clnt,
+ out:
+ 	if (pipefs_sb)
+ 		rpc_put_sb_net(net);
++	rpc_sysfs_client_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 	return err;
+ }
+@@ -733,6 +736,7 @@ int rpc_switch_client_transport(struct rpc_clnt *clnt,
+ 
+ 	rpc_unregister_client(clnt);
+ 	__rpc_clnt_remove_pipedir(clnt);
++	rpc_sysfs_client_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 
+ 	/*
+@@ -879,6 +883,7 @@ static void rpc_free_client_work(struct work_struct *work)
+ 	 * so they cannot be called in rpciod, so they are handled separately
+ 	 * here.
+ 	 */
++	rpc_sysfs_client_destroy(clnt);
+ 	rpc_clnt_debugfs_unregister(clnt);
+ 	rpc_free_clid(clnt);
+ 	rpc_clnt_remove_pipedir(clnt);
 diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-new file mode 100644
-index 000000000000..27eda180ac5e
---- /dev/null
+index fa03e2ef836a..f3b7547ee218 100644
+--- a/net/sunrpc/sysfs.c
 +++ b/net/sunrpc/sysfs.c
-@@ -0,0 +1,20 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2020 Anna Schumaker <Anna.Schumaker@Netapp.com>
-+ */
-+#include <linux/kobject.h>
-+
-+static struct kset *rpc_sunrpc_kset;
-+
-+int rpc_sysfs_init(void)
+@@ -4,6 +4,7 @@
+  */
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/kobject.h>
++#include "sysfs.h"
+ 
+ static struct kset *rpc_sunrpc_kset;
+ static struct kobject *rpc_sunrpc_client_kobj;
+@@ -56,8 +57,68 @@ int rpc_sysfs_init(void)
+ 	return 0;
+ }
+ 
++static void rpc_sysfs_client_release(struct kobject *kobj)
 +{
-+	rpc_sunrpc_kset = kset_create_and_add("sunrpc", NULL, kernel_kobj);
-+	if (!rpc_sunrpc_kset)
-+		return -ENOMEM;
-+	return 0;
++	struct rpc_sysfs_client *c;
++
++	c = container_of(kobj, struct rpc_sysfs_client, kobject);
++	kfree(c);
 +}
 +
-+void rpc_sysfs_exit(void)
++static const void *rpc_sysfs_client_namespace(struct kobject *kobj)
 +{
-+	kset_unregister(rpc_sunrpc_kset);
++	return container_of(kobj, struct rpc_sysfs_client, kobject)->net;
++}
++
++static struct kobj_type rpc_sysfs_client_type = {
++	.release = rpc_sysfs_client_release,
++	.sysfs_ops = &kobj_sysfs_ops,
++	.namespace = rpc_sysfs_client_namespace,
++};
++
+ void rpc_sysfs_exit(void)
+ {
+ 	kobject_put(rpc_sunrpc_client_kobj);
+ 	kset_unregister(rpc_sunrpc_kset);
+ }
++
++static struct rpc_sysfs_client *rpc_sysfs_client_alloc(struct kobject *parent,
++						       struct net *net,
++						       int clid)
++{
++	struct rpc_sysfs_client *p;
++
++	p = kzalloc(sizeof(*p), GFP_KERNEL);
++	if (p) {
++		p->net = net;
++		p->kobject.kset = rpc_sunrpc_kset;
++		if (kobject_init_and_add(&p->kobject, &rpc_sysfs_client_type,
++					 parent, "clnt-%d", clid) == 0)
++			return p;
++		kobject_put(&p->kobject);
++	}
++	return NULL;
++}
++
++void rpc_sysfs_client_setup(struct rpc_clnt *clnt, struct net *net)
++{
++	struct rpc_sysfs_client *rpc_client;
++
++	rpc_client = rpc_sysfs_client_alloc(rpc_sunrpc_client_kobj, net, clnt->cl_clid);
++	if (rpc_client) {
++		clnt->cl_sysfs = rpc_client;
++		kobject_uevent(&rpc_client->kobject, KOBJ_ADD);
++	}
++}
++
++void rpc_sysfs_client_destroy(struct rpc_clnt *clnt)
++{
++	struct rpc_sysfs_client *rpc_client = clnt->cl_sysfs;
++
++	if (rpc_client) {
++		kobject_uevent(&rpc_client->kobject, KOBJ_REMOVE);
++		kobject_del(&rpc_client->kobject);
++		kobject_put(&rpc_client->kobject);
++		clnt->cl_sysfs = NULL;
++	}
 +}
 diff --git a/net/sunrpc/sysfs.h b/net/sunrpc/sysfs.h
-new file mode 100644
-index 000000000000..f181c650aab8
---- /dev/null
+index f181c650aab8..c46afc848993 100644
+--- a/net/sunrpc/sysfs.h
 +++ b/net/sunrpc/sysfs.h
-@@ -0,0 +1,11 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2020 Anna Schumaker <Anna.Schumaker@Netapp.com>
-+ */
-+#ifndef __SUNRPC_SYSFS_H
-+#define __SUNRPC_SYSFS_H
+@@ -5,7 +5,15 @@
+ #ifndef __SUNRPC_SYSFS_H
+ #define __SUNRPC_SYSFS_H
+ 
++struct rpc_sysfs_client {
++	struct kobject kobject;
++	struct net *net;
++};
 +
-+int rpc_sysfs_init(void);
-+void rpc_sysfs_exit(void);
+ int rpc_sysfs_init(void);
+ void rpc_sysfs_exit(void);
+ 
++void rpc_sysfs_client_setup(struct rpc_clnt *clnt, struct net *net);
++void rpc_sysfs_client_destroy(struct rpc_clnt *clnt);
 +
-+#endif
+ #endif
 -- 
 2.27.0
 
