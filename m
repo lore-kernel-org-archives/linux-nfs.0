@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 248AAC47082
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:48:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 674A4C47082
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:48:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 10203610E5
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:48:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 54E21610E5
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Jun 2021 17:48:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233025AbhFHRuA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Jun 2021 13:50:00 -0400
-Received: from mail-qk1-f177.google.com ([209.85.222.177]:46808 "EHLO
-        mail-qk1-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233821AbhFHRt7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 13:49:59 -0400
-Received: by mail-qk1-f177.google.com with SMTP id f70so5820240qke.13
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 10:48:00 -0700 (PDT)
+        id S233821AbhFHRuL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Jun 2021 13:50:11 -0400
+Received: from mail-qt1-f178.google.com ([209.85.160.178]:43545 "EHLO
+        mail-qt1-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233156AbhFHRuL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jun 2021 13:50:11 -0400
+Received: by mail-qt1-f178.google.com with SMTP id 93so8577846qtc.10
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jun 2021 10:48:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=4zJwskrhg2xmjIMfnlMJyQayKAwR6dqMI8RYPyrldHg=;
-        b=G2XVAkNfsE2H48ajOG59ysiXM8URgdDTSZEGZDTHRHTY/AyGrdfDPM1uOPhePQgq52
-         C4dpYl+jU6cakMd12wIZXxvQ8WrUG89msGPlOyX1v12LLZ8JxfEuCnKRJCytIsG8rinG
-         J55+zkixWbuZ9Obvy1khFvX/iC20QtMZJyHHzwfIZXTMXydRR8Z7I9XVDuCOlHuveWmG
-         VHmPh3QIRX61o9XC+dpYojyUWHjEX9DxOP9WXA95d3ahj9s8eW4LhzgVJz8kuVH8Izg4
-         r+OWGCMH9p1FXFLO7gtCZbMgF1BxwFInIpcte9RGRnR/NMlVvU2c+U6R5XkbkSrQ9WkG
-         lvQw==
+        bh=A8+RkubmhiUGlgMZbxD8YgREz+LPON5cuR6XCKvqkKU=;
+        b=UV9LDJyyYQiH4bFg6ZAbkNJ/HBa7XAn7CfH5eQXO7AGVQAXttO0QcVKyKWOHehu5Fq
+         0Ju82HCWsZGlbJKjQ1mw4wKv7KYxtYpC9IGg1KfsIBx9WGZIgEOEquSOLS+YTslu3A41
+         ylymGAubhxyWP5RmhqyZQ6z9WVjE3BFYIb9hUFeRl+OOrNUUJUuwySPQ8727Oc3kBM9G
+         hmmBTWQrI3wnHfXdySTDtuxb0OzSX+oggwnwjQeGhdvRQJ5lnRmCDq/SFkeUD/WGMwT6
+         eFTDOsEapImga+mC+j01UFk6AlzMNJRva6OUNeCwH8IJN/Vo0+Whi3coKCT3l0TizA8k
+         b4gw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=4zJwskrhg2xmjIMfnlMJyQayKAwR6dqMI8RYPyrldHg=;
-        b=CjuIqpNdnLSloOtJXYkCmPQwtUARFmkrDGwYqfHkWJxGEwLxVhjT+ld/s3I5BQHWpC
-         CQtSOD3WX19jWox9PGmRbtgWjgEKyQHLi7cyvXHltYNoJ6sqXY1LzsyfiN/A6XintB1K
-         jIHcQRVzLkmF+11wbPUDjuoEs7rMmjEbpStW6vNDSBYwoaA5LjDLt0i7aaOuVH3pGWba
-         2eTA1NCgVK8A5vT2Fjc6ifHUjbAozgjbHzxXwW5oqnWbPFLV5Xjk6QKrsHPfdYyuvkmr
-         HLPzgQ6SxMlZS6kYOmUselVJ+5Q185oeOhwj69dOnbS7KMyGH/Db+vMdjk2X7dSQ4/YD
-         Kk7w==
-X-Gm-Message-State: AOAM531x9hAF/cJwY/3ODmnxWopfzV0CZR99iPN01xuoT0V7XK2I6TJW
-        PGDKld3jhsY2PHs1cHyt5dxDmn3fYpU=
-X-Google-Smtp-Source: ABdhPJxVEyR8A3MJNykG2W3iaDshS9ezryCtYkv1foVUu5bjLH9CBesxOA6zS2WrZRgRIWGBjtFlgg==
-X-Received: by 2002:a37:a548:: with SMTP id o69mr16965902qke.376.1623174419888;
-        Tue, 08 Jun 2021 10:46:59 -0700 (PDT)
+        bh=A8+RkubmhiUGlgMZbxD8YgREz+LPON5cuR6XCKvqkKU=;
+        b=V0Z2tggaun0Qo+71bvPwNX28Fa7KjHl5auy/ttEuBjanoUBYnr4jjaSfC0PadyiZ1b
+         E2iyrjYk0kOJ+2XCzFa6bk/giH3r33LM7LTmdGyJCEptF1OJKHt5gFrBRgDktMpEd/yg
+         BUxhDqOkJ79u3BnjW9CmCkxWsNpUE072fi2IjNWmnrc4F/1Xl90loXVsyLyHz6Lo1ZE7
+         vCWnFfPsWmS22YVGfMnr/e9Ixdmq048Gck6XVwdZrT6SnWyxXfKq6v3gVABfJ0Vn4uya
+         h5kIZBTNdOjidfIlWfDL+1yyt2/Wc0ikb3Tu+cXjPkbjkQaE1IV7NRreWHTCyBYJFNTy
+         +4lg==
+X-Gm-Message-State: AOAM5333bh0MnhdSTdhMck34R21J5RKDeYBj2GxDbBjb+0OD0z6cVwA/
+        caNpBnDgU+ZZT5RFAPqE4DBJDY+bNRs=
+X-Google-Smtp-Source: ABdhPJz6RCLbNA97dFXuGMZoCdhNjD1tmWB98ZF51N/CHZE7W6rIAmSaF/eHbik+hBzkYku06oxr+A==
+X-Received: by 2002:ac8:5894:: with SMTP id t20mr9687073qta.281.1623174422980;
+        Tue, 08 Jun 2021 10:47:02 -0700 (PDT)
 Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id h2sm12963080qkf.106.2021.06.08.10.46.59
+        by smtp.gmail.com with ESMTPSA id h2sm12963080qkf.106.2021.06.08.10.47.02
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 08 Jun 2021 10:46:59 -0700 (PDT)
+        Tue, 08 Jun 2021 10:47:02 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [RFC PATCH 1/6] nfs-sysfs: Add an nfs-sysfs.py tool
-Date:   Tue,  8 Jun 2021 13:46:52 -0400
-Message-Id: <20210608174657.603256-2-Anna.Schumaker@Netapp.com>
+Subject: [RFC PATCH 5/6] nfs-sysfs.py: Add a command for changing xprt dstaddr
+Date:   Tue,  8 Jun 2021 13:46:56 -0400
+Message-Id: <20210608174657.603256-6-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210608174657.603256-1-Anna.Schumaker@Netapp.com>
 References: <20210608174657.603256-1-Anna.Schumaker@Netapp.com>
@@ -72,61 +72,64 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This will be used to print and manipulate the sunrpc sysfs directory
-files. Running without arguments prints both usage information and the
-location of the sunrpc sysfs directory.
+Using the socket module for dns resolution
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tools/nfs-sysfs/nfs-sysfs.py | 13 +++++++++++++
- tools/nfs-sysfs/sysfs.py     | 18 ++++++++++++++++++
- 2 files changed, 31 insertions(+)
- create mode 100755 tools/nfs-sysfs/nfs-sysfs.py
- create mode 100644 tools/nfs-sysfs/sysfs.py
+ tools/nfs-sysfs/xprt.py | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
 
-diff --git a/tools/nfs-sysfs/nfs-sysfs.py b/tools/nfs-sysfs/nfs-sysfs.py
-new file mode 100755
-index 000000000000..8ff59ea9e81b
---- /dev/null
-+++ b/tools/nfs-sysfs/nfs-sysfs.py
-@@ -0,0 +1,13 @@
-+#!/usr/bin/python
-+import argparse
-+import sysfs
+diff --git a/tools/nfs-sysfs/xprt.py b/tools/nfs-sysfs/xprt.py
+index b95fb2d48829..167e5fa69df7 100644
+--- a/tools/nfs-sysfs/xprt.py
++++ b/tools/nfs-sysfs/xprt.py
+@@ -1,3 +1,4 @@
++import socket
+ import sysfs
+ 
+ class Xprt:
+@@ -26,6 +27,12 @@ class Xprt:
+     def small_str(self):
+         return "xprt %s: %s, %s" % (self.id, self.type, self.dstaddr)
+ 
++    def set_dstaddr(self, newaddr):
++        resolved = socket.gethostbyname(newaddr)
++        with open(self.path / "dstaddr", 'w') as f:
++            f.write(resolved)
++        self.dstaddr = open(self.path / "dstaddr", 'r').readline().strip()
 +
-+parser = argparse.ArgumentParser()
+ 
+ def list_xprts(args):
+     xprts = [ Xprt(f) for f in (sysfs.SUNRPC / "xprt-switches").glob("**/xprt-*") ]
+@@ -34,7 +41,28 @@ def list_xprts(args):
+         if args.id == None or xprt.id == args.id[0]:
+             print(xprt)
+ 
++def get_xprt(id):
++    xprts = [ Xprt(f) for f in (sysfs.SUNRPC / "xprt-switches").glob("**/xprt-*") ]
++    for xprt in xprts:
++        if xprt.id == id:
++            return xprt
 +
-+def show_small_help(args):
-+    parser.print_usage()
-+    print("sunrpc dir:", sysfs.SUNRPC)
-+parser.set_defaults(func=show_small_help)
++def set_xprt_property(args):
++    xprt = get_xprt(args.id[0])
++    try:
++        if args.dstaddr != None:
++            xprt.set_dstaddr(args.dstaddr[0])
++        print(xprt)
++    except Exception as e:
++        print(e)
 +
-+args = parser.parse_args()
-+args.func(args)
-diff --git a/tools/nfs-sysfs/sysfs.py b/tools/nfs-sysfs/sysfs.py
-new file mode 100644
-index 000000000000..0b358f57bb28
---- /dev/null
-+++ b/tools/nfs-sysfs/sysfs.py
-@@ -0,0 +1,18 @@
-+import pathlib
-+import sys
+ def add_command(subparser):
+     parser = subparser.add_parser("xprt", help="Commands for individual xprts")
+     parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt to show")
+     parser.set_defaults(func=list_xprts)
 +
-+MOUNT = None
-+with open("/proc/mounts", 'r') as f:
-+    for line in f:
-+        if "sysfs" in line:
-+            MOUNT = line.split()[1]
-+            break
-+
-+if MOUNT == None:
-+    print("ERROR: sysfs is not mounted")
-+    sys.exit(1)
-+
-+SUNRPC = pathlib.Path(MOUNT) / "kernel" / "sunrpc"
-+if not SUNRPC.is_dir():
-+    print("ERROR: sysfs does not have sunrpc directory")
-+    sys.exit(1)
++    subparser = parser.add_subparsers()
++    parser = subparser.add_parser("set", help="Set an xprt property")
++    parser.add_argument("--id", metavar="ID", nargs=1, type=int, required=True, help="Id of a specific xprt to modify")
++    parser.add_argument("--dstaddr", metavar="dstaddr", nargs=1, type=str, help="New dstaddr to set")
++    parser.set_defaults(func=set_xprt_property)
 -- 
 2.32.0
 
