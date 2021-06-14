@@ -2,129 +2,84 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1ADBBC4743C
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0EBB6C2B9F4
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:57:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E4D7F61208
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E2C4061019
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:57:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232864AbhFNOuZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Jun 2021 10:50:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60480 "EHLO
+        id S233120AbhFNO7E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Jun 2021 10:59:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34126 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232852AbhFNOuY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2021 10:50:24 -0400
+        with ESMTP id S233110AbhFNO7D (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2021 10:59:03 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 27C4CC061766
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Jun 2021 07:48:21 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 255F0C061574;
+        Mon, 14 Jun 2021 07:57:00 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 4B811AB6; Mon, 14 Jun 2021 10:48:19 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 4B811AB6
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <schumakeranna@gmail.com>
-Cc:     daire@dneg.com, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/3] nfs: don't atempt blocking locks on nfs reexports
-Date:   Mon, 14 Jun 2021 10:48:16 -0400
-Message-Id: <1623682098-13236-2-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1623682098-13236-1-git-send-email-bfields@redhat.com>
-References: <1623682098-13236-1-git-send-email-bfields@redhat.com>
+        id 99C036210; Mon, 14 Jun 2021 10:56:59 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 99C036210
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1623682619;
+        bh=Nig4SRLFwGTkSDjGzkaXTrnIYKCs+LArMeR6OvYivBM=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=QnqBevZr597BwRamPTMics1AmDeLp4Mh2JrqVI8lYIk0rPPxsNS9IN5faX6TaZGPC
+         BiLI2cuRLMytAyyXZEQOPpATQ12RASHYhw8cGv3yJoH6uqJjgWSAzy9rWea74C6woj
+         UFLWJS2ReEAjN+kAvQRTrcgrU6gh6zhZKZaNqY9A=
+Date:   Mon, 14 Jun 2021 10:56:59 -0400
+From:   "J . Bruce Fields" <bfields@fieldses.org>
+To:     Colin King <colin.king@canonical.com>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S . Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] rpc: remove redundant initialization of variable status
+Message-ID: <20210614145659.GA13304@fieldses.org>
+References: <20210613140652.75190-1-colin.king@canonical.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210613140652.75190-1-colin.king@canonical.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Thanks, applied.--b.
 
-NFS implements blocking locks by blocking inside its lock method.  In
-the reexport case, this blocks the nfs server thread, which could lead
-to deadlocks since an nfs server thread might be required to unlock the
-conflicting lock.  It also causes a crash, since the nfs server thread
-assumes it can free the lock when its lm_notify lock callback is called.
-
-Ideal would be to make the nfs lock method return without blocking in
-this case, but for now it works just not to attempt blocking locks.  The
-difference is just that the original client will have to poll (as it
-does in the v4.0 case) instead of getting a callback when the lock's
-available.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/export.c          | 2 +-
- fs/nfsd/nfs4state.c      | 8 ++++++--
- include/linux/exportfs.h | 2 ++
- 3 files changed, 9 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/export.c b/fs/nfs/export.c
-index 37a1a88df771..d772c20bbfd1 100644
---- a/fs/nfs/export.c
-+++ b/fs/nfs/export.c
-@@ -180,5 +180,5 @@ const struct export_operations nfs_export_ops = {
- 	.fetch_iversion = nfs_fetch_iversion,
- 	.flags = EXPORT_OP_NOWCC|EXPORT_OP_NOSUBTREECHK|
- 		EXPORT_OP_CLOSE_BEFORE_UNLINK|EXPORT_OP_REMOTE_FS|
--		EXPORT_OP_NOATOMIC_ATTR,
-+		EXPORT_OP_NOATOMIC_ATTR|EXPORT_OP_SYNC_LOCKS,
- };
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 980bd8903f84..00d98bbab2a6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -6835,6 +6835,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfsd4_blocked_lock *nbl = NULL;
- 	struct file_lock *file_lock = NULL;
- 	struct file_lock *conflock = NULL;
-+	struct super_block *sb;
- 	__be32 status = 0;
- 	int lkflg;
- 	int err;
-@@ -6856,6 +6857,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		dprintk("NFSD: nfsd4_lock: permission denied!\n");
- 		return status;
- 	}
-+	sb = cstate->current_fh.fh_dentry->d_sb;
- 
- 	if (lock->lk_is_new) {
- 		if (nfsd4_has_session(cstate))
-@@ -6904,7 +6906,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	fp = lock_stp->st_stid.sc_file;
- 	switch (lock->lk_type) {
- 		case NFS4_READW_LT:
--			if (nfsd4_has_session(cstate))
-+			if (nfsd4_has_session(cstate) &&
-+			    !(sb->s_export_op->flags & EXPORT_OP_SYNC_LOCKS))
- 				fl_flags |= FL_SLEEP;
- 			fallthrough;
- 		case NFS4_READ_LT:
-@@ -6916,7 +6919,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			fl_type = F_RDLCK;
- 			break;
- 		case NFS4_WRITEW_LT:
--			if (nfsd4_has_session(cstate))
-+			if (nfsd4_has_session(cstate) &&
-+			    !(sb->s_export_op->flags & EXPORT_OP_SYNC_LOCKS))
- 				fl_flags |= FL_SLEEP;
- 			fallthrough;
- 		case NFS4_WRITE_LT:
-diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-index fe848901fcc3..3260fe714846 100644
---- a/include/linux/exportfs.h
-+++ b/include/linux/exportfs.h
-@@ -221,6 +221,8 @@ struct export_operations {
- #define EXPORT_OP_NOATOMIC_ATTR		(0x10) /* Filesystem cannot supply
- 						  atomic attribute updates
- 						*/
-+#define EXPORT_OP_SYNC_LOCKS		(0x20) /* Filesystem can't do
-+						  asychronous blocking locks */
- 	unsigned long	flags;
- };
- 
--- 
-2.31.1
-
+On Sun, Jun 13, 2021 at 03:06:52PM +0100, Colin King wrote:
+> From: Colin Ian King <colin.king@canonical.com>
+> 
+> The variable status is being initialized with a value that is never
+> read, the assignment is redundant and can be removed.
+> 
+> Addresses-Coverity: ("Unused value")
+> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+> ---
+>  net/sunrpc/auth_gss/svcauth_gss.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 6dff64374bfe..a81be45f40d9 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -1275,7 +1275,7 @@ static int gss_proxy_save_rsc(struct cache_detail *cd,
+>  	long long ctxh;
+>  	struct gss_api_mech *gm = NULL;
+>  	time64_t expiry;
+> -	int status = -EINVAL;
+> +	int status;
+>  
+>  	memset(&rsci, 0, sizeof(rsci));
+>  	/* context handle */
+> -- 
+> 2.31.1
