@@ -2,115 +2,81 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE667C48BE6
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A505DC49EA2
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C596461283
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7C92C61283
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232798AbhFNOuZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232852AbhFNOuZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 14 Jun 2021 10:50:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60482 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60484 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232858AbhFNOuY (ORCPT
+        with ESMTP id S232875AbhFNOuY (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2021 10:50:24 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2F163C061767
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3040C061787
         for <linux-nfs@vger.kernel.org>; Mon, 14 Jun 2021 07:48:21 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 8C3F75047; Mon, 14 Jun 2021 10:48:19 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 8C3F75047
+        id 435563723; Mon, 14 Jun 2021 10:48:19 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 435563723
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <schumakeranna@gmail.com>
 Cc:     daire@dneg.com, linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/3] lockd: lockd server-side shouldn't set fl_ops
-Date:   Mon, 14 Jun 2021 10:48:17 -0400
-Message-Id: <1623682098-13236-3-git-send-email-bfields@redhat.com>
+Subject: [PATCH 0/3] reexport lock fixes
+Date:   Mon, 14 Jun 2021 10:48:15 -0400
+Message-Id: <1623682098-13236-1-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1623682098-13236-1-git-send-email-bfields@redhat.com>
-References: <1623682098-13236-1-git-send-email-bfields@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Locks have two sets of op arrays, fl_lmops for the lock manager (lockd
-or nfsd), fl_ops for the filesystem.  The server-side lockd code has
-been setting its own fl_ops, which leads to confusion (and crashes) in
-the reexport case, where the filesystem expects to be the only one
-setting fl_ops.
+The following fix up some problems that can cause crashes or silently
+broken lock guarantees in the reexport case.
 
-And there's no reason for it that I can see-the lm_get/put_owner ops do
-the same job.
+Not fixed:
+	- Attempts to reclaim locks after a reboot of the reexport
+	  server will fail.  This at least seems like an improvement
+	  over the current situation, which is that they'll succeed even
+	  in cases where they shouldn't.  Complete support for reboot
+	  recovery is a bigger job.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/lockd/svclock.c | 30 ++++++++++++------------------
- 1 file changed, 12 insertions(+), 18 deletions(-)
+	- NFSv4.1+ lock nofications don't work.  So, clients have to
+	  poll as they do with NFSv4.0, which is suboptimal, but correct
+	  (and an improvement over the current situation, which is a
+	  kernel oops).
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 61d3cc2283dc..1781fc5e9091 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -395,28 +395,10 @@ nlmsvc_release_lockowner(struct nlm_lock *lock)
- 		nlmsvc_put_lockowner(lock->fl.fl_owner);
- }
- 
--static void nlmsvc_locks_copy_lock(struct file_lock *new, struct file_lock *fl)
--{
--	struct nlm_lockowner *nlm_lo = (struct nlm_lockowner *)fl->fl_owner;
--	new->fl_owner = nlmsvc_get_lockowner(nlm_lo);
--}
--
--static void nlmsvc_locks_release_private(struct file_lock *fl)
--{
--	nlmsvc_put_lockowner((struct nlm_lockowner *)fl->fl_owner);
--}
--
--static const struct file_lock_operations nlmsvc_lock_ops = {
--	.fl_copy_lock = nlmsvc_locks_copy_lock,
--	.fl_release_private = nlmsvc_locks_release_private,
--};
--
- void nlmsvc_locks_init_private(struct file_lock *fl, struct nlm_host *host,
- 						pid_t pid)
- {
- 	fl->fl_owner = nlmsvc_find_lockowner(host, pid);
--	if (fl->fl_owner != NULL)
--		fl->fl_ops = &nlmsvc_lock_ops;
- }
- 
- /*
-@@ -788,9 +770,21 @@ nlmsvc_notify_blocked(struct file_lock *fl)
- 	printk(KERN_WARNING "lockd: notification for unknown block!\n");
- }
- 
-+static fl_owner_t nlmsvc_get_owner(fl_owner_t owner)
-+{
-+	return nlmsvc_get_lockowner(owner);
-+}
-+
-+static void nlmsvc_put_owner(fl_owner_t owner)
-+{
-+	nlmsvc_put_lockowner(owner);
-+}
-+
- const struct lock_manager_operations nlmsvc_lock_operations = {
- 	.lm_notify = nlmsvc_notify_blocked,
- 	.lm_grant = nlmsvc_grant_deferred,
-+	.lm_get_owner = nlmsvc_get_owner,
-+	.lm_put_owner = nlmsvc_put_owner,
- };
- 
- /*
+So what we have at this point is a suboptimal lock implementation that
+doesn't support lock recovery.
+
+Another alternative might be to turn off file locking entirely in the
+re-export case.  I'd rather take the incremental improvement and fix the
+oopses.
+
+--b.
+
+J. Bruce Fields (3):
+  nfs: don't atempt blocking locks on nfs reexports
+  lockd: lockd server-side shouldn't set fl_ops
+  nfs: don't allow reexport reclaims
+
+ fs/lockd/svclock.c       | 30 ++++++++++++------------------
+ fs/nfs/export.c          |  2 +-
+ fs/nfs/file.c            |  3 +++
+ fs/nfsd/nfs4state.c      | 11 +++++++++--
+ fs/nfsd/nfsproc.c        |  1 +
+ include/linux/exportfs.h |  2 ++
+ include/linux/fs.h       |  1 +
+ 7 files changed, 29 insertions(+), 21 deletions(-)
+
 -- 
 2.31.1
 
