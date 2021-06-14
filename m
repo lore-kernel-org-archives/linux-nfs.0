@@ -2,102 +2,118 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 746EDC2B9F4
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:20:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63631C2B9F4
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5154961185
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:20:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3583A61283
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jun 2021 14:48:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233743AbhFNOWE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Jun 2021 10:22:04 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:22782 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233383AbhFNOWE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2021 10:22:04 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1623680401;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=F4r6zXU9JovBkh6SsFD5G5K6EvAJNO/7FLVKe9QAg28=;
-        b=JbI4rXkEAIkTvnlDL9qSK13XolnQRuqnWOGjLzQT/S1KYaHcoLeiqypGoEYm9K9f6FhTDU
-        Wq1lVstRJuIXpkorcnypwvoLBig2rvLrUc/hWecGzSXYbbAzCbuVBoHqLr7gpEM5SyR/gs
-        5s4efNEn7S2HmMlDKp8GtnsAqcGQG20=
-Received: from mail-qt1-f199.google.com (mail-qt1-f199.google.com
- [209.85.160.199]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-517-EYiwhqU0NUaCmsDa25CccQ-1; Mon, 14 Jun 2021 10:19:59 -0400
-X-MC-Unique: EYiwhqU0NUaCmsDa25CccQ-1
-Received: by mail-qt1-f199.google.com with SMTP id d7-20020ac811870000b02901e65f85117bso7509881qtj.18
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Jun 2021 07:19:59 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:subject:to:cc:message-id:date:user-agent
-         :mime-version:content-language:content-transfer-encoding;
-        bh=F4r6zXU9JovBkh6SsFD5G5K6EvAJNO/7FLVKe9QAg28=;
-        b=XaCh4kATErLc30SrA/w+3ms74daFwpbFr2dTGzm9Gurq9M70Z6A6EczsBAnHOOeGG1
-         AOsa0lJ7ibKK3l5Xu78dvYtt9o9CLZvB0K8sbOHQK+GZt3KIycUY/ztlWx9sqck6aued
-         pdtiQSFeykIOGhiA3lRMBH9k12gxb2lVxChJKb7HdUo6gjgE/DQjqsLcKC8+FHAfa08V
-         OOMtUxDrSaUXqJ/xIwUltNsOUnc3lOg/BT0m4IkxTriGb3eWb3iGc+FBXOmKNVzxu3H3
-         8itMvnLfEy8ypxAryh4hdOWzjOVKvHLLLOUJCaf0PCQau2JSoshfwWawm1kUUiiTVGiS
-         cu2A==
-X-Gm-Message-State: AOAM533/+HwCTO12rcltlyxN4FjAIyuPeflZg1q6jJaBoFfzyBWbPXJK
-        x6GHgoginpVCsEi1Elg1Q15rhkNzpfzD9S9t71nb9ce1rPXm/c9DSLX2ma2VgE5r2HCG1RklYbw
-        LW5WiPUuIFIgKqniaTnKG
-X-Received: by 2002:a37:9f51:: with SMTP id i78mr16654513qke.345.1623680399566;
-        Mon, 14 Jun 2021 07:19:59 -0700 (PDT)
-X-Google-Smtp-Source: ABdhPJw/6IEZ+QfVUK02KN9O4bl5mcthGlZiOTp4RNVssZ1tim/l1UA5wkakFDU2Ls8uv4MXDweuxg==
-X-Received: by 2002:a37:9f51:: with SMTP id i78mr16654492qke.345.1623680399310;
-        Mon, 14 Jun 2021 07:19:59 -0700 (PDT)
-Received: from madhat.boston.devel.redhat.com ([71.161.93.112])
-        by smtp.gmail.com with ESMTPSA id w4sm9781676qtv.79.2021.06.14.07.19.58
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 14 Jun 2021 07:19:59 -0700 (PDT)
-From:   Steve Dickson <steved@redhat.com>
-Subject: ANNOUNCE: nfs-utils-2.5.4 released.
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc:     "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Message-ID: <c8795653-7728-18a4-93dc-58943ad0fe09@redhat.com>
-Date:   Mon, 14 Jun 2021 10:23:08 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.10.1
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+        id S232976AbhFNOuY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Jun 2021 10:50:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60478 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232798AbhFNOuY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jun 2021 10:50:24 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 27503C061574
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jun 2021 07:48:21 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 72D6248F; Mon, 14 Jun 2021 10:48:19 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 72D6248F
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc:     daire@dneg.com, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/3] nfs: don't allow reexport reclaims
+Date:   Mon, 14 Jun 2021 10:48:18 -0400
+Message-Id: <1623682098-13236-4-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1623682098-13236-1-git-send-email-bfields@redhat.com>
+References: <1623682098-13236-1-git-send-email-bfields@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-This release contains a number of bug fixes, man page
-updates as well as updates to rpc.gssd that allows
-the deamon to recover from thread creation failures
-and threads hung in the Kerberos library.
+In the reexport case, nfsd is currently passing along locks with the
+reclaim bit set.  The client sends a new lock request, which is granted
+if there's currently no conflict--even if it's possible a conflicting
+lock could have been briefly held in the interim.
 
-Finally, a couple new flags were added to mountd
-that allows the setting of the TTL and tweaks how
-messages are logged.
+We don't currently have any way to safely grant reclaim, so for now
+let's just deny them all.
 
-The tarballs can be found in
-   https://www.kernel.org/pub/linux/utils/nfs-utils/2.5.4/
-or
-   http://sourceforge.net/projects/nfs/files/nfs-utils/2.5.4
+I'm doing this by passing the reclaim bit to nfs and letting it fail the
+call, with the idea that eventually the client might be able to do
+something more forgiving here.
 
-The change log is in
-    https://www.kernel.org/pub/linux/utils/nfs-utils/2.5.4/2.5.4-Changelog
-or
-    http://sourceforge.net/projects/nfs/files/nfs-utils/2.5.4/
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfs/file.c       | 3 +++
+ fs/nfsd/nfs4state.c | 3 +++
+ fs/nfsd/nfsproc.c   | 1 +
+ include/linux/fs.h  | 1 +
+ 4 files changed, 8 insertions(+)
 
-The git tree is at:
-    git://linux-nfs.org/~steved/nfs-utils
-
-Please send comments/bugs to linux-nfs@vger.kernel.org
-
-steved.
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 1fef107961bc..35a29b440e3e 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -806,6 +806,9 @@ int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSLOCK);
+ 
++	if (fl->fl_flags & FL_RECLAIM)
++		return -NFSERR_NO_GRACE;
++
+ 	/* No mandatory locks over NFS */
+ 	if (__mandatory_lock(inode) && fl->fl_type != F_UNLCK)
+ 		goto out_err;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 00d98bbab2a6..3ef42c0d5d38 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6903,6 +6903,9 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!locks_in_grace(net) && lock->lk_reclaim)
+ 		goto out;
+ 
++	if (lock->lk_reclaim)
++		fl_flags |= FL_RECLAIM;
++
+ 	fp = lock_stp->st_stid.sc_file;
+ 	switch (lock->lk_type) {
+ 		case NFS4_READW_LT:
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 60d7c59e7935..80c430c37ab7 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -881,6 +881,7 @@ nfserrno (int errno)
+ 		{ nfserr_serverfault, -ENFILE },
+ 		{ nfserr_io, -EUCLEAN },
+ 		{ nfserr_perm, -ENOKEY },
++		{ nfserr_no_grace, -NFSERR_NO_GRACE},
+ 	};
+ 	int	i;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c3c88fdb9b2a..9be479999109 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -997,6 +997,7 @@ static inline struct file *get_file(struct file *f)
+ #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
+ #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
+ #define FL_LAYOUT	2048	/* outstanding pNFS layout */
++#define FL_RECLAIM	4096	/* reclaiming from a reboot server */
+ 
+ #define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
+ 
+-- 
+2.31.1
 
