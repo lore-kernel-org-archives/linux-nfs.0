@@ -2,107 +2,111 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 222B1C48BDF
-	for <linux-nfs@archiver.kernel.org>; Tue, 15 Jun 2021 15:41:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B975C48BE8
+	for <linux-nfs@archiver.kernel.org>; Tue, 15 Jun 2021 15:48:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 106C8614A7
-	for <linux-nfs@archiver.kernel.org>; Tue, 15 Jun 2021 15:41:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 76FB96162D
+	for <linux-nfs@archiver.kernel.org>; Tue, 15 Jun 2021 15:48:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231766AbhFOPnN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 15 Jun 2021 11:43:13 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:39395 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231761AbhFOPnM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jun 2021 11:43:12 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1623771667;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=+FBbMlPbm2yEsz/fG8YH2jekqKDOwBTLfpao5h+P4iE=;
-        b=LyvEHaVda4vXPBO5Fy3bMc1F0XQgqR80INZPLNKR8/o/aE95iCrhWab1uJU5ZsTgGVTNNx
-        NYJPonjzS/MBwP9KJJqkHXDQOUbYed7vKVhbMBheUsAJfw3WGbYgmWd6KOjkdvIJv3nvL+
-        4l2/ieqtMhRq8oLBI1kjTKjA2PixbeU=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-123-HYLFvtjLPVmsp_FlL6GAug-1; Tue, 15 Jun 2021 11:41:04 -0400
-X-MC-Unique: HYLFvtjLPVmsp_FlL6GAug-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2D3941936B79;
-        Tue, 15 Jun 2021 15:41:02 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-118-65.rdu2.redhat.com [10.10.118.65])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id EC15160C13;
-        Tue, 15 Jun 2021 15:40:59 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH] netfs: Add MAINTAINERS record
-From:   David Howells <dhowells@redhat.com>
-To:     jlayton@kernel.org
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-mm@kvack.org, linux-cachefs@redhat.com,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, dhowells@redhat.com,
-        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date:   Tue, 15 Jun 2021 16:40:59 +0100
-Message-ID: <162377165897.729347.292567369593752239.stgit@warthog.procyon.org.uk>
-User-Agent: StGit/0.23
+        id S231897AbhFOPur (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 15 Jun 2021 11:50:47 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44748 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S231869AbhFOPul (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 Jun 2021 11:50:41 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 74515616E8;
+        Tue, 15 Jun 2021 15:48:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1623772117;
+        bh=39Nb/3515QbI8+K29dmSC9QgFO551T1Y53B7L/N1k1M=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=ZXtuLeVCIaJS4CV3IZGberDBDwfsORLNfASsbnkDL820T7bVTkf2F1fEEs6aNLk1V
+         RRhssMa2cDHApciBvmhuBx7mGQZyZxX60cW4Hyae9MDbhmjFgpKPdzN1Ix6KSjPjJM
+         KCBMaQZKg45/3T7kD1IAO+56puETRjwi2FajkJeS3fEXh7cIrchDHeQDPrhrInP1qo
+         kK+cri7HKabhZPGGvkbxuPffoQTNa0kmia1xh1ghNMqmXZrTqJEMybBiJNFVVLm9Mh
+         Ap5xcHpdGa7mCSga/7+TCOksn05tv4uyE+LdyBlhawnviBt4BfKQq4Q0p9y6nYxp7p
+         /iF5nWTJe97tQ==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Dai Ngo <dai.ngo@oracle.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.12 10/33] NFSv4: nfs4_proc_set_acl needs to restore NFS_CAP_UIDGID_NOMAP on error.
+Date:   Tue, 15 Jun 2021 11:48:01 -0400
+Message-Id: <20210615154824.62044-10-sashal@kernel.org>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210615154824.62044-1-sashal@kernel.org>
+References: <20210615154824.62044-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+Content-Type: text/plain; charset=UTF-8
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a MAINTAINERS record for the new netfs helper library.
+From: Dai Ngo <dai.ngo@oracle.com>
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Jeff Layton <jlayton@kernel.org>
-cc: Matthew Wilcox (Oracle) <willy@infradead.org>
-cc: linux-mm@kvack.org
-cc: linux-cachefs@redhat.com
-cc: linux-afs@lists.infradead.org
-cc: linux-nfs@vger.kernel.org
-cc: linux-cifs@vger.kernel.org
-cc: ceph-devel@vger.kernel.org
-cc: v9fs-developer@lists.sourceforge.net
-cc: linux-fsdevel@vger.kernel.org
+[ Upstream commit f8849e206ef52b584cd9227255f4724f0cc900bb ]
+
+Currently if __nfs4_proc_set_acl fails with NFS4ERR_BADOWNER it
+re-enables the idmapper by clearing NFS_CAP_UIDGID_NOMAP before
+retrying again. The NFS_CAP_UIDGID_NOMAP remains cleared even if
+the retry fails. This causes problem for subsequent setattr
+requests for v4 server that does not have idmapping configured.
+
+This patch modifies nfs4_proc_set_acl to detect NFS4ERR_BADOWNER
+and NFS4ERR_BADNAME and skips the retry, since the kernel isn't
+involved in encoding the ACEs, and return -EINVAL.
+
+Steps to reproduce the problem:
+
+ # mount -o vers=4.1,sec=sys server:/export/test /tmp/mnt
+ # touch /tmp/mnt/file1
+ # chown 99 /tmp/mnt/file1
+ # nfs4_setfacl -a A::unknown.user@xyz.com:wrtncy /tmp/mnt/file1
+ Failed setxattr operation: Invalid argument
+ # chown 99 /tmp/mnt/file1
+ chown: changing ownership of ‘/tmp/mnt/file1’: Invalid argument
+ # umount /tmp/mnt
+ # mount -o vers=4.1,sec=sys server:/export/test /tmp/mnt
+ # chown 99 /tmp/mnt/file1
+ #
+
+v2: detect NFS4ERR_BADOWNER and NFS4ERR_BADNAME and skip retry
+       in nfs4_proc_set_acl.
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
+ fs/nfs/nfs4proc.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
- MAINTAINERS |    9 +++++++++
- 1 file changed, 9 insertions(+)
-
-diff --git a/MAINTAINERS b/MAINTAINERS
-index bc0ceef87b73..364465f20e81 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -12878,6 +12878,15 @@ NETWORKING [WIRELESS]
- L:	linux-wireless@vger.kernel.org
- Q:	http://patchwork.kernel.org/project/linux-wireless/list/
- 
-+NETWORK FILESYSTEM HELPER LIBRARY
-+M:	David Howells <dhowells@redhat.com>
-+M:	Jeff Layton <jlayton@kernel.org>
-+L:	linux-cachefs@redhat.com (moderated for non-subscribers)
-+S:	Supported
-+F:	Documentation/filesystems/netfs_library.rst
-+F:	fs/netfs/
-+F:	include/linux/netfs.h
-+
- NETXEN (1/10) GbE SUPPORT
- M:	Manish Chopra <manishc@marvell.com>
- M:	Rahul Verma <rahulv@marvell.com>
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0b809cc6ad1d..056d98d1d1a7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5940,6 +5940,14 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
+ 	do {
+ 		err = __nfs4_proc_set_acl(inode, buf, buflen);
+ 		trace_nfs4_set_acl(inode, err);
++		if (err == -NFS4ERR_BADOWNER || err == -NFS4ERR_BADNAME) {
++			/*
++			 * no need to retry since the kernel
++			 * isn't involved in encoding the ACEs.
++			 */
++			err = -EINVAL;
++			break;
++		}
+ 		err = nfs4_handle_exception(NFS_SERVER(inode), err,
+ 				&exception);
+ 	} while (exception.retry);
+-- 
+2.30.2
 
