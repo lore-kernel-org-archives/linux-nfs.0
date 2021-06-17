@@ -2,81 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C390C2B9F4
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jun 2021 09:07:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06A31C48BE5
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jun 2021 13:08:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6EDC0613E9
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jun 2021 09:07:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DEE40613B9
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jun 2021 13:08:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231389AbhFQJKB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Jun 2021 05:10:01 -0400
-Received: from szxga02-in.huawei.com ([45.249.212.188]:4955 "EHLO
-        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230473AbhFQJKA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2021 05:10:00 -0400
-Received: from dggemv703-chm.china.huawei.com (unknown [172.30.72.57])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4G5GMs3d5Pz70PR;
-        Thu, 17 Jun 2021 17:04:41 +0800 (CST)
-Received: from dggpemm500006.china.huawei.com (7.185.36.236) by
- dggemv703-chm.china.huawei.com (10.3.19.46) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2176.2; Thu, 17 Jun 2021 17:06:10 +0800
-Received: from thunder-town.china.huawei.com (10.174.179.0) by
- dggpemm500006.china.huawei.com (7.185.36.236) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2176.2; Thu, 17 Jun 2021 17:06:09 +0800
-From:   Zhen Lei <thunder.leizhen@huawei.com>
-To:     "J . Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-CC:     Zhen Lei <thunder.leizhen@huawei.com>
-Subject: [PATCH 1/1] nfsd: remove unnecessary oom message
-Date:   Thu, 17 Jun 2021 17:04:57 +0800
-Message-ID: <20210617090458.1491-1-thunder.leizhen@huawei.com>
-X-Mailer: git-send-email 2.26.0.windows.1
+        id S232063AbhFQNLC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Jun 2021 09:11:02 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:60067 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S230137AbhFQNLC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jun 2021 09:11:02 -0400
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 15HD8gTt027407
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 17 Jun 2021 09:08:44 -0400
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 027EA15C3CB8; Thu, 17 Jun 2021 09:08:41 -0400 (EDT)
+Date:   Thu, 17 Jun 2021 09:08:41 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Gao Xiang <hsiangkao@linux.alibaba.com>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
+Subject: Re: [PATCH] nfs: set block size according to pnfs_blksize first
+Message-ID: <YMtJWT7hWnHZhrmm@mit.edu>
+References: <1623847469-150122-1-git-send-email-hsiangkao@linux.alibaba.com>
+ <4898aa11dc26396c13bbc3d8bf18c13efe4d513a.camel@hammerspace.com>
+ <YMoFcdhVwMXJQPJ+@B-P7TQMD6M-0146.local>
+ <2c14b63eacf1742bb0bcd2ae02f2d7005f7682d8.camel@hammerspace.com>
+ <YMoNnr1RYDOLXtKJ@B-P7TQMD6M-0146.local>
+ <YMojdN145g9JqAC8@mit.edu>
+ <YMo6CKAaNcZlqzNC@B-P7TQMD6M-0146.local>
+ <YMqBY0hk/AmgGMeb@mit.edu>
+ <YMq104Ps9nTnzE9R@B-P7TQMD6M-0146.local>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.174.179.0]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
- dggpemm500006.china.huawei.com (7.185.36.236)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <YMq104Ps9nTnzE9R@B-P7TQMD6M-0146.local>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Fixes scripts/checkpatch.pl warning:
-WARNING: Possible unnecessary 'out of memory' message
+On Thu, Jun 17, 2021 at 10:39:15AM +0800, Gao Xiang wrote:
+> What I said was the original testcase strictly addressing the original
+> regression report, which converts from shortform to single-block
+> leaf format, see:
+> 
+> https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git/tree/src/attr_replace_test.c#n40
 
-Remove it can help us save a bit of memory.
+So the question is really is this a generic test or an xfs test?  If
+it's an xfs test, then you can make non-portable assumptions about the
+returned values from statfs(2).
 
-Signed-off-by: Zhen Lei <thunder.leizhen@huawei.com>
----
- fs/nfsd/filecache.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+If it's a generic test, then you can't really do that.  And given the
+name --- generic/486, it's a generic test.
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 7629248fdd53..76d68b2b4ba2 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -643,10 +643,8 @@ nfsd_file_cache_init(void)
- 
- 	nfsd_file_hashtbl = kcalloc(NFSD_FILE_HASH_SIZE,
- 				sizeof(*nfsd_file_hashtbl), GFP_KERNEL);
--	if (!nfsd_file_hashtbl) {
--		pr_err("nfsd: unable to allocate nfsd_file_hashtbl\n");
-+	if (!nfsd_file_hashtbl)
- 		goto out_err;
--	}
- 
- 	nfsd_file_slab = kmem_cache_create("nfsd_file",
- 				sizeof(struct nfsd_file), 0, 0, NULL);
--- 
-2.25.1
+What we probably *can* do is to test a series of xattr value
+replacements --- e.g., find out what is the maximum xattr size
+supported, and then try going from an 8 byte xattr value to an xattr
+value of size N, where N might be 16, 32, 64, 128, 256, .. up to the
+max xattr size supported.
 
+One could also imagine testing starting with an xattr size of 16, 32,
+64, 128, 256, ... max_size and replacing with a small xattr, which
+would test the reverse case.
 
+That would ba a truly general, generic test.
+
+In any case, I'd suggest making a proposed patch to the fstests@
+mailing list, since I'll note that the current set of lists where this
+is being discussed may not guarantee that XFS developers will be
+paying attention to this thread.
+
+> > > And I found another problem in the test, it fails on 1k/2k block size
+> > > extN filesystems, because 2k xattr doesn't fit in single block.. e.g.
+> > > 
+> > >     -Attribute "world" has a 2048 byte value for SCRATCH_MNT/hello
+> > >     +No space left on device
+> > >     +error=22 at line 46
+> > >     +Attribute "world" has a 1 byte value for
+> > > 
+> > > We probably need to check the block size of SCRATCH_DEV and _notrun if
+> > > it's smaller than 4k.
+
+I think you mean using a 1k or 2k extN file system when testing over
+NFS.  It works fine directly on a 1k block file system, since that's
+one of my regular test configs and I would have noticed if it was
+breaking.
+
+BEGIN TEST 1k (1 test): Ext4 1k block Thu Jun 17 09:05:09 EDT 2021
+DEVICE: /dev/vdd
+EXT_MKFS_OPTIONS: -b 1024
+EXT_MOUNT_OPTIONS: -o block_validity
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 kvm-xfstests 5.13.0-rc5-xfstests-00008-ga3f5d4136d5a #171 SMP Wed Jun 16 20:40:09 EDT 2021
+MKFS_OPTIONS  -- -q -b 1024 /dev/vdc
+MOUNT_OPTIONS -- -o acl,user_xattr -o block_validity /dev/vdc /vdc
+
+generic/486             [09:05:10][   19.128541] run fstests generic/486 at 2021-06-17 09:05:10
+ [09:05:10] 0s
+Ran: generic/486
+Passed all 1 tests
+Xunit report: /results/ext4/results-1k/result.xml
+
+Again, my suggestion of using binary search to find the largest size
+xattr supported by the file system is really the way to go.
+
+Cheers,
+
+						- Ted
