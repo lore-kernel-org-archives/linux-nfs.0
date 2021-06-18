@@ -2,210 +2,186 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9D0BC48BDF
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Jun 2021 09:12:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 50DB3C48BDF
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Jun 2021 13:34:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9FE7460FD8
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Jun 2021 09:12:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2FCE06124C
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Jun 2021 13:34:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233214AbhFRJPB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 18 Jun 2021 05:15:01 -0400
-Received: from out30-132.freemail.mail.aliyun.com ([115.124.30.132]:57989 "EHLO
-        out30-132.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S234074AbhFRJOo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2021 05:14:44 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R351e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04420;MF=hsiangkao@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0UcohVPl_1624007547;
-Received: from e18g09479.et15sqa.tbsite.net(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0UcohVPl_1624007547)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 18 Jun 2021 17:12:34 +0800
-From:   Gao Xiang <hsiangkao@linux.alibaba.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     LKML <linux-kernel@vger.kernel.org>,
-        Gao Xiang <hsiangkao@linux.alibaba.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>
-Subject: [RFC PATCH 2/1] nfs: NFSv3: fix SGID bit dropped when inheriting ACLs
-Date:   Fri, 18 Jun 2021 17:12:25 +0800
-Message-Id: <1624007545-142045-1-git-send-email-hsiangkao@linux.alibaba.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1623990055-222609-1-git-send-email-hsiangkao@linux.alibaba.com>
-References: <1623990055-222609-1-git-send-email-hsiangkao@linux.alibaba.com>
+        id S233840AbhFRNgc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 18 Jun 2021 09:36:32 -0400
+Received: from out20-38.mail.aliyun.com ([115.124.20.38]:44734 "EHLO
+        out20-38.mail.aliyun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233837AbhFRNg2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jun 2021 09:36:28 -0400
+X-Alimail-AntiSpam: AC=CONTINUE;BC=0.04446485|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_system_inform|0.184994-0.0132849-0.801721;FP=0|0|0|0|0|-1|-1|-1;HT=ay29a033018047204;MF=wangyugui@e16-tech.com;NM=1;PH=DS;RN=2;RT=2;SR=0;TI=SMTPD_---.KUMy-6a_1624023256;
+Received: from 192.168.2.112(mailfrom:wangyugui@e16-tech.com fp:SMTPD_---.KUMy-6a_1624023256)
+          by smtp.aliyun-inc.com(10.147.42.241);
+          Fri, 18 Jun 2021 21:34:17 +0800
+Date:   Fri, 18 Jun 2021 21:34:17 +0800
+From:   Wang Yugui <wangyugui@e16-tech.com>
+To:     "NeilBrown" <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: any idea about auto export multiple btrfs snapshots?
+In-Reply-To: <20210618152631.F3DE.409509F4@e16-tech.com>
+References: <162397637680.29912.2268876490205517592@noble.neil.brown.name> <20210618152631.F3DE.409509F4@e16-tech.com>
+Message-Id: <20210618213417.2314.409509F4@e16-tech.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+X-Mailer: Becky! ver. 2.75.04 [en]
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-generic/444 fails with NFSv3 as shown above, "
-     QA output created by 444
-     drwxrwsr-x
-    -drwxrwsr-x
-    +drwxrwxr-x
-", which tests "SGID inheritance with default ACLs" fs regression
-and looks after the following commits:
+Hi,
 
-a3bb2d558752 ("ext4: Don't clear SGID when inheriting ACLs")
-073931017b49 ("posix_acl: Clear SGID bit when setting file permissions")
+> > On Thu, 17 Jun 2021, Wang Yugui wrote:
+> > > > Can we go back to the beginning.  What, exactly, is the problem you are
+> > > > trying to solve?  How can you demonstrate the problem?
+> > > > 
+> > > > NeilBrown
+> > > 
+> > > I nfs/exported a btrfs with 2 subvols and 2 snapshot(subvol).
+> > > 
+> > > # btrfs subvolume list /mnt/test
+> > > ID 256 gen 53 top level 5 path sub1
+> > > ID 260 gen 56 top level 5 path sub2
+> > > ID 261 gen 57 top level 5 path .snapshot/sub1-s1
+> > > ID 262 gen 57 top level 5 path .snapshot/sub2-s1
+> > > 
+> > > and then mount.nfs4 it to /nfs/test.
+> > > 
+> > > # /bin/find /nfs/test/
+> > > /nfs/test/
+> > > find: File system loop detected; '/nfs/test/sub1' is part of the same file system loop as '/nfs/test/'.
+> > > /nfs/test/.snapshot
+> > > find: File system loop detected; '/nfs/test/.snapshot/sub1-s1' is part of the same file system loop as '/nfs/test/'.
+> > > find: File system loop detected; '/nfs/test/.snapshot/sub2-s1' is part of the same file system loop as '/nfs/test/'.
+> > > /nfs/test/dir1
+> > > /nfs/test/dir1/a.txt
+> > > find: File system loop detected; '/nfs/test/sub2' is part of the same file system loop as '/nfs/test/'
+> > > 
+> > > /bin/find report 'File system loop detected'. so I though there is
+> > > something wrong.
+> > 
+> > Certainly something is wrong.  The error message implies that some
+> > directory is reporting the same dev an ino as an ancestor directory.
+> > Presumably /nfs/test and /nfs/test/sub1.
+> > Can you confirm that please. e.g. run the command
+> > 
+> >    stat /nfs/test /nfs/test/sub1
+> > and examine the output.
+> 
+> # stat /nfs/test /nfs/test/sub1
+>   File: /nfs/test
+>   Size: 42              Blocks: 32         IO Block: 32768  directory
+> Device: 36h/54d Inode: 256         Links: 1
+> Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+> Access: 2021-06-18 13:50:55.409457648 +0800
+> Modify: 2021-06-13 10:05:10.830825901 +0800
+> Change: 2021-06-13 10:05:10.830825901 +0800
+>  Birth: -
+>   File: /nfs/test/sub1
+>   Size: 8               Blocks: 0          IO Block: 32768  directory
+> Device: 36h/54d Inode: 256         Links: 1
+> Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+> Access: 2021-06-18 13:51:14.463621411 +0800
+> Modify: 2021-06-12 21:59:10.598089917 +0800
+> Change: 2021-06-12 21:59:10.598089917 +0800
+>  Birth: -
+> 
+> same 'Device/Inode' are reported.
+> 
+> 
+> but the local btrfs mount,
+> # stat /mnt/test/ /mnt/test/sub1
+>   File: /mnt/test/
+>   Size: 42              Blocks: 32         IO Block: 4096   directory
+> Device: 33h/51d Inode: 256         Links: 1
+> Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+> Access: 2021-06-18 13:50:55.409457648 +0800
+> Modify: 2021-06-13 10:05:10.830825901 +0800
+> Change: 2021-06-13 10:05:10.830825901 +0800
+>  Birth: -
+>   File: /mnt/test/sub1
+>   Size: 8               Blocks: 0          IO Block: 4096   directory
+> Device: 34h/52d Inode: 256         Links: 1
+> Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
+> Access: 2021-06-18 13:51:14.463621411 +0800
+> Modify: 2021-06-12 21:59:10.598089917 +0800
+> Change: 2021-06-12 21:59:10.598089917 +0800
+>  Birth: -
+> 
+> 'stat' command should cause nfs/crossmnt to happen auto, and then return
+> the 'stat' result?
+> 
+> 
+> > As sub1 is considered a different file system, it should have a
+> > different dev number.  NFS will assign a different device number only
+> > when the server reports a different fsid.  The Linux NFS server will
+> > report a different fsid if d_mountpoint() is 'true' for the dentry, and
+> > follow_down() results in no change the the vfsmnt,dentry in a 'struct
+> > path'.
+> > 
+> > You have already said that d_mountpoint doesn't work for btrfs, so that
+> > is part of the problem.  NFSD doesn't trust d_mountpoint completely as
+> > it only reports that the dentry is a mountpoint in some namespace, not
+> > necessarily in this namespace.  So you really need to fix
+> > nfsd_mountpoint.
+> > 
+> > I suggest you try adding your "dirty fix" to nfsd_mountpoint() so that
+> > it reports the root of a btrfs subvol as a mountpoint, and see if that
+> > fixes the problem.  It should change the problem at least.  You would
+> > need to get nfsd_mountpoint() to return '1' in this case, not '2'.
+> > 
+> > NeilBrown
+> 
+> I changed the return value from 2 to 1.
+>         if (nfsd4_is_junction(dentry))
+>                 return 1;
+> +       if (is_btrfs_subvol_d(dentry))
+> +               return 1;
+>         if (d_mountpoint(dentry))
+> 
+> but the crossmnt still does not happen auto.
+> 
+> I tried to mount the subvol manual, 
+> # mount.nfs4 T7610:/mnt/test/sub1 /nfs/test/sub1
+> mount.nfs4: Stale file handle
+> 
+> we add trace to is_btrfs_subvol_d(), it works as expected.
+> +static inline bool is_btrfs_subvol_d(const struct dentry *dentry)
+> +{
+> +    bool ret= dentry->d_inode && dentry->d_inode->i_ino == 256ULL &&
+> +		dentry->d_sb && dentry->d_sb->s_magic == 0x9123683E;
+> +	printk(KERN_INFO "is_btrfs_subvol_d(%s)=%d\n", dentry->d_name.name, ret);
+> +	return ret;
+> +}
+> 
+> It seems more fixes are needed.
 
-commit 055ffbea0596 ("[PATCH] NFS: Fix handling of the umask when
-an NFSv3 default acl is present.") sets acls explicitly when
-when files are created in a directory that has a default ACL.
-However, after commit a3bb2d558752 and 073931017b49, SGID can be
-dropped if user is not member of the owning group with
-set_posix_acl() called.
+for a normal crossmnt,
+	/mnt/test			btrfs
+	/mn/test/xfs1		xfs
+this xfs1 have 2 inode,
+1) inode in xfs /mn/test/xfs, as the root.
+2) inode in btrfs /mnt/test, as a directory.
+when /mn/test/xfs1 is mounted, nfs client with nocrossmnt option will
+show 2).
 
-Since underlayfs will handle ACL inheritance when creating
-files in a directory that has the default ACL and the umask is
-supposed to be ignored for such case. Therefore, I think no need
-to set acls explicitly (to avoid SGID bit cleared) but only apply
-client umask if the default ACL of the parent directory doesn't
-exist.
+but for a btrfs subvol,
+	/mnt/test		btrfs
+	/mnt/test/sub1	 btrfs subvol
+this sub1 have just 1 inode
+1) inode in /mnt/test/sub1, as the root
 
-With this patch, generic/444 can pass now.
+This difference break the nfs support of btrfs multiple subvol?
 
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: Joseph Qi <joseph.qi@linux.alibaba.com>
-Signed-off-by: Gao Xiang <hsiangkao@linux.alibaba.com>
----
-
-I didn't find the original discussion with Buck Huppmann <buchk@pobox.com>
-about this topic mentioned in
-https://lore.kernel.org/r/20050122203620.108564000@blunzn.suse.de/
-
-and it's just a rough thought about this issue...
-
- fs/nfs/nfs3proc.c | 43 ++++++++++++++++---------------------------
- 1 file changed, 16 insertions(+), 27 deletions(-)
-
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 2299446b3b89..a5676be676be 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -339,7 +339,7 @@ static void nfs3_free_createdata(struct nfs3_createdata *data)
- nfs3_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 		 int flags)
- {
--	struct posix_acl *default_acl, *acl;
-+	struct posix_acl *pacl;
- 	struct nfs3_createdata *data;
- 	struct dentry *d_alias;
- 	int status = -ENOMEM;
-@@ -350,6 +350,10 @@ static void nfs3_free_createdata(struct nfs3_createdata *data)
- 	if (data == NULL)
- 		goto out;
- 
-+	pacl = get_acl(dir, ACL_TYPE_DEFAULT);
-+	if (!pacl || pacl == ERR_PTR(-EOPNOTSUPP))
-+		sattr->ia_mode &= ~current_umask();
-+
- 	data->msg.rpc_proc = &nfs3_procedures[NFS3PROC_CREATE];
- 	data->arg.create.fh = NFS_FH(dir);
- 	data->arg.create.name = dentry->d_name.name;
-@@ -363,10 +367,6 @@ static void nfs3_free_createdata(struct nfs3_createdata *data)
- 		data->arg.create.verifier[1] = cpu_to_be32(current->pid);
- 	}
- 
--	status = posix_acl_create(dir, &sattr->ia_mode, &default_acl, &acl);
--	if (status)
--		goto out;
--
- 	for (;;) {
- 		d_alias = nfs3_do_create(dir, dentry, data);
- 		status = PTR_ERR_OR_ZERO(d_alias);
-@@ -416,14 +416,10 @@ static void nfs3_free_createdata(struct nfs3_createdata *data)
- 		if (status != 0)
- 			goto out_dput;
- 	}
--
--	status = nfs3_proc_setacls(d_inode(dentry), acl, default_acl);
--
- out_dput:
- 	dput(d_alias);
- out_release_acls:
--	posix_acl_release(acl);
--	posix_acl_release(default_acl);
-+	posix_acl_release(pacl);
- out:
- 	nfs3_free_createdata(data);
- 	dprintk("NFS reply create: %d\n", status);
-@@ -582,7 +578,7 @@ static void nfs3_proc_rename_rpc_prepare(struct rpc_task *task, struct nfs_renam
- static int
- nfs3_proc_mkdir(struct inode *dir, struct dentry *dentry, struct iattr *sattr)
- {
--	struct posix_acl *default_acl, *acl;
-+	struct posix_acl *pacl;
- 	struct nfs3_createdata *data;
- 	struct dentry *d_alias;
- 	int status = -ENOMEM;
-@@ -593,10 +589,9 @@ static void nfs3_proc_rename_rpc_prepare(struct rpc_task *task, struct nfs_renam
- 	if (data == NULL)
- 		goto out;
- 
--	status = posix_acl_create(dir, &sattr->ia_mode, &default_acl, &acl);
--	if (status)
--		goto out;
--
-+	pacl = get_acl(dir, ACL_TYPE_DEFAULT);
-+	if (!pacl || pacl == ERR_PTR(-EOPNOTSUPP))
-+		sattr->ia_mode &= ~current_umask();
- 	data->msg.rpc_proc = &nfs3_procedures[NFS3PROC_MKDIR];
- 	data->arg.mkdir.fh = NFS_FH(dir);
- 	data->arg.mkdir.name = dentry->d_name.name;
-@@ -612,12 +607,9 @@ static void nfs3_proc_rename_rpc_prepare(struct rpc_task *task, struct nfs_renam
- 	if (d_alias)
- 		dentry = d_alias;
- 
--	status = nfs3_proc_setacls(d_inode(dentry), acl, default_acl);
--
- 	dput(d_alias);
- out_release_acls:
--	posix_acl_release(acl);
--	posix_acl_release(default_acl);
-+	posix_acl_release(pacl);
- out:
- 	nfs3_free_createdata(data);
- 	dprintk("NFS reply mkdir: %d\n", status);
-@@ -713,7 +705,7 @@ static int nfs3_proc_readdir(struct nfs_readdir_arg *nr_arg,
- nfs3_proc_mknod(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 		dev_t rdev)
- {
--	struct posix_acl *default_acl, *acl;
-+	struct posix_acl *pacl;
- 	struct nfs3_createdata *data;
- 	struct dentry *d_alias;
- 	int status = -ENOMEM;
-@@ -725,9 +717,9 @@ static int nfs3_proc_readdir(struct nfs_readdir_arg *nr_arg,
- 	if (data == NULL)
- 		goto out;
- 
--	status = posix_acl_create(dir, &sattr->ia_mode, &default_acl, &acl);
--	if (status)
--		goto out;
-+	pacl = get_acl(dir, ACL_TYPE_DEFAULT);
-+	if (!pacl || pacl == ERR_PTR(-EOPNOTSUPP))
-+		sattr->ia_mode &= ~current_umask();
- 
- 	data->msg.rpc_proc = &nfs3_procedures[NFS3PROC_MKNOD];
- 	data->arg.mknod.fh = NFS_FH(dir);
-@@ -762,12 +754,9 @@ static int nfs3_proc_readdir(struct nfs_readdir_arg *nr_arg,
- 	if (d_alias)
- 		dentry = d_alias;
- 
--	status = nfs3_proc_setacls(d_inode(dentry), acl, default_acl);
--
- 	dput(d_alias);
- out_release_acls:
--	posix_acl_release(acl);
--	posix_acl_release(default_acl);
-+	posix_acl_release(pacl);
- out:
- 	nfs3_free_createdata(data);
- 	dprintk("NFS reply mknod: %d\n", status);
--- 
-1.8.3.1
+Best Regards
+Wang Yugui (wangyugui@e16-tech.com)
+2021/06/18
 
