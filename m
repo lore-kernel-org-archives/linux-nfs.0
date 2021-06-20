@@ -2,33 +2,33 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-3.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY autolearn=no autolearn_force=no version=3.4.0
+	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A306C2B9F4
-	for <linux-nfs@archiver.kernel.org>; Sat, 19 Jun 2021 06:47:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 474F7C48BDF
+	for <linux-nfs@archiver.kernel.org>; Sun, 20 Jun 2021 12:27:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3CFFD60FEE
-	for <linux-nfs@archiver.kernel.org>; Sat, 19 Jun 2021 06:47:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 15A82610CD
+	for <linux-nfs@archiver.kernel.org>; Sun, 20 Jun 2021 12:27:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232882AbhFSGtQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 19 Jun 2021 02:49:16 -0400
-Received: from out20-109.mail.aliyun.com ([115.124.20.109]:37441 "EHLO
-        out20-109.mail.aliyun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231193AbhFSGtQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Jun 2021 02:49:16 -0400
-X-Alimail-AntiSpam: AC=CONTINUE;BC=0.04437498|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_system_inform|0.432923-0.00974164-0.557335;FP=0|0|0|0|0|-1|-1|-1;HT=ay29a033018047204;MF=wangyugui@e16-tech.com;NM=1;PH=DS;RN=2;RT=2;SR=0;TI=SMTPD_---.KUgdi5q_1624085223;
-Received: from 192.168.2.112(mailfrom:wangyugui@e16-tech.com fp:SMTPD_---.KUgdi5q_1624085223)
-          by smtp.aliyun-inc.com(10.147.42.135);
-          Sat, 19 Jun 2021 14:47:03 +0800
-Date:   Sat, 19 Jun 2021 14:47:05 +0800
+        id S229593AbhFTM33 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 20 Jun 2021 08:29:29 -0400
+Received: from out20-50.mail.aliyun.com ([115.124.20.50]:60932 "EHLO
+        out20-50.mail.aliyun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229591AbhFTM31 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Jun 2021 08:29:27 -0400
+X-Alimail-AntiSpam: AC=CONTINUE;BC=0.1967406|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_enroll_verification|0.148466-0.00233928-0.849195;FP=0|0|0|0|0|-1|-1|-1;HT=ay29a033018047213;MF=wangyugui@e16-tech.com;NM=1;PH=DS;RN=2;RT=2;SR=0;TI=SMTPD_---.KVAB6Id_1624192033;
+Received: from 192.168.2.112(mailfrom:wangyugui@e16-tech.com fp:SMTPD_---.KVAB6Id_1624192033)
+          by smtp.aliyun-inc.com(10.147.43.230);
+          Sun, 20 Jun 2021 20:27:13 +0800
+Date:   Sun, 20 Jun 2021 20:27:14 +0800
 From:   Wang Yugui <wangyugui@e16-tech.com>
 To:     "NeilBrown" <neilb@suse.de>, linux-nfs@vger.kernel.org
 Subject: Re: any idea about auto export multiple btrfs snapshots?
-In-Reply-To: <20210618213417.2314.409509F4@e16-tech.com>
-References: <20210618152631.F3DE.409509F4@e16-tech.com> <20210618213417.2314.409509F4@e16-tech.com>
-Message-Id: <20210619144703.D583.409509F4@e16-tech.com>
+In-Reply-To: <20210618152631.F3DE.409509F4@e16-tech.com>
+References: <162397637680.29912.2268876490205517592@noble.neil.brown.name> <20210618152631.F3DE.409509F4@e16-tech.com>
+Message-Id: <20210620202713.AE85.409509F4@e16-tech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="US-ASCII"
 Content-Transfer-Encoding: 7bit
@@ -39,164 +39,28 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Hi,
 
-> > > On Thu, 17 Jun 2021, Wang Yugui wrote:
-> > > > > Can we go back to the beginning.  What, exactly, is the problem you are
-> > > > > trying to solve?  How can you demonstrate the problem?
-> > > > > 
-> > > > > NeilBrown
-> > > > 
-> > > > I nfs/exported a btrfs with 2 subvols and 2 snapshot(subvol).
-> > > > 
-> > > > # btrfs subvolume list /mnt/test
-> > > > ID 256 gen 53 top level 5 path sub1
-> > > > ID 260 gen 56 top level 5 path sub2
-> > > > ID 261 gen 57 top level 5 path .snapshot/sub1-s1
-> > > > ID 262 gen 57 top level 5 path .snapshot/sub2-s1
-> > > > 
-> > > > and then mount.nfs4 it to /nfs/test.
-> > > > 
-> > > > # /bin/find /nfs/test/
-> > > > /nfs/test/
-> > > > find: File system loop detected; '/nfs/test/sub1' is part of the same file system loop as '/nfs/test/'.
-> > > > /nfs/test/.snapshot
-> > > > find: File system loop detected; '/nfs/test/.snapshot/sub1-s1' is part of the same file system loop as '/nfs/test/'.
-> > > > find: File system loop detected; '/nfs/test/.snapshot/sub2-s1' is part of the same file system loop as '/nfs/test/'.
-> > > > /nfs/test/dir1
-> > > > /nfs/test/dir1/a.txt
-> > > > find: File system loop detected; '/nfs/test/sub2' is part of the same file system loop as '/nfs/test/'
-> > > > 
-> > > > /bin/find report 'File system loop detected'. so I though there is
-> > > > something wrong.
-> > > 
-> > > Certainly something is wrong.  The error message implies that some
-> > > directory is reporting the same dev an ino as an ancestor directory.
-> > > Presumably /nfs/test and /nfs/test/sub1.
-> > > Can you confirm that please. e.g. run the command
-> > > 
-> > >    stat /nfs/test /nfs/test/sub1
-> > > and examine the output.
-> > 
-> > # stat /nfs/test /nfs/test/sub1
-> >   File: /nfs/test
-> >   Size: 42              Blocks: 32         IO Block: 32768  directory
-> > Device: 36h/54d Inode: 256         Links: 1
-> > Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
-> > Access: 2021-06-18 13:50:55.409457648 +0800
-> > Modify: 2021-06-13 10:05:10.830825901 +0800
-> > Change: 2021-06-13 10:05:10.830825901 +0800
-> >  Birth: -
-> >   File: /nfs/test/sub1
-> >   Size: 8               Blocks: 0          IO Block: 32768  directory
-> > Device: 36h/54d Inode: 256         Links: 1
-> > Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
-> > Access: 2021-06-18 13:51:14.463621411 +0800
-> > Modify: 2021-06-12 21:59:10.598089917 +0800
-> > Change: 2021-06-12 21:59:10.598089917 +0800
-> >  Birth: -
-> > 
-> > same 'Device/Inode' are reported.
-> > 
-> > 
-> > but the local btrfs mount,
-> > # stat /mnt/test/ /mnt/test/sub1
-> >   File: /mnt/test/
-> >   Size: 42              Blocks: 32         IO Block: 4096   directory
-> > Device: 33h/51d Inode: 256         Links: 1
-> > Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
-> > Access: 2021-06-18 13:50:55.409457648 +0800
-> > Modify: 2021-06-13 10:05:10.830825901 +0800
-> > Change: 2021-06-13 10:05:10.830825901 +0800
-> >  Birth: -
-> >   File: /mnt/test/sub1
-> >   Size: 8               Blocks: 0          IO Block: 4096   directory
-> > Device: 34h/52d Inode: 256         Links: 1
-> > Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)
-> > Access: 2021-06-18 13:51:14.463621411 +0800
-> > Modify: 2021-06-12 21:59:10.598089917 +0800
-> > Change: 2021-06-12 21:59:10.598089917 +0800
-> >  Birth: -
-> > 
-> > 'stat' command should cause nfs/crossmnt to happen auto, and then return
-> > the 'stat' result?
-> > 
-> > 
-> > > As sub1 is considered a different file system, it should have a
-> > > different dev number.  NFS will assign a different device number only
-> > > when the server reports a different fsid.  The Linux NFS server will
-> > > report a different fsid if d_mountpoint() is 'true' for the dentry, and
-> > > follow_down() results in no change the the vfsmnt,dentry in a 'struct
-> > > path'.
-> > > 
-> > > You have already said that d_mountpoint doesn't work for btrfs, so that
-> > > is part of the problem.  NFSD doesn't trust d_mountpoint completely as
-> > > it only reports that the dentry is a mountpoint in some namespace, not
-> > > necessarily in this namespace.  So you really need to fix
-> > > nfsd_mountpoint.
-> > > 
-> > > I suggest you try adding your "dirty fix" to nfsd_mountpoint() so that
-> > > it reports the root of a btrfs subvol as a mountpoint, and see if that
-> > > fixes the problem.  It should change the problem at least.  You would
-> > > need to get nfsd_mountpoint() to return '1' in this case, not '2'.
-> > > 
-> > > NeilBrown
-> > 
-> > I changed the return value from 2 to 1.
-> >         if (nfsd4_is_junction(dentry))
-> >                 return 1;
-> > +       if (is_btrfs_subvol_d(dentry))
-> > +               return 1;
-> >         if (d_mountpoint(dentry))
-> > 
-> > but the crossmnt still does not happen auto.
-> > 
-> > I tried to mount the subvol manual, 
-> > # mount.nfs4 T7610:/mnt/test/sub1 /nfs/test/sub1
-> > mount.nfs4: Stale file handle
-> > 
-> > we add trace to is_btrfs_subvol_d(), it works as expected.
-> > +static inline bool is_btrfs_subvol_d(const struct dentry *dentry)
-> > +{
-> > +    bool ret= dentry->d_inode && dentry->d_inode->i_ino == 256ULL &&
-> > +		dentry->d_sb && dentry->d_sb->s_magic == 0x9123683E;
-> > +	printk(KERN_INFO "is_btrfs_subvol_d(%s)=%d\n", dentry->d_name.name, ret);
-> > +	return ret;
-> > +}
-> > 
-> > It seems more fixes are needed.
-> 
-> for a normal crossmnt,
-> 	/mnt/test			btrfs
-> 	/mn/test/xfs1		xfs
-> this xfs1 have 2 inode,
-> 1) inode in xfs /mn/test/xfs, as the root.
-> 2) inode in btrfs /mnt/test, as a directory.
-> when /mn/test/xfs1 is mounted, nfs client with nocrossmnt option will
-> show 2).
-> 
-> but for a btrfs subvol,
-> 	/mnt/test		btrfs
-> 	/mnt/test/sub1	 btrfs subvol
-> this sub1 have just 1 inode
-> 1) inode in /mnt/test/sub1, as the root
-> 
-> This difference break the nfs support of btrfs multiple subvol?
+> It seems more fixes are needed.
 
-When os shutdown, btrfs subvol in nfs client is firstly unmounted,
-then the btrfs subvol entry in nfs client will have a unmounted status.
+when compare btrfs subvol with xfs crossmnt, we found out
+a new feature difference.
 
-this btrfs subvol unmounted status in nfs client does NOT exist in btrfs,
-we could use a dummy inode value(BTRFS_LAST_FREE_OBJECTID/-255ULL).
+/mnt/test		xfs
+/mnt/text/xfs2	 another xfs(crossmnt)
+nfsd4_encode_dirent_fattr() report "/mnt/test/xfs2" + "/";
 
-btrfs subvol entry mounted status
-	st_dev	: from subvol
-	st_ino	 : form subvol (255ULL) 
 
-btrfs subvol entry mounted status
-	st_dev	: from parent
-	st_ino	 : dummy inode ( -255ULL) 
+but 
+/mnt/test		btrfs
+/mnt/test/sub1	 btrfs subvol
+nfsd4_encode_dirent_fattr() report "/mnt/test/" + "sub1";
+
+for '/mnt/test/sub1',  nfsd should treat the mountpoint as
+'/mn/test/sub1', rather than '/mnt/test'?
+
+I'm sorry that yet no patch is avaliable, kernel source is quite
+difficult for me.
 
 Best Regards
 Wang Yugui (wangyugui@e16-tech.com)
-2021/06/19
-
+2021/06/20
 
