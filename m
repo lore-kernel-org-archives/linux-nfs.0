@@ -2,67 +2,69 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7242AC48BC2
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jun 2021 03:28:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F7C0C49EA7
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jun 2021 03:29:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4ED896137D
+	by mail.kernel.org (Postfix) with ESMTP id E948A6137D
 	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jun 2021 03:28:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230004AbhFXDbQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Jun 2021 23:31:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36162 "EHLO
+        id S230006AbhFXDbR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Jun 2021 23:31:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36176 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229822AbhFXDbP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2021 23:31:15 -0400
-Received: from mail-il1-x134.google.com (mail-il1-x134.google.com [IPv6:2607:f8b0:4864:20::134])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4176C061574
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jun 2021 20:28:56 -0700 (PDT)
-Received: by mail-il1-x134.google.com with SMTP id i13so486836ilu.4
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jun 2021 20:28:56 -0700 (PDT)
+        with ESMTP id S230002AbhFXDbR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jun 2021 23:31:17 -0400
+Received: from mail-io1-xd2f.google.com (mail-io1-xd2f.google.com [IPv6:2607:f8b0:4864:20::d2f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC62BC061574
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jun 2021 20:28:58 -0700 (PDT)
+Received: by mail-io1-xd2f.google.com with SMTP id k11so6156489ioa.5
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jun 2021 20:28:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=CyiaKFagLBAklqwpiHgbvnvD0KzlBMKBb++MCDTnBg4=;
-        b=G5hd+8+80RAwJ4ZVJLGcl+Q9zmi2raxR46qaE0T28BVNi9p2w0EIRsSRwWpZcedCtK
-         4tik+W3Jn+bMP+bZDWqVXzcJyvTLlhuFoXiuOE7M1cp8w/S+ICnVVhy75tKu1xttJIwk
-         tjCgQMlAf5NgF9ekJZKaJWdaMob4LpA9dXE2KFLnNrDtrJ9LkO3mvJVdsrtqGRlkTPdM
-         t4/sp3kW6nvspMAMLqJyZycClSpjxvravhhcQzMOEi101HjRQOaY7A5PvSySo5PUKiX1
-         Nx5PuC/QGqfeMue+L1vKZrcAmZ1io+3wxSlBIeOunqnrO9sdQ4luHQMsL1JP58ALIL/i
-         sZ/g==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=Oa9Vgi1+mE9cwK7RVRVacr6n6EHbCKrO9HpKfsQaeJ8=;
+        b=klurHPo09Nq6BBVWMy6MogC7x9jKuQwSaxvOovVosG/E4oA20+kGtRf7I2G1BetZvx
+         tEf7O6KhyYTb3f9RkLLSHN0J0fgqdn+Ci4BVP/DqIMJGag0EHcx29/b8S0OESgg6PBvw
+         gpMXn0L5zsDbLN2i3pGcymHTP+EFeEGihXFgNY+XVaT/z9V4r3owCHOm8/SiCBL8L0rq
+         CDN0ckYzHVcnWVCSsL0ASTpyrJeK38keflsepEbVdY1paYq4cAIfhG5ak/9gYvIkJKN4
+         gxhz8h7bDVwUdlcejaOuPsiWPVU3fFWChf9+V26s5HvodO3I9n3SH7seH5jIRH3JyY/B
+         HZKg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=CyiaKFagLBAklqwpiHgbvnvD0KzlBMKBb++MCDTnBg4=;
-        b=KKpqALHM9Ldks/EedF14u5InAD6t6lZYgCiTejVNaQXva44OWDsHOhvYtHVNKnjnAI
-         K/JVIr0dZeMY4Wjwme4uDEqHnqoku1yoS86pbD7MppxruSW6WXmWvCdzBplrfMH2Oizv
-         HE6GqSPgWE4g184ulVEg0p8Jeubtd/mq8A4LZBvYnA0Bp0IB7IKfRofmREfitXXxK2TF
-         7UDqPe27SCmyLi97snxNlu9xjhvWojbTd2g1mGjYS88u2kpDptrtoUCVMuiCnXkCoaV5
-         dlZlZWCbOvUsTSWlacni9bcwPRkOgLF/ZLiJRKS3lqsf2RpAvk9opWl5sHactaOf8JMx
-         xohQ==
-X-Gm-Message-State: AOAM530Wt/NjXFgpx1lJ21buOPArg1WHdN+BgH/6Qi/2NK2ZvLhXeamb
-        +yKgkYxzaiXibz4ajwW4yMU=
-X-Google-Smtp-Source: ABdhPJyBBYFEqGNfH0AwOFpwNfXOteKiJs9SbwUNdcoPHAN5RlkGILVaZ2O9ABasIYwrgaSXCn9BsQ==
-X-Received: by 2002:a92:dcc5:: with SMTP id b5mr2068181ilr.306.1624505336196;
-        Wed, 23 Jun 2021 20:28:56 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=Oa9Vgi1+mE9cwK7RVRVacr6n6EHbCKrO9HpKfsQaeJ8=;
+        b=i16La65suS/A5C5GFwA8A1tijsXl/NSuHPWG3VHYsmDnP4TLWrYVwpWwDHX1zdhUMF
+         HfpiGePQTECwgt7bi8gDD+Z/7lWQ32B7dkI4Ux1xi3rrdlT8zPFFw8eAabRLFfiiTgu2
+         8rpI39sh9lJQsAWcax9N0a97FVWPnLMkYl1wwWssBzS+IRlLEkDZd6gvQL8A99gn2UiD
+         VqsL8b1d/Op40/4iBbZZBHlab6Ud8+ch4kU45C81MIvkUdBfqvQEWRF+8Xq1zPMhe09H
+         u2Jodm5dJj4oUqdYbJkzw2+9tPPxUnC+gXfp6cbEaKIeg739La4cflGXAim/ilIj1s6m
+         m94w==
+X-Gm-Message-State: AOAM532vrksc5irOBErq1KEQtG7QOj2omGH1R+74L2l0syu+W5XUH50B
+        NePUCJ2pzcE8v7E1EDEkQYSConU5SnUPnA==
+X-Google-Smtp-Source: ABdhPJweLdCk/0LcgQCF0NAD3PxfliygYkl01VGmlvXjDwevTopf6b8kN0nsCA1IeNIKnJKyNvGntw==
+X-Received: by 2002:a6b:7d05:: with SMTP id c5mr2296776ioq.148.1624505338152;
+        Wed, 23 Jun 2021 20:28:58 -0700 (PDT)
 Received: from kolga-mac-1.attlocal.net ([2600:1700:6a10:2e90:fd18:15dc:e0e4:e39e])
-        by smtp.gmail.com with ESMTPSA id g4sm1026780ilk.37.2021.06.23.20.28.54
+        by smtp.gmail.com with ESMTPSA id g4sm1026780ilk.37.2021.06.23.20.28.57
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 23 Jun 2021 20:28:55 -0700 (PDT)
+        Wed, 23 Jun 2021 20:28:57 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/8] allow for offlining/removing xprt via sysfs
-Date:   Wed, 23 Jun 2021 23:28:45 -0400
-Message-Id: <20210624032853.4776-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v2 2/8] SUNRPC display xprt's main value in sysfs's xprt_info
+Date:   Wed, 23 Jun 2021 23:28:47 -0400
+Message-Id: <20210624032853.4776-3-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
+In-Reply-To: <20210624032853.4776-1-olga.kornievskaia@gmail.com>
+References: <20210624032853.4776-1-olga.kornievskaia@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -71,48 +73,32 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-In this patch series, I propose to add ability to offline a transport
-so that it's no longer available for tasks with ability to either
-bring it back online (if this transport recovers) or it can be removed
-all together. When a transport is begin removed, all the moveable tasks
-that have been assigned to this transport but didn't complete will be
-retried on a different transport. Note, that if a transport has stuck,
-un-moveable tasks, it can't be removed.
+Display in sysfs in the information about the xprt if this is a
+main transport or not.
 
-in v2 of this patch series:
--- able to online an offlined transport
--- for the getattr, to mark it moveable, use presense of session instead
-of the minorversion
--- added things to the xprt_info displayed via sysfs: (1) whether or not
-this is a main transport, in hopes to prevent to offline/remove a main
-transport. (2) display source port of the TCP transport, as it makes it
-easier to make transports to the network trace. (2) display xprt's
-queuelen which keeps track of tasks that have been assigned to this
-xprt.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ net/sunrpc/sysfs.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Olga Kornievskaia (8):
-  SUNRPC mark the first transport
-  SUNRPC display xprt's main value in sysfs's xprt_info
-  SUNRPC query transport's source port
-  SUNRPC for TCP display xprt's source port in sysfs xprt_info
-  SUNRPC: take a xprt offline using sysfs
-  NFSv4.1 identify and mark RPC tasks that can move between transports
-  sunrpc: display xprt's queuelen of assigned tasks via sysfs
-  sunrpc: remove an offlined xprt using sysfs
-
- fs/nfs/nfs4proc.c               | 38 +++++++++++--
- fs/nfs/pagelist.c               |  8 ++-
- fs/nfs/write.c                  |  6 +-
- include/linux/sunrpc/sched.h    |  2 +
- include/linux/sunrpc/xprt.h     |  3 +
- include/linux/sunrpc/xprtsock.h |  1 +
- net/sunrpc/clnt.c               | 25 +++++++++
- net/sunrpc/sysfs.c              | 98 ++++++++++++++++++++++++++++++---
- net/sunrpc/sysfs.h              |  1 +
- net/sunrpc/xprtmultipath.c      |  6 +-
- net/sunrpc/xprtsock.c           |  7 +++
- 11 files changed, 177 insertions(+), 18 deletions(-)
-
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 45c0cf18360d..6ef5469fe998 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -103,10 +103,10 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
+ 	ret = sprintf(buf, "last_used=%lu\ncur_cong=%lu\ncong_win=%lu\n"
+ 		       "max_num_slots=%u\nmin_num_slots=%u\nnum_reqs=%u\n"
+ 		       "binding_q_len=%u\nsending_q_len=%u\npending_q_len=%u\n"
+-		       "backlog_q_len=%u\n", xprt->last_used, xprt->cong,
+-		       xprt->cwnd, xprt->max_reqs, xprt->min_reqs,
++		       "backlog_q_len=%u\nmain_xprt=%d\n", xprt->last_used,
++		       xprt->cong, xprt->cwnd, xprt->max_reqs, xprt->min_reqs,
+ 		       xprt->num_reqs, xprt->binding.qlen, xprt->sending.qlen,
+-		       xprt->pending.qlen, xprt->backlog.qlen);
++		       xprt->pending.qlen, xprt->backlog.qlen, xprt->main);
+ 	xprt_put(xprt);
+ 	return ret + 1;
+ }
 -- 
 2.27.0
 
