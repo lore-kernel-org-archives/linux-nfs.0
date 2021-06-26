@@ -8,66 +8,64 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 51BEEC49EA7
-	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jun 2021 16:05:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F2EEC49EA6
+	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jun 2021 16:05:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3221E61A2B
-	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jun 2021 16:05:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 66AC861C2A
+	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jun 2021 16:05:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229796AbhFZQH6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 26 Jun 2021 12:07:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54078 "EHLO
+        id S229657AbhFZQHy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 26 Jun 2021 12:07:54 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54072 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229916AbhFZQHz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jun 2021 12:07:55 -0400
-Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CD715C061574
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Jun 2021 09:05:31 -0700 (PDT)
-Received: by mail-qk1-x733.google.com with SMTP id bj15so22468979qkb.11
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Jun 2021 09:05:31 -0700 (PDT)
+        with ESMTP id S229796AbhFZQHy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jun 2021 12:07:54 -0400
+Received: from mail-qk1-x735.google.com (mail-qk1-x735.google.com [IPv6:2607:f8b0:4864:20::735])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F00C1C061766
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Jun 2021 09:05:29 -0700 (PDT)
+Received: by mail-qk1-x735.google.com with SMTP id y29so20962521qky.12
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Jun 2021 09:05:29 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=zIWT1S4kh6PPa3DRlxLlpt/vATak1O4EQDwysGUmM7w=;
-        b=D5EhZBcOJ58qy4GAok324sVwYXH6GlWUSJWm47D0L4xqwRaiKrZLiLHvnqAmfNP3tu
-         eXI3ghtlD0cAiPsC+23Ovaj7PEFTTDi53nrgfwYMvT927XpfdehFGIuzKmDhWSdwjKwL
-         5FbGhamwOHJC325ce3Os4G0HscUP8I1npVh+99pZK2Kki9dk6DkmurmIbC0xD6o1pgFW
-         s80zV7Dui26XAAtybwGCTkeXyAxIdAcgF2/e0VMy+pSNdXUrheO/UwheZ0ffognHR39n
-         EjvPCnvFEk4zCwAMhpOkoOb44L5HHG2lvi5zJGUh5WN4sGasRFTysGkcepmaTqB+YrF8
-         zJ8A==
+        bh=ZKap+aSulr1zEHb3v+Lz/056KVKxsolNEqajHS8Sv5c=;
+        b=QDR4/r0syzVdDGGHvR+m7FjVWijsOrzTN05SuahBaoT4eZNsaz72HzF2roedLt78QM
+         xC1i/O7sQX8kWuotGVHf9ApqxYcWs+CRQbd/n0J9OivaSFOG7dTcuDAcfvy6j+Li9KNx
+         X8btbUKaRR1WG+0RwdLzWGr5JUfECXMMpzg5jEclDFqefaNFnGyuegEjcwEApzsAyUqG
+         7Z0bYga3Rfy+rMilqj9TTFNYiLYeHj+2A0V6d5Chv3fFJFBZ3+E44PXRcVKrLENGWOMJ
+         hwThoB51ixil7/PKydWwhkKw2bCqbveco/pA1qANyQAcW52WfnQzGM4/Tt48kr5JgvNB
+         dfSQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=zIWT1S4kh6PPa3DRlxLlpt/vATak1O4EQDwysGUmM7w=;
-        b=YKyyeq6f6BxmZJiM2xtzOBiVm2DX8mXj7WmcuYhvfNskSAJx8pUaBT/JUrMKxWLMhz
-         UMjSR0fuxI0Jv/W5d+avhd/eBY0FJbO0eNWu21wkHzByjPZ5mu5mdP8FZlBcyTzQmSXG
-         TLbGVuiSeM3DMpPcrGdhwJRfquu4RpQBWheuFS5UzSPYijIkBUOIgW//T2YD3I/QVmG5
-         a5Zce2v/pPZl8S2ZGYmu2R33vMlOFAQdegt2T276mOXRvRiPYX8fScEBFo/w3xI7sw4M
-         1duxNaiq9MqKNP2QMlbygRbnhIDR4WQ+S7yooD/52RlYikKU2TcGKJIX84pEQIL4zzRc
-         Vbmw==
-X-Gm-Message-State: AOAM533NTlVZAfYtwwmiHwCOtHSHTQ62it8EC02ZrTwhA0rPBZp38bja
-        yBHLIXf1fhr4l7sv+z9S6m6J9PdNuLBR
-X-Google-Smtp-Source: ABdhPJx1Sa6sdpfW/DZ+4GRVF/M0fl8NUlmZ62xZeoKUw/aKZBgwmn0DxC9qAmD7y9pTD/uRZAfgzA==
-X-Received: by 2002:a05:620a:136a:: with SMTP id d10mr16612493qkl.422.1624723530483;
-        Sat, 26 Jun 2021 09:05:30 -0700 (PDT)
+        bh=ZKap+aSulr1zEHb3v+Lz/056KVKxsolNEqajHS8Sv5c=;
+        b=BOhcAUxZZyMISAuX/tbClNsIWIRQLsu4yIkYjZBeJzqm2Pz1RZDwthQBArTSyp/ltL
+         gJ4Hdozrcb7Fi5qDekkC0Tb99Ep9c/PMOSebt3gqBccnAZfNXcpDxsMuorJyE29V6vKP
+         UQKd3C01U1mu2PM3P833x2Bdww/HECeKiRGEi72MeI88mEObFLIKRtt+zC2a29CcMvfQ
+         vQDdXUa1TnKHOLV94sFxiuFsxho9WeG6pHc8oF7/TkT/C8af+G5R3fVLmUSb1iURpYzG
+         3+RG/tnZaxE8wHzpX11DutNTcpsB+6ivdHWdowIxswCxe+fLZUKjTCW77Ldaxir4qfX6
+         PuhQ==
+X-Gm-Message-State: AOAM532vTlcp/pv/H+P8NBqlR+9yar8NOd6c4u7IeV1fgEzsk5Y9Q9xD
+        /0a1mdHOt2FGRm26aD5+MbSxsn+5ybhc
+X-Google-Smtp-Source: ABdhPJxvuG3I65zlPdD4skewiMvBn8nz5148X1H8vTmA4sdcRFc+LaZ19VmIgO4jwCHL80go2OeYeQ==
+X-Received: by 2002:a37:a390:: with SMTP id m138mr13446707qke.284.1624723528579;
+        Sat, 26 Jun 2021 09:05:28 -0700 (PDT)
 Received: from leira.hammer.space (c-68-36-133-222.hsd1.mi.comcast.net. [68.36.133.222])
-        by smtp.gmail.com with ESMTPSA id 202sm5797624qki.83.2021.06.26.09.05.29
+        by smtp.gmail.com with ESMTPSA id 202sm5797624qki.83.2021.06.26.09.05.27
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 26 Jun 2021 09:05:29 -0700 (PDT)
+        Sat, 26 Jun 2021 09:05:28 -0700 (PDT)
 From:   trondmy@gmail.com
 X-Google-Original-From: trond.myklebust@hammerspace.com
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFS: Avoid duplicate resets of attribute cache timeouts
-Date:   Sat, 26 Jun 2021 12:05:26 -0400
-Message-Id: <20210626160526.323332-4-trond.myklebust@hammerspace.com>
+Subject: [PATCH 1/3] NFS: Fix up inode attribute revalidation timeouts
+Date:   Sat, 26 Jun 2021 12:05:24 -0400
+Message-Id: <20210626160526.323332-2-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210626160526.323332-3-trond.myklebust@hammerspace.com>
+In-Reply-To: <20210626160526.323332-1-trond.myklebust@hammerspace.com>
 References: <20210626160526.323332-1-trond.myklebust@hammerspace.com>
- <20210626160526.323332-2-trond.myklebust@hammerspace.com>
- <20210626160526.323332-3-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -76,74 +74,147 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-We know that the attributes changed on the server if and only if the
-change attribute is different. Otherwise, we're just refreshing our
-cache with values that were already known to be stale.
+The inode is considered revalidated when we've checked the value of the
+change attribute against our cached value since that suffices to
+establish whether or not the other cached values are valid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
+ fs/nfs/inode.c | 50 ++++++++++++++++----------------------------------
+ 1 file changed, 16 insertions(+), 34 deletions(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index b05414d5f5c7..4ced82dfe52d 100644
+index 5ccc6b258ca5..b05414d5f5c7 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -2059,13 +2059,13 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 					| NFS_INO_INVALID_OTHER;
- 				if (S_ISDIR(inode->i_mode))
- 					nfs_force_lookup_revalidate(inode);
-+				attr_changed = true;
- 				dprintk("NFS: change_attr change on server for file %s/%ld\n",
- 						inode->i_sb->s_id,
- 						inode->i_ino);
- 			} else if (!have_delegation)
- 				nfsi->cache_validity |= NFS_INO_DATA_INVAL_DEFER;
- 			inode_set_iversion_raw(inode, fattr->change_attr);
--			attr_changed = true;
- 		}
+@@ -2070,24 +2070,22 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
  	} else {
  		nfsi->cache_validity |=
-@@ -2098,7 +2098,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 				i_size_write(inode, new_isize);
- 				if (!have_writers)
- 					invalid |= NFS_INO_INVALID_DATA;
--				attr_changed = true;
- 			}
- 			dprintk("NFS: isize change on server for file %s/%ld "
- 					"(%Ld to %Ld)\n",
-@@ -2130,7 +2129,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			inode->i_mode = newmode;
- 			invalid |= NFS_INO_INVALID_ACCESS
- 				| NFS_INO_INVALID_ACL;
--			attr_changed = true;
- 		}
- 	} else if (fattr_supported & NFS_ATTR_FATTR_MODE)
+ 			save_cache_validity & NFS_INO_INVALID_CHANGE;
+-		cache_revalidated = false;
++		if (!have_delegation ||
++		    (nfsi->cache_validity & NFS_INO_INVALID_CHANGE) != 0)
++			cache_revalidated = false;
+ 	}
+ 
+-	if (fattr->valid & NFS_ATTR_FATTR_MTIME) {
++	if (fattr->valid & NFS_ATTR_FATTR_MTIME)
+ 		inode->i_mtime = fattr->mtime;
+-	} else if (fattr_supported & NFS_ATTR_FATTR_MTIME) {
++	else if (fattr_supported & NFS_ATTR_FATTR_MTIME)
  		nfsi->cache_validity |=
-@@ -2141,7 +2139,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			invalid |= NFS_INO_INVALID_ACCESS
+ 			save_cache_validity & NFS_INO_INVALID_MTIME;
+-		cache_revalidated = false;
+-	}
+ 
+-	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
++	if (fattr->valid & NFS_ATTR_FATTR_CTIME)
+ 		inode->i_ctime = fattr->ctime;
+-	} else if (fattr_supported & NFS_ATTR_FATTR_CTIME) {
++	else if (fattr_supported & NFS_ATTR_FATTR_CTIME)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_CTIME;
+-		cache_revalidated = false;
+-	}
+ 
+ 	/* Check if our cached file size is stale */
+ 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
+@@ -2115,19 +2113,15 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			fattr->du.nfs3.used = 0;
+ 			fattr->valid |= NFS_ATTR_FATTR_SPACE_USED;
+ 		}
+-	} else {
++	} else
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_SIZE;
+-		cache_revalidated = false;
+-	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_ATIME)
+ 		inode->i_atime = fattr->atime;
+-	else if (fattr_supported & NFS_ATTR_FATTR_ATIME) {
++	else if (fattr_supported & NFS_ATTR_FATTR_ATIME)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_ATIME;
+-		cache_revalidated = false;
+-	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_MODE) {
+ 		if ((inode->i_mode & S_IALLUGO) != (fattr->mode & S_IALLUGO)) {
+@@ -2138,11 +2132,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
  				| NFS_INO_INVALID_ACL;
+ 			attr_changed = true;
+ 		}
+-	} else if (fattr_supported & NFS_ATTR_FATTR_MODE) {
++	} else if (fattr_supported & NFS_ATTR_FATTR_MODE)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_MODE;
+-		cache_revalidated = false;
+-	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_OWNER) {
+ 		if (!uid_eq(inode->i_uid, fattr->uid)) {
+@@ -2151,11 +2143,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
  			inode->i_uid = fattr->uid;
--			attr_changed = true;
+ 			attr_changed = true;
  		}
- 	} else if (fattr_supported & NFS_ATTR_FATTR_OWNER)
+-	} else if (fattr_supported & NFS_ATTR_FATTR_OWNER) {
++	} else if (fattr_supported & NFS_ATTR_FATTR_OWNER)
  		nfsi->cache_validity |=
-@@ -2152,7 +2149,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			invalid |= NFS_INO_INVALID_ACCESS
- 				| NFS_INO_INVALID_ACL;
+ 			save_cache_validity & NFS_INO_INVALID_OTHER;
+-		cache_revalidated = false;
+-	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_GROUP) {
+ 		if (!gid_eq(inode->i_gid, fattr->gid)) {
+@@ -2164,11 +2154,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
  			inode->i_gid = fattr->gid;
--			attr_changed = true;
+ 			attr_changed = true;
  		}
- 	} else if (fattr_supported & NFS_ATTR_FATTR_GROUP)
+-	} else if (fattr_supported & NFS_ATTR_FATTR_GROUP) {
++	} else if (fattr_supported & NFS_ATTR_FATTR_GROUP)
  		nfsi->cache_validity |=
-@@ -2163,7 +2159,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			if (S_ISDIR(inode->i_mode))
- 				invalid |= NFS_INO_INVALID_DATA;
+ 			save_cache_validity & NFS_INO_INVALID_OTHER;
+-		cache_revalidated = false;
+-	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_NLINK) {
+ 		if (inode->i_nlink != fattr->nlink) {
+@@ -2177,30 +2165,24 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
  			set_nlink(inode, fattr->nlink);
--			attr_changed = true;
+ 			attr_changed = true;
  		}
- 	} else if (fattr_supported & NFS_ATTR_FATTR_NLINK)
+-	} else if (fattr_supported & NFS_ATTR_FATTR_NLINK) {
++	} else if (fattr_supported & NFS_ATTR_FATTR_NLINK)
  		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_NLINK;
+-		cache_revalidated = false;
+-	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
+ 		/*
+ 		 * report the blocks in 512byte units
+ 		 */
+ 		inode->i_blocks = nfs_calc_block_size(fattr->du.nfs3.used);
+-	} else if (fattr_supported & NFS_ATTR_FATTR_SPACE_USED) {
++	} else if (fattr_supported & NFS_ATTR_FATTR_SPACE_USED)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_BLOCKS;
+-		cache_revalidated = false;
+-	}
+ 
+-	if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED) {
++	if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
+ 		inode->i_blocks = fattr->du.nfs2.blocks;
+-	} else if (fattr_supported & NFS_ATTR_FATTR_BLOCKS_USED) {
++	else if (fattr_supported & NFS_ATTR_FATTR_BLOCKS_USED)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_BLOCKS;
+-		cache_revalidated = false;
+-	}
+ 
+ 	/* Update attrtimeo value if we're out of the unstable period */
+ 	if (attr_changed) {
 -- 
 2.31.1
 
