@@ -2,50 +2,50 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-13.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02456C11F68
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jun 2021 17:39:14 +0000 (UTC)
-Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D52D561C65
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FB24C11F67
 	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jun 2021 17:39:13 +0000 (UTC)
+Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
+	by mail.kernel.org (Postfix) with ESMTP id 04AF761C65
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jun 2021 17:39:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232740AbhF1Rli (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 28 Jun 2021 13:41:38 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:39330 "EHLO
+        id S232709AbhF1Rlh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 28 Jun 2021 13:41:37 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:35883 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233194AbhF1Rlh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2021 13:41:37 -0400
+        by vger.kernel.org with ESMTP id S232662AbhF1Rlg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2021 13:41:36 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1624901951;
+        s=mimecast20190719; t=1624901950;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=QOSwNMw98klLDhYhs9jeciNp8ljVmV8Bz++RuxnwhJE=;
-        b=AL4E0eQA4iP+H7UKYdH+HaVVj8k5CVV0+/enHqkY61mhysDmH/7pTsXZCSlgPs/uzE61sK
-        jNDOKxeHscUPohRX/olAXsKhMqIxCwM0A39O5Hd52opektfchNNFBf3cgluTkTJy+tFZW1
-        NLikphAJ1bksrSwQtqFqLcG4bG0RmQQ=
+        bh=N1DIPxBge5DzT9XOd3tf+JmPdFZAHy3tRkvWC+ztfC4=;
+        b=MdiwJu/hj1lRfbJie6HX7+7sJYCVMZimI7zKIY9UGBv3gEmDCuVfa2SjEMrk++oOALGrsC
+        cG4rM7ZRwpt5EPtOiu1PLufVhaf0QGHffvUUvUmX8dybCSvT6qExROD9Z4bTUlbd8ByWsi
+        23mF1LkOyWlYTxD3DDVl9SMA9ib17lU=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-376-ZyootCfMOeGCBmQZFuC0dA-1; Mon, 28 Jun 2021 13:39:09 -0400
-X-MC-Unique: ZyootCfMOeGCBmQZFuC0dA-1
+ us-mta-572-dudhmtLxPMuLn19O2HVfiw-1; Mon, 28 Jun 2021 13:39:08 -0400
+X-MC-Unique: dudhmtLxPMuLn19O2HVfiw-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 99AE119251A6;
-        Mon, 28 Jun 2021 17:39:08 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 861B11084F4B;
+        Mon, 28 Jun 2021 17:39:07 +0000 (UTC)
 Received: from dwysocha.rdu.csb (unknown [10.22.8.151])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 37AF65E26F;
-        Mon, 28 Jun 2021 17:39:08 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 24E465DAA5;
+        Mon, 28 Jun 2021 17:39:07 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] NFS: Allow internal use of read structs and functions
-Date:   Mon, 28 Jun 2021 13:39:02 -0400
-Message-Id: <1624901943-20027-4-git-send-email-dwysocha@redhat.com>
+Subject: [PATCH 1/4] NFS: Remove unnecessary inode parameter from nfs_pageio_complete_read()
+Date:   Mon, 28 Jun 2021 13:39:00 -0400
+Message-Id: <1624901943-20027-2-git-send-email-dwysocha@redhat.com>
 In-Reply-To: <1624901943-20027-1-git-send-email-dwysocha@redhat.com>
 References: <1624901943-20027-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
@@ -53,89 +53,58 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The conversion of the NFS read paths to the new fscache API
-will require use of a few read structs and functions,
-so move these declarations as required.
+Simplify nfs_pageio_complete_read() by using the inode pointer saved
+inside nfs_pageio_descriptor.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/internal.h |  7 +++++++
- fs/nfs/read.c     | 13 ++++---------
- 2 files changed, 11 insertions(+), 9 deletions(-)
+ fs/nfs/read.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index a36af04188c2..f9f6c6a6370f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -463,9 +463,16 @@ extern char *nfs_path(char **p, struct dentry *dentry,
- 
- struct nfs_pgio_completion_ops;
- /* read.c */
-+extern const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
-+struct nfs_readdesc {
-+	struct nfs_pageio_descriptor pgio;
-+	struct nfs_open_context *ctx;
-+};
-+extern int readpage_async_filler(void *data, struct page *page);
-+extern int nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
 diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index b0680351df23..a0b4ce6893a8 100644
+index d2b6dce1f99f..684a730f6670 100644
 --- a/fs/nfs/read.c
 +++ b/fs/nfs/read.c
-@@ -30,7 +30,7 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
- static struct kmem_cache *nfs_rdata_cachep;
-@@ -74,7 +74,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+@@ -74,8 +74,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
  }
  EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
  
--static int nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
-+int nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
+-static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
+-				     struct inode *inode)
++static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
  {
  	struct nfs_pgio_mirror *pgm;
  	unsigned long npages;
-@@ -133,11 +133,6 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
- 	nfs_release_request(req);
+@@ -86,9 +85,9 @@ static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
+ 	WARN_ON_ONCE(pgio->pg_mirror_count != 1);
+ 
+ 	pgm = &pgio->pg_mirrors[0];
+-	NFS_I(inode)->read_io += pgm->pg_bytes_written;
++	NFS_I(pgio->pg_inode)->read_io += pgm->pg_bytes_written;
+ 	npages = (pgm->pg_bytes_written + PAGE_SIZE - 1) >> PAGE_SHIFT;
+-	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
++	nfs_add_stats(pgio->pg_inode, NFSIOS_READPAGES, npages);
  }
  
--struct nfs_readdesc {
--	struct nfs_pageio_descriptor pgio;
--	struct nfs_open_context *ctx;
--};
--
- static void nfs_page_group_set_uptodate(struct nfs_page *req)
- {
- 	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
-@@ -216,7 +211,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
- 	}
- }
  
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.error_cleanup = nfs_async_read_error,
- 	.completion = nfs_read_completion,
- };
-@@ -291,7 +286,7 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
+@@ -376,7 +375,7 @@ int nfs_readpage(struct file *file, struct page *page)
+ 	ret = readpage_async_filler(&desc, page);
  
--static int
-+int
- readpage_async_filler(void *data, struct page *page)
- {
- 	struct nfs_readdesc *desc = data;
+ 	if (!ret)
+-		nfs_pageio_complete_read(&desc.pgio, inode);
++		nfs_pageio_complete_read(&desc.pgio);
+ 
+ 	ret = desc.pgio.pg_error < 0 ? desc.pgio.pg_error : 0;
+ 	if (!ret) {
+@@ -430,7 +429,7 @@ int nfs_readpages(struct file *file, struct address_space *mapping,
+ 
+ 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+ 
+-	nfs_pageio_complete_read(&desc.pgio, inode);
++	nfs_pageio_complete_read(&desc.pgio);
+ 
+ read_complete:
+ 	put_nfs_open_context(desc.ctx);
 -- 
 1.8.3.1
 
