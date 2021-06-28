@@ -2,109 +2,101 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	UNWANTED_LANGUAGE_BODY autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FB24C11F67
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jun 2021 17:39:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC824C11F64
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jun 2021 18:13:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 04AF761C65
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jun 2021 17:39:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 856B361C77
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jun 2021 18:13:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232709AbhF1Rlh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 28 Jun 2021 13:41:37 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:35883 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232662AbhF1Rlg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jun 2021 13:41:36 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1624901950;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=N1DIPxBge5DzT9XOd3tf+JmPdFZAHy3tRkvWC+ztfC4=;
-        b=MdiwJu/hj1lRfbJie6HX7+7sJYCVMZimI7zKIY9UGBv3gEmDCuVfa2SjEMrk++oOALGrsC
-        cG4rM7ZRwpt5EPtOiu1PLufVhaf0QGHffvUUvUmX8dybCSvT6qExROD9Z4bTUlbd8ByWsi
-        23mF1LkOyWlYTxD3DDVl9SMA9ib17lU=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-572-dudhmtLxPMuLn19O2HVfiw-1; Mon, 28 Jun 2021 13:39:08 -0400
-X-MC-Unique: dudhmtLxPMuLn19O2HVfiw-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 861B11084F4B;
-        Mon, 28 Jun 2021 17:39:07 +0000 (UTC)
-Received: from dwysocha.rdu.csb (unknown [10.22.8.151])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 24E465DAA5;
-        Mon, 28 Jun 2021 17:39:07 +0000 (UTC)
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] NFS: Remove unnecessary inode parameter from nfs_pageio_complete_read()
-Date:   Mon, 28 Jun 2021 13:39:00 -0400
-Message-Id: <1624901943-20027-2-git-send-email-dwysocha@redhat.com>
-In-Reply-To: <1624901943-20027-1-git-send-email-dwysocha@redhat.com>
-References: <1624901943-20027-1-git-send-email-dwysocha@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+        id S233111AbhF1SP0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 28 Jun 2021 14:15:26 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58316 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S232738AbhF1SP0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Jun 2021 14:15:26 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 3A0F061C6F;
+        Mon, 28 Jun 2021 18:13:00 +0000 (UTC)
+Subject: [PATCH v2] mm/page_alloc: Return nr_populated when the array is full
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     mgorman@techsingularity.net
+Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org
+Date:   Mon, 28 Jun 2021 14:12:59 -0400
+Message-ID: <162490397938.1485.7782934829743772831.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.1
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Simplify nfs_pageio_complete_read() by using the inode pointer saved
-inside nfs_pageio_descriptor.
+The SUNRPC consumer of __alloc_bulk_pages() legitimately calls it
+with a full array sometimes. In that case, the correct return code,
+according to the API contract, is to return the number of pages
+already in the array/list.
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Let's clean up the return logic to make it clear that the returned
+value is always the total number of pages in the array/list, not the
+number of pages that were allocated during this call.
+
+Fixes: b3b64ebd3822 ("mm/page_alloc: do bulk array bounds check after checking populated elements")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/read.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ mm/page_alloc.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index d2b6dce1f99f..684a730f6670 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -74,8 +74,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index ef2265f86b91..270719898b47 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -5047,7 +5047,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 	int nr_populated = 0;
+ 
+ 	if (unlikely(nr_pages <= 0))
+-		return 0;
++		goto out;
+ 
+ 	/*
+ 	 * Skip populated array elements to determine if any pages need
+@@ -5058,7 +5058,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 
+ 	/* Already populated array? */
+ 	if (unlikely(page_array && nr_pages - nr_populated == 0))
+-		return 0;
++		goto out;
+ 
+ 	/* Use the single page allocator for one page. */
+ 	if (nr_pages - nr_populated == 1)
+@@ -5068,7 +5068,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 	gfp &= gfp_allowed_mask;
+ 	alloc_gfp = gfp;
+ 	if (!prepare_alloc_pages(gfp, 0, preferred_nid, nodemask, &ac, &alloc_gfp, &alloc_flags))
+-		return 0;
++		goto out;
+ 	gfp = alloc_gfp;
+ 
+ 	/* Find an allowed local zone that meets the low watermark. */
+@@ -5141,6 +5141,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 
+ 	local_irq_restore(flags);
+ 
++out:
+ 	return nr_populated;
+ 
+ failed_irq:
+@@ -5156,7 +5157,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 		nr_populated++;
+ 	}
+ 
+-	return nr_populated;
++	goto out;
  }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+ EXPORT_SYMBOL_GPL(__alloc_pages_bulk);
  
--static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
--				     struct inode *inode)
-+static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
- {
- 	struct nfs_pgio_mirror *pgm;
- 	unsigned long npages;
-@@ -86,9 +85,9 @@ static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio,
- 	WARN_ON_ONCE(pgio->pg_mirror_count != 1);
- 
- 	pgm = &pgio->pg_mirrors[0];
--	NFS_I(inode)->read_io += pgm->pg_bytes_written;
-+	NFS_I(pgio->pg_inode)->read_io += pgm->pg_bytes_written;
- 	npages = (pgm->pg_bytes_written + PAGE_SIZE - 1) >> PAGE_SHIFT;
--	nfs_add_stats(inode, NFSIOS_READPAGES, npages);
-+	nfs_add_stats(pgio->pg_inode, NFSIOS_READPAGES, npages);
- }
- 
- 
-@@ -376,7 +375,7 @@ int nfs_readpage(struct file *file, struct page *page)
- 	ret = readpage_async_filler(&desc, page);
- 
- 	if (!ret)
--		nfs_pageio_complete_read(&desc.pgio, inode);
-+		nfs_pageio_complete_read(&desc.pgio);
- 
- 	ret = desc.pgio.pg_error < 0 ? desc.pgio.pg_error : 0;
- 	if (!ret) {
-@@ -430,7 +429,7 @@ int nfs_readpages(struct file *file, struct address_space *mapping,
- 
- 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
- 
--	nfs_pageio_complete_read(&desc.pgio, inode);
-+	nfs_pageio_complete_read(&desc.pgio);
- 
- read_complete:
- 	put_nfs_open_context(desc.ctx);
--- 
-1.8.3.1
+
 
