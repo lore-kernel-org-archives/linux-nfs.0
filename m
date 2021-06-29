@@ -2,116 +2,114 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE7AAC11F66
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Jun 2021 13:42:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF6B5C11F66
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Jun 2021 13:48:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C8A9761D90
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Jun 2021 13:42:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C2FFF61DC2
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Jun 2021 13:48:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234112AbhF2Noa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Jun 2021 09:44:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35046 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233957AbhF2Noa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jun 2021 09:44:30 -0400
-Received: from mail-ed1-x52f.google.com (mail-ed1-x52f.google.com [IPv6:2a00:1450:4864:20::52f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 916C2C061760
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jun 2021 06:42:02 -0700 (PDT)
-Received: by mail-ed1-x52f.google.com with SMTP id t3so9823578edt.12
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jun 2021 06:42:02 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=pDx/bqcRYl+A0B4p2ELXuVZNad5CSbPLu2bfOHsDfFw=;
-        b=n40B3frrLNlfVgjeja52COBRii8wD1Ks2CNRSyG0ixDVQGhNHQDmhbUE+zzaGX9Gnj
-         bb1SMjD0fm7kOkGb10Sv9LO6uVSKjChGnP+0oYlm7MThD6qSCC+bVjzSXyRS/WKOBXY6
-         r7ny2afxrx5D14aSPZpjb5GFVFobvnhy6QvcDkeiOvoGahMboZWLx5kbyQfyOAlrb10j
-         aRU2E/6Fcf2VOWlDfH3WH4NbrOynIeSWqRj/H/7H1F+Yw9bE1t2nAudIQtvywkmQRAxM
-         PnxvMVQJLO1dHzgrK8LHUuwWDhkAPrijmzYcLRQ+pswNbBV5VFBtJtcn5EKaY15y0Y93
-         +r3Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=pDx/bqcRYl+A0B4p2ELXuVZNad5CSbPLu2bfOHsDfFw=;
-        b=NbZzl7/VKVx8TJoL0qytjz0zwFgvYH3x70xhkjBPZrfnq9AFUIKjNrO/rais6kfK31
-         cO5jKQUI76O07btBYOY4C5Ylym1gPvyP+Fe+/5VFmsMNs6rIsD3PSQfIQ6Rg10vxRGrA
-         D8Pe4HHtCiJf9ZbsdRzWfu6pQhZryTVOFGAHuiIWI4JKUMtmft9wYr9JX/RbePCTCXZD
-         8BsQGOqALEPaaiB9elskdZk/7I4wLfEsVjokcKB5EqfrRsbhxccBIdmQiNKApBUUvoNl
-         nmGjPohHMM04TLFBRZ109wp/3PHiSkpzXdEaPkJEx3l8EgIB+rndp0FmEPPbhGrlIZam
-         kP1Q==
-X-Gm-Message-State: AOAM531evGXViH8ENiC/ZXMOQXh/fkuNdk8m+WKJ/5eceTdVQXibGN8v
-        UlpRKmvB7J1iNMdn9g6N2FpVzCiPafrzoxJqZitKgw8ByaA=
-X-Google-Smtp-Source: ABdhPJz8Lp7Lno/iLHG82EpRm+4dfMVYQadyXqq1Jnrrpecs6UcjZUPZ6uCnrbb9H32J1OcrHizjXJZLIvW9lJZHfQE=
-X-Received: by 2002:aa7:c614:: with SMTP id h20mr40343235edq.67.1624974121123;
- Tue, 29 Jun 2021 06:42:01 -0700 (PDT)
+        id S233605AbhF2Nuo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Jun 2021 09:50:44 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60368 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S233050AbhF2Nun (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 Jun 2021 09:50:43 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id E360761D8B;
+        Tue, 29 Jun 2021 13:48:15 +0000 (UTC)
+Subject: [PATCH v3] mm/page_alloc: Further fix __alloc_pages_bulk() return
+ value
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     mgorman@techsingularity.net
+Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org, brouer@redhat.com
+Date:   Tue, 29 Jun 2021 09:48:15 -0400
+Message-ID: <162497449506.16614.7781489905877008435.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.1
 MIME-Version: 1.0
-References: <CAN-5tyEuB5C9u+xZ5L47fSQ9cwZnsbhJuBs+gybU2A-jzAkfog@mail.gmail.com>
- <81154dc28d528402bf5e090a81e6892c7abc431c.camel@hammerspace.com>
-In-Reply-To: <81154dc28d528402bf5e090a81e6892c7abc431c.camel@hammerspace.com>
-From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Tue, 29 Jun 2021 09:41:49 -0400
-Message-ID: <CAN-5tyHTavHRmQKGhUmBvngMwAAK2pr89zBuppK_s27HduJfqQ@mail.gmail.com>
-Subject: Re: client's caching of server-side capabilities
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Jun 28, 2021 at 6:06 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
->
-> On Mon, 2021-06-28 at 16:23 -0400, Olga Kornievskaia wrote:
-> > Hi folks,
-> >
-> > I have a general question of why the client doesn't throw away the
-> > cached server's capabilities on server reboot. Say a client mounted a
-> > server when the server didn't support security_labels, then the
-> > server
-> > was rebooted and support was enabled. Client re-establishes its
-> > clientid/session, recovers state, but assumes all the old
-> > capabilities
-> > apply. A remount is required to clear old/find new capabilities. The
-> > opposite is true that a capability could be removed (but I'm assuming
-> > that's a less practical example).
-> >
-> > I'm curious what are the problems of clearing server capabilities and
-> > rediscovering them on reboot? Is it because a local filesystem could
-> > never have its attributes changed and thus a network file system
-> > can't
-> > either?
-> >
-> > Thank you.
->
-> In my opinion, the client should aim for the absolute minimum overhead
-> on a server reboot. The goal should be to recover state and get I/O
-> started again as quickly as possible. Detection of new features, etc
-> can wait until the client needs to restart.
+The author of commit b3b64ebd3822 ("mm/page_alloc: do bulk array
+bounds check after checking populated elements") was possibly
+confused by the mixture of return values throughout the function.
 
-Do I interpret this correctly: no capability discoveries before
-RECLAIM_COMPLETE but perhaps after? I agree that reboot recovery
-should be done as quickly as possible. If it's some time after, then
-perhaps it can be done on-demand thru say nfs sysfs api: have ability
-to clear current capabilities (or a specific one) and do discover new
-ones?
+The API contract is clear that the function "Returns the number of
+pages on the list or array." It does not list zero as a unique
+return value with a special meaning. Therefore zero is a plausible
+return value only if @nr_pages is zero or less.
 
-The use case I'm going for is when a server upgrades and comes up with
-support for new features. Currently, it requires a client re-mount.
-But perhaps requiring "mount -o remount" in that case isn't any
-different than requiring use of sysfs.
+Clean up the return logic to make it clear that the returned value
+is always the total number of pages in the array/list, not the
+number of pages that were allocated during this call.
 
-Thank you for the feedback.
+The only change in behavior with this patch is the value returned
+if prepare_alloc_pages() fails. To match the API contract, the
+number of pages currently in the array/list is returned in this
+case.
 
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
->
->
+The call site in __page_pool_alloc_pages_slow() also seems to be
+confused on this matter. It should be attended to by someone who
+is familiar with that code.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ mm/page_alloc.c |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index e7af86e1a312..49eb2e134f9d 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -5059,7 +5059,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 	int nr_populated = 0;
+ 
+ 	if (unlikely(nr_pages <= 0))
+-		return 0;
++		goto out;
+ 
+ 	/*
+ 	 * Skip populated array elements to determine if any pages need
+@@ -5070,7 +5070,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 
+ 	/* Already populated array? */
+ 	if (unlikely(page_array && nr_pages - nr_populated == 0))
+-		return nr_populated;
++		goto out;
+ 
+ 	/* Use the single page allocator for one page. */
+ 	if (nr_pages - nr_populated == 1)
+@@ -5080,7 +5080,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 	gfp &= gfp_allowed_mask;
+ 	alloc_gfp = gfp;
+ 	if (!prepare_alloc_pages(gfp, 0, preferred_nid, nodemask, &ac, &alloc_gfp, &alloc_flags))
+-		return 0;
++		goto out;
+ 	gfp = alloc_gfp;
+ 
+ 	/* Find an allowed local zone that meets the low watermark. */
+@@ -5153,6 +5153,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 
+ 	local_irq_restore(flags);
+ 
++out:
+ 	return nr_populated;
+ 
+ failed_irq:
+@@ -5168,7 +5169,7 @@ unsigned long __alloc_pages_bulk(gfp_t gfp, int preferred_nid,
+ 		nr_populated++;
+ 	}
+ 
+-	return nr_populated;
++	goto out;
+ }
+ EXPORT_SYMBOL_GPL(__alloc_pages_bulk);
+ 
+
+
