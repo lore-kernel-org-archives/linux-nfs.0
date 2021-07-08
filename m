@@ -2,108 +2,90 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-20.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B859C07E9C
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Jul 2021 02:23:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97244C07E9C
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Jul 2021 15:26:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 26D5E61CCC
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Jul 2021 02:23:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 85F9C61449
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Jul 2021 15:26:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230405AbhGHC0B (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Jul 2021 22:26:01 -0400
-Received: from mail.kernel.org ([198.145.29.99]:37052 "EHLO mail.kernel.org"
+        id S231906AbhGHP3A (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 8 Jul 2021 11:29:00 -0400
+Received: from mail.kernel.org ([198.145.29.99]:51082 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230404AbhGHC0A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Jul 2021 22:26:00 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id B25EC61CCF
-        for <linux-nfs@vger.kernel.org>; Thu,  8 Jul 2021 02:23:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1625710999;
-        bh=T2YFfYSgAzoktNAAQzV92mlnnMjffifkbRTK4RkuaBc=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=o3kaCHfJaaWJnp2E/UBaIRjy0gCxFl/4d9M/rZSgfBjP9Bw8Ni12QjKYsUnE3fqU0
-         N7CSwDQdWWCjA+L/r9nD0oXbMh/KfI9AQq+6fTK3CZCtMn0AuOa2DXxP0+GddoLO5h
-         c8Fxt1Ao5WtEMrh+ar3hAZwNZXHw7QKGxIFzc3JPw5D51gqrdilWP+rpyoIRTsTb1v
-         a7ePVKPs/kP2ilSkGugBW3YLWG1vU/xv8jU8ssa67y5irFTQgEi8F9n6zb2l9iinjQ
-         4+Q+A/jcMo8aRFRCrhK1TKFkSm1B56my5NfdNutMzr3LgP9zM2waMQjET2Ti7KIXKU
-         mEwik8r4IBLeg==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFS: Label the dentry with a verifier in nfs_rmdir() and nfs_unlink()
-Date:   Wed,  7 Jul 2021 22:23:18 -0400
-Message-Id: <20210708022318.71364-2-trondmy@kernel.org>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210708022318.71364-1-trondmy@kernel.org>
-References: <20210708022318.71364-1-trondmy@kernel.org>
+        id S231804AbhGHP27 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Jul 2021 11:28:59 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 9A0036142B;
+        Thu,  8 Jul 2021 15:26:17 +0000 (UTC)
+Subject: [PATCH v3 0/3] Bulk-release pages during NFSD read splice
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org, linux-mm@kvack.org
+Cc:     neilb@suse.de
+Date:   Thu, 08 Jul 2021 11:26:16 -0400
+Message-ID: <162575623717.2532.8517369487503961860.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+I'm using "v3" simply because the v2 series of NFSD page allocator
+work included the same bulk-release concept in a different form.
+v2 has now been merged (thanks, Mel!). However, the bulk-release
+part of that series was postponed.
 
-After the success of an operation such as rmdir() or unlink(), we expect
-to add the dentry back to the dcache as an ordinary negative dentry.
-However in NFS, unless it is labelled with the appropriate verifier for
-the parent directory state, then nfs_lookup_revalidate will end up
-discarding that dentry and forcing a new lookup.
+Consider v3 to be an RFC refresh.
 
-The fix is to ensure that we relabel the dentry appropriately on
-success.
+As with the page allocation side, I'm trying to reduce the average
+number of times NFSD invokes the page allocation and release APIs
+because they can be expensive, and because it is a resource that is
+shared amongst all nfsd threads and thus access to it is partially
+serialized. This small series tackles a code path that is frequently
+invoked when NFSD handles READ operations on local filesystems that
+support splice (i.e., most of the popular ones).
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+The previous version of this proposal placed the unused pages on
+a local list and then re-used the pages directly in svc_alloc_arg()
+before invoking alloc_pages_bulk_array() to fill in any remaining
+missing rq_pages entries.
+
+This meant there would be the possibility of some workloads that
+caused accrual of pages without bounds, so the finished version of
+that logic would have to be complex and possibly involve a shrinker.
+
+In this version, I'm simply handing the pages back to the page
+allocator, so all that complexity vanishes. What makes it more
+efficient is that instead of calling put_page() for each page,
+the code collects the unused pages in a per-nfsd thread array, and
+returns them to the allocator using a bulk free API (release_pages)
+when the array is full.
+
+In this version of the series, each nfsd thread never accrues more
+than 16 pages. We can easily make that larger or smaller, but 16
+already reduces the rate of put_pages() calls to a minute fraction
+of what it was, and does not consume much additional space in struct
+svc_rqst.
+
+Comments welcome!
+
 ---
- fs/nfs/dir.c | 18 +++++++++++++++---
- 1 file changed, 15 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index baca036f3890..1ce1fa0a5926 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2197,6 +2197,18 @@ static void nfs_dentry_handle_enoent(struct dentry *dentry)
- 		d_delete(dentry);
- }
- 
-+static void nfs_dentry_remove_handle_error(struct inode *dir,
-+					   struct dentry *dentry, int error)
-+{
-+	switch (error) {
-+	case -ENOENT:
-+		d_delete(dentry);
-+		fallthrough;
-+	case 0:
-+		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-+	}
-+}
-+
- int nfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
- 	int error;
-@@ -2219,6 +2231,7 @@ int nfs_rmdir(struct inode *dir, struct dentry *dentry)
- 		up_write(&NFS_I(d_inode(dentry))->rmdir_sem);
- 	} else
- 		error = NFS_PROTO(dir)->rmdir(dir, &dentry->d_name);
-+	nfs_dentry_remove_handle_error(dir, dentry, error);
- 	trace_nfs_rmdir_exit(dir, dentry, error);
- 
- 	return error;
-@@ -2288,9 +2301,8 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
- 	}
- 	spin_unlock(&dentry->d_lock);
- 	error = nfs_safe_remove(dentry);
--	if (!error || error == -ENOENT) {
--		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
--	} else if (need_rehash)
-+	nfs_dentry_remove_handle_error(dir, dentry, error);
-+	if (need_rehash)
- 		d_rehash(dentry);
- out:
- 	trace_nfs_unlink_exit(dir, dentry, error);
--- 
-2.31.1
+Chuck Lever (3):
+      NFSD: Clean up splice actor
+      SUNRPC: Add svc_rqst_replace_page() API
+      NFSD: Batch release pages during splice read
+
+
+ fs/nfsd/vfs.c              | 20 +++++---------------
+ include/linux/sunrpc/svc.h |  5 +++++
+ net/sunrpc/svc.c           | 29 +++++++++++++++++++++++++++++
+ 3 files changed, 39 insertions(+), 15 deletions(-)
+
+--
+Chuck Lever
 
