@@ -2,109 +2,109 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 18E05C07E9C
-	for <linux-nfs@archiver.kernel.org>; Sat, 10 Jul 2021 23:55:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2AFF4C07E9A
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Jul 2021 12:26:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 055FC611B0
-	for <linux-nfs@archiver.kernel.org>; Sat, 10 Jul 2021 23:55:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0FEDD6115B
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Jul 2021 12:26:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232322AbhGJX6C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 10 Jul 2021 19:58:02 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41456 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233876AbhGJX4s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 10 Jul 2021 19:56:48 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 3840A6140A;
-        Sat, 10 Jul 2021 23:52:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1625961149;
-        bh=Frbua5mjATbdfTC7wpGkH32YHrqyla04y8rGKfbuAk8=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=OLG8UNSea2XjLtU4NB9t2Q4JwMNLZFm1hEO5JOMwa+BydzBXcNjxNxUa1P9eUr+bX
-         Ovn01hWcTWXg1ZJPLDuRMgCV1n4YtzOmmI2T/9BpPnC6STCFwBn57fh2/5KiLuomnc
-         Ww6b5n40WqP8GdtWTb2Q+WH7HsbemTewIewZ++pQcxspuwIZq+KFwuNF82EZipzWs6
-         /T81eskWtcjGLTmb/EbanL68qhlKwx/9ta+5Flq0dYPi62sJ+WPrUnpxROtJiBfRX4
-         tRiT0aLdNxlkh7zU+0CrI1uP4kPKoI9MFw9iCf8wpE4mCbmZjLwpTbjKSGRJdikt2N
-         DgaK6JibLRwIA==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 13/21] NFS: nfs_find_open_context() may only select open files
-Date:   Sat, 10 Jul 2021 19:52:04 -0400
-Message-Id: <20210710235212.3222375-13-sashal@kernel.org>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210710235212.3222375-1-sashal@kernel.org>
-References: <20210710235212.3222375-1-sashal@kernel.org>
+        id S231302AbhGLM3c (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 12 Jul 2021 08:29:32 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:26245 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S231373AbhGLM3c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jul 2021 08:29:32 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1626092803;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=O6lYKGVmT3g543VONT88b8IryJyesxNt34iiJehqsRE=;
+        b=OGGOGAm+R7WPzOBy2ofipIBSPJaPXIGF7HPd9qZVA80Wi4T2BeFwFrsKb8A70dA7PI7CBe
+        HKdtphxZ7MBzUK5gJ3+OQrjOzNU0PQFntM91tfsQvdaOGihP+ow0wo/KO0ND1VP43avz6m
+        3OB0Y4+4jVt88s94WksRJu7pnDbcQ44=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-250-_PSiDqXvPhySbsJ2IgNOxw-1; Mon, 12 Jul 2021 08:26:42 -0400
+X-MC-Unique: _PSiDqXvPhySbsJ2IgNOxw-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 3E28C802C88;
+        Mon, 12 Jul 2021 12:26:40 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-118-19.rdu2.redhat.com [10.10.118.19])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1D2E260875;
+        Mon, 12 Jul 2021 12:26:33 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+Subject: [PATCH] netfs: Add MAINTAINERS record
+From:   David Howells <dhowells@redhat.com>
+To:     torvalds@linux-foundation.org
+Cc:     Jeff Layton <jlayton@kernel.org>,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-mm@kvack.org, linux-cachefs@redhat.com,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, dhowells@redhat.com,
+        linux-kernel@vger.kernel.org
+Date:   Mon, 12 Jul 2021 13:26:32 +0100
+Message-ID: <162609279295.3129635.5721010331369998019.stgit@warthog.procyon.org.uk>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+Add a MAINTAINERS record for the new netfs helper library.
 
-[ Upstream commit e97bc66377bca097e1f3349ca18ca17f202ff659 ]
-
-If a file has already been closed, then it should not be selected to
-support further I/O.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-[Trond: Fix an invalid pointer deref reported by Colin Ian King]
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Jeff Layton <jlayton@kernel.org>
+cc: Matthew Wilcox (Oracle) <willy@infradead.org>
+cc: linux-mm@kvack.org
+cc: linux-cachefs@redhat.com
+cc: linux-afs@lists.infradead.org
+cc: linux-nfs@vger.kernel.org
+cc: linux-cifs@vger.kernel.org
+cc: ceph-devel@vger.kernel.org
+cc: v9fs-developer@lists.sourceforge.net
+cc: linux-fsdevel@vger.kernel.org
+Link: https://lore.kernel.org/r/162377165897.729347.292567369593752239.stgit@warthog.procyon.org.uk/
+Link: https://lore.kernel.org/r/162377519404.734878.4912821418522385423.stgit@warthog.procyon.org.uk/ # v1
 ---
- fs/nfs/inode.c         | 4 ++++
- include/linux/nfs_fs.h | 1 +
- 2 files changed, 5 insertions(+)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 33cc69687792..ad01d4fb795e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -972,6 +972,7 @@ EXPORT_SYMBOL_GPL(nfs_inode_attach_open_context);
- void nfs_file_set_open_context(struct file *filp, struct nfs_open_context *ctx)
- {
- 	filp->private_data = get_nfs_open_context(ctx);
-+	set_bit(NFS_CONTEXT_FILE_OPEN, &ctx->flags);
- 	if (list_empty(&ctx->list))
- 		nfs_inode_attach_open_context(ctx);
- }
-@@ -991,6 +992,8 @@ struct nfs_open_context *nfs_find_open_context(struct inode *inode, struct rpc_c
- 			continue;
- 		if ((pos->mode & (FMODE_READ|FMODE_WRITE)) != mode)
- 			continue;
-+		if (!test_bit(NFS_CONTEXT_FILE_OPEN, &pos->flags))
-+			continue;
- 		ctx = get_nfs_open_context(pos);
- 		break;
- 	}
-@@ -1005,6 +1008,7 @@ void nfs_file_clear_open_context(struct file *filp)
- 	if (ctx) {
- 		struct inode *inode = d_inode(ctx->dentry);
+ MAINTAINERS |    9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a61f4f3b78a9..2fd13803cd06 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -13050,6 +13050,15 @@ NETWORKING [WIRELESS]
+ L:	linux-wireless@vger.kernel.org
+ Q:	http://patchwork.kernel.org/project/linux-wireless/list/
  
-+		clear_bit(NFS_CONTEXT_FILE_OPEN, &ctx->flags);
- 		/*
- 		 * We fatal error on write before. Try to writeback
- 		 * every page again.
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index f0015f801a78..e51292d9e1a2 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -77,6 +77,7 @@ struct nfs_open_context {
- #define NFS_CONTEXT_RESEND_WRITES	(1)
- #define NFS_CONTEXT_BAD			(2)
- #define NFS_CONTEXT_UNLOCK	(3)
-+#define NFS_CONTEXT_FILE_OPEN		(4)
- 	int error;
- 
- 	struct list_head list;
--- 
-2.30.2
++NETWORK FILESYSTEM HELPER LIBRARY
++M:	David Howells <dhowells@redhat.com>
++M:	Jeff Layton <jlayton@kernel.org>
++L:	linux-cachefs@redhat.com (moderated for non-subscribers)
++S:	Supported
++F:	Documentation/filesystems/netfs_library.rst
++F:	fs/netfs/
++F:	include/linux/netfs.h
++
+ NETXEN (1/10) GbE SUPPORT
+ M:	Manish Chopra <manishc@marvell.com>
+ M:	Rahul Verma <rahulv@marvell.com>
+
 
