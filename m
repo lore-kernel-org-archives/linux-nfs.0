@@ -2,32 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UPPERCASE_50_75 autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DA5EBC07E9B
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 14:52:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25FD0C6377A
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 14:52:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C7E7F6112D
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 14:52:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 059D76113A
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 14:52:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232225AbhGSOLh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 19 Jul 2021 10:11:37 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41186 "EHLO mail.kernel.org"
+        id S241223AbhGSOLg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 19 Jul 2021 10:11:36 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40664 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S241054AbhGSOI2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S241312AbhGSOI2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Mon, 19 Jul 2021 10:08:28 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 572296113B;
-        Mon, 19 Jul 2021 14:48:35 +0000 (UTC)
-Subject: [PATCH v2 6/6] SUNRPC: Record timeout value in xprt_retransmit
- tracepoint
+Received: by mail.kernel.org (Postfix) with ESMTPSA id EA78061002;
+        Mon, 19 Jul 2021 14:48:16 +0000 (UTC)
+Subject: [PATCH v2 3/6] SUNRPC: Remove unneeded TRACE_DEFINE_ENUMs
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     trondmy@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Date:   Mon, 19 Jul 2021 10:48:34 -0400
-Message-ID: <162670611464.468132.12153190117646878882.stgit@manet.1015granger.net>
+Date:   Mon, 19 Jul 2021 10:48:16 -0400
+Message-ID: <162670609624.468132.3915475444727749215.stgit@manet.1015granger.net>
 In-Reply-To: <162670594361.468132.16222376053830760696.stgit@manet.1015granger.net>
 References: <162670594361.468132.16222376053830760696.stgit@manet.1015granger.net>
 User-Agent: StGit/1.1
@@ -38,47 +37,72 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The client can alter the timeout value after each retransmit. Record
-the updated timeout value in the trace log.
+Clean up: TRACE_DEFINE_ENUM is needed only for enums, not for
+C macros.
 
-Suggested-by: Dai Ngo <dai.ngo@oracle.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/sunrpc.h |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ include/trace/events/sunrpc.h |   34 ----------------------------------
+ 1 file changed, 34 deletions(-)
 
 diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 59ad1718496b..18d552a17c19 100644
+index 861f199896c6..ea6340129b1b 100644
 --- a/include/trace/events/sunrpc.h
 +++ b/include/trace/events/sunrpc.h
-@@ -1061,6 +1061,7 @@ TRACE_EVENT(xprt_retransmit,
- 		__field(u32, xid)
- 		__field(int, ntrans)
- 		__field(int, version)
-+		__field(unsigned long, timeout)
- 		__string(progname,
- 			 rqst->rq_task->tk_client->cl_program->name)
- 		__string(procname, rpc_proc_name(rqst->rq_task))
-@@ -1074,6 +1075,7 @@ TRACE_EVENT(xprt_retransmit,
- 			task->tk_client->cl_clid : -1;
- 		__entry->xid = be32_to_cpu(rqst->rq_xid);
- 		__entry->ntrans = rqst->rq_ntrans;
-+		__entry->timeout = task->tk_timeout;
- 		__assign_str(progname,
- 			     task->tk_client->cl_program->name);
- 		__entry->version = task->tk_client->cl_vers;
-@@ -1081,10 +1083,10 @@ TRACE_EVENT(xprt_retransmit,
- 	),
+@@ -295,21 +295,6 @@ TRACE_EVENT(rpc_request,
+ 		)
+ );
  
- 	TP_printk(
--		"task:%u@%u xid=0x%08x %sv%d %s ntrans=%d",
-+		"task:%u@%u xid=0x%08x %sv%d %s ntrans=%d timeout=%lu",
- 		__entry->task_id, __entry->client_id, __entry->xid,
- 		__get_str(progname), __entry->version, __get_str(procname),
--		__entry->ntrans
-+		__entry->ntrans, __entry->timeout
+-TRACE_DEFINE_ENUM(RPC_TASK_ASYNC);
+-TRACE_DEFINE_ENUM(RPC_TASK_SWAPPER);
+-TRACE_DEFINE_ENUM(RPC_TASK_NULLCREDS);
+-TRACE_DEFINE_ENUM(RPC_CALL_MAJORSEEN);
+-TRACE_DEFINE_ENUM(RPC_TASK_ROOTCREDS);
+-TRACE_DEFINE_ENUM(RPC_TASK_DYNAMIC);
+-TRACE_DEFINE_ENUM(RPC_TASK_NO_ROUND_ROBIN);
+-TRACE_DEFINE_ENUM(RPC_TASK_SOFT);
+-TRACE_DEFINE_ENUM(RPC_TASK_SOFTCONN);
+-TRACE_DEFINE_ENUM(RPC_TASK_SENT);
+-TRACE_DEFINE_ENUM(RPC_TASK_TIMEOUT);
+-TRACE_DEFINE_ENUM(RPC_TASK_NOCONNECT);
+-TRACE_DEFINE_ENUM(RPC_TASK_NO_RETRANS_TIMEOUT);
+-TRACE_DEFINE_ENUM(RPC_TASK_CRED_NOREF);
+-
+ #define rpc_show_task_flags(flags)					\
+ 	__print_flags(flags, "|",					\
+ 		{ RPC_TASK_ASYNC, "ASYNC" },				\
+@@ -327,14 +312,6 @@ TRACE_DEFINE_ENUM(RPC_TASK_CRED_NOREF);
+ 		{ RPC_TASK_NO_RETRANS_TIMEOUT, "NORTO" },		\
+ 		{ RPC_TASK_CRED_NOREF, "CRED_NOREF" })
+ 
+-TRACE_DEFINE_ENUM(RPC_TASK_RUNNING);
+-TRACE_DEFINE_ENUM(RPC_TASK_QUEUED);
+-TRACE_DEFINE_ENUM(RPC_TASK_ACTIVE);
+-TRACE_DEFINE_ENUM(RPC_TASK_NEED_XMIT);
+-TRACE_DEFINE_ENUM(RPC_TASK_NEED_RECV);
+-TRACE_DEFINE_ENUM(RPC_TASK_MSG_PIN_WAIT);
+-TRACE_DEFINE_ENUM(RPC_TASK_SIGNALLED);
+-
+ #define rpc_show_runstate(flags)					\
+ 	__print_flags(flags, "|",					\
+ 		{ (1UL << RPC_TASK_RUNNING), "RUNNING" },		\
+@@ -945,17 +922,6 @@ TRACE_EVENT(rpc_socket_nospace,
  	)
  );
  
+-TRACE_DEFINE_ENUM(XPRT_LOCKED);
+-TRACE_DEFINE_ENUM(XPRT_CONNECTED);
+-TRACE_DEFINE_ENUM(XPRT_CONNECTING);
+-TRACE_DEFINE_ENUM(XPRT_CLOSE_WAIT);
+-TRACE_DEFINE_ENUM(XPRT_BOUND);
+-TRACE_DEFINE_ENUM(XPRT_BINDING);
+-TRACE_DEFINE_ENUM(XPRT_CLOSING);
+-TRACE_DEFINE_ENUM(XPRT_CONGESTED);
+-TRACE_DEFINE_ENUM(XPRT_CWND_WAIT);
+-TRACE_DEFINE_ENUM(XPRT_WRITE_SPACE);
+-
+ #define rpc_show_xprt_state(x)						\
+ 	__print_flags(x, "|",						\
+ 		{ (1UL << XPRT_LOCKED),		"LOCKED"},		\
 
 
