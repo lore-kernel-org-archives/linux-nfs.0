@@ -2,89 +2,98 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62E24C12002
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 12:27:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4546C07E9D
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 14:52:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3FA7160FDC
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 12:27:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A78136113B
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Jul 2021 14:52:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236790AbhGSLqe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 19 Jul 2021 07:46:34 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:30021 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S236571AbhGSLqd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jul 2021 07:46:33 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1626697633;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=jcPq1+1+oQiEPHp6K23QjYbtxnhKxkNFeAxXT+QXeew=;
-        b=LDcDpAJUbZZt4o7ZUTejWP32zLkVxhzzfR0viUiv5vdk9amZAhQGmvUVYviAo6onof0RRs
-        ty40Ox46eaLwXeM/l0Xnztk+/nKNk6c8+TmjXKFWpG0P3ajIgjM3FzADgacIWWkkTFbrwH
-        us3s/Jm9+oo175VWNW9NyfS6LvQe3X4=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-152-QX3Yuuj3PvmS6vUZduibDw-1; Mon, 19 Jul 2021 08:27:12 -0400
-X-MC-Unique: QX3Yuuj3PvmS6vUZduibDw-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2497F8030D7;
-        Mon, 19 Jul 2021 12:27:11 +0000 (UTC)
-Received: from [10.10.66.2] (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 7A21C100164A;
-        Mon, 19 Jul 2021 12:27:10 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Trond Myklebust" <trondmy@hammerspace.com>
-Cc:     xiyuyang19@fudan.edu.cn, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Convert rpc_client refcount to use refcount_t
-Date:   Mon, 19 Jul 2021 08:27:09 -0400
-Message-ID: <2A9784CC-8774-4633-A0E3-B90CDFC5CF7E@redhat.com>
-In-Reply-To: <190d0dec631a2219c4c16a41f7c17e914f625082.camel@hammerspace.com>
-References: <20210717172052.232420-1-trondmy@kernel.org>
- <6AF75462-495E-4B63-9A3E-C9639C45C1F2@redhat.com>
- <190d0dec631a2219c4c16a41f7c17e914f625082.camel@hammerspace.com>
+        id S232073AbhGSOLT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 19 Jul 2021 10:11:19 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40608 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S241311AbhGSOI2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Jul 2021 10:08:28 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id D103F610F7;
+        Mon, 19 Jul 2021 14:48:10 +0000 (UTC)
+Subject: [PATCH v2 2/6] SUNRPC: Unset RPC_TASK_NO_RETRANS_TIMEOUT for NULL
+ RPCs
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     trondmy@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Date:   Mon, 19 Jul 2021 10:48:10 -0400
+Message-ID: <162670609014.468132.12141390010470960903.stgit@manet.1015granger.net>
+In-Reply-To: <162670594361.468132.16222376053830760696.stgit@manet.1015granger.net>
+References: <162670594361.468132.16222376053830760696.stgit@manet.1015granger.net>
+User-Agent: StGit/1.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 19 Jul 2021, at 8:07, Trond Myklebust wrote:
+In some rare failure modes, the server is actually reading the
+transport, but then just dropping the requests on the floor.
+TCP_USER_TIMEOUT cannot detect that case.
 
-> On Mon, 2021-07-19 at 08:01 -0400, Benjamin Coddington wrote:
->> Hi Trond,
->>
->> On 17 Jul 2021, at 13:20, trondmy@kernel.org wrote:
->>
->>> @@ -943,7 +941,7 @@ rpc_release_client(struct rpc_clnt *clnt)
->>>         do {
->>>                 if (list_empty(&clnt->cl_tasks))
->>>                         wake_up(&destroy_wait);
->>> -               if (!atomic_dec_and_test(&clnt->cl_count))
->>> +               if (refcount_dec_not_one(&clnt->cl_count))
->>
->> I guess we're not worried about extra calls racing into
->> rpc_free_auth?
->
-> The refcount would normally be going to zero in the above case. If
-> anything outside the RPC code itself tries to bump the counter then
-> that is a very clear cut case of use-after-free.
+Prevent such a stuck server from pinning client resources
+indefinitely by ensuring that certain idempotent requests
+(such as NULL) can time out even if the connection is still
+operational.
 
-I am thinking about users of rpc_release_client() calling it multiple times,
-but perhaps that's not something that happens.  This is a different issue
-that's not added by your patch, I was noticing it.
+Otherwise rpc_bind_new_program(), gss_destroy_cred(), or
+rpc_clnt_test_and_add_xprt() can wait forever.
 
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/clnt.c |   15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-Ben
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index ca2000d8cf64..d34737a8a68a 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2694,6 +2694,18 @@ static const struct rpc_procinfo rpcproc_null = {
+ 	.p_decode = rpcproc_decode_null,
+ };
+ 
++static void
++rpc_null_call_prepare(struct rpc_task *task, void *data)
++{
++	task->tk_flags &= ~RPC_TASK_NO_RETRANS_TIMEOUT;
++	rpc_call_start(task);
++}
++
++static const struct rpc_call_ops rpc_null_ops = {
++	.rpc_call_prepare = rpc_null_call_prepare,
++	.rpc_call_done = rpc_default_callback,
++};
++
+ static
+ struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
+ 		struct rpc_xprt *xprt, struct rpc_cred *cred, int flags,
+@@ -2707,7 +2719,7 @@ struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
+ 		.rpc_xprt = xprt,
+ 		.rpc_message = &msg,
+ 		.rpc_op_cred = cred,
+-		.callback_ops = (ops != NULL) ? ops : &rpc_default_ops,
++		.callback_ops = ops ?: &rpc_null_ops,
+ 		.callback_data = data,
+ 		.flags = flags | RPC_TASK_SOFT | RPC_TASK_SOFTCONN |
+ 			 RPC_TASK_NULLCREDS,
+@@ -2758,6 +2770,7 @@ static void rpc_cb_add_xprt_release(void *calldata)
+ }
+ 
+ static const struct rpc_call_ops rpc_cb_add_xprt_call_ops = {
++	.rpc_call_prepare = rpc_null_call_prepare,
+ 	.rpc_call_done = rpc_cb_add_xprt_done,
+ 	.rpc_release = rpc_cb_add_xprt_release,
+ };
+
 
