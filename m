@@ -2,96 +2,184 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D40EC07E9B
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Jul 2021 23:11:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 84952C12002
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jul 2021 13:45:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5555A61029
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Jul 2021 23:11:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6CDD761241
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jul 2021 13:45:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232602AbhGTWav (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 20 Jul 2021 18:30:51 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:36130 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232948AbhGTWas (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jul 2021 18:30:48 -0400
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id EAD0922409;
-        Tue, 20 Jul 2021 23:11:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1626822684; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        id S238515AbhGUNEh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Jul 2021 09:04:37 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:20348 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S238605AbhGUNEU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2021 09:04:20 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1626875092;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=LN6PDSPL1OoRnGn+h0IFOeu/dQHz0x87XHv23gVNv24=;
-        b=13HT43VhDO3J9HKLqc7vvsL6QX0PCpJP7LrIn7TvqYNLTVWjVDxapKqxJtbyOBfmozGFto
-        wYzYJIye99TRrkNVE1xIES38XeO00pJ7pEiid/ZVma+17jKkTqpYNdWqVTmUFWjLdGuHMe
-        Zc8Qkk3X7wi8UJHhjGEsmRJ44npqBIE=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1626822684;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=LN6PDSPL1OoRnGn+h0IFOeu/dQHz0x87XHv23gVNv24=;
-        b=IxllSEQysOAwPKQcd48cmL2/FWCa0qe8dfzhdIWAgVoTCDNXyDT1OrdU2o5KTJX7SIMY8H
-        Ja4Ich4ldB2NysBw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        bh=dD0k0Pq287Lg2ikVcgHQbQEUjRPU8jmSQuhejIIyzXI=;
+        b=AT4XY8N673hG8+VAv7dM/parF9UGleZqBlMuCJCZ9KYmSaAn4KoxUIxD+fhIzV9nysUbx0
+        LFwDNXezvmveQWImNbmd5Eu6N7cCSivGXoBQR1FUK0/ORSF7T237O9J/jkPAJEbNTsA63Q
+        JgryLjNIb38xuk3INtPDbGvKnAbPOGw=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-252-1-2iTUoAPoiPWa2aZlt75Q-1; Wed, 21 Jul 2021 09:44:50 -0400
+X-MC-Unique: 1-2iTUoAPoiPWa2aZlt75Q-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7906C13B0C;
-        Tue, 20 Jul 2021 23:11:21 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id 4gPvChlY92C4IQAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 20 Jul 2021 23:11:21 +0000
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D3B08100B704;
+        Wed, 21 Jul 2021 13:44:47 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-112-62.rdu2.redhat.com [10.10.112.62])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 6540D60CEC;
+        Wed, 21 Jul 2021 13:44:40 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+Subject: [RFC PATCH 01/12] afs: Sort out symlink reading
+From:   David Howells <dhowells@redhat.com>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Mike Marshall <hubcap@omnibond.com>,
+        David Wysochanski <dwysocha@redhat.com>,
+        Shyam Prasad N <nspmangalore@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        devel@lists.orangefs.org, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org
+Date:   Wed, 21 Jul 2021 14:44:40 +0100
+Message-ID: <162687508008.276387.6418924257569297305.stgit@warthog.procyon.org.uk>
+In-Reply-To: <162687506932.276387.14456718890524355509.stgit@warthog.procyon.org.uk>
+References: <162687506932.276387.14456718890524355509.stgit@warthog.procyon.org.uk>
+User-Agent: StGit/0.23
+MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Christoph Hellwig" <hch@infradead.org>
-Cc:     "Josef Bacik" <josef@toxicpanda.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "Chuck Lever" <chuck.lever@oracle.com>, "Chris Mason" <clm@fb.com>,
-        "David Sterba" <dsterba@suse.com>, linux-nfs@vger.kernel.org,
-        "Wang Yugui" <wangyugui@e16-tech.com>,
-        "Ulli Horlacher" <framstag@rus.uni-stuttgart.de>,
-        linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH/RFC] NFSD: handle BTRFS subvolumes better.
-In-reply-to: <YPaCuGm+3RX6vzjp@infradead.org>
-References: <162632387205.13764.6196748476850020429@noble.neil.brown.name>,
- <edd94b15-90df-c540-b9aa-8eac89b6713b@toxicpanda.com>,
- <YPBmGknHpFb06fnD@infradead.org>,
- <28bb883d-8d14-f11a-b37f-d8e71118f87f@toxicpanda.com>,
- <YPBvUfCNmv0ElBpo@infradead.org>,
- <e1d9caad-e4c7-09d4-b145-5397b24e1cc7@toxicpanda.com>,
- <YPVC/w4kw3y/14oF@infradead.org>,
- <162673888433.4136.7451392112850411713@noble.neil.brown.name>,
- <YPZr9woK584Oc61H@infradead.org>,
- <162676543271.12554.10226255548215795177@noble.neil.brown.name>,
- <YPaCuGm+3RX6vzjp@infradead.org>
-Date:   Wed, 21 Jul 2021 09:11:17 +1000
-Message-id: <162682267778.12554.5231234508794819027@noble.neil.brown.name>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 20 Jul 2021, Christoph Hellwig wrote:
-> On Tue, Jul 20, 2021 at 05:17:12PM +1000, NeilBrown wrote:
-> > Does anything there seem unreasonable to you?
-> 
-> This is what I've been asking for for years.
-> 
-> 
-Execellent - we seem to be on the same page.
-I'll aim to have some prelimiary patches for review within a week.
+afs_readpage() doesn't get a file pointer when called for a symlink, so
+separate it from regular file pointer handling.
 
-Thanks,
-NeilBrown
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/afs/file.c     |   14 +++++++++-----
+ fs/afs/inode.c    |    6 +++---
+ fs/afs/internal.h |    3 ++-
+ 3 files changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/fs/afs/file.c b/fs/afs/file.c
+index ca0d993add65..c9c21ad0e7c9 100644
+--- a/fs/afs/file.c
++++ b/fs/afs/file.c
+@@ -19,6 +19,7 @@
+ 
+ static int afs_file_mmap(struct file *file, struct vm_area_struct *vma);
+ static int afs_readpage(struct file *file, struct page *page);
++static int afs_symlink_readpage(struct file *file, struct page *page);
+ static void afs_invalidatepage(struct page *page, unsigned int offset,
+ 			       unsigned int length);
+ static int afs_releasepage(struct page *page, gfp_t gfp_flags);
+@@ -46,7 +47,7 @@ const struct inode_operations afs_file_inode_operations = {
+ 	.permission	= afs_permission,
+ };
+ 
+-const struct address_space_operations afs_fs_aops = {
++const struct address_space_operations afs_file_aops = {
+ 	.readpage	= afs_readpage,
+ 	.readahead	= afs_readahead,
+ 	.set_page_dirty	= afs_set_page_dirty,
+@@ -60,6 +61,12 @@ const struct address_space_operations afs_fs_aops = {
+ 	.writepages	= afs_writepages,
+ };
+ 
++const struct address_space_operations afs_symlink_aops = {
++	.readpage	= afs_symlink_readpage,
++	.releasepage	= afs_releasepage,
++	.invalidatepage	= afs_invalidatepage,
++};
++
+ static const struct vm_operations_struct afs_vm_ops = {
+ 	.fault		= filemap_fault,
+ 	.map_pages	= filemap_map_pages,
+@@ -321,7 +328,7 @@ static void afs_req_issue_op(struct netfs_read_subrequest *subreq)
+ 	afs_fetch_data(fsreq->vnode, fsreq);
+ }
+ 
+-static int afs_symlink_readpage(struct page *page)
++static int afs_symlink_readpage(struct file *file, struct page *page)
+ {
+ 	struct afs_vnode *vnode = AFS_FS_I(page->mapping->host);
+ 	struct afs_read *fsreq;
+@@ -386,9 +393,6 @@ const struct netfs_read_request_ops afs_req_ops = {
+ 
+ static int afs_readpage(struct file *file, struct page *page)
+ {
+-	if (!file)
+-		return afs_symlink_readpage(page);
+-
+ 	return netfs_readpage(file, page, &afs_req_ops, NULL);
+ }
+ 
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index bef6f5ccfb09..cf7b66957c6f 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -105,7 +105,7 @@ static int afs_inode_init_from_status(struct afs_operation *op,
+ 		inode->i_mode	= S_IFREG | (status->mode & S_IALLUGO);
+ 		inode->i_op	= &afs_file_inode_operations;
+ 		inode->i_fop	= &afs_file_operations;
+-		inode->i_mapping->a_ops	= &afs_fs_aops;
++		inode->i_mapping->a_ops	= &afs_file_aops;
+ 		break;
+ 	case AFS_FTYPE_DIR:
+ 		inode->i_mode	= S_IFDIR |  (status->mode & S_IALLUGO);
+@@ -123,11 +123,11 @@ static int afs_inode_init_from_status(struct afs_operation *op,
+ 			inode->i_mode	= S_IFDIR | 0555;
+ 			inode->i_op	= &afs_mntpt_inode_operations;
+ 			inode->i_fop	= &afs_mntpt_file_operations;
+-			inode->i_mapping->a_ops	= &afs_fs_aops;
++			inode->i_mapping->a_ops	= &afs_symlink_aops;
+ 		} else {
+ 			inode->i_mode	= S_IFLNK | status->mode;
+ 			inode->i_op	= &afs_symlink_inode_operations;
+-			inode->i_mapping->a_ops	= &afs_fs_aops;
++			inode->i_mapping->a_ops	= &afs_symlink_aops;
+ 		}
+ 		inode_nohighmem(inode);
+ 		break;
+diff --git a/fs/afs/internal.h b/fs/afs/internal.h
+index 791cf02e5696..ccdde00ada8a 100644
+--- a/fs/afs/internal.h
++++ b/fs/afs/internal.h
+@@ -1050,7 +1050,8 @@ extern void afs_dynroot_depopulate(struct super_block *);
+ /*
+  * file.c
+  */
+-extern const struct address_space_operations afs_fs_aops;
++extern const struct address_space_operations afs_file_aops;
++extern const struct address_space_operations afs_symlink_aops;
+ extern const struct inode_operations afs_file_inode_operations;
+ extern const struct file_operations afs_file_operations;
+ extern const struct netfs_read_request_ops afs_req_ops;
+
+
