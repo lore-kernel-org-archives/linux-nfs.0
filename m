@@ -7,45 +7,45 @@ X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 514BAC6377B
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jul 2021 13:47:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79579C6377D
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jul 2021 13:47:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3A37360FF1
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jul 2021 13:47:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 62A0A60FF1
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jul 2021 13:47:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238755AbhGUNGU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Jul 2021 09:06:20 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:37799 "EHLO
+        id S238763AbhGUNGd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Jul 2021 09:06:33 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:55396 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S238753AbhGUNFc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2021 09:05:32 -0400
+        by vger.kernel.org with ESMTP id S238777AbhGUNFw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jul 2021 09:05:52 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1626875168;
+        s=mimecast20190719; t=1626875187;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=tJF6irQE00ShIEgld85BW9bY0f39qS1KE4GzM9lKwvI=;
-        b=Cxpe9/n0o5+lc0I30ZjGpSgtlKP92qOUXTIVDJE0YrhqXs3ygQixukH3TaN3JI2XHgse5x
-        hC2Xe+f3547oQK73qvvqYINbBRzR5+wglyBl2VYBEvFXtO6Q7AsITPMhPk6U3RAMYVvb7X
-        oYxEOLtqzpkP7DN8IT9AZyg2lo7scPY=
+        bh=YIMMVaqdVhebN2c0WSSt5y4n7OTol1pb5VWKxV3dgW0=;
+        b=cFaDkSjwBoUpP1t3bd7kV/xlAdKt/uKl5Os6WgvX40k/eppSUaTYNkHuYJanmEha0h84le
+        NRyvCuMtnTgL+Pj4+Ri/+70OWF5zvS8w/x4qYzIEzotifq5p96Y/ti7stD8W80Git/cIBQ
+        6MpXZQpoGkaD126w6eyBhJGVcs/tWQc=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-495-0ZU9Yv9pPY-NZ_7LkAyTLg-1; Wed, 21 Jul 2021 09:46:05 -0400
-X-MC-Unique: 0ZU9Yv9pPY-NZ_7LkAyTLg-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+ us-mta-455-2dRCJwMHMCuYSt_yp_EJGw-1; Wed, 21 Jul 2021 09:46:25 -0400
+X-MC-Unique: 2dRCJwMHMCuYSt_yp_EJGw-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id DFEBC93920;
-        Wed, 21 Jul 2021 13:46:02 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 5FEE993921;
+        Wed, 21 Jul 2021 13:46:23 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-112-62.rdu2.redhat.com [10.10.112.62])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id A515560C59;
-        Wed, 21 Jul 2021 13:45:58 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 45A5360583;
+        Wed, 21 Jul 2021 13:46:19 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [RFC PATCH 05/12] netfs: Add a netfs inode context
+Subject: [RFC PATCH 07/12] netfs: Initiate write request from a dirty region
 From:   David Howells <dhowells@redhat.com>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
@@ -63,795 +63,1032 @@ Cc:     dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         devel@lists.orangefs.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
-Date:   Wed, 21 Jul 2021 14:45:52 +0100
-Message-ID: <162687515266.276387.1299416976214634692.stgit@warthog.procyon.org.uk>
+Date:   Wed, 21 Jul 2021 14:46:18 +0100
+Message-ID: <162687517832.276387.10765642135364197990.stgit@warthog.procyon.org.uk>
 In-Reply-To: <162687506932.276387.14456718890524355509.stgit@warthog.procyon.org.uk>
 References: <162687506932.276387.14456718890524355509.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a netfs_i_context struct that should be included in the network
-filesystem's own inode struct wrapper, directly after the VFS's inode
-struct, e.g.:
+Handle the initiation of writeback of a piece of the dirty list.  The first
+region on the flush list is extracted and a write request is set up to
+manage it.  The pages in the affected region are flipped from dirty to
+writeback-in-progress.
 
-	struct my_inode {
-		struct {
-			struct inode		vfs_inode;
-			struct netfs_i_context	netfs_ctx;
-		};
-	};
+The writeback is then dispatched (which currently just logs a "--- WRITE
+---" message to dmesg and then abandons it).
 
-The netfs_i_context struct contains two fields for the network filesystem
-to use:
+Notes:
 
-	struct netfs_i_context {
-		...
-		struct fscache_cookie	*cache;
-		unsigned long		flags;
-	#define NETFS_ICTX_NEW_CONTENT	0
-	};
+ (*) A page may host multiple disjoint dirty regions, each with its own
+     netfs_dirty_region, and a region may span multiple pages.  Dirty
+     regions are not permitted to overlap, though they may be merged if
+     they would otherwise overlap.
 
-There's a pointer to the cache cookie and a flag to indicate that the
-content in the file is locally generated and entirely new (ie. the file was
-just created locally or was truncated to nothing).
+ (*) A page may be involved in multiple simultaneous writebacks.  Each one
+     is managed by a separate netfs_dirty_region and netfs_write_request.
 
-Two functions are provided to help with this:
-
- (1) void netfs_i_context_init(struct inode *inode,
-			       const struct netfs_request_ops *ops);
-
-     Initialise the netfs context and set the operations.
-
- (2) struct netfs_i_context *netfs_i_context(struct inode *inode);
-
-     Find the netfs context from the inode struct.
+ (*) Multiple pages may be required to form a write (for crypto/compression
+     purposes) and so adjacent non-dirty pages may also get marked for
+     writeback.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/afs/callback.c      |    2 -
- fs/afs/dir.c           |    2 -
- fs/afs/dynroot.c       |    1 
- fs/afs/file.c          |   29 ++---------
- fs/afs/inode.c         |   10 ++--
- fs/afs/internal.h      |   13 ++---
- fs/afs/super.c         |    2 -
- fs/afs/write.c         |    7 +--
- fs/ceph/addr.c         |    2 -
- fs/netfs/internal.h    |   11 ++++
- fs/netfs/read_helper.c |  124 ++++++++++++++++++++++--------------------------
- fs/netfs/stats.c       |    1 
- include/linux/netfs.h  |   66 +++++++++++++++++++++-----
- 13 files changed, 146 insertions(+), 124 deletions(-)
+ fs/afs/file.c                |  128 ++----------------
+ fs/netfs/Makefile            |    1 
+ fs/netfs/internal.h          |   16 ++
+ fs/netfs/objects.c           |   78 +++++++++++
+ fs/netfs/read_helper.c       |   34 +++++
+ fs/netfs/stats.c             |    6 +
+ fs/netfs/write_back.c        |  306 ++++++++++++++++++++++++++++++++++++++++++
+ fs/netfs/xa_iterator.h       |   85 ++++++++++++
+ include/linux/netfs.h        |   35 +++++
+ include/trace/events/netfs.h |   72 ++++++++++
+ 10 files changed, 642 insertions(+), 119 deletions(-)
+ create mode 100644 fs/netfs/write_back.c
+ create mode 100644 fs/netfs/xa_iterator.h
 
-diff --git a/fs/afs/callback.c b/fs/afs/callback.c
-index 7d9b23d981bf..0d4b9678ad22 100644
---- a/fs/afs/callback.c
-+++ b/fs/afs/callback.c
-@@ -41,7 +41,7 @@ void __afs_break_callback(struct afs_vnode *vnode, enum afs_cb_break_reason reas
- {
- 	_enter("");
- 
--	clear_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags);
-+	clear_bit(NETFS_ICTX_NEW_CONTENT, &netfs_i_context(&vnode->vfs_inode)->flags);
- 	if (test_and_clear_bit(AFS_VNODE_CB_PROMISED, &vnode->flags)) {
- 		vnode->cb_break++;
- 		afs_clear_permits(vnode);
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index ac829e63c570..a4c9cd6de622 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -1350,7 +1350,7 @@ static void afs_vnode_new_inode(struct afs_operation *op)
- 	}
- 
- 	vnode = AFS_FS_I(inode);
--	set_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags);
-+	set_bit(NETFS_ICTX_NEW_CONTENT, &netfs_i_context(&vnode->vfs_inode)->flags);
- 	if (!op->error)
- 		afs_cache_permit(vnode, op->key, vnode->cb_break, &vp->scb);
- 	d_instantiate(op->dentry, inode);
-diff --git a/fs/afs/dynroot.c b/fs/afs/dynroot.c
-index db832cc931c8..f120bcb8bf73 100644
---- a/fs/afs/dynroot.c
-+++ b/fs/afs/dynroot.c
-@@ -76,6 +76,7 @@ struct inode *afs_iget_pseudo_dir(struct super_block *sb, bool root)
- 	/* there shouldn't be an existing inode */
- 	BUG_ON(!(inode->i_state & I_NEW));
- 
-+	netfs_i_context_init(inode, NULL);
- 	inode->i_size		= 0;
- 	inode->i_mode		= S_IFDIR | S_IRUGO | S_IXUGO;
- 	if (root) {
 diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 82e945dbe379..1861e4ecc2ce 100644
+index 8400cdf086b6..a6d483fe4e74 100644
 --- a/fs/afs/file.c
 +++ b/fs/afs/file.c
-@@ -18,13 +18,11 @@
- #include "internal.h"
+@@ -19,9 +19,6 @@
  
  static int afs_file_mmap(struct file *file, struct vm_area_struct *vma);
--static int afs_readpage(struct file *file, struct page *page);
  static int afs_symlink_readpage(struct file *file, struct page *page);
- static void afs_invalidatepage(struct page *page, unsigned int offset,
- 			       unsigned int length);
- static int afs_releasepage(struct page *page, gfp_t gfp_flags);
+-static void afs_invalidatepage(struct page *page, unsigned int offset,
+-			       unsigned int length);
+-static int afs_releasepage(struct page *page, gfp_t gfp_flags);
  
--static void afs_readahead(struct readahead_control *ractl);
  static ssize_t afs_direct_IO(struct kiocb *iocb, struct iov_iter *iter);
  
- const struct file_operations afs_file_operations = {
-@@ -48,8 +46,8 @@ const struct inode_operations afs_file_inode_operations = {
- };
- 
- const struct address_space_operations afs_file_aops = {
--	.readpage	= afs_readpage,
--	.readahead	= afs_readahead,
-+	.readpage	= netfs_readpage,
-+	.readahead	= netfs_readahead,
+@@ -50,17 +47,17 @@ const struct address_space_operations afs_file_aops = {
+ 	.readahead	= netfs_readahead,
  	.set_page_dirty	= afs_set_page_dirty,
  	.launder_page	= afs_launder_page,
- 	.releasepage	= afs_releasepage,
-@@ -153,7 +151,8 @@ int afs_open(struct inode *inode, struct file *file)
- 	}
- 
- 	if (file->f_flags & O_TRUNC)
--		set_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags);
-+		set_bit(NETFS_ICTX_NEW_CONTENT,
-+			&netfs_i_context(&vnode->vfs_inode)->flags);
- 
- 	fscache_use_cookie(afs_vnode_cache(vnode), file->f_mode & FMODE_WRITE);
- 
-@@ -351,13 +350,6 @@ static void afs_init_rreq(struct netfs_read_request *rreq, struct file *file)
- 	rreq->netfs_priv = key_get(afs_file_key(file));
- }
- 
--static bool afs_is_cache_enabled(struct inode *inode)
--{
--	struct fscache_cookie *cookie = afs_vnode_cache(AFS_FS_I(inode));
--
--	return fscache_cookie_enabled(cookie) && cookie->cache_priv;
--}
--
- static int afs_begin_cache_operation(struct netfs_read_request *rreq)
- {
- 	struct afs_vnode *vnode = AFS_FS_I(rreq->inode);
-@@ -378,25 +370,14 @@ static void afs_priv_cleanup(struct address_space *mapping, void *netfs_priv)
- 	key_put(netfs_priv);
- }
- 
--const struct netfs_read_request_ops afs_req_ops = {
-+const struct netfs_request_ops afs_req_ops = {
- 	.init_rreq		= afs_init_rreq,
--	.is_cache_enabled	= afs_is_cache_enabled,
- 	.begin_cache_operation	= afs_begin_cache_operation,
- 	.check_write_begin	= afs_check_write_begin,
- 	.issue_op		= afs_req_issue_op,
- 	.cleanup		= afs_priv_cleanup,
+-	.releasepage	= afs_releasepage,
+-	.invalidatepage	= afs_invalidatepage,
++	.releasepage	= netfs_releasepage,
++	.invalidatepage	= netfs_invalidatepage,
+ 	.direct_IO	= afs_direct_IO,
+ 	.writepage	= afs_writepage,
+-	.writepages	= afs_writepages,
++	.writepages	= netfs_writepages,
  };
  
--static int afs_readpage(struct file *file, struct page *page)
--{
--	return netfs_readpage(file, page, &afs_req_ops, NULL);
--}
--
--static void afs_readahead(struct readahead_control *ractl)
--{
--	netfs_readahead(ractl, &afs_req_ops, NULL);
--}
--
- int afs_write_inode(struct inode *inode, struct writeback_control *wbc)
- {
- 	fscache_unpin_writeback(wbc, afs_vnode_cache(AFS_FS_I(inode)));
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index cf7b66957c6f..3e9e388245a1 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -430,7 +430,7 @@ static void afs_get_inode_cache(struct afs_vnode *vnode)
- 	struct afs_vnode_cache_aux aux;
+ const struct address_space_operations afs_symlink_aops = {
+ 	.readpage	= afs_symlink_readpage,
+-	.releasepage	= afs_releasepage,
+-	.invalidatepage	= afs_invalidatepage,
++	.releasepage	= netfs_releasepage,
++	.invalidatepage	= netfs_invalidatepage,
+ };
  
- 	if (vnode->status.type != AFS_FTYPE_FILE) {
--		vnode->cache = NULL;
-+		vnode->netfs_ctx.cache = NULL;
- 		return;
- 	}
- 
-@@ -440,7 +440,7 @@ static void afs_get_inode_cache(struct afs_vnode *vnode)
- 	key.vnode_id_ext[1]	= htonl(vnode->fid.vnode_hi);
- 	afs_set_cache_aux(vnode, &aux);
- 
--	vnode->cache = fscache_acquire_cookie(
-+	vnode->netfs_ctx.cache = fscache_acquire_cookie(
- 		vnode->volume->cache,
- 		vnode->status.type == AFS_FTYPE_FILE ? 0 : FSCACHE_ADV_SINGLE_CHUNK,
- 		&key, sizeof(key),
-@@ -479,6 +479,7 @@ struct inode *afs_iget(struct afs_operation *op, struct afs_vnode_param *vp)
- 		return inode;
- 	}
- 
-+	netfs_i_context_init(inode, &afs_req_ops);
- 	ret = afs_inode_init_from_status(op, vp, vnode);
- 	if (ret < 0)
- 		goto bad_inode;
-@@ -535,6 +536,7 @@ struct inode *afs_root_iget(struct super_block *sb, struct key *key)
- 	_debug("GOT ROOT INODE %p { vl=%llx }", inode, as->volume->vid);
- 
- 	BUG_ON(!(inode->i_state & I_NEW));
-+	netfs_i_context_init(inode, &afs_req_ops);
- 
- 	vnode = AFS_FS_I(inode);
- 	vnode->cb_v_break = as->volume->cb_v_break,
-@@ -803,9 +805,9 @@ void afs_evict_inode(struct inode *inode)
- 	}
- 
- #ifdef CONFIG_AFS_FSCACHE
--	fscache_relinquish_cookie(vnode->cache,
-+	fscache_relinquish_cookie(vnode->netfs_ctx.cache,
- 				  test_bit(AFS_VNODE_DELETED, &vnode->flags));
--	vnode->cache = NULL;
-+	vnode->netfs_ctx.cache = NULL;
- #endif
- 
- 	afs_prune_wb_keys(vnode);
-diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index ccdde00ada8a..e0204dde4b50 100644
---- a/fs/afs/internal.h
-+++ b/fs/afs/internal.h
-@@ -615,15 +615,15 @@ enum afs_lock_state {
-  * leak from one inode to another.
-  */
- struct afs_vnode {
--	struct inode		vfs_inode;	/* the VFS's inode record */
-+	struct {
-+		struct inode	vfs_inode;	/* the VFS's inode record */
-+		struct netfs_i_context netfs_ctx; /* Netfslib context */
-+	};
- 
- 	struct afs_volume	*volume;	/* volume on which vnode resides */
- 	struct afs_fid		fid;		/* the file identifier for this inode */
- 	struct afs_file_status	status;		/* AFS status info for this file */
- 	afs_dataversion_t	invalid_before;	/* Child dentries are invalid before this */
--#ifdef CONFIG_AFS_FSCACHE
--	struct fscache_cookie	*cache;		/* caching cookie */
--#endif
- 	struct afs_permits __rcu *permit_cache;	/* cache of permits so far obtained */
- 	struct mutex		io_lock;	/* Lock for serialising I/O on this mutex */
- 	struct rw_semaphore	validate_lock;	/* lock for validating this vnode */
-@@ -640,7 +640,6 @@ struct afs_vnode {
- #define AFS_VNODE_MOUNTPOINT	5		/* set if vnode is a mountpoint symlink */
- #define AFS_VNODE_AUTOCELL	6		/* set if Vnode is an auto mount point */
- #define AFS_VNODE_PSEUDODIR	7 		/* set if Vnode is a pseudo directory */
--#define AFS_VNODE_NEW_CONTENT	8		/* Set if file has new content (create/trunc-0) */
- #define AFS_VNODE_SILLY_DELETED	9		/* Set if file has been silly-deleted */
- #define AFS_VNODE_MODIFYING	10		/* Set if we're performing a modification op */
- 
-@@ -666,7 +665,7 @@ struct afs_vnode {
- static inline struct fscache_cookie *afs_vnode_cache(struct afs_vnode *vnode)
- {
- #ifdef CONFIG_AFS_FSCACHE
--	return vnode->cache;
-+	return vnode->netfs_ctx.cache;
- #else
- 	return NULL;
- #endif
-@@ -1054,7 +1053,7 @@ extern const struct address_space_operations afs_file_aops;
- extern const struct address_space_operations afs_symlink_aops;
- extern const struct inode_operations afs_file_inode_operations;
- extern const struct file_operations afs_file_operations;
--extern const struct netfs_read_request_ops afs_req_ops;
-+extern const struct netfs_request_ops afs_req_ops;
- 
- extern int afs_cache_wb_key(struct afs_vnode *, struct afs_file *);
- extern void afs_put_wb_key(struct afs_wb_key *);
-diff --git a/fs/afs/super.c b/fs/afs/super.c
-index 85e52c78f44f..29c1178beb72 100644
---- a/fs/afs/super.c
-+++ b/fs/afs/super.c
-@@ -692,7 +692,7 @@ static struct inode *afs_alloc_inode(struct super_block *sb)
- 	vnode->lock_key		= NULL;
- 	vnode->permit_cache	= NULL;
- #ifdef CONFIG_AFS_FSCACHE
--	vnode->cache		= NULL;
-+	vnode->netfs_ctx.cache	= NULL;
- #endif
- 
- 	vnode->flags		= 1 << AFS_VNODE_UNSET;
-diff --git a/fs/afs/write.c b/fs/afs/write.c
-index 3be3a594124c..a244187f3503 100644
---- a/fs/afs/write.c
-+++ b/fs/afs/write.c
-@@ -49,8 +49,7 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
- 	 * file.  We need to do this before we get a lock on the page in case
- 	 * there's more than one writer competing for the same cache block.
- 	 */
--	ret = netfs_write_begin(file, mapping, pos, len, flags, &page, fsdata,
--				&afs_req_ops, NULL);
-+	ret = netfs_write_begin(file, mapping, pos, len, flags, &page, fsdata);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -76,7 +75,7 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
- 		 * spaces to be merged into writes.  If it's not, only write
- 		 * back what the user gives us.
- 		 */
--		if (!test_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags) &&
-+		if (!test_bit(NETFS_ICTX_NEW_CONTENT, &vnode->netfs_ctx.flags) &&
- 		    (to < f || from > t))
- 			goto flush_conflicting_write;
- 	}
-@@ -557,7 +556,7 @@ static ssize_t afs_write_back_from_locked_page(struct address_space *mapping,
- 	unsigned long priv;
- 	unsigned int offset, to, len, max_len;
- 	loff_t i_size = i_size_read(&vnode->vfs_inode);
--	bool new_content = test_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags);
-+	bool new_content = test_bit(NETFS_ICTX_NEW_CONTENT, &vnode->netfs_ctx.flags);
- 	long count = wbc->nr_to_write;
- 	int ret;
- 
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index a1e2813731d1..a8a41254e691 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -305,7 +305,7 @@ static void ceph_readahead_cleanup(struct address_space *mapping, void *priv)
- 		ceph_put_cap_refs(ci, got);
+ static const struct vm_operations_struct afs_vm_ops = {
+@@ -378,6 +375,11 @@ static void afs_free_dirty_region(struct netfs_dirty_region *region)
+ 	key_put(region->netfs_priv);
  }
  
--static const struct netfs_read_request_ops ceph_netfs_read_ops = {
-+static const struct netfs_request_ops ceph_netfs_read_ops = {
- 	.init_rreq		= ceph_init_rreq,
- 	.is_cache_enabled	= ceph_is_cache_enabled,
- 	.begin_cache_operation	= ceph_begin_cache_operation,
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index b7f2c4459f33..4805d9fc8808 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -5,6 +5,10 @@
-  * Written by David Howells (dhowells@redhat.com)
-  */
- 
-+#include <linux/netfs.h>
-+#include <linux/fscache.h>
-+#include <trace/events/netfs.h>
-+
- #ifdef pr_fmt
- #undef pr_fmt
- #endif
-@@ -50,6 +54,13 @@ static inline void netfs_stat_d(atomic_t *stat)
- 	atomic_dec(stat);
- }
- 
-+static inline bool netfs_is_cache_enabled(struct inode *inode)
++static void afs_init_wreq(struct netfs_write_request *wreq)
 +{
-+	struct fscache_cookie *cookie = netfs_i_cookie(inode);
-+
-+	return fscache_cookie_enabled(cookie) && cookie->cache_priv;
++	//wreq->netfs_priv = key_get(afs_file_key(file));
 +}
 +
- #else
- #define netfs_stat(x) do {} while(0)
- #define netfs_stat_d(x) do {} while(0)
+ static void afs_update_i_size(struct file *file, loff_t new_i_size)
+ {
+ 	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
+@@ -400,6 +402,7 @@ const struct netfs_request_ops afs_req_ops = {
+ 	.init_dirty_region	= afs_init_dirty_region,
+ 	.free_dirty_region	= afs_free_dirty_region,
+ 	.update_i_size		= afs_update_i_size,
++	.init_wreq		= afs_init_wreq,
+ };
+ 
+ int afs_write_inode(struct inode *inode, struct writeback_control *wbc)
+@@ -408,115 +411,6 @@ int afs_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	return 0;
+ }
+ 
+-/*
+- * Adjust the dirty region of the page on truncation or full invalidation,
+- * getting rid of the markers altogether if the region is entirely invalidated.
+- */
+-static void afs_invalidate_dirty(struct page *page, unsigned int offset,
+-				 unsigned int length)
+-{
+-	struct afs_vnode *vnode = AFS_FS_I(page->mapping->host);
+-	unsigned long priv;
+-	unsigned int f, t, end = offset + length;
+-
+-	priv = page_private(page);
+-
+-	/* we clean up only if the entire page is being invalidated */
+-	if (offset == 0 && length == thp_size(page))
+-		goto full_invalidate;
+-
+-	 /* If the page was dirtied by page_mkwrite(), the PTE stays writable
+-	  * and we don't get another notification to tell us to expand it
+-	  * again.
+-	  */
+-	if (afs_is_page_dirty_mmapped(priv))
+-		return;
+-
+-	/* We may need to shorten the dirty region */
+-	f = afs_page_dirty_from(page, priv);
+-	t = afs_page_dirty_to(page, priv);
+-
+-	if (t <= offset || f >= end)
+-		return; /* Doesn't overlap */
+-
+-	if (f < offset && t > end)
+-		return; /* Splits the dirty region - just absorb it */
+-
+-	if (f >= offset && t <= end)
+-		goto undirty;
+-
+-	if (f < offset)
+-		t = offset;
+-	else
+-		f = end;
+-	if (f == t)
+-		goto undirty;
+-
+-	priv = afs_page_dirty(page, f, t);
+-	set_page_private(page, priv);
+-	trace_afs_page_dirty(vnode, tracepoint_string("trunc"), page);
+-	return;
+-
+-undirty:
+-	trace_afs_page_dirty(vnode, tracepoint_string("undirty"), page);
+-	clear_page_dirty_for_io(page);
+-full_invalidate:
+-	trace_afs_page_dirty(vnode, tracepoint_string("inval"), page);
+-	detach_page_private(page);
+-}
+-
+-/*
+- * invalidate part or all of a page
+- * - release a page and clean up its private data if offset is 0 (indicating
+- *   the entire page)
+- */
+-static void afs_invalidatepage(struct page *page, unsigned int offset,
+-			       unsigned int length)
+-{
+-	_enter("{%lu},%u,%u", page->index, offset, length);
+-
+-	BUG_ON(!PageLocked(page));
+-
+-	if (PagePrivate(page))
+-		afs_invalidate_dirty(page, offset, length);
+-
+-	wait_on_page_fscache(page);
+-	_leave("");
+-}
+-
+-/*
+- * release a page and clean up its private state if it's not busy
+- * - return true if the page can now be released, false if not
+- */
+-static int afs_releasepage(struct page *page, gfp_t gfp_flags)
+-{
+-	struct afs_vnode *vnode = AFS_FS_I(page->mapping->host);
+-
+-	_enter("{{%llx:%llu}[%lu],%lx},%x",
+-	       vnode->fid.vid, vnode->fid.vnode, page->index, page->flags,
+-	       gfp_flags);
+-
+-	/* deny if page is being written to the cache and the caller hasn't
+-	 * elected to wait */
+-#ifdef CONFIG_AFS_FSCACHE
+-	if (PageFsCache(page)) {
+-		if (!(gfp_flags & __GFP_DIRECT_RECLAIM) || !(gfp_flags & __GFP_FS))
+-			return false;
+-		wait_on_page_fscache(page);
+-		fscache_note_page_release(afs_vnode_cache(vnode));
+-	}
+-#endif
+-
+-	if (PagePrivate(page)) {
+-		trace_afs_page_dirty(vnode, tracepoint_string("rel"), page);
+-		detach_page_private(page);
+-	}
+-
+-	/* indicate that the page can be released */
+-	_leave(" = T");
+-	return 1;
+-}
+-
+ /*
+  * Handle setting up a memory mapping on an AFS file.
+  */
+diff --git a/fs/netfs/Makefile b/fs/netfs/Makefile
+index 3e11453ad2c5..a201fd7b22cf 100644
+--- a/fs/netfs/Makefile
++++ b/fs/netfs/Makefile
+@@ -3,6 +3,7 @@
+ netfs-y := \
+ 	objects.o \
+ 	read_helper.o \
++	write_back.o \
+ 	write_helper.o
+ # dio_helper.o
+ 
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 77ceab694348..fe85581d8ac0 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -8,6 +8,7 @@
+ #include <linux/netfs.h>
+ #include <linux/fscache.h>
+ #include <trace/events/netfs.h>
++#include "xa_iterator.h"
+ 
+ #ifdef pr_fmt
+ #undef pr_fmt
+@@ -34,6 +35,19 @@ void netfs_free_dirty_region(struct netfs_i_context *ctx, struct netfs_dirty_reg
+ void netfs_put_dirty_region(struct netfs_i_context *ctx,
+ 			    struct netfs_dirty_region *region,
+ 			    enum netfs_region_trace what);
++struct netfs_write_request *netfs_alloc_write_request(struct address_space *mapping,
++						      bool is_dio);
++void netfs_get_write_request(struct netfs_write_request *wreq,
++			     enum netfs_wreq_trace what);
++void netfs_free_write_request(struct work_struct *work);
++void netfs_put_write_request(struct netfs_write_request *wreq,
++			     bool was_async, enum netfs_wreq_trace what);
++
++static inline void netfs_see_write_request(struct netfs_write_request *wreq,
++					   enum netfs_wreq_trace what)
++{
++	trace_netfs_ref_wreq(wreq->debug_id, refcount_read(&wreq->usage), what);
++}
+ 
+ /*
+  * read_helper.c
+@@ -46,6 +60,7 @@ int netfs_prefetch_for_write(struct file *file, struct page *page, loff_t pos, s
+ /*
+  * write_helper.c
+  */
++void netfs_writeback_worker(struct work_struct *work);
+ void netfs_flush_region(struct netfs_i_context *ctx,
+ 			struct netfs_dirty_region *region,
+ 			enum netfs_dirty_trace why);
+@@ -74,6 +89,7 @@ extern atomic_t netfs_n_rh_write_failed;
+ extern atomic_t netfs_n_rh_write_zskip;
+ extern atomic_t netfs_n_wh_region;
+ extern atomic_t netfs_n_wh_flush_group;
++extern atomic_t netfs_n_wh_wreq;
+ 
+ 
+ static inline void netfs_stat(atomic_t *stat)
+diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
+index ba1e052aa352..6e9b2a00076d 100644
+--- a/fs/netfs/objects.c
++++ b/fs/netfs/objects.c
+@@ -111,3 +111,81 @@ void netfs_put_dirty_region(struct netfs_i_context *ctx,
+ 		netfs_free_dirty_region(ctx, region);
+ 	}
+ }
++
++struct netfs_write_request *netfs_alloc_write_request(struct address_space *mapping,
++						      bool is_dio)
++{
++	static atomic_t debug_ids;
++	struct inode *inode = mapping->host;
++	struct netfs_i_context *ctx = netfs_i_context(inode);
++	struct netfs_write_request *wreq;
++
++	wreq = kzalloc(sizeof(struct netfs_write_request), GFP_KERNEL);
++	if (wreq) {
++		wreq->mapping	= mapping;
++		wreq->inode	= inode;
++		wreq->netfs_ops	= ctx->ops;
++		wreq->debug_id	= atomic_inc_return(&debug_ids);
++		xa_init(&wreq->buffer);
++		INIT_WORK(&wreq->work, netfs_writeback_worker);
++		refcount_set(&wreq->usage, 1);
++		ctx->ops->init_wreq(wreq);
++		netfs_stat(&netfs_n_wh_wreq);
++		trace_netfs_ref_wreq(wreq->debug_id, 1, netfs_wreq_trace_new);
++	}
++
++	return wreq;
++}
++
++void netfs_get_write_request(struct netfs_write_request *wreq,
++			     enum netfs_wreq_trace what)
++{
++	int ref;
++
++	__refcount_inc(&wreq->usage, &ref);
++	trace_netfs_ref_wreq(wreq->debug_id, ref + 1, what);
++}
++
++void netfs_free_write_request(struct work_struct *work)
++{
++	struct netfs_write_request *wreq =
++		container_of(work, struct netfs_write_request, work);
++	struct netfs_i_context *ctx = netfs_i_context(wreq->inode);
++	struct page *page;
++	pgoff_t index;
++
++	if (wreq->netfs_priv)
++		wreq->netfs_ops->cleanup(wreq->mapping, wreq->netfs_priv);
++	trace_netfs_ref_wreq(wreq->debug_id, 0, netfs_wreq_trace_free);
++	if (wreq->cache_resources.ops)
++		wreq->cache_resources.ops->end_operation(&wreq->cache_resources);
++	if (wreq->region)
++		netfs_put_dirty_region(ctx, wreq->region,
++				       netfs_region_trace_put_wreq);
++	xa_for_each(&wreq->buffer, index, page) {
++		__free_page(page);
++	}
++	xa_destroy(&wreq->buffer);
++	kfree(wreq);
++	netfs_stat_d(&netfs_n_wh_wreq);
++}
++
++void netfs_put_write_request(struct netfs_write_request *wreq,
++			     bool was_async, enum netfs_wreq_trace what)
++{
++	unsigned int debug_id = wreq->debug_id;
++	bool dead;
++	int ref;
++
++	dead = __refcount_dec_and_test(&wreq->usage, &ref);
++	trace_netfs_ref_wreq(debug_id, ref - 1, what);
++	if (dead) {
++		if (was_async) {
++			wreq->work.func = netfs_free_write_request;
++			if (!queue_work(system_unbound_wq, &wreq->work))
++				BUG();
++		} else {
++			netfs_free_write_request(&wreq->work);
++		}
++	}
++}
 diff --git a/fs/netfs/read_helper.c b/fs/netfs/read_helper.c
-index b03bc5b0da5a..aa98ecf6df6b 100644
+index bfcdbbd32f4c..0b771f2f5449 100644
 --- a/fs/netfs/read_helper.c
 +++ b/fs/netfs/read_helper.c
-@@ -14,7 +14,6 @@
- #include <linux/uio.h>
- #include <linux/sched/mm.h>
- #include <linux/task_io_accounting_ops.h>
--#include <linux/netfs.h>
- #include "internal.h"
- #define CREATE_TRACE_POINTS
- #include <trace/events/netfs.h>
-@@ -38,26 +37,27 @@ static void netfs_put_subrequest(struct netfs_read_subrequest *subreq,
- 		__netfs_put_subrequest(subreq, was_async);
- }
- 
--static struct netfs_read_request *netfs_alloc_read_request(
--	const struct netfs_read_request_ops *ops, void *netfs_priv,
--	struct file *file)
-+static struct netfs_read_request *netfs_alloc_read_request(struct address_space *mapping,
-+							   struct file *file)
- {
- 	static atomic_t debug_ids;
-+	struct inode *inode = file ? file_inode(file) : mapping->host;
-+	struct netfs_i_context *ctx = netfs_i_context(inode);
- 	struct netfs_read_request *rreq;
- 
- 	rreq = kzalloc(sizeof(struct netfs_read_request), GFP_KERNEL);
- 	if (rreq) {
--		rreq->netfs_ops	= ops;
--		rreq->netfs_priv = netfs_priv;
--		rreq->inode	= file_inode(file);
--		rreq->i_size	= i_size_read(rreq->inode);
-+		rreq->mapping	= mapping;
-+		rreq->inode	= inode;
-+		rreq->netfs_ops	= ctx->ops;
-+		rreq->i_size	= i_size_read(inode);
- 		rreq->debug_id	= atomic_inc_return(&debug_ids);
- 		xa_init(&rreq->buffer);
- 		INIT_LIST_HEAD(&rreq->subrequests);
- 		INIT_WORK(&rreq->work, netfs_rreq_work);
- 		refcount_set(&rreq->usage, 1);
- 		__set_bit(NETFS_RREQ_IN_PROGRESS, &rreq->flags);
--		ops->init_rreq(rreq, file);
-+		ctx->ops->init_rreq(rreq, file);
- 		netfs_stat(&netfs_n_rh_rreq);
- 	}
- 
-@@ -971,8 +971,6 @@ static int netfs_rreq_set_up_buffer(struct netfs_read_request *rreq,
- /**
-  * netfs_readahead - Helper to manage a read request
-  * @ractl: The description of the readahead request
-- * @ops: The network filesystem's operations for the helper to use
-- * @netfs_priv: Private netfs data to be retained in the request
-  *
-  * Fulfil a readahead request by drawing data from the cache if possible, or
-  * the netfs if not.  Space beyond the EOF is zero-filled.  Multiple I/O
-@@ -980,34 +978,31 @@ static int netfs_rreq_set_up_buffer(struct netfs_read_request *rreq,
-  * readahead window can be expanded in either direction to a more convenient
-  * alighment for RPC efficiency or to make storage in the cache feasible.
-  *
-- * The calling netfs must provide a table of operations, only one of which,
-- * issue_op, is mandatory.  It may also be passed a private token, which will
-- * be retained in rreq->netfs_priv and will be cleaned up by ops->cleanup().
-+ * The calling netfs must initialise a netfs context contiguous to the vfs
-+ * inode before calling this.
-  *
-  * This is usable whether or not caching is enabled.
-  */
--void netfs_readahead(struct readahead_control *ractl,
--		     const struct netfs_read_request_ops *ops,
--		     void *netfs_priv)
-+void netfs_readahead(struct readahead_control *ractl)
- {
- 	struct netfs_read_request *rreq;
-+	struct netfs_i_context *ctx = netfs_i_context(ractl->mapping->host);
- 	unsigned int debug_index = 0;
- 	int ret;
- 
- 	_enter("%lx,%x", readahead_index(ractl), readahead_count(ractl));
- 
- 	if (readahead_count(ractl) == 0)
--		goto cleanup;
-+		return;
- 
--	rreq = netfs_alloc_read_request(ops, netfs_priv, ractl->file);
-+	rreq = netfs_alloc_read_request(ractl->mapping, ractl->file);
- 	if (!rreq)
--		goto cleanup;
--	rreq->mapping	= ractl->mapping;
-+		return;
- 	rreq->start	= readahead_pos(ractl);
- 	rreq->len	= readahead_length(ractl);
- 
--	if (ops->begin_cache_operation) {
--		ret = ops->begin_cache_operation(rreq);
-+	if (ctx->ops->begin_cache_operation) {
-+		ret = ctx->ops->begin_cache_operation(rreq);
- 		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
- 			goto cleanup_free;
- 	}
-@@ -1039,10 +1034,6 @@ void netfs_readahead(struct readahead_control *ractl,
- cleanup_free:
- 	netfs_put_read_request(rreq, false);
- 	return;
--cleanup:
--	if (netfs_priv)
--		ops->cleanup(ractl->mapping, netfs_priv);
--	return;
- }
- EXPORT_SYMBOL(netfs_readahead);
- 
-@@ -1050,43 +1041,34 @@ EXPORT_SYMBOL(netfs_readahead);
-  * netfs_readpage - Helper to manage a readpage request
-  * @file: The file to read from
-  * @page: The page to read
-- * @ops: The network filesystem's operations for the helper to use
-- * @netfs_priv: Private netfs data to be retained in the request
-  *
-  * Fulfil a readpage request by drawing data from the cache if possible, or the
-  * netfs if not.  Space beyond the EOF is zero-filled.  Multiple I/O requests
-  * from different sources will get munged together.
-  *
-- * The calling netfs must provide a table of operations, only one of which,
-- * issue_op, is mandatory.  It may also be passed a private token, which will
-- * be retained in rreq->netfs_priv and will be cleaned up by ops->cleanup().
-+ * The calling netfs must initialise a netfs context contiguous to the vfs
-+ * inode before calling this.
-  *
-  * This is usable whether or not caching is enabled.
-  */
--int netfs_readpage(struct file *file,
--		   struct page *page,
--		   const struct netfs_read_request_ops *ops,
--		   void *netfs_priv)
-+int netfs_readpage(struct file *file, struct page *page)
- {
-+	struct address_space *mapping = page_file_mapping(page);
- 	struct netfs_read_request *rreq;
-+	struct netfs_i_context *ctx = netfs_i_context(mapping->host);
- 	unsigned int debug_index = 0;
- 	int ret;
- 
- 	_enter("%lx", page_index(page));
- 
--	rreq = netfs_alloc_read_request(ops, netfs_priv, file);
--	if (!rreq) {
--		if (netfs_priv)
--			ops->cleanup(netfs_priv, page_file_mapping(page));
--		unlock_page(page);
--		return -ENOMEM;
--	}
--	rreq->mapping	= page_file_mapping(page);
-+	rreq = netfs_alloc_read_request(mapping, file);
-+	if (!rreq)
-+		goto nomem;
- 	rreq->start	= page_file_offset(page);
- 	rreq->len	= thp_size(page);
- 
--	if (ops->begin_cache_operation) {
--		ret = ops->begin_cache_operation(rreq);
-+	if (ctx->ops->begin_cache_operation) {
-+		ret = ctx->ops->begin_cache_operation(rreq);
- 		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS) {
- 			unlock_page(page);
- 			goto out;
-@@ -1128,6 +1110,9 @@ int netfs_readpage(struct file *file,
- out:
- 	netfs_put_read_request(rreq, false);
- 	return ret;
-+nomem:
-+	unlock_page(page);
-+	return -ENOMEM;
- }
- EXPORT_SYMBOL(netfs_readpage);
- 
-@@ -1136,6 +1121,7 @@ EXPORT_SYMBOL(netfs_readpage);
-  * @page: page being prepared
-  * @pos: starting position for the write
-  * @len: length of write
-+ * @always_fill: T if the page should always be completely filled/cleared
-  *
-  * In some cases, write_begin doesn't need to read at all:
-  * - full page write
-@@ -1145,14 +1131,24 @@ EXPORT_SYMBOL(netfs_readpage);
-  * If any of these criteria are met, then zero out the unwritten parts
-  * of the page and return true. Otherwise, return false.
-  */
--static bool netfs_skip_page_read(struct page *page, loff_t pos, size_t len)
-+static bool netfs_skip_page_read(struct page *page, loff_t pos, size_t len,
-+				 bool always_fill)
- {
- 	struct inode *inode = page->mapping->host;
- 	loff_t i_size = i_size_read(inode);
- 	size_t offset = offset_in_thp(page, pos);
-+	size_t plen = thp_size(page);
-+
-+	if (unlikely(always_fill)) {
-+		if (pos - offset + len <= i_size)
-+			return false; /* Page entirely before EOF */
-+		zero_user_segment(page, 0, plen);
-+		SetPageUptodate(page);
-+		return true;
-+	}
- 
- 	/* Full page write */
--	if (offset == 0 && len >= thp_size(page))
-+	if (offset == 0 && len >= plen)
- 		return true;
- 
- 	/* pos beyond last page in the file */
-@@ -1165,7 +1161,7 @@ static bool netfs_skip_page_read(struct page *page, loff_t pos, size_t len)
- 
- 	return false;
- zero_out:
--	zero_user_segments(page, 0, offset, offset + len, thp_size(page));
-+	zero_user_segments(page, 0, offset, offset + len, plen);
- 	return true;
- }
- 
-@@ -1178,8 +1174,6 @@ static bool netfs_skip_page_read(struct page *page, loff_t pos, size_t len)
-  * @flags: AOP_* flags
-  * @_page: Where to put the resultant page
-  * @_fsdata: Place for the netfs to store a cookie
-- * @ops: The network filesystem's operations for the helper to use
-- * @netfs_priv: Private netfs data to be retained in the request
-  *
-  * Pre-read data for a write-begin request by drawing data from the cache if
-  * possible, or the netfs if not.  Space beyond the EOF is zero-filled.
-@@ -1198,17 +1192,19 @@ static bool netfs_skip_page_read(struct page *page, loff_t pos, size_t len)
-  * should go ahead; unlock the page and return -EAGAIN to cause the page to be
-  * regot; or return an error.
-  *
-+ * The calling netfs must initialise a netfs context contiguous to the vfs
-+ * inode before calling this.
-+ *
-  * This is usable whether or not caching is enabled.
-  */
- int netfs_write_begin(struct file *file, struct address_space *mapping,
- 		      loff_t pos, unsigned int len, unsigned int flags,
--		      struct page **_page, void **_fsdata,
--		      const struct netfs_read_request_ops *ops,
--		      void *netfs_priv)
-+		      struct page **_page, void **_fsdata)
- {
- 	struct netfs_read_request *rreq;
- 	struct page *page, *xpage;
- 	struct inode *inode = file_inode(file);
-+	struct netfs_i_context *ctx = netfs_i_context(inode);
- 	unsigned int debug_index = 0;
- 	pgoff_t index = pos >> PAGE_SHIFT;
- 	int ret;
-@@ -1220,9 +1216,9 @@ int netfs_write_begin(struct file *file, struct address_space *mapping,
- 	if (!page)
- 		return -ENOMEM;
- 
--	if (ops->check_write_begin) {
-+	if (ctx->ops->check_write_begin) {
- 		/* Allow the netfs (eg. ceph) to flush conflicts. */
--		ret = ops->check_write_begin(file, pos, len, page, _fsdata);
-+		ret = ctx->ops->check_write_begin(file, pos, len, page, _fsdata);
- 		if (ret < 0) {
- 			trace_netfs_failure(NULL, NULL, ret, netfs_fail_check_write_begin);
- 			if (ret == -EAGAIN)
-@@ -1238,25 +1234,23 @@ int netfs_write_begin(struct file *file, struct address_space *mapping,
- 	 * within the cache granule containing the EOF, in which case we need
- 	 * to preload the granule.
- 	 */
--	if (!ops->is_cache_enabled(inode) &&
--	    netfs_skip_page_read(page, pos, len)) {
-+	if (!netfs_is_cache_enabled(inode) &&
-+	    netfs_skip_page_read(page, pos, len, false)) {
- 		netfs_stat(&netfs_n_rh_write_zskip);
- 		goto have_page_no_wait;
- 	}
- 
- 	ret = -ENOMEM;
--	rreq = netfs_alloc_read_request(ops, netfs_priv, file);
-+	rreq = netfs_alloc_read_request(mapping, file);
- 	if (!rreq)
- 		goto error;
--	rreq->mapping		= page->mapping;
- 	rreq->start		= page_offset(page);
- 	rreq->len		= thp_size(page);
- 	rreq->no_unlock_page	= page->index;
- 	__set_bit(NETFS_RREQ_NO_UNLOCK_PAGE, &rreq->flags);
--	netfs_priv = NULL;
- 
--	if (ops->begin_cache_operation) {
--		ret = ops->begin_cache_operation(rreq);
-+	if (ctx->ops->begin_cache_operation) {
-+		ret = ctx->ops->begin_cache_operation(rreq);
- 		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
- 			goto error_put;
- 	}
-@@ -1314,8 +1308,6 @@ int netfs_write_begin(struct file *file, struct address_space *mapping,
- 	if (ret < 0)
- 		goto error;
- have_page_no_wait:
--	if (netfs_priv)
--		ops->cleanup(netfs_priv, mapping);
- 	*_page = page;
- 	_leave(" = 0");
- 	return 0;
-@@ -1325,8 +1317,6 @@ int netfs_write_begin(struct file *file, struct address_space *mapping,
- error:
- 	unlock_page(page);
- 	put_page(page);
--	if (netfs_priv)
--		ops->cleanup(netfs_priv, mapping);
+@@ -1415,3 +1415,37 @@ int netfs_prefetch_for_write(struct file *file, struct page *page,
  	_leave(" = %d", ret);
  	return ret;
  }
++
++/*
++ * Invalidate part or all of a page
++ * - release a page and clean up its private data if offset is 0 (indicating
++ *   the entire page)
++ */
++void netfs_invalidatepage(struct page *page, unsigned int offset, unsigned int length)
++{
++	_enter("{%lu},%u,%u", page->index, offset, length);
++
++	wait_on_page_fscache(page);
++}
++EXPORT_SYMBOL(netfs_invalidatepage);
++
++/*
++ * Release a page and clean up its private state if it's not busy
++ * - return true if the page can now be released, false if not
++ */
++int netfs_releasepage(struct page *page, gfp_t gfp_flags)
++{
++	struct netfs_i_context *ctx = netfs_i_context(page->mapping->host);
++
++	kenter("");
++
++	if (PageFsCache(page)) {
++		if (!(gfp_flags & __GFP_DIRECT_RECLAIM) || !(gfp_flags & __GFP_FS))
++			return false;
++		wait_on_page_fscache(page);
++		fscache_note_page_release(ctx->cache);
++	}
++
++	return true;
++}
++EXPORT_SYMBOL(netfs_releasepage);
 diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
-index 9ae538c85378..5510a7a14a40 100644
+index 7c079ca47b5b..ac2510f8cab0 100644
 --- a/fs/netfs/stats.c
 +++ b/fs/netfs/stats.c
-@@ -7,7 +7,6 @@
+@@ -29,6 +29,7 @@ atomic_t netfs_n_rh_write_failed;
+ atomic_t netfs_n_rh_write_zskip;
+ atomic_t netfs_n_wh_region;
+ atomic_t netfs_n_wh_flush_group;
++atomic_t netfs_n_wh_wreq;
  
- #include <linux/export.h>
- #include <linux/seq_file.h>
--#include <linux/netfs.h>
- #include "internal.h"
- 
- atomic_t netfs_n_rh_readahead;
+ void netfs_stats_show(struct seq_file *m)
+ {
+@@ -56,8 +57,9 @@ void netfs_stats_show(struct seq_file *m)
+ 		   atomic_read(&netfs_n_rh_write),
+ 		   atomic_read(&netfs_n_rh_write_done),
+ 		   atomic_read(&netfs_n_rh_write_failed));
+-	seq_printf(m, "WrHelp : R=%u F=%u\n",
++	seq_printf(m, "WrHelp : R=%u F=%u wr=%u\n",
+ 		   atomic_read(&netfs_n_wh_region),
+-		   atomic_read(&netfs_n_wh_flush_group));
++		   atomic_read(&netfs_n_wh_flush_group),
++		   atomic_read(&netfs_n_wh_wreq));
+ }
+ EXPORT_SYMBOL(netfs_stats_show);
+diff --git a/fs/netfs/write_back.c b/fs/netfs/write_back.c
+new file mode 100644
+index 000000000000..9fcb2ac50ebb
+--- /dev/null
++++ b/fs/netfs/write_back.c
+@@ -0,0 +1,306 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Network filesystem high-level write support.
++ *
++ * Copyright (C) 2021 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ */
++
++#include <linux/fs.h>
++#include <linux/mm.h>
++#include <linux/pagemap.h>
++#include <linux/slab.h>
++#include "internal.h"
++
++/*
++ * Process a write request.
++ */
++static void netfs_writeback(struct netfs_write_request *wreq)
++{
++	kdebug("--- WRITE ---");
++}
++
++void netfs_writeback_worker(struct work_struct *work)
++{
++	struct netfs_write_request *wreq =
++		container_of(work, struct netfs_write_request, work);
++
++	netfs_see_write_request(wreq, netfs_wreq_trace_see_work);
++	netfs_writeback(wreq);
++	netfs_put_write_request(wreq, false, netfs_wreq_trace_put_work);
++}
++
++/*
++ * Flush some of the dirty queue.
++ */
++static int netfs_flush_dirty(struct address_space *mapping,
++			     struct writeback_control *wbc,
++			     struct netfs_range *range,
++			     loff_t *next)
++{
++	struct netfs_dirty_region *p, *q;
++	struct netfs_i_context *ctx = netfs_i_context(mapping->host);
++
++	kenter("%llx-%llx", range->start, range->end);
++
++	spin_lock(&ctx->lock);
++
++	/* Scan forwards to find dirty regions containing the suggested start
++	 * point.
++	 */
++	list_for_each_entry_safe(p, q, &ctx->dirty_regions, dirty_link) {
++		_debug("D=%x %llx-%llx", p->debug_id, p->dirty.start, p->dirty.end);
++		if (p->dirty.end <= range->start)
++			continue;
++		if (p->dirty.start >= range->end)
++			break;
++		if (p->state != NETFS_REGION_IS_DIRTY)
++			continue;
++		if (test_bit(NETFS_REGION_FLUSH_Q, &p->flags))
++			continue;
++
++		netfs_flush_region(ctx, p, netfs_dirty_trace_flush_writepages);
++	}
++
++	spin_unlock(&ctx->lock);
++	return 0;
++}
++
++static int netfs_unlock_pages_iterator(struct page *page)
++{
++	unlock_page(page);
++	put_page(page);
++	return 0;
++}
++
++/*
++ * Unlock all the pages in a range.
++ */
++static void netfs_unlock_pages(struct address_space *mapping,
++			       pgoff_t start, pgoff_t end)
++{
++	netfs_iterate_pages(mapping, start, end, netfs_unlock_pages_iterator);
++}
++
++static int netfs_lock_pages_iterator(struct xa_state *xas,
++				     struct page *page,
++				     struct netfs_write_request *wreq,
++				     struct writeback_control *wbc)
++{
++	int ret;
++
++	/* At this point we hold neither the i_pages lock nor the
++	 * page lock: the page may be truncated or invalidated
++	 * (changing page->mapping to NULL), or even swizzled
++	 * back from swapper_space to tmpfs file mapping
++	 */
++	if (wbc->sync_mode != WB_SYNC_NONE) {
++		xas_pause(xas);
++		rcu_read_unlock();
++		ret = lock_page_killable(page);
++		rcu_read_lock();
++	} else {
++		if (!trylock_page(page))
++			ret = -EBUSY;
++	}
++
++	return ret;
++}
++
++/*
++ * Lock all the pages in a range and add them to the write request.
++ */
++static int netfs_lock_pages(struct address_space *mapping,
++			    struct writeback_control *wbc,
++			    struct netfs_write_request *wreq)
++{
++	pgoff_t last = wreq->last;
++	int ret;
++
++	kenter("%lx-%lx", wreq->first, wreq->last);
++	ret = netfs_iterate_get_pages(mapping, wreq->first, wreq->last,
++				      netfs_lock_pages_iterator, wreq, wbc);
++	if (ret < 0)
++		goto failed;
++
++	if (wreq->last < last) {
++		kdebug("Some pages missing %lx < %lx", wreq->last, last);
++		ret = -EIO;
++		goto failed;
++	}
++
++	return 0;
++
++failed:
++	netfs_unlock_pages(mapping, wreq->first, wreq->last);
++	return ret;
++}
++
++static int netfs_set_page_writeback(struct page *page)
++{
++	/* Now we need to clear the dirty flags on any page that's not shared
++	 * with any other dirty region.
++	 */
++	if (!clear_page_dirty_for_io(page))
++		BUG();
++
++	/* We set writeback unconditionally because a page may participate in
++	 * more than one simultaneous writeback.
++	 */
++	set_page_writeback(page);
++	return 0;
++}
++
++/*
++ * Extract a region to write back.
++ */
++static struct netfs_dirty_region *netfs_extract_dirty_region(
++	struct netfs_i_context *ctx,
++	struct netfs_write_request *wreq)
++{
++	struct netfs_dirty_region *region = NULL, *spare;
++
++	spare = netfs_alloc_dirty_region();
++	if (!spare)
++		return NULL;
++
++	spin_lock(&ctx->lock);
++
++	if (list_empty(&ctx->flush_queue))
++		goto out;
++
++	region = list_first_entry(&ctx->flush_queue,
++				  struct netfs_dirty_region, flush_link);
++
++	wreq->region = netfs_get_dirty_region(ctx, region, netfs_region_trace_get_wreq);
++	wreq->start  = region->dirty.start;
++	wreq->len    = region->dirty.end - region->dirty.start;
++	wreq->first  =  region->dirty.start    / PAGE_SIZE;
++	wreq->last   = (region->dirty.end - 1) / PAGE_SIZE;
++
++	/* TODO: Split the region if it's larger than a certain size.  This is
++	 * tricky as we need to observe page, crypto and compression block
++	 * boundaries.  The crypto/comp bounds are defined by ctx->bsize, but
++	 * we don't know where the page boundaries are.
++	 *
++	 * All of these boundaries, however, must be pow-of-2 sized and
++	 * pow-of-2 aligned, so they never partially overlap
++	 */
++
++	smp_store_release(&region->state, NETFS_REGION_IS_FLUSHING);
++	trace_netfs_dirty(ctx, region, NULL, netfs_dirty_trace_flushing);
++	wake_up_var(&region->state);
++	list_del_init(&region->flush_link);
++
++out:
++	spin_unlock(&ctx->lock);
++	netfs_free_dirty_region(ctx, spare);
++	kleave(" = D=%x", region ? region->debug_id : 0);
++	return region;
++}
++
++/*
++ * Schedule a write for the first region on the flush queue.
++ */
++static int netfs_begin_write(struct address_space *mapping,
++			     struct writeback_control *wbc)
++{
++	struct netfs_write_request *wreq;
++	struct netfs_dirty_region *region;
++	struct netfs_i_context *ctx = netfs_i_context(mapping->host);
++	int ret;
++
++	wreq = netfs_alloc_write_request(mapping, false);
++	if (!wreq)
++		return -ENOMEM;
++
++	ret = 0;
++	region = netfs_extract_dirty_region(ctx, wreq);
++	if (!region)
++		goto error;
++
++	ret = netfs_lock_pages(mapping, wbc, wreq);
++	if (ret < 0)
++		goto error;
++
++	trace_netfs_wreq(wreq);
++
++	netfs_iterate_pages(mapping, wreq->first, wreq->last,
++			    netfs_set_page_writeback);
++	netfs_unlock_pages(mapping, wreq->first, wreq->last);
++	iov_iter_xarray(&wreq->source, WRITE, &wreq->mapping->i_pages,
++			wreq->start, wreq->len);
++
++	if (!queue_work(system_unbound_wq, &wreq->work))
++		BUG();
++
++	kleave(" = %lu", wreq->last - wreq->first + 1);
++	return wreq->last - wreq->first + 1;
++
++error:
++	netfs_put_write_request(wreq, wbc->sync_mode != WB_SYNC_NONE,
++				netfs_wreq_trace_put_discard);
++	kleave(" = %d", ret);
++	return ret;
++}
++
++/**
++ * netfs_writepages - Initiate writeback to the server and cache
++ * @mapping: The pagecache to write from
++ * @wbc: Hints from the VM as to what to write
++ *
++ * This is a helper intended to be called directly from a network filesystem's
++ * address space operations table to perform writeback to the server and the
++ * cache.
++ *
++ * We have to be careful as we can end up racing with setattr() truncating the
++ * pagecache since the caller doesn't take a lock here to prevent it.
++ */
++int netfs_writepages(struct address_space *mapping,
++		     struct writeback_control *wbc)
++{
++	struct netfs_range range;
++	loff_t next;
++	int ret;
++
++	kenter("%lx,%llx-%llx,%u,%c%c%c%c,%u,%u",
++	       wbc->nr_to_write,
++	       wbc->range_start, wbc->range_end,
++	       wbc->sync_mode,
++	       wbc->for_kupdate		? 'k' : '-',
++	       wbc->for_background	? 'b' : '-',
++	       wbc->for_reclaim		? 'r' : '-',
++	       wbc->for_sync		? 's' : '-',
++	       wbc->tagged_writepages,
++	       wbc->range_cyclic);
++
++	//dump_stack();
++
++	if (wbc->range_cyclic) {
++		range.start = mapping->writeback_index * PAGE_SIZE;
++		range.end   = ULLONG_MAX;
++		ret = netfs_flush_dirty(mapping, wbc, &range, &next);
++		if (range.start > 0 && wbc->nr_to_write > 0 && ret == 0) {
++			range.start = 0;
++			range.end   = mapping->writeback_index * PAGE_SIZE;
++			ret = netfs_flush_dirty(mapping, wbc, &range, &next);
++		}
++		mapping->writeback_index = next / PAGE_SIZE;
++	} else if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX) {
++		range.start = 0;
++		range.end   = ULLONG_MAX;
++		ret = netfs_flush_dirty(mapping, wbc, &range, &next);
++		if (wbc->nr_to_write > 0 && ret == 0)
++			mapping->writeback_index = next;
++	} else {
++		range.start = wbc->range_start;
++		range.end   = wbc->range_end + 1;
++		ret = netfs_flush_dirty(mapping, wbc, &range, &next);
++	}
++
++	if (ret == 0)
++		ret = netfs_begin_write(mapping, wbc);
++
++	_leave(" = %d", ret);
++	return ret;
++}
++EXPORT_SYMBOL(netfs_writepages);
+diff --git a/fs/netfs/xa_iterator.h b/fs/netfs/xa_iterator.h
+new file mode 100644
+index 000000000000..3f37827f0f99
+--- /dev/null
++++ b/fs/netfs/xa_iterator.h
+@@ -0,0 +1,85 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/* xarray iterator macros for netfslib.
++ *
++ * Copyright (C) 2021 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ */
++
++/*
++ * Iterate over a range of pages.  xarray locks are not held over the iterator
++ * function, so it can sleep if necessary.  The start and end positions are
++ * updated to indicate the span of pages actually processed.
++ */
++#define netfs_iterate_pages(MAPPING, START, END, ITERATOR, ...)		\
++	({								\
++		unsigned long __it_index;				\
++		struct page *page;					\
++		pgoff_t __it_start = (START);				\
++		pgoff_t __it_end = (END);				\
++		pgoff_t __it_tmp;					\
++		int ret = 0;						\
++									\
++		(END) = __it_start;					\
++		xa_for_each_range(&(MAPPING)->i_pages, __it_index, page, \
++				  __it_start, __it_end) {		\
++			if (xa_is_value(page)) {			\
++				ret = -EIO; /* Not a real page. */	\
++				break;					\
++			}						\
++			if (__it_index < (START))			\
++				(START) = __it_index;			\
++			ret = ITERATOR(page, ##__VA_ARGS__);		\
++			if (ret < 0)					\
++				break;					\
++			__it_tmp = __it_index + thp_nr_pages(page) - 1;	\
++			if (__it_tmp > (END))				\
++				(END) = __it_tmp;			\
++		}							\
++		ret;							\
++	})
++
++/*
++ * Iterate over a set of pages, getting each one before calling the iteration
++ * function.  The iteration function may drop the RCU read lock, but should
++ * call xas_pause() before it does so.  The start and end positions are updated
++ * to indicate the span of pages actually processed.
++ */
++#define netfs_iterate_get_pages(MAPPING, START, END, ITERATOR, ...)	\
++	({								\
++		unsigned long __it_index;				\
++		struct page *page;					\
++		pgoff_t __it_start = (START);				\
++		pgoff_t __it_end = (END);				\
++		pgoff_t __it_tmp;					\
++		int ret = 0;						\
++									\
++		XA_STATE(xas, &(MAPPING)->i_pages, __it_start);		\
++		(END) = __it_start;					\
++		rcu_read_lock();					\
++		for (page = xas_load(&xas); page; page = xas_next_entry(&xas, __it_end)) { \
++			if (xas_retry(&xas, page))			\
++				continue;				\
++			if (xa_is_value(page))				\
++				break;					\
++			if (!page_cache_get_speculative(page)) {	\
++				xas_reset(&xas);			\
++				continue;				\
++			}						\
++			if (unlikely(page != xas_reload(&xas))) {	\
++				put_page(page);				\
++				xas_reset(&xas);			\
++				continue;				\
++			}						\
++			__it_index = page_index(page);			\
++			if (__it_index < (START))			\
++				(START) = __it_index;			\
++			ret = ITERATOR(&xas, page, ##__VA_ARGS__);	\
++			if (ret < 0)					\
++				break;					\
++			__it_tmp = __it_index + thp_nr_pages(page) - 1; \
++			if (__it_tmp > (END))				\
++				(END) = __it_tmp;			\
++		}							\
++		rcu_read_unlock();					\
++		ret;							\
++	})
 diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index 815001fe7a76..35bcd916c3a0 100644
+index fc91711d3178..9f874e7ed45a 100644
 --- a/include/linux/netfs.h
 +++ b/include/linux/netfs.h
-@@ -157,14 +157,25 @@ struct netfs_read_request {
- #define NETFS_RREQ_DONT_UNLOCK_PAGES	3	/* Don't unlock the pages on completion */
- #define NETFS_RREQ_FAILED		4	/* The request failed */
- #define NETFS_RREQ_IN_PROGRESS		5	/* Unlocked when the request completes */
--	const struct netfs_read_request_ops *netfs_ops;
+@@ -242,6 +242,35 @@ struct netfs_dirty_region {
+ 	refcount_t		ref;
+ };
+ 
++/*
++ * Descriptor for a write request.  This is used to manage the preparation and
++ * storage of a sequence of dirty data - its compression/encryption and its
++ * writing to one or more servers and the cache.
++ *
++ * The prepared data is buffered here.
++ */
++struct netfs_write_request {
++	struct work_struct	work;
++	struct inode		*inode;		/* The file being accessed */
++	struct address_space	*mapping;	/* The mapping being accessed */
++	struct netfs_dirty_region *region;	/* The region we're writing back */
++	struct netfs_cache_resources cache_resources;
++	struct xarray		buffer;		/* Buffer for encrypted/compressed data */
++	struct iov_iter		source;		/* The iterator to be used */
++	struct list_head	write_link;	/* Link in i_context->write_requests */
++	void			*netfs_priv;	/* Private data for the netfs */
++	unsigned int		debug_id;
++	short			error;		/* 0 or error that occurred */
++	loff_t			i_size;		/* Size of the file */
++	loff_t			start;		/* Start position */
++	size_t			len;		/* Length of the request */
++	pgoff_t			first;		/* First page included */
++	pgoff_t			last;		/* Last page included */
++	refcount_t		usage;
++	unsigned long		flags;
 +	const struct netfs_request_ops *netfs_ops;
 +};
 +
-+/*
-+ * Per-inode description.  This must be directly after the inode struct.
-+ */
-+struct netfs_i_context {
-+	const struct netfs_request_ops *ops;
-+#ifdef CONFIG_FSCACHE
-+	struct fscache_cookie	*cache;
-+#endif
-+	unsigned long		flags;
-+#define NETFS_ICTX_NEW_CONTENT	0		/* Set if file has new content (create/trunc-0) */
+ enum netfs_write_compatibility {
+ 	NETFS_WRITES_COMPATIBLE,	/* Dirty regions can be directly merged */
+ 	NETFS_WRITES_SUPERSEDE,		/* Second write can supersede the first without first
+@@ -275,6 +304,9 @@ struct netfs_request_ops {
+ 		struct netfs_dirty_region *candidate);
+ 	bool (*check_compatible_write)(struct netfs_dirty_region *region, struct file *file);
+ 	void (*update_i_size)(struct file *file, loff_t i_size);
++
++	/* Write request handling */
++	void (*init_wreq)(struct netfs_write_request *wreq);
  };
  
  /*
-  * Operations the network filesystem can/must provide to the helpers.
-  */
--struct netfs_read_request_ops {
--	bool (*is_cache_enabled)(struct inode *inode);
-+struct netfs_request_ops {
- 	void (*init_rreq)(struct netfs_read_request *rreq, struct file *file);
- 	int (*begin_cache_operation)(struct netfs_read_request *rreq);
- 	void (*expand_readahead)(struct netfs_read_request *rreq);
-@@ -218,20 +229,49 @@ struct netfs_cache_ops {
- };
- 
- struct readahead_control;
--extern void netfs_readahead(struct readahead_control *,
--			    const struct netfs_read_request_ops *,
--			    void *);
--extern int netfs_readpage(struct file *,
--			  struct page *,
--			  const struct netfs_read_request_ops *,
--			  void *);
-+extern void netfs_readahead(struct readahead_control *);
-+extern int netfs_readpage(struct file *, struct page *);
- extern int netfs_write_begin(struct file *, struct address_space *,
+@@ -324,6 +356,9 @@ extern int netfs_write_begin(struct file *, struct address_space *,
  			     loff_t, unsigned int, unsigned int, struct page **,
--			     void **,
--			     const struct netfs_read_request_ops *,
--			     void *);
-+			     void **);
+ 			     void **);
+ extern ssize_t netfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from);
++extern int netfs_writepages(struct address_space *mapping, struct writeback_control *wbc);
++extern void netfs_invalidatepage(struct page *page, unsigned int offset, unsigned int length);
++extern int netfs_releasepage(struct page *page, gfp_t gfp_flags);
  
  extern void netfs_subreq_terminated(struct netfs_read_subrequest *, ssize_t, bool);
  extern void netfs_stats_show(struct seq_file *);
+diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
+index 808433e6ddd3..e70abb5033e6 100644
+--- a/include/trace/events/netfs.h
++++ b/include/trace/events/netfs.h
+@@ -63,6 +63,8 @@ enum netfs_dirty_trace {
+ 	netfs_dirty_trace_complete,
+ 	netfs_dirty_trace_flush_conflict,
+ 	netfs_dirty_trace_flush_dsync,
++	netfs_dirty_trace_flush_writepages,
++	netfs_dirty_trace_flushing,
+ 	netfs_dirty_trace_merged_back,
+ 	netfs_dirty_trace_merged_forw,
+ 	netfs_dirty_trace_merged_sub,
+@@ -82,11 +84,20 @@ enum netfs_region_trace {
+ 	netfs_region_trace_get_wreq,
+ 	netfs_region_trace_put_discard,
+ 	netfs_region_trace_put_merged,
++	netfs_region_trace_put_wreq,
+ 	netfs_region_trace_put_write_iter,
+ 	netfs_region_trace_free,
+ 	netfs_region_trace_new,
+ };
  
-+/**
-+ * netfs_i_context - Get the netfs inode context from the inode
-+ * @inode: The inode to query
-+ *
-+ * This function gets the netfs lib inode context from the network filesystem's
-+ * inode.  It expects it to follow on directly from the VFS inode struct.
-+ */
-+static inline struct netfs_i_context *netfs_i_context(struct inode *inode)
-+{
-+	return (struct netfs_i_context *)(inode + 1);
-+}
++enum netfs_wreq_trace {
++	netfs_wreq_trace_free,
++	netfs_wreq_trace_put_discard,
++	netfs_wreq_trace_put_work,
++	netfs_wreq_trace_see_work,
++	netfs_wreq_trace_new,
++};
 +
-+static inline void netfs_i_context_init(struct inode *inode,
-+					const struct netfs_request_ops *ops)
-+{
-+	struct netfs_i_context *ctx = netfs_i_context(inode);
+ #endif
+ 
+ #define netfs_read_traces					\
+@@ -149,6 +160,8 @@ enum netfs_region_trace {
+ 	EM(netfs_dirty_trace_complete,		"COMPLETE  ")	\
+ 	EM(netfs_dirty_trace_flush_conflict,	"FLSH CONFL")	\
+ 	EM(netfs_dirty_trace_flush_dsync,	"FLSH DSYNC")	\
++	EM(netfs_dirty_trace_flush_writepages,	"WRITEPAGES")	\
++	EM(netfs_dirty_trace_flushing,		"FLUSHING  ")	\
+ 	EM(netfs_dirty_trace_merged_back,	"MERGE BACK")	\
+ 	EM(netfs_dirty_trace_merged_forw,	"MERGE FORW")	\
+ 	EM(netfs_dirty_trace_merged_sub,	"SUBSUMED  ")	\
+@@ -167,10 +180,19 @@ enum netfs_region_trace {
+ 	EM(netfs_region_trace_get_wreq,		"GET WREQ   ")	\
+ 	EM(netfs_region_trace_put_discard,	"PUT DISCARD")	\
+ 	EM(netfs_region_trace_put_merged,	"PUT MERGED ")	\
++	EM(netfs_region_trace_put_wreq,		"PUT WREQ   ")	\
+ 	EM(netfs_region_trace_put_write_iter,	"PUT WRITER ")	\
+ 	EM(netfs_region_trace_free,		"FREE       ")	\
+ 	E_(netfs_region_trace_new,		"NEW        ")
+ 
++#define netfs_wreq_traces					\
++	EM(netfs_wreq_trace_free,		"FREE       ")	\
++	EM(netfs_wreq_trace_put_discard,	"PUT DISCARD")	\
++	EM(netfs_wreq_trace_put_work,		"PUT WORK   ")	\
++	EM(netfs_wreq_trace_see_work,		"SEE WORK   ")	\
++	E_(netfs_wreq_trace_new,		"NEW        ")
 +
-+	ctx->ops = ops;
-+}
 +
-+/**
-+ * netfs_i_cookie - Get the cache cookie from the inode
-+ * @inode: The inode to query
-+ *
-+ * Get the caching cookie (if enabled) from the network filesystem's inode.
-+ */
-+static inline struct fscache_cookie *netfs_i_cookie(struct inode *inode)
-+{
-+#ifdef CONFIG_FSCACHE
-+	struct netfs_i_context *ctx = netfs_i_context(inode);
-+	return ctx->cache;
-+#else
-+	return NULL;
-+#endif
-+}
+ /*
+  * Export enum symbols via userspace.
+  */
+@@ -187,6 +209,7 @@ netfs_failures;
+ netfs_region_types;
+ netfs_region_states;
+ netfs_dirty_traces;
++netfs_wreq_traces;
+ 
+ /*
+  * Now redefine the EM() and E_() macros to map the enums to the strings that
+@@ -435,6 +458,55 @@ TRACE_EVENT(netfs_dirty,
+ 		      )
+ 	    );
+ 
++TRACE_EVENT(netfs_wreq,
++	    TP_PROTO(struct netfs_write_request *wreq),
 +
- #endif /* _LINUX_NETFS_H */
++	    TP_ARGS(wreq),
++
++	    TP_STRUCT__entry(
++		    __field(unsigned int,		wreq		)
++		    __field(unsigned int,		cookie		)
++		    __field(loff_t,			start		)
++		    __field(size_t,			len		)
++			     ),
++
++	    TP_fast_assign(
++		    __entry->wreq	= wreq->debug_id;
++		    __entry->cookie	= wreq->cache_resources.debug_id;
++		    __entry->start	= wreq->start;
++		    __entry->len	= wreq->len;
++			   ),
++
++	    TP_printk("W=%08x c=%08x s=%llx %zx",
++		      __entry->wreq,
++		      __entry->cookie,
++		      __entry->start, __entry->len)
++	    );
++
++TRACE_EVENT(netfs_ref_wreq,
++	    TP_PROTO(unsigned int wreq_debug_id, int ref,
++		     enum netfs_wreq_trace what),
++
++	    TP_ARGS(wreq_debug_id, ref, what),
++
++	    TP_STRUCT__entry(
++		    __field(unsigned int,		wreq		)
++		    __field(int,			ref		)
++		    __field(enum netfs_wreq_trace,	what		)
++			     ),
++
++	    TP_fast_assign(
++		    __entry->wreq	= wreq_debug_id;
++		    __entry->ref	= ref;
++		    __entry->what	= what;
++			   ),
++
++	    TP_printk("W=%08x %s r=%u",
++		      __entry->wreq,
++		      __print_symbolic(__entry->what, netfs_wreq_traces),
++		      __entry->ref)
++	    );
++
+ #endif /* _TRACE_NETFS_H */
+ 
+ /* This part must be outside protection */
 
 
