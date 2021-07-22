@@ -2,114 +2,170 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E47FC63793
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jul 2021 16:16:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A51DC432BE
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jul 2021 20:02:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 157A86128A
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jul 2021 16:16:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0E84D60EB1
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jul 2021 20:02:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229561AbhGVPfZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 22 Jul 2021 11:35:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42002 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229476AbhGVPfY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2021 11:35:24 -0400
-Received: from mail-wm1-x32f.google.com (mail-wm1-x32f.google.com [IPv6:2a00:1450:4864:20::32f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF321C061757
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jul 2021 09:15:58 -0700 (PDT)
-Received: by mail-wm1-x32f.google.com with SMTP id p9so1569895wmq.5
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jul 2021 09:15:58 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=Obsm09FqhMZGle+78ROw0VtmFY/fWA9CVF1JdrgJm54=;
-        b=N1p4ROaOYz3eViri6j/bDnDtyYHNOD2Hg+fxoYmLj2DU6kXzQuKlB+Pn8ZjT0eZz5z
-         qnEb94o8mYBvW/kIyF+53EZU7yDwYpTom5ZI114Cn4vwcaeYTZnAGl7TAx1cfBnUrqfa
-         UX9D4oXR0Y487x1xgeJDMD+QLH/98vO/dbEnvSsPhazPufDpm4jVXbDsePLL0DA6yzYB
-         05URU2PNC0cLIbv5zKzWvHSqlslwh7n5w9E2GPrUVGbPpvIbtWjHqDAInzoTauJjD7pC
-         kg5aT/dP6netGHTfiLNlY6U9b4knQamn2Uw09Yqedxk8cLYqapk2Q2wHsv560QR0sFTj
-         ZaKA==
+        id S229556AbhGVTWO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 22 Jul 2021 15:22:14 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:46693 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229649AbhGVTWN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jul 2021 15:22:13 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1626984167;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=7rdoIzLCisnr7eFt+OK0D5B3QFvR/rOqUZ4eP6P3mg4=;
+        b=LXPy45HdwIzkXB115Lx2ul3/MIJxK7GAvZUesZds0Wch9bKyfXk9nLkFe/WqDjZ3RxxUqq
+        5HYkV7sEjLQJ1DtIrhB7NpgZVDiAKUu5sfSTxm2HdoKEhZMd5+AtM77iwla8z26Y+/kTDj
+        oi/O0mQ8K9fiqsUfgZcqGMwIGEU+/CI=
+Received: from mail-ej1-f72.google.com (mail-ej1-f72.google.com
+ [209.85.218.72]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-221-k7AnssEjOKOJ8YMi6DaHpw-1; Thu, 22 Jul 2021 16:02:46 -0400
+X-MC-Unique: k7AnssEjOKOJ8YMi6DaHpw-1
+Received: by mail-ej1-f72.google.com with SMTP id p26-20020a17090653dab0290549bc29d4d7so26572ejo.20
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jul 2021 13:02:46 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=Obsm09FqhMZGle+78ROw0VtmFY/fWA9CVF1JdrgJm54=;
-        b=LpJGtwHxVKm475q0FsRQfVtAQvXEMsDYSgPOTTzEGK5ikAo6+7EFkh3tnh8L17T77E
-         Bl3VZYYxj3EDSS6THnPYI/aPlPf7Dzh3SOEY7q8JcuBSn1Qvz2L5XuPADcJf5+kaLQmp
-         BmUQlUxpprt5Ot3HINRk8v2H+1foOe/JMnOzoLiyJRBhVoG1AIFvz1KiDfD2hylkedXt
-         lgO+8tfHOel7sJ7flr5ZRfAFD46onl4/1GpmBRxHUeTMJcVGPKhKFDyTpgHDZuwuSA58
-         A5f6kWnGPVoMQ6Z/1FigbZkqWT6W1JlMVV5l08mzbrmlVReeFXVxVq2CM+plYwIlWhy9
-         /gnA==
-X-Gm-Message-State: AOAM533cckwFp321erdAOrNGMCoKfejAr2NwjVXEdkJlgpmOxxs3biWK
-        8j8VViVBM3EutIpjOaYE5EGAOgMScbNGNw==
-X-Google-Smtp-Source: ABdhPJweL2iu096DL+nQhUsFX9svpmim42gfV3cRJjVmOeGwtMCUeXmUt1SzCi5AflTs2sriT1e96w==
-X-Received: by 2002:a7b:c778:: with SMTP id x24mr360525wmk.77.1626970557427;
-        Thu, 22 Jul 2021 09:15:57 -0700 (PDT)
-Received: from dell5510.suse.de (gw.ms-free.net. [95.85.240.250])
-        by smtp.gmail.com with ESMTPSA id q81sm3528547wme.18.2021.07.22.09.15.56
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 22 Jul 2021 09:15:57 -0700 (PDT)
-From:   Petr Vorel <petr.vorel@gmail.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     Petr Vorel <petr.vorel@gmail.com>,
-        Steve Dickson <steved@redhat.com>
-Subject: [nfs-utils PATCH 2/2] nfsdcltrack/nfsdcltrack.c: Fix printf format
-Date:   Thu, 22 Jul 2021 18:15:45 +0200
-Message-Id: <20210722161545.26923-2-petr.vorel@gmail.com>
-X-Mailer: git-send-email 2.32.0
-In-Reply-To: <20210722161545.26923-1-petr.vorel@gmail.com>
-References: <20210722161545.26923-1-petr.vorel@gmail.com>
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=7rdoIzLCisnr7eFt+OK0D5B3QFvR/rOqUZ4eP6P3mg4=;
+        b=Ha9mzOoRJvn/le5u3S8RTZQMKwPfpBQbPfossscdQFFziVNVrHehq0jpyrbPpWUia6
+         o9r2R8UUUiFtp5y+zPIFH0PpsxwB9rUmuxWXd1fmbd9P70TphyNSR6TsOec3v8nitTyN
+         OlAlbGEoDe9BFb7kjJjajovKx8/+yeqS4OKwiKzxsGwUu8iewnFwgzXKW7GG8BuYlP4s
+         2y9f+Y9maOKdf3htsk9xL7DUFSwmR8PARNm6MvhV98G2rxRAZ5tKRnVManyr1FYr1jZT
+         1OkB3wpMVu3i/iNC3vjFs2ssY+G3JZhOFsP9LIDTOPvRSPWJ4dnq4ILDQxdNwOw5L6aa
+         zeIA==
+X-Gm-Message-State: AOAM533WjlCpQF6NA9l05F1T5kfP5wvDtLK3ERqO4K5FFBzEKXkGwINy
+        26GSJsXgUe/WkUt7SpI1rKOao0tCMtPRdOoKsEAEuCmKwZ/CW0ULdJSDNJfVbaHcCm5HPmtweZ1
+        niqXW8lFGqYIw7qt1wE2alVJDzrjG4JF1cwKO
+X-Received: by 2002:a17:906:f84a:: with SMTP id ks10mr1341626ejb.537.1626984165171;
+        Thu, 22 Jul 2021 13:02:45 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJxN/Ovr3i5JbOwMPwkAzdDdAM+rWaIJJ5sk9f05RAFN7L6HvB1DicTtAuQuVa7h5f9fUlFlHEiv2fF47LBi8X8=
+X-Received: by 2002:a17:906:f84a:: with SMTP id ks10mr1341611ejb.537.1626984164935;
+ Thu, 22 Jul 2021 13:02:44 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20210720212611.332856-1-steved@redhat.com>
+In-Reply-To: <20210720212611.332856-1-steved@redhat.com>
+From:   David Wysochanski <dwysocha@redhat.com>
+Date:   Thu, 22 Jul 2021 16:02:09 -0400
+Message-ID: <CALF+zOkEtL9DuO68oM=j_8Dt-0Gvx7KxG7jb-KHLsnNgf3-0mg@mail.gmail.com>
+Subject: Re: [PATCH] mount.nfs: Fix the sloppy option processing
+To:     Steve Dickson <steved@redhat.com>
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-nfsdcltrack.c: In function 'cltrack_gracedone':
-nfsdcltrack.c:528:47: error: format '%ld' expects argument of type 'long int', but argument 4 has type 'time_t' {aka 'long long int'} [-Werror=format=]
-  528 |  xlog(D_GENERAL, "%s: grace done. gracetime=%ld", __func__, gracetime);
-      |                                             ~~^             ~~~~~~~~~
-      |                                               |             |
-      |                                               long int      time_t {aka long long int}
-      |                                             %lld
+On Tue, Jul 20, 2021 at 5:27 PM Steve Dickson <steved@redhat.com> wrote:
+>
+> The new mount API broke how the sloppy option is parsed.
+> So the option processing needs to be moved up in
+> the mount.nfs command.
+>
+> The option needs to be the first option in the string
+> that is passed into the kernel with the -s mount(8)
+> and/or the -o sloppy is used.
+>
+> Commit 92b664ef fixed the process of the -s flag
+> and this version fixes the -o sloppy processing
+> as well works when libmount-mount is and is not
+> enabled plus cleans up the mount options passed
+> to the kernel.
+>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/mount/nfs.man   |  7 +++++++
+>  utils/mount/stropts.c | 14 +++++++++++---
+>  2 files changed, 18 insertions(+), 3 deletions(-)
+>
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index f98cb47d..f1b76936 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -555,6 +555,13 @@ using the FS-Cache facility. See cachefilesd(8)
+>  and <kernel_source>/Documentation/filesystems/caching
+>  for detail on how to configure the FS-Cache facility.
+>  Default value is nofsc.
+> +.TP 1.5i
+> +.B sloppy
+> +The
+> +.B sloppy
+> +option is an alternative to specifying
+> +.BR mount.nfs " -s " option.
+> +
+>  .SS "Options for NFS versions 2 and 3 only"
+>  Use these options, along with the options in the above subsection,
+>  for NFS versions 2 and 3 only.
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 82b054a5..fa67a66f 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -339,11 +339,19 @@ static int nfs_verify_lock_option(struct mount_options *options)
+>
+>  static int nfs_insert_sloppy_option(struct mount_options *options)
+>  {
+> -       if (!sloppy || linux_version_code() < MAKE_VERSION(2, 6, 27))
+> +       if (linux_version_code() < MAKE_VERSION(2, 6, 27))
+>                 return 1;
+>
+> -       if (po_insert(options, "sloppy") == PO_FAILED)
+> -               return 0;
+> +       if (po_contains(options, "sloppy")) {
+> +               po_remove_all(options, "sloppy");
+> +               sloppy++;
+> +       }
+> +
+> +       if (sloppy) {
+> +               if (po_insert(options, "sloppy") == PO_FAILED)
+> +                       return 0;
+> +       }
+> +
+>         return 1;
+>  }
+>
+> --
+> 2.31.1
+>
 
-Found in Buildroot riscv32 build.
+Looks good.
 
-Link: http://autobuild.buildroot.net/results/9bc1d43a588338b7395af7bc97535ee16a6ea2d9/build-end.log
+Tested with 1-liner, failed before this patch.
 
-Signed-off-by: Petr Vorel <petr.vorel@gmail.com>
----
- utils/nfsdcltrack/nfsdcltrack.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+# FAIL=0; for o in blah,vers=4.1,sec=sys,sloppy
+blah,vers=4.1,sloppy,sec=sys sloppy,blah,vers=4.1,sec=sys
+vers=4.1,blah,sec=sys,sloppy vers=4.1,blah,sloppy,sec=sys
+vers=4.1,sloppy,blah,sec=sys sloppy,vers=4.1,blah,sec=sys
+sloppy,vers=4.1,sec=sys,blah; do ./utils/mount/mount.nfs -o $o
+127.0.0.1:/exports /mnt/test; if [ $? -ne 0 ]; then FAIL=1; echo
+ERROR: on options $o; break; fi; umount /mnt/test; done; if [ $FAIL
+-eq 0 ]; then echo SUCCESS on kernel $(uname -r) nfs-utils at $(git
+log --oneline | head -1); fi
+mount.nfs: an incorrect mount option was specified
+ERROR: on options blah,vers=4.1,sec=sys,sloppy
 
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-index e926f1c0..0b37c094 100644
---- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -33,6 +33,7 @@
- #include <sys/stat.h>
- #include <sys/types.h>
- #include <fcntl.h>
-+#include <inttypes.h>
- #include <unistd.h>
- #include <libgen.h>
- #include <sys/inotify.h>
-@@ -525,7 +526,7 @@ cltrack_gracedone(const char *timestr)
- 	if (*tail)
- 		return -EINVAL;
- 
--	xlog(D_GENERAL, "%s: grace done. gracetime=%ld", __func__, gracetime);
-+	xlog(D_GENERAL, "%s: grace done. gracetime=%"PRIu64, __func__, gracetime);
- 
- 	ret = sqlite_remove_unreclaimed(gracetime);
- 
--- 
-2.32.0
+# FAIL=0; for o in blah,vers=4.1,sec=sys,sloppy
+blah,vers=4.1,sloppy,sec=sys sloppy,blah,vers=4.1,sec=sys
+vers=4.1,blah,sec=sys,sloppy vers=4.1,blah,sloppy,sec=sys
+vers=4.1,sloppy,blah,sec=sys sloppy,vers=4.1,blah,sec=sys
+sloppy,vers=4.1,sec=sys,blah; do ./utils/mount/mount.nfs -o $o
+127.0.0.1:/exports /mnt/test; if [ $? -ne 0 ]; then FAIL=1; echo
+ERROR: on options $o; break; fi; umount /mnt/test; done; if [ $FAIL
+-eq 0 ]; then echo SUCCESS on kernel $(uname -r) nfs-utils at $(git
+log --oneline | head -1); fi
+SUCCESS on kernel 5.14.0-rc2 nfs-utils at d3e53193c6d6 mount.nfs: Fix
+the sloppy option processing
+
+
+Reviewed-and-tested-by: Dave Wysochanski <dwysocha@redhat.com>
 
