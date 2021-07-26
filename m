@@ -2,58 +2,69 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B532C4338F
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 16:57:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 80F68C4338F
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 16:59:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 133BE60F4F
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 16:57:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 64B8860E08
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 16:59:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235594AbhGZQRZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 26 Jul 2021 12:17:25 -0400
-Received: from p3plsmtpa07-04.prod.phx3.secureserver.net ([173.201.192.233]:39525
-        "EHLO p3plsmtpa07-04.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S240793AbhGZQOu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2021 12:14:50 -0400
-X-Greylist: delayed 310 seconds by postgrey-1.27 at vger.kernel.org; Mon, 26 Jul 2021 12:14:47 EDT
+        id S236545AbhGZQTA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Jul 2021 12:19:00 -0400
+Received: from p3plsmtpa07-05.prod.phx3.secureserver.net ([173.201.192.234]:47346
+        "EHLO p3plsmtpa07-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S242010AbhGZQQz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2021 12:16:55 -0400
 Received: from [192.168.0.100] ([68.239.50.225])
         by :SMTPAUTH: with ESMTPSA
-        id 83qYmxVEiGpY083qZmvrc8; Mon, 26 Jul 2021 09:52:55 -0700
-X-CMAE-Analysis: v=2.4 cv=T/1J89GQ c=1 sm=1 tr=0 ts=60fee867
+        id 83nmmkvCl0LVM83nnmq73U; Mon, 26 Jul 2021 09:50:04 -0700
+X-CMAE-Analysis: v=2.4 cv=JJ/+D+Gb c=1 sm=1 tr=0 ts=60fee7bc
  a=Rhw2r8FBodfaBxRKvGSZLA==:117 a=Rhw2r8FBodfaBxRKvGSZLA==:17
- a=IkcTkHD0fZMA:10 a=AGLkvWKIh2AzmkgO7fkA:9 a=QEXdDO2ut3YA:10
+ a=IkcTkHD0fZMA:10 a=Mwu5d-69jdYTgDQK8hcA:9 a=QEXdDO2ut3YA:10
 X-SECURESERVER-ACCT: tom@talpey.com
-Subject: Re: [PATCH v1 0/3] Optimize NFSD Send completion processing
+Subject: Re: [PATCH v1 1/3] svcrdma: Fewer calls to wake_up() in Send
+ completion handler
 To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
         linux-rdma@vger.kernel.org
 References: <162731055652.13580.8774661104190191089.stgit@klimt.1015granger.net>
+ <162731081843.13580.15415936872318036839.stgit@klimt.1015granger.net>
 From:   Tom Talpey <tom@talpey.com>
-Message-ID: <c59afd87-b53a-25e7-8a22-efc8428bd75b@talpey.com>
-Date:   Mon, 26 Jul 2021 12:52:54 -0400
+Message-ID: <e25bd7be-6bcc-cf7d-efcf-1ac39d411431@talpey.com>
+Date:   Mon, 26 Jul 2021 12:50:02 -0400
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
  Thunderbird/78.12.0
 MIME-Version: 1.0
-In-Reply-To: <162731055652.13580.8774661104190191089.stgit@klimt.1015granger.net>
+In-Reply-To: <162731081843.13580.15415936872318036839.stgit@klimt.1015granger.net>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4xfNVCFhJ5grCMO0aqdV1vCYs9UGaNohHbIljlQXq3ZV2VA+Oja88mR5QOgTpUUkSfdYwkPJ8yitUjJuzbZnkp16xYvbM71MUaLWeb1LDsWQM0pHlhF7Fq
- 2Grnr8DKrLT/NeNc/K+ZIO6Z+4JNP2OUOT09VUX+zzsWSZVEGwVnTlXlwiSSxhEjRdXlVp+g2yvO/Zjf60m/ZpBeTFl0pQUTzUP1gKZn5qWFcGM0Al33KiYE
- JF+RmkCo7RiITLNBjUH2pn5aSCynoWYCgb/MFHWlj3c=
+X-CMAE-Envelope: MS4xfB7yfYMkh/ggSnMeOMx0z35ZSJuEgiRhbDdrzgq2PjRBfbNTmb5boByG4mec2PxM4GvFmvSWwXOb/GE+9jWssLiR2E/wTKFZVAs1xOBaGp3rvN+1aqaf
+ Z8/MOgaCKP27nD0cbmt3/NJLXaRoOb3ciV9N0zQe+C36e/ZGulE4GsHPZlL6tZ29lhv1Y17CSJZfm8JEkMQvc8r3XdXDon25Y4shWF65wGOBbOWKjvSTHD6v
+ 0dBRaeiBus7t8KH550rTHXm6gX6kJ4HBbwU5bembVMY=
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 On 7/26/2021 10:46 AM, Chuck Lever wrote:
-> The following series improves the efficiency of NFSD's Send
-> completion processing by removing costly operations from the svcrdma
-> Send completion handlers. Each of these patches reduces the CPU
-> utilized per RPC by Send completion by an average of 2-3%.
+>   /**
+>    * svc_rdma_wc_send - Invoked by RDMA provider for each polled Send WC
+>    * @cq: Completion Queue context
+> @@ -275,11 +289,9 @@ static void svc_rdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
+>   
+>   	trace_svcrdma_wc_send(wc, &ctxt->sc_cid);
+>   
+> +	svc_rdma_wake_send_waiters(rdma, 1);
+>   	complete(&ctxt->sc_done);
+>   
+> -	atomic_inc(&rdma->sc_sq_avail);
+> -	wake_up(&rdma->sc_send_wait);
 
-Nice gain. Are the improvements additive, i.e. 5-10% CPU reduction
-for all three together?
+This appears to change the order of wake_up() vs complete().
+Is that intentional? Is there any possibility of a false
+scheduler activation, later leading to a second wakeup or poll?
 
-Tom
+Tom.
