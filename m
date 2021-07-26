@@ -2,69 +2,116 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 80F68C4338F
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 16:59:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC4DFC432BE
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 17:28:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 64B8860E08
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 16:59:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8901A60F6C
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 17:28:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236545AbhGZQTA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 26 Jul 2021 12:19:00 -0400
-Received: from p3plsmtpa07-05.prod.phx3.secureserver.net ([173.201.192.234]:47346
-        "EHLO p3plsmtpa07-05.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S242010AbhGZQQz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2021 12:16:55 -0400
-Received: from [192.168.0.100] ([68.239.50.225])
-        by :SMTPAUTH: with ESMTPSA
-        id 83nmmkvCl0LVM83nnmq73U; Mon, 26 Jul 2021 09:50:04 -0700
-X-CMAE-Analysis: v=2.4 cv=JJ/+D+Gb c=1 sm=1 tr=0 ts=60fee7bc
- a=Rhw2r8FBodfaBxRKvGSZLA==:117 a=Rhw2r8FBodfaBxRKvGSZLA==:17
- a=IkcTkHD0fZMA:10 a=Mwu5d-69jdYTgDQK8hcA:9 a=QEXdDO2ut3YA:10
-X-SECURESERVER-ACCT: tom@talpey.com
-Subject: Re: [PATCH v1 1/3] svcrdma: Fewer calls to wake_up() in Send
- completion handler
-To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org
-References: <162731055652.13580.8774661104190191089.stgit@klimt.1015granger.net>
- <162731081843.13580.15415936872318036839.stgit@klimt.1015granger.net>
-From:   Tom Talpey <tom@talpey.com>
-Message-ID: <e25bd7be-6bcc-cf7d-efcf-1ac39d411431@talpey.com>
-Date:   Mon, 26 Jul 2021 12:50:02 -0400
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.12.0
+        id S237053AbhGZQsD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Jul 2021 12:48:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41328 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S236125AbhGZQsA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jul 2021 12:48:00 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 39F19C0F26E9;
+        Mon, 26 Jul 2021 10:20:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=Vqs3NN7xHX7VuOasPLpzjTGLT3AH9xa8Uq7MQmQ6U4c=; b=FHZjLR+NROgvBqw4Rm7M0EuXpa
+        Kq6UeMFn2BtIU2GMt1yXDOwsIQZHALmf+/OE6I98Khff0DHRw8lbz4cZx6pl/fT02klNbbERY4Wl9
+        73UDsnMBCMKydcqtpoq0Np+twUCVzutn0wWZQI/9BkedfPwQ93MnGgGoGg3D/rErUq5MwHPDXsvC6
+        xHMFpHwVQJg3ZVRYJxwGD6376R4w+aik2waOk0pqxN1RhLFxH8wb8tB4GqkYfawx4Ut2aFgesDBw3
+        rcviwx77AEEexcFpnrw6y66YYaEkaDUyP0NlaE8/MYGc7IVElytXGb805x+X6gnoa/0v6x6P+Ej9l
+        Cx7Uu3RA==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1m84GP-00EExM-FX; Mon, 26 Jul 2021 17:19:47 +0000
+Date:   Mon, 26 Jul 2021 18:19:37 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Goldwyn Rodrigues <rgoldwyn@suse.de>
+Cc:     linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] fs: reduce pointers while using file_ra_state_init()
+Message-ID: <YP7uqRrXsbCqTpfx@casper.infradead.org>
+References: <20210726164647.brx3l2ykwv3zz7vr@fiona>
 MIME-Version: 1.0
-In-Reply-To: <162731081843.13580.15415936872318036839.stgit@klimt.1015granger.net>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4xfB7yfYMkh/ggSnMeOMx0z35ZSJuEgiRhbDdrzgq2PjRBfbNTmb5boByG4mec2PxM4GvFmvSWwXOb/GE+9jWssLiR2E/wTKFZVAs1xOBaGp3rvN+1aqaf
- Z8/MOgaCKP27nD0cbmt3/NJLXaRoOb3ciV9N0zQe+C36e/ZGulE4GsHPZlL6tZ29lhv1Y17CSJZfm8JEkMQvc8r3XdXDon25Y4shWF65wGOBbOWKjvSTHD6v
- 0dBRaeiBus7t8KH550rTHXm6gX6kJ4HBbwU5bembVMY=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210726164647.brx3l2ykwv3zz7vr@fiona>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 7/26/2021 10:46 AM, Chuck Lever wrote:
->   /**
->    * svc_rdma_wc_send - Invoked by RDMA provider for each polled Send WC
->    * @cq: Completion Queue context
-> @@ -275,11 +289,9 @@ static void svc_rdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
->   
->   	trace_svcrdma_wc_send(wc, &ctxt->sc_cid);
->   
-> +	svc_rdma_wake_send_waiters(rdma, 1);
->   	complete(&ctxt->sc_done);
->   
-> -	atomic_inc(&rdma->sc_sq_avail);
-> -	wake_up(&rdma->sc_send_wait);
+On Mon, Jul 26, 2021 at 11:46:47AM -0500, Goldwyn Rodrigues wrote:
+> Simplification.
+> 
+> file_ra_state_init() take struct address_space *, just to use inode
+> pointer by dereferencing from mapping->host.
+> 
+> The callers also derive mapping either by file->f_mapping, or
+> even file->f_mapping->host->i_mapping.
+> 
+> Change file_ra_state_init() to accept struct inode * to reduce pointer
+> dereferencing, both in the callee and the caller.
+> 
+> Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
 
-This appears to change the order of wake_up() vs complete().
-Is that intentional? Is there any possibility of a false
-scheduler activation, later leading to a second wakeup or poll?
+Reviewed-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 
-Tom.
+(some adjacent comments)
+
+> diff --git a/fs/btrfs/free-space-cache.c b/fs/btrfs/free-space-cache.c
+> index 4806295116d8..c43bf9915cda 100644
+> --- a/fs/btrfs/free-space-cache.c
+> +++ b/fs/btrfs/free-space-cache.c
+> @@ -351,7 +351,7 @@ static void readahead_cache(struct inode *inode)
+>  	if (!ra)
+>  		return;
+>  
+> -	file_ra_state_init(ra, inode->i_mapping);
+> +	file_ra_state_init(ra, inode);
+>  	last_index = (i_size_read(inode) - 1) >> PAGE_SHIFT;
+>  
+>  	page_cache_sync_readahead(inode->i_mapping, ra, NULL, 0, last_index);
+
+Why does btrfs allocate a file_ra_state using kmalloc instead of
+on the stack?
+
+> +++ b/include/linux/fs.h
+> @@ -3260,7 +3260,7 @@ extern long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
+>  
+>  
+>  extern void
+> -file_ra_state_init(struct file_ra_state *ra, struct address_space *mapping);
+> +file_ra_state_init(struct file_ra_state *ra, struct inode *inode);
+
+This should move to pagemap.h (and lose the extern).
+I'd put it near the definition of VM_READAHEAD_PAGES.
+
+> diff --git a/mm/readahead.c b/mm/readahead.c
+> index d589f147f4c2..3541941df5e7 100644
+> --- a/mm/readahead.c
+> +++ b/mm/readahead.c
+> @@ -31,9 +31,9 @@
+>   * memset *ra to zero.
+>   */
+>  void
+> -file_ra_state_init(struct file_ra_state *ra, struct address_space *mapping)
+> +file_ra_state_init(struct file_ra_state *ra, struct inode *inode)
+>  {
+> -	ra->ra_pages = inode_to_bdi(mapping->host)->ra_pages;
+> +	ra->ra_pages = inode_to_bdi(inode)->ra_pages;
+>  	ra->prev_pos = -1;
+>  }
+>  EXPORT_SYMBOL_GPL(file_ra_state_init);
+
+I'm not entirely sure why this function is out-of-line, tbh.
+Would it make more sense for it to be static inline in a header?
