@@ -7,38 +7,38 @@ X-Spam-Status: No, score=-19.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 30FCFC432BE
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 11:58:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9511C43214
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 11:59:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 17DE460F38
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 11:58:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 95B5360F38
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Jul 2021 11:59:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233512AbhGZLSY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 26 Jul 2021 07:18:24 -0400
-Received: from mail.kernel.org ([198.145.29.99]:37340 "EHLO mail.kernel.org"
+        id S233731AbhGZLS4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Jul 2021 07:18:56 -0400
+Received: from mail.kernel.org ([198.145.29.99]:37492 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233768AbhGZLSX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 26 Jul 2021 07:18:23 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 228B660F44
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Jul 2021 11:58:52 +0000 (UTC)
+        id S233821AbhGZLSx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 26 Jul 2021 07:18:53 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 865A960F51
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Jul 2021 11:59:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1627300732;
+        s=k20201202; t=1627300761;
         bh=qXwd3cJb/5xBDpij3APgwGOM7MrSLSWKzQ6Qk9V6lq0=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=rAOQuwRYwnVmfSxOwfVKEILX0XFa0bo/HzHC07vMFcTbkgr0VkreLYmRYUAQrTzet
-         /291ZiwgGT6vMNEWEaQIr+W7AQepncZQSvA4WhIGjnHZwdmDeoyM3MOqeufUc2ouKf
-         DVLi09/eJCjiNcuXpG5hEvK+7RRpbxBY31yg4zaWQ6lzgY3ALqZRyZwwsGbUcSaKLp
-         72O1e6SpkadS4YLJIcaqzXPrJPyWdIKrCfcOthknmNfsxsgve7Lwa/K3QQi6Q8leeV
-         MGkjB0EWvbuaatnkKvxPwd8Dl84EGzoah+VR9YKHoLW7Cj2g4D2OzVlAEhHDQUYVLD
-         B3hz+e5Busm+g==
+        b=Whp9kF0vn6f4E8piPy/HDmKSC6CB2ofbr+PnBbsZ5tBbPnzxCqp7ZAruH/LpRnaxx
+         lcNxAjGFR7FTOh4ZToCimWQAmGYKOmj4zKfSyEx+LtgCwBcg+/1y45jtOxGrB3/ccI
+         ZXnKls7PUDr9A0Wh6jG++qW/kHAMod5SSiVDNr4/TE6GWtxJWoc6IKCKF+7B66iaWL
+         8kfXi8j9sEuK9ZvH1DyTw85TJsEvN8B2xOEX3LPBrAWUmw/eGE0tumMjK5R9nEGbR4
+         jr4m3d1TFDFX3H8C21snJVLuGv4A79QMJwDaoizjUWL9R2O28VSoexJZbgWxkXdfqt
+         rn5pMHQYX5OJg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Subject: [PATCH 2/2] NFSv4/pNFS: Remove dead code
-Date:   Mon, 26 Jul 2021 07:58:50 -0400
-Message-Id: <20210726115850.8429-2-trondmy@kernel.org>
+Date:   Mon, 26 Jul 2021 07:59:20 -0400
+Message-Id: <20210726115920.8518-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210726115850.8429-1-trondmy@kernel.org>
-References: <20210726115850.8429-1-trondmy@kernel.org>
+In-Reply-To: <20210726115920.8518-1-trondmy@kernel.org>
+References: <20210726115920.8518-1-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
