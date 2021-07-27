@@ -7,267 +7,106 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7883CC4338F
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 22:44:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15247C4338F
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 23:15:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 59C4960184
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 22:44:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E94A360249
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 23:15:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233463AbhG0WoC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Jul 2021 18:44:02 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:54076 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232506AbhG0WoB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jul 2021 18:44:01 -0400
+        id S232750AbhG0XPh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Jul 2021 19:15:37 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:59966 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232314AbhG0XPh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jul 2021 19:15:37 -0400
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 081221FF31;
-        Tue, 27 Jul 2021 22:44:00 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id E41EC2227C;
+        Tue, 27 Jul 2021 23:15:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1627425840; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1627427735; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ntRRi13JXohfoyWNEcO4yHLJ45b2xCCxuE7qaQ+92/E=;
-        b=Hxy1O7u+LTSY6GoBkPm7LXbB7iLSjjClEujaOyLoZXpN/ExHkqOCbQHQ8VyqbnXUuqFHN9
-        yb1FBXLlMNr1fR7R9DC30bIvL7mvr29C4rXWKMfm5ZhKSPhcUohhc6rHRjwnaElep0VaLb
-        8MrEdoCt/lzApwO5Qg1AIr3jsOwfU/o=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=xOgxaBxb3YxZ42LEq8uL0daRSF34LXkNtTtD8Dix0PA=;
+        b=VJr3deVDrt3B7pbZT1vdiF4+LLvd8FAu/SA3UUXxGBsUJ9LLiOKHMvvljfywZC2QRLkAKl
+        2OSZ+nC7utPUNAiyg6KYp3YEtZgTa0lu2iFtvvsBJGi6ArbkjyG6f8b6TzKA6SfuNA9rFS
+        UVEYva70UPAo1icbtWoicJAwjRAijJo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1627425840;
+        s=susede2_ed25519; t=1627427735;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ntRRi13JXohfoyWNEcO4yHLJ45b2xCCxuE7qaQ+92/E=;
-        b=pt3KKB2X11OwJt+bibSzY0h1UBVxh5Ns7JJ8zpKrIlGhr0DvOQjHUZ+KvKLff/y6J42U/r
-        QLvTt62r8wtKwVDg==
+         content-transfer-encoding:content-transfer-encoding;
+        bh=xOgxaBxb3YxZ42LEq8uL0daRSF34LXkNtTtD8Dix0PA=;
+        b=yeGvvHbUBh8LgRSsMj2zj4FIyX7Mqfs1ltLq2YcYbspv6QTHJ7WzVafaazz7fKfEeaw7OJ
+        jxnA5YNRv21JSfDg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 095A013A5D;
-        Tue, 27 Jul 2021 22:43:56 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D2C1013B91;
+        Tue, 27 Jul 2021 23:15:34 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id mlVXLiyMAGHyVQAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 27 Jul 2021 22:43:56 +0000
-Subject: [PATCH 11/11] btrfs: use automount to bind-mount all subvol roots.
-From:   NeilBrown <neilb@suse.de>
-To:     Christoph Hellwig <hch@infradead.org>,
-        Josef Bacik <josef@toxicpanda.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org
-Date:   Wed, 28 Jul 2021 08:37:45 +1000
-Message-ID: <162742546558.32498.1901201501617899416.stgit@noble.brown>
-In-Reply-To: <162742539595.32498.13687924366155737575.stgit@noble.brown>
-References: <162742539595.32498.13687924366155737575.stgit@noble.brown>
-User-Agent: StGit/0.23
-MIME-Version: 1.0
+        id 4BjzI5aTAGEAXQAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 27 Jul 2021 23:15:34 +0000
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+From:   "NeilBrown" <neilb@suse.de>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: fix minor issues with automount expiry.
+Date:   Wed, 28 Jul 2021 09:15:31 +1000
+Message-id: <162742773175.21659.17666555162574585184@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-All subvol roots are now marked as automounts.  If the d_automount()
-function determines that the dentry is not the root of the vfsmount, it
-creates a simple loop-back mount of the dentry onto itself.  If it
-determines that it IS the root of the vfsmount, it returns -EISDIR so
-that no further automounting is attempted.
 
-btrfs_getattr pays special attention to these automount dentries.
-If it is NOT the root of the vfsmount:
- - the ->dev is reported as that for the rest of the vfsmount
- - the ->ino is reported as the subvol objectid, suitable transformed
-   to avoid collision.
+1/ If automount expiry timeout is set to zero, new mounts are not added
+   to the list.  If the timeout is then changed, those previously
+   mounts will still not be timed out.  This is probably not what
+   would be expected.  Simply refusing to start the timer
+   is sufficient to prevent timeout.
 
-This way the same inode appear to be different depending on which mount
-it is in.
-
-automounted vfsmounts are kept on a list and timeout after 500 to 1000
-seconds of last use.  This is configurable via a module parameter.
-The tracking and timeout of automounts is copied from NFS.
+2/ the MODULE_PARM_DESC for nfs_mountpoint_expiry_timeout is missing
+   a space between to two sentences.  This is hidden by the fact that
+   the string is broken onto to line - against current policy.
+   So join onto a single (long) line, and add the space.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/btrfs/btrfs_inode.h |    2 +
- fs/btrfs/inode.c       |  108 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/btrfs/super.c       |    1 
- 3 files changed, 111 insertions(+)
+ fs/nfs/namespace.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/btrfs/btrfs_inode.h b/fs/btrfs/btrfs_inode.h
-index a4b5f38196e6..f03056cacc4a 100644
---- a/fs/btrfs/btrfs_inode.h
-+++ b/fs/btrfs/btrfs_inode.h
-@@ -387,4 +387,6 @@ static inline void btrfs_print_data_csum_error(struct btrfs_inode *inode,
- 			mirror_num);
- }
- 
-+void btrfs_release_automount_timer(void);
-+
- #endif
-diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-index 02537c1a9763..a5f46545fb38 100644
---- a/fs/btrfs/inode.c
-+++ b/fs/btrfs/inode.c
-@@ -31,6 +31,7 @@
- #include <linux/migrate.h>
- #include <linux/sched/mm.h>
- #include <linux/iomap.h>
-+#include <linux/fs_context.h>
- #include <asm/unaligned.h>
- #include "misc.h"
- #include "ctree.h"
-@@ -5782,6 +5783,8 @@ static int btrfs_init_locked_inode(struct inode *inode, void *p)
- 	struct btrfs_iget_args *args = p;
- 
- 	inode->i_ino = args->ino;
-+	if (args->ino == BTRFS_FIRST_FREE_OBJECTID)
-+		inode->i_flags |= S_AUTOMOUNT;
- 	BTRFS_I(inode)->location.objectid = args->ino;
- 	BTRFS_I(inode)->location.type = BTRFS_INODE_ITEM_KEY;
- 	BTRFS_I(inode)->location.offset = 0;
-@@ -5985,6 +5988,101 @@ static int btrfs_dentry_delete(const struct dentry *dentry)
- 	return 0;
- }
- 
-+static void btrfs_expire_automounts(struct work_struct *work);
-+static LIST_HEAD(btrfs_automount_list);
-+static DECLARE_DELAYED_WORK(btrfs_automount_task, btrfs_expire_automounts);
-+int btrfs_mountpoint_expiry_timeout = 500 * HZ;
-+static void btrfs_expire_automounts(struct work_struct *work)
-+{
-+	struct list_head *list = &btrfs_automount_list;
-+	int timeout = READ_ONCE(btrfs_mountpoint_expiry_timeout);
-+
-+	mark_mounts_for_expiry(list);
-+	if (!list_empty(list) && timeout > 0)
-+		schedule_delayed_work(&btrfs_automount_task, timeout);
-+}
-+
-+void btrfs_release_automount_timer(void)
-+{
-+	if (list_empty(&btrfs_automount_list))
-+		cancel_delayed_work(&btrfs_automount_task);
-+}
-+
-+static struct vfsmount *btrfs_automount(struct path *path)
-+{
-+	struct fs_context fc;
-+	struct vfsmount *mnt;
-+	int timeout = READ_ONCE(btrfs_mountpoint_expiry_timeout);
-+
-+	if (path->dentry == path->mnt->mnt_root)
-+		/* dentry is root of the vfsmount,
-+		 * so skip automount processing
-+		 */
-+		return ERR_PTR(-EISDIR);
-+	/* Create a bind-mount to expose the subvol in the mount table */
-+	fc.root = path->dentry;
-+	fc.sb_flags = 0;
-+	fc.source = "btrfs-automount";
-+	mnt = vfs_create_mount(&fc);
-+	if (IS_ERR(mnt))
-+		return mnt;
-+	mntget(mnt);
-+	mnt_set_expiry(mnt, &btrfs_automount_list);
-+	if (timeout > 0)
-+		schedule_delayed_work(&btrfs_automount_task, timeout);
-+	return mnt;
-+}
-+
-+static int param_set_btrfs_timeout(const char *val, const struct kernel_param *kp)
-+{
-+	long num;
-+	int ret;
-+
-+	if (!val)
-+		return -EINVAL;
-+	ret = kstrtol(val, 0, &num);
-+	if (ret)
-+		return -EINVAL;
-+	if (num > 0) {
-+		if (num >= INT_MAX / HZ)
-+			num = INT_MAX;
-+		else
-+			num *= HZ;
-+		*((int *)kp->arg) = num;
-+		if (!list_empty(&btrfs_automount_list))
-+			mod_delayed_work(system_wq, &btrfs_automount_task, num);
-+	} else {
-+		*((int *)kp->arg) = -1*HZ;
-+		cancel_delayed_work(&btrfs_automount_task);
-+	}
-+	return 0;
-+}
-+
-+static int param_get_btrfs_timeout(char *buffer, const struct kernel_param *kp)
-+{
-+	long num = *((int *)kp->arg);
-+
-+	if (num > 0) {
-+		if (num >= INT_MAX - (HZ - 1))
-+			num = INT_MAX / HZ;
-+		else
-+			num = (num + (HZ - 1)) / HZ;
-+	} else
-+		num = -1;
-+	return scnprintf(buffer, PAGE_SIZE, "%li\n", num);
-+}
-+
-+static const struct kernel_param_ops param_ops_btrfs_timeout = {
-+	.set = param_set_btrfs_timeout,
-+	.get = param_get_btrfs_timeout,
-+};
-+#define param_check_btrfs_timeout(name, p) __param_check(name, p, int)
-+
-+module_param(btrfs_mountpoint_expiry_timeout, btrfs_timeout, 0644);
-+MODULE_PARM_DESC(btrfs_mountpoint_expiry_timeout,
-+		"Set the btrfs automounted mountpoint timeout value (seconds). "
-+		"Values <= 0 turn expiration off.");
-+
- static struct dentry *btrfs_lookup(struct inode *dir, struct dentry *dentry,
- 				   unsigned int flags)
- {
-@@ -9195,6 +9293,15 @@ static int btrfs_getattr(struct user_namespace *mnt_userns,
- 
- 	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->dev = BTRFS_I(inode)->root->anon_dev;
-+	if ((inode->i_flags & S_AUTOMOUNT) &&
-+	    path->dentry != path->mnt->mnt_root) {
-+		/* This is the mounted-on side of the automount,
-+		 * so we show the inode number from the ROOT_ITEM key
-+		 * and the dev of the mountpoint.
-+		 */
-+		stat->ino = btrfs_location_to_ino(&BTRFS_I(inode)->root->root_key);
-+		stat->dev = BTRFS_I(d_inode(path->mnt->mnt_root))->root->anon_dev;
-+	}
- 
- 	spin_lock(&BTRFS_I(inode)->lock);
- 	delalloc_bytes = BTRFS_I(inode)->new_delalloc_bytes;
-@@ -10844,4 +10951,5 @@ static const struct inode_operations btrfs_symlink_inode_operations = {
- 
- const struct dentry_operations btrfs_dentry_operations = {
- 	.d_delete	= btrfs_dentry_delete,
-+	.d_automount	= btrfs_automount,
- };
-diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
-index d07b18b2b250..33008e432a15 100644
---- a/fs/btrfs/super.c
-+++ b/fs/btrfs/super.c
-@@ -338,6 +338,7 @@ void __btrfs_panic(struct btrfs_fs_info *fs_info, const char *function,
- static void btrfs_put_super(struct super_block *sb)
- {
- 	close_ctree(btrfs_sb(sb));
-+	btrfs_release_automount_timer();
- }
- 
- enum {
-
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index bc0c698f3350..be5e77a80811 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -196,10 +196,10 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 		goto out_fc;
+=20
+ 	mntget(mnt); /* prevent immediate expiration */
++	mnt_set_expiry(mnt, &nfs_automount_list);
+ 	if (timeout <=3D 0)
+ 		goto out_fc;
+=20
+-	mnt_set_expiry(mnt, &nfs_automount_list);
+ 	schedule_delayed_work(&nfs_automount_task, timeout);
+=20
+ out_fc:
+@@ -366,5 +366,4 @@ static const struct kernel_param_ops param_ops_nfs_timeou=
+t =3D {
+=20
+ module_param(nfs_mountpoint_expiry_timeout, nfs_timeout, 0644);
+ MODULE_PARM_DESC(nfs_mountpoint_expiry_timeout,
+-		"Set the NFS automounted mountpoint timeout value (seconds)."
+-		"Values <=3D 0 turn expiration off.");
++		"Set the NFS automounted mountpoint timeout value (seconds). Values <=3D 0=
+ turn expiration off.");
+--=20
+2.32.0
 
