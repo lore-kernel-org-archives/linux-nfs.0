@@ -2,59 +2,58 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FCEEC4338F
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 22:43:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 910D8C4338F
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 22:43:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 34B1460184
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 22:43:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 77CF460184
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jul 2021 22:43:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232972AbhG0WnH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Jul 2021 18:43:07 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:57124 "EHLO
+        id S233086AbhG0WnO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Jul 2021 18:43:14 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:57146 "EHLO
         smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232810AbhG0WnF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jul 2021 18:43:05 -0400
+        with ESMTP id S231730AbhG0WnN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jul 2021 18:43:13 -0400
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 00CDC21E78;
-        Tue, 27 Jul 2021 22:43:04 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 2895B21E78;
+        Tue, 27 Jul 2021 22:43:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1627425784; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1627425792; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=0TpbPbKdpPuBJzOYDLGprabdAvWGnrm1h37EgRsFnts=;
-        b=nL3M6YWdd6o/ZyD521zO3PjVfu0MTzCsWfh5OhGkhN+KcPtsm7tK6ucvRHtwju5ekFeADP
-        8VOhZduis4H2FoVdVUGFqcb/2iWKNHpSknpDOKR1qiyrsY60T7v7yJY90My65vOmYcvRjO
-        XgoiDdNrdPjliyJXcZTC6eovo4jU+aE=
+        bh=xLs00Rrv/kTcj/5olsX73VJ3zYmRNlaU9tOovlvLkrY=;
+        b=CDYrsqvXmziG2cY28/a82LbbwXxEKRAV1gNZwQZZjcmIeTklR0CSSUHSCu/Y8kbUonbe78
+        wjytZURQAFUN9P7NL1uOozNd/XxH68LBZ2xuRkX6yleEp1GBawrGqI4r5Uq4RZmKoos8RD
+        3E2YzIB7cRdofn5hdWyD0PIc8fkzukw=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1627425784;
+        s=susede2_ed25519; t=1627425792;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=0TpbPbKdpPuBJzOYDLGprabdAvWGnrm1h37EgRsFnts=;
-        b=CZzlkIxkHsCqWkUwj+ehsgFgw7bBL5VYd774t4FPisdItlI2nO0Krq1bvu+lubYsJBh0kb
-        8RxuZBklBv4lCnDw==
+        bh=xLs00Rrv/kTcj/5olsX73VJ3zYmRNlaU9tOovlvLkrY=;
+        b=WP2zRKJ88WSgYMmFFXlnfNH3h946jiyNr0bF/6uXF8WrxO9XhcMa7bNsJ2H42E5Iv6mzYx
+        6eNbxKV9SskOJzDw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 1FA2313A5D;
-        Tue, 27 Jul 2021 22:43:00 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 22F9C13A5D;
+        Tue, 27 Jul 2021 22:43:08 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 2DnzM/SLAGGsVQAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 27 Jul 2021 22:43:00 +0000
-Subject: [PATCH 04/11] VFS: export lookup_mnt()
+        id rca3NPyLAGGzVQAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 27 Jul 2021 22:43:08 +0000
+Subject: [PATCH 05/11] VFS: new function: mount_is_internal()
 From:   NeilBrown <neilb@suse.de>
 To:     Christoph Hellwig <hch@infradead.org>,
         Josef Bacik <josef@toxicpanda.com>,
@@ -65,7 +64,7 @@ To:     Christoph Hellwig <hch@infradead.org>,
 Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org
 Date:   Wed, 28 Jul 2021 08:37:45 +1000
-Message-ID: <162742546551.32498.5847026750506620683.stgit@noble.brown>
+Message-ID: <162742546552.32498.14429836898036234922.stgit@noble.brown>
 In-Reply-To: <162742539595.32498.13687924366155737575.stgit@noble.brown>
 References: <162742539595.32498.13687924366155737575.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -76,55 +75,71 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In order to support filehandle lookup in filesystems with internal
-mounts (multiple subvols in the one filesystem) reconnect_path() in
-exportfs will need to find out if a given dentry is already mounted.
-This can be done with the function lookup_mnt(), so export that to make
-it available.
+This patch introduces the concept of an "internal" mount which is a
+mount where a filesystem has create the mount itself.
+
+Both the mounted-on-dentry and the mount's root dentry must refer to the
+same superblock (they may be the same dentry), and the mounted-on dentry
+must be an automount.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/internal.h         |    1 -
- fs/namespace.c        |    1 +
+ fs/namespace.c        |   29 +++++++++++++++++++++++++++++
  include/linux/mount.h |    2 ++
- 3 files changed, 3 insertions(+), 1 deletion(-)
+ 2 files changed, 31 insertions(+)
 
-diff --git a/fs/internal.h b/fs/internal.h
-index 3ce8edbaa3ca..0feb2722d2e5 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -81,7 +81,6 @@ int do_renameat2(int olddfd, struct filename *oldname, int newdfd,
- /*
-  * namespace.c
-  */
--extern struct vfsmount *lookup_mnt(const struct path *);
- extern int finish_automount(struct vfsmount *, struct path *);
- 
- extern int sb_prepare_remount_readonly(struct super_block *);
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 81b0f2b2e701..73bbdb921e24 100644
+index 73bbdb921e24..a14efbccfb03 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -662,6 +662,7 @@ struct vfsmount *lookup_mnt(const struct path *path)
- 	rcu_read_unlock();
- 	return m;
+@@ -1273,6 +1273,35 @@ bool path_is_mountpoint(const struct path *path)
  }
-+EXPORT_SYMBOL(lookup_mnt);
+ EXPORT_SYMBOL(path_is_mountpoint);
  
- static inline void lock_ns_list(struct mnt_namespace *ns)
++/**
++ * mount_is_internal() - Check if path is a mount internal to a single filesystem
++ * @mnt: vfsmount to check
++ *
++ * Some filesystems present multiple file-sets using a single
++ * superblock, such as btrfs with multiple subvolumes.  Names within a
++ * parent filesystem which lead to a subordinate filesystem are
++ * implemented as automounts so that the structure is visible in the
++ * mount table.  nfsd needs visibility into this arrangement so that it
++ * can determine if a mountpoint requires a new export, or is completely
++ * covered by an existing mount.
++ *
++ * An "internal" mount is one where the parent and child have the same
++ * superblock, and the mounted-on dentry is "managed" as an automount.  A
++ * filehandle found for an inode in the child can be looked-up using either
++ * vfsmount.
++ */
++bool mount_is_internal(struct vfsmount *mnt)
++{
++	struct mount *m = real_mount(mnt);
++
++	if (!mnt_has_parent(m))
++		return false;
++	if (m->mnt_parent->mnt.mnt_sb != m->mnt.mnt_sb)
++		return false;
++	return m->mnt_mountpoint->d_flags & DCACHE_NEED_AUTOMOUNT;
++}
++EXPORT_SYMBOL(mount_is_internal);
++
+ struct vfsmount *mnt_clone_internal(const struct path *path)
  {
+ 	struct mount *p;
 diff --git a/include/linux/mount.h b/include/linux/mount.h
-index 5d92a7e1a742..1d3daed88f83 100644
+index 1d3daed88f83..ab58087728ba 100644
 --- a/include/linux/mount.h
 +++ b/include/linux/mount.h
 @@ -118,6 +118,8 @@ extern unsigned int sysctl_mount_max;
  
  extern bool path_is_mountpoint(const struct path *path);
  
-+extern struct vfsmount *lookup_mnt(const struct path *);
++extern bool mount_is_internal(struct vfsmount *mnt);
 +
- extern void kern_unmount_array(struct vfsmount *mnt[], unsigned int num);
+ extern struct vfsmount *lookup_mnt(const struct path *);
  
- #endif /* _LINUX_MOUNT_H */
+ extern void kern_unmount_array(struct vfsmount *mnt[], unsigned int num);
 
 
