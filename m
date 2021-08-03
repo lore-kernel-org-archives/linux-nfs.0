@@ -2,115 +2,183 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.2 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84425C4320A
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Aug 2021 02:46:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6130DC43214
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Aug 2021 08:26:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5948360FA0
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Aug 2021 02:46:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4D54D60F70
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Aug 2021 08:26:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233399AbhHCCqg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 Aug 2021 22:46:36 -0400
-Received: from out30-133.freemail.mail.aliyun.com ([115.124.30.133]:36293 "EHLO
-        out30-133.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233356AbhHCCqg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Aug 2021 22:46:36 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R211e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04394;MF=haoxu@linux.alibaba.com;NM=1;PH=DS;RN=3;SR=0;TI=SMTPD_---0UhpfPBS_1627958784;
-Received: from B-25KNML85-0107.local(mailfrom:haoxu@linux.alibaba.com fp:SMTPD_---0UhpfPBS_1627958784)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Tue, 03 Aug 2021 10:46:24 +0800
-Subject: Re: [PATCH] common/attr: fix the MAX_ATTRS and MAX_ATTRVAL_SIZE for
- nfs
-To:     Eryu Guan <eguan@linux.alibaba.com>
-Cc:     fstests@vger.kernel.org, linux-nfs@vger.kernel.org
-References: <20210730124252.113071-1-haoxu@linux.alibaba.com>
- <20210730140134.GM60846@e18g06458.et15sqa>
-From:   Hao Xu <haoxu@linux.alibaba.com>
-Message-ID: <973941f3-a2c9-1e5d-a8bc-417a955d505e@linux.alibaba.com>
-Date:   Tue, 3 Aug 2021 10:46:24 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
- Gecko/20100101 Thunderbird/78.10.2
+        id S234530AbhHCI0c (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 3 Aug 2021 04:26:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52710 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234513AbhHCI0b (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Aug 2021 04:26:31 -0400
+Received: from out2.migadu.com (out2.migadu.com [IPv6:2001:41d0:2:aacc::])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 71957C06175F;
+        Tue,  3 Aug 2021 01:26:20 -0700 (PDT)
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
+        t=1627979175;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=/v0LmeMUy3UoCS0LwhBauvix/4HwA46AmbAhAkEbA8E=;
+        b=u7uFzTyEyADueCuQGCCxAAroQPqolEGeZFGM0AWRyD9c0QmJqCSSPgOlySpRiqtKmDlzc7
+        1P//NNrc9CkNxiqdgW0lDbaKRammriCQ04gpGdeDp/TKQdkdzs9UEcrR4glzWhHyj2952x
+        sPbgh3o6gwx+rCJp8G45//eAx5nO7Pw=
+From:   Yajun Deng <yajun.deng@linux.dev>
+To:     davem@davemloft.net, kuba@kernel.org,
+        mathew.j.martineau@linux.intel.com, matthieu.baerts@tessares.net,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bpf@vger.kernel.org, mptcp@lists.linux.dev,
+        linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
+        linux-s390@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Yajun Deng <yajun.deng@linux.dev>
+Subject: [PATCH net-next] net: Modify sock_set_keepalive() for more scenarios
+Date:   Tue,  3 Aug 2021 16:25:53 +0800
+Message-Id: <20210803082553.25194-1-yajun.deng@linux.dev>
 MIME-Version: 1.0
-In-Reply-To: <20210730140134.GM60846@e18g06458.et15sqa>
-Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Transfer-Encoding: 8bit
+X-Migadu-Flow: FLOW_OUT
+X-Migadu-Auth-User: yajun.deng@linux.dev
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-在 2021/7/30 下午10:01, Eryu Guan 写道:
-> [cc linux-nfs for review]
-> 
-> On Fri, Jul 30, 2021 at 08:42:52PM +0800, Hao Xu wrote:
->> The block size of localfs for nfs may be much smaller than nfs itself.
->> So we'd better set MAX_ATTRS and MAX_ATTRVAL_SIZE to 4096 to avoid
->> 'no space' error when we test adding a bunch of xattrs to nfs.
->>
->> Signed-off-by: Hao Xu <haoxu@linux.alibaba.com>
-> 
-> Since the xattr support is relatively new (merged a year ago for
-> NFSv4.2), I'd like nfs folks to take a look as well.
-> 
->> ---
->>
->> It's better to set BLOCK_SIZE to `_get_block_size $variable`
->> here $variable is the localfs for nfs, since I'm not familiar with
->> xfstests, anyone tell what's the name of it.
-> 
-> fstests doesn't know the exported filesystem under NFS, so I don't think
-> we could the block size of it.
-> 
->>
->>   common/attr | 11 +++++++++--
->>   1 file changed, 9 insertions(+), 2 deletions(-)
->>
->> diff --git a/common/attr b/common/attr
->> index 42ceab92335a..a833f00e0884 100644
->> --- a/common/attr
->> +++ b/common/attr
->> @@ -253,9 +253,13 @@ _getfattr()
->>   
->>   # set maximum total attr space based on fs type
->>   case "$FSTYP" in
->> -xfs|udf|pvfs2|9p|ceph|nfs)
->> +xfs|udf|pvfs2|9p|ceph)
->>   	MAX_ATTRS=1000
->>   	;;
->> +nfs)
->> +	BLOCK_SIZE=4096
->> +	let MAX_ATTRS=$BLOCK_SIZE/40
->> +	;;
->>   *)
->>   	# Assume max ~1 block of attrs
->>   	BLOCK_SIZE=`_get_block_size $TEST_DIR`
->> @@ -273,12 +277,15 @@ xfs|udf|btrfs)
->>   pvfs2)
->>   	MAX_ATTRVAL_SIZE=8192
->>   	;;
->> -9p|ceph|nfs)
->> +9p|ceph)
->>   	MAX_ATTRVAL_SIZE=65536
->>   	;;
->>   bcachefs)
->>   	MAX_ATTRVAL_SIZE=1024
->>   	;;
->> +nfs)
->> +	MAX_ATTRVAL_SIZE=3840
->> +	;;
-> 
-> Where does this value come from?
-> 
-3840 = 4096 - 256, which is like the case of *)
-> Thanks,
-> Eryu
-> 
->>   *)
->>   	# Assume max ~1 block of attrs
->>   	BLOCK_SIZE=`_get_block_size $TEST_DIR`
->> -- 
->> 2.24.4
+Add 2nd parameter in sock_set_keepalive(), let the caller decide
+whether to set. This can be applied to more scenarios.
+
+Signed-off-by: Yajun Deng <yajun.deng@linux.dev>
+---
+ include/net/sock.h    |  2 +-
+ net/core/filter.c     |  4 +---
+ net/core/sock.c       | 10 ++++------
+ net/mptcp/sockopt.c   |  4 +---
+ net/rds/tcp_listen.c  |  2 +-
+ net/smc/af_smc.c      |  2 +-
+ net/sunrpc/xprtsock.c |  2 +-
+ 7 files changed, 10 insertions(+), 16 deletions(-)
+
+diff --git a/include/net/sock.h b/include/net/sock.h
+index ff1be7e7e90b..0aae26159549 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2772,7 +2772,7 @@ int sock_set_timestamping(struct sock *sk, int optname,
+ 
+ void sock_enable_timestamps(struct sock *sk);
+ void sock_no_linger(struct sock *sk);
+-void sock_set_keepalive(struct sock *sk);
++void sock_set_keepalive(struct sock *sk, bool valbool);
+ void sock_set_priority(struct sock *sk, u32 priority);
+ void sock_set_rcvbuf(struct sock *sk, int val);
+ void sock_set_mark(struct sock *sk, u32 val);
+diff --git a/net/core/filter.c b/net/core/filter.c
+index faf29fd82276..41b2bf140b89 100644
+--- a/net/core/filter.c
++++ b/net/core/filter.c
+@@ -4769,9 +4769,7 @@ static int _bpf_setsockopt(struct sock *sk, int level, int optname,
+ 			ret = sock_bindtoindex(sk, ifindex, false);
+ 			break;
+ 		case SO_KEEPALIVE:
+-			if (sk->sk_prot->keepalive)
+-				sk->sk_prot->keepalive(sk, valbool);
+-			sock_valbool_flag(sk, SOCK_KEEPOPEN, valbool);
++			sock_set_keepalive(sk, !!valbool);
+ 			break;
+ 		case SO_REUSEPORT:
+ 			sk->sk_reuseport = valbool;
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 9671c32e6ef5..7041e6355ae1 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -892,12 +892,12 @@ int sock_set_timestamping(struct sock *sk, int optname,
+ 	return 0;
+ }
+ 
+-void sock_set_keepalive(struct sock *sk)
++void sock_set_keepalive(struct sock *sk, bool valbool)
+ {
+ 	lock_sock(sk);
+ 	if (sk->sk_prot->keepalive)
+-		sk->sk_prot->keepalive(sk, true);
+-	sock_valbool_flag(sk, SOCK_KEEPOPEN, true);
++		sk->sk_prot->keepalive(sk, valbool);
++	sock_valbool_flag(sk, SOCK_KEEPOPEN, valbool);
+ 	release_sock(sk);
+ }
+ EXPORT_SYMBOL(sock_set_keepalive);
+@@ -1060,9 +1060,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		break;
+ 
+ 	case SO_KEEPALIVE:
+-		if (sk->sk_prot->keepalive)
+-			sk->sk_prot->keepalive(sk, valbool);
+-		sock_valbool_flag(sk, SOCK_KEEPOPEN, valbool);
++		sock_set_keepalive(sk, !!valbool);
+ 		break;
+ 
+ 	case SO_OOBINLINE:
+diff --git a/net/mptcp/sockopt.c b/net/mptcp/sockopt.c
+index 8c03afac5ca0..879b8381055c 100644
+--- a/net/mptcp/sockopt.c
++++ b/net/mptcp/sockopt.c
+@@ -81,9 +81,7 @@ static void mptcp_sol_socket_sync_intval(struct mptcp_sock *msk, int optname, in
+ 			sock_valbool_flag(ssk, SOCK_DBG, !!val);
+ 			break;
+ 		case SO_KEEPALIVE:
+-			if (ssk->sk_prot->keepalive)
+-				ssk->sk_prot->keepalive(ssk, !!val);
+-			sock_valbool_flag(ssk, SOCK_KEEPOPEN, !!val);
++			sock_set_keepalive(ssk, !!val);
+ 			break;
+ 		case SO_PRIORITY:
+ 			ssk->sk_priority = val;
+diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
+index 09cadd556d1e..b69ebb3f424a 100644
+--- a/net/rds/tcp_listen.c
++++ b/net/rds/tcp_listen.c
+@@ -44,7 +44,7 @@ void rds_tcp_keepalive(struct socket *sock)
+ 	int keepidle = 5; /* send a probe 'keepidle' secs after last data */
+ 	int keepcnt = 5; /* number of unack'ed probes before declaring dead */
+ 
+-	sock_set_keepalive(sock->sk);
++	sock_set_keepalive(sock->sk, true);
+ 	tcp_sock_set_keepcnt(sock->sk, keepcnt);
+ 	tcp_sock_set_keepidle(sock->sk, keepidle);
+ 	/* KEEPINTVL is the interval between successive probes. We follow
+diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
+index 898389611ae8..ad8f4302037f 100644
+--- a/net/smc/af_smc.c
++++ b/net/smc/af_smc.c
+@@ -68,7 +68,7 @@ static void smc_set_keepalive(struct sock *sk, int val)
+ {
+ 	struct smc_sock *smc = smc_sk(sk);
+ 
+-	smc->clcsock->sk->sk_prot->keepalive(smc->clcsock->sk, val);
++	sock_set_keepalive(smc->clcsock->sk, !!val);
+ }
+ 
+ static struct smc_hashinfo smc_v4_hashinfo = {
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index e573dcecdd66..306a332f8d28 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2127,7 +2127,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 	spin_unlock(&xprt->transport_lock);
+ 
+ 	/* TCP Keepalive options */
+-	sock_set_keepalive(sock->sk);
++	sock_set_keepalive(sock->sk, true);
+ 	tcp_sock_set_keepidle(sock->sk, keepidle);
+ 	tcp_sock_set_keepintvl(sock->sk, keepidle);
+ 	tcp_sock_set_keepcnt(sock->sk, keepcnt);
+-- 
+2.32.0
 
