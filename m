@@ -2,110 +2,152 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27E7DC4338F
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 00:37:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 220D5C432BE
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 16:36:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0726C61040
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 00:37:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 05B1460EE4
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 16:36:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236345AbhHEAhf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Aug 2021 20:37:35 -0400
-Received: from mail.rptsys.com ([23.155.224.45]:56306 "EHLO mail.rptsys.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S234461AbhHEAhe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Aug 2021 20:37:34 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by mail.rptsys.com (Postfix) with ESMTP id 3206737B2A7E7E
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Aug 2021 19:37:21 -0500 (CDT)
-Received: from mail.rptsys.com ([127.0.0.1])
-        by localhost (vali.starlink.edu [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id cUZq-OHaIERh for <linux-nfs@vger.kernel.org>;
-        Wed,  4 Aug 2021 19:37:20 -0500 (CDT)
-Received: from localhost (localhost [127.0.0.1])
-        by mail.rptsys.com (Postfix) with ESMTP id A5E4E37B2A7E7B
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Aug 2021 19:37:20 -0500 (CDT)
-DKIM-Filter: OpenDKIM Filter v2.10.3 mail.rptsys.com A5E4E37B2A7E7B
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=raptorengineering.com; s=B8E824E6-0BE2-11E6-931D-288C65937AAD;
-        t=1628123840; bh=rFTMcCQq9VbQc0T/27T13QByavd3E0ghZ+HhXYiz1b4=;
-        h=Date:From:To:Message-ID:MIME-Version;
-        b=skOUg6ooFP10WKvFSx+mmDTtktBmv63xYUwuFpYaJQeg8JoCUZBuZ0IAcohDPLs2e
-         LQoN/NVUiGUDQPBQG+zSE1AFAP3VdgtU1WPM4Ty//dDJ7NOhC4IDVd9lE7ez1MHwMB
-         ks+jQqvAsJ3T7FlK32qA1J5KuQhODRcP32nht3rk=
-X-Virus-Scanned: amavisd-new at rptsys.com
-Received: from mail.rptsys.com ([127.0.0.1])
-        by localhost (vali.starlink.edu [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id 1r29NYEvDsCS for <linux-nfs@vger.kernel.org>;
-        Wed,  4 Aug 2021 19:37:20 -0500 (CDT)
-Received: from vali.starlink.edu (unknown [192.168.3.2])
-        by mail.rptsys.com (Postfix) with ESMTP id 82DA937B2A7E78
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Aug 2021 19:37:20 -0500 (CDT)
-Date:   Wed, 4 Aug 2021 19:37:19 -0500 (CDT)
-From:   Timothy Pearson <tpearson@raptorengineering.com>
-To:     linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <361337129.54635.1628123839436.JavaMail.zimbra@raptorengineeringinc.com>
-In-Reply-To: <1851673341.49012.1628121856011.JavaMail.zimbra@raptorengineeringinc.com>
-References: <985631970.48634.1628121620017.JavaMail.zimbra@raptorengineeringinc.com> <1851673341.49012.1628121856011.JavaMail.zimbra@raptorengineeringinc.com>
-Subject: Re: Callback slot table overflowed
+        id S231815AbhHEQgM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 5 Aug 2021 12:36:12 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:55517 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232361AbhHEQgL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Aug 2021 12:36:11 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1628181353;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         references:references; bh=cqiBhFIK0kAqQNHfo/GucN8GfiLKs6hRFMJo5oTIZHg=;
+        b=Zo7rgPPA6Kp1XzQG+zcuXeVE4nQug89E3TmBGYlB0WESl1BWOjOKU822qkzJAvfed8oXz7
+        j/LujaOun+dzqENHx3NXupAHxhgs63JgtPAGdhyqTGCLWjzOyU6+RN1Rr6a6bVxUGS2kTK
+        xG2sl4PaDB3QYCM3IbXeWTJ5E0CoAxc=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-420-OwRpS98qMZeNyIhOZrpXfg-1; Thu, 05 Aug 2021 12:35:47 -0400
+X-MC-Unique: OwRpS98qMZeNyIhOZrpXfg-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C19FFCC623;
+        Thu,  5 Aug 2021 16:35:38 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.22.32.7])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1A1BA5C1A1;
+        Thu,  5 Aug 2021 16:35:33 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+From:   David Howells <dhowells@redhat.com>
+To:     Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Steve French <sfrench@samba.org>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Miklos Szeredi <miklos@szeredi.hu>
+Cc:     dhowells@redhat.com,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        Shyam Prasad N <nspmangalore@gmail.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        devel@lists.orangefs.org, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Canvassing for network filesystem write size vs page size
+References: <YQv+iwmhhZJ+/ndc@casper.infradead.org>
+ <YQvpDP/tdkG4MMGs@casper.infradead.org>
+ <YQvbiCubotHz6cN7@casper.infradead.org>
+ <1017390.1628158757@warthog.procyon.org.uk>
+ <1170464.1628168823@warthog.procyon.org.uk>
+ <1186271.1628174281@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Mailer: Zimbra 8.5.0_GA_3042 (ZimbraWebClient - GC83 (Linux)/8.5.0_GA_3042)
-Thread-Topic: Callback slot table overflowed
-Thread-Index: pWASFVTGcuTitVsqm6vgvEReZrSGHqraViLp7esZBoM=
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <1219712.1628181333.1@warthog.procyon.org.uk>
+Date:   Thu, 05 Aug 2021 17:35:33 +0100
+Message-ID: <1219713.1628181333@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On further investigation, the working server had already been rolled back to 4.19.0.  Apparently the issue was insurmountable in 5.x.
+With Willy's upcoming folio changes, from a filesystem point of view, we're
+going to be looking at folios instead of pages, where:
 
-It should be simple enough to set up a test environment out of production for 5.x, if you have any debug tips / would like to see any debug options compiled in.
+ - a folio is a contiguous collection of pages;
 
-Thanks!
+ - each page in the folio might be standard PAGE_SIZE page (4K or 64K, say) or
+   a huge pages (say 2M each);
 
------ Original Message -----
-> From: "Timothy Pearson" <tpearson@raptorengineering.com>
-> To: "linux-nfs" <linux-nfs@vger.kernel.org>
-> Sent: Wednesday, August 4, 2021 7:04:16 PM
-> Subject: Re: Callback slot table overflowed
+ - a folio has one dirty flag and one writeback flag that applies to all
+   constituent pages;
 
-> Other information that may be helpful:
-> 
-> All clients are using TCP
-> arm64 clients are unaffected by the bug
-> The armel clients use very small (4k) rsize/wsize buffers
-> Prior to the upgrade from Debian Stretch, everything was working perfectly
-> 
-> ----- Original Message -----
->> From: "Timothy Pearson" <tpearson@raptorengineering.com>
->> To: "linux-nfs" <linux-nfs@vger.kernel.org>
->> Sent: Wednesday, August 4, 2021 7:00:20 PM
->> Subject: Callback slot table overflowed
-> 
->> All,
->> 
->> We've hit an odd issue after upgrading a main NFS server from Debian Stretch to
->> Debian Buster.  In both cases the 5.13.4 kernel was used, however after the
->> upgrade none of our ARM thin clients can mount their root filesystems -- early
->> in the boot process I/O errors are returned immediately following "Callback
->> slot table overflowed" in the client dmesg.
->> 
->> I am unable to find any useful information on this "Callback slot table
->> overflowed" message, and have no idea why it is only impacting our ARM (armel)
->> clients.  Both 4.14 and 5.3 on the client side show the issue, other client
->> kernel versions were not tested.
->> 
->> Curiously, increasing the rsize/wsize values to 65536 or higher reduces (but
->> does not eliminate) the number of callback overflow messages.
->> 
->> The server is a ppc64el 64k page host, and none of our pcc64el or amd64 thin
->> clients are experiencing any problems.  Nothing of interest appears in the
->> server message log.
->> 
->> Any troubleshooting hints would be most welcome.
->> 
-> > Thank you!
+ - a complete folio currently is limited to PMD_SIZE or order 8, but could
+   theoretically go up to about 2GiB before various integer fields have to be
+   modified (not to mention the memory allocator).
+
+Willy is arguing that network filesystems should, except in certain very
+special situations (eg. O_SYNC), only write whole folios (limited to EOF).
+
+Some network filesystems, however, currently keep track of which byte ranges
+are modified within a dirty page (AFS does; NFS seems to also) and only write
+out the modified data.
+
+Also, there are limits to the maximum RPC payload sizes, so writing back large
+pages may necessitate multiple writes, possibly to multiple servers.
+
+What I'm trying to do is collate each network filesystem's properties (I'm
+including FUSE in that).
+
+So we have the following filesystems:
+
+ Plan9
+ - Doesn't track bytes
+ - Only writes single pages
+
+ AFS
+ - Max RPC payload theoretically ~5.5 TiB (OpenAFS), ~16EiB (Auristor/kAFS)
+ - kAFS (Linux kernel)
+   - Tracks bytes, only writes back what changed
+   - Writes from up to 65535 contiguous pages.
+ - OpenAFS/Auristor (UNIX/Linux)
+   - Deal with cache-sized blocks (configurable, but something from 8K to 2M),
+     reads and writes in these blocks
+ - OpenAFS/Auristor (Windows)
+   - Track bytes, write back only what changed
+
+ Ceph
+ - File divided into objects (typically 2MiB in size), which may be scattered
+   over multiple servers.
+ - Max RPC size is therefore object size.
+ - Doesn't track bytes.
+
+ CIFS/SMB
+ - Writes back just changed bytes immediately under some circumstances
+ - Doesn't track bytes and writes back whole pages otherwise.
+ - SMB3 has a max RPC size of 16MiB, with a default of 4MiB
+
+ FUSE
+ - Doesn't track bytes.
+ - Max 'RPC' size of 256 pages (I think).
+
+ NFS
+ - Tracks modified bytes within a page.
+ - Max RPC size of 1MiB.
+ - Files may be constructed of objects scattered over different servers.
+
+ OrangeFS
+ - Doesn't track bytes.
+ - Multipage writes possible.
+
+If you could help me fill in the gaps, that would be great.
+
+Thanks,
+David
+
