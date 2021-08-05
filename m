@@ -2,93 +2,127 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61BB9C4338F
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 20:11:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7B5FC4338F
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 21:26:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3000560EE7
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 20:11:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 91C9C60F01
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 Aug 2021 21:26:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231400AbhHEULj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 5 Aug 2021 16:11:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37004 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231372AbhHEULj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Aug 2021 16:11:39 -0400
-Received: from mail-pj1-x102f.google.com (mail-pj1-x102f.google.com [IPv6:2607:f8b0:4864:20::102f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DE5EDC061765
-        for <linux-nfs@vger.kernel.org>; Thu,  5 Aug 2021 13:11:24 -0700 (PDT)
-Received: by mail-pj1-x102f.google.com with SMTP id e2-20020a17090a4a02b029016f3020d867so12309789pjh.3
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Aug 2021 13:11:24 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=+xS0rNCbWcHnzm6yhSIJwEdxrGyiUrUKRfpnM0ZXn1Y=;
-        b=ubstJrMI4ocbkAcB0Y068u3MLZh8hPKdA33BMB+YuSF7BJtMffh6HhRESClQMI2bwC
-         qNtYXLKWl+LpqCSL+9jBkVBme+COPvft48vW42ELz4f5/Qml2QwSOW0mlkqbjjCC+xBg
-         OV67317fw9+5Ea9wvZ2NTnkiJJzYiYJAJjVc7mTSqyrBWCFZz0AfOi3BtWy7sCdAdP32
-         oJE3MLuCXsAKssr0yChO1ha3clDhuib0AZKbkZBCRIorscjfp4gobmzGFlxTGBJ761Mv
-         uC1ga6mH9cZJ7ZzVujcI0/APRkKdg7bwJY1ERT7BFTNXTSWXBFUHjrnTxsl3UzXBAOqt
-         Dmwg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=+xS0rNCbWcHnzm6yhSIJwEdxrGyiUrUKRfpnM0ZXn1Y=;
-        b=mvDy36QfRTjZYp0s9xGNHdDBUHKHhRtgHQz9Swglt/flq2lIPGIMT1E2a5BQGky+6V
-         9+jdxmX0zkboye6fM4c02RIugJXl5XgUW9GBc5Idyi5aO7nruuShKCjiOWBLI5iZ9j1m
-         yn7L/i2XLOWaJQqcCBttC9YxcAqTHqOva6jdOK6lRc0gHMm1c6kSBdqnpLLhUXE6fZAw
-         WvUwBZoefFJkIypeGkWW3sQNOFcK8uz2I7gKVghEakcOSxK+kvAsU4MOv87tjVJFfAQn
-         egnhpsoaKFeR2GDujh4gsY3gucRzTcLv9Hm3cvJH8ex543MysPXC37uuxaYokRhQ9CEJ
-         b94A==
-X-Gm-Message-State: AOAM53075ICWhlrgVLjqxZ0gWWKJPjtN+r1PRo9752o0b0WZf4YuKd2i
-        B7VTO238qbEHkKAfU/VDk1hUrQgB+YM=
-X-Google-Smtp-Source: ABdhPJzJ7Me5FVKLD/ScSBqNsnQrymGS385aM/ElPhCoTnkxWdZStLBw5wu3gBs+YGL3BZYhHtbKsw==
-X-Received: by 2002:a17:90a:4e4e:: with SMTP id t14mr6526951pjl.8.1628194284487;
-        Thu, 05 Aug 2021 13:11:24 -0700 (PDT)
-Received: from nyarly.rlyeh.local ([179.233.244.167])
-        by smtp.gmail.com with ESMTPSA id w18sm7407934pjg.50.2021.08.05.13.11.21
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 05 Aug 2021 13:11:23 -0700 (PDT)
-Date:   Thu, 5 Aug 2021 17:11:19 -0300
-From:   Thiago Rafael Becker <trbecker@gmail.com>
-To:     Steve Dickson <steved@redhat.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "tbecker@redhat.com" <tbecker@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH] mount.nfs: Add readahead option
-Message-ID: <YQxF59HvoJzQZVaM@nyarly.rlyeh.local>
-References: <20210803130717.2890565-1-trbecker@gmail.com>
- <6b627dc6ebc9ee1cbd37a62b48d08b1a031f0f08.camel@hammerspace.com>
- <b1f88c47-fe08-f0a2-ad3e-a65e0fa86874@redhat.com>
+        id S230438AbhHEV0y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 5 Aug 2021 17:26:54 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34026 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S229682AbhHEV0w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Aug 2021 17:26:52 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id BABED60F01
+        for <linux-nfs@vger.kernel.org>; Thu,  5 Aug 2021 21:26:37 +0000 (UTC)
+Subject: [PATCH v1] SUNRPC: Fix a NULL pointer deref in
+ trace_svc_stats_latency()
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Date:   Thu, 05 Aug 2021 17:26:36 -0400
+Message-ID: <162819879677.1725.12026140219173067490.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <b1f88c47-fe08-f0a2-ad3e-a65e0fa86874@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello, all
+Some paths through svc_process() leave rqst->rq_procinfo set to
+NULL, which triggers a crash if tracing happens to be enabled.
 
-On Thu, Aug 05, 2021 at 02:23:29PM -0400, Steve Dickson wrote:
-> Hey Trond!
-> but setting a mount option is much simpler and straightforward...
-> Plus with nfsmount.conf, it can be per fs,server,or global.
-> 
-> You know I am not a fan of taking new mount options, but I have
-> bugs open that show the degrading of read performance from one
-> release over another... If we can eliminate that degradation with an mount
-> option... I really don't see a problem with that...
-> 
-> steved.
-> 
+Fixes: 89ff87494c6e ("SUNRPC: Display RPC procedure names instead of proc numbers")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ include/linux/sunrpc/svc.h    |    1 +
+ include/trace/events/sunrpc.h |    8 ++++----
+ net/sunrpc/svc.c              |   15 +++++++++++++++
+ 3 files changed, 20 insertions(+), 4 deletions(-)
 
-CEPH and CIFS have the rasize mount option that sets the readahead
-size for that file system, so there are precedents for having this
-option for NFS as well.
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index dd3daadbc0e5..064c96157d1f 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -527,6 +527,7 @@ void		   svc_wake_up(struct svc_serv *);
+ void		   svc_reserve(struct svc_rqst *rqstp, int space);
+ struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
+ char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
++const char *	   svc_proc_name(const struct svc_rqst *rqstp);
+ int		   svc_encode_result_payload(struct svc_rqst *rqstp,
+ 					     unsigned int offset,
+ 					     unsigned int length);
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 174385da20ad..b10de4896147 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -1641,7 +1641,7 @@ TRACE_EVENT(svc_process,
+ 		__field(u32, vers)
+ 		__field(u32, proc)
+ 		__string(service, name)
+-		__string(procedure, rqst->rq_procinfo->pc_name)
++		__string(procedure, svc_proc_name(rqst))
+ 		__string(addr, rqst->rq_xprt ?
+ 			 rqst->rq_xprt->xpt_remotebuf : "(null)")
+ 	),
+@@ -1651,7 +1651,7 @@ TRACE_EVENT(svc_process,
+ 		__entry->vers = rqst->rq_vers;
+ 		__entry->proc = rqst->rq_proc;
+ 		__assign_str(service, name);
+-		__assign_str(procedure, rqst->rq_procinfo->pc_name);
++		__assign_str(procedure, svc_proc_name(rqst));
+ 		__assign_str(addr, rqst->rq_xprt ?
+ 			     rqst->rq_xprt->xpt_remotebuf : "(null)");
+ 	),
+@@ -1917,7 +1917,7 @@ TRACE_EVENT(svc_stats_latency,
+ 	TP_STRUCT__entry(
+ 		__field(u32, xid)
+ 		__field(unsigned long, execute)
+-		__string(procedure, rqst->rq_procinfo->pc_name)
++		__string(procedure, svc_proc_name(rqst))
+ 		__string(addr, rqst->rq_xprt->xpt_remotebuf)
+ 	),
+ 
+@@ -1925,7 +1925,7 @@ TRACE_EVENT(svc_stats_latency,
+ 		__entry->xid = be32_to_cpu(rqst->rq_xid);
+ 		__entry->execute = ktime_to_us(ktime_sub(ktime_get(),
+ 							 rqst->rq_stime));
+-		__assign_str(procedure, rqst->rq_procinfo->pc_name);
++		__assign_str(procedure, svc_proc_name(rqst));
+ 		__assign_str(addr, rqst->rq_xprt->xpt_remotebuf);
+ 	),
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 1f3552c62e71..35b549c147a2 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1633,6 +1633,21 @@ u32 svc_max_payload(const struct svc_rqst *rqstp)
+ }
+ EXPORT_SYMBOL_GPL(svc_max_payload);
+ 
++/**
++ * svc_proc_name - Return RPC procedure name in string form
++ * @rqstp: svc_rqst to operate on
++ *
++ * Return value:
++ *   Pointer to a NUL-terminated string
++ */
++const char *svc_proc_name(const struct svc_rqst *rqstp)
++{
++	if (rqstp && rqstp->rq_procinfo)
++		return rqstp->rq_procinfo->pc_name;
++	return "unknown";
++}
++
++
+ /**
+  * svc_encode_result_payload - mark a range of bytes as a result payload
+  * @rqstp: svc_rqst to operate on
+
+
