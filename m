@@ -2,140 +2,145 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E2B09C432BE
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 Aug 2021 20:12:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38665C432BE
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 Aug 2021 20:17:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BEE1D61154
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 Aug 2021 20:12:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1A90B61163
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 Aug 2021 20:17:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244636AbhHFUMw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 6 Aug 2021 16:12:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51002 "EHLO
+        id S244832AbhHFUSA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 6 Aug 2021 16:18:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52122 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244426AbhHFUMw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2021 16:12:52 -0400
-Received: from mail-ed1-x52b.google.com (mail-ed1-x52b.google.com [IPv6:2a00:1450:4864:20::52b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C59BEC0613CF
-        for <linux-nfs@vger.kernel.org>; Fri,  6 Aug 2021 13:12:34 -0700 (PDT)
-Received: by mail-ed1-x52b.google.com with SMTP id i6so14730714edu.1
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Aug 2021 13:12:34 -0700 (PDT)
+        with ESMTP id S232908AbhHFUR7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Aug 2021 16:17:59 -0400
+Received: from mail-qt1-x833.google.com (mail-qt1-x833.google.com [IPv6:2607:f8b0:4864:20::833])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D73BCC0613CF
+        for <linux-nfs@vger.kernel.org>; Fri,  6 Aug 2021 13:17:42 -0700 (PDT)
+Received: by mail-qt1-x833.google.com with SMTP id h27so7363373qtu.9
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Aug 2021 13:17:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=AmpSKDdHkrsEDDHUGuoqCuytr0WqvHAJwTc46DXpH/c=;
-        b=GPXbTQl2VB4+epJgG2oiAfT88YWlHVAsrtH/MxYdw/B1eIJOz0125/RxUHvVApqaz8
-         VtuYK8ZDwkskcmnokr+yTcuvAbVfokFigy3cA/Mp/1m94uzD/nf82jc8HQryNI68LE2l
-         EUvrwdCms5UcDD1VWJrAq/F7q4zMS2UTU+SPBTSRKl2grdg0WkwTixUxmjaKx1GI9FC3
-         ZPHOIEOdtvuC6uL9WUzyyKIr50i3lM6wljyf5uODbNrL7oZXy3sAKxIQaloBt2fIxYDF
-         xzIbRo+otpzbmTDtfDGz4Io+XglrmPr5Ed3C122HnxQbru03gHbpGFYONpSjKzpWM8b8
-         txPA==
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=xBbv87HeL7vxd5hlOBy/XvTz1626I03fsVDJ5SL9qM0=;
+        b=m2S4bNoEmHwYy/ReroU37YgQCGvNKWkDyUL9Se26iwa6z4yQyZyM6MFM7M7pQsWq/+
+         ataVpe2vxFKhSiSAVMJLbBO3J8SKsWqjc3HEx6W94kt7lpz8ph2yOjUWeDhpJXsROVXC
+         Z4IaVt9S38wRGIFdPd/1DQDLSb7j+AVtrKq9rtUAvbj/L+qwjKlw2GwkEygwfFHPiY5R
+         FGZmHroHLRsdxrvESjOgobL2N4FUBLzWAcJ6GzwnIyR57F7dDB5o7Z2MZdiN84rhLYEj
+         jhGQsy83/ZUxhI+ohx8GsYt/ZqRh0V+QSLwNHtrFVo4BlKpoMdWVdsoJYMjqSO2HFqmi
+         YjSw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=AmpSKDdHkrsEDDHUGuoqCuytr0WqvHAJwTc46DXpH/c=;
-        b=PBnZYObvufbr6kAVeamCAqw9WHkjNWfeffi8KPCPBRl6HTzG5scmrzrtyX5geKvxHg
-         4NGqVxK2/mJrZJWzWigyK2dasdi7GANNmUyfmwBsyKTx4FmjlXrdqXFp2CWhbs0h9bD1
-         vhPzVxkgsvvkjiFAWeoDiDP6Zh/8vHqXZFBtfrz2SYCckpCn7Dwurb/tDWlROtYSKjtV
-         KAi2URW/pfWXhvDuVm0iTgkqiyT1toqk1t77GOBGEsegkdv3Vbxc6JoIFlVeGjqvLHd/
-         kpi1TxopUuHIS04WQIXUCjG8NT0Mz0tWeS76UlA+JoM1VVClHsJAOMhMAtIxvG/PA94w
-         RO9w==
-X-Gm-Message-State: AOAM5332a5alIlaJxPBL0I1aXTZquzIn+TFTdjEYYXRVD+aHIF42S3CP
-        d4D1Rgkx+LW270Xg3YqPM2AUuNGVpF02x3391c4=
-X-Google-Smtp-Source: ABdhPJyrVDxg+TIC59kTSrdYyMXUx7GH5kOKYv4ton2PbdGX6FEMkV41vp2vu4D2PR6090yf1AqCf9rgNHoHw2h0DH4=
-X-Received: by 2002:a05:6402:34c4:: with SMTP id w4mr4768117edc.67.1628280753331;
- Fri, 06 Aug 2021 13:12:33 -0700 (PDT)
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=xBbv87HeL7vxd5hlOBy/XvTz1626I03fsVDJ5SL9qM0=;
+        b=EWjIOuSlE1eNdO6lphJbvwt6d2zTQHQ1b2tTsNsc+CYss7iVYDS8AHl5Tt/2cMsKps
+         PbUE7jaQf355bupAP0LdqBYpmITOBw43PpzrGD1IvG+eriwJXurHOPgt0MIBpY2nGGeL
+         wGwddnD43sYjKuQ/ypJIT6qWSXhmHVEyaTjZT6JEJMnrmhmd1IRddI4Z1jx8CGMzGcPe
+         RBSrQkRB6gAV3ETImFBdsgZjgMj3T8BuQAP2wOrksSzZMtzWj2I7IVMrY8eSvBsm1aeA
+         +GsVgw9lf+5sjWOnOmriLvXGbcOLrtU38AQ8eM8WfWnEdiuuUoNqeheWMA3oZ8gbmGXy
+         AKCA==
+X-Gm-Message-State: AOAM532h0LLQLgudSC446lMZrgXl168lkx/10hfv7pIrlIbzrr9cm3lx
+        gWPyUJQvXwKptEnpeUCHqrv1mMVYXKoBPQ==
+X-Google-Smtp-Source: ABdhPJyPjS4vFnfwJWvWBois4iW6xiHQJfkWNTJOVtqIKfDrJNFElrUJkDT5G7C2j3IpJ6h1BRV60A==
+X-Received: by 2002:ac8:7a98:: with SMTP id x24mr10561530qtr.42.1628281061931;
+        Fri, 06 Aug 2021 13:17:41 -0700 (PDT)
+Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
+        by smtp.gmail.com with ESMTPSA id g11sm3705720qtk.91.2021.08.06.13.17.40
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 06 Aug 2021 13:17:41 -0700 (PDT)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     steved@redhat.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v2 1/9] nfs-sysfs: Add an nfs-sysfs.py tool
+Date:   Fri,  6 Aug 2021 16:17:31 -0400
+Message-Id: <20210806201739.472806-2-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.32.0
+In-Reply-To: <20210806201739.472806-1-Anna.Schumaker@Netapp.com>
+References: <20210806201739.472806-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-References: <20210616011013.50547-1-olga.kornievskaia@gmail.com> <20210616011013.50547-7-olga.kornievskaia@gmail.com>
-In-Reply-To: <20210616011013.50547-7-olga.kornievskaia@gmail.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Fri, 6 Aug 2021 16:12:22 -0400
-Message-ID: <CAN-5tyGque598rzk2GQK3u=sWP35DHndJw50mWM-zfzF46L6oQ@mail.gmail.com>
-Subject: Re: [PATCH v3 6/6] NFSv4 allow for nconnect value of trunkable transport
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello folks (Chuck, Trond have graciously participated previously and
-I look forward to hearing back from you),
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-I would like to restart the conversation about the client's behaviour
-with regards to discovered truncable transports.
+This will be used to print and manipulate the sunrpc sysfs directory
+files. Running without arguments prints both usage information and the
+location of the sunrpc sysfs directory.
 
-I have put forth a version and patch 6 is the one that deals with the
-combination of trunkable transport and nconnect and I look for
-feedback from the community. I have written my views in the comments
-in the patch.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ .gitignore                   |  2 ++
+ tools/nfs-sysfs/nfs-sysfs.py | 13 +++++++++++++
+ tools/nfs-sysfs/sysfs.py     | 18 ++++++++++++++++++
+ 3 files changed, 33 insertions(+)
+ create mode 100755 tools/nfs-sysfs/nfs-sysfs.py
+ create mode 100644 tools/nfs-sysfs/sysfs.py
 
-My current position is: given that it's unclear how to reconcile
-managing connections to the same IP together with connections to other
-IPs. I propose we don't bring in nconnect  in play when truncable
-transport is discovered (basically option #2 in my comments below). I
-believe that's the simplest thing to do now and we can add nconnect
-behaviour later.
+diff --git a/.gitignore b/.gitignore
+index c89d1cd2583d..a476bd20bc3b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -84,3 +84,5 @@ systemd/rpc-gssd.service
+ cscope.*
+ # generic editor backup et al
+ *~
++# python bytecode
++__pycache__
+diff --git a/tools/nfs-sysfs/nfs-sysfs.py b/tools/nfs-sysfs/nfs-sysfs.py
+new file mode 100755
+index 000000000000..8ff59ea9e81b
+--- /dev/null
++++ b/tools/nfs-sysfs/nfs-sysfs.py
+@@ -0,0 +1,13 @@
++#!/usr/bin/python
++import argparse
++import sysfs
++
++parser = argparse.ArgumentParser()
++
++def show_small_help(args):
++    parser.print_usage()
++    print("sunrpc dir:", sysfs.SUNRPC)
++parser.set_defaults(func=show_small_help)
++
++args = parser.parse_args()
++args.func(args)
+diff --git a/tools/nfs-sysfs/sysfs.py b/tools/nfs-sysfs/sysfs.py
+new file mode 100644
+index 000000000000..0b358f57bb28
+--- /dev/null
++++ b/tools/nfs-sysfs/sysfs.py
+@@ -0,0 +1,18 @@
++import pathlib
++import sys
++
++MOUNT = None
++with open("/proc/mounts", 'r') as f:
++    for line in f:
++        if "sysfs" in line:
++            MOUNT = line.split()[1]
++            break
++
++if MOUNT == None:
++    print("ERROR: sysfs is not mounted")
++    sys.exit(1)
++
++SUNRPC = pathlib.Path(MOUNT) / "kernel" / "sunrpc"
++if not SUNRPC.is_dir():
++    print("ERROR: sysfs does not have sunrpc directory")
++    sys.exit(1)
+-- 
+2.32.0
 
-Thank you.
-
-
-On Tue, Jun 15, 2021 at 9:10 PM Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
->
-> From: Olga Kornievskaia <kolga@netapp.com>
->
-> If the new mount asked for nconnect mount, then create old client
-> number of connections to the destination address that has been
-> established as the same server with trunkable address.
->
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->
-> --- There might be a number of objection to this patch. One
-> I can think of is that this patch creates the nconnects based on
-> whether or not the new mount asked for nconnect instead of
-> unconditionally creating nconnect number of connections. The patch
-> still creates nconnect connections based on the original value
-> instead of picking the value of clp->cl_nconnect. I would have
-> preferred that would be done. I don't see what can be wrong with
-> using the new value. But I feared to go against what was objected
-> before. My preference would be to (1) create clp->cl_nconnect
-> connections or (2) not use this patch at all or (3) use as is
-> here (meaning at least not create extra connections unless asked
-> for by the mount).
-> ---
->  fs/nfs/nfs4client.c | 9 +++++++++
->  1 file changed, 9 insertions(+)
->
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index af57332503be..50fa9d53b444 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -427,6 +427,15 @@ static void nfs4_add_trunk(struct nfs_client *clp, struct nfs_client *old)
->
->         rpc_clnt_add_xprt(old->cl_rpcclient, &xprt_args,
->                           rpc_clnt_test_and_add_xprt, NULL);
-> +
-> +       if (clp->cl_nconnect > 1) {
-> +               int i;
-> +
-> +               for (i = 0; i < old->cl_nconnect - 1; i++)
-> +                       if (rpc_clnt_add_xprt(old->cl_rpcclient, &xprt_args,
-> +                                             NULL, NULL) < 0)
-> +                               break;
-> +       }
->  }
->
->  /**
-> --
-> 2.27.0
->
