@@ -2,136 +2,154 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69BFEC4338F
-	for <linux-nfs@archiver.kernel.org>; Mon,  9 Aug 2021 00:28:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BD80C4338F
+	for <linux-nfs@archiver.kernel.org>; Mon,  9 Aug 2021 03:58:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4147860F42
-	for <linux-nfs@archiver.kernel.org>; Mon,  9 Aug 2021 00:28:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7B0016101C
+	for <linux-nfs@archiver.kernel.org>; Mon,  9 Aug 2021 03:58:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232435AbhHIA3R (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 8 Aug 2021 20:29:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52820 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229903AbhHIA3R (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Aug 2021 20:29:17 -0400
-Received: from mail-pl1-x62c.google.com (mail-pl1-x62c.google.com [IPv6:2607:f8b0:4864:20::62c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B96AAC061760
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Aug 2021 17:28:56 -0700 (PDT)
-Received: by mail-pl1-x62c.google.com with SMTP id j3so14564403plx.4
-        for <linux-nfs@vger.kernel.org>; Sun, 08 Aug 2021 17:28:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=hTQAbzTf9ULU0kxq5RVe3UvFkDJIkSogU54CcY+eeF4=;
-        b=bfjqJjykzDBi01hxfPK2tUKnrh5Wk8kNPx1u7oZNjR/yJDSid8ddjwFPy4kjls6Vio
-         pvPwcbpMikv/y5GU91WO4zpdug4yzbXUar+QXqPWTwuyb4rlGK1W6kGBR1R1m8yl2PrR
-         Vm2sQsiUlxLgjynC927jxSK3K/Gci5R9vAB2VksoKQLEyqepAyBuuZN0o6Wso9yRL0Ut
-         wBkXcmA/XYxVFDcfuQlBI7PHZgQ5iieh7Ooap/OvWpeGwgXmsOfJ2No9grLBz9jWcM6c
-         O8zCP/wty7eb3pHDJtcT/rav2yQLk+eM9g1LCn2eB+c94oyEDWp2AOMeKzw0U79XAwQA
-         6Vdw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=hTQAbzTf9ULU0kxq5RVe3UvFkDJIkSogU54CcY+eeF4=;
-        b=A1jbFNCXk0WbgtBd5A8lt3uLp8ImuGzFkcXkbxf2lMLKEy2Ws6PYwk9ywSUcdXUFRt
-         QFQ2C0fTqMQVN72EACpeSKo6NLE/AegAz9afZI1/8NisjFoXtgnWZdYeJ0wUctNr5eCK
-         xekFclkVaN0MDngjZfDAItRv1uXpTfbqndwghhZHmChLzyc3qL65PX7BluQDAfKvGsLH
-         e88ePDWKZiVC1iU/yguNyH6ckD5uwQWVAT5/GTVrfjgAiV0cWg3dzNyGasj7i6cvKL2b
-         16LxTomzgn2OHKVfo1iv6KK//YGd25SmCzFGJ1sFTSuD0yotfBA/sWE5+bkV+RcFqLyv
-         l4jQ==
-X-Gm-Message-State: AOAM531IfT6F/f3zharZ/r62FwYSaI4OhEnF9pmp/Ki8iaZdps+cqrCx
-        F3xDk5ZRlNXnoB5AHBJKVTO2oYaqkib9LmYJZOgql0EWfHk=
-X-Google-Smtp-Source: ABdhPJyWNZ2gBBQuG7lJ++liv7Q1rZYSoJLFkIGtUOPiQnxMxNTSlFyrbhhgK0svspzcsPOFBGqFukAX0kQ9UvkZpNc=
-X-Received: by 2002:a65:40c8:: with SMTP id u8mr50716pgp.145.1628468935277;
- Sun, 08 Aug 2021 17:28:55 -0700 (PDT)
+        id S232763AbhHID6j (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 8 Aug 2021 23:58:39 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:56414 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232680AbhHID6i (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Aug 2021 23:58:38 -0400
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 353DF21E55;
+        Mon,  9 Aug 2021 03:58:17 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1628481497; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=Sb1QA97NgQTxNE9aFEJpXFBCpCFiUGgr0naZO+lLRCk=;
+        b=KzG4GFORXeMkvnlSFrT1yn+WfPYF3LvxsokNV1wFl106F18UNkhAxdKOAXpF5A9A36RHm9
+        ibzdubEpKPP8VEm/Lf0QyjkMMrJj7HRDCDnba3KcfN1dSlpwS+/l5ODYr1RYtnzyF6J13Z
+        MRs056zY/oXOSUs8+cybs9NiXGkxv5w=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1628481497;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=Sb1QA97NgQTxNE9aFEJpXFBCpCFiUGgr0naZO+lLRCk=;
+        b=W+yBQz1VKF0Yrm8tgHBsuIYABA07f5kSfl4AG8iPDxD6IzMSTKixf5LPvKzAHF8n5gEODc
+        S7C/+a6enIEvPfBQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 45AB613A9F;
+        Mon,  9 Aug 2021 03:58:15 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 1hoKAdenEGG7BgAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 09 Aug 2021 03:58:15 +0000
+Subject: [PATCH/RFC 0/4] Attempt to make progress with btrfs dev number
+  strangeness.
+From:   NeilBrown <neilb@suse.de>
+To:     Josef Bacik <josef@toxicpanda.com>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.com>
+Cc:     linux-fsdevel@vger.kernel.org,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Btrfs BTRFS <linux-btrfs@vger.kernel.org>
+Date:   Mon, 09 Aug 2021 13:55:27 +1000
+Message-ID: <162848123483.25823.15844774651164477866.stgit@noble.brown>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-References: <CAOv1SKCmdtchm5Z2NU80o49tkrHpAkPFaHKj4-vLDN5bZNCz-Q@mail.gmail.com>
- <162846730406.22632.14734595494457390936@noble.neil.brown.name>
-In-Reply-To: <162846730406.22632.14734595494457390936@noble.neil.brown.name>
-From:   Mike Javorski <mike.javorski@gmail.com>
-Date:   Sun, 8 Aug 2021 17:28:44 -0700
-Message-ID: <CAOv1SKBZ7sGBnvG9-M+De+s=CfU=H_GBs4hJah1E4ks+NSMyPw@mail.gmail.com>
-Subject: Re: NFS server regression in kernel 5.13 (tested w/ 5.13.9)
-To:     NeilBrown <neilb@suse.de>
-Cc:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Appreciate the insights Neil. I will make an attempt to
-trigger/capture the fault if I can.
+I continue to search for a way forward for btrfs so that its behaviour
+with respect to device numbers and subvols is somewhat coherent.
 
-- mike
+This series implements some of the ideas in my "A Third perspective"[1],
+though with changes is various details.
 
-On Sun, Aug 8, 2021 at 5:01 PM NeilBrown <neilb@suse.de> wrote:
->
-> On Mon, 09 Aug 2021, Mike Javorski wrote:
-> > I have been experiencing nfs file access hangs with multiple release
-> > versions of the 5.13.x linux kernel. In each case, all file transfers
-> > freeze for 5-10 seconds and then resume. This seems worse when reading
-> > through many files sequentially.
->
-> A particularly useful debugging tool for NFS freezes is to run
->
->   rpcdebug -m rpc -c all
->
-> while the system appears frozen.  As you only have a 5-10 second window
-> this might be tricky.
-> Setting or clearing debug flags in the rpc module (whether they are
-> already set or not) has a side effect if listing all RPC "tasks" which a
-> waiting for a reply.  Seeing that task list can often be useful.
->
-> The task list appears in "dmesg" output.  If there are not tasks
-> waiting, nothing will be written which might lead you to think it didn't
-> work.
->
-> As Chuck hinted, tcpdump is invaluable for this sort of problem.
->   tcpdump -s 0 -w /tmp/somefile.pcap port 2049
->
-> will capture NFS traffic.  If this can start before a hang, and finish
-> after, it may contain useful information.  Doing that in a way that
-> doesn't create an enormous file might be a challenge.  It would help if
-> you found a way trigger the problem.  Take note of the circumstances
-> when it seems to happen the most.  If you can only produce a large file,
-> we can probably still work with it.
->   tshark -r /tmp/somefile.pcap
-> will report the capture one line per packet.  You can look for the
-> appropriate timestamp, note the frame numbers, and use "editcap"
-> to extract a suitable range of packets.
->
-> NeilBrown
->
->
-> >
-> > My server:
-> > - Archlinux w/ a distribution provided kernel package
-> > - filesystems exported with "rw,sync,no_subtree_check,insecure" options
-> >
-> > Client:
-> > - Archlinux w/ latest distribution provided kernel (5.13.9-arch1-1 at writing)
-> > - nfs mounted via /net autofs with "soft,nodev,nosuid" options
-> > (ver=4.2 is indicated in mount)
-> >
-> > I have tried the 5.13.x kernel several times since the first arch
-> > release (most recently with 5.13.9-arch1-1), all with similar results.
-> > Each time, I am forced to downgrade the linux package to a 5.12.x
-> > kernel (5.12.15-arch1 as of writing) to clear up the transfer issues
-> > and stabilize performance. No other changes are made between tests. I
-> > have confirmed the freezing behavior using both ext4 and btrfs
-> > filesystems exported from this server.
-> >
-> > At this point I would appreciate some guidance in what to provide in
-> > order to diagnose and resolve this issue. I don't have a lot of kernel
-> > debugging experience, so instruction would be helpful.
-> >
-> > - mike
-> >
-> >
+I introduce two new mount options, which default to
+no-change-in-behaviour.
+
+ -o inumbits=  causes inode numbers to be more unique across a whole btrfs
+               filesystem, and is many cases completely unique.  Mounting
+               with "-i inumbits=56" will resolve the NFS issues that
+               started me tilting at this particular windmill.
+
+ -o numdevs=  can reduce the number of distinct devices reported by
+              stat(), either to 2 or to 1.
+              Both ease problems for sites that exhaust their supply of
+              device numbers.
+              '2' allows "du -x" to continue to work, but is otherwise
+              rather strange.
+              '1' breaks the use of "du -x" and similar to examine a
+              single subvol which might have subvol descendants, but
+              provides generally sane behaviour
+              "-o numdevs=1" also forces inumbits to have a useful value.
+
+I introduce a "tree id" which can be discovered using statx().  Two
+files with the same dev and ino might still be different if the tree-ids
+are different.  Connected files with the same tree-id may be usefully
+considered to be related.
+
+I also change various /proc files (only when numdevs=1 is used) to
+provide extra information so they are useful with btrfs despite subvols.
+/proc/maps /proc/smaps /proc/locks /proc/X/fdinfo/Y are affected.
+The inode number becomes "XX:YY" where XX is the subvol number (tree id)
+and YY is the inode number.
+
+An alternate might be to report a number which might use up to 128 bits.
+Which is less likely to seriously break code?
+
+Note that code which ignores badly formatted lines is safe, because it
+will never currently find a match for a btrfs file in these files
+anyway.  The device number they report is never returned in st_dev for
+stat() on any file.
+
+The audit subsystem and one or two other places report dev/ino and so
+need enhanced, but I haven't tried to address those.
+
+Various trace points also report dev/ino.  I haven't tried thinking
+about those either.
+
+Thanks for your upcoming replies!
+
+NeilBrown
+
+---
+
+NeilBrown (4):
+      btrfs: include subvol identifier in inode number if -o inumbits=...
+      btrfs: add numdevs= mount option.
+      VFS/btrfs: add STATX_TREE_ID
+      Add "tree" number to "inode" number in various /proc files.
+
+
+ fs/btrfs/ctree.h          | 17 +++++++++++++++--
+ fs/btrfs/disk-io.c        | 24 +++++++++++++++++++++---
+ fs/btrfs/inode.c          | 39 ++++++++++++++++++++++++++++++++++++++-
+ fs/btrfs/ioctl.c          |  6 ++++--
+ fs/btrfs/super.c          | 31 +++++++++++++++++++++++++++++++
+ fs/inode.c                |  1 +
+ fs/locks.c                | 12 +++++++++---
+ fs/notify/fdinfo.c        | 19 ++++++++++++++-----
+ fs/proc/nommu.c           | 11 ++++++++---
+ fs/proc/task_mmu.c        | 17 ++++++++++++-----
+ fs/proc/task_nommu.c      | 11 ++++++++---
+ fs/stat.c                 |  2 ++
+ include/linux/fs.h        |  3 ++-
+ include/linux/stat.h      | 13 +++++++++++++
+ include/uapi/linux/stat.h |  3 ++-
+ samples/vfs/test-statx.c  |  4 +++-
+ 16 files changed, 183 insertions(+), 30 deletions(-)
+
+--
+Signature
+
