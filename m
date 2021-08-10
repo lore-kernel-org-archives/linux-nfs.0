@@ -2,84 +2,114 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 456D7C4338F
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Aug 2021 13:14:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AAD3C4338F
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Aug 2021 14:00:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2470F60F38
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Aug 2021 13:14:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5275460FDA
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Aug 2021 14:00:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236764AbhHJNO3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Aug 2021 09:14:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46028 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230214AbhHJNO3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Aug 2021 09:14:29 -0400
-Received: from mail-vk1-xa2f.google.com (mail-vk1-xa2f.google.com [IPv6:2607:f8b0:4864:20::a2f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8DB08C0613D3
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Aug 2021 06:14:07 -0700 (PDT)
-Received: by mail-vk1-xa2f.google.com with SMTP id 139so698715vkx.0
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Aug 2021 06:14:07 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=CMTN8P6wL7WpShINueCeSnr8mIS2IIoNzVTxcXCoz/4=;
-        b=mF4fPpHby/NhYbbyaiRw0ofuUwlwEqPY4aDxSEpYVgZAP3rNJPZL/7qVzg13hS8Ogl
-         uAhK693AhmtONWN8Idwqx7NXUMXj+chUSM13FUgVD7KRHQeTN6q1r0x2eQ8N5nc6cpdA
-         6NNQvkW2IwKM5NAE7tvbSr+RJCT0A4ME31eKfRa03j1ISmWw4vgqtAV3Zj6B8Axykl/K
-         rpNOMOS5ohOqrgz+tCvCKxkdE3DhbiSVurJzWrmG6YWDyRX1yX2ee/ex4wP9g5tUugus
-         Hcvvbx3Eqc8sDOCBVy78AXfAPksQDR5SUa96gqMVYgg84IDcXmAiDOdB6TAkzVJdmEVz
-         eCVA==
+        id S240069AbhHJOAi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Aug 2021 10:00:38 -0400
+Received: from mail-ej1-f41.google.com ([209.85.218.41]:38703 "EHLO
+        mail-ej1-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233274AbhHJOAh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Aug 2021 10:00:37 -0400
+Received: by mail-ej1-f41.google.com with SMTP id z20so12891264ejf.5
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Aug 2021 07:00:15 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=CMTN8P6wL7WpShINueCeSnr8mIS2IIoNzVTxcXCoz/4=;
-        b=ZnqN61kO2wofYu2mwsJmSJ1kQ71itwqRDNRVDhbLKx7K5/UX604Ib7GCfdrNf6D1CP
-         NRDbhzqBf2tiuWMT2fTuOw9ZHKJMoF2Mash79LmZcV/pafghCN8ikz0NeJXkmbgzDSMG
-         YtpTvKPqBjQI/1VDl8T7W0bdTpeJfW7amVAGcRlnjQmRpMhmZptNsyHneDCrpoOJOuih
-         YgqNyhe6nSXYTDkTuV30C6oUrF6xeA8zrXGaC0RrFqBaOaEEIfUjGnabjGQXTboittvo
-         YWYEqwt0aweXckysEL7VbMV/TNT4Dk5G7MmW3OO0BQJstqTpXUCihWG0xcsKqGTgSqnK
-         kLEQ==
-X-Gm-Message-State: AOAM531cXW03t05o12UuQqc/ZD0FHmeUnYOIatqv8XyejcTw3tn8VjEu
-        ghyhLoJkyCYIrTvIYNr8cWGgBz2ddeEmcYwGrbdhpbHK4Hg=
-X-Google-Smtp-Source: ABdhPJzHWMnVM1b1VqWniZH9g5T5domHZcArNTWevy9lPeNI4zZft5R4YjtLX1hVNfBDI4ReVzKdPazhzETVLHwW7Co=
-X-Received: by 2002:a1f:d943:: with SMTP id q64mr18140809vkg.23.1628601246618;
- Tue, 10 Aug 2021 06:14:06 -0700 (PDT)
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=4Likup35+S6vxtysMd6++ZEJglljLUpwZsRmcNbAA88=;
+        b=s7Sdn8yL7IRuPtVYS6sTFTcfGmBU0FlkeAXZFVOQwnngQmzy7ysu54qkwAieqi8Jv5
+         6WVR/bYTjAJ0d6clfZa5zLtuq3QxCFMirNHuanNwLF4pftKC62OT7yHqoQB0FCwhoZmK
+         FVUPHuaVRGs1AHNfKE3cKZjsBuYa3QUQ3mzxd0hwZfLa9hqcf9EenD/lLWLQpvMcSDS2
+         6JQdypMC07cgk0WgQd4RhIY9sMlxaCszkx8Ph40JOVdNxnGvSL4XgIJFChba51U3Mx61
+         8vblLksFznb/moWrkW26+2QNb5rfhByFmH+hNVSVECDXDsgzxk43Gc4KOWj0iuitlTEU
+         JPGA==
+X-Gm-Message-State: AOAM533gj3OSAzPipI0dBS1WFUxLHJSok5iA+VxTZks0w6ouVMZQWlyT
+        3kTHR8UniLq+Y+M3scdTj6nBPnOJ+5xpOer52Fg=
+X-Google-Smtp-Source: ABdhPJwZjNYGuJKq7sLEulyemx6vqQM7CmOz9ZSmg+UmN9B+9fpySGWRClQdVuuRRG/UWBFZMvqzNQbmPNFzRQe75eA=
+X-Received: by 2002:a17:907:2d0f:: with SMTP id gs15mr1451374ejc.23.1628604014378;
+ Tue, 10 Aug 2021 07:00:14 -0700 (PDT)
 MIME-Version: 1.0
-From:   mhnx <morphinwithyou@gmail.com>
-Date:   Tue, 10 Aug 2021 16:13:55 +0300
-Message-ID: <CAE-AtHqLDWaggTrPb-3BsobfEgOXtGCQrs9Uw4Ywai_K1bhpcw@mail.gmail.com>
-Subject: NFS shares suddenly becomes unresponsive
-To:     linux-nfs@vger.kernel.org
+References: <162670594361.468132.16222376053830760696.stgit@manet.1015granger.net>
+ <CAFX2Jf=PvvsU8p+3i3OdLOwRCWDedBKhbhnNOe-RyaXx5LWUow@mail.gmail.com> <82A33007-6AE7-49BF-84CF-F960DA1548E3@oracle.com>
+In-Reply-To: <82A33007-6AE7-49BF-84CF-F960DA1548E3@oracle.com>
+From:   Anna Schumaker <anna.schumaker@netapp.com>
+Date:   Tue, 10 Aug 2021 09:59:58 -0400
+Message-ID: <CAFX2JfkT6VE+ghBzFTWf8XxkpTzd4s9WXGtxud3jajGT_7cCOQ@mail.gmail.com>
+Subject: Re: [PATCH v2 0/6] Ensure RPC_TASK_NORTO is disabled for select operations
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello
+On Mon, Aug 9, 2021 at 7:00 PM Chuck Lever III <chuck.lever@oracle.com> wrote:
+>
+>
+>
+> > On Aug 9, 2021, at 4:37 PM, Anna Schumaker <anna.schumaker@netapp.com> wrote:
+> >
+> > Hi Chuck,
+> >
+> > On Mon, Jul 19, 2021 at 10:55 AM Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>
+> >> This is a set of patches I've been toying with to get better
+> >> responsiveness from a client when a transport remains connected but
+> >> the server is not returning RPC replies.
+> >>
+> >> The approach I've taken is to disable RPC_TASK_NO_RETRANS_TIMEOUT
+> >> for a few particular operations to enable them to time out even
+> >> though the connection is still operational. It could be
+> >> appropriate to take this approach for any idempotent operation
+> >> that cannot be killed with a ^C.
+> >>
+> >> Changes since RFC:
+> >> - Dropped changes to async lease renewal and DESTROY_SESSION|CLIENTID
+> >> - Cleaned up some tracepoint issues I found along the way
+> >
+> > Is this the latest version of these patches? If so I can include them
+> > in my linux-next branch for 5.14.
+>
+> AFAIR v2 is the latest, yes. Thanks!
 
-I have a weird problem. I'm using libnfs 3.0.0-2 and nfs-utils 2.3.3-1
-on arch-linux.
+Great, I have them applied!
 
-Sometimes nfs exports are becomes unresponsive and can not mount any
-export and mounted clients can not read and write to mounted shares.
-Also showmount -e $nfsserver gives an empty list. When I restart the
-nfs-server everything goes back to normal.
-
-I only see one error in logs and I'm not sure this is related to this
-problem because problem not occurs after this log everytime but mostly
-when it happens I see only this log.
-
-nfsd: peername failed (err 107)!
-
-I have 30++ exports and high client usage. Clients are very differ;
-linux, windows and datastore. BTW: I have a strong server. 20core, x2
-socket and a bunch of free rams, 2x 40G lacp network.
-
-My nfs.conf only has an open line which is "threads=128"
-
-What should I do?
+Anna
+>
+>
+> > Thanks,
+> > Anna
+> >
+> >>
+> >> ---
+> >>
+> >> Chuck Lever (6):
+> >>      SUNRPC: Refactor rpc_ping()
+> >>      SUNRPC: Unset RPC_TASK_NO_RETRANS_TIMEOUT for NULL RPCs
+> >>      SUNRPC: Remove unneeded TRACE_DEFINE_ENUMs
+> >>      SUNRPC: Update trace flags
+> >>      SUNRPC: xprt_retransmit() displays the the NULL procedure incorrectly
+> >>      SUNRPC: Record timeout value in xprt_retransmit tracepoint
+> >>
+> >>
+> >> include/trace/events/sunrpc.h | 51 ++++++++---------------------------
+> >> net/sunrpc/clnt.c             | 33 ++++++++++++++++-------
+> >> 2 files changed, 35 insertions(+), 49 deletions(-)
+> >>
+> >> --
+> >> Chuck Lever
+>
+> --
+> Chuck Lever
+>
+>
+>
