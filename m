@@ -2,144 +2,98 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1C16C4338F
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 14:47:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3D43C432BE
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 15:40:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CA39D60FC3
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 14:47:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B6D2460FBF
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 15:40:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237387AbhHLOrq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Aug 2021 10:47:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52552 "EHLO
+        id S237922AbhHLPk2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Aug 2021 11:40:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36662 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235298AbhHLOrp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2021 10:47:45 -0400
-X-Greylist: delayed 2424 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 12 Aug 2021 07:47:20 PDT
-Received: from savella.carfax.org.uk (2001-ba8-1f1-f0e6-0-0-0-2.autov6rev.bitfolk.space [IPv6:2001:ba8:1f1:f0e6::2])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F778C061756;
-        Thu, 12 Aug 2021 07:47:19 -0700 (PDT)
-Received: from hrm by savella.carfax.org.uk with local (Exim 4.92)
-        (envelope-from <hrm@savella.carfax.org.uk>)
-        id 1mEBLM-0000bf-Sl; Thu, 12 Aug 2021 15:06:00 +0100
-Date:   Thu, 12 Aug 2021 15:06:00 +0100
-From:   Hugo Mills <hugo@carfax.org.uk>
-To:     Josef Bacik <josef@toxicpanda.com>
-Cc:     NeilBrown <neilb@suse.de>, Chris Mason <clm@fb.com>,
-        David Sterba <dsterba@suse.com>, linux-fsdevel@vger.kernel.org,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Btrfs BTRFS <linux-btrfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC 0/4] Attempt to make progress with btrfs dev number
- strangeness.
-Message-ID: <20210812140600.GA15870@savella.carfax.org.uk>
-Mail-Followup-To: Hugo Mills <hugo@carfax.org.uk>,
-        Josef Bacik <josef@toxicpanda.com>, NeilBrown <neilb@suse.de>,
-        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>,
-        linux-fsdevel@vger.kernel.org,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Btrfs BTRFS <linux-btrfs@vger.kernel.org>
-References: <162848123483.25823.15844774651164477866.stgit@noble.brown>
- <e6496956-0df3-6232-eecb-5209b28ca790@toxicpanda.com>
- <162872000356.22261.854151210687377005@noble.neil.brown.name>
- <6571d3fb-34ea-0f22-4fbe-995e5568e044@toxicpanda.com>
+        with ESMTP id S232854AbhHLPk1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2021 11:40:27 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7862C061756
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Aug 2021 08:40:02 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 7DA6C7C76; Thu, 12 Aug 2021 11:40:01 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 7DA6C7C76
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1628782801;
+        bh=FIzx6+0WQLG4+uWXMyGLp76L9xEc6wRLsTXvyCKdfuA=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=BgoGYvkMaiEu0qLuQFTNNql0bmyWlhw5Nf3i3YjvK9fILrdHX5PbMq/XRc083q7qn
+         bjom1z+3o+5X4bFrLkG0fIMIJtivaG6OpSMARzpgBU8+VyjVnjHZyZHOTmaN3kAsut
+         u70kdNk0+iUHzVPektLBJ2ceFhdpi+tiAmGzPCLk=
+Date:   Thu, 12 Aug 2021 11:40:01 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Olga Kornievskaia <aglo@umich.edu>
+Cc:     Chuck Lever III <chuck.lever@oracle.com>,
+        Bruce Fields <bfields@redhat.com>,
+        Timo Rothenpieler <timo@rothenpieler.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Dai Ngo <dai.ngo@oracle.com>
+Subject: Re: Spurious instability with NFSoRDMA under moderate load
+Message-ID: <20210812154001.GB9536@fieldses.org>
+References: <5DD80ADC-0A4B-4D95-8CF7-29096439DE9D@oracle.com>
+ <0444ca5c-e8b6-1d80-d8a5-8469daa74970@rothenpieler.org>
+ <cc2f55cd-57d4-d7c3-ed83-8b81ea60d821@rothenpieler.org>
+ <3AF4F6CA-8B17-4AE9-82E2-21A2B9AA0774@oracle.com>
+ <CAN-5tyHNvYWd1M7sfZNV5q3Y_GZA2-DoTd=CxYvniZ1zkB5hyw@mail.gmail.com>
+ <95DB2B47-F370-4787-96D9-07CE2F551AFD@oracle.com>
+ <CAN-5tyGXycM1MKa=Sydoo4pP85PGLuh8yjJYsoAM3U+M1NVyCw@mail.gmail.com>
+ <D417C606-9E27-431E-B80E-EE927E62A316@oracle.com>
+ <20210811201435.GA31574@fieldses.org>
+ <CAN-5tyGq=EE4PjSbKVyKLtmhhFF_o6D9uG1QNQ-ByVMp9q8LOw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <6571d3fb-34ea-0f22-4fbe-995e5568e044@toxicpanda.com>
-X-GPG-Fingerprint: DD84 D558 9D81 DDEE 930D  2054 585E 1475 E2AB 1DE4
-X-GPG-Key: E2AB1DE4
-X-Parrot: It is no more. It has joined the choir invisible.
-X-IRC-Nicks: darksatanic darkersatanic darkling darkthing
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <CAN-5tyGq=EE4PjSbKVyKLtmhhFF_o6D9uG1QNQ-ByVMp9q8LOw@mail.gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Aug 12, 2021 at 09:54:54AM -0400, Josef Bacik wrote:
-> On 8/11/21 6:13 PM, NeilBrown wrote:
-> > On Wed, 11 Aug 2021, Josef Bacik wrote:
-> > > 
-> > > I think this is a step in the right direction, but I want to figure out a way to
-> > > accomplish this without magical mount points that users must be aware of.
-> > 
-> > magic mount *options* ???
-> > 
-> > > 
-> > > I think the stat() st_dev ship as sailed, we're stuck with that.  However
-> > > Christoph does have a valid point where it breaks the various info spit out by
-> > > /proc.  You've done a good job with the treeid here, but it still makes it
-> > > impossible for somebody to map the st_dev back to the correct mount.
-> > 
-> > The ship might have sailed, but it is not water tight.  And as the world
-> > it round, it can still come back to bite us from behind.
-> > Anything can be transitioned away from, whether it is devfs or 32-bit
-> > time or giving different device numbers to different file-trees.
-> > 
-> > The linkage between device number and and filesystem is quite strong.
-> > We could modified all of /proc and /sys/ and audit and whatever else to
-> > report the fake device number, but we cannot get the fake device number
-> > into the mount table (without making the mount table unmanageablely
-> > large).
-> > And if subtrees aren't in the mount-table for the NFS server, I don't
-> > think they should be in the mount-table of the NFS client.  So we cannot
-> > export them to NFS.
-> > 
-> > I understand your dislike for mount options.  An alternative with
-> > different costs and benefits would be to introduce a new filesystem type
-> > - btrfs2 or maybe betrfs.  This would provide numdevs=1 semantics and do
-> > whatever we decided was best with inode numbers.  How much would you
-> > hate that?
-> > 
-> 
-> A lot more ;).
-> 
-> > > 
-> > > I think we aren't going to solve that problem, at least not with stat().  I
-> > > think with statx() spitting out treeid we have given userspace a way to
-> > > differentiate subvolumes, and so we should fix statx() to spit out the the super
-> > > block device, that way new userspace things can do their appropriate lookup if
-> > > they so choose.
-> > 
-> > I don't think we should normalize having multiple devnums per filesystem
-> > by encoding it in statx().  It *would* make sense to add a btrfs ioctl
-> > which reports the real device number of a file.  Tools that really need
-> > to work with btrfs could use that, but it would always be obvious that
-> > it was an exception.
-> 
-> That's not what I'm saying.  I'm saying that stat() continues to behave the
-> way it currently does, for legacy users.
-> 
-> And then for statx() it returns the correct devnum like any other file
-> system, with the augmentation of the treeid so that future userspace
-> programs can use the treeid to decide if they want to wander into a
-> subvolume.
-> 
-> This way moving forward we have a way to map back to a mount point because
-> statx() will return the actual devnum for the mountpoint, and then we can
-> use the treeid to be smart about when we wander into a subvolume.
-> 
-> And if we're going to add a treeid, I would actually like to add a
-> parent_treeid as well so we could tell if we're a snapshot or just a normal
-> subvolume.
+On Wed, Aug 11, 2021 at 04:40:04PM -0400, Olga Kornievskaia wrote:
+> On Wed, Aug 11, 2021 at 4:14 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > On Wed, Aug 11, 2021 at 08:01:30PM +0000, Chuck Lever III wrote:
+> > > Probably not just CB_RECALL, but agreed, there doesn't seem to
+> > > be any mechanism that can re-drive callback operations when the
+> > > backchannel is replaced.
+> >
+> > The nfsd4_queue_cb() in nfsd4_cb_release() should queue a work item
+> > to run nfsd4_run_cb_work, which should set up another callback client if
+> > necessary.
 
-   Can I make a request to call it something other than a
-"parent". There's at least three different usages of "parent" for
-three different concepts related to subvolumes in btrfs(*), and it'd
-be nice to avoid the inevitable confusion.
+But I think the result is it'll look to see if there's another
+connection available for callbacks, and give up immediately if not.
 
-(*) 1. "subvolume containing this one",
-    2. "subvolume that was snapshotted to make this one", and,
-    3. at least informally, "subvolume that was sent/received to make this one"
+There's no logic to wait for the client to fix the problem.
 
-   Hugo.
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 7325592b456e..ed0e76f7185c 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -1191,6 +1191,7 @@ static void nfsd4_cb_done(struct rpc_task *task,
+> void *calldata)
+>                 case -ETIMEDOUT:
+>                 case -EACCES:
+>                         nfsd4_mark_cb_down(clp, task->tk_status);
+> +                       cb->cb_need_restart = true;
+>                 }
+>                 break;
+>         default:
+> 
+> Something like this should requeue and retry the callback?
 
-[snip to end]
+I think we'd need more than just that.
 
--- 
-Hugo Mills             | Reading Mein Kampf won't make you a Nazi. Reading
-hugo@... carfax.org.uk | Das Kapital won't make you a communist. But most
-http://carfax.org.uk/  | trolls started out with a copy of Lord of the Rings.
-PGP: E2AB1DE4          |
+--b.
