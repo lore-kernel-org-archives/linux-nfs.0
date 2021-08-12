@@ -2,97 +2,63 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01765C4338F
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 15:41:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5126BC432BE
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 17:02:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C83DD60FBF
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 15:41:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 37D2C60FBF
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 17:02:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238149AbhHLPmH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Aug 2021 11:42:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37038 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238175AbhHLPmH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2021 11:42:07 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BD31FC0617A8;
-        Thu, 12 Aug 2021 08:41:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=rRRInWTXt88iInQrUMslw6/dDmJVHBRbB2u0EULf5Hg=; b=Yw+Dh/oM1oO5pq6qyI7FNo3t6Q
-        gx5MdI+3AKoBLfLsXvV7hSsdpymjB+4rVyaoCBxbggUtS1dXiiIkxKYLtAzpxHz8ozQU6o15snaU3
-        g/YPrBRrNCj6lMSLi+nqago1irdlmXakhi+FcbIoG42INTBaWENjp2LHhYlaIr7Egfk91IAfElT/m
-        5KgDUhy2mv3CYLXkudaTbyYYA0sCBDGG6jWyRU3proN98MFmItee6ftH3yAeDixXfgHs7lNhanbBc
-        7KCjjcQwDIXgN+JXH8G+s0MayKXCVykM0HIw3mPAtULVEOvTqJaOSTNd4ke1enrddQTaShxQ/SagD
-        EvIXleCQ==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mECo0-00EikE-Vo; Thu, 12 Aug 2021 15:39:47 +0000
-Date:   Thu, 12 Aug 2021 16:39:40 +0100
-From:   Matthew Wilcox <willy@infradead.org>
-To:     David Howells <dhowells@redhat.com>
-Cc:     Christoph Hellwig <hch@lst.de>, trond.myklebust@primarydata.com,
-        darrick.wong@oracle.com, jlayton@kernel.org, sfrench@samba.org,
+        id S234252AbhHLRDD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Aug 2021 13:03:03 -0400
+Received: from verein.lst.de ([213.95.11.211]:44952 "EHLO verein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S234238AbhHLRDC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 12 Aug 2021 13:03:02 -0400
+Received: by verein.lst.de (Postfix, from userid 2407)
+        id F3FCE67373; Thu, 12 Aug 2021 19:02:33 +0200 (CEST)
+Date:   Thu, 12 Aug 2021 19:02:33 +0200
+From:   Christoph Hellwig <hch@lst.de>
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     David Howells <dhowells@redhat.com>,
+        Christoph Hellwig <hch@lst.de>,
+        trond.myklebust@primarydata.com, darrick.wong@oracle.com,
+        jlayton@kernel.org, sfrench@samba.org,
         torvalds@linux-foundation.org, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
 Subject: Re: [PATCH 2/2] mm: Make swap_readpage() for SWP_FS_OPS use
  ->direct_IO() not ->readpage()
-Message-ID: <YRVAvKPn8SjczqrD@casper.infradead.org>
-References: <20210812122104.GB18532@lst.de>
- <162876946134.3068428.15475611190876694695.stgit@warthog.procyon.org.uk>
- <162876947840.3068428.12591293664586646085.stgit@warthog.procyon.org.uk>
- <3085432.1628773025@warthog.procyon.org.uk>
+Message-ID: <20210812170233.GA4987@lst.de>
+References: <20210812122104.GB18532@lst.de> <162876946134.3068428.15475611190876694695.stgit@warthog.procyon.org.uk> <162876947840.3068428.12591293664586646085.stgit@warthog.procyon.org.uk> <3085432.1628773025@warthog.procyon.org.uk> <YRVAvKPn8SjczqrD@casper.infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <3085432.1628773025@warthog.procyon.org.uk>
+In-Reply-To: <YRVAvKPn8SjczqrD@casper.infradead.org>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Aug 12, 2021 at 01:57:05PM +0100, David Howells wrote:
-> Christoph Hellwig <hch@lst.de> wrote:
+On Thu, Aug 12, 2021 at 04:39:40PM +0100, Matthew Wilcox wrote:
+> I agree with David; we want something lower-level for swap to call into.
+> I'd suggest aops->swap_rw and an implementation might well look
+> something like:
 > 
-> > On Thu, Aug 12, 2021 at 12:57:58PM +0100, David Howells wrote:
-> > > Make swap_readpage(), when accessing a swap file (SWP_FS_OPS) use
-> > > the ->direct_IO() method on the filesystem rather then ->readpage().
-> > 
-> > ->direct_IO is just a helper for ->read_iter and ->write_iter, so please
-> > don't call it directly.  It actually is slowly on its way out, with at
-> > at least all of the iomap implementations not using it, as well as various
-> > other file systems.
-> 
-> [Note that __swap_writepage() uses ->direct_IO().]
-> 
-> Calling ->write_iter is probably a bad idea here.  Imagine that it goes
-> through, say, generic_file_write_iter(), then __generic_file_write_iter() and
-> then generic_file_direct_write().  It adds a number of delays into the system,
-> including:
-> 
-> 	- Taking the inode lock
-> 	- Removing file privs
-> 	- Cranking mtime, ctime, file version
-> 	  - Doing mnt_want_write
-> 	  - Setting the inode dirty
-> 	- Waiting on pages in the range that are being written 
-> 	- Walking over the pagecache to invalidate the range
-> 	- Redoing the invalidation (can't be skipped since page 0 is pinned)
-> 
-> that we might want to skip as they'll end up being done for every page swapped
-> out.
+> static ssize_t ext4_swap_rw(struct kiocb *iocb, struct iov_iter *iter)
+> {
+> 	return iomap_dio_rw(iocb, iter, &ext4_iomap_ops, NULL, 0);
+> }
 
-I agree with David; we want something lower-level for swap to call into.
-I'd suggest aops->swap_rw and an implementation might well look
-something like:
+Yes, that might make sense and would also replace the awkward IOCB_SWAP
+flag for the write side.
 
-static ssize_t ext4_swap_rw(struct kiocb *iocb, struct iov_iter *iter)
-{
-	return iomap_dio_rw(iocb, iter, &ext4_iomap_ops, NULL, 0);
-}
+For file systems like ext4 and xfs that have an in-memory block mapping
+tree this would be way better than the current version and also support
+swap on say multi-device file systems properly.  We'd just need to be
+careful to read the extent information in at extent_activate time,
+by doing xfs_iread_extents for XFS or the equivalents in other file
+systems.
