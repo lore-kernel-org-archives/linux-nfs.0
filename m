@@ -2,194 +2,144 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64547C4338F
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 14:44:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F1C16C4338F
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 14:47:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3F718610A4
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 14:44:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CA39D60FC3
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Aug 2021 14:47:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236692AbhHLOoy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Aug 2021 10:44:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51840 "EHLO
+        id S237387AbhHLOrq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Aug 2021 10:47:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52552 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233079AbhHLOoy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2021 10:44:54 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41E6EC061756
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Aug 2021 07:44:29 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 6762F7C62; Thu, 12 Aug 2021 10:44:28 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6762F7C62
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1628779468;
-        bh=eExvMh+U/FvzAvVBasn/2NcpKyNUEbjYu2kU/6smPE4=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=Bc8ftnIyWnMCUE23mu1iKvs4QCxnwQxwfTUmGM5zX3RmDFwKlkxWLZ9HWsn+Zx/hX
-         GegGR0d3iG218G1C6m0INyGW4WvUHkElbRWZjTN2+6LU8Q9YtIGt4YzxY0pEaQQaxx
-         VGC4RrIZKjIKRBmkAGCaFzc298XKvaqXiYjEwbxc=
-Date:   Thu, 12 Aug 2021 10:44:28 -0400
-From:   "J.  Bruce Fields" <bfields@fieldses.org>
-To:     NeilBrown <neilb@suse.de>
-Cc:     Timothy Pearson <tpearson@raptorengineering.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@gmail.com>
-Subject: Re: CPU stall, eventual host hang with BTRFS + NFS under heavy load
-Message-ID: <20210812144428.GA9536@fieldses.org>
-References: <281642234.3818.1625478269194.JavaMail.zimbra@raptorengineeringinc.com>
- <162855621114.22632.14151019687856585770@noble.neil.brown.name>
+        with ESMTP id S235298AbhHLOrp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Aug 2021 10:47:45 -0400
+X-Greylist: delayed 2424 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 12 Aug 2021 07:47:20 PDT
+Received: from savella.carfax.org.uk (2001-ba8-1f1-f0e6-0-0-0-2.autov6rev.bitfolk.space [IPv6:2001:ba8:1f1:f0e6::2])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F778C061756;
+        Thu, 12 Aug 2021 07:47:19 -0700 (PDT)
+Received: from hrm by savella.carfax.org.uk with local (Exim 4.92)
+        (envelope-from <hrm@savella.carfax.org.uk>)
+        id 1mEBLM-0000bf-Sl; Thu, 12 Aug 2021 15:06:00 +0100
+Date:   Thu, 12 Aug 2021 15:06:00 +0100
+From:   Hugo Mills <hugo@carfax.org.uk>
+To:     Josef Bacik <josef@toxicpanda.com>
+Cc:     NeilBrown <neilb@suse.de>, Chris Mason <clm@fb.com>,
+        David Sterba <dsterba@suse.com>, linux-fsdevel@vger.kernel.org,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Btrfs BTRFS <linux-btrfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC 0/4] Attempt to make progress with btrfs dev number
+ strangeness.
+Message-ID: <20210812140600.GA15870@savella.carfax.org.uk>
+Mail-Followup-To: Hugo Mills <hugo@carfax.org.uk>,
+        Josef Bacik <josef@toxicpanda.com>, NeilBrown <neilb@suse.de>,
+        Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>,
+        linux-fsdevel@vger.kernel.org,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Btrfs BTRFS <linux-btrfs@vger.kernel.org>
+References: <162848123483.25823.15844774651164477866.stgit@noble.brown>
+ <e6496956-0df3-6232-eecb-5209b28ca790@toxicpanda.com>
+ <162872000356.22261.854151210687377005@noble.neil.brown.name>
+ <6571d3fb-34ea-0f22-4fbe-995e5568e044@toxicpanda.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <162855621114.22632.14151019687856585770@noble.neil.brown.name>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <6571d3fb-34ea-0f22-4fbe-995e5568e044@toxicpanda.com>
+X-GPG-Fingerprint: DD84 D558 9D81 DDEE 930D  2054 585E 1475 E2AB 1DE4
+X-GPG-Key: E2AB1DE4
+X-Parrot: It is no more. It has joined the choir invisible.
+X-IRC-Nicks: darksatanic darkersatanic darkling darkthing
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Aug 10, 2021 at 10:43:31AM +1000, NeilBrown wrote:
-> On Mon, 05 Jul 2021, Timothy Pearson wrote:
+On Thu, Aug 12, 2021 at 09:54:54AM -0400, Josef Bacik wrote:
+> On 8/11/21 6:13 PM, NeilBrown wrote:
+> > On Wed, 11 Aug 2021, Josef Bacik wrote:
+> > > 
+> > > I think this is a step in the right direction, but I want to figure out a way to
+> > > accomplish this without magical mount points that users must be aware of.
 > > 
-> > Sample backtrace below:
+> > magic mount *options* ???
 > > 
-> > [16846.426141] rcu: INFO: rcu_sched self-detected stall on CPU
-> > [16846.426202] rcu:     32-....: (5249 ticks this GP) idle=78a/1/0x4000000000000002 softirq=1663878/1663878 fqs=1986
-> > [16846.426241]  (t=5251 jiffies g=2720809 q=756724)
-> > [16846.426273] NMI backtrace for cpu 32
-> > [16846.426298] CPU: 32 PID: 10624 Comm: kworker/u130:25 Not tainted 5.12.14 #1
-> > [16846.426342] Workqueue: rpciod rpc_async_schedule [sunrpc]
-> > [16846.426406] Call Trace:
-> > [16846.426429] [c000200010823250] [c00000000074e630] dump_stack+0xc4/0x114 (unreliable)
-> > [16846.426483] [c000200010823290] [c00000000075aebc] nmi_cpu_backtrace+0xfc/0x150
-> > [16846.426506] [c000200010823310] [c00000000075b0a8] nmi_trigger_cpumask_backtrace+0x198/0x1f0
-> > [16846.426577] [c0002000108233b0] [c000000000072818] arch_trigger_cpumask_backtrace+0x28/0x40
-> > [16846.426621] [c0002000108233d0] [c000000000202db8] rcu_dump_cpu_stacks+0x158/0x1b8
-> > [16846.426667] [c000200010823470] [c000000000201828] rcu_sched_clock_irq+0x908/0xb10
-> > [16846.426708] [c000200010823560] [c0000000002141d0] update_process_times+0xc0/0x140
-> > [16846.426768] [c0002000108235a0] [c00000000022dd34] tick_sched_handle.isra.18+0x34/0xd0
-> > [16846.426808] [c0002000108235d0] [c00000000022e1e8] tick_sched_timer+0x68/0xe0
-> > [16846.426856] [c000200010823610] [c00000000021577c] __hrtimer_run_queues+0x16c/0x370
-> > [16846.426903] [c000200010823690] [c000000000216378] hrtimer_interrupt+0x128/0x2f0
-> > [16846.426947] [c000200010823740] [c000000000029494] timer_interrupt+0x134/0x310
-> > [16846.426989] [c0002000108237a0] [c000000000016c54] replay_soft_interrupts+0x124/0x2e0
-> > [16846.427045] [c000200010823990] [c000000000016f14] arch_local_irq_restore+0x104/0x170
-> > [16846.427103] [c0002000108239c0] [c00000000017247c] mod_delayed_work_on+0x8c/0xe0
-> > [16846.427149] [c000200010823a20] [c00800000819fe04] rpc_set_queue_timer+0x5c/0x80 [sunrpc]
-> > [16846.427234] [c000200010823a40] [c0080000081a096c] __rpc_sleep_on_priority_timeout+0x194/0x1b0 [sunrpc]
-> > [16846.427324] [c000200010823a90] [c0080000081a3080] rpc_sleep_on_timeout+0x88/0x110 [sunrpc]
-> > [16846.427388] [c000200010823ad0] [c0080000071f7220] nfsd4_cb_done+0x468/0x530 [nfsd]
-> > [16846.427457] [c000200010823b60] [c0080000081a0a0c] rpc_exit_task+0x84/0x1d0 [sunrpc]
-> > [16846.427520] [c000200010823ba0] [c0080000081a2448] __rpc_execute+0xd0/0x760 [sunrpc]
-> > [16846.427598] [c000200010823c30] [c0080000081a2b18] rpc_async_schedule+0x40/0x70 [sunrpc]
+> > > 
+> > > I think the stat() st_dev ship as sailed, we're stuck with that.  However
+> > > Christoph does have a valid point where it breaks the various info spit out by
+> > > /proc.  You've done a good job with the treeid here, but it still makes it
+> > > impossible for somebody to map the st_dev back to the correct mount.
+> > 
+> > The ship might have sailed, but it is not water tight.  And as the world
+> > it round, it can still come back to bite us from behind.
+> > Anything can be transitioned away from, whether it is devfs or 32-bit
+> > time or giving different device numbers to different file-trees.
+> > 
+> > The linkage between device number and and filesystem is quite strong.
+> > We could modified all of /proc and /sys/ and audit and whatever else to
+> > report the fake device number, but we cannot get the fake device number
+> > into the mount table (without making the mount table unmanageablely
+> > large).
+> > And if subtrees aren't in the mount-table for the NFS server, I don't
+> > think they should be in the mount-table of the NFS client.  So we cannot
+> > export them to NFS.
+> > 
+> > I understand your dislike for mount options.  An alternative with
+> > different costs and benefits would be to introduce a new filesystem type
+> > - btrfs2 or maybe betrfs.  This would provide numdevs=1 semantics and do
+> > whatever we decided was best with inode numbers.  How much would you
+> > hate that?
+> > 
 > 
-> Time to play the sleuth .....
-> "rpc_async_schedule" - so this is clearly an async task.
-> It is running in __rpc_execute(), and calls rpc_exit_task().
+> A lot more ;).
 > 
-> rpc_exit_task() is a possible value for ->tk_action, which is set in
-> several places.
-> 1/ in call_bc_transmit_status(), but only after generating a kernel
->   message
->      RPC: Could not send backchannel reply......
->  You didn't report that message, so I'll assume it didn't happen.
+> > > 
+> > > I think we aren't going to solve that problem, at least not with stat().  I
+> > > think with statx() spitting out treeid we have given userspace a way to
+> > > differentiate subvolumes, and so we should fix statx() to spit out the the super
+> > > block device, that way new userspace things can do their appropriate lookup if
+> > > they so choose.
+> > 
+> > I don't think we should normalize having multiple devnums per filesystem
+> > by encoding it in statx().  It *would* make sense to add a btrfs ioctl
+> > which reports the real device number of a file.  Tools that really need
+> > to work with btrfs could use that, but it would always be obvious that
+> > it was an exception.
 > 
-> 2/ In call_decode() if ->p_decode is NULL.  This implies a message
->    which didn't expect a reply.  All nfs4 callback procedures
->    (nfs4_cb_procedures[]) do set p_decode, so it cannot be here.
+> That's not what I'm saying.  I'm saying that stat() continues to behave the
+> way it currently does, for legacy users.
 > 
-> 3/ In call_decode() if the reply was successfully decoded.
->    I cannot rule this out quite so easily, but it seems unlikely as this
->    is a normal pattern and I wouldn't expect it to cause a soft-lockup.
+> And then for statx() it returns the correct devnum like any other file
+> system, with the augmentation of the treeid so that future userspace
+> programs can use the treeid to decide if they want to wander into a
+> subvolume.
 > 
-> 4/ In rpc_exit().  This is my guess.  All the places that rpc_exit() can
->    be called by nfsd (and nfsd appears in the call stack) are for handling 
->    errors.
+> This way moving forward we have a way to map back to a mount point because
+> statx() will return the actual devnum for the mountpoint, and then we can
+> use the treeid to be smart about when we wander into a subvolume.
 > 
-> So GUESS: rpc_exit() is getting called.
-> Not only that, but it is getting called *often*.  The call to
-> rpc_exit_task() (which is not the same as rpc_exit() - be careful) sets
-> tk_action to NULL.  So rpc_exit() must get called again and again and
-> again to keept setting tk_action back to rpc_exit_task, resulting in the
-> soft lockup.
-> 
-> After setting ->tk_action to NULL, rpc_exit_task() calls
-> ->rpc_call_done, which we see in the stack trace is nfsd4_cb_done().
-> 
-> nfsd4_cb_done() in turn calls ->done which is one of
->   nfsd4_cb_probe_done()
->   nfsd4_cb_sequence_done()
->   nfsd4_cb_layout_done()
-> or
->   nfsd4_cb_notify_lock_done()
-> 
-> Some of these call rpc_delay(task,...) and return 0, causing
-> nfsd4_cb_done() to call rpc_restart_call_prepare() This means the task
-> can be requeued, but only after a delay.
-> 
-> This doesn't yet explain the spin, but now let's look back at
->  __rpc_execute().
-> After calling do_action()  (which is rpc_exit_task() in the call trace)
-> it checks if the task is queued.  If rpc_delay_task() wasn't call, it
-> won't be queued and tk_action will be NULL, so it will loop around,
-> do_action will be NULL, and the task aborts.
-> 
-> But if rpc_delay_task() was called, then the task will be queued (on the
-> delay queue), and we continue in __rpc_execute().
-> 
-> The next test if is RPC_SIGNALLED().  If so, then rpc_exit() is called.
-> Aha! We though that must have been getting called repeatedly.  It
-> *might* not be here, but I think it is.  Let's assume so.
-> rpc_exit() will set ->tk_action to rpc_exit_task, dequeue the task and
-> (as it is async) schedule it for handling by rpc_async_schedule (that is
-> in rpc_make_runnable()).
-> 
-> __rpc_execute_task continues down to
-> 		if (task_is_async)
-> 			return;
-> and 
-> rpc_async_schedule() returns.  But the task has already been queued to
-> be handled again, so the whole process loops.
-> 
-> The problem here appears to be that a signalled task is being retried
-> without clearing the SIGNALLED flag.  That is causing the infinite loop
-> and the soft lockup.
-> 
-> This bug appears to have been introduced in Linux 5.2 by
-> Commit: ae67bd3821bb ("SUNRPC: Fix up task signalling")
+> And if we're going to add a treeid, I would actually like to add a
+> parent_treeid as well so we could tell if we're a snapshot or just a normal
+> subvolume.
 
-I wonder how we arrived here.  Does it require that an rpc task returns
-from one of those rpc_delay() calls just as rpc_shutdown_client() is
-signalling it?  That's the only way async tasks get signalled, I think.
+   Can I make a request to call it something other than a
+"parent". There's at least three different usages of "parent" for
+three different concepts related to subvolumes in btrfs(*), and it'd
+be nice to avoid the inevitable confusion.
 
-> Prior to this commit a flag RPC_TASK_KILLED was used, and it gets
-> cleared by rpc_reset_task_statistics() (called from rpc_exit_task()).
-> After this commit a new flag RPC_TASK_SIGNALLED is used, and it is never
-> cleared.
-> 
-> A fix might be to clear RPC_TASK_SIGNALLED in
-> rpc_reset_task_statistics(), but I'll leave that decision to someone
-> else.
+(*) 1. "subvolume containing this one",
+    2. "subvolume that was snapshotted to make this one", and,
+    3. at least informally, "subvolume that was sent/received to make this one"
 
-Might be worth testing with that change just to verify that this is
-what's happening.
+   Hugo.
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index c045f63d11fa..caa931888747 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -813,7 +813,8 @@ static void
- rpc_reset_task_statistics(struct rpc_task *task)
- {
- 	task->tk_timeouts = 0;
--	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_SENT);
-+	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_SIGNALLED|
-+							RPC_TASK_SENT);
- 	rpc_init_task_statistics(task);
- }
- 
+[snip to end]
 
---b.
+-- 
+Hugo Mills             | Reading Mein Kampf won't make you a Nazi. Reading
+hugo@... carfax.org.uk | Das Kapital won't make you a communist. But most
+http://carfax.org.uk/  | trolls started out with a copy of Lord of the Rings.
+PGP: E2AB1DE4          |
