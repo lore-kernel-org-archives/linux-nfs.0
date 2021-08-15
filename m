@@ -2,180 +2,172 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 381E4C4338F
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Aug 2021 19:50:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EDF5DC4338F
+	for <linux-nfs@archiver.kernel.org>; Sun, 15 Aug 2021 01:24:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1BDC2610E9
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Aug 2021 19:50:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C0FA760F51
+	for <linux-nfs@archiver.kernel.org>; Sun, 15 Aug 2021 01:24:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233758AbhHMTvU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Aug 2021 15:51:20 -0400
-Received: from mx0a-00069f02.pphosted.com ([205.220.165.32]:9132 "EHLO
-        mx0a-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230440AbhHMTvS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Aug 2021 15:51:18 -0400
-Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.0.43/8.16.0.43) with SMTP id 17DJQxlu016489;
-        Fri, 13 Aug 2021 19:50:48 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=tJekCAGGSrKmhGuA6hKjzLQ8N78A1Rnt/IgDFU1CKYA=;
- b=lRmuNLt80OtaRUAWS9kNFLbzseSALiDX48ey26gfIzaC2IuRqFk1dmM7bHFj7lolSftg
- pjCtEX4wDc339gIcIeccjtnvJZbTN+qhcluBx95NulIE+/mKMub4jumwZgYZIkrMX4A8
- bL8feDrRI9QlbgxTc5uoTzSDGDVXomfOJhhCYklLo0lzyJ+yO/5dmnwodNHOPFY/rFKm
- WcG6uIaTSpb6tNwbhypNQnT6GQ9X2IbD5fiVVwd1sF50gtg1QIlHPqWqTGb0sIXafV7h
- o8xOXmVj6+t0K61+fdq9lTN7R8k3VYxymw/RZNb30KYhT6ng7wloj15zMg86D+FW2auF 0w== 
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2020-01-29;
- bh=tJekCAGGSrKmhGuA6hKjzLQ8N78A1Rnt/IgDFU1CKYA=;
- b=lKgCskebr4TTUnhDHW3ENnQ72kkTaC5ofQ7POzHMoJMsymR3f+ayybXbBklaLd5p1Iqa
- Aiq3AHtX2ZLouH/yQP/Lz24gQ0wGrip42qovu2Y2x4hTBgXkN1jrspQCun8W/kpXPEFI
- ov9sB1Wo9N9esTblbTTJKz//p5llYRHzGwxYadox5WToJfFgZs6R4W6jyewqyDulaqiJ
- eNvCUbJ/ktJj6GlsYQTN3/YrZOuodHWqVDet5vyLYnBC5pTcGbAgfuBgXt6iczUPO2gf
- fPE6DTO/8oEzBGqMLTtWZYLVKbgaYD9bcTzToxdcv9TkmE4FwZBgHDqAxSjLfYKvXTzF mA== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3acw9p4921-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 13 Aug 2021 19:50:47 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 17DJoaLq028243;
-        Fri, 13 Aug 2021 19:50:46 GMT
-Received: from nam12-mw2-obe.outbound.protection.outlook.com (mail-mw2nam12lp2044.outbound.protection.outlook.com [104.47.66.44])
-        by aserp3020.oracle.com with ESMTP id 3accrenax4-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 13 Aug 2021 19:50:46 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=BjYtp8651dZHnyfaq7IGb4JZTDddMqCQF8T9D3B5n2l5l7563MM9FUcZJKqCXYQBnj57YS3LYa/qHQ5VXIwQU9RolQRjrH2U+T0TsUxRCzhzDa2wlxsjXuw2prNMVBF6Nn5X+t4kRCDBn0qH0gMER2ykuaw70C4v63fiYdlypltnVU+8OVNdtcs/DA8FFidbiz2Gcdd9mpKopZZu96zCLoWR9qnm10IZwHTtthkopnyF3vTda8u1b7VVumRyx5S5X7wc1aUqwPF5igQPFcdR2AXK6xzfF9Zy1IrqtyPsAPGLYbrVZTn/jQ+wN3C2rTGC3/gvBquonhPuh8wtW9lsdA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=tJekCAGGSrKmhGuA6hKjzLQ8N78A1Rnt/IgDFU1CKYA=;
- b=OgYvoDkmd26vhUvCVdfX689c1hEI4P9ZJf3Q2SMvYONVQ+F2DK86us8Ie9CRff5736l568GiZyF+hmGeq58gTy/rJ7l3SxOCcTtYjhf8zMADL4MHH2cIB3gdVdKH623DIzuTUGHUyUz5G6bHe0XOtD0Z4j/kTT9AYVoook2jJ2HooKaBRFIbPrwUXldMm0f6co2EYAV+uBvoNxqDUgxZoJ1O2uUXRc5t7QXZMJ2Al2OsplAU7jnF/sI73TqteVrHyTnRnbFVdNN5DOtU8TBt27Fk+NgtJ2v3cxTBFPf4MTawM/dT505ZerxCZmom3bxxC6kSb0dWJb2kDvAN+NPzzw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
+        id S233237AbhHOBY2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 14 Aug 2021 21:24:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51840 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229453AbhHOBY1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Aug 2021 21:24:27 -0400
+Received: from mail-pl1-x634.google.com (mail-pl1-x634.google.com [IPv6:2607:f8b0:4864:20::634])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6AEA2C061764
+        for <linux-nfs@vger.kernel.org>; Sat, 14 Aug 2021 18:23:58 -0700 (PDT)
+Received: by mail-pl1-x634.google.com with SMTP id d1so16713164pll.1
+        for <linux-nfs@vger.kernel.org>; Sat, 14 Aug 2021 18:23:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=tJekCAGGSrKmhGuA6hKjzLQ8N78A1Rnt/IgDFU1CKYA=;
- b=VL6vD5VVlD9Faqeb422NCUaAY4n33+uSXphEu7tTOaXk97K7WjwSk+oUGgRgrydMQNdr3I5IxjdSWgo+BNTqJQcK0nBX6oOZkRhKvp/yx4q3wNBwNmOi5vFgmST/x0R+IbRd6wqPpmioY6N/tzoEAJVhdJ1eDHgOIq33FarRgzU=
-Received: from SJ0PR10MB4688.namprd10.prod.outlook.com (2603:10b6:a03:2db::24)
- by BY5PR10MB4388.namprd10.prod.outlook.com (2603:10b6:a03:212::24) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4415.15; Fri, 13 Aug
- 2021 19:50:44 +0000
-Received: from SJ0PR10MB4688.namprd10.prod.outlook.com
- ([fe80::a8db:4fc8:ded5:e64]) by SJ0PR10MB4688.namprd10.prod.outlook.com
- ([fe80::a8db:4fc8:ded5:e64%5]) with mapi id 15.20.4415.019; Fri, 13 Aug 2021
- 19:50:44 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Bruce Fields <bfields@redhat.com>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] minor nfsd fixes
-Thread-Topic: [PATCH 0/2] minor nfsd fixes
-Thread-Index: AQHXj7p9GdLm/nXmBEmWN1u3Iz2TTKtx2YuA
-Date:   Fri, 13 Aug 2021 19:50:44 +0000
-Message-ID: <50550C4D-6F22-4142-B66F-9B616D3FD5DB@oracle.com>
-References: <1628800903-10760-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <1628800903-10760-1-git-send-email-bfields@redhat.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: redhat.com; dkim=none (message not signed)
- header.d=none;redhat.com; dmarc=none action=none header.from=oracle.com;
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 7ab470d4-1338-4a21-2340-08d95e93a35d
-x-ms-traffictypediagnostic: BY5PR10MB4388:
-x-microsoft-antispam-prvs: <BY5PR10MB4388018BAFE30626030A492693FA9@BY5PR10MB4388.namprd10.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:2582;
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: +t1b+yQ1qoD0/dW4OogiP77Flny1dUC8e4P3O16gxjaIDNnF43t3AlBCuGpyHBxf52rb7N6IYf4495yWpMdPY2NDhePloG3TRuw2WcdvWH4JOasf4gUz3xDTAYbBV0yRT+kLBlXQScsgj3FOQ186UiSY0la1FtTTakiqCWocnnxjftC5EQEH1Is39dVsT/P06WSrCt3gF3XANEn4qSnQsm4r17In3S8exRa/0WgiG8m3xFpdCaLlBgoeGIyPO9CdkDAUQoJGnATYuc7ziy5FIc3ME8tj22NlmOKJxdE1EcryzCh0eWPxoo+1tV2QCKBY4hlYVWyvCiJiZfvnfAz/vPVjJI0s2hypEq/Cv2l9uFBtPg8uXOlZg86Rv4gaPBjI3e7qBNpw/q5/M2QYOJFHJi2G2RBAlgA+PFszo+/sYUp1W5/fhQOPLTlF8FSnX4R6oGXcHcgPO2u6ZQCRmOjPDfjnZqhdca7gclizWqkJ/Et5/mWytjtIMCNKPbWKXF6StX2uHdMoPpCvDfkUhTshYNivB2z16F3Z2IS6ftDsvvRRemHMa0s6591z7jIigLYXcXJphhq3YMWSaA8xqRFQgfS31kqXWJyLAtdPSksBFw/CgJp/meY9nVzHaLGGfD0AG5Mxwwm0C4NF5+jE59gSmCCW5QF+fIIoSLMuoOwlmZqRPKWt++uVRvW1xRF1OIAjmyx6CrYTyr++ckU0oJeucjTxMUKs6f3si38yv2KPPvM=
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(66446008)(2616005)(122000001)(4326008)(83380400001)(33656002)(6486002)(508600001)(6512007)(6506007)(53546011)(66574015)(64756008)(36756003)(66556008)(71200400001)(38070700005)(2906002)(38100700002)(66946007)(5660300002)(66476007)(186003)(8936002)(8676002)(76116006)(4744005)(316002)(6916009)(86362001)(91956017)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?BfoozI4dWuVfDMMxByvhTUZ0X1SyNdJhLa0BBzc+a9w1pzjrgal13LuI/5pK?=
- =?us-ascii?Q?XO2oG1r3QcDzqz8ur9QLqR2KcwG7JoKYVa7U0kzpHB9L1fwt9tOmZh20OaRf?=
- =?us-ascii?Q?d/ONtJhsSZ+qv3RxwBvFNE2vAM0pTavVepAmGMjnGlQEfLFbR11Gaycbbu2M?=
- =?us-ascii?Q?v5kFlK0XoxcJpIFz0qmAExf2lHArJlpCaC9l4oEMHfPf/HSetV+Cabg2qyzu?=
- =?us-ascii?Q?QztNIk1qgIf4zW8Gc+O0Ac4Si4t8ZuzgXn3TQNPjcf3JQiz1MrV4iF1ceOcw?=
- =?us-ascii?Q?REY9Aw7Dzkze+rjMOvDmT+xSxlG2IueBRART/iZgQMDZl84g2tgDfxiqZHFy?=
- =?us-ascii?Q?gtFCXwoYTrIJomGYFONQYZcWkcTyCXIFbzlH1NxAfgaFKKuEx3smPBvCQWJU?=
- =?us-ascii?Q?AWsJPwO6pJhi7tLiHGXqegTg57pe72uJanZ5ESww2UxPyenSCmrGWtSOKYcf?=
- =?us-ascii?Q?LBn+i2yeNsk9R6uydtHW7urToK5X65MX195vFbO13OIwqQpV4yFpUbkT2Pcv?=
- =?us-ascii?Q?GjtkEGHj28fuzBZGh2IptiqiQ2NRd5hl3cSLV+Tyjn9R6WJcgpcBI0uoSEkx?=
- =?us-ascii?Q?ZsB/7kj7tg+ce2rJ0TbBpSCQJYd+/XrMs7++vQTVcBdaduFu0xQsoMg/ivav?=
- =?us-ascii?Q?XV++0BhwW8D18Mu/2zdbwv71apBHc93JzKVdDidKCX21gtqd0XaYiHfJUSg1?=
- =?us-ascii?Q?guiX1bu/diuvrIf5Gh68GOZ99r8EYHyXRfh9ddz7Z92qEBvbfktVBTofeH9V?=
- =?us-ascii?Q?sXIBMjXuaFoaATURr3lYlDVQfXqXnJzOicOOEAYkFiE/aKAtEVREA5f4ccMy?=
- =?us-ascii?Q?dQOSkb6l8LkBBli+kWcBjxUjODxKai+gYMQWsiSbyGSOIFziM9nxlb8D8gmm?=
- =?us-ascii?Q?lfGqY7fizq6p3ZSm2c/h7jkvDZghf7n0/8ArlkX13hVWKTV4twReqHjwUNEw?=
- =?us-ascii?Q?qOEPB8CQqXsvSSjuimn4gmdTU+F4jxZRL9Ep+FsYK7+yAEbx9+JlMBWfVnR3?=
- =?us-ascii?Q?s8l29ZWauKUYxuLIz64qhnFZHPynIkgDnvzmi7nCDVQe/EHdaJYniT1epoNy?=
- =?us-ascii?Q?uE6MbuE2krD9LoJrs+a3UJjaLxVHefBPbC9w6w7iaGo26wbCLKOyyD6aFymv?=
- =?us-ascii?Q?KoQg9a+cj8ShQ8SD5iwC81pvcLedteOOde2mQs6iCpmws+5FnPVwToPOLMrm?=
- =?us-ascii?Q?VgxiH2bsu4kI6czXUZstNvyp9Va/riSXdOiSf3Oi46rBpyMuqbvuWLdIoXuw?=
- =?us-ascii?Q?X5aK/XAejtvSWI8hPmjndU3rd3tACZ3syAS872dImSq/SKqOS65DoGV8zo9v?=
- =?us-ascii?Q?etuJFZfYKgpygx+N038AVZJ80Oc09Ma5Sv3hFIpnMEAu46dKuZicQr4KK4n6?=
- =?us-ascii?Q?o3vbsp66vo4L+utqEtUb1HMBrcRV?=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <4045750E5C62C54EBA7E68E983671FDC@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=71/rYXFFR+lYpJLFLwn15vWcietufe8jW+ZEomEFgs4=;
+        b=pq98J5hd8qObSM7B1+++fJRnfwAazRvxXMx381VfR0q3cvYcDiLiIakbgA489cqFrP
+         JSBGVfrXtK0y99QCgOuuJG0YgqISI9yLXD/3gNIeqto/qKL+s4ahe3hptnhd34EUffkb
+         Zdr80q+YB17PzU1BNuYOzBjaXS8a06kU7tqxnevwP13zqJSI9WES9ZMDQ/GEYVxFjvFZ
+         OgzQe89yVNaHfOA6qQ+hEnjkXxKnGK5PerVLz3BD8RwdS5VPOOChVnSGbY+JvCT0sAnX
+         EJvpgDZ3dqgaegpXEZOdc0h1GPN3tZyHdMn//33yDAvOKWQcrSZ5OmqytW4W2wwr3KGS
+         XPKg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=71/rYXFFR+lYpJLFLwn15vWcietufe8jW+ZEomEFgs4=;
+        b=pe3zISFveNYCqLJIfHg8GJDweKSxQXAagp9mNTPy7evJkNAb3X87mrztaybhmAz35s
+         N+l05I/ZaYOIlbAUwJ3dHWxplGCtgn9uKgZcACAOH44OzJagb4Ny6SrOcivTV8OPFI8b
+         Uz209RKCj1zvQ1PSGCC8FMzi6VvXxoDZvYK1zgauE/9JMcn7jqiP0Y4lKMph8Mm1KHz3
+         CypYFS3Wcr1G8Z6CxioaqVkR3J4zqB+iUa05iUbJ5GtTIfwoVEuXvWVKlavPkksDgMrv
+         LwnJyF3yoWj+DQ2FnJFb0tmx82HOeqaOlssMnRkz/Ks10SCV5Zuadrf6d6pHym1Xnl95
+         9uhw==
+X-Gm-Message-State: AOAM531kDZeahUklqKBGocvVqPodc7UOzEdUBdN6QqraaOHoDV83JjZK
+        YwW8LWvPXkbIsu/YhaYn7sMtY2g464s3rEdLwWU=
+X-Google-Smtp-Source: ABdhPJwfD3FNhEpvyWCDdcXSz3qoqoQWvbeWu/0vRDMz3qhdWaWvkULe6l9XQ8awLKTJ9bEFkdr3Gfa2gJhJXIt/Nk4=
+X-Received: by 2002:a65:4486:: with SMTP id l6mr8894837pgq.145.1628990637772;
+ Sat, 14 Aug 2021 18:23:57 -0700 (PDT)
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: SJ0PR10MB4688.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 7ab470d4-1338-4a21-2340-08d95e93a35d
-X-MS-Exchange-CrossTenant-originalarrivaltime: 13 Aug 2021 19:50:44.2434
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: OCXWr//qHyfx1KkAS4ecSTIqRzxvGQgxD/7WhQ0gfL+H/p4VRKJ4tsEy69f8CxSInTLU+FWF6WuUfq+COpIg4Q==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BY5PR10MB4388
-X-Proofpoint-Virus-Version: vendor=nai engine=6200 definitions=10075 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 mlxlogscore=969
- malwarescore=0 adultscore=0 spamscore=0 bulkscore=0 mlxscore=0
- phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2107140000 definitions=main-2108130115
-X-Proofpoint-GUID: lqrF4-V2XtP9KfN5paHAzKm4C3JN6081
-X-Proofpoint-ORIG-GUID: lqrF4-V2XtP9KfN5paHAzKm4C3JN6081
+References: <CAOv1SKCmdtchm5Z2NU80o49tkrHpAkPFaHKj4-vLDN5bZNCz-Q@mail.gmail.com>
+ <162846730406.22632.14734595494457390936@noble.neil.brown.name>
+ <CAOv1SKBZ7sGBnvG9-M+De+s=CfU=H_GBs4hJah1E4ks+NSMyPw@mail.gmail.com>
+ <CAOv1SKCUM5cGuXWAc7dsXtbmPMATqd245juC+S9gVXHWiZsvmQ@mail.gmail.com>
+ <162855893202.12431.3423894387218130632@noble.neil.brown.name>
+ <CAOv1SKAaSbfw53LWCCrvGCHESgdtCf5h275Zkzi9_uHkqnCrdg@mail.gmail.com>
+ <162882238416.1695.4958036322575947783@noble.neil.brown.name> <CAOv1SKB_dsam7P9pzzh_SKCtA8uE9cyFdJ=qquEfhLT42-szPA@mail.gmail.com>
+In-Reply-To: <CAOv1SKB_dsam7P9pzzh_SKCtA8uE9cyFdJ=qquEfhLT42-szPA@mail.gmail.com>
+From:   Mike Javorski <mike.javorski@gmail.com>
+Date:   Sat, 14 Aug 2021 18:23:46 -0700
+Message-ID: <CAOv1SKDDOj5UeUwztrMSNJnLgSoEgD8OU55hqtLHffHvaCQzzA@mail.gmail.com>
+Subject: Re: NFS server regression in kernel 5.13 (tested w/ 5.13.9)
+To:     NeilBrown <neilb@suse.de>
+Cc:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Bruce-
+I managed to get a cap with several discreet freezes in it, and I
+included a chunk with 5 of them in the span of ~3000 frames. I added
+packet comments at each frame that the tshark command reported as > 1
+sec RPC wait. Just search for "Freeze" in (wire|t)shark in packet
+details. This is with kernel 5.13.10 provided by Arch (See
+https://github.com/archlinux/linux/compare/a37da2be8e6c85...v5.13.10-arch1
+for diff vs mainline, nothing NFS/RPC related I can identify).
 
-> On Aug 12, 2021, at 4:41 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->=20
-> From: "J. Bruce Fields" <bfields@redhat.com>
->=20
-> These are two minor fixes I stumbled across while investigating other
-> problems.
->=20
-> --b.
->=20
-> J. Bruce Fields (2):
->  rpc: fix gss_svc_init cleanup on failure
->  nfsd4: Fix forced-expiry locking
->=20
-> fs/nfsd/nfs4state.c               | 4 ++--
-> net/sunrpc/auth_gss/svcauth_gss.c | 2 +-
-> 2 files changed, 3 insertions(+), 3 deletions(-)
+I tried unsuccessfully to get any failures with the 5.12.15 kernel.
 
-I will merge these once my power and internet are back on.
+https://drive.google.com/file/d/1T42iX9xCdF9Oe4f7JXsnWqD8oJPrpMqV/view?usp=sharing
 
---
-Chuck Lever
+File should be downloadable anonymously.
 
+- mike
 
-
+On Thu, Aug 12, 2021 at 7:53 PM Mike Javorski <mike.javorski@gmail.com> wrote:
+>
+> The "semi-known-good" has been the client. I tried updating the server
+> multiple times to a 5.13 kernel and each time had to downgrade to the
+> last 5.12 kernel that ArchLinux released (5.12.15) to stabilize
+> performance. At each attempt, the client was running the same 5.13
+> kernel that was being deployed to the server. I never downgraded the
+> client.
+>
+> Thank you for the scripts and all the details, I will test things out
+> this weekend when I can dedicate time to it.
+>
+> - mike
+>
+> On Thu, Aug 12, 2021 at 7:39 PM NeilBrown <neilb@suse.de> wrote:
+> >
+> > On Fri, 13 Aug 2021, Mike Javorski wrote:
+> > > Neil:
+> > >
+> > > Apologies for the delay, your message didn't get properly flagged in my email.
+> >
+> > :-)
+> >
+> > >
+> > > To answer your questions, both client (my Desktop PC) and server (my
+> > > NAS) are running ArchLinux; client w/ current kernel (5.13.9), server
+> > > w/ current or alternate testing kernels (see below).
+> >
+> > So the bug could be in the server or the client.  I assume you are
+> > careful to test a client against a know-good server, or a server against
+> > a known-good client.
+> >
+> > >                                                                 I
+> > > intend to spend some time this weekend attempting to get the tcpdump.
+> > > My initial attempts wound up with 400+Mb files which would be
+> > > difficult to ship and use for diagnostics.
+> >
+> > Rather than you sending me the dump, I'll send you the code.
+> >
+> > Run
+> >   tshark -r filename -d tcp.port==2049,rpc -Y 'tcp.port==2049 && rpc.time > 1'
+> >
+> > This will ensure the NFS traffic is actually decoded as NFS and then
+> > report only NFS(rpc) replies that arrive more than 1 second after the
+> > request.
+> > You can add
+> >
+> >     -T fields -e frame.number -e rpc.time
+> >
+> > to find out what the actual delay was.
+> >
+> > If it reports any, that will be interesting.  Try with a larger time if
+> > necessary to get a modest number of hits.  Using editcap and the given
+> > frame number you can select out 1000 packets either side of the problem
+> > and that should compress to be small enough to transport.
+> >
+> > However it might not find anything.  If the reply never arrives, you'll
+> > never get a reply with a long timeout.  So we need to check that
+> > everything got a reply...
+> >
+> >  tshark -r filename -t tcp.port==2049,rpc  \
+> >    -Y 'tcp.port==2049 && rpc.msg == 0' -T fields \
+> >    -e rpc.xid -e frame.number | sort > /tmp/requests
+> >
+> >  tshark -r filename -t tcp.port==2049,rpc  \
+> >    -Y 'tcp.port==2049 && rpc.msg == 1' -T fields \
+> >    -e rpc.xid -e frame.number | sort > /tmp/replies
+> >
+> >  join -a1 /tmp/requests /tmp/replies | awk 'NF==2'
+> >
+> > This should list the xid and frame number of all requests that didn't
+> > get a reply.  Again, editcap can extract a range of frames into a file of
+> > manageable size.
+> >
+> > Another possibility is that requests are getting replies, but the reply
+> > says "NFS4ERR_DELAY"
+> >
+> >  tshark -r filename -t tcp.port==2049,rpc -Y nfs.nfsstat4==10008
+> >
+> > should report any reply with that error code.
+> >
+> > Hopefully something there will be interesting.
+> >
+> > NeilBrown
