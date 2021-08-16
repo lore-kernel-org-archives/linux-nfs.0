@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F4B8C4320A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75281C43214
 	for <linux-nfs@archiver.kernel.org>; Mon, 16 Aug 2021 14:00:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 41C1E6330B
+	by mail.kernel.org (Postfix) with ESMTP id 5C53463312
 	for <linux-nfs@archiver.kernel.org>; Mon, 16 Aug 2021 14:00:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231690AbhHPOBH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 16 Aug 2021 10:01:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57480 "EHLO
+        id S231797AbhHPOBJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 16 Aug 2021 10:01:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57516 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231797AbhHPOAX (ORCPT
+        with ESMTP id S231820AbhHPOAX (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Aug 2021 10:00:23 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5323FC06129E
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB9E6C0612A5
         for <linux-nfs@vger.kernel.org>; Mon, 16 Aug 2021 06:59:30 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 7E0123723; Mon, 16 Aug 2021 09:59:28 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 7E0123723
+        id 681527C62; Mon, 16 Aug 2021 09:59:28 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 681527C62
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <schumakeranna@gmail.com>
 Cc:     daire@dneg.com, linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/8] lockd: lockd server-side shouldn't set fl_ops
-Date:   Mon, 16 Aug 2021 09:59:20 -0400
-Message-Id: <1629122367-18541-2-git-send-email-bfields@redhat.com>
+Subject: [PATCH 6/8] nfs: don't atempt blocking locks on nfs reexports
+Date:   Mon, 16 Aug 2021 09:59:25 -0400
+Message-Id: <1629122367-18541-7-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1629122367-18541-1-git-send-email-bfields@redhat.com>
 References: <1629122367-18541-1-git-send-email-bfields@redhat.com>
@@ -42,77 +42,89 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Locks have two sets of op arrays, fl_lmops for the lock manager (lockd
-or nfsd), fl_ops for the filesystem.  The server-side lockd code has
-been setting its own fl_ops, which leads to confusion (and crashes) in
-the reexport case, where the filesystem expects to be the only one
-setting fl_ops.
+NFS implements blocking locks by blocking inside its lock method.  In
+the reexport case, this blocks the nfs server thread, which could lead
+to deadlocks since an nfs server thread might be required to unlock the
+conflicting lock.  It also causes a crash, since the nfs server thread
+assumes it can free the lock when its lm_notify lock callback is called.
 
-And there's no reason for it that I can see-the lm_get/put_owner ops do
-the same job.
+Ideal would be to make the nfs lock method return without blocking in
+this case, but for now it works just not to attempt blocking locks.  The
+difference is just that the original client will have to poll (as it
+does in the v4.0 case) instead of getting a callback when the lock's
+available.
 
-Reported-by: Daire Byrne <daire@dneg.com>
-Tested-by: Daire Byrne <daire@dneg.com>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/lockd/svclock.c | 30 ++++++++++++------------------
- 1 file changed, 12 insertions(+), 18 deletions(-)
+ fs/nfs/export.c          | 2 +-
+ fs/nfsd/nfs4state.c      | 8 ++++++--
+ include/linux/exportfs.h | 2 ++
+ 3 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 61d3cc2283dc..1781fc5e9091 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -395,28 +395,10 @@ nlmsvc_release_lockowner(struct nlm_lock *lock)
- 		nlmsvc_put_lockowner(lock->fl.fl_owner);
- }
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index 37a1a88df771..d772c20bbfd1 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -180,5 +180,5 @@ const struct export_operations nfs_export_ops = {
+ 	.fetch_iversion = nfs_fetch_iversion,
+ 	.flags = EXPORT_OP_NOWCC|EXPORT_OP_NOSUBTREECHK|
+ 		EXPORT_OP_CLOSE_BEFORE_UNLINK|EXPORT_OP_REMOTE_FS|
+-		EXPORT_OP_NOATOMIC_ATTR,
++		EXPORT_OP_NOATOMIC_ATTR|EXPORT_OP_SYNC_LOCKS,
+ };
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fa67ecd5fe63..bebe86cce7c7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6835,6 +6835,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfsd4_blocked_lock *nbl = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
++	struct super_block *sb;
+ 	__be32 status = 0;
+ 	int lkflg;
+ 	int err;
+@@ -6856,6 +6857,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		dprintk("NFSD: nfsd4_lock: permission denied!\n");
+ 		return status;
+ 	}
++	sb = cstate->current_fh.fh_dentry->d_sb;
  
--static void nlmsvc_locks_copy_lock(struct file_lock *new, struct file_lock *fl)
--{
--	struct nlm_lockowner *nlm_lo = (struct nlm_lockowner *)fl->fl_owner;
--	new->fl_owner = nlmsvc_get_lockowner(nlm_lo);
--}
--
--static void nlmsvc_locks_release_private(struct file_lock *fl)
--{
--	nlmsvc_put_lockowner((struct nlm_lockowner *)fl->fl_owner);
--}
--
--static const struct file_lock_operations nlmsvc_lock_ops = {
--	.fl_copy_lock = nlmsvc_locks_copy_lock,
--	.fl_release_private = nlmsvc_locks_release_private,
--};
--
- void nlmsvc_locks_init_private(struct file_lock *fl, struct nlm_host *host,
- 						pid_t pid)
- {
- 	fl->fl_owner = nlmsvc_find_lockowner(host, pid);
--	if (fl->fl_owner != NULL)
--		fl->fl_ops = &nlmsvc_lock_ops;
- }
- 
- /*
-@@ -788,9 +770,21 @@ nlmsvc_notify_blocked(struct file_lock *fl)
- 	printk(KERN_WARNING "lockd: notification for unknown block!\n");
- }
- 
-+static fl_owner_t nlmsvc_get_owner(fl_owner_t owner)
-+{
-+	return nlmsvc_get_lockowner(owner);
-+}
-+
-+static void nlmsvc_put_owner(fl_owner_t owner)
-+{
-+	nlmsvc_put_lockowner(owner);
-+}
-+
- const struct lock_manager_operations nlmsvc_lock_operations = {
- 	.lm_notify = nlmsvc_notify_blocked,
- 	.lm_grant = nlmsvc_grant_deferred,
-+	.lm_get_owner = nlmsvc_get_owner,
-+	.lm_put_owner = nlmsvc_put_owner,
+ 	if (lock->lk_is_new) {
+ 		if (nfsd4_has_session(cstate))
+@@ -6904,7 +6906,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	fp = lock_stp->st_stid.sc_file;
+ 	switch (lock->lk_type) {
+ 		case NFS4_READW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (nfsd4_has_session(cstate) &&
++			    !(sb->s_export_op->flags & EXPORT_OP_SYNC_LOCKS))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_READ_LT:
+@@ -6916,7 +6919,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			fl_type = F_RDLCK;
+ 			break;
+ 		case NFS4_WRITEW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (nfsd4_has_session(cstate) &&
++			    !(sb->s_export_op->flags & EXPORT_OP_SYNC_LOCKS))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_WRITE_LT:
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index fe848901fcc3..3260fe714846 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -221,6 +221,8 @@ struct export_operations {
+ #define EXPORT_OP_NOATOMIC_ATTR		(0x10) /* Filesystem cannot supply
+ 						  atomic attribute updates
+ 						*/
++#define EXPORT_OP_SYNC_LOCKS		(0x20) /* Filesystem can't do
++						  asychronous blocking locks */
+ 	unsigned long	flags;
  };
  
- /*
 -- 
 2.31.1
 
