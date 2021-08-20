@@ -7,33 +7,33 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FA1AC432BE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EED95C4320A
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Aug 2021 21:02:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1BEEF610CC
+	by mail.kernel.org (Postfix) with ESMTP id D67A26103B
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Aug 2021 21:02:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239999AbhHTVCt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 20 Aug 2021 17:02:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41684 "EHLO
+        id S240038AbhHTVCx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 20 Aug 2021 17:02:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41686 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240038AbhHTVCs (ORCPT
+        with ESMTP id S240192AbhHTVCs (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Aug 2021 17:02:48 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A4B8AC061757
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A76FCC06175F
         for <linux-nfs@vger.kernel.org>; Fri, 20 Aug 2021 14:02:09 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id E81CB200B; Fri, 20 Aug 2021 17:02:08 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org E81CB200B
+        id 1D6037C34; Fri, 20 Aug 2021 17:02:08 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 1D6037C34
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <schumakeranna@gmail.com>
 Cc:     daire@dneg.com, linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/8] lockd: update nlm_lookup_file reexport comment
-Date:   Fri, 20 Aug 2021 17:02:02 -0400
-Message-Id: <1629493326-28336-5-git-send-email-bfields@redhat.com>
+Subject: [PATCH 6/8] nfs: don't atempt blocking locks on nfs reexports
+Date:   Fri, 20 Aug 2021 17:02:04 -0400
+Message-Id: <1629493326-28336-7-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1629493326-28336-1-git-send-email-bfields@redhat.com>
 References: <1629493326-28336-1-git-send-email-bfields@redhat.com>
@@ -43,30 +43,89 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Update comment to reflect that we *do* allow reexport, whether it's a
-good idea or not....
+NFS implements blocking locks by blocking inside its lock method.  In
+the reexport case, this blocks the nfs server thread, which could lead
+to deadlocks since an nfs server thread might be required to unlock the
+conflicting lock.  It also causes a crash, since the nfs server thread
+assumes it can free the lock when its lm_notify lock callback is called.
+
+Ideal would be to make the nfs lock method return without blocking in
+this case, but for now it works just not to attempt blocking locks.  The
+difference is just that the original client will have to poll (as it
+does in the v4.0 case) instead of getting a callback when the lock's
+available.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/lockd/svcsubs.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/nfs/export.c          | 2 +-
+ fs/nfsd/nfs4state.c      | 8 ++++++--
+ include/linux/exportfs.h | 2 ++
+ 3 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index 2558598610a9..f43d89e89c45 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -111,8 +111,9 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
- 	INIT_HLIST_NODE(&file->f_list);
- 	INIT_LIST_HEAD(&file->f_blocks);
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index 37a1a88df771..d772c20bbfd1 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -180,5 +180,5 @@ const struct export_operations nfs_export_ops = {
+ 	.fetch_iversion = nfs_fetch_iversion,
+ 	.flags = EXPORT_OP_NOWCC|EXPORT_OP_NOSUBTREECHK|
+ 		EXPORT_OP_CLOSE_BEFORE_UNLINK|EXPORT_OP_REMOTE_FS|
+-		EXPORT_OP_NOATOMIC_ATTR,
++		EXPORT_OP_NOATOMIC_ATTR|EXPORT_OP_SYNC_LOCKS,
+ };
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fa67ecd5fe63..bebe86cce7c7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6835,6 +6835,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfsd4_blocked_lock *nbl = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
++	struct super_block *sb;
+ 	__be32 status = 0;
+ 	int lkflg;
+ 	int err;
+@@ -6856,6 +6857,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		dprintk("NFSD: nfsd4_lock: permission denied!\n");
+ 		return status;
+ 	}
++	sb = cstate->current_fh.fh_dentry->d_sb;
  
--	/* Open the file. Note that this must not sleep for too long, else
--	 * we would lock up lockd:-) So no NFS re-exports, folks.
-+	/*
-+	 * Open the file. Note that if we're reexporting, for example,
-+	 * this could block the lockd thread for a while.
- 	 *
- 	 * We have to make sure we have the right credential to open
- 	 * the file.
+ 	if (lock->lk_is_new) {
+ 		if (nfsd4_has_session(cstate))
+@@ -6904,7 +6906,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	fp = lock_stp->st_stid.sc_file;
+ 	switch (lock->lk_type) {
+ 		case NFS4_READW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (nfsd4_has_session(cstate) &&
++			    !(sb->s_export_op->flags & EXPORT_OP_SYNC_LOCKS))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_READ_LT:
+@@ -6916,7 +6919,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			fl_type = F_RDLCK;
+ 			break;
+ 		case NFS4_WRITEW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (nfsd4_has_session(cstate) &&
++			    !(sb->s_export_op->flags & EXPORT_OP_SYNC_LOCKS))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_WRITE_LT:
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index fe848901fcc3..3260fe714846 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -221,6 +221,8 @@ struct export_operations {
+ #define EXPORT_OP_NOATOMIC_ATTR		(0x10) /* Filesystem cannot supply
+ 						  atomic attribute updates
+ 						*/
++#define EXPORT_OP_SYNC_LOCKS		(0x20) /* Filesystem can't do
++						  asychronous blocking locks */
+ 	unsigned long	flags;
+ };
+ 
 -- 
 2.31.1
 
