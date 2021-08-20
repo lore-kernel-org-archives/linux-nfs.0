@@ -7,33 +7,33 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D803C00143
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66186C4338F
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Aug 2021 21:02:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1332A610CC
+	by mail.kernel.org (Postfix) with ESMTP id 49CC2610CC
 	for <linux-nfs@archiver.kernel.org>; Fri, 20 Aug 2021 21:02:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240308AbhHTVCz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S240286AbhHTVCz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 20 Aug 2021 17:02:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41694 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41690 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240286AbhHTVCs (ORCPT
+        with ESMTP id S240262AbhHTVCs (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Aug 2021 17:02:48 -0400
 Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 40C7AC061764
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2EA97C061575
         for <linux-nfs@vger.kernel.org>; Fri, 20 Aug 2021 14:02:10 -0700 (PDT)
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 977BB5BAF; Fri, 20 Aug 2021 17:02:08 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 977BB5BAF
+        id 5CFEA7C62; Fri, 20 Aug 2021 17:02:08 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 5CFEA7C62
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <schumakeranna@gmail.com>
 Cc:     daire@dneg.com, linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 7/8] lockd: don't attempt blocking locks on nfs reexports
-Date:   Fri, 20 Aug 2021 17:02:05 -0400
-Message-Id: <1629493326-28336-8-git-send-email-bfields@redhat.com>
+Subject: [PATCH 2/8] nlm: minor nlm_lookup_file argument change
+Date:   Fri, 20 Aug 2021 17:02:00 -0400
+Message-Id: <1629493326-28336-3-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1629493326-28336-1-git-send-email-bfields@redhat.com>
 References: <1629493326-28336-1-git-send-email-bfields@redhat.com>
@@ -43,67 +43,106 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-As in the v4 case, it doesn't work well to block waiting for a lock on
-an nfs filesystem.
-
-As in the v4 case, that means we're depending on the client to poll.
-It's probably incorrect to depend on that, but I *think* clients do poll
-in practice.  In any case, it's an improvement over hanging the lockd
-thread indefinitely as we currently are.
+It'll come in handy to get the whole nlm_lock.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/lockd/svclock.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+ fs/lockd/svc4proc.c         |  2 +-
+ fs/lockd/svcproc.c          |  2 +-
+ fs/lockd/svcsubs.c          | 14 +++++++-------
+ include/linux/lockd/lockd.h |  2 +-
+ 4 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index d60e6eea2d57..c99acefb9ec9 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -31,6 +31,7 @@
- #include <linux/lockd/nlm.h>
- #include <linux/lockd/lockd.h>
- #include <linux/kthread.h>
-+#include <linux/exportfs.h>
+diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+index 4c10fb5138f1..aa8eca7c38a1 100644
+--- a/fs/lockd/svc4proc.c
++++ b/fs/lockd/svc4proc.c
+@@ -40,7 +40,7 @@ nlm4svc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
  
- #define NLMDBG_FACILITY		NLMDBG_SVCLOCK
+ 	/* Obtain file pointer. Not used by FREE_ALL call. */
+ 	if (filp != NULL) {
+-		if ((error = nlm_lookup_file(rqstp, &file, &lock->fh)) != 0)
++		if ((error = nlm_lookup_file(rqstp, &file, lock)) != 0)
+ 			goto no_locks;
+ 		*filp = file;
  
-@@ -470,18 +471,24 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	    struct nlm_cookie *cookie, int reclaim)
+diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+index 4ae4b63b5392..f4e5e0eb30fd 100644
+--- a/fs/lockd/svcproc.c
++++ b/fs/lockd/svcproc.c
+@@ -69,7 +69,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 
+ 	/* Obtain file pointer. Not used by FREE_ALL call. */
+ 	if (filp != NULL) {
+-		error = cast_status(nlm_lookup_file(rqstp, &file, &lock->fh));
++		error = cast_status(nlm_lookup_file(rqstp, &file, lock));
+ 		if (error != 0)
+ 			goto no_locks;
+ 		*filp = file;
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index 028fc152da22..bbd2bdde4bea 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -82,31 +82,31 @@ static inline unsigned int file_hash(struct nfs_fh *f)
+  */
+ __be32
+ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
+-					struct nfs_fh *f)
++					struct nlm_lock *lock)
  {
- 	struct nlm_block	*block = NULL;
-+	struct inode		*inode = nlmsvc_file_inode(file);
- 	int			error;
- 	int			mode;
-+	int			async_block = 0;
- 	__be32			ret;
+ 	struct nlm_file	*file;
+ 	unsigned int	hash;
+ 	__be32		nfserr;
  
- 	dprintk("lockd: nlmsvc_lock(%s/%ld, ty=%d, pi=%d, %Ld-%Ld, bl=%d)\n",
--				nlmsvc_file_inode(file)->i_sb->s_id,
--				nlmsvc_file_inode(file)->i_ino,
-+				inode->i_sb->s_id, inode->i_ino,
- 				lock->fl.fl_type, lock->fl.fl_pid,
- 				(long long)lock->fl.fl_start,
- 				(long long)lock->fl.fl_end,
- 				wait);
+-	nlm_debug_print_fh("nlm_lookup_file", f);
++	nlm_debug_print_fh("nlm_lookup_file", &lock->fh);
  
-+	if (inode->i_sb->s_export_op->flags & EXPORT_OP_SYNC_LOCKS) {
-+		async_block = wait;
-+		wait = 0;
-+	}
-+
- 	/* Lock file against concurrent access */
- 	mutex_lock(&file->f_mutex);
- 	/* Get existing block (in case client is busy-waiting)
-@@ -542,7 +549,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			 */
- 			if (wait)
- 				break;
--			ret = nlm_lck_denied;
-+			ret = async_block ? nlm_lck_blocked : nlm_lck_denied;
- 			goto out;
- 		case FILE_LOCK_DEFERRED:
- 			if (wait)
+-	hash = file_hash(f);
++	hash = file_hash(&lock->fh);
+ 
+ 	/* Lock file table */
+ 	mutex_lock(&nlm_file_mutex);
+ 
+ 	hlist_for_each_entry(file, &nlm_files[hash], f_list)
+-		if (!nfs_compare_fh(&file->f_handle, f))
++		if (!nfs_compare_fh(&file->f_handle, &lock->fh))
+ 			goto found;
+ 
+-	nlm_debug_print_fh("creating file for", f);
++	nlm_debug_print_fh("creating file for", &lock->fh);
+ 
+ 	nfserr = nlm_lck_denied_nolocks;
+ 	file = kzalloc(sizeof(*file), GFP_KERNEL);
+ 	if (!file)
+ 		goto out_unlock;
+ 
+-	memcpy(&file->f_handle, f, sizeof(struct nfs_fh));
++	memcpy(&file->f_handle, &lock->fh, sizeof(struct nfs_fh));
+ 	mutex_init(&file->f_mutex);
+ 	INIT_HLIST_NODE(&file->f_list);
+ 	INIT_LIST_HEAD(&file->f_blocks);
+@@ -117,7 +117,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
+ 	 * We have to make sure we have the right credential to open
+ 	 * the file.
+ 	 */
+-	if ((nfserr = nlmsvc_ops->fopen(rqstp, f, &file->f_file)) != 0) {
++	if ((nfserr = nlmsvc_ops->fopen(rqstp, &lock->fh, &file->f_file)) != 0) {
+ 		dprintk("lockd: open failed (error %d)\n", nfserr);
+ 		goto out_free;
+ 	}
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 666f5f310a04..81b71ad2040a 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -286,7 +286,7 @@ void		  nlmsvc_locks_init_private(struct file_lock *, struct nlm_host *, pid_t);
+  * File handling for the server personality
+  */
+ __be32		  nlm_lookup_file(struct svc_rqst *, struct nlm_file **,
+-					struct nfs_fh *);
++					struct nlm_lock *);
+ void		  nlm_release_file(struct nlm_file *);
+ void		  nlmsvc_release_lockowner(struct nlm_lock *);
+ void		  nlmsvc_mark_resources(struct net *);
 -- 
 2.31.1
 
