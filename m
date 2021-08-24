@@ -2,67 +2,70 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EED57C4338F
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Aug 2021 18:02:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E8E9C4338F
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Aug 2021 18:02:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D36E5610E6
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 Aug 2021 18:02:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E5F2A610E6
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Aug 2021 18:02:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240009AbhHXSCr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Aug 2021 14:02:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41894 "EHLO
+        id S240072AbhHXSCs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Aug 2021 14:02:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41802 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239992AbhHXSCn (ORCPT
+        with ESMTP id S238759AbhHXSCn (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Aug 2021 14:02:43 -0400
-Received: from mail-qk1-x72b.google.com (mail-qk1-x72b.google.com [IPv6:2607:f8b0:4864:20::72b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E0ABC053406
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2021 10:51:17 -0700 (PDT)
-Received: by mail-qk1-x72b.google.com with SMTP id f22so14421068qkm.5
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2021 10:51:17 -0700 (PDT)
+Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A8675C05340B
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2021 10:51:19 -0700 (PDT)
+Received: by mail-qk1-x733.google.com with SMTP id ay33so12604643qkb.10
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Aug 2021 10:51:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KgI+NCEk+cNEP4JtR9haBBuHu5BH950392qugvvN3Ec=;
-        b=DI53zw9XrlfaHHW1BFCsW/5KkTJ0xXseXjASeu9cxqoRr+A70TyZj2hQYeJyv1Q+Wg
-         1C5Mlw7VPqXTKUxee7iU/6ZFjBR5IiUGc0gRYzcDhdDO764QQBKIxb+H684aiu/yHA5F
-         pXUXhA2eHt1nhVp6Di6paSBUXfcF6bKG3ZKENNpOT1+hCqlJQ/z33zHPLvla3CAJHj5F
-         Fqwx+Uj9ZiC2t2vtWL/awMCDCinGVjMoAE642xHEakX5bZMeIUARlNvbk4lBeJg6aJlp
-         9A4yHddXFdNysTF5RFbURXtiAg97nTkpmHUoHCvExrQossBP0p/JTvPS+mNtKWycjE08
-         FNnA==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=8KwAKcBqY1TTWZry4fngp7gp1LU/zMCzkYKAzNot33s=;
+        b=gcXvRmjF2rcd03VroQvZmTx18uunvwsDyuumN6Xewc9ub5eCsFt0rq6WeUdhIHK8h1
+         EKR7WZg2j3kF5ozpx9zDR0cqlHdT5E77RYHI8wWL2SveEAwLwTbKjFN3sevKUZSuynl0
+         Ztoncz4Jfw7+cpHP5XPTug2lnZLKF8pXl5lhZp8iFIK8fmlWRNL9QqOsAj7C3S5E4Axx
+         GO9zRYgCAs7XtIS8UklvRtv7cCh8LicHLzeQFFjgqbrU26ukP0qJpo/ypb5Opr1HsJ3n
+         0dAhQGpvjAS5fLFk/2mfLqvfCbBf0smel/E5T24Pu5udMxVEQCawz56DuTIhFm1GbAh2
+         ibug==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KgI+NCEk+cNEP4JtR9haBBuHu5BH950392qugvvN3Ec=;
-        b=GRKRpX5VWTnkIB/eIHjwXqu0A+fMXtWM2kn5Fn37LW1B+Cihz9GZykZEDZP4qun90T
-         hgIDivjMeHnsjJ/zFmQlY0ETIJlzFbQ8aMoI1E8v+TQEjCTIbzQ2ZG6tEWmb3WbfeRRe
-         sKJBaS1MzbARUz4qrjWWeetEkxx7nARVTzlwyYOQaX5v3cNcPPSiAsHu5MK1JN3GR2Ra
-         VrKEkNRMflsF4MZdhBix76RZhucpP/JPHLq3Q5+XxUM1aecMhEat0xedgvhFAj567tqB
-         PfVeLlfa/IcAfDz0FLLVhSl7hxt/tae8KaK8O4g7PWnly3WNUpAwZc9QL0ofIiyNJdy4
-         PkWw==
-X-Gm-Message-State: AOAM530sYuRcDhwlkfw0NNEiuIsx6/wGfrI9SW8A2f96CK514fawyJzT
-        Rjlus0ZQxZGLISNhuMsl7Dg=
-X-Google-Smtp-Source: ABdhPJxL2k6kDlgny3qbeK/cQpVBp3ifQz98yW8JyBv40gAPe8GEdfJvzqLQyGaoeTfmSMMrCrqaSQ==
-X-Received: by 2002:a05:620a:20c5:: with SMTP id f5mr27288249qka.204.1629827476698;
-        Tue, 24 Aug 2021 10:51:16 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=8KwAKcBqY1TTWZry4fngp7gp1LU/zMCzkYKAzNot33s=;
+        b=XHKtuRh2iAPMOjWhDhnCO3r4Dv8aMoW1bTV7YGuCMJRwbIsOJN6GP1jg/YuhNLx520
+         UxM6m9UKlbcObLslJ+awyREbuvnQRvTsqfb6CnKXp6FHxbjN2+byeLbxLPNs/CQkOUHg
+         FyCGddnhvgyPXh4airlQYzSQaH0hHzipfMDs+ixZBrtYVSSpBeO3ow6+omLW4jpcL2xr
+         Moqs9joBfQjw5flQTIRyyekXTzfGcfnqCzWz2b3R/yGy7c8MzIUpuKH67v412FUb/QFT
+         9tBr9zONR9uVreeBmfE0eOy5FxKpQ80E7h6AU11pFFJ3U980MWgQ1+BFHYpiUrZF9hl0
+         bOlA==
+X-Gm-Message-State: AOAM533go5j+LZdMVc3GNSuoFNCGC3q2YAcMCGlx9Z78UDb5stOG6dc8
+        GmA+avdefP039z+G9vdola8=
+X-Google-Smtp-Source: ABdhPJxpz7Gw7P/dpDUDXn9LvpeVIFYvWufj/ypB5YRKzWIjHev3riQ/VUOKuWuMLXU/8SBa9I/daQ==
+X-Received: by 2002:a05:620a:d4d:: with SMTP id o13mr27579080qkl.466.1629827478835;
+        Tue, 24 Aug 2021 10:51:18 -0700 (PDT)
 Received: from kolga-mac-1.vpn.netapp.com ([2600:1700:6a10:2e90:549b:da99:adb5:676c])
-        by smtp.gmail.com with ESMTPSA id n18sm11519658qkn.63.2021.08.24.10.51.15
+        by smtp.gmail.com with ESMTPSA id n18sm11519658qkn.63.2021.08.24.10.51.17
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 24 Aug 2021 10:51:16 -0700 (PDT)
+        Tue, 24 Aug 2021 10:51:18 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v4 0/5] do not collapse trunkable transports
-Date:   Tue, 24 Aug 2021 13:51:02 -0400
-Message-Id: <20210824175108.19746-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH] [man]: adding new mount option max_connect
+Date:   Tue, 24 Aug 2021 13:51:04 -0400
+Message-Id: <20210824175108.19746-3-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
+In-Reply-To: <20210824175108.19746-1-olga.kornievskaia@gmail.com>
+References: <20210824175108.19746-1-olga.kornievskaia@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -71,40 +74,39 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-This patch series attempts to allow for new mounts that are to the
-same server (ie nfsv4.1+ session trunkable servers) but different
-network addresses to use connections associated with those mounts
-but still use the same client structure.
+When client discovers trunkable servers, instead of dropping newly
+created trunkable connections, add this connection to the existing
+RPC client.
 
-A new mount options, "max_connect", controls how many extra transports
-can be added to an existing client, with maximum of 16 such transports.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ utils/mount/nfs.man | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-v4: 
-no change to 5 patches were made. 
-patch 6 dropped. 
-man page patch added
-
-Olga Kornievskaia (5):
-  SUNRPC keep track of number of transports to unique addresses
-  SUNRPC add xps_nunique_destaddr_xprts to xprt_switch_info in sysfs
-  NFSv4 introduce max_connect mount options
-  SUNRPC enforce creation of no more than max_connect xprts
-  NFSv4.1 add network transport when session trunking is detected
-
- fs/nfs/client.c                      |  2 ++
- fs/nfs/fs_context.c                  |  7 +++++
- fs/nfs/internal.h                    |  2 ++
- fs/nfs/nfs4client.c                  | 41 ++++++++++++++++++++++++++--
- fs/nfs/super.c                       |  2 ++
- include/linux/nfs_fs.h               |  5 ++++
- include/linux/nfs_fs_sb.h            |  1 +
- include/linux/sunrpc/clnt.h          |  2 ++
- include/linux/sunrpc/xprtmultipath.h |  1 +
- net/sunrpc/clnt.c                    | 11 +++++++-
- net/sunrpc/sysfs.c                   |  4 ++-
- net/sunrpc/xprtmultipath.c           |  1 +
- 12 files changed, 75 insertions(+), 4 deletions(-)
-
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index f1b76936..57a693fd 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -416,6 +416,19 @@ Note that the
+ option may also be used by some pNFS drivers to decide how many
+ connections to set up to the data servers.
+ .TP 1.5i
++.BR max_connect= n
++While
++.BR nconnect
++option sets a limit on the number of connections that can be established
++to a given server IP,
++.BR max_connect
++option allows the user to specify maximum number of connections to different
++server IPs that belong to the same NFSv4.1+ server (session trunkable
++connections) up to a limit of 16. When client discovers that it established
++a client ID to an already existing server, instead of dropping the newly
++created network transport, the client will add this new connection to the
++list of available transports for that RPC client.
++.TP 1.5i
+ .BR rdirplus " / " nordirplus
+ Selects whether to use NFS v3 or v4 READDIRPLUS requests.
+ If this option is not specified, the NFS client uses READDIRPLUS requests
 -- 
 2.27.0
 
