@@ -8,61 +8,61 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36DB8C4320A
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Aug 2021 18:37:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9970AC43214
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 Aug 2021 18:37:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1E49F60FC4
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Aug 2021 18:37:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7E64260FC4
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 Aug 2021 18:37:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229805AbhH0SiS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 27 Aug 2021 14:38:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49910 "EHLO
+        id S229949AbhH0SiU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 27 Aug 2021 14:38:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49922 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229739AbhH0SiS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Aug 2021 14:38:18 -0400
-Received: from mail-qt1-x82c.google.com (mail-qt1-x82c.google.com [IPv6:2607:f8b0:4864:20::82c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 12846C061757
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Aug 2021 11:37:29 -0700 (PDT)
-Received: by mail-qt1-x82c.google.com with SMTP id u21so6085430qtw.8
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Aug 2021 11:37:29 -0700 (PDT)
+        with ESMTP id S229869AbhH0SiU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Aug 2021 14:38:20 -0400
+Received: from mail-qk1-x736.google.com (mail-qk1-x736.google.com [IPv6:2607:f8b0:4864:20::736])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F4BEC061757
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Aug 2021 11:37:31 -0700 (PDT)
+Received: by mail-qk1-x736.google.com with SMTP id p4so1884613qki.3
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Aug 2021 11:37:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=koi2dAiEUZGWQ61rcZsKU0jg5BRUtQ/tg2nRQ2aR2zE=;
-        b=AhVKSuR225KNBMqmD+rg4d1zKvIjlBuFNBw+XJnQjEHcCvxf5ypn4dyINDk5Nnn+Oq
-         o7S5vrbB3A0YlUzrBAeif0OeE4xatj5Ev2JSFUk5sXpPqTiMJij1C8AeS6WhZ4/egvhf
-         RB4C8NegWcmUH1HctXXfq1i1lZ+qW1aAiOIoFmhougP2cqTnL8YEq1oeD4X7Iv/z+SMN
-         VwUxL9DKIBGYGrYLewXfE9BTmZVsxzbBouyY4X1bU1v+1rhZsreLeM9EGQoeO+1CaQI6
-         feb1lRkpUduIK+RborDy0rfRdgzgFCXTphwtYbKqLQlsKhtM4+YCxbMjfAi+hDOSXIrR
-         G2uA==
+        bh=t8C+GGrkuHZuCFx+eMpPXA1G1r6jwtJtqK4jsR12uQk=;
+        b=I4nE/ZBna7h4ebX6cNdZuklk/98bivnaPxFVgn3gm/9hUwIKB9/AqwKEPjC8tVaFs+
+         1+q7ujyw2U2JHBfih5NGA0hP5r2lJkWAdy1AHq/FZ5M78LgcxqVYnJj0GKAIvPDjVv6B
+         DBMXfAa2SfCXSyDLZvcXReuImdreHjR8acOXT23f/RwX1e7GobvmhFBSvHEKGQVTCb1J
+         KHczTWv8WjFXYCAMQzsE/5x4pxHDfREpId6RIFmFxQYOabc02y6A1ntT/7C2kZQoLoHG
+         5Qy/YlkSGiir3X0cQpyIqGUBcp8RaRnlSMpwLxDqL7WBPr6+Rx8Pqd3gkTlOZjiPDPHF
+         ijUA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=koi2dAiEUZGWQ61rcZsKU0jg5BRUtQ/tg2nRQ2aR2zE=;
-        b=fqSXXe1f7/HfqdyPNLDvclHwTdmpW/sZKnBentMpOrjE2ZFxpyOtEij1Xz5o9BtgV9
-         T7QCIwP8IeA8ikQETI/JEpe99xHuWHXVbJVzeTNWuHf/sGp84oRCwoQytiOL9oIQm+lU
-         COHwiDWEdy56snpagygDuQIvA9TIevVxaMltO9NXCCcfJkcaxYxNPjhwVgd/FcT6n2Z8
-         TbeIClefuLkursEdSSJ6OriT/UTOew1BmPisulEeOx3U/SE3XAvEU7JHr3mBMpvVI9bR
-         Bz95JSBL7FkgifOLD0ekbEe2Pjn5/F2VbcAowa542XTAU5/8QywjZzC8Q6WI6UQW7GuX
-         3XQg==
-X-Gm-Message-State: AOAM533ieI4ykpmLJeG9Jq5Mih2kfLQ++q+lb6aNXsVxudsCaYocMhsJ
-        GocWPEXpBpcKNHmG/obM5pI=
-X-Google-Smtp-Source: ABdhPJz8CUS9aBSNyqloebe7vPQJ62ROqxxptj4HSeB78uIaKqyv+HgWFjaZAZuBhAJmI4n5ExS4eg==
-X-Received: by 2002:ac8:4704:: with SMTP id f4mr9607375qtp.80.1630089448138;
-        Fri, 27 Aug 2021 11:37:28 -0700 (PDT)
+        bh=t8C+GGrkuHZuCFx+eMpPXA1G1r6jwtJtqK4jsR12uQk=;
+        b=CRc2gVDSfsUqFFOvOCW9fKwnoFCumFw5XBfUpu3iEkoC9VnZtmg//5eyxGijZqh0xm
+         PeJOaA2E8zZkq0LA9whT91d1cW4h0gw3ShY2xQ4gx3cdw0v/XeBdJ032GvWnjfWPg1k/
+         C3nnjuai+0TRusQ4YXeaJ/YIg9PkiA8hzK+uDB0aeMLf31begUCPM2jJva8+Y0Q5Ippd
+         k3tRX0KQksJ6cIZjLSApWNXzBBKFoWNS26rbr6/9b+EwxlOMZJbwdKyX+Scev1BbJVcN
+         cWgcA0RdTEYP3OKuojt8LUJ6zLRupsXj3xdG16HHnRLRz2Z94Jvcj9s62q2wlxHtYL+j
+         0o2g==
+X-Gm-Message-State: AOAM531LbyAysFj+KTTnNlzz6zF8z1uj4e0NV6fvCgH9nOVem18+qWKi
+        82w2kazjNhZ4A1kBvSZyakoONWYyJ0coSA==
+X-Google-Smtp-Source: ABdhPJwJILEeZHfaWa9zWATyxn9EhlrkoorNz6Dijp/QlIJJ7xtZ35RQDEg/zj2AJ7+ro/iJqnX3nw==
+X-Received: by 2002:a37:8243:: with SMTP id e64mr10542985qkd.89.1630089450302;
+        Fri, 27 Aug 2021 11:37:30 -0700 (PDT)
 Received: from kolga-mac-1.vpn.netapp.com ([2600:1700:6a10:2e90:b143:41d3:e2f6:337b])
-        by smtp.gmail.com with ESMTPSA id bl36sm5207463qkb.37.2021.08.27.11.37.27
+        by smtp.gmail.com with ESMTPSA id bl36sm5207463qkb.37.2021.08.27.11.37.29
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 27 Aug 2021 11:37:27 -0700 (PDT)
+        Fri, 27 Aug 2021 11:37:29 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v5 1/5] SUNRPC keep track of number of transports to unique addresses
-Date:   Fri, 27 Aug 2021 14:37:14 -0400
-Message-Id: <20210827183719.41057-2-olga.kornievskaia@gmail.com>
+Subject: [PATCH v5 2/5] SUNRPC add xps_nunique_destaddr_xprts to xprt_switch_info in sysfs
+Date:   Fri, 27 Aug 2021 14:37:16 -0400
+Message-Id: <20210827183719.41057-4-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20210827183719.41057-1-olga.kornievskaia@gmail.com>
 References: <20210827183719.41057-1-olga.kornievskaia@gmail.com>
@@ -74,56 +74,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Currently, xprt_switch keeps a number of all xprts (xps_nxprts)
-that were added to the switch regardless of whethere it's an
-nconnect transport or a transport to a trunkable address.
-Introduce a new counter to keep track of transports to unique
-destination addresses per xprt_switch.
+In sysfs's xprt_switch_info attribute also display the value of
+number of transports with unique destination addresses for this
+xprt_switch.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- include/linux/sunrpc/xprtmultipath.h | 1 +
- net/sunrpc/clnt.c                    | 2 +-
- net/sunrpc/xprtmultipath.c           | 1 +
- 3 files changed, 3 insertions(+), 1 deletion(-)
+ net/sunrpc/sysfs.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sunrpc/xprtmultipath.h b/include/linux/sunrpc/xprtmultipath.h
-index b19addc8b715..bbb8a5fa0816 100644
---- a/include/linux/sunrpc/xprtmultipath.h
-+++ b/include/linux/sunrpc/xprtmultipath.h
-@@ -18,6 +18,7 @@ struct rpc_xprt_switch {
- 	unsigned int		xps_id;
- 	unsigned int		xps_nxprts;
- 	unsigned int		xps_nactive;
-+	unsigned int		xps_nunique_destaddr_xprts;
- 	atomic_long_t		xps_queuelen;
- 	struct list_head	xps_xprt_list;
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 414c664a3199..9a6f17e18f73 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -207,8 +207,10 @@ static ssize_t rpc_sysfs_xprt_switch_info_show(struct kobject *kobj,
  
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a5b7f6e34d15..451ac7d031db 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2799,7 +2799,7 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- 
- 	task = rpc_call_null_helper(clnt, xprt, NULL, RPC_TASK_ASYNC,
- 			&rpc_cb_add_xprt_call_ops, data);
--
-+	data->xps->xps_nunique_destaddr_xprts++;
- 	rpc_put_task(task);
- success:
- 	return 1;
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index c60820e45082..1693f81aae37 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -139,6 +139,7 @@ struct rpc_xprt_switch *xprt_switch_alloc(struct rpc_xprt *xprt,
- 		xps->xps_iter_ops = &rpc_xprt_iter_singular;
- 		rpc_sysfs_xprt_switch_setup(xps, xprt, gfp_flags);
- 		xprt_switch_add_xprt_locked(xps, xprt);
-+		xps->xps_nunique_destaddr_xprts = 1;
- 		rpc_sysfs_xprt_setup(xps, xprt, gfp_flags);
- 	}
- 
+ 	if (!xprt_switch)
+ 		return 0;
+-	ret = sprintf(buf, "num_xprts=%u\nnum_active=%u\nqueue_len=%ld\n",
++	ret = sprintf(buf, "num_xprts=%u\nnum_active=%u\n"
++		      "num_unique_destaddr=%u\nqueue_len=%ld\n",
+ 		      xprt_switch->xps_nxprts, xprt_switch->xps_nactive,
++		      xprt_switch->xps_nunique_destaddr_xprts,
+ 		      atomic_long_read(&xprt_switch->xps_queuelen));
+ 	xprt_switch_put(xprt_switch);
+ 	return ret + 1;
 -- 
 2.27.0
 
