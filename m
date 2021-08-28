@@ -2,77 +2,113 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B1A5C432BE
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Aug 2021 07:11:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EBB3C432BE
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Aug 2021 11:26:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 309BD601FE
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 Aug 2021 07:11:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3CCD860EB5
+	for <linux-nfs@archiver.kernel.org>; Sat, 28 Aug 2021 11:26:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233403AbhH1HMB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 28 Aug 2021 03:12:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48152 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233348AbhH1HMB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Aug 2021 03:12:01 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D7282C0613D9
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Aug 2021 00:11:10 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=b5ear5mTBHOuPg1atwbc40Tb3/zvsviCgwd0Gh//4HE=; b=a3iQo1GaCG68Vd6StGUxytkjIc
-        QONhN0/6CrKVYV0hNwCmJ6tqXGdbxs7Uf76PkxjdcvWYUtkn9mtSAjsTH+hWPb2LyCTWX5qCDSYE2
-        n6gLe3fcKaVaaAaX80CxRW3Mgfe9W/l+guwhhNV3fktXlLR4EPZSdNvFNoyc5H+RB8NXrq5T2PuwL
-        p3lUIdm4eXzBS3Ity6vE36t3BVg2hprDQIcY++PrpRkNDmOQ0JDLI1TeCP8dfhWn+5FM5xwVngw2G
-        6dIn6AB76vWa7B5AMTU9SfUgGHyaFE5kuzl9+Ee/kxg0nEBha0QPknyv4mCO9ZBTq34SV5YBOOxT/
-        KO36OWEA==;
-Received: from hch by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mJsSs-00FMV3-5W; Sat, 28 Aug 2021 07:09:44 +0000
-Date:   Sat, 28 Aug 2021 08:09:18 +0100
-From:   Christoph Hellwig <hch@infradead.org>
-To:     NeilBrown <neilb@suse.de>
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org, Josef Bacik <josef@toxicpanda.com>
-Subject: Re: [PATCH v2] BTRFS/NFSD: provide more unique inode number for
- btrfs export
-Message-ID: <YSnhHl0HDOgg07U5@infradead.org>
-References: <162995209561.7591.4202079352301963089@noble.neil.brown.name>
- <162995778427.7591.11743795294299207756@noble.neil.brown.name>
- <YSkQ31UTVDtBavOO@infradead.org>
- <163010550851.7591.9342822614202739406@noble.neil.brown.name>
+        id S233886AbhH1L1Y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 28 Aug 2021 07:27:24 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:14432 "EHLO
+        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233861AbhH1L1Y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Aug 2021 07:27:24 -0400
+Received: from dggeme766-chm.china.huawei.com (unknown [172.30.72.53])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4GxZ1p73FnzbdN7;
+        Sat, 28 Aug 2021 19:22:38 +0800 (CST)
+Received: from [10.174.176.245] (10.174.176.245) by
+ dggeme766-chm.china.huawei.com (10.3.19.112) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id
+ 15.1.2308.8; Sat, 28 Aug 2021 19:26:30 +0800
+Subject: Re: Re: [PATCH v3 0/3] auth_gss: netns refcount leaks when
+ use-gss-proxy==1
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Wenbin Zeng <wenbin.zeng@gmail.com>
+CC:     <davem@davemloft.net>, <viro@zeniv.linux.org.uk>,
+        <jlayton@kernel.org>, <trond.myklebust@hammerspace.com>,
+        <anna.schumaker@netapp.com>, <wenbinzeng@tencent.com>,
+        <dsahern@gmail.com>, <nicolas.dichtel@6wind.com>,
+        <willy@infradead.org>, <edumazet@google.com>,
+        <jakub.kicinski@netronome.com>, <tyhicks@canonical.com>,
+        <chuck.lever@oracle.com>, <neilb@suse.com>,
+        <linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <netdev@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+References: <1556692945-3996-1-git-send-email-wenbinzeng@tencent.com>
+ <1560341370-24197-1-git-send-email-wenbinzeng@tencent.com>
+ <20190801195346.GA21527@fieldses.org>
+From:   "wanghai (M)" <wanghai38@huawei.com>
+Message-ID: <9cfbd851-81ce-e272-8693-d3430c381c7a@huawei.com>
+Date:   Sat, 28 Aug 2021 19:26:30 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <163010550851.7591.9342822614202739406@noble.neil.brown.name>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <20190801195346.GA21527@fieldses.org>
+Content-Type: text/plain; charset="gbk"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.174.176.245]
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ dggeme766-chm.china.huawei.com (10.3.19.112)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sat, Aug 28, 2021 at 09:05:08AM +1000, NeilBrown wrote:
-> There doesn't seem to be any other option - and this is still an
-> improvement over the current behaviour.
-> 
-> Collisions should still be quite a few years away, and there is hope
-> that the btrfs developers will take action before then to provide some
-> certainty.   Not much hope, but some.
 
-I think that is a very dangerous assumption.  Given how every inode
-allocation tends to be somewhat predictable I'm also really worried
-that this actually opens up an attach vector.  Last but not least
-I also very much disagree with any of the impact to common code.
-Most importantly the kstat structure, which exist to support the stat
-family of system calls and not as a side channel for NFS file handles
-(nevermind that it is hidden in a nfs patch and didn't even Cc the
-fsdevel list), but also all the impact to the generic nfsd code for
-this very broken concept.  If you want to support such a scheme in
-btrfs as the lesser of evils (which I disagree with), please make
-sure it stays self-contained in the btrfs specific file handle
-encoding and decoding.
+ÔÚ 2019/8/2 3:53, J. Bruce Fields Ð´µÀ:
+> I lost track, what happened to these patches?
+>
+> --b.
+>
+> On Wed, Jun 12, 2019 at 08:09:27PM +0800, Wenbin Zeng wrote:
+>> This patch series fixes an auth_gss bug that results in netns refcount
+>> leaks when use-gss-proxy is set to 1.
+>>
+>> The problem was found in privileged docker containers with gssproxy service
+>> enabled and /proc/net/rpc/use-gss-proxy set to 1, the corresponding
+>> struct net->count ends up at 2 after container gets killed, the consequence
+>> is that the struct net cannot be freed.
+>>
+>> It turns out that write_gssp() called gssp_rpc_create() to create a rpc
+>> client, this increases net->count by 2; rpcsec_gss_exit_net() is supposed
+>> to decrease net->count but it never gets called because its call-path is:
+>>          net->count==0 -> cleanup_net -> ops_exit_list -> rpcsec_gss_exit_net
+>> Before rpcsec_gss_exit_net() gets called, net->count cannot reach 0, this
+>> is a deadlock situation.
+>>
+>> To fix the problem, we must break the deadlock, rpcsec_gss_exit_net()
+>> should move out of the put() path and find another chance to get called,
+>> I think nsfs_evict() is a good place to go, when netns inode gets evicted
+>> we call rpcsec_gss_exit_net() to free the rpc client, this requires a new
+>> callback i.e. evict to be added in struct proc_ns_operations, and add
+>> netns_evict() as one of netns_operations as well.
+>>
+>> v1->v2:
+>>   * in nsfs_evict(), move ->evict() in front of ->put()
+>> v2->v3:
+>>   * rpcsec_gss_evict_net() directly call gss_svc_shutdown_net() regardless
+>>     if gssp_clnt is null, this is exactly same to what rpcsec_gss_exit_net()
+>>     previously did
+>>
+>> Wenbin Zeng (3):
+>>    nsfs: add evict callback into struct proc_ns_operations
+>>    netns: add netns_evict into netns_operations
+>>    auth_gss: fix deadlock that blocks rpcsec_gss_exit_net when
+>>      use-gss-proxy==1
+>>
+>>   fs/nsfs.c                      |  2 ++
+>>   include/linux/proc_ns.h        |  1 +
+>>   include/net/net_namespace.h    |  1 +
+>>   net/core/net_namespace.c       | 12 ++++++++++++
+>>   net/sunrpc/auth_gss/auth_gss.c |  4 ++--
+>>   5 files changed, 18 insertions(+), 2 deletions(-)
+>>
+>> -- 
+>> 1.8.3.1
+These patchsets don't seem to merge into the mainline, are there any 
+other patches that fix this bug?
