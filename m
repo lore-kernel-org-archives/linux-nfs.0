@@ -2,69 +2,71 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD004C432BE
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C7241C43214
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8C9E360F42
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AA03860F42
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237813AbhH3P6A (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Aug 2021 11:58:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41276 "EHLO
+        id S237799AbhH3P6B (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Aug 2021 11:58:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41292 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237629AbhH3P5u (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 11:57:50 -0400
+        with ESMTP id S237732AbhH3P5y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 11:57:54 -0400
 Received: from mail-qv1-xf35.google.com (mail-qv1-xf35.google.com [IPv6:2607:f8b0:4864:20::f35])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2482EC061575
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:56:56 -0700 (PDT)
-Received: by mail-qv1-xf35.google.com with SMTP id g11so8581569qvd.2
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:56:56 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9CCEBC061764
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:56:59 -0700 (PDT)
+Received: by mail-qv1-xf35.google.com with SMTP id a5so8627489qvq.0
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:56:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=dk5BetLebNnEqSw14yGsvT2Uuhrbzwh3AKCWUAFJ8yk=;
-        b=DtkvuRwss0ixo5+g7SM2lo03SgvDSpU8Q34KWArIPl17O0tuDJ+HdRbpxvV5fC6t8V
-         bgh1o1lL6ksOhYtiFCjS7LEy0AdK4koN0yEtZjt9hum9JRgC4M0L2i5cuze4m1U0jDMc
-         uiThTZDu1/wQuAPKpscaFRiSir2/inEadb7JwyUVD3c5AudtUoAsSOu11yZSSKnv0L15
-         vsXNdSm/mSZaN36UFm5OymlBupMq2HFdRZBSggTj0FOHZPNCLjGht1lNnWk5g8tLG/l2
-         I5y5wu4l5T4eQuMHnIery/D4Ixoxwfu++Z6WegODOjwMcWzcv1WJ3GzgZqQq69It0Qw6
-         29cw==
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=W/8NtlacI5WS71LaySwODmC9q+ANEoOEYf3Bcg7kaCo=;
+        b=thy3TORRQJ3CXvMotWkAMxUzAbY59LsVoYVopjI1S7EDeh9hrcQAnR4N5xQ0HdptOc
+         PnrjK4AtWkWFaT2zuS7mBwl1lyn6YR+TU4ijuStJhN8Z5YhSOePehOhDUO0byjLxkPtn
+         kSqCvtXXADw4XwMz1EPJDrEK8qioXpj+D2BKn1Iom0Md/ZrR0C2sUAzQKSPzNWjfKIIc
+         AyRvF1wFnrnhcaOT+WsFV8RLaqwRlHXgqkm0ZXaFAfrM6Hklt6x6R0GChsCVBE7GATVu
+         s8R4IvRTs5f6PWwzYmUO7XC4WAorjfPLHu8yITm+FuEinqidxZ3dlWFAuLksQzcoJnV4
+         5gEw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :mime-version:content-transfer-encoding;
-        bh=dk5BetLebNnEqSw14yGsvT2Uuhrbzwh3AKCWUAFJ8yk=;
-        b=qJhvwdJRIVdyGt9EndLJbBa/sYxQnnnU5cODZ2ae5lkuJrE36m2DnmZu40xgxmOud9
-         GrtLVgL3sfUFKhlxFyfzJJD/qyivj0ZYkRItJG2ysQa/whY29CLz5JJGy27VNqIbzHGN
-         WB0CF6JIQzltZgFgVWFofTI3ySRGhi/GoWcPIF6OP1B7HYgl0H4WE1dwmZxAHUMxH6pq
-         +yIoH3gT1OgAHqj0R+R5boiSSxXtM70yQaEZVkFhWdAVVQ+6bs8eYwezt7vRYNDwn/Qd
-         PPoVRMii0YnN7Em5T+Bxbkmz/g8ZkbZwbOUoDX9uNzYLnktqo85H1PgTFtE2P6xQRTVF
-         1l7w==
-X-Gm-Message-State: AOAM5301nv5kJazpecE0CGG4K6U0YOsbOtfeQbhXfTpNASvNWMgcL5+c
-        T7gyxCYKuQwLC2fEsm0+EfU=
-X-Google-Smtp-Source: ABdhPJzNsUa/3pvC/+3MjK26lOBf2BWqrrkfO6ujPgm6bRBL1QinMYoP6/xUwarzgd38NdFdOKt4xQ==
-X-Received: by 2002:a0c:e910:: with SMTP id a16mr24122169qvo.37.1630339015106;
-        Mon, 30 Aug 2021 08:56:55 -0700 (PDT)
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=W/8NtlacI5WS71LaySwODmC9q+ANEoOEYf3Bcg7kaCo=;
+        b=f9o5AtUUgD3ty0fVBhPPcXsxLRqZc83gVarsFGvmHWE0JtebQ7zGyIqVHF3GR+nHW2
+         ZXae4oSeuMvQaTgt6ESU6ykk0kOR66uGC51IM5TQigG0DzhmA/K82bIoOzjcjfJJRPR2
+         lX0/+/Yjc7a/fZF366RrRZ+LnPKhbKFmo0JEvuBmEDZC64ohhYsJQ0zKwAhEtQ80O/R7
+         VW74lyIIGew4UKhbH3DrBve0b37xq8oUBGvz6IaRPx14EbfHaFIvs9qap6+ppCqad1La
+         uRSljkbmW9fZCzdtUYVFlDrd34/fYk391gwrjYjRJgUJWpkHd8AwNMTr7MmKoOB/yxJC
+         iqRQ==
+X-Gm-Message-State: AOAM533pcTem7U+tREUA8JaBbKm78UWTh9yfhpesDsSrBGYR0hoRtyw2
+        S1bKJ5zX6Dyy5Hau5Jm+ZLc=
+X-Google-Smtp-Source: ABdhPJzBYZJuzBIzblYnnGUpp6xh1Ywi3zx6Tu/wGT6bkXjQdIpcRRDKCrGhxuUS22BdzkEdzdTKwQ==
+X-Received: by 2002:ad4:4f86:: with SMTP id em6mr23625697qvb.7.1630339018672;
+        Mon, 30 Aug 2021 08:56:58 -0700 (PDT)
 Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.56.54
+        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.56.57
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 30 Aug 2021 08:56:54 -0700 (PDT)
+        Mon, 30 Aug 2021 08:56:58 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v3 0/9] Add a tool for using the new sysfs files
-Date:   Mon, 30 Aug 2021 11:56:44 -0400
-Message-Id: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 3/9] nfssysfs.py: Add a command for printing individual xprts
+Date:   Mon, 30 Aug 2021 11:56:47 -0400
+Message-Id: <20210830155653.1386161-4-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.33.0
+In-Reply-To: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
+References: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -73,133 +75,85 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-These patches implement a tool that can be used to read and write the
-sysfs files, with subcommands! They do need my extra patches to add in
-srcaddr and dst_port to the xprt_info file. Let me know if I need to
-resend adding support for kernels both with and without these patches.
+This shows more detailed information than what is presented with xprt
+switches. I take the chance to add a main-export indicator to the
+small_str() used when printing out xprt-switches.
 
-The following subcommands are implemented:
-	nfssysfs.py rpc-client
- 	nfssysfs.py xprt
- 	nfssysfs.py xprt set
- 	nfssysfs.py xprt-switch
- 	nfssysfs.py xprt-switch set
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ tools/nfssysfs/nfssysfs.py |  2 ++
+ tools/nfssysfs/xprt.py     | 38 +++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 39 insertions(+), 1 deletion(-)
 
-So you can print out information about every xprt-switch with:
-	anna@client ~ % nfssysfs xprt-switch
-	switch 0: num_xprts 1, num_active 1, queue_len 0
-		xprt 0: local, /var/run/gssproxy.sock [main]
-	switch 1: num_xprts 1, num_active 1, queue_len 0
-		xprt 1: local, /var/run/rpcbind.sock [main]
-	switch 2: num_xprts 1, num_active 1, queue_len 0
-		xprt 2: tcp, 192.168.111.1 [main]
-	switch 3: num_xprts 4, num_active 4, queue_len 0
-		xprt 3: tcp, 192.168.111.188 [main]
-		xprt 4: tcp, 192.168.111.188
-		xprt 5: tcp, 192.168.111.188
-		xprt 6: tcp, 192.168.111.188
-
-And information about each xprt:
-	anna@client ~ % nfssysfs xprt       
-	xprt 0: local, /var/run/gssproxy.sock, port 0, state <MAIN,CONNECTED,BOUND>
-		Source: (einval), port 0, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-	xprt 1: local, /var/run/rpcbind.sock, port 0, state <MAIN,CONNECTED,BOUND>
-		Source: (einval), port 0, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-	xprt 2: tcp, 192.168.111.1, port 2049, state <MAIN,CONNECTED,BOUND>
-		Source: 192.168.111.222, port 959, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-	xprt 3: tcp, 192.168.111.188, port 2049, state <MAIN,CONNECTED,BOUND>
-		Source: 192.168.111.222, port 921, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-	xprt 4: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
-		Source: 192.168.111.222, port 726, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-	xprt 5: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
-		Source: 192.168.111.222, port 671, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-	xprt 6: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
-		Source: 192.168.111.222, port 934, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-
-You can use the `set` subcommand to change the dstaddr of individual xprts:
-	anna@client ~ % sudo nfssysfs xprt --id 4 
-	xprt 4: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
-		Source: 192.168.111.222, port 726, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-	anna@client ~ % sudo nfssysfs xprt set --id 4 --dstaddr server2.nowheycreamery.com
-	xprt 4: tcp, 192.168.111.186, port 2049, state <CONNECTED,BOUND>
-		Source: 192.168.111.222, port 726, Requests: 2
-		Congestion: cur 0, win 256, Slots: min 2, max 65536
-		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
-
-Or for changing the dstaddr of all xprts attached to a switch:
-	anna@client % ./nfssysfs.py xprt-switch --id 3
-	switch 3: num_xprts 4, num_active 4, queue_len 0
-		xprt 3: tcp, 192.168.111.188 [main]
-		xprt 4: tcp, 192.168.111.188
-		xprt 5: tcp, 192.168.111.188
-		xprt 6: tcp, 192.168.111.188
-	anna@client % sudo ./nfssysfs.py xprt-switch set --id 4 --dstaddr server2.nowheycreamery.vm
-	switch 3: num_xprts 4, num_active 4, queue_len 0
-		xprt 2: tcp, 192.168.111.186 [main]
-		xprt 3: tcp, 192.168.111.186
-		xprt 5: tcp, 192.168.111.186
-		xprt 6: tcp, 192.168.111.186
-
-
-One question I have is about the name right now. Is naming it "nfssysfs"
-okay, or would it be better to name it "nfs" with "sysfs" as a
-subcommand? Going with just "nfs" as the command name would allow us to
-add other non-sysfs tools as subcommands in the future (such as `nfs stat`
-to call `nfsstat`, or for new commands that would otherwise be prefixed
-with "nfs")
-
-Thoughts?
-Anna
-
-
-Anna Schumaker (9):
-  nfssysfs: Add a nfssysfs.py tool
-  nfssysfs.py: Add a command for printing xprt switch information
-  nfssysfs.py: Add a command for printing individual xprts
-  nfssysfs.py: Add a command for printing rpc-client information
-  nfssysfs.py: Add a command for changing xprt dstaddr
-  nfssysfs.py: Add a command for changing xprt-switch dstaddrs
-  nfssysfs.py: Add a command for changing xprt state
-  nfssysfs: Add a man page
-  nfssysfs: Add installation to the Makefile
-
- .gitignore                  |   2 +
- configure.ac                |   1 +
- tools/Makefile.am           |   2 +-
- tools/nfssysfs/Makefile.am  |  20 +++++++
- tools/nfssysfs/client.py    |  27 ++++++++++
- tools/nfssysfs/nfssysfs     |   5 ++
- tools/nfssysfs/nfssysfs.man |  88 +++++++++++++++++++++++++++++++
- tools/nfssysfs/nfssysfs.py  |  23 ++++++++
- tools/nfssysfs/switch.py    |  51 ++++++++++++++++++
- tools/nfssysfs/sysfs.py     |  29 +++++++++++
- tools/nfssysfs/xprt.py      | 101 ++++++++++++++++++++++++++++++++++++
- 11 files changed, 348 insertions(+), 1 deletion(-)
- create mode 100644 tools/nfssysfs/Makefile.am
- create mode 100644 tools/nfssysfs/client.py
- create mode 100644 tools/nfssysfs/nfssysfs
- create mode 100644 tools/nfssysfs/nfssysfs.man
- create mode 100755 tools/nfssysfs/nfssysfs.py
- create mode 100644 tools/nfssysfs/switch.py
- create mode 100644 tools/nfssysfs/sysfs.py
- create mode 100644 tools/nfssysfs/xprt.py
-
+diff --git a/tools/nfssysfs/nfssysfs.py b/tools/nfssysfs/nfssysfs.py
+index 90efcbed7ac8..dfad6ac08fa0 100755
+--- a/tools/nfssysfs/nfssysfs.py
++++ b/tools/nfssysfs/nfssysfs.py
+@@ -11,8 +11,10 @@ parser.set_defaults(func=show_small_help)
+ 
+ 
+ import switch
++import xprt
+ subparser = parser.add_subparsers(title="commands")
+ switch.add_command(subparser)
++xprt.add_command(subparser)
+ 
+ 
+ args = parser.parse_args()
+diff --git a/tools/nfssysfs/xprt.py b/tools/nfssysfs/xprt.py
+index d37537771c1d..fbdd9bfc9375 100644
+--- a/tools/nfssysfs/xprt.py
++++ b/tools/nfssysfs/xprt.py
+@@ -1,12 +1,48 @@
++import sysfs
++
+ class Xprt:
+     def __init__(self, path):
+         self.path = path
+         self.id = int(str(path).rsplit("-", 2)[1])
+         self.type = str(path).rsplit("-", 2)[2]
+         self.dstaddr = open(path / "dstaddr", 'r').readline().strip()
++        self.srcaddr = open(path / "srcaddr", 'r').readline().strip()
++
++        with open(path / "xprt_state") as f:
++            self.state = ','.join(f.readline().split()[1:])
++        self.__dict__.update(sysfs.read_info_file(path / "xprt_info"))
+ 
+     def __lt__(self, rhs):
+         return self.id < rhs.id
+ 
++    def __str__(self):
++        state = self.state
++        if self.main_xprt:
++            state = "MAIN," + self.state
++
++        line = "xprt %s: %s, %s, port %s, state <%s>" % \
++                (self.id, self.type, self.dstaddr, self.dst_port, state)
++        line += "\n	Source: %s, port %s, Requests: %s" % \
++                (self.srcaddr, self.src_port, self.num_reqs)
++        line += "\n	Congestion: cur %s, win %s, Slots: min %s, max %s" % \
++                (self.cur_cong, self.cong_win, self.min_num_slots, self.max_num_slots)
++        line += "\n	Queues: binding %s, sending %s, pending %s, backlog %s, tasks %s" % \
++                (self.binding_q_len, self.sending_q_len, self.pending_q_len, self.backlog_q_len, self.tasks_queuelen)
++        return line
++
+     def small_str(self):
+-        return "xprt %s: %s, %s" % (self.id, self.type, self.dstaddr)
++        return "xprt %s: %s, %s%s" % (self.id, self.type, self.dstaddr,
++                                     f" [main]" if self.main_xprt else "" )
++
++
++def list_xprts(args):
++    xprts = [ Xprt(f) for f in (sysfs.SUNRPC / "xprt-switches").glob("**/xprt-*") ]
++    xprts.sort()
++    for xprt in xprts:
++        if args.id == None or xprt.id == args.id[0]:
++            print(xprt)
++
++def add_command(subparser):
++    parser = subparser.add_parser("xprt", help="Commands for individual xprts")
++    parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt to show")
++    parser.set_defaults(func=list_xprts)
 -- 
 2.33.0
 
