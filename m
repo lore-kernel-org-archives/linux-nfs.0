@@ -2,84 +2,149 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1928C4320E
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 09:12:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D61AC4320A
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C83356101B
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 09:12:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4D88060F42
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234714AbhH3JNF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Aug 2021 05:13:05 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:47876 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235496AbhH3JNE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 05:13:04 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id 56B3B22107;
-        Mon, 30 Aug 2021 09:12:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.com; s=susede1;
-        t=1630314730; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=nywd0oz6iwwHwglHPbyfAVv9NJlMdcowHwWK98LNbhY=;
-        b=lffSWkpWgFlYo+ZZM06LAjRDIY5hi3nsHxp8I8HExonKk5tXEZT5IYAPnn1X3QghJbBNeE
-        qyHE9DDsETENNM0pWho6lb8RIB/O5MxI3x3o0bPdAmP3RY7sJIGAsSOBk/820h5BSTnrrS
-        /t2QDjpvXH3Xf5ebqgUZbXx8r8PE7aE=
-Received: from suse.com (unknown [10.163.43.106])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id CFF69A3B9C;
-        Mon, 30 Aug 2021 09:12:09 +0000 (UTC)
-Date:   Mon, 30 Aug 2021 10:12:08 +0100
-From:   Mel Gorman <mgorman@suse.com>
-To:     NeilBrown <neilb@suse.de>
-Cc:     Chuck Lever III <chuck.lever@oracle.com>,
-        Mike Javorski <mike.javorski@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: don't pause on incomplete allocation
-Message-ID: <20210830091208.GB3997@suse.com>
-References: <163004202961.7591.12633163545286005205@noble.neil.brown.name>
- <CAOv1SKDTcg5WDp5zf3ZGL0enJ7K693W-9TMYKcrgweyzp6Qjhg@mail.gmail.com>
- <163004848514.7591.2757618782251492498@noble.neil.brown.name>
- <6CC9C852-CEE3-4657-86AD-9D5759E2BE1C@oracle.com>
- <CAOv1SKAiPB62sQcnDCKC5vYbbmakfbe80KRu3JEVZVO7Trk8cw@mail.gmail.com>
- <CAOv1SKATk1iP=J9r2x0CQzNuwq2VoRvN8Mkba3DsKq6W_tfrDQ@mail.gmail.com>
- <416268C9-BEAC-483C-9392-8139340BC849@oracle.com>
- <CAOv1SKCjvgSfUoFtufZ5-dB-quG=djnn-UHO286S410aVxrV0Q@mail.gmail.com>
- <12B831AA-4A4E-4102-ADA3-97B6FA0B119E@oracle.com>
- <163027659478.7591.8897815399981483759@noble.neil.brown.name>
+        id S237629AbhH3P6A (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Aug 2021 11:58:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41282 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S237711AbhH3P5u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 11:57:50 -0400
+Received: from mail-qk1-x731.google.com (mail-qk1-x731.google.com [IPv6:2607:f8b0:4864:20::731])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3455DC06175F
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:56:57 -0700 (PDT)
+Received: by mail-qk1-x731.google.com with SMTP id b64so16315550qkg.0
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:56:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=TElF6VSe1gc+dQ6uYO+dXFuLYzgXdsWmKiU8G6WAdWc=;
+        b=vDoVqW50vmIsbU/7+07li24efH/bx/mIMkmiZnF4srEFA9RUZV3/idQ6RsztYAT9x5
+         Y+xYJcmYVFjUiiSmov6YHEFJV98dwitcSfsqS0pvL0shBaMkz7V4XcReNs5hcazMVbco
+         HpSuelFjEGOt6knktnwNdM25AqNs2tDm4uKCyifebuBX3zfldHKiXeYBDi2b/0qnjf8u
+         MLkU0xOLg267YlgzkmYAAi/Dz3oGqqHDDPTxfWG3KHYBYVWbNjP5B1p/qD4tfzCBueiz
+         ddmcqj+gP6k8lL84QdRAZnQUTWXLU59Y4yNTfsEEDgF4rJyKC/71Dd63CVqaULP0UbKd
+         tytQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=TElF6VSe1gc+dQ6uYO+dXFuLYzgXdsWmKiU8G6WAdWc=;
+        b=kCMgzCSB1Ixn090+rVKQGBVv0L4vOhvlq1t+qlq4IMXQWM5FUFV3fz2QyQxR4lIG/E
+         APpibVVirjZg05/xRHqBN+VgLuf704YSPCTCZjkN3xWQFshsZvgEy49vGnjvJtlw051N
+         6NUPliu3tCD3GPsM2SB2CAkx9Gl/d3D2dRTNAa6i9SH5u7zrE6w2P3r8UambJSvTQNQT
+         5m9Xc7y+pNT4IIvD5i2o3zV7jHP1a867rvi4NfcTtjh3wrY7nJysYSC4o1QE3LRbKr4o
+         g5K4dsZ2X7ZOroiNRkIFLNdDwIUPnjPkeIbalNZCvRbFwFjEbX/m+3vaIeHgy9zC0ecE
+         Vivw==
+X-Gm-Message-State: AOAM533HNhuWULyZ9PuHGuHClFxZ7y0LaBp/wWudB3AT0pm6i1FS2Gc5
+        CUUBcmTvh3yGvhup3UEqC+I=
+X-Google-Smtp-Source: ABdhPJw7cT8t3cmhbR9odwGnixM2ta4zz0qBKwVf1lRh3sOR9k8JV6aJTu8RKlHGicBg6ZGZnXPpJg==
+X-Received: by 2002:a05:620a:b83:: with SMTP id k3mr22388363qkh.420.1630339016317;
+        Mon, 30 Aug 2021 08:56:56 -0700 (PDT)
+Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
+        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.56.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 30 Aug 2021 08:56:55 -0700 (PDT)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     steved@redhat.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v3 1/9] nfssysfs: Add a nfssysfs.py tool
+Date:   Mon, 30 Aug 2021 11:56:45 -0400
+Message-Id: <20210830155653.1386161-2-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.33.0
+In-Reply-To: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
+References: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
-In-Reply-To: <163027659478.7591.8897815399981483759@noble.neil.brown.name>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Aug 30, 2021 at 08:36:34AM +1000, NeilBrown wrote:
-> 
-> alloc_pages_bulk_array() attempts to allocate at least one page based on
-> the provided pages, and then opportunistically allocates more if that
-> can be done without dropping the spinlock.
-> 
-> So if it returns fewer than requested, that could just mean that it
-> needed to drop the lock.  In that case, try again immediately.
-> 
-> Only pause for a time if no progress could be made.
-> 
-> Reported-and-tested-by: Mike Javorski <mike.javorski@gmail.com>
-> Reported-and-tested-by: Lothar Paltins <lopa@mailbox.org>
-> Fixes: f6e70aab9dfe ("SUNRPC: refresh rq_pages using a bulk page allocator")
-> Signed-off-by: NeilBrown <neilb@suse.de>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Acked-by: Mel Gorman <mgorman@suse.com>
+This will be used to print and manipulate the sunrpc sysfs directory
+files. Running without arguments prints both usage information and the
+location of the sunrpc sysfs directory.
 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+v3: Check for type: "sysfs" as the third column in the /proc/mounts file
+    Rename from nfs-sysfs.py to nfssysfs.py
+---
+ .gitignore                 |  2 ++
+ tools/nfssysfs/nfssysfs.py | 13 +++++++++++++
+ tools/nfssysfs/sysfs.py    | 19 +++++++++++++++++++
+ 3 files changed, 34 insertions(+)
+ create mode 100755 tools/nfssysfs/nfssysfs.py
+ create mode 100644 tools/nfssysfs/sysfs.py
+
+diff --git a/.gitignore b/.gitignore
+index c89d1cd2583d..a476bd20bc3b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -84,3 +84,5 @@ systemd/rpc-gssd.service
+ cscope.*
+ # generic editor backup et al
+ *~
++# python bytecode
++__pycache__
+diff --git a/tools/nfssysfs/nfssysfs.py b/tools/nfssysfs/nfssysfs.py
+new file mode 100755
+index 000000000000..8ff59ea9e81b
+--- /dev/null
++++ b/tools/nfssysfs/nfssysfs.py
+@@ -0,0 +1,13 @@
++#!/usr/bin/python
++import argparse
++import sysfs
++
++parser = argparse.ArgumentParser()
++
++def show_small_help(args):
++    parser.print_usage()
++    print("sunrpc dir:", sysfs.SUNRPC)
++parser.set_defaults(func=show_small_help)
++
++args = parser.parse_args()
++args.func(args)
+diff --git a/tools/nfssysfs/sysfs.py b/tools/nfssysfs/sysfs.py
+new file mode 100644
+index 000000000000..c9d477063585
+--- /dev/null
++++ b/tools/nfssysfs/sysfs.py
+@@ -0,0 +1,19 @@
++import pathlib
++import re
++import sys
++
++MOUNT = None
++with open("/proc/mounts", 'r') as f:
++    for line in f:
++        if re.search("^sys ", line):
++            MOUNT = line.split()[1]
++            break
++
++if MOUNT == None:
++    print("ERROR: sysfs is not mounted")
++    sys.exit(1)
++
++SUNRPC = pathlib.Path(MOUNT) / "kernel" / "sunrpc"
++if not SUNRPC.is_dir():
++    print("ERROR: sysfs does not have sunrpc directory")
++    sys.exit(1)
 -- 
-Mel Gorman
-SUSE Labs
+2.33.0
+
