@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5D29C43214
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03359C19F38
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 933E260F56
+	by mail.kernel.org (Postfix) with ESMTP id DD4DD60F56
 	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237814AbhH3P6G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S237526AbhH3P6G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 30 Aug 2021 11:58:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41326 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41330 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237691AbhH3P6A (ORCPT
+        with ESMTP id S237758AbhH3P6A (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 11:58:00 -0400
-Received: from mail-qk1-x72a.google.com (mail-qk1-x72a.google.com [IPv6:2607:f8b0:4864:20::72a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CA0C7C0617A8
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:03 -0700 (PDT)
-Received: by mail-qk1-x72a.google.com with SMTP id c10so16120582qko.11
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:03 -0700 (PDT)
+Received: from mail-qv1-xf34.google.com (mail-qv1-xf34.google.com [IPv6:2607:f8b0:4864:20::f34])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3A92C0617AE
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:05 -0700 (PDT)
+Received: by mail-qv1-xf34.google.com with SMTP id e18so8586015qvo.1
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:05 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=nn0vCR8th2Ujh0diRLRkmzEOc/OiB5yqXqEnV1zuwXk=;
-        b=aofICgMPQWnGwrioK9GaQkdCccbfs6Flt0dnoj46BJ074xyh+3bvs0fq9FU/KW3hFm
-         hSeMuGi0GTVCfBfjWh5idwKul21c/q01/ptnHcUz8TjqFtaruLbqZ4PMYDI47uUuVBYI
-         Zx28BfcsaM47fimlKiqOPPxOrICKnqWQ2FHNSp4/N2Afy6P2wdJvtC3ucCZqK04DpdIy
-         qMyqgTmU5V2nwAWFJDfN6Uk3yrg3t+JQrd+alUcejsQnMP3rnEmwUg9dtAhnwaxfKxmX
-         XtMQSRogYsGGXUlFC+Biv7Hpp4Wvt+mT8WZ6836VgDh21KXVesp/LmCv4imbEdjaV6pd
-         tU9w==
+        bh=SROUaiAMehrmiT3ELGDnLtiEyOT7RUgBLqWqJFw66F0=;
+        b=P0N0s3UzPGci6qyOUjHT/NxZ5oKXk5IOYqJgPl/3aPSKP3QPxVLfJknh26b5lzQffy
+         MRselXfM1Rw0Sbjmr28ou7FU6YUb9im1SiV9+Lj089MhzjJV84H3f2K5LRn/CS9ycfLg
+         ZYtH6LoC3VZvBJKUMYieHLqIvu6hgUwURpNPCKWjbDbAwUL9bBLP6xNpK4o4REQE/dQU
+         5LuKT12tafZhNEdeujci7bND4b+rTX7enT5aqb3jKIj16Y455QXCvXBjPiC4g8cfaMap
+         14gv/ofW/0/Z+2aGnIej+/C6o+SiWQy+ujhFqRcKtsS+fEhJuhQljQ5O7A6YqmyZEPI5
+         uivA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=nn0vCR8th2Ujh0diRLRkmzEOc/OiB5yqXqEnV1zuwXk=;
-        b=nObRvIDXZ+atoCnqgJ6nID55/ylJE4Mp38YhIGh0NuYvxee7naHsQtErC3ohzIO3jJ
-         Sy8xIRu/4Sy3O0gcB98OTfWsfHxUpqiwXrb4Cq3TLU3S0eSLWw7JSmdrn99fH/P0OXmL
-         YkuRLudMgMF0iQqyqRXuD85BrLd0oS8Nb2eHG/jljBgTsd3F2Bbs9OyDpYTF3PFBU3wh
-         ASlHb0++B4N5S1eoAhBYseHkl2e2elmxr723BpAI4bi/dLEEDccgO2MRU+4h7BaF4tm8
-         z8Hk8YRSStxMUVHPscWEraEROQsICTWU73YC4Sj4RUJNHcXBdMNRIfZjCN2rCvdMNd4/
-         JuAQ==
-X-Gm-Message-State: AOAM5311vmlz1kMSyLzg/ARdO/xKbj8FFSZMyBP/pq7jcLey1Q+1hnF/
-        zXpMYyO3NiTsfGVhJj2RVcuM/QMINgWexA==
-X-Google-Smtp-Source: ABdhPJwWSvX2iFR6/huuk//RioehfKwWwFu6Dh0do4Qw7RVD2nPpAo+l7gPxxpH3RIJDqZgzbVPLsQ==
-X-Received: by 2002:a05:620a:799:: with SMTP id 25mr22807928qka.119.1630339022912;
-        Mon, 30 Aug 2021 08:57:02 -0700 (PDT)
+        bh=SROUaiAMehrmiT3ELGDnLtiEyOT7RUgBLqWqJFw66F0=;
+        b=HPsc8p5Q93iLgSVXxNQTRXVwHjOuoGa0zOv3HPMYohvQgKBNP5OU5FvHLavrNR2Esq
+         QsM+ECJsPiM0w7Ts6ywu23NH47QdO/BUmWlxVUp+iMF+0u9RbIT8wdgHhOoAdSy5h0Kv
+         TvODoqxkpolYZwY/F3H4bbe7jxl13WvrE4zyyktlLASXR4f7Bxnt0Zvsr4bwy4rJiy5m
+         PrDbIc7RmpP4G0DYHpU+psGwK1sBFNPZ8mKXDfL3i2rIinPw8O1HYlKQkzz8pcLvwbDt
+         CKLaD8TjNp3pDrhWeQH9BFAaMqn9jmnY1w9mZL+IpNqvS4D70NevKQlC5Jh/DKrqb05q
+         6WzQ==
+X-Gm-Message-State: AOAM533zy7kLMILt2Qws0ixCCzlUaqYVgvVB9ATX0AOslwBqlPn7GYT3
+        xlgG88j15UOX8/n4bJtHXdE=
+X-Google-Smtp-Source: ABdhPJzJ4iweZFguGRDhWRf2q1JvfRHxIEH8nSzmq+2WHr52nAcqOELjAVWIO6IWVqbUFDA8NZuf7A==
+X-Received: by 2002:a0c:e790:: with SMTP id x16mr23587015qvn.6.1630339024736;
+        Mon, 30 Aug 2021 08:57:04 -0700 (PDT)
 Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.57.02
+        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.57.03
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 30 Aug 2021 08:57:02 -0700 (PDT)
+        Mon, 30 Aug 2021 08:57:04 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v3 7/9] nfssysfs.py: Add a command for changing xprt state
-Date:   Mon, 30 Aug 2021 11:56:51 -0400
-Message-Id: <20210830155653.1386161-8-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 9/9] nfssysfs: Add installation to the Makefile
+Date:   Mon, 30 Aug 2021 11:56:53 -0400
+Message-Id: <20210830155653.1386161-10-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.33.0
 In-Reply-To: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
 References: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
@@ -75,90 +75,80 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-We can set it offline or online, or we can remove an xprt. The kernel
-only supports removing offlined transports, so we make sure to set the
-state to "offline" before sending the remove command.
+And create a shell script that launches the python program from the
+$(libdir)
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
-v3: Don't compare booleans against True / False
----
- tools/nfssysfs/xprt.py | 29 +++++++++++++++++++++++++++--
- 1 file changed, 27 insertions(+), 2 deletions(-)
+ configure.ac               |  1 +
+ tools/Makefile.am          |  2 +-
+ tools/nfssysfs/Makefile.am | 20 ++++++++++++++++++++
+ tools/nfssysfs/nfssysfs    |  5 +++++
+ 4 files changed, 27 insertions(+), 1 deletion(-)
+ create mode 100644 tools/nfssysfs/Makefile.am
+ create mode 100644 tools/nfssysfs/nfssysfs
 
-diff --git a/tools/nfssysfs/xprt.py b/tools/nfssysfs/xprt.py
-index 2160cb0a9575..9426c99dae2b 100644
---- a/tools/nfssysfs/xprt.py
-+++ b/tools/nfssysfs/xprt.py
-@@ -8,15 +8,18 @@ class Xprt:
-         self.type = str(path).rsplit("-", 2)[2]
-         self.dstaddr = open(path / "dstaddr", 'r').readline().strip()
-         self.srcaddr = open(path / "srcaddr", 'r').readline().strip()
-+        self.exists = True
+diff --git a/configure.ac b/configure.ac
+index bc2d0f02979c..57ad341948a3 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -731,6 +731,7 @@ AC_CONFIG_FILES([
+ 	tools/rpcgen/Makefile
+ 	tools/mountstats/Makefile
+ 	tools/nfs-iostat/Makefile
++	tools/nfssysfs/Makefile
+ 	tools/nfsdclnts/Makefile
+ 	tools/nfsconf/Makefile
+ 	tools/nfsdclddb/Makefile
+diff --git a/tools/Makefile.am b/tools/Makefile.am
+index 9b4b0803db39..12c68b57b8ae 100644
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
+@@ -12,6 +12,6 @@ if CONFIG_NFSDCLD
+ OPTDIRS += nfsdclddb
+ endif
  
--        with open(path / "xprt_state") as f:
--            self.state = ','.join(f.readline().split()[1:])
-+        self.read_state()
-         self.__dict__.update(sysfs.read_info_file(path / "xprt_info"))
+-SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat nfsdclnts $(OPTDIRS)
++SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat nfssysfs nfsdclnts $(OPTDIRS)
  
-     def __lt__(self, rhs):
-         return self.id < rhs.id
- 
-     def __str__(self):
-+        if not self.exists:
-+            return "xprt %s: has been removed" % self.id
+ MAINTAINERCLEANFILES = Makefile.in
+diff --git a/tools/nfssysfs/Makefile.am b/tools/nfssysfs/Makefile.am
+new file mode 100644
+index 000000000000..983b128f5c98
+--- /dev/null
++++ b/tools/nfssysfs/Makefile.am
+@@ -0,0 +1,20 @@
++## Process this file with automake to produce Makefile.in
++PYTHON_FILES =  nfssysfs.py client.py switch.py sysfs.py xprt.py
++tooldir = $(DESTDIR)$(libdir)/nfssysfs
 +
-         state = self.state
-         if self.main_xprt:
-             state = "MAIN," + self.state
-@@ -31,6 +34,13 @@ class Xprt:
-                 (self.binding_q_len, self.sending_q_len, self.pending_q_len, self.backlog_q_len, self.tasks_queuelen)
-         return line
- 
-+    def read_state(self):
-+        if not self.path.exists():
-+            self.exists = False
-+            return
-+        with open(self.path / "xprt_state") as f:
-+            self.state = ','.join(f.readline().split()[1:])
++man8_MANS = nfssysfs.man
 +
-     def small_str(self):
-         return "xprt %s: %s, %s%s" % (self.id, self.type, self.dstaddr,
-                                      f" [main]" if self.main_xprt else "" )
-@@ -41,6 +51,11 @@ class Xprt:
-             f.write(resolved)
-         self.dstaddr = open(self.path / "dstaddr", 'r').readline().strip()
- 
-+    def set_state(self, state):
-+        with open(self.path / "xprt_state", 'w') as f:
-+            f.write(state)
-+        self.read_state()
++all-local: $(PYTHON_FILES)
 +
- 
- def list_xprts(args):
-     xprts = [ Xprt(f) for f in (sysfs.SUNRPC / "xprt-switches").glob("**/xprt-*") ]
-@@ -60,6 +75,13 @@ def set_xprt_property(args):
-     try:
-         if args.dstaddr != None:
-             xprt.set_dstaddr(args.dstaddr[0])
-+        if args.offline:
-+            xprt.set_state("offline")
-+        elif args.online:
-+            xprt.set_state("online")
-+        elif args.remove:
-+            xprt.set_state("offline")
-+            xprt.set_state("remove")
-         print(xprt)
-     except Exception as e:
-         print(e)
-@@ -73,4 +95,7 @@ def add_command(subparser):
-     parser = subparser.add_parser("set", help="Set an xprt property")
-     parser.add_argument("--id", metavar="ID", nargs=1, type=int, required=True, help="Id of a specific xprt to modify")
-     parser.add_argument("--dstaddr", metavar="dstaddr", nargs=1, type=str, help="New dstaddr to set")
-+    parser.add_argument("--offline", action="store_true", help="Set an xprt offline")
-+    parser.add_argument("--online", action="store_true", help="Set an offline xprt back online")
-+    parser.add_argument("--remove", action="store_true", help="Remove an xprt")
-     parser.set_defaults(func=set_xprt_property)
++install-data-hook:
++	mkdir -p $(tooldir)
++	for f in $(PYTHON_FILES) ; do \
++		$(INSTALL) -m 644 $$f $(tooldir)/$$f ; \
++	done
++	chmod +x $(tooldir)/nfssysfs.py
++	$(INSTALL) -m 755 nfssysfs $(DESTDIR)$(sbindir)/nfssysfs
++	sed -i "s|LIBDIR=.|LIBDIR=$(tooldir)|" $(DESTDIR)$(sbindir)/nfssysfs
++
++
++
++MAINTAINERCLEANFILES=Makefile.in
+diff --git a/tools/nfssysfs/nfssysfs b/tools/nfssysfs/nfssysfs
+new file mode 100644
+index 000000000000..82dd2da6f539
+--- /dev/null
++++ b/tools/nfssysfs/nfssysfs
+@@ -0,0 +1,5 @@
++#!/bin/bash
++LIBDIR=.
++PYTHON3=/usr/bin/python
++
++exec $PYTHON3 $LIBDIR/nfssysfs.py $*
 -- 
 2.33.0
 
