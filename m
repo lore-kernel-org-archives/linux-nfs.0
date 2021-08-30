@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF951C432BE
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11AC3C4320A
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DA14860F42
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F2AFD60F42
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237723AbhH3P6D (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Aug 2021 11:58:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41320 "EHLO
+        id S237691AbhH3P6H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Aug 2021 11:58:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41328 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237526AbhH3P57 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 11:57:59 -0400
-Received: from mail-qv1-xf33.google.com (mail-qv1-xf33.google.com [IPv6:2607:f8b0:4864:20::f33])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9D2ACC061796
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:01 -0700 (PDT)
-Received: by mail-qv1-xf33.google.com with SMTP id gf5so8544721qvb.9
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:01 -0700 (PDT)
+        with ESMTP id S237715AbhH3P6A (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 11:58:00 -0400
+Received: from mail-qv1-xf2a.google.com (mail-qv1-xf2a.google.com [IPv6:2607:f8b0:4864:20::f2a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B5780C0617AD
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:04 -0700 (PDT)
+Received: by mail-qv1-xf2a.google.com with SMTP id p17so4221056qvo.8
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=HiRxPZuzFnyvuD5q3Dy856rG1m2Sv7MpUGVlgQKyeBA=;
-        b=KEuZH9h9n8os/Lp6LxzQ5f/ahxJ1zF7IVosBWhESBfBJqH4uj/+Cy1h88wP8UpB3qx
-         EDGq+jYWd/TDzqu3FAYZjDLnqx++i5J8f9XuNWdka/wRoFsx78dWdV7NVAZ7Vr2754SW
-         I7IdmMf+qcdRUNrXsizmwIRVSSS/dDDwqqqrFIowuO5YLqhIbDg7Xf5gGTaknRG8ilXH
-         4+huxzXHViEatiYyStUaGaGmMYCgx10hiRXCm2csxyXJOwrDY6s+s30zZQd/q/Jx+Wpj
-         hkXaJzCEGK1g6MSWVBehKzuCtHiau1WT8d18SoQ5IeLYl1sHfBXd+0M9w6CMOcJFTbfp
-         B5Sw==
+        bh=khaGAdaqkWaatpF0Kr1qGQR60qUuZJKnbxVAZoCcDPU=;
+        b=DRWBk6KrNAGd3miemOOusADfRSBa+0qqOoEBegfCwQy3CadxFwEyRKXBf6gg2mkIWJ
+         onJzfwD6h4UiwvDbarXWbuu5x0IUPVpbmLerP9GC8+qyYx/uTdkPn4N+sSlgN+0qs9Pu
+         qx5hQWk8XWts5CpVG+PgercUYSuq3IY2yn/8vSuYng0bUnXuqJJfoh5oAhgnyUP1O1ia
+         9tdq1mt4XmmRdW8QkMTuAgLd2hjshRPpTedLFpqPz/qrFLZUiS7voL5GGE9o+OaY/Ndp
+         Z1sXTwtNeVheIvagW6F5Biz6lRac+EPOLsVRofQyEFPxLB6pAkWE4HSnaWjY1ze82zkM
+         K53g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=HiRxPZuzFnyvuD5q3Dy856rG1m2Sv7MpUGVlgQKyeBA=;
-        b=LbMIdBUCrYtQJQFalH72Q5LY8KDewPFms+SmYweq2bAxOUxRko8lNoOm3dS7zmdO6I
-         n3IW+BxXwJ709zFWsbmqgwN9c8hEEW6mQCqpS+6nBUONAJL/E4OIQWEYNclUy2VCtHOm
-         ENHxNLQmNiy/DN3L9FkpQYocKQJUBaN1ryj3y8OXFC1ETC/posJpDw98aQvVZfVkma9r
-         plmY0jcuCIrgK6okOo1puk2KtQTMUaaVhNfxguD0royAa8I+3O3jxtQHvC3kknoMhMHb
-         KAoAC0dWFIUAxVmU4Vfb111s1yVJ6y+HG5/5T+swzdwcyNN9F8Vz4EGGbqh2C+Cvuybc
-         Q0yw==
-X-Gm-Message-State: AOAM530lzKOtJTqfcs9b1kQvQ1Ifnb0BCn16DUH327wDwYw0+w0xfU8D
-        gUW/mMJ7WmzRqhDUw3a5wUU=
-X-Google-Smtp-Source: ABdhPJw5V7aLABXHhRw54PgqzuyWPNtH4isZyib1MLFNjOahopiLDW88hG5E5IlPOIpG9cl1hLvOzw==
-X-Received: by 2002:a0c:aac5:: with SMTP id g5mr19459216qvb.23.1630339020728;
-        Mon, 30 Aug 2021 08:57:00 -0700 (PDT)
+        bh=khaGAdaqkWaatpF0Kr1qGQR60qUuZJKnbxVAZoCcDPU=;
+        b=Og99n9svDlSuA+0qFzNNCLK2dHDnpkB7xNCZnufRxp9sNmGI1Y0EDlYWk0la27MVgc
+         GqOtFUdJ7VdCVyZNHEAHVbLVk0BamM9TTtbD3XUksljzOfKN8Mf6+Isnz3giEs1esbEZ
+         a4nsZHaZ4naxzPeTl4Qr3GPnlTOdnEAV5iNqilOFyL05xn1YU4nV2AZsqlUtk64ShYrT
+         LO+RseiDAQRg/u0CygnYvpL8O5HQzVRnU+3eeJnNyU/4ZsO25kW49AnYvGL4Xss3QtuE
+         kFT/d9PFw8SEwKPxB6DfSmu7P23vn8gkWB8Kq8Rq9uiIj7aEodX8ogyuJEzKYr6bEjcO
+         imNQ==
+X-Gm-Message-State: AOAM5335AESznsk5mXPMCvT0Dn/kpVm0M9U0sM3KhizT9qXYVtrQf1O4
+        eBbBfY01Bm5mxW6Ds8LiwRS1W2ZPA4eItQ==
+X-Google-Smtp-Source: ABdhPJw6kLJHmn1TdA4zfvfUkE+1oxnqMQo7ADYQwxA0Rv3XSpBohuYaL4IHQvymmc56O/CEn8AQBQ==
+X-Received: by 2002:a0c:ee43:: with SMTP id m3mr23941081qvs.34.1630339023818;
+        Mon, 30 Aug 2021 08:57:03 -0700 (PDT)
 Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.56.59
+        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.57.03
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 30 Aug 2021 08:57:00 -0700 (PDT)
+        Mon, 30 Aug 2021 08:57:03 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v3 5/9] nfssysfs.py: Add a command for changing xprt dstaddr
-Date:   Mon, 30 Aug 2021 11:56:49 -0400
-Message-Id: <20210830155653.1386161-6-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v3 8/9] nfssysfs: Add a man page
+Date:   Mon, 30 Aug 2021 11:56:52 -0400
+Message-Id: <20210830155653.1386161-9-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.33.0
 In-Reply-To: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
 References: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
@@ -75,64 +75,106 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Using the socket module for dns resolution
-
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tools/nfssysfs/xprt.py | 28 ++++++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+ tools/nfssysfs/nfssysfs.man | 88 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 88 insertions(+)
+ create mode 100644 tools/nfssysfs/nfssysfs.man
 
-diff --git a/tools/nfssysfs/xprt.py b/tools/nfssysfs/xprt.py
-index fbdd9bfc9375..2160cb0a9575 100644
---- a/tools/nfssysfs/xprt.py
-+++ b/tools/nfssysfs/xprt.py
-@@ -1,3 +1,4 @@
-+import socket
- import sysfs
- 
- class Xprt:
-@@ -34,6 +35,12 @@ class Xprt:
-         return "xprt %s: %s, %s%s" % (self.id, self.type, self.dstaddr,
-                                      f" [main]" if self.main_xprt else "" )
- 
-+    def set_dstaddr(self, newaddr):
-+        resolved = socket.gethostbyname(newaddr)
-+        with open(self.path / "dstaddr", 'w') as f:
-+            f.write(resolved)
-+        self.dstaddr = open(self.path / "dstaddr", 'r').readline().strip()
-+
- 
- def list_xprts(args):
-     xprts = [ Xprt(f) for f in (sysfs.SUNRPC / "xprt-switches").glob("**/xprt-*") ]
-@@ -42,7 +49,28 @@ def list_xprts(args):
-         if args.id == None or xprt.id == args.id[0]:
-             print(xprt)
- 
-+def get_xprt(id):
-+    xprts = [ Xprt(f) for f in (sysfs.SUNRPC / "xprt-switches").glob("**/xprt-*") ]
-+    for xprt in xprts:
-+        if xprt.id == id:
-+            return xprt
-+
-+def set_xprt_property(args):
-+    xprt = get_xprt(args.id[0])
-+    try:
-+        if args.dstaddr != None:
-+            xprt.set_dstaddr(args.dstaddr[0])
-+        print(xprt)
-+    except Exception as e:
-+        print(e)
-+
- def add_command(subparser):
-     parser = subparser.add_parser("xprt", help="Commands for individual xprts")
-     parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt to show")
-     parser.set_defaults(func=list_xprts)
-+
-+    subparser = parser.add_subparsers()
-+    parser = subparser.add_parser("set", help="Set an xprt property")
-+    parser.add_argument("--id", metavar="ID", nargs=1, type=int, required=True, help="Id of a specific xprt to modify")
-+    parser.add_argument("--dstaddr", metavar="dstaddr", nargs=1, type=str, help="New dstaddr to set")
-+    parser.set_defaults(func=set_xprt_property)
+diff --git a/tools/nfssysfs/nfssysfs.man b/tools/nfssysfs/nfssysfs.man
+new file mode 100644
+index 000000000000..7b00c1a81106
+--- /dev/null
++++ b/tools/nfssysfs/nfssysfs.man
+@@ -0,0 +1,88 @@
++.\"
++.\" nfssysfs(8)
++.\"
++.TH nfssysfs 8 "05 Aug 2021"
++.SH NAME
++nfssysfs \- Displays NFS & SunRPC connection information
++.SH SYNOPSIS
++.B nfssysfs
++.RB [ \-h | \-\-help ]
++.P
++.B nfssysfs rpc-client
++.RB [ \-h | \-\-help ]
++.RB [ \--id
++.IR ID ]
++.P
++.B nfssysfs xprt-switch
++.RB [ \-h | \-\-help ]
++.RB [ \--id
++.IR ID ]
++.P
++.B nfssysfs xprt-switch set
++.RB [ \-h | \-\-help ]
++.RB [ \--id
++.IR ID ]
++.RB [ \--dstaddr
++.IR dstaddr]
++.P
++.B nfssysfs xprt
++.RB [ \-h | \-\-help ]
++.RB [ \--id
++.IR ID ]
++.P
++.B nfssysfs xprt set
++.RB [ \-h | \-\-help ]
++.RB [ \--id
++.IR ID ]
++.RB [ \--dstaddr
++.IR dstaddr]
++.RB [ --offline ]
++.RB [ --online ]
++.RB [ --remove ]
++.P
++.SH DESCRIPTION
++.RB "The " nfssysfs " command displays information collected in the SunRPC sysfs files about the system's SunRPC objects.
++.P
++.SS Objects
++Valid
++.BR nfssysfs (8)
++objects are:
++.IP "\fBrpc-client\fP"
++Display information about this system's RPC clients.
++.IP "\fBxprt-switch\fP"
++Display information about groups of transports.
++.IP "\fBxprt\fP"
++Display detailed information about each transport that exists on the system.
++.SH OPTIONS
++.SS Options valid for all objects
++.TP
++.B \-h, \-\-help
++Show the help message and exit
++.TP
++.B \-\-id \fIID
++Set or display properties for the object with the given
++.IR ID.
++This option is mandatory for setting properties.
++.SS Options specific to the `xprt-switch set` sub-command
++.TP
++.B \-\-dstaddr \fIdstaddr
++Change the destination address of all transports in the xprt-switch to
++.IR dstaddr
++.SS Options specific to the `xprt set` sub-command
++.TP
++.B \-\-dstaddr \fIdstaddr
++Change the destination address of this specific transport to
++.TP
++.B \-\-offline
++Change the transport state from online to offline
++.TP
++.B \-\-online
++Change the transport state from offline to online
++.TP
++.B \-\-remove
++Removes the transport from the xprt-switch. Note that "main" transports cannot be removed.
++.SH DIRECTORY
++.TP
++.B /sys/kernel/sunrpc/
++.SH AUTHOR
++Anna Schumaker <Anna.Schumaker@Netapp.com>
 -- 
 2.33.0
 
