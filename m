@@ -8,147 +8,113 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 03359C19F38
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C508C4320A
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 16:53:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DD4DD60F56
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 15:57:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1CE5760F5E
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Aug 2021 16:53:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237526AbhH3P6G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Aug 2021 11:58:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41330 "EHLO
+        id S237319AbhH3QyB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Aug 2021 12:54:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54660 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237758AbhH3P6A (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 11:58:00 -0400
-Received: from mail-qv1-xf34.google.com (mail-qv1-xf34.google.com [IPv6:2607:f8b0:4864:20::f34])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3A92C0617AE
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:05 -0700 (PDT)
-Received: by mail-qv1-xf34.google.com with SMTP id e18so8586015qvo.1
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 08:57:05 -0700 (PDT)
+        with ESMTP id S237714AbhH3QyA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Aug 2021 12:54:00 -0400
+Received: from mail-il1-x12b.google.com (mail-il1-x12b.google.com [IPv6:2607:f8b0:4864:20::12b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 56B80C06175F
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 09:53:06 -0700 (PDT)
+Received: by mail-il1-x12b.google.com with SMTP id x5so16819326ill.3
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Aug 2021 09:53:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=SROUaiAMehrmiT3ELGDnLtiEyOT7RUgBLqWqJFw66F0=;
-        b=P0N0s3UzPGci6qyOUjHT/NxZ5oKXk5IOYqJgPl/3aPSKP3QPxVLfJknh26b5lzQffy
-         MRselXfM1Rw0Sbjmr28ou7FU6YUb9im1SiV9+Lj089MhzjJV84H3f2K5LRn/CS9ycfLg
-         ZYtH6LoC3VZvBJKUMYieHLqIvu6hgUwURpNPCKWjbDbAwUL9bBLP6xNpK4o4REQE/dQU
-         5LuKT12tafZhNEdeujci7bND4b+rTX7enT5aqb3jKIj16Y455QXCvXBjPiC4g8cfaMap
-         14gv/ofW/0/Z+2aGnIej+/C6o+SiWQy+ujhFqRcKtsS+fEhJuhQljQ5O7A6YqmyZEPI5
-         uivA==
+        bh=ewb94CFZBoEcv6BEq/49r+UCZ4fce92HK1wsFrtTC3s=;
+        b=EU0LZ8jkh9tjyQEAzrvUK+DU7pOUiVmkJCA2PDlFW6rx00dgA5jTYdGaRvyZOREvry
+         xNCedB/QvRMiGY/msgDSDcqXhOm0W+lEb0C0CcvSjbveFMrZxKPsoeoZ4rcrvaG7l9Jm
+         93ZFQ3Rs2xUH+SiE3UTUv5sbCmx2+7LZA7DH2045vokJoy2tVcGCJmOdf3fGM9FQOjDQ
+         nmCtNU0EI7Q4lYJdWZF9gMOHZEzrqVWJ+by8LAiWAid+gEWr+hV5s+ElvtQsBMUs7r7W
+         JTIcJ3wSttTdlNMUYSq2smC/nBNhcBSFFLZ0uAZBnPjO6CWPMxUioq1g09Av9cEbZE8o
+         FrJQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=SROUaiAMehrmiT3ELGDnLtiEyOT7RUgBLqWqJFw66F0=;
-        b=HPsc8p5Q93iLgSVXxNQTRXVwHjOuoGa0zOv3HPMYohvQgKBNP5OU5FvHLavrNR2Esq
-         QsM+ECJsPiM0w7Ts6ywu23NH47QdO/BUmWlxVUp+iMF+0u9RbIT8wdgHhOoAdSy5h0Kv
-         TvODoqxkpolYZwY/F3H4bbe7jxl13WvrE4zyyktlLASXR4f7Bxnt0Zvsr4bwy4rJiy5m
-         PrDbIc7RmpP4G0DYHpU+psGwK1sBFNPZ8mKXDfL3i2rIinPw8O1HYlKQkzz8pcLvwbDt
-         CKLaD8TjNp3pDrhWeQH9BFAaMqn9jmnY1w9mZL+IpNqvS4D70NevKQlC5Jh/DKrqb05q
-         6WzQ==
-X-Gm-Message-State: AOAM533zy7kLMILt2Qws0ixCCzlUaqYVgvVB9ATX0AOslwBqlPn7GYT3
-        xlgG88j15UOX8/n4bJtHXdE=
-X-Google-Smtp-Source: ABdhPJzJ4iweZFguGRDhWRf2q1JvfRHxIEH8nSzmq+2WHr52nAcqOELjAVWIO6IWVqbUFDA8NZuf7A==
-X-Received: by 2002:a0c:e790:: with SMTP id x16mr23587015qvn.6.1630339024736;
-        Mon, 30 Aug 2021 08:57:04 -0700 (PDT)
-Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id 12sm8585217qtt.16.2021.08.30.08.57.03
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 30 Aug 2021 08:57:04 -0700 (PDT)
-Sender: Anna Schumaker <schumakeranna@gmail.com>
-From:   schumaker.anna@gmail.com
-X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     steved@redhat.com, linux-nfs@vger.kernel.org
-Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v3 9/9] nfssysfs: Add installation to the Makefile
-Date:   Mon, 30 Aug 2021 11:56:53 -0400
-Message-Id: <20210830155653.1386161-10-Anna.Schumaker@Netapp.com>
-X-Mailer: git-send-email 2.33.0
-In-Reply-To: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
-References: <20210830155653.1386161-1-Anna.Schumaker@Netapp.com>
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=ewb94CFZBoEcv6BEq/49r+UCZ4fce92HK1wsFrtTC3s=;
+        b=X/oOBFkvdY8+alovSG7GkFRCDQfeKHF8aM5Y/ZAB2PjDRhvVWzDHdGmav/B6HmTEOg
+         rgDPB0ulySO1rWQLDom6JkoKlFkEUzhnTg5ZvJ8/JgAanJUpCJHMmWPGdGRaFpIpjBx2
+         ghUhxWT4+/SgmUijoG13uEsbafdMLSM2mEQNW09CV1h4P1hFgkEp+9TNR+K/KVB3R8tF
+         srV0dL+WU4FP8jD7Ec/hsA53nmR3Xq06xktrENvt9C7YDgd6CjnvLCEIdJB3b/t6ZDrb
+         /U20tJwv3Nkd69MrR4qjTcZdmj4xXshJUaY650cSb8P8ZIE5c5kNlzcq0jmBLuIMPguo
+         sZhA==
+X-Gm-Message-State: AOAM533qcJXjAvl+whTgapfyvtCHOnbjEV0+7E5kgb9JYYCPocY2h5ha
+        xYKdLzDnsgm0DW5B5NU647I=
+X-Google-Smtp-Source: ABdhPJzDfw4y4c5A193QArrtzUPwhW/yDnDazXof9q5Lv8Dv+/AWiGi/xDX37XjgRpKQFTnJXqlC3g==
+X-Received: by 2002:a05:6e02:174c:: with SMTP id y12mr17548315ill.35.1630342385671;
+        Mon, 30 Aug 2021 09:53:05 -0700 (PDT)
+Received: from kolga-mac-1.attlocal.net ([2600:1700:6a10:2e90:852f:17ae:ef64:bc7])
+        by smtp.gmail.com with ESMTPSA id j13sm8579841ile.85.2021.08.30.09.53.04
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 30 Aug 2021 09:53:05 -0700 (PDT)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        chuck.level@oracle.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [RFC 1/2] xprtrdma: xdr pad optimization revisted again
+Date:   Mon, 30 Aug 2021 12:53:01 -0400
+Message-Id: <20210830165302.60225-2-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.30.1 (Apple Git-130)
+In-Reply-To: <20210830165302.60225-1-olga.kornievskaia@gmail.com>
+References: <20210830165302.60225-1-olga.kornievskaia@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-And create a shell script that launches the python program from the
-$(libdir)
+Given the patch "Always provide aligned buffers to the RPC read layers",
+RPC over RDMA doesn't need to look at the tail page and add that space
+to the write chunk.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+For the RFC 8166 compliant server, it must not write an XDR padding
+into the write chunk (even if space was provided). Historically
+(before RFC 8166) Solaris RDMA server has been requiring the client
+to provide space for the XDR padding and thus this client code has
+existed.
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- configure.ac               |  1 +
- tools/Makefile.am          |  2 +-
- tools/nfssysfs/Makefile.am | 20 ++++++++++++++++++++
- tools/nfssysfs/nfssysfs    |  5 +++++
- 4 files changed, 27 insertions(+), 1 deletion(-)
- create mode 100644 tools/nfssysfs/Makefile.am
- create mode 100644 tools/nfssysfs/nfssysfs
+ net/sunrpc/xprtrdma/rpc_rdma.c | 15 ---------------
+ 1 file changed, 15 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index bc2d0f02979c..57ad341948a3 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -731,6 +731,7 @@ AC_CONFIG_FILES([
- 	tools/rpcgen/Makefile
- 	tools/mountstats/Makefile
- 	tools/nfs-iostat/Makefile
-+	tools/nfssysfs/Makefile
- 	tools/nfsdclnts/Makefile
- 	tools/nfsconf/Makefile
- 	tools/nfsdclddb/Makefile
-diff --git a/tools/Makefile.am b/tools/Makefile.am
-index 9b4b0803db39..12c68b57b8ae 100644
---- a/tools/Makefile.am
-+++ b/tools/Makefile.am
-@@ -12,6 +12,6 @@ if CONFIG_NFSDCLD
- OPTDIRS += nfsdclddb
- endif
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c335c1361564..2c4146bcf2a8 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -255,21 +255,6 @@ rpcrdma_convert_iovs(struct rpcrdma_xprt *r_xprt, struct xdr_buf *xdrbuf,
+ 		page_base = 0;
+ 	}
  
--SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat nfsdclnts $(OPTDIRS)
-+SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat nfssysfs nfsdclnts $(OPTDIRS)
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/tools/nfssysfs/Makefile.am b/tools/nfssysfs/Makefile.am
-new file mode 100644
-index 000000000000..983b128f5c98
---- /dev/null
-+++ b/tools/nfssysfs/Makefile.am
-@@ -0,0 +1,20 @@
-+## Process this file with automake to produce Makefile.in
-+PYTHON_FILES =  nfssysfs.py client.py switch.py sysfs.py xprt.py
-+tooldir = $(DESTDIR)$(libdir)/nfssysfs
-+
-+man8_MANS = nfssysfs.man
-+
-+all-local: $(PYTHON_FILES)
-+
-+install-data-hook:
-+	mkdir -p $(tooldir)
-+	for f in $(PYTHON_FILES) ; do \
-+		$(INSTALL) -m 644 $$f $(tooldir)/$$f ; \
-+	done
-+	chmod +x $(tooldir)/nfssysfs.py
-+	$(INSTALL) -m 755 nfssysfs $(DESTDIR)$(sbindir)/nfssysfs
-+	sed -i "s|LIBDIR=.|LIBDIR=$(tooldir)|" $(DESTDIR)$(sbindir)/nfssysfs
-+
-+
-+
-+MAINTAINERCLEANFILES=Makefile.in
-diff --git a/tools/nfssysfs/nfssysfs b/tools/nfssysfs/nfssysfs
-new file mode 100644
-index 000000000000..82dd2da6f539
---- /dev/null
-+++ b/tools/nfssysfs/nfssysfs
-@@ -0,0 +1,5 @@
-+#!/bin/bash
-+LIBDIR=.
-+PYTHON3=/usr/bin/python
-+
-+exec $PYTHON3 $LIBDIR/nfssysfs.py $*
+-	if (type == rpcrdma_readch)
+-		goto out;
+-
+-	/* When encoding a Write chunk, some servers need to see an
+-	 * extra segment for non-XDR-aligned Write chunks. The upper
+-	 * layer provides space in the tail iovec that may be used
+-	 * for this purpose.
+-	 */
+-	if (type == rpcrdma_writech && r_xprt->rx_ep->re_implicit_roundup)
+-		goto out;
+-
+-	if (xdrbuf->tail[0].iov_len)
+-		rpcrdma_convert_kvec(&xdrbuf->tail[0], seg, &n);
+-
+-out:
+ 	if (unlikely(n > RPCRDMA_MAX_SEGS))
+ 		return -EIO;
+ 	return n;
 -- 
-2.33.0
+2.27.0
 
