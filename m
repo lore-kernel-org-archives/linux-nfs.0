@@ -2,107 +2,116 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99E2BC432BE
-	for <linux-nfs@archiver.kernel.org>; Wed,  1 Sep 2021 15:22:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2088C432BE
+	for <linux-nfs@archiver.kernel.org>; Wed,  1 Sep 2021 23:30:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7FF5160FDC
-	for <linux-nfs@archiver.kernel.org>; Wed,  1 Sep 2021 15:22:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9B1926102A
+	for <linux-nfs@archiver.kernel.org>; Wed,  1 Sep 2021 23:30:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242530AbhIAPXu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 1 Sep 2021 11:23:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41718 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233979AbhIAPXt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2021 11:23:49 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 136BBC061575;
-        Wed,  1 Sep 2021 08:22:53 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id DE22E35BB; Wed,  1 Sep 2021 11:22:51 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org DE22E35BB
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1630509771;
-        bh=o/wgkqf+HNM4jw0xc68wZiht+EdeCND2pgRsIXP1Y5g=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=kdjRKPBogUMbLDVhrxt9qYx1CNpuiwFjoul4G11wtXpJ3/k5PsPURbp8/GF0vvtCk
-         +XUY8Wn7uAwoJpE4dPS92EO2wcTMvX+IlsG3YQB6FLkOsQSJYxP+iOr6urSBizRbls
-         zcQM7mGMlNdvVFkFMRZ2RsPzxNjiM9misvamhyDQ=
-Date:   Wed, 1 Sep 2021 11:22:51 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org, Josef Bacik <josef@toxicpanda.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v2] BTRFS/NFSD: provide more unique inode number for
- btrfs export
-Message-ID: <20210901152251.GA6533@fieldses.org>
-References: <162995209561.7591.4202079352301963089@noble.neil.brown.name>
- <162995778427.7591.11743795294299207756@noble.neil.brown.name>
- <YSkQ31UTVDtBavOO@infradead.org>
- <163010550851.7591.9342822614202739406@noble.neil.brown.name>
- <YSnhHl0HDOgg07U5@infradead.org>
- <163038594541.7591.11109978693705593957@noble.neil.brown.name>
- <YS8ppl6SYsCC0cql@infradead.org>
+        id S233654AbhIAXbm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 1 Sep 2021 19:31:42 -0400
+Received: from smtp-out2.suse.de ([195.135.220.29]:50968 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230061AbhIAXbm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2021 19:31:42 -0400
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 22ABB1FF46;
+        Wed,  1 Sep 2021 23:30:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1630539044; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=D1zCUw/WwOnRTS+qsSk3F8pp29G5w0IrcvyeqCJc1+g=;
+        b=FvGjD0i0yybs6AnZEitcDrIhrrU9L58KJcQva+LuWnIRakbNm1Pxuw28ctqvum5VzOMWRI
+        AWTdJrU60KWLxOiiU0tddamLG+9JiJg/o3pSIy/ncmjLBR1IJrPoFLkgfxEnDD2REKtX+1
+        CD0wkhwmP48Rqs2LxQvbYR3hQHG2vP0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1630539044;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=D1zCUw/WwOnRTS+qsSk3F8pp29G5w0IrcvyeqCJc1+g=;
+        b=zWJxhDQYtaQ3yNcjf+7P9gIqTE9tdEI2uRSvf1Rqa5sTP1cq6cMjK4C4LdW/+74HD7f2N8
+        voFmOM0UpdMqb6Cw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7629C13B2A;
+        Wed,  1 Sep 2021 23:30:41 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id AYYBDSENMGGDNAAAMHmgww
+        (envelope-from <neilb@suse.de>); Wed, 01 Sep 2021 23:30:41 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YS8ppl6SYsCC0cql@infradead.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   "NeilBrown" <neilb@suse.de>
+To:     "J.  Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     Linux NFS list <linux-nfs@vger.kernel.org>,
+        "Steinar H. Gunderson" <steinar+kernel@gunderson.no>
+Subject: [PATCH] SUNRPC: improve error response to over-size gss credential
+Date:   Thu, 02 Sep 2021 09:30:37 +1000
+Message-id: <163053903731.24419.4079441567942239288@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Sep 01, 2021 at 08:20:06AM +0100, Christoph Hellwig wrote:
-> On Tue, Aug 31, 2021 at 02:59:05PM +1000, NeilBrown wrote:
-> > Making the change purely in btrfs is simply not possible.  There is no
-> > way for btrfs to provide nfsd with a different inode number.  To move
-> > the bulk of the change into btrfs code we would need - at the very least
-> > - some way for nfsd to provide the filehandle when requesting stat
-> > information.  We would also need to provide a reference filehandle when
-> > requesting a dentry->filehandle conversion.  Cluttering the
-> > export_operations like that just for btrfs doesn't seem like the right
-> > balance.  I agree that cluttering kstat is not ideal, but it was a case
-> > of choosing the minimum change for the maximum effect.
-> 
-> So you're papering over a btrfs bug by piling up cludges in the nsdd
-> code that has not business even knowing about this btrfs bug, while
-> leaving other users of inodes numbers and file handles broken?
-> 
-> If you only care about file handles:  this is what the export operations
-> are for.  If you care about inode numbers:  well, it is up to btrfs
-> to generate uniqueue inode numbers.  It currently doesn't do that, and
-> no amount of papering over that in nfsd is going to fix the issue.
-> 
-> If XORing a little more entropy
 
-It's stronger than "a little more entropy".  We know enough about how
-the numbers being XOR'd grow to know that collisions are only going to
-happen in some extreme use cases.  (If I understand correctly.)
+When the NFS server receives a large gss (kerberos) credential and tries
+to pass it up to rpc.svcgssd (which is deprecated), it triggers an
+infinite loop in cache_read().
 
-> into the inode number is a good enough band aid (and I strongly
-> disagree with that), do it inside btrfs for every place they report
-> the inode number.  There is nothing NFS-specific about that.
+cache_request() always returns -EAGAIN, and this causes a "goto again".
 
-Neil tried something like that:
+This patch:
+ - changes the error to -E2BIG to avoid the infinite loop, and
+ - generates a WARN_ONCE when rsi_request first sees an over-sized
+   credential.  The warning suggests switching to gssproxy.
 
-	https://lore.kernel.org/linux-nfs/162761259105.21659.4838403432058511846@noble.neil.brown.name/
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=3D196583
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 2 ++
+ net/sunrpc/cache.c                | 2 +-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
 
-	"The patch below, which is just a proof-of-concept, changes
-	btrfs to report a uniform st_dev, and different (64bit) st_ino
-	in different subvols."
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_=
+gss.c
+index a81be45f40d9..e738c0182f09 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -194,6 +194,8 @@ static void rsi_request(struct cache_detail *cd,
+ 	qword_addhex(bpp, blen, rsii->in_handle.data, rsii->in_handle.len);
+ 	qword_addhex(bpp, blen, rsii->in_token.data, rsii->in_token.len);
+ 	(*bpp)[-1] =3D '\n';
++	WARN_ONCE(*blen < 0,
++		  "RPCSEC/GSS credential too large - please use gssproxy\n");
+ }
+=20
+ static int rsi_parse(struct cache_detail *cd,
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 1a2c1c44bb00..59641803472c 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -803,7 +803,7 @@ static int cache_request(struct cache_detail *detail,
+=20
+ 	detail->cache_request(detail, crq->item, &bp, &len);
+ 	if (len < 0)
+-		return -EAGAIN;
++		return -E2BIG;
+ 	return PAGE_SIZE - len;
+ }
+=20
+--=20
+2.32.0
 
-(Though actually you're proposing keeping separate st_dev?)
-
-I looked back through a couple threads to try to understand why we
-couldn't do that (on new filesystems, with a mkfs option to choose new
-or old behavior) and still don't understand.  But the threads are long.
-
-There are objections to a new mount option (which seem obviously wrong;
-this should be a persistent feature of the on-disk filesystem).
-
---b.
