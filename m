@@ -2,238 +2,238 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1174EC433F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 19:52:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DEB59C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DE836610F8
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 19:52:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B6EB361104
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244557AbhIITx5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 9 Sep 2021 15:53:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34810 "EHLO
+        id S239658AbhIIUOo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 9 Sep 2021 16:14:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39402 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231549AbhIITx5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Sep 2021 15:53:57 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0F79C061574;
-        Thu,  9 Sep 2021 12:52:47 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 682B661D7; Thu,  9 Sep 2021 15:52:46 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 682B661D7
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1631217166;
-        bh=AyCGtbYT4RaWW9mMiPagkXBG5RFU2mC5Liwb9pv6z8Y=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=dRKxUKynZSPtK3tk1DW/mwu+lsnRKT/J6fWKEc+JLtyLCWuxYak8B+zv7yovsq6FA
-         ZLNGESftHk8u8rq4ihSqSCnuAuXAvbgDDeIMJ20j8CKd20vd6PT0fxvnOCX+1NZxT5
-         6vpPu6qO5a1WM8nkbcuSHyGRGYk+jSjH9dMApUKc=
-Date:   Thu, 9 Sep 2021 15:52:46 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     "wanghai (M)" <wanghai38@huawei.com>
-Cc:     Wenbin Zeng <wenbin.zeng@gmail.com>, viro@zeniv.linux.org.uk,
-        davem@davemloft.net, jlayton@kernel.org,
-        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        wenbinzeng@tencent.com, dsahern@gmail.com,
-        nicolas.dichtel@6wind.com, willy@infradead.org,
-        edumazet@google.com, jakub.kicinski@netronome.com,
-        tyhicks@canonical.com, chuck.lever@oracle.com, neilb@suse.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        netdev@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/3] auth_gss: netns refcount leaks when
- use-gss-proxy==1
-Message-ID: <20210909195246.GB13808@fieldses.org>
-References: <1556692945-3996-1-git-send-email-wenbinzeng@tencent.com>
- <1557470163-30071-1-git-send-email-wenbinzeng@tencent.com>
- <20190515010331.GA3232@fieldses.org>
- <20190612083755.GA27776@bridge.tencent.com>
- <20190612155224.GF16331@fieldses.org>
- <2c9e3d91-f4b3-6f6a-0dc0-21cef4fab3bb@huawei.com>
- <20210908205103.GE23978@fieldses.org>
- <eef31464-9807-49f6-fc81-ee7425cc481d@huawei.com>
+        with ESMTP id S233128AbhIIUOj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Sep 2021 16:14:39 -0400
+Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA09FC061575
+        for <linux-nfs@vger.kernel.org>; Thu,  9 Sep 2021 13:13:29 -0700 (PDT)
+Received: by mail-qk1-x733.google.com with SMTP id ay33so3245643qkb.10
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Sep 2021 13:13:29 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=XSX0zbVlcTYs+BPa/LdnDilRSr90IA8ID6wEGKUDHn8=;
+        b=kpUyxHsAbOK1ehfV2uV8Nk8OgseCPgvq0iRKxv4jfvEo6SW1XtfFrcSZBz15TdEapO
+         JMe1fFgQ/WyTbcP38ybZ5ojBMlI+RMFfbaWVzKKWYlLuLhdvh/bVxVBUMF4LVB4kWsAU
+         pw5MimduzXiecMA8WniTfVMP+IIpQskiS0TzP+GtBu/1X2rQwk1ONHWmeYacI+cP/6Gv
+         EhDjZQH0PiwkWYyRbYoccIbOUcbfEgu6A/NWpWcN5FWR0YbMSK9xA3PEh/ialyqWRPCq
+         uLaIRmMwQoMEqjzNmyR4cJ8wWUI37iKRYAfJbGlw1OG4YhYtsZV6OL+frYeb5U1SqCya
+         P6FQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=XSX0zbVlcTYs+BPa/LdnDilRSr90IA8ID6wEGKUDHn8=;
+        b=Iijwh7ii5oUf+TjStJVEHyzeeWS5qSj7kh0wcTaa2AUxHsMuta5u5LtuBpAszTjh92
+         KbbyzsEBGvpFcTmm/QJ9knL6AMKr4/Wv7WThjwocUZUF3iz/dzB2H7T/sKdsrzT3WMmH
+         8Loy1WB5AqtA4N2ay/tEhVIxCLjLPMaqPpr7uVJI4eOlxmmH0zPBYzZvdRzChuaLA4Jc
+         J+R4bITr0kbE0+rGNSlZRCooh/1TNn6SVi0zlv77O7nZsXVzcvKiBNLltQqnOjOjW06n
+         MrzCujx1Z4FYIvfvLKlYLnifYKBKR8FsvWOvteKnjEy+5IPHfsOhMTmXleNBmmv0wDWr
+         CF0w==
+X-Gm-Message-State: AOAM531CnWQWTbG70rpavB+lVNC1wsgytm0DAlhvHNLUtU5ax0NFaWkV
+        yD3wduHLjtWwt+tllL5B0hqp1PCauNA=
+X-Google-Smtp-Source: ABdhPJzqOFfgiMlKvhXM55+50qCVKgpTBBiuv5bGt7TGIPNRksghNQm/dKv3rEOoMMvirD/e3K651w==
+X-Received: by 2002:a37:91c1:: with SMTP id t184mr4536800qkd.129.1631218409002;
+        Thu, 09 Sep 2021 13:13:29 -0700 (PDT)
+Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
+        by smtp.gmail.com with ESMTPSA id l13sm2104020qkp.97.2021.09.09.13.13.28
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 09 Sep 2021 13:13:28 -0700 (PDT)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH 01/14] NFS: Create a new nfs_alloc_fattr_with_label() function
+Date:   Thu,  9 Sep 2021 16:13:14 -0400
+Message-Id: <20210909201327.108759-2-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.33.0
+In-Reply-To: <20210909201327.108759-1-Anna.Schumaker@Netapp.com>
+References: <20210909201327.108759-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <eef31464-9807-49f6-fc81-ee7425cc481d@huawei.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Sep 09, 2021 at 10:52:51AM +0800, wanghai (M) wrote:
-> 
-> 在 2021/9/9 4:51, J. Bruce Fields 写道:
-> >On Tue, Sep 07, 2021 at 10:48:52PM +0800, wanghai (M) wrote:
-> >>在 2019/6/12 23:52, J. Bruce Fields 写道:
-> >>>On Wed, Jun 12, 2019 at 04:37:55PM +0800, Wenbin Zeng wrote:
-> >>>>On Tue, May 14, 2019 at 09:03:31PM -0400, J. Bruce Fields wrote:
-> >>>>>Whoops, I was slow to test these.  I'm getting failuring krb5 nfs
-> >>>>>mounts, and the following the server's logs.  Dropping the three patches
-> >>>>>for now.
-> >>>>My bad, I should have found it earlier. Thank you for testing it, Bruce.
-> >>>>
-> >>>>I figured it out, the problem that you saw is due to the following code:
-> >>>>the if-condition is incorrect here because sn->gssp_clnt==NULL doesn't mean
-> >>>>inexistence of 'use-gss-proxy':
-> >>>Thanks, but with the new patches I see the following.  I haven't tried
-> >>>to investigate.
-> >>This patchset adds the nsfs_evict()->netns_evict() code for breaking
-> >>deadlock bugs that exist, but this may cause double free because
-> >>nsfs_evict()->netns_evict() may be called multiple times.
-> >>
-> >>for example:
-> >>
-> >>int main()
-> >>{
-> >>     int fd = open("/proc/self/ns/net", O_RDONLY);
-> >>     close(fd);
-> >>
-> >>     fd = open("/proc/self/ns/net", O_RDONLY);
-> >>     close(fd);
-> >>}
-> >>
-> >>Therefore, the nsfs evict cannot be used to break the deadlock.
-> >Sorry, I haven't really been following this, but I though this problem
-> >was fixed by your checking for gssp_clnt (instead of just relying on the
-> >use_gssp_proc check) in v3 of your patches?
-> >
-> >--b.
-> Sorry, I'm not Wenbin Zeng.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Apologies!
+For creating fattrs with the label field already allocated for us. I
+also update nfs_free_fattr() to free the label in the end and
+nfs_get_root() to use the new function.
 
-> I recently encountered the same problem
-> and found that Zeng had posted a patchset for it. However, after my
-> own analysis, I found that Zeng's patchset will cause the dobule
-> free problem.
-> 
-> The v3 patches also has the double free issue. Because
-> nsfs_evict()->netns_evict()->gss_svc_shutdown_net()->cache_purge()
-> can be called multiple times.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/getroot.c       | 17 ++++++-----------
+ fs/nfs/inode.c         | 17 +++++++++++++++++
+ fs/nfs/internal.h      |  9 ---------
+ include/linux/nfs_fs.h | 13 +++++++++++++
+ 4 files changed, 36 insertions(+), 20 deletions(-)
 
-OK, I see.
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 59355c106ece..7604cb6a0ac2 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -80,18 +80,15 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ 		goto out;
+ 
+ 	/* get the actual root for this mount */
+-	fsinfo.fattr = nfs_alloc_fattr();
++	fsinfo.fattr = nfs_alloc_fattr_with_label(server);
+ 	if (fsinfo.fattr == NULL)
+ 		goto out_name;
+ 
+-	fsinfo.fattr->label = nfs4_label_alloc(server, GFP_KERNEL);
+-	if (IS_ERR(fsinfo.fattr->label))
+-		goto out_fattr;
+ 	error = server->nfs_client->rpc_ops->getroot(server, ctx->mntfh, &fsinfo);
+ 	if (error < 0) {
+ 		dprintk("nfs_get_root: getattr error = %d\n", -error);
+ 		nfs_errorf(fc, "NFS: Couldn't getattr on root");
+-		goto out_label;
++		goto out_fattr;
+ 	}
+ 
+ 	inode = nfs_fhget(s, ctx->mntfh, fsinfo.fattr, NULL);
+@@ -99,12 +96,12 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ 		dprintk("nfs_get_root: get root inode failed\n");
+ 		error = PTR_ERR(inode);
+ 		nfs_errorf(fc, "NFS: Couldn't get root inode");
+-		goto out_label;
++		goto out_fattr;
+ 	}
+ 
+ 	error = nfs_superblock_set_dummy_root(s, inode);
+ 	if (error != 0)
+-		goto out_label;
++		goto out_fattr;
+ 
+ 	/* root dentries normally start off anonymous and get spliced in later
+ 	 * if the dentry tree reaches them; however if the dentry already
+@@ -115,7 +112,7 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ 		dprintk("nfs_get_root: get root dentry failed\n");
+ 		error = PTR_ERR(root);
+ 		nfs_errorf(fc, "NFS: Couldn't get root dentry");
+-		goto out_label;
++		goto out_fattr;
+ 	}
+ 
+ 	security_d_instantiate(root, inode);
+@@ -154,8 +151,6 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ 	nfs_setsecurity(inode, fsinfo.fattr, fsinfo.fattr->label);
+ 	error = 0;
+ 
+-out_label:
+-	nfs4_label_free(fsinfo.fattr->label);
+ out_fattr:
+ 	nfs_free_fattr(fsinfo.fattr);
+ out_name:
+@@ -165,5 +160,5 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ error_splat_root:
+ 	dput(fc->root);
+ 	fc->root = NULL;
+-	goto out_label;
++	goto out_fattr;
+ }
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 853213b3a209..309a8921eea3 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1586,6 +1586,23 @@ struct nfs_fattr *nfs_alloc_fattr(void)
+ }
+ EXPORT_SYMBOL_GPL(nfs_alloc_fattr);
+ 
++struct nfs_fattr *nfs_alloc_fattr_with_label(struct nfs_server *server)
++{
++	struct nfs_fattr *fattr = nfs_alloc_fattr();
++
++	if (!fattr)
++		return NULL;
++
++	fattr->label = nfs4_label_alloc(server, GFP_NOFS);
++	if (IS_ERR(fattr->label)) {
++		kfree(fattr);
++		return NULL;
++	}
++
++	return fattr;
++}
++EXPORT_SYMBOL_GPL(nfs_alloc_fattr_with_label);
++
+ struct nfs_fh *nfs_alloc_fhandle(void)
+ {
+ 	struct nfs_fh *fh;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index a36af04188c2..e6b5474bbe1a 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -339,14 +339,6 @@ nfs4_label_copy(struct nfs4_label *dst, struct nfs4_label *src)
+ 
+ 	return dst;
+ }
+-static inline void nfs4_label_free(struct nfs4_label *label)
+-{
+-	if (label) {
+-		kfree(label->label);
+-		kfree(label);
+-	}
+-	return;
+-}
+ 
+ static inline void nfs_zap_label_cache_locked(struct nfs_inode *nfsi)
+ {
+@@ -355,7 +347,6 @@ static inline void nfs_zap_label_cache_locked(struct nfs_inode *nfsi)
+ }
+ #else
+ static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
+-static inline void nfs4_label_free(void *label) {}
+ static inline void nfs_zap_label_cache_locked(struct nfs_inode *nfsi)
+ {
+ }
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index ce6474594872..597311a063fd 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -416,9 +416,22 @@ extern void nfs_fattr_set_barrier(struct nfs_fattr *fattr);
+ extern unsigned long nfs_inc_attr_generation_counter(void);
+ 
+ extern struct nfs_fattr *nfs_alloc_fattr(void);
++extern struct nfs_fattr *nfs_alloc_fattr_with_label(struct nfs_server *server);
++
++static inline void nfs4_label_free(struct nfs4_label *label)
++{
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (label) {
++		kfree(label->label);
++		kfree(label);
++	}
++#endif
++}
+ 
+ static inline void nfs_free_fattr(const struct nfs_fattr *fattr)
+ {
++	if (fattr)
++		nfs4_label_free(fattr->label);
+ 	kfree(fattr);
+ }
+ 
+-- 
+2.33.0
 
-> And, even if there is no double free problem, the application can
-> make the evict called earlier by 'open("/proc/self/ns/net",
-> O_RDONLY); close(fd);', which makes sunrpc unusable.
-
-So it seems like we'd need a way to atomically check whether the only
-remaining reference counts on the network namespace were held by this
-rpc client and then continue shutting it down if so?
-
-If that's not practical, maybe another solution would be to provide
-userspace with some explicit way to shut this down, and modify gssproxy
-to do that.
-
---b.
-
-> Therefore, the v3 patchset is also not applicable.
-> 
-> This issue causes an OOM on my server after multiple docker creation
-> and destruction, and I don't have a good solution at the moment.
-> >>A large number of netns leaks may cause OOM problems, currently I
-> >>can't find a good solution to fix it, does anyone have a good idea?
-> >>>--b.
-> >>>
-> >>>[ 2908.134813] ------------[ cut here ]------------
-> >>>[ 2908.135732] name 'use-gss-proxy'
-> >>>[ 2908.136276] WARNING: CPU: 2 PID: 15032 at fs/proc/generic.c:673 remove_proc_entry+0x124/0x190
-> >>>[ 2908.138144] Modules linked in: nfsv4 rpcsec_gss_krb5 nfsv3 nfs_acl nfs lockd grace auth_rpcgss sunrpc
-> >>>[ 2908.140183] CPU: 2 PID: 15032 Comm: (coredump) Not tainted 5.2.0-rc2-00441-gaef575f54640 #2257
-> >>>[ 2908.142062] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.12.0-2.fc30 04/01/2014
-> >>>[ 2908.143756] RIP: 0010:remove_proc_entry+0x124/0x190
-> >>>[ 2908.144519] Code: c3 48 c7 c7 60 24 8b 82 e8 29 16 a5 00 eb d5 48 c7 c7 60 24 8b 82 e8 1b 16 a5 00 4c 89 e6 48 c7 c7 ec 4c 52 82 e8 50 fd db ff <0f> 0b eb b6 48 8b 04 24 83 a8 90 00 00 00 01 e9 78 ff ff ff 4c 89
-> >>>[ 2908.148138] RSP: 0018:ffffc900047bbdb0 EFLAGS: 00010282
-> >>>[ 2908.148945] RAX: 0000000000000000 RBX: ffff888036060580 RCX: 0000000000000000
-> >>>[ 2908.150139] RDX: ffff88807fd24e80 RSI: ffff88807fd165b8 RDI: 00000000ffffffff
-> >>>[ 2908.151334] RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
-> >>>[ 2908.152564] R10: 0000000000000000 R11: 0000000000000000 R12: ffffffffa00adb1b
-> >>>[ 2908.153816] R13: 00007ffc8bda5d30 R14: 0000000000000000 R15: ffff88805e2873a8
-> >>>[ 2908.155007] FS:  00007f470bc27e40(0000) GS:ffff88807fd00000(0000) knlGS:0000000000000000
-> >>>[ 2908.156421] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> >>>[ 2908.157333] CR2: 0000562b07764c58 CR3: 000000005e8ea001 CR4: 00000000001606e0
-> >>>[ 2908.158529] Call Trace:
-> >>>[ 2908.158796]  destroy_use_gss_proxy_proc_entry+0xb7/0x150 [auth_rpcgss]
-> >>>[ 2908.159966]  gss_svc_shutdown_net+0x11/0x170 [auth_rpcgss]
-> >>>[ 2908.160830]  netns_evict+0x2f/0x40
-> >>>[ 2908.161266]  nsfs_evict+0x27/0x40
-> >>>[ 2908.161685]  evict+0xd0/0x1a0
-> >>>[ 2908.162035]  __dentry_kill+0xdf/0x180
-> >>>[ 2908.162520]  dentry_kill+0x50/0x1c0
-> >>>[ 2908.163005]  ? dput+0x1c/0x2b0
-> >>>[ 2908.163369]  dput+0x260/0x2b0
-> >>>[ 2908.163739]  path_put+0x12/0x20
-> >>>[ 2908.164155]  do_faccessat+0x17c/0x240
-> >>>[ 2908.164643]  do_syscall_64+0x50/0x1c0
-> >>>[ 2908.165170]  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-> >>>[ 2908.165959] RIP: 0033:0x7f47098e2157
-> >>>[ 2908.166445] Code: 77 01 c3 48 8b 15 69 dd 2c 00 f7 d8 64 89 02 48 c7 c0 ff ff ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 b8 15 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 01 c3 48 8b 15 39 dd 2c 00 f7 d8 64 89 02 b8
-> >>>[ 2908.169994] RSP: 002b:00007ffc8bda5d28 EFLAGS: 00000246 ORIG_RAX: 0000000000000015
-> >>>[ 2908.171315] RAX: ffffffffffffffda RBX: 0000562b0774d979 RCX: 00007f47098e2157
-> >>>[ 2908.172563] RDX: 00007ffc8bda5d3e RSI: 0000000000000000 RDI: 00007ffc8bda5d30
-> >>>[ 2908.173753] RBP: 00007ffc8bda5d70 R08: 0000000000000000 R09: 0000562b07d0b130
-> >>>[ 2908.174943] R10: 0000000000000000 R11: 0000000000000246 R12: 00007ffc8bda5d30
-> >>>[ 2908.176163] R13: 0000562b07b34c80 R14: 0000562b07b35120 R15: 0000000000000000
-> >>>[ 2908.177395] irq event stamp: 4256
-> >>>[ 2908.177835] hardirqs last  enabled at (4255): [<ffffffff811221ee>] console_unlock+0x41e/0x590
-> >>>[ 2908.179378] hardirqs last disabled at (4256): [<ffffffff81001b2f>] trace_hardirqs_off_thunk+0x1a/0x1c
-> >>>[ 2908.181031] softirqs last  enabled at (4252): [<ffffffff820002be>] __do_softirq+0x2be/0x4aa
-> >>>[ 2908.182458] softirqs last disabled at (4233): [<ffffffff810bf8e0>] irq_exit+0x80/0x90
-> >>>[ 2908.183869] ---[ end trace d88132b63efc09d8 ]---
-> >>>[ 2908.184620] BUG: kernel NULL pointer dereference, address: 0000000000000030
-> >>>[ 2908.185829] #PF: supervisor read access in kernel mode
-> >>>[ 2908.186924] #PF: error_code(0x0000) - not-present page
-> >>>[ 2908.187887] PGD 0 P4D 0
-> >>>[ 2908.188318] Oops: 0000 [#1] PREEMPT SMP PTI
-> >>>[ 2908.189254] CPU: 2 PID: 15032 Comm: (coredump) Tainted: G        W         5.2.0-rc2-00441-gaef575f54640 #2257
-> >>>[ 2908.192506] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.12.0-2.fc30 04/01/2014
-> >>>[ 2908.195137] RIP: 0010:__lock_acquire+0x3d2/0x1d90
-> >>>[ 2908.196414] Code: db 48 8b 84 24 88 00 00 00 65 48 33 04 25 28 00 00 00 0f 85 be 10 00 00 48 8d 65 d8 44 89 d8 5b 41 5c 41 5d 41 5e 41 5f 5d c3 <48> 81 3f 60 0d 01 83 41 bb 00 00 00 00 45 0f 45 d8 83 fe 01 0f 87
-> >>>[ 2908.202720] RSP: 0018:ffffc900047bbc80 EFLAGS: 00010002
-> >>>[ 2908.204165] RAX: 0000000000000000 RBX: 0000000000000001 RCX: 0000000000000000
-> >>>[ 2908.206125] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000030
-> >>>[ 2908.208203] RBP: ffffc900047bbd40 R08: 0000000000000001 R09: 0000000000000000
-> >>>[ 2908.210219] R10: 0000000000000001 R11: 0000000000000001 R12: ffff88807ad91500
-> >>>[ 2908.211386] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000282
-> >>>[ 2908.212532] FS:  00007f470bc27e40(0000) GS:ffff88807fd00000(0000) knlGS:0000000000000000
-> >>>[ 2908.213647] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> >>>[ 2908.214400] CR2: 0000000000000030 CR3: 000000005e8ea001 CR4: 00000000001606e0
-> >>>[ 2908.215393] Call Trace:
-> >>>[ 2908.215589]  ? __lock_acquire+0x255/0x1d90
-> >>>[ 2908.216071]  ? clear_gssp_clnt+0x1b/0x50 [auth_rpcgss]
-> >>>[ 2908.216720]  ? __mutex_lock+0x99/0x920
-> >>>[ 2908.217114]  lock_acquire+0x95/0x1b0
-> >>>[ 2908.217484]  ? cache_purge+0x1c/0x110 [sunrpc]
-> >>>[ 2908.218000]  _raw_spin_lock+0x2f/0x40
-> >>>[ 2908.218370]  ? cache_purge+0x1c/0x110 [sunrpc]
-> >>>[ 2908.218882]  cache_purge+0x1c/0x110 [sunrpc]
-> >>>[ 2908.219346]  gss_svc_shutdown_net+0xb8/0x170 [auth_rpcgss]
-> >>>[ 2908.220104]  netns_evict+0x2f/0x40
-> >>>[ 2908.220439]  nsfs_evict+0x27/0x40
-> >>>[ 2908.220786]  evict+0xd0/0x1a0
-> >>>[ 2908.221050]  __dentry_kill+0xdf/0x180
-> >>>[ 2908.221458]  dentry_kill+0x50/0x1c0
-> >>>[ 2908.221842]  ? dput+0x1c/0x2b0
-> >>>[ 2908.222126]  dput+0x260/0x2b0
-> >>>[ 2908.222384]  path_put+0x12/0x20
-> >>>[ 2908.222753]  do_faccessat+0x17c/0x240
-> >>>[ 2908.223125]  do_syscall_64+0x50/0x1c0
-> >>>[ 2908.223479]  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-> >>>[ 2908.224152] RIP: 0033:0x7f47098e2157
-> >>>[ 2908.224566] Code: 77 01 c3 48 8b 15 69 dd 2c 00 f7 d8 64 89 02 48 c7 c0 ff ff ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 b8 15 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 01 c3 48 8b 15 39 dd 2c 00 f7 d8 64 89 02 b8
-> >>>[ 2908.228198] RSP: 002b:00007ffc8bda5d28 EFLAGS: 00000246 ORIG_RAX: 0000000000000015
-> >>>[ 2908.229496] RAX: ffffffffffffffda RBX: 0000562b0774d979 RCX: 00007f47098e2157
-> >>>[ 2908.230938] RDX: 00007ffc8bda5d3e RSI: 0000000000000000 RDI: 00007ffc8bda5d30
-> >>>[ 2908.232182] RBP: 00007ffc8bda5d70 R08: 0000000000000000 R09: 0000562b07d0b130
-> >>>[ 2908.233481] R10: 0000000000000000 R11: 0000000000000246 R12: 00007ffc8bda5d30
-> >>>[ 2908.234750] R13: 0000562b07b34c80 R14: 0000562b07b35120 R15: 0000000000000000
-> >>>[ 2908.236068] Modules linked in: nfsv4 rpcsec_gss_krb5 nfsv3 nfs_acl nfs lockd grace auth_rpcgss sunrpc
-> >>>[ 2908.237861] CR2: 0000000000000030
-> >>>[ 2908.238277] ---[ end trace d88132b63efc09d9 ]---
-> >.
-> >
