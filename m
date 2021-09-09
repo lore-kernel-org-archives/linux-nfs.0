@@ -4,42 +4,42 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72BA7C433FE
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 12:40:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 84B51C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 12:41:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5DF6061100
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 12:40:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6968E6113A
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 12:41:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353727AbhIIMlN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 9 Sep 2021 08:41:13 -0400
-Received: from mail.kernel.org ([198.145.29.99]:46110 "EHLO mail.kernel.org"
+        id S1350411AbhIIMmb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 9 Sep 2021 08:42:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45810 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1354559AbhIIMfd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Sep 2021 08:35:33 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 0BD9261381;
-        Thu,  9 Sep 2021 11:53:52 +0000 (UTC)
+        id S1354115AbhIIMg5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Sep 2021 08:36:57 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 775CD61B7D;
+        Thu,  9 Sep 2021 11:54:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1631188433;
-        bh=41UfQEK4ce4MZ7sHLRplv66BOBkYxe3i9+V1wNuOllM=;
+        s=k20201202; t=1631188445;
+        bh=VfSF8ywJgus035S93IX3ZGmVlbPmqAAUHaLROvHLsII=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=l1Q49FGxodvyinIknvavWY2wDsHdH4SmSDmxMV3DyG9UCzzJSqv9+GWKdoNz3s7rU
-         ADyIW3n+k/NdLuNCnu2LD2e2TpINwwfyNhwYI/fCWSRMIEShPWvXuQpvT4dCf4FPBS
-         g7aRfPyh6WAJy0ICwvF9iG3WBdYRpPmPhbmuQFBjVFbZPbee2RDEhoM+EVXbH4C36P
-         x+OB4+lHpUv8zRu2dBw9KxvcLRFBFgkekRKxyoIU5aXjC1IQ9YxgTEeSAlDdLKgg7K
-         6GN1GXkaWKEdwMfxv60f3a+j4hh3KhjCVprcBg7OeEbszHtqr1DyQs3YqMfiuwD7ZX
-         2W906i17Mqqdg==
+        b=QMlADQyV+l5JIC6W3FsXInhHu+K2hWSQmdxC3iN2Udrswg2TwGByEsyZkEX1aK4b1
+         8jC8jTYBscaIRkA9HQDFUEVaW2KIKaiOHD9O2BKf5PawlCBZakft9fAwTJ5Gs1jQ6F
+         Ni3Je07ftk9z0gzeVdZ0aSk3fzak0MNYarDsReqbMZ4NEh7r7TM4LVPGUOB3T2j9WS
+         8dLCd+/tkaYPBG+tuEJyhUJ0BV0IA6xuR1dSKhlnQgGhDmUBw6A/72C0WDR06m29Kl
+         bZpVBo7RdXw7Ex7hQ2TqHksNPj0erQyeh/Px22dOFzVk+8gqE7DhqBGFzeWsmnz0rn
+         oPC+5txfrrhBw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        Daire Byrne <daire@dneg.com>,
         Chuck Lever <chuck.lever@oracle.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 120/176] rpc: fix gss_svc_init cleanup on failure
-Date:   Thu,  9 Sep 2021 07:50:22 -0400
-Message-Id: <20210909115118.146181-120-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.10 129/176] lockd: lockd server-side shouldn't set fl_ops
+Date:   Thu,  9 Sep 2021 07:50:31 -0400
+Message-Id: <20210909115118.146181-129-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210909115118.146181-1-sashal@kernel.org>
 References: <20210909115118.146181-1-sashal@kernel.org>
@@ -53,30 +53,81 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-[ Upstream commit 5a4753446253a427c0ff1e433b9c4933e5af207c ]
+[ Upstream commit 7de875b231edb807387a81cde288aa9e1015ef9e ]
 
-The failure case here should be rare, but it's obviously wrong.
+Locks have two sets of op arrays, fl_lmops for the lock manager (lockd
+or nfsd), fl_ops for the filesystem.  The server-side lockd code has
+been setting its own fl_ops, which leads to confusion (and crashes) in
+the reexport case, where the filesystem expects to be the only one
+setting fl_ops.
 
+And there's no reason for it that I can see-the lm_get/put_owner ops do
+the same job.
+
+Reported-by: Daire Byrne <daire@dneg.com>
+Tested-by: Daire Byrne <daire@dneg.com>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/lockd/svclock.c | 30 ++++++++++++------------------
+ 1 file changed, 12 insertions(+), 18 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 6dff64374bfe..e22f2d65457d 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1980,7 +1980,7 @@ gss_svc_init_net(struct net *net)
- 		goto out2;
- 	return 0;
- out2:
--	destroy_use_gss_proxy_proc_entry(net);
-+	rsi_cache_destroy_net(net);
- out1:
- 	rsc_cache_destroy_net(net);
- 	return rv;
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 61d3cc2283dc..1781fc5e9091 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -395,28 +395,10 @@ nlmsvc_release_lockowner(struct nlm_lock *lock)
+ 		nlmsvc_put_lockowner(lock->fl.fl_owner);
+ }
+ 
+-static void nlmsvc_locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+-{
+-	struct nlm_lockowner *nlm_lo = (struct nlm_lockowner *)fl->fl_owner;
+-	new->fl_owner = nlmsvc_get_lockowner(nlm_lo);
+-}
+-
+-static void nlmsvc_locks_release_private(struct file_lock *fl)
+-{
+-	nlmsvc_put_lockowner((struct nlm_lockowner *)fl->fl_owner);
+-}
+-
+-static const struct file_lock_operations nlmsvc_lock_ops = {
+-	.fl_copy_lock = nlmsvc_locks_copy_lock,
+-	.fl_release_private = nlmsvc_locks_release_private,
+-};
+-
+ void nlmsvc_locks_init_private(struct file_lock *fl, struct nlm_host *host,
+ 						pid_t pid)
+ {
+ 	fl->fl_owner = nlmsvc_find_lockowner(host, pid);
+-	if (fl->fl_owner != NULL)
+-		fl->fl_ops = &nlmsvc_lock_ops;
+ }
+ 
+ /*
+@@ -788,9 +770,21 @@ nlmsvc_notify_blocked(struct file_lock *fl)
+ 	printk(KERN_WARNING "lockd: notification for unknown block!\n");
+ }
+ 
++static fl_owner_t nlmsvc_get_owner(fl_owner_t owner)
++{
++	return nlmsvc_get_lockowner(owner);
++}
++
++static void nlmsvc_put_owner(fl_owner_t owner)
++{
++	nlmsvc_put_lockowner(owner);
++}
++
+ const struct lock_manager_operations nlmsvc_lock_operations = {
+ 	.lm_notify = nlmsvc_notify_blocked,
+ 	.lm_grant = nlmsvc_grant_deferred,
++	.lm_get_owner = nlmsvc_get_owner,
++	.lm_put_owner = nlmsvc_put_owner,
+ };
+ 
+ /*
 -- 
 2.30.2
 
