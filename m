@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C614C4167B
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB28DC433F5
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4079961132
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B013961132
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237322AbhIIUOr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 9 Sep 2021 16:14:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39416 "EHLO
+        id S233539AbhIIUOt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 9 Sep 2021 16:14:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39442 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236112AbhIIUOl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Sep 2021 16:14:41 -0400
-Received: from mail-qk1-x72a.google.com (mail-qk1-x72a.google.com [IPv6:2607:f8b0:4864:20::72a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6D1DC06175F
-        for <linux-nfs@vger.kernel.org>; Thu,  9 Sep 2021 13:13:31 -0700 (PDT)
-Received: by mail-qk1-x72a.google.com with SMTP id t4so3247045qkb.9
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Sep 2021 13:13:31 -0700 (PDT)
+        with ESMTP id S243937AbhIIUOp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Sep 2021 16:14:45 -0400
+Received: from mail-qk1-x72d.google.com (mail-qk1-x72d.google.com [IPv6:2607:f8b0:4864:20::72d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA537C061574
+        for <linux-nfs@vger.kernel.org>; Thu,  9 Sep 2021 13:13:35 -0700 (PDT)
+Received: by mail-qk1-x72d.google.com with SMTP id w78so3264212qkb.4
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Sep 2021 13:13:35 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=2utUcaXAd/i/w9V0u3PglG1Wj0eW6eEYlOzXf46pLKk=;
-        b=PNOdwT1jtwXkpQHFi8GzjvxGr83M7WEFKtafLmB1kpgi6dp5vxhXCtzqBiAuDlP/3x
-         5BuwdJQM2O9mp+MVQZiAMBPgBUHOrLky+fRr4oQFkMzNoN3KXLhI3c8U1btUC+frN66r
-         uZQlPqth2VNj0SRIdeM5hoDu5g4ZdPrSS9kO5hUiwqD+mSkBPNcRWijhprg7YmTRQwZs
-         H8qh1YOqvkiRjm1k5oc7y2f1aM7ks1u5Tz9ukAdB9k2SJYz1GqMsewnWJIuR3vtxQy5q
-         EQ+R9ujLX2RTOIMy1R2WzoxsmzwMDAvg2paliP0Yd0wFEdMqvoZkS1kMALNHfJglpSDF
-         /b6g==
+        bh=lwAbs3wDGAVnfY2/5dZoA7jR6MbS7MCArmExUy9Gbnk=;
+        b=avbU+grUo+/gnYaBS3XmdykzIsfIa+GAz7DTAwu/tLslEG86ZQAWlpQLGmPsmIqxKR
+         xhq4+jyUhpL0X3p5j6o9hpkwprXg3qyYp8H9LH+0JmyEnapfA/3GZvfg//vkx2Hl0mmS
+         tGPhvHQrm0cPTtOzV8xSBB0s8xmwudKNlPLVtRC2J8HwubRDZphibDxTEb4zuIydIM89
+         yuFiOqd0bCdgYGAbS3635GDj0IIVlMqWHq0HoA7pyf7GsEMkWXRP5li0u7kManA1AYsX
+         8VI3e/fF6sl3ymyFPYfIjw/+fDAafz5ILa0/1unBgXc3k7FsE3wPrLqLVX2pxojNYA3O
+         g8fg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=2utUcaXAd/i/w9V0u3PglG1Wj0eW6eEYlOzXf46pLKk=;
-        b=aN39EF6NK86msiRO784DbrMfPG11FWGwkRCFA8s3HDTRnf9BTGUJZ+IQkCdvr8nbe2
-         fok73sM8JEOrqGG1X+wVZcQLVyvXysoPISJZJMeL1wp87Rk8r+hYDi6o1zWfQKrf8WTa
-         9V0XwtHc5a56/WVLAgjTT4gXv078gDnTlmEQkHrguVHhxeByjMTfVe95D1jBfsHsIa/s
-         1W3NsJ65TcAQzZsvhVSTkt3h8bLY+gyUr16tvSte/qTtp1Aaiabhcba16Hj/k6rrDbrS
-         Qrpg6T6O5nRtEUWKHVrrufdsr16wxinMSRpNl1u6xo5AoNQbL5VXPBBdRc2hSck75eU1
-         bZXQ==
-X-Gm-Message-State: AOAM532yj7gVp+i0FvKfTPhEKrdjvPOgkb5ZN4ukFn9q9caYMynMEAc4
-        gEoNGvttOQN1WWbWm+isZLpDDk2p0RY=
-X-Google-Smtp-Source: ABdhPJw7XFzqzMAhM0LOV8RdyXL600jJhqpNozFgan+c4Zys425aBt5rfeCcvvBgMx5yFqP90lWMHg==
-X-Received: by 2002:ae9:f701:: with SMTP id s1mr4621353qkg.223.1631218410861;
-        Thu, 09 Sep 2021 13:13:30 -0700 (PDT)
+        bh=lwAbs3wDGAVnfY2/5dZoA7jR6MbS7MCArmExUy9Gbnk=;
+        b=vfhPVVv3vNEiLFc19jUfHoS85joM3nzxM0xlw3qQ/wbC/PODFDR4RHnnTKhbCg+k+D
+         AZ1uHFM8AIi9JBVMQFpZgoEbz755u/hCK7vK0eLn7dXqN1eoVJ42iQ+WjrexF9QfB6il
+         /LfH6SDaTE1RD/h+BWZDouGuU/rCueX7DNn/BBMBZ2k4URiK81nogkPeinvAqrW8HEVN
+         lJjhx6GiCLKDj7NG+7PBvXlBY4IuD+fypbTITQ09g/B+XvZGeGAUwpIZncBjmh/DoqZ/
+         YXIJVfvzlbjerSIZhYA4i+BmozlbefAhlHJRTl9PR7I7wjT2JlA+3ylx1JWurHNDCpIb
+         txRQ==
+X-Gm-Message-State: AOAM533i3QDRnBtM3cpqIcIpHrAvfAMA4e4/YdGGkpYpo1hp+OiMwfDv
+        Cv/sEh778K1EdSDQatFriVu6CVW185g=
+X-Google-Smtp-Source: ABdhPJxB/I/VneLJUwcClVgAq9r117rdexc+y5j2u3VvzlYjjKm8pBCYHVr50wgFo0AsfLhHvkj9sQ==
+X-Received: by 2002:a37:68d0:: with SMTP id d199mr4441664qkc.96.1631218414861;
+        Thu, 09 Sep 2021 13:13:34 -0700 (PDT)
 Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id l13sm2104020qkp.97.2021.09.09.13.13.30
+        by smtp.gmail.com with ESMTPSA id l13sm2104020qkp.97.2021.09.09.13.13.34
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 09 Sep 2021 13:13:30 -0700 (PDT)
+        Thu, 09 Sep 2021 13:13:34 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH 04/14] NFS: Remove the nfs4_label from the nfs4_link_res struct
-Date:   Thu,  9 Sep 2021 16:13:17 -0400
-Message-Id: <20210909201327.108759-5-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 10/14] NFS: Remove the nfs4_label argument from nfs_instantiate()
+Date:   Thu,  9 Sep 2021 16:13:23 -0400
+Message-Id: <20210909201327.108759-11-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.33.0
 In-Reply-To: <20210909201327.108759-1-Anna.Schumaker@Netapp.com>
 References: <20210909201327.108759-1-Anna.Schumaker@Netapp.com>
@@ -75,87 +75,101 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Again, use the fattr's label field instead.
+Pull the label from the fattr instead.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c       | 16 +++-------------
- fs/nfs/nfs4xdr.c        |  2 +-
- include/linux/nfs_xdr.h |  1 -
- 3 files changed, 4 insertions(+), 15 deletions(-)
+ fs/nfs/dir.c           | 5 ++---
+ fs/nfs/nfs4proc.c      | 2 +-
+ fs/nfs/proc.c          | 8 ++++----
+ include/linux/nfs_fs.h | 2 +-
+ 4 files changed, 8 insertions(+), 9 deletions(-)
 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 7692d932add9..77bcafc692c3 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2073,12 +2073,11 @@ EXPORT_SYMBOL_GPL(nfs_add_or_obtain);
+  * Code common to create, mkdir, and mknod.
+  */
+ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
+-				struct nfs_fattr *fattr,
+-				struct nfs4_label *label)
++				struct nfs_fattr *fattr)
+ {
+ 	struct dentry *d;
+ 
+-	d = nfs_add_or_obtain(dentry, fhandle, fattr, label);
++	d = nfs_add_or_obtain(dentry, fhandle, fattr, fattr->label);
+ 	if (IS_ERR(d))
+ 		return PTR_ERR(d);
+ 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 06569a35a6df..fed15eafc03b 100644
+index a3b204f2f85c..b36cea00977d 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -4791,7 +4791,6 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 	};
- 	struct nfs4_link_res res = {
- 		.server = server,
--		.label = NULL,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LINK],
-@@ -4800,18 +4799,12 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 	};
- 	int status = -ENOMEM;
- 
--	res.fattr = nfs_alloc_fattr();
-+	res.fattr = nfs_alloc_fattr_with_label(server);
- 	if (res.fattr == NULL)
- 		goto out;
- 
--	res.label = nfs4_label_alloc(server, GFP_KERNEL);
--	if (IS_ERR(res.label)) {
--		status = PTR_ERR(res.label);
--		goto out;
--	}
--
- 	nfs4_inode_make_writeable(inode);
--	nfs4_bitmap_copy_adjust(bitmask, nfs4_bitmask(server, res.label), inode,
-+	nfs4_bitmap_copy_adjust(bitmask, nfs4_bitmask(server, res.fattr->label), inode,
- 				NFS_INO_INVALID_CHANGE);
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
-@@ -4820,12 +4813,9 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 		nfs4_inc_nlink(inode);
- 		status = nfs_post_op_update_inode(inode, res.fattr);
- 		if (!status)
--			nfs_setsecurity(inode, res.fattr, res.label);
-+			nfs_setsecurity(inode, res.fattr, res.fattr->label);
+@@ -4860,7 +4860,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 					      data->res.fattr->time_start,
+ 					      NFS_INO_INVALID_DATA);
+ 		spin_unlock(&dir->i_lock);
+-		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr, data->res.fattr->label);
++		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr);
  	}
- 
--
--	nfs4_label_free(res.label);
--
- out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 98594a97529d..4ce6d2430ff1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -6331,7 +6331,7 @@ static int nfs4_xdr_dec_link(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_restorefh(xdr);
- 	if (status)
- 		goto out;
--	decode_getfattr_label(xdr, res->fattr, res->label, res->server);
-+	decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
- out:
  	return status;
  }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5aba81b74c98..d55bf3fd5167 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1079,7 +1079,6 @@ struct nfs4_link_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
--	struct nfs4_label		*label;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
- };
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index d941cd0fe34d..3d494057dbfc 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -255,7 +255,7 @@ nfs_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+ 	nfs_mark_for_revalidate(dir);
+ 	if (status == 0)
+-		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr, NULL);
++		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr);
+ 	nfs_free_createdata(data);
+ out:
+ 	dprintk("NFS reply create: %d\n", status);
+@@ -302,7 +302,7 @@ nfs_proc_mknod(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 		status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+ 	}
+ 	if (status == 0)
+-		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr, NULL);
++		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr);
+ 	nfs_free_createdata(data);
+ out:
+ 	dprintk("NFS reply mknod: %d\n", status);
+@@ -434,7 +434,7 @@ nfs_proc_symlink(struct inode *dir, struct dentry *dentry, struct page *page,
+ 	 * should fill in the data with a LOOKUP call on the wire.
+ 	 */
+ 	if (status == 0)
+-		status = nfs_instantiate(dentry, fh, fattr, NULL);
++		status = nfs_instantiate(dentry, fh, fattr);
+ 
+ out_free:
+ 	nfs_free_fattr(fattr);
+@@ -463,7 +463,7 @@ nfs_proc_mkdir(struct inode *dir, struct dentry *dentry, struct iattr *sattr)
+ 	status = rpc_call_sync(NFS_CLIENT(dir), &msg, 0);
+ 	nfs_mark_for_revalidate(dir);
+ 	if (status == 0)
+-		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr, NULL);
++		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr);
+ 	nfs_free_createdata(data);
+ out:
+ 	dprintk("NFS reply mkdir: %d\n", status);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 597311a063fd..07d4cd27111f 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -522,7 +522,7 @@ extern struct dentry *nfs_add_or_obtain(struct dentry *dentry,
+ 			struct nfs_fh *fh, struct nfs_fattr *fattr,
+ 			struct nfs4_label *label);
+ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh,
+-			struct nfs_fattr *fattr, struct nfs4_label *label);
++			struct nfs_fattr *fattr);
+ extern int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags);
+ extern void nfs_access_zap_cache(struct inode *inode);
+ extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res,
 -- 
 2.33.0
 
