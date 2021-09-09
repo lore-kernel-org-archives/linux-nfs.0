@@ -7,42 +7,42 @@ X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36F24C433EF
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 12:56:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B88F8C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 13:16:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 209AB60555
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 12:56:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A437860F93
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 13:16:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354427AbhIIM5x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 9 Sep 2021 08:57:53 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40918 "EHLO mail.kernel.org"
+        id S1346991AbhIINRX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 9 Sep 2021 09:17:23 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46260 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1353357AbhIIMtJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Sep 2021 08:49:09 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 3C4E463211;
-        Thu,  9 Sep 2021 11:56:41 +0000 (UTC)
+        id S1357663AbhIINDP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Sep 2021 09:03:15 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 418C263281;
+        Thu,  9 Sep 2021 11:59:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1631188602;
-        bh=/Mc2ln3JnejyRuR3H4GwKJgFRcdTutqOBtrVfUGEjlA=;
+        s=k20201202; t=1631188790;
+        bh=OTeBBEk+/aMmAs7ageVFeEy3xXpZOhG0XdHKbdu/UtM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=iTaMZ7O2nuZ9F5/X9SzpyUZCl7ZFvL0w9tNnelP3Tqv+/zFQDTy7cuzBKEe0/tu/D
-         rz92xdw7qXt4ATc25tiLFUksTIrs4iLUG6IvnHyjpNt6VA/MxJBOIekSVZkHExodVy
-         yc4XBVAlVgYZHIhrN57KlkxiMlT69ZGPcLSxOsJQ8NsEIwd8bu+LQy78VYMHnk+a7+
-         092sAdLkQGAv9MaU4XTqC41wIo9fAkB+N3qgBWAe976rcOJUdI/LK0Mrzov2+PnSYp
-         /UV2JdsOjxK+lpmW0lvt631jT7oFSe7d849AmB6ny173LXY1YLwwJCZ9CIYxOpnYM0
-         mXlWaCN1Yy3vA==
+        b=uQToCvwT6gKsqgzEwik+CHwmZQzvcb+qrLcIxxkwA0OgQnWsODLYLIsL0ZA3HXxwT
+         sdTPrTNgWPqzohMSRSCb4ecryEFUdaFthxOQkX6S5goqM6asNX99tc93FrBo7wdNxf
+         dzGwZrXIMlY63Ewhe6btN53ZEVnqFTo8RK02ZkZ93fDi83GuEOi2DrZIp1ALHQUxD0
+         ZotmefDg0t8QlUYYmwZtVuuG05XUlVZL+U5LA4tcDuHvzDfH4lLV6g4W5FuYo8ck5S
+         CiSjWtUExmiPZ9tC1iTXtcrCpat0eA7jPcMOFaWbeYQ4H2p6Ddyf6xYietABvecoeE
+         Bo+2R81ZEiKaw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 074/109] rpc: fix gss_svc_init cleanup on failure
-Date:   Thu,  9 Sep 2021 07:54:31 -0400
-Message-Id: <20210909115507.147917-74-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 39/59] rpc: fix gss_svc_init cleanup on failure
+Date:   Thu,  9 Sep 2021 07:58:40 -0400
+Message-Id: <20210909115900.149795-39-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210909115507.147917-1-sashal@kernel.org>
-References: <20210909115507.147917-1-sashal@kernel.org>
+In-Reply-To: <20210909115900.149795-1-sashal@kernel.org>
+References: <20210909115900.149795-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -65,10 +65,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index d5470c7fe879..c0016473a255 100644
+index 27dfd85830d8..4f41a1bc59bf 100644
 --- a/net/sunrpc/auth_gss/svcauth_gss.c
 +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1937,7 +1937,7 @@ gss_svc_init_net(struct net *net)
+@@ -1861,7 +1861,7 @@ gss_svc_init_net(struct net *net)
  		goto out2;
  	return 0;
  out2:
