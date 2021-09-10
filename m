@@ -2,241 +2,124 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 85D22C433FE
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C7FBDC433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Sep 2021 00:43:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6C5FB61132
-	for <linux-nfs@archiver.kernel.org>; Thu,  9 Sep 2021 20:13:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B736760C40
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Sep 2021 00:43:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243937AbhIIUOu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 9 Sep 2021 16:14:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39452 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235619AbhIIUOr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Sep 2021 16:14:47 -0400
-Received: from mail-qk1-x731.google.com (mail-qk1-x731.google.com [IPv6:2607:f8b0:4864:20::731])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F00EC061574
-        for <linux-nfs@vger.kernel.org>; Thu,  9 Sep 2021 13:13:37 -0700 (PDT)
-Received: by mail-qk1-x731.google.com with SMTP id p4so3270702qki.3
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Sep 2021 13:13:37 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=e+OL4sC5rvAFPkL9NDQv3YKHpoII8ADkjRXH6q0GAII=;
-        b=ltVuEtXDIN/Z5BL6WnDNJAzyCjQdQ5XYtklxk/cxFELnJEpCvQyvK1lLI18fVZ3hux
-         UBKuxXn7jXhVdXLDFDuQnqOjFe/nNoLZwKkyP/rITlbxMakF5GZDOu5eh/z+CqjpH1BZ
-         HLCxOt6GSQTNwyXLAQqL15ipJPfOtTjZfoP9GsYxjIkcIug4I8P0/MNkWGJs9Xjg8PBB
-         7EGZC8whxtv5LrvxqfmrudwZEEAfpZGkeNbDz43lpwOmz3RcY97d/t9zRkYyDp2ct9iz
-         /v2k+iiCG4NN+jQkULACZ6L5+2nRGBh26s9mqjYl3zMFEZMwE5go1OxEBuQkQ3VibYsn
-         E/Ww==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=e+OL4sC5rvAFPkL9NDQv3YKHpoII8ADkjRXH6q0GAII=;
-        b=A8v+/FKi2hc7lDGOD2V/3bSQNhzTRxKXvi61q7Q3d2gqDcfVBhcsKf4NYtOTgDITGl
-         Q5kUovBI9yL6sHtmjxi4sspofy9ZdLn3NJkrmXEBwESvbY5sFB36ojXGm43gzzNROBRN
-         xQxcmjfK8Wm2wg6U/iLBM/D5+bEbRz5QWDKJ7afYs1rQxXfYwPLbrcqAqTlCoVxum6kN
-         gRKrSqp2qy6KCXlZ2JfgUWw11B8r7qyYcUhBNPXC741kaahK0TlN1ALRncM2ILZhh7X3
-         MPXlgiszEw0BbXv4WOug8YqhJ1t6TkWQWVSKipWfEcDIbLt+8lFfxTsrJt+P+/cH7aT/
-         ofSA==
-X-Gm-Message-State: AOAM532U0Hhyk3PKCKoydiHfezJ6BWSAN+QqiL4288L/Ql3scPfI+oQp
-        61hLa/LetQq2XZAS4qos1NE=
-X-Google-Smtp-Source: ABdhPJyb+04gnfoLKb8kH2ZCJ4eiLNIZhmc719IJOgvgVEcxqlzGLuByMaFPXq3gdc8/Eh5zDv3FMQ==
-X-Received: by 2002:a05:620a:1334:: with SMTP id p20mr4509523qkj.139.1631218416641;
-        Thu, 09 Sep 2021 13:13:36 -0700 (PDT)
-Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id l13sm2104020qkp.97.2021.09.09.13.13.36
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 09 Sep 2021 13:13:36 -0700 (PDT)
-Sender: Anna Schumaker <schumakeranna@gmail.com>
-From:   schumaker.anna@gmail.com
-X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH 13/14] NFS: Remove the nfs4_label argument from nfs_setsecurity
-Date:   Thu,  9 Sep 2021 16:13:26 -0400
-Message-Id: <20210909201327.108759-14-Anna.Schumaker@Netapp.com>
-X-Mailer: git-send-email 2.33.0
-In-Reply-To: <20210909201327.108759-1-Anna.Schumaker@Netapp.com>
-References: <20210909201327.108759-1-Anna.Schumaker@Netapp.com>
+        id S229749AbhIJAo7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 9 Sep 2021 20:44:59 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44584 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S231461AbhIJASG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Sep 2021 20:18:06 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 8EBFC611C1;
+        Fri, 10 Sep 2021 00:16:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1631233009;
+        bh=gwRwG4G4N8PGqxgHm684roFXH4gnD9B5AOdGvL2KIko=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=a8/3PmeqlFM9eIyf3fy2QcKKkRdDAUO80tj7OfcKXfDBML2Kb+2NKTK1/4ryCauNV
+         PKqmZoLEYYthivHDqtnSaBNTXHUE2DAsqeLJojLjD2vc7NFuRW57LBQSn6GSLfUeFR
+         eBwjKN8ZB1LAUwUTf0jX5CWjHlkM4Ovj2vPxO7fEVOXtFM1jBU22PIDesq184s0nXZ
+         8Ykda7ZfxzZC1HSJS/ZdzhwsVMrtrhG1QxnUmH2/NnPA/m/PFxf2Mwk4doMkmPqME2
+         NVeRrffFYvi80uk5puTevRQedg8ooLmq2sck2xqgOfJe4AjIfNsaCpbnBlIcv6BF52
+         bC/Xz6+7md+DA==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.14 36/99] xprtrdma: Disconnect after an ib_post_send() immediate error
+Date:   Thu,  9 Sep 2021 20:14:55 -0400
+Message-Id: <20210910001558.173296-36-sashal@kernel.org>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210910001558.173296-1-sashal@kernel.org>
+References: <20210910001558.173296-1-sashal@kernel.org>
 MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 
+[ Upstream commit 1143129e4d0d27740ce680d2fb0161ad4f27aa7e ]
+
+ib_post_send() does not disconnect the QP when it returns an
+immediate error. Thus, the code that posts LocalInv has to
+explicitly disconnect after an immediate error. This is just
+like the frwr_send() callers handle it.
+
+If a disconnect isn't done here, the transport deadlocks.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/dir.c           |  5 ++---
- fs/nfs/getroot.c       |  2 +-
- fs/nfs/inode.c         | 20 +++++++++-----------
- fs/nfs/nfs4proc.c      |  9 ++++-----
- include/linux/nfs_fs.h |  3 +--
- 5 files changed, 17 insertions(+), 22 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  | 8 ++++++++
+ net/sunrpc/xprtrdma/verbs.c     | 2 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h | 1 +
+ 3 files changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index a34cbdd2b632..bb8b1f7dcbed 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -680,8 +680,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
- 			nfs_set_verifier(dentry, dir_verifier);
- 			status = nfs_refresh_inode(d_inode(dentry), entry->fattr);
- 			if (!status)
--				nfs_setsecurity(d_inode(dentry), entry->fattr,
--						entry->fattr->label);
-+				nfs_setsecurity(d_inode(dentry), entry->fattr);
- 			goto out;
- 		} else {
- 			d_invalidate(dentry);
-@@ -1517,7 +1516,7 @@ nfs_lookup_revalidate_dentry(struct inode *dir, struct dentry *dentry,
- 	if (nfs_refresh_inode(inode, fattr) < 0)
- 		goto out;
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 229fcc9a9064..754c5dffe127 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -557,6 +557,10 @@ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
  
--	nfs_setsecurity(inode, fattr, fattr->label);
-+	nfs_setsecurity(inode, fattr);
- 	nfs_set_verifier(dentry, dir_verifier);
- 
- 	/* set a readdirplus hint that we had a cache miss */
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 0aedee201166..11ff2b2e060f 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -148,7 +148,7 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
- 		!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
- 		server->caps &= ~NFS_CAP_SECURITY_LABEL;
- 
--	nfs_setsecurity(inode, fsinfo.fattr, fsinfo.fattr->label);
-+	nfs_setsecurity(inode, fsinfo.fattr);
- 	error = 0;
- 
- out_fattr:
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 4b20ce19c90e..d109df27c8c6 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -350,23 +350,22 @@ static void nfs_clear_label_invalid(struct inode *inode)
- 	spin_unlock(&inode->i_lock);
+ 	/* On error, the MRs get destroyed once the QP has drained. */
+ 	trace_xprtrdma_post_linv_err(req, rc);
++
++	/* Force a connection loss to ensure complete recovery.
++	 */
++	rpcrdma_force_disconnect(ep);
  }
  
--void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
--					struct nfs4_label *label)
-+void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr)
+ /**
+@@ -653,4 +657,8 @@ void frwr_unmap_async(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	 * retransmission.
+ 	 */
+ 	rpcrdma_unpin_rqst(req->rl_reply);
++
++	/* Force a connection loss to ensure complete recovery.
++	 */
++	rpcrdma_force_disconnect(ep);
+ }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 649c23518ec0..c1797ea19418 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -124,7 +124,7 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
+  * connection is closed or lost. (The important thing is it needs
+  * to be invoked "at least" once).
+  */
+-static void rpcrdma_force_disconnect(struct rpcrdma_ep *ep)
++void rpcrdma_force_disconnect(struct rpcrdma_ep *ep)
  {
- 	int error;
- 
--	if (label == NULL)
-+	if (fattr->label == NULL)
- 		return;
- 
- 	if ((fattr->valid & NFS_ATTR_FATTR_V4_SECURITY_LABEL) && inode->i_security) {
--		error = security_inode_notifysecctx(inode, label->label,
--				label->len);
-+		error = security_inode_notifysecctx(inode, fattr->label->label,
-+				fattr->label->len);
- 		if (error)
- 			printk(KERN_ERR "%s() %s %d "
- 					"security_inode_notifysecctx() %d\n",
- 					__func__,
--					(char *)label->label,
--					label->len, error);
-+					(char *)fattr->label->label,
-+					fattr->label->len, error);
- 		nfs_clear_label_invalid(inode);
- 	}
- }
-@@ -397,8 +396,7 @@ struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
- }
- EXPORT_SYMBOL_GPL(nfs4_label_alloc);
- #else
--void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
--					struct nfs4_label *label)
-+void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr)
- {
- }
- #endif
-@@ -563,7 +561,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 			   fattr->size != 0)
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
- 
--		nfs_setsecurity(inode, fattr, fattr->label);
-+		nfs_setsecurity(inode, fattr);
- 
- 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 		nfsi->attrtimeo_timestamp = now;
-@@ -1233,7 +1231,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
- 		nfs_zap_acl_cache(inode);
- 
--	nfs_setsecurity(inode, fattr, fattr->label);
-+	nfs_setsecurity(inode, fattr);
- 
- 	dfprintk(PAGECACHE, "NFS: (%s/%Lu) revalidation complete\n",
- 		inode->i_sb->s_id,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 975177959e07..02c546f1cf5d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3179,8 +3179,7 @@ static int _nfs4_do_open(struct inode *dir,
- 			if (status == 0) {
- 				nfs_setattr_update_inode(state->inode, sattr,
- 						opendata->o_res.f_attr);
--				nfs_setsecurity(state->inode, opendata->o_res.f_attr,
--						opendata->o_res.f_attr->label);
-+				nfs_setsecurity(state->inode, opendata->o_res.f_attr);
- 			}
- 			sattr->ia_valid = ia_old;
- 		}
-@@ -4262,7 +4261,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	status = nfs4_do_setattr(inode, cred, fattr, sattr, ctx, NULL);
- 	if (status == 0) {
- 		nfs_setattr_update_inode(inode, sattr, fattr);
--		nfs_setsecurity(inode, fattr, fattr->label);
-+		nfs_setsecurity(inode, fattr);
- 	}
- 	return status;
- }
-@@ -4783,7 +4782,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 		nfs4_inc_nlink(inode);
- 		status = nfs_post_op_update_inode(inode, res.fattr);
- 		if (!status)
--			nfs_setsecurity(inode, res.fattr, res.fattr->label);
-+			nfs_setsecurity(inode, res.fattr);
- 	}
- 
- out:
-@@ -6080,7 +6079,7 @@ nfs4_set_security_label(struct inode *inode, const void *buf, size_t buflen)
- 
- 	status = nfs4_do_set_security_label(inode, &ilabel, fattr);
- 	if (status == 0)
--		nfs_setsecurity(inode, fattr, fattr->label);
-+		nfs_setsecurity(inode, fattr);
- 
- 	return status;
- }
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 6fd5ee9c23bb..a4c285747537 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -399,8 +399,7 @@ extern int nfs_revalidate_mapping(struct inode *inode, struct address_space *map
- extern int nfs_revalidate_mapping_rcu(struct inode *inode);
- extern int nfs_setattr(struct user_namespace *, struct dentry *, struct iattr *);
- extern void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr, struct nfs_fattr *);
--extern void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
--				struct nfs4_label *label);
-+extern void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr);
- extern struct nfs_open_context *get_nfs_open_context(struct nfs_open_context *ctx);
- extern void put_nfs_open_context(struct nfs_open_context *ctx);
- extern struct nfs_open_context *nfs_find_open_context(struct inode *inode, const struct cred *cred, fmode_t mode);
+ 	if (atomic_add_unless(&ep->re_force_disconnect, 1, 1))
+ 		xprt_force_disconnect(ep->re_xprt);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 5d231d94e944..927e20a2c04e 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -454,6 +454,7 @@ extern unsigned int xprt_rdma_memreg_strategy;
+ /*
+  * Endpoint calls - xprtrdma/verbs.c
+  */
++void rpcrdma_force_disconnect(struct rpcrdma_ep *ep);
+ void rpcrdma_flush_disconnect(struct rpcrdma_xprt *r_xprt, struct ib_wc *wc);
+ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt);
+ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt);
 -- 
-2.33.0
+2.30.2
 
