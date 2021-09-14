@@ -2,156 +2,132 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7978EC433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Sep 2021 23:00:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A14B1C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 14 Sep 2021 00:27:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4E80460F11
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Sep 2021 23:00:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8456A6112E
+	for <linux-nfs@archiver.kernel.org>; Tue, 14 Sep 2021 00:27:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345363AbhIMXBl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Sep 2021 19:01:41 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:44158 "EHLO
+        id S238118AbhINA26 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Sep 2021 20:28:58 -0400
+Received: from smtp-out2.suse.de ([195.135.220.29]:55030 "EHLO
         smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344357AbhIMXBO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2021 19:01:14 -0400
+        with ESMTP id S236554AbhINA26 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2021 20:28:58 -0400
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 457A2200A9;
-        Mon, 13 Sep 2021 22:59:52 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 1FDF8200AB;
+        Tue, 14 Sep 2021 00:27:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1631573992; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1631579260; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=qcWfA5d+lR5YNPO7UjfSk/r4MnR7nuV2MelnKFymfFI=;
-        b=bFMb9r2E6Z1dQTvgeOsdXcvYuLV0jED1J2X8Rzpf8Ndy6dMhGEodOJ6BrFFDZmTFBLPkYt
-        vxaPKF3sPHjnKiPILhSOiBbgYnHsP0oN9w+LbIVbsnCU8afBQSfaZRaGo5DEWYbeVv0Jp/
-        pzxmWVAw1FCcDlpHSsdNz0aw42VLNuc=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=PFbh9I08qiRIpx/LwQHrN9x2N5uOULjufRHblHpoK4g=;
+        b=uuSgtJ0+FRAjj4cM0Uw3gizAGdSOZ9KZJdQa8Xe47I5rWpB/k4+CBglCk9ze0+ku71h0Kj
+        DLOGlj0TJIV61exkhj/GiPT941q/fF9d5QndRC2KIKAtbsWDv1tpN5woiO3T0qT26hW9qR
+        4D8sFiwSqMqGDl+rMHe/VXOuaFh4drI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1631573992;
+        s=susede2_ed25519; t=1631579260;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=qcWfA5d+lR5YNPO7UjfSk/r4MnR7nuV2MelnKFymfFI=;
-        b=x+LS/pYZq8OvczBtDA5aXDJMh656Qb42uLSsmq8qeH15lCy3n80dFbMAzHdCvjTTbL4ozr
-        H3e2zD8dJCc4caBA==
+         content-transfer-encoding:content-transfer-encoding;
+        bh=PFbh9I08qiRIpx/LwQHrN9x2N5uOULjufRHblHpoK4g=;
+        b=0FOlCmgmDR5J/+kI3Q4QjdyDlONqJLexEA9naFbBESq2iYI7TMeUTBl0wf8j5qeuc63GzD
+        MaW4gs77K7fW/GDg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A4CEE13BA9;
-        Mon, 13 Sep 2021 22:59:49 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B074513ADE;
+        Tue, 14 Sep 2021 00:27:36 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id JnnfGOXXP2G7TAAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 13 Sep 2021 22:59:49 +0000
+        id 4YCuG3jsP2ECawAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 14 Sep 2021 00:27:36 +0000
+From:   NeilBrown <neilb@suse.de>
+To:     Andrew Morton <akpm@linux-foundation.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Matthew Wilcox <willy@infradead.org>,
+        Mel Gorman <mgorman@suse.com>
+Date:   Tue, 14 Sep 2021 10:13:04 +1000
+Subject: [PATCH 0/6] congestion_wait() and GFP_NOFAIL
+Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org
+Message-ID: <163157808321.13293.486682642188075090.stgit@noble.brown>
+User-Agent: StGit/0.23
+MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Amir Goldstein" <amir73il@gmail.com>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        "Christoph Hellwig" <hch@infradead.org>,
-        "Chuck Lever" <chuck.lever@oracle.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        "Josef Bacik" <josef@toxicpanda.com>,
-        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
-        "Theodore Tso" <tytso@mit.edu>, "Jan Kara" <jack@suse.cz>
-Subject: Re: [PATCH v2] BTRFS/NFSD: provide more unique inode number for btrfs export
-In-reply-to: <CAOQ4uxgFf5c0to7f4cT9c9JwWisYRf-kxiZS4BuyXaQV=bLbJg@mail.gmail.com>
-References: <162995209561.7591.4202079352301963089@noble.neil.brown.name>,
- <162995778427.7591.11743795294299207756@noble.neil.brown.name>,
- <YSkQ31UTVDtBavOO@infradead.org>,
- <163010550851.7591.9342822614202739406@noble.neil.brown.name>,
- <YSnhHl0HDOgg07U5@infradead.org>,
- <163038594541.7591.11109978693705593957@noble.neil.brown.name>,
- <YS8ppl6SYsCC0cql@infradead.org>, <20210901152251.GA6533@fieldses.org>,
- <163055605714.24419.381470460827658370@noble.neil.brown.name>,
- <20210905160719.GA20887@fieldses.org>,
- <163089177281.15583.1479086104083425773@noble.neil.brown.name>,
- <CAOQ4uxjbjkqEEXTe7V4vaUUM1gyJwe6iSAaz=PdxJyU2M14K-w@mail.gmail.com>,
- <163149382437.8417.3479990258042844514@noble.neil.brown.name>,
- <CAOQ4uxgFf5c0to7f4cT9c9JwWisYRf-kxiZS4BuyXaQV=bLbJg@mail.gmail.com>
-Date:   Tue, 14 Sep 2021 08:59:46 +1000
-Message-id: <163157398661.3992.2107487416802405356@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 13 Sep 2021, Amir Goldstein wrote:
-> 
-> Right, so the right fix IMO would be to provide similar semantics
-> to the NFS client, like your first patch set tried to do.
-> 
+While working on an NFS issue recently I was informed (or maybe
+"reminded") that congestion_wait() doesn't really do what we think it
+does.   It is indistinguishable from schedule_timeout_uninterruptible().
 
-Like every other approach, this sounds good and sensible ...  until
-you examine the details.
+Some current users for congestion_wait() would be better suited by
+__GFP_NOFAIL.   In related discussions it was pointed out that the 
+__GFP_NOFAIL documentation could usefully clarify the costs of its use.
 
-For NFSv3 (RFC1813) this would be a protocol violation.
-Section 3.3.3 (LOOKUP) says:
-  A server will not allow a LOOKUP operation to cross a mountpoint to
-  the root of a different filesystem, even if the filesystem is
-  exported.
+So this set of patch addresses some of these issues.  The patches are
+all independent and can safely be applied separately in different tress
+as appropriate.
 
-The filesystem is represented by the fsid, so this implies that the fsid
-of an object reported by LOOKUP must be the same as the fsid of the
-directory used in the LOOKUP.
+They:
+ - add or improve documentation relating to these issues
+ - make a tiny fix to the page_alloc_bulk_*
+ - replace those calls to congestion_wait() which are simply waiting
+   to retry a memory allocation.
 
-Linux NFS does allow this restriction to be bypassed with the "crossmnt"
-export option.  Maybe if crossmnt were given it would be defensible to
-change the fsid - if crossmnt is not given, we leave the current
-behaviour.  Note that this is a hack and while it is extremely useful,
-it does not produce a seemly experience.  You can get exactly the same
-problems with "find" - just not as uniformly (mounting with "-o noac"
-makes them uniform).
+These are the easy bits.  There are 5 calls to congestion_wait() and one
+to wait_iff_congested() in mm/ which need consideration.  There are
+multiple calls to congestion_wait in fs/, particularly fs/f2fs/ which
+need to be addressed too.  I'll try to form an opinion about these in
+coming weeks.
 
-For NFSv4, we need to provide a "mounted-on" fileid for any mountpoint. 
-btrfs doesn't have a mounted-on fileid that can be used.  We can fake
-something that might work reasonably well - but it would be fake.  (but
-then ... btrfs already provided bogus information in getdents when there
-is a subvol root in the directory).
-
-But these are relatively minor.  The bigger problem is /proc/mounts.  If
-btrfs maintainers were willing to have every active subvolume appear in
-/proc/mounts, then I would be happy to fiddle the NFS fsid and allow
-every active NFS/btrfs subvolume to appear in /proc/mounts on the NFS
-client.  But they aren't.  So I am not.
-
-> > And I really don't see how an nfs export option would help...  Different
-> > people within and organisation and using the same export might have
-> > different expectations.
-> 
-> That's true.
-> But if admin decides to export a specific btrfs mount as a non-unified
-> filesystem, then NFS clients can decide whether ot not to auto-mount the
-> exported subvolumes and different users on the client machine can decide
-> if they want to rsync or rsync --one-file-system, just as they would with
-> local btrfs.
-> 
-> And maybe I am wrong, but I don't see how the decision on whether to
-> export a non-unified btrfs can be made a btrfs option or a nfsd global
-> option, that's why I ended up with export option.
-
-Just because a btrfs option and global nfsd option are bad, that doesn't
-mean an export option must be good.  It needs to be presented and
-defended on its own merits.
-
-My current opinion (and I must admit I am feeling rather jaded about the
-whole thing), is that while btrfs is a very interesting and valuable
-experiment in fs design, it contains core mistakes that cannot be
-incrementally fixed.  It should be marked as legacy with all current
-behaviour declared as intentional and not subject to change.  This would
-make way for a new "betrfs" which was designed based on all that we have
-learned.  It would use the same code base, but present a more coherent
-interface.  Exactly what that interface would be has yet to be decided,
-but we would not be bound to maintain anything just because btrfs
-supports it.
-
+Thanks,
 NeilBrown
+
+
+---
+
+NeilBrown (6):
+      MM: improve documentation for __GFP_NOFAIL
+      MM: annotate congestion_wait() and wait_iff_congested() as ineffective.
+      EXT4: Remove ENOMEM/congestion_wait() loops.
+      EXT4: remove congestion_wait from ext4_bio_write_page, and simplify
+      XFS: remove congestion_wait() loop from kmem_alloc()
+      XFS: remove congestion_wait() loop from xfs_buf_alloc_pages()
+
+
+ fs/ext4/ext4.h              |  2 +-
+ fs/ext4/ext4_jbd2.c         |  8 +++++-
+ fs/ext4/extents.c           | 49 ++++++++++++++-----------------------
+ fs/ext4/extents_status.c    | 35 ++++++++++++++------------
+ fs/ext4/extents_status.h    |  2 +-
+ fs/ext4/indirect.c          |  2 +-
+ fs/ext4/inode.c             |  6 ++---
+ fs/ext4/ioctl.c             |  4 +--
+ fs/ext4/page-io.c           | 13 ++++------
+ fs/ext4/super.c             |  2 +-
+ fs/jbd2/transaction.c       |  8 +++---
+ fs/xfs/kmem.c               | 16 +++---------
+ fs/xfs/xfs_buf.c            |  6 ++---
+ include/linux/backing-dev.h |  7 ++++++
+ mm/backing-dev.c            |  9 +++++++
+ 15 files changed, 86 insertions(+), 83 deletions(-)
+
+--
+Signature
+
