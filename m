@@ -4,57 +4,57 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B79D1C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 14 Sep 2021 07:40:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EEB2C433FE
+	for <linux-nfs@archiver.kernel.org>; Tue, 14 Sep 2021 07:41:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 92D9760238
-	for <linux-nfs@archiver.kernel.org>; Tue, 14 Sep 2021 07:40:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 29BF560F21
+	for <linux-nfs@archiver.kernel.org>; Tue, 14 Sep 2021 07:41:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241770AbhINHmF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 14 Sep 2021 03:42:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55126 "EHLO
+        id S231640AbhINHmg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 14 Sep 2021 03:42:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55150 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241507AbhINHla (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2021 03:41:30 -0400
-Received: from mail-pg1-x532.google.com (mail-pg1-x532.google.com [IPv6:2607:f8b0:4864:20::532])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D189C0617AF
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Sep 2021 00:38:00 -0700 (PDT)
-Received: by mail-pg1-x532.google.com with SMTP id s11so11924439pgr.11
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Sep 2021 00:38:00 -0700 (PDT)
+        with ESMTP id S241134AbhINHmA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Sep 2021 03:42:00 -0400
+Received: from mail-pg1-x52d.google.com (mail-pg1-x52d.google.com [IPv6:2607:f8b0:4864:20::52d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 394DFC06129D
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Sep 2021 00:38:30 -0700 (PDT)
+Received: by mail-pg1-x52d.google.com with SMTP id g184so11930805pgc.6
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Sep 2021 00:38:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=bytedance-com.20150623.gappssmtp.com; s=20150623;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=Ve9NmyEqViIV//dT1LdQKGfIMDinAsMmZ30wI0oWs1c=;
-        b=EK1/Er6hRnVX2fZvCHsw8jkFa2Ov0/UEkz1sfPKz4MtyYRIdqAmwWsSyxtzaII34Nz
-         9e83C/WbK0FuFRdNf91dfjq7dgGwtSNhk8uyhUMCzUu80LykfTTolGOAZVBRRERE/kYI
-         3rYNpkJXSsaVMbdOfjreRbbNjkfn+/koajYsJ9jNXdQZ4O33b/pzTWEC3+bG+sjaJ7SX
-         VWDLjdaBoB9i2RiWWJdxJdwSucyjxxkAx2LLpJhF7/Zq9fyIE2WQI5evsxwxJfVZegsK
-         89iWFS2Mf9N0+v5ulDPu020wnvrnVNS5QcIsoELSBgldNohXdvu4JkCxEdF+FV7U8lTF
-         Q5Cw==
+        bh=5L3/NHaCGqFlXi1PgtyPXPldesWisd5M2MzkdPFswpU=;
+        b=aawds+ZdgmQfgr4O19Bbjb1tnmHppDZeHQM28obpBAxc63f/d3ki+9vg8HMeNgCvZ9
+         l1fv4U38sV9NVGlyrHRR/L3biZ3qMuBgMcBJ9/4d/3OdwQf3VnFrxWRGbbepAVI7sArV
+         AfkHKSDuNhvgEgZEYICVo1qqRY2XolcCiBTM1eqKKDTjabKr7vU/Ew7prI441h+yxe0U
+         psjwfhIeEXa1UIUGkoULi4SOGfFHhOQyRxNyt5yf1UEVjJttnJu7DoFDtotNJ2hUvFWV
+         UUH2szXMKPJVLVV9cXPKc0GnOYjr5NDBAiQOCIjsR5oBilqlzVRdV4l0VMHkUaTBja1J
+         3l4A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=Ve9NmyEqViIV//dT1LdQKGfIMDinAsMmZ30wI0oWs1c=;
-        b=l3GE5vkTLe8yCoHo760S1ynTw8aCycp6IsrBwUICSKYYo4sy05BQ2so2zLpRl55Tev
-         zPQ8TXuhkeoui+EECITKR+EvjUvFt/NQ/89n1JO9bSXpsNXgeJrkLFcNXxWXlxXNKRbP
-         6PCI/jP6ePn+YzQM9QUYsariNQ1wTGppSPVWvAVnaQ/O7qQUrMmhDfiOv9zjjuMEaI7r
-         9Z/lESE0JDqaSC2L2MVZYC359OjXy/S/qpunSj4IaFp1kmOywvstXmUZbvutVnYFbm2H
-         euTrDZ3JEh5BJl40zuLAW0uy4auc0qkC7ahAAYPgRr5HQwxzvxW2hwaf/iUR4jYrP61u
-         p3wg==
-X-Gm-Message-State: AOAM5332+VDCe5vEpSUtDaNKZlh32ezXLIOfZi0ZAWoizXYb9TSqU0xx
-        JqlgtzN0qu2b4GEDXmgjEg8VLw==
-X-Google-Smtp-Source: ABdhPJzeNhtU+sPaFsnWmu7S41gs1Nsar9HXfmTanwRyM0Ad3KnBzwvJjy1sI44y8s95uozfMgdnWw==
-X-Received: by 2002:a63:da49:: with SMTP id l9mr14258029pgj.277.1631605080003;
-        Tue, 14 Sep 2021 00:38:00 -0700 (PDT)
+        bh=5L3/NHaCGqFlXi1PgtyPXPldesWisd5M2MzkdPFswpU=;
+        b=PsB3OD49Ig+r5EWWzJntftTbTkVfZUpVFIrgLba+2/4SnbUO9imxxpsaeXF8Degqft
+         Qdz9g6F+VLQS4wbH1YgLvqaCwtNaIeGlxeskNGTUI1/OVDn4gMxEZLQZLjGxR3wC0pk9
+         ka+1IaSD5swWOye3ceTIG7Hpy9S2YODYbuss18eQeSHPBYLoHG92Dfm3rDvj/BtK5iBS
+         HDgxRVp0ggi1uzvowR4hMstZ0hP3rHrZV1U7w0m0kGkPCBu8EHQPZbsJ7eP++ZXqqe7s
+         N8Y+ptOqFOO/cFamy40APxaNu8GN9XK6waCBTaFnUz9em7C5s8YVhxa0+AhIp8Ttg8bS
+         TrgA==
+X-Gm-Message-State: AOAM532sU7gWFYKSwsNKj3ykndRtHFHrNhQUaQfVFdIHaIsKzGkYFE+k
+        nDPrLBL9YIZ8bBH87X7T/iT8ndqT30fvUQ==
+X-Google-Smtp-Source: ABdhPJy8+rOLc14+gnFDljhOryw2SP31lFSN5DwaxpCdBACFxg01n2dIXxGl5EEh/bqyueZ408ipGg==
+X-Received: by 2002:a63:7454:: with SMTP id e20mr14244578pgn.136.1631605109791;
+        Tue, 14 Sep 2021 00:38:29 -0700 (PDT)
 Received: from localhost.localdomain ([139.177.225.244])
-        by smtp.gmail.com with ESMTPSA id s3sm9377839pfd.188.2021.09.14.00.37.53
+        by smtp.gmail.com with ESMTPSA id s3sm9377839pfd.188.2021.09.14.00.38.21
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 14 Sep 2021 00:37:59 -0700 (PDT)
+        Tue, 14 Sep 2021 00:38:29 -0700 (PDT)
 From:   Muchun Song <songmuchun@bytedance.com>
 To:     willy@infradead.org, akpm@linux-foundation.org, hannes@cmpxchg.org,
         mhocko@kernel.org, vdavydov.dev@gmail.com, shakeelb@google.com,
@@ -66,9 +66,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         zhengqi.arch@bytedance.com, duanxiongchun@bytedance.com,
         fam.zheng@bytedance.com, smuchun@gmail.com,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v3 42/76] nilfs2: allocate inode by using alloc_inode_sb()
-Date:   Tue, 14 Sep 2021 15:29:04 +0800
-Message-Id: <20210914072938.6440-43-songmuchun@bytedance.com>
+Subject: [PATCH v3 46/76] orangefs: allocate inode by using alloc_inode_sb()
+Date:   Tue, 14 Sep 2021 15:29:08 +0800
+Message-Id: <20210914072938.6440-47-songmuchun@bytedance.com>
 X-Mailer: git-send-email 2.21.0 (Apple Git-122)
 In-Reply-To: <20210914072938.6440-1-songmuchun@bytedance.com>
 References: <20210914072938.6440-1-songmuchun@bytedance.com>
@@ -83,22 +83,22 @@ kmem_cache_alloc() to alloc_inode_sb().
 
 Signed-off-by: Muchun Song <songmuchun@bytedance.com>
 ---
- fs/nilfs2/super.c | 2 +-
+ fs/orangefs/super.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
-index f6b2d280aab5..cf1de3ed9f8b 100644
---- a/fs/nilfs2/super.c
-+++ b/fs/nilfs2/super.c
-@@ -151,7 +151,7 @@ struct inode *nilfs_alloc_inode(struct super_block *sb)
+diff --git a/fs/orangefs/super.c b/fs/orangefs/super.c
+index 2f2e430461b2..1deb411ca5e8 100644
+--- a/fs/orangefs/super.c
++++ b/fs/orangefs/super.c
+@@ -106,7 +106,7 @@ static struct inode *orangefs_alloc_inode(struct super_block *sb)
  {
- 	struct nilfs_inode_info *ii;
+ 	struct orangefs_inode_s *orangefs_inode;
  
--	ii = kmem_cache_alloc(nilfs_inode_cachep, GFP_NOFS);
-+	ii = alloc_inode_sb(sb, nilfs_inode_cachep, GFP_NOFS);
- 	if (!ii)
+-	orangefs_inode = kmem_cache_alloc(orangefs_inode_cache, GFP_KERNEL);
++	orangefs_inode = alloc_inode_sb(sb, orangefs_inode_cache, GFP_KERNEL);
+ 	if (!orangefs_inode)
  		return NULL;
- 	ii->i_bh = NULL;
+ 
 -- 
 2.11.0
 
