@@ -2,77 +2,121 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D3DB7C4332F
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Sep 2021 17:02:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11040C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Sep 2021 18:33:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AEFEF61242
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Sep 2021 17:02:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E651560F92
+	for <linux-nfs@archiver.kernel.org>; Wed, 15 Sep 2021 18:33:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230187AbhIOREL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Sep 2021 13:04:11 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57617 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S230038AbhIOREK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2021 13:04:10 -0400
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 18FH2TuF020081
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 15 Sep 2021 13:02:29 -0400
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 3862A15C3424; Wed, 15 Sep 2021 13:02:29 -0400 (EDT)
-Date:   Wed, 15 Sep 2021 13:02:29 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     NeilBrown <neilb@suse.de>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Matthew Wilcox <willy@infradead.org>,
-        Mel Gorman <mgorman@suse.com>, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/6] EXT4: Remove ENOMEM/congestion_wait() loops.
-Message-ID: <YUInJQ0wJ4Cd07dT@mit.edu>
-References: <163157808321.13293.486682642188075090.stgit@noble.brown>
- <163157838437.13293.14244628630141187199.stgit@noble.brown>
- <YUE+L19JyjqWh+Md@mit.edu>
- <163168354018.3992.580533638417199797@noble.neil.brown.name>
+        id S229697AbhIOSen (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Sep 2021 14:34:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60460 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229479AbhIOSem (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2021 14:34:42 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ADAF6C061574
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Sep 2021 11:33:23 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id CD36E702A; Wed, 15 Sep 2021 14:33:21 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org CD36E702A
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1631730801;
+        bh=/uGH5fxOasXwnY4crRvnCe5iHw3V+OqXeXKL8byfpe0=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=Jv3shyjSUaVd7b+13EVGCHJ6LcrUPungl+V99LvJUSzkZX1Gvg3xoEFaNy5PnJZN3
+         /EGMbYxpimiL/Av87+++Ny5IYcauP3U/IUkyd+jr59rHMVEXy96IyVaaKjyzJ75Crq
+         TGgU0k+xHVgxJfx/+qiLIptAKWqlG7kteSnjCSYM=
+Date:   Wed, 15 Sep 2021 14:33:21 -0400
+To:     Helge Kreutzmann <debian@helgefjell.de>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: Errors in NFS man pages
+Message-ID: <20210915183321.GA10712@fieldses.org>
+References: <20210912060745.GA26295@Debian-50-lenny-64-minimal>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <163168354018.3992.580533638417199797@noble.neil.brown.name>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20210912060745.GA26295@Debian-50-lenny-64-minimal>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Sep 15, 2021 at 03:25:40PM +1000, NeilBrown wrote:
-> Adding gfp_mask to __ext4_journal_start_sb() make perfect sense.
-> There doesn't seem much point adding one to __ext4_journal_start(),
-> we can have ext4_journal_start_with_revoke() call
-> __ext4_journal_start_sb() directly.
-> But I cannot see what it doesn't already do that.
-> i.e. why have the inline __ext4_journal_start() at all?
-> Is it OK if I don't use that for ext4_journal_start_with_revoke()?
+On Sun, Sep 12, 2021 at 08:07:46AM +0200, Helge Kreutzmann wrote:
+> Dear NFS maintainer,
+> the manpage-l10n project maintains a large number of translations of
+> man pages both from a large variety of sources (including NFS) as
+> well for a large variety of target languages.
+> 
+> During their work translators notice different possible issues in the
+> original (english) man pages. Sometimes this is a straightforward
+> typo, sometimes a hard to read sentence, sometimes this is a
+> convention not held up and sometimes we simply do not understand the
+> original.
+> 
+> We use several distributions as sources and update regularly (at
+> least every 2 month). This means we are fairly recent (some
+> distributions like archlinux also update frequently) but might miss
+> the latest upstream version once in a while, so the error might be
+> already fixed. We apologize and ask you to close the issue immediately
+> if this should be the case, but given the huge volume of projects and
+> the very limited number of volunteers we are not able to double check
+> each and every issue.
+> 
+> Secondly we translators see the manpages in the neutral po format,
+> i.e. converted and harmonized, but not the original source (be it man,
+> groff, xml or other). So we cannot provide a true patch (where
+> possible), but only an approximation which you need to convert into
+> your source format.
+> 
+> Finally the issues I'm reporting have accumulated over time and are
+> not always discovered by me, so sometimes my description of the
+> problem my be a bit limited - do not hesitate to ask so we can clarify
+> them.
+> 
+> I'm now reporting the errors for your project. I'm not repeating the
+> errors reported 2020-05-16, 2021-05-29, if you would like a full
+> report, please let me know. If future reports should use another
+> channel, please let me know as well.
 
-Sure.  I think the only reason why we have __ext4_journal_start() as
-an inline function at all was for historical reasons.  That is, we
-modified __ext4_journal_start() so that it took a struct super, and
-instead of changing all of the macros which called
-__ext4_journal_start(), we named it to be __ext4_journal_start_sb()
-and added the inline definition of __ext4_journal_start() to avoid
-changing all of the existing users of __ext4_journal_start().
+This is probably fine.
 
-So sure, it's fine not to use that for
-ext4_journal_start_with_revoke(), and we probably should clean up the
-use of __ext4_journal_start() at some point.  That's unrelated to your
-work, though.
+But if it's possible to make these into patches against nfs-utils
+(http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=summary), and send
+them to steved@redhat.com, cc'd to this list--that would probably get
+the fastest response.
 
-Cheers,
+--b.
 
-					- Ted
+> 
+> 
+> Man page: nfs.5
+> Issue: B<nfsmount.conf(5)> → B<nfsmount.conf>(5)
+> 
+> "If the mount command is configured to do so, all of the mount options "
+> "described in the previous section can also be configured in the I</etc/"
+> "nfsmount.conf> file. See B<nfsmount.conf(5)> for details."
+> msgstr ""
+> "Falls der Befehl »mount« entsprechend konfiguriert ist, können alle in den "
+> "vorhergehenden Kapiteln beschriebenen Einhängeoptionen auch in der Datei I</"
+> --
+> Man page: nfs.5
+> Issue: Why is the word "option" in bold?
+> 
+> "The B<sloppy> option is an alternative to specifying B<mount.nfs> -s "
+> "B<option.>"
+> 
+> -- 
+>       Dr. Helge Kreutzmann                     debian@helgefjell.de
+>            Dipl.-Phys.                   http://www.helgefjell.de/debian.php
+>         64bit GNU powered                     gpg signed mail preferred
+>            Help keep free software "libre": http://www.ffii.de/
+
+
