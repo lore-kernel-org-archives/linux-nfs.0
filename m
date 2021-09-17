@@ -2,176 +2,135 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC5AFC4332F
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Sep 2021 22:13:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2616C4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Sep 2021 02:59:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D4DBA61056
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Sep 2021 22:13:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A2C3061029
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Sep 2021 02:59:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240789AbhIPWOt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Sep 2021 18:14:49 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:54872 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240764AbhIPWOs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Sep 2021 18:14:48 -0400
+        id S243179AbhIQDAp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Sep 2021 23:00:45 -0400
+Received: from smtp-out2.suse.de ([195.135.220.29]:41356 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S243049AbhIQDAp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Sep 2021 23:00:45 -0400
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id D597F22285;
-        Thu, 16 Sep 2021 22:13:25 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 09F2B2007B;
+        Fri, 17 Sep 2021 02:59:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1631830405; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1631847562; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=fUML7PP2cwKhFn9IzXhNLUrnTUVcJXoS96ewZU1uWd4=;
-        b=jXq3fACJglbXO8ZZxnEEMQ+MUPWIjZYeP9OWVMQcOLpTCitAL/GY0hB3ikpZqLry9QOXDj
-        ZRrPGSLgWi+Y6HeNGhcNrGJGBweWKtIOvbUo2E/PYEVdhNesAL6oSHskkTyze7963m/w7v
-        FapF8aEecdCetxL/vyAtSFplWCBT8aI=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=8pvkjCFdBH92niZgGsbVOrH9zONIePhOsL1BwdfqgnA=;
+        b=NrP8J0vhVKv0eLroW/bpzL2ejtwWpy1oEAi7DdQ4kMU5Kv8Oq6l5iLYPu7H9EkxbF1q4/A
+        na+xtpPAcJUY68yb7FlQ9lmxSLRRQKANIKbvzZj9RSTof31Djq1vJviErXSODqyW0wqB4e
+        LQe1sAc/mk1g9ojaRCFZduOcyNryYAc=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1631830405;
+        s=susede2_ed25519; t=1631847562;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=fUML7PP2cwKhFn9IzXhNLUrnTUVcJXoS96ewZU1uWd4=;
-        b=tYmy1+ayRfKGCMEtC5l9akiHOlDJJKFM6kSmG2YO8aDY/SdACek6JZkZDMbN7tSZ+4Wr23
-        jXJfi3+TQ02lBADg==
+         content-transfer-encoding:content-transfer-encoding;
+        bh=8pvkjCFdBH92niZgGsbVOrH9zONIePhOsL1BwdfqgnA=;
+        b=PMuREhLfwiF/t1B800k94ChByfic8xUfzyWra9ANkKBEq5p7ic9AJetd/jrDccwucIyfGK
+        Kco4+Zd25/JWTsBA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 35C2013D6D;
-        Thu, 16 Sep 2021 22:13:21 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9733913D0B;
+        Fri, 17 Sep 2021 02:59:17 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id uyMeOYHBQ2GwUwAAMHmgww
-        (envelope-from <neilb@suse.de>); Thu, 16 Sep 2021 22:13:21 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Michal Hocko" <mhocko@suse.com>
-Cc:     "Andrew Morton" <akpm@linux-foundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        "Andreas Dilger" <adilger.kernel@dilger.ca>,
+        id wyQIFYUERGFLMwAAMHmgww
+        (envelope-from <neilb@suse.de>); Fri, 17 Sep 2021 02:59:17 +0000
+Subject: [PATCH 0/6 v2] congestion_wait() and GFP_NOFAIL
+From:   NeilBrown <neilb@suse.de>
+To:     Andrew Morton <akpm@linux-foundation.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
         "Darrick J. Wong" <djwong@kernel.org>,
-        "Matthew Wilcox" <willy@infradead.org>,
-        "Mel Gorman" <mgorman@suse.com>, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/6] MM: annotate congestion_wait() and
- wait_iff_congested() as ineffective.
-In-reply-to: <YUHfdtth69qKvk8r@dhcp22.suse.cz>
-References: <163157808321.13293.486682642188075090.stgit@noble.brown>,
- <163157838437.13293.15392955714346973750.stgit@noble.brown>,
- <YUHfdtth69qKvk8r@dhcp22.suse.cz>
-Date:   Fri, 17 Sep 2021 08:13:19 +1000
-Message-id: <163183039931.3992.6407941879351179168@noble.neil.brown.name>
+        Matthew Wilcox <willy@infradead.org>,
+        Mel Gorman <mgorman@suse.de>, Michal Hocko <mhocko@suse.com>,
+        ". Dave Chinner" <david@fromorbit.com>,
+        Jonathan Corbet <corbet@lwn.net>
+Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-doc@vger.kernel.org
+Date:   Fri, 17 Sep 2021 12:56:57 +1000
+Message-ID: <163184698512.29351.4735492251524335974.stgit@noble.brown>
+User-Agent: StGit/0.23
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 15 Sep 2021, Michal Hocko wrote:
-> On Tue 14-09-21 10:13:04, Neil Brown wrote:
-> > Only 4 subsystems call set_bdi_congested() or clear_bdi_congested():
-> >  block/pktcdvd, fs/ceph fs/fuse fs/nfs
-> >=20
-> > It may make sense to use congestion_wait() or wait_iff_congested()
-> > within these subsystems, but they have no value outside of these.
-> >=20
-> > Add documentation comments to these functions to discourage further use.
->=20
-> This is an unfortunate state. The MM layer still relies on the API.
-> While adding a documentation to clarify the current status can stop more
-> usage I am wondering what is a real alternative. My experience tells me
-> that a lack of real alternative will lead to new creative ways of doing
-> things instead.
+This second version:
+  - add recipients for the Documentation/core-api changes
+  - add fix for __alloc_pages_bulk() to handle GFP_NOFAIL
+  - drops the annotations for congestion_wait() as being ineffective
+    as that isn't really useful until an alternative is available
+  - changes to GFP_NOFAIL documentation changes to focus on the possible
+    deadlocks rather than the use of memory reserves
+  - Improves ext4 and xfs patches based on feedback from Ted and Dave.
 
-That is a valid concern.  Discouraging the use of an interface without
-providing a clear alternative risks people doing worse things.
+The patches are independent, except that the last patch depends on the
+first.
 
-At lease if people continue to use congestion_wait(), then we will be
-able to find those uses when we are able to provide a better approach.
+As mentioned last time:
 
-I'll drop this patch.
+  These are the easy bits.  There are 5 calls to congestion_wait() and
+  one to wait_iff_congested() in mm/ which need consideration.  There
+  are multiple calls to congestion_wait in fs/, particularly fs/f2fs/
+  which need to be addressed too.  I'll try to form an opinion about
+  these in coming weeks.
 
-Thanks,
+(other interesting comment in original cover letter just duplicates
+ observations made in the commit messages of individual patches).
+
 NeilBrown
 
 
-> =20
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> > ---
-> >  include/linux/backing-dev.h |    7 +++++++
-> >  mm/backing-dev.c            |    9 +++++++++
-> >  2 files changed, 16 insertions(+)
-> >=20
-> > diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-> > index ac7f231b8825..cc9513840351 100644
-> > --- a/include/linux/backing-dev.h
-> > +++ b/include/linux/backing-dev.h
-> > @@ -153,6 +153,13 @@ static inline int wb_congested(struct bdi_writeback =
-*wb, int cong_bits)
-> >  	return wb->congested & cong_bits;
-> >  }
-> > =20
-> > +/* NOTE congestion_wait() and wait_iff_congested() are
-> > + * largely useless except as documentation.
-> > + * congestion_wait() will (almost) always wait for the given timeout.
-> > + * wait_iff_congested() will (almost) never wait, but will call
-> > + * cond_resched().
-> > + * Were possible an alternative waiting strategy should be found.
-> > + */
-> >  long congestion_wait(int sync, long timeout);
-> >  long wait_iff_congested(int sync, long timeout);
-> > =20
-> > diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-> > index 4a9d4e27d0d9..53472ab38796 100644
-> > --- a/mm/backing-dev.c
-> > +++ b/mm/backing-dev.c
-> > @@ -1023,6 +1023,11 @@ EXPORT_SYMBOL(set_bdi_congested);
-> >   * Waits for up to @timeout jiffies for a backing_dev (any backing_dev) =
-to exit
-> >   * write congestion.  If no backing_devs are congested then just wait fo=
-r the
-> >   * next write to be completed.
-> > + *
-> > + * NOTE: in the current implementation, hardly any backing_devs are ever
-> > + * marked as congested, and write-completion is rarely reported (see cal=
-ls
-> > + * to clear_bdi_congested).  So this should not be assumed to ever wake =
-before
-> > + * the timeout.
-> >   */
-> >  long congestion_wait(int sync, long timeout)
-> >  {
-> > @@ -1054,6 +1059,10 @@ EXPORT_SYMBOL(congestion_wait);
-> >   * The return value is 0 if the sleep is for the full timeout. Otherwise,
-> >   * it is the number of jiffies that were still remaining when the functi=
-on
-> >   * returned. return_value =3D=3D timeout implies the function did not sl=
-eep.
-> > + *
-> > + * NOTE: in the current implementation, hardly any backing_devs are ever
-> > + * marked as congested, and write-completion is rarely reported (see cal=
-ls
-> > + * to clear_bdi_congested).  So this should not be assumed to sleep at a=
-ll.
-> >   */
-> >  long wait_iff_congested(int sync, long timeout)
-> >  {
-> >=20
->=20
-> --=20
-> Michal Hocko
-> SUSE Labs
->=20
->=20
+---
+
+NeilBrown (6):
+      MM: Support __GFP_NOFAIL in  alloc_pages_bulk_*() and improve doco
+      MM: improve documentation for __GFP_NOFAIL
+      EXT4: Remove ENOMEM/congestion_wait() loops.
+      EXT4: remove congestion_wait from ext4_bio_write_page, and simplify
+      XFS: remove congestion_wait() loop from kmem_alloc()
+      XFS: remove congestion_wait() loop from xfs_buf_alloc_pages()
+
+
+ Documentation/core-api/memory-allocation.rst | 25 ++++++++-
+ fs/ext4/ext4.h                               |  2 +-
+ fs/ext4/ext4_jbd2.c                          |  4 +-
+ fs/ext4/ext4_jbd2.h                          | 14 +++---
+ fs/ext4/extents.c                            | 53 ++++++++------------
+ fs/ext4/extents_status.c                     | 35 +++++++------
+ fs/ext4/extents_status.h                     |  2 +-
+ fs/ext4/ialloc.c                             |  3 +-
+ fs/ext4/indirect.c                           |  2 +-
+ fs/ext4/inode.c                              |  6 +--
+ fs/ext4/ioctl.c                              |  4 +-
+ fs/ext4/page-io.c                            | 13 ++---
+ fs/ext4/super.c                              |  2 +-
+ fs/jbd2/transaction.c                        |  8 +--
+ fs/xfs/kmem.c                                | 19 +++----
+ fs/xfs/xfs_buf.c                             | 14 +++---
+ include/linux/gfp.h                          |  6 ++-
+ 17 files changed, 113 insertions(+), 99 deletions(-)
+
+--
+Signature
+
