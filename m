@@ -2,158 +2,650 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B86F5C433F5
-	for <linux-nfs@archiver.kernel.org>; Sun, 19 Sep 2021 23:19:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9166DC433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 Sep 2021 12:14:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8BF5760F36
-	for <linux-nfs@archiver.kernel.org>; Sun, 19 Sep 2021 23:19:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 76AAE6109D
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 Sep 2021 12:14:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229590AbhISXVR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 19 Sep 2021 19:21:17 -0400
-Received: from mail-bn8nam12on2135.outbound.protection.outlook.com ([40.107.237.135]:31841
-        "EHLO NAM12-BN8-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S229517AbhISXVR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 19 Sep 2021 19:21:17 -0400
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=SJZ947Ke2sKygYLPlGDjjLn/j8sdJ41YU4Q7k/JlvoaNNsBwW54A0Z69Mxu5fF2KNgvq62ZdO88aKRVLHh9ib9Q4vPaQJr0JkQIR2ikTHs8jhUweIonHH4w0T7YaVAc1t8zfaT8gn5JN+oXvXChFKN4diz+2W8p8Cd2itxWoXk83L9sOf1fZIGleA5jf43dHNIBHslb2HiWWIUNX9gbXWxsuuwc7ZqbTTQy4Ig8owmtB0Ie2RnX1erKwl4PRtrfUugMVyi1WcD3q7elQ/EpmlJQg59QT+2/VpTMK/A1aw9AsU4z6t5c0EDE/Om/B2wtShWQj0j0veFuqPUwOORVbxQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901; h=From:Date:Subject:Message-ID:Content-Type:MIME-Version;
- bh=jqeeibM8cmP6SVp4RwBjlGJDBwgKX6dc/0pAQPST5hM=;
- b=Xjfu+Giy5BvhuDrf6DD8sL41Sj4ayUW6z0I3INAAShtUK5NV26yAf2sK1YbPsHTE1Z/n2dC4i72OHi78oXBJv2hRGmiJJyuHMM/F84P9QFd7Jo0PedhO4zrFV15COknNkDp/RqKx9zIziEJr7KLqkTeJUUJ0IQRCJf+vPXpTgfaPvOr4QR0PcgN7I6NivLNnYf3gUxKEeEKRebCeRitOZulpGVNN9b5BmwPDaYgAji1P1eti8bIF7t5+oCgKM28SFeURo/YROLiZQHgIc7dpSoyMxRADDEWH6buS9j2JKye927JbvAib7anMnS/cPwKNvqOFjzEsOJS5CIqGHOYtOg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=jqeeibM8cmP6SVp4RwBjlGJDBwgKX6dc/0pAQPST5hM=;
- b=btGzrwYXYwVetCB6cDqx0wfgLGilq/OLEE6rxvgIZrxP9cb4iNskaOqFE5BpZfVcTqcpMZKHlIXFL5VxXY0XcXU0LpUn8rLj1ApQQ8o6Bjq3YBDDMLuArOrXUxUqMlyAGlUqEXozmh+VlZAw+mJ+CoG7OP2ISFa7TR2qzpevcSY=
-Received: from CH0PR13MB5084.namprd13.prod.outlook.com (2603:10b6:610:111::7)
- by CH0PR13MB5169.namprd13.prod.outlook.com (2603:10b6:610:ea::20) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4544.5; Sun, 19 Sep
- 2021 23:19:46 +0000
-Received: from CH0PR13MB5084.namprd13.prod.outlook.com
- ([fe80::185b:505d:b35c:a3a2]) by CH0PR13MB5084.namprd13.prod.outlook.com
- ([fe80::185b:505d:b35c:a3a2%8]) with mapi id 15.20.4544.013; Sun, 19 Sep 2021
- 23:19:46 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: recent intermittent fsx-related failures
-Thread-Topic: recent intermittent fsx-related failures
-Thread-Index: AQHXf/8fcA3+DfY3OUmOk0QnMZuIQ6tRAXuAgFtTrwCAAASBgA==
-Date:   Sun, 19 Sep 2021 23:19:46 +0000
-Message-ID: <7bfcfea962bc88eca24fb6fdfcaa9ef47138e531.camel@hammerspace.com>
-References: <67E1CF9F-61C5-4BB9-97FE-61B598EFC382@oracle.com>
-         <2e8bce7bc15b02bbd1dcf740f2d993d6e3d58367.camel@hammerspace.com>
-         <680A4FB2-B90D-47E1-A390-36B3081B1464@oracle.com>
-In-Reply-To: <680A4FB2-B90D-47E1-A390-36B3081B1464@oracle.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: oracle.com; dkim=none (message not signed)
- header.d=none;oracle.com; dmarc=none action=none header.from=hammerspace.com;
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 44a35606-bf4b-4dd8-e538-08d97bc3f86a
-x-ms-traffictypediagnostic: CH0PR13MB5169:
-x-microsoft-antispam-prvs: <CH0PR13MB51695646AADE4CC2D1C7B0B1B8DF9@CH0PR13MB5169.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:4125;
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: PMjtgygpdvhvoy2jY9Pht3V1fEf4/u6I/Ey1cqk9s57E+yDRRUyEencm4hqPTOxh8T02xwv5xds8XN9pu497k50vz2HIVUD47i0vNITI2Pa/cdxfTYqUlPHx4UYYXZVcIdr0QKf88W+XVHFoSU4hO5C3lgYoNEqCuKwUdUw99EVx/JzEYORv+sS7pjzujsd/1dSxtp9WpRXeE23gzgxVPUi5a1eFP19uycpDSUL62+bvh53Loa4wjn4Kix+q5VDnTv8UH//zShPmX2Bv58cquZSu0HykrOr2gY7LqAtqrfcKk9foCVrPFyK+t+7cvyfkIWBE9HDMF3Lo3cqeAwqh/YKech6id6B8oV5qBDN0H7Z3xBFYSRYRkVSLR5TVgv5pYOGNwPNKfTgpfBvdvfWOyK7hYygtG9R5KwP9c5EOCa7rPiEa2EmiTt3VkFQsLj9NYMgA9G2Ckg0K+B5QSso6Erob1evVWmJ5PlX1/7rwCgVW685fZ5bKgZsVzap81f2k8AJ7xur3GN7WMyKWIRkp4doChFgqjTCOGDggVqxGeZVCgcil7OiuT7jugQ/Xjikt1SUtvvr7csV+ay6GMQ+CYt2vt/03QRj9UDEeMnH4DkI90xB22TkQRpVXbAFqAcAuIJ8DEk9pM3XPtpSY0QZdfojT1XDqfr1N2Zj3nG2iMNU7WL4dV5tJRnn8b3y/Z0tP7S899uBT2E365APG9pG5CQ==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR13MB5084.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(346002)(396003)(366004)(136003)(376002)(39830400003)(8676002)(6506007)(53546011)(38100700002)(316002)(71200400001)(5660300002)(76116006)(2616005)(26005)(66946007)(83380400001)(66476007)(478600001)(6486002)(66556008)(64756008)(66446008)(6916009)(186003)(6512007)(3480700007)(2906002)(122000001)(38070700005)(86362001)(8936002)(4326008)(36756003);DIR:OUT;SFP:1102;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?utf-8?B?SVBiREpiWGgzQ2ltbWtRNWNINUhGTGZPS0lHSGZaMlMxa013ZXFKdE9wOVov?=
- =?utf-8?B?WVRUUUMzSmxUcVBzMElHenVoWlhncjBpN0FzdHFCZGliK1NSK0VMeHpURmZS?=
- =?utf-8?B?cko0eUZNMzBKbjdOZjB4ZURiNTBpVk5OL3Q1TXQxOHAxUi8xMFQ2MmRxMWN5?=
- =?utf-8?B?MkhMei9qQmlMOThwSVF2MjN0dXZFMWpzc2haQzNCaVY1R0hHREcydmFhRGRL?=
- =?utf-8?B?Zk1seHVaTE9keHhRRUFrK3lXZklveFh1NWJBZzFCSVB5akdsaGNvN3NmRksr?=
- =?utf-8?B?eU1pbXFYbEc4RldoUjBXSWF2akVvL3NIK29BOE9aeEdQZG1nSzRnZWo3NUpW?=
- =?utf-8?B?OURCV1AxMGc1VlFFSzZtNzNiRGRmTERlc1lQMG9jdmlZSDFxZHV1OVZRbVdj?=
- =?utf-8?B?L1pGWGU0VUkwUXBVTXc0K211bW9FWnpXL3kvelZLbWhzMHM3QWI2emh4bnRT?=
- =?utf-8?B?Zzk3NnZ0czhDcE9lUUVjZGdXY2NHc0ZSRWlHc0wwdlZ4czNOTXdxeXJSSUQr?=
- =?utf-8?B?TVd4LzVjbHBLT0ptR0NCeVZzMjFUcjhoeW1kVENydGlDdDV5d0pFWE9jZjds?=
- =?utf-8?B?M3ZwTkJ6Nk5YcnVRZDNnU3ZndlRqaFVxdERIbEpEQ2dCVkVyK01RQ2xWWVgy?=
- =?utf-8?B?Yi8yMzB4cENXaW5WRUxvWTNCcjEzdnVrOGdZUlpwTkxQSjhtOFV2SzUwZ1VI?=
- =?utf-8?B?WjN4Y05XeVc5QldZSmpGVjVnZHZpZVdFRFFZRCtIaDVoWmNpMlVQa1VTV2pV?=
- =?utf-8?B?UmpYTnB6ek5NeHdzdnV0YlNPaTg3NGMwTml1MGcvOC9yR2lEc21WRjl1ZnFl?=
- =?utf-8?B?dzczZ0xUcG16NEl5S0xDU1dvSFhEaEZLbjBtWmxvaFRuRlVGd3dSOGFyZG1j?=
- =?utf-8?B?MEdyL3ZwVTRqMnl0TnhZN2dyY2psZGlCK0NobEJXMFo4My9uaERueEdNTUlO?=
- =?utf-8?B?ZG13emJJMFZsSURpVjQxUUdhMDRnbGVyTXN1VDRLeGpGQy96VTBKMTJjSHoy?=
- =?utf-8?B?bm1sdDFkMGhVSkUyMXFqRVR0OTZXSVhhcTE2aFNyc1ArRGxFY3crZ0V3TTNE?=
- =?utf-8?B?OFlCSWlxOXhGVHR0SFV4d0hmTzBvcHBFTDh0RGlSS2FHRTdHZitNaUFxUkQ4?=
- =?utf-8?B?SDdWWlBtQkpuVThwVkZZSjBSWWZQYUJMcGhRUXZGeVV6dkNEREhVai9KMTdC?=
- =?utf-8?B?WWQyMndEVWY1bjdLYXJNUG1qU0E4cjFhNERHTjJmeVd1R1Mya0NBMkdBbDh4?=
- =?utf-8?B?OWVMTXROUjNFT0hORlQ2QlpFZ0lheXdIb1U5K0FVempENmZLdFIzRTY5d1RF?=
- =?utf-8?B?TE1mL2N0MS9nMDBySy9OOFZTWWZUeS9KVnFtcHNDcFRKWXR5WUx3ZmoxblU1?=
- =?utf-8?B?U252RnQybVFxc2h0Qm45YitlTVQ3NmdOVXV6cUJadktlOWowTEdVTzlQcnRw?=
- =?utf-8?B?VnhtT2ZGNXJmMk1vVkpSRWlYU3lnN2JTZVlKd3F3eERTZExnMU1oNnlLM2dG?=
- =?utf-8?B?NllsbkE2cDZVb1Zud3h0MFBtai90ank2VE5uZmVZYVVEYlVjamJqMk1oVURl?=
- =?utf-8?B?NWZHZFJyQUdqV2I4ODd0WmpUMEd6aVVoMmFXSXdrMm9Pa3loaXFySG0wcUVP?=
- =?utf-8?B?UnZrMWJmR3JFdnJMRThqckVIZ2RlQUJsSlhBSHZiOS9IK3JLaVJrcjZxeTNm?=
- =?utf-8?B?Y1l0alRZRWUxL2sxb1ZiYkpjckw5VjdTTVU1aDNvemFaYXpKd2dpYmJoRmU2?=
- =?utf-8?Q?QWUFT70hJmNlV6cMJCxoCixVVOG1c1qpyFvfHZV?=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <1A5CF54E76E16045914D38CDE3A5DEC3@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S237557AbhITMQB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 20 Sep 2021 08:16:01 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:27598 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S233150AbhITMPw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2021 08:15:52 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1632140065;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=ABWx0lSF5fp7lLOBNjQMdTbf2jaZA8lEgng1HV1a1kc=;
+        b=Kae1h+Vf+TEUPT78UNpqItYPQmzNUO6QwjS+BiXQ0Ilrg79IMwZ8nyn8OHuQtq/7fSed8P
+        H2gF7U67ANIeEA51naPizg7la0SgkPi0F5HQhrTieFd6M9CokZHl4GecWbbg1grw9hXm1C
+        uQ2l4d+7hPjlrL6hUUY9M4K/fGmOSPo=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-35-sY3Csob7NmKqSJsZGWgx4g-1; Mon, 20 Sep 2021 08:14:22 -0400
+X-MC-Unique: sY3Csob7NmKqSJsZGWgx4g-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id DAC741006AA3;
+        Mon, 20 Sep 2021 12:14:19 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.33.36.44])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 107606D988;
+        Mon, 20 Sep 2021 12:14:15 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+Subject: [RFC PATCH] fscache, 9p, afs, cifs,
+ nfs: Deal with some warnings from W=1
+From:   David Howells <dhowells@redhat.com>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     Jeff Layton <jlayton@kernel.org>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Marc Dionne <marc.dionne@auristor.com>,
+        Steve French <sfrench@samba.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Mauro Carvalho Chehab <mchehab@kernel.org>,
+        v9fs-developer@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-doc@vger.kernel.org,
+        dhowells@redhat.com, linux-kernel@vger.kernel.org
+Date:   Mon, 20 Sep 2021 13:14:15 +0100
+Message-ID: <163214005516.2945267.7000234432243167892.stgit@warthog.procyon.org.uk>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: CH0PR13MB5084.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 44a35606-bf4b-4dd8-e538-08d97bc3f86a
-X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Sep 2021 23:19:46.2098
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: 0OlI0frvXYEWKZfXWw06woQvpVjlmmD4k49RV3+x/8Fu2QJ7V/64v/7xbynrERt4fU/22yH1bE6lus3QIpe8vA==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH0PR13MB5169
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gU3VuLCAyMDIxLTA5LTE5IGF0IDIzOjAzICswMDAwLCBDaHVjayBMZXZlciBJSUkgd3JvdGU6
-DQo+IA0KPiANCj4gPiBPbiBKdWwgMjMsIDIwMjEsIGF0IDQ6MjQgUE0sIFRyb25kIE15a2xlYnVz
-dA0KPiA+IDx0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gRnJp
-LCAyMDIxLTA3LTIzIGF0IDIwOjEyICswMDAwLCBDaHVjayBMZXZlciBJSUkgd3JvdGU6DQo+ID4g
-PiBIaS0NCj4gPiA+IA0KPiA+ID4gSSBub3RpY2VkIHJlY2VudGx5IHRoYXQgZ2VuZXJpYy8wNzUs
-IGdlbmVyaWMvMTEyLCBhbmQgZ2VuZXJpYy8xMjcNCj4gPiA+IHdlcmUNCj4gPiA+IGZhaWxpbmcg
-aW50ZXJtaXR0ZW50bHkgb24gTkZTdjMgbW91bnRzLiBBbGwgdGhyZWUgb2YgdGhlc2UgdGVzdHMN
-Cj4gPiA+IGFyZQ0KPiA+ID4gYmFzZWQgb24gZnN4Lg0KPiA+ID4gDQo+ID4gPiAiZ2l0IGJpc2Vj
-dCIgbGFuZGVkIG9uIHRoaXMgY29tbWl0Og0KPiA+ID4gDQo+ID4gPiA3YjI0ZGFjZjA4NDAgKCJO
-RlM6IEFub3RoZXIgaW5vZGUgcmV2YWxpZGF0aW9uIGltcHJvdmVtZW50IikNCj4gPiA+IA0KPiA+
-ID4gQWZ0ZXIgcmV2ZXJ0aW5nIDdiMjRkYWNmMDg0MCBvbiB2NS4xNC1yYzEsIEkgY2FuIG5vIGxv
-bmdlcg0KPiA+ID4gcmVwcm9kdWNlDQo+ID4gPiB0aGUgdGVzdCBmYWlsdXJlcy4NCj4gPiA+IA0K
-PiA+ID4gDQo+ID4gDQo+ID4gU28geW91IGFyZSBzZWVpbmcgZmlsZSBtZXRhZGF0YSB1cGRhdGVz
-IHRoYXQgZW5kIHVwIG5vdCBjaGFuZ2luZw0KPiA+IHRoZQ0KPiA+IGN0aW1lPw0KPiANCj4gQXMg
-ZmFyIGFzIEkgY2FuIHRlbGwsIGEgV1JJVEUgYW5kIHR3byBTRVRBVFRScyBhcmUgaGFwcGVuaW5n
-IGluDQo+IHNlcXVlbmNlIHRvIHRoZSBzYW1lIGZpbGUgZHVyaW5nIHRoZSBzYW1lIGppZmZ5LiBU
-aGUgV1JJVEUgZG9lcw0KPiBub3QgcmVwb3J0IHByZS9wb3N0IGF0dHJpYnV0ZXMsIGJ1dCB0aGUg
-U0VUQVRUUnMgZG8uIFRoZSByZXBvcnRlZA0KPiBwcmUtIGFuZCBwb3N0LSBtdGltZSBhbmQgY3Rp
-bWUgYXJlIGFsbCB0aGUgc2FtZSB2YWx1ZSBmb3IgYm90aA0KPiBTRVRBVFRScywgSSBiZWxpZXZl
-IGR1ZSB0byB0aW1lc3RhbXBfdHJ1bmNhdGUoKS4NCj4gDQo+IE15IHRoZW9yeSBpcyB0aGF0IHBl
-cnNpc3RlbnQtc3RvcmFnZS1iYWNrZWQgZmlsZXN5c3RlbXMgc2VlbSB0bw0KPiBnbyBzbG93IGVu
-b3VnaCB0aGF0IGl0IGRvZXNuJ3QgYmVjb21lIGEgc2lnbmlmaWNhbnQgcHJvYmxlbS4gQnV0DQo+
-IHdpdGggdG1wZnMsIHRoaXMgY2FuIGhhcHBlbiBvZnRlbiBlbm91Z2ggdGhhdCB0aGUgY2xpZW50
-IGdldHMNCj4gY29uZnVzZWQuIEFuZCBJIGNhbiBtYWtlIHRoZSBwcm9ibGVtIHVucmVwcm9kdWNh
-YmxlIGlmIEkgZW5hYmxlDQo+IGVub3VnaCBkZWJ1Z2dpbmcgcGFyYXBoZXJuYWxpYSBvbiB0aGUg
-c2VydmVyIHRvIHNsb3cgaXQgZG93bi4NCj4gDQo+IEknbSBub3QgZXhhY3RseSBzdXJlIGhvdyB0
-aGUgY2xpZW50IGJlY29tZXMgY29uZnVzZWQgYnkgdGhpcw0KPiBiZWhhdmlvciwgYnV0IGZzeCBy
-ZXBvcnRzIGEgc3RhbGUgc2l6ZSB2YWx1ZSwgb3IgaXQgY2FuIGhpdCBhDQo+IGJ1cyBlcnJvci4g
-SSdtIHNlZWluZyBhdCBsZWFzdCBmb3VyIG9mIHRoZSBmc3gtYmFzZWQgeGZzIHRlc3RzDQo+IGZh
-aWwgaW50ZXJtaXR0ZW50bHkuDQo+IA0KDQpJdCByZWFsbHkgaXNuJ3QgYSBjbGllbnQgcHJvYmxl
-bSB0aGVuLiBJZiB0aGUgc2VydmVyIGlzIGZhaWxpbmcgdG8NCnVwZGF0ZSB0aGUgdGltZXN0YW1w
-cywgdGhlbiB5b3UgZ2V0cyB3aGF0IHlvdSBnZXRzLg0KDQpUaGlzIGlzIG9uZSBvZiB0aGUgcmVh
-c29ucyB3aHkgd2UgbmVlZCB0byBtb3ZlIG9uIGZyb20gTkZTdjMuDQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5t
-eWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+Deal with some warnings generated from make W=1:
+
+ (1) Add/remove/fix kerneldoc parameters descriptions.
+
+ (2) afs_sillyrename() isn't an API functions, so remove the kerneldoc
+     annotation.
+
+ (3) The fscache object CREATE_OBJECT work state isn't used, so remove it.
+
+ (4) Move __add_fid() from between v9fs_fid_add() and its comment.
+
+ (5) 9p's caches_show() doesn't really make sense as an API function, show
+     remove the kerneldoc annotation.  It's also not prefixed with 'v9fs_'.
+
+ (6) Remove the kerneldoc annotation on cifs_match_ipdaddr() as it's not
+     fully documented.
+
+ (7) Turn cifs' rqst_page_get_length()'s banner comment into a kerneldoc
+     comment.  It should probably be prefixed with "cifs_" though.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Jeff Layton <jlayton@kernel.org>
+cc: Dominique Martinet <asmadeus@codewreck.org>
+cc: Marc Dionne <marc.dionne@auristor.com>
+cc: Steve French <sfrench@samba.org>
+cc: Trond Myklebust <trond.myklebust@hammerspace.com>
+cc: Anna Schumaker <anna.schumaker@netapp.com>
+cc: Mauro Carvalho Chehab <mchehab@kernel.org>
+cc: v9fs-developer@lists.sourceforge.net
+cc: linux-afs@lists.infradead.org
+cc: linux-cifs@vger.kernel.org
+cc: linux-nfs@vger.kernel.org
+cc: linux-fsdevel@vger.kernel.org
+cc: linux-doc@vger.kernel.org
+---
+
+ fs/9p/fid.c            |   14 +++++++-------
+ fs/9p/v9fs.c           |    8 +++-----
+ fs/9p/vfs_addr.c       |   13 +++++++++----
+ fs/9p/vfs_file.c       |   33 ++++++++++++---------------------
+ fs/9p/vfs_inode.c      |   24 ++++++++++++++++--------
+ fs/9p/vfs_inode_dotl.c |   11 +++++++++--
+ fs/afs/dir_silly.c     |    4 ++--
+ fs/cifs/connect.c      |   14 +++++++++++++-
+ fs/cifs/misc.c         |   14 ++++++++++++--
+ fs/fscache/object.c    |    2 +-
+ fs/fscache/operation.c |    3 +++
+ fs/nfs_common/grace.c  |    1 -
+ 12 files changed, 87 insertions(+), 54 deletions(-)
+
+diff --git a/fs/9p/fid.c b/fs/9p/fid.c
+index 9d9de62592be..b8863dd0de5c 100644
+--- a/fs/9p/fid.c
++++ b/fs/9p/fid.c
+@@ -19,18 +19,18 @@
+ #include "v9fs_vfs.h"
+ #include "fid.h"
+ 
++static inline void __add_fid(struct dentry *dentry, struct p9_fid *fid)
++{
++	hlist_add_head(&fid->dlist, (struct hlist_head *)&dentry->d_fsdata);
++}
++
++
+ /**
+  * v9fs_fid_add - add a fid to a dentry
+  * @dentry: dentry that the fid is being added to
+  * @fid: fid to add
+  *
+  */
+-
+-static inline void __add_fid(struct dentry *dentry, struct p9_fid *fid)
+-{
+-	hlist_add_head(&fid->dlist, (struct hlist_head *)&dentry->d_fsdata);
+-}
+-
+ void v9fs_fid_add(struct dentry *dentry, struct p9_fid *fid)
+ {
+ 	spin_lock(&dentry->d_lock);
+@@ -67,7 +67,7 @@ static struct p9_fid *v9fs_fid_find_inode(struct inode *inode, kuid_t uid)
+ 
+ /**
+  * v9fs_open_fid_add - add an open fid to an inode
+- * @dentry: inode that the fid is being added to
++ * @inode: inode that the fid is being added to
+  * @fid: fid to add
+  *
+  */
+diff --git a/fs/9p/v9fs.c b/fs/9p/v9fs.c
+index cdb99507ef33..2e0fa7c932db 100644
+--- a/fs/9p/v9fs.c
++++ b/fs/9p/v9fs.c
+@@ -155,6 +155,7 @@ int v9fs_show_options(struct seq_file *m, struct dentry *root)
+ /**
+  * v9fs_parse_options - parse mount options into session structure
+  * @v9ses: existing v9fs session information
++ * @opts: The mount option string
+  *
+  * Return 0 upon success, -ERRNO upon failure.
+  */
+@@ -542,12 +543,9 @@ extern int v9fs_error_init(void);
+ static struct kobject *v9fs_kobj;
+ 
+ #ifdef CONFIG_9P_FSCACHE
+-/**
+- * caches_show - list caches associated with a session
+- *
+- * Returns the size of buffer written.
++/*
++ * List caches associated with a session
+  */
+-
+ static ssize_t caches_show(struct kobject *kobj,
+ 			   struct kobj_attribute *attr,
+ 			   char *buf)
+diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
+index fd45874b55db..1c3708720fb9 100644
+--- a/fs/9p/vfs_addr.c
++++ b/fs/9p/vfs_addr.c
+@@ -88,7 +88,7 @@ static const struct netfs_read_request_ops v9fs_req_ops = {
+ 
+ /**
+  * v9fs_vfs_readpage - read an entire page in from 9P
+- * @filp: file being read
++ * @file: file being read
+  * @page: structure to page
+  *
+  */
+@@ -108,6 +108,8 @@ static void v9fs_vfs_readahead(struct readahead_control *ractl)
+ 
+ /**
+  * v9fs_release_page - release the private state associated with a page
++ * @page: The page to be released
++ * @gfp: The caller's allocation restrictions
+  *
+  * Returns 1 if the page can be released, false otherwise.
+  */
+@@ -128,9 +130,9 @@ static int v9fs_release_page(struct page *page, gfp_t gfp)
+ 
+ /**
+  * v9fs_invalidate_page - Invalidate a page completely or partially
+- *
+- * @page: structure to page
+- * @offset: offset in the page
++ * @page: The page to be invalidated
++ * @offset: offset of the invalidated region
++ * @length: length of the invalidated region
+  */
+ 
+ static void v9fs_invalidate_page(struct page *page, unsigned int offset,
+@@ -190,6 +192,8 @@ static int v9fs_vfs_writepage(struct page *page, struct writeback_control *wbc)
+ 
+ /**
+  * v9fs_launder_page - Writeback a dirty page
++ * @page: The page to be cleaned up
++ *
+  * Returns 0 on success.
+  */
+ 
+@@ -209,6 +213,7 @@ static int v9fs_launder_page(struct page *page)
+ /**
+  * v9fs_direct_IO - 9P address space operation for direct I/O
+  * @iocb: target I/O control block
++ * @iter: The data/buffer to use
+  *
+  * The presence of v9fs_direct_IO() in the address space ops vector
+  * allowes open() O_DIRECT flags which would have failed otherwise.
+diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
+index 4b617d10cf28..170d4612a031 100644
+--- a/fs/9p/vfs_file.c
++++ b/fs/9p/vfs_file.c
+@@ -359,14 +359,11 @@ static int v9fs_file_flock_dotl(struct file *filp, int cmd,
+ }
+ 
+ /**
+- * v9fs_file_read - read from a file
+- * @filp: file pointer to read
+- * @udata: user data buffer to read data into
+- * @count: size of buffer
+- * @offset: offset at which to read data
++ * v9fs_file_read_iter - read from a file
++ * @iocb: The operation parameters
++ * @to: The buffer to read into
+  *
+  */
+-
+ static ssize_t
+ v9fs_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ {
+@@ -388,11 +385,9 @@ v9fs_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ }
+ 
+ /**
+- * v9fs_file_write - write to a file
+- * @filp: file pointer to write
+- * @data: data buffer to write data from
+- * @count: size of buffer
+- * @offset: offset at which to write data
++ * v9fs_file_write_iter - write to a file
++ * @iocb: The operation parameters
++ * @from: The data to write
+  *
+  */
+ static ssize_t
+@@ -574,11 +569,9 @@ v9fs_vm_page_mkwrite(struct vm_fault *vmf)
+ }
+ 
+ /**
+- * v9fs_mmap_file_read - read from a file
+- * @filp: file pointer to read
+- * @data: user data buffer to read data into
+- * @count: size of buffer
+- * @offset: offset at which to read data
++ * v9fs_mmap_file_read_iter - read from a file
++ * @iocb: The operation parameters
++ * @to: The buffer to read into
+  *
+  */
+ static ssize_t
+@@ -589,11 +582,9 @@ v9fs_mmap_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ }
+ 
+ /**
+- * v9fs_mmap_file_write - write to a file
+- * @filp: file pointer to write
+- * @data: data buffer to write data from
+- * @count: size of buffer
+- * @offset: offset at which to write data
++ * v9fs_mmap_file_write_iter - write to a file
++ * @iocb: The operation parameters
++ * @from: The data to write
+  *
+  */
+ static ssize_t
+diff --git a/fs/9p/vfs_inode.c b/fs/9p/vfs_inode.c
+index 795706520b5e..08f48b70a741 100644
+--- a/fs/9p/vfs_inode.c
++++ b/fs/9p/vfs_inode.c
+@@ -218,7 +218,7 @@ v9fs_blank_wstat(struct p9_wstat *wstat)
+ 
+ /**
+  * v9fs_alloc_inode - helper function to allocate an inode
+- *
++ * @sb: The superblock to allocate the inode from
+  */
+ struct inode *v9fs_alloc_inode(struct super_block *sb)
+ {
+@@ -238,7 +238,7 @@ struct inode *v9fs_alloc_inode(struct super_block *sb)
+ 
+ /**
+  * v9fs_free_inode - destroy an inode
+- *
++ * @inode: The inode to be freed
+  */
+ 
+ void v9fs_free_inode(struct inode *inode)
+@@ -343,7 +343,7 @@ int v9fs_init_inode(struct v9fs_session_info *v9ses,
+  * v9fs_get_inode - helper function to setup an inode
+  * @sb: superblock
+  * @mode: mode to setup inode with
+- *
++ * @rdev: The device numbers to set
+  */
+ 
+ struct inode *v9fs_get_inode(struct super_block *sb, umode_t mode, dev_t rdev)
+@@ -369,7 +369,7 @@ struct inode *v9fs_get_inode(struct super_block *sb, umode_t mode, dev_t rdev)
+ }
+ 
+ /**
+- * v9fs_clear_inode - release an inode
++ * v9fs_evict_inode - Remove an inode from the inode cache
+  * @inode: inode to release
+  *
+  */
+@@ -665,14 +665,15 @@ v9fs_create(struct v9fs_session_info *v9ses, struct inode *dir,
+ 
+ /**
+  * v9fs_vfs_create - VFS hook to create a regular file
++ * @mnt_userns: The user namespace of the mount
++ * @dir: The parent directory
++ * @dentry: The name of file to be created
++ * @mode: The UNIX file mode to set
++ * @excl: True if the file must not yet exist
+  *
+  * open(.., O_CREAT) is handled in v9fs_vfs_atomic_open().  This is only called
+  * for mknod(2).
+  *
+- * @dir: directory inode that is being created
+- * @dentry:  dentry that is being deleted
+- * @mode: create permissions
+- *
+  */
+ 
+ static int
+@@ -696,6 +697,7 @@ v9fs_vfs_create(struct user_namespace *mnt_userns, struct inode *dir,
+ 
+ /**
+  * v9fs_vfs_mkdir - VFS mkdir hook to create a directory
++ * @mnt_userns: The user namespace of the mount
+  * @dir:  inode that is being unlinked
+  * @dentry: dentry that is being unlinked
+  * @mode: mode for new directory
+@@ -900,10 +902,12 @@ int v9fs_vfs_rmdir(struct inode *i, struct dentry *d)
+ 
+ /**
+  * v9fs_vfs_rename - VFS hook to rename an inode
++ * @mnt_userns: The user namespace of the mount
+  * @old_dir:  old dir inode
+  * @old_dentry: old dentry
+  * @new_dir: new dir inode
+  * @new_dentry: new dentry
++ * @flags: RENAME_* flags
+  *
+  */
+ 
+@@ -1009,6 +1013,7 @@ v9fs_vfs_rename(struct user_namespace *mnt_userns, struct inode *old_dir,
+ 
+ /**
+  * v9fs_vfs_getattr - retrieve file metadata
++ * @mnt_userns: The user namespace of the mount
+  * @path: Object to query
+  * @stat: metadata structure to populate
+  * @request_mask: Mask of STATX_xxx flags indicating the caller's interests
+@@ -1050,6 +1055,7 @@ v9fs_vfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 
+ /**
+  * v9fs_vfs_setattr - set file metadata
++ * @mnt_userns: The user namespace of the mount
+  * @dentry: file whose metadata to set
+  * @iattr: metadata assignment structure
+  *
+@@ -1285,6 +1291,7 @@ static int v9fs_vfs_mkspecial(struct inode *dir, struct dentry *dentry,
+ 
+ /**
+  * v9fs_vfs_symlink - helper function to create symlinks
++ * @mnt_userns: The user namespace of the mount
+  * @dir: directory inode containing symlink
+  * @dentry: dentry for symlink
+  * @symname: symlink data
+@@ -1340,6 +1347,7 @@ v9fs_vfs_link(struct dentry *old_dentry, struct inode *dir,
+ 
+ /**
+  * v9fs_vfs_mknod - create a special file
++ * @mnt_userns: The user namespace of the mount
+  * @dir: inode destination for new link
+  * @dentry: dentry for file
+  * @mode: mode for creation
+diff --git a/fs/9p/vfs_inode_dotl.c b/fs/9p/vfs_inode_dotl.c
+index e1c0240b51c0..01b9e1281a29 100644
+--- a/fs/9p/vfs_inode_dotl.c
++++ b/fs/9p/vfs_inode_dotl.c
+@@ -37,7 +37,10 @@ v9fs_vfs_mknod_dotl(struct user_namespace *mnt_userns, struct inode *dir,
+ 		    struct dentry *dentry, umode_t omode, dev_t rdev);
+ 
+ /**
+- * v9fs_get_fsgid_for_create - Helper function to get the gid for creating a
++ * v9fs_get_fsgid_for_create - Helper function to get the gid for a new object
++ * @dir_inode: The directory inode
++ *
++ * Helper function to get the gid for creating a
+  * new file system object. This checks the S_ISGID to determine the owning
+  * group of the new file system object.
+  */
+@@ -211,12 +214,13 @@ int v9fs_open_to_dotl_flags(int flags)
+ 
+ /**
+  * v9fs_vfs_create_dotl - VFS hook to create files for 9P2000.L protocol.
++ * @mnt_userns: The user namespace of the mount
+  * @dir: directory inode that is being created
+  * @dentry:  dentry that is being deleted
+  * @omode: create permissions
++ * @excl: True if the file must not yet exist
+  *
+  */
+-
+ static int
+ v9fs_vfs_create_dotl(struct user_namespace *mnt_userns, struct inode *dir,
+ 		     struct dentry *dentry, umode_t omode, bool excl)
+@@ -361,6 +365,7 @@ v9fs_vfs_atomic_open_dotl(struct inode *dir, struct dentry *dentry,
+ 
+ /**
+  * v9fs_vfs_mkdir_dotl - VFS mkdir hook to create a directory
++ * @mnt_userns: The user namespace of the mount
+  * @dir:  inode that is being unlinked
+  * @dentry: dentry that is being unlinked
+  * @omode: mode for new directory
+@@ -537,6 +542,7 @@ static int v9fs_mapped_iattr_valid(int iattr_valid)
+ 
+ /**
+  * v9fs_vfs_setattr_dotl - set file metadata
++ * @mnt_userns: The user namespace of the mount
+  * @dentry: file whose metadata to set
+  * @iattr: metadata assignment structure
+  *
+@@ -816,6 +822,7 @@ v9fs_vfs_link_dotl(struct dentry *old_dentry, struct inode *dir,
+ 
+ /**
+  * v9fs_vfs_mknod_dotl - create a special file
++ * @mnt_userns: The user namespace of the mount
+  * @dir: inode destination for new link
+  * @dentry: dentry for file
+  * @omode: mode for creation
+diff --git a/fs/afs/dir_silly.c b/fs/afs/dir_silly.c
+index dae9a57d7ec0..45cfd50a9521 100644
+--- a/fs/afs/dir_silly.c
++++ b/fs/afs/dir_silly.c
+@@ -86,8 +86,8 @@ static int afs_do_silly_rename(struct afs_vnode *dvnode, struct afs_vnode *vnode
+ 	return afs_do_sync_operation(op);
+ }
+ 
+-/**
+- * afs_sillyrename - Perform a silly-rename of a dentry
++/*
++ * Perform silly-rename of a dentry.
+  *
+  * AFS is stateless and the server doesn't know when the client is holding a
+  * file open.  To prevent application problems when a file is unlinked while
+diff --git a/fs/cifs/connect.c b/fs/cifs/connect.c
+index 0db344807ef1..a725377d662b 100644
+--- a/fs/cifs/connect.c
++++ b/fs/cifs/connect.c
+@@ -1090,7 +1090,7 @@ cifs_demultiplex_thread(void *p)
+ 	module_put_and_exit(0);
+ }
+ 
+-/**
++/*
+  * Returns true if srcaddr isn't specified and rhs isn't specified, or
+  * if srcaddr is specified and matches the IP address of the rhs argument
+  */
+@@ -1550,6 +1550,8 @@ static int match_session(struct cifs_ses *ses, struct smb3_fs_context *ctx)
+ 
+ /**
+  * cifs_setup_ipc - helper to setup the IPC tcon for the session
++ * @ses: The session being set up
++ * @ctx: The mount context
+  *
+  * A new IPC connection is made and stored in the session
+  * tcon_ipc. The IPC tcon has the same lifetime as the session.
+@@ -1605,6 +1607,7 @@ cifs_setup_ipc(struct cifs_ses *ses, struct smb3_fs_context *ctx)
+ 
+ /**
+  * cifs_free_ipc - helper to release the session IPC tcon
++ * @ses: The session being destroyed
+  *
+  * Needs to be called everytime a session is destroyed.
+  *
+@@ -1855,6 +1858,8 @@ cifs_set_cifscreds(struct smb3_fs_context *ctx __attribute__((unused)),
+ 
+ /**
+  * cifs_get_smb_ses - get a session matching @ctx data from @server
++ * @server: The server we want to use
++ * @ctx: The mount context
+  *
+  * This function assumes it is being called from cifs_mount() where we
+  * already got a server reference (server refcount +1). See
+@@ -2065,6 +2070,8 @@ cifs_put_tcon(struct cifs_tcon *tcon)
+ 
+ /**
+  * cifs_get_tcon - get a tcon matching @ctx data from @ses
++ * @ses: The session we're working in
++ * @ctx: The mount context.
+  *
+  * - tcon refcount is the number of mount points using the tcon.
+  * - ses refcount is the number of tcon using the session.
+@@ -3032,6 +3039,11 @@ build_unc_path_to_root(const struct smb3_fs_context *ctx,
+ 
+ /**
+  * expand_dfs_referral - Perform a dfs referral query and update the cifs_sb
++ * @xid: The operation ID
++ * @ses: The session we're working in
++ * @ctx: The mount context
++ * @cifs_sb: The superblock private data
++ * @ref_path: The referral path
+  *
+  * If a referral is found, cifs_sb->ctx->mount_options will be (re-)allocated
+  * to a string containing updated options for the submount.  Otherwise it
+diff --git a/fs/cifs/misc.c b/fs/cifs/misc.c
+index 9469f1cf0b46..05225d13e3d4 100644
+--- a/fs/cifs/misc.c
++++ b/fs/cifs/misc.c
+@@ -591,6 +591,7 @@ void cifs_put_writer(struct cifsInodeInfo *cinode)
+ 
+ /**
+  * cifs_queue_oplock_break - queue the oplock break handler for cfile
++ * @cfile: The file to break the oplock on
+  *
+  * This function is called from the demultiplex thread when it
+  * receives an oplock break for @cfile.
+@@ -1029,6 +1030,9 @@ setup_aio_ctx_iter(struct cifs_aio_ctx *ctx, struct iov_iter *iter, int rw)
+ 
+ /**
+  * cifs_alloc_hash - allocate hash and hash context together
++ * @name: The name of the crypto hash algo
++ * @shash: Where to put the pointer to the hash algo
++ * @sdesc: Where to put the pointer to the hash descriptor
+  *
+  * The caller has to make sure @sdesc is initialized to either NULL or
+  * a valid context. Both can be freed via cifs_free_hash().
+@@ -1067,6 +1071,8 @@ cifs_alloc_hash(const char *name,
+ 
+ /**
+  * cifs_free_hash - free hash and hash context together
++ * @shash: Where to find the pointer to the hash algo
++ * @sdesc: Where to find the pointer to the hash descriptor
+  *
+  * Freeing a NULL hash or context is safe.
+  */
+@@ -1082,8 +1088,10 @@ cifs_free_hash(struct crypto_shash **shash, struct sdesc **sdesc)
+ 
+ /**
+  * rqst_page_get_length - obtain the length and offset for a page in smb_rqst
+- * Input: rqst - a smb_rqst, page - a page index for rqst
+- * Output: *len - the length for this page, *offset - the offset for this page
++ * @rqst: The request descriptor
++ * @page: The index of the page to query
++ * @len: Where to store the length for this page:
++ * @offset: Where to store the offset for this page
+  */
+ void rqst_page_get_length(struct smb_rqst *rqst, unsigned int page,
+ 				unsigned int *len, unsigned int *offset)
+@@ -1116,6 +1124,8 @@ void extract_unc_hostname(const char *unc, const char **h, size_t *len)
+ 
+ /**
+  * copy_path_name - copy src path to dst, possibly truncating
++ * @dst: The destination buffer
++ * @src: The source name
+  *
+  * returns number of bytes written (including trailing nul)
+  */
+diff --git a/fs/fscache/object.c b/fs/fscache/object.c
+index d7eab46dd826..86ad941726f7 100644
+--- a/fs/fscache/object.c
++++ b/fs/fscache/object.c
+@@ -77,7 +77,6 @@ static WORK_STATE(INIT_OBJECT,		"INIT", fscache_initialise_object);
+ static WORK_STATE(PARENT_READY,		"PRDY", fscache_parent_ready);
+ static WORK_STATE(ABORT_INIT,		"ABRT", fscache_abort_initialisation);
+ static WORK_STATE(LOOK_UP_OBJECT,	"LOOK", fscache_look_up_object);
+-static WORK_STATE(CREATE_OBJECT,	"CRTO", fscache_look_up_object);
+ static WORK_STATE(OBJECT_AVAILABLE,	"AVBL", fscache_object_available);
+ static WORK_STATE(JUMPSTART_DEPS,	"JUMP", fscache_jumpstart_dependents);
+ 
+@@ -907,6 +906,7 @@ static void fscache_dequeue_object(struct fscache_object *object)
+  * @object: The object to ask about
+  * @data: The auxiliary data for the object
+  * @datalen: The size of the auxiliary data
++ * @object_size: The size of the object according to the server.
+  *
+  * This function consults the netfs about the coherency state of an object.
+  * The caller must be holding a ref on cookie->n_active (held by
+diff --git a/fs/fscache/operation.c b/fs/fscache/operation.c
+index 433877107700..e002cdfaf3cc 100644
+--- a/fs/fscache/operation.c
++++ b/fs/fscache/operation.c
+@@ -22,7 +22,10 @@ static void fscache_operation_dummy_cancel(struct fscache_operation *op)
+ 
+ /**
+  * fscache_operation_init - Do basic initialisation of an operation
++ * @cookie: The cookie to operate on
+  * @op: The operation to initialise
++ * @processor: The function to perform the operation
++ * @cancel: A function to handle operation cancellation
+  * @release: The release function to assign
+  *
+  * Do basic initialisation of an operation.  The caller must still set flags,
+diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
+index edec45831585..0a9b72685f98 100644
+--- a/fs/nfs_common/grace.c
++++ b/fs/nfs_common/grace.c
+@@ -42,7 +42,6 @@ EXPORT_SYMBOL_GPL(locks_start_grace);
+ 
+ /**
+  * locks_end_grace
+- * @net: net namespace that this lock manager belongs to
+  * @lm: who this grace period is for
+  *
+  * Call this function to state that the given lock manager is ready to
+
+
