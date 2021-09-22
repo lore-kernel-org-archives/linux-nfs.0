@@ -2,86 +2,138 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 165BBC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 15:36:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 912EEC433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 15:40:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EA51560F4C
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 15:36:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 76C6A61181
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 15:40:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236434AbhIVPhp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Sep 2021 11:37:45 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:32683 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S236400AbhIVPho (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Sep 2021 11:37:44 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1632324973;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Xm50amDwEdJyT+MqX3sDHBl8pNMiVQt1LghCgwuKR2A=;
-        b=OVMBVbaf0c4sgOb52x7QMUb5w0vEYHcpB4qHMWkqUT2N0+ozQyXM9gXmlCQL6Gu9Vy2x9e
-        nKmmYCB3d2LUYipcB8+eJzwVo2fCox6F14X3GEoTxQzmf7jblmyqvvoLv4g6W5z8eQXp3X
-        szxofDQWLShNXX3qunWwQIRhobDPVao=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-56-npSN3F-2OE6RkDl6JKiywg-1; Wed, 22 Sep 2021 11:36:12 -0400
-X-MC-Unique: npSN3F-2OE6RkDl6JKiywg-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 817A39126B
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2021 15:36:11 +0000 (UTC)
-Received: from dobby.home.dicksonnet.net (ovpn-114-242.phx2.redhat.com [10.3.114.242])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 3B56610013C1
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2021 15:36:11 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] mountd: only do NFSv4 logging on supported kernels.
-Date:   Wed, 22 Sep 2021 11:36:10 -0400
-Message-Id: <20210922153610.60548-2-steved@redhat.com>
-In-Reply-To: <20210922153610.60548-1-steved@redhat.com>
-References: <20210922153610.60548-1-steved@redhat.com>
+        id S236328AbhIVPlx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 Sep 2021 11:41:53 -0400
+Received: from mta-102a.oxsus-vadesecure.net ([51.81.61.66]:39269 "EHLO
+        mta-102a.oxsus-vadesecure.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232318AbhIVPlx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Sep 2021 11:41:53 -0400
+DKIM-Signature: v=1; a=rsa-sha256; bh=c4mNjWnKOiZa7zmpnNwlJCGMWy9PgXej2zQz3K
+ gaCT4=; c=relaxed/relaxed; d=earthlink.net; h=from:reply-to:subject:
+ date:to:cc:resent-date:resent-from:resent-to:resent-cc:in-reply-to:
+ references:list-id:list-help:list-unsubscribe:list-subscribe:list-post:
+ list-owner:list-archive; q=dns/txt; s=dk12062016; t=1632321123;
+ x=1632925923; b=PwTpJjsWAasLHue/2ieYgZAuO0A+gBOS1mCPshBNH47A8RXYM8MWVGO
+ EQKS8CXB0HLUyU2BygWQmLNKv3w0l5DZDS9aCG20lYAybEnouqJTPzKoNo/wZok/X+h2zjK
+ vuhVCOrtgodT9oe3sCY7Gn+5zTj6PCZaKA+wl78z+CaTfa7i/TRpF8zKi2FcHVYY05E4Lzq
+ lWl577pL7A+eddy57pXy3m3QWOEZTno2kcF4GpzndAAVeFpciQNV4MxROr+io0DXwyhqdjX
+ /VOFqO7HIjNt0COp1RtUmiAyuIUv+sge8CaCM+sehH16RDEJVtcBGA2KYWLpvvcbO/4IN9Y
+ Cvw==
+Received: from FRANKSTHINKPAD ([76.105.143.216])
+ by smtp.oxsus-vadesecure.net ESMTP oxsus1nmtao02p with ngmta
+ id f58ae779-16a72b69b636fa24; Wed, 22 Sep 2021 14:32:03 +0000
+From:   "Frank Filz" <ffilzlnx@mindspring.com>
+To:     "'Daire Byrne'" <daire@dneg.com>,
+        "'Bruce Fields'" <bfields@fieldses.org>
+Cc:     "'Chuck Lever III'" <chuck.lever@oracle.com>,
+        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
+References: <20210921143259.GB21704@fieldses.org> <37851433-48C9-4585-9B68-834474AA6E06@oracle.com> <20210921160030.GC21704@fieldses.org> <CAPt2mGOf8orCkOj9hCM_sSu2uucPiRFPEK+yep+kufv-cDvhSA@mail.gmail.com>
+In-Reply-To: <CAPt2mGOf8orCkOj9hCM_sSu2uucPiRFPEK+yep+kufv-cDvhSA@mail.gmail.com>
+Subject: RE: [PATCH] nfs: reexport documentation
+Date:   Wed, 22 Sep 2021 07:32:02 -0700
+Message-ID: <01c901d7afbe$9cb5dbd0$d6219370$@mindspring.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+Content-Type: text/plain;
+        charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Mailer: Microsoft Outlook 15.0
+Thread-Index: AQHaPmxrNtjQ+kQkvcxH7DV+BmtjZwK315yQATRhzjcB4dNh36t8iYGA
+Content-Language: en-us
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1979816
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- support/export/v4clients.c | 3 +++
- 1 file changed, 3 insertions(+)
 
-diff --git a/support/export/v4clients.c b/support/export/v4clients.c
-index dd985463..5e4f1058 100644
---- a/support/export/v4clients.c
-+++ b/support/export/v4clients.c
-@@ -10,6 +10,7 @@
- #include <sys/inotify.h>
- #include <errno.h>
- #include "export.h"
-+#include "version.h"
- 
- /* search.h declares 'struct entry' and nfs_prot.h
-  * does too.  Easiest fix is to trick search.h into
-@@ -23,6 +24,8 @@ static int clients_fd = -1;
- 
- void v4clients_init(void)
- {
-+	if (linux_version_code() < MAKE_VERSION(5, 3, 0))
-+		return;
- 	if (clients_fd >= 0)
- 		return;
- 	clients_fd = inotify_init1(IN_NONBLOCK);
--- 
-2.31.1
+
+> -----Original Message-----
+> From: Daire Byrne [mailto:daire@dneg.com]
+> Sent: Wednesday, September 22, 2021 2:48 AM
+> To: Bruce Fields <bfields@fieldses.org>
+> Cc: Chuck Lever III <chuck.lever@oracle.com>; Linux NFS Mailing List =
+<linux-
+> nfs@vger.kernel.org>
+> Subject: Re: [PATCH] nfs: reexport documentation
+>=20
+> On Tue, 21 Sept 2021 at 17:00, Bruce Fields <bfields@fieldses.org> =
+wrote:
+> >
+> > > Any recommended workarounds? Or does this simply mean that
+> > > administrators need to notify client users to unmount (or at least
+> > > stop their workloads) before rebooting the proxy?
+> >
+> > I think so.
+> >
+> > If you don't use any file locking or delegations I suppose you're =
+also
+> > OK.  Delegations might be useful, though.
+> >
+> > I'd expect reexport to be useful mainly for data that changes very
+> > rarely, if that helps.
+> >
+> > --b.
+>=20
+> Firstly, it's great to see this documentation and the well maintained =
+wiki page
+> for something we use in production (a lot) - thanks Bruce!
+>=20
+> I can only draw on our experience to say:
+> * if the nfs re-export server doesn't crash, we rarely have cause to =
+reboot it.
+> * we re-export read-only software repositories to WAN/cloud instances =
+(an
+> ideal use case).
+> * we also re-export read/write production storage but every client =
+process is
+> writing unique files - there are no writes to the same
+> file(s) from any clients of the re-export server.
+>=20
+> We don't use or need crossmnt functionality, but I know from chatting =
+to others
+> within our industry that the fsid/crossmnt limitation causes them the =
+most grief
+> and confusion. I think in the case of Netapps, there are similar =
+problems with
+> trying to re-export a namespace made up of different volumes?
+>=20
+> As noted on the wiki, the only way around that is probably to have a =
+"proxy"
+> mode (similar to what ganesha does?).
+
+I'm glad to see this documentation also. It helps to have a common =
+understanding of the challenges of re-export.
+
+Ganesha's proxy mode would be different from what Bruce is proposing due =
+to how Ganesha constructs handles. It adds an export ID to the export =
+configuration which leads to the specific back end (FSAL) that is =
+exporting that handle. It may or may not also encode an fsid into the =
+handle (proxy does so only to the extent the re-exported server put an =
+fsid into the handle, Ganesha's proxy doesn't distinguish between the =
+filesystems on the re-exported server). Ganesha can proxy and serve =
+local file systems because it's proxy isn't a re-export of an NFS mount, =
+but a separate back end module (two actually, one for NFSv3 and one for =
+NFSv4) that talk directly to the proxied server while local file systems =
+resolve handles pretty much the same way knfsd does (use the fsid to =
+find the right filesystem and then use open_by_handle to find the inode =
+within that filesystem - open_by_handle is a user space interface to the =
+same exportfs interface that knfsd uses, with all the same limitations).
+
+What Bruce is proposing is a bit more like a proxy mode I have =
+considered for Ganesha that would allow both a proxied Ganesha server =
+and the Ganesha proxy to use the same handles. Basically the export IDs =
+would be shared between the two servers, though even that could be =
+constructed in a way to allow multiple proxied servers (they just would =
+be required to have non-overlapping export IDs) as well as still export =
+local file systems.
+
+Frank
 
