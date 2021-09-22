@@ -2,89 +2,114 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6E39C433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 14:26:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D65F2C433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 14:40:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ABB606103C
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 14:26:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B5D2A60F26
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 14:40:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235600AbhIVO20 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Sep 2021 10:28:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57258 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234359AbhIVO20 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Sep 2021 10:28:26 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D185C061574
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2021 07:26:56 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 1C7A6367; Wed, 22 Sep 2021 10:26:55 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 1C7A6367
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1632320815;
-        bh=ze+0jcQBzL6Ulx22ziDKjl/vaKbRclTnC12s+Dg9obI=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=T71QDNLTYYL0ZvBWv1dAf3PL1HNULmXGqi8nuAnGm49LqLRZTF3bOy6YTcARy5g71
-         FFHY5JzQJl5wMd0J1G8wdrw+oXD2633dS36EL2PaBDJrWG70Jh19Q6ImDzPlSCYSoY
-         dp5V/VIVZ/wRXrpiZyB3oYNauHWsjgAgcyY1dGmI=
-Date:   Wed, 22 Sep 2021 10:26:55 -0400
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Daire Byrne <daire@dneg.com>
-Cc:     Chuck Lever III <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: reexport documentation
-Message-ID: <20210922142655.GA22937@fieldses.org>
-References: <20210921143259.GB21704@fieldses.org>
- <37851433-48C9-4585-9B68-834474AA6E06@oracle.com>
- <20210921160030.GC21704@fieldses.org>
- <CAPt2mGOf8orCkOj9hCM_sSu2uucPiRFPEK+yep+kufv-cDvhSA@mail.gmail.com>
+        id S235464AbhIVOlx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 Sep 2021 10:41:53 -0400
+Received: from mta-202a.oxsus-vadesecure.net ([51.81.232.240]:42189 "EHLO
+        mta-202a.oxsus-vadesecure.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232720AbhIVOlx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Sep 2021 10:41:53 -0400
+DKIM-Signature: v=1; a=rsa-sha256; bh=7QNjXhYbRVw6dhTmWuCMnie/8ToA1kANIUcED2
+ kEdj8=; c=relaxed/relaxed; d=earthlink.net; h=from:reply-to:subject:
+ date:to:cc:resent-date:resent-from:resent-to:resent-cc:in-reply-to:
+ references:list-id:list-help:list-unsubscribe:list-subscribe:list-post:
+ list-owner:list-archive; q=dns/txt; s=dk12062016; t=1632321621;
+ x=1632926421; b=EKn8nxmUB5IItJRc+1aEorI/gdqNYkw3nnWgoyeT4YgbdMFYT6HR74t
+ FxSo/XVcWiKHkeKmILShAZMJ+D/XI+AJ0ZNid/ncR59KfSeQzdnBMSCckzL9wRGIjJSmX+T
+ 5ACdIBcI9TzbPoYLjmQbxijqm7ki/waoiaVDvcI2moyrxYg10Eq2DW9ff5bhebQRQxElFqq
+ GNNScfp8+zzBoFk6pVXqZzm0IZbkc3NAU9HlHvU0DvQz9hi3TeQQJuQQPhWKTix2LTk39aN
+ axM86qyZ8vuXTu5Sjn+w4HnBVIHa0gYZEW6uc9iOgS7E4gSAtc5tWInPrRoYXjaKN2eKNEW
+ ESA==
+Received: from FRANKSTHINKPAD ([76.105.143.216])
+ by smtp.oxsus-vadesecure.net ESMTP oxsus2nmtao02p with ngmta
+ id 4e501eda-16a72bddc4a42b8d; Wed, 22 Sep 2021 14:40:21 +0000
+From:   "Frank Filz" <ffilzlnx@mindspring.com>
+To:     "'Bruce Fields'" <bfields@fieldses.org>,
+        "'Daire Byrne'" <daire@dneg.com>
+Cc:     "'Chuck Lever III'" <chuck.lever@oracle.com>,
+        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
+References: <20210921143259.GB21704@fieldses.org> <37851433-48C9-4585-9B68-834474AA6E06@oracle.com> <20210921160030.GC21704@fieldses.org> <CAPt2mGOf8orCkOj9hCM_sSu2uucPiRFPEK+yep+kufv-cDvhSA@mail.gmail.com> <20210922142655.GA22937@fieldses.org>
+In-Reply-To: <20210922142655.GA22937@fieldses.org>
+Subject: RE: [PATCH] nfs: reexport documentation
+Date:   Wed, 22 Sep 2021 07:40:21 -0700
+Message-ID: <01ca01d7afbf$c59723f0$50c56bd0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAPt2mGOf8orCkOj9hCM_sSu2uucPiRFPEK+yep+kufv-cDvhSA@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: text/plain;
+        charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+X-Mailer: Microsoft Outlook 15.0
+Thread-Index: AQHaPmxrNtjQ+kQkvcxH7DV+BmtjZwK315yQATRhzjcB4dNh3wHVC7eIq23nh/A=
+Content-Language: en-us
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Sep 22, 2021 at 10:47:35AM +0100, Daire Byrne wrote:
-> We don't use or need crossmnt functionality, but I know from chatting
-> to others within our industry that the fsid/crossmnt limitation causes
-> them the most grief and confusion. I think in the case of Netapps,
-> there are similar problems with trying to re-export a namespace made
-> up of different volumes?
+> On Wed, Sep 22, 2021 at 10:47:35AM +0100, Daire Byrne wrote:
+> > We don't use or need crossmnt functionality, but I know from chatting
+> > to others within our industry that the fsid/crossmnt limitation causes
+> > them the most grief and confusion. I think in the case of Netapps,
+> > there are similar problems with trying to re-export a namespace made
+> > up of different volumes?
+> >
+> > As noted on the wiki, the only way around that is probably to have a
+> > "proxy" mode (similar to what ganesha does?).
 > 
-> As noted on the wiki, the only way around that is probably to have a
-> "proxy" mode (similar to what ganesha does?).
+> I'm not sure what Ganesha does.  I spent some time thinking about and
+couldn't
+> figure out how to do it, at least not on my own in a reasonable amount of
+time.
+> 
+> I liked the idea of limiting the proxy to reexport only one original
+server and
+> reusing the filehandles from the original server without any wrapping.
+That
+> addresses the fsid/crossmnt limitation and filehandle length limitations.
+It
+> means proxies all share the same filehandles so eventually you could also
+> implement migration and failover between them and the original server.
+> 
+> It means when you get a filehandle the only way to find out *anything*
+about it-
+> -even what filesystem it's from--is to go ask the server.
+> That's slow, so you need a filehandle cache.  You have to deal with the
+case
+> where you get a filehandle for an object that isn't mounted yet.
+> Its parents may not be mounted yet either.  If it's a regular file you
+can't call
+> LOOKUPP on it.  I'm not sure how to handle the vfs details in that
+case--how do
+> you fake up a superblock and vfsmount?
 
-I'm not sure what Ganesha does.  I spent some time thinking about and
-couldn't figure out how to do it, at least not on my own in a reasonable
-amount of time.
+That really highlights how Ganesha's proxy is different than anything knfsd
+would do. Ganesha doesn't have to deal with all the vfs stuff. It just needs
+to be able to reflect the original server's handle back to the original
+server. Ganesha ONLY supports NFSv3 proxy (without file open) and NFSv4.1+
+proxy since it needs open by handle. Ganesha then lives with totally
+floating inodes. They may get connected in a name space as a result of
+READDIR or LOOKUP but it never needs the name space. Changing knfsd to NOT
+need to hook the proxied server's handles into vfs would just result in a
+kernel implementation of something more like Ganesha and probably not worth
+it.
 
-I liked the idea of limiting the proxy to reexport only one original
-server and reusing the filehandles from the original server without any
-wrapping.  That addresses the fsid/crossmnt limitation and filehandle
-length limitations.  It means proxies all share the same filehandles so
-eventually you could also implement migration and failover between them
-and the original server.
+> Simpler might be to give up on that idea of reusing the original server's
+> filehandle, and automatically generate and persistently store uuids for
+new
+> filesystems as you discover them.
 
-It means when you get a filehandle the only way to find out *anything*
-about it--even what filesystem it's from--is to go ask the server.
-That's slow, so you need a filehandle cache.  You have to deal with the
-case where you get a filehandle for an object that isn't mounted yet.
-Its parents may not be mounted yet either.  If it's a regular file you
-can't call LOOKUPP on it.  I'm not sure how to handle the vfs details in
-that case--how do you fake up a superblock and vfsmount?
+Ganesha does have a mode for proxy where it uses a database to map original
+server handles and Ganesha handles. That helps get around file handle size
+problems but it's not a great solution because you have to keep a persistent
+data base or lose it all when the proxy crashes.
 
-Simpler might be to give up on that idea of reusing the original
-server's filehandle, and automatically generate and persistently store
-uuids for new filesystems as you discover them.
+Frank
 
-I don't know, I'm rambling.
 
---b.
