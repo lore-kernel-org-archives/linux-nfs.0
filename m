@@ -2,91 +2,71 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=BAYES_20,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6A7AC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 17:28:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CFF9C433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 20:57:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C577D60F6E
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 17:28:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 59B9961168
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Sep 2021 20:57:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236753AbhIVR3i (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Sep 2021 13:29:38 -0400
-Received: from p3plsmtpa06-03.prod.phx3.secureserver.net ([173.201.192.104]:40861
-        "EHLO p3plsmtpa06-03.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S236701AbhIVR3h (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Sep 2021 13:29:37 -0400
-Received: from [192.168.0.100] ([173.76.240.186])
-        by :SMTPAUTH: with ESMTPSA
-        id T62Qm4IvajeJoT62Rm07ar; Wed, 22 Sep 2021 10:28:07 -0700
-X-CMAE-Analysis: v=2.4 cv=aNA1FZxm c=1 sm=1 tr=0 ts=614b67a7
- a=jWrLioA5F7WmVvax94MGYQ==:117 a=jWrLioA5F7WmVvax94MGYQ==:17
- a=IkcTkHD0fZMA:10 a=SEc3moZ4AAAA:8 a=ZcTEHt0vA8zF5IGawKMA:9 a=QEXdDO2ut3YA:10
- a=5oRCH6oROnRZc2VpWJZ3:22
-X-SECURESERVER-ACCT: tom@talpey.com
-Subject: Re: [PATCH v2] xprtrdma: Provide a buffer to pad Write chunks of
- unaligned length
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <163198229142.4159.3151965308454175921.stgit@morisot.1015granger.net>
- <d69234ec-4688-e5d1-17c3-247841d47d16@talpey.com>
- <BAFA239A-2F60-4163-AB20-046AFE6B6F7D@oracle.com>
- <04ec7294-f456-65cb-c401-5a56f61c8dc7@talpey.com>
- <5CE77E8E-97D1-4FFE-89AF-7536C3ABC6F0@oracle.com>
-From:   Tom Talpey <tom@talpey.com>
-Message-ID: <2e0f81a6-fb56-791f-4574-382596605135@talpey.com>
-Date:   Wed, 22 Sep 2021 13:28:07 -0400
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.14.0
+        id S238049AbhIVU6d (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 Sep 2021 16:58:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34126 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S237744AbhIVU6W (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Sep 2021 16:58:22 -0400
+Received: from mail-io1-xd32.google.com (mail-io1-xd32.google.com [IPv6:2607:f8b0:4864:20::d32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5ABC1C06175F
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2021 13:56:35 -0700 (PDT)
+Received: by mail-io1-xd32.google.com with SMTP id a15so5270358iot.2
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2021 13:56:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=srf-ext-com.20210112.gappssmtp.com; s=20210112;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=p2+bnwDe8NnQejQwDcKsqilbxGCbNYLi3v9x+JtVwzo=;
+        b=MbKcG4/R5RX+6CXXG7OGSqx4WMKFaCW3VHwfd6ccQy3jTkrUDbgzOLGW+mDovBaZdn
+         IxECEXTuSH98xiuYJgyakW2zIxmSuVog6M1JbWmAndSbs5mSzaEWQWKkZej/hIU646Nt
+         yQkbD5KZTo4zD0kIa/fMw9JUkLuic/HK6tnmIKjgcC9SArQ03vfTSHIj9ZOVk3iZXzm+
+         8Ckv23Rbug3bf1mNoqM1UdcHZBgQghy8cYcSyqsvwNuyhgniwMm4kCx2+P3WRGVEHFfB
+         bmV3G8KbtrRTh+WDefO4cBHAjD0zyuLp7RFKhjq4NeLMwyCRXG6XzavfxlblhkXJMBgX
+         AzkA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=p2+bnwDe8NnQejQwDcKsqilbxGCbNYLi3v9x+JtVwzo=;
+        b=Of+dZTTR21PCkOew2UXI8BhrwQV7bcZZqobBY7eJ4KUrkrYZBZgkcHPgfznCM1edac
+         7WiWNMaoC+9kHaKQjLgN4N3wZhho/SxMLI1xyKBUkWsFtTNee8nr4xr31oX9TkfcvUQL
+         Qi+Dgsp0cCWXG3Wng69+5dxaJL/02VISWL1MqU0Cb/N+/bS8fv288Bu0uodBG977suXb
+         2oEkgSBgipidmnBJXgR5y9JByTlhj39FroogX8iIZvjGEx3Q+Okvv0JAEz/6UyXuVNfT
+         ab8TdV4IkGo9WOOhPuMJfKA6r8xnXDHkA1wiI8haoclnjbios1LVzWqn2VAewygMx8cw
+         Y0+Q==
+X-Gm-Message-State: AOAM531vIa229hdpQXHCLp4Vq0qzNAkhITXRr4fo4PGIPgqkSdI+iDXK
+        HImaN90t4p5+2GZeIUr9uDECt/iOKQVxnkHBlaK6ECReTgG+9g==
+X-Google-Smtp-Source: ABdhPJzhQUonEgw+v17s2Wja/goJ1+PI82+eASjeRJPEHWtc+iqhL3EbHYjF5CgRJxtG2yngTrFlsSl8jVlD4zbO/Bo=
+X-Received: by 2002:a5e:c110:: with SMTP id v16mr857064iol.43.1632344194597;
+ Wed, 22 Sep 2021 13:56:34 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <5CE77E8E-97D1-4FFE-89AF-7536C3ABC6F0@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4xfIl9/XS+SR7HoCgbV7th2ZirhFTzhuKEaJ3vgDaa0xZKV9td3KVMbpq9ruJnbr6r17Nq0bFgvhQiyi24M7WN1Eqtndcg4a/RdhR7p419fhPCyFe7siw9
- 3paU9Kommoer2qAR9aS7qHMzIqtti59eQar+2gqEn+CIM0w7sXarkJt4iJJXDQsi2vUZ9kZz8nVvMCLhnujRp/6heUz3+iqEIFcGshluiK/9mEE1jmJDAcCO
- 0axir+ZfpeD1cfS2/Ms1sQ==
+From:   Kazi Anwar <kazia@srf-ext.com>
+Date:   Wed, 22 Sep 2021 15:56:23 -0500
+Message-ID: <CAGw7ksJxiKkOf2F9FUDCa_mSAkoU6U=vCXFcupsu+izKuEE1WA@mail.gmail.com>
+Subject: nfs4err_delay
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 9/22/2021 1:18 PM, Chuck Lever III wrote:
-> 
->> On Sep 22, 2021, at 1:15 PM, Tom Talpey <tom@talpey.com> wrote:
->>
->> On 9/21/2021 1:21 PM, Chuck Lever III wrote:
->>>> On Sep 21, 2021, at 12:58 PM, Tom Talpey <tom@talpey.com> wrote:
->>>>
->>>> On 9/18/2021 12:26 PM, Chuck Lever wrote:
->>>>> This is a buffer to be left persistently registered while a
->>>>> connection is up. Connection tear-down will automatically DMA-unmap,
->>>>> invalidate, and dereg the MR. A persistently registered buffer has
->>>>> no-cost to provide, and it can never be elided into the RDMA segment
->>>>> that backs the data payload.
->>>>
->>>> I'm confused by this last sentence. Why is "no-cost" important?
->>> Today, the client turns off this XDR pad when it can because it
->>> is registered and invalidated for every Write chunk with non-
->>> aligned length. That adds a cost to providing it.
->>> No-cost means we don't need to worry about optimizing it away;
->>> it can be provided all the time, if we like, because there's no
->>> additional per-RPC registration/invalidation cost.
->>
->> Sure, I get that, but it's not actually zero. The MR is allocated and
->> therefore consumes a handle. It's a way-better approach than registering a few bytes for each rpc of course. I guess I'm simply suggesting to delete the sentence. The other sentences cover the issue without the possible confusion.
-> 
-> There is a bug now where SG_GAPS support is coalescing the Write
-> pad MR into the data payload, and for various reasons, that's
-> not safe to do all the time.
-> 
-> So this patch addresses that, and this sentence calls out that
-> specific part of the fix.
+Hi,
+We are running nfs v 4.1 on centos 7.6.
+We are seeing an NFS issue where when files/dirs are deleted from a
+client they are occasionally stuck at unlinkat system call(according
+to strace its stuck for 100.5 secs every time). Can anyone explain
+this behavior?
+Running tcp dump shows nfs4err_delay status sent from the server to
+the stuck client.
 
-Wait, what? The sentence, as I read it, is talking about the possible
-advantage of a pre-registered buffer, not a safety or s/g thing. If
-this is fixing a bug, shouldn't that be described?
-
-Tom.
+--
+Kazi Anwar
