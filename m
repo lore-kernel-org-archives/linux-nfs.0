@@ -2,39 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A6CA5C433FE
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:49:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 226E2C43219
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:49:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8BE46613A9
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:49:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0C4A860551
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:49:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344324AbhI2Nv2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 Sep 2021 09:51:28 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36034 "EHLO mail.kernel.org"
+        id S1344328AbhI2Nv3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 Sep 2021 09:51:29 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36058 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1344316AbhI2Nv1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 Sep 2021 09:51:27 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 993D7613A9
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Sep 2021 13:49:46 +0000 (UTC)
+        id S1344315AbhI2Nv2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 Sep 2021 09:51:28 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 774EB61425
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Sep 2021 13:49:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1632923386;
-        bh=lrG1yBbZRwVXxufLVRSbNcJ+4CEV1WmtB1NMXQ4VLbU=;
+        s=k20201202; t=1632923387;
+        bh=gDpL6zIS7P+ehHd52+B4B0jAN5ATz/2k1bTUtMjnyOA=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=KWMTi3MnRIRc3X/pl4ABNAnYcy7RkrLHATF06Dx8tMSXey5MY5X4PayxR5uwtNlts
-         nghP9lW5hGodEEEbqeqcJ1FXt6vZWbwZxojREe8tmWeUTei94dio3Rz0vUoOcHXekc
-         LwECM8IVkNl7vRpCjIEcoha5z1wf1egGHdiDOayybeklceRre7ekifwzsGXYUpgyFX
-         XzFa1GL3E3sU9L/kHCQW3xxE4ADvOJd0/JaX2xtpLSz/SoF92SCIatZ9ZD/uwRNrex
-         SdiDQvatj0ZnU+SKcXDaZbeP3/xYq3nJMKdQUUWWgDJC5eje0B0IFHpuZPclzh/aRd
-         k49DyEQfU2y+g==
+        b=ZwZUGZpoQaP/Bzhgs2PtMomNe6Q/XvJfLPfFwnWNOFu8Tb35gJ+ixAPn2zKqN8VOA
+         HlXG18UhW0J5f4z8iwwQy3qWy31BKBp76glUsKQa4VTkrTM1dRSzqDe7U+7JVYdT1l
+         xLvahNRV2IhuQ2eR7k7sKbvB30cvbKdDplQFjOrR0NLVh2PIhODNZONe5dklU9W/7I
+         jEclEkQSUZhJ3m/UCoybe1w0Oy2+JuYK6wfEceMZsdpg4nom2MHu2I6Am8C00/LXWa
+         uMmUB2MAzTJ3aeXpZf2BN3DohYxOiAjmxUnqOggRVS7IkzzbKBOWmy1i4cI9WAFSJe
+         jyKzMaG0fJqpw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] NFS: Fix up nfs_readdir_inode_mapping_valid()
-Date:   Wed, 29 Sep 2021 09:49:42 -0400
-Message-Id: <20210929134944.632844-3-trondmy@kernel.org>
+Subject: [PATCH 5/5] NFS: Fix dentry verifier races
+Date:   Wed, 29 Sep 2021 09:49:44 -0400
+Message-Id: <20210929134944.632844-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210929134944.632844-2-trondmy@kernel.org>
+In-Reply-To: <20210929134944.632844-4-trondmy@kernel.org>
 References: <20210929134944.632844-1-trondmy@kernel.org>
  <20210929134944.632844-2-trondmy@kernel.org>
+ <20210929134944.632844-3-trondmy@kernel.org>
+ <20210929134944.632844-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -43,28 +45,38 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The check for duplicate readdir cookies should only care if the change
-attribute is invalid or the data cache is invalid.
+If the directory changed while we were revalidating the dentry, then
+don't update the dentry verifier. There is no value in setting the
+verifier to an older value, and we could end up overwriting a more up to
+date verifier from a parallel revalidation.
 
+Fixes: efeda80da38d ("NFSv4: Fix revalidation of dentries with delegations")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/dir.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f2df664db020..fa4d33687d2b 100644
+index 358033aea235..033e9b145627 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -411,7 +411,8 @@ static int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
- static bool
- nfs_readdir_inode_mapping_valid(struct nfs_inode *nfsi)
+@@ -1276,13 +1276,12 @@ static bool nfs_verifier_is_delegated(struct dentry *dentry)
+ static void nfs_set_verifier_locked(struct dentry *dentry, unsigned long verf)
  {
--	if (nfsi->cache_validity & (NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA))
-+	if (nfsi->cache_validity & (NFS_INO_INVALID_CHANGE |
-+				    NFS_INO_INVALID_DATA))
- 		return false;
- 	smp_rmb();
- 	return !test_bit(NFS_INO_INVALIDATING, &nfsi->flags);
+ 	struct inode *inode = d_inode(dentry);
++	struct inode *dir = d_inode(dentry->d_parent);
+ 
+-	if (!nfs_verifier_is_delegated(dentry) &&
+-	    !nfs_verify_change_attribute(d_inode(dentry->d_parent), verf))
+-		goto out;
++	if (!nfs_verify_change_attribute(dir, verf))
++		return;
+ 	if (inode && NFS_PROTO(inode)->have_delegation(inode, FMODE_READ))
+ 		nfs_set_verifier_delegated(&verf);
+-out:
+ 	dentry->d_time = verf;
+ }
+ 
 -- 
 2.31.1
 
