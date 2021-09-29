@@ -2,86 +2,68 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE18AC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:13:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40238C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:49:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 97CB96128E
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:13:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 28587613A9
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 Sep 2021 13:49:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344093AbhI2NP1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 Sep 2021 09:15:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53990 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242801AbhI2NP0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2021 09:15:26 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C1A2C06161C;
-        Wed, 29 Sep 2021 06:13:45 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id EE4C9AB8; Wed, 29 Sep 2021 09:13:43 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org EE4C9AB8
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1632921223;
-        bh=NlIvgxM5m93hFWHDs1DDtdJm2ZkdR1b6DDVnj7Z2NJk=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=iV9o6A78vZxoNseK507gTN7oaihJ9ZFoe5ajWPXQ1kFpV6vn75YKMmn02zJMjgmck
-         LvSQ5mSOMjI86t3nftzpYSCJvNpuutIGUI5E2vVnDbaWxlhQlpjhkSEg0nfQjQ/YgN
-         dve8nanSLmwbnLh/aUZvGQU3tjT7vIftEjrrKG0w=
-Date:   Wed, 29 Sep 2021 09:13:43 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     dingsenjie@163.com
-Cc:     chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, dingsenjie <dingsenjie@yulong.com>
-Subject: Re: [PATCH] fs: nfsd: Simplify the return expression of
- numeric_name_to_id
-Message-ID: <20210929131343.GA20707@fieldses.org>
-References: <20210929091626.11828-1-dingsenjie@163.com>
+        id S1344273AbhI2Nv1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 Sep 2021 09:51:27 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36008 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1344315AbhI2Nv1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 Sep 2021 09:51:27 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 2E34460551
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Sep 2021 13:49:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1632923386;
+        bh=eTf0iQMTb0ecW1foq9M5+Q1gWkI7peNiwLztp0hy9ck=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=aE6OgEOmdB0rwvQ2yPcGmhIFLXYgp6sWzn/3VLkqMT2mQgk+zu/R/vElIVoFm0I2w
+         rir4MJiCoL5/fkX3R5mgKeSSu/ucNxgnxiW9Lb5XO8R1KmvKbynQ4UJ1kRYP43EvAS
+         TMM4CDUaW41xIjUT0J1Hg7hd77E8dK7UAH/nsU4HV24uf05p7vTBOXlGCmyUVernu/
+         7ilXrBm5FE6xLaLZk64QlQjT2SdzQFBEAmfhpWF0buEa6uYaYOc6i3YABmw+DmeQb8
+         GiMd39sA3T+7OH2EsNKOiZqKsdayiAf67C93PzH1qY6MtpCiHE2oNq/7JZl7RC3ltV
+         eAkkVXlAyFSCA==
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] NFS: Ignore the directory size when marking for revalidation
+Date:   Wed, 29 Sep 2021 09:49:41 -0400
+Message-Id: <20210929134944.632844-2-trondmy@kernel.org>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20210929134944.632844-1-trondmy@kernel.org>
+References: <20210929134944.632844-1-trondmy@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210929091626.11828-1-dingsenjie@163.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Well, tastes could reasonably differ, but I'd rather leave this code as
-it is.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
---b.
+If we want to revalidate the directory, then just mark the change
+attribute as invalid.
 
-On Wed, Sep 29, 2021 at 05:16:26PM +0800, dingsenjie@163.com wrote:
-> From: dingsenjie <dingsenjie@yulong.com>
-> 
-> Simplify the return expression in the nfs4idmap.c
-> 
-> Signed-off-by: dingsenjie <dingsenjie@yulong.com>
-> ---
->  fs/nfsd/nfs4idmap.c | 4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-> index f92161c..dc5926c 100644
-> --- a/fs/nfsd/nfs4idmap.c
-> +++ b/fs/nfsd/nfs4idmap.c
-> @@ -603,7 +603,6 @@ static __be32 idmap_id_to_name(struct xdr_stream *xdr,
->  static bool
->  numeric_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen, u32 *id)
->  {
-> -	int ret;
->  	char buf[11];
->  
->  	if (namelen + 1 > sizeof(buf))
-> @@ -612,8 +611,7 @@ static __be32 idmap_id_to_name(struct xdr_stream *xdr,
->  	/* Just to make sure it's null-terminated: */
->  	memcpy(buf, name, namelen);
->  	buf[namelen] = '\0';
-> -	ret = kstrtouint(buf, 10, id);
-> -	return ret == 0;
-> +	return kstrtouint(buf, 10, id) == 0;
->  }
->  
->  static __be32
-> -- 
-> 1.9.1
-> 
+Fixes: 13c0b082b6a9 ("NFS: Replace use of NFS_INO_REVAL_PAGECACHE when checking cache validity")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/dir.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 1ce1fa0a5926..f2df664db020 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1413,7 +1413,7 @@ int nfs_lookup_verify_inode(struct inode *inode, unsigned int flags)
+ static void nfs_mark_dir_for_revalidate(struct inode *inode)
+ {
+ 	spin_lock(&inode->i_lock);
+-	nfs_set_cache_invalid(inode, NFS_INO_REVAL_PAGECACHE);
++	nfs_set_cache_invalid(inode, NFS_INO_INVALID_CHANGE);
+ 	spin_unlock(&inode->i_lock);
+ }
+ 
+-- 
+2.31.1
+
