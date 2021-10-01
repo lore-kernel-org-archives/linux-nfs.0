@@ -2,118 +2,423 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 251C3C433F5
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Oct 2021 09:42:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2568FC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Oct 2021 13:30:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0B8A661A08
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Oct 2021 09:42:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 02A4561A08
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Oct 2021 13:30:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353268AbhJAJo1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Oct 2021 05:44:27 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:54694 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1353236AbhJAJoN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2021 05:44:13 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1633081348;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc; bh=4fBXdu1X05aPpIknF7KN2b7MTZfL3p4yi/7Kw8JKzMo=;
-        b=OYGm3fX8kM7cUzmkAnVT9BNSwa8O75TlmY/B8TfR6VaWlGBgcNvOwWfSD1XSD+EQSRO64q
-        LG8pB57uLc7vSwRlHzSkKJr/vRCH08Wm9RJv8T1IcoAKEqzY9XmkCjwFSrtXRhIMhuIRKm
-        c3pt+PgL0nAlgYikr3elkUE8BOIAfDw=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-458-LVIVwj3bMZiCUKYyVytCpg-1; Fri, 01 Oct 2021 05:42:27 -0400
-X-MC-Unique: LVIVwj3bMZiCUKYyVytCpg-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id BCF6E802921
-        for <linux-nfs@vger.kernel.org>; Fri,  1 Oct 2021 09:42:26 +0000 (UTC)
-Received: from dwysocha.rdu.csb (unknown [10.22.8.148])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 606A160BF4;
-        Fri,  1 Oct 2021 09:42:15 +0000 (UTC)
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     dhowells@redhat.com
-Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [PATCH] cachefiles: Fix oops in trace_cachefiles_mark_buried due to NULL object
-Date:   Fri,  1 Oct 2021 05:42:08 -0400
-Message-Id: <1633081328-26339-1-git-send-email-dwysocha@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+        id S231651AbhJANcA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Oct 2021 09:32:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40116 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231549AbhJANb7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2021 09:31:59 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99DC8C061775
+        for <linux-nfs@vger.kernel.org>; Fri,  1 Oct 2021 06:30:15 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 9934D7032; Fri,  1 Oct 2021 09:30:14 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 9934D7032
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1633095014;
+        bh=pbigPG4tERQjSfM7DdOenqqZD3b8HAsQxFojbhJprOI=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=EPg5DD/UZiTnoXSBVTQBJBuUxXaTwe5igxc/Si3Nm/pr+lXQTKODJk46W6d4IyBtc
+         lpW3MYSMHeL18k6Dpqe31WFOivkbSc1x9+UyCARMrJqgYEb0HxEFNr0FuQLHjTywS3
+         8jMUNYdsPJD1uu3d0rHiysZ5VvhfA2zV80ViRya4=
+Date:   Fri, 1 Oct 2021 09:30:14 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v2] gss: remove legacy gssd upcall pipe
+Message-ID: <20211001133014.GA959@fieldses.org>
+References: <20210928193442.GF25415@fieldses.org>
+ <20210928193756.GG25415@fieldses.org>
+ <20210928211755.GI25415@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210928211755.GI25415@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In cachefiles_mark_object_buried, the dentry in question may
-not have an owner, and thus our cachefiles_object pointer
-may be NULL when calling the tracepoint, in which case we
-will also not have a valid debug_id to print in the tracepoint.
-Check for NULL object in the tracepoint and if so, just set
-debug_id to MAX_UINT as was done in 2908f5e101e3.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-This fixes the following oops:
-[  115.179145] FS-Cache: Cache "mycache" added (type cachefiles)
-[  115.182243] CacheFiles: File cache on vdc registered
-[  128.333709] t1_rsize_lt_rea (3600): drop_caches: 3
-[  128.401940] BUG: kernel NULL pointer dereference, address: 0000000000000010
-[  128.404908] #PF: supervisor read access in kernel mode
-[  128.407073] #PF: error_code(0x0000) - not-present page
-[  128.409738] PGD 0 P4D 0
-[  128.410960] Oops: 0000 [#1] SMP PTI
-[  128.411777] CPU: 1 PID: 178 Comm: kworker/u16:5 Kdump: loaded Not tainted 5.15.0-rc3 #61
-[  128.413182] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.14.0-4.fc34 04/01/2014
-[  128.414641] Workqueue: fscache_object fscache_object_work_func [fscache]
-[  128.415825] RIP: 0010:trace_event_raw_event_cachefiles_mark_buried+0x4e/0xa0 [cachefiles]
-[  128.417565] Code: 41 f6 c6 80 75 47 41 f6 c6 40 75 34 41 f7 c6 00 02 00 00 75 4b ba 20 00 00 00 48 89 ee 48 89 e7 e8 27 30 69 d2 48 85 c0 74 16 <41> 8b 55 10 4c 89 60 10 48 89 e7 89 58 18 89 50
-08 e8 bc fd 67 d2
-[  128.420892] RSP: 0018:ffffaf8d4117fc08 EFLAGS: 00010282
-[  128.422032] RAX: ffff949d803b5834 RBX: 0000000000000000 RCX: 0000000000000088
-[  128.423348] RDX: ffff949d803b5834 RSI: ffff949d803b5830 RDI: ffff949d803b5830
-[  128.424506] RBP: ffff949d84041a50 R08: 0000001ea0136adf R09: ffffaf8d4117fb20
-[  128.425656] R10: ffff949d86c78f18 R11: 0000000000000000 R12: ffff949ded1f5780
-[  128.426932] R13: 0000000000000000 R14: 0000000000000403 R15: ffff949d887d8664
-[  128.428318] FS:  0000000000000000(0000) GS:ffff949ef7c40000(0000) knlGS:0000000000000000
-[  128.429761] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  128.430681] CR2: 0000000000000010 CR3: 0000000157404004 CR4: 0000000000770ee0
-[  128.431824] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[  128.432953] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-[  128.434061] PKRU: 55555554
-[  128.434512] Call Trace:
-[  128.434944]  cachefiles_mark_object_buried+0xa5/0xb0 [cachefiles]
-[  128.435903]  cachefiles_bury_object+0x270/0x430 [cachefiles]
-[  128.436862]  ? kfree+0xaa/0x3a0
-[  128.437396]  ? vfs_getxattr+0x15a/0x180
-[  128.438038]  cachefiles_walk_to_object+0x195/0x9c0 [cachefiles]
-[  128.438984]  ? trace_event_buffer_commit+0x61/0x220
-[  128.439822]  cachefiles_lookup_object+0x5a/0xc0 [cachefiles]
-[  128.440741]  fscache_look_up_object+0xd7/0x160 [fscache]
-[  128.441615]  fscache_object_work_func+0xb2/0x340 [fscache]
-[  128.442547]  process_one_work+0x1f1/0x390
-[  128.443225]  worker_thread+0x53/0x3e0
-[  128.443854]  ? process_one_work+0x390/0x390
-[  128.444527]  kthread+0x127/0x150
-[  128.445058]  ? set_kthread_struct+0x40/0x40
-[  128.445726]  ret_from_fork+0x22/0x30
+This code exists only for compatibility with nfs-utils before
+0cfdc66de043 "gssd: handle new client upcall" (which first appeared in
+nfs-utils version 1.2.2, in 2019).  After 12 years, maybe it's time to
+drop that compatibility code.
 
-Fixes: 2908f5e101e3 ("fscache: Add a cookie debug ID and use that in traces")
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- include/trace/events/cachefiles.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/sunrpc/rpc_pipe_fs.h |   1 -
+ net/sunrpc/auth_gss/auth_gss.c     | 165 ++---------------------------
+ net/sunrpc/rpc_pipe.c              |   7 --
+ 3 files changed, 7 insertions(+), 166 deletions(-)
 
-diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cachefiles.h
-index 9a448fe9355d..695bfdbfdcad 100644
---- a/include/trace/events/cachefiles.h
-+++ b/include/trace/events/cachefiles.h
-@@ -305,7 +305,7 @@ enum cachefiles_obj_ref_trace {
- 			     ),
+On Tue, Sep 28, 2021 at 05:17:55PM -0400, J. Bruce Fields wrote:
+> On Tue, Sep 28, 2021 at 03:37:56PM -0400, J. Bruce Fields wrote:
+> > There's probably more that could go too.  It wasn't immediately obvious
+> > to me whether the code that waits for an open at the start of
+> > gss_{refresh,create}_upcall is still useful.
+> 
+> Eh, I think that can all go too.
+
+Here's the combined version.
+
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index cd188a527d16..f8a11d1cfbf8 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -36,7 +36,6 @@ struct rpc_pipe_ops {
+ 	ssize_t (*upcall)(struct file *, struct rpc_pipe_msg *, char __user *, size_t);
+ 	ssize_t (*downcall)(struct file *, const char __user *, size_t);
+ 	void (*release_pipe)(struct inode *);
+-	int (*open_pipe)(struct inode *);
+ 	void (*destroy_msg)(struct rpc_pipe_msg *);
+ };
  
- 	    TP_fast_assign(
--		    __entry->obj	= obj->fscache.debug_id;
-+		    __entry->obj	= obj ? obj->fscache.debug_id : UINT_MAX;
- 		    __entry->de		= de;
- 		    __entry->why	= why;
- 			   ),
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 5f42aa5fc612..71fd2fb7c5fb 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -73,24 +73,13 @@ struct gss_auth {
+ 	enum rpc_gss_svc service;
+ 	struct rpc_clnt *client;
+ 	struct net *net;
+-	/*
+-	 * There are two upcall pipes; dentry[1], named "gssd", is used
+-	 * for the new text-based upcall; dentry[0] is named after the
+-	 * mechanism (for example, "krb5") and exists for
+-	 * backwards-compatibility with older gssd's.
+-	 */
+-	struct gss_pipe *gss_pipe[2];
++	struct gss_pipe *gss_pipe;
+ 	const char *target_name;
+ };
+ 
+-/* pipe_version >= 0 if and only if someone has a pipe open. */
+-static DEFINE_SPINLOCK(pipe_version_lock);
+-static struct rpc_wait_queue pipe_version_rpc_waitqueue;
+-static DECLARE_WAIT_QUEUE_HEAD(pipe_version_waitqueue);
+ static void gss_put_auth(struct gss_auth *gss_auth);
+ 
+ static void gss_free_ctx(struct gss_cl_ctx *);
+-static const struct rpc_pipe_ops gss_upcall_ops_v0;
+ static const struct rpc_pipe_ops gss_upcall_ops_v1;
+ 
+ static inline struct gss_cl_ctx *
+@@ -253,38 +242,11 @@ struct gss_upcall_msg {
+ 	char databuf[UPCALL_BUF_LEN];
+ };
+ 
+-static int get_pipe_version(struct net *net)
+-{
+-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+-	int ret;
+-
+-	spin_lock(&pipe_version_lock);
+-	if (sn->pipe_version >= 0) {
+-		atomic_inc(&sn->pipe_users);
+-		ret = sn->pipe_version;
+-	} else
+-		ret = -EAGAIN;
+-	spin_unlock(&pipe_version_lock);
+-	return ret;
+-}
+-
+-static void put_pipe_version(struct net *net)
+-{
+-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+-
+-	if (atomic_dec_and_lock(&sn->pipe_users, &pipe_version_lock)) {
+-		sn->pipe_version = -1;
+-		spin_unlock(&pipe_version_lock);
+-	}
+-}
+-
+ static void
+ gss_release_msg(struct gss_upcall_msg *gss_msg)
+ {
+-	struct net *net = gss_msg->auth->net;
+ 	if (!refcount_dec_and_test(&gss_msg->count))
+ 		return;
+-	put_pipe_version(net);
+ 	BUG_ON(!list_empty(&gss_msg->list));
+ 	if (gss_msg->ctx != NULL)
+ 		gss_put_ctx(gss_msg->ctx);
+@@ -385,31 +347,6 @@ gss_upcall_callback(struct rpc_task *task)
+ 	gss_release_msg(gss_msg);
+ }
+ 
+-static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg,
+-			      const struct cred *cred)
+-{
+-	struct user_namespace *userns = cred->user_ns;
+-
+-	uid_t uid = from_kuid_munged(userns, gss_msg->uid);
+-	memcpy(gss_msg->databuf, &uid, sizeof(uid));
+-	gss_msg->msg.data = gss_msg->databuf;
+-	gss_msg->msg.len = sizeof(uid);
+-
+-	BUILD_BUG_ON(sizeof(uid) > sizeof(gss_msg->databuf));
+-}
+-
+-static ssize_t
+-gss_v0_upcall(struct file *file, struct rpc_pipe_msg *msg,
+-		char __user *buf, size_t buflen)
+-{
+-	struct gss_upcall_msg *gss_msg = container_of(msg,
+-						      struct gss_upcall_msg,
+-						      msg);
+-	if (msg->copied == 0)
+-		gss_encode_v0_msg(gss_msg, file->f_cred);
+-	return rpc_pipe_generic_upcall(file, msg, buf, buflen);
+-}
+-
+ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 				const char *service_name,
+ 				const char *target_name,
+@@ -507,17 +444,12 @@ gss_alloc_msg(struct gss_auth *gss_auth,
+ 		kuid_t uid, const char *service_name)
+ {
+ 	struct gss_upcall_msg *gss_msg;
+-	int vers;
+ 	int err = -ENOMEM;
+ 
+ 	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
+ 	if (gss_msg == NULL)
+ 		goto err;
+-	vers = get_pipe_version(gss_auth->net);
+-	err = vers;
+-	if (err < 0)
+-		goto err_free_msg;
+-	gss_msg->pipe = gss_auth->gss_pipe[vers]->pipe;
++	gss_msg->pipe = gss_auth->gss_pipe->pipe;
+ 	INIT_LIST_HEAD(&gss_msg->list);
+ 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+ 	init_waitqueue_head(&gss_msg->waitqueue);
+@@ -529,12 +461,10 @@ gss_alloc_msg(struct gss_auth *gss_auth,
+ 		gss_msg->service_name = kstrdup_const(service_name, GFP_NOFS);
+ 		if (!gss_msg->service_name) {
+ 			err = -ENOMEM;
+-			goto err_put_pipe_version;
++			goto err_free_msg;
+ 		}
+ 	}
+ 	return gss_msg;
+-err_put_pipe_version:
+-	put_pipe_version(gss_auth->net);
+ err_free_msg:
+ 	kfree(gss_msg);
+ err:
+@@ -590,8 +520,6 @@ gss_refresh_upcall(struct rpc_task *task)
+ 		/* XXX: warning on the first, under the assumption we
+ 		 * shouldn't normally hit this case on a refresh. */
+ 		warn_gssd();
+-		rpc_sleep_on_timeout(&pipe_version_rpc_waitqueue,
+-				task, NULL, jiffies + (15 * HZ));
+ 		err = -EAGAIN;
+ 		goto out;
+ 	}
+@@ -624,14 +552,12 @@ static inline int
+ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ {
+ 	struct net *net = gss_auth->net;
+-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_pipe *pipe;
+ 	struct rpc_cred *cred = &gss_cred->gc_base;
+ 	struct gss_upcall_msg *gss_msg;
+ 	DEFINE_WAIT(wait);
+ 	int err;
+ 
+-retry:
+ 	err = 0;
+ 	/* if gssd is down, just skip upcalling altogether */
+ 	if (!gssd_running(net)) {
+@@ -640,17 +566,6 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 		goto out;
+ 	}
+ 	gss_msg = gss_setup_upcall(gss_auth, cred);
+-	if (PTR_ERR(gss_msg) == -EAGAIN) {
+-		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
+-				sn->pipe_version >= 0, 15 * HZ);
+-		if (sn->pipe_version < 0) {
+-			warn_gssd();
+-			err = -EACCES;
+-		}
+-		if (err < 0)
+-			goto out;
+-		goto retry;
+-	}
+ 	if (IS_ERR(gss_msg)) {
+ 		err = PTR_ERR(gss_msg);
+ 		goto out;
+@@ -777,44 +692,9 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	return err;
+ }
+ 
+-static int gss_pipe_open(struct inode *inode, int new_version)
+-{
+-	struct net *net = inode->i_sb->s_fs_info;
+-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+-	int ret = 0;
+-
+-	spin_lock(&pipe_version_lock);
+-	if (sn->pipe_version < 0) {
+-		/* First open of any gss pipe determines the version: */
+-		sn->pipe_version = new_version;
+-		rpc_wake_up(&pipe_version_rpc_waitqueue);
+-		wake_up(&pipe_version_waitqueue);
+-	} else if (sn->pipe_version != new_version) {
+-		/* Trying to open a pipe of a different version */
+-		ret = -EBUSY;
+-		goto out;
+-	}
+-	atomic_inc(&sn->pipe_users);
+-out:
+-	spin_unlock(&pipe_version_lock);
+-	return ret;
+-
+-}
+-
+-static int gss_pipe_open_v0(struct inode *inode)
+-{
+-	return gss_pipe_open(inode, 0);
+-}
+-
+-static int gss_pipe_open_v1(struct inode *inode)
+-{
+-	return gss_pipe_open(inode, 1);
+-}
+-
+ static void
+ gss_pipe_release(struct inode *inode)
+ {
+-	struct net *net = inode->i_sb->s_fs_info;
+ 	struct rpc_pipe *pipe = RPC_I(inode)->pipe;
+ 	struct gss_upcall_msg *gss_msg;
+ 
+@@ -832,8 +712,6 @@ gss_pipe_release(struct inode *inode)
+ 		goto restart;
+ 	}
+ 	spin_unlock(&pipe->lock);
+-
+-	put_pipe_version(net);
+ }
+ 
+ static void
+@@ -1039,30 +917,14 @@ gss_create_new(const struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ 	err = rpcauth_init_credcache(auth);
+ 	if (err)
+ 		goto err_put_mech;
+-	/*
+-	 * Note: if we created the old pipe first, then someone who
+-	 * examined the directory at the right moment might conclude
+-	 * that we supported only the old pipe.  So we instead create
+-	 * the new pipe first.
+-	 */
+ 	gss_pipe = gss_pipe_get(clnt, "gssd", &gss_upcall_ops_v1);
+ 	if (IS_ERR(gss_pipe)) {
+ 		err = PTR_ERR(gss_pipe);
+ 		goto err_destroy_credcache;
+ 	}
+-	gss_auth->gss_pipe[1] = gss_pipe;
+-
+-	gss_pipe = gss_pipe_get(clnt, gss_auth->mech->gm_name,
+-			&gss_upcall_ops_v0);
+-	if (IS_ERR(gss_pipe)) {
+-		err = PTR_ERR(gss_pipe);
+-		goto err_destroy_pipe_1;
+-	}
+-	gss_auth->gss_pipe[0] = gss_pipe;
++	gss_auth->gss_pipe = gss_pipe;
+ 
+ 	return gss_auth;
+-err_destroy_pipe_1:
+-	gss_pipe_free(gss_auth->gss_pipe[1]);
+ err_destroy_credcache:
+ 	rpcauth_destroy_credcache(auth);
+ err_put_mech:
+@@ -1081,8 +943,7 @@ gss_create_new(const struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ static void
+ gss_free(struct gss_auth *gss_auth)
+ {
+-	gss_pipe_free(gss_auth->gss_pipe[0]);
+-	gss_pipe_free(gss_auth->gss_pipe[1]);
++	gss_pipe_free(gss_auth->gss_pipe);
+ 	gss_mech_put(gss_auth->mech);
+ 	put_net(gss_auth->net);
+ 	kfree(gss_auth->target_name);
+@@ -1117,10 +978,8 @@ gss_destroy(struct rpc_auth *auth)
+ 		spin_unlock(&gss_auth_hash_lock);
+ 	}
+ 
+-	gss_pipe_free(gss_auth->gss_pipe[0]);
+-	gss_auth->gss_pipe[0] = NULL;
+-	gss_pipe_free(gss_auth->gss_pipe[1]);
+-	gss_auth->gss_pipe[1] = NULL;
++	gss_pipe_free(gss_auth->gss_pipe);
++	gss_auth->gss_pipe = NULL;
+ 	rpcauth_destroy_credcache(auth);
+ 
+ 	gss_put_auth(gss_auth);
+@@ -2179,19 +2038,10 @@ static const struct rpc_credops gss_nullops = {
+ 	.crstringify_acceptor	= gss_stringify_acceptor,
+ };
+ 
+-static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
+-	.upcall		= gss_v0_upcall,
+-	.downcall	= gss_pipe_downcall,
+-	.destroy_msg	= gss_pipe_destroy_msg,
+-	.open_pipe	= gss_pipe_open_v0,
+-	.release_pipe	= gss_pipe_release,
+-};
+-
+ static const struct rpc_pipe_ops gss_upcall_ops_v1 = {
+ 	.upcall		= gss_v1_upcall,
+ 	.downcall	= gss_pipe_downcall,
+ 	.destroy_msg	= gss_pipe_destroy_msg,
+-	.open_pipe	= gss_pipe_open_v1,
+ 	.release_pipe	= gss_pipe_release,
+ };
+ 
+@@ -2226,7 +2076,6 @@ static int __init init_rpcsec_gss(void)
+ 	err = register_pernet_subsys(&rpcsec_gss_net_ops);
+ 	if (err)
+ 		goto out_svc_exit;
+-	rpc_init_wait_queue(&pipe_version_rpc_waitqueue, "gss pipe version");
+ 	return 0;
+ out_svc_exit:
+ 	gss_svc_shutdown();
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index ee5336d73fdd..f34bafb0dbd3 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -213,19 +213,12 @@ static int
+ rpc_pipe_open(struct inode *inode, struct file *filp)
+ {
+ 	struct rpc_pipe *pipe;
+-	int first_open;
+ 	int res = -ENXIO;
+ 
+ 	inode_lock(inode);
+ 	pipe = RPC_I(inode)->pipe;
+ 	if (pipe == NULL)
+ 		goto out;
+-	first_open = pipe->nreaders == 0 && pipe->nwriters == 0;
+-	if (first_open && pipe->ops->open_pipe) {
+-		res = pipe->ops->open_pipe(inode);
+-		if (res)
+-			goto out;
+-	}
+ 	if (filp->f_mode & FMODE_READ)
+ 		pipe->nreaders++;
+ 	if (filp->f_mode & FMODE_WRITE)
 -- 
-1.8.3.1
+2.31.1
 
