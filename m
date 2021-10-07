@@ -2,46 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D60F1C433FE
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 22:30:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87EB9C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 22:30:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C3C266105A
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 22:30:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 72E08610C8
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 22:30:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237851AbhJGWcq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Oct 2021 18:32:46 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:26097 "EHLO
+        id S238673AbhJGWcs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Oct 2021 18:32:48 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:27133 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233370AbhJGWcp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2021 18:32:45 -0400
+        by vger.kernel.org with ESMTP id S233370AbhJGWcs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2021 18:32:48 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1633645851;
+        s=mimecast20190719; t=1633645853;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=Yh48u7kZGpMcWIBMnksUa2p1rEHfVEL82DyEpqEquZE=;
-        b=BneSNKTNXIFEyO1RNmeLj0E9b0I3VukYcOGDnZxtkhGvdEHoeEyvdkrSXrCTOsVaUtcxtx
-        dmtAC+evZe9gBcO1JA3pykcIVP+FhGVMQbgY0N0VuHfK8DxdvXd4EOKyWRqvU9K7WYJROR
-        iVNQGzxntE6xNVQJW9F7F2wxS2I15eg=
+        bh=mz2hPiZW43Ml1iJmYyn9808jlklT92BinqlidQSptIE=;
+        b=aQm/GT4DuZfbWtIjPmGYlo9E2rZNdbG6x/flMHmrsCo8J5kZ3XPx6MdrqLK/2jDB/9OjH6
+        dowdqKqkImbndrfNdMXDj1XEwtM5aBKG+OmKtrZn38lBOpPcr0IkcirKBBWnR53gkvR1sZ
+        MBO/EeRAFnEZVSZtM4Pqll8jEVIFL7Y=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-188-8ykm1hUfM8eAFX7edqWD9w-1; Thu, 07 Oct 2021 18:30:50 -0400
-X-MC-Unique: 8ykm1hUfM8eAFX7edqWD9w-1
+ us-mta-441-Ts52FDTXNLykI84-ijJ7vA-1; Thu, 07 Oct 2021 18:30:47 -0400
+X-MC-Unique: Ts52FDTXNLykI84-ijJ7vA-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 12D3C1005E68;
-        Thu,  7 Oct 2021 22:30:49 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 1583E1923762;
+        Thu,  7 Oct 2021 22:30:46 +0000 (UTC)
 Received: from dwysocha.rdu.csb (unknown [10.22.8.139])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 741215D9C6;
-        Thu,  7 Oct 2021 22:30:48 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 76C205D9C6;
+        Thu,  7 Oct 2021 22:30:45 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         David Howells <dhowells@redhat.com>
 Cc:     linux-cachefs@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2  7/7] NFS: Remove remaining usages of NFSDBG_FSCACHE
-Date:   Thu,  7 Oct 2021 18:30:23 -0400
-Message-Id: <1633645823-31235-8-git-send-email-dwysocha@redhat.com>
+Subject: [PATCH v2  3/7] NFS: Convert NFS fscache enable/disable dfprintks to tracepoints
+Date:   Thu,  7 Oct 2021 18:30:19 -0400
+Message-Id: <1633645823-31235-4-git-send-email-dwysocha@redhat.com>
 In-Reply-To: <1633645823-31235-1-git-send-email-dwysocha@redhat.com>
 References: <1633645823-31235-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
@@ -49,55 +49,57 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The NFS fscache interface has removed all dfprintks so remove the
-NFSDBG_FSCACHE defines.
+Convert the enable / disable NFS fscache dfprintks to tracepoints.
+Utilize the existing NFS inode trace event class, which allows us
+to keep the same output format to other NFS inode tracepoints.
+Start the names of the tracepoints with "nfs_fscache" for easy
+identification.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/fscache-index.c      | 2 --
- fs/nfs/fscache.c            | 2 --
- include/uapi/linux/nfs_fs.h | 2 +-
- 3 files changed, 1 insertion(+), 5 deletions(-)
+ fs/nfs/fscache.c  | 5 +++--
+ fs/nfs/nfstrace.h | 2 ++
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/fscache-index.c b/fs/nfs/fscache-index.c
-index 4bd5ce736193..71bb4270641f 100644
---- a/fs/nfs/fscache-index.c
-+++ b/fs/nfs/fscache-index.c
-@@ -17,8 +17,6 @@
- #include "internal.h"
- #include "fscache.h"
- 
--#define NFSDBG_FACILITY		NFSDBG_FSCACHE
--
- /*
-  * Define the NFS filesystem for FS-Cache.  Upon registration FS-Cache sticks
-  * the cookie for the top-level index object for NFS into here.  The top-level
 diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index 06c4d8ee7281..57cc242ae916 100644
+index 6764938eca2d..5f9be4a1b5f8 100644
 --- a/fs/nfs/fscache.c
 +++ b/fs/nfs/fscache.c
-@@ -21,8 +21,6 @@
+@@ -19,6 +19,7 @@
+ #include "internal.h"
+ #include "iostat.h"
  #include "fscache.h"
- #include "nfstrace.h"
++#include "nfstrace.h"
  
--#define NFSDBG_FACILITY                NFSDBG_FSCACHE
--
- static struct rb_root nfs_fscache_keys = RB_ROOT;
- static DEFINE_SPINLOCK(nfs_fscache_keys_lock);
+ #define NFSDBG_FACILITY		NFSDBG_FSCACHE
  
-diff --git a/include/uapi/linux/nfs_fs.h b/include/uapi/linux/nfs_fs.h
-index 3afe3767c55d..ae0de165c014 100644
---- a/include/uapi/linux/nfs_fs.h
-+++ b/include/uapi/linux/nfs_fs.h
-@@ -52,7 +52,7 @@
- #define NFSDBG_CALLBACK		0x0100
- #define NFSDBG_CLIENT		0x0200
- #define NFSDBG_MOUNT		0x0400
--#define NFSDBG_FSCACHE		0x0800
-+#define NFSDBG_FSCACHE		0x0800 /* unused */
- #define NFSDBG_PNFS		0x1000
- #define NFSDBG_PNFS_LD		0x2000
- #define NFSDBG_STATE		0x4000
+@@ -314,11 +315,11 @@ void nfs_fscache_open_file(struct inode *inode, struct file *filp)
+ 	nfs_fscache_update_auxdata(&auxdata, inode);
+ 
+ 	if (inode_is_open_for_write(inode)) {
+-		dfprintk(FSCACHE, "NFS: nfsi 0x%p disabling cache\n", nfsi);
++		trace_nfs_fscache_disable_inode(inode);
+ 		clear_bit(NFS_INO_FSCACHE, &nfsi->flags);
+ 		fscache_disable_cookie(cookie, &auxdata, true);
+ 	} else {
+-		dfprintk(FSCACHE, "NFS: nfsi 0x%p enabling cache\n", nfsi);
++		trace_nfs_fscache_enable_inode(inode);
+ 		fscache_enable_cookie(cookie, &auxdata, i_size_read(inode),
+ 				      nfs_fscache_can_enable, inode);
+ 		if (fscache_cookie_enabled(cookie))
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 8a224871be74..b79f5fe2e39d 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -209,6 +209,8 @@
+ DEFINE_NFS_INODE_EVENT(nfs_fsync_enter);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_fsync_exit);
+ DEFINE_NFS_INODE_EVENT(nfs_access_enter);
++DEFINE_NFS_INODE_EVENT(nfs_fscache_enable_inode);
++DEFINE_NFS_INODE_EVENT(nfs_fscache_disable_inode);
+ 
+ TRACE_EVENT(nfs_access_exit,
+ 		TP_PROTO(
 -- 
 1.8.3.1
 
