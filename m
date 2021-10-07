@@ -2,385 +2,302 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 05B36C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 16:37:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82711C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 17:03:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DF452610E6
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 16:37:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 617966101A
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 17:03:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242095AbhJGQjE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Oct 2021 12:39:04 -0400
-Received: from mx0a-00069f02.pphosted.com ([205.220.165.32]:39870 "EHLO
+        id S242925AbhJGRFs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Oct 2021 13:05:48 -0400
+Received: from mx0a-00069f02.pphosted.com ([205.220.165.32]:64764 "EHLO
         mx0a-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233594AbhJGQjE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2021 12:39:04 -0400
-Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 197GQ65S029746;
-        Thu, 7 Oct 2021 16:37:08 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=JzvYqaSeVyLZwsO9E7QaVK/FsyXKBUYUBOaDA7BvWcM=;
- b=xCJM5GN9SCmAfcwWQXDn1+PJvSLsuXAGhDaCzdo1dwkAJBQwDLInr7bC6aNNOnbGdEJt
- gf/fZH4uMiBNm3YXJa8pWis+fW0c57oyKjXnrfAd0XgrF5rth/WBsfs3IOlbktDHhmih
- yhtWjp+XetGyBgyZ8RgDfUIn9E4Ab0lItNEsI7HGz4E31/hDckEyXGVvTWM4gZEFpJ4o
- l5z7D5/g3gBi03JIWTKEIZOA/H65Qruzd63ZdWWechu0EDKqOs27M0gmLVAux55KvvLT
- gV52WrZCkSm4UI0XmLbzq3wYNuPi+h92TyjKw6J53HQT/xJSUNBs7ff2lljSA1vunz9q IA== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3bj02jj3dm-3
+        by vger.kernel.org with ESMTP id S241576AbhJGRFr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2021 13:05:47 -0400
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 197GelsQ004062;
+        Thu, 7 Oct 2021 17:03:52 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : from : to :
+ cc : references : message-id : date : in-reply-to : content-type :
+ content-transfer-encoding : mime-version; s=corp-2021-07-09;
+ bh=PRqPR6CnczLR6MQcLRXSyNUKK3FBRMszthuDb/l91r8=;
+ b=nIntR8y+j12Q3iMTJTPdR3dNjHn6+rshewMNEVPzTPLqk2GSvr60Sfnrdd+0fnRBjgIG
+ 2Kp2Xe/meI2r9qI67EN3M2uYlKJak+7BfpYchQwE+RHXAd4wB6R4cEixH1q7xqPgJ8qF
+ O1wHm/9s7zR5cDjlSSZAn7PFnKNgYG5vP1yI1Yy6Hpy42/fdcltBnQKN11VHbK7uQsux
+ 02OU/MmrMMsfOrr0VvZmTVE5vrVkUAxS1qXtg1RubYaIEg0RflzwJGWRDepxXWJWg/C8
+ 2srpJ01rYNTZS9c9u9nKYXXRkSOcVak2NeVpB6jy+0w6VYvehun6UZMXti+imL5WQxjn pA== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by mx0b-00069f02.pphosted.com with ESMTP id 3bhxbs361c-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 07 Oct 2021 16:37:07 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 197FUnhA190664;
-        Thu, 7 Oct 2021 15:31:10 GMT
-Received: from nam02-bn1-obe.outbound.protection.outlook.com (mail-bn1nam07lp2046.outbound.protection.outlook.com [104.47.51.46])
-        by userp3030.oracle.com with ESMTP id 3bf0saeb40-1
+        Thu, 07 Oct 2021 17:03:50 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 197Gsnmw181583;
+        Thu, 7 Oct 2021 17:03:40 GMT
+Received: from nam10-bn7-obe.outbound.protection.outlook.com (mail-bn7nam10lp2108.outbound.protection.outlook.com [104.47.70.108])
+        by userp3020.oracle.com with ESMTP id 3bf16x5bfv-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 07 Oct 2021 15:31:09 +0000
+        Thu, 07 Oct 2021 17:03:40 +0000
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=lydp04JWELofVgZRU16SErDQJWxg6NrjSgvoHnpN+qJqPuPYm1ajczQuBLf27v90Ow3D9qaPslCcLlsrx0y+gR8g+j6UcNnaoqhR7zuvelonU1gDxnySSsW8qv9udF5UIghS0HTtJ3ei17xsNuQafe5gnjfwVFBu0pSWcPnNovKi0YMs2enkmADWKBiUzwoz0hq4tthI6LfCdFoDY9H1KOnfq75NdHuxT994VrKkxsq69QIacn5DNsZUIAIdmm7Lk6naRSbQk+SZCSZlCKuWbH/sm3zclpElNA2WYLU1olXEqOzxXuiOKnnFIzKLI2YfzfmeTYAjpICPZ5r+f8Kh/g==
+ b=WmzCvaGTfcrcp10/uBPeDBypjQjn42vQpfBxqHdfwSc+bQkMhglW1k1UYr91AbOLYD2eDuLdef5uB9pTtw5wXxWpP0fQFG00XU+ROBPejdbSp4EIk6xL6mZemp3gdSouIWHuvV0FJKZ93d7b9Tu8fbRVWgCZN5ilJuW73rD+Ry/+oQ1qS4+7Z65ajV9son3cxlhawwgQbpEvf9HYAycbor1uGmRCnSYHysr4Mm9iJv54VSPZveWAhg570jmzGa+hzDp3d9ecBp7dZrYutG+UWu8W8JW+UnucbHiDS3225854k5NbRejdxHgWWIdY8ba/3a9acauhMKWW8fs8VZlWCg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=JzvYqaSeVyLZwsO9E7QaVK/FsyXKBUYUBOaDA7BvWcM=;
- b=jfblFg7JGYW/lTUpPWbCnw+TaXv2gBamY1GHasJG8TDqejGBSXprWI2bCsiIgMmVLef2aXgfo9f/roMHmWu8YiVOfN7IFSG0p/jafc1DvjZKTaatqpnp9nJuvKNPIvmnJPS3iI9Hr07nqC3LmE2luTB1O8oc16dTlK1jLZLYXGXo3DaAeizSRPDZJ42/FneflFRgpSrAVWAjAYlh5iYz/FM6FOrlrqTs4txaltYvSyTYpHBI0XSlQwYjSidhHcHizyfIy8yKw8me8jyBqBDYUPisA+1Z4tNJF7wevg6f4PZFlHuAgjZk+/oAOVMVZ+bRjVFe92cgQTEojG72vKHzuA==
+ bh=PRqPR6CnczLR6MQcLRXSyNUKK3FBRMszthuDb/l91r8=;
+ b=RllMIXKMzSRVHbBOi4GakyNNED1tp7Y39xXTJu41MpcuNi/h96Z35wtt9U7K4gagUfufawKpoQGNe7UHKRoVKsHhO0WaiMjB7XIwW2PSJyL7hQiz2lAOcwZTzkdPAkQMgTpVwuQYazR8uyL/C5DB29m2q0WLOnPqmq0P3gsGWunSx7wlKcIalayKa0YN7Cuq7xbrlk3x2UNZxaJjU7WWhhLCET6+/TbdN7MjP4ImmiXRmO9q4aIOzC8oCDVaBubp9DTQu4mF5k7zZbDgWbF+sBu8G4Ojn5qrJj0dX2A6BJAeyLpQxyN6FMXM73kLMM7Oe9As1JGubtAuqhUtyTKFqQ==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
  dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
  d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=JzvYqaSeVyLZwsO9E7QaVK/FsyXKBUYUBOaDA7BvWcM=;
- b=r6NfeVa052rWpEploqmA9cX1Y0P4U0P5ipbRQU5mwgFNBRfCeP+/fRtTiWiFPDndzB761Y5IjTaHkjeMyse2jwbMSNK7U+QgggG3dtAMfjFTLylJEFBT+7EEDFoi0Kwp3XDvSarNG9oChm9BpH6JAh+WNRj07sq8DWrRSid5KPY=
-Received: from SJ0PR10MB4688.namprd10.prod.outlook.com (2603:10b6:a03:2db::24)
- by BYAPR10MB3557.namprd10.prod.outlook.com (2603:10b6:a03:125::27) with
+ bh=PRqPR6CnczLR6MQcLRXSyNUKK3FBRMszthuDb/l91r8=;
+ b=H7Ewj96LwnVyRVcZxvtOn1htT/xZxDfubXbUOU2Kc6OhR4pXY4wNaqqej3V4MdgG1ckWA99SOW0JEhZQKgF2Ddq5lia2UZMWyUVj9MaopcZqB6JVBuYtqt5wX4RllJ/8rJXCCFhfw6zVuHmIOfN6I4H1KpBe84biJy3ZXAmNowE=
+Authentication-Results: vger.kernel.org; dkim=none (message not signed)
+ header.d=none;vger.kernel.org; dmarc=none action=none header.from=oracle.com;
+Received: from BY5PR10MB4257.namprd10.prod.outlook.com (2603:10b6:a03:211::21)
+ by BYAPR10MB3605.namprd10.prod.outlook.com (2603:10b6:a03:129::15) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4566.22; Thu, 7 Oct
- 2021 15:31:07 +0000
-Received: from SJ0PR10MB4688.namprd10.prod.outlook.com
- ([fe80::f4fe:5b4:6bd9:4c5b]) by SJ0PR10MB4688.namprd10.prod.outlook.com
- ([fe80::f4fe:5b4:6bd9:4c5b%6]) with mapi id 15.20.4587.020; Thu, 7 Oct 2021
- 15:31:07 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     David Wysochanski <dwysocha@redhat.com>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC 5/5] NFS: Replace dprintk callsites in nfs_readpage(s)
-Thread-Topic: [PATCH RFC 5/5] NFS: Replace dprintk callsites in
- nfs_readpage(s)
-Thread-Index: AQHXugx45Ev+HCUtEEmdoiu/yqrAbKvHg9gAgAAgVgCAAAbzAIAAAXeA
-Date:   Thu, 7 Oct 2021 15:31:07 +0000
-Message-ID: <E1387930-9DD0-45ED-AF11-82D12692E6B8@oracle.com>
-References: <163345354511.524558.1980332041837428746.stgit@morisot.1015granger.net>
- <163345406901.524558.6277128986656130592.stgit@morisot.1015granger.net>
- <CALF+zOmKJTg-qx2J69QZAhG7KQOfra9noR5=bmaLfAFg1kZf-g@mail.gmail.com>
- <027FEF08-ABD1-47D1-A527-67B4F2184C43@oracle.com>
- <CALF+zOnHf04LYt-weSB2vwpLZNZMe71_r-dOc2uztnwmJQesHQ@mail.gmail.com>
-In-Reply-To: <CALF+zOnHf04LYt-weSB2vwpLZNZMe71_r-dOc2uztnwmJQesHQ@mail.gmail.com>
-Accept-Language: en-US
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4587.18; Thu, 7 Oct
+ 2021 17:03:37 +0000
+Received: from BY5PR10MB4257.namprd10.prod.outlook.com
+ ([fe80::486b:6917:1bf6:c00e]) by BY5PR10MB4257.namprd10.prod.outlook.com
+ ([fe80::486b:6917:1bf6:c00e%8]) with mapi id 15.20.4587.019; Thu, 7 Oct 2021
+ 17:03:37 +0000
+Subject: Re: Locking issue between NFSv4 and SMB client
+From:   dai.ngo@oracle.com
+To:     Bruce Fields <bfields@fieldses.org>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        CIFS <linux-cifs@vger.kernel.org>
+References: <5b7be2c0-95a6-048c-581f-17e5e3750daa@oracle.com>
+ <20210923215056.GH18334@fieldses.org>
+ <90a8f89b-e8ac-2187-2926-d723ebbcb839@oracle.com>
+Message-ID: <4c98a686-3be9-6f95-ea1a-8f03fbf3ea0c@oracle.com>
+Date:   Thu, 7 Oct 2021 10:03:34 -0700
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
+ Gecko/20100101 Thunderbird/78.14.0
+In-Reply-To: <90a8f89b-e8ac-2187-2926-d723ebbcb839@oracle.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
 Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3654.120.0.1.13)
-authentication-results: redhat.com; dkim=none (message not signed)
- header.d=none;redhat.com; dmarc=none action=none header.from=oracle.com;
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: b20671ec-e35a-4f47-29b8-08d989a77bbe
-x-ms-traffictypediagnostic: BYAPR10MB3557:
-x-microsoft-antispam-prvs: <BYAPR10MB3557D28E7076596E50A1C75C93B19@BYAPR10MB3557.namprd10.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:1051;
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: AFzDcPpAFhx1pcng+0AVLU1K6Ubxp5Ivu/d9b1cUt5erp5Qgc8HXl+gdoRkky4zgEvEXgaOZKtHzEP7tMYpgu/+5QNk5Pzy69rHHW63v+GdcW52WchTqwW4q3wl5q/gVb3iNedBjalKVoPb0GGTxPIqXs3gADvdljOmKGK+vkuDzXv47EUMf8byWnkBz7rqsr8CXd9ZzVlnzQWXqQ1XVZqCwdH+GIddsvR/JJDIugHMmuPlzWcuV58HgSW/wLSknIb8w5rTxF5BTWTe7ixY3D9wED2S0vug/Ecf9UUhb7gf+7CS/BC9LEGnd4tMzLeYuykukEsdKw7FQjw1M3zwjunQ6xVzgpYvwGBG2+I2H8t6Ugucw9Cl4Ur+YCb6iZS8+1HjDTpym0qm/1tgNaby2jySXlOaN3lmfKY7t7Kz1S17/JeyIWaJVgovvkmTkpbMW5PT9P4Ry7T6JNqNIs7DrurZ+xSdhoHebIUphENdNs9Hho683NenvuOU2oIrREWTsQLOufMm8QQ+QFbVRfNUCRqpmbxoPt8cCW2IRC84G8A/nq0y/21PmrXjY7wZ5RYDV8ERllR8yjaPYWLH8BuaDJbdjuuFBH/dCi4srhap6lK68DXlDEKEjyU+39WB10sD+eUzak/mQhV23HbnGNAY2bvR+Z20tc18EZFwUzQPTkN68BvGcsXOFvQcQONExZQPZEc0u7LZClKBdIF9ffsRaJ7p1mWV4hNoEDsvXT1OTPOxNY/vXMP25Cp+mNCGps/iF
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SJ0PR10MB4688.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(36756003)(76116006)(91956017)(66946007)(66446008)(71200400001)(66476007)(6512007)(2906002)(8936002)(38100700002)(33656002)(6486002)(122000001)(4326008)(26005)(38070700005)(86362001)(6506007)(186003)(53546011)(6916009)(316002)(508600001)(66556008)(64756008)(2616005)(8676002)(5660300002)(83380400001)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?IVbgTG8uFqLDKHfSrdo6Z5uoWF+iRLFMvU4yFi+Tpd3IXNG8huhI4Rs/lBm5?=
- =?us-ascii?Q?Ck3FVFibXmsEPRLoqNysbQJIiIlggEENW0tzKSw+GHPDPE/OqmY6bJLZaLwZ?=
- =?us-ascii?Q?1jOkD4d2fH35z9VHzCpW12GZTomjD6sqUjwb0v5ZP7MyuaS4k2+AFQj1KDvy?=
- =?us-ascii?Q?kEoybn6/FxCemOdpzuJrXt13yIBVTqvS4DxsHIPwi4VPHQMh8OEiOqsvV4Fg?=
- =?us-ascii?Q?CqXH4JMqXznDSOs5o4wgt4fcwchS9H7i01SIQJGmzUIiphe8blLMCgKE9Ut9?=
- =?us-ascii?Q?Kapq1+Kk9SWNvlqBaDjSwUOKN65x4exUP9EQvm6+XC7G6Q+iYyb0OPUsZO03?=
- =?us-ascii?Q?vsj0a5IiwtSKUiXnryWSCVm2z3sdhDtsInGUsSkLBL3Pz3YI4J59XM5rrfKJ?=
- =?us-ascii?Q?aoEdxvpqSRqr5OtkwwyeghUVzfu6Kug226cguV3gCXvE3a0r/H8m8yDVhktx?=
- =?us-ascii?Q?mvX+qZE6jiSFDYDzvvQRYIZp/aXWOiNlblpjBoFfIkIHxJ/5recqBdVSyyu8?=
- =?us-ascii?Q?a3Co+/9QCZZ5pZxVtwg5pW3NUNhtvGhjvYCWaBngZ3KvACnzV1wSCPzC2a6q?=
- =?us-ascii?Q?sR/Gbkcnrtf+YbpuJKisqOp8ZhXg+wuPG7EUSwVusYQZgetTHXQcAXf7sz3+?=
- =?us-ascii?Q?N/1coCj5gfGK+da/B4VD6F3t9W87vpOpveeqWwchTVvK2iRX7DD5CFMe8mHf?=
- =?us-ascii?Q?k1zRvlZdaTBmdp8Ceafado6FbUnKvtWkI4FImXizg1fDPUWCp030pLKfY4tX?=
- =?us-ascii?Q?sRkkrDWrBnUL2AiPISE2RMX8raNm8lPzZVpL5BrLLDcwr3UJdMIgg3pprcHT?=
- =?us-ascii?Q?yB2afS537CrP/JJKQPi5WJBMAvp3Pj9cc3XR2m7jGzZPXTu1U/1KYMHaMAP2?=
- =?us-ascii?Q?Ug6X/SgX9xKcAb1RNBVMjBtSaMo5XKNAqFCmldcTt+CpZ0XAdr+GsIH1vewq?=
- =?us-ascii?Q?2OabybO2y9GA4UJlroGvpdGbtE6Aegn+E9rmair5+Ud5UWDzPeOMOKFtp0gO?=
- =?us-ascii?Q?5Ur7V4iUG+yp54ZX+R2WpIAstANmiu2RZ2s44xmr5BW6uFvatx1T7MMX/umW?=
- =?us-ascii?Q?TFdvQLMshpXo/I/7gY8aQycA7ICY8Jo3HBPkwa09kMOHSRDzhoJ0bAjprTlj?=
- =?us-ascii?Q?42sEIiys79OUpDem0Mmh5nOeJV6XkEwL6oxvjjpBuUBqcY7ANt8Q52N7kSI3?=
- =?us-ascii?Q?Y7FgXh8dedUOMyL2DM12r7pAKGzW1Wi+eJYuqGrf0W7rWyq3b3rErRhiujG8?=
- =?us-ascii?Q?Dm0YatrsDGRMGo356d/W3TaMTvVpBjq4CoMHwYKyZ3UNF33cvFP0NW8Cm8r2?=
- =?us-ascii?Q?tMBltvrtZEfkhYXVNe8zzzgv?=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <38EFC1549F0F4D4DA19CC37576269538@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+X-ClientProxiedBy: SA9PR10CA0017.namprd10.prod.outlook.com
+ (2603:10b6:806:a7::22) To BY5PR10MB4257.namprd10.prod.outlook.com
+ (2603:10b6:a03:211::21)
 MIME-Version: 1.0
+Received: from dhcp-10-159-146-236.vpn.oracle.com (138.3.200.44) by SA9PR10CA0017.namprd10.prod.outlook.com (2603:10b6:806:a7::22) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4587.19 via Frontend Transport; Thu, 7 Oct 2021 17:03:36 +0000
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: 9a032551-0118-4d99-5010-08d989b46787
+X-MS-TrafficTypeDiagnostic: BYAPR10MB3605:
+X-Microsoft-Antispam-PRVS: <BYAPR10MB3605AF9AF641F9BC6B53800087B19@BYAPR10MB3605.namprd10.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:9508;
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: mkdje9Iui+8wJXvYMD4HviseEbA4nHxSC+nxt7FTT4WdIzlli7FJ1gKcqbo8BkhVZXThzTcjZyMsFxLzygBwZla/psmxcfS1JPSXqr6GtF+zH5jCzJ/Iu1oAkpPyBZcLXH8ARNVVBwmEWp5sxcm+5ttDSrjI3SDGKrutGIH0zqCNFED0DyjgdzlENBw3NltZgZ0Zh7b7Qb/etoDTBx+bFVUrDXZH5ztwarjOqTUPq7wD9gMyP+S4JoHQfeM+wO2lBMKWGMeKTPT3EOD0K0u6o08kvzlFGwymGuWuXQPeifhs84hXwJs8m0/bm7y/47Tv+90uZ7nkO3nDlXUlNqJ2UdL9eC+caHvNAG69WpVR8xLNszMMtXcfTGg5I0g7D4rgl4norVKUDA9FA0AkqGTlLan3gbyUmz66PBxox4GkszN+48wftMgOWICieSdiaWfPOFx56gEqqjs8iZmJ973f0SLOd0NweKdWL1ay6InQCFsgroAE3GYfblYm249Olj3yoQKY59QPlidnkHcCDK1Bpf/ClQyopJPmlzJI4YLh9APW3tRVLT1mFJO1HpgHwaINv6ATzxAs5zJOAAr0t7JwclBHjRBZWG1Zq/c1MfhSZRb8ScgvRFW0Psb0x90x/UwYGwfyyIyyNIxIMIDgkfCIUnyplBw9826Ky+vXgpjuDWWYIj0qGhPfN/0DXUIPQ98P3cwKEgrP6KWpTYLZSBL3uw==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BY5PR10MB4257.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(26005)(4326008)(2906002)(53546011)(7696005)(31686004)(6486002)(31696002)(36756003)(6916009)(186003)(83380400001)(956004)(9686003)(2616005)(66476007)(66556008)(508600001)(66946007)(86362001)(38100700002)(8936002)(54906003)(316002)(8676002)(5660300002)(43740500002);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?Q3VnaTR0anVyZ1hFZUkxblkwNjR3V2taUzc1S2ZQcyt6Q0pPY2RHK2llY3ZC?=
+ =?utf-8?B?Z2FmbTcvQ2R1NmMzNWM1cE9SMVBycG1YK252QzcvRERUZUN6VStiaFNYNWpS?=
+ =?utf-8?B?MWNPRFVpUzZvNGRLNkg5Zld2WkRyaDZtZ2tkQnZyYXRJcW5BMHVUVmNENURH?=
+ =?utf-8?B?T2xrR0NYdG5hK25UcVJlN1N0aUdHZ3dHdHlMZlRmaGwvamU1djJPek9PRXJo?=
+ =?utf-8?B?bmZrMDh0OGpVemkzaFYvSEpIOW1QYTNjaDNCVnlsemhsMDVwYjJXbjVLME1l?=
+ =?utf-8?B?TVhmc2NHOUM1ZkM3M0tyS0FaUzYxY0tiN1Z1anJ0WG1qSVNHR291SVBsdzJE?=
+ =?utf-8?B?elhNMFkvSWM0dTZodzlweVU5WlA0Y1F2S0FVaW0vUkNYT2dWVUxOSzJkZzcw?=
+ =?utf-8?B?L2svZTJ5TUliVmJjTXBPR09VSE8yYUJzVlpONUVwc1V6RHBZbENmZmE5KzhZ?=
+ =?utf-8?B?ekpLcCt5c0NzaHREVGJFOFg2OEJERHZDSGpEUHE2R0pyc3JrVWRicnROLys3?=
+ =?utf-8?B?dVhaUnk2TCtLRW9BbzUra0V3azhNdWJuL2hxbnhMN2RyQUlsNDA1cG9CbWhu?=
+ =?utf-8?B?c3UxZnFYekJ3KzdkcERXUEgySVBSTktUa1IwNDZNbEk5alZFWkYybzdLMlRU?=
+ =?utf-8?B?WG55RzhDV0dHcENhMFFzVnRVNEZyZU5YQktPZDkrU0Zub3l6czFhbFNsN1VE?=
+ =?utf-8?B?N1dIYW9PWjdEeU9wSWF6ZGFKWlVuWUhXY1dISWNBdzRsbVBzNm5sWk93bnFr?=
+ =?utf-8?B?NGhNdmpsVWx5eGl0ZUwwOVlJUHc4c0N3L05GTUxtQmkzdmltZWRrenlMajBk?=
+ =?utf-8?B?SUFVUGRpbXRYTDdFakw5NUQ2QlZaRC9pd3hmVnlzb1F3SXZyUEpGUkgxN2Zp?=
+ =?utf-8?B?dkRZbE1sU1pnMlM2QmRoQXo0dHd5QjgvVnBrS0FLMnhoUWduSW1uV0xhelU2?=
+ =?utf-8?B?cmFIUU1KR2xKNEtWQTU1dTE3a0syWTlrTGdUS21oYWxSZVRTWUlra0t3MHdZ?=
+ =?utf-8?B?ek02eEJlc3dFdTBubnVJaFYvd3RtcWFIMi9QVXh5Z2U3VWJvTXFMK01RL2Mz?=
+ =?utf-8?B?MEdOQ1J6bnNPby9Wb0hTRFdtTEpCODlob1BFczJKQ3JZQjFLVFYvMkxvdHNP?=
+ =?utf-8?B?U1g5Q0FXVHZPa2puay92NzBPdFJlZUNIM3UvQWg2OUVpR2daNmcvbk1maVVR?=
+ =?utf-8?B?WUE2Si82cEhYZ25idWxBaDV5L1k3cGJxaldMN1E5elhnK040ZUMvZzkraEdY?=
+ =?utf-8?B?M3d2dGJaTWd1YkdyejRTc1ZleVJIUmU3N2hiWlBrekVvZnE2cGNPWjhUa1h0?=
+ =?utf-8?B?aHZzNGUrT1F0VFYzQ0dpMjhkTW0rUm5XcEcxNS9peFdtN0F1TTRQNWF4MlVV?=
+ =?utf-8?B?WVA3OWRBN0JtZnNhY3JXYTJOck9OTWhIRjhNVWtEclE2NXRPelg3ZUdzUmRz?=
+ =?utf-8?B?OE9NUnJHRnlKNVNMeDN5V3JIbkw4UklpTVVqRkQvbDk0bHJDNWd6TXhnNXJp?=
+ =?utf-8?B?NTQ0Q0VrZkttUGpON2J3eHJpUFBBNVVqVlZSWlpiaXNMS2JpcGlQYTNVeFJM?=
+ =?utf-8?B?VFVndy9NeWk0a29vaWZrVWtvYnc0Y1dIM0ppQnFEOWlGaXVlN2pyVUFjenFR?=
+ =?utf-8?B?aHdrNlRHdWt5VzN4Rm1ZbHFnUVV4NUZTZ0tqaHo4UmVrczNrMURQTVdheUN2?=
+ =?utf-8?B?VnhFUG1kL2grYnVCWTREQWMvTHlOSmpyNU0vbVQyZUtQaldmYXk0bjNsbU5U?=
+ =?utf-8?Q?/D1RSkMA8kLHrXKOPI8AriFvsrMy1mjvDRXfS2Q?=
 X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 9a032551-0118-4d99-5010-08d989b46787
+X-MS-Exchange-CrossTenant-AuthSource: BY5PR10MB4257.namprd10.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: SJ0PR10MB4688.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: b20671ec-e35a-4f47-29b8-08d989a77bbe
-X-MS-Exchange-CrossTenant-originalarrivaltime: 07 Oct 2021 15:31:07.7204
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 07 Oct 2021 17:03:37.5995
  (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: yX+tW94tHPMvhHm7PGg/faLTiQUqp3QJ4LGj1LV+bFJWJN1Dzcl4cpjke73MiZPABQoeyutdg64ov4ghAw9F3A==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR10MB3557
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: YRZHpsjJJhcuIy5YQX9v56JKybLRLVS+P43V4AMZ10H3LnqEAWN9wTYVwCCGRViDmyFhodm7njG0KgXgJfwZvw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR10MB3605
 X-Proofpoint-Virus-Version: vendor=nai engine=6300 definitions=10130 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 suspectscore=0 adultscore=0
- mlxscore=0 phishscore=0 bulkscore=0 mlxlogscore=999 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2109230001
- definitions=main-2110070101
-X-Proofpoint-ORIG-GUID: Uz5WsVc6Pe34I_6DjNGipQzdQrLVO2bc
-X-Proofpoint-GUID: Uz5WsVc6Pe34I_6DjNGipQzdQrLVO2bc
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 adultscore=0
+ phishscore=0 malwarescore=0 bulkscore=0 mlxlogscore=999 mlxscore=0
+ spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2109230001 definitions=main-2110070110
+X-Proofpoint-GUID: 0cU2Zm5ltxy2sHuOIlCwKSszVZrUYcCz
+X-Proofpoint-ORIG-GUID: 0cU2Zm5ltxy2sHuOIlCwKSszVZrUYcCz
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
+On 9/23/21 3:39 PM, dai.ngo@oracle.com wrote:
+>
+> On 9/23/21 2:50 PM, Bruce Fields wrote:
+>> On Thu, Jul 15, 2021 at 04:45:22PM -0700, dai.ngo@oracle.com wrote:
+>>> Hi Bruce,
+>> Oops, sorry for neglecting this.
+>>
+>>> I'm doing some locking testing between NFSv4 and SMB client and
+>>> think there are some issues on the server that allows both clients
+>>> to lock the same file at the same time.
+>> It's not too surprising to me that getting consistent locks between the
+>> two would be hard.
+>>
+>> Did you get any review from a Samba expert?  I seem to recall it having
+>> a lot of options, and I wonder if it's configured correctly for this
+>> case.
+>
+> No, I have not heard from any Samba expert.
+>
+>>
+>> It sounds like Samba may be giving out oplocks without getting a lease
+>> from the kernel.
+>
+> I will have to circle back to this when we're done with the 1st
+> phase of courteous server.
 
-> On Oct 7, 2021, at 11:25 AM, David Wysochanski <dwysocha@redhat.com> wrot=
-e:
->=20
-> On Thu, Oct 7, 2021 at 11:01 AM Chuck Lever III <chuck.lever@oracle.com> =
-wrote:
->>=20
->>=20
->>=20
->>> On Oct 7, 2021, at 9:05 AM, David Wysochanski <dwysocha@redhat.com> wro=
-te:
->>>=20
->>> On Tue, Oct 5, 2021 at 1:14 PM Chuck Lever <chuck.lever@oracle.com> wro=
-te:
->>>>=20
->>>> There are two new events that report slightly different information
->>>> for readpage and readpages.
->>>>=20
->>>> For readpage:
->>>>             fsx-1387  [006]   380.761896: nfs_aops_readpage:    fileid=
-=3D00:28:2 fhandle=3D0x36fbbe51 version=3D1752899355910932437 page_index=3D=
-32
->>>>=20
->>>> The index of a synchronous single-page read is reported.
->>>>=20
->>>> For readpages:
->>>>=20
->>>>             fsx-1387  [006]   380.760847: nfs_aops_readpages:   fileid=
-=3D00:28:2 fhandle=3D0x36fbbe51 version=3D1752899355909932456 nr_pages=3D3
->>>>=20
->>>> The count of pages requested is reported. readpages does not wait
->>>> for the READ requests to complete.
->>>>=20
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> fs/nfs/nfstrace.h |   70 +++++++++++++++++++++++++++++++++++++++++++++=
-++++++++
->>>> fs/nfs/read.c     |    8 ++----
->>>> 2 files changed, 72 insertions(+), 6 deletions(-)
->>>>=20
->>>> diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
->>>> index e9be65b52bfe..0534d090ee55 100644
->>>> --- a/fs/nfs/nfstrace.h
->>>> +++ b/fs/nfs/nfstrace.h
->>>> @@ -862,6 +862,76 @@ TRACE_EVENT(nfs_sillyrename_unlink,
->>>>                )
->>>> );
->>>>=20
->>>> +TRACE_EVENT(nfs_aops_readpage,
->>>> +               TP_PROTO(
->>>> +                       const struct inode *inode,
->>>> +                       struct page *page
->>>> +               ),
->>>> +
->>>> +               TP_ARGS(inode, page),
->>>> +
->>>> +               TP_STRUCT__entry(
->>>> +                       __field(dev_t, dev)
->>>> +                       __field(u32, fhandle)
->>>> +                       __field(u64, fileid)
->>>> +                       __field(u64, version)
->>>> +                       __field(pgoff_t, index)
->>>> +               ),
->>>> +
->>>> +               TP_fast_assign(
->>>> +                       const struct nfs_inode *nfsi =3D NFS_I(inode);
->>>> +
->>>> +                       __entry->dev =3D inode->i_sb->s_dev;
->>>> +                       __entry->fileid =3D nfsi->fileid;
->>>> +                       __entry->fhandle =3D nfs_fhandle_hash(&nfsi->f=
-h);
->>>> +                       __entry->version =3D inode_peek_iversion_raw(i=
-node);
->>>> +                       __entry->index =3D page_index(page);
->>>> +               ),
->>>> +
->>>> +               TP_printk(
->>>> +                       "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x vers=
-ion=3D%llu page_index=3D%lu",
->>>> +                       MAJOR(__entry->dev), MINOR(__entry->dev),
->>>> +                       (unsigned long long)__entry->fileid,
->>>> +                       __entry->fhandle, __entry->version,
->>>> +                       __entry->index
->>>> +               )
->>>> +);
->>>> +
->>>> +TRACE_EVENT(nfs_aops_readpages,
->>>> +               TP_PROTO(
->>>> +                       const struct inode *inode,
->>>> +                       unsigned int nr_pages
->>>> +               ),
->>>> +
->>>> +               TP_ARGS(inode, nr_pages),
->>>> +
->>>> +               TP_STRUCT__entry(
->>>> +                       __field(dev_t, dev)
->>>> +                       __field(u32, fhandle)
->>>> +                       __field(u64, fileid)
->>>> +                       __field(u64, version)
->>>> +                       __field(unsigned int, nr_pages)
->>>> +               ),
->>>> +
->>>> +               TP_fast_assign(
->>>> +                       const struct nfs_inode *nfsi =3D NFS_I(inode);
->>>> +
->>>> +                       __entry->dev =3D inode->i_sb->s_dev;
->>>> +                       __entry->fileid =3D nfsi->fileid;
->>>> +                       __entry->fhandle =3D nfs_fhandle_hash(&nfsi->f=
-h);
->>>> +                       __entry->version =3D inode_peek_iversion_raw(i=
-node);
->>>> +                       __entry->nr_pages =3D nr_pages;
->>>> +               ),
->>>> +
->>>> +               TP_printk(
->>>> +                       "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x vers=
-ion=3D%llu nr_pages=3D%u",
->>>> +                       MAJOR(__entry->dev), MINOR(__entry->dev),
->>>> +                       (unsigned long long)__entry->fileid,
->>>> +                       __entry->fhandle, __entry->version,
->>>> +                       __entry->nr_pages
->>>> +               )
->>>> +);
->>>> +
->>>> TRACE_EVENT(nfs_initiate_read,
->>>>                TP_PROTO(
->>>>                        const struct nfs_pgio_header *hdr
->>>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
->>>> index 08d6cc57cbc3..94690eda2a88 100644
->>>> --- a/fs/nfs/read.c
->>>> +++ b/fs/nfs/read.c
->>>> @@ -337,8 +337,7 @@ int nfs_readpage(struct file *file, struct page *p=
-age)
->>>>        struct inode *inode =3D page_file_mapping(page)->host;
->>>>        int ret;
->>>>=20
->>>> -       dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
->>>> -               page, PAGE_SIZE, page_index(page));
->>>> +       trace_nfs_aops_readpage(inode, page);
->>>>        nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
->>>>=20
->>>>        /*
->>>> @@ -403,10 +402,7 @@ int nfs_readpages(struct file *file, struct addre=
-ss_space *mapping,
->>>>        struct inode *inode =3D mapping->host;
->>>>        int ret;
->>>>=20
->>>> -       dprintk("NFS: nfs_readpages (%s/%Lu %d)\n",
->>>> -                       inode->i_sb->s_id,
->>>> -                       (unsigned long long)NFS_FILEID(inode),
->>>> -                       nr_pages);
->>>> +       trace_nfs_aops_readpages(inode, nr_pages);
->>>>        nfs_inc_stats(inode, NFSIOS_VFSREADPAGES);
->>>>=20
->>>>        ret =3D -ESTALE;
->>>>=20
->>>>=20
->>>=20
->>> I added this on top of my fscache patches and have been testing.
->>> Should we be tracing (only?) the return point with the return
->>> value?
->>=20
->> The purpose of the entry point is: you get a timestamp, filehandle
->> information, and you know what is driving the READ request (sync
->> read or async readahead).
->>=20
->> There is a dprintk() at the top of the function as well as a
->> performance metric counter, but there currently isn't a dprintk()
->> at the bottom of the function. So I assumed the return code is
->> not a critical piece of information. I'm willing to be educated,
->> though.
->>=20
->=20
-> Well, I was trying to understand the various approaches in nfstrace.h.
-> There are tracepoints that are paired with entry and exit, but I guess
-> these have multiple pieces of information that may change from
-> start to finish.  Examples:
-> nfs_refresh_inode_enter
-> nfs_refresh_inode_exit
-> nfs_lookup_revalidate_enter
-> nfs_lookup_revalidate_exit
+I disabled oplock for the SMB share and locking between NFSv4 and SMB
+client works as expected. It appears that smbd does not set the VFS
+lease on the file after granting oplock to smb client.
 
-These were added over many years by several different people.
-Unfortunately there isn't much strategy here at this point.
+-Dai
 
-But yes, especially for nfs_readpages, the *pages argument
-is a list that is drained by read_cache_pages() so it wouldn't
-have the same value at the end of the function (not that the
-trace point is recording it, but you get the idea).
-
-
->> A return point trace event could be generated only when there
->> is an unexpected error condition, for example, to reduce trace
->> log noise?
->>=20
-> Ok so you would just add a second tracepoint for non-zero returns?
-
-So for I/O operations, there is precedent for recording the
-completion with a _done trace event. I'm redriving this patch
-to include an unconditional return point trace event. Stand by...
-
-
->>>         bigfile-6279    [004] ..... 11550.387232: nfs_aops_readpages: f=
-ileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 version=3D1633611037513339503 nr_p=
-ages=3D32
->>>         bigfile-6279    [004] ..... 11550.387236: nfs_fscache_page_even=
-t_read: fileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 offset=3D0 count=3D4096
->>>         bigfile-6279    [004] ..... 11550.387237: nfs_fscache_page_even=
-t_read_done: fileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 offset=3D0 count=3D4=
-096 error=3D-105
->>>         bigfile-6279    [004] ..... 11550.387248: nfs_fscache_page_even=
-t_read: fileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 offset=3D4096 count=3D409=
-6
->>>         bigfile-6279    [004] ..... 11550.387248: nfs_fscache_page_even=
-t_read_done: fileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 offset=3D4096 count=
-=3D4096 error=3D-105
->>>         bigfile-6279    [004] ..... 11550.387250: nfs_fscache_page_even=
-t_read: fileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 offset=3D8192 count=3D409=
-6
->>>         bigfile-6279    [004] ..... 11550.387250: nfs_fscache_page_even=
-t_read_done: fileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 offset=3D8192 count=
-=3D4096 error=3D-105
->=20
-> Example:
-> bigfile-6279    [004] ..... 11550.387252: nfs_aops_readpages_error:
-> fileid=3D00:2f:26127 fhandle=3D0xb6d0e8f0 version=3D1633611037513339503
-> nr_pages=3D6 error=3D-5
->=20
->=20
->=20
->>=20
->> --
->> Chuck Lever
-
---
-Chuck Lever
-
-
-
+> -Dai
+>
+>>
+>> --b.
+>>
+>>> Here is what I did:
+>>>
+>>> NOTE: lck is a simple program that use lockf(3) to lock a file from
+>>> offset 0 to the length specified by '-l'.
+>>>
+>>> On NFSv4 client
+>>> ---------------
+>>>
+>>> [root@nfsvmd07 ~]# nfsstat -m
+>>> /tmp/mnt from nfsvmf24:/root/smb_share
+>>> Flags: 
+>>> rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,
+>>> proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=10.80.62.47,
+>>>         local_lock=none,addr=10.80.111.94
+>>> [root@nfsvmd07 ~]#
+>>>
+>>>
+>>> [root@nfsvmd07 ~]# ./lck -p /tmp/mnt/messages -W -l 100000000
+>>> Lck/file: 1, Maxlocks: 10000000
+>>> Locking[/tmp/mnt/messages] Offset[0] Len[100000000] N[0]...doing 
+>>> F_LOCK..
+>>> LOCKED...
+>>>
+>>> Locks[1] files[1] took[2.000s] sleep waiting...Hit Control-C to stop
+>>>
+>>> [NFS client successfully locks the file]
+>>>
+>>> On SMB client
+>>> -------------
+>>>
+>>> [root@nfsvme24 ~]# mount |grep cifs
+>>> //nfsvmf24/smb_share on /tmp/mnt type cifs 
+>>> (rw,relatime,vers=3.1.1,cache=strict,username=root,uid=0,noforceuid,gid=0,noforcegid,addr=10.80.111.94,file_mode=0755,dir_mode=0755,soft,nounix,serverino,mapposix,rsize=4194304,wsize=4194304,bsize=1048576,echo_interval=60,actimeo=1)
+>>> [root@nfsvme24 ~]#
+>>>
+>>> [root@nfsvme24 ~]# smbclient -L nfsvmf24
+>>> Enter SAMBA\root's password:
+>>>
+>>>     Sharename       Type      Comment
+>>>     ---------       ----      -------
+>>>     print$          Disk      Printer Drivers
+>>>     smb_share       Disk      Test Samba Share <<===== share to mount
+>>>     IPC$            IPC       IPC Service (Samba 4.10.16)
+>>>     root            Disk      Home Directories
+>>> Reconnecting with SMB1 for workgroup listing.
+>>>
+>>>     Server               Comment
+>>>     ---------            -------
+>>>
+>>>     Workgroup            Master
+>>>     ---------            -------
+>>> [root@nfsvme24 ~]#
+>>>
+>>> [root@nfsvme24 ~]# ./lck -p /tmp/mnt/messages -W -l 100000000
+>>> Lck/file: 1, Maxlocks: 10000000
+>>> Locking[/tmp/mnt/messages] Offset[0] Len[100000000] N[0]...doing 
+>>> F_LOCK..
+>>> LOCKED...
+>>>
+>>> Locks[1] files[1] took[2.000s] sleep waiting...Hit Control-C to stop
+>>>
+>>> [SMB client successfully locks the file]
+>>>
+>>> The same issue happens when either client locks the file first.
+>>> I think this is what has happened:
+>>>
+>>> 1. NFSv4 client opens and locks the file first
+>>>
+>>>      . NFSv4 client send OPEN and LOCK to server, server replies
+>>>        OK on both requests.
+>>>
+>>>      . SMB client sends create request with Oplock==Lease for
+>>>        the same file.
+>>>
+>>>      . server holds off on replying to SMB client's create request,
+>>>        recalls delegation from NFSv4 client, waits for NFSv4 client
+>>>        to return the delegation then replies success to SMB client's
+>>>        create request with lease granted (Oplock==Lease).
+>>>
+>>>        NOTE: I think SMB server should replies the create request
+>>>        with Oplock==None to force the SMB client to sends the
+>>>        lock request.
+>>>
+>>>      . Once SMB client receives the reply of the create with
+>>>        'Oplock==Lease', it assumes it has full control of the file
+>>>        therefor it does not need to send the lock request.
+>>>
+>>>      . both NFSv4 and SMB client now think they have locked the file.
+>>>
+>>> pcap:  nfs_lock_smb_lock.pcap
+>>>
+>>> 2. SMB client creates the file with 'Oplock==Lease' first
+>>>
+>>>      . SMB sends create request with 'Oplock==Lease' to server,
+>>>        server replies OK with 'Oplock==Lease'. SMB client skips
+>>>        sending lock request since it assumes it has full control
+>>>        of the file with the lease.
+>>>
+>>>      . NFSv4 client sends OPEN to server, server replies OK with
+>>>        delagation is none. NFSv4 client sends LOCK request, since
+>>>        no lock was created in the kernel for the SMB client, the
+>>>        lock was granted to the NFSv4 client.
+>>>
+>>>       NOTE: I think the SMB server should send lease break
+>>>       notification to the SMB client, wait for the lease break
+>>>       acknowledgment from SMB client before replying to the
+>>>       OPEN of the NFSv4 client. This will force the SMB client
+>>>       to send the lock request to the server.
+>>>
+>>>      . both NFSv4 and SMB client now think they have locked the file.
+>>>
+>>> Your thought?
+>>>
+>>> Thanks,
+>>>
+>>> -Dai
