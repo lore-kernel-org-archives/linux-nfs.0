@@ -2,262 +2,512 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 54818C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 20:49:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5B23C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 20:49:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 402E761100
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 20:49:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A2DD8603E5
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Oct 2021 20:49:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242500AbhJGUum (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Oct 2021 16:50:42 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:50241 "EHLO
+        id S242577AbhJGUvV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Oct 2021 16:51:21 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:55390 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S242527AbhJGUuZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2021 16:50:25 -0400
+        by vger.kernel.org with ESMTP id S242599AbhJGUu1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2021 16:50:27 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1633639711;
+        s=mimecast20190719; t=1633639713;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=iPrgjvpRBiT5WHFPbooc756Od7ZHmX3BG/EeReDfgUw=;
-        b=M05iwFw+7ODGDaXRkragjn2+DYaFBaFn1IihX2wJoVWjT2yLUIdx/ZPzz4sQcj2yaO5xPw
-        WojH/LcS6QXbZBL9sPOCrpX75FthDLXF2yLhqSmABJU0SoC0Nndr5LLEyhuckdw6gYUKZ4
-        IGVD9uEcmMOhepK5807R7gWtgFa9b3Q=
+        bh=VlAebe8aMLb4WlrjKaWTpiE/rY3QPHDGeApgDA0zbcI=;
+        b=f/Gz5FjKB6gkOtGEXAdM57ll2EwcA7ycIBeM/ACl5uIDieJTqkCK+3jokM9UbHUUQoENiR
+        VkUyBO53sFaPY6mBp1SNcd6V/7TLKbUVoJtl3bIQQ9Iq7VgW58N2HMASIz3kyXrWsoOKNE
+        zjxIh0aF/xhYR1R5wMzGofJJR463eeA=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-586-50JuQ5G1NdqTs1g_pNkSbw-1; Thu, 07 Oct 2021 16:48:22 -0400
-X-MC-Unique: 50JuQ5G1NdqTs1g_pNkSbw-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+ us-mta-475-wor_dxl1O6GTNgr7hVHgew-1; Thu, 07 Oct 2021 16:48:30 -0400
+X-MC-Unique: wor_dxl1O6GTNgr7hVHgew-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C93CC802E63;
-        Thu,  7 Oct 2021 20:44:30 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 651261858479;
+        Thu,  7 Oct 2021 20:44:12 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.33.36.44])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id EB1805D6BA;
-        Thu,  7 Oct 2021 20:44:27 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 39ACC10013C1;
+        Thu,  7 Oct 2021 20:44:09 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH v3 09/10] fscache: Remove stats that are no longer used
+Subject: [PATCH v3 07/10] cifs: (untested) Move to using the alternate
+ fallback fscache I/O API
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Steve French <sfrench@samba.org>,
         Dominique Martinet <asmadeus@codewreck.org>
-Cc:     linux-cachefs@redhat.com, dhowells@redhat.com,
-        Jeff Layton <jlayton@redhat.com>,
+Cc:     Shyam Prasad N <nspmangalore@gmail.com>,
+        linux-cifs@vger.kernel.org, linux-cachefs@redhat.com,
+        dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
         Matthew Wilcox <willy@infradead.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Thu, 07 Oct 2021 21:44:27 +0100
-Message-ID: <163363946712.1980952.14196917718135687578.stgit@warthog.procyon.org.uk>
+Date:   Thu, 07 Oct 2021 21:44:08 +0100
+Message-ID: <163363944839.1980952.3311507543724895463.stgit@warthog.procyon.org.uk>
 In-Reply-To: <163363935000.1980952.15279841414072653108.stgit@warthog.procyon.org.uk>
 References: <163363935000.1980952.15279841414072653108.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove stats counters that are no longer used and remove their display from
-/proc/fs/fscache/stats.
+Move cifs/smb to using the alternate fallback fscache I/O API instead of
+the old upstream I/O API as that is about to be deleted.  The alternate API
+will also be deleted at some point in the future as it's dangerous (as is
+the old API) and can lead to data corruption if the backing filesystem can
+insert/remove bridging blocks of zeros into its extent list[1].
+
+The alternate API reads and writes pages synchronously, with the intention
+of allowing removal of the operation management framework and thence the
+object management framework from fscache.
+
+The preferred change would be to use the netfs lib, but the new I/O API can
+be used directly.  It's just that as the cache now needs to track data for
+itself, caching blocks may exceed page size...
+
+Changes
+=======
+ver #2:
+  - Changed "deprecated" to "fallback" in the new function names[2].
 
 Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Steve French <sfrench@samba.org>
+cc: Shyam Prasad N <nspmangalore@gmail.com>
+cc: linux-cifs@vger.kernel.org
 cc: linux-cachefs@redhat.com
-Link: https://lore.kernel.org/r/163162776915.438332.16744135153328311006.stgit@warthog.procyon.org.uk/ # rfc
-Link: https://lore.kernel.org/r/163189114616.2509237.9890995143218948138.stgit@warthog.procyon.org.uk/ # rfc v2
+Link: https://lore.kernel.org/r/YO17ZNOcq+9PajfQ@mit.edu [1]
+Link: https://lore.kernel.org/r/CAHk-=wiVK+1CyEjW8u71zVPK8msea=qPpznX35gnX+s8sXnJTg@mail.gmail.com/ [2]
+Link: https://lore.kernel.org/r/163162773867.438332.3585429891151112562.stgit@warthog.procyon.org.uk/ # rfc
+Link: https://lore.kernel.org/r/163189112708.2509237.17528578040344723638.stgit@warthog.procyon.org.uk/ # rfc v2
 ---
 
- fs/fscache/internal.h |   28 ----------------------
- fs/fscache/stats.c    |   63 +------------------------------------------------
- 2 files changed, 1 insertion(+), 90 deletions(-)
+ fs/cifs/file.c    |   64 ++++++++++++++++++--------------
+ fs/cifs/fscache.c |  105 ++---------------------------------------------------
+ fs/cifs/fscache.h |   75 +++-----------------------------------
+ 3 files changed, 43 insertions(+), 201 deletions(-)
 
-diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
-index 5281fa1894cd..6eb3f51d7275 100644
---- a/fs/fscache/internal.h
-+++ b/fs/fscache/internal.h
-@@ -151,15 +151,6 @@ extern atomic_t fscache_n_attr_changed_nobufs;
- extern atomic_t fscache_n_attr_changed_nomem;
- extern atomic_t fscache_n_attr_changed_calls;
- 
--extern atomic_t fscache_n_allocs;
--extern atomic_t fscache_n_allocs_ok;
--extern atomic_t fscache_n_allocs_wait;
--extern atomic_t fscache_n_allocs_nobufs;
--extern atomic_t fscache_n_allocs_intr;
--extern atomic_t fscache_n_allocs_object_dead;
--extern atomic_t fscache_n_alloc_ops;
--extern atomic_t fscache_n_alloc_op_waits;
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 13f3182cf796..02894e999c56 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -4175,11 +4175,8 @@ static vm_fault_t
+ cifs_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct page *page = vmf->page;
+-	struct file *file = vmf->vma->vm_file;
+-	struct inode *inode = file_inode(file);
 -
- extern atomic_t fscache_n_retrievals;
- extern atomic_t fscache_n_retrievals_ok;
- extern atomic_t fscache_n_retrievals_wait;
-@@ -178,22 +169,9 @@ extern atomic_t fscache_n_stores_nobufs;
- extern atomic_t fscache_n_stores_intr;
- extern atomic_t fscache_n_stores_oom;
- extern atomic_t fscache_n_store_ops;
--extern atomic_t fscache_n_store_calls;
--extern atomic_t fscache_n_store_pages;
--extern atomic_t fscache_n_store_radix_deletes;
--extern atomic_t fscache_n_store_pages_over_limit;
- extern atomic_t fscache_n_stores_object_dead;
- extern atomic_t fscache_n_store_op_waits;
+-	cifs_fscache_wait_on_page_write(inode, page);
  
--extern atomic_t fscache_n_store_vmscan_not_storing;
--extern atomic_t fscache_n_store_vmscan_gone;
--extern atomic_t fscache_n_store_vmscan_busy;
--extern atomic_t fscache_n_store_vmscan_cancelled;
--extern atomic_t fscache_n_store_vmscan_wait;
--
--extern atomic_t fscache_n_marks;
--extern atomic_t fscache_n_uncaches;
--
- extern atomic_t fscache_n_acquires;
- extern atomic_t fscache_n_acquires_null;
- extern atomic_t fscache_n_acquires_no_cache;
-@@ -242,12 +220,6 @@ extern atomic_t fscache_n_cop_drop_object;
- extern atomic_t fscache_n_cop_put_object;
- extern atomic_t fscache_n_cop_sync_cache;
- extern atomic_t fscache_n_cop_attr_changed;
--extern atomic_t fscache_n_cop_read_or_alloc_page;
--extern atomic_t fscache_n_cop_read_or_alloc_pages;
--extern atomic_t fscache_n_cop_allocate_page;
--extern atomic_t fscache_n_cop_allocate_pages;
--extern atomic_t fscache_n_cop_write_page;
--extern atomic_t fscache_n_cop_uncache_page;
++	wait_on_page_fscache(page);
+ 	lock_page(page);
+ 	return VM_FAULT_LOCKED;
+ }
+@@ -4252,8 +4249,6 @@ cifs_readv_complete(struct work_struct *work)
+ 		if (rdata->result == 0 ||
+ 		    (rdata->result == -EAGAIN && got_bytes))
+ 			cifs_readpage_to_fscache(rdata->mapping->host, page);
+-		else
+-			cifs_fscache_uncache_page(rdata->mapping->host, page);
  
- extern atomic_t fscache_n_cache_no_space_reject;
- extern atomic_t fscache_n_cache_stale_objects;
-diff --git a/fs/fscache/stats.c b/fs/fscache/stats.c
-index 4cefce5bf4cd..2449aa459140 100644
---- a/fs/fscache/stats.c
-+++ b/fs/fscache/stats.c
-@@ -30,15 +30,6 @@ atomic_t fscache_n_attr_changed_nobufs;
- atomic_t fscache_n_attr_changed_nomem;
- atomic_t fscache_n_attr_changed_calls;
+ 		got_bytes -= min_t(unsigned int, PAGE_SIZE, got_bytes);
  
--atomic_t fscache_n_allocs;
--atomic_t fscache_n_allocs_ok;
--atomic_t fscache_n_allocs_wait;
--atomic_t fscache_n_allocs_nobufs;
--atomic_t fscache_n_allocs_intr;
--atomic_t fscache_n_allocs_object_dead;
--atomic_t fscache_n_alloc_ops;
--atomic_t fscache_n_alloc_op_waits;
--
- atomic_t fscache_n_retrievals;
- atomic_t fscache_n_retrievals_ok;
- atomic_t fscache_n_retrievals_wait;
-@@ -57,22 +48,9 @@ atomic_t fscache_n_stores_nobufs;
- atomic_t fscache_n_stores_intr;
- atomic_t fscache_n_stores_oom;
- atomic_t fscache_n_store_ops;
--atomic_t fscache_n_store_calls;
--atomic_t fscache_n_store_pages;
--atomic_t fscache_n_store_radix_deletes;
--atomic_t fscache_n_store_pages_over_limit;
- atomic_t fscache_n_stores_object_dead;
- atomic_t fscache_n_store_op_waits;
+@@ -4376,6 +4371,7 @@ readpages_get_pages(struct address_space *mapping, struct list_head *page_list,
  
--atomic_t fscache_n_store_vmscan_not_storing;
--atomic_t fscache_n_store_vmscan_gone;
--atomic_t fscache_n_store_vmscan_busy;
--atomic_t fscache_n_store_vmscan_cancelled;
--atomic_t fscache_n_store_vmscan_wait;
--
--atomic_t fscache_n_marks;
--atomic_t fscache_n_uncaches;
--
- atomic_t fscache_n_acquires;
- atomic_t fscache_n_acquires_null;
- atomic_t fscache_n_acquires_no_cache;
-@@ -121,12 +99,6 @@ atomic_t fscache_n_cop_drop_object;
- atomic_t fscache_n_cop_put_object;
- atomic_t fscache_n_cop_sync_cache;
- atomic_t fscache_n_cop_attr_changed;
--atomic_t fscache_n_cop_read_or_alloc_page;
--atomic_t fscache_n_cop_read_or_alloc_pages;
--atomic_t fscache_n_cop_allocate_page;
--atomic_t fscache_n_cop_allocate_pages;
--atomic_t fscache_n_cop_write_page;
--atomic_t fscache_n_cop_uncache_page;
+ 	INIT_LIST_HEAD(tmplist);
  
- atomic_t fscache_n_cache_no_space_reject;
- atomic_t fscache_n_cache_stale_objects;
-@@ -156,10 +128,6 @@ int fscache_stats_show(struct seq_file *m, void *v)
- 		   atomic_read(&fscache_n_checkaux_update),
- 		   atomic_read(&fscache_n_checkaux_obsolete));
++again:
+ 	page = lru_to_page(page_list);
  
--	seq_printf(m, "Pages  : mrk=%u unc=%u\n",
--		   atomic_read(&fscache_n_marks),
--		   atomic_read(&fscache_n_uncaches));
--
- 	seq_printf(m, "Acquire: n=%u nul=%u noc=%u ok=%u nbf=%u"
- 		   " oom=%u\n",
- 		   atomic_read(&fscache_n_acquires),
-@@ -198,17 +166,6 @@ int fscache_stats_show(struct seq_file *m, void *v)
- 		   atomic_read(&fscache_n_attr_changed_nomem),
- 		   atomic_read(&fscache_n_attr_changed_calls));
+ 	/*
+@@ -4393,6 +4389,18 @@ readpages_get_pages(struct address_space *mapping, struct list_head *page_list,
+ 		return rc;
+ 	}
  
--	seq_printf(m, "Allocs : n=%u ok=%u wt=%u nbf=%u int=%u\n",
--		   atomic_read(&fscache_n_allocs),
--		   atomic_read(&fscache_n_allocs_ok),
--		   atomic_read(&fscache_n_allocs_wait),
--		   atomic_read(&fscache_n_allocs_nobufs),
--		   atomic_read(&fscache_n_allocs_intr));
--	seq_printf(m, "Allocs : ops=%u owt=%u abt=%u\n",
--		   atomic_read(&fscache_n_alloc_ops),
--		   atomic_read(&fscache_n_alloc_op_waits),
--		   atomic_read(&fscache_n_allocs_object_dead));
--
- 	seq_printf(m, "Retrvls: n=%u ok=%u wt=%u nod=%u nbf=%u"
- 		   " int=%u oom=%u\n",
- 		   atomic_read(&fscache_n_retrievals),
-@@ -230,22 +187,11 @@ int fscache_stats_show(struct seq_file *m, void *v)
- 		   atomic_read(&fscache_n_stores_nobufs),
- 		   atomic_read(&fscache_n_stores_intr),
- 		   atomic_read(&fscache_n_stores_oom));
--	seq_printf(m, "Stores : ops=%u owt=%u run=%u pgs=%u rxd=%u olm=%u abt=%u\n",
-+	seq_printf(m, "Stores : ops=%u owt=%u abt=%u\n",
- 		   atomic_read(&fscache_n_store_ops),
- 		   atomic_read(&fscache_n_store_op_waits),
--		   atomic_read(&fscache_n_store_calls),
--		   atomic_read(&fscache_n_store_pages),
--		   atomic_read(&fscache_n_store_radix_deletes),
--		   atomic_read(&fscache_n_store_pages_over_limit),
- 		   atomic_read(&fscache_n_stores_object_dead));
++	rc = cifs_readpage_from_fscache(mapping->host, page);
++	if (rc == 0) {
++		list_del_init(&page->lru);
++		SetPageUptodate(page);
++		lru_cache_add(page);
++		unlock_page(page);
++		put_page(page);
++		if (list_empty(page_list))
++			return 0;
++		goto again;
++	}
++
+ 	/* move first page to the tmplist */
+ 	*offset = (loff_t)page->index << PAGE_SHIFT;
+ 	*bytes = PAGE_SIZE;
+@@ -4416,10 +4424,20 @@ readpages_get_pages(struct address_space *mapping, struct list_head *page_list,
+ 			__ClearPageLocked(page);
+ 			break;
+ 		}
+-		list_move_tail(&page->lru, tmplist);
+-		(*bytes) += PAGE_SIZE;
++
++		rc = cifs_readpage_from_fscache(mapping->host, page);
++		if (rc == 0) {
++			list_del_init(&page->lru);
++			SetPageUptodate(page);
++			lru_cache_add(page);
++			unlock_page(page);
++			put_page(page);
++		} else {
++			list_move_tail(&page->lru, tmplist);
++			(*bytes) += PAGE_SIZE;
++			(*nr_pages)++;
++		}
+ 		expected_index++;
+-		(*nr_pages)++;
+ 	}
+ 	return rc;
+ }
+@@ -4437,19 +4455,6 @@ static int cifs_readpages(struct file *file, struct address_space *mapping,
+ 	unsigned int xid;
  
--	seq_printf(m, "VmScan : nos=%u gon=%u bsy=%u can=%u wt=%u\n",
--		   atomic_read(&fscache_n_store_vmscan_not_storing),
--		   atomic_read(&fscache_n_store_vmscan_gone),
--		   atomic_read(&fscache_n_store_vmscan_busy),
--		   atomic_read(&fscache_n_store_vmscan_cancelled),
--		   atomic_read(&fscache_n_store_vmscan_wait));
+ 	xid = get_xid();
+-	/*
+-	 * Reads as many pages as possible from fscache. Returns -ENOBUFS
+-	 * immediately if the cookie is negative
+-	 *
+-	 * After this point, every page in the list might have PG_fscache set,
+-	 * so we will need to clean that up off of every page we don't use.
+-	 */
+-	rc = cifs_readpages_from_fscache(mapping->host, mapping, page_list,
+-					 &num_pages);
+-	if (rc == 0) {
+-		free_xid(xid);
+-		return rc;
+-	}
+ 
+ 	if (cifs_sb->mnt_cifs_flags & CIFS_MOUNT_RWPIDFORWARD)
+ 		pid = open_file->pid;
+@@ -4574,7 +4579,6 @@ static int cifs_readpages(struct file *file, struct address_space *mapping,
+ 	 * the pagecache must be uncached before they get returned to the
+ 	 * allocator.
+ 	 */
+-	cifs_fscache_readpages_cancel(mapping->host, page_list);
+ 	free_xid(xid);
+ 	return rc;
+ }
+@@ -4778,17 +4782,19 @@ static int cifs_release_page(struct page *page, gfp_t gfp)
+ {
+ 	if (PagePrivate(page))
+ 		return 0;
 -
- 	seq_printf(m, "Ops    : pend=%u run=%u enq=%u can=%u rej=%u\n",
- 		   atomic_read(&fscache_n_op_pend),
- 		   atomic_read(&fscache_n_op_run),
-@@ -270,13 +216,6 @@ int fscache_stats_show(struct seq_file *m, void *v)
- 		   atomic_read(&fscache_n_cop_put_object),
- 		   atomic_read(&fscache_n_cop_attr_changed),
- 		   atomic_read(&fscache_n_cop_sync_cache));
--	seq_printf(m, "CacheOp: rap=%d ras=%d alp=%d als=%d wrp=%d ucp=%d\n",
--		   atomic_read(&fscache_n_cop_read_or_alloc_page),
--		   atomic_read(&fscache_n_cop_read_or_alloc_pages),
--		   atomic_read(&fscache_n_cop_allocate_page),
--		   atomic_read(&fscache_n_cop_allocate_pages),
--		   atomic_read(&fscache_n_cop_write_page),
--		   atomic_read(&fscache_n_cop_uncache_page));
- 	seq_printf(m, "CacheEv: nsp=%d stl=%d rtr=%d cul=%d\n",
- 		   atomic_read(&fscache_n_cache_no_space_reject),
- 		   atomic_read(&fscache_n_cache_stale_objects),
+-	return cifs_fscache_release_page(page, gfp);
++	if (PageFsCache(page)) {
++		if (!(gfp & __GFP_DIRECT_RECLAIM) || !(gfp & __GFP_FS))
++			return false;
++		wait_on_page_fscache(page);
++	}
++	return true;
+ }
+ 
+ static void cifs_invalidate_page(struct page *page, unsigned int offset,
+ 				 unsigned int length)
+ {
+-	struct cifsInodeInfo *cifsi = CIFS_I(page->mapping->host);
+-
+ 	if (offset == 0 && length == PAGE_SIZE)
+-		cifs_fscache_invalidate_page(page, &cifsi->vfs_inode);
++		wait_on_page_fscache(page);
+ }
+ 
+ static int cifs_launder_page(struct page *page)
+@@ -4808,7 +4814,7 @@ static int cifs_launder_page(struct page *page)
+ 	if (clear_page_dirty_for_io(page))
+ 		rc = cifs_writepage_locked(page, &wbc);
+ 
+-	cifs_fscache_invalidate_page(page, page->mapping->host);
++	wait_on_page_fscache(page);
+ 	return rc;
+ }
+ 
+diff --git a/fs/cifs/fscache.c b/fs/cifs/fscache.c
+index 8eedd20c44ab..d6ff668c268a 100644
+--- a/fs/cifs/fscache.c
++++ b/fs/cifs/fscache.c
+@@ -223,30 +223,6 @@ void cifs_fscache_reset_inode_cookie(struct inode *inode)
+ 	}
+ }
+ 
+-int cifs_fscache_release_page(struct page *page, gfp_t gfp)
+-{
+-	if (PageFsCache(page)) {
+-		struct inode *inode = page->mapping->host;
+-		struct cifsInodeInfo *cifsi = CIFS_I(inode);
+-
+-		cifs_dbg(FYI, "%s: (0x%p/0x%p)\n",
+-			 __func__, page, cifsi->fscache);
+-		if (!fscache_maybe_release_page(cifsi->fscache, page, gfp))
+-			return 0;
+-	}
+-
+-	return 1;
+-}
+-
+-static void cifs_readpage_from_fscache_complete(struct page *page, void *ctx,
+-						int error)
+-{
+-	cifs_dbg(FYI, "%s: (0x%p/%d)\n", __func__, page, error);
+-	if (!error)
+-		SetPageUptodate(page);
+-	unlock_page(page);
+-}
+-
+ /*
+  * Retrieve a page from FS-Cache
+  */
+@@ -256,12 +232,9 @@ int __cifs_readpage_from_fscache(struct inode *inode, struct page *page)
+ 
+ 	cifs_dbg(FYI, "%s: (fsc:%p, p:%p, i:0x%p\n",
+ 		 __func__, CIFS_I(inode)->fscache, page, inode);
+-	ret = fscache_read_or_alloc_page(CIFS_I(inode)->fscache, page,
+-					 cifs_readpage_from_fscache_complete,
+-					 NULL,
+-					 GFP_KERNEL);
+-	switch (ret) {
+ 
++	ret = fscache_fallback_read_page(cifs_inode_cookie(inode), page);
++	switch (ret) {
+ 	case 0: /* page found in fscache, read submitted */
+ 		cifs_dbg(FYI, "%s: submitted\n", __func__);
+ 		return ret;
+@@ -276,86 +249,14 @@ int __cifs_readpage_from_fscache(struct inode *inode, struct page *page)
+ 	return ret;
+ }
+ 
+-/*
+- * Retrieve a set of pages from FS-Cache
+- */
+-int __cifs_readpages_from_fscache(struct inode *inode,
+-				struct address_space *mapping,
+-				struct list_head *pages,
+-				unsigned *nr_pages)
+-{
+-	int ret;
+-
+-	cifs_dbg(FYI, "%s: (0x%p/%u/0x%p)\n",
+-		 __func__, CIFS_I(inode)->fscache, *nr_pages, inode);
+-	ret = fscache_read_or_alloc_pages(CIFS_I(inode)->fscache, mapping,
+-					  pages, nr_pages,
+-					  cifs_readpage_from_fscache_complete,
+-					  NULL,
+-					  mapping_gfp_mask(mapping));
+-	switch (ret) {
+-	case 0:	/* read submitted to the cache for all pages */
+-		cifs_dbg(FYI, "%s: submitted\n", __func__);
+-		return ret;
+-
+-	case -ENOBUFS:	/* some pages are not cached and can't be */
+-	case -ENODATA:	/* some pages are not cached */
+-		cifs_dbg(FYI, "%s: no page\n", __func__);
+-		return 1;
+-
+-	default:
+-		cifs_dbg(FYI, "unknown error ret = %d\n", ret);
+-	}
+-
+-	return ret;
+-}
+-
+ void __cifs_readpage_to_fscache(struct inode *inode, struct page *page)
+ {
+ 	struct cifsInodeInfo *cifsi = CIFS_I(inode);
+-	int ret;
+ 
+ 	WARN_ON(!cifsi->fscache);
+ 
+ 	cifs_dbg(FYI, "%s: (fsc: %p, p: %p, i: %p)\n",
+ 		 __func__, cifsi->fscache, page, inode);
+-	ret = fscache_write_page(cifsi->fscache, page,
+-				 cifsi->vfs_inode.i_size, GFP_KERNEL);
+-	if (ret != 0)
+-		fscache_uncache_page(cifsi->fscache, page);
+-}
+-
+-void __cifs_fscache_readpages_cancel(struct inode *inode, struct list_head *pages)
+-{
+-	cifs_dbg(FYI, "%s: (fsc: %p, i: %p)\n",
+-		 __func__, CIFS_I(inode)->fscache, inode);
+-	fscache_readpages_cancel(CIFS_I(inode)->fscache, pages);
+-}
+-
+-void __cifs_fscache_invalidate_page(struct page *page, struct inode *inode)
+-{
+-	struct cifsInodeInfo *cifsi = CIFS_I(inode);
+-	struct fscache_cookie *cookie = cifsi->fscache;
+-
+-	cifs_dbg(FYI, "%s: (0x%p/0x%p)\n", __func__, page, cookie);
+-	fscache_wait_on_page_write(cookie, page);
+-	fscache_uncache_page(cookie, page);
+-}
+-
+-void __cifs_fscache_wait_on_page_write(struct inode *inode, struct page *page)
+-{
+-	struct cifsInodeInfo *cifsi = CIFS_I(inode);
+-	struct fscache_cookie *cookie = cifsi->fscache;
+-
+-	cifs_dbg(FYI, "%s: (0x%p/0x%p)\n", __func__, page, cookie);
+-	fscache_wait_on_page_write(cookie, page);
+-}
+-
+-void __cifs_fscache_uncache_page(struct inode *inode, struct page *page)
+-{
+-	struct cifsInodeInfo *cifsi = CIFS_I(inode);
+-	struct fscache_cookie *cookie = cifsi->fscache;
+ 
+-	cifs_dbg(FYI, "%s: (0x%p/0x%p)\n", __func__, page, cookie);
+-	fscache_uncache_page(cookie, page);
++	fscache_fallback_write_page(cifs_inode_cookie(inode), page);
+ }
+diff --git a/fs/cifs/fscache.h b/fs/cifs/fscache.h
+index 729b51100a6d..081481645b77 100644
+--- a/fs/cifs/fscache.h
++++ b/fs/cifs/fscache.h
+@@ -9,7 +9,7 @@
+ #ifndef _CIFS_FSCACHE_H
+ #define _CIFS_FSCACHE_H
+ 
+-#define FSCACHE_USE_OLD_IO_API
++#define FSCACHE_USE_FALLBACK_IO_API
+ #include <linux/fscache.h>
+ 
+ #include "cifsglob.h"
+@@ -60,40 +60,9 @@ extern void cifs_fscache_update_inode_cookie(struct inode *inode);
+ extern void cifs_fscache_set_inode_cookie(struct inode *, struct file *);
+ extern void cifs_fscache_reset_inode_cookie(struct inode *);
+ 
+-extern void __cifs_fscache_invalidate_page(struct page *, struct inode *);
+-extern void __cifs_fscache_wait_on_page_write(struct inode *inode, struct page *page);
+-extern void __cifs_fscache_uncache_page(struct inode *inode, struct page *page);
+-extern int cifs_fscache_release_page(struct page *page, gfp_t gfp);
+ extern int __cifs_readpage_from_fscache(struct inode *, struct page *);
+-extern int __cifs_readpages_from_fscache(struct inode *,
+-					 struct address_space *,
+-					 struct list_head *,
+-					 unsigned *);
+-extern void __cifs_fscache_readpages_cancel(struct inode *, struct list_head *);
+-
+ extern void __cifs_readpage_to_fscache(struct inode *, struct page *);
+ 
+-static inline void cifs_fscache_invalidate_page(struct page *page,
+-					       struct inode *inode)
+-{
+-	if (PageFsCache(page))
+-		__cifs_fscache_invalidate_page(page, inode);
+-}
+-
+-static inline void cifs_fscache_wait_on_page_write(struct inode *inode,
+-						   struct page *page)
+-{
+-	if (PageFsCache(page))
+-		__cifs_fscache_wait_on_page_write(inode, page);
+-}
+-
+-static inline void cifs_fscache_uncache_page(struct inode *inode,
+-						   struct page *page)
+-{
+-	if (PageFsCache(page))
+-		__cifs_fscache_uncache_page(inode, page);
+-}
+-
+ static inline int cifs_readpage_from_fscache(struct inode *inode,
+ 					     struct page *page)
+ {
+@@ -103,17 +72,6 @@ static inline int cifs_readpage_from_fscache(struct inode *inode,
+ 	return -ENOBUFS;
+ }
+ 
+-static inline int cifs_readpages_from_fscache(struct inode *inode,
+-					      struct address_space *mapping,
+-					      struct list_head *pages,
+-					      unsigned *nr_pages)
+-{
+-	if (CIFS_I(inode)->fscache)
+-		return __cifs_readpages_from_fscache(inode, mapping, pages,
+-						     nr_pages);
+-	return -ENOBUFS;
+-}
+-
+ static inline void cifs_readpage_to_fscache(struct inode *inode,
+ 					    struct page *page)
+ {
+@@ -121,11 +79,9 @@ static inline void cifs_readpage_to_fscache(struct inode *inode,
+ 		__cifs_readpage_to_fscache(inode, page);
+ }
+ 
+-static inline void cifs_fscache_readpages_cancel(struct inode *inode,
+-						 struct list_head *pages)
++static inline struct fscache_cookie *cifs_inode_cookie(struct inode *inode)
+ {
+-	if (CIFS_I(inode)->fscache)
+-		return __cifs_fscache_readpages_cancel(inode, pages);
++	return CIFS_I(inode)->fscache;
+ }
+ 
+ #else /* CONFIG_CIFS_FSCACHE */
+@@ -145,17 +101,7 @@ static inline void cifs_fscache_update_inode_cookie(struct inode *inode) {}
+ static inline void cifs_fscache_set_inode_cookie(struct inode *inode,
+ 						 struct file *filp) {}
+ static inline void cifs_fscache_reset_inode_cookie(struct inode *inode) {}
+-static inline int cifs_fscache_release_page(struct page *page, gfp_t gfp)
+-{
+-	return 1; /* May release page */
+-}
+ 
+-static inline void cifs_fscache_invalidate_page(struct page *page,
+-			struct inode *inode) {}
+-static inline void cifs_fscache_wait_on_page_write(struct inode *inode,
+-						   struct page *page) {}
+-static inline void cifs_fscache_uncache_page(struct inode *inode,
+-						   struct page *page) {}
+ 
+ static inline int
+ cifs_readpage_from_fscache(struct inode *inode, struct page *page)
+@@ -163,21 +109,10 @@ cifs_readpage_from_fscache(struct inode *inode, struct page *page)
+ 	return -ENOBUFS;
+ }
+ 
+-static inline int cifs_readpages_from_fscache(struct inode *inode,
+-					      struct address_space *mapping,
+-					      struct list_head *pages,
+-					      unsigned *nr_pages)
+-{
+-	return -ENOBUFS;
+-}
+-
+ static inline void cifs_readpage_to_fscache(struct inode *inode,
+ 			struct page *page) {}
+-
+-static inline void cifs_fscache_readpages_cancel(struct inode *inode,
+-						 struct list_head *pages)
+-{
+-}
++static inline struct fscache_cookie *cifs_inode_cookie(struct inode *inode)
++{ return NULL; }
+ 
+ #endif /* CONFIG_CIFS_FSCACHE */
+ 
 
 
