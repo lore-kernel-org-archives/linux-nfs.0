@@ -2,264 +2,92 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62964C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Oct 2021 14:57:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32333C433EF
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Oct 2021 17:27:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4C89060F70
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Oct 2021 14:57:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 16E6860FE8
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Oct 2021 17:27:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242778AbhJHO7w (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Oct 2021 10:59:52 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53886 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232200AbhJHO7w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 8 Oct 2021 10:59:52 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id E3AA860F9E
-        for <linux-nfs@vger.kernel.org>; Fri,  8 Oct 2021 14:57:56 +0000 (UTC)
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3] NFS: Replace dprintk callsites in nfs_readpage(s)
-Date:   Fri,  8 Oct 2021 10:57:55 -0400
-Message-Id:  <163370502469.515303.12254136133220397877.stgit@morisot.1015granger.net>
-X-Mailer: git-send-email 2.33.0
-User-Agent: StGit/1.3
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6609; h=from:subject:message-id; bh=G9x98Ay1E4O3LrwTBeybs2q0RGRNkz+afXpJvWnCRIk=; b=owEBbQKS/ZANAwAIATNqszNvZn+XAcsmYgBhYFxsFZ0CTaiXq7pZxYKoRM04jPutFemjyExoYe2s ILUnpZSJAjMEAAEIAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCYWBcbAAKCRAzarMzb2Z/l3SXEA CSwY1+HM7QhiEpzaNyQaTMx5Gqi+IiJTsYP2+X2NqEgHGrshbQNsQNXpurkiOExfsNJnQUZVEv5XWV gzWjjq/1kDVsk/hppml5u3GsaV1BcQO8RMxU0VS/OaTyhsiNvAjakZOJgDB6PJ7mduvHm3mUwT0rc8 OHiMa7+KU9TsDs2Fb42U3s5uFwpnyM5sPZVJQswvkxTcdBPHI8YdT87hYO6kJGNETfWN/0/Nqbp1zQ rEEqjXWVo+Ud6jjhpo7Tt2Y11rYjsAff+oP/SYmfoRuAt4osOGmKYseN1jFjAd4f0ZCunCo+Vxvz+b ZVGFy3L2IFR8MmtNxlp1dUEzH7z6QYHtsX1z4sqTOzy/6dHFWKOvBjnTryjalDIDkjYnoGbIZRywPI +ZUwe1rqAyFxS14jiwj37EJVW8DMZM0t00WNH5BF0e2Ka6D13husBWLFHchq0UnrP9iBThGiZHqsEK ys942xxp7TkGxY4cejiLdn74foLLTvCrT1jZ5vMaiIEEgzbdNPFoQVgzmqENTpPbn0F+JZ5EB+sC4Z LkQiI/IT9DifWomffnFTYuFkvn93cMzuAkc6gAw7rrRlio/w+rFqqlNdAkEvwf0yyGlSbLqoUNNorF ZPcdd3QltzMnfpC+S3fgVs6EQYeHxBtl8iIJ+AzX1ERCL13kFLu1uTH7FzHg==
-X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp; fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
-Content-Transfer-Encoding: 8bit
+        id S231217AbhJHR3o (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Oct 2021 13:29:44 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:21860 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S231164AbhJHR3o (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Oct 2021 13:29:44 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1633714068;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc; bh=kloBSv2DsGFPJBpEDWVi4y8T4BYAAufU4TmNKwDkboI=;
+        b=T7/3ZptTmtGOhUF31rwJZVG8rcxqwhmFrh/Wtqyyib1aiiwN7dTJLHyPVAgRyDcN/FvJq3
+        5GfxU29JTxGtf1ZT72vaoCY9448BKxKpHBDV5GOtrie5Gm4XBBGqs5u3gINIzgS8sPFJgn
+        6bYOL+ry1zSFKax81nGZWyD0EcDAruA=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-100-t00buLk9N22_1SFnghg04Q-1; Fri, 08 Oct 2021 13:27:46 -0400
+X-MC-Unique: t00buLk9N22_1SFnghg04Q-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id BD42C10A8E08;
+        Fri,  8 Oct 2021 17:27:45 +0000 (UTC)
+Received: from dwysocha.rdu.csb (unknown [10.22.8.9])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 50CFE1007606;
+        Fri,  8 Oct 2021 17:27:45 +0000 (UTC)
+From:   Dave Wysochanski <dwysocha@redhat.com>
+To:     chuck.lever@oracle.com, steved@redhat.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsiostat: Handle both readahead counts for statsver >= 1.2
+Date:   Fri,  8 Oct 2021 13:27:42 -0400
+Message-Id: <1633714062-21081-1-git-send-email-dwysocha@redhat.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These new events report slightly different information for readpage
-and readpages/readahead.
+Later kernel versions convert NFS readpages to readahead so update
+the counts accordingly.
 
-For readpage:
-             fsx-1387  [006]   380.761896: nfs_aop_readpage:    fileid=00:28:2 fhandle=0x36fbbe51 version=1752899355910932437 offset=131072
-             fsx-1387  [006]   380.761900: nfs_aop_readpage_done: fileid=00:28:2 fhandle=0x36fbbe51 version=1752899355910932437 offset=131072 ret=0
-
-The index of a synchronous single-page read is reported.
-
-For readpages:
-
-             fsx-1387  [006]   380.760847: nfs_aop_readahead:   fileid=00:28:2 fhandle=0x36fbbe51 version=1752899355909932456 nr_pages=3
-             fsx-1387  [006]   380.760853: nfs_aop_readahead_done: fileid=00:28:2 fhandle=0x36fbbe51 version=1752899355909932456 nr_pages=3 ret=0
-
-The count of pages requested is reported. nfs_readpages does not
-wait for the READ requests to complete.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/nfstrace.h |  146 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/read.c     |   11 ++--
- 2 files changed, 151 insertions(+), 6 deletions(-)
+ tools/nfs-iostat/nfs-iostat.py | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-Changes since v3:
-- Update the patch description to reflect recent changes
-- Store and display file offset instead of page index
-
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index e9be65b52bfe..898308780df8 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -862,6 +862,152 @@ TRACE_EVENT(nfs_sillyrename_unlink,
- 		)
- );
- 
-+TRACE_EVENT(nfs_aop_readpage,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			struct page *page
-+		),
-+
-+		TP_ARGS(inode, page),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(u64, version)
-+			__field(loff_t, offset)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs_inode *nfsi = NFS_I(inode);
-+
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = nfsi->fileid;
-+			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
-+			__entry->version = inode_peek_iversion_raw(inode);
-+			__entry->offset = page_index(page) << PAGE_SHIFT;
-+		),
-+
-+		TP_printk(
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu offset=%lld",
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle, __entry->version,
-+			__entry->offset
-+		)
-+);
-+
-+TRACE_EVENT(nfs_aop_readpage_done,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			struct page *page,
-+			int ret
-+		),
-+
-+		TP_ARGS(inode, page, ret),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(int, ret)
-+			__field(u64, fileid)
-+			__field(u64, version)
-+			__field(loff_t, offset)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs_inode *nfsi = NFS_I(inode);
-+
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = nfsi->fileid;
-+			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
-+			__entry->version = inode_peek_iversion_raw(inode);
-+			__entry->offset = page_index(page) << PAGE_SHIFT;
-+			__entry->ret = ret;
-+		),
-+
-+		TP_printk(
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu offset=%lld ret=%d",
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle, __entry->version,
-+			__entry->offset, __entry->ret
-+		)
-+);
-+
-+TRACE_EVENT(nfs_aop_readahead,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			unsigned int nr_pages
-+		),
-+
-+		TP_ARGS(inode, nr_pages),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(u64, version)
-+			__field(unsigned int, nr_pages)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs_inode *nfsi = NFS_I(inode);
-+
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = nfsi->fileid;
-+			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
-+			__entry->version = inode_peek_iversion_raw(inode);
-+			__entry->nr_pages = nr_pages;
-+		),
-+
-+		TP_printk(
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu nr_pages=%u",
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle, __entry->version,
-+			__entry->nr_pages
-+		)
-+);
-+
-+TRACE_EVENT(nfs_aop_readahead_done,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			unsigned int nr_pages,
-+			int ret
-+		),
-+
-+		TP_ARGS(inode, nr_pages, ret),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(int, ret)
-+			__field(u64, fileid)
-+			__field(u64, version)
-+			__field(unsigned int, nr_pages)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs_inode *nfsi = NFS_I(inode);
-+
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fileid = nfsi->fileid;
-+			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
-+			__entry->version = inode_peek_iversion_raw(inode);
-+			__entry->nr_pages = nr_pages;
-+			__entry->ret = ret;
-+		),
-+
-+		TP_printk(
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu nr_pages=%u ret=%d",
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle, __entry->version,
-+			__entry->nr_pages, __entry->ret
-+		)
-+);
-+
- TRACE_EVENT(nfs_initiate_read,
- 		TP_PROTO(
- 			const struct nfs_pgio_header *hdr
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 08d6cc57cbc3..c8273d4b12ad 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -337,8 +337,7 @@ int nfs_readpage(struct file *file, struct page *page)
- 	struct inode *inode = page_file_mapping(page)->host;
- 	int ret;
- 
--	dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
--		page, PAGE_SIZE, page_index(page));
-+	trace_nfs_aop_readpage(inode, page);
- 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
- 
- 	/*
-@@ -390,9 +389,11 @@ int nfs_readpage(struct file *file, struct page *page)
- 	}
- out:
- 	put_nfs_open_context(desc.ctx);
-+	trace_nfs_aop_readpage_done(inode, page, ret);
- 	return ret;
- out_unlock:
- 	unlock_page(page);
-+	trace_nfs_aop_readpage_done(inode, page, ret);
- 	return ret;
- }
- 
-@@ -403,10 +404,7 @@ int nfs_readpages(struct file *file, struct address_space *mapping,
- 	struct inode *inode = mapping->host;
- 	int ret;
- 
--	dprintk("NFS: nfs_readpages (%s/%Lu %d)\n",
--			inode->i_sb->s_id,
--			(unsigned long long)NFS_FILEID(inode),
--			nr_pages);
-+	trace_nfs_aop_readahead(inode, nr_pages);
- 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGES);
- 
- 	ret = -ESTALE;
-@@ -439,6 +437,7 @@ int nfs_readpages(struct file *file, struct address_space *mapping,
- read_complete:
- 	put_nfs_open_context(desc.ctx);
- out:
-+	trace_nfs_aop_readahead_done(inode, nr_pages, ret);
- 	return ret;
- }
- 
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+index 1df74ba822b5..1ddd884faf58 100755
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -43,7 +43,7 @@ NfsEventCounters = [
+     'vfspermission',
+     'vfsupdatepage',
+     'vfsreadpage',
+-    'vfsreadpages',
++    'vfsreadpages', # or vfsreadahead in statvers=1.2 or above
+     'vfswritepage',
+     'vfswritepages',
+     'vfsreaddir',
+@@ -86,7 +86,7 @@ class DeviceData:
+             self.__nfs_data['export'] = words[1]
+             self.__nfs_data['mountpoint'] = words[4]
+             self.__nfs_data['fstype'] = words[7]
+-            if words[7] == 'nfs':
++            if words[7] == 'nfs' or words[7] == 'nfs4':
+                 self.__nfs_data['statvers'] = words[8]
+         elif 'nfs' in words or 'nfs4' in words:
+             self.__nfs_data['export'] = words[0]
+@@ -294,8 +294,11 @@ class DeviceData:
+         print()
+         print('%d nfs_readpage() calls read %d pages' % \
+             (vfsreadpage, vfsreadpage))
+-        print('%d nfs_readpages() calls read %d pages' % \
+-            (vfsreadpages, pages_read - vfsreadpage))
++        multipageread = "readpages"
++        if float(self.__nfs_data['statvers'].split('=',1)[1]) >= 1.2:
++            multipageread = "readahead"
++        print('%d nfs_%s() calls read %d pages' % \
++            (vfsreadpages, multipageread, pages_read - vfsreadpage))
+         if vfsreadpages != 0:
+             print('(%.1f pages per call)' % \
+                 (float(pages_read - vfsreadpage) / vfsreadpages))
+-- 
+1.8.3.1
 
