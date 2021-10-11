@@ -2,115 +2,104 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63264C433FE
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 17:55:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D824C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 22:28:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 474FD61167
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 17:55:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5A06A600D4
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 22:28:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233199AbhJNR5U (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 14 Oct 2021 13:57:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59168 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233773AbhJNR5T (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2021 13:57:19 -0400
-Received: from mail-qv1-xf36.google.com (mail-qv1-xf36.google.com [IPv6:2607:f8b0:4864:20::f36])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 23D2EC061570
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2021 10:55:14 -0700 (PDT)
-Received: by mail-qv1-xf36.google.com with SMTP id z3so4201085qvl.9
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2021 10:55:14 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=ooXUaPsDW36LEYss3e9YwlUtHeSl9e6veGzBqPcOAKY=;
-        b=paRbI4LK3gkfYOPHgrtNH55h0krrFl1mF5eszsv9XPfsnqAW+d7qNSYRu1WLrbO3fZ
-         AX4B5fQDopLF0ILpJzBqCyQJMXTsihp7PWN9lSLOt5kWAAGuL/U2HMYTcGFsPzBP7O3s
-         MR4d9pMG5yfdUZkKnJAmwfVUuVnY3XjYqtwW8unwyIgk7bNhiR7CQDz+omMxIq5Im4xN
-         8Xi1nR5OZpl4A8FRmG0ry34l5di6wMJYqIFp4ZufMzJ/dOfj6mazoAZzmqGfnCVy/8Nx
-         imZRnHt4yesH3PM5/KkM22P9kezcftDN0LguD4RT895kMKjME21S5cmubHJrBfyuL/yr
-         s7NQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=ooXUaPsDW36LEYss3e9YwlUtHeSl9e6veGzBqPcOAKY=;
-        b=kZNhPZhLWklPN00B8F3fkmPMQVsZXGA50aNPeYpKNdl7+n8RkX4TepqX8qxkiDLeW4
-         83cFA1FD6ZAHpQoQ48B7jYETIh6tnXBv3B3VjLwPw6PkxNu4jN6jXo8SoMXgIadk000k
-         Qsywwpasr3FDykhj1gAhYTbH2VNVTYjUZyE/TkKJ8tshjiFjDj3IDUuNA4pI4Owl9QiE
-         tE0IzGKpW5rgufBAKgGGGI66deDU+QWuEcyOvGF6vrMknWIrrqkXNxCF2SuvG99s4ZTC
-         IIHMy1OzpYDe2DH+gW4A9IZ+hwQBJBhFQJSxZ9L5jxEm7JVoavbL7pX9FmRgT/BKcdUq
-         BBNQ==
-X-Gm-Message-State: AOAM531zO00QIHtInrKCAlDnRBqB0T9IYwnm3GiB9nahp9kvLC7Iagj4
-        rxCUovEYgz/IbQ/dfWMpoYUGOlkxbBA=
-X-Google-Smtp-Source: ABdhPJzA2N4+gkrx1QiZmlNPPiDN3ZjZAVZcd2QF+bxOIOkKy5VPOvxAnC0G+VFeXwdNRYu+1W9n4Q==
-X-Received: by 2002:a0c:da8b:: with SMTP id z11mr6915038qvj.24.1634234113302;
-        Thu, 14 Oct 2021 10:55:13 -0700 (PDT)
-Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id m6sm1536131qkh.69.2021.10.14.10.55.12
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 14 Oct 2021 10:55:12 -0700 (PDT)
-Sender: Anna Schumaker <schumakeranna@gmail.com>
-From:   schumaker.anna@gmail.com
-X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH 5/5] NFS: Unexport nfs_probe_fsinfo()
-Date:   Thu, 14 Oct 2021 13:55:08 -0400
-Message-Id: <20211014175508.197313-6-Anna.Schumaker@Netapp.com>
-X-Mailer: git-send-email 2.33.0
-In-Reply-To: <20211014175508.197313-1-Anna.Schumaker@Netapp.com>
-References: <20211014175508.197313-1-Anna.Schumaker@Netapp.com>
+        id S229961AbhJNWaP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 14 Oct 2021 18:30:15 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:42838 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229768AbhJNWaO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2021 18:30:14 -0400
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 6C21021A6F;
+        Thu, 14 Oct 2021 22:28:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1634250488; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=MQhFZdazLokqvkVCCjL7FZIUVm22cpdsNzJuvI+VUK0=;
+        b=NDMnXhkI20jlvjRdhc9Lhf1PFV/nsua018oCdV3czZXnPaHlvc1EI/vuXA4UBw5PZBousq
+        XNjproi2EjkvV+I0rYabBlIyga0zeSsgxNBEPK5IOudJtJxNKQhBCii+UEu2Dj1ggtuYW3
+        xFeq4oG8V/Mcyl4m8um8mvWNAWeHgzw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1634250488;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=MQhFZdazLokqvkVCCjL7FZIUVm22cpdsNzJuvI+VUK0=;
+        b=B2Xw2m7TNwOD2ywSGzCBJmX6y9Q4lE4D0+cs535Kt3p/JgRInjAK7bOOH+Zh8mzV2QxdZs
+        9ChWyWTBBEttfCBA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 1ED1813B3A;
+        Thu, 14 Oct 2021 22:28:05 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id fmSSL/WuaGHbPAAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 14 Oct 2021 22:28:05 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Charles Hedrick" <hedrick@cs.rutgers.edu>
+Cc:     "Charles Hedrick" <hedrick@rutgers.edu>,
+        "Chuck Lever III" <chuck.lever@oracle.com>,
+        "Benjamin Coddington" <bcodding@redhat.com>,
+        "Patrick Goetz" <pgoetz@math.utexas.edu>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: more problems with NFS. sort of repeatable problem with vmplayer
+In-reply-to: <2C0DB856-23E5-41A2-A9F5-6E64F5A9FCB6@cs.rutgers.edu>
+References: <D8F59140-83D4-49F8-A858-D163910F0CA1@rutgers.edu>,
+ <e6501675-7cb4-6f5b-78f7-abb1be332a34@math.utexas.edu>,
+ <506B20E8-CE9C-499B-BF53-6026BA132D30@rutgers.edu>,
+ <1EA88CB0-7639-479C-AB1D-CAF5C67AA5C5@redhat.com>,
+ <22DE8966-253D-49A7-936D-F0A0B5246BE6@rutgers.edu>,
+ <08DD4F45-E1CB-4FCB-BA0C-A6B8BD86FEDE@redhat.com>,
+ <5F282359-128D-4F72-B393-B87956DFE458@oracle.com>,
+ <EE014097-EDF8-484B-81DF-9E7012122BB9@rutgers.edu>,
+ <70E12E3F-2DFB-4557-9541-67276E5A195C@rutgers.edu>,
+ <2C0DB856-23E5-41A2-A9F5-6E64F5A9FCB6@cs.rutgers.edu>
+Date:   Tue, 12 Oct 2021 10:44:14 +1100
+Message-id: <163399585460.17149.13892990608606706424@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-
-All the callers are now in client.c so we can remove the
-EXPORT_SYMBOL_GPL() and make it static.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/client.c   | 3 +--
- fs/nfs/internal.h | 1 -
- 2 files changed, 1 insertion(+), 3 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 7f30a6c1a0b0..1e4dc1ab9312 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -828,7 +828,7 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
- /*
-  * Probe filesystem information, including the FSID on v2/v3
-  */
--int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
-+static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs_fattr *fattr)
- {
- 	struct nfs_fsinfo fsinfo;
- 	struct nfs_client *clp = server->nfs_client;
-@@ -862,7 +862,6 @@ int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, struct nfs
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(nfs_probe_fsinfo);
- 
- /*
-  * Grab the destination's particulars, including lease expiry time.
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 508cb64c2661..12f6acb483bb 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -193,7 +193,6 @@ extern void nfs_clients_exit(struct net *net);
- extern struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *);
- int nfs_create_rpc_client(struct nfs_client *, const struct nfs_client_initdata *, rpc_authflavor_t);
- struct nfs_client *nfs_get_client(const struct nfs_client_initdata *);
--int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *, struct nfs_fattr *);
- int nfs_probe_server(struct nfs_server *, struct nfs_fh *);
- void nfs_server_insert_lists(struct nfs_server *);
- void nfs_server_remove_lists(struct nfs_server *);
--- 
-2.33.0
-
+T24gV2VkLCAwNiBPY3QgMjAyMSwgQ2hhcmxlcyBIZWRyaWNrIHdyb3RlOgoKPiAKPiBJdCB0cmll
+ZCBydW5uaW5nIHZtcGxheWVyLiAgU2hvcnRseSBhZnRlciBzdGFydGluZyB0byBjcmVhdGUgYSBu
+ZXcgVk0sCj4gdm1wbGF5ZXIgaHVuZy4gIEkgaGFkIGFub3RoZXIgd2luZG93IHdpdGggYSBzaGVs
+bC4gIEkgd2VudCBpbnRvIHRoZQo+IGRpcmVjdG9yeSB3aXRoIHRoZSB2bSBmaWxlcyBhbmQgZGlk
+IOKAnGxzIC1sdHJj4oCdLiAgSXQgZGlkbuKAmXQgcXVpdGUgaGFuZywKPiBidXQgbG9vayBhYm91
+dCBhIG1pbnV0ZSB0byBmaW5pc2ggSSBhbHNvIHNhdyBsb2cgZW50cmllcyBmcm9tIFZNd2FyZQo+
+IGNvbXBsYWluaW5nIHRoYXQgZGlzayBvcGVyYXRpb25zIHRvb2sgc2V2ZXJhbCBzZWNvbmRzLiAK
+ClVzZWZ1bCBpbmZvcm1hdGlvbiB0byBwcm92aWRlIHdoZW4gYSBwcm9jZXNzIGFwcGVhcnMgdG8g
+aGFuZyBvbiBORlMKaW5jbHVkZToKCi0gY2F0IC9wcm9jLyRQSUQvc3RhY2sKCi0gcnBjZGVidWcg
+LW0gbmZzIC1zIGFsbDsgcnBjZGVidWcgLW0gcnBjIC1zIGFsbCA7IHNsZWVwIDIgOyAKICAgcnBj
+ZGVidWcgLW0gcnBjIC1jIGFsbDsgcnBjZGVidWcgLW0gbmZzIC1jIGFsbAogdGhlbiBjb2xsZWN0
+IGtlcm5lbCBsb2dzCgotIHRjcGR1bXAgLXcgZmlsZW5hbWUucGNhcCAtcyAwIC1jIDEwMDAgcG9y
+dCAyMDQ5CiAgYW5kIGNvbXByZXNzIGZpbGVuYW1lLnBjYXAgYW5kIHB1dCBpdCBzb21ld2hlcmUg
+d2UgY2FuIGZpbmQgaXQuCgotIHRyYWNlLWNtZCByZWNvcmQgLWUgJ25mczoqJyBzbGVlcCAyCiAg
+dHJhY2UtY21kIHJlcG9ydCA+IGZpbGVuYW1lCgo+IAo+IFdl4oCZcmUgcHJvYmFibHkgYW4gdW51
+c3VhbCBpbnN0YWxsYXRpb24uICBXZeKAmXJlIGEgQ1MgZGVwYXJ0bWVudCwgd2l0aAo+IHJlc2Vh
+cmNoZXJzIGFuZCBhbHNvIGEgbGFyZ2UgdGltZS1zaGFyaW5nIGVudmlyb25tZW50IGZvciBzdHVk
+ZW50cwo+IChzcHJlYWQgYWNyb3NzIG1hbnkgbWFjaGluZXMsIHdpdGggYSBncmFwaGljYWwgaW50
+ZXJmYWNlIHVzaW5nIFhyZGIsCj4gZXRjKS4gIE91ciBwZW9wbGUgdXNlIGV2ZXJ5IHBpZWNlIG9m
+IHNvZnR3YXJlIHVuZGVyIHRoZSBzdW4uIAoKUHJvYmFibHkgbm90IGFsbCB0aGF0IHVudXN1YWwu
+ICBUaGVyZSBjZXJ0YWlubHkgYXJlIGxvdHMgb2YgbGFyZ2UgYW5kCnZhcmllZCBORlMgc2l0ZXMg
+b3V0IHRoZXJlLgoKPiAKPiBDbGllbnQgYW5kIHNlcnZlciBhcmUgYm90aCBVYnVudHUgMjAuMDQu
+IFNlcnZlciBpcyBvbiBaRlMgd2l0aCBOVk1lIHN0b3JhZ2UuCgpJZiBpdCBpcyBwb3NzaWJsZSB0
+byByZXByb2R1Y2Ugd2l0aG91dCBaRlMsIHRoYXQgd291bGQgcHJvdmlkZSB1c2VmdWwKaW5mb3Jt
+YXRpb24uCkkgZG9uJ3QgdGhpbmsgaXQgaXMgKmxpa2VseSogdGhhdCBaRlMgY2F1c2VzIHRoZSBw
+cm9ibGVtLCBidXQgbmVpdGhlcgp3b3VsZCBJIGJlIHN1cnByaXNlZCBpZiBpdCBkaWQuCgpOZWls
+QnJvd24K
