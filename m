@@ -2,58 +2,40 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E0DCC43219
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 05:21:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B8CEC433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 05:21:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2C0E960E8B
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 05:21:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 26CA560231
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 05:21:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237593AbhJMFXj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Oct 2021 01:23:39 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:38088 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229514AbhJMFXi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2021 01:23:38 -0400
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 5E2BE1FF87;
-        Wed, 13 Oct 2021 05:21:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1634102493; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ILLm2pe17/wADifWsNez+bTJrwsc+lrviMwLK7kUvDI=;
-        b=bvKId0oH3n+XWRAa8k+X7S4sSfCSq6r7k6wkqvducj0gvOulmoiit7vAXJt7/Fugc4ApBB
-        +eyuMKl31qjAEJWuSCiR357fXwBwkLJzIMHJmLSrbkPgZIeBcwzOpezb3tR0358vd8V0Yu
-        v4i5Ls9qoC9uBvhPFPVe6ERT85hRkzU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1634102493;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ILLm2pe17/wADifWsNez+bTJrwsc+lrviMwLK7kUvDI=;
-        b=7QNd9vO2OGh2y9jVTVQKK6beKgduFwgxo0TkSLgWMuvnfJFmYXqVQMfqyW0QcEDOD1zLDp
-        Em1u+x09Gi2O+KBA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B800113CAE;
-        Wed, 13 Oct 2021 05:21:24 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id rI5FINRsZmEARAAAMHmgww
-        (envelope-from <colyli@suse.de>); Wed, 13 Oct 2021 05:21:24 +0000
-Subject: Re: [PATCH 01/29] bcache: remove bdev_sectors
-To:     Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>
-Cc:     Mike Snitzer <snitzer@redhat.com>, Song Liu <song@kernel.org>,
-        David Sterba <dsterba@suse.com>,
+        id S237705AbhJMFXv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Oct 2021 01:23:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35588 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S236497AbhJMFXt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2021 01:23:49 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 124B2C061570;
+        Tue, 12 Oct 2021 22:21:47 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=2DQz2WV/6nrwiR72242gRkqq8vUi4whhUhfjcP1bIOA=; b=Xa7GvbJUMqzfvYueWwVUK3Ux0y
+        yeuPdYMbBAsv9epgGKu1vVzGX5AB9rd3WONNmNoS6gf48CEj/PVW94BBUJX37asekH4NgbraHAxgt
+        WFbcI0BRgTaJDdjCqpms7HMs5C8IrEAXCvDE3EtdqraUh37FzwbfyoXL8GMrpEuNmvxXHABcddDQj
+        moa/NVUObti9FIhR2tmwTqQ9CsQE6vspnROJ/w7q712HU1YfTb1JyVgsUDPAlJjCQuTqpVjblOKfa
+        d1LJSuZJXvLyYiS+rDzxGbQbtLoGp+8OE0X2NKJLWnwHbMtue0DP5hxKAu9iTrDO6aiD7Uy0tXmC+
+        90afCgmw==;
+Received: from 089144212063.atnat0021.highway.a1.net ([89.144.212.63] helo=localhost)
+        by casper.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1maWdg-0076G9-GA; Wed, 13 Oct 2021 05:17:32 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
+        Song Liu <song@kernel.org>, David Sterba <dsterba@suse.com>,
         Josef Bacik <josef@toxicpanda.com>,
-        Theodore Ts'o <tytso@mit.edu>,
+        "Theodore Ts'o" <tytso@mit.edu>,
         OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
         Dave Kleikamp <shaggy@kernel.org>,
         Ryusuke Konishi <konishi.ryusuke@gmail.com>,
@@ -71,76 +53,42 @@ Cc:     Mike Snitzer <snitzer@redhat.com>, Song Liu <song@kernel.org>,
         linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
         linux-ntfs-dev@lists.sourceforge.net, ntfs3@lists.linux.dev,
         reiserfs-devel@vger.kernel.org
+Subject: [PATCH 07/29] target/iblock: use bdev_nr_sectors instead of open coding it
+Date:   Wed, 13 Oct 2021 07:10:20 +0200
+Message-Id: <20211013051042.1065752-8-hch@lst.de>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20211013051042.1065752-1-hch@lst.de>
 References: <20211013051042.1065752-1-hch@lst.de>
- <20211013051042.1065752-2-hch@lst.de>
-From:   Coly Li <colyli@suse.de>
-Message-ID: <cd1b2185-9682-1d97-9789-96f833007f62@suse.de>
-Date:   Wed, 13 Oct 2021 13:21:22 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
- Gecko/20100101 Thunderbird/78.14.0
 MIME-Version: 1.0
-In-Reply-To: <20211013051042.1065752-2-hch@lst.de>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Language: en-US
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 10/13/21 1:10 PM, Christoph Hellwig wrote:
-> Use the equivalent block layer helper instead.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Use the proper helper to read the block device size.
 
-Acked-by: Coly Li <colyli@suse.de>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ drivers/target/target_core_iblock.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-Thanks.
-
-Coly Li
-
-> ---
->   drivers/md/bcache/super.c     | 2 +-
->   drivers/md/bcache/util.h      | 4 ----
->   drivers/md/bcache/writeback.c | 2 +-
->   3 files changed, 2 insertions(+), 6 deletions(-)
->
-> diff --git a/drivers/md/bcache/super.c b/drivers/md/bcache/super.c
-> index f2874c77ff797..4f89985abe4b7 100644
-> --- a/drivers/md/bcache/super.c
-> +++ b/drivers/md/bcache/super.c
-> @@ -1002,7 +1002,7 @@ static void calc_cached_dev_sectors(struct cache_set *c)
->   	struct cached_dev *dc;
->   
->   	list_for_each_entry(dc, &c->cached_devs, list)
-> -		sectors += bdev_sectors(dc->bdev);
-> +		sectors += bdev_nr_sectors(dc->bdev);
->   
->   	c->cached_dev_sectors = sectors;
->   }
-> diff --git a/drivers/md/bcache/util.h b/drivers/md/bcache/util.h
-> index b64460a762677..a7da7930a7fda 100644
-> --- a/drivers/md/bcache/util.h
-> +++ b/drivers/md/bcache/util.h
-> @@ -584,8 +584,4 @@ static inline unsigned int fract_exp_two(unsigned int x,
->   void bch_bio_map(struct bio *bio, void *base);
->   int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask);
->   
-> -static inline sector_t bdev_sectors(struct block_device *bdev)
-> -{
-> -	return bdev->bd_inode->i_size >> 9;
-> -}
->   #endif /* _BCACHE_UTIL_H */
-> diff --git a/drivers/md/bcache/writeback.c b/drivers/md/bcache/writeback.c
-> index 8120da278161e..c7560f66dca88 100644
-> --- a/drivers/md/bcache/writeback.c
-> +++ b/drivers/md/bcache/writeback.c
-> @@ -45,7 +45,7 @@ static uint64_t __calc_target_rate(struct cached_dev *dc)
->   	 * backing volume uses about 2% of the cache for dirty data.
->   	 */
->   	uint32_t bdev_share =
-> -		div64_u64(bdev_sectors(dc->bdev) << WRITEBACK_SHARE_SHIFT,
-> +		div64_u64(bdev_nr_sectors(dc->bdev) << WRITEBACK_SHARE_SHIFT,
->   				c->cached_dev_sectors);
->   
->   	uint64_t cache_dirty_target =
+diff --git a/drivers/target/target_core_iblock.c b/drivers/target/target_core_iblock.c
+index 31df20abe141f..ab7f5678ebc44 100644
+--- a/drivers/target/target_core_iblock.c
++++ b/drivers/target/target_core_iblock.c
+@@ -232,8 +232,9 @@ static unsigned long long iblock_emulate_read_cap_with_block_size(
+ 	struct block_device *bd,
+ 	struct request_queue *q)
+ {
+-	unsigned long long blocks_long = (div_u64(i_size_read(bd->bd_inode),
+-					bdev_logical_block_size(bd)) - 1);
++	loff_t size = bdev_nr_sectors(bd) << SECTOR_SHIFT;
++	unsigned long long blocks_long =
++		div_u64(size, bdev_logical_block_size(bd)) - 1;
+ 	u32 block_size = bdev_logical_block_size(bd);
+ 
+ 	if (block_size == dev->dev_attrib.block_size)
+-- 
+2.30.2
 
