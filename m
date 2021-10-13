@@ -2,46 +2,64 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB196C4332F
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 05:52:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65F35C4321E
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 06:09:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B05916023E
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 05:52:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E13C60FDA
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Oct 2021 06:09:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237777AbhJMFyq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Oct 2021 01:54:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42512 "EHLO
+        id S231264AbhJMGLX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Oct 2021 02:11:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46292 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229582AbhJMFyp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2021 01:54:45 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EAE10C061570;
-        Tue, 12 Oct 2021 22:52:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=TLmI0Wv2QuwTWKBKyulZhpN/vG7+mutYGLwxwgtoXSU=; b=WG8Sbg76bIW/yFBrJU86scHxmB
-        tj+o1s5xOwVjUkYsXQFA8NmHfhnJwwaWJwjP+r1wXVQx214Bu5mkSO0cnUvyTy7E6klSuqDUN5PnX
-        x2skyeaIa4Zny3ZhUi4dsqV7v/AEXhtmmy9TqFuy6SaNhye8NE4GJpnf/1LIrNUgZsGsJCAcJ+Qkb
-        at3Q9xMyln1HuzfuN1yoPpTaOv97nku/4U0s7pvsASpFrwPn0fmvo5SckwMXBxbSnzLWfsjd2LPUt
-        y8N6iG7/cisaWdsG1ZZS+Gkq0w1DlP57EQoNcgAt+I5E6TJ46kikGMDRB6WHLi29xlzECjDxbkxA0
-        QrBrh9Nw==;
-Received: from 089144212063.atnat0021.highway.a1.net ([89.144.212.63] helo=localhost)
-        by casper.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1maX6U-0078dh-AI; Wed, 13 Oct 2021 05:47:37 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Jens Axboe <axboe@kernel.dk>
-Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
-        Song Liu <song@kernel.org>, David Sterba <dsterba@suse.com>,
+        with ESMTP id S231883AbhJMGLW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2021 02:11:22 -0400
+Received: from mail-pg1-x52d.google.com (mail-pg1-x52d.google.com [IPv6:2607:f8b0:4864:20::52d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 17985C061762
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2021 23:09:20 -0700 (PDT)
+Received: by mail-pg1-x52d.google.com with SMTP id 66so1282867pgc.9
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2021 23:09:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=Qqwh23O6V/63P0yRnTO77bOtLRcytQL2fAyeRI5kB34=;
+        b=CXM9rJHHK73rEQgm0mgdKmXS/wAofOl4OFPnwKac/DX3XFO3SZF+VUOO6mlfTZkIDy
+         UTW+b9/6/6WoMA5ZI2y3esBG93Aw5k00FZrNw4PEm0iPy6yRGylzqCSKEzZCYiYZiEa0
+         Gvi4MQ98yBAEGpxPU0vceWRTRPKnOulu8VFrE=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=Qqwh23O6V/63P0yRnTO77bOtLRcytQL2fAyeRI5kB34=;
+        b=YKakwbBGZHUOAf3N+0hBy520YLo1UAw4DlsKynECNDJy4uXbu/L7llmZpzuXyly2Js
+         UEF9ZjSowS0LEtuzEdQ1Bnbl7xbBwXewPnxWGNeP5uXyM3En41aAdXNfDVpOhraMLVDT
+         qTZAMhbnzuh9O2hK51pV8AD2yK0sPxnmRCOuXW+xxkRhaHoeX2J29UUVpSvRbwu2lsIk
+         YeY68ym4sjdYEeZrGCZoJOyqBrQ+tP8XYXJyEUVnnwlheVWiTlbta0aD2EqaJUvyPZSU
+         m6DMHe4qN4IA2n/5qOhb/Jz4VSJxMa03ftToM9YfXnUjX22eVNPzYhf7f41znQcab39i
+         7yPw==
+X-Gm-Message-State: AOAM530+Pkya+oz3x5fVxh2id9zh/fcgaXlmzOpywCQeioVv4sfeAPNW
+        hW7NXJmPPA6o8bbCo875WZ0thg==
+X-Google-Smtp-Source: ABdhPJzPVB6suksbrVxsW8arxDgbrt+zmZKpBhbvkmkjyXI+mBKX9gJNh2h2afCA7c0GFA7FKUgXzA==
+X-Received: by 2002:a63:d40a:: with SMTP id a10mr26426089pgh.7.1634105359458;
+        Tue, 12 Oct 2021 23:09:19 -0700 (PDT)
+Received: from www.outflux.net (smtp.outflux.net. [198.145.64.163])
+        by smtp.gmail.com with ESMTPSA id e6sm12787858pfm.212.2021.10.12.23.09.18
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 12 Oct 2021 23:09:18 -0700 (PDT)
+Date:   Tue, 12 Oct 2021 23:09:17 -0700
+From:   Kees Cook <keescook@chromium.org>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jens Axboe <axboe@kernel.dk>, Coly Li <colyli@suse.de>,
+        Mike Snitzer <snitzer@redhat.com>, Song Liu <song@kernel.org>,
+        David Sterba <dsterba@suse.com>,
         Josef Bacik <josef@toxicpanda.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
+        Theodore Ts'o <tytso@mit.edu>,
         OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
         Dave Kleikamp <shaggy@kernel.org>,
         Ryusuke Konishi <konishi.ryusuke@gmail.com>,
         Anton Altaparmakov <anton@tuxera.com>,
         Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Kees Cook <keescook@chromium.org>,
         Phillip Lougher <phillip@squashfs.org.uk>,
         Jan Kara <jack@suse.com>, linux-block@vger.kernel.org,
         dm-devel@redhat.com, drbd-dev@lists.linbit.com,
@@ -53,84 +71,24 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
         linux-ntfs-dev@lists.sourceforge.net, ntfs3@lists.linux.dev,
         reiserfs-devel@vger.kernel.org
-Subject: [PATCH 29/29] udf: use sb_bdev_nr_blocks
-Date:   Wed, 13 Oct 2021 07:10:42 +0200
-Message-Id: <20211013051042.1065752-30-hch@lst.de>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20211013051042.1065752-1-hch@lst.de>
+Subject: Re: [PATCH 01/29] bcache: remove bdev_sectors
+Message-ID: <202110122309.010F81F49A@keescook>
 References: <20211013051042.1065752-1-hch@lst.de>
+ <20211013051042.1065752-2-hch@lst.de>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211013051042.1065752-2-hch@lst.de>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the sb_bdev_nr_blocks helper instead of open coding it.
+On Wed, Oct 13, 2021 at 07:10:14AM +0200, Christoph Hellwig wrote:
+> Use the equivalent block layer helper instead.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/udf/lowlevel.c | 5 ++---
- fs/udf/super.c    | 9 +++------
- 2 files changed, 5 insertions(+), 9 deletions(-)
+Reviewed-by: Kees Cook <keescook@chromium.org>
 
-diff --git a/fs/udf/lowlevel.c b/fs/udf/lowlevel.c
-index f1094cdcd6cde..46d6971721975 100644
---- a/fs/udf/lowlevel.c
-+++ b/fs/udf/lowlevel.c
-@@ -47,8 +47,7 @@ unsigned int udf_get_last_session(struct super_block *sb)
- 
- unsigned long udf_get_last_block(struct super_block *sb)
- {
--	struct block_device *bdev = sb->s_bdev;
--	struct cdrom_device_info *cdi = disk_to_cdi(bdev->bd_disk);
-+	struct cdrom_device_info *cdi = disk_to_cdi(sb->s_bdev->bd_disk);
- 	unsigned long lblock = 0;
- 
- 	/*
-@@ -56,7 +55,7 @@ unsigned long udf_get_last_block(struct super_block *sb)
- 	 * Try using the device size...
- 	 */
- 	if (!cdi || cdrom_get_last_written(cdi, &lblock) || lblock == 0)
--		lblock = i_size_read(bdev->bd_inode) >> sb->s_blocksize_bits;
-+		lblock = sb_bdev_nr_blocks(sb);
- 
- 	if (lblock)
- 		return lblock - 1;
-diff --git a/fs/udf/super.c b/fs/udf/super.c
-index b2d7c57d06881..34247fba6df91 100644
---- a/fs/udf/super.c
-+++ b/fs/udf/super.c
-@@ -1175,8 +1175,7 @@ static int udf_load_vat(struct super_block *sb, int p_index, int type1_index)
- 	struct udf_inode_info *vati;
- 	uint32_t pos;
- 	struct virtualAllocationTable20 *vat20;
--	sector_t blocks = i_size_read(sb->s_bdev->bd_inode) >>
--			  sb->s_blocksize_bits;
-+	sector_t blocks = sb_bdev_nr_blocks(sb);
- 
- 	udf_find_vat_block(sb, p_index, type1_index, sbi->s_last_block);
- 	if (!sbi->s_vat_inode &&
-@@ -1838,8 +1837,7 @@ static int udf_check_anchor_block(struct super_block *sb, sector_t block,
- 	int ret;
- 
- 	if (UDF_QUERY_FLAG(sb, UDF_FLAG_VARCONV) &&
--	    udf_fixed_to_variable(block) >=
--	    i_size_read(sb->s_bdev->bd_inode) >> sb->s_blocksize_bits)
-+	    udf_fixed_to_variable(block) >= sb_bdev_nr_blocks(sb))
- 		return -EAGAIN;
- 
- 	bh = udf_read_tagged(sb, block, block, &ident);
-@@ -1901,8 +1899,7 @@ static int udf_scan_anchors(struct super_block *sb, sector_t *lastblock,
- 		last[last_count++] = *lastblock - 152;
- 
- 	for (i = 0; i < last_count; i++) {
--		if (last[i] >= i_size_read(sb->s_bdev->bd_inode) >>
--				sb->s_blocksize_bits)
-+		if (last[i] >= sb_bdev_nr_blocks(sb))
- 			continue;
- 		ret = udf_check_anchor_block(sb, last[i], fileset);
- 		if (ret != -EAGAIN) {
 -- 
-2.30.2
-
+Kees Cook
