@@ -2,72 +2,93 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99FFCC433FE
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 17:04:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4916EC433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 17:55:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7978261151
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 17:04:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2AFE561152
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Oct 2021 17:55:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233222AbhJNRGw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 14 Oct 2021 13:06:52 -0400
-Received: from smtp.hosts.co.uk ([85.233.160.19]:54728 "EHLO smtp.hosts.co.uk"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233025AbhJNRGv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Oct 2021 13:06:51 -0400
-X-Greylist: delayed 5331 seconds by postgrey-1.27 at vger.kernel.org; Thu, 14 Oct 2021 13:06:49 EDT
-Received: from host86-155-223-151.range86-155.btcentralplus.com ([86.155.223.151] helo=[192.168.1.65])
-        by smtp.hosts.co.uk with esmtpa (Exim)
-        (envelope-from <antlists@youngman.org.uk>)
-        id 1mb2lr-0006Lw-DM; Thu, 14 Oct 2021 16:35:51 +0100
-Subject: Re: don't use ->bd_inode to access the block device size
-To:     Kees Cook <keescook@chromium.org>,
-        Dave Kleikamp <dave.kleikamp@oracle.com>
-Cc:     "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "dm-devel@redhat.com" <dm-devel@redhat.com>,
-        "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>,
-        "linux-bcache@vger.kernel.org" <linux-bcache@vger.kernel.org>,
-        "linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
-        "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "jfs-discussion@lists.sourceforge.net" 
-        <jfs-discussion@lists.sourceforge.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-nilfs@vger.kernel.org" <linux-nilfs@vger.kernel.org>,
-        "linux-ntfs-dev@lists.sourceforge.net" 
-        <linux-ntfs-dev@lists.sourceforge.net>,
-        "ntfs3@lists.linux.dev" <ntfs3@lists.linux.dev>,
-        "reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>
-References: <20211013051042.1065752-1-hch@lst.de>
- <20211014062844.GA25448@lst.de>
- <3AB8052D-DD45-478B-85F2-BFBEC1C7E9DF@tuxera.com>
- <a5eb3c18-deb2-6539-cc24-57e6d5d3500c@oracle.com>
- <202110140813.44C95229@keescook>
-From:   Wol <antlists@youngman.org.uk>
-Message-ID: <e3d2f358-be1a-3413-fdb8-2e86718cde3e@youngman.org.uk>
-Date:   Thu, 14 Oct 2021 16:35:49 +0100
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.14.0
+        id S232579AbhJNR5Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 14 Oct 2021 13:57:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59150 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229528AbhJNR5P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2021 13:57:15 -0400
+Received: from mail-qv1-xf2c.google.com (mail-qv1-xf2c.google.com [IPv6:2607:f8b0:4864:20::f2c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C2BD4C061570
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2021 10:55:10 -0700 (PDT)
+Received: by mail-qv1-xf2c.google.com with SMTP id v2so4193826qve.11
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2021 10:55:10 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=sender:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=i4REhmtKkXdYKzNB+V7TCzPzrBsG0gXeVBvTQ79le6s=;
+        b=iTO59ip+LYtEpmah7coqkaL0EQXFm7BK1AN17/5Y63dr4oWQArYqzgh0Eb1ZR3b+B3
+         /KVpDCpReZaADn31DAPxRxUJyGKsDSSxQp1ANF4DGt01QqGuSlxTKR27+m07vQO7pVge
+         yc/7invF33sKDL84U+fLUCSC1e4FzFiJ4LSHTNFQD34ajTqaD8eRFxPta8ogQWWatiSh
+         1fbo1l8dITU7a8wqxYvaYuKhXMfHSVwzbF02jDQFWKMIVi3oJ01UypAlPMrBKL4pzWVf
+         iSGZ548+7b/UEwC79p1p9+xyGX1rfGznOvjkwcbxUOu3oaKwcVjxYzWg7YJs4DJdKS5G
+         X4/Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :mime-version:content-transfer-encoding;
+        bh=i4REhmtKkXdYKzNB+V7TCzPzrBsG0gXeVBvTQ79le6s=;
+        b=jvJZ3V5ufSTS6OEG4IgklicSphaYwJqG2Ag5ZiWgKctC0fKQaAcvoFlN0Ih4F0zoSw
+         VlDCzJV66jIKZ6oLL+2COlyrCe/jHHfKtj+1MXe8dnTiQ5wZZ7WFu3p9XKoGceopwwp+
+         5s7TBwxoUpbQbI2y5ff23SCV2bI8GPRopBp0VLQX4YOcCaqY9OZScxmb9VNzTvcUrhhE
+         Cwf72XrBEJg9BAuRKHxFChzlUo/ZDQy+Fe0sb5s+T0lGhDo14wKPRs8DXDG7CzjS0pXP
+         mzoebiTu0PZvbTUB/ezxj+H0JVSMgXtmZhbeOf1lkS7MuuWER5PIve8Z33Thhwn6eQ2S
+         Ivmg==
+X-Gm-Message-State: AOAM533z6vhjMKMw4p2BvKZpycHrCzZCyOeEYLEBl6Yr8Ah+BPhjRyWX
+        DyhWYBYVYfj4s9/B5k0YBN0=
+X-Google-Smtp-Source: ABdhPJxpm+GRxgva5bizrGc++XxN82+ulPdwEgwlQZerK2acBjS6lxf3RhGhjMkzSMBpmuZUFwr8hQ==
+X-Received: by 2002:a05:6214:a10:: with SMTP id dw16mr7027383qvb.57.1634234109896;
+        Thu, 14 Oct 2021 10:55:09 -0700 (PDT)
+Received: from localhost.localdomain ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
+        by smtp.gmail.com with ESMTPSA id m6sm1536131qkh.69.2021.10.14.10.55.09
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 14 Oct 2021 10:55:09 -0700 (PDT)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH 0/5] NFS: Re-probe server capabilities on remount
+Date:   Thu, 14 Oct 2021 13:55:03 -0400
+Message-Id: <20211014175508.197313-1-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.33.0
 MIME-Version: 1.0
-In-Reply-To: <202110140813.44C95229@keescook>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-GB
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 14/10/2021 16:14, Kees Cook wrote:
->> I don't really mind bdev_size since it's analogous to i_size, but
->> bdev_nr_bytes seems good to me.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-> I much prefer bdev_nr_bytes(), as "size" has no units.
+These patches hook into the nfs_reconfigure() function to reset and
+reprobe a server's capabilities when remounted. This could be useful if
+a server is upgraded to support a new NFS v4.2 feature or if it has
+other changes that can only be detected at mount-time.
 
-Does it mean size IN bytes, or size OF A byte? :-)
+Thoughts?
+Anna
 
-Cheers,
-Wol
+Anna Schumaker (5):
+  NFS: Create an nfs4_server_set_init_caps() function
+  NFS: Move nfs_probe_destination() into the generic client
+  NFS: Replace calls to nfs_probe_fsinfo() with nfs_probe_server()
+  NFS: Call nfs_probe_server() during a fscontext-reconfigure event
+  NFS: Unexport nfs_probe_fsinfo()
+
+ fs/nfs/client.c     | 37 ++++++++++++++++++--------
+ fs/nfs/internal.h   |  3 ++-
+ fs/nfs/nfs4client.c | 65 ++++++++++++++-------------------------------
+ fs/nfs/nfs4proc.c   |  2 ++
+ fs/nfs/super.c      |  7 ++++-
+ 5 files changed, 56 insertions(+), 58 deletions(-)
+
+-- 
+2.33.0
+
