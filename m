@@ -2,135 +2,76 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01B37C433FE
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 14:38:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CF971C433FE
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 14:43:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E03996120A
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 14:38:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AC67761215
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 14:43:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240356AbhJOOk2 convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Oct 2021 10:40:28 -0400
-Received: from mgw-01.mpynet.fi ([82.197.21.90]:38610 "EHLO mgw-01.mpynet.fi"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233109AbhJOOk1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Oct 2021 10:40:27 -0400
-Received: from pps.filterd (mgw-01.mpynet.fi [127.0.0.1])
-        by mgw-01.mpynet.fi (8.16.0.43/8.16.0.43) with SMTP id 19FEWINI065735;
-        Fri, 15 Oct 2021 17:37:43 +0300
-Received: from ex13.tuxera.com (ex13.tuxera.com [178.16.184.72])
-        by mgw-01.mpynet.fi with ESMTP id 3bqa6fr1nj-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-SHA384 bits=256 verify=NOT);
-        Fri, 15 Oct 2021 17:37:42 +0300
-Received: from tuxera-exch.ad.tuxera.com (10.20.48.11) by
- tuxera-exch.ad.tuxera.com (10.20.48.11) with Microsoft SMTP Server (TLS) id
- 15.0.1497.23; Fri, 15 Oct 2021 17:37:42 +0300
-Received: from tuxera-exch.ad.tuxera.com ([fe80::552a:f9f0:68c3:d789]) by
- tuxera-exch.ad.tuxera.com ([fe80::552a:f9f0:68c3:d789%12]) with mapi id
- 15.00.1497.023; Fri, 15 Oct 2021 17:37:42 +0300
-From:   Anton Altaparmakov <anton@tuxera.com>
-To:     Christoph Hellwig <hch@lst.de>
-CC:     Jens Axboe <axboe@kernel.dk>, Coly Li <colyli@suse.de>,
-        Mike Snitzer <snitzer@redhat.com>, Song Liu <song@kernel.org>,
-        David Sterba <dsterba@suse.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        "Konstantin Komarov" <almaz.alexandrovich@paragon-software.com>,
-        Kees Cook <keescook@chromium.org>,
-        Phillip Lougher <phillip@squashfs.org.uk>,
-        Jan Kara <jack@suse.com>,
-        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "dm-devel@redhat.com" <dm-devel@redhat.com>,
-        "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>,
-        "linux-bcache@vger.kernel.org" <linux-bcache@vger.kernel.org>,
-        "linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-        "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "jfs-discussion@lists.sourceforge.net" 
-        <jfs-discussion@lists.sourceforge.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-nilfs@vger.kernel.org" <linux-nilfs@vger.kernel.org>,
-        "linux-ntfs-dev@lists.sourceforge.net" 
-        <linux-ntfs-dev@lists.sourceforge.net>,
-        "ntfs3@lists.linux.dev" <ntfs3@lists.linux.dev>,
-        "reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>
-Subject: Re: [PATCH 02/30] block: add a bdev_nr_bytes helper
-Thread-Topic: [PATCH 02/30] block: add a bdev_nr_bytes helper
-Thread-Index: AQHXwchZP9onky8YCUWD+iMtrLLvTavT7o+A
-Date:   Fri, 15 Oct 2021 14:37:41 +0000
-Message-ID: <7C4AC4BD-B62D-41B3-AAF7-46125D1A1146@tuxera.com>
-References: <20211015132643.1621913-1-hch@lst.de>
- <20211015132643.1621913-3-hch@lst.de>
-In-Reply-To: <20211015132643.1621913-3-hch@lst.de>
-Accept-Language: en-GB, en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-messagesentrepresentingtype: 1
-x-ms-exchange-transport-fromentityheader: Hosted
-x-originating-ip: [109.154.241.177]
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <CA141EBD26CA2142955225C1A7459553@ex13.tuxera.com>
-Content-Transfer-Encoding: 8BIT
+        id S240521AbhJOOpR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Oct 2021 10:45:17 -0400
+Received: from out01.mta.xmission.com ([166.70.13.231]:55382 "EHLO
+        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S237154AbhJOOpR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 10:45:17 -0400
+Received: from in02.mta.xmission.com ([166.70.13.52]:48230)
+        by out01.mta.xmission.com with esmtps  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        (Exim 4.93)
+        (envelope-from <ebiederm@xmission.com>)
+        id 1mbOQP-001lT2-P8; Fri, 15 Oct 2021 08:43:09 -0600
+Received: from ip68-227-160-95.om.om.cox.net ([68.227.160.95]:36892 helo=email.xmission.com)
+        by in02.mta.xmission.com with esmtpsa  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        (Exim 4.93)
+        (envelope-from <ebiederm@xmission.com>)
+        id 1mbOQO-007RxG-Qp; Fri, 15 Oct 2021 08:43:09 -0600
+From:   ebiederm@xmission.com (Eric W. Biederman)
+To:     Alexey Gladkov <legion@kernel.org>
+Cc:     LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Sargun Dhillon <sargun@sargun.me>
+References: <20211014160230.106976-1-legion@kernel.org>
+Date:   Fri, 15 Oct 2021 09:43:01 -0500
+In-Reply-To: <20211014160230.106976-1-legion@kernel.org> (Alexey Gladkov's
+        message of "Thu, 14 Oct 2021 18:02:30 +0200")
+Message-ID: <87o87qxsay.fsf@disp2133>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
 MIME-Version: 1.0
-X-Proofpoint-ORIG-GUID: H-3YelUF38QeF4AeejuL002U0EzCkK0i
-X-Proofpoint-GUID: H-3YelUF38QeF4AeejuL002U0EzCkK0i
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.425,18.0.790
- definitions=2021-10-15_04:2021-10-14,2021-10-15 signatures=0
-X-Proofpoint-Spam-Details: rule=mpy_notspam policy=mpy score=0 phishscore=0 mlxlogscore=984
- bulkscore=0 malwarescore=0 mlxscore=0 spamscore=0 adultscore=0
- suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2109230001 definitions=main-2110150089
+Content-Type: text/plain
+X-XM-SPF: eid=1mbOQO-007RxG-Qp;;;mid=<87o87qxsay.fsf@disp2133>;;;hst=in02.mta.xmission.com;;;ip=68.227.160.95;;;frm=ebiederm@xmission.com;;;spf=neutral
+X-XM-AID: U2FsdGVkX1/IMy026dG3gJOeucUGJ4SAuwgKEo298OU=
+X-SA-Exim-Connect-IP: 68.227.160.95
+X-SA-Exim-Mail-From: ebiederm@xmission.com
+Subject: Re: [PATCH] Fix user namespace leak
+X-SA-Exim-Version: 4.2.1 (built Sat, 08 Feb 2020 21:53:50 +0000)
+X-SA-Exim-Scanned: Yes (on in02.mta.xmission.com)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Christoph,
+Alexey Gladkov <legion@kernel.org> writes:
 
-> On 15 Oct 2021, at 14:26, Christoph Hellwig <hch@lst.de> wrote:
-> 
-> Add a helpe to query the size of a block device in bytes.  This
-> will be used to remove open coded access to ->bd_inode.
+> Fixes: 61ca2c4afd9d ("NFS: Only reference user namespace from nfs4idmap struct instead of cred")
+> Signed-off-by: Alexey Gladkov <legion@kernel.org>
 
-Matthew already pointed out the return type for bdev_nr_bytes() but also your commit message has a typo: "Add a helpe" -> "Add a helper".
+Reviewed-by: "Eric W. Biederman" <ebiederm@xmission.com>
 
-Best regards,
+nfs folks do you want to pick this up?
 
-	Anton
-
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
 > ---
-> include/linux/genhd.h | 7 ++++++-
-> 1 file changed, 6 insertions(+), 1 deletion(-)
-> 
-> diff --git a/include/linux/genhd.h b/include/linux/genhd.h
-> index 082a3e5fd8fa1..f67db3c5a04b3 100644
-> --- a/include/linux/genhd.h
-> +++ b/include/linux/genhd.h
-> @@ -235,9 +235,14 @@ static inline sector_t get_start_sect(struct block_device *bdev)
-> 	return bdev->bd_start_sect;
-> }
-> 
-> +static inline sector_t bdev_nr_bytes(struct block_device *bdev)
-> +{
-> +	return i_size_read(bdev->bd_inode);
-> +}
-> +
-> static inline sector_t bdev_nr_sectors(struct block_device *bdev)
-> {
-> -	return i_size_read(bdev->bd_inode) >> 9;
-> +	return bdev_nr_bytes(bdev) >> SECTOR_SHIFT;
-> }
-> 
-> static inline sector_t get_capacity(struct gendisk *disk)
-> -- 
-> 2.30.2
-> 
-
+>  fs/nfs/nfs4idmap.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
+> index 8d8aba305ecc..f331866dd418 100644
+> --- a/fs/nfs/nfs4idmap.c
+> +++ b/fs/nfs/nfs4idmap.c
+> @@ -487,7 +487,7 @@ nfs_idmap_new(struct nfs_client *clp)
+>  err_destroy_pipe:
+>  	rpc_destroy_pipe_data(idmap->idmap_pipe);
+>  err:
+> -	get_user_ns(idmap->user_ns);
+> +	put_user_ns(idmap->user_ns);
+>  	kfree(idmap);
+>  	return error;
+>  }
