@@ -2,67 +2,97 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 683FCC433F5
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 09:07:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 85C99C433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:27:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4AE5F60E0B
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 09:07:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6854461073
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:27:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236219AbhJOJJh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Oct 2021 05:09:37 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56904 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233389AbhJOJJg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Oct 2021 05:09:36 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C2F2D60E53;
-        Fri, 15 Oct 2021 09:07:23 +0000 (UTC)
-Date:   Fri, 15 Oct 2021 11:07:18 +0200
-From:   Christian Brauner <christian.brauner@ubuntu.com>
-To:     Vivek Goyal <vgoyal@redhat.com>
-Cc:     jmorris@namei.org, linux-security-module@vger.kernel.org,
-        selinux@vger.kernel.org, serge@hallyn.com,
-        linux-fsdevel@vger.kernel.org, virtio-fs@redhat.com,
-        Miklos Szeredi <miklos@szeredi.hu>, dwalsh@redhat.com,
-        jlayton@kernel.org, idryomov@gmail.com, ceph-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        chuck.lever@oracle.com, anna.schumaker@netapp.com,
-        trond.myklebust@hammerspace.com, stephen.smalley.work@gmail.com,
-        casey@schaufler-ca.com, Ondrej Mosnacek <omosnace@redhat.com>
-Subject: Re: [PATCH v2] security: Return xattr name from
- security_dentry_init_security()
-Message-ID: <20211015090718.4xwdnyujw354hnxe@wittgenstein>
-References: <YWWMO/ZDrvDZ5X4c@redhat.com>
+        id S239419AbhJON3S (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Oct 2021 09:29:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40592 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229566AbhJON3R (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 09:29:17 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E6D79C061570;
+        Fri, 15 Oct 2021 06:27:10 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=3V9fbTJuZDj71a+9mtkBQXQRRqP9hAgnu+ZIhkaADhI=; b=zDXL/abHH8Hy7DpCzkgiW3Aiv1
+        vdacyZ7SPKBEIXUCbyEsKC0gp64D671n5SCRSmVJigriIQMAA10dYY9IOAlC7vM1GfXcnLtwdsD3O
+        ypu7eCKX1Owu87zR+xuv8SalJND4PppRsawt0gD2aew4jQMKNPsnqvr4GENtTgKm0dkfWS0Ry8Bt9
+        GNrrcHN5Mql2SnbjOZ9yBDofBiARYHY8gUio35POxOUeg1jnPPUYIsTgg/6hrrCyoMGTWjkIExSb3
+        Icg7BYK/HVmnjML6lPWBo2ViaJXsJ4mE7gIS4UnwvqqbKAdg/c4HqbuEOV4byXXt0MBzfo2aXWJOP
+        +y/4a+bA==;
+Received: from [2001:4bb8:199:73c5:ddfe:9587:819b:83b0] (helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1mbNEZ-007Ce6-3w; Fri, 15 Oct 2021 13:26:51 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
+        Song Liu <song@kernel.org>, David Sterba <dsterba@suse.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        Anton Altaparmakov <anton@tuxera.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Kees Cook <keescook@chromium.org>,
+        Phillip Lougher <phillip@squashfs.org.uk>,
+        Jan Kara <jack@suse.com>, linux-block@vger.kernel.org,
+        dm-devel@redhat.com, drbd-dev@lists.linbit.com,
+        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
+        target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
+Subject: [PATCH 02/30] block: add a bdev_nr_bytes helper
+Date:   Fri, 15 Oct 2021 15:26:15 +0200
+Message-Id: <20211015132643.1621913-3-hch@lst.de>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20211015132643.1621913-1-hch@lst.de>
+References: <20211015132643.1621913-1-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <YWWMO/ZDrvDZ5X4c@redhat.com>
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Oct 12, 2021 at 09:23:07AM -0400, Vivek Goyal wrote:
-> Right now security_dentry_init_security() only supports single security
-> label and is used by SELinux only. There are two users of of this hook,
-> namely ceph and nfs.
-> 
-> NFS does not care about xattr name. Ceph hardcodes the xattr name to
-> security.selinux (XATTR_NAME_SELINUX).
-> 
-> I am making changes to fuse/virtiofs to send security label to virtiofsd
-> and I need to send xattr name as well. I also hardcoded the name of
-> xattr to security.selinux.
-> 
-> Stephen Smalley suggested that it probably is a good idea to modify
-> security_dentry_init_security() to also return name of xattr so that
-> we can avoid this hardcoding in the callers.
-> 
-> This patch adds a new parameter "const char **xattr_name" to
-> security_dentry_init_security() and LSM puts the name of xattr
-> too if caller asked for it (xattr_name != NULL).
-> 
-> Signed-off-by: Vivek Goyal <vgoyal@redhat.com>
-> Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> ---
+Add a helpe to query the size of a block device in bytes.  This
+will be used to remove open coded access to ->bd_inode.
 
-Looks good to me.
-Reviewed-by: Christian Brauner <christian.brauner@ubuntu.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/genhd.h | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/genhd.h b/include/linux/genhd.h
+index 082a3e5fd8fa1..f67db3c5a04b3 100644
+--- a/include/linux/genhd.h
++++ b/include/linux/genhd.h
+@@ -235,9 +235,14 @@ static inline sector_t get_start_sect(struct block_device *bdev)
+ 	return bdev->bd_start_sect;
+ }
+ 
++static inline sector_t bdev_nr_bytes(struct block_device *bdev)
++{
++	return i_size_read(bdev->bd_inode);
++}
++
+ static inline sector_t bdev_nr_sectors(struct block_device *bdev)
+ {
+-	return i_size_read(bdev->bd_inode) >> 9;
++	return bdev_nr_bytes(bdev) >> SECTOR_SHIFT;
+ }
+ 
+ static inline sector_t get_capacity(struct gendisk *disk)
+-- 
+2.30.2
+
