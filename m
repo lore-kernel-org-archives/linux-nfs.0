@@ -2,34 +2,34 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4CC01C10F05
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:29:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B04F3C4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:29:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 39F1A611C3
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:29:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 95DB0611C3
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:29:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239672AbhJONb7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Oct 2021 09:31:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40976 "EHLO
+        id S239677AbhJONcA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Oct 2021 09:32:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40990 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235544AbhJONar (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 09:30:47 -0400
+        with ESMTP id S239692AbhJONav (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 09:30:51 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 92BEFC06177C;
-        Fri, 15 Oct 2021 06:27:48 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BD3ECC06177E;
+        Fri, 15 Oct 2021 06:27:51 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=JmkRxhA/wAtqRoJ695vCmDfNj7DKperG4SlvbF9/aQA=; b=wypN/vpqWEe4eyY+lcYsyi5G6t
-        EFTB+DPye+4Z7VDnOsbbi0apS4pmn4a8XxC5sILqUOkVjxDUyZbey+j8viuPAFaeNg6eHIxX2VwyH
-        dE/3xSe95iP8DD8qyy7yBOv/QKz87kRU91gb9BXox+1MmhQm/A5MxyoT5+9Q63gq3Vcc2oAgiEEfL
-        kF1kTAME2ZwoHx+3XkjZLoLBQmilkUIaUlehPGJBweUx90h95wU/dJvXLXVXkOqCmPO1FuLazcWgV
-        UwppXlrZt0dWbGCeEi7568como3wDgowb8e8sg+tZTtMGL9fj/WILYzldlzkIuUQuExrm7LI6/3Tk
-        89SyaEnQ==;
+        bh=7vy0+8EI8WhVCxcCPpT3E3xZPAv/h7863mIj0HITKC4=; b=xmxZRfmuHz0VqdbUt2oT7Bevb7
+        o4CxF77k0oZ/rzw6OpdJBPS9aNjql5VKLH61Ct4+Yt2AwCG9Jx1/flLXuMKMifBBrYJEUsR3a3fWo
+        B7GgHgzInH6ck+PsWqLyxhKxpsoA7oJm+IkApWIK+2n/B11ik1ZAwOeWyZ+W7My6FzsNx6yCXjDsq
+        WokCivh+P43Uf5GvNl5Jx72fqF06MBW34ChI9M77fHda72O4TYZYenz2y3vZhHHuSCndcxv7KTqfF
+        UOGDQMh4qkLEPZM/+G2Q0iCwlTWD8HrZ5I7oxXkmeQNSJGjTZWeE6ViTYA/CkqLpdtpO7s3ysge5I
+        Nmi3hQXA==;
 Received: from [2001:4bb8:199:73c5:ddfe:9587:819b:83b0] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mbNFE-007DLy-QR; Fri, 15 Oct 2021 13:27:33 +0000
+        id 1mbNFJ-007DRi-Uj; Fri, 15 Oct 2021 13:27:38 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -52,9 +52,9 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
-Subject: [PATCH 18/30] nfs/blocklayout: use bdev_nr_bytes instead of open coding it
-Date:   Fri, 15 Oct 2021 15:26:31 +0200
-Message-Id: <20211015132643.1621913-19-hch@lst.de>
+Subject: [PATCH 20/30] ntfs3: use bdev_nr_bytes instead of open coding it
+Date:   Fri, 15 Oct 2021 15:26:33 +0200
+Message-Id: <20211015132643.1621913-21-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211015132643.1621913-1-hch@lst.de>
 References: <20211015132643.1621913-1-hch@lst.de>
@@ -69,30 +69,29 @@ Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/blocklayout/dev.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ntfs3/super.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index acb1d22907daf..5e56da748b2ab 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -252,7 +252,7 @@ bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
- 	d->bdev = bdev;
+diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
+index 55bbc9200a10e..7ed2cb5e8b1d9 100644
+--- a/fs/ntfs3/super.c
++++ b/fs/ntfs3/super.c
+@@ -918,7 +918,6 @@ static int ntfs_fill_super(struct super_block *sb, void *data, int silent)
+ 	int err;
+ 	struct ntfs_sb_info *sbi;
+ 	struct block_device *bdev = sb->s_bdev;
+-	struct inode *bd_inode = bdev->bd_inode;
+ 	struct request_queue *rq = bdev_get_queue(bdev);
+ 	struct inode *inode = NULL;
+ 	struct ntfs_inode *ni;
+@@ -967,7 +966,7 @@ static int ntfs_fill_super(struct super_block *sb, void *data, int silent)
  
- 
--	d->len = i_size_read(d->bdev->bd_inode);
-+	d->len = bdev_nr_bytes(d->bdev);
- 	d->map = bl_map_simple;
- 
- 	printk(KERN_INFO "pNFS: using block device %s\n",
-@@ -367,7 +367,7 @@ bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
- 		return PTR_ERR(bdev);
- 	d->bdev = bdev;
- 
--	d->len = i_size_read(d->bdev->bd_inode);
-+	d->len = bdev_nr_bytes(d->bdev);
- 	d->map = bl_map_simple;
- 	d->pr_key = v->scsi.pr_key;
+ 	/* Parse boot. */
+ 	err = ntfs_init_from_boot(sb, rq ? queue_logical_block_size(rq) : 512,
+-				  bd_inode->i_size);
++				  bdev_nr_bytes(bdev));
+ 	if (err)
+ 		goto out;
  
 -- 
 2.30.2
