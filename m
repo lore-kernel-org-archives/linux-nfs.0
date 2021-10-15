@@ -2,34 +2,34 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5204EC4321E
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:27:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CE4C6C433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:27:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3CEEF61151
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:27:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BAB5F60FE3
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 13:27:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236295AbhJON3u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Oct 2021 09:29:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40650 "EHLO
+        id S239599AbhJON3x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Oct 2021 09:29:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40668 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239461AbhJON30 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 09:29:26 -0400
+        with ESMTP id S239487AbhJON3a (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 09:29:30 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7A921C061570;
-        Fri, 15 Oct 2021 06:27:20 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 43453C061764;
+        Fri, 15 Oct 2021 06:27:24 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=Py4SFYmeQI8OzGpoQ9LNr+7lWY6I6fBtz06nY0N1e+8=; b=CCeszTHM74/VSZRJ3pe/w3AsVv
-        d7plrag09NyTO7nPNC9+l1rBhlOiceLDvZ6SdfvTuJxc+NlS50shAoxAo3QujgQXyy9B6fjMDBuAr
-        n0MspaNPmqC4Ew6PFWc5Sc3sX91oadiqq3AnoeBrtGx5Rs6HVlUS+aP5Ay4lMOk9Yc4nGOG1LVpgm
-        5N4/4gTlNnq9HICyQCv5pXNbpVY3kf7mTGfE3gyqJ1nA/yj22vuEkikRTQFbkd+aJtdwcCN0dtvKx
-        7QuV+oiDohQI3nDgIFgYt+spe6WftX4DnRHIUbT2iaRoc89is8NVRQYRvPO8rm4gAqKtW8tG185xu
-        YKk4ul2A==;
+        bh=brrNeCrpSVGZomYuK+0XdDRpBpOzq/Tfwu+Oh+282Uo=; b=IxLeKtcq5OzxV91L8hTsh+7Wn6
+        GlocDXjqZDpKZlfP0UYVJ6BEdGYan+wi1rVHDqD7apTedacgzPz/ay+ildx+shvtzPpsAEQ1PxRZu
+        F+2A+Xp7CEiJPBI1rRydwkIH3jEs5fLQZYWGW7ZpoXWC7/sqRQB4Q+yfmq/NjEBYZFGbvSIFKLP+5
+        HZ4numWQM2crsRS3Y0bBhZdCBgmIt8jZTZI3m2/tYEQs9btUPJ0nPqDcW8keyyKPd6rkEI37HdlUh
+        /Iaszs3O8OiNHbWqQ1Xfy8qE3WbJ7te1x7WzzugXIOJXRQ3cv3Gn1lYYgA5DwQWsjfPpsJA9Bqe7z
+        peZfYXaQ==;
 Received: from [2001:4bb8:199:73c5:ddfe:9587:819b:83b0] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mbNEm-007CoV-4E; Fri, 15 Oct 2021 13:27:04 +0000
+        id 1mbNEr-007CtU-GU; Fri, 15 Oct 2021 13:27:09 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -52,10 +52,10 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org,
-        Chaitanya Kulkarni <kch@nvidia.com>
-Subject: [PATCH 07/30] nvmet: use bdev_nr_bytes instead of open coding it
-Date:   Fri, 15 Oct 2021 15:26:20 +0200
-Message-Id: <20211015132643.1621913-8-hch@lst.de>
+        Jan Kara <jack@suse.cz>, Chaitanya Kulkarni <kch@nvidia.com>
+Subject: [PATCH 09/30] fs: use bdev_nr_bytes instead of open coding it in blkdev_max_block
+Date:   Fri, 15 Oct 2021 15:26:22 +0200
+Message-Id: <20211015132643.1621913-10-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211015132643.1621913-1-hch@lst.de>
 References: <20211015132643.1621913-1-hch@lst.de>
@@ -69,33 +69,25 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
 ---
- drivers/nvme/target/io-cmd-bdev.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/buffer.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/nvme/target/io-cmd-bdev.c b/drivers/nvme/target/io-cmd-bdev.c
-index 6139e1de50a66..70ca9dfc1771a 100644
---- a/drivers/nvme/target/io-cmd-bdev.c
-+++ b/drivers/nvme/target/io-cmd-bdev.c
-@@ -87,7 +87,7 @@ int nvmet_bdev_ns_enable(struct nvmet_ns *ns)
- 		ns->bdev = NULL;
- 		return ret;
- 	}
--	ns->size = i_size_read(ns->bdev->bd_inode);
-+	ns->size = bdev_nr_bytes(ns->bdev);
- 	ns->blksize_shift = blksize_bits(bdev_logical_block_size(ns->bdev));
- 
- 	ns->pi_type = 0;
-@@ -108,7 +108,7 @@ int nvmet_bdev_ns_enable(struct nvmet_ns *ns)
- 
- void nvmet_bdev_ns_revalidate(struct nvmet_ns *ns)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index c615387aedcae..156358977249f 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -878,7 +878,7 @@ link_dev_buffers(struct page *page, struct buffer_head *head)
+ static sector_t blkdev_max_block(struct block_device *bdev, unsigned int size)
  {
--	ns->size = i_size_read(ns->bdev->bd_inode);
-+	ns->size = bdev_nr_bytes(ns->bdev);
- }
+ 	sector_t retval = ~((sector_t)0);
+-	loff_t sz = i_size_read(bdev->bd_inode);
++	loff_t sz = bdev_nr_bytes(bdev);
  
- u16 blk_to_nvme_status(struct nvmet_req *req, blk_status_t blk_sts)
+ 	if (sz) {
+ 		unsigned int sizebits = blksize_bits(size);
 -- 
 2.30.2
 
