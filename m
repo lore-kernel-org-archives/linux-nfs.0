@@ -2,76 +2,96 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF971C433FE
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 14:43:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D15A6C433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 15:45:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AC67761215
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 14:43:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B193161164
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Oct 2021 15:45:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240521AbhJOOpR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Oct 2021 10:45:17 -0400
-Received: from out01.mta.xmission.com ([166.70.13.231]:55382 "EHLO
-        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237154AbhJOOpR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 10:45:17 -0400
-Received: from in02.mta.xmission.com ([166.70.13.52]:48230)
-        by out01.mta.xmission.com with esmtps  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-        (Exim 4.93)
-        (envelope-from <ebiederm@xmission.com>)
-        id 1mbOQP-001lT2-P8; Fri, 15 Oct 2021 08:43:09 -0600
-Received: from ip68-227-160-95.om.om.cox.net ([68.227.160.95]:36892 helo=email.xmission.com)
-        by in02.mta.xmission.com with esmtpsa  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-        (Exim 4.93)
-        (envelope-from <ebiederm@xmission.com>)
-        id 1mbOQO-007RxG-Qp; Fri, 15 Oct 2021 08:43:09 -0600
-From:   ebiederm@xmission.com (Eric W. Biederman)
-To:     Alexey Gladkov <legion@kernel.org>
-Cc:     LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Sargun Dhillon <sargun@sargun.me>
-References: <20211014160230.106976-1-legion@kernel.org>
-Date:   Fri, 15 Oct 2021 09:43:01 -0500
-In-Reply-To: <20211014160230.106976-1-legion@kernel.org> (Alexey Gladkov's
-        message of "Thu, 14 Oct 2021 18:02:30 +0200")
-Message-ID: <87o87qxsay.fsf@disp2133>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+        id S241000AbhJOPsB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Oct 2021 11:48:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45224 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S241032AbhJOPr7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2021 11:47:59 -0400
+Received: from mail-pl1-x630.google.com (mail-pl1-x630.google.com [IPv6:2607:f8b0:4864:20::630])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 57F8DC061768
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Oct 2021 08:45:52 -0700 (PDT)
+Received: by mail-pl1-x630.google.com with SMTP id t11so6631019plq.11
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Oct 2021 08:45:52 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=XFM5WavD2dlHj0k2cmbjEUH7DswNvraUTvaUeecsFLI=;
+        b=kI3cmovLUq4/7b3XdGijH4QV2pLukclN+qtvDChdq76oCBSEjB/PxJ/LWqXaiWG3Ff
+         e4ufh94HB0JHTcED5LMZgB7kXmiVxJYf75rZOCTtrAggeGm0/wa2OqJYCFCBhzazIF7l
+         udxg7lVjqVFbJpk0sBDk4exc+CKZoXIIyRuqU=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=XFM5WavD2dlHj0k2cmbjEUH7DswNvraUTvaUeecsFLI=;
+        b=LzS2+KxSLmKbeKyI/JUH26yZEtTbgI+gjsJFNRcxMQCfH8n1tgM4zXCCZxXuw788zF
+         YFsIaUBBIJQ2EcUpR5FnaL31NL6G8/WaPN1mOQZdyzrjkix4QJkK0U4cK8AamwxuQfXv
+         okdqlGRDbPQr9DRDzhCK2MoOlZjS7CF15TjnPjddWyIuHUNNzy2R4luYWVrxc27E7OLj
+         Wpnh2kN/lyAkH0BfmFFBRXpjWswclo+wm80vEBimazsHbQw6zoewHgmWfOzLXws96cpt
+         Mtm77KTWMzO6U7oIMAV/FRYwP2/9aqRF+JED+XHbIHg1s8xHvLUkdt6qAalVL3NrMfjX
+         M9kQ==
+X-Gm-Message-State: AOAM530CZdPQzDUwsDflHH94IA6LWEVTO126NVdIK6/JtmGXcVKNIszG
+        k7wXCKW1lrFBIbjhnRt+05d+kA==
+X-Google-Smtp-Source: ABdhPJwzQs+V6r1hPLOTwtZOgiRq0ZYBjWTuzen8H9dNT74QaE01sJDiES/7Q1kbrrYk+yq2JOau2g==
+X-Received: by 2002:a17:90a:86:: with SMTP id a6mr28243106pja.190.1634312751709;
+        Fri, 15 Oct 2021 08:45:51 -0700 (PDT)
+Received: from www.outflux.net (smtp.outflux.net. [198.145.64.163])
+        by smtp.gmail.com with ESMTPSA id g17sm5328859pfu.22.2021.10.15.08.45.51
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 15 Oct 2021 08:45:51 -0700 (PDT)
+Date:   Fri, 15 Oct 2021 08:45:50 -0700
+From:   Kees Cook <keescook@chromium.org>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jens Axboe <axboe@kernel.dk>, Coly Li <colyli@suse.de>,
+        Mike Snitzer <snitzer@redhat.com>, Song Liu <song@kernel.org>,
+        David Sterba <dsterba@suse.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        Anton Altaparmakov <anton@tuxera.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Phillip Lougher <phillip@squashfs.org.uk>,
+        Jan Kara <jack@suse.com>, linux-block@vger.kernel.org,
+        dm-devel@redhat.com, drbd-dev@lists.linbit.com,
+        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
+        target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
+Subject: Re: [PATCH 01/30] block: move the SECTOR_SIZE related definitions to
+ blk_types.h
+Message-ID: <202110150845.29BA04E647@keescook>
+References: <20211015132643.1621913-1-hch@lst.de>
+ <20211015132643.1621913-2-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain
-X-XM-SPF: eid=1mbOQO-007RxG-Qp;;;mid=<87o87qxsay.fsf@disp2133>;;;hst=in02.mta.xmission.com;;;ip=68.227.160.95;;;frm=ebiederm@xmission.com;;;spf=neutral
-X-XM-AID: U2FsdGVkX1/IMy026dG3gJOeucUGJ4SAuwgKEo298OU=
-X-SA-Exim-Connect-IP: 68.227.160.95
-X-SA-Exim-Mail-From: ebiederm@xmission.com
-Subject: Re: [PATCH] Fix user namespace leak
-X-SA-Exim-Version: 4.2.1 (built Sat, 08 Feb 2020 21:53:50 +0000)
-X-SA-Exim-Scanned: Yes (on in02.mta.xmission.com)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211015132643.1621913-2-hch@lst.de>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Alexey Gladkov <legion@kernel.org> writes:
+On Fri, Oct 15, 2021 at 03:26:14PM +0200, Christoph Hellwig wrote:
+> Ensure these are always available for inlines in the various block layer
+> headers.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-> Fixes: 61ca2c4afd9d ("NFS: Only reference user namespace from nfs4idmap struct instead of cred")
-> Signed-off-by: Alexey Gladkov <legion@kernel.org>
+Awesome, yes. Thanks!
 
-Reviewed-by: "Eric W. Biederman" <ebiederm@xmission.com>
+Reviewed-by: Kees Cook <keescook@chromium.org>
 
-nfs folks do you want to pick this up?
-
-> ---
->  fs/nfs/nfs4idmap.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-> index 8d8aba305ecc..f331866dd418 100644
-> --- a/fs/nfs/nfs4idmap.c
-> +++ b/fs/nfs/nfs4idmap.c
-> @@ -487,7 +487,7 @@ nfs_idmap_new(struct nfs_client *clp)
->  err_destroy_pipe:
->  	rpc_destroy_pipe_data(idmap->idmap_pipe);
->  err:
-> -	get_user_ns(idmap->user_ns);
-> +	put_user_ns(idmap->user_ns);
->  	kfree(idmap);
->  	return error;
->  }
+-- 
+Kees Cook
