@@ -2,34 +2,34 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A4F5C433FE
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB9B9C4321E
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3859460E54
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B5FC060E54
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232132AbhJRKPp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Oct 2021 06:15:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44786 "EHLO
+        id S232158AbhJRKPv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Oct 2021 06:15:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44838 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231779AbhJRKOn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2021 06:14:43 -0400
+        with ESMTP id S231839AbhJRKOx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2021 06:14:53 -0400
 Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 62E5EC06176C;
-        Mon, 18 Oct 2021 03:12:32 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E05BC061765;
+        Mon, 18 Oct 2021 03:12:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=osxw+vfeTnGlEsqH7zjz3v2g+MYYgjLX6YEKTd2gUSw=; b=dlkKT5CDwYhKpw3HO05O5ueVEs
-        tPF01dQcBxy6UOjZkARq5q410PLnD4OYyHYK26f8HCUTvw+qev6XG1teUbqOBTY3oiPoD7wGKgyaZ
-        I1poZwCw62UaIuseuiYbfCGvJwOXSEcTdw11lvi2V84/tFWY4B2iATcJCg8n3GApD/2OdVVVqqKWC
-        KEAEFArDSd767/i9m0mkrvP73sRApUHo+Vt9+L0oYPQESq91baIa/kJK5OID9vPZ6yuhsMz748Oeg
-        FQzopBTaYIpkPGNfHvVDwIxlbbNHyFzq6EtUcTUkpWI7l8X3IgHB+q/z0jl0JOzWQd2/Ugu4sb2+T
-        eTx5yDtA==;
+        bh=OtkCPV+Fhjutx3CncSj5AK/1XKnCr941YaNIR+S0yec=; b=Bng/VPZF7A2X7e+l/odmdmFVsR
+        uZaNxs+4xbvAT0ZVHiP9vMKeWRfl0OhUA97nondabmgiu+HAT0cluWpFQMyhLwSu6BHF3zxAV3ADa
+        bgB+rkBNn/fQgFa2DeznsvEBkxundC7d4+sOqSI9j9lA10fztmCiObDmHpn6DJCe7XrF63hbEkZhS
+        nlBbH+GPx81ZxZHCJrsdlFlO8XJO5vSC7DwxB5/uxxFym2IIjZOaDMvif0g+DzHjX7UoTW9daOw0P
+        HVQPKAp4ObdoMgVdu+JOZ5a1JHX1Vothqq5X0qhQF3UTM2wdCr+Cm0lynMlc3lB7wgbEKD5aDah/C
+        IPQ0uCDg==;
 Received: from [2001:4bb8:199:73c5:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcPcz-00EuUT-EY; Mon, 18 Oct 2021 10:12:21 +0000
+        id 1mcPd7-00EufA-9w; Mon, 18 Oct 2021 10:12:29 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -52,9 +52,9 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
-Subject: [PATCH 18/30] nfs/blocklayout: use bdev_nr_bytes instead of open coding it
-Date:   Mon, 18 Oct 2021 12:11:18 +0200
-Message-Id: <20211018101130.1838532-19-hch@lst.de>
+Subject: [PATCH 21/30] pstore/blk: use bdev_nr_bytes instead of open coding it
+Date:   Mon, 18 Oct 2021 12:11:21 +0200
+Message-Id: <20211018101130.1838532-22-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211018101130.1838532-1-hch@lst.de>
 References: <20211018101130.1838532-1-hch@lst.de>
@@ -68,33 +68,41 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Kees Cook <keescook@chromium.org>
+Acked-by: Kees Cook <keescook@chromium.org>
 ---
- fs/nfs/blocklayout/dev.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/pstore/blk.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index acb1d22907daf..5e56da748b2ab 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -252,7 +252,7 @@ bl_parse_simple(struct nfs_server *server, struct pnfs_block_dev *d,
- 	d->bdev = bdev;
+diff --git a/fs/pstore/blk.c b/fs/pstore/blk.c
+index 04ce58c939a0b..5d1fbaffd66a1 100644
+--- a/fs/pstore/blk.c
++++ b/fs/pstore/blk.c
+@@ -205,7 +205,6 @@ static ssize_t psblk_generic_blk_write(const char *buf, size_t bytes,
+ static int __register_pstore_blk(struct pstore_device_info *dev,
+ 				 const char *devpath)
+ {
+-	struct inode *inode;
+ 	int ret = -ENODEV;
  
+ 	lockdep_assert_held(&pstore_blk_lock);
+@@ -217,14 +216,13 @@ static int __register_pstore_blk(struct pstore_device_info *dev,
+ 		goto err;
+ 	}
  
--	d->len = i_size_read(d->bdev->bd_inode);
-+	d->len = bdev_nr_bytes(d->bdev);
- 	d->map = bl_map_simple;
+-	inode = file_inode(psblk_file);
+-	if (!S_ISBLK(inode->i_mode)) {
++	if (!S_ISBLK(file_inode(psblk_file)->i_mode)) {
+ 		pr_err("'%s' is not block device!\n", devpath);
+ 		goto err_fput;
+ 	}
  
- 	printk(KERN_INFO "pNFS: using block device %s\n",
-@@ -367,7 +367,7 @@ bl_parse_scsi(struct nfs_server *server, struct pnfs_block_dev *d,
- 		return PTR_ERR(bdev);
- 	d->bdev = bdev;
+-	inode = I_BDEV(psblk_file->f_mapping->host)->bd_inode;
+-	dev->zone.total_size = i_size_read(inode);
++	dev->zone.total_size =
++		bdev_nr_bytes(I_BDEV(psblk_file->f_mapping->host));
  
--	d->len = i_size_read(d->bdev->bd_inode);
-+	d->len = bdev_nr_bytes(d->bdev);
- 	d->map = bl_map_simple;
- 	d->pr_key = v->scsi.pr_key;
- 
+ 	ret = __register_pstore_device(dev);
+ 	if (ret)
 -- 
 2.30.2
 
