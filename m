@@ -2,34 +2,34 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E8BBC4321E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AD7AC16AB3
 	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 11A84603E9
+	by mail.kernel.org (Postfix) with ESMTP id 4FCC860E90
 	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231712AbhJRKOe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Oct 2021 06:14:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44666 "EHLO
+        id S231680AbhJRKOd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Oct 2021 06:14:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44642 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231495AbhJRKOR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2021 06:14:17 -0400
+        with ESMTP id S231480AbhJRKOO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2021 06:14:14 -0400
 Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF3F6C061745;
-        Mon, 18 Oct 2021 03:12:06 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 82DABC061745;
+        Mon, 18 Oct 2021 03:12:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=crZRJgOkjYi3EiJOxDBxffWr9S5JpN7jYdBxf7e+8rk=; b=q1iE2U/IN6DUytyaoPoTRWSqqN
-        J/T3DM4ZSaUqv5rJ64pwyg9yr/ueaTqqYbZl06RoDtO0QHPluu7am3nEilxVlZnowkzWoaIO9L2Wz
-        PNPokgYKufDr9BiLDRe1WNiWr9RwJ+moR/qadDbEQUSwBIaw8trzizlOwDXOCF3bcO9M5+NABZwnD
-        UmGoDoihgZysn2/KyEqrR+hPGk/TbxHkBR2mrDPh8WgEMY5CNEErZipaqbY8S/Jb/FIIQThDhQvFo
-        tdR02dADl2w4DxQyevFObIwycQOd3lWdn3RbEfLOoFErtNi+0aHb/FQE10f7/ELbpgYavCqaWWmrI
-        H8ImIXoQ==;
+        bh=fFiyZJBuziQrITu6AwTrNzk8Coj3yxtnkFBgzy+4utY=; b=f1ZTns0vT6m845qkA0baYXk2PG
+        ByKkbnJ+m6x5JEcOlt7OJK30pWXcBBAY2xcc1oOX/GlP+t0jufCSgL5H/v+FL2ep0WYs4CjBQ1ZvD
+        lQG5Q7+G38xvKKRPiacPni83/F9CmBbksfoCmOynDY23d+ddtPSvZOtRc/6cK3nk51j7atKYi19r6
+        Kag73b5r1mpakcbI/gVx0eS5fxTuecjZwPlCdUJUHarqJZdEd5rQWMGiN5zJahL6UlgGggT0wn6rZ
+        vPA0cQ+2G72skx+/d7YG1mcJHEgaG8vk2XDNYrEfowDDgHBQKzmj5azhf7DDo48pGaGARYpawN4ej
+        JsMT/KGQ==;
 Received: from [2001:4bb8:199:73c5:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcPcY-00Eu6p-Hz; Mon, 18 Oct 2021 10:11:54 +0000
+        id 1mcPcV-00Eu56-U0; Mon, 18 Oct 2021 10:11:52 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -53,9 +53,9 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org,
         Chaitanya Kulkarni <kch@nvidia.com>
-Subject: [PATCH 08/30] target/iblock: use bdev_nr_bytes instead of open coding it
-Date:   Mon, 18 Oct 2021 12:11:08 +0200
-Message-Id: <20211018101130.1838532-9-hch@lst.de>
+Subject: [PATCH 07/30] nvmet: use bdev_nr_bytes instead of open coding it
+Date:   Mon, 18 Oct 2021 12:11:07 +0200
+Message-Id: <20211018101130.1838532-8-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211018101130.1838532-1-hch@lst.de>
 References: <20211018101130.1838532-1-hch@lst.de>
@@ -72,25 +72,31 @@ Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Kees Cook <keescook@chromium.org>
 Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
 ---
- drivers/target/target_core_iblock.c | 4 ++--
+ drivers/nvme/target/io-cmd-bdev.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/target/target_core_iblock.c b/drivers/target/target_core_iblock.c
-index 31df20abe141f..b1ef041cacd81 100644
---- a/drivers/target/target_core_iblock.c
-+++ b/drivers/target/target_core_iblock.c
-@@ -232,9 +232,9 @@ static unsigned long long iblock_emulate_read_cap_with_block_size(
- 	struct block_device *bd,
- 	struct request_queue *q)
- {
--	unsigned long long blocks_long = (div_u64(i_size_read(bd->bd_inode),
--					bdev_logical_block_size(bd)) - 1);
- 	u32 block_size = bdev_logical_block_size(bd);
-+	unsigned long long blocks_long =
-+		div_u64(bdev_nr_bytes(bd), block_size) - 1;
+diff --git a/drivers/nvme/target/io-cmd-bdev.c b/drivers/nvme/target/io-cmd-bdev.c
+index 6139e1de50a66..70ca9dfc1771a 100644
+--- a/drivers/nvme/target/io-cmd-bdev.c
++++ b/drivers/nvme/target/io-cmd-bdev.c
+@@ -87,7 +87,7 @@ int nvmet_bdev_ns_enable(struct nvmet_ns *ns)
+ 		ns->bdev = NULL;
+ 		return ret;
+ 	}
+-	ns->size = i_size_read(ns->bdev->bd_inode);
++	ns->size = bdev_nr_bytes(ns->bdev);
+ 	ns->blksize_shift = blksize_bits(bdev_logical_block_size(ns->bdev));
  
- 	if (block_size == dev->dev_attrib.block_size)
- 		return blocks_long;
+ 	ns->pi_type = 0;
+@@ -108,7 +108,7 @@ int nvmet_bdev_ns_enable(struct nvmet_ns *ns)
+ 
+ void nvmet_bdev_ns_revalidate(struct nvmet_ns *ns)
+ {
+-	ns->size = i_size_read(ns->bdev->bd_inode);
++	ns->size = bdev_nr_bytes(ns->bdev);
+ }
+ 
+ u16 blk_to_nvme_status(struct nvmet_req *req, blk_status_t blk_sts)
 -- 
 2.30.2
 
