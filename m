@@ -2,34 +2,34 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5204C433FE
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4F9CC433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BD3C060FC2
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B64E760F22
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231851AbhJRKOz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Oct 2021 06:14:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44704 "EHLO
+        id S231877AbhJRKO6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Oct 2021 06:14:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44738 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231612AbhJRKO0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2021 06:14:26 -0400
+        with ESMTP id S231690AbhJRKOd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2021 06:14:33 -0400
 Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 91CE1C061745;
-        Mon, 18 Oct 2021 03:12:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 87730C06161C;
+        Mon, 18 Oct 2021 03:12:22 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=ufY1F9BE0hyiVrMwVKJsKp268/NwKnrkH8WRQVRWk5I=; b=RyjaMpOyCyue3pLPX/xNtoj3nq
-        rx8YlEZ705/rKwKdJ5j6ftYyft14Nd5lmeU2HOeoDKNZdZqEFb8tcGWjNKmuyQ7TIVDACuaCybOnF
-        Hw7hxgyG0AEyGPi06m5bGMNWRzADYGd7XSzuDPxw411/azHNisWsvQGdWiHfpPSM0P6iWc2qXN240
-        E4XLB+C9Xw7VXkSnHoTpUosw9MXZHaxgjMd76781ZEP3v48okz1audNZi/h9/XY0+D6BH6eZk/uZZ
-        1gf8QCsBdjVwaclvb0GJThzBZPbjtmteLN0beWWqy3sOAdtJb9q4roLF6oQHM10/X0bdNGgCruID/
-        lsO0NOzw==;
+        bh=mHbLY10hNejy/Eg6myZDAE3lqLMvy+937hMxKRWnYHI=; b=lVSE9QbkkoQXxeiFzmYuOXkVzc
+        tp8w5cqd9YoUYaFy5SS//Pl+dSXRQ858H01p3jjW3ZspETzTE9+tAJqy+TqxTKpVvwZCPYHMgYmZ0
+        rLROFlKO3jLsHulgEWrW2lwwlerQZWnzw55Y5e0PNjG+msn7paVDEAzRRmQmdRlatzDlsISotUjAa
+        FNG7mmz/tMs5EueSrUxn68Z6+4sN5Q3uHV3z/o99dybNhaOz+o/dXNMW7qATq2iZ0aSdjA4v3CvgV
+        sVCXDnMBr3/xsUYOn5O01oB/n52uGNo+ikYPYJbXz1IJOc0rhnam7i9Hvi1kuJoq9MYrwXE6RWQyg
+        rWKKUS8A==;
 Received: from [2001:4bb8:199:73c5:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcPcg-00EuDu-HQ; Mon, 18 Oct 2021 10:12:02 +0000
+        id 1mcPcm-00EuKW-66; Mon, 18 Oct 2021 10:12:08 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -51,11 +51,10 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org,
-        Chaitanya Kulkarni <kch@nvidia.com>
-Subject: [PATCH 11/30] affs: use bdev_nr_sectors instead of open coding it
-Date:   Mon, 18 Oct 2021 12:11:11 +0200
-Message-Id: <20211018101130.1838532-12-hch@lst.de>
+        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
+Subject: [PATCH 13/30] cramfs: use bdev_nr_bytes instead of open coding it
+Date:   Mon, 18 Oct 2021 12:11:13 +0200
+Message-Id: <20211018101130.1838532-14-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211018101130.1838532-1-hch@lst.de>
 References: <20211018101130.1838532-1-hch@lst.de>
@@ -70,24 +69,23 @@ Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Kees Cook <keescook@chromium.org>
-Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
 ---
- fs/affs/super.c | 2 +-
+ fs/cramfs/inode.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/affs/super.c b/fs/affs/super.c
-index c6c2a513ec92d..c609005a9eaaa 100644
---- a/fs/affs/super.c
-+++ b/fs/affs/super.c
-@@ -389,7 +389,7 @@ static int affs_fill_super(struct super_block *sb, void *data, int silent)
- 	 * blocks, we will have to change it.
- 	 */
+diff --git a/fs/cramfs/inode.c b/fs/cramfs/inode.c
+index 2be65269a987c..666aa380011e0 100644
+--- a/fs/cramfs/inode.c
++++ b/fs/cramfs/inode.c
+@@ -209,7 +209,7 @@ static void *cramfs_blkdev_read(struct super_block *sb, unsigned int offset,
+ 		return read_buffers[i] + blk_offset;
+ 	}
  
--	size = i_size_read(sb->s_bdev->bd_inode) >> 9;
-+	size = bdev_nr_sectors(sb->s_bdev);
- 	pr_debug("initial blocksize=%d, #blocks=%d\n", 512, size);
+-	devsize = mapping->host->i_size >> PAGE_SHIFT;
++	devsize = bdev_nr_bytes(sb->s_bdev) >> PAGE_SHIFT;
  
- 	affs_set_blocksize(sb, PAGE_SIZE);
+ 	/* Ok, read in BLKS_PER_BUF pages completely first. */
+ 	for (i = 0; i < BLKS_PER_BUF; i++) {
 -- 
 2.30.2
 
