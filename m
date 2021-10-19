@@ -2,158 +2,137 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52306C4321E
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Oct 2021 07:54:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4475DC433FE
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Oct 2021 13:36:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3B8176137B
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Oct 2021 07:54:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 27A3F61038
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Oct 2021 13:36:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234613AbhJSH4y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Oct 2021 03:56:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58206 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234600AbhJSH4x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Oct 2021 03:56:53 -0400
-Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0D203C061745;
-        Tue, 19 Oct 2021 00:54:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=MaNYloGRLxzAenHrMLsvn7WDnjcD3wdf6JM95KrDeMc=; b=3pKX1DVBvd5ZpMinPboPjIhiCF
-        dSjCUFrdUEDrBIGKxxz0ilK9ie1sMiadwkvaQLFylLCj17aEZCRkg0GRKvZdRsF6UK6S+EBJ7wXZD
-        1ER0U3N1Ci4HKQoZbpKTiBMIQG/oQPWHrBh6KM4Xh+KJrVcGALJXx0cHNEYm6bsDkYHfjfuly4Tlv
-        yvQeKHjBnkU4JMFi4AUj1ILCr/Os6UkoIUekn94cy6y2zxTFenJwRDKAKJdRkkb0s8U+6WSkogvTc
-        H8eJfA+HobuFdBZDtCiB+4FjITBdyk/k/uNgsb/obItOwjwMDZVbssOqz/LxNLD+/YWcwadxrF0RX
-        8wT9JWvw==;
-Received: from [2001:4bb8:180:8777:c70:4a89:bc61:2] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcjxG-000TC8-RK; Tue, 19 Oct 2021 07:54:39 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Jens Axboe <axboe@kernel.dk>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-block@vger.kernel.org, linux-scsi@vger.kernel.org,
-        target-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Hannes Reinecke <hare@suse.de>
-Subject: [PATCH 7/7] block: remove QUEUE_FLAG_SCSI_PASSTHROUGH
-Date:   Tue, 19 Oct 2021 09:54:18 +0200
-Message-Id: <20211019075418.2332481-8-hch@lst.de>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20211019075418.2332481-1-hch@lst.de>
-References: <20211019075418.2332481-1-hch@lst.de>
+        id S235771AbhJSNjG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Oct 2021 09:39:06 -0400
+Received: from mail-ed1-f46.google.com ([209.85.208.46]:35684 "EHLO
+        mail-ed1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231564AbhJSNjF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Oct 2021 09:39:05 -0400
+Received: by mail-ed1-f46.google.com with SMTP id w19so13045253edd.2;
+        Tue, 19 Oct 2021 06:36:52 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=l2fMMxDDiXx3vgfR9XbtY8zVEKvNNXiKJ69kmRp4vQM=;
+        b=mCb8jqED0k1GQlElRY/RIaU6/LQcw05GMBYf6vFWLA9vc2DtSanoKswatoZlHXmZeR
+         jxKfUU+m0/uml1+TeZGYzomvq95udLj57/03xWpDUy/P3CqOGD6bCnJBKzlJhShKAqml
+         /NKIpkfkZR8E2C7pWzzyhCN5C7avmhImOUJcNWv522iNnmtPum3Z+C+OmlJmshhiBUyL
+         SdLZ8QfUOh7MIizH83K0nYPshlDdQZHO7fd1jUfNRs1B4rxvOHJw7OsfEgz3GTvdSxC+
+         5+Phg0IXOWQG1NpFvAhdllnkeefXi/zeTMN6v0r7AhGwLpcrlWXIv5TsgHvwW4w7BrEA
+         RMaw==
+X-Gm-Message-State: AOAM532VakqfLcy3QyLtmd9sevati6qN53VSuelDeibLn6VbcZs5ks0t
+        Yi/RFhQVYplSzk6iuYQ5rktFFhBLOee3Zwv7
+X-Google-Smtp-Source: ABdhPJxK5E41qyWGhA8m0/y1a2EmpcFIwcooZQ3yYlMpxn0gc32jmtmTmaGNK+k9ZR0AdgnAjoTadQ==
+X-Received: by 2002:a05:6402:1e8c:: with SMTP id f12mr52173095edf.71.1634650576792;
+        Tue, 19 Oct 2021 06:36:16 -0700 (PDT)
+Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com. [209.85.128.46])
+        by smtp.gmail.com with ESMTPSA id b2sm11215570edv.73.2021.10.19.06.36.16
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 19 Oct 2021 06:36:16 -0700 (PDT)
+Received: by mail-wm1-f46.google.com with SMTP id g39so7785125wmp.3;
+        Tue, 19 Oct 2021 06:36:16 -0700 (PDT)
+X-Received: by 2002:a1c:a443:: with SMTP id n64mr6116840wme.32.1634650175559;
+ Tue, 19 Oct 2021 06:29:35 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+References: <163456861570.2614702.14754548462706508617.stgit@warthog.procyon.org.uk>
+In-Reply-To: <163456861570.2614702.14754548462706508617.stgit@warthog.procyon.org.uk>
+From:   Marc Dionne <marc.dionne@auristor.com>
+Date:   Tue, 19 Oct 2021 10:29:24 -0300
+X-Gmail-Original-Message-ID: <CAB9dFdumxi0U_339S3PfC4TL83Srqn+qGz2AAbJ995NiLhbxnw@mail.gmail.com>
+Message-ID: <CAB9dFdumxi0U_339S3PfC4TL83Srqn+qGz2AAbJ995NiLhbxnw@mail.gmail.com>
+Subject: Re: [Linux-cachefs] [PATCH 00/67] fscache: Rewrite index API and
+ management system
+To:     David Howells <dhowells@redhat.com>
+Cc:     linux-cachefs@redhat.com, Latchesar Ionkov <lucho@ionkov.net>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        linux-mm@kvack.org, linux-afs@lists.infradead.org,
+        Shyam Prasad N <nspmangalore@gmail.com>,
+        linux-cifs@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        v9fs-developer@lists.sourceforge.net,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        ceph-devel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Steve French <sfrench@samba.org>,
+        linux-fsdevel@vger.kernel.org, Omar Sandoval <osandov@osandov.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Export scsi_device_from_queue for use with pktcdvd and use that instead
-of the otherwise unused QUEUE_FLAG_SCSI_PASSTHROUGH queue flag.
+On Mon, Oct 18, 2021 at 11:50 AM David Howells <dhowells@redhat.com> wrote:
+>
+>
+> Here's a set of patches that rewrites and simplifies the fscache index API
+> to remove the complex operation scheduling and object state machine in
+> favour of something much smaller and simpler.  It is built on top of the
+> set of patches that removes the old API[1].
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Hannes Reinecke <hare@suse.de>
----
- block/blk-mq-debugfs.c   | 1 -
- drivers/block/pktcdvd.c  | 5 ++++-
- drivers/scsi/scsi_lib.c  | 8 ++++++++
- drivers/scsi/scsi_scan.c | 1 -
- include/linux/blkdev.h   | 3 ---
- 5 files changed, 12 insertions(+), 6 deletions(-)
+Testing this series in our afs test framework, saw the oops pasted below.
 
-diff --git a/block/blk-mq-debugfs.c b/block/blk-mq-debugfs.c
-index 68ca5d21cda77..a317f05de466a 100644
---- a/block/blk-mq-debugfs.c
-+++ b/block/blk-mq-debugfs.c
-@@ -124,7 +124,6 @@ static const char *const blk_queue_flag_name[] = {
- 	QUEUE_FLAG_NAME(STATS),
- 	QUEUE_FLAG_NAME(POLL_STATS),
- 	QUEUE_FLAG_NAME(REGISTERED),
--	QUEUE_FLAG_NAME(SCSI_PASSTHROUGH),
- 	QUEUE_FLAG_NAME(QUIESCED),
- 	QUEUE_FLAG_NAME(PCI_P2PDMA),
- 	QUEUE_FLAG_NAME(ZONE_RESETALL),
-diff --git a/drivers/block/pktcdvd.c b/drivers/block/pktcdvd.c
-index ea2262ec76d2c..cacf64eedad87 100644
---- a/drivers/block/pktcdvd.c
-+++ b/drivers/block/pktcdvd.c
-@@ -2536,6 +2536,7 @@ static int pkt_new_dev(struct pktcdvd_device *pd, dev_t dev)
- 	int i;
- 	char b[BDEVNAME_SIZE];
- 	struct block_device *bdev;
-+	struct scsi_device *sdev;
- 
- 	if (pd->pkt_dev == dev) {
- 		pkt_err(pd, "recursive setup not allowed\n");
-@@ -2559,10 +2560,12 @@ static int pkt_new_dev(struct pktcdvd_device *pd, dev_t dev)
- 	bdev = blkdev_get_by_dev(dev, FMODE_READ | FMODE_NDELAY, NULL);
- 	if (IS_ERR(bdev))
- 		return PTR_ERR(bdev);
--	if (!blk_queue_scsi_passthrough(bdev_get_queue(bdev))) {
-+	sdev = scsi_device_from_queue(bdev->bd_disk->queue);
-+	if (!sdev) {
- 		blkdev_put(bdev, FMODE_READ | FMODE_NDELAY);
- 		return -EINVAL;
- 	}
-+	put_device(&sdev->sdev_gendev);
- 
- 	/* This is safe, since we have a reference from open(). */
- 	__module_get(THIS_MODULE);
-diff --git a/drivers/scsi/scsi_lib.c b/drivers/scsi/scsi_lib.c
-index a0f801fc8943b..9823b65d15368 100644
---- a/drivers/scsi/scsi_lib.c
-+++ b/drivers/scsi/scsi_lib.c
-@@ -1967,6 +1967,14 @@ struct scsi_device *scsi_device_from_queue(struct request_queue *q)
- 
- 	return sdev;
- }
-+/*
-+ * pktcdvd should have been integrated into the SCSI layers, but for historical
-+ * reasons like the old IDE driver it isn't.  This export allows it to safely
-+ * probe if a given device is a SCSI one and only attach to that.
-+ */
-+#ifdef CONFIG_CDROM_PKTCDVD_MODULE
-+EXPORT_SYMBOL_GPL(scsi_device_from_queue);
-+#endif
- 
- /**
-  * scsi_block_requests - Utility function used by low-level drivers to prevent
-diff --git a/drivers/scsi/scsi_scan.c b/drivers/scsi/scsi_scan.c
-index fe22191522a3b..2808c0cb57114 100644
---- a/drivers/scsi/scsi_scan.c
-+++ b/drivers/scsi/scsi_scan.c
-@@ -280,7 +280,6 @@ static struct scsi_device *scsi_alloc_sdev(struct scsi_target *starget,
- 	sdev->request_queue = q;
- 	q->queuedata = sdev;
- 	__scsi_init_queue(sdev->host, q);
--	blk_queue_flag_set(QUEUE_FLAG_SCSI_PASSTHROUGH, q);
- 	WARN_ON_ONCE(!blk_get_queue(q));
- 
- 	depth = sdev->host->cmd_per_lun ?: 1;
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 6e1c6fbdee0b5..0e811a9642d7f 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -356,7 +356,6 @@ struct request_queue {
- #define QUEUE_FLAG_STATS	20	/* track IO start and completion times */
- #define QUEUE_FLAG_POLL_STATS	21	/* collecting stats for hybrid polling */
- #define QUEUE_FLAG_REGISTERED	22	/* queue has been registered to a disk */
--#define QUEUE_FLAG_SCSI_PASSTHROUGH 23	/* queue supports SCSI commands */
- #define QUEUE_FLAG_QUIESCED	24	/* queue has been quiesced */
- #define QUEUE_FLAG_PCI_P2PDMA	25	/* device supports PCI p2p requests */
- #define QUEUE_FLAG_ZONE_RESETALL 26	/* supports Zone Reset All */
-@@ -390,8 +389,6 @@ bool blk_queue_flag_test_and_set(unsigned int flag, struct request_queue *q);
- #define blk_queue_secure_erase(q) \
- 	(test_bit(QUEUE_FLAG_SECERASE, &(q)->queue_flags))
- #define blk_queue_dax(q)	test_bit(QUEUE_FLAG_DAX, &(q)->queue_flags)
--#define blk_queue_scsi_passthrough(q)	\
--	test_bit(QUEUE_FLAG_SCSI_PASSTHROUGH, &(q)->queue_flags)
- #define blk_queue_pci_p2pdma(q)	\
- 	test_bit(QUEUE_FLAG_PCI_P2PDMA, &(q)->queue_flags)
- #ifdef CONFIG_BLK_RQ_ALLOC_TIME
--- 
-2.30.2
+cachefiles_begin_operation+0x2d maps to cachefiles/io.c:565, where
+object is probably NULL (object->file is at offset 0x28).
 
+Marc
+===
+BUG: kernel NULL pointer dereference, address: 0000000000000028
+#PF: supervisor read access in kernel mode
+#PF: error_code(0x0000) - not-present page
+PGD 0 P4D 0
+Oops: 0000 [#1] SMP NOPTI
+CPU: 5 PID: 16607 Comm: ar Tainted: G            E
+5.15.0-rc5.kafs_testing+ #37
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
+1.14.0-2.fc34 04/01/2014
+RIP: 0010:cachefiles_begin_operation+0x2d/0x80 [cachefiles]
+Code: 00 00 55 53 48 83 ec 08 48 8b 47 08 48 83 7f 10 00 48 8b 68 20
+74 0c b8 01 00 00 00 48 83 c4 08 5b 5d c3 48 c7 07 a0 12 1b a0 <48> 8b
+45 28 48 89 fb 48 85 c0 74 20 48 8d 7d 04 89 74 24 04 e8 3a
+RSP: 0018:ffffc90000d33b48 EFLAGS: 00010246
+RAX: ffff888014991420 RBX: ffff888100ae9cf0 RCX: 0000000000000000
+RDX: 0000000000000001 RSI: 0000000000000000 RDI: ffff888100ae9cf0
+RBP: 0000000000000000 R08: 00000000000006b8 R09: ffff88810e98e000
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff888014991434
+R13: 0000000000000002 R14: ffff888014991420 R15: 0000000000000002
+FS:  00007f72d0486b80(0000) GS:ffff888139940000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000028 CR3: 000000007bac8004 CR4: 0000000000770ee0
+PKRU: 55555554
+Call Trace:
+ fscache_begin_operation.part.0+0x1e3/0x210 [fscache]
+ netfs_write_begin+0x3fb/0x800 [netfs]
+ ? __fscache_use_cookie+0x120/0x200 [fscache]
+ afs_write_begin+0x58/0x2c0 [kafs]
+ ? __vfs_getxattr+0x2a/0x70
+ generic_perform_write+0xb1/0x1b0
+ ? file_update_time+0xcf/0x120
+ __generic_file_write_iter+0x14c/0x1d0
+ generic_file_write_iter+0x5d/0xb0
+ afs_file_write+0x73/0xa0 [kafs]
+ new_sync_write+0x105/0x180
+ vfs_write+0x1cb/0x260
+ ksys_write+0x4f/0xc0
+ do_syscall_64+0x35/0x80
+ entry_SYSCALL_64_after_hwframe+0x44/0xae
+RIP: 0033:0x7f72d059a7a7
+Code: 0d 00 f7 d8 64 89 02 48 c7 c0 ff ff ff ff eb b7 0f 1f 00 f3 0f
+1e fa 64 8b 04 25 18 00 00 00 85 c0 75 10 b8 01 00 00 00 0f 05 <48> 3d
+00 f0 ff ff 77 51 c3 48 83 ec 28 48 89 54 24 18 48 89 74 24
+RSP: 002b:00007fffc31942b8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 0000000000000008 RCX: 00007f72d059a7a7
+RDX: 0000000000000008 RSI: 000055fe42367730 RDI: 0000000000000003
+RBP: 000055fe42367730 R08: 0000000000000000 R09: 00007f72d066ca00
+R10: 000000000000007c R11: 0000000000000246 R12: 0000000000000008
