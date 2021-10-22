@@ -2,62 +2,62 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69EA9C433FE
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 17:11:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3618CC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 17:11:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 57582611F2
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 17:11:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 20C486120D
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 17:11:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233816AbhJVRNt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Oct 2021 13:13:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34886 "EHLO
+        id S233836AbhJVRNu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Oct 2021 13:13:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34896 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233944AbhJVRNf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2021 13:13:35 -0400
-Received: from mail-qk1-x729.google.com (mail-qk1-x729.google.com [IPv6:2607:f8b0:4864:20::729])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4A90C061766
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:17 -0700 (PDT)
-Received: by mail-qk1-x729.google.com with SMTP id r15so5201323qkp.8
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:17 -0700 (PDT)
+        with ESMTP id S233956AbhJVRNg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2021 13:13:36 -0400
+Received: from mail-qk1-x72b.google.com (mail-qk1-x72b.google.com [IPv6:2607:f8b0:4864:20::72b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0CBB0C061767
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:19 -0700 (PDT)
+Received: by mail-qk1-x72b.google.com with SMTP id r15so5201375qkp.8
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=7178+k9HGwpv06ui7KmehzZMIDhQrwDptPJIvqT4zWc=;
-        b=KQLWQ0QnUw4YyOdFoFN2GlcQid3A98e/oQB7CialyZZUtaZusxRpR0iVd4avvj4zkq
-         f4P4K88JnZdBkYTCjwHHdqIobdxITnw97Yg93antekKLQO6XmUB5kQhXwYNqPjDUIfkE
-         OO3R6NNwV9UuuLeDGe3NwmKISjH3SqmVWHv6pujJMlm/JXKx1lFQnTYWeY2ZXJmbhsJc
-         EGEBgitMEcKXWIQCdYVqpd+qckmawspRTqo7wQq0DtNqIq+lVBaifjo913jjZxvJ4DGS
-         qC1XPTZWkPlAt1jvwhwKAzkCb90pn0HmC9wqghIXUvbvlxhDFcaHKKJYc5M+GvMxZZ/w
-         QEpw==
+        bh=gUY6Pr0LbnVoGK2T5GCq7km/HYAYOUWqp0fq63GehQI=;
+        b=pHySW19zKRbgOeTLt+pgA9zDWfaAA3L2x0dg5mYy8jLSYiuRPEwEi7qpBao+HMOWP7
+         yxmKjHJXbvz10RWA4oeakp6lxHfIqxIPYKKze2O9Hey3DqPXDutQiC8trFR+sWGBc5+r
+         bWfAKv6k1zpRRCMs3jCeDTgmCbB+i68tksLUZ7IE3rWpk/cb1YSibyxefxCpkdAQOnKb
+         HqMiBjnjTsWnl14tyHvzoMBMwy8osS42QcbLgrv+GSxJC4rqE8z8+BndBaf7YL4Y3THf
+         gXM6rcQW/QYOyg/hsBSmWwKTsYr5Zop0A3o0zjyj2FVhAyTAzvaik9yCo+WsULONfWlV
+         9vvg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=7178+k9HGwpv06ui7KmehzZMIDhQrwDptPJIvqT4zWc=;
-        b=FEdjNsVmhDESHcLTGZpR6uIZt+3Tzhn4QHOmVaeV672/MJCkOsEM46X3jl0GfATg3W
-         WFCTxOFnbYd7aubY3nwjh1es+2FY4vQ/SKc3pgHWOuy7Bdyvnqrz+bmB1pFIr16qclVD
-         4YipuiKBgJUpYyk/b5EaNjK/Xkp/ipPhl/q1BCXvjUBs2WLF6CU3B9ubmfgjXFJ91XZg
-         KDBU3O1ce1MIQlpi08MTL2gAPhC6MLvila/4F0ReBS50DZqB9Hf5ui+L6qf7oDKbziM6
-         5DJv4p+NxyzOXymjCpxxxriF8LMKnm85sTvjqAOMJvls2bUPQk6bz1+eZtxM+sDTpNTD
-         5jCQ==
-X-Gm-Message-State: AOAM532yNapGa81fUPG3SHEgjPt3/qzRwgENjFPCxQi/U+0a8dx21KGT
-        XGmK5dznOfOzCjH7nm1sQwU=
-X-Google-Smtp-Source: ABdhPJzqIFW8on3+TtJBsESumV2sjoqSsB+omlqLFiK4JzUasPGWckCdSc8Cj2JVwaN35YdEsvCobg==
-X-Received: by 2002:a37:b13:: with SMTP id 19mr1099507qkl.430.1634922676854;
-        Fri, 22 Oct 2021 10:11:16 -0700 (PDT)
+        bh=gUY6Pr0LbnVoGK2T5GCq7km/HYAYOUWqp0fq63GehQI=;
+        b=GSN0vNZXqv/lFkKlKHoPlCTf+WI9LvbI+lxAD4UaFqp9kM41M1SbsmQg0vqjsO4gfw
+         x8MerI5u7RmANj3SoBBRMvu3MKQUYYeLdvMEp7Z/3jP5hjDBpnK00hJxRsgEEHFHe+Lr
+         VxI4Njo5uWANVFCgVyru3LmrFIkZdseD09n020EyEkXH7UD6NuwujXVbYI2uF6upSjxc
+         M5WZzgap1PwN5b5vIfUx8kMnuoEPvRPAFjVgchzMfUb6Aem8o/kDocXNXD1QuBSmzYbo
+         UOLcU/D/inXIqFrstL09jZn8OPE6NaYkKiXETp2AFSZ6ymP4WP4xep71DU2JmcjmbPE5
+         f8CQ==
+X-Gm-Message-State: AOAM5335GWQUrhZdPI0pKNrnmAPeAeYPg6vvs7A31mWjOBG6J9CEc9+Y
+        cfqbu6qnsa2mVV8NL3M/5DI=
+X-Google-Smtp-Source: ABdhPJyYIY13c9QMtSd7k0DBVVcHYAb6oz72nYJaUYsV78YqMgH/LChZbScFC19G8q20xCJnBSv4Gg==
+X-Received: by 2002:a37:a5d1:: with SMTP id o200mr1136919qke.30.1634922678147;
+        Fri, 22 Oct 2021 10:11:18 -0700 (PDT)
 Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id s22sm4484586qko.135.2021.10.22.10.11.16
+        by smtp.gmail.com with ESMTPSA id s22sm4484586qko.135.2021.10.22.10.11.17
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 22 Oct 2021 10:11:16 -0700 (PDT)
+        Fri, 22 Oct 2021 10:11:17 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v2 04/14] NFS: Remove the nfs4_label from the nfs4_link_res struct
-Date:   Fri, 22 Oct 2021 13:11:03 -0400
-Message-Id: <20211022171113.16739-5-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v2 06/14] NFS: Remove the nfs4_label from the nfs4_lookupp_res struct
+Date:   Fri, 22 Oct 2021 13:11:05 -0400
+Message-Id: <20211022171113.16739-7-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.33.1
 In-Reply-To: <20211022171113.16739-1-Anna.Schumaker@Netapp.com>
 References: <20211022171113.16739-1-Anna.Schumaker@Netapp.com>
@@ -69,87 +69,161 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Again, use the fattr's label field instead.
-
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c       | 16 +++-------------
+ fs/nfs/export.c         | 26 +++++++-------------------
+ fs/nfs/nfs3proc.c       |  2 +-
+ fs/nfs/nfs4proc.c       | 10 ++++------
  fs/nfs/nfs4xdr.c        |  2 +-
- include/linux/nfs_xdr.h |  1 -
- 3 files changed, 4 insertions(+), 15 deletions(-)
+ include/linux/nfs_xdr.h |  3 +--
+ 5 files changed, 14 insertions(+), 29 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 06569a35a6df..fed15eafc03b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4791,7 +4791,6 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 	};
- 	struct nfs4_link_res res = {
- 		.server = server,
--		.label = NULL,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LINK],
-@@ -4800,18 +4799,12 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 	};
- 	int status = -ENOMEM;
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index d772c20bbfd1..895b404888dd 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -131,7 +131,6 @@ nfs_get_parent(struct dentry *dentry)
+ 	struct super_block *sb = inode->i_sb;
+ 	struct nfs_server *server = NFS_SB(sb);
+ 	struct nfs_fattr *fattr = NULL;
+-	struct nfs4_label *label = NULL;
+ 	struct dentry *parent;
+ 	struct nfs_rpc_ops const *ops = server->nfs_client->rpc_ops;
+ 	struct nfs_fh fh;
+@@ -139,31 +138,20 @@ nfs_get_parent(struct dentry *dentry)
+ 	if (!ops->lookupp)
+ 		return ERR_PTR(-EACCES);
  
--	res.fattr = nfs_alloc_fattr();
-+	res.fattr = nfs_alloc_fattr_with_label(server);
- 	if (res.fattr == NULL)
- 		goto out;
- 
--	res.label = nfs4_label_alloc(server, GFP_KERNEL);
--	if (IS_ERR(res.label)) {
--		status = PTR_ERR(res.label);
+-	fattr = nfs_alloc_fattr();
+-	if (fattr == NULL) {
+-		parent = ERR_PTR(-ENOMEM);
 -		goto out;
 -	}
++	fattr = nfs_alloc_fattr_with_label(server);
++	if (fattr == NULL)
++		return ERR_PTR(-ENOMEM);
+ 
+-	label = nfs4_label_alloc(server, GFP_KERNEL);
+-	if (IS_ERR(label)) {
+-		parent = ERR_CAST(label);
+-		goto out_free_fattr;
+-	}
 -
- 	nfs4_inode_make_writeable(inode);
--	nfs4_bitmap_copy_adjust(bitmask, nfs4_bitmask(server, res.label), inode,
-+	nfs4_bitmap_copy_adjust(bitmask, nfs4_bitmask(server, res.fattr->label), inode,
- 				NFS_INO_INVALID_CHANGE);
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
-@@ -4820,12 +4813,9 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
- 		nfs4_inc_nlink(inode);
- 		status = nfs_post_op_update_inode(inode, res.fattr);
- 		if (!status)
--			nfs_setsecurity(inode, res.fattr, res.label);
-+			nfs_setsecurity(inode, res.fattr, res.fattr->label);
+-	ret = ops->lookupp(inode, &fh, fattr, label);
++	ret = ops->lookupp(inode, &fh, fattr);
+ 	if (ret) {
+ 		parent = ERR_PTR(ret);
+-		goto out_free_label;
++		goto out;
  	}
  
--
--	nfs4_label_free(res.label);
--
+-	pinode = nfs_fhget(sb, &fh, fattr, label);
++	pinode = nfs_fhget(sb, &fh, fattr, fattr->label);
+ 	parent = d_obtain_alias(pinode);
+-out_free_label:
+-	nfs4_label_free(label);
+-out_free_fattr:
+-	nfs_free_fattr(fattr);
  out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
++	nfs_free_fattr(fattr);
+ 	return parent;
+ }
+ 
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 717eb651f0fd..516f3340b226 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -208,7 +208,7 @@ nfs3_proc_lookup(struct inode *dir, struct dentry *dentry,
+ }
+ 
+ static int nfs3_proc_lookupp(struct inode *inode, struct nfs_fh *fhandle,
+-			     struct nfs_fattr *fattr, struct nfs4_label *label)
++			     struct nfs_fattr *fattr)
+ {
+ 	const char dotdot[] = "..";
+ 	const size_t len = strlen(dotdot);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 49e077841e98..7e02c698c60f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4417,8 +4417,7 @@ nfs4_proc_lookup_mountpoint(struct inode *dir, struct dentry *dentry,
+ }
+ 
+ static int _nfs4_proc_lookupp(struct inode *inode,
+-		struct nfs_fh *fhandle, struct nfs_fattr *fattr,
+-		struct nfs4_label *label)
++		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+ 	struct rpc_clnt *clnt = NFS_CLIENT(inode);
+ 	struct nfs_server *server = NFS_SERVER(inode);
+@@ -4430,7 +4429,6 @@ static int _nfs4_proc_lookupp(struct inode *inode,
+ 	struct nfs4_lookupp_res res = {
+ 		.server = server,
+ 		.fattr = fattr,
+-		.label = label,
+ 		.fh = fhandle,
+ 	};
+ 	struct rpc_message msg = {
+@@ -4443,7 +4441,7 @@ static int _nfs4_proc_lookupp(struct inode *inode,
+ 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_SOFTREVAL)
+ 		task_flags |= RPC_TASK_TIMEOUT;
+ 
+-	args.bitmask = nfs4_bitmask(server, label);
++	args.bitmask = nfs4_bitmask(server, fattr->label);
+ 
+ 	nfs_fattr_init(fattr);
+ 
+@@ -4455,14 +4453,14 @@ static int _nfs4_proc_lookupp(struct inode *inode,
+ }
+ 
+ static int nfs4_proc_lookupp(struct inode *inode, struct nfs_fh *fhandle,
+-			     struct nfs_fattr *fattr, struct nfs4_label *label)
++			     struct nfs_fattr *fattr)
+ {
+ 	struct nfs4_exception exception = {
+ 		.interruptible = true,
+ 	};
+ 	int err;
+ 	do {
+-		err = _nfs4_proc_lookupp(inode, fhandle, fattr, label);
++		err = _nfs4_proc_lookupp(inode, fhandle, fattr);
+ 		trace_nfs4_lookupp(inode, err);
+ 		err = nfs4_handle_exception(NFS_SERVER(inode), err,
+ 				&exception);
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 98594a97529d..4ce6d2430ff1 100644
+index fc5c987d8ad9..77467216cd5d 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -6331,7 +6331,7 @@ static int nfs4_xdr_dec_link(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_restorefh(xdr);
+@@ -6209,7 +6209,7 @@ static int nfs4_xdr_dec_lookupp(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_getfh(xdr, res->fh);
  	if (status)
  		goto out;
--	decode_getfattr_label(xdr, res->fattr, res->label, res->server);
-+	decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
+-	status = decode_getfattr_label(xdr, res->fattr, res->label, res->server);
++	status = decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
  out:
  	return status;
  }
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5aba81b74c98..d55bf3fd5167 100644
+index 95219d5a8668..f0a685d9b8bd 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -1079,7 +1079,6 @@ struct nfs4_link_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
+@@ -1108,7 +1108,6 @@ struct nfs4_lookupp_res {
+ 	const struct nfs_server		*server;
+ 	struct nfs_fattr		*fattr;
+ 	struct nfs_fh			*fh;
 -	struct nfs4_label		*label;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
  };
+ 
+ struct nfs4_lookup_root_arg {
+@@ -1741,7 +1740,7 @@ struct nfs_rpc_ops {
+ 	int	(*lookup)  (struct inode *, struct dentry *,
+ 			    struct nfs_fh *, struct nfs_fattr *);
+ 	int	(*lookupp) (struct inode *, struct nfs_fh *,
+-			    struct nfs_fattr *, struct nfs4_label *);
++			    struct nfs_fattr *);
+ 	int	(*access)  (struct inode *, struct nfs_access_entry *);
+ 	int	(*readlink)(struct inode *, struct page *, unsigned int,
+ 			    unsigned int);
 -- 
 2.33.1
 
