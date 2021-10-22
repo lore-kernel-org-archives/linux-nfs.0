@@ -2,62 +2,62 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E24A5C4332F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66216C433F5
 	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 17:11:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C3D85611CB
+	by mail.kernel.org (Postfix) with ESMTP id 4C50E611CB
 	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 17:11:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233715AbhJVRN7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Oct 2021 13:13:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34934 "EHLO
+        id S233802AbhJVRN5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Oct 2021 13:13:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34930 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233524AbhJVRNn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2021 13:13:43 -0400
-Received: from mail-qv1-xf2f.google.com (mail-qv1-xf2f.google.com [IPv6:2607:f8b0:4864:20::f2f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7FB8FC061766
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:25 -0700 (PDT)
-Received: by mail-qv1-xf2f.google.com with SMTP id b1so919283qvk.5
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:25 -0700 (PDT)
+        with ESMTP id S233987AbhJVRNl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2021 13:13:41 -0400
+Received: from mail-qk1-x731.google.com (mail-qk1-x731.google.com [IPv6:2607:f8b0:4864:20::731])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3A936C061764
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:24 -0700 (PDT)
+Received: by mail-qk1-x731.google.com with SMTP id h65so5471034qke.0
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 10:11:24 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=SHDA7YvQRnodq68TQ5EaK5vBfZ9KMV2Z6ZTLczSeX2c=;
-        b=IDi6UhiNhuleYpZPW9W9mKRNOMBDxNHvqIDZ9BWqsZvV96+ftlsk7LZkTJXsxlju3D
-         2bbDMEdbcj7JondLCAcMeLEeGegBgYKKJejE6QOcY0PG1CR+YAe+1yfNps9k0n4ijHHO
-         bIXutq9E2pYbpSlzCWevjCjbMQJZhmhszG48sMhySJU4ITUGx/wMu6cZzcb17EBzJbGD
-         wfNHQy+TeFLhuK1idlwjoiHWJOO8aSY54JCJLDiTTH5/BimjFYiZxZKM5Sk3s1wRf8Jx
-         RNPWmZvJoym3pwaho5JExgzqljuJ1Wgq2ttZJB+dwq9sj/r7UIX3QuPV2JzZI2VRoANe
-         VZcA==
+        bh=D8uX/xki72nt+sXdqVs+czvAZ2u+0C0hWjF2S5EFh24=;
+        b=cR74pEyJ3naCv7dA/xYN7bvMz/8My/FwIPrqrzlwNQxwSGG7kSQkHyoPO0CbANJ+kN
+         2q1c/6bmEm5l38fLZdxo24cEYLZPED5XT5y0PJqMl9bKUMXCO/sWPuU2jBYlSMY0iytw
+         tZZYeucKUJFOwo7y2lLRCYnQluZmhE4EcqRw9F+TZc14aDNu2HXxeqtBBe8qcQp6CUBL
+         ZZPWRVUVYeoa8TRsv14P9CzgHveldGTj+y1cFBXvyzjHHx5ek5WSvbztC48+vpbHoLHY
+         MDrdfw8e/fPtFlm7jybPlxiRES6JzuKNiA+OKyuKNLji3MP9dkP7F91ceeCW/AsL2jSj
+         X/BQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=SHDA7YvQRnodq68TQ5EaK5vBfZ9KMV2Z6ZTLczSeX2c=;
-        b=O/iQojFZ/A1StiJJHoyDBa/gL2DN6RX6cM+eLGx4AmYtiAL2Y9bpLjn+EX54cIxDW7
-         T8RrYtVAY2EqBiZ4RXbOQLxrI9XSjLVgGUmUT9GW/4MiKJ00Sf0Ss8V3GPid/TRSwFNb
-         j/LevdCQfApcilXvv5At+jfesY62oVPQaKOr4Y8YMXD/pLFuDcHGOroCSlyHRfqQhY9i
-         4gASvykBFc60HZG7v9k5SITWDUr1fi3vVck0ZPAmrv3zALdKcbLMPJKyoRkvlYOzJMK3
-         G37qbOKWzRrfFnMRXlXkZk/KBWHdMHFnhfc/88aSQ5QeVTMo0me5ABMPVqS1JoKTs3UX
-         R8/A==
-X-Gm-Message-State: AOAM533gBO9H3kC0CpAulayX7kdgF0tAPKbTZTBWQ0kpnIgwN1+u0dWm
-        /FyZODsqfNAB7bq9tWjN+z8=
-X-Google-Smtp-Source: ABdhPJxvqQ9it74AsJqzNqfEcL3th4lHgXALo9y6neNVs4iHVMtKvEAy/c+viN1pRYEzjuGgM/nfjw==
-X-Received: by 2002:a0c:ea2a:: with SMTP id t10mr1216972qvp.35.1634922681940;
-        Fri, 22 Oct 2021 10:11:21 -0700 (PDT)
+        bh=D8uX/xki72nt+sXdqVs+czvAZ2u+0C0hWjF2S5EFh24=;
+        b=74+LFE3u6TZ9XuN8oi6Gdl4UY39j5Tz6R0OVFwAaFM082b+cInyb7z8GSp15wnS3EA
+         Ojfb26s71BQY/ZOPsCKWRLMJT5Sy+GKPL0FmCZF51v9v7cvUFpnD3JY02o+HPdPHHJ3z
+         Qj2Md2CBsfMUgLt5sdJb9xcigvUfYd3TFTHIPDPAWPNSoLOIHW4b26wCkVCB0sxPSrt9
+         S8YnxCeP5qZnPlajlhQZBsM7GWtrROmfJ4V0wlZetibj5yD/TwsYryedvL6PZT5dUPUm
+         D2ilKnBZf3Ao8m63+Z7kqVqzjmvtCQNzThnUNekfFGzJiOVJgGkLJOCMeAfXPXeIAZTJ
+         divw==
+X-Gm-Message-State: AOAM532EoT2Ajbq1sJBX598fb8uY079LMSmre34y/91WiD+qNFyCAOfd
+        +z8khOBL9bZjmUpR/vnslZ4=
+X-Google-Smtp-Source: ABdhPJxdU/v5vSf/83JdnWk9dVSQiEX0KatXUH+kO99u9WckI5tDxJNpygUAMnh7lM1v0rycJy2YTw==
+X-Received: by 2002:a37:a212:: with SMTP id l18mr1149809qke.28.1634922683324;
+        Fri, 22 Oct 2021 10:11:23 -0700 (PDT)
 Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id s22sm4484586qko.135.2021.10.22.10.11.21
+        by smtp.gmail.com with ESMTPSA id s22sm4484586qko.135.2021.10.22.10.11.22
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 22 Oct 2021 10:11:21 -0700 (PDT)
+        Fri, 22 Oct 2021 10:11:23 -0700 (PDT)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v2 12/14] NFS: Remove the nfs4_label argument from nfs_fhget()
-Date:   Fri, 22 Oct 2021 13:11:11 -0400
-Message-Id: <20211022171113.16739-13-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v2 14/14] NFS: Remove the nfs4_label argument from decode_getattr_*() functions
+Date:   Fri, 22 Oct 2021 13:11:13 -0400
+Message-Id: <20211022171113.16739-15-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.33.1
 In-Reply-To: <20211022171113.16739-1-Anna.Schumaker@Netapp.com>
 References: <20211022171113.16739-1-Anna.Schumaker@Netapp.com>
@@ -69,145 +69,175 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
+Wa can check if the fattr has an allocated label when needed
+
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/dir.c           | 6 +++---
- fs/nfs/export.c        | 4 ++--
- fs/nfs/getroot.c       | 2 +-
- fs/nfs/inode.c         | 4 ++--
- fs/nfs/nfs4file.c      | 3 +--
- fs/nfs/nfs4proc.c      | 2 +-
- include/linux/nfs_fs.h | 2 +-
- 7 files changed, 11 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4xdr.c | 43 +++++++++++++++++--------------------------
+ 1 file changed, 17 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index cf7d0280155a..a34cbdd2b632 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -695,7 +695,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
- 		goto out;
- 	}
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5c7d37633cc8..1e3b1db7afa9 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4582,8 +4582,7 @@ static int decode_attr_mdsthreshold(struct xdr_stream *xdr,
  
--	inode = nfs_fhget(dentry->d_sb, entry->fh, entry->fattr, entry->fattr->label);
-+	inode = nfs_fhget(dentry->d_sb, entry->fh, entry->fattr);
- 	alias = d_splice_alias(inode, dentry);
- 	d_lookup_done(dentry);
- 	if (alias) {
-@@ -1780,7 +1780,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 		res = ERR_PTR(error);
- 		goto out;
- 	}
--	inode = nfs_fhget(dentry->d_sb, fhandle, fattr, fattr->label);
-+	inode = nfs_fhget(dentry->d_sb, fhandle, fattr);
- 	res = ERR_CAST(inode);
- 	if (IS_ERR(res))
- 		goto out;
-@@ -2057,7 +2057,7 @@ nfs_add_or_obtain(struct dentry *dentry, struct nfs_fh *fhandle,
- 		if (error < 0)
- 			goto out_error;
- 	}
--	inode = nfs_fhget(dentry->d_sb, fhandle, fattr, fattr->label);
-+	inode = nfs_fhget(dentry->d_sb, fhandle, fattr);
- 	d = d_splice_alias(inode, dentry);
- out:
- 	dput(parent);
-diff --git a/fs/nfs/export.c b/fs/nfs/export.c
-index a0462f7e7e35..171c424cb6d5 100644
---- a/fs/nfs/export.c
-+++ b/fs/nfs/export.c
-@@ -103,7 +103,7 @@ nfs_fh_to_dentry(struct super_block *sb, struct fid *fid,
- 		goto out_free_fattr;
- 	}
- 
--	inode = nfs_fhget(sb, server_fh, fattr, fattr->label);
-+	inode = nfs_fhget(sb, server_fh, fattr);
- 
- out_found:
- 	dentry = d_obtain_alias(inode);
-@@ -138,7 +138,7 @@ nfs_get_parent(struct dentry *dentry)
- 		goto out;
- 	}
- 
--	pinode = nfs_fhget(sb, &fh, fattr, fattr->label);
-+	pinode = nfs_fhget(sb, &fh, fattr);
- 	parent = d_obtain_alias(pinode);
- out:
- 	nfs_free_fattr(fattr);
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 7604cb6a0ac2..0aedee201166 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -91,7 +91,7 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
- 		goto out_fattr;
- 	}
- 
--	inode = nfs_fhget(s, ctx->mntfh, fsinfo.fattr, NULL);
-+	inode = nfs_fhget(s, ctx->mntfh, fsinfo.fattr);
- 	if (IS_ERR(inode)) {
- 		dprintk("nfs_get_root: get root inode failed\n");
- 		error = PTR_ERR(inode);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 99ee138a0a5e..4b20ce19c90e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -431,7 +431,7 @@ nfs_ilookup(struct super_block *sb, struct nfs_fattr *fattr, struct nfs_fh *fh)
-  * instead of inode number.
-  */
- struct inode *
--nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, struct nfs4_label *label)
-+nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		struct nfs_fattr *fattr, struct nfs_fh *fh,
+-		struct nfs4_fs_locations *fs_loc, struct nfs4_label *label,
+-		const struct nfs_server *server)
++		struct nfs4_fs_locations *fs_loc, const struct nfs_server *server)
  {
- 	struct nfs_find_desc desc = {
- 		.fh	= fh,
-@@ -563,7 +563,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
- 			   fattr->size != 0)
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
+ 	int status;
+ 	umode_t fmode = 0;
+@@ -4698,8 +4697,8 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	if (status < 0)
+ 		goto xdr_error;
  
--		nfs_setsecurity(inode, fattr, label);
-+		nfs_setsecurity(inode, fattr, fattr->label);
+-	if (label) {
+-		status = decode_attr_security_label(xdr, bitmap, label);
++	if (fattr->label) {
++		status = decode_attr_security_label(xdr, bitmap, fattr->label);
+ 		if (status < 0)
+ 			goto xdr_error;
+ 		fattr->valid |= status;
+@@ -4712,7 +4711,7 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
  
- 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 		nfsi->attrtimeo_timestamp = now;
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index ef78e06bcd21..f55236169645 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -343,8 +343,7 @@ static struct file *__nfs42_ssc_open(struct vfsmount *ss_mnt,
+ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+ 		struct nfs_fh *fh, struct nfs4_fs_locations *fs_loc,
+-		struct nfs4_label *label, const struct nfs_server *server)
++		const struct nfs_server *server)
+ {
+ 	unsigned int savep;
+ 	uint32_t attrlen,
+@@ -4731,8 +4730,7 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
+ 	if (status < 0)
+ 		goto xdr_error;
+ 
+-	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, fs_loc,
+-					label, server);
++	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, fs_loc, server);
+ 	if (status < 0)
+ 		goto xdr_error;
+ 
+@@ -4742,16 +4740,10 @@ static int decode_getfattr_generic(struct xdr_stream *xdr, struct nfs_fattr *fat
+ 	return status;
+ }
+ 
+-static int decode_getfattr_label(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+-		struct nfs4_label *label, const struct nfs_server *server)
+-{
+-	return decode_getfattr_generic(xdr, fattr, NULL, NULL, label, server);
+-}
+-
+ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+ 		const struct nfs_server *server)
+ {
+-	return decode_getfattr_generic(xdr, fattr, NULL, NULL, NULL, server);
++	return decode_getfattr_generic(xdr, fattr, NULL, NULL, server);
+ }
+ 
+ /*
+@@ -6179,7 +6171,7 @@ static int nfs4_xdr_dec_lookup(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_getfh(xdr, res->fh);
+ 	if (status)
  		goto out;
- 	snprintf(read_name, len, SSC_READ_NAME_BODY, read_name_gen++);
+-	status = decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
++	status = decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -6209,7 +6201,7 @@ static int nfs4_xdr_dec_lookupp(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_getfh(xdr, res->fh);
+ 	if (status)
+ 		goto out;
+-	status = decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
++	status = decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -6236,8 +6228,7 @@ static int nfs4_xdr_dec_lookup_root(struct rpc_rqst *rqstp,
+ 		goto out;
+ 	status = decode_getfh(xdr, res->fh);
+ 	if (status == 0)
+-		status = decode_getfattr_label(xdr, res->fattr,
+-						res->fattr->label, res->server);
++		status = decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -6331,7 +6322,7 @@ static int nfs4_xdr_dec_link(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_restorefh(xdr);
+ 	if (status)
+ 		goto out;
+-	decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
++	decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -6361,7 +6352,7 @@ static int nfs4_xdr_dec_create(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_getfh(xdr, res->fh);
+ 	if (status)
+ 		goto out;
+-	decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
++	decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -6394,7 +6385,7 @@ static int nfs4_xdr_dec_getattr(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_putfh(xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
++	status = decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -6532,7 +6523,7 @@ static int nfs4_xdr_dec_open(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 		goto out;
+ 	if (res->access_request)
+ 		decode_access(xdr, &res->access_supported, &res->access_result);
+-	decode_getfattr_label(xdr, res->f_attr, res->f_attr->label, res->server);
++	decode_getfattr(xdr, res->f_attr, res->server);
+ 	if (res->lg_res)
+ 		decode_layoutget(xdr, rqstp, res->lg_res);
+ out:
+@@ -6616,7 +6607,7 @@ static int nfs4_xdr_dec_setattr(struct rpc_rqst *rqstp,
+ 	status = decode_setattr(xdr);
+ 	if (status)
+ 		goto out;
+-	decode_getfattr_label(xdr, res->fattr, res->fattr->label, res->server);
++	decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
+@@ -7031,7 +7022,7 @@ static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req,
+ 		status = decode_getfattr_generic(xdr,
+ 					&res->fs_locations->fattr,
+ 					 NULL, res->fs_locations,
+-					 NULL, res->fs_locations->server);
++					 res->fs_locations->server);
+ 		if (status)
+ 			goto out;
+ 		if (res->renew)
+@@ -7044,7 +7035,7 @@ static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req,
+ 		status = decode_getfattr_generic(xdr,
+ 					&res->fs_locations->fattr,
+ 					 NULL, res->fs_locations,
+-					 NULL, res->fs_locations->server);
++					 res->fs_locations->server);
+ 	}
+ out:
+ 	return status;
+@@ -7475,7 +7466,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 		return -EAGAIN;
  
--	r_ino = nfs_fhget(ss_mnt->mnt_root->d_inode->i_sb, src_fh, &fattr,
--			NULL);
-+	r_ino = nfs_fhget(ss_mnt->mnt_root->d_inode->i_sb, src_fh, &fattr);
- 	if (IS_ERR(r_ino)) {
- 		res = ERR_CAST(r_ino);
- 		goto out_free_name;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b36cea00977d..975177959e07 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2012,7 +2012,7 @@ nfs4_opendata_get_inode(struct nfs4_opendata *data)
- 		if (!(data->f_attr.valid & NFS_ATTR_FATTR))
- 			return ERR_PTR(-EAGAIN);
- 		inode = nfs_fhget(data->dir->d_sb, &data->o_res.fh,
--				&data->f_attr, data->f_attr.label);
-+				&data->f_attr);
- 		break;
- 	default:
- 		inode = d_inode(data->dentry);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 4566c2692cdd..ac4416ebf0ec 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -383,7 +383,7 @@ extern void nfs_zap_caches(struct inode *);
- extern void nfs_set_inode_stale(struct inode *inode);
- extern void nfs_invalidate_atime(struct inode *);
- extern struct inode *nfs_fhget(struct super_block *, struct nfs_fh *,
--				struct nfs_fattr *, struct nfs4_label *);
-+				struct nfs_fattr *);
- struct inode *nfs_ilookup(struct super_block *sb, struct nfs_fattr *, struct nfs_fh *);
- extern int nfs_refresh_inode(struct inode *, struct nfs_fattr *);
- extern int nfs_post_op_update_inode(struct inode *inode, struct nfs_fattr *fattr);
+ 	if (decode_getfattr_attrs(xdr, bitmap, entry->fattr, entry->fh,
+-			NULL, entry->fattr->label, entry->server) < 0)
++			NULL, entry->server) < 0)
+ 		return -EAGAIN;
+ 	if (entry->fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
+ 		entry->ino = entry->fattr->mounted_on_fileid;
 -- 
 2.33.1
 
