@@ -2,115 +2,140 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42B61C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 20:25:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C1B0C433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 20:56:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 08EA76112F
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 20:25:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8130E60EDF
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Oct 2021 20:56:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232089AbhJVU1T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Oct 2021 16:27:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50364 "EHLO
+        id S234309AbhJVU62 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Oct 2021 16:58:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57302 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232082AbhJVU1T (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2021 16:27:19 -0400
-Received: from mail-lj1-x230.google.com (mail-lj1-x230.google.com [IPv6:2a00:1450:4864:20::230])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 556F1C061764
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 13:25:01 -0700 (PDT)
-Received: by mail-lj1-x230.google.com with SMTP id u5so1488038ljo.8
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 13:25:01 -0700 (PDT)
+        with ESMTP id S234153AbhJVU61 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2021 16:58:27 -0400
+Received: from mail-qk1-x72b.google.com (mail-qk1-x72b.google.com [IPv6:2607:f8b0:4864:20::72b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E4DAC061766
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 13:56:09 -0700 (PDT)
+Received: by mail-qk1-x72b.google.com with SMTP id bl14so5897352qkb.4
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 13:56:09 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=VL4lca6iHsx6oQ/wg6H7clLpP/uNe7ZsGNa7hBqT+88=;
-        b=Xm2NbmUwKJoW+515TkyEWt2nuCvePzoqxLYJAFPnOe+lbdK5JzMmyaBBRaBeBIIVr6
-         5Y2Ltv7T1OVUR3yQVc1hEpZ4faavbhalIte0tSbwN89GggYecoOBuJphVvusUfCFdqxX
-         UgjPbDpPnxZpf2xYUJtsUcqxyBe+gW6XgMyZo=
+        d=gmail.com; s=20210112;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=xQz+ReTvhOjs/+Zs9d2cBF8l0RxupR0A14Vhyg4nYbc=;
+        b=R+z4VR06zi1sYrHmAmYAbEW7Pznv/Cj7Xt23P6U/N0kwuN+6DxCHrbhUIEDWxcycfe
+         95/WAqSuJyV2G+UymsvTBVwVumjWc14CJQ1zEFDeSOtrqNTIeNHRP/18Fh9/BeixCSw+
+         UeO+MBx790fnVP6zeJ9gPwAfZf6gQTVbeGYHu/BPAl42+M3UNQs/OTvZ5U7JdTO3wxXE
+         oUDtOuzVGCnV1ZVhXY4Sz5hSzAdLcHOJMMFxkZZlElnV2xEpakYzfJllL5UUmvCoM1vE
+         M0s+soE3w9dH00Ia5vh8Tp06RlizWCVo7bjO6Jgh5SUf4DVeMq4OvPx4sk1SIeQy0+t8
+         EgtQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=VL4lca6iHsx6oQ/wg6H7clLpP/uNe7ZsGNa7hBqT+88=;
-        b=E7RjpJ4SggNXZ863kSdkmeGcK9TOED34nitqHwwWd/katWOtXTtKWTgUNeAGFhXk+R
-         Z3QiZg1zzqLx9tFEJAuyjhBm6B+mkCeLHon6+qJHBLcQcxd/eOcofZVnqqedddW/05cY
-         5FwgZ6MSkPU+6BXlr8YPzYs8iAxCMcnragWP6FMELJKnSL3CVPcmLSP4qnML3/QKz2DQ
-         hm9iIJYv0LDR4GBXHOsRoB8lNvpHa3ZSxIcy6Y4TB4VSaJV8rSkr+je5WAknrnTvZCcY
-         mb8IePGviKrABZBOG+yVZ+9xyliZSU+7/wmNeg6WWfwDE/5Iik4sp+MOvO4GYyMJKNA5
-         JLtg==
-X-Gm-Message-State: AOAM532tVlo4/s44pihsE5lYNBv0nK1nSV15rdQkAfvAsUCrkayD/oq+
-        7G2PjKYq2Y+hylXnP9dgHkZssvpCIaz+zfnj1hk=
-X-Google-Smtp-Source: ABdhPJwY4jnFkOXCxSeiFU5zbDX+oJCeXB2LTCQUJrGzWsj9I2DnSNlKiEsAR/9XLN47FxW58VV5TA==
-X-Received: by 2002:a05:651c:1799:: with SMTP id bn25mr1659903ljb.514.1634934299101;
-        Fri, 22 Oct 2021 13:24:59 -0700 (PDT)
-Received: from mail-lj1-f176.google.com (mail-lj1-f176.google.com. [209.85.208.176])
-        by smtp.gmail.com with ESMTPSA id q6sm141644lfa.267.2021.10.22.13.24.57
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 22 Oct 2021 13:24:58 -0700 (PDT)
-Received: by mail-lj1-f176.google.com with SMTP id w23so3459848lje.7
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Oct 2021 13:24:57 -0700 (PDT)
-X-Received: by 2002:a2e:9945:: with SMTP id r5mr2174611ljj.249.1634934297582;
- Fri, 22 Oct 2021 13:24:57 -0700 (PDT)
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=xQz+ReTvhOjs/+Zs9d2cBF8l0RxupR0A14Vhyg4nYbc=;
+        b=w2EnPACpE4hgGh+M9KIuo1RcFyhrzlS4hScnJzPWGgm8oSCmi+V8bcZIyVMDKWpa82
+         UkXZXPkALa6Rr/PQdw+WTxHz7mNJpdDYQByCuAOlmPeWAxitj3jCfBinztcxx8aJSzTt
+         zAJbX4crZHSK185DvYGko0o8kKah+f9HQWi2RbIpL9wxxM5K5OdYQ5esmCElyffp+SFO
+         6C165IRB8ZdEdF14qI9d0btqx/braeugUGEpEfuNkSYSpWmZyuWWcMYIHNKOlqiaLCnQ
+         96MUetQPghTQAc7zjI7llZd/n00A5R1woNaVE0HwnSHXPHLz3pa42rYVut59+gLisu0O
+         C+Tw==
+X-Gm-Message-State: AOAM533E2lvZl/ZRj+aLl22HFUaXXXJ4KFl2JmEyddG5W2S8jy9RhZ3f
+        AdVqTcDVJNyyy3OTYeicbTk=
+X-Google-Smtp-Source: ABdhPJzhSfm1t71Byk8w16g2XHBsPyRRWa5pBlrkE7TJebEP+YUmstEdBQXRR7BcadtehAIksv5l1Q==
+X-Received: by 2002:a05:620a:f0b:: with SMTP id v11mr1916659qkl.429.1634936168508;
+        Fri, 22 Oct 2021 13:56:08 -0700 (PDT)
+Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
+        by smtp.gmail.com with ESMTPSA id p9sm4576279qki.51.2021.10.22.13.56.08
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 22 Oct 2021 13:56:08 -0700 (PDT)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     steved@redhat.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v4 1/9] rpcsys: Add a rpcsys.py tool
+Date:   Fri, 22 Oct 2021 16:55:58 -0400
+Message-Id: <20211022205606.66392-2-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.33.1
+In-Reply-To: <20211022205606.66392-1-Anna.Schumaker@Netapp.com>
+References: <20211022205606.66392-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-References: <163492911924.1038219.13107463173777870713.stgit@warthog.procyon.org.uk>
- <CAHk-=wjmx7+PD0hzWj5Bg2b807xYD2KCZApTvFje=ufo+MxBMQ@mail.gmail.com>
- <1041557.1634931616@warthog.procyon.org.uk> <CAHk-=wg2LQtWC3e4Z4EGQzEmsLjmk6jm67Ga6UMLY1MH6iDcNQ@mail.gmail.com>
-In-Reply-To: <CAHk-=wg2LQtWC3e4Z4EGQzEmsLjmk6jm67Ga6UMLY1MH6iDcNQ@mail.gmail.com>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Fri, 22 Oct 2021 10:24:41 -1000
-X-Gmail-Original-Message-ID: <CAHk-=wi7K64wo4PtROxq_cLhfq-c-3aCbW5CjRfnKYA439YFUw@mail.gmail.com>
-Message-ID: <CAHk-=wi7K64wo4PtROxq_cLhfq-c-3aCbW5CjRfnKYA439YFUw@mail.gmail.com>
-Subject: Re: [PATCH v2 00/53] fscache: Rewrite index API and management system
-To:     David Howells <dhowells@redhat.com>
-Cc:     linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
-        Marc Dionne <marc.dionne@auristor.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        Dave Wysochanski <dwysocha@redhat.com>,
-        CIFS <linux-cifs@vger.kernel.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Steve French <sfrench@samba.org>,
-        Shyam Prasad N <nspmangalore@gmail.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        v9fs-developer@lists.sourceforge.net,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        Jeff Layton <jlayton@kernel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Omar Sandoval <osandov@osandov.com>,
-        ceph-devel@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Oct 22, 2021 at 9:58 AM Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> and if (c) is the thing that all the network filesystem people want,
-> then what the heck is the point in keeping dead code around? At that
-> point, all the rename crap is just extra work, extra noise, and only a
-> distraction. There's no upside that I can see.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Again, I'm not a fan of (c) as an option, but if done, then the
-simplest model would appear to be:
+This will be used to print and manipulate the sunrpc sysfs directory
+files. Running without arguments prints both usage information and the
+location of the sunrpc sysfs directory.
 
- - remove the old fscache code, obviously disabling the Kconfig for it
-for each filesystem, all in one fell swoop.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ .gitignore             |  2 ++
+ tools/rpcsys/rpcsys.py | 13 +++++++++++++
+ tools/rpcsys/sysfs.py  | 19 +++++++++++++++++++
+ 3 files changed, 34 insertions(+)
+ create mode 100755 tools/rpcsys/rpcsys.py
+ create mode 100644 tools/rpcsys/sysfs.py
 
- - add the new fscache code (possibly preferably in sane chunks that
-explains the parts).
+diff --git a/.gitignore b/.gitignore
+index c89d1cd2583d..a476bd20bc3b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -84,3 +84,5 @@ systemd/rpc-gssd.service
+ cscope.*
+ # generic editor backup et al
+ *~
++# python bytecode
++__pycache__
+diff --git a/tools/rpcsys/rpcsys.py b/tools/rpcsys/rpcsys.py
+new file mode 100755
+index 000000000000..8ff59ea9e81b
+--- /dev/null
++++ b/tools/rpcsys/rpcsys.py
+@@ -0,0 +1,13 @@
++#!/usr/bin/python
++import argparse
++import sysfs
++
++parser = argparse.ArgumentParser()
++
++def show_small_help(args):
++    parser.print_usage()
++    print("sunrpc dir:", sysfs.SUNRPC)
++parser.set_defaults(func=show_small_help)
++
++args = parser.parse_args()
++args.func(args)
+diff --git a/tools/rpcsys/sysfs.py b/tools/rpcsys/sysfs.py
+new file mode 100644
+index 000000000000..c9d477063585
+--- /dev/null
++++ b/tools/rpcsys/sysfs.py
+@@ -0,0 +1,19 @@
++import pathlib
++import re
++import sys
++
++MOUNT = None
++with open("/proc/mounts", 'r') as f:
++    for line in f:
++        if re.search("^sys ", line):
++            MOUNT = line.split()[1]
++            break
++
++if MOUNT == None:
++    print("ERROR: sysfs is not mounted")
++    sys.exit(1)
++
++SUNRPC = pathlib.Path(MOUNT) / "kernel" / "sunrpc"
++if not SUNRPC.is_dir():
++    print("ERROR: sysfs does not have sunrpc directory")
++    sys.exit(1)
+-- 
+2.33.1
 
- - then do a "convert to new world order and enable" commit
-individually for each filesystem
-
-but as mentioned, there's no sane way to bisect things, or have a sane
-development history in this kind of situation.
-
-                Linus
