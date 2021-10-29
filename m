@@ -2,114 +2,74 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64ABEC433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Oct 2021 19:17:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5AC7C433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Oct 2021 13:45:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 47A9760F58
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Oct 2021 19:17:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A86AF61165
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Oct 2021 13:45:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231169AbhJ1TUL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Oct 2021 15:20:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41668 "EHLO
+        id S229998AbhJ2NsE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Oct 2021 09:48:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35190 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231163AbhJ1TUL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2021 15:20:11 -0400
-Received: from mail-qk1-x72d.google.com (mail-qk1-x72d.google.com [IPv6:2607:f8b0:4864:20::72d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E0A67C061745
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2021 12:17:43 -0700 (PDT)
-Received: by mail-qk1-x72d.google.com with SMTP id bm16so6887148qkb.11
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2021 12:17:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=sender:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=bUMmBDuvazjnRFzGmhl9mar6u+kQn+MoU5reptHpBck=;
-        b=LfOcChOW4nIIXUWCNMvpWx4y7LQ7EJsLQTqZZh2nmZvsauFV4LJv9J0K+jfd6NzXnB
-         xygDRH2UxhTbhrmYrGqOI+DwtpwzafvznKyKuaoGryNa/5pIkg8EhG9ODEttjGU0TFq0
-         ILMenQVZWcEfmnz/bdpzeSSH7q18PGD9SLvHS2U1wmKTu8Ccu0VQj4+RfGyIutHpmjRC
-         uP3LWDrYRLv8naye+YbvTGhjtx8JiV+bvpi5Zb0YCx8zIaP2sce1014UsTbwbME/UyUo
-         tFnNZAxiJUqr8Ys+AbGVsikGKUkxJVxPpCgyAKP8Gsn+CLAJtoEJkDpM85PQz5nqrAIL
-         cEog==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :mime-version:content-transfer-encoding;
-        bh=bUMmBDuvazjnRFzGmhl9mar6u+kQn+MoU5reptHpBck=;
-        b=yZZWOvz/TO4Z5i1pD/H4vrK4xq6ZWgQL1pFwgT4AIYJ2necesBBYKVwQKs1IZQh8gS
-         wHEpC9nyaNjCbIB4fW8kBcDACBwm6rbqS5ofLIKQHWq3QIYCdDpA5Hz4ty060jhNQkHY
-         c+CE9QAyU0cvpLZD/r6xdGcQ6+yDBRgJoillOyDBDI9KN54XjTvrcczul7fb3g1Oixfv
-         bIf6XKsGBbha76hw0ouC9MBH9zglzjbR9GStPFCs2hD+7ac32+duMu5yS+fF4YtnpUyb
-         cnJpBsgd5V8wHUsRAGZXoiV8iMHzd3rfbg8aLPDQRp32NnEgoA5emb3/7dCZJPL2vTY6
-         2/dw==
-X-Gm-Message-State: AOAM532xwmw41wS84tRv6nbCrfJ6NLmbVKHFnFxuALgi2jhX3Se9rMlo
-        zjqpNL1qEg6vDxHYGINYMYzKs8lTOD8=
-X-Google-Smtp-Source: ABdhPJzy0hCH6ie6ZgmiRBYnCCmW7hQmZ1YXcrXuY5ozHrX5ygrqJTKVVXSt8LfbrSDrW3gq5odZNA==
-X-Received: by 2002:a05:620a:25c8:: with SMTP id y8mr5199276qko.42.1635448662946;
-        Thu, 28 Oct 2021 12:17:42 -0700 (PDT)
-Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id j20sm2691985qtj.72.2021.10.28.12.17.42
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 28 Oct 2021 12:17:42 -0700 (PDT)
-Sender: Anna Schumaker <schumakeranna@gmail.com>
-From:   schumaker.anna@gmail.com
-X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v2] SUNRPC: Check if the xprt is connected before handling sysfs reads
-Date:   Thu, 28 Oct 2021 15:17:41 -0400
-Message-Id: <20211028191741.167215-1-Anna.Schumaker@Netapp.com>
-X-Mailer: git-send-email 2.33.1
+        with ESMTP id S229692AbhJ2NsE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Oct 2021 09:48:04 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3301C061570
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Oct 2021 06:45:35 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 59EE76FFA; Fri, 29 Oct 2021 09:45:34 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 59EE76FFA
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1635515134;
+        bh=E7R3o4HyUtX07uiEQXgDnrNbkDv01+WYeuvwJS+b9Vo=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=rHXeh7wXUfQNOTwWV1Svodk+ZNvpABGS79XVX7ZGdcZBefpYpNKxQ3eW6GgEqA+M+
+         RIEx7OTTdLsaiC+g0uxPR864CWS31jnr21/186HmpFxkIV6u7vuWt0J6QPKX22LDqT
+         gW1eEP3ay4N1rjUP40A16o1/ttQNQiC7aSDse0EY=
+Date:   Fri, 29 Oct 2021 09:45:34 -0400
+To:     Steve Dickson <steved@redhat.com>
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/1] Enable inter server to server copies on a export
+Message-ID: <20211029134534.GA19967@fieldses.org>
+References: <20211028144851.644018-1-steved@redhat.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211028144851.644018-1-steved@redhat.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+On Thu, Oct 28, 2021 at 10:48:50AM -0400, Steve Dickson wrote:
+> This kernel patch and an upcoming nfs-utils patch
+> adds a new export option 's2sc' which will allow
+> inter server to server copies.
 
-xprts don't immediately reconnect when changing the "dstaddr" property,
-instead this gets handled the next time an operation uses the transport.
-This could lead to NULL pointer dereferences when trying to read sysfs
-files between the disconnect and reconnect operations. Fix this by
-returning an error if the xprt is not connected.
+They're already allowed by a module option.  Why is an export option
+better?  And why should it be set on the destination server and not the
+source server?
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
-v2: Call xprt_put() on the xprt before returning
----
- net/sunrpc/sysfs.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+Really, first I think we should try to identify what the problem is that
+we're trying to solve.
 
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 9a6f17e18f73..2766dd21935b 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -109,8 +109,10 @@ static ssize_t rpc_sysfs_xprt_srcaddr_show(struct kobject *kobj,
- 	struct sock_xprt *sock;
- 	ssize_t ret = -1;
- 
--	if (!xprt)
--		return 0;
-+	if (!xprt || !xprt_connected(xprt)) {
-+		xprt_put(xprt);
-+		return -ENOTCONN;
-+	}
- 
- 	sock = container_of(xprt, struct sock_xprt, xprt);
- 	if (kernel_getsockname(sock->sock, (struct sockaddr *)&saddr) < 0)
-@@ -129,8 +131,10 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
- 	struct rpc_xprt *xprt = rpc_sysfs_xprt_kobj_get_xprt(kobj);
- 	ssize_t ret;
- 
--	if (!xprt)
--		return 0;
-+	if (!xprt || !xprt_connected(xprt)) {
-+		xprt_put(xprt);
-+		return -ENOTCONN;
-+	}
- 
- 	ret = sprintf(buf, "last_used=%lu\ncur_cong=%lu\ncong_win=%lu\n"
- 		       "max_num_slots=%u\nmin_num_slots=%u\nnum_reqs=%u\n"
--- 
-2.33.1
+--b.
 
+> 
+> The option needs to be set on the destination server.
+> 
+> The idea behind the option is to allow admins the 
+> ability to control which export can do these 
+> types of copies.
+> 
+> Steve Dickson (1):
+>   nfsd4_copy: Adds the ability to do inter server to server on an export
+> 
+>  fs/nfsd/nfs4proc.c               | 3 ++-
+>  include/uapi/linux/nfsd/export.h | 1 +
+>  2 files changed, 3 insertions(+), 1 deletion(-)
+> 
+> -- 
+> 2.31.1
