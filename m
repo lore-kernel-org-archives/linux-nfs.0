@@ -2,53 +2,52 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00A4AC433F5
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Oct 2021 14:09:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 440BAC433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Oct 2021 14:10:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D6B2561184
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Oct 2021 14:09:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2A9A061184
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Oct 2021 14:10:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231495AbhJ2OMD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Oct 2021 10:12:03 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:34991 "EHLO
+        id S231624AbhJ2OMf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Oct 2021 10:12:35 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:38094 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231611AbhJ2OMB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Oct 2021 10:12:01 -0400
+        by vger.kernel.org with ESMTP id S231723AbhJ2OMc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Oct 2021 10:12:32 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1635516569;
+        s=mimecast20190719; t=1635516603;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=f9PB19TbkKpQKyZgp5SpdBLsq0ElQa5CcOVpktCgboQ=;
-        b=Ye95qqUlF3LHRTm8gO4SI7Ix1PruwWHmRiqVj5ohArMcvlloFkAQ9nxnOwqJdRjpsspJ43
-        LkOlnLzq+G3145aoOFmFaquzIngqf5rfW6PdD+xepE4PF3RWEUDcSPT+bK5qhyTzN7SghK
-        EM8UdzCWqsqBXqkbzI4ZFyAhTGl5iaI=
+        bh=ZqbU7538GbZ8WBnSLVfxKi0wPIaObo8znbOgyBrQ4Yw=;
+        b=SDE7XUfmXwsfJP5+Fdyqm1JDo8rTRsASUX4c0IxI6H6jZK/wk6dVdiCtriT0MLmd3uUYgK
+        OEk2f91lt2b4p8AG0zng1PPe+MAZpxkyrAHsRCEFlpSL3YUxpzvw7Epqgvp01o33rYtOdC
+        5/bTKRdch184SpM+yhyawKbHSJckc1c=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-29-lPM1U9X5N3OQl2I5ZcwMbg-1; Fri, 29 Oct 2021 10:09:25 -0400
-X-MC-Unique: lPM1U9X5N3OQl2I5ZcwMbg-1
+ us-mta-369-8UMQTdOHOsm7evF6C-An_w-1; Fri, 29 Oct 2021 10:09:58 -0400
+X-MC-Unique: 8UMQTdOHOsm7evF6C-An_w-1
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B3E6580668D;
-        Fri, 29 Oct 2021 14:09:23 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 81EFB1006AA5;
+        Fri, 29 Oct 2021 14:09:56 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.33.36.19])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 3A25660854;
-        Fri, 29 Oct 2021 14:09:20 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A422A60854;
+        Fri, 29 Oct 2021 14:09:53 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH v4 01/10] fscache: Generalise the ->begin_read_operation
- method
+Subject: [PATCH v4 03/10] cachefiles: Always indicate we should fill a
+ post-EOF page with zeros
 From:   David Howells <dhowells@redhat.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         Steve French <sfrench@samba.org>,
         Dominique Martinet <asmadeus@codewreck.org>
-Cc:     Dave Wysochanski <dwysocha@redhat.com>, dhowells@redhat.com,
-        Jeff Layton <jlayton@redhat.com>,
+Cc:     dhowells@redhat.com, Jeff Layton <jlayton@redhat.com>,
         Matthew Wilcox <willy@infradead.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Linus Torvalds <torvalds@linux-foundation.org>,
@@ -56,8 +55,8 @@ Cc:     Dave Wysochanski <dwysocha@redhat.com>, dhowells@redhat.com,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Fri, 29 Oct 2021 15:09:19 +0100
-Message-ID: <163551655939.1877519.5910362900676754518.stgit@warthog.procyon.org.uk>
+Date:   Fri, 29 Oct 2021 15:09:52 +0100
+Message-ID: <163551659286.1877519.2951437510049163050.stgit@warthog.procyon.org.uk>
 In-Reply-To: <163551653404.1877519.12363794970541005441.stgit@warthog.procyon.org.uk>
 References: <163551653404.1877519.12363794970541005441.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
@@ -69,340 +68,96 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Generalise the ->begin_read_operation() method in the fscache_cache_ops
-struct so that it's not read specific by:
+In cachefiles_prepare_read(), always indicate to the netfs lib that a page
+beyond the EOF should be filled with zeros, even if we don't have a cache
+file attached because it's still being created.
 
- (1) changing the name to ->begin_operation();
+This avoids confusion in netfs_rreq_prepare_read() where it sees source ==
+NETFS_DOWNLOAD_FROM_SERVER, where it consequently sees the read after the
+EOF getting reduced to 0 size and thus triggers the WARN_ON and marking the
+read invalid.
 
- (2) changing the netfs_read_request struct pointer parameter to be a
-     netfs_cache_resources struct pointer (it only accesses the cache
-     resources and an ID for debugging from the read request);
-
- (3) and by changing the fscache_retrieval pointer parameter to be a
-     fscache_operation pointer (it only access the operation base of the
-     retrieval).
-
-Also modify the cachefiles implementation so that it stores a pointer to
-the fscache_operation rather than fscache_retrieval in the cache resources.
-
-This makes it easier to share code with the write path in future.
+Also don't try to check for data if there's a flag set indicating we don't
+yet have anything stored in the cache.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-Tested-by: Dave Wysochanski <dwysocha@redhat.com>
-Link: https://lore.kernel.org/r/163162768886.438332.9851931782896704604.stgit@warthog.procyon.org.uk/ # rfc
-Link: https://lore.kernel.org/r/163189105559.2509237.10649193286647776741.stgit@warthog.procyon.org.uk/ # rfc v2
 ---
 
- fs/afs/file.c                 |    2 +-
- fs/cachefiles/interface.c     |    2 +-
- fs/cachefiles/internal.h      |    4 ++--
- fs/cachefiles/io.c            |   28 +++++++++++++---------------
- fs/ceph/cache.h               |    2 +-
- fs/fscache/io.c               |   35 +++++++++++++++++++++--------------
- include/linux/fscache-cache.h |    6 +++---
- include/linux/fscache.h       |   15 ++++++++-------
- 8 files changed, 50 insertions(+), 44 deletions(-)
+ fs/cachefiles/io.c |   29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
 
-diff --git a/fs/afs/file.c b/fs/afs/file.c
-index e6c447ae91f3..4d5b6bfcf815 100644
---- a/fs/afs/file.c
-+++ b/fs/afs/file.c
-@@ -351,7 +351,7 @@ static int afs_begin_cache_operation(struct netfs_read_request *rreq)
- {
- 	struct afs_vnode *vnode = AFS_FS_I(rreq->inode);
- 
--	return fscache_begin_read_operation(rreq, afs_vnode_cache(vnode));
-+	return fscache_begin_read_operation(&rreq->cache_resources, afs_vnode_cache(vnode));
- }
- 
- static int afs_check_write_begin(struct file *file, loff_t pos, unsigned len,
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index da28ac1fa225..8a7755b86c59 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -568,5 +568,5 @@ const struct fscache_cache_ops cachefiles_cache_ops = {
- 	.uncache_page		= cachefiles_uncache_page,
- 	.dissociate_pages	= cachefiles_dissociate_pages,
- 	.check_consistency	= cachefiles_check_consistency,
--	.begin_read_operation	= cachefiles_begin_read_operation,
-+	.begin_operation	= cachefiles_begin_operation,
- };
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 0a511c36dab8..994f90ff12ac 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -198,8 +198,8 @@ extern void cachefiles_uncache_page(struct fscache_object *, struct page *);
- /*
-  * rdwr2.c
-  */
--extern int cachefiles_begin_read_operation(struct netfs_read_request *,
--					   struct fscache_retrieval *);
-+extern int cachefiles_begin_operation(struct netfs_cache_resources *,
-+				      struct fscache_operation *);
- 
- /*
-  * security.c
 diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
-index fac2e8e7b533..08b3183e0dce 100644
+index 08b3183e0dce..dbc1c4421116 100644
 --- a/fs/cachefiles/io.c
 +++ b/fs/cachefiles/io.c
-@@ -268,7 +268,7 @@ static int cachefiles_write(struct netfs_cache_resources *cres,
- static enum netfs_read_source cachefiles_prepare_read(struct netfs_read_subrequest *subreq,
- 						      loff_t i_size)
- {
--	struct fscache_retrieval *op = subreq->rreq->cache_resources.cache_priv;
-+	struct fscache_operation *op = subreq->rreq->cache_resources.cache_priv;
- 	struct cachefiles_object *object;
+@@ -273,6 +273,7 @@ static enum netfs_read_source cachefiles_prepare_read(struct netfs_read_subreque
  	struct cachefiles_cache *cache;
  	const struct cred *saved_cred;
-@@ -277,8 +277,7 @@ static enum netfs_read_source cachefiles_prepare_read(struct netfs_read_subreque
+ 	struct file *file = subreq->rreq->cache_resources.cache_priv2;
++	enum netfs_read_source ret = NETFS_DOWNLOAD_FROM_SERVER;
+ 	loff_t off, to;
  
  	_enter("%zx @%llx/%llx", subreq->len, subreq->start, i_size);
- 
--	object = container_of(op->op.object,
--			      struct cachefiles_object, fscache);
-+	object = container_of(op->object, struct cachefiles_object, fscache);
+@@ -281,19 +282,24 @@ static enum netfs_read_source cachefiles_prepare_read(struct netfs_read_subreque
  	cache = container_of(object->fscache.cache,
  			     struct cachefiles_cache, cache);
  
-@@ -351,7 +350,7 @@ static int cachefiles_prepare_write(struct netfs_cache_resources *cres,
-  */
- static void cachefiles_end_operation(struct netfs_cache_resources *cres)
- {
--	struct fscache_retrieval *op = cres->cache_priv;
-+	struct fscache_operation *op = cres->cache_priv;
- 	struct file *file = cres->cache_priv2;
+-	if (!file)
+-		goto cache_fail_nosec;
++	cachefiles_begin_secure(cache, &saved_cred);
  
- 	_enter("");
-@@ -359,8 +358,8 @@ static void cachefiles_end_operation(struct netfs_cache_resources *cres)
- 	if (file)
- 		fput(file);
- 	if (op) {
--		fscache_op_complete(&op->op, false);
--		fscache_put_retrieval(op);
-+		fscache_op_complete(op, false);
-+		fscache_put_operation(op);
+-	if (subreq->start >= i_size)
+-		return NETFS_FILL_WITH_ZEROES;
++	if (subreq->start >= i_size) {
++		ret = NETFS_FILL_WITH_ZEROES;
++		goto out;
++	}
+ 
+-	cachefiles_begin_secure(cache, &saved_cred);
++	if (!file)
++		goto out;
++
++	if (test_bit(FSCACHE_COOKIE_NO_DATA_YET, &object->fscache.cookie->flags))
++		goto download_and_store;
+ 
+ 	off = vfs_llseek(file, subreq->start, SEEK_DATA);
+ 	if (off < 0 && off >= (loff_t)-MAX_ERRNO) {
+ 		if (off == (loff_t)-ENXIO)
+ 			goto download_and_store;
+-		goto cache_fail;
++		goto out;
  	}
  
- 	_leave("");
-@@ -377,8 +376,8 @@ static const struct netfs_cache_ops cachefiles_netfs_cache_ops = {
- /*
-  * Open the cache file when beginning a cache operation.
-  */
--int cachefiles_begin_read_operation(struct netfs_read_request *rreq,
--				    struct fscache_retrieval *op)
-+int cachefiles_begin_operation(struct netfs_cache_resources *cres,
-+			       struct fscache_operation *op)
- {
- 	struct cachefiles_object *object;
- 	struct cachefiles_cache *cache;
-@@ -387,8 +386,7 @@ int cachefiles_begin_read_operation(struct netfs_read_request *rreq,
+ 	if (off >= subreq->start + subreq->len)
+@@ -307,7 +313,7 @@ static enum netfs_read_source cachefiles_prepare_read(struct netfs_read_subreque
  
- 	_enter("");
+ 	to = vfs_llseek(file, subreq->start, SEEK_HOLE);
+ 	if (to < 0 && to >= (loff_t)-MAX_ERRNO)
+-		goto cache_fail;
++		goto out;
  
--	object = container_of(op->op.object,
--			      struct cachefiles_object, fscache);
-+	object = container_of(op->object, struct cachefiles_object, fscache);
- 	cache = container_of(object->fscache.cache,
- 			     struct cachefiles_cache, cache);
- 
-@@ -406,11 +404,11 @@ int cachefiles_begin_read_operation(struct netfs_read_request *rreq,
- 		goto error_file;
+ 	if (to < subreq->start + subreq->len) {
+ 		if (subreq->start + subreq->len >= i_size)
+@@ -317,16 +323,15 @@ static enum netfs_read_source cachefiles_prepare_read(struct netfs_read_subreque
+ 		subreq->len = to - subreq->start;
  	}
  
--	fscache_get_retrieval(op);
--	rreq->cache_resources.cache_priv = op;
--	rreq->cache_resources.cache_priv2 = file;
--	rreq->cache_resources.ops = &cachefiles_netfs_cache_ops;
--	rreq->cache_resources.debug_id = object->fscache.debug_id;
-+	atomic_inc(&op->usage);
-+	cres->cache_priv = op;
-+	cres->cache_priv2 = file;
-+	cres->ops = &cachefiles_netfs_cache_ops;
-+	cres->debug_id = object->fscache.debug_id;
- 	_leave("");
- 	return 0;
+-	cachefiles_end_secure(cache, saved_cred);
+-	return NETFS_READ_FROM_CACHE;
++	ret = NETFS_READ_FROM_CACHE;
++	goto out;
  
-diff --git a/fs/ceph/cache.h b/fs/ceph/cache.h
-index 058ea2a04376..b94d3f38fb25 100644
---- a/fs/ceph/cache.h
-+++ b/fs/ceph/cache.h
-@@ -54,7 +54,7 @@ static inline int ceph_begin_cache_operation(struct netfs_read_request *rreq)
- {
- 	struct fscache_cookie *cookie = ceph_fscache_cookie(ceph_inode(rreq->inode));
- 
--	return fscache_begin_read_operation(rreq, cookie);
-+	return fscache_begin_read_operation(&rreq->cache_resources, cookie);
+ download_and_store:
+ 	if (cachefiles_has_space(cache, 0, (subreq->len + PAGE_SIZE - 1) / PAGE_SIZE) == 0)
+ 		__set_bit(NETFS_SREQ_WRITE_TO_CACHE, &subreq->flags);
+-cache_fail:
++out:
+ 	cachefiles_end_secure(cache, saved_cred);
+-cache_fail_nosec:
+-	return NETFS_DOWNLOAD_FROM_SERVER;
++	return ret;
  }
- #else
- 
-diff --git a/fs/fscache/io.c b/fs/fscache/io.c
-index 8ecc1141802f..3745a0631618 100644
---- a/fs/fscache/io.c
-+++ b/fs/fscache/io.c
-@@ -14,7 +14,7 @@
- #include "internal.h"
  
  /*
-- * Start a cache read operation.
-+ * Start a cache operation.
-  * - we return:
-  *   -ENOMEM	- out of memory, some pages may be being read
-  *   -ERESTARTSYS - interrupted, some pages may be being read
-@@ -24,15 +24,16 @@
-  *                the pages
-  *   0		- dispatched a read on all pages
-  */
--int __fscache_begin_read_operation(struct netfs_read_request *rreq,
--				   struct fscache_cookie *cookie)
-+int __fscache_begin_operation(struct netfs_cache_resources *cres,
-+			      struct fscache_cookie *cookie,
-+			      bool for_write)
- {
--	struct fscache_retrieval *op;
-+	struct fscache_operation *op;
- 	struct fscache_object *object;
- 	bool wake_cookie = false;
- 	int ret;
- 
--	_enter("rr=%08x", rreq->debug_id);
-+	_enter("c=%08x", cres->debug_id);
- 
- 	fscache_stat(&fscache_n_retrievals);
- 
-@@ -49,10 +50,16 @@ int __fscache_begin_read_operation(struct netfs_read_request *rreq,
- 	if (fscache_wait_for_deferred_lookup(cookie) < 0)
- 		return -ERESTARTSYS;
- 
--	op = fscache_alloc_retrieval(cookie, NULL, NULL, NULL);
-+	op = kzalloc(sizeof(*op), GFP_KERNEL);
- 	if (!op)
- 		return -ENOMEM;
--	trace_fscache_page_op(cookie, NULL, &op->op, fscache_page_op_retr_multi);
-+
-+	fscache_operation_init(cookie, op, NULL, NULL, NULL);
-+	op->flags = FSCACHE_OP_MYTHREAD |
-+		(1UL << FSCACHE_OP_WAITING) |
-+		(1UL << FSCACHE_OP_UNUSE_COOKIE);
-+
-+	trace_fscache_page_op(cookie, NULL, op, fscache_page_op_retr_multi);
- 
- 	spin_lock(&cookie->lock);
- 
-@@ -64,9 +71,9 @@ int __fscache_begin_read_operation(struct netfs_read_request *rreq,
- 
- 	__fscache_use_cookie(cookie);
- 	atomic_inc(&object->n_reads);
--	__set_bit(FSCACHE_OP_DEC_READ_CNT, &op->op.flags);
-+	__set_bit(FSCACHE_OP_DEC_READ_CNT, &op->flags);
- 
--	if (fscache_submit_op(object, &op->op) < 0)
-+	if (fscache_submit_op(object, op) < 0)
- 		goto nobufs_unlock_dec;
- 	spin_unlock(&cookie->lock);
- 
-@@ -75,14 +82,14 @@ int __fscache_begin_read_operation(struct netfs_read_request *rreq,
- 	/* we wait for the operation to become active, and then process it
- 	 * *here*, in this thread, and not in the thread pool */
- 	ret = fscache_wait_for_operation_activation(
--		object, &op->op,
-+		object, op,
- 		__fscache_stat(&fscache_n_retrieval_op_waits),
- 		__fscache_stat(&fscache_n_retrievals_object_dead));
- 	if (ret < 0)
- 		goto error;
- 
- 	/* ask the cache to honour the operation */
--	ret = object->cache->ops->begin_read_operation(rreq, op);
-+	ret = object->cache->ops->begin_operation(cres, op);
- 
- error:
- 	if (ret == -ENOMEM)
-@@ -96,7 +103,7 @@ int __fscache_begin_read_operation(struct netfs_read_request *rreq,
- 	else
- 		fscache_stat(&fscache_n_retrievals_ok);
- 
--	fscache_put_retrieval(op);
-+	fscache_put_operation(op);
- 	_leave(" = %d", ret);
- 	return ret;
- 
-@@ -105,7 +112,7 @@ int __fscache_begin_read_operation(struct netfs_read_request *rreq,
- 	wake_cookie = __fscache_unuse_cookie(cookie);
- nobufs_unlock:
- 	spin_unlock(&cookie->lock);
--	fscache_put_retrieval(op);
-+	fscache_put_operation(op);
- 	if (wake_cookie)
- 		__fscache_wake_unused_cookie(cookie);
- nobufs:
-@@ -113,4 +120,4 @@ int __fscache_begin_read_operation(struct netfs_read_request *rreq,
- 	_leave(" = -ENOBUFS");
- 	return -ENOBUFS;
- }
--EXPORT_SYMBOL(__fscache_begin_read_operation);
-+EXPORT_SYMBOL(__fscache_begin_operation);
-diff --git a/include/linux/fscache-cache.h b/include/linux/fscache-cache.h
-index 8d39491c5f9f..efa9b6f9fab1 100644
---- a/include/linux/fscache-cache.h
-+++ b/include/linux/fscache-cache.h
-@@ -304,9 +304,9 @@ struct fscache_cache_ops {
- 	/* dissociate a cache from all the pages it was backing */
- 	void (*dissociate_pages)(struct fscache_cache *cache);
- 
--	/* Begin a read operation for the netfs lib */
--	int (*begin_read_operation)(struct netfs_read_request *rreq,
--				    struct fscache_retrieval *op);
-+	/* Begin an operation for the netfs lib */
-+	int (*begin_operation)(struct netfs_cache_resources *cres,
-+			       struct fscache_operation *op);
- };
- 
- extern struct fscache_cookie fscache_fsdef_index;
-diff --git a/include/linux/fscache.h b/include/linux/fscache.h
-index a4dab5998613..32f65c16328a 100644
---- a/include/linux/fscache.h
-+++ b/include/linux/fscache.h
-@@ -196,7 +196,8 @@ extern void __fscache_invalidate(struct fscache_cookie *);
- extern void __fscache_wait_on_invalidate(struct fscache_cookie *);
- 
- #ifdef FSCACHE_USE_NEW_IO_API
--extern int __fscache_begin_read_operation(struct netfs_read_request *, struct fscache_cookie *);
-+extern int __fscache_begin_operation(struct netfs_cache_resources *, struct fscache_cookie *,
-+				     bool);
- #else
- extern int __fscache_read_or_alloc_page(struct fscache_cookie *,
- 					struct page *,
-@@ -511,12 +512,12 @@ int fscache_reserve_space(struct fscache_cookie *cookie, loff_t size)
- 
- /**
-  * fscache_begin_read_operation - Begin a read operation for the netfs lib
-- * @rreq: The read request being undertaken
-+ * @cres: The cache resources for the read being performed
-  * @cookie: The cookie representing the cache object
-  *
-- * Begin a read operation on behalf of the netfs helper library.  @rreq
-- * indicates the read request to which the operation state should be attached;
-- * @cookie indicates the cache object that will be accessed.
-+ * Begin a read operation on behalf of the netfs helper library.  @cres
-+ * indicates the cache resources to which the operation state should be
-+ * attached; @cookie indicates the cache object that will be accessed.
-  *
-  * This is intended to be called from the ->begin_cache_operation() netfs lib
-  * operation as implemented by the network filesystem.
-@@ -527,11 +528,11 @@ int fscache_reserve_space(struct fscache_cookie *cookie, loff_t size)
-  * * Other error code from the cache, such as -ENOMEM.
-  */
- static inline
--int fscache_begin_read_operation(struct netfs_read_request *rreq,
-+int fscache_begin_read_operation(struct netfs_cache_resources *cres,
- 				 struct fscache_cookie *cookie)
- {
- 	if (fscache_cookie_valid(cookie) && fscache_cookie_enabled(cookie))
--		return __fscache_begin_read_operation(rreq, cookie);
-+		return __fscache_begin_operation(cres, cookie, false);
- 	return -ENOBUFS;
- }
- 
 
 
