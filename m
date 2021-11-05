@@ -2,93 +2,108 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D22AC433F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Nov 2021 21:59:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75EDEC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Nov 2021 15:57:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 455786124A
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Nov 2021 21:59:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4ED0F60720
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Nov 2021 15:57:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231928AbhKDWBl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 Nov 2021 18:01:41 -0400
-Received: from mail.kernel.org ([198.145.29.99]:39996 "EHLO mail.kernel.org"
+        id S232758AbhKEP7z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 5 Nov 2021 11:59:55 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46002 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231643AbhKDWBl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Nov 2021 18:01:41 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id A885361244;
-        Thu,  4 Nov 2021 21:59:02 +0000 (UTC)
+        id S232537AbhKEP7y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Nov 2021 11:59:54 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 6B82E60230;
+        Fri,  5 Nov 2021 15:57:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1636063142;
-        bh=Pd/1bFjP2FDx/XaL++gU3HIItLHVOI/Pj5Sji1vON/c=;
+        s=k20201202; t=1636127834;
+        bh=kWFhx70/FEe4Ay6ZeSIn3AZkUcCPD27adLUs5+hkz1E=;
         h=From:To:Cc:Subject:Date:From;
-        b=pALSZ8+t/4YP+NTu0KGutFQYZuTAmUgYYcofpKbYRnRbUqB48HWApRp6oLVpiUuML
-         +3KivH/hSvs3Jgx0WysERlxO8ZRvplSiVUC2eEFE5L3v9iaR1VJThoXZbOWP17o8FV
-         ADY53eC2KNSt1iWEKxslXIaBnW0NPACFlFbJwg+ZZo30Wc3wME+/K3d04AvITCOq+o
-         sDU0F6aAb19a9v4fsaBGc4HfEtDPxLDABZXxTSi7w9+0RoCGte9yuh8uhYe+vTREVh
-         VhVR3MsghSHKBUV2Dp3vkxFQhd76QQJafs52oYLgM89g509fEKq0b6kcPsASUI9HI4
-         r/owj8F3Uwj2w==
-From:   trondmy@kernel.org
-To:     rtm@csail.mit.edu
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4: Ensure decode_compound_hdr() sanity checks the tag
-Date:   Thu,  4 Nov 2021 17:52:55 -0400
-Message-Id: <20211104215256.408315-1-trondmy@kernel.org>
-X-Mailer: git-send-email 2.33.1
+        b=nNeZINJWupDgDvSJvzsreSJXv4KlFuqj6JfQxD98b5jFQZ3WUDpBqYWIiDv/VVmYU
+         OdW/GBhgvg89JDoNiTzmA+s1MpbGqJEWSLQAd31R7BXExp7TZZr6gDbRUx1YVybk/A
+         g3RnphxF8zWNexZKDZeQDflJWFdhCWk+mPShBa7HJCOmxtklpI4P5Q8yqUkr5fJSWA
+         5sSZFT39D3YJD1tetpV5q/AWsPCzckMUx5nXGCcXFQ0yiaHyq/rGXaJ6Gw0R78VTnX
+         7Js2ACYIamH7qQkspZGu1W+ZAPX7divU+Ph7YC8Lg3lioCP2AHIv2IiwvINYrioPCW
+         WASlBTkSk6lTQ==
+From:   Nathan Chancellor <nathan@kernel.org>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     Nick Desaulniers <ndesaulniers@google.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        llvm@lists.linux.dev, Nathan Chancellor <nathan@kernel.org>
+Subject: [PATCH] NFS: Avoid using error uninitialized in nfs_lookup()
+Date:   Fri,  5 Nov 2021 08:57:04 -0700
+Message-Id: <20211105155704.3293957-1-nathan@kernel.org>
+X-Mailer: git-send-email 2.34.0.rc0
 MIME-Version: 1.0
+X-Patchwork-Bot: notify
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+Clang warns:
 
-The server is supposed to return the same tag that the client sends in
-the outgoing RPC call, but we should still sanity check the length just
-in case.
+fs/nfs/dir.c:1772:6: error: variable 'error' is used uninitialized whenever 'if' condition is true [-Werror,-Wsometimes-uninitialized]
+        if (fhandle == NULL || fattr == NULL)
+            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fs/nfs/dir.c:1801:44: note: uninitialized use occurs here
+        trace_nfs_lookup_exit(dir, dentry, flags, error);
+                                                  ^~~~~
+fs/nfs/dir.c:1772:2: note: remove the 'if' if its condition is always false
+        if (fhandle == NULL || fattr == NULL)
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fs/nfs/dir.c:1772:6: error: variable 'error' is used uninitialized whenever '||' condition is true [-Werror,-Wsometimes-uninitialized]
+        if (fhandle == NULL || fattr == NULL)
+            ^~~~~~~~~~~~~~~
+fs/nfs/dir.c:1801:44: note: uninitialized use occurs here
+        trace_nfs_lookup_exit(dir, dentry, flags, error);
+                                                  ^~~~~
+fs/nfs/dir.c:1772:6: note: remove the '||' if its condition is always false
+        if (fhandle == NULL || fattr == NULL)
+            ^~~~~~~~~~~~~~~~~~
+fs/nfs/dir.c:1754:11: note: initialize the variable 'error' to silence this warning
+        int error;
+                 ^
+                  = 0
+2 errors generated.
 
-Reported-by: <rtm@csail.mit.edu>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Add a label to skip the call to trace_nfs_lookup_exit() when the call to
+nfs_alloc_fhandle() or nfs_alloc_fattr_with_label() fails because
+trace_nfs_lookup_enter() has not been called at that point so tracing
+the exit does not make sense.
+
+Fixes: 8d3df1d0387e ("NFS: Remove the label from the nfs4_lookup_res struct")
+Link: https://github.com/ClangBuiltLinux/linux/issues/1498
+Signed-off-by: Nathan Chancellor <nathan@kernel.org>
 ---
- fs/nfs/nfs4xdr.c | 23 +++++++++++++----------
- 1 file changed, 13 insertions(+), 10 deletions(-)
+ fs/nfs/dir.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 1e3b1db7afa9..fa01edf19015 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3168,20 +3168,23 @@ static int decode_opaque_inline(struct xdr_stream *xdr, unsigned int *len, char
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 8de99f426183..1c978a7cf730 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1770,7 +1770,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	fhandle = nfs_alloc_fhandle();
+ 	fattr = nfs_alloc_fattr_with_label(NFS_SERVER(dir));
+ 	if (fhandle == NULL || fattr == NULL)
+-		goto out;
++		goto out_no_trace;
  
- static int decode_compound_hdr(struct xdr_stream *xdr, struct compound_hdr *hdr)
- {
--	__be32 *p;
-+	ssize_t ret;
-+	void *ptr;
-+	u32 tmp;
- 
--	p = xdr_inline_decode(xdr, 8);
--	if (unlikely(!p))
-+	if (xdr_stream_decode_u32(xdr, &tmp) < 0)
- 		return -EIO;
--	hdr->status = be32_to_cpup(p++);
--	hdr->taglen = be32_to_cpup(p);
-+	hdr->status = tmp;
- 
--	p = xdr_inline_decode(xdr, hdr->taglen + 4);
--	if (unlikely(!p))
-+	ret = xdr_stream_decode_opaque_inline(xdr, &ptr, NFS4_OPAQUE_LIMIT);
-+	if (ret < 0)
-+		return -EIO;
-+	hdr->taglen = ret;
-+	hdr->tag = ptr;
-+
-+	if (xdr_stream_decode_u32(xdr, &tmp) < 0)
- 		return -EIO;
--	hdr->tag = (char *)p;
--	p += XDR_QUADLEN(hdr->taglen);
--	hdr->nops = be32_to_cpup(p);
-+	hdr->nops = tmp;
- 	if (unlikely(hdr->nops < 1))
- 		return nfs4_stat_to_errno(hdr->status);
- 	return 0;
+ 	dir_verifier = nfs_save_change_attribute(dir);
+ 	trace_nfs_lookup_enter(dir, dentry, flags);
+@@ -1799,6 +1799,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	nfs_set_verifier(dentry, dir_verifier);
+ out:
+ 	trace_nfs_lookup_exit(dir, dentry, flags, error);
++out_no_trace:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
+ 	return res;
+
+base-commit: cb66e0e973daa668dadd43441f877377a1b7b1ff
 -- 
-2.33.1
+2.34.0.rc0
 
