@@ -2,191 +2,108 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A1FF2C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Nov 2021 18:16:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E011BC433F5
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Nov 2021 17:21:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 865A761359
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Nov 2021 18:16:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C61E460C4B
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Nov 2021 17:21:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235148AbhKHSSs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 8 Nov 2021 13:18:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36558 "EHLO
+        id S238356AbhKIRX7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 9 Nov 2021 12:23:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40044 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235105AbhKHSSq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Nov 2021 13:18:46 -0500
-Received: from mail-yb1-xb35.google.com (mail-yb1-xb35.google.com [IPv6:2607:f8b0:4864:20::b35])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 402B3C061570
-        for <linux-nfs@vger.kernel.org>; Mon,  8 Nov 2021 10:16:02 -0800 (PST)
-Received: by mail-yb1-xb35.google.com with SMTP id u60so30123763ybi.9
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Nov 2021 10:16:02 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=jm5Izkg1G50wA3pmIoYSPtUuKzKz9NiOffhCARbvsfs=;
-        b=fCWa+cYcM1jSKKho8UyUYo8JPJDn9CbgfmJxgXRDbB777CJ84i1D7a8PYf6dwLPbaa
-         sV9eO6daiGqminuwPdPkrRgEmT4qQtb/yaJEX2ddXKj3G1800ePp2IdgL4865ani3+KI
-         YJfHCHsqzLNDc64LxHzizPJoKl9yYmN8cZZeEC40RW7UHezGPqcQ10OXHkTVbKugfs2L
-         iHCpQ6Try+YwldxVvEUiC8I/A8GQNMCNPevG3ymfUv5SmF18sxlq8vuRnnkvkoiyncCM
-         Gds2yLhes8W+kz31ZdAkW41eSnaVXXiCThTlmhKY+K/mPMjKMzJaEWirpW1TEvQG8qPL
-         SQgg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=jm5Izkg1G50wA3pmIoYSPtUuKzKz9NiOffhCARbvsfs=;
-        b=IEMcX1wWFz3U0ravCc0F3NI8mUAxgiPiTdut8JSa5I8VmUGryNdrqtG+n0c60x88z3
-         IbLnGKHI98Aqp3eJde6+C28CDklUnn6hsvbLW47nxvgk1OSD+ZHuiuGrJYIGYMtjB81g
-         S72cjhFP/FHCtQbAjdgorfMPqlVTwxoo0Cku+hllGkVYHLEPhhHrR5dMGaZQYOE/2J/g
-         xEEv950iEWUCm2p/9KFeXl9ATkg7F/33HLdIPIL1GYGZeAcSx7TtJEUAhIQj3NRtqIQA
-         YdDt9FVq3Z5GrxO5Ej1b5dbwZ1h2LXQsnOmO1kldMCfkiNhrAalUAdIkUvVxzXqMjZwl
-         PWBQ==
-X-Gm-Message-State: AOAM531flQ98vBmMPxhXRqu/4kiX2ryjNCVQIzWWgp1Dh+n7R0uUVI7e
-        0/sL9UmmUlqlXN1eny2g1HeFPHv/3zd/SEzbjnM=
-X-Google-Smtp-Source: ABdhPJzG4iHaQr9h3j3Wa4SHAwhsWcBuoZscvCFRSHl01rOgRhFi1J6n4ofa9gSpnP9axNixRt5jCg+OMN9YR/r3UCs=
-X-Received: by 2002:a25:183:: with SMTP id 125mr1289601ybb.143.1636395361379;
- Mon, 08 Nov 2021 10:16:01 -0800 (PST)
+        with ESMTP id S237296AbhKIRX7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Nov 2021 12:23:59 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 26124C061764;
+        Tue,  9 Nov 2021 09:21:13 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 974F7A80; Tue,  9 Nov 2021 12:21:11 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 974F7A80
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1636478471;
+        bh=7Yfhs6mgnlAbRfDJtqysXWuoXj0URoLB6EAUKOJhcUo=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=F/j1fnRLd7T2nDlO4VRk53OAJPUuArhmrTcTA33IWgZrQ2Zu4ojzg9ng6mgl8O44i
+         buWApg3fqk90hJemS9xChQ62jrufahKwuwiy+BQ7bjQFYMWG2TOvfT558Uvjc9IAmd
+         f/YrFzNAhUTOqxATZRYin11SScH2fAr+fCdV5pN0=
+Date:   Tue, 9 Nov 2021 12:21:11 -0500
+From:   "bfields@fieldses.org" <bfields@fieldses.org>
+To:     "wanghai (M)" <wanghai38@huawei.com>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        "neilb@suse.com" <neilb@suse.com>,
+        "jakub.kicinski@netronome.com" <jakub.kicinski@netronome.com>,
+        "willy@infradead.org" <willy@infradead.org>,
+        "tyhicks@canonical.com" <tyhicks@canonical.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "nicolas.dichtel@6wind.com" <nicolas.dichtel@6wind.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "edumazet@google.com" <edumazet@google.com>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "ast@kernel.org" <ast@kernel.org>,
+        "christian.brauner@ubuntu.com" <christian.brauner@ubuntu.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "tom@talpey.com" <tom@talpey.com>,
+        "kuba@kernel.org" <kuba@kernel.org>,
+        "cong.wang@bytedance.com" <cong.wang@bytedance.com>,
+        "dsahern@gmail.com" <dsahern@gmail.com>,
+        "timo@rothenpieler.org" <timo@rothenpieler.org>,
+        "jiang.wang@bytedance.com" <jiang.wang@bytedance.com>,
+        "kuniyu@amazon.co.jp" <kuniyu@amazon.co.jp>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "Rao.Shoaib@oracle.com" <Rao.Shoaib@oracle.com>,
+        "wenbin.zeng@gmail.com" <wenbin.zeng@gmail.com>,
+        "kolga@netapp.com" <kolga@netapp.com>
+Subject: Re: [PATCH net 2/2] auth_gss: Fix deadlock that blocks
+ rpcsec_gss_exit_net when use-gss-proxy==1
+Message-ID: <20211109172111.GA5227@fieldses.org>
+References: <a845b544c6592e58feeaff3be9271a717f53b383.camel@hammerspace.com>
+ <20210928134952.GA25415@fieldses.org>
+ <77051a059fa19a7ae2390fbda7f8ab6f09514dfc.camel@hammerspace.com>
+ <20210928141718.GC25415@fieldses.org>
+ <cc92411f242290b85aa232e7220027b875942f30.camel@hammerspace.com>
+ <20210928145747.GD25415@fieldses.org>
+ <8b0e774bdb534c69b0612103acbe61c628fde9b1.camel@hammerspace.com>
+ <20210928154300.GE25415@fieldses.org>
+ <20210929211211.GC20707@fieldses.org>
+ <ba12c503-401d-9b22-be83-7645c619d9d1@huawei.com>
 MIME-Version: 1.0
-References: <20211028183519.160772-1-Anna.Schumaker@Netapp.com>
- <20211028183519.160772-10-Anna.Schumaker@Netapp.com> <f9e404ec-4e7f-3673-73a5-0df1bd8cf52d@redhat.com>
- <c753a360-2ad1-0dc9-074a-a6a3460386dc@redhat.com>
-In-Reply-To: <c753a360-2ad1-0dc9-074a-a6a3460386dc@redhat.com>
-From:   Anna Schumaker <schumaker.anna@gmail.com>
-Date:   Mon, 8 Nov 2021 13:15:45 -0500
-Message-ID: <CAFX2Jfmt4xdcFki3svrFwUy5tgfnu8Y+ESofQv2h87GdTJ0X2g@mail.gmail.com>
-Subject: Re: [PATCH v5 9/9] rpcctl: Add installation to the Makefile
-To:     Steve Dickson <steved@redhat.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <ba12c503-401d-9b22-be83-7645c619d9d1@huawei.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Nov 8, 2021 at 12:19 PM Steve Dickson <steved@redhat.com> wrote:
->
->
->
-> On 11/8/21 12:15, Steve Dickson wrote:
-> > Hello,
-> >
-> > On 10/28/21 14:35, schumaker.anna@gmail.com wrote:
-> >> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+On Thu, Sep 30, 2021 at 09:56:03AM +0800, wanghai (M) wrote:
+> 
+> 在 2021/9/30 5:12, bfields@fieldses.org 写道:
+> >On Tue, Sep 28, 2021 at 11:43:00AM -0400, bfields@fieldses.org wrote:
+> >>On Tue, Sep 28, 2021 at 03:36:58PM +0000, Trond Myklebust wrote:
+> >>>What is the use case here? Starting the gssd daemon or knfsd in
+> >>>separate chrooted environments? We already know that they have to be
+> >>>started in the same net namespace, which pretty much ensures it has to
+> >>>be the same container.
+> >>Somehow I forgot that knfsd startup is happening in some real process's
+> >>context too (not just a kthread).
 > >>
-> >> And create a shell script that launches the python program from the
-> >> $(libdir)
-> >>
-> >> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> >> ---
-> >>   configure.ac             |  1 +
-> >>   tools/Makefile.am        |  2 +-
-> >>   tools/rpcctl/Makefile.am | 20 ++++++++++++++++++++
-> >>   tools/rpcctl/rpcctl      |  5 +++++
-> >>   4 files changed, 27 insertions(+), 1 deletion(-)
-> >>   create mode 100644 tools/rpcctl/Makefile.am
-> >>   create mode 100644 tools/rpcctl/rpcctl
-> >>
-> >> diff --git a/configure.ac b/configure.ac
-> >> index 93626d62be40..dcd3be0c8a8b 100644
-> >> --- a/configure.ac
-> >> +++ b/configure.ac
-> >> @@ -737,6 +737,7 @@ AC_CONFIG_FILES([
-> >>       tools/rpcgen/Makefile
-> >>       tools/mountstats/Makefile
-> >>       tools/nfs-iostat/Makefile
-> >> +    tools/rpcctl/Makefile
-> >>       tools/nfsdclnts/Makefile
-> >>       tools/nfsconf/Makefile
-> >>       tools/nfsdclddb/Makefile
-> >> diff --git a/tools/Makefile.am b/tools/Makefile.am
-> >> index 9b4b0803db39..c3feabbec681 100644
-> >> --- a/tools/Makefile.am
-> >> +++ b/tools/Makefile.am
-> >> @@ -12,6 +12,6 @@ if CONFIG_NFSDCLD
-> >>   OPTDIRS += nfsdclddb
-> >>   endif
-> >> -SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat nfsdclnts
-> >> $(OPTDIRS)
-> >> +SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat rpcctl
-> >> nfsdclnts $(OPTDIRS)
-> >>   MAINTAINERCLEANFILES = Makefile.in
-> >> diff --git a/tools/rpcctl/Makefile.am b/tools/rpcctl/Makefile.am
-> >> new file mode 100644
-> >> index 000000000000..f4237dbc89e5
-> >> --- /dev/null
-> >> +++ b/tools/rpcctl/Makefile.am
-> >> @@ -0,0 +1,20 @@
-> >> +## Process this file with automake to produce Makefile.in
-> >> +PYTHON_FILES =  rpcctl.py client.py switch.py sysfs.py xprt.py
-> >> +tooldir = $(DESTDIR)$(libdir)/rpcctl
-> >> +
-> >> +man8_MANS = rpcctl.man
-> >> +
-> >> +all-local: $(PYTHON_FILES)
-> >> +
-> >> +install-data-hook:
-> >> +    mkdir -p $(tooldir)
-> >> +    for f in $(PYTHON_FILES) ; do \
-> >> +        $(INSTALL) -m 644 $$f $(tooldir)/$$f ; \
-> >> +    done
-> >> +    chmod +x $(tooldir)/rpcctl.py
-> >> +    $(INSTALL) -m 755 rpcctl $(DESTDIR)$(sbindir)/rpcctl
-> >> +    sed -i "s|LIBDIR=.|LIBDIR=$(tooldir)|" $(DESTDIR)$(sbindir)/rpcctl
-> > A couple issues here....
-> >
-> > * Changing a file after installed breaks rpm process since it
-> >    changes the checksum of the file so the process thinks it is
-> >    an undeclared file.
-> >
-> > * Why is the $(sbindir)/rpcctl wrapper even needed?
-> >    Why not simply put the code that is in $(tooldir)/rpcctl.py
-> >    in the /usr/sbin/rpcctl?
-> >
-> > * It appears the proper place to put .py modules is
-> >    under /usr/lib/python-<ver>/rpcctl not /usr/lib64/rpcctl
-> Correction: under /usr/lib/python-<ver>/site-packages/
+> >>OK, great, I agree, that sounds like it should work.
 
-Sure
+Ugh, took me a while to get back to this and I went down a couple dead
+ends.
 
-> >
-> > Finally when I manually set  LIBDIR=/usr/lib64/rpcctl in
-> > the /usr/sbin/rpcctl wrapper all I got was
-> > # rpcctl --help
-> > ERROR: sysfs is not mounted
-> >
-> > So I know it was seeing sys.py module but not seeing
-> > /sys/kernel/sunrpc/ which does exist.
-> >
-> > # ls /sys/kernel/sunrpc/
-> > ./  ../  rpc-clients/  xprt-switches/
-> >
-> > So my suggestion is get rid of that wrapper
-> > and look under /usr/lib/python-<ver>/rpcctl
-> The same correction here... under
-> /usr/lib/python-<ver>/site-packages/rpcctl
+The result from selinux's point of view is that rpc.nfsd is doing things
+it previously only expected gssproxy to do.  Fixable with an update to
+selinux policy.  And easily fixed in the meantime by cut-and-pasting the
+suggestions from the logs.
 
-Okay, I will try all that. Thanks for looking it over!
+Still, the result's that mounts fail when you update the kernel, which
+seems a violation of our usual rules about regressions.  I'd like to do
+better.
 
-Anna
->
-> steved.
-> > for the .py modules.
-> >
-> > steved.
-> >
-> >> +
-> >> +
-> >> +
-> >> +MAINTAINERCLEANFILES=Makefile.in
-> >> diff --git a/tools/rpcctl/rpcctl b/tools/rpcctl/rpcctl
-> >> new file mode 100644
-> >> index 000000000000..4cc35e1ea3f9
-> >> --- /dev/null
-> >> +++ b/tools/rpcctl/rpcctl
-> >> @@ -0,0 +1,5 @@
-> >> +#!/bin/bash
-> >> +LIBDIR=.
-> >> +PYTHON3=/usr/bin/python
-> >> +
-> >> +exec $PYTHON3 $LIBDIR/rpcctl.py $*
-> >>
->
+--b.
