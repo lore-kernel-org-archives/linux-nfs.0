@@ -2,60 +2,82 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FAE5C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 11 Nov 2021 01:08:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D082C433FE
+	for <linux-nfs@archiver.kernel.org>; Thu, 11 Nov 2021 14:29:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 379586135E
-	for <linux-nfs@archiver.kernel.org>; Thu, 11 Nov 2021 01:08:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8695E6117A
+	for <linux-nfs@archiver.kernel.org>; Thu, 11 Nov 2021 14:29:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232659AbhKKBKp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Nov 2021 20:10:45 -0500
-Received: from mail.kernel.org ([198.145.29.99]:44424 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232621AbhKKBKo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 Nov 2021 20:10:44 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPS id A9FFB619A6;
-        Thu, 11 Nov 2021 01:07:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1636592876;
-        bh=Os/nGoCntru26Hn7elgDYfFUD1gZ954VnRevSbRRgtE=;
-        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
-        b=FlkQYQQOwaLa3exNOzKcHJedPf2DOOc+cuJ4lufRkCLYDBegbpzrWBavKM6CnSd12
-         eCEWgG4vVvgImEPvsXy30vX85pe1Cqdxy590nYcDpO0MS/0ED0jpguhlanncVkGs8i
-         y8Fl78wtwfG969BiAMFlfQEEO7eNAOUoLYlPDAmKWcqwpZMDTjyuG5C3FADKQtqf9x
-         NMzaekxmsUdyhRdp9dPZ7f/Xlj7K9PKf0u/73a4+pyFepf3J4ohxgGsTG0D8aRZ6hP
-         u5xZpSr31X20cEICH/eEI+/Sdi3LuLsjQK+KcOLpyH7Y2rVB8VDACZ+dV/qfJbzj6Q
-         7P+JU/m6AZZ3A==
-Subject: Re: [GIT PULL] nfsd changes for 5.16
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20211110215022.GA17888@fieldses.org>
-References: <20211110215022.GA17888@fieldses.org>
-X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20211110215022.GA17888@fieldses.org>
-X-PR-Tracked-Remote: git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.16
-X-PR-Tracked-Commit-Id: 80479eb862102f9513e93fcf726c78cc0be2e3b2
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 38764c734028bf0ae4cf262f3eb7d965c86298bd
-Message-Id: <163659287665.32583.4714912593557446253.pr-tracker-bot@kernel.org>
-Date:   Thu, 11 Nov 2021 01:07:56 +0000
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
+        id S232823AbhKKOcP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 11 Nov 2021 09:32:15 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56352 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233669AbhKKOcO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Nov 2021 09:32:14 -0500
+Received: from nautica.notk.org (ipv6.notk.org [IPv6:2001:41d0:1:7a93::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64193C061767;
+        Thu, 11 Nov 2021 06:29:25 -0800 (PST)
+Received: by nautica.notk.org (Postfix, from userid 108)
+        id ED658C01F; Thu, 11 Nov 2021 15:29:18 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=codewreck.org; s=2;
+        t=1636640958; bh=FLQzEjkMg/HyEOuGGfg/HD+FqViJ2CfzeI4vtlX4CKc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=14LM0lsJlo8UFQwB0ITWsURyJMpC6p7GbMWBmlWlqq78qjvpvHZ8JhvcPHLW7x4hr
+         +kZ2yJi9efxxriJ4dOjWjYW+aOEKLr8uCABtSbW/hMVGtMwroMA8YU+zBEuAVuq1y+
+         Eh77/eihcaliAQHZyqXMXIUlD/yf4gwHCBY0h03Ug83aaMJ8M7RL6e8DxaEhg+DhXN
+         5bnrEUdsfpqlhB0wWaX1t+ZbQ0j6nXY0wzg/fNBvEGCzcg8RqpVYk71bKwMEREbWst
+         c+VGu21kWdEw3CC7yKbyoDgS1rpHQfaJPUG4W0PIbnPgPBuKYi5B/NuoBMYZp6Sz18
+         yKHs6nCXq36cg==
+Received: from odin.codewreck.org (localhost [127.0.0.1])
+        by nautica.notk.org (Postfix) with ESMTPS id F18D9C009;
+        Thu, 11 Nov 2021 15:29:13 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=codewreck.org; s=2;
+        t=1636640958; bh=FLQzEjkMg/HyEOuGGfg/HD+FqViJ2CfzeI4vtlX4CKc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=14LM0lsJlo8UFQwB0ITWsURyJMpC6p7GbMWBmlWlqq78qjvpvHZ8JhvcPHLW7x4hr
+         +kZ2yJi9efxxriJ4dOjWjYW+aOEKLr8uCABtSbW/hMVGtMwroMA8YU+zBEuAVuq1y+
+         Eh77/eihcaliAQHZyqXMXIUlD/yf4gwHCBY0h03Ug83aaMJ8M7RL6e8DxaEhg+DhXN
+         5bnrEUdsfpqlhB0wWaX1t+ZbQ0j6nXY0wzg/fNBvEGCzcg8RqpVYk71bKwMEREbWst
+         c+VGu21kWdEw3CC7yKbyoDgS1rpHQfaJPUG4W0PIbnPgPBuKYi5B/NuoBMYZp6Sz18
+         yKHs6nCXq36cg==
+Received: from localhost (odin.codewreck.org [local])
+        by odin.codewreck.org (OpenSMTPD) with ESMTPA id 33223ae0;
+        Thu, 11 Nov 2021 14:29:09 +0000 (UTC)
+Date:   Thu, 11 Nov 2021 23:28:53 +0900
+From:   Dominique Martinet <asmadeus@codewreck.org>
+To:     David Howells <dhowells@redhat.com>
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-afs@lists.infradead.org, Jeff Layton <jlayton@kernel.org>,
+        Marc Dionne <marc.dionne@auristor.com>,
+        linux-cachefs@redhat.com, Ilya Dryomov <idryomov@gmail.com>,
+        ceph-devel@vger.kernel.org, kafs-testing@auristor.com,
+        v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@lists.orangefs.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v5 0/4] netfs, 9p, afs, ceph: Support folios, at least
+ partially
+Message-ID: <YY0opaUbuiqMGHpr@codewreck.org>
+References: <163657847613.834781.7923681076643317435.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <163657847613.834781.7923681076643317435.stgit@warthog.procyon.org.uk>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The pull request you sent on Wed, 10 Nov 2021 16:50:22 -0500:
+David Howells wrote on Wed, Nov 10, 2021 at 09:07:56PM +0000:
+> Here's a set of patches to convert netfs, 9p and afs to use folios and to
+> provide sufficient conversion for ceph that it can continue to use the
+> netfs library.  Jeff Layton is working on fully converting ceph.
+> 
+> This has been rebased on to the 9p merge in Linus's tree[5] so that it has
+> access to both the 9p conversion to fscache and folios.
 
-> git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.16
-
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/38764c734028bf0ae4cf262f3eb7d965c86298bd
-
-Thank you!
+Ran basic tests on 9p with this; it'd probably deserve a bit more
+soak-in but at least doesn't seem to break anything obvious:
+(Re-)Tested-by: Dominique Martinet <asmadeus@codewreck.org>
 
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
+Dominique
