@@ -2,136 +2,95 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FAEDC433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 15:51:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1712CC433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 16:58:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0D53060F51
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 15:51:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EF2FD61BD2
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 16:58:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232388AbhKOPyF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Nov 2021 10:54:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46534 "EHLO
+        id S231374AbhKORB0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Nov 2021 12:01:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33992 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236616AbhKOPyD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 10:54:03 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 01851C061570
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 07:50:59 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 24B0A6F4B; Mon, 15 Nov 2021 10:50:58 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 24B0A6F4B
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1636991458;
-        bh=cWz+PZJu2rbddzvRn7up+WihElIK3TAeYNq2ojLMzhg=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=VlT8hBeE+KnyhrksmBWCgWnq9g9cmrb1GSk8X95kOlnmXYTKRCN90N0+LLI8fI4kg
-         cSCPxWkH9bxuD9M5Vrj4C06fDo/CimfuxykhiHZ24n/TjfOHPZxsR4z9UIZ/KDpDh4
-         /ZoCmSG6hFiawZkjDfYpMUP/pDOcm5DLsaIcCEU8=
-Date:   Mon, 15 Nov 2021 10:50:58 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Volodymyr Khomenko <volodymyr@vastdata.com>
-Cc:     linux-nfs@vger.kernel.org,
-        Ilan Steinberg <ilan.steinberg@vastdata.com>
-Subject: Re: NFS4 RPCGSS state protection (SP4_MACH_CRED) is not handled
-Message-ID: <20211115155058.GA22737@fieldses.org>
-References: <CANkgwevBKzrz_rDt0djguCXLsQWuTj8WwHNia0Bk+LSgDK-aQw@mail.gmail.com>
+        with ESMTP id S231910AbhKORBX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 12:01:23 -0500
+Received: from mail-qt1-x82e.google.com (mail-qt1-x82e.google.com [IPv6:2607:f8b0:4864:20::82e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D379EC061202
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 08:58:21 -0800 (PST)
+Received: by mail-qt1-x82e.google.com with SMTP id n15so16262659qta.0
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 08:58:21 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=QEgfULIEexhl+Ei/oJkchMCR/I4cVTfFhd3T4Duv7bE=;
+        b=T2f0Alkwhz/V7Z1Ixl3jGTEwm3APViQFUkoQ6VNXwburVHyP0NCJU6ZkbQBVr3pxd2
+         spaLyqkL0Fp1H2mpj8wS2n7luEvv/3C2MuiE3s37I9G/4rmBYokqgDOEM23RediZvIXh
+         sVn5nGNNk2Of7m0vW3pgc7apzQKSSRlrBSUwyot2u5vrn+4BRdwBxuTvYYlpmdp5YQbR
+         0T8AQQCSJhHkYINJvGZcB96WVIVMEbZgiAlQTvROrpiPzi2snAIjbb1oE9z2/57KL71F
+         OmIdYyLz2RmvChWklLfxczRtCRJsSpstEA1coQut2EZGg+pSOQ5mgxNy+fua+1KR4iOM
+         ILqw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=QEgfULIEexhl+Ei/oJkchMCR/I4cVTfFhd3T4Duv7bE=;
+        b=JqxeIOUgY2x2kKP4Bvlt5ywsDNfZGtE5CaqX/Fjpnxc9hh8ur3qJzf5wbYuM1hll3a
+         uRl9iErrLWH3I3K6Wa55pI6xp8aVvvZWBbZAXgD1XcqwYVgKzwBOfwi0e/2WxzdJgX3b
+         xMyV2CIqZ3RaXU4k6dV9h6lySF/nZoHGLoQeRiHzOvUICJa3RdpJYN/teO/kA6lTz2TK
+         TV9OJOZzn6soXyNjgIbyjcgLf3QRZNmf7wHCjnRC1Rce4HRHVJy+8lm3uuGw4poyxCmF
+         ccexZmyngovZoLTh6chG0+bLeF8sQ8vf+MkWz/WVJduxPqUhFe/N6pmuUs6hFF4usLNB
+         tUTg==
+X-Gm-Message-State: AOAM531JlyE04yfjh2OJ5+zO5lAKP/jK8lwouYqZiCy0U+iS1knLlZ1s
+        Nwa3E/Xm+ZFWtXbXWnTKfaCt825QV+ch7w==
+X-Google-Smtp-Source: ABdhPJyznOkO+p7cW8mIRcF9ezUldjCro6Cm0Btw8jbjeVxNqEOUtl5i1KdWTR13L5lgnX2PAJmJUg==
+X-Received: by 2002:ac8:147:: with SMTP id f7mr405759qtg.329.1636995500909;
+        Mon, 15 Nov 2021 08:58:20 -0800 (PST)
+Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
+        by smtp.gmail.com with ESMTPSA id v7sm6988472qki.98.2021.11.15.08.58.20
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 15 Nov 2021 08:58:20 -0800 (PST)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH 3/3] nfs: show dynamic nconnect
+Date:   Mon, 15 Nov 2021 11:58:18 -0500
+Message-Id: <20211115165818.2583501-3-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.33.1
+In-Reply-To: <20211115165818.2583501-1-Anna.Schumaker@Netapp.com>
+References: <20211115165818.2583501-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CANkgwevBKzrz_rDt0djguCXLsQWuTj8WwHNia0Bk+LSgDK-aQw@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Nov 15, 2021 at 04:37:10PM +0200, Volodymyr Khomenko wrote:
-> Hello linux-nfs,
-> 
-> We have the following NFS4 test (implemented using pynfs framework,
-> not regular NFS4 client):
-> 1. NFS4 client wants to use RPCGSS (Kerberos) and starts NFS4 traffic
-> with NFS4 NULL request to establish RPCGSS context of a machine
-> account.
-> 2. During EXCHANGE_ID operation (client establishment), client asks
-> for SP4_MACH_CRED state protection with
-> spo_must_enforce/spo_must_allow fields set to values that are usually
-> used by NFS4 clients (as defined by rfc5661).
-> 3. CREATE_SESSION and RECLAIM_COMPLETE operations (required for NFS4
-> session) are also done with RPCGSS and sevice=svc_gss_integrity - as
-> required by spo_must_enforce option of state protection. If
-> CREATE_SESSION is done with the wrong protection type, error is
-> returned to the client (as expected).
-> 4. However, when operations that are neither in spo_must_enforce nor
-> in spo_must_allow list are done with the wrong protection type
-> (flavor=AUTH_UNIX), NFS server accepts the request and replies by
-> unexpected result (NFS4_OK) instead of error. In our test we used
-> SEQUENCE + PUTROOTFH + GETFH compound operation with RPC credentials
-> using flavor=AUTH_UNIX instead of RPCGSS.
-> 
-> As for me, it looks like a security issue: client asked for state
-> protection but man-in-the-middle can make unprotected requests for
-> state-protected client and session. Expected behaviour from my side
-> is:
-> if NFS4 operation (like GETFH) from state-protected client is neither
-> in spo_must_enforce nor in spo_must_allow lists of SP4_MACH_CRED, the
-> server must fail the request if used credentials has a different
-> flavor than RPCGSS (neither user GSS context nor machine account GSS
-> context).
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-There are two separate questions here:
+Through sysfs we can change the number of xprts attached to an
+rpc_client. This lets us change the displayed nconnect= value to reflect
+the actual number of connected xprts for the given mount.
 
-	- Does the spec require that?
-	- Should the server do it anyway?
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I think the answer to the first question is "no".  If the requirement is
-in the language you've quoted below, I'm not seeing it.  As far as I can
-tell, GSS is required only for operations in spo_must_enforce.
-
-I haven't thought about #2 very much.  If an operation's not in
-spo_must_support, I think the server just checks the sec= option on the
-export.  If we were to require something more than that, I guess that
-would affect the values returned from SECINFO and friends too.
-
-I think the spec's meant to allow the client to use a combination of
-krb5 and sys, and that current server behavior is correct, though it's
-always possible there's some case I haven't thought through.
-
---b.
-
-> 
-> >From rfc5661 (18.35.3.  DESCRIPTION):
-> 
->    o  For SP4_MACH_CRED or SP4_SSV state protection:
-> 
->       *  The list of operations (spo_must_enforce) that MUST use the
->          specified state protection.  This list comes from the results
->          of EXCHANGE_ID.
-> 
->       *  The list of operations (spo_must_allow) that MAY use the
->          specified state protection.  This list comes from the results
->          of EXCHANGE_ID.
-> 
-> ...
-> 
->    o  SP4_MACH_CRED.  If spa_how is SP4_MACH_CRED, then the client MUST
->       send the EXCHANGE_ID request with RPCSEC_GSS as the security
->       flavor, and with a service of RPC_GSS_SVC_INTEGRITY or
->       RPC_GSS_SVC_PRIVACY.  If SP4_MACH_CRED is specified, then the
->       client wants to use an RPCSEC_GSS-based machine credential to
->       protect its state.  The server MUST note the principal the
->       EXCHANGE_ID operation was sent with, and the GSS mechanism used.
->       These notes collectively comprise the machine credential.
-> 
-> Please see pcap file of the traffic (attached) - EXCHANGE_ID with
-> SP4_MACH_CRED is the packet #41 and problematic PUTROOTFH + GETFH
-> request is the packet #49.
-> 
-> User linux NFS4 server was:
-> [centos@rnd-nfs4-srv01 ~]$ uname -a
-> Linux rnd-nfs4-srv01 3.10.0-1062.18.1.el7.x86_64 #1 SMP Tue Mar 17
-> 23:49:17 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
-> 
-> [centos@rnd-nfs4-srv01 ~]$ cat /etc/redhat-release
-> CentOS Linux release 7.7.1908 (Core)
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 3aced401735c..f6ede7bf18f9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -478,7 +478,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_NETID));
+ 	rcu_read_unlock();
+ 	if (clp->cl_nconnect > 0)
+-		seq_printf(m, ",nconnect=%u", clp->cl_nconnect);
++		seq_printf(m, ",nconnect=%u", rpc_clnt_xprt_switch_num_xprts(clp->cl_rpcclient));
+ 	if (version == 4) {
+ 		if (clp->cl_max_connect > 1)
+ 			seq_printf(m, ",max_connect=%u", clp->cl_max_connect);
+-- 
+2.33.1
 
