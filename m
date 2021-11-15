@@ -2,128 +2,184 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D9F1C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 16:58:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 208E3C433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 20:58:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E3C0661BD2
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 16:58:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0070D61AAA
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 20:58:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231500AbhKORBe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Nov 2021 12:01:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33972 "EHLO
+        id S1345063AbhKOU5C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Nov 2021 15:57:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39770 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231845AbhKORBT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 12:01:19 -0500
-Received: from mail-qt1-x82e.google.com (mail-qt1-x82e.google.com [IPv6:2607:f8b0:4864:20::82e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 957B5C061767
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 08:58:20 -0800 (PST)
-Received: by mail-qt1-x82e.google.com with SMTP id f20so15906635qtb.4
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 08:58:20 -0800 (PST)
+        with ESMTP id S1347490AbhKOTj7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 14:39:59 -0500
+Received: from mail-lf1-x132.google.com (mail-lf1-x132.google.com [IPv6:2a00:1450:4864:20::132])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE529C061230
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 11:36:03 -0800 (PST)
+Received: by mail-lf1-x132.google.com with SMTP id c32so46471538lfv.4
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 11:36:03 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=sender:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=uRK4hkiTZUWAj8cllnANNjoMKBWhSK9KFUzOvcsNuMo=;
-        b=gRW0T62HV+UT9h6Yk9u86KO0O3WB3c6UhXA/f86Z5X7AptFebxL1MEk69/tiexmBwh
-         ZvzGOXFmPKGSY54l7mNkhTa7Ec3BU/dmtgMMtRdjQ/q7G8NA/OSjdSPk/xkWR7Kugcqn
-         9ORZQtY2a5m43CttZTNfVauM7FxfzMPBVn8DBHyixQf/JZvj7BxQ+NMM6OwhfkH1ml5l
-         FmLbpnemQOv3QQ7JpLiBUQQ+b82R3BW5+zbzpt5Fh577tQQI51gslBJOtFqgucuw556L
-         r+TSRVppHEHcr9AYSmuD2B7ECDirkfzz+qReTmndefTSTHbuh3MbotV9JnK8x4t0nRC4
-         /lTA==
+        d=vastdata.com; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=m+EnPOs9WIlyi7q11vMx2LG2XZ0foshVWMljmch2pOk=;
+        b=EZbw9lbAkRgTz+EtmqPeRzrleqStSjdqqsVaZDc7CNpzZEYRAA6fnQdlwqK8l2Sciv
+         jtYKcbNrc7MmWLfUJoyLHIRJqDPaPSIH12rtOPMD2DE9Fwf1ZAvossfZkBlZaeG5cXXb
+         to7MwLgq0JddBQpzaKVUa5LXmO+WH1mpnqBVUhrwvNitGA7+P4NH7/PYX1mZRiyunZ/Z
+         HGEpJn0vwwjDi4WWurcPZyBlgNl0aCgTRVPM/tF0bIWFA+HLBo3Mci8Yxvx173i5pv8m
+         YMf0OZD3wJXxFgAHSGk3OhppKqUbhJpkZysDT1J6OoKlwaDX7Y2/C7ySMD8MHVd+7l0A
+         FPQg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :mime-version:content-transfer-encoding;
-        bh=uRK4hkiTZUWAj8cllnANNjoMKBWhSK9KFUzOvcsNuMo=;
-        b=C+p99S4F8gN22QV1GCWJRce3lMEPRNVVjvV8d/cfS6eM5BeqnziCobNXxYdP64hMUS
-         jNVF3X/M6j1d6PnCfIR412oNcIcEa+xXL0snXnDmXl9c6U5DCikOos4GKratymmx4fOI
-         3RRREHCkDXbDebOia0mwM+gHvVHe6LYBnqstv+EAkYRW5L3PiJWkkEKTEOCZpPshP15n
-         HdKFBammhnaiHKWwCyA+mqeAm7HcixrPZBz97GV0kWTDU6gkrZ1e0vSpcJ6LtuHEEdEb
-         sRDdMOdf12Ai4oRBYICrhEc/bwcnNltQ0lxQbKleSJaM24Ssk6k20GxFVa4eTGe78GPD
-         lE2A==
-X-Gm-Message-State: AOAM533d5NrnSrhFYQPzymkgxDL0ZG27gjHqmVHwPtPr5wnp+OSQptgJ
-        /2REr6MyHIVvNIcpRr220D8PO+KdiiYvWA==
-X-Google-Smtp-Source: ABdhPJy+IfTqyFfTCuPJMAGG1KY5pS7fFY8nW3jZafxG32VtoYNRkGZ4fADB8IxUo9qxJvPqIBGVFw==
-X-Received: by 2002:a05:622a:11d1:: with SMTP id n17mr501421qtk.154.1636995499441;
-        Mon, 15 Nov 2021 08:58:19 -0800 (PST)
-Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id v7sm6988472qki.98.2021.11.15.08.58.18
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 15 Nov 2021 08:58:19 -0800 (PST)
-Sender: Anna Schumaker <schumakeranna@gmail.com>
-From:   schumaker.anna@gmail.com
-X-Google-Original-From: Anna.Schumaker@Netapp.com
-To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH 1/3] sunrpc: Fix potential race conditions in rpc_sysfs_xprt_state_change()
-Date:   Mon, 15 Nov 2021 11:58:16 -0500
-Message-Id: <20211115165818.2583501-1-Anna.Schumaker@Netapp.com>
-X-Mailer: git-send-email 2.33.1
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=m+EnPOs9WIlyi7q11vMx2LG2XZ0foshVWMljmch2pOk=;
+        b=htQuMukUPQXnsBJbD2ciqWddKr2uiNt1pEm4MCeqO93s26bCezS7W0vA9w2/YmROVP
+         ykMy2H06Byi/iCKheFPoKDF3JSNDg46b6YbKss+kR5G8OFZXGbdNgeef7oh/sfBdajoD
+         +N4S/qiv4mve1YrQ5syxOQKS9ucUMhpikoz1O+6oA8EKFicoX+HvFcZvisqBu7JgwYvx
+         U8ahl/0n+kObG88SlF2nlAyTyjBzt/a9R6muSLmUg/puRCbpkb6S8DcJhkjjl6uMW02f
+         0yJInkNxYUe30CaIAbmh8OHrzjq5mcuubsTMOPvtl4cDkfWc1Ag8+ptskwj+m1tDwQv1
+         54zA==
+X-Gm-Message-State: AOAM5305Mwi2GDSbx8ertbZjJzTbs2UXBgov5t/DwiZ8GL6SkvtOAEF8
+        Z0plfZDIxZOfqCw9RAZKYfHvn5T92M4cDdVh9fNdGA==
+X-Google-Smtp-Source: ABdhPJxKYy7yhIqNI/A+WgGdVdAz/Ybos5agCKmTYk2OMs5k+4/rRu6dmJlnya1E61Ngxjq1ao4MaMVD6KuStkj43u4=
+X-Received: by 2002:a05:6512:4012:: with SMTP id br18mr1030625lfb.215.1637004962343;
+ Mon, 15 Nov 2021 11:36:02 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CANkgwevBKzrz_rDt0djguCXLsQWuTj8WwHNia0Bk+LSgDK-aQw@mail.gmail.com>
+ <20211115155058.GA22737@fieldses.org>
+In-Reply-To: <20211115155058.GA22737@fieldses.org>
+From:   Volodymyr Khomenko <volodymyr@vastdata.com>
+Date:   Mon, 15 Nov 2021 21:35:51 +0200
+Message-ID: <CANkgwevkUHSBb7Z4BDNXqazHmVOvLd1vucrZjiWRWxiADcA05A@mail.gmail.com>
+Subject: Re: NFS4 RPCGSS state protection (SP4_MACH_CRED) is not handled
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     linux-nfs@vger.kernel.org,
+        Ilan Steinberg <ilan.steinberg@vastdata.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> Does the spec require that?
 
-We need to use test_and_set_bit() when changing xprt state flags to
-avoid potentially getting xps->xps_nactive out of sync.
+Unfortunately the spec is not explicit about this use-case.
+However we have a detailed rationale of the 'spo_must_allow' option there.
+It says that 'The client will be unable to send CLOSE without the
+user's credentials' if users GSS credentials are expired.
+Meaning that AUTH_UNIX credentials (with user UID/GID) is not a valid
+way to solve this issue - from my understanding:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- net/sunrpc/sysfs.c | 35 +++++++++++++++++++----------------
- 1 file changed, 19 insertions(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 77e7d011c1ab..8f309bcdf84f 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -309,25 +309,28 @@ static ssize_t rpc_sysfs_xprt_state_change(struct kobject *kobj,
- 		goto release_tasks;
- 	}
- 	if (offline) {
--		set_bit(XPRT_OFFLINE, &xprt->state);
--		spin_lock(&xps->xps_lock);
--		xps->xps_nactive--;
--		spin_unlock(&xps->xps_lock);
-+		if (!test_and_set_bit(XPRT_OFFLINE, &xprt->state)) {
-+			spin_lock(&xps->xps_lock);
-+			xps->xps_nactive--;
-+			spin_unlock(&xps->xps_lock);
-+		}
- 	} else if (online) {
--		clear_bit(XPRT_OFFLINE, &xprt->state);
--		spin_lock(&xps->xps_lock);
--		xps->xps_nactive++;
--		spin_unlock(&xps->xps_lock);
-+		if (test_and_clear_bit(XPRT_OFFLINE, &xprt->state)) {
-+			spin_lock(&xps->xps_lock);
-+			xps->xps_nactive++;
-+			spin_unlock(&xps->xps_lock);
-+		}
- 	} else if (remove) {
- 		if (test_bit(XPRT_OFFLINE, &xprt->state)) {
--			set_bit(XPRT_REMOVE, &xprt->state);
--			xprt_force_disconnect(xprt);
--			if (test_bit(XPRT_CONNECTED, &xprt->state)) {
--				if (!xprt->sending.qlen &&
--				    !xprt->pending.qlen &&
--				    !xprt->backlog.qlen &&
--				    !atomic_long_read(&xprt->queuelen))
--					rpc_xprt_switch_remove_xprt(xps, xprt);
-+			if (!test_and_set_bit(XPRT_REMOVE, &xprt->state)) {
-+				xprt_force_disconnect(xprt);
-+				if (test_bit(XPRT_CONNECTED, &xprt->state)) {
-+					if (!xprt->sending.qlen &&
-+					    !xprt->pending.qlen &&
-+					    !xprt->backlog.qlen &&
-+					    !atomic_long_read(&xprt->queuelen))
-+						rpc_xprt_switch_remove_xprt(xps, xprt);
-+				}
- 			}
- 		} else {
- 			count = -EINVAL;
--- 
-2.33.1
+rfc5661:
 
+
+   The purpose of spo_must_allow is to allow clients to solve the
+   following conundrum.  Suppose the client ID is confirmed with
+   EXCHGID4_FLAG_BIND_PRINC_STATEID, and it calls OPEN with the
+   RPCSEC_GSS credentials of a normal user.  Now suppose the user's
+   credentials expire, and cannot be renewed (e.g., a Kerberos ticket
+   granting ticket expires, and the user has logged off and will not be
+   acquiring a new ticket granting ticket).  The client will be unable
+   to send CLOSE without the user's credentials, which is to say the
+   client has to either leave the state on the server or re-send
+   EXCHANGE_ID with a new verifier to clear all state, that is, unless
+   the client includes CLOSE on the list of operations in spo_must_allow
+   and the server agrees.
+
+volodymyr.
+
+On Mon, Nov 15, 2021 at 5:50 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Mon, Nov 15, 2021 at 04:37:10PM +0200, Volodymyr Khomenko wrote:
+> > Hello linux-nfs,
+> >
+> > We have the following NFS4 test (implemented using pynfs framework,
+> > not regular NFS4 client):
+> > 1. NFS4 client wants to use RPCGSS (Kerberos) and starts NFS4 traffic
+> > with NFS4 NULL request to establish RPCGSS context of a machine
+> > account.
+> > 2. During EXCHANGE_ID operation (client establishment), client asks
+> > for SP4_MACH_CRED state protection with
+> > spo_must_enforce/spo_must_allow fields set to values that are usually
+> > used by NFS4 clients (as defined by rfc5661).
+> > 3. CREATE_SESSION and RECLAIM_COMPLETE operations (required for NFS4
+> > session) are also done with RPCGSS and sevice=svc_gss_integrity - as
+> > required by spo_must_enforce option of state protection. If
+> > CREATE_SESSION is done with the wrong protection type, error is
+> > returned to the client (as expected).
+> > 4. However, when operations that are neither in spo_must_enforce nor
+> > in spo_must_allow list are done with the wrong protection type
+> > (flavor=AUTH_UNIX), NFS server accepts the request and replies by
+> > unexpected result (NFS4_OK) instead of error. In our test we used
+> > SEQUENCE + PUTROOTFH + GETFH compound operation with RPC credentials
+> > using flavor=AUTH_UNIX instead of RPCGSS.
+> >
+> > As for me, it looks like a security issue: client asked for state
+> > protection but man-in-the-middle can make unprotected requests for
+> > state-protected client and session. Expected behaviour from my side
+> > is:
+> > if NFS4 operation (like GETFH) from state-protected client is neither
+> > in spo_must_enforce nor in spo_must_allow lists of SP4_MACH_CRED, the
+> > server must fail the request if used credentials has a different
+> > flavor than RPCGSS (neither user GSS context nor machine account GSS
+> > context).
+>
+> There are two separate questions here:
+>
+>         - Does the spec require that?
+>         - Should the server do it anyway?
+>
+> I think the answer to the first question is "no".  If the requirement is
+> in the language you've quoted below, I'm not seeing it.  As far as I can
+> tell, GSS is required only for operations in spo_must_enforce.
+>
+> I haven't thought about #2 very much.  If an operation's not in
+> spo_must_support, I think the server just checks the sec= option on the
+> export.  If we were to require something more than that, I guess that
+> would affect the values returned from SECINFO and friends too.
+>
+> I think the spec's meant to allow the client to use a combination of
+> krb5 and sys, and that current server behavior is correct, though it's
+> always possible there's some case I haven't thought through.
+>
+> --b.
+>
+> >
+> > >From rfc5661 (18.35.3.  DESCRIPTION):
+> >
+> >    o  For SP4_MACH_CRED or SP4_SSV state protection:
+> >
+> >       *  The list of operations (spo_must_enforce) that MUST use the
+> >          specified state protection.  This list comes from the results
+> >          of EXCHANGE_ID.
+> >
+> >       *  The list of operations (spo_must_allow) that MAY use the
+> >          specified state protection.  This list comes from the results
+> >          of EXCHANGE_ID.
+> >
+> > ...
+> >
+> >    o  SP4_MACH_CRED.  If spa_how is SP4_MACH_CRED, then the client MUST
+> >       send the EXCHANGE_ID request with RPCSEC_GSS as the security
+> >       flavor, and with a service of RPC_GSS_SVC_INTEGRITY or
+> >       RPC_GSS_SVC_PRIVACY.  If SP4_MACH_CRED is specified, then the
+> >       client wants to use an RPCSEC_GSS-based machine credential to
+> >       protect its state.  The server MUST note the principal the
+> >       EXCHANGE_ID operation was sent with, and the GSS mechanism used.
+> >       These notes collectively comprise the machine credential.
+> >
+> > Please see pcap file of the traffic (attached) - EXCHANGE_ID with
+> > SP4_MACH_CRED is the packet #41 and problematic PUTROOTFH + GETFH
+> > request is the packet #49.
+> >
+> > User linux NFS4 server was:
+> > [centos@rnd-nfs4-srv01 ~]$ uname -a
+> > Linux rnd-nfs4-srv01 3.10.0-1062.18.1.el7.x86_64 #1 SMP Tue Mar 17
+> > 23:49:17 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+> >
+> > [centos@rnd-nfs4-srv01 ~]$ cat /etc/redhat-release
+> > CentOS Linux release 7.7.1908 (Core)
+>
+>
