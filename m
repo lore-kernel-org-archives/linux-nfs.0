@@ -2,56 +2,60 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED243C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 04:48:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55601C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 05:44:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CBDF061C14
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 04:48:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 38FCE61B2A
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 05:44:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245560AbhKPEu4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Nov 2021 23:50:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48370 "EHLO
+        id S236185AbhKPFrs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Nov 2021 00:47:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60188 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245433AbhKPEuy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 23:50:54 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4BF2C27F600;
-        Mon, 15 Nov 2021 17:53:33 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id A0CC5AA2; Mon, 15 Nov 2021 20:53:32 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org A0CC5AA2
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1637027612;
-        bh=0g47k9qD4oPexF9D23ijYzgICWp4ZLsTLeLSTEl2r9A=;
-        h=Date:To:Cc:Subject:From:From;
-        b=x1jiHvlzwkiSMlY9nu6lu2HyiNf7hEV321TZdF4rS2KmTOWsIK+4KWiwDrneH+9wk
-         FZUdAkgpYD1BPkiuZ9u2vCJXNbyiCgCdiRwO68XH3cHQDd6gMStrBaM7wFbwYNNSTZ
-         BHZV/X6oMSr5DRoN66zQAApBmNAdHBWD0a0WOX3s=
-Date:   Mon, 15 Nov 2021 20:53:32 -0500
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: [GIT PULL] nfsd bugfix for 5.16
-Message-ID: <20211116015332.GJ23884@fieldses.org>
+        with ESMTP id S236154AbhKPFrl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2021 00:47:41 -0500
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF74CC079794;
+        Mon, 15 Nov 2021 19:29:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=c8TaYYX1zKy7i28b/mSLAzG8phHLkyan0csYuEpNJ5I=; b=LskO0SarMS4mrwrBP1UbwKNj3m
+        JljHVvow4H2WyVhlEBH+Gbgu/pcis3a78BgOUygrhGyZI0khPAMW55pPVRvFmQh1Ksgnl6SZtDy0L
+        +O16MvL70j6spBSqLn2Sfx79pJXxlPei9W618gtw/deWxHtGqzZJAABXXZeBdkvcA2AUQyN1ruQio
+        95INbyhDl4R4sivN+sLfiFDizLIWhZLZ2/vayt45mZVavtk7Kj9o6MGNjMUOIVIoosaVJQaSP6ZHM
+        zuG8xJ2ssl+k8fkSJGvagwPwIsz1xaPoaBeoYd9qfJwIwcFlVCte++qLPdZro39hsiEiNsHkHELNu
+        0eeoYo4g==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1mmp9v-006RCM-DE; Tue, 16 Nov 2021 03:29:23 +0000
+Date:   Tue, 16 Nov 2021 03:29:23 +0000
+From:   Matthew Wilcox <willy@infradead.org>
+To:     NeilBrown <neilb@suse.de>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mel Gorman <mgorman@suse.de>, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 00/13] Repair SWAP-over-NFS
+Message-ID: <YZMlk2sVjt5viat2@casper.infradead.org>
+References: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Please pull:
+On Tue, Nov 16, 2021 at 01:44:04PM +1100, NeilBrown wrote:
+> swap-over-NFS currently has a variety of problems.
+> 
+> Due to a newish test in generic_write_checks(), all writes to swap
+> currently fail.
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.16-1
+And by "currently", you mean "for over two years" (August 2019).
+Does swap-over-NFS (or any other network filesystem) actually have any
+users, and should we fix it or rip it out?
 
-This is just one bugfix for a buffer overflow in knfsd's xdr decoding.
-
---b.
-
-Chuck Lever (1):
-      NFSD: Fix exposure in nfsd4_decode_bitmap()
-
- fs/nfsd/nfs4xdr.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
