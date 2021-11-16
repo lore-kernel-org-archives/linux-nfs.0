@@ -2,54 +2,54 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 80196C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:48:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 18027C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:48:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6105061C15
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:48:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F3B606320D
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:48:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241543AbhKPCuz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Nov 2021 21:50:55 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:37354 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241059AbhKPCs5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 21:48:57 -0500
+        id S1358054AbhKPCvd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Nov 2021 21:51:33 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:59388 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S242402AbhKPCtW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 21:49:22 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 7F2D71FD6B;
-        Tue, 16 Nov 2021 02:46:00 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 8CA8F212C9;
+        Tue, 16 Nov 2021 02:46:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1637030760; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1637030773; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=uJLgBSr+4ac2HtnFPf6KLC0wSgPyRK3wpQcub+LxsjE=;
-        b=JkAmyrxApRyuTBn7vn5Z5g6h1Fw+zu5G/EIQ3HoU4SR6DCkJTc9MQRxY5p+rbbFiopf+Ks
-        DfC0qFsTopsEA3OGsIEL0PyieQTegaqXDMaaPL7gVyaFlhnW1dIbc/ade8zsDKNbivdhIn
-        ENj9yTsm/EJZis0r4Llb018InpIGK5I=
+        bh=f9JPZARu0omLin5bRQVSgWDU6wAXTb1AVpCm2PGq0QA=;
+        b=atmetXEZDy8cMBJPuxGdsioA9iEEjKYPYqm8r3COaJLFACTYSEnML7mYQBMmGJy6qWq+sX
+        17efbj7aEBJcrchB+nb1mGhfUGNR07Lbzb50Y1OpJ6jJRTv1E1ym8QpibclWvHrVTz6UqJ
+        0VLAHKfisqbII2bdSfpPxKIVMbaS6ng=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1637030760;
+        s=susede2_ed25519; t=1637030773;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=uJLgBSr+4ac2HtnFPf6KLC0wSgPyRK3wpQcub+LxsjE=;
-        b=Za/pDRAZdOa2LQNWoKokZQtyi9KJ4nzaePa487hjO6EW2QwB66ceS2eOY+PoOiRooaGF/M
-        PTd0buGgp9HXduDQ==
+        bh=f9JPZARu0omLin5bRQVSgWDU6wAXTb1AVpCm2PGq0QA=;
+        b=QhGRS68RrxSioGc5OYbdql4ol0fghFMX4at/b29RBqkbuBMOvukvloUoM4ifPSimpAdbic
+        4B6GESV1oZ1RaDBQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2896513B70;
-        Tue, 16 Nov 2021 02:45:57 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3665113B70;
+        Tue, 16 Nov 2021 02:46:10 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id Dl4tNmUbk2HiCAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 16 Nov 2021 02:45:57 +0000
-Subject: [PATCH 04/13] SUNRPC/call_alloc: async tasks mustn't block waiting
- for memory
+        id 8gWHOXIbk2H0CAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 16 Nov 2021 02:46:10 +0000
+Subject: [PATCH 06/13] SUNRPC/xprt: async tasks mustn't block waiting for
+ memory
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -59,7 +59,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Tue, 16 Nov 2021 13:44:04 +1100
-Message-ID: <163703064453.25805.15157255463292733812.stgit@noble.brown>
+Message-ID: <163703064454.25805.13286573055267156315.stgit@noble.brown>
 In-Reply-To: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 References: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -71,55 +71,57 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 When memory is short, new worker threads cannot be created and we depend
-on the minimum one rpciod thread to be able to handle everything.
-So it must not block waiting for memory.
+on the minimum one rpciod thread to be able to handle everything.  So it
+must not block waiting for memory.
 
-mempools are particularly a problem as memory can only be released back
-to the mempool by an async rpc task running.  If all available
-workqueue threads are waiting on the mempool, no thread is available to
-return anything.
+xprt_dynamic_alloc_slot can block indefinitely.  This can tie up all
+workqueue threads and NFS can deadlock.  So when called from a
+workqueue, set __GFP_NORETRY.
 
-rpc_malloc() can block, and this might cause deadlocks.
-So check RPC_IS_ASYNC(), rather than RPC_IS_SWAPPER() to determine if
-blocking is acceptable.
+The rdma alloc_slot already does not block.  However it sets the error
+to -EAGAIN suggesting this will trigger a sleep.  It does not.  As we
+can see in call_reserveresult(), only -ENOMEM causes a sleep.  -EAGAIN
+causes immediate retry.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- net/sunrpc/sched.c              |    4 +++-
- net/sunrpc/xprtrdma/transport.c |    4 +++-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ net/sunrpc/xprt.c               |    5 ++++-
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index e2c835482791..d5b6e897f5a5 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -1023,8 +1023,10 @@ int rpc_malloc(struct rpc_task *task)
- 	struct rpc_buffer *buf;
- 	gfp_t gfp = GFP_NOFS;
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index a02de2bddb28..47d207e416ab 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1687,12 +1687,15 @@ static bool xprt_throttle_congested(struct rpc_xprt *xprt, struct rpc_task *task
+ static struct rpc_rqst *xprt_dynamic_alloc_slot(struct rpc_xprt *xprt)
+ {
+ 	struct rpc_rqst *req = ERR_PTR(-EAGAIN);
++	gfp_t gfp_mask = GFP_NOFS;
  
-+	if (RPC_IS_ASYNC(task))
-+		gfp = GFP_NOWAIT | __GFP_NOWARN;
- 	if (RPC_IS_SWAPPER(task))
--		gfp = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
-+		gfp |= __GFP_MEMALLOC;
- 
- 	size += sizeof(struct rpc_buffer);
- 	if (size <= RPC_BUFFER_MAXSIZE)
+ 	if (xprt->num_reqs >= xprt->max_reqs)
+ 		goto out;
+ 	++xprt->num_reqs;
+ 	spin_unlock(&xprt->reserve_lock);
+-	req = kzalloc(sizeof(struct rpc_rqst), GFP_NOFS);
++	if (current->flags & PF_WQ_WORKER)
++		gfp_mask |= __GFP_NORETRY | __GFP_NOWARN;
++	req = kzalloc(sizeof(struct rpc_rqst), gfp_mask);
+ 	spin_lock(&xprt->reserve_lock);
+ 	if (req != NULL)
+ 		goto out;
 diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 16e5696314a4..a52277115500 100644
+index a52277115500..32df23796747 100644
 --- a/net/sunrpc/xprtrdma/transport.c
 +++ b/net/sunrpc/xprtrdma/transport.c
-@@ -574,8 +574,10 @@ xprt_rdma_allocate(struct rpc_task *task)
- 	gfp_t flags;
+@@ -521,7 +521,7 @@ xprt_rdma_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
+ 	return;
  
- 	flags = RPCRDMA_DEF_GFP;
-+	if (RPC_IS_ASYNC(task))
-+		flags = GFP_NOWAIT | __GFP_NOWARN;
- 	if (RPC_IS_SWAPPER(task))
--		flags = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
-+		flags |= __GFP_MEMALLOC;
+ out_sleep:
+-	task->tk_status = -EAGAIN;
++	task->tk_status = -ENOMEM;
+ 	xprt_add_backlog(xprt, task);
+ }
  
- 	if (!rpcrdma_check_regbuf(r_xprt, req->rl_sendbuf, rqst->rq_callsize,
- 				  flags))
 
 
