@@ -2,54 +2,53 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 95194C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62795C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 825026187F
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 43B336187F
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347298AbhKPCug (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Nov 2021 21:50:36 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:59368 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1356876AbhKPCsf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 21:48:35 -0500
+        id S1357082AbhKPCun (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Nov 2021 21:50:43 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:37318 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1357060AbhKPCsl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 21:48:41 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 398F321910;
-        Tue, 16 Nov 2021 02:45:35 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 60D091FD48;
+        Tue, 16 Nov 2021 02:45:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1637030735; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1637030744; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=1/BSIu6f8h3udxg/DtgGyKIFrkiRDq54LWgglD0VugE=;
-        b=IplAxp1y0sekl7XcljUnG5z89tZMSeqbWmLOhyGMm6vG+6I7vAkuytzPBU64O7NA+Eh0fk
-        y+rZNiyqm9YhWdNNwTYf9+lssWL3iGI3wRyd2yNX3uVMn7sAg6KKFp4i0ZFKbsZRwsO1P4
-        /BP+n7Jkn6O9I+qUqUoTwbwVKb1J6QE=
+        bh=HAFJQqD66lEKxyMF66YMnhf/bOSH3X44K2KcJkng4Uk=;
+        b=gbCVQ6bDbY22Q4NrW50evrXT7Ds3nDI8NTZ9Io9sBz8NoaC8jFFX4LTn9aA2PckSz94ueJ
+        SvWZN4rSfdqNgtdqvCb3r6IMZTWyB8yR622TKV5wwN3g9rx4EO5seoFCc3Xi4NO3yH5dFZ
+        v5umM8wYEzG+99gUwLsGHV5PyxHV710=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1637030735;
+        s=susede2_ed25519; t=1637030744;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=1/BSIu6f8h3udxg/DtgGyKIFrkiRDq54LWgglD0VugE=;
-        b=AWlfzuqouIRw64bl6P8ib6Gos4ML2cOYA82dE/tQ3Wp7jzocfC+UdQnkeEIwOpvnqpyzwP
-        R2e+lzQOcjNzc6Bw==
+        bh=HAFJQqD66lEKxyMF66YMnhf/bOSH3X44K2KcJkng4Uk=;
+        b=mqZ30JPHIzdhcGRAwSZF5MRmu7hx8qlwHnCXFyzSJrWYCq8+8g8lNDIo44ZDQDQku5U0lR
+        tfeimJ8vg5wpEbAQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D80E713B70;
-        Tue, 16 Nov 2021 02:45:32 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0A16A13B70;
+        Tue, 16 Nov 2021 02:45:41 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 1wlgJUwbk2G+CAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 16 Nov 2021 02:45:32 +0000
-Subject: [PATCH 01/13] NFS: move generic_write_checks() call from
- nfs_file_direct_write() to nfs_file_write()
+        id jzimLlUbk2HNCAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 16 Nov 2021 02:45:41 +0000
+Subject: [PATCH 02/13] NFS: do not take i_rwsem for swap IO
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -59,7 +58,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Tue, 16 Nov 2021 13:44:04 +1100
-Message-ID: <163703064449.25805.2687706207398048223.stgit@noble.brown>
+Message-ID: <163703064452.25805.5738767545414940042.stgit@noble.brown>
 In-Reply-To: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 References: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -70,56 +69,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-generic_write_checks() is not needed for swap-out writes, and fails if
-they are attempted.
-nfs_file_direct_write() currently calls generic_write_checks() and is in
-turn called from:
-  nfs_direct_IO  - only for swap-out
-  nfs_file_write - for normal O_DIRECT write
+Taking the i_rwsem for swap IO triggers lockdep warnings regarding
+possible deadlocks with "fs_reclaim".  These deadlocks could, I believe,
+eventuate if a buffered read on the swapfile was attempted.
 
-So move the generic_write_checks() call into nfs_file_write().  This
-allows NFS swap-out writes to complete.
+We don't need coherence with the page cache for a swap file, and
+buffered writes are forbidden anyway.  There is no other need for
+i_rwsem during direct IO.
 
-Fixes: dc617f29dbe5 ("vfs: don't allow writes to swap files")
+So don't take the rwsem or set the NFS_INO_ODIRECT flag during IO to the
+swap file.
+
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/direct.c |    5 +----
- fs/nfs/file.c   |    6 +++++-
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ fs/nfs/io.c |    9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 9cff8709c80a..1e80d243ba25 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -905,10 +905,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
- 	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
- 		file, iov_iter_count(iter), (long long) iocb->ki_pos);
- 
--	result = generic_write_checks(iocb, iter);
--	if (result <= 0)
--		return result;
--	count = result;
-+	count = iov_iter_count(iter);
- 	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES, count);
- 
- 	pos = iocb->ki_pos;
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 24e7dccce355..45d8180b7be3 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -615,8 +615,12 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
- 	if (result)
- 		return result;
- 
--	if (iocb->ki_flags & IOCB_DIRECT)
-+	if (iocb->ki_flags & IOCB_DIRECT) {
-+		result = generic_write_checks(iocb, from);
-+		if (result <= 0)
-+			return result;
- 		return nfs_file_direct_write(iocb, from);
-+	}
- 
- 	dprintk("NFS: write(%pD2, %zu@%Ld)\n",
- 		file, iov_iter_count(from), (long long) iocb->ki_pos);
+diff --git a/fs/nfs/io.c b/fs/nfs/io.c
+index b5551ed8f648..83b4dfbb826d 100644
+--- a/fs/nfs/io.c
++++ b/fs/nfs/io.c
+@@ -118,11 +118,18 @@ static void nfs_block_buffered(struct nfs_inode *nfsi, struct inode *inode)
+  * NFS_INO_ODIRECT.
+  * Note that buffered writes and truncates both take a write lock on
+  * inode->i_rwsem, meaning that those are serialised w.r.t. O_DIRECT.
++ *
++ * When inode IS_SWAPFILE we ignore the flag and don't take the rwsem
++ * as it triggers lockdep warnings and possible deadlocks.
++ * bufferred writes are forbidden anyway, and buffered reads will not
++ * be coherent.
+  */
+ void
+ nfs_start_io_direct(struct inode *inode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
++	if (IS_SWAPFILE(inode))
++		return;
+ 	/* Be an optimist! */
+ 	down_read(&inode->i_rwsem);
+ 	if (test_bit(NFS_INO_ODIRECT, &nfsi->flags) != 0)
+@@ -144,5 +151,7 @@ nfs_start_io_direct(struct inode *inode)
+ void
+ nfs_end_io_direct(struct inode *inode)
+ {
++	if (IS_SWAPFILE(inode))
++		return;
+ 	up_read(&inode->i_rwsem);
+ }
 
 
