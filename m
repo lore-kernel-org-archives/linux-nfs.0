@@ -2,95 +2,145 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE102C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 22:02:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3768C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ABE1663253
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Nov 2021 22:02:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C68F76187F
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348589AbhKOWFI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Nov 2021 17:05:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43516 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351086AbhKOWCA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 17:02:00 -0500
-Received: from mail-il1-x12e.google.com (mail-il1-x12e.google.com [IPv6:2607:f8b0:4864:20::12e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA1ADC03AA2D
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 13:30:43 -0800 (PST)
-Received: by mail-il1-x12e.google.com with SMTP id m11so18200718ilh.5
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2021 13:30:43 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=l84Rs68JQeLKs9TT54ykzpVM8QxmBN1kB7NDp2tzAHE=;
-        b=nF5Pz1uxbfy27JxS3WThkloo9MXRr+tXfgvZdZgfoBbtG/tCPhqMndz7rPygCHxhWy
-         2juqyis3yGiE4owawkDR5ir+KYehK0ZIRbSfWP/Gx+34RLWmOVj1/GrlEpRicMIftibI
-         r0D6H3nDG59NNfjOt9cELQXazSOB3yBZKQIKDdv6XgmF/yeUIbk7xNcSx4JBgpcJiFxB
-         +4uuxa44spq15rr1Orv/G3QeRnEZWCBzd3lhkx1whIR5fV9mRQUkkQYH3NMaBAFecyXZ
-         5Q1FTWoKZPZEgydEsttVAMEU7fbi1k1/HQcCqEVFnwV/2AMLrzYvbBy6HLmYylbTs2zg
-         vCQQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=l84Rs68JQeLKs9TT54ykzpVM8QxmBN1kB7NDp2tzAHE=;
-        b=K9NVeFDqUjbPYGIZSpIiBEo+w/itTU5dgz2fI8MaZnqZAaUtMC3wNKH3rHDufUbKx6
-         R21D6j/uTbmsC829b+sg6V8ISWWF3QrIvOc76Yj2oQAnzvp+oTzculAvfKHFHInliN/t
-         XBt3E0Q7et9z0nZJi7zEeKjtKukUs8tAOVUTsczkujiit197C3WtkHpVPvcTyU2JNnzJ
-         Vm4+ZZANm4UlfXW12qSiByJ8sNrH+sTHQmmePDoad6jxDzYEWZY5ZVsg51/pfuwYPhMi
-         eGYSyJ9/zjROYRC7p+0ZVNXgwCRUf5HgytAJ9Zd/4D+RYxdFsruUcEcDhv9lNcyNiBWQ
-         Kaow==
-X-Gm-Message-State: AOAM530r1JILs/QFSYSHRrUMM18VRdlLFFqMv4tD8yWicKN4BQwglAWs
-        9dVRAH1b9Cw/9iGlwjleRRqFx6KH28Unmg==
-X-Google-Smtp-Source: ABdhPJwzroV7Ggjm2BXPtlA7DSuq20vuC/byU2hCw8N5gkmh6MG25GuBaPsC1qOaXVR6/3ELcAT4ag==
-X-Received: by 2002:a05:6e02:174e:: with SMTP id y14mr1289985ill.89.1637011843057;
-        Mon, 15 Nov 2021 13:30:43 -0800 (PST)
-Received: from kolga-mac-1.attlocal.net ([2600:1700:6a10:2e90:e1ee:4f50:6204:ea99])
-        by smtp.gmail.com with ESMTPSA id q13sm11566676ilo.25.2021.11.15.13.30.42
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 15 Nov 2021 13:30:42 -0800 (PST)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/1] NFSv4.1: handle NFS4ERR_NOSPC by CREATE_SESSION
-Date:   Mon, 15 Nov 2021 16:30:40 -0500
-Message-Id: <20211115213040.337-1-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.30.1 (Apple Git-130)
+        id S239042AbhKPCuc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Nov 2021 21:50:32 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:37292 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1356826AbhKPCs1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 21:48:27 -0500
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id EED111FD47;
+        Tue, 16 Nov 2021 02:45:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1637030726; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=STuKPK8oZgtzlQ4TzQCaIEO4WItR+O1Pk/1ubRhrUlo=;
+        b=ZCw8oIvZtxNtv4c+HmVtPJpEbXwIaN63nTDizauf48LPH/v7Mjo7rKwBrFfBZn63AC4StO
+        PE4GztE7Xc8RXSgsFSJVJ76414RoAMIBbhaKYPWURVN9SNj26rp84CbVYkRKrfVr3p+mhg
+        w5x9wbEeJT4RY853YvZ8tCTrCgAUb0Q=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1637030726;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=STuKPK8oZgtzlQ4TzQCaIEO4WItR+O1Pk/1ubRhrUlo=;
+        b=5BGexwnp1XLU+pa89ep9cuEGHTTW3PysChT7qH1Aza20mJSBwF/2Zyi4j7usu3YsUPwB6/
+        LuxAgAHhgtfAQ1BA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 97E9313B70;
+        Tue, 16 Nov 2021 02:45:24 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id AG6oFUQbk2G5CAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 16 Nov 2021 02:45:24 +0000
+Subject: [PATCH 00/13] Repair SWAP-over-NFS
+From:   NeilBrown <neilb@suse.de>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mel Gorman <mgorman@suse.de>
+Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org
+Date:   Tue, 16 Nov 2021 13:44:04 +1100
+Message-ID: <163702956672.25805.16457749992977493579.stgit@noble.brown>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+swap-over-NFS currently has a variety of problems.
 
-When the client receives ERR_NOSPC on reply to CREATE_SESSION
-it leads to a client hanging in nfs_wait_client_init_complete().
-Instead, complete and fail the client initiation with an EIO
-error which allows for the mount command to fail instead of
-hanging.
+Due to a newish test in generic_write_checks(), all writes to swap
+currently fail.
+With that fixed, there are various sources of deadlocks that can cause
+a swapping system to freeze.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+swap has never worked over NFSv4 due to the occasional need to start the
+state-management thread - which won't happen when under high memory
+pressure.
+
+This series addresses all the problems that I could find, and also
+changes writes to be asynchronous, and both reads and writes to use
+multi-page RPC requests when possible (the last 2 patches).
+
+This last change causes interesting performance changes.  The rate of
+writes to the swap file (measured in K/sec) increases by a factor of
+about 5 (not precisely measured).  However interactive response falls
+noticeably (response time in multiple seconds, but not minutes).  So
+while it seems like it should be a good idea, I'm not sure if we want it
+until it is better understood.
+
+I'd be very happy if others could test out some swapping scenarios to
+see how it performs.  I've been using
+    stress-ng --brk 2 --stack 2 --bigheap 2
+which doesn't give me any insight into whether more useful work is
+getting done.
+
+Apart from the last two patches, I think this series is ready.
+
+Thanks,
+NeilBrown
+
 ---
- fs/nfs/nfs4state.c | 4 ++++
- 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index ecc4594299d6..f63dfa01001c 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1998,6 +1998,10 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- 		dprintk("%s: exit with error %d for server %s\n",
- 				__func__, -EPROTONOSUPPORT, clp->cl_hostname);
- 		return -EPROTONOSUPPORT;
-+	case -ENOSPC:
-+		if (clp->cl_cons_state == NFS_CS_SESSION_INITING)
-+			nfs_mark_client_ready(clp, -EIO);
-+		return -EIO;
- 	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
- 				 * in nfs4_exchange_id */
- 	default:
--- 
-2.27.0
+NeilBrown (13):
+      NFS: move generic_write_checks() call from nfs_file_direct_write() to nfs_file_write()
+      NFS: do not take i_rwsem for swap IO
+      MM: reclaim mustn't enter FS for swap-over-NFS
+      SUNRPC/call_alloc: async tasks mustn't block waiting for memory
+      SUNRPC/auth: async tasks mustn't block waiting for memory
+      SUNRPC/xprt: async tasks mustn't block waiting for memory
+      SUNRPC: remove scheduling boost for "SWAPPER" tasks.
+      NFS: discard NFS_RPC_SWAPFLAGS and RPC_TASK_ROOTCREDS
+      SUNRPC: improve 'swap' handling: scheduling and PF_MEMALLOC
+      NFSv4: keep state manager thread active if swap is enabled
+      NFS: swap-out must always use STABLE writes.
+      MM: use AIO/DIO for reads from SWP_FS_OPS swap-space
+      MM: use AIO for DIO writes to swap
+
+
+ fs/nfs/direct.c                 |  12 +-
+ fs/nfs/file.c                   |  21 ++-
+ fs/nfs/io.c                     |   9 ++
+ fs/nfs/nfs4_fs.h                |   1 +
+ fs/nfs/nfs4proc.c               |  20 +++
+ fs/nfs/nfs4state.c              |  39 ++++-
+ fs/nfs/read.c                   |   4 -
+ fs/nfs/write.c                  |   2 +
+ include/linux/nfs_fs.h          |   8 +-
+ include/linux/nfs_xdr.h         |   2 +
+ include/linux/sunrpc/auth.h     |   1 +
+ include/linux/sunrpc/sched.h    |   1 -
+ include/trace/events/sunrpc.h   |   1 -
+ mm/page_io.c                    | 243 +++++++++++++++++++++++++++-----
+ mm/vmscan.c                     |  12 +-
+ net/sunrpc/auth.c               |   8 +-
+ net/sunrpc/auth_gss/auth_gss.c  |   6 +-
+ net/sunrpc/auth_unix.c          |  10 +-
+ net/sunrpc/clnt.c               |   7 +-
+ net/sunrpc/sched.c              |  29 ++--
+ net/sunrpc/xprt.c               |  19 +--
+ net/sunrpc/xprtrdma/transport.c |  10 +-
+ net/sunrpc/xprtsock.c           |   8 ++
+ 23 files changed, 374 insertions(+), 99 deletions(-)
+
+--
+Signature
 
