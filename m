@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62795C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 91544C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 43B336187F
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 77EC461C15
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Nov 2021 02:47:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1357082AbhKPCun (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Nov 2021 21:50:43 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:37318 "EHLO
+        id S1357264AbhKPCuw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Nov 2021 21:50:52 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:37338 "EHLO
         smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1357060AbhKPCsl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 21:48:41 -0500
+        with ESMTP id S1357221AbhKPCsu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2021 21:48:50 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 60D091FD48;
-        Tue, 16 Nov 2021 02:45:44 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id DCE7C1FD67;
+        Tue, 16 Nov 2021 02:45:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1637030744; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1637030752; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=HAFJQqD66lEKxyMF66YMnhf/bOSH3X44K2KcJkng4Uk=;
-        b=gbCVQ6bDbY22Q4NrW50evrXT7Ds3nDI8NTZ9Io9sBz8NoaC8jFFX4LTn9aA2PckSz94ueJ
-        SvWZN4rSfdqNgtdqvCb3r6IMZTWyB8yR622TKV5wwN3g9rx4EO5seoFCc3Xi4NO3yH5dFZ
-        v5umM8wYEzG+99gUwLsGHV5PyxHV710=
+        bh=SCPnWzrli9uhGf5cSQnA2kslw6w9vTsO2ZaI10TRMW0=;
+        b=pZE6Mn45OybuBUV0fFOy6OA0abrIA0AR+Fglj1GmFirEaWFtVDkCDYxp+ocPMp60lDJ7N2
+        TaWmdEQKPcqYIl2pmPRYlaKiDIw7u0icJyyQk2e/fKk1Mzsv1R0v4/yvnKIgkZCWcNlf83
+        VqbAdkFTRkcWYEkojriQxOzGfTp73+4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1637030744;
+        s=susede2_ed25519; t=1637030752;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=HAFJQqD66lEKxyMF66YMnhf/bOSH3X44K2KcJkng4Uk=;
-        b=mqZ30JPHIzdhcGRAwSZF5MRmu7hx8qlwHnCXFyzSJrWYCq8+8g8lNDIo44ZDQDQku5U0lR
-        tfeimJ8vg5wpEbAQ==
+        bh=SCPnWzrli9uhGf5cSQnA2kslw6w9vTsO2ZaI10TRMW0=;
+        b=8qHcqlPn9r3KPsRJ2cy06JSUnxN3MrXeqxOuPnS8oTruMA9u3t2SC7iQhU5U1gJPcf5I7b
+        3IWDw2sfjb9aJ/Cg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0A16A13B70;
-        Tue, 16 Nov 2021 02:45:41 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 84C4713B70;
+        Tue, 16 Nov 2021 02:45:49 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id jzimLlUbk2HNCAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 16 Nov 2021 02:45:41 +0000
-Subject: [PATCH 02/13] NFS: do not take i_rwsem for swap IO
+        id AYUoLF0bk2HZCAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 16 Nov 2021 02:45:49 +0000
+Subject: [PATCH 03/13] MM: reclaim mustn't enter FS for swap-over-NFS
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -58,7 +58,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Tue, 16 Nov 2021 13:44:04 +1100
-Message-ID: <163703064452.25805.5738767545414940042.stgit@noble.brown>
+Message-ID: <163703064452.25805.16932817889703270242.stgit@noble.brown>
 In-Reply-To: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 References: <163702956672.25805.16457749992977493579.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -69,52 +69,46 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Taking the i_rwsem for swap IO triggers lockdep warnings regarding
-possible deadlocks with "fs_reclaim".  These deadlocks could, I believe,
-eventuate if a buffered read on the swapfile was attempted.
-
-We don't need coherence with the page cache for a swap file, and
-buffered writes are forbidden anyway.  There is no other need for
-i_rwsem during direct IO.
-
-So don't take the rwsem or set the NFS_INO_ODIRECT flag during IO to the
-swap file.
+If swap-out is using filesystem operations (SWP_FS_OPS), then it is not
+safe to enter the FS for reclaim.
+So only down-grade the requirement for swap pages to __GFP_IO after
+checking that SWP_FS_OPS are not being used.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/io.c |    9 +++++++++
- 1 file changed, 9 insertions(+)
+ mm/vmscan.c |   12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/io.c b/fs/nfs/io.c
-index b5551ed8f648..83b4dfbb826d 100644
---- a/fs/nfs/io.c
-+++ b/fs/nfs/io.c
-@@ -118,11 +118,18 @@ static void nfs_block_buffered(struct nfs_inode *nfsi, struct inode *inode)
-  * NFS_INO_ODIRECT.
-  * Note that buffered writes and truncates both take a write lock on
-  * inode->i_rwsem, meaning that those are serialised w.r.t. O_DIRECT.
-+ *
-+ * When inode IS_SWAPFILE we ignore the flag and don't take the rwsem
-+ * as it triggers lockdep warnings and possible deadlocks.
-+ * bufferred writes are forbidden anyway, and buffered reads will not
-+ * be coherent.
-  */
- void
- nfs_start_io_direct(struct inode *inode)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
-+	if (IS_SWAPFILE(inode))
-+		return;
- 	/* Be an optimist! */
- 	down_read(&inode->i_rwsem);
- 	if (test_bit(NFS_INO_ODIRECT, &nfsi->flags) != 0)
-@@ -144,5 +151,7 @@ nfs_start_io_direct(struct inode *inode)
- void
- nfs_end_io_direct(struct inode *inode)
- {
-+	if (IS_SWAPFILE(inode))
-+		return;
- 	up_read(&inode->i_rwsem);
- }
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index fb9584641ac7..049ff4494081 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -1513,8 +1513,14 @@ static unsigned int shrink_page_list(struct list_head *page_list,
+ 		if (!sc->may_unmap && page_mapped(page))
+ 			goto keep_locked;
+ 
++		/* ->flags can be updated non-atomicially (scan_swap_map_slots),
++		 * but that will never affect SWP_FS_OPS, so the data_race
++		 * is safe.
++		 */
+ 		may_enter_fs = (sc->gfp_mask & __GFP_FS) ||
+-			(PageSwapCache(page) && (sc->gfp_mask & __GFP_IO));
++			(PageSwapCache(page) &&
++			 !data_race(page_swap_info(page)->flags & SWP_FS_OPS) &&
++			 (sc->gfp_mask & __GFP_IO));
+ 
+ 		/*
+ 		 * The number of dirty pages determines if a node is marked
+@@ -1682,7 +1688,9 @@ static unsigned int shrink_page_list(struct list_head *page_list,
+ 						goto activate_locked_split;
+ 				}
+ 
+-				may_enter_fs = true;
++				if ((sc->gfp_mask & __GFP_FS) ||
++				    !data_race(page_swap_info(page)->flags & SWP_FS_OPS))
++					may_enter_fs = true;
+ 
+ 				/* Adding to swap updated mapping */
+ 				mapping = page_mapping(page);
 
 
