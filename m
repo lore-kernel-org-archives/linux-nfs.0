@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDAC4C433EF
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 00:47:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 074DCC433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 00:47:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C062B619FA
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 00:47:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E29E6619FA
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 00:47:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232227AbhKQAuX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Nov 2021 19:50:23 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:43342 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229611AbhKQAuX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2021 19:50:23 -0500
+        id S232233AbhKQAu3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Nov 2021 19:50:29 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:37098 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229611AbhKQAu3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2021 19:50:29 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id EB9131FD29;
-        Wed, 17 Nov 2021 00:47:24 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id CC7F12177B;
+        Wed, 17 Nov 2021 00:47:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1637110044; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1637110050; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=tEmpVOUjwETqcUnrx9SSUwolXsOvzVTy5yqH4SFN9o8=;
-        b=rVxUOoE/bctt2k66M+wMyV+GjPHH6QTIyeLR2Oln6J34M1n+Rpq1EYrVbRBpo7GTtBLiiO
-        7niBmT3ek2CQzntT1NZbAFhTbm6AD1LPowI1c9IFwyX0c2SX78yrBIm0PwAODU1jI3kvTl
-        9OfLLOeURFPqJ44eRGPRUthaIBNtXb0=
+        bh=ADeM54StGRViqZXCy0BUQ2qVn2W/LxalQ4iSpCSBAmY=;
+        b=jsQ/gCg/sTv92Bm+Z+Sh6aUH+pDZf2cJxCT715vwRi4MjZDFQ1oRPZgrWSbd9qQ1vWixeV
+        T0EsmBpm5cpM7o5IRpcuLQ7nG5EnDdhltAvowrn2HstB3mwAxV0TWVVTrUGEMNSXn1xvRF
+        GiyS1nS0dDGt8OD7i0obIjCyNdsUn6w=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1637110044;
+        s=susede2_ed25519; t=1637110050;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=tEmpVOUjwETqcUnrx9SSUwolXsOvzVTy5yqH4SFN9o8=;
-        b=cBfM44/Ug158i8oHARoZrIUd0cdqlMQE7EItITr8VKVFgAQD0tORVJn893C98k01D7pBb1
-        uv2e3t0RXESDxSAw==
+        bh=ADeM54StGRViqZXCy0BUQ2qVn2W/LxalQ4iSpCSBAmY=;
+        b=tiM/ToNmq/0A5G/N6EIJBbfpyPrBsAnppYitSVq/5wLE1+JWl6u1cTIp1r67u2wwnu7uFE
+        Ev419qM8AQxyA7Dw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id DC82F13BC1;
-        Wed, 17 Nov 2021 00:47:23 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id BD8FD13BC1;
+        Wed, 17 Nov 2021 00:47:29 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id wfJ2JhtRlGE+WgAAMHmgww
-        (envelope-from <neilb@suse.de>); Wed, 17 Nov 2021 00:47:23 +0000
-Subject: [PATCH 03/14] NFSD: narrow nfsd_mutex protection in nfsd thread
+        id 0nDiHiFRlGFKWgAAMHmgww
+        (envelope-from <neilb@suse.de>); Wed, 17 Nov 2021 00:47:29 +0000
+Subject: [PATCH 04/14] SUNRPC: use sv_lock to protect updates to sv_nrthreads.
 From:   NeilBrown <neilb@suse.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Wed, 17 Nov 2021 11:46:50 +1100
-Message-ID: <163711001002.5485.16884237807627303217.stgit@noble.brown>
+Message-ID: <163711001002.5485.7415582365549720137.stgit@noble.brown>
 In-Reply-To: <163710954700.5485.5622638225352156964.stgit@noble.brown>
 References: <163710954700.5485.5622638225352156964.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -65,47 +65,89 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-There is nothing happening in the start of nfsd() that requires
-protection by the mutex, so don't take it until shutting down the thread
-- which does still require protection.
+Using sv_lock means we don't need to hold the service mutex over these
+updates.
+
+In particular,  svc_exit_thread() no longer requires synchronisation, so
+threads can exit asynchronously.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/nfssvc.c |    6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ fs/nfsd/nfssvc.c |    9 ++++-----
+ net/sunrpc/svc.c |    9 +++++++--
+ 2 files changed, 11 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 3c6e4faac3c3..9e517ddd8d4e 100644
+index 9e517ddd8d4e..27a735a4df29 100644
 --- a/fs/nfsd/nfssvc.c
 +++ b/fs/nfsd/nfssvc.c
-@@ -934,9 +934,6 @@ nfsd(void *vrqstp)
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int err;
+@@ -55,9 +55,8 @@ static __be32			nfsd_init_request(struct svc_rqst *,
+ 						struct svc_process_info *);
  
--	/* Lock module and set up kernel thread */
--	mutex_lock(&nfsd_mutex);
--
- 	/* At this point, the thread shares current->fs
- 	 * with the init process. We need to create files with the
- 	 * umask as defined by the client instead of init's umask. */
-@@ -956,7 +953,6 @@ nfsd(void *vrqstp)
- 	allow_signal(SIGINT);
- 	allow_signal(SIGQUIT);
- 
--	mutex_unlock(&nfsd_mutex);
- 	atomic_inc(&nfsdstats.th_cnt);
- 
- 	set_freezable();
-@@ -985,9 +981,9 @@ nfsd(void *vrqstp)
- 	flush_signals(current);
- 
+ /*
+- * nfsd_mutex protects nn->nfsd_serv -- both the pointer itself and the members
+- * of the svc_serv struct. In particular, ->sv_nrthreads but also to some
+- * extent ->sv_temp_socks and ->sv_permsocks.
++ * nfsd_mutex protects nn->nfsd_serv -- both the pointer itself and some members
++ * of the svc_serv struct such as ->sv_temp_socks and ->sv_permsocks.
+  *
+  * If (out side the lock) nn->nfsd_serv is non-NULL, then it must point to a
+  * properly initialised 'struct svc_serv' with ->sv_nrthreads > 0 (unless
+@@ -983,7 +982,6 @@ nfsd(void *vrqstp)
  	atomic_dec(&nfsdstats.th_cnt);
--	mutex_lock(&nfsd_mutex);
  
  out:
-+	mutex_lock(&nfsd_mutex);
+-	mutex_lock(&nfsd_mutex);
  	/* Take an extra ref so that the svc_put in svc_exit_thread()
  	 * doesn't call svc_destroy()
  	 */
+@@ -993,10 +991,11 @@ nfsd(void *vrqstp)
+ 	svc_exit_thread(rqstp);
+ 
+ 	/* Now if needed we call svc_destroy in appropriate context */
++	mutex_lock(&nfsd_mutex);
+ 	nfsd_put(net);
++	mutex_unlock(&nfsd_mutex);
+ 
+ 	/* Release module */
+-	mutex_unlock(&nfsd_mutex);
+ 	module_put_and_exit(0);
+ 	return 0;
+ }
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index bd610709e88c..a099d0145d89 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -523,7 +523,7 @@ EXPORT_SYMBOL_GPL(svc_shutdown_net);
+ 
+ /*
+  * Destroy an RPC service. Should be called with appropriate locking to
+- * protect the sv_nrthreads, sv_permsocks and sv_tempsocks.
++ * protect sv_permsocks and sv_tempsocks.
+  */
+ void
+ svc_destroy(struct kref *ref)
+@@ -641,7 +641,10 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	svc_get(serv);
+-	serv->sv_nrthreads++;
++	spin_lock_bh(&serv->sv_lock);
++	serv->sv_nrthreads += 1;
++	spin_unlock_bh(&serv->sv_lock);
++
+ 	spin_lock_bh(&pool->sp_lock);
+ 	pool->sp_nrthreads++;
+ 	list_add_rcu(&rqstp->rq_all, &pool->sp_all_threads);
+@@ -882,7 +885,9 @@ svc_exit_thread(struct svc_rqst *rqstp)
+ 		list_del_rcu(&rqstp->rq_all);
+ 	spin_unlock_bh(&pool->sp_lock);
+ 
++	spin_lock_bh(&serv->sv_lock);
+ 	serv->sv_nrthreads -= 1;
++	spin_unlock_bh(&serv->sv_lock);
+ 	svc_sock_update_bufs(serv);
+ 
+ 	svc_rqst_free(rqstp);
 
 
