@@ -2,45 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10E02C433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 22:17:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 49F43C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 22:17:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EA3B461B39
-	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 22:17:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 313A461B39
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Nov 2021 22:17:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241114AbhKQWUe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 17 Nov 2021 17:20:34 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:60209 "EHLO
+        id S241116AbhKQWUf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 17 Nov 2021 17:20:35 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:41614 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S241116AbhKQWU3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2021 17:20:29 -0500
+        by vger.kernel.org with ESMTP id S241119AbhKQWUc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2021 17:20:32 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1637187450;
+        s=mimecast20190719; t=1637187452;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:in-reply-to:in-reply-to:references:references;
-        bh=D72EGa9lgFd9iMcU2FjgBVw/mB/UbN+sEs2moKzridc=;
-        b=OManvD2iDiQ5gCr7Ih/P59J5Us99AAZ/YTa4z/GjYf4g7xhIJU9xRWPfeSRPnsPE8lESWS
-        1mY4x2K5oxB8vTh9CEeBvel0T8ax82GH90pyrnnFcvodGPA5Y5bL5/TtYlA50Z8ThaeVxp
-        p7MmitFqVCD+lU1rXdNLS7V5tbixYAA=
+        bh=pOVSo7AIopz8T/qZm0fpd1bkYSFNIYvYvnPcNIIJAU8=;
+        b=RPzO+DOYQrMz5GXnPQ6598UZZ65I7hNwozcWMr404ttvQqJTQJGuDFpLed6QTS0OqcORYd
+        g5ItAqaNPEdXa576lCvvpkJysScgGIK5uT0vukm14cSR+mTlPgxv3mJh0EKNm/4kIGu29k
+        hW81YglsPXY7iQ6K/Dc9G6lA98+riB0=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-591-7X621R0gMMaL4kTcy0w9Rg-1; Wed, 17 Nov 2021 17:17:27 -0500
-X-MC-Unique: 7X621R0gMMaL4kTcy0w9Rg-1
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-151-ZNQIPSMpNQyu7z2xqjh5qg-1; Wed, 17 Nov 2021 17:17:29 -0500
+X-MC-Unique: ZNQIPSMpNQyu7z2xqjh5qg-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 44A7F1808312;
-        Wed, 17 Nov 2021 22:17:26 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4BFBD100C660;
+        Wed, 17 Nov 2021 22:17:28 +0000 (UTC)
 Received: from dwysocha.rdu.csb (unknown [10.22.32.4])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id B770760657;
-        Wed, 17 Nov 2021 22:17:25 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id C02B960657;
+        Wed, 17 Nov 2021 22:17:27 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [PATCH 2/7] NFS: Cleanup usage of nfs_inode in fscache interface and handle i_size properly
-Date:   Wed, 17 Nov 2021 17:17:13 -0500
-Message-Id: <1637187438-18858-3-git-send-email-dwysocha@redhat.com>
+Subject: [PATCH 5/7] NFS: Replace dfprintks with tracepoints in fscache read and write page functions
+Date:   Wed, 17 Nov 2021 17:17:16 -0500
+Message-Id: <1637187438-18858-6-git-send-email-dwysocha@redhat.com>
 In-Reply-To: <1637187438-18858-1-git-send-email-dwysocha@redhat.com>
 References: <1637187438-18858-1-git-send-email-dwysocha@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
@@ -48,86 +49,251 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-A number of places in the fscache interface used nfs_inode when inode could
-be used, simplifying the code.  Also, handle the read of i_size properly by
-utilizing the i_size_read() interface.
+Most of fscache and other NFS IO paths are now using tracepoints.
+Remove the dfprintks in the NFS fscache read/write page functions
+and replace with tracepoints at the begin and end of the functions.
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- fs/nfs/fscache.c | 24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
+ fs/nfs/fscache.c  |  51 ++++++++++-----------------
+ fs/nfs/nfstrace.h | 101 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 119 insertions(+), 33 deletions(-)
 
 diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index d743629e05e1..ebc91e4b7655 100644
+index 913a29f2b9e4..f4147a7915bd 100644
 --- a/fs/nfs/fscache.c
 +++ b/fs/nfs/fscache.c
-@@ -226,16 +226,16 @@ void nfs_fscache_release_super_cookie(struct super_block *sb)
- }
- 
- static void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *auxdata,
--				  struct nfs_inode *nfsi)
-+				  struct inode *inode)
+@@ -382,9 +382,7 @@ static void nfs_fscache_read_page_complete(struct page *page,
+ 					       void *context,
+ 					       int error)
  {
- 	memset(auxdata, 0, sizeof(*auxdata));
--	auxdata->mtime_sec  = nfsi->vfs_inode.i_mtime.tv_sec;
--	auxdata->mtime_nsec = nfsi->vfs_inode.i_mtime.tv_nsec;
--	auxdata->ctime_sec  = nfsi->vfs_inode.i_ctime.tv_sec;
--	auxdata->ctime_nsec = nfsi->vfs_inode.i_ctime.tv_nsec;
-+	auxdata->mtime_sec  = inode->i_mtime.tv_sec;
-+	auxdata->mtime_nsec = inode->i_mtime.tv_nsec;
-+	auxdata->ctime_sec  = inode->i_ctime.tv_sec;
-+	auxdata->ctime_nsec = inode->i_ctime.tv_nsec;
+-	dfprintk(FSCACHE,
+-		 "NFS: fscache_read_page_complete (0x%p/0x%p/%d)\n",
+-		 page, context, error);
++	trace_nfs_fscache_read_page_complete(page->mapping->host, page, 1, error);
  
--	if (NFS_SERVER(&nfsi->vfs_inode)->nfs_client->rpc_ops->version == 4)
--		auxdata->change_attr = inode_peek_iversion_raw(&nfsi->vfs_inode);
-+	if (NFS_SERVER(inode)->nfs_client->rpc_ops->version == 4)
-+		auxdata->change_attr = inode_peek_iversion_raw(inode);
+ 	/*
+ 	 * If the read completes with an error, mark the page with PG_checked,
+@@ -405,13 +403,11 @@ int __nfs_fscache_read_page(struct nfs_open_context *ctx,
+ {
+ 	int ret;
+ 
+-	dfprintk(FSCACHE,
+-		 "NFS: readpage_from_fscache(fsc:%p/p:%p(i:%lx f:%lx)/0x%p)\n",
+-		 nfs_i_fscache(inode), page, page->index, page->flags, inode);
+-
++	trace_nfs_fscache_read_pages(inode, page, 1);
+ 	if (PageChecked(page)) {
+ 		ClearPageChecked(page);
+-		return 1;
++		ret = 1;
++		goto out;
+ 	}
+ 
+ 	ret = fscache_read_or_alloc_page(nfs_i_fscache(inode),
+@@ -422,22 +418,21 @@ int __nfs_fscache_read_page(struct nfs_open_context *ctx,
+ 
+ 	switch (ret) {
+ 	case 0: /* read BIO submitted (page in fscache) */
+-		dfprintk(FSCACHE,
+-			 "NFS:    fscache_read_page: BIO submitted\n");
+ 		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_READ_OK);
+-		return ret;
++		break;
+ 
+ 	case -ENOBUFS: /* inode not in cache */
+ 	case -ENODATA: /* page not in cache */
+ 		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_READ_FAIL);
+-		dfprintk(FSCACHE,
+-			 "NFS:    fscache_read_page %d\n", ret);
+-		return 1;
++		ret = 1;
++		break;
+ 
+ 	default:
+-		dfprintk(FSCACHE, "NFS:    fscache_read_page %d\n", ret);
+ 		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_READ_FAIL);
+ 	}
++
++out:
++	trace_nfs_fscache_read_pages_exit(inode, page, 1, ret);
+ 	return ret;
  }
  
- /*
-@@ -251,13 +251,13 @@ void nfs_fscache_init_inode(struct inode *inode)
- 	if (!(nfss->fscache && S_ISREG(inode->i_mode)))
- 		return;
+@@ -453,8 +448,7 @@ int __nfs_fscache_read_pages(struct nfs_open_context *ctx,
+ 	unsigned npages = *nr_pages;
+ 	int ret;
  
--	nfs_fscache_update_auxdata(&auxdata, nfsi);
-+	nfs_fscache_update_auxdata(&auxdata, inode);
+-	dfprintk(FSCACHE, "NFS: fscache_read_pages (0x%p/%u/0x%p)\n",
+-		 nfs_i_fscache(inode), npages, inode);
++	trace_nfs_fscache_read_pages(inode, lru_to_page(pages), *nr_pages);
  
- 	nfsi->fscache = fscache_acquire_cookie(NFS_SB(inode->i_sb)->fscache,
- 					       &nfs_fscache_inode_object_def,
- 					       nfsi->fh.data, nfsi->fh.size,
- 					       &auxdata, sizeof(auxdata),
--					       nfsi, nfsi->vfs_inode.i_size, false);
-+					       nfsi, i_size_read(inode), false);
+ 	ret = fscache_read_or_alloc_pages(nfs_i_fscache(inode),
+ 					  mapping, pages, nr_pages,
+@@ -472,22 +466,18 @@ int __nfs_fscache_read_pages(struct nfs_open_context *ctx,
+ 	case 0: /* read submitted to the cache for all pages */
+ 		BUG_ON(!list_empty(pages));
+ 		BUG_ON(*nr_pages != 0);
+-		dfprintk(FSCACHE,
+-			 "NFS: fscache_read_pages: submitted\n");
+-
+-		return ret;
++		break;
+ 
+ 	case -ENOBUFS: /* some pages aren't cached and can't be */
+ 	case -ENODATA: /* some pages aren't cached */
+-		dfprintk(FSCACHE,
+-			 "NFS: fscache_read_pages: no page: %d\n", ret);
+-		return 1;
++		ret = 1;
++		break;
+ 
+ 	default:
+-		dfprintk(FSCACHE,
+-			 "NFS: fscache_read_pages: ret  %d\n", ret);
++		;
+ 	}
+ 
++	trace_nfs_fscache_read_pages_exit(inode, lru_to_page(pages), *nr_pages, ret);
+ 	return ret;
  }
  
- /*
-@@ -271,7 +271,7 @@ void nfs_fscache_clear_inode(struct inode *inode)
+@@ -499,16 +489,10 @@ void __nfs_fscache_write_page(struct inode *inode, struct page *page, int sync)
+ {
+ 	int ret;
  
- 	dfprintk(FSCACHE, "NFS: clear cookie (0x%p/0x%p)\n", nfsi, cookie);
+-	dfprintk(FSCACHE,
+-		 "NFS: fscache_write_page(fsc:%p/p:%p(i:%lx f:%lx)/%d)\n",
+-		 nfs_i_fscache(inode), page, page->index, page->flags, sync);
++	trace_nfs_fscache_write_page(inode, page, 1);
  
--	nfs_fscache_update_auxdata(&auxdata, nfsi);
-+	nfs_fscache_update_auxdata(&auxdata, inode);
- 	fscache_relinquish_cookie(cookie, &auxdata, false);
- 	nfsi->fscache = NULL;
+ 	ret = fscache_write_page(nfs_i_fscache(inode), page,
+ 				 inode->i_size, GFP_KERNEL);
+-	dfprintk(FSCACHE,
+-		 "NFS:     nfs_fscache_write_page: p:%p(i:%lu f:%lx) ret %d\n",
+-		 page, page->index, page->flags, ret);
+-
+ 	if (ret != 0) {
+ 		fscache_uncache_page(nfs_i_fscache(inode), page);
+ 		nfs_inc_fscache_stats(inode,
+@@ -518,4 +502,5 @@ void __nfs_fscache_write_page(struct inode *inode, struct page *page, int sync)
+ 		nfs_inc_fscache_stats(inode,
+ 				      NFSIOS_FSCACHE_PAGES_WRITTEN_OK);
+ 	}
++	trace_nfs_fscache_write_page_exit(inode, page, 1, ret);
  }
-@@ -311,7 +311,7 @@ void nfs_fscache_open_file(struct inode *inode, struct file *filp)
- 	if (!fscache_cookie_valid(cookie))
- 		return;
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 2da68adda88f..62c78e6b4582 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -1097,6 +1097,107 @@
+ 		)
+ );
  
--	nfs_fscache_update_auxdata(&auxdata, nfsi);
-+	nfs_fscache_update_auxdata(&auxdata, inode);
- 
- 	if (inode_is_open_for_write(inode)) {
- 		dfprintk(FSCACHE, "NFS: nfsi 0x%p disabling cache\n", nfsi);
-@@ -320,7 +320,7 @@ void nfs_fscache_open_file(struct inode *inode, struct file *filp)
- 		fscache_uncache_all_inode_pages(cookie, inode);
- 	} else {
- 		dfprintk(FSCACHE, "NFS: nfsi 0x%p enabling cache\n", nfsi);
--		fscache_enable_cookie(cookie, &auxdata, nfsi->vfs_inode.i_size,
-+		fscache_enable_cookie(cookie, &auxdata, i_size_read(inode),
- 				      nfs_fscache_can_enable, inode);
- 		if (fscache_cookie_enabled(cookie))
- 			set_bit(NFS_INO_FSCACHE, &NFS_I(inode)->flags);
++DECLARE_EVENT_CLASS(nfs_fscache_page_event,
++		TP_PROTO(
++			const struct inode *inode,
++			struct page *page,
++			unsigned int nr_pages
++		),
++
++		TP_ARGS(inode, page, nr_pages),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(loff_t, offset)
++			__field(u32, count)
++		),
++
++		TP_fast_assign(
++			const struct nfs_inode *nfsi = NFS_I(inode);
++			const struct nfs_fh *fh = &nfsi->fh;
++
++			__entry->offset = page_index(page) << PAGE_SHIFT;
++			__entry->count = PAGE_SIZE*nr_pages;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(fh);
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%u",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			(long long)__entry->offset, __entry->count
++		)
++);
++DECLARE_EVENT_CLASS(nfs_fscache_page_event_done,
++		TP_PROTO(
++			const struct inode *inode,
++			struct page *page,
++			unsigned int nr_pages,
++			int error
++		),
++
++		TP_ARGS(inode, page, nr_pages, error),
++
++		TP_STRUCT__entry(
++			__field(int, error)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(loff_t, offset)
++			__field(u32, count)
++		),
++
++		TP_fast_assign(
++			const struct nfs_inode *nfsi = NFS_I(inode);
++			const struct nfs_fh *fh = &nfsi->fh;
++
++			__entry->offset = page_index(page) << PAGE_SHIFT;
++			__entry->count = PAGE_SIZE*nr_pages;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(fh);
++			__entry->error = error;
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%u error=%d",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			(long long)__entry->offset, __entry->count,
++			__entry->error
++		)
++);
++#define DEFINE_NFS_FSCACHE_PAGE_EVENT(name) \
++	DEFINE_EVENT(nfs_fscache_page_event, name, \
++			TP_PROTO( \
++				const struct inode *inode, \
++				struct page *page, \
++				unsigned int nr_pages \
++			), \
++			TP_ARGS(inode, page, nr_pages))
++#define DEFINE_NFS_FSCACHE_PAGE_EVENT_DONE(name) \
++	DEFINE_EVENT(nfs_fscache_page_event_done, name, \
++			TP_PROTO( \
++				const struct inode *inode, \
++				struct page *page, \
++				unsigned int nr_pages, \
++				int error \
++			), \
++			TP_ARGS(inode, page, nr_pages, error))
++DEFINE_NFS_FSCACHE_PAGE_EVENT(nfs_fscache_read_pages);
++DEFINE_NFS_FSCACHE_PAGE_EVENT_DONE(nfs_fscache_read_pages_exit);
++DEFINE_NFS_FSCACHE_PAGE_EVENT(nfs_fscache_write_page);
++DEFINE_NFS_FSCACHE_PAGE_EVENT_DONE(nfs_fscache_write_page_exit);
++DEFINE_NFS_FSCACHE_PAGE_EVENT_DONE(nfs_fscache_read_page_complete);
++
+ TRACE_EVENT(nfs_pgio_error,
+ 	TP_PROTO(
+ 		const struct nfs_pgio_header *hdr,
 -- 
 1.8.3.1
 
