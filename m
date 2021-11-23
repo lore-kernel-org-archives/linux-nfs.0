@@ -2,56 +2,56 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE7E4C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Nov 2021 01:31:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A54AEC433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Nov 2021 01:32:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231666AbhKWBfE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Nov 2021 20:35:04 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:37146 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229484AbhKWBfD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Nov 2021 20:35:03 -0500
+        id S230214AbhKWBfJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 Nov 2021 20:35:09 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:57886 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229484AbhKWBfI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Nov 2021 20:35:08 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id C33151FD39;
-        Tue, 23 Nov 2021 01:31:55 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id D129E218B0;
+        Tue, 23 Nov 2021 01:32:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1637631115; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1637631120; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=LtR+h2/SHobdjw6xJn7imJnV1Ye8cBQSZWUn0dvaWP0=;
-        b=1wE+Hz64io3doMFsE20ksU8FEnbMPYk81v6fgkhfhbL6XZJrcW3WKYoqaYSpNzHEXIk4El
-        kGpgp01bf6q6AZLsiY5xGPM6lIBX6FAnsZirJPYOYrHyyAidy8mDcu1lu6x1xKpOc+nMvd
-        iEZNBEu8GSDuoumE1r2TnQ6UWC9fKWM=
+        bh=SRODYG02CzjFzQL4XDmO8VeXkSyZ3ESGsTuHgv14Ty8=;
+        b=i/5vy5vdBfdIAEAV5ZEnWKizE7428B2VtVKrE187BIye1bhMtiMkPAhjDKpvlxLXTY59m9
+        65YGzXe9Xv0iG7gDjUKG4VQ3y2Dd5qXDVn4HcDtYq6qxoWeA4C/P6DsmLWCA2fmbeRn9a9
+        8tsh3R1msGzWc+jOSk5dbGHRyWkCuhY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1637631115;
+        s=susede2_ed25519; t=1637631120;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=LtR+h2/SHobdjw6xJn7imJnV1Ye8cBQSZWUn0dvaWP0=;
-        b=r2qHKE8SpiDY5C2MYeCXe+/v4tS2OjgpCTU9gYpDmJATWGAGVXwh9M9ITDkrG71wq99QHQ
-        zb2ke9Rc6QclAoBQ==
+        bh=SRODYG02CzjFzQL4XDmO8VeXkSyZ3ESGsTuHgv14Ty8=;
+        b=CALl8v4lZ1qqH6pKd/xYECwcDT/Nqss6yHNc4gZUf9jhnhN9xbK+70pV0E5O542E6FT5un
+        rnspWnCjrq0HgtDw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9C85613BD4;
-        Tue, 23 Nov 2021 01:31:54 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id BACB513BD4;
+        Tue, 23 Nov 2021 01:31:59 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id QrBzFYpEnGHwcwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 23 Nov 2021 01:31:54 +0000
-Subject: [PATCH 10/19] lockd: introduce nlmsvc_serv
+        id WMvRHY9EnGH+cwAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 23 Nov 2021 01:31:59 +0000
+Subject: [PATCH 11/19] lockd: simplify management of network status notifiers
 From:   NeilBrown <neilb@suse.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Tue, 23 Nov 2021 12:29:35 +1100
-Message-ID: <163763097547.7284.4982400127908906020.stgit@noble.brown>
+Message-ID: <163763097547.7284.16391884357277786583.stgit@noble.brown>
 In-Reply-To: <163763078330.7284.10141477742275086758.stgit@noble.brown>
 References: <163763078330.7284.10141477742275086758.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -62,143 +62,148 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-lockd has two globals - nlmsvc_task and nlmsvc_rqst - but mostly it
-wants the 'struct svc_serv', and when it doesn't want it exactly it can
-get to what it wants from the serv.
+Now that the network status notifiers use nlmsvc_serv rather then
+nlmsvc_rqst the management can be simplified.
 
-This patch is a first step to removing nlmsvc_task and nlmsvc_rqst.  It
-introduces nlmsvc_serv to store the 'struct svc_serv*'.  This is set as
-soon as the serv is created, and cleared only when it is destroyed.
+Notifier unregistration synchronises with any pending notifications so
+providing we unregister before nlm_serv is freed no further interlock
+is required.
+
+So we move the unregister call to just before the thread is killed
+(which destroys the service) and just before the service is destroyed in
+the failure-path of lockd_up().
+
+Then nlm_ntf_refcnt and nlm_ntf_wq can be removed.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/lockd/svc.c |   36 ++++++++++++++++++++----------------
- 1 file changed, 20 insertions(+), 16 deletions(-)
+ fs/lockd/svc.c |   35 +++++++++--------------------------
+ 1 file changed, 9 insertions(+), 26 deletions(-)
 
 diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index a9669b106dbd..83874878f41d 100644
+index 83874878f41d..20cebb191350 100644
 --- a/fs/lockd/svc.c
 +++ b/fs/lockd/svc.c
-@@ -54,6 +54,7 @@ EXPORT_SYMBOL_GPL(nlmsvc_ops);
- 
- static DEFINE_MUTEX(nlmsvc_mutex);
- static unsigned int		nlmsvc_users;
-+static struct svc_serv		*nlmsvc_serv;
- static struct task_struct	*nlmsvc_task;
+@@ -59,9 +59,6 @@ static struct task_struct	*nlmsvc_task;
  static struct svc_rqst		*nlmsvc_rqst;
  unsigned long			nlmsvc_timeout;
-@@ -306,13 +307,12 @@ static int lockd_inetaddr_event(struct notifier_block *this,
- 	    !atomic_inc_not_zero(&nlm_ntf_refcnt))
- 		goto out;
  
--	if (nlmsvc_rqst) {
-+	if (nlmsvc_serv) {
- 		dprintk("lockd_inetaddr_event: removed %pI4\n",
- 			&ifa->ifa_local);
- 		sin.sin_family = AF_INET;
- 		sin.sin_addr.s_addr = ifa->ifa_local;
--		svc_age_temp_xprts_now(nlmsvc_rqst->rq_server,
--			(struct sockaddr *)&sin);
-+		svc_age_temp_xprts_now(nlmsvc_serv, (struct sockaddr *)&sin);
- 	}
- 	atomic_dec(&nlm_ntf_refcnt);
- 	wake_up(&nlm_ntf_wq);
-@@ -336,14 +336,13 @@ static int lockd_inet6addr_event(struct notifier_block *this,
- 	    !atomic_inc_not_zero(&nlm_ntf_refcnt))
- 		goto out;
- 
--	if (nlmsvc_rqst) {
-+	if (nlmsvc_serv) {
- 		dprintk("lockd_inet6addr_event: removed %pI6\n", &ifa->addr);
- 		sin6.sin6_family = AF_INET6;
- 		sin6.sin6_addr = ifa->addr;
- 		if (ipv6_addr_type(&sin6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
- 			sin6.sin6_scope_id = ifa->idev->dev->ifindex;
--		svc_age_temp_xprts_now(nlmsvc_rqst->rq_server,
--			(struct sockaddr *)&sin6);
-+		svc_age_temp_xprts_now(nlmsvc_serv, (struct sockaddr *)&sin6);
- 	}
- 	atomic_dec(&nlm_ntf_refcnt);
- 	wake_up(&nlm_ntf_wq);
-@@ -423,15 +422,17 @@ static const struct svc_serv_ops lockd_sv_ops = {
- 	.svo_enqueue_xprt	= svc_xprt_do_enqueue,
- };
- 
--static struct svc_serv *lockd_create_svc(void)
-+static int lockd_create_svc(void)
- {
- 	struct svc_serv *serv;
- 
- 	/*
- 	 * Check whether we're already up and running.
- 	 */
--	if (nlmsvc_rqst)
--		return svc_get(nlmsvc_rqst->rq_server);
-+	if (nlmsvc_serv) {
-+		svc_get(nlmsvc_serv);
-+		return 0;
-+	}
- 
- 	/*
- 	 * Sanity check: if there's no pid,
-@@ -448,14 +449,15 @@ static struct svc_serv *lockd_create_svc(void)
- 	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, &lockd_sv_ops);
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
--		return ERR_PTR(-ENOMEM);
-+		return -ENOMEM;
- 	}
-+	nlmsvc_serv = serv;
- 	register_inetaddr_notifier(&lockd_inetaddr_notifier);
- #if IS_ENABLED(CONFIG_IPV6)
- 	register_inet6addr_notifier(&lockd_inet6addr_notifier);
- #endif
- 	dprintk("lockd_up: service created\n");
--	return serv;
-+	return 0;
- }
+-static atomic_t nlm_ntf_refcnt = ATOMIC_INIT(0);
+-static DECLARE_WAIT_QUEUE_HEAD(nlm_ntf_wq);
+-
+ unsigned int lockd_net_id;
  
  /*
-@@ -468,11 +470,10 @@ int lockd_up(struct net *net, const struct cred *cred)
+@@ -303,8 +300,7 @@ static int lockd_inetaddr_event(struct notifier_block *this,
+ 	struct in_ifaddr *ifa = (struct in_ifaddr *)ptr;
+ 	struct sockaddr_in sin;
  
- 	mutex_lock(&nlmsvc_mutex);
+-	if ((event != NETDEV_DOWN) ||
+-	    !atomic_inc_not_zero(&nlm_ntf_refcnt))
++	if (event != NETDEV_DOWN)
+ 		goto out;
  
--	serv = lockd_create_svc();
--	if (IS_ERR(serv)) {
--		error = PTR_ERR(serv);
-+	error = lockd_create_svc();
-+	if (error)
- 		goto err_create;
--	}
-+	serv = nlmsvc_serv;
+ 	if (nlmsvc_serv) {
+@@ -314,8 +310,6 @@ static int lockd_inetaddr_event(struct notifier_block *this,
+ 		sin.sin_addr.s_addr = ifa->ifa_local;
+ 		svc_age_temp_xprts_now(nlmsvc_serv, (struct sockaddr *)&sin);
+ 	}
+-	atomic_dec(&nlm_ntf_refcnt);
+-	wake_up(&nlm_ntf_wq);
+ 
+ out:
+ 	return NOTIFY_DONE;
+@@ -332,8 +326,7 @@ static int lockd_inet6addr_event(struct notifier_block *this,
+ 	struct inet6_ifaddr *ifa = (struct inet6_ifaddr *)ptr;
+ 	struct sockaddr_in6 sin6;
+ 
+-	if ((event != NETDEV_DOWN) ||
+-	    !atomic_inc_not_zero(&nlm_ntf_refcnt))
++	if (event != NETDEV_DOWN)
+ 		goto out;
+ 
+ 	if (nlmsvc_serv) {
+@@ -344,8 +337,6 @@ static int lockd_inet6addr_event(struct notifier_block *this,
+ 			sin6.sin6_scope_id = ifa->idev->dev->ifindex;
+ 		svc_age_temp_xprts_now(nlmsvc_serv, (struct sockaddr *)&sin6);
+ 	}
+-	atomic_dec(&nlm_ntf_refcnt);
+-	wake_up(&nlm_ntf_wq);
+ 
+ out:
+ 	return NOTIFY_DONE;
+@@ -362,14 +353,6 @@ static void lockd_unregister_notifiers(void)
+ #if IS_ENABLED(CONFIG_IPV6)
+ 	unregister_inet6addr_notifier(&lockd_inet6addr_notifier);
+ #endif
+-	wait_event(nlm_ntf_wq, atomic_read(&nlm_ntf_refcnt) == 0);
+-}
+-
+-static void lockd_svc_exit_thread(void)
+-{
+-	atomic_dec(&nlm_ntf_refcnt);
+-	lockd_unregister_notifiers();
+-	svc_exit_thread(nlmsvc_rqst);
+ }
+ 
+ static int lockd_start_svc(struct svc_serv *serv)
+@@ -388,11 +371,9 @@ static int lockd_start_svc(struct svc_serv *serv)
+ 		printk(KERN_WARNING
+ 			"lockd_up: svc_rqst allocation failed, error=%d\n",
+ 			error);
+-		lockd_unregister_notifiers();
+ 		goto out_rqst;
+ 	}
+ 
+-	atomic_inc(&nlm_ntf_refcnt);
+ 	svc_sock_update_bufs(serv);
+ 	serv->sv_maxconn = nlm_max_connections;
+ 
+@@ -410,7 +391,7 @@ static int lockd_start_svc(struct svc_serv *serv)
+ 	return 0;
+ 
+ out_task:
+-	lockd_svc_exit_thread();
++	svc_exit_thread(nlmsvc_rqst);
+ 	nlmsvc_task = NULL;
+ out_rqst:
+ 	nlmsvc_rqst = NULL;
+@@ -477,7 +458,6 @@ int lockd_up(struct net *net, const struct cred *cred)
  
  	error = lockd_up_net(serv, net, cred);
  	if (error < 0) {
-@@ -487,6 +488,8 @@ int lockd_up(struct net *net, const struct cred *cred)
+-		lockd_unregister_notifiers();
+ 		goto err_put;
+ 	}
+ 
+@@ -488,8 +468,10 @@ int lockd_up(struct net *net, const struct cred *cred)
  	}
  	nlmsvc_users++;
  err_put:
-+	if (nlmsvc_users == 0)
-+		nlmsvc_serv = NULL;
+-	if (nlmsvc_users == 0)
++	if (nlmsvc_users == 0) {
++		lockd_unregister_notifiers();
+ 		nlmsvc_serv = NULL;
++	}
  	svc_put(serv);
  err_create:
  	mutex_unlock(&nlmsvc_mutex);
-@@ -501,7 +504,7 @@ void
- lockd_down(struct net *net)
- {
- 	mutex_lock(&nlmsvc_mutex);
--	lockd_down_net(nlmsvc_rqst->rq_server, net);
-+	lockd_down_net(nlmsvc_serv, net);
- 	if (nlmsvc_users) {
- 		if (--nlmsvc_users)
- 			goto out;
-@@ -519,6 +522,7 @@ lockd_down(struct net *net)
+@@ -518,13 +500,14 @@ lockd_down(struct net *net)
+ 		printk(KERN_ERR "lockd_down: no lockd running.\n");
+ 		BUG();
+ 	}
++	lockd_unregister_notifiers();
+ 	kthread_stop(nlmsvc_task);
  	dprintk("lockd_down: service stopped\n");
- 	lockd_svc_exit_thread();
+-	lockd_svc_exit_thread();
++	svc_exit_thread(nlmsvc_rqst);
++	nlmsvc_rqst = NULL;
  	dprintk("lockd_down: service destroyed\n");
-+	nlmsvc_serv = NULL;
+ 	nlmsvc_serv = NULL;
  	nlmsvc_task = NULL;
- 	nlmsvc_rqst = NULL;
+-	nlmsvc_rqst = NULL;
  out:
+ 	mutex_unlock(&nlmsvc_mutex);
+ }
 
 
