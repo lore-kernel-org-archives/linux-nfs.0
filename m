@@ -2,91 +2,80 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04596C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Nov 2021 01:32:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7ECC6C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Nov 2021 12:22:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230103AbhKWBf4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Nov 2021 20:35:56 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:37202 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229484AbhKWBf4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Nov 2021 20:35:56 -0500
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 243E21FD33;
-        Tue, 23 Nov 2021 01:32:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1637631168; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=M42bhQIasE2MvpVoJ/Qwc7TcaBZXRZCimM8iH/q8+qU=;
-        b=p/AMNhp+QVBesP2HRDAEwY2GkJY3dHcyhRzRAyabR9Lt93dk2N+XhEkTLYMEuxy1trvEUe
-        dW2gIvNaCx9+7jvCeLs35GMi+yI/6vVGx9oc5FrKKrz4BIwh+Rtwe4QMudDwENxvRgmWBS
-        P151EO1YhXkzBTZnWW5elQcRqr3Xq9A=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1637631168;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=M42bhQIasE2MvpVoJ/Qwc7TcaBZXRZCimM8iH/q8+qU=;
-        b=2DCHlNiAVRo2eF1UQaQdCOLebLVjP4U7e7NnG2qoexzT0ImPOvebTBMsOGUFOxuPqPZIy1
-        TkZJEFK2HMqFhOCQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id F1A4C13BD4;
-        Tue, 23 Nov 2021 01:32:46 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id pF7eKr5EnGE5dAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 23 Nov 2021 01:32:46 +0000
-Subject: [PATCH 19/19] NFS: switch the callback service back to non-pooled.
-From:   NeilBrown <neilb@suse.de>
-To:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
-Date:   Tue, 23 Nov 2021 12:29:35 +1100
-Message-ID: <163763097551.7284.13645796472410259327.stgit@noble.brown>
-In-Reply-To: <163763078330.7284.10141477742275086758.stgit@noble.brown>
-References: <163763078330.7284.10141477742275086758.stgit@noble.brown>
-User-Agent: StGit/0.23
+        id S233437AbhKWMZe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Nov 2021 07:25:34 -0500
+Received: from mail.kernel.org ([198.145.29.99]:51106 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S229948AbhKWMZc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 23 Nov 2021 07:25:32 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 87C3261002;
+        Tue, 23 Nov 2021 12:22:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1637670144;
+        bh=1jxFLUnE7hAw9XO4ad7+VcW/xFs46+nC6nnZhu74Jr0=;
+        h=From:To:Cc:Subject:Date:From;
+        b=UYdti6bM78RKalRsnRQZ/aK6zG/E+gjddIK6PzhPJQGl8xdge+BCF1AZAVJ+hPrVe
+         ZK9SZEfOYLQfCRMoR+xGTzEOZ/bbXewdTPtnvr9InCWQo4IGu2mcd8KTBQ0qTuV7P1
+         OAFGJ/I3jmJ5ZATUa2tcfnKacVlMA4/k41rAiCb2Fx/bvzK9tDh8B8eYrcZIthf7K2
+         P4FYvfvUJdb4qFI6vCwPsrK9rnEImzrV3tDxi3q+gd5W8XishgA49TEGyIUGeM0uYN
+         /7gDCnQW+SMOmVDd/hNlmvBQk+sS6xUSnGGrLFJTZXg/UCf+ne5MGjS6OoHjxTa0JS
+         2P3IYxzlimicg==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Cc:     chuck.lever@oracle.com, bfields@fieldses.org,
+        Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH] nfsd: don't put blocked locks on LRU until after vfs_lock_file returns
+Date:   Tue, 23 Nov 2021 07:22:23 -0500
+Message-Id: <20211123122223.69236-1-jlayton@kernel.org>
+X-Mailer: git-send-email 2.33.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Now that thread management is consistent there is no need for
-nfs-callback to use svc_create_pooled() as introduced in Commit
-df807fffaabd ("NFSv4.x/callback: Create the callback service through
-svc_create_pooled").  So switch back to svc_create().
+Vasily reported a case where vfs_lock_file took a very long time to
+return (longer than a lease period). The laundromat eventually ran and
+reaped the thing and when the vfs_lock_file returned, it ended up
+accessing freed memory.
 
-If service pools were configured, but the number of threads were left at
-'1', nfs callback may not work reliably when svc_create_pooled() is used.
+Don't put entries onto the LRU until vfs_lock_file returns.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+Reported-by: Vasily Averin <vvs@virtuozzo.com>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfs/callback.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 6cdc9d18a7dd..c4994c1d4e36 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -286,7 +286,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
- 		printk(KERN_WARNING "nfs_callback_create_svc: no kthread, %d users??\n",
- 			cb_info->users);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index bfad94c70b84..8cfef84b9355 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6966,10 +6966,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
  
--	serv = svc_create_pooled(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
-+	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
- 	if (!serv) {
- 		printk(KERN_ERR "nfs_callback_create_svc: create service failed\n");
- 		return ERR_PTR(-ENOMEM);
-
+ 	if (fl_flags & FL_SLEEP) {
+-		nbl->nbl_time = ktime_get_boottime_seconds();
+ 		spin_lock(&nn->blocked_locks_lock);
+ 		list_add_tail(&nbl->nbl_list, &lock_sop->lo_blocked);
+-		list_add_tail(&nbl->nbl_lru, &nn->blocked_locks_lru);
+ 		spin_unlock(&nn->blocked_locks_lock);
+ 	}
+ 
+@@ -6982,6 +6980,10 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			nn->somebody_reclaimed = true;
+ 		break;
+ 	case FILE_LOCK_DEFERRED:
++		nbl->nbl_time = ktime_get_boottime_seconds();
++		spin_lock(&nn->blocked_locks_lock);
++		list_add_tail(&nbl->nbl_lru, &nn->blocked_locks_lru);
++		spin_unlock(&nn->blocked_locks_lock);
+ 		nbl = NULL;
+ 		fallthrough;
+ 	case -EAGAIN:		/* conflock holds conflicting lock */
+-- 
+2.33.1
 
