@@ -2,65 +2,214 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36B89C433EF
-	for <linux-nfs@archiver.kernel.org>; Sat, 27 Nov 2021 19:00:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A67E8C433F5
+	for <linux-nfs@archiver.kernel.org>; Sun, 28 Nov 2021 23:38:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239142AbhK0TD3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 27 Nov 2021 14:03:29 -0500
-Received: from ams.source.kernel.org ([145.40.68.75]:60840 "EHLO
-        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1355981AbhK0TB3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Nov 2021 14:01:29 -0500
-Received: from mail.kernel.org (unknown [198.145.29.99])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1359594AbhK1Xlx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 28 Nov 2021 18:41:53 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:35806 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S241235AbhK1Xjt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Nov 2021 18:39:49 -0500
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 7C765B80931;
-        Sat, 27 Nov 2021 18:58:13 +0000 (UTC)
-Received: by mail.kernel.org (Postfix) with ESMTPS id E6B2C60041;
-        Sat, 27 Nov 2021 18:58:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1638039491;
-        bh=fJnJOos6hKxOm1WT8DmeYABgAiLyQjyHd5tyT2FZdpQ=;
-        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
-        b=DnOFYt5FeDQ1igT1DDeQuYcui496NCMmlE+jqUphxkmi0jpHawJ5JLDxgc9/Jg7cW
-         j6Se3usznjLoqBtDdY/pMyEngTLvRALb4IUKPUTJ8lJ3mmRceJ1S+VoTM08AYZUW/0
-         SdE31iRvdTbAGydX2JMObH7ZNXZbuS+7sftW5/ROp+kNBC7cvsaLgmClINsCNVhjPx
-         7cSS9ITAMdM+SElma4Z30qw/DOmblxGNiHQPcnNw53oRQbMyWr//TfPBWGbcpOWLQ/
-         Hfcbj22SyMJHN+Le/yUbeB6eVc8kIxbTXunJYSU864dB9OG7YqCuRUB3Fji5N1qZ0p
-         NUcvAU1LRjm8w==
-Received: from pdx-korg-docbuild-2.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by pdx-korg-docbuild-2.ci.codeaurora.org (Postfix) with ESMTP id D20EB60074;
-        Sat, 27 Nov 2021 18:58:11 +0000 (UTC)
-Subject: Re: [GIT PULL] Please pull NFS client fixes for 5.16
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <8b451da7c237eae6e008f00cfc3b8aad6f5d8b67.camel@hammerspace.com>
-References: <8b451da7c237eae6e008f00cfc3b8aad6f5d8b67.camel@hammerspace.com>
-X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
-X-PR-Tracked-Message-Id: <8b451da7c237eae6e008f00cfc3b8aad6f5d8b67.camel@hammerspace.com>
-X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-5.16-2
-X-PR-Tracked-Commit-Id: 064a91771f7aae4ea2d13033b64e921951d216ce
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 7413927713388c21d844b38444fb2b91e077ab2f
-Message-Id: <163803949180.17852.5028387960112630711.pr-tracker-bot@kernel.org>
-Date:   Sat, 27 Nov 2021 18:58:11 +0000
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 44B9F1FD33;
+        Sun, 28 Nov 2021 23:36:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1638142592; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=KU9RDamVMC/XpHJZo5l6YA0/YLhqfBqaJeDOCiRSK3I=;
+        b=VhYn8XIA2jX5wzPTwxPtznqxAkWvQXfX5C8gPQclaX4AJFtOKKERwM4z7n8f2lgASv0qVP
+        zz83vtHiDLYmthT6zKfxFDjFwpx1mlR1YhOwSp/fkTymT1cJzq8deB09kpEuZ6p/6X+Q84
+        pe7v0t6tzQWMHUeZD6GLDEwdP8dF0G8=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1638142592;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=KU9RDamVMC/XpHJZo5l6YA0/YLhqfBqaJeDOCiRSK3I=;
+        b=L0x9fdPUurh4ZBKOlzfwIQNBTXyrBTyiJSksh5GHu1Qs91d/wb4+73pJdDBU/aJQwQZul7
+        tPS2bgVueuSrtLBw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 23DC9133A7;
+        Sun, 28 Nov 2021 23:36:30 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id jvpbNH4SpGEsHgAAMHmgww
+        (envelope-from <neilb@suse.de>); Sun, 28 Nov 2021 23:36:30 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Chuck Lever III" <chuck.lever@oracle.com>
+Cc:     "Bruce Fields" <bfields@fieldses.org>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/19] SUNRPC/NFSD: clean up get/put functions.
+In-reply-to: <92C7D2FA-6C7B-4209-B1B4-3B81B2B276F4@oracle.com>
+References: <163763078330.7284.10141477742275086758.stgit@noble.brown>,
+ <163763097540.7284.6343105121634986097.stgit@noble.brown>,
+ <92C7D2FA-6C7B-4209-B1B4-3B81B2B276F4@oracle.com>
+Date:   Mon, 29 Nov 2021 10:36:27 +1100
+Message-id: <163814258705.26075.4680313747300849381@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The pull request you sent on Sat, 27 Nov 2021 15:32:01 +0000:
+On Wed, 24 Nov 2021, Chuck Lever III wrote:
+> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> > index b220e1b91726..135bd86ed3ad 100644
+> > --- a/fs/lockd/svc.c
+> > +++ b/fs/lockd/svc.c
+> > @@ -430,14 +430,8 @@ static struct svc_serv *lockd_create_svc(void)
+> > 	/*
+> > 	 * Check whether we're already up and running.
+> > 	 */
+> > -	if (nlmsvc_rqst) {
+> > -		/*
+> > -		 * Note: increase service usage, because later in case of error
+> > -		 * svc_destroy() will be called.
+> > -		 */
+> > -		svc_get(nlmsvc_rqst->rq_server);
+> > -		return nlmsvc_rqst->rq_server;
+> > -	}
+> > +	if (nlmsvc_rqst)
+> > +		return svc_get(nlmsvc_rqst->rq_server);
+>=20
+> The svc_get-related changes seem like they could be split
+> into a separate clean-up patch.
 
-> git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-5.16-2
+I guess so.
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/7413927713388c21d844b38444fb2b91e077ab2f
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index af8531c3854a..5eb564e58a9b 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -743,7 +743,7 @@ static ssize_t __write_ports_addfd(char *buf, struct =
+net *net, const struct cred
+> >=20
+> > 	err =3D svc_addsock(nn->nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT, cr=
+ed);
+> > 	if (err < 0) {
+> > -		nfsd_destroy(net);
+> > +		nfsd_put(net);
+>=20
+> Seems like there should be a matching nfsd_get() somewhere.
+> Perhaps it can just be an alias for svc_get()?
 
-Thank you!
+What purpose would that serve? I really don't like having simple aliases
+- they seem to hide information.
+In particular, I really don't like reading code, seeing some interface
+that I haven't seen before, hunting it out to find out what it means,
+and discovering that is just a wrapper around something that I already
+know.   Why should I have to learn 2 interfaces when 1 would suffice?
 
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
+So I am not inclined to a nfsd_get().
+
+> > -void nfsd_destroy(struct net *net)
+> > +void nfsd_put(struct net *net)
+> > {
+> > 	struct nfsd_net *nn =3D net_generic(net, nfsd_net_id);
+> > -	int destroy =3D (nn->nfsd_serv->sv_nrthreads =3D=3D 1);
+> >=20
+> > -	if (destroy)
+> > +	nn->nfsd_serv->sv_nrthreads --;
+>=20
+> checkpatch.pl screamed about the whitespace between the variable
+> and the unary operator here and in svc_put().
+
+I've changed it to ".... -=3D 1;", which I generally prefer anyway.
+But it'll probably become "if atomic_dec_and_test()" in a later patch.
+
+> > +/**
+> > + * svc_put - decrement reference count on a SUNRPC serv
+> > + * @serv:  the svc_serv to have count decremented
+> > + *
+> > + * When the reference count reaches zero, svc_destroy()
+> > + * is called to clean up and free the serv.
+> > + */
+> > +static inline void svc_put(struct svc_serv *serv)
+> > +{
+> > +	serv->sv_nrthreads --;
+> > +	if (serv->sv_nrthreads =3D=3D 0)
+>=20
+> Nit: The usual idiom is "if (--serv->sv_nrthreads =3D=3D 0)"
+
+Is it? I thought that changing variables in if() conditions was
+generally discouraged (though it is OK in while()).
+
+So I'll leave it as it is (well... -=3D 1 ..) until it become atomic_t.
+
+> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index 4292278a9552..55a1bf0d129f 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -528,17 +528,7 @@ EXPORT_SYMBOL_GPL(svc_shutdown_net);
+> > void
+> > svc_destroy(struct svc_serv *serv)
+> > {
+> > -	dprintk("svc: svc_destroy(%s, %d)\n",
+> > -				serv->sv_program->pg_name,
+> > -				serv->sv_nrthreads);
+> > -
+> > -	if (serv->sv_nrthreads) {
+> > -		if (--(serv->sv_nrthreads) !=3D 0) {
+> > -			svc_sock_update_bufs(serv);
+> > -			return;
+> > -		}
+> > -	} else
+> > -		printk("svc_destroy: no threads for serv=3D%p!\n", serv);
+> > +	dprintk("svc: svc_destroy(%s)\n", serv->sv_program->pg_name);
+>=20
+> Maybe the dprintk is unnecessary. I would prefer a trace
+> point if there is real value in observing destruction of
+> particular svc_serv objects.
+>=20
+> Likewise in subsequent patches.
+>=20
+> Also... since we're in the clean-up frame of mind, if you
+> see a BUG() call site remaining in a hunk, ask yourself
+> if we really need to kill the kernel at that point, or
+> if a WARN would suffice.
+
+cleanup of BUGs (and dprinkts) is, for me, a different frame of mind
+that the cleanup I currently working on.  I'd rather not get distracted.
+
+
+>=20
+> > 	del_timer_sync(&serv->sv_temptimer);
+> >=20
+> > @@ -892,9 +882,10 @@ svc_exit_thread(struct svc_rqst *rqstp)
+> >=20
+> > 	svc_rqst_free(rqstp);
+> >=20
+> > -	/* Release the server */
+> > -	if (serv)
+> > -		svc_destroy(serv);
+> > +	if (!serv)
+> > +		return;
+> > +	svc_sock_update_bufs(serv);
+>=20
+> I don't object to moving the svc_sock_update_bufs() call
+> site. But....
+>=20
+> Note for someday: I'm not sure of a better way of handling
+> buffer size changes, but this seems like all kinds layering
+> violation.
+
+Despite the name, this function doesn't update any bufs.  It just sets
+some flags.
+Maybe we should have a sequential "version" number in the svc_serv which
+is updated when the number of threads changes.  And each svc_sock holds
+a copy of this.  If it notices the svc_serv has changed version, it
+reassesses its buffer space.
+
+Thanks,
+NeilBrown
