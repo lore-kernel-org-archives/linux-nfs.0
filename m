@@ -2,43 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E5EBC4167D
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:33:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25810C433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:33:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1378035AbhK2OhE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Nov 2021 09:37:04 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:26885 "EHLO
+        id S1378104AbhK2OhO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Nov 2021 09:37:14 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:52545 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1378506AbhK2OfA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:35:00 -0500
+        by vger.kernel.org with ESMTP id S1378080AbhK2OfM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:35:12 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1638196302;
+        s=mimecast20190719; t=1638196314;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=bE5Gto+7nYyvi5eMJQpt4mYL96rzfV9P3tzaPwOz8zw=;
-        b=RVs8dq1ml5eL43B63RQFMxdJDIRzhgCwxkBEfg8nBBxz1Ym8VgAd/vrEzrvH+G0n1UzIXc
-        Jfl4SHrYNbb8iBt5dbUKgNk/eZL7XBdbyOOYva9HYyXU17p9PiCV6z+FENCTKs0IqTjVpm
-        BaegqmMZenhECh7/ip8LG1DuU9X5GgA=
+        bh=6lMQD175vSNNiUiPohn1dpVmj2VfjG13raFv8BINW5c=;
+        b=LuqQ5hIFKBkwQL8rgNxZ66D49EY6OYiEWWGH8baPY74uSEe2QsRf1L510l0iePm5HfKtGu
+        aQVbAPclb/tPNbxv33r8ZJ1HNg/pKEmavmFO+C4HloKZrlYER4krKCjakfRB4yCb+NpaHM
+        iuWKLXYNosEJVmLar16hhc6PGb0McAQ=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-518-garRu2PsPAKXcHlylIBMSA-1; Mon, 29 Nov 2021 09:31:36 -0500
-X-MC-Unique: garRu2PsPAKXcHlylIBMSA-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+ us-mta-397-PiYywnTyOQGmO3D2RyHOEw-1; Mon, 29 Nov 2021 09:31:50 -0500
+X-MC-Unique: PiYywnTyOQGmO3D2RyHOEw-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id A1B611937FFC;
-        Mon, 29 Nov 2021 14:31:18 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 94DDE593D9;
+        Mon, 29 Nov 2021 14:31:46 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.33.36.25])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 82AA545D60;
-        Mon, 29 Nov 2021 14:31:15 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 6217360BF4;
+        Mon, 29 Nov 2021 14:31:43 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 35/64] cachefiles: Add security derivation
+Subject: [PATCH 38/64] vfs,
+ cachefiles: Mark a backing file in use with an inode flag
 From:   David Howells <dhowells@redhat.com>
 To:     linux-cachefs@redhat.com
 Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
@@ -54,190 +55,180 @@ Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
         linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 29 Nov 2021 14:31:14 +0000
-Message-ID: <163819627469.215744.3603633690679962985.stgit@warthog.procyon.org.uk>
+Date:   Mon, 29 Nov 2021 14:31:42 +0000
+Message-ID: <163819630256.215744.4815885535039369574.stgit@warthog.procyon.org.uk>
 In-Reply-To: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 References: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Use an inode flag, S_KERNEL_FILE, to mark that a backing file is in use by
+the kernel to prevent cachefiles or other kernel services from interfering
+with that file.
 
+Alter rmdir to reject attempts to remove a directory marked with this flag.
+This is used by cachefiles to prevent cachefilesd from removing them.
+
+Using S_SWAPFILE instead isn't really viable as that has other effects in
+the I/O paths.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/cachefiles/Makefile   |    3 +
- fs/cachefiles/internal.h |   20 ++++++++
- fs/cachefiles/security.c |  112 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 134 insertions(+), 1 deletion(-)
- create mode 100644 fs/cachefiles/security.c
+ fs/cachefiles/Makefile            |    1 +
+ fs/cachefiles/namei.c             |   44 +++++++++++++++++++++++++++++++++++++
+ fs/namei.c                        |    3 ++-
+ include/linux/fs.h                |    1 +
+ include/trace/events/cachefiles.h |   42 +++++++++++++++++++++++++++++++++++
+ 5 files changed, 90 insertions(+), 1 deletion(-)
+ create mode 100644 fs/cachefiles/namei.c
 
 diff --git a/fs/cachefiles/Makefile b/fs/cachefiles/Makefile
-index 183fb5f3b8b1..28bbb0d14868 100644
+index 463e3d608b75..e0b092ca077f 100644
 --- a/fs/cachefiles/Makefile
 +++ b/fs/cachefiles/Makefile
-@@ -4,7 +4,8 @@
- #
- 
- cachefiles-y := \
--	main.o
-+	main.o \
-+	security.o
+@@ -7,6 +7,7 @@ cachefiles-y := \
+ 	cache.o \
+ 	daemon.o \
+ 	main.o \
++	namei.o \
+ 	security.o
  
  cachefiles-$(CONFIG_CACHEFILES_ERROR_INJECTION) += error_inject.o
- 
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index b2adcb59b4ce..e57ce5ef875c 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -104,6 +104,26 @@ static inline int cachefiles_inject_remove_error(void)
- 	return cachefiles_error_injection_state & 2 ? -EIO : 0;
- }
- 
-+/*
-+ * security.c
-+ */
-+extern int cachefiles_get_security_ID(struct cachefiles_cache *cache);
-+extern int cachefiles_determine_cache_security(struct cachefiles_cache *cache,
-+					       struct dentry *root,
-+					       const struct cred **_saved_cred);
-+
-+static inline void cachefiles_begin_secure(struct cachefiles_cache *cache,
-+					   const struct cred **_saved_cred)
-+{
-+	*_saved_cred = override_creds(cache->cache_cred);
-+}
-+
-+static inline void cachefiles_end_secure(struct cachefiles_cache *cache,
-+					 const struct cred *saved_cred)
-+{
-+	revert_creds(saved_cred);
-+}
-+
- /*
-  * Error handling
-  */
-diff --git a/fs/cachefiles/security.c b/fs/cachefiles/security.c
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
 new file mode 100644
-index 000000000000..fe777164f1d8
+index 000000000000..fef06d2a88ec
 --- /dev/null
-+++ b/fs/cachefiles/security.c
-@@ -0,0 +1,112 @@
++++ b/fs/cachefiles/namei.c
+@@ -0,0 +1,44 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
-+/* CacheFiles security management
++/* CacheFiles path walking and related routines
 + *
-+ * Copyright (C) 2007, 2021 Red Hat, Inc. All Rights Reserved.
++ * Copyright (C) 2021 Red Hat, Inc. All Rights Reserved.
 + * Written by David Howells (dhowells@redhat.com)
 + */
 +
 +#include <linux/fs.h>
-+#include <linux/cred.h>
 +#include "internal.h"
 +
 +/*
-+ * determine the security context within which we access the cache from within
-+ * the kernel
++ * Mark the backing file as being a cache file if it's not already in use.  The
++ * mark tells the culling request command that it's not allowed to cull the
++ * file or directory.  The caller must hold the inode lock.
 + */
-+int cachefiles_get_security_ID(struct cachefiles_cache *cache)
++static bool __cachefiles_mark_inode_in_use(struct cachefiles_object *object,
++					   struct dentry *dentry)
 +{
-+	struct cred *new;
-+	int ret;
++	struct inode *inode = d_backing_inode(dentry);
++	bool can_use = false;
 +
-+	_enter("{%s}", cache->secctx);
-+
-+	new = prepare_kernel_cred(current);
-+	if (!new) {
-+		ret = -ENOMEM;
-+		goto error;
++	if (!(inode->i_flags & S_KERNEL_FILE)) {
++		inode->i_flags |= S_KERNEL_FILE;
++		if (object)
++			trace_cachefiles_mark_active(object, inode);
++		can_use = true;
++	} else {
++		pr_notice("cachefiles: Inode already in use: %pd\n", dentry);
 +	}
 +
-+	if (cache->secctx) {
-+		ret = set_security_override_from_ctx(new, cache->secctx);
-+		if (ret < 0) {
-+			put_cred(new);
-+			pr_err("Security denies permission to nominate security context: error %d\n",
-+			       ret);
-+			goto error;
-+		}
-+	}
-+
-+	cache->cache_cred = new;
-+	ret = 0;
-+error:
-+	_leave(" = %d", ret);
-+	return ret;
++	return can_use;
 +}
 +
 +/*
-+ * see if mkdir and create can be performed in the root directory
++ * Unmark a backing inode.  The caller must hold the inode lock.
 + */
-+static int cachefiles_check_cache_dir(struct cachefiles_cache *cache,
-+				      struct dentry *root)
++static void __cachefiles_unmark_inode_in_use(struct cachefiles_object *object,
++					     struct dentry *dentry)
 +{
-+	int ret;
++	struct inode *inode = d_backing_inode(dentry);
 +
-+	ret = security_inode_mkdir(d_backing_inode(root), root, 0);
-+	if (ret < 0) {
-+		pr_err("Security denies permission to make dirs: error %d",
-+		       ret);
-+		return ret;
-+	}
-+
-+	ret = security_inode_create(d_backing_inode(root), root, 0);
-+	if (ret < 0)
-+		pr_err("Security denies permission to create files: error %d",
-+		       ret);
-+
-+	return ret;
++	inode->i_flags &= ~S_KERNEL_FILE;
++	trace_cachefiles_mark_inactive(object, inode);
 +}
+diff --git a/fs/namei.c b/fs/namei.c
+index 1f9d2187c765..d81f04f8d818 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3958,7 +3958,8 @@ int vfs_rmdir(struct user_namespace *mnt_userns, struct inode *dir,
+ 	inode_lock(dentry->d_inode);
+ 
+ 	error = -EBUSY;
+-	if (is_local_mountpoint(dentry))
++	if (is_local_mountpoint(dentry) ||
++	    (dentry->d_inode->i_flags & S_KERNEL_FILE))
+ 		goto out;
+ 
+ 	error = security_inode_rmdir(dir, dentry);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 473ea3ff0ad4..d4ec20f51129 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2249,6 +2249,7 @@ struct super_operations {
+ #define S_ENCRYPTED	(1 << 14) /* Encrypted file (using fs/crypto/) */
+ #define S_CASEFOLD	(1 << 15) /* Casefolded file */
+ #define S_VERITY	(1 << 16) /* Verity file (using fs/verity/) */
++#define S_KERNEL_FILE	(1 << 17) /* File is in use by the kernel (eg. fs/cachefiles) */
+ 
+ /*
+  * Note that nosuid etc flags are inode-specific: setting some file-system
+diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cachefiles.h
+index 9bd5a8a60801..29fdcfddbbc2 100644
+--- a/include/trace/events/cachefiles.h
++++ b/include/trace/events/cachefiles.h
+@@ -83,6 +83,48 @@ cachefiles_error_traces;
+ #define E_(a, b)	{ a, b }
+ 
+ 
++TRACE_EVENT(cachefiles_mark_active,
++	    TP_PROTO(struct cachefiles_object *obj,
++		     struct inode *inode),
 +
-+/*
-+ * check the security details of the on-disk cache
-+ * - must be called with security override in force
-+ * - must return with a security override in force - even in the case of an
-+ *   error
-+ */
-+int cachefiles_determine_cache_security(struct cachefiles_cache *cache,
-+					struct dentry *root,
-+					const struct cred **_saved_cred)
-+{
-+	struct cred *new;
-+	int ret;
++	    TP_ARGS(obj, inode),
 +
-+	_enter("");
++	    /* Note that obj may be NULL */
++	    TP_STRUCT__entry(
++		    __field(unsigned int,		obj		)
++		    __field(ino_t,			inode		)
++			     ),
 +
-+	/* duplicate the cache creds for COW (the override is currently in
-+	 * force, so we can use prepare_creds() to do this) */
-+	new = prepare_creds();
-+	if (!new)
-+		return -ENOMEM;
++	    TP_fast_assign(
++		    __entry->obj	= obj->debug_id;
++		    __entry->inode	= inode->i_ino;
++			   ),
 +
-+	cachefiles_end_secure(cache, *_saved_cred);
++	    TP_printk("o=%08x i=%lx",
++		      __entry->obj, __entry->inode)
++	    );
 +
-+	/* use the cache root dir's security context as the basis with
-+	 * which create files */
-+	ret = set_create_files_as(new, d_backing_inode(root));
-+	if (ret < 0) {
-+		abort_creds(new);
-+		cachefiles_begin_secure(cache, _saved_cred);
-+		_leave(" = %d [cfa]", ret);
-+		return ret;
-+	}
++TRACE_EVENT(cachefiles_mark_inactive,
++	    TP_PROTO(struct cachefiles_object *obj,
++		     struct inode *inode),
 +
-+	put_cred(cache->cache_cred);
-+	cache->cache_cred = new;
++	    TP_ARGS(obj, inode),
 +
-+	cachefiles_begin_secure(cache, _saved_cred);
-+	ret = cachefiles_check_cache_dir(cache, root);
++	    /* Note that obj may be NULL */
++	    TP_STRUCT__entry(
++		    __field(unsigned int,		obj		)
++		    __field(ino_t,			inode		)
++			     ),
 +
-+	if (ret == -EOPNOTSUPP)
-+		ret = 0;
-+	_leave(" = %d", ret);
-+	return ret;
-+}
++	    TP_fast_assign(
++		    __entry->obj	= obj->debug_id;
++		    __entry->inode	= inode->i_ino;
++			   ),
++
++	    TP_printk("o=%08x i=%lx",
++		      __entry->obj, __entry->inode)
++	    );
++
+ TRACE_EVENT(cachefiles_vfs_error,
+ 	    TP_PROTO(struct cachefiles_object *obj, struct inode *backer,
+ 		     int error, enum cachefiles_error_trace where),
 
 
