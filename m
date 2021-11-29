@@ -2,43 +2,43 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22769C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:34:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D0197C433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:34:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1378397AbhK2Ohp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Nov 2021 09:37:45 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:47398 "EHLO
+        id S1379106AbhK2Oh6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Nov 2021 09:37:58 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:39877 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1378409AbhK2OeQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:34:16 -0500
+        by vger.kernel.org with ESMTP id S1378754AbhK2Ofv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:35:51 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1638196258;
+        s=mimecast20190719; t=1638196353;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=bPLaD8tbsPtLZcPqtSDcKvyOR6vg/1XxTqyxa4ZNNcg=;
-        b=dGr892+gjWVxK/i8g7qIj3N0tJs0vCQ+4n2QTpanxll8G7cdodNLPdY6VOdIG3UTcxJebh
-        uBG0tZJdG0xAx64y8zIBkLQNV/527pQozDx5Vs2s7Ug8DM2u4WEVBTM1nAqeKHIRLUfzOT
-        zOPXj/AIXqHnfrzBjnHmL6+jx1xPsk4=
+        bh=iYCevlqa1zhvwnB+SgrrqZhLv8ZwmM8MJX4h8UnVgrc=;
+        b=iXnVn5eaQa+Exf6p3XZ5+Zc3qtGTeodwxl7reliktwTHluUaFdI07LZfHDvp5SrCYoz9sF
+        v/kuH4saBQRSnwhjssAhfCXN4bwUqtTQQAPvuv0V/R3pz6FOYHIEa57pEuqJ9T7w8bNQrx
+        baqW7CE0D5Rg8M2V4SbluE5aWeOswIs=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-280-97zhyRO1NCOvedntb7pOSw-1; Mon, 29 Nov 2021 09:30:54 -0500
-X-MC-Unique: 97zhyRO1NCOvedntb7pOSw-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+ us-mta-431-FDhtnRWnMEyx9bAvLPBTyg-1; Mon, 29 Nov 2021 09:32:30 -0500
+X-MC-Unique: FDhtnRWnMEyx9bAvLPBTyg-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id BCEFA921D49;
-        Mon, 29 Nov 2021 14:30:31 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id E2CC7101F7A1;
+        Mon, 29 Nov 2021 14:32:27 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.33.36.25])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 79E9819724;
-        Mon, 29 Nov 2021 14:30:28 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8EEA960BF4;
+        Mon, 29 Nov 2021 14:32:12 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 30/64] cachefiles: Introduce rewritten driver
+Subject: [PATCH 40/64] cachefiles: Implement cache registration and withdrawal
 From:   David Howells <dhowells@redhat.com>
 To:     linux-cachefs@redhat.com
 Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
@@ -54,340 +54,361 @@ Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
         linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 29 Nov 2021 14:30:27 +0000
-Message-ID: <163819622766.215744.9108359326983195047.stgit@warthog.procyon.org.uk>
+Date:   Mon, 29 Nov 2021 14:32:11 +0000
+Message-ID: <163819633175.215744.10857127598041268340.stgit@warthog.procyon.org.uk>
 In-Reply-To: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 References: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Introduce basic skeleton of the rewritten cachefiles driver including
-config options so that it can be enabled for compilation.
+Do the following:
+
+ (1) Fill out cachefiles_daemon_add_cache() so that it sets up the cache
+     directories and registers the cache with cachefiles.
+
+ (2) Add a function to do the top-level part of cache withdrawal and
+     unregistration.
+
+ (3) Add a function to sync a cache.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: linux-cachefs@redhat.com
 ---
 
- fs/Kconfig                        |    1 
- fs/Makefile                       |    1 
- fs/cachefiles/Kconfig             |   21 +++++++
- fs/cachefiles/Makefile            |    9 +++
- fs/cachefiles/internal.h          |  115 +++++++++++++++++++++++++++++++++++++
- fs/cachefiles/main.c              |   53 +++++++++++++++++
- include/trace/events/cachefiles.h |   49 ++++++++++++++++
- 7 files changed, 249 insertions(+)
- create mode 100644 fs/cachefiles/Kconfig
- create mode 100644 fs/cachefiles/Makefile
- create mode 100644 fs/cachefiles/internal.h
- create mode 100644 fs/cachefiles/main.c
- create mode 100644 include/trace/events/cachefiles.h
+ fs/cachefiles/Makefile    |    1 
+ fs/cachefiles/cache.c     |  207 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/cachefiles/daemon.c    |    8 +-
+ fs/cachefiles/interface.c |   18 ++++
+ fs/cachefiles/internal.h  |    9 ++
+ 5 files changed, 240 insertions(+), 3 deletions(-)
+ create mode 100644 fs/cachefiles/interface.c
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 86e311377e6e..a6313a969bc5 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -132,6 +132,7 @@ menu "Caches"
- 
- source "fs/netfs/Kconfig"
- source "fs/fscache/Kconfig"
-+source "fs/cachefiles/Kconfig"
- 
- endmenu
- 
-diff --git a/fs/Makefile b/fs/Makefile
-index 290815f3fd31..84c5e4cdfee5 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -125,6 +125,7 @@ obj-$(CONFIG_AFS_FS)		+= afs/
- obj-$(CONFIG_NILFS2_FS)		+= nilfs2/
- obj-$(CONFIG_BEFS_FS)		+= befs/
- obj-$(CONFIG_HOSTFS)		+= hostfs/
-+obj-$(CONFIG_CACHEFILES)	+= cachefiles/
- obj-$(CONFIG_DEBUG_FS)		+= debugfs/
- obj-$(CONFIG_TRACING)		+= tracefs/
- obj-$(CONFIG_OCFS2_FS)		+= ocfs2/
-diff --git a/fs/cachefiles/Kconfig b/fs/cachefiles/Kconfig
-new file mode 100644
-index 000000000000..6827b40f7ddc
---- /dev/null
-+++ b/fs/cachefiles/Kconfig
-@@ -0,0 +1,21 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+
-+config CACHEFILES
-+	tristate "Filesystem caching on files"
-+	depends on FSCACHE && BLOCK
-+	help
-+	  This permits use of a mounted filesystem as a cache for other
-+	  filesystems - primarily networking filesystems - thus allowing fast
-+	  local disk to enhance the speed of slower devices.
-+
-+	  See Documentation/filesystems/caching/cachefiles.rst for more
-+	  information.
-+
-+config CACHEFILES_DEBUG
-+	bool "Debug CacheFiles"
-+	depends on CACHEFILES
-+	help
-+	  This permits debugging to be dynamically enabled in the filesystem
-+	  caching on files module.  If this is set, the debugging output may be
-+	  enabled by setting bits in /sys/modules/cachefiles/parameter/debug or
-+	  by including a debugging specifier in /etc/cachefilesd.conf.
 diff --git a/fs/cachefiles/Makefile b/fs/cachefiles/Makefile
-new file mode 100644
-index 000000000000..a7f3e982e249
---- /dev/null
+index e0b092ca077f..92af5daee8ce 100644
+--- a/fs/cachefiles/Makefile
 +++ b/fs/cachefiles/Makefile
-@@ -0,0 +1,9 @@
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# Makefile for caching in a mounted filesystem
-+#
-+
-+cachefiles-y := \
-+	main.o
-+
-+obj-$(CONFIG_CACHEFILES) := cachefiles.o
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-new file mode 100644
-index 000000000000..26e0e23d7702
---- /dev/null
-+++ b/fs/cachefiles/internal.h
-@@ -0,0 +1,115 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+/* General netfs cache on cache files internal defs
-+ *
-+ * Copyright (C) 2021 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
+@@ -6,6 +6,7 @@
+ cachefiles-y := \
+ 	cache.o \
+ 	daemon.o \
++	interface.o \
+ 	main.o \
+ 	namei.o \
+ 	security.o
+diff --git a/fs/cachefiles/cache.c b/fs/cachefiles/cache.c
+index 73636f89eefa..4c4121105750 100644
+--- a/fs/cachefiles/cache.c
++++ b/fs/cachefiles/cache.c
+@@ -10,6 +10,166 @@
+ #include <linux/namei.h>
+ #include "internal.h"
+ 
++/*
++ * Bring a cache online.
 + */
++int cachefiles_add_cache(struct cachefiles_cache *cache)
++{
++	struct fscache_cache *cache_cookie;
++	struct path path;
++	struct kstatfs stats;
++	struct dentry *graveyard, *cachedir, *root;
++	const struct cred *saved_cred;
++	int ret;
 +
-+#ifdef pr_fmt
-+#undef pr_fmt
-+#endif
++	_enter("");
 +
-+#define pr_fmt(fmt) "CacheFiles: " fmt
++	cache_cookie = fscache_acquire_cache(cache->tag);
++	if (IS_ERR(cache_cookie))
++		return PTR_ERR(cache_cookie);
 +
++	/* we want to work under the module's security ID */
++	ret = cachefiles_get_security_ID(cache);
++	if (ret < 0)
++		goto error_getsec;
 +
-+#include <linux/fscache-cache.h>
-+#include <linux/cred.h>
-+#include <linux/security.h>
++	cachefiles_begin_secure(cache, &saved_cred);
 +
++	/* look up the directory at the root of the cache */
++	ret = kern_path(cache->rootdirname, LOOKUP_DIRECTORY, &path);
++	if (ret < 0)
++		goto error_open_root;
++
++	cache->mnt = path.mnt;
++	root = path.dentry;
++
++	ret = -EINVAL;
++	if (mnt_user_ns(path.mnt) != &init_user_ns) {
++		pr_warn("File cache on idmapped mounts not supported");
++		goto error_unsupported;
++	}
++
++	/* check parameters */
++	ret = -EOPNOTSUPP;
++	if (d_is_negative(root) ||
++	    !d_backing_inode(root)->i_op->lookup ||
++	    !d_backing_inode(root)->i_op->mkdir ||
++	    !(d_backing_inode(root)->i_opflags & IOP_XATTR) ||
++	    !root->d_sb->s_op->statfs ||
++	    !root->d_sb->s_op->sync_fs ||
++	    root->d_sb->s_blocksize > PAGE_SIZE)
++		goto error_unsupported;
++
++	ret = -EROFS;
++	if (sb_rdonly(root->d_sb))
++		goto error_unsupported;
++
++	/* determine the security of the on-disk cache as this governs
++	 * security ID of files we create */
++	ret = cachefiles_determine_cache_security(cache, root, &saved_cred);
++	if (ret < 0)
++		goto error_unsupported;
++
++	/* get the cache size and blocksize */
++	ret = vfs_statfs(&path, &stats);
++	if (ret < 0)
++		goto error_unsupported;
++
++	ret = -ERANGE;
++	if (stats.f_bsize <= 0)
++		goto error_unsupported;
++
++	ret = -EOPNOTSUPP;
++	if (stats.f_bsize > PAGE_SIZE)
++		goto error_unsupported;
++
++	cache->bsize = stats.f_bsize;
++	cache->bshift = 0;
++	if (stats.f_bsize < PAGE_SIZE)
++		cache->bshift = PAGE_SHIFT - ilog2(stats.f_bsize);
++
++	_debug("blksize %u (shift %u)",
++	       cache->bsize, cache->bshift);
++
++	_debug("size %llu, avail %llu",
++	       (unsigned long long) stats.f_blocks,
++	       (unsigned long long) stats.f_bavail);
++
++	/* set up caching limits */
++	do_div(stats.f_files, 100);
++	cache->fstop = stats.f_files * cache->fstop_percent;
++	cache->fcull = stats.f_files * cache->fcull_percent;
++	cache->frun  = stats.f_files * cache->frun_percent;
++
++	_debug("limits {%llu,%llu,%llu} files",
++	       (unsigned long long) cache->frun,
++	       (unsigned long long) cache->fcull,
++	       (unsigned long long) cache->fstop);
++
++	stats.f_blocks >>= cache->bshift;
++	do_div(stats.f_blocks, 100);
++	cache->bstop = stats.f_blocks * cache->bstop_percent;
++	cache->bcull = stats.f_blocks * cache->bcull_percent;
++	cache->brun  = stats.f_blocks * cache->brun_percent;
++
++	_debug("limits {%llu,%llu,%llu} blocks",
++	       (unsigned long long) cache->brun,
++	       (unsigned long long) cache->bcull,
++	       (unsigned long long) cache->bstop);
++
++	/* get the cache directory and check its type */
++	cachedir = cachefiles_get_directory(cache, root, "cache");
++	if (IS_ERR(cachedir)) {
++		ret = PTR_ERR(cachedir);
++		goto error_unsupported;
++	}
++
++	cache->store = cachedir;
++
++	/* get the graveyard directory */
++	graveyard = cachefiles_get_directory(cache, root, "graveyard");
++	if (IS_ERR(graveyard)) {
++		ret = PTR_ERR(graveyard);
++		goto error_unsupported;
++	}
++
++	cache->graveyard = graveyard;
++	cache->cache = cache_cookie;
++
++	ret = fscache_add_cache(cache_cookie, &cachefiles_cache_ops, cache);
++	if (ret < 0)
++		goto error_add_cache;
++
++	/* done */
++	set_bit(CACHEFILES_READY, &cache->flags);
++	dput(root);
++
++	pr_info("File cache on %s registered\n", cache_cookie->name);
++
++	/* check how much space the cache has */
++	cachefiles_has_space(cache, 0, 0);
++	cachefiles_end_secure(cache, saved_cred);
++	_leave(" = 0 [%px]", cache->cache);
++	return 0;
++
++error_add_cache:
++	cachefiles_put_directory(cache->graveyard);
++	cache->graveyard = NULL;
++error_unsupported:
++	cachefiles_put_directory(cache->store);
++	cache->store = NULL;
++	mntput(cache->mnt);
++	cache->mnt = NULL;
++	dput(root);
++error_open_root:
++	cachefiles_end_secure(cache, saved_cred);
++error_getsec:
++	fscache_relinquish_cache(cache_cookie);
++	cache->cache = NULL;
++	pr_err("Failed to register: %d\n", ret);
++	return ret;
++}
++
+ /*
+  * See if we have space for a number of pages and/or a number of files in the
+  * cache
+@@ -101,3 +261,50 @@ int cachefiles_has_space(struct cachefiles_cache *cache,
+ 	_leave(" = %d", ret);
+ 	return ret;
+ }
 +
 +/*
-+ * Debug tracing.
++ * Sync a cache to backing disk.
 + */
-+extern unsigned cachefiles_debug;
-+#define CACHEFILES_DEBUG_KENTER	1
-+#define CACHEFILES_DEBUG_KLEAVE	2
-+#define CACHEFILES_DEBUG_KDEBUG	4
++static void cachefiles_sync_cache(struct cachefiles_cache *cache)
++{
++	const struct cred *saved_cred;
++	int ret;
 +
-+#define dbgprintk(FMT, ...) \
-+	printk(KERN_DEBUG "[%-6.6s] "FMT"\n", current->comm, ##__VA_ARGS__)
++	_enter("%s", cache->cache->name);
 +
-+#define kenter(FMT, ...) dbgprintk("==> %s("FMT")", __func__, ##__VA_ARGS__)
-+#define kleave(FMT, ...) dbgprintk("<== %s()"FMT"", __func__, ##__VA_ARGS__)
-+#define kdebug(FMT, ...) dbgprintk(FMT, ##__VA_ARGS__)
++	/* make sure all pages pinned by operations on behalf of the netfs are
++	 * written to disc */
++	cachefiles_begin_secure(cache, &saved_cred);
++	down_read(&cache->mnt->mnt_sb->s_umount);
++	ret = sync_filesystem(cache->mnt->mnt_sb);
++	up_read(&cache->mnt->mnt_sb->s_umount);
++	cachefiles_end_secure(cache, saved_cred);
 +
++	if (ret == -EIO)
++		cachefiles_io_error(cache,
++				    "Attempt to sync backing fs superblock returned error %d",
++				    ret);
++}
 +
-+#if defined(__KDEBUG)
-+#define _enter(FMT, ...) kenter(FMT, ##__VA_ARGS__)
-+#define _leave(FMT, ...) kleave(FMT, ##__VA_ARGS__)
-+#define _debug(FMT, ...) kdebug(FMT, ##__VA_ARGS__)
++/*
++ * Withdraw cache objects.
++ */
++void cachefiles_withdraw_cache(struct cachefiles_cache *cache)
++{
++	struct fscache_cache *fscache = cache->cache;
 +
-+#elif defined(CONFIG_CACHEFILES_DEBUG)
-+#define _enter(FMT, ...)				\
-+do {							\
-+	if (cachefiles_debug & CACHEFILES_DEBUG_KENTER)	\
-+		kenter(FMT, ##__VA_ARGS__);		\
-+} while (0)
++	pr_info("File cache on %s unregistering\n", fscache->name);
 +
-+#define _leave(FMT, ...)				\
-+do {							\
-+	if (cachefiles_debug & CACHEFILES_DEBUG_KLEAVE)	\
-+		kleave(FMT, ##__VA_ARGS__);		\
-+} while (0)
++	fscache_withdraw_cache(fscache);
 +
-+#define _debug(FMT, ...)				\
-+do {							\
-+	if (cachefiles_debug & CACHEFILES_DEBUG_KDEBUG)	\
-+		kdebug(FMT, ##__VA_ARGS__);		\
-+} while (0)
++	/* we now have to destroy all the active objects pertaining to this
++	 * cache - which we do by passing them off to thread pool to be
++	 * disposed of */
++	// PLACEHOLDER: Withdraw objects
++	fscache_wait_for_objects(fscache);
 +
-+#else
-+#define _enter(FMT, ...) no_printk("==> %s("FMT")", __func__, ##__VA_ARGS__)
-+#define _leave(FMT, ...) no_printk("<== %s()"FMT"", __func__, ##__VA_ARGS__)
-+#define _debug(FMT, ...) no_printk(FMT, ##__VA_ARGS__)
-+#endif
-+
-+#if 1 /* defined(__KDEBUGALL) */
-+
-+#define ASSERT(X)							\
-+do {									\
-+	if (unlikely(!(X))) {						\
-+		pr_err("\n");						\
-+		pr_err("Assertion failed\n");		\
-+		BUG();							\
-+	}								\
-+} while (0)
-+
-+#define ASSERTCMP(X, OP, Y)						\
-+do {									\
-+	if (unlikely(!((X) OP (Y)))) {					\
-+		pr_err("\n");						\
-+		pr_err("Assertion failed\n");		\
-+		pr_err("%lx " #OP " %lx is false\n",			\
-+		       (unsigned long)(X), (unsigned long)(Y));		\
-+		BUG();							\
-+	}								\
-+} while (0)
-+
-+#define ASSERTIF(C, X)							\
-+do {									\
-+	if (unlikely((C) && !(X))) {					\
-+		pr_err("\n");						\
-+		pr_err("Assertion failed\n");		\
-+		BUG();							\
-+	}								\
-+} while (0)
-+
-+#define ASSERTIFCMP(C, X, OP, Y)					\
-+do {									\
-+	if (unlikely((C) && !((X) OP (Y)))) {				\
-+		pr_err("\n");						\
-+		pr_err("Assertion failed\n");		\
-+		pr_err("%lx " #OP " %lx is false\n",			\
-+		       (unsigned long)(X), (unsigned long)(Y));		\
-+		BUG();							\
-+	}								\
-+} while (0)
-+
-+#else
-+
-+#define ASSERT(X)			do {} while (0)
-+#define ASSERTCMP(X, OP, Y)		do {} while (0)
-+#define ASSERTIF(C, X)			do {} while (0)
-+#define ASSERTIFCMP(C, X, OP, Y)	do {} while (0)
-+
-+#endif
-diff --git a/fs/cachefiles/main.c b/fs/cachefiles/main.c
++	// PLACEHOLDER: Withdraw volume
++	cachefiles_sync_cache(cache);
++	cache->cache = NULL;
++	fscache_relinquish_cache(fscache);
++}
+diff --git a/fs/cachefiles/daemon.c b/fs/cachefiles/daemon.c
+index 7d4691614cec..a449ee661987 100644
+--- a/fs/cachefiles/daemon.c
++++ b/fs/cachefiles/daemon.c
+@@ -702,6 +702,7 @@ static int cachefiles_daemon_bind(struct cachefiles_cache *cache, char *args)
+ 
+ 	pr_warn("Cache is disabled for development\n");
+ 	return -ENOANO; // Don't allow the cache to operate yet
++	//return cachefiles_add_cache(cache);
+ }
+ 
+ /*
+@@ -711,10 +712,11 @@ static void cachefiles_daemon_unbind(struct cachefiles_cache *cache)
+ {
+ 	_enter("");
+ 
+-	if (test_bit(CACHEFILES_READY, &cache->flags)) {
+-		// PLACEHOLDER: Withdraw cache
+-	}
++	if (test_bit(CACHEFILES_READY, &cache->flags))
++		cachefiles_withdraw_cache(cache);
+ 
++	cachefiles_put_directory(cache->graveyard);
++	cachefiles_put_directory(cache->store);
+ 	mntput(cache->mnt);
+ 
+ 	kfree(cache->rootdirname);
+diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
 new file mode 100644
-index 000000000000..47bc1cc078de
+index 000000000000..564ea8fa6641
 --- /dev/null
-+++ b/fs/cachefiles/main.c
-@@ -0,0 +1,53 @@
++++ b/fs/cachefiles/interface.c
+@@ -0,0 +1,18 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
-+/* Network filesystem caching backend to use cache files on a premounted
-+ * filesystem
++/* FS-Cache interface to CacheFiles
 + *
 + * Copyright (C) 2021 Red Hat, Inc. All Rights Reserved.
 + * Written by David Howells (dhowells@redhat.com)
 + */
 +
-+#include <linux/module.h>
-+#include <linux/init.h>
-+#include <linux/sched.h>
-+#include <linux/completion.h>
 +#include <linux/slab.h>
-+#include <linux/fs.h>
-+#include <linux/file.h>
-+#include <linux/namei.h>
 +#include <linux/mount.h>
-+#include <linux/statfs.h>
-+#include <linux/sysctl.h>
-+#include <linux/miscdevice.h>
-+#include <linux/netfs.h>
-+#include <trace/events/netfs.h>
-+#define CREATE_TRACE_POINTS
++#include <linux/xattr.h>
++#include <linux/file.h>
++#include <linux/falloc.h>
++#include <trace/events/fscache.h>
 +#include "internal.h"
 +
-+unsigned cachefiles_debug;
-+module_param_named(debug, cachefiles_debug, uint, S_IWUSR | S_IRUGO);
-+MODULE_PARM_DESC(cachefiles_debug, "CacheFiles debugging mask");
-+
-+MODULE_DESCRIPTION("Mounted-filesystem based cache");
-+MODULE_AUTHOR("Red Hat, Inc.");
-+MODULE_LICENSE("GPL");
-+
++const struct fscache_cache_ops cachefiles_cache_ops = {
++	.name			= "cachefiles",
++};
+diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
+index 65e01ac1da39..0ccea2373b40 100644
+--- a/fs/cachefiles/internal.h
++++ b/fs/cachefiles/internal.h
+@@ -32,6 +32,8 @@ struct cachefiles_object {
+ struct cachefiles_cache {
+ 	struct fscache_cache		*cache;		/* Cache cookie */
+ 	struct vfsmount			*mnt;		/* mountpoint holding the cache */
++	struct dentry			*store;		/* Directory into which live objects go */
++	struct dentry			*graveyard;	/* directory into which dead objects go */
+ 	struct file			*cachefilesd;	/* manager daemon handle */
+ 	const struct cred		*cache_cred;	/* security override for accessing cache */
+ 	struct mutex			daemon_mutex;	/* command serialisation mutex */
+@@ -78,8 +80,10 @@ static inline void cachefiles_state_changed(struct cachefiles_cache *cache)
+ /*
+  * cache.c
+  */
++extern int cachefiles_add_cache(struct cachefiles_cache *cache);
+ extern int cachefiles_has_space(struct cachefiles_cache *cache,
+ 				unsigned fnr, unsigned bnr);
++extern void cachefiles_withdraw_cache(struct cachefiles_cache *cache);
+ 
+ /*
+  * daemon.c
+@@ -125,6 +129,11 @@ static inline int cachefiles_inject_remove_error(void)
+ 	return cachefiles_error_injection_state & 2 ? -EIO : 0;
+ }
+ 
 +/*
-+ * initialise the fs caching module
++ * interface.c
 + */
-+static int __init cachefiles_init(void)
-+{
-+	pr_info("Loaded\n");
-+	return 0;
-+}
++extern const struct fscache_cache_ops cachefiles_cache_ops;
 +
-+fs_initcall(cachefiles_init);
-+
-+/*
-+ * clean up on module removal
-+ */
-+static void __exit cachefiles_exit(void)
-+{
-+	pr_info("Unloading\n");
-+}
-+
-+module_exit(cachefiles_exit);
-diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cachefiles.h
-new file mode 100644
-index 000000000000..5ee0aabb20be
---- /dev/null
-+++ b/include/trace/events/cachefiles.h
-@@ -0,0 +1,49 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+/* CacheFiles tracepoints
-+ *
-+ * Copyright (C) 2021 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM cachefiles
-+
-+#if !defined(_TRACE_CACHEFILES_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_CACHEFILES_H
-+
-+#include <linux/tracepoint.h>
-+
-+/*
-+ * Define enums for tracing information.
-+ */
-+#ifndef __CACHEFILES_DECLARE_TRACE_ENUMS_ONCE_ONLY
-+#define __CACHEFILES_DECLARE_TRACE_ENUMS_ONCE_ONLY
-+
-+#endif
-+
-+/*
-+ * Define enum -> string mappings for display.
-+ */
-+
-+
-+/*
-+ * Export enum symbols via userspace.
-+ */
-+#undef EM
-+#undef E_
-+#define EM(a, b) TRACE_DEFINE_ENUM(a);
-+#define E_(a, b) TRACE_DEFINE_ENUM(a);
-+
-+/*
-+ * Now redefine the EM() and E_() macros to map the enums to the strings that
-+ * will be printed in the output.
-+ */
-+#undef EM
-+#undef E_
-+#define EM(a, b)	{ a, b },
-+#define E_(a, b)	{ a, b }
-+
-+
-+#endif /* _TRACE_CACHEFILES_H */
-+
-+/* This part must be outside protection */
-+#include <trace/define_trace.h>
+ /*
+  * namei.c
+  */
 
 
