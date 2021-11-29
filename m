@@ -2,44 +2,43 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20EC6C4321E
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:33:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E5EBC4167D
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:33:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1378706AbhK2OhD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Nov 2021 09:37:03 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:48619 "EHLO
+        id S1378035AbhK2OhE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Nov 2021 09:37:04 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:26885 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1344122AbhK2OfC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:35:02 -0500
+        by vger.kernel.org with ESMTP id S1378506AbhK2OfA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:35:00 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1638196304;
+        s=mimecast20190719; t=1638196302;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=nrK6C2t5s8MrMi1e1Qhp4XOZF/Tldg9bGG5FIOPDrJM=;
-        b=KDyopeJYOJfgXnGfHGi7pvQUCtZgKe+JIdQ16PrnOQZ+NxeSPS56CuJ2jAy4jPE10plwj/
-        IeoAfiw4zvkt7Z7Z5WpYeYgYXNbpJXcM6donYB48IYScb1HBuf7/gJ0eSmqUEpdy3WR3ZF
-        t2acvSS6T9Iww3nU+/VoP4+7F62+YLQ=
+        bh=bE5Gto+7nYyvi5eMJQpt4mYL96rzfV9P3tzaPwOz8zw=;
+        b=RVs8dq1ml5eL43B63RQFMxdJDIRzhgCwxkBEfg8nBBxz1Ym8VgAd/vrEzrvH+G0n1UzIXc
+        Jfl4SHrYNbb8iBt5dbUKgNk/eZL7XBdbyOOYva9HYyXU17p9PiCV6z+FENCTKs0IqTjVpm
+        BaegqmMZenhECh7/ip8LG1DuU9X5GgA=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-338-N3VGA53QNSSEznyP6AckgQ-1; Mon, 29 Nov 2021 09:31:41 -0500
-X-MC-Unique: N3VGA53QNSSEznyP6AckgQ-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+ us-mta-518-garRu2PsPAKXcHlylIBMSA-1; Mon, 29 Nov 2021 09:31:36 -0500
+X-MC-Unique: garRu2PsPAKXcHlylIBMSA-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 570AB1018720;
-        Mon, 29 Nov 2021 14:31:37 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id A1B611937FFC;
+        Mon, 29 Nov 2021 14:31:18 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.33.36.25])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 0D45C60BF4;
-        Mon, 29 Nov 2021 14:31:33 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 82AA545D60;
+        Mon, 29 Nov 2021 14:31:15 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 37/64] cachefiles: Provide a function to check how much space
- there is
+Subject: [PATCH 35/64] cachefiles: Add security derivation
 From:   David Howells <dhowells@redhat.com>
 To:     linux-cachefs@redhat.com
 Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
@@ -55,196 +54,190 @@ Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
         linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 29 Nov 2021 14:31:33 +0000
-Message-ID: <163819629322.215744.13457425294680841213.stgit@warthog.procyon.org.uk>
+Date:   Mon, 29 Nov 2021 14:31:14 +0000
+Message-ID: <163819627469.215744.3603633690679962985.stgit@warthog.procyon.org.uk>
 In-Reply-To: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 References: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Provide a function to check how much space there is.  This also flips the
-state on the cache and will signal the daemon to inform it of the change
-and to ask it to do some culling if necessary.
 
-We will also need to subtract the amount of data currently being written to
-the cache (cache->b_writing) from the amount of available space to avoid
-hitting ENOSPC accidentally.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: linux-cachefs@redhat.com
 ---
 
- fs/cachefiles/Makefile   |    1 
- fs/cachefiles/cache.c    |  103 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/cachefiles/daemon.c   |    2 -
- fs/cachefiles/internal.h |    7 +++
- 4 files changed, 112 insertions(+), 1 deletion(-)
- create mode 100644 fs/cachefiles/cache.c
+ fs/cachefiles/Makefile   |    3 +
+ fs/cachefiles/internal.h |   20 ++++++++
+ fs/cachefiles/security.c |  112 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 134 insertions(+), 1 deletion(-)
+ create mode 100644 fs/cachefiles/security.c
 
 diff --git a/fs/cachefiles/Makefile b/fs/cachefiles/Makefile
-index f008524bb78f..463e3d608b75 100644
+index 183fb5f3b8b1..28bbb0d14868 100644
 --- a/fs/cachefiles/Makefile
 +++ b/fs/cachefiles/Makefile
-@@ -4,6 +4,7 @@
+@@ -4,7 +4,8 @@
  #
  
  cachefiles-y := \
-+	cache.o \
- 	daemon.o \
- 	main.o \
- 	security.o
-diff --git a/fs/cachefiles/cache.c b/fs/cachefiles/cache.c
+-	main.o
++	main.o \
++	security.o
+ 
+ cachefiles-$(CONFIG_CACHEFILES_ERROR_INJECTION) += error_inject.o
+ 
+diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
+index b2adcb59b4ce..e57ce5ef875c 100644
+--- a/fs/cachefiles/internal.h
++++ b/fs/cachefiles/internal.h
+@@ -104,6 +104,26 @@ static inline int cachefiles_inject_remove_error(void)
+ 	return cachefiles_error_injection_state & 2 ? -EIO : 0;
+ }
+ 
++/*
++ * security.c
++ */
++extern int cachefiles_get_security_ID(struct cachefiles_cache *cache);
++extern int cachefiles_determine_cache_security(struct cachefiles_cache *cache,
++					       struct dentry *root,
++					       const struct cred **_saved_cred);
++
++static inline void cachefiles_begin_secure(struct cachefiles_cache *cache,
++					   const struct cred **_saved_cred)
++{
++	*_saved_cred = override_creds(cache->cache_cred);
++}
++
++static inline void cachefiles_end_secure(struct cachefiles_cache *cache,
++					 const struct cred *saved_cred)
++{
++	revert_creds(saved_cred);
++}
++
+ /*
+  * Error handling
+  */
+diff --git a/fs/cachefiles/security.c b/fs/cachefiles/security.c
 new file mode 100644
-index 000000000000..73636f89eefa
+index 000000000000..fe777164f1d8
 --- /dev/null
-+++ b/fs/cachefiles/cache.c
-@@ -0,0 +1,103 @@
++++ b/fs/cachefiles/security.c
+@@ -0,0 +1,112 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
-+/* Manage high-level VFS aspects of a cache.
++/* CacheFiles security management
 + *
 + * Copyright (C) 2007, 2021 Red Hat, Inc. All Rights Reserved.
 + * Written by David Howells (dhowells@redhat.com)
 + */
 +
-+#include <linux/slab.h>
-+#include <linux/statfs.h>
-+#include <linux/namei.h>
++#include <linux/fs.h>
++#include <linux/cred.h>
 +#include "internal.h"
 +
 +/*
-+ * See if we have space for a number of pages and/or a number of files in the
-+ * cache
++ * determine the security context within which we access the cache from within
++ * the kernel
 + */
-+int cachefiles_has_space(struct cachefiles_cache *cache,
-+			 unsigned fnr, unsigned bnr)
++int cachefiles_get_security_ID(struct cachefiles_cache *cache)
 +{
-+	struct kstatfs stats;
-+	u64 b_avail, b_writing;
++	struct cred *new;
 +	int ret;
 +
-+	struct path path = {
-+		.mnt	= cache->mnt,
-+		.dentry	= cache->mnt->mnt_root,
-+	};
++	_enter("{%s}", cache->secctx);
 +
-+	//_enter("{%llu,%llu,%llu,%llu,%llu,%llu},%u,%u",
-+	//       (unsigned long long) cache->frun,
-+	//       (unsigned long long) cache->fcull,
-+	//       (unsigned long long) cache->fstop,
-+	//       (unsigned long long) cache->brun,
-+	//       (unsigned long long) cache->bcull,
-+	//       (unsigned long long) cache->bstop,
-+	//       fnr, bnr);
-+
-+	/* find out how many pages of blockdev are available */
-+	memset(&stats, 0, sizeof(stats));
-+
-+	ret = vfs_statfs(&path, &stats);
-+	if (ret < 0) {
-+		trace_cachefiles_vfs_error(NULL, d_inode(path.dentry), ret,
-+					   cachefiles_trace_statfs_error);
-+		if (ret == -EIO)
-+			cachefiles_io_error(cache, "statfs failed");
-+		_leave(" = %d", ret);
-+		return ret;
++	new = prepare_kernel_cred(current);
++	if (!new) {
++		ret = -ENOMEM;
++		goto error;
 +	}
 +
-+	b_avail = stats.f_bavail >> cache->bshift;
-+	b_writing = atomic_long_read(&cache->b_writing);
-+	if (b_avail > b_writing)
-+		b_avail -= b_writing;
-+	else
-+		b_avail = 0;
++	if (cache->secctx) {
++		ret = set_security_override_from_ctx(new, cache->secctx);
++		if (ret < 0) {
++			put_cred(new);
++			pr_err("Security denies permission to nominate security context: error %d\n",
++			       ret);
++			goto error;
++		}
++	}
 +
-+	//_debug("avail %llu,%llu",
-+	//       (unsigned long long)stats.f_ffree,
-+	//       (unsigned long long)b_avail);
-+
-+	/* see if there is sufficient space */
-+	if (stats.f_ffree > fnr)
-+		stats.f_ffree -= fnr;
-+	else
-+		stats.f_ffree = 0;
-+
-+	if (b_avail > bnr)
-+		b_avail -= bnr;
-+	else
-+		b_avail = 0;
-+
-+	ret = -ENOBUFS;
-+	if (stats.f_ffree < cache->fstop ||
-+	    b_avail < cache->bstop)
-+		goto begin_cull;
-+
++	cache->cache_cred = new;
 +	ret = 0;
-+	if (stats.f_ffree < cache->fcull ||
-+	    b_avail < cache->bcull)
-+		goto begin_cull;
-+
-+	if (test_bit(CACHEFILES_CULLING, &cache->flags) &&
-+	    stats.f_ffree >= cache->frun &&
-+	    b_avail >= cache->brun &&
-+	    test_and_clear_bit(CACHEFILES_CULLING, &cache->flags)
-+	    ) {
-+		_debug("cease culling");
-+		cachefiles_state_changed(cache);
-+	}
-+
-+	//_leave(" = 0");
-+	return 0;
-+
-+begin_cull:
-+	if (!test_and_set_bit(CACHEFILES_CULLING, &cache->flags)) {
-+		_debug("### CULL CACHE ###");
-+		cachefiles_state_changed(cache);
-+	}
-+
++error:
 +	_leave(" = %d", ret);
 +	return ret;
 +}
-diff --git a/fs/cachefiles/daemon.c b/fs/cachefiles/daemon.c
-index 4cfb7c8b37d0..7d4691614cec 100644
---- a/fs/cachefiles/daemon.c
-+++ b/fs/cachefiles/daemon.c
-@@ -167,7 +167,7 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
- 		return 0;
- 
- 	/* check how much space the cache has */
--	// PLACEHOLDER: Check space
-+	cachefiles_has_space(cache, 0, 0);
- 
- 	/* summarise */
- 	f_released = atomic_xchg(&cache->f_released, 0);
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 7fd5429715ea..3783a3e01027 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -39,6 +39,7 @@ struct cachefiles_cache {
- 	atomic_t			gravecounter;	/* graveyard uniquifier */
- 	atomic_t			f_released;	/* number of objects released lately */
- 	atomic_long_t			b_released;	/* number of blocks released lately */
-+	atomic_long_t			b_writing;	/* Number of blocks being written */
- 	unsigned			frun_percent;	/* when to stop culling (% files) */
- 	unsigned			fcull_percent;	/* when to start culling (% files) */
- 	unsigned			fstop_percent;	/* when to stop allocating (% files) */
-@@ -74,6 +75,12 @@ static inline void cachefiles_state_changed(struct cachefiles_cache *cache)
- 	wake_up_all(&cache->daemon_pollwq);
- }
- 
-+/*
-+ * cache.c
-+ */
-+extern int cachefiles_has_space(struct cachefiles_cache *cache,
-+				unsigned fnr, unsigned bnr);
 +
- /*
-  * daemon.c
-  */
++/*
++ * see if mkdir and create can be performed in the root directory
++ */
++static int cachefiles_check_cache_dir(struct cachefiles_cache *cache,
++				      struct dentry *root)
++{
++	int ret;
++
++	ret = security_inode_mkdir(d_backing_inode(root), root, 0);
++	if (ret < 0) {
++		pr_err("Security denies permission to make dirs: error %d",
++		       ret);
++		return ret;
++	}
++
++	ret = security_inode_create(d_backing_inode(root), root, 0);
++	if (ret < 0)
++		pr_err("Security denies permission to create files: error %d",
++		       ret);
++
++	return ret;
++}
++
++/*
++ * check the security details of the on-disk cache
++ * - must be called with security override in force
++ * - must return with a security override in force - even in the case of an
++ *   error
++ */
++int cachefiles_determine_cache_security(struct cachefiles_cache *cache,
++					struct dentry *root,
++					const struct cred **_saved_cred)
++{
++	struct cred *new;
++	int ret;
++
++	_enter("");
++
++	/* duplicate the cache creds for COW (the override is currently in
++	 * force, so we can use prepare_creds() to do this) */
++	new = prepare_creds();
++	if (!new)
++		return -ENOMEM;
++
++	cachefiles_end_secure(cache, *_saved_cred);
++
++	/* use the cache root dir's security context as the basis with
++	 * which create files */
++	ret = set_create_files_as(new, d_backing_inode(root));
++	if (ret < 0) {
++		abort_creds(new);
++		cachefiles_begin_secure(cache, _saved_cred);
++		_leave(" = %d [cfa]", ret);
++		return ret;
++	}
++
++	put_cred(cache->cache_cred);
++	cache->cache_cred = new;
++
++	cachefiles_begin_secure(cache, _saved_cred);
++	ret = cachefiles_check_cache_dir(cache, root);
++
++	if (ret == -EOPNOTSUPP)
++		ret = 0;
++	_leave(" = %d", ret);
++	return ret;
++}
 
 
