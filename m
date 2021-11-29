@@ -2,57 +2,56 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A9C6C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 04:55:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2520C433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 04:56:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231447AbhK2E65 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 28 Nov 2021 23:58:57 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:42524 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238207AbhK2E45 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Nov 2021 23:56:57 -0500
+        id S239859AbhK2E7z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 28 Nov 2021 23:59:55 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:60228 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S240907AbhK2E5y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Nov 2021 23:57:54 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 826B21FD29;
-        Mon, 29 Nov 2021 04:53:39 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id A6A8F212BC;
+        Mon, 29 Nov 2021 04:53:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1638161619; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1638161588; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ksD387RvbGGdsJFIycbu4bFM8cYLiuD6K1tfwfwYy6I=;
-        b=ypyU1EfddA89WrM01cHD73VJDRtVBAEI76nrk1PrusIyKrsy9dPKfyFNB3JDekhUYNPGKV
-        /dRqzvxixudf+EqZn4lFVQjUxZrBSVAO++vOMptvgEOQgzPBjRiBEM7+vBaTTCmXeiAfiO
-        PUY6hLMvwCgeGDpJDlxrhrYDkQIYzcg=
+        bh=55eU6IUmMGnMWDSrM7QS/etQjMpj5mfpzAQJ988Ay8s=;
+        b=1qzwSM/st+Nu8pVhK1O9W0+QeHgn6fEDqlonRY6UF9QjHrO033z8vdDy23k9ROgwJ90PGC
+        0ng1mSZOaeBZSNtWbcP65z3nlUVQbfJRWj1NJWf3A4UFGImY565kNKFKMoTUHy0Vz+FLUq
+        66bxnKO1mg5xAjK0tXGcKuuPmDzk3Vc=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1638161619;
+        s=susede2_ed25519; t=1638161588;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ksD387RvbGGdsJFIycbu4bFM8cYLiuD6K1tfwfwYy6I=;
-        b=DEbE0Ya4hNniqNxqA0ZWCqbxTA3RtyJ8rs4pZ6xlzVoi4RGtck8OLFvILr3qPqqGfsNXzp
-        fY0ICz7APTnkvRDA==
+        bh=55eU6IUmMGnMWDSrM7QS/etQjMpj5mfpzAQJ988Ay8s=;
+        b=4u0vZ5ExNe8VdpzhY9i9SztKWvx4tBpq7q+BMxvQKZmvShNSsfJeB8GNntB8iEk5lnB5GT
+        PxYShfLdXN8D8XBQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 64000133FE;
-        Mon, 29 Nov 2021 04:53:38 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9070C133FE;
+        Mon, 29 Nov 2021 04:53:07 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id gxYLCNJcpGExbwAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 29 Nov 2021 04:53:38 +0000
-Subject: [PATCH 13/20] lockd: move lockd_start_svc() call into
- lockd_create_svc()
+        id pC1iE7NcpGEGbwAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 29 Nov 2021 04:53:07 +0000
+Subject: [PATCH 07/20] NFSD: narrow nfsd_mutex protection in nfsd thread
 From:   NeilBrown <neilb@suse.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Mon, 29 Nov 2021 15:51:25 +1100
-Message-ID: <163816148560.32298.15560175172815507979.stgit@noble.brown>
+Message-ID: <163816148556.32298.7308512506129152207.stgit@noble.brown>
 In-Reply-To: <163816133466.32298.13831616524908720974.stgit@noble.brown>
 References: <163816133466.32298.13831616524908720974.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -63,96 +62,57 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-lockd_start_svc() only needs to be called once, just after the svc is
-created.  If the start fails, the svc is discarded too.
-
-It thus makes sense to call lockd_start_svc() from lockd_create_svc().
-This allows us to remove the test against nlmsvc_rqst at the start of
-lockd_start_svc() - it must always be NULL.
-
-lockd_up() only held an extra reference on the svc until a thread was
-created - then it dropped it.  The thread - and thus the extra reference
-- will remain until kthread_stop() is called.
-Now that the thread is created in lockd_create_svc(), the extra
-reference can be dropped there.  So the 'serv' variable is no longer
-needed in lockd_up().
+There is nothing happening in the start of nfsd() that requires
+protection by the mutex, so don't take it until shutting down the thread
+- which does still require protection - but only for nfsd_put().
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/lockd/svc.c |   22 ++++++++++------------
- 1 file changed, 10 insertions(+), 12 deletions(-)
+ fs/nfsd/nfssvc.c |    8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 20cebb191350..91e7c839841e 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -359,9 +359,6 @@ static int lockd_start_svc(struct svc_serv *serv)
- {
- 	int error;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index e9c9fa820b17..097abd8b059c 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -932,9 +932,6 @@ nfsd(void *vrqstp)
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int err;
  
--	if (nlmsvc_rqst)
--		return 0;
+-	/* Lock module and set up kernel thread */
+-	mutex_lock(&nfsd_mutex);
 -
- 	/*
- 	 * Create the kernel thread and wait for it to start.
- 	 */
-@@ -406,6 +403,7 @@ static const struct svc_serv_ops lockd_sv_ops = {
- static int lockd_create_svc(void)
- {
- 	struct svc_serv *serv;
-+	int error;
+ 	/* At this point, the thread shares current->fs
+ 	 * with the init process. We need to create files with the
+ 	 * umask as defined by the client instead of init's umask. */
+@@ -954,7 +951,6 @@ nfsd(void *vrqstp)
+ 	allow_signal(SIGINT);
+ 	allow_signal(SIGQUIT);
  
- 	/*
- 	 * Check whether we're already up and running.
-@@ -432,6 +430,13 @@ static int lockd_create_svc(void)
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		return -ENOMEM;
- 	}
-+
-+	error = lockd_start_svc(serv);
-+	/* The thread now holds the only reference */
-+	svc_put(serv);
-+	if (error < 0)
-+		return error;
-+
- 	nlmsvc_serv = serv;
- 	register_inetaddr_notifier(&lockd_inetaddr_notifier);
- #if IS_ENABLED(CONFIG_IPV6)
-@@ -446,7 +451,6 @@ static int lockd_create_svc(void)
-  */
- int lockd_up(struct net *net, const struct cred *cred)
- {
--	struct svc_serv *serv;
- 	int error;
+-	mutex_unlock(&nfsd_mutex);
+ 	atomic_inc(&nfsdstats.th_cnt);
  
- 	mutex_lock(&nlmsvc_mutex);
-@@ -454,25 +458,19 @@ int lockd_up(struct net *net, const struct cred *cred)
- 	error = lockd_create_svc();
- 	if (error)
- 		goto err_create;
--	serv = nlmsvc_serv;
+ 	set_freezable();
+@@ -983,7 +979,6 @@ nfsd(void *vrqstp)
+ 	flush_signals(current);
  
--	error = lockd_up_net(serv, net, cred);
-+	error = lockd_up_net(nlmsvc_serv, net, cred);
- 	if (error < 0) {
- 		goto err_put;
- 	}
+ 	atomic_dec(&nfsdstats.th_cnt);
+-	mutex_lock(&nfsd_mutex);
  
--	error = lockd_start_svc(serv);
--	if (error < 0) {
--		lockd_down_net(serv, net);
--		goto err_put;
--	}
- 	nlmsvc_users++;
- err_put:
- 	if (nlmsvc_users == 0) {
- 		lockd_unregister_notifiers();
-+		kthread_stop(nlmsvc_task);
- 		nlmsvc_serv = NULL;
- 	}
--	svc_put(serv);
- err_create:
- 	mutex_unlock(&nlmsvc_mutex);
- 	return error;
+ out:
+ 	/* Take an extra ref so that the svc_put in svc_exit_thread()
+@@ -995,10 +990,11 @@ nfsd(void *vrqstp)
+ 	svc_exit_thread(rqstp);
+ 
+ 	/* Now if needed we call svc_destroy in appropriate context */
++	mutex_lock(&nfsd_mutex);
+ 	nfsd_put(net);
++	mutex_unlock(&nfsd_mutex);
+ 
+ 	/* Release module */
+-	mutex_unlock(&nfsd_mutex);
+ 	module_put_and_exit(0);
+ 	return 0;
+ }
 
 
