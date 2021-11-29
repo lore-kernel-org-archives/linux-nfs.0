@@ -2,44 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B51A1C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:33:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20EC6C4321E
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 14:33:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1378947AbhK2Ogw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Nov 2021 09:36:52 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:55400 "EHLO
+        id S1378706AbhK2OhD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Nov 2021 09:37:03 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:48619 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1378457AbhK2Oet (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:34:49 -0500
+        by vger.kernel.org with ESMTP id S1344122AbhK2OfC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2021 09:35:02 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1638196291;
+        s=mimecast20190719; t=1638196304;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=mmTuam1LC3vhKbcuZg/3uteq0NGebX5xMZYEWsNfvAI=;
-        b=RdCNSNzPkPVk4+Rld0mL3okl4xV6I0u3PQoCDdJ1yhMObyIbS/DwMZ11qCLFS/fD3bvbQw
-        RZd7MJeP3DE13gyYkUhkohK/Nj4U+t8oqsHyGeofKr2h6CHs5V5JX8xNskXq411NKVc9AT
-        nSLhJ4zsmyVcwnL53b4zYbBQFU/7iQQ=
+        bh=nrK6C2t5s8MrMi1e1Qhp4XOZF/Tldg9bGG5FIOPDrJM=;
+        b=KDyopeJYOJfgXnGfHGi7pvQUCtZgKe+JIdQ16PrnOQZ+NxeSPS56CuJ2jAy4jPE10plwj/
+        IeoAfiw4zvkt7Z7Z5WpYeYgYXNbpJXcM6donYB48IYScb1HBuf7/gJ0eSmqUEpdy3WR3ZF
+        t2acvSS6T9Iww3nU+/VoP4+7F62+YLQ=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-366-RUrs-z0EO-y4MetsSVuObA-1; Mon, 29 Nov 2021 09:31:26 -0500
-X-MC-Unique: RUrs-z0EO-y4MetsSVuObA-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+ us-mta-338-N3VGA53QNSSEznyP6AckgQ-1; Mon, 29 Nov 2021 09:31:41 -0500
+X-MC-Unique: N3VGA53QNSSEznyP6AckgQ-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 64C9F801B25;
-        Mon, 29 Nov 2021 14:31:00 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 570AB1018720;
+        Mon, 29 Nov 2021 14:31:37 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.33.36.25])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2667F19724;
-        Mon, 29 Nov 2021 14:30:57 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 0D45C60BF4;
+        Mon, 29 Nov 2021 14:31:33 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 33/64] cachefiles: Add a couple of tracepoints for logging
- errors
+Subject: [PATCH 37/64] cachefiles: Provide a function to check how much space
+ there is
 From:   David Howells <dhowells@redhat.com>
 To:     linux-cachefs@redhat.com
 Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
@@ -55,168 +55,196 @@ Cc:     dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
         linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 29 Nov 2021 14:30:56 +0000
-Message-ID: <163819625632.215744.17907340966178411033.stgit@warthog.procyon.org.uk>
+Date:   Mon, 29 Nov 2021 14:31:33 +0000
+Message-ID: <163819629322.215744.13457425294680841213.stgit@warthog.procyon.org.uk>
 In-Reply-To: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 References: <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add two trace points to log errors, one for vfs operations like mkdir or
-create, and one for I/O operations, like read, write or truncate.
+Provide a function to check how much space there is.  This also flips the
+state on the cache and will signal the daemon to inform it of the change
+and to ask it to do some culling if necessary.
 
-Also add the beginnings of a struct that is going to represent a data file
-and place a debugging ID in it for the tracepoints to record.
+We will also need to subtract the amount of data currently being written to
+the cache (cache->b_writing) from the amount of available space to avoid
+hitting ENOSPC accidentally.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: linux-cachefs@redhat.com
 ---
 
- fs/cachefiles/internal.h          |    1 
- include/trace/events/cachefiles.h |   94 +++++++++++++++++++++++++++++++++++++
- 2 files changed, 95 insertions(+)
+ fs/cachefiles/Makefile   |    1 
+ fs/cachefiles/cache.c    |  103 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/cachefiles/daemon.c   |    2 -
+ fs/cachefiles/internal.h |    7 +++
+ 4 files changed, 112 insertions(+), 1 deletion(-)
+ create mode 100644 fs/cachefiles/cache.c
 
+diff --git a/fs/cachefiles/Makefile b/fs/cachefiles/Makefile
+index f008524bb78f..463e3d608b75 100644
+--- a/fs/cachefiles/Makefile
++++ b/fs/cachefiles/Makefile
+@@ -4,6 +4,7 @@
+ #
+ 
+ cachefiles-y := \
++	cache.o \
+ 	daemon.o \
+ 	main.o \
+ 	security.o
+diff --git a/fs/cachefiles/cache.c b/fs/cachefiles/cache.c
+new file mode 100644
+index 000000000000..73636f89eefa
+--- /dev/null
++++ b/fs/cachefiles/cache.c
+@@ -0,0 +1,103 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/* Manage high-level VFS aspects of a cache.
++ *
++ * Copyright (C) 2007, 2021 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ */
++
++#include <linux/slab.h>
++#include <linux/statfs.h>
++#include <linux/namei.h>
++#include "internal.h"
++
++/*
++ * See if we have space for a number of pages and/or a number of files in the
++ * cache
++ */
++int cachefiles_has_space(struct cachefiles_cache *cache,
++			 unsigned fnr, unsigned bnr)
++{
++	struct kstatfs stats;
++	u64 b_avail, b_writing;
++	int ret;
++
++	struct path path = {
++		.mnt	= cache->mnt,
++		.dentry	= cache->mnt->mnt_root,
++	};
++
++	//_enter("{%llu,%llu,%llu,%llu,%llu,%llu},%u,%u",
++	//       (unsigned long long) cache->frun,
++	//       (unsigned long long) cache->fcull,
++	//       (unsigned long long) cache->fstop,
++	//       (unsigned long long) cache->brun,
++	//       (unsigned long long) cache->bcull,
++	//       (unsigned long long) cache->bstop,
++	//       fnr, bnr);
++
++	/* find out how many pages of blockdev are available */
++	memset(&stats, 0, sizeof(stats));
++
++	ret = vfs_statfs(&path, &stats);
++	if (ret < 0) {
++		trace_cachefiles_vfs_error(NULL, d_inode(path.dentry), ret,
++					   cachefiles_trace_statfs_error);
++		if (ret == -EIO)
++			cachefiles_io_error(cache, "statfs failed");
++		_leave(" = %d", ret);
++		return ret;
++	}
++
++	b_avail = stats.f_bavail >> cache->bshift;
++	b_writing = atomic_long_read(&cache->b_writing);
++	if (b_avail > b_writing)
++		b_avail -= b_writing;
++	else
++		b_avail = 0;
++
++	//_debug("avail %llu,%llu",
++	//       (unsigned long long)stats.f_ffree,
++	//       (unsigned long long)b_avail);
++
++	/* see if there is sufficient space */
++	if (stats.f_ffree > fnr)
++		stats.f_ffree -= fnr;
++	else
++		stats.f_ffree = 0;
++
++	if (b_avail > bnr)
++		b_avail -= bnr;
++	else
++		b_avail = 0;
++
++	ret = -ENOBUFS;
++	if (stats.f_ffree < cache->fstop ||
++	    b_avail < cache->bstop)
++		goto begin_cull;
++
++	ret = 0;
++	if (stats.f_ffree < cache->fcull ||
++	    b_avail < cache->bcull)
++		goto begin_cull;
++
++	if (test_bit(CACHEFILES_CULLING, &cache->flags) &&
++	    stats.f_ffree >= cache->frun &&
++	    b_avail >= cache->brun &&
++	    test_and_clear_bit(CACHEFILES_CULLING, &cache->flags)
++	    ) {
++		_debug("cease culling");
++		cachefiles_state_changed(cache);
++	}
++
++	//_leave(" = 0");
++	return 0;
++
++begin_cull:
++	if (!test_and_set_bit(CACHEFILES_CULLING, &cache->flags)) {
++		_debug("### CULL CACHE ###");
++		cachefiles_state_changed(cache);
++	}
++
++	_leave(" = %d", ret);
++	return ret;
++}
+diff --git a/fs/cachefiles/daemon.c b/fs/cachefiles/daemon.c
+index 4cfb7c8b37d0..7d4691614cec 100644
+--- a/fs/cachefiles/daemon.c
++++ b/fs/cachefiles/daemon.c
+@@ -167,7 +167,7 @@ static ssize_t cachefiles_daemon_read(struct file *file, char __user *_buffer,
+ 		return 0;
+ 
+ 	/* check how much space the cache has */
+-	// PLACEHOLDER: Check space
++	cachefiles_has_space(cache, 0, 0);
+ 
+ 	/* summarise */
+ 	f_released = atomic_xchg(&cache->f_released, 0);
 diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 1f2fea902d3e..b51146a29aca 100644
+index 7fd5429715ea..3783a3e01027 100644
 --- a/fs/cachefiles/internal.h
 +++ b/fs/cachefiles/internal.h
-@@ -62,6 +62,7 @@ struct cachefiles_cache {
- 	char				*tag;		/* cache binding tag */
- };
+@@ -39,6 +39,7 @@ struct cachefiles_cache {
+ 	atomic_t			gravecounter;	/* graveyard uniquifier */
+ 	atomic_t			f_released;	/* number of objects released lately */
+ 	atomic_long_t			b_released;	/* number of blocks released lately */
++	atomic_long_t			b_writing;	/* Number of blocks being written */
+ 	unsigned			frun_percent;	/* when to stop culling (% files) */
+ 	unsigned			fcull_percent;	/* when to start culling (% files) */
+ 	unsigned			fstop_percent;	/* when to stop allocating (% files) */
+@@ -74,6 +75,12 @@ static inline void cachefiles_state_changed(struct cachefiles_cache *cache)
+ 	wake_up_all(&cache->daemon_pollwq);
+ }
  
-+#include <trace/events/cachefiles.h>
- 
- /*
-  * error_inject.c
-diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cachefiles.h
-index 5ee0aabb20be..9bd5a8a60801 100644
---- a/include/trace/events/cachefiles.h
-+++ b/include/trace/events/cachefiles.h
-@@ -18,11 +18,49 @@
- #ifndef __CACHEFILES_DECLARE_TRACE_ENUMS_ONCE_ONLY
- #define __CACHEFILES_DECLARE_TRACE_ENUMS_ONCE_ONLY
- 
-+enum cachefiles_error_trace {
-+	cachefiles_trace_fallocate_error,
-+	cachefiles_trace_getxattr_error,
-+	cachefiles_trace_link_error,
-+	cachefiles_trace_lookup_error,
-+	cachefiles_trace_mkdir_error,
-+	cachefiles_trace_notify_change_error,
-+	cachefiles_trace_open_error,
-+	cachefiles_trace_read_error,
-+	cachefiles_trace_remxattr_error,
-+	cachefiles_trace_rename_error,
-+	cachefiles_trace_seek_error,
-+	cachefiles_trace_setxattr_error,
-+	cachefiles_trace_statfs_error,
-+	cachefiles_trace_tmpfile_error,
-+	cachefiles_trace_trunc_error,
-+	cachefiles_trace_unlink_error,
-+	cachefiles_trace_write_error,
-+};
++/*
++ * cache.c
++ */
++extern int cachefiles_has_space(struct cachefiles_cache *cache,
++				unsigned fnr, unsigned bnr);
 +
- #endif
- 
  /*
-  * Define enum -> string mappings for display.
+  * daemon.c
   */
-+#define cachefiles_error_traces						\
-+	EM(cachefiles_trace_fallocate_error,	"fallocate")		\
-+	EM(cachefiles_trace_getxattr_error,	"getxattr")		\
-+	EM(cachefiles_trace_link_error,		"link")			\
-+	EM(cachefiles_trace_lookup_error,	"lookup")		\
-+	EM(cachefiles_trace_mkdir_error,	"mkdir")		\
-+	EM(cachefiles_trace_notify_change_error, "notify_change")	\
-+	EM(cachefiles_trace_open_error,		"open")			\
-+	EM(cachefiles_trace_read_error,		"read")			\
-+	EM(cachefiles_trace_remxattr_error,	"remxattr")		\
-+	EM(cachefiles_trace_rename_error,	"rename")		\
-+	EM(cachefiles_trace_seek_error,		"seek")			\
-+	EM(cachefiles_trace_setxattr_error,	"setxattr")		\
-+	EM(cachefiles_trace_statfs_error,	"statfs")		\
-+	EM(cachefiles_trace_tmpfile_error,	"tmpfile")		\
-+	EM(cachefiles_trace_trunc_error,	"trunc")		\
-+	EM(cachefiles_trace_unlink_error,	"unlink")		\
-+	E_(cachefiles_trace_write_error,	"write")
- 
- 
- /*
-@@ -33,6 +71,8 @@
- #define EM(a, b) TRACE_DEFINE_ENUM(a);
- #define E_(a, b) TRACE_DEFINE_ENUM(a);
- 
-+cachefiles_error_traces;
-+
- /*
-  * Now redefine the EM() and E_() macros to map the enums to the strings that
-  * will be printed in the output.
-@@ -43,6 +83,60 @@
- #define E_(a, b)	{ a, b }
- 
- 
-+TRACE_EVENT(cachefiles_vfs_error,
-+	    TP_PROTO(struct cachefiles_object *obj, struct inode *backer,
-+		     int error, enum cachefiles_error_trace where),
-+
-+	    TP_ARGS(obj, backer, error, where),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj	)
-+		    __field(unsigned int,			backer	)
-+		    __field(enum cachefiles_error_trace,	where	)
-+		    __field(short,				error	)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj ? obj->debug_id : 0;
-+		    __entry->backer	= backer->i_ino;
-+		    __entry->error	= error;
-+		    __entry->where	= where;
-+			   ),
-+
-+	    TP_printk("o=%08x b=%08x %s e=%d",
-+		      __entry->obj,
-+		      __entry->backer,
-+		      __print_symbolic(__entry->where, cachefiles_error_traces),
-+		      __entry->error)
-+	    );
-+
-+TRACE_EVENT(cachefiles_io_error,
-+	    TP_PROTO(struct cachefiles_object *obj, struct inode *backer,
-+		     int error, enum cachefiles_error_trace where),
-+
-+	    TP_ARGS(obj, backer, error, where),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj	)
-+		    __field(unsigned int,			backer	)
-+		    __field(enum cachefiles_error_trace,	where	)
-+		    __field(short,				error	)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj ? obj->debug_id : 0;
-+		    __entry->backer	= backer->i_ino;
-+		    __entry->error	= error;
-+		    __entry->where	= where;
-+			   ),
-+
-+	    TP_printk("o=%08x b=%08x %s e=%d",
-+		      __entry->obj,
-+		      __entry->backer,
-+		      __print_symbolic(__entry->where, cachefiles_error_traces),
-+		      __entry->error)
-+	    );
-+
- #endif /* _TRACE_CACHEFILES_H */
- 
- /* This part must be outside protection */
 
 
