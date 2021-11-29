@@ -2,54 +2,58 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A71D0C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 04:54:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDC49C433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Nov 2021 04:54:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240837AbhK2E5x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 28 Nov 2021 23:57:53 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:60050 "EHLO
+        id S240981AbhK2E56 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 28 Nov 2021 23:57:58 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:60064 "EHLO
         smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233993AbhK2Ezx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Nov 2021 23:55:53 -0500
+        with ESMTP id S234279AbhK2Ez6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Nov 2021 23:55:58 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id CEC33212CC;
-        Mon, 29 Nov 2021 04:52:35 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 89A16212FE;
+        Mon, 29 Nov 2021 04:52:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1638161555; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1638161560; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=35K5YgPxX5x6XnmMfkmqSEZsXuP7eLE+iO88B1AJJGY=;
-        b=JtaFXwv0+w3HvYGYr4VZonwG96T5lBVuYvfk8u6dMDqr1GxHBh7scUVxMVpAbotnqjjV4t
-        oAjAOHENqi9GK+89YG6CbudxERix4WGR4IzosgjOMkoDOUIxaSfL3sLrEWI6aIGZ4WFsT2
-        3Ja5d7ZYFisXbJWH85xZIpCpxRj7Ye8=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=cm28zN4GKlVceZ/q83bSYsbXYaPUYmpNVxruBbeeM3c=;
+        b=Agvg/o8VGhDBV0tw7LOi8ftMgKmfANIkcdNnLmS79H+MvGt8i7xYsDfmG6fP4jok3ZuDSO
+        DxcRtYH10EHS0eaWRCtH3r57g+cVZVszDRFky9d3wZHYsdrofwQsRYVTaWJafwkL1F+cMg
+        sPYsCsnBHupHz5CjYcQS1hkUsg+6m6o=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1638161555;
+        s=susede2_ed25519; t=1638161560;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=35K5YgPxX5x6XnmMfkmqSEZsXuP7eLE+iO88B1AJJGY=;
-        b=eU8tz481l/2sP4m1qL6lLZjdGOMTBZz+2x3hOhxnG8AIUCpUWA7YplmyhGEx72nW9kIP7t
-        ensaa+SJYAw6EQBw==
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=cm28zN4GKlVceZ/q83bSYsbXYaPUYmpNVxruBbeeM3c=;
+        b=wstx9N2/brcKdYlx+Eehh0HRROluaBzi6uD5idgvayVKBF/Rt+dMKZT1wBHf9aIfuktCnp
+        c4PgSqMk8WXDWqDg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A3462133FE;
-        Mon, 29 Nov 2021 04:52:34 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 6DB7C133FE;
+        Mon, 29 Nov 2021 04:52:39 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 2pmtFpJcpGHVbgAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 29 Nov 2021 04:52:34 +0000
-Subject: [PATCH 00/20 v3] SUNRPC: clean up server thread management
+        id ieSDCpdcpGHhbgAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 29 Nov 2021 04:52:39 +0000
+Subject: [PATCH 01/20] NFSD: handle errors better in write_ports_addfd()
 From:   NeilBrown <neilb@suse.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Mon, 29 Nov 2021 15:51:25 +1100
-Message-ID: <163816133466.32298.13831616524908720974.stgit@noble.brown>
+Message-ID: <163816148551.32298.1997321981162233125.stgit@noble.brown>
+In-Reply-To: <163816133466.32298.13831616524908720974.stgit@noble.brown>
+References: <163816133466.32298.13831616524908720974.stgit@noble.brown>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -58,56 +62,27 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is v3 of mt server thread management cleanup series.
-changes include:
- - splitting out a couple of patches, and moving simple bugfix to the
-   front.
- - Fixed a bug in previous series where lockd module count was being
-   incremented when the lockd thread started, but not decremented when
-   it exited.
- - minor improvement to patch descriptions.
+If write_ports_add() fails, we shouldn't destroy the serv, unless we had
+only just created it.  So if there are any permanent sockets already
+attached, leave the serv in place.
 
-Thanks for the review and testing!
-
-NeilBrown
-
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ fs/nfsd/nfsctl.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-NeilBrown (20):
-      NFSD: handle errors better in write_ports_addfd()
-      SUNRPC: change svc_get() to return the svc.
-      SUNRPC/NFSD: clean up get/put functions.
-      SUNRPC: stop using ->sv_nrthreads as a refcount
-      nfsd: make nfsd_stats.th_cnt atomic_t
-      SUNRPC: use sv_lock to protect updates to sv_nrthreads.
-      NFSD: narrow nfsd_mutex protection in nfsd thread
-      NFSD: Make it possible to use svc_set_num_threads_sync
-      SUNRPC: discard svo_setup and rename svc_set_num_threads_sync()
-      NFSD: simplify locking for network notifier.
-      lockd: introduce nlmsvc_serv
-      lockd: simplify management of network status notifiers
-      lockd: move lockd_start_svc() call into lockd_create_svc()
-      lockd: move svc_exit_thread() into the thread
-      lockd: introduce lockd_put()
-      lockd: rename lockd_create_svc() to lockd_get()
-      SUNRPC: move the pool_map definitions (back) into svc.c
-      SUNRPC: always treat sv_nrpools==1 as "not pooled"
-      lockd: use svc_set_num_threads() for thread start and stop
-      NFS: switch the callback service back to non-pooled.
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index af8531c3854a..d47956672f9e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -742,7 +742,7 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net, const struct cred
+ 		return err;
+ 
+ 	err = svc_addsock(nn->nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT, cred);
+-	if (err < 0) {
++	if (err < 0 && list_empty(&nn->nfsd_serv->sv_permsocks)) {
+ 		nfsd_destroy(net);
+ 		return err;
+ 	}
 
-
- fs/lockd/svc.c             | 200 +++++++++++--------------------------
- fs/nfs/callback.c          |  32 ++----
- fs/nfsd/netns.h            |  13 +--
- fs/nfsd/nfsctl.c           |  24 ++---
- fs/nfsd/nfsd.h             |   2 +-
- fs/nfsd/nfssvc.c           | 159 +++++++++++++++--------------
- fs/nfsd/stats.c            |   2 +-
- fs/nfsd/stats.h            |   4 +-
- include/linux/sunrpc/svc.h |  79 ++++++++-------
- net/sunrpc/svc.c           | 175 ++++++++++++++------------------
- 10 files changed, 286 insertions(+), 404 deletions(-)
-
---
-Signature
 
