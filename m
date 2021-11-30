@@ -2,44 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14EAFC433FE
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Nov 2021 14:55:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8684C4332F
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Nov 2021 15:02:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238030AbhK3O7M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 30 Nov 2021 09:59:12 -0500
-Received: from sin.source.kernel.org ([145.40.73.55]:60458 "EHLO
+        id S244298AbhK3PFn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 30 Nov 2021 10:05:43 -0500
+Received: from sin.source.kernel.org ([145.40.73.55]:58866 "EHLO
         sin.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243369AbhK3O5J (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2021 09:57:09 -0500
+        with ESMTP id S243227AbhK3O4o (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2021 09:56:44 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id C2DF5CE1A78;
-        Tue, 30 Nov 2021 14:53:48 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4A64AC53FCF;
-        Tue, 30 Nov 2021 14:53:46 +0000 (UTC)
+        by sin.source.kernel.org (Postfix) with ESMTPS id 2DC5CCE1A5F;
+        Tue, 30 Nov 2021 14:53:24 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE84DC53FC7;
+        Tue, 30 Nov 2021 14:53:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1638284027;
-        bh=YpBhnxWaTcWZvJTUf22yA0MtqDgiRaofOD3Uy9e7U8g=;
+        s=k20201202; t=1638284002;
+        bh=6twH5+TpWJnPN7F7KBiM85o+hDSCWp2TFCGV04d+MoY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=a5ytYnTthbLcK9t3na9ocpbQ66s+Rl3d1HFUoPf0ZgKCobLu0qt/83lZNSsdRj1Di
-         3tpbrJZVw4HmN/2AwwnTX4guvpVZUDl2KVd4btOK7r5vLfVBrjaB9S/1MIYKwOANy2
-         n/BGeXbibrjV8t9F+doWuZZ5OqgCRm4XOBCuAL4Vx4rIfD0Fy7/5/UDaC0g3w7bQGH
-         t4RLmju+qCjyFNCK/RdkVSgmgnLRFfoUhhZWDROvOgyqoiL8/3PRIGz8ynYjIJFyss
-         s39tAoNbhY39SIFs9+cTiqEKUl7ogYrHXRPf+a53Sxarwf8KhLuxylZhrEBDZJpP+u
-         QyJtI7FDtmA9w==
+        b=QWlwx3Eq/4Yz3p77cGfIpIhx/23tXbpAz6hhnMxtB6SKuAGs44KNHBEKSITG2KbEf
+         myEXk2enTwHxPJpK9VLs53GqwIEOf8hdYIAEMi1+FTffdE+D5CtYxGHeEqRdtywSM4
+         xx/Va/+Gg13P6KtaDacxgJrTjDfIQlvlGi0oy1tRnqaYvwBLq16RXm+xmc/wX+Tgz5
+         Eeyk6FbIEjDNVQwQ1tsfHc8vUzLJOLcCwad0zP1itD5KweaD8INO/rD8nwG83c7Vym
+         0+jwIMdbHN1nMoOzXXrcicTPYsUMPw9bDr6iPK14j55QHOeqGv/4lADzSTTghCH5Er
+         kWCduFttIz10A==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Olga Kornievskaia <kolga@netapp.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, anna.schumaker@netapp.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 03/12] NFSv4.1: handle NFS4ERR_NOSPC by CREATE_SESSION
-Date:   Tue, 30 Nov 2021 09:53:31 -0500
-Message-Id: <20211130145341.946891-3-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 03/14] NFSv4.1: handle NFS4ERR_NOSPC by CREATE_SESSION
+Date:   Tue, 30 Nov 2021 09:53:04 -0500
+Message-Id: <20211130145317.946676-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.33.0
-In-Reply-To: <20211130145341.946891-1-sashal@kernel.org>
-References: <20211130145341.946891-1-sashal@kernel.org>
+In-Reply-To: <20211130145317.946676-1-sashal@kernel.org>
+References: <20211130145317.946676-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -66,10 +66,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 4 insertions(+)
 
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 4e63daeef6339..0c11da166cb6e 100644
+index f92bfc787c5fe..2bdeb212045fd 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -1883,6 +1883,10 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+@@ -1901,6 +1901,10 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
  		dprintk("%s: exit with error %d for server %s\n",
  				__func__, -EPROTONOSUPPORT, clp->cl_hostname);
  		return -EPROTONOSUPPORT;
