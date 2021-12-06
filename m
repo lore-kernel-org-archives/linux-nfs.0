@@ -2,726 +2,225 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DEF9C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon,  6 Dec 2021 21:44:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4825EC433F5
+	for <linux-nfs@archiver.kernel.org>; Mon,  6 Dec 2021 22:05:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351564AbhLFVr4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 6 Dec 2021 16:47:56 -0500
-Received: from mx0a-00069f02.pphosted.com ([205.220.165.32]:13476 "EHLO
-        mx0a-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1351598AbhLFVrz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Dec 2021 16:47:55 -0500
-Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 1B6JicUC031397;
-        Mon, 6 Dec 2021 21:44:25 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=message-id : date :
- subject : to : cc : references : from : in-reply-to : content-type :
- content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=Wu5RfoUie0pLwthf/ghAV+4YrZEalsLP+6mMo5ZLR5c=;
- b=ZckBO68NcX0cBcXN2ksTc376mQye2FfTNKke1Or5r27x2AMG2ztiQh2SFtZN/MXmIRPf
- 5Hccfeu33fAxBdjvqDmcBjqRFijm4n07lcPPRlybHwhilyvUVjVQoQwV53pwppOyFw6L
- Fyobr2XpLyHXiC1bt/ZB830T55atE6baXTzRlg89pMABUCcvd7BEWNmPCUc5RN+7Iu9F
- 0huP0Vd6PnGTkQ0xez70ZCVkRyrWWsfWIhz2XM5YyNXGMubyZZaZjTvuQFU5iusPZXDK
- 7S5mZmiaqZ8iXdvsM2dyJHC3CW5I/c3mvqEMTJ43afxT1ldqyOQjUgnk4xIZLPclyLaE fw== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3csctwkm8y-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 06 Dec 2021 21:44:24 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 1B6La9vL074930;
-        Mon, 6 Dec 2021 21:44:23 GMT
-Received: from nam02-dm3-obe.outbound.protection.outlook.com (mail-dm3nam07lp2046.outbound.protection.outlook.com [104.47.56.46])
-        by aserp3020.oracle.com with ESMTP id 3cr05413g1-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 06 Dec 2021 21:44:23 +0000
+        id S1353284AbhLFWIx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 6 Dec 2021 17:08:53 -0500
+Received: from mail-co1nam11on2117.outbound.protection.outlook.com ([40.107.220.117]:52065
+        "EHLO NAM11-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1356011AbhLFWIv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 6 Dec 2021 17:08:51 -0500
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=U7PzVAuO96FPJprJF5KJXA/n3PaUxboJnmpOsJCjWfRxt1coXPDIxlIAzU0kK2cgygLLtOVE5hlEEtny5F+TM6ftxaPa2AGUiYxqfdp1gbubSe1zEV5r/boImMhlcAooqaaF9fuz9KMKRXxjGLT63EQKhJoU4TE5AoiVnflH2o+IZ5P/R+PcZ6eCr2gVYQSzuq7MqtKAFM2oOexBff8956QFbBihnKxiTHbgwQ0mxbIoaAZb2l6nrV36XfAgKg6UmzBRCkuuHAYkUxREZlNIAfVD8NH8XwPqrGCOcIsCHNYUmdUAQNAD7jeNfh62mhuCEykFJjoFRLfuBaM99oNzlw==
+ b=PMZBqV6M0nqg7Fc7q/j3mvIHFm0hW4lAcXKHYQivNEyavMsiT4WFmgpDBAojL9y5C1rD1ljb5aQfseXrfAc5s7j09jq/sDPDw7rqu5G6tOLJdSYF95sYgMhi3MFp7yrD9sAXt5Oql697UNSpha4V9M/GQ7jRWrrKBBwBU3HFgEvFOcMnYkvQBXDbj84PjrdhdD9+1ZC/uNQN9wR5RCSQfuv5WbdFcrlVnAjGvTJpqh0OhbqdnJLwtTTCbEw2zb3dPcY9+o9MmbaRQwSrWFV8rahvS6339IqfmVMhzWYPy/UQ2yHt/zskiwfXneLUvZV3RXhgsSKmyUttTTXPovDjTg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=Wu5RfoUie0pLwthf/ghAV+4YrZEalsLP+6mMo5ZLR5c=;
- b=P8nDZOS0DKx7vQ17YmIMOStwpRHUM3ja7AFvQxje7UMdcKc/T+rpwhv9bptCp5fVBDiHeFrjlKPCAPtr9ui9CYbb5oy0UUt3EU4E+Zjp46kc1gd+cOASfaHEjE78S+IDMgwBO4KUV4BZRrRT2tL22kKNQgJ9E26oFUEMMoiWeGt3SNNv2CbPMxExQo8j0UrcABLhNCcOmFSoEci5ibElonOmRRMp7Bp6vfMoIL9ocWlGVfwiTYolDPDQHxOjJqSi9L4TPsAB5tPHtO54qF8BzHDpeC3v3DBJqOG/CPJjl8gsKVX5raA2KWmqH6+xEQpVimxCpGbnjjW9imcIwW2pLw==
+ bh=ABVkZ4Iurn/l8Ysl0N7wWRxSGg15Tx9HCEMkLCZjAcg=;
+ b=KTLEFrobKLkapMEp3bzNPGbrOoMg5UAsWyAfTr8OUiIZ5CJw9utiKUYEMT+blLreKNxuz79oA5/LFQrE5p95sEO8KYKvv+klP2Xnaiw9OmTzrUpW5t3mcJOZC0ggsDy5qy4K/PbVLvzlNnJs77yunruf41SaIQpDu/EI7dnCNrgPislN2McPjBnJPDa/H5ap+TZnRgsraNp1qMEGmFyynXHmqBZ5pbXO9euP419TfgsjzGYnAHRrrfftIpaXuIQMFzAJgtbVEL1Hs6haKp2lKO1wo2w8UgTL1Z0yUd02TGctx1NkXTcUpS8CjPfZuQ5+4y9b2HnmWArm70AosNT2+w==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ smtp.mailfrom=hammerspace.com; dmarc=pass action=none
+ header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector2;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=Wu5RfoUie0pLwthf/ghAV+4YrZEalsLP+6mMo5ZLR5c=;
- b=PdKj9QYXfbOGwT9NX5dTuh8dUJaLwHTMV/LQHbUUSb6jpveQYgDCRyrhhemCo5NbgTEzc//MNxbVCN6lpHlPzWLncQ2ukqWg0N0x9LMXW7E88zz5aeIlCGqK49go9z/TOZiWktpkqZqRRG4bmBl7jQbQdr5jsGfsvcbEE3RKIrs=
-Received: from BY5PR10MB4257.namprd10.prod.outlook.com (2603:10b6:a03:211::21)
- by BYAPR10MB3559.namprd10.prod.outlook.com (2603:10b6:a03:11e::14) with
+ bh=ABVkZ4Iurn/l8Ysl0N7wWRxSGg15Tx9HCEMkLCZjAcg=;
+ b=NlLf49F6OhrOpCSs3sVlyXOxiW9r6ylzRBtA50frxJiWQnLTJc9y02k22CKmSdHqV+FgjiTswD+X3PEno5uKf4PqIp/RdbcqMQxI6c5zyPK2eTFEf3sEac+TIYbN39RIJcSIBqtlF/POuluYYBcqh76c02WN9slURGqqTpup3q0=
+Received: from CH0PR13MB5084.namprd13.prod.outlook.com (2603:10b6:610:111::7)
+ by CH0PR13MB5130.namprd13.prod.outlook.com (2603:10b6:610:113::13) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4755.21; Mon, 6 Dec
- 2021 21:44:21 +0000
-Received: from BY5PR10MB4257.namprd10.prod.outlook.com
- ([fe80::8198:a626:3542:2aaf]) by BY5PR10MB4257.namprd10.prod.outlook.com
- ([fe80::8198:a626:3542:2aaf%3]) with mapi id 15.20.4755.022; Mon, 6 Dec 2021
- 21:44:21 +0000
-Message-ID: <01923a7c-bb49-c004-8a35-dbbae718e374@oracle.com>
-Date:   Mon, 6 Dec 2021 13:44:17 -0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:91.0)
- Gecko/20100101 Thunderbird/91.3.2
-Subject: Re: [PATCH RFC v6 2/2] nfsd: Initial implementation of NFSv4
- Courteous Server
-Content-Language: en-US
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4778.10; Mon, 6 Dec
+ 2021 22:05:19 +0000
+Received: from CH0PR13MB5084.namprd13.prod.outlook.com
+ ([fe80::288c:e4f1:334a:a08]) by CH0PR13MB5084.namprd13.prod.outlook.com
+ ([fe80::288c:e4f1:334a:a08%4]) with mapi id 15.20.4778.010; Mon, 6 Dec 2021
+ 22:05:19 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "dai.ngo@oracle.com" <dai.ngo@oracle.com>
+CC:     "jlayton@redhat.com" <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: [PATCH RFC v6 1/2] fs/lock: add new callback, lm_expire_lock, to
+ lock_manager_operations
+Thread-Topic: [PATCH RFC v6 1/2] fs/lock: add new callback, lm_expire_lock, to
+ lock_manager_operations
+Thread-Index: AQHX6ssViMfDzxHt9kqN9Uppd6wWeKwly7iAgAAUSICAAAOyAIAACJgAgAAY1QA=
+Date:   Mon, 6 Dec 2021 22:05:19 +0000
+Message-ID: <33e964f8aef8a94f8b4903c1b9b6c037e37cb325.camel@hammerspace.com>
 References: <20211206175942.47326-1-dai.ngo@oracle.com>
- <20211206175942.47326-3-dai.ngo@oracle.com>
- <4025C4F6-258F-4A2E-8715-05FD77052275@oracle.com>
-From:   dai.ngo@oracle.com
-In-Reply-To: <4025C4F6-258F-4A2E-8715-05FD77052275@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: SA9P223CA0002.NAMP223.PROD.OUTLOOK.COM
- (2603:10b6:806:26::7) To BY5PR10MB4257.namprd10.prod.outlook.com
- (2603:10b6:a03:211::21)
+         <20211206175942.47326-2-dai.ngo@oracle.com>
+         <133AE467-0990-469D-A8A9-497C1C1BD09A@oracle.com>
+         <254f1d07c02a5b39d8b7743af4ceb9b5f69e4e07.camel@hammerspace.com>
+         <20211206200540.GD20244@fieldses.org>
+         <6aea870f-d51e-ed42-6f96-6b5b78edfcc3@oracle.com>
+In-Reply-To: <6aea870f-d51e-ed42-6f96-6b5b78edfcc3@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=hammerspace.com;
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: b07c7fcb-0839-43e6-959e-08d9b9047e00
+x-ms-traffictypediagnostic: CH0PR13MB5130:EE_
+x-microsoft-antispam-prvs: <CH0PR13MB513043B16F9E142D76FAE144B86D9@CH0PR13MB5130.namprd13.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:10000;
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: FuM9K6HzzO/cyP4d+NF03+nJgYynbKVYBiIrqdEC9ckziOT2jWKFbCNxsoRWO7i9q5F0Zlj8+v7qOvtmPJfih22kCxdfpvadEKufQVp47ZNBlWwYAM5SmXt5fWzgmjjw32MSsWggwHe+qiZGXcXMuTtu+eE2rHBhbobYwhpa+dZhnbJtevo8Ed96pK4EkCEUvadHWx1Foe5mMBF3DgQx1jQdCZPYAy6EIU994nhGuBqxsnIIeZZgO3k+gDPCZqvQhLrmYfC1oQ2WeRT374+SaX9rk//Zr2pzvQQMN2j0ByP7wSbx0HELGVPP5jjUbe9YkNpKlh+w9AXCO/puboq9DR6O+6yBEc/rWK7RloTS+yIeQQrHciKt57kpHwjnZ49Tbt86TPQFnibA7spDefz+KDUTSj7gF2LOeqJGFyZT28FJ623PmhOVPZpRoHmL0WZDKboonBAw98G073VOuMMvbLlOrU+DMIQyDVfzZRxQy/5jsZMc1gDu+fujrRpjl457zOL8UZ17GjJnX71rj9RP/9/FKr5TF7XTa4uCbymqn6CMz+1QngQ5dIdIz9lI34TXWYc2I8gAwKkRDj55rxZQrSwS3KBWwn/pRvPuBnELTwUhH1ZLrVrPqU2iiwLKDBYOk5VNm9rzvGs4cUeKohlb2wC0bMzBMLsEczO3mGunZVK44QA/cmd6z2wZG0eIZmVYW5qkXYQziCi92MOrX1c2iw==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR13MB5084.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(136003)(396003)(346002)(39830400003)(376002)(366004)(53546011)(6506007)(36756003)(316002)(8936002)(186003)(71200400001)(66946007)(38100700002)(122000001)(54906003)(26005)(110136005)(8676002)(66446008)(64756008)(66556008)(66476007)(6512007)(2616005)(6486002)(4326008)(5660300002)(83380400001)(38070700005)(76116006)(86362001)(2906002)(508600001);DIR:OUT;SFP:1102;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0: =?utf-8?B?a3IwWUd5YUFhenpXbWsyZGNyTzUrSEw3TGxFQndRKyt2SlBtNG4wbmtKWGJE?=
+ =?utf-8?B?cnNLdGtPTVQyTUVsK09obXBxbStCNUU3a2pDVEdCTmdsNEkwYXVtNFZJQy94?=
+ =?utf-8?B?Z0p6K2hoVEF4UFA1QnUzT00wQnFQL09aekw0NkdabGc0RkNQcUZxUFdrOEp1?=
+ =?utf-8?B?Y25UQmRxeHMwbklmZGp6Njh3NWZINVI2Ym1jQnNQOVg1UW10TTBKYnJlUWFn?=
+ =?utf-8?B?VWhJZmUzSkMrL0syS1dRZFBTRlhHVGdQaUIzbXhrMTJCam4yQVl4RlhWb2ta?=
+ =?utf-8?B?RjdJa092dHc1TjJSS2pwQlhvaW1wNVBHZXI2OHhTWnNEd0tnRUhZT1RLVFQ1?=
+ =?utf-8?B?NkQ5aFV0M0VrSUVUVXdJa0NjMlVCRXVqVEc1SUJRUDhzeEFPWVI5Nmt6REEy?=
+ =?utf-8?B?MlBxbm84SkVlZzFkS3JmUFhOMzZ1NDhsWTgvam91SDlOZ3VqVjBjaUdXYzYr?=
+ =?utf-8?B?bFR3OHhkQ2JTUVJVb2RGRXFuTDRCL1I4V2RuLzh6ZFZ2QytjNGRsb2JtOFpn?=
+ =?utf-8?B?ZCs2VEREYlNDcHJ5bU5MSDQyZ0xHamV2dHh3ekhEaUxKbDZxbFdOV3hYK054?=
+ =?utf-8?B?SFR2N1FvTngxK2o5MHlGcGI2RDB1VEphWVM1R3BXTlRhTkdkTjhITk1ucUEz?=
+ =?utf-8?B?RzFGU1U1Z3ErQlBUY0lQWENZRXVsZVJSR1JUQzJqOVpHdUxUelI4aXhNVE9s?=
+ =?utf-8?B?eStvT1FKS09xY0hjcWQ5YTVqb3FFdEc1RlVIQXYrSDJjUkxwY2R4ZE5neW9H?=
+ =?utf-8?B?Qzd0YUM0ZGQwdDVzSXpaYzRvMXhaanordnpUSDZGY2VTUDI5MlZNTzUvRWl1?=
+ =?utf-8?B?Q2M5cXIyeHF4cjBVS2svQjZlL3p6WWZWRkFVTGtPMlpKbStGbkVyeTdCMThN?=
+ =?utf-8?B?Y09yaVA2M1BzdzF5QmhzWlgyRFNsZU9jZ2RBV1lBV3BYcW9xdkVpamVmMWhz?=
+ =?utf-8?B?Yi9xMzVneERvTEVtSXdWNmh0QXhaKzlveUZNNWt5bkFuc2N5anpReXJSRWVv?=
+ =?utf-8?B?bDB6QUFocmIwZmhIY1VLVXdYeUdLMkJRdTdQWUs2eHNmTFlScGtRb1F6QzZR?=
+ =?utf-8?B?Qkx1MDJ6K21NekFuS0ZDTlpLT2dkTUtydG9hUW1KeGZuU1dub0tPdjM4VVFJ?=
+ =?utf-8?B?WG5Hbzh3VE00OGtHMjlkVENwbWtDYzhKWXN5czlxVmpiR2VFQmxxK1RuN0JO?=
+ =?utf-8?B?aGxxK2kvOCtrMGkrT3hSTHMzRlBJbVRVeUk5UkFZWUo1TlBSdFZkd24rdTRV?=
+ =?utf-8?B?dkd5UDBsOUNrS2pQYTNYdHFIZ01yV1ROdmxmUUwvK3pXbk1oMEw1WUt3bWJO?=
+ =?utf-8?B?Nmt3TklIMEJhRlhNODVUdUhpbUNFb3J0WjhhY3JENEpHeVZqMjdvQS8wTHJu?=
+ =?utf-8?B?QkRPckhyK3g3MTRIdWNnWlBWelVYMUpjVG5OMVZmSVIyRUpFb2Y5eEg4UVd4?=
+ =?utf-8?B?MTd3ZGduVkZaM1QxaTJtTG5WSk1JeU1kN1dXV0wwQzBPLzdKYjYyRzAzUEwy?=
+ =?utf-8?B?ekM0ZGhVSWVNTVJ1THZWcVZjQ042TVBBZ1J3amRIdkJWSGs2REpqMnZGbFhE?=
+ =?utf-8?B?SytUUHBBUzlkVGZIdzRhTnRuUzZUVUdyOHcrNkpEL2dFWExQZExvMEFPaGtB?=
+ =?utf-8?B?RmpzS3hzRVMzQ2Y0WU45aWhQRlgza1NyalJjdUtOMVNiaEVpVUxPaWN2U1d2?=
+ =?utf-8?B?MnBuSCtPSUVwMjBMbStwdVZGYXdaNjlTQjRMSisrMS9IaHFMSU85ak5ZbUZY?=
+ =?utf-8?B?US9tdjdUTi94d2xkMkx3RVlFV2lQM0dyeVppV2E5cDV0Tm9uanV6TDBMRmg5?=
+ =?utf-8?B?T2lHQ1dmK1VuUFVPMDFDYnJGS0hhT01ROHJsbVNCK0x6RFhKbVVCZ3UvUlFr?=
+ =?utf-8?B?OVZzRXFyZWdEYzZhNDNJZitHUkhKck04S0VMVmM4aU9teGdSWW91T1Y5VnYx?=
+ =?utf-8?B?R3pUZ2RkMzJkYmhsTmIybk94d2FVZ0VqOVEyN25FczlrS0RScE5mVG1JRXVN?=
+ =?utf-8?B?WE45UC9WK2VjTXNrSjZZTGlReTlrZ25KSUs4VVRUVXQxMVA1YkJ3dGpla2tr?=
+ =?utf-8?B?dnFnaFFTUW8yT3RQdGZJWWhYNGljRitOUE9SaEk5c3h0OGx3UnR0aEdzc1gy?=
+ =?utf-8?B?VXhXRWRVUWtMS1poaGU1dHp1R0JzNXlIZEl3d0YwWGNEZ0U2R21YWERoOWlW?=
+ =?utf-8?Q?phe+EDFMYrUN+gFEkmmygao=3D?=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <D01BD2631E396C4591B57548E96A0EC9@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Received: from [10.65.137.225] (138.3.200.33) by SA9P223CA0002.NAMP223.PROD.OUTLOOK.COM (2603:10b6:806:26::7) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4755.22 via Frontend Transport; Mon, 6 Dec 2021 21:44:20 +0000
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 612b19b7-3741-4ab9-9eec-08d9b9018fd3
-X-MS-TrafficTypeDiagnostic: BYAPR10MB3559:EE_
-X-Microsoft-Antispam-PRVS: <BYAPR10MB355998D1F8F823A3A4298CE1876D9@BYAPR10MB3559.namprd10.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:6790;
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: V/dNk1SEY7f5L0cEwX71Z+PF89j5FajiYFgoLecY5RWhQTVxq9dSOm+Su5BuLNhIC/WAEKOsc9xk7W/hWNfbQXcftOHDdA8fQkKgk7uusKMhiXlxPFzO3HGMg9TfiNyAQNEFO8+tI35zFHt6GP2mEFhHzfvqVzijESECI3rYYa1TF5lP1Ri70deBLcfHPxIaYOv9hJfEb2zEfQdU9Odih+ohlHlDBBVjI1Fvvo3EGuVPlKmgoYbWrjbtoVbINVgM2maC14r9jIcUctOIu3Zi23WBelF9Fb1OZYDFlFgYciex49UWU/7BsKTmqIfJrqXpUqfu2Trha5+mR8ZsT2z21JkmVekfQ4gJpztkwWUjtLAtqlHyY0dWfen/HdlKPjvdCn+OpcVvYIy7Lh0JRmQKf2I8sUGO3jD1QTLqIi0MHdnzGSLmcai4gcjGpS/hoE76blttrukGvBU3RrIjG+gCqUu3xgWOg8qrJP5707kyomrBWoC8hmb5fYgr1G1Wg+A6mPEqARYLxg7JNhTOddlgxKJCrteIm03DDkOCmBxnWheodxBnElJa+1NfGHl8QG0SfUrewjE1is/SpdbsLKF8lrXfrku4BqES/q69xP2npKTMWdIrCzObtJiSzdPTwAcwpnakysyZpRWg1UxiHp4wrwdNF2oZJmnlfI2gS8tnX+WJnHYD+zz+jSb1lDhl0pO63COn4N2M5dWjwdi1ub8LetfuVGJbygBeYeqqN0ydR8k=
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BY5PR10MB4257.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(6486002)(16576012)(83380400001)(956004)(66946007)(2616005)(9686003)(37006003)(31696002)(38100700002)(31686004)(30864003)(6862004)(2906002)(66476007)(66556008)(8936002)(5660300002)(316002)(54906003)(4326008)(8676002)(6666004)(86362001)(26005)(508600001)(53546011)(186003)(36756003)(43740500002)(309714004);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?aDVKNHZ6YlIzRXJ1c3JIMFJ6T2MvbEFlU09NTWR3RldybUFXUE5qeDN5cTdq?=
- =?utf-8?B?N0M1ei9odWFoQmFTMEJmWUFybk1VelFsejN6ZFU0TEtnRVZIWVRobWNpMGtW?=
- =?utf-8?B?NzRtSDlBZWhEOXR6ZHZRODl4NDZ0Q0pkbm9KUXg3ZDZqam4xalRQcy84N0Jk?=
- =?utf-8?B?dTdqRzdiSXpjamNuRHBvWncxdkE0MWppM0Rvd1VObFBITHVMZVp6b3Ryb2dk?=
- =?utf-8?B?SzU3a1RYS3VNQVBpekRKamo3bWh4Q3BoUGV6L3lFQlpJc21JbnhVMVREME5r?=
- =?utf-8?B?S29wdXRmcDd1MjI3d1U2MWIyNStYVzFVRWtVSklBRkFyWnJUeXpDMFBvbFJZ?=
- =?utf-8?B?TFJNaWF4NUxsWFUrM3ZMNWViSk5EQ3FDMDBmM2dlclNtcVE0TVhJVmIrUUFE?=
- =?utf-8?B?cXFpRDViK0h5VlZUZjJrekt5TFpxTFlqVURnTDhiVDVqdGw1QjVhKy9qQWlv?=
- =?utf-8?B?KzdiQlovZDBhekg5TU1IYUVRRzZpemRIZU1BZDl3YTRLLzBqeVhFeTZzK1ph?=
- =?utf-8?B?RU1VVjI2dmxCYXRVQnkzaHg5Mmx6SU82UnBLOC91L0dTQnEvakRZSjJXb1Jy?=
- =?utf-8?B?SjlvUDFsL1FvWE8vYXhiTzV3QTZQUmR0djBzaEZwL3htUis5eWdCTUZDZ3Jk?=
- =?utf-8?B?eWFSck5zZkJ1YWNDWXo2VnV4NVh2emZvbVJ4SCtFem5Sb3F0T1FQdXBvWWxz?=
- =?utf-8?B?TjNRRjBwZHVFTXM4eXlHdm5hQUhqdnI0R2dJUWZKNDhCdGJWZStRVFJJWFRX?=
- =?utf-8?B?cWZmYStnUzZKejVhVlhMSnprbVFNWGhwd0pFY1NyT3k5SEovOGM4a1hNM0NR?=
- =?utf-8?B?cWxkN3JOcVJ6TVg3QUVFcnRiNW16YzV5ZFNjMXMwZTRmSkpDeVNURjNoWStB?=
- =?utf-8?B?VTNza21FOUF5WVJWQzNKMlM1aFdXckU2S055dVdyamZhU3hBc3JoSE5KbUNJ?=
- =?utf-8?B?ZmxpUFMyU1BFQmhYQlpDUlJBUTA1TStQb1ZBMGw4MWdHMktURkVtOTdrRFYw?=
- =?utf-8?B?OEE0eXphM3AzR0w4Wm0zSjlqSzBiYVVJUGxJc1crL3kvdmMyVTJ4UlgydUpm?=
- =?utf-8?B?Z3BhaGpubHFkUWJ2d243dHZodDJJalFXeml1cU5vYmRaUjl5MXo3UnBteDhh?=
- =?utf-8?B?UU9FWHNka2hZK3RTYkxSL1dhZW5ZSCttRU82MExsc1hHOHA0ajFyVWJRQ0JZ?=
- =?utf-8?B?dUVpdnFaODlyM1dWKzlvaUdDUUR4V0Fqbm1YbXRHTURzK3R6UVdnbmphSjkw?=
- =?utf-8?B?MElWbUNSLzZpQzBDRitHN2FQRnpidWRoSWVvVEtrZDZwK01QOVlxSExzdXND?=
- =?utf-8?B?K251V2tEZ1ZRUitENVdtN1BnWGF6bU0xenM1L1BSSEtxam43YTlKdXZ4a0dT?=
- =?utf-8?B?S25tb3pnVGVhRXFPa1RkOUJ4MG9menZOSWpFQlliZlVxNFdPT25FT01LRzdO?=
- =?utf-8?B?MFJDcS9mSHM1cDAyQ1dtNklVYzdEd2JrLzJsNi84Rk1yeDc2SDVEM0doK3Rh?=
- =?utf-8?B?MHRNblpFd3J1NUQ5QXFYbkovMlp6bzljT2VrWHhqU3dKUGErQWpWQ3BpNHA3?=
- =?utf-8?B?NmFrTkZ1YkpGdjkyeTh6S1NFRWRRdUNJR2xHRlNHV0w4TVdQOVE2SkRGSlRy?=
- =?utf-8?B?aDhJVUdHVTlIaHpBRENzR3ZjcS92bXhyVWZmVWpzRTQ0R0pxQzFYeG1Cai82?=
- =?utf-8?B?NjREdFk3QVlMWEZueVdZMmJZM2NRWDFkV0FmU2RVb1V4Z1FWdlBuRmdTampD?=
- =?utf-8?B?ODFrYjlqNG9TRDNmSjBYQ2wxam9aSnJ6dmp4YWRLZnpsS2RlRTNqTnhaRkF1?=
- =?utf-8?B?ejA0U0pSTTVLQTRyclBLckJDY0RtbUNoUE44K0pwbThNbnFUS1h6YU9GSGF3?=
- =?utf-8?B?Y0l4aUtKbHhWelBZdjREU1RDOUttaEt1bytvNE5yTUxGdUlYYlBYNVdIVzBZ?=
- =?utf-8?B?NDNJSW40cWFSajVobUJqb1FCalVpcjRaSTllTk5MRFgrWkdxVStSUDRHeW1h?=
- =?utf-8?B?YWVwTGU2VGlvZTluV0JWZ0YwL2E0VVN1anBCSDlnR01YM2cxdjFJY0IzYSsx?=
- =?utf-8?B?TkZRQjR5bC95MWhrNmlDb2RvbGZiWGpuYnZGQmN1NUxQSkxFYU5LMTN2U2pt?=
- =?utf-8?B?S3ltWFVTbW00M0ZuNGx4ZW9SQm9YWVF0K3VXWmNsRElqakllNlhLYkUwTWJN?=
- =?utf-8?Q?AQbGTmFl4AgONs7iQAO3mpI=3D?=
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 612b19b7-3741-4ab9-9eec-08d9b9018fd3
-X-MS-Exchange-CrossTenant-AuthSource: BY5PR10MB4257.namprd10.prod.outlook.com
+X-OriginatorOrg: hammerspace.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 06 Dec 2021 21:44:20.9689
+X-MS-Exchange-CrossTenant-AuthSource: CH0PR13MB5084.namprd13.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: b07c7fcb-0839-43e6-959e-08d9b9047e00
+X-MS-Exchange-CrossTenant-originalarrivaltime: 06 Dec 2021 22:05:19.2898
  (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: 5/xefAvfzwyyDYTxuZNRVUSv4NARqSSDZMI5aphcE7kAcxYhy1pQ0n75uVajiqghu/nVMLZqkh/8HvIlJ4QJyw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR10MB3559
-X-Proofpoint-Virus-Version: vendor=nai engine=6300 definitions=10190 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 mlxscore=0 phishscore=0
- malwarescore=0 spamscore=0 mlxlogscore=999 adultscore=0 bulkscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2110150000
- definitions=main-2112060132
-X-Proofpoint-ORIG-GUID: iozGs9uA4Yg4I660-8vHjiuMjhaISKTP
-X-Proofpoint-GUID: iozGs9uA4Yg4I660-8vHjiuMjhaISKTP
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: JwOFTrKOEmrI8L4TgIILw2e8wH67jKihDuspzoOZDJTgMCM3NcPgAIPb7L8YwCRTr+aw/KFk9DUnxnSgBLYGKg==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH0PR13MB5130
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-On 12/6/21 11:55 AM, Chuck Lever III wrote:
-> Hi Dai-
->
-> Some comments and questions below:
->
->
->> On Dec 6, 2021, at 12:59 PM, Dai Ngo <dai.ngo@oracle.com> wrote:
->>
->> Currently an NFSv4 client must maintain its lease by using the at least
->> one of the state tokens or if nothing else, by issuing a RENEW (4.0), or
->> a singleton SEQUENCE (4.1) at least once during each lease period. If the
->> client fails to renew the lease, for any reason, the Linux server expunges
->> the state tokens immediately upon detection of the "failure to renew the
->> lease" condition and begins returning NFS4ERR_EXPIRED if the client should
->> reconnect and attempt to use the (now) expired state.
->>
->> The default lease period for the Linux server is 90 seconds.  The typical
->> client cuts that in half and will issue a lease renewing operation every
->> 45 seconds. The 90 second lease period is very short considering the
->> potential for moderately long term network partitions.  A network partition
->> refers to any loss of network connectivity between the NFS client and the
->> NFS server, regardless of its root cause.  This includes NIC failures, NIC
->> driver bugs, network misconfigurations & administrative errors, routers &
->> switches crashing and/or having software updates applied, even down to
->> cables being physically pulled.  In most cases, these network failures are
->> transient, although the duration is unknown.
->>
->> A server which does not immediately expunge the state on lease expiration
->> is known as a Courteous Server.  A Courteous Server continues to recognize
->> previously generated state tokens as valid until conflict arises between
->> the expired state and the requests from another client, or the server
->> reboots.
->>
->> The initial implementation of the Courteous Server will do the following:
->>
->> . when the laundromat thread detects an expired client and if that client
->> still has established states on the Linux server and there is no waiters
->> for the client's locks then mark the client as a COURTESY_CLIENT and skip
->> destroying the client and all its states, otherwise destroy the client as
->> usual.
->>
->> . detects conflict of OPEN request with COURTESY_CLIENT, destroys the
->> expired client and all its states, skips the delegation recall then allows
->> the conflicting request to succeed.
->>
->> . detects conflict of LOCK/LOCKT, NLM LOCK and TEST, and local locks
->> requests with COURTESY_CLIENT, destroys the expired client and all its
->> states then allows the conflicting request to succeed.
->>
->> . detects conflict of LOCK/LOCKT, NLM LOCK and TEST, and local locks
->> requests with COURTESY_CLIENT, destroys the expired client and all its
->> states then allows the conflicting request to succeed.
->>
->> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
->> ---
->> fs/nfsd/nfs4state.c | 293 +++++++++++++++++++++++++++++++++++++++++++++++++++-
->> fs/nfsd/state.h     |   3 +
->> 2 files changed, 293 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 3f4027a5de88..759f61dc6685 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -125,6 +125,11 @@ static void free_session(struct nfsd4_session *);
->> static const struct nfsd4_callback_ops nfsd4_cb_recall_ops;
->> static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops;
->>
->> +static struct workqueue_struct *laundry_wq;
->> +static void laundromat_main(struct work_struct *);
->> +
->> +static int courtesy_client_expiry = (24 * 60 * 60);	/* in secs */
->> +
->> static bool is_session_dead(struct nfsd4_session *ses)
->> {
->> 	return ses->se_flags & NFS4_SESSION_DEAD;
->> @@ -172,6 +177,7 @@ renew_client_locked(struct nfs4_client *clp)
->>
->> 	list_move_tail(&clp->cl_lru, &nn->client_lru);
->> 	clp->cl_time = ktime_get_boottime_seconds();
->> +	clear_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags);
->> }
->>
->> static void put_client_renew_locked(struct nfs4_client *clp)
->> @@ -2389,6 +2395,10 @@ static int client_info_show(struct seq_file *m, void *v)
->> 		seq_puts(m, "status: confirmed\n");
->> 	else
->> 		seq_puts(m, "status: unconfirmed\n");
->> +	seq_printf(m, "courtesy client: %s\n",
->> +		test_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags) ? "yes" : "no");
->> +	seq_printf(m, "seconds from last renew: %lld\n",
->> +		ktime_get_boottime_seconds() - clp->cl_time);
->> 	seq_printf(m, "name: ");
->> 	seq_quote_mem(m, clp->cl_name.data, clp->cl_name.len);
->> 	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
->> @@ -4662,6 +4672,33 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
->> 	nfsd4_run_cb(&dp->dl_recall);
->> }
->>
->> +/*
->> + * This function is called when a file is opened and there is a
->> + * delegation conflict with another client. If the other client
->> + * is a courtesy client then kick start the laundromat to destroy
->> + * it.
->> + */
->> +static bool
->> +nfsd_check_courtesy_client(struct nfs4_delegation *dp)
->> +{
->> +	struct svc_rqst *rqst;
->> +	struct nfs4_client *clp = dp->dl_recall.cb_clp;
->> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->> +
->> +	if (!i_am_nfsd())
->> +		goto out;
->> +	rqst = kthread_data(current);
->> +	if (rqst->rq_prog != NFS_PROGRAM || rqst->rq_vers < 4)
->> +		return false;
->> +out:
->> +	if (test_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags)) {
->> +		set_bit(NFSD4_DESTROY_COURTESY_CLIENT, &clp->cl_flags);
->> +		mod_delayed_work(laundry_wq, &nn->laundromat_work, 0);
->> +		return true;
->> +	}
->> +	return false;
->> +}
->> +
->> /* Called from break_lease() with i_lock held. */
->> static bool
->> nfsd_break_deleg_cb(struct file_lock *fl)
->> @@ -4670,6 +4707,8 @@ nfsd_break_deleg_cb(struct file_lock *fl)
->> 	struct nfs4_delegation *dp = (struct nfs4_delegation *)fl->fl_owner;
->> 	struct nfs4_file *fp = dp->dl_stid.sc_file;
->>
->> +	if (nfsd_check_courtesy_client(dp))
->> +		return false;
->> 	trace_nfsd_cb_recall(&dp->dl_stid);
->>
->> 	/*
->> @@ -4912,6 +4951,136 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
->> 	return nfsd_setattr(rqstp, fh, &iattr, 0, (time64_t)0);
->> }
->>
->> +static bool
->> +__nfs4_check_deny_bmap(struct nfs4_ol_stateid *stp, u32 access,
->> +			bool share_access)
->> +{
->> +	if (share_access) {
->> +		if (!stp->st_deny_bmap)
->> +			return false;
->> +
->> +		if ((stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_BOTH)) ||
-> Aren't the NFS4_SHARE_DENY macros already bit masks?
->
-> NFS4_SHARE_DENY_BOTH is (NFS4_SHARE_DENY_READ | NFS4_SHARE_DENY_WRITE).
-
-I think the protocol defines these as constants and nfsd uses them
-to set the bitmap in st_deny_bmap. See set_deny().
-
->
->
->> +			(access & NFS4_SHARE_ACCESS_READ &&
->> +				stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_READ)) ||
->> +			(access & NFS4_SHARE_ACCESS_WRITE &&
->> +				stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_WRITE))) {
->> +			return true;
->> +		}
->> +		return false;
->> +	}
->> +	if ((access & NFS4_SHARE_DENY_BOTH) ||
->> +		(access & NFS4_SHARE_DENY_READ &&
->> +			stp->st_access_bmap & (1 << NFS4_SHARE_ACCESS_READ)) ||
->> +		(access & NFS4_SHARE_DENY_WRITE &&
->> +			stp->st_access_bmap & (1 << NFS4_SHARE_ACCESS_WRITE))) {
->> +		return true;
->> +	}
->> +	return false;
->> +}
->> +
->> +/*
->> + * access: if share_access is true then check access mode else check deny mode
->> + */
->> +static bool
->> +nfs4_check_deny_bmap(struct nfs4_client *clp, struct nfs4_file *fp,
->> +		struct nfs4_ol_stateid *st, u32 access, bool share_access)
->> +{
->> +	int i;
->> +	struct nfs4_openowner *oo;
->> +	struct nfs4_stateowner *so, *tmp;
->> +	struct nfs4_ol_stateid *stp, *stmp;
->> +
->> +	spin_lock(&clp->cl_lock);
->> +	for (i = 0; i < OWNER_HASH_SIZE; i++) {
->> +		list_for_each_entry_safe(so, tmp, &clp->cl_ownerstr_hashtbl[i],
->> +					so_strhash) {
->> +			if (!so->so_is_open_owner)
->> +				continue;
->> +			oo = openowner(so);
->> +			list_for_each_entry_safe(stp, stmp,
->> +				&oo->oo_owner.so_stateids, st_perstateowner) {
->> +				if (stp == st || stp->st_stid.sc_file != fp)
->> +					continue;
->> +				if (__nfs4_check_deny_bmap(stp, access,
->> +							share_access)) {
->> +					spin_unlock(&clp->cl_lock);
->> +					return true;
->> +				}
->> +			}
->> +		}
->> +	}
->> +	spin_unlock(&clp->cl_lock);
->> +	return false;
->> +}
->> +
->> +/*
->> + * Function to check if the nfserr_share_denied error for 'fp' resulted
->> + * from conflict with courtesy clients then release their state to resolve
->> + * the conflict.
->> + *
->> + * Function returns:
->> + *	 0 -  no conflict with courtesy clients
->> + *	>0 -  conflict with courtesy clients resolved, try access/deny check again
->> + *	-1 -  conflict with courtesy clients being resolved in background
->> + *            return nfserr_jukebox to NFS client
->> + */
->> +static int
->> +nfs4_destroy_clnts_with_sresv_conflict(struct svc_rqst *rqstp,
->> +			struct nfs4_file *fp, struct nfs4_ol_stateid *stp,
->> +			u32 access, bool share_access)
->> +{
->> +	int cnt = 0;
->> +	int async_cnt = 0;
->> +	bool no_retry = false;
->> +	struct nfs4_client *cl;
->> +	struct list_head *pos, *next, reaplist;
->> +	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
->> +
->> +	INIT_LIST_HEAD(&reaplist);
->> +	spin_lock(&nn->client_lock);
->> +	list_for_each_safe(pos, next, &nn->client_lru) {
->> +		cl = list_entry(pos, struct nfs4_client, cl_lru);
->> +		/*
->> +		 * check all nfs4_ol_stateid of this client
->> +		 * for conflicts with 'access'mode.
->> +		 */
->> +		if (nfs4_check_deny_bmap(cl, fp, stp, access, share_access)) {
->> +			if (!test_bit(NFSD4_COURTESY_CLIENT, &cl->cl_flags)) {
->> +				/* conflict with non-courtesy client */
->> +				no_retry = true;
->> +				cnt = 0;
->> +				goto out;
->> +			}
->> +			/*
->> +			 * if too many to resolve synchronously
->> +			 * then do the rest in background
->> +			 */
->> +			if (cnt > 100) {
->> +				set_bit(NFSD4_DESTROY_COURTESY_CLIENT, &cl->cl_flags);
->> +				async_cnt++;
->> +				continue;
->> +			}
->> +			if (mark_client_expired_locked(cl))
->> +				continue;
->> +			cnt++;
->> +			list_add(&cl->cl_lru, &reaplist);
->> +		}
->> +	}
-> Bruce suggested simply returning NFS4ERR_DELAY for all cases.
-> That would simplify this quite a bit for what is a rare edge
-> case.
-
-If we always do NFS4ERR_DELAY then we have to modify pynfs' OPEN18
-to handle NFS4ERR_DELAY. Since I don't think this code is overly
-complicated and most of the time in real usage, if there is a share
-reservation conflict nfsd should be able to resolve it synchronously
-avoiding the NFS4ERR_DELAY and also it'd be nice if we don't have
-to modify pynfs test.
-
->
->
->> +out:
->> +	spin_unlock(&nn->client_lock);
->> +	list_for_each_safe(pos, next, &reaplist) {
->> +		cl = list_entry(pos, struct nfs4_client, cl_lru);
->> +		list_del_init(&cl->cl_lru);
->> +		expire_client(cl);
->> +	}
-> A slightly nicer construct here would be something like this:
->
-> 	while ((pos = list_del_first(&reaplist)))
-> 		expire_client(list_entry(pos, struct nfs4_client, cl_lru));
-
-You meant llist_del_first?
-The above code follows the style in nfs4_laundromat. Can I keep the
-same to avoid doing retest?
-
->
->
->> +	if (async_cnt) {
->> +		mod_delayed_work(laundry_wq, &nn->laundromat_work, 0);
->> +		if (!no_retry)
->> +			cnt = -1;
->> +	}
->> +	return cnt;
->> +}
->> +
->> static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
->> 		struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp,
->> 		struct nfsd4_open *open)
->> @@ -4921,6 +5090,7 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
->> 	int oflag = nfs4_access_to_omode(open->op_share_access);
->> 	int access = nfs4_access_to_access(open->op_share_access);
->> 	unsigned char old_access_bmap, old_deny_bmap;
->> +	int cnt = 0;
->>
->> 	spin_lock(&fp->fi_lock);
->>
->> @@ -4928,16 +5098,38 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
->> 	 * Are we trying to set a deny mode that would conflict with
->> 	 * current access?
->> 	 */
->> +chk_deny:
->> 	status = nfs4_file_check_deny(fp, open->op_share_deny);
->> 	if (status != nfs_ok) {
->> 		spin_unlock(&fp->fi_lock);
->> +		if (status != nfserr_share_denied)
->> +			goto out;
->> +		cnt = nfs4_destroy_clnts_with_sresv_conflict(rqstp, fp,
->> +				stp, open->op_share_deny, false);
->> +		if (cnt > 0) {
->> +			spin_lock(&fp->fi_lock);
->> +			goto chk_deny;
-> I'm pondering whether a distributed set of clients can
-> cause this loop to never terminate.
-
-I'm not clear how we can get into an infinite loop, can you elaborate?
-
-To get into an infinite loop, there must be stream of new clients that
-open the file with the conflict access mode *and* become courtesy client
-before we finish expiring all existing courtesy clients that have access
-conflict this OPEN.
-
->
->
->> +		}
->> +		if (cnt == -1)
->> +			status = nfserr_jukebox;
->> 		goto out;
->> 	}
->>
->> 	/* set access to the file */
->> +get_access:
->> 	status = nfs4_file_get_access(fp, open->op_share_access);
->> 	if (status != nfs_ok) {
->> 		spin_unlock(&fp->fi_lock);
->> +		if (status != nfserr_share_denied)
->> +			goto out;
->> +		cnt = nfs4_destroy_clnts_with_sresv_conflict(rqstp, fp,
->> +				stp, open->op_share_access, true);
->> +		if (cnt > 0) {
->> +			spin_lock(&fp->fi_lock);
->> +			goto get_access;
-> Ditto.
->
->
->> +		}
->> +		if (cnt == -1)
->> +			status = nfserr_jukebox;
->> 		goto out;
->> 	}
->>
->> @@ -5289,6 +5481,22 @@ static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
->> 	 */
->> }
->>
->> +static bool
->> +nfs4_destroy_courtesy_client(struct nfs4_client *clp)
->> +{
->> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->> +
->> +	spin_lock(&nn->client_lock);
->> +	if (!test_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags) ||
->> +			mark_client_expired_locked(clp)) {
->> +		spin_unlock(&nn->client_lock);
->> +		return false;
->> +	}
->> +	spin_unlock(&nn->client_lock);
->> +	expire_client(clp);
->> +	return true;
->> +}
->> +
-> Perhaps nfs4_destroy_courtesy_client() could be merged into
-> nfsd4_fl_expire_lock(), it's only caller.
-
-ok, will be in v7 patch.
-
->
->
->> __be32
->> nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
->> {
->> @@ -5572,6 +5780,47 @@ static void nfsd4_ssc_expire_umount(struct nfsd_net *nn)
->> }
->> #endif
->>
->> +static
->> +bool nfs4_anylock_conflict(struct nfs4_client *clp)
->> +{
->> +	int i;
->> +	struct nfs4_stateowner *so, *tmp;
->> +	struct nfs4_lockowner *lo;
->> +	struct nfs4_ol_stateid *stp;
->> +	struct nfs4_file *nf;
->> +	struct inode *ino;
->> +	struct file_lock_context *ctx;
->> +	struct file_lock *fl;
->> +
->> +	for (i = 0; i < OWNER_HASH_SIZE; i++) {
->> +		/* scan each lock owner */
->> +		list_for_each_entry_safe(so, tmp, &clp->cl_ownerstr_hashtbl[i],
->> +				so_strhash) {
->> +			if (so->so_is_open_owner)
->> +				continue;
-> Isn't cl_lock needed to protect the cl_ownerstr_hashtbl lists?
-
-Yes, thanks Chuck! will be in v7
-
->
->
->> +
->> +			/* scan lock states of this lock owner */
->> +			lo = lockowner(so);
->> +			list_for_each_entry(stp, &lo->lo_owner.so_stateids,
->> +					st_perstateowner) {
->> +				nf = stp->st_stid.sc_file;
->> +				ino = nf->fi_inode;
->> +				ctx = ino->i_flctx;
->> +				if (!ctx)
->> +					continue;
->> +				/* check each lock belongs to this lock state */
->> +				list_for_each_entry(fl, &ctx->flc_posix, fl_list) {
->> +					if (fl->fl_owner != lo)
->> +						continue;
->> +					if (!list_empty(&fl->fl_blocked_requests))
->> +						return true;
->> +				}
->> +			}
->> +		}
->> +	}
->> +	return false;
->> +}
->> +
->> static time64_t
->> nfs4_laundromat(struct nfsd_net *nn)
->> {
->> @@ -5587,7 +5836,9 @@ nfs4_laundromat(struct nfsd_net *nn)
->> 	};
->> 	struct nfs4_cpntf_state *cps;
->> 	copy_stateid_t *cps_t;
->> +	struct nfs4_stid *stid;
->> 	int i;
->> +	int id = 0;
->>
->> 	if (clients_still_reclaiming(nn)) {
->> 		lt.new_timeo = 0;
->> @@ -5608,8 +5859,33 @@ nfs4_laundromat(struct nfsd_net *nn)
->> 	spin_lock(&nn->client_lock);
->> 	list_for_each_safe(pos, next, &nn->client_lru) {
->> 		clp = list_entry(pos, struct nfs4_client, cl_lru);
->> +		if (test_bit(NFSD4_DESTROY_COURTESY_CLIENT, &clp->cl_flags)) {
->> +			clear_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags);
->> +			goto exp_client;
->> +		}
->> +		if (test_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags)) {
->> +			if (ktime_get_boottime_seconds() >= clp->courtesy_client_expiry)
->> +				goto exp_client;
->> +			/*
->> +			 * after umount, v4.0 client is still
->> +			 * around waiting to be expired
->> +			 */
->> +			if (clp->cl_minorversion)
->> +				continue;
->> +		}
->> 		if (!state_expired(&lt, clp->cl_time))
->> 			break;
->> +		spin_lock(&clp->cl_lock);
->> +		stid = idr_get_next(&clp->cl_stateids, &id);
->> +		spin_unlock(&clp->cl_lock);
->> +		if (stid && !nfs4_anylock_conflict(clp)) {
->> +			/* client still has states */
->> +			clp->courtesy_client_expiry =
->> +				ktime_get_boottime_seconds() + courtesy_client_expiry;
->> +			set_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags);
->> +			continue;
->> +		}
->> +exp_client:
->> 		if (mark_client_expired_locked(clp))
->> 			continue;
->> 		list_add(&clp->cl_lru, &reaplist);
->> @@ -5689,9 +5965,6 @@ nfs4_laundromat(struct nfsd_net *nn)
->> 	return max_t(time64_t, lt.new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
->> }
->>
->> -static struct workqueue_struct *laundry_wq;
->> -static void laundromat_main(struct work_struct *);
->> -
->> static void
->> laundromat_main(struct work_struct *laundry)
->> {
->> @@ -6496,6 +6769,19 @@ nfs4_transform_lock_offset(struct file_lock *lock)
->> 		lock->fl_end = OFFSET_MAX;
->> }
->>
->> +/* return true if lock was expired else return false */
->> +static bool
->> +nfsd4_fl_expire_lock(struct file_lock *fl, bool testonly)
->> +{
->> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *)fl->fl_owner;
->> +	struct nfs4_client *clp = lo->lo_owner.so_client;
->> +
->> +	if (testonly)
->> +		return test_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags) ?
->> +			true : false;
-> Hm. I know test_bit() returns an integer rather than a boolean, but
-> the ternary here is a bit unwieldy. How about just:
->
-> 		return !!test_bit(NFSD4_COURTESY_CLIENT, &clp->cl_flags);
-
-ok, will be in v7.
-
->
->
->> +	return nfs4_destroy_courtesy_client(clp);
->> +}
->> +
->> static fl_owner_t
->> nfsd4_fl_get_owner(fl_owner_t owner)
->> {
->> @@ -6543,6 +6829,7 @@ static const struct lock_manager_operations nfsd_posix_mng_ops  = {
->> 	.lm_notify = nfsd4_lm_notify,
->> 	.lm_get_owner = nfsd4_fl_get_owner,
->> 	.lm_put_owner = nfsd4_fl_put_owner,
->> +	.lm_expire_lock = nfsd4_fl_expire_lock,
->> };
->>
->> static inline void
->> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> index e73bdbb1634a..93e30b101578 100644
->> --- a/fs/nfsd/state.h
->> +++ b/fs/nfsd/state.h
->> @@ -345,6 +345,8 @@ struct nfs4_client {
->> #define NFSD4_CLIENT_UPCALL_LOCK	(5)	/* upcall serialization */
->> #define NFSD4_CLIENT_CB_FLAG_MASK	(1 << NFSD4_CLIENT_CB_UPDATE | \
->> 					 1 << NFSD4_CLIENT_CB_KILL)
->> +#define NFSD4_COURTESY_CLIENT		(6)	/* be nice to expired client */
->> +#define NFSD4_DESTROY_COURTESY_CLIENT	(7)
->> 	unsigned long		cl_flags;
->> 	const struct cred	*cl_cb_cred;
->> 	struct rpc_clnt		*cl_cb_client;
->> @@ -385,6 +387,7 @@ struct nfs4_client {
->> 	struct list_head	async_copies;	/* list of async copies */
->> 	spinlock_t		async_lock;	/* lock for async copies */
->> 	atomic_t		cl_cb_inflight;	/* Outstanding callbacks */
->> +	int			courtesy_client_expiry;
->> };
->>
->> /* struct nfs4_client_reset
->> -- 
->> 2.9.5
->>
-> --
-> Chuck Lever
->
->
->
+T24gTW9uLCAyMDIxLTEyLTA2IGF0IDEyOjM2IC0wODAwLCBkYWkubmdvQG9yYWNsZS5jb20gd3Jv
+dGU6DQo+IA0KPiBPbiAxMi82LzIxIDEyOjA1IFBNLCBiZmllbGRzQGZpZWxkc2VzLm9yZ8Kgd3Jv
+dGU6DQo+ID4gT24gTW9uLCBEZWMgMDYsIDIwMjEgYXQgMDc6NTI6MjlQTSArMDAwMCwgVHJvbmQg
+TXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gT24gTW9uLCAyMDIxLTEyLTA2IGF0IDE4OjM5ICswMDAw
+LCBDaHVjayBMZXZlciBJSUkgd3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiA+IE9uIERlYyA2LCAy
+MDIxLCBhdCAxMjo1OSBQTSwgRGFpIE5nbyA8ZGFpLm5nb0BvcmFjbGUuY29tPg0KPiA+ID4gPiA+
+IHdyb3RlOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEFkZCBuZXcgY2FsbGJhY2ssIGxtX2V4cGly
+ZV9sb2NrLCB0byBsb2NrX21hbmFnZXJfb3BlcmF0aW9ucw0KPiA+ID4gPiA+IHRvDQo+ID4gPiA+
+ID4gYWxsb3cNCj4gPiA+ID4gPiB0aGUgbG9jayBtYW5hZ2VyIHRvIHRha2UgYXBwcm9wcmlhdGUg
+YWN0aW9uIHRvIHJlc29sdmUgdGhlDQo+ID4gPiA+ID4gbG9jaw0KPiA+ID4gPiA+IGNvbmZsaWN0
+DQo+ID4gPiA+ID4gaWYgcG9zc2libGUuIFRoZSBjYWxsYmFjayB0YWtlcyAyIGFyZ3VtZW50cywg
+ZmlsZV9sb2NrIG9mIHRoZQ0KPiA+ID4gPiA+IGJsb2NrZXINCj4gPiA+ID4gPiBhbmQgYSB0ZXN0
+b25seSBmbGFnOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IHRlc3Rvbmx5ID0gMcKgIGNoZWNrIGFu
+ZCByZXR1cm4gdHJ1ZSBpZiBsb2NrIGNvbmZsaWN0IGNhbiBiZQ0KPiA+ID4gPiA+IHJlc29sdmVk
+DQo+ID4gPiA+ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAgZWxzZSByZXR1cm4gZmFsc2Uu
+DQo+ID4gPiA+ID4gdGVzdG9ubHkgPSAwwqAgcmVzb2x2ZSB0aGUgY29uZmxpY3QgaWYgcG9zc2li
+bGUsIHJldHVybiB0cnVlDQo+ID4gPiA+ID4gaWYNCj4gPiA+ID4gPiBjb25mbGljdA0KPiA+ID4g
+PiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIHdhcyByZXNvbHZlZCBlc2xlIHJldHVybiBm
+YWxzZS4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBMb2NrIG1hbmFnZXIsIHN1Y2ggYXMgTkZTdjQg
+Y291cnRlb3VzIHNlcnZlciwgdXNlcyB0aGlzDQo+ID4gPiA+ID4gY2FsbGJhY2sgdG8NCj4gPiA+
+ID4gPiByZXNvbHZlIGNvbmZsaWN0IGJ5IGRlc3Ryb3lpbmcgbG9jayBvd25lciwgb3IgdGhlIE5G
+U3Y0DQo+ID4gPiA+ID4gY291cnRlc3kNCj4gPiA+ID4gPiBjbGllbnQNCj4gPiA+ID4gPiAoY2xp
+ZW50IHRoYXQgaGFzIGV4cGlyZWQgYnV0IGFsbG93ZWQgdG8gbWFpbnRhaW5zIGl0cyBzdGF0ZXMp
+DQo+ID4gPiA+ID4gdGhhdA0KPiA+ID4gPiA+IG93bnMNCj4gPiA+ID4gPiB0aGUgbG9jay4NCj4g
+PiA+ID4gPiANCj4gPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBEYWkgTmdvIDxkYWkubmdvQG9yYWNs
+ZS5jb20+DQo+ID4gPiA+IEFsLCBKZWZmLCBhcyBjby1tYWludGFpbmVycyBvZiByZWNvcmQgZm9y
+IGZzL2xvY2tzLmMsIGNhbiB5b3UNCj4gPiA+ID4gZ2l2ZQ0KPiA+ID4gPiBhbiBBY2sgb3IgUmV2
+aWV3ZWQtYnk/IEknZCBsaWtlIHRvIHRha2UgdGhpcyBwYXRjaCB0aHJvdWdoIHRoZQ0KPiA+ID4g
+PiBuZnNkDQo+ID4gPiA+IHRyZWUgZm9yIHY1LjE3LiBUaGFua3MgZm9yIHlvdXIgdGltZSENCj4g
+PiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiA+IC0tLQ0KPiA+ID4gPiA+IGZzL2xvY2tzLmPCoMKg
+wqDCoMKgwqDCoMKgIHwgMjggKysrKysrKysrKysrKysrKysrKysrKysrKy0tLQ0KPiA+ID4gPiA+
+IGluY2x1ZGUvbGludXgvZnMuaCB8wqAgMSArDQo+ID4gPiA+ID4gMiBmaWxlcyBjaGFuZ2VkLCAy
+NiBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IGRp
+ZmYgLS1naXQgYS9mcy9sb2Nrcy5jIGIvZnMvbG9ja3MuYw0KPiA+ID4gPiA+IGluZGV4IDNkNmZi
+NGFlODQ3Yi4uMGZlZjBhNjMyMmM3IDEwMDY0NA0KPiA+ID4gPiA+IC0tLSBhL2ZzL2xvY2tzLmMN
+Cj4gPiA+ID4gPiArKysgYi9mcy9sb2Nrcy5jDQo+ID4gPiA+ID4gQEAgLTk1NCw2ICs5NTQsNyBA
+QCBwb3NpeF90ZXN0X2xvY2soc3RydWN0IGZpbGUgKmZpbHAsIHN0cnVjdA0KPiA+ID4gPiA+IGZp
+bGVfbG9jayAqZmwpDQo+ID4gPiA+ID4gwqDCoMKgwqDCoMKgwqDCoMKgc3RydWN0IGZpbGVfbG9j
+ayAqY2ZsOw0KPiA+ID4gPiA+IMKgwqDCoMKgwqDCoMKgwqDCoHN0cnVjdCBmaWxlX2xvY2tfY29u
+dGV4dCAqY3R4Ow0KPiA+ID4gPiA+IMKgwqDCoMKgwqDCoMKgwqDCoHN0cnVjdCBpbm9kZSAqaW5v
+ZGUgPSBsb2Nrc19pbm9kZShmaWxwKTsNCj4gPiA+ID4gPiArwqDCoMKgwqDCoMKgwqBib29sIHJl
+dDsNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiDCoMKgwqDCoMKgwqDCoMKgwqBjdHggPSBzbXBfbG9h
+ZF9hY3F1aXJlKCZpbm9kZS0+aV9mbGN0eCk7DQo+ID4gPiA+ID4gwqDCoMKgwqDCoMKgwqDCoMKg
+aWYgKCFjdHggfHwgbGlzdF9lbXB0eV9jYXJlZnVsKCZjdHgtPmZsY19wb3NpeCkpIHsNCj4gPiA+
+ID4gPiBAQCAtOTYyLDExICs5NjMsMjAgQEAgcG9zaXhfdGVzdF9sb2NrKHN0cnVjdCBmaWxlICpm
+aWxwLA0KPiA+ID4gPiA+IHN0cnVjdA0KPiA+ID4gPiA+IGZpbGVfbG9jayAqZmwpDQo+ID4gPiA+
+ID4gwqDCoMKgwqDCoMKgwqDCoMKgfQ0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IMKgwqDCoMKgwqDC
+oMKgwqDCoHNwaW5fbG9jaygmY3R4LT5mbGNfbG9jayk7DQo+ID4gPiA+ID4gK3JldHJ5Og0KPiA+
+ID4gPiA+IMKgwqDCoMKgwqDCoMKgwqDCoGxpc3RfZm9yX2VhY2hfZW50cnkoY2ZsLCAmY3R4LT5m
+bGNfcG9zaXgsIGZsX2xpc3QpIHsNCj4gPiA+ID4gPiAtwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgaWYgKHBvc2l4X2xvY2tzX2NvbmZsaWN0KGZsLCBjZmwpKSB7DQo+ID4gPiA+ID4gLcKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBsb2Nrc19jb3B5X2Nv
+bmZsb2NrKGZsLCBjZmwpOw0KPiA+ID4gPiA+IC3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgZ290byBvdXQ7DQo+ID4gPiA+ID4gK8KgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoGlmICghcG9zaXhfbG9ja3NfY29uZmxpY3QoZmwsIGNmbCkpDQo+ID4gPiA+
+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBjb250aW51
+ZTsNCj4gPiA+ID4gPiArwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgaWYgKGNmbC0+Zmxf
+bG1vcHMgJiYgY2ZsLT5mbF9sbW9wcy0NCj4gPiA+ID4gPiA+bG1fZXhwaXJlX2xvY2sNCj4gPiA+
+ID4gPiAmJg0KPiA+ID4gPiA+ICvCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGNmbC0+ZmxfbG1vcHMtDQo+ID4gPiA+ID4gPmxtX2V4
+cGlyZV9sb2NrKGNmbCwNCj4gPiA+ID4gPiAxKSkgew0KPiA+ID4gPiA+ICvCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgc3Bpbl91bmxvY2soJmN0eC0+ZmxjX2xv
+Y2spOw0KPiA+ID4gPiA+ICvCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgcmV0ID0gY2ZsLT5mbF9sbW9wcy0NCj4gPiA+ID4gPiA+bG1fZXhwaXJlX2xvY2soY2Zs
+LA0KPiA+ID4gPiA+IDApOw0KPiA+ID4gPiA+ICvCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgc3Bpbl9sb2NrKCZjdHgtPmZsY19sb2NrKTsNCj4gPiA+ID4gPiAr
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGlmIChyZXQpDQo+
+ID4gPiA+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgZ290byByZXRyeTsNCj4gPiA+ID4gPiDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgfQ0KPiA+ID4gPiA+ICvCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqBsb2Nrc19jb3B5X2NvbmZsb2NrKGZsLCBjZmwpOw0KPiA+ID4gSG93IGRvIHlvdSBrbm93ICdj
+ZmwnIHN0aWxsIHBvaW50cyB0byBhIHZhbGlkIG9iamVjdCBhZnRlciB5b3UndmUNCj4gPiA+IGRy
+b3BwZWQgdGhlIHNwaW4gbG9jayB0aGF0IHdhcyBwcm90ZWN0aW5nIHRoZSBsaXN0Pw0KPiA+IFVn
+aCwgZ29vZCBwb2ludCwgSSBzaG91bGQgaGF2ZSBub3RpY2VkIHRoYXQgd2hlbiBJIHN1Z2dlc3Rl
+ZCB0aGlzDQo+ID4gYXBwcm9hY2guLi4uDQo+ID4gDQo+ID4gTWF5YmUgdGhlIGZpcnN0IGNhbGwg
+Y291bGQgaW5zdGVhZCByZXR1cm4gcmV0dXJuIHNvbWUgcmVmZXJlbmNlLQ0KPiA+IGNvdW50ZWQN
+Cj4gPiBvYmplY3QgdGhhdCBhIHNlY29uZCBjYWxsIGNvdWxkIHdhaXQgb24uDQo+ID4gDQo+ID4g
+QmV0dGVyLCBtYXliZSBpdCBjb3VsZCBhZGQgaXRzZWxmIHRvIGEgbGlzdCBvZiBzdWNoIHRoaW5n
+cyBhbmQgdGhlbg0KPiA+IHdlDQo+ID4gY291bGQgZG8gdGhpcyBpbiBvbmUgcGFzcy4NCj4gDQo+
+IEkgdGhpbmsgd2UgYWRqdXN0IHRoaXMgbG9naWMgYSBsaXR0bGUgYml0IHRvIGNvdmVyIHJhY2Ug
+Y29uZGl0aW9uOg0KPiANCj4gVGhlIDFzdCBjYWxsIHRvIGxtX2V4cGlyZV9sb2NrIHJldHVybnMg
+dGhlIGNsaWVudCBuZWVkcyB0byBiZQ0KPiBleHBpcmVkLg0KPiANCj4gQmVmb3JlIHdlIG1ha2Ug
+dGhlIDJuZCBjYWxsLCB3ZSBzYXZlIHRoZSAnbG1fZXhwaXJlX2xvY2snIGludG8gYQ0KPiBsb2Nh
+bA0KPiB2YXJpYWJsZSB0aGVuIGRyb3AgdGhlIHNwaW5sb2NrLCBhbmQgdXNlIHRoZSBsb2NhbCB2
+YXJpYWJsZSB0byBtYWtlDQo+IHRoZQ0KPiAybmQgY2FsbCBzbyB0aGF0IHdlIGRvIG5vdCByZWZl
+cmVuY2UgJ2NmbCcuIFRoZSBhcmd1bWVudCBvZiB0aGUNCj4gc2Vjb25kDQo+IGlzIHRoZSBvcGFx
+dWUgcmV0dXJuIHZhbHVlIGZyb20gdGhlIDFzdCBjYWxsLg0KPiANCj4gbmZzZDRfZmxfZXhwaXJl
+X2xvY2sgYWxzbyBuZWVkcyBzb21lIGFkanVzdG1lbnQgdG8gc3VwcG9ydCB0aGUgYWJvdmUuDQo+
+IA0KDQpJdCdzIG5vdCBqdXN0IHRoZSBmYWN0IHRoYXQgeW91J3JlIHVzaW5nICdjZmwnIGluIHRo
+ZSBhY3R1YWwgY2FsbCB0bw0KbG1fZXhwaXJlX2xvY2soKSwgYnV0IHlvdSdyZSBhbHNvIHVzaW5n
+IGl0IGFmdGVyIHJldGFraW5nIHRoZSBzcGlubG9jay4NCg0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVi
+dXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
