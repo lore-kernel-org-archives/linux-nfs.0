@@ -2,67 +2,128 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 501DFC433FE
-	for <linux-nfs@archiver.kernel.org>; Mon,  6 Dec 2021 16:51:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C079C433FE
+	for <linux-nfs@archiver.kernel.org>; Mon,  6 Dec 2021 17:59:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239044AbhLFQzN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 6 Dec 2021 11:55:13 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:29886 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S241934AbhLFQzM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Dec 2021 11:55:12 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1638809503;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=ALfiGm92aK8PxZSE9ytTc2Xl6Q2oMvchNJ3nVc75rJE=;
-        b=XXJQYJJQua8c16uu6adsZmrQ/5OPcDMS9/Z5FrX4JzxPIL1KNMZ3t2Vc3E5RVLX7hm2Jm1
-        YXQwf6Z1XpF+L+BdpG38/fNoSRJ9gw9jG48M1GWR+I/V2r+32HMgH659XdgnvMme7s/gid
-        Uz938u0ZnPNxZn3U+d2Q2v+ABeBdw+w=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-440-Pz7Cu2M7PyuCWH4f8SxkRw-1; Mon, 06 Dec 2021 11:51:40 -0500
-X-MC-Unique: Pz7Cu2M7PyuCWH4f8SxkRw-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2AF54101AFA8;
-        Mon,  6 Dec 2021 16:51:39 +0000 (UTC)
-Received: from plambri-desk (unknown [10.33.36.28])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 149C160BF1;
-        Mon,  6 Dec 2021 16:51:37 +0000 (UTC)
-Date:   Mon, 6 Dec 2021 16:51:35 +0000
-From:   Pierguido Lambri <plambri@redhat.com>
-To:     David Wysochanski <dwysocha@redhat.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-Subject: Re: [PATCH] SUNRPC: Add source address/port to rpc_socket* traces
-Message-ID: <20211206165135.rgrnrurxtydnnqjy@plambri-desk>
-References: <20211202181308.279592-1-plambri@redhat.com>
- <CALF+zOm32pbbnAVrVdWte1=MC_COEfUqjyDf++OqrcS0gc4dHA@mail.gmail.com>
+        id S236253AbhLFSDW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 6 Dec 2021 13:03:22 -0500
+Received: from mx0b-00069f02.pphosted.com ([205.220.177.32]:35140 "EHLO
+        mx0b-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229714AbhLFSDV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Dec 2021 13:03:21 -0500
+Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 1B6GnPi4010265;
+        Mon, 6 Dec 2021 17:59:51 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : mime-version : content-transfer-encoding;
+ s=corp-2021-07-09; bh=a0KSR+wVkurtga4VDW4wDXXrE272i86i+m5FrFY45yY=;
+ b=Yl96starGg5fsucHgItPP7j4MkeqUpTLHkG1hoQJMC3KJb2FV9HLcsCyayKolhjt89Ln
+ Y6mLeeVX4XDgBQRNqOloe3uNsvigV+Y7wDYl9qtkB+UuOS9JwuxrkfE8wtLQlxy4vuuJ
+ kD+UxNjYYsFKOuETKSmJiuUA+RWRsQdiRs4dVN+4tVQT71VAzb/PphdJWNat5NcpqDLQ
+ LIvbjjgeR3XKMrvPmJFbIU9R9zMRWDc6RRhLaGkxPBVnldWjny+svLAhZ8PP5UInglNs
+ AFDHrGJkx0LSJdBwhVWueAH5/cnlXzE5Iweuu+GWHoBlV8GU7+KecV1O9Ae/lxboQgYM fA== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by mx0b-00069f02.pphosted.com with ESMTP id 3csbbqkbtf-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 06 Dec 2021 17:59:51 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 1B6HucWR072283;
+        Mon, 6 Dec 2021 17:59:50 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3020.oracle.com with ESMTP id 3cr1smf1sa-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 06 Dec 2021 17:59:50 +0000
+Received: from userp3020.oracle.com (userp3020.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 1B6HxnaX081234;
+        Mon, 6 Dec 2021 17:59:49 GMT
+Received: from aserp3020.oracle.com (ksplice-shell2.us.oracle.com [10.152.118.36])
+        by userp3020.oracle.com with ESMTP id 3cr1smf1rt-1;
+        Mon, 06 Dec 2021 17:59:49 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     bfields@fieldses.org
+Cc:     chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: [PATCH RFC v6 0/2] nfsd: Initial implementation of NFSv4 Courteous Server
+Date:   Mon,  6 Dec 2021 12:59:40 -0500
+Message-Id: <20211206175942.47326-1-dai.ngo@oracle.com>
+X-Mailer: git-send-email 2.20.1.1226.g1595ea5.dirty
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CALF+zOm32pbbnAVrVdWte1=MC_COEfUqjyDf++OqrcS0gc4dHA@mail.gmail.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-GUID: e16T1UdhVV2bYeDkgEgJNg8ufG1bbp8h
+X-Proofpoint-ORIG-GUID: e16T1UdhVV2bYeDkgEgJNg8ufG1bbp8h
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 06, 2021 at 09:54:30AM -0500, David Wysochanski wrote:
-> >                 TP_printk(
-> > -                       "socket:[%llu] dstaddr=%s/%s "
-> > +                       "socket:[%llu] srcaddr=%pISpc dstaddr=%pISpcst "
-> 
-> Shouldn't the above scan code be the same as dstaddr below: "dstaddr=%pISpc "
 
-Yes, not sure why the extra "st", but it should be "dstaddr=%pISpc"
-indeed. I can resend it with the correct format.
+Hi Bruce,
 
-Thanks,
+This series of patches implement the NFSv4 Courteous Server.
 
-Pier
+A server which does not immediately expunge the state on lease expiration
+is known as a Courteous Server.  A Courteous Server continues to recognize
+previously generated state tokens as valid until conflict arises between
+the expired state and the requests from another client, or the server
+reboots.
+
+The v2 patch includes the following:
+
+. add new callback, lm_expire_lock, to lock_manager_operations to
+  allow the lock manager to take appropriate action with conflict lock.
+
+. handle conflicts of NFSv4 locks with NFSv3/NLM and local locks.
+
+. expire courtesy client after 24hr if client has not reconnected.
+
+. do not allow expired client to become courtesy client if there are
+  waiters for client's locks.
+
+. modify client_info_show to show courtesy client and seconds from
+  last renew.
+
+. fix a problem with NFSv4.1 server where the it keeps returning
+  SEQ4_STATUS_CB_PATH_DOWN in the successful SEQUENCE reply, after
+  the courtesy client re-connects, causing the client to keep sending
+  BCTS requests to server.
+
+The v3 patch includes the following:
+
+. modified posix_test_lock to check and resolve conflict locks
+  to handle NLM TEST and NFSv4 LOCKT requests.
+
+. separate out fix for back channel stuck in SEQ4_STATUS_CB_PATH_DOWN.
+
+The v4 patch includes:
+
+. rework nfsd_check_courtesy to avoid dead lock of fl_lock and client_lock
+  by asking the laudromat thread to destroy the courtesy client.
+
+. handle NFSv4 share reservation conflicts with courtesy client. This
+  includes conflicts between access mode and deny mode and vice versa.
+
+. drop the patch for back channel stuck in SEQ4_STATUS_CB_PATH_DOWN.
+
+The v5 patch includes:
+
+. fix recursive locking of file_rwsem from posix_lock_file. 
+
+. retest with LOCKDEP enabled.
+
+The v6 patch includes:
+
+. merge witn 5.15-rc7
+
+. fix a bug in nfs4_check_deny_bmap that did not check for matched
+  nfs4_file before checking for access/deny conflict. This bug causes
+  pynfs OPEN18 to fail since the server taking too long to release
+  lots of un-conflict clients' state.
+
+. enhance share reservation conflict handler to handle case where
+  a large number of conflict courtesy clients need to be expired.
+  The 1st 100 clients are expired synchronously and the rest are
+  expired in the background by the laundromat and NFS4ERR_DELAY
+  is returned to the NFS client. This is needed to prevent the
+  NFS client from timing out waiting got the reply.
+
+. no regression wirh pynfs 4.0 and 4.1 tests.
 
