@@ -2,81 +2,100 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E180CC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed,  8 Dec 2021 20:05:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 122FBC433FE
+	for <linux-nfs@archiver.kernel.org>; Thu,  9 Dec 2021 16:50:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239951AbhLHUIx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 8 Dec 2021 15:08:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36212 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239944AbhLHUIx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2021 15:08:53 -0500
-Received: from mail-ed1-x52e.google.com (mail-ed1-x52e.google.com [IPv6:2a00:1450:4864:20::52e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CC01BC0617A1
-        for <linux-nfs@vger.kernel.org>; Wed,  8 Dec 2021 12:05:20 -0800 (PST)
-Received: by mail-ed1-x52e.google.com with SMTP id e3so12286675edu.4
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Dec 2021 12:05:20 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=paul-moore-com.20210112.gappssmtp.com; s=20210112;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=7ft5I8nfLjeZ/UkJIKaimQmlaiHw8YvU1BOwkkaA2CU=;
-        b=EmPFxcepJ5xGXXdhooOhOomYnq6mzAFIzdX9Os0Lv4fmZAc8bNPfIgTvGSDma1wZDM
-         /0nC58OBnmMk9SL24E2Q18DwFVlAxlKE6US9Jd3tjuaU+0qq+e1J4OQ1tFZ3w+7AySmE
-         xBGgRzVzOV/QSX+ovzGF6NMFyoU6mE/XviyHXe3n/46WuNoCVF6JHQrvWIg1BVdgTKyn
-         r40/mgd4OyjS+Et19BkNGA/K8t7hQcqH9U/OBmpai1kkFN8E32C3Jn5ZYOenYGwXlhhV
-         IPjauSMGU4L/s0QFo1HG9zRMtANfWhcn9PdOvE+doxgYi1wxPyGU+bzxBESSGBDfreZp
-         MeqA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=7ft5I8nfLjeZ/UkJIKaimQmlaiHw8YvU1BOwkkaA2CU=;
-        b=St0T7A+hiIfaYpYeX3ObVEhzjJJ0/AMBwbRsyQuN6HQKN3t1uszWkJTXzU2Z0Wfflr
-         iyjmGLblXS8SoIvLMvrGE1LBgQcqdOMxBGjacPZ9eKdv0J7iaNRarzGDZMukVV4bu7VU
-         AFf4iaYY9dzL6xvWFCIrtmWtQNfC1lk5w7hVzy3NYvbIDNIpYL/itWS5ShE0KRGcW1gA
-         ZWQFJVNttjF+D22U7XGbGngmfpIosqDvj2Yr1YR/ro+mmP0SsGmB93aEINvA2qP+CnBD
-         bO7GYuOIg38QNHF8HHSU3sukYhjL8HJab/G3bnYvPnkpGQEK+osB+QHQH5OuSKin2kSO
-         xS4w==
-X-Gm-Message-State: AOAM531MrwNv3O1F2IIwlVY+f2tVSj02dEGzzgNQwEB8aCA8Ay2kNQwR
-        zgvcprWGiB59+gryPUYDlkX/TtTRQcQh+GNuxADN
-X-Google-Smtp-Source: ABdhPJyAT5AcX24/vsaF4FuO3zmSI91sBLs+Bo7d3wsmD3mHwOXCNVYQbGhgfKwZE1LynLCP9HqwWfCtr/zzGD5cUOY=
-X-Received: by 2002:aa7:cd5c:: with SMTP id v28mr22130323edw.6.1638993919043;
- Wed, 08 Dec 2021 12:05:19 -0800 (PST)
+        id S241320AbhLIQx5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 9 Dec 2021 11:53:57 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:39169 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S241314AbhLIQx5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2021 11:53:57 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1639068623;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=J1GcNbc9O5U5G8LlnP/kK4YsVg9drcvikjSXrTjTmMo=;
+        b=XXcMufcf1A33ShGEcu/cIiaLPiMTGL16gdDSZZIBBRLuNK6gCt7C6kbEkAQDdYz2GDVqCt
+        BRYwonIPl1rZj9eQ2SEenlK5PYNAmfteUR14vezEphkjYokNCs/mV95PEaEkrLtju5jwIq
+        XjDFkce+O3/381oebL8x0EgnavuTqfc=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-584-JHLalODTOZi6-eTunFrpGg-1; Thu, 09 Dec 2021 11:50:21 -0500
+X-MC-Unique: JHLalODTOZi6-eTunFrpGg-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 79DE718C89DF;
+        Thu,  9 Dec 2021 16:50:19 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.33.36.122])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 24DE25ED39;
+        Thu,  9 Dec 2021 16:49:53 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+From:   David Howells <dhowells@redhat.com>
+In-Reply-To: <d4167c15-b3ce-73b2-1d66-97d651723305@linux.alibaba.com>
+References: <d4167c15-b3ce-73b2-1d66-97d651723305@linux.alibaba.com> <163819575444.215744.318477214576928110.stgit@warthog.procyon.org.uk> <163819612321.215744.9738308885948264476.stgit@warthog.procyon.org.uk>
+To:     JeffleXu <jefflexu@linux.alibaba.com>
+Cc:     dhowells@redhat.com, linux-cachefs@redhat.com,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Matthew Wilcox <willy@infradead.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Omar Sandoval <osandov@osandov.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 24/64] netfs: Pass more information on how to deal with a hole in the cache
 MIME-Version: 1.0
-References: <163898788970.2840238.15026995173472005588.stgit@warthog.procyon.org.uk>
- <CAHC9VhTP-HbRU1z66MOkSyw9w7vhK7Vq8p0FrxVfEX-+tSD43A@mail.gmail.com> <2846548.1638993312@warthog.procyon.org.uk>
-In-Reply-To: <2846548.1638993312@warthog.procyon.org.uk>
-From:   Paul Moore <paul@paul-moore.com>
-Date:   Wed, 8 Dec 2021 15:05:08 -0500
-Message-ID: <CAHC9VhS4ZOWHD4+NnJ4uPbrQv1nookPovw23XoZ+=xOSeMZtEA@mail.gmail.com>
-Subject: Re: [RFC PATCH 1/2] security: Remove security_add_mnt_opt() as it's unused
-To:     David Howells <dhowells@redhat.com>
-Cc:     viro@zeniv.linux.org.uk, anna.schumaker@netapp.com,
-        kolga@netapp.com, casey@schaufler-ca.com, selinux@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <143691.1639068593.1@warthog.procyon.org.uk>
+Content-Transfer-Encoding: quoted-printable
+Date:   Thu, 09 Dec 2021 16:49:53 +0000
+Message-ID: <143692.1639068593@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Dec 8, 2021 at 2:55 PM David Howells <dhowells@redhat.com> wrote:
-> Paul Moore <paul@paul-moore.com> wrote:
-> > There is already a patch in the selinux/next tree which does this.
+JeffleXu <jefflexu@linux.alibaba.com> wrote:
 
-It appears to be, yes.
+> > @@ -466,7 +466,7 @@ static void netfs_rreq_short_read(struct netfs_rea=
+d_request *rreq,
+> >  	netfs_get_read_subrequest(subreq);
+> >  	atomic_inc(&rreq->nr_rd_ops);
+> >  	if (subreq->source =3D=3D NETFS_READ_FROM_CACHE)
+> > -		netfs_read_from_cache(rreq, subreq, true);
+> > +		netfs_read_from_cache(rreq, subreq, NETFS_READ_HOLE_CLEAR);
+> =
 
-> Looks pretty much identical to mine.  Feel free to add:
->
->         Reviewed-by: David Howells <dhowells@redhat.com>
+> Hi I'm not sure why NETFS_READ_HOLE_CLEAR style should be used in 'short
+> read' case.
 
-Thanks.  I generally don't update patches for metadata (unless it is
-really critical) so I don't have to do a force push, but if we have to
-I'll be sure to add your tag (there is a tag from James Morris that
-came in late too).
+The cache backing filesystem (eg. ext4) might have excised a chunk of zero=
+s
+from the cache in order to optimise its extent list.  This instructs the c=
+ache
+to zero over the cracks.  Actually, I need to think a bit further on this.
+This was written assuming that the cache tracks its content independently =
+-
+but those patches are not in with this set.
 
--- 
-paul moore
-www.paul-moore.com
+> I'm not sure why 'subreq->start' is not incremented with
+> 'subreq->transferred' when calling cres->ops->read() in 'short read' cas=
+e.
+
+subreq->start shouldn't get changed.  subreq->transferred is sufficient.
+
+David
+
