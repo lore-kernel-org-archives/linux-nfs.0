@@ -2,50 +2,50 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4295AC433EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Dec 2021 23:53:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C3478C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Dec 2021 23:53:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230089AbhLPXxq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Dec 2021 18:53:46 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:47236 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230102AbhLPXxq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2021 18:53:46 -0500
+        id S230051AbhLPXx4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Dec 2021 18:53:56 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:56422 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230096AbhLPXx4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2021 18:53:56 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 21B742111A;
-        Thu, 16 Dec 2021 23:53:45 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 4C5251F37F;
+        Thu, 16 Dec 2021 23:53:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1639698825; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1639698835; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=/Xf0wQNVm3xiMoEph9xuiX0w4MC4SZqJ4flfzelN2po=;
-        b=HvkZQeCMFZCPSVQFUK/PUY7B7v+NLZpUF/m3Yj4xJKsbEa2leGoz9gqvwpHJBag+WefWI6
-        0VBcdl08xnIcY9vXn22pP/IeYzRGO28wyAsDZqf87G24s8KrbkeUDwXMNDYgmtPjvbHcDh
-        qpdO8NC1Q9cEMZN1/U1R1NMXfhuVzC0=
+        bh=f9JPZARu0omLin5bRQVSgWDU6wAXTb1AVpCm2PGq0QA=;
+        b=XkyI4ce5LB7cLg0dZlvq/6cmAkIAlrOduZ3YaFyQlqABD8YnjmxuQ3tqORjbkTXll3mDxg
+        VBgynpVdMJrYSmT5w3wMlCSXbxjFyO1A2mzVAn+2715rUj2Aj9DqoeIs5bP3zOyGIz8aEL
+        zZXfps1UomDTorCv+vMH9ZfEBjFwLFI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1639698825;
+        s=susede2_ed25519; t=1639698835;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=/Xf0wQNVm3xiMoEph9xuiX0w4MC4SZqJ4flfzelN2po=;
-        b=vZy0FnDUXHJwQKOG4m/0/p1GY8oOwPXQ5ScsZz3bmlnHvp6t/QmB/UuBmIoCdt7YEvO6Gw
-        uqEETfQGhz4AvEAg==
+        bh=f9JPZARu0omLin5bRQVSgWDU6wAXTb1AVpCm2PGq0QA=;
+        b=zyNmjZO9NIndVyf1Mh426Eme8KWpjWDzaouhaq4ppJ7DxpOjj59Xgx/6m8mwAIDmFL8t0G
+        xicSDE4ks/ug8BCA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2C84913EFD;
-        Thu, 16 Dec 2021 23:53:41 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 35EDA13EFD;
+        Thu, 16 Dec 2021 23:53:51 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id RrWdNoXRu2GtWwAAMHmgww
-        (envelope-from <neilb@suse.de>); Thu, 16 Dec 2021 23:53:41 +0000
-Subject: [PATCH 12/18] SUNRPC/auth: async tasks mustn't block waiting for
+        id auDHOI/Ru2G8WwAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 16 Dec 2021 23:53:51 +0000
+Subject: [PATCH 13/18] SUNRPC/xprt: async tasks mustn't block waiting for
  memory
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -58,7 +58,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Fri, 17 Dec 2021 10:48:23 +1100
-Message-ID: <163969850320.20885.16756746953092069326.stgit@noble.brown>
+Message-ID: <163969850327.20885.823088186596498420.stgit@noble.brown>
 In-Reply-To: <163969801519.20885.3977673503103544412.stgit@noble.brown>
 References: <163969801519.20885.3977673503103544412.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -73,120 +73,54 @@ When memory is short, new worker threads cannot be created and we depend
 on the minimum one rpciod thread to be able to handle everything.  So it
 must not block waiting for memory.
 
-mempools are particularly a problem as memory can only be released back
-to the mempool by an async rpc task running.  If all available workqueue
-threads are waiting on the mempool, no thread is available to return
-anything.
+xprt_dynamic_alloc_slot can block indefinitely.  This can tie up all
+workqueue threads and NFS can deadlock.  So when called from a
+workqueue, set __GFP_NORETRY.
 
-lookup_cred() can block on a mempool or kmalloc - and this can cause
-deadlocks.  So add a new RPCAUTH_LOOKUP flag for async lookups and don't
-block on memory.  If the -ENOMEM gets back to call_refreshresult(), wait
-a short while and try again.  HZ>>4 is chosen as it is used elsewhere
-for -ENOMEM retries.
+The rdma alloc_slot already does not block.  However it sets the error
+to -EAGAIN suggesting this will trigger a sleep.  It does not.  As we
+can see in call_reserveresult(), only -ENOMEM causes a sleep.  -EAGAIN
+causes immediate retry.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- include/linux/sunrpc/auth.h    |    1 +
- net/sunrpc/auth.c              |    6 +++++-
- net/sunrpc/auth_gss/auth_gss.c |    6 +++++-
- net/sunrpc/auth_unix.c         |   10 ++++++++--
- net/sunrpc/clnt.c              |    3 +++
- 5 files changed, 22 insertions(+), 4 deletions(-)
+ net/sunrpc/xprt.c               |    5 ++++-
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 98da816b5fc2..3e6ce288a7fc 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -99,6 +99,7 @@ struct rpc_auth_create_args {
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index a02de2bddb28..47d207e416ab 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1687,12 +1687,15 @@ static bool xprt_throttle_congested(struct rpc_xprt *xprt, struct rpc_task *task
+ static struct rpc_rqst *xprt_dynamic_alloc_slot(struct rpc_xprt *xprt)
+ {
+ 	struct rpc_rqst *req = ERR_PTR(-EAGAIN);
++	gfp_t gfp_mask = GFP_NOFS;
  
- /* Flags for rpcauth_lookupcred() */
- #define RPCAUTH_LOOKUP_NEW		0x01	/* Accept an uninitialised cred */
-+#define RPCAUTH_LOOKUP_ASYNC		0x02	/* Don't block waiting for memory */
+ 	if (xprt->num_reqs >= xprt->max_reqs)
+ 		goto out;
+ 	++xprt->num_reqs;
+ 	spin_unlock(&xprt->reserve_lock);
+-	req = kzalloc(sizeof(struct rpc_rqst), GFP_NOFS);
++	if (current->flags & PF_WQ_WORKER)
++		gfp_mask |= __GFP_NORETRY | __GFP_NOWARN;
++	req = kzalloc(sizeof(struct rpc_rqst), gfp_mask);
+ 	spin_lock(&xprt->reserve_lock);
+ 	if (req != NULL)
+ 		goto out;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index a52277115500..32df23796747 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -521,7 +521,7 @@ xprt_rdma_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
+ 	return;
  
- /*
-  * Client authentication ops
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index a9f0d17fdb0d..6bfa19f9fa6a 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -615,6 +615,8 @@ rpcauth_bind_root_cred(struct rpc_task *task, int lookupflags)
- 	};
- 	struct rpc_cred *ret;
- 
-+	if (RPC_IS_ASYNC(task))
-+		lookupflags |= RPCAUTH_LOOKUP_ASYNC;
- 	ret = auth->au_ops->lookup_cred(auth, &acred, lookupflags);
- 	put_cred(acred.cred);
- 	return ret;
-@@ -631,6 +633,8 @@ rpcauth_bind_machine_cred(struct rpc_task *task, int lookupflags)
- 
- 	if (!acred.principal)
- 		return NULL;
-+	if (RPC_IS_ASYNC(task))
-+		lookupflags |= RPCAUTH_LOOKUP_ASYNC;
- 	return auth->au_ops->lookup_cred(auth, &acred, lookupflags);
+ out_sleep:
+-	task->tk_status = -EAGAIN;
++	task->tk_status = -ENOMEM;
+ 	xprt_add_backlog(xprt, task);
  }
  
-@@ -654,7 +658,7 @@ rpcauth_bindcred(struct rpc_task *task, const struct cred *cred, int flags)
- 	};
- 
- 	if (flags & RPC_TASK_ASYNC)
--		lookupflags |= RPCAUTH_LOOKUP_NEW;
-+		lookupflags |= RPCAUTH_LOOKUP_NEW | RPCAUTH_LOOKUP_ASYNC;
- 	if (task->tk_op_cred)
- 		/* Task must use exactly this rpc_cred */
- 		new = get_rpccred(task->tk_op_cred);
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 5f42aa5fc612..df72d6301f78 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1341,7 +1341,11 @@ gss_hash_cred(struct auth_cred *acred, unsigned int hashbits)
- static struct rpc_cred *
- gss_lookup_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- {
--	return rpcauth_lookup_credcache(auth, acred, flags, GFP_NOFS);
-+	gfp_t gfp = GFP_NOFS;
-+
-+	if (flags & RPCAUTH_LOOKUP_ASYNC)
-+		gfp = GFP_NOWAIT | __GFP_NOWARN;
-+	return rpcauth_lookup_credcache(auth, acred, flags, gfp);
- }
- 
- static struct rpc_cred *
-diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-index e7df1f782b2e..e5819265dd1b 100644
---- a/net/sunrpc/auth_unix.c
-+++ b/net/sunrpc/auth_unix.c
-@@ -43,8 +43,14 @@ unx_destroy(struct rpc_auth *auth)
- static struct rpc_cred *
- unx_lookup_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- {
--	struct rpc_cred *ret = mempool_alloc(unix_pool, GFP_NOFS);
--
-+	gfp_t gfp = GFP_NOFS;
-+	struct rpc_cred *ret;
-+
-+	if (flags & RPCAUTH_LOOKUP_ASYNC)
-+		gfp = GFP_NOWAIT | __GFP_NOWARN;
-+	ret = mempool_alloc(unix_pool, gfp);
-+	if (!ret)
-+		return ERR_PTR(-ENOMEM);
- 	rpcauth_init_cred(ret, acred, auth, &unix_credops);
- 	ret->cr_flags = 1UL << RPCAUTH_CRED_UPTODATE;
- 	return ret;
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a312ea2bc440..238b2ef5491f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1745,6 +1745,9 @@ call_refreshresult(struct rpc_task *task)
- 		task->tk_cred_retry--;
- 		trace_rpc_retry_refresh_status(task);
- 		return;
-+	case -ENOMEM:
-+		rpc_delay(task, HZ >> 4);
-+		return;
- 	}
- 	trace_rpc_refresh_status(task);
- 	rpc_call_rpcerror(task, status);
 
 
