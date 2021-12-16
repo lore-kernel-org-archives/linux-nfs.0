@@ -2,96 +2,79 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31CB8C433EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Dec 2021 16:36:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C6FAC433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Dec 2021 16:39:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231150AbhLPQga (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Dec 2021 11:36:30 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46978 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229962AbhLPQga (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2021 11:36:30 -0500
-Received: from mail-ed1-x52c.google.com (mail-ed1-x52c.google.com [IPv6:2a00:1450:4864:20::52c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E65A9C061574
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2021 08:36:29 -0800 (PST)
-Received: by mail-ed1-x52c.google.com with SMTP id z7so27344840edc.11
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2021 08:36:29 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=fkh9SA21WJAwLXrex3D5hDMvc6XDF8J0dz4irJ+Ae9Y=;
-        b=TZ91WtmX33bYGxQ28DYuwMlA4L/Ykfses9BBTD3iJ52Q9qh/2tU+S4awSqTTbNIEfO
-         NIVIGXtvrTssU7E/Ib+EszfgqaQI3Ug/c2E/ITq3PkTvuJKpkp8KHKAP+FyMLrxxfyHm
-         7LDKJiXUmfROJo2atlx1zLIBfA58BXXUjM6Yc=
+        id S233552AbhLPQj4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Dec 2021 11:39:56 -0500
+Received: from mail-yb1-f171.google.com ([209.85.219.171]:34679 "EHLO
+        mail-yb1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233473AbhLPQj4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2021 11:39:56 -0500
+Received: by mail-yb1-f171.google.com with SMTP id y68so66158695ybe.1;
+        Thu, 16 Dec 2021 08:39:55 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=fkh9SA21WJAwLXrex3D5hDMvc6XDF8J0dz4irJ+Ae9Y=;
-        b=p6LK4HCAC1Q5Ay23AhEO7yi2usbelJ7MwPYwVhmI+MiF1hJs0UYjNLsJoLOUFJS0eI
-         5CZ2v2/GxjkDXCS8osWXZvFTrGiUrt75PKsawHOvRzPnduSem6R00lIMuIdMEK4tJbr/
-         MvLnjtilw2KSzuRb4hcXLy2dWYy6+sEaO8q+0I/6LkUr7F90SuJ9zCF43pB7OI+jFgbm
-         oBbyAPuihWMSX6nDqUS59wnLDJAtpFkUiB7c+Zrv486R3g11jBAD7bjNoYY+W7odvHlB
-         GEO0WT80dvbOSWHciRS8aNGnPVxAFi/XXv82NHOnLg1ZxDilc/zdXfyui2bapwTWMkEi
-         /2qA==
-X-Gm-Message-State: AOAM533P6sZrc4vCTm3kdu0Z1XvFxanHCdPe2lDtk62w1487ep30nVi8
-        fVwUjQm7jj+olWRRlsMbSU+f5cJhCctkyavgA1A=
-X-Google-Smtp-Source: ABdhPJyJ+O4jT0nlfqNW54EZZR/mHLNMDFTqQRk2nP4JH6w67pl1qX7ey5Ev33VEeepaVYMDwlgheg==
-X-Received: by 2002:a17:906:58d5:: with SMTP id e21mr17110529ejs.540.1639672573086;
-        Thu, 16 Dec 2021 08:36:13 -0800 (PST)
-Received: from mail-wr1-f46.google.com (mail-wr1-f46.google.com. [209.85.221.46])
-        by smtp.gmail.com with ESMTPSA id n8sm2620011edy.4.2021.12.16.08.36.12
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 16 Dec 2021 08:36:12 -0800 (PST)
-Received: by mail-wr1-f46.google.com with SMTP id j9so13120632wrc.0
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2021 08:36:12 -0800 (PST)
-X-Received: by 2002:a5d:6211:: with SMTP id y17mr9727999wru.97.1639672086343;
- Thu, 16 Dec 2021 08:28:06 -0800 (PST)
+        bh=eEPEGGb1aR8D1SabPjTY1nd05keyniIz1b6jYSVPbm0=;
+        b=Hj3A+K0LD6lFKlpqKBfbSF22UO2VLWDi7JcluQ5EIHi/s1C1UTsWd7A/Y+sOQ1bsRx
+         4VmN+RyWsMkJv25JbjlktQyYZvzDxnVof8Q9/RHWI5dkkaTMYxYf/kEkOSBSPLgP9SEc
+         Kgmd+Odp8yTDu7eIJzcBzjBoZ+htaT78R8ckZWRvSpPgkujBUgQ39mX6pqxWXf7eIoz+
+         khFZlUgtsdkCQmf7czWBpokCIjtkZ5tydmjE55hHM3pyyymWBj5J3dgr5LsAHLPD/GJJ
+         kwouqmiXhbVUd3ySGWUhaKwu6pzXBm23P98n001WctGNCQO7iQa7WLqornEi0Xb+8U+7
+         JC9A==
+X-Gm-Message-State: AOAM531Kj4kJ8SPOYz9RpZFLomI5nJiRjvf2ua+KfO1nw2inpZys29r/
+        Zd5J5Zmzbea4BFBmSGmkpTH9lQCQeCPPgzA6v0Rf5x4q
+X-Google-Smtp-Source: ABdhPJx3uhMKaoI0zA68RqhtsVYo8vhXs4JKxCyeBDG0Ckx6tNJ0VMLxa38S05bvKO+VTn+5h4V0Wbnh5eLsqL1lciE=
+X-Received: by 2002:a25:f305:: with SMTP id c5mr4313857ybs.194.1639672795013;
+ Thu, 16 Dec 2021 08:39:55 -0800 (PST)
 MIME-Version: 1.0
-References: <163967073889.1823006.12237147297060239168.stgit@warthog.procyon.org.uk>
- <163967172373.1823006.6118195970180365070.stgit@warthog.procyon.org.uk>
-In-Reply-To: <163967172373.1823006.6118195970180365070.stgit@warthog.procyon.org.uk>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Thu, 16 Dec 2021 08:27:50 -0800
-X-Gmail-Original-Message-ID: <CAHk-=wjiba2VRKKjOYAiCZn1Tk9H1tiXcOvjekdo3wPHHmedyQ@mail.gmail.com>
-Message-ID: <CAHk-=wjiba2VRKKjOYAiCZn1Tk9H1tiXcOvjekdo3wPHHmedyQ@mail.gmail.com>
-Subject: Re: [PATCH v3 57/68] afs: Fix afs_write_end() to handle len > page size
-To:     David Howells <dhowells@redhat.com>
-Cc:     linux-cachefs@redhat.com, Jeff Layton <jlayton@kernel.org>,
-        Marc Dionne <marc.dionne@auristor.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-afs@lists.infradead.org,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Omar Sandoval <osandov@osandov.com>,
-        JeffleXu <jefflexu@linux.alibaba.com>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>, ceph-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+References: <tencent_CE0F8701456CB89F92C73F28480EF3552E06@qq.com>
+In-Reply-To: <tencent_CE0F8701456CB89F92C73F28480EF3552E06@qq.com>
+From:   Anna Schumaker <anna.schumaker@netapp.com>
+Date:   Thu, 16 Dec 2021 11:39:39 -0500
+Message-ID: <CAFX2Jfk-gH5V2PL3UkSw=QLDDuzSgbKuzUeh8-ir-VpO0BzMpg@mail.gmail.com>
+Subject: Re: [PATCH] nfs: nfs4clinet: check the return value of kstrdup()
+To:     Xiaoke Wang <xkernel.wang@foxmail.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Dec 16, 2021 at 8:22 AM David Howells <dhowells@redhat.com> wrote:
+Hi Xiaoke,
+
+On Mon, Dec 13, 2021 at 2:54 AM Xiaoke Wang <xkernel.wang@foxmail.com> wrote:
 >
-> It is possible for the len argument to afs_write_end() to overrun the end
-> of the page (len is used to key the size of the page in afs_write_start()
-> when compound pages become a regular thing).
+> kstrdup() returns NULL when some internal memory errors happen, it is
+> better to check the return value of it so to catch the memory error in
+> time.
+>
+> Signed-off-by: Xiaoke Wang <xkernel.wang@foxmail.com>
+> ---
+>  fs/nfs/nfs4client.c | 3 +++
+>  1 file changed, 3 insertions(+)
+>
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index af57332..89f13e0 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -1372,5 +1372,8 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
+>                 server->nfs_client->cl_hostname = kstrdup(hostname, GFP_KERNEL);
+>         nfs_server_insert_lists(server);
+>
+> +       if (server->nfs_client->cl_hostname == NULL)
+> +               return -ENOMEM;
+> +
 
-This smells like a bug in the caller.
+Checking the return of kstrdup() makes sense, but I think this should
+right after the kstrdup() call and still under that if block.
 
-It's just insane to call "write_end()" with a range that doesn't
-actually fit in the page provided.
+Anna
 
-Exactly how does that happen, and why should AFS deal with it, not
-whoever called write_end()?
-
-              Linus
+>         return nfs_probe_destination(server);
+>  }
+> --
