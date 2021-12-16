@@ -2,50 +2,50 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C039C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Dec 2021 23:52:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 21FBFC433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Dec 2021 23:52:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229880AbhLPXwV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Dec 2021 18:52:21 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:56294 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229649AbhLPXwV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2021 18:52:21 -0500
+        id S229881AbhLPXw2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Dec 2021 18:52:28 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:47058 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229910AbhLPXw2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2021 18:52:28 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 165891F3A1;
-        Thu, 16 Dec 2021 23:52:20 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id E2E8A2111A;
+        Thu, 16 Dec 2021 23:52:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1639698740; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1639698746; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ug4yW5gOL63SqKbbFD2vKNdEEo7P9U8FK5i/2jPwxYk=;
-        b=pJGrgR6BEwcIRhGSksUqNQsRNwXGhcim6tBNCAVsbADwae8I/iY+PxMl2+Oe1IhXY6sI75
-        SCfb9rfxZL6Hqvgrb5gHpQwa6CKAGbyvX16n7huUCCe3rTUTLphQJG6CZa/AyhtKnnO4Jf
-        UpHISF2nWdOc3w+whip6Y+zta5Ae7X8=
+        bh=cY/eypVNNHD1cZaQ8vKdoi5Gyv0t4LUDjHUscRDhk30=;
+        b=IgDmkb062+ktR5wPexm2UVfch18gGVZ11eht2BuUDkkBL+dhtRIv2TlMVbD+PFiNuApmHc
+        DBNzc/PPZxmlcaJVWCQ63pfrReLguAwm6IjgWI7Jcda9tvgSdUdYIQgsJuPTLt7HoKpOGs
+        l39rJ0Hyxb6+ZhXLa3IE46nbdMtt5fs=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1639698740;
+        s=susede2_ed25519; t=1639698746;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ug4yW5gOL63SqKbbFD2vKNdEEo7P9U8FK5i/2jPwxYk=;
-        b=fTSHn9rcYsuxjAxKyTPBELQNYHb2uC3gKPXE53GOUp81yR7qaysg1lDeBl2XfhgzenTn9n
-        4xVEdjkR6jtp87Dw==
+        bh=cY/eypVNNHD1cZaQ8vKdoi5Gyv0t4LUDjHUscRDhk30=;
+        b=VAsVCjzY8r3AO1a1zXPZMQ2VBuuAVHJe41M1BabTlKf+kOjd7EalIvtWnd1UzGtXHPKH5g
+        C4/MHD2CajK+GMBQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id C47E613EFD;
-        Thu, 16 Dec 2021 23:52:16 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9C74613EFD;
+        Thu, 16 Dec 2021 23:52:23 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id iYrDHzDRu2E5WwAAMHmgww
-        (envelope-from <neilb@suse.de>); Thu, 16 Dec 2021 23:52:16 +0000
-Subject: [PATCH 01/18] Structural cleanup for filesystem-based swap
+        id W5H4FTfRu2FIWwAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 16 Dec 2021 23:52:23 +0000
+Subject: [PATCH 02/18] MM: create new mm/swap.h header file.
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -57,7 +57,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Fri, 17 Dec 2021 10:48:22 +1100
-Message-ID: <163969850251.20885.10819272484905153807.stgit@noble.brown>
+Message-ID: <163969850279.20885.7172996032577523902.stgit@noble.brown>
 In-Reply-To: <163969801519.20885.3977673503103544412.stgit@noble.brown>
 References: <163969801519.20885.3977673503103544412.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -68,309 +68,454 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Linux primarily uses IO to block devices for swap, but can send the IO
-requests to a filesystem.  This has only ever worked for NFS, and that
-hasn't worked for a while due to a lack of testing.  This seems like a
-good time for some tidy-up before restoring swap-over-NFS functionality.
+Many functions declared in include/linux/swap.h are only used within mm/
 
-This patch:
- - updates the documentation (both copies!) for swap_activate which
-   is woefully out-of-date
- - introduces a new address_space operation "swap_rw" for swap IO.
-   The code currently used ->readpage for reads and ->direct_IO for
-   writes.  The former imposes a limit of one-page-at-a-time, the
-   later means that direct writes and swap writes are encouraged to
-   use the same path.  While similar, swap can often be simpler as
-   it can assume that no allocation is needed, and coherence with the
-   page cache is irrelevant.
- - move the responsibility for setting SWP_FS_OPS to ->swap_activate()
-   and also requires it to always call add_swap_extent().  This makes
-   it much easier to find filesystems that require SWP_FS_OPS.
- - drops the call to the filesystem for ->set_page_dirty().  These
-   pages do not belong to the filesystem, and it has no interest
-   in the dirty status.
-
-writeout is switched to ->swap_rw, but read-in is not as that requires
-too much change for this patch.
-
-Both cifs and nfs set SWP_FS_OPS but neither provide a swap_rw, so both
-will now fail to activate swap.  cifs never really tried to provide swap
-support as ->direct_IO always returns an error.  NFS will be fixed up
-with following patches.
+Create a new "mm/swap.h" and move some of these declarations there.
+Remove the redundant 'extern' from the function declarations.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- Documentation/filesystems/locking.rst |   18 ++++++++++++------
- Documentation/filesystems/vfs.rst     |   17 ++++++++++++-----
- fs/cifs/file.c                        |    7 ++++++-
- fs/nfs/file.c                         |   17 +++++++++++++++--
- include/linux/fs.h                    |    1 +
- include/linux/swap.h                  |    1 -
- mm/page_io.c                          |   26 ++++++--------------------
- mm/swap_state.c                       |    2 +-
- mm/swapfile.c                         |   10 +++-------
- 9 files changed, 56 insertions(+), 43 deletions(-)
+ include/linux/swap.h |  121 -----------------------------------------------
+ mm/madvise.c         |    1 
+ mm/memory.c          |    1 
+ mm/mincore.c         |    1 
+ mm/page_alloc.c      |    1 
+ mm/page_io.c         |    1 
+ mm/shmem.c           |    1 
+ mm/swap.h            |  129 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/swap_state.c      |    1 
+ mm/swapfile.c        |    1 
+ mm/util.c            |    1 
+ mm/vmscan.c          |    1 
+ 12 files changed, 139 insertions(+), 121 deletions(-)
+ create mode 100644 mm/swap.h
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index d36fe79167b3..c2bb753bf688 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -265,8 +265,9 @@ prototypes::
- 	int (*launder_page)(struct page *);
- 	int (*is_partially_uptodate)(struct page *, unsigned long, unsigned long);
- 	int (*error_remove_page)(struct address_space *, struct page *);
--	int (*swap_activate)(struct file *);
-+	int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
- 	int (*swap_deactivate)(struct file *);
-+	int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- 
- locking rules:
- 	All except set_page_dirty and freepage may block
-@@ -295,6 +296,7 @@ is_partially_uptodate:	yes
- error_remove_page:	yes
- swap_activate:		no
- swap_deactivate:	no
-+swap_rw:		yes, unlocks
- ======================	======================== =========	===============
- 
- ->write_begin(), ->write_end() and ->readpage() may be called from
-@@ -397,15 +399,19 @@ cleaned, or an error value if not. Note that in order to prevent the page
- getting mapped back in and redirtied, it needs to be kept locked
- across the entire operation.
- 
--->swap_activate will be called with a non-zero argument on
--files backing (non block device backed) swapfiles. A return value
--of zero indicates success, in which case this file can be used for
--backing swapspace. The swapspace operations will be proxied to the
--address space operations.
-+->swap_activate() will be called to prepare the given file for swap.  It
-+should perform any validation and preparation necessary to ensure that
-+writes can be performed with minimal memory allocation.  It should call
-+add_swap_extent(), or the helper iomap_swapfile_activate(), and return
-+the number of extents added.  If IO should be submitted through
-+->swap_rw(), it should set SWP_FS_OPS, otherwise IO will be submitted
-+directly to the block device ``sis->bdev``.
- 
- ->swap_deactivate() will be called in the sys_swapoff()
- path after ->swap_activate() returned success.
- 
-+->swap_rw will be called for swap IO if ->swap_activate() set SWP_FS_OPS.
-+
- file_lock_operations
- ====================
- 
-diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-index bf5c48066fac..70d7ce335565 100644
---- a/Documentation/filesystems/vfs.rst
-+++ b/Documentation/filesystems/vfs.rst
-@@ -751,8 +751,9 @@ cache in your filesystem.  The following members are defined:
- 					      unsigned long);
- 		void (*is_dirty_writeback) (struct page *, bool *, bool *);
- 		int (*error_remove_page) (struct mapping *mapping, struct page *page);
--		int (*swap_activate)(struct file *);
-+		int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
- 		int (*swap_deactivate)(struct file *);
-+		int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- 	};
- 
- ``writepage``
-@@ -959,15 +960,21 @@ cache in your filesystem.  The following members are defined:
- 	unless you have them locked or reference counts increased.
- 
- ``swap_activate``
--	Called when swapon is used on a file to allocate space if
--	necessary and pin the block lookup information in memory.  A
--	return value of zero indicates success, in which case this file
--	can be used to back swapspace.
-+
-+	Called to prepare the given file for swap.  It should perform
-+	any validation and preparation necessary to ensure that writes
-+	can be performed with minimal memory allocation.  It should call
-+	add_swap_extent(), or the helper iomap_swapfile_activate(), and
-+	return the number of extents added.  If IO should be submitted
-+	through ->swap_rw(), it should set SWP_FS_OPS, otherwise IO will
-+	be submitted directly to the block device ``sis->bdev``.
- 
- ``swap_deactivate``
- 	Called during swapoff on files where swap_activate was
- 	successful.
- 
-+``swap_rw``
-+	Called to read or write swap pages when swap_activate() set SWP_FS_OPS.
- 
- The File Object
- ===============
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index 9fee3af83a73..50bebf5f15cc 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -4943,6 +4943,10 @@ static int cifs_swap_activate(struct swap_info_struct *sis,
- 
- 	cifs_dbg(FYI, "swap activate\n");
- 
-+	if (!swap_file->f_mapping->a_ops->swap_rw)
-+		/* Cannot support swap */
-+		return -EINVAL;
-+
- 	spin_lock(&inode->i_lock);
- 	blocks = inode->i_blocks;
- 	isize = inode->i_size;
-@@ -4971,7 +4975,8 @@ static int cifs_swap_activate(struct swap_info_struct *sis,
- 	 * from reading or writing the file
- 	 */
- 
--	return 0;
-+	sis->flags |= SWP_FS_OPS;
-+	return add_swap_extent(sis, 0, sis->max, 0);
- }
- 
- static void cifs_swap_deactivate(struct file *file)
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 24e7dccce355..0d33c95eefb6 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -489,9 +489,14 @@ static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
- {
- 	unsigned long blocks;
- 	long long isize;
-+	int ret;
- 	struct rpc_clnt *clnt = NFS_CLIENT(file->f_mapping->host);
- 	struct inode *inode = file->f_mapping->host;
- 
-+	if (!file->f_mapping->a_ops->swap_rw)
-+		/* Cannot support swap */
-+		return -EINVAL;
-+
- 	spin_lock(&inode->i_lock);
- 	blocks = inode->i_blocks;
- 	isize = inode->i_size;
-@@ -501,9 +506,17 @@ static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
- 		return -EINVAL;
- 	}
- 
-+	ret = rpc_clnt_swap_activate(clnt);
-+	if (ret)
-+		return ret;
-+	ret = add_swap_extent(sis, 0, sis->max, 0);
-+	if (ret < 0) {
-+		rpc_clnt_swap_deactivate(clnt);
-+		return ret;
-+	}
- 	*span = sis->pages;
--
--	return rpc_clnt_swap_activate(clnt);
-+	sis->flags |= SWP_FS_OPS;
-+	return ret;
- }
- 
- static void nfs_swap_deactivate(struct file *file)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bbf812ce89a8..deaaf359cc49 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -415,6 +415,7 @@ struct address_space_operations {
- 	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
- 				sector_t *span);
- 	void (*swap_deactivate)(struct file *file);
-+	int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- };
- 
- extern const struct address_space_operations empty_aops;
 diff --git a/include/linux/swap.h b/include/linux/swap.h
-index d1ea44b31f19..10b2a92c1aa1 100644
+index 10b2a92c1aa1..6a0c25c0bb95 100644
 --- a/include/linux/swap.h
 +++ b/include/linux/swap.h
-@@ -427,7 +427,6 @@ extern int swap_writepage(struct page *page, struct writeback_control *wbc);
- extern void end_swap_bio_write(struct bio *bio);
- extern int __swap_writepage(struct page *page, struct writeback_control *wbc,
- 	bio_end_io_t end_write_func);
--extern int swap_set_page_dirty(struct page *page);
+@@ -419,61 +419,18 @@ extern void kswapd_stop(int nid);
  
+ #ifdef CONFIG_SWAP
+ 
+-#include <linux/blk_types.h> /* for bio_end_io_t */
+-
+-/* linux/mm/page_io.c */
+-extern int swap_readpage(struct page *page, bool do_poll);
+-extern int swap_writepage(struct page *page, struct writeback_control *wbc);
+-extern void end_swap_bio_write(struct bio *bio);
+-extern int __swap_writepage(struct page *page, struct writeback_control *wbc,
+-	bio_end_io_t end_write_func);
+-
  int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
  		unsigned long nr_pages, sector_t start_block);
+ int generic_swapfile_activate(struct swap_info_struct *, struct file *,
+ 		sector_t *);
+ 
+-/* linux/mm/swap_state.c */
+-/* One swap address space for each 64M swap space */
+-#define SWAP_ADDRESS_SPACE_SHIFT	14
+-#define SWAP_ADDRESS_SPACE_PAGES	(1 << SWAP_ADDRESS_SPACE_SHIFT)
+-extern struct address_space *swapper_spaces[];
+-#define swap_address_space(entry)			    \
+-	(&swapper_spaces[swp_type(entry)][swp_offset(entry) \
+-		>> SWAP_ADDRESS_SPACE_SHIFT])
+ static inline unsigned long total_swapcache_pages(void)
+ {
+ 	return global_node_page_state(NR_SWAPCACHE);
+ }
+ 
+-extern void show_swap_cache_info(void);
+-extern int add_to_swap(struct page *page);
+-extern void *get_shadow_from_swap_cache(swp_entry_t entry);
+-extern int add_to_swap_cache(struct page *page, swp_entry_t entry,
+-			gfp_t gfp, void **shadowp);
+-extern void __delete_from_swap_cache(struct page *page,
+-			swp_entry_t entry, void *shadow);
+-extern void delete_from_swap_cache(struct page *);
+-extern void clear_shadow_from_swap_cache(int type, unsigned long begin,
+-				unsigned long end);
+-extern void free_swap_cache(struct page *);
+ extern void free_page_and_swap_cache(struct page *);
+ extern void free_pages_and_swap_cache(struct page **, int);
+-extern struct page *lookup_swap_cache(swp_entry_t entry,
+-				      struct vm_area_struct *vma,
+-				      unsigned long addr);
+-struct page *find_get_incore_page(struct address_space *mapping, pgoff_t index);
+-extern struct page *read_swap_cache_async(swp_entry_t, gfp_t,
+-			struct vm_area_struct *vma, unsigned long addr,
+-			bool do_poll);
+-extern struct page *__read_swap_cache_async(swp_entry_t, gfp_t,
+-			struct vm_area_struct *vma, unsigned long addr,
+-			bool *new_page_allocated);
+-extern struct page *swap_cluster_readahead(swp_entry_t entry, gfp_t flag,
+-				struct vm_fault *vmf);
+-extern struct page *swapin_readahead(swp_entry_t entry, gfp_t flag,
+-				struct vm_fault *vmf);
+-
+ /* linux/mm/swapfile.c */
+ extern atomic_long_t nr_swap_pages;
+ extern long total_swap_pages;
+@@ -527,12 +484,6 @@ static inline void put_swap_device(struct swap_info_struct *si)
+ }
+ 
+ #else /* CONFIG_SWAP */
+-
+-static inline int swap_readpage(struct page *page, bool do_poll)
+-{
+-	return 0;
+-}
+-
+ static inline struct swap_info_struct *swp_swap_info(swp_entry_t entry)
+ {
+ 	return NULL;
+@@ -547,11 +498,6 @@ static inline void put_swap_device(struct swap_info_struct *si)
+ {
+ }
+ 
+-static inline struct address_space *swap_address_space(swp_entry_t entry)
+-{
+-	return NULL;
+-}
+-
+ #define get_nr_swap_pages()			0L
+ #define total_swap_pages			0L
+ #define total_swapcache_pages()			0UL
+@@ -566,14 +512,6 @@ static inline struct address_space *swap_address_space(swp_entry_t entry)
+ #define free_pages_and_swap_cache(pages, nr) \
+ 	release_pages((pages), (nr));
+ 
+-static inline void free_swap_cache(struct page *page)
+-{
+-}
+-
+-static inline void show_swap_cache_info(void)
+-{
+-}
+-
+ /* used to sanity check ptes in zap_pte_range when CONFIG_SWAP=0 */
+ #define free_swap_and_cache(e) is_pfn_swap_entry(e)
+ 
+@@ -599,65 +537,6 @@ static inline void put_swap_page(struct page *page, swp_entry_t swp)
+ {
+ }
+ 
+-static inline struct page *swap_cluster_readahead(swp_entry_t entry,
+-				gfp_t gfp_mask, struct vm_fault *vmf)
+-{
+-	return NULL;
+-}
+-
+-static inline struct page *swapin_readahead(swp_entry_t swp, gfp_t gfp_mask,
+-			struct vm_fault *vmf)
+-{
+-	return NULL;
+-}
+-
+-static inline int swap_writepage(struct page *p, struct writeback_control *wbc)
+-{
+-	return 0;
+-}
+-
+-static inline struct page *lookup_swap_cache(swp_entry_t swp,
+-					     struct vm_area_struct *vma,
+-					     unsigned long addr)
+-{
+-	return NULL;
+-}
+-
+-static inline
+-struct page *find_get_incore_page(struct address_space *mapping, pgoff_t index)
+-{
+-	return find_get_page(mapping, index);
+-}
+-
+-static inline int add_to_swap(struct page *page)
+-{
+-	return 0;
+-}
+-
+-static inline void *get_shadow_from_swap_cache(swp_entry_t entry)
+-{
+-	return NULL;
+-}
+-
+-static inline int add_to_swap_cache(struct page *page, swp_entry_t entry,
+-					gfp_t gfp_mask, void **shadowp)
+-{
+-	return -1;
+-}
+-
+-static inline void __delete_from_swap_cache(struct page *page,
+-					swp_entry_t entry, void *shadow)
+-{
+-}
+-
+-static inline void delete_from_swap_cache(struct page *page)
+-{
+-}
+-
+-static inline void clear_shadow_from_swap_cache(int type, unsigned long begin,
+-				unsigned long end)
+-{
+-}
+ 
+ static inline int page_swapcount(struct page *page)
+ {
+diff --git a/mm/madvise.c b/mm/madvise.c
+index 8c927202bbe6..724470773582 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -33,6 +33,7 @@
+ #include <asm/tlb.h>
+ 
+ #include "internal.h"
++#include "swap.h"
+ 
+ struct madvise_walk_private {
+ 	struct mmu_gather *tlb;
+diff --git a/mm/memory.c b/mm/memory.c
+index 8f1de811a1dc..80bbfd449b40 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -85,6 +85,7 @@
+ 
+ #include "pgalloc-track.h"
+ #include "internal.h"
++#include "swap.h"
+ 
+ #if defined(LAST_CPUPID_NOT_IN_PAGE_FLAGS) && !defined(CONFIG_COMPILE_TEST)
+ #warning Unfortunate NUMA and NUMA Balancing config, growing page-frame for last_cpupid.
+diff --git a/mm/mincore.c b/mm/mincore.c
+index 9122676b54d6..f4f627325e12 100644
+--- a/mm/mincore.c
++++ b/mm/mincore.c
+@@ -20,6 +20,7 @@
+ #include <linux/pgtable.h>
+ 
+ #include <linux/uaccess.h>
++#include "swap.h"
+ 
+ static int mincore_hugetlb(pte_t *pte, unsigned long hmask, unsigned long addr,
+ 			unsigned long end, struct mm_walk *walk)
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index c5952749ad40..c0b7a3878801 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -78,6 +78,7 @@
+ #include "internal.h"
+ #include "shuffle.h"
+ #include "page_reporting.h"
++#include "swap.h"
+ 
+ /* Free Page Internal flags: for internal, non-pcp variants of free_pages(). */
+ typedef int __bitwise fpi_t;
 diff --git a/mm/page_io.c b/mm/page_io.c
-index 9725c7e1eeea..cb617a4f59df 100644
+index cb617a4f59df..a9fe5de5dc32 100644
 --- a/mm/page_io.c
 +++ b/mm/page_io.c
-@@ -307,10 +307,9 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
+@@ -25,6 +25,7 @@
+ #include <linux/psi.h>
+ #include <linux/uio.h>
+ #include <linux/sched/task.h>
++#include "swap.h"
  
- 		set_page_writeback(page);
- 		unlock_page(page);
--		ret = mapping->a_ops->direct_IO(&kiocb, &from);
--		if (ret == PAGE_SIZE) {
-+		ret = mapping->a_ops->swap_rw(&kiocb, &from);
-+		if (ret == 0) {
- 			count_vm_event(PSWPOUT);
--			ret = 0;
- 		} else {
- 			/*
- 			 * In the case of swap-over-nfs, this can be a
-@@ -378,10 +377,11 @@ int swap_readpage(struct page *page, bool synchronous)
- 	}
+ void end_swap_bio_write(struct bio *bio)
+ {
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 18f93c2d68f1..993b6b3ca20f 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -39,6 +39,7 @@
+ #include <linux/frontswap.h>
+ #include <linux/fs_parser.h>
+ #include <linux/swapfile.h>
++#include "swap.h"
  
- 	if (data_race(sis->flags & SWP_FS_OPS)) {
--		struct file *swap_file = sis->swap_file;
--		struct address_space *mapping = swap_file->f_mapping;
-+		//struct file *swap_file = sis->swap_file;
-+		//struct address_space *mapping = swap_file->f_mapping;
+ static struct vfsmount *shm_mnt;
  
--		ret = mapping->a_ops->readpage(swap_file, page);
-+		/* This needs to use ->swap_rw() */
-+		ret = -EINVAL;
- 		if (!ret)
- 			count_vm_event(PSWPIN);
- 		goto out;
-@@ -434,17 +434,3 @@ int swap_readpage(struct page *page, bool synchronous)
- 	psi_memstall_leave(&pflags);
- 	return ret;
- }
--
--int swap_set_page_dirty(struct page *page)
--{
--	struct swap_info_struct *sis = page_swap_info(page);
--
--	if (data_race(sis->flags & SWP_FS_OPS)) {
--		struct address_space *mapping = sis->swap_file->f_mapping;
--
--		VM_BUG_ON_PAGE(!PageSwapCache(page), page);
--		return mapping->a_ops->set_page_dirty(page);
--	} else {
--		return __set_page_dirty_no_writeback(page);
--	}
--}
+diff --git a/mm/swap.h b/mm/swap.h
+new file mode 100644
+index 000000000000..13e72a5023aa
+--- /dev/null
++++ b/mm/swap.h
+@@ -0,0 +1,129 @@
++
++#ifdef CONFIG_SWAP
++#include <linux/blk_types.h> /* for bio_end_io_t */
++
++/* linux/mm/page_io.c */
++int swap_readpage(struct page *page, bool do_poll);
++int swap_writepage(struct page *page, struct writeback_control *wbc);
++void end_swap_bio_write(struct bio *bio);
++int __swap_writepage(struct page *page, struct writeback_control *wbc,
++		     bio_end_io_t end_write_func);
++
++/* linux/mm/swap_state.c */
++/* One swap address space for each 64M swap space */
++#define SWAP_ADDRESS_SPACE_SHIFT	14
++#define SWAP_ADDRESS_SPACE_PAGES	(1 << SWAP_ADDRESS_SPACE_SHIFT)
++extern struct address_space *swapper_spaces[];
++#define swap_address_space(entry)			    \
++	(&swapper_spaces[swp_type(entry)][swp_offset(entry) \
++		>> SWAP_ADDRESS_SPACE_SHIFT])
++
++void show_swap_cache_info(void);
++int add_to_swap(struct page *page);
++void *get_shadow_from_swap_cache(swp_entry_t entry);
++int add_to_swap_cache(struct page *page, swp_entry_t entry,
++		      gfp_t gfp, void **shadowp);
++void __delete_from_swap_cache(struct page *page,
++			      swp_entry_t entry, void *shadow);
++void delete_from_swap_cache(struct page *);
++void clear_shadow_from_swap_cache(int type, unsigned long begin,
++				  unsigned long end);
++void free_swap_cache(struct page *);
++struct page *lookup_swap_cache(swp_entry_t entry,
++			       struct vm_area_struct *vma,
++			       unsigned long addr);
++struct page *find_get_incore_page(struct address_space *mapping, pgoff_t index);
++
++struct page *read_swap_cache_async(swp_entry_t, gfp_t,
++				   struct vm_area_struct *vma,
++				   unsigned long addr,
++				   bool do_poll);
++struct page *__read_swap_cache_async(swp_entry_t, gfp_t,
++				     struct vm_area_struct *vma,
++				     unsigned long addr,
++				     bool *new_page_allocated);
++struct page *swap_cluster_readahead(swp_entry_t entry, gfp_t flag,
++				    struct vm_fault *vmf);
++struct page *swapin_readahead(swp_entry_t entry, gfp_t flag,
++			      struct vm_fault *vmf);
++
++#else /* CONFIG_SWAP */
++static inline int swap_readpage(struct page *page, bool do_poll)
++{
++	return 0;
++}
++
++static inline struct address_space *swap_address_space(swp_entry_t entry)
++{
++	return NULL;
++}
++
++static inline void free_swap_cache(struct page *page)
++{
++}
++
++static inline void show_swap_cache_info(void)
++{
++}
++
++static inline struct page *swap_cluster_readahead(swp_entry_t entry,
++				gfp_t gfp_mask, struct vm_fault *vmf)
++{
++	return NULL;
++}
++
++static inline struct page *swapin_readahead(swp_entry_t swp, gfp_t gfp_mask,
++			struct vm_fault *vmf)
++{
++	return NULL;
++}
++
++static inline int swap_writepage(struct page *p, struct writeback_control *wbc)
++{
++	return 0;
++}
++
++static inline struct page *lookup_swap_cache(swp_entry_t swp,
++					     struct vm_area_struct *vma,
++					     unsigned long addr)
++{
++	return NULL;
++}
++
++static inline
++struct page *find_get_incore_page(struct address_space *mapping, pgoff_t index)
++{
++	return find_get_page(mapping, index);
++}
++
++static inline int add_to_swap(struct page *page)
++{
++	return 0;
++}
++
++static inline void *get_shadow_from_swap_cache(swp_entry_t entry)
++{
++	return NULL;
++}
++
++static inline int add_to_swap_cache(struct page *page, swp_entry_t entry,
++					gfp_t gfp_mask, void **shadowp)
++{
++	return -1;
++}
++
++static inline void __delete_from_swap_cache(struct page *page,
++					swp_entry_t entry, void *shadow)
++{
++}
++
++static inline void delete_from_swap_cache(struct page *page)
++{
++}
++
++static inline void clear_shadow_from_swap_cache(int type, unsigned long begin,
++				unsigned long end)
++{
++}
++
++#endif /* CONFIG_SWAP */
 diff --git a/mm/swap_state.c b/mm/swap_state.c
-index 8d4104242100..616eb1d75b35 100644
+index 616eb1d75b35..514b86b05488 100644
 --- a/mm/swap_state.c
 +++ b/mm/swap_state.c
-@@ -30,7 +30,7 @@
-  */
- static const struct address_space_operations swap_aops = {
- 	.writepage	= swap_writepage,
--	.set_page_dirty	= swap_set_page_dirty,
-+	.set_page_dirty	= __set_page_dirty_no_writeback,
- #ifdef CONFIG_MIGRATION
- 	.migratepage	= migrate_page,
- #endif
+@@ -23,6 +23,7 @@
+ #include <linux/huge_mm.h>
+ #include <linux/shmem_fs.h>
+ #include "internal.h"
++#include "swap.h"
+ 
+ /*
+  * swapper_space is a fiction, retained to simplify the path through
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index e59e08ef46e1..419eacf474c5 100644
+index 419eacf474c5..f23d9ff21cf8 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -2397,13 +2397,9 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+@@ -44,6 +44,7 @@
+ #include <asm/tlbflush.h>
+ #include <linux/swapops.h>
+ #include <linux/swap_cgroup.h>
++#include "swap.h"
  
- 	if (mapping->a_ops->swap_activate) {
- 		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
--		if (ret >= 0)
--			sis->flags |= SWP_ACTIVATED;
--		if (!ret) {
--			sis->flags |= SWP_FS_OPS;
--			ret = add_swap_extent(sis, 0, sis->max, 0);
--			*span = sis->pages;
--		}
-+		if (ret < 0)
-+			return ret;
-+		sis->flags |= SWP_ACTIVATED;
- 		return ret;
- 	}
+ static bool swap_count_continued(struct swap_info_struct *, pgoff_t,
+ 				 unsigned char);
+diff --git a/mm/util.c b/mm/util.c
+index 741ba32a43ac..7e26387be090 100644
+--- a/mm/util.c
++++ b/mm/util.c
+@@ -27,6 +27,7 @@
+ #include <linux/uaccess.h>
  
+ #include "internal.h"
++#include "swap.h"
+ 
+ /**
+  * kfree_const - conditionally free memory
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index fb9584641ac7..969bcdb4ca80 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -58,6 +58,7 @@
+ #include <linux/balloon_compaction.h>
+ 
+ #include "internal.h"
++#include "swap.h"
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/vmscan.h>
 
 
