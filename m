@@ -2,43 +2,48 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FDD6C4321E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02EE1C43217
 	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 20:55:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237309AbhLQUzG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S237386AbhLQUzG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 17 Dec 2021 15:55:06 -0500
-Received: from sin.source.kernel.org ([145.40.73.55]:57902 "EHLO
-        sin.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237369AbhLQUzF (ORCPT
+Received: from dfw.source.kernel.org ([139.178.84.217]:40092 "EHLO
+        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S237309AbhLQUzF (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 15:55:05 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 1C3B6CE269B
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 20:55:04 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B627C36AE2;
-        Fri, 17 Dec 2021 20:55:01 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0A208623C1
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 20:55:05 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 90BC1C36AE2;
+        Fri, 17 Dec 2021 20:55:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1639774502;
-        bh=PlBAEStFqj2AjhFSgj+8SvvyMQgNls6jBnDftH2hE5s=;
+        s=k20201202; t=1639774504;
+        bh=QXcmJ6avdu7VQ4fQjHidyKHbQGwREnHDiKYaQSDj74k=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=mnZ2B3cQqYYGqh15jvI8M5/zzWLpG2mBXMwai5YqKI282nNE84LPjfMeRvthyRyOf
-         OrSEi+T1HcqH5ayLqWgHaqajoEv4regBpwWzYyg54tRpGvZmZf4Vvmgvkdvt3IqTui
-         /iErLiaFD8LlKLDFyq6vFMD961z8TK1P0MXIWRPlvYL/gvUDkQrEqFYPL5UKM3zNfO
-         DdgeGP5gdFz2PeXxEq18VntnSLLfM365jLZlPF6ZGZPgNHSIG5WHyXpaTDWHm57jKU
-         7l5P/Ibkh6K08ptOFWErVuiydhTInFKfkmO4Le/fNEFu68YTckxi8h2denJOD1gpFz
-         /ZX/eIxoE8NCw==
+        b=sXpG0gLEdI0IfyZB3HypP0319sVdjCb99GeP/GozF2CHhsfnFdjGI1zz7WRsqrEoF
+         ngSvTltXo3DnoOWOfbcXwEzOZL7F4qkt/TFhFoWR2PGJK1eKrzRIIXjzMAaRO9hAPZ
+         vf6/M2pIQ6qLHSv9uZfH2i+U5enQnKM/zNdGCav6oqTtSIailqxgNULPg2i6L3w0IN
+         iR8ZBL9tgbWBlK+n2WiqJ9F4pIunyJzXe9RFahIiFs9bulK0QebSzaXNshqf2NFpTu
+         FHV7+Cawbdfvg4WnDp6Ze78AAL468SMuYNr/epuMRt4zUnWuyTN/Ny7srdkJePyYYj
+         hCMoBwT0SR3TQ==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/8] NFS: Return the file btime in the statx results when appropriate
-Date:   Fri, 17 Dec 2021 15:48:49 -0500
-Message-Id: <20211217204854.439578-4-trondmy@kernel.org>
+Subject: [PATCH 8/8] NFSv4: Add an ioctl to allow retrieval of the NFS raw ACCESS mask
+Date:   Fri, 17 Dec 2021 15:48:54 -0500
+Message-Id: <20211217204854.439578-9-trondmy@kernel.org>
 X-Mailer: git-send-email 2.33.1
-In-Reply-To: <20211217204854.439578-3-trondmy@kernel.org>
+In-Reply-To: <20211217204854.439578-8-trondmy@kernel.org>
 References: <20211217204854.439578-1-trondmy@kernel.org>
  <20211217204854.439578-2-trondmy@kernel.org>
  <20211217204854.439578-3-trondmy@kernel.org>
+ <20211217204854.439578-4-trondmy@kernel.org>
+ <20211217204854.439578-5-trondmy@kernel.org>
+ <20211217204854.439578-6-trondmy@kernel.org>
+ <20211217204854.439578-7-trondmy@kernel.org>
+ <20211217204854.439578-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,97 +52,195 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the server supports the NFSv4.x "create_time" attribute, then return
-it as part of the statx results.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c     | 15 +++++++++++++--
- fs/nfs/nfs4trace.h |  3 ++-
- 2 files changed, 15 insertions(+), 3 deletions(-)
+ fs/nfs/dir.c             | 47 +++++++++++++++++++++++++---------------
+ fs/nfs/internal.h        |  2 ++
+ fs/nfs/nfs4file.c        | 39 +++++++++++++++++++++++++++++++++
+ include/uapi/linux/nfs.h | 11 ++++++++++
+ 4 files changed, 81 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 908a62d6a29c..94268cab7613 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -815,6 +815,7 @@ static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index f6fc60822153..2cbff76d36de 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2863,37 +2863,33 @@ void nfs_access_set_mask(struct nfs_access_entry *entry, u32 access_result)
+ }
+ EXPORT_SYMBOL_GPL(nfs_access_set_mask);
  
- static u32 nfs_get_valid_attrmask(struct inode *inode)
+-static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
++int nfs_get_access(struct inode *inode, const struct cred *cred,
++		   struct nfs_access_entry *cache, bool may_block)
  {
-+	u64 fattr_valid = NFS_SERVER(inode)->fattr_valid;
- 	unsigned long cache_validity = READ_ONCE(NFS_I(inode)->cache_validity);
- 	u32 reply_mask = STATX_INO | STATX_TYPE;
+-	struct nfs_access_entry cache;
+-	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
+-	int cache_mask = -1;
+ 	int status;
  
-@@ -834,6 +835,9 @@ static u32 nfs_get_valid_attrmask(struct inode *inode)
- 		reply_mask |= STATX_UID | STATX_GID;
- 	if (!(cache_validity & NFS_INO_INVALID_BLOCKS))
- 		reply_mask |= STATX_BLOCKS;
-+	if (!(cache_validity & NFS_INO_INVALID_BTIME) &&
-+	    (fattr_valid & NFS_ATTR_FATTR_BTIME))
-+		reply_mask |= STATX_BTIME;
- 	return reply_mask;
+ 	trace_nfs_access_enter(inode);
+ 
+-	status = nfs_access_get_cached(inode, cred, &cache, may_block);
++	status = nfs_access_get_cached(inode, cred, cache, may_block);
+ 	if (status == 0)
+-		goto out_cached;
++		return 0;
+ 
+-	status = -ECHILD;
+ 	if (!may_block)
+-		goto out;
+-
++		return -ECHILD;
+ 	/*
+ 	 * Determine which access bits we want to ask for...
+ 	 */
+-	cache.mask = NFS_ACCESS_READ | NFS_ACCESS_MODIFY | NFS_ACCESS_EXTEND;
++	cache->mask = NFS_ACCESS_READ | NFS_ACCESS_MODIFY | NFS_ACCESS_EXTEND;
+ 	if (nfs_server_capable(inode, NFS_CAP_XATTR)) {
+-		cache.mask |= NFS_ACCESS_XAREAD | NFS_ACCESS_XAWRITE |
++		cache->mask |= NFS_ACCESS_XAREAD | NFS_ACCESS_XAWRITE |
+ 		    NFS_ACCESS_XALIST;
+ 	}
+ 	if (S_ISDIR(inode->i_mode))
+-		cache.mask |= NFS_ACCESS_DELETE | NFS_ACCESS_LOOKUP;
++		cache->mask |= NFS_ACCESS_DELETE | NFS_ACCESS_LOOKUP;
+ 	else
+-		cache.mask |= NFS_ACCESS_EXECUTE;
+-	cache.cred = cred;
+-	status = NFS_PROTO(inode)->access(inode, &cache);
++		cache->mask |= NFS_ACCESS_EXECUTE;
++	cache->cred = cred;
++	status = NFS_PROTO(inode)->access(inode, cache);
+ 	if (status != 0) {
+ 		if (status == -ESTALE) {
+ 			if (!S_ISDIR(inode->i_mode))
+@@ -2901,10 +2897,25 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
+ 			else
+ 				nfs_zap_caches(inode);
+ 		}
+-		goto out;
++		return status;
+ 	}
+-	nfs_access_add_cache(inode, &cache);
+-out_cached:
++	nfs_access_add_cache(inode, cache);
++	return 0;
++}
++EXPORT_SYMBOL_GPL(nfs_get_access);
++
++static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
++{
++	struct nfs_access_entry cache;
++	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
++	int cache_mask = -1;
++	int status;
++
++	trace_nfs_access_enter(inode);
++
++	status = nfs_get_access(inode, cred, &cache, may_block);
++	if (status < 0)
++		goto out;
+ 	cache_mask = nfs_access_calc_mask(cache.mask, inode->i_mode);
+ 	if ((mask & ~cache_mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) != 0)
+ 		status = -EACCES;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9602a886f0f0..9b8fd2247533 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -392,6 +392,8 @@ int nfs_mknod(struct user_namespace *, struct inode *, struct dentry *, umode_t,
+ 	      dev_t);
+ int nfs_rename(struct user_namespace *, struct inode *, struct dentry *,
+ 	       struct inode *, struct dentry *, unsigned int);
++int nfs_get_access(struct inode *inode, const struct cred *cred,
++		   struct nfs_access_entry *cache, bool may_block);
+ 
+ /* file.c */
+ int nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 494ebc7cd1c0..ccf70d26c5c4 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -611,6 +611,42 @@ static long nfs4_ioctl_file_statx_set(struct file *dst_file,
+ 	return ret;
  }
  
-@@ -842,6 +846,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- {
- 	struct inode *inode = d_inode(path->dentry);
- 	struct nfs_server *server = NFS_SERVER(inode);
-+	u64 fattr_valid = server->fattr_valid;
- 	unsigned long cache_validity;
- 	int err = 0;
- 	bool force_sync = query_flags & AT_STATX_FORCE_SYNC;
-@@ -851,7 +856,10 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 
- 	request_mask &= STATX_TYPE | STATX_MODE | STATX_NLINK | STATX_UID |
- 			STATX_GID | STATX_ATIME | STATX_MTIME | STATX_CTIME |
--			STATX_INO | STATX_SIZE | STATX_BLOCKS;
-+			STATX_INO | STATX_SIZE | STATX_BLOCKS | STATX_BTIME;
++static long
++nfs4_ioctl_file_access_get(struct file *file,
++			   struct nfs_ioctl_nfs4_access __user *uarg)
++{
++	struct inode *inode = file_inode(file);
++	struct nfs_access_entry cache;
++	__u64 ac_flags;
++	const struct cred *old_cred;
++	struct cred *override_cred;
++	long ret;
 +
-+	if (!(fattr_valid & NFS_ATTR_FATTR_BTIME))
-+		request_mask &= ~STATX_BTIME;
++	if (!NFS_PROTO(inode)->access)
++		return -ENOTSUPP;
++
++	if (get_user(ac_flags, &uarg->ac_flags))
++		return -EFAULT;
++
++	override_cred = prepare_creds();
++	if (!override_cred)
++		return -ENOMEM;
++
++	if (!(ac_flags & NFS_AC_FLAG_EACCESS)) {
++		override_cred->fsuid = override_cred->uid;
++		override_cred->fsgid = override_cred->gid;
++	}
++	old_cred = override_creds(override_cred);
++
++	ret = nfs_get_access(inode, override_cred, &cache, true);
++	if (!ret && unlikely(put_user(cache.mask, &uarg->ac_mask) != 0))
++		ret = -EFAULT;
++
++	revert_creds(old_cred);
++	put_cred(override_cred);
++	return ret;
++}
++
+ static long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ {
+ 	void __user *argp = (void __user *)arg;
+@@ -623,6 +659,9 @@ static long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case NFS_IOC_FILE_STATX_SET:
+ 		ret = nfs4_ioctl_file_statx_set(file, argp);
+ 		break;
++	case NFS_IOC_FILE_ACCESS_GET:
++		ret = nfs4_ioctl_file_access_get(file, argp);
++		break;
+ 	default:
+ 		ret = -ENOIOCTLCMD;
+ 	}
+diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
+index df87da39bc43..b1e50f14db18 100644
+--- a/include/uapi/linux/nfs.h
++++ b/include/uapi/linux/nfs.h
+@@ -41,6 +41,8 @@
+ #define NFS_IOC_FILE_STATX_GET	_IOR('N', 2, struct nfs_ioctl_nfs4_statx)
+ #define NFS_IOC_FILE_STATX_SET	_IOW('N', 3, struct nfs_ioctl_nfs4_statx)
  
- 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
- 		nfs_readdirplus_parent_cache_hit(path->dentry);
-@@ -882,7 +890,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 	/* Is the user requesting attributes that might need revalidation? */
- 	if (!(request_mask & (STATX_MODE|STATX_NLINK|STATX_ATIME|STATX_CTIME|
- 					STATX_MTIME|STATX_UID|STATX_GID|
--					STATX_SIZE|STATX_BLOCKS)))
-+					STATX_SIZE|STATX_BLOCKS|STATX_BTIME)))
- 		goto out_no_revalidate;
++#define NFS_IOC_FILE_ACCESS_GET	_IOR('N', 4, struct nfs_ioctl_nfs4_access)
++
+ /* Options for struct nfs_ioctl_nfs4_statx */
+ #define NFS_FA_OPTIONS_SYNC_AS_STAT			0x0000
+ #define NFS_FA_OPTIONS_FORCE_SYNC			0x2000 /* See statx */
+@@ -125,6 +127,15 @@ struct nfs_ioctl_nfs4_statx {
+ 	__u64 		fa_padding[4];
+ };
  
- 	/* Check whether the cached attributes are stale */
-@@ -905,6 +913,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		do_update |= cache_validity & NFS_INO_INVALID_OTHER;
- 	if (request_mask & STATX_BLOCKS)
- 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
-+	if (request_mask & STATX_BTIME)
-+		do_update |= cache_validity & NFS_INO_INVALID_BTIME;
- 
- 	if (do_update) {
- 		/* Update the attribute cache */
-@@ -925,6 +935,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
- 	if (S_ISDIR(inode->i_mode))
- 		stat->blksize = NFS_SERVER(inode)->dtsize;
-+	stat->btime = NFS_I(inode)->btime;
- out:
- 	trace_nfs_getattr_exit(inode, err);
- 	return err;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 6ee6ad3674a2..186b851be5ba 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -30,7 +30,8 @@
- 		{ NFS_ATTR_FATTR_CTIME, "CTIME" }, \
- 		{ NFS_ATTR_FATTR_CHANGE, "CHANGE" }, \
- 		{ NFS_ATTR_FATTR_OWNER_NAME, "OWNER_NAME" }, \
--		{ NFS_ATTR_FATTR_GROUP_NAME, "GROUP_NAME" })
-+		{ NFS_ATTR_FATTR_GROUP_NAME, "GROUP_NAME" }, \
-+		{ NFS_ATTR_FATTR_BTIME, "BTIME" })
- 
- DECLARE_EVENT_CLASS(nfs4_clientid_event,
- 		TP_PROTO(
++struct nfs_ioctl_nfs4_access {
++	/* input */
++	__u64		ac_flags;		/* operation flags */
++	/* output */
++	__u64		ac_mask;		/* NFS raw ACCESS reply mask */
++};
++
++#define NFS_AC_FLAG_EACCESS (1UL << 0)
++
+ /*
+  * NFS stats. The good thing with these values is that NFSv3 errors are
+  * a superset of NFSv2 errors (with the exception of NFSERR_WFLUSH which
 -- 
 2.33.1
 
