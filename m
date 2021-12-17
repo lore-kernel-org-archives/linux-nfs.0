@@ -2,245 +2,277 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02EE1C43217
-	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 20:55:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37479C433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 20:55:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237386AbhLQUzG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 17 Dec 2021 15:55:06 -0500
-Received: from dfw.source.kernel.org ([139.178.84.217]:40092 "EHLO
-        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237309AbhLQUzF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 15:55:05 -0500
+        id S237401AbhLQUzF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 17 Dec 2021 15:55:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48676 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S237288AbhLQUzE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 15:55:04 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64560C06173E
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 12:55:04 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 0A208623C1
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 20:55:05 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 90BC1C36AE2;
-        Fri, 17 Dec 2021 20:55:04 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0373E623C8
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 20:55:04 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 87FA7C36AEC;
+        Fri, 17 Dec 2021 20:55:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1639774504;
-        bh=QXcmJ6avdu7VQ4fQjHidyKHbQGwREnHDiKYaQSDj74k=;
+        s=k20201202; t=1639774503;
+        bh=oyq6hF0r5XOT4VRw3Gj5irBCLCxdn86r1NVUPaKx7ww=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=sXpG0gLEdI0IfyZB3HypP0319sVdjCb99GeP/GozF2CHhsfnFdjGI1zz7WRsqrEoF
-         ngSvTltXo3DnoOWOfbcXwEzOZL7F4qkt/TFhFoWR2PGJK1eKrzRIIXjzMAaRO9hAPZ
-         vf6/M2pIQ6qLHSv9uZfH2i+U5enQnKM/zNdGCav6oqTtSIailqxgNULPg2i6L3w0IN
-         iR8ZBL9tgbWBlK+n2WiqJ9F4pIunyJzXe9RFahIiFs9bulK0QebSzaXNshqf2NFpTu
-         FHV7+Cawbdfvg4WnDp6Ze78AAL468SMuYNr/epuMRt4zUnWuyTN/Ny7srdkJePyYYj
-         hCMoBwT0SR3TQ==
+        b=MM5l/6n35YTuhqWftmMTemqpsn1QZktO61CG3CYQy8NJKIHDUw6OXJ8o6NQ3FTxaK
+         OddNJTXObUPH9wcxxi+lFeYuomzgNWRSgS9N5Ue4CyrX9NLQIJSE6IYu9mnPWYttX1
+         rkfNRQOnMAIlUxtfecUqhOFXiAuU8/lM7Ggo2ekZO9QsaMJjiuyoiJWbZpr0qYETip
+         gUecs78e+VhEqQCY7cSkGnJS+MezGbF5X6ohJ1/VU255Y9lB5ead4dhc3JcooNlxx1
+         KtRZwg+Y8zvCnnwDPzkyfC5+Zoy2aHhL8t8PQy3sT3xz6eCCO11vCdvxcu56PSlzIb
+         Oa02dHQegmfVA==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 8/8] NFSv4: Add an ioctl to allow retrieval of the NFS raw ACCESS mask
-Date:   Fri, 17 Dec 2021 15:48:54 -0500
-Message-Id: <20211217204854.439578-9-trondmy@kernel.org>
+Subject: [PATCH 6/8] NFSv4: Support the offline bit
+Date:   Fri, 17 Dec 2021 15:48:52 -0500
+Message-Id: <20211217204854.439578-7-trondmy@kernel.org>
 X-Mailer: git-send-email 2.33.1
-In-Reply-To: <20211217204854.439578-8-trondmy@kernel.org>
+In-Reply-To: <20211217204854.439578-6-trondmy@kernel.org>
 References: <20211217204854.439578-1-trondmy@kernel.org>
  <20211217204854.439578-2-trondmy@kernel.org>
  <20211217204854.439578-3-trondmy@kernel.org>
  <20211217204854.439578-4-trondmy@kernel.org>
  <20211217204854.439578-5-trondmy@kernel.org>
  <20211217204854.439578-6-trondmy@kernel.org>
- <20211217204854.439578-7-trondmy@kernel.org>
- <20211217204854.439578-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
+Add tracking of the NFSv4 'offline' attribute.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c             | 47 +++++++++++++++++++++++++---------------
- fs/nfs/internal.h        |  2 ++
- fs/nfs/nfs4file.c        | 39 +++++++++++++++++++++++++++++++++
- include/uapi/linux/nfs.h | 11 ++++++++++
- 4 files changed, 81 insertions(+), 18 deletions(-)
+ fs/nfs/inode.c          | 11 +++++++++++
+ fs/nfs/nfs4proc.c       |  6 ++++++
+ fs/nfs/nfs4trace.h      |  3 ++-
+ fs/nfs/nfs4xdr.c        | 31 ++++++++++++++++++++++++++++++-
+ include/linux/nfs4.h    |  1 +
+ include/linux/nfs_fs.h  |  1 +
+ include/linux/nfs_xdr.h |  5 ++++-
+ 7 files changed, 55 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f6fc60822153..2cbff76d36de 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2863,37 +2863,33 @@ void nfs_access_set_mask(struct nfs_access_entry *entry, u32 access_result)
- }
- EXPORT_SYMBOL_GPL(nfs_access_set_mask);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 4673b091ea31..33f4410190b6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -528,6 +528,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		nfsi->archive = 0;
+ 		nfsi->hidden = 0;
+ 		nfsi->system = 0;
++		nfsi->offline = 0;
+ 		inode_set_iversion_raw(inode, 0);
+ 		inode->i_size = 0;
+ 		clear_nlink(inode);
+@@ -606,6 +607,10 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		} else if (fattr_supported & NFS_ATTR_FATTR_SPACE_USED &&
+ 			   fattr->size != 0)
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
++		if (fattr->valid & NFS_ATTR_FATTR_OFFLINE)
++			nfsi->offline = (fattr->hsa_flags & NFS_HSA_OFFLINE) ? 1 : 0;
++		else if (fattr_supported & NFS_ATTR_FATTR_OFFLINE)
++			nfs_set_cache_invalid(inode, NFS_INO_INVALID_WINATTR);
  
--static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
-+int nfs_get_access(struct inode *inode, const struct cred *cred,
-+		   struct nfs_access_entry *cache, bool may_block)
- {
--	struct nfs_access_entry cache;
--	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
--	int cache_mask = -1;
- 	int status;
+ 		nfs_setsecurity(inode, fattr);
  
- 	trace_nfs_access_enter(inode);
+@@ -2274,6 +2279,12 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_BLOCKS;
  
--	status = nfs_access_get_cached(inode, cred, &cache, may_block);
-+	status = nfs_access_get_cached(inode, cred, cache, may_block);
- 	if (status == 0)
--		goto out_cached;
-+		return 0;
- 
--	status = -ECHILD;
- 	if (!may_block)
--		goto out;
--
-+		return -ECHILD;
- 	/*
- 	 * Determine which access bits we want to ask for...
- 	 */
--	cache.mask = NFS_ACCESS_READ | NFS_ACCESS_MODIFY | NFS_ACCESS_EXTEND;
-+	cache->mask = NFS_ACCESS_READ | NFS_ACCESS_MODIFY | NFS_ACCESS_EXTEND;
- 	if (nfs_server_capable(inode, NFS_CAP_XATTR)) {
--		cache.mask |= NFS_ACCESS_XAREAD | NFS_ACCESS_XAWRITE |
-+		cache->mask |= NFS_ACCESS_XAREAD | NFS_ACCESS_XAWRITE |
- 		    NFS_ACCESS_XALIST;
- 	}
- 	if (S_ISDIR(inode->i_mode))
--		cache.mask |= NFS_ACCESS_DELETE | NFS_ACCESS_LOOKUP;
-+		cache->mask |= NFS_ACCESS_DELETE | NFS_ACCESS_LOOKUP;
- 	else
--		cache.mask |= NFS_ACCESS_EXECUTE;
--	cache.cred = cred;
--	status = NFS_PROTO(inode)->access(inode, &cache);
-+		cache->mask |= NFS_ACCESS_EXECUTE;
-+	cache->cred = cred;
-+	status = NFS_PROTO(inode)->access(inode, cache);
- 	if (status != 0) {
- 		if (status == -ESTALE) {
- 			if (!S_ISDIR(inode->i_mode))
-@@ -2901,10 +2897,25 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
- 			else
- 				nfs_zap_caches(inode);
- 		}
--		goto out;
-+		return status;
- 	}
--	nfs_access_add_cache(inode, &cache);
--out_cached:
-+	nfs_access_add_cache(inode, cache);
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(nfs_get_access);
++	if (fattr->valid & NFS_ATTR_FATTR_OFFLINE)
++		nfsi->offline = (fattr->hsa_flags & NFS_HSA_OFFLINE) ? 1 : 0;
++	else if (fattr_supported & NFS_ATTR_FATTR_OFFLINE)
++		nfsi->cache_validity |=
++			save_cache_validity & NFS_INO_INVALID_WINATTR;
 +
-+static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
-+{
-+	struct nfs_access_entry cache;
-+	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
-+	int cache_mask = -1;
-+	int status;
-+
-+	trace_nfs_access_enter(inode);
-+
-+	status = nfs_get_access(inode, cred, &cache, may_block);
-+	if (status < 0)
-+		goto out;
- 	cache_mask = nfs_access_calc_mask(cache.mask, inode->i_mode);
- 	if ((mask & ~cache_mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) != 0)
- 		status = -EACCES;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9602a886f0f0..9b8fd2247533 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -392,6 +392,8 @@ int nfs_mknod(struct user_namespace *, struct inode *, struct dentry *, umode_t,
- 	      dev_t);
- int nfs_rename(struct user_namespace *, struct inode *, struct dentry *,
- 	       struct inode *, struct dentry *, unsigned int);
-+int nfs_get_access(struct inode *inode, const struct cred *cred,
-+		   struct nfs_access_entry *cache, bool may_block);
- 
- /* file.c */
- int nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync);
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 494ebc7cd1c0..ccf70d26c5c4 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -611,6 +611,42 @@ static long nfs4_ioctl_file_statx_set(struct file *dst_file,
- 	return ret;
- }
- 
-+static long
-+nfs4_ioctl_file_access_get(struct file *file,
-+			   struct nfs_ioctl_nfs4_access __user *uarg)
-+{
-+	struct inode *inode = file_inode(file);
-+	struct nfs_access_entry cache;
-+	__u64 ac_flags;
-+	const struct cred *old_cred;
-+	struct cred *override_cred;
-+	long ret;
-+
-+	if (!NFS_PROTO(inode)->access)
-+		return -ENOTSUPP;
-+
-+	if (get_user(ac_flags, &uarg->ac_flags))
-+		return -EFAULT;
-+
-+	override_cred = prepare_creds();
-+	if (!override_cred)
-+		return -ENOMEM;
-+
-+	if (!(ac_flags & NFS_AC_FLAG_EACCESS)) {
-+		override_cred->fsuid = override_cred->uid;
-+		override_cred->fsgid = override_cred->gid;
-+	}
-+	old_cred = override_creds(override_cred);
-+
-+	ret = nfs_get_access(inode, override_cred, &cache, true);
-+	if (!ret && unlikely(put_user(cache.mask, &uarg->ac_mask) != 0))
-+		ret = -EFAULT;
-+
-+	revert_creds(old_cred);
-+	put_cred(override_cred);
-+	return ret;
-+}
-+
- static long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- {
- 	void __user *argp = (void __user *)arg;
-@@ -623,6 +659,9 @@ static long nfs4_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case NFS_IOC_FILE_STATX_SET:
- 		ret = nfs4_ioctl_file_statx_set(file, argp);
- 		break;
-+	case NFS_IOC_FILE_ACCESS_GET:
-+		ret = nfs4_ioctl_file_access_get(file, argp);
-+		break;
- 	default:
- 		ret = -ENOIOCTLCMD;
- 	}
-diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
-index df87da39bc43..b1e50f14db18 100644
---- a/include/uapi/linux/nfs.h
-+++ b/include/uapi/linux/nfs.h
-@@ -41,6 +41,8 @@
- #define NFS_IOC_FILE_STATX_GET	_IOR('N', 2, struct nfs_ioctl_nfs4_statx)
- #define NFS_IOC_FILE_STATX_SET	_IOW('N', 3, struct nfs_ioctl_nfs4_statx)
- 
-+#define NFS_IOC_FILE_ACCESS_GET	_IOR('N', 4, struct nfs_ioctl_nfs4_access)
-+
- /* Options for struct nfs_ioctl_nfs4_statx */
- #define NFS_FA_OPTIONS_SYNC_AS_STAT			0x0000
- #define NFS_FA_OPTIONS_FORCE_SYNC			0x2000 /* See statx */
-@@ -125,6 +127,15 @@ struct nfs_ioctl_nfs4_statx {
- 	__u64 		fa_padding[4];
+ 	/* Update attrtimeo value if we're out of the unstable period */
+ 	if (attr_changed) {
+ 		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d3a528a4c9b7..d497616ca149 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -218,6 +218,7 @@ const u32 nfs4_fattr_bitmap[3] = {
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+ 	FATTR4_WORD2_SECURITY_LABEL
+ #endif
++	| FATTR4_WORD2_OFFLINE
  };
  
-+struct nfs_ioctl_nfs4_access {
-+	/* input */
-+	__u64		ac_flags;		/* operation flags */
-+	/* output */
-+	__u64		ac_mask;		/* NFS raw ACCESS reply mask */
-+};
+ static const u32 nfs4_pnfs_open_bitmap[3] = {
+@@ -244,6 +245,7 @@ static const u32 nfs4_pnfs_open_bitmap[3] = {
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+ 	| FATTR4_WORD2_SECURITY_LABEL
+ #endif
++	| FATTR4_WORD2_OFFLINE
+ };
+ 
+ static const u32 nfs4_open_noattr_bitmap[3] = {
+@@ -324,6 +326,7 @@ static void nfs4_bitmap_copy_adjust(__u32 *dst, const __u32 *src,
+ 	if (!(cache_validity & NFS_INO_INVALID_WINATTR)) {
+ 		dst[0] &= ~(FATTR4_WORD0_ARCHIVE | FATTR4_WORD0_HIDDEN);
+ 		dst[1] &= ~(FATTR4_WORD1_SYSTEM | FATTR4_WORD1_TIME_BACKUP);
++		dst[2] &= ~FATTR4_WORD2_OFFLINE;
+ 	}
+ }
+ 
+@@ -3927,6 +3930,8 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 		memcpy(server->attr_bitmask_nl, res.attr_bitmask,
+ 				sizeof(server->attr_bitmask));
+ 		server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
++		if (!(res.attr_bitmask[2] & FATTR4_WORD2_OFFLINE))
++			server->fattr_valid &= ~NFS_ATTR_FATTR_OFFLINE;
+ 
+ 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
+ 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+@@ -5484,6 +5489,7 @@ static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ], const __u32 *src,
+ 	if (cache_validity & NFS_INO_INVALID_WINATTR) {
+ 		bitmask[0] |= FATTR4_WORD0_ARCHIVE | FATTR4_WORD0_HIDDEN;
+ 		bitmask[1] |= FATTR4_WORD1_SYSTEM | FATTR4_WORD1_TIME_BACKUP;
++		bitmask[2] |= FATTR4_WORD2_OFFLINE;
+ 	}
+ 
+ 	if (cache_validity & NFS_INO_INVALID_SIZE)
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 5e72639b469e..02c78d66c36d 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -35,7 +35,8 @@
+ 		{ NFS_ATTR_FATTR_HIDDEN, "HIDDEN" }, \
+ 		{ NFS_ATTR_FATTR_SYSTEM, "SYSTEM" }, \
+ 		{ NFS_ATTR_FATTR_ARCHIVE, "ARCHIVE" }, \
+-		{ NFS_ATTR_FATTR_TIME_BACKUP, "TIME_BACKUP" })
++		{ NFS_ATTR_FATTR_TIME_BACKUP, "TIME_BACKUP" }, \
++		{ NFS_ATTR_FATTR_OFFLINE, "OFFLINE" })
+ 
+ DECLARE_EVENT_CLASS(nfs4_clientid_event,
+ 		TP_PROTO(
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 68885ba5fc58..d2c240effc87 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1623,7 +1623,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
+ 			    FATTR4_WORD1_TIME_CREATE |
+ 			    FATTR4_WORD1_TIME_METADATA |
+ 			    FATTR4_WORD1_TIME_MODIFY;
+-		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
++		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL | FATTR4_WORD2_OFFLINE;
+ 		dircount >>= 1;
+ 	}
+ 	/* Use mounted_on_fileid only if the server supports it */
+@@ -4353,6 +4353,29 @@ static int decode_attr_xattrsupport(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	return 0;
+ }
+ 
++static int decode_attr_offline(struct xdr_stream *xdr, uint32_t *bitmap,
++			       uint32_t *res, uint64_t *flags)
++{
++	int status = 0;
++	__be32 *p;
 +
-+#define NFS_AC_FLAG_EACCESS (1UL << 0)
++	if (unlikely(bitmap[2] & (FATTR4_WORD2_OFFLINE - 1U)))
++		return -EIO;
++	if (likely(bitmap[2] & FATTR4_WORD2_OFFLINE)) {
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			return -EIO;
++		if (be32_to_cpup(p))
++			*res |= NFS_HSA_OFFLINE;
++		else
++			*res &= ~NFS_HSA_OFFLINE;
++		bitmap[2] &= ~FATTR4_WORD2_OFFLINE;
++		*flags |= NFS_ATTR_FATTR_OFFLINE;
++	}
++	dprintk("%s: system file: =%s\n", __func__, (*res & NFS_HSA_OFFLINE) == 0 ? "false" : "true");
++	return status;
++}
 +
+ static int verify_attr_len(struct xdr_stream *xdr, unsigned int savep, uint32_t attrlen)
+ {
+ 	unsigned int attrwords = XDR_QUADLEN(attrlen);
+@@ -4841,6 +4864,12 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		fattr->valid |= status;
+ 	}
+ 
++	status = decode_attr_offline(xdr, bitmap, &fattr->hsa_flags,
++				     &fattr->valid);
++	if (status < 0)
++		goto xdr_error;
++
++	status = 0;
+ xdr_error:
+ 	dprintk("%s: xdr returned %d\n", __func__, -status);
+ 	return status;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 5662d8be04eb..817b349c24ca 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -460,6 +460,7 @@ enum lock_type4 {
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
+ #define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
++#define FATTR4_WORD2_OFFLINE		(1UL << 19)
+ 
+ /* MDS threshold bitmap bits */
+ #define THRESHOLD_RD                    (1UL << 0)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 5f1dbd7a7b69..058fc11338d9 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -146,6 +146,7 @@ struct nfs_inode {
+ 	unsigned char		archive : 1;
+ 	unsigned char		hidden : 1;
+ 	unsigned char		system : 1;
++	unsigned char		offline : 1;
+ 
+ 	/*
+ 	 * read_cache_jiffies is when we started read-caching this inode.
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 69c19f465571..0d5b11c1bfec 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -21,6 +21,7 @@
+ #define NFS_HSA_HIDDEN		BIT(0)
+ #define NFS_HSA_SYSTEM		BIT(1)
+ #define NFS_HSA_ARCHIVE		BIT(2)
++#define NFS_HSA_OFFLINE		BIT(3)
+ 
+ struct nfs4_string {
+ 	unsigned int len;
+@@ -119,6 +120,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_SYSTEM           BIT_ULL(28)
+ #define NFS_ATTR_FATTR_ARCHIVE          BIT_ULL(29)
+ #define NFS_ATTR_FATTR_TIME_BACKUP      BIT_ULL(30)
++#define NFS_ATTR_FATTR_OFFLINE          BIT_ULL(31)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -144,7 +146,8 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_SYSTEM \
+ 		| NFS_ATTR_FATTR_ARCHIVE \
+ 		| NFS_ATTR_FATTR_TIME_BACKUP \
+-		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL \
++		| NFS_ATTR_FATTR_OFFLINE)
+ 
  /*
-  * NFS stats. The good thing with these values is that NFSv3 errors are
-  * a superset of NFSv2 errors (with the exception of NFSERR_WFLUSH which
+  * Maximal number of supported layout drivers.
 -- 
 2.33.1
 
