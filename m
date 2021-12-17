@@ -2,200 +2,379 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2A02C43217
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28BB9C4332F
 	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 21:57:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230398AbhLQV5S (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 17 Dec 2021 16:57:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34880 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230399AbhLQV5R (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 16:57:17 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C671C061574
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 13:57:17 -0800 (PST)
+        id S230314AbhLQV5R (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 17 Dec 2021 16:57:17 -0500
+Received: from ams.source.kernel.org ([145.40.68.75]:50834 "EHLO
+        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230368AbhLQV5Q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 16:57:16 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DC5B5623EF
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 21:57:16 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EF408C36AE2;
-        Fri, 17 Dec 2021 21:57:15 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 6F606B82AE1
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 21:57:15 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C52FBC36AE9;
+        Fri, 17 Dec 2021 21:57:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1639778236;
-        bh=Jiy0uxdc8XYXeU3WQ1Tp6LFVSfFJNYjZhenKirx8r/8=;
+        s=k20201202; t=1639778235;
+        bh=kbXOWMHfDAatrQkEzimO/QP75+Rla1z/WzTHE3+sFfs=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=FThjeW0KKONYSAxKL3yn/dW5jjLq+l+MdR0f2KSpaPT9IImIM4TvB7GL/d6t/BZ0X
-         OAQLUIfJ9sfRI1pWznfPF1b0R8RzwhqN5ztB68xZtlNGWrkhsfwfSaw/3+M6i2ALNx
-         mYRQQn5IQUuwQFBPOVBuOFEzMGoH6TGG5Y2jwbBFGc4BeSFLbiVKq5zGASJdr8+giP
-         UdA3Hx5eTJwg2NkfFDT6TsKzd1Qmi6FqSvkrrlrkD6RVJm7TJ3YcqpDYxQBzItjV8I
-         pa9zBI3fYFjEaa84wvzJjVAtL64AmdblnIYwlKoGSmBLAKjWLf/ynBOLFzMSs9eaft
-         ZTDfMTzC/fZQA==
+        b=tXgcikOx4a4ymnO8VqpAsURyb+wMDomKcfCg4l+lgaTH9Bh2TjitbvDgWpLC/ICRs
+         6dCVyJ04Rsw5IH/d9/NEgipDbA1WR6FgIRfPLVAroedRPOtOv/fv00uN94jJ9eGhFM
+         3AWKvIZ0RkIJLqMpCbonjCBiVJ6BKxuiwjr70dN9gAztJbF4aet9G7bP3Kb1qabQxf
+         tIPXl9xS970vWFQkph2AoLqzfIhEDmUkutRsflSgAQe/NzjHK1pUxbDc+J1E/QGI+x
+         BUIiFw2QnqZNGyejfSNERgf/aubSelxPLXgfgJ8/Ef7oTrhn9OLFa4cJxup9ZBtvAG
+         M15ib16WoU5Cw==
 From:   trondmy@kernel.org
 To:     Chuck Lever <chuck.lever@oracle.com>,
         "J. Bruce Fields" <bfields@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 6/9] nfsd: Add a tracepoint for errors in nfsd4_clone_file_range()
-Date:   Fri, 17 Dec 2021 16:50:43 -0500
-Message-Id: <20211217215046.40316-7-trondmy@kernel.org>
+Subject: [PATCH 4/9] nfs: Add export support for weak cache consistency attributes
+Date:   Fri, 17 Dec 2021 16:50:41 -0500
+Message-Id: <20211217215046.40316-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.33.1
-In-Reply-To: <20211217215046.40316-6-trondmy@kernel.org>
+In-Reply-To: <20211217215046.40316-4-trondmy@kernel.org>
 References: <20211217215046.40316-1-trondmy@kernel.org>
  <20211217215046.40316-2-trondmy@kernel.org>
  <20211217215046.40316-3-trondmy@kernel.org>
  <20211217215046.40316-4-trondmy@kernel.org>
- <20211217215046.40316-5-trondmy@kernel.org>
- <20211217215046.40316-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Since a clone error commit can cause the boot verifier to change,
-we should trace those errors.
+Allow knfsd to request weak cache consistency attributes on files that
+have delegations and/or have up to date attribute caches.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfsd/nfs4proc.c |  2 +-
- fs/nfsd/trace.h    | 50 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/vfs.c      | 18 +++++++++++++++--
- fs/nfsd/vfs.h      |  3 ++-
- 4 files changed, 69 insertions(+), 4 deletions(-)
+ fs/nfs/export.c          | 24 ++++++++++++
+ fs/nfsd/nfs3xdr.c        | 83 +++++++++++++++++++++++++++-------------
+ fs/nfsd/nfs4xdr.c        |  6 +--
+ fs/nfsd/vfs.c            | 14 +++++++
+ fs/nfsd/vfs.h            |  5 ++-
+ include/linux/exportfs.h |  3 ++
+ 6 files changed, 103 insertions(+), 32 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 486c5dba4b65..53c2a8f0d627 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1102,7 +1102,7 @@ nfsd4_clone(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (status)
- 		goto out;
- 
--	status = nfsd4_clone_file_range(src, clone->cl_src_pos,
-+	status = nfsd4_clone_file_range(rqstp, src, clone->cl_src_pos,
- 			dst, clone->cl_dst_pos, clone->cl_count,
- 			EX_ISSYNC(cstate->current_fh.fh_export));
- 
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index f1e0d3c51bc2..001444d9829d 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -413,6 +413,56 @@ TRACE_EVENT(nfsd_dirent,
- 	)
- )
- 
-+DECLARE_EVENT_CLASS(nfsd_copy_err_class,
-+	TP_PROTO(struct svc_rqst *rqstp,
-+		 struct svc_fh	*src_fhp,
-+		 loff_t		src_offset,
-+		 struct svc_fh	*dst_fhp,
-+		 loff_t		dst_offset,
-+		 u64		count,
-+		 int		status),
-+	TP_ARGS(rqstp, src_fhp, src_offset, dst_fhp, dst_offset, count, status),
-+	TP_STRUCT__entry(
-+		__field(u32, xid)
-+		__field(u32, src_fh_hash)
-+		__field(loff_t, src_offset)
-+		__field(u32, dst_fh_hash)
-+		__field(loff_t, dst_offset)
-+		__field(u64, count)
-+		__field(int, status)
-+	),
-+	TP_fast_assign(
-+		__entry->xid = be32_to_cpu(rqstp->rq_xid);
-+		__entry->src_fh_hash = knfsd_fh_hash(&src_fhp->fh_handle);
-+		__entry->src_offset = src_offset;
-+		__entry->dst_fh_hash = knfsd_fh_hash(&dst_fhp->fh_handle);
-+		__entry->dst_offset = dst_offset;
-+		__entry->count = count;
-+		__entry->status = status;
-+	),
-+	TP_printk("xid=0x%08x src_fh_hash=0x%08x src_offset=%lld "
-+			"dst_fh_hash=0x%08x dst_offset=%lld "
-+			"count=%llu status=%d",
-+		  __entry->xid, __entry->src_fh_hash, __entry->src_offset,
-+		  __entry->dst_fh_hash, __entry->dst_offset,
-+		  (unsigned long long)__entry->count,
-+		  __entry->status)
-+)
-+
-+#define DEFINE_NFSD_COPY_ERR_EVENT(name)		\
-+DEFINE_EVENT(nfsd_copy_err_class, nfsd_##name,		\
-+	TP_PROTO(struct svc_rqst	*rqstp,		\
-+		 struct svc_fh		*src_fhp,	\
-+		 loff_t			src_offset,	\
-+		 struct svc_fh		*dst_fhp,	\
-+		 loff_t			dst_offset,	\
-+		 u64			count,		\
-+		 int			status),	\
-+	TP_ARGS(rqstp, src_fhp, src_offset, dst_fhp, dst_offset, \
-+		count, status))
-+
-+DEFINE_NFSD_COPY_ERR_EVENT(clone_file_range_err);
-+
- #include "state.h"
- #include "filecache.h"
- #include "vfs.h"
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 38fdfcbb079e..e761b2eff415 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -40,6 +40,7 @@
- #include "../internal.h"
- #include "acl.h"
- #include "idmap.h"
-+#include "xdr4.h"
- #endif /* CONFIG_NFSD_V4 */
- 
- #include "nfsd.h"
-@@ -516,8 +517,15 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index 171c424cb6d5..967f8902c49b 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -151,10 +151,34 @@ static u64 nfs_fetch_iversion(struct inode *inode)
+ 	return inode_peek_iversion_raw(inode);
  }
- #endif
  
--__be32 nfsd4_clone_file_range(struct nfsd_file *nf_src, u64 src_pos,
--		struct nfsd_file *nf_dst, u64 dst_pos, u64 count, bool sync)
-+static struct nfsd4_compound_state *nfsd4_get_cstate(struct svc_rqst *rqstp)
++static int nfs_exp_getattr(struct path *path, struct kstat *stat, bool force)
 +{
-+	return &((struct nfsd4_compoundres *)rqstp->rq_resp)->cstate;
++	const unsigned long check_valid =
++		NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_ATIME |
++		NFS_INO_INVALID_CTIME | NFS_INO_INVALID_MTIME |
++		NFS_INO_INVALID_SIZE | /* NFS_INO_INVALID_BLOCKS | */
++		NFS_INO_INVALID_OTHER | NFS_INO_INVALID_NLINK;
++	struct inode *inode = d_inode(path->dentry);
++	int flags = force ? AT_STATX_SYNC_AS_STAT : AT_STATX_DONT_SYNC;
++	int ret, ret2 = 0;
++
++	if (!force && nfs_check_cache_invalid(inode, check_valid))
++		ret2 = -EAGAIN;
++	ret = vfs_getattr(path, stat, STATX_BASIC_STATS & ~STATX_BLOCKS, flags);
++	if (ret < 0)
++		return ret;
++	stat->blocks = nfs_calc_block_size(stat->size);
++	if (S_ISDIR(inode->i_mode))
++		stat->blksize = NFS_SERVER(inode)->dtsize;
++	stat->result_mask |= STATX_BLOCKS;
++	return ret2;
 +}
 +
-+__be32 nfsd4_clone_file_range(struct svc_rqst *rqstp,
-+		struct nfsd_file *nf_src, u64 src_pos,
-+		struct nfsd_file *nf_dst, u64 dst_pos,
-+		u64 count, bool sync)
+ const struct export_operations nfs_export_ops = {
+ 	.encode_fh = nfs_encode_fh,
+ 	.fh_to_dentry = nfs_fh_to_dentry,
+ 	.get_parent = nfs_get_parent,
++	.getattr = nfs_exp_getattr,
+ 	.fetch_iversion = nfs_fetch_iversion,
+ 	.flags = EXPORT_OP_NOWCC|EXPORT_OP_NOSUBTREECHK|
+ 		EXPORT_OP_CLOSE_BEFORE_UNLINK|EXPORT_OP_REMOTE_FS|
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 0a5ebc52e6a9..81b6cf228517 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -415,21 +415,14 @@ svcxdr_encode_pre_op_attr(struct xdr_stream *xdr, const struct svc_fh *fhp)
+ 	return svcxdr_encode_wcc_attr(xdr, fhp);
+ }
+ 
+-/**
+- * svcxdr_encode_post_op_attr - Encode NFSv3 post-op attributes
+- * @rqstp: Context of a completed RPC transaction
+- * @xdr: XDR stream
+- * @fhp: File handle to encode
+- *
+- * Return values:
+- *   %false: Send buffer space was exhausted
+- *   %true: Success
+- */
+-bool
+-svcxdr_encode_post_op_attr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+-			   const struct svc_fh *fhp)
++static bool
++__svcxdr_encode_post_op_attr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
++			     const struct svc_fh *fhp, bool force)
  {
- 	struct file *src = nf_src->nf_file;
- 	struct file *dst = nf_dst->nf_file;
-@@ -541,6 +549,12 @@ __be32 nfsd4_clone_file_range(struct nfsd_file *nf_src, u64 src_pos,
- 		if (!status)
- 			status = commit_inode_metadata(file_inode(src));
- 		if (status < 0) {
-+			trace_nfsd_clone_file_range_err(rqstp,
-+					&nfsd4_get_cstate(rqstp)->save_fh,
-+					src_pos,
-+					&nfsd4_get_cstate(rqstp)->current_fh,
-+					dst_pos,
-+					count, status);
- 			nfsd_reset_boot_verifier(net_generic(nf_dst->nf_net,
- 						 nfsd_net_id));
- 			ret = nfserrno(status);
+ 	struct dentry *dentry = fhp->fh_dentry;
++	struct path path = {
++		.dentry = dentry,
++	};
+ 	struct kstat stat;
+ 
+ 	/*
+@@ -437,9 +430,10 @@ svcxdr_encode_post_op_attr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	 * stale file handle. In this case, no attributes are
+ 	 * returned.
+ 	 */
+-	if (fhp->fh_no_wcc || !dentry || !d_really_is_positive(dentry))
++	if (!dentry || !d_really_is_positive(dentry))
+ 		goto no_post_op_attrs;
+-	if (fh_getattr(fhp, &stat) != nfs_ok)
++	path.mnt = fhp->fh_export->ex_path.mnt;
++	if (nfsd_getattr(&path, &stat, force) != nfs_ok)
+ 		goto no_post_op_attrs;
+ 
+ 	if (xdr_stream_encode_item_present(xdr) < 0)
+@@ -454,6 +448,31 @@ svcxdr_encode_post_op_attr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	return xdr_stream_encode_item_absent(xdr) > 0;
+ }
+ 
++/**
++ * svcxdr_encode_post_op_attr - Encode NFSv3 post-op attributes
++ * @rqstp: Context of a completed RPC transaction
++ * @xdr: XDR stream
++ * @fhp: File handle to encode
++ *
++ * Return values:
++ *   %false: Send buffer space was exhausted
++ *   %true: Success
++ */
++bool
++svcxdr_encode_post_op_attr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
++			   const struct svc_fh *fhp)
++{
++	return __svcxdr_encode_post_op_attr(rqstp, xdr, fhp, true);
++}
++
++static bool
++svcxdr_encode_post_op_attr_opportunistic(struct svc_rqst *rqstp,
++					 struct xdr_stream *xdr,
++					 const struct svc_fh *fhp)
++{
++	return __svcxdr_encode_post_op_attr(rqstp, xdr, fhp, !fhp->fh_no_wcc);
++}
++
+ /*
+  * Encode weak cache consistency data
+  */
+@@ -481,7 +500,7 @@ svcxdr_encode_wcc_data(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ neither:
+ 	if (xdr_stream_encode_item_absent(xdr) < 0)
+ 		return false;
+-	if (!svcxdr_encode_post_op_attr(rqstp, xdr, fhp))
++	if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr, fhp))
+ 		return false;
+ 
+ 	return true;
+@@ -879,11 +898,13 @@ int nfs3svc_encode_lookupres(struct svc_rqst *rqstp, __be32 *p)
+ 			return 0;
+ 		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
+ 			return 0;
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->dirfh))
+ 			return 0;
+ 		break;
+ 	default:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->dirfh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->dirfh))
+ 			return 0;
+ 	}
+ 
+@@ -901,13 +922,15 @@ nfs3svc_encode_accessres(struct svc_rqst *rqstp, __be32 *p)
+ 		return 0;
+ 	switch (resp->status) {
+ 	case nfs_ok:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 		if (xdr_stream_encode_u32(xdr, resp->access) < 0)
+ 			return 0;
+ 		break;
+ 	default:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 	}
+ 
+@@ -926,7 +949,8 @@ nfs3svc_encode_readlinkres(struct svc_rqst *rqstp, __be32 *p)
+ 		return 0;
+ 	switch (resp->status) {
+ 	case nfs_ok:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 		if (xdr_stream_encode_u32(xdr, resp->len) < 0)
+ 			return 0;
+@@ -935,7 +959,8 @@ nfs3svc_encode_readlinkres(struct svc_rqst *rqstp, __be32 *p)
+ 			return 0;
+ 		break;
+ 	default:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 	}
+ 
+@@ -954,7 +979,8 @@ nfs3svc_encode_readres(struct svc_rqst *rqstp, __be32 *p)
+ 		return 0;
+ 	switch (resp->status) {
+ 	case nfs_ok:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 		if (xdr_stream_encode_u32(xdr, resp->count) < 0)
+ 			return 0;
+@@ -968,7 +994,8 @@ nfs3svc_encode_readres(struct svc_rqst *rqstp, __be32 *p)
+ 			return 0;
+ 		break;
+ 	default:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 	}
+ 
+@@ -1065,7 +1092,8 @@ nfs3svc_encode_readdirres(struct svc_rqst *rqstp, __be32 *p)
+ 		return 0;
+ 	switch (resp->status) {
+ 	case nfs_ok:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 		if (!svcxdr_encode_cookieverf3(xdr, resp->verf))
+ 			return 0;
+@@ -1077,7 +1105,8 @@ nfs3svc_encode_readdirres(struct svc_rqst *rqstp, __be32 *p)
+ 			return 0;
+ 		break;
+ 	default:
+-		if (!svcxdr_encode_post_op_attr(rqstp, xdr, &resp->fh))
++		if (!svcxdr_encode_post_op_attr_opportunistic(rqstp, xdr,
++							      &resp->fh))
+ 			return 0;
+ 	}
+ 
+@@ -1221,7 +1250,7 @@ svcxdr_encode_entry3_plus(struct nfsd3_readdirres *resp, const char *name,
+ 	if (compose_entry_fh(resp, fhp, name, namlen, ino) != nfs_ok)
+ 		goto out_noattrs;
+ 
+-	if (!svcxdr_encode_post_op_attr(resp->rqstp, xdr, fhp))
++	if (!svcxdr_encode_post_op_attr_opportunistic(resp->rqstp, xdr, fhp))
+ 		goto out;
+ 	if (!svcxdr_encode_post_op_fh3(xdr, fhp))
+ 		goto out;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 7abeccb975b2..e14af0383b70 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2865,9 +2865,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 
+-	err = vfs_getattr(&path, &stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
+-	if (err)
+-		goto out_nfserr;
++	status = nfsd_getattr(&path, &stat, true);
++	if (status)
++		goto out;
+ 	if ((bmval0 & (FATTR4_WORD0_FILES_AVAIL | FATTR4_WORD0_FILES_FREE |
+ 			FATTR4_WORD0_FILES_TOTAL | FATTR4_WORD0_MAXNAME)) ||
+ 	    (bmval1 & (FATTR4_WORD1_SPACE_AVAIL | FATTR4_WORD1_SPACE_FREE |
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index a90cc08211a3..4d57befdac6e 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -2412,3 +2412,17 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
+ 
+ 	return err? nfserrno(err) : 0;
+ }
++
++
++__be32
++nfsd_getattr(struct path *p, struct kstat *stat, bool force)
++{
++	const struct export_operations *ops = p->dentry->d_sb->s_export_op;
++	int err;
++
++	if (ops->getattr)
++		err = ops->getattr(p, stat, force);
++	else
++		err = vfs_getattr(p, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
++	return err ? nfserrno(err) : 0;
++}
 diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 6edae1b9a96e..3dba6397d452 100644
+index b21b76e6b9a8..6edae1b9a96e 100644
 --- a/fs/nfsd/vfs.h
 +++ b/fs/nfsd/vfs.h
-@@ -57,7 +57,8 @@ __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
- 		    struct xdr_netobj *);
- __be32		nfsd4_vfs_fallocate(struct svc_rqst *, struct svc_fh *,
- 				    struct file *, loff_t, loff_t, int);
--__be32		nfsd4_clone_file_range(struct nfsd_file *nf_src, u64 src_pos,
-+__be32		nfsd4_clone_file_range(struct svc_rqst *,
-+				       struct nfsd_file *nf_src, u64 src_pos,
- 				       struct nfsd_file *nf_dst, u64 dst_pos,
- 				       u64 count, bool sync);
- #endif /* CONFIG_NFSD_V4 */
+@@ -132,6 +132,8 @@ __be32		nfsd_statfs(struct svc_rqst *, struct svc_fh *,
+ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
+ 				struct dentry *, int);
+ 
++__be32		nfsd_getattr(struct path *p, struct kstat *, bool);
++
+ static inline int fh_want_write(struct svc_fh *fh)
+ {
+ 	int ret;
+@@ -156,8 +158,7 @@ static inline __be32 fh_getattr(const struct svc_fh *fh, struct kstat *stat)
+ {
+ 	struct path p = {.mnt = fh->fh_export->ex_path.mnt,
+ 			 .dentry = fh->fh_dentry};
+-	return nfserrno(vfs_getattr(&p, stat, STATX_BASIC_STATS,
+-				    AT_STATX_SYNC_AS_STAT));
++	return nfsd_getattr(&p, stat, true);
+ }
+ 
+ static inline int nfsd_create_is_exclusive(int createmode)
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index 3260fe714846..58f36022787e 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -10,6 +10,8 @@ struct inode;
+ struct iomap;
+ struct super_block;
+ struct vfsmount;
++struct path;
++struct kstat;
+ 
+ /* limit the handle size to NFSv4 handle size now */
+ #define MAX_HANDLE_SZ 128
+@@ -224,6 +226,7 @@ struct export_operations {
+ #define EXPORT_OP_SYNC_LOCKS		(0x20) /* Filesystem can't do
+ 						  asychronous blocking locks */
+ 	unsigned long	flags;
++	int (*getattr)(struct path *, struct kstat *, bool);
+ };
+ 
+ extern int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
 -- 
 2.33.1
 
