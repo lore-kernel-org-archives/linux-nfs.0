@@ -2,268 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD03BC433FE
-	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 21:57:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 763D1C433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 22:23:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230399AbhLQV5V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 17 Dec 2021 16:57:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34890 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230405AbhLQV5U (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 16:57:20 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 75213C061574
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 13:57:19 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 12EACB82AEB
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 21:57:18 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 88E47C36AE8;
-        Fri, 17 Dec 2021 21:57:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1639778236;
-        bh=+FanleU/olQfZh7qKW9YwFohwTa4rJye7z7WnmYdufo=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=qGzWuya0DylcYyN/Q5NLGXs5KJIjnLPlMqDT/BwUUQFdKoucIiiS/XZBOms8rCw09
-         nY0w7V2gnkjtahq240ZsvE9oMQvKsIdBsoD7SDweDZNEBs5Wq3BdCofkOAgUxnzZ+D
-         HzMRN24+U+R/4bksprN18XaZTcXCvhVYwEacbcQi1VQXH9MewVHb9t5+vj95NgZgG9
-         ENznTgvPk4t/Y1jFeP/FZPvOIr8LhWUNXv2rVoiCbltR4yoVhEATN3i0GtS/aZL95y
-         L1ieQWLBud3nVP0EWoLwJ/mHDr7Z3+sDFDDmfS49YXXCGJ2Wkx4b2lVYYqk29LweKC
-         PIfawvE7bsE1g==
-From:   trondmy@kernel.org
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] nfsd: Replace use of rwsem with errseq_t
-Date:   Fri, 17 Dec 2021 16:50:44 -0500
-Message-Id: <20211217215046.40316-8-trondmy@kernel.org>
-X-Mailer: git-send-email 2.33.1
-In-Reply-To: <20211217215046.40316-7-trondmy@kernel.org>
-References: <20211217215046.40316-1-trondmy@kernel.org>
- <20211217215046.40316-2-trondmy@kernel.org>
- <20211217215046.40316-3-trondmy@kernel.org>
- <20211217215046.40316-4-trondmy@kernel.org>
- <20211217215046.40316-5-trondmy@kernel.org>
- <20211217215046.40316-6-trondmy@kernel.org>
- <20211217215046.40316-7-trondmy@kernel.org>
+        id S230003AbhLQWXl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 17 Dec 2021 17:23:41 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:37894 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229807AbhLQWXl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 17:23:41 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1639779820;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=rzBXHckKODAZRj+4Pg4TaTnXBopKnJnXa7QDwpIdsOs=;
+        b=gckksz8qzpjjGmY9/vxYr733fvfNYDdW2pKfDwtwldgrT5PVqR+7m/rLxMjOrI9VBbXYop
+        EyBCQoRx29+I1MliQXUagg5FCmW1mNvSORUJW+sWMhJ3lfIH6gScO3qi0aFs6gvwxOq7cW
+        AiTlb7i0Ni+prd8eaK3ndAZjYbHvwxo=
+Received: from mail-il1-f198.google.com (mail-il1-f198.google.com
+ [209.85.166.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-80-J2Vy9M8FNQSUtRyYh7pekA-1; Fri, 17 Dec 2021 17:23:39 -0500
+X-MC-Unique: J2Vy9M8FNQSUtRyYh7pekA-1
+Received: by mail-il1-f198.google.com with SMTP id 11-20020a056e0220cb00b002ac12986811so2294333ilq.9
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 14:23:39 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=rzBXHckKODAZRj+4Pg4TaTnXBopKnJnXa7QDwpIdsOs=;
+        b=SfQRhTikFe2DEqTWnxvE5D/5HrTri69LqES0TcFjfYiXU07WW9sUHcOL5NpPxHwHWH
+         lChmOQmt3kiqmmCEbzSA77+Z1GL0aDpT1F1OQbBflbO3ksZ7bcjUUeBpJaflbIYyYg7u
+         nDM3bC6C9d0knw/WNGfHIlyTLPpp9cU5tOFsVOW1IJj3r9k/b4m7yotH1VfG76peqcYM
+         +xYVVswEvhE8TNXa9ftpSAu2O7dzwx2Isps2yqdDxc0hDNG01peMmBr1Dky+93/wE93m
+         BiQJXO/aGdYD5iCtujndRylDyUPQ9CKjcTnHgQQmvxxTbPXlfSyQfXh3YUX99dMw3rn+
+         1aXQ==
+X-Gm-Message-State: AOAM531R0KCdVW0l0SNuvShit7cqcBc/1n9KEtj6QwfmrdtrIYdkpPAE
+        2yyp8/fCRyMoMhtnqqQTX4PMXP/9i4br5V5IfKDxW2dRH1E6zLczbVRRosH23tIXGrmCRBgPs+5
+        DleyjV0HKbPFr4qWHU2CSP7f5bude0Eq8tzV/
+X-Received: by 2002:a05:6638:35a8:: with SMTP id v40mr3339295jal.193.1639779819113;
+        Fri, 17 Dec 2021 14:23:39 -0800 (PST)
+X-Google-Smtp-Source: ABdhPJwsnAG0rGJu9uR4TlJpL8HDxEAFvLuUfss/SP6OZAEIqnXUc6fCRj4MCM8Z+QtyBj7nAtixlrPAbj0xDKgqrfU=
+X-Received: by 2002:a05:6638:35a8:: with SMTP id v40mr3339290jal.193.1639779818930;
+ Fri, 17 Dec 2021 14:23:38 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20211217215046.40316-1-trondmy@kernel.org> <20211217215046.40316-2-trondmy@kernel.org>
+ <20211217215046.40316-3-trondmy@kernel.org> <20211217215046.40316-4-trondmy@kernel.org>
+ <20211217215046.40316-5-trondmy@kernel.org> <20211217215046.40316-6-trondmy@kernel.org>
+In-Reply-To: <20211217215046.40316-6-trondmy@kernel.org>
+From:   Bruce Fields <bfields@redhat.com>
+Date:   Fri, 17 Dec 2021 17:23:28 -0500
+Message-ID: <CAPL3RVFaWgdWQnWOe5B_6=1pNGSOZXp=SVFOBs24aucXphi6wQ@mail.gmail.com>
+Subject: Re: [PATCH 5/9] nfsd: NFSv3 should allow zero length writes
+To:     trondmy@kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Fri, Dec 17, 2021 at 5:07 PM <trondmy@kernel.org> wrote:
+>
+> From: Trond Myklebust <trond.myklebust@hammerspace.com>
+>
+> According to RFC1813: "If count is 0, the WRITE will succeed
+> and return a count of 0, barring errors due to permissions checking."
 
-The nfsd_file nf_rwsem is currently being used to separate file write
-and commit instances to ensure that we catch errors and apply them to
-the correct write/commit.
-We can improve scalability at the expense of a little accuracy (some
-extra false positives) by replacing the nf_rwsem with more careful
-use of the errseq_t mechanism to track errors across the different
-operations.
+Yes, I'm surprised we're not already doing this right.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfsd/filecache.c |  1 -
- fs/nfsd/filecache.h |  1 -
- fs/nfsd/nfs4proc.c  | 16 +++++++++-------
- fs/nfsd/vfs.c       | 40 +++++++++++++++-------------------------
- 4 files changed, 24 insertions(+), 34 deletions(-)
+I wonder how far back this bug goes.
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 7629248fdd53..1e894ddc7ac2 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -194,7 +194,6 @@ nfsd_file_alloc(struct inode *inode, unsigned int may, unsigned int hashval,
- 				__set_bit(NFSD_FILE_BREAK_READ, &nf->nf_flags);
- 		}
- 		nf->nf_mark = NULL;
--		init_rwsem(&nf->nf_rwsem);
- 		trace_nfsd_file_alloc(nf);
- 	}
- 	return nf;
-diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-index 7872df5a0fe3..435ceab27897 100644
---- a/fs/nfsd/filecache.h
-+++ b/fs/nfsd/filecache.h
-@@ -46,7 +46,6 @@ struct nfsd_file {
- 	refcount_t		nf_ref;
- 	unsigned char		nf_may;
- 	struct nfsd_file_mark	*nf_mark;
--	struct rw_semaphore	nf_rwsem;
- };
- 
- int nfsd_file_cache_init(void);
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 53c2a8f0d627..9ea2d2e554ce 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1511,6 +1511,9 @@ static void nfsd4_init_copy_res(struct nfsd4_copy *copy, bool sync)
- 
- static ssize_t _nfsd_copy_file_range(struct nfsd4_copy *copy)
- {
-+	struct file *dst = copy->nf_dst->nf_file;
-+	struct file *src = copy->nf_src->nf_file;
-+	errseq_t since;
- 	ssize_t bytes_copied = 0;
- 	u64 bytes_total = copy->cp_count;
- 	u64 src_pos = copy->cp_src_pos;
-@@ -1523,9 +1526,8 @@ static ssize_t _nfsd_copy_file_range(struct nfsd4_copy *copy)
- 	do {
- 		if (kthread_should_stop())
- 			break;
--		bytes_copied = nfsd_copy_file_range(copy->nf_src->nf_file,
--				src_pos, copy->nf_dst->nf_file, dst_pos,
--				bytes_total);
-+		bytes_copied = nfsd_copy_file_range(src, src_pos, dst, dst_pos,
-+						    bytes_total);
- 		if (bytes_copied <= 0)
- 			break;
- 		bytes_total -= bytes_copied;
-@@ -1535,11 +1537,11 @@ static ssize_t _nfsd_copy_file_range(struct nfsd4_copy *copy)
- 	} while (bytes_total > 0 && !copy->cp_synchronous);
- 	/* for a non-zero asynchronous copy do a commit of data */
- 	if (!copy->cp_synchronous && copy->cp_res.wr_bytes_written > 0) {
--		down_write(&copy->nf_dst->nf_rwsem);
--		status = vfs_fsync_range(copy->nf_dst->nf_file,
--					 copy->cp_dst_pos,
-+		since = READ_ONCE(dst->f_wb_err);
-+		status = vfs_fsync_range(dst, copy->cp_dst_pos,
- 					 copy->cp_res.wr_bytes_written, 0);
--		up_write(&copy->nf_dst->nf_rwsem);
-+		if (!status)
-+			status = filemap_check_wb_err(dst->f_mapping, since);
- 		if (!status)
- 			copy->committed = true;
- 	}
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index e761b2eff415..19215b9f768e 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -529,10 +529,11 @@ __be32 nfsd4_clone_file_range(struct svc_rqst *rqstp,
- {
- 	struct file *src = nf_src->nf_file;
- 	struct file *dst = nf_dst->nf_file;
-+	errseq_t since;
- 	loff_t cloned;
- 	__be32 ret = 0;
- 
--	down_write(&nf_dst->nf_rwsem);
-+	since = READ_ONCE(dst->f_wb_err);
- 	cloned = vfs_clone_file_range(src, src_pos, dst, dst_pos, count, 0);
- 	if (cloned < 0) {
- 		ret = nfserrno(cloned);
-@@ -546,6 +547,8 @@ __be32 nfsd4_clone_file_range(struct svc_rqst *rqstp,
- 		loff_t dst_end = count ? dst_pos + count - 1 : LLONG_MAX;
- 		int status = vfs_fsync_range(dst, dst_pos, dst_end, 0);
- 
-+		if (!status)
-+			status = filemap_check_wb_err(dst->f_mapping, since);
- 		if (!status)
- 			status = commit_inode_metadata(file_inode(src));
- 		if (status < 0) {
-@@ -561,7 +564,6 @@ __be32 nfsd4_clone_file_range(struct svc_rqst *rqstp,
- 		}
- 	}
- out_err:
--	up_write(&nf_dst->nf_rwsem);
- 	return ret;
- }
- 
-@@ -972,6 +974,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
- 	struct super_block	*sb = file_inode(file)->i_sb;
- 	struct svc_export	*exp;
- 	struct iov_iter		iter;
-+	errseq_t		since;
- 	__be32			nfserr;
- 	int			host_err;
- 	int			use_wgather;
-@@ -1012,21 +1015,18 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
- 		flags |= RWF_SYNC;
- 
- 	iov_iter_kvec(&iter, WRITE, vec, vlen, *cnt);
-+	since = READ_ONCE(file->f_wb_err);
- 	if (flags & RWF_SYNC) {
--		down_write(&nf->nf_rwsem);
- 		host_err = vfs_iter_write(file, &iter, &pos, flags);
- 		if (host_err < 0)
- 			nfsd_reset_boot_verifier(net_generic(SVC_NET(rqstp),
- 						 nfsd_net_id));
--		up_write(&nf->nf_rwsem);
- 	} else {
--		down_read(&nf->nf_rwsem);
- 		if (verf)
- 			nfsd_copy_boot_verifier(verf,
- 					net_generic(SVC_NET(rqstp),
- 					nfsd_net_id));
- 		host_err = vfs_iter_write(file, &iter, &pos, flags);
--		up_read(&nf->nf_rwsem);
- 	}
- 	if (host_err < 0) {
- 		nfsd_reset_boot_verifier(net_generic(SVC_NET(rqstp),
-@@ -1036,6 +1036,9 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
- 	*cnt = host_err;
- 	nfsd_stats_io_write_add(exp, *cnt);
- 	fsnotify_modify(file);
-+	host_err = filemap_check_wb_err(file->f_mapping, since);
-+	if (host_err < 0)
-+		goto out_nfserr;
- 
- 	if (stable && use_wgather) {
- 		host_err = wait_for_concurrent_writes(file);
-@@ -1116,19 +1119,6 @@ nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
- }
- 
- #ifdef CONFIG_NFSD_V3
--static int
--nfsd_filemap_write_and_wait_range(struct nfsd_file *nf, loff_t offset,
--				  loff_t end)
--{
--	struct address_space *mapping = nf->nf_file->f_mapping;
--	int ret = filemap_fdatawrite_range(mapping, offset, end);
--
--	if (ret)
--		return ret;
--	filemap_fdatawait_range_keep_errors(mapping, offset, end);
--	return 0;
--}
--
- /*
-  * Commit all pending writes to stable storage.
-  *
-@@ -1159,25 +1149,25 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (err)
- 		goto out;
- 	if (EX_ISSYNC(fhp->fh_export)) {
--		int err2 = nfsd_filemap_write_and_wait_range(nf, offset, end);
-+		errseq_t since = READ_ONCE(nf->nf_file->f_wb_err);
-+		int err2;
- 
--		down_write(&nf->nf_rwsem);
--		if (!err2)
--			err2 = vfs_fsync_range(nf->nf_file, offset, end, 0);
-+		err2 = vfs_fsync_range(nf->nf_file, offset, end, 0);
- 		switch (err2) {
- 		case 0:
- 			nfsd_copy_boot_verifier(verf, net_generic(nf->nf_net,
- 						nfsd_net_id));
-+			err2 = filemap_check_wb_err(nf->nf_file->f_mapping,
-+						    since);
- 			break;
- 		case -EINVAL:
- 			err = nfserr_notsupp;
- 			break;
- 		default:
--			err = nfserrno(err2);
- 			nfsd_reset_boot_verifier(net_generic(nf->nf_net,
- 						 nfsd_net_id));
- 		}
--		up_write(&nf->nf_rwsem);
-+		err = nfserrno(err2);
- 	} else
- 		nfsd_copy_boot_verifier(verf, net_generic(nf->nf_net,
- 					nfsd_net_id));
--- 
-2.33.1
+The svc.c code is from 8154ef2776aa "NFSD: Clean up legacy NFS WRITE
+argument XDR decoders", but the behavior might predate that code.  The
+nfsd_vfs_write() logic, I'm not sure I understand.
+
+We have a pynfs test for the v4 case (WRT4), but I guess we must have
+nothing testing the v3 case.
+
+--b.
+
+>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  fs/nfsd/vfs.c    | 3 +++
+>  net/sunrpc/svc.c | 2 +-
+>  2 files changed, 4 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 4d57befdac6e..38fdfcbb079e 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -969,6 +969,9 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
+>
+>         trace_nfsd_write_opened(rqstp, fhp, offset, *cnt);
+>
+> +       if (!*cnt)
+> +               return nfs_ok;
+> +
+>         if (sb->s_export_op)
+>                 exp_op_flags = sb->s_export_op->flags;
+>
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index a3bbe5ce4570..d1ccf37a4588 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1692,7 +1692,7 @@ unsigned int svc_fill_write_vector(struct svc_rqst *rqstp, struct page **pages,
+>          * entirely in rq_arg.pages. In this case, @first is empty.
+>          */
+>         i = 0;
+> -       if (first->iov_len) {
+> +       if (first->iov_len || !total) {
+>                 vec[i].iov_base = first->iov_base;
+>                 vec[i].iov_len = min_t(size_t, total, first->iov_len);
+>                 total -= vec[i].iov_len;
+> --
+> 2.33.1
+>
 
