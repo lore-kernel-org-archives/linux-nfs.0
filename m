@@ -2,108 +2,112 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBADBC433F5
-	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 21:57:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EB78C433FE
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Dec 2021 21:57:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230382AbhLQV5Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S230393AbhLQV5Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 17 Dec 2021 16:57:16 -0500
-Received: from ams.source.kernel.org ([145.40.68.75]:50824 "EHLO
-        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230314AbhLQV5P (ORCPT
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34870 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230364AbhLQV5P (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2021 16:57:15 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88627C061574
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 13:57:15 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 934EBB82AE2
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 21:57:14 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17021C36AE2;
-        Fri, 17 Dec 2021 21:57:13 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 274E4623C1
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2021 21:57:15 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BAB7C36AE8;
+        Fri, 17 Dec 2021 21:57:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1639778233;
-        bh=ZSaGVB9MGRi4QxDAfomgC2gmJ5GuOSC+sO/F8DFSkQA=;
+        s=k20201202; t=1639778234;
+        bh=XVLGTTpZHBH/Ie0RwNGUQ8kQJR+Jbm/swzH2/zsjdF4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=qdfTQEOxD2yJ1s8JMYswLk72xLTErIBX824QriZBmJ6U4ZbdU6mz3FgFdL8WYDzgy
-         5jYKhvNow1hMIAEFD86J36tgaSjy/DD4aW/uNZidGMoJldg+hJPM6IGL3+Q7n0Ymgo
-         q/P1QqxLjrXQMuHDRQbTPAtHm06XeqUnXt1trwyB9Ke4oNbm6iXMeoh2pmPDFgISZk
-         iwmaXwSJQXQ1EiDQs8bf1Pmo8EY/MCvDw1R9Tzvu9LkzLXzpbdx60Sa93/L5krHWtY
-         9npuyW6JLxbVjhSxPIff/IePjX03gJGhQJEp2iJdSskhMUZU9riQ+gRl/xseEycS+B
-         IYFSrNIUWYhLA==
+        b=AA7ucdqi1b6UkY05H3qREmxhHkEO/mrohlG+71AL5Am1+K2eDJSWOogaT2i0jhHhq
+         Z9izqznwWdaICAwJwrV8PfxtbWwCcnj1QD+KeWzO9QxU709lHkAiEzrbS2q9aZDCq9
+         vCEGo0PegGX7p35SVfXgh9WJyRG3ekNR54WkFAVTCmehiph/4VSGyvlU5S1BwGHKTF
+         ebMpA/btvXtjDpKzg523e+soUnx4AnT3Gend+jG0VnTm1/aeV4U5ioAJWIVp7gWsVs
+         9gY414I8bI5CAOs2vtd8o26ur5iB+y6lmVBuKaH6EEsnHm797J6czTfu05kunmZCgg
+         rJXwqexkaOUhw==
 From:   trondmy@kernel.org
 To:     Chuck Lever <chuck.lever@oracle.com>,
         "J. Bruce Fields" <bfields@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/9] nfsd: map EBADF
-Date:   Fri, 17 Dec 2021 16:50:38 -0500
-Message-Id: <20211217215046.40316-2-trondmy@kernel.org>
+Subject: [PATCH 3/9] nfsd: Retry once in nfsd_open on an -EOPENSTALE return
+Date:   Fri, 17 Dec 2021 16:50:40 -0500
+Message-Id: <20211217215046.40316-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.33.1
-In-Reply-To: <20211217215046.40316-1-trondmy@kernel.org>
+In-Reply-To: <20211217215046.40316-3-trondmy@kernel.org>
 References: <20211217215046.40316-1-trondmy@kernel.org>
+ <20211217215046.40316-2-trondmy@kernel.org>
+ <20211217215046.40316-3-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Peng Tao <tao.peng@primarydata.com>
+From: Jeff Layton <jeff.layton@primarydata.com>
 
-Now that we have open file cache, it is possible that another client
-deletes the file and DP will not know about it. Then IO to MDS would
-fail with BADSTATEID and knfsd would start state recovery, which
-should fail as well and then nfs read/write will fail with EBADF.
-And it triggers a WARN() in nfserrno().
+If we get back -EOPENSTALE from an NFSv4 open, then we either got some
+unhandled error or the inode we got back was not the same as the one
+associated with the dentry.
 
------------[ cut here ]------------
-WARNING: CPU: 0 PID: 13529 at fs/nfsd/nfsproc.c:758 nfserrno+0x58/0x70 [nfsd]()
-nfsd: non-standard errno: -9
-modules linked in: nfsv3 nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_connt
-pata_acpi floppy
-CPU: 0 PID: 13529 Comm: nfsd Tainted: G        W       4.1.5-00307-g6e6579b #7
-Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 09/30/2014
- 0000000000000000 00000000464e6c9c ffff88079085fba8 ffffffff81789936
- 0000000000000000 ffff88079085fc00 ffff88079085fbe8 ffffffff810a08ea
- ffff88079085fbe8 ffff88080f45c900 ffff88080f627d50 ffff880790c46a48
- all Trace:
- [<ffffffff81789936>] dump_stack+0x45/0x57
- [<ffffffff810a08ea>] warn_slowpath_common+0x8a/0xc0
- [<ffffffff810a0975>] warn_slowpath_fmt+0x55/0x70
- [<ffffffff81252908>] ? splice_direct_to_actor+0x148/0x230
- [<ffffffffa02fb8c0>] ? fsid_source+0x60/0x60 [nfsd]
- [<ffffffffa02f9918>] nfserrno+0x58/0x70 [nfsd]
- [<ffffffffa02fba57>] nfsd_finish_read+0x97/0xb0 [nfsd]
- [<ffffffffa02fc7a6>] nfsd_splice_read+0x76/0xa0 [nfsd]
- [<ffffffffa02fcca1>] nfsd_read+0xc1/0xd0 [nfsd]
- [<ffffffffa0233af2>] ? svc_tcp_adjust_wspace+0x12/0x30 [sunrpc]
- [<ffffffffa03073da>] nfsd3_proc_read+0xba/0x150 [nfsd]
- [<ffffffffa02f7a03>] nfsd_dispatch+0xc3/0x210 [nfsd]
- [<ffffffffa0233af2>] ? svc_tcp_adjust_wspace+0x12/0x30 [sunrpc]
- [<ffffffffa0232913>] svc_process_common+0x453/0x6f0 [sunrpc]
- [<ffffffffa0232cc3>] svc_process+0x113/0x1b0 [sunrpc]
- [<ffffffffa02f740f>] nfsd+0xff/0x170 [nfsd]
- [<ffffffffa02f7310>] ? nfsd_destroy+0x80/0x80 [nfsd]
- [<ffffffff810bf3a8>] kthread+0xd8/0xf0
- [<ffffffff810bf2d0>] ? kthread_create_on_node+0x1b0/0x1b0
- [<ffffffff817912a2>] ret_from_fork+0x42/0x70
- [<ffffffff810bf2d0>] ? kthread_create_on_node+0x1b0/0x1b0
+We really have no recourse in that situation other than to retry the
+open, and if it fails to just return nfserr_stale back to the client.
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
 Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfsd/nfsproc.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfsd/nfsproc.c |  1 +
+ fs/nfsd/vfs.c     | 10 +++++++++-
+ 2 files changed, 10 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 90fcd6178823..c2afe1afb6d7 100644
+index 1ebf02123368..458307876ead 100644
 --- a/fs/nfsd/nfsproc.c
 +++ b/fs/nfsd/nfsproc.c
-@@ -851,6 +851,7 @@ nfserrno (int errno)
- 		{ nfserr_io, -EIO },
- 		{ nfserr_nxio, -ENXIO },
- 		{ nfserr_fbig, -E2BIG },
-+		{ nfserr_stale, -EBADF },
- 		{ nfserr_acces, -EACCES },
- 		{ nfserr_exist, -EEXIST },
- 		{ nfserr_xdev, -EXDEV },
+@@ -881,6 +881,7 @@ nfserrno (int errno)
+ 		{ nfserr_serverfault, -ESERVERFAULT },
+ 		{ nfserr_serverfault, -ENFILE },
+ 		{ nfserr_io, -EREMOTEIO },
++		{ nfserr_stale, -EOPENSTALE },
+ 		{ nfserr_io, -EUCLEAN },
+ 		{ nfserr_perm, -ENOKEY },
+ 		{ nfserr_no_grace, -ENOGRACE},
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 738d564ca4ce..a90cc08211a3 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -779,6 +779,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
+ 		int may_flags, struct file **filp)
+ {
+ 	__be32 err;
++	bool retried = false;
+ 
+ 	validate_process_creds();
+ 	/*
+@@ -794,9 +795,16 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
+ 	 */
+ 	if (type == S_IFREG)
+ 		may_flags |= NFSD_MAY_OWNER_OVERRIDE;
++retry:
+ 	err = fh_verify(rqstp, fhp, type, may_flags);
+-	if (!err)
++	if (!err) {
+ 		err = __nfsd_open(rqstp, fhp, type, may_flags, filp);
++		if (err == nfserr_stale && !retried) {
++			retried = true;
++			fh_put(fhp);
++			goto retry;
++		}
++	}
+ 	validate_process_creds();
+ 	return err;
+ }
 -- 
 2.33.1
 
