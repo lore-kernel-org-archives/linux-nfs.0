@@ -2,92 +2,106 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4669C433EF
-	for <linux-nfs@archiver.kernel.org>; Sun, 19 Dec 2021 01:44:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D551AC433F5
+	for <linux-nfs@archiver.kernel.org>; Sun, 19 Dec 2021 09:59:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234021AbhLSBo6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 18 Dec 2021 20:44:58 -0500
-Received: from ams.source.kernel.org ([145.40.68.75]:54040 "EHLO
-        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234054AbhLSBo5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Dec 2021 20:44:57 -0500
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id CFDC5B80B34
-        for <linux-nfs@vger.kernel.org>; Sun, 19 Dec 2021 01:44:56 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B92AC36AE9;
-        Sun, 19 Dec 2021 01:44:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1639878295;
-        bh=NFPiGcI5+jhgO7Yw7iIAoTjRnRVhh56UZHrfSFk0oVs=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=NcyCinINkHqq8ffam4HxB6MV13VKFdLXsk5dKKgcgtRfRJRwFSvZaQUZr5p3TKzFN
-         OI6JIiwnxMS2ud92ePr2jxGn8xHo54RNecMks5wc5H+DBcnUP0MvFn2lJvQKUa2QaP
-         5mhpXdXesNT9W+Xq+js4StCvJ9zK+7Hfsr90VKUmbtVUe18RWlJhebGXHczwGVXmYP
-         8gdNttCnF85P7gVjdjuitzm7ylynSH1Z3KCnXN7JwUmuRLWX6MESeFJIuYap8Gll0C
-         bka35qnR3GjzQivlj4N1Wwcf1PGm6WdZcZFHAhvtII8Vcl3BnUrbk6HVm8Pbs+9rLa
-         Ea0QsbvnFlx+w==
-From:   trondmy@kernel.org
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 09/10] nfsd: allow lockd to be forcibly disabled
-Date:   Sat, 18 Dec 2021 20:38:02 -0500
-Message-Id: <20211219013803.324724-10-trondmy@kernel.org>
-X-Mailer: git-send-email 2.33.1
-In-Reply-To: <20211219013803.324724-9-trondmy@kernel.org>
-References: <20211219013803.324724-1-trondmy@kernel.org>
- <20211219013803.324724-2-trondmy@kernel.org>
- <20211219013803.324724-3-trondmy@kernel.org>
- <20211219013803.324724-4-trondmy@kernel.org>
- <20211219013803.324724-5-trondmy@kernel.org>
- <20211219013803.324724-6-trondmy@kernel.org>
- <20211219013803.324724-7-trondmy@kernel.org>
- <20211219013803.324724-8-trondmy@kernel.org>
- <20211219013803.324724-9-trondmy@kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S232641AbhLSJ7J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 19 Dec 2021 04:59:09 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49732 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229585AbhLSJ7I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Dec 2021 04:59:08 -0500
+Received: from mail-pj1-x102b.google.com (mail-pj1-x102b.google.com [IPv6:2607:f8b0:4864:20::102b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C9932C061574;
+        Sun, 19 Dec 2021 01:59:07 -0800 (PST)
+Received: by mail-pj1-x102b.google.com with SMTP id gj24so6507308pjb.0;
+        Sun, 19 Dec 2021 01:59:07 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:subject:from:in-reply-to:date:cc
+         :content-transfer-encoding:message-id:references:to;
+        bh=dG68qbbN9Wct+UUNDOZqFZ/544NhXHzV1/15tPR+FZQ=;
+        b=qxHxo7P4Hmn3Co0lx+drz0KAQB5rS9kl7ZYFcZdRRbb7g8xE1kzNS9GNUyxxCrMfQT
+         RfAJN7vWYS9skka5kzDB1Rk7Gqe+jr7H7ZR4rCq/iR+ldQ+zl0mhhqv5TJNPGxfrRFup
+         VJIghQje4LiOG7OwXFupSwLFgvyJcmRjHr5QJnyogq9MtAhlEcNzqC+YKsVkw7lirTfN
+         sryZgZcqIQjPiWa+p0CLYu3O/jGddC88jYvKOATqcgJMdsv/mwwY1LpZIPhNB1OWkZh6
+         f1tP3fFcrEzCu8G/Id+li3Q7c0//Ank/PSro7DjAkv/7Er1Q8IW0Oc7NlqTRQoC9YKL6
+         bA+w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:subject:from:in-reply-to:date:cc
+         :content-transfer-encoding:message-id:references:to;
+        bh=dG68qbbN9Wct+UUNDOZqFZ/544NhXHzV1/15tPR+FZQ=;
+        b=QVUYrwd9bvSQ63Ke2hmBcTPBAKII75ghBMYb2a/mfo4Qt3gAJd9TlSZLGwfYUalIkb
+         81zH7YvS3896f5Di0KfCg37lazSxO217WfLyGsEZXtDVzMPxxhPXHkzGlOt5xrn7ejyk
+         T9AjsmVqIfQhC76YbShYVWSuj/dHtZu2OFjb+JbEjExjQe7fZRCZmBZalI2zb7syhN5N
+         oBuvC6+7oQ3pzbxN1NMnv4wR24kaZyqk7eDGVoEGGjmV+HZqiUksQhrW0tJ5AYsCZsHp
+         V/fvs4S0v8kZe7rarAu0jr7BNQultJrcqklrwycb+u6iWxHuETQcttawpmLvTot8BbBV
+         L9fQ==
+X-Gm-Message-State: AOAM532YTl0Ula1wzvw7VzaNV5rl3J9r7ggC5WuLCDAijcvml1UGLl31
+        y1SUOn4Ig4NHt0R/u1e178c=
+X-Google-Smtp-Source: ABdhPJwzUCgNcdoLqJpWlON/LozZCUZMCGAOfGDxUBk0PHq7KdOUOS95eg7rsJ8IVKUG17BiUM2tnQ==
+X-Received: by 2002:a17:90b:3850:: with SMTP id nl16mr13879309pjb.190.1639907947026;
+        Sun, 19 Dec 2021 01:59:07 -0800 (PST)
+Received: from smtpclient.apple ([123.114.22.133])
+        by smtp.gmail.com with ESMTPSA id lb12sm1924537pjb.27.2021.12.19.01.59.01
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 19 Dec 2021 01:59:06 -0800 (PST)
+Content-Type: text/plain;
+        charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 15.0 \(3693.40.0.1.81\))
+Subject: Re: [PATCH v4 00/17] Optimize list lru memory consumption
+From:   xiaoqiang zhao <zhaoxiaoqiang007@gmail.com>
+In-Reply-To: <YbyM17OMHlEmLfhH@casper.infradead.org>
+Date:   Sun, 19 Dec 2021 17:58:55 +0800
+Cc:     Muchun Song <songmuchun@bytedance.com>, akpm@linux-foundation.org,
+        hannes@cmpxchg.org, mhocko@kernel.org, vdavydov.dev@gmail.com,
+        shakeelb@google.com, guro@fb.com, shy828301@gmail.com,
+        alexs@kernel.org, richard.weiyang@gmail.com, david@fromorbit.com,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        jaegeuk@kernel.org, chao@kernel.org, kari.argillander@gmail.com,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        zhengqi.arch@bytedance.com, duanxiongchun@bytedance.com,
+        fam.zheng@bytedance.com, smuchun@gmail.com
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <0AF1C950-FA7A-4D70-9E92-72C7BE32293A@gmail.com>
+References: <20211213165342.74704-1-songmuchun@bytedance.com>
+ <745ddcd6-77e3-22e0-1f8e-e6b05c644eb4@gmail.com>
+ <YbyM17OMHlEmLfhH@casper.infradead.org>
+To:     Matthew Wilcox <willy@infradead.org>
+X-Mailer: Apple Mail (2.3693.40.0.1.81)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Jeff Layton <jeff.layton@primarydata.com>
 
-In some cases, we may want to use a userland NLM server which will
-require that we turn off lockd.
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
-Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfsd/nfssvc.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+> 2021=E5=B9=B412=E6=9C=8817=E6=97=A5 =E4=B8=8B=E5=8D=889:12=EF=BC=8CMatth=
+ew Wilcox <willy@infradead.org> =E5=86=99=E9=81=93=EF=BC=9A
+>=20
+> On Fri, Dec 17, 2021 at 06:05:00PM +0800, xiaoqiang zhao wrote:
+>>=20
+>>=20
+>> =E5=9C=A8 2021/12/14 0:53, Muchun Song =E5=86=99=E9=81=93:
+>>> This series is based on Linux 5.16-rc3.
+>>>=20
+>>> In our server, we found a suspected memory leak problem. The =
+kmalloc-32
+>>> consumes more than 6GB of memory. Other kmem_caches consume less =
+than 2GB
+>>> memory.
+>>>=20
+>>> After our in-depth analysis, the memory consumption of kmalloc-32 =
+slab
+>>> cache is the cause of list_lru_one allocation.
+>>=20
+>> IIUC, you mean: "the memory consumption of kmalloc-32 slab cache is
+>> caused by list_lru_one allocation"
+>>=20
+>=20
+> Please trim the unnecessary parts.  You quoted almost 200 extra lines
+> after this that I (and everybody else reading) have to look through
+> to see if you said anything else.
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 80431921e5d7..6815c70b06af 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -340,8 +340,19 @@ static void nfsd_shutdown_generic(void)
- 	nfsd_file_cache_shutdown();
- }
- 
-+/*
-+ * Allow admin to disable lockd. This would typically be used to allow (e.g.)
-+ * a userspace NLM server of some sort to be used.
-+ */
-+static bool nfsd_disable_lockd = false;
-+module_param(nfsd_disable_lockd, bool, 0644);
-+MODULE_PARM_DESC(nfsd_disable_lockd, "Allow lockd to be manually disabled.");
-+
- static bool nfsd_needs_lockd(struct nfsd_net *nn)
- {
-+	if (nfsd_disable_lockd)
-+		return false;
-+
- 	return nfsd_vers(nn, 2, NFSD_TEST) || nfsd_vers(nn, 3, NFSD_TEST);
- }
- 
--- 
-2.33.1
-
+Sorry for the inconvenience, WILL do next time ;-)=
