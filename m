@@ -2,75 +2,80 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6FCEAC433F5
-	for <linux-nfs@archiver.kernel.org>; Sun, 19 Dec 2021 22:25:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E286CC433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 Dec 2021 03:39:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236786AbhLSWZd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 19 Dec 2021 17:25:33 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:33410 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S236784AbhLSWZd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Dec 2021 17:25:33 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1639952732;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=eGQYNuYECfH4p8FHPRkB7VqqoZYM7W52L0TJzQ3+9bA=;
-        b=NI/1U3zKte07CKu8fs7dqumgaamennCgkPWgZzXcWnmGOaYgspkBOioNe/NAfvQj4sJo10
-        YyH4KgRGKaX0y6zAuUdCSdhPnWIiVHLhHwCn6ylnwCxa/iGlpWT1ivnwIDZi1WeYMCNl0I
-        yP5sZgoZHKZygU69ju6mQEBET3LcTbE=
-Received: from mail-io1-f69.google.com (mail-io1-f69.google.com
- [209.85.166.69]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-85-u34TYwUZM8yVoFHuFZMFUA-1; Sun, 19 Dec 2021 17:25:31 -0500
-X-MC-Unique: u34TYwUZM8yVoFHuFZMFUA-1
-Received: by mail-io1-f69.google.com with SMTP id g23-20020a6be617000000b005e245747fb4so6091157ioh.15
-        for <linux-nfs@vger.kernel.org>; Sun, 19 Dec 2021 14:25:31 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=eGQYNuYECfH4p8FHPRkB7VqqoZYM7W52L0TJzQ3+9bA=;
-        b=ToFzMMzv4sUKpeMWJWaTlAQY21T8X7mA0vVVCX6+W0MuRL3WI9pgflil0V6PvS+pRM
-         XMIZoXI0rCFldXzlKLk5nUP/MdrBpp3bXny2JVn+ZO2VBEaXM24ibOaZAIlXjp0r3ti7
-         s6U4u579uPRk1gjrnWtIFHSDnBTDyCmbrdD1Z06+ihpag7FxDXvOn4TlFAoEYNu5nVSe
-         vKnVJCK/zH3Bti1T0sS8TEtMjv3NXbKkunPNY9SkUgaaAdQwTiCeSBfZhabYaKm+FwWw
-         enp45KHOIWvwSijNVvd9Enn6W4OqgKOqJe9aoAEb973+0eqW6bv+5TWZDB3yhbafeoT2
-         Be5A==
-X-Gm-Message-State: AOAM531ZHvv+LAsJ8syoaY2+wcC+ii5u5dB4Hp3yJVfjyISWxZEZt1s0
-        7M6tI9jtznwS8UeJFNlo4fG7QjuTcnBoOcZIo6AtxNG46k0Oop5g6gz3anjtqFlVTKWYhdsp6yz
-        uOWOptL+oPCmv1Ikpc1lQJtENnBFlSvxi/hUQ
-X-Received: by 2002:a05:6638:13c5:: with SMTP id i5mr8346230jaj.88.1639952730684;
-        Sun, 19 Dec 2021 14:25:30 -0800 (PST)
-X-Google-Smtp-Source: ABdhPJysETfzp7QoPvwMkPXKrTlyFLHD/UDdKvokhlGhfGOU2G/9toXoHLZEolsbPk45RjdwHteTka4yyDf0A3SiJsg=
-X-Received: by 2002:a05:6638:13c5:: with SMTP id i5mr8346223jaj.88.1639952730501;
- Sun, 19 Dec 2021 14:25:30 -0800 (PST)
+        id S234052AbhLTDjd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 19 Dec 2021 22:39:33 -0500
+Received: from out30-54.freemail.mail.aliyun.com ([115.124.30.54]:56276 "EHLO
+        out30-54.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S233995AbhLTDjd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Dec 2021 22:39:33 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R131e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e01424;MF=cuibixuan@linux.alibaba.com;NM=1;PH=DS;RN=13;SR=0;TI=SMTPD_---0V.5JYCF_1639971569;
+Received: from 30.43.68.48(mailfrom:cuibixuan@linux.alibaba.com fp:SMTPD_---0V.5JYCF_1639971569)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Mon, 20 Dec 2021 11:39:30 +0800
+Message-ID: <c5c17989-4c1e-35d2-5a75-a27e58cf6673@linux.alibaba.com>
+Date:   Mon, 20 Dec 2021 11:39:26 +0800
 MIME-Version: 1.0
-References: <20211217215046.40316-1-trondmy@kernel.org> <20211217215046.40316-2-trondmy@kernel.org>
- <20211217215046.40316-3-trondmy@kernel.org> <20211217215046.40316-4-trondmy@kernel.org>
- <20211217215046.40316-5-trondmy@kernel.org> <20211217215046.40316-6-trondmy@kernel.org>
- <CAPL3RVFaWgdWQnWOe5B_6=1pNGSOZXp=SVFOBs24aucXphi6wQ@mail.gmail.com> <3A406AE7-B088-4618-9FA1-63BA6E939578@oracle.com>
-In-Reply-To: <3A406AE7-B088-4618-9FA1-63BA6E939578@oracle.com>
-From:   Bruce Fields <bfields@redhat.com>
-Date:   Sun, 19 Dec 2021 17:25:19 -0500
-Message-ID: <CAPL3RVEXSa4RaWoOfC3dkcYm4k0pt72Cq2NNaShHr+5rZQjykg@mail.gmail.com>
-Subject: Re: [PATCH 5/9] nfsd: NFSv3 should allow zero length writes
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     "trondmy@kernel.org" <trondmy@kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:91.0)
+ Gecko/20100101 Thunderbird/91.4.0
+Subject: Re: [PATCH -next] SUNRPC: Clean XPRT_CONGESTED of xprt->state when
+ rpc task is killed
+To:     linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Cc:     bfields@fieldses.org, chuck.lever@oracle.com,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        davem@davemloft.net, kuba@kernel.org, pete.wl@alibaba-inc.com,
+        wenan.mwa@alibaba-inc.com, xiaoh.peixh@alibaba-inc.com,
+        weipu.zy@alibaba-inc.com
+References: <1639490018-128451-1-git-send-email-cuibixuan@linux.alibaba.com>
+ <1639490018-128451-2-git-send-email-cuibixuan@linux.alibaba.com>
+From:   Bixuan Cui <cuibixuan@linux.alibaba.com>
+In-Reply-To: <1639490018-128451-2-git-send-email-cuibixuan@linux.alibaba.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sat, Dec 18, 2021 at 1:42 PM Chuck Lever III <chuck.lever@oracle.com> wrote:
-> But it seems to me WRT4 should already tickle any problems
-> with nfsd_vfs_write(), shouldn't it?
+ping~
 
-I was just taking Trond's word that this is NFSv3-specific, but it's
-not clear to me why from the code, and I know that WRT4 is passing.
-Something's weird.  I'm travelling or I'd test it.
-
---b.
-
+在 2021/12/14 下午9:53, Bixuan Cui 写道:
+> When the values of tcp_max_slot_table_entries and
+> sunrpc.tcp_slot_table_entries are lower than the number of rpc tasks,
+> xprt_dynamic_alloc_slot() in xprt_alloc_slot() will return -EAGAIN, and
+> then set xprt->state to XPRT_CONGESTED:
+>    xprt_retry_reserve
+>      ->xprt_do_reserve
+>        ->xprt_alloc_slot
+>          ->xprt_dynamic_alloc_slot // return -EAGAIN and task->tk_rqstp is NULL
+>            ->xprt_add_backlog // set_bit(XPRT_CONGESTED, &xprt->state);
+>
+> When rpc task is killed, XPRT_CONGESTED bit of xprt->state will not be
+> cleaned up and nfs hangs:
+>    rpc_exit_task
+>      ->xprt_release // if (req == NULL) is true, then XPRT_CONGESTED
+> 		   // bit not clean
+>
+> Add xprt_wake_up_backlog(xprt) to clean XPRT_CONGESTED bit in
+> xprt_release().
+>
+> Signed-off-by: Bixuan Cui <cuibixuan@linux.alibaba.com>
+> Signed-off-by: Xiaohui Pei <xiaoh.peixh@alibaba-inc.com>
+> ---
+>   net/sunrpc/xprt.c | 1 +
+>   1 file changed, 1 insertion(+)
+>
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index a02de2b..70d11ae 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -1952,6 +1952,7 @@ void xprt_release(struct rpc_task *task)
+>   	if (req == NULL) {
+>   		if (task->tk_client) {
+>   			xprt = task->tk_xprt;
+> +			xprt_wake_up_backlog(xprt);
+>   			xprt_release_write(xprt, task);
+>   		}
+>   		return;
