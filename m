@@ -2,123 +2,161 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76219C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63AE2C433F5
 	for <linux-nfs@archiver.kernel.org>; Wed, 22 Dec 2021 21:07:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229600AbhLVVHO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S231349AbhLVVHO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 22 Dec 2021 16:07:14 -0500
-Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:20840 "EHLO
-        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S231337AbhLVVHO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2021 16:07:14 -0500
-Received: from pps.filterd (m0001303.ppops.net [127.0.0.1])
-        by m0001303.ppops.net (8.16.1.2/8.16.1.2) with ESMTP id 1BMHww93030122
+Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:64844 "EHLO
+        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229600AbhLVVHN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2021 16:07:13 -0500
+Received: from pps.filterd (m0109334.ppops.net [127.0.0.1])
+        by mx0a-00082601.pphosted.com (8.16.1.2/8.16.1.2) with ESMTP id 1BMIrA2N022609
         for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2021 13:07:13 -0800
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fb.com; h=from : to : cc : subject
- : date : message-id : mime-version : content-transfer-encoding :
- content-type; s=facebook; bh=a76+ly2/b29FOVogmBKh6AyZyMjiEd9mim4VtwUfpm0=;
- b=SIYqNov8vNZvkDA6l2AHuy8B24vgsTcIhrbnkUuV73/eJ/AUDFft2uxt/NHSMNxAt/Sa
- RjcPX2oQ4RtiBdsb5onlCWGSz+CzB919VOMYhp19HF2BzGlCvutvQiN2svL3FypSa/GJ
- erT+KjYczfP73cyuyEQFe0u+QzHYYZssWK4= 
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding : content-type; s=facebook;
+ bh=maKUEsrXreQEdv70dvYM6PyPTmWdehj8lma5Y9RMvj4=;
+ b=Eq/T0vVVgI8J/Z1hvgdCAVFMWMhVp2ozhpIgQfN2iMbRVDpnpHuUqhnXLCQpBbAcfF2T
+ zoKNctCriVGlLnrZHOW1ifLI1wEVV1sSlRObQvIc0mb2uZt7RUI2riR6BAp5y+ssL+wr
+ 30yqaiR0J6g+9dII3cBDbyG+XQItN92XKK8= 
 Received: from mail.thefacebook.com ([163.114.132.120])
-        by m0001303.ppops.net (PPS) with ESMTPS id 3d467yta31-1
+        by mx0a-00082601.pphosted.com (PPS) with ESMTPS id 3d49pdgshh-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
         for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2021 13:07:13 -0800
-Received: from twshared21922.14.frc2.facebook.com (2620:10d:c085:108::4) by
- mail.thefacebook.com (2620:10d:c085:11d::6) with Microsoft SMTP Server
+Received: from twshared18912.14.frc2.facebook.com (2620:10d:c085:208::f) by
+ mail.thefacebook.com (2620:10d:c085:11d::5) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
  15.1.2308.20; Wed, 22 Dec 2021 13:07:12 -0800
 Received: by devvm225.atn0.facebook.com (Postfix, from userid 425415)
-        id 9870A86F038D; Wed, 22 Dec 2021 13:07:10 -0800 (PST)
+        id A152F86F0391; Wed, 22 Dec 2021 13:07:10 -0800 (PST)
 From:   Stefan Roesch <shr@fb.com>
 To:     <linux-nfs@vger.kernel.org>
-CC:     <shr@fb.com>
-Subject: [PATCH v7 0/3] io_uring: add getdents64 support
-Date:   Wed, 22 Dec 2021 13:07:05 -0800
-Message-ID: <20211222210708.983429-1-shr@fb.com>
+CC:     <shr@fb.com>, Christian Brauner <christian.brauner@ubuntu.com>
+Subject: [PATCH v7 2/3] fs: split off vfs_getdents function of getdents64 syscall
+Date:   Wed, 22 Dec 2021 13:07:07 -0800
+Message-ID: <20211222210708.983429-3-shr@fb.com>
 X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20211222210708.983429-1-shr@fb.com>
+References: <20211222210708.983429-1-shr@fb.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 X-FB-Internal: Safe
 Content-Type: text/plain
-X-Proofpoint-ORIG-GUID: FI1hyBp1edMb-PN0aO9Wwv_ctqjs7RTd
-X-Proofpoint-GUID: FI1hyBp1edMb-PN0aO9Wwv_ctqjs7RTd
+X-Proofpoint-GUID: IaW11h2oi0ehgwYcPW8xHiqQz34hNxjY
+X-Proofpoint-ORIG-GUID: IaW11h2oi0ehgwYcPW8xHiqQz34hNxjY
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.790,Hydra:6.0.425,FMLib:17.11.62.513
  definitions=2021-12-22_09,2021-12-22_01,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=fb_outbound_notspam policy=fb_outbound score=0 malwarescore=0
- priorityscore=1501 mlxscore=0 lowpriorityscore=0 bulkscore=0 spamscore=0
- suspectscore=0 adultscore=0 impostorscore=0 mlxlogscore=415 phishscore=0
- clxscore=1011 classifier=spam adjust=0 reason=mlx scancount=1
+X-Proofpoint-Spam-Details: rule=fb_outbound_notspam policy=fb_outbound score=0 mlxscore=0
+ clxscore=1011 lowpriorityscore=0 impostorscore=0 adultscore=0 bulkscore=0
+ priorityscore=1501 suspectscore=0 phishscore=0 malwarescore=0 spamscore=0
+ mlxlogscore=833 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.12.0-2110150000 definitions=main-2112220111
 X-FB-Internal: deliver
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This series adds support for getdents64 in liburing. The intent is to
-provide a more complete I/O interface for io_uring.
+This splits off the vfs_getdents function from the getdents64 system
+call. This allows io_uring to call the vfs_getdents function.
 
-Patch 1: fs: add offset parameter to iterate_dir function.
-  This adds an offset parameter to the iterate_dir()
-  function. The new parameter allows the caller to specify
-  the offset to use.
+Signed-off-by: Stefan Roesch <shr@fb.com>
+Acked-by: Christian Brauner <christian.brauner@ubuntu.com>
+---
+ fs/internal.h |  8 ++++++++
+ fs/readdir.c  | 36 ++++++++++++++++++++++++++++--------
+ 2 files changed, 36 insertions(+), 8 deletions(-)
 
-Patch 2: fs: split off vfs_getdents function from getdents64 system call
-  This splits of the iterate_dir part of the syscall in its own
-  dedicated function. This allows to call the function directly from
-  io_uring.
-
-Patch 3: io_uring: add support for getdents64
-  Adds the functions to io_uring to support getdents64.
-
-There is also a patch series for the changes to liburing. This includes
-a new test. The patch series is called "liburing: add getdents support."
-
-The following tests have been performed:
-- new liburing getdents test program has been run
-- xfstests have been run
-- both tests have been repeated with the kernel memory leak checker
-  and no leaks have been reported.
-
-
-V7: - add loff_t *parameter to iterate_dir function
-    - remove do_iterate_dir function
-    - change callers of iterate_dir function
-v6: - rebased patch series
-v5: - remove old patch (v4 contained a patch file from v3)
-V4: - silence compiler warnings
-V3: - add do_iterate_dir() function to Patch 1
-    - make iterate_dir() function call do_iterate_dir()
-      This has the advantage that the function signature of iterate_dir
-      does not change
-V2: - updated the iterate_dir calls in fs/ksmbd, fs/ecryptfs and arch/alp=
-ha with
-      the additional parameter.
-
-
-Stefan Roesch (3):
-  fs: add offset parameter to iterate_dir function
-  fs: split off vfs_getdents function of getdents64 syscall
-  io_uring: add support for getdents64
-
- arch/alpha/kernel/osf_sys.c   |  2 +-
- fs/ecryptfs/file.c            |  2 +-
- fs/exportfs/expfs.c           |  2 +-
- fs/internal.h                 |  8 +++++
- fs/io_uring.c                 | 52 +++++++++++++++++++++++++++++
- fs/ksmbd/smb2pdu.c            |  3 +-
- fs/ksmbd/vfs.c                |  4 +--
- fs/nfsd/nfs4recover.c         |  2 +-
- fs/nfsd/vfs.c                 |  2 +-
- fs/overlayfs/readdir.c        |  6 ++--
- fs/readdir.c                  | 62 +++++++++++++++++++++++++----------
- include/linux/fs.h            |  2 +-
- include/uapi/linux/io_uring.h |  1 +
- 13 files changed, 119 insertions(+), 29 deletions(-)
-
-
-base-commit: d09358c3d161dcea8f02eae1281bc996819cc769
+diff --git a/fs/internal.h b/fs/internal.h
+index 7979ff8d168c..432ea3ce76ec 100644
+--- a/fs/internal.h
++++ b/fs/internal.h
+@@ -194,3 +194,11 @@ long splice_file_to_pipe(struct file *in,
+ 			 struct pipe_inode_info *opipe,
+ 			 loff_t *offset,
+ 			 size_t len, unsigned int flags);
++
++/*
++ * fs/readdir.c
++ */
++struct linux_dirent64;
++
++int vfs_getdents(struct file *file, struct linux_dirent64 __user *dirent=
+,
++		 unsigned int count, loff_t *pos);
+diff --git a/fs/readdir.c b/fs/readdir.c
+index c1e6612e0f47..1b1fade87525 100644
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -21,6 +21,7 @@
+ #include <linux/unistd.h>
+ #include <linux/compat.h>
+ #include <linux/uaccess.h>
++#include "internal.h"
+=20
+ #include <asm/unaligned.h>
+=20
+@@ -359,22 +360,25 @@ static int filldir64(struct dir_context *ctx, const=
+ char *name, int namlen,
+ 	return -EFAULT;
+ }
+=20
+-SYSCALL_DEFINE3(getdents64, unsigned int, fd,
+-		struct linux_dirent64 __user *, dirent, unsigned int, count)
++/**
++ * vfs_getdents - getdents without fdget
++ * @file    : pointer to file struct of directory
++ * @dirent  : pointer to user directory structure
++ * @count   : size of buffer
++ * @pos     : file pos
++ */
++int vfs_getdents(struct file *file, struct linux_dirent64 __user *dirent=
+,
++		 unsigned int count, loff_t *pos)
+ {
+-	struct fd f;
+ 	struct getdents_callback64 buf =3D {
+ 		.ctx.actor =3D filldir64,
++		.ctx.pos =3D *pos,
+ 		.count =3D count,
+ 		.current_dir =3D dirent
+ 	};
+ 	int error;
+=20
+-	f =3D fdget_pos(fd);
+-	if (!f.file)
+-		return -EBADF;
+-
+-	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
++	error =3D iterate_dir(file, &buf.ctx, pos);
+ 	if (error >=3D 0)
+ 		error =3D buf.error;
+ 	if (buf.prev_reclen) {
+@@ -391,6 +395,22 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
+ 	return error;
+ }
+=20
++SYSCALL_DEFINE3(getdents64, unsigned int, fd,
++		struct linux_dirent64 __user *, dirent, unsigned int, count)
++{
++	struct fd f;
++	int error;
++
++	f =3D fdget_pos(fd);
++	if (!f.file)
++		return -EBADF;
++
++	error =3D vfs_getdents(f.file, dirent, count, &f.file->f_pos);
++
++	fdput_pos(f);
++	return error;
++ }
++
+ #ifdef CONFIG_COMPAT
+ struct compat_old_linux_dirent {
+ 	compat_ulong_t	d_ino;
 --=20
 2.30.2
 
