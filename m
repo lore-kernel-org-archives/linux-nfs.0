@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0F14C433FE
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Dec 2021 21:07:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 98A70C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Dec 2021 21:07:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231962AbhLVVHP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Dec 2021 16:07:15 -0500
-Received: from mx0b-00082601.pphosted.com ([67.231.153.30]:27590 "EHLO
-        mx0b-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231337AbhLVVHP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2021 16:07:15 -0500
-Received: from pps.filterd (m0109331.ppops.net [127.0.0.1])
-        by mx0a-00082601.pphosted.com (8.16.1.2/8.16.1.2) with ESMTP id 1BMHx4g8010970
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2021 13:07:14 -0800
+        id S231337AbhLVVHR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 Dec 2021 16:07:17 -0500
+Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:18456 "EHLO
+        mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232830AbhLVVHQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2021 16:07:16 -0500
+Received: from pps.filterd (m0148461.ppops.net [127.0.0.1])
+        by mx0a-00082601.pphosted.com (8.16.1.2/8.16.1.2) with ESMTP id 1BMHx03I014049
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2021 13:07:15 -0800
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fb.com; h=from : to : cc : subject
  : date : message-id : in-reply-to : references : mime-version :
  content-transfer-encoding : content-type; s=facebook;
- bh=8OOc50qxKmAs5IiU6fBFOWB0HolbDTkGHMYiopQUJeI=;
- b=Niag5htqEPRBNAUr/n408y4UQvEunteAoNQhfeSTRfiKdxS3BlRrYeUU3i+sAj6/2rRu
- Gy3yYTnHCVXlzg3pXtzoadn52R6/z4+A6uGOMOekcCuDCE0CQcYq1kBB1l+AWFXgZGAs
- e8kjKNmpvv/HchZQmQYryD16TORPpNLVuVM= 
-Received: from mail.thefacebook.com ([163.114.132.120])
-        by mx0a-00082601.pphosted.com (PPS) with ESMTPS id 3d40wrmh68-2
+ bh=v6H7J6W/w1VbLShf2yyGkjgJa1r6SwYUwh/CcB64iEg=;
+ b=Ba1Z/o9LYf7xG21AVkNtH3dg9S+AnXwr3iKIDiEIL3XEbhKojnz755SeE9QeCyTstbAj
+ 8VO0Xf0BkEoK/p5zdSjupWzvaDINIQzoDVnPzjx/JoFoplpE1lUKVx8OulatR0UF03Ln
+ fvQW7AAg9f9wC8t9XEn+7NarNKAwEV9WahU= 
+Received: from maileast.thefacebook.com ([163.114.130.16])
+        by mx0a-00082601.pphosted.com (PPS) with ESMTPS id 3d42mxktjy-4
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2021 13:07:14 -0800
-Received: from twshared21922.14.frc2.facebook.com (2620:10d:c085:108::4) by
- mail.thefacebook.com (2620:10d:c085:21d::6) with Microsoft SMTP Server
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2021 13:07:15 -0800
+Received: from twshared12416.02.ash9.facebook.com (2620:10d:c0a8:1b::d) by
+ mail.thefacebook.com (2620:10d:c0a8:83::4) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2308.20; Wed, 22 Dec 2021 13:07:12 -0800
+ 15.1.2308.20; Wed, 22 Dec 2021 13:07:14 -0800
 Received: by devvm225.atn0.facebook.com (Postfix, from userid 425415)
-        id A8C6F86F0393; Wed, 22 Dec 2021 13:07:10 -0800 (PST)
+        id 9B67986F038F; Wed, 22 Dec 2021 13:07:10 -0800 (PST)
 From:   Stefan Roesch <shr@fb.com>
 To:     <linux-nfs@vger.kernel.org>
-CC:     <shr@fb.com>, Pavel Begunkov <asml.silence@gmail.com>
-Subject: [PATCH v7 3/3] io_uring: add support for getdents64
-Date:   Wed, 22 Dec 2021 13:07:08 -0800
-Message-ID: <20211222210708.983429-4-shr@fb.com>
+CC:     <shr@fb.com>
+Subject: [PATCH v7 1/3] fs: add offset parameter to iterate_dir function
+Date:   Wed, 22 Dec 2021 13:07:06 -0800
+Message-ID: <20211222210708.983429-2-shr@fb.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211222210708.983429-1-shr@fb.com>
 References: <20211222210708.983429-1-shr@fb.com>
@@ -44,146 +44,289 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 X-FB-Internal: Safe
 Content-Type: text/plain
-X-Proofpoint-GUID: bqmBnATL7-j1F2OgCDwJCMBFrBtntgMF
-X-Proofpoint-ORIG-GUID: bqmBnATL7-j1F2OgCDwJCMBFrBtntgMF
+X-Proofpoint-ORIG-GUID: R3qoZS27FlOlaQQ1iYxubwlzazu-JdjD
+X-Proofpoint-GUID: R3qoZS27FlOlaQQ1iYxubwlzazu-JdjD
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.790,Hydra:6.0.425,FMLib:17.11.62.513
  definitions=2021-12-22_09,2021-12-22_01,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=fb_outbound_notspam policy=fb_outbound score=0 clxscore=1015
- bulkscore=0 malwarescore=0 phishscore=0 mlxscore=0 adultscore=0
- lowpriorityscore=0 suspectscore=0 spamscore=0 impostorscore=0
- mlxlogscore=892 priorityscore=1501 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.12.0-2110150000 definitions=main-2112220111
+X-Proofpoint-Spam-Details: rule=fb_outbound_notspam policy=fb_outbound score=0 adultscore=0
+ clxscore=1015 mlxlogscore=940 lowpriorityscore=0 priorityscore=1501
+ suspectscore=0 spamscore=0 impostorscore=0 malwarescore=0 mlxscore=0
+ bulkscore=0 phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2110150000 definitions=main-2112220111
 X-FB-Internal: deliver
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This adds support for getdents64 to io_uring.
+This change adds the offset parameter to the iterate_dir
+function. The offset paramater allows the caller to specify
+the offset position.
+
+This change is required to support getdents in io_uring.
 
 Signed-off-by: Stefan Roesch <shr@fb.com>
-Reviewed-by: Pavel Begunkov <asml.silence@gmail.com>
 ---
- fs/io_uring.c                 | 52 +++++++++++++++++++++++++++++++++++
- include/uapi/linux/io_uring.h |  1 +
- 2 files changed, 53 insertions(+)
+ arch/alpha/kernel/osf_sys.c |  2 +-
+ fs/ecryptfs/file.c          |  2 +-
+ fs/exportfs/expfs.c         |  2 +-
+ fs/ksmbd/smb2pdu.c          |  3 ++-
+ fs/ksmbd/vfs.c              |  4 ++--
+ fs/nfsd/nfs4recover.c       |  2 +-
+ fs/nfsd/vfs.c               |  2 +-
+ fs/overlayfs/readdir.c      |  6 +++---
+ fs/readdir.c                | 28 ++++++++++++++++++----------
+ include/linux/fs.h          |  2 +-
+ 10 files changed, 31 insertions(+), 22 deletions(-)
 
-diff --git a/fs/io_uring.c b/fs/io_uring.c
-index 5092dfe56da6..c8258c784116 100644
---- a/fs/io_uring.c
-+++ b/fs/io_uring.c
-@@ -693,6 +693,13 @@ struct io_hardlink {
- 	int				flags;
- };
+diff --git a/arch/alpha/kernel/osf_sys.c b/arch/alpha/kernel/osf_sys.c
+index 8bbeebb73cf0..cf68c459bca6 100644
+--- a/arch/alpha/kernel/osf_sys.c
++++ b/arch/alpha/kernel/osf_sys.c
+@@ -162,7 +162,7 @@ SYSCALL_DEFINE4(osf_getdirentries, unsigned int, fd,
+ 	if (!arg.file)
+ 		return -EBADF;
 =20
-+struct io_getdents {
-+	struct file			*file;
-+	struct linux_dirent64 __user	*dirent;
-+	unsigned int			count;
-+	loff_t				pos;
-+};
-+
- struct io_async_connect {
- 	struct sockaddr_storage		address;
- };
-@@ -858,6 +865,7 @@ struct io_kiocb {
- 		struct io_mkdir		mkdir;
- 		struct io_symlink	symlink;
- 		struct io_hardlink	hardlink;
-+		struct io_getdents	getdents;
+-	error =3D iterate_dir(arg.file, &buf.ctx);
++	error =3D iterate_dir(arg.file, &buf.ctx, &arg.file->f_pos);
+ 	if (error >=3D 0)
+ 		error =3D buf.error;
+ 	if (count !=3D buf.count)
+diff --git a/fs/ecryptfs/file.c b/fs/ecryptfs/file.c
+index 18d5b91cb573..b68f1945e615 100644
+--- a/fs/ecryptfs/file.c
++++ b/fs/ecryptfs/file.c
+@@ -109,7 +109,7 @@ static int ecryptfs_readdir(struct file *file, struct=
+ dir_context *ctx)
+ 		.sb =3D inode->i_sb,
  	};
+ 	lower_file =3D ecryptfs_file_to_lower(file);
+-	rc =3D iterate_dir(lower_file, &buf.ctx);
++	rc =3D iterate_dir(lower_file, &buf.ctx, &lower_file->f_pos);
+ 	ctx->pos =3D buf.ctx.pos;
+ 	if (rc < 0)
+ 		goto out;
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index 0106eba46d5a..654e2d4b1d4f 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -323,7 +323,7 @@ static int get_name(const struct path *path, char *na=
+me, struct dentry *child)
+ 	while (1) {
+ 		int old_seq =3D buffer.sequence;
 =20
- 	u8				opcode;
-@@ -1107,6 +1115,9 @@ static const struct io_op_def io_op_defs[] =3D {
- 	[IORING_OP_MKDIRAT] =3D {},
- 	[IORING_OP_SYMLINKAT] =3D {},
- 	[IORING_OP_LINKAT] =3D {},
-+	[IORING_OP_GETDENTS] =3D {
-+		.needs_file		=3D 1,
-+	},
- };
+-		error =3D iterate_dir(file, &buffer.ctx);
++		error =3D iterate_dir(file, &buffer.ctx, &file->f_pos);
+ 		if (buffer.found) {
+ 			error =3D 0;
+ 			break;
+diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
+index 49c9da37315c..fd4cb995d06d 100644
+--- a/fs/ksmbd/smb2pdu.c
++++ b/fs/ksmbd/smb2pdu.c
+@@ -3925,7 +3925,8 @@ int smb2_query_dir(struct ksmbd_work *work)
+ 	dir_fp->readdir_data.private		=3D &query_dir_private;
+ 	set_ctx_actor(&dir_fp->readdir_data.ctx, __query_dir);
 =20
- /* requests with any of those set should undergo io_disarm_next() */
-@@ -4068,6 +4079,42 @@ static int io_linkat(struct io_kiocb *req, unsigne=
-d int issue_flags)
- 	return 0;
- }
+-	rc =3D iterate_dir(dir_fp->filp, &dir_fp->readdir_data.ctx);
++	rc =3D iterate_dir(dir_fp->filp, &dir_fp->readdir_data.ctx,
++			&dir_fp->filp->f_pos);
+ 	if (rc =3D=3D 0)
+ 		restart_ctx(&dir_fp->readdir_data.ctx);
+ 	if (rc =3D=3D -ENOSPC)
+diff --git a/fs/ksmbd/vfs.c b/fs/ksmbd/vfs.c
+index 19d36393974c..5b8e23d3c846 100644
+--- a/fs/ksmbd/vfs.c
++++ b/fs/ksmbd/vfs.c
+@@ -1136,7 +1136,7 @@ int ksmbd_vfs_empty_dir(struct ksmbd_file *fp)
+ 	set_ctx_actor(&readdir_data.ctx, __dir_empty);
+ 	readdir_data.dirent_count =3D 0;
 =20
-+static int io_getdents_prep(struct io_kiocb *req, const struct io_uring_=
-sqe *sqe)
-+{
-+	struct io_getdents *getdents =3D &req->getdents;
-+
-+	if (unlikely(req->ctx->flags & IORING_SETUP_IOPOLL))
-+		return -EINVAL;
-+	if (sqe->ioprio || sqe->rw_flags || sqe->buf_index)
-+		return -EINVAL;
-+
-+	getdents->pos =3D READ_ONCE(sqe->off);
-+	getdents->dirent =3D u64_to_user_ptr(READ_ONCE(sqe->addr));
-+	getdents->count =3D READ_ONCE(sqe->len);
-+
-+	return 0;
-+}
-+
-+static int io_getdents(struct io_kiocb *req, unsigned int issue_flags)
-+{
-+	struct io_getdents *getdents =3D &req->getdents;
-+	int ret;
-+
-+	if (issue_flags & IO_URING_F_NONBLOCK)
-+		return -EAGAIN;
-+
-+	ret =3D vfs_getdents(req->file, getdents->dirent, getdents->count, &get=
-dents->pos);
-+	if (ret < 0) {
-+		if (ret =3D=3D -ERESTARTSYS)
-+			ret =3D -EINTR;
-+
-+		req_set_fail(req);
-+	}
-+
-+	io_req_complete(req, ret);
-+	return 0;
-+}
-+
- static int io_shutdown_prep(struct io_kiocb *req,
- 			    const struct io_uring_sqe *sqe)
- {
-@@ -6574,6 +6621,8 @@ static int io_req_prep(struct io_kiocb *req, const =
-struct io_uring_sqe *sqe)
- 		return io_symlinkat_prep(req, sqe);
- 	case IORING_OP_LINKAT:
- 		return io_linkat_prep(req, sqe);
-+	case IORING_OP_GETDENTS:
-+		return io_getdents_prep(req, sqe);
+-	err =3D iterate_dir(fp->filp, &readdir_data.ctx);
++	err =3D iterate_dir(fp->filp, &readdir_data.ctx, &fp->filp->f_pos);
+ 	if (readdir_data.dirent_count > 2)
+ 		err =3D -ENOTEMPTY;
+ 	else
+@@ -1186,7 +1186,7 @@ static int ksmbd_vfs_lookup_in_dir(struct path *dir=
+, char *name, size_t namelen)
+ 	if (IS_ERR(dfilp))
+ 		return PTR_ERR(dfilp);
+=20
+-	ret =3D iterate_dir(dfilp, &readdir_data.ctx);
++	ret =3D iterate_dir(dfilp, &readdir_data.ctx, &dfilp->f_pos);
+ 	if (readdir_data.dirent_count > 0)
+ 		ret =3D 0;
+ 	fput(dfilp);
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 6fedc49726bf..79a2799891e4 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -307,7 +307,7 @@ nfsd4_list_rec_dir(recdir_func *f, struct nfsd_net *n=
+n)
+ 		return status;
  	}
 =20
- 	printk_once(KERN_WARNING "io_uring: unhandled opcode %d\n",
-@@ -6857,6 +6906,9 @@ static int io_issue_sqe(struct io_kiocb *req, unsig=
-ned int issue_flags)
- 	case IORING_OP_LINKAT:
- 		ret =3D io_linkat(req, issue_flags);
- 		break;
-+	case IORING_OP_GETDENTS:
-+		ret =3D io_getdents(req, issue_flags);
-+		break;
- 	default:
- 		ret =3D -EINVAL;
- 		break;
-diff --git a/include/uapi/linux/io_uring.h b/include/uapi/linux/io_uring.=
-h
-index 787f491f0d2a..57dc88db5793 100644
---- a/include/uapi/linux/io_uring.h
-+++ b/include/uapi/linux/io_uring.h
-@@ -143,6 +143,7 @@ enum {
- 	IORING_OP_MKDIRAT,
- 	IORING_OP_SYMLINKAT,
- 	IORING_OP_LINKAT,
-+	IORING_OP_GETDENTS,
+-	status =3D iterate_dir(nn->rec_file, &ctx.ctx);
++	status =3D iterate_dir(nn->rec_file, &ctx.ctx, &nn->rec_file->f_pos);
+ 	inode_lock_nested(d_inode(dir), I_MUTEX_PARENT);
 =20
- 	/* this goes last, obviously */
- 	IORING_OP_LAST,
+ 	list_for_each_entry_safe(entry, tmp, &ctx.names, list) {
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index c99857689e2c..085864c25318 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1980,7 +1980,7 @@ static __be32 nfsd_buffered_readdir(struct file *fi=
+le, struct svc_fh *fhp,
+ 		buf.used =3D 0;
+ 		buf.full =3D 0;
+=20
+-		host_err =3D iterate_dir(file, &buf.ctx);
++		host_err =3D iterate_dir(file, &buf.ctx, &file->f_pos);
+ 		if (buf.full)
+ 			host_err =3D 0;
+=20
+diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
+index 150fdf3bc68d..52167ff9e513 100644
+--- a/fs/overlayfs/readdir.c
++++ b/fs/overlayfs/readdir.c
+@@ -306,7 +306,7 @@ static inline int ovl_dir_read(struct path *realpath,
+ 	do {
+ 		rdd->count =3D 0;
+ 		rdd->err =3D 0;
+-		err =3D iterate_dir(realfile, &rdd->ctx);
++		err =3D iterate_dir(realfile, &rdd->ctx, &realfile->f_pos);
+ 		if (err >=3D 0)
+ 			err =3D rdd->err;
+ 	} while (!err && rdd->count);
+@@ -722,7 +722,7 @@ static int ovl_iterate_real(struct file *file, struct=
+ dir_context *ctx)
+ 			return PTR_ERR(rdt.cache);
+ 	}
+=20
+-	err =3D iterate_dir(od->realfile, &rdt.ctx);
++	err =3D iterate_dir(od->realfile, &rdt.ctx, &od->realfile->f_pos);
+ 	ctx->pos =3D rdt.ctx.pos;
+=20
+ 	return err;
+@@ -753,7 +753,7 @@ static int ovl_iterate(struct file *file, struct dir_=
+context *ctx)
+ 		      OVL_TYPE_MERGE(ovl_path_type(dentry->d_parent))))) {
+ 			err =3D ovl_iterate_real(file, ctx);
+ 		} else {
+-			err =3D iterate_dir(od->realfile, ctx);
++			err =3D iterate_dir(od->realfile, ctx, &od->realfile->f_pos);
+ 		}
+ 		goto out;
+ 	}
+diff --git a/fs/readdir.c b/fs/readdir.c
+index 09e8ed7d4161..c1e6612e0f47 100644
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -36,8 +36,13 @@
+ 	unsafe_copy_to_user(dst, src, len, label);		\
+ } while (0)
+=20
+-
+-int iterate_dir(struct file *file, struct dir_context *ctx)
++/**
++ * iterate_dir - iterate over directory
++ * @file    : pointer to file struct of directory
++ * @ctx     : pointer to directory ctx structure
++ * @pos     : file offset
++ */
++int iterate_dir(struct file *file, struct dir_context *ctx, loff_t *pos)
+ {
+ 	struct inode *inode =3D file_inode(file);
+ 	bool shared =3D false;
+@@ -60,12 +65,15 @@ int iterate_dir(struct file *file, struct dir_context=
+ *ctx)
+=20
+ 	res =3D -ENOENT;
+ 	if (!IS_DEADDIR(inode)) {
+-		ctx->pos =3D file->f_pos;
++		ctx->pos =3D *pos;
++
+ 		if (shared)
+ 			res =3D file->f_op->iterate_shared(file, ctx);
+ 		else
+ 			res =3D file->f_op->iterate(file, ctx);
+-		file->f_pos =3D ctx->pos;
++
++		*pos =3D ctx->pos;
++
+ 		fsnotify_access(file);
+ 		file_accessed(file);
+ 	}
+@@ -190,7 +198,7 @@ SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
+ 	if (!f.file)
+ 		return -EBADF;
+=20
+-	error =3D iterate_dir(f.file, &buf.ctx);
++	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+ 	if (buf.result)
+ 		error =3D buf.result;
+=20
+@@ -283,7 +291,7 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
+ 	if (!f.file)
+ 		return -EBADF;
+=20
+-	error =3D iterate_dir(f.file, &buf.ctx);
++	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+ 	if (error >=3D 0)
+ 		error =3D buf.error;
+ 	if (buf.prev_reclen) {
+@@ -366,7 +374,7 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
+ 	if (!f.file)
+ 		return -EBADF;
+=20
+-	error =3D iterate_dir(f.file, &buf.ctx);
++	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+ 	if (error >=3D 0)
+ 		error =3D buf.error;
+ 	if (buf.prev_reclen) {
+@@ -379,7 +387,7 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
+ 		else
+ 			error =3D count - buf.count;
+ 	}
+-	fdput_pos(f);
++
+ 	return error;
+ }
+=20
+@@ -448,7 +456,7 @@ COMPAT_SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
+ 	if (!f.file)
+ 		return -EBADF;
+=20
+-	error =3D iterate_dir(f.file, &buf.ctx);
++	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+ 	if (buf.result)
+ 		error =3D buf.result;
+=20
+@@ -534,7 +542,7 @@ COMPAT_SYSCALL_DEFINE3(getdents, unsigned int, fd,
+ 	if (!f.file)
+ 		return -EBADF;
+=20
+-	error =3D iterate_dir(f.file, &buf.ctx);
++	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+ 	if (error >=3D 0)
+ 		error =3D buf.error;
+ 	if (buf.prev_reclen) {
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 6b8dc1a78df6..e1becbe86b07 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3340,7 +3340,7 @@ const char *simple_get_link(struct dentry *, struct=
+ inode *,
+ 			    struct delayed_call *);
+ extern const struct inode_operations simple_symlink_inode_operations;
+=20
+-extern int iterate_dir(struct file *, struct dir_context *);
++extern int iterate_dir(struct file *, struct dir_context *, loff_t *pos)=
+;
+=20
+ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat=
+,
+ 		int flags);
 --=20
 2.30.2
 
