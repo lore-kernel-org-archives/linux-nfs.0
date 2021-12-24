@@ -2,227 +2,421 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A450C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 24 Dec 2021 04:46:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A48E4C433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 24 Dec 2021 17:25:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351297AbhLXEqd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 23 Dec 2021 23:46:33 -0500
-Received: from mx0b-00069f02.pphosted.com ([205.220.177.32]:8286 "EHLO
-        mx0b-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S240362AbhLXEqd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2021 23:46:33 -0500
-Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 1BO4hkGW002453;
-        Fri, 24 Dec 2021 04:46:30 GMT
+        id S1353298AbhLXRZy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 24 Dec 2021 12:25:54 -0500
+Received: from mx0a-00069f02.pphosted.com ([205.220.165.32]:10848 "EHLO
+        mx0a-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229539AbhLXRZx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Dec 2021 12:25:53 -0500
+Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 1BOEww3O002489;
+        Fri, 24 Dec 2021 17:25:52 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : content-type : content-id :
- content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=K7/7jBvKLg1ZBo1PXvwksdsrDTopfO5E2wEY71ZZsKk=;
- b=vRLt39tJ+8iqp37RerSSs/vr+TBVZISYO7ZORm0+TyYh8mE+MJ7vMQsqBcNkPpdqPKd6
- o6DhqGFFWnCOV1wH/RrKn7eC2NGlPY1mv9tj5nYLXN03ciVBySXqvaF/1JqHImgFp28I
- Yfzmc/u0iAZXIG1moWLttj+MtxdFde9nrXRa76inNd1nYygke3te0rG0Hx167cUCOyAB
- 0b/qyZ2skdESTBkPzgnxBDh9PI+OQoruIDk5yHOhcEcjcsW7WUi3Tyw1Lvo5gtt7l5E2
- FpXdqLKT+bYNssjMP3olIh00p3c9wA0B8oB35Vkqt4VbjR2Ujl9IzhC6XNzRUjOScbOR mQ== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3d46qn4kh9-1
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2021-07-09;
+ bh=6pPXoPHz6CyMzo6TIMux5Sd6slT6bM4baJCHSd/xmec=;
+ b=JdJ+MAazKntwAlHN2/8cBck3K3SB4vJg7J8e/Mt1aHbW0pwaMAUqR6kQhQ/IfibU2jSS
+ wU5KY7rWSrLKpJ4YHkBn8C7flfdCDZiGfzpDBDArC/vxeOryDgVCzrjun2hdDUObvBiL
+ xGRN4fkwD235jaWPxwuqozXKSx20YauS/f8jG0rUlUqrZ+xbBROrk0XQeYHudAy6SkGc
+ u+eC0mV8BmFb3lzBnMB2UKHb3We7LAdaujQ0vJ7BB3AsiUKFcEGt2x2oY8H9yPbesBa7
+ NygF3IkQqXWRdlpfZe16M7vg6/H4WOmEe9wb4/Sjo5hnVx8yL9wVy3VkpvSQlCKp1lxf 9w== 
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
+        by mx0b-00069f02.pphosted.com with ESMTP id 3d4f6w3nw7-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 24 Dec 2021 04:46:29 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 1BO4fBpH188617;
-        Fri, 24 Dec 2021 04:46:29 GMT
-Received: from nam11-dm6-obe.outbound.protection.outlook.com (mail-dm6nam11lp2174.outbound.protection.outlook.com [104.47.57.174])
-        by aserp3030.oracle.com with ESMTP id 3d15pgtv1c-1
+        Fri, 24 Dec 2021 17:25:52 +0000
+Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
+        by aserp3020.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 1BOHL28o042252;
+        Fri, 24 Dec 2021 17:25:51 GMT
+Received: from nam11-bn8-obe.outbound.protection.outlook.com (mail-bn8nam11lp2172.outbound.protection.outlook.com [104.47.58.172])
+        by aserp3020.oracle.com with ESMTP id 3d17f80tph-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 24 Dec 2021 04:46:28 +0000
+        Fri, 24 Dec 2021 17:25:50 +0000
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=Xn9ODSm/3Im1fZ2t2mGtYGtRjtD6uzvPm9/eVNbzL+M+zQY66rTxZNVBalDIFWvr3O2vgVOu2w+vpj5z5hjvn0WWLDzOwwZV5D0A8VUrXuhbgQJf5MAXagqlnjn0HVcN2rh8UrFBRY6C3QVsSDxUpaFbbA8WSS7vviEvoIEinQKCGF+lssQf5BxNbU0QGNJaQy6ThPKMCjQkAAeeFsCrmWSrBNcRPfk8XC/zMx5VZqIWNkTaE/VpH2YUSlFQ5W57ng/Cx1dPHYQVqwrw+zQLRMMuO8OeeMrtL8A8TyKk1mrltk+zxoZFJ8KikhVz8VeGounGWMkNP5TKSRFIObl3Cw==
+ b=jiI+DkrTWeR7tpfEiplT9zah/ul3SOt00aZ/uaMID/U/DdBCkZTIQshJBpt1KoAWOPGxQXWNKk0nJaY8lByUhF/I2ce2asnp1MtM+EUU1xaMo02JIZI7Zz8Fc21FY3fVdu2tqKH1/3GoSjyXnkU8TLXTaIXA8mh2vnJ81QUBcnw3gpvWVWkhRVDjQU2bOVmKU0KZY2h1tYulVWspI4RQTOCx2XH7Klx/YqvLshOpIA/pQgQIXqfAXZ7RdmgkyFHS0nA3gzZhdFMYFW0mZpvrKZTWFFpPhTTRLPrGheqH0n/FLWniWFNKuGhxUAy7QfAkw+U+zcSWaFvufUZEXY3U9A==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=K7/7jBvKLg1ZBo1PXvwksdsrDTopfO5E2wEY71ZZsKk=;
- b=UJ0yVDJ4x5ItM8OHWoXw5hrkBR/58jPH83dTuweZRmZHd4SG4S7SRMnrirTzjt69JY44q+SQJQ+duLiLuiAevBnOsNaJ1UFIl47EJYtjqchMSO17NeUgsfYAQGF/1qFHwv0hlnZY9aYhyOvK13O8YzRQNJgdKRE+cYnYB7/svAPcDnCE0CyJpe0a54P7yzMVjlnmsl/+edFpmxgy5OJjS2vSJPkK3i3SEWBlFBnOhpAQMcaJGxeiPE/xVwbRV0eNu9MF39q2utHOq5WqW6ZKeZUWNZu6eATPHYPa6IwXlXu+18UOar3I5nAmEzrtwVFPfuEFHA/le6oYATB6WjYiJA==
+ bh=6pPXoPHz6CyMzo6TIMux5Sd6slT6bM4baJCHSd/xmec=;
+ b=fKtWkRoN9i+L8JSftNfuLBRodOHtlWOswyHJtWH3wBmTW84eqLhUNsJI47E6+mu73Nkwq+j0znUaj5tgMbw8AY+nQBhk4NJlwNfznTPp3rwRubncs/xGp0ya3gqV4Lcvirjr1VTSwtkFhsO9Pi7iUD0c9aVJ2Pg6PIj25CDi0PqGSy+pLr0rekixwV/9ZNAfQ7Uep7eckUSSst4Nd10xOOkaIxiruEol+hLezpysab5W4ZzSUFGhflhkF/RPVGsTycXkWi/PqdoETbDJtCEvcQEhlo6VdCEPYvqW6ZPGEWfpZMvXo6wdFXOEhDUl4K7EpdRgvnvdwECyzvgi6NLgig==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
  dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
  d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=K7/7jBvKLg1ZBo1PXvwksdsrDTopfO5E2wEY71ZZsKk=;
- b=ezqWfAbnjn+bbF8FbFuwlxodADy/JhFtoDjZgerKIWmpuwQnghqgRJJ+TE9iw1OwE9sdzubEvJ5IpQ07Af8mvXpNHRSU1kkgbuO6no6iNuhJ+QjIJBhyRre+SQKRAaJ1MkCMXTb+WGVtj8Hpuqq7I1Pv+b2tlM2a7HxafddlYPI=
+ bh=6pPXoPHz6CyMzo6TIMux5Sd6slT6bM4baJCHSd/xmec=;
+ b=yapoDtr92dhj+GJPao4WXn7TFflsaf3R3mVTL7KnSejFjfBlPO2ubs+WC5bu3qTVfOjZBTnan7p4bS5Y7J5tNT9uJPtbFrf/k8AMP7izb0znUZmP2DN+X52hC7ICFMwv+3oP+7MVYMtUbId5pjIL6tHGyWhP+MH5UErr+w9yBXI=
 Received: from CH0PR10MB4858.namprd10.prod.outlook.com (2603:10b6:610:cb::17)
- by CH2PR10MB3991.namprd10.prod.outlook.com (2603:10b6:610:e::25) with
+ by CH0PR10MB4988.namprd10.prod.outlook.com (2603:10b6:610:c8::20) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4823.19; Fri, 24 Dec
- 2021 04:46:27 +0000
+ 2021 17:25:49 +0000
 Received: from CH0PR10MB4858.namprd10.prod.outlook.com
  ([fe80::241e:15fa:e7d8:dea7]) by CH0PR10MB4858.namprd10.prod.outlook.com
  ([fe80::241e:15fa:e7d8:dea7%6]) with mapi id 15.20.4823.021; Fri, 24 Dec 2021
- 04:46:26 +0000
+ 17:25:49 +0000
 From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Bruce Fields <bfields@fieldses.org>
+To:     Stefan Roesch <shr@fb.com>
 CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: NFSv4 OPEN returns a zero cinfo.after on tmpfs
-Thread-Topic: NFSv4 OPEN returns a zero cinfo.after on tmpfs
-Thread-Index: AQHX+IE1tzJIenJvnUOCaxDdhxb2kA==
-Date:   Fri, 24 Dec 2021 04:46:26 +0000
-Message-ID: <49640909-A7F0-4004-AF55-859621B26D38@oracle.com>
+Subject: Re: [PATCH v7 1/3] add offset parameter to iterate_dir function
+Thread-Topic: [PATCH v7 1/3] add offset parameter to iterate_dir function
+Thread-Index: AQHX+OtLQT+7Nk4IB0WFiJn+eviOuw==
+Date:   Fri, 24 Dec 2021 17:25:49 +0000
+Message-ID: <06BA4A1A-2C07-446B-93F6-095D61A41A22@oracle.com>
+References: <20211222210708.983429-1-shr@fb.com>
+ <20211222210708.983429-2-shr@fb.com>
+In-Reply-To: <20211222210708.983429-2-shr@fb.com>
 Accept-Language: en-US
 Content-Language: en-US
 X-MS-Has-Attach: 
 X-MS-TNEF-Correlator: 
 x-mailer: Apple Mail (2.3654.120.0.1.13)
 x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 53607efb-ee12-43d2-3d6d-08d9c698584f
-x-ms-traffictypediagnostic: CH2PR10MB3991:EE_
-x-microsoft-antispam-prvs: <CH2PR10MB39912358C287366BAB854C3F937F9@CH2PR10MB3991.namprd10.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:3631;
+x-ms-office365-filtering-correlation-id: 5feb8e11-da06-4cbe-5791-08d9c7026d97
+x-ms-traffictypediagnostic: CH0PR10MB4988:EE_
+x-microsoft-antispam-prvs: <CH0PR10MB4988FBCA0644ADDE84AFA528937F9@CH0PR10MB4988.namprd10.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:5516;
 x-ms-exchange-senderadcheck: 1
 x-ms-exchange-antispam-relay: 0
 x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: jIC4UdbvPDC4bLptopgJvcklYPV2TObC6zoPhzmixlbqPVLsIg+YX/c33Y2YfeMYcs5hRQwWwznnIGBULlsYQ1Vj3RkgzRR3vDkqqwHJFUazyol4zAKfGoFw56cFsuutB3tzIN6e2jZ7YND5SKThU6bud9hwaKeXVFSHMlrcZOcZyIjww0bZFJViGc8UcM5bCDAsitQPtnMv6P8z8jAsoQVb3uWY6qrnW4jyessg3LBYKf7wi43SlrjAQANS03Da3DKImCP2WKgr33h5DJmkrUJ+OtkemCeSXgsJgcFuFXOp3t7vB07qSOprWzREjwETSNHNt4U5LW/1VyO2fwq327V/88cX8Umj8Lwv+aDxxLaUI2RGsWtP///byyRjvuRSt992SD4primgDywhZcUcMedDe3BT2Wuyd/PR4FU4u2nWQZXn0Sf3bc0fWaxRLdbxI6db0yVLltaD/uEP+L4VgdBOxjkMrf3Iu7oij3oQ8HbEUjGD1gbZ7qcfvlKlAnsqBC3jjbJq7i4UZM4crB8yqUHPwUq/vttIhyk1m8esFuP0PFXnVu/x/6eb/p+A2xtu6r4gm40tTieMBQ1yEcxxUUK+khf421F3XVb3FScEsgOWBCGGrJIeITdektZGgZ17/qFKOb6BnFO8HBcJIn/uVqn42xz57Y+SjCt8rPtgcEELFkWXOLnh1eqp2CV230kQaP8Ppm1EfRYTPYz3eJnqI+ozV3SM1zeld34mzjfGf3RUjYhFSgQs6JlRzduP1fJlm5CI40vkTeuQerFF3c8m/Q==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR10MB4858.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(66556008)(76116006)(6916009)(26005)(2906002)(36756003)(38070700005)(64756008)(86362001)(66476007)(5660300002)(508600001)(71200400001)(66446008)(83380400001)(66946007)(4326008)(316002)(186003)(38100700002)(8676002)(6512007)(2616005)(6486002)(8936002)(33656002)(6506007)(122000001)(17423001)(45980500001);DIR:OUT;SFP:1101;
+x-microsoft-antispam-message-info: nuw24hNaB9Ba3aXeMhZlKuV0A3pFXltr/rfPIfJVQVRtnZQQ8dtpsMzoDro5wDJcdu+E/llIiVr3qgDjnwpueXXrrceimY/kdE+/pDBJqzpnlz2ZcyiEMtB0qJaTt0cvG2i76i0Eo7NxyLLz1upIJUikLQOi3xlM7IkwXOyFBId4pNS6Sn4mwAI13H+Jg6LiKMn2gaxu3NvQwu4RgfYC+DHz4wTJNWrBR0wbDOwBHf6+5cJ3zUTY8+REdxriWEKTq0HNc21agQIrbw5V0eP/8KKIuvM33EKhu/rskHU0lVzDLMS8jxHBH+5EJhBzLxWtyl3hMIO4xjA7fVIXaV4Yvn54lCUIuKhPf3RgPe9TGIE5yhxiO7Ap7CuU12P+UbOYlQWDRYXS+igCmYETaYtW/NzlF81be4MygzO1MPumIXu8KYdk3H9nvbOZjENidXBrGyvUEJ16d1XZ9nCXVU+/shtXjjw6YrA2++15a4KUwRwZbEQSMA03U5LkafrT8Q+v5MUOMEV/jXt0pmSEx/4J2v1IWV2rtRTzNLXBp7GzRYwNSozLSDFc6nz5uheOg8UCUy4XMkUggfK08Ilnov2E7SNfe/iFPMaPSDkn9BxFOTakvJ/dGMhPhf/LvgiZqXyVdolYdYqRSjUAmA0xPXpJdStl4SqyU1Dxq0+WEgElpIvnXEyTOf8PV66H72FYIgBZfJO5vi09yutuN3IXuAXmM9IPw/l2vbswe5LJ8bdyibsO2CTS2DN5vDpcr9rw/yTe
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR10MB4858.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(2906002)(33656002)(83380400001)(6486002)(316002)(53546011)(122000001)(6506007)(8936002)(8676002)(2616005)(26005)(66446008)(186003)(6512007)(76116006)(4326008)(38070700005)(5660300002)(66946007)(86362001)(64756008)(36756003)(6916009)(38100700002)(71200400001)(66476007)(66556008)(508600001)(45980500001);DIR:OUT;SFP:1101;
 x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?lPKvQ6ew8akaUZGFTPIj/Wn1wnpTqZmF1KDis5IjWhy9i78sC59ko8EwXfuX?=
- =?us-ascii?Q?KlJYdlLxB+coyva3m5KQLLJZx7oUEkjYaUetU3STjqxBT5IO2EKMzMulBM2k?=
- =?us-ascii?Q?YO2hZrfkToBCL5SR/ONfbJKRvoZEg05BNw1yqQNRaqaUf2bQgrW9ftl0cCKY?=
- =?us-ascii?Q?hzYv/fNbhB8lYsh2VqUmaRuq54/7OghqdPCpdJJG1ZJ6/Ubz8qTcDCjFvAIJ?=
- =?us-ascii?Q?Add3DxGmEQzztodFjsHmSaPW/5qK7ku5OICw3za53tz8C4VBqcWETYOSpLo1?=
- =?us-ascii?Q?7M81AkIGnyljqQlDjZfq1XJq1Uxd51cHSi9iaxgCb8bfVABPEJqd+Qesqhub?=
- =?us-ascii?Q?ZL0cHZcF6Li5WmfW2RqYmRMEappPObMokEeQ2NAbmIOdPK7Vf8/o3dBR3ZPC?=
- =?us-ascii?Q?ql02WGAVtjpSSvA54Tz/KkW0HzKywdWCCPijR46ExlaNQLkt/knWPKmkhtuH?=
- =?us-ascii?Q?pQOzejKBdUzuUpI0VVGS6TnjA1XJIqhQ9r1mZmKqXylle2zRFdfuDXAUCWSS?=
- =?us-ascii?Q?g6YWgPa4unWEmv2bXoir80qKI031vrkHUvVXJH1LeZEB65O6vM5kWD7H5ACp?=
- =?us-ascii?Q?G7/xHXbrd96s1fsLhUViaYKUCNanPOsWNC7zF6am1C5VQcxT2OIf1ivfAIV+?=
- =?us-ascii?Q?TVtRkWnfh5JPsApdMlbWOxPtd/HnM6TJdiBIRLkMdVovTy2DBJ74JdjHQ38K?=
- =?us-ascii?Q?9UdOY74byrkLvfmdq3JxASovpf8WIvrv09RU6YEnhBj6k2BY7jmGJIw76Q4x?=
- =?us-ascii?Q?xTaO/rQUp1/TchsrQnz/ETmK0K9YN7YA8vjOWZdXgIIgpTOtPj5LDfnZJ69x?=
- =?us-ascii?Q?E5H5u9fyAI9gdMp5JzyGOQWPmlPjuTrwVA5LCYpEr7aziX3TRPUPLT3PhEMJ?=
- =?us-ascii?Q?NXWOEbulLrZkdtm+Ao/mWwocy6J+xeLIBP4GtdezZ/cnb7XDDaV1yL69EU/C?=
- =?us-ascii?Q?GPZlNU7hiYKLa64jUhQFdvlselqHg2Fwy1iZcbo10zXtAoP5f6MmFKgqCpnn?=
- =?us-ascii?Q?1ecEtsEphX2v2QKB4z30TPTikf6veBEW/uSnpTKVQbYpbyh/HlfAWRHvYHJF?=
- =?us-ascii?Q?a2sL5mdP4Txq3zX8JlRYuTTV2+j6m+Wx0zWDdzrEdty4Qq9sYmmV1Rcxe0za?=
- =?us-ascii?Q?jgpsrLf2ktmgq/HVSo3dJDNZJ2IZ2TrC+K89IeJ+G3eGsF4i9Sh596+Mhby4?=
- =?us-ascii?Q?vVaNKXc+4w2vKRQwxhCx8MajWCBB+T9GufbxM8yYeUct061W9Kz0TjH2U0lQ?=
- =?us-ascii?Q?NfuohHw0gR+vhFuBQqz4/hKKrHEi4uiL/UVAYDCsnINTL08poXQGyfaZoJ2o?=
- =?us-ascii?Q?gJQHj6FH8Jw9yCXYmjWobovhUsnT+GUL2DWkIyBOsIVb7KaHWRWCf2FITt1i?=
- =?us-ascii?Q?BGue5V4iQr4hUJ7Mqv7e/9IUWznp+eLWQCvrNWaK0CebQoZX4A2ZHVzde+iQ?=
- =?us-ascii?Q?k7dOmMWCAQeKBiglRXyu5fr1ot/D5hDplaMt7LZm2RF/8K9DJNq+EoS7+KrM?=
- =?us-ascii?Q?DD6xu3FghML6cM7cdOW4lJpAtWWTOyUVxvzfRzaCkDCwZ4a+vpCDByzl5RqK?=
- =?us-ascii?Q?j4B7bFcnJvAlMULKqD8/EA/NpqW/GsagLI6l8PuebeA12oCjJmC6z6PFDuS9?=
- =?us-ascii?Q?rVnDAHjJqezoJ0Y8z/Gr2JY=3D?=
+x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?PTyIY8w7Sl9ZOiMTojODMhNlpVeHn8WpLGrpiHr98VnnrPf1l14SRwGpBbmb?=
+ =?us-ascii?Q?Ze4oFiiidoCuDB0rwCUeLYjM56pr8BtogYvnDNniuyqMR7UR98uRnQnYed32?=
+ =?us-ascii?Q?UFNzx0q97CiSiQtGyPRu5bm22s9w1CUBnr90fS9O2mCwemZZIe6TQJJuQohE?=
+ =?us-ascii?Q?FLdrpqMgalCO6RhOB4Lo6ms93WFZ5rg0aIq2/EmhWT4qqpHoioZwoh7SSa7R?=
+ =?us-ascii?Q?a25uQrMidpeHANwh6jeg8wj30ONRe6MDZTC6W/W+rEX2r++nOlyeOQooAGAY?=
+ =?us-ascii?Q?07SE48rvdJ6jWyeD1UOV9Wh2Ezyzhf2dicL7JwyFG0G67zeXaRm3oev6rcP+?=
+ =?us-ascii?Q?8o0YdhiAzBnHnTU09j8BEy3PB+FAllBNHS6wX9djhNdMWGZSB5Gv4i0G7B3j?=
+ =?us-ascii?Q?+EXkMwsCRfDNKScX4Np1r4fehdTTdCicEK0xgA7HrNdHwFSKVyFNYceU6FqM?=
+ =?us-ascii?Q?tBLxpAUcC+xTCJSEzrnNfum8J1/gcKJIUrpG7TyeZ+uvfJU50NOBUXYaOl3o?=
+ =?us-ascii?Q?whAWJClne4lk5gizAJjXDYEJa7MDYaseWnSal4nVTvRyvtjMnrWZlTLX855M?=
+ =?us-ascii?Q?ARBN1v0DQk9bonSbQSB0wjMwZwqpPDMk636OI2BOw2quaG8fYppIsEfB126a?=
+ =?us-ascii?Q?P9OJDbhj+mg5jHQsVyXM6hsyxSsIDVG/8HnJrIcslhApOQzm9/RwU5U9RV+a?=
+ =?us-ascii?Q?ttVaBupCYB6rCLPtPUL4GoTYNowaAGVb6slyRztEIqMOJ1lgffB81RUsLImr?=
+ =?us-ascii?Q?iSAFjUcYgUPFRImKAWwJfm3E5MF4pUgwNsVAhs8PikP2w+JSegIaLoE/6WG9?=
+ =?us-ascii?Q?MQVhonAXNvrBWRpWacOJTVjJJ1F/29Io2vG10A9s50pWCBiVrEi6CSMzLnm2?=
+ =?us-ascii?Q?bwcMyBPYC3KrbibwzgkNDpRzJNndynjv8PjOMgzU5RHmtRSKLrBX1zSUdagZ?=
+ =?us-ascii?Q?DcIkUbKq2o+Q52Z4t0heAlpg+x1cXAZLhn2qek2baIoeOC74ZR/ybgn7iDv/?=
+ =?us-ascii?Q?neshmhimH7/kxFR5rz3dEBkAuTW7j20RCqR0zmV8llKn+CXU+BuKKq7FsnDC?=
+ =?us-ascii?Q?8O1HbWcyb/pE1J1+TjPXhYzsDbREltAYeVwTSbQc8VOL8Ozf9u9CvtlTCNEL?=
+ =?us-ascii?Q?tBzDCqVCrlLpH/ERoqokv13jyKFjnD75XGyByLl/ggumyq3TdzVVCDGkYE8d?=
+ =?us-ascii?Q?M6SHWN02Qvea/rn2F84hhPBXhouJSAIXYhRVtPD31hfOBO/fLk9DcIfl/oCB?=
+ =?us-ascii?Q?knDYstF55ubTURmzC2LrivomPLJOpvG51/HT9oc5wOFp2GabOP2/vhqlN8K3?=
+ =?us-ascii?Q?ZMK8T021qdlixcHgm8k32HkQMgvsnMoa5MUDOpL2hhndUMPYDG06FEqb8dgA?=
+ =?us-ascii?Q?4wHLC1/GaXrkmUEyHO1Ee8Z87fchYNqk9h0RGVvNwdNV83BhXcxPgkue1PIA?=
+ =?us-ascii?Q?iNjFPUPR9lGNIRnlu64fIPJHN2KLAMaGTqOihd+BKajkmovDbfvn51HCxlId?=
+ =?us-ascii?Q?WX9pCSFEkGuiIdm/qvCt1QKKdIxohWS4dbU5yjLd5DAxf8Nzr0XRb3U/6p3/?=
+ =?us-ascii?Q?Hcd1MO6c/BmCqEn4OxQnnjhtMiVHiWl+t+mXZ3DvyVz8Ys1/xdKdQY7E9QHu?=
+ =?us-ascii?Q?DOo28/krcR/+oWrA+lD6WRM=3D?=
 Content-Type: text/plain; charset="us-ascii"
-Content-ID: <FDDA501A6E5D4242821A7FC4F48A1A44@namprd10.prod.outlook.com>
+Content-ID: <E095B96F37164E4B96A752E7847168CB@namprd10.prod.outlook.com>
 Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
 X-OriginatorOrg: oracle.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
 X-MS-Exchange-CrossTenant-AuthSource: CH0PR10MB4858.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 53607efb-ee12-43d2-3d6d-08d9c698584f
-X-MS-Exchange-CrossTenant-originalarrivaltime: 24 Dec 2021 04:46:26.7927
+X-MS-Exchange-CrossTenant-Network-Message-Id: 5feb8e11-da06-4cbe-5791-08d9c7026d97
+X-MS-Exchange-CrossTenant-originalarrivaltime: 24 Dec 2021 17:25:49.1507
  (UTC)
 X-MS-Exchange-CrossTenant-fromentityheader: Hosted
 X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
 X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: N2IqoyZ+hjDZlkKS7GX8YnjhFq9lDVt0NHjn5bdXi7DyAcf41t9mvV3Iy3I4gdcgXIl7HvY57d3s00ILMZDTBg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR10MB3991
-X-Proofpoint-Virus-Version: vendor=nai engine=6300 definitions=10207 signatures=668683
+X-MS-Exchange-CrossTenant-userprincipalname: /a2S7KCNqhLWFMfRVe1uOE94Cq89fpHCh4gjSseM0oT2cKLDoo5vDofrzlbwHzia1nUjxmo/jinNr3D0EiHYgA==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH0PR10MB4988
+X-Proofpoint-Virus-Version: vendor=nai engine=6300 definitions=10208 signatures=668683
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 malwarescore=0
- mlxscore=0 spamscore=0 adultscore=0 bulkscore=0 phishscore=0
+ spamscore=0 phishscore=0 mlxscore=0 bulkscore=0 adultscore=0
  suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2110150000 definitions=main-2112240021
-X-Proofpoint-ORIG-GUID: 4wv8CCd-S6OStwawqlfsfDbg30f3gadw
-X-Proofpoint-GUID: 4wv8CCd-S6OStwawqlfsfDbg30f3gadw
+ engine=8.12.0-2110150000 definitions=main-2112240084
+X-Proofpoint-GUID: BZrdAcWHsZE7uHXSILuJ-Z01zY_rM6--
+X-Proofpoint-ORIG-GUID: BZrdAcWHsZE7uHXSILuJ-Z01zY_rM6--
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Bruce-
 
-During some testing I noticed that OPEN frequently returns a
-zero in the cinfo.after field on my test share, which is tmpfs.
-Does not seem to be an issue for xfs.
+> On Dec 22, 2021, at 4:07 PM, Stefan Roesch <shr@fb.com> wrote:
+>=20
+> This change adds the offset parameter to the iterate_dir
+> function. The offset paramater allows the caller to specify
+> the offset position.
+>=20
+> This change is required to support getdents in io_uring.
+>=20
+> Signed-off-by: Stefan Roesch <shr@fb.com>
+> ---
+> arch/alpha/kernel/osf_sys.c |  2 +-
+> fs/ecryptfs/file.c          |  2 +-
+> fs/exportfs/expfs.c         |  2 +-
+> fs/ksmbd/smb2pdu.c          |  3 ++-
+> fs/ksmbd/vfs.c              |  4 ++--
+> fs/nfsd/nfs4recover.c       |  2 +-
+> fs/nfsd/vfs.c               |  2 +-
+> fs/overlayfs/readdir.c      |  6 +++---
+> fs/readdir.c                | 28 ++++++++++++++++++----------
+> include/linux/fs.h          |  2 +-
+> 10 files changed, 31 insertions(+), 22 deletions(-)
 
-For xfs, we take the 2nd arm in nfsd4_change_attribute(), and
-for tmpfs, we take the 3rd arm:
+Thanks for posting. The nfsd changes seem sensible to me.
 
-309 static inline u64 nfsd4_change_attribute(struct kstat *stat,
-310                                          struct inode *inode)
-311 {
-312         if (inode->i_sb->s_export_op->fetch_iversion)
-313                 return inode->i_sb->s_export_op->fetch_iversion(inode);
-314         else if (IS_I_VERSION(inode)) {
-315                 u64 chattr;
-316=20
-317                 chattr =3D  stat->ctime.tv_sec;
-318                 chattr <<=3D 30;
-319                 chattr +=3D stat->ctime.tv_nsec;
-320                 chattr +=3D inode_query_iversion(inode);
-321                 return chattr;
-322         } else
-323                 return time_to_chattr(&stat->ctime);
-324 }
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
 
-Thus for tmpfs, ->fetch_iversion() is NULL and IS_I_VERSION is false.
 
-Since commit 428a23d2bf0c ("nfsd: skip some unnecessary stats in
-the v4 case"), fill_post_wcc() looks like this:
-
-518 static bool fs_supports_change_attribute(struct super_block *sb)
-519 {
-520         return sb->s_flags & SB_I_VERSION || sb->s_export_op->fetch_ive=
-rsion;
-521 }
-
-...
-
-557 void fill_post_wcc(struct svc_fh *fhp)
-558 {
-559         bool v4 =3D (fhp->fh_maxsize =3D=3D NFS4_FHSIZE);
-560         struct inode *inode =3D d_inode(fhp->fh_dentry);
-561=20
-562         if (fhp->fh_no_wcc)
-563                 return;
-564=20
-565         if (fhp->fh_post_saved)
-566                 printk("nfsd: inode locked twice during operation.\n");
-567=20
-568         fhp->fh_post_saved =3D true;
-569=20
-570         if (fs_supports_change_attribute(inode->i_sb) || !v4) {
-571                 __be32 err =3D fh_getattr(fhp, &fhp->fh_post_attr);
-572=20
-573                 if (err) {
-574                         fhp->fh_post_saved =3D false;
-575                         fhp->fh_post_attr.ctime =3D inode->i_ctime;
-576                 }
-577         }
-578         if (v4)
-579                 fhp->fh_post_change =3D
-580                         nfsd4_change_attribute(&fhp->fh_post_attr, inod=
-e);
-581 }
-
-fs_support_change_attribute() returns false for tmpfs, and !v4
-evaluates to false for OPEN operations. That means the fs_getattr()
-is never invoked and nfsd4_change_attribute() is called with an
-uninitialized fh_post_attr.
-
-It appears that the same problem exists in fill_pre_wcc() but the
-symptoms are different. This is because for tmpfs, the local variable
-@stat is not initialized -- it contains whatever was on the stack
-before fill_pre_wcc() was invoked. In other words, the on-the-wire
-cinfo.before field contains old stack contents.
-
-So both OPEN result cinfo fields are junk on tmpfs exports.
-
-I haven't checked if "fs_supports_change_attribute(inode->i_sb) || !v4"
-happens to evaluate to false for other filesystem types.
-
-An easy way to address this would be to revert 428a23d2bf0c. But I
-wonder if there are any particular regression tests in the pynfs
-suite that could detect this kind of misbehavior, in case someone
-would like to try to re-implement the optimization in 428a23d2bf0c.
-
+> diff --git a/arch/alpha/kernel/osf_sys.c b/arch/alpha/kernel/osf_sys.c
+> index 8bbeebb73cf0..cf68c459bca6 100644
+> --- a/arch/alpha/kernel/osf_sys.c
+> +++ b/arch/alpha/kernel/osf_sys.c
+> @@ -162,7 +162,7 @@ SYSCALL_DEFINE4(osf_getdirentries, unsigned int, fd,
+> 	if (!arg.file)
+> 		return -EBADF;
+>=20
+> -	error =3D iterate_dir(arg.file, &buf.ctx);
+> +	error =3D iterate_dir(arg.file, &buf.ctx, &arg.file->f_pos);
+> 	if (error >=3D 0)
+> 		error =3D buf.error;
+> 	if (count !=3D buf.count)
+> diff --git a/fs/ecryptfs/file.c b/fs/ecryptfs/file.c
+> index 18d5b91cb573..b68f1945e615 100644
+> --- a/fs/ecryptfs/file.c
+> +++ b/fs/ecryptfs/file.c
+> @@ -109,7 +109,7 @@ static int ecryptfs_readdir(struct file *file, struct=
+ dir_context *ctx)
+> 		.sb =3D inode->i_sb,
+> 	};
+> 	lower_file =3D ecryptfs_file_to_lower(file);
+> -	rc =3D iterate_dir(lower_file, &buf.ctx);
+> +	rc =3D iterate_dir(lower_file, &buf.ctx, &lower_file->f_pos);
+> 	ctx->pos =3D buf.ctx.pos;
+> 	if (rc < 0)
+> 		goto out;
+> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+> index 0106eba46d5a..654e2d4b1d4f 100644
+> --- a/fs/exportfs/expfs.c
+> +++ b/fs/exportfs/expfs.c
+> @@ -323,7 +323,7 @@ static int get_name(const struct path *path, char *na=
+me, struct dentry *child)
+> 	while (1) {
+> 		int old_seq =3D buffer.sequence;
+>=20
+> -		error =3D iterate_dir(file, &buffer.ctx);
+> +		error =3D iterate_dir(file, &buffer.ctx, &file->f_pos);
+> 		if (buffer.found) {
+> 			error =3D 0;
+> 			break;
+> diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
+> index 49c9da37315c..fd4cb995d06d 100644
+> --- a/fs/ksmbd/smb2pdu.c
+> +++ b/fs/ksmbd/smb2pdu.c
+> @@ -3925,7 +3925,8 @@ int smb2_query_dir(struct ksmbd_work *work)
+> 	dir_fp->readdir_data.private		=3D &query_dir_private;
+> 	set_ctx_actor(&dir_fp->readdir_data.ctx, __query_dir);
+>=20
+> -	rc =3D iterate_dir(dir_fp->filp, &dir_fp->readdir_data.ctx);
+> +	rc =3D iterate_dir(dir_fp->filp, &dir_fp->readdir_data.ctx,
+> +			&dir_fp->filp->f_pos);
+> 	if (rc =3D=3D 0)
+> 		restart_ctx(&dir_fp->readdir_data.ctx);
+> 	if (rc =3D=3D -ENOSPC)
+> diff --git a/fs/ksmbd/vfs.c b/fs/ksmbd/vfs.c
+> index 19d36393974c..5b8e23d3c846 100644
+> --- a/fs/ksmbd/vfs.c
+> +++ b/fs/ksmbd/vfs.c
+> @@ -1136,7 +1136,7 @@ int ksmbd_vfs_empty_dir(struct ksmbd_file *fp)
+> 	set_ctx_actor(&readdir_data.ctx, __dir_empty);
+> 	readdir_data.dirent_count =3D 0;
+>=20
+> -	err =3D iterate_dir(fp->filp, &readdir_data.ctx);
+> +	err =3D iterate_dir(fp->filp, &readdir_data.ctx, &fp->filp->f_pos);
+> 	if (readdir_data.dirent_count > 2)
+> 		err =3D -ENOTEMPTY;
+> 	else
+> @@ -1186,7 +1186,7 @@ static int ksmbd_vfs_lookup_in_dir(struct path *dir=
+, char *name, size_t namelen)
+> 	if (IS_ERR(dfilp))
+> 		return PTR_ERR(dfilp);
+>=20
+> -	ret =3D iterate_dir(dfilp, &readdir_data.ctx);
+> +	ret =3D iterate_dir(dfilp, &readdir_data.ctx, &dfilp->f_pos);
+> 	if (readdir_data.dirent_count > 0)
+> 		ret =3D 0;
+> 	fput(dfilp);
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index 6fedc49726bf..79a2799891e4 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -307,7 +307,7 @@ nfsd4_list_rec_dir(recdir_func *f, struct nfsd_net *n=
+n)
+> 		return status;
+> 	}
+>=20
+> -	status =3D iterate_dir(nn->rec_file, &ctx.ctx);
+> +	status =3D iterate_dir(nn->rec_file, &ctx.ctx, &nn->rec_file->f_pos);
+> 	inode_lock_nested(d_inode(dir), I_MUTEX_PARENT);
+>=20
+> 	list_for_each_entry_safe(entry, tmp, &ctx.names, list) {
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index c99857689e2c..085864c25318 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1980,7 +1980,7 @@ static __be32 nfsd_buffered_readdir(struct file *fi=
+le, struct svc_fh *fhp,
+> 		buf.used =3D 0;
+> 		buf.full =3D 0;
+>=20
+> -		host_err =3D iterate_dir(file, &buf.ctx);
+> +		host_err =3D iterate_dir(file, &buf.ctx, &file->f_pos);
+> 		if (buf.full)
+> 			host_err =3D 0;
+>=20
+> diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
+> index 150fdf3bc68d..52167ff9e513 100644
+> --- a/fs/overlayfs/readdir.c
+> +++ b/fs/overlayfs/readdir.c
+> @@ -306,7 +306,7 @@ static inline int ovl_dir_read(struct path *realpath,
+> 	do {
+> 		rdd->count =3D 0;
+> 		rdd->err =3D 0;
+> -		err =3D iterate_dir(realfile, &rdd->ctx);
+> +		err =3D iterate_dir(realfile, &rdd->ctx, &realfile->f_pos);
+> 		if (err >=3D 0)
+> 			err =3D rdd->err;
+> 	} while (!err && rdd->count);
+> @@ -722,7 +722,7 @@ static int ovl_iterate_real(struct file *file, struct=
+ dir_context *ctx)
+> 			return PTR_ERR(rdt.cache);
+> 	}
+>=20
+> -	err =3D iterate_dir(od->realfile, &rdt.ctx);
+> +	err =3D iterate_dir(od->realfile, &rdt.ctx, &od->realfile->f_pos);
+> 	ctx->pos =3D rdt.ctx.pos;
+>=20
+> 	return err;
+> @@ -753,7 +753,7 @@ static int ovl_iterate(struct file *file, struct dir_=
+context *ctx)
+> 		      OVL_TYPE_MERGE(ovl_path_type(dentry->d_parent))))) {
+> 			err =3D ovl_iterate_real(file, ctx);
+> 		} else {
+> -			err =3D iterate_dir(od->realfile, ctx);
+> +			err =3D iterate_dir(od->realfile, ctx, &od->realfile->f_pos);
+> 		}
+> 		goto out;
+> 	}
+> diff --git a/fs/readdir.c b/fs/readdir.c
+> index 09e8ed7d4161..c1e6612e0f47 100644
+> --- a/fs/readdir.c
+> +++ b/fs/readdir.c
+> @@ -36,8 +36,13 @@
+> 	unsafe_copy_to_user(dst, src, len, label);		\
+> } while (0)
+>=20
+> -
+> -int iterate_dir(struct file *file, struct dir_context *ctx)
+> +/**
+> + * iterate_dir - iterate over directory
+> + * @file    : pointer to file struct of directory
+> + * @ctx     : pointer to directory ctx structure
+> + * @pos     : file offset
+> + */
+> +int iterate_dir(struct file *file, struct dir_context *ctx, loff_t *pos)
+> {
+> 	struct inode *inode =3D file_inode(file);
+> 	bool shared =3D false;
+> @@ -60,12 +65,15 @@ int iterate_dir(struct file *file, struct dir_context=
+ *ctx)
+>=20
+> 	res =3D -ENOENT;
+> 	if (!IS_DEADDIR(inode)) {
+> -		ctx->pos =3D file->f_pos;
+> +		ctx->pos =3D *pos;
+> +
+> 		if (shared)
+> 			res =3D file->f_op->iterate_shared(file, ctx);
+> 		else
+> 			res =3D file->f_op->iterate(file, ctx);
+> -		file->f_pos =3D ctx->pos;
+> +
+> +		*pos =3D ctx->pos;
+> +
+> 		fsnotify_access(file);
+> 		file_accessed(file);
+> 	}
+> @@ -190,7 +198,7 @@ SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
+> 	if (!f.file)
+> 		return -EBADF;
+>=20
+> -	error =3D iterate_dir(f.file, &buf.ctx);
+> +	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+> 	if (buf.result)
+> 		error =3D buf.result;
+>=20
+> @@ -283,7 +291,7 @@ SYSCALL_DEFINE3(getdents, unsigned int, fd,
+> 	if (!f.file)
+> 		return -EBADF;
+>=20
+> -	error =3D iterate_dir(f.file, &buf.ctx);
+> +	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+> 	if (error >=3D 0)
+> 		error =3D buf.error;
+> 	if (buf.prev_reclen) {
+> @@ -366,7 +374,7 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
+> 	if (!f.file)
+> 		return -EBADF;
+>=20
+> -	error =3D iterate_dir(f.file, &buf.ctx);
+> +	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+> 	if (error >=3D 0)
+> 		error =3D buf.error;
+> 	if (buf.prev_reclen) {
+> @@ -379,7 +387,7 @@ SYSCALL_DEFINE3(getdents64, unsigned int, fd,
+> 		else
+> 			error =3D count - buf.count;
+> 	}
+> -	fdput_pos(f);
+> +
+> 	return error;
+> }
+>=20
+> @@ -448,7 +456,7 @@ COMPAT_SYSCALL_DEFINE3(old_readdir, unsigned int, fd,
+> 	if (!f.file)
+> 		return -EBADF;
+>=20
+> -	error =3D iterate_dir(f.file, &buf.ctx);
+> +	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+> 	if (buf.result)
+> 		error =3D buf.result;
+>=20
+> @@ -534,7 +542,7 @@ COMPAT_SYSCALL_DEFINE3(getdents, unsigned int, fd,
+> 	if (!f.file)
+> 		return -EBADF;
+>=20
+> -	error =3D iterate_dir(f.file, &buf.ctx);
+> +	error =3D iterate_dir(f.file, &buf.ctx, &f.file->f_pos);
+> 	if (error >=3D 0)
+> 		error =3D buf.error;
+> 	if (buf.prev_reclen) {
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 6b8dc1a78df6..e1becbe86b07 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -3340,7 +3340,7 @@ const char *simple_get_link(struct dentry *, struct=
+ inode *,
+> 			    struct delayed_call *);
+> extern const struct inode_operations simple_symlink_inode_operations;
+>=20
+> -extern int iterate_dir(struct file *, struct dir_context *);
+> +extern int iterate_dir(struct file *, struct dir_context *, loff_t *pos)=
+;
+>=20
+> int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+> 		int flags);
+> --=20
+> 2.30.2
+>=20
 
 --
 Chuck Lever
