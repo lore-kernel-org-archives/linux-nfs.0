@@ -2,326 +2,274 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BE19C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 27 Dec 2021 19:11:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 942B5C433FE
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Dec 2021 19:11:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231307AbhL0TLf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 27 Dec 2021 14:11:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58348 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231200AbhL0TLf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Dec 2021 14:11:35 -0500
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA9DFC06173E
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Dec 2021 11:11:34 -0800 (PST)
+        id S231200AbhL0TLi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 27 Dec 2021 14:11:38 -0500
+Received: from ams.source.kernel.org ([145.40.68.75]:45280 "EHLO
+        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231394AbhL0TLg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Dec 2021 14:11:36 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 2AA6FCE114B
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Dec 2021 19:11:33 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 67858C36AEC;
-        Mon, 27 Dec 2021 19:11:31 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 00746B81144
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Dec 2021 19:11:35 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7EEA7C36AEA;
+        Mon, 27 Dec 2021 19:11:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1640632291;
-        bh=O5YT/FOTCSe0an4CaWKzPFvNsly5YLxV7SWVj+pEVUM=;
+        s=k20201202; t=1640632293;
+        bh=MjUByfu3U69mq7jbVbeQ255Ffo1A+X4mvQj8BtMkhg4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=qD0vK9Ig9kR0cCWe+/PEcqx/OOIiBHwg2xcP60jD9Teq/E66ei+oV1Jhx90NmVES2
-         pQV1ElK42VVRbn+v0HLDHQcfKdLmXHoJ2JQ63u1CEhWxZWzOoU0utge98TxWoI3NVf
-         Ctp10j1DZuYWgJTBp5Pb5ehqtdPwYRTcdXq/7DE6pW+W/pmDQEdKvII1zQ9NihJuVt
-         SNCFjdbo4vCFm3bdtHeLzCKQj2bMP+uGna5GGxqB3f+I2K1hr++sx3DWTVDrirpPBN
-         roZcaSpkNwBN6UIz8ZZt0/8mvWOtbAT3bLcuHiJqYRf49Ao/kCsqe9fGt4kfL8JqV0
-         A+lVf/EOPp8pQ==
+        b=bGGoyOMjDAfPZnVYKWCs0td6W2o8rXMPrSE8gPVo9TgLZ/ioFNNX0eW6dq+0lGyOS
+         Snrc10jOnEaGVn2idlx1UdT/KwQu7DY7YwOMFAAjLWsau3TcusjM46NvyTRhJ7l92q
+         VnWpmGrgS5DPuGAoTH6NYFOkZENqWz7rn8EppGpJvfd92LoSYb9gS9eLmk9txKwO0e
+         RQ2n4QNdsp3tlPiqdwpjMHrs6G+rP1K8zn+BqS8nhw9Ds9XjCmooW+qZtx69VDo8am
+         JLtjXzRbR6HCqFbdqbXBdIa5Pesqh4MqHVFmRN7bGbKIbw/6t7pXMqBs0RO9+DD06O
+         /9KadJTwlmB2A==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/8] nfs: Add timecreate to nfs inode
-Date:   Mon, 27 Dec 2021 14:04:58 -0500
-Message-Id: <20211227190504.309612-3-trondmy@kernel.org>
+Subject: [PATCH v2 6/8] NFSv4: Support the offline bit
+Date:   Mon, 27 Dec 2021 14:05:02 -0500
+Message-Id: <20211227190504.309612-7-trondmy@kernel.org>
 X-Mailer: git-send-email 2.33.1
-In-Reply-To: <20211227190504.309612-2-trondmy@kernel.org>
+In-Reply-To: <20211227190504.309612-6-trondmy@kernel.org>
 References: <20211227190504.309612-1-trondmy@kernel.org>
  <20211227190504.309612-2-trondmy@kernel.org>
+ <20211227190504.309612-3-trondmy@kernel.org>
+ <20211227190504.309612-4-trondmy@kernel.org>
+ <20211227190504.309612-5-trondmy@kernel.org>
+ <20211227190504.309612-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anne Marie Merritt <annemarie.merritt@primarydata.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Add tracking of the create time (a.k.a. btime) along with corresponding
-bitfields, request, and decode xdr routines.
+Add tracking of the NFSv4 'offline' attribute.
 
-Signed-off-by: Anne Marie Merritt <annemarie.merritt@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c          | 28 ++++++++++++++++++++++------
- fs/nfs/nfs4proc.c       | 15 +++++++++++++--
- fs/nfs/nfs4xdr.c        | 24 ++++++++++++++++++++++++
- fs/nfs/nfstrace.h       |  3 ++-
- include/linux/nfs_fs.h  |  7 +++++++
- include/linux/nfs_xdr.h |  3 +++
- 6 files changed, 71 insertions(+), 9 deletions(-)
+ fs/nfs/inode.c          | 11 +++++++++++
+ fs/nfs/nfs4proc.c       |  6 ++++++
+ fs/nfs/nfs4trace.h      |  3 ++-
+ fs/nfs/nfs4xdr.c        | 31 ++++++++++++++++++++++++++++++-
+ include/linux/nfs4.h    |  1 +
+ include/linux/nfs_fs.h  |  1 +
+ include/linux/nfs_xdr.h |  5 ++++-
+ 7 files changed, 55 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 897dec07cf4b..908a62d6a29c 100644
+index 4673b091ea31..33f4410190b6 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -201,6 +201,7 @@ void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
- 		if (!(flags & NFS_INO_REVAL_FORCED))
- 			flags &= ~(NFS_INO_INVALID_MODE |
- 				   NFS_INO_INVALID_OTHER |
-+				   NFS_INO_INVALID_BTIME |
- 				   NFS_INO_INVALID_XATTR);
- 		flags &= ~(NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_SIZE);
- 	} else if (flags & NFS_INO_REVAL_PAGECACHE)
-@@ -521,6 +522,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		memset(&inode->i_atime, 0, sizeof(inode->i_atime));
- 		memset(&inode->i_mtime, 0, sizeof(inode->i_mtime));
- 		memset(&inode->i_ctime, 0, sizeof(inode->i_ctime));
-+		memset(&nfsi->btime, 0, sizeof(nfsi->btime));
+@@ -528,6 +528,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		nfsi->archive = 0;
+ 		nfsi->hidden = 0;
+ 		nfsi->system = 0;
++		nfsi->offline = 0;
  		inode_set_iversion_raw(inode, 0);
  		inode->i_size = 0;
  		clear_nlink(inode);
-@@ -544,6 +546,10 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 			inode->i_ctime = fattr->ctime;
- 		else if (fattr_supported & NFS_ATTR_FATTR_CTIME)
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_CTIME);
-+		if (fattr->valid & NFS_ATTR_FATTR_BTIME)
-+			nfsi->btime = fattr->btime;
-+		else if (fattr_supported & NFS_ATTR_FATTR_BTIME)
-+			nfs_set_cache_invalid(inode, NFS_INO_INVALID_BTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
- 			inode_set_iversion_raw(inode, fattr->change_attr);
- 		else
-@@ -1801,7 +1807,7 @@ static int nfs_inode_finish_partial_attr_update(const struct nfs_fattr *fattr,
- 		NFS_INO_INVALID_ATIME | NFS_INO_INVALID_CTIME |
- 		NFS_INO_INVALID_MTIME | NFS_INO_INVALID_SIZE |
- 		NFS_INO_INVALID_BLOCKS | NFS_INO_INVALID_OTHER |
--		NFS_INO_INVALID_NLINK;
-+		NFS_INO_INVALID_NLINK | NFS_INO_INVALID_BTIME;
- 	unsigned long cache_validity = NFS_I(inode)->cache_validity;
- 	enum nfs4_change_attr_type ctype = NFS_SERVER(inode)->change_attr_type;
+@@ -606,6 +607,10 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		} else if (fattr_supported & NFS_ATTR_FATTR_SPACE_USED &&
+ 			   fattr->size != 0)
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_BLOCKS);
++		if (fattr->valid & NFS_ATTR_FATTR_OFFLINE)
++			nfsi->offline = (fattr->hsa_flags & NFS_HSA_OFFLINE) ? 1 : 0;
++		else if (fattr_supported & NFS_ATTR_FATTR_OFFLINE)
++			nfs_set_cache_invalid(inode, NFS_INO_INVALID_WINATTR);
  
-@@ -2052,10 +2058,13 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	nfsi->read_cache_jiffies = fattr->time_start;
+ 		nfs_setsecurity(inode, fattr);
  
- 	save_cache_validity = nfsi->cache_validity;
--	nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR
--			| NFS_INO_INVALID_ATIME
--			| NFS_INO_REVAL_FORCED
--			| NFS_INO_INVALID_BLOCKS);
-+	nfsi->cache_validity &=
-+		~(NFS_INO_INVALID_ATIME | NFS_INO_REVAL_FORCED |
-+		  NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_CTIME |
-+		  NFS_INO_INVALID_MTIME | NFS_INO_INVALID_SIZE |
-+		  NFS_INO_INVALID_OTHER | NFS_INO_INVALID_BLOCKS |
-+		  NFS_INO_INVALID_NLINK | NFS_INO_INVALID_MODE |
-+		  NFS_INO_INVALID_BTIME);
- 
- 	/* Do atomic weak cache consistency updates */
- 	nfs_wcc_update_inode(inode, fattr);
-@@ -2085,7 +2094,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 					| NFS_INO_INVALID_BLOCKS
- 					| NFS_INO_INVALID_NLINK
- 					| NFS_INO_INVALID_MODE
--					| NFS_INO_INVALID_OTHER;
-+					| NFS_INO_INVALID_OTHER
-+					| NFS_INO_INVALID_BTIME;
- 				if (S_ISDIR(inode->i_mode))
- 					nfs_force_lookup_revalidate(inode);
- 				attr_changed = true;
-@@ -2116,6 +2126,12 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+@@ -2274,6 +2279,12 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
  		nfsi->cache_validity |=
- 			save_cache_validity & NFS_INO_INVALID_CTIME;
+ 			save_cache_validity & NFS_INO_INVALID_BLOCKS;
  
-+	if (fattr->valid & NFS_ATTR_FATTR_BTIME)
-+		nfsi->btime = fattr->btime;
-+	else if (fattr_supported & NFS_ATTR_FATTR_BTIME)
++	if (fattr->valid & NFS_ATTR_FATTR_OFFLINE)
++		nfsi->offline = (fattr->hsa_flags & NFS_HSA_OFFLINE) ? 1 : 0;
++	else if (fattr_supported & NFS_ATTR_FATTR_OFFLINE)
 +		nfsi->cache_validity |=
-+			save_cache_validity & NFS_INO_INVALID_BTIME;
++			save_cache_validity & NFS_INO_INVALID_WINATTR;
 +
- 	/* Check if our cached file size is stale */
- 	if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
- 		new_isize = nfs_size_to_loff_t(fattr->size);
+ 	/* Update attrtimeo value if we're out of the unstable period */
+ 	if (attr_changed) {
+ 		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5d9ff01ddf46..be8eeb22b35f 100644
+index 4e6cc54016ba..713a71fb3020 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -208,6 +208,7 @@ const u32 nfs4_fattr_bitmap[3] = {
- 	| FATTR4_WORD1_RAWDEV
- 	| FATTR4_WORD1_SPACE_USED
- 	| FATTR4_WORD1_TIME_ACCESS
-+	| FATTR4_WORD1_TIME_CREATE
- 	| FATTR4_WORD1_TIME_METADATA
- 	| FATTR4_WORD1_TIME_MODIFY
- 	| FATTR4_WORD1_MOUNTED_ON_FILEID,
-@@ -229,6 +230,7 @@ static const u32 nfs4_pnfs_open_bitmap[3] = {
- 	| FATTR4_WORD1_RAWDEV
- 	| FATTR4_WORD1_SPACE_USED
- 	| FATTR4_WORD1_TIME_ACCESS
-+	| FATTR4_WORD1_TIME_CREATE
- 	| FATTR4_WORD1_TIME_METADATA
- 	| FATTR4_WORD1_TIME_MODIFY,
- 	FATTR4_WORD2_MDSTHRESHOLD
-@@ -308,6 +310,9 @@ static void nfs4_bitmap_copy_adjust(__u32 *dst, const __u32 *src,
- 		dst[1] &= ~FATTR4_WORD1_MODE;
- 	if (!(cache_validity & NFS_INO_INVALID_OTHER))
- 		dst[1] &= ~(FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP);
-+
-+	if (!(cache_validity & NFS_INO_INVALID_BTIME))
-+		dst[1] &= ~FATTR4_WORD1_TIME_CREATE;
+@@ -219,6 +219,7 @@ const u32 nfs4_fattr_bitmap[3] = {
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+ 	FATTR4_WORD2_SECURITY_LABEL
+ #endif
++	| FATTR4_WORD2_OFFLINE
+ };
+ 
+ static const u32 nfs4_pnfs_open_bitmap[3] = {
+@@ -245,6 +246,7 @@ static const u32 nfs4_pnfs_open_bitmap[3] = {
+ #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+ 	| FATTR4_WORD2_SECURITY_LABEL
+ #endif
++	| FATTR4_WORD2_OFFLINE
+ };
+ 
+ static const u32 nfs4_open_noattr_bitmap[3] = {
+@@ -325,6 +327,7 @@ static void nfs4_bitmap_copy_adjust(__u32 *dst, const __u32 *src,
+ 	if (!(cache_validity & NFS_INO_INVALID_WINATTR)) {
+ 		dst[0] &= ~(FATTR4_WORD0_ARCHIVE | FATTR4_WORD0_HIDDEN);
+ 		dst[1] &= ~(FATTR4_WORD1_SYSTEM | FATTR4_WORD1_TIME_BACKUP);
++		dst[2] &= ~FATTR4_WORD2_OFFLINE;
+ 	}
  }
  
- static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
-@@ -1233,8 +1238,8 @@ nfs4_update_changeattr_locked(struct inode *inode,
- 				NFS_INO_INVALID_ACCESS | NFS_INO_INVALID_ACL |
- 				NFS_INO_INVALID_SIZE | NFS_INO_INVALID_OTHER |
- 				NFS_INO_INVALID_BLOCKS | NFS_INO_INVALID_NLINK |
--				NFS_INO_INVALID_MODE | NFS_INO_INVALID_XATTR |
--				NFS_INO_REVAL_PAGECACHE;
-+				NFS_INO_INVALID_MODE | NFS_INO_INVALID_BTIME |
-+				NFS_INO_INVALID_XATTR | NFS_INO_REVAL_PAGECACHE;
- 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 	}
- 	nfsi->attrtimeo_timestamp = jiffies;
-@@ -3893,6 +3898,10 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 			server->fattr_valid &= ~NFS_ATTR_FATTR_CTIME;
- 		if (!(res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY))
- 			server->fattr_valid &= ~NFS_ATTR_FATTR_MTIME;
-+		if (!(res.attr_bitmask[1] & FATTR4_WORD1_TIME_MODIFY))
-+			server->fattr_valid &= ~NFS_ATTR_FATTR_MTIME;
-+		if (!(res.attr_bitmask[1] & FATTR4_WORD1_TIME_CREATE))
-+			server->fattr_valid &= ~NFS_ATTR_FATTR_BTIME;
+@@ -3927,6 +3930,8 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
  		memcpy(server->attr_bitmask_nl, res.attr_bitmask,
  				sizeof(server->attr_bitmask));
  		server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-@@ -5450,6 +5459,8 @@ static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ], const __u32 *src,
- 		bitmask[1] |= FATTR4_WORD1_TIME_MODIFY;
- 	if (cache_validity & NFS_INO_INVALID_BLOCKS)
- 		bitmask[1] |= FATTR4_WORD1_SPACE_USED;
-+	if (cache_validity & NFS_INO_INVALID_BTIME)
-+		bitmask[1] |= FATTR4_WORD1_TIME_CREATE;
++		if (!(res.attr_bitmask[2] & FATTR4_WORD2_OFFLINE))
++			server->fattr_valid &= ~NFS_ATTR_FATTR_OFFLINE;
+ 
+ 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
+ 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+@@ -5486,6 +5491,7 @@ static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ], const __u32 *src,
+ 	if (cache_validity & NFS_INO_INVALID_WINATTR) {
+ 		bitmask[0] |= FATTR4_WORD0_ARCHIVE | FATTR4_WORD0_HIDDEN;
+ 		bitmask[1] |= FATTR4_WORD1_SYSTEM | FATTR4_WORD1_TIME_BACKUP;
++		bitmask[2] |= FATTR4_WORD2_OFFLINE;
+ 	}
  
  	if (cache_validity & NFS_INO_INVALID_SIZE)
- 		bitmask[0] |= FATTR4_WORD0_SIZE;
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 5e72639b469e..02c78d66c36d 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -35,7 +35,8 @@
+ 		{ NFS_ATTR_FATTR_HIDDEN, "HIDDEN" }, \
+ 		{ NFS_ATTR_FATTR_SYSTEM, "SYSTEM" }, \
+ 		{ NFS_ATTR_FATTR_ARCHIVE, "ARCHIVE" }, \
+-		{ NFS_ATTR_FATTR_TIME_BACKUP, "TIME_BACKUP" })
++		{ NFS_ATTR_FATTR_TIME_BACKUP, "TIME_BACKUP" }, \
++		{ NFS_ATTR_FATTR_OFFLINE, "OFFLINE" })
+ 
+ DECLARE_EVENT_CLASS(nfs4_clientid_event,
+ 		TP_PROTO(
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 801119b7a596..33ab1377f443 100644
+index 280df43c5bf2..a45872f860ec 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -1616,6 +1616,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 		attrs[1] |= FATTR4_WORD1_MODE|FATTR4_WORD1_NUMLINKS|FATTR4_WORD1_OWNER|
- 			FATTR4_WORD1_OWNER_GROUP|FATTR4_WORD1_RAWDEV|
- 			FATTR4_WORD1_SPACE_USED|FATTR4_WORD1_TIME_ACCESS|
-+			FATTR4_WORD1_TIME_CREATE |
- 			FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
- 		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
+@@ -1623,7 +1623,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
+ 			    FATTR4_WORD1_TIME_CREATE |
+ 			    FATTR4_WORD1_TIME_METADATA |
+ 			    FATTR4_WORD1_TIME_MODIFY;
+-		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
++		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL | FATTR4_WORD2_OFFLINE;
  		dircount >>= 1;
-@@ -4121,6 +4122,24 @@ static int decode_attr_time_access(struct xdr_stream *xdr, uint32_t *bitmap, str
- 	return status;
+ 	}
+ 	/* Use mounted_on_fileid only if the server supports it */
+@@ -4354,6 +4354,29 @@ static int decode_attr_xattrsupport(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	return 0;
  }
  
-+static int decode_attr_time_create(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec64 *time)
++static int decode_attr_offline(struct xdr_stream *xdr, uint32_t *bitmap,
++			       uint32_t *res, uint64_t *flags)
 +{
 +	int status = 0;
++	__be32 *p;
 +
-+	time->tv_sec = 0;
-+	time->tv_nsec = 0;
-+	if (unlikely(bitmap[1] & (FATTR4_WORD1_TIME_CREATE - 1U)))
++	if (unlikely(bitmap[2] & (FATTR4_WORD2_OFFLINE - 1U)))
 +		return -EIO;
-+	if (likely(bitmap[1] & FATTR4_WORD1_TIME_CREATE)) {
-+		status = decode_attr_time(xdr, time);
-+		if (status == 0)
-+			status = NFS_ATTR_FATTR_BTIME;
-+		bitmap[1] &= ~FATTR4_WORD1_TIME_CREATE;
++	if (likely(bitmap[2] & FATTR4_WORD2_OFFLINE)) {
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			return -EIO;
++		if (be32_to_cpup(p))
++			*res |= NFS_HSA_OFFLINE;
++		else
++			*res &= ~NFS_HSA_OFFLINE;
++		bitmap[2] &= ~FATTR4_WORD2_OFFLINE;
++		*flags |= NFS_ATTR_FATTR_OFFLINE;
 +	}
-+	dprintk("%s: btime=%lld\n", __func__, time->tv_sec);
++	dprintk("%s: system file: =%s\n", __func__, (*res & NFS_HSA_OFFLINE) == 0 ? "false" : "true");
 +	return status;
 +}
 +
- static int decode_attr_time_metadata(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec64 *time)
+ static int verify_attr_len(struct xdr_stream *xdr, unsigned int savep, uint32_t attrlen)
  {
- 	int status = 0;
-@@ -4678,6 +4697,11 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 		goto xdr_error;
- 	fattr->valid |= status;
+ 	unsigned int attrwords = XDR_QUADLEN(attrlen);
+@@ -4842,6 +4865,12 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		fattr->valid |= status;
+ 	}
  
-+	status = decode_attr_time_create(xdr, bitmap, &fattr->btime);
++	status = decode_attr_offline(xdr, bitmap, &fattr->hsa_flags,
++				     &fattr->valid);
 +	if (status < 0)
 +		goto xdr_error;
-+	fattr->valid |= status;
 +
- 	status = decode_attr_time_metadata(xdr, bitmap, &fattr->ctime);
- 	if (status < 0)
- 		goto xdr_error;
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index b3aee261801e..cba86d167c38 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -33,7 +33,8 @@
- 			{ NFS_INO_INVALID_BLOCKS, "INVALID_BLOCKS" }, \
- 			{ NFS_INO_INVALID_XATTR, "INVALID_XATTR" }, \
- 			{ NFS_INO_INVALID_NLINK, "INVALID_NLINK" }, \
--			{ NFS_INO_INVALID_MODE, "INVALID_MODE" })
-+			{ NFS_INO_INVALID_MODE, "INVALID_MODE" }, \
-+			{ NFS_INO_INVALID_BTIME, "INVALID_BTIME" })
++	status = 0;
+ xdr_error:
+ 	dprintk("%s: xdr returned %d\n", __func__, -status);
+ 	return status;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 5662d8be04eb..817b349c24ca 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -460,6 +460,7 @@ enum lock_type4 {
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
+ #define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
++#define FATTR4_WORD2_OFFLINE		(1UL << 19)
  
- #define nfs_show_nfsi_flags(v) \
- 	__print_flags(v, "|", \
+ /* MDS threshold bitmap bits */
+ #define THRESHOLD_RD                    (1UL << 0)
 diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 450e393d4bf2..8d944d399b17 100644
+index 1839fed16b18..61f852ebb0a4 100644
 --- a/include/linux/nfs_fs.h
 +++ b/include/linux/nfs_fs.h
-@@ -138,6 +138,12 @@ struct nfs_inode {
- 	unsigned long		flags;			/* atomic bit ops */
- 	unsigned long		cache_validity;		/* bit mask */
+@@ -148,6 +148,7 @@ struct nfs_inode {
+ 	unsigned char		archive : 1;
+ 	unsigned char		hidden : 1;
+ 	unsigned char		system : 1;
++	unsigned char		offline : 1;
  
-+	/*
-+	 * NFS Attributes not included in struct inode
-+	 */
-+
-+	struct timespec64	btime;
-+
  	/*
  	 * read_cache_jiffies is when we started read-caching this inode.
- 	 * attrtimeo is for how long the cached information is assumed
-@@ -260,6 +266,7 @@ struct nfs4_copy_state {
- #define NFS_INO_INVALID_XATTR	BIT(15)		/* xattrs are invalid */
- #define NFS_INO_INVALID_NLINK	BIT(16)		/* cached nlinks is invalid */
- #define NFS_INO_INVALID_MODE	BIT(17)		/* cached mode is invalid */
-+#define NFS_INO_INVALID_BTIME	BIT(18)		/* cached btime is invalid */
- 
- #define NFS_INO_INVALID_ATTR	(NFS_INO_INVALID_CHANGE \
- 		| NFS_INO_INVALID_CTIME \
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6e604d6a3e6d..8e8ff5def523 100644
+index dedc7e0bf2b9..f5588bc22cb1 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -67,6 +67,7 @@ struct nfs_fattr {
- 	struct timespec64	atime;
- 	struct timespec64	mtime;
- 	struct timespec64	ctime;
-+	struct timespec64	btime;
- 	__u64			change_attr;	/* NFSv4 change attribute */
- 	__u64			pre_change_attr;/* pre-op NFSv4 change attribute */
- 	__u64			pre_size;	/* pre_op_attr.size	  */
-@@ -106,6 +107,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_OWNER_NAME	BIT_ULL(23)
- #define NFS_ATTR_FATTR_GROUP_NAME	BIT_ULL(24)
- #define NFS_ATTR_FATTR_V4_SECURITY_LABEL BIT_ULL(25)
-+#define NFS_ATTR_FATTR_BTIME		BIT_ULL(26)
+@@ -21,6 +21,7 @@
+ #define NFS_HSA_HIDDEN		BIT(0)
+ #define NFS_HSA_SYSTEM		BIT(1)
+ #define NFS_HSA_ARCHIVE		BIT(2)
++#define NFS_HSA_OFFLINE		BIT(3)
+ 
+ struct nfs4_string {
+ 	unsigned int len;
+@@ -119,6 +120,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_SYSTEM           BIT_ULL(28)
+ #define NFS_ATTR_FATTR_ARCHIVE          BIT_ULL(29)
+ #define NFS_ATTR_FATTR_TIME_BACKUP      BIT_ULL(30)
++#define NFS_ATTR_FATTR_OFFLINE          BIT_ULL(31)
  
  #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
  		| NFS_ATTR_FATTR_MODE \
-@@ -126,6 +128,7 @@ struct nfs_fattr {
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_BTIME \
- 		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+@@ -144,7 +146,8 @@ struct nfs_fattr {
+ 		| NFS_ATTR_FATTR_SYSTEM \
+ 		| NFS_ATTR_FATTR_ARCHIVE \
+ 		| NFS_ATTR_FATTR_TIME_BACKUP \
+-		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL \
++		| NFS_ATTR_FATTR_OFFLINE)
  
  /*
+  * Maximal number of supported layout drivers.
 -- 
 2.33.1
 
