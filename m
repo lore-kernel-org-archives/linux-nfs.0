@@ -2,185 +2,155 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDA06C433F5
-	for <linux-nfs@archiver.kernel.org>; Sun, 26 Dec 2021 18:34:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 13690C433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Dec 2021 10:45:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231459AbhLZSeq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 26 Dec 2021 13:34:46 -0500
-Received: from out3-smtp.messagingengine.com ([66.111.4.27]:35643 "EHLO
-        out3-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230465AbhLZSeq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Dec 2021 13:34:46 -0500
-Received: from compute1.internal (compute1.nyi.internal [10.202.2.41])
-        by mailout.nyi.internal (Postfix) with ESMTP id B8DCE5C0093;
-        Sun, 26 Dec 2021 13:34:45 -0500 (EST)
-Received: from mailfrontend2 ([10.202.2.163])
-  by compute1.internal (MEProxy); Sun, 26 Dec 2021 13:34:45 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-        messagingengine.com; h=cc:content-type:date:from:in-reply-to
-        :message-id:mime-version:references:subject:to:x-me-proxy
-        :x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; bh=a0dFVF
-        82WizF9FvBRbCiW5Gm3vxn6RBxpn+fRF6z6Rs=; b=HEbGhNG5H2cIrIrZ/61mhj
-        xkjupTtU3bYALg8Beu7pNNc/UB6WRhDdYaq4OeE753c/Ct/Dk9vLiR4g7PP+SJZQ
-        fOr9gZbHAbU5/QEjfKdlDzkvht4qkWSI1NQJNbJWZUzJyZL6qkYEbPJ9XetDgMPv
-        fti3cnybaOmvCSrISm58qUcfi+tvC4G2cI6W5yAFfoXEdRlnurYZkW8Ri9U8DpPJ
-        mNzxkBjtbWT0cmdHlIM9RIHz26FolQDeSfqpQGf1hOYYf5TObuuRA/7jb4IFdQ8j
-        OMF+32pl9lGHdKO+zp0rMBn34MZaOxgjeK2YtVwOuig4PspAAfnjzMdbNAq0avOg
-        ==
-X-ME-Sender: <xms:xbXIYQLd-egsWIbSgx9uJcz9SyQbFUX4ytboNaqiLNDm-j_NRkRJAw>
-    <xme:xbXIYQICwXDkghiwNF6ZhrKEu4XEZNVDYFWwitHf_SNfHeh11tPBvVEV8j3A77DXu
-    pIAOEjNlXsHVTOLeQ>
-X-ME-Received: <xmr:xbXIYQv_M_c0xwm3BrQpRBGI7Rg-9u3VcvL97Zy9lmWi4QuGIcPpiK19LeZStGGYzMisVcV-wmff64TstlRoA8NweJDjTEBiY1ftJks0i7JJ5cNhYWL1LZrEXVeSrWS77Y8nONYis1C3Ye6o7_XSJ0dCrGOMhqpT>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedvuddruddugedgieekucetufdoteggodetrfdotf
-    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfqfgfvpdfurfetoffkrfgpnffqhgen
-    uceurghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmne
-    cujfgurhephffktgggufffjgfvfhfosehgtdhmrehhtdejnecuhfhrohhmpedfffhorhhi
-    rghnucfvrgihlhhorhculdfnihhsthhsmddfuceolhhishhtshesughorhhirghnthgrhi
-    hlohhrrdgtohhmqeenucggtffrrghtthgvrhhnpedvhedtvdetledtkeetueefleehgeff
-    vdfgtdeiheehtdetgfeugfegteffhfdvleenucffohhmrghinhepthhimhgvrdhsohdpgh
-    hsshgurdhtohdpughorhhirghnthgrhihlohhrrdgtohhmnecuvehluhhsthgvrhfuihii
-    vgeptdenucfrrghrrghmpehmrghilhhfrhhomheplhhishhtshesughorhhirghnthgrhi
-    hlohhrrdgtohhm
-X-ME-Proxy: <xmx:xbXIYdblTuVpk3OmtjyDFJaJTYqcMoc_tKoAhEmpk7Iq26ty0pGTuA>
-    <xmx:xbXIYXbkoTb_U-b9KMa08wHk1QXItaqK4ESl32wDyxKPUBPm57WdGA>
-    <xmx:xbXIYZDm3idlcS_Ul3wQxkCyQ8vJgGFOuJlRGAUHoSXIR650RPSDPQ>
-    <xmx:xbXIYTGOZz13LV25IE7GLWAqJmcgbLYlTkozWdblaaZTqUlwOt3I2Q>
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sun,
- 26 Dec 2021 13:34:45 -0500 (EST)
-From:   "Dorian Taylor (Lists)" <lists@doriantaylor.com>
-Message-Id: <AA15B46B-032F-456D-A562-504AD0516AC0@doriantaylor.com>
-Content-Type: multipart/signed;
-        boundary="Apple-Mail=_85F050A9-8880-49C2-B8B2-A5A3F44E194E";
-        protocol="application/pgp-signature";
-        micalg=pgp-sha512
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.7\))
-Subject: Re: GSSAPI as it relates to NFS
-Date:   Sun, 26 Dec 2021 13:34:43 -0500
-In-Reply-To: <9DA49FE9-F4AF-44CC-8BCF-86F4D2D984AA@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To:     Chuck Lever III <chuck.lever@oracle.com>
-References: <234CDB6C-C565-4BB4-AE38-92F4B05AB4BD@doriantaylor.com>
- <48DBBF53-7CE3-4DDA-B697-B14F8C382E78@oracle.com>
- <AF7243DE-250E-4CCB-86C0-40C69BB71C88@doriantaylor.com>
- <9DA49FE9-F4AF-44CC-8BCF-86F4D2D984AA@oracle.com>
-X-Mailer: Apple Mail (2.3608.120.23.2.7)
+        id S233354AbhL0Kpb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 27 Dec 2021 05:45:31 -0500
+Received: from mail-eopbgr80101.outbound.protection.outlook.com ([40.107.8.101]:40007
+        "EHLO EUR04-VI1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S232742AbhL0Kpa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 27 Dec 2021 05:45:30 -0500
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=OSMELQUpO58wzwsPnTZsosp+uwCvW01ZOyTQAeuqW9Pbo9z6+qpEZAfe+HndUIrywpiJKbT9Wo0vXUbTweidOUAUl76tZpzMAXZKPvm9e0CJIMfQBkylxumrvUNZvVeHl/J+LzlMwwLX8xlcJcDTxgdDBrCOpzJ3Qe9Lj0MymCttgKDWfA4kycF0fELeQzGwO3bN367Ixr0BKMdDVN+UBu8eDzTEoJovCKRUDi6wCcAxWVHe63gJ+f1Arf6ctRHDHcFVJ0t6RrWSctOU35NxYIK4Sdpf4P+pOvZAiPNUEUw4z2DPPJmtps2oA5GdkrmSdVEVH3Og4FOAaCDQzAa+7g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=CwuVNDnGdJ1GcH41Cb+dIiiiXqbLuMn9P30NH0PFnJU=;
+ b=JPsUrnIpggB6w7zPgwDK+yEOaN4m3NtmqW6wcaqlD1AU0TUGwuDtrRfCIEIJOkuig6gz0ElyWQTZF93oB+oAa+/ijAZmfNSUtBEskVyGO5/zFQlRb0FKdWNXv7kvwxMk1pqiQhjZh/D6skbDQU5sl0SV706rvHtvIyLw/X1xT7fV+2RN1Y3yzKKzslmB9vOF8XSjB9laTV0FZETcf+8ITh8uY226/G74SG4k2PbAIB6oPAloVQUGLPcw6y9gcgf8p+xxrlyRXuDXx7xBiepZIkAOZYVgoNxuPs5o33H/N3+iYhmH+O5nC1rDR0HWgeQNqp8bRqvdHIrRZKEfrIYp1g==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=virtuozzo.com; dmarc=pass action=none
+ header.from=virtuozzo.com; dkim=pass header.d=virtuozzo.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=virtuozzo.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=CwuVNDnGdJ1GcH41Cb+dIiiiXqbLuMn9P30NH0PFnJU=;
+ b=H2TOufyr1BPb8BkamVl98cCfOpGh/3dZQvvvU4MEGeJWbxDrJHBr6lqigsihVyzqR+vK0jERMMnIlEdDtqAdVkhnRXVnxKcisAYNvAJViKwm8iFRMfNisdN0P+1S/iWwpz1ocB4+d2ED5HsGdN2NiPhMe+rCWceUH4gk4hBuHYg=
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=virtuozzo.com;
+Received: from AM9PR08MB6241.eurprd08.prod.outlook.com (2603:10a6:20b:281::21)
+ by AM0PR08MB3554.eurprd08.prod.outlook.com (2603:10a6:208:e3::15) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4823.21; Mon, 27 Dec
+ 2021 10:45:28 +0000
+Received: from AM9PR08MB6241.eurprd08.prod.outlook.com
+ ([fe80::f9ca:fe00:10da:a62f]) by AM9PR08MB6241.eurprd08.prod.outlook.com
+ ([fe80::f9ca:fe00:10da:a62f%5]) with mapi id 15.20.4823.022; Mon, 27 Dec 2021
+ 10:45:27 +0000
+From:   Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH] nfs: local_lock: handle async processing of F_SETLK with
+ FL_SLEEP
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     kernel@openvz.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-ID: <6613b17b-43bd-07d0-2ca7-1581a39cdf7b@virtuozzo.com>
+Date:   Mon, 27 Dec 2021 13:45:26 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.14.0
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: AS9PR07CA0019.eurprd07.prod.outlook.com
+ (2603:10a6:20b:46c::23) To AM9PR08MB6241.eurprd08.prod.outlook.com
+ (2603:10a6:20b:281::21)
+MIME-Version: 1.0
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: 0f5a6d7a-3c17-447e-3324-08d9c925feee
+X-MS-TrafficTypeDiagnostic: AM0PR08MB3554:EE_
+X-Microsoft-Antispam-PRVS: <AM0PR08MB35541EB7F5D64A20CC737486AA429@AM0PR08MB3554.eurprd08.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:923;
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: DcxXfAJ/zBCxWVz/tz8dnw591puCTZ8kRazA1JDCH3LVjRlJwBudMjqb/hIcIzUnUd45x8iSmYGsQDz1jSiPBEqQS897nDV+NnQw/bJL1sQ9PgJZybyHz+N+JNxAxEmws3YgfTuS1uUrDly9TMRdr57ry7hJ9qapAbYGPOloVGjPrg0Og9owwOdy8srs0fe+zs8aRxSuyFDJCB6kb6SjHiwXZlH5B6HgILxSSqs0FyvpyftE7jRM/qRuelZLzOLlxML5B7LtsJy1a3X2qk4/VYAsCy//DvCv5bPUstoOcj8IETMKLFk021QXd2xueJqht8gbzdaGE8KfFbS/dWxaoYCpnhnBvArUGIGXe7MtfAssHLjbLKCGdsNl0G51BkKJLF3XH+NvG+O6r6yOmgdBJKcVK3kUDshzCUalY7skO2SkpHNbqatbvT/okitaSVCT0FqI/aHw6/qQs2tsmmH6qYrtBcJbFCQAbKyVQxh8L6/95+t0lzU4VCZv7R1qGUwzEqlJe3wgPdebAlJa+D5IO+mn3Yq9o7MDG55lLyThonq5F50gfHKbCfqLBEWWP7YNRj7Mph+5+Zp5pLgjbY2n1AeWU5wIjkGDi0rUZaCgvzJZianNCLpifi84dZKEr3XADRvQxkhC9axJunaT8vImO3OB5GQSq42lUWOePGtrbPDM/nLtSekhcCPD1hLEWZV4vxCbwugkZssSrr0MqOAEP/Ryiwp+dTfLBjGx/KEaI+JCY2wGYHt7dbb2KQXnuVu4Pk5qysaw765gVFZvkPogMimU5PH6g3ziZFcLBXgxstOYnuIInxrur8sIkf/YMN1Nm+QYwqNWm6J52gdM5ZtqD0LwqZdEQYIxpsQJxnQTttM=
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:AM9PR08MB6241.eurprd08.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(366004)(4744005)(6506007)(186003)(5660300002)(6512007)(36756003)(4326008)(508600001)(26005)(966005)(52116002)(316002)(8936002)(2906002)(2616005)(8676002)(110136005)(38350700002)(86362001)(38100700002)(66476007)(31686004)(66946007)(6486002)(66556008)(31696002)(83380400001)(43740500002)(45980500001);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?emtMbWk1ZG9lbEJpQit2WnI2UFB0ZXowbjdsdzIvUjY4aWlBQzZ4UGo4MTRQ?=
+ =?utf-8?B?eGxDcHRnRUt1RjdyYm5qOWhtNmlGSy9RUFErazg2RE4vM1ZCYlVqbERmVVV5?=
+ =?utf-8?B?dW02YkRtUkcreXFtcEgvWEs2Y0hWRE14VjEyVlZtVkR0LzZJK0hHZjhIRysx?=
+ =?utf-8?B?NEEvdG9ZM0t5eW1ZNmE0L2I2SXhVYVJuTGZidXNKQThDdk9ZZEdGcW1mRFlT?=
+ =?utf-8?B?VWlUWWxBOWt2ckZxSmgwWmFhZnF2UEZUaUh1MDVxNldXRWFtYldHZERWTkwr?=
+ =?utf-8?B?dHM1UnVqU2FqMjJoU3dMTnhJTXBFTVV1RENQeERHSWp4Ti9OdUhyOWF3MW0z?=
+ =?utf-8?B?K3p1RVZEOGF3TzNkNzNlVWw5d2tuNGswRlV4S2EvdU45QmNWOTRzZHJQRUhS?=
+ =?utf-8?B?clR6QVpiM2hjVVNHaTdjTko5bHlraXZMOGxtVWNialQrZUdSakRiRGEwYzg2?=
+ =?utf-8?B?Qm9teXpsSEhvSUhBV3liSXEyL3lIYjFzczZNTzJVSEpoZW92cGovbXRmS2sv?=
+ =?utf-8?B?bGxqNFY1YzF2RFpqMDVpVnByZTk5cmlQNTg4RUFjS2xlU2VoRzBCUnBBMVZT?=
+ =?utf-8?B?U2hRdDdGNUtwOXo5cXNyNTV1N2gxYklxOUpHNHBLa2xuUWQrTVRSZTZPTC9O?=
+ =?utf-8?B?SDJ0eSs5bEFjbEFqQitlU1NBTnl0cnNVbVRQbmhtbXdSdWVyc3N6aE1SY0hM?=
+ =?utf-8?B?UGRhb0JmRlBqQkZlNXIxNW1rNERaQXRYelRVWE1GM1lVTG5JNzJXWDZCQWJu?=
+ =?utf-8?B?U3RRY0x5OW9KV2dJZlBJQjJDT3BoQ1o4N1RkMFRpKzdtOWoyMkpUdU5kU3Q4?=
+ =?utf-8?B?cUZxUGJtUFhoeDdFWXFDbE42NThVNk1rUkNublh2Vy9qTE5TU1NFNW9LQ2lw?=
+ =?utf-8?B?b2tnVnd5NjF1YTBobmpJRDlpbXhaR1k3cEhvSmRWSHBkOTNYbllzM00wQUpp?=
+ =?utf-8?B?Qm04RlNRbVArNUlCTW1QYkZrOTM4M1VVQlh6WmtDYlAybEtuSHlKV2JiK3JK?=
+ =?utf-8?B?N205UVk2akxHajlQaGZpWlVqSXZVRXczUEVvRTlEWGNpN3ZhZXJCRWNqRmRR?=
+ =?utf-8?B?SngrYVBBdGJaWlJCRXFQSHd5K2NKQ3NHckV6WkpCcDBJVVowQnd2S2lJMjUy?=
+ =?utf-8?B?OENUQkpVN2IxQ0xoMmh1SWpXN053dDRmUHY1b3pkZkoyUXF6ZlFkUVB2NVVG?=
+ =?utf-8?B?dEpKdXNQUTVxaWQxa3RVOGpVOVo1VG9YZWxybGZwMDBwd1hvSEdnMkFTeFFW?=
+ =?utf-8?B?SW1RaXRoWmk0amxnTExiUGw5ZGRTNlNTRjIrSWdYY1Yvb3R5R1UwS3I4Y3FE?=
+ =?utf-8?B?a3R5SWxGQW42YUJrajhOaGpyd1pHWFdUTHRYMXZVaUZvUTdwbyttaTZSK291?=
+ =?utf-8?B?S2tNd0ZyMURnQVU4b210NGNTR3RIU2pWOVV6YjdZSHRHVy9SSSt0YisrZElw?=
+ =?utf-8?B?cGwzRnJWTEc4QzJuUGN5N1hpVjd6NVFwY2ZuajMxdzVHT3FuR2pYZk1ZRDZO?=
+ =?utf-8?B?aU45MFZpdlZSeEdyaEdZMkRROFdIYlpxeVBNQlNCUzVZN3ZuVVQ0VE00SlNj?=
+ =?utf-8?B?alFybUNtVURqU2F0S25SSUZqSFYwajRiRitzK2hqQ2RtcE0zN25CSGxxRWFR?=
+ =?utf-8?B?bzB0ellrZmRRQXczcnlQN1Q2aktraDhBYXI3Z2xhdFBvZnd0Z0FCUzc2alIz?=
+ =?utf-8?B?OTlMWlphbHp5Yk84c2ZBZnBuaFlkd3p0REFKQkIrbGZETDFIekJ2aDVkc09L?=
+ =?utf-8?B?N21XYWxkdjZrci9BdnQ4MUxZNi9iMWVtQkF0RUVCQlFGdHd6YW5FMlM0ZFc5?=
+ =?utf-8?B?bUcralZ2S1ZuSDR5U1pic3gxSTl3M3FVc1JJRkoxeFBaeGVGWjJuYnA3RElS?=
+ =?utf-8?B?RXhMOFVZeU9FQ3NsckFkVndWWjF2WFNYeEF5WjJLS2k5Rk1mWTEvYW4xcTh6?=
+ =?utf-8?B?YitNNHRUM015RzRPbDcrcXhIUm1scmd0am85KytmUnFHTVQ1Q2RtRXVUbXEr?=
+ =?utf-8?B?Wm9lTnFWbUhHbWhjRENjR0RWZU1EaWs4WnEzeXlOWlNXYkx5MVVHcDlrb2p0?=
+ =?utf-8?B?b00zOFlJbDRpNkY5aTF5bUZoSndYTS92aThIdzRZb0hTQUJDRzk1ckE2VFpr?=
+ =?utf-8?B?dkFVWnNhVE8vbHNNMmJmM1FNN1d6UjVFWEM2UGdzbkhkM2dSRndNREVjMUc3?=
+ =?utf-8?Q?iFj2IOl8D7tVRgjVBRjJ8ss=3D?=
+X-OriginatorOrg: virtuozzo.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 0f5a6d7a-3c17-447e-3324-08d9c925feee
+X-MS-Exchange-CrossTenant-AuthSource: AM9PR08MB6241.eurprd08.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 27 Dec 2021 10:45:27.9662
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 0bc7f26d-0264-416e-a6fc-8352af79c58f
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: AY4ssfyJZvKc775qTfKAghFdRbsVj55u80yWClyhx+MMRA+S0XPKQpr0C/03Yh3xFI61S3tBnt8F1QssuXDq/Q==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM0PR08MB3554
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+nfsd and lockd use F_SETLK cmd with the FL_SLEEP flag set to request
+asynchronous processing of blocking locks.
 
---Apple-Mail=_85F050A9-8880-49C2-B8B2-A5A3F44E194E
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
+Currently nfs mounted with 'local_lock' option use locks_lock_file_wait()
+function blocked on such requests.
 
+To handle such requests properly, non-blocking posix_file_lock()
+function should be used instead.
 
-> On Dec 25, 2021, at 5:53 PM, Chuck Lever III <chuck.lever@oracle.com> =
-wrote:
->=20
-> IIRC Linux requires that a mount operation be done by root. If you run =
-gssd with "-n", become root, then kinit as yourself, I think it should =
-work.
->=20
-> There has been some discussion about enabling a non-privileged user to =
-perform a mount... it's a bit tricky because the function of mount is to =
-alter the file namespace, which traditionally requires extra privilege =
-to do.
->=20
-> Mac OS has had this functionality for ages to enable basic Finder =
-operation. Linux doesn't have it yet.
+https://bugzilla.kernel.org/show_bug.cgi?id=215383
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/nfs/file.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-I mean, you=E2=80=99re the expert, though it looks a heck of a lot like =
-the functionality is present: mount(8) is setuid (and so is mount.nfs), =
-there is the `user` (and separate `users`) mount option in fstab, and I =
-am pretty sure I have mounted things like optical drives and USB keys =
-from a Linux desktop without e.g. entering a password (though I suppose =
-that could have been the work of FUSE or GVFS or something).
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 24e7dccce355..c9c974ee2f43 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -769,9 +769,11 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	 */
+ 	if (!is_local)
+ 		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
++	else if ((fl->fl_flags && FL_SLEEP) && IS_SETLK(cmd))
++		status = posix_lock_file(filp, fl, NULL);
+ 	else
+ 		status = locks_lock_file_wait(filp, fl);
+-	if (status < 0)
++	if (status)
+ 		goto out;
+ 
+ 	/*
+-- 
+2.25.1
 
-> AFAIK you are not doing anything wrong. It just isn't supported on =
-Linux at this time.
-
-So, here is something interesting:
-
-* I run `rpc.gssd -fn -vvv`
-* in a root shell, I `kinit` as myself
-* I `mount remotehome:/in/fstab`
-* miraculously, that $RPC_PIPEFS/nfs/$CLIENT/krb5 pseudo-file now =
-reports =E2=80=9Cmech=3Dkrb5 uid=3D1000=E2=80=A6=E2=80=9D
-* after some carping about credential caches, rpc.gssd works correctly =
-and the share is mounted as me.
-
-I didn=E2=80=99t mount the NFS share though, root did, with my Kerberos =
-TGT. =46rom this I can deduce that that uid=3D1000 must be coming from =
-rpc.idmapd, because where else could it come from? That=E2=80=99s the =
-only thing that =E2=80=9Cknows=E2=80=9D the relationship between the =
-Kerberos principals and the user IDs on the system.
-
-Moreover, what looks like what happened with the credential caches is =
-that even though doing a kinit for my ticket as root, the ccache that =
-rpc.gssd actually *used* to authenticate the share was a different one  =
-owned by me (uid 1000) that was also in /tmp at the time.
-
-So /tmp/krb5cc_0 is used (presumably by rpc.idmapd) to find out that =
-dorian@REALM -> 1000, but then /tmp/krb5cc_1000_XoaBV1 (by rpc.gssd) to =
-actually authenticate the mount.
-
-What this is telling me is that there is no reason in principle why a =
-non-root user shouldn't be able to mount an NFSv4 share authenticated by =
-GSS/Kerberos (as both `mount` and `mount.nfs` are setuid, and the fstab =
-entry has `user` in the options; by all means the code to do the job =
-sure looks like it=E2=80=99s in there), but rather the information about =
-the *initial* mapping from Kerberos principal to system uid is not =
-getting transmitted to rpc.gssd. To recap:
-
-* when I run `mount remotehome:/in/fstab` as myself, gssd reports =
-reading uid=3D0 in that pseudo-file;
-* when I run `mount remotehome:/in/fstab` as root with my ticket, gssd =
-reports uid=3D1000.
-
-although, actually:
-
-* it turns out that the only parts that matter are a) rpc.gssd -n, and =
-b) root having a ccache with my ticket in it, in addition to me having =
-one as well. I also appear not to need to be root to do the actual mount =
-though, as `mount` is suid.
-
-(aside: it looks like the `noresvport` mount option is ignored, as port =
-<1024 is used to connect whether the real uid invoking `mount` is root =
-or myself.)
-
-This is looking more and more like a bug. I wonder what it would take to =
-get it to work properly?
-
---
-Dorian Taylor
-Make things. Make sense.
-https://doriantaylor.com
-
-
---Apple-Mail=_85F050A9-8880-49C2-B8B2-A5A3F44E194E
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCgAdFiEEQCibkUxMA9OSsNh/irFKO32Nr6MFAmHItcMACgkQirFKO32N
-r6O1sg/6ArrqEYO0GU7Oca3z00BVduPdralr3KP2ni1fA7P+88yfCavQRku3m5Vq
-fr08hpB4ByL9mNG7Hj7ITtk2huGe612y865PzmfZ2JFBnNfVv9qDCfdm6xri+WgB
-zg3lTDvV5I0E8rJCZeTb0mPNho8rLZF8rCOOh1gQPFykONl/CRUakud7GzapYbuE
-Vze/U9HEYacMxfPgGqAsm+DtuhG+4ASNLDMYM67X7h/NFSRsMwJx43KC6WPx4jPg
-TO6oHz3P+3AFaab2wH8ooZFUuihiG0cQ3yBjQk0A/ZblWK3ZN4RvJGUiSfIVRYKS
-VyGhiGWATfFCsMJqspYBDwEYjZEhSMzhi4JUllc7iWY5k7VzI06TZ3moGZsHEof8
-cjPy1JNGXBQKRg5lwofoaD24227isC1DTKLUIMp5NL9pSfrqw2nC2e+NU3N6uyHO
-p0Dx7SR16+BOSQmV+p7yzxCyo/dKM5rIEgs9kZhqh0zsLqfIRH7SHyqJTL3OX0z0
-4Gw3YkdUrJG5krd/Zj57xsfT5W0pE0Q22r7kFQkbQN7RdrqeM6wWzmM8fZCEiY6S
-yP2R+rdxfByTfYaDEOtp9ZW5REyG6MDgjz6Zm+GLqGu9odZRJL/ZIynihuyGCo3g
-cKtZZLjuqXGcx7bcMx294qHNeBolnBK4jw8OX68wfaM6uV9UFS8=
-=SmfW
------END PGP SIGNATURE-----
-
---Apple-Mail=_85F050A9-8880-49C2-B8B2-A5A3F44E194E--
