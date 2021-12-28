@@ -2,143 +2,163 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27C7BC433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 27 Dec 2021 19:47:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB3F8C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 Dec 2021 01:00:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232429AbhL0TrV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 27 Dec 2021 14:47:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38050 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232422AbhL0TrV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Dec 2021 14:47:21 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B90DCC06173E
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Dec 2021 11:47:20 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 56CA4B8113A
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Dec 2021 19:47:19 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D037BC36AEA;
-        Mon, 27 Dec 2021 19:47:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1640634438;
-        bh=XN4Dz6hNttV1tZeFHFXjSdFmePMym08qe5huMilWSfI=;
-        h=From:To:Cc:Subject:Date:From;
-        b=HbQVFFnQ4v6rGDbqYzZAcuVCGdizicDKmynHaBSyh3Fma5+rOnabiIjGUHX+ces70
-         OEtv0Ks12+gmRKyx7lE+cXsEGiz5bXrrysUYCBrfPgi6SpctWncNrQuvZ1e+U+ylpy
-         qZ9UHPKoLji+XXTie2I4FsPdCxOfax+VxVcGVcVTjh2AFC2eakKaxbRvtI7x1tSF0Z
-         anPG7AXNNEgyzsS2NJa7zdB/e3r7yNtp/LPI3odT5sQ6P0CmEh+xADXIP3NmoLuLHt
-         HxcqJswvZ5CmHlGdwJ2XaIV+ls4/gl1L+gMLeWGk8D5YhdNEc4jtetj79P1Tv5BMjv
-         Oat1iVYur78aA==
-From:   trondmy@kernel.org
-To:     Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4: Allow writebacks to request 'blocks used'
-Date:   Mon, 27 Dec 2021 14:40:51 -0500
-Message-Id: <20211227194052.309898-1-trondmy@kernel.org>
-X-Mailer: git-send-email 2.33.1
+        id S234274AbhL1BAH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 27 Dec 2021 20:00:07 -0500
+Received: from mail-am6eur05on2138.outbound.protection.outlook.com ([40.107.22.138]:36256
+        "EHLO EUR05-AM6-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S234271AbhL1BAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 27 Dec 2021 20:00:07 -0500
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=Q4JvwsNswhw5WdOs7D04kQ1gZgPhPac0N2aE192aImiliCJuCBWYsXBETqorq3dvBfFPoCt71gSJGo0yAll3ksnT7PWBZVK9f63tQ5LNWB0DICHbfHtgzYC5fDfIL5hszWhTaPdZi83BRWpMqlmG5helnOXSJXVlS52XP1ag/wdLpsOZVpz9TXhNLLeY7IQuYz/9l10p52KCaUag4uoEczyWuyZr4FmJJAkc/pQbj0fIIC/rh1L231Zl3Na9hMQIv02StFVLCAawkoTkvhBusUv5QkLuOjjiFl9K0O/kywZcDSmgczNrRUy9tdhrR08GQzwWPJN3DZEFf9kVUDI7+Q==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=gBdDdMrwg+bnPhZhIgVBgJUgS56T9RfafXEfKuSHWTo=;
+ b=TFc/S6bNTsgtYJjOJ2B8HRqzQXE1RYjcrK6Zi5zwvUqrenIbz/pTGIPfbIbKFg2FcEv6heOD45/bwMyBXS7LSf84owE2vGoMtBsZCFUNj1KdgV3y6CwWrCBvToR+Huu79Z2KF+KTMkkMiiLSSSNv542UrYbx8rxrOuw88Z0nRoG1NxGa1S7AhNCRJ6gzMWR4H6Hun28fdOFHC+eKUWuqDOyjSg+kHdPqu/McDMdcR8bGPaFL8ZFQXbELW2vCSu1gGgftDQOVmhGh7s96QJzZtv71T5nkB8tQu7jbzSmierGFf1vuhhmUISqzM5SZcR6Y2Qr62DA2Q/xd59Rmj1yRGQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=virtuozzo.com; dmarc=pass action=none
+ header.from=virtuozzo.com; dkim=pass header.d=virtuozzo.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=virtuozzo.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=gBdDdMrwg+bnPhZhIgVBgJUgS56T9RfafXEfKuSHWTo=;
+ b=hpmPrUPzMKdrXH65x1lJ6Owsmz3hmaXXR7uN4G6JQX3EAw2ZPdP9yeEkMt8WxYguSeBRkI4Uz5u1I64x9fmNIyCKykMm4cgWJJGUeOOdBNlYZ2QhDFWVQLDyVhD+RP9U/LizGmVZzpxaMqR40GWjHc8kM7d5zRIlE9z9mbzlUaU=
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=virtuozzo.com;
+Received: from AM9PR08MB6241.eurprd08.prod.outlook.com (2603:10a6:20b:281::21)
+ by AM9PR08MB6754.eurprd08.prod.outlook.com (2603:10a6:20b:304::16) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4823.19; Tue, 28 Dec
+ 2021 01:00:04 +0000
+Received: from AM9PR08MB6241.eurprd08.prod.outlook.com
+ ([fe80::f9ca:fe00:10da:a62f]) by AM9PR08MB6241.eurprd08.prod.outlook.com
+ ([fe80::f9ca:fe00:10da:a62f%5]) with mapi id 15.20.4823.023; Tue, 28 Dec 2021
+ 01:00:03 +0000
+Subject: Re: [PATCH v2] nfs: local_lock: handle async processing of F_SETLK
+ with FL_SLEEP
+From:   Vasily Averin <vvs@virtuozzo.com>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     kernel@openvz.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+References: <202112272042.Xlz50x0x-lkp@intel.com>
+ <3e5d6777-9365-c853-071f-3e9fc4df922c@virtuozzo.com>
+Message-ID: <2305d90b-d1b2-6924-7d93-b29848eeb92e@virtuozzo.com>
+Date:   Tue, 28 Dec 2021 04:00:02 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.14.0
+In-Reply-To: <3e5d6777-9365-c853-071f-3e9fc4df922c@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: AM5PR1001CA0015.EURPRD10.PROD.OUTLOOK.COM
+ (2603:10a6:206:2::28) To AM9PR08MB6241.eurprd08.prod.outlook.com
+ (2603:10a6:20b:281::21)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: f95a30ed-c036-4307-131b-08d9c99d61c0
+X-MS-TrafficTypeDiagnostic: AM9PR08MB6754:EE_
+X-Microsoft-Antispam-PRVS: <AM9PR08MB67541E4F7BD6F3060D19A615AA439@AM9PR08MB6754.eurprd08.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:800;
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: 493g8wxAPvIsda+u3Hy6OUy48w+YhYu0Y9LMHxJreR1JGcCh4bB4Uy495W2wpcsk26fIwcpBd4LYL6KDW6CTk4NFIzfeFUnGOWxZD0UHsZjxi7Zgho8AwLP6GteFRC2/BtgYZTDuAXIMogHDYWD49uhzAnANaSQxaMPlDCG1URiRygWnB+sDSMyDgbsUFOd+GwKwCvu+v0OOjOlPQzjS1FHUBQ7URp0dKNwdNeDRk89zb2WfSxfSUeEdZYvJVwnc8ZO5ZPhUhsh2e0yTNXj10Ohw2XIsD9f9ElFcyiDjJSpxna6qmBjc1dPHGCZy4jCUEcmb9LTnMePtIN1/eOLx6ZIOTAILDpJv6K9WzWjKuLz4Vx0EK+0OznOsjk6gR7JelF3b/vv6c6mWc09mehhuAYfz/3t9U56cKDBghcJhOoNV9XT4JKlMzHBnayfnm6+XwVLvC14It63L8lIX+1+W1UKi9LGUFhKC+iRSh0Y9Sy8KD1Tqgmt4tbqTt233242sCXReKNO9MbqF6+jgL9mSwRpOqQ+0SiF0xhHae6CX/P7CrKTuGkBA+P1SBz869XvzFgOS0las7D7YwQhFlhMfKD+9aUxe+p1el53uOlyjOyGXcQ8zzE/6+UYBTHjFkEwLz7Go8bvF+azkxraQ5iaYSifCsRfXlfgz3RseHRdtTRyPcwmf6xHGGiH8sCeX3amQXhB0PRyizH4Kbyg6bEihmvxTG8V9PnnkhMHZTmgu1fdQ/Ut5vvdlkCvBsRWuFxL4+/Wv6wylIpw3582yPXgd/mttPpVLbpJPyLwvaUKs4y8pX53FF2+MrYFxNXOzcZO/hVkq8bbC/U5G6RpqU5l/lWGXfsFtrZdBQ1ChnXZGrng=
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:AM9PR08MB6241.eurprd08.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(366004)(8936002)(8676002)(966005)(86362001)(186003)(6512007)(508600001)(36756003)(53546011)(26005)(6506007)(31696002)(66476007)(66946007)(6486002)(66556008)(83380400001)(5660300002)(2906002)(52116002)(31686004)(110136005)(4326008)(38350700002)(38100700002)(316002)(2616005)(45980500001)(43740500002);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?UkdYWnFoOUF0VmVWVVhIbHlBSUF5aENCYTNtbGJ3TC9ieDVISmJiZWEzcWNG?=
+ =?utf-8?B?OTBtSzNGWUx3VlBOWTMycW1kcndTRkwycGNZOWwzM29QTEQ5MEhuTE5LeVRF?=
+ =?utf-8?B?WnlUTmNQcGpaTXVOcVNuZ1VJVVZHaVRNcHdmL3ZjcnJQL3pNbGNFaUNJdGZw?=
+ =?utf-8?B?b1YzcEZ5VU8ycVIyUHZSY2taYWZXUm5zREdzRXpudXd4dFpXMUZoT0FtRWNk?=
+ =?utf-8?B?TXFhZkhvYUFyMkpJVnQ3ZG9WejMxVzk2eEhPYTZKZ0hoZTJndEc5QUFXYmI2?=
+ =?utf-8?B?a291aEQ1bU8wdDBxcGRDdkk3MFZtLzhhQ01WYVBzREhqWWxjYVNiam45aEVr?=
+ =?utf-8?B?R0xYK3A1MVorNzJPd2g1RnhPdHVCTGp0eG5mSG1KZE15WUdUTzVvdVNnazdF?=
+ =?utf-8?B?eGUrSG1xc3NNL2Jud3BSNWhsS2k1R1E3YVI5azRIYlZRMW9EU21WNDBNK3V5?=
+ =?utf-8?B?OG02K2JJanlnR24wS0QzVEFrZGhrMFljRCtoWUZIOFAvQVl2YWpqSG9JNmhB?=
+ =?utf-8?B?WkJVaXhKL0cyUGZYNi8xMENxMjBkNWNvWGp5Y0JkU0xEbml5aWxSTmhaTDRP?=
+ =?utf-8?B?ZThlcFVmWmRvTzdDazFSQy9hcGIwa2RXSlFpWmVXVkdsNFNRQzhzRXpYaWd4?=
+ =?utf-8?B?bGliQTMxZXhHWndRVWtKM25QdE4zTWVwSFlhREpFdE9Cem9hZXhWOG0zSDNn?=
+ =?utf-8?B?cWhZSEU5MGJLb0ZuZFhqeUhSWlNweWNCZHJleHNBTnAvZW5xTmpCMm43R1hW?=
+ =?utf-8?B?MXQvM1hMK21rSkJnMVJHelVJZnpMdi9kSTdWa3g1SHpYRURqU3l2enoyQ093?=
+ =?utf-8?B?dnROckp4dm1MNlFQa3BNN1UzVklqZkFHUjJMNVpkaHYya1dicVpnSHZUUm5x?=
+ =?utf-8?B?ZnRUU2Y4eDZ5ejhRaTN6Znd0RU9RWG9TelE1azRTSVJaRzkvR1lkQ3pJWTBk?=
+ =?utf-8?B?TDRIejVjRm9nbk9JNW9YcCtDcGZZVGZNQ3lmSUsvS1FRakk0ZitYdURTUzN2?=
+ =?utf-8?B?Mkh5WEY1clY3N1dMdXgzYkZ2emtvZVkzdS9SUkJVOXIveGpZd2NiZitjVW91?=
+ =?utf-8?B?YkI4ci9TMTJaclBiQmpMREJPR3ZtUVJNdkVDeDhBWDlnUmxZZkFSdFA5QW0v?=
+ =?utf-8?B?Y3BMaVcxYUdyRGF1blYxQ2dQcG1zcUtJMjVUdFROSndsd204eXJIbEdwVmRB?=
+ =?utf-8?B?aW84cTJIT0FnV0RLb0Nmd05ZVG12MlhHcmM2cmF1bzBYaU9LZ29aSzJFVXlp?=
+ =?utf-8?B?aW0yODFxbEFiemkxWGZWQ3UzMkdFclN0Q2dGRTRNY1ZLQkdSQUd1a3E3dStV?=
+ =?utf-8?B?Rk1GVk9aZ08xMlFMN0MrK0kyL1N6TWpLbzVNWldZWkJHaEJMRWEzY0pOR0tP?=
+ =?utf-8?B?SmZoMDNYN2dudzIxMStFQldqTVNSeTM5QVZPaDBHMjVsQWptbCt0VmcrMnc3?=
+ =?utf-8?B?ZTJyZlRmRWpvVjRhYXIzSHZ4cW05RnBvam9iZUE3LzQ5WVpPancraWEvMHd0?=
+ =?utf-8?B?QkpwOW1oWlVRS3dNdC9tdnM0L2JJcTlvc0hERmR2WGs2a0g5SFBZTXluRlVm?=
+ =?utf-8?B?TDJsVnhEOFQ3OG0yMTZoUUlHMnFYOFFuTXphVkNraksyeU9oOW52WFdhWGFw?=
+ =?utf-8?B?TnhrWmxVNHBsYXVyMi8yRGNUdmxxdjB2SHBkd0JkYWdNbXFMWXlyYjRBM1E2?=
+ =?utf-8?B?ODFhRGZGVDYybHhocEFiUUozc0J1c1h0Rzl4NXNvTFcrbCtyZ1BWRldSWGJU?=
+ =?utf-8?B?YU4vSEZWZkFxaHpwdVNvMWE3ZWMvUnRVTUwxZVh4NmJWbmQrdElkckplZnpX?=
+ =?utf-8?B?dlQveDN2SUVBbE9YRDk1L3NSdWJ1RWMxT1ZROGpRYmFQZGJjN0tQYURlZVBt?=
+ =?utf-8?B?aGJuQnUvckM0clBOUnZCNnQ4LzM4cVZCRnA0WTlMWWl0UTVGQVdLNE5wYm0r?=
+ =?utf-8?B?Rnc3ZkdKS2ZpNGsybU1ZVHVkS0FueG5Ia2V5L2paaU9WdUtvL1cvcXJLMEZU?=
+ =?utf-8?B?ZmdZczJIOFMxenBRVEJDdUJiUWZwdmh4a05GaDE0cUYrMEFYR0syS0FWMEFh?=
+ =?utf-8?B?dkdtT2Q4dFVsM0o2OVE2UDgvRmR1eWdUYVIxbXYwampkUlV0clJ3QzNJUzUr?=
+ =?utf-8?B?L21oVVg0N05kZE5qSTBNczNRVU12Mm03eGZCSnZ5UE5Da1p1c2NmWUJGc09W?=
+ =?utf-8?Q?sthfM0vh5t1GRN6RI1Bd9o0=3D?=
+X-OriginatorOrg: virtuozzo.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: f95a30ed-c036-4307-131b-08d9c99d61c0
+X-MS-Exchange-CrossTenant-AuthSource: AM9PR08MB6241.eurprd08.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 28 Dec 2021 01:00:03.8224
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 0bc7f26d-0264-416e-a6fc-8352af79c58f
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: lajGKY9/kJV2+ki3xD0zJJCtGOUpGri1KuwjaRxw9fLOcX7cO5a+GPe1rL1riDKOmY7VJuQbDFPRljw75YLHww==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM9PR08MB6754
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+Patch is wrong,
+I missed that FL_FLOCK are handled here too.
 
-When doing a non-pNFS write, allow the writeback code to specify that it
-also needs to update 'blocks used'.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/nfs4_fs.h  |  2 ++
- fs/nfs/nfs4proc.c | 21 +++++++--------------
- 2 files changed, 9 insertions(+), 14 deletions(-)
-
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ed5eaca6801e..89076dd32334 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -315,6 +315,8 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
- 		const struct nfs_open_context *ctx,
- 		const struct nfs_lock_context *l_ctx,
- 		fmode_t fmode);
-+extern void nfs4_bitmask_set(__u32 bitmask[], const __u32 src[],
-+			     struct inode *inode, unsigned long cache_validity);
- extern int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- 			     struct nfs_fattr *fattr, struct inode *inode);
- extern int update_open_stateid(struct nfs4_state *state,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 535436dbdc9a..ad6076ca7f1e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -108,10 +108,6 @@ static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
- static int nfs41_free_stateid(struct nfs_server *, const nfs4_stateid *,
- 		const struct cred *, bool);
- #endif
--static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ],
--			     const __u32 *src, struct inode *inode,
--			     struct nfs_server *server,
--			     struct nfs4_label *label);
- 
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
- static inline struct nfs4_label *
-@@ -3669,7 +3665,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		if (!nfs4_have_delegation(inode, FMODE_READ)) {
- 			nfs4_bitmask_set(calldata->arg.bitmask_store,
- 					 server->cache_consistency_bitmask,
--					 inode, server, NULL);
-+					 inode, 0);
- 			calldata->arg.bitmask = calldata->arg.bitmask_store;
- 		} else
- 			calldata->arg.bitmask = NULL;
-@@ -5421,14 +5417,14 @@ bool nfs4_write_need_cache_consistency_data(struct nfs_pgio_header *hdr)
- 	return nfs4_have_delegation(hdr->inode, FMODE_READ) == 0;
- }
- 
--static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ], const __u32 *src,
--			     struct inode *inode, struct nfs_server *server,
--			     struct nfs4_label *label)
-+void nfs4_bitmask_set(__u32 bitmask[], const __u32 src[],
-+		      struct inode *inode, unsigned long cache_validity)
- {
--	unsigned long cache_validity = READ_ONCE(NFS_I(inode)->cache_validity);
-+	struct nfs_server *server = NFS_SERVER(inode);
- 	unsigned int i;
- 
- 	memcpy(bitmask, src, sizeof(*bitmask) * NFS4_BITMASK_SZ);
-+	cache_validity |= READ_ONCE(NFS_I(inode)->cache_validity);
- 
- 	if (cache_validity & NFS_INO_INVALID_CHANGE)
- 		bitmask[0] |= FATTR4_WORD0_CHANGE;
-@@ -5440,8 +5436,6 @@ static void nfs4_bitmask_set(__u32 bitmask[NFS4_BITMASK_SZ], const __u32 *src,
- 		bitmask[1] |= FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP;
- 	if (cache_validity & NFS_INO_INVALID_NLINK)
- 		bitmask[1] |= FATTR4_WORD1_NUMLINKS;
--	if (label && label->len && cache_validity & NFS_INO_INVALID_LABEL)
--		bitmask[2] |= FATTR4_WORD2_SECURITY_LABEL;
- 	if (cache_validity & NFS_INO_INVALID_CTIME)
- 		bitmask[1] |= FATTR4_WORD1_TIME_METADATA;
- 	if (cache_validity & NFS_INO_INVALID_MTIME)
-@@ -5468,7 +5462,7 @@ static void nfs4_proc_write_setup(struct nfs_pgio_header *hdr,
- 	} else {
- 		nfs4_bitmask_set(hdr->args.bitmask_store,
- 				 server->cache_consistency_bitmask,
--				 hdr->inode, server, NULL);
-+				 hdr->inode, NFS_INO_INVALID_BLOCKS);
- 		hdr->args.bitmask = hdr->args.bitmask_store;
- 	}
- 
-@@ -6506,8 +6500,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, const struct cred *cred,
- 	data->args.fhandle = &data->fh;
- 	data->args.stateid = &data->stateid;
- 	nfs4_bitmask_set(data->args.bitmask_store,
--			 server->cache_consistency_bitmask, inode, server,
--			 NULL);
-+			 server->cache_consistency_bitmask, inode, 0);
- 	data->args.bitmask = data->args.bitmask_store;
- 	nfs_copy_fh(&data->fh, NFS_FH(inode));
- 	nfs4_stateid_copy(&data->stateid, stateid);
--- 
-2.33.1
+On 27.12.2021 18:50, Vasily Averin wrote:
+> nfsd and lockd use F_SETLK cmd with the FL_SLEEP flag set to request
+> asynchronous processing of blocking locks.
+> 
+> Currently nfs mounted with 'local_lock' option use locks_lock_file_wait()
+> function blocked on such requests.
+> 
+> To handle such requests properly, non-blocking posix_file_lock()
+> function should be used instead.
+> 
+> https://bugzilla.kernel.org/show_bug.cgi?id=215383
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> ---
+> v2: fixed 'fl_flags && FL_SLEEP' => 'fl_flags & FL_SLEEP'
+> ---
+>  fs/nfs/file.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 24e7dccce355..38e1821cff5d 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -769,9 +769,11 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+>  	 */
+>  	if (!is_local)
+>  		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+> +	else if ((fl->fl_flags & FL_SLEEP) && IS_SETLK(cmd))
+> +		status = posix_lock_file(filp, fl, NULL);
+>  	else
+>  		status = locks_lock_file_wait(filp, fl);
+> -	if (status < 0)
+> +	if (status)
+>  		goto out;
+>  
+>  	/*
+> 
 
