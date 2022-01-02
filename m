@@ -2,150 +2,100 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 21312C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 Dec 2021 02:00:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63DCFC433F5
+	for <linux-nfs@archiver.kernel.org>; Sun,  2 Jan 2022 17:35:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237496AbhLaCA0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 30 Dec 2021 21:00:26 -0500
-Received: from out30-42.freemail.mail.aliyun.com ([115.124.30.42]:60681 "EHLO
-        out30-42.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229890AbhLaCAZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Dec 2021 21:00:25 -0500
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R861e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04426;MF=cuibixuan@linux.alibaba.com;NM=1;PH=DS;RN=13;SR=0;TI=SMTPD_---0V0OEF90_1640916021;
-Received: from 30.43.68.129(mailfrom:cuibixuan@linux.alibaba.com fp:SMTPD_---0V0OEF90_1640916021)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 31 Dec 2021 10:00:22 +0800
-Message-ID: <b94123d2-5a39-b635-4471-8962ba2a69fb@linux.alibaba.com>
-Date:   Fri, 31 Dec 2021 10:00:20 +0800
+        id S229778AbiABRfL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Jan 2022 12:35:11 -0500
+Received: from dfw.source.kernel.org ([139.178.84.217]:55230 "EHLO
+        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229743AbiABRfL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Jan 2022 12:35:11 -0500
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 2906460F4D
+        for <linux-nfs@vger.kernel.org>; Sun,  2 Jan 2022 17:35:11 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 524DCC36AEB;
+        Sun,  2 Jan 2022 17:35:10 +0000 (UTC)
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     trondmy@kernel.org
+Subject: [PATCH 00/10] Write verifier fixes and clean-ups
+Date:   Sun,  2 Jan 2022 12:35:09 -0500
+Message-Id:  <164114486506.7344.16096063573748374893.stgit@bazille.1015granger.net>
+X-Mailer: git-send-email 2.34.0
+User-Agent: StGit/1.4
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:91.0)
- Gecko/20100101 Thunderbird/91.4.1
-Subject: Re: [PATCH -next] SUNRPC: Clean XPRT_CONGESTED of xprt->state when
- rpc task is killed
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
-Cc:     "pete.wl@alibaba-inc.com" <pete.wl@alibaba-inc.com>,
-        "xiaoh.peixh@alibaba-inc.com" <xiaoh.peixh@alibaba-inc.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "kuba@kernel.org" <kuba@kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "weipu.zy@alibaba-inc.com" <weipu.zy@alibaba-inc.com>,
-        "wenan.mwa@alibaba-inc.com" <wenan.mwa@alibaba-inc.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
-References: <1639490018-128451-1-git-send-email-cuibixuan@linux.alibaba.com>
- <1639490018-128451-2-git-send-email-cuibixuan@linux.alibaba.com>
- <c5c17989-4c1e-35d2-5a75-a27e58cf6673@linux.alibaba.com>
- <c5d8fa4cfe87800afe588c4c3d54cd3178e04b47.camel@hammerspace.com>
- <efbf73f3-c6cd-90f6-ef22-bde14be708cc@linux.alibaba.com>
- <b8c236d99fd0f4e08dd0ee12a81274bd643a7690.camel@hammerspace.com>
-From:   Bixuan Cui <cuibixuan@linux.alibaba.com>
-In-Reply-To: <b8c236d99fd0f4e08dd0ee12a81274bd643a7690.camel@hammerspace.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2230; h=from:subject:message-id; bh=J10JekV1NgjB+a1f8j6w/hd8c+onHpbSxCbQFFVksyw=; b=owEBbQKS/ZANAwAIATNqszNvZn+XAcsmYgBh0eJNOB2/0uKmcgMrA2myCa9CNhjJV2F0XxLC7e8M E/k9k5WJAjMEAAEIAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCYdHiTQAKCRAzarMzb2Z/l4+wD/ 9y4+DUR9H1M8WRFTwnfOZ6kkhVh/AL7GAUCVC93b/1ZORBr5NLq6aBvgXU6SigLOlxIyQdSvatK0QI 1lc6rCWOHS/4uVlVBynFLurJbin6+bNxx6hGNBXsXkdWiqqcbmgPBGrRJQ6Mz1Qg58jmIeASg99wHr AC2of6cZK7YH1ACLi5P2Dr9auJN0IMDgdNxPHlBikVlpM8nBwb7u/GIyO1XnxpZGvqILWtqwpdah4p lQqvl+B0J/A18tb89dk5HVF4PlJJck1dxcUS+4GPVDov12HHDF3CrgGWaRnvETMpofQGM7Hl9eii2w 75PxeePSbhAOjV0sD79cdFZCQcHuwEKklizrKv4hHCt5QcLlSJTKKmbqQ7ZdOCEIlIH6x4qmg7N9s7 L5KjstfLI433DRdsZD3QRnOHr3viszwVocoj7cwuAmt05GnQrLsVDNfk2PR4XS/mYc7TZm7o8QdmF/ HyrPcRgZVEZzN0v0AVy5bdNlpWZz9WW0RBJS8Iw7BwUI5LAiv9irCWIV9wZtk5xz0RAmQMpqhC2vzl EZzoCvcDELY1FbMEFg6sFY5jCHKXTk0Utsvvdn8zKu4UcfiTIOyVHwptsy+SGDu8SkHYr7cJ+86NMt mQTY3BXo/IlrlBvFym2FeHA6AtS6IWFrh/zO0qPAOx9y2PfRC6RVv0FRGQTQ==
+X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp; fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi-
 
-在 2021/12/22 下午11:02, Trond Myklebust 写道:
-> On Wed, 2021-12-22 at 10:55 +0800, Bixuan Cui wrote:
->> 在 2021/12/21 上午2:22, Trond Myklebust 写道:
->>   
->>> On Mon, 2021-12-20 at 11:39 +0800, Bixuan Cui wrote:
->>>   
->>>> ping~
->>>>
->>>> 在 2021/12/14 下午9:53, Bixuan Cui 写道:
->>>>   
->>>>> When the values of tcp_max_slot_table_entries and
->>>>> sunrpc.tcp_slot_table_entries are lower than the number of rpc
->>>>> tasks,
->>>>> xprt_dynamic_alloc_slot() in xprt_alloc_slot() will return -
->>>>> EAGAIN,
->>>>> and
->>>>> then set xprt->state to XPRT_CONGESTED:
->>>>>     xprt_retry_reserve
->>>>>       ->xprt_do_reserve
->>>>>         ->xprt_alloc_slot
->>>>>           ->xprt_dynamic_alloc_slot // return -EAGAIN and task-
->>>>>   
->>>>>> tk_rqstp is NULL
->>>>>             ->xprt_add_backlog // set_bit(XPRT_CONGESTED, &xprt-
->>>>>   
->>>>>> state);
->>>>> When rpc task is killed, XPRT_CONGESTED bit of xprt->state will
->>>>> not
->>>>> be
->>>>> cleaned up and nfs hangs:
->>>>>     rpc_exit_task
->>>>>       ->xprt_release // if (req == NULL) is true, then
->>>>> XPRT_CONGESTED
->>>>>                     // bit not clean
->>>>>
->>>>> Add xprt_wake_up_backlog(xprt) to clean XPRT_CONGESTED bit in
->>>>> xprt_release().
->>> I'm not seeing how this explanation makes sense. If the task
->>> doesn't
->>> hold a slot, then freeing that task isn't going to clear the
->>> congestion
->>> caused by all the slots being in use.
->> Hi，
->> If the rpc task is free, call xprt_release() :
->> void xprt_release(struct rpc_task *task)
->>   {
->>        if (req == NULL) {
->>                    if (task->tk_client) {
->>                            xprt = task->tk_xprt;
->>                            xprt_release_write(xprt, task); // 1.
->> release xprt
->>                    }
->>                    return;
->>            }
->>        ....
->>        if (likely(!bc_prealloc(req)))
->>                    xprt->ops->free_slot(xprt, req); // 2. release slot
->> and call xprt_wake_up_backlog(xprt, req) to wakeup next task(clear
->> XPRT_CONGESTED bit if next is NULL) in xprt_free_slot()
->>            else
->>                    xprt_free_bc_request(req);
->>   }
->>   I mean that in step 1, xprt was only released, but
->> xprt_wake_up_backlog was not called (I don’t know if it is necessary,
->> but xprt->state may still be XPRT_CONGESTED), which causes xprt to
->> hold up. I think it happens when the task that does not hold a slot
->> is the last released task，xprt_wake_up_backlog(clear XPRT_CONGESTED)
->> will not be executed. :-)
->> Thanks，
->> Bixuan Cui
->>
->>   
-> My point is that in that case 1, there is no slot to free, so there is
-> no change to the congestion state.
->
-> IOW: your patch is incorrect because it is trying to assign a slot in a
-> case where there is no slot to assign.
-Hi，
-I found the correct way to fix it, that is, do not free the request when 
-there are tasks in the xprt->backlog :-)
-And it has been fixed by e877a88d1f06 (SUNRPC in case of backlog, hand 
-free slots directly to waiting task)
-     commit e877a88d1f069edced4160792f42c2a8e2dba942
-     Author: NeilBrown <neilb@suse.de>
-     Date:   Mon May 17 09:59:10 2021 +1000
+After a little inebriated holiday consideration, I've come to the
+conclusion that returning zero verifiers to STABLE WRITE requests
+as reported by Rick Macklem here:
 
-     SUNRPC in case of backlog, hand free slots directly to waiting task
+https://lore.kernel.org/linux-nfs/YQXPR0101MB096857EEACF04A6DF1FC6D9BDD749@YQXPR0101MB0968.CANPRD01.PROD.OUTLOOK.COM/T/
 
-     If sunrpc.tcp_max_slot_table_entries is small and there are tasks
-     on the backlog queue, then when a request completes it is freed and the
-     first task on the queue is woken.  The expectation is that it will wake
-     and claim that request.  However if it was a sync task and the waiting
-     process was killed at just that moment, it will wake and NOT claim the
-     request.
-Thanks for your advice.
+is a regression because at least one NFS client noticed the
+behavior and required a code change to continue interoperating
+with the Linux NFS server. The behavior also seems contrary to
+spec language in RFC 8881 and RFC 1813.
 
-Thanks,
-Bixuan Cui
+To address this, I propose the following (during v5.17 merge
+window):
 
+1. Roll back
+  "nfsd: Add a tracepoint for errors in nfsd4_clone_file_range()"
+  "nfsd: Replace use of rwsem with errseq_t"
+
+2. Apply
+  "NFSD: Fix verifier returned in stable WRITEs" first so
+  that it has a greater opportunity to be back-ported cleanly
+  to recent kernels
+
+3. Re-apply patches rolled back in step 1 along with additional
+  clean-ups.
+
+Review will show that not all of these new clean-ups are necessary,
+but they do eliminate some technical debt that has accrued over the
+past few years in this area.
+
+I'm interested in review, comments, or objections.
+
+---
+
+Chuck Lever (8):
+      NFSD: Fix verifier returned in stable WRITEs
+      NFSD: Clean up nfsd_vfs_write()
+      NFSD: De-duplicate net_generic(SVC_NET(rqstp), nfsd_net_id)
+      NFSD: De-duplicate net_generic(nf->nf_net, nfsd_net_id)
+      NFSD: Write verifier might go backwards
+      NFSD: Clean up the nfsd_net::nfssvc_boot field
+      NFSD: Rename boot verifier functions
+      NFSD: Trace boot verifier resets
+
+Trond Myklebust (2):
+      nfsd: Replace use of rwsem with errseq_t
+      nfsd: Add a tracepoint for errors in nfsd4_clone_file_range()
+
+
+ fs/nfsd/filecache.c |   3 +-
+ fs/nfsd/filecache.h |   1 -
+ fs/nfsd/netns.h     |  11 ++---
+ fs/nfsd/nfs4proc.c  |  20 +++++----
+ fs/nfsd/nfsctl.c    |   3 +-
+ fs/nfsd/nfssvc.c    |  61 ++++++++++++++++++--------
+ fs/nfsd/trace.h     |  78 +++++++++++++++++++++++++++++++++
+ fs/nfsd/vfs.c       | 104 ++++++++++++++++++++++----------------------
+ fs/nfsd/vfs.h       |   3 +-
+ 9 files changed, 195 insertions(+), 89 deletions(-)
+
+--
+Chuck Lever
