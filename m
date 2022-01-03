@@ -2,139 +2,75 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D712EC433EF
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jan 2022 19:56:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E2A2C433F5
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jan 2022 20:08:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233297AbiACT4Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Jan 2022 14:56:25 -0500
-Received: from ams.source.kernel.org ([145.40.68.75]:39460 "EHLO
-        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230228AbiACT4Z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jan 2022 14:56:25 -0500
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 78D35B8109D
-        for <linux-nfs@vger.kernel.org>; Mon,  3 Jan 2022 19:56:24 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B9313C36AE9;
-        Mon,  3 Jan 2022 19:56:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1641239783;
-        bh=z4PurGPupYocyZ8Wl4EKp0AqYlYv3BNFg3QN5mF5cyk=;
-        h=From:To:Cc:Subject:Date:From;
-        b=lO4VhCpxqbIFMOS/4iTtTvk41GPmAQHTo749Mt7S9f4dGs1lMpE5bbvXiT1GLKwm3
-         QlDJOIfuswoI/Q3/hECCfwGsV9PIq8WAAO6bpLQPy7w2Lte1niBSDJm+8FQNNXuEC9
-         dysV4zTz65UGqCBxUcXouSfqqGSpaHsYiYlT5+uePAQ+6/ULVZ1a2n47oAAfNmc1Tc
-         OTxzzcKusnEErbtGV2ibbOS3SR8KuEHJ0I3QU41+DcAmH7Yb6kP0Bb9yl2SPyl/vaU
-         VCvaRiMsljcHXztnRvHKuQc5yLDEN62JvI7HRFEAvmpx2POgvwGpvdh8JTYvKp4vPl
-         O4bNdFUfpJ+Pg==
-From:   trondmy@kernel.org
-To:     Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc:     rtm@csail.mit.edu, linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1: Fix uninitialised variable in devicenotify
-Date:   Mon,  3 Jan 2022 14:50:16 -0500
-Message-Id: <20220103195016.17095-1-trondmy@kernel.org>
-X-Mailer: git-send-email 2.33.1
+        id S229821AbiACUIs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Jan 2022 15:08:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33096 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229586AbiACUIs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jan 2022 15:08:48 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30E4FC061761
+        for <linux-nfs@vger.kernel.org>; Mon,  3 Jan 2022 12:08:48 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 8FDB65FFF; Mon,  3 Jan 2022 15:08:47 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 8FDB65FFF
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1641240527;
+        bh=s6V2mgqeg0CfbAIgiFRQpcU8/XLlJUfaxzsNRFOzPLs=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=z6BnSYwT998mV+1Pt03bHKrzCxBYV5zVmo7h7VA1ZRI2dP7m4OcYibhxdK29EFkhp
+         4BiKOI82sXuMl2OLdVnPTsPEySuyEs66QKO15LKAKC7UVyeGA1NCPgVqrs6LhfoJnA
+         bstSvgbxmw0u78KgiC0hI2FJBpTYuZbzlfq16Ii0=
+Date:   Mon, 3 Jan 2022 15:08:47 -0500
+To:     trondmy@kernel.org
+Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] Support case insensitive filesystems in NFSv4
+Message-ID: <20220103200847.GH21514@fieldses.org>
+References: <20211217203658.439352-1-trondmy@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211217203658.439352-1-trondmy@kernel.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Fri, Dec 17, 2021 at 03:36:53PM -0500, trondmy@kernel.org wrote:
+> From: Trond Myklebust <trond.myklebust@hammerspace.com>
+> 
+> Add support for detecting an export of a case insensitive filesystem in
+> NFSv4. If that is the case, then we need to adjust the dentry caching
+> and invalidation rules to ensure that we don't inadvertently end up
+> caching other case folded aliases after an operation that results in a
+> directory entry name change.
 
-When decode_devicenotify_args() exits with no entries, we need to
-ensure that the struct cb_devicenotifyargs is initialised to
-{ 0, NULL } in order to avoid problems in
-nfs4_callback_devicenotify().
+What server and configuration are you testing this against?
 
-Reported-by: <rtm@csail.mit.edu>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/callback.h      |  2 +-
- fs/nfs/callback_proc.c |  2 +-
- fs/nfs/callback_xdr.c  | 18 +++++++++---------
- 3 files changed, 11 insertions(+), 11 deletions(-)
+--b.
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 6a2033131c06..ccd4f245cae2 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -170,7 +170,7 @@ struct cb_devicenotifyitem {
- };
- 
- struct cb_devicenotifyargs {
--	int				 ndevs;
-+	uint32_t			 ndevs;
- 	struct cb_devicenotifyitem	 *devs;
- };
- 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 09c5b1cb3e07..c343666d9a42 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -358,7 +358,7 @@ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
- 				  struct cb_process_state *cps)
- {
- 	struct cb_devicenotifyargs *args = argp;
--	int i;
-+	uint32_t i;
- 	__be32 res = 0;
- 	struct nfs_client *clp = cps->clp;
- 	struct nfs_server *server = NULL;
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 4c48d85f6517..ce3d1d5b1291 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -258,11 +258,9 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 				void *argp)
- {
- 	struct cb_devicenotifyargs *args = argp;
-+	uint32_t tmp, n, i;
- 	__be32 *p;
- 	__be32 status = 0;
--	u32 tmp;
--	int n, i;
--	args->ndevs = 0;
- 
- 	/* Num of device notifications */
- 	p = xdr_inline_decode(xdr, sizeof(uint32_t));
-@@ -271,7 +269,7 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 		goto out;
- 	}
- 	n = ntohl(*p++);
--	if (n <= 0)
-+	if (n == 0)
- 		goto out;
- 	if (n > ULONG_MAX / sizeof(*args->devs)) {
- 		status = htonl(NFS4ERR_BADXDR);
-@@ -330,19 +328,21 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 			dev->cbd_immediate = 0;
- 		}
- 
--		args->ndevs++;
--
- 		dprintk("%s: type %d layout 0x%x immediate %d\n",
- 			__func__, dev->cbd_notify_type, dev->cbd_layout_type,
- 			dev->cbd_immediate);
- 	}
-+	args->ndevs = n;
-+	dprintk("%s: ndevs %d\n", __func__, args->ndevs);
-+	return 0;
-+err:
-+	kfree(args->devs);
- out:
-+	args->devs = NULL;
-+	args->ndevs = 0;
- 	dprintk("%s: status %d ndevs %d\n",
- 		__func__, ntohl(status), args->ndevs);
- 	return status;
--err:
--	kfree(args->devs);
--	goto out;
- }
- 
- static __be32 decode_sessionid(struct xdr_stream *xdr,
--- 
-2.33.1
-
+> 
+> Trond Myklebust (5):
+>   NFSv4: Add some support for case insensitive filesystems
+>   NFSv4: Just don't cache negative dentries on case insensitive servers
+>   NFS: Invalidate negative dentries on all case insensitive directory
+>     changes
+>   NFS: Add a helper to remove case-insensitive aliases
+>   NFS: Fix the verifier for case sensitive filesystem in
+>     nfs_atomic_open()
+> 
+>  fs/nfs/dir.c              | 41 +++++++++++++++++++++++++++++++++------
+>  fs/nfs/internal.h         |  1 +
+>  fs/nfs/nfs4proc.c         | 13 +++++++++++--
+>  fs/nfs/nfs4xdr.c          | 40 ++++++++++++++++++++++++++++++++++++++
+>  include/linux/nfs_fs_sb.h |  2 ++
+>  include/linux/nfs_xdr.h   |  2 ++
+>  6 files changed, 91 insertions(+), 8 deletions(-)
+> 
+> -- 
+> 2.33.1
