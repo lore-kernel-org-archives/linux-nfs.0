@@ -2,77 +2,80 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0CC46C433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jan 2022 08:06:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01003C433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jan 2022 12:32:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351403AbiALIGm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 Jan 2022 03:06:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44426 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351400AbiALIGm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jan 2022 03:06:42 -0500
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88571C06173F;
-        Wed, 12 Jan 2022 00:06:41 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Transfer-Encoding
-        :Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
-        Sender:Reply-To:Content-ID:Content-Description;
-        bh=5SYRKrelbUcT8UDzxAN+Nb5s1/112dY1hzNg3RG1SRc=; b=i7QUF05Al2ZZ8uol13811H1waT
-        57T14Zi6fBxmF5qfsR6p6ZXZbzwjS44de2ALjymVVtwbHrTSdIfRnkoItkO82yApcDMPfersxvjSY
-        KK4DPNkZhbdoIz9OTeFHh3p3At0fiOI3rRSy8oquFDfm3lKMv7tYpcksZpbNILbX5VITPk5JwaTNF
-        lajusbsobFHnVAvc/Q/wwMVazB8RussDWqoZVQaXf8XO6IyFv+hNXXTAPWJznDJScHOdwcbwnAeDG
-        NFj9FJ0qFpglPlYX6bZdQaUrVIWV25D8qDu8Do95n9PfuIraXvu4Gi4rzIZXkNp/FYQMfiZXMzp70
-        WjFB0MuQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1n7YeU-001T4W-Hv; Wed, 12 Jan 2022 08:06:38 +0000
-Date:   Wed, 12 Jan 2022 00:06:38 -0800
-From:   "hch@infradead.org" <hch@infradead.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "dan.carpenter@oracle.com" <dan.carpenter@oracle.com>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Lance Shelton <Lance.Shelton@hammerspace.com>,
-        Richard Sharpe <Richard.Sharpe@hammerspace.com>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [bug report] NFS: Support statx_get and statx_set ioctls
-Message-ID: <Yd6MDkMJaU0ACMEH@infradead.org>
-References: <20220111074309.GA12918@kili>
- <Yd1ETmx/HCigOrzl@infradead.org>
- <56202063c1eba6020b356a393178b9626652198e.camel@hammerspace.com>
+        id S240523AbiALMcp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 Jan 2022 07:32:45 -0500
+Received: from mga17.intel.com ([192.55.52.151]:12209 "EHLO mga17.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S240219AbiALMco (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 Jan 2022 07:32:44 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1641990764; x=1673526764;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=17feNRCWxaaCotEaxWchhHxpKB2++aseGYBTFYm3A1E=;
+  b=f0WcNd0Ntzfy2JSRxx59uutoPn0041jOsv4R0J5EYpwyFyKnWz4Rro6Y
+   Rqj6TOZXRIlEOptwwymqBuMMnzwJW+scTNlxey4AF8jyOTbEHoa1y9Ima
+   +gf8YTPVJjT0CxeyJ+/fl2nLFfIy3KWGY+UbM2zoY6OQ/OaZo9bdE4/YE
+   59LVQVSB9lbjbnt8Ypbk3Zs/9Oxj7iRasuQvqLCJHYSlzMCRcJ5Ewcz9x
+   osFdM+5EU2DXyoWbri8iWrftotMnx9bhW7pTQULo9NK4UVVGA/mvWTFzz
+   Xi2e4Nrcb1nbeJtW+o4AB7XHx4qH41SB8IOZ4de0G4hYpr9I6sgfqqvZy
+   w==;
+X-IronPort-AV: E=McAfee;i="6200,9189,10224"; a="224418034"
+X-IronPort-AV: E=Sophos;i="5.88,282,1635231600"; 
+   d="scan'208";a="224418034"
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Jan 2022 04:32:44 -0800
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.88,282,1635231600"; 
+   d="scan'208";a="592990198"
+Received: from lkp-server01.sh.intel.com (HELO 276f1b88eecb) ([10.239.97.150])
+  by fmsmga004.fm.intel.com with ESMTP; 12 Jan 2022 04:32:42 -0800
+Received: from kbuild by 276f1b88eecb with local (Exim 4.92)
+        (envelope-from <lkp@intel.com>)
+        id 1n7cny-0005mi-6L; Wed, 12 Jan 2022 12:32:42 +0000
+Date:   Wed, 12 Jan 2022 20:32:18 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     Olga Kornievskaia <kolga@netapp.com>
+Cc:     kbuild-all@lists.01.org,
+        Linux Memory Management List <linux-mm@kvack.org>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [RFC PATCH linux-next] nfs4_discover_trunking() can be static
+Message-ID: <20220112123218.GA25976@65a275238185>
+References: <202201122012.9sn7Q8EF-lkp@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <56202063c1eba6020b356a393178b9626652198e.camel@hammerspace.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+In-Reply-To: <202201122012.9sn7Q8EF-lkp@intel.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Jan 11, 2022 at 06:08:27PM +0000, Trond Myklebust wrote:
-> So firstly, there already has been a discussion of this on linux-
-> fsdevel (and linux-kernel):
-> https://lore.kernel.org/lkml/20160429125813.23636.49830.stgit@warthog.procyon.org.uk/
-> and the consensus at the time was that these attributes were not needed
-> in statx.
+fs/nfs/nfs4proc.c:4008:5: warning: symbol 'nfs4_discover_trunking' was not declared. Should it be static?
 
-And apparently someone now has a different opinion, so we should restart
-it.
+Fixes: 82ebfb0d6333 ("NFSv4.1 query for fs_location attr on a new file system")
+Reported-by: kernel test robot <lkp@intel.com>
+Signed-off-by: kernel test robot <lkp@intel.com>
+---
+ nfs4proc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> 
-> The other issue is that this is not a duplicate of stat. It's adding
-> support for both _setting_ and reading back these attributes. The
-> ability to supporting reading the archive bit / backup time, for
-> example, is completely useless unless you can also set those values
-> after backing up the file. Right now, there is no support in the VFS
-> for setting any attributes that are not part of the standard POSIX set.
-
-Either way this has no business being private in NFS.  We need to
-come to an agreement to have a proper interface for CIFS, fat, exfat
-and the 2 ntfs drivers as welŀ.  With the first three being the most
-important ones.
-
-So big fat nack for stashing something like this into nfs without proper
-review and coordination.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a93deeca0c86f..7a59ec2d7dacc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4005,7 +4005,7 @@ static int _nfs4_discover_trunking(struct nfs_server *server,
+ 	return status;
+ }
+ 
+-int nfs4_discover_trunking(struct nfs_server *server, struct nfs_fh *fhandle)
++static int nfs4_discover_trunking(struct nfs_server *server, struct nfs_fh *fhandle)
+ {
+ 	struct nfs4_exception exception = {
+ 		.interruptible = true,
