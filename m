@@ -2,108 +2,109 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90098C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Jan 2022 11:02:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 399DEC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Jan 2022 12:36:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240603AbiANLCl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Jan 2022 06:02:41 -0500
-Received: from server.atrad.com.au ([150.101.241.2]:43474 "EHLO
-        server.atrad.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230046AbiANLCj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2022 06:02:39 -0500
-X-Greylist: delayed 1412 seconds by postgrey-1.27 at vger.kernel.org; Fri, 14 Jan 2022 06:02:39 EST
-Received: from marvin.atrad.com.au (IDENT:1008@marvin.atrad.com.au [192.168.0.2])
-        by server.atrad.com.au (8.17.1/8.17.1) with ESMTPS id 20EAd1eS016249
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NO)
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Jan 2022 21:09:02 +1030
-Date:   Fri, 14 Jan 2022 21:09:01 +1030
-From:   Jonathan Woithe <jwoithe@just42.net>
-To:     linux-nfs@vger.kernel.org
-Subject: [Bug report] Recurring oops, 5.15.x, possibly during or soon after
- client mount
-Message-ID: <20220114103901.GA22009@marvin.atrad.com.au>
+        id S236045AbiANMgg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Jan 2022 07:36:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52588 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230379AbiANMgg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2022 07:36:36 -0500
+Received: from mail-lf1-x133.google.com (mail-lf1-x133.google.com [IPv6:2a00:1450:4864:20::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DC043C061574
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Jan 2022 04:36:35 -0800 (PST)
+Received: by mail-lf1-x133.google.com with SMTP id m3so15788887lfu.0
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Jan 2022 04:36:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=bBQsqu4hoFKDggD3Ah73gFjsiwr155j9ZaPwmpMVfeU=;
+        b=dINfUmD2r5tO/Z+aqI8mEyH33zCvvGZGRtaOfQRPJ3QKpe3AE4j3qjIL5JRbMy2BFU
+         4F46GQxBZmKjQP+/Ih+yIYJcSmyhRKkmqMXJT3E1RYFCOhwN9mMD3BtIOtNLUOu7T0Uw
+         fPYaf23/gPpWFHZ5hxM0d97z3mLLAefioscAzi2F6lIclIduo6WD0yrlWRgjM9WF+T5J
+         6Rqscj/mzT/Bj34yjrVsljkT55zTvtL/eWL8EbaS/O/mgZGZO1ishG9Kniu9r7W0uptK
+         otdieJcdmVUuXWNI9kAwsdHQb4ZOEbPYBbnx90nPe57eOd0OxRFHvnqcmmVbzdYpVWdi
+         eVMw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=bBQsqu4hoFKDggD3Ah73gFjsiwr155j9ZaPwmpMVfeU=;
+        b=JfdTa8zEn6jSNKrJ6r1UkH+4zsVhQ67gQN/gq12EHQsLS/tC+aJmZAS0SlGKljKqcC
+         6Umw3CaX1C7Fx0zwWrauo8ukdIG2+RuzjvwasPtdMPTFxaSgU7M4Em4fkM0wSx7femH2
+         ud6RC4idJ4Q7mlwN2GLJatyrUJ8veNqFWqyDTKn0eWhNagMHNU6b3wgoTXcHh1FcC3nW
+         o5vLYi1I7nzkfWuFxWpQBDTik8F8FptPQ/eKYp7a5IyFCCzT3Ss5auN24ZPG4MOq5msr
+         tgu5fHAvea7NgmmOzaBHSYVyiJnxObWQbSHnQQLUr9WjatuFUEr5tMcr8ea8PcW79wNl
+         0u9Q==
+X-Gm-Message-State: AOAM5330plNS6kL5F6x17bQ5lvOGRgmdFcfPDeS0enorMDC0vu0I/Gho
+        unM6EC9SdvkOIlWXKcS9TKgeGg47Erzkj5IlFUBKHtpVRrk=
+X-Google-Smtp-Source: ABdhPJycRFUgrn559KrfCtSyrleTOMPJtq/iXdKOxIRMUSQGrirp56Vzc0UMlAbeWzDc1Tlkpvmfcjbu9U4iuZcxRsA=
+X-Received: by 2002:a2e:8550:: with SMTP id u16mr6394751ljj.208.1642163794072;
+ Fri, 14 Jan 2022 04:36:34 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-MIMEDefang-action: accept
-X-Scanned-By: MIMEDefang 2.86 on 192.168.0.1
+From:   Chris Chilvers <chilversc@gmail.com>
+Date:   Fri, 14 Jan 2022 12:36:23 +0000
+Message-ID: <CAAmbk-f7B4jfmhe-aH26E0eRQnOxGGFPr3yHZMv0F4KQc6FVdg@mail.gmail.com>
+Subject: [bug report] Resolving symlinks ignores rootdir setting
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi all
+I was testing using the rootdir setting in nfs.config to allow using export
+paths that would normally conflict with local systems directories with NFS v3.
 
-Recently we migrated an NFS server from a 32-bit environment running 
-kernel 4.14.128 to a 64-bit 5.15.x kernel.  The NFS configuration remained
-unchanged between the two systems.
+The idea was to support re-exporting a source NFS server such as NetApp that
+might exports arbitrary paths such as /home without overwriting the /home
+directory on the NFS server, and even support exporting a root directory similar
+to NFS v4.
 
-On two separate occasions since the upgrade (5 Jan under 5.15.10, 14 Jan
-under 5.15.12) the kernel has oopsed at around the time that an NFS client
-machine is turned on for the day.  On both occasions the call trace was
-essentially identical.  The full oops sequence is at the end of this email. 
-The oops was not observed when running the 4.14.128 kernel.
+While testing I ran into an issue where the NFS server would fail to start.
+During start up, the NFS server would log the error:
 
-Is there anything more I can provide to help track down the cause of the
-oops?
+  $ systemctl status nfs-server.service
+  systemd[1]: Starting NFS server and services...
+  exportfs[2307]: exportfs: Failed to stat /srv/nfs/usr/bin: No such
+file or directory
+  systemd[1]: nfs-server.service: Control process exited, code=exited,
+status=1/FAILURE
 
-Regards
-  jonathan
+  $ cat nfs.config
+  [exports]
+  rootdir=/srv/nfs
 
-Oops under 5.15.12:
+  $ cat /etc/exports
+  /         10.0.0.0/8(rw,sync,wdelay,no_root_squash,no_all_squash,no_subtree_check,sec=sys,secure,fsid=0,nohide)
+  /assets   10.0.0.0/8(rw,sync,wdelay,no_root_squash,no_all_squash,no_subtree_check,sec=sys,secure,fsid=10,nohide)
+  /bin      10.0.0.0/8(rw,sync,wdelay,no_root_squash,no_all_squash,no_subtree_check,sec=sys,secure,fsid=30,nohide)
+  /software 10.0.0.0/8(rw,sync,wdelay,no_root_squash,no_all_squash,no_subtree_check,sec=sys,secure,fsid=40,nohide)
 
-Jan 14 08:48:30 nfssvr kernel: BUG: kernel NULL pointer dereference, address: 0000000000000110
-Jan 14 08:48:30 nfssvr kernel: #PF: supervisor read access in kernel mode
-Jan 14 08:48:30 nfssvr kernel: #PF: error_code(0x0000) - not-present page
-Jan 14 08:48:30 nfssvr kernel: Oops: 0000 [#1] PREEMPT SMP PTI
-Jan 14 08:48:30 nfssvr kernel: CPU: 0 PID: 2935 Comm: lockd Not tainted 5.15.12 #1
-Jan 14 08:48:30 nfssvr kernel: Hardware name:  /DG31PR, BIOS PRG3110H.86A.0038.2007.1221.1757 12/21/2007
-Jan 14 08:48:30 nfssvr kernel: RIP: 0010:vfs_lock_file+0x5/0x30
-Jan 14 08:48:30 nfssvr kernel: Code: ff ff 41 89 c4 85 c0 0f 84 42 ff ff ff e9 f8 fe ff ff 0f 0b e8 2c bc d2 00 66 66 2e 0f 1f 84 00 00 00 00 00 90 0f 1f 44 00 00 <48> 8b 47 28 49 89 d0 48 8b 80 98 00 00 00 48 85 c0 74 05 e9 f3 dc
-Jan 14 08:48:30 nfssvr kernel: RSP: 0018:ffffa478401a3c38 EFLAGS: 00010246
-Jan 14 08:48:30 nfssvr kernel: RAX: 7fffffffffffffff RBX: 00000000000000e8 RCX: 0000000000000000
-Jan 14 08:48:30 nfssvr kernel: RDX: ffffa478401a3c40 RSI: 0000000000000006 RDI: 00000000000000e8
-Jan 14 08:48:30 nfssvr kernel: RBP: ffff946ead1ecc00 R08: ffff946f88ab1000 R09: ffff946f88b33a00
-Jan 14 08:48:30 nfssvr kernel: R10: 0000000000000000 R11: 0000000000000000 R12: ffffffffa657ff30
-Jan 14 08:48:30 nfssvr kernel: R13: ffff946e99df7c40 R14: ffff946e82fb0510 R15: ffff946ead1ecc00
-Jan 14 08:48:30 nfssvr kernel: FS:  0000000000000000(0000) GS:ffff946fabc00000(0000) knlGS:0000000000000000
-Jan 14 08:48:30 nfssvr kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-Jan 14 08:48:30 nfssvr kernel: CR2: 0000000000000110 CR3: 000000010083a000 CR4: 00000000000006f0
-Jan 14 08:48:30 nfssvr kernel: Call Trace:
-Jan 14 08:48:30 nfssvr kernel:  <TASK>
-Jan 14 08:48:30 nfssvr kernel:  nlm_unlock_files+0x6e/0xb0
-Jan 14 08:48:30 nfssvr kernel:  ? __skb_recv_udp+0x198/0x330
-Jan 14 08:48:30 nfssvr kernel:  ? _raw_spin_lock+0x13/0x2e
-Jan 14 08:48:30 nfssvr kernel:  ? nlmsvc_traverse_blocks+0x36/0x120
-Jan 14 08:48:30 nfssvr kernel:  ? preempt_count_add+0x68/0xa0
-Jan 14 08:48:30 nfssvr kernel:  nlm_traverse_files+0x152/0x280
-Jan 14 08:48:30 nfssvr kernel:  nlmsvc_free_host_resources+0x27/0x40
-Jan 14 08:48:30 nfssvr kernel:  nlm_host_rebooted+0x23/0x90
-Jan 14 08:48:30 nfssvr kernel:  nlmsvc_proc_sm_notify+0xae/0x110
-Jan 14 08:48:30 nfssvr kernel:  ? nlmsvc_decode_reboot+0x8b/0xc0
-Jan 14 08:48:30 nfssvr kernel:  nlmsvc_dispatch+0x89/0x180
-Jan 14 08:48:30 nfssvr kernel:  svc_process_common+0x3ce/0x6f0
-Jan 14 08:48:30 nfssvr kernel:  ? lockd_inet6addr_event+0xf0/0xf0
-Jan 14 08:48:30 nfssvr kernel:  svc_process+0xb7/0xf0
-Jan 14 08:48:30 nfssvr kernel:  lockd+0xca/0x1b0
-Jan 14 08:48:30 nfssvr kernel:  ? preempt_count_add+0x68/0xa0
-Jan 14 08:48:30 nfssvr kernel:  ? _raw_spin_lock_irqsave+0x19/0x40
-Jan 14 08:48:30 nfssvr kernel:  ? set_grace_period+0x90/0x90
-Jan 14 08:48:30 nfssvr kernel:  kthread+0x141/0x170
-Jan 14 08:48:30 nfssvr kernel:  ? set_kthread_struct+0x40/0x40
-Jan 14 08:48:30 nfssvr kernel:  ret_from_fork+0x22/0x30
-Jan 14 08:48:30 nfssvr kernel:  </TASK>
-Jan 14 08:48:30 nfssvr kernel: Modules linked in: tun nf_nat_ftp nf_conntrack_ftp xt_REDIRECT xt_nat xt_conntrack xt_tcpudp xt_NFLOG nfnetlink_log nfnetlink iptable_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 iptable_filter ip_tables x_tables ipv6 hid_generic usbhid hi
-Jan 14 08:48:30 nfssvr kernel: CR2: 0000000000000110
-Jan 14 08:48:30 nfssvr kernel: ---[ end trace f8f28acee6f24340 ]---
-Jan 14 08:48:30 nfssvr kernel: RIP: 0010:vfs_lock_file+0x5/0x30
-Jan 14 08:48:30 nfssvr kernel: Code: ff ff 41 89 c4 85 c0 0f 84 42 ff ff ff e9 f8 fe ff ff 0f 0b e8 2c bc d2 00 66 66 2e 0f 1f 84 00 00 00 00 00 90 0f 1f 44 00 00 <48> 8b 47 28 49 89 d0 48 8b 80 98 00 00 00 48 85 c0 74 05 e9 f3 dc
-Jan 14 08:48:30 nfssvr kernel: RSP: 0018:ffffa478401a3c38 EFLAGS: 00010246
-Jan 14 08:48:30 nfssvr kernel: RAX: 7fffffffffffffff RBX: 00000000000000e8 RCX: 0000000000000000
-Jan 14 08:48:30 nfssvr kernel: RDX: ffffa478401a3c40 RSI: 0000000000000006 RDI: 00000000000000e8
-Jan 14 08:48:30 nfssvr kernel: RBP: ffff946ead1ecc00 R08: ffff946f88ab1000 R09: ffff946f88b33a00
-Jan 14 08:48:30 nfssvr kernel: R10: 0000000000000000 R11: 0000000000000000 R12: ffffffffa657ff30
-Jan 14 08:48:30 nfssvr kernel: R13: ffff946e99df7c40 R14: ffff946e82fb0510 R15: ffff946ead1ecc00
-Jan 14 08:48:30 nfssvr kernel: FS:  0000000000000000(0000) GS:ffff946fabc00000(0000) knlGS:0000000000000000
-Jan 14 08:48:30 nfssvr kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-Jan 14 08:48:30 nfssvr kernel: CR2: 0000000000000110 CR3: 000000010083a000 CR4: 00000000000006f0
+If I create the directory /srv/nfs/usr/bin then the NFS server will start.
+Listing the actual exports shows that a different path was exported compared to
+the path from /etc/exports.
+
+  $ exportfs -s
+  / 10.0.0.0/8(sync,wdelay,nohide,no_subtree_check,fsid=0,sec=sys,rw,secure,no_root_squash,no_all_squ>
+  /assets 10.0.0.0/8(sync,wdelay,nohide,no_subtree_check,fsid=10,sec=sys,rw,secure,no_root_squash,no_>
+  /usr/bin 10.0.0.0/8(sync,wdelay,nohide,no_subtree_check,fsid=30,sec=sys,rw,secure,no_root_squash,no>
+  /software 10.0.0.0/8(sync,wdelay,nohide,no_subtree_check,fsid=40,sec=sys,rw,secure,no_root_squash,n>
+
+To test this further I create a symlink from /software to /usr/lib. Once again
+the server failed to start because it could not find /srv/nfs/usr/lib.
+
+Reading through the source, I think the issue is in the getexportent function in
+support/nfs/exports.c.
+
+    /* resolve symlinks */
+    if (realpath(ee.e_path, rpath) != NULL) {
+        rpath[sizeof (rpath) - 1] = '\0';
+        strncpy(ee.e_path, rpath, sizeof (ee.e_path) - 1);
+        ee.e_path[sizeof (ee.e_path) - 1] = '\0';
+    }
+
+It appears this function does not take into account the rootdir property when
+resolving e_path.
+
+This was tested on Ubuntu 20.04 with the 5.11.8-051108-generic kernel. nfs-utils
+version is 2.5.3.
