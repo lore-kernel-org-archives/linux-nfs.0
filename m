@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08F07C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 07:20:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F5DCC43219
+	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 07:20:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244687AbiARHUS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Jan 2022 02:20:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41936 "EHLO
+        id S244822AbiARHUV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 18 Jan 2022 02:20:21 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41972 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244726AbiARHUM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 02:20:12 -0500
+        with ESMTP id S244726AbiARHUS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 02:20:18 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8AD77C061574;
-        Mon, 17 Jan 2022 23:20:12 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E41CC061574;
+        Mon, 17 Jan 2022 23:20:18 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=EcXfe+QJLbyEaBSYcI8IdLx+VpwVU+Twsx7L0heUO1Q=; b=Crht+UUgONjGH1v8HmgHBuR0Pw
-        3+FhXNSZnyjRNWPG58Wm2G5KNvvpy1aGmBMUIrUK1u4m17TdekCh3eo0S2wKQYJJCbvDqXQsRo2wK
-        voVwIithhKd6AwW1XgXVCGDM2qY6luEVdRs+f8pN0VmiQubGiTFrLb9HST+OMYWI2ooLOR0H3H2W4
-        vveuXxxHUHwA+40YbvmOhhsxe1wU4IgQ9dJEnKgPFvwGnegPrJbbGgCJPHOwX/k9PMvLPupdzEJoQ
-        dshYui2V9dLVx8Ag4GNgYySKuflXOClHoN9+HnAX1vSgCn5EnBRDfedOUMh6tHzNLJ5kJKsxDwFUO
-        XkKnK+AQ==;
+        bh=NiiyVm7T1RSoly2lncOqK9SkmVJ5v0QSThOfEky6q20=; b=MpqAqQ8K5Fa6Y5wTGJl/gbG8OO
+        dn6PaxcYnaVlNfT2mS1jeUKelsFExp+uG3u9mIvCpmas8BzQ0HJleX15bQnbvwePmlkVlO5W0vzSK
+        HvgBfIGs0RGASj9FFd6sE8tJ4qfhkmRCextanNUhqXChTqh8JwFoHdtpflmklbp5zQYV6ZVzOyC1T
+        pwKLY+kGCwUQFPrabqHRfoONsuU1ADJ9WWyYqDlTyqsbbVI8ypgDGmJbl8/GUeu7NuW8yznpIFL9H
+        xC7HLvhlMXxb+qdKze/uBd+r7dTrjI/Jf8j/c9/dF2KRq4+f8hr1Qn1e+/PCC7wHouMmupch1ruki
+        Eavz2L2w==;
 Received: from [2001:4bb8:184:72a4:a4a9:19c0:5242:7768] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1n9imk-000ZPF-0i; Tue, 18 Jan 2022 07:20:06 +0000
+        id 1n9imp-000ZRg-HC; Tue, 18 Jan 2022 07:20:12 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Pavel Begunkov <asml.silence@gmail.com>,
@@ -43,9 +43,9 @@ Cc:     Pavel Begunkov <asml.silence@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
         xen-devel@lists.xenproject.org, drbd-dev@lists.linbit.com
-Subject: [PATCH 04/19] ntfs3: remove ntfs_alloc_bio
-Date:   Tue, 18 Jan 2022 08:19:37 +0100
-Message-Id: <20220118071952.1243143-5-hch@lst.de>
+Subject: [PATCH 06/19] dm-crypt: remove clone_init
+Date:   Tue, 18 Jan 2022 08:19:39 +0100
+Message-Id: <20220118071952.1243143-7-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220118071952.1243143-1-hch@lst.de>
 References: <20220118071952.1243143-1-hch@lst.de>
@@ -56,63 +56,71 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-bio_alloc will never fail if it is allowed to sleep, so there is no
-need for this loop.  Also remove the __GFP_HIGH specifier as it doesn't
-make sense here given that we'll always fall back to the mempool anyway.
+Just open code it next to the bio allocations, which saves a few lines
+of code, prepares for future changes and allows to remove the duplicate
+bi_opf assignment for the bio_clone_fast case in kcryptd_io_read.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/ntfs3/fsntfs.c | 23 ++---------------------
- 1 file changed, 2 insertions(+), 21 deletions(-)
+ drivers/md/dm-crypt.c | 21 ++++++++-------------
+ 1 file changed, 8 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ntfs3/fsntfs.c b/fs/ntfs3/fsntfs.c
-index 4de9acb169689..4a255e21ecf5f 100644
---- a/fs/ntfs3/fsntfs.c
-+++ b/fs/ntfs3/fsntfs.c
-@@ -1443,17 +1443,6 @@ int ntfs_write_bh(struct ntfs_sb_info *sbi, struct NTFS_RECORD_HEADER *rhdr,
- 	return err;
+diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
+index 20abe3486aba1..3c5ecd35d3483 100644
+--- a/drivers/md/dm-crypt.c
++++ b/drivers/md/dm-crypt.c
+@@ -234,7 +234,7 @@ static volatile unsigned long dm_crypt_pages_per_client;
+ #define DM_CRYPT_MEMORY_PERCENT			2
+ #define DM_CRYPT_MIN_PAGES_PER_CLIENT		(BIO_MAX_VECS * 16)
+ 
+-static void clone_init(struct dm_crypt_io *, struct bio *);
++static void crypt_endio(struct bio *clone);
+ static void kcryptd_queue_crypt(struct dm_crypt_io *io);
+ static struct scatterlist *crypt_get_sg_data(struct crypt_config *cc,
+ 					     struct scatterlist *sg);
+@@ -1673,7 +1673,10 @@ static struct bio *crypt_alloc_buffer(struct dm_crypt_io *io, unsigned size)
+ 		mutex_lock(&cc->bio_alloc_lock);
+ 
+ 	clone = bio_alloc_bioset(GFP_NOIO, nr_iovecs, &cc->bs);
+-	clone_init(io, clone);
++	clone->bi_private = io;
++	clone->bi_end_io = crypt_endio;
++	bio_set_dev(clone, cc->dev->bdev);
++	clone->bi_opf = io->base_bio->bi_opf;
+ 
+ 	remaining_size = size;
+ 
+@@ -1826,16 +1829,6 @@ static void crypt_endio(struct bio *clone)
+ 	crypt_dec_pending(io);
  }
  
--static inline struct bio *ntfs_alloc_bio(u32 nr_vecs)
+-static void clone_init(struct dm_crypt_io *io, struct bio *clone)
 -{
--	struct bio *bio = bio_alloc(GFP_NOFS | __GFP_HIGH, nr_vecs);
+-	struct crypt_config *cc = io->cc;
 -
--	if (!bio && (current->flags & PF_MEMALLOC)) {
--		while (!bio && (nr_vecs /= 2))
--			bio = bio_alloc(GFP_NOFS | __GFP_HIGH, nr_vecs);
--	}
--	return bio;
+-	clone->bi_private = io;
+-	clone->bi_end_io  = crypt_endio;
+-	bio_set_dev(clone, cc->dev->bdev);
+-	clone->bi_opf	  = io->base_bio->bi_opf;
 -}
 -
- /*
-  * ntfs_bio_pages - Read/write pages from/to disk.
-  */
-@@ -1496,11 +1485,7 @@ int ntfs_bio_pages(struct ntfs_sb_info *sbi, const struct runs_tree *run,
- 		lbo = ((u64)lcn << cluster_bits) + off;
- 		len = ((u64)clen << cluster_bits) - off;
- new_bio:
--		new = ntfs_alloc_bio(nr_pages - page_idx);
--		if (!new) {
--			err = -ENOMEM;
--			goto out;
--		}
-+		new = bio_alloc(GFP_NOFS, nr_pages - page_idx);
- 		if (bio) {
- 			bio_chain(bio, new);
- 			submit_bio(bio);
-@@ -1599,11 +1584,7 @@ int ntfs_bio_fill_1(struct ntfs_sb_info *sbi, const struct runs_tree *run)
- 		lbo = (u64)lcn << cluster_bits;
- 		len = (u64)clen << cluster_bits;
- new_bio:
--		new = ntfs_alloc_bio(BIO_MAX_VECS);
--		if (!new) {
--			err = -ENOMEM;
--			break;
--		}
-+		new = bio_alloc(GFP_NOFS, BIO_MAX_VECS);
- 		if (bio) {
- 			bio_chain(bio, new);
- 			submit_bio(bio);
+ static int kcryptd_io_read(struct dm_crypt_io *io, gfp_t gfp)
+ {
+ 	struct crypt_config *cc = io->cc;
+@@ -1850,10 +1843,12 @@ static int kcryptd_io_read(struct dm_crypt_io *io, gfp_t gfp)
+ 	clone = bio_clone_fast(io->base_bio, gfp, &cc->bs);
+ 	if (!clone)
+ 		return 1;
++	clone->bi_private = io;
++	clone->bi_end_io = crypt_endio;
++	bio_set_dev(clone, cc->dev->bdev);
+ 
+ 	crypt_inc_pending(io);
+ 
+-	clone_init(io, clone);
+ 	clone->bi_iter.bi_sector = cc->start + io->sector;
+ 
+ 	if (dm_crypt_integrity_io_alloc(io, clone)) {
 -- 
 2.30.2
 
