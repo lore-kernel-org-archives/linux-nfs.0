@@ -2,77 +2,151 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F364C4332F
-	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 07:26:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CE9EDC433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 12:07:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232405AbiARH0I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Jan 2022 02:26:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43298 "EHLO
+        id S241263AbiARMH3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 18 Jan 2022 07:07:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52000 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229541AbiARH0I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 02:26:08 -0500
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B2244C061574;
-        Mon, 17 Jan 2022 23:26:07 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=+dhYCXllEHNKm5Sc731XzwwsjVqJhcW4C4oj7NGz3M4=; b=TGajYPjm2XkqLBdJOhVzBzTwlB
-        boJ4d295sjI9UUInwlPKhDyuNoTCqGg0FQw18iEAahbV/VVb81mYPWPf2+b0qiATEyluQn27qsXLu
-        5EVgEHA+7ijXmvn4H9WVCyKxYjU5n2iMLOTjwqsd83+4PS4pEhBcGzUeq1dUTDUkcbQTongiSpChY
-        fMZaj3W15A+CXTQEIRuyROppX7fq6If8tvRdRgQkFWIaI+wN8ZUno+UKphp83Uu8eTqHUPFrbKJbF
-        AjzrmA/xEfJMnw5y3y5YjNzCJMWjtRHB0WCK6aAmH9OhkBqR/9ABbA+LAF3arRARXloUVo1Ubox1R
-        7bgznWDQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1n9iri-000afR-VI; Tue, 18 Jan 2022 07:25:14 +0000
-Date:   Mon, 17 Jan 2022 23:25:14 -0800
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        David Howells <dhowells@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Dave Wysochanski <dwysocha@redhat.com>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Marc Dionne <marc.dionne@auristor.com>,
-        Omar Sandoval <osandov@osandov.com>,
-        Shyam Prasad N <nspmangalore@gmail.com>,
-        Steve French <sfrench@samba.org>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        Peter Zijlstra <peterz@infradead.org>,
-        ceph-devel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-cachefs@redhat.com, CIFS <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux-MM <linux-mm@kvack.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        v9fs-developer@lists.sourceforge.net,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: Out of order read() completion and buffer filling beyond
- returned amount
-Message-ID: <YeZrWoQY/3dKZHfT@infradead.org>
-References: <2752208.1642413437@warthog.procyon.org.uk>
- <CAHk-=wjQG5HnwQD98z8de1EvRzDnebZxh=gQUVTKCn0DOp7PQw@mail.gmail.com>
- <YeVvXToTxCsMzHZv@casper.infradead.org>
+        with ESMTP id S241257AbiARMH3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 07:07:29 -0500
+Received: from mail-yb1-xb33.google.com (mail-yb1-xb33.google.com [IPv6:2607:f8b0:4864:20::b33])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DDA8DC06173E
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Jan 2022 04:07:28 -0800 (PST)
+Received: by mail-yb1-xb33.google.com with SMTP id g12so2831623ybh.4
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Jan 2022 04:07:28 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bytedance-com.20210112.gappssmtp.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=OC5quY8+bzQ7YwLxGQW1P7Vgcog//q1EsjQWuTsPZiA=;
+        b=c3af9NXfUtTV/ISsfNREopmBIAf8fT4PPP17qdILfbQoqvb1yfMa+D0XLlYT6JoNjU
+         ePaLArNrWW5zLYdpo1aCAVvBM7NZdg3qoad2pIpBpn+dKX2qpHWbIzeTo/ZWGlUzG9m6
+         hdWzHLZgMHYc+km3yxBo/4gsymQJh83zgMLiF405qZowaqIxM7BnTJJFnGp2/q35ZIA6
+         maVqxHfZSqMXQDeOLAlQCpQMgLny1kM6wpQgjMqc1MgA20REMRU1Kyb60DSCWB1/YGt0
+         nmM29RNua0k7xFUkauKHhL0GFjcs9AX976BwT6xrQiJmMLPjBfkMK40ffRMoWetReJqm
+         /lFQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=OC5quY8+bzQ7YwLxGQW1P7Vgcog//q1EsjQWuTsPZiA=;
+        b=tBEYAuFWcm+4YzNY5lsB+Cm9KDgppcl0r+CQ2IA+t43WoaNRLNH44mTFhCaQ92djQN
+         kSWs7MFisopyRaNYq6igG16vs/lnEHC+OtvPpFmIY6dJJsg//c+84UC22k2ZMnahNxkR
+         RWbMjFQcX++90ELjId0lZ/W7YzA97INR3jLJGh2iiTSyfDaF8QOmovmSQmFf5zqhJq0h
+         3CtpWvw2POOEJW2HbgmrRdu9+cR+JF5FaBkK8vaFFqxfePboyOExkrZxms/soig85wBs
+         rISnP+ZbhlL+xJv7FriDKKJTEwtEpDnNkZa93YuQI73PYdvDhh8lCUmMSo6XfyiGD2u1
+         6vQw==
+X-Gm-Message-State: AOAM532aiw4Uh0Li0kORh5Y/2PTXEFTHukCe0PEsU6PhsFh8zgBYka1B
+        RPSKCgLaj3bRlzYYwyAvVAq48AuyJxUXPgfZAa/RJA==
+X-Google-Smtp-Source: ABdhPJxNFvL/SkKU6juzzW+raWlteR7gaAX3pdOhU7lWwwCB3tPpMz6t5NIUds1vo4+A7k0YLFoYLeZ3JS1yM7GxpMg=
+X-Received: by 2002:a25:8806:: with SMTP id c6mr31085871ybl.199.1642507648082;
+ Tue, 18 Jan 2022 04:07:28 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YeVvXToTxCsMzHZv@casper.infradead.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+References: <20211220085649.8196-1-songmuchun@bytedance.com>
+ <20211220085649.8196-11-songmuchun@bytedance.com> <20220106110051.GA470@blackbody.suse.cz>
+ <CAMZfGtXZA+rLMUw5yLSW=eUncT0BjH++Dpi1EzKwXvV9zwqF1w@mail.gmail.com> <20220113133213.GA28468@blackbody.suse.cz>
+In-Reply-To: <20220113133213.GA28468@blackbody.suse.cz>
+From:   Muchun Song <songmuchun@bytedance.com>
+Date:   Tue, 18 Jan 2022 20:05:44 +0800
+Message-ID: <CAMZfGtWJeov9XD_MEkDJwTK5b73OKPYxJBQi=D5-NSyNSSKLCw@mail.gmail.com>
+Subject: Re: [PATCH v5 10/16] mm: list_lru: allocate list_lru_one only when needed
+To:     =?UTF-8?Q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>
+Cc:     Matthew Wilcox <willy@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Michal Hocko <mhocko@kernel.org>,
+        Vladimir Davydov <vdavydov.dev@gmail.com>,
+        Shakeel Butt <shakeelb@google.com>,
+        Roman Gushchin <guro@fb.com>, Yang Shi <shy828301@gmail.com>,
+        Alex Shi <alexs@kernel.org>,
+        Wei Yang <richard.weiyang@gmail.com>,
+        Dave Chinner <david@fromorbit.com>,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        jaegeuk@kernel.org, chao@kernel.org,
+        Kari Argillander <kari.argillander@gmail.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Linux Memory Management List <linux-mm@kvack.org>,
+        linux-nfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>,
+        Xiongchun duan <duanxiongchun@bytedance.com>,
+        Fam Zheng <fam.zheng@bytedance.com>,
+        Muchun Song <smuchun@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Jan 17, 2022 at 01:30:05PM +0000, Matthew Wilcox wrote:
-> I think for DIO, you're sacrificing the entire buffer with any filesystem.
-> If the underlying file is split across multiple drives, or is even
-> just fragmented on a single drive, we'll submit multiple BIOs which
-> will complete independently (even for SCSI which writes sequentially;
-> never mind NVMe which can DMA blocks asynchronously).  It might be
-> more apparent in a networking situation where errors are more common,
-> but it's always been a possibility since Linux introduced DIO.
+On Thu, Jan 13, 2022 at 9:32 PM Michal Koutn=C3=BD <mkoutny@suse.com> wrote=
+:
+>
+> On Wed, Jan 12, 2022 at 09:22:36PM +0800, Muchun Song <songmuchun@bytedan=
+ce.com> wrote:
+> >   root(-1) -> A(0) -> B(1) -> C(2)
+> >
+> > CPU0:                                   CPU1:
+> > memcg_list_lru_alloc(C)
+> >                                         memcg_drain_all_list_lrus(C)
+> >                                         memcg_drain_all_list_lrus(B)
+> >                                         // Now C and B are offline. The
+> >                                         // kmemcg_id becomes the follow=
+ing if
+> >                                         // we do not the kmemcg_id of i=
+ts
+> >                                         // descendants in
+> >                                         // memcg_drain_all_list_lrus().
+> >                                         //
+> >                                         // root(-1) -> A(0) -> B(0) -> =
+C(1)
+> >
+> >   for (i =3D 0; memcg; memcg =3D parent_mem_cgroup(memcg), i++) {
+> >       // allocate struct list_lru_per_memcg for memcg C
+> >       table[i].mlru =3D memcg_init_list_lru_one(gfp);
+> >   }
+> >
+> >   spin_lock_irqsave(&lru->lock, flags);
+> >   while (i--) {
+> >       // here index =3D 1
+> >       int index =3D table[i].memcg->kmemcg_id;
+> >
+> >       struct list_lru_per_memcg *mlru =3D table[i].mlru;
+> >       if (index < 0 || rcu_dereference_protected(mlrus->mlru[index], tr=
+ue))
+> >           kfree(mlru);
+> >       else
+> >           // mlrus->mlru[index] will be assigned a new value regardless
+> >           // memcg C is already offline.
+> >           rcu_assign_pointer(mlrus->mlru[index], mlru);
+> >   }
+> >   spin_unlock_irqrestore(&lru->lock, flags);
+> >
+>
+> > So changing ->kmemcg_id of all its descendants can prevent
+> > memcg_list_lru_alloc() from allocating list lrus for the offlined
+> > cgroup after memcg_list_lru_free() calling.
+>
+> Thanks for the illustrative example. I can see how this can be a problem
+> in a general call of memcg_list_lru_alloc(C).
+>
+> However, the code, as I understand it, resolves the memcg to which lru
+> allocation should be associated via get_mem_cgroup_from_objcg() and
+> memcg_reparent_list_lrus(C) comes after memcg_reparent_objcgs(C, B),
+> i.e. the allocation would target B (or even A if after
+> memcg_reparent_objcgs(B, A))?
+>
+> It seems to me like "wasting" the existing objcg reparenting mechanism.
+> Or what do you think could be a problem relying on it?
+>
 
-Yes.  Probably because of that we also never allow short reads or writes
-due to I/O errrors but always fail the whole I/O.
+I have thought about this. It's a little different to rely on objcg
+reparenting since the user can get memcg from objcg and
+then does not realize the memcg has reparented. Although it
+can check memcg->objcg to know whether the memcg is
+reparented, it should also prevent this memcg from being
+reparented throughout memcg_list_lru_alloc(). Maybe
+holding css_set_lock can do that. I do not think this
+is a good choice. Do you have any thoughts about this?
+
+Thanks.
