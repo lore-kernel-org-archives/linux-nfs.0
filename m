@@ -2,144 +2,134 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 584A0C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 13:55:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BEE7C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 15:26:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244484AbiARNz3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Jan 2022 08:55:29 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:46785 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S244535AbiARNzL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 08:55:11 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1642514111;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=nVXdBfar06aN8bLGcQhg3hoHTwA3zNmoM5BZNTP/YMg=;
-        b=H8J2TQ8G69thSAuWlcMMxbsd+i0VyJ/Vn9q0geuzWwQMS4bgf/MYUawDzZQZRtvRr+Q+6Z
-        nyAzC9Tlz8q7ctiin4hd5RZpVzLvdILkD9ir85E/N12m4ORtwLRGQGgK6pUUqlzVwTkpo8
-        qs13i6qd0tbipeRwh5oE1FBr2rFKGSY=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-315-E2DiHj7XNe26-nTe-KwSqA-1; Tue, 18 Jan 2022 08:55:08 -0500
-X-MC-Unique: E2DiHj7XNe26-nTe-KwSqA-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        id S1344512AbiARP0v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 18 Jan 2022 10:26:51 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:47904 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S235669AbiARP0t (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 10:26:49 -0500
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9EFDF18B9EA9;
-        Tue, 18 Jan 2022 13:54:58 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.33.36.165])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 578142B6E9;
-        Tue, 18 Jan 2022 13:54:55 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 09/11] vfs,
- fscache: Add an IS_KERNEL_FILE() macro for the S_KERNEL_FILE flag
-From:   David Howells <dhowells@redhat.com>
-To:     linux-cachefs@redhat.com
-Cc:     Jeff Layton <jlayton@kernel.org>, Jeff Layton <jlayton@kernel.org>,
-        dhowells@redhat.com, Trond Myklebust <trondmy@hammerspace.com>,
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 8B83A1F3BB;
+        Tue, 18 Jan 2022 15:26:47 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1642519607;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type;
+        bh=pISiuQNXvK9RwVRhtGimkQU0Qq0IlFXZAYS9c6WH+lo=;
+        b=ItRpTvT6cl/39P2xG0WErztkWwVfTpmCyJcH8HCL1HOEyv/50eACyhwXRbUWaEx/AavWyv
+        i/GEy1azJQJMjwt4ow+Gcj3A5fz80NdHVxz6miV2X6qnP9huzKmZVIas9iBBuif9MjcE/n
+        dx52PdW+Hzx5Be05QZxi8ghrDV1idnI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1642519607;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type;
+        bh=pISiuQNXvK9RwVRhtGimkQU0Qq0IlFXZAYS9c6WH+lo=;
+        b=FMrd7SwJzJ2RgV5jLa4I8KuP1T+FDVAH2X8D6YWlM5T+UouOT4ScmXKyVnMffdlCCxxfwL
+        9C8MJnaJYiTnKfBg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2CFCC13B41;
+        Tue, 18 Jan 2022 15:26:47 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id swZsCDfc5mGVYAAAMHmgww
+        (envelope-from <pvorel@suse.cz>); Tue, 18 Jan 2022 15:26:47 +0000
+Date:   Tue, 18 Jan 2022 16:26:45 +0100
+From:   Petr Vorel <pvorel@suse.cz>
+To:     linux-nfs@vger.kernel.org
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <smfrench@gmail.com>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Matthew Wilcox <willy@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Omar Sandoval <osandov@osandov.com>,
-        JeffleXu <jefflexu@linux.alibaba.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Tue, 18 Jan 2022 13:54:54 +0000
-Message-ID: <164251409447.3435901.10092442643336534999.stgit@warthog.procyon.org.uk>
-In-Reply-To: <164251396932.3435901.344517748027321142.stgit@warthog.procyon.org.uk>
-References: <164251396932.3435901.344517748027321142.stgit@warthog.procyon.org.uk>
-User-Agent: StGit/0.23
+        Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        Nikita Yushchenko <nikita.yushchenko@virtuozzo.com>,
+        ltp@lists.linux.it
+Subject: LTP nfslock01 test failing on NFS v3 (lockd: cannot monitor 10.0.0.2)
+Message-ID: <YebcNQg0u5cU1QyQ@pevik>
+Reply-To: Petr Vorel <pvorel@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add an IS_KERNEL_FILE() macro to test the S_KERNEL_FILE inode flag as is
-common practice for the other inode flags[1].
+Hi all,
 
-Suggested-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-cc: linux-cachefs@redhat.com
-Link: https://lore.kernel.org/r/88d7f8970dcc0fd0ead891b1f42f160b8d17d60e.camel@kernel.org/ [1]
----
+this is a test failure posted by Nikita Yushchenko [1]. LTP NFS test nfslock01
+looks to be failing on NFS v3:
 
- fs/cachefiles/namei.c |    6 +++---
- fs/namei.c            |    2 +-
- include/linux/fs.h    |    1 +
- 3 files changed, 5 insertions(+), 4 deletions(-)
+"not unsharing /var makes AF_UNIX socket for host's rpcbind to become available
+inside ltpns. Then, at nfs3 mount time, kernel creates an instance of lockd for
+ltpns, and ports for that instance leak to host's rpcbind and overwrite ports
+for lockd already active for root namespace. This breaks nfs3 file locking."
 
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index f256c8aff7bb..04563f759e99 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -20,7 +20,7 @@ static bool __cachefiles_mark_inode_in_use(struct cachefiles_object *object,
- 	struct inode *inode = d_backing_inode(dentry);
- 	bool can_use = false;
- 
--	if (!(inode->i_flags & S_KERNEL_FILE)) {
-+	if (!IS_KERNEL_FILE(inode)) {
- 		inode->i_flags |= S_KERNEL_FILE;
- 		trace_cachefiles_mark_active(object, inode);
- 		can_use = true;
-@@ -746,7 +746,7 @@ static struct dentry *cachefiles_lookup_for_cull(struct cachefiles_cache *cache,
- 		goto lookup_error;
- 	if (d_is_negative(victim))
- 		goto lookup_put;
--	if (d_inode(victim)->i_flags & S_KERNEL_FILE)
-+	if (IS_KERNEL_FILE(d_inode(victim)))
- 		goto lookup_busy;
- 	return victim;
- 
-@@ -793,7 +793,7 @@ int cachefiles_cull(struct cachefiles_cache *cache, struct dentry *dir,
- 	/* check to see if someone is using this object */
- 	inode = d_inode(victim);
- 	inode_lock(inode);
--	if (inode->i_flags & S_KERNEL_FILE) {
-+	if (IS_KERNEL_FILE(inode)) {
- 		ret = -EBUSY;
- 	} else {
- 		/* Stop the cache from picking it back up */
-diff --git a/fs/namei.c b/fs/namei.c
-index d81f04f8d818..c2175ab3849d 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3959,7 +3959,7 @@ int vfs_rmdir(struct user_namespace *mnt_userns, struct inode *dir,
- 
- 	error = -EBUSY;
- 	if (is_local_mountpoint(dentry) ||
--	    (dentry->d_inode->i_flags & S_KERNEL_FILE))
-+	    IS_KERNEL_FILE(dentry->d_inode))
- 		goto out;
- 
- 	error = security_inode_rmdir(dir, dentry);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f5d3bf5b69a6..227497793282 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2216,6 +2216,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
- #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
- #define IS_CASEFOLDED(inode)	((inode)->i_flags & S_CASEFOLD)
- #define IS_VERITY(inode)	((inode)->i_flags & S_VERITY)
-+#define IS_KERNEL_FILE(inode)	((inode)->i_flags & S_KERNEL_FILE)
- 
- #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
- 				 (inode)->i_rdev == WHITEOUT_DEV)
+This error has been hidden, showing only with extra patch from Nikita [2].
+Because the patch has not been merged, in case you want to verify yourself,
+feel free to use my LTP fork branch nfs_flock/fail-on-error to get this patch +
+strace debugging [3]:
 
+# PATH="/opt/ltp/testcases/bin:$PATH" /opt/ltp/testcases/bin/nfslock01 -t tcp -v 3
+...
+nfslock01 1 TINFO: initialize 'lhost' 'ltp_ns_veth2' interface
+nfslock01 1 TINFO: add local addr 10.0.0.2/24
+nfslock01 1 TINFO: add local addr fd00:1:1:1::2/64
+nfslock01 1 TINFO: initialize 'rhost' 'ltp_ns_veth1' interface
+nfslock01 1 TINFO: add remote addr 10.0.0.1/24
+nfslock01 1 TINFO: add remote addr fd00:1:1:1::1/64
+nfslock01 1 TINFO: Network config (local -- remote):
+nfslock01 1 TINFO: ltp_ns_veth2 -- ltp_ns_veth1
+nfslock01 1 TINFO: 10.0.0.2/24 -- 10.0.0.1/24
+nfslock01 1 TINFO: fd00:1:1:1::2/64 -- fd00:1:1:1::1/64
+nfslock01 1 TINFO: timeout per run is 0h 5m 0s
+nfslock01 1 TINFO: setup NFSv3, socket type tcp
+nfslock01 1 TINFO: Mounting NFS: mount -v -t nfs -o proto=tcp,vers=3 10.0.0.2:/tmp/LTP_nfslock01.PAYCDFih75/3/tcp /tmp/LTP_nfslock01.PAYCDFih75/3/0
+nfslock01 1 TINFO: creating test files
+nfslock01 1 TINFO: Testing locking
+nfslock01 1 TINFO: locking 'flock_idata' file and writing data
+nfslock01 1 TINFO: waiting for pids: 2022 2023
+execve("/opt/ltp/testcases/bin/nfs_flock", ["nfs_flock", "0", "flock_idata"], 0x7ffd4dae5880 /* 206 vars */execve("/opt/ltp/testcases/bin/nfs_flock", ["nfs_flock", "1", "flock_idata"], 0x7ffee8d52690 /* 206 vars */) = 0
+brk(NULL)                               = 0x555ad67cc000
+...
+openat(AT_FDCWD, "flock_idata", O_RDWR) = 3
+) = 3
+fcntl(3, F_SETLKW, {l_type=F_WRLCK, l_whence=SEEK_SET, l_start=64, l_len=64}fcntl(3, F_SETLKW, {l_type=F_WRLCK, l_whence=SEEK_SET, l_start=0, l_len=64}) = -1 ENOLCK (No locks available)
+newfstatat(1, "", {st_mode=S_IFCHR|0600, st_rdev=makedev(0x88, 0x1), ...}, AT_EMPTY_PATH) = 0
+brk(NULL)                               = 0x55aefc2d5000
+brk(0x55aefc2f6000)                     = 0x55aefc2f6000
+write(1, "failed in writeb_lock, Errno = 3"..., 34failed in writeb_lock, Errno = 37
+) = 34
+exit_group(1)                           = ?
++++ exited with 1 +++
+) = -1 ENOLCK (No locks available)
+newfstatat(1, "", {st_mode=S_IFCHR|0600, st_rdev=makedev(0x88, 0x1), ...}, AT_EMPTY_PATH) = 0
+brk(NULL)                               = 0x555ad67cc000
+brk(0x555ad67ed000)                     = 0x555ad67ed000
+write(1, "failed in writeb_lock, Errno = 3"..., 34failed in writeb_lock, Errno = 37
+) = 34
+exit_group(1)                           = ?
++++ exited with 1 +++
+nfslock01 1 TFAIL: nfs_lock process failed
+...
 
+Dmesg shows: "lockd: cannot monitor 10.0.0.2", test fails on
+fcntl(fd, F_SETLKW, &lock), lock.l_whence is SEEK_SET.
+
+Running other NFS versions (-v 4 or -v 4.1 or -v 4.2) works ok.
+Also tested only on TCP due UDP being recently disabled by default.
+
+I found this behaviour on various kernels (openSUSE 5.16, Debian: 5.16, 5.10,
+SLES 5.14 and 5.3 - both heavily patched).
+
+Is it a bug in lockd or in a test? Is there some limitation on v3?
+
+Kind regards,
+Petr
