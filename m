@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C012C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 07:20:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B5CB5C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jan 2022 07:21:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245062AbiARHUl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Jan 2022 02:20:41 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42062 "EHLO
+        id S240207AbiARHV3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 18 Jan 2022 02:21:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42094 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244955AbiARHUf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 02:20:35 -0500
+        with ESMTP id S245084AbiARHUp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2022 02:20:45 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 33426C06161C;
-        Mon, 17 Jan 2022 23:20:35 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 856C4C061574;
+        Mon, 17 Jan 2022 23:20:40 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=Hmdul2b824Aw+W7hsxfLRPm+W2xGls7ShW1BUgArE2A=; b=FlSg7Ip4B3XJbqRLUazSGBl6sY
-        aCwhXTmbowZx9b2j7qi2Hd8DnfbGH4eiPxuAaA2nRPne046/wmkaYlrnWHmDzVrmLfbwtcNrB2Y5G
-        L2k1rbD83lcM9y55YgCjdm3x34WIVHPPGGKbMAMBTkOlHX1/RYAWfOSXMvKfFfvu+z6XGHMVcEUOc
-        GTFWU4kS/QuprLIJtVIfCwCheJZFCG7BPLBRkxMUGQVd05jFWnJg0a/6rUFRuwjohPcbkpzQsrxtv
-        nMW27Vau8u3rAodC7STr3O6ThI27hF4j362D5p61hPICn2G3bNrEpQc2H7FsOMM9QEe/wLR7EuIoO
-        m2N3R2JA==;
+        bh=MsGvE+zelEtK2ZAmqGr9r296MUnHWlWqqYprZYaU/Qc=; b=ba9hoWbGUd3UF44k/Q1mMFZiw/
+        LOquygFZ4fhHqFh6+gf7JrujgcajikANTdNBLN8MIZKyEmfaiCzXF4lNuEZJ2P6fTOau2sn65xU10
+        dCFsIPaRlIlvRWyRLxkC0dwaoUvYxJMzRqOdN9r+LVMcgfm0g1jRbrYIAfo9C4GZ4pGYzj29CKWeT
+        /D8geXLwV2aSF8lhOFYa0OFLvaAZOe40o22cAi0T6ocY3y96rkCMbjZR4HvNQ2M6Lo8+CeJ1M7Xem
+        kgOPpweTULHdz/SQ1i1vLPacHvqCx/PgmlCIY+x4RGd/gEqdgOieJWLFN+AehcSJ/Ecv1SlLj/DYe
+        FDD9lnOw==;
 Received: from [2001:4bb8:184:72a4:a4a9:19c0:5242:7768] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1n9in6-000Zaz-6Z; Tue, 18 Jan 2022 07:20:28 +0000
+        id 1n9inB-000Ze7-Pu; Tue, 18 Jan 2022 07:20:34 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Pavel Begunkov <asml.silence@gmail.com>,
@@ -43,9 +43,9 @@ Cc:     Pavel Begunkov <asml.silence@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
         xen-devel@lists.xenproject.org, drbd-dev@lists.linbit.com
-Subject: [PATCH 12/19] xen-blkback: bio_alloc can't fail if it is allow to sleep
-Date:   Tue, 18 Jan 2022 08:19:45 +0100
-Message-Id: <20220118071952.1243143-13-hch@lst.de>
+Subject: [PATCH 14/19] block: pass a block_device and opf to blk_next_bio
+Date:   Tue, 18 Jan 2022 08:19:47 +0100
+Message-Id: <20220118071952.1243143-15-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220118071952.1243143-1-hch@lst.de>
 References: <20220118071952.1243143-1-hch@lst.de>
@@ -56,53 +56,169 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove handling of NULL returns from sleeping bio_alloc calls given that
-those can't fail.
+All callers need to set the block_device and operation, so lift that into
+the common code.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/block/xen-blkback/blkback.c | 14 --------------
- 1 file changed, 14 deletions(-)
+ block/bio.c               |  6 +++++-
+ block/blk-lib.c           | 19 +++++--------------
+ block/blk-zoned.c         |  9 +++------
+ block/blk.h               |  2 --
+ drivers/nvme/target/zns.c |  6 +++---
+ include/linux/bio.h       |  3 ++-
+ 6 files changed, 18 insertions(+), 27 deletions(-)
 
-diff --git a/drivers/block/xen-blkback/blkback.c b/drivers/block/xen-blkback/blkback.c
-index 14e452896d04c..6bb2ad7692065 100644
---- a/drivers/block/xen-blkback/blkback.c
-+++ b/drivers/block/xen-blkback/blkback.c
-@@ -1327,9 +1327,6 @@ static int dispatch_rw_block_io(struct xen_blkif_ring *ring,
- 				     seg[i].nsec << 9,
- 				     seg[i].offset) == 0)) {
- 			bio = bio_alloc(GFP_KERNEL, bio_max_segs(nseg - i));
--			if (unlikely(bio == NULL))
--				goto fail_put_bio;
--
- 			biolist[nbio++] = bio;
- 			bio_set_dev(bio, preq.bdev);
- 			bio->bi_private = pending_req;
-@@ -1346,9 +1343,6 @@ static int dispatch_rw_block_io(struct xen_blkif_ring *ring,
- 		BUG_ON(operation_flags != REQ_PREFLUSH);
+diff --git a/block/bio.c b/block/bio.c
+index 43fb28ac6b44e..52c99bfa8008d 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -344,10 +344,14 @@ void bio_chain(struct bio *bio, struct bio *parent)
+ }
+ EXPORT_SYMBOL(bio_chain);
  
- 		bio = bio_alloc(GFP_KERNEL, 0);
--		if (unlikely(bio == NULL))
--			goto fail_put_bio;
+-struct bio *blk_next_bio(struct bio *bio, unsigned int nr_pages, gfp_t gfp)
++struct bio *blk_next_bio(struct bio *bio, struct block_device *bdev,
++		unsigned int nr_pages, unsigned int opf, gfp_t gfp)
+ {
+ 	struct bio *new = bio_alloc(gfp, nr_pages);
+ 
++	bio_set_dev(new, bdev);
++	new->bi_opf = opf;
++
+ 	if (bio) {
+ 		bio_chain(bio, new);
+ 		submit_bio(bio);
+diff --git a/block/blk-lib.c b/block/blk-lib.c
+index 9245b300ef73e..1b8ced45e4e55 100644
+--- a/block/blk-lib.c
++++ b/block/blk-lib.c
+@@ -82,11 +82,8 @@ int __blkdev_issue_discard(struct block_device *bdev, sector_t sector,
+ 
+ 		WARN_ON_ONCE((req_sects << 9) > UINT_MAX);
+ 
+-		bio = blk_next_bio(bio, 0, gfp_mask);
++		bio = blk_next_bio(bio, bdev, 0, op, gfp_mask);
+ 		bio->bi_iter.bi_sector = sector;
+-		bio_set_dev(bio, bdev);
+-		bio_set_op_attrs(bio, op, 0);
 -
- 		biolist[nbio++] = bio;
- 		bio_set_dev(bio, preq.bdev);
- 		bio->bi_private = pending_req;
-@@ -1381,14 +1375,6 @@ static int dispatch_rw_block_io(struct xen_blkif_ring *ring,
- 	free_req(ring, pending_req);
- 	msleep(1); /* back off a bit */
- 	return -EIO;
+ 		bio->bi_iter.bi_size = req_sects << 9;
+ 		sector += req_sects;
+ 		nr_sects -= req_sects;
+@@ -176,14 +173,12 @@ static int __blkdev_issue_write_same(struct block_device *bdev, sector_t sector,
+ 	max_write_same_sectors = bio_allowed_max_sectors(q);
+ 
+ 	while (nr_sects) {
+-		bio = blk_next_bio(bio, 1, gfp_mask);
++		bio = blk_next_bio(bio, bdev, 1, REQ_OP_WRITE_SAME, gfp_mask);
+ 		bio->bi_iter.bi_sector = sector;
+-		bio_set_dev(bio, bdev);
+ 		bio->bi_vcnt = 1;
+ 		bio->bi_io_vec->bv_page = page;
+ 		bio->bi_io_vec->bv_offset = 0;
+ 		bio->bi_io_vec->bv_len = bdev_logical_block_size(bdev);
+-		bio_set_op_attrs(bio, REQ_OP_WRITE_SAME, 0);
+ 
+ 		if (nr_sects > max_write_same_sectors) {
+ 			bio->bi_iter.bi_size = max_write_same_sectors << 9;
+@@ -252,10 +247,8 @@ static int __blkdev_issue_write_zeroes(struct block_device *bdev,
+ 		return -EOPNOTSUPP;
+ 
+ 	while (nr_sects) {
+-		bio = blk_next_bio(bio, 0, gfp_mask);
++		bio = blk_next_bio(bio, bdev, 0, REQ_OP_WRITE_ZEROES, gfp_mask);
+ 		bio->bi_iter.bi_sector = sector;
+-		bio_set_dev(bio, bdev);
+-		bio->bi_opf = REQ_OP_WRITE_ZEROES;
+ 		if (flags & BLKDEV_ZERO_NOUNMAP)
+ 			bio->bi_opf |= REQ_NOUNMAP;
+ 
+@@ -303,11 +296,9 @@ static int __blkdev_issue_zero_pages(struct block_device *bdev,
+ 		return -EPERM;
+ 
+ 	while (nr_sects != 0) {
+-		bio = blk_next_bio(bio, __blkdev_sectors_to_bio_pages(nr_sects),
+-				   gfp_mask);
++		bio = blk_next_bio(bio, bdev, __blkdev_sectors_to_bio_pages(nr_sects),
++				   REQ_OP_WRITE, gfp_mask);
+ 		bio->bi_iter.bi_sector = sector;
+-		bio_set_dev(bio, bdev);
+-		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
+ 
+ 		while (nr_sects != 0) {
+ 			sz = min((sector_t) PAGE_SIZE, nr_sects << 9);
+diff --git a/block/blk-zoned.c b/block/blk-zoned.c
+index 774ecc598bee2..5ab755d792c81 100644
+--- a/block/blk-zoned.c
++++ b/block/blk-zoned.c
+@@ -215,9 +215,8 @@ static int blkdev_zone_reset_all_emulated(struct block_device *bdev,
+ 			continue;
+ 		}
+ 
+-		bio = blk_next_bio(bio, 0, gfp_mask);
+-		bio_set_dev(bio, bdev);
+-		bio->bi_opf = REQ_OP_ZONE_RESET | REQ_SYNC;
++		bio = blk_next_bio(bio, bdev, 0, REQ_OP_ZONE_RESET | REQ_SYNC,
++				   gfp_mask);
+ 		bio->bi_iter.bi_sector = sector;
+ 		sector += zone_sectors;
+ 
+@@ -306,9 +305,7 @@ int blkdev_zone_mgmt(struct block_device *bdev, enum req_opf op,
+ 	}
+ 
+ 	while (sector < end_sector) {
+-		bio = blk_next_bio(bio, 0, gfp_mask);
+-		bio_set_dev(bio, bdev);
+-		bio->bi_opf = op | REQ_SYNC;
++		bio = blk_next_bio(bio, bdev, 0, op | REQ_SYNC, gfp_mask);
+ 		bio->bi_iter.bi_sector = sector;
+ 		sector += zone_sectors;
+ 
+diff --git a/block/blk.h b/block/blk.h
+index 8bd43b3ad33d5..6b93de33e8a43 100644
+--- a/block/blk.h
++++ b/block/blk.h
+@@ -406,8 +406,6 @@ extern int blk_iolatency_init(struct request_queue *q);
+ static inline int blk_iolatency_init(struct request_queue *q) { return 0; }
+ #endif
+ 
+-struct bio *blk_next_bio(struct bio *bio, unsigned int nr_pages, gfp_t gfp);
 -
-- fail_put_bio:
--	for (i = 0; i < nbio; i++)
--		bio_put(biolist[i]);
--	atomic_set(&pending_req->pendcnt, 1);
--	__end_block_io_op(pending_req, BLK_STS_RESOURCE);
--	msleep(1); /* back off a bit */
--	return -EIO;
+ #ifdef CONFIG_BLK_DEV_ZONED
+ void blk_queue_free_zone_bitmaps(struct request_queue *q);
+ void blk_queue_clear_zone_settings(struct request_queue *q);
+diff --git a/drivers/nvme/target/zns.c b/drivers/nvme/target/zns.c
+index 46bc30fe85d2b..247de74247fab 100644
+--- a/drivers/nvme/target/zns.c
++++ b/drivers/nvme/target/zns.c
+@@ -412,10 +412,10 @@ static u16 nvmet_bdev_zone_mgmt_emulate_all(struct nvmet_req *req)
+ 
+ 	while (sector < get_capacity(bdev->bd_disk)) {
+ 		if (test_bit(blk_queue_zone_no(q, sector), d.zbitmap)) {
+-			bio = blk_next_bio(bio, 0, GFP_KERNEL);
+-			bio->bi_opf = zsa_req_op(req->cmd->zms.zsa) | REQ_SYNC;
++			bio = blk_next_bio(bio, bdev, 0,
++				zsa_req_op(req->cmd->zms.zsa) | REQ_SYNC,
++				GFP_KERNEL);
+ 			bio->bi_iter.bi_sector = sector;
+-			bio_set_dev(bio, bdev);
+ 			/* This may take a while, so be nice to others */
+ 			cond_resched();
+ 		}
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 117d7f248ac96..edeae54074ede 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -790,6 +790,7 @@ static inline void bio_set_polled(struct bio *bio, struct kiocb *kiocb)
+ 		bio->bi_opf |= REQ_NOWAIT;
  }
  
+-struct bio *blk_next_bio(struct bio *bio, unsigned int nr_pages, gfp_t gfp);
++struct bio *blk_next_bio(struct bio *bio, struct block_device *bdev,
++		unsigned int nr_pages, unsigned int opf, gfp_t gfp);
  
+ #endif /* __LINUX_BIO_H */
 -- 
 2.30.2
 
