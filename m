@@ -2,111 +2,312 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6A4FC433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jan 2022 21:01:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CAE45C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jan 2022 21:49:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347377AbiATVBs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Jan 2022 16:01:48 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:60388 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1347149AbiATVBr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2022 16:01:47 -0500
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 33C392195F;
-        Thu, 20 Jan 2022 21:01:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1642712506;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
+        id S1378001AbiATVtx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Jan 2022 16:49:53 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:32719 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1377994AbiATVtx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2022 16:49:53 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1642715392;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=UaXDKza4Sh7YIM3Vzo5bFIWT6IENs7PssxfIjC5umQw=;
-        b=yywB5zTfYaE/pN5XftHj78h2EijpEUz2xT5plerQTtOJ2qh5xiIEiethu3x/0Df6VruRVi
-        2aEoqO009UgkK1FSwwBpfxcNdz6YN4iaHzsFoGDun2ZU63Ugk8QOZLMvny68Vzg5i5gwBE
-        D+daUNXBN5ec81kEPxwttaYR2Qw/s2k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1642712506;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=UaXDKza4Sh7YIM3Vzo5bFIWT6IENs7PssxfIjC5umQw=;
-        b=CDulFiSjc14GO/F1AdHtEvXx+UAh+0L0JxXOBSVAFb7b/kaGC5Ux+BgF8tgarOPwcxI2SI
-        Vrf9ohp2dptbkiBQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        bh=GfgKaodlN9Lyf93BRAbcq71NjLq5mLWN//fkUxBkn4U=;
+        b=VrtaRkVjIqUmSeJ0yoZwFDI768pr8ok/yPJP2KBkl6SvKYILuj0yIZzkNH2B42tYPsHqj9
+        BUYgecd+vPo+nrQ9+cv/7fOgk7B06nMvXNXBrZNg/5tCXwp/8OEsfnis6ti3INCyh4N4Fr
+        b7sUk0N2/h9MOpP8EN/MVNVr2CsH4iQ=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-339-Le2TFKmPMzKWLU4fsGgoaQ-1; Thu, 20 Jan 2022 16:49:50 -0500
+X-MC-Unique: Le2TFKmPMzKWLU4fsGgoaQ-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id C474C13EC3;
-        Thu, 20 Jan 2022 21:01:45 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id swaqLLnN6WGaQwAAMHmgww
-        (envelope-from <pvorel@suse.cz>); Thu, 20 Jan 2022 21:01:45 +0000
-Date:   Thu, 20 Jan 2022 22:01:38 +0100
-From:   Petr Vorel <pvorel@suse.cz>
-To:     Nikita Yushchenko <nikita.yushchenko@virtuozzo.com>
-Cc:     ltp@lists.linux.it, kernel@openvz.org, linux-nfs@vger.kernel.org,
-        Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>
-Subject: Re: [PATCH] rpc_lib.sh: fix portmapper detection in case of socket
- activation
-Message-ID: <YenNsuS1gcA9tDe3@pevik>
-Reply-To: Petr Vorel <pvorel@suse.cz>
-References: <20220120143727.27057-1-nikita.yushchenko@virtuozzo.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D5952343C9;
+        Thu, 20 Jan 2022 21:49:49 +0000 (UTC)
+Received: from aion.usersys.redhat.com (unknown [10.22.8.154])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id A20F94D732;
+        Thu, 20 Jan 2022 21:49:49 +0000 (UTC)
+Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
+        id DD0FC1A001E; Thu, 20 Jan 2022 16:49:48 -0500 (EST)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     selinux@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH RFC v2 1/2] selinux: Fix selinux_sb_mnt_opts_compat()
+Date:   Thu, 20 Jan 2022 16:49:47 -0500
+Message-Id: <20220120214948.3637895-2-smayhew@redhat.com>
+In-Reply-To: <20220120214948.3637895-1-smayhew@redhat.com>
+References: <20220120214948.3637895-1-smayhew@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220120143727.27057-1-nikita.yushchenko@virtuozzo.com>
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Nikita,
+selinux_sb_mnt_opts_compat() is called under the sb_lock spinlock and
+shouldn't be performing any memory allocations.  Fix this by parsing the
+sids at the same time we're chopping up the security mount options
+string and then using the pre-parsed sids when doing the comparison.
 
-[ Cc: Steve as user-space maintainer, also Neil and whole linux-nfs ]
+Fixes: cc274ae7763d ("selinux: fix sleeping function called from invalid context")
+Fixes: 69c4a42d72eb ("lsm,selinux: add new hook to compare new mount to an existing mount")
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ security/selinux/hooks.c | 112 ++++++++++++++++++++++++++-------------
+ 1 file changed, 76 insertions(+), 36 deletions(-)
 
-> On systemd-based linux hosts, rpcbind service is typically started via
-> socket activation, when the first client connects. If no client has
-> connected before LTP rpc test starts, rpcbind process will not be
-> running at the time of check_portmap_rpcbind() execution, causing
-> check_portmap_rpcbind() to report TCONF error.
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 5b6895e4fc29..f27ca9e870c0 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -342,6 +342,11 @@ static void inode_free_security(struct inode *inode)
+ 
+ struct selinux_mnt_opts {
+ 	const char *fscontext, *context, *rootcontext, *defcontext;
++	u32 fscontext_sid;
++	u32 context_sid;
++	u32 rootcontext_sid;
++	u32 defcontext_sid;
++	unsigned short preparsed;
+ };
+ 
+ static void selinux_free_mnt_opts(void *mnt_opts)
+@@ -598,12 +603,11 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
+ 	return 0;
+ }
+ 
+-static int parse_sid(struct super_block *sb, const char *s, u32 *sid,
+-		     gfp_t gfp)
++static int parse_sid(struct super_block *sb, const char *s, u32 *sid)
+ {
+ 	int rc = security_context_str_to_sid(&selinux_state, s,
+-					     sid, gfp);
+-	if (rc)
++					     sid, GFP_KERNEL);
++	if (rc && sb != NULL)
+ 		pr_warn("SELinux: security_context_str_to_sid"
+ 		       "(%s) failed for (dev %s, type %s) errno=%d\n",
+ 		       s, sb->s_id, sb->s_type->name, rc);
+@@ -673,8 +677,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 */
+ 	if (opts) {
+ 		if (opts->fscontext) {
+-			rc = parse_sid(sb, opts->fscontext, &fscontext_sid,
+-					GFP_KERNEL);
++			rc = parse_sid(sb, opts->fscontext, &fscontext_sid);
+ 			if (rc)
+ 				goto out;
+ 			if (bad_option(sbsec, FSCONTEXT_MNT, sbsec->sid,
+@@ -683,8 +686,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 			sbsec->flags |= FSCONTEXT_MNT;
+ 		}
+ 		if (opts->context) {
+-			rc = parse_sid(sb, opts->context, &context_sid,
+-					GFP_KERNEL);
++			rc = parse_sid(sb, opts->context, &context_sid);
+ 			if (rc)
+ 				goto out;
+ 			if (bad_option(sbsec, CONTEXT_MNT, sbsec->mntpoint_sid,
+@@ -693,8 +695,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 			sbsec->flags |= CONTEXT_MNT;
+ 		}
+ 		if (opts->rootcontext) {
+-			rc = parse_sid(sb, opts->rootcontext, &rootcontext_sid,
+-					GFP_KERNEL);
++			rc = parse_sid(sb, opts->rootcontext, &rootcontext_sid);
+ 			if (rc)
+ 				goto out;
+ 			if (bad_option(sbsec, ROOTCONTEXT_MNT, root_isec->sid,
+@@ -703,8 +704,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 			sbsec->flags |= ROOTCONTEXT_MNT;
+ 		}
+ 		if (opts->defcontext) {
+-			rc = parse_sid(sb, opts->defcontext, &defcontext_sid,
+-					GFP_KERNEL);
++			rc = parse_sid(sb, opts->defcontext, &defcontext_sid);
+ 			if (rc)
+ 				goto out;
+ 			if (bad_option(sbsec, DEFCONTEXT_MNT, sbsec->def_sid,
+@@ -976,6 +976,9 @@ static int selinux_add_opt(int token, const char *s, void **mnt_opts)
+ {
+ 	struct selinux_mnt_opts *opts = *mnt_opts;
+ 	bool is_alloc_opts = false;
++	bool preparse_sid = false;
++	u32 sid;
++	int rc;
+ 
+ 	if (token == Opt_seclabel)
+ 		/* eaten and completely ignored */
+@@ -991,26 +994,57 @@ static int selinux_add_opt(int token, const char *s, void **mnt_opts)
+ 		is_alloc_opts = true;
+ 	}
+ 
++	if (selinux_initialized(&selinux_state))
++		preparse_sid = true;
++
+ 	switch (token) {
+ 	case Opt_context:
+ 		if (opts->context || opts->defcontext)
+ 			goto err;
+ 		opts->context = s;
++		if (preparse_sid) {
++			rc = parse_sid(NULL, s, &sid);
++			if (rc == 0) {
++				opts->context_sid = sid;
++				opts->preparsed |= CONTEXT_MNT;
++			}
++		}
+ 		break;
+ 	case Opt_fscontext:
+ 		if (opts->fscontext)
+ 			goto err;
+ 		opts->fscontext = s;
++		if (preparse_sid) {
++			rc = parse_sid(NULL, s, &sid);
++			if (rc == 0) {
++				opts->fscontext_sid = sid;
++				opts->preparsed |= FSCONTEXT_MNT;
++			}
++		}
+ 		break;
+ 	case Opt_rootcontext:
+ 		if (opts->rootcontext)
+ 			goto err;
+ 		opts->rootcontext = s;
++		if (preparse_sid) {
++			rc = parse_sid(NULL, s, &sid);
++			if (rc == 0) {
++				opts->rootcontext_sid = sid;
++				opts->preparsed |= ROOTCONTEXT_MNT;
++			}
++		}
+ 		break;
+ 	case Opt_defcontext:
+ 		if (opts->context || opts->defcontext)
+ 			goto err;
+ 		opts->defcontext = s;
++		if (preparse_sid) {
++			rc = parse_sid(NULL, s, &sid);
++			if (rc == 0) {
++				opts->defcontext_sid = sid;
++				opts->preparsed |= DEFCONTEXT_MNT;
++			}
++		}
+ 		break;
+ 	}
+ 
+@@ -2648,8 +2682,6 @@ static int selinux_sb_mnt_opts_compat(struct super_block *sb, void *mnt_opts)
+ {
+ 	struct selinux_mnt_opts *opts = mnt_opts;
+ 	struct superblock_security_struct *sbsec = sb->s_security;
+-	u32 sid;
+-	int rc;
+ 
+ 	/*
+ 	 * Superblock not initialized (i.e. no options) - reject if any
+@@ -2666,35 +2698,43 @@ static int selinux_sb_mnt_opts_compat(struct super_block *sb, void *mnt_opts)
+ 		return (sbsec->flags & SE_MNTMASK) ? 1 : 0;
+ 
+ 	if (opts->fscontext) {
+-		rc = parse_sid(sb, opts->fscontext, &sid, GFP_NOWAIT);
+-		if (rc)
+-			return 1;
+-		if (bad_option(sbsec, FSCONTEXT_MNT, sbsec->sid, sid))
++		if (opts->preparsed & FSCONTEXT_MNT) {
++			if (bad_option(sbsec, FSCONTEXT_MNT, sbsec->sid,
++				       opts->fscontext_sid))
++				return 1;
++		} else {
+ 			return 1;
++		}
+ 	}
+ 	if (opts->context) {
+-		rc = parse_sid(sb, opts->context, &sid, GFP_NOWAIT);
+-		if (rc)
+-			return 1;
+-		if (bad_option(sbsec, CONTEXT_MNT, sbsec->mntpoint_sid, sid))
++		if (opts->preparsed & CONTEXT_MNT) {
++			if (bad_option(sbsec, CONTEXT_MNT, sbsec->mntpoint_sid,
++				       opts->context_sid))
++				return 1;
++		} else {
+ 			return 1;
++		}
+ 	}
+ 	if (opts->rootcontext) {
+-		struct inode_security_struct *root_isec;
++		if (opts->preparsed & ROOTCONTEXT_MNT) {
++			struct inode_security_struct *root_isec;
+ 
+-		root_isec = backing_inode_security(sb->s_root);
+-		rc = parse_sid(sb, opts->rootcontext, &sid, GFP_NOWAIT);
+-		if (rc)
+-			return 1;
+-		if (bad_option(sbsec, ROOTCONTEXT_MNT, root_isec->sid, sid))
++			root_isec = backing_inode_security(sb->s_root);
++			if (bad_option(sbsec, ROOTCONTEXT_MNT, root_isec->sid,
++				       opts->rootcontext_sid))
++				return 1;
++		} else {
+ 			return 1;
++		}
+ 	}
+ 	if (opts->defcontext) {
+-		rc = parse_sid(sb, opts->defcontext, &sid, GFP_NOWAIT);
+-		if (rc)
+-			return 1;
+-		if (bad_option(sbsec, DEFCONTEXT_MNT, sbsec->def_sid, sid))
++		if (opts->preparsed & DEFCONTEXT_MNT) {
++			if (bad_option(sbsec, DEFCONTEXT_MNT, sbsec->def_sid,
++				       opts->defcontext_sid))
++				return 1;
++		} else {
+ 			return 1;
++		}
+ 	}
+ 	return 0;
+ }
+@@ -2713,14 +2753,14 @@ static int selinux_sb_remount(struct super_block *sb, void *mnt_opts)
+ 		return 0;
+ 
+ 	if (opts->fscontext) {
+-		rc = parse_sid(sb, opts->fscontext, &sid, GFP_KERNEL);
++		rc = parse_sid(sb, opts->fscontext, &sid);
+ 		if (rc)
+ 			return rc;
+ 		if (bad_option(sbsec, FSCONTEXT_MNT, sbsec->sid, sid))
+ 			goto out_bad_option;
+ 	}
+ 	if (opts->context) {
+-		rc = parse_sid(sb, opts->context, &sid, GFP_KERNEL);
++		rc = parse_sid(sb, opts->context, &sid);
+ 		if (rc)
+ 			return rc;
+ 		if (bad_option(sbsec, CONTEXT_MNT, sbsec->mntpoint_sid, sid))
+@@ -2729,14 +2769,14 @@ static int selinux_sb_remount(struct super_block *sb, void *mnt_opts)
+ 	if (opts->rootcontext) {
+ 		struct inode_security_struct *root_isec;
+ 		root_isec = backing_inode_security(sb->s_root);
+-		rc = parse_sid(sb, opts->rootcontext, &sid, GFP_KERNEL);
++		rc = parse_sid(sb, opts->rootcontext, &sid);
+ 		if (rc)
+ 			return rc;
+ 		if (bad_option(sbsec, ROOTCONTEXT_MNT, root_isec->sid, sid))
+ 			goto out_bad_option;
+ 	}
+ 	if (opts->defcontext) {
+-		rc = parse_sid(sb, opts->defcontext, &sid, GFP_KERNEL);
++		rc = parse_sid(sb, opts->defcontext, &sid);
+ 		if (rc)
+ 			return rc;
+ 		if (bad_option(sbsec, DEFCONTEXT_MNT, sbsec->def_sid, sid))
+-- 
+2.31.1
 
-> Fix that by adding a quiet invocation of 'rpcinfo' before checking for
-> rpcbind.
-
-Looks reasonable, but I'd prefer to have confirmation from NFS experts.
-
-> For portmap, similar step is likely not needed, because portmap is used
-> only on old systemd and those don't use systemd.
-
-> Signed-off-by: Nikita Yushchenko <nikita.yushchenko@virtuozzo.com>
-> ---
->  testcases/network/rpc/basic_tests/rpc_lib.sh | 6 ++++++
->  1 file changed, 6 insertions(+)
-
-> diff --git a/testcases/network/rpc/basic_tests/rpc_lib.sh b/testcases/network/rpc/basic_tests/rpc_lib.sh
-> index c7c868709..e882e41b3 100644
-> --- a/testcases/network/rpc/basic_tests/rpc_lib.sh
-> +++ b/testcases/network/rpc/basic_tests/rpc_lib.sh
-> @@ -8,6 +8,12 @@ check_portmap_rpcbind()
->  	if pgrep portmap > /dev/null; then
->  		PORTMAPPER="portmap"
->  	else
-> +		# In case of systemd socket activation, rpcbind could be
-> +		# not started until somebody tries to connect to it's socket.
-> +		#
-> +		# To handle that case properly, run a client now.
-> +		rpcinfo >/dev/null 2>&1
-nit: Shouldn't we keep stderr? In LTP we put required commands into
-$TST_NEEDS_CMDS. It'd be better not require rpcinfo (not a hard dependency),
-and thus it'd be better to see "command not found" when rpcinfo missing and test
-fails.
-
-Kind regards,
-Petr
-
-> +
->  		pgrep rpcbind > /dev/null && PORTMAPPER="rpcbind" || \
->  			tst_brk TCONF "portmap or rpcbind is not running"
->  	fi
