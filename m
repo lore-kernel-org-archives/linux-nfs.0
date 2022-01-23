@@ -2,169 +2,121 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56A59C433F5
-	for <linux-nfs@archiver.kernel.org>; Sat, 22 Jan 2022 20:55:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B81AC433F5
+	for <linux-nfs@archiver.kernel.org>; Sun, 23 Jan 2022 06:29:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234855AbiAVUzN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 22 Jan 2022 15:55:13 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50928 "EHLO
+        id S231942AbiAWG3Y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 23 Jan 2022 01:29:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33262 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234844AbiAVUzN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Jan 2022 15:55:13 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DB46DC06173D;
-        Sat, 22 Jan 2022 12:55:12 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
-        Content-Description:In-Reply-To:References;
-        bh=3H17ZwduCeulLDZ8G7sSfbVcJQrwo5WKSwj+sy/g+qI=; b=IWAWN0UBg/t1BcYDP4KL2EDU3K
-        s3MxYl2lNhK+VZCIKM8wR3QkVENKhn9C7ZbqYIR9s8CXwjq9lpQ7CigDDhsSpZxCsKkNRKQRHeY6t
-        AlxzTzcq2zC2+BkOearzCUpVuiQmsC0v5SDU7tU8GhnezqGHcxjplEznDzpY9WY1QtOmJX/3E8UMr
-        o1NW92jdNvcou5/EIpd0/Ysa2rXETloAiZJ3/+9ZxtexqK+dBy4hEMBAwr7sempRSJSyfNVCcmZY0
-        asCdi2wQrEYJAquFbnu2jMPTlWG9NWosiro9I1mBItsyt8SjhKMoppdLKJit0H+q06ZHIZausX/Ku
-        Ilx+mnFA==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nBNPV-00GblC-SM; Sat, 22 Jan 2022 20:54:57 +0000
-From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Subject: [PATCH 1/2] Convert NFS from readpages to readahead
-Date:   Sat, 22 Jan 2022 20:54:52 +0000
-Message-Id: <20220122205453.3958181-1-willy@infradead.org>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S229549AbiAWG3Y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Jan 2022 01:29:24 -0500
+Received: from mail-wr1-x430.google.com (mail-wr1-x430.google.com [IPv6:2a00:1450:4864:20::430])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 026BAC06173B
+        for <linux-nfs@vger.kernel.org>; Sat, 22 Jan 2022 22:29:24 -0800 (PST)
+Received: by mail-wr1-x430.google.com with SMTP id v6so7614745wra.8
+        for <linux-nfs@vger.kernel.org>; Sat, 22 Jan 2022 22:29:23 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=vastdata.com; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=dzw69EPYwlmOHBt/UTItvtkhgc1C8duOChzsUdPkLrM=;
+        b=OfDjgQvMjD4rGBeOelLMOt8qRNEevVS/WyAGxGUENlO1KhQXq3d/YfB06oIhMFKaj7
+         suXkxFKBqBK46RskbQ++M+WX/GfyiJ4QzvPyH9ZdcqtuzB8Vu/1js6PM3oYun8UlN+s4
+         MGdlLyfzT8vEtV9GNIE1FfTRKKNcN+m/KeUudiWC2d0cT8dPyjGHhzTPuDk67O2noywR
+         AWBjwTJKCsOXzs/+9r1P9NQH1qV+fwhDUu+SVfrt4XQRRd93YfHXQM4wxFR1qC+lqYVu
+         h1zBjEmw0wLvGeWd8RPa8zd+mfFHZCrvwltzBfvPW/i2nVL7gPJuW5S6cSyQcwoB0Qzv
+         hzCQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=dzw69EPYwlmOHBt/UTItvtkhgc1C8duOChzsUdPkLrM=;
+        b=LM37449XDOT+2Zp/4BCf+VWt9eokrMZvKDdGXRVsu951bvAQ/bfPU7DGac1ufFQqmP
+         b2uwM1za79RMJnBApIXZOv6pzbd0rP/tY9PluM5+Hy0tL0+1uxPYqvDfVPz5CZm9hajx
+         8UGiUvNL+XfWv8G36HrDkvYvVTc4I4bOCnUlLLr360ZA5ot0CVeRlenm1UImZl1C7ow7
+         3ZemZ3IU8nF25EODUpJorzzyIdeJ7X0DdCERTFHyHfO62khU+qgEVSqehC6hKSl63uH8
+         hw6BzW4khvt/WwUxXGiKxah5Zc47axf0+RPQYLhCuiZ7DHX3KEfTy+b8g9ajKoXCgXBs
+         JvQw==
+X-Gm-Message-State: AOAM5319MgtgV5o9H5C0RwLO7Nal6vzXggHGMnc6XWO7JYZqyRShC73k
+        EGU6hUypGIp0SXdCZT10t6JDDB6j7bnkCQ==
+X-Google-Smtp-Source: ABdhPJxysGC4y0/6b+oIc8pL9PUBcBBxd5BKomrQJg3ie53c03T32/ggPJVqrziurP7zr+9gIL5S9g==
+X-Received: by 2002:adf:fec7:: with SMTP id q7mr9499201wrs.85.1642919362608;
+        Sat, 22 Jan 2022 22:29:22 -0800 (PST)
+Received: from gmail.com ([2a0d:6fc2:4951:4400:aa5e:45ff:fee1:90a8])
+        by smtp.gmail.com with ESMTPSA id p4sm15145353wmq.40.2022.01.22.22.29.21
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 22 Jan 2022 22:29:22 -0800 (PST)
+Date:   Sun, 23 Jan 2022 08:29:19 +0200
+From:   Dan Aloni <dan.aloni@vastdata.com>
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFSD: trim reads past NFS_OFFSET_MAX and fix NFSv3
+ check
+Message-ID: <20220123062919.7yjz5ryousix6vxf@gmail.com>
+References: <5DD3C5DF-52EF-4C84-894C-FCBB9A0F4259@oracle.com>
+ <20220122124953.1606281-1-dan.aloni@vastdata.com>
+ <ADEC85C2-8D72-4E25-A49B-2039C1FF82F2@oracle.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ADEC85C2-8D72-4E25-A49B-2039C1FF82F2@oracle.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-NFS is one of the last two users of the deprecated ->readpages aop.
-This conversion looks straightforward, but I have only compile-tested
-it.
+On Sat, Jan 22, 2022 at 05:37:16PM +0000, Chuck Lever III wrote:
+> Similar language in RFC 8881 section 18.22.4:
+> 
+> >>    If the server returns a "short read" (i.e., fewer data than requested
+> >>    and eof is set to FALSE), the client should send another READ to get
+> >>    the remaining data.  A server may return less data than requested
+> >>    under several circumstances.  The file may have been truncated by
+> >>    another client or perhaps on the server itself, changing the file
+> >>    size from what the requesting client believes to be the case.  This
+> >>    would reduce the actual amount of data available to the client.  It
+> >>    is possible that the server reduce the transfer size and so return a
+> >>    short read result.  Server resource exhaustion may also occur in a
+> >>    short read.
+> 
+> So the server could be returning INVAL and leaving EOF set
+> to false. That might be triggering the client to retry the
+> READ. Does the server need to set the EOF flag if the READ
+> arguments cross the limit of the range that the server can
+> return? Does the client need to check for this case and
+> stop retrying? The specs aren't particularly clear on this
+> matter.
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- fs/nfs/file.c          |  2 +-
- fs/nfs/nfstrace.h      |  6 +++---
- fs/nfs/read.c          | 21 +++++++++++++--------
- include/linux/nfs_fs.h |  3 +--
- 4 files changed, 18 insertions(+), 14 deletions(-)
+But eof only in `resok` and not in `resfail`. For reference, here's the
+reply I got:
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 76d76acbc594..4d681683d13c 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -514,7 +514,7 @@ static void nfs_swap_deactivate(struct file *file)
- 
- const struct address_space_operations nfs_file_aops = {
- 	.readpage = nfs_readpage,
--	.readpages = nfs_readpages,
-+	.readahead = nfs_readahead,
- 	.set_page_dirty = __set_page_dirty_nobuffers,
- 	.writepage = nfs_writepage,
- 	.writepages = nfs_writepages,
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 317ce27bdc4b..4611aa3a21a4 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -889,11 +889,11 @@ TRACE_EVENT(nfs_aop_readpage_done,
- TRACE_EVENT(nfs_aop_readahead,
- 		TP_PROTO(
- 			const struct inode *inode,
--			struct page *page,
-+			loff_t pos,
- 			unsigned int nr_pages
- 		),
- 
--		TP_ARGS(inode, page, nr_pages),
-+		TP_ARGS(inode, pos, nr_pages),
- 
- 		TP_STRUCT__entry(
- 			__field(dev_t, dev)
-@@ -911,7 +911,7 @@ TRACE_EVENT(nfs_aop_readahead,
- 			__entry->fileid = nfsi->fileid;
- 			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
- 			__entry->version = inode_peek_iversion_raw(inode);
--			__entry->offset = page_index(page) << PAGE_SHIFT;
-+			__entry->offset = pos;
- 			__entry->nr_pages = nr_pages;
- 		),
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index eb00229c1a50..2472f962a9a2 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -290,9 +290,8 @@ static void nfs_readpage_result(struct rpc_task *task,
- }
- 
- static int
--readpage_async_filler(void *data, struct page *page)
-+readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
- {
--	struct nfs_readdesc *desc = data;
- 	struct inode *inode = page_file_mapping(page)->host;
- 	unsigned int rsize = NFS_SERVER(inode)->rsize;
- 	struct nfs_page *new;
-@@ -397,14 +396,16 @@ int nfs_readpage(struct file *file, struct page *page)
- 	return ret;
- }
- 
--int nfs_readpages(struct file *file, struct address_space *mapping,
--		struct list_head *pages, unsigned nr_pages)
-+void nfs_readahead(struct readahead_control *ractl)
- {
-+	unsigned int nr_pages = readahead_count(ractl);
-+	struct file *file = ractl->file;
- 	struct nfs_readdesc desc;
--	struct inode *inode = mapping->host;
-+	struct inode *inode = ractl->mapping->host;
-+	struct page *page;
- 	int ret;
- 
--	trace_nfs_aop_readahead(inode, lru_to_page(pages), nr_pages);
-+	trace_nfs_aop_readahead(inode, readahead_pos(ractl), nr_pages);
- 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGES);
- 
- 	ret = -ESTALE;
-@@ -422,14 +423,18 @@ int nfs_readpages(struct file *file, struct address_space *mapping,
- 	nfs_pageio_init_read(&desc.pgio, inode, false,
- 			     &nfs_async_read_completion_ops);
- 
--	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
-+	while ((page = readahead_page(ractl)) != NULL) {
-+		ret = readpage_async_filler(&desc, page);
-+		put_page(page);
-+		if (ret)
-+			break;
-+	}
- 
- 	nfs_pageio_complete_read(&desc.pgio);
- 
- 	put_nfs_open_context(desc.ctx);
- out:
- 	trace_nfs_aop_readahead_done(inode, nr_pages, ret);
--	return ret;
- }
- 
- int __init nfs_init_readpagecache(void)
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 00835bacd236..e6ab516bc3d1 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -598,8 +598,7 @@ nfs_have_writebacks(struct inode *inode)
-  * linux/fs/nfs/read.c
-  */
- extern int  nfs_readpage(struct file *, struct page *);
--extern int  nfs_readpages(struct file *, struct address_space *,
--		struct list_head *, unsigned);
-+void nfs_readahead(struct readahead_control *);
- 
- /*
-  * inline functions
+Network File System, READ Reply  Error: NFS3ERR_INVAL
+    [Program Version: 3]
+    [V3 Procedure: READ (6)]
+    Status: NFS3ERR_INVAL (22)
+    file_attributes  Regular File mode: 0600 uid: 0 gid: 0
+        attributes_follow: value follows (1)
+        attributes  Regular File mode: 0600 uid: 0 gid: 0
+            Type: Regular File (1)
+            Mode: 0600, S_IRUSR, S_IWUSR
+            nlink: 1
+            uid: 0
+            gid: 0
+            size: 9223372036854775807
+            used: 4096
+            rdev: 0,0
+            fsid: 0x0000000000000002 (2)
+            fileid: 69
+            atime: Jan 18, 2022 20:20:33.611267439 IST
+                seconds: 1642530033
+                nano seconds: 611267439
+            mtime: Jan 18, 2022 20:20:33.571266608 IST
+                seconds: 1642530033
+                nano seconds: 571266608
+            ctime: Jan 18, 2022 20:20:33.571266608 IST
+                seconds: 1642530033
+                nano seconds: 571266608
+
 -- 
-2.34.1
-
+Dan Aloni
