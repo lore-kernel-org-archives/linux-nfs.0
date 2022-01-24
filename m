@@ -2,236 +2,160 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96B63C433FE
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jan 2022 22:58:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62DE5C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jan 2022 02:08:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1841246AbiAXW6G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jan 2022 17:58:06 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44322 "EHLO
+        id S1346102AbiAYCId (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jan 2022 21:08:33 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50542 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1839098AbiAXWtw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2022 17:49:52 -0500
-Received: from mail-ej1-x633.google.com (mail-ej1-x633.google.com [IPv6:2a00:1450:4864:20::633])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8ABADC06809E
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jan 2022 13:07:39 -0800 (PST)
-Received: by mail-ej1-x633.google.com with SMTP id ah7so24862984ejc.4
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jan 2022 13:07:39 -0800 (PST)
+        with ESMTP id S1847615AbiAXXUK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2022 18:20:10 -0500
+Received: from mail-ej1-x636.google.com (mail-ej1-x636.google.com [IPv6:2a00:1450:4864:20::636])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B0F04C08E8B4
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jan 2022 13:27:55 -0800 (PST)
+Received: by mail-ej1-x636.google.com with SMTP id o12so25102744eju.13
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jan 2022 13:27:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ionos.com; s=google;
+        d=paul-moore-com.20210112.gappssmtp.com; s=20210112;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=ePWzg4KksjRUDSjqr+o9tEK0DbR7L8NzVM+5lIUlDPo=;
-        b=UryOzKtTd2BAlxPDRNgCwCESf13lD5IW6bNOSpBDepFbuH7r9fjbsT6cE5x5Ghft6m
-         mvPNVWtkz01mVJrSqeC/gB7JTH8T6qFvFS/VnIIFZHW5/gP/sOhhcnNoyYhFzrPdUaVF
-         FvDL8M4vNuURIqj/n/AdjkvXl39lYlpRohMIl+wO54x442N5Kx3ijGlQ972NHhWQkaPM
-         2PB2Ht3BymPWofX9NOCMsDhYcC+73YD1E+ldRp1Zbpzgc9ITLFFrLh5PDvAi6v8hFREw
-         ZBIZaScnPoiVR8zI3lCx6RkrB7DD23Vmu/ZR3nC2SK8GmSX6IQ39leUg3dHZiL44CE+y
-         QY2Q==
+        bh=RYjOggTIatflhN2tcFQRaqqDoiv4Tn5RiFVJCwGLqbw=;
+        b=3gh94fdxPP1DWGi6gOuYZrgk2uf3k5hBepC1rTfdXAfdOBNwWYVRFT+7VJ//ZBKj48
+         9cUBdcc1L83luJV4tNyo6xJ2NhDMZh+fGByJMZOR/E6OGpvhKXMfLugkrlVdTOH56MDo
+         53GnLKtMZ1UmD6cNG2HLa7dp6n40gG/YORbut8GypvyjOFtcXXVbFmRUkHhk5gGPcxEp
+         Dgpu/Tpnuc1tgVySpXrEXV2khVCSkxu0v94hJwxyVmROc7D4gXyjwSOqfPqFfbNilXgd
+         1HKCc/J/SbsB8BIH3KWfAuFdAb4ahrykJGfJjcwv72KNRdT+NPieaA//XGgx9ofoPnqK
+         CFVw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=ePWzg4KksjRUDSjqr+o9tEK0DbR7L8NzVM+5lIUlDPo=;
-        b=1ycS38Fl9nv8sKGeiJEvj7dcFjJMaVkXAbShM2YLA3tWvjnLepDt/4P4u8iCIcrXGU
-         VVpVSmZtW5rTj7mE/0c8b/R0d+hs+m49rS1e6PkOpeMggntAabCe/1BlDgrR2ZuPQef6
-         VVP2UDfzP0SR6mSSRMls3OWLFx9kNSW8eCCA2zJ2sH0Lqwfe1VjCBqh6/UVLMkvVHSle
-         2StLIq+uDw2I4YoxwlzyW1nJn50hGHhOO4JmhWWSXXkeKzwvqw0qZ1GT5cVbyRcDYSbv
-         kwptfyetlE3kMWolW8o55/wNRpSHlR49WLb0IIuIDwhxXHPmzPqZzbW2vU+mQ7a+9UCD
-         n10w==
-X-Gm-Message-State: AOAM533RP80fJbfO5Vbl8WZs4oOxYfvdkQpP5l6SKbcfZ75TCKNQ3eC2
-        9zUlHQvz7Ptp4sp/7HUyIAmtXFV4JLf66AMtJ9UWFw==
-X-Google-Smtp-Source: ABdhPJxclIDTBsv4yYQkMf2IKJZoaAKnmKikCbThIVE5NKI9QkHybFZsTLU/0wfsssiMKHH11b6mrHEUsG/59h5Yi1w=
-X-Received: by 2002:a17:907:1c23:: with SMTP id nc35mr11335786ejc.624.1643058458017;
- Mon, 24 Jan 2022 13:07:38 -0800 (PST)
+        bh=RYjOggTIatflhN2tcFQRaqqDoiv4Tn5RiFVJCwGLqbw=;
+        b=UJ405AltzPJV5ljiJD6dmvJPBACflVXg3OWDmcnrlfTZ1Pi8V04VChWbI/Wriv1CuK
+         nxTl21pMMHOroaxjSnMuMMK5uTTaFxaEJfkjONauxh15ePOyA6Z9Ps2PTF9+KJiSumO9
+         dY2D2g71s4/kIO/cGBksT9tff7MqsIRCyKA8PxMdAZddKpgqEL7C39I6ouPP1rXwwR3T
+         MsDzEi1D/A2Xe7hd5nK+oGmV5uLIkx6ZnqzTPWrC032nV0zh1SXqdNOsE9n37OVWz4G4
+         1ur60RyTnIkFuLyCO+3Y/ePE946jyvQUanTiTfmf9uwLb9P5XdAM7C2zGnSR1+Z3k9MY
+         dKVQ==
+X-Gm-Message-State: AOAM530KOdhvo6ysggMPsOvLDmpPp4YgNjW1tkByWPnsmyzJ5N4MYnMK
+        Q60CWeqMwQ1r3pZ1l+52vzqOWjl+w7hx6feTNPio
+X-Google-Smtp-Source: ABdhPJzYbZvpioE6dEHN6JXBqwOIehEPUtOGXhvu9h/22uwOkXqdsmf4vjBbxGP53yiW7luwQlXcqdOThz5giAMUPiM=
+X-Received: by 2002:a17:907:968d:: with SMTP id hd13mr4919050ejc.12.1643059674146;
+ Mon, 24 Jan 2022 13:27:54 -0800 (PST)
 MIME-Version: 1.0
-References: <20220124091107.642561-1-hch@lst.de> <20220124091107.642561-12-hch@lst.de>
-In-Reply-To: <20220124091107.642561-12-hch@lst.de>
-From:   Jinpu Wang <jinpu.wang@ionos.com>
-Date:   Mon, 24 Jan 2022 22:07:26 +0100
-Message-ID: <CAMGffEknV3j8nm__Bc_q7QUra+MV2kj-CMcq8O2ZdEK+B3om_Q@mail.gmail.com>
-Subject: Re: [PATCH 11/19] rnbd-srv: remove struct rnbd_dev_blk_io
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Jens Axboe <axboe@kernel.dk>,
-        Pavel Begunkov <asml.silence@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "Md . Haris Iqbal" <haris.iqbal@ionos.com>,
-        =?UTF-8?Q?Roger_Pau_Monn=C3=A9?= <roger.pau@citrix.co>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        linux-block@vger.kernel.org, dm-devel@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
-        xen-devel@lists.xenproject.org, drbd-dev@lists.linbit.com
+References: <20220120214948.3637895-1-smayhew@redhat.com> <20220120214948.3637895-2-smayhew@redhat.com>
+In-Reply-To: <20220120214948.3637895-2-smayhew@redhat.com>
+From:   Paul Moore <paul@paul-moore.com>
+Date:   Mon, 24 Jan 2022 16:27:43 -0500
+Message-ID: <CAHC9VhT2RhnXtK3aQuDCFUr5qayH25G8HHjRTJzhWM3H41YNog@mail.gmail.com>
+Subject: Re: [PATCH RFC v2 1/2] selinux: Fix selinux_sb_mnt_opts_compat()
+To:     Scott Mayhew <smayhew@redhat.com>
+Cc:     selinux@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Jan 24, 2022 at 10:11 AM Christoph Hellwig <hch@lst.de> wrote:
+On Thu, Jan 20, 2022 at 4:50 PM Scott Mayhew <smayhew@redhat.com> wrote:
 >
-> Only the priv field of rnbd_dev_blk_io is used, so store the value of
-> that in bio->bi_private directly and remove the entire bio_set overhead.
+> selinux_sb_mnt_opts_compat() is called under the sb_lock spinlock and
+> shouldn't be performing any memory allocations.  Fix this by parsing the
+> sids at the same time we're chopping up the security mount options
+> string and then using the pre-parsed sids when doing the comparison.
 >
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jack Wang <jinpu.wang@ionos.com>
-Thanks!
+> Fixes: cc274ae7763d ("selinux: fix sleeping function called from invalid context")
+> Fixes: 69c4a42d72eb ("lsm,selinux: add new hook to compare new mount to an existing mount")
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 > ---
->  drivers/block/rnbd/rnbd-srv-dev.c |  4 +---
->  drivers/block/rnbd/rnbd-srv-dev.h | 13 ++-----------
->  drivers/block/rnbd/rnbd-srv.c     | 27 ++++-----------------------
->  drivers/block/rnbd/rnbd-srv.h     |  1 -
->  4 files changed, 7 insertions(+), 38 deletions(-)
+>  security/selinux/hooks.c | 112 ++++++++++++++++++++++++++-------------
+>  1 file changed, 76 insertions(+), 36 deletions(-)
 >
-> diff --git a/drivers/block/rnbd/rnbd-srv-dev.c b/drivers/block/rnbd/rnbd-srv-dev.c
-> index 98d3e591a0885..c5d0a03911659 100644
-> --- a/drivers/block/rnbd/rnbd-srv-dev.c
-> +++ b/drivers/block/rnbd/rnbd-srv-dev.c
-> @@ -12,8 +12,7 @@
->  #include "rnbd-srv-dev.h"
->  #include "rnbd-log.h"
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 5b6895e4fc29..f27ca9e870c0 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -342,6 +342,11 @@ static void inode_free_security(struct inode *inode)
 >
-> -struct rnbd_dev *rnbd_dev_open(const char *path, fmode_t flags,
-> -                              struct bio_set *bs)
-> +struct rnbd_dev *rnbd_dev_open(const char *path, fmode_t flags)
->  {
->         struct rnbd_dev *dev;
->         int ret;
-> @@ -30,7 +29,6 @@ struct rnbd_dev *rnbd_dev_open(const char *path, fmode_t flags,
->
->         dev->blk_open_flags = flags;
->         bdevname(dev->bdev, dev->name);
-> -       dev->ibd_bio_set = bs;
->
->         return dev;
->
-> diff --git a/drivers/block/rnbd/rnbd-srv-dev.h b/drivers/block/rnbd/rnbd-srv-dev.h
-> index 1a14ece0be726..2c3df02b5e8ec 100644
-> --- a/drivers/block/rnbd/rnbd-srv-dev.h
-> +++ b/drivers/block/rnbd/rnbd-srv-dev.h
-> @@ -14,25 +14,16 @@
->
->  struct rnbd_dev {
->         struct block_device     *bdev;
-> -       struct bio_set          *ibd_bio_set;
->         fmode_t                 blk_open_flags;
->         char                    name[BDEVNAME_SIZE];
+>  struct selinux_mnt_opts {
+>         const char *fscontext, *context, *rootcontext, *defcontext;
+> +       u32 fscontext_sid;
+> +       u32 context_sid;
+> +       u32 rootcontext_sid;
+> +       u32 defcontext_sid;
+> +       unsigned short preparsed;
 >  };
->
-> -struct rnbd_dev_blk_io {
-> -       struct rnbd_dev *dev;
-> -       void             *priv;
-> -       /* have to be last member for front_pad usage of bioset_init */
-> -       struct bio      bio;
-> -};
-> -
->  /**
->   * rnbd_dev_open() - Open a device
-> + * @path:      path to open
->   * @flags:     open flags
-> - * @bs:                bio_set to use during block io,
->   */
-> -struct rnbd_dev *rnbd_dev_open(const char *path, fmode_t flags,
-> -                              struct bio_set *bs);
-> +struct rnbd_dev *rnbd_dev_open(const char *path, fmode_t flags);
->
->  /**
->   * rnbd_dev_close() - Close a device
-> diff --git a/drivers/block/rnbd/rnbd-srv.c b/drivers/block/rnbd/rnbd-srv.c
-> index 6d228af1dcc35..ff9b389976078 100644
-> --- a/drivers/block/rnbd/rnbd-srv.c
-> +++ b/drivers/block/rnbd/rnbd-srv.c
-> @@ -116,9 +116,7 @@ rnbd_get_sess_dev(int dev_id, struct rnbd_srv_session *srv_sess)
->
->  static void rnbd_dev_bi_end_io(struct bio *bio)
->  {
-> -       struct rnbd_dev_blk_io *io = bio->bi_private;
-> -
-> -       rnbd_endio(io->priv, blk_status_to_errno(bio->bi_status));
-> +       rnbd_endio(bio->bi_private, blk_status_to_errno(bio->bi_status));
->         bio_put(bio);
+
+Is the preparsed field strictly necessary?  Can't we just write the
+code to assume that if a given SID field is not SECSID_NULL then it is
+valid/preparsed?
+
+> @@ -598,12 +603,11 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
+>         return 0;
 >  }
 >
-> @@ -131,7 +129,6 @@ static int process_rdma(struct rnbd_srv_session *srv_sess,
->         struct rnbd_srv_sess_dev *sess_dev;
->         u32 dev_id;
->         int err;
-> -       struct rnbd_dev_blk_io *io;
->         struct bio *bio;
->         short prio;
+> -static int parse_sid(struct super_block *sb, const char *s, u32 *sid,
+> -                    gfp_t gfp)
+> +static int parse_sid(struct super_block *sb, const char *s, u32 *sid)
+>  {
+>         int rc = security_context_str_to_sid(&selinux_state, s,
+> -                                            sid, gfp);
+> -       if (rc)
+> +                                            sid, GFP_KERNEL);
+> +       if (rc && sb != NULL)
+>                 pr_warn("SELinux: security_context_str_to_sid"
+>                        "(%s) failed for (dev %s, type %s) errno=%d\n",
+>                        s, sb->s_id, sb->s_type->name, rc);
+
+It seems like it would still be useful to see the warning even when sb
+is NULL, wouldn't you say?  How about something like this:
+
+  if (rc)
+    pr_warn("SELinux: blah blah blah (dev %s, type %s) blah blah\n",
+            (sb ? sb->s_id : "?"),
+            (sb ? sb->s_type->name : "?"));
+
+> @@ -976,6 +976,9 @@ static int selinux_add_opt(int token, const char *s, void **mnt_opts)
+>  {
+>         struct selinux_mnt_opts *opts = *mnt_opts;
+>         bool is_alloc_opts = false;
+> +       bool preparse_sid = false;
+> +       u32 sid;
+> +       int rc;
 >
-> @@ -152,7 +149,7 @@ static int process_rdma(struct rnbd_srv_session *srv_sess,
->         priv->sess_dev = sess_dev;
->         priv->id = id;
->
-> -       bio = bio_alloc_bioset(GFP_KERNEL, 1, sess_dev->rnbd_dev->ibd_bio_set);
-> +       bio = bio_alloc(GFP_KERNEL, 1);
->         if (bio_add_page(bio, virt_to_page(data), datalen,
->                         offset_in_page(data)) != datalen) {
->                 rnbd_srv_err(sess_dev, "Failed to map data to bio\n");
-> @@ -160,12 +157,8 @@ static int process_rdma(struct rnbd_srv_session *srv_sess,
->                 goto bio_put;
+>         if (token == Opt_seclabel)
+>                 /* eaten and completely ignored */
+> @@ -991,26 +994,57 @@ static int selinux_add_opt(int token, const char *s, void **mnt_opts)
+>                 is_alloc_opts = true;
 >         }
 >
-> -       io = container_of(bio, struct rnbd_dev_blk_io, bio);
-> -       io->dev = sess_dev->rnbd_dev;
-> -       io->priv = priv;
-> -
->         bio->bi_end_io = rnbd_dev_bi_end_io;
-> -       bio->bi_private = io;
-> +       bio->bi_private = priv;
->         bio->bi_opf = rnbd_to_bio_flags(le32_to_cpu(msg->rw));
->         bio->bi_iter.bi_sector = le64_to_cpu(msg->sector);
->         bio->bi_iter.bi_size = le32_to_cpu(msg->bi_size);
-> @@ -260,7 +253,6 @@ static void destroy_sess(struct rnbd_srv_session *srv_sess)
->
->  out:
->         xa_destroy(&srv_sess->index_idr);
-> -       bioset_exit(&srv_sess->sess_bio_set);
->
->         pr_info("RTRS Session %s disconnected\n", srv_sess->sessname);
->
-> @@ -289,16 +281,6 @@ static int create_sess(struct rtrs_srv_sess *rtrs)
->                 return -ENOMEM;
->
->         srv_sess->queue_depth = rtrs_srv_get_queue_depth(rtrs);
-> -       err = bioset_init(&srv_sess->sess_bio_set, srv_sess->queue_depth,
-> -                         offsetof(struct rnbd_dev_blk_io, bio),
-> -                         BIOSET_NEED_BVECS);
-> -       if (err) {
-> -               pr_err("Allocating srv_session for path %s failed\n",
-> -                      pathname);
-> -               kfree(srv_sess);
-> -               return err;
-> -       }
-> -
->         xa_init_flags(&srv_sess->index_idr, XA_FLAGS_ALLOC);
->         INIT_LIST_HEAD(&srv_sess->sess_dev_list);
->         mutex_init(&srv_sess->lock);
-> @@ -747,8 +729,7 @@ static int process_msg_open(struct rnbd_srv_session *srv_sess,
->                 goto reject;
->         }
->
-> -       rnbd_dev = rnbd_dev_open(full_path, open_flags,
-> -                                &srv_sess->sess_bio_set);
-> +       rnbd_dev = rnbd_dev_open(full_path, open_flags);
->         if (IS_ERR(rnbd_dev)) {
->                 pr_err("Opening device '%s' on session %s failed, failed to open the block device, err: %ld\n",
->                        full_path, srv_sess->sessname, PTR_ERR(rnbd_dev));
-> diff --git a/drivers/block/rnbd/rnbd-srv.h b/drivers/block/rnbd/rnbd-srv.h
-> index e5604bce123ab..be2ae486d407e 100644
-> --- a/drivers/block/rnbd/rnbd-srv.h
-> +++ b/drivers/block/rnbd/rnbd-srv.h
-> @@ -23,7 +23,6 @@ struct rnbd_srv_session {
->         struct rtrs_srv_sess    *rtrs;
->         char                    sessname[NAME_MAX];
->         int                     queue_depth;
-> -       struct bio_set          sess_bio_set;
->
->         struct xarray           index_idr;
->         /* List of struct rnbd_srv_sess_dev */
-> --
-> 2.30.2
->
+> +       if (selinux_initialized(&selinux_state))
+> +               preparse_sid = true;
+
+Since there is no looping in selinux_add_opt, and you can only specify
+one token/option for a given call to this function, it seems like we
+can do away with preparse_sid and just do the selinux_initialized(...)
+check directly in the code below, yes?
+
+>         switch (token) {
+>         case Opt_context:
+>                 if (opts->context || opts->defcontext)
+>                         goto err;
+>                 opts->context = s;
+> +               if (preparse_sid) {
+> +                       rc = parse_sid(NULL, s, &sid);
+> +                       if (rc == 0) {
+> +                               opts->context_sid = sid;
+> +                               opts->preparsed |= CONTEXT_MNT;
+> +                       }
+> +               }
+
+Is there a reason why we need a dedicated sid variable as opposed to
+passing opt->context_sid as the parameter?  For example:
+
+  rc = parse_sid(NULL, s, &opts->context_sid);
+
+-- 
+paul moore
+paul-moore.com
