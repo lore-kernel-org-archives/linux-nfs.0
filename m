@@ -2,124 +2,107 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FA42C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jan 2022 03:55:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 85A14C433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jan 2022 05:35:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241283AbiAXDzh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 23 Jan 2022 22:55:37 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:57064 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235321AbiAXDzg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Jan 2022 22:55:36 -0500
+        id S241104AbiAXFf3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jan 2022 00:35:29 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:50028 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229623AbiAXFf3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2022 00:35:29 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 378CC21997;
-        Mon, 24 Jan 2022 03:55:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1642996535; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 351051F380;
+        Mon, 24 Jan 2022 05:35:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1643002528;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=WFyjPabVahDB+vrXElKQ+UDq/fcSAdM6+RjOQdJJ+zQ=;
-        b=VgQrwpIxLgoCjPnFeLQ6BZXyoET8QaMuJj5dg3XrTQjG/Dyt8rnQo5H2GJQtXWKNEPjzw0
-        3LVlkZnGEErfLJ5EZGcO/nb+tBz6PyIHowNAMuCegClQg5ZrMhmmIZTDjms6NXFeLDRqPQ
-        zG8uip/oHc07Wt3VH1lEmYNs8wJB0uM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1642996535;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
+        bh=OTyPEQDRmkQ+qcAPzVDveelCYqDuxJTJRFqBr095D38=;
+        b=j3/KALv4ndNRWJBl8lDzFTKaVLwjLhs2zwVHfRpqBvAkojo2ETZIbxWKxGh5fxz1p1rpnc
+        Af8vpqTY/6WqoL+GhIFreujuciP4nIoyZZ96ojK1zJBXa3WE1VgdLYjWrSiXUJCxRmzTy7
+        J6lqWAgGg5YyLx7ONlHQPooxMebcXhw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1643002528;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=WFyjPabVahDB+vrXElKQ+UDq/fcSAdM6+RjOQdJJ+zQ=;
-        b=JvFFvxy7hIQZ1+xEKNkM/EQRldT0iSe3V12OSgUpU+cHWb6H8JoYwh8OdaLk3As3Rgau0m
-        WMhtltZp6u4HM8Ag==
+        bh=OTyPEQDRmkQ+qcAPzVDveelCYqDuxJTJRFqBr095D38=;
+        b=6kQFbu1FyhQJvxwF9kvQXbdKtD05MpH8mDUNoyKS2VmDM+hdZLQ5do3xEHaHBWykPKPDs1
+        ZgU9D+RiiJV0FDDw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id EEB8813305;
-        Mon, 24 Jan 2022 03:55:31 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 044D01331A;
+        Mon, 24 Jan 2022 05:35:27 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id eiDtKjMj7mFfRgAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 24 Jan 2022 03:55:31 +0000
-Subject: [PATCH 23/23] SUNRPC: lock against ->sock changing during sysfs read
-From:   NeilBrown <neilb@suse.de>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mel Gorman <mgorman@suse.de>,
-        Christoph Hellwig <hch@infradead.org>,
-        David Howells <dhowells@redhat.com>
-Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org
-Date:   Mon, 24 Jan 2022 14:48:32 +1100
-Message-ID: <164299611287.26253.6282866540933339893.stgit@noble.brown>
-In-Reply-To: <164299573337.26253.7538614611220034049.stgit@noble.brown>
-References: <164299573337.26253.7538614611220034049.stgit@noble.brown>
-User-Agent: StGit/0.23
+        id ljVjOp867mGoYwAAMHmgww
+        (envelope-from <pvorel@suse.cz>); Mon, 24 Jan 2022 05:35:27 +0000
+Date:   Mon, 24 Jan 2022 06:35:26 +0100
+From:   Petr Vorel <pvorel@suse.cz>
+To:     Steve Dickson <steved@redhat.com>
+Cc:     linux-nfs@vger.kernel.org,
+        Yongcheng Yang <yongcheng.yang@gmail.com>
+Subject: Re: [PATCH 1/1] utils: Fix left debug info
+Message-ID: <Ye46npjOSzvqdXc2@pevik>
+Reply-To: Petr Vorel <pvorel@suse.cz>
+References: <20220122180243.19355-1-pvorel@suse.cz>
+ <67d7bba1-d4e5-00be-c198-8501df6e61e1@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <67d7bba1-d4e5-00be-c198-8501df6e61e1@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-->sock can be set to NULL asynchronously unless ->recv_mutex is held.
-So it is important to hold that mutex.  Otherwise a sysfs read can
-trigger an oops.
-Commit 17f09d3f619a ("SUNRPC: Check if the xprt is connected before
-handling sysfs reads") appears to attempt to fix this problem, but it
-only narrows the race window.
+> Hey!
 
-Fixes: 17f09d3f619a ("SUNRPC: Check if the xprt is connected before handling sysfs reads")
-Fixes: a8482488a7d6 ("SUNRPC query transport's source port")
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- net/sunrpc/sysfs.c    |    5 ++++-
- net/sunrpc/xprtsock.c |    7 ++++++-
- 2 files changed, 10 insertions(+), 2 deletions(-)
+> This patch is pretty messed up.
 
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 2766dd21935b..baaf65ea9e38 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -115,11 +115,14 @@ static ssize_t rpc_sysfs_xprt_srcaddr_show(struct kobject *kobj,
- 	}
- 
- 	sock = container_of(xprt, struct sock_xprt, xprt);
--	if (kernel_getsockname(sock->sock, (struct sockaddr *)&saddr) < 0)
-+	mutex_lock(&sock->recv_mutex);
-+	if (sock->sock == NULL ||
-+	    kernel_getsockname(sock->sock, (struct sockaddr *)&saddr) < 0)
- 		goto out;
- 
- 	ret = sprintf(buf, "%pISc\n", &saddr);
- out:
-+	mutex_unlock(&sock->recv_mutex);
- 	xprt_put(xprt);
- 	return ret + 1;
- }
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 9d34c71004fa..3f2b766e9f82 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1641,7 +1641,12 @@ static int xs_get_srcport(struct sock_xprt *transport)
- unsigned short get_srcport(struct rpc_xprt *xprt)
- {
- 	struct sock_xprt *sock = container_of(xprt, struct sock_xprt, xprt);
--	return xs_sock_getport(sock->sock);
-+	unsigned short ret = 0;
-+	mutex_lock(&sock->recv_mutex);
-+	if (sock->sock)
-+		ret = xs_sock_getport(sock->sock);
-+	mutex_unlock(&sock->recv_mutex);
-+	return ret;
- }
- EXPORT_SYMBOL(get_srcport);
- 
+> On 1/22/22 13:02, Petr Vorel wrote:
+> > Patch for 497ffdf8 ('manpage: remove the no longer supported value
+> > "vers2"') [1] didn't contain printf in exportfs.c (looks like debugging
+> > info) and errno handling in stropts.c (maybe work on other patch) which
+> > were applied. Thus removing it.
+> Someone pointed it to me that  with 2 v3 auto-negotiation
+> on the same mount the is error EPROTONOSUPPORT
+> instead of EBUSY so this test
+>      if (errno != EBUSY)
+> 	errno = olderrno;
 
+> seemed to work but unfortunately I can
+> not find the patch/bz or thread we were
+> communicating in... So I am going to
+> remove the test until I get (or find) the
+> official patch
 
+Hi Steve,
+
+thanks a lot for explanation.
+
+Also not sure if it needs to be removed, but there are at least few places which
+mention NFS version 2.
+
+$ git grep -i nfs.version.2
+utils/mountd/mountd.man:an NFS side protocol used by NFS version 2 [RFC1094] and NFS version 3 [RFC1813].
+utils/mountd/mountd.man:can support both NFS version 2, 3 and 4. If the
+utils/mountd/mountd.man:can support both NFS version 2 and the newer version 3.
+utils/nfsstat/nfsstat.c:  -2                    Show NFS version 2 statistics\n\
+utils/statd/sm-notify.man:For NFS version 2 and version 3, the
+utils/statd/statd.man:For NFS version 2 [RFC1094] and NFS version 3 [RFC1813], the
+
+Kind regards,
+Petr
+
+> Committed!
+
+> thanks,
+
+> steved.
