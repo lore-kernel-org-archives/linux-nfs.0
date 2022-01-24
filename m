@@ -2,50 +2,50 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F2AFC433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jan 2022 03:55:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FA42C433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jan 2022 03:55:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241270AbiAXDzZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 23 Jan 2022 22:55:25 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:47144 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235321AbiAXDzZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Jan 2022 22:55:25 -0500
+        id S241283AbiAXDzh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 23 Jan 2022 22:55:37 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:57064 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S235321AbiAXDzg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Jan 2022 22:55:36 -0500
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 314321F3A0;
-        Mon, 24 Jan 2022 03:55:24 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 378CC21997;
+        Mon, 24 Jan 2022 03:55:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1642996524; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1642996535; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=jKekh97n0i6AmpeVDE22svCq5nXmamLchP56LCBUk8Y=;
-        b=cghIZ+kikeLgdtBbznxHOS+3WEdmBrO58IXPnQI2796gYuTKI0vwTkL6GMNqI2mYUIIeU6
-        ReNJlFXbDr6Eb54AwmHUbjX4yrIkQyU1S2kMSlYL4L6gRIdVymk3q/9Cqx7AimvDYswQYI
-        nxCqilDbnGhP6QAEsarThDH0Sw84OTo=
+        bh=WFyjPabVahDB+vrXElKQ+UDq/fcSAdM6+RjOQdJJ+zQ=;
+        b=VgQrwpIxLgoCjPnFeLQ6BZXyoET8QaMuJj5dg3XrTQjG/Dyt8rnQo5H2GJQtXWKNEPjzw0
+        3LVlkZnGEErfLJ5EZGcO/nb+tBz6PyIHowNAMuCegClQg5ZrMhmmIZTDjms6NXFeLDRqPQ
+        zG8uip/oHc07Wt3VH1lEmYNs8wJB0uM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1642996524;
+        s=susede2_ed25519; t=1642996535;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=jKekh97n0i6AmpeVDE22svCq5nXmamLchP56LCBUk8Y=;
-        b=pyWYRf1SlHJfVNvJ5zVKWKuw4WN+JbjrZRekAoxXuyjygtU2r+5TTggEeP2gXDcVFJ3xIg
-        XpH/SY4pzZRfnFAQ==
+        bh=WFyjPabVahDB+vrXElKQ+UDq/fcSAdM6+RjOQdJJ+zQ=;
+        b=JvFFvxy7hIQZ1+xEKNkM/EQRldT0iSe3V12OSgUpU+cHWb6H8JoYwh8OdaLk3As3Rgau0m
+        WMhtltZp6u4HM8Ag==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2E76D13305;
-        Mon, 24 Jan 2022 03:55:20 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id EEB8813305;
+        Mon, 24 Jan 2022 03:55:31 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id g+iONygj7mFHRgAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 24 Jan 2022 03:55:20 +0000
-Subject: [PATCH 22/23] NFS: swap-out must always use STABLE writes.
+        id eiDtKjMj7mFfRgAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 24 Jan 2022 03:55:31 +0000
+Subject: [PATCH 23/23] SUNRPC: lock against ->sock changing during sysfs read
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -57,7 +57,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Mon, 24 Jan 2022 14:48:32 +1100
-Message-ID: <164299611287.26253.13462969110743208198.stgit@noble.brown>
+Message-ID: <164299611287.26253.6282866540933339893.stgit@noble.brown>
 In-Reply-To: <164299573337.26253.7538614611220034049.stgit@noble.brown>
 References: <164299573337.26253.7538614611220034049.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -68,63 +68,58 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The commit handling code is not safe against memory-pressure deadlocks
-when writing to swap.  In particular, nfs_commitdata_alloc() blocks
-indefinitely waiting for memory, and this can consume all available
-workqueue threads.
+->sock can be set to NULL asynchronously unless ->recv_mutex is held.
+So it is important to hold that mutex.  Otherwise a sysfs read can
+trigger an oops.
+Commit 17f09d3f619a ("SUNRPC: Check if the xprt is connected before
+handling sysfs reads") appears to attempt to fix this problem, but it
+only narrows the race window.
 
-swap-out most likely uses STABLE writes anyway as COND_STABLE indicates
-that a stable write should be used if the write fits in a single
-request, and it normally does.  However if we ever swap with a small
-wsize, or gather unusually large numbers of pages for a single write,
-this might change.
-
-For safety, make it explicit in the code that direct writes used for swap
-must always use FLUSH_COND_STABLE.
-
+Fixes: 17f09d3f619a ("SUNRPC: Check if the xprt is connected before handling sysfs reads")
+Fixes: a8482488a7d6 ("SUNRPC query transport's source port")
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/direct.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ net/sunrpc/sysfs.c    |    5 ++++-
+ net/sunrpc/xprtsock.c |    7 ++++++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 43a956d7fd62..29c007b2a17a 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -791,7 +791,7 @@ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
-  */
- static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 					       struct iov_iter *iter,
--					       loff_t pos)
-+					       loff_t pos, int ioflags)
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 2766dd21935b..baaf65ea9e38 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -115,11 +115,14 @@ static ssize_t rpc_sysfs_xprt_srcaddr_show(struct kobject *kobj,
+ 	}
+ 
+ 	sock = container_of(xprt, struct sock_xprt, xprt);
+-	if (kernel_getsockname(sock->sock, (struct sockaddr *)&saddr) < 0)
++	mutex_lock(&sock->recv_mutex);
++	if (sock->sock == NULL ||
++	    kernel_getsockname(sock->sock, (struct sockaddr *)&saddr) < 0)
+ 		goto out;
+ 
+ 	ret = sprintf(buf, "%pISc\n", &saddr);
+ out:
++	mutex_unlock(&sock->recv_mutex);
+ 	xprt_put(xprt);
+ 	return ret + 1;
+ }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 9d34c71004fa..3f2b766e9f82 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1641,7 +1641,12 @@ static int xs_get_srcport(struct sock_xprt *transport)
+ unsigned short get_srcport(struct rpc_xprt *xprt)
  {
- 	struct nfs_pageio_descriptor desc;
- 	struct inode *inode = dreq->inode;
-@@ -799,7 +799,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 	size_t requested_bytes = 0;
- 	size_t wsize = max_t(size_t, NFS_SERVER(inode)->wsize, PAGE_SIZE);
+ 	struct sock_xprt *sock = container_of(xprt, struct sock_xprt, xprt);
+-	return xs_sock_getport(sock->sock);
++	unsigned short ret = 0;
++	mutex_lock(&sock->recv_mutex);
++	if (sock->sock)
++		ret = xs_sock_getport(sock->sock);
++	mutex_unlock(&sock->recv_mutex);
++	return ret;
+ }
+ EXPORT_SYMBOL(get_srcport);
  
--	nfs_pageio_init_write(&desc, inode, FLUSH_COND_STABLE, false,
-+	nfs_pageio_init_write(&desc, inode, ioflags, false,
- 			      &nfs_direct_write_completion_ops);
- 	desc.pg_dreq = dreq;
- 	get_dreq(dreq);
-@@ -905,6 +905,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
- 	struct nfs_direct_req *dreq;
- 	struct nfs_lock_context *l_ctx;
- 	loff_t pos, end;
-+	int ioflags = swap ? FLUSH_COND_STABLE : FLUSH_STABLE;
- 
- 	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
- 		file, iov_iter_count(iter), (long long) iocb->ki_pos);
-@@ -947,7 +948,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
- 	if (!swap)
- 		nfs_start_io_direct(inode);
- 
--	requested = nfs_direct_write_schedule_iovec(dreq, iter, pos);
-+	requested = nfs_direct_write_schedule_iovec(dreq, iter, pos, ioflags);
- 
- 	if (mapping->nrpages) {
- 		invalidate_inode_pages2_range(mapping,
 
 
