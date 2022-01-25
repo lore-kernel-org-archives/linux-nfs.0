@@ -2,132 +2,113 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C21B8C4321E
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jan 2022 19:01:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 973C4C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jan 2022 19:09:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233387AbiAYTBA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 25 Jan 2022 14:01:00 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44220 "EHLO
+        id S229582AbiAYTJw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 Jan 2022 14:09:52 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46236 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232105AbiAYTA7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2022 14:00:59 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8508CC06173B
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Jan 2022 11:00:56 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 4B6AFB81A23
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Jan 2022 19:00:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B5BF9C340E0;
-        Tue, 25 Jan 2022 19:00:53 +0000 (UTC)
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     neilb@suse.de
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v1 2/2] SUNRPC: Remove svo_shutdown method
-Date:   Tue, 25 Jan 2022 14:00:52 -0500
-Message-Id:  <164313725230.3285.5420060785593218794.stgit@bazille.1015granger.net>
-X-Mailer: git-send-email 2.34.0
-In-Reply-To:  <164313706374.3285.4265550102084857832.stgit@bazille.1015granger.net>
-References:  <164313706374.3285.4265550102084857832.stgit@bazille.1015granger.net>
-User-Agent: StGit/1.4
+        with ESMTP id S229586AbiAYTJu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2022 14:09:50 -0500
+Received: from mail-qv1-xf2b.google.com (mail-qv1-xf2b.google.com [IPv6:2607:f8b0:4864:20::f2b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 65AE7C06173D
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Jan 2022 11:09:49 -0800 (PST)
+Received: by mail-qv1-xf2b.google.com with SMTP id a7so26214786qvl.1
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Jan 2022 11:09:49 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=kw5JfT3YUES2j7F/cVOsfLAQzmbaJFRQxrMCwxFTydA=;
+        b=BeAY+Kibs1iqu695MqZej4L+vyS2TywF6tc9ZxaV50g/Q8xJqe3BRAVXnJZuWD97Mo
+         K91lTUrqHQvZMOj1RTA0TLqFlx/z8468zUvl7s6zy6P274AZq9kGxttdTOdzQ1H/g1fD
+         DvMdZKMFPnht5utoKm7IKcL5+Kjnu03nUchfmsoJs8xDnV+8/cawjUwClRFcbqxSAGVl
+         ZkdSLXLXWH7n5+p7VqXwsjjk4fDRyW4KeLm9mXNqE+EukRdWBjH0vCbXReUqT3kiLp6q
+         B7TP6WcQP6AwHktmnYxHR+j+cjnSXCzvlYJ+TzUEd0D5nG6Ovs8e/4DZJbrvmfapODAK
+         EfQg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :in-reply-to:references:mime-version:content-transfer-encoding;
+        bh=kw5JfT3YUES2j7F/cVOsfLAQzmbaJFRQxrMCwxFTydA=;
+        b=n1JhE7FRwzZEKpqDXi+ixmjHH6suhtZ00yZ6rNFIRh3Msc2hH+WEiWTBAn2gA3MrlB
+         HcoyFMe3zo3a5mpQ0TP5fhOYGpP9VY1oN+XpOcbuqKvLQKfcJM5EkKZ6veV2E4b7nazF
+         lZDrtBszgrf0eEvNhMV6G3kr2qPBX/FBgQgy5Rve3xyfqAH/BoJkcUNg9N1lSFbvsRDR
+         ufZBHTg8e1khMkcJzYavn3m+VSWlP9XFSR217W21XwFYi2QLdnvdWWu4xBJxj68pdDO/
+         cErq1p2rOS1isU3xTh+R70GnNioifZTCTuzrIdzysFj32S2EExsEjQcBLXKM7XFyh04K
+         h6KA==
+X-Gm-Message-State: AOAM533NaSATCwRgFMbZN9WssdJHflrNTA5F92K+qPx/MoAkUf5e62V7
+        iK35psupjaJDyCNVKoYi9sMzP/ePpyw=
+X-Google-Smtp-Source: ABdhPJyG6E8ctjbVDuU8iEyUul0KMzZxF73cnAciwAz1XNLea1Nm8nONoAFs9sz1nGpSHmjhNKugHg==
+X-Received: by 2002:a05:6214:d02:: with SMTP id 2mr19602215qvh.125.1643137788545;
+        Tue, 25 Jan 2022 11:09:48 -0800 (PST)
+Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
+        by smtp.gmail.com with ESMTPSA id n6sm34802qtx.23.2022.01.25.11.09.47
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 25 Jan 2022 11:09:47 -0800 (PST)
+Sender: Anna Schumaker <schumakeranna@gmail.com>
+From:   schumaker.anna@gmail.com
+X-Google-Original-From: Anna.Schumaker@Netapp.com
+To:     steved@redhat.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v6 1/9] rpcctl: Add a rpcctl.py tool
+Date:   Tue, 25 Jan 2022 14:09:38 -0500
+Message-Id: <20220125190946.23586-2-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20220125190946.23586-1-Anna.Schumaker@Netapp.com>
+References: <20220125190946.23586-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2981; h=from:subject:message-id; bh=NEPktSkWLjLaTKQaHMfTHny5YeSIEqvGtcdh6iTLz6w=; b=owEBbQKS/ZANAwAIATNqszNvZn+XAcsmYgBh8EjkaJZT3Fg1Ks6HNuTvhxt1Nyihl2OpLyJEGckZ nQ3iLziJAjMEAAEIAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCYfBI5AAKCRAzarMzb2Z/lxoPD/ 9j1LKAxNTMF7lpMPuXL1duf/Ve75fqk8HFM4V3bDWNWxi6SX6ha7MKj7nhoR9PdMAzMKauZ+MXq45x rm/q92FJU2Gj+RZiRXB6ry6eqbyaosFRurfhY2cn/iIRGWYJ6xo7m46mJ9C8srftTsaOZczlvSFSc7 pZtr+HGZsvr6laWkFIHIRSe4XNoOzYCZEBqVb2097zY54j0BwIMaV9BheDKa2xzlMK6gpAYPBG8RvA L/cgYD1G3fxuXx3HTsLUX9eSR4aOuLjC3lQREhVYCbYI7RVOnm1GCLHaE2Im9HxAE8txLkGqEQB0bf SJcM6Ww41h4pJ++mka29VtXn8gEoIiPJI6vdgeiVMoIEkSgTz+CRKaB02+rHQQW0F6LrISxIg9tivR EUMyfULa1/I6m4A+Sb8yyRiIFrm7Yzf5LREeCY4zwwC6MMwVF08y4HVRdDJXYnPovDETdlClTtQut+ TxmCdWKYD1U92b0t5/AiIevdHiMvH9N3/vLvVB5APVAArQZZduacTQCQGxHRLUoDALnDzzstBrc8/X s6OL0ADSdG5YhHZrNU/zlWoCeYfRgmEnlQbL6d+b/tiWyPYfxcS1uxnm3l59vXW81bqp5N6YwS4/wL DBGuA9b+DK5ZXkoGNWmhavs6EB6nTCAuvc3c75bZxB6VzII0PZArWb5ATrmA==
-X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp; fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up. Neil observed that "any code that calls svc_shutdown_net()
-knows what the shutdown function should be, and so can call it
-directly."
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+This will be used to print and manipulate the sunrpc sysfs directory
+files. Running without arguments prints both usage information and the
+location of the sunrpc sysfs directory.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+--
+v6: Combine files into a single Python script
 ---
- fs/lockd/svc.c             |    5 ++---
- fs/nfsd/nfssvc.c           |    2 +-
- include/linux/sunrpc/svc.h |    3 ---
- net/sunrpc/svc.c           |    3 ---
- 4 files changed, 3 insertions(+), 10 deletions(-)
+ tools/rpcctl/rpcctl.py | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+ create mode 100755 tools/rpcctl/rpcctl.py
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 3a05af873625..f5b688a844aa 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -249,6 +249,7 @@ static int make_socks(struct svc_serv *serv, struct net *net,
- 		printk(KERN_WARNING
- 			"lockd_up: makesock failed, error=%d\n", err);
- 	svc_shutdown_net(serv, net);
-+	svc_rpcb_cleanup(serv, net);
- 	return err;
- }
- 
-@@ -287,8 +288,7 @@ static void lockd_down_net(struct svc_serv *serv, struct net *net)
- 			cancel_delayed_work_sync(&ln->grace_period_end);
- 			locks_end_grace(&ln->lockd_manager);
- 			svc_shutdown_net(serv, net);
--			dprintk("%s: per-net data destroyed; net=%x\n",
--				__func__, net->ns.inum);
-+			svc_rpcb_cleanup(serv, net);
- 		}
- 	} else {
- 		pr_err("%s: no users! net=%x\n",
-@@ -351,7 +351,6 @@ static struct notifier_block lockd_inet6addr_notifier = {
- #endif
- 
- static const struct svc_serv_ops lockd_sv_ops = {
--	.svo_shutdown		= svc_rpcb_cleanup,
- 	.svo_function		= lockd,
- 	.svo_module		= THIS_MODULE,
- };
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index aeeac6de1f0a..0c6b216e439e 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -613,7 +613,6 @@ static int nfsd_get_default_max_blksize(void)
- }
- 
- static const struct svc_serv_ops nfsd_thread_sv_ops = {
--	.svo_shutdown		= nfsd_last_thread,
- 	.svo_function		= nfsd,
- 	.svo_module		= THIS_MODULE,
- };
-@@ -724,6 +723,7 @@ void nfsd_put(struct net *net)
- 
- 	if (kref_put(&nn->nfsd_serv->sv_refcnt, nfsd_noop)) {
- 		svc_shutdown_net(nn->nfsd_serv, net);
-+		nfsd_last_thread(nn->nfsd_serv, net);
- 		svc_destroy(&nn->nfsd_serv->sv_refcnt);
- 		spin_lock(&nfsd_notifier_lock);
- 		nn->nfsd_serv = NULL;
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 6ef9c1cafd0b..63794d772eb3 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -55,9 +55,6 @@ struct svc_pool {
- struct svc_serv;
- 
- struct svc_serv_ops {
--	/* Callback to use when last thread exits. */
--	void		(*svo_shutdown)(struct svc_serv *, struct net *);
--
- 	/* function for service threads to run */
- 	int		(*svo_function)(void *);
- 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 2aabec2b4bec..74a75a22da9a 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -539,9 +539,6 @@ EXPORT_SYMBOL_GPL(svc_create_pooled);
- void svc_shutdown_net(struct svc_serv *serv, struct net *net)
- {
- 	svc_close_net(serv, net);
--
--	if (serv->sv_ops->svo_shutdown)
--		serv->sv_ops->svo_shutdown(serv, net);
- }
- EXPORT_SYMBOL_GPL(svc_shutdown_net);
- 
+diff --git a/tools/rpcctl/rpcctl.py b/tools/rpcctl/rpcctl.py
+new file mode 100755
+index 000000000000..9851d2f5f9a6
+--- /dev/null
++++ b/tools/rpcctl/rpcctl.py
+@@ -0,0 +1,25 @@
++#!/usr/bin/python3
++import argparse
++import pathlib
++import sys
++
++with open("/proc/mounts", 'r') as f:
++    mount = [ line.split()[1] for line in f if line.startswith("sys ") ]
++    if len(mount) == 0:
++        print("ERROR: sysfs is not mounted")
++        sys.exit(1)
++
++sunrpc = pathlib.Path(mount[0]) / "kernel" / "sunrpc"
++if not sunrpc.is_dir():
++    print("ERROR: sysfs does not have sunrpc directory")
++    sys.exit(1)
++
++parser = argparse.ArgumentParser()
++
++def show_small_help(args):
++    parser.print_usage()
++    print("sunrpc dir:", sunrpc)
++parser.set_defaults(func=show_small_help)
++
++args = parser.parse_args()
++args.func(args)
+-- 
+2.34.1
 
