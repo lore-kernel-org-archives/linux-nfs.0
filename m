@@ -2,258 +2,235 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 85B24C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jan 2022 21:59:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82E65C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jan 2022 22:11:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233441AbiAYV7p (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 25 Jan 2022 16:59:45 -0500
-Received: from mx0b-00069f02.pphosted.com ([205.220.177.32]:48706 "EHLO
-        mx0b-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233434AbiAYV7p (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2022 16:59:45 -0500
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 20PJH84m003671;
-        Tue, 25 Jan 2022 21:59:43 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=E/AQK8T/uNkludXzr8coM1tuOGuySQ6fv3eDyXQb5P0=;
- b=rhhvOJQ1WLKSOEjAeO8TLqpON/tRnX5/g/+jZEP8DJeLLUyaPFB/XHf9G0oY1wkwGDqI
- LeAOdTU/8EWaKzQLKjAvBaKfh0akbjKJieb7cKa9T0dUZbVG0VlC6eYfsGVAdynaSGUT
- F7ryHY+wRGxJBiCw86t7Cbq9qmmBWFUGXHIdIDHOels/O2gPpNQ5NolusETCGuVGL7fF
- n8jx57Ss0qyGBbqlIrOr2V+aHD1qcQ2mnhAzUf1/bSwx7FJRHq0Q6xjBIiEiPJRMrElk
- /9MCquiKFkzB2l4iguIIakhmZbc1++hBDYP7qY9cBVYIharAZCOrjwQsvbJJMMdRAgOI lA== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3dsvmjd0bn-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 25 Jan 2022 21:59:43 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 20PLoxwS183792;
-        Tue, 25 Jan 2022 21:59:41 GMT
-Received: from nam04-dm6-obe.outbound.protection.outlook.com (mail-dm6nam08lp2047.outbound.protection.outlook.com [104.47.73.47])
-        by userp3030.oracle.com with ESMTP id 3dr71yv2nh-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 25 Jan 2022 21:59:41 +0000
+        id S233546AbiAYWLZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 Jan 2022 17:11:25 -0500
+Received: from esa10.utexas.iphmx.com ([216.71.150.156]:30907 "EHLO
+        esa10.utexas.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230384AbiAYWLY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2022 17:11:24 -0500
+X-Utexas-Sender-Group: RELAYLIST-O365
+X-IronPort-MID: 315845017
+X-IPAS-Result: =?us-ascii?q?A2G+AQBzdPBhh6o4L2haHgEBCxIMQIMsKC6BVmqESoNIA?=
+ =?us-ascii?q?QGFOYUOgwIDnXUDGDwCCQEBAQEBAQEBAQcCQQQBAQMEhH4Cg10mOBMBAgQBA?=
+ =?us-ascii?q?QEBAwIDAQEBAQEBAwEBBgEBAQEBAQUEAgIQAQEBAQsNDggLBg4VIoUvOQ2DU?=
+ =?us-ascii?q?007AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBBQKBCD0BA?=
+ =?us-ascii?q?QEBAgESERUIAQE3AQQLCw4KAgImAgIyJQYNBgIBARcHgmKCZgMNIQGhHgGBE?=
+ =?us-ascii?q?wEWPgIjAUABAQuBCIkMeoExgQGCCAEBBgQEhQ0YRgkNgVsJCQGBBiqDDoslQ?=
+ =?us-ascii?q?4FJRIE8D4J0PoN/DRARAoMugkMikWgGMl0BMBsvLEojSkWhDGCeAINPn0IGD?=
+ =?us-ascii?q?wUup3mWR6Y7AgQCBAUCDgEBBoF4gX8zGggdE4MkURkPjiAZg1iKfSMyOAIGC?=
+ =?us-ascii?q?wEBAwmNZQGCRQEB?=
+IronPort-PHdr: A9a23:ICm5xx3p500maWt5smDPpVBlVkEcU/3cMg0U788hjLRDOuSm8o/5N
+ UPSrfNqkBfSXIrd5v4F7oies63pVWEap5rUtncEfc9AUhYfgpAQmAotSMeOFUz8KqvsaCo3V
+ MRPXVNo5Te1K09QTcP3e12Uv2G//TcJXBjzKFkdGw==
+IronPort-Data: A9a23:tZ1cdKroCP0ET+Aem0aynMAZK9NeBmK9ZRIvgKrLsJaIsI4StFCzt
+ garIBnTPK2MMWv0KI9waI+180xQuMXWmN9qGgQ6/CFkFX8R8uPIVI+TRqvS04N+DSFioGZPt
+ Zh2hgzocZhcokcxIn5BC5C5xZVG/fjgqoHUVaiUakideSc+EH170Us5xrZj6mJVqYHR7z2l6
+ IuaT/L3ZQfNNw5cagr4PIra9XuDFNyr0N8plgRWicJj5TcypFFJZH4rHpxdGlOjKmVi8k9Wc
+ M6YpF2x1juxEx7AkbpJmJ6jGqEBaua60QRjFhO68kVt6/RPjnVa70o1CBYTQUIP0CyQoN178
+ 8puvIXsTFY2APLKud1IBnG0EwkmVUFH0JnuBCHm9Oe0lgjBeXaqxOhyBkYrO4Fe4vxwHWxF6
+ f0fLnYKcwyHgOW1hrm8T4GAhOx6dJWtYNxZ5y8mlG6BZRolacmrr6Hi/dBf0SsirsVHAfaYe
+ tYUeTN0KhnMfnWjP39MUc9uwLrw3yaXnztwlG/NiJtu3XLv1QFD6b/sM/T5Ud2yWpAA9qqfj
+ jmfpD+mav0AD/SVxzuI9n63ruHOkCf3Q48JUrqi+ZZCi12OzW9VDBAIWEGTpuOwgUqzHdlYL
+ iQ89iMvt6Ua+EqmQZ/2WBjQiHqFuAMMHtxeCMUk5wyXjKnZ+QCUAi4DVDEpVTA9nMo/RDhv3
+ VjQmdrsXGVrqOfMFirb8aqIpzSvPyRTNXUFeSIPUQoC5Z/kvZ03iRXMCN1kFcZZk+EZBxn1m
+ 2uTtRczjY4MrscSi6Dq4m6YhROV882hohEO2i3bWWes7wVcbYGjZpC15VWz0RqmBNbGJrVml
+ Chb8/Vy/NziHrnRy3LVG7ll8KWBoq/famaA2AIH84wJrmz1oxaekZZsDCaSzauF3zZtRNMES
+ ErauAcU75gKOnKvNPZze9joVJxsyrX8H9P4UPySdsBJfpV6aA6A+mdpeFKU2Gfu1kMrlMnT2
+ Kt3k+7zUR726ow+k1JaotvxN5d2nUjSIkuOH/jGI+yPi+b2WZJsYe5t3KGyRu449riYhw7e7
+ sxSMcCHoz0GDrGlO3KKrdZLdgxRRZTeOXwQg5wHHgJkClo2cFzN99eKndvNhqQ5wvgEy7+Up
+ hlRpGcBlgKm3CKvxfq2hoBLM+q0BskXQYMTOC0nJ1Gz3HY/KY2o9r8YbZIrfL4hnNGPPtYlJ
+ 8Tpj/6oW6wVIhyeo2R1RcCk8ORKKUr37SrTYXvNSGVuJ/ZIGl2Skve5L1uHycX7JnHq3SfIi
+ +b8jVyzrFtqb1gKMfs6n9r2nwru5iBMwbwrN6YKS/EKEHjRHEFRA3SZppcKzwskcH0vGhPyO
+ 96qPCol
+IronPort-HdrOrdr: A9a23:DkE9D6PDQfedl8BcT0H155DYdb4zR+YMi2TDiHoddfUFSKalfp
+ 6V98jztSWatN/eYgBHpTnyAtjlfZq6z+8J3WBxB8bZYOCCggeVxe5ZnOjfKlHbalXDH6tmpN
+ xdmstFeaPN5DpB7foSiTPQe7hA/DDEytHQuQ639QYTcegAUdAE0+4WMHf9LqQ7fnglOXJvf6
+ Dsmvav6gDQMkg/X4CePD0oTuLDr9rEmNbPZgMHPQcu7E2rgSmz4LD3PhCE1lNGOgk/jIsKwC
+ zgqUjU96+ju/a0xlv10HLS1Y1fnJ/ExsFYDMKBp8AJInHHixquZq5mR7qe1QpF6t2H2RIPqp
+ 3hsh0gN8N85zf4eXy0mwLk303a3DMn+xbZuCmlqEqmhfa8aCMxCsJHi44cWADe8VAcsNZ117
+ 8O936FtrJMZCmw3RjV1pztbVVHh0C0qX0tnao4lHpES7YTb7dXsMg24F5VKpEdByj3gbpXXt
+ WGNPusp8q+TGnqLUww5gJUsZmRtzUIb1i7q3E5y4yoO2M8pgE886MarPZv6UvouqhNDKWs3N
+ 60QpiAoos+OvP+XZgNddvpfvHHeVAlYSi8eV56cm6XXJ3uBRr22uzKCfMOla2XUa1N8IY/iZ
+ zaFHxCs2p3V1PJYPf+qaF2zg==
+X-IronPort-Anti-Spam-Filtered: true
+X-IronPort-AV: E=Sophos;i="5.88,315,1635224400"; 
+   d="scan'208";a="315845017"
+X-Utexas-Seen-Outbound: true
+Received: from mail-co1nam11lp2170.outbound.protection.outlook.com (HELO NAM11-CO1-obe.outbound.protection.outlook.com) ([104.47.56.170])
+  by esa10.utexas.iphmx.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 25 Jan 2022 16:11:24 -0600
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=D0CPab76VDZ4i/vNwjktwC8inb4EztvqVjavIiXLXDEkHV5yUD3Y4I9uE2fvtt0LLcru9tSeTTa+U0BADELwGrFuJOw6SYgaPIYay7FmyzUtRP/gCavFNPEAPJNOn8xxqe/4w2T/ASxEeIKlc+H9tFyzdKV1QeuYHFLL2/OFZbCMNauXrS8CfZOgCGh2HLiAa5S3h+6uitdML6j1LkHxQQTM3GLA3nqtR9HQ2WT1TuOmzB+485fdm54jY/Nkb62xsm0oCQZDXaW9J4k5kowenjzDMSR8J90M36lkhnP3iYA/0kti6dcDEDN562RuLEQfrURbTw0xbyaZJPvYz10afg==
+ b=U1gNuadO7raEuLswCmNsxV1FjD3BJrtkvnS1NyhbSPm+HJ95vbUUtepyLS5RhcmfI81gGYyQNAndQD5Lv/rmYW5GJDyMXC5inmy8wUcbx3jsISeOy9efPSzLvOBYzb45ifbBldjqYZ75JzXNNGwPEuRJeTkxhf0T0kC6tNZ261foKZDcDyrF29NakQ2Iqsdes8v8i/Zm8PluDM2J/aIdG7LlGF+t4LYG338Uq7xFQ34MBnLaSiMJd14AI+X7PyRqOudCwr8UdEulyTYRLeJVG2J5p62+H2DCw0USUbcrc7iCJsKK8FUeLMjBF8hh58GNjYSqKzIk1ZxyUTYfv8MwJQ==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=E/AQK8T/uNkludXzr8coM1tuOGuySQ6fv3eDyXQb5P0=;
- b=Z8/fee62GnM42Uxz+yXa+OzsjNsts/6ypw4fUmp4RvtapRNFVLrvo18DC6Qc0ZbNCmbqeU89UuiAIlIp0OOzWhiBguDojxtiuh1POU6wPeL2D+VHu0D52P7SQKkHByup9aGT/m6zmShz/A0RrnmpqEQM4GJqwP2+WkYkd5PalNBdShVkXzCNwhSyPpK291Dc1pRyj7sGCWWIM9Z2Cm1bq5njPTUsUY5MHioBa3fmMy0VdYMUZOBzGYVNgHDwtEQ7sB8ksNVKKCNa6MOHR/7c62oMTWGUFje6EKbBPGnAY4+4pkr3+aLkSLDZCNWXIhl8VSwUXBuQwZxuIU7orRPSdw==
+ bh=huGnqYN28IBvE4ZEfdTuTdGZjl0QyK8xMcPSN0oqgKM=;
+ b=KFJKHDbR1Xa//SINCdUvJa9CJZFcqA3JlhOKwMkUSAZLffjYER+qhMH9U5+M0oaJAeOPBdT0gtPJTaOC6CEBqAtZTpKwHyh2PSgVDF2whWqFRE0CyUw7Jepel5ey9e9Ra1w5ZIc3SaN2jWQGki9QXttTIbOGqzQg500riKS1cP3tmTvjTWEwIXFSVeZcmyI/IHlBgFL8+7YkEFHeYoYOZeOKTv2AU60IQ6FpYdqzf7sLAo2xXd57j1wcXNHUGMpGx781rI3gaX4Y4sZz8cJJAXPRVFrLk3v95QfR9tUfzTQjcSYkl11v9fW4gjEecSnU0deb89rjMxgM+4vF/RS5uw==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none; dmarc=none;
  dkim=none; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ d=utexas.onmicrosoft.com; s=selector1-utexas-onmicrosoft-com;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=E/AQK8T/uNkludXzr8coM1tuOGuySQ6fv3eDyXQb5P0=;
- b=ukkZnlC03uZYMv4XIpGzgjkbef9TDjf/D/eOs126JgOg8tu5ZoH21azpe3x5FWeKB+P8SsqUsMyRCF010W2Uf06t6V2XBnPMMr9ULXWlj3mbW31mz0wYK45Di9WARpEitXhgfcjGj168HmiDo8IGmsBlry9gBaYmqCyt0FaD+ko=
-Received: from CH0PR10MB4858.namprd10.prod.outlook.com (2603:10b6:610:cb::17)
- by CY4PR10MB1989.namprd10.prod.outlook.com (2603:10b6:903:11a::12) with
+ bh=huGnqYN28IBvE4ZEfdTuTdGZjl0QyK8xMcPSN0oqgKM=;
+ b=ftoDqP6AGMpucoNWHLCMTtmUIRCdvTy9kMeAoOloirOxF2Tn4EPFKUBfIUXX7eCaefyIhshB6mV0UVbYe9Cr8PTBTPIso1ErbCaBL+80HTGcPFm+f2+Rl2naYl4MY2tEM6vVCtX55LByu1GetA84TxQWT9AVjNbK1RsvVPv08+Y=
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=math.utexas.edu;
+Received: from BYAPR06MB3848.namprd06.prod.outlook.com (2603:10b6:a02:8c::15)
+ by SN6PR06MB4861.namprd06.prod.outlook.com (2603:10b6:805:c1::32) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4909.12; Tue, 25 Jan
- 2022 21:59:39 +0000
-Received: from CH0PR10MB4858.namprd10.prod.outlook.com
- ([fe80::241e:15fa:e7d8:dea7]) by CH0PR10MB4858.namprd10.prod.outlook.com
- ([fe80::241e:15fa:e7d8:dea7%9]) with mapi id 15.20.4909.017; Tue, 25 Jan 2022
- 21:59:39 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Neil Brown <neilb@suse.de>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 2/2] SUNRPC: Remove svo_shutdown method
-Thread-Topic: [PATCH v1 2/2] SUNRPC: Remove svo_shutdown method
-Thread-Index: AQHYEh4AiHVQD0aNRUipeoAjiSRA4qx0R9qAgAABnIA=
-Date:   Tue, 25 Jan 2022 21:59:39 +0000
-Message-ID: <E1C5753E-6061-41CC-930F-1565488FC799@oracle.com>
-References: <164313706374.3285.4265550102084857832.stgit@bazille.1015granger.net>
- <164313725230.3285.5420060785593218794.stgit@bazille.1015granger.net>
- <164314763348.5493.760625882164316264@noble.neil.brown.name>
-In-Reply-To: <164314763348.5493.760625882164316264@noble.neil.brown.name>
-Accept-Language: en-US
+ 2022 22:11:21 +0000
+Received: from BYAPR06MB3848.namprd06.prod.outlook.com
+ ([fe80::7949:fab0:e011:12f2]) by BYAPR06MB3848.namprd06.prod.outlook.com
+ ([fe80::7949:fab0:e011:12f2%4]) with mapi id 15.20.4930.015; Tue, 25 Jan 2022
+ 22:11:21 +0000
+Message-ID: <7256e781-5ab8-2b39-cb69-58a73ae48786@math.utexas.edu>
+Date:   Tue, 25 Jan 2022 16:11:18 -0600
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.5.0
+Subject: Re: parallel file create rates (+high latency)
 Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3654.120.0.1.13)
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: ce6db024-9f6b-4152-ed1b-08d9e04dfc30
-x-ms-traffictypediagnostic: CY4PR10MB1989:EE_
-x-microsoft-antispam-prvs: <CY4PR10MB19896B06BE5AF0ED9C4C7CC9935F9@CY4PR10MB1989.namprd10.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:2399;
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: cwMoy80G31ojSfYLtvbPERBY7NzkLe98FrpMvuTUwHBLNIr9JdLtRDUY/qHyH7Nxx+wG+HJGce36ieaZqWPlvesqKZXi7kO568MTBbcc6PSxp6GHb3+BTcoj3v3Oj3kSq0+rzfRXjGNx4cCX4QboAuF9/Ykbpu9GYUSlknkLyvYdi5P4I/ylXNChshXTh5FASk1yrpVcn8po1KFntss4KupwEda37BqRXP5EcsDRRALmoWnKIwH5eJiuB3H+Xi2w7DMzh4quWn/gfsLZsfK6W9rNLT+wB3Zedz8pHIG740xw2Ndhng4kN0YkEhR+XFmxxnsWCWQ62U4BVdjUF/7nzR8+FJ1LgLTOsefB2KKTiI0GpWrFpewYwyDGpiga+6Qm0gXby7Y3cXPO4mAJilBrnWrJCB/6KKXipHAPmjts39uP29BoQspmFdfWTGrxcSKTP/tS2VrWtchaFyH3bOqCIfwiWzYQaD/8SS9s3JPhVOvY/Iypbs57YBd9wV4BOiLfiBZnthef61VoBgOgT3SuvpB62fLTXR72e26FGhj+l37g+AvLidL2aHnzZp3zPs9+A0r8G8Uc3GV50k1YVQ6hZULwXMtV/SE89inV90duIwcgYCe6/6oDjs9D4FiVbnPJ3+7SSAOpcJaIsiSkhN0R40lq+OIpE5tD1zD6gvwDbg673thIBrQJrDr7R0lsIB/KeKO14RBiYoiqJOfbZVUXgUgug7lAuh+7bO7YgKyg7NlOGlxXfAzFg8ZVxQqK2d0U
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR10MB4858.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(366004)(86362001)(66556008)(71200400001)(186003)(6916009)(36756003)(2616005)(33656002)(6506007)(76116006)(316002)(38100700002)(66446008)(64756008)(6512007)(508600001)(38070700005)(6486002)(5660300002)(2906002)(4326008)(83380400001)(122000001)(66476007)(66946007)(8936002)(26005)(53546011)(8676002)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?Yr5Si8b8zgJQFu/7utGamJJJKSFFT2XcZ738z4VrIw/jmPhWD+NjuVY7ZQ7R?=
- =?us-ascii?Q?+vHpyuKdLSaTpUNQ0cwy78l1IVaIoYE8xZpSti7W3p5BZS8xIHlRE6ZQI+4j?=
- =?us-ascii?Q?wWSTMPICALEiyQ0T6t9u9JlWL9anQ2CAs7jb6mBdyO6lAHSGSpbjPbtHqW+h?=
- =?us-ascii?Q?xxrPK3q993bnkm6+8UF5PeZVPfC3zm8wo7JPNRIB25L3BU7n76QzX676dEk7?=
- =?us-ascii?Q?IbQAIDpYzMP5jAwoRajDvAfNzex/B1cSfWOzWin3qxadEaDc4jZ+kWp9xMlh?=
- =?us-ascii?Q?mmbZUDiIz8noVXCDLicTWUq+cDvVYuuN1StAYtP74lifQWk/o1WJ1VfoLtM0?=
- =?us-ascii?Q?nUK0ODa0Rv/JT2yxJlKU1haczxht6EKBLXnr8yfXULoyY8x3fYHp+PagVJNh?=
- =?us-ascii?Q?etfx/+BeS8/cMHQXuiqWsHwKfErKw3ksTf4mMDKFmcJiLKE7Ta+ozWMkNZcU?=
- =?us-ascii?Q?DXymYig+45qeJl4LIv90Zqzgj5jgt9ltT2wXq5a2FRh5ZcPN2udfAkwti0k5?=
- =?us-ascii?Q?Opi/KlRUU4SsZEWcKM8KBuVYV4PSByYvURandLpRnPYMQ+5m3f6OLFu0LujW?=
- =?us-ascii?Q?CuTWLG/UcQ36WUzRM0UaI9DVxqhqHp4fpJoGQu+9XObdZ936mnTut30qtCJ5?=
- =?us-ascii?Q?9kKGqv3J+TpFYKq69leVqZLueh7W3k7E+pwzO7j4R3YwvcFa68BNTdip3Ou1?=
- =?us-ascii?Q?jLpyzKRB4YjV7JCF/Yyb6g8xHYePP8eazSnMq6n4rmA7bRJz3oVaV2FtSko6?=
- =?us-ascii?Q?eVLh1vaZZVHLRPthZMAOsYkmb45fvzPOs9rI49U463hyaAqTcJHRoOHC+phX?=
- =?us-ascii?Q?d0sC7UsFMekLlRzG/+N2ZhPEh+GBedCwkuQeilAtZGR125CjgVeD8a9K8Ecq?=
- =?us-ascii?Q?fKPHl09qq17Cn83Gxmb961e5NYQA0Uv7F1FBEg04q8cyS8dcm6PFGAwuOSPq?=
- =?us-ascii?Q?Xd+Q2HiuhdU27mUgFiIg+iYBl1VPk1VeT0Bu32VfiRelIYgH4l17fWjXonYO?=
- =?us-ascii?Q?M8vNST9IGs3uTQiU8tEadOykKoP3wY9bfdBOVMLY9Rkkmf1ckj01YBbVgqrA?=
- =?us-ascii?Q?yfjfFNCm+U5V9JCpbj++jIfPerGyoUyuUZTTWiT6T3P6ZQiJ59t23bybWMur?=
- =?us-ascii?Q?GB5ytG/ybASJRx5/sMRvSqBnltIHoJKyaV16JFy3buEUf/cS8sJnG0A0JGJC?=
- =?us-ascii?Q?r+sYDfJNejuGWy7n5/KYLkdJsR549bGgbm+om7J+ljhXTKW+/dg3o/+CfeJM?=
- =?us-ascii?Q?Lum2hLcBazh0pwFNjG02LOwtiYPXW1mV5mr8dBoufqeGsy8Ilj1pppjLzWY+?=
- =?us-ascii?Q?SHHNe4AK5D+zPvL+adUZ6zmqWFFaUzc198D4uXiDPbnQmyyGZEerVqWJodhl?=
- =?us-ascii?Q?SSJ6LfxSYBxzX5ljiomyNCU2oaUJPzKkJ91tCyfBIaJNnwQNW2FOlSr7/Qfd?=
- =?us-ascii?Q?x77TjVTLbKJ73FZ9vY24fLAkB14UbKSN9yjQmT5Z/C2SumtwLNEYyQ1XP5Br?=
- =?us-ascii?Q?IbJRXedygnnjVbqY7Lb8nJKME0V18j+BEuorz0sX0B+tsdXEzgRpGTSmeGQ5?=
- =?us-ascii?Q?uT//rW5UmNsw8D+BqOks0mNZ5tx7q7ItgyoSu9+hcxLoJBKF+Avww6clO33P?=
- =?us-ascii?Q?JbZNHpjFF9nvrLuLVEp4De0=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <62CA8DC7994FDE4BAAF4C992A8A581A3@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+To:     Bruce Fields <bfields@fieldses.org>
+Cc:     Chuck Lever III <chuck.lever@oracle.com>,
+        Daire Byrne <daire@dneg.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <CAPt2mGOaRsKOiL_wuSK_D5oYYnn0R-pvVsZc5HYGdEbT2FngtQ@mail.gmail.com>
+ <20220124193759.GA4975@fieldses.org>
+ <CAPt2mGOCn5OaeZm24+zh92qRcWTF8h-H2WXqScz9RMfo4r_-Qw@mail.gmail.com>
+ <20220124205045.GB4975@fieldses.org>
+ <CAPt2mGPTGgXztawDJfAKsiYqnm6P_mn1rtquSDKjpnSgvJH1YA@mail.gmail.com>
+ <20220125135959.GA15537@fieldses.org>
+ <F7C721F7-D906-426F-814F-4D3F34AD6FB1@oracle.com>
+ <42867c2c-1ab3-9bb6-0e5a-57d13d667bc6@math.utexas.edu>
+ <20220125215942.GC17638@fieldses.org>
+From:   Patrick Goetz <pgoetz@math.utexas.edu>
+In-Reply-To: <20220125215942.GC17638@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: SN7PR04CA0192.namprd04.prod.outlook.com
+ (2603:10b6:806:126::17) To BYAPR06MB3848.namprd06.prod.outlook.com
+ (2603:10b6:a02:8c::15)
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: 94cf1bc6-205d-48dc-288e-08d9e04f9e2f
+X-MS-TrafficTypeDiagnostic: SN6PR06MB4861:EE_
+X-Microsoft-Antispam-PRVS: <SN6PR06MB4861F7CD54A190C9873159EA835F9@SN6PR06MB4861.namprd06.prod.outlook.com>
+X-Utexas-From-ExO: true
+X-MS-Oob-TLC-OOBClassifiers: OLM:8273;
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: BL0S7X/WuSxTeI7uzUkKnNTAo8/VmN4DLms8YuD5et5zxGPevvVUM9oBlVwD5E8HQ0vr1INO/KcynWufKyjHsJhyyGWQ9jbtj/PfR+YoHBrOgQEckNcGfDI3ZQ5JZ9ts01koyBPaBAq0aDFTgXJskenOTXxASl9CRaptiPY5F80fNy7BuHFQfFEywu+YAqtShfKx/e8oyKeOF5NlZL7ZJP07nlRsp26nEoAaskdQSYxWjpXLbprmg4+jfjS0Lz/oANVNM6MNwwfY6cT9cAHyyNV6XHOdZeBacswqDUEt/DpKAJM1G8jWRRLW0yg2QYV/chnYYuJc56YtYI+0UkLyFTFWXqf0TLUlk6i4fZfSIHTFQ5qjVymmRN/aJjMh0VNfjJ+QqEk3lelIpvJ4h9u07NEaPS3VLkqkIejDFNCEXnRzOSdoEe8+h1zlqREJnZDcIofB9G6/n7aEURayCPWzBMAGGZq7d9UJAgoDouEuPVHRb/iXQ2sjFhQKZld4aG2JEN9/J4K3s9KptwqKzFbTLh/RG4gfIMYQVkzFrEoJlYzyK2Hb/Z7HWl05SR4iNaH67TMqVyLJ1SbIHb7DXqtlUn9ZlnAHPNklmuNezb0qDzRna+5ky5vGDDSDVVoWvSXbRfyBOfEhcB8tY8+PSRAVxgZcaoCNJxEHLyDYQ04t46m06fmRwpuRIAGvmLFTC8XIcMJhNreOZJH3ES6jbThi+FH3VbriGrxGKGXHw4cazWhbS+CUP1kw4fXDd0PIviHyYYe+d1rQC7TLzwxSu8Y3eQ==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BYAPR06MB3848.namprd06.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(366004)(6916009)(53546011)(26005)(6506007)(86362001)(54906003)(4326008)(8936002)(2616005)(6512007)(38100700002)(31686004)(52116002)(8676002)(38350700002)(66476007)(186003)(6666004)(316002)(786003)(6486002)(75432002)(83380400001)(66946007)(5660300002)(2906002)(66556008)(31696002)(508600001)(43740500002)(45980500001);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?ZGdoZGVzQTloVkFRNHJTN0txV3p1bjVRSG5rM1NYMUZWK0JMRXNRaUM5STRt?=
+ =?utf-8?B?SmhCOEtRMnlvby9CMlVBNy9naFdZWmZTSXNRVFo4VWpVUTh6MXlDYytVZERR?=
+ =?utf-8?B?eDA2UHBXYWdVNDlqRVFOTG5pa0RmYWRkVVlGSklhTVlRUUFNV2F2aHJobElH?=
+ =?utf-8?B?NUltcDkwSXZkYWdVdWtrSVhUcDlNMnZPZnAyaGUvSkhwWkxkVk1KalVNZitX?=
+ =?utf-8?B?QUZ2YUY4SVhnUEgyVDJpTU9scnA4RGtFUEp4eHF0UlNobEo5K0FpWkJmS1Fz?=
+ =?utf-8?B?NHJ4eVIySTlTUXNrMlJ4bkZqMXJtMm9kODRQUXRyN21iOElzZTBqaGw1UlRr?=
+ =?utf-8?B?T0JxL1Q5Qkp4TC9FRE9oMFBZNE9RckZxcUM4R0duVTZmUWdDMEhyQ21sSVkz?=
+ =?utf-8?B?cTdHbVY5WEx0NVdjbUpRM0N5NnZKd2NuOWJuRC9TTVdGYVB6Wm1HOVg2a2s5?=
+ =?utf-8?B?MXd6bXlSQlJNNnpiZVRUT3lSRGNsaThMT1o5TTlxVlpaMVRFRzQ0QjRqQ2ZI?=
+ =?utf-8?B?dUYyU3o4VmlPWHBmeXQ0RGlvODN4K28xYkFYRGcvT3N5ekZCMFVIRnFkNHl1?=
+ =?utf-8?B?ZjM0b25TRTJuR3F6Mkk5QUFJSVZjSkVJU3VPMzMwOUZDQnhseEltV1g1TktW?=
+ =?utf-8?B?ZGNzcjJDUXR5RzZKWThZY0FFdG5WWjRwc1MzUWRYdnluSUw2YkROb1kwb2JQ?=
+ =?utf-8?B?bE1YeDlnOVJxbXZOVEg1SXhuaVFNS25FNkZuVzJZdktOaGJMVnNFSjY2eUE5?=
+ =?utf-8?B?bUlkMUVnOTdZNkFHZjNZWXZhTUxRUEpORkFOaDFkL0tsU1h4em52bW9aMXJW?=
+ =?utf-8?B?anoxUWRYcm0rYTFBYTk0anpxeU5nL25lMXdwOWhIYjViQ2dxTGlYZ1NlVHp5?=
+ =?utf-8?B?cFNvZG0rbVk2TEM2N2FWWldtUldXMVFQWVF1TmgwSUthMllEMmV5amhiVVpZ?=
+ =?utf-8?B?cDF4NkJ2eVo5N1FZQnJ3QnhyakJrdCtSaDlpTld3UVB6VjVoM3dUQVBlYTlk?=
+ =?utf-8?B?UEIwMFA3Z3JrYllLSkZhdE0wWXpaS1Q1am1zWDhMSFh5MDlVV2NVWlBuZUNL?=
+ =?utf-8?B?dVArckkyaHVVYkFWRFhBR2tWYlNvcDRwL3l4aHo2elFwaFdlcWluZWNOUXBr?=
+ =?utf-8?B?djhEVWFma2RyMTk1TXk2cUZzM0pMakc1UDVGMTByOVNGcEVvUzkxbzlJYTUw?=
+ =?utf-8?B?cEswK2VIVmtKYzQyb2FvUnIweWQ5b0JkQnV0c0VTdkJoeFFsN1cxMmg2ZWZK?=
+ =?utf-8?B?TjhDMFU0cVF2SlM1c3BvUnhkK1Y0R21LU3p1U0Y4V0tQRFRMeFFYUitpY3BY?=
+ =?utf-8?B?UFVjUmZTcGQ0WVBhbkc0a1BWZkp2SFIxQkdZUUV1T2NwL05sQjBNZ0N4NFh0?=
+ =?utf-8?B?UFc2T25abGxsa0J2aExzQWdpSGVoVW5ET3VOc2JUbmllWTZyV1NkRklhUnJJ?=
+ =?utf-8?B?azBpWTRxd1cxMjVwUHhLL2FZMFAweUZQSXZlRDcwRmhJdE45R1Y4ZWVZcE1N?=
+ =?utf-8?B?d0o5b3RleXAzRlI4T0pobEt1RHZGTk1MOC85NFFnWndRbDZBUEZQMTFhM2cv?=
+ =?utf-8?B?NzRsTFA5M011UnZRWTFKQnpjcEZDQ3hLcis1b2tHWkQ0ajZJc2RNdFpZRUI2?=
+ =?utf-8?B?TGpDeklSL3BvQVcxcDVlQmpGU1JXenRSeWw1OHcvdzlOSllxTE55NlovQTRC?=
+ =?utf-8?B?STVIeWwzNnRkVTdKSTNLOXNxUUF6NXppeG43QjM5VUlsemMwOERlZXIvandh?=
+ =?utf-8?B?bmY2aTdqY1NONllvcDBJTjZzVkZlWXJIZW1ybnk2SHJGQ0pFMXBwMDRKQW5w?=
+ =?utf-8?B?a0NZejY2SVhsZk9iS0JFenk0MlZZd2ZkSTlSRlVTSW9RdUtWQ2NXenNzaG5s?=
+ =?utf-8?B?ci9CZEZ1TVBDb3NYd3d5ekdKQitQTnlJeHIrUk83by85QnNhNUFLaTF6Rmlx?=
+ =?utf-8?B?MEVKMWN3ajNWdFRCYSs1ME55aE5ydjVsaDg5SlREVjl1YzBWWks3SGZHeXBq?=
+ =?utf-8?B?WWt1dzZONFlEaFdmb3hKM0tWZmJ0am85VTdBTUVwTXBpa0dJbFJpZm8wcUtm?=
+ =?utf-8?B?N0VnZlBCQVFlNmFBdDFUTVl4NktQekpWVm9OWlNjUkNZTTJJVG0rNEFQVkhn?=
+ =?utf-8?B?cDZBZnFGaytlUkRNV1BNWTEwZ1FGV1hhbWdodmhxRGR4bWFyTlZ5N1hRbk1E?=
+ =?utf-8?Q?Ngus1JA+N6V/GzQuxozzcpo=3D?=
+X-OriginatorOrg: math.utexas.edu
+X-MS-Exchange-CrossTenant-Network-Message-Id: 94cf1bc6-205d-48dc-288e-08d9e04f9e2f
+X-MS-Exchange-CrossTenant-AuthSource: BYAPR06MB3848.namprd06.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: CH0PR10MB4858.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ce6db024-9f6b-4152-ed1b-08d9e04dfc30
-X-MS-Exchange-CrossTenant-originalarrivaltime: 25 Jan 2022 21:59:39.6866
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 25 Jan 2022 22:11:21.2595
  (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: lTMlBdc/f/r95t02bjk8hQZISNoK+mtP3AsfXLuYH7msrcaWDgeIqNYF9iNlw0Qb82ICHza3UlhGzBTUap97gA==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY4PR10MB1989
-X-Proofpoint-Virus-Version: vendor=nai engine=6300 definitions=10238 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 mlxlogscore=999
- adultscore=0 spamscore=0 bulkscore=0 mlxscore=0 phishscore=0
- suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2201110000 definitions=main-2201250131
-X-Proofpoint-GUID: zrWwi7wD542qdZwEMe7vxc5RDhvRY0qX
-X-Proofpoint-ORIG-GUID: zrWwi7wD542qdZwEMe7vxc5RDhvRY0qX
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 31d7e2a5-bdd8-414e-9e97-bea998ebdfe1
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: GKQ8zAn0bwkJXQQel+ocCHK7gPTujmudYpjlzz2AjuijKIBLkCa4zvQvx7MYup2/wL0cXSNmp/XD807dORqlAw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR06MB4861
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
 
-> On Jan 25, 2022, at 4:53 PM, NeilBrown <neilb@suse.de> wrote:
->=20
-> On Wed, 26 Jan 2022, Chuck Lever wrote:
->> Clean up. Neil observed that "any code that calls svc_shutdown_net()
->> knows what the shutdown function should be, and so can call it
->> directly."
->>=20
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> fs/lockd/svc.c             |    5 ++---
->> fs/nfsd/nfssvc.c           |    2 +-
->> include/linux/sunrpc/svc.h |    3 ---
->> net/sunrpc/svc.c           |    3 ---
->> 4 files changed, 3 insertions(+), 10 deletions(-)
->>=20
->> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
->> index 3a05af873625..f5b688a844aa 100644
->> --- a/fs/lockd/svc.c
->> +++ b/fs/lockd/svc.c
->> @@ -249,6 +249,7 @@ static int make_socks(struct svc_serv *serv, struct =
-net *net,
->> 		printk(KERN_WARNING
->> 			"lockd_up: makesock failed, error=3D%d\n", err);
->> 	svc_shutdown_net(serv, net);
->> +	svc_rpcb_cleanup(serv, net);
->> 	return err;
->> }
->>=20
->> @@ -287,8 +288,7 @@ static void lockd_down_net(struct svc_serv *serv, st=
-ruct net *net)
->> 			cancel_delayed_work_sync(&ln->grace_period_end);
->> 			locks_end_grace(&ln->lockd_manager);
->> 			svc_shutdown_net(serv, net);
->> -			dprintk("%s: per-net data destroyed; net=3D%x\n",
->> -				__func__, net->ns.inum);
->> +			svc_rpcb_cleanup(serv, net);
->> 		}
->> 	} else {
->> 		pr_err("%s: no users! net=3D%x\n",
->> @@ -351,7 +351,6 @@ static struct notifier_block lockd_inet6addr_notifie=
-r =3D {
->> #endif
->>=20
->> static const struct svc_serv_ops lockd_sv_ops =3D {
->> -	.svo_shutdown		=3D svc_rpcb_cleanup,
->> 	.svo_function		=3D lockd,
->> 	.svo_module		=3D THIS_MODULE,
->> };
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index aeeac6de1f0a..0c6b216e439e 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -613,7 +613,6 @@ static int nfsd_get_default_max_blksize(void)
->> }
->>=20
->> static const struct svc_serv_ops nfsd_thread_sv_ops =3D {
->> -	.svo_shutdown		=3D nfsd_last_thread,
->> 	.svo_function		=3D nfsd,
->> 	.svo_module		=3D THIS_MODULE,
->> };
->> @@ -724,6 +723,7 @@ void nfsd_put(struct net *net)
->>=20
->> 	if (kref_put(&nn->nfsd_serv->sv_refcnt, nfsd_noop)) {
->> 		svc_shutdown_net(nn->nfsd_serv, net);
->> +		nfsd_last_thread(nn->nfsd_serv, net);
->> 		svc_destroy(&nn->nfsd_serv->sv_refcnt);
->> 		spin_lock(&nfsd_notifier_lock);
->> 		nn->nfsd_serv =3D NULL;
->> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
->> index 6ef9c1cafd0b..63794d772eb3 100644
->> --- a/include/linux/sunrpc/svc.h
->> +++ b/include/linux/sunrpc/svc.h
->> @@ -55,9 +55,6 @@ struct svc_pool {
->> struct svc_serv;
->>=20
->> struct svc_serv_ops {
->> -	/* Callback to use when last thread exits. */
->> -	void		(*svo_shutdown)(struct svc_serv *, struct net *);
->> -
->> 	/* function for service threads to run */
->> 	int		(*svo_function)(void *);
->>=20
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index 2aabec2b4bec..74a75a22da9a 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -539,9 +539,6 @@ EXPORT_SYMBOL_GPL(svc_create_pooled);
->> void svc_shutdown_net(struct svc_serv *serv, struct net *net)
->> {
->> 	svc_close_net(serv, net);
->> -
->> -	if (serv->sv_ops->svo_shutdown)
->> -		serv->sv_ops->svo_shutdown(serv, net);
->> }
->> EXPORT_SYMBOL_GPL(svc_shutdown_net);
->=20
-> Could we rename svc_close_net() to svc_shutdown_net() and drop this
-> function?
+On 1/25/22 15:59, Bruce Fields wrote:
+> On Tue, Jan 25, 2022 at 03:50:05PM -0600, Patrick Goetz wrote:
+>> On 1/25/22 09:30, Chuck Lever III wrote:
+>>>> On Jan 25, 2022, at 8:59 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>> On Tue, Jan 25, 2022 at 12:52:46PM +0000, Daire Byrne wrote:
+>>>>> Yea, it does seem like the server is the ultimate arbitrar and the
+>>>>> fact that multiple clients can achieve much higher rates of
+>>>>> parallelism does suggest that the VFS locking per client is somewhat
+>>>>> redundant and limiting (in this super niche case).
+>>>>
+>>>> It doesn't seem *so* weird to have a server with fast storage a long
+>>>> round-trip time away, in which case the client-side operation could take
+>>>> several orders of magnitude longer than the server.
+>>>>
+>>>> Though even if the client locking wasn't a factor, you might still have
+>>>> to do some work to take advantage of that.  (E.g. if your workload is
+>>>> just a single "untar"--it still waits for one create before doing the
+>>>> next one).
+>>>
+>>> Note that this is also an issue for data center area filesystems, where
+>>> back-end replication of metadata updates makes creates and deletes as
+>>> slow as if they were being done on storage hundreds of miles away.
+>>>
+>>> The solution of choice appears to be to replace tar/rsync and such
+>>> tools with versions that are smarter about parallelizing file creation
+>>> and deletion.
+>>
+>> Are these tools available to mere mortals?  If so, what are they
+>> called.  This is a problem I'm currently dealing with; trying to
+>> back up hundreds of terabytes of image data.
+> 
+> How many files, though?
+> 
 
-I considered that, but svc_close_net() seems to be transport-related,
-whereas svc_shutdown_net() seems to be generic to the NFS server, so
-I left them separate. A better rationale might push me into merging
-them. :-)
-
-
-> Either way:=20
->  Reviewed-by: NeilBrown <neilb@suse.de>
->=20
-> Thanks,
-> NeilBrown
-
---
-Chuck Lever
+IDK, 4000 images per collection, with hundreds of collections on disk? 
+Say at least 500,000 files?  Maybe a million? With most files about 1GB 
+in size.  I was trying to just rsync it all from the data server to a 
+ZFS-based backup server in our data center, but the backup started 
+failing constantly because the filesystem would change after rsync had 
+already constructed an index. Even after an initial copy, a backup like 
+that runs for over a week.  The strategy I'm about to try and implement 
+is to NFS mount the data server's data partition to the backup server 
+and then have a script walk through the directory hierarchy, rsyncing 
+collections one at a time.  ZFS send/receive would probably be better, 
+but the data server isn't configured with ZFS.
 
 
 
+> Writes of file data *should* be limited mainly just be your network and
+> disk bandwidth.
+> 
+> Creation of files is limited by network and disk latency, is more
+> complicated, and is where multiple processes are more likely to help.
+> 
+> --b.
