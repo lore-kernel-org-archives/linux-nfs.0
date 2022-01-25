@@ -2,145 +2,101 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6445DC4332F
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jan 2022 02:08:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A75B5C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jan 2022 06:17:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350263AbiAYCIm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jan 2022 21:08:42 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:34914 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2364027AbiAXXqi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2022 18:46:38 -0500
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        id S231665AbiAYGQ0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 Jan 2022 01:16:26 -0500
+Received: from gandalf.ozlabs.org ([150.107.74.76]:58115 "EHLO
+        gandalf.ozlabs.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S256366AbiAYFWA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2022 00:22:00 -0500
+Received: from authenticated.ozlabs.org (localhost [127.0.0.1])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+         key-exchange ECDHE (P-256) server-signature RSA-PSS (4096 bits) server-digest SHA256)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id A5F761F380;
-        Mon, 24 Jan 2022 23:46:34 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1643067994; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=O1VqbzJOlGaifaJnTpeWcxfAXBKCS/nij+vQJOJ3HYI=;
-        b=gd9YP1OwwM9EE18VcdplcmS8vgRb11eFIMf2Idn01IxEEFN7FGU1LkehFkDnHXqHObFMiQ
-        iZL5byRajJgg0yxB0KlaDLqzWMled8a6Ids3nyx50h1YpmTTJr+uwdLkhWW+5ucoCWwHVa
-        uBmcqTeCY/ZVqEkTaBTpwcFtLOkmZMQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1643067994;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=O1VqbzJOlGaifaJnTpeWcxfAXBKCS/nij+vQJOJ3HYI=;
-        b=MvM1UsnPFohYkN7sJghezQxpFZ/Attv7WTV0IKxefUlEXEaJxuoYuNEA8wE3l7SDPZ2zRP
-        /3TsjuIJ6mWOhsAg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id AC79213CDE;
-        Mon, 24 Jan 2022 23:46:32 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id bXMeGVg672HJdgAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 24 Jan 2022 23:46:32 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+        by mail.ozlabs.org (Postfix) with ESMTPSA id 4JjZwC20rDz4xNm;
+        Tue, 25 Jan 2022 16:21:47 +1100 (AEDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=canb.auug.org.au;
+        s=201702; t=1643088108;
+        bh=EXHDGMBkz/WT0lNUnQj7KDfXlPwfDl9vmteB2k6cJ3g=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=EdnIAN3Dje7TsR0qLc+kvP3CKJZXsiXEiv5aBCcj083DxKac3+abPPCAhie1cgZYw
+         cT6dqjqE84E/qHpW/3nph5OmiAPelmoPcwV3Rg05oMi5OLIpBGhxN0jTCsiHFJ2/+u
+         /roc9Spb+C0aH61oZQuBc+cfkoZ1O5OTT7kSadLv8xBDcpvFqpgDsOBDjEsKA0Mb2+
+         YXWT6GKw1+XGHVNF/YiP8srvXlfIZoQGe/8e/undAt9RVWTqJSUZlDNj4bjsg2e3ou
+         pDdTJ0ODV2qNfkoBpOy5XPygYoFAbe2cr09gq4TX7fqu48RujXWOohUm/SFv67xOj6
+         R/VYHrcEkzfuQ==
+Date:   Tue, 25 Jan 2022 16:21:46 +1100
+From:   Stephen Rothwell <sfr@canb.auug.org.au>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Steven Rostedt <rostedt@goodmis.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux Next Mailing List <linux-next@vger.kernel.org>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trondmy@gmail.com>,
+        NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: linux-next: runtime warning in next-20220125
+Message-ID: <20220125162146.13872bdb@canb.auug.org.au>
+In-Reply-To: <20220125160505.068dbb52@canb.auug.org.au>
+References: <20220125160505.068dbb52@canb.auug.org.au>
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Chuck Lever III" <chuck.lever@oracle.com>
-Cc:     "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: dynamic management of nfsd thread count
-In-reply-to: <EF3A3E35-FD8F-4ADF-AAFD-A120D83F80F5@oracle.com>
-References: <EF3A3E35-FD8F-4ADF-AAFD-A120D83F80F5@oracle.com>
-Date:   Tue, 25 Jan 2022 10:46:18 +1100
-Message-id: <164306797808.8775.17626755733657689261@noble.neil.brown.name>
+Content-Type: multipart/signed; boundary="Sig_/GcmYL3f6WLHjIlgotq6pgNq";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 25 Jan 2022, Chuck Lever III wrote:
-> Hi Neil-
+--Sig_/GcmYL3f6WLHjIlgotq6pgNq
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+Hi all,
+
+On Tue, 25 Jan 2022 16:05:05 +1100 Stephen Rothwell <sfr@canb.auug.org.au> =
+wrote:
+>
+> My qemu boot test of a powerpc pseries_le_defconfig kernel produces the
+> following trace:
 >=20
-> The clean-up of NFSD thread management has been merged into v5.17-rc.
-> I'm wondering if you have thought more about how to implement dynamic
-> management.
-
-I have some scraps of code but nothing much.
-My plan is to have threads exit after they have been around for "a
-while" and have new threads be created when there is "apparent need".
-
-I think there always needs to be at least one thread (as thread creation
-can fail, or block for a long time), but if there are > 1 and a thread
-finds that it has nothing immediately to do, and it has been over (e.g.)
-5 minutes since it was created, then it exits.  So there will always be
-gentle downward pressure on the number of threads.
-
-When data arrives on a transport and there is no thread available to
-process it, then we need to consider starting a new thread.  This is by
-far the most interesting part.  I think we want a rate limit as a
-function of the number of threads already existing.
-e.g.:=20
-  if there are fewer than "nr_threads" threads, then start a thread.
-  if there are between "nr_threads" and "8*nr_threads", then schedule a threa=
-d to
-     start in 10ms unless that has already been scheduled
-  if there are more than "8*nr_threads", then don't start new threads
-
-Obviously there are some magic numbers in there that need to be
-justified, and I don't have any justification as yet.
-The "10ms" should ideally be related to the typical request-processing
-time (mean? max? mid-range?)
-The "8*nr_threads" should probably be separately configurable, with
-something like that value as a default.
-
-So with the default of 4 (or 8?) threads, the count will quickly grow to
-that number if there is any load, then slowly grow beyond that as load
-persists.
-It would be nice to find a way to measure if the nfsd threads are
-overloading the system in some way, but I haven't yet thought about what
-that might mean.
-
+> ------------[ cut here ]------------
+> WARNING: CPU: 0 PID: 0 at kernel/trace/trace_events.c:417 trace_event_raw=
+_init+0x194/0x730
+> Modules linked in:
+> CPU: 0 PID: 0 Comm: swapper/0 Not tainted 5.17.0-rc1 #2
+> NIP:  c0000000002bdbb4 LR: c0000000002bdcb0 CTR: c0000000002bdb70
 >=20
-> One thing that occurred to me was that there was a changeset that
-> attempted to convert NFSD threads into work queues. We merged some
-> of that but stopped when it was found that work queue scheduling
-> seems to have some worst case behavior that sometimes impacts the
-> performance of the Linux NFS server.
+> I have no idea what has caused this :-(  Maybe commit
 >=20
-> The part of that work that was merged is now vestigial, and might
-> need to be reverted before proceeding with dynamic NFSD thread
-> management. For example:
->=20
->  476 void svc_xprt_enqueue(struct svc_xprt *xprt)
->  477 {
->  478         if (test_bit(XPT_BUSY, &xprt->xpt_flags))
->  479                 return;
->  480         xprt->xpt_server->sv_ops->svo_enqueue_xprt(xprt);
->  481 }
->  482 EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
->=20
-> The svo_enqueue_xprt method was to be different for the different
-> scheduling mechanisms. But to this day there is only one method
-> defined: svc_xprt_do_enqueue()
->=20
-> Do you have plans to use this or discard it? If not, I'd like to
-> see that it is removed eventually, as virtual functions are
-> more costly than they used to be thanks to Spectre/Meltdown, and
-> this one is invoked multiple times per RPC.
+>   5544d5318802 ("SUNRPC: Same as SVC_RQST_ENDPOINT, but without the xid")
 
-I think this can go - I see no use for it.
+Actually, reverting commits
 
-I suspect svo_module can go as well - I don't think the thread is ever
-the thing that primarily keeps a module active.
-svo_shutdown can go too.  any code that calls svc_shutdown_net() knows
-what the shutdown function should be, and so can call it directly.
+  6ff851d98af8 ("SUNRPC: Improve sockaddr handling in the svc_xprt_create_e=
+rror trace point")
+  5544d5318802 ("SUNRPC: Same as SVC_RQST_ENDPOINT, but without the xid")
+  e2d3613db12a ("SUNRPC: Record endpoint information in trace log")
 
-svo_function is useful, but as it is the only thing in sv_ops that is
-needed, we can drop the sv_ops structure and just have a pointer to the
-svo_function directly in the svc_serv.
+makes the warning go away.
 
-I'm happy to provide patches for all this if you like.
+--=20
+Cheers,
+Stephen Rothwell
 
-NeilBrown
+--Sig_/GcmYL3f6WLHjIlgotq6pgNq
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAmHviOoACgkQAVBC80lX
+0Gys6QgAlGSkaap9eq9MYZ7vSaG4FckU4s2yeO0WuT8ESDW3LLEhh5QMs74MqdRH
+5H9ZftfOAQnzEsyboKAJC6heWbxpHG2yJ+NlKtMWviIRSm4TYPvL3fxxueq0KDiY
+Peo16xh4yyERxGOHHU2u77mQGy1Qi77bJJtt0eL5b7Ur95yfG86EoRpRp3uzi7F4
+ESCZ/UYPTN0lexyafnZzI6TAThwnyq1bHdXCvPyinibryzNwbrEjwibtdlaAkzdL
+AICl655j7ya/rzkWMkS/MWdW18L1af8vagM87+i9ynA7QRbT0JY9l/c+BMOYE81I
+Fv5BdzURvzJe7qqdNsNgwudRnn63wA==
+=6Eui
+-----END PGP SIGNATURE-----
+
+--Sig_/GcmYL3f6WLHjIlgotq6pgNq--
