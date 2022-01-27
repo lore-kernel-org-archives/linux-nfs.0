@@ -2,62 +2,60 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 75C4AC433FE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B8E7C433F5
 	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jan 2022 19:49:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235210AbiA0Tt4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S239816AbiA0Tt4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 27 Jan 2022 14:49:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40344 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40342 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245702AbiA0Tt4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2022 14:49:56 -0500
-Received: from mail-qt1-x833.google.com (mail-qt1-x833.google.com [IPv6:2607:f8b0:4864:20::833])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B22A3C06173B
+        with ESMTP id S235210AbiA0Ttz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2022 14:49:55 -0500
+Received: from mail-qv1-xf2d.google.com (mail-qv1-xf2d.google.com [IPv6:2607:f8b0:4864:20::f2d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 10745C061714
         for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2022 11:49:55 -0800 (PST)
-Received: by mail-qt1-x833.google.com with SMTP id z1so2288314qto.3
+Received: by mail-qv1-xf2d.google.com with SMTP id hu2so3811072qvb.8
         for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2022 11:49:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=27Cy+fjQrrhdBt/+KeF+2iggxTxikJ4LQwj6XTmGTFQ=;
-        b=SankUvwZe3dHu+0eZQaZPIPwv1v+r6VBoKzJ/gxw3J7NtdrWwU3TrZQ37i6XkKWMpN
-         6sidNgBgWNdjLfokSUSacR96Uug3oDRAzV6+Rru5hP3B8qU5XGxAjBeVBt1+5ZpDa+fE
-         aaxS1dC08HNR3TzhPfHKL64DsQNURqY4R3olSLPe8nF0aSXX1sIGutwZvMx/BEKUMqlr
-         eBcRH2QMbCjf7QcMWoLn2fO82VJa/vN977S5NRvSlKsy79MozKU6R72RGkvJUc23BEPT
-         /hq/VvFmLwAW2U34HVxSJNSvLfzT+kOzqp6oS5GEzPvWxSuIcmH9zMZhAwNFCmjSv3JJ
-         wExg==
+        h=sender:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=3e8h6kKbAzstWQQgLI0QPxCAZT5om4JOr3OSWjN3bUk=;
+        b=JRCF7TWhZTW/JUGUfSZbJgoXK++JD1TpqI53h9gPjYUCseSe1R0kufsSFeA+3K8KJ7
+         2vTSWE89nJdoJIm/LiluOp+m0Ts2EJJRdUjsHlPmVopjPAHYMSW56Uh1hY21uzKK9j/R
+         hd9TmIges8710T9Rvq2OT0rsuHCGq80WQbuO1jdtNzdh2Zkr+ugGMB9rq2CJ4V8Fhl+w
+         qLcwq9xeLIFTWIXD1OOd57WTtPslzvacFiP2jCYziqx/kInUabLHHSwsfdSMB4IvvzZQ
+         114wt8fyjglveplV/3iOn1dYjRv8NXXT7o+BEhTp/CXe45ltrBNEmlIIDZqbMl1dCx4o
+         BpXw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
-         :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=27Cy+fjQrrhdBt/+KeF+2iggxTxikJ4LQwj6XTmGTFQ=;
-        b=HJGyD3B/5LrKQMO1JPx949a353Vof53mZhSKV6DYzIN4TZT//fEgF4iDT6sSiHZeoQ
-         jVPsYqFh7LbvinOVKXGXIBZTrrhA4mn/LgOD1vu0IQ4wmlmDr2qXED5yrkeAbIdr69rz
-         VjzRs+H32kARLEqYxQNngwR3R9p3J070X/Fgc/9LLrTBC8CFg0RidfdietrZusMvcPDZ
-         aqYreGSuEmsJ5pu6HRInBsyv/4aWpkC/KYxYPfoJpkJQJV0tJikr1kT9vHENGUU5zV50
-         oEmbMlhz2XqC5goQqRYAuye7H3ozCYbNOxBkwkVxRzl3SSRG5qoHEbuGhqlXaED/Icg7
-         F+/A==
-X-Gm-Message-State: AOAM533k7VT+AcgRPP5hoQnrh7uwYiW780uLk80Euny/eEQOUAsqCoi6
-        bBvyv8310HPVPVBaaTSawR8iRX3QVTM=
-X-Google-Smtp-Source: ABdhPJwjBc75VZlBwgBPMIoo44u2HpCdnhV2ptIaN5TFcPlS3wLjRlGMYBCUTCdriVrAWy9VHmshHw==
-X-Received: by 2002:a05:622a:1908:: with SMTP id w8mr4005465qtc.252.1643312994763;
+         :mime-version:content-transfer-encoding;
+        bh=3e8h6kKbAzstWQQgLI0QPxCAZT5om4JOr3OSWjN3bUk=;
+        b=7TAWe64oUdWdmNW1aP709zlRN3PJ9D2D01yqYF1F/CjpCFHNaLHV6SXtESOm3LIQS1
+         3bxTDhR1jXoAw+aK+R2LGdGNa6n4AxXYL899Z0nINQybqyb557dVUMqUKSZp+ofKrim9
+         PI9fnOnVLZG4WkwEQ+Zhpb9+8SK0QFlXj94PNF8jWc+aNK4h52WeDH/ArZFtf8dBUUud
+         eq4zoBIDrdf0U8/PdN5szcYl8FP0auLvXa3jMNXdnq9E/sN7V4IKpnTJWUDXeqgb2xq9
+         k4euenyL11Te7p60fsO0icjwz2OMTd3YT61+yq23cbC9lkXVq36je9rdNqBcMYovF0Ee
+         uvGg==
+X-Gm-Message-State: AOAM530mL9l7iWEo9+2PjXRymXU2UUaSoRTdcnvbeR60DmX0zrL18RoJ
+        CXrAYYRAq08aRarR7H5lpAI=
+X-Google-Smtp-Source: ABdhPJyrzjM4ozas4DPNFpGJKvEtcfzgAfiQ3K0uCooZ7rP6ou1IXZD6DJi44JejfsNDd0+yMW/Tow==
+X-Received: by 2002:a05:6214:20e7:: with SMTP id 7mr5125284qvk.48.1643312994067;
         Thu, 27 Jan 2022 11:49:54 -0800 (PST)
 Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id g7sm1836483qkc.104.2022.01.27.11.49.54
+        by smtp.gmail.com with ESMTPSA id g7sm1836483qkc.104.2022.01.27.11.49.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Jan 2022 11:49:54 -0800 (PST)
+        Thu, 27 Jan 2022 11:49:53 -0800 (PST)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v7 1/9] rpcctl: Add a rpcctl.py tool
-Date:   Thu, 27 Jan 2022 14:49:44 -0500
-Message-Id: <20220127194952.63033-2-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v7 0/9] Add a tool for using the new sysfs files
+Date:   Thu, 27 Jan 2022 14:49:43 -0500
+Message-Id: <20220127194952.63033-1-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.35.0
-In-Reply-To: <20220127194952.63033-1-Anna.Schumaker@Netapp.com>
-References: <20220127194952.63033-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -66,49 +64,115 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This will be used to print and manipulate the sunrpc sysfs directory
-files. Running without arguments prints both usage information and the
-location of the sunrpc sysfs directory.
+These patches implement a tool that can be used to read and write the
+sysfs files, with subcommands!
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
---
-v7: Check entire line for "sysfs" instead of just the start of the line
----
- tools/rpcctl/rpcctl.py | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+The following subcommands are implemented:
+	rpcctl client
+ 	rpcctl switch
+ 	rpcctl switch set
+ 	rpcctl xprt
+ 	rpcctl xprt set
+
+So you can print out information about every switch with:
+	anna@client ~ % rpcctl switch
+	switch 0: xprts 1, active 1, queue 0
+		xprt 0: local, /var/run/gssproxy.sock [main]
+	switch 1: xprts 1, active 1, queue 0
+		xprt 1: local, /var/run/rpcbind.sock [main]
+	switch 2: xprts 1, active 1, queue 0
+		xprt 2: tcp, 192.168.111.1 [main]
+	switch 3: xprts 4, active 4, queue 0
+		xprt 3: tcp, 192.168.111.188 [main]
+		xprt 4: tcp, 192.168.111.188
+		xprt 5: tcp, 192.168.111.188
+		xprt 6: tcp, 192.168.111.188
+
+And information about each xprt:
+	anna@client ~ % rpcctl xprt
+	xprt 0: local, /var/run/gssproxy.sock, port 0, state <CONNECTED,BOUND>, main
+		Source: (einval), port 0, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt 1: local, /var/run/rpcbind.sock, port 0, state <CONNECTED,BOUND>, main
+		Source: (einval), port 0, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt 2: tcp, 192.168.111.1, port 2049, state <CONNECTED,BOUND>, main
+		Source: 192.168.111.222, port 959, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt 3: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>, main
+		Source: 192.168.111.222, port 921, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt 4: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 726, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt 5: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 671, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt 6: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 934, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+
+You can use the `set` subcommand to change the dstaddr of individual xprts:
+	anna@client ~ % sudo rpcctl xprt --id 4 
+	xprt 4: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 726, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	anna@client ~ % sudo rpcctl xprt set --id 4 --dstaddr server2.nowheycreamery.com
+	xprt 4: tcp, 192.168.111.186, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 726, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+
+Or for changing the dstaddr of all xprts attached to a switch:
+	anna@client % rpcctl switch --id 3
+	switch 3: xprts 4, active 4, queue 0
+		xprt 3: tcp, 192.168.111.188 [main]
+		xprt 4: tcp, 192.168.111.188
+		xprt 5: tcp, 192.168.111.188
+		xprt 6: tcp, 192.168.111.188
+	anna@client % sudo rpcctl switch set --id 4 --dstaddr server2.nowheycreamery.vm
+	switch 3: xprts 4, active 4, queue 0
+		xprt 2: tcp, 192.168.111.186 [main]
+		xprt 3: tcp, 192.168.111.186
+		xprt 5: tcp, 192.168.111.186
+		xprt 6: tcp, 192.168.111.186
+
+Changes in v7:
+- Fix up detecting if sysfs is mounted
+
+Thoughts?
+Anna
+
+
+Anna Schumaker (9):
+  rpcctl: Add a rpcctl.py tool
+  rpcctl: Add a command for printing xprt switch information
+  rpcctl: Add a command for printing individual xprts
+  rpcctl: Add a command for printing rpc client information
+  rpcctl: Add a command for changing xprt dstaddr
+  rpcctl: Add a command for changing xprt switch dstaddrs
+  rpcctl: Add a command for changing xprt state
+  rpcctl: Add a man page
+  rpcctl: Add installation to the Makefile
+
+ configure.ac             |   1 +
+ tools/Makefile.am        |   2 +-
+ tools/rpcctl/Makefile.am |  13 +++
+ tools/rpcctl/rpcctl.man  |  88 +++++++++++++++
+ tools/rpcctl/rpcctl.py   | 230 +++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 333 insertions(+), 1 deletion(-)
+ create mode 100644 tools/rpcctl/Makefile.am
+ create mode 100644 tools/rpcctl/rpcctl.man
  create mode 100755 tools/rpcctl/rpcctl.py
 
-diff --git a/tools/rpcctl/rpcctl.py b/tools/rpcctl/rpcctl.py
-new file mode 100755
-index 000000000000..9737ac4a9740
---- /dev/null
-+++ b/tools/rpcctl/rpcctl.py
-@@ -0,0 +1,25 @@
-+#!/usr/bin/python3
-+import argparse
-+import pathlib
-+import sys
-+
-+with open("/proc/mounts", 'r') as f:
-+    mount = [ line.split()[1] for line in f if "sysfs" in line ]
-+    if len(mount) == 0:
-+        print("ERROR: sysfs is not mounted")
-+        sys.exit(1)
-+
-+sunrpc = pathlib.Path(mount[0]) / "kernel" / "sunrpc"
-+if not sunrpc.is_dir():
-+    print("ERROR: sysfs does not have sunrpc directory")
-+    sys.exit(1)
-+
-+parser = argparse.ArgumentParser()
-+
-+def show_small_help(args):
-+    parser.print_usage()
-+    print("sunrpc dir:", sunrpc)
-+parser.set_defaults(func=show_small_help)
-+
-+args = parser.parse_args()
-+args.func(args)
 -- 
 2.35.0
 
