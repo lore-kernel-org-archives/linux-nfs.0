@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8B4CC433EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jan 2022 19:49:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FF97C4321E
+	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jan 2022 19:49:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245702AbiA0Tt5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 27 Jan 2022 14:49:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40346 "EHLO
+        id S245743AbiA0Tt7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 27 Jan 2022 14:49:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40362 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245708AbiA0Tt4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2022 14:49:56 -0500
+        with ESMTP id S245709AbiA0Tt6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2022 14:49:58 -0500
 Received: from mail-qt1-x831.google.com (mail-qt1-x831.google.com [IPv6:2607:f8b0:4864:20::831])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 57444C061747
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2022 11:49:56 -0800 (PST)
-Received: by mail-qt1-x831.google.com with SMTP id h25so2518872qtm.1
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2022 11:49:56 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 73E02C061714
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2022 11:49:58 -0800 (PST)
+Received: by mail-qt1-x831.google.com with SMTP id b5so3401845qtq.11
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2022 11:49:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=pzZX1cVE9H60Q9bqhWS3/JXUmBjeHDoCXI05lUqW7Os=;
-        b=gtEpdKZkiE9aOh38bgHLGCWZTjl2pnqq168NLdP6gypnoh2kqCd8aT8cXnh4XQrruT
-         Jx+jckcheEduUr2cn910dhaW9MrhQ+Bfv/vpjX07unv/JrXIXauVnvlJyy+NbVtweN3q
-         IBu42A1Anga3ANqoiZ8un3ePMhMDErEYbZnB2DmIAY7ndiC+SDAZHuL+ZtJ5PMb9A7Z7
-         PMYohxo1Ekki+sMcmSrMO4yBKBtksJI6GaKGXYmeyLZWrY9nQYLwJWdwUxitkA7Ye+IW
-         r9DvH+y7fjvkgs6BeYj5dzkeJsavLGd6ibO4cNWa6y6eX+eY4Ha5DtlJs9GZbwqKxeaQ
-         0sqQ==
+        bh=wIr4dYeXuycAWYUtMcxedVBml9BP+YdoGTwnU9TNSYc=;
+        b=GcBguoaUdGo11/OFLksJ6gQC5pkJa8BMMBxZ4TQD8LmnJIuOUR9UWeLlRMrpgTZWQO
+         zOS9e7+hKv4vbOcUyJZZgNVx5bR01KNG5pdQcCpJ3JD197nbn0yAOmdfJSViJBWuLU3/
+         lDmWJJYautMfRcnOiYUSVSQ5DeEf63i1Pl1mg/ws8iZw3hxDOnpWGucT5OUW2+JoGj7d
+         wXR740LfC1K0KHwRkOa0+tv6+JvRqJ+e7Gm2vd107BAqOEyZuqC65RD677Do+TQ06d5K
+         koCit17bslWxOFYIud6eVz60lt8GXwOx08vT7NnCmwNYqjdPcGj2U8j6/tEE0+7kQScj
+         v+jA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=pzZX1cVE9H60Q9bqhWS3/JXUmBjeHDoCXI05lUqW7Os=;
-        b=D2vDU82yoOoSwNyk3joGouEWukYAeuCD3zuy+MmNGSYDVcHU/3mJKIQTdDLM2vuIMZ
-         h5B+x9K/eQm/BfOnTtJIFNPN4WnokxyCit7Y05DhfiORISOFP32KSS8Xt4fkyFiIK98q
-         49EIxwBwpI0dSj50wyebY6DRMKZpHVfVq0sDnbFKOPSf73VLr1bv+qbDXDs8W96PRm8O
-         tFsxwxUPSxo9AHqVvUTqrzSRf+qvFRgE3QLeFBl+zH6vVbwAQMBGbgBW+Z7TMsYHhVUG
-         n26bcyApSjOKqSjboZh7qjT4ufYWj1WOVhmYCtUgzJt/Rujxy30HU4Muit0OGyBNF+BC
-         WBxw==
-X-Gm-Message-State: AOAM530131ATTEzdRSN5juBiEwVXNjTE8Ic1TJbOd1xrgKDl57Fo0Ix/
-        F6HELiz0R1PRhUtZvWmt5QbPhLxtM1Q=
-X-Google-Smtp-Source: ABdhPJytVeVu9kvKVZJXYmmmo5+GYj4FxCNxSfNmEnC0IffTeRcUPg0ASAWgG3MYZ7eS/AG68Js9sA==
-X-Received: by 2002:ac8:5f0e:: with SMTP id x14mr4019902qta.234.1643312995438;
-        Thu, 27 Jan 2022 11:49:55 -0800 (PST)
+        bh=wIr4dYeXuycAWYUtMcxedVBml9BP+YdoGTwnU9TNSYc=;
+        b=leGcn3Y6WSjsInAthM3lJlqHNqNEwjDSPwDqhDdELx8g55PSFJMdmJliM/Qcn39U32
+         JQjN0v7LOvGcSwzgohSG5VwixD4nnWWS32zoq283yXW3pkbkbzg32/NfW/dkdZfsSqR3
+         odgzQTXUKy9Qkooo44UImyA46xgRWRrDlfGr3+zgtTlGwxR8TrTG//qE7NFBIb8O/mfF
+         nUoBV09HsScvgFq5fvscEtNops1gxYM1w/tGAdosS2ywi8GdnY9pzZ4RssJoSbtZvsiG
+         LO7SVjB45WHVsFSK3msZucAi7gAY7JZVSg8Byerkg9haaNTWEb1O4SCU8F07XdO6UU6U
+         SzaA==
+X-Gm-Message-State: AOAM530PCKj/8g8ZMk7rDbK7dEut7B2WQZ9z6X6H6g629BZJcpzeKC2/
+        T0WDZREDzclfRJRz+zKAz9k=
+X-Google-Smtp-Source: ABdhPJyrBhyxzFpvKYAHflRNBcorpx5Z/Q7LoXaoT/OJHRrfFqj51Ecdlcx7BPKFgBFeAeo1uDcSiQ==
+X-Received: by 2002:a05:622a:593:: with SMTP id c19mr1280673qtb.556.1643312997580;
+        Thu, 27 Jan 2022 11:49:57 -0800 (PST)
 Received: from gouda.nowheycreamery.com ([2601:401:100:a3a:aa6d:aaff:fe2e:8a6a])
-        by smtp.gmail.com with ESMTPSA id g7sm1836483qkc.104.2022.01.27.11.49.54
+        by smtp.gmail.com with ESMTPSA id g7sm1836483qkc.104.2022.01.27.11.49.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Jan 2022 11:49:55 -0800 (PST)
+        Thu, 27 Jan 2022 11:49:57 -0800 (PST)
 Sender: Anna Schumaker <schumakeranna@gmail.com>
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v7 2/9] rpcctl: Add a command for printing xprt switch information
-Date:   Thu, 27 Jan 2022 14:49:45 -0500
-Message-Id: <20220127194952.63033-3-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v7 5/9] rpcctl: Add a command for changing xprt dstaddr
+Date:   Thu, 27 Jan 2022 14:49:48 -0500
+Message-Id: <20220127194952.63033-6-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.35.0
 In-Reply-To: <20220127194952.63033-1-Anna.Schumaker@Netapp.com>
 References: <20220127194952.63033-1-Anna.Schumaker@Netapp.com>
@@ -66,105 +66,81 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This combines the information found in xprt_switch_info with a subset of
-the information found in each xprt subdirectory
+Using the socket module for dns resolution
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tools/rpcctl/rpcctl.py | 68 ++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 68 insertions(+)
+ tools/rpcctl/rpcctl.py | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
 diff --git a/tools/rpcctl/rpcctl.py b/tools/rpcctl/rpcctl.py
-index 9737ac4a9740..0d922f1acf21 100755
+index bdb56d1f5476..c481f96333f9 100755
 --- a/tools/rpcctl/rpcctl.py
 +++ b/tools/rpcctl/rpcctl.py
-@@ -1,5 +1,6 @@
- #!/usr/bin/python3
+@@ -2,6 +2,7 @@
  import argparse
-+import collections
+ import collections
  import pathlib
++import socket
  import sys
  
-@@ -14,6 +15,70 @@ if not sunrpc.is_dir():
-     print("ERROR: sysfs does not have sunrpc directory")
-     sys.exit(1)
+ with open("/proc/mounts", 'r') as f:
+@@ -22,6 +23,11 @@ def read_addr_file(path):
+     except:
+         return "(enoent)"
  
-+def read_addr_file(path):
-+    try:
-+        with open(path, 'r') as f:
-+            return f.readline().strip()
-+    except:
-+        return "(enoent)"
++def write_addr_file(path, newaddr):
++    with open(path, 'w') as f:
++        f.write(newaddr)
++    return read_addr_file(path)
 +
-+def read_info_file(path):
-+    res = collections.defaultdict(int)
-+    try:
-+        with open(path) as info:
-+            lines = [ l.split("=", 1) for l in info if "=" in l ]
-+            res.update({ key:int(val.strip()) for (key, val) in lines })
-+    finally:
-+        return res
-+
-+
-+class Xprt:
-+    def __init__(self, path):
-+        self.path = path
-+        self.id = int(path.stem.split("-")[1])
-+        self.type = path.stem.split("-")[2]
-+        self.dstaddr = read_addr_file(path / "dstaddr")
-+
-+    def __lt__(self, rhs):
-+        return self.id < rhs.id
-+
-+    def small_str(self):
-+        return f"xprt {self.id}: {self.type}, {self.dstaddr}"
-+
-+
-+class XprtSwitch:
-+    def __init__(self, path):
-+        self.path = path
-+        self.id = int(path.stem.split("-")[1])
-+        self.info = read_info_file(path / "xprt_switch_info")
-+
-+        self.xprts = [ Xprt(p) for p in self.path.iterdir() if p.is_dir() ]
-+        self.xprts.sort()
-+
-+    def __lt__(self, rhs):
-+        return self.id < rhs.id
-+
-+    def __str__(self):
-+        switch =  f"switch {self.id}: " \
-+                  f"xprts {self.info['num_xprts']}, " \
-+                  f"active {self.info['num_active']}, " \
-+                  f"queue {self.info['queue_len']}"
-+        xprts = [ f"	{x.small_str()}" for x in self.xprts ]
-+        return "\n".join([ switch ] + xprts)
-+
-+    def add_command(subparser):
-+        parser = subparser.add_parser("switch", help="Commands for xprt switches")
-+        parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt-switch to show")
-+        parser.set_defaults(func=XprtSwitch.list_all)
-+
-+    def list_all(args):
-+        switches = [ XprtSwitch(f) for f in (sunrpc / "xprt-switches").iterdir() ]
-+        switches.sort()
-+        for xs in switches:
-+            if args.id == None or xs.id == args.id[0]:
-+                print(xs)
-+
-+
- parser = argparse.ArgumentParser()
+ def read_info_file(path):
+     res = collections.defaultdict(int)
+     try:
+@@ -73,11 +79,21 @@ class Xprt:
+         main = " [main]" if self.info.get("main_xprt") else ""
+         return f"xprt {self.id}: {self.type}, {self.dstaddr}{main}"
  
- def show_small_help(args):
-@@ -21,5 +86,8 @@ def show_small_help(args):
-     print("sunrpc dir:", sunrpc)
- parser.set_defaults(func=show_small_help)
- 
-+subparser = parser.add_subparsers(title="commands")
-+XprtSwitch.add_command(subparser)
++    def set_dstaddr(self, newaddr):
++        resolved = socket.gethostbyname(newaddr)
++        self.dstaddr = write_addr_file(self.path / "dstaddr", resolved)
 +
- args = parser.parse_args()
- args.func(args)
+     def add_command(subparser):
+         parser = subparser.add_parser("xprt", help="Commands for individual xprts")
+         parser.add_argument("--id", metavar="ID", nargs=1, type=int, help="Id of a specific xprt to show")
+         parser.set_defaults(func=Xprt.list_all)
+ 
++        subparser = parser.add_subparsers()
++        parser = subparser.add_parser("set", help="Set an xprt property")
++        parser.add_argument("--id", metavar="ID", nargs=1, type=int, required=True, help="Id of a specific xprt to modify")
++        parser.add_argument("--dstaddr", metavar="dstaddr", nargs=1, type=str, help="New dstaddr to set")
++        parser.set_defaults(func=Xprt.set_property)
++
+     def list_all(args):
+         xprts = [ Xprt(f) for f in (sunrpc / "xprt-switches").glob("**/xprt-*") ]
+         xprts.sort()
+@@ -85,6 +101,21 @@ class Xprt:
+             if args.id == None or xprt.id == args.id[0]:
+                 print(xprt)
+ 
++    def get_by_id(id):
++        xprts = [ Xprt(f) for f in (sunrpc / "xprt-switches").glob("**/xprt-*") ]
++        for xprt in xprts:
++            if xprt.id == id:
++                return xprt
++
++    def set_property(args):
++        xprt = Xprt.get_by_id(args.id[0])
++        try:
++            if args.dstaddr != None:
++                xprt.set_dstaddr(args.dstaddr[0])
++            print(xprt)
++        except Exception as e:
++            print(e)
++
+ 
+ class XprtSwitch:
+     def __init__(self, path, sep=":"):
 -- 
 2.35.0
 
