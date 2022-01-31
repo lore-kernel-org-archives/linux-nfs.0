@@ -2,75 +2,111 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 128B6C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 31 Jan 2022 20:37:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 767EEC433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 31 Jan 2022 21:39:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1379337AbiAaUhx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 31 Jan 2022 15:37:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37352 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1350773AbiAaUho (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jan 2022 15:37:44 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4CF5C061714
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Jan 2022 12:37:43 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 3D77414DC; Mon, 31 Jan 2022 15:37:42 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 3D77414DC
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1643661462;
-        bh=uJfpAwjM5tou7NFmBbnDWYY7q+KJ90NYOs82VENLpwY=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=EFKiskf1UL95uVa/QLy4S2Zjzpu6LZJ0k4ak6aoJuXIYisYrenuIxTIdsvtSUnocN
-         K1iomOZ/aeisBTuoxWSqe9Y6EsEhcCRLbAP5/YTVu/aWfsIquNg887Z6CfHk7+6oIN
-         YCkOj7tkcs0EqRAUZ1PI8iF6jeGu5/xO7KMlwmH0=
-Date:   Mon, 31 Jan 2022 15:37:42 -0500
-From:   bfields <bfields@fieldses.org>
-To:     Richard Weinberger <richard@nod.at>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>,
-        luis turcitu <luis.turcitu@appsbroker.com>,
-        chris chilvers <chris.chilvers@appsbroker.com>,
-        david young <david.young@appsbroker.com>,
-        Daire Byrne <daire@dneg.com>,
-        david oberhollenzer <david.oberhollenzer@sigma-star.at>,
-        david <david@sigma-star.at>, goliath@sigma-star.at,
-        trond myklebust <trond.myklebust@hammerspace.com>,
-        anna schumaker <anna.schumaker@netapp.com>
-Subject: Re: [RFC PATCH] mountd: export: Deal with NFS filesystems
-Message-ID: <20220131203742.GE30119@fieldses.org>
-References: <20220131104316.10357-1-richard@nod.at>
- <20220131170125.GB30119@fieldses.org>
- <8290532.5517.1643649341941.JavaMail.zimbra@nod.at>
+        id S1381274AbiAaVjf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 31 Jan 2022 16:39:35 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:38208 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1381161AbiAaViZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jan 2022 16:38:25 -0500
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 4909321117;
+        Mon, 31 Jan 2022 21:38:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1643665101; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=NKd6R/0YNRyfzQ8ZZPjRR1HT9tn7/jzGyteVTy+hgUM=;
+        b=w9OpH9VTawfzJ/u8BXxgoWfymo+nzi1jLr7eZl7pa7S3H/zTZKoiY74UIkzV5oczRiR35F
+        eLqBmYg3tZ8JK2/HDaZcngWqnQ+25s7odv9jecLpLT9NEc3dJUozM5hdxJii1lZgOzXMMQ
+        FFGA76YJ9SMMXO+XgXy/NeWcIiKT5is=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1643665101;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=NKd6R/0YNRyfzQ8ZZPjRR1HT9tn7/jzGyteVTy+hgUM=;
+        b=aObXzQQUXcR2oE8tQR5V9RJQ891z3ud0AVoKa2jrFRJM1SxbfNEWDptJM65WaSHMXX4Vyx
+        716tCFUO9nP6+iAA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9A75313CCA;
+        Mon, 31 Jan 2022 21:38:14 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id caHTFcZW+GGqAQAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 31 Jan 2022 21:38:14 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <8290532.5517.1643649341941.JavaMail.zimbra@nod.at>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Matthew Wilcox" <willy@infradead.org>
+Cc:     "Andrew Morton" <akpm@linux-foundation.org>,
+        "Jeff Layton" <jlayton@kernel.org>,
+        "Ilya Dryomov" <idryomov@gmail.com>,
+        "Miklos Szeredi" <miklos@szeredi.hu>,
+        "Trond Myklebust" <trond.myklebust@hammerspace.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/3] nfs: remove reliance on bdi congestion
+In-reply-to: <YffhBYZ+6pgWeF71@casper.infradead.org>
+References: <164360127045.4233.2606812444285122570.stgit@noble.brown>,
+ <164360183350.4233.691070075155620959.stgit@noble.brown>,
+ <YfdkCsxyu0jpo+98@casper.infradead.org>,
+ <164360492268.18996.14760090171177015570@noble.neil.brown.name>,
+ <YffhBYZ+6pgWeF71@casper.infradead.org>
+Date:   Tue, 01 Feb 2022 08:38:11 +1100
+Message-id: <164366509142.18996.11029008051103064089@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Jan 31, 2022 at 06:15:41PM +0100, Richard Weinberger wrote:
-> ----- Ursprüngliche Mail -----
-> > Von: "bfields" <bfields@fieldses.org>
-> >> Using /proc/fs/nfsfs/volumes it is possible to find the NFS fsid
-> >> from the backend and use it as seed for mountd's UUID mechanism.
+On Tue, 01 Feb 2022, Matthew Wilcox wrote:
+> On Mon, Jan 31, 2022 at 03:55:22PM +1100, NeilBrown wrote:
+> > On Mon, 31 Jan 2022, Matthew Wilcox wrote:
+> > > On Mon, Jan 31, 2022 at 03:03:53PM +1100, NeilBrown wrote:
+> > > >  - .writepage to return AOP_WRITEPAGE_ACTIVATE if WB_SYNC_NONE
+> > > >     and the flag is set.
+> > > 
+> > > Is this actually useful?  I ask because Dave Chinner believes
+> > > the call to ->writepage in vmscan to be essentially unused.
 > > 
-> > Sorry, I haven't checked--what is that number, really?  It's probably
-> > not the fsid returned from the server, as that wouldn't be guaranteed
-> > unique across multiple servers.  But that means it's probably generated
-> > in a way that doesn't guarantee it's stable across reboots.  And we need
-> > filehandles to work across reboots.
+> > He would be wrong ...  unless "essentially" means "mostly" rather than
+> > "totally".
+> > swap-out to NFS results in that ->writepage call.
 > 
-> Unless I badly misunderstood the code it comes from fs/nfs/client.c's
-> nfs_create_server() where the NFS client fetches NFS_ATTR_FATTR via getattr().
-> So it should be unique:
-> https://datatracker.ietf.org/doc/html/rfc7530#section-5.8.1.9
+> For writes, SWP_FS_OPS uses ->direct_IO, not ->writepage.  Confused.
+> 
 
-Unique within one server, but not across different servers.
+I shouldn't have mentioned NFS - that is an irrelevant distraction.
 
-Depending on how your servers assign fsids, collisions might be quite
-likely.  Results of a collision would be pretty bad.
+The "call to ->writepage in vmscan" is used, at least for swap.
+For swapout it is the ->writepage from swap_aops, not the ->writepage of
+any filesystem.  This is swap_writepage(), and for SWP_FS_OPS that maps
+to a ->direct_IO call.
 
---b.
+Dave may well be right that the ->writepage in vmscan never calls
+xfs_writepage or many others.
+
+To get to the ->writepage of a filesystem it would need to be called
+from kswapd.  You would need to have no swap configured, and 90% of
+memory consumed with anon pages so that the dirty_background_ratio
+of 10% didn't kick off writeback.  Then I would expect to kswapd to
+write out to a filesystem before writeback would do it.
+
+Nonetheless, without clear evidence to the contrary, I think it is
+safest to add this test to the ->writepage function for any filesystem
+which currently sets the bdi async congested flag.
+
+Thanks,
+NeilBrown
