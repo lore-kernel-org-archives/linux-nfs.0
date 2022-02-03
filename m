@@ -2,47 +2,48 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E573AC433FE
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:42:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 56935C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:42:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354151AbiBCUmr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 15:42:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59348 "EHLO
+        id S237530AbiBCUms (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:42:48 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59118 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1355828AbiBCUjz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:39:55 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C9172C061183;
-        Thu,  3 Feb 2022 12:36:40 -0800 (PST)
+        with ESMTP id S1356044AbiBCUk7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:40:59 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B065C0613E3;
+        Thu,  3 Feb 2022 12:37:00 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 74884B835BC;
-        Thu,  3 Feb 2022 20:36:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 66C16C36AE2;
-        Thu,  3 Feb 2022 20:36:38 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 56FF360A77;
+        Thu,  3 Feb 2022 20:37:00 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DAA6BC340F0;
+        Thu,  3 Feb 2022 20:36:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1643920599;
-        bh=GyoKvYHjJdZEdczGMaOTHA3l7hEsSGN7FAAdvH/xJRg=;
+        s=k20201202; t=1643920619;
+        bh=J0oY2ELlrWXgd10fbeUVF1lyKQTWa7uQM3TycUZkb1k=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=LZarsZNf7x17VtfYrvnR6rnBpn3h6dZziWb92v7Itpm7IA2r1tY1qovZswdUgTOvE
-         YQxCwFESMV4i7fanLsYaW+YALpWdad+N6s7nFRBJA1Y0nLgW5jRBdhHfFhN932nMei
-         /NV0FiBhop8w1o/h8m2xXrRpA0r9Rdcl93etAi7UW8PWya454HLiPfphML+MHNcCOi
-         mGdiNsWu1cRDVZYHqunb4fsjF9yxNIFl38M7utU+7TiuvMX345pYTkRyuwIEAanjBd
-         VU1gMDOji+yv3ZFyMCu6tMNge09Bce+bhG25iJxkeY+E0nQwDxbwtjqMw34JSjwYS1
-         bug/fdHKvNWwA==
+        b=NEUR+89R6QzFcM4YUA81VnO2Z5NO9sncV6j3LqwqBxND+kJup1ENdZsVncux7PbJM
+         s5tGIx23CdtVIqiEYnHH5yxjbDs8WgVutJ6bHiLtA8fP53gEkQh2CfWviL+i/MXN93
+         w0vurP2mNIWCPIxMcFaQr56w6jsA7EHBiG4U/CZhcH5t2G7RN6TYz4cyC/G77uoDTo
+         QwDZmWnpsWNhXr1ELqKIbi4kOcJq7XBTQEqe2guUEriNz5hw7PGnwPeEXG1r6YLsmZ
+         5v2OBg8wZoiDYV2I+Z/ZbEOVeYcMqarpu0WIoVSa1RVIpthr6WGtPaeNPhqa8GZ7lQ
+         iHP7md/B03u+A==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        rtm@csail.mit.edu, Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, anna.schumaker@netapp.com,
+Cc:     Olga Kornievskaia <kolga@netapp.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 3/9] NFSv4.1: Fix uninitialised variable in devicenotify
-Date:   Thu,  3 Feb 2022 15:36:27 -0500
-Message-Id: <20220203203633.4685-3-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 5/7] NFSv4 expose nfs_parse_server_name function
+Date:   Thu,  3 Feb 2022 15:36:49 -0500
+Message-Id: <20220203203651.5158-5-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220203203633.4685-1-sashal@kernel.org>
-References: <20220203203633.4685-1-sashal@kernel.org>
+In-Reply-To: <20220203203651.5158-1-sashal@kernel.org>
+References: <20220203203651.5158-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -51,104 +52,49 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-[ Upstream commit b05bf5c63b326ce1da84ef42498d8e0e292e694c ]
+[ Upstream commit f5b27cc6761e27ee6387a24df1a99ca77b360fea ]
 
-When decode_devicenotify_args() exits with no entries, we need to
-ensure that the struct cb_devicenotifyargs is initialised to
-{ 0, NULL } in order to avoid problems in
-nfs4_callback_devicenotify().
+Make nfs_parse_server_name available outside of nfs4namespace.c.
 
-Reported-by: <rtm@csail.mit.edu>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/callback.h      |  2 +-
- fs/nfs/callback_proc.c |  2 +-
- fs/nfs/callback_xdr.c  | 18 +++++++++---------
- 3 files changed, 11 insertions(+), 11 deletions(-)
+ fs/nfs/nfs4_fs.h       | 3 ++-
+ fs/nfs/nfs4namespace.c | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index a20a0bce40a48..80ad04abcf309 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -168,7 +168,7 @@ struct cb_devicenotifyitem {
- };
- 
- struct cb_devicenotifyargs {
--	int				 ndevs;
-+	uint32_t			 ndevs;
- 	struct cb_devicenotifyitem	 *devs;
- };
- 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 440ff8e7082b6..3998b432e1b98 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -355,7 +355,7 @@ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
- 				  struct cb_process_state *cps)
- {
- 	struct cb_devicenotifyargs *args = argp;
--	int i;
-+	uint32_t i;
- 	__be32 res = 0;
- 	struct nfs_client *clp = cps->clp;
- 	struct nfs_server *server = NULL;
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 57de914630bc9..36c34be839d09 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -265,11 +265,9 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 				void *argp)
- {
- 	struct cb_devicenotifyargs *args = argp;
-+	uint32_t tmp, n, i;
- 	__be32 *p;
- 	__be32 status = 0;
--	u32 tmp;
--	int n, i;
--	args->ndevs = 0;
- 
- 	/* Num of device notifications */
- 	p = read_buf(xdr, sizeof(uint32_t));
-@@ -278,7 +276,7 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 		goto out;
- 	}
- 	n = ntohl(*p++);
--	if (n <= 0)
-+	if (n == 0)
- 		goto out;
- 	if (n > ULONG_MAX / sizeof(*args->devs)) {
- 		status = htonl(NFS4ERR_BADXDR);
-@@ -336,19 +334,21 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 			dev->cbd_immediate = 0;
- 		}
- 
--		args->ndevs++;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index c719389381dc4..0b867d7c02992 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -241,7 +241,8 @@ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
+ 			       struct nfs_fh *, struct nfs_fattr *);
+ int nfs4_replace_transport(struct nfs_server *server,
+ 				const struct nfs4_fs_locations *locations);
 -
- 		dprintk("%s: type %d layout 0x%x immediate %d\n",
- 			__func__, dev->cbd_notify_type, dev->cbd_layout_type,
- 			dev->cbd_immediate);
- 	}
-+	args->ndevs = n;
-+	dprintk("%s: ndevs %d\n", __func__, args->ndevs);
-+	return 0;
-+err:
-+	kfree(args->devs);
- out:
-+	args->devs = NULL;
-+	args->ndevs = 0;
- 	dprintk("%s: status %d ndevs %d\n",
- 		__func__, ntohl(status), args->ndevs);
- 	return status;
--err:
--	kfree(args->devs);
--	goto out;
++size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
++			     size_t salen, struct net *net);
+ /* nfs4proc.c */
+ extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
+ extern int nfs4_call_sync(struct rpc_clnt *, struct nfs_server *,
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index d8b040bd9814d..2b1921bb5348b 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -120,8 +120,8 @@ static int nfs4_validate_fspath(struct dentry *dentry,
+ 	return 0;
  }
  
- static __be32 decode_sessionid(struct xdr_stream *xdr,
+-static size_t nfs_parse_server_name(char *string, size_t len,
+-		struct sockaddr *sa, size_t salen, struct net *net)
++size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
++			     size_t salen, struct net *net)
+ {
+ 	ssize_t ret;
+ 
 -- 
 2.34.1
 
