@@ -2,35 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBA7DC433EF
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:35:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 648EDC433FE
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:36:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354701AbiBCUfe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 15:35:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58030 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354297AbiBCUde (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:33:34 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4BF15C06174A;
-        Thu,  3 Feb 2022 12:33:03 -0800 (PST)
+        id S1354563AbiBCUgh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:36:37 -0500
+Received: from dfw.source.kernel.org ([139.178.84.217]:41000 "EHLO
+        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1355099AbiBCUev (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:34:51 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DED4761A04;
-        Thu,  3 Feb 2022 20:33:02 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6A9E1C340EB;
-        Thu,  3 Feb 2022 20:33:01 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 6428A61B03;
+        Thu,  3 Feb 2022 20:34:51 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0C8A2C36B08;
+        Thu,  3 Feb 2022 20:34:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1643920382;
-        bh=SeiQ8rRzQyBwPXJWscgWn7Gf9uDRWBYWJf02DAfTknA=;
+        s=k20201202; t=1643920490;
+        bh=XVFM1tXUzp/miplACsf4svGjDWRV9r3TUJTlD4CJNVE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Nhd3Vmefoot7nfOVf5u9xgHshOyJ5pdrcWO1pTFCgSV7JwZhiD44uBMFolDwm12wF
-         Z+pYBFv/ZzTIA36OheD3GMundpwXSXXsu+IKmi2vNSyDEg0Zn1RMe3s8FIoMeufKFs
-         PIdRbyug+CNUgUosFoX2ahcghjCbO/0xC3vXxCTgFaZoudYIlDXcEs+rWg1x0cv1gX
-         XUszZ5gl7hxcsGtxArjv26/88AWAHqzoB+N8l3wZ9fNtec1Ibbg4yW8ewoSlyjazyy
-         QyKwGDzcrBPyJLtrboUggoCPikP2qjfd7DFG0peC8xasT6w5mDtg0G8sPn8teD3xvt
-         Ake/bYG4jm/qw==
+        b=bhFUMb3mQ6JS3ZQQQPJorWgXF5fmSQ5VZ+HHccUnAHyweGMfNRYIoozgBvk+yK9DX
+         FKc7Ve0fXy/N3JF/8aOBHoFDzJZpaMoYONEOgnEKMrsVPXyoFlWDTbr6qPDvdkU+Bg
+         LH+W2tNhe2tdGXvkLhbpE/+cFkFhLEa8NRu1CRe8jCdzrSDDF325XzmI01llOtCR0/
+         nAL5nKKbmeOE87NkU00z/Tn6n6wjutQRUyjNrG5gIl0XhPXQZRez6sb3juV5rJzNJg
+         wQ6IVy7o75rpHyvFfuhyXN/FQYxjWluwheGp6aUmlWRuvIGhaPLJ2LWEDuvhzsoQ93
+         vEpvsoKlignKw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Olga Kornievskaia <kolga@netapp.com>,
@@ -38,12 +35,12 @@ Cc:     Olga Kornievskaia <kolga@netapp.com>,
         Sasha Levin <sashal@kernel.org>,
         trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.15 10/41] NFSv4 handle port presence in fs_location server string
-Date:   Thu,  3 Feb 2022 15:32:14 -0500
-Message-Id: <20220203203245.3007-10-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 02/25] NFSv4 only print the label when its queried
+Date:   Thu,  3 Feb 2022 15:34:23 -0500
+Message-Id: <20220203203447.3570-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220203203245.3007-1-sashal@kernel.org>
-References: <20220203203245.3007-1-sashal@kernel.org>
+In-Reply-To: <20220203203447.3570-1-sashal@kernel.org>
+References: <20220203203447.3570-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -54,82 +51,38 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-[ Upstream commit a8d54baba7c65db2d3278873def61f8d3753d766 ]
+[ Upstream commit 2c52c8376db7160a1dd8a681c61c9258405ef143 ]
 
-An fs_location attribute returns a string that can be ipv4, ipv6,
-or DNS name. An ip location can have a port appended to it and if
-no port is present a default port needs to be set. If rpc_pton()
-fails to parse, try calling rpc_uaddr2socaddr() that can convert
-an universal address.
+When the bitmask of the attributes doesn't include the security label,
+don't bother printing it. Since the label might not be null terminated,
+adjust the printing format accordingly.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4_fs.h       |  2 +-
- fs/nfs/nfs4namespace.c | 17 +++++++++++------
- 2 files changed, 12 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4xdr.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 0eb8e5d2ec395..f8672a34fd635 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -282,7 +282,7 @@ int nfs4_submount(struct fs_context *, struct nfs_server *);
- int nfs4_replace_transport(struct nfs_server *server,
- 				const struct nfs4_fs_locations *locations);
- size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
--			     size_t salen, struct net *net);
-+			     size_t salen, struct net *net, int port);
- /* nfs4proc.c */
- extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
- extern int nfs4_async_handle_error(struct rpc_task *task,
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index f1ed4f60a7f33..3680c8da510c9 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -165,15 +165,20 @@ static int nfs4_validate_fspath(struct dentry *dentry,
- }
- 
- size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
--			     size_t salen, struct net *net)
-+			     size_t salen, struct net *net, int port)
- {
- 	ssize_t ret;
- 
- 	ret = rpc_pton(net, string, len, sa, salen);
- 	if (ret == 0) {
--		ret = nfs_dns_resolve_name(net, string, len, sa, salen);
--		if (ret < 0)
--			ret = 0;
-+		ret = rpc_uaddr2sockaddr(net, string, len, sa, salen);
-+		if (ret == 0) {
-+			ret = nfs_dns_resolve_name(net, string, len, sa, salen);
-+			if (ret < 0)
-+				ret = 0;
-+		}
-+	} else if (port) {
-+		rpc_set_port(sa, port);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c16b93df1bc14..9f8bd45379e72 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4184,10 +4184,11 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		} else
+ 			printk(KERN_WARNING "%s: label too long (%u)!\n",
+ 					__func__, len);
++		if (label && label->label)
++			dprintk("%s: label=%.*s, len=%d, PI=%d, LFS=%d\n",
++				__func__, label->len, (char *)label->label,
++				label->len, label->pi, label->lfs);
  	}
- 	return ret;
+-	if (label && label->label)
+-		dprintk("%s: label=%s, len=%d, PI=%d, LFS=%d\n", __func__,
+-			(char *)label->label, label->len, label->pi, label->lfs);
+ 	return status;
  }
-@@ -328,7 +333,7 @@ static int try_location(struct fs_context *fc,
- 			nfs_parse_server_name(buf->data, buf->len,
- 					      &ctx->nfs_server.address,
- 					      sizeof(ctx->nfs_server._address),
--					      fc->net_ns);
-+					      fc->net_ns, 0);
- 		if (ctx->nfs_server.addrlen == 0)
- 			continue;
  
-@@ -496,7 +501,7 @@ static int nfs4_try_replacing_one_location(struct nfs_server *server,
- 			continue;
- 
- 		salen = nfs_parse_server_name(buf->data, buf->len,
--						sap, addr_bufsize, net);
-+						sap, addr_bufsize, net, 0);
- 		if (salen == 0)
- 			continue;
- 		rpc_set_port(sap, NFS_PORT);
 -- 
 2.34.1
 
