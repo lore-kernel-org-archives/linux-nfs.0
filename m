@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CF3EC433FE
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:36:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EBA63C43217
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:37:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354792AbiBCUgj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 15:36:39 -0500
-Received: from dfw.source.kernel.org ([139.178.84.217]:41052 "EHLO
-        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238158AbiBCUex (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:34:53 -0500
+        id S1355063AbiBCUhC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:37:02 -0500
+Received: from ams.source.kernel.org ([145.40.68.75]:37364 "EHLO
+        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1354104AbiBCUfA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:35:00 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id AAB8261B32;
-        Thu,  3 Feb 2022 20:34:52 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5A934C340F3;
-        Thu,  3 Feb 2022 20:34:51 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 85F3BB835AF;
+        Thu,  3 Feb 2022 20:34:59 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 54770C340E8;
+        Thu,  3 Feb 2022 20:34:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1643920492;
-        bh=uxBtlMvpAEk7Qv6agBQmc3iJ1oSIfEUqJj1aLSZvzl4=;
+        s=k20201202; t=1643920498;
+        bh=l/brSncTN6vdt2U5TbNasSHodgL5NGbj4Cmm4cRhARM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=skqnbx0UDzC5lH+guTrInV2WAWs6Rrol3WLVIWcH/ArtGb9Fy3dCpyLe/FFssj5Bx
-         leP6qLmJodwNWBvnHEdJVWOxbJMqylX5zr2Y+yHN+31yWT/494wCWUM+9NKmuMI0eG
-         J/WY77SsCe2QdgOifEL2ubIPTUeQx/zPg2KRdZ47OQt/e0EY2TzQdSd3yKhhMy4M3J
-         bKwISV0nJpoQ/likJWPJdF3QACa2L6MrAWARdCHGOzeGqXkrLNqUNPBWxLL0BZZOSQ
-         vRn0U0i9BZspNcsP+YwRTlaP0nHtv7So80I/Tktxg39Cp8itaNBzDQo1qe2yP1BiPP
-         BO9K8Gr9HRJjw==
+        b=EexiStfLG0g87l54dljnt1y85gFNH7zvRnabOUKpz8HT9WYcAiOir2dpsYmM6L9Uh
+         iNc1jwP7MYQv+fm/n76S29CjsVJEpVGnFk3sBd7QrePtJAIsl40op6GSqO6l+xEOLO
+         ZKRTepvNQjsjsVnv5fInq4XbVpyri2XzGoexzgl7o0/hqm+BAZ2+BmJp+sp/HQ08qo
+         BS21CSwCHorKVz43SL9/prvjWCV7lp4YAZDjr0NBiqD2Fv3YSd4zvDxV60V9nvzMi4
+         O8tCJynG/qXbSFSn3aYMbxupZrm+lSUgYT05T/QtineBcZxIud84HZSgstkSCP1Fz/
+         9tdlA0vK7Wigg==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Xiaoke Wang <xkernel.wang@foxmail.com>,
+Cc:     Olga Kornievskaia <kolga@netapp.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>,
         trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 03/25] nfs: nfs4clinet: check the return value of kstrdup()
-Date:   Thu,  3 Feb 2022 15:34:24 -0500
-Message-Id: <20220203203447.3570-3-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 07/25] NFSv4 expose nfs_parse_server_name function
+Date:   Thu,  3 Feb 2022 15:34:28 -0500
+Message-Id: <20220203203447.3570-7-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20220203203447.3570-1-sashal@kernel.org>
 References: <20220203203447.3570-1-sashal@kernel.org>
@@ -49,38 +49,49 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Xiaoke Wang <xkernel.wang@foxmail.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-[ Upstream commit fbd2057e5329d3502a27491190237b6be52a1cb6 ]
+[ Upstream commit f5b27cc6761e27ee6387a24df1a99ca77b360fea ]
 
-kstrdup() returns NULL when some internal memory errors happen, it is
-better to check the return value of it so to catch the memory error in
-time.
+Make nfs_parse_server_name available outside of nfs4namespace.c.
 
-Signed-off-by: Xiaoke Wang <xkernel.wang@foxmail.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4client.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4_fs.h       | 3 ++-
+ fs/nfs/nfs4namespace.c | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 6d74f2e2de461..0e6437b08a3a5 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1330,8 +1330,11 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
- 	}
- 	nfs_put_client(clp);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 3e344bec3647b..de71cf89a24ee 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -281,7 +281,8 @@ struct rpc_clnt *nfs4_negotiate_security(struct rpc_clnt *, struct inode *,
+ int nfs4_submount(struct fs_context *, struct nfs_server *);
+ int nfs4_replace_transport(struct nfs_server *server,
+ 				const struct nfs4_fs_locations *locations);
+-
++size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
++			     size_t salen, struct net *net);
+ /* nfs4proc.c */
+ extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
+ extern int nfs4_async_handle_error(struct rpc_task *task,
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 873342308dc0d..f1ed4f60a7f33 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -164,8 +164,8 @@ static int nfs4_validate_fspath(struct dentry *dentry,
+ 	return 0;
+ }
  
--	if (server->nfs_client->cl_hostname == NULL)
-+	if (server->nfs_client->cl_hostname == NULL) {
- 		server->nfs_client->cl_hostname = kstrdup(hostname, GFP_KERNEL);
-+		if (server->nfs_client->cl_hostname == NULL)
-+			return -ENOMEM;
-+	}
- 	nfs_server_insert_lists(server);
+-static size_t nfs_parse_server_name(char *string, size_t len,
+-		struct sockaddr *sa, size_t salen, struct net *net)
++size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
++			     size_t salen, struct net *net)
+ {
+ 	ssize_t ret;
  
- 	return nfs_probe_destination(server);
 -- 
 2.34.1
 
