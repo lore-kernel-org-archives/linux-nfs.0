@@ -2,48 +2,48 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BE56C4332F
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:39:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A2C83C433FE
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:42:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1355047AbiBCUjG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 15:39:06 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59102 "EHLO
+        id S1354251AbiBCUmJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:42:09 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59350 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1355075AbiBCUhE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:37:04 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A086AC061749;
-        Thu,  3 Feb 2022 12:35:00 -0800 (PST)
+        with ESMTP id S1355829AbiBCUjz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:39:55 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 214C0C06177E;
+        Thu,  3 Feb 2022 12:36:40 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 40D6161B1F;
-        Thu,  3 Feb 2022 20:35:00 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9A09C340EF;
-        Thu,  3 Feb 2022 20:34:58 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id DD6AFB835BC;
+        Thu,  3 Feb 2022 20:36:38 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DA646C340F2;
+        Thu,  3 Feb 2022 20:36:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1643920499;
-        bh=ktM89XCjdX4piqpIJRwOY3wrxDBa/THTYrXLVyRKYCs=;
+        s=k20201202; t=1643920597;
+        bh=3ac+FuFvTfl2BMZ4CXOkDSBDx8Add5UW+u1yknlOleg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Q4JsDMKcy3g1HoR0Vs6o83tq8VNpWn3dBZ/q6rzxkj4CE5Ag/6r4HWuYqX0pJeMKC
-         UDBgfS+05WLPfzNNg70v18+YnDQHKdNv5huX6xiZ8g0FzCN7oxRNXxL8wWXNvXe4Kg
-         FLbR3SWJm9ZJ/XoHm95xHh/R+Ss4litd4jIpRHb6yWs0yRIcvBPvTRk/2XeaepA8t/
-         2p6GQec+FiufDB+/YMS2PBbctHfoc+zx0zgCxVBeOWJksmJk+UkEpvqpGbn512EEuS
-         3wVLoX29Ny24hKoPoB56BrrnP1p1/7eEYuGSl8ldRl/yI73TAv6oovnQyprVTJiYOL
-         8cHqd3tVP11Mw==
+        b=NgAYUT4ZSUqwR8oPQPR8wBqiQ9BK6URNMVGAAkXmLho1lzxFGn791YSJAQ+mcf+CC
+         /3x6KiZ0mNmShZ+3wcv6uezg2mSZtyccpiY//lA9jkMv4dOHL7Jv/WcRaPIok1tpSL
+         fWEGwlYF1F4MltrJmlILgvQ2b3weJlX0bVY0gwdT/cHQCQTiV2Dvnmhd/ckaZbZFQi
+         lppGEOCHDX73JZdEBMEincnpHXJm/9OafsR0zYeDmL6DGwPG/Uu8Z/+k1M5dVYH4LC
+         yq31uyCtFgkOss55NOnjDjI6fwbMPwIyjfPVWBrxi82d67x92lLrMpflZtG008bd2W
+         1GGDZ95b1EdgA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
+Cc:     Xiaoke Wang <xkernel.wang@foxmail.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>,
         trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 08/25] NFSv4 handle port presence in fs_location server string
-Date:   Thu,  3 Feb 2022 15:34:29 -0500
-Message-Id: <20220203203447.3570-8-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 2/9] nfs: nfs4clinet: check the return value of kstrdup()
+Date:   Thu,  3 Feb 2022 15:36:26 -0500
+Message-Id: <20220203203633.4685-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220203203447.3570-1-sashal@kernel.org>
-References: <20220203203447.3570-1-sashal@kernel.org>
+In-Reply-To: <20220203203633.4685-1-sashal@kernel.org>
+References: <20220203203633.4685-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -52,84 +52,38 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+From: Xiaoke Wang <xkernel.wang@foxmail.com>
 
-[ Upstream commit a8d54baba7c65db2d3278873def61f8d3753d766 ]
+[ Upstream commit fbd2057e5329d3502a27491190237b6be52a1cb6 ]
 
-An fs_location attribute returns a string that can be ipv4, ipv6,
-or DNS name. An ip location can have a port appended to it and if
-no port is present a default port needs to be set. If rpc_pton()
-fails to parse, try calling rpc_uaddr2socaddr() that can convert
-an universal address.
+kstrdup() returns NULL when some internal memory errors happen, it is
+better to check the return value of it so to catch the memory error in
+time.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Xiaoke Wang <xkernel.wang@foxmail.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4_fs.h       |  2 +-
- fs/nfs/nfs4namespace.c | 17 +++++++++++------
- 2 files changed, 12 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4client.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index de71cf89a24ee..6d916563356ef 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -282,7 +282,7 @@ int nfs4_submount(struct fs_context *, struct nfs_server *);
- int nfs4_replace_transport(struct nfs_server *server,
- 				const struct nfs4_fs_locations *locations);
- size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
--			     size_t salen, struct net *net);
-+			     size_t salen, struct net *net, int port);
- /* nfs4proc.c */
- extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
- extern int nfs4_async_handle_error(struct rpc_task *task,
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index f1ed4f60a7f33..3680c8da510c9 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -165,15 +165,20 @@ static int nfs4_validate_fspath(struct dentry *dentry,
- }
- 
- size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr *sa,
--			     size_t salen, struct net *net)
-+			     size_t salen, struct net *net, int port)
- {
- 	ssize_t ret;
- 
- 	ret = rpc_pton(net, string, len, sa, salen);
- 	if (ret == 0) {
--		ret = nfs_dns_resolve_name(net, string, len, sa, salen);
--		if (ret < 0)
--			ret = 0;
-+		ret = rpc_uaddr2sockaddr(net, string, len, sa, salen);
-+		if (ret == 0) {
-+			ret = nfs_dns_resolve_name(net, string, len, sa, salen);
-+			if (ret < 0)
-+				ret = 0;
-+		}
-+	} else if (port) {
-+		rpc_set_port(sa, port);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 02b01b4025f6e..c7672c89b9673 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -1241,8 +1241,11 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
  	}
- 	return ret;
- }
-@@ -328,7 +333,7 @@ static int try_location(struct fs_context *fc,
- 			nfs_parse_server_name(buf->data, buf->len,
- 					      &ctx->nfs_server.address,
- 					      sizeof(ctx->nfs_server._address),
--					      fc->net_ns);
-+					      fc->net_ns, 0);
- 		if (ctx->nfs_server.addrlen == 0)
- 			continue;
+ 	nfs_put_client(clp);
  
-@@ -496,7 +501,7 @@ static int nfs4_try_replacing_one_location(struct nfs_server *server,
- 			continue;
+-	if (server->nfs_client->cl_hostname == NULL)
++	if (server->nfs_client->cl_hostname == NULL) {
+ 		server->nfs_client->cl_hostname = kstrdup(hostname, GFP_KERNEL);
++		if (server->nfs_client->cl_hostname == NULL)
++			return -ENOMEM;
++	}
+ 	nfs_server_insert_lists(server);
  
- 		salen = nfs_parse_server_name(buf->data, buf->len,
--						sap, addr_bufsize, net);
-+						sap, addr_bufsize, net, 0);
- 		if (salen == 0)
- 			continue;
- 		rpc_set_port(sap, NFS_PORT);
+ 	return nfs_probe_destination(server);
 -- 
 2.34.1
 
