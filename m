@@ -2,45 +2,45 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 797FBC433FE
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:38:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C579C43219
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:39:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354830AbiBCUip (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 15:38:45 -0500
-Received: from dfw.source.kernel.org ([139.178.84.217]:42946 "EHLO
-        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235533AbiBCUgn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:36:43 -0500
+        id S1355708AbiBCUi7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:38:59 -0500
+Received: from ams.source.kernel.org ([145.40.68.75]:38962 "EHLO
+        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S238158AbiBCUg5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:36:57 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id EFCD260A6B;
-        Thu,  3 Feb 2022 20:36:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 93B89C36AE2;
-        Thu,  3 Feb 2022 20:36:41 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 8233CB835C2;
+        Thu,  3 Feb 2022 20:36:56 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7D2C6C340EF;
+        Thu,  3 Feb 2022 20:36:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1643920602;
-        bh=HvOdQTY9G06pOPmVVUWFW37MhjqeFcqZr++os+rIBhk=;
+        s=k20201202; t=1643920615;
+        bh=Rk+bx6izfFhamqI62DLqstxwO1vrmy+lWTIj8j3BP2o=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=YzXSGOP/n7dO4ND4PSD8Si/R4qcE3Un7VhzTsABuYqkhh44CNHKmXR2P49TiNNfac
-         M2J6KrqQ+koNmtJNcNbR/NdUYIZrmzqKB1kYSnLqZr6AwofosuTnQNklR7BiBLXrzk
-         3KRPYG3TjrAXVRcNrMvOMJsSvhuIM7dzo5rogAyBdnNjR59VMqvj2TJ+Yb68BhVgST
-         xfiN0OKdokYGBJYMwt1c/7+Mr92j+PUFJltOmwC7BUNFKLISixsGo7tKZTjsVtVtxw
-         VbLnSv86bq8+ygud76R5nepKBskvWMSOAy/eXOQSKsNhIdrbkDx9x/u7UwI1UZLyKo
-         sBHovVBqC52Mw==
+        b=BP+am+wv2MmFtx8THquOAmMAbzbMAuWZX+xDf005Cv1n/jFFEziqXmVqkAIaBF32t
+         7V4GITe6pgMlgM1avlRXhulZPAZYzTW0vByZyU5DTjqD3BqeTDfLADfEpQ4uMme++v
+         pvxDp8MhYfGmYeEDQXMpBy6LlMLU5xygGnf9BLCkGiahfewgoYO8t/Fg43uzb1ZRXl
+         AsnRzLUEJo/xDH+KSDzuIx/0fK/BdEV8lBrcHAqUbRdWYhWxhf4PYsGQgEDdi/xWiI
+         thYF3TaTKNsGkrPBGvDCMMUaEjQqMLdh34kkqxjJ0JCGWnrNTN2BaKHZJZqYXqjeaC
+         va2mN+YVXKnNQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
+Cc:     Xiaoke Wang <xkernel.wang@foxmail.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>,
         trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 5/9] NFSv4 remove zero number of fs_locations entries error check
-Date:   Thu,  3 Feb 2022 15:36:29 -0500
-Message-Id: <20220203203633.4685-5-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 2/7] nfs: nfs4clinet: check the return value of kstrdup()
+Date:   Thu,  3 Feb 2022 15:36:46 -0500
+Message-Id: <20220203203651.5158-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220203203633.4685-1-sashal@kernel.org>
-References: <20220203203633.4685-1-sashal@kernel.org>
+In-Reply-To: <20220203203651.5158-1-sashal@kernel.org>
+References: <20220203203651.5158-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -49,48 +49,38 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+From: Xiaoke Wang <xkernel.wang@foxmail.com>
 
-[ Upstream commit 90e12a3191040bd3854d3e236c35921e4e92a044 ]
+[ Upstream commit fbd2057e5329d3502a27491190237b6be52a1cb6 ]
 
-Remove the check for the zero length fs_locations reply in the
-xdr decoding, and instead check for that in the migration code.
+kstrdup() returns NULL when some internal memory errors happen, it is
+better to check the return value of it so to catch the memory error in
+time.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Xiaoke Wang <xkernel.wang@foxmail.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4state.c | 3 +++
- fs/nfs/nfs4xdr.c   | 2 --
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4client.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f92bfc787c5fe..c0987557d4ab4 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2003,6 +2003,9 @@ static int nfs4_try_migration(struct nfs_server *server, struct rpc_cred *cred)
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 2fb4633897084..48baa92846e5f 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -1329,8 +1329,11 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
+ 		goto out;
  	}
  
- 	result = -NFS4ERR_NXIO;
-+	if (!locations->nlocations)
-+		goto out;
-+
- 	if (!(locations->fattr.valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
- 		dprintk("<-- %s: No fs_locations data, migration skipped\n",
- 			__func__);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 99facb5f186fd..ccdc0ca699c39 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3731,8 +3731,6 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 	if (unlikely(!p))
- 		goto out_overflow;
- 	n = be32_to_cpup(p);
--	if (n <= 0)
--		goto out_eio;
- 	for (res->nlocations = 0; res->nlocations < n; res->nlocations++) {
- 		u32 m;
- 		struct nfs4_fs_location *loc;
+-	if (server->nfs_client->cl_hostname == NULL)
++	if (server->nfs_client->cl_hostname == NULL) {
+ 		server->nfs_client->cl_hostname = kstrdup(hostname, GFP_KERNEL);
++		if (server->nfs_client->cl_hostname == NULL)
++			return -ENOMEM;
++	}
+ 	nfs_server_insert_lists(server);
+ 
+ 	error = nfs_probe_destination(server);
 -- 
 2.34.1
 
