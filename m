@@ -2,198 +2,214 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EDD94C43217
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 19:32:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C002C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:29:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353414AbiBCTcP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 14:32:15 -0500
-Received: from mx0b-00069f02.pphosted.com ([205.220.177.32]:33728 "EHLO
-        mx0b-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S240903AbiBCTcO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 14:32:14 -0500
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 213HTBwB011613;
-        Thu, 3 Feb 2022 19:32:12 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=eY+XqNFduAX41W8TpvYE5P42MITUoi/qtS6yb4jnpec=;
- b=Q4Ubnusopz6nD0SA30m7hJ1yls8fqaT2joXPSLsqav94AqE4B8C2EyRjaPiETmpGZQOi
- B7d+DW48SWhBUyNtZat3iV3w8j+Jy3SuvXhBXLzcwc0D0+H+sehc3DxApnLkRYJxXwTT
- m3J+OzYr0PqXPcuDJhofSsf0N/LwjQzowVo2WGrEfmXAYq7wI94qjiN+KvIR/dzwl2Wk
- pxRbT451C3qvFg/sTzBn1oT2XddOYDCAyzWMYHVeflYBoSqEsBrAr3NZYRsknjyaP/hF
- MhBDTbMkXAYBm1aU27ietm0e1vNM8CgyyP/K8mNFZ9GvOq/NQY2gTZYLWJ2954B8paGa UA== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3e0het8s47-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 03 Feb 2022 19:32:12 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 213JLo3P066261;
-        Thu, 3 Feb 2022 19:32:11 GMT
-Received: from nam10-dm6-obe.outbound.protection.outlook.com (mail-dm6nam10lp2107.outbound.protection.outlook.com [104.47.58.107])
-        by userp3030.oracle.com with ESMTP id 3dvtq5vm48-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 03 Feb 2022 19:32:11 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=Y15KGUOrxNklf7ismq52WgqxZvaz2s/iUpzPEov8NL+TEqdhW/S4yOi1593H88p6XaVWJLPIvlGZXDDluGuY040l/MYUqbLzMsSU68om7FQ6eZ+C9WkjUJe1a3sRz7SfOmyd7pXk/yRM57ey7zkYcJ2h7C5NV/5E3Sx5GBv/1gDZiMyYbV9tkGPQpP40ikL73N9wd6xlzCy09GebmD+YZ4SbicnvnjwYwTBRtXJNIosiC1basAp0Tbd+WgYJZ3c9BoGWylFppJPbBl6/ZIKUFkUBjsNzvEGR0FHjAmTT1xU2rCIslKZnIFAuAyVKi1SUQA/jXNhwY/+Jwgek8qReBQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=eY+XqNFduAX41W8TpvYE5P42MITUoi/qtS6yb4jnpec=;
- b=Vqs9Os5dtmu+lDGUCscOP2CuRPQyqPeBs3TSlX6nzg7R4Kehc00wQevGnfcPhGJ/8OBdJ1Sb7IXI0OYp4G+Ip7Ge5fHsZ36pbPcjfLMUkbMKqG/vYZdBfMEj6qZBCRxM2NivW7y/imKAlDz2eBH16+aWsIub6CM8882GpN4rvNFZ+9SqKkw+TTv3p7ceXMYnxm+OuXfcUPiqGmFxj1v/u6Ha2U556PJxbbujxdvuBtwCf+4ZwbeFdeeR9hXM+JYDRLMzP99uPDvUCDgnQnp2pDcnkmpqGaQ/KvYGtclZy5mY+886yRkjh6CIwGJClg4JwKomSiHjCzJ7xJingyggdw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none; dmarc=none;
- dkim=none; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=eY+XqNFduAX41W8TpvYE5P42MITUoi/qtS6yb4jnpec=;
- b=eLNxlixrRt6cchcY7hyRPCMofYQc8YIKdu2Ppbb2pf5k+ieTP2hgc57XsrR1e1fXBwDRRoA+q3Zw/H/zBmnujDBme4y+fZ+5WwbXZ9G+QdTO621F8G9+PkcMIfrRHiuk8yF+jXo6UtLxr7dYbw/s5TtmhNEofrBKShpyoOLjo1w=
-Received: from CH0PR10MB4858.namprd10.prod.outlook.com (2603:10b6:610:cb::17)
- by DM6PR10MB3385.namprd10.prod.outlook.com (2603:10b6:5:1af::26) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4930.20; Thu, 3 Feb
- 2022 19:32:09 +0000
-Received: from CH0PR10MB4858.namprd10.prod.outlook.com
- ([fe80::1490:125c:62cd:6082]) by CH0PR10MB4858.namprd10.prod.outlook.com
- ([fe80::1490:125c:62cd:6082%4]) with mapi id 15.20.4930.022; Thu, 3 Feb 2022
- 19:32:09 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Jeff Layton <jlayton@redhat.com>
-CC:     Dai Ngo <dai.ngo@oracle.com>, Bruce Fields <bfields@fieldses.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH RFC 2/3] fs/lock: only call lm_breaker_owns_lease if there
- is conflict.
-Thread-Topic: [PATCH RFC 2/3] fs/lock: only call lm_breaker_owns_lease if
- there is conflict.
-Thread-Index: AQHYFH7W0rGCTsT7ak+Nt+Sdq6K0MayCQHkA
-Date:   Thu, 3 Feb 2022 19:32:09 +0000
-Message-ID: <7CA3D081-8AC4-4B24-849C-7840457D18F8@oracle.com>
-References: <1643398773-29149-1-git-send-email-dai.ngo@oracle.com>
- <1643398773-29149-3-git-send-email-dai.ngo@oracle.com>
-In-Reply-To: <1643398773-29149-3-git-send-email-dai.ngo@oracle.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3654.120.0.1.13)
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 961227dd-1eba-4811-d56b-08d9e74bdeda
-x-ms-traffictypediagnostic: DM6PR10MB3385:EE_
-x-microsoft-antispam-prvs: <DM6PR10MB3385BFCD912B523E4FE8B3A693289@DM6PR10MB3385.namprd10.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:2150;
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: pyR+skVVx95sYih2MmY5RAJ4sYIt32M7z2VbJxFehTQkYuN17A/dWj6YJKCUBe7aU2tlOfTgor3m5ZcCYdQGO9NdGG/cfHsfKMML563pt5tt+NuZYJbrvdEj0sux0ltWRWF7nIqNg5JCCqRTPg8z+6bzl9eiWL4/A0UzUYWfHhznNzmvd+/+P/sUiltbGUk21sJ4r4VXgOqt+ih7wlFWhBAv4NiaRe8ie4RnE/4GssAewpsnPkJR3auLaGB0To8c2kbrFr47Yw/bEvzoCP6ANKKmqbhpgfqtuboyDGy8Lu6PuZlSEn0etWyFRXQRBx0jDZQqpeGA0Jj1VkFajghSSK57C9zNG7/gOx7okC/8Y074TSnmQ4argnmC7j9ng6YBeb9AqNzaTnhWOicXcTRCQfP96vFQwh54miFRGoF8tmWVA7BkaYRZlfFkUfi8XXOhev7WEahCaY7VMFfrVW8sxJC/IyV11aObzDjnOnY9g9pPhvauLQo/wtAwngz0fm69Twvw34HcGYItlG7xnvctKD14Iu72hFqBbiIAq64qfXjkLbeIEg6o6WHj3Y3ElTl0W5JiVLEZsM3mlN3KNZTknXO4uksSk6qGpEky74q2lMJ5azjJajj+Cwvsi9SN4D7pUtvEk1+ebjvp2JCINCa3PvsnsY9t46L0HwWfgLDKd63O46PCIraHUx3/8iA1WJaUOVfe1T48QlrDEZVW/73oLD6TDj4R1YpCQqoFHIv1Cf/mGwWXicLTQZvV3eiA5G7S
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR10MB4858.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(366004)(36756003)(4326008)(86362001)(71200400001)(64756008)(5660300002)(54906003)(53546011)(122000001)(38100700002)(6916009)(38070700005)(6486002)(508600001)(66446008)(76116006)(6506007)(8676002)(8936002)(6512007)(66946007)(66476007)(316002)(66556008)(83380400001)(2906002)(33656002)(2616005)(186003)(26005)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?Ol3liXdTjZnCTWG92YtZf/LShWGwHwjBq/6MQzNGKP0NBqbIkRFTrAHgNEgU?=
- =?us-ascii?Q?Y5mT8Ov3On2igES/FYlDdenIRIxMYStxPd5dmkijZ7pGLIQogBtebSUEU9Fa?=
- =?us-ascii?Q?bjPr2uIZQKK64FtXAAlxMI2hc3K9bkwjFzgyVRlvRUv8n5jyTnjjL4YoCiFc?=
- =?us-ascii?Q?BA0ymbvL1UpsL2Lzg+cdfLa4xJK8gQZrbDvom8ZVJQxkP6g8A830ZVFHQgAH?=
- =?us-ascii?Q?2sotDMP5jduHMfQb9DWoZ2ZDvAd0k84rcB6U2bumpO0wXoBTqpVoSGva0TtU?=
- =?us-ascii?Q?uFF+7HEQm5CJsfrr4misfLyHdx1buir17dc2dIbpWM1yv9PaImO+RXaU6n9M?=
- =?us-ascii?Q?zeagxgPdzDHZ4PrRUnN9JQYDvSHiay4lwGchva21CmQdTReCS5NXP1fzdRCj?=
- =?us-ascii?Q?DhzTNoObyb0jNWVOswvdZytNU+nJNz1HEu3AivT/7DFw1M4vW4lVSWWOZimr?=
- =?us-ascii?Q?dMij2KU6/evom9IVYL1NL4FmCuJtbXX0Pw/4hFzV6EassKktt0QUMfjATNC3?=
- =?us-ascii?Q?mj3Iw6K5/0ysimTifAtLqSTmCc83q9V73XYPD5xEFHJeYTe2Tqb2jRNQp9YN?=
- =?us-ascii?Q?gMuZYJrVPeBZ0HlZw/4mkkW76M++TvrWj8CXVwAsIXfqT3DkWOm/wVebry17?=
- =?us-ascii?Q?Szj2iXQo6CNbup39ZQVvOLPrhpaqU7IZC3BOydotvbGzEMtbqDhoNEKGqMGS?=
- =?us-ascii?Q?WhOE2Tqoxu5QNWZ7PChup1NGa7z2wYv6n1qJ3AC/5jpCiXFbyMkWL8cx66R2?=
- =?us-ascii?Q?bSMkNhbOjvUihDpuz+ufggg6qTsvIxnztsRyIksAACXBcfP/LJ0ee/HYhEcS?=
- =?us-ascii?Q?iphK7jCVHD4i/HUet0KyHuisDV+OYW/reZSP9hYY1A0kJ1g9Yjs9isNTv2E8?=
- =?us-ascii?Q?culkNG0Q2FRNvgMzfzhm+JtTVe3d/Kf0vu6dNSx7VqfEHqNUOr/gYhJof/LJ?=
- =?us-ascii?Q?hP86cqOXtTY0d4VDglYLdb73fKDQp44PJ+eZG2namVgWiWrCYZI1l3jXsVKM?=
- =?us-ascii?Q?/qtnL5u29F9ZvA/vQurscGLnShzb/HPo9hVUqe6rZFrmXQhpPioDZqsPEMKx?=
- =?us-ascii?Q?SrxIH5wz3C+uaWm1JIjR4LjIUO3p3ET0A1CLtshd0YmEg3UtA83UJqzwoTm6?=
- =?us-ascii?Q?dmrYSsjY8krZqBk7kdqS8DmTsKQAMecweqGNdFWAGNeBvUNUu7rRHSv/19y0?=
- =?us-ascii?Q?uea4OS+B31TnuP2bV1/twc7W0GN2gqzP4mDaTZu/qaK4c4ZFy2jIi4YUk/cD?=
- =?us-ascii?Q?m701VDXbbYxbo+022c2y/KoPtXWg5x9Ac1Dc9vcTIqOvszVkFkDc+qszPQB+?=
- =?us-ascii?Q?HjsAYvc953ilgI3BRBURaL0OFlcnphkddkJjH+Ghz7RNT0Nt8id24rDmM3KH?=
- =?us-ascii?Q?NBefmPH5YEv+ObvsknJvYLs0r9rTrVePVJF94wyTHi+XzIK7GVL5e0aCPdZO?=
- =?us-ascii?Q?Ox9SvbUgM2j3Ldu1cBQxIfh2cFGyTLlFAtrbDo+VESQ/blD3It3zdcZ3lZvj?=
- =?us-ascii?Q?s125xjCsCik28mvEkYosfunXY5xryb3QuGXpmzWCktMoo8mxqrr1VbNeea9Q?=
- =?us-ascii?Q?pU8eaZqfHXSR5nGRtuaUQW4qAb7d0PRnC3GayUVGpWkqBiuWAQUuZCMDmef0?=
- =?us-ascii?Q?dPJG4tiC4KcuW8CE9t967H4=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <16751B1856D9C34BADA3C27A50C2F55A@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        id S244225AbiBCU3w (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:29:52 -0500
+Received: from ams.source.kernel.org ([145.40.68.75]:32860 "EHLO
+        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232458AbiBCU3w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:29:52 -0500
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 302E6B835A1;
+        Thu,  3 Feb 2022 20:29:51 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1BAAEC340E8;
+        Thu,  3 Feb 2022 20:29:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1643920190;
+        bh=sc2F+0Jac5GAdnhjcuYPK4JBExq1fGnSC7VOV23wS68=;
+        h=From:To:Cc:Subject:Date:From;
+        b=iDkRWU6B+Gi6jn5B5klkqkoeJhrQ5yALCOxtXiUhLJVIexcliuSBk2G5vk3o97kMg
+         vkJ1mQB6Knc31Odj8PUOfXxbNPnJVbrYvAj5U//WwyzUpdxTk39SuquNtXt95iq+ru
+         fFjnp6IUsWr24dcvZP4KlnxOFEJLc0kkNM0/l3MWYnOuYf5fA6K67QDIakkuqcvkNE
+         U6nBaBkwPknuv5g63eRGJEizzzZRmSA0Qqv3sptjdy7nYrKtaFEMZNFjpDFNyeVTb4
+         ZaztsgHaAdN01xMNUIIbgzq0JowrNg1L2s90pTEAf0K+mt0SPzMkCz/iCdEtMnyQ0g
+         roXUD4pXq7kOw==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     NeilBrown <neilb@suse.de>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.16 01/52] NFS: change nfs_access_get_cached to only report the mask
+Date:   Thu,  3 Feb 2022 15:28:55 -0500
+Message-Id: <20220203202947.2304-1-sashal@kernel.org>
+X-Mailer: git-send-email 2.34.1
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: CH0PR10MB4858.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 961227dd-1eba-4811-d56b-08d9e74bdeda
-X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Feb 2022 19:32:09.6216
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: H8SON7q1ooBoiG76Hm+zAkf5ExC0cXvbfH7h9fCnctHHTIHCPuqmKTEO78Q8JWQLif0nUFoJs2wC1cuO5wkAIQ==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR10MB3385
-X-Proofpoint-Virus-Version: vendor=nai engine=6300 definitions=10247 signatures=673430
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 mlxlogscore=999
- adultscore=0 malwarescore=0 bulkscore=0 suspectscore=0 mlxscore=0
- phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2201110000 definitions=main-2202030116
-X-Proofpoint-ORIG-GUID: HZ1C_32tS73GD78d07RLrAg7D3QUee5C
-X-Proofpoint-GUID: HZ1C_32tS73GD78d07RLrAg7D3QUee5C
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Jeff-
+From: NeilBrown <neilb@suse.de>
 
-> On Jan 28, 2022, at 2:39 PM, Dai Ngo <dai.ngo@oracle.com> wrote:
->=20
-> Modify leases_conflict to call lm_breaker_owns_lease only if
-> there is real conflict.  This is to allow the lock manager to
-> resolve the conflict if possible.
->=20
-> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+[ Upstream commit b5e7b59c3480f355910f9d2c6ece5857922a5e54 ]
 
-If we are to take 1/3 and 2/3 through the nfsd tree,
-can you send an Acked-by: ?
+Currently the nfs_access_get_cached family of functions report a
+'struct nfs_access_entry' as the result, with both .mask and .cred set.
+However the .cred is never used.  This is probably good and there is no
+guarantee that it won't be freed before use.
 
+Change to only report the 'mask' - as this is all that is used or needed.
 
-> ---
-> fs/locks.c | 6 +++---
-> 1 file changed, 3 insertions(+), 3 deletions(-)
->=20
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 052b42cc7f25..456717873cff 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -1357,9 +1357,6 @@ static bool leases_conflict(struct file_lock *lease=
-, struct file_lock *breaker)
-> {
-> 	bool rc;
->=20
-> -	if (lease->fl_lmops->lm_breaker_owns_lease
-> -			&& lease->fl_lmops->lm_breaker_owns_lease(lease))
-> -		return false;
-> 	if ((breaker->fl_flags & FL_LAYOUT) !=3D (lease->fl_flags & FL_LAYOUT)) =
-{
-> 		rc =3D false;
-> 		goto trace;
-> @@ -1370,6 +1367,9 @@ static bool leases_conflict(struct file_lock *lease=
-, struct file_lock *breaker)
-> 	}
->=20
-> 	rc =3D locks_conflict(breaker, lease);
-> +	if (rc && lease->fl_lmops->lm_breaker_owns_lease &&
-> +		lease->fl_lmops->lm_breaker_owns_lease(lease))
-> +		rc =3D false;
-> trace:
-> 	trace_leases_conflict(rc, lease, breaker);
-> 	return rc;
-> --=20
-> 2.9.5
->=20
+Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/nfs/dir.c           | 20 +++++++++-----------
+ fs/nfs/nfs4proc.c      | 18 +++++++++---------
+ include/linux/nfs_fs.h |  4 ++--
+ 3 files changed, 20 insertions(+), 22 deletions(-)
 
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 731d31015b6aa..8487a6d691167 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2673,7 +2673,7 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, co
+ 	return NULL;
+ }
+ 
+-static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res, bool may_block)
++static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred, u32 *mask, bool may_block)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_access_entry *cache;
+@@ -2703,8 +2703,7 @@ static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *
+ 		spin_lock(&inode->i_lock);
+ 		retry = false;
+ 	}
+-	res->cred = cache->cred;
+-	res->mask = cache->mask;
++	*mask = cache->mask;
+ 	list_move_tail(&cache->lru, &nfsi->access_cache_entry_lru);
+ 	err = 0;
+ out:
+@@ -2716,7 +2715,7 @@ static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *
+ 	return -ENOENT;
+ }
+ 
+-static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res)
++static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cred, u32 *mask)
+ {
+ 	/* Only check the most recently returned cache entry,
+ 	 * but do it without locking.
+@@ -2738,22 +2737,21 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
+ 		goto out;
+ 	if (nfs_check_cache_invalid(inode, NFS_INO_INVALID_ACCESS))
+ 		goto out;
+-	res->cred = cache->cred;
+-	res->mask = cache->mask;
++	*mask = cache->mask;
+ 	err = 0;
+ out:
+ 	rcu_read_unlock();
+ 	return err;
+ }
+ 
+-int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct
+-nfs_access_entry *res, bool may_block)
++int nfs_access_get_cached(struct inode *inode, const struct cred *cred,
++			  u32 *mask, bool may_block)
+ {
+ 	int status;
+ 
+-	status = nfs_access_get_cached_rcu(inode, cred, res);
++	status = nfs_access_get_cached_rcu(inode, cred, mask);
+ 	if (status != 0)
+-		status = nfs_access_get_cached_locked(inode, cred, res,
++		status = nfs_access_get_cached_locked(inode, cred, mask,
+ 		    may_block);
+ 
+ 	return status;
+@@ -2874,7 +2872,7 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
+ 
+ 	trace_nfs_access_enter(inode);
+ 
+-	status = nfs_access_get_cached(inode, cred, &cache, may_block);
++	status = nfs_access_get_cached(inode, cred, &cache.mask, may_block);
+ 	if (status == 0)
+ 		goto out_cached;
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ee3bc79f6ca3a..322ff45ad15ca 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7611,7 +7611,7 @@ static int nfs4_xattr_set_nfs4_user(const struct xattr_handler *handler,
+ 				    const char *key, const void *buf,
+ 				    size_t buflen, int flags)
+ {
+-	struct nfs_access_entry cache;
++	u32 mask;
+ 	int ret;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
+@@ -7626,8 +7626,8 @@ static int nfs4_xattr_set_nfs4_user(const struct xattr_handler *handler,
+ 	 * do a cached access check for the XA* flags to possibly avoid
+ 	 * doing an RPC and getting EACCES back.
+ 	 */
+-	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
+-		if (!(cache.mask & NFS_ACCESS_XAWRITE))
++	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
++		if (!(mask & NFS_ACCESS_XAWRITE))
+ 			return -EACCES;
+ 	}
+ 
+@@ -7648,14 +7648,14 @@ static int nfs4_xattr_get_nfs4_user(const struct xattr_handler *handler,
+ 				    struct dentry *unused, struct inode *inode,
+ 				    const char *key, void *buf, size_t buflen)
+ {
+-	struct nfs_access_entry cache;
++	u32 mask;
+ 	ssize_t ret;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
+ 		return -EOPNOTSUPP;
+ 
+-	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
+-		if (!(cache.mask & NFS_ACCESS_XAREAD))
++	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
++		if (!(mask & NFS_ACCESS_XAREAD))
+ 			return -EACCES;
+ 	}
+ 
+@@ -7680,13 +7680,13 @@ nfs4_listxattr_nfs4_user(struct inode *inode, char *list, size_t list_len)
+ 	ssize_t ret, size;
+ 	char *buf;
+ 	size_t buflen;
+-	struct nfs_access_entry cache;
++	u32 mask;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
+ 		return 0;
+ 
+-	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
+-		if (!(cache.mask & NFS_ACCESS_XALIST))
++	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
++		if (!(mask & NFS_ACCESS_XALIST))
+ 			return 0;
+ 	}
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 05f249f20f55d..f33559acbcc28 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -533,8 +533,8 @@ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh,
+ 			struct nfs_fattr *fattr);
+ extern int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags);
+ extern void nfs_access_zap_cache(struct inode *inode);
+-extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res,
+-				 bool may_block);
++extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred,
++				 u32 *mask, bool may_block);
+ 
+ /*
+  * linux/fs/nfs/symlink.c
+-- 
+2.34.1
 
