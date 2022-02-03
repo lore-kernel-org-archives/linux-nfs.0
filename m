@@ -2,42 +2,45 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1162CC43219
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:34:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 197FCC433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:34:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354550AbiBCUeR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 15:34:17 -0500
-Received: from dfw.source.kernel.org ([139.178.84.217]:38830 "EHLO
-        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354177AbiBCUcu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:32:50 -0500
+        id S1355020AbiBCUeW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:34:22 -0500
+Received: from ams.source.kernel.org ([145.40.68.75]:35846 "EHLO
+        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1354361AbiBCUdI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:33:08 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 730EF61A6D;
-        Thu,  3 Feb 2022 20:32:50 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 00CCCC36AE2;
-        Thu,  3 Feb 2022 20:32:48 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 331F4B835A3;
+        Thu,  3 Feb 2022 20:33:07 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96361C340F0;
+        Thu,  3 Feb 2022 20:33:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1643920369;
-        bh=cNXuiQbp4eVaybtXIz+X39csbOButa7r68/wQKJtlsk=;
+        s=k20201202; t=1643920386;
+        bh=+NBcL0Eq3UCVybOvYfablR+3wu7sDTLFohP96udNTEs=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Rda7/7CtwL+HbXYVSV78lNBy46gyWEdHv7l6XrmQ42yt93ybGW9H+HT1SYBXtj1oD
-         6qhU8xTvL688dXSKburalrhYS0rVrn1tBFwfXp7kHzEOH52P5w4gT+TT9cw4DVnEI+
-         wrnkopLg891loATBDpQklpl5fDaU0LLMG4gA3563S5xsz3mmVc8z1VBsPa9CKbbDlK
-         m9IbedH/Ndz4SBk4lCG2VY/TarEWMjgS3bswgNgwEKD7xR2vbUDhZ8ETW1Cv7arD//
-         udk0oJIbgWjsxHm8oNPt9Q+zTnLJodOJqc/TTRzd692nYJ1T1UGYOQSaECPQuw91lW
-         A8HZbjJdmIkOA==
+        b=ogfveCHm+8DuSQegcbzCAO0Hn5W0MvnoKnaG7vZuMjLpMEs9f780tZE6DfmdZeqqQ
+         iLE6fm5fx3PB6ur4xbxuw/cKlaeZ937MlEeqiQ3QnedjAK36JVLg88t9iVKSsDrEaY
+         OcIWoBFL5egAThnW9BXoAunW2BDLaiEZsOROIb7jL/CZo5d7dAtb1hoMaR6xM0ypfC
+         49pU2AU7RLBRJKmptUopfHlg4Yz5DWsk4p/HXIn6/cyZQsJF2l5tQi/Y+rVP9SM6IR
+         VYRsqVlMwMCasqATYuIkbj7ju49IY74ZoIzZpgz70KIvaFmxLPWgvudn+d59qJVNOq
+         1TK7ZYaK7myPw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
+Cc:     Xiyu Yang <xiyuyang19@fudan.edu.cn>,
+        Xin Xiong <xiongx18@fudan.edu.cn>,
+        Xin Tan <tanxin.ctf@gmail.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>,
         trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.15 02/41] NFSv4 only print the label when its queried
-Date:   Thu,  3 Feb 2022 15:32:06 -0500
-Message-Id: <20220203203245.3007-2-sashal@kernel.org>
+        chuck.lever@oracle.com, davem@davemloft.net, kuba@kernel.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.15 12/41] net/sunrpc: fix reference count leaks in rpc_sysfs_xprt_state_change
+Date:   Thu,  3 Feb 2022 15:32:16 -0500
+Message-Id: <20220203203245.3007-12-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20220203203245.3007-1-sashal@kernel.org>
 References: <20220203203245.3007-1-sashal@kernel.org>
@@ -49,40 +52,47 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+From: Xiyu Yang <xiyuyang19@fudan.edu.cn>
 
-[ Upstream commit 2c52c8376db7160a1dd8a681c61c9258405ef143 ]
+[ Upstream commit 776d794f28c95051bc70405a7b1fa40115658a18 ]
 
-When the bitmask of the attributes doesn't include the security label,
-don't bother printing it. Since the label might not be null terminated,
-adjust the printing format accordingly.
+The refcount leak issues take place in an error handling path. When the
+3rd argument buf doesn't match with "offline", "online" or "remove", the
+function simply returns -EINVAL and forgets to decrease the reference
+count of a rpc_xprt object and a rpc_xprt_switch object increased by
+rpc_sysfs_xprt_kobj_get_xprt() and
+rpc_sysfs_xprt_kobj_get_xprt_switch(), causing reference count leaks of
+both unused objects.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Fix this issue by jumping to the error handling path labelled with
+out_put when buf matches none of "offline", "online" or "remove".
+
+Signed-off-by: Xiyu Yang <xiyuyang19@fudan.edu.cn>
+Signed-off-by: Xin Xiong <xiongx18@fudan.edu.cn>
+Signed-off-by: Xin Tan <tanxin.ctf@gmail.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4xdr.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ net/sunrpc/sysfs.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index a8cff19c6f00c..5e886518f2d45 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4197,10 +4197,11 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
- 		} else
- 			printk(KERN_WARNING "%s: label too long (%u)!\n",
- 					__func__, len);
-+		if (label && label->label)
-+			dprintk("%s: label=%.*s, len=%d, PI=%d, LFS=%d\n",
-+				__func__, label->len, (char *)label->label,
-+				label->len, label->pi, label->lfs);
- 	}
--	if (label && label->label)
--		dprintk("%s: label=%s, len=%d, PI=%d, LFS=%d\n", __func__,
--			(char *)label->label, label->len, label->pi, label->lfs);
- 	return status;
- }
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 9a6f17e18f73b..379cf0e4d965b 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -291,8 +291,10 @@ static ssize_t rpc_sysfs_xprt_state_change(struct kobject *kobj,
+ 		online = 1;
+ 	else if (!strncmp(buf, "remove", 6))
+ 		remove = 1;
+-	else
+-		return -EINVAL;
++	else {
++		count = -EINVAL;
++		goto out_put;
++	}
  
+ 	if (wait_on_bit_lock(&xprt->state, XPRT_LOCKED, TASK_KILLABLE)) {
+ 		count = -EINTR;
 -- 
 2.34.1
 
