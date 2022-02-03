@@ -2,48 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 82FDEC433EF
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:30:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B67B7C4332F
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Feb 2022 20:34:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354266AbiBCUa2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Feb 2022 15:30:28 -0500
-Received: from ams.source.kernel.org ([145.40.68.75]:33182 "EHLO
-        ams.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354151AbiBCUaJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:30:09 -0500
+        id S1354721AbiBCUeH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Feb 2022 15:34:07 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58164 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1354727AbiBCUct (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2022 15:32:49 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63E76C06176C;
+        Thu,  3 Feb 2022 12:32:49 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 76091B835A2;
-        Thu,  3 Feb 2022 20:30:08 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C332CC340F4;
-        Thu,  3 Feb 2022 20:30:05 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 027B761A6A;
+        Thu,  3 Feb 2022 20:32:49 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 80D5EC340F1;
+        Thu,  3 Feb 2022 20:32:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1643920207;
-        bh=3lBPqZPBgZcKhOtMH3BcoKZunXu8BZh01IxJQ3TGeiI=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=DAe9v1lnXlWGFqXUSaS182jnnXLr8h1nVFg1Ow9Nvnft+wWDo3pk0QmGNetizOJK4
-         Nxl1sNxjXeTylg4+7lezTa48F5zAVPJ3jRRufhHmH8Fz8uPNRxU+DiLYqhQwUBjP+Q
-         Ef//jBs1UQ28P+dxs2GmelCLPvNAztnwIkBfLQoKax6JfSU2X4UpebdqfqAeRkac7S
-         zU2tWHIHX+45GTt0ylkyA4wGNwUUrQuANy53HBtDdOd/t2Ho5BA8s583q9cYiLvS2Y
-         m2FZibVxy1oRy0fadIHFXEWdJ6y+vdIAKWA5pR6yuyjgD+D0QKcd4fiSOgA0+ccW6l
-         T+OqiYI1vFy3w==
+        s=k20201202; t=1643920368;
+        bh=0BckxtSU4b0gF7BwRA5xjr7nbstlcZ0kVWyFdYvyHks=;
+        h=From:To:Cc:Subject:Date:From;
+        b=LXDMmXbKGXVeCNDn2Alcli+yFduAa/uPyHcvYD3vdmxxg4mqwissZQsyN05YkeU25
+         aSARgJoH6SxAFTbOt8KupLYVYf5IIRNFDdOka/Wk1yXpGoIynOTZa7A36qxw7tp5kl
+         feCXHX9Yqae+eVSDK6OVDBnSYeO3hyiXVdb6IgQ/aY+G++vfKs6ZHiMRqHhx2058ag
+         cXnxQRWZyT69nsmPS4l6gbjo/xSTq0fiVTZ77fxM4YJM7DU4jrPHrH7ioOy+BcAReq
+         oW/BcGtegqy9coJG8p3wYND0qULXL99bhpaZ6emXO2Fkc81HRFwtKHyxCauieC741I
+         8iEM9+bqEjoZA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Xiyu Yang <xiyuyang19@fudan.edu.cn>,
-        Xin Xiong <xiongx18@fudan.edu.cn>,
-        Xin Tan <tanxin.ctf@gmail.com>,
+Cc:     NeilBrown <neilb@suse.de>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, chuck.lever@oracle.com,
+        Sasha Levin <sashal@kernel.org>,
         trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        davem@davemloft.net, kuba@kernel.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.16 12/52] net/sunrpc: fix reference count leaks in rpc_sysfs_xprt_state_change
-Date:   Thu,  3 Feb 2022 15:29:06 -0500
-Message-Id: <20220203202947.2304-12-sashal@kernel.org>
+        linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.15 01/41] NFS: change nfs_access_get_cached to only report the mask
+Date:   Thu,  3 Feb 2022 15:32:05 -0500
+Message-Id: <20220203203245.3007-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220203202947.2304-1-sashal@kernel.org>
-References: <20220203202947.2304-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -52,47 +50,169 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Xiyu Yang <xiyuyang19@fudan.edu.cn>
+From: NeilBrown <neilb@suse.de>
 
-[ Upstream commit 776d794f28c95051bc70405a7b1fa40115658a18 ]
+[ Upstream commit b5e7b59c3480f355910f9d2c6ece5857922a5e54 ]
 
-The refcount leak issues take place in an error handling path. When the
-3rd argument buf doesn't match with "offline", "online" or "remove", the
-function simply returns -EINVAL and forgets to decrease the reference
-count of a rpc_xprt object and a rpc_xprt_switch object increased by
-rpc_sysfs_xprt_kobj_get_xprt() and
-rpc_sysfs_xprt_kobj_get_xprt_switch(), causing reference count leaks of
-both unused objects.
+Currently the nfs_access_get_cached family of functions report a
+'struct nfs_access_entry' as the result, with both .mask and .cred set.
+However the .cred is never used.  This is probably good and there is no
+guarantee that it won't be freed before use.
 
-Fix this issue by jumping to the error handling path labelled with
-out_put when buf matches none of "offline", "online" or "remove".
+Change to only report the 'mask' - as this is all that is used or needed.
 
-Signed-off-by: Xiyu Yang <xiyuyang19@fudan.edu.cn>
-Signed-off-by: Xin Xiong <xiongx18@fudan.edu.cn>
-Signed-off-by: Xin Tan <tanxin.ctf@gmail.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/sysfs.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c           | 20 +++++++++-----------
+ fs/nfs/nfs4proc.c      | 18 +++++++++---------
+ include/linux/nfs_fs.h |  4 ++--
+ 3 files changed, 20 insertions(+), 22 deletions(-)
 
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 2766dd21935b8..77e7d011c1ab1 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -295,8 +295,10 @@ static ssize_t rpc_sysfs_xprt_state_change(struct kobject *kobj,
- 		online = 1;
- 	else if (!strncmp(buf, "remove", 6))
- 		remove = 1;
--	else
--		return -EINVAL;
-+	else {
-+		count = -EINVAL;
-+		goto out_put;
-+	}
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 5b68c44848caf..a1197733e236d 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2675,7 +2675,7 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, co
+ 	return NULL;
+ }
  
- 	if (wait_on_bit_lock(&xprt->state, XPRT_LOCKED, TASK_KILLABLE)) {
- 		count = -EINTR;
+-static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res, bool may_block)
++static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred, u32 *mask, bool may_block)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_access_entry *cache;
+@@ -2705,8 +2705,7 @@ static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *
+ 		spin_lock(&inode->i_lock);
+ 		retry = false;
+ 	}
+-	res->cred = cache->cred;
+-	res->mask = cache->mask;
++	*mask = cache->mask;
+ 	list_move_tail(&cache->lru, &nfsi->access_cache_entry_lru);
+ 	err = 0;
+ out:
+@@ -2718,7 +2717,7 @@ static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *
+ 	return -ENOENT;
+ }
+ 
+-static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res)
++static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cred, u32 *mask)
+ {
+ 	/* Only check the most recently returned cache entry,
+ 	 * but do it without locking.
+@@ -2740,22 +2739,21 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
+ 		goto out;
+ 	if (nfs_check_cache_invalid(inode, NFS_INO_INVALID_ACCESS))
+ 		goto out;
+-	res->cred = cache->cred;
+-	res->mask = cache->mask;
++	*mask = cache->mask;
+ 	err = 0;
+ out:
+ 	rcu_read_unlock();
+ 	return err;
+ }
+ 
+-int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct
+-nfs_access_entry *res, bool may_block)
++int nfs_access_get_cached(struct inode *inode, const struct cred *cred,
++			  u32 *mask, bool may_block)
+ {
+ 	int status;
+ 
+-	status = nfs_access_get_cached_rcu(inode, cred, res);
++	status = nfs_access_get_cached_rcu(inode, cred, mask);
+ 	if (status != 0)
+-		status = nfs_access_get_cached_locked(inode, cred, res,
++		status = nfs_access_get_cached_locked(inode, cred, mask,
+ 		    may_block);
+ 
+ 	return status;
+@@ -2876,7 +2874,7 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
+ 
+ 	trace_nfs_access_enter(inode);
+ 
+-	status = nfs_access_get_cached(inode, cred, &cache, may_block);
++	status = nfs_access_get_cached(inode, cred, &cache.mask, may_block);
+ 	if (status == 0)
+ 		goto out_cached;
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1f38f8cd8c3ce..443eab71c9a9e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7677,7 +7677,7 @@ static int nfs4_xattr_set_nfs4_user(const struct xattr_handler *handler,
+ 				    const char *key, const void *buf,
+ 				    size_t buflen, int flags)
+ {
+-	struct nfs_access_entry cache;
++	u32 mask;
+ 	int ret;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
+@@ -7692,8 +7692,8 @@ static int nfs4_xattr_set_nfs4_user(const struct xattr_handler *handler,
+ 	 * do a cached access check for the XA* flags to possibly avoid
+ 	 * doing an RPC and getting EACCES back.
+ 	 */
+-	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
+-		if (!(cache.mask & NFS_ACCESS_XAWRITE))
++	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
++		if (!(mask & NFS_ACCESS_XAWRITE))
+ 			return -EACCES;
+ 	}
+ 
+@@ -7714,14 +7714,14 @@ static int nfs4_xattr_get_nfs4_user(const struct xattr_handler *handler,
+ 				    struct dentry *unused, struct inode *inode,
+ 				    const char *key, void *buf, size_t buflen)
+ {
+-	struct nfs_access_entry cache;
++	u32 mask;
+ 	ssize_t ret;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
+ 		return -EOPNOTSUPP;
+ 
+-	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
+-		if (!(cache.mask & NFS_ACCESS_XAREAD))
++	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
++		if (!(mask & NFS_ACCESS_XAREAD))
+ 			return -EACCES;
+ 	}
+ 
+@@ -7746,13 +7746,13 @@ nfs4_listxattr_nfs4_user(struct inode *inode, char *list, size_t list_len)
+ 	ssize_t ret, size;
+ 	char *buf;
+ 	size_t buflen;
+-	struct nfs_access_entry cache;
++	u32 mask;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
+ 		return 0;
+ 
+-	if (!nfs_access_get_cached(inode, current_cred(), &cache, true)) {
+-		if (!(cache.mask & NFS_ACCESS_XALIST))
++	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
++		if (!(mask & NFS_ACCESS_XALIST))
+ 			return 0;
+ 	}
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 4d95cc999d121..4a733f1409397 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -517,8 +517,8 @@ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh,
+ 			struct nfs_fattr *fattr, struct nfs4_label *label);
+ extern int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags);
+ extern void nfs_access_zap_cache(struct inode *inode);
+-extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res,
+-				 bool may_block);
++extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred,
++				 u32 *mask, bool may_block);
+ 
+ /*
+  * linux/fs/nfs/symlink.c
 -- 
 2.34.1
 
