@@ -2,41 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C3E3C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Feb 2022 21:52:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1744AC433EF
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Feb 2022 21:52:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242781AbiBGVwW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Feb 2022 16:52:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35564 "EHLO
+        id S239071AbiBGVw0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Feb 2022 16:52:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35576 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239071AbiBGVwV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Feb 2022 16:52:21 -0500
+        with ESMTP id S243124AbiBGVwW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Feb 2022 16:52:22 -0500
 Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A9B2AC061355
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Feb 2022 13:52:20 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 66EF3C0612A4
+        for <linux-nfs@vger.kernel.org>; Mon,  7 Feb 2022 13:52:21 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 15BD0CE12F2
+        by sin.source.kernel.org (Postfix) with ESMTPS id DE5A5CE12F4
         for <linux-nfs@vger.kernel.org>; Mon,  7 Feb 2022 21:52:19 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4756BC004E1
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Feb 2022 21:52:17 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 28C55C340EF
+        for <linux-nfs@vger.kernel.org>; Mon,  7 Feb 2022 21:52:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1644270737;
-        bh=LNDtppmrla3a5y+kPk3soXpBrb9OUCpzpKKpUEiTfnA=;
-        h=From:To:Subject:Date:From;
-        b=Pl3oaoYZIQifXVFx0kCF/9GqRMAs7xnQ6LAlw/UGqt0fUe+fMA8+w3i4dP/PX4mTk
-         0XU+YGjThCKV+Cjq1/Xw4QDLXpsb3Fh3H4nc6ze+igTCOtypKLdvHruWLnF96ZDrJC
-         tSCckyVzYF17MnTQK7tSPgXTmLwn1Bc/6y+Xel0pdUTsAccbjtzzg8ouKsRhB4GVGP
-         xJT2aVsbXnjgG7iKxZ/L0lnvv8F3IZZ0wogqSA2ZBJjVXsnZ9t8b/eG10ctH0us6Ot
-         0NeKIqDcQsNKGGB0laOFNvGhjxKxzOnlijmmXMITj+pKA/hOgmE9uJdOPLqBwNZLbw
-         v7r0IyTHVV5nw==
+        s=k20201202; t=1644270738;
+        bh=mDJ7+c9NiDpAXTUCW6B1Fr5ZbiEdZ3/+U/lP202Mz5o=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=N2BKNwfCcMlBdYV+kfHHBGasi5GT0WVwyQ9GXCCOHmtdZTDMMKReoZAofSZOkyPXe
+         a3gGdZb0LHnvwGa4ftXxe1NHStFJzUzi6Nch/aPG2B02rGaeoyDHTHUnqGcZGzmd9E
+         XK3ni5S0fav4W/Dqcfc5NkNDwHVUaepRT1Y9ySvtYH3dMCahy9UwCIyJsV92thwcWz
+         BIXIE1w4O564bLPfWBAu/3qz2lTWSbxlekrnpfu4ywvxXbvs5UT664NhyTwOFDypl6
+         /3ZseNb86222XUMsR3SdwRWcUvEXLgI37NB1qwdNXqL00pv3G3dN88F9JdpKdAG6n/
+         tAwQkchn1Mlaw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] Adaptive readdir readahead
-Date:   Mon,  7 Feb 2022 16:46:08 -0500
-Message-Id: <20220207214610.803566-1-trondmy@kernel.org>
+Subject: [PATCH 2/2] NFS: Simplify nfs_readdir_xdr_to_array()
+Date:   Mon,  7 Feb 2022 16:46:10 -0500
+Message-Id: <20220207214610.803566-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20220207214610.803566-2-trondmy@kernel.org>
+References: <20220207214610.803566-1-trondmy@kernel.org>
+ <20220207214610.803566-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -45,21 +48,64 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The current NFS readdir code will always try to maximise the amount of
-readahead it performs on the assumption that we can cache anything that
-isn't immediately read by the process.
-There are several cases where this assumption breaks down, including
-when the 'ls -l' heuristic kicks in to try to force use of readdirplus
-as a batch replacement for lookup/getattr.
+Recent changes to readdir mean that we can cope with partially filled
+page cache entries, so we no longer need to rely on looping in
+nfs_readdir_xdr_to_array().
 
-Trond Myklebust (2):
-  NFS: Adjust the amount of readahead performed by NFS readdir
-  NFS: Simplify nfs_readdir_xdr_to_array()
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/dir.c | 27 ++++++++++-----------------
+ 1 file changed, 10 insertions(+), 17 deletions(-)
 
- fs/nfs/dir.c           | 91 ++++++++++++++++++++++++++++++++----------
- include/linux/nfs_fs.h |  1 +
- 2 files changed, 71 insertions(+), 21 deletions(-)
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index c8b62c231080..33eb3a8f0c71 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -868,6 +868,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	size_t array_size;
+ 	struct inode *inode = file_inode(desc->file);
+ 	unsigned int dtsize = desc->dtsize;
++	unsigned int pglen;
+ 	int status = -ENOMEM;
+ 
+ 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+@@ -885,27 +886,19 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	if (!pages)
+ 		goto out;
+ 
+-	do {
+-		unsigned int pglen;
+-		status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
+-						pages, dtsize,
+-						verf_res);
+-		if (status < 0)
+-			break;
+-
+-		pglen = status;
+-		if (pglen == 0) {
+-			nfs_readdir_page_set_eof(page);
+-			break;
+-		}
+-
+-		verf_arg = verf_res;
++	status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
++					pages, dtsize, verf_res);
++	if (status < 0)
++		goto free_pages;
+ 
++	pglen = status;
++	if (pglen != 0)
+ 		status = nfs_readdir_page_filler(desc, entry, pages, pglen,
+ 						 arrays, narrays);
+-	} while (!status && nfs_readdir_page_needs_filling(page) &&
+-		 page_mapping(page));
++	else
++		nfs_readdir_page_set_eof(page);
+ 
++free_pages:
+ 	nfs_readdir_free_pages(pages, array_size);
+ out:
+ 	nfs_free_fattr(entry->fattr);
 -- 
 2.34.1
 
