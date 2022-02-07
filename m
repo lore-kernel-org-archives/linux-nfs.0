@@ -2,54 +2,53 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 162FBC43217
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Feb 2022 06:16:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3059C433FE
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Feb 2022 06:16:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243896AbiBGGPn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Feb 2022 01:15:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50540 "EHLO
+        id S237448AbiBGGPl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Feb 2022 01:15:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50218 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352072AbiBGEsP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Feb 2022 23:48:15 -0500
+        with ESMTP id S1352029AbiBGErD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Feb 2022 23:47:03 -0500
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 22607C043181;
-        Sun,  6 Feb 2022 20:48:14 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B2A78C043181;
+        Sun,  6 Feb 2022 20:47:02 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id D2BA6210E8;
-        Mon,  7 Feb 2022 04:48:12 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 39DA0210EA;
+        Mon,  7 Feb 2022 04:47:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1644209292; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1644209221; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ViWGm/depDGf235ykZcrvlwHPhzYZ1IOzNywgeuJlCs=;
-        b=dEj/ZECgQzPmVNNwNtLhRwIK+t+7MZfIgofMU57KXuIxPsebs5TmJ+yBisbfSkJ1Lthv13
-        WGxGwr5R4TqIlYYAhIz1CsdYyp+aE9q3/2eQvTm0XbIF4xjDADjB0h2337rxl00eMcgeg/
-        EywU58RZdtc7KMmvbgUOuYuHFQJUK2Q=
+        bh=3r8zsBbPzlbUX6ihPzKY8ExxG48IN+l0THpUms1TqYM=;
+        b=UtZfd3blxXJDljhegPqUt1T8a0XNn86n8kcT10KrYnlGH5mPQ9EbVWk9J+FFYsJoeL3hGl
+        UD17NrMjxiyR2BQJTe+Iz7tXl4JNwmaVyVcPmskjhGF/6Siwd6+Bq9eMbymlMRm1hJDgzC
+        YeVz/60dCfGVtNKQud3BFbvUY8iIDlY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1644209292;
+        s=susede2_ed25519; t=1644209221;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ViWGm/depDGf235ykZcrvlwHPhzYZ1IOzNywgeuJlCs=;
-        b=LB4uxgey7EDf4HC0h1f45bTAwNW+UouWDbatH0XJLCUd1qURVb63ibV21W/iR7wynleyiL
-        nIOTeQVWLnjvIqCQ==
+        bh=3r8zsBbPzlbUX6ihPzKY8ExxG48IN+l0THpUms1TqYM=;
+        b=NUMtiBtL6cZig7Sxd4ypS7Jn0vCqv1VQV9qag2wwmvgvOS+6PR4aq/Pz9mKtlWCmqrcSOo
+        Axz4qktLGCHSLrDQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id F0D7B1330E;
-        Mon,  7 Feb 2022 04:48:09 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id AAA1F1330E;
+        Mon,  7 Feb 2022 04:46:57 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id O2hbK4mkAGJiNQAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 07 Feb 2022 04:48:09 +0000
-Subject: [PATCH 12/21] SUNRPC/call_alloc: async tasks mustn't block waiting
- for memory
+        id 0ALXGUGkAGIRNQAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 07 Feb 2022 04:46:57 +0000
+Subject: [PATCH 02/21] MM: drop swap_set_page_dirty
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -61,7 +60,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Mon, 07 Feb 2022 15:46:01 +1100
-Message-ID: <164420916119.29374.4983888648335050333.stgit@noble.brown>
+Message-ID: <164420916112.29374.16921074216162707434.stgit@noble.brown>
 In-Reply-To: <164420889455.29374.17958998143835612560.stgit@noble.brown>
 References: <164420889455.29374.17958998143835612560.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -72,56 +71,75 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When memory is short, new worker threads cannot be created and we depend
-on the minimum one rpciod thread to be able to handle everything.
-So it must not block waiting for memory.
+Pages that are written to swap are owned by the MM subsystem - not any
+filesystem.
 
-mempools are particularly a problem as memory can only be released back
-to the mempool by an async rpc task running.  If all available
-workqueue threads are waiting on the mempool, no thread is available to
-return anything.
+When such a page is passed to a filesystem to be written out to a
+swap-file, the filesystem handles the data, but the page itself does not
+belong to the filesystem.  So calling the filesystem's set_page_dirty
+address_space operation makes no sense.  This is for pages in the given
+address space, and a page to be written to swap does not exist in the
+given address space.
 
-rpc_malloc() can block, and this might cause deadlocks.
-So check RPC_IS_ASYNC(), rather than RPC_IS_SWAPPER() to determine if
-blocking is acceptable.
+So drop swap_set_page_dirty() which calls the address-space's
+set_page_dirty, and alway use __set_page_dirty_no_writeback, which is
+appropriate for pages being swapped out.
 
+Fixes-no-auto-backport: 62c230bc1790 ("mm: add support for a filesystem to activate swap files and use direct_IO for writing swap pages")
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- net/sunrpc/sched.c              |    4 +++-
- net/sunrpc/xprtrdma/transport.c |    4 +++-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ include/linux/swap.h |    1 -
+ mm/page_io.c         |   14 --------------
+ mm/swap_state.c      |    2 +-
+ 3 files changed, 1 insertion(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index e2c835482791..d5b6e897f5a5 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -1023,8 +1023,10 @@ int rpc_malloc(struct rpc_task *task)
- 	struct rpc_buffer *buf;
- 	gfp_t gfp = GFP_NOFS;
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 3f54a8941c9d..a43929f7033e 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -419,7 +419,6 @@ extern void kswapd_stop(int nid);
  
-+	if (RPC_IS_ASYNC(task))
-+		gfp = GFP_NOWAIT | __GFP_NOWARN;
- 	if (RPC_IS_SWAPPER(task))
--		gfp = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
-+		gfp |= __GFP_MEMALLOC;
+ #ifdef CONFIG_SWAP
  
- 	size += sizeof(struct rpc_buffer);
- 	if (size <= RPC_BUFFER_MAXSIZE)
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 42e375dbdadb..5714bf880e95 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -570,8 +570,10 @@ xprt_rdma_allocate(struct rpc_task *task)
- 	gfp_t flags;
- 
- 	flags = RPCRDMA_DEF_GFP;
-+	if (RPC_IS_ASYNC(task))
-+		flags = GFP_NOWAIT | __GFP_NOWARN;
- 	if (RPC_IS_SWAPPER(task))
--		flags = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
-+		flags |= __GFP_MEMALLOC;
- 
- 	if (!rpcrdma_check_regbuf(r_xprt, req->rl_sendbuf, rqst->rq_callsize,
- 				  flags))
+-extern int swap_set_page_dirty(struct page *page);
+ int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
+ 		unsigned long nr_pages, sector_t start_block);
+ int generic_swapfile_activate(struct swap_info_struct *, struct file *,
+diff --git a/mm/page_io.c b/mm/page_io.c
+index f8c26092e869..34b12d6f94d7 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -438,17 +438,3 @@ int swap_readpage(struct page *page, bool synchronous)
+ 	delayacct_swapin_end();
+ 	return ret;
+ }
+-
+-int swap_set_page_dirty(struct page *page)
+-{
+-	struct swap_info_struct *sis = page_swap_info(page);
+-
+-	if (data_race(sis->flags & SWP_FS_OPS)) {
+-		struct address_space *mapping = sis->swap_file->f_mapping;
+-
+-		VM_BUG_ON_PAGE(!PageSwapCache(page), page);
+-		return mapping->a_ops->set_page_dirty(page);
+-	} else {
+-		return __set_page_dirty_no_writeback(page);
+-	}
+-}
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index bb38453425c7..514b86b05488 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -31,7 +31,7 @@
+  */
+ static const struct address_space_operations swap_aops = {
+ 	.writepage	= swap_writepage,
+-	.set_page_dirty	= swap_set_page_dirty,
++	.set_page_dirty	= __set_page_dirty_no_writeback,
+ #ifdef CONFIG_MIGRATION
+ 	.migratepage	= migrate_page,
+ #endif
 
 
