@@ -2,54 +2,54 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83D51C3526C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 651F6C4167D
 	for <linux-nfs@archiver.kernel.org>; Mon,  7 Feb 2022 06:16:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244733AbiBGGPw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Feb 2022 01:15:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50252 "EHLO
+        id S244229AbiBGGPv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Feb 2022 01:15:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50724 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352032AbiBGErK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Feb 2022 23:47:10 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18B0BC043181;
-        Sun,  6 Feb 2022 20:47:10 -0800 (PST)
+        with ESMTP id S1352083AbiBGEs4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Feb 2022 23:48:56 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF9E6C043181;
+        Sun,  6 Feb 2022 20:48:55 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id C173D210EA;
-        Mon,  7 Feb 2022 04:47:08 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 65A351F37E;
+        Mon,  7 Feb 2022 04:48:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1644209228; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1644209334; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=jIwc70WfyZePk+M4TY2KFFjSotnhhDywYz77GPeU54I=;
-        b=ikz+i/JzVV65yxb2LUs6PuJG5e71Z8cf0FCBCTwmQXIBBaWz7WzKAfUY7+5dxqv3EeamNP
-        vpVguyYOVN3GdY74xr7qwgFI/YZ2d0mfWArhal/iwFqps1IacbWE5EGygBB7cXVhUTyGXV
-        TxOxx4jDPhTUzTesTOJxRzKEX5wg/aY=
+        bh=GWtpS01SlD8ZVUrxVP9gFCCl2UNqlrRmBNEVUmeRtmo=;
+        b=kNIWdVn1JtQxtbk8/Nx6GLgboyR8KAmP+K5JduuWBPGclcqClVmtLpJHItE3omianjO5z0
+        SNC5hZolH+T0LtFtHRunNrPdXTu+PCGez5JWpaaddP63DdRBmZfM9Ae6yzgDoLDMK7T+NJ
+        GNWeX1+vPCr0azmCFmtAIUAYS/fy9Z4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1644209228;
+        s=susede2_ed25519; t=1644209334;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=jIwc70WfyZePk+M4TY2KFFjSotnhhDywYz77GPeU54I=;
-        b=TDjRpTiE1Vmtdb2gZ+xE1034/7dr8Wq8HP7cTr9R85FgeZ86lrzm4X7/YxOcgW/9zP4kQi
-        jZERoqE82s77CkDw==
+        bh=GWtpS01SlD8ZVUrxVP9gFCCl2UNqlrRmBNEVUmeRtmo=;
+        b=ffx2tefwVFLCky+w3WrFtjZq7gyasAyO/zejnRvdHSVlZDEVIZOmdA8EDAYGU7iLhs5gIn
+        pfPeko0mKo156ECg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id DF1A91330E;
-        Mon,  7 Feb 2022 04:47:05 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7FE1A1330E;
+        Mon,  7 Feb 2022 04:48:51 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id O7oOJ0mkAGIXNQAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 07 Feb 2022 04:47:05 +0000
-Subject: [PATCH 03/21] MM: move responsibility for setting SWP_FS_OPS to
- ->swap_activate
+        id HAu/D7OkAGKSNQAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 07 Feb 2022 04:48:51 +0000
+Subject: [PATCH 18/21] NFSv4: keep state manager thread active if swap is
+ enabled
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -61,7 +61,7 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-mm@kvack.org,
         linux-kernel@vger.kernel.org
 Date:   Mon, 07 Feb 2022 15:46:01 +1100
-Message-ID: <164420916113.29374.18179900562061291108.stgit@noble.brown>
+Message-ID: <164420916123.29374.17511219549445805575.stgit@noble.brown>
 In-Reply-To: <164420889455.29374.17958998143835612560.stgit@noble.brown>
 References: <164420889455.29374.17958998143835612560.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -72,115 +72,216 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If a filesystem wishes to handle all swap IO itself (via ->direct_IO and
-->readpage), rather than just providing devices addresses for
-submit_bio(), SWP_FS_OPS must be set.
-Currently the protocol for setting this it to have ->swap_activate
-return zero.  In that case SWP_FS_OPS is set, and add_swap_extent()
-is called for the entire file.
+If we are swapping over NFSv4, we may not be able to allocate memory to
+start the state-manager thread at the time when we need it.
+So keep it always running when swap is enabled, and just signal it to
+start.
 
-This is a little clumsy as different return values for ->swap_activate
-have quite different meanings, and it makes it hard to search for which
-filesystems require SWP_FS_OPS to be set.
+This requires updating and testing the cl_swapper count on the root
+rpc_clnt after following all ->cl_parent links.
 
-So remove the special meaning of a zero return, and require the
-filesystem to set SWP_FS_OPS if it so desires, and to always call
-add_swap_extent() as required.
-
-Currently only NFS and CIFS return zero for add_swap_extent().
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/cifs/file.c       |    3 ++-
- fs/nfs/file.c        |   13 +++++++++++--
- include/linux/swap.h |    6 ++++++
- mm/swapfile.c        |   10 +++-------
- 4 files changed, 22 insertions(+), 10 deletions(-)
+ fs/nfs/file.c           |   15 ++++++++++++---
+ fs/nfs/nfs4_fs.h        |    1 +
+ fs/nfs/nfs4proc.c       |   20 ++++++++++++++++++++
+ fs/nfs/nfs4state.c      |   39 +++++++++++++++++++++++++++++++++------
+ include/linux/nfs_xdr.h |    2 ++
+ net/sunrpc/clnt.c       |    2 ++
+ 6 files changed, 70 insertions(+), 9 deletions(-)
 
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index e7af802dcfa6..fe49f1cab018 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -4917,7 +4917,8 @@ static int cifs_swap_activate(struct swap_info_struct *sis,
- 	 * from reading or writing the file
- 	 */
- 
--	return 0;
-+	sis->flags |= SWP_FS_OPS;
-+	return add_swap_extent(sis, 0, sis->max, 0);
- }
- 
- static void cifs_swap_deactivate(struct file *file)
 diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 76d76acbc594..d5aa55c7edb0 100644
+index 4d4750738aeb..81fe996c6272 100644
 --- a/fs/nfs/file.c
 +++ b/fs/nfs/file.c
-@@ -488,6 +488,7 @@ static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
- {
+@@ -486,8 +486,9 @@ static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
  	unsigned long blocks;
  	long long isize;
-+	int ret;
- 	struct rpc_clnt *clnt = NFS_CLIENT(file->f_mapping->host);
- 	struct inode *inode = file->f_mapping->host;
+ 	int ret;
+-	struct rpc_clnt *clnt = NFS_CLIENT(file->f_mapping->host);
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = file_inode(file);
++	struct rpc_clnt *clnt = NFS_CLIENT(inode);
++	struct nfs_client *cl = NFS_SERVER(inode)->nfs_client;
  
-@@ -500,9 +501,17 @@ static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
- 		return -EINVAL;
+ 	if (!file->f_mapping->a_ops->swap_rw)
+ 		/* Cannot support swap */
+@@ -512,14 +513,22 @@ static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
  	}
- 
-+	ret = rpc_clnt_swap_activate(clnt);
-+	if (ret)
-+		return ret;
-+	ret = add_swap_extent(sis, 0, sis->max, 0);
-+	if (ret < 0) {
-+		rpc_clnt_swap_deactivate(clnt);
-+		return ret;
-+	}
  	*span = sis->pages;
--
--	return rpc_clnt_swap_activate(clnt);
-+	sis->flags |= SWP_FS_OPS;
-+	return ret;
+ 	sis->flags |= SWP_FS_OPS;
++
++	if (cl->rpc_ops->enable_swap)
++		cl->rpc_ops->enable_swap(inode);
++
+ 	return ret;
  }
  
  static void nfs_swap_deactivate(struct file *file)
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index a43929f7033e..b57cff3c5ac2 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -573,6 +573,12 @@ static inline swp_entry_t get_swap_page(struct page *page)
- 	return entry;
+ {
+-	struct rpc_clnt *clnt = NFS_CLIENT(file->f_mapping->host);
++	struct inode *inode = file_inode(file);
++	struct rpc_clnt *clnt = NFS_CLIENT(inode);
++	struct nfs_client *cl = NFS_SERVER(inode)->nfs_client;
+ 
+ 	rpc_clnt_swap_deactivate(clnt);
++	if (cl->rpc_ops->disable_swap)
++		cl->rpc_ops->disable_swap(file_inode(file));
  }
  
-+static inline int add_swap_extent(struct swap_info_struct *sis,
-+				  unsigned long start_page,
-+				  unsigned long nr_pages, sector_t start_block)
+ const struct address_space_operations nfs_file_aops = {
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 84f39b6f1b1e..79df6e83881b 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -42,6 +42,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_LEASE_MOVED,
+ 	NFS4CLNT_DELEGATION_EXPIRED,
+ 	NFS4CLNT_RUN_MANAGER,
++	NFS4CLNT_MANAGER_AVAILABLE,
+ 	NFS4CLNT_RECALL_RUNNING,
+ 	NFS4CLNT_RECALL_ANY_LAYOUT_READ,
+ 	NFS4CLNT_RECALL_ANY_LAYOUT_RW,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b18f31b2c9e7..d3549f48b012 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -10461,6 +10461,24 @@ static ssize_t nfs4_listxattr(struct dentry *dentry, char *list, size_t size)
+ 	return error + error2 + error3;
+ }
+ 
++static void nfs4_enable_swap(struct inode *inode)
 +{
-+	return -EINVAL;
++	/* The state manager thread must always be running.
++	 * It will notice the client is a swapper, and stay put.
++	 */
++	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
++
++	nfs4_schedule_state_manager(clp);
 +}
- #endif /* CONFIG_SWAP */
++
++static void nfs4_disable_swap(struct inode *inode)
++{
++	/* The state manager thread will now exit once it is
++	 * woken.
++	 */
++	wake_up_var(&NFS_SERVER(inode)->nfs_client->cl_state);
++}
++
+ static const struct inode_operations nfs4_dir_inode_operations = {
+ 	.create		= nfs_create,
+ 	.lookup		= nfs_lookup,
+@@ -10538,6 +10556,8 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.create_server	= nfs4_create_server,
+ 	.clone_server	= nfs_clone_server,
+ 	.discover_trunking = nfs4_discover_trunking,
++	.enable_swap	= nfs4_enable_swap,
++	.disable_swap	= nfs4_disable_swap,
+ };
  
- #ifdef CONFIG_THP_SWAP
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 71c7a31dd291..ed6028aea8bf 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -2347,13 +2347,9 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f5a62c0d999b..5dc52eefaffb 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1205,10 +1205,17 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ {
+ 	struct task_struct *task;
+ 	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
++	struct rpc_clnt *cl = clp->cl_rpcclient;
++
++	while (cl != cl->cl_parent)
++		cl = cl->cl_parent;
  
- 	if (mapping->a_ops->swap_activate) {
- 		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
--		if (ret >= 0)
--			sis->flags |= SWP_ACTIVATED;
--		if (!ret) {
--			sis->flags |= SWP_FS_OPS;
--			ret = add_swap_extent(sis, 0, sis->max, 0);
--			*span = sis->pages;
--		}
-+		if (ret < 0)
-+			return ret;
-+		sis->flags |= SWP_ACTIVATED;
- 		return ret;
+ 	set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+-	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
++	if (test_and_set_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state) != 0) {
++		wake_up_var(&clp->cl_state);
+ 		return;
++	}
++	set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state);
+ 	__module_get(THIS_MODULE);
+ 	refcount_inc(&clp->cl_count);
+ 
+@@ -1224,6 +1231,7 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ 		printk(KERN_ERR "%s: kthread_run: %ld\n",
+ 			__func__, PTR_ERR(task));
+ 		nfs4_clear_state_manager_bit(clp);
++		clear_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state);
+ 		nfs_put_client(clp);
+ 		module_put(THIS_MODULE);
  	}
+@@ -2669,11 +2677,8 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			clear_bit(NFS4CLNT_RECALL_RUNNING, &clp->cl_state);
+ 		}
  
+-		/* Did we race with an attempt to give us more work? */
+-		if (!test_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state))
+-			return;
+-		if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
+-			return;
++		return;
++
+ 	} while (refcount_read(&clp->cl_count) > 1 && !signalled());
+ 	goto out_drain;
+ 
+@@ -2693,9 +2698,31 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ static int nfs4_run_state_manager(void *ptr)
+ {
+ 	struct nfs_client *clp = ptr;
++	struct rpc_clnt *cl = clp->cl_rpcclient;
++
++	while (cl != cl->cl_parent)
++		cl = cl->cl_parent;
+ 
+ 	allow_signal(SIGKILL);
++again:
++	set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state);
+ 	nfs4_state_manager(clp);
++	if (atomic_read(&cl->cl_swapper)) {
++		wait_var_event_interruptible(&clp->cl_state,
++					     test_bit(NFS4CLNT_RUN_MANAGER,
++						      &clp->cl_state));
++		if (atomic_read(&cl->cl_swapper) &&
++		    test_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state))
++			goto again;
++		/* Either no longer a swapper, or were signalled */
++	}
++	clear_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state);
++
++	if (refcount_read(&clp->cl_count) > 1 && !signalled() &&
++	    test_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state) &&
++	    !test_and_set_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state))
++		goto again;
++
+ 	nfs_put_client(clp);
+ 	module_put_and_kthread_exit(0);
+ 	return 0;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 728cb0c1f0b6..6861ac8af808 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1798,6 +1798,8 @@ struct nfs_rpc_ops {
+ 	struct nfs_server *(*clone_server)(struct nfs_server *, struct nfs_fh *,
+ 					   struct nfs_fattr *, rpc_authflavor_t);
+ 	int	(*discover_trunking)(struct nfs_server *, struct nfs_fh *);
++	void	(*enable_swap)(struct inode *inode);
++	void	(*disable_swap)(struct inode *inode);
+ };
+ 
+ /*
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 842366a2fc57..04ccf6a06ca7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -3069,6 +3069,8 @@ rpc_clnt_swap_activate_callback(struct rpc_clnt *clnt,
+ int
+ rpc_clnt_swap_activate(struct rpc_clnt *clnt)
+ {
++	while (clnt != clnt->cl_parent)
++		clnt = clnt->cl_parent;
+ 	if (atomic_inc_return(&clnt->cl_swapper) == 1)
+ 		return rpc_clnt_iterate_for_each_xprt(clnt,
+ 				rpc_clnt_swap_activate_callback, NULL);
 
 
