@@ -2,71 +2,101 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 87094C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0105AC433FE
 	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 11:51:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243620AbiBHLvE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Feb 2022 06:51:04 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41640 "EHLO
+        id S1356994AbiBHLvF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Feb 2022 06:51:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39132 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358967AbiBHLuq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 06:50:46 -0500
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24C1BC03E95F
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 03:49:01 -0800 (PST)
-Received: from dggpeml500023.china.huawei.com (unknown [172.30.72.57])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4JtLqL56yTzbkBr;
-        Tue,  8 Feb 2022 19:47:58 +0800 (CST)
-Received: from [10.174.176.83] (10.174.176.83) by
- dggpeml500023.china.huawei.com (7.185.36.114) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2308.21; Tue, 8 Feb 2022 19:48:58 +0800
-From:   "zhangxiaoxu (A)" <zhangxiaoxu5@huawei.com>
-To:     <tao.lyu@epfl.ch>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-CC:     ChenXiaoSong <chenxiaosong2@huawei.com>,
-        yanaijie <yanaijie@huawei.com>,
-        "zhangyi (F)" <yi.zhang@huawei.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Question about CVE-2022-24448
-Message-ID: <1bb42908-8f58-bf56-c2da-42739ee48d16@huawei.com>
-Date:   Tue, 8 Feb 2022 19:48:58 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.7.1
+        with ESMTP id S1356912AbiBHLuY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 06:50:24 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id DA7E8C033249
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 03:44:00 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1644320640;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=42sOIqw3jJVRTqH7VTl5wP1SVhu7QK5dVzzNtPFS6Vg=;
+        b=RYdh982aEYxBXCSyyEZcOwDz6qtEtqJ7WtZRxgrtmpMgaSzD6N42zAlpehFk8HFc2JAgpb
+        0tUHEXm/hbKZMjnCzZt0BKxzUTf/ArfkE9HInBdmO+UVWsYNgx9J6bVhXEE/izRdexXv0v
+        l9V/FqpaxNnQPHXaJ7A06XXn5g9UQHQ=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-612-GJeCiZWSP-WhQTnb9NY37A-1; Tue, 08 Feb 2022 06:43:56 -0500
+X-MC-Unique: GJeCiZWSP-WhQTnb9NY37A-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C17F11926DA0;
+        Tue,  8 Feb 2022 11:43:55 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 54CD210589D5;
+        Tue,  8 Feb 2022 11:43:55 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     NeilBrown <neilb@suse.de>
+Cc:     "Chuck Lever III" <chuck.lever@oracle.com>,
+        "Steve Dickson" <steved@redhat.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs-utils PATCH] nfs4id: a tool to create and persist nfs4
+ client uniquifiers
+Date:   Tue, 08 Feb 2022 06:43:54 -0500
+Message-ID: <0BDE59B8-C1FE-4B04-AB89-F65AD37AA8AC@redhat.com>
+In-Reply-To: <164429006120.27779.2597672223372340780@noble.neil.brown.name>
+References: <c2e8b7c06352d3cad3454de096024fff80e638af.1643979161.git.bcodding@redhat.com>
+ <87EAC6F6-C450-4642-A11A-55247C791D66@oracle.com>
+ <32889B9A-1293-4050-8131-726042D1EAD9@redhat.com>
+ <26803BBB-4F2C-4EFD-BC8D-A50A5C361E5C@oracle.com>
+ <164429006120.27779.2597672223372340780@noble.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="gbk"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.176.83]
-X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
- dggpeml500023.china.huawei.com (7.185.36.114)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond and Tao,
+On 7 Feb 2022, at 22:14, NeilBrown wrote:
 
-I have some question about CVE-2022-24448[1].
+> On Sat, 05 Feb 2022, Chuck Lever III wrote:
+>>
+>> The problem is that a network namespace (to which the persistent
+>> uniquifier is attached) and an FS namespace (in which the persistent
+>> uniquifier is stored) are created and managed independently.
+>
+> Not necessarily ....  at least: network namespaces do have visibility in
+> the filesystem and you can have files that associate with a specific
+> network namespace - without depending on FS namespaces.
+>
+> "man ip-netns" tells us that when a tool (e.g.  mount.nfs) is
+> network-namespace aware, it should first look in /etc/netns/NAME/
+> before looking in /etc/ for any config file.
+> The tool can determine "NAME" by running "ip netns identify", but there
+> is bound to library code to achieve the same effect.
+> You stat /proc/self/ns/net, then readdir /run/netns and stat everything
+> in there until you find something that matches /proc/self/ns/net
+>
+> If a container management system wants to put /etc/ elsewhere, it can
+> doubtlessly install a symlink in /etc/netns/NAME, and as this is an
+> established standard, it seems likely that they already do.
+>
+> So: enhance nfs-utils config code to (optionally) look in
+> /etc/netns/NAME first (or maybe last if they are to override) , and
+> store the identity in /etc/{netns/NAME/}nfs.conf.d/identity.conf
+>
+> Whatever tool creates the identity, writes it to
+>   /etc/netns/NAME/nfs.conf.d/identity.conf
+>
+> While we are at it, we should get exportfs to look there too, and
+> establish some convention so /var/lib/nfs can use a different path in
+> different network namespaces.
 
-It's description as:
-   An issue was discovered in fs/nfs/dir.c in the Linux kernel before 5.16.5.
-   If an application sets the O_DIRECTORY flag, and tries to open a regular
-   file, nfs_atomic_open() performs a regular lookup. If a regular file is
-   found, ENOTDIR should occur, but the server instead returns uninitialized
-   data in the file descriptor.
+Thanks! This is extremely helpful.
 
-It's fixed by ac795161c936 ("NFSv4: Handle case where the lookup of a directory fails")
+I can modify nfs4id to check if it has been invoked within a network
+namespace, then then check and store uuids in /etc/netns/NAME first.
 
-When try to open a regular file with O_DIRECTORY flag,
-it always return -ENOTDIR to userspace rather than a
-valid file descriptor because the 'do_open' check the
-dentry type.
+Ben
 
-My questions are:
-1. which uninitialized data in the file description are returned from 'nfs_atomic_open'?
-2. where use the uninitialized data?
-3. which uninitialized data are returned from server?
-4. is there a PoC reproducer or how to trigger it?
-
-
-[1] https://nvd.nist.gov/vuln/detail/CVE-2022-24448
