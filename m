@@ -2,105 +2,85 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96EEEC4167B
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 22:22:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33E8CC4332F
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 22:22:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1386264AbiBHWWz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Feb 2022 17:22:55 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44314 "EHLO
+        id S1385679AbiBHWW4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Feb 2022 17:22:56 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52004 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1386236AbiBHTsD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 14:48:03 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CAF1C0613CB;
-        Tue,  8 Feb 2022 11:48:03 -0800 (PST)
+        with ESMTP id S1386388AbiBHUU7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 15:20:59 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE501C0613CB;
+        Tue,  8 Feb 2022 12:20:58 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DCE31615DB;
-        Tue,  8 Feb 2022 19:48:02 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 01A1AC004E1;
-        Tue,  8 Feb 2022 19:48:01 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 3AFF1B81D96;
+        Tue,  8 Feb 2022 20:20:57 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E055AC004E1;
+        Tue,  8 Feb 2022 20:20:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1644349682;
-        bh=c8q0TxHVTjf4aNkQStcXVJSZB5mKfeuVp0Hhu1DcxMk=;
-        h=From:To:Cc:Subject:Date:From;
-        b=VJ8gWT14MPgCcP1GFBoBKr73DvfGR5bYwQHRF6+IKxXnNzBDMraPC5jdM2W2PVzVc
-         UEDDOcs828zHRI5VxgF+SK4pnxDWCJDDq7pkBHJLFtwhNMUUBc8Heu+OHRRXUSdl8q
-         e9OMtJQ3G1F6YxQUxM2i5cASx8thwaqIPtcSPhys6Lty3CebQfVOZ4s9ORqCc4/XcN
-         6vsPMwVJFWlzKr8FmUSqx7JT8CIB3OZfOT9lgj4TqTS9zXLXTsrXhJHXj3A4nt1Aph
-         452lraqlJnJY58NqcCC0DptsKFKU9nNBFrhiL3v/OgoXhZxJXerxYOAnS3Ozf1aFa/
-         Se9rQVk1a2fiw==
-From:   anna@kernel.org
-To:     torvalds@linux-foundation.org
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] Please Pull NFS Client Bugfixes for Linux v5.17-rc
-Date:   Tue,  8 Feb 2022 14:48:00 -0500
-Message-Id: <20220208194800.482704-1-anna@kernel.org>
-X-Mailer: git-send-email 2.35.1
+        s=k20201202; t=1644351655;
+        bh=Vhtge7hojtmGGF81piLOUYoshwDSD3PcrRHLoVd8ChY=;
+        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
+        b=ouM3q7IpGBRfIIkj26ZJaqT1Vv+qJC5irFIminsk2HYqRDEtMCrjnV4LS/5DNIrXt
+         L/jgQfDyeFW+k97NTbtWRpnLDYBV5aN6Ivdgm84KzXGuXQWMjpxdZeXW1sZ6mrYM/T
+         GuU8o7Na+YZxxCtNRlZMKN5BfKiM2UsDPI7ORfu4FeR1nayfG/9GwqMEl44vu41MHe
+         t4jPgt0uIevWqZVY4tE1TUeFagxXLJ3i3GVY3rx+ZW3M+CyWRVG/uQExydAGAisoch
+         S2nsqGbdnsy098E4xH/N7QpZ2FovV1GOwMOBT0tjbXuN8lUWuYjWKe4ciVn2OWuFsC
+         e9C1u6XyTAMpQ==
+Received: by mail-wm1-f41.google.com with SMTP id y6-20020a7bc186000000b0037bdc5a531eso1382915wmi.0;
+        Tue, 08 Feb 2022 12:20:55 -0800 (PST)
+X-Gm-Message-State: AOAM532F1t725c7tOE02mR1j9m2Gh/Fz3432Tkk6+9Qbk3+B8SvyFXou
+        4lxLpZR/gjAN+xS/+9duESj4cxpqIlAuwytlBzk=
+X-Google-Smtp-Source: ABdhPJwLIUg4euQ7vbczUVQ/hY1bQdVcNhbIv4x5leu70o7Ug5GAOttqCPqNgvpmrRDxSdb6ZTUKtzLNr+c0VWHOBM0=
+X-Received: by 2002:a05:600c:1f0b:: with SMTP id bd11mr2484770wmb.82.1644351654529;
+ Tue, 08 Feb 2022 12:20:54 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20220208194800.482704-1-anna@kernel.org> <CAHk-=whxJC==PiWer8UJTOGhQBSKWzY6f78qkaUvfK-5e9H-Yw@mail.gmail.com>
+In-Reply-To: <CAHk-=whxJC==PiWer8UJTOGhQBSKWzY6f78qkaUvfK-5e9H-Yw@mail.gmail.com>
+From:   Anna Schumaker <anna@kernel.org>
+Date:   Tue, 8 Feb 2022 15:20:38 -0500
+X-Gmail-Original-Message-ID: <CAFX2JfmQFR3G3xtieHNK56_Auy0yt8Vbg=x-JEWM4WCfh=txUg@mail.gmail.com>
+Message-ID: <CAFX2JfmQFR3G3xtieHNK56_Auy0yt8Vbg=x-JEWM4WCfh=txUg@mail.gmail.com>
+Subject: Re: [GIT PULL] Please Pull NFS Client Bugfixes for Linux v5.17-rc
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Linus,
+On Tue, Feb 8, 2022 at 3:13 PM Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
+>
+> On Tue, Feb 8, 2022 at 11:48 AM <anna@kernel.org> wrote:
+> >
+> >   git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.17-2
+>
+> Thanks, pulled.
+>
+> And this email setup works well and has proper dkim and so hopefully
+> won't have the spam issue that your previous one had.
 
-The following changes since commit 26291c54e111ff6ba87a164d85d4a4e134b7315c:
+Good to hear!
 
-  Linux 5.17-rc2 (2022-01-30 15:37:07 +0200)
+>
+> But can I please ask you to actually put your whole name in the
+> "From:" field, not just "anna@kernel.org"? As is, it just looked a bit
+> like spam in my (non-spam) inbox because I don't see your real name in
+> the mail index..
+>
+> I suspect that's mainly a git-send-email config thing, or whatever you
+> ended up sending this.
 
-are available in the Git repository at:
+Yeah, I did end up using git-send-email for this instead of
+copying-and-pasting into Gmail. I'll fix that up!
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.17-2
-
-for you to fetch changes up to b49ea673e119f59c71645e2f65b3ccad857c90ee:
-
-  SUNRPC: lock against ->sock changing during sysfs read (2022-02-08 09:14:26 -0500)
-
-----------------------------------------------------------------
-NFS Client Bugfixes for Linux 5.17-rc
-
-- Stable Fixes:
-  - Fix initialization of nfs_client cl_flags
-
-- Other Fixes:
-  - Fix performance issues with uncached readdir calls
-  - Fix potential pointer dereferences in rpcrdma_ep_create
-  - Fix nfs4_proc_get_locations() kernel-doc comment
-  - Fix locking during sunrpc sysfs reads
-  - Update my email address in the MAINTAINERS file to my new kernel.org email
-
-Thanks,
 Anna
 
-----------------------------------------------------------------
-Anna Schumaker (1):
-      MAINTAINERS: Update my email address
-
-Dan Aloni (1):
-      xprtrdma: fix pointer derefs in error cases of rpcrdma_ep_create
-
-NeilBrown (1):
-      SUNRPC: lock against ->sock changing during sysfs read
-
-Trond Myklebust (2):
-      NFS: Avoid duplicate uncached readdir calls on eof
-      NFS: Fix initialisation of nfs_client cl_flags field
-
-Yang Li (1):
-      NFS: Fix nfs4_proc_get_locations() kernel-doc comment
-
-trondmy@kernel.org (2):
-      NFS: Don't overfill uncached readdir pages
-      NFS: Don't skip directory entries when doing uncached readdir
-
- MAINTAINERS                 |  2 +-
- fs/nfs/client.c             |  2 +-
- fs/nfs/dir.c                | 24 ++++++++++++++++++------
- fs/nfs/nfs4proc.c           |  3 ++-
- include/linux/nfs_fs.h      |  1 +
- net/sunrpc/sysfs.c          |  5 ++++-
- net/sunrpc/xprtrdma/verbs.c |  3 +++
- net/sunrpc/xprtsock.c       |  7 ++++++-
- 8 files changed, 36 insertions(+), 11 deletions(-)
+>
+>                 Linus
