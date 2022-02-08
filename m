@@ -2,84 +2,150 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 735DDC4332F
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 22:23:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A2E70C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 22:23:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1386252AbiBHWXD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Feb 2022 17:23:03 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46040 "EHLO
+        id S1387341AbiBHWXC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Feb 2022 17:23:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45428 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1387069AbiBHVwj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 16:52:39 -0500
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 14FE5C0612B8;
-        Tue,  8 Feb 2022 13:52:39 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 67D5CCE1C9B;
-        Tue,  8 Feb 2022 21:52:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8E913C340EE;
-        Tue,  8 Feb 2022 21:52:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1644357155;
-        bh=e2FM1V1/4GHLdTXW9RpgJI03OpLLahT/Clg2E6le/10=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=poNWY/0HwItxg3uLd/DJwy3Epe1guC1sb9SZsJ8ORMxYUgCjiD2WoY+ufGDx6GGDJ
-         O1BuHJh5tkDSJmlD+0WqEPOWTtmAuM+nVKfimhorM8EtDJqoUiS/vuoB84sSbwChLe
-         RnXLyl9I4cNUY1Ci08CwQPce9OyHsnDT09j/UKHKlCDuht+RZG2Rp7fjExuGQbWRG6
-         KLwfauqHZ9/NILCUiHg/XBvfIUiWQQUU17MDVVohrQyJJSQkprw/8itFDXpmMYXMM7
-         j/LCikKLIJy/1OWX5pV3ROkQ+ryT4SaYAHCnvmlRzDHZvFCN9xVvM2LQ+YjIa2VOop
-         QU7FENANL0JeQ==
-From:   Anna Schumaker <anna@kernel.org>
-To:     fstests@vger.kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] check: Export CHECK_OPTIONS and PLATFORM for Xunit Reporting
-Date:   Tue,  8 Feb 2022 16:52:29 -0500
-Message-Id: <20220208215232.491780-2-anna@kernel.org>
-X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220208215232.491780-1-anna@kernel.org>
-References: <20220208215232.491780-1-anna@kernel.org>
+        with ESMTP id S1386252AbiBHTwz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 14:52:55 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id B3883C0613CB
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 11:52:53 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1644349972;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=YIjgk7muE8MdUq9Jlp1TQVS8rSX7nOW/kNd8jhbDRoM=;
+        b=VmG6RP4hCTl9wrDd7SjdrIwUaSkmzRRWfqP7/NWF8TkeDSjhtjdmUk1f3SNFkA2vpYGsOq
+        uugKMiJlULqnO96WDOF6wvReZ29mSG3hT9/99lywAZI4i7YjL2kvkxItvgxAJvEzuhW6RB
+        u2PeyKhh0GZ2PC5NURUGw/GTzdhYZAE=
+Received: from mail-qk1-f198.google.com (mail-qk1-f198.google.com
+ [209.85.222.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-369-9XmsgpcGOTCRfS6da9gc0g-1; Tue, 08 Feb 2022 14:52:49 -0500
+X-MC-Unique: 9XmsgpcGOTCRfS6da9gc0g-1
+Received: by mail-qk1-f198.google.com with SMTP id u12-20020a05620a0c4c00b00475a9324977so11735116qki.13
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Feb 2022 11:52:49 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
+         :content-language:to:cc:references:from:in-reply-to
+         :content-transfer-encoding;
+        bh=YIjgk7muE8MdUq9Jlp1TQVS8rSX7nOW/kNd8jhbDRoM=;
+        b=N82fcGPutfHKcJzK77H/5s53MkCyd6w4ri1M79bUwGa9l/P25/GD8vN3D3YavaBrgY
+         gt82c8Y5i9Kb986Qb/i3rg+tdJlDmPtEXT0uX3ssZRDS2l0ZYoqUE2T5LW+CmddG4O6O
+         PDqPSr/seIYbnwDILZuarQXfKXfYtY4hRyS/xmY/0AkSZv2ICFayykhO17rsOk2gBVVC
+         RZdY0C/oRVH1dVE/fThcIlX3yr8Q46o/Z89pAVCScd34IPgGgNTf8uQmXEqPCeovmFZ7
+         EAK3RVimzixUeWt+vCJaRO9LyuPL8MqpCs+opLN0rclMQ6xers9z5yU9SONAxvuSmzDo
+         EW5A==
+X-Gm-Message-State: AOAM532w0mK35jAJ5XbhkyiTIFddFC9VJrRrIzFMeeJ86TvteSJSBg2B
+        xsyBl7vud7uMf1/iK6p21YG+3UoaYWNw+60vwUuCZ98MqJPUx9PuMASfPyHRnwp0ME3dH1Tmy10
+        WN1qoNLZxRB3Nk8/0aBB2
+X-Received: by 2002:ac8:5f48:: with SMTP id y8mr4047999qta.284.1644349968567;
+        Tue, 08 Feb 2022 11:52:48 -0800 (PST)
+X-Google-Smtp-Source: ABdhPJzcU5aXQkEHTXHRBcNBgopBWVFl/Yvmh7TV0fgvyDc/one6g3KDAEJ5kf9vSsIdpxYV5GeFRQ==
+X-Received: by 2002:ac8:5f48:: with SMTP id y8mr4047990qta.284.1644349968296;
+        Tue, 08 Feb 2022 11:52:48 -0800 (PST)
+Received: from [172.31.1.6] ([70.105.253.180])
+        by smtp.gmail.com with ESMTPSA id v19sm7740321qkp.131.2022.02.08.11.52.47
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 08 Feb 2022 11:52:48 -0800 (PST)
+Message-ID: <6cfb516d-0747-a749-b310-1368a2186307@redhat.com>
+Date:   Tue, 8 Feb 2022 14:52:47 -0500
 MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.5.0
+Subject: Re: [nfs-utils PATCH] nfs4id: a tool to create and persist nfs4
+ client uniquifiers
+Content-Language: en-US
+To:     Benjamin Coddington <bcodding@redhat.com>
+Cc:     linux-nfs@vger.kernel.org
+References: <c2e8b7c06352d3cad3454de096024fff80e638af.1643979161.git.bcodding@redhat.com>
+ <6f01c382-8da5-5673-30db-0c0099d820b5@redhat.com>
+ <0AB20C82-6200-46E0-A76C-62345DAF8A3A@redhat.com>
+From:   Steve Dickson <steved@redhat.com>
+In-Reply-To: <0AB20C82-6200-46E0-A76C-62345DAF8A3A@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-I found that running ./check by hand with Xunit reporting enabled caused
-the PLATFORM variable to be unset, and the CHECK_OPTIONS was the default
-"-g auto" instead of the "-g quick" that I also passed in. This patch
-sets both variables so Xunit reporting is accurate.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
-Maybe there is a better way to do this? If so please let me know!
----
- check | 2 ++
- 1 file changed, 2 insertions(+)
+On 2/8/22 11:22 AM, Benjamin Coddington wrote:
+> On 8 Feb 2022, at 11:04, Steve Dickson wrote:
+> 
+>> Hello,
+>>
+>> On 2/4/22 7:56 AM, Benjamin Coddington wrote:
+>>> The nfs4id program will either create a new UUID from a random source or
+>>> derive it from /etc/machine-id, else it returns a UUID that has already
+>>> been written to /etc/nfs4-id.  This small, lightweight tool is 
+>>> suitable for
+>>> execution by systemd-udev in rules to populate the nfs4 client 
+>>> uniquifier.
+>>>
+>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>>> ---
+>>>   .gitignore               |   1 +
+>>>   configure.ac             |   4 +
+>>>   tools/Makefile.am        |   1 +
+>>>   tools/nfs4id/Makefile.am |   8 ++
+>>>   tools/nfs4id/nfs4id.c    | 184 +++++++++++++++++++++++++++++++++++++++
+>>>   tools/nfs4id/nfs4id.man  |  29 ++++++
+>>>   6 files changed, 227 insertions(+)
+>>>   create mode 100644 tools/nfs4id/Makefile.am
+>>>   create mode 100644 tools/nfs4id/nfs4id.c
+>>>   create mode 100644 tools/nfs4id/nfs4id.man
+>> Just a nit... naming convention... In the past
+>> we never put the protocol version in the name.
+>> Do a ls tools and utils directory and you
+>> see what I mean....
+>>
+>> Would it be a problem to change the name from
+>> nfs4id to nfsid?
+> 
+> Not at all.. 
+Good...
 
-diff --git a/check b/check
-index a08631213cbb..c8a38345123a 100755
---- a/check
-+++ b/check
-@@ -273,6 +273,7 @@ _prepare_test_list()
- }
- 
- # Process command arguments first.
-+export CHECK_OPTIONS="$*"
- while [ $# -gt 0 ]; do
- 	case "$1" in
- 	-\? | -h | --help) usage ;;
-@@ -360,6 +361,7 @@ if ! . ./common/rc; then
- 	echo "check: failed to source common/rc"
- 	exit 1
- fi
-+export PLATFORM=$(_full_platform_details)
- 
- if [ -n "$subdir_xfile" ]; then
- 	for d in $SRC_GROUPS $FSTYP; do
--- 
-2.35.1
+> and I think there's a lot of room for naming discussions about
+> the file to store the id too:
+> 
+> Trond sent /etc/nfs4_uuid
+> Neil suggests /etc/netns/NAME/nfs.conf.d/identity.conf
+> Ben sent /etc/nfs4-id (to match /etc/machine-id)
+Question... is it kosher to be writing /etc which is
+generally on the root filesystem?
+
+By far Neil suggestion is the most intriguing... but
+on the containers I'm looking at there no /etc/netns
+directory.
+
+I had to install the iproute package to do the
+"ip netns identify" which returns NULL...
+also adds yet another dependency on nfs-utils.
+
+So if "ip netns identify" does return NULL what directory
+path should be used?
+
+I'm all for making things container friendly but I'm
+also a fan of keeping things simple... So
+how about /etc/nfs.conf.d/identity.conf or
+/etc/nfs.conf.d/nfsid.conf?
+
+> 
+> Maybe the tool wants an option to specify the file?
+This is probably not a bad idea... It is a common practice
+
+steved.
+
+> 
+> Ben
+> 
 
