@@ -2,83 +2,71 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 370D1C433FE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B4D37C4167B
 	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 22:23:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1387331AbiBHWW7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Feb 2022 17:22:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50198 "EHLO
+        id S1381347AbiBHWXA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Feb 2022 17:23:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46028 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1386347AbiBHUNN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 15:13:13 -0500
-Received: from mail-ed1-x52a.google.com (mail-ed1-x52a.google.com [IPv6:2a00:1450:4864:20::52a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D54D2C0612C0
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 12:13:12 -0800 (PST)
-Received: by mail-ed1-x52a.google.com with SMTP id m11so616833edi.13
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Feb 2022 12:13:12 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=TQ3HZkUFGAf4B+2eLQfeREueBSNbdWDQUKhjsxyVA9Y=;
-        b=IvbPGlJLCDvnlk6W/5N307Vj0Cm+PzEP9jec7BmAcDnlMon9ab67PPDjmZcRICbjTH
-         rKM2s+/SwTSAwGzfitajCFqK9Nf5SlTKKmNKlQa6xSEMasorGK7tnl3j/HCG0A9nJzNJ
-         ymnndRCWJA1oN7PYDaCiRd5w7yksrWTQlj054=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=TQ3HZkUFGAf4B+2eLQfeREueBSNbdWDQUKhjsxyVA9Y=;
-        b=Frf0CFOQXKI063kVsRSN6g0kC3RuQPKwhtGeU02c/kd1rYrGM9d+KgYD8+mkDEZNHB
-         VnOTGfl6ointwmXSTr7trxjWCV9uZ6NUcLJ9YpueBggSUx9b8hr3fPL3YFG849Bu5Lo7
-         YDiqg+07P5HI/0prp3+mylWQfwYqBqq6WUGrr6iZ4YgmYU+jkY2HYr7DKltP24pNQdNH
-         PCaD+K8DJeRclCF35dmxR/GIPYTi0i1tfIN5aHSFFuCtDLZqJ0eYMYeG9GdBl5O+5f4c
-         pnzw4ZGO/WcAftJYgmK28CRMQZm97l4ez9lmyBoxSZvR9RCqI5CvyyPBz9aCkkD2DhA8
-         0DQw==
-X-Gm-Message-State: AOAM531kx5VXTXMEyPDYl9qUhAT6lRjuNtcPDIuTzh5sEE9w+haO5UZl
-        0mY5e8ucUZaSrgSGFqZSOmSDUA8yeW/uCHz/
-X-Google-Smtp-Source: ABdhPJybCq8KX10KgciZnhRdNVUVLg/BIOl1UkcgHoXnU7GFdyIDYJvNipCGbXmbFig7YsDWPSyNDA==
-X-Received: by 2002:a05:6402:5212:: with SMTP id s18mr6260951edd.379.1644351191225;
-        Tue, 08 Feb 2022 12:13:11 -0800 (PST)
-Received: from mail-wr1-f50.google.com (mail-wr1-f50.google.com. [209.85.221.50])
-        by smtp.gmail.com with ESMTPSA id h8sm3498225ejy.31.2022.02.08.12.13.10
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 08 Feb 2022 12:13:10 -0800 (PST)
-Received: by mail-wr1-f50.google.com with SMTP id q7so293901wrc.13
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Feb 2022 12:13:10 -0800 (PST)
-X-Received: by 2002:adf:d087:: with SMTP id y7mr4716600wrh.274.1644351190120;
- Tue, 08 Feb 2022 12:13:10 -0800 (PST)
+        with ESMTP id S1387067AbiBHVwi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 16:52:38 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 182FCC0612BC;
+        Tue,  8 Feb 2022 13:52:38 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id A891461639;
+        Tue,  8 Feb 2022 21:52:37 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1BDBDC004E1;
+        Tue,  8 Feb 2022 21:52:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1644357157;
+        bh=BAtgUU3U8csDNJrdRd0bqKFRltZJKOy72p0vv/ao5ag=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Vg4oLPConeciJzGtLQ8aVB4RaWswVkWuFoDcOH10QF/hFF3zGwZK5Ogx6c/XLWinT
+         5y2SG8NHqotuKAb5y394sOGumJxDvkiZTo9Zj3CgLzdiduk7kFKjKeagKdrX7/GlJr
+         9Q51ZUtNUjoU7wDY60t0Iqx3AnQk16cAQ1E+vqCbAVxabduUQXQ/O9R5jUc6klSoxn
+         WcpZugxpdAB4fx2Atz3HYhG5rm/NWtCQbs2CXOq1600om5WbN9RPk14n1ZssbSm+QO
+         2tz7EbDaCfqzEPMQsLDAA/aP3v0Lx8ZxC01zKC+B5GJYWpO5RF4bhuAP8FdyDVKxcL
+         YrZbpR3pkq79Q==
+From:   Anna Schumaker <anna@kernel.org>
+To:     fstests@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 4/4] generic/633: Check if idmapped mounts are supported before running
+Date:   Tue,  8 Feb 2022 16:52:32 -0500
+Message-Id: <20220208215232.491780-5-anna@kernel.org>
+X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220208215232.491780-1-anna@kernel.org>
+References: <20220208215232.491780-1-anna@kernel.org>
 MIME-Version: 1.0
-References: <20220208194800.482704-1-anna@kernel.org>
-In-Reply-To: <20220208194800.482704-1-anna@kernel.org>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Tue, 8 Feb 2022 12:12:53 -0800
-X-Gmail-Original-Message-ID: <CAHk-=whxJC==PiWer8UJTOGhQBSKWzY6f78qkaUvfK-5e9H-Yw@mail.gmail.com>
-Message-ID: <CAHk-=whxJC==PiWer8UJTOGhQBSKWzY6f78qkaUvfK-5e9H-Yw@mail.gmail.com>
-Subject: Re: [GIT PULL] Please Pull NFS Client Bugfixes for Linux v5.17-rc
-To:     Anna Schumaker <anna@kernel.org>
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Feb 8, 2022 at 11:48 AM <anna@kernel.org> wrote:
->
->   git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.17-2
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Thanks, pulled.
+This appears to have been missed when the test was added.
 
-And this email setup works well and has proper dkim and so hopefully
-won't have the spam issue that your previous one had.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ tests/generic/633 | 1 +
+ 1 file changed, 1 insertion(+)
 
-But can I please ask you to actually put your whole name in the
-"From:" field, not just "anna@kernel.org"? As is, it just looked a bit
-like spam in my (non-spam) inbox because I don't see your real name in
-the mail index..
+diff --git a/tests/generic/633 b/tests/generic/633
+index 382806471223..6750117735f7 100755
+--- a/tests/generic/633
++++ b/tests/generic/633
+@@ -15,6 +15,7 @@ _begin_fstest auto quick atime attr cap idmapped io_uring mount perms rw unlink
+ # real QA test starts here
+ 
+ _supported_fs generic
++_require_idmapped_mounts
+ _require_test
+ 
+ echo "Silence is golden"
+-- 
+2.35.1
 
-I suspect that's mainly a git-send-email config thing, or whatever you
-ended up sending this.
-
-                Linus
