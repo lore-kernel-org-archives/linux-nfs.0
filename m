@@ -2,101 +2,83 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0105AC433FE
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 11:51:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3B34C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 11:52:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1356994AbiBHLvF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Feb 2022 06:51:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39132 "EHLO
+        id S231327AbiBHLwe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Feb 2022 06:52:34 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43242 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1356912AbiBHLuY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 06:50:24 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id DA7E8C033249
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 03:44:00 -0800 (PST)
+        with ESMTP id S240846AbiBHLwe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 06:52:34 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id A0A7BC03FEC0
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 03:52:32 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1644320640;
+        s=mimecast20190719; t=1644321151;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=42sOIqw3jJVRTqH7VTl5wP1SVhu7QK5dVzzNtPFS6Vg=;
-        b=RYdh982aEYxBXCSyyEZcOwDz6qtEtqJ7WtZRxgrtmpMgaSzD6N42zAlpehFk8HFc2JAgpb
-        0tUHEXm/hbKZMjnCzZt0BKxzUTf/ArfkE9HInBdmO+UVWsYNgx9J6bVhXEE/izRdexXv0v
-        l9V/FqpaxNnQPHXaJ7A06XXn5g9UQHQ=
+        bh=7MKu7WQEn9DpcC0w+ZVuJvCaE5jPe72ovb7SuWms1iY=;
+        b=EhFrvo56JPx9nsugxBpBeZVy47H7GbBLJD4YJpLYeolI+ZBc3sxWfBMMDvtuGucLpYWHo3
+        FXXcWktwKxk1tcQUKtQEatdXB745wSj3xcIBjOmqCXWaUTpVKavBY/ka345oNG7BS6hV78
+        5hlhBM+ATsRW73NvQNQp2jl0C9sr0ro=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-612-GJeCiZWSP-WhQTnb9NY37A-1; Tue, 08 Feb 2022 06:43:56 -0500
-X-MC-Unique: GJeCiZWSP-WhQTnb9NY37A-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+ us-mta-101-DRjM5o7XMwuXsEDKSsAjrQ-1; Tue, 08 Feb 2022 06:52:30 -0500
+X-MC-Unique: DRjM5o7XMwuXsEDKSsAjrQ-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C17F11926DA0;
-        Tue,  8 Feb 2022 11:43:55 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B521A8145E3;
+        Tue,  8 Feb 2022 11:52:29 +0000 (UTC)
 Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 54CD210589D5;
-        Tue,  8 Feb 2022 11:43:55 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 741AF2B3CA;
+        Tue,  8 Feb 2022 11:52:29 +0000 (UTC)
 From:   "Benjamin Coddington" <bcodding@redhat.com>
 To:     NeilBrown <neilb@suse.de>
-Cc:     "Chuck Lever III" <chuck.lever@oracle.com>,
-        "Steve Dickson" <steved@redhat.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs-utils PATCH] nfs4id: a tool to create and persist nfs4
- client uniquifiers
-Date:   Tue, 08 Feb 2022 06:43:54 -0500
-Message-ID: <0BDE59B8-C1FE-4B04-AB89-F65AD37AA8AC@redhat.com>
-In-Reply-To: <164429006120.27779.2597672223372340780@noble.neil.brown.name>
-References: <c2e8b7c06352d3cad3454de096024fff80e638af.1643979161.git.bcodding@redhat.com>
- <87EAC6F6-C450-4642-A11A-55247C791D66@oracle.com>
- <32889B9A-1293-4050-8131-726042D1EAD9@redhat.com>
- <26803BBB-4F2C-4EFD-BC8D-A50A5C361E5C@oracle.com>
- <164429006120.27779.2597672223372340780@noble.neil.brown.name>
+Cc:     "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: v4 clientid uniquifiers in containers/namespaces
+Date:   Tue, 08 Feb 2022 06:52:28 -0500
+Message-ID: <A677D8A9-FD0B-43E5-82D6-E660CCB8B185@redhat.com>
+In-Reply-To: <164428557862.27779.17375354328525752842@noble.neil.brown.name>
+References: <6CEC5101-0512-4082-81F8-BDFEC5B6DF3A@redhat.com>
+ <164428557862.27779.17375354328525752842@noble.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 7 Feb 2022, at 22:14, NeilBrown wrote:
+On 7 Feb 2022, at 20:59, NeilBrown wrote:
 
-> On Sat, 05 Feb 2022, Chuck Lever III wrote:
+> On Sun, 06 Feb 2022, Benjamin Coddington wrote:
+>> Hi all,
 >>
->> The problem is that a network namespace (to which the persistent
->> uniquifier is attached) and an FS namespace (in which the persistent
->> uniquifier is stored) are created and managed independently.
+>> Is anyone using a udev(-like) implementation with NETLINK_LISTEN_ALL_NSID?
+>> It looks like that is at least necessary to allow the init namespaced udev
+>> to receive notifications on /sys/fs/nfs/net/nfs_client/identifier, which
+>> would be a pre-req to automatically uniquify in containers.
 >
-> Not necessarily ....  at least: network namespaces do have visibility in
-> the filesystem and you can have files that associate with a specific
-> network namespace - without depending on FS namespaces.
->
-> "man ip-netns" tells us that when a tool (e.g.  mount.nfs) is
-> network-namespace aware, it should first look in /etc/netns/NAME/
-> before looking in /etc/ for any config file.
-> The tool can determine "NAME" by running "ip netns identify", but there
-> is bound to library code to achieve the same effect.
-> You stat /proc/self/ns/net, then readdir /run/netns and stat everything
-> in there until you find something that matches /proc/self/ns/net
->
-> If a container management system wants to put /etc/ elsewhere, it can
-> doubtlessly install a symlink in /etc/netns/NAME, and as this is an
-> established standard, it seems likely that they already do.
->
-> So: enhance nfs-utils config code to (optionally) look in
-> /etc/netns/NAME first (or maybe last if they are to override) , and
-> store the identity in /etc/{netns/NAME/}nfs.conf.d/identity.conf
->
-> Whatever tool creates the identity, writes it to
->   /etc/netns/NAME/nfs.conf.d/identity.conf
->
-> While we are at it, we should get exportfs to look there too, and
-> establish some convention so /var/lib/nfs can use a different path in
-> different network namespaces.
+> Could you walk me through the reasoning here - or point me to where it
+> has been discussed.
 
-Thanks! This is extremely helpful.
+https://lore.kernel.org/linux-nfs/20210414181040.7108-1-steved@redhat.com/
 
-I can modify nfs4id to check if it has been invoked within a network
-namespace, then then check and store uuids in /etc/netns/NAME first.
+> It seems to me that mount.nfs is the place to set nfs_client/identifier.
+> It can be told (via /etc/nfs.conf or /etc/nfsmount.conf) how to generate
+> and where to store the identifier.  It can check the current value and
+> update if needed.  As long as the identifier is set before the first
+> mount, there is no rush.
+>
+> Why does it need to be done in response to a uevent??
+
+I think the assertion was that it was the only sensible way, and it does
+seem to be better than exposing yet another knob when all that's needed is a
+way to distinguish and persist NFS clients when network namespaces can come
+and go at any time, and there can be a lot of them.
 
 Ben
 
