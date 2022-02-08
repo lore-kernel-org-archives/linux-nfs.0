@@ -2,130 +2,162 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84523C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 22:22:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 155C9C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Feb 2022 22:22:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350060AbiBHWWr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Feb 2022 17:22:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60362 "EHLO
+        id S1386583AbiBHWWv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Feb 2022 17:22:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47190 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1386583AbiBHU4I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 15:56:08 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DBFF2C0612C3
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 12:56:06 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 8CA601F383;
-        Tue,  8 Feb 2022 20:56:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1644353765; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        with ESMTP id S1386286AbiBHUAf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2022 15:00:35 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 6B6B7C0613CB
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 12:00:34 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1644350433;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=w7qulzs7l7p1FYvl0feBpI3DJ/fOLDz+kfJCkUNLat0=;
-        b=b0Q4GEOfzTDF6NcSghAmCZCuZtBeKc4ZEmXf6/AtsMujdgRyPg2l10q+duXrvr9kenE88S
-        3GxNf9VM0yZhpQy0enJwZ5paGRldSEQ3af6kCYPk1thjt87bgl1rxNREOFMsSvz74nXg0Z
-        WXF10ZJT45QNPmNUHmAvQRS+iavx4y8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1644353765;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=w7qulzs7l7p1FYvl0feBpI3DJ/fOLDz+kfJCkUNLat0=;
-        b=dnVyenRFDr0iIXCvs2r6siOYwp6j6rYq5KOXY6b2VfA+xTy+tf6dw44Dbqbedo1BN1gLwb
-        5hza1A8F/trOZ+AQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        bh=kRkaTGLko6RS0qcQazcY7AMYnvXl1StloiyodCJTRg8=;
+        b=R/H+vYwki+X+BXhJjoLu3WXatNg+/pGro2dEFhs061C8ZtniuRrmI8KXd4k0chGmPAW8QO
+        A00iEzzhZGFLdiI73ZCs02PdRRPhx88lD2pMgf4x36jAJ0pBiDdjjCrt+42sd4xtS1MqAi
+        G0jq6pT33WyXJLjEXGqPxCK2sqnYgDw=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-21-Fz5IEP1VOsaOJbh4mvXROg-1; Tue, 08 Feb 2022 15:00:32 -0500
+X-MC-Unique: Fz5IEP1VOsaOJbh4mvXROg-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id AF6C213780;
-        Tue,  8 Feb 2022 20:56:04 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id E6thGuTYAmKcNAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 08 Feb 2022 20:56:04 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 668361124C45
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Feb 2022 20:00:31 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 0F9995F714;
+        Tue,  8 Feb 2022 20:00:30 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Steve Dickson" <steved@redhat.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH] nfs4id: a tool to create and persist nfs4
+ client uniquifiers
+Date:   Tue, 08 Feb 2022 15:00:29 -0500
+Message-ID: <E013276C-7605-4E2B-A650-C61C6FC5BADF@redhat.com>
+In-Reply-To: <6cfb516d-0747-a749-b310-1368a2186307@redhat.com>
+References: <c2e8b7c06352d3cad3454de096024fff80e638af.1643979161.git.bcodding@redhat.com>
+ <6f01c382-8da5-5673-30db-0c0099d820b5@redhat.com>
+ <0AB20C82-6200-46E0-A76C-62345DAF8A3A@redhat.com>
+ <6cfb516d-0747-a749-b310-1368a2186307@redhat.com>
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Benjamin Coddington" <bcodding@redhat.com>
-Cc:     "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: v4 clientid uniquifiers in containers/namespaces
-In-reply-to: <A677D8A9-FD0B-43E5-82D6-E660CCB8B185@redhat.com>
-References: <6CEC5101-0512-4082-81F8-BDFEC5B6DF3A@redhat.com>,
- <164428557862.27779.17375354328525752842@noble.neil.brown.name>,
- <A677D8A9-FD0B-43E5-82D6-E660CCB8B185@redhat.com>
-Date:   Wed, 09 Feb 2022 07:56:00 +1100
-Message-id: <164435376000.27779.4059629372785561121@noble.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 08 Feb 2022, Benjamin Coddington wrote:
-> On 7 Feb 2022, at 20:59, NeilBrown wrote:
->=20
-> > On Sun, 06 Feb 2022, Benjamin Coddington wrote:
-> >> Hi all,
-> >>
-> >> Is anyone using a udev(-like) implementation with NETLINK_LISTEN_ALL_NSI=
-D?
-> >> It looks like that is at least necessary to allow the init namespaced ud=
-ev
-> >> to receive notifications on /sys/fs/nfs/net/nfs_client/identifier, which
-> >> would be a pre-req to automatically uniquify in containers.
-> >
-> > Could you walk me through the reasoning here - or point me to where it
-> > has been discussed.
->=20
-> https://lore.kernel.org/linux-nfs/20210414181040.7108-1-steved@redhat.com/
+On 8 Feb 2022, at 14:52, Steve Dickson wrote:
 
-Thanks.  I did remember that discussion though it was helpful to refresh
-my memory, and to be sure there is nothing else.
+> On 2/8/22 11:22 AM, Benjamin Coddington wrote:
+>> On 8 Feb 2022, at 11:04, Steve Dickson wrote:
+>>
+>>> Hello,
+>>>
+>>> On 2/4/22 7:56 AM, Benjamin Coddington wrote:
+>>>> The nfs4id program will either create a new UUID from a random 
+>>>> source or
+>>>> derive it from /etc/machine-id, else it returns a UUID that has 
+>>>> already
+>>>> been written to /etc/nfs4-id.  This small, lightweight tool is 
+>>>> suitable for
+>>>> execution by systemd-udev in rules to populate the nfs4 client 
+>>>> uniquifier.
+>>>>
+>>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>>>> ---
+>>>>   .gitignore               |   1 +
+>>>>   configure.ac             |   4 +
+>>>>   tools/Makefile.am        |   1 +
+>>>>   tools/nfs4id/Makefile.am |   8 ++
+>>>>   tools/nfs4id/nfs4id.c    | 184 
+>>>> +++++++++++++++++++++++++++++++++++++++
+>>>>   tools/nfs4id/nfs4id.man  |  29 ++++++
+>>>>   6 files changed, 227 insertions(+)
+>>>>   create mode 100644 tools/nfs4id/Makefile.am
+>>>>   create mode 100644 tools/nfs4id/nfs4id.c
+>>>>   create mode 100644 tools/nfs4id/nfs4id.man
+>>> Just a nit... naming convention... In the past
+>>> we never put the protocol version in the name.
+>>> Do a ls tools and utils directory and you
+>>> see what I mean....
+>>>
+>>> Would it be a problem to change the name from
+>>> nfs4id to nfsid?
+>>
+>> Not at all..
+> Good...
 
->=20
-> > It seems to me that mount.nfs is the place to set nfs_client/identifier.
-> > It can be told (via /etc/nfs.conf or /etc/nfsmount.conf) how to generate
-> > and where to store the identifier.  It can check the current value and
-> > update if needed.  As long as the identifier is set before the first
-> > mount, there is no rush.
-> >
-> > Why does it need to be done in response to a uevent??
->=20
-> I think the assertion was that it was the only sensible way, and it does
-> seem to be better than exposing yet another knob when all that's needed is a
-> way to distinguish and persist NFS clients when network namespaces can come
-> and go at any time, and there can be a lot of them.
+I didn't orginally do that because I thought it might be confusing for 
+some
+folks who want `nfsid` to display their kerberos identity.  There's a BZ
+open for that!
 
-"assertion" is an apt word.  There wasn't a whole lot of reasoned
-argument, mostly just assertions.
+Do you think that's a problem?  I feel like it's a problem.
 
-The best argument was that "nfs.conf is not namespace aware", which is
-only somewhat true.  Using "ip netnfs exec" will make
-non-namepsace-aware tools work correctly in namespaces providing their
-config files are in /etc/netns/NAME - they get bind-mounted over the
-files in /etc.
-And of course /etc/nfs.conf can be MADE namespace aware.
+>> and I think there's a lot of room for naming discussions about
+>> the file to store the id too:
+>>
+>> Trond sent /etc/nfs4_uuid
+>> Neil suggests /etc/netns/NAME/nfs.conf.d/identity.conf
+>> Ben sent /etc/nfs4-id (to match /etc/machine-id)
+> Question... is it kosher to be writing /etc which is
+> generally on the root filesystem?
 
-There is also a reasonable argument that auto-editiing /etc/nfs.conf
-risks collision with an admin, but that is why we have /etc/nfs.conf.d
+Sure, why not?
 
-For me, the weakest part of the Steve's case was that he presented it as
-"setting module parameters via nfs.conf" rather than "configuring client
-identity via nfs.conf".  A number of the early negative responses were
-focused on the distraction of a module parameter being involved.
+> By far Neil suggestion is the most intriguing... but
+> on the containers I'm looking at there no /etc/netns
+> directory.
 
-The weakness for the alternative, of course, is the fact that using the
-udev mechanism requires running udevd in each network namespace, which
-is an unnecessary burden.
+Not yet -- you can create it.
 
-So I still STRONGLY think that the identity should be set by mount.nfs
-reading (and writing) some file in /etc or /etc/netnfs/NAME, and I
-weakly think that the file should be in /etc/nfs.conf.d/ so that the
-reading is automagic.
+> I had to install the iproute package to do the
+> "ip netns identify" which returns NULL...
+> also adds yet another dependency on nfs-utils.
 
-Thanks,
-NeilBrown
+We don't need the dependency..this little binary is just a helper for a 
+udev
+rule.  Trond already wrote his version of this.  :)  This one's just 
+trying
+to be a little lighter (whoa, we don't need all of bash!).
+
+> So if "ip netns identify" does return NULL what directory
+> path should be used?
+
+I think thats out of scope..  if udevd is running in a container, and 
+has a
+rule that uses this tool, then the container either is likely to have
+already customized its /etc.  Or perhaps we can make the udev rule 
+namespace
+aware (I need to look into what's available to udev's rule environment 
+when
+it runs in a namespace).
+
+> I'm all for making things container friendly but I'm
+> also a fan of keeping things simple... So
+> how about /etc/nfs.conf.d/identity.conf or
+> /etc/nfs.conf.d/nfsid.conf?
+
+Really, because its not a configuration.  Its value persistence, and we 
+/really/
+don't want people configuring it.
+
+>>
+>> Maybe the tool wants an option to specify the file?
+> This is probably not a bad idea... It is a common practice
+
+OK, I'll do that.
+
+Ben
+
