@@ -2,92 +2,77 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22C66C433F5
-	for <linux-nfs@archiver.kernel.org>; Wed,  9 Feb 2022 22:02:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31FA7C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed,  9 Feb 2022 22:49:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234752AbiBIWCb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 9 Feb 2022 17:02:31 -0500
-Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:45272 "EHLO
+        id S236295AbiBIWtX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 9 Feb 2022 17:49:23 -0500
+Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:51104 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234798AbiBIWC3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2022 17:02:29 -0500
-Received: from mx1.molgen.mpg.de (mx3.molgen.mpg.de [141.14.17.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F103BE00ED7E
-        for <linux-nfs@vger.kernel.org>; Wed,  9 Feb 2022 14:02:26 -0800 (PST)
-Received: from [192.168.0.2] (ip5f5aee0c.dynamic.kabel-deutschland.de [95.90.238.12])
-        (using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-        (No client certificate requested)
-        (Authenticated sender: pmenzel)
-        by mx.molgen.mpg.de (Postfix) with ESMTPSA id CE25861E6478B;
-        Wed,  9 Feb 2022 23:02:23 +0100 (CET)
-Message-ID: <d16aac1e-a3aa-309a-0130-c60147c980d1@molgen.mpg.de>
-Date:   Wed, 9 Feb 2022 23:02:23 +0100
+        with ESMTP id S236294AbiBIWtW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2022 17:49:22 -0500
+X-Greylist: delayed 1999 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 09 Feb 2022 14:49:24 PST
+Received: from mail105.syd.optusnet.com.au (mail105.syd.optusnet.com.au [211.29.132.249])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id E607FE01925B;
+        Wed,  9 Feb 2022 14:49:24 -0800 (PST)
+Received: from dread.disaster.area (pa49-180-69-7.pa.nsw.optusnet.com.au [49.180.69.7])
+        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 08C7510C707D;
+        Thu, 10 Feb 2022 08:55:11 +1100 (AEDT)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1nHuvd-00A6js-EK; Thu, 10 Feb 2022 08:55:09 +1100
+Date:   Thu, 10 Feb 2022 08:55:09 +1100
+From:   Dave Chinner <david@fromorbit.com>
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH RFC 1/6] NFSD: Fix NFSv4 SETATTR's handling of large file
+ sizes
+Message-ID: <20220209215509.GV59715@dread.disaster.area>
+References: <164329914731.5879.7791856151631542523.stgit@bazille.1015granger.net>
+ <164329971128.5879.15718457509790221509.stgit@bazille.1015granger.net>
+ <20220128003641.GK59715@dread.disaster.area>
+ <77B0ABAA-3427-4E4E-AE5A-B6D34FB6E837@oracle.com>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.5.1
-Subject: Re: [PATCH] NFS: LOOKUP_DIRECTORY is also ok with symlinks
-Content-Language: en-US
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc:     linux-nfs@vger.kernel.org, it+linux-nfs@molgen.mpg.de,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-References: <20220208183823.1391397-1-trondmy@kernel.org>
-From:   Paul Menzel <pmenzel@molgen.mpg.de>
-In-Reply-To: <20220208183823.1391397-1-trondmy@kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <77B0ABAA-3427-4E4E-AE5A-B6D34FB6E837@oracle.com>
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.4 cv=deDjYVbe c=1 sm=1 tr=0 ts=62043840
+        a=NB+Ng1P8A7U24Uo7qoRq4Q==:117 a=NB+Ng1P8A7U24Uo7qoRq4Q==:17
+        a=kj9zAlcOel0A:10 a=oGFeUVbbRNcA:10 a=7-415B0cAAAA:8
+        a=_-h6WkgsADSuhMYx-ykA:9 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Dear Trond,
-
-
-Am 08.02.22 um 19:38 schrieb trondmy@kernel.org:
-> From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Fri, Jan 28, 2022 at 01:48:48AM +0000, Chuck Lever III wrote:
 > 
-> Commit ac795161c936 (NFSv4: Handle case where the lookup of a directory
-> fails) [1], part of Linux since 5.17-rc2, introduced a regression, where
-> a symbolic link on an NFS mount to a directory on another NFS does not
-> resolve(?) the first time it is accessed:
 > 
-> Reported-by: Paul Menzel <pmenzel@molgen.mpg.de>
-> Fixes: ac795161c936 ("NFSv4: Handle case where the lookup of a directory fails")
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-
-Thank you for fixing it so quickly. My colleague verified, that it fixes 
-our issue.
-
-Tested-by: Donald Buczek <buczek@molgen.mpg.de>
-
-
-Kind regards,
-
-Paul
-
-
-> ---
->   fs/nfs/dir.c | 4 ++--
->   1 file changed, 2 insertions(+), 2 deletions(-)
+> > On Jan 27, 2022, at 7:36 PM, Dave Chinner <david@fromorbit.com> wrote:
+> > 
+> > On Thu, Jan 27, 2022 at 11:08:31AM -0500, Chuck Lever wrote:
+> >> IOW it assumes the caller has already sanity-checked the value.
+> > 
+> > Every filesystem assumes that the iattr that is passed to ->setattr
+> > by notify_change() has been sanity checked and the parameters are
+> > within the valid VFS supported ranges, not just XFS. Perhaps this
+> > check should be in notify_change, not in the callers?
 > 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index e128503728f2..6dee4e12d381 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -2051,14 +2051,14 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
->   	if (!res) {
->   		inode = d_inode(dentry);
->   		if ((lookup_flags & LOOKUP_DIRECTORY) && inode &&
-> -		    !S_ISDIR(inode->i_mode))
-> +		    !(S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)))
->   			res = ERR_PTR(-ENOTDIR);
->   		else if (inode && S_ISREG(inode->i_mode))
->   			res = ERR_PTR(-EOPENSTALE);
->   	} else if (!IS_ERR(res)) {
->   		inode = d_inode(res);
->   		if ((lookup_flags & LOOKUP_DIRECTORY) && inode &&
-> -		    !S_ISDIR(inode->i_mode)) {
-> +		    !(S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode))) {
->   			dput(res);
->   			res = ERR_PTR(-ENOTDIR);
->   		} else if (inode && S_ISREG(inode->i_mode)) {
+> My (limited) understanding of the VFS code is that functions at
+> the notify_change() level expect that its callers will have
+> already sanitized the input -- those callers are largely the
+> system call routines. That's why I chose to address this in NFSD.
+> 
+> Maybe inode_newsize_ok() needs to check for negative size values?
+
+Yeah, that would seem reasonable - the size passed to it is a
+loff_t, and it's not checked for overflows/negative values. So if it
+checked for offset < 0 if would catch this....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
