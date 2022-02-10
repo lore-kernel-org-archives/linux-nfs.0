@@ -2,382 +2,184 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B04FC433FE
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 16:36:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F3234C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 16:42:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244286AbiBJQgw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Feb 2022 11:36:52 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:47096 "EHLO
+        id S235587AbiBJQmE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Feb 2022 11:42:04 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:54084 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244283AbiBJQgv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2022 11:36:51 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id EC5C7C2A
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 08:36:48 -0800 (PST)
+        with ESMTP id S244598AbiBJQmC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2022 11:42:02 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id A8A70EB7
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 08:41:49 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1644511008;
+        s=mimecast20190719; t=1644511308;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=YfJ6dj0gN4bDeVPIaVdvf99NrVWcCmBDume9lmUYoic=;
-        b=XW7viUjKUjQQjBIVsEaLYkygkohi4wj2R18fIiDx62mfidltrgpAgUY/CAxX+MBY7e1R1E
-        8Q71BJcvtFbbU6i6Yfx02zKgdAX0lDuyBLpUmhJaGP0QunY7GVUMcOYeFB+II57Amr/H6u
-        re+I6e+GPztOldtDgTnZi5FfU8L9Oh0=
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=8++y5Rvxhnvdy76Y9Ken0LtSmHbTfT9bzl++cI4WX8s=;
+        b=PiIFt11bm1NKi+BA6HpcUR6Pniu4Wgg5ar53aWF//p7DWC8M79yL9sickZcxy62boyKq4a
+        OeN6G1xItVfR8HZP91qXO5iyI3TS+LtqX1o5b72TV/56UjnkDr8zkwtFOB7y6dybhqUa8W
+        fQt3MXHSQCkVI5/Q0JW2adREQYhA4ME=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-17-5Mu2taQSNnmav2Fzy83lEw-1; Thu, 10 Feb 2022 11:36:46 -0500
-X-MC-Unique: 5Mu2taQSNnmav2Fzy83lEw-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+ us-mta-292-aIwL53_nPveeQViUHOviow-1; Thu, 10 Feb 2022 11:41:47 -0500
+X-MC-Unique: aIwL53_nPveeQViUHOviow-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id BAF8A8144E1
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 16:36:45 +0000 (UTC)
-Received: from bcodding.csb (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 832227CD67;
-        Thu, 10 Feb 2022 16:36:45 +0000 (UTC)
-Received: by bcodding.csb (Postfix, from userid 24008)
-        id 104D610C30F0; Thu, 10 Feb 2022 11:36:45 -0500 (EST)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     Steve Dickson <steved@redhat.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfsuuid: a tool to create and persist nfs4 client uniquifiers
-Date:   Thu, 10 Feb 2022 11:36:44 -0500
-Message-Id: <54b6fa955bed073464243e1af6b7faf468468255.1644510803.git.bcodding@redhat.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id A9D171800D50;
+        Thu, 10 Feb 2022 16:41:46 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 3622375747;
+        Thu, 10 Feb 2022 16:41:46 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Chuck Lever III" <chuck.lever@oracle.com>
+Cc:     "Steve Dickson" <steved@redhat.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs-utils PATCH] nfs4id: a tool to create and persist nfs4
+ client uniquifiers
+Date:   Thu, 10 Feb 2022 11:41:45 -0500
+Message-ID: <49DFAEF7-F25D-4CE5-8950-706873C6F0DE@redhat.com>
+In-Reply-To: <A9437272-D53D-4678-8FF9-50B87FE5F17A@oracle.com>
+References: <c2e8b7c06352d3cad3454de096024fff80e638af.1643979161.git.bcodding@redhat.com>
+ <6f01c382-8da5-5673-30db-0c0099d820b5@redhat.com>
+ <33B10EBB-3DD1-45FE-B7D2-D5EA21DFB172@oracle.com>
+ <839b09ed-fd21-bda1-0502-d7c6f1fa9e88@redhat.com>
+ <32D8EBC9-652A-49D7-B763-A82E2AEF6282@oracle.com>
+ <281b1976-9b40-fc53-301a-2846c2ead5aa@redhat.com>
+ <13069AB1-28EB-43F6-83BF-41E9B9501C75@redhat.com>
+ <10D2854A-310D-44DD-A31D-83385AD7D87C@oracle.com>
+ <E0B72831-1575-41CC-BB61-752F9CD0367C@redhat.com>
+ <A9437272-D53D-4678-8FF9-50B87FE5F17A@oracle.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+Content-Type: text/plain; format=flowed
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The nfsuuid program will either create a new UUID from a random source or
-derive it from /etc/machine-id, else it returns a UUID that has already
-been written to /etc/nfsuuid or the file specified.  This small,
-lightweight tool is suitable for execution by systemd-udev in rules to
-populate the nfs4 client uniquifier.
+On 10 Feb 2022, at 11:25, Chuck Lever III wrote:
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- .gitignore                |   1 +
- configure.ac              |   4 +
- tools/Makefile.am         |   1 +
- tools/nfsuuid/Makefile.am |   8 ++
- tools/nfsuuid/nfsuuid.c   | 203 ++++++++++++++++++++++++++++++++++++++
- tools/nfsuuid/nfsuuid.man |  33 +++++++
- 6 files changed, 250 insertions(+)
- create mode 100644 tools/nfsuuid/Makefile.am
- create mode 100644 tools/nfsuuid/nfsuuid.c
- create mode 100644 tools/nfsuuid/nfsuuid.man
+>> On Feb 10, 2022, at 10:47 AM, Benjamin Coddington 
+>> <bcodding@redhat.com> wrote:
+>>
+>> On 10 Feb 2022, at 10:21, Chuck Lever III wrote:
+>>
+>>>> On Feb 10, 2022, at 8:28 AM, Benjamin Coddington 
+>>>> <bcodding@redhat.com> wrote:
+>>>>
+>>>> On 8 Feb 2022, at 17:39, Steve Dickson wrote:
+>>>>
+>>>>> On 2/8/22 4:18 PM, Chuck Lever III wrote:
+>>>>>>
+>>>>>>
+>>>>>>> On Feb 8, 2022, at 2:29 PM, Steve Dickson <steved@redhat.com> 
+>>>>>>> wrote:
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>> On 2/8/22 11:21 AM, Chuck Lever III wrote:
+>>>>>>>>> On Feb 8, 2022, at 11:04 AM, Steve Dickson <steved@redhat.com> 
+>>>>>>>>> wrote:
+>>>>>>>>>
+>>>>>>>>> Hello,
+>>>>>>>>>
+>>>>>>>>> On 2/4/22 7:56 AM, Benjamin Coddington wrote:
+>>>>>>>>>> The nfs4id program will either create a new UUID from a 
+>>>>>>>>>> random source or
+>>>>>>>>>> derive it from /etc/machine-id, else it returns a UUID that 
+>>>>>>>>>> has already
+>>>>>>>>>> been written to /etc/nfs4-id.  This small, lightweight tool 
+>>>>>>>>>> is suitable for
+>>>>>>>>>> execution by systemd-udev in rules to populate the nfs4 
+>>>>>>>>>> client uniquifier.
+>>>>>>>>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>>>>>>>>>> ---
+>>>>>>>>>> .gitignore               |   1 +
+>>>>>>>>>> configure.ac             |   4 +
+>>>>>>>>>> tools/Makefile.am        |   1 +
+>>>>>>>>>> tools/nfs4id/Makefile.am |   8 ++
+>>>>>>>>>> tools/nfs4id/nfs4id.c    | 184 
+>>>>>>>>>> +++++++++++++++++++++++++++++++++++++++
+>>>>>>>>>> tools/nfs4id/nfs4id.man  |  29 ++++++
+>>>>>>>>>> 6 files changed, 227 insertions(+)
+>>>>>>>>>> create mode 100644 tools/nfs4id/Makefile.am
+>>>>>>>>>> create mode 100644 tools/nfs4id/nfs4id.c
+>>>>>>>>>> create mode 100644 tools/nfs4id/nfs4id.man
+>>>>>>>>> Just a nit... naming convention... In the past
+>>>>>>>>> we never put the protocol version in the name.
+>>>>>>>>> Do a ls tools and utils directory and you
+>>>>>>>>> see what I mean....
+>>>>>>>>>
+>>>>>>>>> Would it be a problem to change the name from
+>>>>>>>>> nfs4id to nfsid?
+>>>>>>>> nfs4id is pretty generic, too.
+>>>>>>>> Can we go with nfs-client-id ?
+>>>>>>> I'm never been big with putting '-'
+>>>>>>> in command names... nfscltid would
+>>>>>>> be better IMHO... if we actually
+>>>>>>> need the 'clt' in the name.
+>>>>>>
+>>>>>> We have nfsidmap already. IMO we need some distinction
+>>>>>> with user ID mapping tools... and some day we might
+>>>>>> want to manage server IDs too (see EXCHANGE_ID).
+>>>>> Hmm... So we could not use the same tool to do
+>>>>> both the server and client, via flags?
+>>>>>
+>>>>>>
+>>>>>> nfsclientid then?
+>>>>> You like to type more than I do... You always have... :-)
+>>>>>
+>>>>> But like I started the conversation... the naming is
+>>>>> a nit... but I would like to see one tool to set the
+>>>>> ids for both the server and client... how about
+>>>>> nfsid -s and nfsid -c
+>>>>
+>>>> The tricky thing here is that this little binary isn't going to set
+>>>> anything, and we probably never want people to run it from the 
+>>>> command line.
+>>>>
+>>>> A 'nfsid -s' and 'nfsid -c' seem to want to do much more.  I feel 
+>>>> they are
+>>>> out of scope for the problem I'm trying to solve:  I need something 
+>>>> that
+>>>> will generate a unique value, and persist it, suitable for 
+>>>> execution in a
+>>>> udevd rule.
+>>>>
+>>>> Perhaps we can stop worrying so much about the name of this as I 
+>>>> don't think
+>>>> it should be a first-class nfs-utils command, rather just a helper 
+>>>> for udev.
+>>>>
+>>>> And maybe the name can reflect that - "nfsuuid" ?
+>>>
+>>> The client ID can be an arbitrary string, so I think not.
+>>
+>> I feel like we might all be missing the fact that this tool doesn't 
+>> create
+>> client IDs.  The tool only creates uuids, and returns what may have 
+>> already
+>> been set by something somewhere else.  It's not supposed to ever get 
+>> typed
+>> out or run by people.  Any other suggestions?
+>
+> nfsgetclientid
+> nfsgenclientid
 
-diff --git a/.gitignore b/.gitignore
-index c89d1cd2583d..4d63ee93b2dc 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -61,6 +61,7 @@ utils/statd/statd
- tools/locktest/testlk
- tools/getiversion/getiversion
- tools/nfsconf/nfsconf
-+tools/nfsuuid/nfsuuid
- support/export/mount.h
- support/export/mount_clnt.c
- support/export/mount_xdr.c
-diff --git a/configure.ac b/configure.ac
-index 50e9b321dcf3..1342c471f142 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -355,6 +355,9 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for the keyutils libraries and headers
-   AC_KEYUTILS
- 
-+  dnl check for the libuuid library and headers
-+  AC_LIBUUID
-+
-   dnl Check for sqlite3
-   AC_SQLITE3_VERS
- 
-@@ -740,6 +743,7 @@ AC_CONFIG_FILES([
- 	tools/nfsdclnts/Makefile
- 	tools/nfsconf/Makefile
- 	tools/nfsdclddb/Makefile
-+	tools/nfsuuid/Makefile
- 	utils/Makefile
- 	utils/blkmapd/Makefile
- 	utils/nfsdcld/Makefile
-diff --git a/tools/Makefile.am b/tools/Makefile.am
-index 9b4b0803db39..a12b0f34f4e7 100644
---- a/tools/Makefile.am
-+++ b/tools/Makefile.am
-@@ -7,6 +7,7 @@ OPTDIRS += rpcgen
- endif
- 
- OPTDIRS += nfsconf
-+OPTDIRS += nfsuuid
- 
- if CONFIG_NFSDCLD
- OPTDIRS += nfsdclddb
-diff --git a/tools/nfsuuid/Makefile.am b/tools/nfsuuid/Makefile.am
-new file mode 100644
-index 000000000000..7b3a54c30d50
---- /dev/null
-+++ b/tools/nfsuuid/Makefile.am
-@@ -0,0 +1,8 @@
-+## Process this file with automake to produce Makefile.in
-+
-+man8_MANS	= nfsuuid.man
-+
-+bin_PROGRAMS = nfsuuid
-+
-+nfsuuid_SOURCES = nfsuuid.c
-+nfsuuid_LDADD = $(LIBUUID)
-diff --git a/tools/nfsuuid/nfsuuid.c b/tools/nfsuuid/nfsuuid.c
-new file mode 100644
-index 000000000000..e8933b360875
---- /dev/null
-+++ b/tools/nfsuuid/nfsuuid.c
-@@ -0,0 +1,203 @@
-+/*
-+ * nfsuuid.c -- create and persist uniquifiers for nfs4 clients
-+ *
-+ * Copyright (C) 2022  Red Hat, Benjamin Coddington <bcodding@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
-+
-+#include <stdio.h>
-+#include <stdarg.h>
-+#include <getopt.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <stdlib.h>
-+#include <fcntl.h>
-+#include <unistd.h>
-+#include <uuid/uuid.h>
-+
-+#define DEFAULT_ID_FILE "/etc/nfsuuid"
-+
-+UUID_DEFINE(nfs4_clientid_uuid_template,
-+	0xa2, 0x25, 0x68, 0xb2, 0x7a, 0x5f, 0x49, 0x90,
-+	0x8f, 0x98, 0xc5, 0xf0, 0x67, 0x78, 0xcc, 0xf1);
-+
-+static char *prog;
-+static char *source = NULL;
-+static char *id_file = DEFAULT_ID_FILE;
-+static char nfs_unique_id[64];
-+static int replace = 0;
-+
-+static void usage(void)
-+{
-+	fprintf(stderr, "usage: %s [-r|--replace] [-f <file> |--file <file> ] [machine]\n", prog);
-+}
-+
-+static void fatal(const char *fmt, ...)
-+{
-+	int err = errno;
-+	va_list args;
-+	char fatal_msg[256] = "fatal: ";
-+
-+	va_start(args, fmt);
-+	vsnprintf(&fatal_msg[7], 255, fmt, args);
-+	if (err)
-+		fprintf(stderr, "%s: %s\n", fatal_msg, strerror(err));
-+	else
-+		fprintf(stderr, "%s\n", fatal_msg);
-+	exit(-1);
-+}
-+
-+static int read_nfs_unique_id(void)
-+{
-+	int fd;
-+	ssize_t len;
-+
-+	if (replace) {
-+		errno = ENOENT;
-+		return -1;
-+	}
-+
-+	fd = open(id_file, O_RDONLY);
-+	if (fd < 0)
-+		return fd;
-+	len = read(fd, nfs_unique_id, 64);
-+	close(fd);
-+	return len;
-+}
-+
-+static void write_nfs_unique_id(void)
-+{
-+	int fd;
-+
-+	fd = open(id_file, O_RDWR|O_TRUNC|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-+	if (fd < 0)
-+		fatal("could not write id to %s", id_file);
-+	write(fd, nfs_unique_id, 37);
-+}
-+
-+static void print_nfs_unique_id(void)
-+{
-+	fprintf(stdout, "%s", nfs_unique_id);
-+}
-+	
-+static void check_or_make_id(void)
-+{
-+	int ret;
-+	uuid_t uuid;
-+
-+	ret = read_nfs_unique_id();
-+	if (ret < 1) {
-+		if (errno != ENOENT )
-+			fatal("reading file %s", id_file);
-+		uuid_generate_random(uuid);
-+		uuid_unparse(uuid, nfs_unique_id);
-+		nfs_unique_id[36] = '\n';
-+		nfs_unique_id[37] = '\0';
-+		write_nfs_unique_id();
-+	}
-+	print_nfs_unique_id();
-+}
-+
-+static void check_or_make_id_from_machine(void)
-+{
-+	int fd, ret;
-+	char machineid[32];
-+	uuid_t uuid;
-+
-+	ret = read_nfs_unique_id();
-+	if (ret < 1) {
-+		if (errno != ENOENT )
-+			fatal("reading file %s", id_file);
-+
-+		fd = open("/etc/machine-id", O_RDONLY);
-+		if (fd < 0)
-+			fatal("unable to read /etc/machine-id");
-+
-+		read(fd, machineid, 32);
-+		close(fd);
-+
-+		uuid_generate_sha1(uuid, nfs4_clientid_uuid_template, machineid, 32);
-+		uuid_unparse(uuid, nfs_unique_id);
-+		nfs_unique_id[36] = '\n';
-+		nfs_unique_id[37] = '\0';
-+		write_nfs_unique_id();
-+	}
-+	print_nfs_unique_id();
-+}
-+
-+int main(int argc, char **argv)
-+{
-+	prog = argv[0];
-+
-+	while (1) {
-+		int opt, prev_ind;
-+		int option_index = 0;
-+		static struct option long_options[] = {
-+			{"replace",	no_argument,		0, 'r' },
-+			{"file",	required_argument,	0, 'f' },
-+			{ 0, 0, 0, 0 }
-+		};
-+
-+		errno = 0;
-+		prev_ind = optind;
-+		opt = getopt_long(argc, argv, ":rf:", long_options, &option_index);
-+		if (opt == -1)
-+			break;
-+
-+		/* Let's detect missing options in the middle of an option list */
-+		if (optind == prev_ind + 2 && *optarg == '-') {
-+			opt = ':';
-+			--optind;
-+		}
-+
-+		switch (opt) {
-+		case 'r':
-+			replace = 1;
-+			break;
-+		case 'f':
-+			id_file = optarg;
-+			break;
-+		case ':':
-+			usage();
-+			fatal("option \"%s\" requires an argument", argv[prev_ind]);
-+			break;
-+		case '?':
-+			usage();
-+			fatal("unexpected arg \"%s\"", argv[optind - 1]);
-+			break;
-+		}
-+	}
-+
-+	argc -= optind;
-+
-+	if (argc > 1) {
-+		usage();
-+		fatal("Too many arguments");
-+	}
-+
-+	if (argc)
-+		source = argv[optind++];
-+
-+	if (!source)
-+		check_or_make_id();
-+	else if (strcmp(source, "machine") == 0)
-+		check_or_make_id_from_machine();
-+	else {
-+		usage();
-+		fatal("unrecognized source %s\n", source);
-+	}
-+}
-diff --git a/tools/nfsuuid/nfsuuid.man b/tools/nfsuuid/nfsuuid.man
-new file mode 100644
-index 000000000000..856d2f383e0f
---- /dev/null
-+++ b/tools/nfsuuid/nfsuuid.man
-@@ -0,0 +1,33 @@
-+.\"
-+.\" nfsuuid(8)
-+.\"
-+.TH nfsuuid 8 "10 Feb 2022"
-+.SH NAME
-+nfsuuid \- Generate or return nfs client id uniquifiers
-+.SH SYNOPSIS
-+.B nfsuuid [ -r | --replace ] [ -f | --file <file> ] [<source>]
-+
-+.SH DESCRIPTION
-+The
-+.B nfsuuid
-+command provides a simple utility to help NFS Version 4 clients use unique
-+and persistent client id values.  The command checks for the existence of a
-+file /etc/nfsuuid and returns the first 64 chars read from that file.  If
-+the file is not found, a UUID is generated from the specified source and
-+written to the file and returned.
-+.SH OPTIONS
-+.TP
-+.BR \-r,\ \-\-replace
-+Overwrite the <file> with a UUID generated from <source>.
-+.TP
-+.BR \-f,\ \-\-file
-+Use the specified file to lookup or store any generated UUID.  If <file> is
-+not specified, the default file used is /etc/nfsuuid.
-+.SH Sources
-+If <source> is not specified, nfsuuid will generate a new random UUID.
-+
-+If <source> is "machine", nfsuuid will generate a deterministic UUID value
-+derived from a sha1 hash of the contents of /etc/machine-id and a static
-+key.
-+.SH SEE ALSO
-+.BR machine-id (5)
--- 
-2.31.1
+But it doesn't generate client ids either.. the client id is the 
+uniquifier
+and the nodename and conditionally the address.  I feel thats even more
+misleading.
+
+> Since you asked above for other suggestions, I responded here.
+> I'll try really hard not to respond again in this thread :)
+
+:)   I got sucked into this thread again too.
+
+Ben
 
