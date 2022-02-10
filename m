@@ -2,77 +2,101 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD5D4C433EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 18:01:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 91230C433FE
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 18:01:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245476AbiBJSBm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Feb 2022 13:01:42 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:60070 "EHLO
+        id S239511AbiBJSBn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Feb 2022 13:01:43 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:60072 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243363AbiBJSBm (ORCPT
+        with ESMTP id S245473AbiBJSBm (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2022 13:01:42 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 8A05D115A
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 10:01:38 -0800 (PST)
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 76E0025C3
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 10:01:40 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1644516097;
+        s=mimecast20190719; t=1644516099;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=oQ4j1SNFz6kfXDzicrUoMV6UXDgqNJu4L6VYR6hqqg8=;
-        b=M88SjrGgtojP0G7fuE+sTofXCn0ly0pr6pi7PQU+nFN6DvMx0O4bJCpu7TnFUELiGqq7Cd
-        9ynaDbYKv7FRcSVx+HLWdbaMCldUgCXTOOgKU69zyaoEnldjf3vSw2LnebiQXoj04X64Ru
-        5FLJTf0AJ1zwm9bdmR6DthoJjJYumaU=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ZwhPf12ZS4Dv/hMPMkY6fckUiE4Jg26UwiKSTI1F4Hw=;
+        b=EjAtce3SV9AfcM7syt9YhBTT5mOSTxgjVGoRtwhbdRZo53vAG7+QY1vbk299fjP3CbDBjY
+        ty8zogDu4mhsJMPZ7xs6PpNt5qaImphjaR9hyRHTdnqi+tUpxPVQRACpaxJtibTFaW4/AQ
+        PvRoS06LcfC58SvCLdb/ryLvV7e7p10=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-613-12E9_TjiPrWHHvPWgyod-g-1; Thu, 10 Feb 2022 13:01:36 -0500
-X-MC-Unique: 12E9_TjiPrWHHvPWgyod-g-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+ us-mta-290-0lL-EOIZMPio3cquuQm17A-1; Thu, 10 Feb 2022 13:01:38 -0500
+X-MC-Unique: 0lL-EOIZMPio3cquuQm17A-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B44541091DB7
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id CA7E3107B0F1
         for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 18:01:11 +0000 (UTC)
 Received: from bcodding.csb (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 920D985F01;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 91F0A838DC;
         Thu, 10 Feb 2022 18:01:11 +0000 (UTC)
 Received: by bcodding.csb (Postfix, from userid 24008)
-        id 12C3110C30F0; Thu, 10 Feb 2022 13:01:11 -0500 (EST)
+        id 19E2310C30F7; Thu, 10 Feb 2022 13:01:11 -0500 (EST)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     Steve Dickson <steved@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/2] nfsuuid and udev examples
-Date:   Thu, 10 Feb 2022 13:01:09 -0500
-Message-Id: <cover.1644515977.git.bcodding@redhat.com>
+Subject: [PATCH v2 2/2] nfsuuid: add some example udev rules
+Date:   Thu, 10 Feb 2022 13:01:11 -0500
+Message-Id: <4be9f403cd5d2f04fd63da2e30339aa29b7bf5f1.1644515977.git.bcodding@redhat.com>
+In-Reply-To: <cover.1644515977.git.bcodding@redhat.com>
+References: <cover.1644515977.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Changes on v2:
-	- add forgotten aclocal/libuuid.m4
+Provide several variations on the use of the nfsuuid tool in a udev rule in
+order to automagically uniquify NFSv4 clients.
 
-Benjamin Coddington (2):
-  nfsuuid: a tool to create and persist nfs4 client uniquifiers
-  nfsuuid: add some example udev rules
-
- .gitignore                       |   1 +
- aclocal/libuuid.m4               |  17 +++
- configure.ac                     |   4 +
- tools/Makefile.am                |   1 +
- tools/nfsuuid/Makefile.am        |   8 ++
- tools/nfsuuid/example_udev.rules |  28 +++++
- tools/nfsuuid/nfsuuid.c          | 203 +++++++++++++++++++++++++++++++
- tools/nfsuuid/nfsuuid.man        |  33 +++++
- 8 files changed, 295 insertions(+)
- create mode 100644 aclocal/libuuid.m4
- create mode 100644 tools/nfsuuid/Makefile.am
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ tools/nfsuuid/example_udev.rules | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
  create mode 100644 tools/nfsuuid/example_udev.rules
- create mode 100644 tools/nfsuuid/nfsuuid.c
- create mode 100644 tools/nfsuuid/nfsuuid.man
 
+diff --git a/tools/nfsuuid/example_udev.rules b/tools/nfsuuid/example_udev.rules
+new file mode 100644
+index 000000000000..31117387ac59
+--- /dev/null
++++ b/tools/nfsuuid/example_udev.rules
+@@ -0,0 +1,28 @@
++# This is a sample udev rules file that demonstrates how to get udev
++# to set a unique but persistent client id uniquifier for the kernel
++# NFS client.  The NFS client exposes a sysfs entry that can be used to
++# "uniquify" a client.  Values written to this entry are used to create
++# the client's identifier to distinguish a client from all other clients
++# that may claim state from a particular server.  Clients typically use
++# several sources of information to generate a client ID such as hostname,
++# and NFS version numbers, however these values may collide in certain
++# sitations.
++#
++# These examples use the `nfsuuid` helper available from nfs-utils, see
++# the man page nfsuuid(8).
++#
++# Write the default output of `nfsuuid` to /sys/fs/nfs/net/nfs_client/identifier
++# This either creates a new, random uuid or returns one previously saved:
++# KERNEL=="nfs_client", ATTR{identifier}=="(null)", PROGRAM="/usr/bin/nfsuuid", ATTR{identifier}="%c"
++#
++# Generate a new, random uuid on every boot:
++# KERNEL=="nfs_client", ATTR{identifier}=="(null)", PROGRAM="/usr/bin/nfsuuid -rf/dev/null", ATTR{identifier}="%c"
++#
++# Generate a deterministic uuid based on /etc/machine-id, or return the previously saved one:
++# KERNEL=="nfs_client", ATTR{identifier}=="(null)", PROGRAM="/usr/bin/nfsuuid machine", ATTR{identifier}="%c"
++#
++# Always use a deterministic uuid based on /etc/machine-id:
++# KERNEL=="nfs_client", ATTR{identifier}=="(null)", PROGRAM="/usr/bin/nfsuuid -r machine", ATTR{identifier}="%c"
++#
++# Generate a new, random uuid or return the one previously saved in /var/nfs/client_id:
++# KERNEL=="nfs_client", ATTR{identifier}=="(null)", PROGRAM="/usr/bin/nfsuuid -f/var/nfs/client_id", ATTR{identifier}="%c"
 -- 
 2.31.1
 
