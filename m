@@ -2,149 +2,410 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 13945C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 17:32:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DA71C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 18:01:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241776AbiBJRcH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Feb 2022 12:32:07 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:43338 "EHLO
+        id S243363AbiBJSBm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Feb 2022 13:01:42 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:60068 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229794AbiBJRcH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2022 12:32:07 -0500
+        with ESMTP id S239511AbiBJSBm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2022 13:01:42 -0500
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 066E82647
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 09:32:07 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 81CF6109E
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 10:01:38 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1644514327;
+        s=mimecast20190719; t=1644516097;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=gKFnzr3mw42+cLmY82j9IW2wooukdLwJVlZhUwWFhlU=;
-        b=WN8J50J0+S9InL8ZaZLNZei8pc2ICgoL0v7uynNFWJb872K7MwwXmTXxlXMtGHh0iVowoz
-        /ITgr4MI5Acp6xmh5L+Fgi/+Y58FXO/E4bLeLDEJ7eDoHhoXCdT8QZRbQHSdg9HuPWG3L3
-        l9l45p4PrKgl1FsRN7OwTbV34KaYAzg=
-Received: from mail-qt1-f200.google.com (mail-qt1-f200.google.com
- [209.85.160.200]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=AME8S9WYB8mbcemS2tTCVkJSNPZSKtYrlmO1enu8khk=;
+        b=etkzsQvH629IJ+5LfL2MQ6VttjSmZYrEkxkPUk52wwcx7HcZx4bVUDlBBmX+9XcZwJzcVk
+        8RWcqnh6MGeV3RPRMmlgUr3/9fsDqYO1Oj+bsJfOIR0mIqgv/aB2mYv/cKfd8quJG4HHE2
+        Ph6AIImksMISoRfytkvesCN2NLdngNk=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-187-GpT7EPG4PCS_ETzP19_Kbg-1; Thu, 10 Feb 2022 12:32:03 -0500
-X-MC-Unique: GpT7EPG4PCS_ETzP19_Kbg-1
-Received: by mail-qt1-f200.google.com with SMTP id j30-20020ac84c9e000000b002cf986622d1so4934500qtv.6
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 09:32:03 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
-         :references:user-agent:mime-version:content-transfer-encoding;
-        bh=gKFnzr3mw42+cLmY82j9IW2wooukdLwJVlZhUwWFhlU=;
-        b=4TM0Sk0qurUF82S+zN8CqpBqMcWxqPto8+z2Y5To235tQh5Esx0Vr7Trb9Y7vVwOCr
-         4T8SkdJ9osjQTfAh8F0Uyud0YdHIAGzkvDVZyF87xm3mknwVs+MCmH0t+GD6ryOvgR+K
-         nHogQ9r0m0iro+J8glibAPgscZF7iEZVW18r+Ar/Ph7kNC8YGkmoWcxEyT+OhcquTtPt
-         gs1EnyHANZTQQ9b9pliEKRl7ehYVybYmtax5hjfyU6C5LOBzrshn4cRh5ysdtPUIdi6P
-         uNdgSu/C/W/0RNCrPwKLEFLLIhAgq80C5/AGaSN5P4R396E5LtyCUmqxJAVpv6DYTJx7
-         pypw==
-X-Gm-Message-State: AOAM531mvMmUkK4oc0qZ0Z2W8gDsy6xzPvP23XKVx+AHQRQr8XK6MAFc
-        YmBSAdzSuDxwOsG0aoxIOZBM9kj80wiCa+u7OZY6uFRrg8gnzEPLmH5LnOkd4Wablmw6wSA68Hz
-        E5xRnxcCl+dILTKNZyj6p
-X-Received: by 2002:ac8:5d8e:: with SMTP id d14mr5570350qtx.278.1644514323456;
-        Thu, 10 Feb 2022 09:32:03 -0800 (PST)
-X-Google-Smtp-Source: ABdhPJz24bjw/li4d++11Tr6sKRRTIK+JHKdr4CaSbu5BNNRZFHqf2AlI0qo+B+Zlp3w3EvzXsJumQ==
-X-Received: by 2002:ac8:5d8e:: with SMTP id d14mr5570332qtx.278.1644514323208;
-        Thu, 10 Feb 2022 09:32:03 -0800 (PST)
-Received: from [192.168.1.3] (68-20-15-154.lightspeed.rlghnc.sbcglobal.net. [68.20.15.154])
-        by smtp.gmail.com with ESMTPSA id bk23sm10146791qkb.3.2022.02.10.09.32.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 10 Feb 2022 09:32:02 -0800 (PST)
-Message-ID: <76dbd9cebe142067b9322d66c23f9b77f8075cf0.camel@redhat.com>
-Subject: Re: [PATCH RFC v12 1/3] fs/lock: add new callback,
- lm_lock_conflict, to lock_manager_operations
-From:   Jeff Layton <jlayton@redhat.com>
-To:     Chuck Lever III <chuck.lever@oracle.com>,
-        Bruce Fields <bfields@fieldses.org>
-Cc:     Dai Ngo <dai.ngo@oracle.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Date:   Thu, 10 Feb 2022 12:32:02 -0500
-In-Reply-To: <2AEF8E7D-2F4E-4D88-8B71-48195C6E45ED@oracle.com>
-References: <1644468729-30383-1-git-send-email-dai.ngo@oracle.com>
-         <1644468729-30383-2-git-send-email-dai.ngo@oracle.com>
-         <20220210142826.GD21434@fieldses.org>
-         <2AEF8E7D-2F4E-4D88-8B71-48195C6E45ED@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-User-Agent: Evolution 3.42.3 (3.42.3-1.fc35) 
+ us-mta-651-N2IcO3K3NQeZr0dJ-P5q2g-1; Thu, 10 Feb 2022 13:01:35 -0500
+X-MC-Unique: N2IcO3K3NQeZr0dJ-P5q2g-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D6CA0887642
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2022 18:01:11 +0000 (UTC)
+Received: from bcodding.csb (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8FA4F7747D;
+        Thu, 10 Feb 2022 18:01:11 +0000 (UTC)
+Received: by bcodding.csb (Postfix, from userid 24008)
+        id 1564110C30F1; Thu, 10 Feb 2022 13:01:11 -0500 (EST)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     Steve Dickson <steved@redhat.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/2] nfsuuid: a tool to create and persist nfs4 client uniquifiers
+Date:   Thu, 10 Feb 2022 13:01:10 -0500
+Message-Id: <9c046648bfd9c8260ec7bd37e0a93f7821e0842f.1644515977.git.bcodding@redhat.com>
+In-Reply-To: <cover.1644515977.git.bcodding@redhat.com>
+References: <cover.1644515977.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2022-02-10 at 16:50 +0000, Chuck Lever III wrote:
-> 
-> > On Feb 10, 2022, at 9:28 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Wed, Feb 09, 2022 at 08:52:07PM -0800, Dai Ngo wrote:
-> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > > index bbf812ce89a8..726d0005e32f 100644
-> > > --- a/include/linux/fs.h
-> > > +++ b/include/linux/fs.h
-> > > @@ -1068,6 +1068,14 @@ struct lock_manager_operations {
-> > > 	int (*lm_change)(struct file_lock *, int, struct list_head *);
-> > > 	void (*lm_setup)(struct file_lock *, void **);
-> > > 	bool (*lm_breaker_owns_lease)(struct file_lock *);
-> > > +	/*
-> > > +	 * This callback function is called after a lock conflict is
-> > > +	 * detected. This allows the lock manager of the lock that
-> > > +	 * causes the conflict to see if the conflict can be resolved
-> > > +	 * somehow. If it can then this callback returns false; the
-> > > +	 * conflict was resolved, else returns true.
-> > > +	 */
-> > > +	bool (*lm_lock_conflict)(struct file_lock *cfl);
-> > > };
-> > 
-> > I don't love that name.  The function isn't checking for a lock
-> > conflict--it'd have to know *what* the lock is conflicting with.  It's
-> > being told whether the lock is still valid.
-> > 
-> > I'd prefer lm_lock_expired(), with the opposite return values.
-> 
-> Or even lm_lock_is_expired(). I agree that the sense of the
-> return values should be reversed.
-> 
-> 
-> The block comment does not belong in struct lock_manager_operations,
-> IMO.
-> 
-> Jeff's previous review comment was:
-> 
-> > > @@ -1059,6 +1062,9 @@ static int posix_lock_inode(struct inode *inode, struct file_lock *request,
-> > > 		list_for_each_entry(fl, &ctx->flc_posix, fl_list) {
-> > > 			if (!posix_locks_conflict(request, fl))
-> > > 				continue;
-> > > +			if (fl->fl_lmops && fl->fl_lmops->lm_lock_conflict &&
-> > > +				!fl->fl_lmops->lm_lock_conflict(fl))
-> > > +				continue;
-> > 
-> > The naming of this op is a little misleading. We already know that there
-> > is a lock confict in this case. The question is whether it's resolvable
-> > by expiring a tardy client. That said, I don't have a better name to
-> > suggest at the moment.
-> > 
-> > A comment about what this function actually tells us would be nice here.
-> 
-> 
-> I agree that a comment that spells out the API contract would be
-> useful. But it doesn't belong in the middle of struct
-> lock_manager_operations, IMO.
-> 
-> I usually put such information in the block comment that precedes
-> the individual functions (nfsd4_fl_lock_conflict in this case).
-> 
-> Even so, the patch description has this information already.
-> Jeff, I think the patch description is adequate for this
-> purpose -- more information appears later in 3/3. What do you
-> think?
-> 
+The nfsuuid program will either create a new UUID from a random source or
+derive it from /etc/machine-id, else it returns a UUID that has already
+been written to /etc/nfsuuid or the file specified.  This small,
+lightweight tool is suitable for execution by systemd-udev in rules to
+populate the nfs4 client uniquifier.
 
-I'd be fine with that.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ .gitignore                |   1 +
+ aclocal/libuuid.m4        |  17 ++++
+ configure.ac              |   4 +
+ tools/Makefile.am         |   1 +
+ tools/nfsuuid/Makefile.am |   8 ++
+ tools/nfsuuid/nfsuuid.c   | 203 ++++++++++++++++++++++++++++++++++++++
+ tools/nfsuuid/nfsuuid.man |  33 +++++++
+ 7 files changed, 267 insertions(+)
+ create mode 100644 aclocal/libuuid.m4
+ create mode 100644 tools/nfsuuid/Makefile.am
+ create mode 100644 tools/nfsuuid/nfsuuid.c
+ create mode 100644 tools/nfsuuid/nfsuuid.man
+
+diff --git a/.gitignore b/.gitignore
+index c89d1cd2583d..4d63ee93b2dc 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -61,6 +61,7 @@ utils/statd/statd
+ tools/locktest/testlk
+ tools/getiversion/getiversion
+ tools/nfsconf/nfsconf
++tools/nfsuuid/nfsuuid
+ support/export/mount.h
+ support/export/mount_clnt.c
+ support/export/mount_xdr.c
+diff --git a/aclocal/libuuid.m4 b/aclocal/libuuid.m4
+new file mode 100644
+index 000000000000..f64085010d1d
+--- /dev/null
++++ b/aclocal/libuuid.m4
+@@ -0,0 +1,17 @@
++AC_DEFUN([AC_LIBUUID], [
++        LIBUUID=
++
++        AC_CHECK_LIB([uuid], [uuid_generate_random], [], [AC_MSG_FAILURE(
++                [Missing libuuid uuid_generate_random, needed to build nfs4id])])
++
++        AC_CHECK_LIB([uuid], [uuid_generate_sha1], [], [AC_MSG_FAILURE(
++                [Missing libuuid uuid_generate_sha1, needed to build nfs4id])])
++
++        AC_CHECK_LIB([uuid], [uuid_unparse], [], [AC_MSG_FAILURE(
++                [Missing libuuid uuid_unparse, needed to build nfs4id])])
++
++        AC_CHECK_HEADER([uuid/uuid.h], [], [AC_MSG_FAILURE(
++                [Missing uuid/uuid.h, needed to build nfs4id])])
++
++        AC_SUBST([LIBUUID], ["-luuid"])
++])
+diff --git a/configure.ac b/configure.ac
+index 50e9b321dcf3..1342c471f142 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -355,6 +355,9 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for the keyutils libraries and headers
+   AC_KEYUTILS
+ 
++  dnl check for the libuuid library and headers
++  AC_LIBUUID
++
+   dnl Check for sqlite3
+   AC_SQLITE3_VERS
+ 
+@@ -740,6 +743,7 @@ AC_CONFIG_FILES([
+ 	tools/nfsdclnts/Makefile
+ 	tools/nfsconf/Makefile
+ 	tools/nfsdclddb/Makefile
++	tools/nfsuuid/Makefile
+ 	utils/Makefile
+ 	utils/blkmapd/Makefile
+ 	utils/nfsdcld/Makefile
+diff --git a/tools/Makefile.am b/tools/Makefile.am
+index 9b4b0803db39..a12b0f34f4e7 100644
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
+@@ -7,6 +7,7 @@ OPTDIRS += rpcgen
+ endif
+ 
+ OPTDIRS += nfsconf
++OPTDIRS += nfsuuid
+ 
+ if CONFIG_NFSDCLD
+ OPTDIRS += nfsdclddb
+diff --git a/tools/nfsuuid/Makefile.am b/tools/nfsuuid/Makefile.am
+new file mode 100644
+index 000000000000..7b3a54c30d50
+--- /dev/null
++++ b/tools/nfsuuid/Makefile.am
+@@ -0,0 +1,8 @@
++## Process this file with automake to produce Makefile.in
++
++man8_MANS	= nfsuuid.man
++
++bin_PROGRAMS = nfsuuid
++
++nfsuuid_SOURCES = nfsuuid.c
++nfsuuid_LDADD = $(LIBUUID)
+diff --git a/tools/nfsuuid/nfsuuid.c b/tools/nfsuuid/nfsuuid.c
+new file mode 100644
+index 000000000000..bbdec59f1afe
+--- /dev/null
++++ b/tools/nfsuuid/nfsuuid.c
+@@ -0,0 +1,203 @@
++/*
++ * nfsuuid.c -- create and persist uniquifiers for nfs4 clients
++ *
++ * Copyright (C) 2022  Red Hat, Benjamin Coddington <bcodding@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#include <stdio.h>
++#include <stdarg.h>
++#include <getopt.h>
++#include <string.h>
++#include <errno.h>
++#include <stdlib.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <uuid/uuid.h>
++
++#define DEFAULT_ID_FILE "/etc/nfsuuid"
++
++UUID_DEFINE(nfs4_clientid_uuid_template,
++	0xa2, 0x25, 0x68, 0xb2, 0x7a, 0x5f, 0x49, 0x90,
++	0x8f, 0x98, 0xc5, 0xf0, 0x67, 0x78, 0xcc, 0xf1);
++
++static char *prog;
++static char *source = NULL;
++static char *id_file = DEFAULT_ID_FILE;
++static char nfs_unique_id[64];
++static int replace = 0;
++
++static void usage(void)
++{
++	fprintf(stderr, "usage: %s [-r|--replace] [-f <file> |--file <file> ] [machine]\n", prog);
++}
++
++static void fatal(const char *fmt, ...)
++{
++	int err = errno;
++	va_list args;
++	char fatal_msg[256] = "fatal: ";
++
++	va_start(args, fmt);
++	vsnprintf(&fatal_msg[7], 255, fmt, args);
++	if (err)
++		fprintf(stderr, "%s: %s\n", fatal_msg, strerror(err));
++	else
++		fprintf(stderr, "%s\n", fatal_msg);
++	exit(-1);
++}
++
++static int read_nfs_unique_id(void)
++{
++	int fd;
++	ssize_t len;
++
++	if (replace) {
++		errno = ENOENT;
++		return -1;
++	}
++
++	fd = open(id_file, O_RDONLY);
++	if (fd < 0)
++		return fd;
++	len = read(fd, nfs_unique_id, 64);
++	close(fd);
++	return len;
++}
++
++static void write_nfs_unique_id(void)
++{
++	int fd;
++
++	fd = open(id_file, O_RDWR|O_TRUNC|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
++	if (fd < 0)
++		fatal("could not write id to %s", id_file);
++	write(fd, nfs_unique_id, 37);
++}
++
++static void print_nfs_unique_id(void)
++{
++	fprintf(stdout, "%s", nfs_unique_id);
++}
++
++static void check_or_make_id(void)
++{
++	int ret;
++	uuid_t uuid;
++
++	ret = read_nfs_unique_id();
++	if (ret < 1) {
++		if (errno != ENOENT )
++			fatal("reading file %s", id_file);
++		uuid_generate_random(uuid);
++		uuid_unparse(uuid, nfs_unique_id);
++		nfs_unique_id[36] = '\n';
++		nfs_unique_id[37] = '\0';
++		write_nfs_unique_id();
++	}
++	print_nfs_unique_id();
++}
++
++static void check_or_make_id_from_machine(void)
++{
++	int fd, ret;
++	char machineid[32];
++	uuid_t uuid;
++
++	ret = read_nfs_unique_id();
++	if (ret < 1) {
++		if (errno != ENOENT )
++			fatal("reading file %s", id_file);
++
++		fd = open("/etc/machine-id", O_RDONLY);
++		if (fd < 0)
++			fatal("unable to read /etc/machine-id");
++
++		read(fd, machineid, 32);
++		close(fd);
++
++		uuid_generate_sha1(uuid, nfs4_clientid_uuid_template, machineid, 32);
++		uuid_unparse(uuid, nfs_unique_id);
++		nfs_unique_id[36] = '\n';
++		nfs_unique_id[37] = '\0';
++		write_nfs_unique_id();
++	}
++	print_nfs_unique_id();
++}
++
++int main(int argc, char **argv)
++{
++	prog = argv[0];
++
++	while (1) {
++		int opt, prev_ind;
++		int option_index = 0;
++		static struct option long_options[] = {
++			{"replace",	no_argument,		0, 'r' },
++			{"file",	required_argument,	0, 'f' },
++			{ 0, 0, 0, 0 }
++		};
++
++		errno = 0;
++		prev_ind = optind;
++		opt = getopt_long(argc, argv, ":rf:", long_options, &option_index);
++		if (opt == -1)
++			break;
++
++		/* Let's detect missing options in the middle of an option list */
++		if (optind == prev_ind + 2 && *optarg == '-') {
++			opt = ':';
++			--optind;
++		}
++
++		switch (opt) {
++		case 'r':
++			replace = 1;
++			break;
++		case 'f':
++			id_file = optarg;
++			break;
++		case ':':
++			usage();
++			fatal("option \"%s\" requires an argument", argv[prev_ind]);
++			break;
++		case '?':
++			usage();
++			fatal("unexpected arg \"%s\"", argv[optind - 1]);
++			break;
++		}
++	}
++
++	argc -= optind;
++
++	if (argc > 1) {
++		usage();
++		fatal("Too many arguments");
++	}
++
++	if (argc)
++		source = argv[optind++];
++
++	if (!source)
++		check_or_make_id();
++	else if (strcmp(source, "machine") == 0)
++		check_or_make_id_from_machine();
++	else {
++		usage();
++		fatal("unrecognized source %s\n", source);
++	}
++}
+diff --git a/tools/nfsuuid/nfsuuid.man b/tools/nfsuuid/nfsuuid.man
+new file mode 100644
+index 000000000000..856d2f383e0f
+--- /dev/null
++++ b/tools/nfsuuid/nfsuuid.man
+@@ -0,0 +1,33 @@
++.\"
++.\" nfsuuid(8)
++.\"
++.TH nfsuuid 8 "10 Feb 2022"
++.SH NAME
++nfsuuid \- Generate or return nfs client id uniquifiers
++.SH SYNOPSIS
++.B nfsuuid [ -r | --replace ] [ -f | --file <file> ] [<source>]
++
++.SH DESCRIPTION
++The
++.B nfsuuid
++command provides a simple utility to help NFS Version 4 clients use unique
++and persistent client id values.  The command checks for the existence of a
++file /etc/nfsuuid and returns the first 64 chars read from that file.  If
++the file is not found, a UUID is generated from the specified source and
++written to the file and returned.
++.SH OPTIONS
++.TP
++.BR \-r,\ \-\-replace
++Overwrite the <file> with a UUID generated from <source>.
++.TP
++.BR \-f,\ \-\-file
++Use the specified file to lookup or store any generated UUID.  If <file> is
++not specified, the default file used is /etc/nfsuuid.
++.SH Sources
++If <source> is not specified, nfsuuid will generate a new random UUID.
++
++If <source> is "machine", nfsuuid will generate a deterministic UUID value
++derived from a sha1 hash of the contents of /etc/machine-id and a static
++key.
++.SH SEE ALSO
++.BR machine-id (5)
 -- 
-Jeff Layton <jlayton@redhat.com>
+2.31.1
 
