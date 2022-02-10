@@ -2,54 +2,53 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1471C43219
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 05:39:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8ABB4C4332F
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Feb 2022 05:40:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234358AbiBJFjQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Feb 2022 00:39:16 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:35508 "EHLO
+        id S234552AbiBJFkK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Feb 2022 00:40:10 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:36612 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234243AbiBJFiw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2022 00:38:52 -0500
+        with ESMTP id S234431AbiBJFj7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2022 00:39:59 -0500
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5061D10CC;
-        Wed,  9 Feb 2022 21:38:54 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B64FA10C5;
+        Wed,  9 Feb 2022 21:40:01 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id D576F1F43F;
-        Thu, 10 Feb 2022 05:38:52 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 70DD91F43D;
+        Thu, 10 Feb 2022 05:40:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1644471532; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1644471600; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Tft3SoinWu7UxepEf8WEuD+UlaGfn26eHEwniJocVAs=;
-        b=AZtdCcwJujZVCHcdXkKOM6szi0SH98wyFfZVUIfLZbgfuKnWcUV9h+nOyBGfZYHb4fgg9q
-        0bzK8zlrysy2kvIK7aPM5QM5vklJlDnFMRJyEFrhh2ywPGPQAZRjcJ0eaWwg/TWCT1jT1c
-        Y7P/mxpVQ0jyTZnT5empOfYlfVQmIKo=
+        bh=eBfA0J1VAN4vDciFet8kyITCSUUXphOKJM0dbNgQDlg=;
+        b=yqtSqHyxwgEcFQ7tdufVmzaUi5fzX/LrzaAkzdhIXE5cnkTbkkI3ey9uCvPzGq0EJK8rda
+        +E9mWICL33Dcuy7EPilwaTHUIuOW26UmS0BKCDRpVFIaT/aGIr40dAeK5kQwab4f7Y/7nd
+        gFlh18fk9z+J+gUjbfTujF0HzFVklpA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1644471532;
+        s=susede2_ed25519; t=1644471600;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Tft3SoinWu7UxepEf8WEuD+UlaGfn26eHEwniJocVAs=;
-        b=yNiRicVz0d7OW6BOtosPuVbsxI1wCRGRy4fi5NKnYLY2dFaJO1i8uBQffBceecqdSDIthz
-        JkyQL6tOSv8newBg==
+        bh=eBfA0J1VAN4vDciFet8kyITCSUUXphOKJM0dbNgQDlg=;
+        b=CLVBNBE0ot5kjIcVDwlr6NGjjMHQwRokAo5rn1m3cMUkvfX1d7EUuwl81RGB0IMKB7NGBI
+        Q3kdl10ckIPVZ6Cg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4058513519;
-        Thu, 10 Feb 2022 05:38:44 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2284A13519;
+        Thu, 10 Feb 2022 05:39:52 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id AC9zO+SkBGLMOAAAMHmgww
-        (envelope-from <neilb@suse.de>); Thu, 10 Feb 2022 05:38:44 +0000
-Subject: [PATCH 03/11] MM: improve cleanup when ->readpages doesn't process
- all pages.
+        id zTSyNCilBGIvOQAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 10 Feb 2022 05:39:52 +0000
+Subject: [PATCH 06/11] ceph: remove reliance on bdi congestion
 From:   NeilBrown <neilb@suse.de>
 To:     Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
         Wu Fengguang <fengguang.wu@intel.com>,
@@ -72,7 +71,7 @@ Cc:     linux-doc@vger.kernel.org, linux-mm@kvack.org,
         ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
         linux-kernel@vger.kernel.org, linux-block@vger.kernel.org
 Date:   Thu, 10 Feb 2022 16:37:52 +1100
-Message-ID: <164447147258.23354.15753542879688740872.stgit@noble.brown>
+Message-ID: <164447147260.23354.2337728875894445797.stgit@noble.brown>
 In-Reply-To: <164447124918.23354.17858831070003318849.stgit@noble.brown>
 References: <164447124918.23354.17858831070003318849.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -83,61 +82,123 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If ->readpages doesn't process all the pages, then it is best to act as
-though they weren't requested so that a subsequent readahead can try
-again.
-So:
-  - remove any 'ahead' pages from the page cache so they can be loaded
-    with ->readahead() rather then multiple ->read()s
-  - update the file_ra_state to reflect the reads that were actually
-    submitted.
+The bdi congestion tracking in not widely used and will be removed.
 
-This allows ->readpages() to abort early due e.g.  to congestion, which
-will then allow us to remove the inode_read_congested() test from
-page_Cache_async_ra().
+CEPHfs is one of a small number of filesystems that uses it, setting
+just the async (write) congestion flags at what it determines are
+appropriate times.
+
+The only remaining effect of the async flag is to cause (some)
+WB_SYNC_NONE writes to be skipped.
+
+So instead of setting the flag, set an internal flag and change:
+ - .writepages to do nothing if WB_SYNC_NONE and the flag is set
+ - .writepage to return AOP_WRITEPAGE_ACTIVATE if WB_SYNC_NONE
+    and the flag is set.
+
+The writepages change causes a behavioural change in that pageout() can
+now return PAGE_ACTIVATE instead of PAGE_KEEP, so SetPageActive() will
+be called on the page which (I think) wil further delay the next attempt
+at writeout.  This might be a good thing.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- mm/readahead.c |   19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+ fs/ceph/addr.c  |   22 +++++++++++++---------
+ fs/ceph/super.c |    1 +
+ fs/ceph/super.h |    1 +
+ 3 files changed, 15 insertions(+), 9 deletions(-)
 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index c44b2957f59f..35a7ebfcb504 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -104,7 +104,13 @@
-  * for necessary resources (e.g.  memory or indexing information) to
-  * become available.  Pages in the final ``async_size`` may be
-  * considered less urgent and failure to read them is more acceptable.
-- * They will eventually be read individually using ->readpage().
-+ * In this case it is best to use delete_from_page_cache() to remove the
-+ * pages from the page cache as is automatically done for pages that
-+ * were not fetched with readahead_page().  This will allow a
-+ * subsequent synchronous read ahead request to try them again.  If they
-+ * are left in the page cache, then they will be read individually using
-+ * ->readpage().
-+ *
-  */
+diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
+index c98e5238a1b6..dc7af34640dd 100644
+--- a/fs/ceph/addr.c
++++ b/fs/ceph/addr.c
+@@ -563,7 +563,7 @@ static int writepage_nounlock(struct page *page, struct writeback_control *wbc)
  
- #include <linux/kernel.h>
-@@ -226,8 +232,17 @@ static void read_pages(struct readahead_control *rac, struct list_head *pages,
+ 	if (atomic_long_inc_return(&fsc->writeback_count) >
+ 	    CONGESTION_ON_THRESH(fsc->mount_options->congestion_kb))
+-		set_bdi_congested(inode_to_bdi(inode), BLK_RW_ASYNC);
++		fsc->write_congested = true;
  
- 	if (aops->readahead) {
- 		aops->readahead(rac);
--		/* Clean up the remaining pages */
-+		/*
-+		 * Clean up the remaining pages.  The sizes in ->ra
-+		 * maybe be used to size next read-ahead, so make sure
-+		 * they accurately reflect what happened.
-+		 */
- 		while ((page = readahead_page(rac))) {
-+			rac->ra->size -= 1;
-+			if (rac->ra->async_size > 0) {
-+				rac->ra->async_size -= 1;
-+				delete_from_page_cache(page);
-+			}
- 			unlock_page(page);
- 			put_page(page);
- 		}
+ 	req = ceph_osdc_new_request(osdc, &ci->i_layout, ceph_vino(inode), page_off, &len, 0, 1,
+ 				    CEPH_OSD_OP_WRITE, CEPH_OSD_FLAG_WRITE, snapc,
+@@ -623,7 +623,7 @@ static int writepage_nounlock(struct page *page, struct writeback_control *wbc)
+ 
+ 	if (atomic_long_dec_return(&fsc->writeback_count) <
+ 	    CONGESTION_OFF_THRESH(fsc->mount_options->congestion_kb))
+-		clear_bdi_congested(inode_to_bdi(inode), BLK_RW_ASYNC);
++		fsc->write_congested = false;
+ 
+ 	return err;
+ }
+@@ -635,6 +635,10 @@ static int ceph_writepage(struct page *page, struct writeback_control *wbc)
+ 	BUG_ON(!inode);
+ 	ihold(inode);
+ 
++	if (wbc->sync_mode == WB_SYNC_NONE &&
++	    ceph_inode_to_client(inode)->write_congested)
++		return AOP_WRITEPAGE_ACTIVATE;
++
+ 	wait_on_page_fscache(page);
+ 
+ 	err = writepage_nounlock(page, wbc);
+@@ -707,8 +711,7 @@ static void writepages_finish(struct ceph_osd_request *req)
+ 			if (atomic_long_dec_return(&fsc->writeback_count) <
+ 			     CONGESTION_OFF_THRESH(
+ 					fsc->mount_options->congestion_kb))
+-				clear_bdi_congested(inode_to_bdi(inode),
+-						    BLK_RW_ASYNC);
++				fsc->write_congested = false;
+ 
+ 			ceph_put_snap_context(detach_page_private(page));
+ 			end_page_writeback(page);
+@@ -760,6 +763,10 @@ static int ceph_writepages_start(struct address_space *mapping,
+ 	bool done = false;
+ 	bool caching = ceph_is_cache_enabled(inode);
+ 
++	if (wbc->sync_mode == WB_SYNC_NONE &&
++	    fsc->write_congested)
++		return 0;
++
+ 	dout("writepages_start %p (mode=%s)\n", inode,
+ 	     wbc->sync_mode == WB_SYNC_NONE ? "NONE" :
+ 	     (wbc->sync_mode == WB_SYNC_ALL ? "ALL" : "HOLD"));
+@@ -954,11 +961,8 @@ static int ceph_writepages_start(struct address_space *mapping,
+ 
+ 			if (atomic_long_inc_return(&fsc->writeback_count) >
+ 			    CONGESTION_ON_THRESH(
+-				    fsc->mount_options->congestion_kb)) {
+-				set_bdi_congested(inode_to_bdi(inode),
+-						  BLK_RW_ASYNC);
+-			}
+-
++				    fsc->mount_options->congestion_kb))
++				fsc->write_congested = true;
+ 
+ 			pages[locked_pages++] = page;
+ 			pvec.pages[i] = NULL;
+diff --git a/fs/ceph/super.c b/fs/ceph/super.c
+index bf79f369aec6..4a3b77d049c7 100644
+--- a/fs/ceph/super.c
++++ b/fs/ceph/super.c
+@@ -802,6 +802,7 @@ static struct ceph_fs_client *create_fs_client(struct ceph_mount_options *fsopt,
+ 	fsc->have_copy_from2 = true;
+ 
+ 	atomic_long_set(&fsc->writeback_count, 0);
++	fsc->write_congested = false;
+ 
+ 	err = -ENOMEM;
+ 	/*
+diff --git a/fs/ceph/super.h b/fs/ceph/super.h
+index 67f145e1ae7a..0bd97aea2319 100644
+--- a/fs/ceph/super.h
++++ b/fs/ceph/super.h
+@@ -121,6 +121,7 @@ struct ceph_fs_client {
+ 	struct ceph_mds_client *mdsc;
+ 
+ 	atomic_long_t writeback_count;
++	bool write_congested;
+ 
+ 	struct workqueue_struct *inode_wq;
+ 	struct workqueue_struct *cap_wq;
 
 
