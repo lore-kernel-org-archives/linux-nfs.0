@@ -2,168 +2,90 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 835D0C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Feb 2022 21:06:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06DE9C433EF
+	for <linux-nfs@archiver.kernel.org>; Sat, 12 Feb 2022 18:13:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353692AbiBKVGc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 11 Feb 2022 16:06:32 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:59004 "EHLO
+        id S229470AbiBLSNI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 12 Feb 2022 13:13:08 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:60968 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1353719AbiBKVGa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2022 16:06:30 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 69A7E30F
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2022 13:06:26 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1644613585;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=4ZE8YWsUm1E1SqyMzPNZiLa4Uk87tqyWpRnTXYxo/5w=;
-        b=Qab8mz8Wf6Fb5UPbTZE4I9lgbftmrxG3kusoYugCY2qR2FQT4VdUgI7gwQTKKNnWStPVAu
-        eMHOLPQvZtBPkaJ2kd0f634zvPtx9/ZtgYZoKU/F0hEV/DnpltPjnNwKDP2SlLD+6SCJnp
-        0Ka7H8ho75EyAZBlR7Dzb+5kuWlr0Xc=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-629-iCxZhmgdOcmlBQS8vpo8iQ-1; Fri, 11 Feb 2022 16:06:24 -0500
-X-MC-Unique: iCxZhmgdOcmlBQS8vpo8iQ-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 1C18A1091DA2;
-        Fri, 11 Feb 2022 21:06:23 +0000 (UTC)
-Received: from [10.10.66.2] (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 9B32812E30;
-        Fri, 11 Feb 2022 21:06:22 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Chuck Lever III" <chuck.lever@oracle.com>
-Cc:     "Steve Dickson" <SteveD@RedHat.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] nfsuuid: a tool to create and persist nfs4 client
- uniquifiers
-Date:   Fri, 11 Feb 2022 16:06:20 -0500
-Message-ID: <948D8123-E310-4A35-BF04-C030F20EA83C@redhat.com>
-In-Reply-To: <06B01290-E375-455E-A6D7-419CA653A0D1@oracle.com>
-References: <cover.1644515977.git.bcodding@redhat.com>
- <9c046648bfd9c8260ec7bd37e0a93f7821e0842f.1644515977.git.bcodding@redhat.com>
- <7642FA55-F3F2-4813-86E2-1B65185E6B36@oracle.com>
- <3d2992df-7ef7-50ba-4f11-f4de588620d2@redhat.com>
- <DDB59BD9-8C29-45C3-ABAF-B25EDDB63E09@oracle.com>
- <D0908E76-C163-4DBF-A93C-665492EB9DB2@redhat.com>
- <E2C56D5B-AC77-48D1-9AF6-268406648657@oracle.com>
- <4657F9AE-3B9E-4992-9334-3FF1CF18EF31@redhat.com>
- <C7533D80-25B3-4722-94A9-0440C48B8574@oracle.com>
- <945849B4-BE30-434C-88E9-8E901AAFA638@redhat.com>
- <06B01290-E375-455E-A6D7-419CA653A0D1@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+        with ESMTP id S229446AbiBLSNH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Feb 2022 13:13:07 -0500
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6712050B22;
+        Sat, 12 Feb 2022 10:13:02 -0800 (PST)
+Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21C9aHQi029601;
+        Sat, 12 Feb 2022 18:12:59 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
+ bh=frNKqwQx8SieiZ4CPyYZKxm9vJXGrBd7eUl0Zc0CchU=;
+ b=kdSzTNGxDyyTQJmv2GFqIXxP2FbtJnR3gSCqEtaTjvU9NEfYQRWtR+U7sq6UNqK4doKh
+ N1Vp5RZlQez6Ga9biITpNDl7/uXMljX/yW5MWp0I0H69YaYeLzyOqewMOv6QtgdlcS8r
+ G2Xd/LyUA6yGc3PmLAqPdxgrDme68LGSXTwyHv3Z7j0wlErT13v/9CVME3LSq+WtrO6A
+ ma+QDLXcGsO9A7YaoFuqRdZOhyVFog9qsJaQmPGYwS/3gxq3pj67duQsssH/vokH/Dst
+ 7Zpvkb9Tu8FHrGZ7w3IvuyXqwYnbuVcD/l/H1JPiGv6/b1yTsEIq6AgpCEIaKSyf5vXC tA== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by mx0b-00069f02.pphosted.com with ESMTP id 3e63g110xd-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 12 Feb 2022 18:12:59 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 21CIBqos120368;
+        Sat, 12 Feb 2022 18:12:58 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3020.oracle.com with ESMTP id 3e66bj2f58-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 12 Feb 2022 18:12:58 +0000
+Received: from userp3020.oracle.com (userp3020.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 21CICvrv121470;
+        Sat, 12 Feb 2022 18:12:57 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by userp3020.oracle.com with ESMTP id 3e66bj2f4u-2;
+        Sat, 12 Feb 2022 18:12:57 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, bfields@fieldses.org
+Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH RFC v13 1/4] fs/lock: documentation cleanup. Replace inode->i_lock with flc_lock.
+Date:   Sat, 12 Feb 2022 10:12:52 -0800
+Message-Id: <1644689575-1235-2-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1644689575-1235-1-git-send-email-dai.ngo@oracle.com>
+References: <1644689575-1235-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-GUID: 6AgVbn1JA7OI9MLI-eWqaxb5BZ4urp07
+X-Proofpoint-ORIG-GUID: 6AgVbn1JA7OI9MLI-eWqaxb5BZ4urp07
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 11 Feb 2022, at 15:51, Chuck Lever III wrote:
+Update lock usage of lock_manager_operations' functions.
 
->> On Feb 11, 2022, at 3:16 PM, Benjamin Coddington 
->> <bcodding@redhat.com> wrote:
->>
->> On 11 Feb 2022, at 15:00, Chuck Lever III wrote:
->>
->>>> On Feb 11, 2022, at 2:30 PM, Benjamin Coddington 
->>>> <bcodding@redhat.com> wrote:
->>>>
->>>> All the arguments for exacting tolerances on how it should be named 
->>>> apply
->>>> equally well to anything that implies its output will be used for 
->>>> nfs client
->>>> ids, or host ids.
->>>
->>> I completely disagree with this assessment.
->>
->> But how, and in what way?  The tool just generates uuids, and spits 
->> them
->> out, or it spits out whatever's in the file you specify, up to 64 
->> chars.  If
->> we can't have uuid in the name, how can we have NFS or machine-id or
->> host-id?
->
-> We don't have a tool called "string" to get and set the DNS name of
-> the local host. It's called "hostname".
->
-> The purpose of the proposed tool is to persist a unique string to be
-> used as part of an NFS client ID. I would like to name the tool based
-> on that purpose, not based on the way the content of the persistent
-> file happens to be arranged some of the time.
->
-> When the tool generates the string, it just happens to be a UUID. It
-> doesn't have to be. The tool could generate a digest of the boot time
-> or the current time. In fact, one of those is usually part of certain
-> types of a UUID anyway. The fact that it is a UUID is totally not
-> relevant. We happen to use a UUID because it has certain global
-> uniqueness properties. (By the way, perhaps the man page could mention
-> that global uniqueness is important for this identifier. Anything with
-> similar guaranteed global uniqueness could be used).
->
-> You keep admitting that the tool can output something that isn't a
-> UUID. Doesn't that make my argument for me: that the tool doesn't
-> generate a UUID, it manages a persistent host identifier. Just like
-> "hostname." Therefore "nfshostid". I really don't see how nfshostid
-> is just as miserable as nfsuuid -- hence, I completely disagree
-> that "all arguments ... apply equally well".
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ Documentation/filesystems/locking.rst | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Yes - your arguement is a good one.   I wasn't clear enough admitting 
-you
-were right two emails ago, sorry about that.
-
-However, I still feel the same argument applied to "nfshostid" 
-disqualifies
-it as well.  It doesn't output the nfshostid.  That, if it even contains 
-the
-part outputted, is more than what's written out.
-
-In my experience with linux tools, nfshostid sounds like something I can 
-use
-to set or retrieve the identifier for an NFS host, and this little tool 
-does
-not do that.
-
-> In fairness, I'm trying to understand why you want to stick with
-> "nfsuuid". You originally said you wanted a generic tool. OK, but
-> now you say you don't have other uses for the tool after all. You
-> said you don't want it to be associated with an NFS client ID. That
-> part I still don't grok. Can you help me understand?
-
-I don't want to stick with nfsuuid, I'm just trying to apply everyone's
-reasoning to the current list of suggested names and it appears to me
-that we've disqualified them all.
-
->>> I object strongly to the name nfsuuid, and you seem to be 
->>> inflexible. This
->>> is not a hill I want to die on, however I reserve the right to say 
->>> "I told
->>> you so" when it turns out to be a poor choice.
->>
->> How does agreeing with you multiple times in my last response and 
->> making
->> further suggestions for names seem inflexible to you?  This is the 
->> worst
->> part of working over email - I think you're misreading my good humor 
->> in the
->> face of a drudging discussion as sarcasm or ill will.
->
-> Nope, not at all. It wasn't apparent that you agreed, as much
-> of your reply seemed to be disagreeing with my reply. So maybe
-> I am overreacting. Though my reply can also be read with humor,
-> even though it is a bit dry.
-
-Sorry about that -- I really just want to move forward.  I can send it 
-again
-as nfshostid.  I think if we are clear in the man page that it isn't
-necessarily part or any of the identifier used by NFS, rather its just
-trying to manage the persistent unique portion, it works for me.
-
-Unless we can go with persistychars, because that makes me grin.
-
-Ben
+diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+index 3f9b1497ebb8..aaca0b601819 100644
+--- a/Documentation/filesystems/locking.rst
++++ b/Documentation/filesystems/locking.rst
+@@ -438,13 +438,13 @@ prototypes::
+ locking rules:
+ 
+ ======================	=============	=================	=========
+-ops			inode->i_lock	blocked_lock_lock	may block
++ops			   flc_lock  	blocked_lock_lock	may block
+ ======================	=============	=================	=========
+-lm_notify:		yes		yes			no
++lm_notify:		no      	yes			no
+ lm_grant:		no		no			no
+ lm_break:		yes		no			no
+ lm_change		yes		no			no
+-lm_breaker_owns_lease:	no		no			no
++lm_breaker_owns_lease:	yes     	no			no
+ ======================	=============	=================	=========
+ 
+ buffer_head
+-- 
+2.9.5
 
