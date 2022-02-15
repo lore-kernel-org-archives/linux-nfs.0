@@ -2,34 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B298C43217
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F2F0C43219
 	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 19:21:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231234AbiBOTWH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S239427AbiBOTWH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 15 Feb 2022 14:22:07 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:56774 "EHLO
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:56772 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239427AbiBOTWG (ORCPT
+        with ESMTP id S239247AbiBOTWG (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 14:22:06 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30B3D78064
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 11:21:56 -0800 (PST)
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 03A7A75E7C
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 11:21:53 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id BE47EB81C11
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 19:21:54 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4B05EC340EC;
-        Tue, 15 Feb 2022 19:21:53 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 9267C61773
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 19:21:52 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AFEFEC340EB;
+        Tue, 15 Feb 2022 19:21:51 +0000 (UTC)
 From:   Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v8 3/9] rpcctl: Add a command for printing individual xprts
-Date:   Tue, 15 Feb 2022 14:21:44 -0500
-Message-Id: <20220215192150.53811-4-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v8 0/9] Add a tool for using the new sysfs files
+Date:   Tue, 15 Feb 2022 14:21:41 -0500
+Message-Id: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
-References: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -38,103 +36,126 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This shows more detailed information than what is presented with xprt
-switches. I take the chance to add a main-export indicator to the
-small_str() used when printing out xprt-switches.
+These patches implement a tool that can be used to read and write the
+sysfs files, with subcommands!
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
-v8: Better exception handling if an Xprt isn't found
----
- tools/rpcctl/rpcctl.py | 55 +++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 54 insertions(+), 1 deletion(-)
+The following subcommands are implemented:
+	rpcctl client
+	rpcctl client show
+ 	rpcctl switch
+ 	rpcctl switch set
+ 	rpcctl switch show
+ 	rpcctl xprt
+ 	rpcctl xprt remove
+ 	rpcctl xprt set
+ 	rpcctl xprt show
 
-diff --git a/tools/rpcctl/rpcctl.py b/tools/rpcctl/rpcctl.py
-index 1eb0454aaf58..6b9627318949 100755
---- a/tools/rpcctl/rpcctl.py
-+++ b/tools/rpcctl/rpcctl.py
-@@ -1,6 +1,8 @@
- #!/usr/bin/python3
- import argparse
- import collections
-+import errno
-+import os
- import pathlib
- import sys
- 
-@@ -37,13 +39,63 @@ class Xprt:
-         self.path = path
-         self.name = path.stem.rsplit("-", 1)[0]
-         self.type = path.stem.split("-")[2]
-+        self.info = read_info_file(path / "xprt_info")
-         self.dstaddr = read_addr_file(path / "dstaddr")
-+        self.srcaddr = read_addr_file(path / "srcaddr")
-+
-+        with open(path / "xprt_state") as f:
-+            self.state = ','.join(f.readline().split()[1:])
- 
-     def __lt__(self, rhs):
-         return self.name < rhs.name
- 
-+    def _xprt(self):
-+        main = ", main" if self.info.get("main_xprt") else ""
-+        return f"{self.name}: {self.type}, {self.dstaddr}, " \
-+               f"port {self.info['dst_port']}, state <{self.state}>{main}"
-+
-+    def _src_reqs(self):
-+        return f"	Source: {self.srcaddr}, port {self.info['src_port']}, " \
-+               f"Requests: {self.info['num_reqs']}"
-+
-+    def _cong_slots(self):
-+        return f"	Congestion: cur {self.info['cur_cong']}, win {self.info['cong_win']}, " \
-+               f"Slots: min {self.info['min_num_slots']}, max {self.info['max_num_slots']}"
-+
-+    def _queues(self):
-+        return f"	Queues: binding {self.info['binding_q_len']}, " \
-+               f"sending {self.info['sending_q_len']}, pending {self.info['pending_q_len']}, " \
-+               f"backlog {self.info['backlog_q_len']}, tasks {self.info['tasks_queuelen']}"
-+
-+    def __str__(self):
-+        return "\n".join([self._xprt(), self._src_reqs(),
-+                          self._cong_slots(), self._queues() ])
-+
-     def small_str(self):
--        return f"{self.name}: {self.type}, {self.dstaddr}"
-+        main = " [main]" if self.info.get("main_xprt") else ""
-+        return f"{self.name}: {self.type}, {self.dstaddr}{main}"
-+
-+    def add_command(subparser):
-+        parser = subparser.add_parser("xprt", help="Commands for individual xprts")
-+        parser.set_defaults(func=Xprt.show, xprt=None)
-+        subparser = parser.add_subparsers()
-+
-+        show = subparser.add_parser("show", help="Show xprts")
-+        show.add_argument("xprt", metavar="XPRT", nargs='?',
-+                          help="Name of a specific xprt to show")
-+        show.set_defaults(func=Xprt.show)
-+
-+    def get_by_name(name):
-+        glob = f"**/{name}-*" if name else "**/xprt-*"
-+        res = [ Xprt(x) for x in (sunrpc / "xprt-switches").glob(glob) ]
-+        if name and len(res) == 0:
-+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
-+                                    f"{sunrpc / 'xprt-switches' / glob}")
-+        return sorted(res)
-+
-+    def show(args):
-+        for xprt in Xprt.get_by_name(args.xprt):
-+            print(xprt)
- 
- 
- class XprtSwitch:
-@@ -94,6 +146,7 @@ parser.set_defaults(func=show_small_help)
- 
- subparser = parser.add_subparsers(title="commands")
- XprtSwitch.add_command(subparser)
-+Xprt.add_command(subparser)
- 
- args = parser.parse_args()
- try:
+So you can print out information about every switch with:
+	anna@client ~ % rpcctl switch
+	switch-0: xprts 1, active 1, queue 0
+		xprt-0: local, /var/run/gssproxy.sock [main]
+	switch-1: xprts 1, active 1, queue 0
+		xprt-1: local, /var/run/rpcbind.sock [main]
+	switch-2: xprts 1, active 1, queue 0
+		xprt-2: tcp, 192.168.111.1 [main]
+	switch-3: xprts 4, active 4, queue 0
+		xprt-3: tcp, 192.168.111.188 [main]
+		xprt-4: tcp, 192.168.111.188
+		xprt-5: tcp, 192.168.111.188
+		xprt-6: tcp, 192.168.111.188
+
+And information about each xprt:
+	anna@client ~ % rpcctl xprt
+	xprt-0: local, /var/run/gssproxy.sock, port 0, state <CONNECTED,BOUND>, main
+		Source: (einval), port 0, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt-1: local, /var/run/rpcbind.sock, port 0, state <CONNECTED,BOUND>, main
+		Source: (einval), port 0, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt-2: tcp, 192.168.111.1, port 2049, state <CONNECTED,BOUND>, main
+		Source: 192.168.111.222, port 959, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt-3: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>, main
+		Source: 192.168.111.222, port 921, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt-4: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 726, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt-5: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 671, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+	xprt-6: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 934, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+
+You can use the `set` subcommand to change the dstaddr of individual xprts:
+	anna@client ~ % sudo rpcctl xprt show xprt-4 
+	xprt-4: tcp, 192.168.111.188, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 726, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+
+	anna@client ~ % sudo rpcctl xprt set xprt-4 dstaddr server2.nowheycreamery.com
+	xprt-4: tcp, 192.168.111.186, port 2049, state <CONNECTED,BOUND>
+		Source: 192.168.111.222, port 726, Requests: 2
+		Congestion: cur 0, win 256, Slots: min 2, max 65536
+		Queues: binding 0, sending 0, pending 0, backlog 0, tasks 0
+
+Or for changing the dstaddr of all xprts attached to a switch:
+	anna@client % rpcctl switch show switch-3
+	switch-3: xprts 4, active 4, queue 0
+		xprt 3: tcp, 192.168.111.188 [main]
+		xprt 4: tcp, 192.168.111.188
+		xprt 5: tcp, 192.168.111.188
+		xprt 6: tcp, 192.168.111.188
+
+	anna@client % sudo rpcctl switch set switch-3 dstaddr server2.nowheycreamery.vm
+	switch-3: xprts 4, active 4, queue 0
+		xprt 2: tcp, 192.168.111.186 [main]
+		xprt 3: tcp, 192.168.111.186
+		xprt 5: tcp, 192.168.111.186
+		xprt 6: tcp, 192.168.111.186
+
+Changes in v8:
+- Improved exception handling when running commands
+- Completely rework argument and command parsing to be more like ip-link
+- Completely rewrite the man page to reflect the new argument scheme and
+  add examples
+- Only call socket.gethostbyname() once when changing the dstaddr of an
+  RPC switch
+
+Thoughts?
+Anna
+
+
+Anna Schumaker (9):
+  rpcctl: Add a rpcctl.py tool
+  rpcctl: Add a command for printing xprt switch information
+  rpcctl: Add a command for printing individual xprts
+  rpcctl: Add a command for printing rpc client information
+  rpcctl: Add a command for changing xprt dstaddr
+  rpcctl: Add a command for changing xprt switch dstaddrs
+  rpcctl: Add a command for changing xprt state
+  rpcctl: Add a man page
+  rpcctl: Add installation to the Makefile
+
+ configure.ac             |   1 +
+ tools/Makefile.am        |   2 +-
+ tools/rpcctl/Makefile.am |  13 ++
+ tools/rpcctl/rpcctl.man  |  67 ++++++++++
+ tools/rpcctl/rpcctl.py   | 255 +++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 337 insertions(+), 1 deletion(-)
+ create mode 100644 tools/rpcctl/Makefile.am
+ create mode 100644 tools/rpcctl/rpcctl.man
+ create mode 100755 tools/rpcctl/rpcctl.py
+
 -- 
 2.35.1
 
