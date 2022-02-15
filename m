@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 831D4C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 19:21:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B298C43217
+	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 19:21:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238282AbiBOTWG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 15 Feb 2022 14:22:06 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:56756 "EHLO
+        id S231234AbiBOTWH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 15 Feb 2022 14:22:07 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:56774 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238383AbiBOTWF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 14:22:05 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 396CE78064
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 11:21:55 -0800 (PST)
+        with ESMTP id S239427AbiBOTWG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 14:22:06 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30B3D78064
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 11:21:56 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id CA448617C3
+        by ams.source.kernel.org (Postfix) with ESMTPS id BE47EB81C11
         for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 19:21:54 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 57010C340F0;
-        Tue, 15 Feb 2022 19:21:54 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4B05EC340EC;
+        Tue, 15 Feb 2022 19:21:53 +0000 (UTC)
 From:   Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v8 5/9] rpcctl: Add a command for changing xprt dstaddr
-Date:   Tue, 15 Feb 2022 14:21:46 -0500
-Message-Id: <20220215192150.53811-6-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v8 3/9] rpcctl: Add a command for printing individual xprts
+Date:   Tue, 15 Feb 2022 14:21:44 -0500
+Message-Id: <20220215192150.53811-4-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.35.1
 In-Reply-To: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
 References: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
@@ -38,77 +38,103 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Using the socket module for dns resolution
+This shows more detailed information than what is presented with xprt
+switches. I take the chance to add a main-export indicator to the
+small_str() used when printing out xprt-switches.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tools/rpcctl/rpcctl.py | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+v8: Better exception handling if an Xprt isn't found
+---
+ tools/rpcctl/rpcctl.py | 55 +++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 54 insertions(+), 1 deletion(-)
 
 diff --git a/tools/rpcctl/rpcctl.py b/tools/rpcctl/rpcctl.py
-index 2e710b5627f0..98e1f680ed72 100755
+index 1eb0454aaf58..6b9627318949 100755
 --- a/tools/rpcctl/rpcctl.py
 +++ b/tools/rpcctl/rpcctl.py
-@@ -4,6 +4,7 @@ import collections
- import errno
- import os
+@@ -1,6 +1,8 @@
+ #!/usr/bin/python3
+ import argparse
+ import collections
++import errno
++import os
  import pathlib
-+import socket
  import sys
  
- with open("/proc/mounts", 'r') as f:
-@@ -24,6 +25,11 @@ def read_addr_file(path):
-     except:
-         return "(enoent)"
- 
-+def write_addr_file(path, newaddr):
-+    with open(path, 'w') as f:
-+        f.write(newaddr)
-+    return read_addr_file(path)
+@@ -37,13 +39,63 @@ class Xprt:
+         self.path = path
+         self.name = path.stem.rsplit("-", 1)[0]
+         self.type = path.stem.split("-")[2]
++        self.info = read_info_file(path / "xprt_info")
+         self.dstaddr = read_addr_file(path / "dstaddr")
++        self.srcaddr = read_addr_file(path / "srcaddr")
 +
- def read_info_file(path):
-     res = collections.defaultdict(int)
-     try:
-@@ -75,6 +81,10 @@ class Xprt:
-         main = " [main]" if self.info.get("main_xprt") else ""
-         return f"{self.name}: {self.type}, {self.dstaddr}{main}"
++        with open(path / "xprt_state") as f:
++            self.state = ','.join(f.readline().split()[1:])
  
-+    def set_dstaddr(self, newaddr):
-+        resolved = socket.gethostbyname(newaddr)
-+        self.dstaddr = write_addr_file(self.path / "dstaddr", newaddr)
-+
-     def add_command(subparser):
-         parser = subparser.add_parser("xprt", help="Commands for individual xprts")
-         parser.set_defaults(func=Xprt.show, xprt=None)
-@@ -85,6 +95,15 @@ class Xprt:
-                           help="Name of a specific xprt to show")
-         show.set_defaults(func=Xprt.show)
+     def __lt__(self, rhs):
+         return self.name < rhs.name
  
-+        set = subparser.add_parser("set", help="Change an xprt property")
-+        set.add_argument("xprt", metavar="XPRT", nargs=1,
-+                         help="Name of a specific xprt to modify")
-+        subparser = set.add_subparsers(required=True)
-+        dstaddr = subparser.add_parser("dstaddr", help="Change an xprt's dstaddr")
-+        dstaddr.add_argument("newaddr", metavar="NEWADDR", nargs=1,
-+                             help="The new address for the xprt")
-+        dstaddr.set_defaults(func=Xprt.set_property, property="dstaddr")
++    def _xprt(self):
++        main = ", main" if self.info.get("main_xprt") else ""
++        return f"{self.name}: {self.type}, {self.dstaddr}, " \
++               f"port {self.info['dst_port']}, state <{self.state}>{main}"
 +
-     def get_by_name(name):
-         glob = f"**/{name}-*" if name else "**/xprt-*"
-         res = [ Xprt(x) for x in (sunrpc / "xprt-switches").glob(glob) ]
-@@ -97,6 +116,12 @@ class Xprt:
-         for xprt in Xprt.get_by_name(args.xprt):
-             print(xprt)
++    def _src_reqs(self):
++        return f"	Source: {self.srcaddr}, port {self.info['src_port']}, " \
++               f"Requests: {self.info['num_reqs']}"
++
++    def _cong_slots(self):
++        return f"	Congestion: cur {self.info['cur_cong']}, win {self.info['cong_win']}, " \
++               f"Slots: min {self.info['min_num_slots']}, max {self.info['max_num_slots']}"
++
++    def _queues(self):
++        return f"	Queues: binding {self.info['binding_q_len']}, " \
++               f"sending {self.info['sending_q_len']}, pending {self.info['pending_q_len']}, " \
++               f"backlog {self.info['backlog_q_len']}, tasks {self.info['tasks_queuelen']}"
++
++    def __str__(self):
++        return "\n".join([self._xprt(), self._src_reqs(),
++                          self._cong_slots(), self._queues() ])
++
+     def small_str(self):
+-        return f"{self.name}: {self.type}, {self.dstaddr}"
++        main = " [main]" if self.info.get("main_xprt") else ""
++        return f"{self.name}: {self.type}, {self.dstaddr}{main}"
++
++    def add_command(subparser):
++        parser = subparser.add_parser("xprt", help="Commands for individual xprts")
++        parser.set_defaults(func=Xprt.show, xprt=None)
++        subparser = parser.add_subparsers()
++
++        show = subparser.add_parser("show", help="Show xprts")
++        show.add_argument("xprt", metavar="XPRT", nargs='?',
++                          help="Name of a specific xprt to show")
++        show.set_defaults(func=Xprt.show)
++
++    def get_by_name(name):
++        glob = f"**/{name}-*" if name else "**/xprt-*"
++        res = [ Xprt(x) for x in (sunrpc / "xprt-switches").glob(glob) ]
++        if name and len(res) == 0:
++            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
++                                    f"{sunrpc / 'xprt-switches' / glob}")
++        return sorted(res)
++
++    def show(args):
++        for xprt in Xprt.get_by_name(args.xprt):
++            print(xprt)
  
-+    def set_property(args):
-+        for xprt in Xprt.get_by_name(args.xprt[0]):
-+            if args.property == "dstaddr":
-+                xprt.set_dstaddr(socket.gethostbyname(args.newaddr[0]))
-+        print(xprt)
-+
  
  class XprtSwitch:
-     def __init__(self, path, sep=":"):
+@@ -94,6 +146,7 @@ parser.set_defaults(func=show_small_help)
+ 
+ subparser = parser.add_subparsers(title="commands")
+ XprtSwitch.add_command(subparser)
++Xprt.add_command(subparser)
+ 
+ args = parser.parse_args()
+ try:
 -- 
 2.35.1
 
