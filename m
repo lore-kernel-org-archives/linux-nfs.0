@@ -2,59 +2,109 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27052C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 10:25:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 93C1DC4332F
+	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 15:28:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235404AbiBOKZQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 15 Feb 2022 05:25:16 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41710 "EHLO
+        id S240066AbiBOP2y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 15 Feb 2022 10:28:54 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:47548 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231349AbiBOKZP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 05:25:15 -0500
-X-Greylist: delayed 458 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 15 Feb 2022 02:25:05 PST
-Received: from mail.ispras.ru (mail.ispras.ru [83.149.199.84])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CCFEB22B3D
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 02:25:05 -0800 (PST)
-Received: from hednb3.intra.ispras.ru (unknown [10.10.2.52])
-        by mail.ispras.ru (Postfix) with ESMTPSA id 3E0114076B21;
-        Tue, 15 Feb 2022 10:17:26 +0000 (UTC)
-From:   Alexey Khoroshilov <khoroshilov@ispras.ru>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>
-Cc:     Alexey Khoroshilov <khoroshilov@ispras.ru>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        ldv-project@linuxtesting.org
-Subject: [PATCH] NFS: remove unneeded check in decode_devicenotify_args()
-Date:   Tue, 15 Feb 2022 13:17:04 +0300
-Message-Id: <1644920224-24966-1-git-send-email-khoroshilov@ispras.ru>
-X-Mailer: git-send-email 2.7.4
+        with ESMTP id S239982AbiBOP2p (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 10:28:45 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2298CA9729;
+        Tue, 15 Feb 2022 07:27:52 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id B3072615F2;
+        Tue, 15 Feb 2022 15:27:51 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 87C3CC340EB;
+        Tue, 15 Feb 2022 15:27:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1644938871;
+        bh=8kbzgWG3vxuxHmxWCGGZt/R8YXpIkmbbfND5axACxC4=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=h9k4sfI1WRlC/G1ow0rQ2gYV2UJvGLKU542GEj4yTDzowViYiJ6sShaTY6R5ksOSi
+         Gyc5JpC6HJjf75AKGxDpKe1vlVaTArjpiF6rpAOB9VJGug8hfP4KOPUolCZqgnMC9A
+         tyDoQenz2jdEslDecelzw4FkH5OstffLsy0fFKUsw4H1B7HCWePeUyfmxH6NDwPBnY
+         UipIrcVZjoVVM3/jMZa8BxZHT0GLeGv8nTqPp7WAlbJ2WakRA1yhgSdojWngcQIUpe
+         f+1OhVaDwAxtFdNJZNvgBkonxxUS9gmEPpltNIC2qtIydiPvwP6Q9kSCSVZvOM05xE
+         lMc7tHZSolXEg==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.16 27/34] NFSD: Fix offset type in I/O trace points
+Date:   Tue, 15 Feb 2022 10:26:50 -0500
+Message-Id: <20220215152657.580200-27-sashal@kernel.org>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20220215152657.580200-1-sashal@kernel.org>
+References: <20220215152657.580200-1-sashal@kernel.org>
+MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Overflow check in not needed anymore after we switch to kmalloc_array().
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Signed-off-by: Alexey Khoroshilov <khoroshilov@ispras.ru>
-Fixes: a4f743a6bb20 ("NFSv4.1: Convert open-coded array allocation calls to kmalloc_array()")
+[ Upstream commit 6a4d333d540041d244b2fca29b8417bfde20af81 ]
+
+NFSv3 and NFSv4 use u64 offset values on the wire. Record these values
+verbatim without the implicit type case to loff_t.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/callback_xdr.c | 4 ----
- 1 file changed, 4 deletions(-)
+ fs/nfsd/trace.h | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index f90de8043b0f..8dcb08e1a885 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -271,10 +271,6 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 	n = ntohl(*p++);
- 	if (n == 0)
- 		goto out;
--	if (n > ULONG_MAX / sizeof(*args->devs)) {
--		status = htonl(NFS4ERR_BADXDR);
--		goto out;
--	}
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index f1e0d3c51bc23..e662494de3c75 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -320,14 +320,14 @@ TRACE_EVENT(nfsd_export_update,
+ DECLARE_EVENT_CLASS(nfsd_io_class,
+ 	TP_PROTO(struct svc_rqst *rqstp,
+ 		 struct svc_fh	*fhp,
+-		 loff_t		offset,
+-		 unsigned long	len),
++		 u64		offset,
++		 u32		len),
+ 	TP_ARGS(rqstp, fhp, offset, len),
+ 	TP_STRUCT__entry(
+ 		__field(u32, xid)
+ 		__field(u32, fh_hash)
+-		__field(loff_t, offset)
+-		__field(unsigned long, len)
++		__field(u64, offset)
++		__field(u32, len)
+ 	),
+ 	TP_fast_assign(
+ 		__entry->xid = be32_to_cpu(rqstp->rq_xid);
+@@ -335,7 +335,7 @@ DECLARE_EVENT_CLASS(nfsd_io_class,
+ 		__entry->offset = offset;
+ 		__entry->len = len;
+ 	),
+-	TP_printk("xid=0x%08x fh_hash=0x%08x offset=%lld len=%lu",
++	TP_printk("xid=0x%08x fh_hash=0x%08x offset=%llu len=%u",
+ 		  __entry->xid, __entry->fh_hash,
+ 		  __entry->offset, __entry->len)
+ )
+@@ -344,8 +344,8 @@ DECLARE_EVENT_CLASS(nfsd_io_class,
+ DEFINE_EVENT(nfsd_io_class, nfsd_##name,	\
+ 	TP_PROTO(struct svc_rqst *rqstp,	\
+ 		 struct svc_fh	*fhp,		\
+-		 loff_t		offset,		\
+-		 unsigned long	len),		\
++		 u64		offset,		\
++		 u32		len),		\
+ 	TP_ARGS(rqstp, fhp, offset, len))
  
- 	args->devs = kmalloc_array(n, sizeof(*args->devs), GFP_KERNEL);
- 	if (!args->devs) {
+ DEFINE_NFSD_IO_EVENT(read_start);
 -- 
-2.7.4
+2.34.1
 
