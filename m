@@ -2,108 +2,83 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DAF2C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 18:26:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 13099C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 19:21:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235687AbiBOS06 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 15 Feb 2022 13:26:58 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41480 "EHLO
+        id S237486AbiBOTWE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 15 Feb 2022 14:22:04 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:56728 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229714AbiBOS04 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 13:26:56 -0500
-Received: from mail-qv1-xf36.google.com (mail-qv1-xf36.google.com [IPv6:2607:f8b0:4864:20::f36])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9378BF50
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 10:26:45 -0800 (PST)
-Received: by mail-qv1-xf36.google.com with SMTP id p7so18373927qvk.11
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 10:26:45 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=bcGW3wlwlAcS7KVIk0cl1012yM22NJRBNkL1I1tu6DI=;
-        b=kl03c5SW8htJTKxCjUZCwppW+19G3ynNC/cVv0t3drX1naSqvfKLXOaha3lGHNW5sT
-         dvgA6UEzyykodFo2y3VrrFibKTcZoJEUYyoDfcECfui/A93mDw5QGplJo2/ZbiYtOVtL
-         gZ5BPcFV584g98L6QSViXQ4jYtAxuPKmNj+nnLfXtoRv60vqPM1CwXQtjSIV2q5gTnv3
-         SpIGrIL2Al8nly3OWSlJCnCX4NU69NVtjnkhQLnL9a/25qtMf7HUj1eZnPwFA3dfSm6U
-         HhHHY0TMDMdTYCEnb5YgHY4enD6DyQJWoccgRZRFsMwQ5x+lU9Tp3vX1VbZA41VBdidf
-         RqbQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=bcGW3wlwlAcS7KVIk0cl1012yM22NJRBNkL1I1tu6DI=;
-        b=IsY2AY9eG2frUiQ3rDsEJDnjIYktFkdHChJkQ46SXircMn+3/SMqmFD7LENp9WwXgX
-         gc636e8wIMNOoitup3x9+YkAvTkNJ5zsZO4Hue/n9xEGRavos2xHeCOeXUWRMXtjCBQN
-         O714W9zgNqgkY7Ov4Jega0sFx+Ag3q94wpd5Boe4BlE6j+zCdeQpAK5FYvLYzueYDVJj
-         vnsptBnfGLTGYQNRlS5BqM/m6TUlDR2vrryIwtgjaxf2vPoahsjrulnnGyLr4j9bUAiG
-         t9mbO+q/9Hfmwz2N+SyySCkydmVzTouLeSE0kH+P56lWB/Ap8ZG50Nd718Hi36AUmdL0
-         HwSg==
-X-Gm-Message-State: AOAM533daiXIcsTNOAPDaxfepWbiTqIPp7fKemXzvBG+3gqiNPrZeOd7
-        uH1fXaUxCWcMoo0xQoNSmMdgsYKQZsIGvQ==
-X-Google-Smtp-Source: ABdhPJzgiDYylANj4dwpXQMizl32IfzofBWbpYKdeO2WxEaY0QPxOlPfpABKlnzLIE5NWlkRjzBM+A==
-X-Received: by 2002:a05:6214:5006:: with SMTP id jo6mr300771qvb.55.1644949604410;
-        Tue, 15 Feb 2022 10:26:44 -0800 (PST)
-Received: from kolga-mac-1.vpn.netapp.com ([2600:1700:6a10:2e90:6013:ae57:cac3:2abd])
-        by smtp.gmail.com with ESMTPSA id n19sm10095495qtk.66.2022.02.15.10.26.43
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 15 Feb 2022 10:26:43 -0800 (PST)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] NFSv4.1 restrict GETATTR fs_location query to the main transport
-Date:   Tue, 15 Feb 2022 13:26:41 -0500
-Message-Id: <20220215182641.46271-1-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.30.1 (Apple Git-130)
+        with ESMTP id S231234AbiBOTWD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 14:22:03 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 83DC977A9B
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 11:21:53 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 20CE26179B
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 19:21:53 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3D880C340F0;
+        Tue, 15 Feb 2022 19:21:52 +0000 (UTC)
+From:   Anna.Schumaker@Netapp.com
+To:     steved@redhat.com, linux-nfs@vger.kernel.org
+Cc:     Anna.Schumaker@Netapp.com
+Subject: [PATCH v8 1/9] rpcctl: Add a rpcctl.py tool
+Date:   Tue, 15 Feb 2022 14:21:42 -0500
+Message-Id: <20220215192150.53811-2-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
+References: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-In the presence of trunking transports, it's helpful to make sure
-that during the migration event, the GETATTR for fs_location attribute
-happens on the main transport.
+This will be used to print and manipulate the sunrpc sysfs directory
+files. Running without arguments prints both usage information and the
+location of the sunrpc sysfs directory.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ tools/rpcctl/rpcctl.py | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+ create mode 100755 tools/rpcctl/rpcctl.py
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d9bc64ba2ae7..e32dd69df818 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8013,6 +8013,18 @@ static int _nfs41_proc_get_locations(struct nfs_server *server,
- 		.rpc_resp	= &res,
- 		.rpc_cred	= cred,
- 	};
-+	struct nfs4_call_sync_data data = {
-+		.seq_server = server,
-+		.seq_args = &args.seq_args,
-+		.seq_res = &res.seq_res,
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clnt,
-+		.rpc_message = &msg,
-+		.callback_ops = server->nfs_client->cl_mvops->call_sync_ops,
-+		.callback_data = &data,
-+		.flags = RPC_TASK_NO_ROUND_ROBIN,
-+	};
- 	int status;
- 
- 	nfs_fattr_init(&locations->fattr);
-@@ -8020,8 +8032,7 @@ static int _nfs41_proc_get_locations(struct nfs_server *server,
- 	locations->nlocations = 0;
- 
- 	nfs4_init_sequence(&args.seq_args, &res.seq_res, 0, 1);
--	status = nfs4_call_sync_sequence(clnt, server, &msg,
--					&args.seq_args, &res.seq_res);
-+	status = nfs4_call_sync_custom(&task_setup_data);
- 	if (status == NFS4_OK &&
- 	    res.seq_res.sr_status_flags & SEQ4_STATUS_LEASE_MOVED)
- 		status = -NFS4ERR_LEASE_MOVED;
+diff --git a/tools/rpcctl/rpcctl.py b/tools/rpcctl/rpcctl.py
+new file mode 100755
+index 000000000000..9737ac4a9740
+--- /dev/null
++++ b/tools/rpcctl/rpcctl.py
+@@ -0,0 +1,25 @@
++#!/usr/bin/python3
++import argparse
++import pathlib
++import sys
++
++with open("/proc/mounts", 'r') as f:
++    mount = [ line.split()[1] for line in f if "sysfs" in line ]
++    if len(mount) == 0:
++        print("ERROR: sysfs is not mounted")
++        sys.exit(1)
++
++sunrpc = pathlib.Path(mount[0]) / "kernel" / "sunrpc"
++if not sunrpc.is_dir():
++    print("ERROR: sysfs does not have sunrpc directory")
++    sys.exit(1)
++
++parser = argparse.ArgumentParser()
++
++def show_small_help(args):
++    parser.print_usage()
++    print("sunrpc dir:", sunrpc)
++parser.set_defaults(func=show_small_help)
++
++args = parser.parse_args()
++args.func(args)
 -- 
-2.27.0
+2.35.1
 
