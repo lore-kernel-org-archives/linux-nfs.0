@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AF11C433FE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF0BCC4332F
 	for <linux-nfs@archiver.kernel.org>; Tue, 15 Feb 2022 19:21:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237918AbiBOTWF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S239151AbiBOTWF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 15 Feb 2022 14:22:05 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:56748 "EHLO
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:56754 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231234AbiBOTWE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 14:22:04 -0500
+        with ESMTP id S238282AbiBOTWF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2022 14:22:05 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0A91278064
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA3E679C41
         for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 11:21:54 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 9965D6179D
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 19:21:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF6A3C340F2;
-        Tue, 15 Feb 2022 19:21:52 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 4828061793
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2022 19:21:54 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA9C9C340EB;
+        Tue, 15 Feb 2022 19:21:53 +0000 (UTC)
 From:   Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v8 2/9] rpcctl: Add a command for printing xprt switch information
-Date:   Tue, 15 Feb 2022 14:21:43 -0500
-Message-Id: <20220215192150.53811-3-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v8 4/9] rpcctl: Add a command for printing rpc client information
+Date:   Tue, 15 Feb 2022 14:21:45 -0500
+Message-Id: <20220215192150.53811-5-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.35.1
 In-Reply-To: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
 References: <20220215192150.53811-1-Anna.Schumaker@Netapp.com>
@@ -38,118 +38,89 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This combines the information found in xprt_switch_info with a subset of
-the information found in each xprt subdirectory
+It's mostly the same information as with xprt-switches, except with
+rpc-client id prepended to the first line.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
-v8: Handle Exceptions when running commands
+v8: Better exception handling if an RpcClient isn't found
 ---
- tools/rpcctl/rpcctl.py | 80 +++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 79 insertions(+), 1 deletion(-)
+ tools/rpcctl/rpcctl.py | 39 +++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 37 insertions(+), 2 deletions(-)
 
 diff --git a/tools/rpcctl/rpcctl.py b/tools/rpcctl/rpcctl.py
-index 9737ac4a9740..1eb0454aaf58 100755
+index 6b9627318949..2e710b5627f0 100755
 --- a/tools/rpcctl/rpcctl.py
 +++ b/tools/rpcctl/rpcctl.py
-@@ -1,5 +1,6 @@
- #!/usr/bin/python3
- import argparse
-+import collections
- import pathlib
- import sys
+@@ -99,17 +99,18 @@ class Xprt:
  
-@@ -14,6 +15,76 @@ if not sunrpc.is_dir():
-     print("ERROR: sysfs does not have sunrpc directory")
-     sys.exit(1)
  
-+def read_addr_file(path):
-+    try:
-+        with open(path, 'r') as f:
-+            return f.readline().strip()
-+    except:
-+        return "(enoent)"
-+
-+def read_info_file(path):
-+    res = collections.defaultdict(int)
-+    try:
-+        with open(path) as info:
-+            lines = [ l.split("=", 1) for l in info if "=" in l ]
-+            res.update({ key:int(val.strip()) for (key, val) in lines })
-+    finally:
-+        return res
-+
-+
-+class Xprt:
-+    def __init__(self, path):
-+        self.path = path
-+        self.name = path.stem.rsplit("-", 1)[0]
-+        self.type = path.stem.split("-")[2]
-+        self.dstaddr = read_addr_file(path / "dstaddr")
-+
-+    def __lt__(self, rhs):
-+        return self.name < rhs.name
-+
-+    def small_str(self):
-+        return f"{self.name}: {self.type}, {self.dstaddr}"
-+
-+
-+class XprtSwitch:
+ class XprtSwitch:
+-    def __init__(self, path):
++    def __init__(self, path, sep=":"):
+         self.path = path
+         self.name = path.stem
+         self.info = read_info_file(path / "xprt_switch_info")
+         self.xprts = sorted([ Xprt(p) for p in self.path.iterdir() if p.is_dir() ])
++        self.sep = sep
+ 
+     def __lt__(self, rhs):
+         return self.name < rhs.name
+ 
+     def __str__(self):
+-        switch =  f"{self.name}: " \
++        switch =  f"{self.name}{self.sep} " \
+                   f"xprts {self.info['num_xprts']}, " \
+                   f"active {self.info['num_active']}, " \
+                   f"queue {self.info['queue_len']}"
+@@ -137,6 +138,39 @@ class XprtSwitch:
+             print(switch)
+ 
+ 
++class RpcClient:
 +    def __init__(self, path):
 +        self.path = path
 +        self.name = path.stem
-+        self.info = read_info_file(path / "xprt_switch_info")
-+        self.xprts = sorted([ Xprt(p) for p in self.path.iterdir() if p.is_dir() ])
++        self.switch = XprtSwitch(path / (path / "switch").readlink(), sep=",")
 +
 +    def __lt__(self, rhs):
 +        return self.name < rhs.name
 +
 +    def __str__(self):
-+        switch =  f"{self.name}: " \
-+                  f"xprts {self.info['num_xprts']}, " \
-+                  f"active {self.info['num_active']}, " \
-+                  f"queue {self.info['queue_len']}"
-+        xprts = [ f"	{x.small_str()}" for x in self.xprts ]
-+        return "\n".join([ switch ] + xprts)
++        return f"{self.name}: {self.switch}"
 +
 +    def add_command(subparser):
-+        parser = subparser.add_parser("switch", help="Commands for xprt switches")
-+        parser.set_defaults(func=XprtSwitch.show, switch=None)
++        parser = subparser.add_parser("client", help="Commands for rpc clients")
++        parser.set_defaults(func=RpcClient.show, client=None)
 +        subparser = parser.add_subparsers()
 +
-+        show = subparser.add_parser("show", help="Show xprt switches")
-+        show.add_argument("switch", metavar="SWITCH", nargs='?',
-+                          help="Name of a specific switch to show")
-+        show.set_defaults(func=XprtSwitch.show)
++        show = subparser.add_parser("show", help="Show rpc clients")
++        show.add_argument("client", metavar="CLIENT", nargs='?',
++                          help="Name of a specific rpc client to show")
++        parser.set_defaults(func=RpcClient.show)
 +
 +    def get_by_name(name):
-+        xprt_switches = sunrpc / "xprt-switches"
++        rpc_clients = sunrpc / "rpc-clients"
 +        if name:
-+            return [ XprtSwitch(xprt_switches / name) ]
-+        return [ XprtSwitch(f) for f in sorted(xprt_switches.iterdir()) ]
++            return [ RpcClient(rpc_clients / name) ]
++        return [ RpcClient(f) for f in sorted(rpc_clients.iterdir()) ]
 +
 +    def show(args):
-+        for switch in XprtSwitch.get_by_name(args.switch):
-+            print(switch)
++        for client in RpcClient.get_by_name(args.client):
++            print(client)
 +
 +
  parser = argparse.ArgumentParser()
  
  def show_small_help(args):
-@@ -21,5 +92,12 @@ def show_small_help(args):
-     print("sunrpc dir:", sunrpc)
+@@ -145,6 +179,7 @@ def show_small_help(args):
  parser.set_defaults(func=show_small_help)
  
-+subparser = parser.add_subparsers(title="commands")
-+XprtSwitch.add_command(subparser)
-+
- args = parser.parse_args()
--args.func(args)
-+try:
-+    args.func(args)
-+except Exception as e:
-+    print(str(e))
-+    sys.exit(1)
+ subparser = parser.add_subparsers(title="commands")
++RpcClient.add_command(subparser)
+ XprtSwitch.add_command(subparser)
+ Xprt.add_command(subparser)
+ 
 -- 
 2.35.1
 
