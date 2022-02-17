@@ -2,41 +2,47 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92F02C433FE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32478C4332F
 	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 22:39:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238033AbiBQWjs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Feb 2022 17:39:48 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:36302 "EHLO
+        id S1343924AbiBQWjr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Feb 2022 17:39:47 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:36296 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343922AbiBQWjr (ORCPT
+        with ESMTP id S238033AbiBQWjr (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 17:39:47 -0500
-Received: from sin.source.kernel.org (sin.source.kernel.org [145.40.73.55])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C7651169223
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E46C169222
         for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 14:39:32 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 231FCCE30B7
+        by dfw.source.kernel.org (Postfix) with ESMTPS id DED38617AD
         for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:31 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5C9DCC340E8
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:29 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8460FC340EC
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645137569;
-        bh=tluS2rb1XiGRzaXLn7227m0+fFMcuHkbuh+VTqqGE68=;
-        h=From:To:Subject:Date:From;
-        b=vOCTu626yGkBwCTsiHEKEAS2pxq80NoaTQdFz5I59zk9f+PfARjET3Hcg9M9oPt/s
-         eMKEL86ZVyywKgBE0y3j3FTu7TUZF9pBdXlnuxps8D3HLua+8TR0KBFul9r+wG1Wtd
-         xkblOwFQWl3CX2ICdrewFgmvK+5LW0L+UmCsnH/GHBgffChJgpo/uN8uZB9nELDjo8
-         xZNGqYm8X6iDaO49Z/sma3h7fiAydUF6KS9WaImnjCN2wBBI7oB0KTmfbRfeRgUBkD
-         fPLeLgF/Nvxq0blNA8ZX5uNihvj9GncaWr3m/G63hBoPNUEyOyAZoZB0W9T0MVIAjr
-         c+TGUCPeRPaaQ==
+        s=k20201202; t=1645137571;
+        bh=/CoS4tD/rJneRXLrapypwu6bXV4NqO/k3+cOr74Bynk=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=S77UclXYXe/XIWWBFi+k9/xXzI1lDWi03EuqNQB5zPfaJDAQlBilU3oAP9+BcPLA0
+         Xfa54X/zyq/uz88Wbif7/MLZkcWS18RNH1WJDMrFeGCdRNou1Che0MtW7qGaJgDfJ0
+         rXsSl/eEEjFiYqgc8lTSUxasYcs6bUlR/o4T76i4nsXAz+T9ejH2I/Vvmd1Hws34pF
+         TROSX8yHNSDN5+Oe9GuFn5Fr4au/WCnSCEc+dW3ELaI5v51mE71SahwfVJlV3Uyxd/
+         5bOoHYC+Bzjnqwm+92qDH/NpYEagDhT0wLvCqgETtei1zuD0JOWPgETUJt2ATYkI/G
+         DJ6QdtAh79qBw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v4 0/5] Readdir improvements
-Date:   Thu, 17 Feb 2022 17:33:18 -0500
-Message-Id: <20220217223323.696173-1-trondmy@kernel.org>
+Subject: [PATCH v4 5/5] NFS: Don't ask for readdirplus if files are being written to
+Date:   Thu, 17 Feb 2022 17:33:23 -0500
+Message-Id: <20220217223323.696173-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220217223323.696173-5-trondmy@kernel.org>
+References: <20220217223323.696173-1-trondmy@kernel.org>
+ <20220217223323.696173-2-trondmy@kernel.org>
+ <20220217223323.696173-3-trondmy@kernel.org>
+ <20220217223323.696173-4-trondmy@kernel.org>
+ <20220217223323.696173-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -45,34 +51,60 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The current NFS readdir code will always try to maximise the amount of
-readahead it performs on the assumption that we can cache anything that
-isn't immediately read by the process.
-There are several cases where this assumption breaks down, including
-when the 'ls -l' heuristic kicks in to try to force use of readdirplus
-as a batch replacement for lookup/getattr.
+If a file is being written to, then readdirplus isn't going to help with
+retrieving attributes, since we will have to flush out writes anyway in
+order to sync the mtime/ctime.
 
---
-v2: Remove reset of dtsize when NFS_INO_FORCE_READDIR is set
-v3: Avoid excessive window shrinking in uncached_readdir case
-v4: Track 'ls -l' cache hit/miss statistics
-    Improved algorithm for falling back to uncached readdir
-    Skip readdirplus when files are being written to
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/inode.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-Trond Myklebust (5):
-  NFS: Adjust the amount of readahead performed by NFS readdir
-  NFS: Simplify nfs_readdir_xdr_to_array()
-  NFS: Improve algorithm for falling back to uncached readdir
-  NFS: Improve heuristic for readdirplus
-  NFS: Don't ask for readdirplus if files are being written to
-
- fs/nfs/dir.c           | 210 ++++++++++++++++++++++++++---------------
- fs/nfs/inode.c         |  17 ++--
- fs/nfs/internal.h      |   4 +-
- fs/nfs/nfstrace.h      |   1 -
- include/linux/nfs_fs.h |   7 +-
- 5 files changed, 153 insertions(+), 86 deletions(-)
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1bef81f5373a..00500c369c5f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -837,6 +837,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	int err = 0;
+ 	bool force_sync = query_flags & AT_STATX_FORCE_SYNC;
+ 	bool do_update = false;
++	bool record_cache = !nfs_have_writebacks(inode);
+ 
+ 	trace_nfs_getattr_enter(inode);
+ 
+@@ -845,7 +846,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 			STATX_INO | STATX_SIZE | STATX_BLOCKS;
+ 
+ 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
+-		nfs_readdirplus_parent_cache_hit(path->dentry);
++		if (record_cache)
++			nfs_readdirplus_parent_cache_hit(path->dentry);
+ 		goto out_no_revalidate;
+ 	}
+ 
+@@ -894,17 +896,18 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	if (request_mask & STATX_BLOCKS)
+ 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+ 
+-	if (do_update) {
++	if (record_cache) {
+ 		/* Update the attribute cache */
+-		if (!(server->flags & NFS_MOUNT_NOAC))
++		if (do_update && !(server->flags & NFS_MOUNT_NOAC))
+ 			nfs_readdirplus_parent_cache_miss(path->dentry);
+ 		else
+ 			nfs_readdirplus_parent_cache_hit(path->dentry);
++	}
++	if (do_update) {
+ 		err = __nfs_revalidate_inode(server, inode);
+ 		if (err)
+ 			goto out;
+-	} else
+-		nfs_readdirplus_parent_cache_hit(path->dentry);
++	}
+ out_no_revalidate:
+ 	/* Only return attributes that were revalidated. */
+ 	stat->result_mask = nfs_get_valid_attrmask(inode) | request_mask;
 -- 
 2.35.1
 
