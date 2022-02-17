@@ -2,47 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 32478C4332F
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 22:39:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C454BC43217
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 22:39:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343924AbiBQWjr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Feb 2022 17:39:47 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:36296 "EHLO
+        id S1343925AbiBQWjt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Feb 2022 17:39:49 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:36316 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238033AbiBQWjr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 17:39:47 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E46C169222
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 14:39:32 -0800 (PST)
+        with ESMTP id S1343922AbiBQWjs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 17:39:48 -0500
+Received: from sin.source.kernel.org (sin.source.kernel.org [145.40.73.55])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9077E811B9
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 14:39:33 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DED38617AD
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:31 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8460FC340EC
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:31 +0000 (UTC)
+        by sin.source.kernel.org (Postfix) with ESMTPS id 05C24CE303F
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:32 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3C861C340EB
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645137571;
-        bh=/CoS4tD/rJneRXLrapypwu6bXV4NqO/k3+cOr74Bynk=;
+        s=k20201202; t=1645137570;
+        bh=OEaWlQura1Zo3jLczETAEUmVQFXQqWShYTiOvBTsLUA=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=S77UclXYXe/XIWWBFi+k9/xXzI1lDWi03EuqNQB5zPfaJDAQlBilU3oAP9+BcPLA0
-         Xfa54X/zyq/uz88Wbif7/MLZkcWS18RNH1WJDMrFeGCdRNou1Che0MtW7qGaJgDfJ0
-         rXsSl/eEEjFiYqgc8lTSUxasYcs6bUlR/o4T76i4nsXAz+T9ejH2I/Vvmd1Hws34pF
-         TROSX8yHNSDN5+Oe9GuFn5Fr4au/WCnSCEc+dW3ELaI5v51mE71SahwfVJlV3Uyxd/
-         5bOoHYC+Bzjnqwm+92qDH/NpYEagDhT0wLvCqgETtei1zuD0JOWPgETUJt2ATYkI/G
-         DJ6QdtAh79qBw==
+        b=OveIbU+lqrqwC3Yg7RbJlwNTAJkvNrIxH+nQGzS4ycxnUFQ90kC1qnCb9E75Aj5An
+         t/rjQNxHXBc0Dwcdc103arijzoK23J286Dd5K/OoB2JzBM9D4BaGuE5QWVgaGI6IpG
+         rvcyLJmw2Z6+OnU+GdohdV2LciYrQhkpy5UpH8zxTMIJZaMlo2z1NsfVaS8m8xKTJy
+         cnW3t/Uf+UWhSvdHEENpI/sjjdtCb/XCuhwiLN08JFdCojG0O28FTX32K3WayIvVHy
+         BpE6byUNo2qZSOWDRuynJ+kDyiHCpCikzFsrYOLO8yeeFl3kmubN9vOdACqE3KPsd+
+         IFBrZOgp9PTeQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v4 5/5] NFS: Don't ask for readdirplus if files are being written to
-Date:   Thu, 17 Feb 2022 17:33:23 -0500
-Message-Id: <20220217223323.696173-6-trondmy@kernel.org>
+Subject: [PATCH v4 2/5] NFS: Simplify nfs_readdir_xdr_to_array()
+Date:   Thu, 17 Feb 2022 17:33:20 -0500
+Message-Id: <20220217223323.696173-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220217223323.696173-5-trondmy@kernel.org>
+In-Reply-To: <20220217223323.696173-2-trondmy@kernel.org>
 References: <20220217223323.696173-1-trondmy@kernel.org>
  <20220217223323.696173-2-trondmy@kernel.org>
- <20220217223323.696173-3-trondmy@kernel.org>
- <20220217223323.696173-4-trondmy@kernel.org>
- <20220217223323.696173-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -51,60 +48,66 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If a file is being written to, then readdirplus isn't going to help with
-retrieving attributes, since we will have to flush out writes anyway in
-order to sync the mtime/ctime.
+Recent changes to readdir mean that we can cope with partially filled
+page cache entries, so we no longer need to rely on looping in
+nfs_readdir_xdr_to_array().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ fs/nfs/dir.c | 29 +++++++++++------------------
+ 1 file changed, 11 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1bef81f5373a..00500c369c5f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -837,6 +837,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 	int err = 0;
- 	bool force_sync = query_flags & AT_STATX_FORCE_SYNC;
- 	bool do_update = false;
-+	bool record_cache = !nfs_have_writebacks(inode);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index b0ee3a0e0f81..10421b5331ca 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -864,6 +864,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	size_t array_size;
+ 	struct inode *inode = file_inode(desc->file);
+ 	unsigned int dtsize = desc->dtsize;
++	unsigned int pglen;
+ 	int status = -ENOMEM;
  
- 	trace_nfs_getattr_enter(inode);
+ 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+@@ -881,28 +882,20 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	if (!pages)
+ 		goto out;
  
-@@ -845,7 +846,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 			STATX_INO | STATX_SIZE | STATX_BLOCKS;
+-	do {
+-		unsigned int pglen;
+-		status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
+-						pages, dtsize,
+-						verf_res);
+-		if (status < 0)
+-			break;
+-
+-		pglen = status;
+-		if (pglen == 0) {
+-			nfs_readdir_page_set_eof(page);
+-			break;
+-		}
+-
+-		verf_arg = verf_res;
++	status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie, pages,
++					dtsize, verf_res);
++	if (status < 0)
++		goto free_pages;
  
- 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
--		nfs_readdirplus_parent_cache_hit(path->dentry);
-+		if (record_cache)
-+			nfs_readdirplus_parent_cache_hit(path->dentry);
- 		goto out_no_revalidate;
- 	}
++	pglen = status;
++	if (pglen != 0)
+ 		status = nfs_readdir_page_filler(desc, entry, pages, pglen,
+ 						 arrays, narrays);
+-		desc->buffer_fills++;
+-	} while (!status && nfs_readdir_page_needs_filling(page) &&
+-		page_mapping(page));
++	else
++		nfs_readdir_page_set_eof(page);
++	desc->buffer_fills++;
  
-@@ -894,17 +896,18 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 	if (request_mask & STATX_BLOCKS)
- 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
- 
--	if (do_update) {
-+	if (record_cache) {
- 		/* Update the attribute cache */
--		if (!(server->flags & NFS_MOUNT_NOAC))
-+		if (do_update && !(server->flags & NFS_MOUNT_NOAC))
- 			nfs_readdirplus_parent_cache_miss(path->dentry);
- 		else
- 			nfs_readdirplus_parent_cache_hit(path->dentry);
-+	}
-+	if (do_update) {
- 		err = __nfs_revalidate_inode(server, inode);
- 		if (err)
- 			goto out;
--	} else
--		nfs_readdirplus_parent_cache_hit(path->dentry);
-+	}
- out_no_revalidate:
- 	/* Only return attributes that were revalidated. */
- 	stat->result_mask = nfs_get_valid_attrmask(inode) | request_mask;
++free_pages:
+ 	nfs_readdir_free_pages(pages, array_size);
+ out:
+ 	nfs_free_fattr(entry->fattr);
 -- 
 2.35.1
 
