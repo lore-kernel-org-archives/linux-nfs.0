@@ -2,75 +2,81 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 427B3C433FE
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 20:29:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB325C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 22:36:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343659AbiBQU35 convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Feb 2022 15:29:57 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:50126 "EHLO
+        id S241522AbiBQWhA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Feb 2022 17:37:00 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:53476 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343662AbiBQU34 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 15:29:56 -0500
-Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B816C332B
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 12:29:41 -0800 (PST)
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id EE12060765A1;
-        Thu, 17 Feb 2022 21:29:39 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id m1OHZKLnaUQ8; Thu, 17 Feb 2022 21:29:39 +0100 (CET)
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 8546F60765A3;
-        Thu, 17 Feb 2022 21:29:39 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id lh1UrxI_x2vk; Thu, 17 Feb 2022 21:29:39 +0100 (CET)
-Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 5231D60765A1;
-        Thu, 17 Feb 2022 21:29:39 +0100 (CET)
-Date:   Thu, 17 Feb 2022 21:29:39 +0100 (CET)
-From:   Richard Weinberger <richard@nod.at>
-To:     bfields <bfields@fieldses.org>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>, david <david@sigma-star.at>,
-        luis turcitu <luis.turcitu@appsbroker.com>,
-        david young <david.young@appsbroker.com>,
-        david oberhollenzer <david.oberhollenzer@sigma-star.at>,
-        trond myklebust <trond.myklebust@hammerspace.com>,
-        anna schumaker <anna.schumaker@netapp.com>,
-        chris chilvers <chris.chilvers@appsbroker.com>
-Message-ID: <2117074981.60920.1645129779132.JavaMail.zimbra@nod.at>
-In-Reply-To: <20220217201805.GC16497@fieldses.org>
-References: <20220217131531.2890-1-richard@nod.at> <20220217163332.GA16497@fieldses.org> <1525788049.60261.1645118835162.JavaMail.zimbra@nod.at> <20220217192726.GB16497@fieldses.org> <245552734.60874.1645128938141.JavaMail.zimbra@nod.at> <20220217201805.GC16497@fieldses.org>
-Subject: Re: [RFC PATCH 0/6] nfs-utils: Improving NFS re-exports
+        with ESMTP id S232023AbiBQWg6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 17:36:58 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA29116921D
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 14:36:43 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 098A7210DC;
+        Thu, 17 Feb 2022 22:36:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1645137402; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=D6xH+GLNf2HcdpkX5IOFaVo/1N9mwwBlgA9AlaXPurg=;
+        b=xO5v918/kvUGhN31oDstJ/BnDiF2GBHne9gxEutY/f+fIwb+xn4KtcpcUoO3iF0z36MRdl
+        RlNHc8sNulYFRoQklL38tD3F8WmIOpYm2nDP3eeRg3/AB0qzNnEVwAYIGD2RTAf5UXDYYk
+        S5vN2+t2GXffc+ZItlVKOnJBPstNd8g=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1645137402;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=D6xH+GLNf2HcdpkX5IOFaVo/1N9mwwBlgA9AlaXPurg=;
+        b=LYS4bf0BjTdPjWlbVGIaFs0K0IIt9kYM+XASrDJg2ezxKcf2xY5+BUyNSXyLE+DZMOfKXe
+        Byb5guMPrWMDJUBw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 31B7B13BE1;
+        Thu, 17 Feb 2022 22:36:40 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id +ROvN/jNDmJkEgAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 17 Feb 2022 22:36:40 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
-X-Originating-IP: [195.201.40.130]
-X-Mailer: Zimbra 8.8.12_GA_3807 (ZimbraWebClient - FF97 (Linux)/8.8.12_GA_3809)
-Thread-Topic: nfs-utils: Improving NFS re-exports
-Thread-Index: q1XuzeijnZKTn+gLIFFS3/xbKp+siQ==
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Chuck Lever" <chuck.lever@oracle.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/8] Clean up struct svc_serv_ops
+In-reply-to: <164511349417.1361.12607852846407534019.stgit@klimt.1015granger.net>
+References: <164511349417.1361.12607852846407534019.stgit@klimt.1015granger.net>
+Date:   Fri, 18 Feb 2022 09:36:37 +1100
+Message-id: <164513739771.10228.8490335253199789553@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
------ Ursprüngliche Mail -----
-> Von: "bfields" <bfields@fieldses.org>
->> The reason why setting the timeout to 0 is still needed is because
->> when mountd uncovers a subvolume but no client uses it a filehandle,
->> it is not locked and can be unmounted later.
->> Only when nfsd sees a matching filehandle the reference counter will
->> be increased and umounting is no longer possible.
+On Fri, 18 Feb 2022, Chuck Lever wrote:
+> Here is the completed series of patches to remove struct
+> svc_serv_ops, as suggested by Neil Brown. The original material was
+> introduced several years ago when we planned to convert the RPC
+> server to use work queues. That work was never completed.
 > 
-> I understand that.  But, then if a client comes in with a matching
-> filehandle, mountd should be able to look up the filesystem and trigger
-> a new mount, right?
+> Removal now is to eliminate some unnecessary virtual functions
+> and to pave the way for the possibility of dynamic nfsd thread
+> management.
+> 
+> The full set of patches has been provisionally applied to my
+> for-next branch to enable broad testing. Comments welcome.
 
-This does not match what I saw in my experiments. The handle machted only
-when the subvolume was mounted before.
-But I understand now your point, in theory it should work.
-I'll investigate into this.
+All looks good - lots of nice cleanups there.
 
 Thanks,
-//richard
+NeilBrown
