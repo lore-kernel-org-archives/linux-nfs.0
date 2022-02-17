@@ -2,33 +2,33 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7379CC433EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 13:22:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4CD7C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 13:23:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238854AbiBQNXL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Feb 2022 08:23:11 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:51030 "EHLO
+        id S240885AbiBQNXN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Feb 2022 08:23:13 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:51266 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230153AbiBQNXJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 08:23:09 -0500
+        with ESMTP id S240882AbiBQNXM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 08:23:12 -0500
 Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA54399ECE
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 05:22:52 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0190BAEF12
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 05:22:56 -0800 (PST)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id A7713605DEBB;
+        by lithops.sigma-star.at (Postfix) with ESMTP id 2125560F6B8E;
         Thu, 17 Feb 2022 14:16:41 +0100 (CET)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id epkojYBpEXMZ; Thu, 17 Feb 2022 14:16:41 +0100 (CET)
+        with ESMTP id 7AdH86T1LhPA; Thu, 17 Feb 2022 14:16:40 +0100 (CET)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 030CD60765A6;
-        Thu, 17 Feb 2022 14:16:41 +0100 (CET)
+        by lithops.sigma-star.at (Postfix) with ESMTP id 7AE3860D482C;
+        Thu, 17 Feb 2022 14:16:40 +0100 (CET)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id u5LINtTGGjJ2; Thu, 17 Feb 2022 14:16:40 +0100 (CET)
+        with ESMTP id sDOCmXgzzmK9; Thu, 17 Feb 2022 14:16:40 +0100 (CET)
 Received: from blindfold.corp.sigma-star.at (213-47-184-186.cable.dynamic.surfer.at [213.47.184.186])
-        by lithops.sigma-star.at (Postfix) with ESMTPSA id 5D644605DED6;
-        Thu, 17 Feb 2022 14:16:40 +0100 (CET)
+        by lithops.sigma-star.at (Postfix) with ESMTPSA id E43C9605DEBB;
+        Thu, 17 Feb 2022 14:16:39 +0100 (CET)
 From:   Richard Weinberger <richard@nod.at>
 To:     linux-nfs@vger.kernel.org
 Cc:     david@sigma-star.at, bfields@fieldses.org,
@@ -36,9 +36,9 @@ Cc:     david@sigma-star.at, bfields@fieldses.org,
         david.oberhollenzer@sigma-star.at, trond.myklebust@hammerspace.com,
         anna.schumaker@netapp.com, chris.chilvers@appsbroker.com,
         Richard Weinberger <richard@nod.at>
-Subject: [RFC PATCH 6/6] export: Garbage collect orphaned subvolumes upon start
-Date:   Thu, 17 Feb 2022 14:15:31 +0100
-Message-Id: <20220217131531.2890-7-richard@nod.at>
+Subject: [RFC PATCH 5/6] nfsd: statfs() every known subvolume upon start
+Date:   Thu, 17 Feb 2022 14:15:30 +0100
+Message-Id: <20220217131531.2890-6-richard@nod.at>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20220217131531.2890-1-richard@nod.at>
 References: <20220217131531.2890-1-richard@nod.at>
@@ -48,230 +48,61 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Make sure the database contains no orphaned subvolumes.
-We have to be careful.
+This will trigger an automount of a subvolume and existing
+file handles will continue to work.
 
 Signed-off-by: Richard Weinberger <richard@nod.at>
 ---
- support/export/cache.c  | 97 +++++++++++++++++++++++++++++++++++++++++
- support/export/export.h |  3 ++
- utils/exportd/exportd.c | 17 +++++++-
- utils/mountd/mountd.c   |  1 +
- utils/mountd/svc_run.c  | 18 ++++++++
- 5 files changed, 135 insertions(+), 1 deletion(-)
+ utils/nfsd/Makefile.am |  6 ++++++
+ utils/nfsd/nfsd.c      | 10 ++++++++++
+ 2 files changed, 16 insertions(+)
 
-diff --git a/support/export/cache.c b/support/export/cache.c
-index b5763b1d..94a0d79a 100644
---- a/support/export/cache.c
-+++ b/support/export/cache.c
-@@ -1181,6 +1181,103 @@ lookup_export(char *dom, char *path, struct addri=
-nfo *ai)
- 	return found;
- }
+diff --git a/utils/nfsd/Makefile.am b/utils/nfsd/Makefile.am
+index 8acc9a04..3acc8354 100644
+--- a/utils/nfsd/Makefile.am
++++ b/utils/nfsd/Makefile.am
+@@ -11,6 +11,12 @@ noinst_HEADERS =3D nfssvc.h
+ nfsd_SOURCES =3D nfsd.c nfssvc.c
+ nfsd_LDADD =3D ../../support/nfs/libnfs.la $(LIBTIRPC)
 =20
-+static char *get_export_path(char *path)
-+{
-+	int i;
-+	nfs_export *exp;
-+	nfs_export *found =3D NULL;
++if CONFIG_REEXPORT
++nfsd_LDADD +=3D ../../support/reexport/libreexport.a $(LIBSQLITE) $(LIBP=
+THREAD) -lrt
++endif
 +
-+	for (i =3D 0; i < MCL_MAXTYPES; i++) {
-+		for (exp =3D exportlist[i].p_head; exp; exp =3D exp->m_next) {
-+			if (!path_matches(exp, path))
-+				continue;
++nfsd_CPPFLAGS =3D -I$(top_srcdir)/support/reexport
 +
-+			if (!found) {
-+				found =3D exp;
-+				continue;
-+			}
-+
-+			/* Always prefer non-V4ROOT exports */
-+			if (exp->m_export.e_flags & NFSEXP_V4ROOT)
-+				continue;
-+			if (found->m_export.e_flags & NFSEXP_V4ROOT) {
-+				found =3D exp;
-+				continue;
-+			}
-+
-+			/* If one is a CROSSMOUNT, then prefer the longest path */
-+			if (((found->m_export.e_flags & NFSEXP_CROSSMOUNT) ||
-+			     (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)) &&
-+			    strlen(found->m_export.e_path) !=3D
-+			    strlen(exp->m_export.e_path)) {
-+
-+				if (strlen(exp->m_export.e_path) >
-+				    strlen(found->m_export.e_path)) {
-+					found =3D exp;
-+				}
-+				continue;
-+			}
-+		}
-+	}
-+
-+	if (found)
-+		return found->m_export.e_path;
-+	else
-+		return NULL;
-+}
-+
-+int export_subvol_orphaned(char *path)
-+{
-+	struct statfs st, stp;
-+	char *path_parent;
-+	int ret;
-+
-+	path_parent =3D get_export_path(path);
-+	if (!path_parent)
-+		/*
-+		 * Path has no parent in export list.
-+		 * Must be orphaned.
-+		 */
-+		return 1;
-+
-+	ret =3D statfs(path_parent, &stp);
-+	if (ret =3D=3D -1)
-+		/*
-+		 * Parent path is not statfs'able. Maybe not yet mounted?
-+		 * Can't be sure, don't treat path as orphaned.
-+		 */
-+		return 0;
-+
-+	if (strcmp(path_parent, path) =3D=3D 0)
-+		/*
-+		 * This is not a subvolume, it is listed in exports.
-+		 * No need to keep tack of it.
-+		 */
-+		return 1;
-+
-+	if (stp.f_type !=3D 0x6969)
-+		/*
-+		 * Parent is not a NFS mount. Maybe not yet mounted?
-+		 * Can't be sure either.
-+		 */
-+		return 0;
-+
-+	ret =3D statfs(path, &st);
-+	if (ret =3D=3D -1) {
-+		if (errno =3D=3D ENOENT)
-+			/*
-+			 * Parent is a NFS mount but path is gone.
-+			 * Must be orphaned.
-+			 */
-+			return 1;
-+	}
-+
-+	/*
-+	 * For all remaining cases we can't be sure either.
-+	 */
-+	return 0;
-+}
-+
- #ifdef HAVE_JUNCTION_SUPPORT
+ MAINTAINERCLEANFILES =3D Makefile.in
 =20
- #include <libxml/parser.h>
-diff --git a/support/export/export.h b/support/export/export.h
-index 8d5a0d30..45dd3da4 100644
---- a/support/export/export.h
-+++ b/support/export/export.h
-@@ -38,4 +38,7 @@ static inline bool is_ipaddr_client(char *dom)
- {
- 	return dom[0] =3D=3D '$';
- }
-+
-+int export_subvol_orphaned(char *path);
-+
- #endif /* EXPORT__H */
-diff --git a/utils/exportd/exportd.c b/utils/exportd/exportd.c
-index 4ddfed35..6dc51a32 100644
---- a/utils/exportd/exportd.c
-+++ b/utils/exportd/exportd.c
-@@ -208,6 +208,12 @@ read_exportd_conf(char *progname, char **argv)
- 		default_ttl =3D ttl;
- }
-=20
-+static void subvol_cb(char *path)
-+{
-+	if (export_subvol_orphaned(path))
-+		reexpdb_drop_subvolume_unlocked(path);
-+}
-+
- int
- main(int argc, char **argv)
- {
-@@ -297,7 +303,16 @@ main(int argc, char **argv)
- 	/* Open files now to avoid sharing descriptors among forked processes *=
-/
- 	cache_open();
- 	v4clients_init();
--	reexpdb_init();
-+	if (reexpdb_init() !=3D 0) {
-+		xlog(L_ERROR, "%s: Failed to init reexport database", __func__);
-+		exit(1);
-+	}
-+
-+	/*
-+	 * Load exports into memory and garbage collect orphaned subvolumes.
-+	 */
-+	auth_reload();
-+	reexpdb_uncover_subvolumes(subvol_cb);
-=20
- 	/* Process incoming upcalls */
- 	cache_process_loop();
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index bcf749fa..8555d746 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -32,6 +32,7 @@
- #include "nfsd_path.h"
- #include "nfslib.h"
- #include "export.h"
+ #######################################################################
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index b0741718..b5175f7a 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -29,6 +29,7 @@
+ #include "nfssvc.h"
+ #include "xlog.h"
+ #include "xcommon.h"
 +#include "reexport.h"
 =20
- extern void my_svc_run(void);
+ #ifndef NFSD_NPROC
+ #define NFSD_NPROC 8
+@@ -347,6 +348,15 @@ main(int argc, char **argv)
+ 		exit(1);
+ 	}
 =20
-diff --git a/utils/mountd/svc_run.c b/utils/mountd/svc_run.c
-index 167b9757..9a891ff0 100644
---- a/utils/mountd/svc_run.c
-+++ b/utils/mountd/svc_run.c
-@@ -57,6 +57,7 @@
- #include <rpc/rpc_com.h>
- #endif
- #include "export.h"
-+#include "reexport.h"
-=20
- void my_svc_run(void);
-=20
-@@ -87,6 +88,12 @@ my_svc_getreqset (fd_set *readfds)
-=20
- #endif
-=20
-+static void subvol_cb(char *path)
-+{
-+	if (export_subvol_orphaned(path))
-+		reexpdb_drop_subvolume_unlocked(path);
-+}
-+
- /*
-  * The heart of the server.  A crib from libc for the most part...
-  */
-@@ -96,6 +103,17 @@ my_svc_run(void)
- 	fd_set	readfds;
- 	int	selret;
-=20
-+	if (reexpdb_init() !=3D 0) {
-+		xlog(L_ERROR, "%s: Failed to init reexport database", __func__);
-+		return;
++	/*
++	 * Make sure that uncovered NFS subvolumes are present such that
++	 * existing file handles continue working.
++	 */
++	if (reexpdb_init() =3D=3D 0) {
++		reexpdb_uncover_subvolumes(NULL);
++		reexpdb_destroy();
 +	}
 +
-+	/*
-+	 * Load exports into memory and garbage collect orphaned subvolumes.
-+	 */
-+	auth_reload();
-+	reexpdb_uncover_subvolumes(subvol_cb);
-+
- 	for (;;) {
+ 	/* make sure nfsdfs is mounted if it's available */
+ 	nfssvc_mount_nfsdfs(progname);
 =20
- 		readfds =3D svc_fdset;
 --=20
 2.31.1
 
