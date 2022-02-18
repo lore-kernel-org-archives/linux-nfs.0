@@ -2,167 +2,85 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4703DC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Feb 2022 23:16:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F0A5BC433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 12:16:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237384AbiBPXQy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Feb 2022 18:16:54 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:57510 "EHLO
+        id S240337AbiBQMRC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Feb 2022 07:17:02 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:33420 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229553AbiBPXQy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2022 18:16:54 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9FB5AB7C42
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Feb 2022 15:16:37 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id B5A8C21A95;
-        Wed, 16 Feb 2022 23:16:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1645053395; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Vy6oCsRrOORYyivDw7Jc8YHxdL9M1t5sDfWMcfSi81c=;
-        b=OJGNJe+2UEF/cqQJGnI+ug6ytpTj69P+nBTcrjdHMmBye3kpYTyIUyjBy44pHwNBVYRmWt
-        mQBbOyNbOASguA2JrOugoWlqWDHOfLUXMRKGCSnRcbitmH7cPIaMxVi+rzW+RdGIJ7aGb7
-        LOrx4m4JuYv/9V8DCtzerNomtePZA1k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1645053395;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Vy6oCsRrOORYyivDw7Jc8YHxdL9M1t5sDfWMcfSi81c=;
-        b=xYlSbDyUbLSH39oC8Lhhwca8QGI6sHz3QumbK1t6gHYudSZmCDojbdfwtQKGpPMTMz5S+K
-        QmVxJokkyanW/GAw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3C38213B6B;
-        Wed, 16 Feb 2022 23:16:33 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id qtM+OdGFDWInZwAAMHmgww
-        (envelope-from <neilb@suse.de>); Wed, 16 Feb 2022 23:16:33 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+        with ESMTP id S240339AbiBQMQ4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 07:16:56 -0500
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0A7C37E097
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 04:16:42 -0800 (PST)
+Received: from dggpemm500022.china.huawei.com (unknown [172.30.72.56])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Jzv1107j9zbkYx
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 20:15:33 +0800 (CST)
+Received: from dggpemm500017.china.huawei.com (7.185.36.178) by
+ dggpemm500022.china.huawei.com (7.185.36.162) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2308.21; Thu, 17 Feb 2022 20:16:40 +0800
+Received: from huawei.com (10.175.101.6) by dggpemm500017.china.huawei.com
+ (7.185.36.178) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2308.21; Thu, 17 Feb
+ 2022 20:16:39 +0800
+From:   Wenchao Hao <haowenchao@huawei.com>
+To:     <linux-nfs@vger.kernel.org>
+CC:     Zhiqiang Liu <liuzhiqiang26@huawei.com>, <linfeilong@huawei.com>,
+        "Wenchao Hao" <haowenchao@huawei.com>,
+        <yanglongkang@h-partners.com>
+Subject: [PATCH] idmapd: Fix error status when nfs-idmapd exits
+Date:   Thu, 17 Feb 2022 20:27:32 -0500
+Message-ID: <20220218012732.1549586-1-haowenchao@huawei.com>
+X-Mailer: git-send-email 2.32.0
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Benjamin Coddington" <bcodding@redhat.com>
-Cc:     "Chuck Lever III" <chuck.lever@oracle.com>,
-        "Steve Dickson" <SteveD@RedHat.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] nfsuuid: a tool to create and persist nfs4 client
- uniquifiers
-In-reply-to: <2965D098-7AEE-419D-BF8B-4D7AF4AB40FB@redhat.com>
-References: <cover.1644515977.git.bcodding@redhat.com>, =?utf-8?q?=3C9c04664?=
- =?utf-8?q?8bfd9c8260ec7bd37e0a93f7821e0842f=2E1644515977=2Egit=2Ebcodding?=
- =?utf-8?q?=40redhat=2Ecom=3E=2C?=
- <7642FA55-F3F2-4813-86E2-1B65185E6B36@oracle.com>,
- <3d2992df-7ef7-50ba-4f11-f4de588620d2@redhat.com>,
- <DDB59BD9-8C29-45C3-ABAF-B25EDDB63E09@oracle.com>,
- <D0908E76-C163-4DBF-A93C-665492EB9DB2@redhat.com>,
- <E2C56D5B-AC77-48D1-9AF6-268406648657@oracle.com>,
- <4657F9AE-3B9E-4992-9334-3FF1CF18EF31@redhat.com>,
- <C7533D80-25B3-4722-94A9-0440C48B8574@oracle.com>,
- <945849B4-BE30-434C-88E9-8E901AAFA638@redhat.com>,
- <06B01290-E375-455E-A6D7-419CA653A0D1@oracle.com>,
- <948D8123-E310-4A35-BF04-C030F20EA83C@redhat.com>,
- <164479707170.27779.15384523062754338136@noble.neil.brown.name>,
- <863AB69A-D5D6-4F22-950C-E5F468CD4552@redhat.com>,
- <42AAFEDD-F4EE-4A91-BD23-E08B1149EF1C@oracle.com>,
- <3AF29DC6-2EEB-4C3E-BD6C-BE31910921AE@redhat.com>,
- <9FC005FB-370E-4AFA-AD80-8599CBFCC1E0@oracle.com>,
- <2965D098-7AEE-419D-BF8B-4D7AF4AB40FB@redhat.com>
-Date:   Thu, 17 Feb 2022 10:16:30 +1100
-Message-id: <164505339057.10228.4638327664904213534@noble.neil.brown.name>
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.101.6]
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
+ dggpemm500017.china.huawei.com (7.185.36.178)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 17 Feb 2022, Benjamin Coddington wrote:
-> How can we figure out what we want to do as a community before doing
-> it all the ways?
+nfs-idmapd.service would report following error when stopped:
 
-The evidence suggests that we can't.  Maybe we shouldn't.
+Feb 17 07:32:05 fedora systemd[1]: Starting NFSv4 ID-name mapping service...
+Feb 17 07:32:05 fedora rpc.idmapd[1198]: Setting log level to 0
+Feb 17 07:32:05 fedora systemd[1]: Started NFSv4 ID-name mapping service.
+Feb 17 07:32:11 fedora rpc.idmapd[1198]: exiting on signal 15
+Feb 17 07:32:11 fedora systemd[1]: Stopping NFSv4 ID-name mapping service...
+Feb 17 07:32:11 fedora systemd[1]: nfs-idmapd.service: Main process exited, code=exited, status=1/FAILURE
+Feb 17 07:32:11 fedora systemd[1]: nfs-idmapd.service: Failed with result 'exit-code'.
+Feb 17 07:32:11 fedora systemd[1]: Stopped NFSv4 ID-name mapping service.
 
-Or maybe we can take a completely different approach.  As I like to say:
-"When in doubt, document."  (OK, I just made that up...)
+commit 93e8f092(idmapd: Add graceful exit and resource cleanup)
+redirected SIGTERM, so when executing "systemctl stop nfs-idmapd", the
+main() of idmapd would running to tail to return, while it returned 1
+which considered as error by systemd.
 
-I propose the following text to be added to nfs(5) or maybe put in a
-separate man page - nfs-container(5).
+So here just return 0 in main().
 
+Signed-off-by: Wenchao Hao <haowenchao@huawei.com>
+---
+ utils/idmapd/idmapd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-NFS IN A CONTAINER
-  When NFS is used to mount filesystems in a container, and specifically
-  in a separate network namespace, these mounts are treated as quite
-  separate from any mounts in a different container or not in a
-  container (i.e. in a different network namespace).
-
-  In the NFSv4.x protocol, each client must have a unique identifier.
-  This is used by the server to determine when a client has restarted,
-  so any state from a previous instance can be discarded.  So any two
-  concurrent clients that might access the same server MUST have
-  different identifiers, and any two consecutive instances of the same
-  client SHOULD have the same identifier.
-
-  Linux constructs the identifier (referred to as co_ownerid in the NFS
-  specifications) from various pieces of information, three of which can
-  be controlled by the sysadmin:
-
-  - the hostname.  This can be different in different containers if they
-    have different "UTS" namespaces.  If the container system ensures
-    each container sees a unique host name, then this is
-    sufficient for a correctly functioning NFS identifier.
-    The host name is copied when the first NFS filesystem is mounted in
-    a given network namespace.  Any subsequent change in the apparent
-    hostname will not change the NFSv4 identifier.
-
-  - the value of the nfs.nfs4_unique_id module parameter.  This is the
-    same for all containers on a given host so is not useful to
-    differentiate between containers.
-
-  - the value stored in /sys/fs/nfs/client/net/identifier.  This virtual
-    file is local to the network namespace that it is accessed in and so
-    can provided uniqueness between containers when the hostname is
-    uniform among containers.
-
-    This value is empty on namespace creation. though there is a pending
-    kernel patch which initialises it to a random value.  This would mean
-    that containers which currently rely simply on a unique hostname to
-    create unique NFS identifiers, will now *not* have a stable
-    identifier from one instance to the next.  This may be a regression,
-    so the patch should probably be reconsidered.
-
-    If the value is to be set, that should be done before the first
-    mount (much as the hostname is copied before the first mount).
-    If the container system has access to some sort of per-container
-    identity, then a command like
-       uuidgen --sha1 --namespace @url -N "nfs:$CONTAINER_ID" \
-                 > /sys/fs/nfs/client/net/identifier 
-
-    might be suitable.  If the containre system provides no stable name,
-    but does have stable storage, then something like
-
-      [ -s /etc/nfsv4-uuid ] || uuidgen > /etc/nfsv4-uuid && 
-          cat /etc/nfsv4-uuid > /sys/fs/nfs/client/net/identifier 
-
-    would suffice.
-
-    If a container has neither a stable name nor stable (local) storage,
-    then it is not possible to provide a stable identifer, so providing
-    a random one to ensure uniqueness would be best
-
-        uuidgen > /sys/fs/nfs/client/net/identifier
-
-
-Comments, revisions, etc most welcome.
-
-Thanks
-NeilBrown
-
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index e2c160e8..e79c124d 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -474,7 +474,7 @@ main(int argc, char **argv)
+ 		event_free(svrdirev);
+ 	event_base_free(evbase);
+ 
+-	return 1;
++	return 0;
+ }
+ 
+ static void
+-- 
+2.32.0
 
