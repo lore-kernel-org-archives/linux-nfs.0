@@ -2,362 +2,99 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48DB5C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Feb 2022 22:39:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 54CC0C433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Feb 2022 07:47:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343926AbiBQWju (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Feb 2022 17:39:50 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:36322 "EHLO
+        id S231868AbiBRHrO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 18 Feb 2022 02:47:14 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:60584 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343922AbiBQWju (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2022 17:39:50 -0500
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88FD1811B9
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 14:39:34 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S231867AbiBRHrN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Feb 2022 02:47:13 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3912C2B4
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 23:46:55 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id CD5B4CE30B8
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:32 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1A594C340F1
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2022 22:39:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645137571;
-        bh=BbcYAjEyo+JiQOEWtlHT5A2N2TSllu9LC6ANfoao19k=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=r54Zw0Z+TKicuqsfVj2SVU11ipPFM8BCnA/GosGg7Tm49JpSZ7RWFLHnaGTHlxOys
-         fL/4JMFX3GphV9tsmj78ZvMCIde4G/86ZPRF9djDgsg8ZOu0hP6pmoRCuyU7ptbFLi
-         4v5Sm/NlGAYVuVhO8B+M1T6D+oR6p8ponkk/YxhG9oKOpeKKylZDwbrtEZweV7ICvi
-         AjumKW7F2vbpmhMJIhWV51zICjZzgXP2zV8IRwIsB+EkvqRAwcV5YDp8e0DuwwQGc8
-         gKPM6rWK9jc5uEZ3xhyJc4ub0qHtvgDMmYfVAJfq76a3MhT8MyR9ttdJ9+oxIz70wW
-         7xCET/X2V4YwQ==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v4 4/5] NFS: Improve heuristic for readdirplus
-Date:   Thu, 17 Feb 2022 17:33:22 -0500
-Message-Id: <20220217223323.696173-5-trondmy@kernel.org>
-X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220217223323.696173-4-trondmy@kernel.org>
-References: <20220217223323.696173-1-trondmy@kernel.org>
- <20220217223323.696173-2-trondmy@kernel.org>
- <20220217223323.696173-3-trondmy@kernel.org>
- <20220217223323.696173-4-trondmy@kernel.org>
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 7B0811F383;
+        Fri, 18 Feb 2022 07:46:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1645170414; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=fHrt3M6sZNd60JUF8YLyHekFJeePGgLf3gYMiBzYWNM=;
+        b=dohbUWzxKhRDpb5lCJyzVIUbUM933CHZIDlfJBDsHEKN+PXvZcHfw9zjsmvJCnDH8IkNgA
+        +KBX889aSimJ1nzbFf32DBamRNRvk3anf/6QRcEd7UrRHRocEGxRsztjf78hUwcRUPgx0n
+        NazJqCFB09f/4QXoSa02Jic/zt2AMUQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1645170414;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=fHrt3M6sZNd60JUF8YLyHekFJeePGgLf3gYMiBzYWNM=;
+        b=4W8mEjtzJImqz2SobaktZ+Ev/fupML/l+BGBdRA5Pj+hAiwoeopqm+fKdjNR5EhWGSBMBg
+        uOIyz/s1rl95t6Cg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 1C8F013BD8;
+        Fri, 18 Feb 2022 07:46:52 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id wGmPMuxOD2KcOwAAMHmgww
+        (envelope-from <neilb@suse.de>); Fri, 18 Feb 2022 07:46:52 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Daire Byrne" <daire@dneg.com>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        "Patrick Goetz" <pgoetz@math.utexas.edu>,
+        "linux-nfs" <linux-nfs@vger.kernel.org>
+Subject: Re: parallel file create rates (+high latency)
+In-reply-to: <CAPt2mGOx0qNTWoY9vmyVBtZ3gxdbv5qQ-2qVbtqWW9FiZFRhEg@mail.gmail.com>
+References: <CAPt2mGOaRsKOiL_wuSK_D5oYYnn0R-pvVsZc5HYGdEbT2FngtQ@mail.gmail.com>,
+ <20220124193759.GA4975@fieldses.org>,
+ <adce2b72-ed5c-3056-313c-caea9bad4e15@math.utexas.edu>,
+ <20220125212055.GB17638@fieldses.org>,
+ <164315533676.5493.13243313269022942124@noble.neil.brown.name>,
+ <20220126025722.GD17638@fieldses.org>,
+ <CAPt2mGP2guMMf1C9VoQ0AvZ819jPuz0vDoEzJJhtL8q5DJ300A@mail.gmail.com>,
+ <CAPt2mGNXq==1KUskF3U6-CDeoX57=d7NW4Qn_esDqarf9bTBaw@mail.gmail.com>,
+ <20220211155949.GA4941@fieldses.org>,
+ <CAPt2mGOx0qNTWoY9vmyVBtZ3gxdbv5qQ-2qVbtqWW9FiZFRhEg@mail.gmail.com>
+Date:   Fri, 18 Feb 2022 18:46:49 +1100
+Message-id: <164517040900.10228.8956772146017892417@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Fri, 18 Feb 2022, Daire Byrne wrote:
+> On Fri, 11 Feb 2022 at 15:59, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > I think the path forward would be to update Neil's patch, add your
+> > performance data, send it to Al and linux-fsdevel, and see if we can get
+> > some idea what remains to be done to get this right.
+> 
+> If Neil or anyone else is able to do that work, I'm happy to test and
+> provide the numbers.
+> 
+> If I could update the patch myself, I would have happily contributed
+> but I lack the experience or knowledge. I'm great at identifying
+> problems, but not so hot at solving them :)
+> 
 
-The heuristic for readdirplus is designed to try to detect 'ls -l' and
-similar patterns. It does so by looking for cache hit/miss patterns in
-both the attribute cache and in the dcache of the files in a given
-directory, and then sets a flag for the readdirplus code to interpret.
+I've ported it to mainline without much trouble.  I started some simple
+testing (parallel create/delete of the same file) and hit a bug quite
+easily.  I fixed that (eventually) and then tried with more than 1 CPU,
+and hit another bug.  But then it was quitting time.  If I can get rid
+of all the easy to find bugs, I'll post it with a CC to you, and you can
+find some more for me!
 
-The problem with this approach is that a single attribute or dcache miss
-can cause the NFS code to force a refresh of the attributes for the
-entire set of files contained in the directory.
-
-To be able to make a more nuanced decision, let's sample the number of
-hits and misses in the set of open directory descriptors. That allows us
-to set thresholds at which we start preferring READDIRPLUS over regular
-READDIR, or at which we start to force a re-read of the remaining
-readdir cache using READDIRPLUS.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/dir.c           | 77 +++++++++++++++++++++++++-----------------
- fs/nfs/inode.c         |  4 +--
- fs/nfs/internal.h      |  4 +--
- fs/nfs/nfstrace.h      |  1 -
- include/linux/nfs_fs.h |  5 +--
- 5 files changed, 53 insertions(+), 38 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 43a559b34f4a..cd57df004789 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -87,8 +87,7 @@ alloc_nfs_open_dir_context(struct inode *dir)
- 			nfs_set_cache_invalid(dir,
- 					      NFS_INO_INVALID_DATA |
- 						      NFS_INO_REVAL_FORCED);
--		list_add(&ctx->list, &nfsi->open_files);
--		clear_bit(NFS_INO_FORCE_READDIR, &nfsi->flags);
-+		list_add_tail_rcu(&ctx->list, &nfsi->open_files);
- 		spin_unlock(&dir->i_lock);
- 		return ctx;
- 	}
-@@ -98,9 +97,9 @@ alloc_nfs_open_dir_context(struct inode *dir)
- static void put_nfs_open_dir_context(struct inode *dir, struct nfs_open_dir_context *ctx)
- {
- 	spin_lock(&dir->i_lock);
--	list_del(&ctx->list);
-+	list_del_rcu(&ctx->list);
- 	spin_unlock(&dir->i_lock);
--	kfree(ctx);
-+	kfree_rcu(ctx, rcu_head);
- }
- 
- /*
-@@ -567,7 +566,6 @@ static int nfs_readdir_xdr_filler(struct nfs_readdir_descriptor *desc,
- 		/* We requested READDIRPLUS, but the server doesn't grok it */
- 		if (error == -ENOTSUPP && desc->plus) {
- 			NFS_SERVER(inode)->caps &= ~NFS_CAP_READDIRPLUS;
--			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
- 			desc->plus = arg.plus = false;
- 			goto again;
- 		}
-@@ -617,51 +615,57 @@ int nfs_same_file(struct dentry *dentry, struct nfs_entry *entry)
- 	return 1;
- }
- 
--static
--bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx)
-+#define NFS_READDIR_CACHE_USAGE_THRESHOLD (8UL)
-+
-+static bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx,
-+				unsigned int cache_hits,
-+				unsigned int cache_misses)
- {
- 	if (!nfs_server_capable(dir, NFS_CAP_READDIRPLUS))
- 		return false;
--	if (test_and_clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(dir)->flags))
--		return true;
--	if (ctx->pos == 0)
-+	if (ctx->pos == 0 ||
-+	    cache_hits + cache_misses > NFS_READDIR_CACHE_USAGE_THRESHOLD)
- 		return true;
- 	return false;
- }
- 
- /*
-- * This function is called by the lookup and getattr code to request the
-+ * This function is called by the getattr code to request the
-  * use of readdirplus to accelerate any future lookups in the same
-  * directory.
-  */
--void nfs_advise_use_readdirplus(struct inode *dir)
-+void nfs_readdir_record_entry_cache_hit(struct inode *dir)
- {
- 	struct nfs_inode *nfsi = NFS_I(dir);
-+	struct nfs_open_dir_context *ctx;
- 
--	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS) &&
--	    !list_empty(&nfsi->open_files))
--		set_bit(NFS_INO_ADVISE_RDPLUS, &nfsi->flags);
-+	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS)) {
-+		list_for_each_entry_rcu (ctx, &nfsi->open_files, list)
-+			atomic_inc(&ctx->cache_hits);
-+	}
- }
- 
- /*
-  * This function is mainly for use by nfs_getattr().
-  *
-  * If this is an 'ls -l', we want to force use of readdirplus.
-- * Do this by checking if there is an active file descriptor
-- * and calling nfs_advise_use_readdirplus, then forcing a
-- * cache flush.
-  */
--void nfs_force_use_readdirplus(struct inode *dir)
-+void nfs_readdir_record_entry_cache_miss(struct inode *dir)
- {
- 	struct nfs_inode *nfsi = NFS_I(dir);
-+	struct nfs_open_dir_context *ctx;
- 
--	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS) &&
--	    !list_empty(&nfsi->open_files)) {
--		set_bit(NFS_INO_ADVISE_RDPLUS, &nfsi->flags);
--		set_bit(NFS_INO_FORCE_READDIR, &nfsi->flags);
-+	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS)) {
-+		list_for_each_entry_rcu (ctx, &nfsi->open_files, list)
-+			atomic_inc(&ctx->cache_misses);
- 	}
- }
- 
-+static void nfs_readdir_record_dcache_miss(struct inode *dir)
-+{
-+	nfs_readdir_record_entry_cache_miss(dir);
-+}
-+
- static
- void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
- 		unsigned long dir_verifier)
-@@ -1101,6 +1105,18 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
- 	return status;
- }
- 
-+#define NFS_READDIR_CACHE_MISS_THRESHOLD (16UL)
-+
-+static void nfs_readdir_handle_cache_misses(struct inode *inode,
-+					    struct nfs_readdir_descriptor *desc,
-+					    pgoff_t page_index,
-+					    unsigned int cache_misses)
-+{
-+	if (desc->ctx->pos != 0 &&
-+	    cache_misses > NFS_READDIR_CACHE_MISS_THRESHOLD)
-+		invalidate_mapping_pages(inode->i_mapping, page_index + 1, -1);
-+}
-+
- /* The file offset position represents the dirent entry number.  A
-    last cookie cache takes care of the common case of reading the
-    whole directory.
-@@ -1112,6 +1128,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_open_dir_context *dir_ctx = file->private_data;
- 	struct nfs_readdir_descriptor *desc;
-+	unsigned int cache_hits, cache_misses;
- 	pgoff_t page_index;
- 	int res;
- 
-@@ -1137,7 +1154,6 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 		goto out;
- 	desc->file = file;
- 	desc->ctx = ctx;
--	desc->plus = nfs_use_readdirplus(inode, ctx);
- 	desc->page_index_max = -1;
- 
- 	spin_lock(&file->f_lock);
-@@ -1150,6 +1166,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	desc->page_fill_misses = dir_ctx->page_fill_misses;
- 	nfs_set_dtsize(desc, dir_ctx->dtsize);
- 	memcpy(desc->verf, dir_ctx->verf, sizeof(desc->verf));
-+	cache_hits = atomic_xchg(&dir_ctx->cache_hits, 0);
-+	cache_misses = atomic_xchg(&dir_ctx->cache_misses, 0);
- 	spin_unlock(&file->f_lock);
- 
- 	if (desc->eof) {
-@@ -1157,9 +1175,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 		goto out_free;
- 	}
- 
--	if (test_and_clear_bit(NFS_INO_FORCE_READDIR, &nfsi->flags) &&
--	    list_is_singular(&nfsi->open_files))
--		invalidate_mapping_pages(inode->i_mapping, page_index + 1, -1);
-+	desc->plus = nfs_use_readdirplus(inode, ctx, cache_hits, cache_misses);
-+	nfs_readdir_handle_cache_misses(inode, desc, page_index, cache_misses);
- 
- 	do {
- 		res = readdir_search_pagecache(desc);
-@@ -1178,7 +1195,6 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 			break;
- 		}
- 		if (res == -ETOOSMALL && desc->plus) {
--			clear_bit(NFS_INO_ADVISE_RDPLUS, &nfsi->flags);
- 			nfs_zap_caches(inode);
- 			desc->page_index = 0;
- 			desc->plus = false;
-@@ -1602,7 +1618,7 @@ nfs_lookup_revalidate_dentry(struct inode *dir, struct dentry *dentry,
- 	nfs_set_verifier(dentry, dir_verifier);
- 
- 	/* set a readdirplus hint that we had a cache miss */
--	nfs_force_use_readdirplus(dir);
-+	nfs_readdir_record_dcache_miss(dir);
- 	ret = 1;
- out:
- 	nfs_free_fattr(fattr);
-@@ -1659,7 +1675,6 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
- 				nfs_mark_dir_for_revalidate(dir);
- 			goto out_bad;
- 		}
--		nfs_advise_use_readdirplus(dir);
- 		goto out_valid;
- 	}
- 
-@@ -1866,7 +1881,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 		goto out;
- 
- 	/* Notify readdir to use READDIRPLUS */
--	nfs_force_use_readdirplus(dir);
-+	nfs_readdir_record_dcache_miss(dir);
- 
- no_entry:
- 	res = d_splice_alias(inode, dentry);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index f9fc506ebb29..1bef81f5373a 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -789,7 +789,7 @@ static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
- 	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
- 		return;
- 	parent = dget_parent(dentry);
--	nfs_force_use_readdirplus(d_inode(parent));
-+	nfs_readdir_record_entry_cache_miss(d_inode(parent));
- 	dput(parent);
- }
- 
-@@ -800,7 +800,7 @@ static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
- 	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
- 		return;
- 	parent = dget_parent(dentry);
--	nfs_advise_use_readdirplus(d_inode(parent));
-+	nfs_readdir_record_entry_cache_hit(d_inode(parent));
- 	dput(parent);
- }
- 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 2de7c56a1fbe..46dc97b65661 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -366,8 +366,8 @@ extern struct nfs_client *nfs_init_client(struct nfs_client *clp,
- 			   const struct nfs_client_initdata *);
- 
- /* dir.c */
--extern void nfs_advise_use_readdirplus(struct inode *dir);
--extern void nfs_force_use_readdirplus(struct inode *dir);
-+extern void nfs_readdir_record_entry_cache_hit(struct inode *dir);
-+extern void nfs_readdir_record_entry_cache_miss(struct inode *dir);
- extern unsigned long nfs_access_cache_count(struct shrinker *shrink,
- 					    struct shrink_control *sc);
- extern unsigned long nfs_access_cache_scan(struct shrinker *shrink,
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 45a310b586ce..3672f6703ee7 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -36,7 +36,6 @@
- 
- #define nfs_show_nfsi_flags(v) \
- 	__print_flags(v, "|", \
--			{ BIT(NFS_INO_ADVISE_RDPLUS), "ADVISE_RDPLUS" }, \
- 			{ BIT(NFS_INO_STALE), "STALE" }, \
- 			{ BIT(NFS_INO_ACL_LRU_SET), "ACL_LRU_SET" }, \
- 			{ BIT(NFS_INO_INVALIDATING), "INVALIDATING" }, \
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 9e5fc29723c2..e21bd9452d27 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -101,6 +101,8 @@ struct nfs_open_context {
- 
- struct nfs_open_dir_context {
- 	struct list_head list;
-+	atomic_t cache_hits;
-+	atomic_t cache_misses;
- 	unsigned long attr_gencount;
- 	__be32	verf[NFS_DIR_VERIFIER_SIZE];
- 	__u64 dir_cookie;
-@@ -110,6 +112,7 @@ struct nfs_open_dir_context {
- 	unsigned int dtsize;
- 	signed char duped;
- 	bool eof;
-+	struct rcu_head rcu_head;
- };
- 
- /*
-@@ -274,13 +277,11 @@ struct nfs4_copy_state {
- /*
-  * Bit offsets in flags field
-  */
--#define NFS_INO_ADVISE_RDPLUS	(0)		/* advise readdirplus */
- #define NFS_INO_STALE		(1)		/* possible stale inode */
- #define NFS_INO_ACL_LRU_SET	(2)		/* Inode is on the LRU list */
- #define NFS_INO_INVALIDATING	(3)		/* inode is being invalidated */
- #define NFS_INO_PRESERVE_UNLINKED (4)		/* preserve file if removed while open */
- #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
--#define NFS_INO_FORCE_READDIR	(7)		/* force readdirplus */
- #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
- #define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
- #define NFS_INO_LAYOUTSTATS	(11)		/* layoutstats inflight */
--- 
-2.35.1
-
+Thanks,
+NeilBrown
