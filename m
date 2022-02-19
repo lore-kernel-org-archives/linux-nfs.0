@@ -2,77 +2,67 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5522C433F5
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Feb 2022 22:23:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 632C5C433EF
+	for <linux-nfs@archiver.kernel.org>; Sat, 19 Feb 2022 00:28:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238635AbiBRWXl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 18 Feb 2022 17:23:41 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:37312 "EHLO
+        id S240375AbiBSA3I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 18 Feb 2022 19:29:08 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:33844 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232331AbiBRWXk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Feb 2022 17:23:40 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF6B91B3727;
-        Fri, 18 Feb 2022 14:23:22 -0800 (PST)
+        with ESMTP id S240371AbiBSA3I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Feb 2022 19:29:08 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C712B7C4E;
+        Fri, 18 Feb 2022 16:28:51 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 83FCF61EAC;
-        Fri, 18 Feb 2022 22:23:22 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89B67C340E9;
-        Fri, 18 Feb 2022 22:23:21 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id DFBAC61F82;
+        Sat, 19 Feb 2022 00:28:50 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 51A2AC340ED;
+        Sat, 19 Feb 2022 00:28:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645223001;
-        bh=uk1s75mVlW0O44zX7T+aa8+8I7XuD1z0XbVB2oouvYc=;
-        h=From:To:Cc:Subject:Date:From;
-        b=XUUJa4dVoRtPTBuxAVdjTAbwNMl06sYOKkdF3LKNhgIxgFtzEK66RR73Jm7gKr/ZL
-         kBHICiQCMO5lbzvQrzXMV31vb7qQpbMfL4OFCwsd+QLmtykXUVBTBuvU8zIJowxtDb
-         Hhj9unpH9XcDcNBQB11wwchBiLdLhNGGUPtBXIHPSLQ0NSejwJLBp/PZT8W0sM/jyr
-         fntSvAv/weR/GHpAIo+MMQ/Q9OLsVM4SFrOKfsI9gOKopz4oe/jRyvbYvNWVsjsnbV
-         h85iSNDoEzjqsQ5xFUgkcF4oYPsSbcWTw6lacaJn8E9kkcOszvFwvLafRKqGCVFEUF
-         O8eSXWktmRiaw==
-From:   Anna Schumaker <anna@kernel.org>
-To:     torvalds@linux-foundation.org
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] Please Pull A Few More NFS Client Bugfixes for Linux v5.17-rc
-Date:   Fri, 18 Feb 2022 17:23:20 -0500
-Message-Id: <20220218222320.386771-1-anna@kernel.org>
-X-Mailer: git-send-email 2.35.1
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        s=k20201202; t=1645230530;
+        bh=gIMZLn4Q9/LKSvS4WzeGjDlGcZ4bQhXwN/jNdrIEJ54=;
+        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
+        b=CEIPLMRSaZsA1Vl1Rinu1V+odPdYcrXWKKDsAhSvmoo4U/NS0xIe+fpT7gevlHDxP
+         jK+MJhdhz8kPwINE/f2u+KzZUXQfgR/Pj1psROLe1MQxB7C1kjZRp0AOqwpvWTiyrA
+         V3LTCEJ348lrATqu7L26xawvBiuiK+PQdh0Mdv216DHPJMhtSiCahRD/9Wr16ltk5l
+         Q7vbSHHZJuXzd9norV3OEXdNNYcXQtxc+oIS2ggyUjdDanz1gBrA5f8ZhgNMZ6spXn
+         pPasr0dF2VYOdhP8fg3ZVGgNvff8PxBC3BCB8imtEazjqyTDoPUnV94or07+g2o/GR
+         i+VQqQPWSNi0g==
+Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 3C959E5D07D;
+        Sat, 19 Feb 2022 00:28:50 +0000 (UTC)
+Subject: Re: [GIT PULL] Please Pull A Few More NFS Client Bugfixes for Linux v5.17-rc
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20220218222320.386771-1-anna@kernel.org>
+References: <20220218222320.386771-1-anna@kernel.org>
+X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20220218222320.386771-1-anna@kernel.org>
+X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.17-3
+X-PR-Tracked-Commit-Id: d19e0183a88306acda07f4a01fedeeffe2a2a06b
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 4f12b742eb2b3a850ac8be7dc4ed52976fc6cb0b
+Message-Id: <164523053024.25426.2356686124435032276.pr-tracker-bot@kernel.org>
+Date:   Sat, 19 Feb 2022 00:28:50 +0000
+To:     Anna Schumaker <anna@kernel.org>
+Cc:     torvalds@linux-foundation.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Linus,
+The pull request you sent on Fri, 18 Feb 2022 17:23:20 -0500:
 
-The following changes since commit 754e0b0e35608ed5206d6a67a791563c631cec07:
+> git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.17-3
 
-  Linux 5.17-rc4 (2022-02-13 12:13:30 -0800)
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/4f12b742eb2b3a850ac8be7dc4ed52976fc6cb0b
 
-are available in the Git repository at:
+Thank you!
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.17-3
-
-for you to fetch changes up to d19e0183a88306acda07f4a01fedeeffe2a2a06b:
-
-  NFS: Do not report writeback errors in nfs_getattr() (2022-02-16 15:15:22 -0500)
-
-----------------------------------------------------------------
-NFS Client Bugfixes for Linux 5.17-rc5
-
-- Other Fixes:
-  - Fix unnecessary changeattr revalidations
-  - Fix resolving symlinks during directory lookups
-  - Don't report writeback errors in nfs_getattr()
-
-----------------------------------------------------------------
-Trond Myklebust (3):
-      NFS: Remove an incorrect revalidation in nfs4_update_changeattr_locked()
-      NFS: LOOKUP_DIRECTORY is also ok with symlinks
-      NFS: Do not report writeback errors in nfs_getattr()
-
- fs/nfs/dir.c      | 4 ++--
- fs/nfs/inode.c    | 9 +++------
- fs/nfs/nfs4proc.c | 3 +--
- 3 files changed, 6 insertions(+), 10 deletions(-)
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
