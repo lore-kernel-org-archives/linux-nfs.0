@@ -2,73 +2,78 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D86CC433F5
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Feb 2022 10:01:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 26755C433EF
+	for <linux-nfs@archiver.kernel.org>; Sun, 20 Feb 2022 22:34:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236719AbiBTKBD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 20 Feb 2022 05:01:03 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:42904 "EHLO
+        id S242815AbiBTWfM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 20 Feb 2022 17:35:12 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:36456 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231245AbiBTKAg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Feb 2022 05:00:36 -0500
-Received: from jabberwock.ucw.cz (jabberwock.ucw.cz [46.255.230.98])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 983BC546B5;
-        Sun, 20 Feb 2022 02:00:11 -0800 (PST)
-Received: by jabberwock.ucw.cz (Postfix, from userid 1017)
-        id 57F381C0B7D; Sun, 20 Feb 2022 11:00:10 +0100 (CET)
-Date:   Sun, 20 Feb 2022 11:00:09 +0100
-From:   Pavel Machek <pavel@denx.de>
-To:     Sasha Levin <sashal@kernel.org>
-Cc:     linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH AUTOSEL 4.19 09/11] NFSD: Fix offset type in I/O trace
- points
-Message-ID: <20220220100009.GA7321@amd>
-References: <20220215153104.581786-1-sashal@kernel.org>
- <20220215153104.581786-9-sashal@kernel.org>
+        with ESMTP id S242065AbiBTWfL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Feb 2022 17:35:11 -0500
+X-Greylist: delayed 489 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 20 Feb 2022 14:34:49 PST
+Received: from cc-smtpout2.netcologne.de (cc-smtpout2.netcologne.de [IPv6:2001:4dd0:100:1062:25:2:0:2])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 11B454C40F
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Feb 2022 14:34:48 -0800 (PST)
+Received: from cc-smtpin3.netcologne.de (cc-smtpin3.netcologne.de [89.1.8.203])
+        by cc-smtpout2.netcologne.de (Postfix) with ESMTP id EE8FA125B5;
+        Sun, 20 Feb 2022 23:26:35 +0100 (CET)
+Received: from nas2.garloff.de (xdsl-89-0-244-240.nc.de [89.0.244.240])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by cc-smtpin3.netcologne.de (Postfix) with ESMTPSA id 77DD211DDF;
+        Sun, 20 Feb 2022 23:26:32 +0100 (CET)
+Received: from [192.168.155.16] (unknown [192.168.155.10])
+        by nas2.garloff.de (Postfix) with ESMTPSA id 18CB9B3B0027;
+        Sun, 20 Feb 2022 23:26:24 +0100 (CET)
+Message-ID: <50bd4b4d-3730-4048-fcce-6c79dfe70acf@garloff.de>
+Date:   Sun, 20 Feb 2022 23:26:30 +0100
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="YiEDa0DAkWCtVeE4"
-Content-Disposition: inline
-In-Reply-To: <20220215153104.581786-9-sashal@kernel.org>
-User-Agent: Mutt/1.5.23 (2014-03-12)
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.5.0
+Content-Language: en-US
+To:     Olga Kornievskaia <kolga@netapp.com>
+From:   Kurt Garloff <kurt@garloff.de>
+Subject: 6f283634 / 1976b2b3 breaks NFS (QNAP/Linux kNFSD)
+Cc:     linux-nfs@vger.kernel.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-NetCologne-Spam: L
+X-Rspamd-Queue-Id: 77DD211DDF
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Olga,
 
---YiEDa0DAkWCtVeE4
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+your upstream commit 1976b2b3, applied to 5.15.24 as 6f283634 breaks NFS
+for me.
 
-Hi!
+This is while mounting many NFS filesystems from two NFS servers, one
+Qnap (nfs v4.1) and one linux 5.15.16 knfsd (nfs v4.2).
 
-> [ Upstream commit 6a4d333d540041d244b2fca29b8417bfde20af81 ]
->=20
-> NFSv3 and NFSv4 use u64 offset values on the wire. Record these values
-> verbatim without the implicit type case to loff_t.
+The NFS mounts just would not succeed. This appears to happen to all
+Qnap mounts and one of the mounts from the linux knfsd.
 
-AFAICT this is already in 4.19.X-stable queue, so it can be dropped
-=66rom AUTOSEL.
+I did some bisecting in 5.15.24 ... reverting 6f283634 and subsequent
+NFS/sunRPC patches from you and Xiyu, Anna did the trick to recover from
+this failure.
+To be precise: I reverted 4403233b 4b22aa42 5ca123c9 c5ae18fa be67be6a
+6f283634 2df6a47a 0c5d3bfb 3cb5b317 58967a23 bbf647ec and 38ae9387 in
+5.15.24. I started reenabling and 2df6aa647a is the last patch that
+still results a working NFS for me.
 
-Best regards,
-							Pavel
-						=09
---=20
-DENX Software Engineering GmbH,      Managing Director: Wolfgang Denk
-HRB 165235 Munich, Office: Kirchenstr.5, D-82194 Groebenzell, Germany
+Looking at the culprit patch, I could not immediately see what's wrong
+-- so I'll leave it to you. I guess the server does not return
+fs_locations in the way it's expected and thus the NFS mount hangs.
 
---YiEDa0DAkWCtVeE4
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
+I seem not to be the only one, see
+https://bbs.archlinux.org/viewtopic.php?pid=2022938
+https://bugs.archlinux.org/task/73860
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
+HTH,
 
-iEYEARECAAYFAmISESgACgkQMOfwapXb+vL3RgCfYl6Y0dPlg1mLsL4bxhh9kapu
-720AnRifTTpgTIgvZlVg6ld8dHogiv2I
-=5v1A
------END PGP SIGNATURE-----
-
---YiEDa0DAkWCtVeE4--
+-- 
+Kurt Garloff <kurt@garloff.de>
