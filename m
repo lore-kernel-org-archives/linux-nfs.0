@@ -2,44 +2,47 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64FA1C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 21 Feb 2022 16:16:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 098BDC433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Feb 2022 16:16:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1379983AbiBUQP1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Feb 2022 11:15:27 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:40058 "EHLO
+        id S1379985AbiBUQP3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Feb 2022 11:15:29 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:40040 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1379987AbiBUQPZ (ORCPT
+        with ESMTP id S1379984AbiBUQPZ (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2022 11:15:25 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F13427B07
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 01A57275E9
         for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 08:15:02 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 588BFB81257
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 95235612A5
         for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:01 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E78ACC340F3
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:14:59 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3ADAAC36AE5
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645460100;
-        bh=C9FY7JQKBoL8OHLdydu8B5k+jIdHYV7qILcMGC1n+cI=;
+        s=k20201202; t=1645460101;
+        bh=v3e2mXaKwiL5bwS3ThBP2MfOTQJD/LBWkBvnStlvDjg=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=ERRWCUUNXmbuGmudnBvDsGtoi+LFiFkdiH3Oi1Rk35jvZnn6YtQ4LpZB5d6grh4co
-         2/2yNrXRnhUWlzSxi0Lqdf8s4DrGjfsbyeI8dq9niXhDYR7EYwD7i7aeLo5Wr5+G3k
-         8l87KeP4kxyaTA1QfiIk1b1aG7h4zO2PSI9rLBJYbCLvfo09poGTIhv5YZotRVDKEF
-         NvY/prWa6YwKE/iNu+xx3mnIDsGTa72P46JQhB1XPtQDtTj/vyfZgVVL9xsAZ7MJUA
-         Pe1QjtcQFsaQ3LtI55F3SQ2WPFqhHsdDxDQ60IkEx6svgVUtPVdL3Pp1joe9oO0lvZ
-         mtpIrIaPK2orw==
+        b=FjvS7rfytglW6zj6dtpVdwHj7qq+r8JeXdCOrQ6qQ97S4pX/XyesIRAg6ReOjM9th
+         LJ49PSm/QXSp+E6UDTWUnCKiGTpZPte4eHhjYyur41rbd6WteDYAHOQ1dMpKzhtRWK
+         o8SazNXeFZPuAds/vyon2YEoqZ6H9qp0IgjkffDLkqFQdWLqWZCjA2rgduVEmnQSul
+         tEbumsA4H6E/xPGO9YfopV+IgoyHTGJt2DsHtJHl9nHKzC+ZdfGQ5ty0pGKdPgm18J
+         EFeyHdlwZp89YfzcuvPnYvifP0ObBf3mog60UWeS48IlTiScV021d3/6gVgYAHZVT/
+         etBcbo8XeVsOA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v6 02/13] NFS: Trace lookup revalidation failure
-Date:   Mon, 21 Feb 2022 11:08:40 -0500
-Message-Id: <20220221160851.15508-3-trondmy@kernel.org>
+Subject: [PATCH v6 05/13] NFS: Improve algorithm for falling back to uncached readdir
+Date:   Mon, 21 Feb 2022 11:08:43 -0500
+Message-Id: <20220221160851.15508-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220221160851.15508-2-trondmy@kernel.org>
+In-Reply-To: <20220221160851.15508-5-trondmy@kernel.org>
 References: <20220221160851.15508-1-trondmy@kernel.org>
  <20220221160851.15508-2-trondmy@kernel.org>
+ <20220221160851.15508-3-trondmy@kernel.org>
+ <20220221160851.15508-4-trondmy@kernel.org>
+ <20220221160851.15508-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -48,56 +51,161 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Enable tracing of lookup revalidation failures.
+When reading a very large directory, we want to try to keep the page
+cache up to date if doing so is inexpensive. Right now, we will try to
+refill the page cache if it is non-empty, irrespective of whether or not
+doing so is going to take a long time.
+
+Replace that algorithm with something that looks at how many times we've
+refilled the page cache without seeing a cache hit.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 17 +++++------------
- 1 file changed, 5 insertions(+), 12 deletions(-)
+ fs/nfs/dir.c           | 51 +++++++++++++++++++++---------------------
+ include/linux/nfs_fs.h |  1 +
+ 2 files changed, 27 insertions(+), 25 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 8b190c8e4a45..8e750ef34559 100644
+index a7f25fef890a..d0707e63ce45 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -1474,9 +1474,7 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
+@@ -71,19 +71,16 @@ const struct address_space_operations nfs_dir_aops = {
+ 
+ #define NFS_INIT_DTSIZE PAGE_SIZE
+ 
+-static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir)
++static struct nfs_open_dir_context *
++alloc_nfs_open_dir_context(struct inode *dir)
  {
- 	switch (error) {
- 	case 1:
--		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is valid\n",
--			__func__, dentry);
--		return 1;
-+		break;
- 	case 0:
- 		/*
- 		 * We can't d_drop the root of a disconnected tree:
-@@ -1485,13 +1483,10 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
- 		 * inodes on unmount and further oopses.
- 		 */
- 		if (inode && IS_ROOT(dentry))
--			return 1;
--		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is invalid\n",
--				__func__, dentry);
--		return 0;
-+			error = 1;
-+		break;
- 	}
--	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) lookup returned error %d\n",
--				__func__, dentry, error);
-+	trace_nfs_lookup_revalidate_exit(dir, dentry, 0, error);
- 	return error;
+ 	struct nfs_inode *nfsi = NFS_I(dir);
+ 	struct nfs_open_dir_context *ctx;
+-	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL_ACCOUNT);
++
++	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL_ACCOUNT);
+ 	if (ctx != NULL) {
+-		ctx->duped = 0;
+ 		ctx->attr_gencount = nfsi->attr_gencount;
+-		ctx->dir_cookie = 0;
+-		ctx->dup_cookie = 0;
+-		ctx->page_index = 0;
+ 		ctx->dtsize = NFS_INIT_DTSIZE;
+-		ctx->eof = false;
+ 		spin_lock(&dir->i_lock);
+ 		if (list_empty(&nfsi->open_files) &&
+ 		    (nfsi->cache_validity & NFS_INO_DATA_INVAL_DEFER))
+@@ -170,6 +167,7 @@ struct nfs_readdir_descriptor {
+ 	unsigned long	timestamp;
+ 	unsigned long	gencount;
+ 	unsigned long	attr_gencount;
++	unsigned int	page_fill_misses;
+ 	unsigned int	cache_entry_index;
+ 	unsigned int	buffer_fills;
+ 	unsigned int	dtsize;
+@@ -925,6 +923,18 @@ nfs_readdir_page_get_cached(struct nfs_readdir_descriptor *desc)
+ 					   desc->last_cookie);
  }
  
-@@ -1623,9 +1618,7 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
- 		goto out_bad;
++#define NFS_READDIR_PAGE_FILL_MISS_MAX 5
++/*
++ * If we've tried to refill the page cache more than 5 times, and
++ * still not found our cookie, then we should stop and fall back
++ * to uncached readdir
++ */
++static bool nfs_readdir_may_fill_pagecache(struct nfs_readdir_descriptor *desc)
++{
++	return desc->dir_cookie == 0 ||
++	       desc->page_fill_misses < NFS_READDIR_PAGE_FILL_MISS_MAX;
++}
++
+ /*
+  * Returns 0 if desc->dir_cookie was found on page desc->page_index
+  * and locks the page to prevent removal from the page cache.
+@@ -940,6 +950,8 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
+ 	if (!desc->page)
+ 		return -ENOMEM;
+ 	if (nfs_readdir_page_needs_filling(desc->page)) {
++		if (!nfs_readdir_may_fill_pagecache(desc))
++			return -EBADCOOKIE;
+ 		desc->page_index_max = desc->page_index;
+ 		res = nfs_readdir_xdr_to_array(desc, nfsi->cookieverf, verf,
+ 					       &desc->page, 1);
+@@ -958,36 +970,22 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
+ 		if (desc->page_index == 0)
+ 			memcpy(nfsi->cookieverf, verf,
+ 			       sizeof(nfsi->cookieverf));
++		desc->page_fill_misses++;
+ 	}
+ 	res = nfs_readdir_search_array(desc);
+-	if (res == 0)
++	if (res == 0) {
++		desc->page_fill_misses = 0;
+ 		return 0;
++	}
+ 	nfs_readdir_page_unlock_and_put_cached(desc);
+ 	return res;
+ }
  
- 	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
--	error = nfs_lookup_revalidate_dentry(dir, dentry, inode);
--	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
--	return error;
-+	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
- out_valid:
- 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
- out_bad:
+-static bool nfs_readdir_dont_search_cache(struct nfs_readdir_descriptor *desc)
+-{
+-	struct address_space *mapping = desc->file->f_mapping;
+-	struct inode *dir = file_inode(desc->file);
+-	unsigned int dtsize = NFS_SERVER(dir)->dtsize;
+-	loff_t size = i_size_read(dir);
+-
+-	/*
+-	 * Default to uncached readdir if the page cache is empty, and
+-	 * we're looking for a non-zero cookie in a large directory.
+-	 */
+-	return desc->dir_cookie != 0 && mapping->nrpages == 0 && size > dtsize;
+-}
+-
+ /* Search for desc->dir_cookie from the beginning of the page cache */
+ static int readdir_search_pagecache(struct nfs_readdir_descriptor *desc)
+ {
+ 	int res;
+ 
+-	if (nfs_readdir_dont_search_cache(desc))
+-		return -EBADCOOKIE;
+-
+ 	do {
+ 		if (desc->page_index == 0) {
+ 			desc->current_index = 0;
+@@ -1149,6 +1147,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	page_index = dir_ctx->page_index;
+ 	desc->attr_gencount = dir_ctx->attr_gencount;
+ 	desc->eof = dir_ctx->eof;
++	desc->page_fill_misses = dir_ctx->page_fill_misses;
+ 	nfs_set_dtsize(desc, dir_ctx->dtsize);
+ 	memcpy(desc->verf, dir_ctx->verf, sizeof(desc->verf));
+ 	spin_unlock(&file->f_lock);
+@@ -1204,6 +1203,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	dir_ctx->duped = desc->duped;
+ 	dir_ctx->attr_gencount = desc->attr_gencount;
+ 	dir_ctx->page_index = desc->page_index;
++	dir_ctx->page_fill_misses = desc->page_fill_misses;
+ 	dir_ctx->eof = desc->eof;
+ 	dir_ctx->dtsize = desc->dtsize;
+ 	memcpy(dir_ctx->verf, desc->verf, sizeof(dir_ctx->verf));
+@@ -1247,6 +1247,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+ 			dir_ctx->dir_cookie = offset;
+ 		else
+ 			dir_ctx->dir_cookie = 0;
++		dir_ctx->page_fill_misses = 0;
+ 		if (offset == 0)
+ 			memset(dir_ctx->verf, 0, sizeof(dir_ctx->verf));
+ 		dir_ctx->duped = 0;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index d27f7e788624..3165927048e4 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -106,6 +106,7 @@ struct nfs_open_dir_context {
+ 	__u64 dir_cookie;
+ 	__u64 dup_cookie;
+ 	pgoff_t page_index;
++	unsigned int page_fill_misses;
+ 	unsigned int dtsize;
+ 	signed char duped;
+ 	bool eof;
 -- 
 2.35.1
 
