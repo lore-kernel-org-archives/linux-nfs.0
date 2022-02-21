@@ -2,55 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3AE1CC433FE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2AB58C433EF
 	for <linux-nfs@archiver.kernel.org>; Mon, 21 Feb 2022 16:17:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1379987AbiBUQPc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Feb 2022 11:15:32 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:40112 "EHLO
+        id S1379977AbiBUQPb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Feb 2022 11:15:31 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:40078 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1379992AbiBUQP2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2022 11:15:28 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A12B423BD4
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 08:15:05 -0800 (PST)
+        with ESMTP id S1379988AbiBUQP1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2022 11:15:27 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A160D275E4
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 08:15:03 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3DA38612A3
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:05 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 78728C340EC
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:04 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 59F4DB81258
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:02 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9CCDC36AE2
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645460104;
-        bh=hLDoQkvyJmnOiq6gFw7//p6qSnKAkLj3H61khVngHzs=;
+        s=k20201202; t=1645460101;
+        bh=WUn9Vl/8MYcUOyEsRTWTJrdUM82S7jYrK+BZMYFlQOE=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=UPAj5+vaG8C1xe+nxJxCZdrLYUQZ3cXaizsYY5nT5e6Cwv3R5wq9eeMtl9hKL6LWl
-         144v9ZrRiTxMksHFJiu62gzsEVRTqKP9YtkPIR/gHtCi3aGYIsMBJ0eE7L5Peeod7S
-         pxDEZtsv9fTPB5D9br4TXxQpZWMjES+kgfuWH0jlkTri9nvh2dPyupDfghu+2fW063
-         mn25SyGauVVxuxCvW/oZ78JRihkxaAh5aGQ81mmtoHbmSebRjzYFg1ULZ8rA6VM5B3
-         DtLggy6gXtI29ig485qJ64956aLnX/4cmlmIH5sXP5fTwvzHWZvCzBvAmin7/aQmYk
-         XQ1KAlPPd/giA==
+        b=VQprGTr1F/lhq0RkUbiu/v005puxQASIzyC1fV+hROwVqwMeVyU2f/8qmBVBYfple
+         SujcfMAIiuBjp3m9MvxznjYNB0f7n2pro7wq+ttcPYyZI/ICf7sCWz/b4JUFxV+Mqx
+         piWBUcf9sIRy90qfFpsnRNOCTuLIC+oZ5dwNAzu/Ot3fP7uQQLzwYB43WMFCxb00sx
+         UoXd59PsveX4bas/WKVJfPohr8NzS47cpnzB6gg7sif7ylsY/lzrK4RZqJlYuNoqVu
+         pQhvKjnig2ojab2WOAFTXbh32yaYyyZcNtFK8rBAkCKkHNN32aNmF19lCQDWPpng9y
+         sujTDdOmXga4A==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v6 13/13] NFS: Trace effects of the readdirplus heuristic
-Date:   Mon, 21 Feb 2022 11:08:51 -0500
-Message-Id: <20220221160851.15508-14-trondmy@kernel.org>
+Subject: [PATCH v6 04/13] NFS: Simplify nfs_readdir_xdr_to_array()
+Date:   Mon, 21 Feb 2022 11:08:42 -0500
+Message-Id: <20220221160851.15508-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220221160851.15508-13-trondmy@kernel.org>
+In-Reply-To: <20220221160851.15508-4-trondmy@kernel.org>
 References: <20220221160851.15508-1-trondmy@kernel.org>
  <20220221160851.15508-2-trondmy@kernel.org>
  <20220221160851.15508-3-trondmy@kernel.org>
  <20220221160851.15508-4-trondmy@kernel.org>
- <20220221160851.15508-5-trondmy@kernel.org>
- <20220221160851.15508-6-trondmy@kernel.org>
- <20220221160851.15508-7-trondmy@kernel.org>
- <20220221160851.15508-8-trondmy@kernel.org>
- <20220221160851.15508-9-trondmy@kernel.org>
- <20220221160851.15508-10-trondmy@kernel.org>
- <20220221160851.15508-11-trondmy@kernel.org>
- <20220221160851.15508-12-trondmy@kernel.org>
- <20220221160851.15508-13-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -59,93 +50,66 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Enable tracking of when the readdirplus heuristic causes a page cache
-invalidation.
+Recent changes to readdir mean that we can cope with partially filled
+page cache entries, so we no longer need to rely on looping in
+nfs_readdir_xdr_to_array().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c      |  6 +++++-
- fs/nfs/nfstrace.h | 50 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 55 insertions(+), 1 deletion(-)
+ fs/nfs/dir.c | 29 +++++++++++------------------
+ 1 file changed, 11 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index bcbfe03e3835..9f48c75dbf4c 100644
+index c84a3bbda216..a7f25fef890a 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -1141,7 +1141,11 @@ static void nfs_readdir_handle_cache_misses(struct inode *inode,
- 	    cache_misses <= NFS_READDIR_CACHE_MISS_THRESHOLD ||
- 	    !nfs_readdir_may_fill_pagecache(desc))
- 		return;
--	invalidate_mapping_pages(inode->i_mapping, page_index + 1, -1);
-+	if (invalidate_mapping_pages(inode->i_mapping, page_index + 1, -1) == 0)
-+		return;
-+	trace_nfs_readdir_invalidate_cache_range(
-+		inode, (loff_t)(page_index + 1) << PAGE_SHIFT,
-+		MAX_LFS_FILESIZE);
- }
+@@ -864,6 +864,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	size_t array_size;
+ 	struct inode *inode = file_inode(desc->file);
+ 	unsigned int dtsize = desc->dtsize;
++	unsigned int pglen;
+ 	int status = -ENOMEM;
  
- /* The file offset position represents the dirent entry number.  A
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 7c1102b991d0..ec2645d20abf 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -273,6 +273,56 @@ DEFINE_NFS_UPDATE_SIZE_EVENT(wcc);
- DEFINE_NFS_UPDATE_SIZE_EVENT(update);
- DEFINE_NFS_UPDATE_SIZE_EVENT(grow);
+ 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+@@ -881,28 +882,20 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	if (!pages)
+ 		goto out;
  
-+DECLARE_EVENT_CLASS(nfs_inode_range_event,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			loff_t range_start,
-+			loff_t range_end
-+		),
-+
-+		TP_ARGS(inode, range_start, range_end),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u32, fhandle)
-+			__field(u64, fileid)
-+			__field(u64, version)
-+			__field(loff_t, range_start)
-+			__field(loff_t, range_end)
-+		),
-+
-+		TP_fast_assign(
-+			const struct nfs_inode *nfsi = NFS_I(inode);
-+
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
-+			__entry->fileid = nfsi->fileid;
-+			__entry->version = inode_peek_iversion_raw(inode);
-+			__entry->range_start = range_start;
-+			__entry->range_end = range_end;
-+		),
-+
-+		TP_printk(
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu "
-+			"range=[%lld, %lld]",
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->fileid,
-+			__entry->fhandle, __entry->version,
-+			__entry->range_start, __entry->range_end
-+		)
-+);
-+
-+#define DEFINE_NFS_INODE_RANGE_EVENT(name) \
-+	DEFINE_EVENT(nfs_inode_range_event, name, \
-+			TP_PROTO( \
-+				const struct inode *inode, \
-+				loff_t range_start, \
-+				loff_t range_end \
-+			), \
-+			TP_ARGS(inode, range_start, range_end))
-+
-+DEFINE_NFS_INODE_RANGE_EVENT(nfs_readdir_invalidate_cache_range);
-+
- DECLARE_EVENT_CLASS(nfs_readdir_event,
- 		TP_PROTO(
- 			const struct file *file,
+-	do {
+-		unsigned int pglen;
+-		status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
+-						pages, dtsize,
+-						verf_res);
+-		if (status < 0)
+-			break;
+-
+-		pglen = status;
+-		if (pglen == 0) {
+-			nfs_readdir_page_set_eof(page);
+-			break;
+-		}
+-
+-		verf_arg = verf_res;
++	status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie, pages,
++					dtsize, verf_res);
++	if (status < 0)
++		goto free_pages;
+ 
++	pglen = status;
++	if (pglen != 0)
+ 		status = nfs_readdir_page_filler(desc, entry, pages, pglen,
+ 						 arrays, narrays);
+-		desc->buffer_fills++;
+-	} while (!status && nfs_readdir_page_needs_filling(page) &&
+-		page_mapping(page));
++	else
++		nfs_readdir_page_set_eof(page);
++	desc->buffer_fills++;
+ 
++free_pages:
+ 	nfs_readdir_free_pages(pages, array_size);
+ out:
+ 	nfs_free_fattr(entry->fattr);
 -- 
 2.35.1
 
