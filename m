@@ -2,100 +2,144 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C40A2C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 21 Feb 2022 14:01:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA27BC433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Feb 2022 16:16:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239034AbiBUOAR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Feb 2022 09:00:17 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:59778 "EHLO
+        id S1379991AbiBUQP2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Feb 2022 11:15:28 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:40060 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1377182AbiBUOAQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2022 09:00:16 -0500
-Received: from mail-ej1-x630.google.com (mail-ej1-x630.google.com [IPv6:2a00:1450:4864:20::630])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4997D1A3AD
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 05:59:53 -0800 (PST)
-Received: by mail-ej1-x630.google.com with SMTP id p15so33439391ejc.7
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 05:59:53 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dneg.com; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=2fYMWLDQPPjNpwZ9BdqqV7Y+HVdKlVjbncwG7q0T3Wg=;
-        b=gLOuhnaJUPB4B5/WXaMPSHcmeDSHMS7COlKCOQ0Gr7tCY3HkY09smvFuAuB1yUxxSB
-         WHaCmDFLFgBs9NbOFfsuwzDkFW8yAiIbjA7T4z0CfhFfAGOi/Fjil64Bt9lrlYmd4u/x
-         J9anZWBoroc68td4bPfFR9gBFkOz0QDgotmNZh8RrW+boz0idxehFtUylQatZ+i+ClHP
-         BhaHUVst3uPVl7xBstdcFaDtSi8HWT+K2OF8WX5ebB7ckkUwwu6c31YlqCTPC43LgnWn
-         mMRnbnGR2mL8NVd3dYgcK7WzkCxdhMjKMQMsvkuDbK53c4mfbLHq8yl2Kdyhl/rpeUeD
-         l8rg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=2fYMWLDQPPjNpwZ9BdqqV7Y+HVdKlVjbncwG7q0T3Wg=;
-        b=jXgbEus2T2y6ZYK4agGtgw+9D/yOrWAHCNiC4jjdS9h1UW4yhN4kcSBcxjCWv4MEvQ
-         IQPG1/B6W4GKF2yGG7sCVnYf8odUZ31jZguQQGQT98gAFfIMMz6a+y/pxaWDJIop9kda
-         t6ijBrw4wY47lu0bB1ijfyJ/oh0BkwNRO9yAxWUBGz4GS9hTnGjMCmFg2UQGzd8PDaDG
-         45AzZV9muuS1KCUq1QjAgrbjbkZ8sGFGJiljEYmWIM4uUx5bXZDQqfZUXxlOd57PVeI3
-         pwu8Tfch0DZ+aZ16ynZCaov3wVTGrRxgqPaNRwPUsZlLtBaoImWdNQBEECc+OOs2mtAk
-         GmVQ==
-X-Gm-Message-State: AOAM532Zkf+DBn6nQVIa2KQ4rOjH3Lbbn8lRTilz6wtj6NmJXxOaOHc3
-        dDaUbca6coJ8JvIJOds8suH5s5pbx+ZqJjoddApb/w==
-X-Google-Smtp-Source: ABdhPJyfKGeRIbMZds5xpVtLHjB2ON2wRM47lNNOtCsPFR4UykiN/zPz+BWKyIYZYrXSCCI4wBXf6jyIFWwGzoNKCaw=
-X-Received: by 2002:a17:907:2a53:b0:6ce:e4fe:3f92 with SMTP id
- fe19-20020a1709072a5300b006cee4fe3f92mr15581449ejc.389.1645451991890; Mon, 21
- Feb 2022 05:59:51 -0800 (PST)
+        with ESMTP id S1379986AbiBUQPZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2022 11:15:25 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D8F5027B09
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 08:15:02 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7064D612A3
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:02 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 18203C340F1
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2022 16:15:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1645460102;
+        bh=KmywsLUD8y02FPy3fCK28yoWL5oPPleON/q3PmiX2QY=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=C0cw1GpTo2ZOa8TIvI9vGhgXLMXRtfKJRwQLT+pnbF+L0om6U3xcxWNk+Kc3kcIVx
+         H5EDXZDhRUNk8bNHob1MF3RHaWTz1KWvOdoEi70Vql12t2BxGF5NIeLp5faxe2SNwB
+         +JyWK17E6nVXxllWSsEcDZNnqGeTa5YCYwrkizj4h3H1J39Xj5JyTa1gFMy/o9d6G9
+         9ys6DWt02rA3B2IztL1vDrFmfAspa+u0Lm45U3Y0mRwjaxGAurh046hfXAtfG+EZRU
+         sqdMcptzf7yKFXBa8GFSp7sDUxuKEh3GNG0eOsERqzirb6po2gRxdUuNbFzTWcoeG3
+         nU4FTC4Kk2L4Q==
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH v6 07/13] NFS: Don't ask for readdirplus unless it can help nfs_getattr()
+Date:   Mon, 21 Feb 2022 11:08:45 -0500
+Message-Id: <20220221160851.15508-8-trondmy@kernel.org>
+X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220221160851.15508-7-trondmy@kernel.org>
+References: <20220221160851.15508-1-trondmy@kernel.org>
+ <20220221160851.15508-2-trondmy@kernel.org>
+ <20220221160851.15508-3-trondmy@kernel.org>
+ <20220221160851.15508-4-trondmy@kernel.org>
+ <20220221160851.15508-5-trondmy@kernel.org>
+ <20220221160851.15508-6-trondmy@kernel.org>
+ <20220221160851.15508-7-trondmy@kernel.org>
 MIME-Version: 1.0
-References: <CAPt2mGOaRsKOiL_wuSK_D5oYYnn0R-pvVsZc5HYGdEbT2FngtQ@mail.gmail.com>
- <20220124193759.GA4975@fieldses.org> <adce2b72-ed5c-3056-313c-caea9bad4e15@math.utexas.edu>
- <20220125212055.GB17638@fieldses.org> <164315533676.5493.13243313269022942124@noble.neil.brown.name>
- <20220126025722.GD17638@fieldses.org> <CAPt2mGP2guMMf1C9VoQ0AvZ819jPuz0vDoEzJJhtL8q5DJ300A@mail.gmail.com>
- <CAPt2mGNXq==1KUskF3U6-CDeoX57=d7NW4Qn_esDqarf9bTBaw@mail.gmail.com>
- <20220211155949.GA4941@fieldses.org> <CAPt2mGOx0qNTWoY9vmyVBtZ3gxdbv5qQ-2qVbtqWW9FiZFRhEg@mail.gmail.com>
- <164517040900.10228.8956772146017892417@noble.neil.brown.name>
-In-Reply-To: <164517040900.10228.8956772146017892417@noble.neil.brown.name>
-From:   Daire Byrne <daire@dneg.com>
-Date:   Mon, 21 Feb 2022 13:59:16 +0000
-Message-ID: <CAPt2mGMLQCEPqsYGeaMd3BPGRne4F4h-2-pzqm1a8nwfKqv1ug@mail.gmail.com>
-Subject: Re: parallel file create rates (+high latency)
-To:     NeilBrown <neilb@suse.de>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Patrick Goetz <pgoetz@math.utexas.edu>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 18 Feb 2022 at 07:46, NeilBrown <neilb@suse.de> wrote:
->
-> On Fri, 18 Feb 2022, Daire Byrne wrote:
-> > On Fri, 11 Feb 2022 at 15:59, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >
-> > > I think the path forward would be to update Neil's patch, add your
-> > > performance data, send it to Al and linux-fsdevel, and see if we can get
-> > > some idea what remains to be done to get this right.
-> >
-> > If Neil or anyone else is able to do that work, I'm happy to test and
-> > provide the numbers.
-> >
-> > If I could update the patch myself, I would have happily contributed
-> > but I lack the experience or knowledge. I'm great at identifying
-> > problems, but not so hot at solving them :)
-> >
->
-> I've ported it to mainline without much trouble.  I started some simple
-> testing (parallel create/delete of the same file) and hit a bug quite
-> easily.  I fixed that (eventually) and then tried with more than 1 CPU,
-> and hit another bug.  But then it was quitting time.  If I can get rid
-> of all the easy to find bugs, I'll post it with a CC to you, and you can
-> find some more for me!
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-That would be awesome! I have a real world production case for this
-and it's a pretty heavy workload. If that doesn't shake out any bugs,
-nothing will.
+If attribute caching is turned off, then use of readdirplus is not going
+to help stat() performance.
+Readdirplus also doesn't help if a file is being written to, since we
+will have to flush those writes in order to sync the mtime/ctime.
 
-The only caveat being that it will likely be restricted to NFSv3
-testing due to the concurrency limitations with NFSv4.1+ (from the
-other thread).
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/inode.c | 33 +++++++++++++++++----------------
+ 1 file changed, 17 insertions(+), 16 deletions(-)
 
-Daire
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1bef81f5373a..9d2af9887715 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -782,24 +782,26 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
+ }
+ EXPORT_SYMBOL_GPL(nfs_setattr_update_inode);
+ 
+-static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
++/*
++ * Don't request help from readdirplus if the file is being written to,
++ * or if attribute caching is turned off
++ */
++static bool nfs_getattr_readdirplus_enable(const struct inode *inode)
+ {
+-	struct dentry *parent;
++	return nfs_server_capable(inode, NFS_CAP_READDIRPLUS) &&
++	       !nfs_have_writebacks(inode) && NFS_MAXATTRTIMEO(inode) > 5 * HZ;
++}
+ 
+-	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
+-		return;
+-	parent = dget_parent(dentry);
++static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
++{
++	struct dentry *parent = dget_parent(dentry);
+ 	nfs_readdir_record_entry_cache_miss(d_inode(parent));
+ 	dput(parent);
+ }
+ 
+ static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
+ {
+-	struct dentry *parent;
+-
+-	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
+-		return;
+-	parent = dget_parent(dentry);
++	struct dentry *parent = dget_parent(dentry);
+ 	nfs_readdir_record_entry_cache_hit(d_inode(parent));
+ 	dput(parent);
+ }
+@@ -837,6 +839,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	int err = 0;
+ 	bool force_sync = query_flags & AT_STATX_FORCE_SYNC;
+ 	bool do_update = false;
++	bool readdirplus_enabled = nfs_getattr_readdirplus_enable(inode);
+ 
+ 	trace_nfs_getattr_enter(inode);
+ 
+@@ -845,7 +848,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 			STATX_INO | STATX_SIZE | STATX_BLOCKS;
+ 
+ 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
+-		nfs_readdirplus_parent_cache_hit(path->dentry);
++		if (readdirplus_enabled)
++			nfs_readdirplus_parent_cache_hit(path->dentry);
+ 		goto out_no_revalidate;
+ 	}
+ 
+@@ -895,15 +899,12 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+ 
+ 	if (do_update) {
+-		/* Update the attribute cache */
+-		if (!(server->flags & NFS_MOUNT_NOAC))
++		if (readdirplus_enabled)
+ 			nfs_readdirplus_parent_cache_miss(path->dentry);
+-		else
+-			nfs_readdirplus_parent_cache_hit(path->dentry);
+ 		err = __nfs_revalidate_inode(server, inode);
+ 		if (err)
+ 			goto out;
+-	} else
++	} else if (readdirplus_enabled)
+ 		nfs_readdirplus_parent_cache_hit(path->dentry);
+ out_no_revalidate:
+ 	/* Only return attributes that were revalidated. */
+-- 
+2.35.1
+
