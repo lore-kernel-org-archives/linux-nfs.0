@@ -2,231 +2,128 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6692C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Feb 2022 03:22:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 517DAC433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Feb 2022 12:51:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241479AbiBVDVW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Feb 2022 22:21:22 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:52014 "EHLO
+        id S232049AbiBVMuv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 22 Feb 2022 07:50:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52570 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241468AbiBVDVP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2022 22:21:15 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B5541193E3;
-        Mon, 21 Feb 2022 19:20:48 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 756FA210FF;
-        Tue, 22 Feb 2022 03:20:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1645500047; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        with ESMTP id S229524AbiBVMur (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Feb 2022 07:50:47 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 972C7128658
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Feb 2022 04:50:21 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1645534220;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=OVO5L5oh76QqfW3n1oDvBos2Yawv0E43OsrqMmz97u8=;
-        b=Cx4lOcCSZ4xZdlO/0dt8OvOiHYMvfFgE8dneyy4gx9SAbx/jm5IA5BhEiUt8c8MGgChw8S
-        lV0AvwUZ9O2angScciMT5S/cugRbdvDnpm+SMpxcXp1h2pdra88SQyfZY9lVnTX5Tr8Dg4
-        oB5Wo4vGigfE2skk7MCoyKNYLxDuocs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1645500047;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=OVO5L5oh76QqfW3n1oDvBos2Yawv0E43OsrqMmz97u8=;
-        b=SRC+OazRSNJPy370sTVlIzOM0il7qZEAvTNiLN6R//xLWhOCX5g8q6QwhVzoewi3VDD6wO
-        l60QJmE012FgycCQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        bh=lcH3MwD+lRdzbv4K6rHz0ZoUZwpQ0X3fc1GAKwVEwf4=;
+        b=JdvlZV9TGZWcg3VzfU/8uehqiKsPgHDVE9hiuvnTpTIczD3KHIkA0veb7AkiXTIqZSTZlN
+        BJoBq2cIERlWL+/4wqowOPtWQ7KnCigIERe1hUt35El+coPUpPMAbfRWii3KI9sNGvI4xZ
+        hFVQtAUczzknk1F9kUGqy21NW6ZJwk0=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-215-iMHBzjngOzmDyL-uOGzV2A-1; Tue, 22 Feb 2022 07:50:17 -0500
+X-MC-Unique: iMHBzjngOzmDyL-uOGzV2A-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0E23613BA7;
-        Tue, 22 Feb 2022 03:20:35 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id m6yZK4NWFGJLWwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 22 Feb 2022 03:20:35 +0000
-Subject: [PATCH 11/11] Remove congestion tracking framework.
-From:   NeilBrown <neilb@suse.de>
-To:     Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Wu Fengguang <fengguang.wu@intel.com>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        Paolo Valente <paolo.valente@linaro.org>,
-        Jens Axboe <axboe@kernel.dk>
-Cc:     linux-doc@vger.kernel.org, linux-mm@kvack.org,
-        linux-nilfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-kernel@vger.kernel.org
-Date:   Tue, 22 Feb 2022 14:17:17 +1100
-Message-ID: <164549983747.9187.6171768583526866601.stgit@noble.brown>
-In-Reply-To: <164549971112.9187.16871723439770288255.stgit@noble.brown>
-References: <164549971112.9187.16871723439770288255.stgit@noble.brown>
-User-Agent: StGit/0.23
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6823B1883522;
+        Tue, 22 Feb 2022 12:50:16 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 27B46838DE;
+        Tue, 22 Feb 2022 12:50:15 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Trond Myklebust" <trondmy@hammerspace.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v6 05/13] NFS: Improve algorithm for falling back to
+ uncached readdir
+Date:   Tue, 22 Feb 2022 07:50:15 -0500
+Message-ID: <17D70218-EECB-456B-9BCA-E7FC128A4864@redhat.com>
+In-Reply-To: <79a2c935bd5b9044c216c90ebfac3dc2e8e6b888.camel@hammerspace.com>
+References: <20220221160851.15508-1-trondmy@kernel.org>
+ <20220221160851.15508-2-trondmy@kernel.org>
+ <20220221160851.15508-3-trondmy@kernel.org>
+ <20220221160851.15508-4-trondmy@kernel.org>
+ <20220221160851.15508-5-trondmy@kernel.org>
+ <20220221160851.15508-6-trondmy@kernel.org>
+ <BCE9A6AB-EAA5-477E-BFE7-529AEC443E6A@redhat.com>
+ <e01f0373409aaf09dbaf59f3aa7deb421af68980.camel@hammerspace.com>
+ <5B222AF7-98A7-428B-81B2-1A1D3FFAD944@redhat.com>
+ <b097f18981260e9a2d75f654a5c4f229391bb8bb.camel@hammerspace.com>
+ <9DBD587E-C4CA-4674-B47D-92396EEEA082@redhat.com>
+ <79a2c935bd5b9044c216c90ebfac3dc2e8e6b888.camel@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This framework is no longer used - so discard it.
+On 21 Feb 2022, at 18:20, Trond Myklebust wrote:
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/backing-dev-defs.h |    8 -----
- include/linux/backing-dev.h      |    2 -
- include/trace/events/writeback.h |   28 -------------------
- mm/backing-dev.c                 |   57 --------------------------------------
- 4 files changed, 95 deletions(-)
+> On Mon, 2022-02-21 at 16:10 -0500, Benjamin Coddington wrote:
+>> On 21 Feb 2022, at 15:55, Trond Myklebust wrote:
+>>>
+>>> We will always need the ability to cut over to uncached readdir.
+>>
+>> Yes.
+>>
+>>> If the cookie is no longer returned by the server because one or more
+>>> files were deleted then we need to resolve the situation somehow (IOW:
+>>> the 'rm *' case). The new algorithm _does_ improve performance on those
+>>> situations, because it no longer requires us to read the entire
+>>> directory before switching over: we try 5 times, then fail over.
+>>
+>> Yes, using per-page validation doesn't remove the need for uncached
+>> readdir.  It does allow a reader to simply resume filling the cache where
+>> it left off.  There's no need to try 5 times and fail over.  And there's
+>> no need to make a trade-off and make the situation worse in certain
+>> scenarios.
+>>
+>> I thought I'd point that out and make an offer to re-submit it.  Any
+>> interest?
+>>
+>
+> As I recall, I had concerns about that approach. Can you explain again
+> how it will work?
 
-diff --git a/include/linux/backing-dev-defs.h b/include/linux/backing-dev-defs.h
-index 993c5628a726..e863c88df95f 100644
---- a/include/linux/backing-dev-defs.h
-+++ b/include/linux/backing-dev-defs.h
-@@ -207,14 +207,6 @@ struct backing_dev_info {
- #endif
- };
- 
--enum {
--	BLK_RW_ASYNC	= 0,
--	BLK_RW_SYNC	= 1,
--};
--
--void clear_bdi_congested(struct backing_dev_info *bdi, int sync);
--void set_bdi_congested(struct backing_dev_info *bdi, int sync);
--
- struct wb_lock_cookie {
- 	bool locked;
- 	unsigned long flags;
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 2d764566280c..87ce24d238f3 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -135,8 +135,6 @@ static inline bool writeback_in_progress(struct bdi_writeback *wb)
- 
- struct backing_dev_info *inode_to_bdi(struct inode *inode);
- 
--long congestion_wait(int sync, long timeout);
--
- static inline bool mapping_can_writeback(struct address_space *mapping)
- {
- 	return inode_to_bdi(mapping->host)->capabilities & BDI_CAP_WRITEBACK;
-diff --git a/include/trace/events/writeback.h b/include/trace/events/writeback.h
-index a345b1e12daf..86b2a82da546 100644
---- a/include/trace/events/writeback.h
-+++ b/include/trace/events/writeback.h
-@@ -735,34 +735,6 @@ TRACE_EVENT(writeback_sb_inodes_requeue,
- 	)
- );
- 
--DECLARE_EVENT_CLASS(writeback_congest_waited_template,
--
--	TP_PROTO(unsigned int usec_timeout, unsigned int usec_delayed),
--
--	TP_ARGS(usec_timeout, usec_delayed),
--
--	TP_STRUCT__entry(
--		__field(	unsigned int,	usec_timeout	)
--		__field(	unsigned int,	usec_delayed	)
--	),
--
--	TP_fast_assign(
--		__entry->usec_timeout	= usec_timeout;
--		__entry->usec_delayed	= usec_delayed;
--	),
--
--	TP_printk("usec_timeout=%u usec_delayed=%u",
--			__entry->usec_timeout,
--			__entry->usec_delayed)
--);
--
--DEFINE_EVENT(writeback_congest_waited_template, writeback_congestion_wait,
--
--	TP_PROTO(unsigned int usec_timeout, unsigned int usec_delayed),
--
--	TP_ARGS(usec_timeout, usec_delayed)
--);
--
- DECLARE_EVENT_CLASS(writeback_single_inode_template,
- 
- 	TP_PROTO(struct inode *inode,
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index eae96dfe0261..7176af65b103 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -1005,60 +1005,3 @@ const char *bdi_dev_name(struct backing_dev_info *bdi)
- 	return bdi->dev_name;
- }
- EXPORT_SYMBOL_GPL(bdi_dev_name);
--
--static wait_queue_head_t congestion_wqh[2] = {
--		__WAIT_QUEUE_HEAD_INITIALIZER(congestion_wqh[0]),
--		__WAIT_QUEUE_HEAD_INITIALIZER(congestion_wqh[1])
--	};
--static atomic_t nr_wb_congested[2];
--
--void clear_bdi_congested(struct backing_dev_info *bdi, int sync)
--{
--	wait_queue_head_t *wqh = &congestion_wqh[sync];
--	enum wb_congested_state bit;
--
--	bit = sync ? WB_sync_congested : WB_async_congested;
--	if (test_and_clear_bit(bit, &bdi->wb.congested))
--		atomic_dec(&nr_wb_congested[sync]);
--	smp_mb__after_atomic();
--	if (waitqueue_active(wqh))
--		wake_up(wqh);
--}
--EXPORT_SYMBOL(clear_bdi_congested);
--
--void set_bdi_congested(struct backing_dev_info *bdi, int sync)
--{
--	enum wb_congested_state bit;
--
--	bit = sync ? WB_sync_congested : WB_async_congested;
--	if (!test_and_set_bit(bit, &bdi->wb.congested))
--		atomic_inc(&nr_wb_congested[sync]);
--}
--EXPORT_SYMBOL(set_bdi_congested);
--
--/**
-- * congestion_wait - wait for a backing_dev to become uncongested
-- * @sync: SYNC or ASYNC IO
-- * @timeout: timeout in jiffies
-- *
-- * Waits for up to @timeout jiffies for a backing_dev (any backing_dev) to exit
-- * write congestion.  If no backing_devs are congested then just wait for the
-- * next write to be completed.
-- */
--long congestion_wait(int sync, long timeout)
--{
--	long ret;
--	unsigned long start = jiffies;
--	DEFINE_WAIT(wait);
--	wait_queue_head_t *wqh = &congestion_wqh[sync];
--
--	prepare_to_wait(wqh, &wait, TASK_UNINTERRUPTIBLE);
--	ret = io_schedule_timeout(timeout);
--	finish_wait(wqh, &wait);
--
--	trace_writeback_congestion_wait(jiffies_to_usecs(timeout),
--					jiffies_to_usecs(jiffies - start));
--
--	return ret;
--}
--EXPORT_SYMBOL(congestion_wait);
+Every page of readdir results has the directory's change attr stored on the
+page.  That, along with the page's index and the first cookie is enough
+information to determine if the page's data can be used by another process.
 
+Which means that when the pagecache is dropped, fillers don't have to restart
+filling the cache at page index 0, they can continue to fill at whatever
+index they were at previously.  If another process finds a page that doesn't
+match its page index, cookie, and the current directory's change attr, the
+page is dropped and refilled from that process' indexing.
+
+> A few of the concerns I have revolve around telldir()/seekdir(). If the
+> platform is 32-bit, then we cannot use cookies as the telldir() output,
+> and so our only option is to use offsets into the page cache (this is
+> why this patch carves out an exception if desc->dir_cookie == 0). How
+> would that work with you scheme?
+
+For 32-bit seekdir, pages are filled starting at index 0.  This is very
+unlikely to match other readers (unless they also do the _same_ seekdir).
+
+> Even in the 64-bit case where are able to use cookies for
+> telldir()/seekdir(), how do we determine an appropriate page index
+> after a seekdir()?
+
+We don't.  Instead we start filling at index 0.  Again, the pagecache will
+only be useful to other processes that have done the same llseek.
+
+This approach optimizes the pagecache for processes that are doing similar
+work, and has the added benefit of scaling well for large directory listings
+under memory pressure.  Also a number of classes of directory modifications
+(such as renames, or insertions/deletions at locations a reader has moved
+beyond) are no longer a reason to re-fill the pagecache from scratch.
+
+Ben
 
