@@ -2,234 +2,153 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B61CC433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B4B1C433F5
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 13:41:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240999AbiBWNlJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 08:41:09 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37432 "EHLO
+        id S241000AbiBWNlI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 08:41:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37430 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241001AbiBWNlI (ORCPT
+        with ESMTP id S240999AbiBWNlI (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 08:41:08 -0500
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id C8B10AC065
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 05:40:39 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 2E371AC06A
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 05:40:40 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1645623639;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=orXhI6SXyypSX1JBBjrp4e1ep+yrNv2FjfbJmeW8+58=;
-        b=DeipjoVR7sdRq+f+XsQNVrqbNECHO49ZxueF5LSiOEZ6J1p9iDMr/43w1+f8lwpOlygNDN
-        CIbywqTsZIUJM5RFsKKh+p246PVVXwQilTJNd92ZakkQefSprSD07vj9mQ2nI2tziQC4A8
-        6Dlmg6oa/pXuELMY5u0yDClMpFS5nsM=
+        bh=vha02VFW5Iw1IQcPMRwnb3PRTXDYtnVPVn1kQ09IAtM=;
+        b=Ugj1zYDB7Mp3Uh92fOw/rPXjRb45FWDE5GyYixdCShtDWkL4j6l0acheV2QzJTIVMdsEPU
+        tk+CZcCDq4dBkWH3uYNQE7s262vgxYzp3z041b/jolkOWS1m5F1ZCFMKC3Rv4XIss/Plz8
+        kFbVp1t8IVuKWCEtK/RrFDhWOLIt9S4=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-377-875VWFbrNNSQn9ye5xlMxQ-1; Wed, 23 Feb 2022 08:40:37 -0500
-X-MC-Unique: 875VWFbrNNSQn9ye5xlMxQ-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+ us-mta-407-k1icQD9nM-aRhaCh4ULf2A-1; Wed, 23 Feb 2022 08:40:37 -0500
+X-MC-Unique: k1icQD9nM-aRhaCh4ULf2A-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9F72C1854E26
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id A1B88800425
         for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:40:36 +0000 (UTC)
 Received: from bcodding.csb (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 569CF2B4D2
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 605EA7A537
         for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:40:36 +0000 (UTC)
 Received: by bcodding.csb (Postfix, from userid 24008)
-        id EC83010C30F1; Wed, 23 Feb 2022 08:40:35 -0500 (EST)
+        id 01DA310C3101; Wed, 23 Feb 2022 08:40:36 -0500 (EST)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/8] NFSv4: Send GETATTR with READDIR
-Date:   Wed, 23 Feb 2022 08:40:29 -0500
-Message-Id: <eedb07d14a96caef1de663a436a326b2c5012ab4.1645623510.git.bcodding@redhat.com>
-In-Reply-To: <d759b6df8acd82b8d44e2afcf11a7a94dcf85ba6.1645623510.git.bcodding@redhat.com>
-References: <d759b6df8acd82b8d44e2afcf11a7a94dcf85ba6.1645623510.git.bcodding@redhat.com>
+Subject: [PATCH v3 4/8] NFS: Keep the readdir pagecache cursor updated
+Date:   Wed, 23 Feb 2022 08:40:31 -0500
+Message-Id: <5479c8c5be9cf3f387edac54f170461f8f7b89e2.1645623510.git.bcodding@redhat.com>
+In-Reply-To: <aaedb2e378800a5cdb7071d65690b981274f2c22.1645623510.git.bcodding@redhat.com>
+References: <d759b6df8acd82b8d44e2afcf11a7a94dcf85ba6.1645623510.git.bcodding@redhat.com> <eedb07d14a96caef1de663a436a326b2c5012ab4.1645623510.git.bcodding@redhat.com> <aaedb2e378800a5cdb7071d65690b981274f2c22.1645623510.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-For each batch of entries, track whether the directory has changed.  We can
-use this information to better manage the cache when reading long
-directories.
+Whenever we successfully locate our dir_cookie within the pagecache, or
+finish emitting entries to userspace, update the pagecache cursor.  These
+updates provide marker points to validate pagecache pages in a future
+patch.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/nfs42proc.c        |  2 +-
- fs/nfs/nfs4proc.c         | 29 +++++++++++++++++++++--------
- fs/nfs/nfs4xdr.c          |  6 ++++++
- include/linux/nfs_fs_sb.h |  5 +++++
- include/linux/nfs_xdr.h   |  2 ++
- 5 files changed, 35 insertions(+), 9 deletions(-)
+ fs/nfs/dir.c | 32 ++++++++++++++++++++++++++------
+ 1 file changed, 26 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 882bf84484ac..3ab54228b2ed 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -1082,7 +1082,7 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
- 	if (!res.dst_fattr)
- 		return -ENOMEM;
- 
--	nfs4_bitmask_set(dst_bitmask, server->cache_consistency_bitmask,
-+	nfs4_bitmask_set(dst_bitmask, server->cache_consistency_bitmask_nl,
- 			 dst_inode, NFS_INO_INVALID_BLOCKS);
- 
- 	status = nfs4_call_sync(server->client, server, msg,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 73a9b6de666c..45285447c077 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3665,7 +3665,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		/* Close-to-open cache consistency revalidation */
- 		if (!nfs4_have_delegation(inode, FMODE_READ)) {
- 			nfs4_bitmask_set(calldata->arg.bitmask_store,
--					 server->cache_consistency_bitmask,
-+					 server->cache_consistency_bitmask_nl,
- 					 inode, 0);
- 			calldata->arg.bitmask = calldata->arg.bitmask_store;
- 		} else
-@@ -3905,7 +3905,12 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask, sizeof(server->cache_consistency_bitmask));
- 		server->cache_consistency_bitmask[0] &= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
- 		server->cache_consistency_bitmask[1] &= FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
--		server->cache_consistency_bitmask[2] = 0;
-+		server->cache_consistency_bitmask[2] = res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL;
-+
-+		memcpy(server->cache_consistency_bitmask_nl, server->cache_consistency_bitmask, sizeof(server->cache_consistency_bitmask));
-+		server->cache_consistency_bitmask_nl[2] = 0;
-+
-+
- 
- 		/* Avoid a regression due to buggy server */
- 		for (i = 0; i < ARRAY_SIZE(res.exclcreat_bitmask); i++)
-@@ -4576,7 +4581,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 		res.fattr = nfs_alloc_fattr();
- 		if (res.fattr == NULL)
- 			return -ENOMEM;
--		args.bitmask = server->cache_consistency_bitmask;
-+		args.bitmask = server->cache_consistency_bitmask_nl;
- 	}
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
-@@ -5098,14 +5103,19 @@ static int _nfs4_proc_readdir(struct nfs_readdir_arg *nr_arg,
- 		.rpc_resp = &res,
- 		.rpc_cred = nr_arg->cred,
- 	};
--	int			status;
-+	int			status = -ENOMEM;
- 
- 	dprintk("%s: dentry = %pd2, cookie = %llu\n", __func__,
- 		nr_arg->dentry, (unsigned long long)nr_arg->cookie);
- 	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
--		args.bitmask = server->attr_bitmask_nl;
-+		args.bitmask = server->cache_consistency_bitmask_nl;
- 	else
--		args.bitmask = server->attr_bitmask;
-+		args.bitmask = server->cache_consistency_bitmask;
-+
-+	res.dir_attr = nfs_alloc_fattr();
-+	if (res.dir_attr == NULL)
-+		goto out;
-+	res.server = server;
- 
- 	nfs4_setup_readdir(nr_arg->cookie, nr_arg->verf, nr_arg->dentry, &args);
- 	res.pgbase = args.pgbase;
-@@ -5118,6 +5128,9 @@ static int _nfs4_proc_readdir(struct nfs_readdir_arg *nr_arg,
- 
- 	nfs_invalidate_atime(dir);
- 
-+	nfs_refresh_inode(dir, res.dir_attr);
-+	nfs_free_fattr(res.dir_attr);
-+out:
- 	dprintk("%s: returns %d\n", __func__, status);
- 	return status;
- }
-@@ -5583,7 +5596,7 @@ static void nfs4_proc_write_setup(struct nfs_pgio_header *hdr,
- 		hdr->res.fattr = NULL;
- 	} else {
- 		nfs4_bitmask_set(hdr->args.bitmask_store,
--				 server->cache_consistency_bitmask,
-+				 server->cache_consistency_bitmask_nl,
- 				 hdr->inode, NFS_INO_INVALID_BLOCKS);
- 		hdr->args.bitmask = hdr->args.bitmask_store;
- 	}
-@@ -6622,7 +6635,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, const struct cred *cred,
- 	data->args.fhandle = &data->fh;
- 	data->args.stateid = &data->stateid;
- 	nfs4_bitmask_set(data->args.bitmask_store,
--			 server->cache_consistency_bitmask, inode, 0);
-+			 server->cache_consistency_bitmask_nl, inode, 0);
- 	data->args.bitmask = data->args.bitmask_store;
- 	nfs_copy_fh(&data->fh, NFS_FH(inode));
- 	nfs4_stateid_copy(&data->stateid, stateid);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b7780b97dc4d..1cd0d49ef992 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -469,10 +469,12 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
- #define NFS4_enc_readdir_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putfh_maxsz + \
-+				encode_getattr_maxsz + \
- 				encode_readdir_maxsz)
- #define NFS4_dec_readdir_sz	(compound_decode_hdr_maxsz + \
- 				decode_sequence_maxsz + \
- 				decode_putfh_maxsz + \
-+				decode_getattr_maxsz + \
- 				decode_readdir_maxsz)
- #define NFS4_enc_write_sz	(compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
-@@ -2529,6 +2531,7 @@ static void nfs4_xdr_enc_readdir(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fh, &hdr);
-+	encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_readdir(xdr, args, req, &hdr);
- 
- 	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-@@ -6769,6 +6772,9 @@ static int nfs4_xdr_dec_readdir(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	if (status)
- 		goto out;
- 	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_getfattr(xdr, res->dir_attr, res->server);
- 	if (status)
- 		goto out;
- 	status = decode_readdir(xdr, rqstp, res);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index ca0959e51e81..04bc827e4367 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -213,6 +213,11 @@ struct nfs_server {
- 						   of change attribute, size, ctime
- 						   and mtime attributes supported by
- 						   the server */
-+	u32			cache_consistency_bitmask_nl[3];
-+						/* V4 bitmask representing the subset
-+						   of change attribute, size, ctime
-+						   and mtime attributes supported by
-+						   the server excluding label support */
- 	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
- 						   that are supported on this
- 						   filesystem */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 728cb0c1f0b6..fbb8b7695c30 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1139,6 +1139,8 @@ struct nfs4_readdir_res {
- 	struct nfs4_sequence_res	seq_res;
- 	nfs4_verifier			verifier;
- 	unsigned int			pgbase;
-+	struct nfs_fattr		*dir_attr;
-+	const struct nfs_server *server;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 009187c0ae0f..2b1a0c1cdce4 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -154,6 +154,10 @@ struct nfs_cache_array {
+ 	struct nfs_cache_array_entry array[];
  };
  
- struct nfs4_readlink {
++static const int cache_entries_per_page =
++	(PAGE_SIZE - sizeof(struct nfs_cache_array)) /
++	sizeof(struct nfs_cache_array_entry);
++
+ struct nfs_readdir_descriptor {
+ 	struct file	*file;
+ 	struct page	*page;
+@@ -282,6 +286,21 @@ static bool nfs_readdir_array_is_full(struct nfs_cache_array *array)
+ 	return array->page_full;
+ }
+ 
++static void nfs_readdir_set_cursor(struct nfs_readdir_descriptor *desc, int index)
++{
++	desc->pgc.entry_index = index;
++	desc->pgc.index_cookie = desc->dir_cookie;
++}
++
++static void nfs_readdir_cursor_next(struct nfs_dir_page_cursor *pgc, u64 cookie)
++{
++	pgc->index_cookie = cookie;
++	if (++pgc->entry_index == cache_entries_per_page) {
++		pgc->entry_index = 0;
++		pgc->page_index++;
++	}
++}
++
+ /*
+  * the caller is responsible for freeing qstr.name
+  * when called by nfs_readdir_add_to_array, the strings will be freed in
+@@ -455,7 +474,7 @@ static int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
+ 
+ 	index = (unsigned int)diff;
+ 	desc->dir_cookie = array->array[index].cookie;
+-	desc->pgc.entry_index = index;
++	nfs_readdir_set_cursor(desc, index);
+ 	return 0;
+ out_eof:
+ 	desc->eof = true;
+@@ -524,7 +543,7 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
+ 			else
+ 				desc->ctx->pos = new_pos;
+ 			desc->prev_index = new_pos;
+-			desc->pgc.entry_index = i;
++			nfs_readdir_set_cursor(desc, i);
+ 			return 0;
+ 		}
+ 	}
+@@ -551,9 +570,9 @@ static int nfs_readdir_search_array(struct nfs_readdir_descriptor *desc)
+ 		status = nfs_readdir_search_for_cookie(array, desc);
+ 
+ 	if (status == -EAGAIN) {
+-		desc->pgc.index_cookie = array->last_cookie;
++		desc->pgc.entry_index = array->size - 1;
++		nfs_readdir_cursor_next(&desc->pgc, array->last_cookie);
+ 		desc->current_index += array->size;
+-		desc->pgc.page_index++;
+ 	}
+ 	kunmap_atomic(array);
+ 	return status;
+@@ -1084,6 +1103,8 @@ static void nfs_do_filldir(struct nfs_readdir_descriptor *desc,
+ 		desc->eof = !desc->eob;
+ 
+ 	kunmap(desc->page);
++	desc->pgc.entry_index = i-1;
++	nfs_readdir_cursor_next(&desc->pgc, desc->dir_cookie);
+ 	dfprintk(DIRCACHE, "NFS: nfs_do_filldir() filling ended @ cookie %llu\n",
+ 			(unsigned long long)desc->dir_cookie);
+ }
+@@ -1118,8 +1139,7 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
+ 		goto out;
+ 
+ 	desc->pgc.page_index = 0;
+-	desc->pgc.entry_index = 0;
+-	desc->pgc.index_cookie = desc->dir_cookie;
++	nfs_readdir_set_cursor(desc, 0);
+ 	desc->duped = 0;
+ 	desc->page_index_max = 0;
+ 
 -- 
 2.31.1
 
