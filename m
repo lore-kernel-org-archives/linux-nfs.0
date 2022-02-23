@@ -2,48 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D4EDC433FE
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 21:20:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2832C433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 21:20:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242449AbiBWVUF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 16:20:05 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51942 "EHLO
+        id S242313AbiBWVUC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 16:20:02 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51900 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242415AbiBWVUD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:03 -0500
+        with ESMTP id S241417AbiBWVUB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:01 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE45F4ECCD
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:34 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B0D04EA0A
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:33 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 69459618A2
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:34 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 04A63C340F0
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 1599561650
         for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:33 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4B665C340F1
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645651174;
-        bh=TwH9XBO4tFY1Wb3RcdoVj19uDIH4r8SdsJDVWUodJrI=;
+        s=k20201202; t=1645651172;
+        bh=AU/1BuAYIRPvCSJMRaL7bK15l0+X1t9HvSCk7ukL0FY=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=XAfoequ8V7zLl/Y/l+KlprCyE2BkvQiwVamyG3NdBbRol2Xm67G163q6Vn6h7MFTL
-         i1kqHHM+h7hr+nYdFVkMuqFLcisTVkAQI1hzvIgVL4cvSgY4ZVJNEgRmnJtwX8HPzT
-         v2Z/yOYR1FSEbmfmIdnuVIuFJxPsZEtSqx/5xT+H36aZb3F6+LmXj0dF3Lasgs3mxQ
-         ZlplR2EBhb2wHLL3VftZWm003YyLCag9MeybNag2zxwvFRmDRDc9UloM45DTWkTjva
-         pWj4BPcNAHY4YWel4Il+l9eFt8/mU8ZRM9qn3BMsqnxwEp7rk4xN1IjmlDlQnJ4AtX
-         VDCWCh8bX7rxg==
+        b=a/t3qLqs2ThixYWZ3AgOZPm5yZ1lxK25+IV13TdqIxy/88Iwq89gJ3qqXCT7tUlQP
+         bekjRJVhkqTJ8UbwKPJ7tB38aohKHPmo52NUzb5FTdIPgtPANN9k3lIqKyXUGtC++x
+         elSHNFc6fw9qyehPSWqKsw0MYPFCgux2dF9C7K5wsdRfaHaoNwrY6EtQOu7oprXfih
+         zAkAPR1KTsoKgyubyVRVfPAG6e8TE7B5398PIy0RkCAs79dTLYxF11f3kUMtMLeakH
+         ez0pOovRsFkgbhQu2nHEBLWgmUgyAXHeOCgHRter+WZIoTbpjItXIISyBEzHAtTm0C
+         E5nA/HsyKoDlQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v7 06/21] NFS: If the cookie verifier changes, we must invalidate the page cache
-Date:   Wed, 23 Feb 2022 16:12:50 -0500
-Message-Id: <20220223211305.296816-7-trondmy@kernel.org>
+Subject: [PATCH v7 02/21] NFS: Trace lookup revalidation failure
+Date:   Wed, 23 Feb 2022 16:12:46 -0500
+Message-Id: <20220223211305.296816-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220223211305.296816-6-trondmy@kernel.org>
+In-Reply-To: <20220223211305.296816-2-trondmy@kernel.org>
 References: <20220223211305.296816-1-trondmy@kernel.org>
  <20220223211305.296816-2-trondmy@kernel.org>
- <20220223211305.296816-3-trondmy@kernel.org>
- <20220223211305.296816-4-trondmy@kernel.org>
- <20220223211305.296816-5-trondmy@kernel.org>
- <20220223211305.296816-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -52,34 +48,56 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that if the cookie verifier changes when we use the zero-valued
-cookie, then we invalidate any cached pages.
+Enable tracing of lookup revalidation failures.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/nfs/dir.c | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 5d9367d9b651..7932d474ce00 100644
+index ebddc736eac2..1aa55cac9d9a 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -945,9 +945,14 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
+@@ -1474,9 +1474,7 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
+ {
+ 	switch (error) {
+ 	case 1:
+-		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is valid\n",
+-			__func__, dentry);
+-		return 1;
++		break;
+ 	case 0:
  		/*
- 		 * Set the cookie verifier if the page cache was empty
+ 		 * We can't d_drop the root of a disconnected tree:
+@@ -1485,13 +1483,10 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
+ 		 * inodes on unmount and further oopses.
  		 */
--		if (desc->page_index == 0)
-+		if (desc->last_cookie == 0 &&
-+		    memcmp(nfsi->cookieverf, verf, sizeof(nfsi->cookieverf))) {
- 			memcpy(nfsi->cookieverf, verf,
- 			       sizeof(nfsi->cookieverf));
-+			invalidate_inode_pages2_range(desc->file->f_mapping,
-+						      desc->page_index_max + 1,
-+						      -1);
-+		}
+ 		if (inode && IS_ROOT(dentry))
+-			return 1;
+-		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is invalid\n",
+-				__func__, dentry);
+-		return 0;
++			error = 1;
++		break;
  	}
- 	res = nfs_readdir_search_array(desc);
- 	if (res == 0)
+-	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) lookup returned error %d\n",
+-				__func__, dentry, error);
++	trace_nfs_lookup_revalidate_exit(dir, dentry, 0, error);
+ 	return error;
+ }
+ 
+@@ -1623,9 +1618,7 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
+ 		goto out_bad;
+ 
+ 	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
+-	error = nfs_lookup_revalidate_dentry(dir, dentry, inode);
+-	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
+-	return error;
++	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
+ out_valid:
+ 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
+ out_bad:
 -- 
 2.35.1
 
