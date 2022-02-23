@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4771CC43219
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1956C43217
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 21:21:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242447AbiBWVUH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 16:20:07 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51962 "EHLO
+        id S242468AbiBWVVM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 16:21:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52088 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242403AbiBWVUF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:05 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6BDD84ECCD
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:37 -0800 (PST)
+        with ESMTP id S242482AbiBWVUJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:09 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 294D94ECC9
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:41 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4B70C618A0
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 01782C340E7
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:36 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id D831BB81CA4
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83AB6C340E7
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645651177;
-        bh=h+cJYvOB7K5QBDul+/hHIKM5aBG0kujRFDwNLhZJAu0=;
+        s=k20201202; t=1645651178;
+        bh=i7/gOqtVIeKb2i7ihQdqIN8e18muCBZ89nPBFm9KjNc=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=RWm0ku+P+5TqYZRZ8YPWN4WDRLLWl2Ybf4TSaSxmoFQ0+IHHtLx1KtVarb67FlTf9
-         8EZCSCIiGAsX1imB5MoZ4XxIyKFUzIIG/Gk5rcDw1V2dkyDe4DnQ/bHXP6s/4iTqWS
-         9D5SrjGsWHPgfpbb3JO5JUMvQLaPZZsxjM/RmcgqSI/ovgomcgHLeGC7F8E9gVo6k0
-         sjBbkLZ8o10Nuz9apY+Bh0L9ML/ccTbTdqQ83x7BpUhjb3KMydX5l18prkHI0iNd+J
-         iPfVDIr4C5wJboiMh/Wl4cXuWaKXEXQ2xkuESKME8sBdI0YCS7XRwuA9hv2CYbmDtQ
-         FfqX7MC2M8WeQ==
+        b=qVaHEUUMaEGJKXLo2yIKVgPCHDiP0QKlKxcwAzelNuoE04G25lgrKqDl3/2Py0mIJ
+         2g4J486KzTUHj/FsFJttfAp9YHNp50JTv0y3v+pTRAGfiz8gcyJun08eBJR8qE8zc6
+         mj6+9nFlu8l77XDEFG6GwPtQh20tB3hTzzoeeQz2m3jNczkv3HYVTh2b+kfUtlQy0Y
+         Y2M3BLbZhCY0OlpcKY86wD8kKkN8VLMCEwCT8yyMe87CKLRCd7SQAPEs9fPd+/nr5X
+         7pbACOphgAWVGbt3UMTcmKbDHEKYoluTmJVFLo7QFMR+Ym/umgSqMruGX2hhWyg+Qg
+         6s2VGf5Q2RwEg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v7 13/21] NFSv4: Ask for a full XDR buffer of readdir goodness
-Date:   Wed, 23 Feb 2022 16:12:57 -0500
-Message-Id: <20220223211305.296816-14-trondmy@kernel.org>
+Subject: [PATCH v7 17/21] NFS: Trace effects of readdirplus on the dcache
+Date:   Wed, 23 Feb 2022 16:13:01 -0500
+Message-Id: <20220223211305.296816-18-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220223211305.296816-13-trondmy@kernel.org>
+In-Reply-To: <20220223211305.296816-17-trondmy@kernel.org>
 References: <20220223211305.296816-1-trondmy@kernel.org>
  <20220223211305.296816-2-trondmy@kernel.org>
  <20220223211305.296816-3-trondmy@kernel.org>
@@ -51,6 +51,10 @@ References: <20220223211305.296816-1-trondmy@kernel.org>
  <20220223211305.296816-11-trondmy@kernel.org>
  <20220223211305.296816-12-trondmy@kernel.org>
  <20220223211305.296816-13-trondmy@kernel.org>
+ <20220223211305.296816-14-trondmy@kernel.org>
+ <20220223211305.296816-15-trondmy@kernel.org>
+ <20220223211305.296816-16-trondmy@kernel.org>
+ <20220223211305.296816-17-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -59,72 +63,53 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Instead of pretending that we know the ratio of directory info vs
-readdirplus attribute info, just set the 'dircount' field to the same
-value as the 'maxcount' field.
+Trace the effects of readdirplus on attribute and dentry revalidation.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs3xdr.c | 7 ++++---
- fs/nfs/nfs4xdr.c | 6 +++---
- 2 files changed, 7 insertions(+), 6 deletions(-)
+ fs/nfs/dir.c      | 5 +++++
+ fs/nfs/nfstrace.h | 3 +++
+ 2 files changed, 8 insertions(+)
 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 54a1d21cbcc6..296320f91579 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -1261,6 +1261,8 @@ static void nfs3_xdr_enc_readdir3args(struct rpc_rqst *req,
- static void encode_readdirplus3args(struct xdr_stream *xdr,
- 				    const struct nfs3_readdirargs *args)
- {
-+	uint32_t dircount = args->count;
-+	uint32_t maxcount = args->count;
- 	__be32 *p;
- 
- 	encode_nfs_fh3(xdr, args->fh);
-@@ -1273,9 +1275,8 @@ static void encode_readdirplus3args(struct xdr_stream *xdr,
- 	 * readdirplus: need dircount + buffer size.
- 	 * We just make sure we make dircount big enough
- 	 */
--	*p++ = cpu_to_be32(args->count >> 3);
--
--	*p = cpu_to_be32(args->count);
-+	*p++ = cpu_to_be32(dircount);
-+	*p = cpu_to_be32(maxcount);
- }
- 
- static void nfs3_xdr_enc_readdirplus3args(struct rpc_rqst *req,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 8e70b92df4cc..b7780b97dc4d 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1605,7 +1605,8 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 		FATTR4_WORD0_RDATTR_ERROR,
- 		FATTR4_WORD1_MOUNTED_ON_FILEID,
- 	};
--	uint32_t dircount = readdir->count >> 1;
-+	uint32_t dircount = readdir->count;
-+	uint32_t maxcount = readdir->count;
- 	__be32 *p, verf[2];
- 	uint32_t attrlen = 0;
- 	unsigned int i;
-@@ -1618,7 +1619,6 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 			FATTR4_WORD1_SPACE_USED|FATTR4_WORD1_TIME_ACCESS|
- 			FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
- 		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
--		dircount >>= 1;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 41e2d02d8611..95b18d1ad0cf 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -742,8 +742,12 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
+ 			status = nfs_refresh_inode(d_inode(dentry), entry->fattr);
+ 			if (!status)
+ 				nfs_setsecurity(d_inode(dentry), entry->fattr);
++			trace_nfs_readdir_lookup_revalidate(d_inode(parent),
++							    dentry, 0, status);
+ 			goto out;
+ 		} else {
++			trace_nfs_readdir_lookup_revalidate_failed(
++				d_inode(parent), dentry, 0);
+ 			d_invalidate(dentry);
+ 			dput(dentry);
+ 			dentry = NULL;
+@@ -765,6 +769,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
+ 		dentry = alias;
  	}
- 	/* Use mounted_on_fileid only if the server supports it */
- 	if (!(readdir->bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID))
-@@ -1634,7 +1634,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 	encode_nfs4_verifier(xdr, &readdir->verifier);
- 	p = reserve_space(xdr, 12 + (attrlen << 2));
- 	*p++ = cpu_to_be32(dircount);
--	*p++ = cpu_to_be32(readdir->count);
-+	*p++ = cpu_to_be32(maxcount);
- 	*p++ = cpu_to_be32(attrlen);
- 	for (i = 0; i < attrlen; i++)
- 		*p++ = cpu_to_be32(attrs[i]);
+ 	nfs_set_verifier(dentry, dir_verifier);
++	trace_nfs_readdir_lookup(d_inode(parent), dentry, 0);
+ out:
+ 	dput(dentry);
+ }
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index c2d0543ecb2d..7c1102b991d0 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -432,6 +432,9 @@ DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_enter);
+ DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_exit);
+ DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_revalidate_enter);
+ DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_revalidate_exit);
++DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup);
++DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup_revalidate_failed);
++DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_readdir_lookup_revalidate);
+ 
+ TRACE_EVENT(nfs_atomic_open_enter,
+ 		TP_PROTO(
 -- 
 2.35.1
 
