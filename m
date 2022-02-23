@@ -2,80 +2,84 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DC7A5C433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 20:22:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D4EDC433FE
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 21:20:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234855AbiBWUVy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 15:21:54 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48924 "EHLO
+        id S242449AbiBWVUF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 16:20:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51942 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232105AbiBWUVx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 15:21:53 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 010204D24F
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 12:21:24 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1645647684;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=u8kVwqcjIrD5zUdSjqNqhAiLPf0+xMjZB8/slyK3y54=;
-        b=ETX16i3dcxlTZVtFX//qMwIybAtJN6xnsQMDSvYzlnmPVy/eHKCM+wrxln2wK6Kb3Feb+/
-        kDdzoETAKAN70zR5uwAD/57BC9O3cbHVSsN3ChDlS4emYQq0XA/bIEccFViCcy0ZEImYvK
-        6roOoqXtVQACr2m/AQKmgem2pjL7YS4=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-632-G_v3OKqSOmiY5LGirGHCIg-1; Wed, 23 Feb 2022 15:21:22 -0500
-X-MC-Unique: G_v3OKqSOmiY5LGirGHCIg-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S242415AbiBWVUD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:03 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE45F4ECCD
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:34 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id E4A8E1006AA5
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 20:21:21 +0000 (UTC)
-Received: from madhat.home.dicksonnet.net (unknown [10.2.18.88])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 992DC61F20
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 20:21:21 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] systemd: Fix format-overflow warning
-Date:   Wed, 23 Feb 2022 15:21:20 -0500
-Message-Id: <20220223202120.126170-1-steved@redhat.com>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 69459618A2
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:34 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 04A63C340F0
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1645651174;
+        bh=TwH9XBO4tFY1Wb3RcdoVj19uDIH4r8SdsJDVWUodJrI=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=XAfoequ8V7zLl/Y/l+KlprCyE2BkvQiwVamyG3NdBbRol2Xm67G163q6Vn6h7MFTL
+         i1kqHHM+h7hr+nYdFVkMuqFLcisTVkAQI1hzvIgVL4cvSgY4ZVJNEgRmnJtwX8HPzT
+         v2Z/yOYR1FSEbmfmIdnuVIuFJxPsZEtSqx/5xT+H36aZb3F6+LmXj0dF3Lasgs3mxQ
+         ZlplR2EBhb2wHLL3VftZWm003YyLCag9MeybNag2zxwvFRmDRDc9UloM45DTWkTjva
+         pWj4BPcNAHY4YWel4Il+l9eFt8/mU8ZRM9qn3BMsqnxwEp7rk4xN1IjmlDlQnJ4AtX
+         VDCWCh8bX7rxg==
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH v7 06/21] NFS: If the cookie verifier changes, we must invalidate the page cache
+Date:   Wed, 23 Feb 2022 16:12:50 -0500
+Message-Id: <20220223211305.296816-7-trondmy@kernel.org>
+X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220223211305.296816-6-trondmy@kernel.org>
+References: <20220223211305.296816-1-trondmy@kernel.org>
+ <20220223211305.296816-2-trondmy@kernel.org>
+ <20220223211305.296816-3-trondmy@kernel.org>
+ <20220223211305.296816-4-trondmy@kernel.org>
+ <20220223211305.296816-5-trondmy@kernel.org>
+ <20220223211305.296816-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-rpc-pipefs-generator.c:35:23: error: '%s' directive output between 0 and 2147483653 bytes may exceed minimum required size of 4095 [-Werror=format-overflow=]
-   35 |         sprintf(path, "%s/%s", dirname, pipefs_unit);
-      |                       ^
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Ensure that if the cookie verifier changes when we use the zero-valued
+cookie, then we invalidate any cached pages.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- systemd/rpc-pipefs-generator.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/systemd/rpc-pipefs-generator.c b/systemd/rpc-pipefs-generator.c
-index c24db56..7b2bb4f 100644
---- a/systemd/rpc-pipefs-generator.c
-+++ b/systemd/rpc-pipefs-generator.c
-@@ -28,11 +28,12 @@ static int generate_mount_unit(const char *pipefs_path, const char *pipefs_unit,
- {
- 	char	*path;
- 	FILE	*f;
-+	size_t size = (strlen(dirname) + 1 + strlen(pipefs_unit));
- 
--	path = malloc(strlen(dirname) + 1 + strlen(pipefs_unit));
-+	path = malloc(size);
- 	if (!path)
- 		return 1;
--	sprintf(path, "%s/%s", dirname, pipefs_unit);
-+	snprintf(path, size, "%s/%s", dirname, pipefs_unit);
- 	f = fopen(path, "w");
- 	if (!f)
- 	{
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 5d9367d9b651..7932d474ce00 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -945,9 +945,14 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
+ 		/*
+ 		 * Set the cookie verifier if the page cache was empty
+ 		 */
+-		if (desc->page_index == 0)
++		if (desc->last_cookie == 0 &&
++		    memcmp(nfsi->cookieverf, verf, sizeof(nfsi->cookieverf))) {
+ 			memcpy(nfsi->cookieverf, verf,
+ 			       sizeof(nfsi->cookieverf));
++			invalidate_inode_pages2_range(desc->file->f_mapping,
++						      desc->page_index_max + 1,
++						      -1);
++		}
+ 	}
+ 	res = nfs_readdir_search_array(desc);
+ 	if (res == 0)
 -- 
 2.35.1
 
