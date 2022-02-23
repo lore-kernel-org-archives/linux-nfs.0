@@ -2,46 +2,62 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61EF5C43219
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 21:20:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1748CC433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 21:21:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242398AbiBWVUC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 16:20:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51922 "EHLO
+        id S242552AbiBWVVL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 16:21:11 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52116 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242403AbiBWVUC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:02 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58D6C4ECC7
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:34 -0800 (PST)
+        with ESMTP id S242503AbiBWVUK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:10 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7260B4EA25
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:42 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id E81D56189F
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:33 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 27877C340E7
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:33 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 22B0BB821B3
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B45D0C340F3
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645651173;
-        bh=BDtVy5SNX6exg3u/FD6tPHlS7Ace5WAEZPBUVrHFAsI=;
+        s=k20201202; t=1645651179;
+        bh=qJhJnNTOIFtE1tHwTGzE5AhMobSpjIlVEhJr0soq6w0=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=HY7kUNRmMBazv8m5jd2YrPEMLakbDqEHepHDOqD+IOTFqFbiMHYN8ETC7z6PpKbzw
-         POC1eWGMhc2oyB213GNo1qt4KeoQCHhvm7TnnhJdCyJvu4YDLL3coyRlw8QbbUOcOC
-         5lADKXhR0vEUp7n3QeJu7jqOm7EQ4aHv0/bkpF/dVoucuJWjLGqphQhBDmRnHq9TUA
-         v0JHV6x+tMZNssRbcDXWpmO0AYc5x+IVZYolYdxcHHzncY7dCA1ifOLt4/QGZnNCsU
-         qKO1poxbkjOqQdZeS7B73YDIgHEa93/PXj8aMmxs4dxkWoN+l4QhGWlDHH1qUXbU1r
-         qL1aSWbM2nbyg==
+        b=qDEudrWYxS6EHZ6vwiwIsuTVVAH2kgzpLMIhoAWL4oEyy1AYeAUXJELHzLKMp0Ue+
+         qKUoGeRIiFj5/f1QplageLIVJp6+ar2tBAqIwa7tdm13rCDzIdfhYFI75zbHR6zzDT
+         Y4kmJieM91TAvpdBlMVkLn9hW94+b8xvJ4odYu9C3FScE/oqeLoRdno9ObraykvAZw
+         bWR6TmJaHxCZXgNKIfQoJw0O0lwjnX9GKEdhMdDqqtlwau8Kwna0Y9PvgPfKWcGIk/
+         EDri2wr44E0PlsZ0ElRTB0gSDtuN5/TPDl5CcF+LhVcWQjzn6CuHJsdnVRhfBaLGF6
+         qh5ospTMC2KPw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v7 04/21] NFS: Calculate page offsets algorithmically
-Date:   Wed, 23 Feb 2022 16:12:48 -0500
-Message-Id: <20220223211305.296816-5-trondmy@kernel.org>
+Subject: [PATCH v7 20/21] NFS: Fix up forced readdirplus
+Date:   Wed, 23 Feb 2022 16:13:04 -0500
+Message-Id: <20220223211305.296816-21-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220223211305.296816-4-trondmy@kernel.org>
+In-Reply-To: <20220223211305.296816-20-trondmy@kernel.org>
 References: <20220223211305.296816-1-trondmy@kernel.org>
  <20220223211305.296816-2-trondmy@kernel.org>
  <20220223211305.296816-3-trondmy@kernel.org>
  <20220223211305.296816-4-trondmy@kernel.org>
+ <20220223211305.296816-5-trondmy@kernel.org>
+ <20220223211305.296816-6-trondmy@kernel.org>
+ <20220223211305.296816-7-trondmy@kernel.org>
+ <20220223211305.296816-8-trondmy@kernel.org>
+ <20220223211305.296816-9-trondmy@kernel.org>
+ <20220223211305.296816-10-trondmy@kernel.org>
+ <20220223211305.296816-11-trondmy@kernel.org>
+ <20220223211305.296816-12-trondmy@kernel.org>
+ <20220223211305.296816-13-trondmy@kernel.org>
+ <20220223211305.296816-14-trondmy@kernel.org>
+ <20220223211305.296816-15-trondmy@kernel.org>
+ <20220223211305.296816-16-trondmy@kernel.org>
+ <20220223211305.296816-17-trondmy@kernel.org>
+ <20220223211305.296816-18-trondmy@kernel.org>
+ <20220223211305.296816-19-trondmy@kernel.org>
+ <20220223211305.296816-20-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -50,64 +66,167 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Instead of relying on counting the page offsets as we walk through the
-page cache, switch to calculating them algorithmically.
+Avoid clearing the entire readdir page cache if we're just doing forced
+readdirplus for the 'ls -l' heuristic.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/nfs/dir.c           | 49 ++++++++++++++++++++++++++----------------
+ include/linux/nfs_fs.h |  1 +
+ 2 files changed, 31 insertions(+), 19 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 8f17aaebcd77..f2258e926df2 100644
+index 2007eebfb5cf..d41ea614edec 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -248,17 +248,20 @@ static const char *nfs_readdir_copy_name(const char *name, unsigned int len)
+@@ -169,6 +169,7 @@ struct nfs_readdir_descriptor {
+ 	unsigned int	cache_entry_index;
+ 	unsigned int	buffer_fills;
+ 	unsigned int	dtsize;
++	bool force_plus;
+ 	bool plus;
+ 	bool eob;
+ 	bool eof;
+@@ -352,6 +353,16 @@ static bool nfs_readdir_page_cookie_match(struct page *page, u64 last_cookie,
  	return ret;
  }
  
-+static size_t nfs_readdir_array_maxentries(void)
++static bool nfs_readdir_page_is_full(struct page *page)
 +{
-+	return (PAGE_SIZE - sizeof(struct nfs_cache_array)) /
-+	       sizeof(struct nfs_cache_array_entry);
++	struct nfs_cache_array *array = kmap_atomic(page);
++	int ret;
++
++	ret = nfs_readdir_array_is_full(array);
++	kunmap_atomic(array);
++	return ret;
 +}
 +
- /*
-  * Check that the next array entry lies entirely within the page bounds
-  */
- static int nfs_readdir_array_can_expand(struct nfs_cache_array *array)
+ static void nfs_readdir_page_unlock_and_put(struct page *page)
  {
--	struct nfs_cache_array_entry *cache_entry;
--
- 	if (array->page_full)
- 		return -ENOSPC;
--	cache_entry = &array->array[array->size + 1];
--	if ((char *)cache_entry - (char *)array > PAGE_SIZE) {
-+	if (array->size == nfs_readdir_array_maxentries()) {
- 		array->page_full = 1;
- 		return -ENOSPC;
- 	}
-@@ -317,6 +320,11 @@ static struct page *nfs_readdir_page_get_locked(struct address_space *mapping,
- 	return page;
+ 	unlock_page(page);
+@@ -359,7 +370,7 @@ static void nfs_readdir_page_unlock_and_put(struct page *page)
  }
  
-+static loff_t nfs_readdir_page_offset(struct page *page)
-+{
-+	return (loff_t)page->index * (loff_t)nfs_readdir_array_maxentries();
-+}
-+
- static u64 nfs_readdir_page_last_cookie(struct page *page)
+ static struct page *nfs_readdir_page_get_locked(struct address_space *mapping,
+-						u64 last_cookie)
++						u64 last_cookie, bool clear)
  {
- 	struct nfs_cache_array *array;
-@@ -447,7 +455,7 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
- 		if (array->array[i].cookie == desc->dir_cookie) {
- 			struct nfs_inode *nfsi = NFS_I(file_inode(desc->file));
+ 	pgoff_t index = nfs_readdir_page_cookie_hash(last_cookie);
+ 	struct page *page;
+@@ -371,8 +382,10 @@ static struct page *nfs_readdir_page_get_locked(struct address_space *mapping,
+ 	change_attr = inode_peek_iversion_raw(mapping->host);
+ 	if (PageUptodate(page)) {
+ 		if (nfs_readdir_page_cookie_match(page, last_cookie,
+-						  change_attr))
+-			return page;
++						  change_attr)) {
++			if (!clear || !nfs_readdir_page_is_full(page))
++				return page;
++		}
+ 		nfs_readdir_clear_array(page);
+ 	}
+ 	nfs_readdir_page_init_array(page, last_cookie, change_attr);
+@@ -393,13 +406,7 @@ static u64 nfs_readdir_page_last_cookie(struct page *page)
  
--			new_pos = desc->current_index + i;
-+			new_pos = nfs_readdir_page_offset(desc->page) + i;
- 			if (desc->attr_gencount != nfsi->attr_gencount ||
- 			    !nfs_readdir_inode_mapping_valid(nfsi)) {
- 				desc->duped = 0;
+ static bool nfs_readdir_page_needs_filling(struct page *page)
+ {
+-	struct nfs_cache_array *array;
+-	bool ret;
+-
+-	array = kmap_atomic(page);
+-	ret = !nfs_readdir_array_is_full(array);
+-	kunmap_atomic(array);
+-	return ret;
++	return !nfs_readdir_page_is_full(page);
+ }
+ 
+ static void nfs_readdir_page_set_eof(struct page *page)
+@@ -412,11 +419,11 @@ static void nfs_readdir_page_set_eof(struct page *page)
+ }
+ 
+ static struct page *nfs_readdir_page_get_next(struct address_space *mapping,
+-					      u64 cookie)
++					      u64 cookie, bool clear)
+ {
+ 	struct page *page;
+ 
+-	page = nfs_readdir_page_get_locked(mapping, cookie);
++	page = nfs_readdir_page_get_locked(mapping, cookie, clear);
+ 	if (page) {
+ 		if (nfs_readdir_page_last_cookie(page) == cookie)
+ 			return page;
+@@ -808,7 +815,8 @@ static int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
+ 			*arrays = page = new;
+ 		} else {
+ 			new = nfs_readdir_page_get_next(mapping,
+-							entry->prev_cookie);
++							entry->prev_cookie,
++							desc->force_plus);
+ 			if (!new)
+ 				break;
+ 			if (page != *arrays)
+@@ -937,8 +945,8 @@ nfs_readdir_page_unlock_and_put_cached(struct nfs_readdir_descriptor *desc)
+ static struct page *
+ nfs_readdir_page_get_cached(struct nfs_readdir_descriptor *desc)
+ {
+-	return nfs_readdir_page_get_locked(desc->file->f_mapping,
+-					   desc->last_cookie);
++	return nfs_readdir_page_get_locked(
++		desc->file->f_mapping, desc->last_cookie, desc->force_plus);
+ }
+ 
+ /*
+@@ -1124,9 +1132,7 @@ static void nfs_readdir_handle_cache_misses(struct inode *inode,
+ 	if (desc->ctx->pos == 0 ||
+ 	    cache_misses <= NFS_READDIR_CACHE_MISS_THRESHOLD)
+ 		return;
+-	if (invalidate_mapping_pages(inode->i_mapping, 0, -1) == 0)
+-		return;
+-	trace_nfs_readdir_invalidate_cache_range(inode, 0, MAX_LFS_FILESIZE);
++	desc->force_plus = true;
+ }
+ 
+ /* The file offset position represents the dirent entry number.  A
+@@ -1170,6 +1176,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	desc->page_index = page_index;
+ 	desc->last_cookie = dir_ctx->last_cookie;
+ 	desc->attr_gencount = dir_ctx->attr_gencount;
++	desc->force_plus = dir_ctx->force_plus;
+ 	desc->eof = dir_ctx->eof;
+ 	nfs_set_dtsize(desc, dir_ctx->dtsize);
+ 	memcpy(desc->verf, dir_ctx->verf, sizeof(desc->verf));
+@@ -1183,7 +1190,10 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	}
+ 
+ 	desc->plus = nfs_use_readdirplus(inode, ctx, cache_hits, cache_misses);
+-	nfs_readdir_handle_cache_misses(inode, desc, cache_misses);
++	if (desc->plus)
++		nfs_readdir_handle_cache_misses(inode, desc, cache_misses);
++	else
++		desc->force_plus = false;
+ 
+ 	do {
+ 		res = readdir_search_pagecache(desc);
+@@ -1224,6 +1234,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	dir_ctx->last_cookie = desc->last_cookie;
+ 	dir_ctx->attr_gencount = desc->attr_gencount;
+ 	dir_ctx->page_index = desc->page_index;
++	dir_ctx->force_plus = desc->force_plus;
+ 	dir_ctx->eof = desc->eof;
+ 	dir_ctx->dtsize = desc->dtsize;
+ 	memcpy(dir_ctx->verf, desc->verf, sizeof(dir_ctx->verf));
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 42aad886d3c0..3f9625c7d0ef 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -109,6 +109,7 @@ struct nfs_open_dir_context {
+ 	__u64 last_cookie;
+ 	pgoff_t page_index;
+ 	unsigned int dtsize;
++	bool force_plus;
+ 	bool eof;
+ 	struct rcu_head rcu_head;
+ };
 -- 
 2.35.1
 
