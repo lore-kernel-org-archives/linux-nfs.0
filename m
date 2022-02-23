@@ -2,160 +2,133 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 274E2C4332F
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 18:19:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDEB6C433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 18:25:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243616AbiBWSRS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 13:17:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47224 "EHLO
+        id S243824AbiBWSY4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 13:24:56 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56000 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243680AbiBWSRO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 13:17:14 -0500
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8E403ED1F
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 10:16:46 -0800 (PST)
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21NIDsSX001902;
-        Wed, 23 Feb 2022 18:16:45 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
- bh=syq4AIY1zXSJPAQDPO05MJ3pl/y7Q5deB8DiBTxbbnU=;
- b=a30C00/b2OLDDnkmMRetOAkqzbB3r71LRDr9BNsy6Oaha3RezADU+LCD/Nhh+a7QUnzV
- ViOtUQQGFjSl/7P3TM6yrBouNufIt//m6WFkmOY56RZHh5ISS2XmxCyBhVZ8IqF3kgrv
- iUlKIMniW511+dbrDOU00FZWC9hU+ik3xvDohGUVvUPpufsEN6bDWGMZMhUvAax+YxSy
- GDYG47kOKc6K57bRrsI+9Mf/SjG+/i7D+Jq5pHmevwIQLbXSg1y2W1inWtLsKFtaPEVf
- 2L8g/3OH3tCRGYWwGy93Qs2dAKWFom2PWJU6rfQjlLszeFesOjcMRif3uJqNNmMvUFfA yg== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3ecv6evxpr-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 23 Feb 2022 18:16:45 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 21NIAtJm155927;
-        Wed, 23 Feb 2022 18:16:45 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by aserp3030.oracle.com with ESMTP id 3eapkj17s8-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 23 Feb 2022 18:16:45 +0000
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 21NICxfe162308;
-        Wed, 23 Feb 2022 18:16:44 GMT
-Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by aserp3030.oracle.com with ESMTP id 3eapkj17pe-8;
-        Wed, 23 Feb 2022 18:16:44 +0000
-From:   Dai Ngo <dai.ngo@oracle.com>
-To:     chuck.lever@oracle.com, bfields@fieldses.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v14 07/10] NFSD: Update find_client_in_id_table() to handle courtesy clients
-Date:   Wed, 23 Feb 2022 10:16:34 -0800
-Message-Id: <1645640197-1725-8-git-send-email-dai.ngo@oracle.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1645640197-1725-1-git-send-email-dai.ngo@oracle.com>
-References: <1645640197-1725-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-GUID: kgcaJpn_62tG876OhrmWnRUpQNsL4CFc
-X-Proofpoint-ORIG-GUID: kgcaJpn_62tG876OhrmWnRUpQNsL4CFc
+        with ESMTP id S243822AbiBWSYz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 13:24:55 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E2A24A3DE;
+        Wed, 23 Feb 2022 10:24:27 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id B0748614AC;
+        Wed, 23 Feb 2022 18:24:26 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1CB79C340EC;
+        Wed, 23 Feb 2022 18:24:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1645640666;
+        bh=rgRvW1Qn3oSDYFubJHW9j2LhGBXXkh7qZ9/mK+YaNbo=;
+        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
+        b=m8fEWD4GaLZ7waaLQ7ty81ymd0pdAvkb/U+sTbFD9QI7N6nrANWX72lZRJhik+vPK
+         x7sX9MqPirv/+RnFB1FbdUAOgfR/+HbxoJuKEGmpy2SJ5c3PIkygTAJbyF1c9U1eDb
+         DcNWwPIV1cmo3+gLmBPQaPXch3iVcphl4v3bmM3GUcL0SJE4pXFB5wnqES0jyku+gp
+         8gkZa6sH2Oa3zSrDC1zTOn5ML6srO8K65+AiBrdeBnvA4lmhF2K77E9U6vYF96dOg1
+         yHKa9vnMF92xIoV4qkyun2OEy7n42RBNgetKpEemzvyQnAMCsZX2h92WMPDPhO8Dxb
+         8IZsjXFshYoHw==
+Received: by mail-wr1-f54.google.com with SMTP id o4so4274958wrf.3;
+        Wed, 23 Feb 2022 10:24:26 -0800 (PST)
+X-Gm-Message-State: AOAM533pLjA3R+DMOy0QMLX7Z8hxoUC5J2NC5wAdJBUeZBhnGqxRZtmj
+        3nyZrcuWKrShOj0NQSUhmyMJC0DSrq7bFIRdGiM=
+X-Google-Smtp-Source: ABdhPJwvY74YtBuDahnwr0uyH1IlIUzyz5bn91fZKzOhSgrdyjhpWP5Omd9qz1sWAAWMhxQUPbJFgoh/6Ji5wRMC0jk=
+X-Received: by 2002:a5d:6ace:0:b0:1ed:89dc:a456 with SMTP id
+ u14-20020a5d6ace000000b001ed89dca456mr684028wrw.114.1645640664650; Wed, 23
+ Feb 2022 10:24:24 -0800 (PST)
+MIME-Version: 1.0
+References: <20220208215232.491780-1-anna@kernel.org> <20220208215232.491780-4-anna@kernel.org>
+ <20220223165729.GH8288@magnolia>
+In-Reply-To: <20220223165729.GH8288@magnolia>
+From:   Anna Schumaker <anna@kernel.org>
+Date:   Wed, 23 Feb 2022 13:24:08 -0500
+X-Gmail-Original-Message-ID: <CAFX2JfmJmeFusSEGLEtCXtNGyCW_3faCtMFXEzBKonw+rUO54A@mail.gmail.com>
+Message-ID: <CAFX2JfmJmeFusSEGLEtCXtNGyCW_3faCtMFXEzBKonw+rUO54A@mail.gmail.com>
+Subject: Re: [PATCH 3/4] generic/578: Test that filefrag is supported before running
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     fstests@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Update find_client_in_id_table to:
- . skip client with CLIENT_EXPIRED; discarded courtesy client
- . if courtesy client was found then clear CLIENT_COURTESY and set
-   CLIENT_RECONNECTED flag so callers can take appropriate action.
+On Wed, Feb 23, 2022 at 11:57 AM Darrick J. Wong <djwong@kernel.org> wrote:
+>
+> On Tue, Feb 08, 2022 at 04:52:31PM -0500, Anna Schumaker wrote:
+> > From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> >
+> > NFS does not support FIBMAP/FIEMAP, so the check for non-shared extents
+> > on NFS v4.2 always fails with the message: "FIBMAP/FIEMAP unsupported".
+> > I added the _require_filefrag check for NFS and other filesystems that
+> > don't have FIEMAP or FIBMAP support.
+> >
+> > Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> > ---
+> >  common/rc         | 14 ++++++++++++++
+> >  tests/generic/578 |  2 +-
+> >  2 files changed, 15 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/common/rc b/common/rc
+> > index b3289de985d8..73d17da9430e 100644
+> > --- a/common/rc
+> > +++ b/common/rc
+> > @@ -4673,6 +4673,20 @@ _require_inode_limits()
+> >       fi
+> >  }
+> >
+> > +_require_filefrag()
+> > +{
+> > +     _require_command "$FILEFRAG_PROG" filefrag
+> > +
+> > +     local file="$TEST_DIR/filefrag_testfile"
+> > +
+> > +     echo "XX" > $file
+>
+> Nit: You might want to rm -f $file before echoing into it, just in case
+> some future knave ;) sets up that pathname to point to a named pipe or
+> something that will hang fstests...
+>
+> > +     ${FILEFRAG_PROG} $file 2>&1 | grep -q "FIBMAP/FIEMAP[[:space:]]*unsupported"
+> > +     if [ $? -eq 0 ]; then
+>
+> ...and rm it again here to avoid leaving test files around.
 
-Update find_confirmed_client to discard courtesy client.
-Update lookup_clientid to call find_client_in_id_table directly.
-Update set_client to create client record for courtesy client.
-Update find_cpntf_state to discard courtesy client.
+Sure, I can make that change. Should I update
+_require_filefrag_options() and _require_fibmap() to follow the same
+pattern while I'm at it? The new function was based off of those.
 
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
----
- fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++++++++++++--
- 1 file changed, 32 insertions(+), 2 deletions(-)
+Anna
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5cef1a78cc28..6e3ca0ea4f28 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2915,6 +2915,19 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
-+
-+			/* need to sync with thread resolving lock/deleg conflict */
-+			clear_bit(NFSD4_CLIENT_RECONNECTED, &clp->cl_flags);
-+			spin_lock(&clp->cl_cs_lock);
-+			if (test_bit(NFSD4_CLIENT_EXPIRED, &clp->cl_flags)) {
-+				spin_unlock(&clp->cl_cs_lock);
-+				continue;
-+			}
-+			if (test_bit(NFSD4_CLIENT_COURTESY, &clp->cl_flags)) {
-+				clear_bit(NFSD4_CLIENT_COURTESY, &clp->cl_flags);
-+				set_bit(NFSD4_CLIENT_RECONNECTED, &clp->cl_flags);
-+			}
-+			spin_unlock(&clp->cl_cs_lock);
- 			renew_client_locked(clp);
- 			return clp;
- 		}
-@@ -2922,6 +2935,7 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- 	return NULL;
- }
- 
-+
- static void
- nfsd4_discard_courtesy_clnt(struct nfs4_client *clp)
- {
-@@ -2934,9 +2948,15 @@ static struct nfs4_client *
- find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- {
- 	struct list_head *tbl = nn->conf_id_hashtbl;
-+	struct nfs4_client *clp;
- 
- 	lockdep_assert_held(&nn->client_lock);
--	return find_client_in_id_table(tbl, clid, sessions);
-+	clp = find_client_in_id_table(tbl, clid, sessions);
-+	if (clp && test_bit(NFSD4_CLIENT_RECONNECTED, &clp->cl_flags)) {
-+		nfsd4_discard_courtesy_clnt(clp);
-+		clp = NULL;
-+	}
-+	return clp;
- }
- 
- static struct nfs4_client *
-@@ -4867,9 +4887,10 @@ static struct nfs4_client *lookup_clientid(clientid_t *clid, bool sessions,
- 						struct nfsd_net *nn)
- {
- 	struct nfs4_client *found;
-+	struct list_head *tbl = nn->conf_id_hashtbl;
- 
- 	spin_lock(&nn->client_lock);
--	found = find_confirmed_client(clid, sessions, nn);
-+	found = find_client_in_id_table(tbl, clid, sessions);
- 	if (found)
- 		atomic_inc(&found->cl_rpc_users);
- 	spin_unlock(&nn->client_lock);
-@@ -4894,6 +4915,8 @@ static __be32 set_client(clientid_t *clid,
- 	cstate->clp = lookup_clientid(clid, false, nn);
- 	if (!cstate->clp)
- 		return nfserr_expired;
-+	if (test_bit(NFSD4_CLIENT_RECONNECTED, &cstate->clp->cl_flags))
-+		nfsd4_client_record_create(cstate->clp);
- 	return nfs_ok;
- }
- 
-@@ -6222,6 +6245,13 @@ static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- 	found = lookup_clientid(&cps->cp_p_clid, true, nn);
- 	if (!found)
- 		goto out;
-+	if (test_bit(NFSD4_CLIENT_RECONNECTED, &found->cl_flags)) {
-+		nfsd4_discard_courtesy_clnt(found);
-+		if (atomic_dec_and_lock(&found->cl_rpc_users,
-+				&nn->client_lock))
-+			spin_unlock(&nn->client_lock);
-+		goto out;
-+	}
- 
- 	*stid = find_stateid_by_type(found, &cps->cp_p_stateid,
- 			NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID);
--- 
-2.9.5
-
+>
+> Otherwise this looks ok to me.
+>
+> --D
+>
+> > +             _notrun "FIBMAP/FIEMAP not supported by this filesystem"
+> > +     fi
+> > +     rm -f $file
+> > +}
+> > +
+> >  _require_filefrag_options()
+> >  {
+> >       _require_command "$FILEFRAG_PROG" filefrag
+> > diff --git a/tests/generic/578 b/tests/generic/578
+> > index 01929a280f8c..64c813032cf8 100755
+> > --- a/tests/generic/578
+> > +++ b/tests/generic/578
+> > @@ -23,7 +23,7 @@ _cleanup()
+> >  # real QA test starts here
+> >  _supported_fs generic
+> >  _require_test_program "mmap-write-concurrent"
+> > -_require_command "$FILEFRAG_PROG" filefrag
+> > +_require_filefrag
+> >  _require_test_reflink
+> >  _require_cp_reflink
+> >
+> > --
+> > 2.35.1
+> >
