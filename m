@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 75563C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AE50C433F5
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 21:23:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242677AbiBWVWa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 16:22:30 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52040 "EHLO
+        id S242419AbiBWVUG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 16:20:06 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51972 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242451AbiBWVUG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:06 -0500
+        with ESMTP id S242423AbiBWVUE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 16:20:04 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3321F4ECE7
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:38 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 309EF4ECDA
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:19:36 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 10A63618A2
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:38 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A9778C340E7
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:37 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 1267961650
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:36 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4A127C340F0
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 21:19:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645651177;
-        bh=+MiUFfC0SeWN4+VjycQsRApv2J4rGpod/B+OPr+ibOY=;
+        s=k20201202; t=1645651175;
+        bh=haB0TZhsy/Akzv5gxDiPKiHprJp2VAgbi/1a8/Kry2U=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=G4phKhTO2915vwYfqSffGoESTnDHs/wPoBS1eL+aM40Xewju8OD/B1D3BuDPWxlpQ
-         BpuWI+BL96UgMDfTWzchJh1jTG0rt1VIbbdA67Acxq1XG5OQRerIwx0CxUnCDV2YxN
-         qoETTG8AgYKrlIwmmqquiPieG8Pxnb8bOhhAJ+L8JaJb+HJaPFNpITVnd/z8rf1PF5
-         LwbiRkhlXTPCT46FJYl5AHUvNODnUodY7D4HQgv8qBisqDNyGXuhxn4t4Nh/WzUONP
-         darcJZCK2AFQVuKjbi+seGF2IMg317BUa7vabCoeuo/hICUKAi53jCmH7NN1JHk1je
-         MgpUfUiKNkO7Q==
+        b=B8TeJvTS2XemG2IiAsvYNkevY17OM+bITf/ENLWpH4VaHELNd+nV5Btzs3KHpLGJT
+         pvB6VbT/9jK/bTILKno//fr86wszbmZNaREKI+BIQ+76Vq6Txb4O7DrWoPEI+T+jZA
+         oibThjyu9ZCUh5QghmNe1dx8bJ64WZ9eeryds/Mo9cC0WGt9jy+898fjZdA5Z9DVHt
+         9UEsKp+0hn7Ec71CgNHQq60vcpWcOVheIEpVtU5EAekcHrvvFYSDwoZ1VT3C+HA1OR
+         IfiFKhoc768iqeGWibxKoyuqrYXDikEs3MCyXHt0MOQ0qYKpYwtDXb54LDAcgJbrOO
+         hvJHhraQMH+KA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v7 15/21] NFS: Don't request readdirplus when revalidation was forced
-Date:   Wed, 23 Feb 2022 16:12:59 -0500
-Message-Id: <20220223211305.296816-16-trondmy@kernel.org>
+Subject: [PATCH v7 09/21] NFS: Simplify nfs_readdir_xdr_to_array()
+Date:   Wed, 23 Feb 2022 16:12:53 -0500
+Message-Id: <20220223211305.296816-10-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220223211305.296816-15-trondmy@kernel.org>
+In-Reply-To: <20220223211305.296816-9-trondmy@kernel.org>
 References: <20220223211305.296816-1-trondmy@kernel.org>
  <20220223211305.296816-2-trondmy@kernel.org>
  <20220223211305.296816-3-trondmy@kernel.org>
@@ -47,12 +47,6 @@ References: <20220223211305.296816-1-trondmy@kernel.org>
  <20220223211305.296816-7-trondmy@kernel.org>
  <20220223211305.296816-8-trondmy@kernel.org>
  <20220223211305.296816-9-trondmy@kernel.org>
- <20220223211305.296816-10-trondmy@kernel.org>
- <20220223211305.296816-11-trondmy@kernel.org>
- <20220223211305.296816-12-trondmy@kernel.org>
- <20220223211305.296816-13-trondmy@kernel.org>
- <20220223211305.296816-14-trondmy@kernel.org>
- <20220223211305.296816-15-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -61,103 +55,66 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the revalidation was forced, due to the presence of a LOOKUP_EXCL or
-a LOOKUP_REVAL flag, then readdirplus won't help. It also can't help
-when we're doing a path component lookup.
+Recent changes to readdir mean that we can cope with partially filled
+page cache entries, so we no longer need to rely on looping in
+nfs_readdir_xdr_to_array().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 26 ++++++++++++++++----------
- 1 file changed, 16 insertions(+), 10 deletions(-)
+ fs/nfs/dir.c | 29 +++++++++++------------------
+ 1 file changed, 11 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index a9098d5a9fc8..54f0d37485d5 100644
+index 83933b7018ea..9b0f13b52dbf 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -682,10 +682,13 @@ void nfs_readdir_record_entry_cache_miss(struct inode *dir)
- 	}
- }
+@@ -879,6 +879,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	size_t array_size;
+ 	struct inode *inode = file_inode(desc->file);
+ 	unsigned int dtsize = desc->dtsize;
++	unsigned int pglen;
+ 	int status = -ENOMEM;
  
--static void nfs_lookup_advise_force_readdirplus(struct inode *dir)
-+static void nfs_lookup_advise_force_readdirplus(struct inode *dir,
-+						unsigned int flags)
- {
- 	if (nfs_server_capable(dir, NFS_CAP_CASE_INSENSITIVE))
- 		return;
-+	if (flags & (LOOKUP_EXCL | LOOKUP_PARENT | LOOKUP_REVAL))
-+		return;
- 	nfs_readdir_record_entry_cache_miss(dir);
- }
- 
-@@ -1583,15 +1586,17 @@ nfs_lookup_revalidate_delegated(struct inode *dir, struct dentry *dentry,
- 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
- }
- 
--static int
--nfs_lookup_revalidate_dentry(struct inode *dir, struct dentry *dentry,
--			     struct inode *inode)
-+static int nfs_lookup_revalidate_dentry(struct inode *dir,
-+					struct dentry *dentry,
-+					struct inode *inode, unsigned int flags)
- {
- 	struct nfs_fh *fhandle;
- 	struct nfs_fattr *fattr;
- 	unsigned long dir_verifier;
- 	int ret;
- 
-+	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
-+
- 	ret = -ENOMEM;
- 	fhandle = nfs_alloc_fhandle();
- 	fattr = nfs_alloc_fattr_with_label(NFS_SERVER(inode));
-@@ -1612,6 +1617,10 @@ nfs_lookup_revalidate_dentry(struct inode *dir, struct dentry *dentry,
- 		}
+ 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+@@ -896,28 +897,20 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	if (!pages)
  		goto out;
- 	}
-+
-+	/* Request help from readdirplus */
-+	nfs_lookup_advise_force_readdirplus(dir, flags);
-+
- 	ret = 0;
- 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
- 		goto out;
-@@ -1621,8 +1630,6 @@ nfs_lookup_revalidate_dentry(struct inode *dir, struct dentry *dentry,
- 	nfs_setsecurity(inode, fattr);
- 	nfs_set_verifier(dentry, dir_verifier);
  
--	/* set a readdirplus hint that we had a cache miss */
--	nfs_lookup_advise_force_readdirplus(dir);
- 	ret = 1;
+-	do {
+-		unsigned int pglen;
+-		status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
+-						pages, dtsize,
+-						verf_res);
+-		if (status < 0)
+-			break;
+-
+-		pglen = status;
+-		if (pglen == 0) {
+-			nfs_readdir_page_set_eof(page);
+-			break;
+-		}
+-
+-		verf_arg = verf_res;
++	status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie, pages,
++					dtsize, verf_res);
++	if (status < 0)
++		goto free_pages;
+ 
++	pglen = status;
++	if (pglen != 0)
+ 		status = nfs_readdir_page_filler(desc, entry, pages, pglen,
+ 						 arrays, narrays);
+-		desc->buffer_fills++;
+-	} while (!status && nfs_readdir_page_needs_filling(page) &&
+-		page_mapping(page));
++	else
++		nfs_readdir_page_set_eof(page);
++	desc->buffer_fills++;
+ 
++free_pages:
+ 	nfs_readdir_free_pages(pages, array_size);
  out:
- 	nfs_free_fattr(fattr);
-@@ -1688,8 +1695,7 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
- 	if (NFS_STALE(inode))
- 		goto out_bad;
- 
--	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
--	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
-+	return nfs_lookup_revalidate_dentry(dir, dentry, inode, flags);
- out_valid:
- 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
- out_bad:
-@@ -1883,7 +1889,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 		goto out;
- 
- 	/* Notify readdir to use READDIRPLUS */
--	nfs_lookup_advise_force_readdirplus(dir);
-+	nfs_lookup_advise_force_readdirplus(dir, flags);
- 
- no_entry:
- 	res = d_splice_alias(inode, dentry);
-@@ -2146,7 +2152,7 @@ nfs4_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
- reval_dentry:
- 	if (flags & LOOKUP_RCU)
- 		return -ECHILD;
--	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
-+	return nfs_lookup_revalidate_dentry(dir, dentry, inode, flags);
- 
- full_reval:
- 	return nfs_do_lookup_revalidate(dir, dentry, flags);
+ 	nfs_free_fattr(entry->fattr);
 -- 
 2.35.1
 
