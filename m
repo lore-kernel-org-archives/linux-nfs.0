@@ -2,249 +2,99 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB68CC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 13:42:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A8E4C433FE
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Feb 2022 14:24:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240976AbiBWNlK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Feb 2022 08:41:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37422 "EHLO
+        id S241508AbiBWOXi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Feb 2022 09:23:38 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41034 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238752AbiBWNlH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 08:41:07 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id C7D94AC05F
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 05:40:39 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1645623639;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=boVjQySP0bow3lHCS1C6zSDqVgfR35bAsnNUPhH4nmY=;
-        b=Xg72O65iTYYitB0Wjy1KnF9unj6bjhTpvoAZHar1llrP5sX0e9QyOjEL870E3z2/0GRi03
-        TBIdQ4OaZE7Es0KOcs1s20VFDcOEV9E5+4i0/wMHvaOm6pl64FWn472Q9bUF7cGYF0LTtX
-        4Mi3GwqYbHXxGWlF9qDdlpfclyjoMOE=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-377-dwOF8fY8P_SryZCTWCz-gw-1; Wed, 23 Feb 2022 08:40:37 -0500
-X-MC-Unique: dwOF8fY8P_SryZCTWCz-gw-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id A01A01091DA1
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:40:36 +0000 (UTC)
-Received: from bcodding.csb (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 528B67C03E
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 13:40:36 +0000 (UTC)
-Received: by bcodding.csb (Postfix, from userid 24008)
-        id F1C5D10C30F7; Wed, 23 Feb 2022 08:40:35 -0500 (EST)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 3/8] NFS: Add a struct to track readdir pagecache location
-Date:   Wed, 23 Feb 2022 08:40:30 -0500
-Message-Id: <aaedb2e378800a5cdb7071d65690b981274f2c22.1645623510.git.bcodding@redhat.com>
-In-Reply-To: <eedb07d14a96caef1de663a436a326b2c5012ab4.1645623510.git.bcodding@redhat.com>
-References: <d759b6df8acd82b8d44e2afcf11a7a94dcf85ba6.1645623510.git.bcodding@redhat.com> <eedb07d14a96caef1de663a436a326b2c5012ab4.1645623510.git.bcodding@redhat.com>
+        with ESMTP id S239615AbiBWOXi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2022 09:23:38 -0500
+Received: from mail-ed1-x531.google.com (mail-ed1-x531.google.com [IPv6:2a00:1450:4864:20::531])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E7D5B1892
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 06:23:10 -0800 (PST)
+Received: by mail-ed1-x531.google.com with SMTP id z22so44418640edd.1
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Feb 2022 06:23:10 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=1B/oCfMvlO7P1vRziqRGnhWRi/hgZFJlRfuqeZS3BEo=;
+        b=bcXZdAHg80S5eA6IGDqF4AOeLbfFtLZw1Q3HUPam67/ro1UNQ/TW+Tt0LuwIgPZA60
+         UZr6bHMU1Jy1VMCFdsBJpMJDrDEe4an3KbiOSe58KOb3hJTLZTbj7qCvtpX+g5QMPr9z
+         rWASsvfSHzk5plT9ZxYC4Z3RYHv+PVbDzf0HJFLbaNe3HVv9UQa2uvifwGRlLZUDRtRM
+         mBkKA7u3AYP+jkrMV/wMF3BQidJleB23Hw8WWZ3loK/7FJJ39QB5akIJYAqYSqrKH8a2
+         Ss5jpDXDa3651y8HMRHB3pJReN43vupAkK3c/rgSlKolX/J7vYsJhFgCRCSY7GDvUyir
+         zlzg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=1B/oCfMvlO7P1vRziqRGnhWRi/hgZFJlRfuqeZS3BEo=;
+        b=Grv7d4yVqo+hvtkiUVCKYmY+L1LouSeub8EOcrNzWuFr+uCCvpygIpwkN3ykXQY8jX
+         ae8l3D4irfSDhJD22XZMHTnBNOeLthH63/D7KjcGOc3AWhoDRTsguI06BFTFMab5GRpm
+         0Y40AfMCTg5BEuLguadd8zMtArOxWC2+P3xYGHcyVMDCjoHoDXGwl7VPz9H59NTUMhBy
+         D6+bREYblcZ8jTrzBfqRl4uynVF4Q4R0q4y0E4DxafdXmOjR48nLixdA5LZm/wArMya8
+         ToaL65ADru/Klv3uzMhBcGkAH3aXu9PBFf/xRxW/1HsyL2wvCBYNUkj6WJdgDn3U/DeJ
+         o4jw==
+X-Gm-Message-State: AOAM532W8d7JPjJfnd8MDnaUYYolX0A1EseWwS++7xMUkSHnBwdirjVx
+        KolZvMAU1pbq2j4IihjS0kVBXi+HJ/Gg8Y/krQs=
+X-Google-Smtp-Source: ABdhPJyt67g4aNhewyXkoZ/8+MTHns5smc4vohE/dkgx78r3GQPANTTfI8vVT2t5NyV/t6hEKrFcOmU4k9bkyTAbL38=
+X-Received: by 2002:a05:6402:5191:b0:40f:b9e0:4d1b with SMTP id
+ q17-20020a056402519100b0040fb9e04d1bmr32107324edd.149.1645626188866; Wed, 23
+ Feb 2022 06:23:08 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+References: <50bd4b4d-3730-4048-fcce-6c79dfe70acf@garloff.de>
+ <8957291b-ecd1-931e-5d0c-7ef20c401e5d@garloff.de> <F693AC98-DCB4-4086-AC19-EE1B71DB2551@netapp.com>
+ <be851303-b1bb-7d8d-832e-a1a3db529662@garloff.de> <10d55787-7b97-8636-9426-73fdeda0a122@garloff.de>
+ <6401c5e1-8f05-5644-9bea-207640a21b77@garloff.de>
+In-Reply-To: <6401c5e1-8f05-5644-9bea-207640a21b77@garloff.de>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Wed, 23 Feb 2022 09:22:57 -0500
+Message-ID: <CAN-5tyHC0m8nLgEi89EdKUo-kpEWsi-LUNHqAXc=gBzW+u52NA@mail.gmail.com>
+Subject: Re: 6f283634 / 1976b2b3 breaks NFS (QNAP/Linux kNFSD)
+To:     Kurt Garloff <kurt@garloff.de>
+Cc:     "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Directory entries in the NFS readdir pagecache are referenced by their
-cookie value and offset.  By defining a structure to group these values,
-we'll simplify changes to validate pagecache pages in patches that follow.
+On Wed, Feb 23, 2022 at 8:20 AM Kurt Garloff <kurt@garloff.de> wrote:
+>
+> Hi Olga,
+>
+> any updates? Were you able to investigate the traces?
+>
+> Breaking NFS mounts from Qnap (knfsd with 3.4.6 kernel here,
+> though Qnap might have patched it),is not something that
+> should happen with a -stable kernel update, even if the problem
+> would be on the Qnap side, which would not be completely
+> surprising.
+>
+> So I think we should revert this patch at least for -stable,
+> unless we understand what's going on and have a better fix
+> than a plain revert.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/dir.c           | 46 ++++++++++++++++++++----------------------
- include/linux/nfs_fs.h |  6 ++++++
- 2 files changed, 28 insertions(+), 24 deletions(-)
+Hi Kurt,
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 79bdcedc0cad..009187c0ae0f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -158,11 +158,10 @@ struct nfs_readdir_descriptor {
- 	struct file	*file;
- 	struct page	*page;
- 	struct dir_context *ctx;
--	pgoff_t		page_index;
- 	pgoff_t		page_index_max;
- 	u64		dir_cookie;
--	u64		last_cookie;
- 	u64		dup_cookie;
-+	struct nfs_dir_page_cursor pgc;
- 	loff_t		current_index;
- 	loff_t		prev_index;
- 
-@@ -172,7 +171,6 @@ struct nfs_readdir_descriptor {
- 	unsigned long	gencount;
- 	unsigned long	attr_gencount;
- 	unsigned int	page_fill_misses;
--	unsigned int	cache_entry_index;
- 	unsigned int	buffer_fills;
- 	unsigned int	dtsize;
- 	signed char duped;
-@@ -457,7 +455,7 @@ static int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
- 
- 	index = (unsigned int)diff;
- 	desc->dir_cookie = array->array[index].cookie;
--	desc->cache_entry_index = index;
-+	desc->pgc.entry_index = index;
- 	return 0;
- out_eof:
- 	desc->eof = true;
-@@ -526,7 +524,7 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
- 			else
- 				desc->ctx->pos = new_pos;
- 			desc->prev_index = new_pos;
--			desc->cache_entry_index = i;
-+			desc->pgc.entry_index = i;
- 			return 0;
- 		}
- 	}
-@@ -553,9 +551,9 @@ static int nfs_readdir_search_array(struct nfs_readdir_descriptor *desc)
- 		status = nfs_readdir_search_for_cookie(array, desc);
- 
- 	if (status == -EAGAIN) {
--		desc->last_cookie = array->last_cookie;
-+		desc->pgc.index_cookie = array->last_cookie;
- 		desc->current_index += array->size;
--		desc->page_index++;
-+		desc->pgc.page_index++;
- 	}
- 	kunmap_atomic(array);
- 	return status;
-@@ -968,8 +966,8 @@ static struct page *
- nfs_readdir_page_get_cached(struct nfs_readdir_descriptor *desc)
- {
- 	return nfs_readdir_page_get_locked(desc->file->f_mapping,
--					   desc->page_index,
--					   desc->last_cookie);
-+					   desc->pgc.page_index,
-+					   desc->pgc.index_cookie);
- }
- 
- #define NFS_READDIR_PAGE_FILL_MISS_MAX 5
-@@ -1001,10 +999,10 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
- 	if (nfs_readdir_page_needs_filling(desc->page)) {
- 		if (!nfs_readdir_may_fill_pagecache(desc))
- 			return -EBADCOOKIE;
--		desc->page_index_max = desc->page_index;
-+		desc->page_index_max = desc->pgc.page_index;
- 		trace_nfs_readdir_cache_fill(desc->file, nfsi->cookieverf,
--					     desc->last_cookie,
--					     desc->page_index, desc->dtsize);
-+					     desc->pgc.index_cookie,
-+					     desc->pgc.page_index, desc->dtsize);
- 		res = nfs_readdir_xdr_to_array(desc, nfsi->cookieverf, verf,
- 					       &desc->page, 1);
- 		if (res < 0) {
-@@ -1012,7 +1010,7 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
- 			trace_nfs_readdir_cache_fill_done(inode, res);
- 			if (res == -EBADCOOKIE || res == -ENOTSYNC) {
- 				invalidate_inode_pages2(desc->file->f_mapping);
--				desc->page_index = 0;
-+				desc->pgc.page_index = 0;
- 				return -EAGAIN;
- 			}
- 			return res;
-@@ -1020,7 +1018,7 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
- 		/*
- 		 * Set the cookie verifier if the page cache was empty
- 		 */
--		if (desc->page_index == 0)
-+		if (desc->pgc.page_index == 0)
- 			memcpy(nfsi->cookieverf, verf,
- 			       sizeof(nfsi->cookieverf));
- 		desc->page_fill_misses++;
-@@ -1040,10 +1038,10 @@ static int readdir_search_pagecache(struct nfs_readdir_descriptor *desc)
- 	int res;
- 
- 	do {
--		if (desc->page_index == 0) {
-+		if (desc->pgc.page_index == 0) {
- 			desc->current_index = 0;
- 			desc->prev_index = 0;
--			desc->last_cookie = 0;
-+			desc->pgc.index_cookie = 0;
- 		}
- 		res = find_and_lock_cache_page(desc);
- 	} while (res == -EAGAIN);
-@@ -1061,7 +1059,7 @@ static void nfs_do_filldir(struct nfs_readdir_descriptor *desc,
- 	unsigned int i = 0;
- 
- 	array = kmap(desc->page);
--	for (i = desc->cache_entry_index; i < array->size; i++) {
-+	for (i = desc->pgc.entry_index; i < array->size; i++) {
- 		struct nfs_cache_array_entry *ent;
- 
- 		ent = &array->array[i];
-@@ -1119,13 +1117,13 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
- 	if (!arrays[0])
- 		goto out;
- 
--	desc->page_index = 0;
--	desc->cache_entry_index = 0;
--	desc->last_cookie = desc->dir_cookie;
-+	desc->pgc.page_index = 0;
-+	desc->pgc.entry_index = 0;
-+	desc->pgc.index_cookie = desc->dir_cookie;
- 	desc->duped = 0;
- 	desc->page_index_max = 0;
- 
--	trace_nfs_readdir_uncached(desc->file, desc->verf, desc->last_cookie,
-+	trace_nfs_readdir_uncached(desc->file, desc->verf, desc->pgc.index_cookie,
- 				   -1, desc->dtsize);
- 
- 	status = nfs_readdir_xdr_to_array(desc, desc->verf, verf, arrays, sz);
-@@ -1258,7 +1256,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 		}
- 		if (res == -ETOOSMALL && desc->plus) {
- 			nfs_zap_caches(inode);
--			desc->page_index = 0;
-+			desc->pgc.page_index = 0;
- 			desc->plus = false;
- 			desc->eof = false;
- 			continue;
-@@ -1271,7 +1269,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 		if (desc->eob || desc->eof)
- 			break;
- 		/* Grow the dtsize if we have to go back for more pages */
--		if (desc->page_index == desc->page_index_max)
-+		if (desc->pgc.page_index == desc->page_index_max)
- 			nfs_grow_dtsize(desc);
- 	} while (!desc->eob && !desc->eof);
- 
-@@ -1280,7 +1278,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	dir_ctx->dup_cookie = desc->dup_cookie;
- 	dir_ctx->duped = desc->duped;
- 	dir_ctx->attr_gencount = desc->attr_gencount;
--	dir_ctx->page_index = desc->page_index;
-+	dir_ctx->page_index = desc->pgc.page_index;
- 	dir_ctx->page_fill_misses = desc->page_fill_misses;
- 	dir_ctx->eof = desc->eof;
- 	dir_ctx->dtsize = desc->dtsize;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 0a5425a58bbd..2f5ded282477 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -99,6 +99,12 @@ struct nfs_open_context {
- 	struct rcu_head	rcu_head;
- };
- 
-+struct nfs_dir_page_cursor {
-+	__u64 index_cookie;
-+	pgoff_t page_index;
-+	unsigned int entry_index;
-+};
-+
- struct nfs_open_dir_context {
- 	struct list_head list;
- 	atomic_t cache_hits;
--- 
-2.31.1
+I apologize for the late response. I have looked at the network trace.
+The problem stems from the broken server that claims to support
+fs_locations but then decides to never reply to the query.
 
+I can implement a mount option to say fs_locquery=off to handle mounts
+against the broken servers?
+
+However I would like to ask if the better path forward isn't to update
+to the knfsd where the problem is fixed?
+
+>
+> Best,
+> --
+>
+> Kurt Garloff <kurt@garloff.de>
+>
