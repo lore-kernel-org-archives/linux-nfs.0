@@ -2,116 +2,298 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3F33C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Feb 2022 16:31:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 776ACC433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Feb 2022 16:32:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229798AbiBXQbX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Feb 2022 11:31:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51072 "EHLO
+        id S229674AbiBXQbo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Feb 2022 11:31:44 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53138 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229674AbiBXQbX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2022 11:31:23 -0500
-Received: from mail-ed1-x530.google.com (mail-ed1-x530.google.com [IPv6:2a00:1450:4864:20::530])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 14C1E1F6377
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:30:44 -0800 (PST)
-Received: by mail-ed1-x530.google.com with SMTP id bq11so3665205edb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:30:44 -0800 (PST)
+        with ESMTP id S229890AbiBXQbn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2022 11:31:43 -0500
+Received: from mail-wm1-x330.google.com (mail-wm1-x330.google.com [IPv6:2a00:1450:4864:20::330])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05BA41A9054
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:31:04 -0800 (PST)
+Received: by mail-wm1-x330.google.com with SMTP id bg16-20020a05600c3c9000b00380f6f473b0so140434wmb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:31:03 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=xCDVviS1rWKTyTmf8XJHHf/Z/m+RW3azVtKj4v7AQgY=;
-        b=OSrQGbh1Bi5kgw2ugjnmX6C/DRnjH3ZOSsHOtHQ6rDHMa7wUDLCptYK0KxlQ8/D3N8
-         igc1yTfjmCc9EDhUCd4dMW3eDyxI7P97GL3n4MoyAXZQPZauigE+RpcX/UKKrEd3kYXA
-         UfbBHZV4pAnJJSsfn9CMy0vbmrIQxAv8eDZ/KYMQzOyDMHGNzXDcDWtU5KtgGgLJ3bjT
-         /UlN7XlLSgfpyMaCE+Yf57jyWBkXY7+6Iz9jZ/tCE4aWTW/r1foJ8/qTP9SSYUJFMu2u
-         //Jn47v5Cqk+HjBiyeTgicPxdXjkbW6QaHPfYd+LA2HfqJua4JpHHnRhVWBKLKHp2FC5
-         hepA==
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=Sgx0aDHfQQaatA33vfIbvvWROj3cPyoEUQuG3hbRL6k=;
+        b=KzaXk5P1ivqmyEpc/m18Rc0yua9EKTWM9Pd2OjTRkeDaN3oWa24D+IKgvqsPCeDUEl
+         xE9IuDszZAnAivSOdOSfENF8XqeCI5u+C/7AaHlzHwwBFRv9E5ZueIv9YVw9k+sj+087
+         ZAUpJDOzdQETGEvRMRNZ7SWaIWHHIarDbbwFZMocHM6Vkdqf4D8D82nOq8whjMQMDGqM
+         1q8R23DgQK4YoDr1t0UIvjTx91F8OPqAkbrbMevYVBa4lwrgozijBMignqaVAVgspm3B
+         98aF+CmMgn1I7aNrzdKxgT0SAGP/0UN6FDAZReYQW1CbizGkE9kEHxRlBbB2T8oLrK3A
+         q+mg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=xCDVviS1rWKTyTmf8XJHHf/Z/m+RW3azVtKj4v7AQgY=;
-        b=CSGz7c64gQdF8Kj+Tnwq2IKZQHBmUiP0/RCyaqzuG39QLclOEiDyvkU57VPvh8ul3g
-         ETt9mxMwrnkUzuWW7EBpZSiD8ON33vtWdtHB6r+K+0jxMGe1VO+wIau8anrlW/Z9sBaE
-         +VMnKPz4e+YobjGDDjnfVIav87mzhvY48y7duzm9O1Z/Ow42YJEaXCuj7Dkyy5DoqlfM
-         zwO6HsCqDXi4jxNRWtytf5LTDYkn3HXjyCFJbdAeRiqPZ2GBMrenIzz7A8Orx3QJpEJe
-         SGnN/0DeKkdF8dVS/H4qd1YQX9orxSEhHN4iFVtXOxI7ZV6p7yXubDOiTcNJ7bZNxPH6
-         VZWQ==
-X-Gm-Message-State: AOAM531ZCIN34LAj6B0gy9IfskQyl+U7+turBVtL1prugCS5c0oM9i3z
-        uVi93mlnVgSom+dgIsa1SEF+0eKdl6w=
-X-Google-Smtp-Source: ABdhPJxE9nAx6DTzQ9EA24Nqi5F49tAYA8mqbXzGs9JMs+N1PstzLF9PKWHsbVVt317mNspCSC2Hlw==
-X-Received: by 2002:a5d:544d:0:b0:1ee:880d:3391 with SMTP id w13-20020a5d544d000000b001ee880d3391mr1597679wrv.72.1645719443475;
-        Thu, 24 Feb 2022 08:17:23 -0800 (PST)
-Received: from localhost.localdomain ([5.29.13.154])
-        by smtp.gmail.com with ESMTPSA id l26sm978851wmi.30.2022.02.24.08.17.22
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 24 Feb 2022 08:17:22 -0800 (PST)
-From:   Amir Goldstein <amir73il@gmail.com>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] nfsd: more robust allocation failure handling in nfsd_file_cache_init
-Date:   Thu, 24 Feb 2022 18:17:05 +0200
-Message-Id: <20220224161705.1041788-1-amir73il@gmail.com>
-X-Mailer: git-send-email 2.25.1
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=Sgx0aDHfQQaatA33vfIbvvWROj3cPyoEUQuG3hbRL6k=;
+        b=UDFv9EF5pqg4iMoPApTjKQyy+QGfabtN3Fk/qUo36RrqC5skQIaDVPTCkEhK832FtI
+         qqUDbevKaG+z0/IX3RbYrbMbDbZFAYuxx3bIrIFMTBDMlndXdpTaFPNFvmQcuOT2oEIP
+         lnOo+81Ke5wPOgHNS9tnadqOhWMS4Isc9eXukjSagymVeVqjxchDWknKCehfTXpqiXor
+         IOHA5b6vt1jdGIeMIrg1EprcAi6A97fOKKXcQpwmgOc2dvXmwwqCnlkUBmFiOYRwxDJ7
+         0dMjnnLLDjW/xjorAlQWJ5bkCUeSBDjtbcjNIfWHCQSBiqMvVlP72QLJz92d4OoZGUad
+         O3iw==
+X-Gm-Message-State: AOAM533j0p4sWu73hidG/6swQRNJGwvdGCvp0IDqDrvIgZwnGKFAbxSJ
+        eVdjm3NdoWPMHY3cATd6AOXKnfWZ1xwpY6leu/8YyX3jhA7Uqg==
+X-Google-Smtp-Source: ABdhPJw6haoL5uZt1tNEZxlRDR5ynlKUW76IYby+JdmLqbF9PpXQW64AGuViSOUUGoH32DY3TYDOx7O8G65hrVCLsBY=
+X-Received: by 2002:a05:600c:1d27:b0:37c:74bb:2b4d with SMTP id
+ l39-20020a05600c1d2700b0037c74bb2b4dmr12463378wms.82.1645720262146; Thu, 24
+ Feb 2022 08:31:02 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20220223211305.296816-1-trondmy@kernel.org> <20220223211305.296816-2-trondmy@kernel.org>
+ <20220223211305.296816-3-trondmy@kernel.org> <20220223211305.296816-4-trondmy@kernel.org>
+ <20220223211305.296816-5-trondmy@kernel.org> <20220223211305.296816-6-trondmy@kernel.org>
+ <20220223211305.296816-7-trondmy@kernel.org> <20220223211305.296816-8-trondmy@kernel.org>
+ <20220223211305.296816-9-trondmy@kernel.org>
+In-Reply-To: <20220223211305.296816-9-trondmy@kernel.org>
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+Date:   Thu, 24 Feb 2022 11:30:45 -0500
+Message-ID: <CAFX2Jfm5Dxy8iG71+wd2daB53ViLtUWb0LgnpDqhaiucEEWxRA@mail.gmail.com>
+Subject: Re: [PATCH v7 08/21] NFS: Adjust the amount of readahead performed by
+ NFS readdir
+To:     trondmy@kernel.org
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The nfsd file cache table can be pretty large and its allocation
-may require as many as 80 contigious pages.
+Hi Trond,
 
-Employ the same fix that was employed for similar issue that was
-reported for the reply cache hash table allocation several years ago
-by commit 8f97514b423a ("nfsd: more robust allocation failure handling
-in nfsd_reply_cache_init").
+On Wed, Feb 23, 2022 at 8:11 PM <trondmy@kernel.org> wrote:
+>
+> From: Trond Myklebust <trond.myklebust@hammerspace.com>
+>
+> The current NFS readdir code will always try to maximise the amount of
+> readahead it performs on the assumption that we can cache anything that
+> isn't immediately read by the process.
+> There are several cases where this assumption breaks down, including
+> when the 'ls -l' heuristic kicks in to try to force use of readdirplus
+> as a batch replacement for lookup/getattr.
+>
+> This patch therefore tries to tone down the amount of readahead we
+> perform, and adjust it to try to match the amount of data being
+> requested by user space.
 
-Fixes: 65294c1f2c5e ("nfsd: add a new struct file caching facility to nfsd")
-Link: https://lore.kernel.org/linux-nfs/e3cdaeec85a6cfec980e87fc294327c0381c1778.camel@kernel.org/
-Suggested-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Amir Goldstein <amir73il@gmail.com>
----
+I'm seeing cthon basic tests fail at this patch, but I'm unsure if it
+would have started now or in patches 6 or 7 due to the earlier compile
+error. The other cthon tests still pass, however:
 
-Since v1:
-- Use kvcalloc()
-- Use kvfree()
+Thu Feb 24 11:27:44 EST 2022
+./server -b -o tcp,v3,sec=sys -m /mnt/nfsv3tcp -p /srv/test/anna/nfsv3tcp server
+./server -b -o proto=tcp,sec=sys,v4.0 -m /mnt/nfsv4tcp -p
+/srv/test/anna/nfsv4tcp server
+./server -b -o proto=tcp,sec=sys,v4.1 -m /mnt/nfsv41tcp -p
+/srv/test/anna/nfsv41tcp server
+./server -b -o proto=tcp,sec=sys,v4.2 -m /mnt/nfsv42tcp -p
+/srv/test/anna/nfsv42tcp server
+Waiting for 'b' to finish...
+The '-b' test using '-o tcp,v3,sec=sys' args to server: Failed!!
+The '-b' test using '-o proto=tcp,sec=sys,v4.0' args to server: Failed!!
+The '-b' test using '-o proto=tcp,sec=sys,v4.2' args to server: Failed!!
+The '-b' test using '-o proto=tcp,sec=sys,v4.1' args to server: Failed!!
+ Done: 11:27:46
 
- fs/nfsd/filecache.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Anna
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 8bc807c5fea4..cc2831cec669 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -632,7 +632,7 @@ nfsd_file_cache_init(void)
- 	if (!nfsd_filecache_wq)
- 		goto out;
- 
--	nfsd_file_hashtbl = kcalloc(NFSD_FILE_HASH_SIZE,
-+	nfsd_file_hashtbl = kvcalloc(NFSD_FILE_HASH_SIZE,
- 				sizeof(*nfsd_file_hashtbl), GFP_KERNEL);
- 	if (!nfsd_file_hashtbl) {
- 		pr_err("nfsd: unable to allocate nfsd_file_hashtbl\n");
-@@ -700,7 +700,7 @@ nfsd_file_cache_init(void)
- 	nfsd_file_slab = NULL;
- 	kmem_cache_destroy(nfsd_file_mark_slab);
- 	nfsd_file_mark_slab = NULL;
--	kfree(nfsd_file_hashtbl);
-+	kvfree(nfsd_file_hashtbl);
- 	nfsd_file_hashtbl = NULL;
- 	destroy_workqueue(nfsd_filecache_wq);
- 	nfsd_filecache_wq = NULL;
-@@ -811,7 +811,7 @@ nfsd_file_cache_shutdown(void)
- 	fsnotify_wait_marks_destroyed();
- 	kmem_cache_destroy(nfsd_file_mark_slab);
- 	nfsd_file_mark_slab = NULL;
--	kfree(nfsd_file_hashtbl);
-+	kvfree(nfsd_file_hashtbl);
- 	nfsd_file_hashtbl = NULL;
- 	destroy_workqueue(nfsd_filecache_wq);
- 	nfsd_filecache_wq = NULL;
--- 
-2.25.1
-
+>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  fs/nfs/dir.c           | 55 +++++++++++++++++++++++++++++++++++++++++-
+>  include/linux/nfs_fs.h |  1 +
+>  2 files changed, 55 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 70c0db877815..83933b7018ea 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -69,6 +69,8 @@ const struct address_space_operations nfs_dir_aops = {
+>         .freepage = nfs_readdir_clear_array,
+>  };
+>
+> +#define NFS_INIT_DTSIZE PAGE_SIZE
+> +
+>  static struct nfs_open_dir_context *
+>  alloc_nfs_open_dir_context(struct inode *dir)
+>  {
+> @@ -78,6 +80,7 @@ alloc_nfs_open_dir_context(struct inode *dir)
+>         ctx = kzalloc(sizeof(*ctx), GFP_KERNEL_ACCOUNT);
+>         if (ctx != NULL) {
+>                 ctx->attr_gencount = nfsi->attr_gencount;
+> +               ctx->dtsize = NFS_INIT_DTSIZE;
+>                 spin_lock(&dir->i_lock);
+>                 if (list_empty(&nfsi->open_files) &&
+>                     (nfsi->cache_validity & NFS_INO_DATA_INVAL_DEFER))
+> @@ -153,6 +156,7 @@ struct nfs_readdir_descriptor {
+>         struct page     *page;
+>         struct dir_context *ctx;
+>         pgoff_t         page_index;
+> +       pgoff_t         page_index_max;
+>         u64             dir_cookie;
+>         u64             last_cookie;
+>         u64             dup_cookie;
+> @@ -165,12 +169,36 @@ struct nfs_readdir_descriptor {
+>         unsigned long   gencount;
+>         unsigned long   attr_gencount;
+>         unsigned int    cache_entry_index;
+> +       unsigned int    buffer_fills;
+> +       unsigned int    dtsize;
+>         signed char duped;
+>         bool plus;
+>         bool eob;
+>         bool eof;
+>  };
+>
+> +static void nfs_set_dtsize(struct nfs_readdir_descriptor *desc, unsigned int sz)
+> +{
+> +       struct nfs_server *server = NFS_SERVER(file_inode(desc->file));
+> +       unsigned int maxsize = server->dtsize;
+> +
+> +       if (sz > maxsize)
+> +               sz = maxsize;
+> +       if (sz < NFS_MIN_FILE_IO_SIZE)
+> +               sz = NFS_MIN_FILE_IO_SIZE;
+> +       desc->dtsize = sz;
+> +}
+> +
+> +static void nfs_shrink_dtsize(struct nfs_readdir_descriptor *desc)
+> +{
+> +       nfs_set_dtsize(desc, desc->dtsize >> 1);
+> +}
+> +
+> +static void nfs_grow_dtsize(struct nfs_readdir_descriptor *desc)
+> +{
+> +       nfs_set_dtsize(desc, desc->dtsize << 1);
+> +}
+> +
+>  static void nfs_readdir_array_init(struct nfs_cache_array *array)
+>  {
+>         memset(array, 0, sizeof(struct nfs_cache_array));
+> @@ -774,6 +802,7 @@ static int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
+>                                 break;
+>                         arrays++;
+>                         *arrays = page = new;
+> +                       desc->page_index_max++;
+>                 } else {
+>                         new = nfs_readdir_page_get_next(mapping,
+>                                                         page->index + 1,
+> @@ -783,6 +812,7 @@ static int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
+>                         if (page != *arrays)
+>                                 nfs_readdir_page_unlock_and_put(page);
+>                         page = new;
+> +                       desc->page_index_max = new->index;
+>                 }
+>                 status = nfs_readdir_add_to_array(entry, page);
+>         } while (!status && !entry->eof);
+> @@ -848,7 +878,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+>         struct nfs_entry *entry;
+>         size_t array_size;
+>         struct inode *inode = file_inode(desc->file);
+> -       size_t dtsize = NFS_SERVER(inode)->dtsize;
+> +       unsigned int dtsize = desc->dtsize;
+>         int status = -ENOMEM;
+>
+>         entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+> @@ -884,6 +914,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+>
+>                 status = nfs_readdir_page_filler(desc, entry, pages, pglen,
+>                                                  arrays, narrays);
+> +               desc->buffer_fills++;
+>         } while (!status && nfs_readdir_page_needs_filling(page) &&
+>                 page_mapping(page));
+>
+> @@ -931,6 +962,7 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
+>         if (!desc->page)
+>                 return -ENOMEM;
+>         if (nfs_readdir_page_needs_filling(desc->page)) {
+> +               desc->page_index_max = desc->page_index;
+>                 res = nfs_readdir_xdr_to_array(desc, nfsi->cookieverf, verf,
+>                                                &desc->page, 1);
+>                 if (res < 0) {
+> @@ -1067,6 +1099,7 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
+>         desc->cache_entry_index = 0;
+>         desc->last_cookie = desc->dir_cookie;
+>         desc->duped = 0;
+> +       desc->page_index_max = 0;
+>
+>         status = nfs_readdir_xdr_to_array(desc, desc->verf, verf, arrays, sz);
+>
+> @@ -1076,10 +1109,22 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
+>         }
+>         desc->page = NULL;
+>
+> +       /*
+> +        * Grow the dtsize if we have to go back for more pages,
+> +        * or shrink it if we're reading too many.
+> +        */
+> +       if (!desc->eof) {
+> +               if (!desc->eob)
+> +                       nfs_grow_dtsize(desc);
+> +               else if (desc->buffer_fills == 1 &&
+> +                        i < (desc->page_index_max >> 1))
+> +                       nfs_shrink_dtsize(desc);
+> +       }
+>
+>         for (i = 0; i < sz && arrays[i]; i++)
+>                 nfs_readdir_page_array_free(arrays[i]);
+>  out:
+> +       desc->page_index_max = -1;
+>         kfree(arrays);
+>         dfprintk(DIRCACHE, "NFS: %s: returns %d\n", __func__, status);
+>         return status;
+> @@ -1118,6 +1163,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+>         desc->file = file;
+>         desc->ctx = ctx;
+>         desc->plus = nfs_use_readdirplus(inode, ctx);
+> +       desc->page_index_max = -1;
+>
+>         spin_lock(&file->f_lock);
+>         desc->dir_cookie = dir_ctx->dir_cookie;
+> @@ -1128,6 +1174,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+>         desc->last_cookie = dir_ctx->last_cookie;
+>         desc->attr_gencount = dir_ctx->attr_gencount;
+>         desc->eof = dir_ctx->eof;
+> +       nfs_set_dtsize(desc, dir_ctx->dtsize);
+>         memcpy(desc->verf, dir_ctx->verf, sizeof(desc->verf));
+>         spin_unlock(&file->f_lock);
+>
+> @@ -1169,6 +1216,11 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+>
+>                 nfs_do_filldir(desc, nfsi->cookieverf);
+>                 nfs_readdir_page_unlock_and_put_cached(desc);
+> +               if (desc->eob || desc->eof)
+> +                       break;
+> +               /* Grow the dtsize if we have to go back for more pages */
+> +               if (desc->page_index == desc->page_index_max)
+> +                       nfs_grow_dtsize(desc);
+>         } while (!desc->eob && !desc->eof);
+>
+>         spin_lock(&file->f_lock);
+> @@ -1179,6 +1231,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+>         dir_ctx->attr_gencount = desc->attr_gencount;
+>         dir_ctx->page_index = desc->page_index;
+>         dir_ctx->eof = desc->eof;
+> +       dir_ctx->dtsize = desc->dtsize;
+>         memcpy(dir_ctx->verf, desc->verf, sizeof(dir_ctx->verf));
+>         spin_unlock(&file->f_lock);
+>  out_free:
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 1c533f2c1f36..691a27936849 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -107,6 +107,7 @@ struct nfs_open_dir_context {
+>         __u64 dup_cookie;
+>         __u64 last_cookie;
+>         pgoff_t page_index;
+> +       unsigned int dtsize;
+>         signed char duped;
+>         bool eof;
+>  };
+> --
+> 2.35.1
+>
