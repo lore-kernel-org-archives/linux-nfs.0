@@ -2,128 +2,130 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D08CDC433EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Feb 2022 16:32:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AAFCAC433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Feb 2022 16:33:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229907AbiBXQcT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Feb 2022 11:32:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56504 "EHLO
+        id S229889AbiBXQc3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Feb 2022 11:32:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57224 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229532AbiBXQcR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2022 11:32:17 -0500
-Received: from mail-pj1-x102a.google.com (mail-pj1-x102a.google.com [IPv6:2607:f8b0:4864:20::102a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3846A4C408
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:31:40 -0800 (PST)
-Received: by mail-pj1-x102a.google.com with SMTP id gl14-20020a17090b120e00b001bc2182c3d5so5796219pjb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:31:40 -0800 (PST)
+        with ESMTP id S229899AbiBXQcZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2022 11:32:25 -0500
+Received: from mail-wm1-x32e.google.com (mail-wm1-x32e.google.com [IPv6:2a00:1450:4864:20::32e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D66E11D7BF
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:31:48 -0800 (PST)
+Received: by mail-wm1-x32e.google.com with SMTP id v2-20020a7bcb42000000b0037b9d960079so167081wmj.0
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Feb 2022 08:31:48 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20210112.gappssmtp.com; s=20210112;
-        h=content-transfer-encoding:from:mime-version:subject:date:message-id
-         :references:cc:in-reply-to:to;
-        bh=9pdKVdGgOkMZj/rMe0H1g8Nx4C5EJ0FhYBuM26imb1w=;
-        b=RokpOp5tbzamDEc+IKS6EfAUSHKYkP5CI6pboSoD08qSmxmma+dcwV1tswSkN+4n2w
-         uOSZ/9U2QLvB8//W85pnEoGufJRlNlckAFEVFzEXD0MUhoGvM144zrB0qfcQ6lhOtn8u
-         OgttKsVEopodeiI+MVS4q6SHBHhaILRnO4DRzKDQyEHU9gxSqRDYMx+PR8xLduJPdr2c
-         juiIZjRSUk5GXMajZQ+nTASvGG8GB/VFkJwMpRuNVloqBfOULKs9NB51jSHzFnCp1JHU
-         tZLyF72L5f8td6h+6Vv6cdUNGHLGHh14H0KrORCtXNSvVaeyXo0PRahbivmXEYwp2KWA
-         sEew==
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=WN4f2hH1ybEx+XDhPAJeCD41HbMfXw2pGJizsgIMI7c=;
+        b=DmT7mqWvl3z1Y8R0U8e28FrvZEhqLQW/YwIXDte74GJvlOSwm27ps7W2ibq9vTV+sT
+         P6IMNI/kemlttI+AU2PUwIpVNg0q6wFipa2rIodcx3kkevbTLXGKpyZfwdebdA/jcnos
+         X8YWNSHn2KEn5AtkcZLW71tdsZJ5woLzsdvUc1CvnZWd2WHGlILYfltGeMTZysh2i9gZ
+         /3zVQoO9OwSGNHzIE+VBsFyL23e344BoSN60PEQIuN9XP/94rNg8qSA4uxtodLryGVg6
+         d5o5Nee2dnACtIGRIAfOBmIU+oPKDmbxcBiHuV9ATbYkeHJFqdfcc9jmfgomzG57pxZM
+         guvA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:content-transfer-encoding:from:mime-version
-         :subject:date:message-id:references:cc:in-reply-to:to;
-        bh=9pdKVdGgOkMZj/rMe0H1g8Nx4C5EJ0FhYBuM26imb1w=;
-        b=rm7nBy/iWLWPhpj4woYLYcAXyRt9q5taKiCl6GekylNTj7N3I36+knv461zbcWoGk7
-         EcRUOHivhRFHHUCxYnvNkGmGFQAFWZwxmYBF2I8itpRYMYQJFUrmThOaZQSrt9jSgxjm
-         0U/hHVeKQNUm50tNHy9z5WSCoBXKiECJ4ovzl5qQFQPb4D7SkbUpHctlsT3E/UFCsdbK
-         WZP1m4DHX3Sh1rIOrpy5dETe3djKcd1/rDZBZMHgQwai+VRu+sN2qo+CMjV8DxDIZ9Y9
-         am0nqLD4Gyjz35awr938QgbqMiWUGEmHDFNMzXqEqHsERWfmeGOftpCHH41qvnHLwL0u
-         50qw==
-X-Gm-Message-State: AOAM532+TKD4ptyI8x95iS4kdMYpWnu7/d9n11sSipkNelhhn5L/Bh1q
-        AAGTkA8OWmSCAece6TP7Fud82w==
-X-Google-Smtp-Source: ABdhPJwILxIiNBIe4uwvcJI4yA/KJvZUHTS4irgP1DwajEiSVZK6yJaUb60LC3vEkaTiOVWpKW+eog==
-X-Received: by 2002:a17:902:bb93:b0:14f:3c15:566f with SMTP id m19-20020a170902bb9300b0014f3c15566fmr3393981pls.6.1645720291048;
-        Thu, 24 Feb 2022 08:31:31 -0800 (PST)
-Received: from smtpclient.apple (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
-        by smtp.gmail.com with ESMTPSA id lp1sm118634pjb.17.2022.02.24.08.31.30
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 24 Feb 2022 08:31:30 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=WN4f2hH1ybEx+XDhPAJeCD41HbMfXw2pGJizsgIMI7c=;
+        b=Gf5tEmDm51htMZawBvfP5Nv+gOehI/eX2a9q82k93MsdqxDVRTgDc3JLS79sDIsjUr
+         5iQF+94Si6ke/WsN8d2af7XCzIRYDuc0mzoqopQYiI4FppANdzMnS32NHwyJs4YwC2EA
+         FIskergh0d4jX6V9NLTmtEYw7OF01PmxxhHgarq9vRvGTE2eF19noMvOqHRt8Lh2/ifK
+         qWxS+ssOMKmobbICNMCwwXJjZf4YsMo2h6EjbobI8C5PtFhU2slPUhPZHeXnLtUCWi7x
+         SFWqJtTmsI0nP1gQ2DsAJ9oWJ+nbrwIW3U6Fw3WaPadJH4BJDMeqTq6dt6iIuzl+tyTi
+         LOtg==
+X-Gm-Message-State: AOAM533qBAoJUdUb3K6VlZvG0gMz1448vKJ3ZvpP45v1b866ZspfDVJ/
+        XSnNEOEfm6R8ULqKE3VCSjcZZYy/+1RKZwOR07UKaafqMYE=
+X-Google-Smtp-Source: ABdhPJzD5pmflAVa2mWQR4vqbqw3ek0mYqkkLjuj7FYUtwsMAvYsNrlMqBTKlz86mqwKfeUfh8tXx6el+BHnOn6DTcI=
+X-Received: by 2002:a7b:c742:0:b0:37b:dea5:3539 with SMTP id
+ w2-20020a7bc742000000b0037bdea53539mr2989331wmk.38.1645719524405; Thu, 24 Feb
+ 2022 08:18:44 -0800 (PST)
+MIME-Version: 1.0
+References: <20220223211305.296816-1-trondmy@kernel.org> <20220223211305.296816-2-trondmy@kernel.org>
+ <20220223211305.296816-3-trondmy@kernel.org> <20220223211305.296816-4-trondmy@kernel.org>
+ <20220223211305.296816-5-trondmy@kernel.org> <20220223211305.296816-6-trondmy@kernel.org>
+ <20220223211305.296816-7-trondmy@kernel.org>
+In-Reply-To: <20220223211305.296816-7-trondmy@kernel.org>
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+Date:   Thu, 24 Feb 2022 11:18:27 -0500
+Message-ID: <CAFX2Jf=009PkXD0b9_NNyX1k60KJ1fz8WKswnd8iU8EFpmbROw@mail.gmail.com>
+Subject: Re: [PATCH v7 06/21] NFS: If the cookie verifier changes, we must
+ invalidate the page cache
+To:     trondmy@kernel.org
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-From:   Andreas Dilger <adilger@dilger.ca>
-Mime-Version: 1.0 (1.0)
-Subject: Re: [PATCH/RFC] VFS: support parallel updates in the one directory.
-Date:   Thu, 24 Feb 2022 09:31:28 -0700
-Message-Id: <893053D7-E5DD-43DB-941A-05C10FF5F396@dilger.ca>
-References: <164568221518.25116.18139840533197037520@noble.neil.brown.name>
-Cc:     "Darrick J. Wong" <djwong@kernel.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        Daire Byrne <daire@dneg.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-In-Reply-To: <164568221518.25116.18139840533197037520@noble.neil.brown.name>
-To:     NeilBrown <neilb@suse.de>
-X-Mailer: iPhone Mail (19D52)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Feb 23, 2022, at 22:57, NeilBrown <neilb@suse.de> wrote:
->=20
->=20
-> I added this:
-> --- a/fs/xfs/xfs_icache.c
-> +++ b/fs/xfs/xfs_icache.c
-> @@ -87,6 +87,7 @@ xfs_inode_alloc(
->    /* VFS doesn't initialise i_mode or i_state! */
->    VFS_I(ip)->i_mode =3D 0;
->    VFS_I(ip)->i_state =3D 0;
-> +    VFS_I(ip)->i_flags |=3D S_PAR_UPDATE;
->    mapping_set_large_folios(VFS_I(ip)->i_mapping);
->=20
->    XFS_STATS_INC(mp, vn_active);
->=20
-> and ran my highly sophisticated test in an XFS directory:
->=20
-> for i in {1..70}; do ( for j in {1000..8000}; do touch $j; rm -f $j ; done=
- ) & done
->=20
-> This doesn't crash - which is a good sign.
-> While that was going I tried
-> while : ; do ls -l ; done
->=20
-> it sometimes reports garbage for the stat info:
->=20
-> total 0
-> -????????? ? ?    ?    ?            ? 1749
-> -????????? ? ?    ?    ?            ? 1764
-> -????????? ? ?    ?    ?            ? 1765
-> -rw-r--r-- 1 root root 0 Feb 24 16:47 1768
-> -rw-r--r-- 1 root root 0 Feb 24 16:47 1770
-> -rw-r--r-- 1 root root 0 Feb 24 16:47 1772
-> ....
->=20
-> I *think* that is bad - probably the "garbage" that you referred to?
->=20
-> Obviously I gets lots of=20
-> ls: cannot access '1764': No such file or directory
-> ls: cannot access '1749': No such file or directory
-> ls: cannot access '1780': No such file or directory
-> ls: cannot access '1765': No such file or directory
->=20
-> but that is normal and expected when you are creating and deleting
-> files during the ls.
+Hi Trond,
 
-The "ls -l" output with "???" is exactly the case where the filename is
-in readdir() but stat() on a file fails due to an unavoidable userspace=20
-race between the two syscalls and the concurrent unlink(). This is
-probably visible even without the concurrent dirops patch.=20
+On Wed, Feb 23, 2022 at 7:48 PM <trondmy@kernel.org> wrote:
+>
+> From: Trond Myklebust <trond.myklebust@hammerspace.com>
+>
+> Ensure that if the cookie verifier changes when we use the zero-valued
+> cookie, then we invalidate any cached pages.
+>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  fs/nfs/dir.c | 7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 5d9367d9b651..7932d474ce00 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -945,9 +945,14 @@ static int find_and_lock_cache_page(struct nfs_readd=
+ir_descriptor *desc)
+>                 /*
+>                  * Set the cookie verifier if the page cache was empty
+>                  */
+> -               if (desc->page_index =3D=3D 0)
+> +               if (desc->last_cookie =3D=3D 0 &&
+> +                   memcmp(nfsi->cookieverf, verf, sizeof(nfsi->cookiever=
+f))) {
+>                         memcpy(nfsi->cookieverf, verf,
+>                                sizeof(nfsi->cookieverf));
+> +                       invalidate_inode_pages2_range(desc->file->f_mappi=
+ng,
+> +                                                     desc->page_index_ma=
+x + 1,
 
-The list of affected filenames even correlates with the reported errors:
-1764, 1765, 1769
+I'm getting this when I try to compile this patch:
 
-It looks like everything is working as expected.=20
+fs/nfs/dir.c: In function =E2=80=98find_and_lock_cache_page=E2=80=99:
+fs/nfs/dir.c:953:61: error: =E2=80=98struct nfs_readdir_descriptor=E2=80=99=
+ has no
+member named =E2=80=98page_index_max=E2=80=99; did you mean =E2=80=98page_i=
+ndex=E2=80=99?
+  953 |
+desc->page_index_max + 1,
+      |
+^~~~~~~~~~~~~~
+      |                                                             page_in=
+dex
+make[2]: *** [scripts/Makefile.build:288: fs/nfs/dir.o] Error 1
+make[1]: *** [scripts/Makefile.build:550: fs/nfs] Error 2
+make: *** [Makefile:1831: fs] Error 2
+make: *** Waiting for unfinished jobs....
 
-Cheers, Andreas
+It looks like the "page_index_max" field is added in patch 8.
 
+Anna
+
+
+Anna
+> +                                                     -1);
+> +               }
+>         }
+>         res =3D nfs_readdir_search_array(desc);
+>         if (res =3D=3D 0)
+> --
+> 2.35.1
+>
