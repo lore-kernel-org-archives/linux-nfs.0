@@ -2,43 +2,53 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96371C43219
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E4F0DC43217
 	for <linux-nfs@archiver.kernel.org>; Fri, 25 Feb 2022 18:34:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233410AbiBYSfT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S233309AbiBYSfT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 25 Feb 2022 13:35:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46858 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47274 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233309AbiBYSfM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:12 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CEAC21A8CB5
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:38 -0800 (PST)
+        with ESMTP id S233371AbiBYSfQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:16 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 133F51A94BE
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:42 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 83A92B83308
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 00FE5C340F1
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:35 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id AED69B8330A
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:40 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 30657C340F0
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645814076;
-        bh=Dr9xlbTR3BiwO3ozfsjH4snNedaCB0dVmtVOhk+82ME=;
+        s=k20201202; t=1645814080;
+        bh=pv10uEsrs9ZnKlQiBYTMYh9QSFk0gZyni6kyxxoc5wY=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=pkeW8HorSdgKbI+fyXX6dQGRuxcbsTGW0y7T080t6sdnNz3RvPLjrgkUoxd9WxJ2R
-         KPU5E8yZ8puZr2SOk4YlyxeTBmuh+L8EyafOOwf54LROJijIoTn5c1y94O1EvlkVK5
-         D6GFIrPOJ541mcRx1DUdqapKBajjQ9JdPAN3uaZ6SgFc7HTTU9Dow+9MYN0jRe1elA
-         MG0hKzHDf+cHPXXeBAhUham69XbFoOiBlRU9l0k/V1iDI9pe9XcebAjHo+K8RwXviZ
-         0Oa4CBDeQsrFuV8J9UKQMsUWwnJhXAgWBGtJlVgTL3iRZmT7mjyKP4vtRBNzAIRtPn
-         qQnA1wpNu/AsQ==
+        b=rbMUv23l/lIosRzAok8bgFLduEEqyEMNMxe07Pe+Do/o59oZ9flu/kHR2vf0QbcYS
+         BM8aOLTMkCSmCMjHbH7rcRWcDen4Ka/rWe4sWM2TCon00tVMiKzLTxWpWmm/gQUd5s
+         n+72+6vfKzYzcXR24SRjsO4tqs4XIemmvGp8A6puB4YxfakhtI84i9p+7PCDAICaUY
+         uMtkZPVTdwCLbUTqKRMHf2ZL/EVSC3cylAYdQM/vL5TGrnoouqeCJWI52ZH2HyKNYy
+         7muAdg517K9/eg9Zb6E7v9U7/qdc+MjTLi1NHvyeD6a1Ahoz6IPEJBuR/LiEuL29Oa
+         fSwaeK/1i3nBw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v8 01/24] NFS: Return valid errors from nfs2/3_decode_dirent()
-Date:   Fri, 25 Feb 2022 13:28:06 -0500
-Message-Id: <20220225182829.1236093-2-trondmy@kernel.org>
+Subject: [PATCH v8 11/24] NFS: Simplify nfs_readdir_xdr_to_array()
+Date:   Fri, 25 Feb 2022 13:28:16 -0500
+Message-Id: <20220225182829.1236093-12-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220225182829.1236093-1-trondmy@kernel.org>
+In-Reply-To: <20220225182829.1236093-11-trondmy@kernel.org>
 References: <20220225182829.1236093-1-trondmy@kernel.org>
+ <20220225182829.1236093-2-trondmy@kernel.org>
+ <20220225182829.1236093-3-trondmy@kernel.org>
+ <20220225182829.1236093-4-trondmy@kernel.org>
+ <20220225182829.1236093-5-trondmy@kernel.org>
+ <20220225182829.1236093-6-trondmy@kernel.org>
+ <20220225182829.1236093-7-trondmy@kernel.org>
+ <20220225182829.1236093-8-trondmy@kernel.org>
+ <20220225182829.1236093-9-trondmy@kernel.org>
+ <20220225182829.1236093-10-trondmy@kernel.org>
+ <20220225182829.1236093-11-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,99 +57,66 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Valid return values for decode_dirent() callback functions are:
- 0: Success
- -EBADCOOKIE: End of directory
- -EAGAIN: End of xdr_stream
+Recent changes to readdir mean that we can cope with partially filled
+page cache entries, so we no longer need to rely on looping in
+nfs_readdir_xdr_to_array().
 
-All errors need to map into one of those three values.
-
-Fixes: 573c4e1ef53a ("NFS: Simplify ->decode_dirent() calling sequence")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs2xdr.c |  2 +-
- fs/nfs/nfs3xdr.c | 21 ++++++---------------
- 2 files changed, 7 insertions(+), 16 deletions(-)
+ fs/nfs/dir.c | 29 +++++++++++------------------
+ 1 file changed, 11 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 7fba7711e6b3..3d5ba43f44bb 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -949,7 +949,7 @@ int nfs2_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2a0d119e3756..1c79244115f0 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -879,6 +879,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	size_t array_size;
+ 	struct inode *inode = file_inode(desc->file);
+ 	unsigned int dtsize = desc->dtsize;
++	unsigned int pglen;
+ 	int status = -ENOMEM;
  
- 	error = decode_filename_inline(xdr, &entry->name, &entry->len);
- 	if (unlikely(error))
--		return error;
-+		return -EAGAIN;
+ 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+@@ -896,28 +897,20 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
+ 	if (!pages)
+ 		goto out;
  
- 	/*
- 	 * The type (size and byte order) of nfscookie isn't defined in
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 54a1d21cbcc6..7ab60ad98776 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -1967,7 +1967,6 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		       bool plus)
- {
- 	struct user_namespace *userns = rpc_userns(entry->server->client);
--	struct nfs_entry old = *entry;
- 	__be32 *p;
- 	int error;
- 	u64 new_cookie;
-@@ -1987,15 +1986,15 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 
- 	error = decode_fileid3(xdr, &entry->ino);
- 	if (unlikely(error))
--		return error;
-+		return -EAGAIN;
- 
- 	error = decode_inline_filename3(xdr, &entry->name, &entry->len);
- 	if (unlikely(error))
--		return error;
-+		return -EAGAIN;
- 
- 	error = decode_cookie3(xdr, &new_cookie);
- 	if (unlikely(error))
--		return error;
-+		return -EAGAIN;
- 
- 	entry->d_type = DT_UNKNOWN;
- 
-@@ -2003,7 +2002,7 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		entry->fattr->valid = 0;
- 		error = decode_post_op_attr(xdr, entry->fattr, userns);
- 		if (unlikely(error))
--			return error;
-+			return -EAGAIN;
- 		if (entry->fattr->valid & NFS_ATTR_FATTR_V3)
- 			entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
- 
-@@ -2018,11 +2017,8 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 			return -EAGAIN;
- 		if (*p != xdr_zero) {
- 			error = decode_nfs_fh3(xdr, entry->fh);
--			if (unlikely(error)) {
--				if (error == -E2BIG)
--					goto out_truncated;
--				return error;
--			}
-+			if (unlikely(error))
-+				return -EAGAIN;
- 		} else
- 			zero_nfs_fh3(entry->fh);
- 	}
-@@ -2031,11 +2027,6 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 	entry->cookie = new_cookie;
- 
- 	return 0;
+-	do {
+-		unsigned int pglen;
+-		status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
+-						pages, dtsize,
+-						verf_res);
+-		if (status < 0)
+-			break;
 -
--out_truncated:
--	dprintk("NFS: directory entry contains invalid file handle\n");
--	*entry = old;
--	return -EAGAIN;
- }
+-		pglen = status;
+-		if (pglen == 0) {
+-			nfs_readdir_page_set_eof(page);
+-			break;
+-		}
+-
+-		verf_arg = verf_res;
++	status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie, pages,
++					dtsize, verf_res);
++	if (status < 0)
++		goto free_pages;
  
- /*
++	pglen = status;
++	if (pglen != 0)
+ 		status = nfs_readdir_page_filler(desc, entry, pages, pglen,
+ 						 arrays, narrays);
+-		desc->buffer_fills++;
+-	} while (!status && nfs_readdir_page_needs_filling(page) &&
+-		page_mapping(page));
++	else
++		nfs_readdir_page_set_eof(page);
++	desc->buffer_fills++;
+ 
++free_pages:
+ 	nfs_readdir_free_pages(pages, array_size);
+ out:
+ 	nfs_free_fattr(entry->fattr);
 -- 
 2.35.1
 
