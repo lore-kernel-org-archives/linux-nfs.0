@@ -2,50 +2,43 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02B6EC433F5
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Feb 2022 18:34:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 96371C43219
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Feb 2022 18:34:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233335AbiBYSfS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Feb 2022 13:35:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47252 "EHLO
+        id S233410AbiBYSfT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Feb 2022 13:35:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46858 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233340AbiBYSfQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:16 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 314611A9058
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:41 -0800 (PST)
+        with ESMTP id S233309AbiBYSfM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:12 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CEAC21A8CB5
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:38 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 732C6B8330F
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:39 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E4927C340F0
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:38 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 83A92B83308
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:37 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 00FE5C340F1
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645814079;
-        bh=z4mH3Wad3B1ZlApHsjh3QycqAIVXV4F84PeYx1najEs=;
+        s=k20201202; t=1645814076;
+        bh=Dr9xlbTR3BiwO3ozfsjH4snNedaCB0dVmtVOhk+82ME=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=kBxmFQBJVl6krAiFF8f1gzTUY0EDJowBn3zmtPnVuqMV/P00t3UXPerYyhtea4FAL
-         f9+uNhy+gWWWfMArHhEEZS4e1V/IUhXqD9WyKeROyHDvAFXI2THCP9/ZT0PayuLMrD
-         KrsbBE2l6bs+HHIVN1neWDM+vpV+iBFIgfXo5nQO8QG3e6Fd3zDs7ElsKNyS8VNJZ/
-         +jcxcK+1CE0Vmb9u/GnAhK+eCyCeY2/3QTOw5l14Gjwl3ttXAsbG9NXxfSQap5gsmb
-         IPT05+K0H0Mry/Tboh3OPgyR+eSoNStZUcp/1ECRNfWsEijRgNb+U4bCeKAsT6tfB4
-         zCh2ZLgUzGG1g==
+        b=pkeW8HorSdgKbI+fyXX6dQGRuxcbsTGW0y7T080t6sdnNz3RvPLjrgkUoxd9WxJ2R
+         KPU5E8yZ8puZr2SOk4YlyxeTBmuh+L8EyafOOwf54LROJijIoTn5c1y94O1EvlkVK5
+         D6GFIrPOJ541mcRx1DUdqapKBajjQ9JdPAN3uaZ6SgFc7HTTU9Dow+9MYN0jRe1elA
+         MG0hKzHDf+cHPXXeBAhUham69XbFoOiBlRU9l0k/V1iDI9pe9XcebAjHo+K8RwXviZ
+         0Oa4CBDeQsrFuV8J9UKQMsUWwnJhXAgWBGtJlVgTL3iRZmT7mjyKP4vtRBNzAIRtPn
+         qQnA1wpNu/AsQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v8 08/24] NFS: If the cookie verifier changes, we must invalidate the page cache
-Date:   Fri, 25 Feb 2022 13:28:13 -0500
-Message-Id: <20220225182829.1236093-9-trondmy@kernel.org>
+Subject: [PATCH v8 01/24] NFS: Return valid errors from nfs2/3_decode_dirent()
+Date:   Fri, 25 Feb 2022 13:28:06 -0500
+Message-Id: <20220225182829.1236093-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220225182829.1236093-8-trondmy@kernel.org>
+In-Reply-To: <20220225182829.1236093-1-trondmy@kernel.org>
 References: <20220225182829.1236093-1-trondmy@kernel.org>
- <20220225182829.1236093-2-trondmy@kernel.org>
- <20220225182829.1236093-3-trondmy@kernel.org>
- <20220225182829.1236093-4-trondmy@kernel.org>
- <20220225182829.1236093-5-trondmy@kernel.org>
- <20220225182829.1236093-6-trondmy@kernel.org>
- <20220225182829.1236093-7-trondmy@kernel.org>
- <20220225182829.1236093-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -54,34 +47,99 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that if the cookie verifier changes when we use the zero-valued
-cookie, then we invalidate any cached pages.
+Valid return values for decode_dirent() callback functions are:
+ 0: Success
+ -EBADCOOKIE: End of directory
+ -EAGAIN: End of xdr_stream
 
+All errors need to map into one of those three values.
+
+Fixes: 573c4e1ef53a ("NFS: Simplify ->decode_dirent() calling sequence")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/nfs/nfs2xdr.c |  2 +-
+ fs/nfs/nfs3xdr.c | 21 ++++++---------------
+ 2 files changed, 7 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 8cab7edd7420..1ce24e255b2b 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -945,9 +945,14 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
- 		/*
- 		 * Set the cookie verifier if the page cache was empty
- 		 */
--		if (desc->page_index == 0)
-+		if (desc->last_cookie == 0 &&
-+		    memcmp(nfsi->cookieverf, verf, sizeof(nfsi->cookieverf))) {
- 			memcpy(nfsi->cookieverf, verf,
- 			       sizeof(nfsi->cookieverf));
-+			invalidate_inode_pages2_range(desc->file->f_mapping,
-+						      desc->page_index_max + 1,
-+						      -1);
-+		}
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 7fba7711e6b3..3d5ba43f44bb 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -949,7 +949,7 @@ int nfs2_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 
+ 	error = decode_filename_inline(xdr, &entry->name, &entry->len);
+ 	if (unlikely(error))
+-		return error;
++		return -EAGAIN;
+ 
+ 	/*
+ 	 * The type (size and byte order) of nfscookie isn't defined in
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 54a1d21cbcc6..7ab60ad98776 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1967,7 +1967,6 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 		       bool plus)
+ {
+ 	struct user_namespace *userns = rpc_userns(entry->server->client);
+-	struct nfs_entry old = *entry;
+ 	__be32 *p;
+ 	int error;
+ 	u64 new_cookie;
+@@ -1987,15 +1986,15 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 
+ 	error = decode_fileid3(xdr, &entry->ino);
+ 	if (unlikely(error))
+-		return error;
++		return -EAGAIN;
+ 
+ 	error = decode_inline_filename3(xdr, &entry->name, &entry->len);
+ 	if (unlikely(error))
+-		return error;
++		return -EAGAIN;
+ 
+ 	error = decode_cookie3(xdr, &new_cookie);
+ 	if (unlikely(error))
+-		return error;
++		return -EAGAIN;
+ 
+ 	entry->d_type = DT_UNKNOWN;
+ 
+@@ -2003,7 +2002,7 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 		entry->fattr->valid = 0;
+ 		error = decode_post_op_attr(xdr, entry->fattr, userns);
+ 		if (unlikely(error))
+-			return error;
++			return -EAGAIN;
+ 		if (entry->fattr->valid & NFS_ATTR_FATTR_V3)
+ 			entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
+ 
+@@ -2018,11 +2017,8 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 			return -EAGAIN;
+ 		if (*p != xdr_zero) {
+ 			error = decode_nfs_fh3(xdr, entry->fh);
+-			if (unlikely(error)) {
+-				if (error == -E2BIG)
+-					goto out_truncated;
+-				return error;
+-			}
++			if (unlikely(error))
++				return -EAGAIN;
+ 		} else
+ 			zero_nfs_fh3(entry->fh);
  	}
- 	res = nfs_readdir_search_array(desc);
- 	if (res == 0)
+@@ -2031,11 +2027,6 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	entry->cookie = new_cookie;
+ 
+ 	return 0;
+-
+-out_truncated:
+-	dprintk("NFS: directory entry contains invalid file handle\n");
+-	*entry = old;
+-	return -EAGAIN;
+ }
+ 
+ /*
 -- 
 2.35.1
 
