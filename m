@@ -2,41 +2,45 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E21FBC433F5
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Feb 2022 18:34:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81A7AC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Feb 2022 18:34:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233346AbiBYSfQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Feb 2022 13:35:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46822 "EHLO
+        id S233333AbiBYSfR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Feb 2022 13:35:17 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46862 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232563AbiBYSfL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:11 -0500
+        with ESMTP id S233316AbiBYSfM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:12 -0500
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5DE6B1A8CAE
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:38 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A36091A8CBD
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:39 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 1CB7FB83309
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89CEDC340E7
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:35 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 5B622B8330A
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:38 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D2C3BC340F0
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645814075;
-        bh=su0PeaSdz3w9X2ycxq4oIIY+BQJ8E4SO1hQzXys1vrM=;
-        h=From:To:Subject:Date:From;
-        b=L6YrEWIkcAtD1mWgusaPU2xKQFjYVvBH5opFhICUDq0EFlFtEznf7Oi5AAhk9pC+v
-         nQqgYqU9WplLvQNM8bRLcnqxfjLq8sZrWKcViwwYy9Sy9KZCuFV9kSxoZjl5rKCnyD
-         iAjIROztfGO8IBBR2FoVR4aFsRdmHHvyBbbVQWIz7XySlMR0H3p5yEDJdVz0XFiSf7
-         tVgu+fHI4NjI21tCD4F2TM+AX4FLGAmaDVssRxJ3uQDlQ+Xt1QcOKgJAE6zeezYo3c
-         vwU0yRxKGHIjXQVvuzIGXu+nvKiUIPJfJ69klcMnqAC8cGjnPnp3xtyNYNY1GJ0t2T
-         ncLS9Xm1CTkUg==
+        s=k20201202; t=1645814077;
+        bh=AU/1BuAYIRPvCSJMRaL7bK15l0+X1t9HvSCk7ukL0FY=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=gVISJcBtZNd1IGj/sC+E0wTTpkNTDPlB2WGsscRF/m+KBRK2NAGEN8pGsqDiye9iW
+         ycL0YbDBOc07RA6J7h0ieXGkKOMdqA7LcuX63f6D3kDwgXKhhgVrzsEy4+7BbaYBe8
+         USzf2T0feE69+bSZ/sjessRpgcU+pRXF2MX1P8rUGSGGl8FdNeywBPZHapa4mSPK90
+         0yTYNRLcDEpt8w+ZGV+qUuG8ltcV7Tx6UhYtx2cLbyBrxsrV/X+UQUq8JSbALVmFVb
+         3goJPcGe1jjGUkfITjv0oBOM8EKtkY4clZ99juUeZvBdfhIGV4DtO2Uqcaiks/LaVc
+         DnRCy3v8BAdeg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v8 00/24] Readdir improvements
-Date:   Fri, 25 Feb 2022 13:28:05 -0500
-Message-Id: <20220225182829.1236093-1-trondmy@kernel.org>
+Subject: [PATCH v8 03/24] NFS: Trace lookup revalidation failure
+Date:   Fri, 25 Feb 2022 13:28:08 -0500
+Message-Id: <20220225182829.1236093-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220225182829.1236093-3-trondmy@kernel.org>
+References: <20220225182829.1236093-1-trondmy@kernel.org>
+ <20220225182829.1236093-2-trondmy@kernel.org>
+ <20220225182829.1236093-3-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -45,76 +49,56 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The current NFS readdir code will always try to maximise the amount of
-readahead it performs on the assumption that we can cache anything that
-isn't immediately read by the process.
-There are several cases where this assumption breaks down, including
-when the 'ls -l' heuristic kicks in to try to force use of readdirplus
-as a batch replacement for lookup/getattr.
+Enable tracing of lookup revalidation failures.
 
-This series also implement Ben's page cache filter to ensure that we can
-improve the ability to share cached data between processes that are
-reading the same directory at the same time, and to avoid live-locks
-when the directory is simultaneously changing.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/dir.c | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
 
---
-v2: Remove reset of dtsize when NFS_INO_FORCE_READDIR is set
-v3: Avoid excessive window shrinking in uncached_readdir case
-v4: Track 'ls -l' cache hit/miss statistics
-    Improved algorithm for falling back to uncached readdir
-    Skip readdirplus when files are being written to
-v5: bugfixes
-    Skip readdirplus when the acdirmax/acregmax values are low
-    Request a full XDR buffer when doing READDIRPLUS
-v6: Add tracing
-    Don't have lookup request readdirplus when it won't help
-v7: Implement Ben's page cache filter
-    Reduce the use of uncached readdir
-    Change indexing of the page cache to improve seekdir() performance.
-v8: Reduce the page cache overhead by shrinking the cookie hashvalue size
-    Incorporate other feedback from Anna, Ben and Neil
-    Fix nfs2/3_decode_dirent return values
-    Fix the change attribute value set in nfs_readdir_page_get_next()
-
-
-Trond Myklebust (24):
-  NFS: Return valid errors from nfs2/3_decode_dirent()
-  NFS: constify nfs_server_capable() and nfs_have_writebacks()
-  NFS: Trace lookup revalidation failure
-  NFS: Initialise the readdir verifier as best we can in nfs_opendir()
-  NFS: Use kzalloc() to avoid initialising the nfs_open_dir_context
-  NFS: Calculate page offsets algorithmically
-  NFS: Store the change attribute in the directory page cache
-  NFS: If the cookie verifier changes, we must invalidate the page cache
-  NFS: Don't re-read the entire page cache to find the next cookie
-  NFS: Adjust the amount of readahead performed by NFS readdir
-  NFS: Simplify nfs_readdir_xdr_to_array()
-  NFS: Reduce use of uncached readdir
-  NFS: Improve heuristic for readdirplus
-  NFS: Don't ask for readdirplus unless it can help nfs_getattr()
-  NFSv4: Ask for a full XDR buffer of readdir goodness
-  NFS: Readdirplus can't help lookup for case insensitive filesystems
-  NFS: Don't request readdirplus when revalidation was forced
-  NFS: Add basic readdir tracing
-  NFS: Trace effects of readdirplus on the dcache
-  NFS: Trace effects of the readdirplus heuristic
-  NFS: Convert readdir page cache to use a cookie based index
-  NFS: Fix up forced readdirplus
-  NFS: Remove unnecessary cache invalidations for directories
-  NFS: Cache all entries in the readdirplus reply
-
- fs/nfs/Kconfig         |   4 +
- fs/nfs/dir.c           | 513 ++++++++++++++++++++++++-----------------
- fs/nfs/inode.c         |  46 ++--
- fs/nfs/internal.h      |   4 +-
- fs/nfs/nfs2xdr.c       |   2 +-
- fs/nfs/nfs3xdr.c       |  28 +--
- fs/nfs/nfs4proc.c      |   2 -
- fs/nfs/nfs4xdr.c       |   6 +-
- fs/nfs/nfstrace.h      | 123 +++++++++-
- include/linux/nfs_fs.h |  19 +-
- 10 files changed, 479 insertions(+), 268 deletions(-)
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ebddc736eac2..1aa55cac9d9a 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1474,9 +1474,7 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
+ {
+ 	switch (error) {
+ 	case 1:
+-		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is valid\n",
+-			__func__, dentry);
+-		return 1;
++		break;
+ 	case 0:
+ 		/*
+ 		 * We can't d_drop the root of a disconnected tree:
+@@ -1485,13 +1483,10 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
+ 		 * inodes on unmount and further oopses.
+ 		 */
+ 		if (inode && IS_ROOT(dentry))
+-			return 1;
+-		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is invalid\n",
+-				__func__, dentry);
+-		return 0;
++			error = 1;
++		break;
+ 	}
+-	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) lookup returned error %d\n",
+-				__func__, dentry, error);
++	trace_nfs_lookup_revalidate_exit(dir, dentry, 0, error);
+ 	return error;
+ }
+ 
+@@ -1623,9 +1618,7 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
+ 		goto out_bad;
+ 
+ 	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
+-	error = nfs_lookup_revalidate_dentry(dir, dentry, inode);
+-	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
+-	return error;
++	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
+ out_valid:
+ 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
+ out_bad:
 -- 
 2.35.1
 
