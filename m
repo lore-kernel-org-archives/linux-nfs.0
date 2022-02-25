@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12A04C4321E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81F85C433EF
 	for <linux-nfs@archiver.kernel.org>; Fri, 25 Feb 2022 18:34:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233375AbiBYSfX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S233355AbiBYSfX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 25 Feb 2022 13:35:23 -0500
 Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47272 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233355AbiBYSfQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:16 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 878A81A905E
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:41 -0800 (PST)
+        with ESMTP id S233397AbiBYSfR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2022 13:35:17 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 78C9E1B65D8
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 10:34:44 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id D0B95B83311
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:39 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5465AC340F4
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:39 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 1E1E0B83309
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:44 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 944D4C340F1
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Feb 2022 18:34:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1645814079;
-        bh=Maf7kKFFOFCnH8ZDoumF8Xs6FCKA8kE874bD1VZHvxA=;
+        s=k20201202; t=1645814083;
+        bh=/Hh4ZDVLddAewg5KmSMUDCPnN6eJUtFDtuBUz+0xNek=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=hX+lGPLzLG5mXa2qvBnWQbcEwBeMh9p09HocNCqsPQvCzpiBkgFggncRxxxEYaiwO
-         L4EMY/nLl++QmGrcTPLdntRvbnQcyetz4UysOmaAmeUp35losaQYJ3t7H2RWgLjuo2
-         +Sutdc+Dkjzb0Jgs0FQGBJ4AzWB6fJ9FqEeWTlYUuvZuIeXm73kdf7EJnY8k/j/t4K
-         LowPvVgRsRYczbbjXTUpk8shh0Cc5ppdEfmQiteWxiLXNPgEZtX8vKyc3saJGAMmds
-         Z1Fjhbx8KUs2ZPb/ELO5WA/SucT5E3vreFWNSHdz602wLaOOWfGb2dEwqR/U8SodHf
-         yzfy/KrwZw56g==
+        b=KptbVm8hwLb+DfHvw+n9k5LS9+jG0h7FnB2OLPp75oKbNZlaC4/6KEA/wOL3SL0T3
+         7dxolkBRQ8yOyjuzyIPys0sTJyIpVrrx8TxcrzJK+znIG4EgobzQfrjIM7ZNWe3xpa
+         1Cc411/rEry1NXsd5hJJ7KAYXRn7LXWmWvkyi0JmoztgAIOkXnYU75W7VucY+ptB+9
+         eOoWkrPePy0lXIZn0N8jJ+4Bj3McLD+JU8FwVyiXZ+30cmdo8H2yhOWtLJYKSiSOfI
+         sux9iHzmtDO9UL8qmMvtWbjP3sVad2ZnzDkMVVMBvdoa52Iukqidvq93GLNOGfq5OF
+         prqrPVK+6595A==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v8 09/24] NFS: Don't re-read the entire page cache to find the next cookie
-Date:   Fri, 25 Feb 2022 13:28:14 -0500
-Message-Id: <20220225182829.1236093-10-trondmy@kernel.org>
+Subject: [PATCH v8 19/24] NFS: Trace effects of readdirplus on the dcache
+Date:   Fri, 25 Feb 2022 13:28:24 -0500
+Message-Id: <20220225182829.1236093-20-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220225182829.1236093-9-trondmy@kernel.org>
+In-Reply-To: <20220225182829.1236093-19-trondmy@kernel.org>
 References: <20220225182829.1236093-1-trondmy@kernel.org>
  <20220225182829.1236093-2-trondmy@kernel.org>
  <20220225182829.1236093-3-trondmy@kernel.org>
@@ -47,6 +47,16 @@ References: <20220225182829.1236093-1-trondmy@kernel.org>
  <20220225182829.1236093-7-trondmy@kernel.org>
  <20220225182829.1236093-8-trondmy@kernel.org>
  <20220225182829.1236093-9-trondmy@kernel.org>
+ <20220225182829.1236093-10-trondmy@kernel.org>
+ <20220225182829.1236093-11-trondmy@kernel.org>
+ <20220225182829.1236093-12-trondmy@kernel.org>
+ <20220225182829.1236093-13-trondmy@kernel.org>
+ <20220225182829.1236093-14-trondmy@kernel.org>
+ <20220225182829.1236093-15-trondmy@kernel.org>
+ <20220225182829.1236093-16-trondmy@kernel.org>
+ <20220225182829.1236093-17-trondmy@kernel.org>
+ <20220225182829.1236093-18-trondmy@kernel.org>
+ <20220225182829.1236093-19-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -55,70 +65,53 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the page cache entry that was last read gets invalidated for some
-reason, then make sure we can re-create it on the next call to readdir.
-This, combined with the cache page validation, allows us to reuse the
-cached value of page-index on successive calls to nfs_readdir.
+Trace the effects of readdirplus on attribute and dentry revalidation.
 
-Credit is due to Benjamin Coddington for showing that the concept works,
-and that it allows for improved cache sharing between processes even in
-the case where pages are lost due to LRU or active invalidation.
-
-Suggested-by: Benjamin Coddington <bcodding@redhat.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c           | 10 +++++++---
- include/linux/nfs_fs.h |  1 +
- 2 files changed, 8 insertions(+), 3 deletions(-)
+ fs/nfs/dir.c      | 5 +++++
+ fs/nfs/nfstrace.h | 3 +++
+ 2 files changed, 8 insertions(+)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 1ce24e255b2b..713028043c6d 100644
+index 9fc584c11e70..fa32eb5f6391 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -1124,6 +1124,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	desc->dup_cookie = dir_ctx->dup_cookie;
- 	desc->duped = dir_ctx->duped;
- 	page_index = dir_ctx->page_index;
-+	desc->page_index = page_index;
-+	desc->last_cookie = dir_ctx->last_cookie;
- 	desc->attr_gencount = dir_ctx->attr_gencount;
- 	desc->eof = dir_ctx->eof;
- 	memcpy(desc->verf, dir_ctx->verf, sizeof(desc->verf));
-@@ -1172,6 +1174,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- 	spin_lock(&file->f_lock);
- 	dir_ctx->dir_cookie = desc->dir_cookie;
- 	dir_ctx->dup_cookie = desc->dup_cookie;
-+	dir_ctx->last_cookie = desc->last_cookie;
- 	dir_ctx->duped = desc->duped;
- 	dir_ctx->attr_gencount = desc->attr_gencount;
- 	dir_ctx->page_index = desc->page_index;
-@@ -1213,10 +1216,11 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+@@ -742,8 +742,12 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
+ 			status = nfs_refresh_inode(d_inode(dentry), entry->fattr);
+ 			if (!status)
+ 				nfs_setsecurity(d_inode(dentry), entry->fattr);
++			trace_nfs_readdir_lookup_revalidate(d_inode(parent),
++							    dentry, 0, status);
+ 			goto out;
+ 		} else {
++			trace_nfs_readdir_lookup_revalidate_failed(
++				d_inode(parent), dentry, 0);
+ 			d_invalidate(dentry);
+ 			dput(dentry);
+ 			dentry = NULL;
+@@ -765,6 +769,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
+ 		dentry = alias;
  	}
- 	if (offset != filp->f_pos) {
- 		filp->f_pos = offset;
--		if (nfs_readdir_use_cookie(filp))
--			dir_ctx->dir_cookie = offset;
--		else
-+		if (!nfs_readdir_use_cookie(filp)) {
- 			dir_ctx->dir_cookie = 0;
-+			dir_ctx->page_index = 0;
-+		} else
-+			dir_ctx->dir_cookie = offset;
- 		if (offset == 0)
- 			memset(dir_ctx->verf, 0, sizeof(dir_ctx->verf));
- 		dir_ctx->duped = 0;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 6e10725887d1..1c533f2c1f36 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -105,6 +105,7 @@ struct nfs_open_dir_context {
- 	__be32	verf[NFS_DIR_VERIFIER_SIZE];
- 	__u64 dir_cookie;
- 	__u64 dup_cookie;
-+	__u64 last_cookie;
- 	pgoff_t page_index;
- 	signed char duped;
- 	bool eof;
+ 	nfs_set_verifier(dentry, dir_verifier);
++	trace_nfs_readdir_lookup(d_inode(parent), dentry, 0);
+ out:
+ 	dput(dentry);
+ }
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index c2d0543ecb2d..7c1102b991d0 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -432,6 +432,9 @@ DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_enter);
+ DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_exit);
+ DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_revalidate_enter);
+ DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_revalidate_exit);
++DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup);
++DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup_revalidate_failed);
++DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_readdir_lookup_revalidate);
+ 
+ TRACE_EVENT(nfs_atomic_open_enter,
+ 		TP_PROTO(
 -- 
 2.35.1
 
