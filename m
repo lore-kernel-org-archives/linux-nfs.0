@@ -2,41 +2,49 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00D78C433F5
-	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 754BCC433EF
+	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232184AbiB0XTN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 27 Feb 2022 18:19:13 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42052 "EHLO
+        id S232195AbiB0XTQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 27 Feb 2022 18:19:16 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42326 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231630AbiB0XTM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:19:12 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 07EEC22501
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:34 -0800 (PST)
+        with ESMTP id S232186AbiB0XTP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:19:15 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C8BD322527
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:37 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 58F74611AF
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:34 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8FB74C340E9
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:33 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id C5AB5611D4
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:36 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6BE57C340E9
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646003913;
-        bh=OjPQB8rh7JPrreofA5AKdQ4GHwFU5RVd/rBQnGG3CfA=;
-        h=From:To:Subject:Date:From;
-        b=NqYm+Cfmt22nx0sZsglav+dExV8yLtmhXX2rG5R9fw5jVGekyN7Pyul9Ate0qpev9
-         GmhHoRJHgUPpi1ifn/OoE9/a276YqLkablz/DbxP1YwAbRHsQAkugJ2P/eWWp8oxQa
-         4Z9KXBBMFQIBEIlpXK2iRasjs50Q7nnHA8l8Zn/nuPOnxLf9y+VuQfibRcn+lU5lrt
-         n8O9h9BWHiIGRu2r5qvcVGx3RTfyZRsSMmQZfGNiYKwFCqEJGRkMSPaNcbyq39nYA6
-         aRJz2fDcfwjfPCyvher9O/nzTwvHMm8oxGo9PCIclK+6ccHIj9+zYQIEuyW8sIpNPt
-         7hcP++F2I58tQ==
+        s=k20201202; t=1646003916;
+        bh=F6cIFzb322lA5LYmOGHKbW31HBMZnxMHH/samvy5LRg=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=n+EbAYDEcWODmLs3lf5hxkfQ85Zpv80MVy8tg8j9e6RaMoNGO5n5FlfIiTXGhpa9p
+         QOq6ddNRTh1jnDalzIbGwzTxF5AWoPVk3gEVGYgh0dZ7CHarBKDDpF52LCGhIl+tKs
+         /Ed6IF2zgHGCx5GA9oJ0Wm4v58b6e/LIOkx2ssISblGqNoSabA+DA7OvQIwxLcRYMt
+         Z+8v99cMY3bhe5Bpp+IgJqAtmJH1KPl9r2/Rhuz14cjQ5FKp1sQbfMzuh8WKtpa8og
+         shWauK2OFF6vgpd7xEkbMJjeE0wH2zLe2Si0rCPORY08d00knlkP/8rMQWYlvcxXxw
+         pNuW6wz56eHoQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v9 00/27] Readdir improvements
-Date:   Sun, 27 Feb 2022 18:12:00 -0500
-Message-Id: <20220227231227.9038-1-trondmy@kernel.org>
+Subject: [PATCH v9 07/27] NFS: Store the change attribute in the directory page cache
+Date:   Sun, 27 Feb 2022 18:12:07 -0500
+Message-Id: <20220227231227.9038-8-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220227231227.9038-7-trondmy@kernel.org>
+References: <20220227231227.9038-1-trondmy@kernel.org>
+ <20220227231227.9038-2-trondmy@kernel.org>
+ <20220227231227.9038-3-trondmy@kernel.org>
+ <20220227231227.9038-4-trondmy@kernel.org>
+ <20220227231227.9038-5-trondmy@kernel.org>
+ <20220227231227.9038-6-trondmy@kernel.org>
+ <20220227231227.9038-7-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -45,81 +53,155 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The current NFS readdir code will always try to maximise the amount of
-readahead it performs on the assumption that we can cache anything that
-isn't immediately read by the process.
-There are several cases where this assumption breaks down, including
-when the 'ls -l' heuristic kicks in to try to force use of readdirplus
-as a batch replacement for lookup/getattr.
+Use the change attribute and the first cookie in a directory page cache
+entry to validate that the page is up to date.
 
-This series also implement Ben's page cache filter to ensure that we can
-improve the ability to share cached data between processes that are
-reading the same directory at the same time, and to avoid live-locks
-when the directory is simultaneously changing.
+Suggested-by: Benjamin Coddington <bcodding@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/dir.c | 68 ++++++++++++++++++++++++++++------------------------
+ 1 file changed, 37 insertions(+), 31 deletions(-)
 
---
-v2: Remove reset of dtsize when NFS_INO_FORCE_READDIR is set
-v3: Avoid excessive window shrinking in uncached_readdir case
-v4: Track 'ls -l' cache hit/miss statistics
-    Improved algorithm for falling back to uncached readdir
-    Skip readdirplus when files are being written to
-v5: bugfixes
-    Skip readdirplus when the acdirmax/acregmax values are low
-    Request a full XDR buffer when doing READDIRPLUS
-v6: Add tracing
-    Don't have lookup request readdirplus when it won't help
-v7: Implement Ben's page cache filter
-    Reduce the use of uncached readdir
-    Change indexing of the page cache to improve seekdir() performance.
-v8: Reduce the page cache overhead by shrinking the cookie hashvalue size
-    Incorporate other feedback from Anna, Ben and Neil
-    Fix nfs2/3_decode_dirent return values
-    Fix the change attribute value set in nfs_readdir_page_get_next()
-v9: Address bugs that were hit when testing with large directories
-    Misc cleanups
-
-Trond Myklebust (27):
-  NFS: Return valid errors from nfs2/3_decode_dirent()
-  NFS: constify nfs_server_capable() and nfs_have_writebacks()
-  NFS: Trace lookup revalidation failure
-  NFS: Initialise the readdir verifier as best we can in nfs_opendir()
-  NFS: Use kzalloc() to avoid initialising the nfs_open_dir_context
-  NFS: Calculate page offsets algorithmically
-  NFS: Store the change attribute in the directory page cache
-  NFS: Don't re-read the entire page cache to find the next cookie
-  NFS: Don't advance the page pointer unless the page is full
-  NFS: Adjust the amount of readahead performed by NFS readdir
-  NFS: If the cookie verifier changes, we must invalidate the page cache
-  NFS: Simplify nfs_readdir_xdr_to_array()
-  NFS: Reduce use of uncached readdir
-  NFS: Improve heuristic for readdirplus
-  NFS: Don't ask for readdirplus unless it can help nfs_getattr()
-  NFSv4: Ask for a full XDR buffer of readdir goodness
-  NFS: Readdirplus can't help lookup for case insensitive filesystems
-  NFS: Don't request readdirplus when revalidation was forced
-  NFS: Add basic readdir tracing
-  NFS: Trace effects of readdirplus on the dcache
-  NFS: Trace effects of the readdirplus heuristic
-  NFS: Clean up page array initialisation/free
-  NFS: Convert readdir page cache to use a cookie based index
-  NFS: Fix up forced readdirplus
-  NFS: Remove unnecessary cache invalidations for directories
-  NFS: Optimise away the previous cookie field
-  NFS: Cache all entries in the readdirplus reply
-
- fs/nfs/Kconfig          |   4 +
- fs/nfs/dir.c            | 602 ++++++++++++++++++++++++----------------
- fs/nfs/inode.c          |  46 ++-
- fs/nfs/internal.h       |   4 +-
- fs/nfs/nfs2xdr.c        |   3 +-
- fs/nfs/nfs3xdr.c        |  29 +-
- fs/nfs/nfs4proc.c       |   2 -
- fs/nfs/nfs4xdr.c        |   7 +-
- fs/nfs/nfstrace.h       | 123 +++++++-
- include/linux/nfs_fs.h  |  19 +-
- include/linux/nfs_xdr.h |   3 +-
- 11 files changed, 532 insertions(+), 310 deletions(-)
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 6f0a38db6c37..bfb553c57274 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -140,6 +140,7 @@ struct nfs_cache_array_entry {
+ };
+ 
+ struct nfs_cache_array {
++	u64 change_attr;
+ 	u64 last_cookie;
+ 	unsigned int size;
+ 	unsigned char page_full : 1,
+@@ -176,12 +177,14 @@ static void nfs_readdir_array_init(struct nfs_cache_array *array)
+ 	memset(array, 0, sizeof(struct nfs_cache_array));
+ }
+ 
+-static void nfs_readdir_page_init_array(struct page *page, u64 last_cookie)
++static void nfs_readdir_page_init_array(struct page *page, u64 last_cookie,
++					u64 change_attr)
+ {
+ 	struct nfs_cache_array *array;
+ 
+ 	array = kmap_atomic(page);
+ 	nfs_readdir_array_init(array);
++	array->change_attr = change_attr;
+ 	array->last_cookie = last_cookie;
+ 	array->cookies_are_ordered = 1;
+ 	kunmap_atomic(array);
+@@ -208,7 +211,7 @@ nfs_readdir_page_array_alloc(u64 last_cookie, gfp_t gfp_flags)
+ {
+ 	struct page *page = alloc_page(gfp_flags);
+ 	if (page)
+-		nfs_readdir_page_init_array(page, last_cookie);
++		nfs_readdir_page_init_array(page, last_cookie, 0);
+ 	return page;
+ }
+ 
+@@ -305,19 +308,43 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ 	return ret;
+ }
+ 
++static bool nfs_readdir_page_validate(struct page *page, u64 last_cookie,
++				      u64 change_attr)
++{
++	struct nfs_cache_array *array = kmap_atomic(page);
++	int ret = true;
++
++	if (array->change_attr != change_attr)
++		ret = false;
++	if (array->size > 0 && array->array[0].cookie != last_cookie)
++		ret = false;
++	kunmap_atomic(array);
++	return ret;
++}
++
++static void nfs_readdir_page_unlock_and_put(struct page *page)
++{
++	unlock_page(page);
++	put_page(page);
++}
++
+ static struct page *nfs_readdir_page_get_locked(struct address_space *mapping,
+ 						pgoff_t index, u64 last_cookie)
+ {
+ 	struct page *page;
++	u64 change_attr;
+ 
+ 	page = grab_cache_page(mapping, index);
+-	if (page && !PageUptodate(page)) {
+-		nfs_readdir_page_init_array(page, last_cookie);
+-		if (invalidate_inode_pages2_range(mapping, index + 1, -1) < 0)
+-			nfs_zap_mapping(mapping->host, mapping);
+-		SetPageUptodate(page);
++	if (!page)
++		return NULL;
++	change_attr = inode_peek_iversion_raw(mapping->host);
++	if (PageUptodate(page)) {
++		if (nfs_readdir_page_validate(page, last_cookie, change_attr))
++			return page;
++		nfs_readdir_clear_array(page);
+ 	}
+-
++	nfs_readdir_page_init_array(page, last_cookie, change_attr);
++	SetPageUptodate(page);
+ 	return page;
+ }
+ 
+@@ -357,12 +384,6 @@ static void nfs_readdir_page_set_eof(struct page *page)
+ 	kunmap_atomic(array);
+ }
+ 
+-static void nfs_readdir_page_unlock_and_put(struct page *page)
+-{
+-	unlock_page(page);
+-	put_page(page);
+-}
+-
+ static struct page *nfs_readdir_page_get_next(struct address_space *mapping,
+ 					      pgoff_t index, u64 cookie)
+ {
+@@ -419,16 +440,6 @@ static int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
+ 	return -EBADCOOKIE;
+ }
+ 
+-static bool
+-nfs_readdir_inode_mapping_valid(struct nfs_inode *nfsi)
+-{
+-	if (nfsi->cache_validity & (NFS_INO_INVALID_CHANGE |
+-				    NFS_INO_INVALID_DATA))
+-		return false;
+-	smp_rmb();
+-	return !test_bit(NFS_INO_INVALIDATING, &nfsi->flags);
+-}
+-
+ static bool nfs_readdir_array_cookie_in_range(struct nfs_cache_array *array,
+ 					      u64 cookie)
+ {
+@@ -457,8 +468,7 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
+ 			struct nfs_inode *nfsi = NFS_I(file_inode(desc->file));
+ 
+ 			new_pos = nfs_readdir_page_offset(desc->page) + i;
+-			if (desc->attr_gencount != nfsi->attr_gencount ||
+-			    !nfs_readdir_inode_mapping_valid(nfsi)) {
++			if (desc->attr_gencount != nfsi->attr_gencount) {
+ 				desc->duped = 0;
+ 				desc->attr_gencount = nfsi->attr_gencount;
+ 			} else if (new_pos < desc->prev_index) {
+@@ -1095,11 +1105,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	 * to either find the entry with the appropriate number or
+ 	 * revalidate the cookie.
+ 	 */
+-	if (ctx->pos == 0 || nfs_attribute_cache_expired(inode)) {
+-		res = nfs_revalidate_mapping(inode, file->f_mapping);
+-		if (res < 0)
+-			goto out;
+-	}
++	nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
+ 
+ 	res = -ENOMEM;
+ 	desc = kzalloc(sizeof(*desc), GFP_KERNEL);
 -- 
 2.35.1
 
