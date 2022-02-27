@@ -2,229 +2,172 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 617F2C433F5
-	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E7DCEC433EF
+	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:51:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232210AbiB0XTZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 27 Feb 2022 18:19:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43124 "EHLO
+        id S231375AbiB0Xvg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 27 Feb 2022 18:51:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44194 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232214AbiB0XTY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:19:24 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E899D22502
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:46 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S229486AbiB0Xvf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:51:35 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C78C049FB9
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:50:57 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 9FA4DB80B9D
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26834C340E9
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646003924;
-        bh=x1tD1yPfDJ0zpUOPWu1s4QVZ2XujnA+MjnbafFTQi/E=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Z/UEnuIi+5L+r0EYhIgJt5QNi85MQmIkmYaEq4tcQ3vIhv6jQO2MjtOlSTS2qQam8
-         o4qvJOrr5puG0JS5BZbj/BK41nfhgd+aMQRUDrrlkotx8/5m+TSAV86s4pSJN2RUVc
-         JrbSC77LDw//elD7ZCQp32WWLyqWD90i/tSsoFFbh/y7biPXW0/AsI6qOITJBdzweW
-         aVvQsxwi3P84PXhyxaptgHx3kRadKEIU0Ro3/4Rv0JQxQBxX7rCuvtPm+Fov1uJpbX
-         koWkpZSiclQB+OnOevv6KhaxnljGMP3G4Q9k81p8665kjQPna4tCIeIGlpbpZOfs0Y
-         XaF/Fl+xROXIA==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v9 26/27] NFS: Optimise away the previous cookie field
-Date:   Sun, 27 Feb 2022 18:12:26 -0500
-Message-Id: <20220227231227.9038-27-trondmy@kernel.org>
-X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220227231227.9038-26-trondmy@kernel.org>
-References: <20220227231227.9038-1-trondmy@kernel.org>
- <20220227231227.9038-2-trondmy@kernel.org>
- <20220227231227.9038-3-trondmy@kernel.org>
- <20220227231227.9038-4-trondmy@kernel.org>
- <20220227231227.9038-5-trondmy@kernel.org>
- <20220227231227.9038-6-trondmy@kernel.org>
- <20220227231227.9038-7-trondmy@kernel.org>
- <20220227231227.9038-8-trondmy@kernel.org>
- <20220227231227.9038-9-trondmy@kernel.org>
- <20220227231227.9038-10-trondmy@kernel.org>
- <20220227231227.9038-11-trondmy@kernel.org>
- <20220227231227.9038-12-trondmy@kernel.org>
- <20220227231227.9038-13-trondmy@kernel.org>
- <20220227231227.9038-14-trondmy@kernel.org>
- <20220227231227.9038-15-trondmy@kernel.org>
- <20220227231227.9038-16-trondmy@kernel.org>
- <20220227231227.9038-17-trondmy@kernel.org>
- <20220227231227.9038-18-trondmy@kernel.org>
- <20220227231227.9038-19-trondmy@kernel.org>
- <20220227231227.9038-20-trondmy@kernel.org>
- <20220227231227.9038-21-trondmy@kernel.org>
- <20220227231227.9038-22-trondmy@kernel.org>
- <20220227231227.9038-23-trondmy@kernel.org>
- <20220227231227.9038-24-trondmy@kernel.org>
- <20220227231227.9038-25-trondmy@kernel.org>
- <20220227231227.9038-26-trondmy@kernel.org>
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 632D01F891;
+        Sun, 27 Feb 2022 23:50:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1646005856; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=dSJTncVvco70M4Slorpug5TivvbDPMgomp5jzqRdNI8=;
+        b=McEchP5YcYud1tKtzohz2L85Ttfwymtlwjo2cM4oFUzjf6l+M0FvAaq11fIfhRaP8wX1ub
+        MJ8IzEZurcQEwxNsrLGBzh5gDD2grCCuDH+neKBsdN3vSui2TSJk0Z5a/LTyGqwuTqA24Q
+        0OIumspmYgrXOf4q9kvvwWIZiLh2Cww=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1646005856;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=dSJTncVvco70M4Slorpug5TivvbDPMgomp5jzqRdNI8=;
+        b=TPI0SVW88zLKJT9QNkiVOjvaTpT+21ee/7ey63Pl6f9h96CROhi/Z/T8toreyvF3LLSP8B
+        A5fWduBmlmFS6hAQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0087712FC5;
+        Sun, 27 Feb 2022 23:50:54 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 59d+K14OHGKvKwAAMHmgww
+        (envelope-from <neilb@suse.de>); Sun, 27 Feb 2022 23:50:54 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Benjamin Coddington" <bcodding@redhat.com>
+Cc:     "Trond Myklebust" <trondmy@hammerspace.com>,
+        anna.schumaker@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSv4: use unique client identifiers in network namespaces
+In-reply-to: <7CDAEA98-3A8D-459A-80FE-82AA58A4EDA2@redhat.com>
+References: =?utf-8?q?=3C6e05bf321ff50785360e6c339d111db368e7dfda=2E16443499?=
+ =?utf-8?q?90=2Egit=2Ebcodding=40redhat=2Ecom=3E=2C?=
+ <189aba691b341f64f653817c9cdf018ef34ac257.camel@hammerspace.com>,
+ <7CDAEA98-3A8D-459A-80FE-82AA58A4EDA2@redhat.com>
+Date:   Mon, 28 Feb 2022 10:50:52 +1100
+Message-id: <164600585213.15631.6635814364853064416@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Wed, 09 Feb 2022, Benjamin Coddington wrote:
+> On 8 Feb 2022, at 15:27, Trond Myklebust wrote:
+>=20
+> > On Tue, 2022-02-08 at 15:03 -0500, Benjamin Coddington wrote:
+> >> In order to differentiate client state, assign a random uuid to the
+> >> uniquifing portion of the client identifier when a network namespace
+> >> is
+> >> created.=C2=A0 Containers may still override this value if they wish to
+> >> maintain
+> >> stable client identifiers by writing to
+> >> /sys/fs/nfs/net/client/identifier,
+> >> either by udev rules or other means.
+> >>
+> >> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> >> ---
+> >> =C2=A0fs/nfs/sysfs.c | 14 ++++++++++++++
+> >> =C2=A01 file changed, 14 insertions(+)
+> >>
+> >> diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
+> >> index 8cb70755e3c9..9b811323fd7f 100644
+> >> --- a/fs/nfs/sysfs.c
+> >> +++ b/fs/nfs/sysfs.c
+> >> @@ -167,6 +167,18 @@ static struct nfs_netns_client
+> >> *nfs_netns_client_alloc(struct kobject *parent,
+> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0return NULL;
+> >> =C2=A0}
+> >> =C2=A0
+> >> +static void assign_unique_clientid(struct nfs_netns_client *clp)
+> >> +{
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0unsigned char client_uuid[16];
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0char *uuid_str =3D kmalloc(UU=
+ID_STRING_LEN + 1,=20
+> >> GFP_KERNEL);
+> >> +
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0if (uuid_str) {
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0generate_random_uuid(client_uuid);
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0sprintf(uuid_str, "%pU", client_uuid);
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0rcu_assign_pointer(clp->identifier,=20
+> >> uuid_str);
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0}
+> >> +}
+> >> +
+> >> =C2=A0void nfs_netns_sysfs_setup(struct nfs_net *netns, struct net *net)
+> >> =C2=A0{
+> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0struct nfs_netns_client =
+*clp;
+> >> @@ -174,6 +186,8 @@ void nfs_netns_sysfs_setup(struct nfs_net *netns,
+> >> struct net *net)
+> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0clp =3D nfs_netns_client=
+_alloc(nfs_client_kobj, net);
+> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0if (clp) {
+> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
+=C2=A0=C2=A0=C2=A0=C2=A0netns->nfs_client =3D clp;
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0if (net !=3D &init_net)
+> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
+=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0assign_u=
+nique_clientid(clp);
+> >
+> > Why shouldn't this go in nfs_netns_client_alloc? At this point you've
+> > already published the pointer in netns, so you're prone to races.
+>=20
+> No reason it shouldn't, I'll put it there if that's what you want.
+>=20
+> I thought that's why it was RCU-ed, and figured we'd just do it before=20
+> the
+> uevent.
+>=20
+> > Also, why the exclusion of init_net?
+>=20
+> Because we're unique enough if we're not in a network namespace, and any
+> additional uniqueness we might need (due to NAT, or cloned VMs) /should/=20
+> be
+> getting from udev, as you envisioned.  That way, if we are getting
+> uniquified, its from a source that's likely persistent/deterministic. =20
+> If we
+> just generate a random uniquifier, its going to be different next boot=20
+> if
+> there's no udev rule and userspace helpers.  That's going to make things=20
+> a
+> lot worse for simple setups.
 
-Replace the 'previous cookie' field in struct nfs_entry with the
-array->last_cookie.
+I liked this patch at first, but I no longer think it is a good idea.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/dir.c            | 26 ++++++++++++++------------
- fs/nfs/nfs2xdr.c        |  1 -
- fs/nfs/nfs3xdr.c        |  1 -
- fs/nfs/nfs4xdr.c        |  1 -
- include/linux/nfs_xdr.h |  3 +--
- 5 files changed, 15 insertions(+), 17 deletions(-)
+It is quite possible today for containers to provide sufficient
+uniqueness simply by setting a unique hostname before the first NFS
+mount.
+Quite possibly some containers already do this, and are working
+perfectly.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 5a2c98b2cc15..c2c847845464 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -296,19 +296,20 @@ static int nfs_readdir_array_can_expand(struct nfs_cache_array *array)
- 	return 0;
- }
- 
--static
--int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
-+static int nfs_readdir_page_array_append(struct page *page,
-+					 const struct nfs_entry *entry,
-+					 u64 *cookie)
- {
- 	struct nfs_cache_array *array;
- 	struct nfs_cache_array_entry *cache_entry;
- 	const char *name;
--	int ret;
-+	int ret = -ENOMEM;
- 
- 	name = nfs_readdir_copy_name(entry->name, entry->len);
--	if (!name)
--		return -ENOMEM;
- 
- 	array = kmap_atomic(page);
-+	if (!name)
-+		goto out;
- 	ret = nfs_readdir_array_can_expand(array);
- 	if (ret) {
- 		kfree(name);
-@@ -316,7 +317,7 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
- 	}
- 
- 	cache_entry = &array->array[array->size];
--	cache_entry->cookie = entry->prev_cookie;
-+	cache_entry->cookie = array->last_cookie;
- 	cache_entry->ino = entry->ino;
- 	cache_entry->d_type = entry->d_type;
- 	cache_entry->name_len = entry->len;
-@@ -328,6 +329,7 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
- 	if (entry->eof != 0)
- 		nfs_readdir_array_set_eof(array);
- out:
-+	*cookie = array->last_cookie;
- 	kunmap_atomic(array);
- 	return ret;
- }
-@@ -791,6 +793,7 @@ static int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
- 	struct xdr_stream stream;
- 	struct xdr_buf buf;
- 	struct page *scratch, *new, *page = *arrays;
-+	u64 cookie;
- 	int status;
- 
- 	scratch = alloc_page(GFP_KERNEL);
-@@ -812,22 +815,21 @@ static int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
- 			nfs_prime_dcache(file_dentry(desc->file), entry,
- 					desc->dir_verifier);
- 
--		status = nfs_readdir_add_to_array(entry, page);
-+		status = nfs_readdir_page_array_append(page, entry, &cookie);
- 		if (status != -ENOSPC)
- 			continue;
- 
- 		if (page->mapping != mapping) {
- 			if (!--narrays)
- 				break;
--			new = nfs_readdir_page_array_alloc(entry->prev_cookie,
--							   GFP_KERNEL);
-+			new = nfs_readdir_page_array_alloc(cookie, GFP_KERNEL);
- 			if (!new)
- 				break;
- 			arrays++;
- 			*arrays = page = new;
- 		} else {
--			new = nfs_readdir_page_get_next(
--				mapping, entry->prev_cookie, change_attr);
-+			new = nfs_readdir_page_get_next(mapping, cookie,
-+							change_attr);
- 			if (!new)
- 				break;
- 			if (page != *arrays)
-@@ -835,7 +837,7 @@ static int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
- 			page = new;
- 		}
- 		desc->page_index_max++;
--		status = nfs_readdir_add_to_array(entry, page);
-+		status = nfs_readdir_page_array_append(page, entry, &cookie);
- 	} while (!status && !entry->eof);
- 
- 	switch (status) {
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 3d5ba43f44bb..05c3b4b2b3dd 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -955,7 +955,6 @@ int nfs2_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 	 * The type (size and byte order) of nfscookie isn't defined in
- 	 * RFC 1094.  This implementation assumes that it's an XDR uint32.
- 	 */
--	entry->prev_cookie = entry->cookie;
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		return -EAGAIN;
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index d6779ceeb39e..3b0b650c9c5a 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -2024,7 +2024,6 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 			zero_nfs_fh3(entry->fh);
- 	}
- 
--	entry->prev_cookie = entry->cookie;
- 	entry->cookie = new_cookie;
- 
- 	return 0;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b7780b97dc4d..86a5f6516928 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -7508,7 +7508,6 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 	if (entry->fattr->valid & NFS_ATTR_FATTR_TYPE)
- 		entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
- 
--	entry->prev_cookie = entry->cookie;
- 	entry->cookie = new_cookie;
- 
- 	return 0;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 728cb0c1f0b6..82f7c2730b9a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -745,8 +745,7 @@ struct nfs_auth_info {
-  */
- struct nfs_entry {
- 	__u64			ino;
--	__u64			cookie,
--				prev_cookie;
-+	__u64			cookie;
- 	const char *		name;
- 	unsigned int		len;
- 	int			eof;
--- 
-2.35.1
+If we add new randomness, the they will get a different identifier on
+each boot.  This is bad for exactly the same reason that it is bad for
+"net =3D=3D &init_net".
 
+i.e.  I believe this patch could cause a regression for working sites.
+The regression may not be immediately obvious, but it may still be
+there.
+For this reason, I think this patch should be dropped.
+
+Thanks,
+NeilBrown
