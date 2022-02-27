@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C8C8C4332F
-	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 087FDC43217
+	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232207AbiB0XTV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232202AbiB0XTV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sun, 27 Feb 2022 18:19:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42630 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42634 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232202AbiB0XTS (ORCPT
+        with ESMTP id S232203AbiB0XTS (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:19:18 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B26822504
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AE7552250A
         for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:41 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 382E6611D7
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:41 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 84465C340F4
+        by ams.source.kernel.org (Postfix) with ESMTPS id 6AA1DB80CE0
         for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:40 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E536BC340F0
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646003920;
-        bh=5h/9ONhR9JbTNfkbM1Nf4RX6uqiE1+CzDp93/8OWHsA=;
+        s=k20201202; t=1646003919;
+        bh=Bg2e85OO/+fRAPnmVClp7gJZuYJlnK6kyX6mkYltXGU=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Y+uJm4RKamIn8qTNLnfV+95FPTmMmguUzTpngsQhsrkmkukSaJ6FZ0/dTJt0L8hz8
-         0nCLCExaj25NV5fvRdlARFZbA+g0F2CGXBSQg6mVj6EoxA0J6Tr9Q3/WpP+H3N352G
-         0VkpW061EvHrUmXDvrgE+3kA313m/szA8vMt0JjWRMH6kGSK8MZJUpuBN6YAWwHn56
-         zLIHMdbdQndxrSkSD/WYFTE+aPaRKug16wh4afWV2yGN2/uHcRqahwGJbSwPaO+8Q6
-         br9rvDuTTZiqiPtFkmzNg0/G/OfAhl+SARe7bHET7k7ggm+9FUh5H9om+dscj6Rflg
-         epIT6nkqL9rrA==
+        b=NNa5i7v0JsVuCOru40rv6uEpBbic9+L/Qlt0waNcfcRm8QpTbSudDV9WCiuhzQuB1
+         K68NMuWJu84XFpj1eeuR5qTfgglxKtpKKJaFW4mmLSLu9wE/KtNQSYEMRX1OHGyfgm
+         aPPXntOp0zcV9nZKvNzGnvxTnJ8o0znKZ5XOtG74sW70mAzEII34taSsEC0DpcwmcZ
+         OfKckY3+P6nyaUtTL2PwNPccYrrCkKMbOvLiJNW8KijYRAZQEmSiGlXPZxqIRuIxiT
+         AIYh/R5NWOrrvJaGbD8XLXRjs1xoALwHRO3Jxv9ZH47JkbBkUwKCHR28/r1foT+wMT
+         xzQKMfQORdWww==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v9 17/27] NFS: Readdirplus can't help lookup for case insensitive filesystems
-Date:   Sun, 27 Feb 2022 18:12:17 -0500
-Message-Id: <20220227231227.9038-18-trondmy@kernel.org>
+Subject: [PATCH v9 13/27] NFS: Reduce use of uncached readdir
+Date:   Sun, 27 Feb 2022 18:12:13 -0500
+Message-Id: <20220227231227.9038-14-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220227231227.9038-17-trondmy@kernel.org>
+In-Reply-To: <20220227231227.9038-13-trondmy@kernel.org>
 References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-2-trondmy@kernel.org>
  <20220227231227.9038-3-trondmy@kernel.org>
@@ -51,10 +51,6 @@ References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-11-trondmy@kernel.org>
  <20220227231227.9038-12-trondmy@kernel.org>
  <20220227231227.9038-13-trondmy@kernel.org>
- <20220227231227.9038-14-trondmy@kernel.org>
- <20220227231227.9038-15-trondmy@kernel.org>
- <20220227231227.9038-16-trondmy@kernel.org>
- <20220227231227.9038-17-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -63,27 +59,64 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the filesystem is case insensitive, then readdirplus can't help with
-cache misses, since it won't return case folded variants of the filename.
+When reading a very large directory, we want to try to keep the page
+cache up to date if doing so is inexpensive. With the change to allow
+readdir to continue reading even when the cache is incomplete, we no
+longer need to fall back to uncached readdir in order to scale to large
+directories.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/dir.c | 23 +++--------------------
+ 1 file changed, 3 insertions(+), 20 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c5c7175a257c..5892c4ee3a6d 100644
+index 0c190c93901e..0b7d4be38452 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -694,6 +694,8 @@ void nfs_readdir_record_entry_cache_miss(struct inode *dir)
- 
- static void nfs_lookup_advise_force_readdirplus(struct inode *dir)
- {
-+	if (nfs_server_capable(dir, NFS_CAP_CASE_INSENSITIVE))
-+		return;
- 	nfs_readdir_record_entry_cache_miss(dir);
+@@ -999,28 +999,11 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
+ 	return res;
  }
  
+-static bool nfs_readdir_dont_search_cache(struct nfs_readdir_descriptor *desc)
+-{
+-	struct address_space *mapping = desc->file->f_mapping;
+-	struct inode *dir = file_inode(desc->file);
+-	unsigned int dtsize = NFS_SERVER(dir)->dtsize;
+-	loff_t size = i_size_read(dir);
+-
+-	/*
+-	 * Default to uncached readdir if the page cache is empty, and
+-	 * we're looking for a non-zero cookie in a large directory.
+-	 */
+-	return desc->dir_cookie != 0 && mapping->nrpages == 0 && size > dtsize;
+-}
+-
+ /* Search for desc->dir_cookie from the beginning of the page cache */
+ static int readdir_search_pagecache(struct nfs_readdir_descriptor *desc)
+ {
+ 	int res;
+ 
+-	if (nfs_readdir_dont_search_cache(desc))
+-		return -EBADCOOKIE;
+-
+ 	do {
+ 		if (desc->page_index == 0) {
+ 			desc->current_index = 0;
+@@ -1273,10 +1256,10 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int whence)
+ 	}
+ 	if (offset != filp->f_pos) {
+ 		filp->f_pos = offset;
+-		if (!nfs_readdir_use_cookie(filp)) {
++		dir_ctx->page_index = 0;
++		if (!nfs_readdir_use_cookie(filp))
+ 			dir_ctx->dir_cookie = 0;
+-			dir_ctx->page_index = 0;
+-		} else
++		else
+ 			dir_ctx->dir_cookie = offset;
+ 		if (offset == 0)
+ 			memset(dir_ctx->verf, 0, sizeof(dir_ctx->verf));
 -- 
 2.35.1
 
