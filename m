@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09691C4167E
-	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B52D0C433F5
+	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232190AbiB0XTT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232200AbiB0XTT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sun, 27 Feb 2022 18:19:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42556 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42510 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232198AbiB0XTR (ORCPT
+        with ESMTP id S232190AbiB0XTR (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:19:17 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F4E02250A
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2A44022504
         for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:40 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 803B0611AF
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BE91DC340F2
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:39 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id C6B2BB80B9D
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:38 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4543BC340E9
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646003920;
-        bh=lM9XrmPi10WZoh8XtAcXdB0KwhFEAfra12xDra+VbPo=;
+        s=k20201202; t=1646003917;
+        bh=hxke4oEQ5V2eoqm1zKSZkP5YTLZewRZn8run3leV5e0=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=KjZUKyjahfB4yWo7k/BITQriLnKSNqczOqBC4h0CKEyatHvGmG2j9u+0MrAE2v2yh
-         ai/v1WgDsYEbwmqeb3NjUzXSwHf6Raje3mYiWsk4ZG/55Qn6cpvI/lrXu+l39C7KvT
-         JuIJUMRJtgwOa9LGih026dvErlgeML23q3a00tFgI3Ifbd3FEou+ynFTdkM02C+kJg
-         PZnE50SJqyrspjAIIgJKk0ucr1ba/DGVdq5sE1uL8wBYiLKrvsCp3immC8VXGjPp6U
-         uCygtHo1h8pgL83863DpBlq/cneqiHmfqyGfNiFXTM7tyi1m4dDBFg2PBt4CNRxvVn
-         Pmac3wi84psjw==
+        b=c53w0LVvFJdU3k7KoSxq/MgcpitgTwvXF1oZ0iZfw1IQ2D+CIL4L0SBfBULhCZrV/
+         rTVWGveBX1walk3OKvh1LnfbUS3bQWWZ/kmP31yb9Bbi3+E2N7Ql1W3L+DrQWP2Nqm
+         K3e7aRiLRK8AVe4TG6cqwrAtDoKOeLfrnZz+HjjgcC2dj9eZgHEDdN6jWASxvBtiq4
+         eT4G5da7ygcCgr0S5yIvTKJL2J+/0J4GmU0bOq4wvh2CnCZfLr0S7btfvO6vpa5aSm
+         nE0F9HZRi55lr+Av+/NxXVMGp7T/TqyP9dPzJKFAUwWSuPQHiEskZSHD86HfIUXqLh
+         po7R3O7FR5KXg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v9 15/27] NFS: Don't ask for readdirplus unless it can help nfs_getattr()
-Date:   Sun, 27 Feb 2022 18:12:15 -0500
-Message-Id: <20220227231227.9038-16-trondmy@kernel.org>
+Subject: [PATCH v9 09/27] NFS: Don't advance the page pointer unless the page is full
+Date:   Sun, 27 Feb 2022 18:12:09 -0500
+Message-Id: <20220227231227.9038-10-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220227231227.9038-15-trondmy@kernel.org>
+In-Reply-To: <20220227231227.9038-9-trondmy@kernel.org>
 References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-2-trondmy@kernel.org>
  <20220227231227.9038-3-trondmy@kernel.org>
@@ -47,12 +47,6 @@ References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-7-trondmy@kernel.org>
  <20220227231227.9038-8-trondmy@kernel.org>
  <20220227231227.9038-9-trondmy@kernel.org>
- <20220227231227.9038-10-trondmy@kernel.org>
- <20220227231227.9038-11-trondmy@kernel.org>
- <20220227231227.9038-12-trondmy@kernel.org>
- <20220227231227.9038-13-trondmy@kernel.org>
- <20220227231227.9038-14-trondmy@kernel.org>
- <20220227231227.9038-15-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -61,93 +55,93 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If attribute caching is turned off, then use of readdirplus is not going
-to help stat() performance.
-Readdirplus also doesn't help if a file is being written to, since we
-will have to flush those writes in order to sync the mtime/ctime.
+When we hit the end of the data in the readdir page, we don't want to
+start filling a new page, unless this one is full.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 33 +++++++++++++++++----------------
- 1 file changed, 17 insertions(+), 16 deletions(-)
+ fs/nfs/dir.c | 32 ++++++++++++++++++++++----------
+ 1 file changed, 22 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index bbf4357ff727..10d17cfb8639 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -780,24 +780,26 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 37f78b0ebc40..e2aafc7263d5 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -417,6 +417,18 @@ bool nfs_readdir_use_cookie(const struct file *filp)
+ 	return true;
  }
- EXPORT_SYMBOL_GPL(nfs_setattr_update_inode);
  
--static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
-+/*
-+ * Don't request help from readdirplus if the file is being written to,
-+ * or if attribute caching is turned off
-+ */
-+static bool nfs_getattr_readdirplus_enable(const struct inode *inode)
- {
--	struct dentry *parent;
-+	return nfs_server_capable(inode, NFS_CAP_READDIRPLUS) &&
-+	       !nfs_have_writebacks(inode) && NFS_MAXATTRTIMEO(inode) > 5 * HZ;
-+}
- 
--	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
--		return;
--	parent = dget_parent(dentry);
-+static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
++static void nfs_readdir_seek_next_array(struct nfs_cache_array *array,
++					struct nfs_readdir_descriptor *desc)
 +{
-+	struct dentry *parent = dget_parent(dentry);
- 	nfs_readdir_record_entry_cache_miss(d_inode(parent));
- 	dput(parent);
- }
- 
- static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
++	if (array->page_full) {
++		desc->last_cookie = array->last_cookie;
++		desc->current_index += array->size;
++		desc->cache_entry_index = 0;
++		desc->page_index++;
++	} else
++		desc->last_cookie = array->array[0].cookie;
++}
++
+ static int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
+ 				      struct nfs_readdir_descriptor *desc)
  {
--	struct dentry *parent;
--
--	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
--		return;
--	parent = dget_parent(dentry);
-+	struct dentry *parent = dget_parent(dentry);
- 	nfs_readdir_record_entry_cache_hit(d_inode(parent));
- 	dput(parent);
- }
-@@ -835,6 +837,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 	int err = 0;
- 	bool force_sync = query_flags & AT_STATX_FORCE_SYNC;
- 	bool do_update = false;
-+	bool readdirplus_enabled = nfs_getattr_readdirplus_enable(inode);
- 
- 	trace_nfs_getattr_enter(inode);
- 
-@@ -843,7 +846,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 			STATX_INO | STATX_SIZE | STATX_BLOCKS;
- 
- 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
--		nfs_readdirplus_parent_cache_hit(path->dentry);
-+		if (readdirplus_enabled)
-+			nfs_readdirplus_parent_cache_hit(path->dentry);
- 		goto out_no_revalidate;
+@@ -428,6 +440,7 @@ static int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
+ 	if (diff >= array->size) {
+ 		if (array->page_is_eof)
+ 			goto out_eof;
++		nfs_readdir_seek_next_array(array, desc);
+ 		return -EAGAIN;
  	}
  
-@@ -893,15 +897,12 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+@@ -500,7 +513,8 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
+ 		status = -EBADCOOKIE;
+ 		if (desc->dir_cookie == array->last_cookie)
+ 			desc->eof = true;
+-	}
++	} else
++		nfs_readdir_seek_next_array(array, desc);
+ out:
+ 	return status;
+ }
+@@ -517,11 +531,6 @@ static int nfs_readdir_search_array(struct nfs_readdir_descriptor *desc)
+ 	else
+ 		status = nfs_readdir_search_for_cookie(array, desc);
  
- 	if (do_update) {
--		/* Update the attribute cache */
--		if (!(server->flags & NFS_MOUNT_NOAC))
-+		if (readdirplus_enabled)
- 			nfs_readdirplus_parent_cache_miss(path->dentry);
+-	if (status == -EAGAIN) {
+-		desc->last_cookie = array->last_cookie;
+-		desc->current_index += array->size;
+-		desc->page_index++;
+-	}
+ 	kunmap_atomic(array);
+ 	return status;
+ }
+@@ -998,7 +1007,7 @@ static void nfs_do_filldir(struct nfs_readdir_descriptor *desc,
+ {
+ 	struct file	*file = desc->file;
+ 	struct nfs_cache_array *array;
+-	unsigned int i = 0;
++	unsigned int i;
+ 
+ 	array = kmap(desc->page);
+ 	for (i = desc->cache_entry_index; i < array->size; i++) {
+@@ -1011,10 +1020,13 @@ static void nfs_do_filldir(struct nfs_readdir_descriptor *desc,
+ 			break;
+ 		}
+ 		memcpy(desc->verf, verf, sizeof(desc->verf));
+-		if (i < (array->size-1))
+-			desc->dir_cookie = array->array[i+1].cookie;
 -		else
--			nfs_readdirplus_parent_cache_hit(path->dentry);
- 		err = __nfs_revalidate_inode(server, inode);
- 		if (err)
- 			goto out;
--	} else
-+	} else if (readdirplus_enabled)
- 		nfs_readdirplus_parent_cache_hit(path->dentry);
- out_no_revalidate:
- 	/* Only return attributes that were revalidated. */
++		if (i == array->size - 1) {
+ 			desc->dir_cookie = array->last_cookie;
++			nfs_readdir_seek_next_array(array, desc);
++		} else {
++			desc->dir_cookie = array->array[i + 1].cookie;
++			desc->last_cookie = array->array[0].cookie;
++		}
+ 		if (nfs_readdir_use_cookie(file))
+ 			desc->ctx->pos = desc->dir_cookie;
+ 		else
 -- 
 2.35.1
 
