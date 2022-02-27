@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFF22C4321E
-	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA692C433EF
+	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232212AbiB0XTW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 27 Feb 2022 18:19:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42826 "EHLO
+        id S232208AbiB0XTX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 27 Feb 2022 18:19:23 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42908 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232201AbiB0XTV (ORCPT
+        with ESMTP id S232209AbiB0XTV (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:19:21 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0991822502
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:43 -0800 (PST)
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9065322501
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:44 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DEACA611D7
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 84EF1C340F2
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:42 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 3F62BB80B9D
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE49DC340F0
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646003922;
-        bh=wTKbrsWXYsWLXdci+cjvw5WSje4bJ4LWqMPOwfCWTdU=;
+        s=k20201202; t=1646003921;
+        bh=84VHW+MjK2MciFRF+fkIQr8sxCTgy6uTxEIxU/lNyJE=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=aRk6WdTIPUk9tmONUGpd7LNMcRnBhPpTJXp8Y6uPWcmPy4wnTGPwFYbW9H0PJULp/
-         w2HN38SPxiV2gqxH5NUwHLxwWWvyP1I5Z5vAFcaijqbYbav7Jj10H9KYM7dO3iljir
-         fQ4QTM2w4brog06Tp4Jd8o+Porl1GbjIlxq4rqj4TYe2k9apPNov9lr8E2qguQACbq
-         OcEgB/jX2RmTw2UCgQc3lvABDH7qa/030km7+40buJ7eWmwUGZRdDcFi6uqzUu586Y
-         HBPnhzR2cwoY9DtmAztj6ryXY5sJVDK3an9UjuC7sVxvd3zGCgRx6eqstt+n/Q8Not
-         uIvZotcfUxUWA==
+        b=N4RrRIWXAruSmtoR5NAM6Qz9ril7NRAfg1r0hnjhWDxP2bbNygHsiLpYWE/2d6zIn
+         IwxmoDDbuYeCxzmf5PH9ZxCLiZ5LTUer1F+1iiN0bgyUqyTka4kYR0B5SOhaEQ9Z6j
+         Txl9SGsnY/dImBTFykm4Dtu0Hp1UPaEeZh1MpdNkx47sbPM2SZ4HxdsqfE6cbL8zX9
+         lLh3/3HpMuCRzfjTGcsmt9iSg2ZmBSojVt6igBOkDuiAl0KEjvaUqII9AzB90WQbn0
+         z3RSq27wBTrF1ydLvrK8SfnoMsK9Jxn163G3E2d8Jr5P3NzwEkHpvIslCbyFriUz8r
+         lCjRi/QwCAW4w==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v9 22/27] NFS: Clean up page array initialisation/free
-Date:   Sun, 27 Feb 2022 18:12:22 -0500
-Message-Id: <20220227231227.9038-23-trondmy@kernel.org>
+Subject: [PATCH v9 20/27] NFS: Trace effects of readdirplus on the dcache
+Date:   Sun, 27 Feb 2022 18:12:20 -0500
+Message-Id: <20220227231227.9038-21-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220227231227.9038-22-trondmy@kernel.org>
+In-Reply-To: <20220227231227.9038-20-trondmy@kernel.org>
 References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-2-trondmy@kernel.org>
  <20220227231227.9038-3-trondmy@kernel.org>
@@ -58,8 +58,6 @@ References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-18-trondmy@kernel.org>
  <20220227231227.9038-19-trondmy@kernel.org>
  <20220227231227.9038-20-trondmy@kernel.org>
- <20220227231227.9038-21-trondmy@kernel.org>
- <20220227231227.9038-22-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -68,59 +66,53 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
+Trace the effects of readdirplus on attribute and dentry revalidation.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 16 ++++++----------
- 1 file changed, 6 insertions(+), 10 deletions(-)
+ fs/nfs/dir.c      | 5 +++++
+ fs/nfs/nfstrace.h | 3 +++
+ 2 files changed, 8 insertions(+)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 483bb67d2ace..95a29a973dc8 100644
+index 0dda082610cc..9a2415b5be73 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -199,20 +199,17 @@ static void nfs_grow_dtsize(struct nfs_readdir_descriptor *desc)
- 	nfs_set_dtsize(desc, desc->dtsize << 1);
+@@ -752,8 +752,12 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
+ 			status = nfs_refresh_inode(d_inode(dentry), entry->fattr);
+ 			if (!status)
+ 				nfs_setsecurity(d_inode(dentry), entry->fattr);
++			trace_nfs_readdir_lookup_revalidate(d_inode(parent),
++							    dentry, 0, status);
+ 			goto out;
+ 		} else {
++			trace_nfs_readdir_lookup_revalidate_failed(
++				d_inode(parent), dentry, 0);
+ 			d_invalidate(dentry);
+ 			dput(dentry);
+ 			dentry = NULL;
+@@ -775,6 +779,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
+ 		dentry = alias;
+ 	}
+ 	nfs_set_verifier(dentry, dir_verifier);
++	trace_nfs_readdir_lookup(d_inode(parent), dentry, 0);
+ out:
+ 	dput(dentry);
  }
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index c2d0543ecb2d..7c1102b991d0 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -432,6 +432,9 @@ DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_enter);
+ DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_exit);
+ DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_revalidate_enter);
+ DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_revalidate_exit);
++DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup);
++DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup_revalidate_failed);
++DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_readdir_lookup_revalidate);
  
--static void nfs_readdir_array_init(struct nfs_cache_array *array)
--{
--	memset(array, 0, sizeof(struct nfs_cache_array));
--}
--
- static void nfs_readdir_page_init_array(struct page *page, u64 last_cookie,
- 					u64 change_attr)
- {
- 	struct nfs_cache_array *array;
- 
- 	array = kmap_atomic(page);
--	nfs_readdir_array_init(array);
- 	array->change_attr = change_attr;
- 	array->last_cookie = last_cookie;
-+	array->size = 0;
-+	array->page_full = 0;
-+	array->page_is_eof = 0;
- 	array->cookies_are_ordered = 1;
- 	kunmap_atomic(array);
- }
-@@ -220,16 +217,15 @@ static void nfs_readdir_page_init_array(struct page *page, u64 last_cookie,
- /*
-  * we are freeing strings created by nfs_add_to_readdir_array()
-  */
--static
--void nfs_readdir_clear_array(struct page *page)
-+static void nfs_readdir_clear_array(struct page *page)
- {
- 	struct nfs_cache_array *array;
--	int i;
-+	unsigned int i;
- 
- 	array = kmap_atomic(page);
- 	for (i = 0; i < array->size; i++)
- 		kfree(array->array[i].name);
--	nfs_readdir_array_init(array);
-+	array->size = 0;
- 	kunmap_atomic(array);
- }
- 
+ TRACE_EVENT(nfs_atomic_open_enter,
+ 		TP_PROTO(
 -- 
 2.35.1
 
