@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA692C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AEDDC4167E
 	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:18:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232208AbiB0XTX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232206AbiB0XTX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sun, 27 Feb 2022 18:19:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42908 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42910 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232209AbiB0XTV (ORCPT
+        with ESMTP id S232210AbiB0XTV (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:19:21 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9065322501
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 96CD62250A
         for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:18:44 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 3F62BB80B9D
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 77B1C611D4
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:44 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C56C2C340F0
         for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:43 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE49DC340F0
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 23:18:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646003921;
-        bh=84VHW+MjK2MciFRF+fkIQr8sxCTgy6uTxEIxU/lNyJE=;
+        s=k20201202; t=1646003923;
+        bh=kImNWb+ZQLwpJRUBv8IYr+PeOGFgcCo58C5B2ZBUmGQ=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=N4RrRIWXAruSmtoR5NAM6Qz9ril7NRAfg1r0hnjhWDxP2bbNygHsiLpYWE/2d6zIn
-         IwxmoDDbuYeCxzmf5PH9ZxCLiZ5LTUer1F+1iiN0bgyUqyTka4kYR0B5SOhaEQ9Z6j
-         Txl9SGsnY/dImBTFykm4Dtu0Hp1UPaEeZh1MpdNkx47sbPM2SZ4HxdsqfE6cbL8zX9
-         lLh3/3HpMuCRzfjTGcsmt9iSg2ZmBSojVt6igBOkDuiAl0KEjvaUqII9AzB90WQbn0
-         z3RSq27wBTrF1ydLvrK8SfnoMsK9Jxn163G3E2d8Jr5P3NzwEkHpvIslCbyFriUz8r
-         lCjRi/QwCAW4w==
+        b=pGY8f9sLXlJ3CSHGW9nZOSd+7WPeLo8gd6aR4MDwTN3VqcG6XRUPJHd99lzaOlk60
+         Bg6dE6mMErkdmgg8CZ4YPgQ5eqGONvJrs1VgRE0K/WyfXBkQYoRKnm/tBa/Un1JyA0
+         7QMWlVsb6OyCiGrgW95jDRURWAcI63VxfGMYt1GuVNHvBDL4YMSMT09Z+DCbYR6M//
+         GGkBwrNnQBfEyYRlUasJ2knA5DZCAlmItq9MlL7F7iK8NChRCY+xpSoBdFgoQawIRb
+         NLYN3MUGgDmuN0YlYpG8GfZD4o7geJ7FNNawzI2Ji8JmY01Rnp8eiWHJya9kfQSfOL
+         LaB+YSCsHpuFA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v9 20/27] NFS: Trace effects of readdirplus on the dcache
-Date:   Sun, 27 Feb 2022 18:12:20 -0500
-Message-Id: <20220227231227.9038-21-trondmy@kernel.org>
+Subject: [PATCH v9 25/27] NFS: Remove unnecessary cache invalidations for directories
+Date:   Sun, 27 Feb 2022 18:12:25 -0500
+Message-Id: <20220227231227.9038-26-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220227231227.9038-20-trondmy@kernel.org>
+In-Reply-To: <20220227231227.9038-25-trondmy@kernel.org>
 References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-2-trondmy@kernel.org>
  <20220227231227.9038-3-trondmy@kernel.org>
@@ -58,6 +58,11 @@ References: <20220227231227.9038-1-trondmy@kernel.org>
  <20220227231227.9038-18-trondmy@kernel.org>
  <20220227231227.9038-19-trondmy@kernel.org>
  <20220227231227.9038-20-trondmy@kernel.org>
+ <20220227231227.9038-21-trondmy@kernel.org>
+ <20220227231227.9038-22-trondmy@kernel.org>
+ <20220227231227.9038-23-trondmy@kernel.org>
+ <20220227231227.9038-24-trondmy@kernel.org>
+ <20220227231227.9038-25-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -66,53 +71,93 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Trace the effects of readdirplus on attribute and dentry revalidation.
+Now that the directory page cache entries police themselves, don't
+bother with marking the page cache for invalidation.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c      | 5 +++++
- fs/nfs/nfstrace.h | 3 +++
- 2 files changed, 8 insertions(+)
+ fs/nfs/dir.c           | 5 -----
+ fs/nfs/inode.c         | 9 +++------
+ fs/nfs/nfs4proc.c      | 2 --
+ include/linux/nfs_fs.h | 2 --
+ 4 files changed, 3 insertions(+), 15 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 0dda082610cc..9a2415b5be73 100644
+index 68b0f19053ac..5a2c98b2cc15 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -752,8 +752,12 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
- 			status = nfs_refresh_inode(d_inode(dentry), entry->fattr);
- 			if (!status)
- 				nfs_setsecurity(d_inode(dentry), entry->fattr);
-+			trace_nfs_readdir_lookup_revalidate(d_inode(parent),
-+							    dentry, 0, status);
- 			goto out;
- 		} else {
-+			trace_nfs_readdir_lookup_revalidate_failed(
-+				d_inode(parent), dentry, 0);
- 			d_invalidate(dentry);
- 			dput(dentry);
- 			dentry = NULL;
-@@ -775,6 +779,7 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
- 		dentry = alias;
- 	}
- 	nfs_set_verifier(dentry, dir_verifier);
-+	trace_nfs_readdir_lookup(d_inode(parent), dentry, 0);
- out:
- 	dput(dentry);
- }
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index c2d0543ecb2d..7c1102b991d0 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -432,6 +432,9 @@ DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_enter);
- DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_exit);
- DEFINE_NFS_LOOKUP_EVENT(nfs_lookup_revalidate_enter);
- DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_lookup_revalidate_exit);
-+DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup);
-+DEFINE_NFS_LOOKUP_EVENT(nfs_readdir_lookup_revalidate_failed);
-+DEFINE_NFS_LOOKUP_EVENT_DONE(nfs_readdir_lookup_revalidate);
+@@ -83,11 +83,6 @@ alloc_nfs_open_dir_context(struct inode *dir)
+ 		ctx->attr_gencount = nfsi->attr_gencount;
+ 		ctx->dtsize = NFS_INIT_DTSIZE;
+ 		spin_lock(&dir->i_lock);
+-		if (list_empty(&nfsi->open_files) &&
+-		    (nfsi->cache_validity & NFS_INO_DATA_INVAL_DEFER))
+-			nfs_set_cache_invalid(dir,
+-					      NFS_INO_INVALID_DATA |
+-						      NFS_INO_REVAL_FORCED);
+ 		list_add_tail_rcu(&ctx->list, &nfsi->open_files);
+ 		memcpy(ctx->verf, nfsi->cookieverf, sizeof(ctx->verf));
+ 		spin_unlock(&dir->i_lock);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 10d17cfb8639..43af1b6de5a6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -210,6 +210,8 @@ void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
+ 	if (flags & NFS_INO_INVALID_DATA)
+ 		nfs_fscache_invalidate(inode, 0);
+ 	flags &= ~NFS_INO_REVAL_FORCED;
++	if (S_ISDIR(inode->i_mode))
++		flags &= ~(NFS_INO_INVALID_DATA | NFS_INO_DATA_INVAL_DEFER);
  
- TRACE_EVENT(nfs_atomic_open_enter,
- 		TP_PROTO(
+ 	nfsi->cache_validity |= flags;
+ 
+@@ -1429,10 +1431,7 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			&& (fattr->valid & NFS_ATTR_FATTR_CHANGE)
+ 			&& inode_eq_iversion_raw(inode, fattr->pre_change_attr)) {
+ 		inode_set_iversion_raw(inode, fattr->change_attr);
+-		if (S_ISDIR(inode->i_mode))
+-			nfs_set_cache_invalid(inode, NFS_INO_INVALID_DATA);
+-		else if (nfs_server_capable(inode, NFS_CAP_XATTR))
+-			nfs_set_cache_invalid(inode, NFS_INO_INVALID_XATTR);
++		nfs_set_cache_invalid(inode, NFS_INO_INVALID_XATTR);
+ 	}
+ 	/* If we have atomic WCC data, we may update some attributes */
+ 	ts = inode->i_ctime;
+@@ -1851,8 +1850,6 @@ EXPORT_SYMBOL_GPL(nfs_refresh_inode);
+ static int nfs_post_op_update_inode_locked(struct inode *inode,
+ 		struct nfs_fattr *fattr, unsigned int invalid)
+ {
+-	if (S_ISDIR(inode->i_mode))
+-		invalid |= NFS_INO_INVALID_DATA;
+ 	nfs_set_cache_invalid(inode, invalid);
+ 	if ((fattr->valid & NFS_ATTR_FATTR) == 0)
+ 		return 0;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8b875355824b..f1aa6b3c8523 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1206,8 +1206,6 @@ nfs4_update_changeattr_locked(struct inode *inode,
+ 	u64 change_attr = inode_peek_iversion_raw(inode);
+ 
+ 	cache_validity |= NFS_INO_INVALID_CTIME | NFS_INO_INVALID_MTIME;
+-	if (S_ISDIR(inode->i_mode))
+-		cache_validity |= NFS_INO_INVALID_DATA;
+ 
+ 	switch (NFS_SERVER(inode)->change_attr_type) {
+ 	case NFS4_CHANGE_TYPE_IS_UNDEFINED:
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 3893386ceaed..72f42b1d0d3c 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -360,8 +360,6 @@ static inline void nfs_mark_for_revalidate(struct inode *inode)
+ 	nfsi->cache_validity |= NFS_INO_INVALID_ACCESS | NFS_INO_INVALID_ACL |
+ 				NFS_INO_INVALID_CHANGE | NFS_INO_INVALID_CTIME |
+ 				NFS_INO_INVALID_SIZE;
+-	if (S_ISDIR(inode->i_mode))
+-		nfsi->cache_validity |= NFS_INO_INVALID_DATA;
+ 	spin_unlock(&inode->i_lock);
+ }
+ 
 -- 
 2.35.1
 
