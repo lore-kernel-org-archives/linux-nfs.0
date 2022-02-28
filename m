@@ -2,51 +2,51 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A961C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Feb 2022 12:23:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5618EC433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Feb 2022 12:23:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236284AbiB1MX4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 28 Feb 2022 07:23:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46062 "EHLO
+        id S236295AbiB1MYO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 28 Feb 2022 07:24:14 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48020 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236295AbiB1MXj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2022 07:23:39 -0500
-Received: from mail-pg1-x52c.google.com (mail-pg1-x52c.google.com [IPv6:2607:f8b0:4864:20::52c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C820155BCD
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:22:58 -0800 (PST)
-Received: by mail-pg1-x52c.google.com with SMTP id 12so11260822pgd.0
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:22:58 -0800 (PST)
+        with ESMTP id S236362AbiB1MX5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2022 07:23:57 -0500
+Received: from mail-pl1-x62b.google.com (mail-pl1-x62b.google.com [IPv6:2607:f8b0:4864:20::62b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A3B37520B
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:16 -0800 (PST)
+Received: by mail-pl1-x62b.google.com with SMTP id l9so10119993pls.6
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:16 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=bytedance-com.20210112.gappssmtp.com; s=20210112;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=7RQGHmSpLUsBWZUQYPpcdOjVs87EIcOAL9fVyXOtIRQ=;
-        b=8OKYvg3uY+0MhQo9Sqp4PHlfDHE8n5JHFkh0d4IPnyiTC0hPfVIt2xxcAbqCQqdjsw
-         92pF22xqGKb/Zrti0Hx41FWRNgFKxWIH8k7lmpuJTDWGL2jtVtg0hG5Bo1e26N00+Pdi
-         Oqc524Bk6FBDUhr6GhV9xxi5TqJ13Igp/dPXx2cSS1lREZebqOGdvplA9VRbeohCo44V
-         YUS5ig1qtXpGqzkxqWdrFWV0UhIkmcderji7aXysd68MOjjHiT4F/keQdesOWTeHVtRY
-         HAO9FL0jJcoSvj/VubwpRqOyoeA/VkFZ3Ltb6A6wxOW19eajDaa8a3cedjQw620HUJ/i
-         hbKA==
+        bh=3CsekL525kd4wMUq3hGH48YYiOw10AxsnYHSRiavRRo=;
+        b=yWb0o30Ai7jt2ic9aWpnmT0w6NOd++UYjPe4/U84uEfZ4Yi+dBC0OL9YaYP0QDWrod
+         9S+z16kZh3BplAN3pFakq2BGTolIjPo9Lt/XyrYHdTnDcbNQnRQH9Yp/Q59ikL6eGeFK
+         1ToP4tWaSgcD2SSmZuXcyjqtjf6qI5+uGQo4TjkT2REeZ+EYjQdcH9YZcm9ZfdAML+A/
+         HihZUnPVgpAr0P5UzPoK8MZfq38wH/2HORkBwF92tUJcmlqe1tlMJYVnoHH1YJVNVIF8
+         r2sMqsZMli/jOXygwlCZVLWU3lXaZ8PVWgjqzW1rrLElxuBjdOHU/h7JDB570GKrNzwo
+         ZTmw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=7RQGHmSpLUsBWZUQYPpcdOjVs87EIcOAL9fVyXOtIRQ=;
-        b=xpprcI0v3RY69y2sK9wvWhcfX2rYWoPtjUjT3paZunve3nzVPO+Zcn/EO3H6AiAbrx
-         S3JItGYWaAZtMzF6nXK6Qe3l9H3YUdNBshO6sM/daUwO1wypybgrQf/fi2zD/02afN/Z
-         TjbzeuhXJuNP/vWTvTKJorBM4HLdrD5JGOAZF/ni9CFD+zvQnROnpKW49INQ4hZFcWNL
-         hdBzO326+a8B9cd3FQ+ANKdcUeFZujs/WtBuBPbJAwM4ENKS5zstmOGt2jrAuvYaikPR
-         x9y4CuSPk4kS4TzDPjUMzTOXOdAUQkndrNkF6DnfCHel9BTTUyk8kv7D0+vgiaNAHQhA
-         hTTg==
-X-Gm-Message-State: AOAM530lH02lEFzXSgNMZuyaS/UMnwAhtbzbHihBsHrWWp5qWFSUe0Gr
-        QFZOsPqbHWJKcUtHFaaDH5lhdg==
-X-Google-Smtp-Source: ABdhPJzgAE0yHpfYS+vzCxbO7K/OSkp2rCJIamxAE5RBODPYQ4mTFqO8oVK9gFGTCNJgkd0+YSRxHA==
-X-Received: by 2002:a05:6a00:278d:b0:4e1:4534:8801 with SMTP id bd13-20020a056a00278d00b004e145348801mr21153306pfb.78.1646050978317;
-        Mon, 28 Feb 2022 04:22:58 -0800 (PST)
+        bh=3CsekL525kd4wMUq3hGH48YYiOw10AxsnYHSRiavRRo=;
+        b=GTy86U81wbnOAOJmPl/VdCYdj3jBInM2uvC/lXZkWIUHRgDT/Htt4JDH41qqrXXqDw
+         0EIlWHjl2+0W6ascBqfcakeICj4z9qRmk/gaRqjN3XnO/drGigNGHIbJMRBE2dWTKiop
+         GDcIzTlTcSO2iGEfQd8mDZFY2r88RbxxDba4//bK1LJBew4gGPznQ6tZtb5IFUt/Qpe2
+         1wX0rrnamMNvMU5iSEsHHaPDExcAJ7MSbu5t2l+LCvXjJeQr2I30rzlYGI3ElEJWiMbZ
+         21HAczowtMJIVd4Lsz4fqiuTPtjbXivaOwtz9mR7ou4X7GcasVByWwnGGD3CSQwPxHS4
+         U3fw==
+X-Gm-Message-State: AOAM531Vz3+rgCcGZkMF0AsFYEBhbf9YRZaF/GVJRqPFolNOa2Uq/vsz
+        8O5KuMvNOxxErlDJb7lrwtnGGw==
+X-Google-Smtp-Source: ABdhPJz2mJtVFcGCpLkGoeKpHWerUiwrRW/dint6TVNOtnn8bqEp9SVeaF46LPLwo1CJnR1wfgQ1LQ==
+X-Received: by 2002:a17:90a:bb0d:b0:1bd:3baf:c8b4 with SMTP id u13-20020a17090abb0d00b001bd3bafc8b4mr6631856pjr.15.1646050996207;
+        Mon, 28 Feb 2022 04:23:16 -0800 (PST)
 Received: from FVFYT0MHHV2J.tiktokcdn.com ([139.177.225.227])
-        by smtp.gmail.com with ESMTPSA id ep22-20020a17090ae65600b001b92477db10sm10466753pjb.29.2022.02.28.04.22.49
+        by smtp.gmail.com with ESMTPSA id ep22-20020a17090ae65600b001b92477db10sm10466753pjb.29.2022.02.28.04.23.07
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 28 Feb 2022 04:22:58 -0800 (PST)
+        Mon, 28 Feb 2022 04:23:15 -0800 (PST)
 From:   Muchun Song <songmuchun@bytedance.com>
 To:     willy@infradead.org, akpm@linux-foundation.org, hannes@cmpxchg.org,
         mhocko@kernel.org, vdavydov.dev@gmail.com, shakeelb@google.com,
@@ -60,9 +60,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         zhengqi.arch@bytedance.com, duanxiongchun@bytedance.com,
         fam.zheng@bytedance.com, smuchun@gmail.com,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v6 05/16] f2fs: allocate inode by using alloc_inode_sb()
-Date:   Mon, 28 Feb 2022 20:21:15 +0800
-Message-Id: <20220228122126.37293-6-songmuchun@bytedance.com>
+Subject: [PATCH v6 07/16] mm: dcache: use kmem_cache_alloc_lru() to allocate dentry
+Date:   Mon, 28 Feb 2022 20:21:17 +0800
+Message-Id: <20220228122126.37293-8-songmuchun@bytedance.com>
 X-Mailer: git-send-email 2.32.0 (Apple Git-132)
 In-Reply-To: <20220228122126.37293-1-songmuchun@bytedance.com>
 References: <20220228122126.37293-1-songmuchun@bytedance.com>
@@ -72,32 +72,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The inode allocation is supposed to use alloc_inode_sb(), so convert
-kmem_cache_alloc() to alloc_inode_sb().
+Like inode cache, the dentry will also be added to its memcg list_lru.
+So replace kmem_cache_alloc() with kmem_cache_alloc_lru() to allocate
+dentry.
 
 Signed-off-by: Muchun Song <songmuchun@bytedance.com>
 Acked-by: Roman Gushchin <roman.gushchin@linux.dev>
 ---
- fs/f2fs/super.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ fs/dcache.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index baefd398ec1a..9cc753a3944d 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -1345,8 +1345,12 @@ static struct inode *f2fs_alloc_inode(struct super_block *sb)
- {
- 	struct f2fs_inode_info *fi;
+diff --git a/fs/dcache.c b/fs/dcache.c
+index c84269c6e8bf..93f4f5ee07bf 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1766,7 +1766,8 @@ static struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
+ 	char *dname;
+ 	int err;
  
--	fi = f2fs_kmem_cache_alloc(f2fs_inode_cachep,
--				GFP_F2FS_ZERO, false, F2FS_SB(sb));
-+	if (time_to_inject(F2FS_SB(sb), FAULT_SLAB_ALLOC)) {
-+		f2fs_show_injection_info(F2FS_SB(sb), FAULT_SLAB_ALLOC);
-+		return NULL;
-+	}
-+
-+	fi = alloc_inode_sb(sb, f2fs_inode_cachep, GFP_F2FS_ZERO);
- 	if (!fi)
+-	dentry = kmem_cache_alloc(dentry_cache, GFP_KERNEL);
++	dentry = kmem_cache_alloc_lru(dentry_cache, &sb->s_dentry_lru,
++				      GFP_KERNEL);
+ 	if (!dentry)
  		return NULL;
  
 -- 
