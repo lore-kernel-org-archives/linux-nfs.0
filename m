@@ -2,172 +2,99 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7DCEC433EF
-	for <linux-nfs@archiver.kernel.org>; Sun, 27 Feb 2022 23:51:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 94D46C433EF
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Feb 2022 00:56:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231375AbiB0Xvg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 27 Feb 2022 18:51:36 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44194 "EHLO
+        id S231376AbiB1A4r (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 27 Feb 2022 19:56:47 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47626 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229486AbiB0Xvf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 18:51:35 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C78C049FB9
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Feb 2022 15:50:57 -0800 (PST)
+        with ESMTP id S229926AbiB1A4q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2022 19:56:46 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A317F6E4CA;
+        Sun, 27 Feb 2022 16:56:08 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 632D01F891;
-        Sun, 27 Feb 2022 23:50:56 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 44DA8218CE;
+        Mon, 28 Feb 2022 00:56:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1646005856; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1646009767; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=dSJTncVvco70M4Slorpug5TivvbDPMgomp5jzqRdNI8=;
-        b=McEchP5YcYud1tKtzohz2L85Ttfwymtlwjo2cM4oFUzjf6l+M0FvAaq11fIfhRaP8wX1ub
-        MJ8IzEZurcQEwxNsrLGBzh5gDD2grCCuDH+neKBsdN3vSui2TSJk0Z5a/LTyGqwuTqA24Q
-        0OIumspmYgrXOf4q9kvvwWIZiLh2Cww=
+        bh=6BMX+ZTu71y6pW6n3w8F+LKPlpMD1xGyNzpWEriNEMU=;
+        b=1oVF7UvWyYQbKC/xLf9MsPR8L3YFujQtqWjDHI94j3Y6llbbBEk2LfEWhVw1RKXMvC0qBD
+        AkIvIvUtlcpZCbTCf0+sxGGDUkQ+B9NLXEnYiMmkxnLDvm4StN1h694Ps83kJCvBCZAZj8
+        EqUfKBdZeCUe1bXwMeZou2fTb0WkjDQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1646005856;
+        s=susede2_ed25519; t=1646009767;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=dSJTncVvco70M4Slorpug5TivvbDPMgomp5jzqRdNI8=;
-        b=TPI0SVW88zLKJT9QNkiVOjvaTpT+21ee/7ey63Pl6f9h96CROhi/Z/T8toreyvF3LLSP8B
-        A5fWduBmlmFS6hAQ==
+        bh=6BMX+ZTu71y6pW6n3w8F+LKPlpMD1xGyNzpWEriNEMU=;
+        b=ZqAexWszEd97yVO/gMY1fUsKeCbC0z3zIfR0iYIdzKVOYZJIVYUn/GzIx+edrJvq14rJuV
+        x5NUKrQjCITcUmBQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0087712FC5;
-        Sun, 27 Feb 2022 23:50:54 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 852F2139BD;
+        Mon, 28 Feb 2022 00:56:04 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 59d+K14OHGKvKwAAMHmgww
-        (envelope-from <neilb@suse.de>); Sun, 27 Feb 2022 23:50:54 +0000
+        id LCeyD6QdHGLqPAAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 28 Feb 2022 00:56:04 +0000
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
 From:   "NeilBrown" <neilb@suse.de>
-To:     "Benjamin Coddington" <bcodding@redhat.com>
-Cc:     "Trond Myklebust" <trondmy@hammerspace.com>,
-        anna.schumaker@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSv4: use unique client identifiers in network namespaces
-In-reply-to: <7CDAEA98-3A8D-459A-80FE-82AA58A4EDA2@redhat.com>
-References: =?utf-8?q?=3C6e05bf321ff50785360e6c339d111db368e7dfda=2E16443499?=
- =?utf-8?q?90=2Egit=2Ebcodding=40redhat=2Ecom=3E=2C?=
- <189aba691b341f64f653817c9cdf018ef34ac257.camel@hammerspace.com>,
- <7CDAEA98-3A8D-459A-80FE-82AA58A4EDA2@redhat.com>
-Date:   Mon, 28 Feb 2022 10:50:52 +1100
-Message-id: <164600585213.15631.6635814364853064416@noble.neil.brown.name>
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     "Andreas Dilger" <adilger@dilger.ca>,
+        "Dave Chinner" <david@fromorbit.com>,
+        "Al Viro" <viro@zeniv.linux.org.uk>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        "LKML" <linux-kernel@vger.kernel.org>,
+        "Daire Byrne" <daire@dneg.com>,
+        "Andreas Dilger" <adilger.kernel@dilger.ca>
+Subject: Re: [PATCH/RFC] VFS: support parallel updates in the one directory.
+In-reply-to: <20220224233848.GC8269@magnolia>
+References: <164568221518.25116.18139840533197037520@noble.neil.brown.name>,
+ <893053D7-E5DD-43DB-941A-05C10FF5F396@dilger.ca>,
+ <20220224233848.GC8269@magnolia>
+Date:   Mon, 28 Feb 2022 11:55:47 +1100
+Message-id: <164600974741.15631.8678502963654197325@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 09 Feb 2022, Benjamin Coddington wrote:
-> On 8 Feb 2022, at 15:27, Trond Myklebust wrote:
+On Fri, 25 Feb 2022, Darrick J. Wong wrote:
+> On Thu, Feb 24, 2022 at 09:31:28AM -0700, Andreas Dilger wrote:
+> > On Feb 23, 2022, at 22:57, NeilBrown <neilb@suse.de> wrote:
+> > >=20
+> > > for i in {1..70}; do ( for j in {1000..8000}; do touch $j; rm -f $j ; d=
+one ) & done
 >=20
-> > On Tue, 2022-02-08 at 15:03 -0500, Benjamin Coddington wrote:
-> >> In order to differentiate client state, assign a random uuid to the
-> >> uniquifing portion of the client identifier when a network namespace
-> >> is
-> >> created.=C2=A0 Containers may still override this value if they wish to
-> >> maintain
-> >> stable client identifiers by writing to
-> >> /sys/fs/nfs/net/client/identifier,
-> >> either by udev rules or other means.
-> >>
-> >> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> >> ---
-> >> =C2=A0fs/nfs/sysfs.c | 14 ++++++++++++++
-> >> =C2=A01 file changed, 14 insertions(+)
-> >>
-> >> diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-> >> index 8cb70755e3c9..9b811323fd7f 100644
-> >> --- a/fs/nfs/sysfs.c
-> >> +++ b/fs/nfs/sysfs.c
-> >> @@ -167,6 +167,18 @@ static struct nfs_netns_client
-> >> *nfs_netns_client_alloc(struct kobject *parent,
-> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0return NULL;
-> >> =C2=A0}
-> >> =C2=A0
-> >> +static void assign_unique_clientid(struct nfs_netns_client *clp)
-> >> +{
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0unsigned char client_uuid[16];
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0char *uuid_str =3D kmalloc(UU=
-ID_STRING_LEN + 1,=20
-> >> GFP_KERNEL);
-> >> +
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0if (uuid_str) {
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0generate_random_uuid(client_uuid);
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0sprintf(uuid_str, "%pU", client_uuid);
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0rcu_assign_pointer(clp->identifier,=20
-> >> uuid_str);
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0}
-> >> +}
-> >> +
-> >> =C2=A0void nfs_netns_sysfs_setup(struct nfs_net *netns, struct net *net)
-> >> =C2=A0{
-> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0struct nfs_netns_client =
-*clp;
-> >> @@ -174,6 +186,8 @@ void nfs_netns_sysfs_setup(struct nfs_net *netns,
-> >> struct net *net)
-> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0clp =3D nfs_netns_client=
-_alloc(nfs_client_kobj, net);
-> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0if (clp) {
-> >> =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0=C2=A0=C2=A0=C2=A0netns->nfs_client =3D clp;
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0if (net !=3D &init_net)
-> >> +=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0assign_u=
-nique_clientid(clp);
-> >
-> > Why shouldn't this go in nfs_netns_client_alloc? At this point you've
-> > already published the pointer in netns, so you're prone to races.
+> I think you want something faster here, like ln to hardlink an existing
+> file into the directory.
 >=20
-> No reason it shouldn't, I'll put it there if that's what you want.
->=20
-> I thought that's why it was RCU-ed, and figured we'd just do it before=20
-> the
-> uevent.
->=20
-> > Also, why the exclusion of init_net?
->=20
-> Because we're unique enough if we're not in a network namespace, and any
-> additional uniqueness we might need (due to NAT, or cloned VMs) /should/=20
-> be
-> getting from udev, as you envisioned.  That way, if we are getting
-> uniquified, its from a source that's likely persistent/deterministic. =20
-> If we
-> just generate a random uniquifier, its going to be different next boot=20
-> if
-> there's no udev rule and userspace helpers.  That's going to make things=20
-> a
-> lot worse for simple setups.
 
-I liked this patch at first, but I no longer think it is a good idea.
+And probably written in C too..
 
-It is quite possible today for containers to provide sufficient
-uniqueness simply by setting a unique hostname before the first NFS
-mount.
-Quite possibly some containers already do this, and are working
-perfectly.
+=20
+> (I am also not a fan of "PAR_UPDATE", since 'par' is already an English
+> word that doesn't mean 'parallel'.)
 
-If we add new randomness, the they will get a different identifier on
-each boot.  This is bad for exactly the same reason that it is bad for
-"net =3D=3D &init_net".
+:-)
+We already have DCACHE_PAR_LOOKUP for parallel lookups in a directory
+(though it is really a lock bit and I think should be named as soch).
+So it made sense to use DCACHE_PAR_UPDATE for parallel updates.
+And then S_PAR_UPDATE for the inode flag to enable this seemed logical.
 
-i.e.  I believe this patch could cause a regression for working sites.
-The regression may not be immediately obvious, but it may still be
-there.
-For this reason, I think this patch should be dropped.
+But I agree that these names are sub-par :-)
 
-Thanks,
 NeilBrown
