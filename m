@@ -2,51 +2,51 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5463C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Feb 2022 12:23:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9AB3FC433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Feb 2022 12:23:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236366AbiB1MYQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 28 Feb 2022 07:24:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48848 "EHLO
+        id S236413AbiB1MYV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 28 Feb 2022 07:24:21 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46930 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236388AbiB1MYH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2022 07:24:07 -0500
-Received: from mail-pf1-x42e.google.com (mail-pf1-x42e.google.com [IPv6:2607:f8b0:4864:20::42e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58F1975219
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:25 -0800 (PST)
-Received: by mail-pf1-x42e.google.com with SMTP id s11so639810pfu.13
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:25 -0800 (PST)
+        with ESMTP id S236311AbiB1MXq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2022 07:23:46 -0500
+Received: from mail-pl1-x629.google.com (mail-pl1-x629.google.com [IPv6:2607:f8b0:4864:20::629])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3E9170339
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:07 -0800 (PST)
+Received: by mail-pl1-x629.google.com with SMTP id z2so10555133plg.8
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:07 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=bytedance-com.20210112.gappssmtp.com; s=20210112;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=+Fd7li1iOMpK7jvkCUIxllzXaVUUg0Vj1c4/CWRZnB0=;
-        b=OmTVqBVEoCQsCJh5cQrW3YGi2ivgre7SGfWjAQT5JfZdvx7QYprKZ4R5EBpIxBheXj
-         pW2QdcSq7+hCU4EsfxTF0uLKINSLfyDEj0ttE6P2mZ0IJwUfVQmxb8lE94HF1rWAMQit
-         Wi/KaoKx5S+S/k6QX39c56uWjPQiadjRv/cdAFU/XkHBxtjMjicPztddBQaokGYfegQk
-         zPRCgiAo8KCReehGB4RxMRc2/S2PrTwF7z4y37Lii2hFaOQ5G8A9+/zKxWmSO0CrIChq
-         +NJoPkyZ5VvL5jqjUTLg5+s/rh0xqe8am/ASAjV1zkHmrbwLs/st+bfqrOXh/I03TEig
-         48sA==
+        bh=W7N2ct9tvwpvEjrUOuEEAnTDqNZXNpAiEvvqkroYr+g=;
+        b=KkiGb7Pdw1ydl11Dl3qV5P0aGMZh9PcwBwSXXbMOqJ1IVhP7TYoPH6Ir6xqn+/3aEp
+         DuSqdDLytjLHGFKPt03t23ihHcjWxTFYlX2aXol49Yvjgx8yjokCxShrlEPO+/3ChyLP
+         LEGnEl20CzF078t+1B0Oi9vuk9MfZ2LQM5dTW5ZQhfciSvzOuoehO+IfG8q4UukWi2nX
+         QEEOzgbeN82NGwiBEM8hSi2o0Y3QBlj5zyBxklZMRXDi4b7iQLkj/LGMu+32vEKc7aOu
+         syIJw5XXba+Zd5ZGMjkZP/Vna94ZPQ0ORPgYsOm+I9TBx9PcUhpF+GqyJY7i1XHl0Ida
+         FLOQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=+Fd7li1iOMpK7jvkCUIxllzXaVUUg0Vj1c4/CWRZnB0=;
-        b=thb9wJ0mHj+AxkLpQ6cugx805igvx6qKVJBpo3atWo4XlZCp6ok5wOZvJvw8bpoBUF
-         s24o5mhFl3SosvLT3y0+VUya2TGlbvjgxIGnxi+kZU91ZRU3vGu3JzTdzAOKsFqB1/CB
-         JPhQTS8hneeqEJyG1BQRWSWhWB3B7fhqQgDju38vg24CKM6ok9xaQFoCtqGztvZY4unz
-         aDgBsVCHMVdxdCi5xN8OSwQLolsePiY0YAcjBdw9UQ7pwReWXy3xHNydLP80sYv4lWX7
-         q7qRukTC9ykBFIDHJ6hqm20fJ0h+pOaa9vxe27QL0vatSgxR87A3K9Tw5hvXNXRVbQ4w
-         l+WA==
-X-Gm-Message-State: AOAM533zG5Z8dlDXbMk5HAxllcqtAQMCNCiPoX+R26r3qAEiZqqIzyoe
-        c3z6qPW8Q9oshA7375Yhv5rL3Q==
-X-Google-Smtp-Source: ABdhPJyTtLogBLlA8TUxa8YlltGEoXIBGc16lzGJxC0sfwr8X6oVevbD/+aMp2kL+7EUsF9EGu9vLw==
-X-Received: by 2002:a05:6a00:1706:b0:4df:7fe0:841a with SMTP id h6-20020a056a00170600b004df7fe0841amr21287409pfc.64.1646051004721;
-        Mon, 28 Feb 2022 04:23:24 -0800 (PST)
+        bh=W7N2ct9tvwpvEjrUOuEEAnTDqNZXNpAiEvvqkroYr+g=;
+        b=C2qL/k22w6ykccX39ZKulNDDlWX6yJ8m6Gtk3SJK4cCy5u53nVmLwXoVwMkUx9icr/
+         7BTGED6C1zkhRtLa6MdPdlOWI4sBJxI+tE+rsX+1PkWAeoWKouY+xQA0Xzwyd6quEjyY
+         2QbmeMmn350/n2UBMc8Tz7jCPB6LFfLPyUQ7vSSjOZjZ8+sN0letxEWrKL7O7q4MRn2F
+         rzMiAhU1aElP/EBRi2otx8+5kVG/4ckbMm6DnbWpryqT86aSiV20T6zWLS7z9DNF9u0T
+         MTQzND/diDu2xVsucJ3W/lE2qAdd9r7tyv+dNg7/AbDMniALysl2lCA3FElh8mgOjX/H
+         26Yg==
+X-Gm-Message-State: AOAM532pWGC5KoNpRXjm5IUkZ9tITngOFZQujT+L2U6fzXqOrgbGM1sF
+        QcvIqBYWhkzYawCPO5mPCKP6Ww==
+X-Google-Smtp-Source: ABdhPJy2O/UK2533uxkLDGlF5W6RsWluHD1/MUiuZcqt+i/pTIK5YRHC2V4KQvLpyDf0rDuWQAJu6A==
+X-Received: by 2002:a17:902:be14:b0:14f:ce67:d0a1 with SMTP id r20-20020a170902be1400b0014fce67d0a1mr20044235pls.29.1646050987224;
+        Mon, 28 Feb 2022 04:23:07 -0800 (PST)
 Received: from FVFYT0MHHV2J.tiktokcdn.com ([139.177.225.227])
-        by smtp.gmail.com with ESMTPSA id ep22-20020a17090ae65600b001b92477db10sm10466753pjb.29.2022.02.28.04.23.16
+        by smtp.gmail.com with ESMTPSA id ep22-20020a17090ae65600b001b92477db10sm10466753pjb.29.2022.02.28.04.22.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 28 Feb 2022 04:23:24 -0800 (PST)
+        Mon, 28 Feb 2022 04:23:06 -0800 (PST)
 From:   Muchun Song <songmuchun@bytedance.com>
 To:     willy@infradead.org, akpm@linux-foundation.org, hannes@cmpxchg.org,
         mhocko@kernel.org, vdavydov.dev@gmail.com, shakeelb@google.com,
@@ -60,9 +60,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         zhengqi.arch@bytedance.com, duanxiongchun@bytedance.com,
         fam.zheng@bytedance.com, smuchun@gmail.com,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v6 08/16] xarray: use kmem_cache_alloc_lru to allocate xa_node
-Date:   Mon, 28 Feb 2022 20:21:18 +0800
-Message-Id: <20220228122126.37293-9-songmuchun@bytedance.com>
+Subject: [PATCH v6 06/16] nfs42: use a specific kmem_cache to allocate nfs4_xattr_entry
+Date:   Mon, 28 Feb 2022 20:21:16 +0800
+Message-Id: <20220228122126.37293-7-songmuchun@bytedance.com>
 X-Mailer: git-send-email 2.32.0 (Apple Git-132)
 In-Reply-To: <20220228122126.37293-1-songmuchun@bytedance.com>
 References: <20220228122126.37293-1-songmuchun@bytedance.com>
@@ -72,130 +72,184 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The workingset will add the xa_node to the shadow_nodes list. So the
-allocation of xa_node should be done by kmem_cache_alloc_lru(). Using
-xas_set_lru() to pass the list_lru which we want to insert xa_node
-into to set up the xa_node reclaim context correctly.
+If we want to add the allocated objects to its list_lru, we should use
+kmem_cache_alloc_lru() to allocate objects. So intruduce
+nfs4_xattr_entry_cachep which is used to allocate nfs4_xattr_entry.
 
 Signed-off-by: Muchun Song <songmuchun@bytedance.com>
-Acked-by: Johannes Weiner <hannes@cmpxchg.org>
-Acked-by: Roman Gushchin <roman.gushchin@linux.dev>
 ---
- include/linux/swap.h   |  5 ++++-
- include/linux/xarray.h |  9 ++++++++-
- lib/xarray.c           | 10 +++++-----
- mm/workingset.c        |  2 +-
- 4 files changed, 18 insertions(+), 8 deletions(-)
+ fs/nfs/nfs42xattr.c | 95 ++++++++++++++++++++++++++---------------------------
+ 1 file changed, 47 insertions(+), 48 deletions(-)
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 1d38d9475c4d..3db431276d82 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -334,9 +334,12 @@ void workingset_activation(struct folio *folio);
+diff --git a/fs/nfs/nfs42xattr.c b/fs/nfs/nfs42xattr.c
+index 1c4d2a05b401..5b7af9080db0 100644
+--- a/fs/nfs/nfs42xattr.c
++++ b/fs/nfs/nfs42xattr.c
+@@ -81,7 +81,7 @@ struct nfs4_xattr_entry {
+ 	struct hlist_node hnode;
+ 	struct list_head lru;
+ 	struct list_head dispose;
+-	char *xattr_name;
++	const char *xattr_name;
+ 	void *xattr_value;
+ 	size_t xattr_size;
+ 	struct nfs4_xattr_bucket *bucket;
+@@ -98,6 +98,7 @@ static struct list_lru nfs4_xattr_entry_lru;
+ static struct list_lru nfs4_xattr_large_entry_lru;
  
- /* Only track the nodes of mappings with shadow entries */
- void workingset_update_node(struct xa_node *node);
-+extern struct list_lru shadow_nodes;
- #define mapping_set_update(xas, mapping) do {				\
--	if (!dax_mapping(mapping) && !shmem_mapping(mapping))		\
-+	if (!dax_mapping(mapping) && !shmem_mapping(mapping)) {		\
- 		xas_set_update(xas, workingset_update_node);		\
-+		xas_set_lru(xas, &shadow_nodes);			\
-+	}								\
- } while (0)
- 
- /* linux/mm/page_alloc.c */
-diff --git a/include/linux/xarray.h b/include/linux/xarray.h
-index d6d5da6ed735..bb52b786be1b 100644
---- a/include/linux/xarray.h
-+++ b/include/linux/xarray.h
-@@ -1317,6 +1317,7 @@ struct xa_state {
- 	struct xa_node *xa_node;
- 	struct xa_node *xa_alloc;
- 	xa_update_node_t xa_update;
-+	struct list_lru *xa_lru;
- };
+ static struct kmem_cache *nfs4_xattr_cache_cachep;
++static struct kmem_cache *nfs4_xattr_entry_cachep;
  
  /*
-@@ -1336,7 +1337,8 @@ struct xa_state {
- 	.xa_pad = 0,					\
- 	.xa_node = XAS_RESTART,				\
- 	.xa_alloc = NULL,				\
--	.xa_update = NULL				\
-+	.xa_update = NULL,				\
-+	.xa_lru = NULL,					\
+  * Hashing helper functions.
+@@ -177,49 +178,27 @@ nfs4_xattr_alloc_entry(const char *name, const void *value,
+ {
+ 	struct nfs4_xattr_entry *entry;
+ 	void *valp;
+-	char *namep;
+-	size_t alloclen, slen;
+-	char *buf;
+-	uint32_t flags;
++	const char *namep;
++	uint32_t flags = len > PAGE_SIZE ? NFS4_XATTR_ENTRY_EXTVAL : 0;
++	gfp_t gfp = GFP_KERNEL_ACCOUNT | GFP_NOFS;
++	struct list_lru *lru;
+ 
+ 	BUILD_BUG_ON(sizeof(struct nfs4_xattr_entry) +
+ 	    XATTR_NAME_MAX + 1 > PAGE_SIZE);
+ 
+-	alloclen = sizeof(struct nfs4_xattr_entry);
+-	if (name != NULL) {
+-		slen = strlen(name) + 1;
+-		alloclen += slen;
+-	} else
+-		slen = 0;
+-
+-	if (alloclen + len <= PAGE_SIZE) {
+-		alloclen += len;
+-		flags = 0;
+-	} else {
+-		flags = NFS4_XATTR_ENTRY_EXTVAL;
+-	}
+-
+-	buf = kmalloc(alloclen, GFP_KERNEL_ACCOUNT | GFP_NOFS);
+-	if (buf == NULL)
++	lru = flags & NFS4_XATTR_ENTRY_EXTVAL ? &nfs4_xattr_large_entry_lru :
++	      &nfs4_xattr_entry_lru;
++	entry = kmem_cache_alloc_lru(nfs4_xattr_entry_cachep, lru, gfp);
++	if (!entry)
+ 		return NULL;
+-	entry = (struct nfs4_xattr_entry *)buf;
+-
+-	if (name != NULL) {
+-		namep = buf + sizeof(struct nfs4_xattr_entry);
+-		memcpy(namep, name, slen);
+-	} else {
+-		namep = NULL;
+-	}
+-
+-
+-	if (flags & NFS4_XATTR_ENTRY_EXTVAL) {
+-		valp = kvmalloc(len, GFP_KERNEL_ACCOUNT | GFP_NOFS);
+-		if (valp == NULL) {
+-			kfree(buf);
+-			return NULL;
+-		}
+-	} else if (len != 0) {
+-		valp = buf + sizeof(struct nfs4_xattr_entry) + slen;
++	namep = kstrdup_const(name, gfp);
++	if (!namep && name)
++		goto free_buf;
++
++	if (len != 0) {
++		valp = kvmalloc(len, gfp);
++		if (!valp)
++			goto free_name;
+ 	} else
+ 		valp = NULL;
+ 
+@@ -232,23 +211,23 @@ nfs4_xattr_alloc_entry(const char *name, const void *value,
+ 
+ 	entry->flags = flags;
+ 	entry->xattr_value = valp;
+-	kref_init(&entry->ref);
+ 	entry->xattr_name = namep;
+ 	entry->xattr_size = len;
+-	entry->bucket = NULL;
+-	INIT_LIST_HEAD(&entry->lru);
+-	INIT_LIST_HEAD(&entry->dispose);
+-	INIT_HLIST_NODE(&entry->hnode);
+ 
+ 	return entry;
++free_name:
++	kfree_const(namep);
++free_buf:
++	kmem_cache_free(nfs4_xattr_entry_cachep, entry);
++	return NULL;
  }
  
- /**
-@@ -1631,6 +1633,11 @@ static inline void xas_set_update(struct xa_state *xas, xa_update_node_t update)
- 	xas->xa_update = update;
+ static void
+ nfs4_xattr_free_entry(struct nfs4_xattr_entry *entry)
+ {
+-	if (entry->flags & NFS4_XATTR_ENTRY_EXTVAL)
+-		kvfree(entry->xattr_value);
+-	kfree(entry);
++	kvfree(entry->xattr_value);
++	kfree_const(entry->xattr_name);
++	kmem_cache_free(nfs4_xattr_entry_cachep, entry);
  }
  
-+static inline void xas_set_lru(struct xa_state *xas, struct list_lru *lru)
+ static void
+@@ -289,7 +268,7 @@ nfs4_xattr_alloc_cache(void)
+ {
+ 	struct nfs4_xattr_cache *cache;
+ 
+-	cache = kmem_cache_alloc(nfs4_xattr_cache_cachep,
++	cache = kmem_cache_alloc_lru(nfs4_xattr_cache_cachep, &nfs4_xattr_cache_lru,
+ 	    GFP_KERNEL_ACCOUNT | GFP_NOFS);
+ 	if (cache == NULL)
+ 		return NULL;
+@@ -992,6 +971,17 @@ static void nfs4_xattr_cache_init_once(void *p)
+ 	INIT_LIST_HEAD(&cache->dispose);
+ }
+ 
++static void nfs4_xattr_entry_init_once(void *p)
 +{
-+	xas->xa_lru = lru;
++	struct nfs4_xattr_entry *entry = p;
++
++	kref_init(&entry->ref);
++	entry->bucket = NULL;
++	INIT_LIST_HEAD(&entry->lru);
++	INIT_LIST_HEAD(&entry->dispose);
++	INIT_HLIST_NODE(&entry->hnode);
 +}
 +
- /**
-  * xas_next_entry() - Advance iterator to next present entry.
-  * @xas: XArray operation state.
-diff --git a/lib/xarray.c b/lib/xarray.c
-index 6f47f6375808..b95e92598b9c 100644
---- a/lib/xarray.c
-+++ b/lib/xarray.c
-@@ -302,7 +302,7 @@ bool xas_nomem(struct xa_state *xas, gfp_t gfp)
- 	}
- 	if (xas->xa->xa_flags & XA_FLAGS_ACCOUNT)
- 		gfp |= __GFP_ACCOUNT;
--	xas->xa_alloc = kmem_cache_alloc(radix_tree_node_cachep, gfp);
-+	xas->xa_alloc = kmem_cache_alloc_lru(radix_tree_node_cachep, xas->xa_lru, gfp);
- 	if (!xas->xa_alloc)
- 		return false;
- 	xas->xa_alloc->parent = NULL;
-@@ -334,10 +334,10 @@ static bool __xas_nomem(struct xa_state *xas, gfp_t gfp)
- 		gfp |= __GFP_ACCOUNT;
- 	if (gfpflags_allow_blocking(gfp)) {
- 		xas_unlock_type(xas, lock_type);
--		xas->xa_alloc = kmem_cache_alloc(radix_tree_node_cachep, gfp);
-+		xas->xa_alloc = kmem_cache_alloc_lru(radix_tree_node_cachep, xas->xa_lru, gfp);
- 		xas_lock_type(xas, lock_type);
- 	} else {
--		xas->xa_alloc = kmem_cache_alloc(radix_tree_node_cachep, gfp);
-+		xas->xa_alloc = kmem_cache_alloc_lru(radix_tree_node_cachep, xas->xa_lru, gfp);
- 	}
- 	if (!xas->xa_alloc)
- 		return false;
-@@ -371,7 +371,7 @@ static void *xas_alloc(struct xa_state *xas, unsigned int shift)
- 		if (xas->xa->xa_flags & XA_FLAGS_ACCOUNT)
- 			gfp |= __GFP_ACCOUNT;
- 
--		node = kmem_cache_alloc(radix_tree_node_cachep, gfp);
-+		node = kmem_cache_alloc_lru(radix_tree_node_cachep, xas->xa_lru, gfp);
- 		if (!node) {
- 			xas_set_err(xas, -ENOMEM);
- 			return NULL;
-@@ -1014,7 +1014,7 @@ void xas_split_alloc(struct xa_state *xas, void *entry, unsigned int order,
- 		void *sibling = NULL;
- 		struct xa_node *node;
- 
--		node = kmem_cache_alloc(radix_tree_node_cachep, gfp);
-+		node = kmem_cache_alloc_lru(radix_tree_node_cachep, xas->xa_lru, gfp);
- 		if (!node)
- 			goto nomem;
- 		node->array = xas->xa;
-diff --git a/mm/workingset.c b/mm/workingset.c
-index 8c03afe1d67c..979c7130c266 100644
---- a/mm/workingset.c
-+++ b/mm/workingset.c
-@@ -429,7 +429,7 @@ void workingset_activation(struct folio *folio)
-  * point where they would still be useful.
-  */
- 
--static struct list_lru shadow_nodes;
-+struct list_lru shadow_nodes;
- 
- void workingset_update_node(struct xa_node *node)
+ int __init nfs4_xattr_cache_init(void)
  {
+ 	int ret = 0;
+@@ -1003,6 +993,13 @@ int __init nfs4_xattr_cache_init(void)
+ 	if (nfs4_xattr_cache_cachep == NULL)
+ 		return -ENOMEM;
+ 
++	nfs4_xattr_entry_cachep = kmem_cache_create("nfs4_xattr_entry",
++			sizeof(struct nfs4_xattr_entry), 0,
++			(SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD | SLAB_ACCOUNT),
++			nfs4_xattr_entry_init_once);
++	if (!nfs4_xattr_entry_cachep)
++		goto out5;
++
+ 	ret = list_lru_init_memcg(&nfs4_xattr_large_entry_lru,
+ 	    &nfs4_xattr_large_entry_shrinker);
+ 	if (ret)
+@@ -1040,6 +1037,8 @@ int __init nfs4_xattr_cache_init(void)
+ out3:
+ 	list_lru_destroy(&nfs4_xattr_large_entry_lru);
+ out4:
++	kmem_cache_destroy(nfs4_xattr_entry_cachep);
++out5:
+ 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
+ 
+ 	return ret;
 -- 
 2.11.0
 
