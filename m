@@ -2,51 +2,51 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9AB3FC433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Feb 2022 12:23:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CDC9C433FE
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Feb 2022 12:24:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236413AbiB1MYV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 28 Feb 2022 07:24:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46930 "EHLO
+        id S236312AbiB1MYq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 28 Feb 2022 07:24:46 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47738 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236311AbiB1MXq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2022 07:23:46 -0500
-Received: from mail-pl1-x629.google.com (mail-pl1-x629.google.com [IPv6:2607:f8b0:4864:20::629])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3E9170339
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:07 -0800 (PST)
-Received: by mail-pl1-x629.google.com with SMTP id z2so10555133plg.8
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:07 -0800 (PST)
+        with ESMTP id S236369AbiB1MYQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2022 07:24:16 -0500
+Received: from mail-pg1-x532.google.com (mail-pg1-x532.google.com [IPv6:2607:f8b0:4864:20::532])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4FAAF74DC4
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:34 -0800 (PST)
+Received: by mail-pg1-x532.google.com with SMTP id o8so11212527pgf.9
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2022 04:23:34 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=bytedance-com.20210112.gappssmtp.com; s=20210112;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=W7N2ct9tvwpvEjrUOuEEAnTDqNZXNpAiEvvqkroYr+g=;
-        b=KkiGb7Pdw1ydl11Dl3qV5P0aGMZh9PcwBwSXXbMOqJ1IVhP7TYoPH6Ir6xqn+/3aEp
-         DuSqdDLytjLHGFKPt03t23ihHcjWxTFYlX2aXol49Yvjgx8yjokCxShrlEPO+/3ChyLP
-         LEGnEl20CzF078t+1B0Oi9vuk9MfZ2LQM5dTW5ZQhfciSvzOuoehO+IfG8q4UukWi2nX
-         QEEOzgbeN82NGwiBEM8hSi2o0Y3QBlj5zyBxklZMRXDi4b7iQLkj/LGMu+32vEKc7aOu
-         syIJw5XXba+Zd5ZGMjkZP/Vna94ZPQ0ORPgYsOm+I9TBx9PcUhpF+GqyJY7i1XHl0Ida
-         FLOQ==
+        bh=4weE4kqhVNNelpninfKVs0Z5lAWaMF5vJ9tpJi1vKqM=;
+        b=jNIurO4J5jzzg6tw4FkyFriQIvcP76IRCFSaYIPHcK6WypzpBeQpxT2wVTd235Rx+H
+         zIM3T3a8rwrhBykl8ohYk5Rc989WTu+s+jPwkike3SU1b3etv0KAPcS0b4SrXMmRau5V
+         0XbYaQddQw2cwYkWhjXYHjmGO10fEHgAzCMhMqJ2gkZ3249Xgb3P6nEgYgKIL7C8Fduc
+         PlmhdyUHJ1/oOtXztvv1x2qiybg82kKYTC7ZYo3Wp4hJOrsH08TwJq1UFHRkMxviVlee
+         kHCyRPQBH+81w9gv77XtRh/AUjRq2gsCar9rXwYlvYrfL/BuBWxcTVZaCJTztmsk1L4F
+         5z6g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=W7N2ct9tvwpvEjrUOuEEAnTDqNZXNpAiEvvqkroYr+g=;
-        b=C2qL/k22w6ykccX39ZKulNDDlWX6yJ8m6Gtk3SJK4cCy5u53nVmLwXoVwMkUx9icr/
-         7BTGED6C1zkhRtLa6MdPdlOWI4sBJxI+tE+rsX+1PkWAeoWKouY+xQA0Xzwyd6quEjyY
-         2QbmeMmn350/n2UBMc8Tz7jCPB6LFfLPyUQ7vSSjOZjZ8+sN0letxEWrKL7O7q4MRn2F
-         rzMiAhU1aElP/EBRi2otx8+5kVG/4ckbMm6DnbWpryqT86aSiV20T6zWLS7z9DNF9u0T
-         MTQzND/diDu2xVsucJ3W/lE2qAdd9r7tyv+dNg7/AbDMniALysl2lCA3FElh8mgOjX/H
-         26Yg==
-X-Gm-Message-State: AOAM532pWGC5KoNpRXjm5IUkZ9tITngOFZQujT+L2U6fzXqOrgbGM1sF
-        QcvIqBYWhkzYawCPO5mPCKP6Ww==
-X-Google-Smtp-Source: ABdhPJy2O/UK2533uxkLDGlF5W6RsWluHD1/MUiuZcqt+i/pTIK5YRHC2V4KQvLpyDf0rDuWQAJu6A==
-X-Received: by 2002:a17:902:be14:b0:14f:ce67:d0a1 with SMTP id r20-20020a170902be1400b0014fce67d0a1mr20044235pls.29.1646050987224;
-        Mon, 28 Feb 2022 04:23:07 -0800 (PST)
+        bh=4weE4kqhVNNelpninfKVs0Z5lAWaMF5vJ9tpJi1vKqM=;
+        b=ChtAKe9aAyhqZvT0joTQ/1FTRgxJufbbtpA9EocD+RpAyGY/DEle4ZVe3xIzc+rm8p
+         FJ4+C+aOmtVk5/uD8bIzE3Pc3iLi++AVX4EdunR+hlERQ6g0MsW7pEVF7BF1swZPdiVV
+         JaR8NUFJ1ntSjBd9LS4FwaiYzcW+ydOS01zbpmsqyMtHyUwOp1B9hoCJpoAy74XsXBuQ
+         a+jR5rhLGbUHZ7N1sdbf4SweF2Tl1tswejUG9kqtgL00RW+0u1RieXF9SkPe8snatYGA
+         3Ga2lBwdFz0aNIe7LBRPFAPNmYhN2OtQyZa2AEOYkwk+ySURQMxOHs1IJm5pTVWg0NIc
+         QGXg==
+X-Gm-Message-State: AOAM530fXftGyHzu8RlPMFRgoaltUhWCBPwclJiQkj1FqLjeEgvzvIRV
+        V3L1v1zhvBsozh/sgqTphDPDKQ==
+X-Google-Smtp-Source: ABdhPJy0Y3sz8zYIu7FfTE85icoaySMSdHhDkvZcfxDVS79w35TAOVMTZcKVPjThbCUvuMwVu0O9uQ==
+X-Received: by 2002:a65:554e:0:b0:34d:f721:7fef with SMTP id t14-20020a65554e000000b0034df7217fefmr7749911pgr.476.1646051013796;
+        Mon, 28 Feb 2022 04:23:33 -0800 (PST)
 Received: from FVFYT0MHHV2J.tiktokcdn.com ([139.177.225.227])
-        by smtp.gmail.com with ESMTPSA id ep22-20020a17090ae65600b001b92477db10sm10466753pjb.29.2022.02.28.04.22.58
+        by smtp.gmail.com with ESMTPSA id ep22-20020a17090ae65600b001b92477db10sm10466753pjb.29.2022.02.28.04.23.25
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 28 Feb 2022 04:23:06 -0800 (PST)
+        Mon, 28 Feb 2022 04:23:33 -0800 (PST)
 From:   Muchun Song <songmuchun@bytedance.com>
 To:     willy@infradead.org, akpm@linux-foundation.org, hannes@cmpxchg.org,
         mhocko@kernel.org, vdavydov.dev@gmail.com, shakeelb@google.com,
@@ -60,9 +60,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         zhengqi.arch@bytedance.com, duanxiongchun@bytedance.com,
         fam.zheng@bytedance.com, smuchun@gmail.com,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v6 06/16] nfs42: use a specific kmem_cache to allocate nfs4_xattr_entry
-Date:   Mon, 28 Feb 2022 20:21:16 +0800
-Message-Id: <20220228122126.37293-7-songmuchun@bytedance.com>
+Subject: [PATCH v6 09/16] mm: memcontrol: move memcg_online_kmem() to mem_cgroup_css_online()
+Date:   Mon, 28 Feb 2022 20:21:19 +0800
+Message-Id: <20220228122126.37293-10-songmuchun@bytedance.com>
 X-Mailer: git-send-email 2.32.0 (Apple Git-132)
 In-Reply-To: <20220228122126.37293-1-songmuchun@bytedance.com>
 References: <20220228122126.37293-1-songmuchun@bytedance.com>
@@ -72,184 +72,130 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If we want to add the allocated objects to its list_lru, we should use
-kmem_cache_alloc_lru() to allocate objects. So intruduce
-nfs4_xattr_entry_cachep which is used to allocate nfs4_xattr_entry.
+It will simplify the code if moving memcg_online_kmem() to
+mem_cgroup_css_online() and do not need to set ->kmemcg_id
+to -1 to indicate the memcg is offline. In the next patch,
+->kmemcg_id will be used to sync list lru reparenting which
+requires not to change ->kmemcg_id.
 
 Signed-off-by: Muchun Song <songmuchun@bytedance.com>
+Acked-by: Roman Gushchin <roman.gushchin@linux.dev>
 ---
- fs/nfs/nfs42xattr.c | 95 ++++++++++++++++++++++++++---------------------------
- 1 file changed, 47 insertions(+), 48 deletions(-)
+ mm/memcontrol.c | 37 ++++++++++++++++---------------------
+ 1 file changed, 16 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/nfs42xattr.c b/fs/nfs/nfs42xattr.c
-index 1c4d2a05b401..5b7af9080db0 100644
---- a/fs/nfs/nfs42xattr.c
-+++ b/fs/nfs/nfs42xattr.c
-@@ -81,7 +81,7 @@ struct nfs4_xattr_entry {
- 	struct hlist_node hnode;
- 	struct list_head lru;
- 	struct list_head dispose;
--	char *xattr_name;
-+	const char *xattr_name;
- 	void *xattr_value;
- 	size_t xattr_size;
- 	struct nfs4_xattr_bucket *bucket;
-@@ -98,6 +98,7 @@ static struct list_lru nfs4_xattr_entry_lru;
- static struct list_lru nfs4_xattr_large_entry_lru;
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index ffc5f0798de1..5bdf5184681c 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -3616,7 +3616,8 @@ static int memcg_online_kmem(struct mem_cgroup *memcg)
+ 	if (cgroup_memory_nokmem)
+ 		return 0;
  
- static struct kmem_cache *nfs4_xattr_cache_cachep;
-+static struct kmem_cache *nfs4_xattr_entry_cachep;
+-	BUG_ON(memcg->kmemcg_id >= 0);
++	if (unlikely(mem_cgroup_is_root(memcg)))
++		return 0;
  
- /*
-  * Hashing helper functions.
-@@ -177,49 +178,27 @@ nfs4_xattr_alloc_entry(const char *name, const void *value,
+ 	memcg_id = memcg_alloc_cache_id();
+ 	if (memcg_id < 0)
+@@ -3642,7 +3643,10 @@ static void memcg_offline_kmem(struct mem_cgroup *memcg)
+ 	struct mem_cgroup *parent;
+ 	int kmemcg_id;
+ 
+-	if (memcg->kmemcg_id == -1)
++	if (cgroup_memory_nokmem)
++		return;
++
++	if (unlikely(mem_cgroup_is_root(memcg)))
+ 		return;
+ 
+ 	parent = parent_mem_cgroup(memcg);
+@@ -3652,7 +3656,6 @@ static void memcg_offline_kmem(struct mem_cgroup *memcg)
+ 	memcg_reparent_objcgs(memcg, parent);
+ 
+ 	kmemcg_id = memcg->kmemcg_id;
+-	BUG_ON(kmemcg_id < 0);
+ 
+ 	/*
+ 	 * After we have finished memcg_reparent_objcgs(), all list_lrus
+@@ -3663,7 +3666,6 @@ static void memcg_offline_kmem(struct mem_cgroup *memcg)
+ 	memcg_drain_all_list_lrus(kmemcg_id, parent);
+ 
+ 	memcg_free_cache_id(kmemcg_id);
+-	memcg->kmemcg_id = -1;
+ }
+ #else
+ static int memcg_online_kmem(struct mem_cgroup *memcg)
+@@ -5178,7 +5180,6 @@ mem_cgroup_css_alloc(struct cgroup_subsys_state *parent_css)
  {
- 	struct nfs4_xattr_entry *entry;
- 	void *valp;
--	char *namep;
--	size_t alloclen, slen;
--	char *buf;
--	uint32_t flags;
-+	const char *namep;
-+	uint32_t flags = len > PAGE_SIZE ? NFS4_XATTR_ENTRY_EXTVAL : 0;
-+	gfp_t gfp = GFP_KERNEL_ACCOUNT | GFP_NOFS;
-+	struct list_lru *lru;
+ 	struct mem_cgroup *parent = mem_cgroup_from_css(parent_css);
+ 	struct mem_cgroup *memcg, *old_memcg;
+-	long error = -ENOMEM;
  
- 	BUILD_BUG_ON(sizeof(struct nfs4_xattr_entry) +
- 	    XATTR_NAME_MAX + 1 > PAGE_SIZE);
+ 	old_memcg = set_active_memcg(parent);
+ 	memcg = mem_cgroup_alloc();
+@@ -5207,34 +5208,26 @@ mem_cgroup_css_alloc(struct cgroup_subsys_state *parent_css)
+ 		return &memcg->css;
+ 	}
  
--	alloclen = sizeof(struct nfs4_xattr_entry);
--	if (name != NULL) {
--		slen = strlen(name) + 1;
--		alloclen += slen;
--	} else
--		slen = 0;
+-	/* The following stuff does not apply to the root */
+-	error = memcg_online_kmem(memcg);
+-	if (error)
+-		goto fail;
 -
--	if (alloclen + len <= PAGE_SIZE) {
--		alloclen += len;
--		flags = 0;
--	} else {
--		flags = NFS4_XATTR_ENTRY_EXTVAL;
+ 	if (cgroup_subsys_on_dfl(memory_cgrp_subsys) && !cgroup_memory_nosocket)
+ 		static_branch_inc(&memcg_sockets_enabled_key);
+ 
+ 	return &memcg->css;
+-fail:
+-	mem_cgroup_id_remove(memcg);
+-	mem_cgroup_free(memcg);
+-	return ERR_PTR(error);
+ }
+ 
+ static int mem_cgroup_css_online(struct cgroup_subsys_state *css)
+ {
+ 	struct mem_cgroup *memcg = mem_cgroup_from_css(css);
+ 
++	if (memcg_online_kmem(memcg))
++		goto remove_id;
++
+ 	/*
+ 	 * A memcg must be visible for expand_shrinker_info()
+ 	 * by the time the maps are allocated. So, we allocate maps
+ 	 * here, when for_each_mem_cgroup() can't skip it.
+ 	 */
+-	if (alloc_shrinker_info(memcg)) {
+-		mem_cgroup_id_remove(memcg);
+-		return -ENOMEM;
 -	}
--
--	buf = kmalloc(alloclen, GFP_KERNEL_ACCOUNT | GFP_NOFS);
--	if (buf == NULL)
-+	lru = flags & NFS4_XATTR_ENTRY_EXTVAL ? &nfs4_xattr_large_entry_lru :
-+	      &nfs4_xattr_entry_lru;
-+	entry = kmem_cache_alloc_lru(nfs4_xattr_entry_cachep, lru, gfp);
-+	if (!entry)
- 		return NULL;
--	entry = (struct nfs4_xattr_entry *)buf;
--
--	if (name != NULL) {
--		namep = buf + sizeof(struct nfs4_xattr_entry);
--		memcpy(namep, name, slen);
--	} else {
--		namep = NULL;
--	}
--
--
--	if (flags & NFS4_XATTR_ENTRY_EXTVAL) {
--		valp = kvmalloc(len, GFP_KERNEL_ACCOUNT | GFP_NOFS);
--		if (valp == NULL) {
--			kfree(buf);
--			return NULL;
--		}
--	} else if (len != 0) {
--		valp = buf + sizeof(struct nfs4_xattr_entry) + slen;
-+	namep = kstrdup_const(name, gfp);
-+	if (!namep && name)
-+		goto free_buf;
-+
-+	if (len != 0) {
-+		valp = kvmalloc(len, gfp);
-+		if (!valp)
-+			goto free_name;
- 	} else
- 		valp = NULL;
++	if (alloc_shrinker_info(memcg))
++		goto offline_kmem;
  
-@@ -232,23 +211,23 @@ nfs4_xattr_alloc_entry(const char *name, const void *value,
- 
- 	entry->flags = flags;
- 	entry->xattr_value = valp;
--	kref_init(&entry->ref);
- 	entry->xattr_name = namep;
- 	entry->xattr_size = len;
--	entry->bucket = NULL;
--	INIT_LIST_HEAD(&entry->lru);
--	INIT_LIST_HEAD(&entry->dispose);
--	INIT_HLIST_NODE(&entry->hnode);
- 
- 	return entry;
-+free_name:
-+	kfree_const(namep);
-+free_buf:
-+	kmem_cache_free(nfs4_xattr_entry_cachep, entry);
-+	return NULL;
+ 	/* Online state pins memcg ID, memcg ID pins CSS */
+ 	refcount_set(&memcg->id.ref, 1);
+@@ -5244,6 +5237,11 @@ static int mem_cgroup_css_online(struct cgroup_subsys_state *css)
+ 		queue_delayed_work(system_unbound_wq, &stats_flush_dwork,
+ 				   2UL*HZ);
+ 	return 0;
++offline_kmem:
++	memcg_offline_kmem(memcg);
++remove_id:
++	mem_cgroup_id_remove(memcg);
++	return -ENOMEM;
  }
  
- static void
- nfs4_xattr_free_entry(struct nfs4_xattr_entry *entry)
- {
--	if (entry->flags & NFS4_XATTR_ENTRY_EXTVAL)
--		kvfree(entry->xattr_value);
--	kfree(entry);
-+	kvfree(entry->xattr_value);
-+	kfree_const(entry->xattr_name);
-+	kmem_cache_free(nfs4_xattr_entry_cachep, entry);
+ static void mem_cgroup_css_offline(struct cgroup_subsys_state *css)
+@@ -5301,9 +5299,6 @@ static void mem_cgroup_css_free(struct cgroup_subsys_state *css)
+ 	cancel_work_sync(&memcg->high_work);
+ 	mem_cgroup_remove_from_trees(memcg);
+ 	free_shrinker_info(memcg);
+-
+-	/* Need to offline kmem if online_css() fails */
+-	memcg_offline_kmem(memcg);
+ 	mem_cgroup_free(memcg);
  }
  
- static void
-@@ -289,7 +268,7 @@ nfs4_xattr_alloc_cache(void)
- {
- 	struct nfs4_xattr_cache *cache;
- 
--	cache = kmem_cache_alloc(nfs4_xattr_cache_cachep,
-+	cache = kmem_cache_alloc_lru(nfs4_xattr_cache_cachep, &nfs4_xattr_cache_lru,
- 	    GFP_KERNEL_ACCOUNT | GFP_NOFS);
- 	if (cache == NULL)
- 		return NULL;
-@@ -992,6 +971,17 @@ static void nfs4_xattr_cache_init_once(void *p)
- 	INIT_LIST_HEAD(&cache->dispose);
- }
- 
-+static void nfs4_xattr_entry_init_once(void *p)
-+{
-+	struct nfs4_xattr_entry *entry = p;
-+
-+	kref_init(&entry->ref);
-+	entry->bucket = NULL;
-+	INIT_LIST_HEAD(&entry->lru);
-+	INIT_LIST_HEAD(&entry->dispose);
-+	INIT_HLIST_NODE(&entry->hnode);
-+}
-+
- int __init nfs4_xattr_cache_init(void)
- {
- 	int ret = 0;
-@@ -1003,6 +993,13 @@ int __init nfs4_xattr_cache_init(void)
- 	if (nfs4_xattr_cache_cachep == NULL)
- 		return -ENOMEM;
- 
-+	nfs4_xattr_entry_cachep = kmem_cache_create("nfs4_xattr_entry",
-+			sizeof(struct nfs4_xattr_entry), 0,
-+			(SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD | SLAB_ACCOUNT),
-+			nfs4_xattr_entry_init_once);
-+	if (!nfs4_xattr_entry_cachep)
-+		goto out5;
-+
- 	ret = list_lru_init_memcg(&nfs4_xattr_large_entry_lru,
- 	    &nfs4_xattr_large_entry_shrinker);
- 	if (ret)
-@@ -1040,6 +1037,8 @@ int __init nfs4_xattr_cache_init(void)
- out3:
- 	list_lru_destroy(&nfs4_xattr_large_entry_lru);
- out4:
-+	kmem_cache_destroy(nfs4_xattr_entry_cachep);
-+out5:
- 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
- 
- 	return ret;
 -- 
 2.11.0
 
