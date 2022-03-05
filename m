@@ -2,110 +2,98 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B2C6BC4321E
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Mar 2022 20:09:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB262C433F5
+	for <linux-nfs@archiver.kernel.org>; Sat,  5 Mar 2022 00:37:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231194AbiCDUKC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 4 Mar 2022 15:10:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53306 "EHLO
+        id S230267AbiCEAiO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 4 Mar 2022 19:38:14 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50392 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232434AbiCDUJP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2022 15:09:15 -0500
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D889120C2E0;
-        Fri,  4 Mar 2022 12:03:28 -0800 (PST)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 19F587253; Fri,  4 Mar 2022 15:03:20 -0500 (EST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 19F587253
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1646424200;
-        bh=ZNPhSxtZN/ks7FEtwW3By9jmrYTGNVzKwe2BPkQyF4I=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=uiZeXZiYMk5gm68OPikmt9bu1yk4SYuezouW0NySj87i/JWnGAQkQD/NzwmMUz8R1
-         pcuHEPjP1jxU/DRaRwlqtqOR75p/mOyztxxBU7tI/0YwQ9RaQtsY3NWuqlCRGmCPXz
-         hianw1bXIv4o3k2ME/zn4ZliHSWUMLfS4epyE3UE=
-Date:   Fri, 4 Mar 2022 15:03:20 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Josef Bacik <josef@toxicpanda.com>
-Cc:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: nfs generic/373 failure after "fs: allow cross-vfsmount
- reflink/dedupe"
-Message-ID: <20220304200320.GB5037@fieldses.org>
-References: <20220302082658.GF3927073@dread.disaster.area>
- <CAOQ4uxgiL2eqx-kad+dddXvXPREKT-w3_BnLzdoJaJqGm=H=vA@mail.gmail.com>
- <20220302211226.GG3927073@dread.disaster.area>
- <20220302220450.GD10757@fieldses.org>
- <Yh/vADRGuPFGIEc+@localhost.localdomain>
- <20220302224250.GF10757@fieldses.org>
- <YiABiLtH/4nMJE+u@localhost.localdomain>
- <20220303000735.GA21944@fieldses.org>
- <YiAL7uNA3ZiaBCE6@localhost.localdomain>
- <20220303005001.GB21944@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220303005001.GB21944@fieldses.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+        with ESMTP id S229587AbiCEAiN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2022 19:38:13 -0500
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 659792590E3;
+        Fri,  4 Mar 2022 16:37:24 -0800 (PST)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 224Jx5ms020770;
+        Sat, 5 Mar 2022 00:37:21 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
+ bh=t6BjpuZ9RtInSf1gfShJDJd5eYJCYibRkA8U7Opka74=;
+ b=MF6+lLxBLOg1mz8gbHsrCNMrCYsrh2fQ1VnW+Z3bF+C+iTIOtsthZFuy88yPvul7OiJG
+ uJ8y2QNAOgX4STL9aWtuck1ph7tXFVw5PHxlMzU4CvPeYbynz/g/UZjb5dtthhVVVMF5
+ gNx/kA5/RwQv+B2Gdp59W/lIxy+J9djNU5rzbW6uK143zUiz+Apbb7Dpz2LDPiKbcxKr
+ 8DIESOXN39B5akOStPyqtm3vaAGX7jZT0QlnMK1pi686fjBQaLA/BYPxLZ6TqNSt1jVN
+ niMa37cf27X9ULta/zxpYdHuCF/XQcPJQ23R3QMISdf9kzbaK/F+vXtiIhuYeK5NdStv ng== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by mx0b-00069f02.pphosted.com with ESMTP id 3ek4hw36jm-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 05 Mar 2022 00:37:21 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 2250PxNV146639;
+        Sat, 5 Mar 2022 00:37:20 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by aserp3030.oracle.com with ESMTP id 3ek4jh9bfj-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 05 Mar 2022 00:37:20 +0000
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 2250bJaF161402;
+        Sat, 5 Mar 2022 00:37:20 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by aserp3030.oracle.com with ESMTP id 3ek4jh9bfb-2;
+        Sat, 05 Mar 2022 00:37:20 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, bfields@fieldses.org
+Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH RFC v15 01/11] fs/lock: add helper locks_any_blockers to check for blockers
+Date:   Fri,  4 Mar 2022 16:37:03 -0800
+Message-Id: <1646440633-3542-2-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1646440633-3542-1-git-send-email-dai.ngo@oracle.com>
+References: <1646440633-3542-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-ORIG-GUID: Pu-QuOWtoSgfKJfyc3DOh6xMjmkSidg1
+X-Proofpoint-GUID: Pu-QuOWtoSgfKJfyc3DOh6xMjmkSidg1
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 02, 2022 at 07:50:01PM -0500, J. Bruce Fields wrote:
-> On Wed, Mar 02, 2022 at 07:29:34PM -0500, Josef Bacik wrote:
-> > On Wed, Mar 02, 2022 at 07:07:35PM -0500, J. Bruce Fields wrote:
-> > > Sorry, took me a minute to understand, myself:
-> > > 
-> > > It's actually only the client behavior that changed.  Previously the
-> > > client would reject an attempt to clone across filesystems, so the
-> > > server never saw such a request.  After this patch, the client will go
-> > > ahead and send the CLONE.  (Which, come to think of it, is probably the
-> > > right thing for the client to do.)
-> > > 
-> > > So the server's probably always had a bug, and this just uncovered it.
-> > > 
-> > > I'd be curious what the consequences are.  And where the check should be
-> > > (above or below vfs_clone_file_range()?).
-> > > 
-> > 
-> > This is where I'm confused, this really shouldn't succeed
-> > 
-> > loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
-> >                            struct file *file_out, loff_t pos_out,
-> >                            loff_t len, unsigned int remap_flags)
-> > {
-> >         loff_t ret;
-> > 
-> >         WARN_ON_ONCE(remap_flags & REMAP_FILE_DEDUP);
-> > 
-> >         if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-> >                 return -EXDEV;
-> > 
-> > 
-> > loff_t vfs_clone_file_range(struct file *file_in, loff_t pos_in,
-> >                             struct file *file_out, loff_t pos_out,
-> >                             loff_t len, unsigned int remap_flags)
-> > {
-> >         loff_t ret;
-> > 
-> >         file_start_write(file_out);
-> >         ret = do_clone_file_range(file_in, pos_in, file_out, pos_out, len,
-> >                                   remap_flags);
-> > 
-> > And even if we get past here, I imagine XFS would freak out because it can't
-> > find the extents (unless you're getting lucky and everything is lining up?).
-> > I'm super confused...
-> 
-> Bah, I see what you mean.  Maybe there's something wrong with my setup.
-> I'll try some more stuff and report back....
+Add helper locks_any_blockers to check if there is any blockers
+for a file_lock.
 
-Sorry for the noise, you're right, generic/373 is just being dumb.
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ include/linux/fs.h | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-I assumed it was mounting different exports for some reason.  But in
-fact it's just doing a bind mount and then "cp --reflink=always" between
-two mounts of the same filesystem.  Previously that got rejected out of
-hand, now the client sends a CLONE and the server handles it.
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 831b20430d6e..7f5756bfcc13 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1200,6 +1200,11 @@ extern void lease_unregister_notifier(struct notifier_block *);
+ struct files_struct;
+ extern void show_fd_locks(struct seq_file *f,
+ 			 struct file *filp, struct files_struct *files);
++
++static inline bool locks_has_blockers_locked(struct file_lock *lck)
++{
++	return !list_empty(&lck->fl_blocked_requests);
++}
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int fcntl_getlk(struct file *file, unsigned int cmd,
+ 			      struct flock __user *user)
+@@ -1335,6 +1340,11 @@ static inline int lease_modify(struct file_lock *fl, int arg,
+ struct files_struct;
+ static inline void show_fd_locks(struct seq_file *f,
+ 			struct file *filp, struct files_struct *files) {}
++
++static inline bool locks_has_blockers_locked(struct file_lock *lck)
++{
++	return false;
++}
+ #endif /* !CONFIG_FILE_LOCKING */
+ 
+ static inline struct inode *file_inode(const struct file *f)
+-- 
+2.9.5
 
-Which is an improvement.  So it's only generic/373 that needs fixing.
-
---b.
