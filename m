@@ -2,272 +2,171 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27592C433EF
-	for <linux-nfs@archiver.kernel.org>; Sat,  5 Mar 2022 00:37:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A1B7C4332F
+	for <linux-nfs@archiver.kernel.org>; Sat,  5 Mar 2022 00:37:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230294AbiCEAiT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 4 Mar 2022 19:38:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50504 "EHLO
+        id S230300AbiCEAiV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 4 Mar 2022 19:38:21 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50512 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230281AbiCEAiQ (ORCPT
+        with ESMTP id S230285AbiCEAiQ (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2022 19:38:16 -0500
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E26E518E;
-        Fri,  4 Mar 2022 16:37:26 -0800 (PST)
-Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 224KKVsD009041;
-        Sat, 5 Mar 2022 00:37:24 GMT
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 29F7A14CDBE;
+        Fri,  4 Mar 2022 16:37:28 -0800 (PST)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 224Jx5mu020770;
+        Sat, 5 Mar 2022 00:37:25 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
- bh=uzBNFvtHoRswa0M3uV1N7JPzWWcNssMEvYaFtrPvz0Q=;
- b=yVE8Ji67QZ5ngD4t4r/kIiMFv5Vm7IEv9Pva9jur6kPq4TGPHprCJLMhWMGwBt8MMDy1
- jt1M+CvWUhFgetI//d34qgwxyNFpzarLPXc5Cd2yEr9nTt/z4nC+WKZNsBZxaAq+dVOB
- BBbLVTkGCPnUoJ6vOv8qrk7EydZatcDat7NhXtB1pHmqYxebfSOntLJV8pBJWqzAVc8I
- zx+qVODktdIBmYDDBH3ydWB2mDBNDiEsvuQsWzgX7w0wv3tFnDWyE8rw2LJ06OoEkqXz
- SZzbZ0LGTVdDwogzO+FnJd6hAANaBNTJHyYy3jGAqvEamu5sueglCCnjY9RNXZn6bnLq BA== 
+ bh=olLzHwNmxZBZy72/SZ6XOB6q2e+528u7ZebVNL6Jhdc=;
+ b=KG69aUJ5FfNSwmgV7L/s57AEUB/E66dvZZ1vw3U6Ksb1pC8fIunxB1PB2uir6g53mVcj
+ i9JPMlpzgVualNOoBgGvQWtNTE8Ch8MyWn8UgL9vm3GXWy0+H3vNOKVDj0XdcYgfUFKI
+ tH6MNhz4TPd1gmfVAVjIarfrqSbSiagFkJZmQappEI5dyCyLfojBML9ggT7zbIImkPhr
+ dyFAx0c+kdjXPaPfoE//krLP19VtgpZDHztS0nIiQVUhwDSFUMEKB/Lh386yVRSo5LrX
+ d3zD59X22CD2OLNA0r3W7FiUmcaJEtGo0kNjDpOFxRU7Gxl+thVnFL3xuq2CijdfE3VY LQ== 
 Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3ek4hv32wc-1
+        by mx0b-00069f02.pphosted.com with ESMTP id 3ek4hw36jr-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 05 Mar 2022 00:37:25 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 2250Ptck146527;
+        Sat, 5 Mar 2022 00:37:24 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by aserp3030.oracle.com with ESMTP id 3ek4jh9bga-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
         Sat, 05 Mar 2022 00:37:24 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 2250PtDI146510;
-        Sat, 5 Mar 2022 00:37:23 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by aserp3030.oracle.com with ESMTP id 3ek4jh9bg4-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 05 Mar 2022 00:37:23 +0000
 Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 2250bJaN161402;
-        Sat, 5 Mar 2022 00:37:22 GMT
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 2250bJaR161402;
+        Sat, 5 Mar 2022 00:37:24 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by aserp3030.oracle.com with ESMTP id 3ek4jh9bfb-6;
-        Sat, 05 Mar 2022 00:37:22 +0000
+        by aserp3030.oracle.com with ESMTP id 3ek4jh9bfb-8;
+        Sat, 05 Mar 2022 00:37:24 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, bfields@fieldses.org
 Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC v15 05/11] NFSD: Update nfs4_get_vfs_file() to handle courtesy clients
-Date:   Fri,  4 Mar 2022 16:37:07 -0800
-Message-Id: <1646440633-3542-6-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH RFC v15 07/11] NFSD: Update find_in_sessionid_hashtbl() to handle courtesy clients
+Date:   Fri,  4 Mar 2022 16:37:09 -0800
+Message-Id: <1646440633-3542-8-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1646440633-3542-1-git-send-email-dai.ngo@oracle.com>
 References: <1646440633-3542-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-GUID: oHQW3muM_3wimgHVIUppcYA8lghbslD2
-X-Proofpoint-ORIG-GUID: oHQW3muM_3wimgHVIUppcYA8lghbslD2
+X-Proofpoint-ORIG-GUID: EMzK13TYS1rIHu4e_kBLiOOHKfeAF-oT
+X-Proofpoint-GUID: EMzK13TYS1rIHu4e_kBLiOOHKfeAF-oT
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Update nfs4_get_vfs_file and nfs4_upgrade_open to handle share
-reservation conflict with courtesy client.
+Update find_in_sessionid_hashtbl to:
+ . skip client with CLIENT_EXPIRED flag; discarded courtesy client.
+ . if courtesy client was found then clear CLIENT_COURTESY and
+   set CLIENT_RECONNECTED so callers can take appropriate action.
 
-If share/access check fails with share denied then check if the
-the conflict was caused by courtesy clients. If that's the case
-then set CLIENT_EXPIRED flag to expire the courtesy clients and
-allow nfs4_get_vfs_file to continue. Client with CLIENT_EXPIRED
-is expired by the laundromat.
+Update nfsd4_sequence and nfsd4_bind_conn_to_session to create client
+record for client with CLIENT_RECONNECTED set.
+
+Update nfsd4_destroy_session to discard client with CLIENT_RECONNECTED
+set.
 
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 135 +++++++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 113 insertions(+), 22 deletions(-)
+ fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++++++++++++--
+ 1 file changed, 32 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 40a357fd1a14..b16f689f34c3 100644
+index f42d72a8f5ca..34a59c6f446c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4713,21 +4713,9 @@ nfsd_break_deleg_cb(struct file_lock *fl)
- 	return ret;
- }
- 
--/**
-- * nfsd_breaker_owns_lease - Check if lease conflict was resolved
-- * @fl: Lock state to check
-- *
-- * Return values:
-- *   %true: Lease conflict was resolved
-- *   %false: Lease conflict was not resolved.
-- */
--static bool nfsd_breaker_owns_lease(struct file_lock *fl)
-+static bool
-+nfs4_check_and_expire_courtesy_client(struct nfs4_client *clp)
+@@ -1963,13 +1963,22 @@ find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net,
  {
--	struct nfs4_delegation *dl = fl->fl_owner;
--	struct svc_rqst *rqst;
+ 	struct nfsd4_session *session;
+ 	__be32 status = nfserr_badsession;
++	struct nfs4_client *clp;
+ 
+ 	session = __find_in_sessionid_hashtbl(sessionid, net);
+ 	if (!session)
+ 		goto out;
++	clp = session->se_client;
++	if (clp && nfs4_is_courtesy_client_expired(clp)) {
++		session = NULL;
++		goto out;
++	}
+ 	status = nfsd4_get_session_locked(session);
+-	if (status)
++	if (status) {
+ 		session = NULL;
++		if (clp && test_bit(NFSD4_CLIENT_COURTESY, &clp->cl_flags))
++			nfsd4_discard_courtesy_clnt(clp);
++	}
+ out:
+ 	*ret = status;
+ 	return session;
+@@ -3671,6 +3680,7 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 	struct nfsd4_session *session;
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct nfs4_client *clp;
+ 
+ 	if (!nfsd4_last_compound_op(rqstp))
+ 		return nfserr_not_only_op;
+@@ -3703,6 +3713,13 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 	nfsd4_init_conn(rqstp, conn, session);
+ 	status = nfs_ok;
+ out:
++	clp = session->se_client;
++	if (test_bit(NFSD4_CLIENT_RECONNECTED, &clp->cl_flags)) {
++		if (status == nfs_ok)
++			nfsd4_client_record_create(clp);
++		else
++			nfsd4_discard_courtesy_clnt(clp);
++	}
+ 	nfsd4_put_session(session);
+ out_no_session:
+ 	return status;
+@@ -3725,6 +3742,7 @@ nfsd4_destroy_session(struct svc_rqst *r, struct nfsd4_compound_state *cstate,
+ 	int ref_held_by_me = 0;
+ 	struct net *net = SVC_NET(r);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct nfs4_client *clp;
+ 
+ 	status = nfserr_not_only_op;
+ 	if (nfsd4_compound_in_session(cstate, sessionid)) {
+@@ -3737,6 +3755,12 @@ nfsd4_destroy_session(struct svc_rqst *r, struct nfsd4_compound_state *cstate,
+ 	ses = find_in_sessionid_hashtbl(sessionid, net, &status);
+ 	if (!ses)
+ 		goto out_client_lock;
++	clp = ses->se_client;
++	if (test_bit(NFSD4_CLIENT_RECONNECTED, &clp->cl_flags)) {
++		status = nfserr_badsession;
++		nfsd4_discard_courtesy_clnt(clp);
++		goto out_put_session;
++	}
+ 	status = nfserr_wrong_cred;
+ 	if (!nfsd4_mach_creds_match(ses->se_client, r))
+ 		goto out_put_session;
+@@ -3841,7 +3865,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+ 	struct xdr_stream *xdr = resp->xdr;
+ 	struct nfsd4_session *session;
 -	struct nfs4_client *clp;
--
--	clp = dl->dl_stid.sc_client;
- 	/*
- 	 * need to sync with courtesy client trying to reconnect using
- 	 * the cl_cs_lock, nn->client_lock can not be used since this
-@@ -4744,6 +4732,26 @@ static bool nfsd_breaker_owns_lease(struct file_lock *fl)
- 		return true;
- 	}
- 	spin_unlock(&clp->cl_cs_lock);
-+	return false;
-+}
-+
-+/**
-+ * nfsd_breaker_owns_lease - Check if lease conflict was resolved
-+ * @fl: Lock state to check
-+ *
-+ * Return values:
-+ *   %true: Lease conflict was resolved
-+ *   %false: Lease conflict was not resolved.
-+ */
-+static bool nfsd_breaker_owns_lease(struct file_lock *fl)
-+{
-+	struct nfs4_delegation *dl = fl->fl_owner;
-+	struct svc_rqst *rqst;
-+	struct nfs4_client *clp;
-+
-+	clp = dl->dl_stid.sc_client;
-+	if (nfs4_check_and_expire_courtesy_client(clp))
-+		return true;
- 
- 	if (!i_am_nfsd())
- 		return false;
-@@ -4965,9 +4973,75 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
- 	return nfsd_setattr(rqstp, fh, &iattr, 0, (time64_t)0);
- }
- 
-+static bool
-+nfs4_check_access_deny_bmap(struct nfs4_ol_stateid *stp, u32 access,
-+			bool share_access)
-+{
-+	if (share_access) {
-+		if (!stp->st_deny_bmap)
-+			return false;
-+
-+		if ((stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_BOTH)) ||
-+			(access & NFS4_SHARE_ACCESS_READ &&
-+				stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_READ)) ||
-+			(access & NFS4_SHARE_ACCESS_WRITE &&
-+				stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_WRITE))) {
-+			return true;
-+		}
-+		return false;
-+	}
-+	if ((access & NFS4_SHARE_DENY_BOTH) ||
-+		(access & NFS4_SHARE_DENY_READ &&
-+			stp->st_access_bmap & (1 << NFS4_SHARE_ACCESS_READ)) ||
-+		(access & NFS4_SHARE_DENY_WRITE &&
-+			stp->st_access_bmap & (1 << NFS4_SHARE_ACCESS_WRITE))) {
-+		return true;
-+	}
-+	return false;
-+}
-+
-+/*
-+ * Check whether courtesy clients have conflicting access
-+ *
-+ * access:  is op_share_access if share_access is true.
-+ *	    Check if access mode, op_share_access, would conflict with
-+ *	    the current deny mode of the file 'fp'.
-+ * access:  is op_share_deny if share_access is false.
-+ *	    Check if the deny mode, op_share_deny, would conflict with
-+ *	    current access of the file 'fp'.
-+ * stp:     skip checking this entry.
-+ * new_stp: normal open, not open upgrade.
-+ *
-+ * Function returns:
-+ *	true   - access/deny mode conflict with normal client.
-+ *	false  - no conflict or conflict with courtesy client(s) is resolved.
-+ */
-+static bool
-+nfs4_resolve_deny_conflicts_locked(struct nfs4_file *fp, bool new_stp,
-+		struct nfs4_ol_stateid *stp, u32 access, bool share_access)
-+{
-+	struct nfs4_ol_stateid *st;
-+	struct nfs4_client *clp;
-+	bool conflict = false;
-+
-+	lockdep_assert_held(&fp->fi_lock);
-+	list_for_each_entry(st, &fp->fi_stateids, st_perfile) {
-+		if (st->st_openstp || (st == stp && new_stp) ||
-+			(!nfs4_check_access_deny_bmap(st,
-+					access, share_access)))
-+			continue;
-+		clp = st->st_stid.sc_client;
-+		if (nfs4_check_and_expire_courtesy_client(clp))
-+			continue;
-+		conflict = true;
-+		break;
-+	}
-+	return conflict;
-+}
-+
- static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 		struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp,
--		struct nfsd4_open *open)
-+		struct nfsd4_open *open, bool new_stp)
- {
- 	struct nfsd_file *nf = NULL;
++	struct nfs4_client *clp = NULL;
+ 	struct nfsd4_slot *slot;
+ 	struct nfsd4_conn *conn;
  	__be32 status;
-@@ -4983,15 +5057,29 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 	 */
- 	status = nfs4_file_check_deny(fp, open->op_share_deny);
- 	if (status != nfs_ok) {
--		spin_unlock(&fp->fi_lock);
--		goto out;
-+		if (status != nfserr_share_denied) {
-+			spin_unlock(&fp->fi_lock);
-+			goto out;
-+		}
-+		if (nfs4_resolve_deny_conflicts_locked(fp, new_stp,
-+				stp, open->op_share_deny, false)) {
-+			spin_unlock(&fp->fi_lock);
-+			goto out;
-+		}
- 	}
- 
- 	/* set access to the file */
- 	status = nfs4_file_get_access(fp, open->op_share_access);
- 	if (status != nfs_ok) {
--		spin_unlock(&fp->fi_lock);
--		goto out;
-+		if (status != nfserr_share_denied) {
-+			spin_unlock(&fp->fi_lock);
-+			goto out;
-+		}
-+		if (nfs4_resolve_deny_conflicts_locked(fp, new_stp,
-+				stp, open->op_share_access, true)) {
-+			spin_unlock(&fp->fi_lock);
-+			goto out;
-+		}
- 	}
- 
- 	/* Set access bits in stateid */
-@@ -5042,7 +5130,7 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
- 	unsigned char old_deny_bmap = stp->st_deny_bmap;
- 
- 	if (!test_access(open->op_share_access, stp))
--		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
-+		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open, false);
- 
- 	/* test and set deny mode */
- 	spin_lock(&fp->fi_lock);
-@@ -5051,7 +5139,10 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
- 		set_deny(open->op_share_deny, stp);
- 		fp->fi_share_deny |=
- 				(open->op_share_deny & NFS4_SHARE_DENY_BOTH);
--	}
-+	} else if (status == nfserr_share_denied &&
-+		!nfs4_resolve_deny_conflicts_locked(fp, false, stp,
-+			open->op_share_deny, false))
-+		status = nfs_ok;
- 	spin_unlock(&fp->fi_lock);
- 
- 	if (status != nfs_ok)
-@@ -5391,7 +5482,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 			goto out;
- 		}
- 	} else {
--		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
-+		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open, true);
- 		if (status) {
- 			stp->st_stid.sc_type = NFS4_CLOSED_STID;
- 			release_open_stateid(stp);
+@@ -3951,6 +3975,12 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (conn)
+ 		free_conn(conn);
+ 	spin_unlock(&nn->client_lock);
++	if (clp && test_bit(NFSD4_CLIENT_RECONNECTED, &clp->cl_flags)) {
++		if (status == nfs_ok)
++			nfsd4_client_record_create(clp);
++		else
++			nfsd4_discard_courtesy_clnt(clp);
++	}
+ 	return status;
+ out_put_session:
+ 	nfsd4_put_session_locked(session);
 -- 
 2.9.5
 
