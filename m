@@ -2,60 +2,60 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F0EE3C433F5
-	for <linux-nfs@archiver.kernel.org>; Sun,  6 Mar 2022 23:51:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 980E7C433F5
+	for <linux-nfs@archiver.kernel.org>; Sun,  6 Mar 2022 23:51:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234530AbiCFXwS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 6 Mar 2022 18:52:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35020 "EHLO
+        id S234544AbiCFXwb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 6 Mar 2022 18:52:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35382 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234544AbiCFXwR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Mar 2022 18:52:17 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DB0CF46676;
-        Sun,  6 Mar 2022 15:51:24 -0800 (PST)
+        with ESMTP id S234559AbiCFXw2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Mar 2022 18:52:28 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B46775BE47;
+        Sun,  6 Mar 2022 15:51:30 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 822841F37D;
-        Sun,  6 Mar 2022 23:51:23 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 7292F210FC;
+        Sun,  6 Mar 2022 23:51:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1646610683; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1646610689; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=/g0ODDKZICxfw8OkQOAdWjyHJrJLWNkQcZQcCR78ueM=;
-        b=T4ukFn+wEDeh92N6fLVx9pN4gaNzy8X+S+e+lwobhcFMlsRCPQ7ggGCMUmzO6Bqosm6uJP
-        xQFdmw9zoZtCmbWIBndnKIzVCiEn7NRKA2g+6iVtYnCjEMNgjzrhJscCsfkDTDB9sfk5Ze
-        vCKJDgX+f4SMwDZK9mUW9Mj5dKpSrH0=
+        bh=jngo5Bo3wdO5HfY7AV8JY8HyvrejXGQE08t8AS2N2u8=;
+        b=o76x26hRbop+hpVl403EUUo0cauluLPNSFM2EanEoHzXyzQfETFljvGNrE5Qah1yS8yw8n
+        E05yj1qD5ql2TZwKU0exOLTo5sUI/Rj5st/x+0u8thYsgrjCMR75sZxk7F4Pqf7oQ8ePZD
+        sj+yZUqAVFcFxTcmW5w6YDNjkfkGn+I=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1646610683;
+        s=susede2_ed25519; t=1646610689;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=/g0ODDKZICxfw8OkQOAdWjyHJrJLWNkQcZQcCR78ueM=;
-        b=3y2nW3HMAtzr9BW6DPGKlFpc7QpW5ZZRZzQLJgUOj8C3vMFbWB0vZJXllGWnl+xxsKMhIx
-        ED8ZXABe7j73IaDQ==
+        bh=jngo5Bo3wdO5HfY7AV8JY8HyvrejXGQE08t8AS2N2u8=;
+        b=qFIjiF7B1wCrUJ7fBCa5eULbdwu+RoMUAao0whugh1kKTS42VudmOSs9jqS3c84MQOTSgs
+        5CofiHuu8HrRzxCQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 8E8D1134CD;
-        Sun,  6 Mar 2022 23:51:21 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7BFC7134CD;
+        Sun,  6 Mar 2022 23:51:27 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 6Hx2EvlIJWJ1WgAAMHmgww
-        (envelope-from <neilb@suse.de>); Sun, 06 Mar 2022 23:51:21 +0000
-Subject: [PATCH 09/10] MM: submit multipage write for SWP_FS_OPS swap-space
+        id 3XryDf9IJWKBWgAAMHmgww
+        (envelope-from <neilb@suse.de>); Sun, 06 Mar 2022 23:51:27 +0000
+Subject: [PATCH 10/10] VFS: Add FMODE_CAN_ODIRECT file flag
 From:   NeilBrown <neilb@suse.de>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Christoph Hellwig <hch@infradead.org>,
         David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, linux-kernel@vger.kernel.org
 Date:   Mon, 07 Mar 2022 10:49:38 +1100
-Message-ID: <164661057808.13454.2786821520388177290.stgit@noble.brown>
+Message-ID: <164661057808.13454.4020322316652952783.stgit@noble.brown>
 In-Reply-To: <164661047081.13454.11679636335222534920.stgit@noble.brown>
 References: <164661047081.13454.11679636335222534920.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -66,236 +66,167 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-swap_writepage() is given one page at a time, but may be called repeatedly
-in succession.
-For block-device swapspace, the blk_plug functionality allows the
-multiple pages to be combined together at lower layers.
-That cannot be used for SWP_FS_OPS as blk_plug may not exist - it is
-only active when CONFIG_BLOCK=y.  Consequently all swap reads over NFS
-are single page reads.
+Currently various places test if direct IO is possible on a file by
+checking for the existence of the direct_IO address space operation.
+This is a poor choice, as the direct_IO operation may not be used - it is
+only used if the generic_file_*_iter functions are called for direct IO
+and some filesystems - particularly NFS - don't do this.
 
-With this patch we pass a pointer-to-pointer via the wbc.
-swap_writepage can store state between calls - much like the pointer
-passed explicitly to swap_readpage.  After calling swap_writepage() some
-number of times, the state will be passed to swap_write_unplug() which
-can submit the combined request.
+Instead, introduce a new f_mode flag: FMODE_CAN_ODIRECT and change the
+various places to check this (avoiding pointer dereferences).
+do_dentry_open() will set this flag if ->direct_IO is present, so
+filesystems do not need to be changed.
+
+NFS *is* changed, to set the flag explicitly and discard the direct_IO
+entry in the address_space_operations for files.
+
+Other filesystems which currently use noop_direct_IO could usefully be
+changed to set this flag instead.
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- include/linux/writeback.h |    7 ++++
- mm/page_io.c              |   78 ++++++++++++++++++++++++++++++++-------------
- mm/swap.h                 |    4 ++
- mm/vmscan.c               |    9 ++++-
- 4 files changed, 74 insertions(+), 24 deletions(-)
+ drivers/block/loop.c |    4 ++--
+ fs/fcntl.c           |    9 ++++-----
+ fs/nfs/file.c        |    3 ++-
+ fs/open.c            |    9 ++++-----
+ fs/overlayfs/file.c  |   13 ++++---------
+ include/linux/fs.h   |    3 +++
+ 6 files changed, 19 insertions(+), 22 deletions(-)
 
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index fec248ab1fec..32b35f21cb97 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -80,6 +80,13 @@ struct writeback_control {
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index 19fe19eaa50e..59166c7bbcc0 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -185,8 +185,8 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)
+ 	 */
+ 	if (dio) {
+ 		if (queue_logical_block_size(lo->lo_queue) >= sb_bsize &&
+-				!(lo->lo_offset & dio_align) &&
+-				mapping->a_ops->direct_IO)
++		    !(lo->lo_offset & dio_align) &&
++		    (file->f_mode & FMODE_CAN_ODIRECT))
+ 			use_dio = true;
+ 		else
+ 			use_dio = false;
+diff --git a/fs/fcntl.c b/fs/fcntl.c
+index 9c6c6a3e2de5..11e665242a76 100644
+--- a/fs/fcntl.c
++++ b/fs/fcntl.c
+@@ -56,11 +56,10 @@ static int setfl(int fd, struct file * filp, unsigned long arg)
+ 		   arg |= O_NONBLOCK;
  
- 	unsigned punt_to_cgroup:1;	/* cgrp punting, see __REQ_CGROUP_PUNT */
+ 	/* Pipe packetized mode is controlled by O_DIRECT flag */
+-	if (!S_ISFIFO(inode->i_mode) && (arg & O_DIRECT)) {
+-		if (!filp->f_mapping || !filp->f_mapping->a_ops ||
+-			!filp->f_mapping->a_ops->direct_IO)
+-				return -EINVAL;
+-	}
++	if (!S_ISFIFO(inode->i_mode) &&
++	    (arg & O_DIRECT) &&
++	    !(filp->f_mode & FMODE_CAN_ODIRECT))
++		return -EINVAL;
  
-+	/* To enable batching of swap writes to non-block-device backends,
-+	 * "plug" can be set point to a 'struct swap_iocb *'.  When all swap
-+	 * writes have been submitted, if with swap_iocb is not NULL,
-+	 * swap_write_unplug() should be called.
-+	 */
-+	struct swap_iocb **swap_plug;
-+
- #ifdef CONFIG_CGROUP_WRITEBACK
- 	struct bdi_writeback *wb;	/* wb this writeback is issued under */
- 	struct inode *inode;		/* inode being written out */
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 4e8abbfbe388..3bf6547d6789 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -308,8 +308,9 @@ static void sio_write_complete(struct kiocb *iocb, long ret)
- {
- 	struct swap_iocb *sio = container_of(iocb, struct swap_iocb, iocb);
- 	struct page *page = sio->bvec[0].bv_page;
-+	int p;
+ 	if (filp->f_op->check_flags)
+ 		error = filp->f_op->check_flags(arg);
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 3dbef2c31567..9e2def045111 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -74,6 +74,8 @@ nfs_file_open(struct inode *inode, struct file *filp)
+ 		return res;
  
--	if (ret != PAGE_SIZE) {
-+	if (ret != PAGE_SIZE * sio->pages) {
- 		/*
- 		 * In the case of swap-over-nfs, this can be a
- 		 * temporary failure if the system has limited
-@@ -320,43 +321,63 @@ static void sio_write_complete(struct kiocb *iocb, long ret)
- 		 * the normal direct-to-bio case as it could
- 		 * be temporary.
- 		 */
--		set_page_dirty(page);
--		ClearPageReclaim(page);
- 		pr_err_ratelimited("Write error %ld on dio swapfile (%llu)\n",
- 				   ret, page_file_offset(page));
-+		for (p = 0; p < sio->pages; p++) {
-+			page = sio->bvec[p].bv_page;
-+			set_page_dirty(page);
-+			ClearPageReclaim(page);
-+		}
- 	} else
--		count_vm_event(PSWPOUT);
--	end_page_writeback(page);
-+		count_vm_events(PSWPOUT, sio->pages);
-+
-+	for (p = 0; p < sio->pages; p++)
-+		end_page_writeback(sio->bvec[p].bv_page);
-+
- 	mempool_free(sio, sio_pool);
+ 	res = nfs_open(inode, filp);
++	if (res == 0)
++		filp->f_mode |= FMODE_CAN_ODIRECT;
+ 	return res;
  }
  
- static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
- {
--	struct swap_iocb *sio;
-+	struct swap_iocb *sio = NULL;
- 	struct swap_info_struct *sis = page_swap_info(page);
- 	struct file *swap_file = sis->swap_file;
--	struct address_space *mapping = swap_file->f_mapping;
--	struct iov_iter from;
--	int ret;
-+	loff_t pos = page_file_offset(page);
+@@ -535,7 +537,6 @@ const struct address_space_operations nfs_file_aops = {
+ 	.write_end = nfs_write_end,
+ 	.invalidatepage = nfs_invalidate_page,
+ 	.releasepage = nfs_release_page,
+-	.direct_IO = nfs_direct_IO,
+ #ifdef CONFIG_MIGRATION
+ 	.migratepage = nfs_migrate_page,
+ #endif
+diff --git a/fs/open.c b/fs/open.c
+index 9ff2f621b760..76ddf9014499 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -834,17 +834,16 @@ static int do_dentry_open(struct file *f,
+ 	if ((f->f_mode & FMODE_WRITE) &&
+ 	     likely(f->f_op->write || f->f_op->write_iter))
+ 		f->f_mode |= FMODE_CAN_WRITE;
++	if (f->f_mapping->a_ops && f->f_mapping->a_ops->direct_IO)
++		f->f_mode |= FMODE_CAN_ODIRECT;
  
- 	set_page_writeback(page);
- 	unlock_page(page);
--	sio = mempool_alloc(sio_pool, GFP_NOIO);
--	init_sync_kiocb(&sio->iocb, swap_file);
--	sio->iocb.ki_complete = sio_write_complete;
--	sio->iocb.ki_pos = page_file_offset(page);
--	sio->bvec[0].bv_page = page;
--	sio->bvec[0].bv_len = PAGE_SIZE;
--	sio->bvec[0].bv_offset = 0;
--	iov_iter_bvec(&from, WRITE, &sio->bvec[0], 1, PAGE_SIZE);
--	ret = mapping->a_ops->swap_rw(&sio->iocb, &from);
--	if (ret != -EIOCBQUEUED)
--		sio_write_complete(&sio->iocb, ret);
--	return ret;
-+	if (wbc->swap_plug)
-+		sio = *wbc->swap_plug;
-+	if (sio) {
-+		if (sio->iocb.ki_filp != swap_file ||
-+		    sio->iocb.ki_pos + sio->pages * PAGE_SIZE != pos) {
-+			swap_write_unplug(sio);
-+			sio = NULL;
-+		}
-+	}
-+	if (!sio) {
-+		sio = mempool_alloc(sio_pool, GFP_NOIO);
-+		init_sync_kiocb(&sio->iocb, swap_file);
-+		sio->iocb.ki_complete = sio_write_complete;
-+		sio->iocb.ki_pos = pos;
-+		sio->pages = 0;
-+	}
-+	sio->bvec[sio->pages].bv_page = page;
-+	sio->bvec[sio->pages].bv_len = PAGE_SIZE;
-+	sio->bvec[sio->pages].bv_offset = 0;
-+	sio->pages += 1;
-+	if (sio->pages == ARRAY_SIZE(sio->bvec) || !wbc->swap_plug) {
-+		swap_write_unplug(sio);
-+		sio = NULL;
-+	}
-+	if (wbc->swap_plug)
-+		*wbc->swap_plug = sio;
-+
-+	return 0;
- }
+ 	f->f_write_hint = WRITE_LIFE_NOT_SET;
+ 	f->f_flags &= ~(O_CREAT | O_EXCL | O_NOCTTY | O_TRUNC);
  
- int __swap_writepage(struct page *page, struct writeback_control *wbc,
--		bio_end_io_t end_write_func)
-+		     bio_end_io_t end_write_func)
- {
- 	struct bio *bio;
- 	int ret;
-@@ -393,6 +414,19 @@ int __swap_writepage(struct page *page, struct writeback_control *wbc,
- 	return 0;
- }
+ 	file_ra_state_init(&f->f_ra, f->f_mapping->host->i_mapping);
  
-+void swap_write_unplug(struct swap_iocb *sio)
-+{
-+	struct iov_iter from;
-+	struct address_space *mapping = sio->iocb.ki_filp->f_mapping;
-+	int ret;
-+
-+	iov_iter_bvec(&from, WRITE, sio->bvec, sio->pages,
-+		      PAGE_SIZE * sio->pages);
-+	ret = mapping->a_ops->swap_rw(&sio->iocb, &from);
-+	if (ret != -EIOCBQUEUED)
-+		sio_write_complete(&sio->iocb, ret);
-+}
-+
- static void sio_read_complete(struct kiocb *iocb, long ret)
- {
- 	struct swap_iocb *sio = container_of(iocb, struct swap_iocb, iocb);
-diff --git a/mm/swap.h b/mm/swap.h
-index 0389ab147837..a6da8f612904 100644
---- a/mm/swap.h
-+++ b/mm/swap.h
-@@ -16,6 +16,7 @@ static inline void swap_read_unplug(struct swap_iocb *plug)
- 	if (unlikely(plug))
- 		__swap_read_unplug(plug);
- }
-+void swap_write_unplug(struct swap_iocb *sio);
- int swap_writepage(struct page *page, struct writeback_control *wbc);
- void end_swap_bio_write(struct bio *bio);
- int __swap_writepage(struct page *page, struct writeback_control *wbc,
-@@ -71,6 +72,9 @@ static inline int swap_readpage(struct page *page, bool do_poll,
- {
- 	return 0;
- }
-+static inline void swap_write_unplug(struct swap_iocb *sio)
-+{
-+}
+-	/* NB: we're sure to have correct a_ops only after f_op->open */
+-	if (f->f_flags & O_DIRECT) {
+-		if (!f->f_mapping->a_ops || !f->f_mapping->a_ops->direct_IO)
+-			return -EINVAL;
+-	}
++	if ((f->f_flags & O_DIRECT) && !(f->f_mode & FMODE_CAN_ODIRECT))
++		return -EINVAL;
  
- static inline struct address_space *swap_address_space(swp_entry_t entry)
- {
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index ffae4ba82eae..1918650abf39 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1166,7 +1166,8 @@ typedef enum {
-  * pageout is called by shrink_page_list() for each dirty page.
-  * Calls ->writepage().
-  */
--static pageout_t pageout(struct page *page, struct address_space *mapping)
-+static pageout_t pageout(struct page *page, struct address_space *mapping,
-+			 struct swap_iocb **plug)
- {
  	/*
- 	 * If the page is dirty, only perform writeback if that write
-@@ -1213,6 +1214,7 @@ static pageout_t pageout(struct page *page, struct address_space *mapping)
- 			.range_start = 0,
- 			.range_end = LLONG_MAX,
- 			.for_reclaim = 1,
-+			.swap_plug = plug,
- 		};
+ 	 * XXX: Huge page cache doesn't support writing yet. Drop all page
+diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+index fa125feed0ff..9d69b4dbb8c4 100644
+--- a/fs/overlayfs/file.c
++++ b/fs/overlayfs/file.c
+@@ -82,11 +82,8 @@ static int ovl_change_flags(struct file *file, unsigned int flags)
+ 	if (((flags ^ file->f_flags) & O_APPEND) && IS_APPEND(inode))
+ 		return -EPERM;
  
- 		SetPageReclaim(page);
-@@ -1539,6 +1541,7 @@ static unsigned int shrink_page_list(struct list_head *page_list,
- 	unsigned int nr_reclaimed = 0;
- 	unsigned int pgactivate = 0;
- 	bool do_demote_pass;
-+	struct swap_iocb *plug = NULL;
+-	if (flags & O_DIRECT) {
+-		if (!file->f_mapping->a_ops ||
+-		    !file->f_mapping->a_ops->direct_IO)
+-			return -EINVAL;
+-	}
++	if ((flags & O_DIRECT) && !(file->f_mode & FMODE_CAN_ODIRECT))
++		return -EINVAL;
  
- 	memset(stat, 0, sizeof(*stat));
- 	cond_resched();
-@@ -1819,7 +1822,7 @@ static unsigned int shrink_page_list(struct list_head *page_list,
- 			 * starts and then write it out here.
- 			 */
- 			try_to_unmap_flush_dirty();
--			switch (pageout(page, mapping)) {
-+			switch (pageout(page, mapping, &plug)) {
- 			case PAGE_KEEP:
- 				goto keep_locked;
- 			case PAGE_ACTIVATE:
-@@ -1973,6 +1976,8 @@ static unsigned int shrink_page_list(struct list_head *page_list,
- 	list_splice(&ret_pages, page_list);
- 	count_vm_events(PGACTIVATE, pgactivate);
+ 	if (file->f_op->check_flags) {
+ 		err = file->f_op->check_flags(flags);
+@@ -306,8 +303,7 @@ static ssize_t ovl_read_iter(struct kiocb *iocb, struct iov_iter *iter)
  
-+	if (plug)
-+		swap_write_unplug(plug);
- 	return nr_reclaimed;
- }
+ 	ret = -EINVAL;
+ 	if (iocb->ki_flags & IOCB_DIRECT &&
+-	    (!real.file->f_mapping->a_ops ||
+-	     !real.file->f_mapping->a_ops->direct_IO))
++	    !(real.file->f_mode & FMODE_CAN_ODIRECT))
+ 		goto out_fdput;
+ 
+ 	old_cred = ovl_override_creds(file_inode(file)->i_sb);
+@@ -367,8 +363,7 @@ static ssize_t ovl_write_iter(struct kiocb *iocb, struct iov_iter *iter)
+ 
+ 	ret = -EINVAL;
+ 	if (iocb->ki_flags & IOCB_DIRECT &&
+-	    (!real.file->f_mapping->a_ops ||
+-	     !real.file->f_mapping->a_ops->direct_IO))
++	    !(real.file->f_mode & FMODE_CAN_ODIRECT))
+ 		goto out_fdput;
+ 
+ 	if (!ovl_should_sync(OVL_FS(inode->i_sb)))
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 57e3b387cb17..c34c53267415 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -161,6 +161,9 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
+ /* File is stream-like */
+ #define FMODE_STREAM		((__force fmode_t)0x200000)
+ 
++/* File supports DIRECT IO */
++#define	FMODE_CAN_ODIRECT	((__force fmode_t)0x400000)
++
+ /* File was opened by fanotify and shouldn't generate fanotify events */
+ #define FMODE_NONOTIFY		((__force fmode_t)0x4000000)
  
 
 
