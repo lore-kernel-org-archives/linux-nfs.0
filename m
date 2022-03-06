@@ -2,61 +2,58 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56089C43217
-	for <linux-nfs@archiver.kernel.org>; Sun,  6 Mar 2022 23:43:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 08944C433EF
+	for <linux-nfs@archiver.kernel.org>; Sun,  6 Mar 2022 23:50:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234471AbiCFXo2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 6 Mar 2022 18:44:28 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44892 "EHLO
+        id S231564AbiCFXvF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 6 Mar 2022 18:51:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33218 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234481AbiCFXo1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Mar 2022 18:44:27 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ED2404198F
-        for <linux-nfs@vger.kernel.org>; Sun,  6 Mar 2022 15:43:29 -0800 (PST)
+        with ESMTP id S230191AbiCFXvE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Mar 2022 18:51:04 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BDC5C11A1D;
+        Sun,  6 Mar 2022 15:50:11 -0800 (PST)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 7547121111;
-        Sun,  6 Mar 2022 23:43:28 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 6DBD11F38E;
+        Sun,  6 Mar 2022 23:50:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1646610208; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1646610610; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=hRVIPm23nHnrI7WtoIgjrZUWa+2YaFb1uWafdgoA9iU=;
-        b=P1khN2D5Si+pdXiOTkY7AffOEEGHB4eCjmyc+4gPbxnhr2n6b236zSF+2fljRAZi/svIB2
-        113c6SzCXxgsJIPpIlj/D2/m4jdP3EglfUsJ7inBjkO2r2wBjineTR0yN90bVzLepJLefg
-        a05OkmS9KoM5uzoaRXjcfM23PhJNCZU=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=B5TF9OjBYnAvE9aH5SLQp8lDT5DoHM72C74T7yiurcA=;
+        b=UrTWS9yX+p9XW7I8btQShNBxnfOKbcGpJeq+bgYsDqam1Gerz+p/wzaDqtyRayoNwlGQMK
+        YMb0qXlrV/Gu5ljlt7G0oxOtNuEbvkl7Pbfy2ZedzovSmpQ49DiZGfQ5BtMPaNfrEHCb1t
+        dZ8FuvnxUvI7CzkPWPJPL27mK02DFZA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1646610208;
+        s=susede2_ed25519; t=1646610610;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=hRVIPm23nHnrI7WtoIgjrZUWa+2YaFb1uWafdgoA9iU=;
-        b=RyXhAuTtzDSOo5toNnzJomClbjAPpUYc/hsBYm4iI8zItfW9AZM1H5rVEj/0+Jwnjv4vKq
-        UHRM+e8yE98MQtCQ==
+         content-transfer-encoding:content-transfer-encoding;
+        bh=B5TF9OjBYnAvE9aH5SLQp8lDT5DoHM72C74T7yiurcA=;
+        b=FtqjrEGiYRJ+tJHuysqbTXlAReKwNZ+5CZmn40Se1LP0vA/eUY+MLbTHOHnK4U7LOp7gTj
+        q8G35DFLTOwL23Aw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 55E69134CD;
-        Sun,  6 Mar 2022 23:43:27 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 8E3E1134CD;
+        Sun,  6 Mar 2022 23:50:08 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id sTKUBB9HJWJRWAAAMHmgww
-        (envelope-from <neilb@suse.de>); Sun, 06 Mar 2022 23:43:27 +0000
-Subject: [PATCH 11/11] SUNRPC: change locking for xs_swap_enable/disable
+        id te+YErBIJWIIWgAAMHmgww
+        (envelope-from <neilb@suse.de>); Sun, 06 Mar 2022 23:50:08 +0000
+Subject: [PATCH 00/10] MM changes to improve swap-over-NFS support
 From:   NeilBrown <neilb@suse.de>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>
-Cc:     linux-nfs@vger.kernel.org
-Date:   Mon, 07 Mar 2022 10:41:45 +1100
-Message-ID: <164661010499.31054.12748930938408125464.stgit@noble.brown>
-In-Reply-To: <164660993703.31054.17075972410545449555.stgit@noble.brown>
-References: <164660993703.31054.17075972410545449555.stgit@noble.brown>
+To:     Andrew Morton <akpm@linux-foundation.org>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org
+Date:   Mon, 07 Mar 2022 10:49:38 +1100
+Message-ID: <164661047081.13454.11679636335222534920.stgit@noble.brown>
 User-Agent: StGit/0.23
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -65,74 +62,51 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-It is not in general safe to wait for XPRT_LOCKED to clear.
-A wakeup is only sent when
- - connection completes
- - sock close completes
-so during normal operations, this can wait indefinitely.
+Hi Andrew,
+ these are the non-NFS-specific parts of the swap-over-NFS series that
+ I've posted a few times.  I've address all comments, most recently
+ style improvements in mm/swap.h.
+ Would it be possible for these to land in the next merge window?
 
-The event we need to protect against is ->inet being set to NULL, and
-that happens under the recv_mutex lock.
+Thanks,
+NeilBrown
 
-So drop the handlign of XPRT_LOCKED and use recv_mutex instead.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- net/sunrpc/xprtsock.c |   26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 61d3293f1d68..7e39f87cde2d 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1936,9 +1936,9 @@ static void xs_local_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- 
- #if IS_ENABLED(CONFIG_SUNRPC_SWAP)
- /*
-- * Note that this should be called with XPRT_LOCKED held (or when we otherwise
-- * know that we have exclusive access to the socket), to guard against
-- * races with xs_reset_transport.
-+ * Note that this should be called with XPRT_LOCKED held, or recv_mutex
-+ * held, or when we otherwise know that we have exclusive access to the
-+ * socket, to guard against races with xs_reset_transport.
-  */
- static void xs_set_memalloc(struct rpc_xprt *xprt)
- {
-@@ -1967,13 +1967,11 @@ xs_enable_swap(struct rpc_xprt *xprt)
- {
- 	struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
- 
--	if (atomic_inc_return(&xprt->swapper) != 1)
--		return 0;
--	if (wait_on_bit_lock(&xprt->state, XPRT_LOCKED, TASK_KILLABLE))
--		return -ERESTARTSYS;
--	if (xs->inet)
-+	mutex_lock(&xs->recv_mutex);
-+	if (atomic_inc_return(&xprt->swapper) == 1 &&
-+	    xs->inet)
- 		sk_set_memalloc(xs->inet);
--	xprt_release_xprt(xprt, NULL);
-+	mutex_unlock(&xs->recv_mutex);
- 	return 0;
- }
- 
-@@ -1989,13 +1987,11 @@ xs_disable_swap(struct rpc_xprt *xprt)
- {
- 	struct sock_xprt *xs = container_of(xprt, struct sock_xprt, xprt);
- 
--	if (!atomic_dec_and_test(&xprt->swapper))
--		return;
--	if (wait_on_bit_lock(&xprt->state, XPRT_LOCKED, TASK_KILLABLE))
--		return;
--	if (xs->inet)
-+	mutex_lock(&xs->recv_mutex);
-+	if (atomic_dec_and_test(&xprt->swapper) &&
-+	    xs->inet)
- 		sk_clear_memalloc(xs->inet);
--	xprt_release_xprt(xprt, NULL);
-+	mutex_unlock(&xs->recv_mutex);
- }
- #else
- static void xs_set_memalloc(struct rpc_xprt *xprt)
+NeilBrown (10):
+      MM: create new mm/swap.h header file.
+      MM: drop swap_set_page_dirty
+      MM: move responsibility for setting SWP_FS_OPS to ->swap_activate
+      MM: reclaim mustn't enter FS for SWP_FS_OPS swap-space
+      MM: introduce ->swap_rw and use it for reads from SWP_FS_OPS swap-space
+      MM: perform async writes to SWP_FS_OPS swap-space using ->swap_rw
+      DOC: update documentation for swap_activate and swap_rw
+      MM: submit multipage reads for SWP_FS_OPS swap-space
+      MM: submit multipage write for SWP_FS_OPS swap-space
+      VFS: Add FMODE_CAN_ODIRECT file flag
 
+
+ Documentation/filesystems/locking.rst |  18 +-
+ Documentation/filesystems/vfs.rst     |  17 +-
+ drivers/block/loop.c                  |   4 +-
+ fs/cifs/file.c                        |   7 +-
+ fs/fcntl.c                            |   9 +-
+ fs/nfs/file.c                         |  20 ++-
+ fs/open.c                             |   9 +-
+ fs/overlayfs/file.c                   |  13 +-
+ include/linux/fs.h                    |   4 +
+ include/linux/swap.h                  |   7 +-
+ include/linux/writeback.h             |   7 +
+ mm/madvise.c                          |   8 +-
+ mm/memory.c                           |   2 +-
+ mm/page_io.c                          | 244 ++++++++++++++++++++------
+ mm/swap.h                             |  30 +++-
+ mm/swap_state.c                       |  22 ++-
+ mm/swapfile.c                         |  13 +-
+ mm/vmscan.c                           |  38 ++--
+ 18 files changed, 347 insertions(+), 125 deletions(-)
+
+--
+Signature
 
