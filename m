@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3B60C433F5
-	for <linux-nfs@archiver.kernel.org>; Sun,  6 Mar 2022 03:54:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6900FC433EF
+	for <linux-nfs@archiver.kernel.org>; Sun,  6 Mar 2022 08:50:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232018AbiCFDzB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 5 Mar 2022 22:55:01 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44816 "EHLO
+        id S231389AbiCFIvK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 6 Mar 2022 03:51:10 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55460 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231794AbiCFDzA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Mar 2022 22:55:00 -0500
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 95E1F580F2;
-        Sat,  5 Mar 2022 19:54:08 -0800 (PST)
-Received: from kwepemi100006.china.huawei.com (unknown [172.30.72.53])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4KB70N1WKNz9sR4;
-        Sun,  6 Mar 2022 11:50:28 +0800 (CST)
+        with ESMTP id S230026AbiCFIvJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Mar 2022 03:51:09 -0500
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6BFAA6580B;
+        Sun,  6 Mar 2022 00:50:17 -0800 (PST)
+Received: from kwepemi100002.china.huawei.com (unknown [172.30.72.57])
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4KBFXp1MZhz1GBwq;
+        Sun,  6 Mar 2022 16:45:30 +0800 (CST)
 Received: from kwepemm600015.china.huawei.com (7.193.23.52) by
- kwepemi100006.china.huawei.com (7.221.188.165) with Microsoft SMTP Server
+ kwepemi100002.china.huawei.com (7.221.188.188) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2308.21; Sun, 6 Mar 2022 11:54:05 +0800
+ 15.1.2308.21; Sun, 6 Mar 2022 16:50:14 +0800
 Received: from [10.174.176.52] (10.174.176.52) by
  kwepemm600015.china.huawei.com (7.193.23.52) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2308.21; Sun, 6 Mar 2022 11:54:05 +0800
-Message-ID: <5666cb64-c9e4-0549-6ddb-cfc877c9c071@huawei.com>
-Date:   Sun, 6 Mar 2022 11:54:04 +0800
+ 15.1.2308.21; Sun, 6 Mar 2022 16:50:14 +0800
+Message-ID: <1789b0d7-edc1-8c66-602b-2ca66de7a2be@huawei.com>
+Date:   Sun, 6 Mar 2022 16:50:13 +0800
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
  Thunderbird/91.2.1
-Subject: Re: [PATCH -next 1/2] nfs: nfs{,4}_file_flush should consume
- writeback error
+Subject: Re: [PATCH -next 2/2] nfs: nfs_file_write() check writeback errors
+ correctly
 To:     Trond Myklebust <trondmy@hammerspace.com>,
         "anna@kernel.org" <anna@kernel.org>,
         "smayhew@redhat.com" <smayhew@redhat.com>
@@ -39,64 +39,50 @@ CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "liuyongqiang13@huawei.com" <liuyongqiang13@huawei.com>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "yi.zhang@huawei.com" <yi.zhang@huawei.com>,
-        "zhangxiaoxu5@huawei.com" <zhangxiaoxu5@huawei.com>,
-        ChenXiaoSong <chenxiaosong2@huawei.com>
+        "zhangxiaoxu5@huawei.com" <zhangxiaoxu5@huawei.com>
 References: <20220305124636.2002383-1-chenxiaosong2@huawei.com>
- <20220305124636.2002383-2-chenxiaosong2@huawei.com>
- <ca81e90788eabbf6b5df5db7ea407199a6a3aa04.camel@hammerspace.com>
+ <20220305124636.2002383-3-chenxiaosong2@huawei.com>
+ <461aafe64a56836b8d248556052f8d00b6d37731.camel@hammerspace.com>
 From:   "chenxiaosong (A)" <chenxiaosong2@huawei.com>
-In-Reply-To: <ca81e90788eabbf6b5df5db7ea407199a6a3aa04.camel@hammerspace.com>
+In-Reply-To: <461aafe64a56836b8d248556052f8d00b6d37731.camel@hammerspace.com>
 Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
 X-Originating-IP: [10.174.176.52]
-X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
  kwepemm600015.china.huawei.com (7.193.23.52)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-It would be more clear if I update the reproducer like this:
+filemap_sample_wb_err() -> errseq_sample() initialise errseq_t variable 
+`since`, the caller of this function will checks for an error using 
+filemap_check_wb_err(since) -> errseq_check().
 
-         nfs server                 |       nfs client
-  --------------------------------- |---------------------------------
-  # No space left on server         |
-  fallocate -l 100G /server/nospace |
-                                    | mount -t nfs $nfs_server_ip:/ /mnt
-                                    |
-                                    | # Expected error
-                                    | dd if=/dev/zero of=/mnt/file
-                                    |
-                                    | # Release space on mountpoint
-                                    | rm /mnt/nospace
-                                    |
-                                    | # Unexpected error
-                                    | dd if=/dev/zero of=/mnt/file
+filemap_sample_wb_err's purpose is just sampling consumed (seen) 
+writeback error to initialise errseq_t variable. I understand that 
+filemap_sample_wb_err()/filemap_check_wb_err() cannot detect the new 
+error between filemap_sample_wb_err() and filemap_check_wb_err().
 
-The Unexpected error (No space left on device) when doing second `dd`, 
-is from unconsumed writeback error after close() the file when doing 
-first `dd`. There is enough space when doing second `dd`, we should not 
-report the nospace error.
+It would be better using file->f_mapping->wb_err instead of 
+filemap_sample_wb_err() in nfs_file_write() to sample wb_err at that 
+time point.
 
-We should report and consume the writeback error when userspace call 
-close()->flush(), the writeback error should not be left for next open().
+In do_dentry_open(), we just sample consumed(seen) writeback error. It 
+is necessary to consume the writeback error before close() over.
 
-Currently, fsync() will consume the writeback error while calling 
-file_check_and_advance_wb_err(), close()->flush() should also consume 
-the writeback error.
+There is some cases that writeback error have not been consumed(seen) 
+after close() file over, I think it is unexpected behavior, is this a 
+bug? It is worth noting that fsync() will not be called after close() in 
+nfs.
 
-
-在 2022/3/6 0:53, Trond Myklebust 写道:
-> 'rm' doesn't open any files or do any I/O, so it shouldn't be returning
-> any errors from the page cache.
+在 2022/3/6 1:12, Trond Myklebust 写道:
+> Hmm... Why isn't this considered a bug with filemap_sample_wb_err()? If
+> what you say is true, then do_dentry_open() could be picking up
+> existing errors from the filesystem and from the inode and propagating
+> them to random processes.
 > 
-> IOW: The problem here is not that we're failing to clear an error from
-> the page cache. It is that something in 'rm' is checking the page cache
-> and returning any errors that it finds there.
-> 
-> Is 'rm' perhaps doing a stat() on the file it is deleting? If so, does
-> this patch fix the bug?
-> 
-> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/comm
-> it/?id=d19e0183a883
+> It basically means everyone who cares about correctness of the error
+> return values needs to do a fsync() immediately after open() in order
+> to sync up the value in file->f_wb_err.
 > 
