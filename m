@@ -2,105 +2,88 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF7E0C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Mar 2022 02:42:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9FC0EC433F5
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Mar 2022 21:44:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238785AbiCHCnU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Mar 2022 21:43:20 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43448 "EHLO
+        id S1350427AbiCHVpf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Mar 2022 16:45:35 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43946 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234531AbiCHCnT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Mar 2022 21:43:19 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05C4A13F36
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Mar 2022 18:42:23 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id A1442210EF;
-        Tue,  8 Mar 2022 02:42:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1646707342; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=O3oTS4wkEJ5cRW9Q6QnensCFywZupj63h/gY7Fji9iM=;
-        b=ONtnvnjpwbzBh/NodPHepIYl6k+opXwR7Ilhl19GX8udAgxIkC8D4maKZhZv1vvZIINoCs
-        YB0ZqCOvSQ5llHoOo9QBXI/wuthQm/8Nw5lbDAQ10piYgT3ZFwSYxGuA+b4/bQhCS+fviT
-        tZXlUSkfp/HriM3tp/3wLEDEr6nlHGQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1646707342;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=O3oTS4wkEJ5cRW9Q6QnensCFywZupj63h/gY7Fji9iM=;
-        b=AvSfvUCs5rQqV1DMyl+EDeXWLZ5EU/bXgS19ING9RaCXrHzhERLx7e/4IwJrXk3WQQxojH
-        UIUHNq4Qm8IF+4AA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 8645813C09;
-        Tue,  8 Mar 2022 02:42:21 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id jkhTEY3CJmKlHwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 08 Mar 2022 02:42:21 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+        with ESMTP id S1346294AbiCHVpf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Mar 2022 16:45:35 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EFC1A4D25D
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Mar 2022 13:44:37 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 35F354B53; Tue,  8 Mar 2022 16:44:37 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 35F354B53
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1646775877;
+        bh=LMblVJNZM1SsTP0rXRBEEG3hXbkUoxGHnxaWHCQg7+g=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=baNJnUK5quyNXxLjwzSUOMqZozaFq9ryKlfd/0kl8QhffUwTZBOsOyWc/ichpJoz6
+         sr94IqOBlm28/nuz/qJSNJ8I7fBbY4zewzmx4FmDM1oX9kAeWlSjrXTMGivKlh3r1U
+         parYr+DTiNoz5SSloQGgFqmjUYmw8faw2jpaNeVA=
+Date:   Tue, 8 Mar 2022 16:44:37 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Richard Weinberger <richard@nod.at>
+Cc:     linux-nfs@vger.kernel.org, david@sigma-star.at,
+        luis.turcitu@appsbroker.com, david.young@appsbroker.com,
+        david.oberhollenzer@sigma-star.at, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, chris.chilvers@appsbroker.com
+Subject: Re: [RFC PATCH 1/6] Implement reexport helper library
+Message-ID: <20220308214437.GB22644@fieldses.org>
+References: <20220217131531.2890-1-richard@nod.at>
+ <20220217131531.2890-2-richard@nod.at>
 MIME-Version: 1.0
-From:   NeilBrown <neilb@suse.de>
-Subject: [PATCH] SUNRPC: avoid race between mod_timer() and del_timer_sync()
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date:   Tue, 08 Mar 2022 13:42:17 +1100
-Message-id: <164670733789.31932.14711754930977072270@noble.neil.brown.name>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220217131531.2890-2-richard@nod.at>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Thu, Feb 17, 2022 at 02:15:26PM +0100, Richard Weinberger wrote:
+> +#define REEXPDB_SHM_NAME "/nfs_reexport_db_lock"
+> +#define REEXPDB_SHM_SZ 4096
+> +#define REEXPDB_INIT_LOCK NFS_STATEDIR "/reexpdb_init.lock"
+> +#define REEXPDB_DBFILE NFS_STATEDIR "/reexpdb.sqlite3"
 
-xprt_destory() claims XPRT_LOCKED and then calls del_timer_sync().
-Both xprt_unlock_connect() and xprt_release() call
- ->release_xprt()
-which drops XPRT_LOCKED and *then* xprt_schedule_autodisconnect()
-which calls mod_timer().
+I don't know much about sqlite--why do we need to do our own file
+locking?  If we do need to do it ourself, could we lock the database
+file instead instead of using a separate lock file?
 
-This may result in mod_timer() being called *after* del_timer_sync().
-When this happens, the timer may fire long after the xprt has been freed,
-and run_timer_softirq() will probably crash.
+> +static const char initdb_sql[] = "CREATE TABLE IF NOT EXISTS fsidnums (num INTEGER PRIMARY KEY CHECK (num > 0 AND num < 4294967296), path TEXT UNIQUE); CREATE TABLE IF NOT EXISTS subvolumes (path TEXT PRIMARY KEY); CREATE INDEX IF NOT EXISTS idx_ids_path ON fsidnums (path);";
 
-The pairing of ->release_xprt() and xprt_schedule_autodisconnect() is
-always called under ->transport_lock.  So if we take ->transport_lock to
-call del_timer_sync(), we can be sure that mod_timer() will run first
-(if it runs at all).
+I'd personally find it easier to read if these were defined in the place
+where they're used.  (And, honestly, if this is just used once, maybe
+the definition is unnecessary.)
 
-Cc: stable@vger.kernel.org
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- net/sunrpc/xprt.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+What are the two tables used for?  Naively I'd've thought the
+"subvolumes" table was redundant.
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index a02de2bddb28..5388263f8fc8 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -2112,7 +2112,14 @@ static void xprt_destroy(struct rpc_xprt *xprt)
- 	 */
- 	wait_on_bit_lock(&xprt->state, XPRT_LOCKED, TASK_UNINTERRUPTIBLE);
- 
-+	/*
-+	 * xprt_schedule_autodisconnect() can run after XPRT_LOCKED
-+	 * is cleared.  We use ->transport_lock to ensure the mod_timer()
-+	 * can only run *before* del_time_sync(), never after.
-+	 */
-+	spin_lock(&xprt->transport_lock);
- 	del_timer_sync(&xprt->timer);
-+	spin_unlock(&xprt->transport_lock);
- 
- 	/*
- 	 * Destroy sockets etc from the system workqueue so they can
--- 
-2.35.1
+> +/*
+> + * This query is a little tricky. We use SQL to find and claim the smallest free fsid number.
 
+Yes, that is a little tricky.  Is it necessary?  My SQL Is rusty, but
+the database should be able to pick a unique value for us, shouldn't it?
+
+> + * To find a free fsid the fsidnums is left joined to itself but with an offset of 1.
+> + * Everything after the UNION statement is to handle the corner case where fsidnums
+> + * is empty. In this case we want 1 as first fsid number.
+> + */
+> +static const char new_fsidnum_by_path_sql[] = "INSERT INTO fsidnums VALUES ((SELECT ids1.num + 1 FROM fsidnums AS ids1 LEFT JOIN fsidnums AS ids2 ON ids2.num = ids1.num + 1 WHERE ids2.num IS NULL UNION SELECT 1 WHERE NOT EXISTS (SELECT NULL FROM fsidnums WHERE num = 1) LIMIT 1), ?1) RETURNING num;";
+> +static const char fsidnum_by_path_sql[] = "SELECT num FROM fsidnums WHERE path = ?1;";
+> +static const char add_crossed_volume_sql[] = "REPLACE INTO subvolumes VALUES(?1);";
+> +static const char drop_crossed_volume_sql[] = "DELETE FROM subvolumes WHERE path = ?1;";
+> +static const char get_crossed_volumes_sql[] = "SELECT path from subvolumes;";
+...
+> +/*
+> + * reexpdb_init - Initialize reexport database
+> + *
+> + * Setup shared lock (database is concurrently used by multiple processes),
+
+So, this should all work when rpc.mountd is run with --num_threads > 1?
+
+--b.
