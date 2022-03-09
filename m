@@ -2,109 +2,100 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02CB6C433FE
-	for <linux-nfs@archiver.kernel.org>; Wed,  9 Mar 2022 18:27:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 92557C433F5
+	for <linux-nfs@archiver.kernel.org>; Wed,  9 Mar 2022 18:27:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231716AbiCIS20 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 9 Mar 2022 13:28:26 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53960 "EHLO
+        id S235486AbiCIS23 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 9 Mar 2022 13:28:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54088 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231230AbiCIS2Y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Mar 2022 13:28:24 -0500
-Received: from mail-oo1-xc30.google.com (mail-oo1-xc30.google.com [IPv6:2607:f8b0:4864:20::c30])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A608A31206
-        for <linux-nfs@vger.kernel.org>; Wed,  9 Mar 2022 10:27:22 -0800 (PST)
-Received: by mail-oo1-xc30.google.com with SMTP id w3-20020a4ac183000000b0031d806bbd7eso3858711oop.13
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Mar 2022 10:27:22 -0800 (PST)
+        with ESMTP id S235448AbiCIS20 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Mar 2022 13:28:26 -0500
+Received: from mail-oo1-xc2e.google.com (mail-oo1-xc2e.google.com [IPv6:2607:f8b0:4864:20::c2e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C45031206
+        for <linux-nfs@vger.kernel.org>; Wed,  9 Mar 2022 10:27:27 -0800 (PST)
+Received: by mail-oo1-xc2e.google.com with SMTP id l24-20020a4a8558000000b00320d5a1f938so3902655ooh.8
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Mar 2022 10:27:27 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=v/v+PLiebDEn6OBfshopUcx5Mv717C5YgxE/2WltueU=;
-        b=BThtd47pdmBEDM6CBb+WLmZ5qDGqPgI8XqXdZb2cqt+mAhTCwXeTJsjeRFdRgo1DMX
-         QL49rkrXD0v/bqPPfJydsM+7rjuF6qLvBiaAcw9JOttdOdBlE9kXLvmV4piEaqte6P4g
-         HJv65FQL9pgc8jLKEMz7m7c6VjI+LAQFCCWwQEYEmEnqiKhAGtbqaelwHdYaswc5bjoM
-         tW6T2BhfPRh8GODG3RjdTXtoiiyta/fpr/xwK7cAhpBpmlddswNoHoeu/DpGU0sjCPoX
-         V+ZW0akTsC9YOazkyCjL6ORkKkhtv0FDpLKj+9IO0VRNqWY4gntBb2XqBzR2U6UhFhpr
-         npSA==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=D8TA6wLI8zvEF9+oX9iybr/dM7zq7LTQZx0y/3OKWos=;
+        b=FSAKa/U3q3j3a9rEX4c9yzTSfih/yDV3W8YkC5tMWgF4XQQXKQ5YzB7o3PSI40eCFh
+         QwiMxeOpmbJlRBgYs2N5MnWjLWDCdixFXA/UTrumZcQs7sgn93o/TMSjHHd9RVCG/joX
+         NK1qS8xz2L0NBM7qjtXKavgLKZAsdCx1UHNMfy/5FcXUFpCWHtEU3o4fiMK35mijBGoQ
+         nxGSttiTyJjZwZf8jITqUtd10ooAhljFzJk+8NfQMjNVpDRQarvm4QZzM/rA4XJXg7Vr
+         +aHxuAxAu0kQhbJ0IIFuuNxRS44YRVFpiY1QGh/7cFJlBnvA7TZb9kVbSG0u+Wcs/zs5
+         0Hkw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=v/v+PLiebDEn6OBfshopUcx5Mv717C5YgxE/2WltueU=;
-        b=MahMPDFK/GYFxHFRz9DGx1FMoaNqxlCahsU94c8nbe1n3TFlBrZ45yfYgog9tzhKcm
-         kX2Vb0cXxHDBPqMZIEV0+96OkSchem5AwqcR6p5mo/rZoy3SLGx6UvCbpa3Bk0JQNqml
-         Sf22Usk68W16mS0Xxqq9Kz+vc9sUodd0u1Gl/dhFY3TD9EwKqJ1A3M0yjcPQMtwGBASl
-         c5LvLUT9b3aGc3qUx4KwuiTZnPqTA18YZtbspu4A3SP/v44/2MA8Y8Or+eJlbIMxKk1T
-         WaixCC1xObivJ9Apt2Tdgp/K/osvetC0OdIy4PuBteUdNMjsz5erL6opZ70ch2FTuHBj
-         eL7g==
-X-Gm-Message-State: AOAM533dDAojO2EX9cIJYN895lNzZhT+JRBXsgFbOYJVTnjLv6Ep/Evh
-        0beio9qs63YZxKkbk1iokz1QnFLOMp4=
-X-Google-Smtp-Source: ABdhPJzTdwI1ArDBV/E+0SntLSWBvr1XRCcwyjaU6qanhz+IKOLKYQPepXwRRqUu/kt/eQM0x8peDg==
-X-Received: by 2002:a05:6870:32ce:b0:d9:a0ee:44b3 with SMTP id r14-20020a05687032ce00b000d9a0ee44b3mr499613oac.142.1646850441614;
-        Wed, 09 Mar 2022 10:27:21 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=D8TA6wLI8zvEF9+oX9iybr/dM7zq7LTQZx0y/3OKWos=;
+        b=fHWyWapzaQSEC3CCFQEGZ0jDeybJZ4NpkcBtwQwYU+sb2+3fE2LUh9CryzpEN9fQBh
+         X/PkLU5fdl+dZyJTPzP+fwe91IIPfQZrbBqgOe//9eBiXG+N1S3CINllwUcfxbyKt/t0
+         ufEajb8cloDthXNdWlEmugmPU1xRZUDnCrxj7Qu1PWwRULa+ZBzt4Fn5wMPK5BcqUv8e
+         q8NAYXD/jo80AaN+UIAPHrUo4a3UCGaI+fTkFiAvVzSa+k83dRr60CUTLB//lfZ4VLZU
+         MdT9oscnNyDf/wV6/cr7pWsv4lFFrhcPKlIIshQrr0rjYByOfgXIIBobs8AX2eUx1ysb
+         j5Mg==
+X-Gm-Message-State: AOAM531Ie5dpa8GOwIWk+g2hlX8Npbw8ETO502BG4b8FCW9ZjF5sHPBS
+        bHBLGWbtWFG52G9hdfr+bEw8AuJvDFc=
+X-Google-Smtp-Source: ABdhPJwvCRypge3aljApIKUo+dGPySmudgBm54LhH+rGnWWbpcNPkCI4b1jtaAgXIozqwxpTq8ky0g==
+X-Received: by 2002:a4a:d687:0:b0:321:1b4e:60b8 with SMTP id i7-20020a4ad687000000b003211b4e60b8mr490258oot.78.1646850446469;
+        Wed, 09 Mar 2022 10:27:26 -0800 (PST)
 Received: from nyarly.redhat.com ([179.233.246.234])
-        by smtp.gmail.com with ESMTPSA id k5-20020a056870a4c500b000d9c2216692sm1213270oal.24.2022.03.09.10.27.19
+        by smtp.gmail.com with ESMTPSA id k5-20020a056870a4c500b000d9c2216692sm1213270oal.24.2022.03.09.10.27.24
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 09 Mar 2022 10:27:21 -0800 (PST)
+        Wed, 09 Mar 2022 10:27:26 -0800 (PST)
 From:   Thiago Rafael Becker <trbecker@gmail.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     tbecker@redhat.com, steved@redhat.com, chuck.lever@oracle.com,
         Thiago Rafael Becker <trbecker@gmail.com>
-Subject: [RFC PATCH 0/7] Introduce nfs-readahead-udev
-Date:   Wed,  9 Mar 2022 15:26:46 -0300
-Message-Id: <20220309182653.1885252-1-trbecker@gmail.com>
+Subject: [RFC PATCH 2/7] readahead: configure udev
+Date:   Wed,  9 Mar 2022 15:26:48 -0300
+Message-Id: <20220309182653.1885252-3-trbecker@gmail.com>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220309182653.1885252-1-trbecker@gmail.com>
+References: <20220309182653.1885252-1-trbecker@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch series introduces nfs-readahead-udev, a utility to
-automatically set NFS readahead when a mountpoint is mounted.
+Set the udev rule to call the readahead utility.
 
-The tool currently supports setting read ahead per mountpoint, nfs major
-version, or by a global default value.
-
-Thiago Rafael Becker (7):
-  Create nfs-readahead-udev
-  readahead: configure udev
-  readahead: create logging facility
-  readahead: only set readahead for nfs devices.
-  readahead: create the configuration file
-  readahead: add mountpoint and fstype options
-  readahead: documentation
-
- .gitignore                                    |   6 +
- configure.ac                                  |   4 +
- tools/Makefile.am                             |   2 +-
- tools/nfs-readahead-udev/99-nfs_bdi.rules.in  |   1 +
- tools/nfs-readahead-udev/Makefile.am          |  26 +++
- tools/nfs-readahead-udev/config_parser.c      |  25 +++
- tools/nfs-readahead-udev/config_parser.h      |  14 ++
- tools/nfs-readahead-udev/list.h               |  48 ++++
- tools/nfs-readahead-udev/log.h                |  16 ++
- tools/nfs-readahead-udev/main.c               | 211 ++++++++++++++++++
- .../nfs-readahead-udev/nfs-readahead-udev.man |  47 ++++
- tools/nfs-readahead-udev/parser.y             |  85 +++++++
- tools/nfs-readahead-udev/readahead.conf       |  15 ++
- tools/nfs-readahead-udev/scanner.l            |  19 ++
- tools/nfs-readahead-udev/syslog.c             |  47 ++++
- 15 files changed, 565 insertions(+), 1 deletion(-)
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1946283
+Signed-off-by: Thiago Rafael Becker <trbecker@gmail.com>
+---
+ tools/nfs-readahead-udev/99-nfs_bdi.rules.in | 1 +
+ tools/nfs-readahead-udev/Makefile.am         | 8 ++++++++
+ 2 files changed, 9 insertions(+)
  create mode 100644 tools/nfs-readahead-udev/99-nfs_bdi.rules.in
- create mode 100644 tools/nfs-readahead-udev/Makefile.am
- create mode 100644 tools/nfs-readahead-udev/config_parser.c
- create mode 100644 tools/nfs-readahead-udev/config_parser.h
- create mode 100644 tools/nfs-readahead-udev/list.h
- create mode 100644 tools/nfs-readahead-udev/log.h
- create mode 100644 tools/nfs-readahead-udev/main.c
- create mode 100644 tools/nfs-readahead-udev/nfs-readahead-udev.man
- create mode 100644 tools/nfs-readahead-udev/parser.y
- create mode 100644 tools/nfs-readahead-udev/readahead.conf
- create mode 100644 tools/nfs-readahead-udev/scanner.l
- create mode 100644 tools/nfs-readahead-udev/syslog.c
 
+diff --git a/tools/nfs-readahead-udev/99-nfs_bdi.rules.in b/tools/nfs-readahead-udev/99-nfs_bdi.rules.in
+new file mode 100644
+index 00000000..15f8a995
+--- /dev/null
++++ b/tools/nfs-readahead-udev/99-nfs_bdi.rules.in
+@@ -0,0 +1 @@
++SUBSYSTEM=="bdi", ACTION=="add", PROGRAM="_libexecdir_/nfs-readahead-udev", ATTR{read_ahead_kb}="%c"
+diff --git a/tools/nfs-readahead-udev/Makefile.am b/tools/nfs-readahead-udev/Makefile.am
+index 5455e954..873cc175 100644
+--- a/tools/nfs-readahead-udev/Makefile.am
++++ b/tools/nfs-readahead-udev/Makefile.am
+@@ -1,3 +1,11 @@
+ libexec_PROGRAMS = nfs-readahead-udev
+ nfs_readahead_udev_SOURCES = main.c
+ 
++udev_rulesdir = /etc/udev/rules.d
++udev_rules_DATA = 99-nfs_bdi.rules
++
++99-nfs_bdi.rules: 99-nfs_bdi.rules.in $(builddefs)
++	$(SED) "s|_libexecdir_|@libexecdir@|g" 99-nfs_bdi.rules.in > $@
++
++clean-local:
++	$(RM) 99-nfs_bdi.rules
 -- 
 2.35.1
 
