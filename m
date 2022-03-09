@@ -2,175 +2,150 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50F8AC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed,  9 Mar 2022 15:26:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF3B6C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed,  9 Mar 2022 15:28:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230128AbiCIP1U (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 9 Mar 2022 10:27:20 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54036 "EHLO
+        id S232016AbiCIP3u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 9 Mar 2022 10:29:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56836 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230014AbiCIP1T (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Mar 2022 10:27:19 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 15BF19F6EB;
-        Wed,  9 Mar 2022 07:26:21 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id ADBDAB82206;
-        Wed,  9 Mar 2022 15:26:19 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 061A3C340E8;
-        Wed,  9 Mar 2022 15:26:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646839578;
-        bh=wE8WScMA30oNgZIX8sgYX722g0p0ycgmgh/CjHL+/9w=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=saBHRU4rxxqAcFBQKx8VXhVd6Txoc8aJG9uJ8Y2DdijC8a6sESxud37tDU6VI6LpN
-         LEGtepyE0wLYuFchvbMlHh+APL6RmUim4Uauz2QLj35GhT3/yynrYMkndXBu3rTXUL
-         HVAm5j7okn3Lw3uBthbQ38cWSm7PTv1KXX4kBbxuJDARAYqjvS02bBwwe60C3/2WJs
-         WB+6mn4Azf+jRxi7ukfUPFXcUMI2Ose765kUGV/vzSBrSzz1KlYYPBpACr7LqRQff+
-         V2JtM5G0UfLKMCfY/oORRVoyolYe+JD+aNY5oO+dNETtfNRYozYh4joHKh8Ko/vtw6
-         SLHP8MQv9n5dA==
-Message-ID: <9132b97b5e52fec9c2838b31739175619df3e752.camel@kernel.org>
-Subject: Re: [PATCH v2 01/19] fscache: export fscache_end_operation()
-From:   Jeff Layton <jlayton@kernel.org>
-To:     David Howells <dhowells@redhat.com>, linux-cachefs@redhat.com
-Cc:     Jeffle Xu <jefflexu@linux.alibaba.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        David Wysochanski <dwysocha@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Wed, 09 Mar 2022 10:26:15 -0500
-In-Reply-To: <164678190346.1200972.7453733431978569479.stgit@warthog.procyon.org.uk>
-References: <164678185692.1200972.597611902374126174.stgit@warthog.procyon.org.uk>
-         <164678190346.1200972.7453733431978569479.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="ISO-8859-15"
-User-Agent: Evolution 3.42.4 (3.42.4-1.fc35) 
+        with ESMTP id S232844AbiCIP3q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Mar 2022 10:29:46 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 75354B10A5
+        for <linux-nfs@vger.kernel.org>; Wed,  9 Mar 2022 07:28:47 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 9D3A01BE1; Wed,  9 Mar 2022 10:28:46 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 9D3A01BE1
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1646839726;
+        bh=f5xkWa2EN1kaKA0o8VuAs7oihIdULEHhlZmuSihjjd4=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=MelBq6OYLMUsyn9nrhOuqlCI9w06n6TdMVmVml5gFbol1N/2cdWV2eHzA9m98Oq2T
+         q5JYSiMWviyMUaUt5So3BdVKy+cPO3PwTrCPCuNuROFqtgCr+EMqMBJtW/xFikT+9X
+         KXXh+LYsYdgH9cXTmn+CYeAzXD0BlCYNNfu8VPMc=
+Date:   Wed, 9 Mar 2022 10:28:46 -0500
+From:   bfields <bfields@fieldses.org>
+To:     Richard Weinberger <richard@nod.at>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>, david <david@sigma-star.at>,
+        luis turcitu <luis.turcitu@appsbroker.com>,
+        david young <david.young@appsbroker.com>,
+        david oberhollenzer <david.oberhollenzer@sigma-star.at>,
+        trond myklebust <trond.myklebust@hammerspace.com>,
+        anna schumaker <anna.schumaker@netapp.com>,
+        chris chilvers <chris.chilvers@appsbroker.com>
+Subject: Re: [RFC PATCH 1/6] Implement reexport helper library
+Message-ID: <20220309152846.GC6633@fieldses.org>
+References: <20220217131531.2890-1-richard@nod.at>
+ <20220217131531.2890-2-richard@nod.at>
+ <20220308214437.GB22644@fieldses.org>
+ <692661836.127800.1646819014252.JavaMail.zimbra@nod.at>
+ <20220309141945.GA6633@fieldses.org>
+ <2098326047.128064.1646838131178.JavaMail.zimbra@nod.at>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <2098326047.128064.1646838131178.JavaMail.zimbra@nod.at>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 2022-03-08 at 23:25 +0000, David Howells wrote:
-> From: Jeffle Xu <jefflexu@linux.alibaba.com>
+On Wed, Mar 09, 2022 at 04:02:11PM +0100, Richard Weinberger wrote:
+> Bruce,
 > 
-> Export fscache_end_operation() to avoid code duplication.
+> ----- Ursprüngliche Mail -----
+> > Von: "bfields" <bfields@fieldses.org>
+> >> Concurrent access to the database is synchronized using a shared rwlock (on
+> >> shared memory).
+> >> reexpdb_init.lock is used to make sure that creating and initializing the shared
+> >> memory/lock
+> >> happens once.
+> > 
+> > Could you point me to sqlite documentation that explains why the user
+> > would need to do their own locking?
 > 
-> Besides, considering the paired fscache_begin_read_operation() is
-> already exported, it shall make sense to also export
-> fscache_end_operation().
+> https://www.sqlite.org/rescode.html#busy
+>  
+> > I assumed sqlite would do any necessary locking for you.  It seems like
+> > a core function for a database.
 > 
+> Well, SQLite does locking but no queuing.
+> So, as soon somebody is writing the data base it is locked and all other
+> read/writes will fail either with SQLITE_BUSY or SQLITE_LOCKED.
+> It is up to the user how to react on that.
+>  
+> That's why I chose to use a shared rwlock where a task can *wait* upon
+> conflicting access.
+> 
+> Maybe there is a better way do it, dunno.
 
-Not what I think of when you say "exporting" but the patch itself looks
-fine.
+Oh, got it, thanks for the explanation.
 
-> Signed-off-by: Jeffle Xu <jefflexu@linux.alibaba.com>
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> cc: linux-cachefs@redhat.com
-> 
-> Link: https://lore.kernel.org/r/20220302125134.131039-2-jefflexu@linux.alibaba.com/ # Jeffle's v4
-> Link: https://lore.kernel.org/r/164622971432.3564931.12184135678781328146.stgit@warthog.procyon.org.uk/ # v1
-> ---
-> 
->  fs/cifs/fscache.c       |    8 --------
->  fs/fscache/internal.h   |   11 -----------
->  fs/nfs/fscache.c        |    8 --------
->  include/linux/fscache.h |   14 ++++++++++++++
->  4 files changed, 14 insertions(+), 27 deletions(-)
-> 
-> diff --git a/fs/cifs/fscache.c b/fs/cifs/fscache.c
-> index 33af72e0ac0c..b47c2011ce5b 100644
-> --- a/fs/cifs/fscache.c
-> +++ b/fs/cifs/fscache.c
-> @@ -134,14 +134,6 @@ void cifs_fscache_release_inode_cookie(struct inode *inode)
->  	}
->  }
->  
-> -static inline void fscache_end_operation(struct netfs_cache_resources *cres)
-> -{
-> -	const struct netfs_cache_ops *ops = fscache_operation_valid(cres);
-> -
-> -	if (ops)
-> -		ops->end_operation(cres);
-> -}
-> -
->  /*
->   * Fallback page reading interface.
->   */
-> diff --git a/fs/fscache/internal.h b/fs/fscache/internal.h
-> index f121c21590dc..ed1c9ed737f2 100644
-> --- a/fs/fscache/internal.h
-> +++ b/fs/fscache/internal.h
-> @@ -70,17 +70,6 @@ static inline void fscache_see_cookie(struct fscache_cookie *cookie,
->  			     where);
->  }
->  
-> -/*
-> - * io.c
-> - */
-> -static inline void fscache_end_operation(struct netfs_cache_resources *cres)
-> -{
-> -	const struct netfs_cache_ops *ops = fscache_operation_valid(cres);
-> -
-> -	if (ops)
-> -		ops->end_operation(cres);
-> -}
-> -
->  /*
->   * main.c
->   */
-> diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-> index cfe901650ab0..39654ca72d3d 100644
-> --- a/fs/nfs/fscache.c
-> +++ b/fs/nfs/fscache.c
-> @@ -249,14 +249,6 @@ void nfs_fscache_release_file(struct inode *inode, struct file *filp)
->  	}
->  }
->  
-> -static inline void fscache_end_operation(struct netfs_cache_resources *cres)
-> -{
-> -	const struct netfs_cache_ops *ops = fscache_operation_valid(cres);
-> -
-> -	if (ops)
-> -		ops->end_operation(cres);
-> -}
-> -
->  /*
->   * Fallback page reading interface.
->   */
-> diff --git a/include/linux/fscache.h b/include/linux/fscache.h
-> index 296c5f1d9f35..d2430da8aa67 100644
-> --- a/include/linux/fscache.h
-> +++ b/include/linux/fscache.h
-> @@ -456,6 +456,20 @@ int fscache_begin_read_operation(struct netfs_cache_resources *cres,
->  	return -ENOBUFS;
->  }
->  
-> +/**
-> + * fscache_end_operation - End the read operation for the netfs lib
-> + * @cres: The cache resources for the read operation
-> + *
-> + * Clean up the resources at the end of the read request.
-> + */
-> +static inline void fscache_end_operation(struct netfs_cache_resources *cres)
-> +{
-> +	const struct netfs_cache_ops *ops = fscache_operation_valid(cres);
-> +
-> +	if (ops)
-> +		ops->end_operation(cres);
-> +}
-> +
->  /**
->   * fscache_read - Start a read from the cache.
->   * @cres: The cache resources to use
-> 
-> 
+Assuming writes are rare, maybe a dumb retry loop would be adequate.
+Sounds like that's what we'd need anyway if we were to share the
+database between cooperating re-export servers.  (Would we have a
+performance problem in that case, if several reexport servers start at
+once and all start trying to populate the shared database?  I don't
+know.)
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Anyway, it's a judgement call, fair enough.  Might be worth a brief
+comment, at least.
+
+> >> > What are the two tables used for?  Naively I'd've thought the
+> >> > "subvolumes" table was redundant.
+> >> 
+> >> fsidnums is used to store generated and predefined fsid numbers.
+> >> It is only used in reexport modes auto-fsidnum and predefined-fsidnum.
+> >> 
+> >> subvolumes contains a list of subvolumes which a are likely in use by
+> >> a client. Up start all these paths will get touched such that they can
+> >> be exported.
+> > 
+> > The fsidnums also contains that same list of paths, right?  So I don't
+> > understand why we need both.
+> 
+> In the current design generated fsidnums will stay forever while the paths
+> in subvolumes can get cleaned.
+>  
+> > Also, if we're depending on touching all the paths on startup, something
+> > is wrong.
+> 
+> I think we talked about that already and agreed that it should work without
+> touching. So far I didn't had a chance to investigate into this.
+
+OK.  Do you think you could look into that, and strip this down to the
+one auto-fsidnum case, and then continue the discussion?  I think that'd
+clarify things.
+
+As I say, I wouldn't necessarily be opposed to later adding a reexport=
+option back in, but for now I'd first like to see if we can find the
+simplest patches that will solve the problem in one good-enough way.
+
+> > What we want to do is touch the path when we get an upcall for the given
+> > fsid.  That way we don't have to assume, for example, that the system
+> > will never expire mounts that haven't been used recently.
+> > 
+> >> >> +/*
+> >> >> + * This query is a little tricky. We use SQL to find and claim the smallest
+> >> >> free fsid number.
+> >> > 
+> >> > Yes, that is a little tricky.  Is it necessary?  My SQL Is rusty, but
+> >> > the database should be able to pick a unique value for us, shouldn't it?
+> >> 
+> >> SQLite can generate a unique value, but we cannot select the range.
+> >> It will give a value between 0 and 2^64.
+> >> We need an id between 1 and 2^32.
+> > 
+> > Surely that CHECK constraint doesn't somehow cause sqlite to generate
+> > non-unique primary keys?  At worst I'd think it would cause INSERTs to
+> > fail if the ordinary primary-key-choosing algorithm chooses something
+> > over 2^32.
+> 
+> The CHECK is just a paranoid check. My SQL INSERT generates ids starting with 1.
+> Sure, if you run it 2^32 times, it will fail due to the CHECK.
+
+OK.
+
+--b.
