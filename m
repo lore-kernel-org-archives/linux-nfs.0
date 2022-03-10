@@ -2,47 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44BC8C433FE
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Mar 2022 16:20:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BEBCC433FE
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Mar 2022 16:21:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242731AbiCJQV4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Mar 2022 11:21:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44394 "EHLO
+        id S243004AbiCJQWD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Mar 2022 11:22:03 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44816 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242868AbiCJQUo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2022 11:20:44 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 48936194172
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Mar 2022 08:19:33 -0800 (PST)
+        with ESMTP id S243347AbiCJQV1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2022 11:21:27 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id E19C119531F
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Mar 2022 08:19:42 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1646929171;
+        s=mimecast20190719; t=1646929181;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Hj8bAINGHaG2GF71IxEolwOwG7LzctTbX0iZeo0PTB4=;
-        b=XXHDIEdSxLfqpHIY4O7Jg00D5for3kg8dd6oDJBeGXEP4w11B/gsz7oxnW7V0zQqvnxU+Z
-        2VHWdMjnDM7Tgau7YXwMzQeBeiozB2pUoFew+BqAJmmDzmdASyG2DAYwIBcs37D5jJITsr
-        hkhdlut4T9CHa0sRp8GpDjedOSnh6wU=
+        bh=EVBPDsgUrkmnW1iIuL47y+dS63RMYVXBGzQs9vGVOQM=;
+        b=jPcM7tiENqbu3TrAJnU2m71X0huxL9vD21TNokfej2I+DczCYs+J/O8HWJ4y8M75nvfrsb
+        l8M6VsENFPbERD6IF4BNZpinm2zthOCdbaonz3QuiZjtX3P8EHrWcw7BiFgXmraCDw2ODM
+        KD7SVQQbbhh6fnkvkOMj0UqJ9pSKmd8=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-36-yZLQgkHPNIaYe5MYKaT8UA-1; Thu, 10 Mar 2022 11:19:15 -0500
-X-MC-Unique: yZLQgkHPNIaYe5MYKaT8UA-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+ us-mta-339-JkUy8IYoPAWIMjR5r2EPow-1; Thu, 10 Mar 2022 11:19:37 -0500
+X-MC-Unique: JkUy8IYoPAWIMjR5r2EPow-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id AF33D51E6;
-        Thu, 10 Mar 2022 16:17:51 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 853EF51E6;
+        Thu, 10 Mar 2022 16:19:35 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.33.36.19])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 814D3106F979;
-        Thu, 10 Mar 2022 16:17:34 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id EFD8B838DA;
+        Thu, 10 Mar 2022 16:18:47 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH v3 11/20] netfs: Change ->init_request() to return an error
- code
+Subject: [PATCH v3 15/20] netfs: Prepare to split read_helper.c
 From:   David Howells <dhowells@redhat.com>
 To:     linux-cachefs@redhat.com
 Cc:     Jeff Layton <jlayton@kernel.org>, dhowells@redhat.com,
@@ -58,199 +57,79 @@ Cc:     Jeff Layton <jlayton@kernel.org>, dhowells@redhat.com,
         linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs-developer@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Thu, 10 Mar 2022 16:17:34 +0000
-Message-ID: <164692905398.2099075.5238033621684646524.stgit@warthog.procyon.org.uk>
+Date:   Thu, 10 Mar 2022 16:18:47 +0000
+Message-ID: <164692912709.2099075.4349905992838317797.stgit@warthog.procyon.org.uk>
 In-Reply-To: <164692883658.2099075.5745824552116419504.stgit@warthog.procyon.org.uk>
 References: <164692883658.2099075.5745824552116419504.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/1.4
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Change the request initialisation function to return an error code so that
-the network filesystem can return a failure (ENOMEM, for example).
+Rename netfs_rreq_unlock() to netfs_rreq_unlock_folios() to make it sound
+less like it's dropping a lock on an netfs_io_request struct.
 
-This will also allow ceph to abort a ->readahead() op if the server refuses
-to give it a cap allowing local caching from within the netfslib framework
-(errors aren't passed back through ->readahead(), so returning, say,
--ENOBUFS will cause the op to be aborted).
+Remove the 'static' marker on netfs_rreq_unlock_folios() and declaring it
+in internal.h preparatory to splitting the file.
+
+Changes
+=======
+ver #2)
+ - Slide this patch to after the one adding netfs_begin_read().
+ - As a consequence, don't need to unstatic so many functions.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 cc: linux-cachefs@redhat.com
-Link: https://lore.kernel.org/r/164678212401.1200972.16537041523832944934.stgit@warthog.procyon.org.uk/ # v2
+Link: https://lore.kernel.org/r/164623002861.3564931.17340149482236413375.stgit@warthog.procyon.org.uk/ # v1
+Link: https://lore.kernel.org/r/164678215208.1200972.9761906209395002182.stgit@warthog.procyon.org.uk/ # v2
 ---
 
- fs/9p/vfs_addr.c       |    3 ++-
- fs/afs/file.c          |    3 ++-
- fs/netfs/objects.c     |   41 ++++++++++++++++++++++++-----------------
- fs/netfs/read_helper.c |   20 ++++++++++++--------
- include/linux/netfs.h  |    2 +-
- 5 files changed, 41 insertions(+), 28 deletions(-)
+ fs/netfs/internal.h    |    5 +++++
+ fs/netfs/read_helper.c |    4 ++--
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index fdc1033a1546..91d3926c9559 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -56,12 +56,13 @@ static void v9fs_issue_read(struct netfs_io_subrequest *subreq)
-  * @rreq: The read request
-  * @file: The file being read from
-  */
--static void v9fs_init_request(struct netfs_io_request *rreq, struct file *file)
-+static int v9fs_init_request(struct netfs_io_request *rreq, struct file *file)
- {
- 	struct p9_fid *fid = file->private_data;
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 937c2465943f..11c0c9ef9299 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -15,6 +15,11 @@
  
- 	refcount_inc(&fid->count);
- 	rreq->netfs_priv = fid;
-+	return 0;
- }
+ #define pr_fmt(fmt) "netfs: " fmt
  
- /**
-diff --git a/fs/afs/file.c b/fs/afs/file.c
-index b19d635eed12..6469d7f98ef5 100644
---- a/fs/afs/file.c
-+++ b/fs/afs/file.c
-@@ -359,9 +359,10 @@ static int afs_symlink_readpage(struct file *file, struct page *page)
- 	return ret;
- }
- 
--static void afs_init_request(struct netfs_io_request *rreq, struct file *file)
-+static int afs_init_request(struct netfs_io_request *rreq, struct file *file)
- {
- 	rreq->netfs_priv = key_get(afs_file_key(file));
-+	return 0;
- }
- 
- static bool afs_is_cache_enabled(struct inode *inode)
-diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
-index 986d7a9d25dd..ae18827e156b 100644
---- a/fs/netfs/objects.c
-+++ b/fs/netfs/objects.c
-@@ -20,27 +20,34 @@ struct netfs_io_request *netfs_alloc_request(struct address_space *mapping,
- {
- 	static atomic_t debug_ids;
- 	struct netfs_io_request *rreq;
-+	int ret;
- 
- 	rreq = kzalloc(sizeof(struct netfs_io_request), GFP_KERNEL);
--	if (rreq) {
--		rreq->start	= start;
--		rreq->len	= len;
--		rreq->origin	= origin;
--		rreq->netfs_ops	= ops;
--		rreq->netfs_priv = netfs_priv;
--		rreq->mapping	= mapping;
--		rreq->inode	= file_inode(file);
--		rreq->i_size	= i_size_read(rreq->inode);
--		rreq->debug_id	= atomic_inc_return(&debug_ids);
--		INIT_LIST_HEAD(&rreq->subrequests);
--		INIT_WORK(&rreq->work, netfs_rreq_work);
--		refcount_set(&rreq->ref, 1);
--		__set_bit(NETFS_RREQ_IN_PROGRESS, &rreq->flags);
--		if (ops->init_request)
--			ops->init_request(rreq, file);
--		netfs_stat(&netfs_n_rh_rreq);
-+	if (!rreq)
-+		return ERR_PTR(-ENOMEM);
++/*
++ * buffered_read.c
++ */
++void netfs_rreq_unlock_folios(struct netfs_io_request *rreq);
 +
-+	rreq->start	= start;
-+	rreq->len	= len;
-+	rreq->origin	= origin;
-+	rreq->netfs_ops	= ops;
-+	rreq->netfs_priv = netfs_priv;
-+	rreq->mapping	= mapping;
-+	rreq->inode	= file_inode(file);
-+	rreq->i_size	= i_size_read(rreq->inode);
-+	rreq->debug_id	= atomic_inc_return(&debug_ids);
-+	INIT_LIST_HEAD(&rreq->subrequests);
-+	INIT_WORK(&rreq->work, netfs_rreq_work);
-+	refcount_set(&rreq->ref, 1);
-+	__set_bit(NETFS_RREQ_IN_PROGRESS, &rreq->flags);
-+	if (rreq->netfs_ops->init_request) {
-+		ret = rreq->netfs_ops->init_request(rreq, file);
-+		if (ret < 0) {
-+			kfree(rreq);
-+			return ERR_PTR(ret);
-+		}
- 	}
- 
-+	netfs_stat(&netfs_n_rh_rreq);
- 	return rreq;
- }
- 
+ /*
+  * objects.c
+  */
 diff --git a/fs/netfs/read_helper.c b/fs/netfs/read_helper.c
-index dea085715286..b5176f4320f4 100644
+index 6864716cfcac..d448dc4f1010 100644
 --- a/fs/netfs/read_helper.c
 +++ b/fs/netfs/read_helper.c
-@@ -768,7 +768,7 @@ void netfs_readahead(struct readahead_control *ractl,
- 				   readahead_pos(ractl),
- 				   readahead_length(ractl),
- 				   NETFS_READAHEAD);
--	if (!rreq)
-+	if (IS_ERR(rreq))
- 		goto cleanup;
- 
- 	if (ops->begin_cache_operation) {
-@@ -842,11 +842,9 @@ int netfs_readpage(struct file *file,
- 	rreq = netfs_alloc_request(folio->mapping, file, ops, netfs_priv,
- 				   folio_file_pos(folio), folio_size(folio),
- 				   NETFS_READPAGE);
--	if (!rreq) {
--		if (netfs_priv)
--			ops->cleanup(folio_file_mapping(folio), netfs_priv);
--		folio_unlock(folio);
--		return -ENOMEM;
-+	if (IS_ERR(rreq)) {
-+		ret = PTR_ERR(rreq);
-+		goto alloc_error;
- 	}
- 
- 	if (ops->begin_cache_operation) {
-@@ -887,6 +885,11 @@ int netfs_readpage(struct file *file,
- out:
- 	netfs_put_request(rreq, false, netfs_rreq_trace_put_hold);
- 	return ret;
-+alloc_error:
-+	if (netfs_priv)
-+		ops->cleanup(folio_file_mapping(folio), netfs_priv);
-+	folio_unlock(folio);
-+	return ret;
- }
- EXPORT_SYMBOL(netfs_readpage);
- 
-@@ -1007,12 +1010,13 @@ int netfs_write_begin(struct file *file, struct address_space *mapping,
- 		goto have_folio_no_wait;
- 	}
- 
--	ret = -ENOMEM;
- 	rreq = netfs_alloc_request(mapping, file, ops, netfs_priv,
- 				   folio_file_pos(folio), folio_size(folio),
- 				   NETFS_READ_FOR_WRITE);
--	if (!rreq)
-+	if (IS_ERR(rreq)) {
-+		ret = PTR_ERR(rreq);
- 		goto error;
-+	}
- 	rreq->no_unlock_folio	= folio_index(folio);
- 	__set_bit(NETFS_RREQ_NO_UNLOCK_FOLIO, &rreq->flags);
- 	netfs_priv = NULL;
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index 7dc741d9b21b..4b99e38f73d9 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -193,7 +193,7 @@ struct netfs_io_request {
+@@ -250,7 +250,7 @@ static void netfs_rreq_write_to_cache(struct netfs_io_request *rreq)
+  * Unlock the folios in a read operation.  We need to set PG_fscache on any
+  * folios we're going to write back before we unlock them.
   */
- struct netfs_request_ops {
- 	bool (*is_cache_enabled)(struct inode *inode);
--	void (*init_request)(struct netfs_io_request *rreq, struct file *file);
-+	int (*init_request)(struct netfs_io_request *rreq, struct file *file);
- 	int (*begin_cache_operation)(struct netfs_io_request *rreq);
- 	void (*expand_readahead)(struct netfs_io_request *rreq);
- 	bool (*clamp_length)(struct netfs_io_subrequest *subreq);
+-static void netfs_rreq_unlock(struct netfs_io_request *rreq)
++void netfs_rreq_unlock_folios(struct netfs_io_request *rreq)
+ {
+ 	struct netfs_io_subrequest *subreq;
+ 	struct folio *folio;
+@@ -432,7 +432,7 @@ static void netfs_rreq_assess(struct netfs_io_request *rreq, bool was_async)
+ 		return;
+ 	}
+ 
+-	netfs_rreq_unlock(rreq);
++	netfs_rreq_unlock_folios(rreq);
+ 
+ 	clear_bit_unlock(NETFS_RREQ_IN_PROGRESS, &rreq->flags);
+ 	wake_up_bit(&rreq->flags, NETFS_RREQ_IN_PROGRESS);
 
 
