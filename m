@@ -2,135 +2,123 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9BD2C433FE
-	for <linux-nfs@archiver.kernel.org>; Sat, 12 Mar 2022 02:13:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E89ADC43217
+	for <linux-nfs@archiver.kernel.org>; Sat, 12 Mar 2022 02:13:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229477AbiCLCOw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 11 Mar 2022 21:14:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56996 "EHLO
+        id S230045AbiCLCOx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 11 Mar 2022 21:14:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57040 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230028AbiCLCOv (ORCPT
+        with ESMTP id S230035AbiCLCOv (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2022 21:14:51 -0500
 Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2B6E51945ED;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D4AB01A2708;
         Fri, 11 Mar 2022 18:13:47 -0800 (PST)
-Received: from pps.filterd (m0246632.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22BN1vxI011895;
-        Sat, 12 Mar 2022 02:13:44 GMT
+Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22C1Vdws023826;
+        Sat, 12 Mar 2022 02:13:45 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
- bh=AwpXRCZkY8QYpJhUegFeWznbe39s+u1FE01qP8lP6jA=;
- b=cs3aj2jeiTlYCpnGqo46tCGdz/kCOWx1wuK+wA1S3M6U2CQgjux/Jur3B6QqdGmXUC1P
- tmA4Hi13gJMf8kjH2sLOydfG7KWR3eWHikvGyqfWmyv/DhgOW3/f5lM1GUiEtVztQipR
- zL8wkey1ENTFw9SlUdnIHovKvDkHMPFYPJ6rpNVpFmnU3z1saAlm47trzg1t+so0IWQz
- flen0jgq8ztza8dgfeBfRb4lFZyqwmmJleYMr/NXEiIfkTXq3d1Uir01eyyv7lngxvcT
- AtpQmA3Uig/liKu2F7OX5uLCo9lXR48DsRIr7UOc9xAYOF3/IwqcRbXd58kE5kCOtrj6 8A== 
+ bh=zr2GuroqkQCEJUAkHaSF7PaiddkbHo5TKIjBVWhg/24=;
+ b=hlaDWH7y5bnAB6PPjxcAIc032U8tWoHGP+66NO15ZoU8+Mvzj1gTOkT1IjSqj62ossv/
+ /8YvQCSYyH7W0c17C9hO89MPJtZ6oM6E4/HhdWAYaHBrDZ0axYqjhaUM1kKMOIkbbYY4
+ YRl0GUDSNOJjn1ZngR7MKcIWa0wvh+goGqLjVhQNk+Ipx/JVZyFq0Na6WjL+DihfQaNW
+ 16FBeaGZXmG69ftjrcQEAwsRJvkisq3cnFRSKi8w/UXLwtLxJeF5kZqJL8fFoNmUfwO5
+ KobzxJxePIf4n6aKGQ7aV9Ng/LoAKeqldSFp3ROj1jjPjlc3py3QcTs7c0xiEf5XCsOC +w== 
 Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3ekyfstka5-1
+        by mx0b-00069f02.pphosted.com with ESMTP id 3erhxcg0v9-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 12 Mar 2022 02:13:45 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 22C2CA0U084327;
+        Sat, 12 Mar 2022 02:13:44 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by aserp3030.oracle.com with ESMTP id 3erhj88qfr-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
         Sat, 12 Mar 2022 02:13:44 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 22C2C4C0084308;
-        Sat, 12 Mar 2022 02:13:43 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by aserp3030.oracle.com with ESMTP id 3erhj88qfj-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 12 Mar 2022 02:13:43 +0000
 Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22C2DgMR086332;
-        Sat, 12 Mar 2022 02:13:43 GMT
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22C2DgMV086332;
+        Sat, 12 Mar 2022 02:13:44 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by aserp3030.oracle.com with ESMTP id 3erhj88qfe-2;
-        Sat, 12 Mar 2022 02:13:43 +0000
+        by aserp3030.oracle.com with ESMTP id 3erhj88qfe-4;
+        Sat, 12 Mar 2022 02:13:44 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, bfields@fieldses.org
 Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC v16 01/11] fs/lock: add helper locks_owner_has_blockers to check for blockers
-Date:   Fri, 11 Mar 2022 18:13:25 -0800
-Message-Id: <1647051215-2873-2-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH RFC v16 03/11] NFSD: Add lm_lock_expired call out
+Date:   Fri, 11 Mar 2022 18:13:27 -0800
+Message-Id: <1647051215-2873-4-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1647051215-2873-1-git-send-email-dai.ngo@oracle.com>
 References: <1647051215-2873-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-GUID: ziE3Pj06inWOKfnXXBPJAPd4JKLCN-BN
-X-Proofpoint-ORIG-GUID: ziE3Pj06inWOKfnXXBPJAPd4JKLCN-BN
+X-Proofpoint-GUID: da4MgeTcuShorU52jRrTTB57iloxtXGL
+X-Proofpoint-ORIG-GUID: da4MgeTcuShorU52jRrTTB57iloxtXGL
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add helper locks_owner_has_blockers to check if there is any blockers
-for a given lockowner.
+Add callout function nfsd4_lm_lock_expired for lm_lock_expired.
+If lock request has conflict with courtesy client then expire the
+courtesy client and return no conflict to caller.
 
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/locks.c         | 28 ++++++++++++++++++++++++++++
- include/linux/fs.h |  7 +++++++
- 2 files changed, 35 insertions(+)
+ fs/nfsd/nfs4state.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 050acf8b5110..53864eb99dc5 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -300,6 +300,34 @@ void locks_release_private(struct file_lock *fl)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a65d59510681..583ac807e98d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6578,10 +6578,47 @@ nfsd4_lm_notify(struct file_lock *fl)
+ 	}
  }
- EXPORT_SYMBOL_GPL(locks_release_private);
  
 +/**
-+ * locks_owner_has_blockers - Check for blocking lock requests
-+ * @flctx: file lock context
-+ * @owner: lock owner
++ * nfsd4_lm_lock_expired - check if lock conflict can be resolved.
 + *
++ * @fl: pointer to file_lock with a potential conflict
 + * Return values:
-+ *   %true: @owner has at least one blocker
-+ *   %false: @owner has no blockers
++ *   %false: real conflict, lock conflict can not be resolved.
++ *   %true: no conflict, lock conflict was resolved.
++ *
++ * Note that this function is called while the flc_lock is held.
 + */
-+bool locks_owner_has_blockers(struct file_lock_context *flctx,
-+		fl_owner_t owner)
++static bool
++nfsd4_lm_lock_expired(struct file_lock *fl)
 +{
-+	struct file_lock *fl;
++	struct nfs4_lockowner *lo;
++	struct nfs4_client *clp;
++	bool rc = false;
 +
-+	spin_lock(&flctx->flc_lock);
-+	list_for_each_entry(fl, &flctx->flc_posix, fl_list) {
-+		if (fl->fl_owner != owner)
-+			continue;
-+		if (!list_empty(&fl->fl_blocked_requests)) {
-+			spin_unlock(&flctx->flc_lock);
-+			return true;
++	if (!fl)
++		return false;
++	lo = (struct nfs4_lockowner *)fl->fl_owner;
++	clp = lo->lo_owner.so_client;
++
++	/* need to sync with courtesy client trying to reconnect */
++	spin_lock(&clp->cl_cs_lock);
++	if (test_bit(NFSD4_CLIENT_EXPIRED, &clp->cl_flags))
++		rc = true;
++	else {
++		if (test_bit(NFSD4_CLIENT_COURTESY, &clp->cl_flags)) {
++			set_bit(NFSD4_CLIENT_EXPIRED, &clp->cl_flags);
++			rc =  true;
 +		}
 +	}
-+	spin_unlock(&flctx->flc_lock);
-+	return false;
++	spin_unlock(&clp->cl_cs_lock);
++	return rc;
 +}
-+EXPORT_SYMBOL_GPL(locks_owner_has_blockers);
 +
- /* Free a lock which is not in use. */
- void locks_free_lock(struct file_lock *fl)
- {
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 831b20430d6e..da8ae38f471c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1200,6 +1200,8 @@ extern void lease_unregister_notifier(struct notifier_block *);
- struct files_struct;
- extern void show_fd_locks(struct seq_file *f,
- 			 struct file *filp, struct files_struct *files);
-+extern bool locks_owner_has_blockers(struct file_lock_context *flctx,
-+			fl_owner_t owner);
- #else /* !CONFIG_FILE_LOCKING */
- static inline int fcntl_getlk(struct file *file, unsigned int cmd,
- 			      struct flock __user *user)
-@@ -1335,6 +1337,11 @@ static inline int lease_modify(struct file_lock *fl, int arg,
- struct files_struct;
- static inline void show_fd_locks(struct seq_file *f,
- 			struct file *filp, struct files_struct *files) {}
-+extern bool locks_owner_has_blockers(struct file_lock_context *flctx,
-+			fl_owner_t owner)
-+{
-+	return false;
-+}
- #endif /* !CONFIG_FILE_LOCKING */
+ static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+ 	.lm_notify = nfsd4_lm_notify,
+ 	.lm_get_owner = nfsd4_lm_get_owner,
+ 	.lm_put_owner = nfsd4_lm_put_owner,
++	.lm_lock_expired = nfsd4_lm_lock_expired,
+ };
  
- static inline struct inode *file_inode(const struct file *f)
+ static inline void
 -- 
 2.9.5
 
