@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C47FBC4321E
-	for <linux-nfs@archiver.kernel.org>; Sun, 13 Mar 2022 17:12:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C17AC433EF
+	for <linux-nfs@archiver.kernel.org>; Sun, 13 Mar 2022 17:12:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235118AbiCMRNW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 13 Mar 2022 13:13:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60520 "EHLO
+        id S235123AbiCMRNX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 13 Mar 2022 13:13:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60590 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235122AbiCMRNU (ORCPT
+        with ESMTP id S235109AbiCMRNU (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2022 13:13:20 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 67AA713A1ED
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 10:12:12 -0700 (PDT)
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E5BD139CDD
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 10:12:13 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 10E5FB80CD8
+        by ams.source.kernel.org (Postfix) with ESMTPS id B482DB80CB3
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:12 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2D5EEC340E8
         for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:11 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8AC2FC340EE
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647191529;
-        bh=Z+CvJxEfkHR4Z0YDMyER2rGO+npSIUGuT5Q83OIpFVU=;
+        s=k20201202; t=1647191531;
+        bh=nE19W34fd42CqMHl4wQgysmt/jUMDOCjdhpV4Ut7nSU=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=KjbvG7WLU8bgp+aW++M/1FLvxyIBXbOtwABBHb9buIwLxdiRYVxYXuKDbCNilG6hW
-         fk8W4ZPm8xaOyDRBeGMXOMEgChWTvm9c841WwNuBVwSoX5wTZmwoYd0IHkVe8yoMuZ
-         PT3mtCBQ5+lnR1CW3nxAPXET09JieDrAP1JAjOsI58uu/TgOvJZRV8tIm1T0i7gLR1
-         zhsyb1w2sx7fJf+lPawb2+0Si86md9jqwHxNOOqruqU3+mAtd0UO0yRQGDLl12MV6h
-         8bt9ok8pUCpV6ocpJUpER3ClO6qnsvUM74tA+BidPgnbnIwRl+4oUsmU4CiA8g7jOL
-         06lyBXg0a79eA==
+        b=e1SqzzXoDaqNAkyPBZz44WeQS08gAKjoLcqVW7gMcQuoprQ7ojefQVI6E9/co8Dzs
+         3ncqv6YRrIVUvp8HbY6G2CqQpEyTEXAu2ihNvPPQbxcjo6Y6KpNj8tiwmpj8XI/R4V
+         CummDS9ByTBfwFXBaQUuFNbmzRL5UO1xbhblqG0dj4sFBBcyq/GG4mSp9QGiQPjfdQ
+         wmL17AyIajVAaXcX6R0IT0SP/7mseA8VZOcUa30MbwQ40GGNo09jv2FZWSb/3d+dXE
+         JZq+XcQDo1tn+GIfH70NF6OoVyYEU9Xp7MpcjjiEQqrHwaWZinkUdBEwZllEf30UxI
+         gxQ614fBvJUYA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v10 15/26] NFS: Don't ask for readdirplus unless it can help nfs_getattr()
-Date:   Sun, 13 Mar 2022 13:05:46 -0400
-Message-Id: <20220313170557.5940-16-trondmy@kernel.org>
+Subject: [PATCH v10 19/26] NFS: Add basic readdir tracing
+Date:   Sun, 13 Mar 2022 13:05:50 -0400
+Message-Id: <20220313170557.5940-20-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220313170557.5940-15-trondmy@kernel.org>
+In-Reply-To: <20220313170557.5940-19-trondmy@kernel.org>
 References: <20220313170557.5940-1-trondmy@kernel.org>
  <20220313170557.5940-2-trondmy@kernel.org>
  <20220313170557.5940-3-trondmy@kernel.org>
@@ -53,6 +53,10 @@ References: <20220313170557.5940-1-trondmy@kernel.org>
  <20220313170557.5940-13-trondmy@kernel.org>
  <20220313170557.5940-14-trondmy@kernel.org>
  <20220313170557.5940-15-trondmy@kernel.org>
+ <20220313170557.5940-16-trondmy@kernel.org>
+ <20220313170557.5940-17-trondmy@kernel.org>
+ <20220313170557.5940-18-trondmy@kernel.org>
+ <20220313170557.5940-19-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -61,103 +65,144 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If attribute caching is turned off, then use of readdirplus is not going
-to help stat() performance.
-Readdirplus also doesn't help if a file is being written to, since we
-will have to flush those writes in order to sync the mtime/ctime.
+Add tracing to track how often the client goes to the server for updated
+readdir information.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 45 +++++++++++++++++++++++++--------------------
- 1 file changed, 25 insertions(+), 20 deletions(-)
+ fs/nfs/dir.c      | 13 ++++++++-
+ fs/nfs/nfstrace.h | 68 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 80 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index bbf4357ff727..e51d86707fca 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -780,26 +780,32 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- }
- EXPORT_SYMBOL_GPL(nfs_setattr_update_inode);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index cf7974642a19..d591d20f7534 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -984,10 +984,14 @@ static int find_and_lock_cache_page(struct nfs_readdir_descriptor *desc)
+ 		if (desc->page_index == desc->page_index_max)
+ 			nfs_grow_dtsize(desc);
+ 		desc->page_index_max = desc->page_index;
++		trace_nfs_readdir_cache_fill(desc->file, nfsi->cookieverf,
++					     desc->last_cookie,
++					     desc->page->index, desc->dtsize);
+ 		res = nfs_readdir_xdr_to_array(desc, nfsi->cookieverf, verf,
+ 					       &desc->page, 1);
+ 		if (res < 0) {
+ 			nfs_readdir_page_unlock_and_put_cached(desc);
++			trace_nfs_readdir_cache_fill_done(inode, res);
+ 			if (res == -EBADCOOKIE || res == -ENOTSYNC) {
+ 				invalidate_inode_pages2(desc->file->f_mapping);
+ 				desc->page_index = 0;
+@@ -1108,7 +1112,14 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
+ 	desc->duped = 0;
+ 	desc->page_index_max = 0;
  
--static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
-+/*
-+ * Don't request help from readdirplus if the file is being written to,
-+ * or if attribute caching is turned off
-+ */
-+static bool nfs_getattr_readdirplus_enable(const struct inode *inode)
- {
--	struct dentry *parent;
-+	return nfs_server_capable(inode, NFS_CAP_READDIRPLUS) &&
-+	       !nfs_have_writebacks(inode) && NFS_MAXATTRTIMEO(inode) > 5 * HZ;
-+}
- 
--	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
--		return;
--	parent = dget_parent(dentry);
--	nfs_readdir_record_entry_cache_miss(d_inode(parent));
--	dput(parent);
-+static void nfs_readdirplus_parent_cache_miss(struct dentry *dentry)
-+{
-+	if (!IS_ROOT(dentry)) {
-+		struct dentry *parent = dget_parent(dentry);
-+		nfs_readdir_record_entry_cache_miss(d_inode(parent));
-+		dput(parent);
++	trace_nfs_readdir_uncached(desc->file, desc->verf, desc->last_cookie,
++				   -1, desc->dtsize);
++
+ 	status = nfs_readdir_xdr_to_array(desc, desc->verf, verf, arrays, sz);
++	if (status < 0) {
++		trace_nfs_readdir_uncached_done(file_inode(desc->file), status);
++		goto out_free;
 +	}
- }
  
- static void nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
- {
--	struct dentry *parent;
--
--	if (!nfs_server_capable(d_inode(dentry), NFS_CAP_READDIRPLUS))
--		return;
--	parent = dget_parent(dentry);
--	nfs_readdir_record_entry_cache_hit(d_inode(parent));
--	dput(parent);
-+	if (!IS_ROOT(dentry)) {
-+		struct dentry *parent = dget_parent(dentry);
-+		nfs_readdir_record_entry_cache_hit(d_inode(parent));
-+		dput(parent);
-+	}
- }
- 
- static u32 nfs_get_valid_attrmask(struct inode *inode)
-@@ -835,6 +841,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 	int err = 0;
- 	bool force_sync = query_flags & AT_STATX_FORCE_SYNC;
- 	bool do_update = false;
-+	bool readdirplus_enabled = nfs_getattr_readdirplus_enable(inode);
- 
- 	trace_nfs_getattr_enter(inode);
- 
-@@ -843,7 +850,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 			STATX_INO | STATX_SIZE | STATX_BLOCKS;
- 
- 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
--		nfs_readdirplus_parent_cache_hit(path->dentry);
-+		if (readdirplus_enabled)
-+			nfs_readdirplus_parent_cache_hit(path->dentry);
- 		goto out_no_revalidate;
+ 	for (i = 0; !desc->eob && i < sz && arrays[i]; i++) {
+ 		desc->page = arrays[i];
+@@ -1127,7 +1138,7 @@ static int uncached_readdir(struct nfs_readdir_descriptor *desc)
+ 			 i < (desc->page_index_max >> 1))
+ 			nfs_shrink_dtsize(desc);
  	}
+-
++out_free:
+ 	for (i = 0; i < sz && arrays[i]; i++)
+ 		nfs_readdir_page_array_free(arrays[i]);
+ out:
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 3672f6703ee7..c2d0543ecb2d 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -160,6 +160,8 @@ DEFINE_NFS_INODE_EVENT(nfs_fsync_enter);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_fsync_exit);
+ DEFINE_NFS_INODE_EVENT(nfs_access_enter);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_set_cache_invalid);
++DEFINE_NFS_INODE_EVENT_DONE(nfs_readdir_cache_fill_done);
++DEFINE_NFS_INODE_EVENT_DONE(nfs_readdir_uncached_done);
  
-@@ -893,15 +901,12 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		do_update |= cache_validity & NFS_INO_INVALID_BLOCKS;
+ TRACE_EVENT(nfs_access_exit,
+ 		TP_PROTO(
+@@ -271,6 +273,72 @@ DEFINE_NFS_UPDATE_SIZE_EVENT(wcc);
+ DEFINE_NFS_UPDATE_SIZE_EVENT(update);
+ DEFINE_NFS_UPDATE_SIZE_EVENT(grow);
  
- 	if (do_update) {
--		/* Update the attribute cache */
--		if (!(server->flags & NFS_MOUNT_NOAC))
-+		if (readdirplus_enabled)
- 			nfs_readdirplus_parent_cache_miss(path->dentry);
--		else
--			nfs_readdirplus_parent_cache_hit(path->dentry);
- 		err = __nfs_revalidate_inode(server, inode);
- 		if (err)
- 			goto out;
--	} else
-+	} else if (readdirplus_enabled)
- 		nfs_readdirplus_parent_cache_hit(path->dentry);
- out_no_revalidate:
- 	/* Only return attributes that were revalidated. */
++DECLARE_EVENT_CLASS(nfs_readdir_event,
++		TP_PROTO(
++			const struct file *file,
++			const __be32 *verifier,
++			u64 cookie,
++			pgoff_t page_index,
++			unsigned int dtsize
++		),
++
++		TP_ARGS(file, verifier, cookie, page_index, dtsize),
++
++		TP_STRUCT__entry(
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++			__field(u64, version)
++			__array(char, verifier, NFS4_VERIFIER_SIZE)
++			__field(u64, cookie)
++			__field(pgoff_t, index)
++			__field(unsigned int, dtsize)
++		),
++
++		TP_fast_assign(
++			const struct inode *dir = file_inode(file);
++			const struct nfs_inode *nfsi = NFS_I(dir);
++
++			__entry->dev = dir->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
++			__entry->version = inode_peek_iversion_raw(dir);
++			if (cookie != 0)
++				memcpy(__entry->verifier, verifier,
++				       NFS4_VERIFIER_SIZE);
++			else
++				memset(__entry->verifier, 0,
++				       NFS4_VERIFIER_SIZE);
++			__entry->cookie = cookie;
++			__entry->index = page_index;
++			__entry->dtsize = dtsize;
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu "
++			"cookie=%s:0x%llx cache_index=%lu dtsize=%u",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid, __entry->fhandle,
++			__entry->version, show_nfs4_verifier(__entry->verifier),
++			(unsigned long long)__entry->cookie, __entry->index,
++			__entry->dtsize
++		)
++);
++
++#define DEFINE_NFS_READDIR_EVENT(name) \
++	DEFINE_EVENT(nfs_readdir_event, name, \
++			TP_PROTO( \
++				const struct file *file, \
++				const __be32 *verifier, \
++				u64 cookie, \
++				pgoff_t page_index, \
++				unsigned int dtsize \
++				), \
++			TP_ARGS(file, verifier, cookie, page_index, dtsize))
++
++DEFINE_NFS_READDIR_EVENT(nfs_readdir_cache_fill);
++DEFINE_NFS_READDIR_EVENT(nfs_readdir_uncached);
++
+ DECLARE_EVENT_CLASS(nfs_lookup_event,
+ 		TP_PROTO(
+ 			const struct inode *dir,
 -- 
 2.35.1
 
