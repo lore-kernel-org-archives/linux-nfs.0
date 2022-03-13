@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 746ACC4332F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7406C43217
 	for <linux-nfs@archiver.kernel.org>; Sun, 13 Mar 2022 17:12:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235089AbiCMRNV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 13 Mar 2022 13:13:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60522 "EHLO
+        id S235113AbiCMRNW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 13 Mar 2022 13:13:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60540 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235113AbiCMRNT (ORCPT
+        with ESMTP id S235096AbiCMRNT (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2022 13:13:19 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 25A39139CFE
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3D67D13A1C5
         for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 10:12:11 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id BB58FB80CAD
+        by dfw.source.kernel.org (Postfix) with ESMTPS id B967760FDD
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:10 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F155BC340E8
         for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:09 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B671C340E8
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647191528;
-        bh=nXGvvAaZjXNCImpZyKPlB83LM1gB9xUedQJdbZ0r3WE=;
+        s=k20201202; t=1647191530;
+        bh=Pi6QQmcZUZFhmZaJYFwgo7fNTcZupt9kMXmORg1j7EY=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=SWzuSGBASmChi4lR9zdhwhD9hWO7MGt5mxBbuYV6amxChxyYCFXyo4QkSE+jkO/v9
-         gHlA7z6J+y0tC/TfD3YyZDZ43DsnvF60mnKA46pqKA6rHpsAk2Pu861uKS0xPihm6d
-         Jpd3tyS1IlAA2OIG4bDiloVeEbyAn5jrMxhqx0qqP+hfrBx/sKMNRxvaUuFGtN35cZ
-         mqW2yqXHfhm0rg0WXk8fpkNnmKgonBzRP2Ls0/3zR+f6lZYpqe2HtOJ/llN+bfdv1A
-         sJDjNMGplH4yqUU9c//Fe2EeOSP6bdik/0H/mt+FXQ1ZzqckqK8nqDDYIMFXeJexQg
-         sg8Eo/SwPK3zg==
+        b=tkZfC8wvQ6z6m0IjxyizBM8VEEwKY9jZRbxVh0k7wqWbCGHMjoq9Y2Z1rm+umdrhj
+         46K2dDgP+t1otq884Zy9pfPcp4MwoQCUAonFkIJMD4ZUT0A4GtMMcx49oPySBwQTpE
+         D631Fklv4VPFUeLoCBD1gPs2NBB/vYcTCdWp0nPXzhYl6/pq6I0rPYYWKfoUYEIBWc
+         ABmVUEqjE83R4NedTt1fW3kqqQ7ckqu/BkfgaprLjftDUEQmyWe5jnGbXCr47K5bZU
+         x1V+jIs/EWNGhsbV+aCXvYMG27WovUpDj1PwKbju6NpQsEu+3H/QmsuwY9moFeNMHW
+         WQZpV3huD3Nag==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v10 12/26] NFS: Simplify nfs_readdir_xdr_to_array()
-Date:   Sun, 13 Mar 2022 13:05:43 -0400
-Message-Id: <20220313170557.5940-13-trondmy@kernel.org>
+Subject: [PATCH v10 16/26] NFSv4: Ask for a full XDR buffer of readdir goodness
+Date:   Sun, 13 Mar 2022 13:05:47 -0400
+Message-Id: <20220313170557.5940-17-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220313170557.5940-12-trondmy@kernel.org>
+In-Reply-To: <20220313170557.5940-16-trondmy@kernel.org>
 References: <20220313170557.5940-1-trondmy@kernel.org>
  <20220313170557.5940-2-trondmy@kernel.org>
  <20220313170557.5940-3-trondmy@kernel.org>
@@ -50,6 +50,10 @@ References: <20220313170557.5940-1-trondmy@kernel.org>
  <20220313170557.5940-10-trondmy@kernel.org>
  <20220313170557.5940-11-trondmy@kernel.org>
  <20220313170557.5940-12-trondmy@kernel.org>
+ <20220313170557.5940-13-trondmy@kernel.org>
+ <20220313170557.5940-14-trondmy@kernel.org>
+ <20220313170557.5940-15-trondmy@kernel.org>
+ <20220313170557.5940-16-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -58,66 +62,72 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Recent changes to readdir mean that we can cope with partially filled
-page cache entries, so we no longer need to rely on looping in
-nfs_readdir_xdr_to_array().
+Instead of pretending that we know the ratio of directory info vs
+readdirplus attribute info, just set the 'dircount' field to the same
+value as the 'maxcount' field.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 29 +++++++++++------------------
- 1 file changed, 11 insertions(+), 18 deletions(-)
+ fs/nfs/nfs3xdr.c | 7 ++++---
+ fs/nfs/nfs4xdr.c | 6 +++---
+ 2 files changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 9998d7d17367..9d086ab4f889 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -889,6 +889,7 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
- 	size_t array_size;
- 	struct inode *inode = file_inode(desc->file);
- 	unsigned int dtsize = desc->dtsize;
-+	unsigned int pglen;
- 	int status = -ENOMEM;
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 7ab60ad98776..d6779ceeb39e 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1261,6 +1261,8 @@ static void nfs3_xdr_enc_readdir3args(struct rpc_rqst *req,
+ static void encode_readdirplus3args(struct xdr_stream *xdr,
+ 				    const struct nfs3_readdirargs *args)
+ {
++	uint32_t dircount = args->count;
++	uint32_t maxcount = args->count;
+ 	__be32 *p;
  
- 	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
-@@ -906,28 +907,20 @@ static int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
- 	if (!pages)
- 		goto out;
- 
--	do {
--		unsigned int pglen;
--		status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie,
--						pages, dtsize,
--						verf_res);
--		if (status < 0)
--			break;
+ 	encode_nfs_fh3(xdr, args->fh);
+@@ -1273,9 +1275,8 @@ static void encode_readdirplus3args(struct xdr_stream *xdr,
+ 	 * readdirplus: need dircount + buffer size.
+ 	 * We just make sure we make dircount big enough
+ 	 */
+-	*p++ = cpu_to_be32(args->count >> 3);
 -
--		pglen = status;
--		if (pglen == 0) {
--			nfs_readdir_page_set_eof(page);
--			break;
--		}
--
--		verf_arg = verf_res;
-+	status = nfs_readdir_xdr_filler(desc, verf_arg, entry->cookie, pages,
-+					dtsize, verf_res);
-+	if (status < 0)
-+		goto free_pages;
+-	*p = cpu_to_be32(args->count);
++	*p++ = cpu_to_be32(dircount);
++	*p = cpu_to_be32(maxcount);
+ }
  
-+	pglen = status;
-+	if (pglen != 0)
- 		status = nfs_readdir_page_filler(desc, entry, pages, pglen,
- 						 arrays, narrays);
--		desc->buffer_fills++;
--	} while (!status && nfs_readdir_page_needs_filling(page) &&
--		page_mapping(page));
-+	else
-+		nfs_readdir_page_set_eof(page);
-+	desc->buffer_fills++;
- 
-+free_pages:
- 	nfs_readdir_free_pages(pages, array_size);
- out:
- 	nfs_free_fattr(entry->fattr);
+ static void nfs3_xdr_enc_readdirplus3args(struct rpc_rqst *req,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 8e70b92df4cc..b7780b97dc4d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1605,7 +1605,8 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
+ 		FATTR4_WORD0_RDATTR_ERROR,
+ 		FATTR4_WORD1_MOUNTED_ON_FILEID,
+ 	};
+-	uint32_t dircount = readdir->count >> 1;
++	uint32_t dircount = readdir->count;
++	uint32_t maxcount = readdir->count;
+ 	__be32 *p, verf[2];
+ 	uint32_t attrlen = 0;
+ 	unsigned int i;
+@@ -1618,7 +1619,6 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
+ 			FATTR4_WORD1_SPACE_USED|FATTR4_WORD1_TIME_ACCESS|
+ 			FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+ 		attrs[2] |= FATTR4_WORD2_SECURITY_LABEL;
+-		dircount >>= 1;
+ 	}
+ 	/* Use mounted_on_fileid only if the server supports it */
+ 	if (!(readdir->bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID))
+@@ -1634,7 +1634,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
+ 	encode_nfs4_verifier(xdr, &readdir->verifier);
+ 	p = reserve_space(xdr, 12 + (attrlen << 2));
+ 	*p++ = cpu_to_be32(dircount);
+-	*p++ = cpu_to_be32(readdir->count);
++	*p++ = cpu_to_be32(maxcount);
+ 	*p++ = cpu_to_be32(attrlen);
+ 	for (i = 0; i < attrlen; i++)
+ 		*p++ = cpu_to_be32(attrs[i]);
 -- 
 2.35.1
 
