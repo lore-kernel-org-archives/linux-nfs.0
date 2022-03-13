@@ -2,48 +2,45 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B47DC43219
-	for <linux-nfs@archiver.kernel.org>; Sun, 13 Mar 2022 17:12:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16B5BC4321E
+	for <linux-nfs@archiver.kernel.org>; Sun, 13 Mar 2022 17:12:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235095AbiCMRNP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 13 Mar 2022 13:13:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60400 "EHLO
+        id S235105AbiCMRNQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 13 Mar 2022 13:13:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60410 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234874AbiCMRNO (ORCPT
+        with ESMTP id S234471AbiCMRNO (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2022 13:13:14 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9CA96139CDD
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 10:12:06 -0700 (PDT)
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F057139CDA
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 10:12:07 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 38A4960FDD
+        by ams.source.kernel.org (Postfix) with ESMTPS id 19554B80CAD
         for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:06 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D1627C340F3
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:05 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B0E09C36AE2
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647191526;
-        bh=zYhvub24lZwHSGJubm8T+/Fb/2omFYNma1blsw8u/iU=;
+        s=k20201202; t=1647191524;
+        bh=AU/1BuAYIRPvCSJMRaL7bK15l0+X1t9HvSCk7ukL0FY=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=QKn0+px9pOks7TwTHFSS53MbLE1H4J+28W7UIEOAMAz3oWOdys07VD4ZFTus0/7Jy
-         uvjxu+Ow8HJDTmbhgjtAdlFR9yC7THi4pNEhbwnNR2nyyYfRF3nqpHkusvQYdgtO6M
-         07P+QfW3gR5vYEFHrzth9oZHPD5S4Q6B7yh1DPv00EH8pSHqFwbs4foGA7s788LeqD
-         haMEXAwpXbtFFkuIvgjgofSHs8huYr7xC5bFXzqlS6MLAHHhGJ+pqjTgYn/MxyaPYo
-         Kjtj6M24RormKMfbx0JLZhjOaz/VZTg7Tp5Part1Cjg1mXOV3kBCoJzLFrqvWBB/Co
-         e1PPke8ZHFqAg==
+        b=gSBlwWUfilzPopbyjFXEV65y/dAtNthDA8nhKRtRWwazg0Zh5dGdiURIDWD5W6RsR
+         XwPGb0sz44b6WYsMD4Hv+EHl83oWy1HCRB0RRuVcn15Y4rg5TZkHPCgex8X9iCZoqY
+         CZjR93Lu9JpkYNVnar/7RsiW5F5uIpCn6ux4U9qTbngS10vAmxFHfFdEqAhqUBOQM1
+         o2iiXa8GU7llHnReb17vNE/nZP2RDl1OXsQyAN/Rve0WWKWKQwzdPJIT6VZh+nwlhE
+         2MArLqI2NxIDVaxXaK/aI+cBUL/GPnlO0XqrOJYapGjDFHGsi3pPbTW388Cju44y1t
+         G/RYCEe6qiWQg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v10 06/26] NFS: Calculate page offsets algorithmically
-Date:   Sun, 13 Mar 2022 13:05:37 -0400
-Message-Id: <20220313170557.5940-7-trondmy@kernel.org>
+Subject: [PATCH v10 03/26] NFS: Trace lookup revalidation failure
+Date:   Sun, 13 Mar 2022 13:05:34 -0400
+Message-Id: <20220313170557.5940-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220313170557.5940-6-trondmy@kernel.org>
+In-Reply-To: <20220313170557.5940-3-trondmy@kernel.org>
 References: <20220313170557.5940-1-trondmy@kernel.org>
  <20220313170557.5940-2-trondmy@kernel.org>
  <20220313170557.5940-3-trondmy@kernel.org>
- <20220313170557.5940-4-trondmy@kernel.org>
- <20220313170557.5940-5-trondmy@kernel.org>
- <20220313170557.5940-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -52,64 +49,56 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Instead of relying on counting the page offsets as we walk through the
-page cache, switch to calculating them algorithmically.
+Enable tracing of lookup revalidation failures.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/nfs/dir.c | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 379f88b158fb..6f0a38db6c37 100644
+index ebddc736eac2..1aa55cac9d9a 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -249,17 +249,20 @@ static const char *nfs_readdir_copy_name(const char *name, unsigned int len)
- 	return ret;
- }
- 
-+static size_t nfs_readdir_array_maxentries(void)
-+{
-+	return (PAGE_SIZE - sizeof(struct nfs_cache_array)) /
-+	       sizeof(struct nfs_cache_array_entry);
-+}
-+
- /*
-  * Check that the next array entry lies entirely within the page bounds
-  */
- static int nfs_readdir_array_can_expand(struct nfs_cache_array *array)
+@@ -1474,9 +1474,7 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
  {
--	struct nfs_cache_array_entry *cache_entry;
--
- 	if (array->page_full)
- 		return -ENOSPC;
--	cache_entry = &array->array[array->size + 1];
--	if ((char *)cache_entry - (char *)array > PAGE_SIZE) {
-+	if (array->size == nfs_readdir_array_maxentries()) {
- 		array->page_full = 1;
- 		return -ENOSPC;
+ 	switch (error) {
+ 	case 1:
+-		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is valid\n",
+-			__func__, dentry);
+-		return 1;
++		break;
+ 	case 0:
+ 		/*
+ 		 * We can't d_drop the root of a disconnected tree:
+@@ -1485,13 +1483,10 @@ nfs_lookup_revalidate_done(struct inode *dir, struct dentry *dentry,
+ 		 * inodes on unmount and further oopses.
+ 		 */
+ 		if (inode && IS_ROOT(dentry))
+-			return 1;
+-		dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is invalid\n",
+-				__func__, dentry);
+-		return 0;
++			error = 1;
++		break;
  	}
-@@ -318,6 +321,11 @@ static struct page *nfs_readdir_page_get_locked(struct address_space *mapping,
- 	return page;
+-	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) lookup returned error %d\n",
+-				__func__, dentry, error);
++	trace_nfs_lookup_revalidate_exit(dir, dentry, 0, error);
+ 	return error;
  }
  
-+static loff_t nfs_readdir_page_offset(struct page *page)
-+{
-+	return (loff_t)page->index * (loff_t)nfs_readdir_array_maxentries();
-+}
-+
- static u64 nfs_readdir_page_last_cookie(struct page *page)
- {
- 	struct nfs_cache_array *array;
-@@ -448,7 +456,7 @@ static int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
- 		if (array->array[i].cookie == desc->dir_cookie) {
- 			struct nfs_inode *nfsi = NFS_I(file_inode(desc->file));
+@@ -1623,9 +1618,7 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
+ 		goto out_bad;
  
--			new_pos = desc->current_index + i;
-+			new_pos = nfs_readdir_page_offset(desc->page) + i;
- 			if (desc->attr_gencount != nfsi->attr_gencount ||
- 			    !nfs_readdir_inode_mapping_valid(nfsi)) {
- 				desc->duped = 0;
+ 	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
+-	error = nfs_lookup_revalidate_dentry(dir, dentry, inode);
+-	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
+-	return error;
++	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
+ out_valid:
+ 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
+ out_bad:
 -- 
 2.35.1
 
