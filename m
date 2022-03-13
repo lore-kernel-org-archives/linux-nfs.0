@@ -2,44 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7EA2C433FE
-	for <linux-nfs@archiver.kernel.org>; Sun, 13 Mar 2022 17:12:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 268D4C4332F
+	for <linux-nfs@archiver.kernel.org>; Sun, 13 Mar 2022 17:12:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235006AbiCMRNO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 13 Mar 2022 13:13:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60294 "EHLO
+        id S234169AbiCMRNP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 13 Mar 2022 13:13:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60320 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234169AbiCMRNM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2022 13:13:12 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 722A0139CDD
+        with ESMTP id S234803AbiCMRNN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Mar 2022 13:13:13 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C834E139CDA
         for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 10:12:05 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 120136122A
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 5E4D06121F
         for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:05 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 47D2CC340F4
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:04 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 15340C340E8
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Mar 2022 17:12:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647191524;
-        bh=Y1ipazY3pl3WZgPz62B3OLONuRP4E1z7/Fuod/m3bP0=;
+        s=k20201202; t=1647191525;
+        bh=AkViboMthu16I6ccMD5EDxf5c/hBYqowBXD+650a51k=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=peoOXRne408WXzODUcGL3YLVWWkS6IlDY4PdWBg7ZsdgRuWtAHQMrYSoXsr+IsVuj
-         3OPzvJH7aLngK0g83Il7mIOD1IViaKatolh0+CzKXsA+VGscW0c6ZB1Y9rEE8RficK
-         HsgiMiNHaLXOQQKTuhUMAhNaCI2tQspAPOspFXFdw3f6roZz+kx4Rb6J8RM393Gwfw
-         95aMhdbUsmxF2dyxjufhFINduLAjbG0c53gAjmQKIzhMq6y0LcAB/LEEs+HtTn5SNh
-         DSiz2IpfJ8IYNhTa9aw6bT4TJLTehMjeCf+mNGw+uQFfHoq6H8Gn14DEo7WjGxAicT
-         GfRdjqSXyw7GA==
+        b=YpWpw36zEyfmFpg0aVRJR8E6TpLX9LwJn7ZkI+rccs1Fa12vMAJvd0fWg01/iOqGu
+         S0GbEYa3EUJ7chH9RkkPCmvyf7BvDdUgLHrOS6yb9xWHwdlxbVM4q3037vLcIfTAT5
+         mh+msWtfHHXjRF2tmMlm+RX9Xxx/snqSKNYBTjMGt+I9+7ms69R3jelllqDv1Dgixz
+         J36SsNU+mCR5MYg5cYwnJXRUVEBRo0zzwz3TLfLEObtDvO+0NGIY23tcBhqgT33WOV
+         L3oagvzbKv6RrN1LFb4LvPQtReFxhT6eLDpb7Vt07fmv+FNXYFRIbPeepIu145jmI7
+         47GzY0yCvUu/Q==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v10 02/26] NFS: constify nfs_server_capable() and nfs_have_writebacks()
-Date:   Sun, 13 Mar 2022 13:05:33 -0400
-Message-Id: <20220313170557.5940-3-trondmy@kernel.org>
+Subject: [PATCH v10 04/26] NFS: Initialise the readdir verifier as best we can in nfs_opendir()
+Date:   Sun, 13 Mar 2022 13:05:35 -0400
+Message-Id: <20220313170557.5940-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220313170557.5940-2-trondmy@kernel.org>
+In-Reply-To: <20220313170557.5940-4-trondmy@kernel.org>
 References: <20220313170557.5940-1-trondmy@kernel.org>
  <20220313170557.5940-2-trondmy@kernel.org>
+ <20220313170557.5940-3-trondmy@kernel.org>
+ <20220313170557.5940-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -48,39 +50,27 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
+For the purpose of ensuring that opendir() followed by seekdir() work as
+correctly as possible, try to initialise the readdir verifier in
+nfs_opendir().
+
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/nfs_fs.h | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ fs/nfs/dir.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 72a732a5103c..6e10725887d1 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -363,7 +363,7 @@ static inline void nfs_mark_for_revalidate(struct inode *inode)
- 	spin_unlock(&inode->i_lock);
- }
- 
--static inline int nfs_server_capable(struct inode *inode, int cap)
-+static inline int nfs_server_capable(const struct inode *inode, int cap)
- {
- 	return NFS_SERVER(inode)->caps & cap;
- }
-@@ -587,12 +587,11 @@ extern struct nfs_commit_data *nfs_commitdata_alloc(bool never_fail);
- extern void nfs_commit_free(struct nfs_commit_data *data);
- bool nfs_commit_end(struct nfs_mds_commit_info *cinfo);
- 
--static inline int
--nfs_have_writebacks(struct inode *inode)
-+static inline bool nfs_have_writebacks(const struct inode *inode)
- {
- 	if (S_ISREG(inode->i_mode))
- 		return atomic_long_read(&NFS_I(inode)->nrequests) != 0;
--	return 0;
-+	return false;
- }
- 
- /*
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 1aa55cac9d9a..1dfbd05081ad 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -89,6 +89,7 @@ static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct inode *dir
+ 						      NFS_INO_REVAL_FORCED);
+ 		list_add(&ctx->list, &nfsi->open_files);
+ 		clear_bit(NFS_INO_FORCE_READDIR, &nfsi->flags);
++		memcpy(ctx->verf, nfsi->cookieverf, sizeof(ctx->verf));
+ 		spin_unlock(&dir->i_lock);
+ 		return ctx;
+ 	}
 -- 
 2.35.1
 
