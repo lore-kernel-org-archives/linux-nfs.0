@@ -2,142 +2,203 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A72DEC433EF
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Mar 2022 07:44:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F744C433FE
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Mar 2022 07:44:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230395AbiCQHpX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Mar 2022 03:45:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59488 "EHLO
+        id S230400AbiCQHpo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Mar 2022 03:45:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59622 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230380AbiCQHpT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2022 03:45:19 -0400
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BDCE2C12E7;
-        Thu, 17 Mar 2022 00:44:03 -0700 (PDT)
-Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22H3THLX001986;
-        Thu, 17 Mar 2022 07:44:01 GMT
+        with ESMTP id S230383AbiCQHpV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2022 03:45:21 -0400
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 622FFBF51F;
+        Thu, 17 Mar 2022 00:44:05 -0700 (PDT)
+Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22H3SxoI012057;
+        Thu, 17 Mar 2022 07:44:03 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
- bh=//dc5mO3m2lCgIQUlFf4OQ7mC2eW2A7e1z/rZkBbXCM=;
- b=ms9r/OhIR6ZKh02KUF4I8TMXapjLjKGK4KooiH6anskR1q2Mxvbw/Lr0EZJo6wNLe4E4
- pBHk4a7GJKRAOPzGBy7zhajzf9JYhWxHMYfnD8+WE/tTtQR2LZ8TdPbIaHpKwMNFObE8
- j9LiaNQLnLeQvQ8G/O6EBfYUZSrPWnKO+xijI6eO7qKSgCBklb/JQt2CXPgPFsz2FQFb
- iD8B05dB9DB8nf7MoxeP2Snu57EWdMQg9YVHR6t/+Cxo5Wp1XdE8o1lLK4MWm19y/PHy
- bATpqvOTs1UA7ja3fEgym1dtn+UhdxQdrZPgHkfVFams1++vkAESBwzFcoHPxBT/NyL5 YQ== 
+ bh=1rfMiQOymJmvFWqAdtO1JO6R4JwEKzTHyNgN2fdB/zQ=;
+ b=VcV5vRkt8//rUIL4QVKGxoVXf0HzKeZT+wx/CJ4bDdX0K4+5hwIK3ShPTRcnLW8Bh0Ys
+ Fiuy+gtURBQlYhYGBBaxIVgyIw7cN/7DyaZZsh+UoMzqJClVK8TyjGRvbU5v1DWZZb+U
+ 8fJLIlwQyDcreZ/d1BezJWTfDRojxG7YIDm+vJsg0FZQHOGUpXR66hYQyKynP/ph6jrj
+ ELCFhDFvWi+aRTrCZG66qzSMk/3kCCmf3KzjK1xdQqLx902apISl7aua1771XsOea8Ha
+ p03l6zl7ATvtHwSa3IpcGGe+It3AkDQn0YlSbh7Adey+ygH0kP+i2rXvG1f/hcjEp/9q Zg== 
 Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3et5xwr5e8-1
+        by mx0b-00069f02.pphosted.com with ESMTP id 3et60rg70c-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 17 Mar 2022 07:44:00 +0000
+        Thu, 17 Mar 2022 07:44:03 +0000
 Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 22H7fnWA034958;
-        Thu, 17 Mar 2022 07:43:59 GMT
+        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 22H7fqJi035051;
+        Thu, 17 Mar 2022 07:44:02 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3erhy2wr02-1
+        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3erhy2wr12-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 17 Mar 2022 07:43:59 +0000
+        Thu, 17 Mar 2022 07:44:02 +0000
 Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22H7hoGr038783;
-        Thu, 17 Mar 2022 07:43:59 GMT
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22H7hoGv038783;
+        Thu, 17 Mar 2022 07:44:02 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3erhy2wqv5-9;
-        Thu, 17 Mar 2022 07:43:58 +0000
+        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3erhy2wqv5-11;
+        Thu, 17 Mar 2022 07:44:02 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, bfields@fieldses.org
 Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC v17 08/11] NFSD: Update find_client_in_id_table() to handle courtesy client
-Date:   Thu, 17 Mar 2022 00:43:45 -0700
-Message-Id: <1647503028-11966-9-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH RFC v17 10/11] NFSD: Update laundromat to handle courtesy clients
+Date:   Thu, 17 Mar 2022 00:43:47 -0700
+Message-Id: <1647503028-11966-11-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1647503028-11966-1-git-send-email-dai.ngo@oracle.com>
 References: <1647503028-11966-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-GUID: lUP3A7qeVmCQOgBVicXcgFxFrnZlLsuC
-X-Proofpoint-ORIG-GUID: lUP3A7qeVmCQOgBVicXcgFxFrnZlLsuC
+X-Proofpoint-GUID: dYbiqqiwAeCS4H1eoNr2p4PDBc1bnKL0
+X-Proofpoint-ORIG-GUID: dYbiqqiwAeCS4H1eoNr2p4PDBc1bnKL0
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Update find_client_in_id_table to:
- . skip client with CLIENT_EXPIRED; discarded courtesy client
- . if courtesy client was found then set CLIENT_RECONNECTED
-   state so caller can take appropriate action.
+Add nfs4_anylock_blocker and nfs4_lockowner_has_blockers to check
+if an expired client has any lock blockers
 
-Update find_confirmed_client to discard courtesy client.
-Update lookup_clientid to call find_client_in_id_table directly.
-Update set_client to create client record for courtesy client.
-Update find_cpntf_state to discard courtesy client.
+Update nfs4_get_client_reaplist to:
+ . add courtesy client in CLIENT_EXPIRED state to reaplist.
+ . detect if expired client still has state and no blockers then
+   transit it to courtesy client by setting CLIENT_COURTESY state
+   and removing the client record.
 
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 91 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3b1e857eabee..102b4aae286d 100644
+index b4b976e00ce6..d5758c7101dc 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2893,6 +2893,8 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
-+			if (nfsd4_courtesy_clnt_expired(clp))
+@@ -5755,24 +5755,106 @@ static void nfsd4_ssc_expire_umount(struct nfsd_net *nn)
+ }
+ #endif
+ 
++/* Check if any lock belonging to this lockowner has any blockers */
++static bool
++nfs4_lockowner_has_blockers(struct nfs4_lockowner *lo)
++{
++	struct file_lock_context *ctx;
++	struct nfs4_ol_stateid *stp;
++	struct nfs4_file *nf;
++
++	list_for_each_entry(stp, &lo->lo_owner.so_stateids, st_perstateowner) {
++		nf = stp->st_stid.sc_file;
++		ctx = nf->fi_inode->i_flctx;
++		if (!ctx)
++			continue;
++		if (locks_owner_has_blockers(ctx, lo))
++			return true;
++	}
++	return false;
++}
++
++static bool
++nfs4_anylock_blockers(struct nfs4_client *clp)
++{
++	int i;
++	struct nfs4_stateowner *so;
++	struct nfs4_lockowner *lo;
++
++	spin_lock(&clp->cl_lock);
++	for (i = 0; i < OWNER_HASH_SIZE; i++) {
++		list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[i],
++				so_strhash) {
++			if (so->so_is_open_owner)
 +				continue;
- 			renew_client_locked(clp);
- 			return clp;
- 		}
-@@ -2904,9 +2906,15 @@ static struct nfs4_client *
- find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- {
- 	struct list_head *tbl = nn->conf_id_hashtbl;
-+	struct nfs4_client *clp;
- 
- 	lockdep_assert_held(&nn->client_lock);
--	return find_client_in_id_table(tbl, clid, sessions);
-+	clp = find_client_in_id_table(tbl, clid, sessions);
-+	if (clp && clp->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) {
-+		nfsd4_discard_courtesy_clnt(clp);
-+		clp = NULL;
++			lo = lockowner(so);
++			if (nfs4_lockowner_has_blockers(lo)) {
++				spin_unlock(&clp->cl_lock);
++				return true;
++			}
++		}
 +	}
-+	return clp;
- }
- 
- static struct nfs4_client *
-@@ -4822,9 +4830,10 @@ static struct nfs4_client *lookup_clientid(clientid_t *clid, bool sessions,
- 						struct nfsd_net *nn)
++	spin_unlock(&clp->cl_lock);
++	return false;
++}
++
+ static void
+ nfs4_get_client_reaplist(struct nfsd_net *nn, struct list_head *reaplist,
+ 				struct laundry_time *lt)
  {
- 	struct nfs4_client *found;
-+	struct list_head *tbl = nn->conf_id_hashtbl;
+ 	struct list_head *pos, *next;
+ 	struct nfs4_client *clp;
++	bool cour;
++	struct list_head cslist;
  
+ 	INIT_LIST_HEAD(reaplist);
++	INIT_LIST_HEAD(&cslist);
  	spin_lock(&nn->client_lock);
--	found = find_confirmed_client(clid, sessions, nn);
-+	found = find_client_in_id_table(tbl, clid, sessions);
- 	if (found)
- 		atomic_inc(&found->cl_rpc_users);
+ 	list_for_each_safe(pos, next, &nn->client_lru) {
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		if (!state_expired(lt, clp->cl_time))
+ 			break;
+-		if (mark_client_expired_locked(clp))
++
++		if (!client_has_state(clp))
++			goto exp_client;
++
++		if (clp->cl_cs_client_state == NFSD4_CLIENT_EXPIRED)
++			goto exp_client;
++		cour = (clp->cl_cs_client_state == NFSD4_CLIENT_COURTESY);
++		if (cour && ktime_get_boottime_seconds() >=
++				(clp->cl_time + NFSD_COURTESY_CLIENT_TIMEOUT))
++			goto exp_client;
++		if (nfs4_anylock_blockers(clp)) {
++exp_client:
++			if (mark_client_expired_locked(clp))
++				continue;
++			list_add(&clp->cl_lru, reaplist);
+ 			continue;
+-		list_add(&clp->cl_lru, reaplist);
++		}
++		if (!cour) {
++			spin_lock(&clp->cl_cs_lock);
++			clp->cl_cs_client_state = NFSD4_CLIENT_COURTESY;
++			spin_unlock(&clp->cl_cs_lock);
++			list_add(&clp->cl_cs_list, &cslist);
++		}
+ 	}
  	spin_unlock(&nn->client_lock);
-@@ -4849,6 +4858,8 @@ static __be32 set_client(clientid_t *clid,
- 	cstate->clp = lookup_clientid(clid, false, nn);
- 	if (!cstate->clp)
- 		return nfserr_expired;
-+	if (cstate->clp->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED)
-+		nfsd4_client_record_create(cstate->clp);
- 	return nfs_ok;
++
++	while (!list_empty(&cslist)) {
++		clp = list_first_entry(&cslist, struct nfs4_client, cl_cs_list);
++		list_del_init(&clp->cl_cs_list);
++		spin_lock(&clp->cl_cs_lock);
++		/*
++		 * Client might have re-connected. Make sure it's
++		 * still in courtesy state before removing its record.
++		 */
++		if (clp->cl_cs_client_state != NFSD4_CLIENT_COURTESY) {
++			spin_unlock(&clp->cl_cs_lock);
++			continue;
++		}
++		spin_unlock(&clp->cl_cs_lock);
++		nfsd4_client_record_remove(clp);
++	}
  }
  
-@@ -6168,6 +6179,13 @@ static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- 	found = lookup_clientid(&cps->cp_p_clid, true, nn);
- 	if (!found)
- 		goto out;
-+	if (found->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) {
-+		nfsd4_discard_courtesy_clnt(found);
-+		if (atomic_dec_and_lock(&found->cl_rpc_users,
-+				&nn->client_lock))
-+			spin_unlock(&nn->client_lock);
-+		goto out;
-+	}
- 
- 	*stid = find_stateid_by_type(found, &cps->cp_p_stateid,
- 			NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID);
+ static time64_t
+@@ -5818,6 +5900,13 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+ 		if (!state_expired(&lt, dp->dl_time))
+ 			break;
++		spin_lock(&clp->cl_cs_lock);
++		if (clp->cl_cs_client_state == NFSD4_CLIENT_COURTESY) {
++			clp->cl_cs_client_state = NFSD4_CLIENT_EXPIRED;
++			spin_unlock(&clp->cl_cs_lock);
++			continue;
++		}
++		spin_unlock(&clp->cl_cs_lock);
+ 		WARN_ON(!unhash_delegation_locked(dp));
+ 		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
 -- 
 2.9.5
 
