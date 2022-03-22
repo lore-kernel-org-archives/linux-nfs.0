@@ -2,176 +2,176 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BB900C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 21:50:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 831CFC433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 22:07:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236933AbiCVVwM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 22 Mar 2022 17:52:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45048 "EHLO
+        id S237541AbiCVWId (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 22 Mar 2022 18:08:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56314 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236941AbiCVVvw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2022 17:51:52 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 01672674F5;
-        Tue, 22 Mar 2022 14:50:23 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 2665F72C6; Tue, 22 Mar 2022 17:50:23 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 2665F72C6
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1647985823;
-        bh=4zP0pIJc2qHmjGMC2LudiwpznnevC8oMBvzNghI9J/M=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=yDmrwKUu4+QOMjJc9xt/C9ApF8Uzgl5wD3s50a5mCA0ny5GZ0xP63Wb7ebcnNqgDI
-         lVas4m2PyegIQFpUWb5MVJGZgGtsNEIeK/bHncSWRn1fljRfRCOUJdNhMx8v06zx53
-         qzmlqsCi+gr3f4EjdJ/TzpnQwAwB4L3EiBqAsn4s=
-Date:   Tue, 22 Mar 2022 17:50:23 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Dai Ngo <dai.ngo@oracle.com>
-Cc:     chuck.lever@oracle.com, jlayton@redhat.com,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH RFC v17 06/11] NFSD: Update find_clp_in_name_tree() to
- handle courtesy client
-Message-ID: <20220322215023.GA13980@fieldses.org>
-References: <1647503028-11966-1-git-send-email-dai.ngo@oracle.com>
- <1647503028-11966-7-git-send-email-dai.ngo@oracle.com>
+        with ESMTP id S237435AbiCVWIc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2022 18:08:32 -0400
+X-Greylist: delayed 1502 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 22 Mar 2022 15:07:03 PDT
+Received: from gateway22.websitewelcome.com (gateway22.websitewelcome.com [192.185.47.206])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C2AEB6F4BB
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 15:07:03 -0700 (PDT)
+Received: from cm10.websitewelcome.com (cm10.websitewelcome.com [100.42.49.4])
+        by gateway22.websitewelcome.com (Postfix) with ESMTP id C8546FDE4
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 16:19:17 -0500 (CDT)
+Received: from 162-215-252-75.unifiedlayer.com ([208.91.199.152])
+        by cmsmtp with SMTP
+        id WluPnKV8CRnrrWluPngDZr; Tue, 22 Mar 2022 16:19:17 -0500
+X-Authority-Reason: nr=8
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=roeck-us.net; s=default; h=In-Reply-To:Content-Type:MIME-Version:References
+        :Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:Content-Transfer-Encoding
+        :Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
+        Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
+        List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=Al7pVKSedpXzR2mUJv99Hxat4XtGmTagJN/XJ1s2Hmo=; b=sLKrSHw+KVgnGkbzOB/VEO9Fg0
+        KeOJMxYu0Bnmzx+A12YhIb/k/Tk3UK2ZVTx0zQcuzkHsdLKhFvMGi8TmZHzt23hyDOYlMO/8cY/PQ
+        Yunn41qFPTaRF+ofo07duityfQ5AVD1okUG5CggtfPtzAAvJALxs7O9IRjat/EIXIbzstKLf16y54
+        RfQAb/09FG7Hm/HVBSs2kn974LsMYF0m6yN1DlVBpdIJr7IDlc8QTKAG3WsJoVWrO1Tn4O6a7/p8Z
+        Gz9TP+2eFoS0gMfpY7o1mvfTMdBvZOp+5drONWxhiqFH/1A6QnPVE8wlQBppd4+BysFkDdGt5WtRp
+        L30Scr2A==;
+Received: from 108-223-40-66.lightspeed.sntcca.sbcglobal.net ([108.223.40.66]:57612 helo=localhost)
+        by bh-25.webhostbox.net with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        (Exim 4.94.2)
+        (envelope-from <linux@roeck-us.net>)
+        id 1nWluO-000g4u-OE; Tue, 22 Mar 2022 21:19:16 +0000
+Date:   Tue, 22 Mar 2022 14:19:15 -0700
+From:   Guenter Roeck <linux@roeck-us.net>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        Mike Snitzer <snitzer@redhat.com>,
+        Philipp Reisner <philipp.reisner@linbit.com>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Roger Pau =?iso-8859-1?Q?Monn=E9?= <roger.pau@citrix.co>,
+        dm-devel@redhat.com, "Md . Haris Iqbal " <haris.iqbal@ionos.com>,
+        Lars Ellenberg <lars.ellenberg@linbit.com>,
+        linux-fsdevel@vger.kernel.org, xen-devel@lists.xenproject.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        ntfs3@lists.linux.dev, Jack Wang <jinpu.wang@ionos.com>,
+        Pavel Begunkov <asml.silence@gmail.com>,
+        drbd-dev@lists.linbit.com
+Subject: Re: [dm-devel] [PATCH 01/19] fs: remove mpage_alloc
+Message-ID: <20220322211915.GA2413063@roeck-us.net>
+References: <20220124091107.642561-1-hch@lst.de>
+ <20220124091107.642561-2-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1647503028-11966-7-git-send-email-dai.ngo@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <20220124091107.642561-2-hch@lst.de>
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - bh-25.webhostbox.net
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - roeck-us.net
+X-BWhitelist: no
+X-Source-IP: 108.223.40.66
+X-Source-L: No
+X-Exim-ID: 1nWluO-000g4u-OE
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
+X-Source-Sender: 108-223-40-66.lightspeed.sntcca.sbcglobal.net (localhost) [108.223.40.66]:57612
+X-Source-Auth: guenter@roeck-us.net
+X-Email-Count: 17
+X-Source-Cap: cm9lY2s7YWN0aXZzdG07YmgtMjUud2ViaG9zdGJveC5uZXQ=
+X-Local-Domain: yes
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 17, 2022 at 12:43:43AM -0700, Dai Ngo wrote:
-> Update find_clp_in_name_tree to check and expire courtesy client.
+On Mon, Jan 24, 2022 at 10:10:49AM +0100, Christoph Hellwig wrote:
+> open code mpage_alloc in it's two callers and simplify the results
+> because of the context:
 > 
-> Update find_confirmed_client_by_name to discard the courtesy
-> client by setting CLIENT_EXPIRED.
+>  - __mpage_writepage always passes GFP_NOFS and can thus always sleep and
+>     will never get a NULL return from bio_alloc at all.
+>  - do_mpage_readpage can only get a non-sleeping context for readahead
+>    which never sets PF_MEMALLOC and thus doesn't need the retry loop
+>    either.
 > 
-> Update nfsd4_setclientid to expire client with CLIENT_EXPIRED
-> state to prevent multiple confirmed clients with the same name
-> on the conf_id_hashtbl list.
-
-I could use a little more "why" here.
-
-I'll give it another read, but right now I'm just not understanding how
-this is meant to work.
-
---b.
-
+> Both cases will never have __GFP_HIGH set.
 > 
-> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
-> ---
->  fs/nfsd/nfs4state.c | 27 ++++++++++++++++++++++++---
->  fs/nfsd/state.h     | 22 ++++++++++++++++++++++
->  2 files changed, 46 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c6b5e05c9c34..dc0e60bf694c 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2834,8 +2834,11 @@ find_clp_in_name_tree(struct xdr_netobj *name, struct rb_root *root)
->  			node = node->rb_left;
->  		else if (cmp < 0)
->  			node = node->rb_right;
-> -		else
-> +		else {
-> +			if (nfsd4_courtesy_clnt_expired(clp))
-> +				return NULL;
->  			return clp;
-> +		}
->  	}
->  	return NULL;
->  }
-> @@ -2914,8 +2917,15 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
->  static struct nfs4_client *
->  find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
->  {
-> +	struct nfs4_client *clp;
-> +
->  	lockdep_assert_held(&nn->client_lock);
-> -	return find_clp_in_name_tree(name, &nn->conf_name_tree);
-> +	clp = find_clp_in_name_tree(name, &nn->conf_name_tree);
-> +	if (clp && clp->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) {
-> +		nfsd4_discard_courtesy_clnt(clp);
-> +		clp = NULL;
-> +	}
-> +	return clp;
->  }
->  
->  static struct nfs4_client *
-> @@ -4032,12 +4042,19 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	struct nfs4_client	*unconf = NULL;
->  	__be32 			status;
->  	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-> +	struct nfs4_client	*cclient = NULL;
->  
->  	new = create_client(clname, rqstp, &clverifier);
->  	if (new == NULL)
->  		return nfserr_jukebox;
->  	spin_lock(&nn->client_lock);
-> -	conf = find_confirmed_client_by_name(&clname, nn);
-> +	/* find confirmed client by name */
-> +	conf = find_clp_in_name_tree(&clname, &nn->conf_name_tree);
-> +	if (conf && conf->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) {
-> +		cclient = conf;
-> +		conf = NULL;
-> +	}
-> +
->  	if (conf && client_has_state(conf)) {
->  		status = nfserr_clid_inuse;
->  		if (clp_used_exchangeid(conf))
-> @@ -4068,7 +4085,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	new = NULL;
->  	status = nfs_ok;
->  out:
-> +	if (cclient)
-> +		unhash_client_locked(cclient);
->  	spin_unlock(&nn->client_lock);
-> +	if (cclient)
-> +		expire_client(cclient);
->  	if (new)
->  		free_client(new);
->  	if (unconf) {
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index d156ae3ab46c..14b2c158ccca 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -735,6 +735,7 @@ extern void nfsd4_client_record_remove(struct nfs4_client *clp);
->  extern int nfsd4_client_record_check(struct nfs4_client *clp);
->  extern void nfsd4_record_grace_done(struct nfsd_net *nn);
->  
-> +/* courteous server */
->  static inline bool
->  nfsd4_expire_courtesy_clnt(struct nfs4_client *clp)
->  {
-> @@ -749,4 +750,25 @@ nfsd4_expire_courtesy_clnt(struct nfs4_client *clp)
->  	return rc;
->  }
->  
-> +static inline void
-> +nfsd4_discard_courtesy_clnt(struct nfs4_client *clp)
-> +{
-> +	spin_lock(&clp->cl_cs_lock);
-> +	clp->cl_cs_client_state = NFSD4_CLIENT_EXPIRED;
-> +	spin_unlock(&clp->cl_cs_lock);
-> +}
-> +
-> +static inline bool
-> +nfsd4_courtesy_clnt_expired(struct nfs4_client *clp)
-> +{
-> +	bool rc = false;
-> +
-> +	spin_lock(&clp->cl_cs_lock);
-> +	if (clp->cl_cs_client_state == NFSD4_CLIENT_EXPIRED)
-> +		rc = true;
-> +	if (clp->cl_cs_client_state == NFSD4_CLIENT_COURTESY)
-> +		clp->cl_cs_client_state = NFSD4_CLIENT_RECONNECTED;
-> +	spin_unlock(&clp->cl_cs_lock);
-> +	return rc;
-> +}
->  #endif   /* NFSD4_STATE_H */
-> -- 
-> 2.9.5
+
+With this patch in the tree, I get:
+
+[    1.198134] Unexpected gfp: 0x2 (__GFP_HIGHMEM). Fixing up to gfp: 0x1192888 (GFP_NOWAIT|__GFP_FS|__GFP_NOWARN|__GFP_NORETRY|__GFP_NOMEMALLOC|__GFP_HARDWALL|__GFP_MOVABLE|__GFP_SKIP_KASAN_POISON). Fix your code!
+[    1.198783] CPU: 0 PID: 1 Comm: init Not tainted 5.17.0-01402-g8565d64430f8 #1
+[    1.199165] Stack : 0000000000000042 0000000000000000 0000000000000008 dae882cc7dea7ec4
+[    1.199563]         a8000000014f0c00 0000000000000000 a80000000146b2c8 ffffffff80d3a920
+[    1.199750]         a80000000146b0e0 0000000000000001 0000000000000000 0000000000000000
+[    1.199936]         000000000003087f 0000000000000000 ffffffff806d9f54 0000000000000000
+[    1.200121]         a80000000146b16f ffffffff80da0000 0000000000000001 000000000119288a
+[    1.200306]         ffffffff80da0000 ffffffffffffffff 000000000119288a 000000000119288a
+[    1.200491]         a800000001416f00 0000000000000000 ffffffff80774d30 ffffffffa0042718
+[    1.200676]         ffffffff80ec2158 a800000001468000 a80000000146b2c0 0000000000000000
+[    1.200861]         ffffffff80b55730 0000000000000000 a80000000146b3f8 ffffffff80d3a920
+[    1.201046]         0000000000000001 000000000119288a ffffffff80108fa0 dae882cc7dea7ec4
+[    1.201236]         ...
+[    1.201548] Call Trace:
+[    1.201622] [<ffffffff80108fa0>] show_stack+0x38/0x118
+[    1.201960] [<ffffffff80b55730>] dump_stack_lvl+0x50/0x6c
+[    1.202105] [<ffffffff80b4d8a4>] kmalloc_fix_flags+0x60/0x88
+[    1.202249] [<ffffffff802b40f8>] new_slab+0x2d8/0x320
+[    1.202375] [<ffffffff802b6844>] ___slab_alloc.constprop.0+0x33c/0x5e8
+[    1.202528] [<ffffffff802b6b24>] __slab_alloc.constprop.0+0x34/0x50
+[    1.202675] [<ffffffff802b72b8>] kmem_cache_alloc+0x320/0x368
+[    1.202811] [<ffffffff805e2a68>] bvec_alloc+0x78/0x128
+[    1.202936] [<ffffffff805e2fac>] bio_alloc_bioset+0x194/0x340
+[    1.203073] [<ffffffff80325bd8>] do_mpage_readpage+0x540/0x6e0
+[    1.203213] [<ffffffff80325e38>] mpage_readahead+0xc0/0x198
+[    1.203346] [<ffffffff802583a8>] read_pages+0xc0/0x2e0
+[    1.203472] [<ffffffff802589a4>] page_cache_ra_unbounded+0x1cc/0x290
+[    1.203622] [<ffffffff8024e2fc>] filemap_fault+0x4f4/0x7e8
+[    1.203753] [<ffffffff80282b2c>] __do_fault+0x44/0x190
+[    1.203878] [<ffffffff80288e0c>] __handle_mm_fault+0x7e4/0xcd0
+[    1.204015] [<ffffffff80289408>] handle_mm_fault+0x110/0x258
+[    1.204149] [<ffffffff801220e0>] do_page_fault+0x110/0x4f0
+[    1.204278] [<ffffffff801288d8>] tlb_do_page_fault_1+0x108/0x110
+[    1.204421] [<ffffffff8035eddc>] padzero+0x64/0x98
+[    1.204538] [<ffffffff80360618>] load_elf_binary+0x1808/0x18d0
+[    1.204677] [<ffffffff802d9f40>] bprm_execve+0x240/0x5a8
+[    1.204806] [<ffffffff802db49c>] kernel_execve+0x144/0x200
+[    1.204937] [<ffffffff80b4a658>] try_to_run_init_process+0x18/0x58
+[    1.205085] [<ffffffff80b5ecc0>] kernel_init+0xb4/0x10c
+[    1.205220] [<ffffffff80102558>] ret_from_kernel_thread+0x14/0x1c
+
+with some qemu emulations. Bisect log is attached.
+
+I can not easily revert the patch since an attempt to do so causes
+conflicts, so I can not test upstream without this patch.
+
+Guenter
+
+---
+# bad: [8565d64430f8278bea38dab0a3ab60b4e11c71e4] Merge tag 'bounds-fixes-v5.18-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/kees/linux
+# good: [f443e374ae131c168a065ea1748feac6b2e76613] Linux 5.17
+git bisect start 'HEAD' 'v5.17'
+# good: [5628b8de1228436d47491c662dc521bc138a3d43] Merge tag 'random-5.18-rc1-for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/crng/random
+git bisect good 5628b8de1228436d47491c662dc521bc138a3d43
+# bad: [69d1dea852b54eecd8ad2ec92a7fd371e9aec4bd] Merge tag 'for-5.18/drivers-2022-03-18' of git://git.kernel.dk/linux-block
+git bisect bad 69d1dea852b54eecd8ad2ec92a7fd371e9aec4bd
+# good: [b080cee72ef355669cbc52ff55dc513d37433600] Merge tag 'for-5.18/io_uring-statx-2022-03-18' of git://git.kernel.dk/linux-block
+git bisect good b080cee72ef355669cbc52ff55dc513d37433600
+# bad: [22027a9811349de28f81e13e20e83299099acd3a] nvmet: replace ida_simple[get|remove] with the simler ida_[alloc|free]
+git bisect bad 22027a9811349de28f81e13e20e83299099acd3a
+# bad: [672fdcf0e7de3b1e39416ac85abf178f023271f1] block: partition include/linux/blk-cgroup.h
+git bisect bad 672fdcf0e7de3b1e39416ac85abf178f023271f1
+# bad: [b42c1fc3d55e077d36718ad9800d89100b2aff81] block: fix the kerneldoc for bio_end_io_acct
+git bisect bad b42c1fc3d55e077d36718ad9800d89100b2aff81
+# bad: [4b1dc86d1857f1007865cab759f2285280692eee] drbd: bio_alloc can't fail if it is allow to sleep
+git bisect bad 4b1dc86d1857f1007865cab759f2285280692eee
+# bad: [f0d911927b3c7cf5f9edb5941d0287144a602d0d] nilfs2: remove nilfs_alloc_seg_bio
+git bisect bad f0d911927b3c7cf5f9edb5941d0287144a602d0d
+# good: [e7243285c0fc87054990fcde630583586ff8ed5f] block: move blk_drop_partitions to blk.h
+git bisect good e7243285c0fc87054990fcde630583586ff8ed5f
+# bad: [d5f68a42da7a4516e7503c281a54a58727f07dc3] fs: remove mpage_alloc
+git bisect bad d5f68a42da7a4516e7503c281a54a58727f07dc3
+# good: [322cbb50de711814c42fb088f6d31901502c711a] block: remove genhd.h
+git bisect good 322cbb50de711814c42fb088f6d31901502c711a
+# first bad commit: [d5f68a42da7a4516e7503c281a54a58727f07dc3] fs: remove mpage_alloc
