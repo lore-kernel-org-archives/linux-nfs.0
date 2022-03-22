@@ -2,52 +2,45 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74D2EC433FE
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:22:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B3E50C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:54:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234626AbiCVBYA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Mar 2022 21:24:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42714 "EHLO
+        id S235195AbiCVB4C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Mar 2022 21:56:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54098 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234645AbiCVBX5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:23:57 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 45139289BC
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:22:31 -0700 (PDT)
+        with ESMTP id S235139AbiCVB4A (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:56:00 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 96D3843EC2
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:54:34 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 8579D615E2
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:22:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9CE4EC340EE;
-        Tue, 22 Mar 2022 01:22:29 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 1F9AF60AE1
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:54:34 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2FB94C340EE;
+        Tue, 22 Mar 2022 01:54:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647912149;
-        bh=jBsBs0MYAmbMA+BaUY2qfe0Peph2k09n9zyI5ZjvPMw=;
+        s=k20201202; t=1647914073;
+        bh=TpFozSPyg7PH9QSv7+9Ca1GGRZqck54LuncQ6km/yVM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=UivfGdqSdXZi0VsoX6VKOSqFVPPvfw5EpeliHjDk2rw3LRw5RgeCkJwzonMzWeNym
-         dJdIiCrBd9JOXIPg3bzuYUw/tCJhFYyMZhtnZq/S6cy/eNC9wUaWQ1vHI2+WxhYLOA
-         QXu0eIw9+qMl+/e2/IcoAQelNwzpiLo+MdE8uG3FFhWjsfk20ZmthwKej9qyPxdr/t
-         YOjpjUWJIXPNf3U1QXnLInZ2rrPlahl9RpQ0wcBX6gxmCtyw+9DYpuWkcmX2Zv1QBd
-         XLWgK6DcWQVlFpEbrqzMpMYBYTZax7YWxaPqWU+FPBaftHPZXoItP1wqbCf3P31+0U
-         P7MZ6AYQ9KPbQ==
+        b=KPjDhmxVgFg76pCE4V6GXV92+dm5JSf3uQHe1MG1aYfvkKKk91FTh7RcM2Gy4jHcg
+         IhZBFNiZDKLq9eGvWpXBWHiPe2Tohs42Is7zTUa2NT6B1kNXzQf4/AuyTVtb6kguYu
+         pbrUrbxXO+nJ9AsrySop0/YpaK0IvqEdZw5DOOW48LjXxaxCGISvhaY6/glvv13n8T
+         WPhx/gwQwRSQFFmxbpH++vsHeXJju52SHhVddWoim9RQSuri4jHQHzyc481dlLYlzf
+         lZW/JZqVfUDvlNMjRvA7uQ4z+mMAc5WPiejTGN39CAnwynwP56D1xXYMjeY/JOPxe6
+         vYSUBF0gqcbNw==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Cc:     Neil Brown <neilb@suse.de>
-Subject: [PATCH v2 9/9] pNFS/files: Ensure pNFS allocation modes are consistent with nfsiod
-Date:   Mon, 21 Mar 2022 21:16:18 -0400
-Message-Id: <20220322011618.1052288-10-trondmy@kernel.org>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Enrico Scholz <enrico.scholz@sigma-chemnitz.de>
+Subject: [PATCH v2 1/9] NFS: Fix memory allocation in rpc_malloc()
+Date:   Mon, 21 Mar 2022 21:47:38 -0400
+Message-Id: <20220322014746.1052984-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220322011618.1052288-9-trondmy@kernel.org>
-References: <20220322011618.1052288-1-trondmy@kernel.org>
- <20220322011618.1052288-2-trondmy@kernel.org>
- <20220322011618.1052288-3-trondmy@kernel.org>
- <20220322011618.1052288-4-trondmy@kernel.org>
- <20220322011618.1052288-5-trondmy@kernel.org>
- <20220322011618.1052288-6-trondmy@kernel.org>
- <20220322011618.1052288-7-trondmy@kernel.org>
- <20220322011618.1052288-8-trondmy@kernel.org>
- <20220322011618.1052288-9-trondmy@kernel.org>
+In-Reply-To: <20220322014746.1052984-1-trondmy@kernel.org>
+References: <20220322014746.1052984-1-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -56,28 +49,73 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that pNFS file commit allocations in rpciod/nfsiod callbacks can
-fail in low memory mode, so that the threads don't block and loop
-forever.
+When in a low memory situation, we do want rpciod to kick off direct
+reclaim in the case where that helps, however we don't want it looping
+forever in mempool_alloc().
+So first try allocating from the slab using GFP_KERNEL | __GFP_NORETRY,
+and then fall back to a GFP_NOWAIT allocation from the mempool.
+
+Ditto for rpc_alloc_task()
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/filelayout/filelayout.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/sunrpc/sched.h |  1 +
+ net/sunrpc/sched.c           | 21 ++++++++++++++-------
+ 2 files changed, 15 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 9c96e3e5ed35..76deddab0a8f 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -1075,7 +1075,7 @@ filelayout_setup_ds_info(struct pnfs_ds_commit_info *fl_cinfo,
- 	unsigned int size = (fl->stripe_type == STRIPE_SPARSE) ?
- 		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 56710f8056d3..1d7a3e51b795 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -262,6 +262,7 @@ void		rpc_destroy_mempool(void);
+ extern struct workqueue_struct *rpciod_workqueue;
+ extern struct workqueue_struct *xprtiod_workqueue;
+ void		rpc_prepare_task(struct rpc_task *task);
++gfp_t		rpc_task_gfp_mask(void);
  
--	new = pnfs_alloc_commit_array(size, GFP_NOIO);
-+	new = pnfs_alloc_commit_array(size, nfs_io_gfp_mask());
- 	if (new) {
- 		spin_lock(&inode->i_lock);
- 		array = pnfs_add_commit_array(fl_cinfo, new, lseg);
+ static inline int rpc_wait_for_completion_task(struct rpc_task *task)
+ {
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 7c8f87ebdbc0..d59a033820be 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -57,6 +57,13 @@ struct workqueue_struct *rpciod_workqueue __read_mostly;
+ struct workqueue_struct *xprtiod_workqueue __read_mostly;
+ EXPORT_SYMBOL_GPL(xprtiod_workqueue);
+ 
++gfp_t rpc_task_gfp_mask(void)
++{
++	if (current->flags & PF_WQ_WORKER)
++		return GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN;
++	return GFP_KERNEL;
++}
++
+ unsigned long
+ rpc_task_timeout(const struct rpc_task *task)
+ {
+@@ -1030,15 +1037,15 @@ int rpc_malloc(struct rpc_task *task)
+ 	struct rpc_rqst *rqst = task->tk_rqstp;
+ 	size_t size = rqst->rq_callsize + rqst->rq_rcvsize;
+ 	struct rpc_buffer *buf;
+-	gfp_t gfp = GFP_KERNEL;
+-
+-	if (RPC_IS_ASYNC(task))
+-		gfp = GFP_NOWAIT | __GFP_NOWARN;
++	gfp_t gfp = rpc_task_gfp_mask();
+ 
+ 	size += sizeof(struct rpc_buffer);
+-	if (size <= RPC_BUFFER_MAXSIZE)
+-		buf = mempool_alloc(rpc_buffer_mempool, gfp);
+-	else
++	if (size <= RPC_BUFFER_MAXSIZE) {
++		buf = kmem_cache_alloc(rpc_buffer_slabp, gfp);
++		/* Reach for the mempool if dynamic allocation fails */
++		if (!buf && RPC_IS_ASYNC(task))
++			buf = mempool_alloc(rpc_buffer_mempool, GFP_NOWAIT);
++	} else
+ 		buf = kmalloc(size, gfp);
+ 
+ 	if (!buf)
 -- 
 2.35.1
 
