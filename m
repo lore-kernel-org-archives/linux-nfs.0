@@ -2,44 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 79DE8C4332F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3A62C433F5
 	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:54:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235139AbiCVB4I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Mar 2022 21:56:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54392 "EHLO
+        id S235166AbiCVB4J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Mar 2022 21:56:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54466 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235166AbiCVB4F (ORCPT
+        with ESMTP id S235189AbiCVB4F (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:56:05 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 076B51D306
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:54:38 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24CC612AE3
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:54:39 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 9068160B15
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:54:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A42CCC340F0;
-        Tue, 22 Mar 2022 01:54:36 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id B2DB860B09
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:54:38 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C6FE0C340EE;
+        Tue, 22 Mar 2022 01:54:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647914077;
-        bh=cCVkVoMAlDQfoVIQE3s7VVfidrskFyjLShmlmXXc8Qw=;
+        s=k20201202; t=1647914078;
+        bh=jBsBs0MYAmbMA+BaUY2qfe0Peph2k09n9zyI5ZjvPMw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=bQpoaE9cMd6YgMu77JCXfvYFMWbgaNh6TKn4OouMVenvrXqTAXAOg5AObKoiK4nEc
-         BhE1eKJB/vVT/mLYvZptfy+rSS/GsAdBO5PedphZOFm8XGLr8CakDImysq3o3V2RtW
-         s0i6acJs0aIBu2ctdXSyHlOiIUsfe2RfPzmK5OIJ/rcpZWUt2Zvugyy6k3Qmto09pG
-         Ggd1JGPCBUOHy7CClOOQaOh52ZNv/4NYSd6jdtTzO0BOIYe/kQlr9lSoenq95+4OLU
-         4bjq1sHl2kOA11BCneO2P2pr9uZbpzSs+5J9IaaGAzZtMLmBKsf5mZ0OzJ883g3hTj
-         yrnhGYX0ep79A==
+        b=hdPcCjz22GOtaJKGbARdUwAuT8tn+81ub0dy0aaUb5aZbrJ5FC+GxHBZax3bu3w58
+         1ubD5BGVPThbZ+uCHgHB2dQ00mFv9gS3yBqAY5uC8/HBkkS9is+hCX4opJbtbd2rjq
+         KLxWkZnkluKEHe0MoNx5UfbiW8FvdC+6lbcYUGMtUldRMCfkZIsvqwFwLzULphicgF
+         MPiIojHRQCz4tuOz1sPLvCUssIRZMivTDHDFV0cMtv+77WjwuV6o0T3ipinQssU4M6
+         DWAgRU3YF8PIRsC1sLG3uh1rOwiX15zMU1PMCieJqpT2EBAYvgLGGEy+biIz4gjFJx
+         jEs6/Lv6IMhPg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Enrico Scholz <enrico.scholz@sigma-chemnitz.de>
-Subject: [PATCH v2 7/9] NFSv4/pnfs: Ensure pNFS allocation modes are consistent with nfsiod
-Date:   Mon, 21 Mar 2022 21:47:44 -0400
-Message-Id: <20220322014746.1052984-8-trondmy@kernel.org>
+Subject: [PATCH v2 9/9] pNFS/files: Ensure pNFS allocation modes are consistent with nfsiod
+Date:   Mon, 21 Mar 2022 21:47:46 -0400
+Message-Id: <20220322014746.1052984-10-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220322014746.1052984-7-trondmy@kernel.org>
+In-Reply-To: <20220322014746.1052984-9-trondmy@kernel.org>
 References: <20220322014746.1052984-1-trondmy@kernel.org>
  <20220322014746.1052984-2-trondmy@kernel.org>
  <20220322014746.1052984-3-trondmy@kernel.org>
@@ -47,6 +47,8 @@ References: <20220322014746.1052984-1-trondmy@kernel.org>
  <20220322014746.1052984-5-trondmy@kernel.org>
  <20220322014746.1052984-6-trondmy@kernel.org>
  <20220322014746.1052984-7-trondmy@kernel.org>
+ <20220322014746.1052984-8-trondmy@kernel.org>
+ <20220322014746.1052984-9-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -55,128 +57,28 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that pNFS allocations that can be called from rpciod/nfsiod
-callback can fail in low memory mode, so that the threads don't block
-and loop forever.
+Ensure that pNFS file commit allocations in rpciod/nfsiod callbacks can
+fail in low memory mode, so that the threads don't block and loop
+forever.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs42proc.c |  2 +-
- fs/nfs/pnfs.c      | 39 +++++++++++++++++----------------------
- 2 files changed, 18 insertions(+), 23 deletions(-)
+ fs/nfs/filelayout/filelayout.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 882bf84484ac..b841e267b764 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -1017,7 +1017,7 @@ int nfs42_proc_layouterror(struct pnfs_layout_segment *lseg,
- 		return -EOPNOTSUPP;
- 	if (n > NFS42_LAYOUTERROR_MAX)
- 		return -EINVAL;
--	data = nfs42_alloc_layouterror_data(lseg, GFP_KERNEL);
-+	data = nfs42_alloc_layouterror_data(lseg, nfs_io_gfp_mask());
- 	if (!data)
- 		return -ENOMEM;
- 	for (i = 0; i < n; i++) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f089e11fd001..de318bb5d349 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1233,7 +1233,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo,
- 	int status = 0;
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 9c96e3e5ed35..76deddab0a8f 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -1075,7 +1075,7 @@ filelayout_setup_ds_info(struct pnfs_ds_commit_info *fl_cinfo,
+ 	unsigned int size = (fl->stripe_type == STRIPE_SPARSE) ?
+ 		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
  
- 	*pcred = NULL;
--	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	lrp = kzalloc(sizeof(*lrp), nfs_io_gfp_mask());
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
- 		spin_lock(&ino->i_lock);
-@@ -2206,7 +2206,7 @@ _pnfs_grab_empty_layout(struct inode *ino, struct nfs_open_context *ctx)
- 	struct pnfs_layout_hdr *lo;
- 
- 	spin_lock(&ino->i_lock);
--	lo = pnfs_find_alloc_layout(ino, ctx, GFP_KERNEL);
-+	lo = pnfs_find_alloc_layout(ino, ctx, nfs_io_gfp_mask());
- 	if (!lo)
- 		goto out_unlock;
- 	if (!test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags))
-@@ -2249,8 +2249,8 @@ static void _lgopen_prepare_attached(struct nfs4_opendata *data,
- 	lo = _pnfs_grab_empty_layout(ino, ctx);
- 	if (!lo)
- 		return;
--	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid,
--					     &rng, GFP_KERNEL);
-+	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng,
-+					     nfs_io_gfp_mask());
- 	if (!lgp) {
- 		pnfs_clear_first_layoutget(lo);
- 		nfs_layoutget_end(lo);
-@@ -2275,8 +2275,8 @@ static void _lgopen_prepare_floating(struct nfs4_opendata *data,
- 	};
- 	struct nfs4_layoutget *lgp;
- 
--	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid,
--					     &rng, GFP_KERNEL);
-+	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng,
-+					     nfs_io_gfp_mask());
- 	if (!lgp)
- 		return;
- 	data->lgp = lgp;
-@@ -2691,13 +2691,11 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- 		else
- 			rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
- 
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   nfs_req_openctx(req),
--						   req_offset(req),
--						   rd_size,
--						   IOMODE_READ,
--						   false,
--						   GFP_KERNEL);
-+		pgio->pg_lseg =
-+			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-+					   req_offset(req), rd_size,
-+					   IOMODE_READ, false,
-+					   nfs_io_gfp_mask());
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -2718,13 +2716,10 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 	pnfs_generic_pg_check_layout(pgio);
- 	pnfs_generic_pg_check_range(pgio, req);
- 	if (pgio->pg_lseg == NULL) {
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   nfs_req_openctx(req),
--						   req_offset(req),
--						   wb_size,
--						   IOMODE_RW,
--						   false,
--						   GFP_KERNEL);
-+		pgio->pg_lseg =
-+			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-+					   req_offset(req), wb_size, IOMODE_RW,
-+					   false, nfs_io_gfp_mask());
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -3183,7 +3178,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 
- 	status = -ENOMEM;
- 	/* Note kzalloc ensures data->res.seq_res.sr_slot == NULL */
--	data = kzalloc(sizeof(*data), GFP_NOFS);
-+	data = kzalloc(sizeof(*data), nfs_io_gfp_mask());
- 	if (!data)
- 		goto clear_layoutcommitting;
- 
-@@ -3250,7 +3245,7 @@ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
- {
- 	struct nfs4_threshold *thp;
- 
--	thp = kzalloc(sizeof(*thp), GFP_KERNEL);
-+	thp = kzalloc(sizeof(*thp), nfs_io_gfp_mask());
- 	if (!thp) {
- 		dprintk("%s mdsthreshold allocation failed\n", __func__);
- 		return NULL;
+-	new = pnfs_alloc_commit_array(size, GFP_NOIO);
++	new = pnfs_alloc_commit_array(size, nfs_io_gfp_mask());
+ 	if (new) {
+ 		spin_lock(&inode->i_lock);
+ 		array = pnfs_add_commit_array(fl_cinfo, new, lseg);
 -- 
 2.35.1
 
