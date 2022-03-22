@@ -2,50 +2,48 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5852DC433FE
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:22:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5DC8C43217
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:22:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234641AbiCVBX6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Mar 2022 21:23:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42544 "EHLO
+        id S234640AbiCVBX5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Mar 2022 21:23:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42564 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234634AbiCVBX4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:23:56 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC146289BC
+        with ESMTP id S234641AbiCVBXz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:23:55 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 616AD1DA77
         for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:22:29 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 01DEC615E3
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:22:29 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 91E06C340EE;
-        Tue, 22 Mar 2022 01:22:28 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id EB639615C7
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:22:27 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 87A0DC340EE;
+        Tue, 22 Mar 2022 01:22:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647912148;
-        bh=cCVkVoMAlDQfoVIQE3s7VVfidrskFyjLShmlmXXc8Qw=;
+        s=k20201202; t=1647912147;
+        bh=hQqYU8IsqDxmW6S3nbP0jML+3PV2udg3I0lI/1Lhslo=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Hl7HLJ+ujM+5MJX5sP2ypWpaP31Uv5VU/e3Uni7R7mnxkZir6nFufgIqtZeiZvErJ
-         UiqXlLDU4fQoDCEfuw8xHuCp491yBcyJ7dMgET6li0fasbyAhUOAT2klYav5omKboL
-         M4SM2mW7tSgJ+4lTYPL46yE5m9LdLtyAURZPvn7ywzpcuAG2zyKgHsazZdxUsaaAeC
-         wmjSWBmMuGWfGFenTE5+buLwxM7ryGIICnkEs6SQrsYPss9sPziUBS2dcz4ljkF1qn
-         1KVbDH+nRNFOOdNj4wnMNxIBSxMTWtwGDC4N65eDssaJgC67ec8V6ho8+ue9a4RlkY
-         d1LS1YBkSYBVg==
+        b=ECvS0kw3goZUwUn+E2P8B93ZE3JFhkzKOwaEVXyST/8CmSHEQuiHufz+ADJdvsP8U
+         t30WTPlRe10KblU0JNz6b1g+VyxMP7BXsqE4YI57NXx7kx91JxG4DuKz7euVWbYnbK
+         T70TXLkSgVtgoIcGzfNOgF96NiMw6HdCEjXqLuh886uKiK2DeQtSBJMERxc08MGurs
+         6b9CoI52Li4UbGX5Aiftnk32RxML7R4/3/OuD5lUZxGdJrdKEAFJiJariME4meHOzt
+         aRpBz5jdk4PCywfvHsMYNPun2KEZrnVEHnSioC/X58bP7IuxJ+1f1683nxJ44feTWl
+         /fXMLkoYlXPCQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Cc:     Neil Brown <neilb@suse.de>
-Subject: [PATCH v2 7/9] NFSv4/pnfs: Ensure pNFS allocation modes are consistent with nfsiod
-Date:   Mon, 21 Mar 2022 21:16:16 -0400
-Message-Id: <20220322011618.1052288-8-trondmy@kernel.org>
+Subject: [PATCH v2 5/9] NFS: nfsiod should not block forever in mempool_alloc()
+Date:   Mon, 21 Mar 2022 21:16:14 -0400
+Message-Id: <20220322011618.1052288-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220322011618.1052288-7-trondmy@kernel.org>
+In-Reply-To: <20220322011618.1052288-5-trondmy@kernel.org>
 References: <20220322011618.1052288-1-trondmy@kernel.org>
  <20220322011618.1052288-2-trondmy@kernel.org>
  <20220322011618.1052288-3-trondmy@kernel.org>
  <20220322011618.1052288-4-trondmy@kernel.org>
  <20220322011618.1052288-5-trondmy@kernel.org>
- <20220322011618.1052288-6-trondmy@kernel.org>
- <20220322011618.1052288-7-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -54,128 +52,128 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that pNFS allocations that can be called from rpciod/nfsiod
-callback can fail in low memory mode, so that the threads don't block
-and loop forever.
+The concern is that since nfsiod is sometimes required to kick off a
+commit, it can get locked up waiting forever in mempool_alloc() instead
+of failing gracefully and leaving the commit until later.
+
+Try to allocate from the slab first, with GFP_KERNEL | __GFP_NORETRY,
+then fall back to a non-blocking attempt to allocate from the memory
+pool.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs42proc.c |  2 +-
- fs/nfs/pnfs.c      | 39 +++++++++++++++++----------------------
- 2 files changed, 18 insertions(+), 23 deletions(-)
+ fs/nfs/internal.h      |  7 +++++++
+ fs/nfs/pnfs_nfs.c      |  8 ++++++--
+ fs/nfs/write.c         | 24 +++++++++---------------
+ include/linux/nfs_fs.h |  2 +-
+ 4 files changed, 23 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 882bf84484ac..b841e267b764 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -1017,7 +1017,7 @@ int nfs42_proc_layouterror(struct pnfs_layout_segment *lseg,
- 		return -EOPNOTSUPP;
- 	if (n > NFS42_LAYOUTERROR_MAX)
- 		return -EINVAL;
--	data = nfs42_alloc_layouterror_data(lseg, GFP_KERNEL);
-+	data = nfs42_alloc_layouterror_data(lseg, nfs_io_gfp_mask());
- 	if (!data)
- 		return -ENOMEM;
- 	for (i = 0; i < n; i++) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f089e11fd001..de318bb5d349 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1233,7 +1233,7 @@ pnfs_send_layoutreturn(struct pnfs_layout_hdr *lo,
- 	int status = 0;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 194840a97e3a..57b0497105c8 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -587,6 +587,13 @@ nfs_write_match_verf(const struct nfs_writeverf *verf,
+ 		!nfs_write_verifier_cmp(&req->wb_verf, &verf->verifier);
+ }
  
- 	*pcred = NULL;
--	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	lrp = kzalloc(sizeof(*lrp), nfs_io_gfp_mask());
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
- 		spin_lock(&ino->i_lock);
-@@ -2206,7 +2206,7 @@ _pnfs_grab_empty_layout(struct inode *ino, struct nfs_open_context *ctx)
- 	struct pnfs_layout_hdr *lo;
- 
- 	spin_lock(&ino->i_lock);
--	lo = pnfs_find_alloc_layout(ino, ctx, GFP_KERNEL);
-+	lo = pnfs_find_alloc_layout(ino, ctx, nfs_io_gfp_mask());
- 	if (!lo)
- 		goto out_unlock;
- 	if (!test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags))
-@@ -2249,8 +2249,8 @@ static void _lgopen_prepare_attached(struct nfs4_opendata *data,
- 	lo = _pnfs_grab_empty_layout(ino, ctx);
- 	if (!lo)
- 		return;
--	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid,
--					     &rng, GFP_KERNEL);
-+	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng,
-+					     nfs_io_gfp_mask());
- 	if (!lgp) {
- 		pnfs_clear_first_layoutget(lo);
- 		nfs_layoutget_end(lo);
-@@ -2275,8 +2275,8 @@ static void _lgopen_prepare_floating(struct nfs4_opendata *data,
- 	};
- 	struct nfs4_layoutget *lgp;
- 
--	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid,
--					     &rng, GFP_KERNEL);
-+	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng,
-+					     nfs_io_gfp_mask());
- 	if (!lgp)
- 		return;
- 	data->lgp = lgp;
-@@ -2691,13 +2691,11 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- 		else
- 			rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
- 
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   nfs_req_openctx(req),
--						   req_offset(req),
--						   rd_size,
--						   IOMODE_READ,
--						   false,
--						   GFP_KERNEL);
-+		pgio->pg_lseg =
-+			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-+					   req_offset(req), rd_size,
-+					   IOMODE_READ, false,
-+					   nfs_io_gfp_mask());
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -2718,13 +2716,10 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 	pnfs_generic_pg_check_layout(pgio);
- 	pnfs_generic_pg_check_range(pgio, req);
- 	if (pgio->pg_lseg == NULL) {
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   nfs_req_openctx(req),
--						   req_offset(req),
--						   wb_size,
--						   IOMODE_RW,
--						   false,
--						   GFP_KERNEL);
-+		pgio->pg_lseg =
-+			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-+					   req_offset(req), wb_size, IOMODE_RW,
-+					   false, nfs_io_gfp_mask());
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -3183,7 +3178,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- 
- 	status = -ENOMEM;
- 	/* Note kzalloc ensures data->res.seq_res.sr_slot == NULL */
--	data = kzalloc(sizeof(*data), GFP_NOFS);
-+	data = kzalloc(sizeof(*data), nfs_io_gfp_mask());
- 	if (!data)
- 		goto clear_layoutcommitting;
- 
-@@ -3250,7 +3245,7 @@ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
++static inline gfp_t nfs_io_gfp_mask(void)
++{
++	if (current->flags & PF_WQ_WORKER)
++		return GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN;
++	return GFP_KERNEL;
++}
++
+ /* unlink.c */
+ extern struct rpc_task *
+ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 316f68f96e57..657c242a18ff 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -419,7 +419,7 @@ static struct nfs_commit_data *
+ pnfs_bucket_fetch_commitdata(struct pnfs_commit_bucket *bucket,
+ 			     struct nfs_commit_info *cinfo)
  {
- 	struct nfs4_threshold *thp;
+-	struct nfs_commit_data *data = nfs_commitdata_alloc(false);
++	struct nfs_commit_data *data = nfs_commitdata_alloc();
  
--	thp = kzalloc(sizeof(*thp), GFP_KERNEL);
-+	thp = kzalloc(sizeof(*thp), nfs_io_gfp_mask());
- 	if (!thp) {
- 		dprintk("%s mdsthreshold allocation failed\n", __func__);
+ 	if (!data)
  		return NULL;
+@@ -515,7 +515,11 @@ pnfs_generic_commit_pagelist(struct inode *inode, struct list_head *mds_pages,
+ 	unsigned int nreq = 0;
+ 
+ 	if (!list_empty(mds_pages)) {
+-		data = nfs_commitdata_alloc(true);
++		data = nfs_commitdata_alloc();
++		if (!data) {
++			nfs_retry_commit(mds_pages, NULL, cinfo, -1);
++			return -ENOMEM;
++		}
+ 		data->ds_commit_index = -1;
+ 		list_splice_init(mds_pages, &data->pages);
+ 		list_add_tail(&data->list, &list);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 599a82406d38..ef47e3700e4b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -70,27 +70,17 @@ static mempool_t *nfs_wdata_mempool;
+ static struct kmem_cache *nfs_cdata_cachep;
+ static mempool_t *nfs_commit_mempool;
+ 
+-struct nfs_commit_data *nfs_commitdata_alloc(bool never_fail)
++struct nfs_commit_data *nfs_commitdata_alloc(void)
+ {
+ 	struct nfs_commit_data *p;
+ 
+-	if (never_fail)
+-		p = mempool_alloc(nfs_commit_mempool, GFP_NOIO);
+-	else {
+-		/* It is OK to do some reclaim, not no safe to wait
+-		 * for anything to be returned to the pool.
+-		 * mempool_alloc() cannot handle that particular combination,
+-		 * so we need two separate attempts.
+-		 */
++	p = kmem_cache_zalloc(nfs_cdata_cachep, nfs_io_gfp_mask());
++	if (!p) {
+ 		p = mempool_alloc(nfs_commit_mempool, GFP_NOWAIT);
+-		if (!p)
+-			p = kmem_cache_alloc(nfs_cdata_cachep, GFP_NOIO |
+-					     __GFP_NOWARN | __GFP_NORETRY);
+ 		if (!p)
+ 			return NULL;
++		memset(p, 0, sizeof(*p));
+ 	}
+-
+-	memset(p, 0, sizeof(*p));
+ 	INIT_LIST_HEAD(&p->pages);
+ 	return p;
+ }
+@@ -1826,7 +1816,11 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
+ 	if (list_empty(head))
+ 		return 0;
+ 
+-	data = nfs_commitdata_alloc(true);
++	data = nfs_commitdata_alloc();
++	if (!data) {
++		nfs_retry_commit(head, NULL, cinfo, -1);
++		return -ENOMEM;
++	}
+ 
+ 	/* Set up the argument struct */
+ 	nfs_init_commit(data, head, NULL, cinfo);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c47c448befc8..db305abafc9e 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -580,7 +580,7 @@ extern int nfs_wb_all(struct inode *inode);
+ extern int nfs_wb_page(struct inode *inode, struct page *page);
+ extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
+ extern int  nfs_commit_inode(struct inode *, int);
+-extern struct nfs_commit_data *nfs_commitdata_alloc(bool never_fail);
++extern struct nfs_commit_data *nfs_commitdata_alloc(void);
+ extern void nfs_commit_free(struct nfs_commit_data *data);
+ bool nfs_commit_end(struct nfs_mds_commit_info *cinfo);
+ 
 -- 
 2.35.1
 
