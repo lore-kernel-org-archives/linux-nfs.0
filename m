@@ -2,43 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC33BC433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:54:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E246C4332F
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:54:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235157AbiCVB4E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Mar 2022 21:56:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54162 "EHLO
+        id S235169AbiCVB4F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Mar 2022 21:56:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54156 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235190AbiCVB4C (ORCPT
+        with ESMTP id S235132AbiCVB4C (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:56:02 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 923291CFD7
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:54:35 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B12CD44A02
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:54:36 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 49B9CB818E6
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:54:34 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 99165C340E8;
-        Tue, 22 Mar 2022 01:54:32 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 551C0B81B2D
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:54:35 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BDFC3C340F2;
+        Tue, 22 Mar 2022 01:54:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647914072;
-        bh=uMjNaDhQikir6YSCGCjDm3nJKvfqJTQRvB1VWIwdQC4=;
-        h=From:To:Cc:Subject:Date:From;
-        b=NOrFVNYcgOkVeTAsOOFTnuYG3VayWcA2oC7tTFz24/StmmIMSs7cPK9n8y9/+3R/3
-         yfLyDmEC1IwDLZ9RxF/wjT8cJhxixwVEKIUp5+5mBImkEB3UJ8KfE5JVBq9Q9cTL7l
-         CctINC7yS67TeLXJiNgeURqkvDIaHsD1wHdWU+Xo+jqNJKDeH1JfP+jUgVnE6LVsSV
-         kkNborFWYx9bovfVlTSPzCt57ianAHykxM9xKf5OcvVLbBW54yAVmj2qobxGMEXYBD
-         5JFQld8pBetuXQcTm0rCdS9M+oNWDvHNzpqPN+YsFTMTC7uvv6jHkhRm2eraQT7sub
-         nwbwMeWGawccA==
+        s=k20201202; t=1647914074;
+        bh=DrZNvoTWRqfjg6xxjhNfSiAQdezk+5CXJVWZ5lfbe1c=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Q9FGcM2h8saccDKPgPJuGcb+BTl5k0PjuhPEt0a9+s0chdhlmlBYiGLlIZnZ9Ga8y
+         8z570cfR4rljp45pMGbIY0qFYSBsUp5MCwdUxvrrU+bd/REt97wtgHCE6z+qUxbLnW
+         ZXZ5HzEiOPw+s6rOCBrSdibJFeTlO2k72DZd1GXKGTiY4V3kty9nU/LHB8aCTmJWBZ
+         9C9QxehdnWggq/UyMBPi4Ca/88SyxmN3xO1+one1uX1EIwXAoky/UtUhbRPpf8fJzw
+         qzRmq2O4mgWR61no/cFS0SpK3p+06Op1OFQhCovvxa4QsGRPsm43DXpN8NKZnXnv0q
+         faoznvIjLbZxQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Enrico Scholz <enrico.scholz@sigma-chemnitz.de>
-Subject: [PATCH v2 0/9] Crossing our fingers is not a strategy
-Date:   Mon, 21 Mar 2022 21:47:37 -0400
-Message-Id: <20220322014746.1052984-1-trondmy@kernel.org>
+Subject: [PATCH v2 2/9] NFS: Fix memory allocation in rpc_alloc_task()
+Date:   Mon, 21 Mar 2022 21:47:39 -0400
+Message-Id: <20220322014746.1052984-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220322014746.1052984-2-trondmy@kernel.org>
+References: <20220322014746.1052984-1-trondmy@kernel.org>
+ <20220322014746.1052984-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,52 +50,36 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-We'd like to avoid GFP_NOWAIT whenever possible, because it has no fall-
-back reclaim strategy for dealing with a failure of the initial
-allocation.
-At the same time, memory pools appear to be suboptimal as an allocation
-strategy when used with anything other than GFP_NOWAIT, since they cause
-threads to hang upon failure.
+As for rpc_malloc(), we first try allocating from the slab, then fall
+back to a non-waiting allocation from the mempool.
 
-This patch series therefore aims to demote the mempools to being a
-strategy of last resort, with the primary allocation strategy being to
-use the underlying slabs.
-While we're at it, we want to ensure that rpciod, xprtiod and nfsiod all
-use the same allocation strategy, so that the latter two don't thwart
-our ability to complete writeback RPC calls by getting blocked in the mm
-layer.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ net/sunrpc/sched.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-Trond Myklebust (9):
-  NFS: Fix memory allocation in rpc_malloc()
-  NFS: Fix memory allocation in rpc_alloc_task()
-  SUNRPC: Fix unx_lookup_cred() allocation
-  SUNRPC: Make the rpciod and xprtiod slab allocation modes consistent
-  NFS: nfsiod should not block forever in mempool_alloc()
-  NFS: Avoid writeback threads getting stuck in mempool_alloc()
-  NFSv4/pnfs: Ensure pNFS allocation modes are consistent with nfsiod
-  pNFS/flexfiles: Ensure pNFS allocation modes are consistent with
-    nfsiod
-  pNFS/files: Ensure pNFS allocation modes are consistent with nfsiod
-
- fs/nfs/filelayout/filelayout.c         |  2 +-
- fs/nfs/flexfilelayout/flexfilelayout.c | 50 +++++++++++---------------
- fs/nfs/internal.h                      |  7 ++++
- fs/nfs/nfs42proc.c                     |  2 +-
- fs/nfs/pagelist.c                      | 10 +++---
- fs/nfs/pnfs.c                          | 39 +++++++++-----------
- fs/nfs/pnfs_nfs.c                      |  8 +++--
- fs/nfs/write.c                         | 34 +++++++++---------
- include/linux/nfs_fs.h                 |  2 +-
- include/linux/sunrpc/sched.h           |  1 +
- net/sunrpc/auth_unix.c                 | 18 +++++-----
- net/sunrpc/backchannel_rqst.c          |  8 ++---
- net/sunrpc/rpcb_clnt.c                 |  4 +--
- net/sunrpc/sched.c                     | 31 ++++++++++------
- net/sunrpc/socklib.c                   |  3 +-
- net/sunrpc/xprt.c                      |  5 +--
- net/sunrpc/xprtsock.c                  | 11 +++---
- 17 files changed, 123 insertions(+), 112 deletions(-)
-
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index d59a033820be..b258b87a3ec2 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -1108,10 +1108,14 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
+ 	rpc_init_task_statistics(task);
+ }
+ 
+-static struct rpc_task *
+-rpc_alloc_task(void)
++static struct rpc_task *rpc_alloc_task(void)
+ {
+-	return (struct rpc_task *)mempool_alloc(rpc_task_mempool, GFP_KERNEL);
++	struct rpc_task *task;
++
++	task = kmem_cache_alloc(rpc_task_slabp, rpc_task_gfp_mask());
++	if (task)
++		return task;
++	return mempool_alloc(rpc_task_mempool, GFP_NOWAIT);
+ }
+ 
+ /*
 -- 
 2.35.1
 
