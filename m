@@ -2,195 +2,91 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 58328C43217
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:54:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C6B7C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 09:10:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235189AbiCVB4K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 21 Mar 2022 21:56:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54484 "EHLO
+        id S230440AbiCVJMQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 22 Mar 2022 05:12:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48878 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235114AbiCVB4G (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:56:06 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F7CB1D306
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:54:40 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id C4895B81B2D
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:54:38 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BFACC340E8;
-        Tue, 22 Mar 2022 01:54:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647914077;
-        bh=eD2KQYnN8f7Yvi+SCRjQOL9lO3dzZe1LYm9ivcVGoCw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Mx/zW8tAPuxBIaPUd4ojZE3joWCWbG1AGuvm0/5PxcCfNHrAyv/Mt5VjjqP/k2PAP
-         P+OSh+pyFdA/VN23w7Nfxq5AfkbknfQLqhmtToK1aqmjVaTQQmGi3iMcWBbWJulL3E
-         Ott7cwKQrAusZo+93hlJ9D6a1boxWmkVcaDm2dJLImIjmq+q0EXKPzHmcxQsHB6E+m
-         W3VZGMOp1QqvyEkD7EHTLqXCV/5hrjdVGtDtJ2nTf7ZPocbD86VA6PW59w57QgK4cr
-         cj7e+2SeC2EUvC+1H2xDtHhyWQKn+pjfTma8tNe3VZdzI8z6QjPhsX/4Yrd+uPkiE7
-         bplT2hh7+ocgA==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Enrico Scholz <enrico.scholz@sigma-chemnitz.de>
-Subject: [PATCH v2 8/9] pNFS/flexfiles: Ensure pNFS allocation modes are consistent with nfsiod
-Date:   Mon, 21 Mar 2022 21:47:45 -0400
-Message-Id: <20220322014746.1052984-9-trondmy@kernel.org>
-X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220322014746.1052984-8-trondmy@kernel.org>
-References: <20220322014746.1052984-1-trondmy@kernel.org>
- <20220322014746.1052984-2-trondmy@kernel.org>
- <20220322014746.1052984-3-trondmy@kernel.org>
- <20220322014746.1052984-4-trondmy@kernel.org>
- <20220322014746.1052984-5-trondmy@kernel.org>
- <20220322014746.1052984-6-trondmy@kernel.org>
- <20220322014746.1052984-7-trondmy@kernel.org>
- <20220322014746.1052984-8-trondmy@kernel.org>
+        with ESMTP id S230241AbiCVJMP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2022 05:12:15 -0400
+X-Greylist: delayed 528 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 22 Mar 2022 02:10:44 PDT
+Received: from mail.essepidev.it (mail.essepidev.it [80.211.164.182])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C32017E592
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 02:10:44 -0700 (PDT)
+Message-ID: <1e533cc2-477b-de30-e347-582d83973390@essepidev.it>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=essepidev.it;
+        s=dkim; t=1647939713;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=qdNrK1ddv3CJxg6bRRKawQ7lPwou6gr5cyfnCLwNr6M=;
+        b=ehbg/PIIeWIm2T4ovRZ3uwMLDfN23BpxTNpcXbD9A0nA6Re34hwUTZB07uiDwVHkhgv6ZP
+        P8lp5mNpOSUyK+/j5nlZPlmKTi2znF9IyAQE8i5Lw6UKUjEeYESkrW3vuTRb16+ZZQ3+2k
+        rtS8I8rDpRWLYAYBd1FGin32UFvBpb8l0zuZ1ef383cYFe23Th+mtQQ2U9MfbTtGOyK1c1
+        75ewL7qp9/t3YHLVjTTcHpS8drDH/of3/oC0iHSM272nzVq3QLpqD0O59PwCeCKV1a8lsj
+        H8gUord2mwxy3URkqKwFiLulK2z7A7UMmKGkpKYULD6W4MT+AeyCba9B6ZWzhg==
+Date:   Tue, 22 Mar 2022 10:00:47 +0100
 MIME-Version: 1.0
+Content-Language: en-GB
+To:     linux-nfs@vger.kernel.org
+From:   Sebastiano Pomata <seb@essepidev.it>
+Subject: NFSv41 server delegations breaking ld?
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
+Authentication-Results: mail.essepidev.it;
+        auth=pass smtp.mailfrom=seb@essepidev.it
+X-Spamd-Bar: /
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+In the company I work for we just deployed a small cluster of Linux 
+workstations, using FreeIPA/NFS/Kerberos and NFS-shared home 
+directories. The NFS server runs on CentOS 7 while the clients are on 
+Rocky Linux 8. As far as I can see from the mount command, v4.1 of the 
+NFS protocol is being used.
 
-Ensure that pNFS flexfile allocations in rpciod/nfsiod callbacks can
-fail in low memory mode, so that the threads don't block and loop
-forever.
+During the first days of working with this new setup, we started 
+observing errors on most client machines while working on a 
+NFS-mounted directory: specifically, while compiling with gcc/ld, the 
+ld linker often failed with a
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 50 +++++++++++---------------
- 1 file changed, 21 insertions(+), 29 deletions(-)
+“: final close failed: Input/output error”
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index e28f2177afb7..604be402ae13 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -663,7 +663,7 @@ nfs4_ff_layout_stat_io_start_read(struct inode *inode,
- 	spin_unlock(&mirror->lock);
- 
- 	if (report)
--		pnfs_report_layoutstat(inode, GFP_KERNEL);
-+		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
- }
- 
- static void
-@@ -694,7 +694,7 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
- 	spin_unlock(&mirror->lock);
- 
- 	if (report)
--		pnfs_report_layoutstat(inode, GFP_KERNEL);
-+		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
- }
- 
- static void
-@@ -806,13 +806,10 @@ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
- 		      bool strict_iomode)
- {
- 	pnfs_put_lseg(pgio->pg_lseg);
--	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--					   nfs_req_openctx(req),
--					   req_offset(req),
--					   req->wb_bytes,
--					   IOMODE_READ,
--					   strict_iomode,
--					   GFP_KERNEL);
-+	pgio->pg_lseg =
-+		pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-+				   req_offset(req), req->wb_bytes, IOMODE_READ,
-+				   strict_iomode, nfs_io_gfp_mask());
- 	if (IS_ERR(pgio->pg_lseg)) {
- 		pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 		pgio->pg_lseg = NULL;
-@@ -894,13 +891,10 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- retry:
- 	ff_layout_pg_check_layout(pgio, req);
- 	if (!pgio->pg_lseg) {
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   nfs_req_openctx(req),
--						   req_offset(req),
--						   req->wb_bytes,
--						   IOMODE_RW,
--						   false,
--						   GFP_KERNEL);
-+		pgio->pg_lseg =
-+			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-+					   req_offset(req), req->wb_bytes,
-+					   IOMODE_RW, false, nfs_io_gfp_mask());
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -953,13 +947,10 @@ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
- 				    struct nfs_page *req)
- {
- 	if (!pgio->pg_lseg) {
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--						   nfs_req_openctx(req),
--						   req_offset(req),
--						   req->wb_bytes,
--						   IOMODE_RW,
--						   false,
--						   GFP_KERNEL);
-+		pgio->pg_lseg =
-+			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-+					   req_offset(req), req->wb_bytes,
-+					   IOMODE_RW, false, nfs_io_gfp_mask());
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -1258,7 +1249,7 @@ static void ff_layout_io_track_ds_error(struct pnfs_layout_segment *lseg,
- 	mirror = FF_LAYOUT_COMP(lseg, idx);
- 	err = ff_layout_track_ds_error(FF_LAYOUT_FROM_HDR(lseg->pls_layout),
- 				       mirror, offset, length, status, opnum,
--				       GFP_KERNEL);
-+				       nfs_io_gfp_mask());
- 
- 	switch (status) {
- 	case NFS4ERR_DELAY:
-@@ -1973,7 +1964,8 @@ ff_layout_setup_ds_info(struct pnfs_ds_commit_info *fl_cinfo,
- 	struct inode *inode = lseg->pls_layout->plh_inode;
- 	struct pnfs_commit_array *array, *new;
- 
--	new = pnfs_alloc_commit_array(flseg->mirror_array_cnt, GFP_KERNEL);
-+	new = pnfs_alloc_commit_array(flseg->mirror_array_cnt,
-+				      nfs_io_gfp_mask());
- 	if (new) {
- 		spin_lock(&inode->i_lock);
- 		array = pnfs_add_commit_array(fl_cinfo, new, lseg);
-@@ -2152,10 +2144,10 @@ ff_layout_prepare_layoutreturn(struct nfs4_layoutreturn_args *args)
- 	struct nfs4_flexfile_layoutreturn_args *ff_args;
- 	struct nfs4_flexfile_layout *ff_layout = FF_LAYOUT_FROM_HDR(args->layout);
- 
--	ff_args = kmalloc(sizeof(*ff_args), GFP_KERNEL);
-+	ff_args = kmalloc(sizeof(*ff_args), nfs_io_gfp_mask());
- 	if (!ff_args)
- 		goto out_nomem;
--	ff_args->pages[0] = alloc_page(GFP_KERNEL);
-+	ff_args->pages[0] = alloc_page(nfs_io_gfp_mask());
- 	if (!ff_args->pages[0])
- 		goto out_nomem_free;
- 
-@@ -2193,7 +2185,7 @@ ff_layout_send_layouterror(struct pnfs_layout_segment *lseg)
- 		return;
- 
- 	errors = kmalloc_array(NFS42_LAYOUTERROR_MAX, sizeof(*errors),
--			       GFP_KERNEL);
-+			       nfs_io_gfp_mask());
- 	if (errors != NULL) {
- 		const struct nfs4_ff_layout_ds_err *pos;
- 		size_t n = 0;
-@@ -2445,7 +2437,7 @@ ff_layout_prepare_layoutstats(struct nfs42_layoutstat_args *args)
- 
- 	/* For now, send at most PNFS_LAYOUTSTATS_MAXDEV statistics */
- 	args->devinfo = kmalloc_array(dev_count, sizeof(*args->devinfo),
--				      GFP_KERNEL);
-+				      nfs_io_gfp_mask());
- 	if (!args->devinfo)
- 		return -ENOMEM;
- 
--- 
-2.35.1
+This error could be consistently triggered once it appeared, however 
+the conditions in order to reproduce it among different clients are 
+not clear to us. The expected output of the compilation is a ~40 MB 
+.so file.
 
+Further investigations and a call with strace revealed that a close() 
+function was failing with a “-1/EIO” error, thus causing the whole 
+compilation to fail.
+
+Enabling some extra debugging info via rpcdebug for the NFS client and 
+server provided some useful insights and, by looking at these logs, 
+somebody in the #centos IRC channel pointed to NFS 4.1 server 
+delegations feature as a potential culprit (and suggested sending a 
+message to this ML).
+
+Effectively, after echoing a 0 to /proc/sys/fs/leases-enable on the 
+NFS server and remounting the NFS volume on the client, the issue 
+appears to be fixed.
+Furthermore, on some clients where the NFS volume remount hasn’t yet 
+been performed, the ld operation will still fail with the same error, 
+again without a clear pattern for reproducibility.
+
+I have collected a strace of the failing gcc/ld compilation and a 
+tcpdump capture of the traffic between the NFS client and server 
+during the failing compilation, hoping it could be useful for somebody 
+to shine some light on the issue.
+
+Versions involved:
+NFS server: kernel version 5.4.175-1.el7.elrepo x86_64
+NFS clients: kernel version 5.4.178-1.el8.elrepo x86_64, gcc 8.5.0 
+20210514, ld 2.30-108.el8_5.1
+
+
+Kind regards,
+Sebastiano Pomata
