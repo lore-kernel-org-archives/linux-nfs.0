@@ -2,47 +2,51 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CFC2EC433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:22:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DA908C4332F
+	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 01:22:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234634AbiCVBX7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S234649AbiCVBX7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 21 Mar 2022 21:23:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42666 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42670 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234626AbiCVBX4 (ORCPT
+        with ESMTP id S234637AbiCVBX4 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2022 21:23:56 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 16F3F2A257
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6072D1D0D4
         for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2022 18:22:30 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id B3B71B81AE8
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:22:28 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0091EC340E8;
-        Tue, 22 Mar 2022 01:22:26 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id EA218615E5
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 01:22:29 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 14645C340E8;
+        Tue, 22 Mar 2022 01:22:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1647912147;
-        bh=WF9+St0w0R0Hgm0uZW4pnTk8xcPSORCvuqfeNaG3KzA=;
+        s=k20201202; t=1647912149;
+        bh=eD2KQYnN8f7Yvi+SCRjQOL9lO3dzZe1LYm9ivcVGoCw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=T6hIfT7506e0FypvH0ApTEpmG1I+EFojZrK/qjvQwYWo2KueOQpLel4izUqpYkKen
-         BBp0tVfwFX2O3/5tYUTYKNpCkKkaOCG0gxRPRi7gxSHVtpta135I2HMAoQEQnOjX5A
-         nENl+2VDLdosrRi+pJqmVOfQyliK3M898qKDMX6fpAMh5uhvwE8bqF2zPfvZf9FSNU
-         fk5XMXOq+L65fOSrJG9ywgF6uYYhpEeTTG/hsjL9C21ULKc4o2ePd1y4yFvqHJ2LSu
-         LRHzaC47GqPnAPElzVFALhfD1iAp/YTqGtH9Q/XL4LY8GxmPLgpz1iJ862hdSg7MXb
-         D9FZCUrNKWsQg==
+        b=GTEfe9X12Y/ltRILgQhfV1hbB1jLGGM7rzpKqGSgC/7tAtUt1urLckF3Z4KqtFMen
+         wvSHkEd1IWL1SwiMV04p03+/lKy1huYiGjAy02yXj6qevUbqn4Lj/Hbrz9EOeVIf7x
+         0Q9i7WmXNkfvnubOo6beEbbrH4uRWcnJOaPeOEEXn2QacnUBiYVcohdH7q6MBw4ZG7
+         B9+5lHSLXb+IkAyMxfRopofIgv+Gm6W+K2AUyQazIAJ/U1CFBQ0XubJ8Q13Mq0lL2T
+         lQVqsAcsWab6yAX2Hn8iZgn+JCFqUWGFb1UEu8+UNNjJxBJto87Q+jLhy49B+m7mI6
+         hVV1ZdPmYk0kA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Cc:     Neil Brown <neilb@suse.de>
-Subject: [PATCH v2 4/9] SUNRPC: Make the rpciod and xprtiod slab allocation modes consistent
-Date:   Mon, 21 Mar 2022 21:16:13 -0400
-Message-Id: <20220322011618.1052288-5-trondmy@kernel.org>
+Subject: [PATCH v2 8/9] pNFS/flexfiles: Ensure pNFS allocation modes are consistent with nfsiod
+Date:   Mon, 21 Mar 2022 21:16:17 -0400
+Message-Id: <20220322011618.1052288-9-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220322011618.1052288-4-trondmy@kernel.org>
+In-Reply-To: <20220322011618.1052288-8-trondmy@kernel.org>
 References: <20220322011618.1052288-1-trondmy@kernel.org>
  <20220322011618.1052288-2-trondmy@kernel.org>
  <20220322011618.1052288-3-trondmy@kernel.org>
  <20220322011618.1052288-4-trondmy@kernel.org>
+ <20220322011618.1052288-5-trondmy@kernel.org>
+ <20220322011618.1052288-6-trondmy@kernel.org>
+ <20220322011618.1052288-7-trondmy@kernel.org>
+ <20220322011618.1052288-8-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -51,150 +55,139 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Make sure that rpciod and xprtiod are always using the same slab
-allocation modes.
+Ensure that pNFS flexfile allocations in rpciod/nfsiod callbacks can
+fail in low memory mode, so that the threads don't block and loop
+forever.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/backchannel_rqst.c |  8 ++++----
- net/sunrpc/rpcb_clnt.c        |  4 ++--
- net/sunrpc/socklib.c          |  3 ++-
- net/sunrpc/xprt.c             |  5 +----
- net/sunrpc/xprtsock.c         | 11 ++++++-----
- 5 files changed, 15 insertions(+), 16 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 50 +++++++++++---------------
+ 1 file changed, 21 insertions(+), 29 deletions(-)
 
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 22a2c235abf1..5a6b61dcdf2d 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -75,9 +75,9 @@ static int xprt_alloc_xdr_buf(struct xdr_buf *buf, gfp_t gfp_flags)
- 	return 0;
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index e28f2177afb7..604be402ae13 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -663,7 +663,7 @@ nfs4_ff_layout_stat_io_start_read(struct inode *inode,
+ 	spin_unlock(&mirror->lock);
+ 
+ 	if (report)
+-		pnfs_report_layoutstat(inode, GFP_KERNEL);
++		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
  }
  
--static
--struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt, gfp_t gfp_flags)
-+static struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt)
- {
-+	gfp_t gfp_flags = GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN;
- 	struct rpc_rqst *req;
+ static void
+@@ -694,7 +694,7 @@ nfs4_ff_layout_stat_io_start_write(struct inode *inode,
+ 	spin_unlock(&mirror->lock);
  
- 	/* Pre-allocate one backchannel rpc_rqst */
-@@ -154,7 +154,7 @@ int xprt_setup_bc(struct rpc_xprt *xprt, unsigned int min_reqs)
- 	INIT_LIST_HEAD(&tmp_list);
- 	for (i = 0; i < min_reqs; i++) {
- 		/* Pre-allocate one backchannel rpc_rqst */
--		req = xprt_alloc_bc_req(xprt, GFP_KERNEL);
-+		req = xprt_alloc_bc_req(xprt);
- 		if (req == NULL) {
- 			printk(KERN_ERR "Failed to create bc rpc_rqst\n");
- 			goto out_free;
-@@ -343,7 +343,7 @@ struct rpc_rqst *xprt_lookup_bc_request(struct rpc_xprt *xprt, __be32 xid)
- 			break;
- 		} else if (req)
- 			break;
--		new = xprt_alloc_bc_req(xprt, GFP_KERNEL);
-+		new = xprt_alloc_bc_req(xprt);
- 	} while (new);
- 	return req;
- }
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 0fdeb8666bfd..5a8e6d46809a 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -714,7 +714,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 		goto bailout_nofree;
- 	}
- 
--	map = kzalloc(sizeof(struct rpcbind_args), GFP_KERNEL);
-+	map = kzalloc(sizeof(struct rpcbind_args), rpc_task_gfp_mask());
- 	if (!map) {
- 		status = -ENOMEM;
- 		goto bailout_release_client;
-@@ -730,7 +730,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	case RPCBVERS_4:
- 	case RPCBVERS_3:
- 		map->r_netid = xprt->address_strings[RPC_DISPLAY_NETID];
--		map->r_addr = rpc_sockaddr2uaddr(sap, GFP_KERNEL);
-+		map->r_addr = rpc_sockaddr2uaddr(sap, rpc_task_gfp_mask());
- 		if (!map->r_addr) {
- 			status = -ENOMEM;
- 			goto bailout_free_args;
-diff --git a/net/sunrpc/socklib.c b/net/sunrpc/socklib.c
-index d52313af82bc..05b38bf68316 100644
---- a/net/sunrpc/socklib.c
-+++ b/net/sunrpc/socklib.c
-@@ -15,6 +15,7 @@
- #include <linux/pagemap.h>
- #include <linux/udp.h>
- #include <linux/sunrpc/msg_prot.h>
-+#include <linux/sunrpc/sched.h>
- #include <linux/sunrpc/xdr.h>
- #include <linux/export.h>
- 
-@@ -222,7 +223,7 @@ static int xprt_send_pagedata(struct socket *sock, struct msghdr *msg,
- {
- 	int err;
- 
--	err = xdr_alloc_bvec(xdr, GFP_KERNEL);
-+	err = xdr_alloc_bvec(xdr, rpc_task_gfp_mask());
- 	if (err < 0)
- 		return err;
- 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index bbe913121f43..744c6c1d536f 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1679,15 +1679,12 @@ static bool xprt_throttle_congested(struct rpc_xprt *xprt, struct rpc_task *task
- static struct rpc_rqst *xprt_dynamic_alloc_slot(struct rpc_xprt *xprt)
- {
- 	struct rpc_rqst *req = ERR_PTR(-EAGAIN);
--	gfp_t gfp_mask = GFP_KERNEL;
- 
- 	if (xprt->num_reqs >= xprt->max_reqs)
- 		goto out;
- 	++xprt->num_reqs;
- 	spin_unlock(&xprt->reserve_lock);
--	if (current->flags & PF_WQ_WORKER)
--		gfp_mask |= __GFP_NORETRY | __GFP_NOWARN;
--	req = kzalloc(sizeof(*req), gfp_mask);
-+	req = kzalloc(sizeof(*req), rpc_task_gfp_mask());
- 	spin_lock(&xprt->reserve_lock);
- 	if (req != NULL)
- 		goto out;
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 8909c768fe71..b52eaa8a0cda 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -428,9 +428,9 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 		offset += want;
- 	}
- 
--	want = xs_alloc_sparse_pages(buf,
--			min_t(size_t, count - offset, buf->page_len),
--			GFP_KERNEL);
-+	want = xs_alloc_sparse_pages(
-+		buf, min_t(size_t, count - offset, buf->page_len),
-+		GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN);
- 	if (seek < want) {
- 		ret = xs_read_bvec(sock, msg, flags, buf->bvec,
- 				xdr_buf_pagecount(buf),
-@@ -826,7 +826,8 @@ static void
- xs_stream_prepare_request(struct rpc_rqst *req)
- {
- 	xdr_free_bvec(&req->rq_rcv_buf);
--	req->rq_task->tk_status = xdr_alloc_bvec(&req->rq_rcv_buf, GFP_KERNEL);
-+	req->rq_task->tk_status = xdr_alloc_bvec(
-+		&req->rq_rcv_buf, GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN);
+ 	if (report)
+-		pnfs_report_layoutstat(inode, GFP_KERNEL);
++		pnfs_report_layoutstat(inode, nfs_io_gfp_mask());
  }
  
- /*
-@@ -2487,7 +2488,7 @@ static int bc_malloc(struct rpc_task *task)
- 		return -EINVAL;
- 	}
+ static void
+@@ -806,13 +806,10 @@ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
+ 		      bool strict_iomode)
+ {
+ 	pnfs_put_lseg(pgio->pg_lseg);
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+-					   nfs_req_openctx(req),
+-					   req_offset(req),
+-					   req->wb_bytes,
+-					   IOMODE_READ,
+-					   strict_iomode,
+-					   GFP_KERNEL);
++	pgio->pg_lseg =
++		pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
++				   req_offset(req), req->wb_bytes, IOMODE_READ,
++				   strict_iomode, nfs_io_gfp_mask());
+ 	if (IS_ERR(pgio->pg_lseg)) {
+ 		pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 		pgio->pg_lseg = NULL;
+@@ -894,13 +891,10 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ retry:
+ 	ff_layout_pg_check_layout(pgio, req);
+ 	if (!pgio->pg_lseg) {
+-		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+-						   nfs_req_openctx(req),
+-						   req_offset(req),
+-						   req->wb_bytes,
+-						   IOMODE_RW,
+-						   false,
+-						   GFP_KERNEL);
++		pgio->pg_lseg =
++			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
++					   req_offset(req), req->wb_bytes,
++					   IOMODE_RW, false, nfs_io_gfp_mask());
+ 		if (IS_ERR(pgio->pg_lseg)) {
+ 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 			pgio->pg_lseg = NULL;
+@@ -953,13 +947,10 @@ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
+ 				    struct nfs_page *req)
+ {
+ 	if (!pgio->pg_lseg) {
+-		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+-						   nfs_req_openctx(req),
+-						   req_offset(req),
+-						   req->wb_bytes,
+-						   IOMODE_RW,
+-						   false,
+-						   GFP_KERNEL);
++		pgio->pg_lseg =
++			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
++					   req_offset(req), req->wb_bytes,
++					   IOMODE_RW, false, nfs_io_gfp_mask());
+ 		if (IS_ERR(pgio->pg_lseg)) {
+ 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 			pgio->pg_lseg = NULL;
+@@ -1258,7 +1249,7 @@ static void ff_layout_io_track_ds_error(struct pnfs_layout_segment *lseg,
+ 	mirror = FF_LAYOUT_COMP(lseg, idx);
+ 	err = ff_layout_track_ds_error(FF_LAYOUT_FROM_HDR(lseg->pls_layout),
+ 				       mirror, offset, length, status, opnum,
+-				       GFP_KERNEL);
++				       nfs_io_gfp_mask());
  
--	page = alloc_page(GFP_KERNEL);
-+	page = alloc_page(GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN);
- 	if (!page)
+ 	switch (status) {
+ 	case NFS4ERR_DELAY:
+@@ -1973,7 +1964,8 @@ ff_layout_setup_ds_info(struct pnfs_ds_commit_info *fl_cinfo,
+ 	struct inode *inode = lseg->pls_layout->plh_inode;
+ 	struct pnfs_commit_array *array, *new;
+ 
+-	new = pnfs_alloc_commit_array(flseg->mirror_array_cnt, GFP_KERNEL);
++	new = pnfs_alloc_commit_array(flseg->mirror_array_cnt,
++				      nfs_io_gfp_mask());
+ 	if (new) {
+ 		spin_lock(&inode->i_lock);
+ 		array = pnfs_add_commit_array(fl_cinfo, new, lseg);
+@@ -2152,10 +2144,10 @@ ff_layout_prepare_layoutreturn(struct nfs4_layoutreturn_args *args)
+ 	struct nfs4_flexfile_layoutreturn_args *ff_args;
+ 	struct nfs4_flexfile_layout *ff_layout = FF_LAYOUT_FROM_HDR(args->layout);
+ 
+-	ff_args = kmalloc(sizeof(*ff_args), GFP_KERNEL);
++	ff_args = kmalloc(sizeof(*ff_args), nfs_io_gfp_mask());
+ 	if (!ff_args)
+ 		goto out_nomem;
+-	ff_args->pages[0] = alloc_page(GFP_KERNEL);
++	ff_args->pages[0] = alloc_page(nfs_io_gfp_mask());
+ 	if (!ff_args->pages[0])
+ 		goto out_nomem_free;
+ 
+@@ -2193,7 +2185,7 @@ ff_layout_send_layouterror(struct pnfs_layout_segment *lseg)
+ 		return;
+ 
+ 	errors = kmalloc_array(NFS42_LAYOUTERROR_MAX, sizeof(*errors),
+-			       GFP_KERNEL);
++			       nfs_io_gfp_mask());
+ 	if (errors != NULL) {
+ 		const struct nfs4_ff_layout_ds_err *pos;
+ 		size_t n = 0;
+@@ -2445,7 +2437,7 @@ ff_layout_prepare_layoutstats(struct nfs42_layoutstat_args *args)
+ 
+ 	/* For now, send at most PNFS_LAYOUTSTATS_MAXDEV statistics */
+ 	args->devinfo = kmalloc_array(dev_count, sizeof(*args->devinfo),
+-				      GFP_KERNEL);
++				      nfs_io_gfp_mask());
+ 	if (!args->devinfo)
  		return -ENOMEM;
  
 -- 
