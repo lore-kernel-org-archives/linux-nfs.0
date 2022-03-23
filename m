@@ -2,176 +2,363 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 831CFC433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Mar 2022 22:07:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BEACC433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Mar 2022 00:43:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237541AbiCVWId (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 22 Mar 2022 18:08:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56314 "EHLO
+        id S240534AbiCWAol (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 22 Mar 2022 20:44:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54090 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237435AbiCVWIc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2022 18:08:32 -0400
-X-Greylist: delayed 1502 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 22 Mar 2022 15:07:03 PDT
-Received: from gateway22.websitewelcome.com (gateway22.websitewelcome.com [192.185.47.206])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C2AEB6F4BB
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 15:07:03 -0700 (PDT)
-Received: from cm10.websitewelcome.com (cm10.websitewelcome.com [100.42.49.4])
-        by gateway22.websitewelcome.com (Postfix) with ESMTP id C8546FDE4
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2022 16:19:17 -0500 (CDT)
-Received: from 162-215-252-75.unifiedlayer.com ([208.91.199.152])
-        by cmsmtp with SMTP
-        id WluPnKV8CRnrrWluPngDZr; Tue, 22 Mar 2022 16:19:17 -0500
-X-Authority-Reason: nr=8
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=roeck-us.net; s=default; h=In-Reply-To:Content-Type:MIME-Version:References
-        :Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:Content-Transfer-Encoding
-        :Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
-        Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:List-Unsubscribe:
-        List-Subscribe:List-Post:List-Owner:List-Archive;
-        bh=Al7pVKSedpXzR2mUJv99Hxat4XtGmTagJN/XJ1s2Hmo=; b=sLKrSHw+KVgnGkbzOB/VEO9Fg0
-        KeOJMxYu0Bnmzx+A12YhIb/k/Tk3UK2ZVTx0zQcuzkHsdLKhFvMGi8TmZHzt23hyDOYlMO/8cY/PQ
-        Yunn41qFPTaRF+ofo07duityfQ5AVD1okUG5CggtfPtzAAvJALxs7O9IRjat/EIXIbzstKLf16y54
-        RfQAb/09FG7Hm/HVBSs2kn974LsMYF0m6yN1DlVBpdIJr7IDlc8QTKAG3WsJoVWrO1Tn4O6a7/p8Z
-        Gz9TP+2eFoS0gMfpY7o1mvfTMdBvZOp+5drONWxhiqFH/1A6QnPVE8wlQBppd4+BysFkDdGt5WtRp
-        L30Scr2A==;
-Received: from 108-223-40-66.lightspeed.sntcca.sbcglobal.net ([108.223.40.66]:57612 helo=localhost)
-        by bh-25.webhostbox.net with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-        (Exim 4.94.2)
-        (envelope-from <linux@roeck-us.net>)
-        id 1nWluO-000g4u-OE; Tue, 22 Mar 2022 21:19:16 +0000
-Date:   Tue, 22 Mar 2022 14:19:15 -0700
-From:   Guenter Roeck <linux@roeck-us.net>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
-        Mike Snitzer <snitzer@redhat.com>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Roger Pau =?iso-8859-1?Q?Monn=E9?= <roger.pau@citrix.co>,
-        dm-devel@redhat.com, "Md . Haris Iqbal " <haris.iqbal@ionos.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        linux-fsdevel@vger.kernel.org, xen-devel@lists.xenproject.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        ntfs3@lists.linux.dev, Jack Wang <jinpu.wang@ionos.com>,
-        Pavel Begunkov <asml.silence@gmail.com>,
-        drbd-dev@lists.linbit.com
-Subject: Re: [dm-devel] [PATCH 01/19] fs: remove mpage_alloc
-Message-ID: <20220322211915.GA2413063@roeck-us.net>
-References: <20220124091107.642561-1-hch@lst.de>
- <20220124091107.642561-2-hch@lst.de>
+        with ESMTP id S235042AbiCWAok (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2022 20:44:40 -0400
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F1E73C4B9;
+        Tue, 22 Mar 2022 17:43:11 -0700 (PDT)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22MKxkdL010107;
+        Wed, 23 Mar 2022 00:43:08 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=message-id : date :
+ subject : to : cc : references : from : in-reply-to : content-type :
+ content-transfer-encoding : mime-version; s=corp-2021-07-09;
+ bh=SlIsVlMk3QRi+A4x+zmNTdK+xCiR/GB+y3YiXT292eU=;
+ b=vuvGSCH48UtfHSGsHI8N673A2rlBu4fSIs7t8zww+iX+UrL+FmNt4dlfav3GMoi5pq+6
+ 45S5ZjlEUa6C0Y4v0XsR80/zqrYb1C8WGSD2rs7JfxA5xWjD3sKm5QkBm8ulXQIReef/
+ fTG/TEheW1+TVpwOFPPZmnGcdAi56+bTILmwpwRRXSULczUc/6+KbASwSySeNthneKBu
+ xh5NhKzz+rD/WE4xG/868j/DFqxXb1HaTaRmWlVesc/KugcxmyevEcuD+kVSWBy7qvwK
+ p8wlWinhVMIDHD2zbL7VlmvsabI7SdIP5T/H8uBf/Duz6jkkmlODl0oSG/G1kZNhKKF4 Hw== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80] (may be forged))
+        by mx0b-00069f02.pphosted.com with ESMTP id 3ew7qt85x7-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 23 Mar 2022 00:43:08 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.1.2/8.16.1.2) with SMTP id 22N0fvPk012197;
+        Wed, 23 Mar 2022 00:43:06 GMT
+Received: from nam10-dm6-obe.outbound.protection.outlook.com (mail-dm6nam10lp2101.outbound.protection.outlook.com [104.47.58.101])
+        by userp3030.oracle.com with ESMTP id 3ew49r8bme-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 23 Mar 2022 00:43:06 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=oD0YqEAYOfCcJmLP4BRvUlTpo9uGXJjfkK8A93Wmc6u7AOODxCcCXBCEZNSsf8ZId5BHJpEmQleFrCh19KfxZeDei/3kLpSqJNJ/XssXBbpNks15d4bRWqRa1B3IRZqFCZ8LvuNDeGiTa8AHEKVds2L5ZKM09C/nFJ9rMQJbm11HkPwAeQCFSxqnZQtk5JZKDFNMkK5JhYYjR8gzty/I16GRBiA7wcKxsdsumF78fR7uzvUXQBNwpHVlgjFarA2bFDC1ZjujzKmyQeHWsLiNWBxR2iYTUJQ0O7gcyINLiBmgwkQUdtQUoHlY+6FZpqc9w0D2tXgEef66C8PAyS34BA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=SlIsVlMk3QRi+A4x+zmNTdK+xCiR/GB+y3YiXT292eU=;
+ b=F3RUcuN1Xkk7I9NIwtuT3BTJsNCAfuCvjY1KMfOEEJLoHgvaZIqrl0oFUbpESQeH/NLl0CF17jBBtnuTgq3nYq8MxryxvfruESiJomP1noHfVwiufuSqZg5BzHXLpRINz2x7tBFPbI/oGeG8O9oTilNH/Y+F0z3UYsLeSIfhRD4vDoxtPOtTzjcFuOvsRTkoA2wVu7FT2wQMzD9QbZD++IW70NlSouuDWAhbwRdiCpuem/t4b1G6S2pyDjNXp2aTIEW/MqalODFn9oAHmS0u1mzIJhC3Hry5oV00Rp9Qlb1D4tdaz2yEocXjTQa/85E/p4mdlwcQtj5nt/Cpmo7Z/Q==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=SlIsVlMk3QRi+A4x+zmNTdK+xCiR/GB+y3YiXT292eU=;
+ b=XmUqArSWldbztAttWsBReCXGlJLb6Jyy/YH8irgGnKs8aFAAh9VBdicTZ7kkLgdcd4RRsCGWh/PPkb51uiaHzY+v29ktEfYFQ3T8iCkz4UuCDI9rIGkY+XQ3oPz1oubImWm/2Yg+2qdRd+K2UwmC2J2tSRf1UWJm0C1OFXYx1IE=
+Received: from BY5PR10MB4257.namprd10.prod.outlook.com (2603:10b6:a03:211::21)
+ by BL0PR10MB2803.namprd10.prod.outlook.com (2603:10b6:208:7f::32) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5081.15; Wed, 23 Mar
+ 2022 00:43:04 +0000
+Received: from BY5PR10MB4257.namprd10.prod.outlook.com
+ ([fe80::2803:98d6:9d00:5572]) by BY5PR10MB4257.namprd10.prod.outlook.com
+ ([fe80::2803:98d6:9d00:5572%9]) with mapi id 15.20.5102.016; Wed, 23 Mar 2022
+ 00:43:04 +0000
+Message-ID: <17e69efc-f290-e729-5292-f470780126a5@oracle.com>
+Date:   Tue, 22 Mar 2022 17:42:58 -0700
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:91.0)
+ Gecko/20100101 Thunderbird/91.7.0
+Subject: Re: [PATCH RFC v17 05/11] NFSD: Update nfs4_get_vfs_file() to handle
+ courtesy client
+Content-Language: en-US
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     chuck.lever@oracle.com, jlayton@redhat.com,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+References: <1647503028-11966-1-git-send-email-dai.ngo@oracle.com>
+ <1647503028-11966-6-git-send-email-dai.ngo@oracle.com>
+ <20220321214400.GA19715@fieldses.org>
+From:   dai.ngo@oracle.com
+In-Reply-To: <20220321214400.GA19715@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: SN6PR01CA0010.prod.exchangelabs.com (2603:10b6:805:b6::23)
+ To BY5PR10MB4257.namprd10.prod.outlook.com (2603:10b6:a03:211::21)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220124091107.642561-2-hch@lst.de>
-X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
-X-AntiAbuse: Primary Hostname - bh-25.webhostbox.net
-X-AntiAbuse: Original Domain - vger.kernel.org
-X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
-X-AntiAbuse: Sender Address Domain - roeck-us.net
-X-BWhitelist: no
-X-Source-IP: 108.223.40.66
-X-Source-L: No
-X-Exim-ID: 1nWluO-000g4u-OE
-X-Source: 
-X-Source-Args: 
-X-Source-Dir: 
-X-Source-Sender: 108-223-40-66.lightspeed.sntcca.sbcglobal.net (localhost) [108.223.40.66]:57612
-X-Source-Auth: guenter@roeck-us.net
-X-Email-Count: 17
-X-Source-Cap: cm9lY2s7YWN0aXZzdG07YmgtMjUud2ViaG9zdGJveC5uZXQ=
-X-Local-Domain: yes
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: b4c4b758-48ba-43f9-b67f-08da0c66162a
+X-MS-TrafficTypeDiagnostic: BL0PR10MB2803:EE_
+X-Microsoft-Antispam-PRVS: <BL0PR10MB2803B550562420E442C9BBB987189@BL0PR10MB2803.namprd10.prod.outlook.com>
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: vcV5qFTuqu/A9nxE4tgEh5WP/zivh2k/qIQTCdIfxfZbgsscvGwEsK+eeONJImrGs2FlN5N/1/KHKcVupC1VPEsAuDzkMGvhIv5Q6oQW51Y3AfeystkUlAcXNSEl/0nZ3VIfbjY7VijZc6YyjRZmiHeCSVGaYqwCTWSxCP6oJjEsvpZI8pnyMjV31uG3fQBr0dWeRnFnNG7zpmHvCfD/sc64Ha8xpmXiQdsgHXMlN6NHd1gGhU/AhVsvZZz7Y6VnumiGok2i61nMQX46ZYB4PQwIBdqoGLeLBKVViqxJiKY9UQkyOT2sqGwRXmYBj46xT+/N+PliVvmvT2pVCBz4+DP8AMVqIcga9QbSLz3Z1R6fP3KbRqq0DwAM7j8qwU/f7BhFT9+h9rOTRYkeTSRUb4Ihv9sD0g79hpSjUNt+gMVT+yX1UQ9KZ8Q7DQ8wJYF/vNzVb5C8pH97CEdvgjf5N5Xmy44Jd0F1FBLX3Qq4vsDP7W2AAz2KWjZ7aozq3U6iWAq4+Ir8v5P5p9B+bj+zcVdr5rF4ZLdICmLn6NiYHpTtXlLDJcMkw1B9u9ZRTsP9eLxxc6R8YFC8aTEghgUnXWRoqgxz/XLh7n/QwJGU49QxIwJr9qodcfNkdcc9WdIOFDLuVXeiJ6Vwao6TRqA6Y793NPJBWHudm1itkKdFVn+YgKSKceZ+z7n7A9a2t8mbJB5ACawGgW7viTz2whWYEw==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BY5PR10MB4257.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(366004)(508600001)(36756003)(8936002)(15650500001)(6486002)(83380400001)(31686004)(5660300002)(66556008)(26005)(316002)(8676002)(186003)(9686003)(66476007)(4326008)(2906002)(2616005)(6512007)(38100700002)(6506007)(6666004)(66946007)(86362001)(53546011)(31696002)(6916009)(43740500002);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?U0VMNjdqQmh2SmRhcDF2eVB6SHRBK0xXSmtvOFkweHZXMUJDZXJRSWN3Sm5C?=
+ =?utf-8?B?N3ZlaEhnMHhjYmowaUQ2T2pwaWk1NnVYaGVjU3o3a0NMbE5JWEEvK0VCUk55?=
+ =?utf-8?B?MFpsMHFYSFc1TGVaY2NKSFRmV2RKbGVKa3pGNkh6RlljZVNHdDJoZ2RBSlNO?=
+ =?utf-8?B?T2ppZzVzUmtjL0RVT0ltWHNzKzQ1TXVaZFVLWmJ6OHM5R1NvNm1kSlNrZkRK?=
+ =?utf-8?B?QU8yRCtEWExNRmRLbVdTZzNhU09PaWFSWVpZRkpkQkkxeVhWNEZRQVJ4YU0z?=
+ =?utf-8?B?L1J3MTZKQUF4dHMrY1NjRUlkemtlbElRanZVcmxWdzNYSk5rTDdWMDBaTEFM?=
+ =?utf-8?B?S1VKLzc2ZHZUM1VLMHZ2c3c0TkdBR0JBTFhWTFNVaXFNUXN6TlJUM0ZodHBO?=
+ =?utf-8?B?QzlCRlBKalgzNm5pUU9zUThyWU1IMlZxVk44b3Q1cXNRd3FlNWJhbW9oTGV4?=
+ =?utf-8?B?enBac0NhaEFqRFVJRE5DNENiMmZ3UElRbFpZZXRJSTFvL3NwdEhQcTBqMDVI?=
+ =?utf-8?B?b1JPcXduaFdvbml1RWNvaW15MkF4RnJRR25yWEt1U1JlbklYK1FzaUt0amtm?=
+ =?utf-8?B?WmhNYlFzZUQwWjY3ZEhnZFR3NnRaWXNTeTNwc05MWXR5L3I5SWpFWnE5eDRJ?=
+ =?utf-8?B?UWExZ3pTY29QSUtxWHRXZ1lPaWdtMk5JVXhYNVRnNFVUY3M3QlhiOUZiamE4?=
+ =?utf-8?B?L0FNbzh1MXY4N05GS3pYbFNpeGhublB3NkVLZlhFM2xJQnIwYmNJMTIyUEtx?=
+ =?utf-8?B?UkV6YmhVK3hJWGlrQnRldzlDUGpibTdZbTJrNTlZVHczaW9WaC9tZnBLZkE3?=
+ =?utf-8?B?R1loYURHYnM4eExpKzMvSHRub3lLQVZGRVluS0pjc1dNOUdteGVoR2Q0RFpy?=
+ =?utf-8?B?bC90RHVoSC9FRnRwYy9TUnNvNmpnQ2Niek9adSttQ2Qxa0l1WHZoZEoxZjBo?=
+ =?utf-8?B?YXRqMC9QcHFSQ0pUZXh5WnRwWk9VbVNFc29HK1RsZWRiaDl3OWxVV3RjV3RI?=
+ =?utf-8?B?SzZZV0UwMjdNVEhjV3RQcHhDbmx6L0hOSERwZEV6WWpyZTllRS9TQWlOdFpa?=
+ =?utf-8?B?M01QN2dUR0M3UTdYRUhqWVRDRlBDbmtYWHRuWU51M1cyM0RTNnBFK3M2UUhk?=
+ =?utf-8?B?TjdkeVUrcm1RODY4YmhDWi9TNlVWRkh2VkVWMHBXUDNTaEFIM0g2eVdiMWlR?=
+ =?utf-8?B?QUVCOFdMZ0I0dTFtQTRITDdNR2hqelAxTEFFa1FVVDJveXVsRGwyYk5veU1X?=
+ =?utf-8?B?OG5XaDdjc1doQmZjSE1tYzkxbzRUdUhiL1pqd21xQ2piazdLL1Y0akQ0SVcr?=
+ =?utf-8?B?ZWFCQ1RWM2pFNXh1K0lNZC9aWk9FUFowYnBHYjZZanRPaEhrRDlIUlV4QUtq?=
+ =?utf-8?B?aVhTV3BQR3BucWtIenZObDEwK2dycWZhS21nTjIrZUdRVTh2S1RUc1BCcUlV?=
+ =?utf-8?B?UGplcExCRWtNemVHb2NrZVBjNWRQWnV0amxNb29MNzd1eFd4MnI1SFVOUkxM?=
+ =?utf-8?B?bmhBYzcwdlpvc00yN24xYUhiblZKai8wTWFHc29vbzZJMVliZCs2NDV1YVZy?=
+ =?utf-8?B?TEV0b2RwYkFMRXdnaXNNMjdCRlpOMnI2TzF2OVhQek1sYk02anZ3YnFJam45?=
+ =?utf-8?B?dGhLN3RmeFVNeU9OUGVDVkNHVW1KaVNhRkp3d1NqVmh5UEFiYUxDRnIrdWJV?=
+ =?utf-8?B?Z29yK2dSN2FRanZUQlkrUW4vYlhNQ2tIbGd0OERRYUQyc29EQXIzdGtCYk1t?=
+ =?utf-8?B?TEJmQVlDcDBUaEhQOHMxUVp0YU5KSGpBV1hDdlRBdDVaMnh3cXQ2YjVOdVh5?=
+ =?utf-8?B?UC82cGZwMkpQTHFsNnpneVBVSVAxYTU0aEZZY1BoT2IxOWlqK0kyYXRDeURM?=
+ =?utf-8?B?UXFWczVHOTNxWUZLVjcyYi84WE11UmhBVzVMUGhJaERqc3NDMG1hY0hpN3lo?=
+ =?utf-8?Q?uCM63Zj4+isqCXyaZBPDOyCFsQ0hUG2u?=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: b4c4b758-48ba-43f9-b67f-08da0c66162a
+X-MS-Exchange-CrossTenant-AuthSource: BY5PR10MB4257.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 23 Mar 2022 00:43:04.5547
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: V7+USw/Q/xPItkrSBmCEL94i9l6VbmZ4/TO+HHxGM+HuFDgXzeCTNCICOoyAx37unXVfMJmbpD6B8MhTAw9/qw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL0PR10MB2803
+X-Proofpoint-Virus-Version: vendor=nai engine=6300 definitions=10294 signatures=694350
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 malwarescore=0 mlxscore=0
+ bulkscore=0 phishscore=0 spamscore=0 mlxlogscore=999 suspectscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2202240000
+ definitions=main-2203230002
+X-Proofpoint-GUID: d_lM3THiw1-1jVzOYXSWs7gCAbeIgrqP
+X-Proofpoint-ORIG-GUID: d_lM3THiw1-1jVzOYXSWs7gCAbeIgrqP
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Jan 24, 2022 at 10:10:49AM +0100, Christoph Hellwig wrote:
-> open code mpage_alloc in it's two callers and simplify the results
-> because of the context:
-> 
->  - __mpage_writepage always passes GFP_NOFS and can thus always sleep and
->     will never get a NULL return from bio_alloc at all.
->  - do_mpage_readpage can only get a non-sleeping context for readahead
->    which never sets PF_MEMALLOC and thus doesn't need the retry loop
->    either.
-> 
-> Both cases will never have __GFP_HIGH set.
-> 
 
-With this patch in the tree, I get:
+On 3/21/22 2:44 PM, J. Bruce Fields wrote:
+> On Thu, Mar 17, 2022 at 12:43:42AM -0700, Dai Ngo wrote:
+>> Update nfs4_get_vfs_file and nfs4_upgrade_open to handle share
+>> reservation conflict with courtesy client.
+>>
+>> Update nfs4_get_vfs_file and nfs4_upgrade_open to handle share
+>> reservation conflict with courtesy client.
+>>
+>> When we have deny/access conflict we walk the fi_stateids of the
+>> file in question, looking for open stateid and check the deny/access
+>> of that stateid against the one from the open request. If there is
+>> a conflict then we check if the client that owns that stateid is
+>> a courtesy client. If it is then we set the client state to
+>> CLIENT_EXPIRED and allow the open request to continue. We have
+>> to scan all the stateid's of the file since the conflict can be
+>> caused by multiple open stateid's.
+>>
+>> Client with CLIENT_EXPIRED is expired by the laundromat.
+>>
+>> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+>> ---
+>>   fs/nfsd/nfs4state.c | 99 ++++++++++++++++++++++++++++++++++++++++++++++++-----
+>>   1 file changed, 91 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index f20c75890594..c6b5e05c9c34 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -4950,9 +4950,75 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+>>   	return nfsd_setattr(rqstp, fh, &iattr, 0, (time64_t)0);
+>>   }
+>>   
+>> +static bool
+>> +nfs4_check_access_deny_bmap(struct nfs4_ol_stateid *stp, u32 access,
+>> +			bool share_access)
+>> +{
+>> +	if (share_access) {
+>> +		if (!stp->st_deny_bmap)
+>> +			return false;
+>> +
+>> +		if ((stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_BOTH)) ||
+>> +			(access & NFS4_SHARE_ACCESS_READ &&
+>> +				stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_READ)) ||
+>> +			(access & NFS4_SHARE_ACCESS_WRITE &&
+>> +				stp->st_deny_bmap & (1 << NFS4_SHARE_DENY_WRITE))) {
+>> +			return true;
+>> +		}
+>> +		return false;
+> Looks like you could do this with just:
+>
+> 		return share_access & bmap_to_share_mode(stp->st_deny_bmap);
 
-[    1.198134] Unexpected gfp: 0x2 (__GFP_HIGHMEM). Fixing up to gfp: 0x1192888 (GFP_NOWAIT|__GFP_FS|__GFP_NOWARN|__GFP_NORETRY|__GFP_NOMEMALLOC|__GFP_HARDWALL|__GFP_MOVABLE|__GFP_SKIP_KASAN_POISON). Fix your code!
-[    1.198783] CPU: 0 PID: 1 Comm: init Not tainted 5.17.0-01402-g8565d64430f8 #1
-[    1.199165] Stack : 0000000000000042 0000000000000000 0000000000000008 dae882cc7dea7ec4
-[    1.199563]         a8000000014f0c00 0000000000000000 a80000000146b2c8 ffffffff80d3a920
-[    1.199750]         a80000000146b0e0 0000000000000001 0000000000000000 0000000000000000
-[    1.199936]         000000000003087f 0000000000000000 ffffffff806d9f54 0000000000000000
-[    1.200121]         a80000000146b16f ffffffff80da0000 0000000000000001 000000000119288a
-[    1.200306]         ffffffff80da0000 ffffffffffffffff 000000000119288a 000000000119288a
-[    1.200491]         a800000001416f00 0000000000000000 ffffffff80774d30 ffffffffa0042718
-[    1.200676]         ffffffff80ec2158 a800000001468000 a80000000146b2c0 0000000000000000
-[    1.200861]         ffffffff80b55730 0000000000000000 a80000000146b3f8 ffffffff80d3a920
-[    1.201046]         0000000000000001 000000000119288a ffffffff80108fa0 dae882cc7dea7ec4
-[    1.201236]         ...
-[    1.201548] Call Trace:
-[    1.201622] [<ffffffff80108fa0>] show_stack+0x38/0x118
-[    1.201960] [<ffffffff80b55730>] dump_stack_lvl+0x50/0x6c
-[    1.202105] [<ffffffff80b4d8a4>] kmalloc_fix_flags+0x60/0x88
-[    1.202249] [<ffffffff802b40f8>] new_slab+0x2d8/0x320
-[    1.202375] [<ffffffff802b6844>] ___slab_alloc.constprop.0+0x33c/0x5e8
-[    1.202528] [<ffffffff802b6b24>] __slab_alloc.constprop.0+0x34/0x50
-[    1.202675] [<ffffffff802b72b8>] kmem_cache_alloc+0x320/0x368
-[    1.202811] [<ffffffff805e2a68>] bvec_alloc+0x78/0x128
-[    1.202936] [<ffffffff805e2fac>] bio_alloc_bioset+0x194/0x340
-[    1.203073] [<ffffffff80325bd8>] do_mpage_readpage+0x540/0x6e0
-[    1.203213] [<ffffffff80325e38>] mpage_readahead+0xc0/0x198
-[    1.203346] [<ffffffff802583a8>] read_pages+0xc0/0x2e0
-[    1.203472] [<ffffffff802589a4>] page_cache_ra_unbounded+0x1cc/0x290
-[    1.203622] [<ffffffff8024e2fc>] filemap_fault+0x4f4/0x7e8
-[    1.203753] [<ffffffff80282b2c>] __do_fault+0x44/0x190
-[    1.203878] [<ffffffff80288e0c>] __handle_mm_fault+0x7e4/0xcd0
-[    1.204015] [<ffffffff80289408>] handle_mm_fault+0x110/0x258
-[    1.204149] [<ffffffff801220e0>] do_page_fault+0x110/0x4f0
-[    1.204278] [<ffffffff801288d8>] tlb_do_page_fault_1+0x108/0x110
-[    1.204421] [<ffffffff8035eddc>] padzero+0x64/0x98
-[    1.204538] [<ffffffff80360618>] load_elf_binary+0x1808/0x18d0
-[    1.204677] [<ffffffff802d9f40>] bprm_execve+0x240/0x5a8
-[    1.204806] [<ffffffff802db49c>] kernel_execve+0x144/0x200
-[    1.204937] [<ffffffff80b4a658>] try_to_run_init_process+0x18/0x58
-[    1.205085] [<ffffffff80b5ecc0>] kernel_init+0xb4/0x10c
-[    1.205220] [<ffffffff80102558>] ret_from_kernel_thread+0x14/0x1c
+Thanks, this makes it much simpler. Fix in v18.
 
-with some qemu emulations. Bisect log is attached.
+>
+>
+>> +	}
+>> +	if ((access & NFS4_SHARE_DENY_BOTH) ||
+>> +		(access & NFS4_SHARE_DENY_READ &&
+>> +			stp->st_access_bmap & (1 << NFS4_SHARE_ACCESS_READ)) ||
+>> +		(access & NFS4_SHARE_DENY_WRITE &&
+>> +			stp->st_access_bmap & (1 << NFS4_SHARE_ACCESS_WRITE))) {
+>> +		return true;
+>> +	}
+> Likewise.
 
-I can not easily revert the patch since an attempt to do so causes
-conflicts, so I can not test upstream without this patch.
+Fix in v18.
 
-Guenter
+>
+> Also, I think it'd be simpler to check for both access and deny
+> conflicts here, instead of just one or the other.
 
----
-# bad: [8565d64430f8278bea38dab0a3ab60b4e11c71e4] Merge tag 'bounds-fixes-v5.18-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/kees/linux
-# good: [f443e374ae131c168a065ea1748feac6b2e76613] Linux 5.17
-git bisect start 'HEAD' 'v5.17'
-# good: [5628b8de1228436d47491c662dc521bc138a3d43] Merge tag 'random-5.18-rc1-for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/crng/random
-git bisect good 5628b8de1228436d47491c662dc521bc138a3d43
-# bad: [69d1dea852b54eecd8ad2ec92a7fd371e9aec4bd] Merge tag 'for-5.18/drivers-2022-03-18' of git://git.kernel.dk/linux-block
-git bisect bad 69d1dea852b54eecd8ad2ec92a7fd371e9aec4bd
-# good: [b080cee72ef355669cbc52ff55dc513d37433600] Merge tag 'for-5.18/io_uring-statx-2022-03-18' of git://git.kernel.dk/linux-block
-git bisect good b080cee72ef355669cbc52ff55dc513d37433600
-# bad: [22027a9811349de28f81e13e20e83299099acd3a] nvmet: replace ida_simple[get|remove] with the simler ida_[alloc|free]
-git bisect bad 22027a9811349de28f81e13e20e83299099acd3a
-# bad: [672fdcf0e7de3b1e39416ac85abf178f023271f1] block: partition include/linux/blk-cgroup.h
-git bisect bad 672fdcf0e7de3b1e39416ac85abf178f023271f1
-# bad: [b42c1fc3d55e077d36718ad9800d89100b2aff81] block: fix the kerneldoc for bio_end_io_acct
-git bisect bad b42c1fc3d55e077d36718ad9800d89100b2aff81
-# bad: [4b1dc86d1857f1007865cab759f2285280692eee] drbd: bio_alloc can't fail if it is allow to sleep
-git bisect bad 4b1dc86d1857f1007865cab759f2285280692eee
-# bad: [f0d911927b3c7cf5f9edb5941d0287144a602d0d] nilfs2: remove nilfs_alloc_seg_bio
-git bisect bad f0d911927b3c7cf5f9edb5941d0287144a602d0d
-# good: [e7243285c0fc87054990fcde630583586ff8ed5f] block: move blk_drop_partitions to blk.h
-git bisect good e7243285c0fc87054990fcde630583586ff8ed5f
-# bad: [d5f68a42da7a4516e7503c281a54a58727f07dc3] fs: remove mpage_alloc
-git bisect bad d5f68a42da7a4516e7503c281a54a58727f07dc3
-# good: [322cbb50de711814c42fb088f6d31901502c711a] block: remove genhd.h
-git bisect good 322cbb50de711814c42fb088f6d31901502c711a
-# first bad commit: [d5f68a42da7a4516e7503c281a54a58727f07dc3] fs: remove mpage_alloc
+I'm not clear here.
+
+I remove nfs4_check_access_deny_bmap, fold this functionality
+into nfs4_resolve_deny_conflicts_locked by making use of
+bmap_to_share_mode.
+  
+
+>
+>> +	return false;
+>> +}
+>> +
+>> +/*
+>> + * Check whether courtesy clients have conflicting access
+>> + *
+>> + * access:  is op_share_access if share_access is true.
+>> + *	    Check if access mode, op_share_access, would conflict with
+>> + *	    the current deny mode of the file 'fp'.
+>> + * access:  is op_share_deny if share_access is false.
+>> + *	    Check if the deny mode, op_share_deny, would conflict with
+>> + *	    current access of the file 'fp'.
+>> + * stp:     skip checking this entry.
+>> + * new_stp: normal open, not open upgrade.
+>> + *
+>> + * Function returns:
+>> + *	true   - access/deny mode conflict with normal client.
+>> + *	false  - no conflict or conflict with courtesy client(s) is resolved.
+>> + */
+>> +static bool
+>> +nfs4_resolve_deny_conflicts_locked(struct nfs4_file *fp, bool new_stp,
+>> +		struct nfs4_ol_stateid *stp, u32 access, bool share_access)
+>> +{
+>> +	struct nfs4_ol_stateid *st;
+>> +	struct nfs4_client *clp;
+>> +	bool conflict = false;
+>> +
+>> +	lockdep_assert_held(&fp->fi_lock);
+>> +	list_for_each_entry(st, &fp->fi_stateids, st_perfile) {
+>> +		if (st->st_openstp || (st == stp && new_stp) ||
+> I'd split this into separate if statements and add a comment at least
+> for the st_openstp case, which isn't too obvious:
+>
+> 		if (st->st_openstp) /* ignore lock stateids */
+> 			continue;
+
+Fix in v18.
+
+>
+>> +			(!nfs4_check_access_deny_bmap(st,
+>> +					access, share_access)))
+>> +			continue;
+>> +		clp = st->st_stid.sc_client;
+>> +		if (nfsd4_expire_courtesy_clnt(clp))
+>> +			continue;
+>> +		conflict = true;
+>> +		break;
+>> +	}
+>> +	return conflict;
+>> +}
+>> +
+>>   static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+>>   		struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp,
+>> -		struct nfsd4_open *open)
+>> +		struct nfsd4_open *open, bool new_stp)
+>>   {
+>>   	struct nfsd_file *nf = NULL;
+>>   	__be32 status;
+>> @@ -4968,15 +5034,29 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+>>   	 */
+>>   	status = nfs4_file_check_deny(fp, open->op_share_deny);
+>>   	if (status != nfs_ok) {
+>> -		spin_unlock(&fp->fi_lock);
+>> -		goto out;
+>> +		if (status != nfserr_share_denied) {
+>> +			spin_unlock(&fp->fi_lock);
+>> +			goto out;
+>> +		}
+>> +		if (nfs4_resolve_deny_conflicts_locked(fp, new_stp,
+>> +				stp, open->op_share_deny, false)) {
+>> +			spin_unlock(&fp->fi_lock);
+>> +			goto out;
+>> +		}
+>>   	}
+>>   
+>>   	/* set access to the file */
+>>   	status = nfs4_file_get_access(fp, open->op_share_access);
+>>   	if (status != nfs_ok) {
+>> -		spin_unlock(&fp->fi_lock);
+>> -		goto out;
+>> +		if (status != nfserr_share_denied) {
+>> +			spin_unlock(&fp->fi_lock);
+>> +			goto out;
+>> +		}
+>> +		if (nfs4_resolve_deny_conflicts_locked(fp, new_stp,
+>> +				stp, open->op_share_access, true)) {
+>> +			spin_unlock(&fp->fi_lock);
+>> +			goto out;
+>> +		}
+>>   	}
+>>   
+>>   	/* Set access bits in stateid */
+>> @@ -5027,7 +5107,7 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
+>>   	unsigned char old_deny_bmap = stp->st_deny_bmap;
+>>   
+>>   	if (!test_access(open->op_share_access, stp))
+>> -		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
+>> +		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open, false);
+>>   
+>>   	/* test and set deny mode */
+>>   	spin_lock(&fp->fi_lock);
+>> @@ -5036,7 +5116,10 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
+>>   		set_deny(open->op_share_deny, stp);
+>>   		fp->fi_share_deny |=
+>>   				(open->op_share_deny & NFS4_SHARE_DENY_BOTH);
+>> -	}
+>> +	} else if (status == nfserr_share_denied &&
+>> +		!nfs4_resolve_deny_conflicts_locked(fp, false, stp,
+>> +			open->op_share_deny, false))
+> Looks to me like these nfs4_resolve_deny_conflicts_locked() calls could
+> go into nfs4_file_check_deny and nfs4_file_get_access instead.
+
+Fix in v18.
+
+-Dai
+
+>
+> --b.
+>
+>> +		status = nfs_ok;
+>>   	spin_unlock(&fp->fi_lock);
+>>   
+>>   	if (status != nfs_ok)
+>> @@ -5376,7 +5459,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+>>   			goto out;
+>>   		}
+>>   	} else {
+>> -		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
+>> +		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open, true);
+>>   		if (status) {
+>>   			stp->st_stid.sc_type = NFS4_CLOSED_STID;
+>>   			release_open_stateid(stp);
+>> -- 
+>> 2.9.5
