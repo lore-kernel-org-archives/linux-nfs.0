@@ -2,49 +2,49 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 773C0C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E2498C433FE
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Mar 2022 20:19:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244795AbiCWUUm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Mar 2022 16:20:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50842 "EHLO
+        id S230070AbiCWUUn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Mar 2022 16:20:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50904 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230070AbiCWUUl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2022 16:20:41 -0400
+        with ESMTP id S240558AbiCWUUm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2022 16:20:42 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 9C5671CB3A
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id E93071D326
         for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2022 13:19:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1648066750;
+        s=mimecast20190719; t=1648066751;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Am6lhT2qbsmRqVPaDfBrigBs2TIbVKCJe7CvKinIzaI=;
-        b=dG7BRhywrYGAW/h36RvwgUNKCEZlxfeQLrVPFGfu4ZYv4gZpgb2VqfLj7i4el1SxJaSXSe
-        yRsHAyoj5pVpF5ff+aWaiV0IjJjVfet8fLBG5fCenUFk0a3sX/IqagG/vuMWe4kdGYIUv2
-        EPAM5Arhfve3prJkLrwXN2aT9oM7SVY=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=uveqk269buC83REhtEYbV8V7SeNs/Lmku709rCSUKxM=;
+        b=UspclhEdVJXSjdHHa2bcc1/vWEiR6Kj+3XwsBfJV3/xsgHwSDvxQIQcgKQB5+qCW+BKjOf
+        ve1yw2KLhLurJgFVqqAW97sKf3qoq5BwS2aUAW3DgT1lczQ6EVoiqtFYlH2C58RY/VPfjA
+        lNzO0nnK1uotZRxxuxKmC2UeMwS6uow=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-627-_zazaxjzMZakc6zFlgiwVg-1; Wed, 23 Mar 2022 16:18:59 -0400
-X-MC-Unique: _zazaxjzMZakc6zFlgiwVg-1
+ us-mta-479-Q_5xvPIDNIeYe2QfiRCsEg-1; Wed, 23 Mar 2022 16:19:08 -0400
+X-MC-Unique: Q_5xvPIDNIeYe2QfiRCsEg-1
 Received: from smtp.corp.redhat.com (int-mx10.intmail.prod.int.rdu2.redhat.com [10.11.54.10])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id B663E803D7A;
-        Wed, 23 Mar 2022 20:18:58 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 38D573803917;
+        Wed, 23 Mar 2022 20:19:07 +0000 (UTC)
 Received: from nyarly.redhat.com (ovpn-116-121.gru2.redhat.com [10.97.116.121])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 44139401E24;
-        Wed, 23 Mar 2022 20:18:54 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id D48FC401E24;
+        Wed, 23 Mar 2022 20:19:03 +0000 (UTC)
 From:   Thiago Becker <tbecker@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     steved@redhat.com, trond.myklebust@hammerspace.com,
         anna.schumaker@netapp.com, kolga@netapp.com,
         Thiago Becker <tbecker@redhat.com>
-Subject: [PATCH RFC v3 1/6] Create nfsrahead
-Date:   Wed, 23 Mar 2022 17:18:36 -0300
-Message-Id: <20220323201841.4166549-2-tbecker@redhat.com>
+Subject: [PATCH RFC v3 3/6] nfsrahead: only set readahead for nfs devices.
+Date:   Wed, 23 Mar 2022 17:18:38 -0300
+Message-Id: <20220323201841.4166549-4-tbecker@redhat.com>
 In-Reply-To: <20220323201841.4166549-1-tbecker@redhat.com>
 References: <20220323201841.4166549-1-tbecker@redhat.com>
 MIME-Version: 1.0
@@ -54,79 +54,168 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This tool is invoked by udev to find and set the readahead value to NFS
-mounts.
+Limit setting the readahead for nfs devices.
 
 Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1946283
 Signed-off-by: Thiago Becker <tbecker@redhat.com>
 ---
- .gitignore                  | 1 +
- configure.ac                | 1 +
- tools/Makefile.am           | 2 +-
- tools/nfsrahead/Makefile.am | 3 +++
- tools/nfsrahead/main.c      | 7 +++++++
- 5 files changed, 13 insertions(+), 1 deletion(-)
- create mode 100644 tools/nfsrahead/Makefile.am
- create mode 100644 tools/nfsrahead/main.c
+ tools/nfsrahead/Makefile.am |   1 +
+ tools/nfsrahead/main.c      | 130 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 131 insertions(+)
 
-diff --git a/.gitignore b/.gitignore
-index c89d1cd2..38ab1d39 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -61,6 +61,7 @@ utils/statd/statd
- tools/locktest/testlk
- tools/getiversion/getiversion
- tools/nfsconf/nfsconf
-+tools/nfsrahead/nfsrahead
- support/export/mount.h
- support/export/mount_clnt.c
- support/export/mount_xdr.c
-diff --git a/configure.ac b/configure.ac
-index e0f5a930..3e1c183b 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -737,6 +737,7 @@ AC_CONFIG_FILES([
- 	tools/rpcgen/Makefile
- 	tools/mountstats/Makefile
- 	tools/nfs-iostat/Makefile
-+	tools/nfsrahead/Makefile
- 	tools/rpcctl/Makefile
- 	tools/nfsdclnts/Makefile
- 	tools/nfsconf/Makefile
-diff --git a/tools/Makefile.am b/tools/Makefile.am
-index c3feabbe..40c17c37 100644
---- a/tools/Makefile.am
-+++ b/tools/Makefile.am
-@@ -12,6 +12,6 @@ if CONFIG_NFSDCLD
- OPTDIRS += nfsdclddb
- endif
- 
--SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat rpcctl nfsdclnts $(OPTDIRS)
-+SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat rpcctl nfsdclnts nfsrahead $(OPTDIRS)
- 
- MAINTAINERCLEANFILES = Makefile.in
 diff --git a/tools/nfsrahead/Makefile.am b/tools/nfsrahead/Makefile.am
-new file mode 100644
-index 00000000..edff7921
---- /dev/null
+index b598bec3..afccc520 100644
+--- a/tools/nfsrahead/Makefile.am
 +++ b/tools/nfsrahead/Makefile.am
-@@ -0,0 +1,3 @@
-+libexec_PROGRAMS = nfsrahead
-+nfsrahead_SOURCES = main.c
-+
+@@ -1,5 +1,6 @@
+ libexec_PROGRAMS = nfsrahead
+ nfsrahead_SOURCES = main.c
++nfsrahead_LDFLAGS= -lmount
+ 
+ udev_rulesdir = /etc/udev/rules.d
+ udev_rules_DATA = 99-nfs_bdi.rules
 diff --git a/tools/nfsrahead/main.c b/tools/nfsrahead/main.c
-new file mode 100644
-index 00000000..e454108e
---- /dev/null
+index e454108e..2cf77424 100644
+--- a/tools/nfsrahead/main.c
 +++ b/tools/nfsrahead/main.c
-@@ -0,0 +1,7 @@
-+#include <stdio.h>
+@@ -1,7 +1,137 @@
+ #include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <errno.h>
 +
-+int main(int argc, char **argv, char **envp)
++#include <libmount/libmount.h>
++#include <sys/sysmacros.h>
++
++#ifndef MOUNTINFO_PATH
++#define MOUNTINFO_PATH "/proc/self/mountinfo"
++#endif
++
++/* Device information from the system */
++struct device_info {
++	char *device_number;
++	dev_t dev;
++	char *mountpoint;
++	char *fstype;
++};
++
++/* Convert a string in the format n:m to a device number */
++static dev_t dev_from_arg(const char *device_number)
 +{
-+	unsigned int readahead = 128;
-+	printf("%d\n", readahead);
++	char *s = strdup(device_number), *p;
++	char *maj_s, *min_s;
++	unsigned int maj, min;
++	dev_t dev;
++
++	maj_s = p = s;
++	for ( ; *p != ':'; p++)
++		;
++
++	*p = '\0';
++	min_s = p + 1;
++
++	maj = strtol(maj_s, NULL, 10);
++	min = strtol(min_s, NULL, 10);
++
++	dev = makedev(maj, min);
++
++	free(s);
++	return dev;
 +}
++
++#define sfree(ptr) if (ptr) free(ptr)
++
++/* device_info maintenance */
++static void init_device_info(struct device_info *di, const char *device_number)
++{
++	di->device_number = strdup(device_number);
++	di->dev = dev_from_arg(device_number);
++	di->mountpoint = NULL;
++	di->fstype = NULL;
++}
++
++
++static void free_device_info(struct device_info *di)
++{
++	sfree(di->mountpoint);
++	sfree(di->fstype);
++	sfree(di->device_number);
++}
++
++static int get_mountinfo(const char *device_number, struct device_info *device_info, const char *mountinfo_path)
++{
++	int ret = 0;
++	struct libmnt_table *mnttbl;
++	struct libmnt_fs *fs;
++	char *target;
++
++	init_device_info(device_info, device_number);
++
++	mnttbl = mnt_new_table();
++
++	if ((ret = mnt_table_parse_file(mnttbl, mountinfo_path)) < 0)
++		goto out_free_tbl;
++
++	if ((fs = mnt_table_find_devno(mnttbl, device_info->dev, MNT_ITER_FORWARD)) == NULL) {
++		ret = ENOENT;
++		goto out_free_tbl;
++	}
++
++	if ((target = (char *)mnt_fs_get_target(fs)) == NULL) {
++		ret = ENOENT;
++		goto out_free_fs;
++	}
++
++	device_info->mountpoint = strdup(target);
++	target = (char *)mnt_fs_get_fstype(fs);
++	if (target)
++		device_info->fstype = strdup(target);
++
++out_free_fs:
++	mnt_free_fs(fs);
++out_free_tbl:
++	mnt_free_table(mnttbl);
++	free(device_info->device_number);
++	device_info->device_number = NULL;
++	return ret;
++}
++
++static int get_device_info(const char *device_number, struct device_info *device_info)
++{
++	int ret = ENOENT;
++	for (int retry_count = 0; retry_count < 10 && ret != 0; retry_count++)
++		ret = get_mountinfo(device_number, device_info, MOUNTINFO_PATH);
++
++	return ret;
++}
+ 
+ int main(int argc, char **argv, char **envp)
+ {
++	int ret = 0;
++	struct device_info device;
+ 	unsigned int readahead = 128;
++
++	if (argc != 2) {
++		return -EINVAL;
++	}
++
++	if ((ret = get_device_info(argv[1], &device)) != 0) {
++		goto out;
++	}
++
++	if (strncmp("nfs", device.fstype, 3) != 0) {
++		ret = -EINVAL;
++		goto out;
++	}
++
++	info("Setting %s readahead to 128\n", device.mountpoint);
++
+ 	printf("%d\n", readahead);
++
++out:
++	free_device_info(&device);
++	return ret;
+ }
 -- 
 2.35.1
 
