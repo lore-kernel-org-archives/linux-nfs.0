@@ -2,80 +2,111 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27866C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Mar 2022 18:28:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A978C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Mar 2022 21:39:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343658AbiCXS3u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Mar 2022 14:29:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33824 "EHLO
+        id S1352361AbiCXVl0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Mar 2022 17:41:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48014 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352621AbiCXS3t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2022 14:29:49 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09D1E1102
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Mar 2022 11:28:06 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id D90356217; Thu, 24 Mar 2022 14:28:05 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org D90356217
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1648146485;
-        bh=zmgImIrHcr5DBCvR/GakJAG+PUiS0fLuEUZtEIZtt/o=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=Vhjfa/yy6ChS0tYT1p5PBwszic5RQv8zIfPxldQ+YQWPswQ77HnROU37IEmI1xnXG
-         HR7fH5i7/jB0k8J7/UwT6VyGoSo5dcbDj38lf0cVOfjxdUEy230DgdRWrnfVFlQZ3s
-         bP15rY9g0PC4rmOn+IbnEWPI1jNVeEjtD4797ghs=
-Date:   Thu, 24 Mar 2022 14:28:05 -0400
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Jonathan Woithe <jwoithe@just42.net>
-Cc:     Chuck Lever III <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] lockd: fix server crash on reboot of client holding
- lock
-Message-ID: <20220324182805.GA28045@fieldses.org>
-References: <20220115212336.GB30050@marvin.atrad.com.au>
- <20220116220627.GA19813@marvin.atrad.com.au>
- <1E71316C-9EE8-4C71-ADA1-71E2910CA070@oracle.com>
- <20220117074430.GA22026@marvin.atrad.com.au>
- <20220117220851.GA8494@marvin.atrad.com.au>
- <20220117221156.GB3090@fieldses.org>
- <20220118220016.GB16108@fieldses.org>
- <20220118222050.GB30863@marvin.atrad.com.au>
- <20220118222703.GD16108@fieldses.org>
- <20220323233323.GI2179@marvin.atrad.com.au>
+        with ESMTP id S1349593AbiCXVlZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2022 17:41:25 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 039446473C
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Mar 2022 14:39:53 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 914436139D
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Mar 2022 21:39:52 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BE47EC340EE
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Mar 2022 21:39:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1648157992;
+        bh=KuIxCCcIK5THBRyx1gYe+BY1fxdHeSRRZ1i3INheoJI=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=XvF7Yfi5EOxzOfLstsznYSX/sJbKOGL8edozo0+akPwiw29IjAfWQh2l4rxaGqOhM
+         vQuHXJMGH+2lJIMC5lf+ogN5fiGF98qCpbNFQ7c4mxfIE6Xu3f5JHwvkFQlv6cuCwd
+         U33kbADOzE/SQep1Fa33zsi5ImxrSDv0zCatKrFOnQZi349MaLvOXqfxaFIbrr3eip
+         JPkJfEoS2YLUlkIU5vf/yrMuiDpAO9I3Laze1wWjr3hTizEO/Htt7qkY8OUtm4hfPP
+         Jdxg/F+CaDFZdUErVIX2yrskBA9zao4kRp/GwytgV3C3rJedbA82gbDC0PnfH3QIXG
+         3bH4Ciams0T1Q==
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] SUNRPC: Don't return error values in sysfs read of closed files
+Date:   Thu, 24 Mar 2022 17:33:45 -0400
+Message-Id: <20220324213345.5833-2-trondmy@kernel.org>
+X-Mailer: git-send-email 2.35.1
+In-Reply-To: <20220324213345.5833-1-trondmy@kernel.org>
+References: <20220324213345.5833-1-trondmy@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220323233323.GI2179@marvin.atrad.com.au>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 24, 2022 at 10:03:23AM +1030, Jonathan Woithe wrote:
-> On Tue, Jan 18, 2022 at 05:27:03PM -0500, Bruce Fields wrote:
-> > On Wed, Jan 19, 2022 at 08:50:50AM +1030, Jonathan Woithe wrote:
-> > > On Tue, Jan 18, 2022 at 05:00:16PM -0500, Bruce Fields wrote:
-> > > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > > 
-> > > > I thought I was iterating over the array when actually the iteration is
-> > > > over the values contained in the array?
-> > > > :
-> > > 
-> > > Would you like me to apply this against a 5.15.x kernel and test locally? 
-> > > Or should I just wait for a 5.15.x stable series update which includes it?
-> > 
-> > I'm pretty confident I'm reproducing the same problem you saw, so it'd
-> > be fine to just wait for an update.
-> > 
-> > (But if you do test these patches, let us know, one more confirmation
-> > never hurts.)
-> 
-> The shift back to a 5.15.x kernel ended up being delayed for a while for
-> various reasons.  The server concerned was eventually upgraded to 5.15.27 on
-> 9 March 2022.  In that time, client machines have been turned on and off and
-> inevitably the conditions which caused the crash have been exercised many
-> times (libreoffice, firefox and thunderbird are used daily on almost all of
-> the clients).  The server has not experienced the crash since the upgrade. 
-> On the basis of this I think it's fair to consider our problem solved.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Thanks for the confirmation.--b.
+Instead of returning an error value, which ends up being the return
+value for the read() system call, it is more elegant to simply return
+the error as a string value.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ net/sunrpc/sysfs.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 8ce053f84421..796e0f141282 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -93,10 +93,13 @@ static ssize_t rpc_sysfs_xprt_dstaddr_show(struct kobject *kobj,
+ 	struct rpc_xprt *xprt = rpc_sysfs_xprt_kobj_get_xprt(kobj);
+ 	ssize_t ret;
+ 
+-	if (!xprt)
+-		return 0;
++	if (!xprt) {
++		ret = sprintf(buf, "<closed>\n");
++		goto out;
++	}
+ 	ret = sprintf(buf, "%s\n", xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 	xprt_put(xprt);
++out:
+ 	return ret + 1;
+ }
+ 
+@@ -147,8 +150,8 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
+ 	ssize_t ret;
+ 
+ 	if (!xprt || !xprt_connected(xprt)) {
+-		xprt_put(xprt);
+-		return -ENOTCONN;
++		ret = sprintf(buf, "<closed>\n");
++		goto out;
+ 	}
+ 
+ 	ret = sprintf(buf, "last_used=%lu\ncur_cong=%lu\ncong_win=%lu\n"
+@@ -165,6 +168,7 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
+ 		       atomic_long_read(&xprt->queuelen),
+ 		       (xprt->xprt_class->ident == XPRT_TRANSPORT_TCP) ?
+ 				xprt->address_strings[RPC_DISPLAY_PORT] : "0");
++out:
+ 	xprt_put(xprt);
+ 	return ret + 1;
+ }
+@@ -178,10 +182,7 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
+ 	int locked, connected, connecting, close_wait, bound, binding,
+ 	    closing, congested, cwnd_wait, write_space, offline, remove;
+ 
+-	if (!xprt)
+-		return 0;
+-
+-	if (!xprt->state) {
++	if (!(xprt && xprt->state)) {
+ 		ret = sprintf(buf, "state=CLOSED\n");
+ 	} else {
+ 		locked = test_bit(XPRT_LOCKED, &xprt->state);
+-- 
+2.35.1
+
