@@ -2,43 +2,43 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1CDF0C433FE
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Mar 2022 16:18:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 23B0FC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Mar 2022 20:00:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350083AbiCYQTp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Mar 2022 12:19:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39790 "EHLO
+        id S232125AbiCYUB4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Mar 2022 16:01:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56402 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354969AbiCYQTn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2022 12:19:43 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C93EA2634
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2022 09:18:06 -0700 (PDT)
+        with ESMTP id S231892AbiCYUBn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2022 16:01:43 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C623B24A765
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2022 12:52:08 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 6587A6195E
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2022 16:18:06 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9641BC340EE
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2022 16:18:05 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 4F3CA61BF8
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2022 18:02:09 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 802B5C34100
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2022 18:02:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1648225085;
-        bh=yT7k4sUpBRY+2reRl9B0zDvpuVLwS1wH51qi5QKyEbo=;
+        s=k20201202; t=1648231328;
+        bh=wsVaQ6U8G7kdvaF7wHDkqDE5b0eb1ZOqOyqtvCNtpgI=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=UKmLfqdTa98/D8GCT+Y+ccQeL+bhkAsH9MrFM5UtCzFjttRcdxOW24x+fkMx/thyu
-         HdsiczHaVNvPfGddcnDvP0HXUTjEF0ZFupsE0UpHa1r9Y7+bjLYUqQVWB2PLLnTWBh
-         o/I93e1FD8UMVreW30FPiv4PU6PREdX0wVl0Etf0WV3kT681rFq8aLUTlUzDxZYaRt
-         Sc37apKS5i8Tf0FmP1qNQpN2lT4ONS3cOF+Z+6JuLnp8TJuHDPMdQ/hpXPP6H6FCbD
-         C0hLKSJ3vK4AZ37sdu1/8vbcnqy0uNM3TWdcRn+EuMx2aqcpF2Y2vYQ7bGK8FDzeM8
-         vGVNcYhnmSZZw==
+        b=i1/tS+HSyaMQ3iqq4UXga+zRsIHLxPqWh15biVft7z8h8jhxhzflekjUmMVoEoPTw
+         K16lCHBjchm3cCe9F88i4KU9jR0RN+hO5VE+28jFBr9Xt8tmzJQUiAGW5vXFIo1LU/
+         winbaneRPrOhSuzQtvMpvaV026/UtLetjykjATD6uRFhtyCLQr4aGFK2jNrvGaqEaL
+         lmwyLDGhxdVOlFekGRpq9P2Inxhw5bGduw/JvbT6/qFYqYm7WJkqKvgArl/sOiMwZZ
+         fEKYLtgpHgecSQcuVpZCxZZw74XgZEIZ11FuwQ99oSo7ZpOggctyf2gqOzxjkGu4wq
+         fH91GULeQq5XA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] SUNRPC: Don't return error values in sysfs read of closed files
-Date:   Fri, 25 Mar 2022 12:11:38 -0400
-Message-Id: <20220325161138.249905-2-trondmy@kernel.org>
+Subject: [PATCH v3 2/2] SUNRPC: Don't return error values in sysfs read of closed files
+Date:   Fri, 25 Mar 2022 13:55:21 -0400
+Message-Id: <20220325175521.561344-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220325161138.249905-1-trondmy@kernel.org>
-References: <20220325161138.249905-1-trondmy@kernel.org>
+In-Reply-To: <20220325175521.561344-1-trondmy@kernel.org>
+References: <20220325175521.561344-1-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -53,11 +53,14 @@ the error as a string value.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
+v2: Rewrite to use transport switch
+v3: remove '\0' from the pseudo-file
+
  net/sunrpc/sysfs.c | 27 +++++++++++++++------------
  1 file changed, 15 insertions(+), 12 deletions(-)
 
 diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 60ff32296da3..7a9ff2e6261a 100644
+index 9d8a7d9f3e41..a3a2f8aeb80e 100644
 --- a/net/sunrpc/sysfs.c
 +++ b/net/sunrpc/sysfs.c
 @@ -93,10 +93,13 @@ static ssize_t rpc_sysfs_xprt_dstaddr_show(struct kobject *kobj,
@@ -73,7 +76,7 @@ index 60ff32296da3..7a9ff2e6261a 100644
  	ret = sprintf(buf, "%s\n", xprt->address_strings[RPC_DISPLAY_ADDR]);
  	xprt_put(xprt);
 +out:
- 	return ret + 1;
+ 	return ret;
  }
  
 @@ -106,10 +109,10 @@ static ssize_t rpc_sysfs_xprt_srcaddr_show(struct kobject *kobj,
@@ -85,24 +88,24 @@ index 60ff32296da3..7a9ff2e6261a 100644
  
  	if (!xprt || !xprt_connected(xprt)) {
 -		ret = -ENOTCONN;
-+		ret = sprintf(buf, "<closed>\n") + 1;
++		ret = sprintf(buf, "<closed>\n");
  	} else if (xprt->ops->get_srcaddr) {
  		ret = xprt->ops->get_srcaddr(xprt, buf, buflen);
  		if (ret > 0) {
-@@ -121,8 +124,10 @@ static ssize_t rpc_sysfs_xprt_srcaddr_show(struct kobject *kobj,
- 				buf[ret] = '\0';
+@@ -118,8 +121,10 @@ static ssize_t rpc_sysfs_xprt_srcaddr_show(struct kobject *kobj,
  				ret++;
+ 				buf[ret] = '\0';
  			}
 -		}
 -	}
 +		} else
-+			ret = sprintf(buf, "<closed>\n") + 1;
++			ret = sprintf(buf, "<closed>\n");
 +	} else
-+		ret = sprintf(buf, "<not a socket>\n") + 1;
++		ret = sprintf(buf, "<not a socket>\n");
  	xprt_put(xprt);
  	return ret;
  }
-@@ -136,8 +141,8 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
+@@ -133,8 +138,8 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
  	ssize_t ret;
  
  	if (!xprt || !xprt_connected(xprt)) {
@@ -113,15 +116,15 @@ index 60ff32296da3..7a9ff2e6261a 100644
  	}
  
  	if (xprt->ops->get_srcport)
-@@ -155,6 +160,7 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
+@@ -152,6 +157,7 @@ static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
  		       xprt->backlog.qlen, xprt->main, srcport,
  		       atomic_long_read(&xprt->queuelen),
  		       xprt->address_strings[RPC_DISPLAY_PORT]);
 +out:
  	xprt_put(xprt);
- 	return ret + 1;
+ 	return ret;
  }
-@@ -168,10 +174,7 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
+@@ -165,10 +171,7 @@ static ssize_t rpc_sysfs_xprt_state_show(struct kobject *kobj,
  	int locked, connected, connecting, close_wait, bound, binding,
  	    closing, congested, cwnd_wait, write_space, offline, remove;
  
