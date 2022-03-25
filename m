@@ -2,142 +2,103 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2A88C4321E
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Mar 2022 04:35:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1708CC43219
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Mar 2022 04:35:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1354989AbiCYEgu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Mar 2022 00:36:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46578 "EHLO
+        id S1358238AbiCYEgv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Mar 2022 00:36:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46576 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358225AbiCYEgq (ORCPT
+        with ESMTP id S1358241AbiCYEgq (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2022 00:36:46 -0400
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E805CC681B;
-        Thu, 24 Mar 2022 21:35:06 -0700 (PDT)
-Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22P0UaJO000397;
-        Fri, 25 Mar 2022 04:35:04 GMT
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E4D5EC682F;
+        Thu, 24 Mar 2022 21:35:09 -0700 (PDT)
+Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22ONb2Si031192;
+        Fri, 25 Mar 2022 04:35:07 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
- bh=gYMJq4dxnDqhdoRF7SSicGipvtMmJWPUOgDsbNZ7DyU=;
- b=ZLVdF3yjZJI4QNWRXiMMC9UqV8HzhbUPiSXBWtzcMuAbOdCZmHKJAp2EdJpQGXLft968
- HN2cNm/j7ItNv+IOjS4y6iFRFHPRByHOzfmd/0JHe7de8fsYbgUdSeK0cTSFr8y8qW9y
- jWNdLYYONqHWFiZGkTisJ68OpfazGG1AMtY8zB1XjF0BbhFa1NcJ1BdOLt1p4UH3NSuM
- OeqtqMWgOMn8BR/iGySsxOT+UF+pCEeYFpLf8IuT6tWw9fsAvIC8C0JGPgX86EHdlcLt
- pu8cBX2QBDki6XV49mM7Rpqvx7JBB5JNbG6KBtjPdfrJSA/mZcMj3yLElCjiKaRcMGrY 8g== 
+ bh=gyQqK7dCX48o4jiHAdmiq+u3QAEhj/882VQxChuwKY8=;
+ b=bsKZRtCF9qALUGagT2sfHUo+rdiKz0Rf+q+CFHt4AoLualj8aOHJjZ0a7ToxuKtm0L/j
+ WsJUz4okzi9GqlTrq2ALNbD/acBScDx+eUOs8DUpxxtS35XDSh0BLoSu7zZak8iaJMGb
+ NunTQoAYbUvM+H4jVSo8Oh9p061h1HulnBgCMsnTLHJICLmCwbuRa7NfcStrgWutO3hJ
+ nLrUTImYmIwikjbOMGsY+7WYfim9Mx0VWTxd3LVUntaT8hY2maBYDt09rHBdxO07eg/w
+ 24B4964E6ptGg6QCyEqc6TxJleF67K5+nxDSyOCIkBbdk+HNEU0dt68whPgmCpjtnaPX 1w== 
 Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.appoci.oracle.com [130.35.103.27])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3ew72anuv0-1
+        by mx0b-00069f02.pphosted.com with ESMTP id 3ew5s0x9x4-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 25 Mar 2022 04:35:04 +0000
+        Fri, 25 Mar 2022 04:35:07 +0000
 Received: from pps.filterd (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 22P4WD85020767;
-        Fri, 25 Mar 2022 04:35:02 GMT
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 22P4WDEW020751;
+        Fri, 25 Mar 2022 04:35:05 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3ew6sc2bqs-1
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3ew6sc2bsq-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 25 Mar 2022 04:35:02 +0000
+        Fri, 25 Mar 2022 04:35:05 +0000
 Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22P4YsCi040479;
-        Fri, 25 Mar 2022 04:35:02 GMT
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22P4YsCo040479;
+        Fri, 25 Mar 2022 04:35:05 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3ew6sc2bmt-9;
-        Fri, 25 Mar 2022 04:35:02 +0000
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3ew6sc2bmt-12;
+        Fri, 25 Mar 2022 04:35:05 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, bfields@fieldses.org
 Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC v18 08/11] NFSD: Update find_client_in_id_table() to handle courtesy client
-Date:   Thu, 24 Mar 2022 21:34:48 -0700
-Message-Id: <1648182891-32599-9-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH RFC v18 11/11] NFSD: Show state of courtesy clients in client info
+Date:   Thu, 24 Mar 2022 21:34:51 -0700
+Message-Id: <1648182891-32599-12-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1648182891-32599-1-git-send-email-dai.ngo@oracle.com>
 References: <1648182891-32599-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-GUID: tgB2Q1MpwjBMFAbJYGT_R_8o3vgmCYOQ
-X-Proofpoint-ORIG-GUID: tgB2Q1MpwjBMFAbJYGT_R_8o3vgmCYOQ
+X-Proofpoint-GUID: WR0hTULfwCEo-EM0UYDz2r2x8Bx2NM--
+X-Proofpoint-ORIG-GUID: WR0hTULfwCEo-EM0UYDz2r2x8Bx2NM--
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Update find_client_in_id_table to:
- . skip client with CLIENT_EXPIRED; discarded courtesy client
- . if courtesy client was found then set CLIENT_RECONNECTED
-   state so caller can take appropriate action.
-
-Update find_confirmed_client to discard courtesy client.
-Update lookup_clientid to call find_client_in_id_table directly.
-Update set_client to create client record for courtesy client.
-Update find_cpntf_state to discard courtesy client.
+Update client_info_show to show state of courtesy client
+and time since last renew.
 
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3e9cdc4a4a47..fe34d6780713 100644
+index 6169cbb74d31..5f003271004c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2952,6 +2952,8 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
-+			if (nfsd4_courtesy_clnt_expired(clp))
-+				continue;
- 			renew_client_locked(clp);
- 			return clp;
- 		}
-@@ -2963,9 +2965,15 @@ static struct nfs4_client *
- find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
+@@ -2470,7 +2470,8 @@ static int client_info_show(struct seq_file *m, void *v)
  {
- 	struct list_head *tbl = nn->conf_id_hashtbl;
-+	struct nfs4_client *clp;
+ 	struct inode *inode = m->private;
+ 	struct nfs4_client *clp;
+-	u64 clid;
++	u64 clid, hrs;
++	u32 mins, secs;
  
- 	lockdep_assert_held(&nn->client_lock);
--	return find_client_in_id_table(tbl, clid, sessions);
-+	clp = find_client_in_id_table(tbl, clid, sessions);
-+	if (clp && clp->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) {
-+		nfsd4_discard_courtesy_clnt(clp);
-+		clp = NULL;
-+	}
-+	return clp;
- }
- 
- static struct nfs4_client *
-@@ -4881,9 +4889,10 @@ static struct nfs4_client *lookup_clientid(clientid_t *clid, bool sessions,
- 						struct nfsd_net *nn)
- {
- 	struct nfs4_client *found;
-+	struct list_head *tbl = nn->conf_id_hashtbl;
- 
- 	spin_lock(&nn->client_lock);
--	found = find_confirmed_client(clid, sessions, nn);
-+	found = find_client_in_id_table(tbl, clid, sessions);
- 	if (found)
- 		atomic_inc(&found->cl_rpc_users);
- 	spin_unlock(&nn->client_lock);
-@@ -4908,6 +4917,8 @@ static __be32 set_client(clientid_t *clid,
- 	cstate->clp = lookup_clientid(clid, false, nn);
- 	if (!cstate->clp)
- 		return nfserr_expired;
-+	if (cstate->clp->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED)
-+		nfsd4_client_record_create(cstate->clp);
- 	return nfs_ok;
- }
- 
-@@ -6144,6 +6155,13 @@ static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- 	found = lookup_clientid(&cps->cp_p_clid, true, nn);
- 	if (!found)
- 		goto out;
-+	if (found->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) {
-+		nfsd4_discard_courtesy_clnt(found);
-+		if (atomic_dec_and_lock(&found->cl_rpc_users,
-+				&nn->client_lock))
-+			spin_unlock(&nn->client_lock);
-+		goto out;
-+	}
- 
- 	*stid = find_stateid_by_type(found, &cps->cp_p_stateid,
- 			NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID);
+ 	clp = get_nfsdfs_clp(inode);
+ 	if (!clp)
+@@ -2478,10 +2479,17 @@ static int client_info_show(struct seq_file *m, void *v)
+ 	memcpy(&clid, &clp->cl_clientid, sizeof(clid));
+ 	seq_printf(m, "clientid: 0x%llx\n", clid);
+ 	seq_printf(m, "address: \"%pISpc\"\n", (struct sockaddr *)&clp->cl_addr);
+-	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
++
++	if (clp->cl_cs_client_state == NFSD4_CLIENT_COURTESY)
++		seq_puts(m, "status: courtesy\n");
++	else if (clp->cl_cs_client_state == NFSD4_CLIENT_CONFIRMED)
+ 		seq_puts(m, "status: confirmed\n");
+ 	else
+ 		seq_puts(m, "status: unconfirmed\n");
++	hrs = div_u64_rem(ktime_get_boottime_seconds() - clp->cl_time,
++				3600, &secs);
++	mins = div_u64_rem((u64)secs, 60, &secs);
++	seq_printf(m, "time since last renew: %llu:%02u:%02u\n", hrs, mins, secs);
+ 	seq_printf(m, "name: ");
+ 	seq_quote_mem(m, clp->cl_name.data, clp->cl_name.len);
+ 	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
 -- 
 2.9.5
 
