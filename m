@@ -2,60 +2,60 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42192C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Mar 2022 23:54:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CB43C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Mar 2022 23:54:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234968AbiC2Xzr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Mar 2022 19:55:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47206 "EHLO
+        id S241208AbiC2Xzz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Mar 2022 19:55:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47308 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241295AbiC2XzU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2022 19:55:20 -0400
+        with ESMTP id S237498AbiC2Xym (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2022 19:54:42 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B9C0F2261D2;
-        Tue, 29 Mar 2022 16:52:52 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4CFC24E247;
+        Tue, 29 Mar 2022 16:52:20 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 70BF9218F9;
-        Tue, 29 Mar 2022 23:52:51 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 2F6AF218F9;
+        Tue, 29 Mar 2022 23:52:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1648597971; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1648597939; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=4Nhl/gv+xJp+ByGDT5YVjTNRimHHTfVAVx6ENwNFDnA=;
-        b=MZjJOPQZUFCfkGoWPznlD46FTghqaNHvn9Mqg5X5+zMFGTdMOOEI6thyMr1E5EyQ4IljTb
-        oTSSt81OOTQWH4rXDHtkwrHe0NDzIzUi0rJ5rm8Fa8MF9IdUvhVZiYWMrO1qC+GsGHOCTn
-        Dmb7lfyTLShn241RqjzAgAs3eT7/Y+0=
+        bh=tE32eedhCbqKNV/qzY0QU0j1sD/lbIXfPgDh2Z7fRTs=;
+        b=npmS5Rtdt/vjDg9rTITOYuf0u/0wOAROyuYict0Yx8Rlg5aAG7crOrIyOIn5n7L9jpR+l3
+        xRm3PhCNFMQsJ0ujiDy2L6oYKm1FM94lty/8pH2WSGM5CMs0tIlhDERpH4jI7U4LC8JfcK
+        joM92dZM0iUmJ2/asLXy8NyVeEpzxLY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1648597971;
+        s=susede2_ed25519; t=1648597939;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=4Nhl/gv+xJp+ByGDT5YVjTNRimHHTfVAVx6ENwNFDnA=;
-        b=YFdItVT8i4IyKH/d06xEQvLP3mRbqho5lYqyulNC1s8hwHT9QQgIL+Mb/9ikn3DyhYLt5J
-        VjxaHKAn+FzUX2BA==
+        bh=tE32eedhCbqKNV/qzY0QU0j1sD/lbIXfPgDh2Z7fRTs=;
+        b=3wC0HgxOOEeD/3T3+oCgunZQv+J+1MqE6Bd8mMwtFdIWZsqNC9klDTo+16h0XLvnTbFdk4
+        MQLIjNp7nPKQUXAQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 57A4D13A7E;
-        Tue, 29 Mar 2022 23:52:49 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4922A13A7E;
+        Tue, 29 Mar 2022 23:52:17 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 9xIDBdGbQ2JfLwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 29 Mar 2022 23:52:49 +0000
-Subject: [PATCH 10/10] VFS: Add FMODE_CAN_ODIRECT file flag
+        id nFx+ArGbQ2JILwAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 29 Mar 2022 23:52:17 +0000
+Subject: [PATCH 07/10] DOC: update documentation for swap_activate and swap_rw
 From:   NeilBrown <neilb@suse.de>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Christoph Hellwig <hch@infradead.org>,
         David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, linux-kernel@vger.kernel.org
 Date:   Wed, 30 Mar 2022 10:49:41 +1100
-Message-ID: <164859778128.29473.15189737957277399416.stgit@noble.brown>
+Message-ID: <164859778126.29473.6778751233552859461.stgit@noble.brown>
 In-Reply-To: <164859751830.29473.5309689752169286816.stgit@noble.brown>
 References: <164859751830.29473.5309689752169286816.stgit@noble.brown>
 User-Agent: StGit/0.23
@@ -66,166 +66,105 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Currently various places test if direct IO is possible on a file by
-checking for the existence of the direct_IO address space operation.
-This is a poor choice, as the direct_IO operation may not be used - it is
-only used if the generic_file_*_iter functions are called for direct IO
-and some filesystems - particularly NFS - don't do this.
-
-Instead, introduce a new f_mode flag: FMODE_CAN_ODIRECT and change the
-various places to check this (avoiding pointer dereferences).
-do_dentry_open() will set this flag if ->direct_IO is present, so
-filesystems do not need to be changed.
-
-NFS *is* changed, to set the flag explicitly and discard the direct_IO
-entry in the address_space_operations for files.
-
-Other filesystems which currently use noop_direct_IO could usefully be
-changed to set this flag instead.
+This documentation for ->swap_activate() has been out-of-date for a long
+time.  This patch updates it to match recent changes, and adds
+documentation for the associated ->swap_rw()
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- drivers/block/loop.c |    4 ++--
- fs/fcntl.c           |    9 ++++-----
- fs/nfs/file.c        |    3 ++-
- fs/open.c            |    9 ++++-----
- fs/overlayfs/file.c  |   13 ++++---------
- include/linux/fs.h   |    3 +++
- 6 files changed, 19 insertions(+), 22 deletions(-)
+ Documentation/filesystems/locking.rst |   18 ++++++++++++------
+ Documentation/filesystems/vfs.rst     |   17 ++++++++++++-----
+ 2 files changed, 24 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 3e636a75c83a..74cd550a8952 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -186,8 +186,8 @@ static void __loop_update_dio(struct loop_device *lo, bool dio)
- 	 */
- 	if (dio) {
- 		if (queue_logical_block_size(lo->lo_queue) >= sb_bsize &&
--				!(lo->lo_offset & dio_align) &&
--				mapping->a_ops->direct_IO)
-+		    !(lo->lo_offset & dio_align) &&
-+		    (file->f_mode & FMODE_CAN_ODIRECT))
- 			use_dio = true;
- 		else
- 			use_dio = false;
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index f15d885b9796..34a3faa4886d 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -56,11 +56,10 @@ static int setfl(int fd, struct file * filp, unsigned long arg)
- 		   arg |= O_NONBLOCK;
+diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+index 2998cec9af4b..009d855c9be5 100644
+--- a/Documentation/filesystems/locking.rst
++++ b/Documentation/filesystems/locking.rst
+@@ -260,8 +260,9 @@ prototypes::
+ 	int (*launder_folio)(struct folio *);
+ 	bool (*is_partially_uptodate)(struct folio *, size_t from, size_t count);
+ 	int (*error_remove_page)(struct address_space *, struct page *);
+-	int (*swap_activate)(struct file *);
++	int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
+ 	int (*swap_deactivate)(struct file *);
++	int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
  
- 	/* Pipe packetized mode is controlled by O_DIRECT flag */
--	if (!S_ISFIFO(inode->i_mode) && (arg & O_DIRECT)) {
--		if (!filp->f_mapping || !filp->f_mapping->a_ops ||
--			!filp->f_mapping->a_ops->direct_IO)
--				return -EINVAL;
--	}
-+	if (!S_ISFIFO(inode->i_mode) &&
-+	    (arg & O_DIRECT) &&
-+	    !(filp->f_mode & FMODE_CAN_ODIRECT))
-+		return -EINVAL;
+ locking rules:
+ 	All except dirty_folio and freepage may block
+@@ -290,6 +291,7 @@ is_partially_uptodate:	yes
+ error_remove_page:	yes
+ swap_activate:		no
+ swap_deactivate:	no
++swap_rw:		yes, unlocks
+ ======================	======================== =========	===============
  
- 	if (filp->f_op->check_flags)
- 		error = filp->f_op->check_flags(arg);
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 6da81a4f3bff..143412226bab 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -74,6 +74,8 @@ nfs_file_open(struct inode *inode, struct file *filp)
- 		return res;
+ ->write_begin(), ->write_end() and ->readpage() may be called from
+@@ -392,15 +394,19 @@ cleaned, or an error value if not. Note that in order to prevent the folio
+ getting mapped back in and redirtied, it needs to be kept locked
+ across the entire operation.
  
- 	res = nfs_open(inode, filp);
-+	if (res == 0)
-+		filp->f_mode |= FMODE_CAN_ODIRECT;
- 	return res;
- }
+-->swap_activate will be called with a non-zero argument on
+-files backing (non block device backed) swapfiles. A return value
+-of zero indicates success, in which case this file can be used for
+-backing swapspace. The swapspace operations will be proxied to the
+-address space operations.
++->swap_activate() will be called to prepare the given file for swap.  It
++should perform any validation and preparation necessary to ensure that
++writes can be performed with minimal memory allocation.  It should call
++add_swap_extent(), or the helper iomap_swapfile_activate(), and return
++the number of extents added.  If IO should be submitted through
++->swap_rw(), it should set SWP_FS_OPS, otherwise IO will be submitted
++directly to the block device ``sis->bdev``.
  
-@@ -535,7 +537,6 @@ const struct address_space_operations nfs_file_aops = {
- 	.write_end = nfs_write_end,
- 	.invalidate_folio = nfs_invalidate_folio,
- 	.releasepage = nfs_release_page,
--	.direct_IO = nfs_direct_IO,
- #ifdef CONFIG_MIGRATION
- 	.migratepage = nfs_migrate_page,
- #endif
-diff --git a/fs/open.c b/fs/open.c
-index 1315253e0247..7b50d7a2f51d 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -834,16 +834,15 @@ static int do_dentry_open(struct file *f,
- 	if ((f->f_mode & FMODE_WRITE) &&
- 	     likely(f->f_op->write || f->f_op->write_iter))
- 		f->f_mode |= FMODE_CAN_WRITE;
-+	if (f->f_mapping->a_ops && f->f_mapping->a_ops->direct_IO)
-+		f->f_mode |= FMODE_CAN_ODIRECT;
+ ->swap_deactivate() will be called in the sys_swapoff()
+ path after ->swap_activate() returned success.
  
- 	f->f_flags &= ~(O_CREAT | O_EXCL | O_NOCTTY | O_TRUNC);
- 
- 	file_ra_state_init(&f->f_ra, f->f_mapping->host->i_mapping);
- 
--	/* NB: we're sure to have correct a_ops only after f_op->open */
--	if (f->f_flags & O_DIRECT) {
--		if (!f->f_mapping->a_ops || !f->f_mapping->a_ops->direct_IO)
--			return -EINVAL;
--	}
-+	if ((f->f_flags & O_DIRECT) && !(f->f_mode & FMODE_CAN_ODIRECT))
-+		return -EINVAL;
- 
- 	/*
- 	 * XXX: Huge page cache doesn't support writing yet. Drop all page
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index fa125feed0ff..9d69b4dbb8c4 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -82,11 +82,8 @@ static int ovl_change_flags(struct file *file, unsigned int flags)
- 	if (((flags ^ file->f_flags) & O_APPEND) && IS_APPEND(inode))
- 		return -EPERM;
- 
--	if (flags & O_DIRECT) {
--		if (!file->f_mapping->a_ops ||
--		    !file->f_mapping->a_ops->direct_IO)
--			return -EINVAL;
--	}
-+	if ((flags & O_DIRECT) && !(file->f_mode & FMODE_CAN_ODIRECT))
-+		return -EINVAL;
- 
- 	if (file->f_op->check_flags) {
- 		err = file->f_op->check_flags(flags);
-@@ -306,8 +303,7 @@ static ssize_t ovl_read_iter(struct kiocb *iocb, struct iov_iter *iter)
- 
- 	ret = -EINVAL;
- 	if (iocb->ki_flags & IOCB_DIRECT &&
--	    (!real.file->f_mapping->a_ops ||
--	     !real.file->f_mapping->a_ops->direct_IO))
-+	    !(real.file->f_mode & FMODE_CAN_ODIRECT))
- 		goto out_fdput;
- 
- 	old_cred = ovl_override_creds(file_inode(file)->i_sb);
-@@ -367,8 +363,7 @@ static ssize_t ovl_write_iter(struct kiocb *iocb, struct iov_iter *iter)
- 
- 	ret = -EINVAL;
- 	if (iocb->ki_flags & IOCB_DIRECT &&
--	    (!real.file->f_mapping->a_ops ||
--	     !real.file->f_mapping->a_ops->direct_IO))
-+	    !(real.file->f_mode & FMODE_CAN_ODIRECT))
- 		goto out_fdput;
- 
- 	if (!ovl_should_sync(OVL_FS(inode->i_sb)))
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 7c65e09c09a6..781361562a27 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -162,6 +162,9 @@ typedef int (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
- /* File is stream-like */
- #define FMODE_STREAM		((__force fmode_t)0x200000)
- 
-+/* File supports DIRECT IO */
-+#define	FMODE_CAN_ODIRECT	((__force fmode_t)0x400000)
++->swap_rw will be called for swap IO if SWP_FS_OPS was set by ->swap_activate().
 +
- /* File was opened by fanotify and shouldn't generate fanotify events */
- #define FMODE_NONOTIFY		((__force fmode_t)0x4000000)
+ file_lock_operations
+ ====================
  
+diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
+index 4f14edf93941..9d3480e089f6 100644
+--- a/Documentation/filesystems/vfs.rst
++++ b/Documentation/filesystems/vfs.rst
+@@ -751,8 +751,9 @@ cache in your filesystem.  The following members are defined:
+ 					       size_t count);
+ 		void (*is_dirty_writeback) (struct page *, bool *, bool *);
+ 		int (*error_remove_page) (struct mapping *mapping, struct page *page);
+-		int (*swap_activate)(struct file *);
++		int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
+ 		int (*swap_deactivate)(struct file *);
++		int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
+ 	};
+ 
+ ``writepage``
+@@ -963,15 +964,21 @@ cache in your filesystem.  The following members are defined:
+ 	unless you have them locked or reference counts increased.
+ 
+ ``swap_activate``
+-	Called when swapon is used on a file to allocate space if
+-	necessary and pin the block lookup information in memory.  A
+-	return value of zero indicates success, in which case this file
+-	can be used to back swapspace.
++
++	Called to prepare the given file for swap.  It should perform
++	any validation and preparation necessary to ensure that writes
++	can be performed with minimal memory allocation.  It should call
++	add_swap_extent(), or the helper iomap_swapfile_activate(), and
++	return the number of extents added.  If IO should be submitted
++	through ->swap_rw(), it should set SWP_FS_OPS, otherwise IO will
++	be submitted directly to the block device ``sis->bdev``.
+ 
+ ``swap_deactivate``
+ 	Called during swapoff on files where swap_activate was
+ 	successful.
+ 
++``swap_rw``
++	Called to read or write swap pages when SWP_FS_OPS is set.
+ 
+ The File Object
+ ===============
 
 
