@@ -2,169 +2,73 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CB43C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Mar 2022 23:54:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BA91AC433FE
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Mar 2022 00:12:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241208AbiC2Xzz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Mar 2022 19:55:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47308 "EHLO
+        id S232402AbiC3AOY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Mar 2022 20:14:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43254 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237498AbiC2Xym (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2022 19:54:42 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4CFC24E247;
-        Tue, 29 Mar 2022 16:52:20 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 2F6AF218F9;
-        Tue, 29 Mar 2022 23:52:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1648597939; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=tE32eedhCbqKNV/qzY0QU0j1sD/lbIXfPgDh2Z7fRTs=;
-        b=npmS5Rtdt/vjDg9rTITOYuf0u/0wOAROyuYict0Yx8Rlg5aAG7crOrIyOIn5n7L9jpR+l3
-        xRm3PhCNFMQsJ0ujiDy2L6oYKm1FM94lty/8pH2WSGM5CMs0tIlhDERpH4jI7U4LC8JfcK
-        joM92dZM0iUmJ2/asLXy8NyVeEpzxLY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1648597939;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=tE32eedhCbqKNV/qzY0QU0j1sD/lbIXfPgDh2Z7fRTs=;
-        b=3wC0HgxOOEeD/3T3+oCgunZQv+J+1MqE6Bd8mMwtFdIWZsqNC9klDTo+16h0XLvnTbFdk4
-        MQLIjNp7nPKQUXAQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4922A13A7E;
-        Tue, 29 Mar 2022 23:52:17 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id nFx+ArGbQ2JILwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 29 Mar 2022 23:52:17 +0000
-Subject: [PATCH 07/10] DOC: update documentation for swap_activate and swap_rw
-From:   NeilBrown <neilb@suse.de>
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org
-Date:   Wed, 30 Mar 2022 10:49:41 +1100
-Message-ID: <164859778126.29473.6778751233552859461.stgit@noble.brown>
-In-Reply-To: <164859751830.29473.5309689752169286816.stgit@noble.brown>
-References: <164859751830.29473.5309689752169286816.stgit@noble.brown>
-User-Agent: StGit/0.23
+        with ESMTP id S231715AbiC3AOX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2022 20:14:23 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 25C3669CCE;
+        Tue, 29 Mar 2022 17:12:40 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 6A40C7216; Tue, 29 Mar 2022 20:12:39 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 6A40C7216
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1648599159;
+        bh=L8mTxGHAKryAac8wkg0Ftio66gd7FXWDoRKhQQ5flQk=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=O0f3EAgz63ZySIk0Zut+j59uK/j2zC0wO1Y3/2bi/VLDW1boPVpX4ueo87s4WRcrM
+         L1EK0elCrlxDGppP85Gp3Tsvlr9sj1R4bijWI6O17p4UXC8CR63A8a6UpCJQeXkaGa
+         s/o6aSLO4SRGP9HyiTeAYoK6ULxGIYxk+ZKXXrS8=
+Date:   Tue, 29 Mar 2022 20:12:39 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     dai.ngo@oracle.com
+Cc:     chuck.lever@oracle.com, jlayton@redhat.com,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC v18 02/11] NFSD: Add courtesy client state, macro and
+ spinlock to support courteous server
+Message-ID: <20220330001239.GG32217@fieldses.org>
+References: <1648182891-32599-1-git-send-email-dai.ngo@oracle.com>
+ <1648182891-32599-3-git-send-email-dai.ngo@oracle.com>
+ <20220329154750.GE29634@fieldses.org>
+ <612ef738-20f6-55f0-1677-cc035ba2fd0d@oracle.com>
+ <20220329163011.GG29634@fieldses.org>
+ <5cddab8d-dd92-6863-78fd-a4608a722927@oracle.com>
+ <20220329183916.GC32217@fieldses.org>
+ <593317f2-b4d6-eac1-7886-48a7271871e8@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <593317f2-b4d6-eac1-7886-48a7271871e8@oracle.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This documentation for ->swap_activate() has been out-of-date for a long
-time.  This patch updates it to match recent changes, and adds
-documentation for the associated ->swap_rw()
+On Tue, Mar 29, 2022 at 02:45:28PM -0700, dai.ngo@oracle.com wrote:
+> This does not prevent the courtesy client from doing trunking in all
+> cases. It is only prevent the courtesy client from doing trunking without
+> first reconnect to the server.
+> 
+> I think this behavior is the same as if the server does not support courtesy
+> client; the server can expire the courtesy anytime it wants. If the
+> courtesy client reconnected successfully then by the time nfsd4_create_session/
+> find_confirmed_client is called the client already becomes active
+> so the server will process the request normally.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- Documentation/filesystems/locking.rst |   18 ++++++++++++------
- Documentation/filesystems/vfs.rst     |   17 ++++++++++++-----
- 2 files changed, 24 insertions(+), 11 deletions(-)
+I'm not sure what you mean here.  All a client has to do to reconnect is
+succesfully renew its lease.  That doesn't necessarily require calling
+CREATE_SESSION again.
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 2998cec9af4b..009d855c9be5 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -260,8 +260,9 @@ prototypes::
- 	int (*launder_folio)(struct folio *);
- 	bool (*is_partially_uptodate)(struct folio *, size_t from, size_t count);
- 	int (*error_remove_page)(struct address_space *, struct page *);
--	int (*swap_activate)(struct file *);
-+	int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
- 	int (*swap_deactivate)(struct file *);
-+	int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- 
- locking rules:
- 	All except dirty_folio and freepage may block
-@@ -290,6 +291,7 @@ is_partially_uptodate:	yes
- error_remove_page:	yes
- swap_activate:		no
- swap_deactivate:	no
-+swap_rw:		yes, unlocks
- ======================	======================== =========	===============
- 
- ->write_begin(), ->write_end() and ->readpage() may be called from
-@@ -392,15 +394,19 @@ cleaned, or an error value if not. Note that in order to prevent the folio
- getting mapped back in and redirtied, it needs to be kept locked
- across the entire operation.
- 
--->swap_activate will be called with a non-zero argument on
--files backing (non block device backed) swapfiles. A return value
--of zero indicates success, in which case this file can be used for
--backing swapspace. The swapspace operations will be proxied to the
--address space operations.
-+->swap_activate() will be called to prepare the given file for swap.  It
-+should perform any validation and preparation necessary to ensure that
-+writes can be performed with minimal memory allocation.  It should call
-+add_swap_extent(), or the helper iomap_swapfile_activate(), and return
-+the number of extents added.  If IO should be submitted through
-+->swap_rw(), it should set SWP_FS_OPS, otherwise IO will be submitted
-+directly to the block device ``sis->bdev``.
- 
- ->swap_deactivate() will be called in the sys_swapoff()
- path after ->swap_activate() returned success.
- 
-+->swap_rw will be called for swap IO if SWP_FS_OPS was set by ->swap_activate().
-+
- file_lock_operations
- ====================
- 
-diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-index 4f14edf93941..9d3480e089f6 100644
---- a/Documentation/filesystems/vfs.rst
-+++ b/Documentation/filesystems/vfs.rst
-@@ -751,8 +751,9 @@ cache in your filesystem.  The following members are defined:
- 					       size_t count);
- 		void (*is_dirty_writeback) (struct page *, bool *, bool *);
- 		int (*error_remove_page) (struct mapping *mapping, struct page *page);
--		int (*swap_activate)(struct file *);
-+		int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
- 		int (*swap_deactivate)(struct file *);
-+		int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- 	};
- 
- ``writepage``
-@@ -963,15 +964,21 @@ cache in your filesystem.  The following members are defined:
- 	unless you have them locked or reference counts increased.
- 
- ``swap_activate``
--	Called when swapon is used on a file to allocate space if
--	necessary and pin the block lookup information in memory.  A
--	return value of zero indicates success, in which case this file
--	can be used to back swapspace.
-+
-+	Called to prepare the given file for swap.  It should perform
-+	any validation and preparation necessary to ensure that writes
-+	can be performed with minimal memory allocation.  It should call
-+	add_swap_extent(), or the helper iomap_swapfile_activate(), and
-+	return the number of extents added.  If IO should be submitted
-+	through ->swap_rw(), it should set SWP_FS_OPS, otherwise IO will
-+	be submitted directly to the block device ``sis->bdev``.
- 
- ``swap_deactivate``
- 	Called during swapoff on files where swap_activate was
- 	successful.
- 
-+``swap_rw``
-+	Called to read or write swap pages when SWP_FS_OPS is set.
- 
- The File Object
- ===============
+> Also to handle cases when the courtesy client reconnects after it was in
+> EXPIRED state, we want to force the client to recover its state starting
+> with EXCHANGE_ID so we have to return BAD_SESSION on CREATE_SESSION request.
 
+The client should not have to send EXCHANGE_ID.
 
+--b.
