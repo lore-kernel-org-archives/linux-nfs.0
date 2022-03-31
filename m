@@ -2,360 +2,243 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 728F9C4332F
-	for <linux-nfs@archiver.kernel.org>; Thu, 31 Mar 2022 16:02:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67A8CC43219
+	for <linux-nfs@archiver.kernel.org>; Thu, 31 Mar 2022 16:02:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239474AbiCaQEI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 31 Mar 2022 12:04:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35274 "EHLO
+        id S239491AbiCaQEK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 31 Mar 2022 12:04:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35340 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239475AbiCaQEH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2022 12:04:07 -0400
+        with ESMTP id S239490AbiCaQEI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2022 12:04:08 -0400
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C879611F78C;
-        Thu, 31 Mar 2022 09:02:18 -0700 (PDT)
-Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22VFUhpG029851;
-        Thu, 31 Mar 2022 16:02:15 GMT
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8082618546B;
+        Thu, 31 Mar 2022 09:02:20 -0700 (PDT)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22VEVZNZ032352;
+        Thu, 31 Mar 2022 16:02:17 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id; s=corp-2021-07-09;
- bh=P8VRVLM4/Ravtnn9PO5s7x1BJwvTvh+UxoNYAp7+Vh4=;
- b=gIvUcI+waZGW3v7w0P/xbzuE0e26SX9oumqSJa3dJxyO+Bxj/Jkf/q7aMp1U+DpzXWQX
- IMDvTE9l59ma3PUbd111AUqoBEdSH+nOTI5JZJFsaf6aAwuIuIM+mSgFfBLly1nx7mun
- OqpOrYN5ZVTg7jrTmYsB+v9DKlRUUcpjbCOkiwXSDN/elR5Vs7/p9EB2gxbXz/HjPmq7
- GhbJit1ApIS4uSN2xV2A6VCFuI16QTlzM+3qGYwAI2n/FxjiK8Apmixapp4tGFl/3w6d
- TWFWGaMy7mun1xo7RPiaWrFwsK1gm++m2f+A9zPMPZn0ondWdzT1MNTFQ2GEPEUdlNMt BA== 
+ subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
+ bh=7m5VLcqBEMVCYwIs+MEvIHvY/see9DZZ11OwFVzEYfM=;
+ b=DV73wRxXsO33KVlezXxYCY0WmC9DerAUcvzWm1hkef9R+CnDpbrDMP0Rn7OO5n0cMnK7
+ 23xNNMzDejx/3gPbkTae0V05LfONZtDh448DlzeyE2X/HeY4eYianJc37Azm1/GObmax
+ ucFfrKYM5pVtEz7v264aLtclLRfF+MqijG4Lm9le9h6tDhDFT08FSMmLBVcidXmgAopI
+ 1symR5EVE2JHGyX6cPXY32Btp0/OIGN9ZtSYepMP+AC+muaptPJ4apHLeKDe6nCMki5h
+ ZlWFmuCUhv4STY2T0Y4KmwfGqy8GDQGL6DukrzZTLg7B1q6qK/uehUDSML6FCVAzTebn 9Q== 
 Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.appoci.oracle.com [147.154.114.232])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3f1tqbck2k-1
+        by mx0b-00069f02.pphosted.com with ESMTP id 3f1uctw1hq-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 31 Mar 2022 16:02:14 +0000
+        Thu, 31 Mar 2022 16:02:17 +0000
 Received: from pps.filterd (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 22VFvMT1029483;
-        Thu, 31 Mar 2022 16:02:13 GMT
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 22VFvNG5029664;
+        Thu, 31 Mar 2022 16:02:16 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3f1s95hxfk-1
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3f1s95hxj8-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 31 Mar 2022 16:02:13 +0000
+        Thu, 31 Mar 2022 16:02:16 +0000
 Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22VG10Jt003132;
-        Thu, 31 Mar 2022 16:02:13 GMT
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 22VG10K5003132;
+        Thu, 31 Mar 2022 16:02:16 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3f1s95hxf8-1;
-        Thu, 31 Mar 2022 16:02:13 +0000
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3f1s95hxf8-6;
+        Thu, 31 Mar 2022 16:02:15 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, bfields@fieldses.org
 Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC v19 0/11] NFSD: Initial implementation of NFSv4 Courteous Server
-Date:   Thu, 31 Mar 2022 09:01:58 -0700
-Message-Id: <1648742529-28551-1-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH RFC v19 05/11] NFSD: Update nfs4_get_vfs_file() to handle courtesy client
+Date:   Thu, 31 Mar 2022 09:02:03 -0700
+Message-Id: <1648742529-28551-6-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
-X-Proofpoint-GUID: NRnQrHF1b1JyKuUEIt0RYIILl0fzwXoP
-X-Proofpoint-ORIG-GUID: NRnQrHF1b1JyKuUEIt0RYIILl0fzwXoP
+In-Reply-To: <1648742529-28551-1-git-send-email-dai.ngo@oracle.com>
+References: <1648742529-28551-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-ORIG-GUID: nb4y-kyY7ATNffqaeHYOgIGKsEkijwLS
+X-Proofpoint-GUID: nb4y-kyY7ATNffqaeHYOgIGKsEkijwLS
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Chuck, Bruce
-
-This series of patches implement the NFSv4 Courteous Server.
-
-A server which does not immediately expunge the state on lease expiration
-is known as a Courteous Server.  A Courteous Server continues to recognize
-previously generated state tokens as valid until conflict arises between
-the expired state and the requests from another client, or the server
-reboots.
-
-v2:
-
-. add new callback, lm_expire_lock, to lock_manager_operations to
-  allow the lock manager to take appropriate action with conflict lock.
-
-. handle conflicts of NFSv4 locks with NFSv3/NLM and local locks.
-
-. expire courtesy client after 24hr if client has not reconnected.
-
-. do not allow expired client to become courtesy client if there are
-  waiters for client's locks.
-
-. modify client_info_show to show courtesy client and seconds from
-  last renew.
-
-. fix a problem with NFSv4.1 server where the it keeps returning
-  SEQ4_STATUS_CB_PATH_DOWN in the successful SEQUENCE reply, after
-  the courtesy client reconnects, causing the client to keep sending
-  BCTS requests to server.
-
-v3:
-
-. modified posix_test_lock to check and resolve conflict locks
-  to handle NLM TEST and NFSv4 LOCKT requests.
-
-. separate out fix for back channel stuck in SEQ4_STATUS_CB_PATH_DOWN.
-
-v4:
-
-. rework nfsd_check_courtesy to avoid dead lock of fl_lock and client_lock
-  by asking the laudromat thread to destroy the courtesy client.
-
-. handle NFSv4 share reservation conflicts with courtesy client. This
-  includes conflicts between access mode and deny mode and vice versa.
-
-. drop the patch for back channel stuck in SEQ4_STATUS_CB_PATH_DOWN.
-
-v5:
-
-. fix recursive locking of file_rwsem from posix_lock_file. 
-
-. retest with LOCKDEP enabled.
-
-v6:
-
-. merge witn 5.15-rc7
-
-. fix a bug in nfs4_check_deny_bmap that did not check for matched
-  nfs4_file before checking for access/deny conflict. This bug causes
-  pynfs OPEN18 to fail since the server taking too long to release
-  lots of un-conflict clients' state.
-
-. enhance share reservation conflict handler to handle case where
-  a large number of conflict courtesy clients need to be expired.
-  The 1st 100 clients are expired synchronously and the rest are
-  expired in the background by the laundromat and NFS4ERR_DELAY
-  is returned to the NFS client. This is needed to prevent the
-  NFS client from timing out waiting got the reply.
-
-v7:
-
-. Fix race condition in posix_test_lock and posix_lock_inode after
-  dropping spinlock.
-
-. Enhance nfsd4_fl_expire_lock to work with with new lm_expire_lock
-  callback
-
-. Always resolve share reservation conflicts asynchrously.
-
-. Fix bug in nfs4_laundromat where spinlock is not used when
-  scanning cl_ownerstr_hashtbl.
-
-. Fix bug in nfs4_laundromat where idr_get_next was called
-  with incorrect 'id'. 
-
-. Merge nfs4_destroy_courtesy_client into nfsd4_fl_expire_lock.
-
-v8:
-
-. Fix warning in nfsd4_fl_expire_lock reported by test robot.
-
-v9:
-
-. Simplify lm_expire_lock API by (1) remove the 'testonly' flag
-  and (2) specifying return value as true/false to indicate
-  whether conflict was succesfully resolved.
-
-. Rework nfsd4_fl_expire_lock to mark client with
-  NFSD4_DESTROY_COURTESY_CLIENT then tell the laundromat to expire
-  the client in the background.
-
-. Add a spinlock in nfs4_client to synchronize access to the
-  NFSD4_COURTESY_CLIENT and NFSD4_DESTROY_COURTESY_CLIENT flag to
-  handle race conditions when resolving lock and share reservation
-  conflict.
-
-. Courtesy client that was marked as NFSD4_DESTROY_COURTESY_CLIENT
-  are now consisdered 'dead', waiting for the laundromat to expire
-  it. This client is no longer allowed to use its states if it
-  reconnects before the laundromat finishes expiring the client.
-
-  For v4.1 client, the detection is done in the processing of the
-  SEQUENCE op and returns NFS4ERR_BAD_SESSION to force the client
-  to re-establish new clientid and session.
-  For v4.0 client, the detection is done in the processing of the
-  RENEW and state-related ops and return NFS4ERR_EXPIRE to force
-  the client to re-establish new clientid.
-
-v10:
-
-  Resolve deadlock in v9 by avoiding getting cl_client and
-  cl_cs_lock together. The laundromat needs to determine whether
-  the expired client has any state and also has no blockers on
-  its locks. Both of these conditions are allowed to change after
-  the laundromat transits an expired client to courtesy client.
-  When this happens, the laundromat will detect it on the next
-  run and and expire the courtesy client.
-
-  Remove client persistent record before marking it as COURTESY_CLIENT
-  and add client persistent record before clearing the COURTESY_CLIENT
-  flag to allow the courtesy client to transist to normal client to
-  continue to use its state.
-
-  Lock/delegation/share reversation conflict with courtesy client is
-  resolved by marking the courtesy client as DESTROY_COURTESY_CLIENT,
-  effectively disable it, then allow the current request to proceed
-  immediately.
-  
-  Courtesy client marked as DESTROY_COURTESY_CLIENT is not allowed
-  to reconnect to reuse itsstate. It is expired by the laundromat
-  asynchronously in the background.
-
-  Move processing of expired clients from nfs4_laudromat to a
-  separate function, nfs4_get_client_reaplist, that creates the
-  reaplist and also to process courtesy clients.
-
-  Update Documentation/filesystems/locking.rst to include new
-  lm_lock_conflict call.
-
-  Modify leases_conflict to call lm_breaker_owns_lease only if
-  there is real conflict.  This is to allow the lock manager to
-  resolve the delegation conflict if possible.
-
-v11:
-
-  Add comment for lm_lock_conflict callback.
-
-  Replace static const courtesy_client_expiry with macro.
-
-  Remove courtesy_clnt argument from find_in_sessionid_hashtbl.
-  Callers use nfs4_client->cl_cs_client boolean to determined if
-  it's the courtesy client and take appropriate actions.
-
-  Rename NFSD4_COURTESY_CLIENT and NFSD4_DESTROY_COURTESY_CLIENT
-  with NFSD4_CLIENT_COURTESY and NFSD4_CLIENT_DESTROY_COURTESY.
-
-v12:
-
-  Remove unnecessary comment in nfs4_get_client_reaplist.
-
-  Replace nfs4_client->cl_cs_client boolean with
-  NFSD4_CLIENT_COURTESY_CLNT flag.
-
-  Remove courtesy_clnt argument from find_client_in_id_table and
-  find_clp_in_name_tree. Callers use NFSD4_CLIENT_COURTESY_CLNT to
-  determined if it's the courtesy client and take appropriate actions.
-
-v13:
-
-  Merge with 5.17-rc3.
-
-  Cleanup Documentation/filesystems/locking.rst: replace i_lock
-  with flc_lock, update API's that use flc_lock.
-
-  Rename lm_lock_conflict to lm_lock_expired().
-
-  Remove comment of lm_lock_expired API in lock_manager_operations.
-  Same information is in patch description.
-
-  Update commit messages of 4/4.
-
-  Add some comment for NFSD4_CLIENT_COURTESY_CLNT.
-
-  Add nfsd4_discard_courtesy_clnt() to eliminate duplicate code of
-  discarding courtesy client; setting NFSD4_DESTROY_COURTESY_CLIENT.
-
-v14:
-
-. merge with Chuck's public for-next branch.
-
-. remove courtesy_client_expiry, use client's last renew time.
-
-. simplify comment of nfs4_check_access_deny_bmap.
-
-. add comment about race condition in nfs4_get_client_reaplist.
-
-. add list_del when walking cslist in nfs4_get_client_reaplist.
-
-. remove duplicate INIT_LIST_HEAD(&reaplist) from nfs4_laundromat
-
-. Modify find_confirmed_client and find_confirmed_client_by_name
-  to detect courtesy client and destroy it.
-
-. refactor lookup_clientid to use find_client_in_id_table
-  directly instead of find_confirmed_client.
-
-. refactor nfsd4_setclientid to call find_clp_in_name_tree
-  directly instead of find_confirmed_client_by_name.
-
-. remove comment of NFSD4_CLIENT_COURTESY.
-
-. replace NFSD4_CLIENT_DESTROY_COURTESY with NFSD4_CLIENT_EXPIRED.
-
-. replace NFSD4_CLIENT_COURTESY_CLNT with NFSD4_CLIENT_RECONNECTED.
-
-v15:
-
-. add helper locks_has_blockers_locked in fs.h to check for
-  lock blockers
-
-. rename nfs4_conflict_clients to nfs4_resolve_deny_conflicts_locked
-
-. update nfs4_upgrade_open() to handle courtesy clients.
-
-. add helper nfs4_check_and_expire_courtesy_client and
-  nfs4_is_courtesy_client_expired to deduplicate some code.
-
-. update nfs4_anylock_blocker:
-   . replace list_for_each_entry_safe with list_for_each_entry
-   . break nfs4_anylock_blocker into 2 smaller functions.
-
-. update nfs4_get_client_reaplist:
-   . remove unnecessary commets
-   . acquire cl_cs_lock before setting NFSD4_CLIENT_COURTESY flag
-
-. update client_info_show to show 'time since last renew: 00:00:38'
-  instead of 'seconds from last renew: 38'.
-
-v16:
-
-. update client_info_show to display 'status' as
-  'confirmed/unconfirmed/courtesy'
-
-. replace helper locks_has_blockers_locked in fs.h in v15 with new
-  locks_owner_has_blockers call in fs/locks.c
-
-. update nfs4_lockowner_has_blockers to use locks_owner_has_blockers
-
-. move nfs4_check_and_expire_courtesy_client from 5/11 to 4/11
-
-. remove unnecessary check for NULL clp in find_in_sessionid_hashtb
-
-. fix typo in commit messages
-
-v17:
-
-. replace flags used for courtesy client with enum courtesy_client_state
-
-. add state table in nfsd/state.h
-
-. make nfsd4_expire_courtesy_clnt, nfsd4_discard_courtesy_clnt and
-  nfsd4_courtesy_clnt_expired as static inline.
-
-. update nfsd_breaker_owns_lease to use dl->dl_stid.sc_client directly
-
-. fix kernel test robot warning when CONFIG_FILE_LOCKING not defined.
-
-v18:
-
-. modify 0005-NFSD-Update-nfs4_get_vfs_file-to-handle-courtesy-cli.patch to:
-
-    . remove nfs4_check_access_deny_bmap, fold this functionality
-      into nfs4_resolve_deny_conflicts_locked by making use of
-      bmap_to_share_mode.
-
-    . move nfs4_resolve_deny_conflicts_locked into nfs4_file_get_access
-      and nfs4_file_check_deny. 
-
-v19:
-
-. modify 0002-NFSD-Add-courtesy-client-state-macro-and-spinlock-to.patch to
-
-    . add NFSD4_CLIENT_ACTIVE
-
-    . redo Courtesy client state table
-
-. modify 0007-NFSD-Update-find_in_sessionid_hashtbl-to-handle-cour.patch and
-  0008-NFSD-Update-find_client_in_id_table-to-handle-courte.patch to:
-
-    . set cl_cs_client_stare to NFSD4_CLIENT_ACTIVE when reactive
-      courtesy client  
-
+Update nfs4_get_vfs_file and nfs4_upgrade_open to handle share
+reservation conflict with courtesy client.
+
+Update nfs4_get_vfs_file and nfs4_upgrade_open to handle share
+reservation conflict with courtesy client.
+
+When we have deny/access conflict we walk the fi_stateids of the
+file in question, looking for open stateid and check the deny/access
+of that stateid against the one from the open request. If there is
+a conflict then we check if the client that owns that stateid is
+a courtesy client. If it is then we set the client state to
+CLIENT_EXPIRED and allow the open request to continue. We have
+to scan all the stateid's of the file since the conflict can be
+caused by multiple open stateid's.
+
+Client with CLIENT_EXPIRED is expired by the laundromat.
+
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/nfs4state.c | 85 +++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 72 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f20c75890594..fe8969ba94b3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -701,9 +701,56 @@ __nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+ 		atomic_inc(&fp->fi_access[O_RDONLY]);
+ }
+ 
++/*
++ * Check if courtesy clients have conflicting access and resolve it if possible
++ *
++ * access:  is op_share_access if share_access is true.
++ *	    Check if access mode, op_share_access, would conflict with
++ *	    the current deny mode of the file 'fp'.
++ * access:  is op_share_deny if share_access is false.
++ *	    Check if the deny mode, op_share_deny, would conflict with
++ *	    current access of the file 'fp'.
++ * stp:     skip checking this entry.
++ * new_stp: normal open, not open upgrade.
++ *
++ * Function returns:
++ *	false - access/deny mode conflict with normal client.
++ *	true  - no conflict or conflict with courtesy client(s) is resolved.
++ */
++static bool
++nfs4_resolve_deny_conflicts_locked(struct nfs4_file *fp, bool new_stp,
++		struct nfs4_ol_stateid *stp, u32 access, bool share_access)
++{
++	struct nfs4_ol_stateid *st;
++	struct nfs4_client *clp;
++	bool conflict = true;
++	unsigned char bmap;
++
++	lockdep_assert_held(&fp->fi_lock);
++	list_for_each_entry(st, &fp->fi_stateids, st_perfile) {
++		/* ignore lock stateid */
++		if (st->st_openstp)
++			continue;
++		if (st == stp && new_stp)
++			continue;
++		/* check file access against deny mode or vice versa */
++		bmap = share_access ? st->st_deny_bmap : st->st_access_bmap;
++		if (!(access & bmap_to_share_mode(bmap)))
++			continue;
++		clp = st->st_stid.sc_client;
++		if (nfsd4_expire_courtesy_clnt(clp))
++			continue;
++		conflict = false;
++		break;
++	}
++	return conflict;
++}
++
+ static __be32
+-nfs4_file_get_access(struct nfs4_file *fp, u32 access)
++nfs4_file_get_access(struct nfs4_file *fp, u32 access,
++		struct nfs4_ol_stateid *stp, bool new_stp)
+ {
++
+ 	lockdep_assert_held(&fp->fi_lock);
+ 
+ 	/* Does this access mode make sense? */
+@@ -711,15 +758,21 @@ nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+ 		return nfserr_inval;
+ 
+ 	/* Does it conflict with a deny mode already set? */
+-	if ((access & fp->fi_share_deny) != 0)
+-		return nfserr_share_denied;
++	if ((access & fp->fi_share_deny) != 0) {
++		if (!nfs4_resolve_deny_conflicts_locked(fp, new_stp,
++				stp, access, true))
++			return nfserr_share_denied;
++	}
+ 
+ 	__nfs4_file_get_access(fp, access);
+ 	return nfs_ok;
+ }
+ 
+-static __be32 nfs4_file_check_deny(struct nfs4_file *fp, u32 deny)
++static __be32 nfs4_file_check_deny(struct nfs4_file *fp, u32 deny,
++		struct nfs4_ol_stateid *stp, bool new_stp)
+ {
++	__be32 rc = nfs_ok;
++
+ 	/* Common case is that there is no deny mode. */
+ 	if (deny) {
+ 		/* Does this deny mode make sense? */
+@@ -728,13 +781,19 @@ static __be32 nfs4_file_check_deny(struct nfs4_file *fp, u32 deny)
+ 
+ 		if ((deny & NFS4_SHARE_DENY_READ) &&
+ 		    atomic_read(&fp->fi_access[O_RDONLY]))
+-			return nfserr_share_denied;
++			rc = nfserr_share_denied;
+ 
+ 		if ((deny & NFS4_SHARE_DENY_WRITE) &&
+ 		    atomic_read(&fp->fi_access[O_WRONLY]))
+-			return nfserr_share_denied;
++			rc = nfserr_share_denied;
++
++		if (rc == nfserr_share_denied) {
++			if (nfs4_resolve_deny_conflicts_locked(fp, new_stp,
++					stp, deny, false))
++				rc = nfs_ok;
++		}
+ 	}
+-	return nfs_ok;
++	return rc;
+ }
+ 
+ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+@@ -4952,7 +5011,7 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ 
+ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp,
+-		struct nfsd4_open *open)
++		struct nfsd4_open *open, bool new_stp)
+ {
+ 	struct nfsd_file *nf = NULL;
+ 	__be32 status;
+@@ -4966,14 +5025,14 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 	 * Are we trying to set a deny mode that would conflict with
+ 	 * current access?
+ 	 */
+-	status = nfs4_file_check_deny(fp, open->op_share_deny);
++	status = nfs4_file_check_deny(fp, open->op_share_deny, stp, new_stp);
+ 	if (status != nfs_ok) {
+ 		spin_unlock(&fp->fi_lock);
+ 		goto out;
+ 	}
+ 
+ 	/* set access to the file */
+-	status = nfs4_file_get_access(fp, open->op_share_access);
++	status = nfs4_file_get_access(fp, open->op_share_access, stp, new_stp);
+ 	if (status != nfs_ok) {
+ 		spin_unlock(&fp->fi_lock);
+ 		goto out;
+@@ -5027,11 +5086,11 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
+ 	unsigned char old_deny_bmap = stp->st_deny_bmap;
+ 
+ 	if (!test_access(open->op_share_access, stp))
+-		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
++		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open, false);
+ 
+ 	/* test and set deny mode */
+ 	spin_lock(&fp->fi_lock);
+-	status = nfs4_file_check_deny(fp, open->op_share_deny);
++	status = nfs4_file_check_deny(fp, open->op_share_deny, stp, false);
+ 	if (status == nfs_ok) {
+ 		set_deny(open->op_share_deny, stp);
+ 		fp->fi_share_deny |=
+@@ -5376,7 +5435,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 			goto out;
+ 		}
+ 	} else {
+-		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
++		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open, true);
+ 		if (status) {
+ 			stp->st_stid.sc_type = NFS4_CLOSED_STID;
+ 			release_open_stateid(stp);
+-- 
+2.9.5
 
