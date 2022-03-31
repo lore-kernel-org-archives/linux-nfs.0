@@ -2,59 +2,60 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD8AAC4332F
-	for <linux-nfs@archiver.kernel.org>; Thu, 31 Mar 2022 04:11:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A802C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 31 Mar 2022 06:16:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229543AbiCaEM6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 31 Mar 2022 00:12:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54260 "EHLO
+        id S230437AbiCaGSm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 31 Mar 2022 02:18:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35624 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229997AbiCaEMV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2022 00:12:21 -0400
-Received: from mail-yw1-x1134.google.com (mail-yw1-x1134.google.com [IPv6:2607:f8b0:4864:20::1134])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C40B8158576
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Mar 2022 20:53:27 -0700 (PDT)
-Received: by mail-yw1-x1134.google.com with SMTP id 00721157ae682-2e6650cde1bso240047707b3.12
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Mar 2022 20:53:27 -0700 (PDT)
+        with ESMTP id S230210AbiCaGSl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2022 02:18:41 -0400
+Received: from mail-yb1-xb31.google.com (mail-yb1-xb31.google.com [IPv6:2607:f8b0:4864:20::b31])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0981458E70
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Mar 2022 23:16:54 -0700 (PDT)
+Received: by mail-yb1-xb31.google.com with SMTP id u103so40569761ybi.9
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Mar 2022 23:16:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=bytedance-com.20210112.gappssmtp.com; s=20210112;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=ak2t2jCNQu1M2/jAOYEZkhc3R1ocF5/1qJQ+3hjAnME=;
-        b=tkvUPecqmQulNzBQqTFmi7Dei2Lz6Mn445nrLTgnye7JELzViZqpIsbrhlyTvAs+Dc
-         O2PzcrgIEqVcpVDVfjoBCzrwz8cX6owQtgn4k6W0tHNglJN4AxjMI4S42ir904Ky4cYz
-         h8wULYh2QFZ3as3p2woAyxMFzGQCOFFEEsBnQAM8d1aloqJodsljEyX78x1pTQqYRTrp
-         k2dHlWyyTA+IYWWBvIymhVYCJxorN4SNj1SlOo3wDa71/kBxms27NThdj/CmV/nrhGaF
-         nwZr/ZqIWMYjR/DW2zaK8s6hVwv9+iUUYlf4yoK3QkMztFkKtOTVhQ/LBO/KJC3rdAKn
-         BlhA==
+        bh=ssMyZLw7ncLemsmqGaMfG0ae57UUUk7vXWBlKG+NN1A=;
+        b=2d+K+RWlJqT+nE6mE8PAkmz9MrEs71tfObMPJmDRdCGm3JD1v+UPAtzj8Jbu8Wm4xp
+         DGUIuhDaPABNKSrd7TpB8GX1KjFQCYSjzzSNRUXVqV+dsjagX3PxE6qIxebCX3dgFy7E
+         +DiMGmDJvumnOVNI8EiUPVNdi0JKxbAWKQECPLUf2nlCeQAHkVGhrJ4mrwl+qSlFnImM
+         nkUjv34LYTL+G5hV+b3387hdlExLvTb6w5VbzTFzA6v7Q5/Boa9dexCVNSmmsJBjV9M6
+         jLWg5eF3fD1zvdDACie3F3Ev7M26DboU34xmln2X9vRqEogOfnZQSYxGxRNscJxxyCFZ
+         ednw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=ak2t2jCNQu1M2/jAOYEZkhc3R1ocF5/1qJQ+3hjAnME=;
-        b=NvmK1EGbyMBo0kcC5+bZNIFbltwx+vI8hIjh9gAkhPRengV6OPeQDLovB/wmZ8vjQv
-         Ig1c1wJ0lKLKxZ9cbIXxaExnQ45IQUpI/XtwjJskWPtGvxFYE6IJpklkkA2ydZUm/GFa
-         4XG/Zs15Z/bbJmAKDef4hX3aPsR11dcBtzF4dYVJnKq86V+GISsbHMHiMUMv0Er9qDH9
-         7h8uN0UZ/erAl3o0NCtirekzSL2hXDGvmziao7dw0POzrjtHwBpzKV2KF88kY7wm3JUt
-         cP5QLJm8ZIO80Tq3NBaPorH1sFNfi6W40TdqtbqoNj+GXUSjsbXqYdjfObJ6sQ7Rz0dB
-         nmOg==
-X-Gm-Message-State: AOAM533xSEnnFi5mrg4UQsgzNDtb3A8UDMfHjJxJZOVHpoMNst6azTDv
-        TXgTxDZ/22j1tpGI3ouUgQ+y0BTK36wHrLUwXpIB2w==
-X-Google-Smtp-Source: ABdhPJxHjh8wcw0AdvJ2RbvjPxEo4eKx9G8Z+IYtVJqziw69Fb+8Y8BoQ0j4XCRCr056HsXRwjqBvkq5wyqIZqUk8Dk=
-X-Received: by 2002:a0d:f685:0:b0:2e2:22e6:52d7 with SMTP id
- g127-20020a0df685000000b002e222e652d7mr3190538ywf.418.1648698806850; Wed, 30
- Mar 2022 20:53:26 -0700 (PDT)
+        bh=ssMyZLw7ncLemsmqGaMfG0ae57UUUk7vXWBlKG+NN1A=;
+        b=yE/zPSAb7XPgvhQcLj8yzBU9JRDaFmFyGaZ2xJ1yuTW7o5Ewb0CSIkl4atLjU454GL
+         4cCEhHEg9F9MfLSprOsys8GvK0I0XY3mo8bOz6iPrynMWuVC1x3775pV8rRvnidmH1+H
+         C6V8k2oZbC2MfoKBmuDnhLW26JmutmhGTLGBKPTQJPiYWfJVtZDYe1qC6OrZvvCyni7n
+         CpX3FlheJz7VxzTxqTOd3+FRuf4uJDXnRoOrDLJsrYWi2+wBRBdq1udZBTYX/Zod7n4W
+         CyjxGWP0SkCysUKHfO0v2tajE/cQJdkdwy+bp1Gm+OvsN3X1YW7Z3/zj4Vz6wu9HAGIL
+         ArvQ==
+X-Gm-Message-State: AOAM5338WRgzaQ0OtREPF0Z7Czk/6hlyqu9oe3Uszlv3nd9B35lmOixD
+        /tG1PsplfUlm3DLT+d/1axmv3P0zoZO1bBQTM1ci9Q==
+X-Google-Smtp-Source: ABdhPJzPL/5GzcZ7y9X+UBkl5p/lmzz0czNU9Xq1SriFM841PFmkRBojaT7/2rmd3IyxJl4N94K7MBAyzyqp28Kt9KE=
+X-Received: by 2002:a05:6902:70c:b0:634:73ef:e663 with SMTP id
+ k12-20020a056902070c00b0063473efe663mr3181281ybt.246.1648707413283; Wed, 30
+ Mar 2022 23:16:53 -0700 (PDT)
 MIME-Version: 1.0
 References: <20220228122126.37293-1-songmuchun@bytedance.com>
  <20220228122126.37293-13-songmuchun@bytedance.com> <164869718565.25542.15818719940772238394@noble.neil.brown.name>
-In-Reply-To: <164869718565.25542.15818719940772238394@noble.neil.brown.name>
+ <CAMZfGtUSA9f3k9jF5U-y+NVt8cpmB9_mk1F9-vmm4JOuWFF_Bw@mail.gmail.com> <164870069595.25542.17292003658915487357@noble.neil.brown.name>
+In-Reply-To: <164870069595.25542.17292003658915487357@noble.neil.brown.name>
 From:   Muchun Song <songmuchun@bytedance.com>
-Date:   Thu, 31 Mar 2022 11:52:50 +0800
-Message-ID: <CAMZfGtUSA9f3k9jF5U-y+NVt8cpmB9_mk1F9-vmm4JOuWFF_Bw@mail.gmail.com>
+Date:   Thu, 31 Mar 2022 14:16:17 +0800
+Message-ID: <CAMZfGtX9pkWYf40RwDALZLKGDc+Dt2UJA7wZFjTagf0AyWyCiw@mail.gmail.com>
 Subject: Re: [PATCH v6 12/16] mm: list_lru: replace linear array with xarray
-To:     NeilBrown <neilb@suse.de>
+To:     NeilBrown <neilb@suse.de>,
+        Andrew Morton <akpm@linux-foundation.org>
 Cc:     Matthew Wilcox <willy@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
         Johannes Weiner <hannes@cmpxchg.org>,
         Michal Hocko <mhocko@kernel.org>,
         Vladimir Davydov <vdavydov.dev@gmail.com>,
@@ -79,46 +80,70 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 31, 2022 at 11:26 AM NeilBrown <neilb@suse.de> wrote:
+On Thu, Mar 31, 2022 at 12:25 PM NeilBrown <neilb@suse.de> wrote:
 >
-> On Mon, 28 Feb 2022, Muchun Song wrote:
-> > If we run 10k containers in the system, the size of the
-> > list_lru_memcg->lrus can be ~96KB per list_lru. When we decrease the
-> > number containers, the size of the array will not be shrinked. It is
-> > not scalable. The xarray is a good choice for this case. We can save
-> > a lot of memory when there are tens of thousands continers in the
-> > system. If we use xarray, we also can remove the logic code of
-> > resizing array, which can simplify the code.
+> On Thu, 31 Mar 2022, Muchun Song wrote:
 > >
-> > Signed-off-by: Muchun Song <songmuchun@bytedance.com>
+> > If the above fix cannot fix your issue, would you mind providing
+> > the .config and stack trace?
 >
-> Hi,
->  I've just tried some simple testing on NFS (xfstests generic/???) and
->  it reliably crashes in this code.
->  Specifically in list_lru_add(), list_lru_from_kmem() returns NULL,
->  which results in a NULL deref.
->  list_lru_from_kmem() returns NULL because an xa_load() returns NULL.
-
-Did you test with the patch [1].
-
-[1] https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=ae085d7f9365de7da27ab5c0d16b12d51ea7fca9
-
+> The kernel I'm using is
+>   74164d284b2909de0ba13518cc063e9ea9334749
+> plus one patch in fs/namei.c
+> So it does include the commit you mentioned.
 >
->  The patch doesn't make any sense to me.  It replaces an array of
->  structures with an xarray, which is an array of pointers.
->  It seems to assume that all the pointers in the array get magically
->  allocated to the required structures.  I certainly cannot find when
->  the 'struct list_lru_node' structures get allocated.  So xa_load() will
->  *always* return NULL in this code.
-
-struct list_lru_node is allocated via kmem_cache_alloc_lru().
-
+> Config is below
 >
->  I can provide more details of the failure stack if needed, but I doubt
->  that would be necessary.
+> I run
+>     ./check -nfs generic/037
+> in xfstests, and crash is quick.
+>
+> Stack trace is
+>
+> [  121.557601] BUG: kernel NULL pointer dereference, address: 0000000000000008
+> [  121.558003] #PF: supervisor read access in kernel mode
+> [  121.558299] #PF: error_code(0x0000) - not-present page
+> [  121.558598] PGD 0 P4D 0
+> [  121.558750] Oops: 0000 [#1] PREEMPT SMP
+> [  121.558978] CPU: 2 PID: 1116 Comm: setfattr Not tainted 5.17.0-dev #455
+> [  121.559360] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.15.0-0-g2dd4b9b-rebuilt.opensuse.org 04/01/2014
+> [  121.560009] RIP: 0010:list_lru_add+0x58/0xae
+> [  121.560267] Code: 00 48 8d 58 48 74 23 48 89 ef e8 93 08 03 00 49 89 c5 48 85 c0 74 13 8b 90 40 0e 00 00 31 f6 4c 89 e7 e8 66 fb ff ff 48 3
+> [  121.561353] RSP: 0018:ffffc900016dfbd0 EFLAGS: 00010246
+> [  121.561668] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000094fd1aeb
+> [  121.562076] RDX: ffff888007768be8 RSI: ffffffff826b4914 RDI: ffffffff82745064
+> [  121.562484] RBP: ffff8880097b3888 R08: ffffffffffffffff R09: ffff888007768b40
+> [  121.562890] R10: ffffc900016dfa98 R11: 0000000000008f0c R12: ffffffff8482e7a0
+> [  121.563296] R13: ffff888007766000 R14: ffff888005e72300 R15: 0000000000000000
+> [  121.563702] FS:  00007f558ef08580(0000) GS:ffff88801f200000(0000) knlGS:0000000000000000
+> [  121.564166] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [  121.564499] CR2: 0000000000000008 CR3: 00000000084c4000 CR4: 00000000000006e0
+> [  121.564905] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [  121.565314] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> [  121.565719] Call Trace:
+> [  121.565860]  <TASK>
+> [  121.565985]  nfs4_xattr_get_cache+0x131/0x169
+> [  121.566239]  nfs4_xattr_cache_add+0x47/0x15a
+> [  121.566485]  nfs4_xattr_set_nfs4_user+0xcb/0xef
+> [  121.566748]  __vfs_setxattr+0x66/0x72
+> [  121.566961]  __vfs_setxattr_noperm+0x6e/0xf5
+> [  121.567211]  vfs_setxattr+0xa7/0x12a
+> [  121.567419]  setxattr+0x115/0x14d
+> [  121.567612]  ? check_chain_key+0xde/0x11f
+> [  121.567846]  path_setxattr+0x78/0xcf
+> [  121.568053]  __x64_sys_setxattr+0x22/0x25
+> [  121.568287]  do_syscall_64+0x6d/0x80
+> [  121.568497]  entry_SYSCALL_64_after_hwframe+0x44/0xae
 >
 
-If the above fix cannot fix your issue, would you mind providing
-the .config and stack trace?
+Thanks for your report.  I knew the reason. It is because the following
+patch in this series was missed upstream.  Could you help me test if it
+works properly?
 
-Thanks for your report.
+[v6,06/16] nfs42: use a specific kmem_cache to allocate nfs4_xattr_entry
+
+Hi Andrew,
+
+Would you mind picking it up?
+
+Thanks.
