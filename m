@@ -2,128 +2,183 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1ED8C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Apr 2022 15:55:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C731C433EF
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Apr 2022 16:09:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1349236AbiDAP5j (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Apr 2022 11:57:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42360 "EHLO
+        id S237129AbiDAQL1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Apr 2022 12:11:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43990 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358345AbiDAPqd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2022 11:46:33 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D21B1D2041;
-        Fri,  1 Apr 2022 08:21:10 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 4FABA2935; Fri,  1 Apr 2022 11:21:09 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 4FABA2935
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1648826469;
-        bh=4l3wlpIs4kNvRReXOBmDIJ2f7a/O4+gaNwKWu3ut688=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=galmP6duQKF5oiJQ1aRbMUar5ztI/u16FU8KQfPppgE8sct8iqbIPnsQqVzPwqlzu
-         nF5j8gH04DjSYf4X4FiOI54u7yUevYwTiBTCLMYI1NaaVWY21TbvOCH0E5rpfX+3re
-         Fhlcp4NLX4vn6jHOT5YNo8X8djsdPofS35PasJJc=
-Date:   Fri, 1 Apr 2022 11:21:09 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Dai Ngo <dai.ngo@oracle.com>
-Cc:     chuck.lever@oracle.com, jlayton@redhat.com,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH RFC v19 06/11] NFSD: Update find_clp_in_name_tree() to
- handle courtesy client
-Message-ID: <20220401152109.GB18534@fieldses.org>
-References: <1648742529-28551-1-git-send-email-dai.ngo@oracle.com>
- <1648742529-28551-7-git-send-email-dai.ngo@oracle.com>
+        with ESMTP id S1349657AbiDAQI5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2022 12:08:57 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 8A35AFFB4C
+        for <linux-nfs@vger.kernel.org>; Fri,  1 Apr 2022 08:32:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1648827172;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=pdeAVoT8WrUyzro2PiZcbaPSqi9ISMyf0NB3t0SMW6U=;
+        b=QU2xvgezHd9YYkY5KAuyxDzltk1KtGErqyFDctfXAsvT0US+Ka4U+fN2bFUFGnfXQ/dZr0
+        UgrT87Yt5a2iNjHuwKVVVwTGa0+MlKcnEXouD5hsrbs3uMGqRfeYh2tKX2HTAiGIL/gcMr
+        INAFKRc6fJqcj1RtbTeVyK7QWIM6h4M=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-675-f1SZsWzrO9u-FqfNpxy4BA-1; Fri, 01 Apr 2022 11:32:51 -0400
+X-MC-Unique: f1SZsWzrO9u-FqfNpxy4BA-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 3725F80281D;
+        Fri,  1 Apr 2022 15:32:51 +0000 (UTC)
+Received: from nyarly.redhat.com (ovpn-116-139.gru2.redhat.com [10.97.116.139])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id E3FA47C4E;
+        Fri,  1 Apr 2022 15:32:47 +0000 (UTC)
+From:   Thiago Becker <tbecker@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     steved@redhat.com, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, kolga@netapp.com,
+        Thiago Becker <tbecker@redhat.com>
+Subject: [PATCH v4 6/7] nfsrahead: User documentation
+Date:   Fri,  1 Apr 2022 12:32:07 -0300
+Message-Id: <20220401153208.3120851-7-tbecker@redhat.com>
+In-Reply-To: <20220401153208.3120851-1-tbecker@redhat.com>
+References: <20220401153208.3120851-1-tbecker@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1648742529-28551-7-git-send-email-dai.ngo@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.11.54.5
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 31, 2022 at 09:02:04AM -0700, Dai Ngo wrote:
-> Update find_clp_in_name_tree to check and expire courtesy client.
-> 
-> Update find_confirmed_client_by_name to discard the courtesy
-> client by setting CLIENT_EXPIRED.
-> 
-> Update nfsd4_setclientid to expire client with CLIENT_EXPIRED
-> state to prevent multiple confirmed clients with the same name
-> on the conf_name_tree.
-> 
-> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
-> ---
->  fs/nfsd/nfs4state.c | 27 ++++++++++++++++++++++++---
->  fs/nfsd/state.h     | 22 ++++++++++++++++++++++
->  2 files changed, 46 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index fe8969ba94b3..eadce5d19473 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2893,8 +2893,11 @@ find_clp_in_name_tree(struct xdr_netobj *name, struct rb_root *root)
->  			node = node->rb_left;
->  		else if (cmp < 0)
->  			node = node->rb_right;
-> -		else
-> +		else {
-> +			if (nfsd4_courtesy_clnt_expired(clp))
-> +				return NULL;
->  			return clp;
-> +		}
->  	}
->  	return NULL;
->  }
-> @@ -2973,8 +2976,15 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
->  static struct nfs4_client *
->  find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
->  {
-> +	struct nfs4_client *clp;
-> +
->  	lockdep_assert_held(&nn->client_lock);
-> -	return find_clp_in_name_tree(name, &nn->conf_name_tree);
-> +	clp = find_clp_in_name_tree(name, &nn->conf_name_tree);
-> +	if (clp && clp->cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) {
-> +		nfsd4_discard_courtesy_clnt(clp);
-> +		clp = NULL;
-> +	}
-> +	return clp;
->  }
->  
-....
-> +static inline void
-> +nfsd4_discard_courtesy_clnt(struct nfs4_client *clp)
-> +{
-> +	spin_lock(&clp->cl_cs_lock);
-> +	clp->cl_cs_client_state = NFSD4_CLIENT_EXPIRED;
-> +	spin_unlock(&clp->cl_cs_lock);
-> +}
+Add the man page for nfsrahead, and add the new section to nfs.conf.
 
-This is a red flag to me.... What guarantees that the condition we just
-checked (cl_cs_client_state == NFSD4_CLIENT_RECONNECTED) is still true
-here?  Why couldn't another thread have raced in and called
-reactivate_courtesy_client?
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1946283
+Signed-off-by: Thiago Becker <tbecker@redhat.com>
+---
+ systemd/nfs.conf.man          | 11 ++++++
+ tools/nfsrahead/Makefile.am   |  3 ++
+ tools/nfsrahead/nfsrahead.man | 72 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 86 insertions(+)
+ create mode 100644 tools/nfsrahead/nfsrahead.man
 
-Should we be holding cl_cs_lock across both the cl_cs_client_state and
-the assignment?  Or should reactivate_courtesy_client be taking the
-client_lock?
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index be487a11..e74083e9 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -294,6 +294,17 @@ Only
+ .B debug=
+ is recognized.
+ 
++.TP
++.B nfsrahead
++Recognized values:
++.BR nfs ,
++.BR nfsv4 ,
++.BR default .
++
++See
++.BR nfsrahead (5)
++for deatils.
++
+ .SH FILES
+ .TP 10n
+ .I /etc/nfs.conf
+diff --git a/tools/nfsrahead/Makefile.am b/tools/nfsrahead/Makefile.am
+index 60a1102a..845ea0d5 100644
+--- a/tools/nfsrahead/Makefile.am
++++ b/tools/nfsrahead/Makefile.am
+@@ -3,6 +3,9 @@ nfsrahead_SOURCES = main.c
+ nfsrahead_LDFLAGS= -lmount
+ nfsrahead_LDADD = ../../support/nfs/libnfsconf.la
+ 
++man5_MANS = nfsrahead.man
++EXTRA_DIST = $(man5_MANS)
++
+ udev_rulesdir = /usr/lib/udev/rules.d/
+ udev_rules_DATA = 99-nfs.rules
+ 
+diff --git a/tools/nfsrahead/nfsrahead.man b/tools/nfsrahead/nfsrahead.man
+new file mode 100644
+index 00000000..5488f633
+--- /dev/null
++++ b/tools/nfsrahead/nfsrahead.man
+@@ -0,0 +1,72 @@
++.\" Manpage for nfsrahead.
++.nh
++.ad l
++.TH man 5 "08 Mar 2022" "1.0" "nfsrahead man page"
++.SH NAME
++
++nfsrahead \- Configure the readahead for NFS mounts
++
++.SH SYNOPSIS
++
++nfsrahead [-F] [-d] <device>
++
++.SH DESCRIPTION
++
++\fInfsrahead\fR is a tool intended to be used with udev to set the \fIread_ahead_kb\fR parameter of NFS mounts, according to the configuration file (see \fICONFIGURATION\fR). \fIdevice\fR is the device number for the NFS backing device as provided by the kernel.
++
++.SH OPTIONS
++.TP
++.B -F
++Send messages to 
++.I stderr 
++instead of
++.I syslog
++
++.TP
++.B -d
++Increase the debugging level.
++
++.SH CONFIGURATION
++.I nfsrahead
++is configured in
++.IR /etc/nfs.conf ,
++in the section titled
++.IR nfsrahead .
++It accepts the following configurations.
++
++.TP
++.B nfs=<value>
++The readahead value applied to NFSv3 mounts.
++
++.TP
++.B nfs4=<value>
++The readahead value applied to NFSv4 mounts.
++
++.TP
++.B default=<value>
++The default configuration when none of the configurations above is set.
++
++.SH EXAMPLE CONFIGURATION
++[nfsrahead]
++.br
++nfs=15000              # readahead of 15000 for NFSv3 mounts
++.br
++nfs4=16000             # readahead of 16000 for NFSv4 mounts
++.br
++default=128            # default is 128
++
++.SH SEE ALSO
++
++.BR mount.nfs (8),
++.BR nfs (5),
++.BR nfs.conf (5),
++.BR udev (7),
++.BR bcc-readahead (8)
++
++.SH BUGS
++
++No known bugs.
++
++.SH AUTHOR
++
++Thiago Rafael Becker <trbecker@gmail.com>
+-- 
+2.35.1
 
-I'm still not clear on the need for the CLIENT_RECONNECTED state.
-
-I think analysis would be a bit simpler if the only states were ACTIVE,
-COURTESY, and EXPIRED, the only transitions possible were
-
-	ACTIVE->COURTESY->{EXPIRED or ACTIVE}
-
-and the same lock ensured that those were the only possible transitions.
-
-(And to be honest I'd still prefer the original approach where we expire
-clients from the posix locking code and then retry.  It handles an
-additional case (the one where reboot happens after a long network
-partition), and I don't think it requires adding these new client
-states....)
-
---b.
