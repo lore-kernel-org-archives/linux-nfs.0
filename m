@@ -2,156 +2,119 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DFD4FC433EF
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Apr 2022 03:23:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 64C22C433F5
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Apr 2022 03:29:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244520AbiDADZg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 31 Mar 2022 23:25:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42316 "EHLO
+        id S244560AbiDADb0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 31 Mar 2022 23:31:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59992 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244542AbiDADZ3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2022 23:25:29 -0400
-Received: from mail-yw1-x1129.google.com (mail-yw1-x1129.google.com [IPv6:2607:f8b0:4864:20::1129])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AE0052C13A
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Mar 2022 20:23:37 -0700 (PDT)
-Received: by mail-yw1-x1129.google.com with SMTP id 00721157ae682-2ea1b9b3813so19367857b3.2
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Mar 2022 20:23:37 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance-com.20210112.gappssmtp.com; s=20210112;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=VQmEc11aIbx+ZtNr6xhDNIOvDmC310KGZSAfuh7/n4o=;
-        b=U2sd5IBeDZM9I11jk51mO17fAqz78NJ9AkSAFGNgkLDMHoTwPcuzlCX0EJbmd9bb/H
-         fP4CvGZIHZj4HHO5u90gNLl3WMM6i3r468t2r4byAfmm2eMWDnVBZ/zkIq/aCvYjWtKS
-         71Iw8C3q63aPogvu4Rp2N3lhiYPzCqEOTu3zrLJ0tA/wKS3Pzihb34DdzTTMtGW6wwsm
-         9PvekKjKqPVnHzp2WlDmgVJzU4eP0AKp2zaTKnakYKifBbiVSape10kLEbT6je8VLFOF
-         aaNnqaFeXKLP2wDuS8/I2cRd07mwfhzDgGaOmp1+dsRhNRdzxyl+f1jFuiXITaE384Zr
-         Pygg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=VQmEc11aIbx+ZtNr6xhDNIOvDmC310KGZSAfuh7/n4o=;
-        b=ijjxI8EQGlCNtFDTRfkBTrOrcERhCa+da3eOLhS9P9df54zKCNLKLzMooK6yqF0gtW
-         iQN25tm5otNwd2vRACK/7sS5U2XOZgvEFkCHvx+n608k5RveGk5Hid8tBYXDqs6Pj8W2
-         OkhdYGzrG1GIQC3ktg5yVT2O6RN2yIVybD0ptnk4qCw8lNC10Fl1zG+lQSzDlM3OagLJ
-         ig1dToKXwJQ8FOROYeKHLK2gdijuhmf0xcDI0d6raOWu/boYiRGKFhe6wCz4HELfIx4V
-         Q/dORMkKg/bZUfbbsMo7HunHDNuUw5Xpm45MTl2FYA8nUTtYJpr5gXlG0XG8hENZdQ66
-         CtCw==
-X-Gm-Message-State: AOAM531R1EreAyg/c3OHBI9Ql/d06kHYQCrKCYejcxLf2+WwJcZjP2oN
-        XIQZ8zmT625pYWvNnU2/Rxz+rD7l/rS7WRciLBD+0w==
-X-Google-Smtp-Source: ABdhPJyfBNiFGOcyCVVnQq3QlsWIGX+YGW+qL+Jm/E/uL9rdKI+a88ky2Pv25kLFMeoOO0k8ts7UGdkHow0gWNpe3hE=
-X-Received: by 2002:a0d:f685:0:b0:2e2:22e6:52d7 with SMTP id
- g127-20020a0df685000000b002e222e652d7mr8046178ywf.418.1648783416948; Thu, 31
- Mar 2022 20:23:36 -0700 (PDT)
+        with ESMTP id S235381AbiDADbZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2022 23:31:25 -0400
+Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B37C58828;
+        Thu, 31 Mar 2022 20:29:34 -0700 (PDT)
+Received: from kwepemi100010.china.huawei.com (unknown [172.30.72.57])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4KV5CV5xdyzBrbk;
+        Fri,  1 Apr 2022 11:25:26 +0800 (CST)
+Received: from kwepemm600015.china.huawei.com (7.193.23.52) by
+ kwepemi100010.china.huawei.com (7.221.188.54) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2308.21; Fri, 1 Apr 2022 11:29:31 +0800
+Received: from huawei.com (10.175.127.227) by kwepemm600015.china.huawei.com
+ (7.193.23.52) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2308.21; Fri, 1 Apr
+ 2022 11:29:31 +0800
+From:   ChenXiaoSong <chenxiaosong2@huawei.com>
+To:     <trond.myklebust@hammerspace.com>, <anna@kernel.org>,
+        <smayhew@redhat.com>
+CC:     <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <chenxiaosong2@huawei.com>, <liuyongqiang13@huawei.com>,
+        <yi.zhang@huawei.com>, <zhangxiaoxu5@huawei.com>
+Subject: [PATCH -next,v2 1/3] NFS: return more nuanced writeback errors in nfs_file_write()
+Date:   Fri, 1 Apr 2022 11:44:07 +0800
+Message-ID: <20220401034409.256770-2-chenxiaosong2@huawei.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220401034409.256770-1-chenxiaosong2@huawei.com>
+References: <20220401034409.256770-1-chenxiaosong2@huawei.com>
 MIME-Version: 1.0
-References: <20220228122126.37293-1-songmuchun@bytedance.com>
- <20220228122126.37293-13-songmuchun@bytedance.com> <YkXCWW7ru9Gxyy6G@casper.infradead.org>
-In-Reply-To: <YkXCWW7ru9Gxyy6G@casper.infradead.org>
-From:   Muchun Song <songmuchun@bytedance.com>
-Date:   Fri, 1 Apr 2022 11:23:01 +0800
-Message-ID: <CAMZfGtXiVDxO1hqiOChR2a_nwK5kUiWafEXML7=YfuPBy0zH5w@mail.gmail.com>
-Subject: Re: [PATCH v6 12/16] mm: list_lru: replace linear array with xarray
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Michal Hocko <mhocko@kernel.org>,
-        Vladimir Davydov <vdavydov.dev@gmail.com>,
-        Shakeel Butt <shakeelb@google.com>,
-        Roman Gushchin <roman.gushchin@linux.dev>,
-        Yang Shi <shy828301@gmail.com>, Alex Shi <alexs@kernel.org>,
-        Wei Yang <richard.weiyang@gmail.com>,
-        Dave Chinner <david@fromorbit.com>,
-        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        jaegeuk@kernel.org, chao@kernel.org,
-        Kari Argillander <kari.argillander@gmail.com>,
-        Vlastimil Babka <vbabka@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Linux Memory Management List <linux-mm@kvack.org>,
-        linux-nfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>,
-        Xiongchun duan <duanxiongchun@bytedance.com>,
-        Fam Zheng <fam.zheng@bytedance.com>,
-        Muchun Song <smuchun@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ kwepemm600015.china.huawei.com (7.193.23.52)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Mar 31, 2022 at 11:01 PM Matthew Wilcox <willy@infradead.org> wrote:
->
-> On Mon, Feb 28, 2022 at 08:21:22PM +0800, Muchun Song wrote:
-> > @@ -586,27 +508,48 @@ int memcg_list_lru_alloc(struct mem_cgroup *memcg, struct list_lru *lru,
-> >               }
-> >       }
-> >
-> > +     xas_lock_irqsave(&xas, flags);
-> >       while (i--) {
-> > +             int index = READ_ONCE(table[i].memcg->kmemcg_id);
-> >               struct list_lru_per_memcg *mlru = table[i].mlru;
-> >
-> > +             xas_set(&xas, index);
-> > +retry:
-> > +             if (unlikely(index < 0 || xas_error(&xas) || xas_load(&xas))) {
-> >                       kfree(mlru);
-> > +             } else {
-> > +                     xas_store(&xas, mlru);
-> > +                     if (xas_error(&xas) == -ENOMEM) {
-> > +                             xas_unlock_irqrestore(&xas, flags);
-> > +                             if (xas_nomem(&xas, gfp))
-> > +                                     xas_set_err(&xas, 0);
-> > +                             xas_lock_irqsave(&xas, flags);
-> > +                             /*
-> > +                              * The xas lock has been released, this memcg
-> > +                              * can be reparented before us. So reload
-> > +                              * memcg id. More details see the comments
-> > +                              * in memcg_reparent_list_lrus().
-> > +                              */
-> > +                             index = READ_ONCE(table[i].memcg->kmemcg_id);
-> > +                             if (index < 0)
-> > +                                     xas_set_err(&xas, 0);
-> > +                             else if (!xas_error(&xas) && index != xas.xa_index)
-> > +                                     xas_set(&xas, index);
-> > +                             goto retry;
-> > +                     }
-> > +             }
-> >       }
-> > +     /* xas_nomem() is used to free memory instead of memory allocation. */
-> > +     if (xas.xa_alloc)
-> > +             xas_nomem(&xas, gfp);
-> > +     xas_unlock_irqrestore(&xas, flags);
-> >       kfree(table);
-> >
-> > +     return xas_error(&xas);
-> >  }
->
-> This is really unidiomatic.  And so much more complicated than it needs
-> to be.
->
->         while (i--) {
->                 do {
->                         int index = READ_ONCE(table[i].memcg->kmemcg_id);
->                         struct list_lru_per_memcg *mlru = table[i].mlru;
->
->                         xas_set(&xas, index);
->                         xas_lock_irqsave(&xas, flags);
->                         if (index < 0 || xas_load(&xas))
->                                 xas_set_err(&xas, -EBUSY);
->                         xas_store(&xas, mlru);
->                         if (!xas_error(&xas))
->                                 break;
->                         xas_unlock_irqrestore(&xas, flags);
->                 } while (xas_nomem(&xas, gfp));
->
->                 if (xas_error(&xas))
->                         kfree(mlru);
->         }
->
->         kfree(table);
->         return xas_error(&xas);
->
-> (you might want to mask out the EBUSY error here)
->
+Currently, writeback error in address_space flags will not be set in
+nfs_mapping_set_error(), return value of nfs_wb_all() is always 0 even if
+there is new writeback error. And error from filemap_check_wb_err() is just
+used to check, will not be reported to userspace.
 
-I'm not familiar with xarray APIs.  I'll dig deeper to see if this code works
-properly.  Thanks for your suggestions.
+Furthermore, filemap_sample_wb_err() always return 0 if old writeback error
+have not been consumed. filemap_check_wb_err() will return the old error
+even if there is no new writeback error between filemap_sample_wb_err() and
+filemap_check_wb_err().
+
+So we still need record writeback error in address_space flags. The writeback
+error in address_space flags is not used to be reported to userspace, it is just
+used to detect if there is new error while writeback.
+
+generic_perform_write() detect wb error by calling filemap_check_errors():
+  generic_perform_write
+    nfs_write_end
+      nfs_wb_all
+        filemap_write_and_wait
+          filemap_write_and_wait_range
+            filemap_check_errors
+
+filemap_fdatawait_range() detect wb error by calling filemap_check_errors():
+  filemap_fdatawait_range
+    __filemap_fdatawait_range
+    filemap_check_errors
+
+As filemap_check_errors() only report -EIO or -ENOSPC, we must use the more nuanced
+writeback error for -EIO by returning -(file->f_mapping->wb_err & MAX_ERRNO).
+
+Fixes: 6c984083ec24 ("NFS: Use of mapping_set_error() results in spurious errors")
+Signed-off-by: ChenXiaoSong <chenxiaosong2@huawei.com>
+---
+ fs/nfs/file.c  | 3 +++
+ fs/nfs/write.c | 5 +----
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index b0ca244c50d0..5513ab63c108 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -683,6 +683,9 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 	}
+ 	nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
+ out:
++	/* Use the more nuanced writeback error for -EIO */
++	if (result == -EIO)
++		result = filemap_check_wb_err(file->f_mapping, 0);
+ 	return result;
+ 
+ out_swapfile:
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f00d45cf80ef..eec15efb41ab 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -312,10 +312,7 @@ static void nfs_mapping_set_error(struct page *page, int error)
+ 	struct address_space *mapping = page_file_mapping(page);
+ 
+ 	SetPageError(page);
+-	filemap_set_wb_err(mapping, error);
+-	if (mapping->host)
+-		errseq_set(&mapping->host->i_sb->s_wb_err,
+-			   error == -ENOSPC ? -ENOSPC : -EIO);
++	mapping_set_error(mapping, error);
+ 	nfs_set_pageerror(mapping);
+ }
+ 
+-- 
+2.31.1
+
