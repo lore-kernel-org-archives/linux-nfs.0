@@ -2,48 +2,51 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D88A6C433F5
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Apr 2022 16:09:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 363AAC433FE
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Apr 2022 16:09:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231489AbiDAQLY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Apr 2022 12:11:24 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55788 "EHLO
+        id S243299AbiDAQL2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Apr 2022 12:11:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49746 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1349532AbiDAQI4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2022 12:08:56 -0400
+        with ESMTP id S1349633AbiDAQI5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2022 12:08:57 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id E0CB71A2A34
-        for <linux-nfs@vger.kernel.org>; Fri,  1 Apr 2022 08:32:37 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 2DCD8FFB4B
+        for <linux-nfs@vger.kernel.org>; Fri,  1 Apr 2022 08:32:51 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1648827157;
+        s=mimecast20190719; t=1648827170;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=fcjZlfxucPJ7FKgcNGZ3x/MCsoP3RaotjbqiTYdTASs=;
-        b=ZjtOICLbPTYSkgO/yJ/TJRyDukEm1PvXxOqbrdzJd/k50MOPliUY786nt9yige4MELeLv/
-        T85pruqQ1Hcjg/1FrA+LSnopuyKy1OP6XexzQ1Uu3xkMbs9RrBUcEDjS04DmBV1mAC5sz+
-        cWR5lfnWST4ewbyYxREH6V4Sm32ahK0=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=vESb3x633QWbvnEi4e9pu9J78HVNlcN3PfpVYmVC8kk=;
+        b=Crn68SC0xmOxLHNknJu3+E+vsWBsYsQ7i1hnyuEMEZouvWDKI9lTdIZXsv01HSY0qEGa7q
+        dhnPSUgff+k04bS+s826c7XWhJa/J9uS6h9pZPoIwxnGS2FqUI7rgTdWNvNuhI8zTtN+51
+        pAtwMiZFqHEQXohAjoGskgjTjFCZyTA=
 Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
  [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-512-U00_d2E8OsqcF8HOeoP0zA-1; Fri, 01 Apr 2022 11:32:25 -0400
-X-MC-Unique: U00_d2E8OsqcF8HOeoP0zA-1
+ us-mta-26-yNXldqTgNFS5xX0OwZhsHA-1; Fri, 01 Apr 2022 11:32:47 -0400
+X-MC-Unique: yNXldqTgNFS5xX0OwZhsHA-1
 Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 964573802139;
-        Fri,  1 Apr 2022 15:32:24 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 207E12A2AD45;
+        Fri,  1 Apr 2022 15:32:47 +0000 (UTC)
 Received: from nyarly.redhat.com (ovpn-116-139.gru2.redhat.com [10.97.116.139])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1CE8E2D444;
-        Fri,  1 Apr 2022 15:32:17 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id E45909D42;
+        Fri,  1 Apr 2022 15:32:43 +0000 (UTC)
 From:   Thiago Becker <tbecker@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     steved@redhat.com, trond.myklebust@hammerspace.com,
         anna.schumaker@netapp.com, kolga@netapp.com,
         Thiago Becker <tbecker@redhat.com>
-Subject: [PATCH v4 0/7] Intruduce nfsrahead
-Date:   Fri,  1 Apr 2022 12:32:01 -0300
-Message-Id: <20220401153208.3120851-1-tbecker@redhat.com>
+Subject: [PATCH v4 5/7] nfsrahead: get the information from the config file.
+Date:   Fri,  1 Apr 2022 12:32:06 -0300
+Message-Id: <20220401153208.3120851-6-tbecker@redhat.com>
+In-Reply-To: <20220401153208.3120851-1-tbecker@redhat.com>
+References: <20220401153208.3120851-1-tbecker@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 2.79 on 10.11.54.5
@@ -51,68 +54,64 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Recent changes in the linux kernel caused NFS readahead to default to
-128 from the previous default of 15 * rsize. This causes performance
-penalties to some read-heavy workloads, which can be fixed by
-tuning the readahead for that given mount.
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1946283
+Signed-off-by: Thiago Becker <tbecker@redhat.com>
+---
+ tools/nfsrahead/main.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-Specifically, the read troughput on a sec=krb5p mount drops by 50-75%
-when comparing the default readahead with a readahead of 15360.
-
-Previous discussions:
-https://lore.kernel.org/linux-nfs/20210803130717.2890565-1-trbecker@gmail.com/
-I attempted to add a non-kernel option to mount.nfs, and it was
-rejected.
-
-https://lore.kernel.org/linux-nfs/20210811171402.947156-1-trbecker@gmail.com/
-Attempted to add a mount option to the kernel, rejected as well.
-
-I had started a separate tool to set the readahead of BDIs, but the
-scope is specifically for NFS, so I would like to get the community
-feeling for having this in nfs-utils.
-
-This patch series introduces nfs-readahead-udev, a utility to
-automatically set NFS readahead when NFS is mounted. The utility is
-triggered by udev when a new BDI is added, returns to udev the value of
-the readahead that should be used.
-
-The tool currently supports setting read ahead per mountpoint, nfs major
-version, or by a global default value.
-
-v2:
-    - explain the motivation
-
-v3:
-    - adopt already available facilities
-    - nfsrahead is now configured in nfs.conf
-
-v4:
-    - retry getting the device if it fails
-    - assorted fixes and improvements
-
-Thiago Becker (7):
-  Create nfsrahead
-  nfsrahead: configure udev
-  nfsrahead: only set readahead for nfs devices.
-  nfsrahead: add logging
-  nfsrahead: get the information from the config file.
-  nfsrahead: User documentation
-  nfsrahead: retry getting the device if it fails.
-
- .gitignore                      |   2 +
- configure.ac                    |   1 +
- systemd/nfs.conf.man            |  11 ++
- tools/Makefile.am               |   2 +-
- tools/nfsrahead/99-nfs.rules.in |   1 +
- tools/nfsrahead/Makefile.am     |  16 +++
- tools/nfsrahead/main.c          | 183 ++++++++++++++++++++++++++++++++
- tools/nfsrahead/nfsrahead.man   |  72 +++++++++++++
- 8 files changed, 287 insertions(+), 1 deletion(-)
- create mode 100644 tools/nfsrahead/99-nfs.rules.in
- create mode 100644 tools/nfsrahead/Makefile.am
- create mode 100644 tools/nfsrahead/main.c
- create mode 100644 tools/nfsrahead/nfsrahead.man
-
+diff --git a/tools/nfsrahead/main.c b/tools/nfsrahead/main.c
+index b630b92f..1a312ac9 100644
+--- a/tools/nfsrahead/main.c
++++ b/tools/nfsrahead/main.c
+@@ -8,12 +8,14 @@
+ #include <sys/sysmacros.h>
+ 
+ #include "xlog.h"
++#include "conffile.h"
+ 
+ #ifndef MOUNTINFO_PATH
+ #define MOUNTINFO_PATH "/proc/self/mountinfo"
+ #endif
+ 
+ #define CONF_NAME "nfsrahead"
++#define NFS_DEFAULT_READAHEAD 128
+ 
+ /* Device information from the system */
+ struct device_info {
+@@ -113,6 +115,14 @@ static int get_device_info(const char *device_number, struct device_info *device
+ 	return ret;
+ }
+ 
++static int conf_get_readahead(const char *kind) {
++	int readahead = 0;
++
++	if((readahead = conf_get_num(CONF_NAME, kind, -1)) == -1)
++		readahead = conf_get_num(CONF_NAME, "default", NFS_DEFAULT_READAHEAD);
++	
++	return readahead;
++}
+ #define L_DEFAULT (L_WARNING | L_ERROR | L_FATAL)
+ 
+ int main(int argc, char **argv)
+@@ -133,6 +143,8 @@ int main(int argc, char **argv)
+ 		}
+ 	}
+ 
++	conf_init_file(NFS_CONFFILE);
++
+ 	xlog_stderr(log_stderr);
+ 	xlog_syslog(~log_stderr);
+ 	xlog_config(L_DEFAULT | (L_NOTICE & verbose), 1);
+@@ -155,6 +167,8 @@ int main(int argc, char **argv)
+ 		goto out;
+ 	}
+ 
++	readahead = conf_get_readahead(device.fstype);
++
+ 	xlog(L_WARNING, "setting %s readahead to %d\n", device.mountpoint, readahead);
+ 
+ 	printf("%d\n", readahead);
 -- 
 2.35.1
 
