@@ -2,202 +2,162 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 619B1C4332F
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Apr 2022 22:45:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F0EBC433EF
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Apr 2022 22:51:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236465AbiDFWrx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Apr 2022 18:47:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60830 "EHLO
+        id S237418AbiDFWxj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Apr 2022 18:53:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53564 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237206AbiDFWrr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Apr 2022 18:47:47 -0400
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BBAA812ABE
-        for <linux-nfs@vger.kernel.org>; Wed,  6 Apr 2022 15:45:48 -0700 (PDT)
-Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 236JwObV024505;
-        Wed, 6 Apr 2022 22:45:47 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
- bh=nDwDIgrcv/dHvjE7U2Ea2NjjkDKZGVKNiRDXBWHixxI=;
- b=eb7S1bJp+Qjr9klSdtm8cdN9k5uZRQHDhm9wy0ToKxXxicp0EDF6Hh8fAezxPY41t9vb
- BJd3lpg3nAXvKMoxXLDRDt+oynSDsWrHk9vZlmzyT4T6TkI85Dx4Bp/27NZLh8YLxcxX
- DXTzPQt4jfR1WlthhinONwvAkv1FOtLG6t8yvraLqSzJThecJ88WeVHOgHvh3gcM/4zr
- f2VcxWqi9Yw5cRtMkT1ksyKIo0b+Q7wOKu1EP/3cUcx/xS9dzZSpQ1I1HbjxYZG6Wetv
- HSBN42C0zyrTvzIP6Q0cQdLfC/3dls+KkbkBI+cv4o2TZAbIaNR7HdHSAZswL/RctxMP ww== 
-Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
-        by mx0b-00069f02.pphosted.com with ESMTP id 3f6f1taf9s-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 06 Apr 2022 22:45:47 +0000
-Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 236MeYQP011633;
-        Wed, 6 Apr 2022 22:45:46 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3f9803d5qy-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 06 Apr 2022 22:45:46 +0000
-Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 236Mjcbo021908;
-        Wed, 6 Apr 2022 22:45:45 GMT
-Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3f9803d5mk-10;
-        Wed, 06 Apr 2022 22:45:45 +0000
-From:   Dai Ngo <dai.ngo@oracle.com>
-To:     chuck.lever@oracle.com, bfields@fieldses.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v20 09/10] NFSD: Update laundromat to handle courtesy client
-Date:   Wed,  6 Apr 2022 15:45:32 -0700
-Message-Id: <1649285133-16765-10-git-send-email-dai.ngo@oracle.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1649285133-16765-1-git-send-email-dai.ngo@oracle.com>
-References: <1649285133-16765-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-ORIG-GUID: xTXph2JlNo4Z_sJ6CArjOd2lP13Q3tl3
-X-Proofpoint-GUID: xTXph2JlNo4Z_sJ6CArjOd2lP13Q3tl3
+        with ESMTP id S237367AbiDFWxh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Apr 2022 18:53:37 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 24894200364
+        for <linux-nfs@vger.kernel.org>; Wed,  6 Apr 2022 15:51:40 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id ED4481F859;
+        Wed,  6 Apr 2022 22:51:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1649285497; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=xhK5Rfv2kcs1ZiPzQNwVHN8uE9kMtHwkhGh0+DpfRWs=;
+        b=UJks10Hi0OMRIcB1Z1hWIU/GPOPI9HnCOCF0CwjtHwyJJBhD17+HpdlWIsZSyQpVvzVmtl
+        DmKwAgNGaS4HKvfSu1HLxGSg5kyJ6REt0IZfpRnaGrDjwlxYq+tlkb1JbeGBU6BT6N2sXr
+        GADQop9tGHgaeruzl+6uIh9WzM2WWdM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1649285497;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=xhK5Rfv2kcs1ZiPzQNwVHN8uE9kMtHwkhGh0+DpfRWs=;
+        b=2NjCJ1WylrYiIohPjsVmVWNlqoXI8ELHqFmq0kl3q+j+dbqERi+yp3qnKw8Llzz4cAZeHP
+        YEX4aRZdkWEiOGAg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 5E953139F5;
+        Wed,  6 Apr 2022 22:51:36 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 0QSyB3gZTmIAVQAAMHmgww
+        (envelope-from <neilb@suse.de>); Wed, 06 Apr 2022 22:51:36 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Steve Dickson" <steved@redhat.com>
+Cc:     "Chuck Lever III" <chuck.lever@oracle.com>,
+        "Benjamin Coddington" <bcodding@redhat.com>,
+        "Trond Myklebust" <trondmy@hammerspace.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] mount.nfs: handle EADDRINUSE from mount(2)
+In-reply-to: <852313a3-005e-2771-8be1-888891370533@redhat.com>
+References: <164816808982.6096.11435363819568479436@noble.neil.brown.name>,
+ <852313a3-005e-2771-8be1-888891370533@redhat.com>
+Date:   Thu, 07 Apr 2022 08:51:32 +1000
+Message-id: <164928549280.10985.16998885406899511034@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add nfs4_anylock_blocker and nfs4_lockowner_has_blockers to check
-if an expired client has any lock blockers
+On Thu, 07 Apr 2022, Steve Dickson wrote:
+> Hey!
+>=20
+> My apologies for taking so long to get to this....
 
-Update nfs4_get_client_reaplist to:
- . add courtesy client in CLIENT_EXPIRED state to reaplist.
- . detect if expired client still has state and no blockers then
-   transit it to courtesy client by setting CLIENT_COURTESY state
-   and removing the client record.
+Better late than never !! :-)
 
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
----
- fs/nfsd/nfs4state.c | 93 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 91 insertions(+), 2 deletions(-)
+>=20
+> On 3/24/22 8:28 PM, NeilBrown wrote:
+> >=20
+> > [[This is the followup to the kernel patch I recently posted.
+> >    It changes the behaviour of incorrectly configured containers to
+> >    get unique client identities - so lease stealing doesn't happen
+> >    so data corruption is avoided - but does not provide stable
+> >    identities, so reboot recovery is not ideal.
+> Which patch are you referring to and did it make it in?
+>=20
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4278b2078606..edd50a4485aa 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5731,24 +5731,106 @@ static void nfsd4_ssc_expire_umount(struct nfsd_net *nn)
- }
- #endif
- 
-+/* Check if any lock belonging to this lockowner has any blockers */
-+static bool
-+nfs4_lockowner_has_blockers(struct nfs4_lockowner *lo)
-+{
-+	struct file_lock_context *ctx;
-+	struct nfs4_ol_stateid *stp;
-+	struct nfs4_file *nf;
-+
-+	list_for_each_entry(stp, &lo->lo_owner.so_stateids, st_perstateowner) {
-+		nf = stp->st_stid.sc_file;
-+		ctx = nf->fi_inode->i_flctx;
-+		if (!ctx)
-+			continue;
-+		if (locks_owner_has_blockers(ctx, lo))
-+			return true;
-+	}
-+	return false;
-+}
-+
-+static bool
-+nfs4_anylock_blockers(struct nfs4_client *clp)
-+{
-+	int i;
-+	struct nfs4_stateowner *so;
-+	struct nfs4_lockowner *lo;
-+
-+	spin_lock(&clp->cl_lock);
-+	for (i = 0; i < OWNER_HASH_SIZE; i++) {
-+		list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[i],
-+				so_strhash) {
-+			if (so->so_is_open_owner)
-+				continue;
-+			lo = lockowner(so);
-+			if (nfs4_lockowner_has_blockers(lo)) {
-+				spin_unlock(&clp->cl_lock);
-+				return true;
-+			}
-+		}
-+	}
-+	spin_unlock(&clp->cl_lock);
-+	return false;
-+}
-+
- static void
- nfs4_get_client_reaplist(struct nfsd_net *nn, struct list_head *reaplist,
- 				struct laundry_time *lt)
- {
- 	struct list_head *pos, *next;
- 	struct nfs4_client *clp;
-+	bool cour;
-+	struct list_head cslist;
- 
- 	INIT_LIST_HEAD(reaplist);
-+	INIT_LIST_HEAD(&cslist);
- 	spin_lock(&nn->client_lock);
- 	list_for_each_safe(pos, next, &nn->client_lru) {
- 		clp = list_entry(pos, struct nfs4_client, cl_lru);
- 		if (!state_expired(lt, clp->cl_time))
- 			break;
--		if (mark_client_expired_locked(clp))
-+
-+		if (!client_has_state(clp))
-+			goto exp_client;
-+
-+		if (clp->cl_cs_client_state == NFSD4_CLIENT_EXPIRED)
-+			goto exp_client;
-+		cour = (clp->cl_cs_client_state == NFSD4_CLIENT_COURTESY);
-+		if (cour && ktime_get_boottime_seconds() >=
-+				(clp->cl_time + NFSD_COURTESY_CLIENT_TIMEOUT))
-+			goto exp_client;
-+		if (nfs4_anylock_blockers(clp)) {
-+exp_client:
-+			if (mark_client_expired_locked(clp))
-+				continue;
-+			list_add(&clp->cl_lru, reaplist);
- 			continue;
--		list_add(&clp->cl_lru, reaplist);
-+		}
-+		if (!cour) {
-+			spin_lock(&clp->cl_cs_lock);
-+			clp->cl_cs_client_state = NFSD4_CLIENT_COURTESY;
-+			spin_unlock(&clp->cl_cs_lock);
-+			list_add(&clp->cl_cs_list, &cslist);
-+		}
- 	}
- 	spin_unlock(&nn->client_lock);
-+
-+	while (!list_empty(&cslist)) {
-+		clp = list_first_entry(&cslist, struct nfs4_client, cl_cs_list);
-+		list_del_init(&clp->cl_cs_list);
-+		spin_lock(&clp->cl_cs_lock);
-+		/*
-+		 * Client might have re-connected. Make sure it's
-+		 * still in courtesy state before removing its record.
-+		 */
-+		if (clp->cl_cs_client_state != NFSD4_CLIENT_COURTESY) {
-+			spin_unlock(&clp->cl_cs_lock);
-+			continue;
-+		}
-+		spin_unlock(&clp->cl_cs_lock);
-+		nfsd4_client_record_remove(clp);
-+	}
- }
- 
- static time64_t
-@@ -5794,6 +5876,13 @@ nfs4_laundromat(struct nfsd_net *nn)
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		if (!state_expired(&lt, dp->dl_time))
- 			break;
-+		spin_lock(&clp->cl_cs_lock);
-+		if (clp->cl_cs_client_state == NFSD4_CLIENT_COURTESY) {
-+			clp->cl_cs_client_state = NFSD4_CLIENT_EXPIRED;
-+			spin_unlock(&clp->cl_cs_lock);
-+			continue;
-+		}
-+		spin_unlock(&clp->cl_cs_lock);
- 		WARN_ON(!unhash_delegation_locked(dp));
- 		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
--- 
-2.9.5
+https://lore.kernel.org/all/164816787898.6096.12819715693501838662@noble.neil=
+.brown.name/
 
+It hasn't landed, and I didn't expect it to (yet).  It is a basis for
+discussion and experimentation.
+
+
+> >    What is best to do when configuration is wrong?  Provide best service
+> >    possible despite it not being perfect, or provide no service so the
+> >    config will not get fixed.  I could be swayed either way.
+> > ]]
+> Maybe a little both? :-) Flag the broken config and continue on
+> if possible... but flagging the broken config is more critical... IMHO.
+
+I tend to agree, but it isn't clear how best to flag something in a way
+that the flag will actually be seen.
+
+>=20
+> >=20
+> > When NFS filesystems are mounted in different network namespaces, each
+> > network namespace must provide a different hostname (via accompanying
+> > UTS namespace) or different identifier (via sysfs).
+> >=20
+> > If the kernel finds that the identity that it constructs is already in
+> > use in a different namespace it will fail the mount with EADDRINUSE.
+> >=20
+> > This patch catches that error and, if the sysfs identifier is unset,
+> > writes a random string and retries.  This allows the mount to complete
+> > safely even when misconfigured.  The random string has 128 bits of
+> > entropy and so is extremely likely to be globally unique.
+> >=20
+> > A lock is taken on the identifier file, and it is only updated if no
+> > identifier is set.  Thus two concurrent mount attempts will not generate
+> > different identities.  The mount is retried in any case as a race may
+> > have updated the identifier while waiting for the lock.
+> >=20
+> > This is not an ideal solution as an unclean restart of the host cannot
+> > be detected by the server except by a lease timeout.  If the identifier
+> > is configured correctly and is stable across restarts, the server can
+> > detect the restart immediately.  Consequently a warning message is
+> > generated to encourage correct configuration.
+> Just curious... How did you test this patch? I would like
+> to build an env to generate this type of error.
+
+ip netns add foo
+ip netns exec foo  ip link set dev lo up
+ip link add veth0 type veth peer name veth1
+ip link set veth1 netns foo
+
+ip netns exec foo ifconfig veth1 10.1.1.1/24 up
+ifconfig veth0 10.1.1.2/24 up
+
+ip netns exec foo ip route add default via 10.1.1.2
+echo 1 > /proc/sys/net/ipv4/ip_forward
+iptables -t nat -A POSTROUTING -j SNAT --to-source 10.0.2.15 -s 10.1.1.0/24
+
+## At this point we have a separate network namespace which has network
+## connectivity to anything the host can reach.
+## The "--to-source" address is the IP address of the host - a qemu
+## instance in this case.
+
+# mount in the primary namespace
+mount -o vers=3D4.1 server:/path /mnt
+
+# attempt to mount in the alternate name space
+ip netns exec foo mount -o vers=3D4.1 server:/path /mnt2
+
+Note that "ip netns exec" creates a temporary mount namespace, so when
+it exits, /mnt2 will no longer be mounted.  If you want to do more than
+one thing you might need to
+   ip netns exec foo /bin/sh my-shell-script
+or
+   ip netns exec foo /bin/bash -i
+   # in a separate terminal window.
+
+NeilBrown
