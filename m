@@ -2,31 +2,33 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8DC3C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Apr 2022 17:43:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D52DC433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Apr 2022 17:43:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346522AbiDGRpe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Apr 2022 13:45:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44338 "EHLO
+        id S1346528AbiDGRpi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Apr 2022 13:45:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44636 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346505AbiDGRpc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2022 13:45:32 -0400
+        with ESMTP id S1346519AbiDGRph (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2022 13:45:37 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3427322C6F8
-        for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2022 10:43:31 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9D4E122C1E9
+        for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2022 10:43:33 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id D19F9B826B6
-        for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2022 17:43:18 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6703FC385A0;
-        Thu,  7 Apr 2022 17:43:17 +0000 (UTC)
-Subject: [PATCH v3 0/2] Fix request deferral for NFS/RDMA
+        by ams.source.kernel.org (Postfix) with ESMTPS id E7D77B82795
+        for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2022 17:43:31 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 38B4EC385A4;
+        Thu,  7 Apr 2022 17:43:30 +0000 (UTC)
+Subject: [PATCH v3 2/2] SUNRPC: Fix the svc_deferred_event trace class
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     rostedt@goodmis.org
-Date:   Thu, 07 Apr 2022 13:43:16 -0400
-Message-ID: <164935330144.76813.17862521591948764594.stgit@klimt.1015granger.net>
+Date:   Thu, 07 Apr 2022 13:43:29 -0400
+Message-ID: <164935340926.76813.4345516465286175319.stgit@klimt.1015granger.net>
+In-Reply-To: <164935330144.76813.17862521591948764594.stgit@klimt.1015granger.net>
+References: <164935330144.76813.17862521591948764594.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.5.dev1+g8516920
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -35,38 +37,63 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Last week Trond reported a server crash in svc_rdma_sendto() that
-seemed related to deferral of a request incoming on an RPC/RDMA
-transport. A link to that report appears in the first patch below.
+Fix a NULL deref crash that occurs when an svc_rqst is deferred
+while the sunrpc tracing subsystem is enabled. svc_revisit() sets
+dr->xprt to NULL, so it can't be relied upon in the tracepoint to
+provide the remote's address.
 
-The first patch in this series addresses the crash, and the second
-fixes a related observability crash. The other patches from v1
-of this series have been postponed to 5.19.
+Unfortunately we can't revert the "svc_deferred_class" hunk in
+commit ece200ddd54b ("sunrpc: Save remote presentation address in
+svc_xprt for trace events") because there is now a specific check
+of event format specifiers for unsafe dereferences. The warning
+that check emits is:
 
-Comments, opinions, and Reviewed-by's are appreciated!
+  event svc_defer_recv has unsafe dereference of argument 1
 
+A "%pISpc" format specifier with a "struct sockaddr *" is indeed
+flagged by this check.
 
-Since v2:
-- Fix "has unsafe dereference" warnings in patch 2/2
+Instead, take the brute-force approach used by the svcrdma_qp_error
+tracepoint. Convert the dr::addr field into a presentation address
+in the TP_fast_assign() arm of the trace event, and store that as
+a string. This fix can be backported to -stable kernels.
 
-Since v1:
-- Series trimmed down to just what will go to 5.18-rc
-- 2nd patch re-worked so it can be backported to recent stable
-- Addressed a few checkpatch.pl nits
+In the meantime, commit c6ced22997ad ("tracing: Update print fmt
+check to handle new __get_sockaddr() macro") is now in v5.18, so
+this wonky fix can be replaced with __sockaddr() and friends
+properly during the v5.19 merge window.
 
+Fixes: ece200ddd54b ("sunrpc: Save remote presentation address in svc_xprt for trace events")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/trace/events/sunrpc.h |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-Chuck Lever (2):
-      SUNRPC: Fix NFSD's request deferral on RDMA transports
-      SUNRPC: Fix the svc_deferred_event trace class
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index ab8ae1f6ba84..4eb706fa5825 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -2017,17 +2017,18 @@ DECLARE_EVENT_CLASS(svc_deferred_event,
+ 	TP_STRUCT__entry(
+ 		__field(const void *, dr)
+ 		__field(u32, xid)
+-		__string(addr, dr->xprt->xpt_remotebuf)
++		__array(__u8, addr, INET6_ADDRSTRLEN + 10)
+ 	),
+ 
+ 	TP_fast_assign(
+ 		__entry->dr = dr;
+ 		__entry->xid = be32_to_cpu(*(__be32 *)(dr->args +
+ 						       (dr->xprt_hlen>>2)));
+-		__assign_str(addr, dr->xprt->xpt_remotebuf);
++		snprintf(__entry->addr, sizeof(__entry->addr) - 1,
++			 "%pISpc", (struct sockaddr *)&dr->addr);
+ 	),
+ 
+-	TP_printk("addr=%s dr=%p xid=0x%08x", __get_str(addr), __entry->dr,
++	TP_printk("addr=%s dr=%p xid=0x%08x", __entry->addr, __entry->dr,
+ 		__entry->xid)
+ );
+ 
 
-
- include/linux/sunrpc/svc.h              | 1 +
- include/trace/events/sunrpc.h           | 7 ++++---
- net/sunrpc/svc_xprt.c                   | 3 +++
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c | 2 +-
- 4 files changed, 9 insertions(+), 4 deletions(-)
-
---
-Chuck Lever
 
