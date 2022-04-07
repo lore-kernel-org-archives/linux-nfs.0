@@ -2,145 +2,119 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 566FBC4167B
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Apr 2022 17:28:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20AA9C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Apr 2022 17:43:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346322AbiDGRaG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Apr 2022 13:30:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51104 "EHLO
+        id S232372AbiDGRpa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Apr 2022 13:45:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44146 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1347138AbiDGR3b (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2022 13:29:31 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 61EA81CC;
-        Thu,  7 Apr 2022 10:26:00 -0700 (PDT)
+        with ESMTP id S231470AbiDGRpa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Apr 2022 13:45:30 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3CC422A292
+        for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2022 10:43:27 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 0D988B82866;
-        Thu,  7 Apr 2022 17:25:59 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 309CEC385A0;
-        Thu,  7 Apr 2022 17:25:57 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1649352357;
-        bh=Rp3AAoZEhUXKlTVXiDR+mPUkgeKRvkK4oqYwes7kndQ=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=gWQ64C7AQq2qeuiSBgl1jzN4NKdMOKiOM1lCktHxNnt+ofZPc0ubfuIDzVi3nMged
-         ICHE8PuoiY3tinYIvbjvCtWMVZZrt9bs7MxK3esTxrJY9BGu1zSLKNdTwy3kG4wFfT
-         L6ttYBQ5VG7l1Z/J+id9AUzk8C6z3CsmThwb4eC7eIA8Myyny3lSGyXUN1c99tiLzl
-         Coao53kPZU/PK2gLw5JMhSAJHGiYcfBJiZAVsrobY/5swxwb5bBJRPX8LoDkMOxZ4+
-         8R1DF2o0IJpc5yfuCS5CcjvEWWfB0+fxeeHO8Dt81WJvw/uahMx9jB1MdimM3gFTXW
-         llvTQ26Q6yEsg==
-Message-ID: <1e94ae620fcd96f149dc025ceffc66119b70f473.camel@kernel.org>
-Subject: Re: [PATCH v4] VFS: filename_create(): fix incorrect intent.
-From:   Jeff Layton <jlayton@kernel.org>
-To:     NeilBrown <neilb@suse.de>, Al Viro <viro@zeniv.linux.org.uk>
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>,
-        David Disseldorp <ddiss@suse.de>
-Date:   Thu, 07 Apr 2022 13:25:55 -0400
-In-Reply-To: <164878611050.25542.6758961460499392000@noble.neil.brown.name>
-References: <164877264126.25542.1271530843099472952@noble.neil.brown.name>
-         <164878611050.25542.6758961460499392000@noble.neil.brown.name>
-Content-Type: text/plain; charset="ISO-8859-15"
-User-Agent: Evolution 3.42.4 (3.42.4-1.fc35) 
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 9D36761AFE
+        for <linux-nfs@vger.kernel.org>; Thu,  7 Apr 2022 17:43:24 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DCEBEC385AA;
+        Thu,  7 Apr 2022 17:43:23 +0000 (UTC)
+Subject: [PATCH v3 1/2] SUNRPC: Fix NFSD's request deferral on RDMA transports
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     rostedt@goodmis.org
+Date:   Thu, 07 Apr 2022 13:43:22 -0400
+Message-ID: <164935340273.76813.7096678268046264254.stgit@klimt.1015granger.net>
+In-Reply-To: <164935330144.76813.17862521591948764594.stgit@klimt.1015granger.net>
+References: <164935330144.76813.17862521591948764594.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.5.dev1+g8516920
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2022-04-01 at 15:08 +1100, NeilBrown wrote:
-> When asked to create a path ending '/', but which is not to be a
-> directory (LOOKUP_DIRECTORY not set), filename_create() will never try
-> to create the file.  If it doesn't exist, -ENOENT is reported.
-> 
-> However, it still passes LOOKUP_CREATE|LOOKUP_EXCL to the filesystems
-> ->lookup() function, even though there is no intent to create.  This is
-> misleading and can cause incorrect behaviour.
-> 
-> If you try
->    ln -s foo /path/dir/
-> 
-> where 'dir' is a directory on an NFS filesystem which is not currently
-> known in the dcache, this will fail with ENOENT.
-> As the name is not in the dcache, nfs_lookup gets called with
-> LOOKUP_CREATE|LOOKUP_EXCL and so it returns NULL without performing any
-> lookup, with the expectation that a subsequent call to create the
-> target will be made, and the lookup can be combined with the creation.
-> In the case with a trailing '/' and no LOOKUP_DIRECTORY, that call is never
-> made.  Instead filename_create() sees that the dentry is not (yet)
-> positive and returns -ENOENT - even though the directory actually
-> exists.
-> 
-> So only set LOOKUP_CREATE|LOOKUP_EXCL if there really is an intent
-> to create, and use the absence of these flags to decide if -ENOENT
-> should be returned.
-> 
-> Note that filename_parentat() is only interested in LOOKUP_REVAL, so we
-> split that out and store it in 'reval_flag'.
-> __looku_hash() then gets reval_flag combined with whatever create flags
-> were determined to be needed.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  fs/namei.c | 22 ++++++++++------------
->  1 file changed, 10 insertions(+), 12 deletions(-)
-> 
-> ARG - v3 had a missing semi-colon.  Sorry.
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 3f1829b3ab5b..509657fdf4f5 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3673,18 +3673,14 @@ static struct dentry *filename_create(int dfd, struct filename *name,
->  {
->  	struct dentry *dentry = ERR_PTR(-EEXIST);
->  	struct qstr last;
-> +	bool want_dir = lookup_flags & LOOKUP_DIRECTORY;
-> +	unsigned int reval_flag = lookup_flags & LOOKUP_REVAL;
-> +	unsigned int create_flags = LOOKUP_CREATE | LOOKUP_EXCL;
->  	int type;
->  	int err2;
->  	int error;
-> -	bool is_dir = (lookup_flags & LOOKUP_DIRECTORY);
->  
-> -	/*
-> -	 * Note that only LOOKUP_REVAL and LOOKUP_DIRECTORY matter here. Any
-> -	 * other flags passed in are ignored!
-> -	 */
-> -	lookup_flags &= LOOKUP_REVAL;
-> -
-> -	error = filename_parentat(dfd, name, lookup_flags, path, &last, &type);
-> +	error = filename_parentat(dfd, name, reval_flag, path, &last, &type);
->  	if (error)
->  		return ERR_PTR(error);
->  
-> @@ -3698,11 +3694,13 @@ static struct dentry *filename_create(int dfd, struct filename *name,
->  	/* don't fail immediately if it's r/o, at least try to report other errors */
->  	err2 = mnt_want_write(path->mnt);
->  	/*
-> -	 * Do the final lookup.
-> +	 * Do the final lookup.  Suppress 'create' if there is a trailing
-> +	 * '/', and a directory wasn't requested.
->  	 */
-> -	lookup_flags |= LOOKUP_CREATE | LOOKUP_EXCL;
-> +	if (last.name[last.len] && !want_dir)
-> +		create_flags = 0;
->  	inode_lock_nested(path->dentry->d_inode, I_MUTEX_PARENT);
-> -	dentry = __lookup_hash(&last, path->dentry, lookup_flags);
-> +	dentry = __lookup_hash(&last, path->dentry, reval_flag | create_flags);
->  	if (IS_ERR(dentry))
->  		goto unlock;
->  
-> @@ -3716,7 +3714,7 @@ static struct dentry *filename_create(int dfd, struct filename *name,
->  	 * all is fine. Let's be bastards - you had / on the end, you've
->  	 * been asking for (non-existent) directory. -ENOENT for you.
->  	 */
-> -	if (unlikely(!is_dir && last.name[last.len])) {
-> +	if (unlikely(!create_flags)) {
->  		error = -ENOENT;
->  		goto fail;
->  	}
+Trond Myklebust reports an NFSD crash in svc_rdma_sendto(). Further
+investigation shows that the crash occurred while NFSD was handling
+a deferred request.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+This patch addresses two inter-related issues that prevent request
+deferral from working correctly for RPC/RDMA requests:
+
+1. Prevent the crash by ensuring that the original
+   svc_rqst::rq_xprt_ctxt value is available when the request is
+   revisited. Otherwise svc_rdma_sendto() does not have a Receive
+   context available with which to construct its reply.
+
+2. Possibly since before commit 71641d99ce03 ("svcrdma: Properly
+   compute .len and .buflen for received RPC Calls"),
+   svc_rdma_recvfrom() did not include the transport header in the
+   returned xdr_buf. There should have been no need for svc_defer()
+   and friends to save and restore that header, as of that commit.
+   This issue is addressed in a backport-friendly way by simply
+   having svc_rdma_recvfrom() set rq_xprt_hlen to zero
+   unconditionally, just as svc_tcp_recvfrom() does. This enables
+   svc_deferred_recv() to correctly reconstruct an RPC message
+   received via RPC/RDMA.
+
+Reported-by: Trond Myklebust <trondmy@hammerspace.com>
+Link: https://lore.kernel.org/linux-nfs/82662b7190f26fb304eb0ab1bb04279072439d4e.camel@hammerspace.com/
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: <stable@vger.kernel.org>
+---
+ include/linux/sunrpc/svc.h              |    1 +
+ net/sunrpc/svc_xprt.c                   |    3 +++
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index a5dda4987e8b..217711fc9cac 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -395,6 +395,7 @@ struct svc_deferred_req {
+ 	size_t			addrlen;
+ 	struct sockaddr_storage	daddr;	/* where reply must come from */
+ 	size_t			daddrlen;
++	void			*xprt_ctxt;
+ 	struct cache_deferred_req handle;
+ 	size_t			xprt_hlen;
+ 	int			argslen;
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 0c117d3bfda8..b42cfffa7395 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1231,6 +1231,8 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		dr->daddr = rqstp->rq_daddr;
+ 		dr->argslen = rqstp->rq_arg.len >> 2;
+ 		dr->xprt_hlen = rqstp->rq_xprt_hlen;
++		dr->xprt_ctxt = rqstp->rq_xprt_ctxt;
++		rqstp->rq_xprt_ctxt = NULL;
+ 
+ 		/* back up head to the start of the buffer and copy */
+ 		skip = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
+@@ -1269,6 +1271,7 @@ static noinline int svc_deferred_recv(struct svc_rqst *rqstp)
+ 	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
+ 	rqstp->rq_daddr       = dr->daddr;
+ 	rqstp->rq_respages    = rqstp->rq_pages;
++	rqstp->rq_xprt_ctxt   = dr->xprt_ctxt;
+ 	svc_xprt_received(rqstp->rq_xprt);
+ 	return (dr->argslen<<2) - dr->xprt_hlen;
+ }
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index cf76a6ad127b..864131a9fc6e 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -831,7 +831,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 		goto out_err;
+ 	if (ret == 0)
+ 		goto out_drop;
+-	rqstp->rq_xprt_hlen = ret;
++	rqstp->rq_xprt_hlen = 0;
+ 
+ 	if (svc_rdma_is_reverse_direction_reply(xprt, ctxt))
+ 		goto out_backchannel;
+
+
