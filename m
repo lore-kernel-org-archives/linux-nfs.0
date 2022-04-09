@@ -2,38 +2,56 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A779C433F5
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Apr 2022 23:00:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3B23C433F5
+	for <linux-nfs@archiver.kernel.org>; Sat,  9 Apr 2022 05:07:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235673AbiDHXCs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Apr 2022 19:02:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40008 "EHLO
+        id S235604AbiDIFJ2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 9 Apr 2022 01:09:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60258 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240017AbiDHXCs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Apr 2022 19:02:48 -0400
-X-Greylist: delayed 455 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 08 Apr 2022 16:00:41 PDT
-Received: from aragorn.sasg.de (aragorn.sasg.de [95.142.64.10])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id A455F6A418
-        for <linux-nfs@vger.kernel.org>; Fri,  8 Apr 2022 16:00:41 -0700 (PDT)
-Received: by aragorn.sasg.de (Postfix, from userid 1450)
-        id CCBBE2682E36; Sat,  9 Apr 2022 00:53:04 +0200 (CEST)
-To:     linux-nfs@vger.kernel.org
-Subject: Downloadlink ERKA.360
-From:   <service@myerka.de>
-X-Sender: <service@myerka.de>
-X-Mailer: PHP
-X-Priority: 3
-Message-Id: <20220408225304.CCBBE2682E36@aragorn.sasg.de>
-Date:   Sat,  9 Apr 2022 00:53:04 +0200 (CEST)
+        with ESMTP id S241916AbiDIFIt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Apr 2022 01:08:49 -0400
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF2FB1D9146;
+        Fri,  8 Apr 2022 22:06:42 -0700 (PDT)
+Received: by verein.lst.de (Postfix, from userid 2407)
+        id AB9CC68AFE; Sat,  9 Apr 2022 07:06:38 +0200 (CEST)
+Date:   Sat, 9 Apr 2022 07:06:38 +0200
+From:   Christoph Hellwig <hch@lst.de>
+To:     Hugh Dickins <hughd@google.com>
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        Chuck Lever III <chuck.lever@oracle.com>,
+        Mark Hemment <markhemm@googlemail.com>,
+        Patrice CHOTARD <patrice.chotard@foss.st.com>,
+        Mikulas Patocka <mpatocka@redhat.com>,
+        Lukas Czerner <lczerner@redhat.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Darrick J. Wong" <djwong@kernel.org>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        linux-stm32@st-md-mailman.stormreply.com, viro@zeniv.linux.org.uk
+Subject: Re: [PATCH] tmpfs: fix regressions from wider use of ZERO_PAGE
+Message-ID: <20220409050638.GB17755@lst.de>
+References: <9a978571-8648-e830-5735-1f4748ce2e30@google.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <9a978571-8648-e830-5735-1f4748ce2e30@google.com>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Sehr geehrte Frau 🔥 Jennifer is interested in you! More info: http://inx.lv/NoVW?xyv 🔥 iepw10,
+On Fri, Apr 08, 2022 at 01:38:41PM -0700, Hugh Dickins wrote:
+> +		} else if (iter_is_iovec(to)) {
+> +			/*
+> +			 * Copy to user tends to be so well optimized, but
+> +			 * clear_user() not so much, that it is noticeably
+> +			 * faster to copy the zero page instead of clearing.
+> +			 */
+> +			ret = copy_page_to_iter(ZERO_PAGE(0), offset, nr, to);
 
-anbei erhalten Sie den Download-Link, dieser ist 24 Stunden gültig.
+Is the offset and length guaranteed to be less than PAGE_SIZE here?
 
-https://www.erka.org/erka360/download.php?token=ad5f98d1e75b7841&email=linux-nfs@vger.kernel.org
-
-Ihr ERKA-Team
-
+Either way I'd rather do this optimization in iov_iter_zero rather
+than hiding it in tmpfs.
