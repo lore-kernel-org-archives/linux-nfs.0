@@ -2,45 +2,48 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B920FC433FE
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Apr 2022 21:40:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 798F8C4332F
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Apr 2022 21:40:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237048AbiDKVmx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Apr 2022 17:42:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36780 "EHLO
+        id S237081AbiDKVmy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Apr 2022 17:42:54 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36782 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237081AbiDKVmw (ORCPT
+        with ESMTP id S1344791AbiDKVmw (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2022 17:42:52 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E36633A39
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C530633A3A
         for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2022 14:40:37 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 262A6B818C8
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2022 21:40:36 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 73CA2C385A3;
-        Mon, 11 Apr 2022 21:40:34 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 3F5F561704
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2022 21:40:37 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 906E7C385A3;
+        Mon, 11 Apr 2022 21:40:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1649713234;
-        bh=XDyu0lsurJEAhJLJoQZYLGFV2g+T+Pe+yv9mizVz8CE=;
+        s=k20201202; t=1649713237;
+        bh=qPudaQAYHUtYnkzoLgfPWcStuGfd0CEvlH41urmdpiI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=kXdS9NohGJiEVNlCCjWhfekeVVcq0mBvbFhHMzV7tStyMCBxKwmHvU0bRraY6kIYE
-         +1NnSdWi7sAJA2rD+5PNzxHA942z6aEJcmIl8FjfrHCeL1YflGi4GHCU8AOCAGu8j6
-         OVhJRtwMv695F9CyPLduWkEjNmX20Bycw2aLR+a4NakeSCWWl0R/J7US+ALUQTXixa
-         OK3ZobBB9HyuDV0hiCk6WvHRNrj4LXamDdIXkZCSlAGOX6jed3/YqHtGnsyCiFcJxN
-         KApxG4hsSI7cke3DqfeFrXykx8VXenoK+DzBjC1qZUPmPDxdpuDbQ1FHEJgCf/dFWy
-         MZ3Jn3u06vMrg==
+        b=aXIQedSNy6UQIAPF7o4Xj0qLk+OvHZepSpOsSunh2Wyb5GfacjFL8BSMdCDAjXKWZ
+         Xi2EmgZBCBWWPddmiKJ7j3r2vPow9VrBrDTv0gYDgCnpfl6B89qupHxfL/T7yXyiZi
+         QqZHipgF/am1rBaXs08Vansc2QPCDiML/9HB31sCkeYvbsSkuCI70FVvaWMTzlC2vy
+         /hfDEFhPtg48f6DEZ/4NDv9dDQTePX4CivTXv7a3aC+HjNMysr/JVg7O4lgFRMaIhb
+         jn57XVwWI9t9/btuwIFSq3MXBEm+qINMl2Sg28cPKBc6Xdmuhk8+KA1L9i893owbSz
+         Dku2codsJR7mQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Cc:     ChenXiaoSong <chenxiaosong2@huawei.com>,
         Scott Mayhew <smayhew@redhat.com>
-Subject: [PATCH v2 1/5] NFS: Do not report EINTR/ERESTARTSYS as mapping errors
-Date:   Mon, 11 Apr 2022 17:33:42 -0400
-Message-Id: <20220411213346.762302-2-trondmy@kernel.org>
+Subject: [PATCH v2 4/5] NFS: Do not report flush errors in nfs_write_end()
+Date:   Mon, 11 Apr 2022 17:33:45 -0400
+Message-Id: <20220411213346.762302-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220411213346.762302-1-trondmy@kernel.org>
+In-Reply-To: <20220411213346.762302-4-trondmy@kernel.org>
 References: <20220411213346.762302-1-trondmy@kernel.org>
+ <20220411213346.762302-2-trondmy@kernel.org>
+ <20220411213346.762302-3-trondmy@kernel.org>
+ <20220411213346.762302-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -49,28 +52,35 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the attempt to flush data was interrupted due to a local signal, then
-just requeue the writes back for I/O.
+If we do flush cached writebacks in nfs_write_end() due to the imminent
+expiration of an RPCSEC_GSS session, then we should defer reporting any
+resulting errors until the calls to file_check_and_advance_wb_err() in
+nfs_file_write() and nfs_file_fsync().
 
 Fixes: 6fbda89b257f ("NFS: Replace custom error reporting mechanism with generic one")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/write.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/file.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index e864ac836237..9d3ac6edc901 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1436,7 +1436,7 @@ static void nfs_async_write_error(struct list_head *head, int error)
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
--		if (nfs_error_is_fatal(error))
-+		if (nfs_error_is_fatal_on_server(error))
- 			nfs_write_error(req, error);
- 		else
- 			nfs_redirty_request(req);
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 8211a7aa799c..16ddb258eef3 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -386,11 +386,8 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 		return status;
+ 	NFS_I(mapping->host)->write_io += copied;
+ 
+-	if (nfs_ctx_key_to_expire(ctx, mapping->host)) {
+-		status = nfs_wb_all(mapping->host);
+-		if (status < 0)
+-			return status;
+-	}
++	if (nfs_ctx_key_to_expire(ctx, mapping->host))
++		nfs_wb_all(mapping->host);
+ 
+ 	return copied;
+ }
 -- 
 2.35.1
 
