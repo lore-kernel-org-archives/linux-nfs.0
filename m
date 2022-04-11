@@ -2,46 +2,49 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 07833C433F5
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 823E9C433EF
 	for <linux-nfs@archiver.kernel.org>; Mon, 11 Apr 2022 21:40:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344791AbiDKVmz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Apr 2022 17:42:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36794 "EHLO
+        id S1350070AbiDKVm4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Apr 2022 17:42:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36808 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1350070AbiDKVmx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2022 17:42:53 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C7EE338AB
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2022 14:40:38 -0700 (PDT)
+        with ESMTP id S1350226AbiDKVmz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Apr 2022 17:42:55 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 60563338AB
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2022 14:40:40 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id ED24FB815C8
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2022 21:40:36 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C2B8C385A9;
-        Mon, 11 Apr 2022 21:40:35 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 1D958B818C8
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Apr 2022 21:40:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5793DC385A5;
+        Mon, 11 Apr 2022 21:40:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1649713235;
-        bh=Q0sQqucLrEsfxJiDJRj0jf8k0wqNqcX5dWyoVIv+DIs=;
+        s=k20201202; t=1649713237;
+        bh=PILKzRTE62PeTeUucmUsBc8qA03ZD1GzTYPrd7eYXrU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=HsXUkcYuUgsP1jlK+RBMJ+l2CDqWtXiQ6sINn7yCycmpquiBYAS2V9xsOVnN8ySpk
-         Y5js3q4szaVZbi8m+bezc6zI1hoYQtGp1GpTDYi0RkMC6T0P69f0PNSeTp4YIV6V6y
-         5/efoCT8QHDV60Dn72PMqEFmKALNvTQ+cyfo6GrDMWt8XIcHoWoogiAOzF6DomneKw
-         5yYym2Ax31bNiz6OPOk6DP8V/Sme7A/nsPBKdYN0mOAAZYAS9plmWQ+GEhUKlP4yYu
-         UGk8cRb575n3UFniAGpYDw4y+Wq5JX9VIKuuJH+OoEiRbNMSa96PAOArMWcab0UkAL
-         J/MhzH4WXdXKQ==
+        b=uf5lrpvd3qqafA+rPcR0G1R9A9A5ojV95TAMkwGayhfpeRXeZ3XeFn4mKAe9bJql0
+         0/LQVAbPPDdIPF3kT4bje013Tyrv+/4NXOXC+c4SVfUq/M2EAFxdYZQOdt6kVcWHth
+         JtIXNL+cEFwhHzvKykiQTCFI1dCo2FktfpHiO5eVrD38FsW9TPMaMdcE/O6u/KPfpH
+         xGOdus9E/gm9DXRcJ4TS0cWH9Fb7HgrnyNlDLvLn7jjRhzi8XcdlCI2HZb38n3Wbz8
+         +tF4Lu93kNlxloopGOMC9Ar+8nDFrNFEl9x7GdtSC8Ojaqp9voqSWYv36lQUYDqllR
+         hzggL2zaFPVVQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
 Cc:     ChenXiaoSong <chenxiaosong2@huawei.com>,
         Scott Mayhew <smayhew@redhat.com>
-Subject: [PATCH v2 2/5] NFS: fsync() should report filesystem errors over EINTR/ERESTARTSYS
-Date:   Mon, 11 Apr 2022 17:33:43 -0400
-Message-Id: <20220411213346.762302-3-trondmy@kernel.org>
+Subject: [PATCH v2 5/5] NFS: Don't report errors from nfs_pageio_complete() more than once
+Date:   Mon, 11 Apr 2022 17:33:46 -0400
+Message-Id: <20220411213346.762302-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220411213346.762302-2-trondmy@kernel.org>
+In-Reply-To: <20220411213346.762302-5-trondmy@kernel.org>
 References: <20220411213346.762302-1-trondmy@kernel.org>
  <20220411213346.762302-2-trondmy@kernel.org>
+ <20220411213346.762302-3-trondmy@kernel.org>
+ <20220411213346.762302-4-trondmy@kernel.org>
+ <20220411213346.762302-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -50,41 +53,44 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the commit to disk is interrupted, we should still first check for
-filesystem errors so that we can report them in preference to the error
-due to the signal.
+Since errors from nfs_pageio_complete() are already being reported
+through nfs_async_write_error(), we should not be returning them to the
+callers of do_writepages() as well. They will end up being reported
+through the generic mechanism instead.
 
-Fixes: 2197e9b06c22 ("NFS: Fix up fsync() when the server rebooted")
+Fixes: 6fbda89b257f ("NFS: Replace custom error reporting mechanism with generic one")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/file.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/nfs/write.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 81c80548a5c6..95e1236d95c5 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -204,15 +204,16 @@ static int
- nfs_file_fsync_commit(struct file *file, int datasync)
- {
- 	struct inode *inode = file_inode(file);
--	int ret;
-+	int ret, ret2;
- 
- 	dprintk("NFS: fsync file(%pD2) datasync %d\n", file, datasync);
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
- 	ret = nfs_commit_inode(inode, FLUSH_SYNC);
--	if (ret < 0)
--		return ret;
--	return file_check_and_advance_wb_err(file);
-+	ret2 = file_check_and_advance_wb_err(file);
-+	if (ret2 < 0)
-+		return ret2;
-+	return ret;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9d3ac6edc901..0fe101e4e3db 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -677,11 +677,7 @@ static int nfs_writepage_locked(struct page *page,
+ 	err = nfs_do_writepage(page, wbc, &pgio);
+ 	pgio.pg_error = 0;
+ 	nfs_pageio_complete(&pgio);
+-	if (err < 0)
+-		return err;
+-	if (nfs_error_is_fatal(pgio.pg_error))
+-		return pgio.pg_error;
+-	return 0;
++	return err;
  }
  
- int
+ int nfs_writepage(struct page *page, struct writeback_control *wbc)
+@@ -739,9 +735,6 @@ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ 
+ 	if (err < 0)
+ 		goto out_err;
+-	err = pgio.pg_error;
+-	if (nfs_error_is_fatal(err))
+-		goto out_err;
+ 	return 0;
+ out_err:
+ 	return err;
 -- 
 2.35.1
 
