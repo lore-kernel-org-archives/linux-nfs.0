@@ -2,132 +2,272 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 37353C433F5
-	for <linux-nfs@archiver.kernel.org>; Sun, 17 Apr 2022 08:22:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C9467C433FE
+	for <linux-nfs@archiver.kernel.org>; Sun, 17 Apr 2022 19:07:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233618AbiDQIYc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 17 Apr 2022 04:24:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32870 "EHLO
+        id S234887AbiDQTKF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 17 Apr 2022 15:10:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47060 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232279AbiDQIYb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Apr 2022 04:24:31 -0400
-Received: from mail-ed1-x52f.google.com (mail-ed1-x52f.google.com [IPv6:2a00:1450:4864:20::52f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 413F33A715
-        for <linux-nfs@vger.kernel.org>; Sun, 17 Apr 2022 01:21:55 -0700 (PDT)
-Received: by mail-ed1-x52f.google.com with SMTP id c6so14494771edn.8
-        for <linux-nfs@vger.kernel.org>; Sun, 17 Apr 2022 01:21:55 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=sender:date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=uJBTXx8OmnCmlzbMxKp0GKjgPbO3h19C+nKu0MjHcbA=;
-        b=iVgr6qyXOgH1Obco8oo367olbotQPmriExW9UFQPjShJmEpFY7v1yZ6X2PRNyr5V6E
-         Vh4HbKMfvsP83WcrjvgUmGKYzl01oOMwlaG20bbMxa9QI4v6cx6W2UqQqG5OaHgQoDYp
-         veumu/cuTObKM86dzZmRmag4N+lW36Q9P/AHIqYIVTAkU+ElivOX1xYMc7Iiz/X0iB24
-         eK9VVivtQd1BRcDI0XPOcF3rTPVcG7fHjVgr/BkSguJJn8XCaxPCtc7hJPNoo12lYwsA
-         ogVBH77POh70JYiCXpDL1vGvrPUCqDE2FZf3GoJlqPi0zZByooNfi8/RHt9SxxX3FLYD
-         cyVg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:sender:date:from:to:cc:subject:message-id
-         :references:mime-version:content-disposition:in-reply-to;
-        bh=uJBTXx8OmnCmlzbMxKp0GKjgPbO3h19C+nKu0MjHcbA=;
-        b=KnOfFF5a+Q6yDZpBI3QkYsPB6qGIlF+ionSoY07jjdVtGf3+NqjHK2kpclmraSayH0
-         tLhvZQ9LdYsQvMuc8dHyuVOJm9F6Jz/d9EXX0/AwnB6EE3pCl2RsRhgPsyTsMqvi+SJu
-         t7j14+qsQH9VWa3jgn4bOwcv/+naSEV3y2MuiNhRQ9HPCh3ECMV9Hui3qal5mqqCNq+E
-         OeIkGJxjkQSghbY2dqLSPDb3mIWoiDCcSXBz3YExYrzoLOseQ4pFCL2N7T6+UhZqfsJJ
-         XkdA/Q91s3VcyWeJ09CgP1abPVrCsU+al3ysIbjzE6LPhS+eL8JqPaXgk8zGyhSBpBDJ
-         eQTA==
-X-Gm-Message-State: AOAM5325f4QqLJniKRPZ3rzhBdkYc7KoRNtGdyVWrWzHGvxNLIBAJZq+
-        VCz8KokLFfEuJv44XULM4dF+fffkVFMykA==
-X-Google-Smtp-Source: ABdhPJwe4Ku2JnRVsDONA/0xjrEoabKa9yLsv2rBMcFhvmmoS3vwBMXxG6/I22GxyHuJhLhV8a9nIQ==
-X-Received: by 2002:a50:ec94:0:b0:41d:9a7a:65fd with SMTP id e20-20020a50ec94000000b0041d9a7a65fdmr6991821edr.284.1650183713759;
-        Sun, 17 Apr 2022 01:21:53 -0700 (PDT)
-Received: from eldamar (c-82-192-242-114.customer.ggaweb.ch. [82.192.242.114])
-        by smtp.gmail.com with ESMTPSA id cb25-20020a170906a45900b006e87e5f9c4asm3414053ejb.140.2022.04.17.01.21.52
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 17 Apr 2022 01:21:52 -0700 (PDT)
-Sender: Salvatore Bonaccorso <salvatore.bonaccorso@gmail.com>
-Date:   Sun, 17 Apr 2022 10:21:51 +0200
-From:   Salvatore Bonaccorso <carnil@debian.org>
-To:     Steve Dickson <steved@redhat.com>
-Cc:     linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        Ben Hutchings <benh@debian.org>
-Subject: Re: [PATCH] nfs-utils: nfsidmap.man: Fix section number
-Message-ID: <YlvOH5CA+Bvl5yQC@eldamar.lan>
-References: <20220412070016.720489-1-carnil@debian.org>
- <f9ec727f-e616-4af8-ac09-2d0fd1f2ae0a@redhat.com>
- <YlXSJspEFVtBvJk0@eldamar.lan>
+        with ESMTP id S232144AbiDQTKE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Apr 2022 15:10:04 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C951D35DFB;
+        Sun, 17 Apr 2022 12:07:27 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 0EA8E6CCD; Sun, 17 Apr 2022 15:07:27 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 0EA8E6CCD
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1650222447;
+        bh=4BbwefQOJFg9IPpk+to3yXh1OSX0hIshtNwjd0t9TC0=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=JLCBit8DH6nzq+IhoYmUYC69X62KBAu95xzdznLlR31qWyhDmdZTuN+teZcQPryw7
+         bD8EbVEGmgl4XdUehDCgmoaOZe0HqaKlA8ZHzrUmlzxESc/6/yuQlKlzlFr101Yj/J
+         KSLBHIZIZ41xbC3WE1EoMsDPRFuBjfMJZacH9ocI=
+Date:   Sun, 17 Apr 2022 15:07:27 -0400
+From:   Bruce Fields <bfields@fieldses.org>
+To:     dai.ngo@oracle.com
+Cc:     Chuck Lever III <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH RFC v19 06/11] NFSD: Update find_clp_in_name_tree() to
+ handle courtesy client
+Message-ID: <20220417190727.GA18120@fieldses.org>
+References: <1648742529-28551-1-git-send-email-dai.ngo@oracle.com>
+ <1648742529-28551-7-git-send-email-dai.ngo@oracle.com>
+ <20220401152109.GB18534@fieldses.org>
+ <52CA1DBC-A0E2-4C1C-96DF-3E6114CDDFFD@oracle.com>
+ <8dc762fc-dac8-b323-d0bc-4dbeada8c279@oracle.com>
+ <20220413125550.GA29176@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <YlXSJspEFVtBvJk0@eldamar.lan>
+In-Reply-To: <20220413125550.GA29176@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Steve,
-
-On Tue, Apr 12, 2022 at 09:25:28PM +0200, Salvatore Bonaccorso wrote:
-> Hi Steve,
-> 
-> On Tue, Apr 12, 2022 at 10:28:50AM -0400, Steve Dickson wrote:
-> > Hello,
+On Wed, Apr 13, 2022 at 08:55:50AM -0400, Bruce Fields wrote:
+> On Fri, Apr 01, 2022 at 12:11:34PM -0700, dai.ngo@oracle.com wrote:
+> > On 4/1/22 8:57 AM, Chuck Lever III wrote:
+> > >>(And to be honest I'd still prefer the original approach where we expire
+> > >>clients from the posix locking code and then retry.  It handles an
+> > >>additional case (the one where reboot happens after a long network
+> > >>partition), and I don't think it requires adding these new client
+> > >>states....)
+> > >The locking of the earlier approach was unworkable.
+> > >
+> > >But, I'm happy to consider that again if you can come up with a way
+> > >of handling it properly and simply.
 > > 
-> > On 4/12/22 3:00 AM, Salvatore Bonaccorso wrote:
-> > 
-> > My mailer was unable to process the attachment
-> > Please in-line the patch and resend it.
+> > I will wait for feedback from Bruce before sending v20 with the
+> > above change.
 > 
-> That is very strange, I used git send-email to submit it, and I do not
-> see where it got mangled, as it is present as well in
+> OK, I'd like to tweak the design in that direction.
 > 
-> https://lore.kernel.org/linux-nfs/20220412070016.720489-1-carnil@debian.org/
+> I'd like to handle the case where the network goes down for a while, and
+> the server gets power-cycled before the network comes back up.  I think
+> that could easily happen.  There's no reason clients couldn't reclaim
+> all their state in that case.  We should let them.
 > 
-> Any idea what happened?
+> To handle that case, we have to delay removing the client's stable
+> storage record until there's a lock conflict.  That means code that
+> checks for conflicts must be able to sleep.
 > 
-> Here it is again, inlined in this message.
+> In each case (opens, locks, delegations), conflicts are first detected
+> while holding a spinlock.  So we need to unlock before waiting, and then
+> retry if necessary.
 > 
-> Regards,
-> Salvatore
+> We decided instead to remove the stable-storage record when first
+> converting a client to a courtesy client--then we can handle a conflict
+> by just setting a flag on the client that indicates it should no longer
+> be used, no need to drop any locks.
 > 
-> From da390ced58885b0ed80be3722d4d913909e7c543 Mon Sep 17 00:00:00 2001
-> From: Ben Hutchings <benh@debian.org>
-> Date: Mon, 14 Mar 2022 00:19:33 +0100
-> Subject: [PATCH] nfsidmap.man: Fix section number
+> That leaves the client in a state where it's still on a bunch of global
+> data structures, but has to be treated as if it no longer exists.  That
+> turns out to require more special handling than expected.  You've shown
+> admirable persistance in handling those cases, but I'm still not
+> completely convinced this is correct.
 > 
-> The nfsidmap manual page is supposed to be in section 8, but calls the
-> .TH macro with a section argument of 5.  This results in an incorrect
-> header and causes debhelper (in Debian) to install it in the section 5
-> directory. Fix that.
+> We could avoid that complication, and also solve the
+> server-reboot-during-network-partition problem, if we went back to the
+> first plan and allowed ourselves to sleep at the time we detect a
+> conflict.  I don't think it's that complicated.
 > 
-> Signed-off-by: Ben Hutchings <benh@debian.org>
-> [Salvatore Bonaccorso: Slightly modify commit message to mention that
-> the Problem is found in Debian through installing the manpage via
-> debhelper]
-> Signed-off-by: Salvatore Bonaccorso <carnil@debian.org>
-> ---
->  utils/nfsidmap/nfsidmap.man | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> We end up using a lot of the same logic regardless, so don't throw away
+> the existing patches.
 > 
-> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
-> index 2af16f3157ff..1911c41be6f9 100644
-> --- a/utils/nfsidmap/nfsidmap.man
-> +++ b/utils/nfsidmap/nfsidmap.man
-> @@ -2,7 +2,7 @@
->  .\"@(#)nfsidmap(8) - The NFS idmapper upcall program
->  .\"
->  .\" Copyright (C) 2010 Bryan Schumaker <bjschuma@netapp.com>
-> -.TH nfsidmap 5 "1 October 2010"
-> +.TH nfsidmap 8 "1 October 2010"
->  .SH NAME
->  nfsidmap \- The NFS idmapper upcall program
->  .SH SYNOPSIS
-> -- 
-> 2.35.1
+> My basic plan is:
+> 
+> Keep the client state, but with only three values: ACTIVE, COURTESY, and
+> EXPIRABLE.
+> 
+> ACTIVE is the initial state, which we return to whenever we renew.  The
+> laundromat sets COURTESY whenever a client isn't renewed for a lease
+> period.  When we run into a conflict with a lock held by a client, we
+> call
+> 
+>   static bool try_to_expire_client(struct nfs4_client *clp)
+>   {
+> 	return COURTESY == cmpxchg(clp->cl_state, COURTESY, EXPIRABLE);
+>   }
+> 
+> If it returns true, that tells us the client was a courtesy client.  We
+> then call queue_work(laundry_wq, &nn->laundromat_work) to tell the
+> laundromat to actually expire the client.  Then if needed we can drop
+> locks, wait for the laundromat to do the work with
+> flush_workqueue(laundry_wq), and retry.
+> 
+> All the EXPIRABLE state does is tell the laundromat to expire this
+> client.  It does *not* prevent the client from being renewed and
+> acquiring new locks--if that happens before the laundromat gets to the
+> client, that's fine, we let it return to ACTIVE state and if someone
+> retries the conflicing lock they'll just get a denial.
+> 
+> Here's a suggested a rough patch ordering.  If you want to go above and
+> beyond, I also suggest some tests that should pass after each step:
+> 
+> 
+> PATCH 1
+> -------
+> 
+> Implement courtesy behavior *only* for clients that have
+> delegations, but no actual opens or locks:
+> 
+> Define new cl_state field with values ACTIVE, COURTESY, and EXPIRABLE.
+> Set to ACTIVE on renewal.  Modify the laundromat so that instead of
+> expiring any client that's too old, it first checks if a client has
+> state consisting only of unconflicted delegations, and, if so, it sets
+> COURTESY.
+> 
+> Define try_to_expire_client as above.  In nfsd_break_deleg_cb, call
+> try_to_expire_client and queue_work.  (But also continue scheduling the
+> recall as we do in the current code, there's no harm to that.)
+> 
+> Modify the laundromat to try to expire old clients with EXPIRED set.
+> 
+> TESTS:
+> 	- Establish a client, open a file, get a delegation, close the
+> 	  file, wait 2 lease periods, verify that you can still use the
+> 	  delegation.
+> 	- Establish a client, open a file, get a delegation, close the
+> 	  file, wait 2 lease periods, establish a second client, request
+> 	  a conflicting open, verify that the open succeeds and that the
+> 	  first client is no longer able to use its delegation.
+> 
+> 
+> PATCH 2
+> -------
+> 
+> Extend courtesy client behavior to clients that have opens or
+> delegations, but no locks:
+> 
+> Modify the laundromat to set COURTESY on old clients with state
+> consisting only of opens or unconflicted delegations.
+> 
+> Add in nfs4_resolve_deny_conflicts_locked and friends as in your patch
+> "Update nfs4_get_vfs_file()...", but in the case of a conflict, call
+> try_to_expire_client and queue_work(), then modify e.g.
+> nfs4_get_vfs_file to flush_workqueue() and then retry after unlocking
+> fi_lock.
+> 
+> TESTS:
+> 	- establish a client, open a file, wait 2 lease periods, verify
+> 	  that you can still use the open stateid.
+> 	- establish a client, open a file, wait 2 lease periods,
+> 	  establish a second client, request an open with a share mode
+> 	  conflicting with the first open, verify that the open succeeds
+> 	  and that first client is no longer able to use its open.
+> 
+> PATCH 3
+> -------
+> 
+> Minor tweak to prevent the laundromat from being freed out from
+> under a thread processing a conflicting lock:
+> 
+> Create and destroy the laundromat workqueue in init_nfsd/exit_nfsd
+> instead of where it's done currently.
+> 
+> (That makes the laundromat's lifetime longer than strictly necessary.
+> We could do better with a little more work; I think this is OK for now.)
+> 
+> TESTS:
+> 	- just rerun any regression tests; this patch shouldn't change
+> 	  behavior.
+> 
+> PATCH 4
+> -------
+> 
+> Extend courtesy client behavior to any client with state, including
+> locks:
+> 
+> Modify the laundromat to set COURTESY on any old client with state.
+> 
+> Add two new lock manager callbacks:
+> 
+> 	void * (*lm_lock_expirable)(struct file_lock *);
+> 	bool (*lm_expire_lock)(void *);
+> 
+> If lm_lock_expirable() is called and returns non-NULL, posix_lock_inode
+> should drop flc_lock, call lm_expire_lock() with the value returned from
+> lm_lock_expirable, and then restart the loop over flc_posix from the
+> beginning.
+> 
+> For now, nfsd's lm_lock_expirable will basically just be
+> 
+> 	if (try_to_expire_client()) {
+> 		queue_work()
+> 		return get_net();
 
-Was this version now correctly processed by your mailer?
+Correction: I forgot that the laundromat is global, not per-net.  So, we
+can skip the put_net/get_net.  Also, lm_lock_expirable can just return
+bool instead of void *, and lm_expire_lock needs no arguments.
 
-Regards,
-Salvatore
+--b.
+
+> 	}
+> 	return NULL;
+> 
+> and lm_expire_lock will:
+> 
+> 	flush_workqueue()
+> 	put_net()
+> 
+> One more subtlety: the moment we drop the flc_lock, it's possible
+> another task could race in and free it.  Worse, the nfsd module could be
+> removed entirely--so nfsd's lm_expire_lock code could disappear out from
+> under us.  To prevent this, I think we need to add a struct module
+> *owner field to struct lock_manager_operations, and use it like:
+> 
+> 	owner = fl->fl_lmops->owner;
+> 	__get_module(owner);
+> 	expire_lock = fl->fl_lmops->lm_expire_lock;
+> 	spin_unlock(&ctx->flc_lock);
+> 	expire_lock(...);
+> 	module_put(owner);
+> 
+> Maybe there's some simpler way, but I don't see it.
+> 
+> TESTS:
+> 	- retest courtesy client behavior using file locks this time.
+> 
+> --
+> 
+> That's the basic idea.  I think it should work--though I may have
+> overlooked something.
+> 
+> This has us flush the laundromat workqueue while holding mutexes in a
+> couple cases.  We could avoid that with a little more work, I think.
+> But those mutexes should only be associated with the client requesting a
+> new open/lock, and such a client shouldn't be touched by the laundromat,
+> so I think we're OK.
+> 
+> It'd also be helpful to update the info file with courtesy client
+> information, as you do in your current patches.
+> 
+> Does this make sense?
+> 
+> --b.
