@@ -2,35 +2,36 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5EA8C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Apr 2022 16:51:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BC96C4332F
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Apr 2022 16:52:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346639AbiDRQyX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Apr 2022 12:54:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52830 "EHLO
+        id S1346688AbiDRQyj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Apr 2022 12:54:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56280 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346481AbiDRQws (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Apr 2022 12:52:48 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D7C82B26B;
-        Mon, 18 Apr 2022 09:50:02 -0700 (PDT)
+        with ESMTP id S1346594AbiDRQyM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Apr 2022 12:54:12 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8612C32EFB;
+        Mon, 18 Apr 2022 09:51:31 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id A76C7B8100E;
-        Mon, 18 Apr 2022 16:50:00 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B7A2DC385A1;
-        Mon, 18 Apr 2022 16:49:58 +0000 (UTC)
-Subject: [PATCH RFC 5/5] net/tls: Add observability for AF_TLSH sockets
+        by ams.source.kernel.org (Postfix) with ESMTPS id F1305B81047;
+        Mon, 18 Apr 2022 16:51:29 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3C8E0C385AB;
+        Mon, 18 Apr 2022 16:51:28 +0000 (UTC)
+Subject: [PATCH RFC 03/15] SUNRPC: Capture cmsg metadata on client-side
+ receive
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-nvme@lists.infradead.org, linux-cifs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
 Cc:     ak@tempesta-tech.com, borisp@nvidia.com, simo@redhat.com
-Date:   Mon, 18 Apr 2022 12:49:57 -0400
-Message-ID: <165030059773.5073.6168640435213548957.stgit@oracle-102.nfsv4.dev>
-In-Reply-To: <165030051838.5073.8699008789153780301.stgit@oracle-102.nfsv4.dev>
-References: <165030051838.5073.8699008789153780301.stgit@oracle-102.nfsv4.dev>
+Date:   Mon, 18 Apr 2022 12:51:27 -0400
+Message-ID: <165030068714.5246.3782745125073050750.stgit@oracle-102.nfsv4.dev>
+In-Reply-To: <165030062272.5246.16956092606399079004.stgit@oracle-102.nfsv4.dev>
+References: <165030062272.5246.16956092606399079004.stgit@oracle-102.nfsv4.dev>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -39,580 +40,161 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+kTLS sockets use cmsg to report decryption errors and the need
+for session re-keying. An "application data" message contains a ULP
+payload, and that is passed along to the RPC client. An "alert"
+message triggers connection reset. Everything else is discarded.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/tls/af_tlsh.c |   50 +++++++
- net/tls/trace.c   |    3 
- net/tls/trace.h   |  355 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 402 insertions(+), 6 deletions(-)
+ include/net/tls.h             |    2 ++
+ include/trace/events/sunrpc.h |   40 +++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c         |   49 +++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 89 insertions(+), 2 deletions(-)
 
-diff --git a/net/tls/af_tlsh.c b/net/tls/af_tlsh.c
-index 4d1c1de3a474..31eae3e0d54c 100644
---- a/net/tls/af_tlsh.c
-+++ b/net/tls/af_tlsh.c
-@@ -239,8 +239,10 @@ static bool tlsh_handshake_done(struct sock *sk)
- 		tlsh_sock_restore_locked(sk);
+diff --git a/include/net/tls.h b/include/net/tls.h
+index 6b1bf46daa34..54bccb2e4014 100644
+--- a/include/net/tls.h
++++ b/include/net/tls.h
+@@ -71,6 +71,8 @@ static inline struct tlsh_sock *tlsh_sk(struct sock *sk)
  
- 		if (tlsh_crypto_info_initialized(sk)) {
-+			trace_tlsh_handshake_ok(sk);
- 			done(data, 0);
- 		} else {
-+			trace_tlsh_handshake_failed(sk);
- 			done(data, -EACCES);
- 		}
- 	}
-@@ -282,6 +284,8 @@ static int tlsh_release(struct socket *sock)
- 	if (!sk)
- 		return 0;
+ #define TLS_CRYPTO_INFO_READY(info)	((info)->cipher_type)
  
-+	trace_tlsh_release(sock);
-+
- 	switch (sk->sk_family) {
- 	case AF_INET:
- 		if (!tlsh_handshake_done(sk))
-@@ -364,6 +368,7 @@ static int tlsh_bind(struct socket *sock, struct sockaddr *uaddr, int addrlen)
- 	}
++#define TLS_RECORD_TYPE_ALERT		0x15
++#define TLS_RECORD_TYPE_HANDSHAKE	0x16
+ #define TLS_RECORD_TYPE_DATA		0x17
  
- 	tsk->th_bind_family = uaddr->sa_family;
-+	trace_tlsh_bind(sock);
- 	return 0;
- }
- 
-@@ -386,6 +391,8 @@ static int tlsh_accept(struct socket *listener, struct socket *newsock, int flag
- 	long timeo;
- 	int rc;
- 
-+	trace_tlsh_accept(listener);
-+
- 	rc = -EPERM;
- 	if (!capable(CAP_NET_BIND_SERVICE))
- 		goto out;
-@@ -429,6 +436,7 @@ static int tlsh_accept(struct socket *listener, struct socket *newsock, int flag
- 	}
- 
- 	sock_graft(newsk, newsock);
-+	trace_tlsh_newsock(newsock, newsk);
- 
- out_release:
- 	release_sock(sk);
-@@ -450,6 +458,8 @@ static int tlsh_getname(struct socket *sock, struct sockaddr *uaddr, int peer)
- {
- 	struct sock *sk = sock->sk;
- 
-+	trace_tlsh_getname(sock);
-+
- 	switch (sk->sk_family) {
- 	case AF_INET:
- 		return inet_getname(sock, uaddr, peer);
-@@ -486,6 +496,7 @@ static __poll_t tlsh_poll(struct file *file, struct socket *sock,
- 			mask |= EPOLLIN | EPOLLRDNORM;
- 		if (sk_is_readable(sk))
- 			mask |= EPOLLIN | EPOLLRDNORM;
-+		trace_tlsh_poll_listener(sock, mask);
- 		return mask;
- 	}
- 
-@@ -504,6 +515,7 @@ static __poll_t tlsh_poll(struct file *file, struct socket *sock,
- 	if (sk->sk_err || !skb_queue_empty_lockless(&sk->sk_error_queue))
- 		mask |= EPOLLERR;
- 
-+	trace_tlsh_poll(sock, mask);
- 	return mask;
- }
- 
-@@ -539,6 +551,7 @@ static int tlsh_listen(struct socket *sock, int backlog)
- 	sk->sk_state = TCP_LISTEN;
- 	tlsh_register_listener(sk);
- 
-+	trace_tlsh_listen(sock);
- 	rc = 0;
- 
- out:
-@@ -559,6 +572,8 @@ static int tlsh_shutdown(struct socket *sock, int how)
- {
- 	struct sock *sk = sock->sk;
- 
-+	trace_tlsh_shutdown(sock);
-+
- 	switch (sk->sk_family) {
- 	case AF_INET:
- 		break;
-@@ -590,6 +605,8 @@ static int tlsh_setsockopt(struct socket *sock, int level, int optname,
- {
- 	struct sock *sk = sock->sk;
- 
-+	trace_tlsh_setsockopt(sock);
-+
- 	switch (sk->sk_family) {
- 	case AF_INET:
- 		break;
-@@ -756,6 +773,8 @@ static int tlsh_getsockopt(struct socket *sock, int level, int optname,
- 	struct sock *sk = sock->sk;
- 	int ret;
- 
-+	trace_tlsh_getsockopt(sock);
-+
- 	switch (sk->sk_family) {
- 	case AF_INET:
- 		break;
-@@ -803,6 +822,9 @@ static int tlsh_getsockopt(struct socket *sock, int level, int optname,
- static int tlsh_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
- {
- 	struct sock *sk = sock->sk;
-+	int ret;
-+
-+	trace_tlsh_sendmsg_start(sock, size);
- 
- 	switch (sk->sk_family) {
- 	case AF_INET:
-@@ -812,12 +834,19 @@ static int tlsh_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
- 		break;
- #endif
- 	default:
--		return -EOPNOTSUPP;
-+		ret = -EOPNOTSUPP;
-+		goto out;
-+	}
-+
-+	if (unlikely(inet_send_prepare(sk))) {
-+		ret = -EAGAIN;
-+		goto out;
- 	}
-+	ret = sk->sk_prot->sendmsg(sk, msg, size);
- 
--	if (unlikely(inet_send_prepare(sk)))
--		return -EAGAIN;
--	return sk->sk_prot->sendmsg(sk, msg, size);
-+out:
-+	trace_tlsh_sendmsg_result(sock, ret);
-+	return ret;
- }
- 
- /**
-@@ -835,6 +864,9 @@ static int tlsh_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
- 			int flags)
- {
- 	struct sock *sk = sock->sk;
-+	int ret;
-+
-+	trace_tlsh_recvmsg_start(sock, size);
- 
- 	switch (sk->sk_family) {
- 	case AF_INET:
-@@ -844,12 +876,17 @@ static int tlsh_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
- 		break;
- #endif
- 	default:
--		return -EOPNOTSUPP;
-+		ret = -EOPNOTSUPP;
-+		goto out;
- 	}
- 
- 	if (likely(!(flags & MSG_ERRQUEUE)))
- 		sock_rps_record_flow(sk);
--	return sock_common_recvmsg(sock, msg, size, flags);
-+	ret = sock_common_recvmsg(sock, msg, size, flags);
-+
-+out:
-+	trace_tlsh_recvmsg_result(sock, ret);
-+	return ret;
- }
- 
- static const struct proto_ops tlsh_proto_ops = {
-@@ -920,6 +957,7 @@ int tlsh_pf_create(struct net *net, struct socket *sock, int protocol, int kern)
- 	}
- 
- 	tlsh_sk(sk)->th_bind_family = AF_UNSPEC;
-+	trace_tlsh_pf_create(sock);
- 	return 0;
- 
- err_sk_put:
-diff --git a/net/tls/trace.c b/net/tls/trace.c
-index e374913cf9c9..3747ca2ede67 100644
---- a/net/tls/trace.c
-+++ b/net/tls/trace.c
-@@ -2,6 +2,9 @@
- /* Copyright (C) 2019 Netronome Systems, Inc. */
- 
- #include <linux/module.h>
-+#include <linux/net.h>
-+#include <net/sock.h>
-+#include <net/tls.h>
- 
- #ifndef __CHECKER__
- #define CREATE_TRACE_POINTS
-diff --git a/net/tls/trace.h b/net/tls/trace.h
-index 9ba5f600ea43..9302d992edad 100644
---- a/net/tls/trace.h
-+++ b/net/tls/trace.h
-@@ -12,6 +12,56 @@
- 
- struct sock;
- 
-+#define show_af_family(family)					\
-+	__print_symbolic(family,				\
-+		{ AF_INET,		"AF_INET" },		\
-+		{ AF_INET6,		"AF_INET6" },		\
-+		{ AF_TLSH,		"AF_TLSH" })
-+
-+TRACE_DEFINE_ENUM(TCP_ESTABLISHED);
-+TRACE_DEFINE_ENUM(TCP_SYN_SENT);
-+TRACE_DEFINE_ENUM(TCP_SYN_RECV);
-+TRACE_DEFINE_ENUM(TCP_FIN_WAIT1);
-+TRACE_DEFINE_ENUM(TCP_FIN_WAIT2);
-+TRACE_DEFINE_ENUM(TCP_TIME_WAIT);
-+TRACE_DEFINE_ENUM(TCP_CLOSE);
-+TRACE_DEFINE_ENUM(TCP_CLOSE_WAIT);
-+TRACE_DEFINE_ENUM(TCP_LAST_ACK);
-+TRACE_DEFINE_ENUM(TCP_LISTEN);
-+TRACE_DEFINE_ENUM(TCP_CLOSING);
-+TRACE_DEFINE_ENUM(TCP_NEW_SYN_RECV);
-+
-+#define show_tcp_state(state)					\
-+	__print_symbolic(state,					\
-+		{ TCP_ESTABLISHED,	"ESTABLISHED" },	\
-+		{ TCP_SYN_SENT,		"SYN_SENT" },		\
-+		{ TCP_SYN_RECV,		"SYN_RECV" },		\
-+		{ TCP_FIN_WAIT1,	"FIN_WAIT1" },		\
-+		{ TCP_FIN_WAIT2,	"FIN_WAIT2" },		\
-+		{ TCP_TIME_WAIT,	"TIME_WAIT" },		\
-+		{ TCP_CLOSE,		"CLOSE" },		\
-+		{ TCP_CLOSE_WAIT,	"CLOSE_WAIT" },		\
-+		{ TCP_LAST_ACK,		"LAST_ACK" },		\
-+		{ TCP_LISTEN,		"LISTEN" },		\
-+		{ TCP_CLOSING,		"CLOSING" },		\
-+		{ TCP_NEW_SYN_RECV,	"NEW_SYN_RECV" })
-+
-+#define show_poll_event_mask(mask)				\
-+	__print_flags(mask, "|",				\
-+		{ EPOLLIN,		"IN" },			\
-+		{ EPOLLPRI,		"PRI" },		\
-+		{ EPOLLOUT,		"OUT" },		\
-+		{ EPOLLERR,		"ERR" },		\
-+		{ EPOLLHUP,		"HUP" },		\
-+		{ EPOLLNVAL,		"NVAL" },		\
-+		{ EPOLLRDNORM,		"RDNORM" },		\
-+		{ EPOLLRDBAND,		"RDBAND" },		\
-+		{ EPOLLWRNORM,		"WRNORM" },		\
-+		{ EPOLLWRBAND,		"WRBAND" },		\
-+		{ EPOLLMSG,		"MSG" },		\
-+		{ EPOLLRDHUP,		"RDHUP" })
-+
-+
- TRACE_EVENT(tls_device_offload_set,
- 
- 	TP_PROTO(struct sock *sk, int dir, u32 tcp_seq, u8 *rec_no, int ret),
-@@ -192,6 +242,311 @@ TRACE_EVENT(tls_device_tx_resync_send,
- 	)
+ #define TLS_AAD_SPACE_SIZE		13
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index a66aa1f59ed8..49b748c03610 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -1286,6 +1286,46 @@ TRACE_EVENT(xs_data_ready,
+ 	TP_printk("peer=[%s]:%s", __get_str(addr), __get_str(port))
  );
  
-+DECLARE_EVENT_CLASS(tlsh_listener_class,
++/*
++ * From https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
++ *
++ * Captured March 2022. Other values are unassigned or reserved.
++ */
++#define rpc_show_tls_content_type(type) \
++	__print_symbolic(type, \
++		{ 20,		"change cipher spec" }, \
++		{ 21,		"alert" }, \
++		{ 22,		"handshake" }, \
++		{ 23,		"application data" }, \
++		{ 24,		"heartbeat" }, \
++		{ 25,		"tls12_cid" }, \
++		{ 26,		"ACK" })
++
++TRACE_EVENT(xs_tls_contenttype,
 +	TP_PROTO(
-+		const struct socket *sock
++		const struct rpc_xprt *xprt,
++		unsigned char ctype
 +	),
-+	TP_ARGS(sock),
++
++	TP_ARGS(xprt, ctype),
++
 +	TP_STRUCT__entry(
-+		__field(const struct socket *, sock)
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, family)
++		__string(addr, xprt->address_strings[RPC_DISPLAY_ADDR])
++		__string(port, xprt->address_strings[RPC_DISPLAY_PORT])
++		__field(unsigned long, ctype)
 +	),
++
 +	TP_fast_assign(
-+		const struct sock *sk = sock->sk;
-+
-+		__entry->sock = sock;
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->family = tlsh_sk((struct sock *)sk)->th_bind_family;
++		__assign_str(addr, xprt->address_strings[RPC_DISPLAY_ADDR]);
++		__assign_str(port, xprt->address_strings[RPC_DISPLAY_PORT]);
++		__entry->ctype = ctype;
 +	),
 +
-+	TP_printk("listener=%p sk=%p(%d) family=%s",
-+		__entry->sock, __entry->sk,
-+		__entry->refcount, show_af_family(__entry->family)
++	TP_printk("peer=[%s]:%s: %s", __get_str(addr), __get_str(port),
++		rpc_show_tls_content_type(__entry->ctype)
 +	)
 +);
 +
-+#define DEFINE_TLSH_LISTENER_EVENT(name)			\
-+	DEFINE_EVENT(tlsh_listener_class, name,			\
-+		TP_PROTO(					\
-+			const struct socket *sock		\
-+		),						\
-+		TP_ARGS(sock))
-+
-+DEFINE_TLSH_LISTENER_EVENT(tlsh_bind);
-+DEFINE_TLSH_LISTENER_EVENT(tlsh_accept);
-+DEFINE_TLSH_LISTENER_EVENT(tlsh_listen);
-+DEFINE_TLSH_LISTENER_EVENT(tlsh_pf_create);
-+
-+TRACE_EVENT(tlsh_newsock,
-+	TP_PROTO(
-+		const struct socket *newsock,
-+		const struct sock *newsk
-+	),
-+	TP_ARGS(newsock, newsk),
-+	TP_STRUCT__entry(
-+		__field(const struct socket *, newsock)
-+		__field(const struct sock *, newsk)
-+		__field(int, refcount)
-+		__field(unsigned long, family)
-+	),
-+	TP_fast_assign(
-+		__entry->newsock = newsock;
-+		__entry->newsk = newsk;
-+		__entry->refcount = refcount_read(&newsk->sk_refcnt);
-+		__entry->family = newsk->sk_family;
-+	),
-+
-+	TP_printk("newsock=%p newsk=%p(%d) family=%s",
-+		__entry->newsock, __entry->newsk,
-+		__entry->refcount, show_af_family(__entry->family)
-+	)
-+);
-+
-+DECLARE_EVENT_CLASS(tlsh_proto_op_class,
-+	TP_PROTO(
-+		const struct socket *sock
-+	),
-+	TP_ARGS(sock),
-+	TP_STRUCT__entry(
-+		__field(const struct socket *, sock)
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, family)
-+		__field(unsigned long, state)
-+	),
-+	TP_fast_assign(
-+		const struct sock *sk = sock->sk;
-+
-+		__entry->sock = sock;
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->family = sk->sk_family;
-+		__entry->state = sk->sk_state;
-+	),
-+
-+	TP_printk("sock=%p sk=%p(%d) family=%s state=%s",
-+		__entry->sock, __entry->sk, __entry->refcount,
-+		show_af_family(__entry->family),
-+		show_tcp_state(__entry->state)
-+	)
-+);
-+
-+#define DEFINE_TLSH_PROTO_OP_EVENT(name)			\
-+	DEFINE_EVENT(tlsh_proto_op_class, name,			\
-+		TP_PROTO(					\
-+			const struct socket *sock		\
-+		),						\
-+		TP_ARGS(sock))
-+
-+DEFINE_TLSH_PROTO_OP_EVENT(tlsh_release);
-+DEFINE_TLSH_PROTO_OP_EVENT(tlsh_getname);
-+DEFINE_TLSH_PROTO_OP_EVENT(tlsh_shutdown);
-+DEFINE_TLSH_PROTO_OP_EVENT(tlsh_setsockopt);
-+DEFINE_TLSH_PROTO_OP_EVENT(tlsh_getsockopt);
-+
-+TRACE_EVENT(tlsh_sendmsg_start,
-+	TP_PROTO(
-+		const struct socket *sock,
-+		size_t size
-+	),
-+	TP_ARGS(sock, size),
-+	TP_STRUCT__entry(
-+		__field(const struct socket *, sock)
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, family)
-+		__field(unsigned long, state)
-+		__field(const void *, op)
-+		__field(size_t, size)
-+	),
-+	TP_fast_assign(
-+		const struct sock *sk = sock->sk;
-+
-+		__entry->sock = sock;
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->family = sk->sk_family;
-+		__entry->state = sk->sk_state;
-+		__entry->op = sk->sk_prot->sendmsg;
-+		__entry->size = size;
-+	),
-+
-+	TP_printk("sock=%p sk=%p(%d) family=%s state=%s size=%zu op=%pS",
-+		__entry->sock, __entry->sk, __entry->refcount,
-+		show_af_family(__entry->family),
-+		show_tcp_state(__entry->state),
-+		__entry->size, __entry->op
-+	)
-+);
-+
-+TRACE_EVENT(tlsh_recvmsg_start,
-+	TP_PROTO(
-+		const struct socket *sock,
-+		size_t size
-+	),
-+	TP_ARGS(sock, size),
-+	TP_STRUCT__entry(
-+		__field(const struct socket *, sock)
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, family)
-+		__field(unsigned long, state)
-+		__field(const void *, op)
-+		__field(size_t, size)
-+	),
-+	TP_fast_assign(
-+		const struct sock *sk = sock->sk;
-+
-+		__entry->sock = sock;
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->family = sk->sk_family;
-+		__entry->state = sk->sk_state;
-+		__entry->op = sk->sk_prot->recvmsg;
-+		__entry->size = size;
-+	),
-+
-+	TP_printk("sock=%p sk=%p(%d) family=%s state=%s size=%zu op=%pS",
-+		__entry->sock, __entry->sk, __entry->refcount,
-+		show_af_family(__entry->family),
-+		show_tcp_state(__entry->state),
-+		__entry->size, __entry->op
-+	)
-+);
-+
-+DECLARE_EVENT_CLASS(tlsh_opmsg_result_class,
-+	TP_PROTO(
-+		const struct socket *sock,
-+		int result
-+	),
-+	TP_ARGS(sock, result),
-+	TP_STRUCT__entry(
-+		__field(const struct socket *, sock)
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, family)
-+		__field(unsigned long, state)
-+		__field(int, result)
-+	),
-+	TP_fast_assign(
-+		const struct sock *sk = sock->sk;
-+
-+		__entry->sock = sock;
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->family = sk->sk_family;
-+		__entry->state = sk->sk_state;
-+		__entry->result = result;
-+	),
-+
-+	TP_printk("sock=%p sk=%p(%d) family=%s state=%s result=%d",
-+		__entry->sock, __entry->sk, __entry->refcount,
-+		show_af_family(__entry->family),
-+		show_tcp_state(__entry->state),
-+		__entry->result
-+	)
-+);
-+
-+#define DEFINE_TLSH_OPMSG_RESULT_EVENT(name)			\
-+	DEFINE_EVENT(tlsh_opmsg_result_class, name,		\
-+		TP_PROTO(					\
-+			const struct socket *sock,		\
-+			int result				\
-+		),						\
-+		TP_ARGS(sock, result))
-+
-+DEFINE_TLSH_OPMSG_RESULT_EVENT(tlsh_sendmsg_result);
-+DEFINE_TLSH_OPMSG_RESULT_EVENT(tlsh_recvmsg_result);
-+
-+TRACE_EVENT(tlsh_poll,
-+	TP_PROTO(
-+		const struct socket *sock,
-+		__poll_t mask
-+	),
-+	TP_ARGS(sock, mask),
-+	TP_STRUCT__entry(
-+		__field(const struct socket *, sock)
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, mask)
-+	),
-+	TP_fast_assign(
-+		const struct sock *sk = sock->sk;
-+
-+		__entry->sock = sock;
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->mask = mask;
-+	),
-+
-+	TP_printk("sock=%p sk=%p(%d) mask=%s",
-+		__entry->sock, __entry->sk, __entry->refcount,
-+		show_poll_event_mask(__entry->mask)
-+	)
-+);
-+
-+TRACE_EVENT(tlsh_poll_listener,
-+	TP_PROTO(
-+		const struct socket *sock,
-+		__poll_t mask
-+	),
-+	TP_ARGS(sock, mask),
-+	TP_STRUCT__entry(
-+		__field(const struct socket *, sock)
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, mask)
-+	),
-+	TP_fast_assign(
-+		const struct sock *sk = sock->sk;
-+
-+		__entry->sock = sock;
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->mask = mask;
-+	),
-+
-+	TP_printk("sock=%p sk=%p(%d) mask=%s",
-+		__entry->sock, __entry->sk, __entry->refcount,
-+		show_poll_event_mask(__entry->mask)
-+	)
-+);
-+
-+DECLARE_EVENT_CLASS(tlsh_handshake_done_class,
-+	TP_PROTO(
-+		const struct sock *sk
-+	),
-+	TP_ARGS(sk),
-+	TP_STRUCT__entry(
-+		__field(const struct sock *, sk)
-+		__field(int, refcount)
-+		__field(unsigned long, family)
-+	),
-+	TP_fast_assign(
-+		__entry->sk = sk;
-+		__entry->refcount = refcount_read(&sk->sk_refcnt);
-+		__entry->family = sk->sk_family;
-+	),
-+
-+	TP_printk("sk=%p(%d) family=%s",
-+		__entry->sk, __entry->refcount,
-+		show_af_family(__entry->family)
-+	)
-+);
-+
-+#define DEFINE_TLSH_HANDSHAKE_DONE_EVENT(name)			\
-+	DEFINE_EVENT(tlsh_handshake_done_class, name,		\
-+		TP_PROTO(					\
-+			const struct sock *sk			\
-+		),						\
-+		TP_ARGS(sk))
-+
-+DEFINE_TLSH_HANDSHAKE_DONE_EVENT(tlsh_handshake_ok);
-+DEFINE_TLSH_HANDSHAKE_DONE_EVENT(tlsh_handshake_failed);
-+
- #endif /* _TLS_TRACE_H_ */
+ TRACE_EVENT(xs_stream_read_data,
+ 	TP_PROTO(struct rpc_xprt *xprt, ssize_t err, size_t total),
  
- #undef TRACE_INCLUDE_PATH
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index b5bc03c52b9b..e42ae84d7359 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -47,6 +47,8 @@
+ #include <net/checksum.h>
+ #include <net/udp.h>
+ #include <net/tcp.h>
++#include <net/tls.h>
++
+ #include <linux/bvec.h>
+ #include <linux/highmem.h>
+ #include <linux/uio.h>
+@@ -350,13 +352,56 @@ xs_alloc_sparse_pages(struct xdr_buf *buf, size_t want, gfp_t gfp)
+ 	return want;
+ }
+ 
++static int
++xs_sock_process_cmsg(struct socket *sock, struct msghdr *msg,
++		     struct cmsghdr *cmsg, int ret)
++{
++	if (cmsg->cmsg_level == SOL_TLS &&
++	    cmsg->cmsg_type == TLS_GET_RECORD_TYPE) {
++		u8 content_type = *((u8 *)CMSG_DATA(cmsg));
++
++		trace_xs_tls_contenttype(xprt_from_sock(sock->sk), content_type);
++		switch (content_type) {
++		case TLS_RECORD_TYPE_DATA:
++			/* TLS sets EOR at the end of each application data
++			 * record, even though there might be more frames
++			 * waiting to be decrypted. */
++			msg->msg_flags &= ~MSG_EOR;
++			break;
++		case TLS_RECORD_TYPE_ALERT:
++			ret = -ENOTCONN;
++			break;
++		default:
++			ret = -EAGAIN;
++		}
++	}
++	return ret;
++}
++
++static int
++xs_sock_recv_cmsg(struct socket *sock, struct msghdr *msg, int flags)
++{
++	union {
++		struct cmsghdr	cmsg;
++		u8		buf[CMSG_SPACE(sizeof(u8))];
++	} u;
++	int ret;
++
++	msg->msg_control = &u;
++	msg->msg_controllen = sizeof(u);
++	ret = sock_recvmsg(sock, msg, flags);
++	if (msg->msg_controllen != sizeof(u))
++		ret = xs_sock_process_cmsg(sock, msg, &u.cmsg, ret);
++	return ret;
++}
++
+ static ssize_t
+ xs_sock_recvmsg(struct socket *sock, struct msghdr *msg, int flags, size_t seek)
+ {
+ 	ssize_t ret;
+ 	if (seek != 0)
+ 		iov_iter_advance(&msg->msg_iter, seek);
+-	ret = sock_recvmsg(sock, msg, flags);
++	ret = xs_sock_recv_cmsg(sock, msg, flags);
+ 	return ret > 0 ? ret + seek : ret;
+ }
+ 
+@@ -382,7 +427,7 @@ xs_read_discard(struct socket *sock, struct msghdr *msg, int flags,
+ 		size_t count)
+ {
+ 	iov_iter_discard(&msg->msg_iter, READ, count);
+-	return sock_recvmsg(sock, msg, flags);
++	return xs_sock_recv_cmsg(sock, msg, flags);
+ }
+ 
+ #if ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE
 
 
