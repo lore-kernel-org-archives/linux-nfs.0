@@ -2,124 +2,133 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5762C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Apr 2022 12:30:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17536C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Apr 2022 13:01:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241345AbiDZMdG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Apr 2022 08:33:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44926 "EHLO
+        id S239345AbiDZNEg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Apr 2022 09:04:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60174 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234942AbiDZMdF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2022 08:33:05 -0400
-Received: from mail-ej1-x634.google.com (mail-ej1-x634.google.com [IPv6:2a00:1450:4864:20::634])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF8DA88B24
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Apr 2022 05:29:57 -0700 (PDT)
-Received: by mail-ej1-x634.google.com with SMTP id m20so15002836ejj.10
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Apr 2022 05:29:57 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dneg.com; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=4r9dpEEZxQjLunjtmysIuwfLl8tWCCfm3ehoce9xSWg=;
-        b=ECxkDG1geDZGMIG6VRHARE9+Aqi2ANvE2ZQBFYtU7zBDX27zV2NNs7YgC8+d/zTgd3
-         QKsAVr2cFmXZWVhI7UHuG82ZgSbgp7g1piudvKKb32N8kvJclGdgc7ls1lTIHAbDWfGo
-         cbQuajYedDr1VqQKKPkCc8t6zL6CXypq+wvlQut3DdlNIwhcxPQxfFU7ku0IJOeE6ogi
-         kwmy30+KQM3ofQaZ8kK6Tl9v4nYKc0qCdCASI6JW84cLWGyR4uX7sac4Po4f8zoF1Z6l
-         siPHrRteGqdrGgA7sYnRMKaPnLnyd04oN/sFq4feGwZkGklj5N/DMcsb2qr5sGDPafP3
-         R8dg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=4r9dpEEZxQjLunjtmysIuwfLl8tWCCfm3ehoce9xSWg=;
-        b=mgk8MH41HzEm6uIJ+ZpsM9tT37kV5xqzPe62HDAViwJL1cP9JMETJMg3uMPDuxXQxt
-         iL49yt2KhdjumKahLBglnruPepBUE6j3DG4j9+J3QaQfyFuLFLIZ4M71f/naSm34XDcm
-         oVv/x+3ZVi7krtNAIKv/ehu/2HuQcxPxvsDdCQ1Ay9QwvE8HkX35zPzlh0ZKsmQMeHwt
-         gDaLgu3eIRDg2AXIP/QUbD+sBApJSfK+BWn1lSIF+ZDxy7+UZvMh0cYVojW41lBE1erE
-         mUigBoh3OoCCnJKn2hOf1oi/34vQSkNkrVAjuz5YzqfOGHj0VeAwQv7qaPm7YTjkbruA
-         MLLw==
-X-Gm-Message-State: AOAM532jfmO6KC6ELelvJyAukjBJC8zNJB1/8JvZSj9l3NpZz85ZEtPd
-        RvYLnTxUwVM5QsZRuRcmUv1S604RmuW2DzDFN+BMVQ==
-X-Google-Smtp-Source: ABdhPJxw6q3MEOUevi4w0ue0sbzOA+UwETJ0BckLKO3cJDf4UqTU9OrRkcZ4W3bDKc2nClScob66NS8xWqmQzANp8yQ=
-X-Received: by 2002:a17:907:6d82:b0:6ef:f56a:85a4 with SMTP id
- sb2-20020a1709076d8200b006eff56a85a4mr21599229ejc.142.1650976196367; Tue, 26
- Apr 2022 05:29:56 -0700 (PDT)
+        with ESMTP id S1345226AbiDZNEf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2022 09:04:35 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 104D11DA7D;
+        Tue, 26 Apr 2022 06:01:25 -0700 (PDT)
+Received: from kwepemi500007.china.huawei.com (unknown [172.30.72.53])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4KnhlW5VlwzGp36;
+        Tue, 26 Apr 2022 20:58:47 +0800 (CST)
+Received: from kwepemm600001.china.huawei.com (7.193.23.3) by
+ kwepemi500007.china.huawei.com (7.221.188.207) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Tue, 26 Apr 2022 21:01:23 +0800
+Received: from huawei.com (10.175.113.133) by kwepemm600001.china.huawei.com
+ (7.193.23.3) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Tue, 26 Apr
+ 2022 21:01:22 +0800
+From:   Wang Hai <wanghai38@huawei.com>
+To:     <trond.myklebust@hammerspace.com>, <anna@kernel.org>,
+        <chuck.lever@oracle.com>, <davem@davemloft.net>, <kuba@kernel.org>,
+        <pabeni@redhat.com>
+CC:     <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <wanghai38@huawei.com>
+Subject: [PATCH net] SUNRPC: Fix local socket leak in xs_local_setup_socket()
+Date:   Tue, 26 Apr 2022 21:20:11 +0800
+Message-ID: <20220426132011.25418-1-wanghai38@huawei.com>
+X-Mailer: git-send-email 2.17.1
 MIME-Version: 1.0
-References: <20220126025722.GD17638@fieldses.org> <CAPt2mGP2guMMf1C9VoQ0AvZ819jPuz0vDoEzJJhtL8q5DJ300A@mail.gmail.com>
- <CAPt2mGNXq==1KUskF3U6-CDeoX57=d7NW4Qn_esDqarf9bTBaw@mail.gmail.com>
- <20220211155949.GA4941@fieldses.org> <CAPt2mGOx0qNTWoY9vmyVBtZ3gxdbv5qQ-2qVbtqWW9FiZFRhEg@mail.gmail.com>
- <164517040900.10228.8956772146017892417@noble.neil.brown.name>
- <CAPt2mGMLQCEPqsYGeaMd3BPGRne4F4h-2-pzqm1a8nwfKqv1ug@mail.gmail.com>
- <CAPt2mGMt3Sq66qmPBeGYE0CASTTy7nY2K_LjQK6VZx-uz2P-wg@mail.gmail.com>
- <20220425132232.GA24825@fieldses.org> <CAPt2mGMtBH=jzK0cTT7+PTbX-iR-iSx1RmF2beCDxBjXY5sj8A@mail.gmail.com>
- <20220425160236.GB24825@fieldses.org> <CAPt2mGPR9c9=rh4p_D7RPo+4S=DgH7VNpqvOKryKsYwaCAtnJA@mail.gmail.com>
- <165093700757.1648.16863178337904278508@noble.neil.brown.name>
-In-Reply-To: <165093700757.1648.16863178337904278508@noble.neil.brown.name>
-From:   Daire Byrne <daire@dneg.com>
-Date:   Tue, 26 Apr 2022 13:29:20 +0100
-Message-ID: <CAPt2mGPVWuut=ESWicSw0Ser2PGTeuyb+ACL41N6p_FAAuOUwg@mail.gmail.com>
-Subject: Re: parallel file create rates (+high latency)
-To:     NeilBrown <neilb@suse.de>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Patrick Goetz <pgoetz@math.utexas.edu>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
+X-Originating-IP: [10.175.113.133]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ kwepemm600001.china.huawei.com (7.193.23.3)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 26 Apr 2022 at 02:36, NeilBrown <neilb@suse.de> wrote:
->
-> On Tue, 26 Apr 2022, Daire Byrne wrote:
-> >
-> > I'll stare at fs/nfsd/vfs.c for a bit but I probably lack the
-> > expertise to make it work.
->
-> Staring at code is good for the soul ....  but I'll try to schedule time
-> to work on this patch again - make it work from nfsd and also make it
-> handle rename.
+If the connection to a local endpoint in xs_local_setup_socket() fails,
+fput() is missing in the error path, which will result in a socket leak.
+It can be reproduced in simple script below.
 
-Yea, I stared at it for quite a while this morning and no amount of
-coffee was going to help me figure out how best to proceed.
+while true
+do
+        systemctl stop rpcbind.service
+        systemctl stop rpc-statd.service
+        systemctl stop nfs-server.service
 
-If you are able to update this for nfsd then I'll be eternally
-grateful and do my best to test it under load in an effort to get it
-all merged.
+        systemctl restart rpcbind.service
+        systemctl restart rpc-statd.service
+        systemctl restart nfs-server.service
+done
 
-The community here has been so good to us over the last couple of
-years and it is very much appreciated. It has helped us deliver (oscar
-winning) movies!
+When executing the script, you can observe that the
+"cat /proc/net/unix | wc -l" count keeps growing.
 
-To give some brief context as to why this is useful to us (for anyone
-interested), we utilise NFS re-export extensively to run our batch
-jobs (movie frame renders) in various remote DCs. In combination with
-fscache and long term attribute caching, this works great for exposing
-our (read often) onprem storage to the remote DCs (with varying
-latencies).
+Add the missing fput(), and restore transport to old socket.
 
-But batch jobs have a tendency to start related tasks on many clients
-at the same time with their results or logs being written to big
-common directories. And by writing through the re-export server, we
-often hit this limitation with parallel file creates which slows
-everything down. We have tried to avoid large directories where
-possible, but it's hard to catch and fix all the cases.
+Signed-off-by: Wang Hai <wanghai38@huawei.com>
+---
+ net/sunrpc/xprtsock.c | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
 
-Using an NFS re-export server works 95% of the time for our workloads
-(after much help from this community), so we are just trying to pick
-away at the last 5% of edge cases. One of the disadvantages of the
-re-export server in the middle, is that we lose some of the natural
-parallelism that directly connected clients would otherwise have. And
-this becomes very noticeable once the latency goes above 20ms.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 0f39e08ee580..7219c545385e 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1819,6 +1819,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+ {
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
+ 									xprt);
++	struct socket *trans_sock = NULL;
++	struct sock *trans_inet = NULL;
++	int ret;
+ 
+ 	if (!transport->inet) {
+ 		struct sock *sk = sock->sk;
+@@ -1835,6 +1838,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+ 
+ 		xprt_clear_connected(xprt);
+ 
++		trans_sock = transport->sock;
++		trans_inet = transport->inet;
++
+ 		/* Reset to new socket */
+ 		transport->sock = sock;
+ 		transport->inet = sk;
+@@ -1844,7 +1850,14 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+ 
+ 	xs_stream_start_connect(transport);
+ 
+-	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
++	ret = kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
++	/* Restore to old socket */
++	if (ret && trans_inet) {
++		transport->sock = trans_sock;
++		transport->inet = trans_inet;
++	}
++
++	return ret;
+ }
+ 
+ /**
+@@ -1887,7 +1900,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ 		xprt->stat.connect_time += (long)jiffies -
+ 					   xprt->stat.connect_start;
+ 		xprt_set_connected(xprt);
+-		break;
++		goto out;
+ 	case -ENOBUFS:
+ 		break;
+ 	case -ENOENT:
+@@ -1904,6 +1917,9 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ 				xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 	}
+ 
++	transport->file = NULL;
++	fput(filp);
++
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+-- 
+2.17.1
 
-Cheers,
-
-Daire
-
-
-> > It's also not entirely clear that this parallel creates RFC patch will
-> > ever make it into mainline?
->
-> I hope it will eventually, but I have no idea when that might be.
->
-> Thanks for your continued interest,
-> NeilBrown
