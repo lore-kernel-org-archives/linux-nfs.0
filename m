@@ -2,60 +2,59 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD104C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Apr 2022 01:38:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 77524C433F5
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Apr 2022 01:38:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235775AbiD1Bl5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 27 Apr 2022 21:41:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36098 "EHLO
+        id S238553AbiD1BmD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 27 Apr 2022 21:42:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36522 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229528AbiD1Bl5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2022 21:41:57 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 321CA7EA12
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2022 18:38:44 -0700 (PDT)
+        with ESMTP id S229528AbiD1BmC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Apr 2022 21:42:02 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A846E7EA12
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Apr 2022 18:38:49 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id D785E1F37F;
-        Thu, 28 Apr 2022 01:38:42 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 65FA3210EE;
+        Thu, 28 Apr 2022 01:38:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1651109922; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1651109928; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=SoKCsaGfsTOGC9N/Bhbr+pKiQVsIWfPcP+PixLIaDg8=;
-        b=ZsgnEBLT35NafYPmdsLyXfDIuVb0BnadTEUrkLn25y7CldffmK6A5L8rE8dcl6unqLgoBd
-        3yhbnmJdaPC4nSYeVjyIyCd5C/qxJ1eoHXRQRZLj+OREOumBK0U8EbippO4ehwp53LY2mw
-        +rwZvPxRON/rE1lpnBwODjqGRY4cug0=
+        bh=2UYu8aY/Bi1LG2I/Lzstp4Fzjn7cNUxESlHj0RyV0gc=;
+        b=HYqfIgwr6MsD/ECw+k4Asp9yS7t+png2vhpZurFWRFnF19BrPkz03KbcfrmoQEKowK6251
+        /VfkC47RRbg2/mR6hTjSM/T4OMnHkAjAcXlwHqQ7xyhFA2cWj02nNJB651h9xYNkhUtxIN
+        o1toAcMiOwTbeSqL/OQUCdj+0DwswUM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1651109922;
+        s=susede2_ed25519; t=1651109928;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=SoKCsaGfsTOGC9N/Bhbr+pKiQVsIWfPcP+PixLIaDg8=;
-        b=XcQwMeSOVJcCFfuPptf8QNJjcQbvkB3L6QfEu9Z4oai10A4atADCjmNbeHQPDyRhb0iCKL
-        3esEt788lwW8dZAQ==
+        bh=2UYu8aY/Bi1LG2I/Lzstp4Fzjn7cNUxESlHj0RyV0gc=;
+        b=Tafo+dnZXeCVd7AYXqSM0VU47YPOyp0oFcpQxyzZpfI/ElqE9Vmj/x9InqvxzEPp4yjGHP
+        u2QH4AMT6W3mHNBA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 6240B13425;
-        Thu, 28 Apr 2022 01:38:41 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 069EC13425;
+        Thu, 28 Apr 2022 01:38:46 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 8rHJByHwaWJMbQAAMHmgww
-        (envelope-from <neilb@suse.de>); Thu, 28 Apr 2022 01:38:41 +0000
-Subject: [PATCH 1/2] NFS: change nfs_access_get_cached() to
- nfs_access_check_cached()
+        id HWpzLCbwaWJTbQAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 28 Apr 2022 01:38:46 +0000
+Subject: [PATCH 2/2] NFS: limit use of ACCESS cache for negative responses
 From:   NeilBrown <neilb@suse.de>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna@kernel.org>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Thu, 28 Apr 2022 11:37:32 +1000
-Message-ID: <165110985230.7595.10676160398710495817.stgit@noble.brown>
+Message-ID: <165110985232.7595.17585053378305829045.stgit@noble.brown>
 In-Reply-To: <165110909570.7595.8578730126480600782.stgit@noble.brown>
 References: <165110909570.7595.8578730126480600782.stgit@noble.brown>
 User-Agent: StGit/1.5
@@ -66,231 +65,176 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-nfs_access_get_cached() reports (on success) the access modes known to
-be permitted.  The caller than has to compare this against the wanted
-modes.
+NFS currently caches the results of ACCESS lookups indefinitely while the
+inode doesn't change (i.e.  while ctime, changeid, owner/group/mode etc
+don't change).  This is a problem if the result from the server might
+change.
 
-This is replaced with nfs_access_check_cached() which is told what modes
-are wanted and returns -EACCES if they are not available, 0 if they are,
-or -ECHILD or -ENOENT as before.
+When the result from the server depends purely on the credentials
+provided by the client and the information in the inode, it is not
+expected that the result from the server will change, and the current
+behaviour is safe.
 
-This new interface will allow more subtlety for choose when to trust the
-cache to be encoded in nfs_access_check_cached(), which is then
-available to all callers.
+However in some configurations the server can include another lookup
+step.  This happens with the Linux NFS server when the "--manage-gids"
+option is given to rpc.mountd. NetApp servers have similar functionality
+with "AUTH_SYS Extended Groups" functionality in ONTAP9.  With these,
+the user reported by the client is mapped on the server to a list of
+group ids.  If this mapping changes, the result of ACCESS can change.
 
-nfs_access_calc_mask() is changed to nfs_calc_access_mask().  This new
-function is given a set of Linux MAY_* flags and returns the
-corresponding set of NFS_ACCESS_* flags.  This is the inverse of
-nfs_access_calc_mask().
+This is particularly a problem when a new group is added to a user.  If
+they had already tried and failed to access the file (or more commonly a
+directory) then adding them to the group will not successfully give them
+access as the failure is cached.  Even if the user logs out and back in
+again to get the new credential on the client, they might try to access
+the file before the server is aware of the change.  By default the Linux
+server caches group information for 30 minutes.  This can be reduced but
+there will always be a window after the group has been added when the
+server can still report ACCESS based on old group information.
 
-Because of this inversion there is a small change in behaviour.  For a
-non-file, non-directory, the previous code would grant MAY_WRITE if any
-for NFS_ACCESS_MODIFY, NFS_ACCESS_EXTEND, NFS_ACCESS_DELETE were
-granted.
-This new code does not support this "any" approach, and it isn't clear
-it is the most correct approach.  So for non-file, non-directories,
-MAY_WRITE will only be granted if NFS_ACCESS_MODIFY is granted.
+The inverse is less of a problem.  Removing someone from a group has
+never been a guaranteed way to remove any access - at the very least a
+user normally needs to log off before they lose access to any groups that
+they were a member of.
 
-The nfs_access_exit trace event now reports the NFS_ACCESS flags, not he
-Linux MAY flags.
+If a user is removed from a group they may still be granted "access" on
+the client, but this isn't sufficient to change anything for which write
+access has been removed, and normally only provides read access to
+cached content.  So caching positive ACCESS rights indefinitely is not a
+significant security problem.
+
+The value of the ACCESS cache is realised primarily for successful
+tests.  These happen often, for example the test for X permissions
+during filename lookups.  Having a quick (even lock-free) result helps
+this common operation.  When the ACCESS cache denies the access there is
+less cost in taking longer to confirm the access, and this is the case
+where a stale cache is more problematic.
+
+So, this patch changes the way that the access cache is used.
+- If the requested access is found in the cache, and is granted, then the
+  call uses the cached information no matter how old it is.
+- If the requested access is found in the cache and is denied, then the
+  cached result is only used if is it newer than the current MINATTRTIMEO
+  for the file.
+- If the requested access is found in the cache, is denied, and is more
+  than MINATTRTIMEO old, then a new ACCESS request is made to the server
+- If the requested access is NOT found in the cache, obviously a new
+  ACCESS request is made to the server, and this will be cached.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/dir.c           |   62 +++++++++++++++++++++++++-----------------------
- fs/nfs/nfs4proc.c      |   24 +++++++------------
- include/linux/nfs_fs.h |    4 ++-
- 3 files changed, 43 insertions(+), 47 deletions(-)
+ fs/nfs/dir.c           |   24 +++++++++++++++++++-----
+ fs/nfs/nfs4proc.c      |    1 +
+ include/linux/nfs_fs.h |    1 +
+ 3 files changed, 21 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c6b263b5faf1..b4e2c6a34234 100644
+index b4e2c6a34234..c461029515b5 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -2971,19 +2971,22 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
- 	return err;
+@@ -2900,7 +2900,8 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, co
+ 	return NULL;
  }
  
--int nfs_access_get_cached(struct inode *inode, const struct cred *cred,
--			  u32 *mask, bool may_block)
-+int nfs_access_check_cached(struct inode *inode, const struct cred *cred,
-+			    u32 want, bool may_block)
+-static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred, u32 *mask, bool may_block)
++static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred,
++					u32 *mask, unsigned long *cjiffies, bool may_block)
  {
-+	u32 have;
- 	int status;
- 
--	status = nfs_access_get_cached_rcu(inode, cred, mask);
-+	status = nfs_access_get_cached_rcu(inode, cred, &have);
- 	if (status != 0)
--		status = nfs_access_get_cached_locked(inode, cred, mask,
--		    may_block);
-+		status = nfs_access_get_cached_locked(inode, cred, &have,
-+						      may_block);
- 
-+	if (status == 0 && (want & ~have) != 0)
-+		status = -EACCES;
- 	return status;
- }
--EXPORT_SYMBOL_GPL(nfs_access_get_cached);
-+EXPORT_SYMBOL_GPL(nfs_access_check_cached);
- 
- static void nfs_access_add_rbtree(struct inode *inode,
- 				  struct nfs_access_entry *set,
-@@ -3067,26 +3070,26 @@ EXPORT_SYMBOL_GPL(nfs_access_add_cache);
- #define NFS_DIR_MAY_WRITE NFS_MAY_WRITE
- #define NFS_MAY_LOOKUP (NFS_ACCESS_LOOKUP)
- #define NFS_MAY_EXECUTE (NFS_ACCESS_EXECUTE)
--static int
--nfs_access_calc_mask(u32 access_result, umode_t umode)
-+static u32
-+nfs_calc_access_mask(int may_mask, umode_t umode)
- {
--	int mask = 0;
-+	int access_mask = 0;
- 
--	if (access_result & NFS_MAY_READ)
--		mask |= MAY_READ;
-+	if (may_mask & MAY_READ)
-+		access_mask |= NFS_MAY_READ;
- 	if (S_ISDIR(umode)) {
--		if ((access_result & NFS_DIR_MAY_WRITE) == NFS_DIR_MAY_WRITE)
--			mask |= MAY_WRITE;
--		if ((access_result & NFS_MAY_LOOKUP) == NFS_MAY_LOOKUP)
--			mask |= MAY_EXEC;
-+		if (may_mask & MAY_WRITE)
-+			access_mask |= NFS_DIR_MAY_WRITE;
-+		if (may_mask & MAY_EXEC)
-+			access_mask |= NFS_MAY_LOOKUP;
- 	} else if (S_ISREG(umode)) {
--		if ((access_result & NFS_FILE_MAY_WRITE) == NFS_FILE_MAY_WRITE)
--			mask |= MAY_WRITE;
--		if ((access_result & NFS_MAY_EXECUTE) == NFS_MAY_EXECUTE)
--			mask |= MAY_EXEC;
--	} else if (access_result & NFS_MAY_WRITE)
--			mask |= MAY_WRITE;
--	return mask;
-+		if (may_mask & MAY_WRITE)
-+			access_mask |= NFS_FILE_MAY_WRITE;
-+		if (may_mask & MAY_EXEC)
-+			access_mask |= NFS_MAY_EXECUTE;
-+	} else if (may_mask & MAY_WRITE)
-+		access_mask |= NFS_ACCESS_MODIFY;
-+	return access_mask;
- }
- 
- void nfs_access_set_mask(struct nfs_access_entry *entry, u32 access_result)
-@@ -3099,14 +3102,15 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
- {
- 	struct nfs_access_entry cache;
- 	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
--	int cache_mask = -1;
-+	u32 want;
- 	int status;
- 
- 	trace_nfs_access_enter(inode);
- 
--	status = nfs_access_get_cached(inode, cred, &cache.mask, may_block);
--	if (status == 0)
--		goto out_cached;
-+	want = nfs_calc_access_mask(mask, inode->i_mode);
-+	status = nfs_access_check_cached(inode, cred, want, may_block);
-+	if (status == 0 || status == -EACCES)
-+		goto out;
- 
- 	status = -ECHILD;
- 	if (!may_block)
-@@ -3132,12 +3136,10 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
- 		goto out;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_access_entry *cache;
+@@ -2931,6 +2932,7 @@ static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *
+ 		retry = false;
  	}
- 	nfs_access_add_cache(inode, &cache, cred);
--out_cached:
--	cache_mask = nfs_access_calc_mask(cache.mask, inode->i_mode);
--	if ((mask & ~cache_mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) != 0)
-+	if ((want & ~cache.mask) != 0)
- 		status = -EACCES;
+ 	*mask = cache->mask;
++	*cjiffies = cache->jiffies;
+ 	list_move_tail(&cache->lru, &nfsi->access_cache_entry_lru);
+ 	err = 0;
  out:
--	trace_nfs_access_exit(inode, mask, cache_mask, status);
-+	trace_nfs_access_exit(inode, want, cache.mask, status);
- 	return status;
+@@ -2942,7 +2944,8 @@ static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *
+ 	return -ENOENT;
  }
  
+-static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cred, u32 *mask)
++static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cred,
++				     u32 *mask, unsigned long *cjiffies)
+ {
+ 	/* Only check the most recently returned cache entry,
+ 	 * but do it without locking.
+@@ -2965,6 +2968,7 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
+ 	if (nfs_check_cache_invalid(inode, NFS_INO_INVALID_ACCESS))
+ 		goto out;
+ 	*mask = cache->mask;
++	*cjiffies = cache->jiffies;
+ 	err = 0;
+ out:
+ 	rcu_read_unlock();
+@@ -2974,16 +2978,24 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
+ int nfs_access_check_cached(struct inode *inode, const struct cred *cred,
+ 			    u32 want, bool may_block)
+ {
++	unsigned long cjiffies;
+ 	u32 have;
+ 	int status;
+ 
+-	status = nfs_access_get_cached_rcu(inode, cred, &have);
++	status = nfs_access_get_cached_rcu(inode, cred, &have, &cjiffies);
+ 	if (status != 0)
+ 		status = nfs_access_get_cached_locked(inode, cred, &have,
+-						      may_block);
++						      &cjiffies, may_block);
+ 
+-	if (status == 0 && (want & ~have) != 0)
++	if (status == 0 && (want & ~have) != 0) {
+ 		status = -EACCES;
++		/* Don't trust a negative result beyond MINATTRTIMEO,
++		 * even if we hold a delegation
++		 */
++		if (!time_in_range_open(jiffies, cjiffies,
++					cjiffies + NFS_MINATTRTIMEO(inode)))
++			status = -ENOENT;
++	}
+ 	return status;
+ }
+ EXPORT_SYMBOL_GPL(nfs_access_check_cached);
+@@ -3036,6 +3048,7 @@ void nfs_access_add_cache(struct inode *inode, struct nfs_access_entry *set,
+ 	cache->fsgid = cred->fsgid;
+ 	cache->group_info = get_group_info(cred->group_info);
+ 	cache->mask = set->mask;
++	cache->jiffies = set->jiffies;
+ 
+ 	/* The above field assignments must be visible
+ 	 * before this item appears on the lru.  We cannot easily
+@@ -3121,6 +3134,7 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
+ 	 */
+ 	cache.mask = NFS_ACCESS_READ | NFS_ACCESS_MODIFY | NFS_ACCESS_EXTEND |
+ 		     nfs_access_xattr_mask(NFS_SERVER(inode));
++	cache.jiffies = jiffies;
+ 	if (S_ISDIR(inode->i_mode))
+ 		cache.mask |= NFS_ACCESS_DELETE | NFS_ACCESS_LOOKUP;
+ 	else
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 16106f805ffa..1e80d88df588 100644
+index 1e80d88df588..a78b62c5bad1 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -7719,7 +7719,6 @@ static int nfs4_xattr_set_nfs4_user(const struct xattr_handler *handler,
- 				    const char *key, const void *buf,
- 				    size_t buflen, int flags)
- {
--	u32 mask;
- 	int ret;
+@@ -2644,6 +2644,7 @@ static int nfs4_opendata_access(const struct cred *cred,
+ 		mask = NFS4_ACCESS_READ;
  
- 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
-@@ -7734,10 +7733,9 @@ static int nfs4_xattr_set_nfs4_user(const struct xattr_handler *handler,
- 	 * do a cached access check for the XA* flags to possibly avoid
- 	 * doing an RPC and getting EACCES back.
- 	 */
--	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
--		if (!(mask & NFS_ACCESS_XAWRITE))
--			return -EACCES;
--	}
-+	if (nfs_access_check_cached(inode, current_cred(), NFS_ACCESS_XAWRITE,
-+				    true) == -EACCES)
-+		return -EACCES;
+ 	nfs_access_set_mask(&cache, opendata->o_res.access_result);
++	cache.jiffies = jiffies;
+ 	nfs_access_add_cache(state->inode, &cache, cred);
  
- 	if (buf == NULL) {
- 		ret = nfs42_proc_removexattr(inode, key);
-@@ -7756,16 +7754,14 @@ static int nfs4_xattr_get_nfs4_user(const struct xattr_handler *handler,
- 				    struct dentry *unused, struct inode *inode,
- 				    const char *key, void *buf, size_t buflen)
- {
--	u32 mask;
- 	ssize_t ret;
- 
- 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
- 		return -EOPNOTSUPP;
- 
--	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
--		if (!(mask & NFS_ACCESS_XAREAD))
--			return -EACCES;
--	}
-+	if (nfs_access_check_cached(inode, current_cred(), NFS_ACCESS_XAREAD,
-+				    true) == -EACCES)
-+		return -EACCES;
- 
- 	ret = nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
- 	if (ret)
-@@ -7788,15 +7784,13 @@ nfs4_listxattr_nfs4_user(struct inode *inode, char *list, size_t list_len)
- 	ssize_t ret, size;
- 	char *buf;
- 	size_t buflen;
--	u32 mask;
- 
- 	if (!nfs_server_capable(inode, NFS_CAP_XATTR))
- 		return 0;
- 
--	if (!nfs_access_get_cached(inode, current_cred(), &mask, true)) {
--		if (!(mask & NFS_ACCESS_XALIST))
--			return 0;
--	}
-+	if (nfs_access_check_cached(inode, current_cred(), NFS_ACCESS_XALIST,
-+				    true) == -EACCES)
-+		return 0;
- 
- 	ret = nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
- 	if (ret)
+ 	flags = NFS4_ACCESS_READ | NFS4_ACCESS_EXECUTE | NFS4_ACCESS_LOOKUP;
 diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index b48b9259e02c..7614f621c42d 100644
+index 7614f621c42d..e40bd61c80c5 100644
 --- a/include/linux/nfs_fs.h
 +++ b/include/linux/nfs_fs.h
-@@ -530,8 +530,8 @@ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh,
- 			struct nfs_fattr *fattr);
- extern int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags);
- extern void nfs_access_zap_cache(struct inode *inode);
--extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred,
--				 u32 *mask, bool may_block);
-+extern int nfs_access_check_cached(struct inode *inode, const struct cred *cred,
-+				   u32 want, bool may_block);
- 
- /*
-  * linux/fs/nfs/symlink.c
+@@ -56,6 +56,7 @@
+ struct nfs_access_entry {
+ 	struct rb_node		rb_node;
+ 	struct list_head	lru;
++	unsigned long		jiffies;
+ 	kuid_t			fsuid;
+ 	kgid_t			fsgid;
+ 	struct group_info	*group_info;
 
 
