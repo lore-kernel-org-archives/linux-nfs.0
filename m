@@ -2,118 +2,202 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B42A2C433F5
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Apr 2022 14:09:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 061ECC433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Apr 2022 14:43:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240550AbiD1OMj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Apr 2022 10:12:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55358 "EHLO
+        id S1348414AbiD1Oqi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Apr 2022 10:46:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43246 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244125AbiD1OMj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2022 10:12:39 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 9133E5371D
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Apr 2022 07:09:24 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1651154963;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=r89Z/7oHso894jLgFkyp7GZ9nOpRmCTTiW/mUMGcSaU=;
-        b=e27E+jxRbxcgZoixFyFite40pNq+aqGYIDAvPT/L/vP9sArfpiHBAa02g+OfxeYbXIRfPU
-        i9Qb8Hu5Q3MYPus2ee4W0Uu3cIyYnXHtKzggC4Atttg2/YQ4fFo1OCxDcG9OyA9gQ+91KX
-        yC72C2RfitCMPB4QkhWM3HLg0rihGXE=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-531-_Aap0-ndPQmMqh42lv3zmw-1; Thu, 28 Apr 2022 10:09:19 -0400
-X-MC-Unique: _Aap0-ndPQmMqh42lv3zmw-1
-Received: from smtp.corp.redhat.com (int-mx10.intmail.prod.int.rdu2.redhat.com [10.11.54.10])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S1348257AbiD1Oqh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2022 10:46:37 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3639D220CB
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Apr 2022 07:43:22 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 8C873811E7A;
-        Thu, 28 Apr 2022 14:09:18 +0000 (UTC)
-Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1B093463EF5;
-        Thu, 28 Apr 2022 14:09:18 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Hannes Reinecke" <hare@suse.de>
-Cc:     "Jakub Kicinski" <kuba@kernel.org>,
-        "Sagi Grimberg" <sagi@grimberg.me>,
-        "Chuck Lever" <chuck.lever@oracle.com>, netdev@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-nvme@lists.infradead.org,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ak@tempesta-tech.com, borisp@nvidia.com, simo@redhat.com
-Subject: Re: [PATCH RFC 4/5] net/tls: Add support for PF_TLSH (a TLS handshake
- listener)
-Date:   Thu, 28 Apr 2022 10:09:17 -0400
-Message-ID: <E2BF9CFF-9361-400B-BDEE-CF5E0AFDCA63@redhat.com>
-In-Reply-To: <be7e3c4b-8bb5-e818-1402-ac24cbbcb38c@suse.de>
-References: <165030051838.5073.8699008789153780301.stgit@oracle-102.nfsv4.dev>
- <165030059051.5073.16723746870370826608.stgit@oracle-102.nfsv4.dev>
- <20220425101459.15484d17@kernel.org>
- <66077b73-c1a4-d2ae-c8e4-3e19e9053171@suse.de>
- <1fca2eda-83e4-fe39-13c8-0e5e7553689b@grimberg.me>
- <20220426080247.19bbb64e@kernel.org>
- <40bc060f-f359-081d-9ba7-fae531cf2cd6@suse.de>
- <20220426170334.3781cd0e@kernel.org>
- <23f497ab-08e3-3a25-26d9-56d94ee92cde@suse.de>
- <20220428063009.0a63a7f9@kernel.org>
- <be7e3c4b-8bb5-e818-1402-ac24cbbcb38c@suse.de>
+        by smtp-out1.suse.de (Postfix) with ESMTPS id AF21A210F3;
+        Thu, 28 Apr 2022 14:43:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1651157000; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=oZuiVnDhry/wkJk/1XP+/3oFsXyfnMnNd8SxslPpuVE=;
+        b=bQRTZBxVe9vjKJ4okG3U+5vRPdrXaNp5ueJZdSAiOiLoRDE7G9kGIylf+OkxC9juKKScIt
+        YGoZj/f+55/dYMLVvCRyFtIJGsKc6wZlw9gZgxin/XQQXvg0ysszX3Hkd+caNPALJyn/jI
+        PzQRlB5+EdnBlvAP6LC+zq01IyFRfQY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1651157000;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=oZuiVnDhry/wkJk/1XP+/3oFsXyfnMnNd8SxslPpuVE=;
+        b=/FTSwa41VqA8i4wT8oduHJt2gcxCowSxca2sXcBa0CSONIia3oDW6YXpzxNSIHelOV0xcv
+        T7FDLsrkeZllb+BQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D8EAF13AF8;
+        Thu, 28 Apr 2022 14:43:19 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id kML9MQeoamK9bwAAMHmgww
+        (envelope-from <pvorel@suse.cz>); Thu, 28 Apr 2022 14:43:19 +0000
+From:   Petr Vorel <pvorel@suse.cz>
+To:     ltp@lists.linux.it
+Cc:     Petr Vorel <pvorel@suse.cz>, Steve Dickson <steved@redhat.com>,
+        libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        Cyril Hrubis <chrubis@suse.cz>,
+        automated-testing@yoctoproject.org, Li Wang <liwang@redhat.com>,
+        Jan Stancek <jstancek@redhat.com>,
+        Yang Xu <xuyang2018.jy@fujitsu.com>,
+        Anders Roxell <anders.roxell@linaro.org>,
+        Naresh Kamboju <naresh.kamboju@linaro.org>,
+        =?UTF-8?q?Daniel=20D=C3=ADaz?= <daniel.diaz@linaro.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Veronika Kabatova <vkabatov@redhat.com>,
+        Alexey Kodanev <aleksei.kodanev@bell-sw.com>
+Subject: [RFC PATCH 1/3] rpc: Remove rup01.sh test
+Date:   Thu, 28 Apr 2022 16:43:06 +0200
+Message-Id: <20220428144308.32639-2-pvorel@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20220428144308.32639-1-pvorel@suse.cz>
+References: <20220428144308.32639-1-pvorel@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Scanned-By: MIMEDefang 2.85 on 10.11.54.10
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 28 Apr 2022, at 9:51, Hannes Reinecke wrote:
+rstatd is a RPC daemon which collects performance statistics from kernel
+on serving machine. On a client side there is rup (remote uptime display).
 
-> On 4/28/22 15:30, Jakub Kicinski wrote:
->> On Thu, 28 Apr 2022 09:26:41 +0200 Hannes Reinecke wrote:
->>> The whole thing started off with the problem on _how_ sockets could be
->>> passed between kernel and userspace and vice versa.
->>> While there is fd passing between processes via AF_UNIX, there is no
->>> such mechanism between kernel and userspace.
->>
->> Noob question - the kernel <> user space FD sharing is just
->> not implemented yet, or somehow fundamentally hard because kernel
->> fds are "special"?
->
-> Noob reply: wish I knew.  (I somewhat hoped _you_ would've been able to
-> tell me.)
->
-> Thing is, the only method I could think of for fd passing is the POSIX fd
-> passing via unix_attach_fds()/unix_detach_fds().  But that's AF_UNIX,
-> which really is designed for process-to-process communication, not
-> process-to-kernel.  So you probably have to move a similar logic over to
-> AF_NETLINK. And design a new interface on how fds should be passed over
-> AF_NETLINK.
->
-> But then you have to face the issue that AF_NELINK is essentially UDP, and
-> you have _no_ idea if and how many processes do listen on the other end.
-> Thing is, you (as the sender) have to copy the fd over to the receiving
-> process, so you'd better _hope_ there is a receiving process.  Not to
-> mention that there might be several processes listening in...
->
-> And that's something I _definitely_ don't feel comfortable with without
-> guidance from the networking folks, so I didn't pursue it further and we
-> went with the 'accept()' mechanism Chuck implemented.
->
-> I'm open to suggestions, though.
+rstat client and server implementation for Linux had the latest release
+4.0.1 in 2005. Although it's still installable on Debian, IMHO whole
+technology is not used nowadays.
 
-EXPORT_SYMBOL(receive_fd) would allow interesting implementations.
+As we have other RPC tests (both RPC/TI-RPC and RPC integration, i.e.
+NFS), we don't need to test this particular implementation. If this
+implementation is really useful, it should be moved into libtirpc
+project.
 
-The kernel keyring facilities have a good API for creating various key_types
-which are able to perform work such as this from userspace contexts.
+Signed-off-by: Petr Vorel <pvorel@suse.cz>
+---
+ runtest/net.rpc                               |  1 -
+ .../network/rpc/basic_tests/rup/Makefile      | 29 -----------
+ .../network/rpc/basic_tests/rup/rup01.sh      | 50 -------------------
+ 3 files changed, 80 deletions(-)
+ delete mode 100644 testcases/network/rpc/basic_tests/rup/Makefile
+ delete mode 100755 testcases/network/rpc/basic_tests/rup/rup01.sh
 
-I have a working prototype for a keyring key instantiation which allows a
-userspace process to install a kernel fd on its file table.  The problem
-here is how to match/route such fd passing to appropriate processes in
-appropriate namespaces.  I think this problem is shared by all
-kernel-to-userspace upcalls, which I hope we can discuss at LSF/MM.
-
-I don't think kernel fds are very special as compared to userspace fds.
-
-Ben
+diff --git a/runtest/net.rpc b/runtest/net.rpc
+index fb0665fae..ccee1dda7 100644
+--- a/runtest/net.rpc
++++ b/runtest/net.rpc
+@@ -4,5 +4,4 @@
+ #
+ rpc01 rpc01.sh
+ rpcinfo rpcinfo01.sh
+-rup rup01.sh
+ rusers rusers01.sh
+diff --git a/testcases/network/rpc/basic_tests/rup/Makefile b/testcases/network/rpc/basic_tests/rup/Makefile
+deleted file mode 100644
+index e0ebaaa58..000000000
+--- a/testcases/network/rpc/basic_tests/rup/Makefile
++++ /dev/null
+@@ -1,29 +0,0 @@
+-#
+-#    network/rpc/basic_tests/rup test suite Makefile.
+-#
+-#    Copyright (C) 2009, Cisco Systems Inc.
+-#
+-#    This program is free software; you can redistribute it and/or modify
+-#    it under the terms of the GNU General Public License as published by
+-#    the Free Software Foundation; either version 2 of the License, or
+-#    (at your option) any later version.
+-#
+-#    This program is distributed in the hope that it will be useful,
+-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-#    GNU General Public License for more details.
+-#
+-#    You should have received a copy of the GNU General Public License along
+-#    with this program; if not, write to the Free Software Foundation, Inc.,
+-#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+-#
+-# Ngie Cooper, July 2009
+-#
+-
+-top_srcdir		?= ../../../../..
+-
+-include $(top_srcdir)/include/mk/env_pre.mk
+-
+-INSTALL_TARGETS		:= rup01.sh
+-
+-include $(top_srcdir)/include/mk/generic_leaf_target.mk
+diff --git a/testcases/network/rpc/basic_tests/rup/rup01.sh b/testcases/network/rpc/basic_tests/rup/rup01.sh
+deleted file mode 100755
+index 44f0e73d2..000000000
+--- a/testcases/network/rpc/basic_tests/rup/rup01.sh
++++ /dev/null
+@@ -1,50 +0,0 @@
+-#!/bin/sh
+-# Copyright (c) 2017 Oracle and/or its affiliates. All Rights Reserved.
+-# Copyright (c) International Business Machines  Corp., 2000
+-#
+-# This program is free software; you can redistribute it and/or
+-# modify it under the terms of the GNU General Public License as
+-# published by the Free Software Foundation; either version 2 of
+-# the License, or (at your option) any later version.
+-#
+-# This program is distributed in the hope that it would be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+-
+-TCID="rup01"
+-TST_TOTAL=7
+-
+-TST_USE_LEGACY_API=1
+-. tst_net.sh
+-
+-do_setup()
+-{
+-	tst_resm TINFO "Checking for rstatd on $(tst_ipaddr)"
+-	rpcinfo -u $(tst_ipaddr) rstatd 3 > /dev/null 2>&1 || \
+-		tst_brkm TCONF "rstatd is inactive on $(tst_ipaddr)"
+-}
+-
+-do_test()
+-{
+-	tst_resm TINFO "Test rup with options set"
+-
+-	EXPECT_RHOST_PASS rup $(tst_ipaddr)
+-
+-	local opts="-d -h -l -t"
+-	for opt in $opts; do
+-		EXPECT_RHOST_PASS rup $opt $(tst_ipaddr)
+-	done
+-
+-	tst_resm TINFO "Test rup with bad options"
+-	EXPECT_RHOST_FAIL rup bogushost
+-	EXPECT_RHOST_FAIL rup -bogusflag $(tst_ipaddr)
+-}
+-
+-do_setup
+-do_test
+-
+-tst_exit
+-- 
+2.35.3
 
