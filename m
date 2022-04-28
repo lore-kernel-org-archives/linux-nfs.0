@@ -2,135 +2,105 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 183FBC4332F
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Apr 2022 07:07:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D544AC433FE
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Apr 2022 07:07:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244819AbiD1HKQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Apr 2022 03:10:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37178 "EHLO
+        id S233641AbiD1HKR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Apr 2022 03:10:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36170 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243824AbiD1HKE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2022 03:10:04 -0400
+        with ESMTP id S244941AbiD1HKL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Apr 2022 03:10:11 -0400
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 129099A987;
-        Thu, 28 Apr 2022 00:06:48 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 83044996A4;
+        Thu, 28 Apr 2022 00:06:51 -0700 (PDT)
 Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 23S5sxCX032115;
-        Thu, 28 Apr 2022 07:06:45 GMT
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 23S65Fgo032176;
+        Thu, 28 Apr 2022 07:06:48 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
- bh=8wxROLCFf21i4G1MDpwgdE5up1VD2tI4Hd2iZWeERLk=;
- b=UHAQVIpklrlb6pDeZsKuiq3YULojOmGhAAdDFco4UH2yTqHh4PxpfFzlSzNBPFzezzyG
- BaVTSHfPA5J5YieUiNZ1fjF81g0PpEdbs9z5NkMtdIEhZ0NXXj3bB36VkHIPBeAUHd68
- Xs/gA9M3bPiA5YgW1akBfLBhW/k/CctyBLc6ByFsSY0mRTRVbAFw0pRhB+lkYvnuI/0d
- JTsDIiyn0F2xixCCz66kuxbjLe6Gv0SSvJzTPqsCCpuBmuTyUXGO2bQNq6GKHgye+n3w
- VecLyhcnRExkTf7evdCv+J9AZfDQys0sdmbfVrvmrvVA1PxrRo2zazzyscW3KPM8m2sV pQ== 
+ bh=jtBJGqf5xgvESLaeCwAvjDdsZDXODqkmqPSSCXdE62U=;
+ b=dNumFeIctkzpdRFDGngX2Px2FHFZJGu0FhbVcPJiUWHYFa/vh+PyVcCwmkGR0SRAtA8T
+ 3EfFqJGzyKwBKHvLQ06g5Rnnde2meFlKcUX+XRdLK172ylcKA5xiH7iRVEzLGbOYRgOm
+ zlTlyJtyV3pETPvkjjhGYLIEIEfiPK9AdqsX++J8hOPHX61Hu2Ki32468THi1MQScF+5
+ e3zbJvTxCo4z6W+sTb8Dv3rjsIJVD2kcRkjvgGD1Gj16hf56SdlqOzLRnpPmoHoxCnzj
+ QwUrYYPItOaZOdtPKwMTUEXArIp8XP7CKcI8x6BoJz//fIdLudwWkTaeNXT+r/lGNu55 GA== 
 Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3fmb102ngt-1
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3fmb102nh3-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 28 Apr 2022 07:06:45 +0000
+        Thu, 28 Apr 2022 07:06:48 +0000
 Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 23S70D83019599;
-        Thu, 28 Apr 2022 07:06:43 GMT
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 23S70Bc3019500;
+        Thu, 28 Apr 2022 07:06:46 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3fm7w634w7-1
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3fm7w634yk-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 28 Apr 2022 07:06:43 +0000
+        Thu, 28 Apr 2022 07:06:46 +0000
 Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 23S76cAi007862;
-        Thu, 28 Apr 2022 07:06:43 GMT
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 23S76cAo007862;
+        Thu, 28 Apr 2022 07:06:46 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3fm7w634qj-5;
-        Thu, 28 Apr 2022 07:06:43 +0000
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3fm7w634qj-8;
+        Thu, 28 Apr 2022 07:06:46 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, bfields@fieldses.org
 Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC v23 4/7] fs/lock: add helper locks_owner_has_blockers to check for blockers
-Date:   Thu, 28 Apr 2022 00:06:32 -0700
-Message-Id: <1651129595-6904-5-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH RFC v23 7/7] NFSD: Show state of courtesy client in client info
+Date:   Thu, 28 Apr 2022 00:06:35 -0700
+Message-Id: <1651129595-6904-8-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1651129595-6904-1-git-send-email-dai.ngo@oracle.com>
 References: <1651129595-6904-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-ORIG-GUID: KNu173461XlnazrbTCDSBWFkN9bPoaUx
-X-Proofpoint-GUID: KNu173461XlnazrbTCDSBWFkN9bPoaUx
+X-Proofpoint-ORIG-GUID: V01lDeMOUBuEPTB832FyYBOpP4YSblld
+X-Proofpoint-GUID: V01lDeMOUBuEPTB832FyYBOpP4YSblld
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add helper locks_owner_has_blockers to check if there is any blockers
-for a given lockowner.
+Update client_info_show to show state of courtesy client
+and time since last renew.
 
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/locks.c         | 28 ++++++++++++++++++++++++++++
- include/linux/fs.h |  7 +++++++
- 2 files changed, 35 insertions(+)
+ fs/nfsd/nfs4state.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 8c6df10cd9ed..c369841ef7d1 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -300,6 +300,34 @@ void locks_release_private(struct file_lock *fl)
- }
- EXPORT_SYMBOL_GPL(locks_release_private);
- 
-+/**
-+ * locks_owner_has_blockers - Check for blocking lock requests
-+ * @flctx: file lock context
-+ * @owner: lock owner
-+ *
-+ * Return values:
-+ *   %true: @owner has at least one blocker
-+ *   %false: @owner has no blockers
-+ */
-+bool locks_owner_has_blockers(struct file_lock_context *flctx,
-+		fl_owner_t owner)
-+{
-+	struct file_lock *fl;
-+
-+	spin_lock(&flctx->flc_lock);
-+	list_for_each_entry(fl, &flctx->flc_posix, fl_list) {
-+		if (fl->fl_owner != owner)
-+			continue;
-+		if (!list_empty(&fl->fl_blocked_requests)) {
-+			spin_unlock(&flctx->flc_lock);
-+			return true;
-+		}
-+	}
-+	spin_unlock(&flctx->flc_lock);
-+	return false;
-+}
-+EXPORT_SYMBOL_GPL(locks_owner_has_blockers);
-+
- /* Free a lock which is not in use. */
- void locks_free_lock(struct file_lock *fl)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cf6d5ebea17a..9f4c0327415c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2471,7 +2471,8 @@ static int client_info_show(struct seq_file *m, void *v)
  {
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bbde95387a23..b8ed7f974fb4 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1174,6 +1174,8 @@ extern void lease_unregister_notifier(struct notifier_block *);
- struct files_struct;
- extern void show_fd_locks(struct seq_file *f,
- 			 struct file *filp, struct files_struct *files);
-+extern bool locks_owner_has_blockers(struct file_lock_context *flctx,
-+			fl_owner_t owner);
- #else /* !CONFIG_FILE_LOCKING */
- static inline int fcntl_getlk(struct file *file, unsigned int cmd,
- 			      struct flock __user *user)
-@@ -1309,6 +1311,11 @@ static inline int lease_modify(struct file_lock *fl, int arg,
- struct files_struct;
- static inline void show_fd_locks(struct seq_file *f,
- 			struct file *filp, struct files_struct *files) {}
-+static inline bool locks_owner_has_blockers(struct file_lock_context *flctx,
-+			fl_owner_t owner)
-+{
-+	return false;
-+}
- #endif /* !CONFIG_FILE_LOCKING */
+ 	struct inode *inode = m->private;
+ 	struct nfs4_client *clp;
+-	u64 clid;
++	u64 clid, hrs;
++	u32 mins, secs;
  
- static inline struct inode *file_inode(const struct file *f)
+ 	clp = get_nfsdfs_clp(inode);
+ 	if (!clp)
+@@ -2479,10 +2480,19 @@ static int client_info_show(struct seq_file *m, void *v)
+ 	memcpy(&clid, &clp->cl_clientid, sizeof(clid));
+ 	seq_printf(m, "clientid: 0x%llx\n", clid);
+ 	seq_printf(m, "address: \"%pISpc\"\n", (struct sockaddr *)&clp->cl_addr);
+-	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
++
++	if (clp->cl_state == NFSD4_COURTESY)
++		seq_puts(m, "status: courtesy\n");
++	else if (clp->cl_state == NFSD4_EXPIRABLE)
++		seq_puts(m, "status: expirable\n");
++	else if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
+ 		seq_puts(m, "status: confirmed\n");
+ 	else
+ 		seq_puts(m, "status: unconfirmed\n");
++	hrs = div_u64_rem(ktime_get_boottime_seconds() - clp->cl_time,
++				3600, &secs);
++	mins = div_u64_rem((u64)secs, 60, &secs);
++	seq_printf(m, "time since last renew: %llu:%02u:%02u\n", hrs, mins, secs);
+ 	seq_printf(m, "name: ");
+ 	seq_quote_mem(m, clp->cl_name.data, clp->cl_name.len);
+ 	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
 -- 
 2.9.5
 
