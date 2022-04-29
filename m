@@ -2,194 +2,217 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 016D7C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Apr 2022 14:56:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D48EBC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Apr 2022 15:16:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1378046AbiD2O7b (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Apr 2022 10:59:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45776 "EHLO
+        id S1377765AbiD2PTj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Apr 2022 11:19:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44956 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1378066AbiD2O7H (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2022 10:59:07 -0400
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0616C8A30B
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 07:55:49 -0700 (PDT)
-Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 23TDlHBm025790
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 14:55:48 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : subject :
- date : message-id : references : in-reply-to : content-type : content-id :
- content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=WWcE5mDseC/Z8dY61WuUDaaER8BWh4Wgd3WmEha1rF4=;
- b=GerQHLRK4gkvbg5aNq++UcVCtMHESoWds4/ME+wsDFhKDO2eWti5yqn24sqTuNUa66eH
- 94QrOh6dVE0Jxi1/SBbBSNVil10bj1lnXUT+Tv7ajj1L78l8duQ1AbCJyWXXKKdX2D5d
- lfw2gwNLTru7DDSmAeUL5hioNvlcgdz+1mW4cqbqDVOkwjI/kBEYnna6yUuHVyfstLU4
- aoHYLmZAF/2u0m15xowKSiVP2IEz9tlGsc4Y39pMpw7D8ptR3jFEsiNTCA7+xIL3W8eL
- PMn2Km69hdAcRj5QTdf8h2iYcvBYl49lVuZ/oGcUNgY+j+aBLNerAuCY17CcrmETBc0n NQ== 
-Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.appoci.oracle.com [130.35.103.27])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3fmb1my451-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 14:55:47 +0000
-Received: from pps.filterd (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 23TEpFWb021241
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 14:55:46 GMT
-Received: from nam11-co1-obe.outbound.protection.outlook.com (mail-co1nam11lp2175.outbound.protection.outlook.com [104.47.56.175])
-        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3fm7w85844-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 14:55:45 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=cGHdMiIUTst6/yv7pXzMD6++cYAqfr/7dtEo90f00oWDeWNZhEKSU4vl8qI6iyvUqvYrJ808OZoFGw2PEUh9pPNsCDFRr7RIjShtkY8fe9DH43atnQy5ahn4cUl8Vrs4DPPyzRJImVRVxdgz/saiSfjxFTufnEPsGFvVhkyDoNKBJJNRObSmooOfkLDQj7PImmbbvSf2bVNJHLJiYN9nkcZZd6ayyLWpKUvJPfozQAQ8lHoVxecPX70KRoilFMKLa/JbUo3mrcwH8MYQT+dD0N3Y/AUTfCnU4FDMKlSLqn4GujXooGtjCCzs/EkDxSpWioFcAAkT0AJU/QpjHck5xg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=WWcE5mDseC/Z8dY61WuUDaaER8BWh4Wgd3WmEha1rF4=;
- b=oO8obEriwvZ58UCKBc95BcXqxficBf3YJbS1fArowWbL1hioVd+DpBQcwShZtp5R/yOxet/MB6fv5g4N6js/hZCUePZhosqEKtvfiKa9YXL8Z+jW6NH/PgsfatNT216QsmMe9FX7G04QzJa84WZZXI6K6DjfKGjSVE1rvdZoG3TqJDcSqbc3MXNAw/QPMxw5iyMEPrTalBBQIBN34wo1xRR9SfQoNwNoD4bOEQH8SL473/k0JsC/D69YW843AF2OBzXdudCRe4eeSlNwEFOysljEN2fRXQtOQeC8kJY/rfBQjgywofFiNw++bvNiDX3o69SIwLxIUNjG4pGXzR60GA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=WWcE5mDseC/Z8dY61WuUDaaER8BWh4Wgd3WmEha1rF4=;
- b=NEv6KY446JVHlwEQvJna/c0rFOhr23uCMPFMJkXWVziG+kydRQgpCEo/lzzKA36JuaaYuTKLDfJ/2wJJn2D0HX0HPh7gBLalqR+0rUocUzZmvhcAOQtRACTBPJvUyCDcEy6AnZFPv0jG/is92khzY0nelyo2Cu2Ncb6+7qtaXA0=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by CY4PR10MB1832.namprd10.prod.outlook.com (2603:10b6:903:123::11) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5186.18; Fri, 29 Apr
- 2022 14:55:41 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::ed81:8458:5414:f59f]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::ed81:8458:5414:f59f%9]) with mapi id 15.20.5206.013; Fri, 29 Apr 2022
- 14:55:41 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/6] Minor NFSD fixes and clean-ups for 5.19
-Thread-Topic: [PATCH 0/6] Minor NFSD fixes and clean-ups for 5.19
-Thread-Index: AQHYW9juTZ29QDTEgEe/mhN/xVjtX60G+rAA
-Date:   Fri, 29 Apr 2022 14:55:41 +0000
-Message-ID: <45545156-4667-422D-84D7-9B9356F557E8@oracle.com>
-References: <165124376329.1060.17013198516228928515.stgit@bazille.1015granger.net>
-In-Reply-To: <165124376329.1060.17013198516228928515.stgit@bazille.1015granger.net>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3654.120.0.1.13)
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: d6d87e5d-89e4-4bd8-e174-08da29f054b6
-x-ms-traffictypediagnostic: CY4PR10MB1832:EE_
-x-microsoft-antispam-prvs: <CY4PR10MB1832D8085FFA4ED314EF6ECA93FC9@CY4PR10MB1832.namprd10.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: gLxjiYvAx/fXtAgJJH351hbZZmyfewujBXY16XEcFtsnJ1dIM0gpVnztSw+OqX6OOcZ8pUtzlG3t+DaMs+Z1I1iCmVWySyIaGQPI7U7VTQ1/hg3K1X38DsmbSg7yzeOQnxFCjlR48B+m66mYiF4N+5c0Jb5fSHQkIthe/7+tIi/OcyMTaVerfP0zk+bZw8+XcodBrESalrjtZsxv0wvxXT/0jpXsE1jrA01ii+OLTHbbhOHKokAQryr/iLUup1S6DIUHkGL9FlvZQLKvXuGEynrWzbzwpoHUf+l+S3DRh0mkHCZtcU0ZuI0kaw1BN2Mj76HDjGFhxZ+Je+/EZeXxyJHhPH1tDnewAlgOCOg4S4dNgmcD5HtvmDcgYrQAHhRhN2Wj7FHB9GaTjzjnD8ZTBTiZTbWdHZrduod2IdU5GeFUZhDSWZB4KgWSiVcoGUvq9h446k4/rW6ttoWWSBfFxfGY/BH2CBhCG+QBOZsPDtd9csj59oBjlw7C/b1tpH8tcSqSeCVmruo0jDlBvYMOUR2WuUoZEBgykv8lKzvc04o6yxAomLevJi9EMAob68+OIthKZpNopeALREXntwapUh42nmxOhkwrBf2Cu0x1KD2A7bIoyXSSvPX1/aA5vyCMikS8LBMAYtpADajHdRFZV/LPC4muXT+9UlLrr5VBXqKThPIGHlyMYmqsASPYX/fBoOqczU7JwQrVCp+za1bPSGsbv7msqDhMC6x6VNqFmK/6ECxOd9dvhCnAoVnai8GVrJkid+Usic4Ainmj4oY0zWYzys0FhKuhULY/lkg6Mjh99BEsUUxFYbHR5WIUZEsr
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(366004)(86362001)(91956017)(186003)(316002)(36756003)(66556008)(64756008)(66946007)(2616005)(66446008)(66476007)(8676002)(8936002)(5660300002)(26005)(6512007)(6916009)(966005)(76116006)(6486002)(83380400001)(33656002)(53546011)(71200400001)(508600001)(6506007)(38070700005)(38100700002)(122000001)(2906002)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?tXARZtFik0mI7PLH/Vxg3vzVKZIME9yErDmg9b2uNiwuwUFezrbaaLQ4AA0i?=
- =?us-ascii?Q?lyivfRJktZSPw2b0P3qvFS0xThVNDO+ogyK9jPWGxMq4Pnun6RyWr9LPCTri?=
- =?us-ascii?Q?Mn7OB7ldrn7eQL4szgQSUUhelg6WO/HzXteiRCRoSzU1cgIJW0FoUbMHQIyW?=
- =?us-ascii?Q?luVjmsarBu+CTKGrwb1tAUjoedonWieNBJPnYSFvA3ghSrMLUG4F2/+K/uT9?=
- =?us-ascii?Q?xeM9KIkbuTpiTTRYbMr+N4dkfeE1sTObefecRXSw4LzPjG0n+sCQ0h5iKYk9?=
- =?us-ascii?Q?Ow0aqQSsqBkNJDXuwse6L6zciiobk0GuaTFb4Ui8G5kmR3m1tRMlP1gLIzLI?=
- =?us-ascii?Q?b6bEuCaxaf9OBjxgy6Af/R7b83pW42s+5TxQWnoHtP4pn+Q5fYJore3QBeRt?=
- =?us-ascii?Q?RoAp3x1Gy0hgYWG+rKO2uPK+i4NNQaqJpO4EepgBQtecKcxOWf+IlR+4QAk3?=
- =?us-ascii?Q?Bi/5xuL51HWarHo3IFcmhIfL6XwhCqlfDaV2lBzrk8jcurlJcxVZ6GsRcLJo?=
- =?us-ascii?Q?gchcnX5NXyQhB/8wEyFuNmgXh5eF3CQ/7LRrR/jDV6okI8iUQLPnz4ymWlPF?=
- =?us-ascii?Q?T46QArsMLh7XPj5l1Olhi7jvawsvTcyb0AvOdtE8o0JXXqBDFMhOxW4176aO?=
- =?us-ascii?Q?ZR8GW8yAipkaiPgI/PvRyKND9/ya9pugSnuWwCsB0KnLKaf03zLvVJ3trv8i?=
- =?us-ascii?Q?O81iCch0iQ17DmUubBO3Dc/pEjuFOAtNqMIpEj2k3Xgt1M/lEtuEti3r4NHx?=
- =?us-ascii?Q?O/sNOAyb4hkexzY5O3Sq2knPUZyNyr8/PPToBXyc1g41NYuq/D0yPEgOfvqf?=
- =?us-ascii?Q?jLUC5cioz7eDeMsbFRd9AKbx5HzVciIuIRyTn2yRjWovYsDPsi3eAxcywwM/?=
- =?us-ascii?Q?r9h6KGzTd8t8X0SNqKLjyTnm1hAY5NjcD76AQuK+hf7PykRELJ8j1Efu9/a8?=
- =?us-ascii?Q?anAqrOdgExcExaYATbw/IKHZGNZ15llDzz54fda9nT6CoghII4Z0zpCg4lbI?=
- =?us-ascii?Q?Q+ZJsMjV57k/mNMSN51DkO77imHWomtHFLqsyQJoFXcgrqPZSyahbRDTYIJV?=
- =?us-ascii?Q?o7cHmHrB5Vsr3QAEq8ljKk/2BynQ6egnpMZd+78DKufkuR+mV3FuYd/0+szm?=
- =?us-ascii?Q?YiPYUkWj8kgmX/ZRq7nezI1nJcX/ncRIk7/UPegvnB9A9COy/HmtIIOqOL0T?=
- =?us-ascii?Q?s3y+AYXta/IVPQxRbGQm04OXt0rrr2oPAoSXwLRyYUInJJA7OFYlPzxCjkuO?=
- =?us-ascii?Q?fPHNhGhJvhfByBHNHEDzQ3pLA4/W6dYoTUS7SWJPndWOJknFTZMOpY+ZtR7l?=
- =?us-ascii?Q?6MfPHaoDKQD+t62fWq5ZNCzETASv3V9XLWg+tNbLqNi16ANEg4890C/tvbEJ?=
- =?us-ascii?Q?vIeuaREoQs1g69BFtCU0VvCUo5kElZr3a2QdSIvbe+nh+v3bdwOg7Y6H3SmL?=
- =?us-ascii?Q?T8qxhgQiwGHfC+vp2O7k26rDpzxeIZSSp0hiPufVaEZZ5/HooDvjPeC+SQg4?=
- =?us-ascii?Q?+Ed0SMlFxenOfBhHFtkBcpFVW4qXkGaNz5UxBkPpoKyXEgH3KaY/sJ3iWlds?=
- =?us-ascii?Q?EEtnzUgg999ejydyrVpGGKUzCBXBMhVVepre3vbDb+tI9uf3JRgFm+NWn+Os?=
- =?us-ascii?Q?JkgO61lCbVEUP/09qa6ubKBZHbrwwpBs/nrgDK2nAkZkwBtZYEKI1K4YG8QN?=
- =?us-ascii?Q?m6Q38g/ps1s3jggCNG6ri7dsQ+hkxvwmoUrscw6qkhs0JdaNDV9hwYw0Hmx4?=
- =?us-ascii?Q?u/WpFgZoN9EJdYyJo0sq8KjIhCWJsB4=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <A8E59CD276EE9546BA98AC283FDC5988@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        with ESMTP id S235634AbiD2PTi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2022 11:19:38 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 68E7D240A1;
+        Fri, 29 Apr 2022 08:16:19 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 7A8B168B1; Fri, 29 Apr 2022 11:16:18 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 7A8B168B1
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1651245378;
+        bh=30AGXwEw1Pc3Zxe7+OVYS0kG7UCtnbqt/4JKSHukKOc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=HiE1KyrIPvz5swuYaIeKNGJlBtF88Lpk5SzxT6YCgVPM4fkHHl0MqYHU+boe+3z3H
+         3gHw7nHVYHxuoptR7gunpfjxZsC5kVgbx5ko6VK8MLcxOZR0Rp4jS361D+64bgUpIv
+         /kLCQJhoV5XwGJpvxWt3MHalGe9uGKDPsyvkj5rI=
+Date:   Fri, 29 Apr 2022 11:16:18 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Dai Ngo <dai.ngo@oracle.com>
+Cc:     chuck.lever@oracle.com, jlayton@redhat.com,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC v23 5/7] fs/lock: add 2 callbacks to
+ lock_manager_operations to resolve conflict
+Message-ID: <20220429151618.GF7107@fieldses.org>
+References: <1651129595-6904-1-git-send-email-dai.ngo@oracle.com>
+ <1651129595-6904-6-git-send-email-dai.ngo@oracle.com>
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: d6d87e5d-89e4-4bd8-e174-08da29f054b6
-X-MS-Exchange-CrossTenant-originalarrivaltime: 29 Apr 2022 14:55:41.6338
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: 7P40O9QmTya6lncTCsW+Jn2dsq5+E09upo4l6yOoq1AB/1pW6+oQsfPoC/bzHIQK/EHapST7U2gG8aBbO6/fzg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY4PR10MB1832
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.486,18.0.858
- definitions=2022-04-29_05:2022-04-28,2022-04-29 signatures=0
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 spamscore=0 adultscore=0
- mlxscore=0 bulkscore=0 suspectscore=0 malwarescore=0 mlxlogscore=999
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2202240000
- definitions=main-2204290082
-X-Proofpoint-GUID: _m3bKLiC6m0Yiq_6fuoaUG7aMjRdHNKo
-X-Proofpoint-ORIG-GUID: _m3bKLiC6m0Yiq_6fuoaUG7aMjRdHNKo
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1651129595-6904-6-git-send-email-dai.ngo@oracle.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Apr 29, 2022, at 10:53 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->=20
-> I've gotten confirmation that the NFSv3 OPEN(CREATE) fixes posted
-> previously:
-
-Argh. "NFSv4 OPEN(CREATE)".
-
-
-> https://lore.kernel.org/linux-nfs/20220420192418.GB27805@fieldses.org/T/#=
-t
->=20
-> are effective and so far, have not resulted in any regression. I've
-> pushed these to my for-next branch.
->=20
-> On top of these I have collected a few related clean-ups and fixes
-> that were found along the way, posted here for review.
->=20
+On Thu, Apr 28, 2022 at 12:06:33AM -0700, Dai Ngo wrote:
+> Add 2 new callbacks, lm_lock_expirable and lm_expire_lock, to
+> lock_manager_operations to allow the lock manager to take appropriate
+> action to resolve the lock conflict if possible.
+> 
+> A new field, lm_mod_owner, is also added to lock_manager_operations.
+> The lm_mod_owner is used by the fs/lock code to make sure the lock
+> manager module such as nfsd, is not freed while lock conflict is being
+> resolved.
+> 
+> lm_lock_expirable checks and returns true to indicate that the lock
+> conflict can be resolved else return false. This callback must be
+> called with the flc_lock held so it can not block.
+> 
+> lm_expire_lock is called to resolve the lock conflict if the returned
+> value from lm_lock_expirable is true. This callback is called without
+> the flc_lock held since it's allowed to block. Upon returning from
+> this callback, the lock conflict should be resolved and the caller is
+> expected to restart the conflict check from the beginnning of the list.
+> 
+> Lock manager, such as NFSv4 courteous server, uses this callback to
+> resolve conflict by destroying lock owner, or the NFSv4 courtesy client
+> (client that has expired but allowed to maintains its states) that owns
+> the lock.
+> 
+> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 > ---
->=20
-> Chuck Lever (6):
->      NFSD: Remove dprintk call sites from tail of nfsd4_open()
->      NFSD: Fix whitespace
->      NFSD: Move documenting comment for nfsd4_process_open2()
->      NFSD: Trace filecache opens
->      NFSD: Clean up the show_nf_flags() macro
->      SUNRPC: Use RMW bitops in single-threaded hot paths
->=20
->=20
-> fs/nfsd/filecache.c                      |  5 +-
-> fs/nfsd/nfs4proc.c                       | 67 +++++++++++-------------
-> fs/nfsd/nfs4state.c                      | 12 +++++
-> fs/nfsd/nfs4xdr.c                        |  2 +-
-> fs/nfsd/trace.h                          | 34 +++++++++---
-> net/sunrpc/auth_gss/svcauth_gss.c        |  4 +-
-> net/sunrpc/svc.c                         |  6 +--
-> net/sunrpc/svc_xprt.c                    |  2 +-
-> net/sunrpc/svcsock.c                     |  8 +--
-> net/sunrpc/xprtrdma/svc_rdma_transport.c |  2 +-
-> 10 files changed, 85 insertions(+), 57 deletions(-)
->=20
-> --
-> Chuck Lever
->=20
+>  Documentation/filesystems/locking.rst |  4 ++++
+>  fs/locks.c                            | 45 +++++++++++++++++++++++++++++++----
+>  include/linux/fs.h                    |  3 +++
+>  3 files changed, 48 insertions(+), 4 deletions(-)
+> 
+> diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+> index c26d854275a0..0997a258361a 100644
+> --- a/Documentation/filesystems/locking.rst
+> +++ b/Documentation/filesystems/locking.rst
+> @@ -428,6 +428,8 @@ prototypes::
+>  	void (*lm_break)(struct file_lock *); /* break_lease callback */
+>  	int (*lm_change)(struct file_lock **, int);
+>  	bool (*lm_breaker_owns_lease)(struct file_lock *);
+> +        bool (*lm_lock_expirable)(struct file_lock *);
+> +        void (*lm_expire_lock)(void);
+>  
+>  locking rules:
+>  
+> @@ -439,6 +441,8 @@ lm_grant:		no		no			no
+>  lm_break:		yes		no			no
+>  lm_change		yes		no			no
+>  lm_breaker_owns_lease:	yes     	no			no
+> +lm_lock_expirable	yes		no			no
+> +lm_expire_lock		no		no			yes
+>  ======================	=============	=================	=========
+>  
+>  buffer_head
+> diff --git a/fs/locks.c b/fs/locks.c
+> index c369841ef7d1..d48c3f455657 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -896,6 +896,37 @@ static bool flock_locks_conflict(struct file_lock *caller_fl,
+>  	return locks_conflict(caller_fl, sys_fl);
+>  }
+>  
+> +static bool
+> +resolve_lock_conflict_locked(struct file_lock_context *ctx,
+> +			struct file_lock *cfl, bool rwsem)
+> +{
+> +	void *owner;
+> +	bool ret;
+> +	void (*func)(void);
+> +
+> +	if (cfl->fl_lmops && cfl->fl_lmops->lm_lock_expirable &&
+> +				cfl->fl_lmops->lm_expire_lock) {
+> +		ret = (*cfl->fl_lmops->lm_lock_expirable)(cfl);
+> +		if (!ret)
+> +			return false;
+> +		owner = cfl->fl_lmops->lm_mod_owner;
+> +		if (!owner)
+> +			return false;
+> +		func = cfl->fl_lmops->lm_expire_lock;
+> +		__module_get(owner);
+> +		if (rwsem)
+> +			percpu_up_read(&file_rwsem);
+> +		spin_unlock(&ctx->flc_lock);
 
---
-Chuck Lever
+Dropping and reacquiring locks inside a function like this makes me
+nervous.  It means it's not obvious in the caller that the lock isn't
+held throughout.
 
+I know it's more verbose, but let's just open-code this logic in the
+callers.
 
+(And, thanks for catching the test_lock case, I'd forgotten it.)
 
+Also: do we *really* need to drop the file_rwsem?  Were you seeing it
+that cause problems?  The only possible conflict is with someone trying
+to read /proc/locks, and I'm surprised that it'd be a problem to let
+them wait here.
+
+--b.
+
+> +		(*func)();
+> +		module_put(owner);
+> +		if (rwsem)
+> +			percpu_down_read(&file_rwsem);
+> +		spin_lock(&ctx->flc_lock);
+> +		return true;
+> +	}
+> +	return false;
+> +}
+> +
+>  void
+>  posix_test_lock(struct file *filp, struct file_lock *fl)
+>  {
+> @@ -910,11 +941,14 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
+>  	}
+>  
+>  	spin_lock(&ctx->flc_lock);
+> +retry:
+>  	list_for_each_entry(cfl, &ctx->flc_posix, fl_list) {
+> -		if (posix_locks_conflict(fl, cfl)) {
+> -			locks_copy_conflock(fl, cfl);
+> -			goto out;
+> -		}
+> +		if (!posix_locks_conflict(fl, cfl))
+> +			continue;
+> +		if (resolve_lock_conflict_locked(ctx, cfl, false))
+> +			goto retry;
+> +		locks_copy_conflock(fl, cfl);
+> +		goto out;
+>  	}
+>  	fl->fl_type = F_UNLCK;
+>  out:
+> @@ -1108,6 +1142,7 @@ static int posix_lock_inode(struct inode *inode, struct file_lock *request,
+>  
+>  	percpu_down_read(&file_rwsem);
+>  	spin_lock(&ctx->flc_lock);
+> +retry:
+>  	/*
+>  	 * New lock request. Walk all POSIX locks and look for conflicts. If
+>  	 * there are any, either return error or put the request on the
+> @@ -1117,6 +1152,8 @@ static int posix_lock_inode(struct inode *inode, struct file_lock *request,
+>  		list_for_each_entry(fl, &ctx->flc_posix, fl_list) {
+>  			if (!posix_locks_conflict(request, fl))
+>  				continue;
+> +			if (resolve_lock_conflict_locked(ctx, fl, true))
+> +				goto retry;
+>  			if (conflock)
+>  				locks_copy_conflock(conflock, fl);
+>  			error = -EAGAIN;
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index b8ed7f974fb4..aa6c1bbdb8c4 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1029,6 +1029,7 @@ struct file_lock_operations {
+>  };
+>  
+>  struct lock_manager_operations {
+> +	void *lm_mod_owner;
+>  	fl_owner_t (*lm_get_owner)(fl_owner_t);
+>  	void (*lm_put_owner)(fl_owner_t);
+>  	void (*lm_notify)(struct file_lock *);	/* unblock callback */
+> @@ -1037,6 +1038,8 @@ struct lock_manager_operations {
+>  	int (*lm_change)(struct file_lock *, int, struct list_head *);
+>  	void (*lm_setup)(struct file_lock *, void **);
+>  	bool (*lm_breaker_owns_lease)(struct file_lock *);
+> +	bool (*lm_lock_expirable)(struct file_lock *cfl);
+> +	void (*lm_expire_lock)(void);
+>  };
+>  
+>  struct lock_manager {
+> -- 
+> 2.9.5
