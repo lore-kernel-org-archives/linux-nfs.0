@@ -2,199 +2,303 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0DE0AC433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Apr 2022 14:54:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D7D5C43217
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Apr 2022 14:56:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1377985AbiD2O53 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Apr 2022 10:57:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42228 "EHLO
+        id S1377361AbiD2O7b (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Apr 2022 10:59:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45598 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1377980AbiD2O53 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2022 10:57:29 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C70C2BE9C5
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 07:54:10 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 5718961F91
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 14:54:10 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE9DDC385A7
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 14:54:09 +0000 (UTC)
-Subject: [PATCH 6/6] SUNRPC: Use RMW bitops in single-threaded hot paths
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Date:   Fri, 29 Apr 2022 10:54:08 -0400
-Message-ID: <165124404878.1060.12201901556265807507.stgit@bazille.1015granger.net>
-In-Reply-To: <165124376329.1060.17013198516228928515.stgit@bazille.1015granger.net>
-References: <165124376329.1060.17013198516228928515.stgit@bazille.1015granger.net>
-User-Agent: StGit/1.5
+        with ESMTP id S1378059AbiD2O7E (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2022 10:59:04 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3CFB58021C;
+        Fri, 29 Apr 2022 07:55:44 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id C5769713E; Fri, 29 Apr 2022 10:55:43 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org C5769713E
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1651244143;
+        bh=tDQHv338NLF6NXf5xbExpqRc7xhJkmujHotG81YnZY4=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=KcYl93u6PH3l5yEX6oLLZxFxUPto/1WV80EwoFIKomd/fKDMM1f0HKV//slHbvsgE
+         TSppcjqzz6QS7Q+8X2E79Tt9lTLpQI/3SNToh1hQCJJxgx3SYV6pjGqjmdoQjaY2U6
+         2wsc8o5+lz2M3i1NRXyOny2gmXUbxEPLzv82Ydzk=
+Date:   Fri, 29 Apr 2022 10:55:43 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Dai Ngo <dai.ngo@oracle.com>
+Cc:     chuck.lever@oracle.com, jlayton@redhat.com,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC v23 1/7] NFSD: add courteous server support for
+ thread with only delegation
+Message-ID: <20220429145543.GD7107@fieldses.org>
+References: <1651129595-6904-1-git-send-email-dai.ngo@oracle.com>
+ <1651129595-6904-2-git-send-email-dai.ngo@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1651129595-6904-2-git-send-email-dai.ngo@oracle.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I noticed CPU pipeline stalls while using perf.
+On Thu, Apr 28, 2022 at 12:06:29AM -0700, Dai Ngo wrote:
+> This patch provides courteous server support for delegation only.
+> Only expired client with delegation but no conflict and no open
+> or lock state is allowed to be in COURTESY state.
+> 
+> Delegation conflict with COURTESY/EXPIRABLE client is resolved by
+> setting it to EXPIRABLE, queue work for the laundromat and return
+> delay to the caller. Conflict is resolved when the laudromat runs
+> and expires the EXIRABLE client while the NFS client retries the
+> OPEN request. Local thread request that gets conflict is doing the
+> retry in _break_lease.
+> 
+> Client in COURTESY or EXPIRABLE state is allowed to reconnect and
+> continues to have access to its state. Access to the nfs4_client by
+> the reconnecting thread and the laundromat is serialized via the
+> client_lock.
+> 
+> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+> ---
+>  fs/nfsd/nfs4state.c | 79 ++++++++++++++++++++++++++++++++++++++++++++---------
+>  fs/nfsd/nfsd.h      |  1 +
+>  fs/nfsd/state.h     | 29 ++++++++++++++++++++
+>  3 files changed, 96 insertions(+), 13 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 234e852fcdfa..b84ba19c856b 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -125,6 +125,8 @@ static void free_session(struct nfsd4_session *);
+>  static const struct nfsd4_callback_ops nfsd4_cb_recall_ops;
+>  static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops;
+>  
+> +static struct workqueue_struct *laundry_wq;
+> +
+>  static bool is_session_dead(struct nfsd4_session *ses)
+>  {
+>  	return ses->se_flags & NFS4_SESSION_DEAD;
+> @@ -152,6 +154,7 @@ static __be32 get_client_locked(struct nfs4_client *clp)
+>  	if (is_client_expired(clp))
+>  		return nfserr_expired;
+>  	atomic_inc(&clp->cl_rpc_users);
+> +	clp->cl_state = NFSD4_ACTIVE;
+>  	return nfs_ok;
+>  }
+>  
+> @@ -172,6 +175,7 @@ renew_client_locked(struct nfs4_client *clp)
+>  
+>  	list_move_tail(&clp->cl_lru, &nn->client_lru);
+>  	clp->cl_time = ktime_get_boottime_seconds();
+> +	clp->cl_state = NFSD4_ACTIVE;
+>  }
+>  
+>  static void put_client_renew_locked(struct nfs4_client *clp)
+> @@ -2004,6 +2008,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+>  	idr_init(&clp->cl_stateids);
+>  	atomic_set(&clp->cl_rpc_users, 0);
+>  	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+> +	clp->cl_state = NFSD4_ACTIVE;
+>  	INIT_LIST_HEAD(&clp->cl_idhash);
+>  	INIT_LIST_HEAD(&clp->cl_openowners);
+>  	INIT_LIST_HEAD(&clp->cl_delegations);
+> @@ -4694,9 +4699,16 @@ nfsd_break_deleg_cb(struct file_lock *fl)
+>  	bool ret = false;
+>  	struct nfs4_delegation *dp = (struct nfs4_delegation *)fl->fl_owner;
+>  	struct nfs4_file *fp = dp->dl_stid.sc_file;
+> +	struct nfs4_client *clp = dp->dl_stid.sc_client;
+> +	struct nfsd_net *nn;
+>  
+>  	trace_nfsd_cb_recall(&dp->dl_stid);
+>  
+> +	if (try_to_expire_client(clp)) {
+> +		nn = net_generic(clp->net, nfsd_net_id);
+> +		mod_delayed_work(laundry_wq, &nn->laundromat_work, 0);
+> +	}
+> +
+>  	/*
+>  	 * We don't want the locks code to timeout the lease for us;
+>  	 * we'll remove it ourself if a delegation isn't returned
+> @@ -5605,6 +5617,58 @@ static void nfsd4_ssc_expire_umount(struct nfsd_net *nn)
+>  }
+>  #endif
+>  
+> +/*
+> + * place holder for now, no check for lock blockers yet
+> + */
+> +static bool
+> +nfs4_anylock_blockers(struct nfs4_client *clp)
+> +{
+> +	/*
+> +	 * don't want to check for delegation conflict here since
+> +	 * we need the state_lock for it. The laundromat willexpire
+> +	 * COURTESY later when checking for delegation recall timeout.
+> +	 */
+> +	return false;
+> +}
+> +
+> +static bool client_has_state_tmp(struct nfs4_client *clp)
 
-Once an svc thread is scheduled and executing an RPC, no other
-processes will touch svc_rqst::rq_flags. Thus bus-locked atomics are
-not needed outside the svc thread scheduler.
+Why the "_tmp"?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/nfs4proc.c                       |    7 ++++---
- fs/nfsd/nfs4xdr.c                        |    2 +-
- net/sunrpc/auth_gss/svcauth_gss.c        |    4 ++--
- net/sunrpc/svc.c                         |    6 +++---
- net/sunrpc/svc_xprt.c                    |    2 +-
- net/sunrpc/svcsock.c                     |    8 ++++----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
- 7 files changed, 16 insertions(+), 15 deletions(-)
+> +{
+> +	if (!list_empty(&clp->cl_delegations) &&
+> +			!client_has_openowners(clp) &&
+> +			list_empty(&clp->async_copies))
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9dbce52f0f33..3895eb52d2b1 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -970,7 +970,7 @@ nfsd4_read(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * the client wants us to do more in this compound:
- 	 */
- 	if (!nfsd4_last_compound_op(rqstp))
--		clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
-+		__clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
- 
- 	/* check stateid */
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-@@ -2650,11 +2650,12 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 	cstate->minorversion = args->minorversion;
- 	fh_init(current_fh, NFS4_FHSIZE);
- 	fh_init(save_fh, NFS4_FHSIZE);
-+
- 	/*
- 	 * Don't use the deferral mechanism for NFSv4; compounds make it
- 	 * too hard to avoid non-idempotency problems.
- 	 */
--	clear_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
-+	__clear_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
- 
- 	/*
- 	 * According to RFC3010, this takes precedence over all other errors.
-@@ -2769,7 +2770,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- out:
- 	cstate->status = status;
- 	/* Reset deferral mechanism for RPC deferrals */
--	set_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
-+	__set_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
- 	return rpc_success;
- }
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index da92e7d2ab6a..61b2aae81abb 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2411,7 +2411,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	argp->rqstp->rq_cachetype = cachethis ? RC_REPLBUFF : RC_NOCACHE;
- 
- 	if (readcount > 1 || max_reply > PAGE_SIZE - auth_slack)
--		clear_bit(RQ_SPLICE_OK, &argp->rqstp->rq_flags);
-+		__clear_bit(RQ_SPLICE_OK, &argp->rqstp->rq_flags);
- 
- 	return true;
- }
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index c2ba9d4cd2c7..bcd74dddbe2d 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -900,7 +900,7 @@ unwrap_integ_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct g
- 	 * rejecting the server-computed MIC in this somewhat rare case,
- 	 * do not use splice with the GSS integrity service.
- 	 */
--	clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
-+	__clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
- 
- 	/* Did we already verify the signature on the original pass through? */
- 	if (rqstp->rq_deferred)
-@@ -972,7 +972,7 @@ unwrap_priv_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct gs
- 	int pad, remaining_len, offset;
- 	u32 rseqno;
- 
--	clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
-+	__clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
- 
- 	priv_len = svc_getnl(&buf->head[0]);
- 	if (rqstp->rq_deferred) {
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 557004017548..57245c776d17 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1238,10 +1238,10 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 		goto err_short_len;
- 
- 	/* Will be turned off by GSS integrity and privacy services */
--	set_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
-+	__set_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
- 	/* Will be turned off only when NFSv4 Sessions are used */
--	set_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
--	clear_bit(RQ_DROPME, &rqstp->rq_flags);
-+	__set_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
-+	__clear_bit(RQ_DROPME, &rqstp->rq_flags);
- 
- 	svc_putu32(resv, rqstp->rq_xid);
- 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f9d9922f1629..a93b7c18e4a0 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1241,7 +1241,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 	trace_svc_defer(rqstp);
- 	svc_xprt_get(rqstp->rq_xprt);
- 	dr->xprt = rqstp->rq_xprt;
--	set_bit(RQ_DROPME, &rqstp->rq_flags);
-+	__set_bit(RQ_DROPME, &rqstp->rq_flags);
- 
- 	dr->handle.revisit = svc_revisit;
- 	return &dr->handle;
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 05452318afec..b3c9740cfd35 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -298,9 +298,9 @@ static void svc_sock_setbufsize(struct svc_sock *svsk, unsigned int nreqs)
- static void svc_sock_secure_port(struct svc_rqst *rqstp)
- {
- 	if (svc_port_is_privileged(svc_addr(rqstp)))
--		set_bit(RQ_SECURE, &rqstp->rq_flags);
-+		__set_bit(RQ_SECURE, &rqstp->rq_flags);
- 	else
--		clear_bit(RQ_SECURE, &rqstp->rq_flags);
-+		__clear_bit(RQ_SECURE, &rqstp->rq_flags);
- }
- 
- /*
-@@ -1008,9 +1008,9 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	rqstp->rq_xprt_ctxt   = NULL;
- 	rqstp->rq_prot	      = IPPROTO_TCP;
- 	if (test_bit(XPT_LOCAL, &svsk->sk_xprt.xpt_flags))
--		set_bit(RQ_LOCAL, &rqstp->rq_flags);
-+		__set_bit(RQ_LOCAL, &rqstp->rq_flags);
- 	else
--		clear_bit(RQ_LOCAL, &rqstp->rq_flags);
-+		__clear_bit(RQ_LOCAL, &rqstp->rq_flags);
- 
- 	p = (__be32 *)rqstp->rq_arg.head[0].iov_base;
- 	calldir = p[1];
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 94b20fb47135..199fa012f18a 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -602,7 +602,7 @@ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
- 
- static void svc_rdma_secure_port(struct svc_rqst *rqstp)
- {
--	set_bit(RQ_SECURE, &rqstp->rq_flags);
-+	__set_bit(RQ_SECURE, &rqstp->rq_flags);
- }
- 
- static void svc_rdma_kill_temp_xprt(struct svc_xprt *xprt)
+I would have expected
 
+	if (!list_empty(&clp->cl_delegations) ||
+		client_has_openowners(clp) ||
+		!list_empty(&clp->async_copies))
 
+?--b.
+
+> +		return true;
+> +	return false;
+> +}
+> +
+> +static void
+> +nfs4_get_client_reaplist(struct nfsd_net *nn, struct list_head *reaplist,
+> +				struct laundry_time *lt)
+> +{
+> +	struct list_head *pos, *next;
+> +	struct nfs4_client *clp;
+> +
+> +	INIT_LIST_HEAD(reaplist);
+> +	spin_lock(&nn->client_lock);
+> +	list_for_each_safe(pos, next, &nn->client_lru) {
+> +		clp = list_entry(pos, struct nfs4_client, cl_lru);
+> +		if (clp->cl_state == NFSD4_EXPIRABLE)
+> +			goto exp_client;
+> +		if (!state_expired(lt, clp->cl_time))
+> +			break;
+> +		clp->cl_state = NFSD4_COURTESY;
+> +		if (!client_has_state_tmp(clp) ||
+> +				ktime_get_boottime_seconds() >=
+> +				(clp->cl_time + NFSD_COURTESY_CLIENT_TIMEOUT))
+> +			goto exp_client;
+> +		if (nfs4_anylock_blockers(clp)) {
+> +exp_client:
+> +			if (!mark_client_expired_locked(clp))
+> +				list_add(&clp->cl_lru, reaplist);
+> +		}
+> +	}
+> +	spin_unlock(&nn->client_lock);
+> +}
+> +
+>  static time64_t
+>  nfs4_laundromat(struct nfsd_net *nn)
+>  {
+> @@ -5627,7 +5691,6 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  		goto out;
+>  	}
+>  	nfsd4_end_grace(nn);
+> -	INIT_LIST_HEAD(&reaplist);
+>  
+>  	spin_lock(&nn->s2s_cp_lock);
+>  	idr_for_each_entry(&nn->s2s_cp_stateids, cps_t, i) {
+> @@ -5637,17 +5700,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  			_free_cpntf_state_locked(nn, cps);
+>  	}
+>  	spin_unlock(&nn->s2s_cp_lock);
+> -
+> -	spin_lock(&nn->client_lock);
+> -	list_for_each_safe(pos, next, &nn->client_lru) {
+> -		clp = list_entry(pos, struct nfs4_client, cl_lru);
+> -		if (!state_expired(&lt, clp->cl_time))
+> -			break;
+> -		if (mark_client_expired_locked(clp))
+> -			continue;
+> -		list_add(&clp->cl_lru, &reaplist);
+> -	}
+> -	spin_unlock(&nn->client_lock);
+> +	nfs4_get_client_reaplist(nn, &reaplist, &lt);
+>  	list_for_each_safe(pos, next, &reaplist) {
+>  		clp = list_entry(pos, struct nfs4_client, cl_lru);
+>  		trace_nfsd_clid_purged(&clp->cl_clientid);
+> @@ -5657,6 +5710,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  	spin_lock(&state_lock);
+>  	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+>  		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+> +		try_to_expire_client(dp->dl_stid.sc_client);
+>  		if (!state_expired(&lt, dp->dl_time))
+>  			break;
+>  		WARN_ON(!unhash_delegation_locked(dp));
+> @@ -5722,7 +5776,6 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  	return max_t(time64_t, lt.new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+>  }
+>  
+> -static struct workqueue_struct *laundry_wq;
+>  static void laundromat_main(struct work_struct *);
+>  
+>  static void
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 4fc1fd639527..23996c6ca75e 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -336,6 +336,7 @@ void		nfsd_lockd_shutdown(void);
+>  #define COMPOUND_ERR_SLACK_SPACE	16     /* OP_SETATTR */
+>  
+>  #define NFSD_LAUNDROMAT_MINTIMEOUT      1   /* seconds */
+> +#define	NFSD_COURTESY_CLIENT_TIMEOUT	(24 * 60 * 60)	/* seconds */
+>  
+>  /*
+>   * The following attributes are currently not supported by the NFSv4 server:
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 95457cfd37fc..bd15f2863823 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -283,6 +283,28 @@ struct nfsd4_sessionid {
+>  #define HEXDIR_LEN     33 /* hex version of 16 byte md5 of cl_name plus '\0' */
+>  
+>  /*
+> + *       State                Meaning                  Where set
+> + * --------------------------------------------------------------------------
+> + * | NFSD4_ACTIVE      | Confirmed, active    | Default                     |
+> + * |------------------- ----------------------------------------------------|
+> + * | NFSD4_COURTESY    | Courtesy state.      | nfs4_get_client_reaplist    |
+> + * |                   | Lease/lock/share     |                             |
+> + * |                   | reservation conflict |                             |
+> + * |                   | can cause Courtesy   |                             |
+> + * |                   | client to be expired |                             |
+> + * |------------------------------------------------------------------------|
+> + * | NFSD4_EXPIRABLE   | Courtesy client to be| nfs4_laundromat             |
+> + * |                   | expired by Laundromat| try_to_expire_client        |
+> + * |                   | due to conflict      |                             |
+> + * |------------------------------------------------------------------------|
+> + */
+> +enum {
+> +	NFSD4_ACTIVE = 0,
+> +	NFSD4_COURTESY,
+> +	NFSD4_EXPIRABLE,
+> +};
+> +
+> +/*
+>   * struct nfs4_client - one per client.  Clientids live here.
+>   *
+>   * The initial object created by an NFS client using SETCLIENTID (for NFSv4.0)
+> @@ -385,6 +407,8 @@ struct nfs4_client {
+>  	struct list_head	async_copies;	/* list of async copies */
+>  	spinlock_t		async_lock;	/* lock for async copies */
+>  	atomic_t		cl_cb_inflight;	/* Outstanding callbacks */
+> +
+> +	unsigned int		cl_state;
+>  };
+>  
+>  /* struct nfs4_client_reset
+> @@ -702,4 +726,9 @@ extern void nfsd4_client_record_remove(struct nfs4_client *clp);
+>  extern int nfsd4_client_record_check(struct nfs4_client *clp);
+>  extern void nfsd4_record_grace_done(struct nfsd_net *nn);
+>  
+> +static inline bool try_to_expire_client(struct nfs4_client *clp)
+> +{
+> +	cmpxchg(&clp->cl_state, NFSD4_COURTESY, NFSD4_EXPIRABLE);
+> +	return clp->cl_state == NFSD4_EXPIRABLE;
+> +}
+>  #endif   /* NFSD4_STATE_H */
+> -- 
+> 2.9.5
