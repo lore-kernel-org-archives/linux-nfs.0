@@ -2,101 +2,186 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D537CC4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Apr 2022 17:42:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9650FC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Apr 2022 19:04:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1379753AbiD2RqD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Apr 2022 13:46:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52440 "EHLO
+        id S1380207AbiD2TIN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Apr 2022 15:08:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57162 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351647AbiD2Rp6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2022 13:45:58 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 488EBD39B4
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 10:42:39 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id E5B8BB8376A
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Apr 2022 17:42:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4585BC385AF;
-        Fri, 29 Apr 2022 17:42:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1651254156;
-        bh=dyTDr9QFVRB6I7vXOXvD7YfHhn+ihB2g1HE55P0kzcU=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=EpDXd8TngG9LDBOQWEWyHpxyKZtUsoIaJLJsm9u25+HW3p7DSQr5rmmzUkLzciU+f
-         kiYuwdFUSlSlw1g283u5odIeQCb4OHQC4lRZuSaq/SuteySqXEYOhiOp12cUW6G6PP
-         Lb1/PDhceLa3SJ7KvwbmnW5j3EOdyLhb3+iEvJe18l70I+pnNAlh6whGh2x2i48rbX
-         Kqgo8DlxeUucqRKeqyg5HfUPODU2FnkI04+2QuEQ6QsN+kRBIwz3uFkG/7ZfLfJBn7
-         Acq0FsM5tsT+SglKdkHCiSva+8szZgrSbvrvbKMS1GeGrgNSEZjLYorLJvk2q9j6w0
-         UwYsvdZS6FVVQ==
-From:   trondmy@kernel.org
-To:     "wanghai (M)" <wanghai38@huawei.com>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/4] SUNRPC: Ensure timely close of disconnected AF_LOCAL sockets
-Date:   Fri, 29 Apr 2022 13:36:27 -0400
-Message-Id: <20220429173629.621418-2-trondmy@kernel.org>
-X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220429173629.621418-1-trondmy@kernel.org>
-References: <20220429173629.621418-1-trondmy@kernel.org>
+        with ESMTP id S1355618AbiD2TIN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2022 15:08:13 -0400
+Received: from mail-pg1-x52d.google.com (mail-pg1-x52d.google.com [IPv6:2607:f8b0:4864:20::52d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5C56DD5EA9;
+        Fri, 29 Apr 2022 12:04:54 -0700 (PDT)
+Received: by mail-pg1-x52d.google.com with SMTP id k14so7220855pga.0;
+        Fri, 29 Apr 2022 12:04:54 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=QqxV8SgMeflDFmUbpjCjuBhww/TZdT/CeB66xbgfc7I=;
+        b=Ojqvo3+w49gK8bzrBn89rOirlJzB4XuOAzcvQE5X6EsnGCJjqU3roOlPbgOvRw89hv
+         spfJSNlSX+v3RKSjOrgXqUE8XqXiTkoHjSVzzp7TcLEfCwl8RrUdUyVMsQC5/2JaLUVg
+         80UtWArbAdFZS3n/C7UwVwFj8RPhbTDrmVO16NUytVd8CaaW1ZHVRxF7rOEGocS/Etsp
+         wOsgzcevrzU52oBLgIkvMkg29X6agXinxkypUn78dT9yaquMGpglyJwAUMUZomiCNbWM
+         RU4hC6PRL3kSRwYLpIqw8kyTkU2Do3X1NucJm5mdURivK2KqXjP2CJj/37KC4Nviqkf3
+         zdIA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=QqxV8SgMeflDFmUbpjCjuBhww/TZdT/CeB66xbgfc7I=;
+        b=aiOojHVStCYoJT+XY2JpTOfop3Q2oFCziOrUgZGSUp2xxhN20Heu5ydZjttojNwmg8
+         sCyxC5FrTkVVKYOfcIQYUfTNpGkAfxSFC+GE833OzP5309lnPyBowIgHd8MvZp8QMJbp
+         QlRuZEom9FVbTqTgxBJpkRGCQ0X0jU7YED7ng0GKsoIylhGMv3tH9BuBGNqJog/wyHOf
+         u7IF56l07KEyWsIqpkvhtdiqZQN4ieS1tPnjiC1Zmp336XjaNOWepbw3QbfkabOogH+W
+         QLyaOwDpVRkJQV8mgxejtPAL/+qzYn55FH8/S44vdvWKM+SwTiGCgtbGF1vOaUT4KHNu
+         TTjg==
+X-Gm-Message-State: AOAM532sntNBmdXeQEuH19hCpOCi52YgasfxyHV3GQFVPYAAboSgkcl5
+        S2JgZeAhZtY4GZVyDMS+13bnOWMfvX/PMODJ8AI=
+X-Google-Smtp-Source: ABdhPJyXzQ9yOioq4oKJTYFlGewE09wdvTMBKSEK4Sf1gAiuTyvytPFlYMMoLxH4EC6sRAL0ke9HTmrgHXPJTI0trn8=
+X-Received: by 2002:a63:90ca:0:b0:3aa:fff3:6f76 with SMTP id
+ a193-20020a6390ca000000b003aafff36f76mr631072pge.206.1651259093865; Fri, 29
+ Apr 2022 12:04:53 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <165119280115.15698.2629172320052218921.stgit@noble.brown> <165119301488.15698.9457662928942765453.stgit@noble.brown>
+In-Reply-To: <165119301488.15698.9457662928942765453.stgit@noble.brown>
+From:   Yang Shi <shy828301@gmail.com>
+Date:   Fri, 29 Apr 2022 12:04:41 -0700
+Message-ID: <CAHbLzko+9nBem8GnxQJ8RQu7bizQMMmS1TNqbRXcgkjUs+JuMw@mail.gmail.com>
+Subject: Re: [PATCH 1/2] MM: handle THP in swap_*page_fs()
+To:     NeilBrown <neilb@suse.de>
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        Geert Uytterhoeven <geert+renesas@glider.be>,
+        Christoph Hellwig <hch@lst.de>,
+        Miaohe Lin <linmiaohe@huawei.com>, linux-nfs@vger.kernel.org,
+        Linux MM <linux-mm@kvack.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Thu, Apr 28, 2022 at 5:44 PM NeilBrown <neilb@suse.de> wrote:
+>
+> Pages passed to swap_readpage()/swap_writepage() are not necessarily all
+> the same size - there may be transparent-huge-pages involves.
+>
+> The BIO paths of swap_*page() handle this correctly, but the SWP_FS_OPS
+> path does not.
+>
+> So we need to use thp_size() to find the size, not just assume
+> PAGE_SIZE, and we need to track the total length of the request, not
+> just assume it is "page * PAGE_SIZE".
 
-When the rpcbind server closes the socket, we need to ensure that the
-socket is closed by the kernel as soon as feasible, so add a
-sk_state_change callback to trigger this close.
+Swap-over-nfs doesn't support THP swap IIUC. So SWP_FS_OPS should not
+see THP at all. But I agree to remove the assumption about page size
+in this path.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/xprtsock.c | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index f9849b297ea3..25b8a8ead56b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1418,6 +1418,26 @@ static size_t xs_tcp_bc_maxpayload(struct rpc_xprt *xprt)
- }
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- 
-+/**
-+ * xs_local_state_change - callback to handle AF_LOCAL socket state changes
-+ * @sk: socket whose state has changed
-+ *
-+ */
-+static void xs_local_state_change(struct sock *sk)
-+{
-+	struct rpc_xprt *xprt;
-+	struct sock_xprt *transport;
-+
-+	if (!(xprt = xprt_from_sock(sk)))
-+		return;
-+	transport = container_of(xprt, struct sock_xprt, xprt);
-+	if (sk->sk_shutdown & SHUTDOWN_MASK) {
-+		clear_bit(XPRT_CONNECTED, &xprt->state);
-+		/* Trigger the socket release */
-+		xs_run_error_worker(transport, XPRT_SOCK_WAKE_DISCONNECT);
-+	}
-+}
-+
- /**
-  * xs_tcp_state_change - callback to handle TCP socket state changes
-  * @sk: socket whose state has changed
-@@ -1866,6 +1886,7 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
- 		sk->sk_user_data = xprt;
- 		sk->sk_data_ready = xs_data_ready;
- 		sk->sk_write_space = xs_udp_write_space;
-+		sk->sk_state_change = xs_local_state_change;
- 		sk->sk_error_report = xs_error_report;
- 
- 		xprt_clear_connected(xprt);
--- 
-2.35.1
-
+>
+> Reported-by: Miaohe Lin <linmiaohe@huawei.com>
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  mm/page_io.c |   23 +++++++++++++----------
+>  1 file changed, 13 insertions(+), 10 deletions(-)
+>
+> diff --git a/mm/page_io.c b/mm/page_io.c
+> index c132511f521c..d636a3531cad 100644
+> --- a/mm/page_io.c
+> +++ b/mm/page_io.c
+> @@ -239,6 +239,7 @@ struct swap_iocb {
+>         struct kiocb            iocb;
+>         struct bio_vec          bvec[SWAP_CLUSTER_MAX];
+>         int                     pages;
+> +       int                     len;
+>  };
+>  static mempool_t *sio_pool;
+>
+> @@ -261,7 +262,7 @@ static void sio_write_complete(struct kiocb *iocb, long ret)
+>         struct page *page = sio->bvec[0].bv_page;
+>         int p;
+>
+> -       if (ret != PAGE_SIZE * sio->pages) {
+> +       if (ret != sio->len) {
+>                 /*
+>                  * In the case of swap-over-nfs, this can be a
+>                  * temporary failure if the system has limited
+> @@ -301,7 +302,7 @@ static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
+>                 sio = *wbc->swap_plug;
+>         if (sio) {
+>                 if (sio->iocb.ki_filp != swap_file ||
+> -                   sio->iocb.ki_pos + sio->pages * PAGE_SIZE != pos) {
+> +                   sio->iocb.ki_pos + sio->len != pos) {
+>                         swap_write_unplug(sio);
+>                         sio = NULL;
+>                 }
+> @@ -312,10 +313,12 @@ static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
+>                 sio->iocb.ki_complete = sio_write_complete;
+>                 sio->iocb.ki_pos = pos;
+>                 sio->pages = 0;
+> +               sio->len = 0;
+>         }
+>         sio->bvec[sio->pages].bv_page = page;
+> -       sio->bvec[sio->pages].bv_len = PAGE_SIZE;
+> +       sio->bvec[sio->pages].bv_len = thp_size(page);
+>         sio->bvec[sio->pages].bv_offset = 0;
+> +       sio->len += thp_size(page);
+>         sio->pages += 1;
+>         if (sio->pages == ARRAY_SIZE(sio->bvec) || !wbc->swap_plug) {
+>                 swap_write_unplug(sio);
+> @@ -371,8 +374,7 @@ void swap_write_unplug(struct swap_iocb *sio)
+>         struct address_space *mapping = sio->iocb.ki_filp->f_mapping;
+>         int ret;
+>
+> -       iov_iter_bvec(&from, WRITE, sio->bvec, sio->pages,
+> -                     PAGE_SIZE * sio->pages);
+> +       iov_iter_bvec(&from, WRITE, sio->bvec, sio->pages, sio->len);
+>         ret = mapping->a_ops->swap_rw(&sio->iocb, &from);
+>         if (ret != -EIOCBQUEUED)
+>                 sio_write_complete(&sio->iocb, ret);
+> @@ -383,7 +385,7 @@ static void sio_read_complete(struct kiocb *iocb, long ret)
+>         struct swap_iocb *sio = container_of(iocb, struct swap_iocb, iocb);
+>         int p;
+>
+> -       if (ret == PAGE_SIZE * sio->pages) {
+> +       if (ret == sio->len) {
+>                 for (p = 0; p < sio->pages; p++) {
+>                         struct page *page = sio->bvec[p].bv_page;
+>
+> @@ -415,7 +417,7 @@ static void swap_readpage_fs(struct page *page,
+>                 sio = *plug;
+>         if (sio) {
+>                 if (sio->iocb.ki_filp != sis->swap_file ||
+> -                   sio->iocb.ki_pos + sio->pages * PAGE_SIZE != pos) {
+> +                   sio->iocb.ki_pos + sio->len != pos) {
+>                         swap_read_unplug(sio);
+>                         sio = NULL;
+>                 }
+> @@ -426,10 +428,12 @@ static void swap_readpage_fs(struct page *page,
+>                 sio->iocb.ki_pos = pos;
+>                 sio->iocb.ki_complete = sio_read_complete;
+>                 sio->pages = 0;
+> +               sio->len = 0;
+>         }
+>         sio->bvec[sio->pages].bv_page = page;
+> -       sio->bvec[sio->pages].bv_len = PAGE_SIZE;
+> +       sio->bvec[sio->pages].bv_len = thp_size(page);
+>         sio->bvec[sio->pages].bv_offset = 0;
+> +       sio->len += thp_size(page);
+>         sio->pages += 1;
+>         if (sio->pages == ARRAY_SIZE(sio->bvec) || !plug) {
+>                 swap_read_unplug(sio);
+> @@ -521,8 +525,7 @@ void __swap_read_unplug(struct swap_iocb *sio)
+>         struct address_space *mapping = sio->iocb.ki_filp->f_mapping;
+>         int ret;
+>
+> -       iov_iter_bvec(&from, READ, sio->bvec, sio->pages,
+> -                     PAGE_SIZE * sio->pages);
+> +       iov_iter_bvec(&from, READ, sio->bvec, sio->pages, sio->len);
+>         ret = mapping->a_ops->swap_rw(&sio->iocb, &from);
+>         if (ret != -EIOCBQUEUED)
+>                 sio_read_complete(&sio->iocb, ret);
+>
+>
+>
