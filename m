@@ -2,166 +2,166 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3475CC433EF
-	for <linux-nfs@archiver.kernel.org>; Sat, 30 Apr 2022 01:18:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 73AE7C433F5
+	for <linux-nfs@archiver.kernel.org>; Sat, 30 Apr 2022 16:43:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1381988AbiD3BVt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Apr 2022 21:21:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58216 "EHLO
+        id S1383174AbiD3QrO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 30 Apr 2022 12:47:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34534 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1381989AbiD3BVr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Apr 2022 21:21:47 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C460BD3DB1;
-        Fri, 29 Apr 2022 18:18:26 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 3D8CC707A; Fri, 29 Apr 2022 21:18:26 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 3D8CC707A
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1651281506;
-        bh=WvIZySk1Jmkj9VnGx+Kv1+9vjlrfFuubfmrOZNOe6bg=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=apq9r0DooDuV9cBg7AVDl+vzUoDsflcIYiNkDgb5iZKiQTaNVT4gSYiOPe+jsEtPL
-         gtaGeLZ5vtSk7wzZGvuVLMC4S3uyHSoNxtOu4RJ2qjjoM39N9CynQ+kgS6OGMB4OW5
-         hKLN+1QMGB5b6C1ZvRvQoSXJYFy1W/jEi7JN+yxw=
-Date:   Fri, 29 Apr 2022 21:18:26 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     dai.ngo@oracle.com
-Cc:     chuck.lever@oracle.com, jlayton@redhat.com,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH RFC v23 5/7] fs/lock: add 2 callbacks to
- lock_manager_operations to resolve conflict
-Message-ID: <20220430011826.GA14842@fieldses.org>
-References: <1651129595-6904-1-git-send-email-dai.ngo@oracle.com>
- <1651129595-6904-6-git-send-email-dai.ngo@oracle.com>
- <20220429151618.GF7107@fieldses.org>
- <862e6f3c-fb59-33e0-a6ea-7a67c93cfb20@oracle.com>
- <20220429195819.GI7107@fieldses.org>
+        with ESMTP id S1383169AbiD3QrO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Apr 2022 12:47:14 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 959173F8B5
+        for <linux-nfs@vger.kernel.org>; Sat, 30 Apr 2022 09:43:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1651337030;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=dcjFzxhgEkp64LVsFghlYYty93oOo510lJELOJpzHhs=;
+        b=ACQ0+XN8iv5bUbjvbYrFS/xmESLvSw9WmMAXNrQR3cUAAOsLcb9vTNWGT5TRpmFeWFFxUz
+        aD25cH8ZQCKfFrt3t2JYL3oIWOIW9vrGib3yI3UeloiBbFUYo+B2Kd1Mh3UzSI5Cgb/x5g
+        n7hnrWMOgAPUmvBNQ2smyVIFdWwbpEI=
+Received: from mail-qv1-f70.google.com (mail-qv1-f70.google.com
+ [209.85.219.70]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-389-BCCqfY_rMFiO6GDKb6GCYA-1; Sat, 30 Apr 2022 12:43:45 -0400
+X-MC-Unique: BCCqfY_rMFiO6GDKb6GCYA-1
+Received: by mail-qv1-f70.google.com with SMTP id 30-20020a0c80a1000000b00446218e1bcbso8020406qvb.23
+        for <linux-nfs@vger.kernel.org>; Sat, 30 Apr 2022 09:43:45 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
+         :content-language:to:cc:references:from:in-reply-to
+         :content-transfer-encoding;
+        bh=dcjFzxhgEkp64LVsFghlYYty93oOo510lJELOJpzHhs=;
+        b=xZxo9iuiBDjcGe179njWAwhLoXQZhxS45gMHGZ2RJkLQrgXqx22/hnPYwBeub4T2r/
+         rndmeK6IHCJTnnL+GgOmb2CdVLCqjMSRce2qCnCHJ9+Uk0qFvLAJ1VkcUmhNEHBexv8W
+         RBD8S1782nWgSU84x51ZSpXs/yCoWrzW5yLLw1ze6FK7E0clMjweBNsL5Y6g6Qmosk3O
+         kiKrTbwPDSRC6SiEKEGE7dLxp5ajqGRX02K6PHIkGrU6k2tyLeGEcYIR5K1sjfhRX3FG
+         40tEZXj+rsXDS8ZDUoAiaKGq6W9cELjLS329NCiynM97k7OCZjj1FvaoIGRecT2hrHB1
+         XYVg==
+X-Gm-Message-State: AOAM530o1yxwJcXwQyYrM2zzMxBmhFddMdlm1UPe1coW0/yyjNvn1hyy
+        dXxd5Fm0anEvDlrTY11KSq9sSVsO3deeUKtgIrJ08lx5VijqO+Dc9zyxeZB2GPXSztpVteUOozH
+        m8JIR8DojPeCVqfIza2gl
+X-Received: by 2002:a05:622a:349:b0:2f1:ffc2:821a with SMTP id r9-20020a05622a034900b002f1ffc2821amr4079342qtw.36.1651337024651;
+        Sat, 30 Apr 2022 09:43:44 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJyL9vD+uLpDhnuEGZy5At3nnsGz6TucntqCuyJp+WQExQZJiOLJmUggTg5iEYDxiALZ5v73KA==
+X-Received: by 2002:a05:622a:349:b0:2f1:ffc2:821a with SMTP id r9-20020a05622a034900b002f1ffc2821amr4079331qtw.36.1651337024377;
+        Sat, 30 Apr 2022 09:43:44 -0700 (PDT)
+Received: from [172.31.1.6] ([71.168.80.171])
+        by smtp.gmail.com with ESMTPSA id r6-20020ac87946000000b002f39b99f691sm1412934qtt.43.2022.04.30.09.43.43
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 30 Apr 2022 09:43:44 -0700 (PDT)
+Message-ID: <2c15f117-19f4-66cb-d5a9-5b570fce19cd@redhat.com>
+Date:   Sat, 30 Apr 2022 12:43:43 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220429195819.GI7107@fieldses.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.7.0
+Subject: Re: [PATCH] nfsrahead: fix oops caused by non-starndard naming
+ schemes
+Content-Language: en-US
+To:     Thiago Becker <tbecker@redhat.com>, linux-nfs@vger.kernel.org
+Cc:     trbecker@gmail.com
+References: <20220425195948.2627428-1-tbecker@redhat.com>
+From:   Steve Dickson <steved@redhat.com>
+In-Reply-To: <20220425195948.2627428-1-tbecker@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Apr 29, 2022 at 03:58:19PM -0400, J. Bruce Fields wrote:
-> On Fri, Apr 29, 2022 at 10:24:11AM -0700, dai.ngo@oracle.com wrote:
-> > 
-> > On 4/29/22 8:16 AM, J. Bruce Fields wrote:
-> > >On Thu, Apr 28, 2022 at 12:06:33AM -0700, Dai Ngo wrote:
-> > >>Add 2 new callbacks, lm_lock_expirable and lm_expire_lock, to
-> > >>lock_manager_operations to allow the lock manager to take appropriate
-> > >>action to resolve the lock conflict if possible.
-> > >>
-> > >>A new field, lm_mod_owner, is also added to lock_manager_operations.
-> > >>The lm_mod_owner is used by the fs/lock code to make sure the lock
-> > >>manager module such as nfsd, is not freed while lock conflict is being
-> > >>resolved.
-> > >>
-> > >>lm_lock_expirable checks and returns true to indicate that the lock
-> > >>conflict can be resolved else return false. This callback must be
-> > >>called with the flc_lock held so it can not block.
-> > >>
-> > >>lm_expire_lock is called to resolve the lock conflict if the returned
-> > >>value from lm_lock_expirable is true. This callback is called without
-> > >>the flc_lock held since it's allowed to block. Upon returning from
-> > >>this callback, the lock conflict should be resolved and the caller is
-> > >>expected to restart the conflict check from the beginnning of the list.
-> > >>
-> > >>Lock manager, such as NFSv4 courteous server, uses this callback to
-> > >>resolve conflict by destroying lock owner, or the NFSv4 courtesy client
-> > >>(client that has expired but allowed to maintains its states) that owns
-> > >>the lock.
-> > >>
-> > >>Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
-> > >>---
-> > >>  Documentation/filesystems/locking.rst |  4 ++++
-> > >>  fs/locks.c                            | 45 +++++++++++++++++++++++++++++++----
-> > >>  include/linux/fs.h                    |  3 +++
-> > >>  3 files changed, 48 insertions(+), 4 deletions(-)
-> > >>
-> > >>diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-> > >>index c26d854275a0..0997a258361a 100644
-> > >>--- a/Documentation/filesystems/locking.rst
-> > >>+++ b/Documentation/filesystems/locking.rst
-> > >>@@ -428,6 +428,8 @@ prototypes::
-> > >>  	void (*lm_break)(struct file_lock *); /* break_lease callback */
-> > >>  	int (*lm_change)(struct file_lock **, int);
-> > >>  	bool (*lm_breaker_owns_lease)(struct file_lock *);
-> > >>+        bool (*lm_lock_expirable)(struct file_lock *);
-> > >>+        void (*lm_expire_lock)(void);
-> > >>  locking rules:
-> > >>@@ -439,6 +441,8 @@ lm_grant:		no		no			no
-> > >>  lm_break:		yes		no			no
-> > >>  lm_change		yes		no			no
-> > >>  lm_breaker_owns_lease:	yes     	no			no
-> > >>+lm_lock_expirable	yes		no			no
-> > >>+lm_expire_lock		no		no			yes
-> > >>  ======================	=============	=================	=========
-> > >>  buffer_head
-> > >>diff --git a/fs/locks.c b/fs/locks.c
-> > >>index c369841ef7d1..d48c3f455657 100644
-> > >>--- a/fs/locks.c
-> > >>+++ b/fs/locks.c
-> > >>@@ -896,6 +896,37 @@ static bool flock_locks_conflict(struct file_lock *caller_fl,
-> > >>  	return locks_conflict(caller_fl, sys_fl);
-> > >>  }
-> > >>+static bool
-> > >>+resolve_lock_conflict_locked(struct file_lock_context *ctx,
-> > >>+			struct file_lock *cfl, bool rwsem)
-> > >>+{
-> > >>+	void *owner;
-> > >>+	bool ret;
-> > >>+	void (*func)(void);
-> > >>+
-> > >>+	if (cfl->fl_lmops && cfl->fl_lmops->lm_lock_expirable &&
-> > >>+				cfl->fl_lmops->lm_expire_lock) {
-> > >>+		ret = (*cfl->fl_lmops->lm_lock_expirable)(cfl);
-> > >>+		if (!ret)
-> > >>+			return false;
-> > >>+		owner = cfl->fl_lmops->lm_mod_owner;
-> > >>+		if (!owner)
-> > >>+			return false;
-> > >>+		func = cfl->fl_lmops->lm_expire_lock;
-> > >>+		__module_get(owner);
-> > >>+		if (rwsem)
-> > >>+			percpu_up_read(&file_rwsem);
-> > >>+		spin_unlock(&ctx->flc_lock);
-> > >Dropping and reacquiring locks inside a function like this makes me
-> > >nervous.  It means it's not obvious in the caller that the lock isn't
-> > >held throughout.
-> > >
-> > >I know it's more verbose, but let's just open-code this logic in the
-> > >callers.
-> > 
-> > fix in v24.
-> > 
-> > >
-> > >(And, thanks for catching the test_lock case, I'd forgotten it.)
-> > >
-> > >Also: do we *really* need to drop the file_rwsem?  Were you seeing it
-> > >that cause problems?  The only possible conflict is with someone trying
-> > >to read /proc/locks, and I'm surprised that it'd be a problem to let
-> > >them wait here.
-> > 
-> > Yes, apparently file_rwsem is used when the laundromat expires the
-> > COURTESY client client and causes deadlock.
+
+
+On 4/25/22 3:59 PM, Thiago Becker wrote:
+> brtfs uses a non standard naming scheme for its fs structures, which
+> causes nfsrahead to take a long time scanning all the memory
+> available and then crashes. This causes the udev to take forever to
+> quiesce and delays the system startup.
 > 
-> It's taken, but only for read.  I'm rather surprised that would cause a
-> deadlock.  Do you have any kind of trace showing what happened?
+> This t=patch refactors the way the device number is obtained to handle
+> this situation.
 > 
-> Oh well, it's not a big deal to just open code this and set the "retry:"
-> before both lock acquisitions, that's probably best in fact.  I'm just
-> curious.
+> Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=2078147
+> Signed-off-by: Thiago Becker <tbecker@redhat.com>
+Committed... Thanks!
 
-I remember running across this:
+steved.
 
-	https://lore.kernel.org/linux-nfs/20210927201433.GA1704@fieldses.org/
+> ---
+>   tools/nfsrahead/main.c | 23 +++++++++++++++--------
+>   1 file changed, 15 insertions(+), 8 deletions(-)
+> 
+> diff --git a/tools/nfsrahead/main.c b/tools/nfsrahead/main.c
+> index b3af3aa8..83a389f7 100644
+> --- a/tools/nfsrahead/main.c
+> +++ b/tools/nfsrahead/main.c
+> @@ -26,27 +26,31 @@ struct device_info {
+>   };
+>   
+>   /* Convert a string in the format n:m to a device number */
+> -static dev_t dev_from_arg(const char *device_number)
+> +static int fill_device_number(struct device_info *info)
+>   {
+> -	char *s = strdup(device_number), *p;
+> +	char *s = strdup(info->device_number), *p;
+>   	char *maj_s, *min_s;
+>   	unsigned int maj, min;
+> -	dev_t dev;
+> +	int err = -EINVAL;
+>   
+>   	maj_s = p = s;
+> -	for ( ; *p != ':'; p++)
+> +	for ( ; *p != ':' && *p != '\0'; p++)
+>   		;
+>   
+> +	if (*p == '\0')
+> +		goto out_free;
+> +
+> +	err = 0;
+>   	*p = '\0';
+>   	min_s = p + 1;
+>   
+>   	maj = strtol(maj_s, NULL, 10);
+>   	min = strtol(min_s, NULL, 10);
+>   
+> -	dev = makedev(maj, min);
+> -
+> +	info->dev = makedev(maj, min);
+> +out_free:
+>   	free(s);
+> -	return dev;
+> +	return err;
+>   }
+>   
+>   #define sfree(ptr) if (ptr) free(ptr)
+> @@ -55,7 +59,7 @@ static dev_t dev_from_arg(const char *device_number)
+>   static void init_device_info(struct device_info *di, const char *device_number)
+>   {
+>   	di->device_number = strdup(device_number);
+> -	di->dev = dev_from_arg(device_number);
+> +	di->dev = 0;
+>   	di->mountpoint = NULL;
+>   	di->fstype = NULL;
+>   }
+> @@ -76,6 +80,8 @@ static int get_mountinfo(const char *device_number, struct device_info *device_i
+>   	char *target;
+>   
+>   	init_device_info(device_info, device_number);
+> +	if ((ret = fill_device_number(device_info)) < 0)
+> +		goto out_free_device_info;
+>   
+>   	mnttbl = mnt_new_table();
+>   
+> @@ -101,6 +107,7 @@ out_free_fs:
+>   	mnt_free_fs(fs);
+>   out_free_tbl:
+>   	mnt_free_table(mnttbl);
+> +out_free_device_info:
+>   	free(device_info->device_number);
+>   	device_info->device_number = NULL;
+>   	return ret;
 
-though that didn't involve the laundromat.  Were you seeing an actual
-deadlock with these new patches?  Or a lockdep warning like that one?
-
---b.
