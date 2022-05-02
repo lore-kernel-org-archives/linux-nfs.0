@@ -2,33 +2,33 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCCF7C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 May 2022 08:51:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1707AC433FE
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 May 2022 08:51:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1383908AbiEBIzO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 May 2022 04:55:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34764 "EHLO
+        id S1383921AbiEBIzP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 May 2022 04:55:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34766 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1383934AbiEBIzL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2022 04:55:11 -0400
+        with ESMTP id S1381887AbiEBIzF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2022 04:55:05 -0400
 Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B371E13DCD
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3BEA13DDE
         for <linux-nfs@vger.kernel.org>; Mon,  2 May 2022 01:51:33 -0700 (PDT)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 25FD26081108;
+        by lithops.sigma-star.at (Postfix) with ESMTP id E368C6081119;
         Mon,  2 May 2022 10:51:30 +0200 (CEST)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id 0JYR-zG6Gsyj; Mon,  2 May 2022 10:51:28 +0200 (CEST)
+        with ESMTP id 5XhSRD7E-Qeb; Mon,  2 May 2022 10:51:30 +0200 (CEST)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 7AC7A6081106;
-        Mon,  2 May 2022 10:51:28 +0200 (CEST)
+        by lithops.sigma-star.at (Postfix) with ESMTP id 097FC6081105;
+        Mon,  2 May 2022 10:51:30 +0200 (CEST)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id ITUnP3oI7V6H; Mon,  2 May 2022 10:51:28 +0200 (CEST)
+        with ESMTP id Z0iOYGqj9WiB; Mon,  2 May 2022 10:51:29 +0200 (CEST)
 Received: from blindfold.corp.sigma-star.at (213-47-184-186.cable.dynamic.surfer.at [213.47.184.186])
-        by lithops.sigma-star.at (Postfix) with ESMTPSA id 0FE826081103;
-        Mon,  2 May 2022 10:51:28 +0200 (CEST)
+        by lithops.sigma-star.at (Postfix) with ESMTPSA id 73871608F44C;
+        Mon,  2 May 2022 10:51:29 +0200 (CEST)
 From:   Richard Weinberger <richard@nod.at>
 To:     linux-nfs@vger.kernel.org
 Cc:     david@sigma-star.at, bfields@fieldses.org,
@@ -36,9 +36,9 @@ Cc:     david@sigma-star.at, bfields@fieldses.org,
         david.oberhollenzer@sigma-star.at, trond.myklebust@hammerspace.com,
         anna.schumaker@netapp.com, steved@redhat.com,
         chris.chilvers@appsbroker.com, Richard Weinberger <richard@nod.at>
-Subject: [PATCH 1/5] Implement reexport helper library
-Date:   Mon,  2 May 2022 10:50:41 +0200
-Message-Id: <20220502085045.13038-2-richard@nod.at>
+Subject: [PATCH 4/5] export: Avoid fsid= conflicts
+Date:   Mon,  2 May 2022 10:50:44 +0200
+Message-Id: <20220502085045.13038-5-richard@nod.at>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20220502085045.13038-1-richard@nod.at>
 References: <20220502085045.13038-1-richard@nod.at>
@@ -48,451 +48,140 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This internal library contains code that will be used by various
-tools within the nfs-utils package to deal better with NFS re-export,
-especially cross mounts.
+As soon reexport=3D is used, numerical fsids are automatically
+assigned, therefore other fsid=3D options are no longer possible
+without the risk of a conflict.
 
 Signed-off-by: Richard Weinberger <richard@nod.at>
 ---
- configure.ac                 |  12 ++
- support/Makefile.am          |   4 +
- support/reexport/Makefile.am |   6 +
- support/reexport/reexport.c  | 285 +++++++++++++++++++++++++++++++++++
- support/reexport/reexport.h  |  39 +++++
- 5 files changed, 346 insertions(+)
- create mode 100644 support/reexport/Makefile.am
- create mode 100644 support/reexport/reexport.c
- create mode 100644 support/reexport/reexport.h
+ support/export/export.c        | 27 +++++++++++++++++++++++++--
+ systemd/nfs-server-generator.c | 14 ++++++++++++--
+ utils/exportfs/exportfs.c      | 10 ++++++++--
+ 3 files changed, 45 insertions(+), 6 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 93626d62..86bf8ba9 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -274,6 +274,17 @@ AC_ARG_ENABLE(nfsv4server,
- 	fi
- 	AM_CONDITIONAL(CONFIG_NFSV4SERVER, [test "$enable_nfsv4server" =3D "yes=
-" ])
-=20
-+AC_ARG_ENABLE(reexport,
-+	[AC_HELP_STRING([--enable-reexport],
-+			[enable support for re-exporting NFS mounts  @<:@default=3Dno@:>@])],
-+	enable_reexport=3D$enableval,
-+	enable_reexport=3D"no")
-+	if test "$enable_reexport" =3D yes; then
-+		AC_DEFINE(HAVE_REEXPORT_SUPPORT, 1,
-+                          [Define this if you want NFS re-export support=
- compiled in])
-+	fi
-+	AM_CONDITIONAL(CONFIG_REEXPORT, [test "$enable_reexport" =3D "yes" ])
-+
- dnl Check for TI-RPC library and headers
- AC_LIBTIRPC
-=20
-@@ -730,6 +741,7 @@ AC_CONFIG_FILES([
- 	support/nsm/Makefile
- 	support/nfsidmap/Makefile
- 	support/nfsidmap/libnfsidmap.pc
-+	support/reexport/Makefile
- 	tools/Makefile
- 	tools/locktest/Makefile
- 	tools/nlmtest/Makefile
-diff --git a/support/Makefile.am b/support/Makefile.am
-index c962d4d4..986e9b5f 100644
---- a/support/Makefile.am
-+++ b/support/Makefile.am
-@@ -10,6 +10,10 @@ if CONFIG_JUNCTION
- OPTDIRS +=3D junction
- endif
-=20
-+if CONFIG_REEXPORT
-+OPTDIRS +=3D reexport
-+endif
-+
- SUBDIRS =3D export include misc nfs nsm $(OPTDIRS)
-=20
- MAINTAINERCLEANFILES =3D Makefile.in
-diff --git a/support/reexport/Makefile.am b/support/reexport/Makefile.am
-new file mode 100644
-index 00000000..9d544a8f
---- /dev/null
-+++ b/support/reexport/Makefile.am
-@@ -0,0 +1,6 @@
-+## Process this file with automake to produce Makefile.in
-+
-+noinst_LIBRARIES =3D libreexport.a
-+libreexport_a_SOURCES =3D reexport.c
-+
-+MAINTAINERCLEANFILES =3D Makefile.in
-diff --git a/support/reexport/reexport.c b/support/reexport/reexport.c
-new file mode 100644
-index 00000000..5474a21f
---- /dev/null
-+++ b/support/reexport/reexport.c
-@@ -0,0 +1,285 @@
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <sqlite3.h>
-+#include <stdint.h>
-+#include <stdio.h>
-+#include <sys/random.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <sys/vfs.h>
-+#include <unistd.h>
-+
-+#include "nfsd_path.h"
-+#include "nfslib.h"
+diff --git a/support/export/export.c b/support/export/export.c
+index 03390dfc..c5e56b1a 100644
+--- a/support/export/export.c
++++ b/support/export/export.c
+@@ -25,6 +25,7 @@
+ #include "exportfs.h"
+ #include "nfsd_path.h"
+ #include "xlog.h"
 +#include "reexport.h"
-+#include "xcommon.h"
-+#include "xlog.h"
+=20
+ exp_hash_table exportlist[MCL_MAXTYPES] =3D {{NULL, {{NULL,NULL}, }}, };=
+=20
+ static int export_hash(char *);
+@@ -115,6 +116,7 @@ export_read(char *fname, int ignore_hosts)
+ 	nfs_export		*exp;
+=20
+ 	int volumes =3D 0;
++	int reexport_found =3D 0;
+=20
+ 	setexportent(fname, "r");
+ 	while ((eep =3D getexportent(0,1)) !=3D NULL) {
+@@ -126,7 +128,25 @@ export_read(char *fname, int ignore_hosts)
+ 		}
+ 		else
+ 			warn_duplicated_exports(exp, eep);
 +
-+#define REEXPDB_DBFILE NFS_STATEDIR "/reexpdb.sqlite3"
-+#define REEXPDB_DBFILE_WAIT_USEC (5000)
-+
-+static sqlite3 *db;
-+static int init_done;
-+
-+static int prng_init(void)
-+{
-+	int seed;
-+
-+	if (getrandom(&seed, sizeof(seed), 0) !=3D sizeof(seed)) {
-+		xlog(L_ERROR, "Unable to obtain seed for PRNG via getrandom()");
-+		return -1;
++		if (eep->e_reexport)
++			reexport_found =3D 1;
 +	}
 +
-+	srand(seed);
-+	return 0;
-+}
++	if (reexport_found) {
++		for (int i =3D 0; i < MCL_MAXTYPES; i++) {
++			for (exp =3D exportlist[i].p_head; exp; exp =3D exp->m_next) {
++				if (exp->m_export.e_reexport)
++					continue;
 +
-+static void wait_for_dbaccess(void)
-+{
-+	usleep(REEXPDB_DBFILE_WAIT_USEC + (rand() % REEXPDB_DBFILE_WAIT_USEC));
-+}
++				if (exp->m_export.e_flags & NFSEXP_FSID) {
++					xlog(L_ERROR, "When a reexport=3D option is present no manully assi=
+gned numerical fsid=3D options are allowed");
++					return -1;
++				}
++			}
++		}
+ 	}
 +
-+/*
-+ * reexpdb_init - Initialize reexport database
-+ */
-+int reexpdb_init(void)
-+{
-+	char *sqlerr;
-+	int ret;
+ 	endexportent();
+=20
+ 	return volumes;
+@@ -147,7 +167,7 @@ export_d_read(const char *dname, int ignore_hosts)
+ 	int n =3D 0, i;
+ 	struct dirent **namelist =3D NULL;
+ 	int volumes =3D 0;
+-
++	int num_exports;
+=20
+ 	n =3D scandir(dname, &namelist, NULL, versionsort);
+ 	if (n < 0) {
+@@ -186,7 +206,10 @@ export_d_read(const char *dname, int ignore_hosts)
+ 			continue;
+ 		}
+=20
+-		volumes +=3D export_read(fname, ignore_hosts);
++		num_exports =3D export_read(fname, ignore_hosts);
++		if (num_exports < 0)
++			return -1;
++		volumes +=3D num_exports;
+ 	}
+=20
+ 	for (i =3D 0; i < n; i++)
+diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generato=
+r.c
+index eec98fd2..e4202954 100644
+--- a/systemd/nfs-server-generator.c
++++ b/systemd/nfs-server-generator.c
+@@ -89,6 +89,8 @@ int main(int argc, char *argv[])
+ 	struct list	*list =3D NULL;
+ 	FILE		*f, *fstab;
+ 	struct mntent	*mnt;
++	int		num_exports;
++	int		num_exports_d;
+=20
+ 	/* Avoid using any external services */
+ 	xlog_syslog(0);
+@@ -102,8 +104,16 @@ int main(int argc, char *argv[])
+ 	path =3D alloca(strlen(argv[1]) + sizeof(dirbase) + sizeof(filebase));
+ 	if (!path)
+ 		exit(2);
+-	if (export_read(_PATH_EXPORTS, 1) +
+-	    export_d_read(_PATH_EXPORTS_D, 1) =3D=3D 0)
 +
-+	if (init_done)
-+		return 0;
++	num_exports =3D export_read(_PATH_EXPORTS, 1);
++	if (num_exports < 0)
++		exit(1);
 +
-+	if (prng_init() !=3D 0)
-+		return -1;
++	num_exports_d =3D export_d_read(_PATH_EXPORTS_D, 1);
++	if (num_exports_d < 0)
++		exit(1);
 +
-+	ret =3D sqlite3_open_v2(REEXPDB_DBFILE, &db, SQLITE_OPEN_READWRITE | SQ=
-LITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, NULL);
-+	if (ret !=3D SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to open reexport database: %s", sqlite3_errstr(r=
-et));
-+		return -1;
-+	}
++	if (num_exports + num_exports_d =3D=3D 0)
+ 		/* Nothing is exported, so nothing to do */
+ 		exit(0);
+=20
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 7f21edcf..7a67c4d3 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -206,8 +206,14 @@ main(int argc, char **argv)
+ 	atexit(release_lockfile);
+=20
+ 	if (f_export && ! f_ignore) {
+-		if (! (export_read(_PATH_EXPORTS, 0) +
+-		       export_d_read(_PATH_EXPORTS_D, 0))) {
++		int num_exports, num_exports_d;
 +
-+again:
-+	ret =3D sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS fsidnums (num INTE=
-GER PRIMARY KEY CHECK (num > 0 AND num < 4294967296), path TEXT UNIQUE); =
-CREATE INDEX IF NOT EXISTS idx_ids_path ON fsidnums (path);", NULL, NULL,=
- &sqlerr);
-+	switch (ret) {
-+	case SQLITE_OK:
-+		init_done =3D 1;
-+		ret =3D 0;
-+		break;
-+	case SQLITE_BUSY:
-+	case SQLITE_LOCKED:
-+		wait_for_dbaccess();
-+		goto again;
-+	default:
-+		xlog(L_ERROR, "Unable to init reexport database: %s", sqlite3_errstr(r=
-et));
-+		sqlite3_free(sqlerr);
-+		sqlite3_close_v2(db);
-+		ret =3D -1;
-+	}
++		num_exports =3D export_read(_PATH_EXPORTS, 0);
++		num_exports_d =3D export_d_read(_PATH_EXPORTS_D, 0);
++		if (num_exports < 0 || num_exports_d < 0)
++			return 1;
 +
-+	return ret;
-+}
-+
-+/*
-+ * reexpdb_destroy - Undo reexpdb_init().
-+ */
-+void reexpdb_destroy(void)
-+{
-+	if (!init_done)
-+		return;
-+
-+	sqlite3_close_v2(db);
-+}
-+
-+static int get_fsidnum_by_path(char *path, uint32_t *fsidnum)
-+{
-+	static const char fsidnum_by_path_sql[] =3D "SELECT num FROM fsidnums W=
-HERE path =3D ?1;";
-+	sqlite3_stmt *stmt =3D NULL;
-+	int found =3D 0;
-+	int ret;
-+
-+	ret =3D sqlite3_prepare_v2(db, fsidnum_by_path_sql, sizeof(fsidnum_by_p=
-ath_sql), &stmt, NULL);
-+	if (ret !=3D SQLITE_OK) {
-+		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", fsidnum_by_pat=
-h_sql, sqlite3_errstr(ret));
-+		goto out;
-+	}
-+
-+	ret =3D sqlite3_bind_text(stmt, 1, path, -1, NULL);
-+	if (ret !=3D SQLITE_OK) {
-+		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", fsidnum_by_path_s=
-ql, sqlite3_errstr(ret));
-+		goto out;
-+	}
-+
-+again:
-+	ret =3D sqlite3_step(stmt);
-+	switch (ret) {
-+	case SQLITE_ROW:
-+		*fsidnum =3D sqlite3_column_int(stmt, 0);
-+		found =3D 1;
-+		break;
-+	case SQLITE_DONE:
-+		/* No hit */
-+		found =3D 0;
-+		break;
-+	case SQLITE_BUSY:
-+	case SQLITE_LOCKED:
-+		wait_for_dbaccess();
-+		goto again;
-+	default:
-+		xlog(L_WARNING, "Error while looking up '%s' in database: %s", path, s=
-qlite3_errstr(ret));
-+	}
-+
-+out:
-+	sqlite3_finalize(stmt);
-+	return found;
-+}
-+
-+static int get_path_by_fsidnum(uint32_t fsidnum, char **path)
-+{
-+	static const char path_by_fsidnum_sql[] =3D "SELECT path FROM fsidnums =
-WHERE num =3D ?1;";
-+	sqlite3_stmt *stmt =3D NULL;
-+	int found =3D 0;
-+	int ret;
-+
-+	ret =3D sqlite3_prepare_v2(db, path_by_fsidnum_sql, sizeof(path_by_fsid=
-num_sql), &stmt, NULL);
-+	if (ret !=3D SQLITE_OK) {
-+		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", path_by_fsidnu=
-m_sql, sqlite3_errstr(ret));
-+		goto out;
-+	}
-+
-+	ret =3D sqlite3_bind_int(stmt, 1, fsidnum);
-+	if (ret !=3D SQLITE_OK) {
-+		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", path_by_fsidnum_s=
-ql, sqlite3_errstr(ret));
-+		goto out;
-+	}
-+
-+again:
-+	ret =3D sqlite3_step(stmt);
-+	switch (ret) {
-+	case SQLITE_ROW:
-+		*path =3D xstrdup((char *)sqlite3_column_text(stmt, 0));
-+		found =3D 1;
-+		break;
-+	case SQLITE_DONE:
-+		/* No hit */
-+		found =3D 0;
-+		break;
-+	case SQLITE_BUSY:
-+	case SQLITE_LOCKED:
-+		wait_for_dbaccess();
-+		goto again;
-+	default:
-+		xlog(L_WARNING, "Error while looking up '%i' in database: %s", fsidnum=
-, sqlite3_errstr(ret));
-+	}
-+
-+out:
-+	sqlite3_finalize(stmt);
-+	return found;
-+}
-+
-+static int new_fsidnum_by_path(char *path, uint32_t *fsidnum)
-+{
-+	/*
-+	 * This query is a little tricky. We use SQL to find and claim the smal=
-lest free fsid number.
-+	 * To find a free fsid the fsidnums is left joined to itself but with a=
-n offset of 1.
-+	 * Everything after the UNION statement is to handle the corner case wh=
-ere fsidnums
-+	 * is empty. In this case we want 1 as first fsid number.
-+	 */
-+	static const char new_fsidnum_by_path_sql[] =3D "INSERT INTO fsidnums V=
-ALUES ((SELECT ids1.num + 1 FROM fsidnums AS ids1 LEFT JOIN fsidnums AS i=
-ds2 ON ids2.num =3D ids1.num + 1 WHERE ids2.num IS NULL UNION SELECT 1 WH=
-ERE NOT EXISTS (SELECT NULL FROM fsidnums WHERE num =3D 1) LIMIT 1), ?1) =
-RETURNING num;";
-+
-+	sqlite3_stmt *stmt =3D NULL;
-+	int found =3D 0, check =3D 0;
-+	int ret;
-+
-+	ret =3D sqlite3_prepare_v2(db, new_fsidnum_by_path_sql, sizeof(new_fsid=
-num_by_path_sql), &stmt, NULL);
-+	if (ret !=3D SQLITE_OK) {
-+		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", new_fsidnum_by=
-_path_sql, sqlite3_errstr(ret));
-+		goto out;
-+	}
-+
-+	ret =3D sqlite3_bind_text(stmt, 1, path, -1, NULL);
-+	if (ret !=3D SQLITE_OK) {
-+		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", new_fsidnum_by_pa=
-th_sql, sqlite3_errstr(ret));
-+		goto out;
-+	}
-+
-+again:
-+	ret =3D sqlite3_step(stmt);
-+	switch (ret) {
-+	case SQLITE_ROW:
-+		*fsidnum =3D sqlite3_column_int(stmt, 0);
-+		found =3D 1;
-+		break;
-+	case SQLITE_CONSTRAINT:
-+		/* Maybe we lost the race against another writer and the path is now p=
-resent. */
-+		check =3D 1;
-+		break;
-+	case SQLITE_BUSY:
-+	case SQLITE_LOCKED:
-+		wait_for_dbaccess();
-+		goto again;
-+	default:
-+		xlog(L_WARNING, "Error while looking up '%s' in database: %s", path, s=
-qlite3_errstr(ret));
-+	}
-+
-+out:
-+	sqlite3_finalize(stmt);
-+
-+	if (check) {
-+		found =3D get_fsidnum_by_path(path, fsidnum);
-+		if (!found)
-+			xlog(L_WARNING, "SQLITE_CONSTRAINT error while inserting '%s' in data=
-base", path);
-+	}
-+
-+	return found;
-+}
-+
-+/*
-+ * reexpdb_fsidnum_by_path - Lookup a fsid by path.
-+ *
-+ * @path: File system path used as lookup key
-+ * @fsidnum: Pointer where found fsid is written to
-+ * @may_create: If non-zero, allocate new fsid if lookup failed
-+ *
-+ */
-+int reexpdb_fsidnum_by_path(char *path, uint32_t *fsidnum, int may_creat=
-e)
-+{
-+	int found;
-+
-+	found =3D get_fsidnum_by_path(path, fsidnum);
-+
-+	if (!found && may_create)
-+		found =3D new_fsidnum_by_path(path, fsidnum);
-+
-+	return found;
-+}
-+
-+/*
-+ * reexpdb_uncover_subvolume - Make sure a subvolume is present.
-+ *
-+ * @fsidnum: Numerical fsid number to look for
-+ *
-+ * Subvolumes (NFS cross mounts) get automatically mounted upon first
-+ * access and can vanish after fs.nfs.nfs_mountpoint_timeout seconds.
-+ * Also if the NFS server reboots, clients can still have valid file
-+ * handles for such a subvolume.
-+ *
-+ * If kNFSd asks mountd for the path of a given fsidnum it can
-+ * trigger an automount by calling statfs() on the given path.
-+ */
-+void reexpdb_uncover_subvolume(uint32_t fsidnum)
-+{
-+	struct statfs64 st;
-+	char *path =3D NULL;
-+	int ret;
-+
-+	if (get_path_by_fsidnum(fsidnum, &path)) {
-+		ret =3D nfsd_path_statfs64(path, &st);
-+		if (ret =3D=3D -1)
-+			xlog(L_WARNING, "statfs() failed");
-+	}
-+
-+	free(path);
-+}
-diff --git a/support/reexport/reexport.h b/support/reexport/reexport.h
-new file mode 100644
-index 00000000..bb6d2a1b
---- /dev/null
-+++ b/support/reexport/reexport.h
-@@ -0,0 +1,39 @@
-+#ifndef REEXPORT_H
-+#define REEXPORT_H
-+
-+enum {
-+	REEXP_NONE =3D 0,
-+	REEXP_AUTO_FSIDNUM,
-+	REEXP_PREDEFINED_FSIDNUM,
-+};
-+
-+#ifdef HAVE_REEXPORT_SUPPORT
-+int reexpdb_init(void);
-+void reexpdb_destroy(void);
-+int reexpdb_fsidnum_by_path(char *path, uint32_t *fsidnum, int may_creat=
-e);
-+int reexpdb_apply_reexport_settings(struct exportent *ep, char *flname, =
-int flline);
-+void reexpdb_uncover_subvolume(uint32_t fsidnum);
-+#else
-+static inline int reexpdb_init(void) { return 0; }
-+static inline void reexpdb_destroy(void) {}
-+static inline int reexpdb_fsidnum_by_path(char *path, uint32_t *fsidnum,=
- int may_create)
-+{
-+	(void)path;
-+	(void)may_create;
-+	*fsidnum =3D 0;
-+	return 0;
-+}
-+static inline int reexpdb_apply_reexport_settings(struct exportent *ep, =
-char *flname, int flline)
-+{
-+	(void)ep;
-+	(void)flname;
-+	(void)flline;
-+	return 0;
-+}
-+static inline void reexpdb_uncover_subvolume(uint32_t fsidnum)
-+{
-+	(void)fsidnum;
-+}
-+#endif /* HAVE_REEXPORT_SUPPORT */
-+
-+#endif /* REEXPORT_H */
++		if (!(num_exports + num_exports_d)) {
+ 			if (f_verbose)
+ 				xlog(L_WARNING, "No file systems exported!");
+ 		}
 --=20
 2.31.1
 
