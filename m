@@ -2,210 +2,326 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FC75C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 May 2022 17:49:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1CE26C433EF
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 May 2022 21:19:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243750AbiEBRwd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 May 2022 13:52:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52862 "EHLO
+        id S1386030AbiEBVXJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 May 2022 17:23:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55810 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240418AbiEBRwd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2022 13:52:33 -0400
-Received: from mail-pj1-x1031.google.com (mail-pj1-x1031.google.com [IPv6:2607:f8b0:4864:20::1031])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 682C665C1;
-        Mon,  2 May 2022 10:49:02 -0700 (PDT)
-Received: by mail-pj1-x1031.google.com with SMTP id j8-20020a17090a060800b001cd4fb60dccso13308724pjj.2;
-        Mon, 02 May 2022 10:49:02 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=COitYDD2QK7Io8HotGUG1E8FA+/THRtBu4YhBbnt/9Y=;
-        b=HOyChXNPd0gP8UKUBeE83hBU+0I2BPcZUG97FRQMY6OdeL1mY1npyxO6BZgT3VAeAp
-         0elyzuO/naP/5I+8qrVeGHEnOFq/CcW0LCmKn9XPrUKUZasvV/MEP6aT/NyAr7ys++0B
-         J44ALS2noyL9fwIcrl6+QM1i/Rj+mPZYo347HeVMJ1U2xzedNrK4kyg1F52zm26VtIkU
-         t5Yb3R3eWyrMd/KGCDJWKL42ROc0YefM3H6fx3URH4r86wVEX+mDLM+OcCRYqD7oYATm
-         PUtxnJrhRMeiYuhPsn+KfyOqm7MHqqbAWntdfLi4mjt2D03YdLlKT3X1E4MZzYsMM6wU
-         OtSA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=COitYDD2QK7Io8HotGUG1E8FA+/THRtBu4YhBbnt/9Y=;
-        b=8RQMkIUu56s5EhcJ5AAn00RqL3RjJ5gpjVBfAuyRYrJcu188SFMWDEH3FV2mFs9o/P
-         Rk0wCo28IyKIGJtkDIxDlFafw6a/Je5bjvVUf6U/V0XF6QC98+WK8sw3wimYAZQaUXmT
-         X1QjeOA9yvB6yE9WCy0iRLl0vGGW8zcI0bY3b6Q9uXKiE8fB4Yy29+OvnBe/u1faWCy1
-         ky5xgkOaZXAwdWCSmqhacvEPhBiun8/VdLetbHu1/4msWxEGWDiqxyvrwmV6eeXGMFd6
-         rj1+ztleYDB+IbMTCXpIjSypa9SNumYLDjpw57dKdaJf7yPf6ZPvQWsb+byzp0zV5JAb
-         q+hg==
-X-Gm-Message-State: AOAM533BX0kNhXZHlQdWO+cB3aNpQLWVeWW4lnlAeE16RoDCN6YwyPtG
-        rTbCZlrirPwQamMpHqi+yCvpJDPUfHMExBKTvw4=
-X-Google-Smtp-Source: ABdhPJw033z/wJCqMFoN48CqODTw8SowfGoCVw6iDHO+NnvXKCmKg2FFVSOMM6+brasxr0pC2UIGiFYYpF4KzZUBQ1c=
-X-Received: by 2002:a17:903:32d2:b0:15d:ea5:3e0f with SMTP id
- i18-20020a17090332d200b0015d0ea53e0fmr13007774plr.117.1651513741762; Mon, 02
- May 2022 10:49:01 -0700 (PDT)
-MIME-Version: 1.0
-References: <165119280115.15698.2629172320052218921.stgit@noble.brown>
- <165119301488.15698.9457662928942765453.stgit@noble.brown>
- <CAHbLzko+9nBem8GnxQJ8RQu7bizQMMmS1TNqbRXcgkjUs+JuMw@mail.gmail.com> <165146539609.24404.4051313590023463843@noble.neil.brown.name>
-In-Reply-To: <165146539609.24404.4051313590023463843@noble.neil.brown.name>
-From:   Yang Shi <shy828301@gmail.com>
-Date:   Mon, 2 May 2022 10:48:49 -0700
-Message-ID: <CAHbLzkpF4zedBmipjX8Zy5F=Fffez+xgxTAvveaz1nRHb9Wg_Q@mail.gmail.com>
-Subject: Re: [PATCH 1/2] MM: handle THP in swap_*page_fs()
-To:     NeilBrown <neilb@suse.de>, Huang Ying <ying.huang@intel.com>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Geert Uytterhoeven <geert+renesas@glider.be>,
-        Christoph Hellwig <hch@lst.de>,
-        Miaohe Lin <linmiaohe@huawei.com>, linux-nfs@vger.kernel.org,
-        Linux MM <linux-mm@kvack.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        with ESMTP id S230422AbiEBVXI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2022 17:23:08 -0400
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4750DFC7;
+        Mon,  2 May 2022 14:19:38 -0700 (PDT)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 242IigdU018676;
+        Mon, 2 May 2022 21:19:35 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
+ bh=X7ktcCaGHVBTAhinTVuGGA0a3RBdFxoGDH7Ba4FwyVU=;
+ b=mMQVD5AjPFMO6dB8rFIqMy6dFrHuG19yKf5qcFlkrWvwumvvmBgmLpEdBZzbwLhnwhgM
+ PU1N2mlgU2pHul62xpfea8y6rF3pacnQkF+lWtvSevc2r4Vn5QXW4UrqbOcjUJUFJS7i
+ pqQfNr/ySmjvoAIxxxNEc4fxFsI2ZNWD+l6tOzItlno46o9e+Yb+uefe+EskXS5dIHYx
+ ibTJgz/sbk0XvDueHKJUXyKm5UpurgV3QZA1hnGvfPZ8fm0tWyD2d9gjVYMYk2Pn8coY
+ cPX6Ck3CecYAUy1gkltJ7gdOCyymb7CCFPUgQyrxfuOskRlOyoKRlOW2PgKes0OyG+qR /Q== 
+Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3frwnt4bpk-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 02 May 2022 21:19:35 +0000
+Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 242LAkAa029094;
+        Mon, 2 May 2022 21:19:34 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3fruj1v8pw-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 02 May 2022 21:19:34 +0000
+Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 242LJXSI003941;
+        Mon, 2 May 2022 21:19:33 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3fruj1v8ph-2;
+        Mon, 02 May 2022 21:19:33 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, bfields@fieldses.org
+Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH RFC v25 1/7] NFSD: add courteous server support for thread with only delegation
+Date:   Mon,  2 May 2022 14:19:21 -0700
+Message-Id: <1651526367-1522-2-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1651526367-1522-1-git-send-email-dai.ngo@oracle.com>
+References: <1651526367-1522-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-ORIG-GUID: zwmsQUeS1c4Z59Z5HzK4Vfl0ahOhD-JO
+X-Proofpoint-GUID: zwmsQUeS1c4Z59Z5HzK4Vfl0ahOhD-JO
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, May 1, 2022 at 9:23 PM NeilBrown <neilb@suse.de> wrote:
->
-> On Sat, 30 Apr 2022, Yang Shi wrote:
-> > On Thu, Apr 28, 2022 at 5:44 PM NeilBrown <neilb@suse.de> wrote:
-> > >
-> > > Pages passed to swap_readpage()/swap_writepage() are not necessarily all
-> > > the same size - there may be transparent-huge-pages involves.
-> > >
-> > > The BIO paths of swap_*page() handle this correctly, but the SWP_FS_OPS
-> > > path does not.
-> > >
-> > > So we need to use thp_size() to find the size, not just assume
-> > > PAGE_SIZE, and we need to track the total length of the request, not
-> > > just assume it is "page * PAGE_SIZE".
-> >
-> > Swap-over-nfs doesn't support THP swap IIUC. So SWP_FS_OPS should not
-> > see THP at all. But I agree to remove the assumption about page size
-> > in this path.
->
-> Can you help me understand this please.  How would the swap code know
-> that swap-over-NFS doesn't support THP swap?  There is no reason that
-> NFS wouldn't be able to handle 2MB writes.  Even 1GB should work though
-> NFS would have to split into several smaller WRITE requests.
+This patch provides courteous server support for delegation only.
+Only expired client with delegation but no conflict and no open
+or lock state is allowed to be in COURTESY state.
 
-AFAICT, THP swap is only supported on non-rotate block devices, for
-example, SSD, PMEM, etc. IIRC, the swap device has to support the
-cluster in order to swap THP. The cluster is only supported by
-non-rotate block devices.
+Delegation conflict with COURTESY/EXPIRABLE client is resolved by
+setting it to EXPIRABLE, queue work for the laundromat and return
+delay to the caller. Conflict is resolved when the laudromat runs
+and expires the EXIRABLE client while the NFS client retries the
+OPEN request. Local thread request that gets conflict is doing the
+retry in _break_lease.
 
-Looped Ying in, who is the author of THP swap.
+Client in COURTESY or EXPIRABLE state is allowed to reconnect and
+continues to have access to its state. Access to the nfs4_client by
+the reconnecting thread and the laundromat is serialized via the
+client_lock.
 
->
-> Thanks,
-> NeilBrown
->
->
-> >
-> > >
-> > > Reported-by: Miaohe Lin <linmiaohe@huawei.com>
-> > > Signed-off-by: NeilBrown <neilb@suse.de>
-> > > ---
-> > >  mm/page_io.c |   23 +++++++++++++----------
-> > >  1 file changed, 13 insertions(+), 10 deletions(-)
-> > >
-> > > diff --git a/mm/page_io.c b/mm/page_io.c
-> > > index c132511f521c..d636a3531cad 100644
-> > > --- a/mm/page_io.c
-> > > +++ b/mm/page_io.c
-> > > @@ -239,6 +239,7 @@ struct swap_iocb {
-> > >         struct kiocb            iocb;
-> > >         struct bio_vec          bvec[SWAP_CLUSTER_MAX];
-> > >         int                     pages;
-> > > +       int                     len;
-> > >  };
-> > >  static mempool_t *sio_pool;
-> > >
-> > > @@ -261,7 +262,7 @@ static void sio_write_complete(struct kiocb *iocb, long ret)
-> > >         struct page *page = sio->bvec[0].bv_page;
-> > >         int p;
-> > >
-> > > -       if (ret != PAGE_SIZE * sio->pages) {
-> > > +       if (ret != sio->len) {
-> > >                 /*
-> > >                  * In the case of swap-over-nfs, this can be a
-> > >                  * temporary failure if the system has limited
-> > > @@ -301,7 +302,7 @@ static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
-> > >                 sio = *wbc->swap_plug;
-> > >         if (sio) {
-> > >                 if (sio->iocb.ki_filp != swap_file ||
-> > > -                   sio->iocb.ki_pos + sio->pages * PAGE_SIZE != pos) {
-> > > +                   sio->iocb.ki_pos + sio->len != pos) {
-> > >                         swap_write_unplug(sio);
-> > >                         sio = NULL;
-> > >                 }
-> > > @@ -312,10 +313,12 @@ static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
-> > >                 sio->iocb.ki_complete = sio_write_complete;
-> > >                 sio->iocb.ki_pos = pos;
-> > >                 sio->pages = 0;
-> > > +               sio->len = 0;
-> > >         }
-> > >         sio->bvec[sio->pages].bv_page = page;
-> > > -       sio->bvec[sio->pages].bv_len = PAGE_SIZE;
-> > > +       sio->bvec[sio->pages].bv_len = thp_size(page);
-> > >         sio->bvec[sio->pages].bv_offset = 0;
-> > > +       sio->len += thp_size(page);
-> > >         sio->pages += 1;
-> > >         if (sio->pages == ARRAY_SIZE(sio->bvec) || !wbc->swap_plug) {
-> > >                 swap_write_unplug(sio);
-> > > @@ -371,8 +374,7 @@ void swap_write_unplug(struct swap_iocb *sio)
-> > >         struct address_space *mapping = sio->iocb.ki_filp->f_mapping;
-> > >         int ret;
-> > >
-> > > -       iov_iter_bvec(&from, WRITE, sio->bvec, sio->pages,
-> > > -                     PAGE_SIZE * sio->pages);
-> > > +       iov_iter_bvec(&from, WRITE, sio->bvec, sio->pages, sio->len);
-> > >         ret = mapping->a_ops->swap_rw(&sio->iocb, &from);
-> > >         if (ret != -EIOCBQUEUED)
-> > >                 sio_write_complete(&sio->iocb, ret);
-> > > @@ -383,7 +385,7 @@ static void sio_read_complete(struct kiocb *iocb, long ret)
-> > >         struct swap_iocb *sio = container_of(iocb, struct swap_iocb, iocb);
-> > >         int p;
-> > >
-> > > -       if (ret == PAGE_SIZE * sio->pages) {
-> > > +       if (ret == sio->len) {
-> > >                 for (p = 0; p < sio->pages; p++) {
-> > >                         struct page *page = sio->bvec[p].bv_page;
-> > >
-> > > @@ -415,7 +417,7 @@ static void swap_readpage_fs(struct page *page,
-> > >                 sio = *plug;
-> > >         if (sio) {
-> > >                 if (sio->iocb.ki_filp != sis->swap_file ||
-> > > -                   sio->iocb.ki_pos + sio->pages * PAGE_SIZE != pos) {
-> > > +                   sio->iocb.ki_pos + sio->len != pos) {
-> > >                         swap_read_unplug(sio);
-> > >                         sio = NULL;
-> > >                 }
-> > > @@ -426,10 +428,12 @@ static void swap_readpage_fs(struct page *page,
-> > >                 sio->iocb.ki_pos = pos;
-> > >                 sio->iocb.ki_complete = sio_read_complete;
-> > >                 sio->pages = 0;
-> > > +               sio->len = 0;
-> > >         }
-> > >         sio->bvec[sio->pages].bv_page = page;
-> > > -       sio->bvec[sio->pages].bv_len = PAGE_SIZE;
-> > > +       sio->bvec[sio->pages].bv_len = thp_size(page);
-> > >         sio->bvec[sio->pages].bv_offset = 0;
-> > > +       sio->len += thp_size(page);
-> > >         sio->pages += 1;
-> > >         if (sio->pages == ARRAY_SIZE(sio->bvec) || !plug) {
-> > >                 swap_read_unplug(sio);
-> > > @@ -521,8 +525,7 @@ void __swap_read_unplug(struct swap_iocb *sio)
-> > >         struct address_space *mapping = sio->iocb.ki_filp->f_mapping;
-> > >         int ret;
-> > >
-> > > -       iov_iter_bvec(&from, READ, sio->bvec, sio->pages,
-> > > -                     PAGE_SIZE * sio->pages);
-> > > +       iov_iter_bvec(&from, READ, sio->bvec, sio->pages, sio->len);
-> > >         ret = mapping->a_ops->swap_rw(&sio->iocb, &from);
-> > >         if (ret != -EIOCBQUEUED)
-> > >                 sio_read_complete(&sio->iocb, ret);
-> > >
-> > >
-> > >
-> >
+Reviewed-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/nfs4state.c | 82 +++++++++++++++++++++++++++++++++++++++++++----------
+ fs/nfsd/nfsd.h      |  1 +
+ fs/nfsd/state.h     | 31 ++++++++++++++++++++
+ 3 files changed, 99 insertions(+), 15 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 234e852fcdfa..24b51e822175 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -125,6 +125,8 @@ static void free_session(struct nfsd4_session *);
+ static const struct nfsd4_callback_ops nfsd4_cb_recall_ops;
+ static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops;
+ 
++static struct workqueue_struct *laundry_wq;
++
+ static bool is_session_dead(struct nfsd4_session *ses)
+ {
+ 	return ses->se_flags & NFS4_SESSION_DEAD;
+@@ -152,6 +154,7 @@ static __be32 get_client_locked(struct nfs4_client *clp)
+ 	if (is_client_expired(clp))
+ 		return nfserr_expired;
+ 	atomic_inc(&clp->cl_rpc_users);
++	clp->cl_state = NFSD4_ACTIVE;
+ 	return nfs_ok;
+ }
+ 
+@@ -172,6 +175,7 @@ renew_client_locked(struct nfs4_client *clp)
+ 
+ 	list_move_tail(&clp->cl_lru, &nn->client_lru);
+ 	clp->cl_time = ktime_get_boottime_seconds();
++	clp->cl_state = NFSD4_ACTIVE;
+ }
+ 
+ static void put_client_renew_locked(struct nfs4_client *clp)
+@@ -1090,6 +1094,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 	get_clnt_odstate(odstate);
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	dp->dl_retries = 1;
++	dp->dl_recalled = false;
+ 	nfsd4_init_cb(&dp->dl_recall, dp->dl_stid.sc_client,
+ 		      &nfsd4_cb_recall_ops, NFSPROC4_CLNT_CB_RECALL);
+ 	get_nfs4_file(fp);
+@@ -2004,6 +2009,8 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ 	idr_init(&clp->cl_stateids);
+ 	atomic_set(&clp->cl_rpc_users, 0);
+ 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
++	clp->cl_state = NFSD4_ACTIVE;
++	atomic_set(&clp->cl_delegs_in_recall, 0);
+ 	INIT_LIST_HEAD(&clp->cl_idhash);
+ 	INIT_LIST_HEAD(&clp->cl_openowners);
+ 	INIT_LIST_HEAD(&clp->cl_delegations);
+@@ -4694,9 +4701,18 @@ nfsd_break_deleg_cb(struct file_lock *fl)
+ 	bool ret = false;
+ 	struct nfs4_delegation *dp = (struct nfs4_delegation *)fl->fl_owner;
+ 	struct nfs4_file *fp = dp->dl_stid.sc_file;
++	struct nfs4_client *clp = dp->dl_stid.sc_client;
++	struct nfsd_net *nn;
+ 
+ 	trace_nfsd_cb_recall(&dp->dl_stid);
+ 
++	dp->dl_recalled = true;
++	atomic_inc(&clp->cl_delegs_in_recall);
++	if (try_to_expire_client(clp)) {
++		nn = net_generic(clp->net, nfsd_net_id);
++		mod_delayed_work(laundry_wq, &nn->laundromat_work, 0);
++	}
++
+ 	/*
+ 	 * We don't want the locks code to timeout the lease for us;
+ 	 * we'll remove it ourself if a delegation isn't returned
+@@ -4739,9 +4755,14 @@ static int
+ nfsd_change_deleg_cb(struct file_lock *onlist, int arg,
+ 		     struct list_head *dispose)
+ {
+-	if (arg & F_UNLCK)
++	struct nfs4_delegation *dp = (struct nfs4_delegation *)onlist->fl_owner;
++	struct nfs4_client *clp = dp->dl_stid.sc_client;
++
++	if (arg & F_UNLCK) {
++		if (dp->dl_recalled)
++			atomic_dec(&clp->cl_delegs_in_recall);
+ 		return lease_modify(onlist, arg, dispose);
+-	else
++	} else
+ 		return -EAGAIN;
+ }
+ 
+@@ -5605,6 +5626,49 @@ static void nfsd4_ssc_expire_umount(struct nfsd_net *nn)
+ }
+ #endif
+ 
++/*
++ * place holder for now, no check for lock blockers yet
++ */
++static bool
++nfs4_anylock_blockers(struct nfs4_client *clp)
++{
++	if (atomic_read(&clp->cl_delegs_in_recall) ||
++			client_has_openowners(clp)  ||
++			!list_empty(&clp->async_copies))
++		return true;
++	return false;
++}
++
++static void
++nfs4_get_client_reaplist(struct nfsd_net *nn, struct list_head *reaplist,
++				struct laundry_time *lt)
++{
++	struct list_head *pos, *next;
++	struct nfs4_client *clp;
++
++	INIT_LIST_HEAD(reaplist);
++	spin_lock(&nn->client_lock);
++	list_for_each_safe(pos, next, &nn->client_lru) {
++		clp = list_entry(pos, struct nfs4_client, cl_lru);
++		if (clp->cl_state == NFSD4_EXPIRABLE)
++			goto exp_client;
++		if (!state_expired(lt, clp->cl_time))
++			break;
++		if (!atomic_read(&clp->cl_rpc_users))
++			clp->cl_state = NFSD4_COURTESY;
++		if (!client_has_state(clp) ||
++				ktime_get_boottime_seconds() >=
++				(clp->cl_time + NFSD_COURTESY_CLIENT_TIMEOUT))
++			goto exp_client;
++		if (nfs4_anylock_blockers(clp)) {
++exp_client:
++			if (!mark_client_expired_locked(clp))
++				list_add(&clp->cl_lru, reaplist);
++		}
++	}
++	spin_unlock(&nn->client_lock);
++}
++
+ static time64_t
+ nfs4_laundromat(struct nfsd_net *nn)
+ {
+@@ -5627,7 +5691,6 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		goto out;
+ 	}
+ 	nfsd4_end_grace(nn);
+-	INIT_LIST_HEAD(&reaplist);
+ 
+ 	spin_lock(&nn->s2s_cp_lock);
+ 	idr_for_each_entry(&nn->s2s_cp_stateids, cps_t, i) {
+@@ -5637,17 +5700,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			_free_cpntf_state_locked(nn, cps);
+ 	}
+ 	spin_unlock(&nn->s2s_cp_lock);
+-
+-	spin_lock(&nn->client_lock);
+-	list_for_each_safe(pos, next, &nn->client_lru) {
+-		clp = list_entry(pos, struct nfs4_client, cl_lru);
+-		if (!state_expired(&lt, clp->cl_time))
+-			break;
+-		if (mark_client_expired_locked(clp))
+-			continue;
+-		list_add(&clp->cl_lru, &reaplist);
+-	}
+-	spin_unlock(&nn->client_lock);
++	nfs4_get_client_reaplist(nn, &reaplist, &lt);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		trace_nfsd_clid_purged(&clp->cl_clientid);
+@@ -5722,7 +5775,6 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	return max_t(time64_t, lt.new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ }
+ 
+-static struct workqueue_struct *laundry_wq;
+ static void laundromat_main(struct work_struct *);
+ 
+ static void
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 4fc1fd639527..23996c6ca75e 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -336,6 +336,7 @@ void		nfsd_lockd_shutdown(void);
+ #define COMPOUND_ERR_SLACK_SPACE	16     /* OP_SETATTR */
+ 
+ #define NFSD_LAUNDROMAT_MINTIMEOUT      1   /* seconds */
++#define	NFSD_COURTESY_CLIENT_TIMEOUT	(24 * 60 * 60)	/* seconds */
+ 
+ /*
+  * The following attributes are currently not supported by the NFSv4 server:
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 95457cfd37fc..f3d6313914ed 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -149,6 +149,7 @@ struct nfs4_delegation {
+ /* For recall: */
+ 	int			dl_retries;
+ 	struct nfsd4_callback	dl_recall;
++	bool			dl_recalled;
+ };
+ 
+ #define cb_to_delegation(cb) \
+@@ -283,6 +284,28 @@ struct nfsd4_sessionid {
+ #define HEXDIR_LEN     33 /* hex version of 16 byte md5 of cl_name plus '\0' */
+ 
+ /*
++ *       State                Meaning                  Where set
++ * --------------------------------------------------------------------------
++ * | NFSD4_ACTIVE      | Confirmed, active    | Default                     |
++ * |------------------- ----------------------------------------------------|
++ * | NFSD4_COURTESY    | Courtesy state.      | nfs4_get_client_reaplist    |
++ * |                   | Lease/lock/share     |                             |
++ * |                   | reservation conflict |                             |
++ * |                   | can cause Courtesy   |                             |
++ * |                   | client to be expired |                             |
++ * |------------------------------------------------------------------------|
++ * | NFSD4_EXPIRABLE   | Courtesy client to be| nfs4_laundromat             |
++ * |                   | expired by Laundromat| try_to_expire_client        |
++ * |                   | due to conflict      |                             |
++ * |------------------------------------------------------------------------|
++ */
++enum {
++	NFSD4_ACTIVE = 0,
++	NFSD4_COURTESY,
++	NFSD4_EXPIRABLE,
++};
++
++/*
+  * struct nfs4_client - one per client.  Clientids live here.
+  *
+  * The initial object created by an NFS client using SETCLIENTID (for NFSv4.0)
+@@ -385,6 +408,9 @@ struct nfs4_client {
+ 	struct list_head	async_copies;	/* list of async copies */
+ 	spinlock_t		async_lock;	/* lock for async copies */
+ 	atomic_t		cl_cb_inflight;	/* Outstanding callbacks */
++
++	unsigned int		cl_state;
++	atomic_t		cl_delegs_in_recall;
+ };
+ 
+ /* struct nfs4_client_reset
+@@ -702,4 +728,9 @@ extern void nfsd4_client_record_remove(struct nfs4_client *clp);
+ extern int nfsd4_client_record_check(struct nfs4_client *clp);
+ extern void nfsd4_record_grace_done(struct nfsd_net *nn);
+ 
++static inline bool try_to_expire_client(struct nfs4_client *clp)
++{
++	cmpxchg(&clp->cl_state, NFSD4_COURTESY, NFSD4_EXPIRABLE);
++	return clp->cl_state == NFSD4_EXPIRABLE;
++}
+ #endif   /* NFSD4_STATE_H */
+-- 
+2.9.5
+
