@@ -2,471 +2,177 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 30D37C433F5
-	for <linux-nfs@archiver.kernel.org>; Mon,  2 May 2022 21:19:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3278CC433FE
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 May 2022 21:19:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1387605AbiEBVXK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 2 May 2022 17:23:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55812 "EHLO
+        id S1387614AbiEBVXN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 May 2022 17:23:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55836 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234306AbiEBVXJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2022 17:23:09 -0400
+        with ESMTP id S230422AbiEBVXL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 May 2022 17:23:11 -0400
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3B036DFD7;
-        Mon,  2 May 2022 14:19:39 -0700 (PDT)
-Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 242Juuew019339;
-        Mon, 2 May 2022 21:19:34 GMT
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 70F2FBC83;
+        Mon,  2 May 2022 14:19:41 -0700 (PDT)
+Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 242Kw9m5004338;
+        Mon, 2 May 2022 21:19:35 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id; s=corp-2021-07-09;
- bh=guvsKpex7MQUIuYakhQ8195d2GHNtxPnj+40p8Yl1Jo=;
- b=YCcX23jt7yzIhh+M5lz7XlTM0s5dOWTqy3XfydyGwqyO02zYsVlNGuvzYD137pbpoUbE
- 1TDDa05Y+EIOO0y4U6W7XnJYi6SKkO5K+YjyeUFnh8T0PsSY3wUBn4KT7Fp7tJiJgNfT
- 8rWFxNFyVqpS5BYZzsF7mnY9XWVBEXiVzZsgiitk5MYchb9Q6PFb2gtzHYRFLA3QP41l
- FPFFPjxwwEOHOxay9PVmX+ez28+/3fjOxG9B4uRddRa2s4OgSsP4zIpT2IArbDMHlEyt
- P6GvxfSUb21ldyqpieA6YTfNtc8j5UxviW0K/P/C28/dXr3+YsGmEwvn4hjvz/U7jpg5 LA== 
+ subject : date : message-id : in-reply-to : references; s=corp-2021-07-09;
+ bh=5MaDpPMGq5u015BZ/xv3zV3etamFYF2SftHH6yNllhk=;
+ b=MRY7+iVxbveQop3cNLASaYY5DmsYpV01zN79GRRalSMHKpKMUF9VW/ZpdNasSSv1thfF
+ RhKhFrH/9BXK0sjfcbSOEAG9Md+iCJAUc0D7Zs69+xREtgw/kxc2nPr7WsVDa682cg3q
+ 9oXZc4miKuubDvOdIZVp6CDZfYKmB6HjAah9RrGhzOTV1JJP5lVTW6/HDzL8rCAkU8kV
+ ikYbalBKmzWUV/D6kqo2AGyG2pSFv92iJu954FFqbJq8MaMnZwWj76yhd4jiUmqx2MI9
+ GzjKt6LkeyGL5D7fX7e+u1pmGJcggJ9KOrRgGr8JuzkPFmTkUI8GcTpEe6e94ryuxRH8 cQ== 
 Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3frwnt4bpj-1
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3fruq0cdux-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 02 May 2022 21:19:35 +0000
+Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 242LAjAl029073;
+        Mon, 2 May 2022 21:19:35 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3fruj1v8q4-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
         Mon, 02 May 2022 21:19:34 +0000
-Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 242LAkv0029089;
-        Mon, 2 May 2022 21:19:33 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3fruj1v8pp-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 02 May 2022 21:19:33 +0000
 Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 242LJXSG003941;
-        Mon, 2 May 2022 21:19:33 GMT
+        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 242LJXSM003941;
+        Mon, 2 May 2022 21:19:34 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3fruj1v8ph-1;
-        Mon, 02 May 2022 21:19:32 +0000
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3fruj1v8ph-4;
+        Mon, 02 May 2022 21:19:34 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, bfields@fieldses.org
 Cc:     jlayton@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC v25 0/7] NFSD: Initial implementation of NFSv4 Courteous Server
-Date:   Mon,  2 May 2022 14:19:20 -0700
-Message-Id: <1651526367-1522-1-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH RFC v25 3/7] NFSD: move create/destroy of laundry_wq to init_nfsd and exit_nfsd
+Date:   Mon,  2 May 2022 14:19:23 -0700
+Message-Id: <1651526367-1522-4-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
-X-Proofpoint-ORIG-GUID: BkoSHDBh7aBGqJxSz77mgBrFrsQuOJro
-X-Proofpoint-GUID: BkoSHDBh7aBGqJxSz77mgBrFrsQuOJro
+In-Reply-To: <1651526367-1522-1-git-send-email-dai.ngo@oracle.com>
+References: <1651526367-1522-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-ORIG-GUID: nyj9DvCkbJOEd0WZ4NFclxsjkUyNmtf5
+X-Proofpoint-GUID: nyj9DvCkbJOEd0WZ4NFclxsjkUyNmtf5
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Chuck, Bruce
+This patch moves create/destroy of laundry_wq from nfs4_state_start
+and nfs4_state_shutdown_net to init_nfsd and exit_nfsd to prevent
+the laundromat from being freed while a thread is processing a
+conflicting lock.
+
+Reviewed-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/nfs4state.c | 28 ++++++++++++++++------------
+ fs/nfsd/nfsctl.c    |  4 ++++
+ fs/nfsd/nfsd.h      |  4 ++++
+ 3 files changed, 24 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fe7949683c01..76c98ab7991b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -127,6 +127,21 @@ static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops;
+ 
+ static struct workqueue_struct *laundry_wq;
+ 
++int nfsd4_create_laundry_wq(void)
++{
++	int rc = 0;
++
++	laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd4");
++	if (laundry_wq == NULL)
++		rc = -ENOMEM;
++	return rc;
++}
++
++void nfsd4_destroy_laundry_wq(void)
++{
++	destroy_workqueue(laundry_wq);
++}
++
+ static bool is_session_dead(struct nfsd4_session *ses)
+ {
+ 	return ses->se_flags & NFS4_SESSION_DEAD;
+@@ -7747,22 +7762,12 @@ nfs4_state_start(void)
+ {
+ 	int ret;
+ 
+-	laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd4");
+-	if (laundry_wq == NULL) {
+-		ret = -ENOMEM;
+-		goto out;
+-	}
+ 	ret = nfsd4_create_callback_queue();
+ 	if (ret)
+-		goto out_free_laundry;
++		return ret;
+ 
+ 	set_max_delegations();
+ 	return 0;
+-
+-out_free_laundry:
+-	destroy_workqueue(laundry_wq);
+-out:
+-	return ret;
+ }
+ 
+ void
+@@ -7799,7 +7804,6 @@ nfs4_state_shutdown_net(struct net *net)
+ void
+ nfs4_state_shutdown(void)
+ {
+-	destroy_workqueue(laundry_wq);
+ 	nfsd4_destroy_callback_queue();
+ }
+ 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 16920e4512bd..322a208878f2 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1544,6 +1544,9 @@ static int __init init_nfsd(void)
+ 	retval = register_cld_notifier();
+ 	if (retval)
+ 		goto out_free_all;
++	retval = nfsd4_create_laundry_wq();
++	if (retval)
++		goto out_free_all;
+ 	return 0;
+ out_free_all:
+ 	unregister_pernet_subsys(&nfsd_net_ops);
+@@ -1566,6 +1569,7 @@ static int __init init_nfsd(void)
+ 
+ static void __exit exit_nfsd(void)
+ {
++	nfsd4_destroy_laundry_wq();
+ 	unregister_cld_notifier();
+ 	unregister_pernet_subsys(&nfsd_net_ops);
+ 	nfsd_drc_slab_free();
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 23996c6ca75e..847b482155ae 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -162,6 +162,8 @@ void nfs4_state_shutdown_net(struct net *net);
+ int nfs4_reset_recoverydir(char *recdir);
+ char * nfs4_recoverydir(void);
+ bool nfsd4_spo_must_allow(struct svc_rqst *rqstp);
++int nfsd4_create_laundry_wq(void);
++void nfsd4_destroy_laundry_wq(void);
+ #else
+ static inline int nfsd4_init_slabs(void) { return 0; }
+ static inline void nfsd4_free_slabs(void) { }
+@@ -175,6 +177,8 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+ {
+ 	return false;
+ }
++static inline int nfsd4_create_laundry_wq(void) { return 0; };
++static inline void nfsd4_destroy_laundry_wq(void) {};
+ #endif
+ 
+ /*
+-- 
+2.9.5
 
-This series of patches implement the NFSv4 Courteous Server.
-
-A server which does not immediately expunge the state on lease expiration
-is known as a Courteous Server.  A Courteous Server continues to recognize
-previously generated state tokens as valid until conflict arises between
-the expired state and the requests from another client, or the server
-reboots.
-
-v2:
-
-. add new callback, lm_expire_lock, to lock_manager_operations to
-  allow the lock manager to take appropriate action with conflict lock.
-
-. handle conflicts of NFSv4 locks with NFSv3/NLM and local locks.
-
-. expire courtesy client after 24hr if client has not reconnected.
-
-. do not allow expired client to become courtesy client if there are
-  waiters for client's locks.
-
-. modify client_info_show to show courtesy client and seconds from
-  last renew.
-
-. fix a problem with NFSv4.1 server where the it keeps returning
-  SEQ4_STATUS_CB_PATH_DOWN in the successful SEQUENCE reply, after
-  the courtesy client reconnects, causing the client to keep sending
-  BCTS requests to server.
-
-v3:
-
-. modified posix_test_lock to check and resolve conflict locks
-  to handle NLM TEST and NFSv4 LOCKT requests.
-
-. separate out fix for back channel stuck in SEQ4_STATUS_CB_PATH_DOWN.
-
-v4:
-
-. rework nfsd_check_courtesy to avoid dead lock of fl_lock and client_lock
-  by asking the laudromat thread to destroy the courtesy client.
-
-. handle NFSv4 share reservation conflicts with courtesy client. This
-  includes conflicts between access mode and deny mode and vice versa.
-
-. drop the patch for back channel stuck in SEQ4_STATUS_CB_PATH_DOWN.
-
-v5:
-
-. fix recursive locking of file_rwsem from posix_lock_file. 
-
-. retest with LOCKDEP enabled.
-
-v6:
-
-. merge witn 5.15-rc7
-
-. fix a bug in nfs4_check_deny_bmap that did not check for matched
-  nfs4_file before checking for access/deny conflict. This bug causes
-  pynfs OPEN18 to fail since the server taking too long to release
-  lots of un-conflict clients' state.
-
-. enhance share reservation conflict handler to handle case where
-  a large number of conflict courtesy clients need to be expired.
-  The 1st 100 clients are expired synchronously and the rest are
-  expired in the background by the laundromat and NFS4ERR_DELAY
-  is returned to the NFS client. This is needed to prevent the
-  NFS client from timing out waiting got the reply.
-
-v7:
-
-. Fix race condition in posix_test_lock and posix_lock_inode after
-  dropping spinlock.
-
-. Enhance nfsd4_fl_expire_lock to work with with new lm_expire_lock
-  callback
-
-. Always resolve share reservation conflicts asynchrously.
-
-. Fix bug in nfs4_laundromat where spinlock is not used when
-  scanning cl_ownerstr_hashtbl.
-
-. Fix bug in nfs4_laundromat where idr_get_next was called
-  with incorrect 'id'. 
-
-. Merge nfs4_destroy_courtesy_client into nfsd4_fl_expire_lock.
-
-v8:
-
-. Fix warning in nfsd4_fl_expire_lock reported by test robot.
-
-v9:
-
-. Simplify lm_expire_lock API by (1) remove the 'testonly' flag
-  and (2) specifying return value as true/false to indicate
-  whether conflict was succesfully resolved.
-
-. Rework nfsd4_fl_expire_lock to mark client with
-  NFSD4_DESTROY_COURTESY_CLIENT then tell the laundromat to expire
-  the client in the background.
-
-. Add a spinlock in nfs4_client to synchronize access to the
-  NFSD4_COURTESY_CLIENT and NFSD4_DESTROY_COURTESY_CLIENT flag to
-  handle race conditions when resolving lock and share reservation
-  conflict.
-
-. Courtesy client that was marked as NFSD4_DESTROY_COURTESY_CLIENT
-  are now consisdered 'dead', waiting for the laundromat to expire
-  it. This client is no longer allowed to use its states if it
-  reconnects before the laundromat finishes expiring the client.
-
-  For v4.1 client, the detection is done in the processing of the
-  SEQUENCE op and returns NFS4ERR_BAD_SESSION to force the client
-  to re-establish new clientid and session.
-  For v4.0 client, the detection is done in the processing of the
-  RENEW and state-related ops and return NFS4ERR_EXPIRE to force
-  the client to re-establish new clientid.
-
-v10:
-
-  Resolve deadlock in v9 by avoiding getting cl_client and
-  cl_cs_lock together. The laundromat needs to determine whether
-  the expired client has any state and also has no blockers on
-  its locks. Both of these conditions are allowed to change after
-  the laundromat transits an expired client to courtesy client.
-  When this happens, the laundromat will detect it on the next
-  run and and expire the courtesy client.
-
-  Remove client persistent record before marking it as COURTESY_CLIENT
-  and add client persistent record before clearing the COURTESY_CLIENT
-  flag to allow the courtesy client to transist to normal client to
-  continue to use its state.
-
-  Lock/delegation/share reversation conflict with courtesy client is
-  resolved by marking the courtesy client as DESTROY_COURTESY_CLIENT,
-  effectively disable it, then allow the current request to proceed
-  immediately.
-  
-  Courtesy client marked as DESTROY_COURTESY_CLIENT is not allowed
-  to reconnect to reuse itsstate. It is expired by the laundromat
-  asynchronously in the background.
-
-  Move processing of expired clients from nfs4_laudromat to a
-  separate function, nfs4_get_client_reaplist, that creates the
-  reaplist and also to process courtesy clients.
-
-  Update Documentation/filesystems/locking.rst to include new
-  lm_lock_conflict call.
-
-  Modify leases_conflict to call lm_breaker_owns_lease only if
-  there is real conflict.  This is to allow the lock manager to
-  resolve the delegation conflict if possible.
-
-v11:
-
-  Add comment for lm_lock_conflict callback.
-
-  Replace static const courtesy_client_expiry with macro.
-
-  Remove courtesy_clnt argument from find_in_sessionid_hashtbl.
-  Callers use nfs4_client->cl_cs_client boolean to determined if
-  it's the courtesy client and take appropriate actions.
-
-  Rename NFSD4_COURTESY_CLIENT and NFSD4_DESTROY_COURTESY_CLIENT
-  with NFSD4_CLIENT_COURTESY and NFSD4_CLIENT_DESTROY_COURTESY.
-
-v12:
-
-  Remove unnecessary comment in nfs4_get_client_reaplist.
-
-  Replace nfs4_client->cl_cs_client boolean with
-  NFSD4_CLIENT_COURTESY_CLNT flag.
-
-  Remove courtesy_clnt argument from find_client_in_id_table and
-  find_clp_in_name_tree. Callers use NFSD4_CLIENT_COURTESY_CLNT to
-  determined if it's the courtesy client and take appropriate actions.
-
-v13:
-
-  Merge with 5.17-rc3.
-
-  Cleanup Documentation/filesystems/locking.rst: replace i_lock
-  with flc_lock, update API's that use flc_lock.
-
-  Rename lm_lock_conflict to lm_lock_expired().
-
-  Remove comment of lm_lock_expired API in lock_manager_operations.
-  Same information is in patch description.
-
-  Update commit messages of 4/4.
-
-  Add some comment for NFSD4_CLIENT_COURTESY_CLNT.
-
-  Add nfsd4_discard_courtesy_clnt() to eliminate duplicate code of
-  discarding courtesy client; setting NFSD4_DESTROY_COURTESY_CLIENT.
-
-v14:
-
-. merge with Chuck's public for-next branch.
-
-. remove courtesy_client_expiry, use client's last renew time.
-
-. simplify comment of nfs4_check_access_deny_bmap.
-
-. add comment about race condition in nfs4_get_client_reaplist.
-
-. add list_del when walking cslist in nfs4_get_client_reaplist.
-
-. remove duplicate INIT_LIST_HEAD(&reaplist) from nfs4_laundromat
-
-. Modify find_confirmed_client and find_confirmed_client_by_name
-  to detect courtesy client and destroy it.
-
-. refactor lookup_clientid to use find_client_in_id_table
-  directly instead of find_confirmed_client.
-
-. refactor nfsd4_setclientid to call find_clp_in_name_tree
-  directly instead of find_confirmed_client_by_name.
-
-. remove comment of NFSD4_CLIENT_COURTESY.
-
-. replace NFSD4_CLIENT_DESTROY_COURTESY with NFSD4_CLIENT_EXPIRED.
-
-. replace NFSD4_CLIENT_COURTESY_CLNT with NFSD4_CLIENT_RECONNECTED.
-
-v15:
-
-. add helper locks_has_blockers_locked in fs.h to check for
-  lock blockers
-
-. rename nfs4_conflict_clients to nfs4_resolve_deny_conflicts_locked
-
-. update nfs4_upgrade_open() to handle courtesy clients.
-
-. add helper nfs4_check_and_expire_courtesy_client and
-  nfs4_is_courtesy_client_expired to deduplicate some code.
-
-. update nfs4_anylock_blocker:
-   . replace list_for_each_entry_safe with list_for_each_entry
-   . break nfs4_anylock_blocker into 2 smaller functions.
-
-. update nfs4_get_client_reaplist:
-   . remove unnecessary commets
-   . acquire cl_cs_lock before setting NFSD4_CLIENT_COURTESY flag
-
-. update client_info_show to show 'time since last renew: 00:00:38'
-  instead of 'seconds from last renew: 38'.
-
-v16:
-
-. update client_info_show to display 'status' as
-  'confirmed/unconfirmed/courtesy'
-
-. replace helper locks_has_blockers_locked in fs.h in v15 with new
-  locks_owner_has_blockers call in fs/locks.c
-
-. update nfs4_lockowner_has_blockers to use locks_owner_has_blockers
-
-. move nfs4_check_and_expire_courtesy_client from 5/11 to 4/11
-
-. remove unnecessary check for NULL clp in find_in_sessionid_hashtb
-
-. fix typo in commit messages
-
-v17:
-
-. replace flags used for courtesy client with enum courtesy_client_state
-
-. add state table in nfsd/state.h
-
-. make nfsd4_expire_courtesy_clnt, nfsd4_discard_courtesy_clnt and
-  nfsd4_courtesy_clnt_expired as static inline.
-
-. update nfsd_breaker_owns_lease to use dl->dl_stid.sc_client directly
-
-. fix kernel test robot warning when CONFIG_FILE_LOCKING not defined.
-
-v18:
-
-. modify 0005-NFSD-Update-nfs4_get_vfs_file-to-handle-courtesy-cli.patch to:
-
-    . remove nfs4_check_access_deny_bmap, fold this functionality
-      into nfs4_resolve_deny_conflicts_locked by making use of
-      bmap_to_share_mode.
-
-    . move nfs4_resolve_deny_conflicts_locked into nfs4_file_get_access
-      and nfs4_file_check_deny. 
-
-v19:
-
-. modify 0002-NFSD-Add-courtesy-client-state-macro-and-spinlock-to.patch to
-
-    . add NFSD4_CLIENT_ACTIVE
-
-    . redo Courtesy client state table
-
-. modify 0007-NFSD-Update-find_in_sessionid_hashtbl-to-handle-cour.patch and
-  0008-NFSD-Update-find_client_in_id_table-to-handle-courte.patch to:
-
-    . set cl_cs_client_stare to NFSD4_CLIENT_ACTIVE when reactive
-      courtesy client  
-
-v20:
-
-. modify 0006-NFSD-Update-find_clp_in_name_tree-to-handle-courtesy.patch to:
-	. add nfsd4_discard_reconnect_clnt
-	. replace call to nfsd4_discard_courtesy_clnt with
-	  nfsd4_discard_reconnect_clnt
-
-. modify 0007-NFSD-Update-find_in_sessionid_hashtbl-to-handle-cour.patch to:
-	. replace call to nfsd4_discard_courtesy_clnt with
-	  nfsd4_discard_reconnect_clnt
-          
-. modify 0008-NFSD-Update-find_client_in_id_table-to-handle-courte.patch
-	. replace call to nfsd4_discard_courtesy_clnt with
-	  nfsd4_discard_reconnect_clnt
-
-v21:
-
-. merged with 5.18.0-rc3
-
-. Redo based on Bruce's suggestion by breaking the patches into functionality
-  and also don't remove client record of courtesy client until the client is
-  actually expired.
-
-  0001: courteous server framework with support for client with delegation only.
-        This patch also handles COURTESY and EXPIRABLE reconnect.
-        Conflict is resolved by set the courtesy client to EXPIRABLE, let the
-        laundromat expires the client on next run and return NFS4ERR_DELAY
-        OPEN request.
-
-  0002: add support for opens/share reservation to courteous server
-        Conflict is resolved by set the courtesy client to EXPIRABLE, let the
-        laundromat expires the client on next run and return NFS4ERR_DELAY
-        OPEN request.
-
-  0003: mv creation/destroying laundromat workqueue from nfs4_state_start and
-        and nfs4_state_shutdown_net to init_nfsd and exit_nfsd.
-
-  0004: fs/lock: add locks_owner_has_blockers helper
-  
-  0005: add 2 callbacks to lock_manager_operations for resolving lock conflict
-  
-  0006: add support for locks to courteous server, making use of 0004 and 0005
-        Conflict is resolved by set the courtesy client to EXPIRABLE, run the
-        laundromat immediately and wait for it to complete before returning to
-        fs/lock code to recheck the lock list from the beginning.
-
-        NOTE: I could not get queue_work/queue_delay_work and flush_workqueue
-        to work as expected, I have to use mod_delayed_work and flush_workqueue
-        to get the laundromat to run immediately.
-
-        When we check for blockers in nfs4_anylock_blockers, we do not check
-        for client with delegation conflict. This is because we already hold
-        the client_lock and to check for delegation conflict we need the state_lock
-        and scanning the del_recall_lru list each time. So to avoid this overhead
-        and potential deadlock (not sure about lock of ordering of these locks)
-        we check and set the COURTESY client with delegation being recalled to
-        EXPIRABLE later in nfs4_laundromat.
-
-  0007: show state of courtesy client in client info.
-
-v22:
-
-. modify 0001:
-	. allow EXPIRABLE client to reconnect.
-        . modify try_to_expire_client to return false if cl_state is
-          either COURTEY or EXPIRABLE.
-        . remove try_to_activate_client and set cl_state to ACTIVE in
-          get_client_locked and renew_client_locked.
-        . remove unnecessary cl_cs_lock. Synchronization between expiring
-          client and client reconnect is provided by mark_client_expired_locked
-          and get_client_locked or renew_client_locked
-
-. modify 0003:
-        . fix 'ld' error with laundry_wq when CONFIG_NFSD is defined
-          and CONFIG_NFSD_V4 is not defined.
-
-v23:
-	. rework try_to_expire_client to return true when cl_state in EXPIRABLE
-	  and its callers to work accordingly.
-
-	. add missing mod_delay_work in nfsd4_lm_lock_expirable.
-
-	. add check for cl_rpc_users before setting client state to COURTESY
-	  in nfs4_get_client_reaplist.
-
-        . setting client to COURTESY before nfs4_anylock_blockers to handle
-          race between the laundromat and thread resolving lock conflict.
-
-	. cleanup 2 fs/lock callbacks: lm_lock_expirable to return bool and
-          lm_expire_lock takes no argument.
-v24:
-	. add new counter, cl_delegs_in_recall, in nfs4_client to maintain
-	  delegation recalls and is checked by nfs4_anylock_blockers.
-
-	. remove resolve_lock_conflict_locked and move its logic into the
-	  callers posix_lock_inode and posix_test_lock for clarity.
-
-	. rename 'conflict' to 'resolvable' in nfs4_resolve_deny_conflicts_locked.
-
-	. fix kernel robot test warning about missing semicolon in nfsd.h
-
-v25:
-	. drop clearing of dl_recalled in nfsd_change_deleg_cb.
-
-	. simplify posix_lock_inode and posix_test_lock. Lock manager code
-	  is expected to provide all required fields in lock_manager_operations
-	  for handling lock conflict
-
-	. revert client_info_show to show seconds from last renew. 
-
-	. add 'Reviewed-by: J. Bruce Fields <bfields@fieldses.org>' to
-	  the patch series.
