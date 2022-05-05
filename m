@@ -2,122 +2,67 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 91B9CC433F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 May 2022 00:01:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D033CC433EF
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 May 2022 02:48:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237042AbiEEAFC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 May 2022 20:05:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57900 "EHLO
+        id S239865AbiEECvx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 May 2022 22:51:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56026 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351580AbiEDXpn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2022 19:45:43 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBB4A21E3B;
-        Wed,  4 May 2022 16:42:04 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 695201F745;
-        Wed,  4 May 2022 23:42:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1651707723; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=AfEAmNadKBsyJGPHhIrqELUvuuTnv3+PkANYskYe9Z0=;
-        b=HP9Mdd0yAlGwCYu5G+uJ3VejgPUOyGqL96rsTA3rLVta8BIpQlcOHOnWQqLYj/g+dJevsx
-        go/q/geAcVFpjCmAsZlJR5mjce9eJQ1f5MqbY6lz7JmDcbqzw+en7IlUUmewUnxqRPtsi6
-        oO4oYZUiReSD+rAaAsK723I3eNXWdgA=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1651707723;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=AfEAmNadKBsyJGPHhIrqELUvuuTnv3+PkANYskYe9Z0=;
-        b=baAopqfnk2KDxhB0joCqS5hQX4Zdx8yytBWV2UbF+3CqxSx6C28g7OxO8YVGZIVvKZNCEG
-        VvVPfKJmMxfQDYCw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9D8D4131BD;
-        Wed,  4 May 2022 23:42:00 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id a/7yFUgPc2JxXAAAMHmgww
-        (envelope-from <neilb@suse.de>); Wed, 04 May 2022 23:42:00 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+        with ESMTP id S239845AbiEECvw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 May 2022 22:51:52 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8CBE128E0B;
+        Wed,  4 May 2022 19:48:14 -0700 (PDT)
+Received: from kwepemi100026.china.huawei.com (unknown [172.30.72.56])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Ktyjj3Tw4zGpXT;
+        Thu,  5 May 2022 10:45:29 +0800 (CST)
+Received: from kwepemm600015.china.huawei.com (7.193.23.52) by
+ kwepemi100026.china.huawei.com (7.221.188.60) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Thu, 5 May 2022 10:48:12 +0800
+Received: from [10.174.176.52] (10.174.176.52) by
+ kwepemm600015.china.huawei.com (7.193.23.52) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Thu, 5 May 2022 10:48:11 +0800
+Message-ID: <67d6a536-9027-1928-99b6-af512a36cd1a@huawei.com>
+Date:   Thu, 5 May 2022 10:48:10 +0800
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Yang Shi" <shy828301@gmail.com>
-Cc:     "Huang Ying" <ying.huang@intel.com>,
-        "Andrew Morton" <akpm@linux-foundation.org>,
-        "Geert Uytterhoeven" <geert+renesas@glider.be>,
-        "Christoph Hellwig" <hch@lst.de>,
-        "Miaohe Lin" <linmiaohe@huawei.com>, linux-nfs@vger.kernel.org,
-        "Linux MM" <linux-mm@kvack.org>,
-        "Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 1/2] MM: handle THP in swap_*page_fs()
-In-reply-to: <CAHbLzkpF4zedBmipjX8Zy5F=Fffez+xgxTAvveaz1nRHb9Wg_Q@mail.gmail.com>
-References: <165119280115.15698.2629172320052218921.stgit@noble.brown>,
- <165119301488.15698.9457662928942765453.stgit@noble.brown>,
- <CAHbLzko+9nBem8GnxQJ8RQu7bizQMMmS1TNqbRXcgkjUs+JuMw@mail.gmail.com>,
- <165146539609.24404.4051313590023463843@noble.neil.brown.name>,
- <CAHbLzkpF4zedBmipjX8Zy5F=Fffez+xgxTAvveaz1nRHb9Wg_Q@mail.gmail.com>
-Date:   Thu, 05 May 2022 09:41:56 +1000
-Message-id: <165170771676.24672.16520001373464213119@noble.neil.brown.name>
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
+ Thunderbird/91.2.1
+Subject: Re: [PATCH -next 0/2] fix nfsv4 bugs of opening with O_ACCMODE flag
+To:     Lyu Tao <tao.lyu@epfl.ch>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bjschuma@netapp.com" <bjschuma@netapp.com>,
+        "anna@kernel.org" <anna@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        "liuyongqiang13@huawei.com" <liuyongqiang13@huawei.com>,
+        "yi.zhang@huawei.com" <yi.zhang@huawei.com>,
+        "zhangxiaoxu5@huawei.com" <zhangxiaoxu5@huawei.com>
+References: <20220329113208.2466000-1-chenxiaosong2@huawei.com>
+ <68b65889-3b2c-fb72-a0a8-d0afc15a03e0@huawei.com>
+ <e0c2d7ec62b447cabddbc8a9274be955@epfl.ch>
+ <0b6546f7-8a04-9d6e-50c3-483c8a1a6591@huawei.com>
+ <d73a51a2-6b63-b536-61e6-3d18563f027d@huawei.com>
+ <3ee78045f18b4932b1651de776ee73c4@epfl.ch>
+ <f927bec5-1078-dcb9-6f3e-a64d304efd5b@huawei.com>
+ <55415e44b4b04bbfa66c42d5f2788384@epfl.ch>
+ <88231dee-760f-b992-f1d1-81309076071e@huawei.com>
+ <f794d0aaef654bffacda9159321d66e0@epfl.ch>
+From:   "chenxiaosong (A)" <chenxiaosong2@huawei.com>
+In-Reply-To: <f794d0aaef654bffacda9159321d66e0@epfl.ch>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.174.176.52]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ kwepemm600015.china.huawei.com (7.193.23.52)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 03 May 2022, Yang Shi wrote:
-> On Sun, May 1, 2022 at 9:23 PM NeilBrown <neilb@suse.de> wrote:
-> >
-> > On Sat, 30 Apr 2022, Yang Shi wrote:
-> > > On Thu, Apr 28, 2022 at 5:44 PM NeilBrown <neilb@suse.de> wrote:
-> > > >
-> > > > Pages passed to swap_readpage()/swap_writepage() are not necessarily =
-all
-> > > > the same size - there may be transparent-huge-pages involves.
-> > > >
-> > > > The BIO paths of swap_*page() handle this correctly, but the SWP_FS_O=
-PS
-> > > > path does not.
-> > > >
-> > > > So we need to use thp_size() to find the size, not just assume
-> > > > PAGE_SIZE, and we need to track the total length of the request, not
-> > > > just assume it is "page * PAGE_SIZE".
-> > >
-> > > Swap-over-nfs doesn't support THP swap IIUC. So SWP_FS_OPS should not
-> > > see THP at all. But I agree to remove the assumption about page size
-> > > in this path.
-> >
-> > Can you help me understand this please.  How would the swap code know
-> > that swap-over-NFS doesn't support THP swap?  There is no reason that
-> > NFS wouldn't be able to handle 2MB writes.  Even 1GB should work though
-> > NFS would have to split into several smaller WRITE requests.
->=20
-> AFAICT, THP swap is only supported on non-rotate block devices, for
-> example, SSD, PMEM, etc. IIRC, the swap device has to support the
-> cluster in order to swap THP. The cluster is only supported by
-> non-rotate block devices.
->=20
-> Looped Ying in, who is the author of THP swap.
+"NVD Last Modified" date of CVE-2022-24448 is updated as 04/29/2022, but 
+the content of the cve is old.
 
-I hunted around the code and found that THP swap only happens if a
-'cluster_info' is allocated, and that only happens if=20
-	if (p->bdev && bdev_nonrot(p->bdev)) {
-in the swapon syscall.
-
-I guess "nonrot" is being use as a synonym for "low latency"...
-So even if NFS was low-latency it couldn't benefit from THP swap.
-
-So as you say it is not currently possible for THP pages to be send to
-NFS for swapout.  It makes sense to prepare for it though I think - if
-only so that the code is more consistent and less confusing.
-
-Thanks,
-NeilBrown
+https://nvd.nist.gov/vuln/detail/CVE-2022-24448
