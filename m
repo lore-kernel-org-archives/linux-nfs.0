@@ -2,129 +2,94 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 742ADC433EF
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 May 2022 02:56:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B85AC433F5
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 May 2022 07:41:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1388384AbiEFDA3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 5 May 2022 23:00:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36832 "EHLO
+        id S1381632AbiEFHok (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 6 May 2022 03:44:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35882 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238954AbiEFDA2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 May 2022 23:00:28 -0400
-Received: from mga17.intel.com (mga17.intel.com [192.55.52.151])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ABFD15C65F;
-        Thu,  5 May 2022 19:56:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1651805806; x=1683341806;
-  h=message-id:subject:from:to:cc:date:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=bm/ECb2jddD2tXLPLMb1gNbwUfVlj/otmAhjYIFTg4o=;
-  b=mvE0HPZdX+AV7TTGgcw3iNdXXL9LVt6gTqIePgswCwBZSgluwtWLFVtO
-   KJYegzsNjzwIgWKUGaYEEge6jOy2NtTS80A/ZIM8+etfdA8fLYWsmLMgt
-   S9esM+JM932gumOuFWxFNPY0PwiF85rIpspCQf0u1+f32mn74UV8dQdxv
-   xU8PpF8ZGIrxjdTlpSQKTD+jt9chhw7uD6RlKuSame6MIb6VyikmMCGYn
-   FIbnU3iNN3xqft0l6rKgxOqUFxqDELCNNk1frOdPUqiCYY/1R3+nr8GMQ
-   ukxUIQDszr8TAaqUJZaCfG08/isfXIz5BaH7Qvb3oKgwsbQd390DtgD/9
-   g==;
-X-IronPort-AV: E=McAfee;i="6400,9594,10338"; a="248864370"
-X-IronPort-AV: E=Sophos;i="5.91,203,1647327600"; 
-   d="scan'208";a="248864370"
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 May 2022 19:56:46 -0700
-X-IronPort-AV: E=Sophos;i="5.91,203,1647327600"; 
-   d="scan'208";a="735337943"
-Received: from fulaizha-mobl1.ccr.corp.intel.com ([10.254.213.163])
-  by orsmga005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 05 May 2022 19:56:43 -0700
-Message-ID: <e63ac163c9283ca93d8309be1cdfed6c6ea97e5e.camel@intel.com>
-Subject: Re: [PATCH 1/2] MM: handle THP in swap_*page_fs()
-From:   "ying.huang@intel.com" <ying.huang@intel.com>
-To:     NeilBrown <neilb@suse.de>, Yang Shi <shy828301@gmail.com>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Geert Uytterhoeven <geert+renesas@glider.be>,
-        Christoph Hellwig <hch@lst.de>,
-        Miaohe Lin <linmiaohe@huawei.com>, linux-nfs@vger.kernel.org,
-        Linux MM <linux-mm@kvack.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Date:   Fri, 06 May 2022 10:56:40 +0800
-In-Reply-To: <165170771676.24672.16520001373464213119@noble.neil.brown.name>
-References: <165119280115.15698.2629172320052218921.stgit@noble.brown>
-        , <165119301488.15698.9457662928942765453.stgit@noble.brown>
-        , <CAHbLzko+9nBem8GnxQJ8RQu7bizQMMmS1TNqbRXcgkjUs+JuMw@mail.gmail.com>
-        , <165146539609.24404.4051313590023463843@noble.neil.brown.name>
-        , <CAHbLzkpF4zedBmipjX8Zy5F=Fffez+xgxTAvveaz1nRHb9Wg_Q@mail.gmail.com>
-         <165170771676.24672.16520001373464213119@noble.neil.brown.name>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.38.3-1 
+        with ESMTP id S1357116AbiEFHoj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 May 2022 03:44:39 -0400
+Received: from smtp5.epfl.ch (smtp5.epfl.ch [IPv6:2001:620:618:1e0:1:80b2:e034:1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6A8C5B3E5
+        for <linux-nfs@vger.kernel.org>; Fri,  6 May 2022 00:40:55 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=epfl.ch;
+      s=epfl; t=1651822852;
+      h=From:To:CC:Subject:Date:Message-ID:Content-Type:Content-Transfer-Encoding:MIME-Version;
+      bh=+q6EU4ou11rp/Adq8ErA1hBF3oE9f/2O2rhlrWoVrqE=;
+      b=ikWj4i/UhSNlTIX4yA2ndQ4Wb3PwipZ5WXfxs6AIfVzec5Q4yJ7yuvAp5hDlkUb3+
+        f0KvUnYxznnRWyjhlpBtJwqJREzgtGiscGO202/ntcCypMzeedlPwJXoN0CtD5G5z
+        9GeMrTSWP09sNvyTgeuC6+NCxWBeuI1XUQ3hkhPxo=
+Received: (qmail 4971 invoked by uid 107); 6 May 2022 07:40:52 -0000
+Received: from ax-snat-224-174.epfl.ch (HELO ewa05.intranet.epfl.ch) (192.168.224.174) (TLS, ECDHE-RSA-AES256-GCM-SHA384 (X25519 curve) cipher)
+  by mail.epfl.ch (AngelmatoPhylax SMTP proxy) with ESMTPS; Fri, 06 May 2022 09:40:52 +0200
+X-EPFL-Auth: +dtnDacP1/Qm7fXShKLMJNoVvZuS6LOxl71MoRkEl4mlgrz+9kc=
+Received: from ewa07.intranet.epfl.ch (128.178.224.178) by
+ ewa05.intranet.epfl.ch (128.178.224.174) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.1.2375.24; Fri, 6 May 2022 09:40:51 +0200
+Received: from ewa07.intranet.epfl.ch ([fe80::f470:9b62:7382:7f3a]) by
+ ewa07.intranet.epfl.ch ([fe80::f470:9b62:7382:7f3a%4]) with mapi id
+ 15.01.2375.024; Fri, 6 May 2022 09:40:51 +0200
+From:   Lyu Tao <tao.lyu@epfl.ch>
+To:     "chenxiaosong (A)" <chenxiaosong2@huawei.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bjschuma@netapp.com" <bjschuma@netapp.com>,
+        "anna@kernel.org" <anna@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        "liuyongqiang13@huawei.com" <liuyongqiang13@huawei.com>,
+        "yi.zhang@huawei.com" <yi.zhang@huawei.com>,
+        "zhangxiaoxu5@huawei.com" <zhangxiaoxu5@huawei.com>
+Subject: Re: [PATCH -next 0/2] fix nfsv4 bugs of opening with O_ACCMODE flag
+Thread-Topic: [PATCH -next 0/2] fix nfsv4 bugs of opening with O_ACCMODE flag
+Thread-Index: AQHYQ16YLIpFlrH2FUmiiFZ5HnfMO6zWS0oAgBdxzEuAABNUgIAABmuAgAAjKin//+c4gIAAL0qEgACZlICAAHFaAYAgkWkAgAIEEb8=
+Date:   Fri, 6 May 2022 07:40:51 +0000
+Message-ID: <018da3c0453845329d5ae2ec8924af06@epfl.ch>
+References: <20220329113208.2466000-1-chenxiaosong2@huawei.com>
+ <68b65889-3b2c-fb72-a0a8-d0afc15a03e0@huawei.com>
+ <e0c2d7ec62b447cabddbc8a9274be955@epfl.ch>
+ <0b6546f7-8a04-9d6e-50c3-483c8a1a6591@huawei.com>
+ <d73a51a2-6b63-b536-61e6-3d18563f027d@huawei.com>
+ <3ee78045f18b4932b1651de776ee73c4@epfl.ch>
+ <f927bec5-1078-dcb9-6f3e-a64d304efd5b@huawei.com>
+ <55415e44b4b04bbfa66c42d5f2788384@epfl.ch>
+ <88231dee-760f-b992-f1d1-81309076071e@huawei.com>
+ <f794d0aaef654bffacda9159321d66e0@epfl.ch>,<67d6a536-9027-1928-99b6-af512a36cd1a@huawei.com>
+In-Reply-To: <67d6a536-9027-1928-99b6-af512a36cd1a@huawei.com>
+Accept-Language: en-US, fr-CH
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [128.178.116.84]
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2022-05-05 at 09:41 +1000, NeilBrown wrote:
-> On Tue, 03 May 2022, Yang Shi wrote:
-> > On Sun, May 1, 2022 at 9:23 PM NeilBrown <neilb@suse.de> wrote:
-> > > 
-> > > On Sat, 30 Apr 2022, Yang Shi wrote:
-> > > > On Thu, Apr 28, 2022 at 5:44 PM NeilBrown <neilb@suse.de> wrote:
-> > > > > 
-> > > > > Pages passed to swap_readpage()/swap_writepage() are not necessarily all
-> > > > > the same size - there may be transparent-huge-pages involves.
-> > > > > 
-> > > > > The BIO paths of swap_*page() handle this correctly, but the SWP_FS_OPS
-> > > > > path does not.
-> > > > > 
-> > > > > So we need to use thp_size() to find the size, not just assume
-> > > > > PAGE_SIZE, and we need to track the total length of the request, not
-> > > > > just assume it is "page * PAGE_SIZE".
-> > > > 
-> > > > Swap-over-nfs doesn't support THP swap IIUC. So SWP_FS_OPS should not
-> > > > see THP at all. But I agree to remove the assumption about page size
-> > > > in this path.
-> > > 
-> > > Can you help me understand this please.  How would the swap code know
-> > > that swap-over-NFS doesn't support THP swap?  There is no reason that
-> > > NFS wouldn't be able to handle 2MB writes.  Even 1GB should work though
-> > > NFS would have to split into several smaller WRITE requests.
-> > 
-> > AFAICT, THP swap is only supported on non-rotate block devices, for
-> > example, SSD, PMEM, etc. IIRC, the swap device has to support the
-> > cluster in order to swap THP. The cluster is only supported by
-> > non-rotate block devices.
-> > 
-> > Looped Ying in, who is the author of THP swap.
-> 
-> I hunted around the code and found that THP swap only happens if a
-> 'cluster_info' is allocated, and that only happens if 
-> 	if (p->bdev && bdev_nonrot(p->bdev)) {
-> in the swapon syscall.
-> 
+> From: chenxiaosong (A) <chenxiaosong2@huawei.com>
+> Sent: Thursday, May 5, 2022 4:48 AM
+> To: Lyu Tao
+> Cc: linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org; bjschuma@net=
+app.com; anna@kernel.org; Trond Myklebust; liuyongqiang13@huawei.com; yi.zh=
+ang@huawei.com; zhangxiaoxu5@huawei.com
+> Subject: Re: [PATCH -next 0/2] fix nfsv4 bugs of opening with O_ACCMODE f=
+lag
+=A0  =20
+> "NVD Last Modified" date of CVE-2022-24448 is updated as 04/29/2022, but =
+the content of the cve is old.
+> https://nvd.nist.gov/vuln/detail/CVE-2022-24448
+=20
+Hi,=20
 
-And in get_swap_pages(), the cluster is only allocated for block
-devices.
+Thanks for reaching out.
 
-		if (size == SWAPFILE_CLUSTER) {
-			if (si->flags & SWP_BLKDEV)
-				n_ret = swap_alloc_cluster(si, swp_entries);
-		} else
-			n_ret = scan_swap_map_slots(si, SWAP_HAS_CACHE,
-						    n_goal, swp_entries);
+I've requested to update the CVE description and they replied me that it wo=
+uld be updated yesterday. Maybe the system need some time to reflesh. Let's=
+ wait a few more days.
 
-We may remove this restriction in the future if someone can show the
-benefit.
-
-Best Regards,
-Huang, Ying
-
-> I guess "nonrot" is being use as a synonym for "low latency"...
-> So even if NFS was low-latency it couldn't benefit from THP swap.
-> 
-> So as you say it is not currently possible for THP pages to be send to
-> NFS for swapout.  It makes sense to prepare for it though I think - if
-> only so that the code is more consistent and less confusing.
-> 
-> Thanks,
-> NeilBrown
-
-
+Best,
+Tao=
