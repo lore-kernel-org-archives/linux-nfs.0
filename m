@@ -2,102 +2,68 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4183BC433F5
-	for <linux-nfs@archiver.kernel.org>; Sun,  8 May 2022 14:17:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 12CB8C4167D
+	for <linux-nfs@archiver.kernel.org>; Sun,  8 May 2022 19:18:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233796AbiEHOVV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 8 May 2022 10:21:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46122 "EHLO
+        id S229913AbiEHTVw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 8 May 2022 15:21:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33942 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233772AbiEHOVU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 May 2022 10:21:20 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7269DAE5E
-        for <linux-nfs@vger.kernel.org>; Sun,  8 May 2022 07:17:30 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 26AB1B80D3A
-        for <linux-nfs@vger.kernel.org>; Sun,  8 May 2022 14:17:29 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 722A6C385AC
-        for <linux-nfs@vger.kernel.org>; Sun,  8 May 2022 14:17:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1652019447;
-        bh=OeAJVczyaAnbX/tU0M6kyvaHhJKbzBqK3FerhvaVUy0=;
-        h=From:To:Subject:Date:From;
-        b=A+TBxbW5xjm2Y020+/81PUla6WsJO3oGkKFthxixxawl9DKAmBo9OibtTWswjJgTF
-         ZgJgjB98mOPtYBM9JzGDpFmS0H+NsUIqf7DeqZIIhksJrT3D8D0PxakatrCJ4e65Sv
-         lntbdGxJrPLiPxoCgP2VVoHSIbg4+c3JqHcMh3x013UG6hkHjPiHEaJAcuA8N7QIvM
-         d9GSb0dizAiT5tqpDtDN23ZDlPcC0+2uUcvs5moEs6u0XOPrib+caILUeDm9484icz
-         yjj14M5X4qs/fvlqXvwvwQcbeWUhHbvOUmnnSoqAjv2w6wSenL36udym7mXLl1Mn48
-         JhZswkENZKoaA==
-From:   trondmy@kernel.org
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] Revert "SUNRPC: Ensure gss-proxy connects on setup"
-Date:   Sun,  8 May 2022 10:11:20 -0400
-Message-Id: <20220508141121.12274-1-trondmy@kernel.org>
-X-Mailer: git-send-email 2.35.3
+        with ESMTP id S1348280AbiEHTKw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 May 2022 15:10:52 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 43F792DCD;
+        Sun,  8 May 2022 12:06:39 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=HPtZn1pXVcAa2BUPhG85sgXmXcmLsDiRYjOT7IzzrhM=; b=juEwUtY+Pswar3mi9JCqMG0GB0
+        eDZZ9UH2uN8HFDyFlUDrZTXE2YJnQJ3j8xjADLm/8ozl2oFFxoJ/3UBpi+cv0JS8p9k50jwwdYWMG
+        bmk1L+0tuu0X6IG8b5oiZmaRi4DThDX0pwC35eYJ46I5qO+kJTs50VM+tsRtqqkny2m36qFziDIiS
+        Y9x+nmjbz0OjJnsZSJXJScraAShlBtty6se+Fj21xQly9hqNdBCBkMW0jiHleQgCXnAUO4HuuEy6X
+        71WDfR3YtiizfRmphYM5ZobpS7DEUGLZWl5ml+RPoyjFo63IwmpUryJxGIvk95gnj1FLLYHUf/HtE
+        rb2k7tLg==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1nnmEn-002k8z-4S; Sun, 08 May 2022 19:06:37 +0000
+Date:   Sun, 8 May 2022 20:06:37 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Christoph Hellwig <hch@infradead.org>
+Cc:     linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] fs: Change the type of filler_t
+Message-ID: <YngUvbIyPA2gsslF@casper.infradead.org>
+References: <20220502054159.3471078-1-willy@infradead.org>
+ <20220502054159.3471078-4-willy@infradead.org>
+ <YnE60WTzSzxt9OxY@infradead.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <YnE60WTzSzxt9OxY@infradead.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Tue, May 03, 2022 at 07:23:13AM -0700, Christoph Hellwig wrote:
+> > @@ -3504,9 +3504,9 @@ static struct folio *do_read_cache_folio(struct address_space *mapping,
+> >  
+> >  filler:
+> >  		if (filler)
+> > -			err = filler(data, &folio->page);
+> > +			err = filler(file, folio);
+> >  		else
+> > -			err = mapping->a_ops->read_folio(data, folio);
+> > +			err = mapping->a_ops->read_folio(file, folio);
+> 
+> Wouldn't it just make sense to just pass mapping->a_ops->read_folio as
+> the filler here from the callers that currently pass NULL?
 
-This reverts commit 892de36fd4a98fab3298d417c051d9099af5448d.
+Thanks for the review.  We're heading in the same direction; my
+plan was to (in some subsequent merge window) convert all callers of
+read_cache_page() to use read_mapping_folio() (by setting ->read_folio)
+and then get rid of filler_t altogether.
 
-The gssproxy server is unresponsive when it calls into the kernel to
-start the upcall service, so it will not reply to our RPC ping at all.
-
-Reported-by: "J.Bruce Fields" <bfields@fieldses.org>
-Fixes: 892de36fd4a9 ("SUNRPC: Ensure gss-proxy connects on setup")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- include/linux/sunrpc/clnt.h          | 1 -
- net/sunrpc/auth_gss/gss_rpc_upcall.c | 2 +-
- net/sunrpc/clnt.c                    | 3 ---
- 3 files changed, 1 insertion(+), 5 deletions(-)
-
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index db5149567305..267b7aeaf1a6 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -160,7 +160,6 @@ struct rpc_add_xprt_test {
- #define RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT	(1UL << 9)
- #define RPC_CLNT_CREATE_SOFTERR		(1UL << 10)
- #define RPC_CLNT_CREATE_REUSEPORT	(1UL << 11)
--#define RPC_CLNT_CREATE_IGNORE_NULL_UNAVAIL (1UL << 12)
- 
- struct rpc_clnt *rpc_create(struct rpc_create_args *args);
- struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index 8ca1d809b78d..61c276bddaf2 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -97,7 +97,7 @@ static int gssp_rpc_create(struct net *net, struct rpc_clnt **_clnt)
- 		 * timeout, which would result in reconnections being
- 		 * done without the correct namespace:
- 		 */
--		.flags		= RPC_CLNT_CREATE_IGNORE_NULL_UNAVAIL |
-+		.flags		= RPC_CLNT_CREATE_NOPING |
- 				  RPC_CLNT_CREATE_NO_IDLE_TIMEOUT
- 	};
- 	struct rpc_clnt *clnt;
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 22c28cf43eba..98133aa54f19 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -479,9 +479,6 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
- 
- 	if (!(args->flags & RPC_CLNT_CREATE_NOPING)) {
- 		int err = rpc_ping(clnt);
--		if ((args->flags & RPC_CLNT_CREATE_IGNORE_NULL_UNAVAIL) &&
--		    err == -EOPNOTSUPP)
--			err = 0;
- 		if (err != 0) {
- 			rpc_shutdown_client(clnt);
- 			return ERR_PTR(err);
--- 
-2.35.3
-
+Maybe there are some filesystems that can't do that, eg they need a
+different ->read_folio() when called from read_cache_folio() to the
+one they need when called for filemap_read(), but I bet they can all be
+worked around.
