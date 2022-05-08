@@ -2,88 +2,153 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A252C433EF
-	for <linux-nfs@archiver.kernel.org>; Sun,  8 May 2022 12:58:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD07EC433EF
+	for <linux-nfs@archiver.kernel.org>; Sun,  8 May 2022 14:17:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233231AbiEHNCG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 8 May 2022 09:02:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45800 "EHLO
+        id S233795AbiEHOVT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 8 May 2022 10:21:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46116 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233652AbiEHM6r (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 May 2022 08:58:47 -0400
-Received: from mail-wm1-x334.google.com (mail-wm1-x334.google.com [IPv6:2a00:1450:4864:20::334])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3F86BBCBB
-        for <linux-nfs@vger.kernel.org>; Sun,  8 May 2022 05:54:54 -0700 (PDT)
-Received: by mail-wm1-x334.google.com with SMTP id c190-20020a1c35c7000000b0038e37907b5bso9392763wma.0
-        for <linux-nfs@vger.kernel.org>; Sun, 08 May 2022 05:54:54 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=vastdata.com; s=google;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KmpGvp+sd61rqwq02G+sX/SLC6UQmVcIzaMDS+Mw1d8=;
-        b=BZ8D8dFdG66QYF2+e7yFP8cci+PwwVrhkFgco2P4Y040Nrw+OXjeMUsMXA7GuoeGxx
-         YkKOTjalHyqlfVaNo1oiZXX/zAV/8YFsHnZELG5ENsGTIgEZg0CgfTkvVCrwoGj5Z9CW
-         2DDKVg/3kaop/Ti9hXNdDWGRw07qj5jNIiI+UGOWX0U3z3iQdAo3VBDMJXWhv36jTMhY
-         EjRueFF9pl0CLWnJT8qinLGBeqjh/IwQxqR1PwwPsjwFGydJ8U0Z+ZkvzdR2U6CJqQgs
-         LweLZoFLLNelmEQB0pQVkDpaGqgb6ekYM0LJPLtoWaE4ayY3dxYzrF8yLF7ek7qfBYK4
-         huJw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KmpGvp+sd61rqwq02G+sX/SLC6UQmVcIzaMDS+Mw1d8=;
-        b=k5QVueuCi8yguYVdICB9oyNenZr4heBrxYBPtgm+vxe/XMqZH3ljKPv5hbxyWJ+D0Z
-         8T9ax5Kd/ioGVY5QMoQ5+xduSX82qZoKsom2g8HZRTLDUodP4DVCrxN0O75693lxgt0Z
-         CeK47utupYJCRsMbRFKkHFR9aAkj63tHf5ibhFxLs89apKXLyIfymXOhxUkVBOj2JTYn
-         vJSIAvFudGBCWenwH8K8pIRfXUnXCMtPZrJsicL48UYJGlbLwo8TAn47wDqlOcIhz6mS
-         Itf3Tc9At2MS49VOwf2G3QjdS00Rs/GFz08nRAbkT3rRUtdN3n54oNFAjB9dfmRYxllK
-         tVkA==
-X-Gm-Message-State: AOAM533vnFMPYRoubogqyKYJwc8qCOe17ToTec3bfIiBprRo6OCZ5nY8
-        /4RiKlbTtM6RmhCuNljvF9GHsQ==
-X-Google-Smtp-Source: ABdhPJw2BdhLCrchI7zO7pxnZIUT2vKDBdmmibHhBYe8mcApFgZoJ77nSXynQ0pANwDMqVAmr8pOuA==
-X-Received: by 2002:a05:600c:1c97:b0:394:7a2e:a83c with SMTP id k23-20020a05600c1c9700b003947a2ea83cmr11437760wms.175.1652014492690;
-        Sun, 08 May 2022 05:54:52 -0700 (PDT)
-Received: from jupiter.lan ([2a0d:6fc2:4951:4400:aa5e:45ff:fee1:90a8])
-        by smtp.gmail.com with ESMTPSA id bg9-20020a05600c3c8900b00394755b4479sm8975777wmb.21.2022.05.08.05.54.51
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 08 May 2022 05:54:52 -0700 (PDT)
-From:   Dan Aloni <dan.aloni@vastdata.com>
-To:     Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: fix broken handling of the softreval mount option
-Date:   Sun,  8 May 2022 15:54:50 +0300
-Message-Id: <20220508125450.2176603-1-dan.aloni@vastdata.com>
-X-Mailer: git-send-email 2.23.0
+        with ESMTP id S233772AbiEHOVT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 May 2022 10:21:19 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1CA7BAE5E
+        for <linux-nfs@vger.kernel.org>; Sun,  8 May 2022 07:17:29 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id AB5A361182
+        for <linux-nfs@vger.kernel.org>; Sun,  8 May 2022 14:17:28 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E7DAAC385A4
+        for <linux-nfs@vger.kernel.org>; Sun,  8 May 2022 14:17:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1652019448;
+        bh=+3KpI6+Xzy09htS/spgchGReeCB9iP3XfD06rtxZr1o=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=b13lF3Kh4vXMerIZhVfB8QVBOfF0VWmQl6mYtxjvKoxpNdc48Bm/25WzsVWRpB89u
+         RrRclnut1Qe4WoFBn3uJNjjQ9GgRccHqBg6KfdwMoTdOPg9zgfvEphbg3o1th42MO0
+         mAdpYDNcR/Zpne2qzzbQgI3iEDWOY3r5QQ47v0r6V7REuFlevuB/PfKQWaq4K3jgg6
+         uRTx1zTpho+egNYz9qXT9zQFb2O5wdjmk4FJawPT60AVEQdDPa6jmxwcVfFBgbidOf
+         tk2q/2V2NGbAnx6K0v/Yr2R6ylcX4tRYngMGDeGRasZk3tlHlFdTKTV6GguSoY03+C
+         EdnnIAwbsZBNQ==
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] SUNRPC: Ensure that the gssproxy client can start in a connected state
+Date:   Sun,  8 May 2022 10:11:21 -0400
+Message-Id: <20220508141121.12274-2-trondmy@kernel.org>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20220508141121.12274-1-trondmy@kernel.org>
+References: <20220508141121.12274-1-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Turns out that ever since this mount option was added, passing
-`softreval` in NFS mount options cancelled all other flags while not
-affecting the underlying flag `NFS_MOUNT_SOFTREVAL`.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Fixes: c74dfe97c104 ("NFS: Add mount option 'softreval'")
-Signed-off-by: Dan Aloni <dan.aloni@vastdata.com>
+Ensure that the gssproxy client connects to the server from the gssproxy
+daemon process context so that the AF_LOCAL socket connection is done
+using the correct path and namespaces.
+
+Fixes: 1d658336b05f ("SUNRPC: Add RPC based upcall mechanism for RPCGSS auth")
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/fs_context.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/sunrpc/clnt.h          |  1 +
+ net/sunrpc/auth_gss/gss_rpc_upcall.c |  1 +
+ net/sunrpc/clnt.c                    | 33 ++++++++++++++++++++++++++++
+ 3 files changed, 35 insertions(+)
 
-diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
-index e2d59bb5e6bb..9a16897e8dc6 100644
---- a/fs/nfs/fs_context.c
-+++ b/fs/nfs/fs_context.c
-@@ -517,7 +517,7 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
- 		if (result.negated)
- 			ctx->flags &= ~NFS_MOUNT_SOFTREVAL;
- 		else
--			ctx->flags &= NFS_MOUNT_SOFTREVAL;
-+			ctx->flags |= NFS_MOUNT_SOFTREVAL;
- 		break;
- 	case Opt_posix:
- 		if (result.negated)
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 267b7aeaf1a6..90501404fa49 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -160,6 +160,7 @@ struct rpc_add_xprt_test {
+ #define RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT	(1UL << 9)
+ #define RPC_CLNT_CREATE_SOFTERR		(1UL << 10)
+ #define RPC_CLNT_CREATE_REUSEPORT	(1UL << 11)
++#define RPC_CLNT_CREATE_CONNECTED	(1UL << 12)
+ 
+ struct rpc_clnt *rpc_create(struct rpc_create_args *args);
+ struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index 61c276bddaf2..f549e4c05def 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -98,6 +98,7 @@ static int gssp_rpc_create(struct net *net, struct rpc_clnt **_clnt)
+ 		 * done without the correct namespace:
+ 		 */
+ 		.flags		= RPC_CLNT_CREATE_NOPING |
++				  RPC_CLNT_CREATE_CONNECTED |
+ 				  RPC_CLNT_CREATE_NO_IDLE_TIMEOUT
+ 	};
+ 	struct rpc_clnt *clnt;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 98133aa54f19..e2c6eca0271b 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -76,6 +76,7 @@ static int	rpc_encode_header(struct rpc_task *task,
+ static int	rpc_decode_header(struct rpc_task *task,
+ 				  struct xdr_stream *xdr);
+ static int	rpc_ping(struct rpc_clnt *clnt);
++static int	rpc_ping_noreply(struct rpc_clnt *clnt);
+ static void	rpc_check_timeout(struct rpc_task *task);
+ 
+ static void rpc_register_client(struct rpc_clnt *clnt)
+@@ -483,6 +484,12 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
+ 			rpc_shutdown_client(clnt);
+ 			return ERR_PTR(err);
+ 		}
++	} else if (args->flags & RPC_CLNT_CREATE_CONNECTED) {
++		int err = rpc_ping_noreply(clnt);
++		if (err != 0) {
++			rpc_shutdown_client(clnt);
++			return ERR_PTR(err);
++		}
+ 	}
+ 
+ 	clnt->cl_softrtry = 1;
+@@ -2709,6 +2716,10 @@ static const struct rpc_procinfo rpcproc_null = {
+ 	.p_decode = rpcproc_decode_null,
+ };
+ 
++static const struct rpc_procinfo rpcproc_null_noreply = {
++	.p_encode = rpcproc_encode_null,
++};
++
+ static void
+ rpc_null_call_prepare(struct rpc_task *task, void *data)
+ {
+@@ -2762,6 +2773,28 @@ static int rpc_ping(struct rpc_clnt *clnt)
+ 	return status;
+ }
+ 
++static int rpc_ping_noreply(struct rpc_clnt *clnt)
++{
++	struct rpc_message msg = {
++		.rpc_proc = &rpcproc_null_noreply,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = clnt,
++		.rpc_message = &msg,
++		.callback_ops = &rpc_null_ops,
++		.flags = RPC_TASK_SOFT | RPC_TASK_SOFTCONN | RPC_TASK_NULLCREDS,
++	};
++	struct rpc_task	*task;
++	int status;
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	status = task->tk_status;
++	rpc_put_task(task);
++	return status;
++}
++
+ struct rpc_cb_add_xprt_calldata {
+ 	struct rpc_xprt_switch *xps;
+ 	struct rpc_xprt *xprt;
 -- 
-2.23.0
+2.35.3
 
