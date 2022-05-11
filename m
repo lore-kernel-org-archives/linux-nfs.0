@@ -2,85 +2,64 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90FA2C433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 May 2022 12:38:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E1B6EC433F5
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 May 2022 13:04:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230293AbiEKMiN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 May 2022 08:38:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44180 "EHLO
+        id S242967AbiEKNEO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 May 2022 09:04:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50600 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242499AbiEKMiM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2022 08:38:12 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6BEDE22EA5F;
-        Wed, 11 May 2022 05:38:11 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 075D5B82219;
-        Wed, 11 May 2022 12:38:10 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 598DFC340F2;
-        Wed, 11 May 2022 12:38:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-        s=korg; t=1652272688;
-        bh=gyTtKqGrdgmxpfgLM/JIRhyOctz/MqSDCYRh45Yfp+A=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=2deGWEjFIg1VgIh1TKv9PzyymIsk0XV45P65/6KT+7fgWhx/q7J9Z93XxM0lgkI07
-         23oYRtnpPjgTC/vPze8yeriSL3XDwctV4KioqFkzfx6dPykma7d+doD/ho8cLanDT/
-         ebzYoRmFK85QBoksGCChCTVmfYHC+ERfFLMlwC6k=
-Date:   Wed, 11 May 2022 14:38:05 +0200
-From:   Greg KH <gregkh@linuxfoundation.org>
-To:     Wolfgang Walter <linux@stwm.de>
-Cc:     stable@vger.kernel.org, Trond Myklebust <trondmy@gmail.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: 5.4.188 and later: massive performance regression with nfsd
-Message-ID: <YnuuLZe6h80KCNhd@kroah.com>
-References: <f8d9b9112607df4807fba8948ac6e145@stwm.de>
+        with ESMTP id S237566AbiEKNEN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 May 2022 09:04:13 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 17902232773;
+        Wed, 11 May 2022 06:04:11 -0700 (PDT)
+Received: from kwepemi100018.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4Kyw810DN5zhZ2K;
+        Wed, 11 May 2022 21:03:29 +0800 (CST)
+Received: from kwepemm600001.china.huawei.com (7.193.23.3) by
+ kwepemi100018.china.huawei.com (7.221.188.35) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Wed, 11 May 2022 21:04:08 +0800
+Received: from huawei.com (10.175.113.133) by kwepemm600001.china.huawei.com
+ (7.193.23.3) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Wed, 11 May
+ 2022 21:04:07 +0800
+From:   Wang Hai <wanghai38@huawei.com>
+To:     <trond.myklebust@hammerspace.com>, <bfields@fieldses.org>,
+        <anna@kernel.org>, <chuck.lever@oracle.com>, <davem@davemloft.net>,
+        <kuba@kernel.org>, <pabeni@redhat.com>
+CC:     <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <wanghai38@huawei.com>
+Subject: [PATCH 0/3] Refix the socket leak in xs_setup_local()
+Date:   Wed, 11 May 2022 21:22:29 +0800
+Message-ID: <20220511132232.4030-1-wanghai38@huawei.com>
+X-Mailer: git-send-email 2.17.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <f8d9b9112607df4807fba8948ac6e145@stwm.de>
+Content-Type: text/plain
+X-Originating-IP: [10.175.113.133]
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
+ kwepemm600001.china.huawei.com (7.193.23.3)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, May 11, 2022 at 12:03:13PM +0200, Wolfgang Walter wrote:
-> Hi,
-> 
-> starting with 5.4.188 wie see a massive performance regression on our
-> nfs-server. It basically is serving requests very very slowly with cpu
-> utilization of 100% (with 5.4.187 and earlier it is 10%) so that it is
-> unusable as a fileserver.
-> 
-> The culprit are commits (or one of it):
-> 
-> c32f1041382a88b17da5736886da4a492353a1bb "nfsd: cleanup
-> nfsd_file_lru_dispose()"
-> 628adfa21815f74c04724abc85847f24b5dd1645 "nfsd: Containerise filecache
-> laundrette"
-> 
-> (upstream 36ebbdb96b694dd9c6b25ad98f2bbd263d022b63 and
-> 9542e6a643fc69d528dfb3303f145719c61d3050)
-> 
-> If I revert them in v5.4.192 the kernel works as before and performance is
-> ok again.
-> 
-> I did not try to revert them one by one as any disruption of our nfs-server
-> is a severe problem for us and I'm not sure if they are related.
-> 
-> 5.10 and 5.15 both always performed very badly on our nfs-server in a
-> similar way so we were stuck with 5.4.
-> 
-> I now think this is because of 36ebbdb96b694dd9c6b25ad98f2bbd263d022b63
-> and/or 9542e6a643fc69d528dfb3303f145719c61d3050 though I didn't tried to
-> revert them in 5.15 yet.
+Patch1 and patch2 roll back the wrong solution to fix socket leaks.
 
-Odds are 5.18-rc6 is also a problem?
+Patch3 adds safe teardown mechanism to re-fix socket leaks.
 
-If so, I'll just wait for the fix to get into Linus's tree as this does
-not seem to be a stable-tree-only issue.
+Wang Hai (3):
+  Revert "SUNRPC: Ensure gss-proxy connects on setup"
+  Revert "Revert "SUNRPC: attempt AF_LOCAL connect on setup""
+  SUNRPC: Fix local socket leak in xs_setup_local()
 
-thanks,
+ include/linux/sunrpc/clnt.h          |  1 -
+ net/sunrpc/auth_gss/gss_rpc_upcall.c |  2 +-
+ net/sunrpc/clnt.c                    |  3 ---
+ net/sunrpc/xprtsock.c                | 19 ++++++++++++++++++-
+ 4 files changed, 19 insertions(+), 6 deletions(-)
 
-greg k-h
+-- 
+2.17.1
+
