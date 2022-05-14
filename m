@@ -2,46 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1D8FC4332F
-	for <linux-nfs@archiver.kernel.org>; Sat, 14 May 2022 14:14:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82F62C433EF
+	for <linux-nfs@archiver.kernel.org>; Sat, 14 May 2022 14:33:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233002AbiENOOc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 14 May 2022 10:14:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50984 "EHLO
+        id S232772AbiENOdN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 14 May 2022 10:33:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53056 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233001AbiENOOY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2022 10:14:24 -0400
+        with ESMTP id S232498AbiENOdM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2022 10:33:12 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4D5581581B
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 07:14:24 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E31331C905
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 07:33:11 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id D444F60EDA
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 14:14:23 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ED6E4C34116;
-        Sat, 14 May 2022 14:14:22 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7F29260F60
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 14:33:11 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 99B42C340EE;
+        Sat, 14 May 2022 14:33:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1652537663;
-        bh=ReQRCdjwjHc9eKaBs4b8uOavUQqFl0e0QuDHT3nVK7k=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=D6dR8RDjhjBlhWXwjzqwPA4oQ5w6jH+lDorphTejbriPYKlJCn1JPqK+yBbhK8TI1
-         MZk08MV3v6RklYN0Yu0f5VAbZKptwYtkKJMIUrQsnRYt5VjhRmcGZIOP+jIpLH7mwE
-         zFF9x/aGD73yoglVsi3vlnQ3EEibsJafOBLW0csMfm2ai5uLMpvkCm4ERl9ytWAOhv
-         DC4Nbo3vi41PoJy2w02ElYs1rezjby0rsrHIV6k36vJHrK9ghtsrRXPPxzCVKFIukl
-         bu2qXebqXQVQ5am26SdLv6j/zmoEYpB/8ruYMony1oc1a7wmFhB+5hhHC0AZeEeiQ3
-         0oFe3o+FnNFSw==
+        s=k20201202; t=1652538790;
+        bh=BftTyQzgW6WIZpyT8Bhqa3nVxo+4m15Y2HngVLtj1Kk=;
+        h=From:To:Cc:Subject:Date:From;
+        b=rCZpklD91KCsMJZKuIyocnzfbJ4pvUEyMUi2s+rn1EufOU4BGyFgFYewIUxFcyoyo
+         Xhglg/IrqPd5OZviILxlMvi9BDTbMCCDdx6BLhHbgHILxV+Ka8iTpkkX6B2RxJ64fY
+         3N7ga++qs7Qelmycj1Q/sDGbAhhDU7bYdpm/x/JhqnycrZuknIPgStCJqfNBnoYmGC
+         SIjWleCgarYmQt8BP44m+XMWw6ahTdoFMGR8aZ6hqhpPCZtTIzknoggobFgdjknesa
+         l2Dxy99A8ys2ROCe7OzIMXU2YpvGOmlA5TPsD1IGr7FiRwbFA47XbV4XVKQggtw4tz
+         vuYniRQhDN9Hw==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 4/5] pNFS/files: Fall back to I/O through the MDS on non-fatal layout errors
-Date:   Sat, 14 May 2022 10:08:13 -0400
-Message-Id: <20220514140814.3655-4-trondmy@kernel.org>
+Subject: [PATCH v3 0/5] Ensure mapping errors are reported only once
+Date:   Sat, 14 May 2022 10:26:59 -0400
+Message-Id: <20220514142704.4149-1-trondmy@kernel.org>
 X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220514140814.3655-3-trondmy@kernel.org>
-References: <20220514140814.3655-1-trondmy@kernel.org>
- <20220514140814.3655-2-trondmy@kernel.org>
- <20220514140814.3655-3-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -50,32 +46,26 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Only report the error when the server is returning a fatal error, such
-as ESTALE, EIO, etc...
+The expectation since Linux 4.13 has been that EIO errors are always
+reported in fsync(), whether or not they were detected and reported
+earlier.
+On the other hand, ENOSPC errors are reported as soon as detected, and
+should only be reported once.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/filelayout/filelayout.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+--
+v3: minor correctness fixes
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 76deddab0a8f..2b2661582bbe 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -839,7 +839,12 @@ fl_pnfs_update_layout(struct inode *ino,
- 
- 	lseg = pnfs_update_layout(ino, ctx, pos, count, iomode, strict_iomode,
- 				  gfp_flags);
--	if (IS_ERR_OR_NULL(lseg))
-+	if (IS_ERR(lseg)) {
-+		/* Fall back to MDS on recoverable errors */
-+		if (!nfs_error_is_fatal_on_server(PTR_ERR(lseg)))
-+			lseg = NULL;
-+		goto out;
-+	} else if (!lseg)
- 		goto out;
- 
- 	lo = NFS_I(ino)->layout;
+Trond Myklebust (5):
+  NFS: Do not report EINTR/ERESTARTSYS as mapping errors
+  NFS: fsync() should report filesystem errors over EINTR/ERESTARTSYS
+  NFS: Don't report ENOSPC write errors twice
+  NFS: Do not report flush errors in nfs_write_end()
+  NFS: Don't report errors from nfs_pageio_complete() more than once
+
+ fs/nfs/file.c  | 50 +++++++++++++++++++++-----------------------------
+ fs/nfs/write.c | 11 ++---------
+ 2 files changed, 23 insertions(+), 38 deletions(-)
+
 -- 
 2.36.1
 
