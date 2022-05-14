@@ -2,48 +2,43 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56431C43217
-	for <linux-nfs@archiver.kernel.org>; Sat, 14 May 2022 14:51:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06EABC4321E
+	for <linux-nfs@archiver.kernel.org>; Sat, 14 May 2022 14:51:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233439AbiENOvP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S233484AbiENOvP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 14 May 2022 10:51:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45762 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45360 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233705AbiENOvD (ORCPT
+        with ESMTP id S233698AbiENOvD (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2022 10:51:03 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BBFF934674
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 07:50:45 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B685AA451
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 07:50:43 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 5A22460F70
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 14:50:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C8E83C34116;
-        Sat, 14 May 2022 14:50:44 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 554C360F47
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 14:50:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5A8C7C34116;
+        Sat, 14 May 2022 14:50:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1652539845;
-        bh=d9LhUJRq5+rDWcd7ORCDZXtKzVKUehbDccHatHbEXFU=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=C0E6aCjgqVH8GsKt+gNel+MOzrNPiSmSW8PytWZOpDMr/jAe1pbRycL+g5r0zp7GX
-         +9brzwDaCXYw/spMesjaNgZFA2xr51ir5mnzPo1F3+B7Q9N08JAhJgblIWaja+aMn+
-         a2nWpVEBEFOLueYvu8unQmkWGuTdGSctwoiMyeg/L7dvJdzs43dd0UQmEb00ozqUmM
-         72VroZZ+VBNbsBTutbLypy4cjRJo6TH8+Vj1IhbPoayvjK9ir7morZYA3U+iPpK3+T
-         03CFH6/QIPyPVpazrCc7nkPDDiCWVKBDADy/cOJb8sY9OmjnMkrwSjTmNhYS/JrTNj
-         fAMprxx2ThupA==
+        s=k20201202; t=1652539842;
+        bh=AxffH804IbJxdgJRI2Z+Xm+gT/miBEcDgrf32xjeZAo=;
+        h=From:To:Cc:Subject:Date:From;
+        b=q/A+/ipdisrljB11tczc1wH8oa3mLOn3g/DSOp8Tn7IryXb/PcfhlPuNDTQis/pwX
+         0zC0UweVHk2PyMzRDbSu74nKswsJCRxeHN1aSQRqx1W4jXa0hzNXECBe7Kx7XK2mBD
+         jeXxdIeVDj0GPY+2ZgL+tqQJuq5umb5uOqy3hzMOWYxGdc3/FinenuHe6T8RAS19im
+         lKzdLgdFujS0anb9nF7cErTRx7LgdMMkFXZw3ioQFSxtkCHm+LY8wPpRFMt1UDrnWY
+         ljGPjTYCWKm3j05VJIlXLIuGO/K5GC1cGsh357wsg1niibqohekPG8SLMm52p6t4cn
+         FR+khS4EMgQjg==
 From:   trondmy@kernel.org
 To:     Steve Dickson <SteveD@redhat.com>,
         "J.Bruce Fields" <bfields@fieldses.org>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 4/6] nfs4_getacl: Add support for the --dacl and --sacl options
-Date:   Sat, 14 May 2022 10:44:34 -0400
-Message-Id: <20220514144436.4298-5-trondmy@kernel.org>
+Subject: [PATCH 0/6] Allow nfs4-acl-tools to access 'dacl' and 'sacl'
+Date:   Sat, 14 May 2022 10:44:30 -0400
+Message-Id: <20220514144436.4298-1-trondmy@kernel.org>
 X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220514144436.4298-4-trondmy@kernel.org>
-References: <20220514144436.4298-1-trondmy@kernel.org>
- <20220514144436.4298-2-trondmy@kernel.org>
- <20220514144436.4298-3-trondmy@kernel.org>
- <20220514144436.4298-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -52,151 +47,40 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Add support for the NFSv4.1 dacl and sacl attributes.
+The following patch set matches the kernel patches to allow access to
+the NFSv4.1 'dacl' and 'sacl' attributes. The current patches are very
+basic, adding support for encoding/decoding the new attributes only when
+the user specifies the '--dacl' or '--sacl' flags on the command line.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- nfs4_getfacl/nfs4_getfacl.c | 72 +++++++++++++++++++++++++++++++++----
- 1 file changed, 65 insertions(+), 7 deletions(-)
+Trond Myklebust (6):
+  libnfs4acl: Add helpers to set the dacl and sacl
+  libnfs4acl: Add support for the NFS4.1 ACE_INHERITED_ACE flag
+  The NFSv41 DACL and SACL prepend an extra field to the acl
+  nfs4_getacl: Add support for the --dacl and --sacl options
+  nfs4_setacl: Add support for the --dacl and --sacl options
+  Edit manpages to document the new --dacl, --sacl and inheritance
+    features
 
-diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
-index 1222dd907c9e..954cf7edb19a 100644
---- a/nfs4_getfacl/nfs4_getfacl.c
-+++ b/nfs4_getfacl/nfs4_getfacl.c
-@@ -42,15 +42,30 @@
- #include <ftw.h>
- #include <getopt.h>
- 
-+#define OPT_DACL	0x98
-+#define OPT_SACL	0x99
-+
- static void usage(int);
- static void more_help();
- static char *execname;
--static void print_acl_from_path();
-+static void print_acl_from_path(const char *, enum acl_type);
- static int ignore_comment = 0;
- 
--static int recursive(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
-+static int print_acl(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
-+{
-+	print_acl_from_path(fpath, ACL_TYPE_ACL);
-+	return 0;
-+}
-+
-+static int print_dacl(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
- {
--	print_acl_from_path(fpath);
-+	print_acl_from_path(fpath, ACL_TYPE_DACL);
-+	return 0;
-+}
-+
-+static int print_sacl(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
-+{
-+	print_acl_from_path(fpath, ACL_TYPE_SACL);
- 	return 0;
- }
- 
-@@ -59,6 +74,8 @@ static struct option long_options[] = {
-         {"help",         0, 0, 'h' },
-         {"recursive",     0, 0, 'R' },
-         {"omit-header",  0, 0, 'c'},
-+        {"dacl",         0, 0, OPT_DACL},
-+        {"sacl",         0, 0, OPT_SACL},
-         { NULL,          0, 0, 0,  },
- };
- 
-@@ -66,6 +83,9 @@ int main(int argc, char **argv)
- {
- 	int opt, res = 1;
-         int do_recursive = 0;
-+	int (*recursive)(const char *fpath, const struct stat *sb,
-+			 int tflag, struct FTW *ftwbuf) = print_acl;
-+	enum acl_type type = ACL_TYPE_ACL;
- 	
- 	execname = basename(argv[0]);
- 
-@@ -88,6 +108,14 @@ int main(int argc, char **argv)
- 			case 'c':
- 				ignore_comment = 1;
- 				break;
-+			case OPT_DACL:
-+				type = ACL_TYPE_DACL;
-+				recursive = print_dacl;
-+				break;
-+			case OPT_SACL:
-+				type = ACL_TYPE_SACL;
-+				recursive = print_sacl;
-+				break;
- 			case 'h':
- 				usage(1);
- 				res = 0;
-@@ -111,23 +139,51 @@ int main(int argc, char **argv)
- 				printf("Invalid filename: %s\n", argv[optind]);
- 		}
- 		else
--			print_acl_from_path(argv[optind]);
-+			print_acl_from_path(argv[optind], type);
- 		res = 0;
- 	}
- out:
- 	return res;
- }
- 
--static void print_acl_from_path(const char *fpath)
-+static void print_acl_from_path(const char *fpath, enum acl_type type)
- {
- 	struct nfs4_acl *acl;
--	acl = nfs4_acl_for_path(fpath);
-+
-+	switch (type) {
-+	case ACL_TYPE_ACL:
-+		acl = nfs4_getacl(fpath);
-+		break;
-+	case ACL_TYPE_DACL:
-+		acl = nfs4_getdacl(fpath);
-+		break;
-+	case ACL_TYPE_SACL:
-+		acl = nfs4_getsacl(fpath);
-+		break;
-+	}
-+
- 	if (acl != NULL) {
- 		if (ignore_comment == 0)
- 			printf("# file: %s\n", fpath);
- 		nfs4_print_acl(stdout, acl);
- 		printf("\n");
- 		nfs4_free_acl(acl);
-+	} else {
-+		switch (errno) {
-+		case ENODATA:
-+			fprintf(stderr,"Attribute not found on file: %s\n",
-+				fpath);
-+			break;
-+		case EREMOTEIO:
-+			fprintf(stderr,"An NFS server error occurred.\n");
-+			break;
-+		case EOPNOTSUPP:
-+                        fprintf(stderr,"Operation to request attribute not "
-+				       "supported: %s\n", fpath);
-+			break;
-+		default:
-+			perror("Failed operation");
-+		}
- 	}
- }
- 
-@@ -142,7 +198,9 @@ static void usage(int label)
- 	"   -H, --more-help	 display ACL format information\n"
- 	"   -h, --help		 display this help text\n"
- 	"   -R, --recursive	 recurse into subdirectories\n"
--	"   -c, --omit-header	 Do not display the comment header (Do not print filename)\n";
-+	"   -c, --omit-header	 Do not display the comment header (Do not print filename)\n"
-+	"       --dacl           display the NFSv4.1 dacl\n"
-+	"       --sacl           display the NFSv4.1 sacl\n";
- 
- 	fprintf(stderr, gfusage, execname);
- }
+ include/libacl_nfs4.h             | 18 +++++++
+ include/nfs4.h                    |  6 +++
+ libnfs4acl/Makefile               |  2 +
+ libnfs4acl/acl_nfs4_copy_acl.c    |  2 +
+ libnfs4acl/acl_nfs4_xattr_load.c  | 14 +++++-
+ libnfs4acl/acl_nfs4_xattr_pack.c  | 22 ++++++--
+ libnfs4acl/nfs4_ace_from_string.c |  3 ++
+ libnfs4acl/nfs4_get_ace_flags.c   |  2 +
+ libnfs4acl/nfs4_getacl.c          | 84 +++++++++++++++++++++++++++++++
+ libnfs4acl/nfs4_new_acl.c         |  1 +
+ libnfs4acl/nfs4_setacl.c          | 49 ++++++++++++++++++
+ man/man1/nfs4_getfacl.1           | 14 ++++++
+ man/man1/nfs4_setfacl.1           |  8 +++
+ man/man5/nfs4_acl.5               | 10 ++++
+ nfs4_getfacl/nfs4_getfacl.c       | 73 ++++++++++++++++++++++++---
+ nfs4_setfacl/nfs4_setfacl.c       | 67 ++++++++++++++++++++++--
+ 16 files changed, 359 insertions(+), 16 deletions(-)
+ create mode 100644 libnfs4acl/nfs4_getacl.c
+ create mode 100644 libnfs4acl/nfs4_setacl.c
+
 -- 
 2.36.1
 
