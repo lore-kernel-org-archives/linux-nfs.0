@@ -2,45 +2,47 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93CD2C433FE
-	for <linux-nfs@archiver.kernel.org>; Sat, 14 May 2022 14:14:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B616C433F5
+	for <linux-nfs@archiver.kernel.org>; Sat, 14 May 2022 14:14:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230169AbiENOOa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 14 May 2022 10:14:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50974 "EHLO
+        id S232997AbiENOOb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 14 May 2022 10:14:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50996 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232997AbiENOOY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2022 10:14:24 -0400
+        with ESMTP id S233002AbiENOOZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 May 2022 10:14:25 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B54301580E
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 07:14:23 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D1CC61581D
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 07:14:24 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4E78160F1A
-        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 14:14:23 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 55DDAC34117;
-        Sat, 14 May 2022 14:14:22 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 6E24760F16
+        for <linux-nfs@vger.kernel.org>; Sat, 14 May 2022 14:14:24 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89371C340EE;
+        Sat, 14 May 2022 14:14:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1652537662;
-        bh=3/4qHphF9RAyki3MqwJ+YC7f2Va4FCTc7dWLqokT5II=;
+        s=k20201202; t=1652537663;
+        bh=vYfJPBYCAjqilbHHrueSFEhX47JBAgIfuXTUg7hMCmk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=S1+wlxFS5xATwYOZ/vJTlHoydSSA9AFzrw8G3m6RZH7CTI4O+StKFa4abmH7L+skA
-         8geOytbufXhdBYFplJ1jv0qVz2/7hzHolvTcuUvStpj9GBzJ6wo7CzfFmoDlQgMxTS
-         z+y+JhM3mywhVR3aMjk4bU0MCCTsH2SAH5SaouqaigK5qCKaicmA0+alnxYmkYgKHR
-         NhfFKbzxFmiwIpjFBcCGePvR7kWUMhcqiNbD4a7/hCyGtBjsYyP4LuXQzkZqWSqnSQ
-         eBId7o1o+PF2xrL2bCts5i9962F2DIPf/AQ3JDhmSYsuUL0BxKHOCYeoh6LGPW8l2/
-         TxIgKaeG3VwYA==
+        b=ky0A1cbsxwvCgAWVa4AHUFz2iJY1s64HwzB3EMuGQr5zpFXZ4MbAdcCwcv1Emlce9
+         ZE5SH7Q93qHE5xo1mcpp4dqXxO2rfo9Sl/FSo7/RWcZc0h7DINJyj0gkFx1MfjuJHZ
+         Fzb05TyTyt0AUzrcEPElJK2DCxj28EhzxpA+c8KiaM00uEF5cxO0oqrOzUKMjG/oPx
+         Lj8PIzKh22Pku2TT161W/x2s4rkgF8SKl7T4+BQH3uy8qL9VGgx4OapRILVWyJqaXB
+         3JtZCQd/P+M2ZHm7/fAUHlkknP9vbL1xKAcXO47vvYoalD+4V/7yIdgBz0u733IUJD
+         yaP2SgHqkKp1Q==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] NFS: Further fixes to the writeback error handling
-Date:   Sat, 14 May 2022 10:08:12 -0400
-Message-Id: <20220514140814.3655-3-trondmy@kernel.org>
+Subject: [PATCH 5/5] NFSv4: Don't hold the layoutget locks across multiple RPC calls
+Date:   Sat, 14 May 2022 10:08:14 -0400
+Message-Id: <20220514140814.3655-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220514140814.3655-2-trondmy@kernel.org>
+In-Reply-To: <20220514140814.3655-4-trondmy@kernel.org>
 References: <20220514140814.3655-1-trondmy@kernel.org>
  <20220514140814.3655-2-trondmy@kernel.org>
+ <20220514140814.3655-3-trondmy@kernel.org>
+ <20220514140814.3655-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -49,92 +51,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-When we handle an error by redirtying the page, we're not corrupting the
-mapping, so we don't want the error to be recorded in the mapping.
-If the caller has specified a sync_mode of WB_SYNC_NONE, we can just
-return AOP_WRITEPAGE_ACTIVATE. However if we're dealing with
-WB_SYNC_ALL, we need to ensure that retries happen when the errors are
-non-fatal.
+When doing layoutget as part of the open() compound, we have to be
+careful to release the layout locks before we can call any further RPC
+calls, such as setattr(). The reason is that those calls could trigger
+a recall, which could deadlock.
 
-Reported-by: Olga Kornievskaia <aglo@umich.edu>
-Fixes: 8fc75bed96bb ("NFS: Fix up return value on fatal errors in nfs_page_async_flush()")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/write.c | 39 ++++++++++++++++++---------------------
- 1 file changed, 18 insertions(+), 21 deletions(-)
+ fs/nfs/nfs4proc.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f00d45cf80ef..a8eb348947a6 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -603,8 +603,9 @@ static void nfs_write_error(struct nfs_page *req, int error)
-  * Find an associated nfs write request, and prepare to flush it out
-  * May return an error if the user signalled nfs_wait_on_request().
-  */
--static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
--				struct page *page)
-+static int nfs_page_async_flush(struct page *page,
-+				struct writeback_control *wbc,
-+				struct nfs_pageio_descriptor *pgio)
- {
- 	struct nfs_page *req;
- 	int ret = 0;
-@@ -630,11 +631,11 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
- 		/*
- 		 * Remove the problematic req upon fatal errors on the server
- 		 */
--		if (nfs_error_is_fatal(ret)) {
--			if (nfs_error_is_fatal_on_server(ret))
--				goto out_launder;
--		} else
--			ret = -EAGAIN;
-+		if (nfs_error_is_fatal_on_server(ret))
-+			goto out_launder;
-+		if (wbc->sync_mode == WB_SYNC_NONE)
-+			ret = AOP_WRITEPAGE_ACTIVATE;
-+		redirty_page_for_writepage(wbc, page);
- 		nfs_redirty_request(req);
- 		pgio->pg_error = 0;
- 	} else
-@@ -650,15 +651,8 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
- static int nfs_do_writepage(struct page *page, struct writeback_control *wbc,
- 			    struct nfs_pageio_descriptor *pgio)
- {
--	int ret;
--
- 	nfs_pageio_cond_complete(pgio, page_index(page));
--	ret = nfs_page_async_flush(pgio, page);
--	if (ret == -EAGAIN) {
--		redirty_page_for_writepage(wbc, page);
--		ret = AOP_WRITEPAGE_ACTIVATE;
--	}
--	return ret;
-+	return nfs_page_async_flush(page, wbc, pgio);
- }
- 
- /*
-@@ -737,12 +731,15 @@ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
- 		priority = wb_priority(wbc);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a79f66432bd3..bf3ba541b9fb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3098,6 +3098,10 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
  	}
  
--	nfs_pageio_init_write(&pgio, inode, priority, false,
--				&nfs_async_write_completion_ops);
--	pgio.pg_io_completion = ioc;
--	err = write_cache_pages(mapping, wbc, nfs_writepages_callback, &pgio);
--	pgio.pg_error = 0;
--	nfs_pageio_complete(&pgio);
-+	do {
-+		nfs_pageio_init_write(&pgio, inode, priority, false,
-+				      &nfs_async_write_completion_ops);
-+		pgio.pg_io_completion = ioc;
-+		err = write_cache_pages(mapping, wbc, nfs_writepages_callback,
-+					&pgio);
-+		pgio.pg_error = 0;
-+		nfs_pageio_complete(&pgio);
-+	} while (err < 0 && !nfs_error_is_fatal(err));
- 	nfs_io_completion_put(ioc);
- 
- 	if (err < 0)
+ out:
++	if (opendata->lgp) {
++		nfs4_lgopen_release(opendata->lgp);
++		opendata->lgp = NULL;
++	}
+ 	if (!opendata->cancelled)
+ 		nfs4_sequence_free_slot(&opendata->o_res.seq_res);
+ 	return ret;
 -- 
 2.36.1
 
