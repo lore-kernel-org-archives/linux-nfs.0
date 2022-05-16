@@ -2,34 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DE1DC433F5
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 May 2022 21:01:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EE7E8C43219
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 May 2022 21:01:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348790AbiEPVBn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 16 May 2022 17:01:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45176 "EHLO
+        id S1348876AbiEPVBo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 16 May 2022 17:01:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46132 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1348949AbiEPVBA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2022 17:01:00 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 071D42738
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 13:35:54 -0700 (PDT)
+        with ESMTP id S1349213AbiEPVBI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2022 17:01:08 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3068AB859
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 13:36:26 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 0227C61499
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 20:35:54 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 24D45C34116;
-        Mon, 16 May 2022 20:35:53 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id C9144B815F3
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 20:36:24 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F190C385AA;
+        Mon, 16 May 2022 20:36:23 +0000 (UTC)
 From:   Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v1 5/6] SUNRPC: Export xdr_buf_pagecount()
-Date:   Mon, 16 May 2022 16:35:48 -0400
-Message-Id: <20220516203549.2605575-6-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v1 0/5] NFS: Improvements for the NFSv4.2 READ_PLUS
+Date:   Mon, 16 May 2022 16:36:17 -0400
+Message-Id: <20220516203622.2605713-1-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220516203549.2605575-1-Anna.Schumaker@Netapp.com>
-References: <20220516203549.2605575-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -38,26 +36,55 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-The NFS server will need this for iterating over pages in a READ_PLUS
-reply
+Previously, decoding was a one step process that expanded holes as they
+were seen in the buffer. This had a few undesireable side effects:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- net/sunrpc/xdr.c | 1 +
- 1 file changed, 1 insertion(+)
+1) An extra READ_PLUS call was often needed to fetch any data shifted
+   off the end of the buffer when the last two segments are a HOLE
+   followed by DATA
+2) We shifted the entire remaining buffer for each hole, meaning some
+   segments would get moved multiple times during one decode pass.
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 0b378c80f5f5..d71c90552fa2 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -139,6 +139,7 @@ size_t xdr_buf_pagecount(const struct xdr_buf *buf)
- 		return 0;
- 	return (buf->page_base + buf->page_len + PAGE_SIZE - 1) >> PAGE_SHIFT;
- }
-+EXPORT_SYMBOL_GPL(xdr_buf_pagecount);
- 
- char *xdr_buf_nth_page_address(const struct xdr_buf *buf, unsigned int n,
- 			       unsigned int *len)
+These patches attempt to address this by turning READ_PLUS decoding into
+a two-step process. First, we build up a list of each segment returned
+by the server, then we walk the list in reverse and move each segment
+directly to their target offset. This cuts out all the extra copying,
+and means we won't lose any data off of the end of the reply.
+
+The results of my performance testing can be found here:
+    https://wiki.linux-nfs.org/wiki/index.php/Read_Plus_May_2022
+
+Between these patches and the corresponding server patches, I'm seeing a
+several second decrease in the amount of time that a READ_PLUS call
+takes to complete even on the worst case test where pages alternate
+between hole and data segments.
+
+I also optimistically remove the CONFIG_NFS_V4_2_READ_PLUS Kconfig
+option now that the known performance and correctness issues have been
+resolved, but I would also be fine with changing it to default to 'y' if
+there are objections to entirely dropping the option.
+
+Please note that these patches rely on the xdr_stream_move_segment()
+function added as the first patch of the corresponding server patches.
+
+Thoughts?
+Anna
+
+
+Anna Schumaker (5):
+  SUNRPC: Add a function for directly setting the xdr page len
+  SUNRPC: Add a function for zeroing out a portion of an xdr_stream
+  NFS: Replace the READ_PLUS decoding code
+  SUNRPC: Remove xdr_align_data() and xdr_expand_hole()
+  NFS: Remove the CONFIG_NFS_V4_2_READ_PLUS Kconfig option
+
+ fs/nfs/Kconfig             |   9 --
+ fs/nfs/nfs42xdr.c          | 168 +++++++++++++++++++------------------
+ fs/nfs/nfs4proc.c          |   2 +-
+ include/linux/sunrpc/xdr.h |   5 +-
+ net/sunrpc/xdr.c           | 111 +++++++++++-------------
+ 5 files changed, 140 insertions(+), 155 deletions(-)
+
 -- 
 2.36.1
 
