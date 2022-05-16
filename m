@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1742EC433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 May 2022 21:02:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48A63C433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 May 2022 21:02:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348623AbiEPVCH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 16 May 2022 17:02:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46184 "EHLO
+        id S240349AbiEPVCJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 16 May 2022 17:02:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41786 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1349222AbiEPVBJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2022 17:01:09 -0400
+        with ESMTP id S1349209AbiEPVBI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2022 17:01:08 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1210DB86F
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 13:36:28 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A835B85E
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 13:36:26 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id BE127B8165B
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 20:36:26 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 44B3FC385AA;
-        Mon, 16 May 2022 20:36:25 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 53F86B8160F
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 20:36:25 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C6BDFC34115;
+        Mon, 16 May 2022 20:36:23 +0000 (UTC)
 From:   Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v1 4/5] SUNRPC: Remove xdr_align_data() and xdr_expand_hole()
-Date:   Mon, 16 May 2022 16:36:21 -0400
-Message-Id: <20220516203622.2605713-5-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v1 1/5] SUNRPC: Add a function for directly setting the xdr page len
+Date:   Mon, 16 May 2022 16:36:18 -0400
+Message-Id: <20220516203622.2605713-2-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.36.1
 In-Reply-To: <20220516203622.2605713-1-Anna.Schumaker@Netapp.com>
 References: <20220516203622.2605713-1-Anna.Schumaker@Netapp.com>
@@ -38,105 +38,68 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-These functions are no longer needed now that the NFS client places data
-and hole segments directly.
+We need to do this step during READ_PLUS decoding so that we know pages
+are the right length and any extra data has been preserved in the tail.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- include/linux/sunrpc/xdr.h |  2 --
- net/sunrpc/xdr.c           | 66 --------------------------------------
- 2 files changed, 68 deletions(-)
+ include/linux/sunrpc/xdr.h |  1 +
+ net/sunrpc/xdr.c           | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
 
 diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index d632fd170bf6..05a1a8b459b0 100644
+index b375b284afbe..607340fa1fd4 100644
 --- a/include/linux/sunrpc/xdr.h
 +++ b/include/linux/sunrpc/xdr.h
-@@ -263,8 +263,6 @@ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
+@@ -262,6 +262,7 @@ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
+ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
  extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
  extern int xdr_process_buf(const struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
- extern void xdr_set_pagelen(struct xdr_stream *, unsigned int len);
--extern unsigned int xdr_align_data(struct xdr_stream *, unsigned int offset, unsigned int length);
--extern unsigned int xdr_expand_hole(struct xdr_stream *, unsigned int offset, unsigned int length);
++extern void xdr_set_pagelen(struct xdr_stream *, unsigned int len);
+ extern unsigned int xdr_align_data(struct xdr_stream *, unsigned int offset, unsigned int length);
+ extern unsigned int xdr_expand_hole(struct xdr_stream *, unsigned int offset, unsigned int length);
  extern bool xdr_stream_subsegment(struct xdr_stream *xdr, struct xdr_buf *subbuf,
- 				  unsigned int len);
- extern unsigned int xdr_stream_move_segment(struct xdr_stream *xdr, unsigned int offset,
 diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 7c7c4d360950..49f98c95d1a7 100644
+index d71c90552fa2..ff36a20aab89 100644
 --- a/net/sunrpc/xdr.c
 +++ b/net/sunrpc/xdr.c
-@@ -1539,72 +1539,6 @@ void xdr_set_pagelen(struct xdr_stream *xdr, unsigned int len)
+@@ -1509,6 +1509,36 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
  }
- EXPORT_SYMBOL_GPL(xdr_set_pagelen);
+ EXPORT_SYMBOL_GPL(xdr_read_pages);
  
--unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
--			    unsigned int length)
--{
--	struct xdr_buf *buf = xdr->buf;
--	unsigned int from, bytes, len;
--	unsigned int shift;
--
--	xdr_realign_pages(xdr);
--	from = xdr_page_pos(xdr);
--
--	if (from >= buf->page_len + buf->tail->iov_len)
--		return 0;
--	if (from + buf->head->iov_len >= buf->len)
--		return 0;
--
--	len = buf->len - buf->head->iov_len;
--
--	/* We only shift data left! */
--	if (WARN_ONCE(from < offset, "SUNRPC: misaligned data src=%u dst=%u\n",
--		      from, offset))
--		return 0;
--	if (WARN_ONCE(offset > buf->page_len,
--		      "SUNRPC: buffer overflow. offset=%u, page_len=%u\n",
--		      offset, buf->page_len))
--		return 0;
--
--	/* Move page data to the left */
--	shift = from - offset;
--	xdr_buf_pages_shift_left(buf, from, len, shift);
--
--	bytes = xdr_stream_remaining(xdr);
--	if (length > bytes)
--		length = bytes;
--	bytes -= length;
--
--	xdr->buf->len -= shift;
--	xdr_set_page(xdr, offset + length, bytes);
--	return length;
--}
--EXPORT_SYMBOL_GPL(xdr_align_data);
--
--unsigned int xdr_expand_hole(struct xdr_stream *xdr, unsigned int offset,
--			     unsigned int length)
--{
--	struct xdr_buf *buf = xdr->buf;
--	unsigned int from, to, shift;
--
--	xdr_realign_pages(xdr);
--	from = xdr_page_pos(xdr);
--	to = xdr_align_size(offset + length);
--
--	/* Could the hole be behind us? */
--	if (to > from) {
--		unsigned int buflen = buf->len - buf->head->iov_len;
--		shift = to - from;
--		xdr_buf_try_expand(buf, shift);
--		xdr_buf_pages_shift_right(buf, from, buflen, shift);
--		xdr_set_page(xdr, to, xdr_stream_remaining(xdr));
--	} else if (to != from)
--		xdr_align_data(xdr, to, 0);
--	xdr_buf_pages_zero(buf, offset, length);
--
--	return length;
--}
--EXPORT_SYMBOL_GPL(xdr_expand_hole);
--
- /**
-  * xdr_enter_page - decode data from the XDR page
-  * @xdr: pointer to xdr_stream struct
++/**
++ * xdr_set_pagelen - Sets the length of the XDR pages
++ * @xdr: pointer to xdr_stream struct
++ * @len: new length of the XDR page data
++ *
++ * Either grows or shrinks the length of the xdr pages by setting pagelen to
++ * @len bytes. When shrinking, any extra data is moved into buf->tail, whereas
++ * when growing any data beyond the current pointer is moved into the tail.
++ *
++ * Returns True if the operation was successful, and False otherwise.
++ */
++void xdr_set_pagelen(struct xdr_stream *xdr, unsigned int len)
++{
++	struct xdr_buf *buf = xdr->buf;
++	size_t remaining = xdr_stream_remaining(xdr);
++	size_t base = 0;
++
++	if (len < buf->page_len) {
++		base = buf->page_len - len;
++		xdr_shrink_pagelen(buf, len);
++	} else {
++		xdr_buf_head_shift_right(buf, xdr_stream_pos(xdr),
++					 buf->page_len, remaining);
++		if (len > buf->page_len)
++			xdr_buf_try_expand(buf, len - buf->page_len);
++	}
++	xdr_set_tail_base(xdr, base, remaining);
++}
++EXPORT_SYMBOL_GPL(xdr_set_pagelen);
++
+ unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
+ 			    unsigned int length)
+ {
 -- 
 2.36.1
 
