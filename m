@@ -2,34 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8769DC43217
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 May 2022 21:01:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D8DDC433F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 May 2022 21:02:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348860AbiEPVBs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 16 May 2022 17:01:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44144 "EHLO
+        id S1345903AbiEPVB7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 16 May 2022 17:01:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44640 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1348953AbiEPVBA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2022 17:01:00 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A39ED2ACC
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 13:35:54 -0700 (PDT)
+        with ESMTP id S1348926AbiEPVA7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 May 2022 17:00:59 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A6D71F3B
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 13:35:53 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 24EC7B8165D
-        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 20:35:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A0111C36AE5;
-        Mon, 16 May 2022 20:35:51 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 35C01B8165B
+        for <linux-nfs@vger.kernel.org>; Mon, 16 May 2022 20:35:52 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E2E0C385AA;
+        Mon, 16 May 2022 20:35:50 +0000 (UTC)
 From:   Anna.Schumaker@Netapp.com
 To:     steved@redhat.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH v1 2/6] SUNRPC: Introduce xdr_encode_double()
-Date:   Mon, 16 May 2022 16:35:45 -0400
-Message-Id: <20220516203549.2605575-3-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v1 0/6] NFSD: Improvements for the NFSv4.2 READ_PLUS operation
+Date:   Mon, 16 May 2022 16:35:43 -0400
+Message-Id: <20220516203549.2605575-1-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220516203549.2605575-1-Anna.Schumaker@Netapp.com>
-References: <20220516203549.2605575-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -38,46 +36,44 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-This is similar to xdr_encode_word(), but instead lets us encode a
-64-bit wide value into the xdr_buf at the given offset.
+The main motivation for this patchset is fixing generic/091 and
+generic/263 with READ_PLUS. These tests appear to be failing due to
+files getting modified in the middle of reply encoding. Attempts to lock
+the file for the entire encode result in a deadlock, since llseek() and
+read() both need the file lock.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- include/linux/sunrpc/xdr.h | 1 +
- net/sunrpc/xdr.c           | 8 ++++++++
- 2 files changed, 9 insertions(+)
+The solution is to read everything from disk at once, and then check if
+each buffer page is all zeroes or not. As a bonus, this lets us support
+READ_PLUS hole segments on filesystems that don't track sparse files.
+Additionally, this also solves the performance issues I hit when testing
+using btrfs on a virtual machine.
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 04d47a096f8a..e502fe576813 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -196,6 +196,7 @@ extern int read_bytes_from_xdr_buf(const struct xdr_buf *, unsigned int, void *,
- extern int write_bytes_to_xdr_buf(const struct xdr_buf *, unsigned int, void *, unsigned int);
- 
- extern int xdr_encode_word(const struct xdr_buf *, unsigned int, u32);
-+extern int xdr_encode_double(const struct xdr_buf *, unsigned int, u64);
- extern int xdr_decode_word(const struct xdr_buf *, unsigned int, u32 *);
- 
- struct xdr_array2_desc;
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 26559c08f68f..87526bce9e15 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1856,6 +1856,14 @@ int xdr_encode_word(const struct xdr_buf *buf, unsigned int base, u32 obj)
- }
- EXPORT_SYMBOL_GPL(xdr_encode_word);
- 
-+int xdr_encode_double(const struct xdr_buf *buf, unsigned int base, u64 obj)
-+{
-+	__be64 raw = cpu_to_be64(obj);
-+
-+	return write_bytes_to_xdr_buf(buf, base, &raw, sizeof(obj));
-+}
-+EXPORT_SYMBOL_GPL(xdr_encode_double);
-+
- /* Returns 0 on success, or else a negative error code. */
- static int xdr_xcode_array2(const struct xdr_buf *buf, unsigned int base,
- 			    struct xdr_array2_desc *desc, int encode)
+I created a wiki page with the results of my performance testing here:
+    https://wiki.linux-nfs.org/wiki/index.php/Read_Plus_May_2022
+
+These should probably have some soak time in linux-next, so let's target
+them for the Linux 5.20 (6.0?) merge window rather than rushing to get
+them into 5.19. As far as ordering goes, these patches should probably
+go in before the related client changes as the client will also be
+changed to make use of the xdr_stream_move_segment() function.
+
+Thoughts?
+Anna
+
+
+Anna Schumaker (6):
+  SUNRPC: Introduce xdr_stream_move_segment()
+  SUNRPC: Introduce xdr_encode_double()
+  SUNRPC: Introduce xdr_buf_trim_head()
+  SUNRPC: Introduce xdr_buf_nth_page_address()
+  SUNRPC: Export xdr_buf_pagecount()
+  NFSD: Repeal and replace the READ_PLUS implementation
+
+ fs/nfsd/nfs4xdr.c          | 202 +++++++++++++++++++------------------
+ include/linux/sunrpc/xdr.h |   6 ++
+ net/sunrpc/xdr.c           | 102 +++++++++++++++++++
+ 3 files changed, 210 insertions(+), 100 deletions(-)
+
 -- 
 2.36.1
 
