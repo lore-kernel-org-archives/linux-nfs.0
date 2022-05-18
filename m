@@ -2,360 +2,854 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A90AC433F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 May 2022 15:26:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 35D77C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 May 2022 23:05:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238539AbiERP04 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 May 2022 11:26:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50612 "EHLO
+        id S229752AbiERXFt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 May 2022 19:05:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51362 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229496AbiERP0z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 May 2022 11:26:55 -0400
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 204E31A0487
-        for <linux-nfs@vger.kernel.org>; Wed, 18 May 2022 08:26:53 -0700 (PDT)
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 24IEVLjT005212;
-        Wed, 18 May 2022 15:26:49 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=cJSibPnbRi4AV7eU3nbtFdqhflipHWMkxssoQfLtIMg=;
- b=mGjOx9/zI1c62kVOLDBgiLauzRq91fHA6hqPmg5ngYG3JrwLqgm54uGq1RAIefnRA2zM
- tHH1kSr1+4LPppxw1xTjaKA1CT9se/L2UWIcS2ao1O/UR55sEr2YeCb6uTSDO96emhJI
- gmDqyvTzG94k4C1tAxyUBXrhlnApCW6oikHpirpuKNEFp82IYFrMbG9Lp9cAI759avzv
- WBfawEfLKLjrihPvX8oSUiowVJqmPjLQDXdsHXOXmU5YwqQ/754UuIwT7aZhYpLL+6y9
- qE/rjZtyni9LQ6ztRN31Bzgl/lr981qOb0D5/qqkkKyZbYtfIvuS5+nU1dDfuaRSm0oo uw== 
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3g23721t8b-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 18 May 2022 15:26:48 +0000
-Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 24IFQVUe011277;
-        Wed, 18 May 2022 15:26:47 GMT
-Received: from nam12-mw2-obe.outbound.protection.outlook.com (mail-mw2nam12lp2049.outbound.protection.outlook.com [104.47.66.49])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com with ESMTP id 3g37cqgqk1-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 18 May 2022 15:26:47 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=k7hxppuq0ySHJHS+g5PHHGF43ssmCK9crcvyRRh2CLTz/r3mKnjfxgI1eZZrpT8emmmhQmp7+ISX4zrdITl8sx3YvdsSdbPTofyFP8Rjc5KqCbM8DmQOfCq4AVJOIPJdJyVFL9FqzGxE+/6E+5x6nSLkZarHCtC6jRmyq+r9k4xx6CXDI5AnEOEm9BXSDXerbG4VbAgASscq/4Cxws8LG78sElDI4GyFwI+B2jAa/poijzNakn5M171b1JkfJC6DcBvgrJ+ZPR2ozezr4YseDTdDhsyHNmCriBVH6fYWfCy2sAX9/B6Ktkmt1UGuZZ47+WxhIwyOK/6Km29meD3LAw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=cJSibPnbRi4AV7eU3nbtFdqhflipHWMkxssoQfLtIMg=;
- b=BSl894hLC+upNt3fZV7mk58yJm/Mykef4O0YU0L//OxYI0vM0ZnHua2tSOuKDOD4duNURTCEs4k3BoFmJgJjlG6dj3QNzMcC60lQmWL5HgdBAw6rRtN0XE/2tAY4fbiQ8bVDfu8mLXBPKlzX8a0BA+4dJlT8uNnIqcHZHJPa4sggXj4He+Bqe5vsqRb86tbtns0AlAlPVoJG2BBQBLYlNmUjTM54i8FuFkcHpQ6Awl+krKgVYvK1vVmJuMBIWOOn7qAX41RgV0OHIj8EZy8Qmbz3ke2KRzeYT6DqHeds50wg5mi/4YsOdQq484M5l3cWs5DMDpxb5vmRCL0WBa2TKA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=cJSibPnbRi4AV7eU3nbtFdqhflipHWMkxssoQfLtIMg=;
- b=m+9F7kZ2q6l0s91rnT59FddMvhtW6rHoFJBggE/RSAyo9Dt0bFcL0Ope3+xOoKI3mY6TjPEdiURj3yPoS7ks49O/vpMK2Sd8zhoD/PkBrwOMkrDfNPhJWctLYzNYdyzIyfah/2vI8/9smKT9g5+TMnt7wiZSriPV1fUxYjMHhMY=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by CY4PR10MB2038.namprd10.prod.outlook.com (2603:10b6:903:122::20) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5250.17; Wed, 18 May
- 2022 15:26:45 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::ed81:8458:5414:f59f]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::ed81:8458:5414:f59f%7]) with mapi id 15.20.5250.018; Wed, 18 May 2022
- 15:26:45 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Neil Brown <neilb@suse.de>
-CC:     Bruce Fields <bfields@fieldses.org>,
-        Steve Dickson <SteveD@RedHat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] nfsd: report client confirmation status in "info" file
-Thread-Topic: [PATCH v2] nfsd: report client confirmation status in "info"
- file
-Thread-Index: AQHXHRCg4I/NVojQCUuAkyEihGCrLa0nUdcAgAALZAA=
-Date:   Wed, 18 May 2022 15:26:45 +0000
-Message-ID: <A62B027C-434A-41CF-938C-2ABFE10A794E@oracle.com>
-References: <161456493684.22801.323431390819102360.stgit@noble>
- <20210301185037.GB14881@fieldses.org>
- <874khui7hr.fsf@notabene.neil.brown.name>
- <20210302032733.GC16303@fieldses.org>
- <87y2ejerwn.fsf@notabene.neil.brown.name>
- <87v99neruh.fsf@notabene.neil.brown.name>
- <87h7l6epmb.fsf@notabene.neil.brown.name>
- <41FCC628-9C02-4A8D-9E82-292AAF489E9B@oracle.com>
-In-Reply-To: <41FCC628-9C02-4A8D-9E82-292AAF489E9B@oracle.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3654.120.0.1.13)
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: de4ddf44-99fa-453d-995d-08da38e2d150
-x-ms-traffictypediagnostic: CY4PR10MB2038:EE_
-x-microsoft-antispam-prvs: <CY4PR10MB20382B8D7DA687530EE4528C93D19@CY4PR10MB2038.namprd10.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: yneM784ujWIJ92LpSrhqESppqQx/VBF4eGrYo/hg2qot6mIYAZiZq/Sl8fSHNuteJMN5V2sAEtkvsM/Mhwa1OBoDOV1pOSxIDvCl9CS1L6K+m623gvoI7gcR2bZmAIGlTIoVE55uRXfqXdSqaa1SZRq3j5fC1d9GoWikP8cAdcX8kNdTIfYs18kQpjKujqqiHSU53tlA8WBJrThvq2JhgnjliNuQ4kvMxXzGYentH3StTsEETcOJ17YhsXPwyQh1R3KvExo3m5hP9BspDKepzGI8YgVwHGHA5AqUqSiUU56yfBAfIdUGbkOsXWT7SSsmi49kKSD9GEMjN4NtlohTl6WeqYa0Nkid0q343j1Z7C7iDgCHWYrm8yXBznfFum0m6zmDwMKPu4HdUpC5mjYCjy+ri1pOli/+ZmQtLTqOQbzBBwPkb3wwa2/gVki5HbfT6tFNK4XNvoijl4MYJV13hFW6ngmwIM0k2cXYafL7pKWQYzE14vHyYzYED7PoZfLAMN/GI4vpYkUUgDKeVaAAkfH4olmxfLKyTazADBmHUYCosXi/KqjNDel0f7OY1wxlnU15ossQOXTWsXcu5EasWgAR4ygvnPuAY9tLCBxU3+4ea3CXG0U2dWlkz0kXNgxfsbb9Bn0DGFWa8IKgHvuHkGso7Fr9MDkUj8wZ7fsxZqTUPPdcoJZ1LBcseyd6fO0Ob+3JLcWrZ4q3lYDn2l/2mg4OTBqdqoqx01sk8iugNkqRmikgiHRFMJ6umB7vxN3ODL651SqixLolO3nq6xJQhQ==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(366004)(4326008)(8676002)(64756008)(2616005)(33656002)(6916009)(2906002)(186003)(76116006)(66476007)(91956017)(66556008)(66946007)(5660300002)(83380400001)(122000001)(6486002)(86362001)(6506007)(53546011)(71200400001)(508600001)(6512007)(316002)(8936002)(38100700002)(66446008)(54906003)(38070700005)(26005)(36756003)(21314003)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?SkbPw0Hbz8iVpHj/hOzvmuJy9Wr11fQJSmtx5dv+KQa9030a4XZ7FqdHrlOM?=
- =?us-ascii?Q?gV3lu/JVO582d1N6tHBKguvTeCH0X4iBdq0zTKdMzN/blRH+r0vNu2z9wFfC?=
- =?us-ascii?Q?phc5sN8t+wIyozeJ94K5IGlITZ5+J6ax4xs7oZEZZAXuxjiUuzgE5eEZInPp?=
- =?us-ascii?Q?vQGfe6HTFNzBCfkakUT9XAxaQjGOTC6ZV6cYQO9DYdOIxOw8lLRAA/oD28qx?=
- =?us-ascii?Q?iMo+DgGhihSDartZcuXnDegUGmk7eD1hzatdSF4lrFCQQ8LCRSkmM2zsbWFw?=
- =?us-ascii?Q?N24C+9qD9IjuZMeCcLDdgjWWOp/hysLmGhn7SEf7D7Qpe3Jo+LV5qe0uQTmo?=
- =?us-ascii?Q?EiOFrFyC4cnRuHM1GpecIugyN3j/qjErHf54CCOok4WK4ARNtSvdQcYUVr7g?=
- =?us-ascii?Q?DnMYZnixqSyy72ZD+vaqNgyRRAvl9DW9JnyoUo4unTpcWJVBnO3Kvh8YkSus?=
- =?us-ascii?Q?Qpx8a8NmuRJhzxVpk6GRZi48TWq8W3oF/rm5HQ2X6tVpLDxTCHPRtE6Etfb1?=
- =?us-ascii?Q?zk+N28kSOQnUrI7aNw57QXoJ9SykXMsVsXtnYaK3Y054w5TYUN2j27twm/Rb?=
- =?us-ascii?Q?U6UTxwe+UrZO+nzVImTClUofx3QuK+ULYvFgJAhV0nFWI81cAwUhcgnbw2IZ?=
- =?us-ascii?Q?HghnGP3i++DYIGE1mt0lr0HziTYUtOfCg7ptMGydB0s18p7pZx+OaaKkmeYF?=
- =?us-ascii?Q?b8hLp+H+WRq81g/EubHy7PhEI4I1Fiy3jjGx4QpgxcWdZ+LJ2gQFAIuSVgiL?=
- =?us-ascii?Q?c6AWk6HT5idCGPug5YMKKwF/HiPYadfmNXmlI+Sl57q1HlODpoz37oWIWhna?=
- =?us-ascii?Q?a0lt3MmwYg/xLISX1kVW4ZeGYmJqZn94YfhV1eMsyh4a43VE1Uf1bsc44jbf?=
- =?us-ascii?Q?Q/hS0F+9RCyDhORzxHCrlP9cmZeR2e0JatnBTWY1z6tMiADZNUYL78LHBVXz?=
- =?us-ascii?Q?3qzVOInhqtFG66uelDISxREdn9JqLWHFHKukwkZCqeOl+I/y2tNh+p7NB+Rk?=
- =?us-ascii?Q?d1xkvxewu4vK2wwgKq4tgLhlEN0A3k6OmINvIGGV3qFxBqm/57VtOVT2LkSz?=
- =?us-ascii?Q?WXL6R5mkNYi5LzxIf0sA5oTLZPPNM0TVzB0tkRkFahoT9q9HSd0iwNzMg/AN?=
- =?us-ascii?Q?UcwB/hdrDl88g8U53aawMBGZuyR1jEtEw2qA03rsswKAXUa6Q7ugKaym7qsz?=
- =?us-ascii?Q?cJhopJHkovgsUjKQvthEaD9ya7k/Cydx7lb/yFalKN+BMg79Dh0UG+0BYp93?=
- =?us-ascii?Q?/tusmf5G+9OGru6BeinqVfYXspUtuNVRYCdOd/bi0zYx6LJ2mAnH21z8mVl3?=
- =?us-ascii?Q?eCrfYEiHIRd/MdiYYWVQFoG1FtarCe6F8bKq8xZ3X9DVpPODne5t32c2WrE1?=
- =?us-ascii?Q?sOdaR4MbrhR/iErk8v7H/VJ3SLZ9h4Vn+P0+YfarmWa3ciHt57tGypxXJ+Hb?=
- =?us-ascii?Q?gD7ymNfqm331eRupqH/0KTO+VXCBDGvwn76XPOlkCF6id5GPVZDxcln+EGz5?=
- =?us-ascii?Q?wxKxa4I/PRzVwn5aJqFKbVnup33AyUSbbWQMYpoDBckGZgk57wFabyM6yIti?=
- =?us-ascii?Q?EIY4TmrziUyDo8oiXJFjJLA9Z0iDSorJrk4+jaQUqBeajyVg2AVM7R5PFvXp?=
- =?us-ascii?Q?+bTZ793s9PTopVvUDluV+Nrk0phDogVCvmfGEhVfR55QjCutk8nQZaAz/kWk?=
- =?us-ascii?Q?mTCzpX+5pbuCoP0F9DBAvI1D/W4hQn4UE1nUxVmQofjYSyLYG0cNwdRiIH/O?=
- =?us-ascii?Q?cmCAQHtq5Xb3lJvIvkzqTmZxzwMq8kQ=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <E2E0BE17CCC5FB40A6FF515EAA68B290@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        with ESMTP id S229655AbiERXFs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 May 2022 19:05:48 -0400
+Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E72A3242
+        for <linux-nfs@vger.kernel.org>; Wed, 18 May 2022 16:05:42 -0700 (PDT)
+Received: from localhost (localhost [127.0.0.1])
+        by lithops.sigma-star.at (Postfix) with ESMTP id B21966081104;
+        Thu, 19 May 2022 01:05:40 +0200 (CEST)
+Received: from lithops.sigma-star.at ([127.0.0.1])
+        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
+        with ESMTP id ezB2VAGgf4R5; Thu, 19 May 2022 01:05:39 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+        by lithops.sigma-star.at (Postfix) with ESMTP id 6B4BD608110A;
+        Thu, 19 May 2022 01:05:39 +0200 (CEST)
+Received: from lithops.sigma-star.at ([127.0.0.1])
+        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
+        with ESMTP id zdCOymEa7ngi; Thu, 19 May 2022 01:05:39 +0200 (CEST)
+Received: from blindfold.corp.sigma-star.at (213-47-184-186.cable.dynamic.surfer.at [213.47.184.186])
+        by lithops.sigma-star.at (Postfix) with ESMTPSA id DA0FA6081104;
+        Thu, 19 May 2022 01:05:38 +0200 (CEST)
+From:   Richard Weinberger <richard@nod.at>
+To:     linux-nfs@vger.kernel.org
+Cc:     david@sigma-star.at, bfields@fieldses.org,
+        luis.turcitu@appsbroker.com, david.young@appsbroker.com,
+        david.oberhollenzer@sigma-star.at, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, chris.chilvers@appsbroker.com,
+        steved@redhat.com, Richard Weinberger <richard@nod.at>
+Subject: [PATCH] RFC: Reexport state database backend plugin support
+Date:   Thu, 19 May 2022 01:05:13 +0200
+Message-Id: <20220518230513.15307-1-richard@nod.at>
+X-Mailer: git-send-email 2.26.2
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: de4ddf44-99fa-453d-995d-08da38e2d150
-X-MS-Exchange-CrossTenant-originalarrivaltime: 18 May 2022 15:26:45.1674
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: OQbGiL/B3X/pbBiH6y70bYj/rBVLpYXh1+4yR1ZgcZZlH09WPjuE8l3a8BzFQaRc2Imbw2SuH7D9Dn5evhpU3g==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY4PR10MB2038
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.486,18.0.874
- definitions=2022-05-18_06:2022-05-17,2022-05-18 signatures=0
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 malwarescore=0 mlxscore=0
- phishscore=0 bulkscore=0 mlxlogscore=999 adultscore=0 suspectscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2202240000
- definitions=main-2205180091
-X-Proofpoint-GUID: lJwTYF0VUnDgs1QsTB9pDDQYACwvBlt1
-X-Proofpoint-ORIG-GUID: lJwTYF0VUnDgs1QsTB9pDDQYACwvBlt1
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Since I talked about the feature already I though it is time to show some=
+ code.
 
+sqlite is not a perfect fit for everyone.
+Especially when the re-exporting NFS server is part of a load balancer,
+a more sophisticated distributed database is preferable.
+This RFC patch implements support for different databases using a simple
+plugin interface on top of my previous patch series.
 
-> On May 18, 2022, at 10:45 AM, Chuck Lever III <chuck.lever@oracle.com> wr=
-ote:
->=20
-> Hi Neil-
->=20
->=20
->> On Mar 19, 2021, at 6:38 PM, NeilBrown <neilb@suse.de> wrote:
->>=20
->>=20
->> mountd can now monitor clients appearing and disappearing in
->> /proc/fs/nfsd/clients, and will log these events, in liu of the logging
->> of mount/unmount events for NFSv3.
->>=20
->> Currently it cannot distinguish between unconfirmed clients (which might
->> be transient and totally uninteresting) and confirmed clients.
->>=20
->> So add a "status: " line which reports either "confirmed" or
->> "unconfirmed", and use fsnotify to report that the info file
->> has been modified.
->>=20
->> This requires a bit of infrastructure to keep the dentry for the "info"
->> file.  There is no need to take a counted reference as the dentry must
->> remain around until the client is removed.
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.de>
->> ---
->> fs/nfsd/nfs4state.c | 19 +++++++++++++++----
->> fs/nfsd/nfsctl.c    | 14 ++++++++------
->> fs/nfsd/nfsd.h      |  4 +++-
->> fs/nfsd/state.h     |  4 ++++
->> 4 files changed, 30 insertions(+), 11 deletions(-)
->>=20
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 97447a64bad0..ec1b2dd8fd45 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -43,6 +43,7 @@
->> #include <linux/sunrpc/addr.h>
->> #include <linux/jhash.h>
->> #include <linux/string_helpers.h>
->> +#include <linux/fsnotify.h>
->> #include "xdr4.h"
->> #include "xdr4cb.h"
->> #include "vfs.h"
->> @@ -2352,6 +2353,10 @@ static int client_info_show(struct seq_file *m, v=
-oid *v)
->> 	memcpy(&clid, &clp->cl_clientid, sizeof(clid));
->> 	seq_printf(m, "clientid: 0x%llx\n", clid);
->> 	seq_printf(m, "address: \"%pISpc\"\n", (struct sockaddr *)&clp->cl_addr=
-);
->> +	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
->> +		seq_puts(m, "status: confirmed\n");
->> +	else
->> +		seq_puts(m, "status: unconfirmed\n");
->> 	seq_printf(m, "name: ");
->> 	seq_quote_mem(m, clp->cl_name.data, clp->cl_name.len);
->> 	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
->> @@ -2702,6 +2707,7 @@ static struct nfs4_client *create_client(struct xd=
-r_netobj name,
->> 	int ret;
->> 	struct net *net =3D SVC_NET(rqstp);
->> 	struct nfsd_net *nn =3D net_generic(net, nfsd_net_id);
->> +	struct dentry *dentries[ARRAY_SIZE(client_files)];
->>=20
->> 	clp =3D alloc_client(name);
->> 	if (clp =3D=3D NULL)
->> @@ -2721,9 +2727,11 @@ static struct nfs4_client *create_client(struct x=
-dr_netobj name,
->> 	memcpy(&clp->cl_addr, sa, sizeof(struct sockaddr_storage));
->> 	clp->cl_cb_session =3D NULL;
->> 	clp->net =3D net;
->> -	clp->cl_nfsd_dentry =3D nfsd_client_mkdir(nn, &clp->cl_nfsdfs,
->> -			clp->cl_clientid.cl_id - nn->clientid_base,
->> -			client_files);
->> +	clp->cl_nfsd_dentry =3D nfsd_client_mkdir(
->> +		nn, &clp->cl_nfsdfs,
->> +		clp->cl_clientid.cl_id - nn->clientid_base,
->> +		client_files, dentries);
->> +	clp->cl_nfsd_info_dentry =3D dentries[0];
->> 	if (!clp->cl_nfsd_dentry) {
->> 		free_client(clp);
->> 		return NULL;
->> @@ -2798,7 +2806,10 @@ move_to_confirmed(struct nfs4_client *clp)
->> 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
->> 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
->> 	add_clp_to_name_tree(clp, &nn->conf_name_tree);
->> -	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
->> +	if (!test_and_set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags) &&
->> +	    clp->cl_nfsd_dentry &&
->> +	    clp->cl_nfsd_info_dentry)
->> +		fsnotify_dentry(clp->cl_nfsd_info_dentry, FS_MODIFY);
->=20
-> I hit a "sleep while spin-locked" splat and bisected it to this
-> commit. fsnotify() can allocate memory with GFP_KERNEL, so it
-> can't be called while &nn->client_lock is held, unfortunately.
+Signed-off-by: Richard Weinberger <richard@nod.at>
+---
+ support/reexport/Makefile.am        |   7 +
+ support/reexport/backend_sqlite.c   | 251 ++++++++++++++++++++++++++++
+ support/reexport/reexport.c         | 237 +++-----------------------
+ support/reexport/reexport_backend.h |  48 ++++++
+ systemd/Makefile.am                 |   2 +-
+ systemd/nfs.conf.man                |   5 +-
+ utils/exportd/Makefile.am           |   2 +-
+ utils/exportfs/Makefile.am          |   2 +-
+ utils/mount/Makefile.am             |   4 +-
+ utils/mountd/Makefile.am            |   2 +-
+ 10 files changed, 335 insertions(+), 225 deletions(-)
+ create mode 100644 support/reexport/backend_sqlite.c
+ create mode 100644 support/reexport/reexport_backend.h
 
-Never mind. This was fixed by
-
-  934bd07fae7e ("nfsd: move fsnotify on client creation outside spinlock")
-
-
->> 	renew_client_locked(clp);
->> }
->>=20
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index ef86ed23af82..94ce1eabd9d1 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
->> @@ -1266,7 +1266,8 @@ static void nfsdfs_remove_files(struct dentry *roo=
-t)
->> /* XXX: cut'n'paste from simple_fill_super; figure out if we could share
->> * code instead. */
->> static  int nfsdfs_create_files(struct dentry *root,
->> -					const struct tree_descr *files)
->> +				const struct tree_descr *files,
->> +				struct dentry **fdentries)
->> {
->> 	struct inode *dir =3D d_inode(root);
->> 	struct inode *inode;
->> @@ -1275,8 +1276,6 @@ static  int nfsdfs_create_files(struct dentry *roo=
-t,
->>=20
->> 	inode_lock(dir);
->> 	for (i =3D 0; files->name && files->name[0]; i++, files++) {
->> -		if (!files->name)
->> -			continue;
->> 		dentry =3D d_alloc_name(root, files->name);
->> 		if (!dentry)
->> 			goto out;
->> @@ -1290,6 +1289,8 @@ static  int nfsdfs_create_files(struct dentry *roo=
-t,
->> 		inode->i_private =3D __get_nfsdfs_client(dir);
->> 		d_add(dentry, inode);
->> 		fsnotify_create(dir, dentry);
->> +		if (fdentries)
->> +			fdentries[i] =3D dentry;
->> 	}
->> 	inode_unlock(dir);
->> 	return 0;
->> @@ -1301,8 +1302,9 @@ static  int nfsdfs_create_files(struct dentry *roo=
-t,
->>=20
->> /* on success, returns positive number unique to that client. */
->> struct dentry *nfsd_client_mkdir(struct nfsd_net *nn,
->> -		struct nfsdfs_client *ncl, u32 id,
->> -		const struct tree_descr *files)
->> +				 struct nfsdfs_client *ncl, u32 id,
->> +				 const struct tree_descr *files,
->> +				 struct dentry **fdentries)
->> {
->> 	struct dentry *dentry;
->> 	char name[11];
->> @@ -1313,7 +1315,7 @@ struct dentry *nfsd_client_mkdir(struct nfsd_net *=
-nn,
->> 	dentry =3D nfsd_mkdir(nn->nfsd_client_dir, ncl, name);
->> 	if (IS_ERR(dentry)) /* XXX: tossing errors? */
->> 		return NULL;
->> -	ret =3D nfsdfs_create_files(dentry, files);
->> +	ret =3D nfsdfs_create_files(dentry, files, fdentries);
->> 	if (ret) {
->> 		nfsd_client_rmdir(dentry);
->> 		return NULL;
->> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
->> index 8bdc37aa2c2e..9aee72f65330 100644
->> --- a/fs/nfsd/nfsd.h
->> +++ b/fs/nfsd/nfsd.h
->> @@ -107,7 +107,9 @@ struct nfsdfs_client {
->>=20
->> struct nfsdfs_client *get_nfsdfs_client(struct inode *);
->> struct dentry *nfsd_client_mkdir(struct nfsd_net *nn,
->> -		struct nfsdfs_client *ncl, u32 id, const struct tree_descr *);
->> +				 struct nfsdfs_client *ncl, u32 id,
->> +				 const struct tree_descr *,
->> +				 struct dentry **fdentries);
->> void nfsd_client_rmdir(struct dentry *dentry);
->>=20
->>=20
->> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> index 73deea353169..54cab651ac1d 100644
->> --- a/fs/nfsd/state.h
->> +++ b/fs/nfsd/state.h
->> @@ -371,6 +371,10 @@ struct nfs4_client {
->>=20
->> 	/* debugging info directory under nfsd/clients/ : */
->> 	struct dentry		*cl_nfsd_dentry;
->> +	/* 'info' file within that directory. Ref is not counted,
->> +	 * but will remain valid iff cl_nfsd_dentry !=3D NULL
->> +	 */
->> +	struct dentry		*cl_nfsd_info_dentry;
->>=20
->> 	/* for nfs41 callbacks */
->> 	/* We currently support a single back channel with a single slot */
->> --=20
->> 2.30.1
->>=20
->=20
-> --
-> Chuck Lever
-
---
-Chuck Lever
-
-
+diff --git a/support/reexport/Makefile.am b/support/reexport/Makefile.am
+index 9d544a8f..d45007be 100644
+--- a/support/reexport/Makefile.am
++++ b/support/reexport/Makefile.am
+@@ -3,4 +3,11 @@
+ noinst_LIBRARIES =3D libreexport.a
+ libreexport_a_SOURCES =3D reexport.c
+=20
++pkgplugindir=3D$(libdir)/libnfsreexport_backends/
++pkgplugin_LTLIBRARIES =3D sqlite.la
++
++sqlite_la_SOURCES =3D backend_sqlite.c
++sqlite_la_LDFLAGS =3D -module -avoid-version
++sqlite_la_LIBADD =3D ../../support/nfs/libnfsconf.la $(LIBSQLITE)
++
+ MAINTAINERCLEANFILES =3D Makefile.in
+diff --git a/support/reexport/backend_sqlite.c b/support/reexport/backend=
+_sqlite.c
+new file mode 100644
+index 00000000..a54d64ea
+--- /dev/null
++++ b/support/reexport/backend_sqlite.c
+@@ -0,0 +1,251 @@
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <sqlite3.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/random.h>
++#include <unistd.h>
++
++#include "conffile.h"
++#include "reexport_backend.h"
++#include "xlog.h"
++
++#define REEXPDB_DBFILE NFS_STATEDIR "/reexpdb.sqlite3"
++#define REEXPDB_DBFILE_WAIT_USEC (5000)
++
++static sqlite3 *db;
++static int init_done;
++
++static int prng_init(void)
++{
++	int seed;
++
++	if (getrandom(&seed, sizeof(seed), 0) !=3D sizeof(seed)) {
++		xlog(L_ERROR, "Unable to obtain seed for PRNG via getrandom()");
++		return -1;
++	}
++
++	srand(seed);
++	return 0;
++}
++
++static void wait_for_dbaccess(void)
++{
++	usleep(REEXPDB_DBFILE_WAIT_USEC + (rand() % REEXPDB_DBFILE_WAIT_USEC));
++}
++
++static bool sqlite_plug_init(void)
++{
++	char *sqlerr;
++	int ret;
++
++	if (init_done)
++		return true;
++
++	if (prng_init() !=3D 0)
++		return false;
++
++	ret =3D sqlite3_open_v2(conf_get_str_with_def("reexport", "sqlitedb", R=
+EEXPDB_DBFILE),
++			      &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_F=
+ULLMUTEX,
++			      NULL);
++	if (ret !=3D SQLITE_OK) {
++		xlog(L_ERROR, "Unable to open reexport database: %s", sqlite3_errstr(r=
+et));
++		return false;
++	}
++
++again:
++	ret =3D sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS fsidnums (num INTE=
+GER PRIMARY KEY CHECK (num > 0 AND num < 4294967296), path TEXT UNIQUE); =
+CREATE INDEX IF NOT EXISTS idx_ids_path ON fsidnums (path);", NULL, NULL,=
+ &sqlerr);
++	switch (ret) {
++	case SQLITE_OK:
++		init_done =3D 1;
++		ret =3D 0;
++		break;
++	case SQLITE_BUSY:
++	case SQLITE_LOCKED:
++		wait_for_dbaccess();
++		goto again;
++	default:
++		xlog(L_ERROR, "Unable to init reexport database: %s", sqlite3_errstr(r=
+et));
++		sqlite3_free(sqlerr);
++		sqlite3_close_v2(db);
++		ret =3D -1;
++	}
++
++	return ret =3D=3D 0 ? true : false;
++}
++
++static void sqlite_plug_destroy(void)
++{
++	if (!init_done)
++		return;
++
++	sqlite3_close_v2(db);
++}
++
++static bool get_fsidnum_by_path(char *path, uint32_t *fsidnum)
++{
++	static const char fsidnum_by_path_sql[] =3D "SELECT num FROM fsidnums W=
+HERE path =3D ?1;";
++	sqlite3_stmt *stmt =3D NULL;
++	bool found =3D false;
++	int ret;
++
++	ret =3D sqlite3_prepare_v2(db, fsidnum_by_path_sql, sizeof(fsidnum_by_p=
+ath_sql), &stmt, NULL);
++	if (ret !=3D SQLITE_OK) {
++		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", fsidnum_by_pat=
+h_sql, sqlite3_errstr(ret));
++		goto out;
++	}
++
++	ret =3D sqlite3_bind_text(stmt, 1, path, -1, NULL);
++	if (ret !=3D SQLITE_OK) {
++		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", fsidnum_by_path_s=
+ql, sqlite3_errstr(ret));
++		goto out;
++	}
++
++again:
++	ret =3D sqlite3_step(stmt);
++	switch (ret) {
++	case SQLITE_ROW:
++		*fsidnum =3D sqlite3_column_int(stmt, 0);
++		found =3D true;
++		break;
++	case SQLITE_DONE:
++		/* No hit */
++		found =3D false;
++		break;
++	case SQLITE_BUSY:
++	case SQLITE_LOCKED:
++		wait_for_dbaccess();
++		goto again;
++	default:
++		xlog(L_WARNING, "Error while looking up '%s' in database: %s", path, s=
+qlite3_errstr(ret));
++	}
++
++out:
++	sqlite3_finalize(stmt);
++	return found;
++}
++
++static bool sqlite_plug_path_by_fsidnum(uint32_t fsidnum, char **path)
++{
++	static const char path_by_fsidnum_sql[] =3D "SELECT path FROM fsidnums =
+WHERE num =3D ?1;";
++	sqlite3_stmt *stmt =3D NULL;
++	bool found =3D false;
++	int ret;
++
++	ret =3D sqlite3_prepare_v2(db, path_by_fsidnum_sql, sizeof(path_by_fsid=
+num_sql), &stmt, NULL);
++	if (ret !=3D SQLITE_OK) {
++		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", path_by_fsidnu=
+m_sql, sqlite3_errstr(ret));
++		goto out;
++	}
++
++	ret =3D sqlite3_bind_int(stmt, 1, fsidnum);
++	if (ret !=3D SQLITE_OK) {
++		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", path_by_fsidnum_s=
+ql, sqlite3_errstr(ret));
++		goto out;
++	}
++
++again:
++	ret =3D sqlite3_step(stmt);
++	switch (ret) {
++	case SQLITE_ROW:
++		*path =3D strdup((char *)sqlite3_column_text(stmt, 0));
++		if (*path)
++			found =3D true;
++		break;
++	case SQLITE_DONE:
++		/* No hit */
++		found =3D false;
++		break;
++	case SQLITE_BUSY:
++	case SQLITE_LOCKED:
++		wait_for_dbaccess();
++		goto again;
++	default:
++		xlog(L_WARNING, "Error while looking up '%i' in database: %s", fsidnum=
+, sqlite3_errstr(ret));
++	}
++
++out:
++	sqlite3_finalize(stmt);
++	return found;
++}
++
++static bool new_fsidnum_by_path(char *path, uint32_t *fsidnum)
++{
++	/*
++	 * This query is a little tricky. We use SQL to find and claim the smal=
+lest free fsid number.
++	 * To find a free fsid the fsidnums is left joined to itself but with a=
+n offset of 1.
++	 * Everything after the UNION statement is to handle the corner case wh=
+ere fsidnums
++	 * is empty. In this case we want 1 as first fsid number.
++	 */
++	static const char new_fsidnum_by_path_sql[] =3D "INSERT INTO fsidnums V=
+ALUES ((SELECT ids1.num + 1 FROM fsidnums AS ids1 LEFT JOIN fsidnums AS i=
+ds2 ON ids2.num =3D ids1.num + 1 WHERE ids2.num IS NULL UNION SELECT 1 WH=
+ERE NOT EXISTS (SELECT NULL FROM fsidnums WHERE num =3D 1) LIMIT 1), ?1) =
+RETURNING num;";
++
++	sqlite3_stmt *stmt =3D NULL;
++	int ret, check =3D 0;
++	bool found =3D false;
++
++	ret =3D sqlite3_prepare_v2(db, new_fsidnum_by_path_sql, sizeof(new_fsid=
+num_by_path_sql), &stmt, NULL);
++	if (ret !=3D SQLITE_OK) {
++		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", new_fsidnum_by=
+_path_sql, sqlite3_errstr(ret));
++		goto out;
++	}
++
++	ret =3D sqlite3_bind_text(stmt, 1, path, -1, NULL);
++	if (ret !=3D SQLITE_OK) {
++		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", new_fsidnum_by_pa=
+th_sql, sqlite3_errstr(ret));
++		goto out;
++	}
++
++again:
++	ret =3D sqlite3_step(stmt);
++	switch (ret) {
++	case SQLITE_ROW:
++		*fsidnum =3D sqlite3_column_int(stmt, 0);
++		found =3D true;
++		break;
++	case SQLITE_CONSTRAINT:
++		/* Maybe we lost the race against another writer and the path is now p=
+resent. */
++		check =3D 1;
++		break;
++	case SQLITE_BUSY:
++	case SQLITE_LOCKED:
++		wait_for_dbaccess();
++		goto again;
++	default:
++		xlog(L_WARNING, "Error while looking up '%s' in database: %s", path, s=
+qlite3_errstr(ret));
++	}
++
++out:
++	sqlite3_finalize(stmt);
++
++	if (check) {
++		found =3D get_fsidnum_by_path(path, fsidnum);
++		if (!found)
++			xlog(L_WARNING, "SQLITE_CONSTRAINT error while inserting '%s' in data=
+base", path);
++	}
++
++	return found;
++}
++
++static bool sqlite_plug_fsidnum_by_path(char *path, uint32_t *fsidnum, i=
+nt may_create)
++{
++	bool found;
++
++	found =3D get_fsidnum_by_path(path, fsidnum);
++
++	if (!found && may_create)
++		found =3D new_fsidnum_by_path(path, fsidnum);
++
++	return found;
++}
++
++struct reexpdb_backend_plugin plug_ops =3D {
++	.fsidnum_by_path =3D sqlite_plug_fsidnum_by_path,
++	.path_by_fsidnum =3D sqlite_plug_path_by_fsidnum,
++	.initdb =3D sqlite_plug_init,
++	.destroydb =3D sqlite_plug_destroy,
++};
++
+diff --git a/support/reexport/reexport.c b/support/reexport/reexport.c
+index 61574fc5..112fcfb9 100644
+--- a/support/reexport/reexport.c
++++ b/support/reexport/reexport.c
+@@ -2,7 +2,7 @@
+ #include <config.h>
+ #endif
+=20
+-#include <sqlite3.h>
++#include <dlfcn.h>
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <sys/random.h>
+@@ -15,228 +15,38 @@
+ #include "conffile.h"
+ #include "nfslib.h"
+ #include "reexport.h"
++#include "reexport_backend.h"
+ #include "xcommon.h"
+ #include "xlog.h"
+=20
+-#define REEXPDB_DBFILE NFS_STATEDIR "/reexpdb.sqlite3"
+-#define REEXPDB_DBFILE_WAIT_USEC (5000)
++struct reexpdb_backend_plugin *plg;
++static void *backend_dl;
+=20
+-static sqlite3 *db;
+-static int init_done;
+-
+-static int prng_init(void)
+-{
+-	int seed;
+-
+-	if (getrandom(&seed, sizeof(seed), 0) !=3D sizeof(seed)) {
+-		xlog(L_ERROR, "Unable to obtain seed for PRNG via getrandom()");
+-		return -1;
+-	}
+-
+-	srand(seed);
+-	return 0;
+-}
+-
+-static void wait_for_dbaccess(void)
+-{
+-	usleep(REEXPDB_DBFILE_WAIT_USEC + (rand() % REEXPDB_DBFILE_WAIT_USEC));
+-}
+-
+-/*
+- * reexpdb_init - Initialize reexport database
+- */
+ int reexpdb_init(void)
+ {
+-	char *sqlerr;
+-	int ret;
+-
+-	if (init_done)
+-		return 0;
++	char *sofile =3D conf_get_str_with_def("reexport", "backend_plugin", RE=
+EXPDB_BACKEND_DEFAULT);
+=20
+-	if (prng_init() !=3D 0)
+-		return -1;
+-
+-	ret =3D sqlite3_open_v2(conf_get_str_with_def("reexport", "sqlitedb", R=
+EEXPDB_DBFILE),
+-			      &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_F=
+ULLMUTEX,
+-			      NULL);
+-	if (ret !=3D SQLITE_OK) {
+-		xlog(L_ERROR, "Unable to open reexport database: %s", sqlite3_errstr(r=
+et));
++	backend_dl =3D dlopen(sofile, RTLD_NOW | RTLD_LOCAL);
++	if (!backend_dl) {
++		xlog(L_WARNING, "Unable to open %s: %s", sofile, dlerror());
+ 		return -1;
+ 	}
+=20
+-again:
+-	ret =3D sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS fsidnums (num INTE=
+GER PRIMARY KEY CHECK (num > 0 AND num < 4294967296), path TEXT UNIQUE); =
+CREATE INDEX IF NOT EXISTS idx_ids_path ON fsidnums (path);", NULL, NULL,=
+ &sqlerr);
+-	switch (ret) {
+-	case SQLITE_OK:
+-		init_done =3D 1;
+-		ret =3D 0;
+-		break;
+-	case SQLITE_BUSY:
+-	case SQLITE_LOCKED:
+-		wait_for_dbaccess();
+-		goto again;
+-	default:
+-		xlog(L_ERROR, "Unable to init reexport database: %s", sqlite3_errstr(r=
+et));
+-		sqlite3_free(sqlerr);
+-		sqlite3_close_v2(db);
+-		ret =3D -1;
++	plg =3D (struct reexpdb_backend_plugin *)dlsym(backend_dl, REEXPDB_BACK=
+END_OPS);
++	if (plg =3D=3D NULL) {
++		xlog(L_WARNING, "Unable to locate plug_ops in %s: %s", sofile, dlerror=
+());
++		dlclose(backend_dl);
++		return -1;
+ 	}
+=20
+-	return ret;
++	return plg->initdb() =3D=3D true;
+ }
+=20
+-/*
+- * reexpdb_destroy - Undo reexpdb_init().
+- */
+ void reexpdb_destroy(void)
+ {
+-	if (!init_done)
+-		return;
+-
+-	sqlite3_close_v2(db);
+-}
+-
+-static int get_fsidnum_by_path(char *path, uint32_t *fsidnum)
+-{
+-	static const char fsidnum_by_path_sql[] =3D "SELECT num FROM fsidnums W=
+HERE path =3D ?1;";
+-	sqlite3_stmt *stmt =3D NULL;
+-	int found =3D 0;
+-	int ret;
+-
+-	ret =3D sqlite3_prepare_v2(db, fsidnum_by_path_sql, sizeof(fsidnum_by_p=
+ath_sql), &stmt, NULL);
+-	if (ret !=3D SQLITE_OK) {
+-		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", fsidnum_by_pat=
+h_sql, sqlite3_errstr(ret));
+-		goto out;
+-	}
+-
+-	ret =3D sqlite3_bind_text(stmt, 1, path, -1, NULL);
+-	if (ret !=3D SQLITE_OK) {
+-		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", fsidnum_by_path_s=
+ql, sqlite3_errstr(ret));
+-		goto out;
+-	}
+-
+-again:
+-	ret =3D sqlite3_step(stmt);
+-	switch (ret) {
+-	case SQLITE_ROW:
+-		*fsidnum =3D sqlite3_column_int(stmt, 0);
+-		found =3D 1;
+-		break;
+-	case SQLITE_DONE:
+-		/* No hit */
+-		found =3D 0;
+-		break;
+-	case SQLITE_BUSY:
+-	case SQLITE_LOCKED:
+-		wait_for_dbaccess();
+-		goto again;
+-	default:
+-		xlog(L_WARNING, "Error while looking up '%s' in database: %s", path, s=
+qlite3_errstr(ret));
+-	}
+-
+-out:
+-	sqlite3_finalize(stmt);
+-	return found;
+-}
+-
+-static int get_path_by_fsidnum(uint32_t fsidnum, char **path)
+-{
+-	static const char path_by_fsidnum_sql[] =3D "SELECT path FROM fsidnums =
+WHERE num =3D ?1;";
+-	sqlite3_stmt *stmt =3D NULL;
+-	int found =3D 0;
+-	int ret;
+-
+-	ret =3D sqlite3_prepare_v2(db, path_by_fsidnum_sql, sizeof(path_by_fsid=
+num_sql), &stmt, NULL);
+-	if (ret !=3D SQLITE_OK) {
+-		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", path_by_fsidnu=
+m_sql, sqlite3_errstr(ret));
+-		goto out;
+-	}
+-
+-	ret =3D sqlite3_bind_int(stmt, 1, fsidnum);
+-	if (ret !=3D SQLITE_OK) {
+-		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", path_by_fsidnum_s=
+ql, sqlite3_errstr(ret));
+-		goto out;
+-	}
+-
+-again:
+-	ret =3D sqlite3_step(stmt);
+-	switch (ret) {
+-	case SQLITE_ROW:
+-		*path =3D xstrdup((char *)sqlite3_column_text(stmt, 0));
+-		found =3D 1;
+-		break;
+-	case SQLITE_DONE:
+-		/* No hit */
+-		found =3D 0;
+-		break;
+-	case SQLITE_BUSY:
+-	case SQLITE_LOCKED:
+-		wait_for_dbaccess();
+-		goto again;
+-	default:
+-		xlog(L_WARNING, "Error while looking up '%i' in database: %s", fsidnum=
+, sqlite3_errstr(ret));
+-	}
+-
+-out:
+-	sqlite3_finalize(stmt);
+-	return found;
+-}
+-
+-static int new_fsidnum_by_path(char *path, uint32_t *fsidnum)
+-{
+-	/*
+-	 * This query is a little tricky. We use SQL to find and claim the smal=
+lest free fsid number.
+-	 * To find a free fsid the fsidnums is left joined to itself but with a=
+n offset of 1.
+-	 * Everything after the UNION statement is to handle the corner case wh=
+ere fsidnums
+-	 * is empty. In this case we want 1 as first fsid number.
+-	 */
+-	static const char new_fsidnum_by_path_sql[] =3D "INSERT INTO fsidnums V=
+ALUES ((SELECT ids1.num + 1 FROM fsidnums AS ids1 LEFT JOIN fsidnums AS i=
+ds2 ON ids2.num =3D ids1.num + 1 WHERE ids2.num IS NULL UNION SELECT 1 WH=
+ERE NOT EXISTS (SELECT NULL FROM fsidnums WHERE num =3D 1) LIMIT 1), ?1) =
+RETURNING num;";
+-
+-	sqlite3_stmt *stmt =3D NULL;
+-	int found =3D 0, check =3D 0;
+-	int ret;
+-
+-	ret =3D sqlite3_prepare_v2(db, new_fsidnum_by_path_sql, sizeof(new_fsid=
+num_by_path_sql), &stmt, NULL);
+-	if (ret !=3D SQLITE_OK) {
+-		xlog(L_WARNING, "Unable to prepare SQL query '%s': %s", new_fsidnum_by=
+_path_sql, sqlite3_errstr(ret));
+-		goto out;
+-	}
+-
+-	ret =3D sqlite3_bind_text(stmt, 1, path, -1, NULL);
+-	if (ret !=3D SQLITE_OK) {
+-		xlog(L_WARNING, "Unable to bind SQL query '%s': %s", new_fsidnum_by_pa=
+th_sql, sqlite3_errstr(ret));
+-		goto out;
+-	}
+-
+-again:
+-	ret =3D sqlite3_step(stmt);
+-	switch (ret) {
+-	case SQLITE_ROW:
+-		*fsidnum =3D sqlite3_column_int(stmt, 0);
+-		found =3D 1;
+-		break;
+-	case SQLITE_CONSTRAINT:
+-		/* Maybe we lost the race against another writer and the path is now p=
+resent. */
+-		check =3D 1;
+-		break;
+-	case SQLITE_BUSY:
+-	case SQLITE_LOCKED:
+-		wait_for_dbaccess();
+-		goto again;
+-	default:
+-		xlog(L_WARNING, "Error while looking up '%s' in database: %s", path, s=
+qlite3_errstr(ret));
+-	}
+-
+-out:
+-	sqlite3_finalize(stmt);
+-
+-	if (check) {
+-		found =3D get_fsidnum_by_path(path, fsidnum);
+-		if (!found)
+-			xlog(L_WARNING, "SQLITE_CONSTRAINT error while inserting '%s' in data=
+base", path);
+-	}
+-
+-	return found;
++	plg->destroydb();
++	plg =3D NULL;
++	dlclose(backend_dl);
+ }
+=20
+ /*
+@@ -249,14 +59,7 @@ out:
+  */
+ int reexpdb_fsidnum_by_path(char *path, uint32_t *fsidnum, int may_creat=
+e)
+ {
+-	int found;
+-
+-	found =3D get_fsidnum_by_path(path, fsidnum);
+-
+-	if (!found && may_create)
+-		found =3D new_fsidnum_by_path(path, fsidnum);
+-
+-	return found;
++	return plg->fsidnum_by_path(path, fsidnum, may_create);
+ }
+=20
+ /*
+@@ -278,7 +81,7 @@ void reexpdb_uncover_subvolume(uint32_t fsidnum)
+ 	char *path =3D NULL;
+ 	int ret;
+=20
+-	if (get_path_by_fsidnum(fsidnum, &path)) {
++	if (plg->path_by_fsidnum(fsidnum, &path)) {
+ 		ret =3D nfsd_path_statfs64(path, &st);
+ 		if (ret =3D=3D -1)
+ 			xlog(L_WARNING, "statfs() failed");
+@@ -300,7 +103,7 @@ void reexpdb_uncover_subvolume(uint32_t fsidnum)
+ int reexpdb_apply_reexport_settings(struct exportent *ep, char *flname, =
+int flline)
+ {
+ 	uint32_t fsidnum;
+-	int found;
++	bool found;
+ 	int ret =3D 0;
+=20
+ 	if (ep->e_reexport =3D=3D REEXP_NONE)
+diff --git a/support/reexport/reexport_backend.h b/support/reexport/reexp=
+ort_backend.h
+new file mode 100644
+index 00000000..9e5e5c43
+--- /dev/null
++++ b/support/reexport/reexport_backend.h
+@@ -0,0 +1,48 @@
++#ifndef REEXPORT_BACKEND_H
++#define REEXPORT_BACKEND_H
++
++#define REEXPDB_BACKEND_DEFAULT "sqlite.so"
++#define REEXPDB_BACKEND_OPS "plug_ops"
++
++struct reexpdb_backend_plugin {
++	/*
++	 * Find or allocate a fsidnum for a given path.
++	 *
++	 * @path: Path to look for
++	 * @fsidnum: Pointer to an uint32_t variable
++	 * @may_create: If non-zero, a fsidnum will be allocated if none was fo=
+und
++	 *
++	 * Returns true if either an fsidnum was found or successfully allocate=
+d,
++	 * false otherwise.
++	 * On success, the fsidnum will be stored into @fsidnum.
++	 * Upon errors, false is returned and errors are logged.
++	 */
++	bool (*fsidnum_by_path)(char *path, uint32_t *fsidnum, int may_create);
++
++	/*
++	 * Lookup path by a given fsidnum
++	 *
++	 * @fsidnum: fsidnum to look for
++	 * @path: address of a char pointer
++	 *
++	 * Returns true if a path was found, false otherwise.
++	 * Upon errors, false is returned and errors are logged.
++	 * In case of success, the function returns the found path
++	 * via @path, @path will point to a freshly allocated buffer
++	 * which is free()'able.
++	 */
++	bool (*path_by_fsidnum)(uint32_t fsidnum, char **path);
++
++	/*
++	 * Init database connection, can get called multiple times.
++	 * Returns true on success, false otherwise.
++	 */
++	bool (*initdb)(void);
++
++	/*
++	 * Undoes initdb().
++	 */
++	void (*destroydb)(void);
++};
++
++#endif /* REEXPORT_BACKEND_H */
+diff --git a/systemd/Makefile.am b/systemd/Makefile.am
+index f254b218..70182600 100644
+--- a/systemd/Makefile.am
++++ b/systemd/Makefile.am
+@@ -70,7 +70,7 @@ nfs_server_generator_LDADD =3D ../support/export/libexp=
+ort.a \
+ 			     $(LIBPTHREAD)
+=20
+ if CONFIG_REEXPORT
+-nfs_server_generator_LDADD +=3D ../support/reexport/libreexport.a $(LIBS=
+QLITE) -lrt
++nfs_server_generator_LDADD +=3D ../support/reexport/libreexport.a -ldl
+ endif
+=20
+ rpc_pipefs_generator_LDADD =3D ../support/nfs/libnfs.la
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index afd2b3f8..0d083171 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -297,9 +297,10 @@ is recognized.
+=20
+ .TP
+ .B reexport
+-Only
+ .B sqlitedb=3D
+-is recognized, path to the state database.
++, path to the state database, if sqlite backend is used.
++.B backend_plugin=3D
++, path to database backend plugin, default is sqlite.so.
+=20
+ .SH FILES
+ .TP 10n
+diff --git a/utils/exportd/Makefile.am b/utils/exportd/Makefile.am
+index b0ec9034..6f23ed97 100644
+--- a/utils/exportd/Makefile.am
++++ b/utils/exportd/Makefile.am
+@@ -19,7 +19,7 @@ exportd_LDADD =3D ../../support/export/libexport.a \
+ 			$(OPTLIBS) $(LIBBLKID) $(LIBPTHREAD) \
+ 			-luuid
+ if CONFIG_REEXPORT
+-exportd_LDADD +=3D ../../support/reexport/libreexport.a $(LIBSQLITE) -lr=
+t
++exportd_LDADD +=3D ../../support/reexport/libreexport.a -ldl
+ endif
+=20
+ exportd_CPPFLAGS =3D $(AM_CPPFLAGS) $(CPPFLAGS) \
+diff --git a/utils/exportfs/Makefile.am b/utils/exportfs/Makefile.am
+index 451637a0..a17ed130 100644
+--- a/utils/exportfs/Makefile.am
++++ b/utils/exportfs/Makefile.am
+@@ -13,7 +13,7 @@ exportfs_LDADD =3D ../../support/export/libexport.a \
+ 		 $(LIBWRAP) $(LIBNSL) $(LIBPTHREAD)
+=20
+ if CONFIG_REEXPORT
+-exportfs_LDADD +=3D ../../support/reexport/libreexport.a $(LIBSQLITE) -l=
+rt
++exportfs_LDADD +=3D ../../support/reexport/libreexport.a -ldl
+ endif
+=20
+ exportfs_CPPFLAGS =3D $(AM_CPPFLAGS) $(CPPFLAGS) -I$(top_srcdir)/support=
+/reexport
+diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+index 0268488c..d569b127 100644
+--- a/utils/mount/Makefile.am
++++ b/utils/mount/Makefile.am
+@@ -33,9 +33,9 @@ mount_nfs_LDADD =3D ../../support/nfs/libnfs.la \
+ 		  $(LIBTIRPC)
+=20
+ if CONFIG_REEXPORT
+-mount_nfs_LDADD +=3D ../../support/reexport/libreexport.a \
++mount_nfs_LDADD +=3D ../../support/reexport/libreexport.a -ldl \
+ 		   ../../support/misc/libmisc.a \
+-		   $(LIBSQLITE) -lrt $(LIBPTHREAD)
++		   -lrt $(LIBPTHREAD)
+ endif
+=20
+=20
+diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
+index 569d335a..d9a5c374 100644
+--- a/utils/mountd/Makefile.am
++++ b/utils/mountd/Makefile.am
+@@ -21,7 +21,7 @@ mountd_LDADD =3D ../../support/export/libexport.a \
+ 	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) -luuid $(LIBTIRPC) \
+ 	       $(LIBPTHREAD)
+ if CONFIG_REEXPORT
+-mountd_LDADD +=3D ../../support/reexport/libreexport.a $(LIBSQLITE) -lrt
++mountd_LDADD +=3D ../../support/reexport/libreexport.a -ldl
+ endif
+=20
+ mountd_CPPFLAGS =3D $(AM_CPPFLAGS) $(CPPFLAGS) \
+--=20
+2.31.1
 
