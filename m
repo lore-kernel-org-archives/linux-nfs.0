@@ -2,57 +2,136 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9EC4C433F5
-	for <linux-nfs@archiver.kernel.org>; Tue, 24 May 2022 08:12:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42965C433F5
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 May 2022 10:05:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231376AbiEXIMC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 May 2022 04:12:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41050 "EHLO
+        id S232270AbiEXKFM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 May 2022 06:05:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42500 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231540AbiEXIL4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2022 04:11:56 -0400
-Received: from mail.greatagencyonline.pl (mail.greatagencyonline.pl [89.40.125.71])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E369D541BB
-        for <linux-nfs@vger.kernel.org>; Tue, 24 May 2022 01:11:47 -0700 (PDT)
-Received: by mail.greatagencyonline.pl (Postfix, from userid 1001)
-        id 838DEA336F; Tue, 24 May 2022 09:01:26 +0100 (BST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=greatagencyonline.pl;
-        s=mail; t=1653379310;
-        bh=ksvwLPFdjL017OLwir5xHXy3Vmrj/5fhZ5DwBI62qzc=;
-        h=Date:From:To:Subject:From;
-        b=jIw04E/B/rrp3ZzLMDxYUWENfm4CBEjPkpynkvax4kR8HwF6R1+7yWl7UyzaS7h2L
-         QynR5T7f53NzxYa1gqEeMzGKrahDVpx/7uniKtL3/NbL/99YXm3DNBqzvxZUEna2gp
-         ynxg3HCIy6pp+BwSgpcXvnxoRhSX2QWnPvEHZgyPIRGml7gwl8zZwTSphSPcu8y9jR
-         /6d49ftRU6p1QPrX6uSvMeMhYxxfjk1IiskMT/IsvvXYUy789xjsO3DUK0EpiHMigc
-         biWIdbEHWA196dOsuy018Y/BeY2fLgkvTVOMwE1Ni26DaQp+6W3sK5Aru7NqfKnjeH
-         QvoX6ucZVUJag==
-Received: by mail.greatagencyonline.pl for <linux-nfs@vger.kernel.org>; Tue, 24 May 2022 08:00:54 GMT
-Message-ID: <20220524074502-0.1.43.vxv1.0.m5g5akl8dw@greatagencyonline.pl>
-Date:   Tue, 24 May 2022 08:00:54 GMT
-From:   =?UTF-8?Q? "Miko=C5=82aj_Rudzik" ?= 
-        <mikolaj.rudzik@greatagencyonline.pl>
-To:     <linux-nfs@vger.kernel.org>
-Subject: =?UTF-8?Q?Nap=C5=82yw_Klient=C3=B3w_ze_strony?=
-X-Mailer: mail.greatagencyonline.pl
+        with ESMTP id S231631AbiEXKFL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 May 2022 06:05:11 -0400
+Received: from relay11.mail.gandi.net (relay11.mail.gandi.net [IPv6:2001:4b98:dc4:8::231])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4675C7220D;
+        Tue, 24 May 2022 03:05:08 -0700 (PDT)
+Received: (Authenticated sender: i.maximets@ovn.org)
+        by mail.gandi.net (Postfix) with ESMTPSA id 83B6D100011;
+        Tue, 24 May 2022 10:05:02 +0000 (UTC)
+Message-ID: <457ccb80-d41d-ff95-1edc-751741465416@ovn.org>
+Date:   Tue, 24 May 2022 12:05:01 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.8.0
+Cc:     dev@openvswitch.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Sagi Grimberg <sagi@grimberg.me>,
+        borisp@nvidia.com, netdev@vger.kernel.org,
+        linux-nvme@lists.infradead.org,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Hannes Reinecke <hare@suse.de>, simo@redhat.com,
+        linux-fsdevel@vger.kernel.org, ak@tempesta-tech.com,
+        i.maximets@ovn.org
+Content-Language: en-US
+To:     Jakub Kicinski <kuba@kernel.org>,
+        Benjamin Coddington <bcodding@redhat.com>
+References: <165030051838.5073.8699008789153780301.stgit@oracle-102.nfsv4.dev>
+ <165030059051.5073.16723746870370826608.stgit@oracle-102.nfsv4.dev>
+ <20220425101459.15484d17@kernel.org>
+ <66077b73-c1a4-d2ae-c8e4-3e19e9053171@suse.de>
+ <1fca2eda-83e4-fe39-13c8-0e5e7553689b@grimberg.me>
+ <20220426080247.19bbb64e@kernel.org>
+ <40bc060f-f359-081d-9ba7-fae531cf2cd6@suse.de>
+ <20220426170334.3781cd0e@kernel.org>
+ <23f497ab-08e3-3a25-26d9-56d94ee92cde@suse.de>
+ <20220428063009.0a63a7f9@kernel.org>
+ <be7e3c4b-8bb5-e818-1402-ac24cbbcb38c@suse.de>
+ <E2BF9CFF-9361-400B-BDEE-CF5E0AFDCA63@redhat.com>
+ <20220428140856.61e53533@kernel.org>
+From:   Ilya Maximets <i.maximets@ovn.org>
+Subject: Re: [ovs-dev] [PATCH RFC 4/5] net/tls: Add support for PF_TLSH (a TLS
+ handshake listener)
+In-Reply-To: <20220428140856.61e53533@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Dzie=C5=84 dobry,
+On 4/28/22 23:08, Jakub Kicinski wrote:
+> On Thu, 28 Apr 2022 10:09:17 -0400 Benjamin Coddington wrote:
+>>> Noob reply: wish I knew.  (I somewhat hoped _you_ would've been able to
+>>> tell me.)
+>>>
+>>> Thing is, the only method I could think of for fd passing is the POSIX fd
+>>> passing via unix_attach_fds()/unix_detach_fds().  But that's AF_UNIX,
+>>> which really is designed for process-to-process communication, not
+>>> process-to-kernel.  So you probably have to move a similar logic over to
+>>> AF_NETLINK. And design a new interface on how fds should be passed over
+>>> AF_NETLINK.
+>>>
+>>> But then you have to face the issue that AF_NELINK is essentially UDP, and
+>>> you have _no_ idea if and how many processes do listen on the other end.
+>>> Thing is, you (as the sender) have to copy the fd over to the receiving
+>>> process, so you'd better _hope_ there is a receiving process.  Not to
+>>> mention that there might be several processes listening in...
+> 
+> Sort of. I double checked the netlink upcall implementations we have,
+> they work by user space entity "registering" their netlink address
+> (portid) at startup. Kernel then directs the upcalls to that address.
+> But AFAICT there's currently no way for the netlink "server" to see
+> when a "client" goes away, which makes me slightly uneasy about using
+> such schemes for security related stuff. The user agent may crash and
+> something else could grab the same address, I think.
+> 
+> Let me CC OvS who uses it the most, perhaps I'm missing a trick.
 
-chcia=C5=82bym poinformowa=C4=87 Pa=C5=84stwa o mo=C5=BCliwo=C5=9Bci pozy=
-skania nowych zlece=C5=84 ze strony www.
+I don't think there are any tricks.  From what I see OVS creates
+several netlink sockets, connects them to the kernel (nl_pid = 0)
+and obtains their nl_pid's from the kernel.
+These pids are either just a task_tgid_vnr() or a random negative
+value from the [S32_MIN, -4096] range.  After that OVS "registers"
+those pids in the openvswitch kernel module.  That just means sending
+an array of integers to the kernel.  Kernel will later use these
+integer pids to find the socket and send data to the userspace.
 
-Widzimy zainteresowanie potencjalnych Klient=C3=B3w Pa=C5=84stwa firm=C4=85=
-, dlatego ch=C4=99tnie pomo=C5=BCemy Pa=C5=84stwu dotrze=C4=87 z ofert=C4=
-=85 do wi=C4=99kszego grona odbiorc=C3=B3w poprzez efektywne metody pozyc=
-jonowania strony w Google.
+openvswitch module inside the kernel has no way to detect that
+socket with a certain pid no longer exists.  So, it will continue
+to try to find the socket and send, even if the user-space process
+is dead.
 
-Czy m=C3=B3g=C5=82bym liczy=C4=87 na kontakt zwrotny?
+So, if you can find a way to reliably create a process with the
+same task_tgid or trick the randomizer inside the netlink_autobind(),
+you can start receiving upcalls from the kernel in a new process,
+IIUC.  Also, netlink_bind() allows to just specify the nl_pid
+for listening sockets.  That might be another way.
 
+> 
+> My thinking was to use the netlink attribute format (just to reuse the
+> helpers and parsing, but we can invent a new TLV format if needed) but
+> create a new socket type specifically for upcalls.
+> 
+>>> And that's something I _definitely_ don't feel comfortable with without
+>>> guidance from the networking folks, so I didn't pursue it further and we
+>>> went with the 'accept()' mechanism Chuck implemented.
+>>>
+>>> I'm open to suggestions, though.  
+>>
+>> EXPORT_SYMBOL(receive_fd) would allow interesting implementations.
+>>
+>> The kernel keyring facilities have a good API for creating various key_types
+>> which are able to perform work such as this from userspace contexts.
+>>
+>> I have a working prototype for a keyring key instantiation which allows a
+>> userspace process to install a kernel fd on its file table.  The problem
+>> here is how to match/route such fd passing to appropriate processes in
+>> appropriate namespaces.  I think this problem is shared by all
+>> kernel-to-userspace upcalls, which I hope we can discuss at LSF/MM.
+> 
+> Almost made me wish I was coming to LFS/MM :)
+> 
+>> I don't think kernel fds are very special as compared to userspace fds.
+> _______________________________________________
+> dev mailing list
+> dev@openvswitch.org
+> https://mail.openvswitch.org/mailman/listinfo/ovs-dev
+> 
 
-Pozdrawiam,
-Miko=C5=82aj Rudzik
