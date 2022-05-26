@@ -2,70 +2,93 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 457DDC433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 May 2022 04:06:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0041EC433F5
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 May 2022 05:27:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238643AbiE0EGq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 27 May 2022 00:06:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44388 "EHLO
+        id S237031AbiE0F1Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 27 May 2022 01:27:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44276 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240465AbiE0EGl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 May 2022 00:06:41 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 20C1412ADC;
-        Thu, 26 May 2022 21:06:39 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S231840AbiE0F1X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 May 2022 01:27:23 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50712EBAA5
+        for <linux-nfs@vger.kernel.org>; Thu, 26 May 2022 22:27:20 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id A41BF61DBA;
-        Fri, 27 May 2022 04:06:38 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id E0749C385A9;
-        Fri, 27 May 2022 04:06:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1653624397;
-        bh=I6sNIeTE3L/jsPEBhjey3Sktkbpn1ybtGP9GSn1ETo4=;
-        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
-        b=pa2D/cTdja6DgO4BJ8y1ihOM/tsxSn8FVaXGHxjHCsHSZMAbr+AdCmueyYiu9bDa8
-         x4NyjB/YuRLthdKhyjrj9/LRg6Jnl5N4JfqQohBjXiAgIqdh89eXPLMccZScBG3Luu
-         FyJsHWo7NY27/uGoX48fqyNmsb1SnpKTvwTlxHhZSCJWMqgmjQJZKyLYMwDbxF/fHX
-         IUTOrUebdUnRpe5UHk4OoTO2d8QaNqSsFasUZXs7JhccxeZ/GDtUxwsD2HFi0O3BVP
-         rd9aFhVztjFBc1U/vupNMPOovtd97431zhlIJtZnMdmh3QhHFBg3QsMoYbA6zFtUrh
-         Qm0hB9mJHrfmQ==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id C2920EAC081;
-        Fri, 27 May 2022 04:06:37 +0000 (UTC)
-Subject: Re: [GIT PULL] nfsd changes for 5.19
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <DDB7B172-52E3-4015-9BD2-9BCDE209E5AC@oracle.com>
-References: <DDB7B172-52E3-4015-9BD2-9BCDE209E5AC@oracle.com>
-X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <DDB7B172-52E3-4015-9BD2-9BCDE209E5AC@oracle.com>
-X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-5.19
-X-PR-Tracked-Commit-Id: 08af54b3e5729bc1d56ad3190af811301bdc37a1
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 6d29d7fe4f0c1e81c39622cce45cd397b23dc48f
-Message-Id: <165362439778.3780.1154326941363112833.pr-tracker-bot@kernel.org>
-Date:   Fri, 27 May 2022 04:06:37 +0000
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@kernel.org>
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 10994218BB;
+        Fri, 27 May 2022 05:27:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1653629239; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=l7nvUxWskKqe83LrWZMRTiXsm3Jvb9juc0cy4Z//C2Y=;
+        b=iMZeQLVyPoUUQiykUndM+fs7XqJUpf/Wr48MoXxiCmgVOOFTA+Vkr+FIc+cPfj2XqfkD6c
+        sWp5hHMDkaTKxkppit7NkgIYAnQBZErqX5r/PqEYbSuYH0qxhRU49+LC1I2jWmMqdCT21g
+        aV5vijzvuXKcxh9iT5OgFr4vUup59q4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1653629239;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=l7nvUxWskKqe83LrWZMRTiXsm3Jvb9juc0cy4Z//C2Y=;
+        b=pMVwpt7ssxpVSGi3GRzFTw/w56gWiirau/xOGmYbGM9YjXzMRbT9s8LAn78elewVszwbsg
+        JzNSSfltdi5UBXCQ==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 364581346B;
+        Fri, 27 May 2022 05:27:17 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id GTuXODVhkGIeewAAMHmgww
+        (envelope-from <neilb@suse.de>); Fri, 27 May 2022 05:27:17 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Steve Dickson" <steved@redhat.com>
+Cc:     "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH nfs-utils] Update autoconfig files to work with v2.71
+In-reply-to: <165335765658.22265.136811943333028416@noble.neil.brown.name>
+References: <165335765658.22265.136811943333028416@noble.neil.brown.name>
+Date:   Thu, 26 May 2022 10:06:19 +1000
+Message-id: <165352357925.11129.13126161631957337173@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The pull request you sent on Thu, 26 May 2022 15:25:00 +0000:
+On Tue, 24 May 2022, NeilBrown wrote:
+> OpenSUSE recently updated autoconf to v2.71, and nfs-utils now doesn't
+> build.  This patch fixes it.  It was mostly achieved with the autoupdate
+> program.
+>=20
+> I haven't updated the AC_PREREQ(), but nor have I confirmed that it
+> still works with v2.59.  It does seem to work with 2.69.
 
-> https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-5.19
+Actually, please don't apply this as-is.
+I remembered that I left....
+> @@ -50,8 +50,8 @@ AC_DEFUN([AC_LIBTIRPC_OLD], [
+>    dnl Also must have the headers installed where we expect
+>    dnl to look for headers; add -I compiler option if found
+>    AS_IF([test "$has_libtirpc" =3D "yes"],
+> -        [AC_CHECK_HEADERS([${tirpc_header_dir}/netconfig.h],
+> -                          [AC_SUBST([AM_CPPFLAGS], ["-I${tirpc_header_dir}=
+"])],
+> +        [AC_CHECK_HEADERS([/usr/include/tirpc/netconfig.h],
+> +                          [AC_SUBST([AM_CPPFLAGS], ["-I/usr/include/tirpc"=
+])],
+>                            [has_libtirpc=3D"no"])])
+> =20
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/6d29d7fe4f0c1e81c39622cce45cd397b23dc48f
+this in there - it ignores the config request an always uses
+/usr/include/tirpc.  I need to work out how to do the right thing
+without getting warnings.
 
-Thank you!
-
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
+Thanks,
+NeilBrown
