@@ -2,119 +2,147 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14D00C433F5
-	for <linux-nfs@archiver.kernel.org>; Sat, 28 May 2022 20:19:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBB11C433EF
+	for <linux-nfs@archiver.kernel.org>; Sun, 29 May 2022 02:32:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229744AbiE1UTa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 28 May 2022 16:19:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54812 "EHLO
+        id S229461AbiE2Ccb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 28 May 2022 22:32:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48462 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229733AbiE1UTZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 May 2022 16:19:25 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AAD444D627
-        for <linux-nfs@vger.kernel.org>; Sat, 28 May 2022 13:19:24 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 508EF7124; Sat, 28 May 2022 16:19:24 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 508EF7124
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1653769164;
-        bh=x2jyS/ALZ67uRtgwuZHs1NSpWUQIZpWMYqc4/qu/6gA=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=DDLGZKcosluIkFVswdsp7ZdhRquN3MBvXndRFPwj5pp/4xh2XSX5q7duEzAljSbtB
-         U/P/vxSlB1r8pkv1P+yIvud+ra0B8/L/QS4Id1K1aUcuMheYMuGAwE8DLJyuYWv+Am
-         sgTzCaP4VzryyATSz7imLOyWpTXFB8h+YCn9k6S0=
-Date:   Sat, 28 May 2022 16:19:24 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] Test renaming onto an open file
-Message-ID: <20220528201924.GE9929@fieldses.org>
-References: <165368065607.3280217.2106378952611449081.stgit@morisot.1015granger.net>
+        with ESMTP id S229445AbiE2Ccb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 May 2022 22:32:31 -0400
+Received: from out20-206.mail.aliyun.com (out20-206.mail.aliyun.com [115.124.20.206])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F00B45B3FE
+        for <linux-nfs@vger.kernel.org>; Sat, 28 May 2022 19:32:21 -0700 (PDT)
+X-Alimail-AntiSpam: AC=CONTINUE;BC=0.04948568|-1;BR=01201311R121S10rulernew998_84748_2000303;CH=blue;DM=|CONTINUE|false|;DS=CONTINUE|ham_system_inform|0.0186616-0.00150413-0.979834;FP=0|0|0|0|0|-1|-1|-1;HT=ay29a033018047202;MF=wangyugui@e16-tech.com;NM=1;PH=DS;RN=5;RT=5;SR=0;TI=SMTPD_---.NuwvtCj_1653791538;
+Received: from 192.168.2.112(mailfrom:wangyugui@e16-tech.com fp:SMTPD_---.NuwvtCj_1653791538)
+          by smtp.aliyun-inc.com(33.37.77.208);
+          Sun, 29 May 2022 10:32:19 +0800
+Date:   Sun, 29 May 2022 10:32:19 +0800
+From:   Wang Yugui <wangyugui@e16-tech.com>
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Subject: Re: filecache LRU performance regression
+Cc:     Frank van der Linden <fllinden@amazon.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Matthew Wilcox <matthew.wilcox@oracle.com>,
+        Liam Howlett <liam.howlett@oracle.com>
+In-Reply-To: <ADD1751A-7F67-4729-BFFC-D6938CA963A0@oracle.com>
+References: <20220527203721.GA10628@dev-dsk-fllinden-2c-d7720709.us-west-2.amazon.com> <ADD1751A-7F67-4729-BFFC-D6938CA963A0@oracle.com>
+Message-Id: <20220529103218.65DA.409509F4@e16-tech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <165368065607.3280217.2106378952611449081.stgit@morisot.1015granger.net>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+X-Mailer: Becky! ver. 2.75.04 [en]
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Applied, thanks.--b.
+Hi,
 
-On Fri, May 27, 2022 at 03:44:55PM -0400, Chuck Lever wrote:
-> There has been a recent report of RENAME onto an open file resulting
-> in a bogus ESTALE when that open (and now deleted) file is closed.
-> Build in some testing with and without SEQUENCE to ensure a server
-> is handling this case as expected.
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > 
-> Changes since v1:
-> - None. This is a just a repost.
+> > On May 27, 2022, at 4:37 PM, Frank van der Linden <fllinden@amazon.com> wrote:
+> > 
+> > On Fri, May 27, 2022 at 06:59:47PM +0000, Chuck Lever III wrote:
+> >> 
+> >> 
+> >> Hi Frank-
+> >> 
+> >> Bruce recently reminded me about this issue. Is there a bugzilla somewhere?
+> >> Do you have a reproducer I can try?
+> > 
+> > Hi Chuck,
+> > 
+> > The easiest way to reproduce the issue is to run generic/531 over an
+> > NFSv4 mount, using a system with a larger number of CPUs on the client
+> > side (or just scaling the test up manually - it has a calculation based
+> > on the number of CPUs).
+> > 
+> > The test will take a long time to finish. I initially described the
+> > details here:
+> > 
+> > https://lore.kernel.org/linux-nfs/20200608192122.GA19171@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com/
+> > 
+> > Since then, it was also reported here:
+> > 
+> > https://lore.kernel.org/all/20210531125948.2D37.409509F4@e16-tech.com/T/#m8c3e4173696e17a9d5903d2a619550f352314d20
 > 
-> ---
->  nfs4.0/servertests/st_rename.py   |   16 ++++++++++++++++
->  nfs4.1/server41tests/st_rename.py |   19 ++++++++++++++++++-
->  2 files changed, 34 insertions(+), 1 deletion(-)
+> Thanks for the summary. So, there isn't a bugzilla tracking this
+> issue? If not, please create one here:
 > 
-> diff --git a/nfs4.0/servertests/st_rename.py b/nfs4.0/servertests/st_rename.py
-> index afe9a7fe0a58..3302608719e3 100644
-> --- a/nfs4.0/servertests/st_rename.py
-> +++ b/nfs4.0/servertests/st_rename.py
-> @@ -524,6 +524,22 @@ def testLinkRename(t, env):
->          t.fail("RENAME of file into its hard link should do nothing, "
->                 "but cinfo was changed")
->  
-> +def testStaleRename(t, env):
-> +    """RENAME file over an open file should allow CLOSE
-> +
-> +    FLAGS: rename all
-> +    CODE: RNM21
-> +    """
-> +    c = env.c1
-> +    c.init_connection()
-> +    basedir = c.homedir + [t.word()]
-> +    c.maketree([t.word(), b'file'])
-> +    fh, stateid = c.create_confirm(t.word(), path=basedir + [b'file2'])
-> +    res = c.rename_obj(basedir + [b'file'], basedir + [b'file2'])
-> +    check(res)
-> +    res = c.close_file(t.word(), fh, stateid)
-> +    check(res, msg="CLOSE after RENAME deletes target returns ESTALE")
-> +
->  ###########################################
->  
->      def testNamingPolicy(t, env):
-> diff --git a/nfs4.1/server41tests/st_rename.py b/nfs4.1/server41tests/st_rename.py
-> index 066df749379f..26ed4d275067 100644
-> --- a/nfs4.1/server41tests/st_rename.py
-> +++ b/nfs4.1/server41tests/st_rename.py
-> @@ -1,5 +1,5 @@
->  from xdrdef.nfs4_const import *
-> -from .environment import check, fail, maketree, rename_obj, get_invalid_utf8strings, create_obj, create_confirm, link, use_obj, create_file
-> +from .environment import check, fail, maketree, rename_obj, get_invalid_utf8strings, create_obj, create_confirm, link, use_obj, create_file, close_file
->  import nfs_ops
->  op = nfs_ops.NFS4ops()
->  from xdrdef.nfs4_type import *
-> @@ -529,3 +529,20 @@ def testLinkRename(t, env):
->      if scinfo.before != scinfo.after or tcinfo.before != tcinfo.after:
->          t.fail("RENAME of file into its hard link should do nothing, "
->                 "but cinfo was changed")
-> +
-> +def testStaleRename(t, env):
-> +    """RENAME file over an open file should allow CLOSE
-> +
-> +    FLAGS: rename all
-> +    CODE: RNM21
-> +    """
-> +    name = env.testname(t)
-> +    owner = b"owner_%s" % name
-> +    sess = env.c1.new_client_session(name)
-> +    maketree(sess, [name, b'file'])
-> +    basedir = env.c1.homedir + [name]
-> +    fh, stateid = create_confirm(sess, owner, path=basedir + [b'file2'])
-> +    res = rename_obj(sess, basedir + [b'file'], basedir + [b'file2'])
-> +    check(res)
-> +    res = close_file(sess, fh, stateid)
-> +    check(res, msg="CLOSE after RENAME deletes target returns ESTALE")
+>   https://bugzilla.linux-nfs.org/
 > 
+> Then we don't have to keep asking for a repeat summary ;-)
+> 
+> 
+> > I posted an experimental patch, but it's actually not quite correct
+> > (although I think the idea behind it is makes sense):
+> > 
+> > https://lore.kernel.org/linux-nfs/20201020183718.14618-4-trondmy@kernel.org/T/#m869aa427f125afee2af9a89d569c6b98e12e516f
+> 
+> A handful of random comments:
+> 
+> - nfsd_file_put() is now significantly different than it used
+>   to be, so that part of the patch will have to be updated in
+>   order to apply to v5.18+
+
+When many open files(>NFSD_FILE_LRU_THRESHOLD),
+nfsd_file_gc() will waste many CPU times.
+
+Can we serialize nfsd_file_gc() for v5.18+ as a first step?
+
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index 3d944ca..6abefd9 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -63,6 +63,8 @@ static struct delayed_work		nfsd_filecache_laundrette;
+ 
+ static void nfsd_file_gc(void);
+ 
++static atomic_t nfsd_file_gc_queue_delayed = ATOMIC_INIT(0);
++
+ static void
+ nfsd_file_schedule_laundrette(void)
+ {
+@@ -71,8 +73,10 @@ nfsd_file_schedule_laundrette(void)
+ 	if (count == 0 || test_bit(NFSD_FILE_SHUTDOWN, &nfsd_file_lru_flags))
+ 		return;
+ 
+-	queue_delayed_work(system_wq, &nfsd_filecache_laundrette,
++	if(atomic_cmpxchg(&nfsd_file_gc_queue_delayed, 0, 1)==0){
++		queue_delayed_work(system_wq, &nfsd_filecache_laundrette,
+ 			NFSD_LAUNDRETTE_DELAY);
++	}
+ }
+ 
+ static void
+@@ -468,15 +472,22 @@ nfsd_file_lru_walk_list(struct shrink_control *sc)
+ 	return ret;
+ }
+ 
++// nfsd_file_gc() support concurrency, but serialize it
++atomic_t nfsd_file_gc_running = ATOMIC_INIT(0);
+ static void
+ nfsd_file_gc(void)
+ {
+-	nfsd_file_lru_walk_list(NULL);
++	if(atomic_cmpxchg(&nfsd_file_gc_running, 0, 1)==0){
++		nfsd_file_lru_walk_list(NULL);
++		atomic_set(&nfsd_file_gc_running, 0);
++	}
+ }
+ 
+ static void
+ nfsd_file_gc_worker(struct work_struct *work)
+ {
++	atomic_set(&nfsd_file_gc_queue_delayed, 0);
++	// pr_info("nfsd_file_gc_worker\n");
+ 	nfsd_file_gc();
+ 	nfsd_file_schedule_laundrette();
+ }
+
+Best Regards
+Wang Yugui (wangyugui@e16-tech.com)
+2022/05/29
+
+
