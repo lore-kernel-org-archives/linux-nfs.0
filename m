@@ -2,171 +2,94 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3473FC433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 May 2022 01:36:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C25B1C433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 31 May 2022 06:12:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231538AbiE3Bgw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 29 May 2022 21:36:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46018 "EHLO
+        id S235006AbiEaGMD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 31 May 2022 02:12:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48312 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230402AbiE3Bgw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 29 May 2022 21:36:52 -0400
-Received: from out20-86.mail.aliyun.com (out20-86.mail.aliyun.com [115.124.20.86])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 38D4063DF
-        for <linux-nfs@vger.kernel.org>; Sun, 29 May 2022 18:36:51 -0700 (PDT)
-X-Alimail-AntiSpam: AC=CONTINUE;BC=0.04445068|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_enroll_verification|0.0182193-0.00142166-0.980359;FP=0|0|0|0|0|-1|-1|-1;HT=ay29a033018047199;MF=wangyugui@e16-tech.com;NM=1;PH=DS;RN=5;RT=5;SR=0;TI=SMTPD_---.NvNh89i_1653874608;
-Received: from 192.168.2.112(mailfrom:wangyugui@e16-tech.com fp:SMTPD_---.NvNh89i_1653874608)
-          by smtp.aliyun-inc.com(33.37.67.126);
-          Mon, 30 May 2022 09:36:48 +0800
-Date:   Mon, 30 May 2022 09:36:50 +0800
-From:   Wang Yugui <wangyugui@e16-tech.com>
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Subject: Re: filecache LRU performance regression
-Cc:     Frank van der Linden <fllinden@amazon.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Matthew Wilcox <matthew.wilcox@oracle.com>,
-        Liam Howlett <liam.howlett@oracle.com>
-In-Reply-To: <69EAFC64-E5B1-450A-9DCE-695E478A213B@oracle.com>
-References: <20220529103218.65DA.409509F4@e16-tech.com> <69EAFC64-E5B1-450A-9DCE-695E478A213B@oracle.com>
-Message-Id: <20220530093649.43F8.409509F4@e16-tech.com>
+        with ESMTP id S238360AbiEaGMC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 May 2022 02:12:02 -0400
+Received: from mga06.intel.com (mga06b.intel.com [134.134.136.31])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 353DB46159
+        for <linux-nfs@vger.kernel.org>; Mon, 30 May 2022 23:12:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1653977520; x=1685513520;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=fekQ/J8nbROQkB+pG2DwAGCVJ8UWT1A/AYFz2noIobc=;
+  b=evvwamiyC57y6NNEP3VJCfx6HpdZqwv4sIAQJ81JZRSueB0hW9fgwE24
+   pB88IRwfQ2mSNejGalXAncnh8xyps3YfyU2XHFi6cqtbbIvV8kH3r+tPV
+   RCJHtLREDmIA6xoMRFAbdI3cuXyZrIPg48DNDBX3+rxSxHWxiu9tZOtQM
+   0ySzYVcDGM1ruah/2RSXROb9AgqQ1ychkN3KCXZ7l8x8r8jlwzranNvoK
+   4dn2UCT3AKWu+bRbt0k0sdPIVr//4cHNyYZNaPts43tdH2zUdRHd6olV6
+   KQHo3UUQzN9ry47kXoa6+YytxQn03RG/2PC8ARj+k2kFu9jSou0BxKE47
+   g==;
+X-IronPort-AV: E=McAfee;i="6400,9594,10363"; a="335809479"
+X-IronPort-AV: E=Sophos;i="5.91,264,1647327600"; 
+   d="scan'208";a="335809479"
+Received: from orsmga004.jf.intel.com ([10.7.209.38])
+  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 30 May 2022 23:11:59 -0700
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.91,264,1647327600"; 
+   d="scan'208";a="706429509"
+Received: from lkp-server01.sh.intel.com (HELO 60dabacc1df6) ([10.239.97.150])
+  by orsmga004.jf.intel.com with ESMTP; 30 May 2022 23:11:58 -0700
+Received: from kbuild by 60dabacc1df6 with local (Exim 4.95)
+        (envelope-from <lkp@intel.com>)
+        id 1nvv6k-0002PO-1c;
+        Tue, 31 May 2022 06:11:58 +0000
+Date:   Tue, 31 May 2022 14:10:57 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     Wang Yugui <wangyugui@e16-tech.com>, linux-nfs@vger.kernel.org
+Cc:     kbuild-all@lists.01.org, Wang Yugui <wangyugui@e16-tech.com>
+Subject: Re: [PATCH] nfsd: serialize filecache garbage collector
+Message-ID: <202205311402.i5by7a5m-lkp@intel.com>
+References: <20220530012947.16451-1-wangyugui@e16-tech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Content-Transfer-Encoding: 7bit
-X-Mailer: Becky! ver. 2.75.04 [en]
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220530012947.16451-1-wangyugui@e16-tech.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+Hi Wang,
 
-> 
-> > On May 28, 2022, at 10:32 PM, Wang Yugui <wangyugui@e16-tech.com> wrote:
-> > 
-> > Hi,
-> > 
-> >>> On May 27, 2022, at 4:37 PM, Frank van der Linden <fllinden@amazon.com> wrote:
-> >>> 
-> >>> On Fri, May 27, 2022 at 06:59:47PM +0000, Chuck Lever III wrote:
-> >>>> 
-> >>>> Hi Frank-
-> >>>> 
-> >>>> Bruce recently reminded me about this issue. Is there a bugzilla somewhere?
-> >>>> Do you have a reproducer I can try?
-> >>> 
-> >>> Hi Chuck,
-> >>> 
-> >>> The easiest way to reproduce the issue is to run generic/531 over an
-> >>> NFSv4 mount, using a system with a larger number of CPUs on the client
-> >>> side (or just scaling the test up manually - it has a calculation based
-> >>> on the number of CPUs).
-> >>> 
-> >>> The test will take a long time to finish. I initially described the
-> >>> details here:
-> >>> 
-> >>> https://lore.kernel.org/linux-nfs/20200608192122.GA19171@dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com/
-> >>> 
-> >>> Since then, it was also reported here:
-> >>> 
-> >>> https://lore.kernel.org/all/20210531125948.2D37.409509F4@e16-tech.com/T/#m8c3e4173696e17a9d5903d2a619550f352314d20
-> >> 
-> >> Thanks for the summary. So, there isn't a bugzilla tracking this
-> >> issue? If not, please create one here:
-> >> 
-> >>  https://bugzilla.linux-nfs.org/
-> >> 
-> >> Then we don't have to keep asking for a repeat summary ;-)
-> >> 
-> >> 
-> >>> I posted an experimental patch, but it's actually not quite correct
-> >>> (although I think the idea behind it is makes sense):
-> >>> 
-> >>> https://lore.kernel.org/linux-nfs/20201020183718.14618-4-trondmy@kernel.org/T/#m869aa427f125afee2af9a89d569c6b98e12e516f
-> >> 
-> >> A handful of random comments:
-> >> 
-> >> - nfsd_file_put() is now significantly different than it used
-> >>  to be, so that part of the patch will have to be updated in
-> >>  order to apply to v5.18+
-> > 
-> > When many open files(>NFSD_FILE_LRU_THRESHOLD),
-> > nfsd_file_gc() will waste many CPU times.
-> 
-> Thanks for the suggestion. I agree that CPU and
-> memory bandwidth are not being used effectively
-> by the filecache garbage collector.
-> 
-> 
-> > Can we serialize nfsd_file_gc() for v5.18+ as a first step?
-> 
-> If I understand Frank's problem statement correctly,
-> garbage collection during an nfsd_file_put() under
-> an NFSv4-only workload walks the length of the LRU
-> list and finds nothing to evict 100% of the time.
-> That seems like a bug, and fixing it might give us
-> the most improvement in this area.
-> 
-> 
-> > diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-> > index 3d944ca..6abefd9 100644
-> > --- a/fs/nfsd/filecache.c
-> > +++ b/fs/nfsd/filecache.c
-> > @@ -63,6 +63,8 @@ static struct delayed_work		nfsd_filecache_laundrette;
-> > 
-> > static void nfsd_file_gc(void);
-> > 
-> > +static atomic_t nfsd_file_gc_queue_delayed = ATOMIC_INIT(0);
-> > +
-> > static void
-> > nfsd_file_schedule_laundrette(void)
-> > {
-> > @@ -71,8 +73,10 @@ nfsd_file_schedule_laundrette(void)
-> > 	if (count == 0 || test_bit(NFSD_FILE_SHUTDOWN, &nfsd_file_lru_flags))
-> > 		return;
-> > 
-> > -	queue_delayed_work(system_wq, &nfsd_filecache_laundrette,
-> > +	if(atomic_cmpxchg(&nfsd_file_gc_queue_delayed, 0, 1)==0){
-> > +		queue_delayed_work(system_wq, &nfsd_filecache_laundrette,
-> > 			NFSD_LAUNDRETTE_DELAY);
-> 
-> I might misunderstand what this is doing exactly.
-> I'm sure there's a preferred idiom in the kernel
-> for not queuing a new work item when one is already
-> running, so that an open-coded cmpxchg is not
-> necessary.
+Thank you for the patch! Perhaps something to improve:
 
-Thanks. I dropped queue_delayed_work related change and reposted it.
+[auto build test WARNING on linus/master]
+[also build test WARNING on v5.18 next-20220527]
+[If your patch is applied to the wrong git tree, kindly drop us a note.
+And when submitting patch, we suggest to use '--base' as documented in
+https://git-scm.com/docs/git-format-patch]
 
-> It might be better to allocate a specific workqueue
-> for filecache garbage collection, and limit the
-> maximum number of active work items allowed on that
-> queue to 1. One benefit of that might be reducing
-> the number of threads contending for the filecache
-> data structures.
+url:    https://github.com/intel-lab-lkp/linux/commits/Wang-Yugui/nfsd-serialize-filecache-garbage-collector/20220530-093218
+base:   https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git b00ed48bb0a7c295facf9036135a573a5cdbe7de
+config: x86_64-randconfig-s021 (https://download.01.org/0day-ci/archive/20220531/202205311402.i5by7a5m-lkp@intel.com/config)
+compiler: gcc-11 (Debian 11.3.0-1) 11.3.0
+reproduce:
+        # apt-get install sparse
+        # sparse version: v0.6.4-14-g5a0004b5-dirty
+        # https://github.com/intel-lab-lkp/linux/commit/7e2af8570695784cb8a9f9a3931dc631a9077206
+        git remote add linux-review https://github.com/intel-lab-lkp/linux
+        git fetch --no-tags linux-review Wang-Yugui/nfsd-serialize-filecache-garbage-collector/20220530-093218
+        git checkout 7e2af8570695784cb8a9f9a3931dc631a9077206
+        # save the config file
+        mkdir build_dir && cp config build_dir/.config
+        make W=1 C=1 CF='-fdiagnostic-prefix -D__CHECK_ENDIAN__' O=build_dir ARCH=x86_64 SHELL=/bin/bash fs/nfsd/
 
-In this way, the number of threads of filecache garbage collection is
-reduced. but filecache is still accessed by all nfsd threads for filecache
-fetch/save.
+If you fix the issue, kindly add following tag where applicable
+Reported-by: kernel test robot <lkp@intel.com>
 
-Best Regards
-Wang Yugui (wangyugui@e16-tech.com)
-2022/05/30
 
-> If GC is capped like this, maybe create one GC
-> workqueue per nfsd_net so GC activity in one
-> namespace does not starve filecache GC in other
-> namespaces.
-> 
-> Before I would take patches like this, though,
-> performance data demonstrating a problem and some
-> improvement should be presented separately or as
-> part of the patch descriptions.
+sparse warnings: (new ones prefixed by >>)
+>> fs/nfsd/filecache.c:475:10: sparse: sparse: symbol 'nfsd_file_gc_running' was not declared. Should it be static?
 
-> If you repost, start a separate thread and cc:
-> 
-> M:      Tejun Heo <tj@kernel.org>
-> R:      Lai Jiangshan <jiangshanlai@gmail.com>
-> 
-> to get review by workqueue domain experts.
-> 
-> 
+Please review and possibly fold the followup patch.
 
+-- 
+0-DAY CI Kernel Test Service
+https://01.org/lkp
