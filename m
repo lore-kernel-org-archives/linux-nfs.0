@@ -2,83 +2,66 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 223C0CCA477
-	for <linux-nfs@archiver.kernel.org>; Wed,  1 Jun 2022 17:34:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86611C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed,  1 Jun 2022 20:47:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1356381AbiFARe5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 1 Jun 2022 13:34:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40934 "EHLO
+        id S230336AbiFAUrl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 1 Jun 2022 16:47:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44686 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1356406AbiFARe4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2022 13:34:56 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 99F4BA501B
-        for <linux-nfs@vger.kernel.org>; Wed,  1 Jun 2022 10:34:55 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1654104894;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=PrGy0+WSqjbldaLDiTD6I7uCOoMEI7d+ThKKSkhEAcI=;
-        b=BRQZ+nCWhHfD2m/pipmm9pwpj4+39MnR1lgdYGBI0jreZcdtd2yrCMeCE0H2uFfe5YkI/3
-        dMfGvvixgp4oCQ4XHJUkGf1oxhek1CyArfSyTPfP32SaANPDWquJGGfd4UN1gHNgdQyf97
-        BoUfUyIciQVJBd73mhQOqxluImRaEwQ=
-Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
- [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-43-RX-Ev_V9MUGxHAySWzqHzQ-1; Wed, 01 Jun 2022 13:34:51 -0400
-X-MC-Unique: RX-Ev_V9MUGxHAySWzqHzQ-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S230132AbiFAUrX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jun 2022 16:47:23 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4DD801F4295
+        for <linux-nfs@vger.kernel.org>; Wed,  1 Jun 2022 13:39:51 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 23F1A1C00129;
-        Wed,  1 Jun 2022 17:34:51 +0000 (UTC)
-Received: from aion.usersys.redhat.com (unknown [10.22.12.3])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 318F52166B26;
-        Wed,  1 Jun 2022 17:34:50 +0000 (UTC)
-Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
-        id CB62C1A27C3; Wed,  1 Jun 2022 13:34:49 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna@kernel.org
-Cc:     kolga@netapp.com, linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: set cl_max_connect when cloning an rpc_clnt
-Date:   Wed,  1 Jun 2022 13:34:49 -0400
-Message-Id: <20220601173449.155273-1-smayhew@redhat.com>
+        by ams.source.kernel.org (Postfix) with ESMTPS id 06058B81BBA
+        for <linux-nfs@vger.kernel.org>; Wed,  1 Jun 2022 20:39:50 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7E418C385A5
+        for <linux-nfs@vger.kernel.org>; Wed,  1 Jun 2022 20:39:48 +0000 (UTC)
+Subject: [PATCH] SUNRPC: Trap RDMA segment overflows
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Date:   Wed, 01 Jun 2022 16:39:47 -0400
+Message-ID: <165411598744.1142.6464520583131673765.stgit@bazille.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.78 on 10.11.54.6
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If the initial attempt at trunking detection using the krb5i auth flavor
-fails with -EACCES, -NFS4ERR_CLID_INUSE, or -NFS4ERR_WRONGSEC, then the
-NFS client tries again using auth_sys, cloning the rpc_clnt in the
-process.  If this second attempt at trunking detection succeeds, then
-the resulting nfs_client->cl_rpcclient winds up having cl_max_connect=0
-and subsequent attempts to add additional transport connections to the
-rpc_clnt will fail with a message similar to the following being logged:
+Prevent svc_rdma_build_writes() from walking off the end of a Write
+chunk's segment array. Caught with KASAN.
 
-[502044.312640] SUNRPC: reached max allowed number (0) did not add
-transport to server: 192.168.122.3
+The test that this fix replaces is invalid, and might have been left
+over from an earlier prototype of the PCL work.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Fixes: 7a1cbfa18059 ("svcrdma: Use parsed chunk lists to construct RDMA Writes")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/clnt.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/xprtrdma/svc_rdma_rw.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e2c6eca0271b..b6781ada3aa8 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -651,6 +651,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
- 	new->cl_discrtry = clnt->cl_discrtry;
- 	new->cl_chatty = clnt->cl_chatty;
- 	new->cl_principal = clnt->cl_principal;
-+	new->cl_max_connect = clnt->cl_max_connect;
- 	return new;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+index 5f0155fdefc7..11cf7c646644 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+@@ -478,10 +478,10 @@ svc_rdma_build_writes(struct svc_rdma_write_info *info,
+ 		unsigned int write_len;
+ 		u64 offset;
  
- out_err:
--- 
-2.35.3
+-		seg = &info->wi_chunk->ch_segments[info->wi_seg_no];
+-		if (!seg)
++		if (info->wi_seg_no >= info->wi_chunk->ch_segcount)
+ 			goto out_overflow;
+ 
++		seg = &info->wi_chunk->ch_segments[info->wi_seg_no];
+ 		write_len = min(remaining, seg->rs_length - info->wi_seg_off);
+ 		if (!write_len)
+ 			goto out_overflow;
+
 
