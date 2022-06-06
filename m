@@ -2,99 +2,126 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ABD98C43334
-	for <linux-nfs@archiver.kernel.org>; Mon,  6 Jun 2022 18:36:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E94ADC433EF
+	for <linux-nfs@archiver.kernel.org>; Mon,  6 Jun 2022 20:47:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231607AbiFFSgK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 6 Jun 2022 14:36:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54250 "EHLO
+        id S234531AbiFFUr0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 6 Jun 2022 16:47:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46748 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230154AbiFFSgJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2022 14:36:09 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A4711116D
-        for <linux-nfs@vger.kernel.org>; Mon,  6 Jun 2022 11:36:08 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4916761336
-        for <linux-nfs@vger.kernel.org>; Mon,  6 Jun 2022 18:36:08 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98E88C385A9
-        for <linux-nfs@vger.kernel.org>; Mon,  6 Jun 2022 18:36:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1654540567;
-        bh=QxKZ57Tbu0KMV0ZdyJzdTNzsIMtxg0C2WD3ipQlam44=;
-        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
-        b=aRfFEcYhxySCdexgS7Ze0juVZk7eSEPyjIr2SIF82yre40f/NoaR+uNWoGs920Cjo
-         j9crbhZNZ1LB9ncgbcngfphHZlvrlZLy0aKyqN7o/TKSHdjQXpycvP6oBh9mxSISXj
-         XRxtb9zNNNGin2v5axjNrHADM6Jp9ZiTazi5oUGk7Sv8jrUlRcNbU58S65Wbi4S93M
-         2lNvgqjJVroqm2/rQJElWGKPTBKzCF6q0g+vvYgYUNa2/c2UTcsD6P56wNoqra/+K5
-         wmUb7T+6JvjmC0RErsuRU2we1aFe/hH4OIxquLbmcFAjTMe34VDKsJVDt6H7LEITAG
-         RKm/eMtOCZ+0g==
-Received: by mail-wm1-f47.google.com with SMTP id o37-20020a05600c512500b0039c4ba4c64dso2476605wms.2
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jun 2022 11:36:07 -0700 (PDT)
-X-Gm-Message-State: AOAM5318Q+Kgmxt9FMuy4/EoLTCg1j7GHyPatuxLsVe48PAPCs0XYro5
-        XSPM8eSq1zyLvzAdcKm5MLEJORuvR9XzlK/jD+8=
-X-Google-Smtp-Source: ABdhPJyRWOK+qsj0QPner7rMuyqmOP5XqwGK+Jmno3p0YzbxhZ//DVM8QV8BrScg9ht5Y4TVa2kYnBV334QMbI1d4Hs=
-X-Received: by 2002:a05:600c:4f51:b0:397:86a9:b827 with SMTP id
- m17-20020a05600c4f5100b0039786a9b827mr50929217wmq.114.1654540566184; Mon, 06
- Jun 2022 11:36:06 -0700 (PDT)
+        with ESMTP id S234195AbiFFUrQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2022 16:47:16 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBC7AAFB3B;
+        Mon,  6 Jun 2022 13:40:59 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=jShwzeL+5O6p6+KB8AXJd8QTjTM3rLlLO0YNnyhkzoU=; b=j8WB6rbesWftHu8QIJhuNjLLRv
+        8UGF1DKSTdZLPDZ0Kov24duPgp8KMpi6m8VEsqm5e1sZdIO0hAb54JNjAbS00XQgXdsCx8+PvicwO
+        rYdGhK7Gy6I6AX03/exLoIxL+gMZQDduaqInpnkGl13x/6LHcmOMXo+u8SO/crNY4L5fIgFOEe3TY
+        clMZRMy11m0K44+Yi9a6EjLXZgw7NLEoTTdV/oEJbaeKVMorPM13Ba1mk7M/T/X6/bkJL+qWpRRnS
+        1wANzqWwYhqp/CK739JNy4OmGeFkTAhy3sEt9IXLj+oIA+NjHnNm9hNBqc/doCVMUizMtdR2GOaOc
+        gaaqEAJA==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1nyJWy-00B19u-3f; Mon, 06 Jun 2022 20:40:56 +0000
+From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-aio@kvack.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-mm@kvack.org,
+        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        linux-mtd@lists.infradead.org,
+        virtualization@lists.linux-foundation.org
+Subject: [PATCH 19/20] fs: Remove aops->migratepage()
+Date:   Mon,  6 Jun 2022 21:40:49 +0100
+Message-Id: <20220606204050.2625949-20-willy@infradead.org>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220606204050.2625949-1-willy@infradead.org>
+References: <20220606204050.2625949-1-willy@infradead.org>
 MIME-Version: 1.0
-References: <20220601173449.155273-1-smayhew@redhat.com>
-In-Reply-To: <20220601173449.155273-1-smayhew@redhat.com>
-From:   Anna Schumaker <anna@kernel.org>
-Date:   Mon, 6 Jun 2022 14:35:49 -0400
-X-Gmail-Original-Message-ID: <CAFX2JfkQFoQd2UDGqtMc=FPPrtpb0Qyjj-iO-FXZUfauVcXv2w@mail.gmail.com>
-Message-ID: <CAFX2JfkQFoQd2UDGqtMc=FPPrtpb0Qyjj-iO-FXZUfauVcXv2w@mail.gmail.com>
-Subject: Re: [PATCH] sunrpc: set cl_max_connect when cloning an rpc_clnt
-To:     Scott Mayhew <smayhew@redhat.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Scott,
+With all users converted to migrate_folio(), remove this operation.
 
-On Wed, Jun 1, 2022 at 1:34 PM Scott Mayhew <smayhew@redhat.com> wrote:
->
-> If the initial attempt at trunking detection using the krb5i auth flavor
-> fails with -EACCES, -NFS4ERR_CLID_INUSE, or -NFS4ERR_WRONGSEC, then the
-> NFS client tries again using auth_sys, cloning the rpc_clnt in the
-> process.  If this second attempt at trunking detection succeeds, then
-> the resulting nfs_client->cl_rpcclient winds up having cl_max_connect=0
-> and subsequent attempts to add additional transport connections to the
-> rpc_clnt will fail with a message similar to the following being logged:
->
-> [502044.312640] SUNRPC: reached max allowed number (0) did not add
-> transport to server: 192.168.122.3
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+---
+ include/linux/fs.h |  2 --
+ mm/compaction.c    |  5 ++---
+ mm/migrate.c       | 10 +---------
+ 3 files changed, 3 insertions(+), 14 deletions(-)
 
-Good catch! I was wondering if you could give me a "Fixes:" tag so it
-can be backported to stable?
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5737c92ed286..95347cc035ae 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -367,8 +367,6 @@ struct address_space_operations {
+ 	 */
+ 	int (*migrate_folio)(struct address_space *, struct folio *dst,
+ 			struct folio *src, enum migrate_mode);
+-	int (*migratepage) (struct address_space *,
+-			struct page *, struct page *, enum migrate_mode);
+ 	bool (*isolate_page)(struct page *, isolate_mode_t);
+ 	void (*putback_page)(struct page *);
+ 	int (*launder_folio)(struct folio *);
+diff --git a/mm/compaction.c b/mm/compaction.c
+index db34b459e5d9..f0dc62159c0e 100644
+--- a/mm/compaction.c
++++ b/mm/compaction.c
+@@ -1034,7 +1034,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+ 
+ 			/*
+ 			 * Only pages without mappings or that have a
+-			 * ->migratepage callback are possible to migrate
++			 * ->migrate_folio callback are possible to migrate
+ 			 * without blocking. However, we can be racing with
+ 			 * truncation so it's necessary to lock the page
+ 			 * to stabilise the mapping as truncation holds
+@@ -1046,8 +1046,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+ 
+ 			mapping = page_mapping(page);
+ 			migrate_dirty = !mapping ||
+-					mapping->a_ops->migrate_folio ||
+-					mapping->a_ops->migratepage;
++					mapping->a_ops->migrate_folio;
+ 			unlock_page(page);
+ 			if (!migrate_dirty)
+ 				goto isolate_fail_put;
+diff --git a/mm/migrate.c b/mm/migrate.c
+index a8edd226c72d..c5560430dce4 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -911,9 +911,6 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
+ 			 */
+ 			rc = mapping->a_ops->migrate_folio(mapping, dst, src,
+ 								mode);
+-		else if (mapping->a_ops->migratepage)
+-			rc = mapping->a_ops->migratepage(mapping, &dst->page,
+-							&src->page, mode);
+ 		else
+ 			rc = fallback_migrate_folio(mapping, dst, src, mode);
+ 	} else {
+@@ -928,12 +925,7 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
+ 			goto out;
+ 		}
+ 
+-		if (mapping->a_ops->migrate_folio)
+-			rc = mapping->a_ops->migrate_folio(mapping, dst, src,
+-								mode);
+-		else
+-			rc = mapping->a_ops->migratepage(mapping, &dst->page,
+-							&src->page, mode);
++		rc = mapping->a_ops->migrate_folio(mapping, dst, src, mode);
+ 		WARN_ON_ONCE(rc == MIGRATEPAGE_SUCCESS &&
+ 				!folio_test_isolated(src));
+ 	}
+-- 
+2.35.1
 
-Thanks,
-Anna
-
->
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  net/sunrpc/clnt.c | 1 +
->  1 file changed, 1 insertion(+)
->
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index e2c6eca0271b..b6781ada3aa8 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -651,6 +651,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
->         new->cl_discrtry = clnt->cl_discrtry;
->         new->cl_chatty = clnt->cl_chatty;
->         new->cl_principal = clnt->cl_principal;
-> +       new->cl_max_connect = clnt->cl_max_connect;
->         return new;
->
->  out_err:
-> --
-> 2.35.3
->
