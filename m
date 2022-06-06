@@ -2,175 +2,97 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BEA96C43334
-	for <linux-nfs@archiver.kernel.org>; Mon,  6 Jun 2022 20:51:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D5E9C433EF
+	for <linux-nfs@archiver.kernel.org>; Mon,  6 Jun 2022 22:09:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234772AbiFFUvl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 6 Jun 2022 16:51:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44928 "EHLO
+        id S231557AbiFFWJm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 6 Jun 2022 18:09:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59800 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234666AbiFFUt4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2022 16:49:56 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBB68FD30;
-        Mon,  6 Jun 2022 13:41:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=o3aaQHfQtp8mApg3jGvaUbMxXMesQjforjwRq7Bq2eU=; b=FEnR7eEx/VqQapCb2J1x1R7fqn
-        GHGdnHs4TAUYPhigynTRMZ8qU4EWbsdGE3TfoyFJqfBAgGTtewYKTmiwvMMYa2HzGM87YYHNNNBAf
-        25WKlfaBUvQt5+7ogUbK8K0pDyk13POFE1JCVwn42/GfMWEBrYZHN2/3N10M2ljY4Z2NIxy968T1O
-        HE7TzEF3cSl9U3cZr+DVtzHy9GRmE/G/dKDgi6vIqQx9YHC1/Rfaz1Ct+G2LHZg/lo5tSznhIMqdV
-        W1GO7z8A4xasl5WYZ2TeCzudph+MgQrRtd+cB9PyhUGii++9HtpbBEllVTWL/01DS9ex+eqAgijud
-        Ea0r0KAw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nyJWx-00B19k-M6; Mon, 06 Jun 2022 20:40:55 +0000
-From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-aio@kvack.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-mm@kvack.org,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        linux-mtd@lists.infradead.org,
-        virtualization@lists.linux-foundation.org
-Subject: [PATCH 14/20] hugetlb: Convert to migrate_folio
-Date:   Mon,  6 Jun 2022 21:40:44 +0100
-Message-Id: <20220606204050.2625949-15-willy@infradead.org>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20220606204050.2625949-1-willy@infradead.org>
-References: <20220606204050.2625949-1-willy@infradead.org>
+        with ESMTP id S231521AbiFFWJl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jun 2022 18:09:41 -0400
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93DADBE1A
+        for <linux-nfs@vger.kernel.org>; Mon,  6 Jun 2022 15:09:40 -0700 (PDT)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 08AF86C90; Mon,  6 Jun 2022 18:09:39 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 08AF86C90
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1654553379;
+        bh=ktiBAQ/wgvwptzNAOn9nPvZvQrzjysCqUMdBc8mNzTw=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=WPUOboAf6TuslUvsZHx8Fe20biVnFhZPoQr9fjcmru+oPU5/A3Ke3T1UGsfIj/UpR
+         KI9vYL3/hFiwY8GE3CMgAP6LSyjy8q9LqbJamTXBQffffcAy0Z3MpHrV5uCwjqLm20
+         EmZ16rPjUjHD9bWB68CxZlmSIm9TcPMyNvZljiL4=
+Date:   Mon, 6 Jun 2022 18:09:38 -0400
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 1/5] SUNRPC: Fix the calculation of xdr->end in
+ xdr_get_next_encode_buffer()
+Message-ID: <20220606220938.GE15057@fieldses.org>
+References: <165445865736.1664.4497130284832282034.stgit@bazille.1015granger.net>
+ <165445910560.1664.5852151724543272982.stgit@bazille.1015granger.net>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <165445910560.1664.5852151724543272982.stgit@bazille.1015granger.net>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This involves converting migrate_huge_page_move_mapping().  We also need a
-folio variant of hugetlb_set_page_subpool(), but that's for a later patch.
+On Sun, Jun 05, 2022 at 03:58:25PM -0400, Chuck Lever wrote:
+> I found that NFSD's new NFSv3 READDIRPLUS XDR encoder was screwing up
+> right at the end of the page array. xdr_get_next_encode_buffer() does
+> not compute the value of xdr->end correctly:
+> 
+>  * The check to see if we're on the final available page in xdr->buf
+>    needs to account for the space consumed by @nbytes.
+> 
+>  * The new xdr->end value needs to account for the portion of @nbytes
+>    that is to be encoded into the previous buffer.
+> 
+> Fixes: 2825a7f90753 ("nfsd4: allow encoding across page boundaries")
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xdr.c |    6 +++++-
+>  1 file changed, 5 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+> index df194cc07035..b57cf9df4de8 100644
+> --- a/net/sunrpc/xdr.c
+> +++ b/net/sunrpc/xdr.c
+> @@ -979,7 +979,11 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
+>  	 */
+>  	xdr->p = (void *)p + frag2bytes;
+>  	space_left = xdr->buf->buflen - xdr->buf->len;
+> -	xdr->end = (void *)p + min_t(int, space_left, PAGE_SIZE);
+> +	if (space_left - nbytes >= PAGE_SIZE)
+> +		xdr->end = (void *)p + PAGE_SIZE;
+> +	else
+> +		xdr->end = (void *)p + space_left - frag1bytes;
+> +
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- fs/hugetlbfs/inode.c    | 19 ++++++++++---------
- include/linux/migrate.h |  6 +++---
- mm/migrate.c            | 18 +++++++++---------
- 3 files changed, 22 insertions(+), 21 deletions(-)
+I think that's right.
 
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index 14d33f725e05..583ca3f52c04 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -954,25 +954,26 @@ static int hugetlbfs_symlink(struct user_namespace *mnt_userns,
- 	return error;
- }
- 
--static int hugetlbfs_migrate_page(struct address_space *mapping,
--				struct page *newpage, struct page *page,
-+static int hugetlbfs_migrate_folio(struct address_space *mapping,
-+				struct folio *dst, struct folio *src,
- 				enum migrate_mode mode)
- {
- 	int rc;
- 
--	rc = migrate_huge_page_move_mapping(mapping, newpage, page);
-+	rc = migrate_huge_page_move_mapping(mapping, dst, src);
- 	if (rc != MIGRATEPAGE_SUCCESS)
- 		return rc;
- 
--	if (hugetlb_page_subpool(page)) {
--		hugetlb_set_page_subpool(newpage, hugetlb_page_subpool(page));
--		hugetlb_set_page_subpool(page, NULL);
-+	if (hugetlb_page_subpool(&src->page)) {
-+		hugetlb_set_page_subpool(&dst->page,
-+					hugetlb_page_subpool(&src->page));
-+		hugetlb_set_page_subpool(&src->page, NULL);
- 	}
- 
- 	if (mode != MIGRATE_SYNC_NO_COPY)
--		migrate_page_copy(newpage, page);
-+		folio_migrate_copy(dst, src);
- 	else
--		migrate_page_states(newpage, page);
-+		folio_migrate_flags(dst, src);
- 
- 	return MIGRATEPAGE_SUCCESS;
- }
-@@ -1142,7 +1143,7 @@ static const struct address_space_operations hugetlbfs_aops = {
- 	.write_begin	= hugetlbfs_write_begin,
- 	.write_end	= hugetlbfs_write_end,
- 	.dirty_folio	= noop_dirty_folio,
--	.migratepage    = hugetlbfs_migrate_page,
-+	.migrate_folio  = hugetlbfs_migrate_folio,
- 	.error_remove_page	= hugetlbfs_error_remove_page,
- };
- 
-diff --git a/include/linux/migrate.h b/include/linux/migrate.h
-index 4ef22806cd8e..088749471485 100644
---- a/include/linux/migrate.h
-+++ b/include/linux/migrate.h
-@@ -35,8 +35,8 @@ extern int isolate_movable_page(struct page *page, isolate_mode_t mode);
- 
- extern void migrate_page_states(struct page *newpage, struct page *page);
- extern void migrate_page_copy(struct page *newpage, struct page *page);
--extern int migrate_huge_page_move_mapping(struct address_space *mapping,
--				  struct page *newpage, struct page *page);
-+int migrate_huge_page_move_mapping(struct address_space *mapping,
-+		struct folio *dst, struct folio *src);
- extern int migrate_page_move_mapping(struct address_space *mapping,
- 		struct page *newpage, struct page *page, int extra_count);
- void migration_entry_wait_on_locked(swp_entry_t entry, pte_t *ptep,
-@@ -67,7 +67,7 @@ static inline void migrate_page_copy(struct page *newpage,
- 				     struct page *page) {}
- 
- static inline int migrate_huge_page_move_mapping(struct address_space *mapping,
--				  struct page *newpage, struct page *page)
-+				  struct folio *dst, struct folio *src)
- {
- 	return -ENOSYS;
- }
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 148dd0463dec..a8edd226c72d 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -475,26 +475,26 @@ EXPORT_SYMBOL(folio_migrate_mapping);
-  * of folio_migrate_mapping().
-  */
- int migrate_huge_page_move_mapping(struct address_space *mapping,
--				   struct page *newpage, struct page *page)
-+				   struct folio *dst, struct folio *src)
- {
--	XA_STATE(xas, &mapping->i_pages, page_index(page));
-+	XA_STATE(xas, &mapping->i_pages, folio_index(src));
- 	int expected_count;
- 
- 	xas_lock_irq(&xas);
--	expected_count = 2 + page_has_private(page);
--	if (!page_ref_freeze(page, expected_count)) {
-+	expected_count = 2 + folio_has_private(src);
-+	if (!folio_ref_freeze(src, expected_count)) {
- 		xas_unlock_irq(&xas);
- 		return -EAGAIN;
- 	}
- 
--	newpage->index = page->index;
--	newpage->mapping = page->mapping;
-+	dst->index = src->index;
-+	dst->mapping = src->mapping;
- 
--	get_page(newpage);
-+	folio_get(dst);
- 
--	xas_store(&xas, newpage);
-+	xas_store(&xas, dst);
- 
--	page_ref_unfreeze(page, expected_count - 1);
-+	folio_ref_unfreeze(src, expected_count - 1);
- 
- 	xas_unlock_irq(&xas);
- 
--- 
-2.35.1
+Couldn't you just make that
 
+
+-	xdr->end = (void *)p + min_t(int, space_left, PAGE_SIZE);
++	xdr->end = (void *)p + min_t(int, space_left - nbytes, PAGE_SIZE);
+
+?
+
+(Note we know space_left >= nbytes from the second "if" of this
+function.)
+
+No strong opinion either way, really, I just wonder if I'm missing
+something.
+
+--b.
+
+>  	xdr->buf->page_len += frag2bytes;
+>  	xdr->buf->len += nbytes;
+>  	return p;
+> 
