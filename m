@@ -2,54 +2,53 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FE64C433EF
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jun 2022 23:20:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 51301CCA47D
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jun 2022 23:20:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236965AbiFMXUp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Jun 2022 19:20:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51904 "EHLO
+        id S236428AbiFMXUr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Jun 2022 19:20:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51886 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236428AbiFMXUn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2022 19:20:43 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8AB5B2983D;
-        Mon, 13 Jun 2022 16:20:39 -0700 (PDT)
+        with ESMTP id S237654AbiFMXUq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2022 19:20:46 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5C1A52B18B;
+        Mon, 13 Jun 2022 16:20:45 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 34EB11F959;
-        Mon, 13 Jun 2022 23:20:38 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 1359221AA0;
+        Mon, 13 Jun 2022 23:20:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1655162438; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1655162444; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=dv0t/moe0oo2g4yNdVPUDgVdwdMBKpyu/x9jlXnCUWQ=;
-        b=gat8BNdlwOtlhRNhKV7bDO0aFl07I0a2ImRNHxKdZm/OlKMUeP89eD7Vy0zTlZzn+fswIW
-        BJBM3zg3jTWoZsgs0i5+oizCj6FvQ82vjWdHWLy/CPZ1lH+r529KPtVc9r/6gNiX2UlryB
-        en50mmh+nZQeoojQnNnd+KiTbC01BgA=
+        bh=0MtfIrHZ/Ov+xd8eT4mDLOzkjS/G6SbIerKz5jiAI3I=;
+        b=emhdbCNAOOE1/IwfamybQdjwRm6qZn705F8LzcQ4TGJWtMsWORR1RV8wvdI8R8UBwg+nqt
+        eK5+M5UOZer6S5B8g2ga1SnAxggMidfD8MMxQpXfG++i5tF2QWh3rFD6OCqoSLfwIanldA
+        jnosA1MI1CsarnyZzyJkV+EE52Oo9Vs=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1655162438;
+        s=susede2_ed25519; t=1655162444;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=dv0t/moe0oo2g4yNdVPUDgVdwdMBKpyu/x9jlXnCUWQ=;
-        b=C0BcQJ7jOn+AVLULjJbrc70KgLqI8xMLcwgkLYm31PuvYVhtEl0PGgF4leaYNeOmCmrwuM
-        E+UlmOtqwBVkhhAA==
+        bh=0MtfIrHZ/Ov+xd8eT4mDLOzkjS/G6SbIerKz5jiAI3I=;
+        b=7PhoTejWCCKC2GX1e1gWHKvG7tRdUbGbaSU82YIgswwoD+B5NXPg1o1E6WArermrtNdijf
+        nJlbv0/YcU2Yl0CQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id E824A134CF;
-        Mon, 13 Jun 2022 23:20:35 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D4033134CF;
+        Mon, 13 Jun 2022 23:20:41 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id gk8JKEPGp2LNbwAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 13 Jun 2022 23:20:35 +0000
-Subject: [PATCH 04/12] VFS: move dput() and mnt_drop_write() into
- done_path_update()
+        id NEFuI0nGp2LXbwAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 13 Jun 2022 23:20:41 +0000
+Subject: [PATCH 05/12] VFS: export done_path_update()
 From:   NeilBrown <neilb@suse.de>
 To:     Al Viro <viro@zeniv.linux.org.uk>, Daire Byrne <daire@dneg.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -57,7 +56,7 @@ To:     Al Viro <viro@zeniv.linux.org.uk>, Daire Byrne <daire@dneg.com>,
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
 Date:   Tue, 14 Jun 2022 09:18:21 +1000
-Message-ID: <165516230198.21248.8276913837756883567.stgit@noble.brown>
+Message-ID: <165516230198.21248.8675541854979948509.stgit@noble.brown>
 In-Reply-To: <165516173293.21248.14587048046993234326.stgit@noble.brown>
 References: <165516173293.21248.14587048046993234326.stgit@noble.brown>
 User-Agent: StGit/1.5
@@ -68,53 +67,77 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-All calls to done_path_update() are followed by the same two calls, so
-merge them in.
+This function will be be useful to nfsd, so export it.
+
+done_path_create_wq() is now simple enough to be "static inline"
+rather than an explicit export.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/namei.c |    8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/namei.c            |   11 ++---------
+ include/linux/namei.h |   10 +++++++++-
+ 2 files changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index 83ce2f7083be..f13bff877e30 100644
+index f13bff877e30..8ce7aa16b704 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -1732,6 +1732,8 @@ static void done_path_update(struct path *path, struct dentry *dentry,
- 	} else {
- 		inode_unlock(dir);
- 	}
-+	dput(dentry);
-+	mnt_drop_write(path->mnt);
+@@ -1719,7 +1719,7 @@ struct dentry *lookup_hash_update_len(const char *name, int nlen,
  }
+ EXPORT_SYMBOL(lookup_hash_update_len);
+ 
+-static void done_path_update(struct path *path, struct dentry *dentry,
++void done_path_update(struct path *path, struct dentry *dentry,
+ 			     wait_queue_head_t *wq)
+ {
+ 	struct inode *dir = path->dentry->d_inode;
+@@ -1735,6 +1735,7 @@ static void done_path_update(struct path *path, struct dentry *dentry,
+ 	dput(dentry);
+ 	mnt_drop_write(path->mnt);
+ }
++EXPORT_SYMBOL(done_path_update);
  
  static struct dentry *lookup_fast(struct nameidata *nd,
-@@ -3953,8 +3955,6 @@ void done_path_create_wq(struct path *path, struct dentry *dentry,
- 			 wait_queue_head_t *wq)
- {
- 	done_path_update(path, dentry, wq);
--	dput(dentry);
--	mnt_drop_write(path->mnt);
- 	path_put(path);
+ 				  struct inode **inode,
+@@ -3951,14 +3952,6 @@ struct dentry *kern_path_create(int dfd, const char *pathname,
  }
- EXPORT_SYMBOL(done_path_create_wq);
-@@ -4276,8 +4276,6 @@ int do_rmdir(int dfd, struct filename *name)
- 	error = vfs_rmdir(mnt_userns, path.dentry->d_inode, dentry);
- exit3:
- 	done_path_update(&path, dentry, &wq);
--	dput(dentry);
--	mnt_drop_write(path.mnt);
- exit2:
- 	path_put(&path);
- 	if (retry_estale(error, lookup_flags)) {
-@@ -4412,8 +4410,6 @@ int do_unlinkat(int dfd, struct filename *name)
- 				   &delegated_inode);
- exit3:
- 		done_path_update(&path, dentry, &wq);
--		dput(dentry);
--		mnt_drop_write(path.mnt);
- 	}
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
+ EXPORT_SYMBOL(kern_path_create);
+ 
+-void done_path_create_wq(struct path *path, struct dentry *dentry,
+-			 wait_queue_head_t *wq)
+-{
+-	done_path_update(path, dentry, wq);
+-	path_put(path);
+-}
+-EXPORT_SYMBOL(done_path_create_wq);
+-
+ inline struct dentry *user_path_create(int dfd, const char __user *pathname,
+ 				       struct path *path, unsigned int lookup_flags)
+ {
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index f75c6639dd1a..217aa6de9f25 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -64,11 +64,19 @@ extern struct dentry *user_path_create(int, const char __user *, struct path *,
+ extern struct dentry *lookup_hash_update_len(const char *name, int nlen,
+ 					     struct path *path, unsigned int flags,
+ 					     wait_queue_head_t *wq);
+-extern void done_path_create_wq(struct path *, struct dentry *, wait_queue_head_t *wq);
++extern void done_path_update(struct path *, struct dentry *, wait_queue_head_t *);
++static inline void done_path_create_wq(struct path *path, struct dentry *dentry,
++				       wait_queue_head_t *wq)
++{
++	done_path_update(path, dentry, wq);
++	path_put(path);
++}
++
+ static inline void done_path_create(struct path *path, struct dentry *dentry)
+ {
+ 	done_path_create_wq(path, dentry, NULL);
+ }
++
+ extern struct dentry *kern_path_locked(const char *, struct path *);
+ 
+ extern struct dentry *try_lookup_one_len(const char *, struct dentry *, int);
 
 
