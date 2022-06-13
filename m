@@ -2,122 +2,138 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6010DC43334
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jun 2022 21:14:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E153AC43334
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jun 2022 23:19:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232570AbiFMVO0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Jun 2022 17:14:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42928 "EHLO
+        id S230388AbiFMXT6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Jun 2022 19:19:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51232 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352050AbiFMVNJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2022 17:13:09 -0400
-Received: from mail-oi1-x236.google.com (mail-oi1-x236.google.com [IPv6:2607:f8b0:4864:20::236])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B98B339B87
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2022 13:52:41 -0700 (PDT)
-Received: by mail-oi1-x236.google.com with SMTP id bd16so1115740oib.6
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jun 2022 13:52:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cloudflare.com; s=google;
-        h=message-id:date:mime-version:user-agent:subject:content-language:to
-         :cc:references:from:in-reply-to:content-transfer-encoding;
-        bh=Ie2xrfdugqSnUY/lUmZJBYqEw/Jj5HQgDROYZDI7Ljg=;
-        b=q8Sos2zHH2cqeJpqAWGopwq4BFpy5d162ZHvWsGBGzD8dXmnX4TsH4oGd9xtjxFj3k
-         kkiT7ORHTaWO7TVdzrFrUtvSJwyodFHKf3kDLk5zfyB6+Q4t7bACoSZoThK4QulFXt66
-         4eu47sTHknmVkiiSbjTEY+HxauLbTxzPeZ3t8=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
-         :content-language:to:cc:references:from:in-reply-to
-         :content-transfer-encoding;
-        bh=Ie2xrfdugqSnUY/lUmZJBYqEw/Jj5HQgDROYZDI7Ljg=;
-        b=Iphdn2+bOyF1gs/SvA8VVk8ClsbBellBj/ZrK3uv1n23V/AeIZzCahx2wxKpkAuMWP
-         TFet5r9uieMfRjEbIjQ0RE8Ft3lkizT9OmclnGNsinD61L4u6dXE0r8GIM3wYz7tWOB4
-         vF9JerQj87kwz0gW0FoMXJzpoXPtYWx2IdMlTY9qPyyr/tWu79WIsdgepblqzACfMO3I
-         pI9BorSrVNnkvauLj3Dp+LGtMngq4mzGPkDr6rk6odMSXSqMCETb7hGUW6i+p/2B4008
-         RWwK9yp7uu4eyqR+kKXchmVUXs6PkI11WrVlruLLiUuwSgL2HJi2UD/4hWKJQn+P8+Pb
-         Q9cg==
-X-Gm-Message-State: AOAM530ujW0KZVtjVpJa7bZkXbKyYG+DH5zNaV0s3X9aw44ucA/yx96m
-        6nqrpf9Tx+InYvmRpoItHnuH7g==
-X-Google-Smtp-Source: ABdhPJxwqO943xteTGAgFieA/vZp5/Zn/6Qxyj5rF6Le0Sf8rKMQHGa/+OpWxWOapQGjDXa0MQVMLw==
-X-Received: by 2002:a05:6808:2394:b0:326:d5d6:a4ba with SMTP id bp20-20020a056808239400b00326d5d6a4bamr321996oib.67.1655153561069;
-        Mon, 13 Jun 2022 13:52:41 -0700 (PDT)
-Received: from [192.168.0.41] ([184.4.90.121])
-        by smtp.gmail.com with ESMTPSA id dv8-20020a056870d88800b000f5eb6b409bsm4444747oab.45.2022.06.13.13.52.39
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 13 Jun 2022 13:52:40 -0700 (PDT)
-Message-ID: <e1b62234-9b8a-e7c2-2946-5ef9f6f23a08@cloudflare.com>
-Date:   Mon, 13 Jun 2022 15:52:38 -0500
+        with ESMTP id S229488AbiFMXT6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jun 2022 19:19:58 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 12AD860EC;
+        Mon, 13 Jun 2022 16:19:57 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 3A7A421A94;
+        Mon, 13 Jun 2022 23:19:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1655162395; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=IkkdWLZCbKTXcy+wyaIkRfefAaKEDvHsBtJt3VONYgA=;
+        b=DwoBafhYE+kEHIlypI4/grEhAWzHf/UF0VyDCgMKrgDJIGweAh+P0DadbfI9RAZBJNPQa+
+        b4/IGqGuitKJ+50MHrB/4WdGI38yXlh2GAMi0YPwrODaoyDlNw0fAAcpnFtVN3IlE7JsG/
+        xSyF9acA9PeEVuQqiHrU7/0jevn20F0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1655162395;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=IkkdWLZCbKTXcy+wyaIkRfefAaKEDvHsBtJt3VONYgA=;
+        b=rTVSAXoRTxOBYxsL5LWjJ+V89M/2QCl+IeuxWV/KKnz855LQKX2t8MUT5Qa9Iw3n0NTlzr
+        yQtVtGj9veHk/NAg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id F1619134CF;
+        Mon, 13 Jun 2022 23:19:52 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id M9J8KhjGp2KXbwAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 13 Jun 2022 23:19:52 +0000
+Subject: [PATCH RFC 00/12] Allow concurrent directory updates.
+From:   NeilBrown <neilb@suse.de>
+To:     Al Viro <viro@zeniv.linux.org.uk>, Daire Byrne <daire@dneg.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+Date:   Tue, 14 Jun 2022 09:18:21 +1000
+Message-ID: <165516173293.21248.14587048046993234326.stgit@noble.brown>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.10.0
-Subject: Re: [PATCH v3] cred: Propagate security_prepare_creds() error code
-Content-Language: en-US
-To:     "Eric W. Biederman" <ebiederm@xmission.com>
-Cc:     linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-aio@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-cachefs@redhat.com, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, netdev@vger.kernel.org,
-        keyrings@vger.kernel.org, selinux@vger.kernel.org,
-        serge@hallyn.com, amir73il@gmail.com, kernel-team@cloudflare.com,
-        Jeff Moyer <jmoyer@redhat.com>,
-        Paul Moore <paul@paul-moore.com>
-References: <20220608150942.776446-1-fred@cloudflare.com>
- <87tu8oze94.fsf@email.froward.int.ebiederm.org>
-From:   Frederick Lawler <fred@cloudflare.com>
-In-Reply-To: <87tu8oze94.fsf@email.froward.int.ebiederm.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Eric,
+VFS currently holds an exclusive lock on a directory during create,
+unlink, rename.  This imposes serialisation on all filesystems though
+some may not benefit from it, and some may be able to provide finer
+grained locking internally, thus reducing contention.
 
-On 6/13/22 12:04 PM, Eric W. Biederman wrote:
-> Frederick Lawler <fred@cloudflare.com> writes:
-> 
->> While experimenting with the security_prepare_creds() LSM hook, we
->> noticed that our EPERM error code was not propagated up the callstack.
->> Instead ENOMEM is always returned.  As a result, some tools may send a
->> confusing error message to the user:
->>
->> $ unshare -rU
->> unshare: unshare failed: Cannot allocate memory
->>
->> A user would think that the system didn't have enough memory, when
->> instead the action was denied.
->>
->> This problem occurs because prepare_creds() and prepare_kernel_cred()
->> return NULL when security_prepare_creds() returns an error code. Later,
->> functions calling prepare_creds() and prepare_kernel_cred() return
->> ENOMEM because they assume that a NULL meant there was no memory
->> allocated.
->>
->> Fix this by propagating an error code from security_prepare_creds() up
->> the callstack.
-> 
-> Why would it make sense for security_prepare_creds to return an error
-> code other than ENOMEM?
->  > That seems a bit of a violation of what that function is supposed to do
->
+This series allows the filesystem to request that the inode lock be
+shared rather than exclusive.  In that case an exclusive lock will be
+held on the dentry instead, much as is done for parallel lookup.
 
-The API allows LSM authors to decide what error code is returned from 
-the cred_prepare hook. security_task_alloc() is a similar hook, and has 
-its return code propagated.
+The NFS filesystem can easily support concurrent updates (server does
+any needed serialiation) so it is converted.
 
-I'm proposing we follow security_task_allocs() pattern, and add 
-visibility for failure cases in prepare_creds().
+This series also converts nfsd to use the new interfaces so concurrent
+incoming NFS requests in the one directory can be handled concurrently.
 
-> I have probably missed a very interesting discussion where that was
-> mentioned but I don't see link to the discussion or anything explaining
-> why we want to do that in this change.
-> 
+As a net result, if an NFS mounted filesystem is reexported over NFS,
+then multiple clients can create files in a single directory and all
+synchronisation will be handled on the final server.  This helps hid
+latency on link from client to server.
 
-AFAIK, this is the start of the discussion.
+I include a few nfsd patches that aren't strictly needed for this work,
+but seem to be a logical consequence of the changes that I did have to
+make.
 
-> Eric
-> 
+I have only tested this lightly.  In particular the rename support is
+quite new and I haven't tried to break it yet.
 
+I post this for general review, and hopefully extra testing...  Daire
+Byrne has expressed interest in the NFS re-export parallelism.
+
+NeilBrown
+
+
+---
+
+NeilBrown (12):
+      VFS: support parallel updates in the one directory.
+      VFS: move EEXIST and ENOENT tests into lookup_hash_update()
+      VFS: move want_write checks into lookup_hash_update()
+      VFS: move dput() and mnt_drop_write() into done_path_update()
+      VFS: export done_path_update()
+      VFS: support concurrent renames.
+      NFS: support parallel updates in the one directory.
+      nfsd: allow parallel creates from nfsd
+      nfsd: support concurrent renames.
+      nfsd: reduce locking in nfsd_lookup()
+      nfsd: use (un)lock_inode instead of fh_(un)lock
+      nfsd: discard fh_locked flag and fh_lock/fh_unlock
+
+
+ fs/dcache.c            |  59 ++++-
+ fs/namei.c             | 578 ++++++++++++++++++++++++++++++++---------
+ fs/nfs/dir.c           |  29 ++-
+ fs/nfs/inode.c         |   2 +
+ fs/nfs/unlink.c        |   5 +-
+ fs/nfsd/nfs2acl.c      |   6 +-
+ fs/nfsd/nfs3acl.c      |   4 +-
+ fs/nfsd/nfs3proc.c     |  37 +--
+ fs/nfsd/nfs4acl.c      |   7 +-
+ fs/nfsd/nfs4proc.c     |  61 ++---
+ fs/nfsd/nfs4state.c    |   8 +-
+ fs/nfsd/nfsfh.c        |  10 +-
+ fs/nfsd/nfsfh.h        |  58 +----
+ fs/nfsd/nfsproc.c      |  31 +--
+ fs/nfsd/vfs.c          | 243 ++++++++---------
+ fs/nfsd/vfs.h          |   8 +-
+ include/linux/dcache.h |  27 ++
+ include/linux/fs.h     |   1 +
+ include/linux/namei.h  |  30 ++-
+ 19 files changed, 791 insertions(+), 413 deletions(-)
+
+--
+Signature
 
