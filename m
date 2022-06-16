@@ -2,162 +2,203 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D8172C43334
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jun 2022 06:51:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F1DABC43334
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jun 2022 10:49:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241798AbiFPGva (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jun 2022 02:51:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40026 "EHLO
+        id S231351AbiFPKtJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jun 2022 06:49:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36490 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236834AbiFPGv3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2022 02:51:29 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA45E5BD06
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Jun 2022 23:51:27 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 7BBE621C85;
-        Thu, 16 Jun 2022 06:51:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1655362286;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=xaB8uap2BzLYqn7FttBfPkR0KtlLual8TfZL74kVsxY=;
-        b=mbfIGiZmBjOaRji5drqCIm4yz5q1B+CezUozxXnsxLXAhNh/8BaBkWVZ62im+pi7L5miLM
-        DGa/NkS3i9c49uOTF1+vgE8gpeiaM10dJ0/E/0IGo0fvuE6zqCcV4YRRlLApdHciOuvEMB
-        hRDeE0JM0TUHMKDM8Ry+ekFHqrZ3ec8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1655362286;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=xaB8uap2BzLYqn7FttBfPkR0KtlLual8TfZL74kVsxY=;
-        b=63zfYp3BbP+dRp/W+pOJk/rZ70RwsYe6y4YgNtQL5XCuJ4G/g0hNxGdYFJQDf2mPhCJQdn
-        Wgk/UuWGxEJs+0BA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 5505A1344E;
-        Thu, 16 Jun 2022 06:51:26 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id 7QX7Eu7SqmJAXQAAMHmgww
-        (envelope-from <pvorel@suse.cz>); Thu, 16 Jun 2022 06:51:26 +0000
-Date:   Thu, 16 Jun 2022 08:51:24 +0200
-From:   Petr Vorel <pvorel@suse.cz>
-To:     Li Wang <liwang@redhat.com>
-Cc:     LTP List <ltp@lists.linux.it>, linux-nfs@vger.kernel.org
-Subject: Re: [LTP] [RFC][PATCH v2 9/9] nfs: Use TST_ALL_FILESYSTEMS=1
-Message-ID: <YqrS7K3l3b3Vp+ys@pevik>
-Reply-To: Petr Vorel <pvorel@suse.cz>
-References: <20220609214223.4608-1-pvorel@suse.cz>
- <20220609214223.4608-10-pvorel@suse.cz>
- <CAEemH2dViRNFsreFRyyTtPECdVEyaAEE0CuYBmZrwor=rgi=mQ@mail.gmail.com>
+        with ESMTP id S229838AbiFPKtI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jun 2022 06:49:08 -0400
+Received: from mail-ej1-x631.google.com (mail-ej1-x631.google.com [IPv6:2a00:1450:4864:20::631])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CA0235DD21
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jun 2022 03:49:05 -0700 (PDT)
+Received: by mail-ej1-x631.google.com with SMTP id hj18so1392579ejb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jun 2022 03:49:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dneg.com; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=zdv5HvJdOUS16UfpAYkCSxAdQ5u2uZ4iGAl0EwYrSX8=;
+        b=qVh98qSY7GkMzEotZLLP3oRk0j1errP5YUfSlXNDLo9qpFmIlwB930D7w00tTzMbe4
+         GAmJrZ0DMBwWJbL7RWEn2IDfz5q/bWLAMpn50hj+wbl6Q0+6c7YtKnC8NoeBrlxl1bt3
+         Alx8q9S6tso2FcWciZ6hO0elh1LG9bRCxRsNgl+TNAqqnyMN0i/6QNKfk/E11CUq039t
+         yZgoMrvIEKZs25H2fOpTaMjyxSqWejKb8AO/10IdwyoRpIq/0YOSMsvHG0E/J9+EeI2w
+         8rCWTsRPuh9Hyjko+RJuZbvcjQGZOdDduX1EzqgCz14r+m1CqMkYt65mUUvOjSDc8BJ/
+         Rn0A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=zdv5HvJdOUS16UfpAYkCSxAdQ5u2uZ4iGAl0EwYrSX8=;
+        b=mhxSfGaGQl6BR+A4r1sIGZwvlAZwhric/ogdP4gKyOLbVBOM6EKyZXp+GPEeu4Vl6H
+         BaQYkG2rjCp/1knquV4AuL7bJmTJI61XJkSPBte5+QqHr0BU2nSdzJJOyGYmpAWRW7g4
+         y20bTnsajMr1XZ5xJjIWDXBrA1v0+aCpAryZZ9TiZArflXALE058Rp0+iJWWurJWgOwH
+         gcKZTi6zwLssWQqPjVMimwrcSTayiiD/v25w6NFQZzyaai9uPawRUFU3b8DJ7bBG+KQr
+         /yXQwOsm8eY/LK11AgI4cwQiQC2amBHFyeHWb/1lm8TAs+0aLi0dQM6SAprP+uLfCyvM
+         ED2g==
+X-Gm-Message-State: AJIora+3ULVCoM9Z+3/gRP28I/Pf4b4cQannYKkYcjDIV9EsqRH9va9Z
+        iFLqskzfauwCoXMGwM3tEekwD0pW/QSWoJV1tMzj+Q==
+X-Google-Smtp-Source: AGRyM1vlAyzSwM4XDyHbc1Wtl2T1qv7BOE85nxm0tCoxS79Jm2Gdwwpo4xt2+8ZN/uHiDQ9THPDqUT19/eLYN0UNQoU=
+X-Received: by 2002:a17:906:5256:b0:711:ee4d:fbe4 with SMTP id
+ y22-20020a170906525600b00711ee4dfbe4mr3722377ejm.312.1655376544294; Thu, 16
+ Jun 2022 03:49:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAEemH2dViRNFsreFRyyTtPECdVEyaAEE0CuYBmZrwor=rgi=mQ@mail.gmail.com>
+References: <165516173293.21248.14587048046993234326.stgit@noble.brown>
+ <CAPt2mGNjWXad6e7nSUTu=0ez1qU1wBNegrntgHKm5hOeBs5gQA@mail.gmail.com> <165534094600.26404.4349155093299535793@noble.neil.brown.name>
+In-Reply-To: <165534094600.26404.4349155093299535793@noble.neil.brown.name>
+From:   Daire Byrne <daire@dneg.com>
+Date:   Thu, 16 Jun 2022 11:48:28 +0100
+Message-ID: <CAPt2mGOw_PS-5KY-9WFzGOT=ax6PFhVYSTQG-dpXzV5MeGieYg@mail.gmail.com>
+Subject: Re: [PATCH RFC 00/12] Allow concurrent directory updates.
+To:     NeilBrown <neilb@suse.de>
+Cc:     Al Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-> On Fri, Jun 10, 2022 at 5:44 AM Petr Vorel <pvorel@suse.cz> wrote:
+On Thu, 16 Jun 2022 at 01:56, NeilBrown <neilb@suse.de> wrote:
+>
+> On Wed, 15 Jun 2022, Daire Byrne wrote:
+> ..
+> > However, it is at this point that I started to experience some
+> > stability issues with the re-export server that are not present with
+> > the vanilla unpatched v5.19-rc2 kernel. In particular the knfsd
+> > threads start to lock up with stack traces like this:
+> >
+> > [ 1234.460696] INFO: task nfsd:5514 blocked for more than 123 seconds.
+> > [ 1234.461481]       Tainted: G        W   E     5.19.0-1.dneg.x86_64 #1
+> > [ 1234.462289] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+> > disables this message.
+> > [ 1234.463227] task:nfsd            state:D stack:    0 pid: 5514
+> > ppid:     2 flags:0x00004000
+> > [ 1234.464212] Call Trace:
+> > [ 1234.464677]  <TASK>
+> > [ 1234.465104]  __schedule+0x2a9/0x8a0
+> > [ 1234.465663]  schedule+0x55/0xc0
+> > [ 1234.466183]  ? nfs_lookup_revalidate_dentry+0x3a0/0x3a0 [nfs]
+> > [ 1234.466995]  __nfs_lookup_revalidate+0xdf/0x120 [nfs]
+>
+> I can see the cause of this - I forget a wakeup.  This patch should fix
+> it, though I hope to find a better solution.
+>
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 54c2c7adcd56..072130d000c4 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2483,17 +2483,16 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
+>         if (!(dentry->d_flags & DCACHE_PAR_UPDATE)) {
+>                 /* Must have exclusive lock on parent */
+>                 did_set_par_update = true;
+> +               lock_acquire_exclusive(&dentry->d_update_map, 0,
+> +                                      0, NULL, _THIS_IP_);
+>                 dentry->d_flags |= DCACHE_PAR_UPDATE;
+>         }
+>
+>         spin_unlock(&dentry->d_lock);
+>         error = nfs_safe_remove(dentry);
+>         nfs_dentry_remove_handle_error(dir, dentry, error);
+> -       if (did_set_par_update) {
+> -               spin_lock(&dentry->d_lock);
+> -               dentry->d_flags &= ~DCACHE_PAR_UPDATE;
+> -               spin_unlock(&dentry->d_lock);
+> -       }
+> +       if (did_set_par_update)
+> +               d_unlock_update(dentry);
+>  out:
+>         trace_nfs_unlink_exit(dir, dentry, error);
+>         return error;
+>
+> >
+> > So all in all, the performance improvements in the knfsd re-export
+> > case is looking great and we have real world use cases that this helps
+> > with (batch processing workloads with latencies >10ms). If we can
+> > figure out the hanging knfsd threads, then I can test it more heavily.
+>
+> Hopefully the above patch will allow the more heavy testing to continue.
+> In any case, thanks a lot for the testing so far,
 
-> > Signed-off-by: Petr Vorel <pvorel@suse.cz>
-> > ---
-> > Hi NFS developers,
+Patch applied but unfortunately I'm still getting the same trace, but
+this time I also captured a preceding stack for a hung process local
+to the reexport server - I wonder if it's happening somewhere in the
+VFS changes rather than nfsd which then exports the path?
 
-> > your comments are welcome. This is an effort how to support NFS tests on
-> > all filesystems available on SUT. Using $TST_MNTPOINT means test run in
-> > loop, each time different filesystem is used. It's implemented via
-> > formatted loop device (the same way as in LTP C API).
+[  373.930506] INFO: task XXXX:5072 blocked for more than 122 seconds.
+[  373.931410]       Tainted: G        W   E     5.19.0-3.dneg.x86_64 #1
+[  373.932313] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+disables this message.
+[  373.933442] task:XXXX          state:D stack:    0 pid: 5072 ppid:
+   1 flags:0x00000000
+[  373.934639] Call Trace:
+[  373.935007]  <TASK>
+[  373.935306]  __schedule+0x2a9/0x8a0
+[  373.935844]  schedule+0x55/0xc0
+[  373.936294]  ? nfs_lookup_revalidate_dentry+0x3a0/0x3a0 [nfs]
+[  373.937137]  __nfs_lookup_revalidate+0xdf/0x120 [nfs]
+[  373.937875]  ? put_prev_task_stop+0x170/0x170
+[  373.938525]  nfs_lookup_revalidate+0x15/0x20 [nfs]
+[  373.939226]  lookup_fast+0xda/0x150
+[  373.939756]  path_openat+0x12a/0x1090
+[  373.940293]  ? __filemap_fdatawrite_range+0x54/0x70
+[  373.941100]  do_filp_open+0xb2/0x120
+[  373.941635]  ? hashlen_string+0xd0/0xd0
+[  373.942190]  ? _raw_spin_unlock+0xe/0x30
+[  373.942766]  do_sys_openat2+0x245/0x320
+[  373.943305]  do_sys_open+0x46/0x80
+[  373.943839]  __x64_sys_open+0x21/0x30
+[  373.944428]  do_syscall_64+0x3b/0x90
+[  373.944979]  entry_SYSCALL_64_after_hwframe+0x46/0xb0
+[  373.945688] RIP: 0033:0x7fcd80ceeeb0
+[  373.946226] RSP: 002b:00007fff90fd8298 EFLAGS: 00000246 ORIG_RAX:
+0000000000000002
+[  373.947330] RAX: ffffffffffffffda RBX: 00007fcd81d6e981 RCX: 00007fcd80ceeeb0
+[  373.947333] RDX: 00000000000001b6 RSI: 0000000000000000 RDI: 00007fff90fd8360
+[  373.947334] RBP: 00007fff90fd82f0 R08: 00007fcd81d6e986 R09: 0000000000000000
+[  373.947335] R10: 0000000000000024 R11: 0000000000000246 R12: 0000000000cd6110
+[  373.947337] R13: 0000000000000008 R14: 00007fff90fd8360 R15: 00007fff90fdb580
+[  373.947339]  </TASK>
+[  373.947421] INFO: task nfsd:5696 blocked for more than 122 seconds.
+[  373.947423]       Tainted: G        W   E     5.19.0-3.dneg.x86_64 #1
+[  373.947424] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
+disables this message.
+[  373.947425] task:nfsd            state:D stack:    0 pid: 5696
+ppid:     2 flags:0x00004000
+[  373.947428] Call Trace:
+[  373.947429]  <TASK>
+[  373.947430]  __schedule+0x2a9/0x8a0
+[  373.947434]  schedule+0x55/0xc0
+[  373.947436]  ? nfs_lookup_revalidate_dentry+0x3a0/0x3a0 [nfs]
+[  373.947451]  __nfs_lookup_revalidate+0xdf/0x120 [nfs]
+[  373.947464]  ? put_prev_task_stop+0x170/0x170
+[  373.947466]  nfs_lookup_revalidate+0x15/0x20 [nfs]
+[  373.947478]  lookup_dcache+0x5a/0x80
+[  373.947481]  lookup_one_unlocked+0x59/0xa0
+[  373.947484]  lookup_one_len_unlocked+0x1d/0x20
+[  373.947487]  nfsd_lookup_dentry+0x190/0x470 [nfsd]
+[  373.947509]  nfsd_lookup+0x88/0x1b0 [nfsd]
+[  373.947522]  nfsd3_proc_lookup+0xb4/0x100 [nfsd]
+[  373.947537]  nfsd_dispatch+0x161/0x290 [nfsd]
+[  373.947551]  svc_process_common+0x48a/0x620 [sunrpc]
+[  373.947589]  ? nfsd_svc+0x330/0x330 [nfsd]
+[  373.947602]  ? nfsd_shutdown_threads+0xa0/0xa0 [nfsd]
+[  373.947621]  svc_process+0xbc/0xf0 [sunrpc]
+[  373.951088]  nfsd+0xda/0x190 [nfsd]
+[  373.951136]  kthread+0xf0/0x120
+[  373.951138]  ? kthread_complete_and_exit+0x20/0x20
+[  373.951140]  ret_from_fork+0x22/0x30
+[  373.951149]  </TASK>
 
-> > Code is also at:
-> > https://github.com/pevik/ltp/tree/shell/all_filesystems.v2
+I double checked that the patch had been applied and I hadn't made a
+mistake with installation.
 
-> > But this requires restarting NFS server (otherwise legacy
-> > testcases/lib/daemonlib.sh
-> > would have to be used), which is IMHO not optimal.
+I could perhaps try running with just the VFS patches to see if I can
+still reproduce the "local" VFS hang without the nfsd patches? Your
+previous VFS only patchset was stable for me.
 
-> > Without that (or only run 'systemctl reload nfs-server' or exportfs -r
-> > on remote side) it cannot be umounted after testing - debugging with
-> > fuser, code at:
-
-> > https://github.com/pevik/ltp/commit/3656d035d43445a107154ef397ef1db2fad2c4f0
-
-> > The problem is that loop device is still referenced by nfs server and
-> > thus cannot be unmounted. Can this be somehow fixed? Is it even wanted
-> > to have tests on loop device (the only reasonable way to support more
-> > filesystems)? Also tests will run much longer (we could filter out some
-> > filesystems not supported, if there are any).
-
-> > # LTP_SINGLE_FS_TYPE=ext2 PATH="/opt/ltp/testcases/bin:$PATH" nfs07.sh -v
-> > 3 -t tcp -i3
-> > ## NOTE: testing itself is OK
-> > nfs07 1 TINFO: initialize 'lhost' 'ltp_ns_veth2' interface
-> > nfs07 1 TINFO: add local addr 10.0.0.2/24
-> > nfs07 1 TINFO: add local addr fd00:1:1:1::2/64
-> > nfs07 1 TINFO: initialize 'rhost' 'ltp_ns_veth1' interface
-> > nfs07 1 TINFO: add remote addr 10.0.0.1/24
-> > nfs07 1 TINFO: add remote addr fd00:1:1:1::1/64
-> > nfs07 1 TINFO: Network config (local -- remote):
-> > nfs07 1 TINFO: ltp_ns_veth2 -- ltp_ns_veth1
-> > nfs07 1 TINFO: 10.0.0.2/24 -- 10.0.0.1/24
-> > nfs07 1 TINFO: fd00:1:1:1::2/64 -- fd00:1:1:1::1/64
-> > tst_device.c:89: TINFO: Found free device 0 '/dev/loop0'
-> > tst_supported_fs_types.c:148: TINFO: WARNING: testing only ext2
-> > tst_supported_fs_types.c:89: TINFO: Kernel supports ext2
-> > tst_supported_fs_types.c:51: TINFO: mkfs.ext2 does exist
-> > nfs07 1 TINFO: Testing on ext2
-> > nfs07 1 TINFO: Formatting ext2 with opts='/dev/loop0'
-> > nfs07 1 TINFO: timeout per run is 0h 5m 0s
-> > nfs07 1 TINFO: mount.nfs: (linux nfs-utils 2.6.1)
-> > nfs07 1 TINFO: setup NFSv3, socket type tcp
-> > nfs07 1 TINFO: Mounting NFS: mount -v -t nfs -o proto=tcp,vers=3 10.0.0.2:/tmp/LTP_nfs07.A3PIB82iUv/mntpoint/3/tcp
-> > /tmp/LTP_nfs07.A3PIB82iUv/mntpoint/3/0
-> > nfs07 1 TPASS: All files and directories were correctly listed
-> > nfs07 2 TPASS: All files and directories were correctly listed
-> > nfs07 3 TPASS: All files and directories were correctly listed
-> > nfs07 4 TINFO: Cleaning up testcase
-
-> > ## DEBUGGING CODE in nfs_cleanup()
-> > nfs07 4 TINFO: fuser -mv /tmp/LTP_nfs07.P1XS9smc5w ($TST_TMPDIR)
-> >                      USER        PID ACCESS COMMAND
-> > /tmp/LTP_nfs07.P1XS9smc5w:
-> >                      root     kernel mount /tmp
-> >                      root       2125 ..c.. tst_timeout_kil
-> > nfs07 4 TINFO: fuser -mv /tmp/LTP_nfs07.P1XS9smc5w/mntpoint ($TST_MNTPOINT)
-> >                      USER        PID ACCESS COMMAND
-> > /tmp/LTP_nfs07.P1XS9smc5w/mntpoint:
-> >                      root     kernel mount
-> > /tmp/LTP_nfs07.P1XS9smc5w/mntpoint
-> > nfs07 4 TINFO: fuser -mv /tmp/LTP_nfs07.P1XS9smc5w/mntpoint/3/0
-> >                      USER        PID ACCESS COMMAND
-> > /tmp/LTP_nfs07.P1XS9smc5w/mntpoint/3/0:
-> >                      root     kernel mount
-> > /tmp/LTP_nfs07.P1XS9smc5w/mntpoint/3/0
-
-> > ## from nfs_cleanup()
-> > ## grep -q "$local_dir" /proc/mounts && umount $local_dir
-> > nfs07 4 TINFO: umount /tmp/LTP_nfs07.P1XS9smc5w/mntpoint/3/0
-> > umount: /tmp/LTP_nfs07.P1XS9smc5w/mntpoint: target is busy.
-
-
-> Maybe try with `umount -fl`?
-
-Thank you! Unfortunately it does not work (I tried this before ending up with
-restarting server because even -fl did not help).
-
-I also consider the need of 'umount -fl' as kind of error just less aggressive
-then restarting server. But if this is considered ok, why not.
-
-Kind regards,
-Petr
-
-> unmount manual says:
->    -f, --force    force unmount (in case of an unreachable NFS system)
->    -l, --lazy      detach the filesystem now, clean up things later
+Daire
