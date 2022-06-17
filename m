@@ -2,103 +2,86 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B746C433EF
-	for <linux-nfs@archiver.kernel.org>; Fri, 17 Jun 2022 15:28:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6F46C43334
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Jun 2022 19:56:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1382829AbiFQP2h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 17 Jun 2022 11:28:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56270 "EHLO
+        id S243568AbiFQT45 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 17 Jun 2022 15:56:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36452 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1382873AbiFQP2b (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2022 11:28:31 -0400
-Received: from mail-ed1-x52c.google.com (mail-ed1-x52c.google.com [IPv6:2a00:1450:4864:20::52c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DC51437ABE
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Jun 2022 08:28:29 -0700 (PDT)
-Received: by mail-ed1-x52c.google.com with SMTP id es26so4946504edb.4
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Jun 2022 08:28:29 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dneg.com; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=WPVSEvTCvflFVWW5j2J0ixJtMAaP9wSf1jUduymLlc0=;
-        b=v7RXMWZyuWDlLd2v5s/ooA/1Btk4V0x78HXw7Xm7i33Wi4KPyENUDcJieRtSDHdqXF
-         y0CguHXlfnWbXj9NHraQ6rewV/+kAKdVxVFcsWohBz4cMSu/XJIxbWcQgFbjOEonH3m9
-         x0hV49Il2On30MIL5DdT4BGZWralIS3PVPDN2i9lIVxw1wD8EcFvpyfh6Cl/cm6vZzJ6
-         PL9+Opn3M4m129911zb6XlvplLpltIWORVUm8OXUH2JZIdv6k51S4jV3FKqR0udjmP8z
-         EUCtnQ5UquCW9dfEm1dEWgXhrSK9gx16akUcJ0URmOTwbS6E87UTFqfUUq9H3KW4bcKl
-         wXPQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=WPVSEvTCvflFVWW5j2J0ixJtMAaP9wSf1jUduymLlc0=;
-        b=cPpvoqP8YQaUbu04a8BI05F+sdq7K2h3Le59qlMsQ0M1yZKrimLV11euQFScvVCptB
-         Ka2NTansFgfOy5k5fp7PxXPKmkPGjeXSS2NQcR2PBtGya7x9qg4o8NO1UC8emJMSp9Zp
-         zArGJ7Ag+HRbclmJfOQRmGmdNcUrzuigYwi6jfNIEcNUaPnsjW17vJtmsvtoPRfLTxse
-         +21EeZcVaO3q1ZfLZdKmOuMIHpmeUfB0++v3CMoLpfFtePH9Kdan2vVtrJDgBz+8ifA1
-         3rEXdcyCmlBFetPdQ7wRrjagRTRE5WhgbT42fC77myk2BvJGMWKQGKk3l0j1+aVRKjzE
-         IskA==
-X-Gm-Message-State: AJIora/kwWhpXcnvUdknz4o4GH4jlJ4uhmrnhFBHxYuci44e3/xx8mf8
-        PDEJzyYtwEiqboRjSFTkqQvg9WVfHE61Gyqzl18Bm2iFA3uOFQ==
-X-Google-Smtp-Source: AGRyM1vEi6r6fYhd5rEyG/Oo+64RdkJiqOkUizhd0wgddNSc0WlzPxLW8/Jzu4daDxPaJij9IyK5BeX6kcGkf4WPg5E=
-X-Received: by 2002:aa7:cf01:0:b0:435:5ace:69cc with SMTP id
- a1-20020aa7cf01000000b004355ace69ccmr6151037edy.251.1655479708477; Fri, 17
- Jun 2022 08:28:28 -0700 (PDT)
+        with ESMTP id S234252AbiFQT44 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jun 2022 15:56:56 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A9EF454030
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Jun 2022 12:56:55 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 51ABEB82693
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Jun 2022 19:56:54 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8EDC9C3411B;
+        Fri, 17 Jun 2022 19:56:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1655495813;
+        bh=ctpJLKFl0LpMn+gbrPeJDsEJcesFVcJCoSVx3E8gFrc=;
+        h=From:To:Cc:Subject:Date:From;
+        b=jsOCH4oa602vxOwsHQuWwyNzYzTuqltfKG5OeVnhUnbXLn61/PT8LiHHkny/qXHJL
+         Vz5ZJPzDAhs0wkVRQMIQo6U8aMU02ZFj4IfFknrQgze0SrwoatDU2NrbSyzdV7H6bC
+         Yo0Lr/2r6XwpPHAgSH26oNszvn6ojSMSOyVYOVAKVaHMdDk+7OoJcNo2bwCL37Uubh
+         +BqSxfQP2LJ+C7jus1tQd4SsuSbODJHEBbLFppcdDQVSc4cn/V3k+/fNiTNu2ToWWy
+         qnwLXWL4zUVfppkrWff6CUUKFm/cZ8TmMLvFOmFODzhYvlYx/NtsICSmBcPPnfX1Gp
+         rzkc4d3kHKHaQ==
+From:   Anna Schumaker <anna@kernel.org>
+To:     linux-nfs@vger.kernel.org, torvalds@linux-foundation.org
+Cc:     anna@kernel.org
+Subject: [GIT PULL] NFS Client Bugfixes for 5.19-rc
+Date:   Fri, 17 Jun 2022 15:56:51 -0400
+Message-Id: <20220617195651.1028948-1-anna@kernel.org>
+X-Mailer: git-send-email 2.36.1
 MIME-Version: 1.0
-References: <165516173293.21248.14587048046993234326.stgit@noble.brown>
- <CAPt2mGNjWXad6e7nSUTu=0ez1qU1wBNegrntgHKm5hOeBs5gQA@mail.gmail.com>
- <165534094600.26404.4349155093299535793@noble.neil.brown.name>
- <CAPt2mGOw_PS-5KY-9WFzGOT=ax6PFhVYSTQG-dpXzV5MeGieYg@mail.gmail.com> <165544498126.26404.7712330810213588882@noble.neil.brown.name>
-In-Reply-To: <165544498126.26404.7712330810213588882@noble.neil.brown.name>
-From:   Daire Byrne <daire@dneg.com>
-Date:   Fri, 17 Jun 2022 16:27:52 +0100
-Message-ID: <CAPt2mGNJYJ=pTmRRseJdeyvTDw9am6uNUaiZysDvU2bNcNJLQw@mail.gmail.com>
-Subject: Re: [PATCH RFC 00/12] Allow concurrent directory updates.
-To:     NeilBrown <neilb@suse.de>
-Cc:     Anna Schumaker <schumaker.anna@gmail.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 17 Jun 2022 at 06:49, NeilBrown <neilb@suse.de> wrote:
->
-> On Thu, 16 Jun 2022, Daire Byrne wrote:
-> >
-> > I double checked that the patch had been applied and I hadn't made a
-> > mistake with installation.
->
-> :-) always worth double checking...
->
-> >
-> > I could perhaps try running with just the VFS patches to see if I can
-> > still reproduce the "local" VFS hang without the nfsd patches? Your
-> > previous VFS only patchset was stable for me.
->
-> I've made quite a few changes since that VFS-only patches.  Almost
-> certainly the problem is not in the nfsd code.
->
-> I think that following has a reasonable chance of making things better,
-> both for the problem you hit and the problem Anna hit.  I haven't tested
-> it at all yet so no promises - up to you if you try it.
->
-> Thanks to both of you for the help with testing.
->
-> NeilBrown
+Hi Linus,
 
-This patch does the job for me - no more stack traces and things have
-been stable all day. I'm going to run some production loads over the
-weekend and then I'll do some more artificial scale testing next week.
+The following changes since commit f2906aa863381afb0015a9eb7fefad885d4e5a56:
 
-Thanks again for this work! Improving the parallelism anywhere we can
-for single clients and then nfsd is great for reexport servers
-(especially once you add some "cloud" latency).
+  Linux 5.19-rc1 (2022-06-05 17:18:54 -0700)
 
-Cheers,
+are available in the Git repository at:
 
-Daire
+  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-5.19-2
+
+for you to fetch changes up to 5ee3d10f84d0a32fc11a55c70c204b6d81fd9ef6:
+
+  NFSv4: Add FMODE_CAN_ODIRECT after successful open of a NFS4.x file (2022-06-15 15:03:12 -0400)
+
+----------------------------------------------------------------
+NFS Client Fixes for Linux 5.19-rc
+
+- Bugfixes:
+  - Add FMODE_CAN_ODIRECT support to NFSv4 so opens don't fail
+  - Fix trunking detection & cl_max_connect setting
+  - Avoid pnfs_update_layout() livelocks
+  - Don't keep retrying pNFS if the server replies with NFS4ERR_UNAVAILABLE
+
+----------------------------------------------------------------
+Dave Wysochanski (1):
+      NFSv4: Add FMODE_CAN_ODIRECT after successful open of a NFS4.x file
+
+Scott Mayhew (1):
+      sunrpc: set cl_max_connect when cloning an rpc_clnt
+
+Trond Myklebust (2):
+      pNFS: Don't keep retrying if the server replied NFS4ERR_LAYOUTUNAVAILABLE
+      pNFS: Avoid a live lock condition in pnfs_update_layout()
+
+ fs/nfs/callback_proc.c |  1 +
+ fs/nfs/dir.c           |  1 +
+ fs/nfs/nfs4file.c      |  1 +
+ fs/nfs/pnfs.c          | 21 +++++++++++++++------
+ fs/nfs/pnfs.h          |  1 +
+ net/sunrpc/clnt.c      |  1 +
+ 6 files changed, 20 insertions(+), 6 deletions(-)
