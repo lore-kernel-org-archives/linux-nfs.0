@@ -2,57 +2,57 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08091C43334
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jun 2022 15:25:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3026BCCA479
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 Jun 2022 15:25:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244743AbiFTPZz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 20 Jun 2022 11:25:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55370 "EHLO
+        id S243890AbiFTPZ4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 20 Jun 2022 11:25:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55412 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239950AbiFTPZW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2022 11:25:22 -0400
-Received: from mail-qv1-xf36.google.com (mail-qv1-xf36.google.com [IPv6:2607:f8b0:4864:20::f36])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BAA07CF9
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2022 08:24:32 -0700 (PDT)
-Received: by mail-qv1-xf36.google.com with SMTP id 88so12811540qva.9
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2022 08:24:32 -0700 (PDT)
+        with ESMTP id S244756AbiFTPZZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jun 2022 11:25:25 -0400
+Received: from mail-qk1-x72f.google.com (mail-qk1-x72f.google.com [IPv6:2607:f8b0:4864:20::72f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51406E0F
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2022 08:24:37 -0700 (PDT)
+Received: by mail-qk1-x72f.google.com with SMTP id o73so8021181qke.7
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jun 2022 08:24:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=1HQd2B/YkNYnZSu99acmqUXErKGwuXvN6tYgl+XEJ6A=;
-        b=mLlyN5eCfD9MyWiqDlYWwU19roYac7YV5tk4wFbec8JWtlL3XTXOfnQ2H1uvzaNosF
-         cxSfbc9hi61M9TmIFOXEuySFWqH+yNodeAuaRlXlq1fbheSdN8WXo4NYKaIAS7f5kOd4
-         dMLGysIoZMGtAKvJV4SlykJRfj+0QtgUmIROH5KZDbsRTbMeCv3K8h9ywhqqnNoLgfyp
-         080CIbLiBU0+ON057KDmfo8t45OLMRsWGON5BYn1Wl2+4PsOTudblCjeM4uShlZPJ10o
-         oHIiTEzh3xUJsLQWWNg1Q36W3asXYCHaeo6KUDs1n2BIh6ubcxzqDMQOz3ONKJEifKFw
-         NQ1Q==
+        bh=hiOpeOldRv5C+cpYA4d1f38bxNJH8q04syRxbARTC6c=;
+        b=ay0q7cQkXAZSzBhHJ6PnnFHvbGnGRbn/98lGjYuHobUzkyCUC4rGbB/P8Sag4HJe/M
+         dtEblkAw0cVd/SNbKj8mpkAqsSW7eV4E/nHxd6KhHhFwKnq/YWfiGLPUhEW3RH7zlxZz
+         K7oIUUaMnJOHwhaxDFPfuw9VknELrO95fjzKyRm3kAx3Zx5+V8Q0sQjoZ1hSwIG8MhRF
+         LBsdk4Di9HJ1y5MqlSIj/qwGGrmy1w2cubuyKxqVtt8gF5FZpHZ5AyJyG6KIFeZAZH+r
+         C2heJ2g4fczXx+UmTyJARIKcyBQ+v/D5FV8NmUMArNUWG0TcVxpNjxwoD8A0ky+Cj5sn
+         szGg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=1HQd2B/YkNYnZSu99acmqUXErKGwuXvN6tYgl+XEJ6A=;
-        b=Bmd1dRb0tmBCxUBGU9I07kh7JqUexuauPwnBveCEsIg+9t/JmyCFnzU+vuB+u5ZK5l
-         enndJyK2bNrjWnWrSKKpQ0MVx85dYSq/N5xjio+ZKgWX3h9Mo1KYFE9UTOGFleq9PkGP
-         4+UoxpoXMwGR7+LxX9L/dH+BDmIafilqSDUskHS4uWB/W0hLxvTWeX1mUsWgM5uS2Sup
-         IJe63rOmklajsH2Lac5gSevBc2LZIt3kQJHZ+R0RhonJOpeE1lEKpYLxibDKAmk4bebm
-         yl7H/eJPGy1hwJuGYrXAJSVt5LSDWgp8Vv9/yjBsj+YZUU13lIOgILhzb4LTvwLFY0ss
-         PubQ==
-X-Gm-Message-State: AJIora8d8DvrsVbFuHmyoX4s0qHEduSqcxGVOPXL/7Y29TccI3ffwiG3
-        /UJCzp8Lvc34IdYeDnZEf7w=
-X-Google-Smtp-Source: AGRyM1tdIO+ZJ33ED4UEwRmrCf2wDOSTbUkCSoiGyGHPLIJL9Y/32nfT4FKWrhUkuHtSf+6va+e6zQ==
-X-Received: by 2002:ac8:5d87:0:b0:305:bbf:cd85 with SMTP id d7-20020ac85d87000000b003050bbfcd85mr20398526qtx.618.1655738671755;
-        Mon, 20 Jun 2022 08:24:31 -0700 (PDT)
+        bh=hiOpeOldRv5C+cpYA4d1f38bxNJH8q04syRxbARTC6c=;
+        b=ceGZRpQeJRjIasAJ22R0AfJnXIct+cZS6o7fnKZZ4IBPA4UWHthF5FZhkrnZfC0+wg
+         CdsolL3WsSxC4bzB2Qy1k0z0sp8dnYyscifH7NNbg03Y/z11cAZ+LLnIGYrO7Lymvcg+
+         E+gli98dpZ/BwEvdNS0enoD+CajpV+brKeVwuqMSMcPZ+zX1O+/cWlEcuggei7jLT8zg
+         Kg0BqWnRM8eHqEAvdmeKOeUgv0sIw58yD88KhHv/4q3b4ifhNBCNfuwFj3HJwBfnPDij
+         k5tk7WmcbK4ul6NbpD0BfsEGfpj9SdSYXT8Owxw4hqVnZNPeJWcQ3Sp4VIj9LMBLH03u
+         MALg==
+X-Gm-Message-State: AJIora+O3EXz4pqv1zjOFk156Nb5tg9X0PiP6sUYBtTgceir4qZamJvB
+        w4GBqO3r1gyx63cIB+AyHTmYQDB87EjGPw==
+X-Google-Smtp-Source: AGRyM1uOOjjPjbihuV+Uc9iy/l+cY1LRtZVrLOXieSegrvr0XwQpeoNsVPOF3f0eYtGIC4lMqq+ZhQ==
+X-Received: by 2002:a05:620a:1b98:b0:6a7:7e6d:d886 with SMTP id dv24-20020a05620a1b9800b006a77e6dd886mr16934958qkb.595.1655738676423;
+        Mon, 20 Jun 2022 08:24:36 -0700 (PDT)
 Received: from kolga-mac-1.attlocal.net ([2600:1700:6a10:2e90:48cb:6eb8:1da1:a5c0])
-        by smtp.gmail.com with ESMTPSA id g10-20020a05620a40ca00b006a791a42693sm12517862qko.133.2022.06.20.08.24.30
+        by smtp.gmail.com with ESMTPSA id g10-20020a05620a40ca00b006a791a42693sm12517862qko.133.2022.06.20.08.24.35
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 20 Jun 2022 08:24:31 -0700 (PDT)
+        Mon, 20 Jun 2022 08:24:35 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v1 01/12] SUNRPC expose functions for offline remote xprt functionality
-Date:   Mon, 20 Jun 2022 11:23:56 -0400
-Message-Id: <20220620152407.63127-2-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 05/12] SUNRPC parameterize rpc_clnt_iterate_for_each_xprt with iterator init function
+Date:   Mon, 20 Jun 2022 11:24:00 -0400
+Message-Id: <20220620152407.63127-6-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20220620152407.63127-1-olga.kornievskaia@gmail.com>
 References: <20220620152407.63127-1-olga.kornievskaia@gmail.com>
@@ -64,113 +64,139 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Re-arrange the code that make offline transport and delete transport
-callable functions.
+Allow for rpc_clnt_iterate_for_each_xprt() to take in an iterator
+initialization function if no function passed in a default initiator
+is used.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- include/linux/sunrpc/xprt.h |  3 +++
- net/sunrpc/sysfs.c          | 28 +++++-----------------------
- net/sunrpc/xprt.c           | 35 +++++++++++++++++++++++++++++++++++
- 3 files changed, 43 insertions(+), 23 deletions(-)
+ fs/nfs/nfs4proc.c           |  2 +-
+ include/linux/sunrpc/clnt.h |  1 +
+ net/sunrpc/clnt.c           | 17 ++++++++++++-----
+ net/sunrpc/debugfs.c        |  2 +-
+ net/sunrpc/stats.c          |  2 +-
+ 5 files changed, 16 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 522bbf937957..0d51b9f9ea37 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -505,4 +505,7 @@ static inline int xprt_test_and_set_binding(struct rpc_xprt *xprt)
- 	return test_and_set_bit(XPRT_BINDING, &xprt->state);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cf898bea3bfd..5e4c32924347 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8532,7 +8532,7 @@ int nfs4_proc_bind_conn_to_session(struct nfs_client *clp, const struct cred *cr
+ 		.clp = clp,
+ 		.cred = cred,
+ 	};
+-	return rpc_clnt_iterate_for_each_xprt(clp->cl_rpcclient,
++	return rpc_clnt_iterate_for_each_xprt(clp->cl_rpcclient, NULL,
+ 			nfs4_proc_bind_conn_to_session_callback, &data);
  }
  
-+void xprt_set_offline_locked(struct rpc_xprt *xprt, struct rpc_xprt_switch *xps);
-+void xprt_set_online_locked(struct rpc_xprt *xprt, struct rpc_xprt_switch *xps);
-+void xprt_delete_locked(struct rpc_xprt *xprt, struct rpc_xprt_switch *xps);
- #endif /* _LINUX_SUNRPC_XPRT_H */
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index a3a2f8aeb80e..7330eb9a70cf 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -314,32 +314,14 @@ static ssize_t rpc_sysfs_xprt_state_change(struct kobject *kobj,
- 		goto release_tasks;
- 	}
- 	if (offline) {
--		if (!test_and_set_bit(XPRT_OFFLINE, &xprt->state)) {
--			spin_lock(&xps->xps_lock);
--			xps->xps_nactive--;
--			spin_unlock(&xps->xps_lock);
--		}
-+		xprt_set_offline_locked(xprt, xps);
- 	} else if (online) {
--		if (test_and_clear_bit(XPRT_OFFLINE, &xprt->state)) {
--			spin_lock(&xps->xps_lock);
--			xps->xps_nactive++;
--			spin_unlock(&xps->xps_lock);
--		}
-+		xprt_set_online_locked(xprt, xps);
- 	} else if (remove) {
--		if (test_bit(XPRT_OFFLINE, &xprt->state)) {
--			if (!test_and_set_bit(XPRT_REMOVE, &xprt->state)) {
--				xprt_force_disconnect(xprt);
--				if (test_bit(XPRT_CONNECTED, &xprt->state)) {
--					if (!xprt->sending.qlen &&
--					    !xprt->pending.qlen &&
--					    !xprt->backlog.qlen &&
--					    !atomic_long_read(&xprt->queuelen))
--						rpc_xprt_switch_remove_xprt(xps, xprt);
--				}
--			}
--		} else {
-+		if (test_bit(XPRT_OFFLINE, &xprt->state))
-+			xprt_delete_locked(xprt, xps);
-+		else
- 			count = -EINVAL;
--		}
- 	}
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index e74a0740603b..20aed14fe222 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -213,6 +213,7 @@ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+ int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
  
- release_tasks:
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 86d62cffba0d..6480ae324b27 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -2152,3 +2152,38 @@ void xprt_put(struct rpc_xprt *xprt)
- 		kref_put(&xprt->kref, xprt_destroy_kref);
+ int 		rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
++			int (*setup)(struct rpc_clnt *, struct rpc_xprt_iter *),
+ 			int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
+ 			void *data);
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 410bd6c352ad..b26267606de0 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -817,6 +817,8 @@ int rpc_clnt_xprt_iter_offline_init(struct rpc_clnt *clnt,
+ /**
+  * rpc_clnt_iterate_for_each_xprt - Apply a function to all transports
+  * @clnt: pointer to client
++ * @setup: an optional iterator init function to use, if none supplied
++ *   default rpc_clnt_xprt_iter_init() iterator is used
+  * @fn: function to apply
+  * @data: void pointer to function data
+  *
+@@ -826,13 +828,17 @@ int rpc_clnt_xprt_iter_offline_init(struct rpc_clnt *clnt,
+  * On error, the iteration stops, and the function returns the error value.
+  */
+ int rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
++		int (*setup)(struct rpc_clnt *, struct rpc_xprt_iter *),
+ 		int (*fn)(struct rpc_clnt *, struct rpc_xprt *, void *),
+ 		void *data)
+ {
+ 	struct rpc_xprt_iter xpi;
+ 	int ret;
+ 
+-	ret = rpc_clnt_xprt_iter_init(clnt, &xpi);
++	if (!setup)
++		ret = rpc_clnt_xprt_iter_init(clnt, &xpi);
++	else
++		ret = setup(clnt, &xpi);
+ 	if (ret)
+ 		return ret;
+ 	for (;;) {
+@@ -3052,7 +3058,8 @@ static int rpc_xprt_offline_destroy(struct rpc_clnt *clnt,
+ 
+ void rpc_clnt_manage_trunked_xprts(struct rpc_clnt *clnt, void *data)
+ {
+-	rpc_clnt_iterate_for_each_xprt(clnt, rpc_xprt_offline_destroy, data);
++	rpc_clnt_iterate_for_each_xprt(clnt, NULL, rpc_xprt_offline_destroy,
++			data);
  }
- EXPORT_SYMBOL_GPL(xprt_put);
-+
-+void xprt_set_offline_locked(struct rpc_xprt *xprt, struct rpc_xprt_switch *xps)
-+{
-+	if (!test_and_set_bit(XPRT_OFFLINE, &xprt->state)) {
-+		spin_lock(&xps->xps_lock);
-+		xps->xps_nactive--;
-+		spin_unlock(&xps->xps_lock);
-+	}
-+}
-+EXPORT_SYMBOL(xprt_set_offline_locked);
-+
-+void xprt_set_online_locked(struct rpc_xprt *xprt, struct rpc_xprt_switch *xps)
-+{
-+	if (test_and_clear_bit(XPRT_OFFLINE, &xprt->state)) {
-+		spin_lock(&xps->xps_lock);
-+		xps->xps_nactive++;
-+		spin_unlock(&xps->xps_lock);
-+	}
-+}
-+EXPORT_SYMBOL(xprt_set_online_locked);
-+
-+void xprt_delete_locked(struct rpc_xprt *xprt, struct rpc_xprt_switch *xps)
-+{
-+	if (test_and_set_bit(XPRT_REMOVE, &xprt->state))
-+		return;
-+
-+	xprt_force_disconnect(xprt);
-+	if (!test_bit(XPRT_CONNECTED, &xprt->state))
-+		return;
-+
-+	if (!xprt->sending.qlen && !xprt->pending.qlen &&
-+	    !xprt->backlog.qlen && !atomic_long_read(&xprt->queuelen))
-+		rpc_xprt_switch_remove_xprt(xps, xprt);
-+}
-+EXPORT_SYMBOL(xprt_delete_locked);
+ EXPORT_SYMBOL_GPL(rpc_clnt_manage_trunked_xprts);
+ 
+@@ -3084,7 +3091,7 @@ rpc_set_connect_timeout(struct rpc_clnt *clnt,
+ 		.connect_timeout = connect_timeout,
+ 		.reconnect_timeout = reconnect_timeout,
+ 	};
+-	rpc_clnt_iterate_for_each_xprt(clnt,
++	rpc_clnt_iterate_for_each_xprt(clnt, NULL,
+ 			rpc_xprt_set_connect_timeout,
+ 			&timeout);
+ }
+@@ -3181,7 +3188,7 @@ rpc_clnt_swap_activate(struct rpc_clnt *clnt)
+ 	while (clnt != clnt->cl_parent)
+ 		clnt = clnt->cl_parent;
+ 	if (atomic_inc_return(&clnt->cl_swapper) == 1)
+-		return rpc_clnt_iterate_for_each_xprt(clnt,
++		return rpc_clnt_iterate_for_each_xprt(clnt, NULL,
+ 				rpc_clnt_swap_activate_callback, NULL);
+ 	return 0;
+ }
+@@ -3200,7 +3207,7 @@ void
+ rpc_clnt_swap_deactivate(struct rpc_clnt *clnt)
+ {
+ 	if (atomic_dec_if_positive(&clnt->cl_swapper) == 0)
+-		rpc_clnt_iterate_for_each_xprt(clnt,
++		rpc_clnt_iterate_for_each_xprt(clnt, NULL,
+ 				rpc_clnt_swap_deactivate_callback, NULL);
+ }
+ EXPORT_SYMBOL_GPL(rpc_clnt_swap_deactivate);
+diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
+index 7dc9cc929bfd..ab60b4d3deb2 100644
+--- a/net/sunrpc/debugfs.c
++++ b/net/sunrpc/debugfs.c
+@@ -160,7 +160,7 @@ rpc_clnt_debugfs_register(struct rpc_clnt *clnt)
+ 	debugfs_create_file("tasks", S_IFREG | 0400, clnt->cl_debugfs, clnt,
+ 			    &tasks_fops);
+ 
+-	rpc_clnt_iterate_for_each_xprt(clnt, do_xprt_debugfs, &xprtnum);
++	rpc_clnt_iterate_for_each_xprt(clnt, NULL, do_xprt_debugfs, &xprtnum);
+ }
+ 
+ void
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index 52908f9e6eab..e50f73a4aca5 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -258,7 +258,7 @@ void rpc_clnt_show_stats(struct seq_file *seq, struct rpc_clnt *clnt)
+ 	seq_printf(seq, "p/v: %u/%u (%s)\n",
+ 			clnt->cl_prog, clnt->cl_vers, clnt->cl_program->name);
+ 
+-	rpc_clnt_iterate_for_each_xprt(clnt, do_print_stats, seq);
++	rpc_clnt_iterate_for_each_xprt(clnt, NULL, do_print_stats, seq);
+ 
+ 	seq_printf(seq, "\tper-op statistics\n");
+ 	for (op = 0; op < maxproc; op++) {
 -- 
 2.27.0
 
