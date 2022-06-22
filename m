@@ -2,32 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B289CCA483
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jun 2022 14:14:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E37BC433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jun 2022 14:14:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1358243AbiFVOOJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Jun 2022 10:14:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35764 "EHLO
+        id S1358364AbiFVOOb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 Jun 2022 10:14:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36190 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358246AbiFVONn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 10:13:43 -0400
+        with ESMTP id S1358337AbiFVOOS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 10:14:18 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA190BBD;
-        Wed, 22 Jun 2022 07:13:42 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6075FE0B2;
+        Wed, 22 Jun 2022 07:14:09 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 56F4DB81F58;
-        Wed, 22 Jun 2022 14:13:41 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9116C34114;
-        Wed, 22 Jun 2022 14:13:39 +0000 (UTC)
-Subject: [PATCH RFC 08/30] NFSD: Report the number of items evicted by the LRU
- walk
+        by ams.source.kernel.org (Postfix) with ESMTPS id F1D6CB81F5B;
+        Wed, 22 Jun 2022 14:14:07 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 396DFC34114;
+        Wed, 22 Jun 2022 14:14:06 +0000 (UTC)
+Subject: [PATCH RFC 12/30] NFSD: Hook up the filecache stat file
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
 Cc:     david@fromorbit.com, tgraf@suug.ch, jlayton@redhat.com
-Date:   Wed, 22 Jun 2022 10:13:38 -0400
-Message-ID: <165590721886.75778.3954208768212592776.stgit@manet.1015granger.net>
+Date:   Wed, 22 Jun 2022 10:14:05 -0400
+Message-ID: <165590724513.75778.16837692771867171102.stgit@manet.1015granger.net>
 In-Reply-To: <165590626293.75778.9843437418112335153.stgit@manet.1015granger.net>
 References: <165590626293.75778.9843437418112335153.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5.dev2+g9ce680a5
@@ -38,112 +37,56 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+There has always been the capability of exporting filecache metrics
+via /proc, but it was never hooked up. Let's surface these metrics
+to enable better observability of the filecache.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/filecache.c |   14 +++++++++++---
- fs/nfsd/trace.h     |   29 +++++++++++++++++++++++++++++
- 2 files changed, 40 insertions(+), 3 deletions(-)
+ fs/nfsd/nfsctl.c |   10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index b1e7588d578a..d597acfdab28 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -45,6 +45,7 @@ struct nfsd_fcache_bucket {
- static DEFINE_PER_CPU(unsigned long, nfsd_file_cache_hits);
- static DEFINE_PER_CPU(unsigned long, nfsd_file_acquisitions);
- static DEFINE_PER_CPU(unsigned long, nfsd_file_releases);
-+static DEFINE_PER_CPU(unsigned long, nfsd_file_evictions);
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 0621c2faf242..631bf8422c0f 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -25,6 +25,7 @@
+ #include "state.h"
+ #include "netns.h"
+ #include "pnfs.h"
++#include "filecache.h"
  
- struct nfsd_fcache_disposal {
- 	struct work_struct work;
-@@ -482,9 +483,12 @@ static void
- nfsd_file_gc(void)
- {
- 	LIST_HEAD(dispose);
-+	unsigned long ret;
- 
--	list_lru_walk(&nfsd_file_lru, nfsd_file_lru_cb,
--		      &dispose, LONG_MAX);
-+	ret = list_lru_walk(&nfsd_file_lru, nfsd_file_lru_cb,
-+			    &dispose, LONG_MAX);
-+	this_cpu_add(nfsd_file_evictions, ret);
-+	trace_nfsd_file_gc_evicted(ret, list_lru_count(&nfsd_file_lru));
- 	nfsd_file_gc_dispose_list(&dispose);
- }
- 
-@@ -509,6 +513,8 @@ nfsd_file_lru_scan(struct shrinker *s, struct shrink_control *sc)
- 
- 	ret = list_lru_shrink_walk(&nfsd_file_lru, sc,
- 				   nfsd_file_lru_cb, &dispose);
-+	this_cpu_add(nfsd_file_evictions, ret);
-+	trace_nfsd_file_shrinker_evicted(ret, list_lru_count(&nfsd_file_lru));
- 	nfsd_file_gc_dispose_list(&dispose);
- 	return ret;
- }
-@@ -1085,7 +1091,7 @@ nfsd_file_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  */
- static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
- {
--	unsigned long hits = 0, acquisitions = 0, releases = 0;
-+	unsigned long hits = 0, acquisitions = 0, releases = 0, evictions = 0;
- 	unsigned int i, count = 0, longest = 0;
- 
+ /*
+  *	We have a single directory with several nodes in it.
+@@ -46,6 +47,7 @@ enum {
+ 	NFSD_MaxBlkSize,
+ 	NFSD_MaxConnections,
+ 	NFSD_SupportedEnctypes,
++	NFSD_Filecache,
  	/*
-@@ -1106,6 +1112,7 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
- 		hits += per_cpu(nfsd_file_cache_hits, i);
- 		acquisitions += per_cpu(nfsd_file_acquisitions, i);
- 		releases += per_cpu(nfsd_file_releases, i);
-+		evictions += per_cpu(nfsd_file_evictions, i);
- 	}
+ 	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
+ 	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
+@@ -229,6 +231,13 @@ static const struct file_operations reply_cache_stats_operations = {
+ 	.release	= single_release,
+ };
  
- 	seq_printf(m, "total entries: %u\n", count);
-@@ -1114,6 +1121,7 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "cache hits:    %lu\n", hits);
- 	seq_printf(m, "acquisitions:  %lu\n", acquisitions);
- 	seq_printf(m, "releases:      %lu\n", releases);
-+	seq_printf(m, "evictions:     %lu\n", evictions);
- 	if (releases)
- 		seq_printf(m, "mean age (ms): %ld\n",
- 			atomic_long_read(&nfsd_file_total_age) / releases);
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index a60ead3b227a..c055c6361bd5 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -851,6 +851,35 @@ TRACE_EVENT(nfsd_file_fsnotify_handle_event,
- 			__entry->nlink, __entry->mode, __entry->mask)
- );
- 
-+DECLARE_EVENT_CLASS(nfsd_file_lruwalk_class,
-+	TP_PROTO(
-+		unsigned long evicted,
-+		unsigned long remaining
-+	),
-+	TP_ARGS(evicted, remaining),
-+	TP_STRUCT__entry(
-+		__field(unsigned long, evicted)
-+		__field(unsigned long, remaining)
-+	),
-+	TP_fast_assign(
-+		__entry->evicted = evicted;
-+		__entry->remaining = remaining;
-+	),
-+	TP_printk("%lu entries evicted, %lu remaining",
-+		__entry->evicted, __entry->remaining)
-+);
++static const struct file_operations filecache_ops = {
++	.open		= nfsd_file_cache_stats_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
 +
-+#define DEFINE_NFSD_FILE_LRUWALK_EVENT(name)				\
-+DEFINE_EVENT(nfsd_file_lruwalk_class, name,				\
-+	TP_PROTO(							\
-+		unsigned long evicted,					\
-+		unsigned long remaining					\
-+	),								\
-+	TP_ARGS(evicted, remaining))
-+
-+DEFINE_NFSD_FILE_LRUWALK_EVENT(nfsd_file_gc_evicted);
-+DEFINE_NFSD_FILE_LRUWALK_EVENT(nfsd_file_shrinker_evicted);
-+
- #include "cache.h"
- 
- TRACE_DEFINE_ENUM(RC_DROPIT);
+ /*----------------------------------------------------------------------------*/
+ /*
+  * payload - write methods
+@@ -1371,6 +1380,7 @@ static int nfsd_fill_super(struct super_block *sb, struct fs_context *fc)
+ 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+ 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
+ 		[NFSD_MaxConnections] = {"max_connections", &transaction_ops, S_IWUSR|S_IRUGO},
++		[NFSD_Filecache] = {"filecache", &filecache_ops, S_IRUGO},
+ #if defined(CONFIG_SUNRPC_GSS) || defined(CONFIG_SUNRPC_GSS_MODULE)
+ 		[NFSD_SupportedEnctypes] = {"supported_krb5_enctypes", &supported_enctypes_ops, S_IRUGO},
+ #endif /* CONFIG_SUNRPC_GSS or CONFIG_SUNRPC_GSS_MODULE */
 
 
