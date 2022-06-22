@@ -2,31 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FF38C43334
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jun 2022 14:14:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B289CCA483
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 Jun 2022 14:14:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1358223AbiFVOOJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1358243AbiFVOOJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 22 Jun 2022 10:14:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35878 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35764 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358305AbiFVON4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 10:13:56 -0400
+        with ESMTP id S1358246AbiFVONn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 10:13:43 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18CAFA45F;
-        Wed, 22 Jun 2022 07:13:56 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA190BBD;
+        Wed, 22 Jun 2022 07:13:42 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id AE01FB81F56;
-        Wed, 22 Jun 2022 14:13:54 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 11AEFC341C0;
-        Wed, 22 Jun 2022 14:13:53 +0000 (UTC)
-Subject: [PATCH RFC 10/30] NFSD: Report filecache item construction failures
+        by ams.source.kernel.org (Postfix) with ESMTPS id 56F4DB81F58;
+        Wed, 22 Jun 2022 14:13:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9116C34114;
+        Wed, 22 Jun 2022 14:13:39 +0000 (UTC)
+Subject: [PATCH RFC 08/30] NFSD: Report the number of items evicted by the LRU
+ walk
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
 Cc:     david@fromorbit.com, tgraf@suug.ch, jlayton@redhat.com
-Date:   Wed, 22 Jun 2022 10:13:52 -0400
-Message-ID: <165590723207.75778.6796494140785317184.stgit@manet.1015granger.net>
+Date:   Wed, 22 Jun 2022 10:13:38 -0400
+Message-ID: <165590721886.75778.3954208768212592776.stgit@manet.1015granger.net>
 In-Reply-To: <165590626293.75778.9843437418112335153.stgit@manet.1015granger.net>
 References: <165590626293.75778.9843437418112335153.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5.dev2+g9ce680a5
@@ -37,58 +38,112 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-My guess is this is exceptionally rare, but it's worth reporting
-to see how nfsd_file_acquire() behaves when the cache is full.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/filecache.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/nfsd/filecache.c |   14 +++++++++++---
+ fs/nfsd/trace.h     |   29 +++++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index cae7fa2343c1..a2a78163bf8d 100644
+index b1e7588d578a..d597acfdab28 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -47,6 +47,7 @@ static DEFINE_PER_CPU(unsigned long, nfsd_file_acquisitions);
+@@ -45,6 +45,7 @@ struct nfsd_fcache_bucket {
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_cache_hits);
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_acquisitions);
  static DEFINE_PER_CPU(unsigned long, nfsd_file_releases);
- static DEFINE_PER_CPU(unsigned long, nfsd_file_pages_flushed);
- static DEFINE_PER_CPU(unsigned long, nfsd_file_evictions);
-+static DEFINE_PER_CPU(unsigned long, nfsd_file_cons_fails);
++static DEFINE_PER_CPU(unsigned long, nfsd_file_evictions);
  
  struct nfsd_fcache_disposal {
  	struct work_struct work;
-@@ -975,6 +976,7 @@ nfsd_do_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
+@@ -482,9 +483,12 @@ static void
+ nfsd_file_gc(void)
+ {
+ 	LIST_HEAD(dispose);
++	unsigned long ret;
  
- 	/* Did construction of this file fail? */
- 	if (!test_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
-+		this_cpu_inc(nfsd_file_cons_fails);
- 		if (!retry) {
- 			status = nfserr_jukebox;
- 			goto out;
-@@ -1098,7 +1100,7 @@ nfsd_file_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+-	list_lru_walk(&nfsd_file_lru, nfsd_file_lru_cb,
+-		      &dispose, LONG_MAX);
++	ret = list_lru_walk(&nfsd_file_lru, nfsd_file_lru_cb,
++			    &dispose, LONG_MAX);
++	this_cpu_add(nfsd_file_evictions, ret);
++	trace_nfsd_file_gc_evicted(ret, list_lru_count(&nfsd_file_lru));
+ 	nfsd_file_gc_dispose_list(&dispose);
+ }
+ 
+@@ -509,6 +513,8 @@ nfsd_file_lru_scan(struct shrinker *s, struct shrink_control *sc)
+ 
+ 	ret = list_lru_shrink_walk(&nfsd_file_lru, sc,
+ 				   nfsd_file_lru_cb, &dispose);
++	this_cpu_add(nfsd_file_evictions, ret);
++	trace_nfsd_file_shrinker_evicted(ret, list_lru_count(&nfsd_file_lru));
+ 	nfsd_file_gc_dispose_list(&dispose);
+ 	return ret;
+ }
+@@ -1085,7 +1091,7 @@ nfsd_file_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  */
  static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
  {
- 	unsigned long releases = 0, pages_flushed = 0, evictions = 0;
--	unsigned long hits = 0, acquisitions = 0;
-+	unsigned long hits = 0, acquisitions = 0, cons_fails = 0;
+-	unsigned long hits = 0, acquisitions = 0, releases = 0;
++	unsigned long hits = 0, acquisitions = 0, releases = 0, evictions = 0;
  	unsigned int i, count = 0, longest = 0;
  
  	/*
-@@ -1121,6 +1123,7 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
+@@ -1106,6 +1112,7 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
+ 		hits += per_cpu(nfsd_file_cache_hits, i);
+ 		acquisitions += per_cpu(nfsd_file_acquisitions, i);
  		releases += per_cpu(nfsd_file_releases, i);
- 		evictions += per_cpu(nfsd_file_evictions, i);
- 		pages_flushed += per_cpu(nfsd_file_pages_flushed, i);
-+		cons_fails += per_cpu(nfsd_file_cons_fails, i);
++		evictions += per_cpu(nfsd_file_evictions, i);
  	}
  
  	seq_printf(m, "total entries: %u\n", count);
-@@ -1136,6 +1139,7 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
- 	else
- 		seq_printf(m, "mean age (ms): -\n");
- 	seq_printf(m, "pages flushed: %lu\n", pages_flushed);
-+	seq_printf(m, "cons fails:    %lu\n", cons_fails);
- 	return 0;
- }
+@@ -1114,6 +1121,7 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "cache hits:    %lu\n", hits);
+ 	seq_printf(m, "acquisitions:  %lu\n", acquisitions);
+ 	seq_printf(m, "releases:      %lu\n", releases);
++	seq_printf(m, "evictions:     %lu\n", evictions);
+ 	if (releases)
+ 		seq_printf(m, "mean age (ms): %ld\n",
+ 			atomic_long_read(&nfsd_file_total_age) / releases);
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index a60ead3b227a..c055c6361bd5 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -851,6 +851,35 @@ TRACE_EVENT(nfsd_file_fsnotify_handle_event,
+ 			__entry->nlink, __entry->mode, __entry->mask)
+ );
  
++DECLARE_EVENT_CLASS(nfsd_file_lruwalk_class,
++	TP_PROTO(
++		unsigned long evicted,
++		unsigned long remaining
++	),
++	TP_ARGS(evicted, remaining),
++	TP_STRUCT__entry(
++		__field(unsigned long, evicted)
++		__field(unsigned long, remaining)
++	),
++	TP_fast_assign(
++		__entry->evicted = evicted;
++		__entry->remaining = remaining;
++	),
++	TP_printk("%lu entries evicted, %lu remaining",
++		__entry->evicted, __entry->remaining)
++);
++
++#define DEFINE_NFSD_FILE_LRUWALK_EVENT(name)				\
++DEFINE_EVENT(nfsd_file_lruwalk_class, name,				\
++	TP_PROTO(							\
++		unsigned long evicted,					\
++		unsigned long remaining					\
++	),								\
++	TP_ARGS(evicted, remaining))
++
++DEFINE_NFSD_FILE_LRUWALK_EVENT(nfsd_file_gc_evicted);
++DEFINE_NFSD_FILE_LRUWALK_EVENT(nfsd_file_shrinker_evicted);
++
+ #include "cache.h"
+ 
+ TRACE_DEFINE_ENUM(RC_DROPIT);
 
 
