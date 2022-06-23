@@ -2,75 +2,118 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E3AC7C43334
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 Jun 2022 01:46:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0699DC433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 Jun 2022 01:47:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1358657AbiFWBqS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Jun 2022 21:46:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33740 "EHLO
+        id S1377187AbiFWBrq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 Jun 2022 21:47:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35126 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358911AbiFWBqP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 21:46:15 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EC38F434BE;
-        Wed, 22 Jun 2022 18:46:12 -0700 (PDT)
-Received: from dggemv703-chm.china.huawei.com (unknown [172.30.72.56])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4LT30k1zyWzSgpw;
-        Thu, 23 Jun 2022 09:42:46 +0800 (CST)
-Received: from kwepemm600015.china.huawei.com (7.193.23.52) by
- dggemv703-chm.china.huawei.com (10.3.19.46) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.24; Thu, 23 Jun 2022 09:46:10 +0800
-Received: from huawei.com (10.175.127.227) by kwepemm600015.china.huawei.com
- (7.193.23.52) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Thu, 23 Jun
- 2022 09:46:10 +0800
-From:   ChenXiaoSong <chenxiaosong2@huawei.com>
-To:     <trond.myklebust@hammerspace.com>, <anna@kernel.org>
-CC:     <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <chenxiaosong2@huawei.com>, <liuyongqiang13@huawei.com>,
-        <yi.zhang@huawei.com>, <zhangxiaoxu5@huawei.com>
-Subject: [PATCH] NFS: remove redundant code in nfs_file_write()
-Date:   Thu, 23 Jun 2022 09:58:58 +0800
-Message-ID: <20220623015858.1728497-1-chenxiaosong2@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S1359719AbiFWBrp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 21:47:45 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1F8443ACC
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2022 18:47:44 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 64BD221C66;
+        Thu, 23 Jun 2022 01:47:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1655948863; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=I1DqH5K0Sn0dM/JTC6+NRFvJvl9VHcLAqI0Igel49c4=;
+        b=KToxm9f+9QjR9kcVVnaCTP0yY5wrtTF/ONWFYMT59VVI+Ge+xTYdc8mK57B+Wyn6UdVlMs
+        6B61kyqUXVBmWFk9MqajwEGJ4FN9dGJYiBjfJ0xUKNwx30D5H3imGOnahuijlKhQRp1oyi
+        ujP8ZBp39Dlus581CD1LCKs1Aiiy6M0=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1655948863;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=I1DqH5K0Sn0dM/JTC6+NRFvJvl9VHcLAqI0Igel49c4=;
+        b=1S3NU9/PHMjmR8EwNiPgn6pn9I7Za/774x9kIW1QxdpZX0d3NHijPG2CUF86w2DJWJqHAQ
+        3lhdJApzChU6sRBg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 8827013461;
+        Thu, 23 Jun 2022 01:47:42 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id Sg+2ED7Gs2KwWwAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 23 Jun 2022 01:47:42 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
- kwepemm600015.china.huawei.com (7.193.23.52)
-X-CFilter-Loop: Reflected
+From:   "NeilBrown" <neilb@suse.de>
+To:     Steve Dickson <steved@redhat.com>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>
+Subject: [PATCH nfs-utils] modprobe: protect against sysctl errors
+Date:   Thu, 23 Jun 2022 11:47:39 +1000
+Message-id: <165594885936.4786.14207888490098319610@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-filemap_fdatawait_range() will always return 0, after patch 6c984083ec24
-("NFS: Use of mapping_set_error() results in spurious errors"), it will not
-save the wb err in struct address_space->flags:
 
-  result = filemap_fdatawait_range(file->f_mapping, ...) = 0
-    filemap_check_errors(mapping) = 0
-      test_bit(..., &mapping->flags) // flags is 0
+If there is an error running sysctl, a modprobe of these modules will
+fail.  We probably don't want that - missing a sysctl is unlikely to be
+fatal.
 
-Signed-off-by: ChenXiaoSong <chenxiaosong2@huawei.com>
+A real possibility is that /sbin/sysctl might not exist at all,
+such as in a initramfs.  In that case we definitely don't want modprobe
+to fail.
+
+So make the scriptlets safe.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/file.c | 2 --
- 1 file changed, 2 deletions(-)
+ systemd/50-nfs.conf | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 2d72b1b7ed74..54237a231687 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -663,8 +663,6 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
- 		result = filemap_fdatawait_range(file->f_mapping,
- 						 iocb->ki_pos - written,
- 						 iocb->ki_pos - 1);
--		if (result < 0)
--			goto out;
- 	}
- 	result = generic_write_sync(iocb, written);
- 	if (result < 0)
--- 
-2.31.1
+diff --git a/systemd/50-nfs.conf b/systemd/50-nfs.conf
+index b56b2d765969..19e8ee734c8e 100644
+--- a/systemd/50-nfs.conf
++++ b/systemd/50-nfs.conf
+@@ -1,16 +1,16 @@
+ # Ensure all NFS systctl settings get applied when modules load
+=20
+ # sunrpc module supports "sunrpc.*" sysctls
+-install sunrpc /sbin/modprobe --ignore-install sunrpc $CMDLINE_OPTS && /sbin=
+/sysctl -q --pattern sunrpc --system
++install sunrpc /sbin/modprobe --ignore-install sunrpc $CMDLINE_OPTS && { /sb=
+in/sysctl -q --pattern sunrpc --system; exit 0; }
+=20
+ # rpcrdma module supports sunrpc.svc_rdma.*
+-install rpcrdma /sbin/modprobe --ignore-install rpcrdma $CMDLINE_OPTS && /sb=
+in/sysctl -q --pattern sunrpc.svc_rdma --system
++install rpcrdma /sbin/modprobe --ignore-install rpcrdma $CMDLINE_OPTS && { /=
+sbin/sysctl -q --pattern sunrpc.svc_rdma --system; exit 0; }
+=20
+ # lockd module supports "fs.nfs.nlm*" and "fs.nfs.nsm*" sysctls
+-install lockd /sbin/modprobe --ignore-install lockd $CMDLINE_OPTS && /sbin/s=
+ysctl -q --pattern fs.nfs.n[sl]m --system
++install lockd /sbin/modprobe --ignore-install lockd $CMDLINE_OPTS && { /sbin=
+/sysctl -q --pattern fs.nfs.n[sl]m --system; exit 0; }
+=20
+ # nfsv4 module supports "fs.nfs.*" sysctls (nfs_callback_tcpport and idmap_c=
+ache_timeout)
+-install nfsv4 /sbin/modprobe --ignore-install nfsv4 $CMDLINE_OPTS && /sbin/s=
+ysctl -q --pattern 'fs.nfs.(nfs_callback_tcpport|idmap_cache_timeout)' --syst=
+em
++install nfsv4 /sbin/modprobe --ignore-install nfsv4 $CMDLINE_OPTS && { /sbin=
+/sysctl -q --pattern 'fs.nfs.(nfs_callback_tcpport|idmap_cache_timeout)' --sy=
+stem; exit 0; }
+=20
+ # nfs module supports "fs.nfs.*" sysctls
+-install nfs /sbin/modprobe --ignore-install nfs $CMDLINE_OPTS && /sbin/sysct=
+l -q --pattern fs.nfs --system
++install nfs /sbin/modprobe --ignore-install nfs $CMDLINE_OPTS && { /sbin/sys=
+ctl -q --pattern fs.nfs --system; exit 0; }
+--=20
+2.36.1
 
