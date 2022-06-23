@@ -2,115 +2,65 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED586C43334
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 Jun 2022 01:48:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C7C2C433EF
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 Jun 2022 04:43:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1377330AbiFWBs3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 Jun 2022 21:48:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36360 "EHLO
+        id S232086AbiFWEnw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 23 Jun 2022 00:43:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36208 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1377325AbiFWBs2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 21:48:28 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1FCAF43499
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2022 18:48:24 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id C5D6C1F91F;
-        Thu, 23 Jun 2022 01:48:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1655948902; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=xedQ8D0jKuXePhGrcorna7M3d38UWpXxq8EzrkuYHQY=;
-        b=n4V21ewdQ2To8mPN69TUHSAB1NCWAKvjGvC6P3FkDqp/TkWLwAOMWE7niAFrRF438OYeVi
-        pp5CsfrA2pRZSZY6yygD1VYwfTs/ktMjQ61xZFOCaHw5aWBzpwZCESsPOW2yxOeOaY6uOJ
-        KJblbBg/IB5NNULJoTGGdr8W1jaU/3k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1655948902;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=xedQ8D0jKuXePhGrcorna7M3d38UWpXxq8EzrkuYHQY=;
-        b=QAlmVfQHBSi0YBG3VcLG+H3XcnHASUJ1UqV+rSveuNVynQJUaw94+7wvgudKomE0kDlKfI
-        RPSqvnOypZrSyEAQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 835EE13461;
-        Thu, 23 Jun 2022 01:48:21 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id +UrmD2XGs2LsWwAAMHmgww
-        (envelope-from <neilb@suse.de>); Thu, 23 Jun 2022 01:48:21 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+        with ESMTP id S237185AbiFWDXB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jun 2022 23:23:01 -0400
+Received: from mail-ed1-x532.google.com (mail-ed1-x532.google.com [IPv6:2a00:1450:4864:20::532])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 62F5A637C
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2022 20:22:57 -0700 (PDT)
+Received: by mail-ed1-x532.google.com with SMTP id z7so26583355edm.13
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jun 2022 20:22:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=from:to:date:message-id:user-agent:subject:mime-version
+         :content-transfer-encoding;
+        bh=wjunn4+x2QEs4HRrQcozT7INn2DM0lGSHIZkmkDz3T0=;
+        b=Uk2Qo3qYqnwxZ+HtXcI42cQf9+KCOOsApCyJUbZ3URu9DyVao3PwrXoP0hRyxkzlI8
+         lVBtWfLK0f6SMFZA0NzPRGDW3SPIoxKL1q/nG+pZZImeQ4vMAkHT58h6yQrwK4WCctVh
+         rERPbHlA8gA9niAQRYdxVbJlk3+lKRnlrBroKOGi/tP8pd4y7ZvcfiDT14ZsWWfgrnVj
+         z6/RDNjW+ayn/1rIb3TTuLtoXnvtVzwKLOqW8WNG6zaHvPgdunBhYwUSEn51sU40FMjB
+         +JXGFsh0rNE5CPkKlGbtOfbWISSRm05S5K5bFbA6uSAWa/s06FdndLKyzAxh9MbUg89T
+         IPeg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:from:to:date:message-id:user-agent:subject
+         :mime-version:content-transfer-encoding;
+        bh=wjunn4+x2QEs4HRrQcozT7INn2DM0lGSHIZkmkDz3T0=;
+        b=3L+f4Tw3S6yRD+rxX52spehQLcB8bicYpIkY083DTrk7FPV/hDqdd0o4YaC6YtU3Kp
+         AXn+r1TutjcUAZ9CWCKfZI95S4I5Wy45acz6mx64RLaHCk+yhdJGFOVZ98iRQF3f9J4s
+         5poQH3kBAjYjp8RySgQ6mNhReXeDZbbQohXcNqILYp3yKDaVH2upEu2/s2OLXP/+A4xg
+         eOh4+0JnhLL/i95JtBSs9cDrSDbp2/o5ZFLcviz+D373JkydMd9XGhqOktaZ8Cpf8fTT
+         /YN3IZUBCL1z7VIIqAGTkgrnW/9n9upPAVLojWHvDNge7d9jhANfmw0ghALBc1xH5dc6
+         AS2A==
+X-Gm-Message-State: AJIora/nWubi/WkcvtlLYfpJp9Ttg2T4T7mKr5vg+x3mbsAyQZCemlf6
+        e9+dyZUXXAG/YyTkL2rQ7PWiLO1v1Fs=
+X-Google-Smtp-Source: AGRyM1tPcJJFXwAkaRPGYi/bk3kobz5d85byXINFn6nuhDQ3z1ccGarRX90G5DsAaIA/xtpVQolpMA==
+X-Received: by 2002:a05:6402:2710:b0:435:bf54:8569 with SMTP id y16-20020a056402271000b00435bf548569mr4159047edd.165.1655954575962;
+        Wed, 22 Jun 2022 20:22:55 -0700 (PDT)
+Received: from [192.168.178.67] (aftr-62-216-205-150.dynamic.mnet-online.de. [62.216.205.150])
+        by smtp.gmail.com with ESMTPSA id a12-20020a50858c000000b0042617ba638esm16168917edh.24.2022.06.22.20.22.55
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
+        Wed, 22 Jun 2022 20:22:55 -0700 (PDT)
+From:   "Holger B. A. Rauch" <rauch.holger@gmail.com>
+To:     <linux-nfs@vger.kernel.org>
+Date:   Thu, 23 Jun 2022 05:22:54 +0200
+Message-ID: <1818e958ab0.2a06.5e117a29f51efed2e27b76f62c3ffe17@gmail.com>
+User-Agent: AquaMail/1.37.0 (build: 103700163)
+Subject: unsubsctibe
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     Steve Dickson <steved@redhat.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>
-Subject: [PATCH nfs-utils] configure: make modprobe.d directory configurable.
-Date:   Thu, 23 Jun 2022 11:48:16 +1000
-Message-id: <165594889671.4786.9612372524810600367@noble.neil.brown.name>
+Content-Type: text/plain; format=flowed; charset="us-ascii"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+unsubscribe
 
-Debian seems to prefer /lib/modprobe.d - at lease sometimes.
-
-So allow
-  ./configure --with-modprobedir=3D/lib/modprobe.d
-to work, but default to /usr/lib/modprobe.d
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- configure.ac        | 12 ++++++++++++
- systemd/Makefile.am |  6 ++++--
- 2 files changed, 16 insertions(+), 2 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index a13f36915a35..4403335bcaa9 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -71,6 +71,18 @@ AC_ARG_WITH(systemd,
- 	AM_CONDITIONAL(INSTALL_SYSTEMD, [test "$use_systemd" =3D 1])
- 	AC_SUBST(unitdir)
-=20
-+modprobedir=3D/usr/lib/modprobe.d
-+AC_ARG_WITH(modprobedir,
-+	[AS_HELP_STRING([--with-modprobedir@<:@=3Dmodprobe-dir-path@:>@],[install m=
-odprobe config files @<:@Default: /usr/lib/modprobe.d@:>@])],
-+	if test "$withval" !=3D "no" ; then
-+		modprobedir=3D$withval
-+	else
-+		modprobedir=3D
-+	fi
-+	)
-+	AM_CONDITIONAL(INSTALL_MODPROBEDIR, [test -n "$modprobedir"])
-+	AC_SUBST(modprobedir)
-+
- AC_ARG_ENABLE(nfsv4,
- 	[AS_HELP_STRING([--disable-nfsv4],[disable support for NFSv4 @<:@default=3D=
-no@:>@])],
- 	enable_nfsv4=3D$enableval,
-diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index 63a50bf2c07e..7b5ab84bd793 100644
---- a/systemd/Makefile.am
-+++ b/systemd/Makefile.am
-@@ -82,5 +82,7 @@ install-data-hook: $(unit_files) $(modprobe_files)
- else
- install-data-hook: $(modprobe_files)
- endif
--	mkdir -p $(DESTDIR)/usr/lib/modprobe.d
--	cp $(modprobe_files) $(DESTDIR)/usr/lib/modprobe.d/
-+if INSTALL_MODPROBEDIR
-+	mkdir -p $(DESTDIR)$(modprobedir)
-+	cp $(modprobe_files) $(DESTDIR)$(modprobedir)
-+endif
---=20
-2.36.1
 
