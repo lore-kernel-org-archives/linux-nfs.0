@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26686C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 Jun 2022 18:07:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60C48CCA481
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 Jun 2022 18:07:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231563AbiF1SHd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 Jun 2022 14:07:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51436 "EHLO
+        id S234217AbiF1SHe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 28 Jun 2022 14:07:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51508 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233856AbiF1SHW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2022 14:07:22 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0A62B1EAD6;
-        Tue, 28 Jun 2022 11:07:21 -0700 (PDT)
+        with ESMTP id S234211AbiF1SHd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jun 2022 14:07:33 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F63A1EAE8;
+        Tue, 28 Jun 2022 11:07:32 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id B2628B81F38;
-        Tue, 28 Jun 2022 18:07:19 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1CB36C3411D;
-        Tue, 28 Jun 2022 18:07:18 +0000 (UTC)
-Subject: [PATCH v2 14/31] NFSD: Trace filecache LRU activity
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 29CCC61ADB;
+        Tue, 28 Jun 2022 18:07:32 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2B083C3411D;
+        Tue, 28 Jun 2022 18:07:31 +0000 (UTC)
+Subject: [PATCH v2 16/31] NFSD: Fix the filecache LRU shrinker
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
 Cc:     david@fromorbit.com, jlayton@redhat.com, tgraf@suug.ch
-Date:   Tue, 28 Jun 2022 14:07:17 -0400
-Message-ID: <165643963717.84360.15268194972880071415.stgit@manet.1015granger.net>
+Date:   Tue, 28 Jun 2022 14:07:30 -0400
+Message-ID: <165643965013.84360.5320447476976778288.stgit@manet.1015granger.net>
 In-Reply-To: <165643915086.84360.2809940286726976517.stgit@manet.1015granger.net>
 References: <165643915086.84360.2809940286726976517.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5.dev2+g9ce680a5
@@ -37,151 +37,48 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Observe the operation of garbage collection and the lifetime of
-filecache items.
+Without LRU item rotation, the shrinker visits only a few items on
+the end of the LRU list, and those would always be long-term OPEN
+files for NFSv4 workloads. That makes the filecache shrinker
+completely ineffective.
 
+Adopt the same strategy as the inode LRU by using LRU_ROTATE.
+
+Suggested-by: Dave Chinner <david@fromorbit.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/filecache.c |   44 +++++++++++++++++++++++++++++++-------------
- fs/nfsd/trace.h     |   39 +++++++++++++++++++++++++++++++++++++++
- 2 files changed, 70 insertions(+), 13 deletions(-)
+ fs/nfsd/filecache.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 8ade3699664c..37373b012276 100644
+index 6e9e186334ab..bd6ba63f69ae 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -267,6 +267,18 @@ nfsd_file_flush(struct nfsd_file *nf)
- 		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
- }
+@@ -452,6 +452,7 @@ nfsd_file_dispose_list_delayed(struct list_head *dispose)
+  *
+  * Return values:
+  *   %LRU_REMOVED: @item was removed from the LRU
++ *   %LRU_ROTATED: @item is to be moved to the LRU tail
+  *   %LRU_SKIP: @item cannot be evicted
+  */
+ static enum lru_status
+@@ -490,7 +491,7 @@ nfsd_file_lru_cb(struct list_head *item, struct list_lru_one *lru,
  
-+static void nfsd_file_lru_add(struct nfsd_file *nf)
-+{
-+	if (list_lru_add(&nfsd_file_lru, &nf->nf_lru))
-+		trace_nfsd_file_lru_add(nf);
-+}
-+
-+static void nfsd_file_lru_remove(struct nfsd_file *nf)
-+{
-+	if (list_lru_del(&nfsd_file_lru, &nf->nf_lru))
-+		trace_nfsd_file_lru_del(nf);
-+}
-+
- static void
- nfsd_file_do_unhash(struct nfsd_file *nf)
- {
-@@ -286,8 +298,7 @@ nfsd_file_unhash(struct nfsd_file *nf)
- {
- 	if (test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
- 		nfsd_file_do_unhash(nf);
--		if (!list_empty(&nf->nf_lru))
--			list_lru_del(&nfsd_file_lru, &nf->nf_lru);
-+		nfsd_file_lru_remove(nf);
- 		return true;
+ 	if (test_and_clear_bit(NFSD_FILE_REFERENCED, &nf->nf_flags)) {
+ 		trace_nfsd_file_gc_referenced(nf);
+-		return LRU_SKIP;
++		return LRU_ROTATE;
  	}
- 	return false;
-@@ -450,27 +461,34 @@ nfsd_file_lru_cb(struct list_head *item, struct list_lru_one *lru,
- 	 * counter. Here we check the counter and then test and clear the flag.
- 	 * That order is deliberate to ensure that we can do this locklessly.
- 	 */
--	if (refcount_read(&nf->nf_ref) > 1)
--		goto out_skip;
-+	if (refcount_read(&nf->nf_ref) > 1) {
-+		trace_nfsd_file_gc_in_use(nf);
-+		return LRU_SKIP;
-+	}
  
- 	/*
- 	 * Don't throw out files that are still undergoing I/O or
- 	 * that have uncleared errors pending.
- 	 */
--	if (nfsd_file_check_writeback(nf))
--		goto out_skip;
-+	if (nfsd_file_check_writeback(nf)) {
-+		trace_nfsd_file_gc_writeback(nf);
-+		return LRU_SKIP;
-+	}
+ 	if (!test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
+@@ -532,7 +533,7 @@ nfsd_file_gc(void)
+ 	unsigned long ret;
  
--	if (test_and_clear_bit(NFSD_FILE_REFERENCED, &nf->nf_flags))
--		goto out_skip;
-+	if (test_and_clear_bit(NFSD_FILE_REFERENCED, &nf->nf_flags)) {
-+		trace_nfsd_file_gc_referenced(nf);
-+		return LRU_SKIP;
-+	}
- 
--	if (!test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags))
--		goto out_skip;
-+	if (!test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
-+		trace_nfsd_file_gc_hashed(nf);
-+		return LRU_SKIP;
-+	}
- 
- 	list_lru_isolate_move(lru, &nf->nf_lru, head);
- 	this_cpu_inc(nfsd_file_evictions);
-+	trace_nfsd_file_gc_disposed(nf);
- 	return LRU_REMOVED;
--out_skip:
--	return LRU_SKIP;
+ 	ret = list_lru_walk(&nfsd_file_lru, nfsd_file_lru_cb,
+-			    &dispose, LONG_MAX);
++			    &dispose, list_lru_count(&nfsd_file_lru));
+ 	trace_nfsd_file_gc_removed(ret, list_lru_count(&nfsd_file_lru));
+ 	nfsd_file_gc_dispose_list(&dispose);
  }
- 
- /*
-@@ -1037,7 +1055,7 @@ nfsd_do_file_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	refcount_inc(&nf->nf_ref);
- 	__set_bit(NFSD_FILE_HASHED, &nf->nf_flags);
- 	__set_bit(NFSD_FILE_PENDING, &nf->nf_flags);
--	list_lru_add(&nfsd_file_lru, &nf->nf_lru);
-+	nfsd_file_lru_add(nf);
- 	hlist_add_head_rcu(&nf->nf_node, &nfsd_file_hashtbl[hashval].nfb_head);
- 	++nfsd_file_hashtbl[hashval].nfb_count;
- 	nfsd_file_hashtbl[hashval].nfb_maxcount = max(nfsd_file_hashtbl[hashval].nfb_maxcount,
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 5eb2643f5fcd..16094ddbf35a 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -851,6 +851,45 @@ TRACE_EVENT(nfsd_file_fsnotify_handle_event,
- 			__entry->nlink, __entry->mode, __entry->mask)
- );
- 
-+DECLARE_EVENT_CLASS(nfsd_file_gc_class,
-+	TP_PROTO(
-+		const struct nfsd_file *nf
-+	),
-+	TP_ARGS(nf),
-+	TP_STRUCT__entry(
-+		__field(void *, nf_inode)
-+		__field(void *, nf_file)
-+		__field(int, nf_ref)
-+		__field(unsigned long, nf_flags)
-+	),
-+	TP_fast_assign(
-+		__entry->nf_inode = nf->nf_inode;
-+		__entry->nf_file = nf->nf_file;
-+		__entry->nf_ref = refcount_read(&nf->nf_ref);
-+		__entry->nf_flags = nf->nf_flags;
-+	),
-+	TP_printk("inode=%p ref=%d nf_flags=%s nf_file=%p",
-+		__entry->nf_inode, __entry->nf_ref,
-+		show_nf_flags(__entry->nf_flags),
-+		__entry->nf_file
-+	)
-+);
-+
-+#define DEFINE_NFSD_FILE_GC_EVENT(name)					\
-+DEFINE_EVENT(nfsd_file_gc_class, name,					\
-+	TP_PROTO(							\
-+		const struct nfsd_file *nf				\
-+	),								\
-+	TP_ARGS(nf))
-+
-+DEFINE_NFSD_FILE_GC_EVENT(nfsd_file_lru_add);
-+DEFINE_NFSD_FILE_GC_EVENT(nfsd_file_lru_del);
-+DEFINE_NFSD_FILE_GC_EVENT(nfsd_file_gc_in_use);
-+DEFINE_NFSD_FILE_GC_EVENT(nfsd_file_gc_writeback);
-+DEFINE_NFSD_FILE_GC_EVENT(nfsd_file_gc_referenced);
-+DEFINE_NFSD_FILE_GC_EVENT(nfsd_file_gc_hashed);
-+DEFINE_NFSD_FILE_GC_EVENT(nfsd_file_gc_disposed);
-+
- DECLARE_EVENT_CLASS(nfsd_file_lruwalk_class,
- 	TP_PROTO(
- 		unsigned long removed,
 
 
