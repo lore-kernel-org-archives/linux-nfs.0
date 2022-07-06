@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6A73C43334
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Jul 2022 04:20:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FF78C43334
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Jul 2022 04:20:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231592AbiGFEUP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Jul 2022 00:20:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42694 "EHLO
+        id S231349AbiGFEUs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Jul 2022 00:20:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43094 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230359AbiGFEUN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2022 00:20:13 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B825B272C
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jul 2022 21:20:12 -0700 (PDT)
+        with ESMTP id S229921AbiGFEUr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2022 00:20:47 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D25921838E
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jul 2022 21:20:46 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 7B07C1F8B6;
-        Wed,  6 Jul 2022 04:20:11 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 84ACC22849;
+        Wed,  6 Jul 2022 04:20:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1657081211; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1657081245; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=V0ONAXNcsuNCM3u/6sv99D1JZhgOVP6Sd2g1CyRBucw=;
-        b=Tb2G10wlMKonC3BsUuq9kRysePDfoocgrAok3mxud6aXt7hxcQTu6sSAUWEG+rT5t/8JjR
-        oYrx7fmNKjuq+cv+XWiAa1YYXQLLUQ+j0v5JCY287HhtEUl3YZ7RKAFJHYCJXZfRJ/KwEa
-        dpefM2sAXOzdqLpUceCoqy1HSuoU0I0=
+        bh=w7LQxZ6st6gsPWv1TDn+iaNfRHm08fMBBxCDWaA9wrE=;
+        b=F6A2QvJ7XvYoc8co6F7BhNSO2xXdBaFnpi6ekoiLRg7M1WMvVHNF19gYvCj2yzfrJV7yyP
+        7bnowXPmsqkZcyj6j2ayb4rQclQY6MfDmM3kkikqY3XMZR40cM9l6nL/XG1G51h+HOHnVC
+        0Qrglm0FaJKyeZLBD4/5j37QBRxVMWs=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1657081211;
+        s=susede2_ed25519; t=1657081245;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=V0ONAXNcsuNCM3u/6sv99D1JZhgOVP6Sd2g1CyRBucw=;
-        b=LKkwdYqCC9939Q+zji4oDzr1r5J4sDrU03FYYIpbpW4FnNv2k4QWsGK4VAssNeQLDhipw/
-        YCY7uOv85hmC3wAw==
+        bh=w7LQxZ6st6gsPWv1TDn+iaNfRHm08fMBBxCDWaA9wrE=;
+        b=ZHtR5xZIlGqsE+jMJeUBnupClZc1vB82zpemIYzpAMVX2hhqG/RoOkCuM0UqYjgyXBsbRm
+        YqXJAaa/WVjiCXCw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A923213A37;
-        Wed,  6 Jul 2022 04:20:07 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 67E4513A37;
+        Wed,  6 Jul 2022 04:20:44 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id qvVGGXcNxWK2QQAAMHmgww
-        (envelope-from <neilb@suse.de>); Wed, 06 Jul 2022 04:20:07 +0000
-Subject: [PATCH 3/8] NFSD: always drop directory lock in nfsd_unlink()
+        id 0IgWCZwNxWLvQQAAMHmgww
+        (envelope-from <neilb@suse.de>); Wed, 06 Jul 2022 04:20:44 +0000
+Subject: [PATCH 4/8] NFSD: only call fh_unlock() once in nfsd_link()
 From:   NeilBrown <neilb@suse.de>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Jeff Layton <jlayton@kernel.org>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Wed, 06 Jul 2022 14:18:12 +1000
-Message-ID: <165708109257.1940.5635801592688577227.stgit@noble.brown>
+Message-ID: <165708109258.1940.6581517569232462503.stgit@noble.brown>
 In-Reply-To: <165708033167.1940.3364591321728458949.stgit@noble.brown>
 References: <165708033167.1940.3364591321728458949.stgit@noble.brown>
 User-Agent: StGit/1.5
@@ -65,84 +65,60 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Some error paths in nfsd_unlink() allow it to exit without unlocking the
-directory.  This is not a problem in practice as the directory will be
-locked with an fh_put(), but it is untidy and potentially confusing.
+On non-error paths, nfsd_link() calls fh_unlock() twice.  This is safe
+because fh_unlock() records that the unlock has been done and doesn't
+repeat it.
+However it makes the code a little confusing and interferes with changes
+that are planned for directory locking.
 
-This allows us to remove all the fh_unlock() calls that are immediately
-after nfsd_unlink() calls.
+So rearrange the code to ensure fh_unlock() is called exactly once if
+fh_lock() was called.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/nfs3proc.c |    2 --
- fs/nfsd/nfs4proc.c |    4 +---
- fs/nfsd/vfs.c      |    7 +++++--
- 3 files changed, 6 insertions(+), 7 deletions(-)
+ fs/nfsd/vfs.c |   18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 38255365ef71..ad7941001106 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -478,7 +478,6 @@ nfsd3_proc_remove(struct svc_rqst *rqstp)
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->status = nfsd_unlink(rqstp, &resp->fh, -S_IFDIR,
- 				   argp->name, argp->len);
--	fh_unlock(&resp->fh);
- 	return rpc_success;
- }
- 
-@@ -499,7 +498,6 @@ nfsd3_proc_rmdir(struct svc_rqst *rqstp)
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->status = nfsd_unlink(rqstp, &resp->fh, S_IFDIR,
- 				   argp->name, argp->len);
--	fh_unlock(&resp->fh);
- 	return rpc_success;
- }
- 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 3279daab909d..4737019738ab 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1052,10 +1052,8 @@ nfsd4_remove(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_grace;
- 	status = nfsd_unlink(rqstp, &cstate->current_fh, 0,
- 			     remove->rm_name, remove->rm_namelen);
--	if (!status) {
--		fh_unlock(&cstate->current_fh);
-+	if (!status)
- 		set_change_info(&remove->rm_cinfo, &cstate->current_fh);
--	}
- 	return status;
- }
- 
 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 1e7ca39e8a49..3f4579f5775c 100644
+index 3f4579f5775c..4916c29af0fa 100644
 --- a/fs/nfsd/vfs.c
 +++ b/fs/nfsd/vfs.c
-@@ -1762,12 +1762,12 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	rdentry = lookup_one_len(fname, dentry, flen);
- 	host_err = PTR_ERR(rdentry);
- 	if (IS_ERR(rdentry))
--		goto out_drop_write;
-+		goto out_unlock;
+@@ -1551,8 +1551,10 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
  
- 	if (d_really_is_negative(rdentry)) {
- 		dput(rdentry);
- 		host_err = -ENOENT;
--		goto out_drop_write;
+ 	dnew = lookup_one_len(name, ddir, len);
+ 	host_err = PTR_ERR(dnew);
+-	if (IS_ERR(dnew))
+-		goto out_nfserr;
++	if (IS_ERR(dnew)) {
++		err = nfserrno(host_err);
 +		goto out_unlock;
++	}
+ 
+ 	dold = tfhp->fh_dentry;
+ 
+@@ -1571,17 +1573,17 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		else
+ 			err = nfserrno(host_err);
  	}
- 	rinode = d_inode(rdentry);
- 	ihold(rinode);
-@@ -1805,6 +1805,9 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	}
+-out_dput:
+ 	dput(dnew);
+-out_unlock:
+-	fh_unlock(ffhp);
++out_drop_write:
+ 	fh_drop_write(tfhp);
  out:
  	return err;
+ 
+-out_nfserr:
+-	err = nfserrno(host_err);
+-	goto out_unlock;
++out_dput:
++	dput(dnew);
 +out_unlock:
-+	fh_unlock(fhp);
++	fh_unlock(ffhp);
 +	goto out_drop_write;
  }
  
- /*
+ static void
 
 
