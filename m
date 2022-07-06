@@ -2,243 +2,308 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 050B6C43334
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Jul 2022 18:10:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C105C43334
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Jul 2022 18:45:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231612AbiGFSKp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Jul 2022 14:10:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53776 "EHLO
+        id S234051AbiGFSpD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Jul 2022 14:45:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56812 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230291AbiGFSKo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2022 14:10:44 -0400
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EFFC928E28
-        for <linux-nfs@vger.kernel.org>; Wed,  6 Jul 2022 11:10:42 -0700 (PDT)
-Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 266GMoY1006158;
-        Wed, 6 Jul 2022 18:10:31 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2021-07-09;
- bh=E0eCl5p8oMmUE2b9nYW2xbT/1x79hdPgOwqNYtzU0E8=;
- b=vuLsROyk7LfE63/25YSbVl+wWkDgme4ibXzSURL0JMbq7Q8v3h9vC2dsKgJ8EMC1J0Wp
- hGh65cY7ajCOaRXofQsTR9jM2x9eCaMmDSC1JsxQ67lAaRZq6Rvocxg39w2HIKKHtYPM
- vBeP1EoFGIDs/MdBopqFTIMsgwf2eM8OHQicF0iHdavRTdaWtCP1I/Deo3QiQVfTMGSy
- +G4uSUul5xYcZhP+jwd07k7I7qlehZdt9PCxTULsfRlaYxEVkyfTg37ZisYCXEXiCMi8
- gpXqhvIHAjSomtHnwT8Ou9Yq8qQzYNTYuKnavh6G4JonATzXPtyOGt0DWK+AjtB2kd1b 6g== 
-Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3h4ubytv1d-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 06 Jul 2022 18:10:30 +0000
-Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.16.1.2/8.16.1.2) with SMTP id 266HfJOe016468;
-        Wed, 6 Jul 2022 18:10:30 GMT
-Received: from nam02-sn1-obe.outbound.protection.outlook.com (mail-sn1anam02lp2043.outbound.protection.outlook.com [104.47.57.43])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com with ESMTP id 3h4ud61ag8-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 06 Jul 2022 18:10:30 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=croWnFkRbZVImkD2mgKtDp6x1bDtPF684+Z7PhWgIG9o9Oha2d8l5vdv0GIbcUiLsjn1D8+LjRtNb8jDZnqivQ6Eszc3fDwPfUuHuT2gB0BSmJnCdahxk41o/N3/GNdV9IVWT0BI6BDHhT6V0qLNk5FTCUxzU3pcQRmxWBg8vrAjlwBMPJKYiTixK340EC69gaRt1jVZe7u6NaLMUAwJvEZUl1ChUVus0EXEgG4fVBDWOph34TPTimwQ4vWolPsnAc87ylsC5mvDCP7RcBpjWJ9x4iyqVcKa3FkXelpVkazirAXDceIW1P+3P+mweQ/tbuuqpb9MeIJwOE+cQSARKw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=E0eCl5p8oMmUE2b9nYW2xbT/1x79hdPgOwqNYtzU0E8=;
- b=hihUrBWok8ce62Pd0ai4sfkgSEsmGh11EKPEhG4RYrweyzJ70TcUzPE1kppJs6wHdemOeqEDAUzxOGkBiqSk3t6Ts4ntZF7JSpRGIl0np8P60yQthaCvxheSTxJQFImNY+YiLmuHqd480YeAuI2l7YF9B0glJrolpqzQ8eG327zIop2r4rh28WBw/kGw+0Algt4hAxSit5paOrMLPie8zifiizwP7c7HGvueYbm9apjrM9xCMIpMJ31PRwddi1ErrsMwdSz7deNPufEGTHO8aIbKwO23ht1kcM6FYnIQgfYL53Y6bkmUww8nhwY7WwMXBMzRxkEWpNPYzjiQugyRaQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=E0eCl5p8oMmUE2b9nYW2xbT/1x79hdPgOwqNYtzU0E8=;
- b=luELhzog8lC7CcYGpuL6XKclFHYrQshSMsk3DhUj4v6owNnHTohZrRai2/30nddUGSyxjz/MkiJ90W4Lwwpuodw3K7ykv880/qTuPrPOmexpNODAGberReTgw4xsqpbP/dRt2V1Bw9VLka7QPrzlBEI/9057Se6lL5VBS63L18A=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by MWHPR10MB1408.namprd10.prod.outlook.com (2603:10b6:300:1f::8) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5395.15; Wed, 6 Jul
- 2022 18:10:28 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::9920:1ac4:2d14:e703]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::9920:1ac4:2d14:e703%5]) with mapi id 15.20.5395.021; Wed, 6 Jul 2022
- 18:10:27 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Jeff Layton <jlayton@kernel.org>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "trondmy@hammerspace.com" <trondmy@hammerspace.com>
-Subject: Re: [PATCH v2 03/15] SUNRPC: Replace dprintk() call site in
- xs_data_ready
-Thread-Topic: [PATCH v2 03/15] SUNRPC: Replace dprintk() call site in
- xs_data_ready
-Thread-Index: AQHYebVsA5QfjiQznUipQF2FW+UKja1xxaoAgAAOQYA=
-Date:   Wed, 6 Jul 2022 18:10:27 +0000
-Message-ID: <DAE78CB7-4A01-4DB7-8E7A-788A311C52A9@oracle.com>
+        with ESMTP id S231715AbiGFSpC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jul 2022 14:45:02 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 311BB27B15
+        for <linux-nfs@vger.kernel.org>; Wed,  6 Jul 2022 11:45:01 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id EE2C9B81E83
+        for <linux-nfs@vger.kernel.org>; Wed,  6 Jul 2022 18:44:59 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4137BC3411C;
+        Wed,  6 Jul 2022 18:44:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1657133098;
+        bh=cM0hUjl5xqLXzpdHKlGUGjERbCHbwt1WZr4DNJMevYg=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=taeHfdnXYzUU2mdTMMb38vXF90NMxRQbpiHwDUSQpjugd90TUpKgkdKVmkSr2KB7E
+         oS82F9bVlTlMb7xjKOy1ehL0mdFLkWZIKmGjlQSvPJ7K5/W1ix78Jmnn64p+w4Kd4Q
+         iPwQ5NzOG6P90IHa5FF3cR6Gv1CryzXoTgW7poHGUv3n67gZJAd5MW+iMnW3pmcjke
+         ob2myoJguwz21Ou/W8OLtrVamCePiJ4QEk+usuOG/9mBrIVIM3EL+XjN8RdCQPD0rS
+         w9u/1tL46TabMSBquBiLqZyIxnnH6UwZAWx8CydkupYupW0BkR2mBKhHnAkWi9Dgd4
+         DD5tEgjJXZ8Iw==
+Message-ID: <0240d09511336c5a5490607ec29ec49c12eff473.camel@kernel.org>
+Subject: Re: [PATCH v2 04/15] NFS: Replace fs_context-related dprintk() call
+ sites with tracepoints
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Cc:     trondmy@hammerspace.com
+Date:   Wed, 06 Jul 2022 14:44:56 -0400
+In-Reply-To: <165452705445.1496.2682789415111295436.stgit@oracle-102.nfsv4.dev>
 References: <165452664596.1496.16204212908726904739.stgit@oracle-102.nfsv4.dev>
- <165452704802.1496.15626296214203899256.stgit@oracle-102.nfsv4.dev>
- <8d04a3f22e170e117cdc605037932f29f6408d6b.camel@kernel.org>
-In-Reply-To: <8d04a3f22e170e117cdc605037932f29f6408d6b.camel@kernel.org>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3696.100.31)
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 2520903c-6233-4dae-2d0c-08da5f7ace5e
-x-ms-traffictypediagnostic: MWHPR10MB1408:EE_
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: fQxhRsf7tJi0+u9ccabtNcCs4adbJZWUczWODnCGYot5nlqsqqVRLZWm6K9ir/DC3Nr2PM0JgeSau9i+QQAwLOo+hPMYi2K8Ay7O5hSxbCqYyobqnbwlngSYgcMln9CKpwOfccwzLjfe6qfR4879E2PJRA4qz8oF9K4VEO0SjDHOGM/5nnYgbyRkzIzhl+U7OITa5Gmo+vEy65DPd76blbsphSuQoM8mssL8KY44a7POqJ/U7BTmT48KAhI9QN06P322+o13XpUp3vW3Xh0T3A8FmCbOjkIsr6BoEBh8b7XEhIt8IhnVBBq0gNFjSSAShw2Y1biL1lETRga4wrU1QQM2JtGFE7to2E5XOyWycZfqm8Kaeu8XNaEmSmg8kSIO8rxr7hHyRM36o645Y37ozgO3dIXlPbWoegpmjqQdHaBGZZ0xunsW/PwpEex50HiDANZPODV4sEmYyCG+/8qQ3YLIAnB2K6mB2+B0fLKbgq0o+D072hzPavyR+ubdcMcCWr8/88DEs9XfIxaBVyAuiAvUyv3OfkW5es7Rptdx0L0wycytPHaLQUHS39oZ21n6ylppbkscBwJjEBoESm2E/5EOztIbCbGSYM9Ex5ZPC/ChCgZ13lKJgV1P913r3SEKat62Vi5gkvPk0ChF74mzrEPXaT7xF417ZASm/UJvfSl0QVVDbYgt/Iul3vMpxWCZs4RnwNnhu4M2jWn+3fRmnHRi/HZAta6tIHwL1o4BOFVzoIgC83+aTk33TsXwFqeb0dA+HRCtkm1DYl3ToqTzXTZhkF28cFCJA8xdt5RcN/9DNIcvWbgL6ONFxHlDkDNrOBlStL3++zbJ90IRa/F+glwHrzALCi3Dwau+8+Cl1tE=
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230016)(396003)(346002)(376002)(136003)(39860400002)(366004)(8936002)(6512007)(8676002)(6486002)(38100700002)(33656002)(478600001)(76116006)(66946007)(64756008)(4326008)(66476007)(66556008)(5660300002)(86362001)(2616005)(71200400001)(91956017)(38070700005)(122000001)(26005)(186003)(53546011)(316002)(36756003)(6916009)(41300700001)(6506007)(2906002)(83380400001)(54906003)(66446008)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?1QOszDy+EjzJ/5UG5I5+jmNeFVnvJOzTHhaXIW1eDS2CmKi664+KQumsQi4y?=
- =?us-ascii?Q?Wfjfl6k/C9Hja6++dpamGjkqZUGCs/I3n/pK7nuWXkcpdl3O/xdOzvsx2zcr?=
- =?us-ascii?Q?pqmoPuFFOlvW4sNxctA70xZ3dsU9Si/lDhX5Bo9Z4Ue/jk9RjU4pbqM0DWCa?=
- =?us-ascii?Q?bkFR1PNSb2q/mQ1PBty6kJ8fzKfjWXQg3b8VscoYQcObri9P39ePABMIG8hA?=
- =?us-ascii?Q?gjS20gOzqC2f/5RGbPrAuBeaSXOSzGFKsqLzlk6Ve0O6NkHI53/wqpak1nXx?=
- =?us-ascii?Q?46lBFobU9kSIpFRJ/1JdbKtotjZI2ACOh/ignau1wyqirci0xlVtqYjvlHiZ?=
- =?us-ascii?Q?76Xeo/SGOYtjUm2quF6km2fOwDTcqXvwq3S9zqjyZIf0Gp5Y1YQcp/T+W08s?=
- =?us-ascii?Q?UevjA1zf/deRj5E83ILuKg53xIsEdZ370fWG9Oax1Ah5s+CbAVQbmE+OOVNP?=
- =?us-ascii?Q?yODGOHdj7jH+LrvOcgQ0gBct6W2cpQPugWA3HlIWWqrXqsoKuD54qeQq70H0?=
- =?us-ascii?Q?+fOgKf1iNfbdZ8HXxZQPLYaDHf4+AaCXwSDJ20/Nj+/x4JZ/DQ3mGgo2RfiV?=
- =?us-ascii?Q?h5+zllV8XkaPm2VwITUfOVZ+ajVOKPKZDxgfeXTag86WB5BOSCilRsDHhwFv?=
- =?us-ascii?Q?tHHjyGP7XzCgibuQdAbuNo46OAKz1Cf3GG4cbIc1FxdR8nKBC3HATQhDvGmI?=
- =?us-ascii?Q?b4qGTpQhtIRq7Uf8Wu8jAqSXdaH2LqVj5i5vbUPunk4WdCX6hHLQFMmZe/tS?=
- =?us-ascii?Q?7DHUougz0HBi4R0HJ9sGc2fBiOy+yMbs7RALD8MNEHvNDwYEKEbgIVWzJhfo?=
- =?us-ascii?Q?A96WOpUs+dVPkxcdCuXbDLJUL5VS7Ac9HFM0B/i0GoG991pLok5CKetx/sxk?=
- =?us-ascii?Q?iUgvjzTfuL/cF7R5i+oMJyJzYcfimlKe53F8XEKbk722rHeNsukiBbjXRadh?=
- =?us-ascii?Q?FUZGBGyVF6wwDMpJ3hVlmtBATyPLXuZvcynzT+aZs2KYcGzNh3WyEufXij7f?=
- =?us-ascii?Q?T0Rr3M/j5LknNgTptCCjzaM9vQFvvlsNWddLW9MeggCwAvOAZyZ84FwU9zsW?=
- =?us-ascii?Q?WpuVza0ylAwEG7jiKN602mQKsiiikEZmMvfSVzUk1q/krLz/XyIpqP8x4QyL?=
- =?us-ascii?Q?IwCey2XTSbBvVm7/CHMkMxN3/DI3Qu5ofoR2J/onIf5nNgK03oswuLk8+CPh?=
- =?us-ascii?Q?I8orlZlGz594AW8dUVsLHAok08bbE0EFtedjdobsV683oedVM8sVcyWhWh0d?=
- =?us-ascii?Q?vM076idc6E0XtJFydthnXyQme4J7Ki0YlTzHdyu8WwU9+5rU1SLhQuJd52BP?=
- =?us-ascii?Q?3msnt6Rb56SrOcY+LayoH0hfQpm1429WXXsDpF9INt/kpTBlvWuOT8LFDvyp?=
- =?us-ascii?Q?aOSVF0jl019qfkXzxkdkBbY7Idin0/DhVSu6HA+2cBuh/XvSI5R+lxDxNKQD?=
- =?us-ascii?Q?YK8p00oKi19UMnj9uUtrbLpGdNbihnIIclAb9ROx9KpvGLqG9YzeTwQE1SDW?=
- =?us-ascii?Q?MJm7jRS6V5jATwsZ8tc+3SFDdbIV3e6PON8eCEWYevixoKsqWF01/SvgsNl6?=
- =?us-ascii?Q?U4ahAjvBYk3Kf9Myt5WYSeInZj4dTZxQhXCkLI012xv4OcNbcXQcbKcqZ4lQ?=
- =?us-ascii?Q?jg=3D=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <B22FCEC951856D41AADE5A35A1A0CF35@namprd10.prod.outlook.com>
+         <165452705445.1496.2682789415111295436.stgit@oracle-102.nfsv4.dev>
+Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.2 (3.44.2-1.fc36) 
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 2520903c-6233-4dae-2d0c-08da5f7ace5e
-X-MS-Exchange-CrossTenant-originalarrivaltime: 06 Jul 2022 18:10:27.9116
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: QR9r4yh1g2z3rF0axnzMM7cfbnAouXpQLa1FWYu2dhRON1UHP7m2sz4/+el/zX/NewaC0qtcC9Yh+xsDpHk6wg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: MWHPR10MB1408
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.517,18.0.883
- definitions=2022-07-06_09:2022-06-28,2022-07-06 signatures=0
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 suspectscore=0 phishscore=0
- mlxlogscore=999 spamscore=0 adultscore=0 malwarescore=0 mlxscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2206140000
- definitions=main-2207060071
-X-Proofpoint-ORIG-GUID: 6MZVgldkHoDevzImwiENAGreCC_Hn0Zg
-X-Proofpoint-GUID: 6MZVgldkHoDevzImwiENAGreCC_Hn0Zg
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Jul 6, 2022, at 1:19 PM, Jeff Layton <jlayton@kernel.org> wrote:
+On Mon, 2022-06-06 at 10:50 -0400, Chuck Lever wrote:
+> Contributed as part of the long patch series that converts NFS from
+> using dprintk to tracepoints for observability.
 >=20
-> On Mon, 2022-06-06 at 10:50 -0400, Chuck Lever wrote:
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> include/trace/events/sunrpc.h | 20 ++++++++++++++++++++
->> net/sunrpc/xprtsock.c | 6 ++++--
->> 2 files changed, 24 insertions(+), 2 deletions(-)
->>=20
->> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc=
-.h
->> index 3995c58a1c51..a66aa1f59ed8 100644
->> --- a/include/trace/events/sunrpc.h
->> +++ b/include/trace/events/sunrpc.h
->> @@ -1266,6 +1266,26 @@ TRACE_EVENT(xprt_reserve,
->> 	)
->> );
->>=20
->> +TRACE_EVENT(xs_data_ready,
->> +	TP_PROTO(
->> +		const struct rpc_xprt *xprt
->> +	),
->> +
->> +	TP_ARGS(xprt),
->> +
->> +	TP_STRUCT__entry(
->> +		__string(addr, xprt->address_strings[RPC_DISPLAY_ADDR])
->> +		__string(port, xprt->address_strings[RPC_DISPLAY_PORT])
->> +	),
->> +
->> +	TP_fast_assign(
->> +		__assign_str(addr, xprt->address_strings[RPC_DISPLAY_ADDR]);
->> +		__assign_str(port, xprt->address_strings[RPC_DISPLAY_PORT]);
->> +	),
->>=20
->>=20
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfs/fs_context.c |   25 ++++++++++-------
+>  fs/nfs/nfstrace.h   |   77 +++++++++++++++++++++++++++++++++++++++++++++=
+++++++
+>  2 files changed, 92 insertions(+), 10 deletions(-)
 >=20
-> This tracepoint is likely to fire rather often when it's enabled. Would
-> it be more efficient to store the addr and port as binary data instead?
-
-Yes, and it can use get_sockaddr() and friends for that. But those
-patches were in flight when I wrote this one.
-
-
->> +
->> +	TP_printk("peer=3D[%s]:%s", __get_str(addr), __get_str(port))
->> +);
->> +
->> TRACE_EVENT(xs_stream_read_data,
->> 	TP_PROTO(struct rpc_xprt *xprt, ssize_t err, size_t total),
->>=20
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 650102a9c86a..73fab802996d 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -1378,7 +1378,7 @@ static void xs_udp_data_receive_workfn(struct work=
-_struct *work)
->> }
->>=20
->> /**
->> - * xs_data_ready - "data ready" callback for UDP sockets
->> + * xs_data_ready - "data ready" callback for sockets
->> * @sk: socket with data to read
->> *
->> */
->> @@ -1386,11 +1386,13 @@ static void xs_data_ready(struct sock *sk)
->> {
->> 	struct rpc_xprt *xprt;
->>=20
->> -	dprintk("RPC: xs_data_ready...\n");
->> 	xprt =3D xprt_from_sock(sk);
->> 	if (xprt !=3D NULL) {
->> 		struct sock_xprt *transport =3D container_of(xprt,
->> 				struct sock_xprt, xprt);
->> +
->> +		trace_xs_data_ready(xprt);
->> +
->> 		transport->old_data_ready(sk);
->> 		/* Any data means we had a useful conversation, so
->> 		 * then we don't need to delay the next reconnect
->>=20
->>=20
+> diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+> index 9a16897e8dc6..35e400a557b9 100644
+> --- a/fs/nfs/fs_context.c
+> +++ b/fs/nfs/fs_context.c
+> @@ -21,6 +21,8 @@
+>  #include "nfs.h"
+>  #include "internal.h"
+> =20
+> +#include "nfstrace.h"
+> +
+>  #define NFSDBG_FACILITY		NFSDBG_MOUNT
+> =20
+>  #if IS_ENABLED(CONFIG_NFS_V3)
+> @@ -284,7 +286,7 @@ static int nfs_verify_server_address(struct sockaddr =
+*addr)
+>  	}
+>  	}
+> =20
+> -	dfprintk(MOUNT, "NFS: Invalid IP address specified\n");
+> +	trace_nfs_mount_addr_err(addr);
+>  	return 0;
+>  }
+> =20
+> @@ -378,7 +380,7 @@ static int nfs_parse_security_flavors(struct fs_conte=
+xt *fc,
+>  	char *string =3D param->string, *p;
+>  	int ret;
+> =20
+> -	dfprintk(MOUNT, "NFS: parsing %s=3D%s option\n", param->key, param->str=
+ing);
+> +	trace_nfs_mount_assign(param->key, string);
+> =20
+>  	while ((p =3D strsep(&string, ":")) !=3D NULL) {
+>  		if (!*p)
+> @@ -480,7 +482,7 @@ static int nfs_fs_context_parse_param(struct fs_conte=
+xt *fc,
+>  	unsigned int len;
+>  	int ret, opt;
+> =20
+> -	dfprintk(MOUNT, "NFS:   parsing nfs mount option '%s'\n", param->key);
+> +	trace_nfs_mount_option(param);
+> =20
+>  	opt =3D fs_parse(fc, nfs_fs_parameters, param, &result);
+>  	if (opt < 0)
+> @@ -683,6 +685,7 @@ static int nfs_fs_context_parse_param(struct fs_conte=
+xt *fc,
+>  			return ret;
+>  		break;
+>  	case Opt_vers:
+> +		trace_nfs_mount_assign(param->key, param->string);
+>  		ret =3D nfs_parse_version_string(fc, param->string);
+>  		if (ret < 0)
+>  			return ret;
+> @@ -694,6 +697,7 @@ static int nfs_fs_context_parse_param(struct fs_conte=
+xt *fc,
+>  		break;
+> =20
+>  	case Opt_proto:
+> +		trace_nfs_mount_assign(param->key, param->string);
+>  		protofamily =3D AF_INET;
+>  		switch (lookup_constant(nfs_xprt_protocol_tokens, param->string, -1)) =
+{
+>  		case Opt_xprt_udp6:
+> @@ -729,6 +733,7 @@ static int nfs_fs_context_parse_param(struct fs_conte=
+xt *fc,
+>  		break;
+> =20
+>  	case Opt_mountproto:
+> +		trace_nfs_mount_assign(param->key, param->string);
+>  		mountfamily =3D AF_INET;
+>  		switch (lookup_constant(nfs_xprt_protocol_tokens, param->string, -1)) =
+{
+>  		case Opt_xprt_udp6:
+> @@ -751,6 +756,7 @@ static int nfs_fs_context_parse_param(struct fs_conte=
+xt *fc,
+>  		break;
+> =20
+>  	case Opt_addr:
+> +		trace_nfs_mount_assign(param->key, param->string);
+>  		len =3D rpc_pton(fc->net_ns, param->string, param->size,
+>  			       &ctx->nfs_server.address,
+>  			       sizeof(ctx->nfs_server._address));
+> @@ -759,16 +765,19 @@ static int nfs_fs_context_parse_param(struct fs_con=
+text *fc,
+>  		ctx->nfs_server.addrlen =3D len;
+>  		break;
+>  	case Opt_clientaddr:
+> +		trace_nfs_mount_assign(param->key, param->string);
+>  		kfree(ctx->client_address);
+>  		ctx->client_address =3D param->string;
+>  		param->string =3D NULL;
+>  		break;
+>  	case Opt_mounthost:
+> +		trace_nfs_mount_assign(param->key, param->string);
+>  		kfree(ctx->mount_server.hostname);
+>  		ctx->mount_server.hostname =3D param->string;
+>  		param->string =3D NULL;
+>  		break;
+>  	case Opt_mountaddr:
+> +		trace_nfs_mount_assign(param->key, param->string);
+>  		len =3D rpc_pton(fc->net_ns, param->string, param->size,
+>  			       &ctx->mount_server.address,
+>  			       sizeof(ctx->mount_server._address));
+> @@ -846,7 +855,6 @@ static int nfs_fs_context_parse_param(struct fs_conte=
+xt *fc,
+>  		 */
+>  	case Opt_sloppy:
+>  		ctx->sloppy =3D true;
+> -		dfprintk(MOUNT, "NFS:   relaxing parsing rules\n");
+>  		break;
+>  	}
+> =20
+> @@ -879,10 +887,8 @@ static int nfs_parse_source(struct fs_context *fc,
+>  	size_t len;
+>  	const char *end;
+> =20
+> -	if (unlikely(!dev_name || !*dev_name)) {
+> -		dfprintk(MOUNT, "NFS: device name not specified\n");
+> +	if (unlikely(!dev_name || !*dev_name))
+>  		return -EINVAL;
+> -	}
+> =20
+>  	/* Is the host name protected with square brakcets? */
+>  	if (*dev_name =3D=3D '[') {
+> @@ -922,7 +928,7 @@ static int nfs_parse_source(struct fs_context *fc,
+>  	if (!ctx->nfs_server.export_path)
+>  		goto out_nomem;
+> =20
+> -	dfprintk(MOUNT, "NFS: MNTPATH: '%s'\n", ctx->nfs_server.export_path);
+> +	trace_nfs_mount_path(ctx->nfs_server.export_path);
+>  	return 0;
+> =20
+>  out_bad_devname:
+> @@ -1116,7 +1122,6 @@ static int nfs23_parse_monolithic(struct fs_context=
+ *fc,
+>  	return nfs_invalf(fc, "NFS: nfs_mount_data version supports only AUTH_S=
+YS");
+> =20
+>  out_nomem:
+> -	dfprintk(MOUNT, "NFS: not enough memory to handle mount options");
+>  	return -ENOMEM;
+> =20
+>  out_no_address:
+> @@ -1248,7 +1253,7 @@ static int nfs4_parse_monolithic(struct fs_context =
+*fc,
+>  	if (IS_ERR(c))
+>  		return PTR_ERR(c);
+>  	ctx->nfs_server.export_path =3D c;
+> -	dfprintk(MOUNT, "NFS: MNTPATH: '%s'\n", c);
+> +	trace_nfs_mount_path(c);
+> =20
+>  	c =3D strndup_user(data->client_addr.data, 16);
+>  	if (IS_ERR(c))
+> diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+> index 012bd7339862..ccaeae42ee77 100644
+> --- a/fs/nfs/nfstrace.h
+> +++ b/fs/nfs/nfstrace.h
+> @@ -1609,6 +1609,83 @@ TRACE_EVENT(nfs_fh_to_dentry,
+>  		)
+>  );
+> =20
+> +TRACE_EVENT(nfs_mount_addr_err,
+> +	TP_PROTO(
+> +		const struct sockaddr *sap
+> +	),
+> +
+> +	TP_ARGS(sap),
+> +
+> +	TP_STRUCT__entry(
+> +		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
+> +	),
+> +
+> +	TP_fast_assign(
+> +		memcpy(__entry->addr, sap, sizeof(__entry->addr));
+> +	),
+> +
+> +	TP_printk("addr=3D%pISpc", __entry->addr)
+> +);
+> +
+> +TRACE_EVENT(nfs_mount_assign,
+> +	TP_PROTO(
+> +		const char *option,
+> +		const char *value
+> +	),
+> +
+> +	TP_ARGS(option, value),
+> +
+> +	TP_STRUCT__entry(
+> +		__string(option, option)
+> +		__string(value, value)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__assign_str(option, option);
+> +		__assign_str(value, value);
+> +	),
+> +
+> +	TP_printk("option %s=3D%s",
+> +		__get_str(option), __get_str(value)
+> +	)
+> +);
+> +
+> +TRACE_EVENT(nfs_mount_option,
+> +	TP_PROTO(
+> +		const struct fs_parameter *param
+> +	),
+> +
+> +	TP_ARGS(param),
+> +
+> +	TP_STRUCT__entry(
+> +		__string(option, param->key)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__assign_str(option, param->key);
+> +	),
+> +
+> +	TP_printk("option %s", __get_str(option))
+> +);
+> +
+> +TRACE_EVENT(nfs_mount_path,
+> +	TP_PROTO(
+> +		const char *path
+> +	),
+> +
+> +	TP_ARGS(path),
+> +
+> +	TP_STRUCT__entry(
+> +		__string(path, path)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__assign_str(path, path);
+> +	),
+> +
+> +	TP_printk("path=3D'%s'", __get_str(path))
+> +);
+> +
+>  DECLARE_EVENT_CLASS(nfs_xdr_event,
+>  		TP_PROTO(
+>  			const struct xdr_stream *xdr,
 >=20
-> That dprintk was pretty worthless anyway. So the change seems fine to
-> me.
 >=20
->=20
-> --=20
-> Jeff Layton <jlayton@kernel.org>
 
---
-Chuck Lever
+Seems like an improvement overall.=20
 
-
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
