@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 30EA2C43334
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Jul 2022 18:27:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BB1AEC43334
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Jul 2022 18:27:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239630AbiGHS07 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Jul 2022 14:26:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47134 "EHLO
+        id S239607AbiGHS1F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Jul 2022 14:27:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47324 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239602AbiGHS0h (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2022 14:26:37 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0C9FB9CE19;
-        Fri,  8 Jul 2022 11:26:21 -0700 (PDT)
+        with ESMTP id S239609AbiGHS0k (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2022 14:26:40 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B4D888F35;
+        Fri,  8 Jul 2022 11:26:25 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id A196FB82929;
-        Fri,  8 Jul 2022 18:26:19 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EF58FC341C6;
-        Fri,  8 Jul 2022 18:26:17 +0000 (UTC)
-Subject: [PATCH v3 24/32] NFSD: Replace the "init once" mechanism
+        by ams.source.kernel.org (Postfix) with ESMTPS id 83807B82928;
+        Fri,  8 Jul 2022 18:26:06 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C86E1C341C6;
+        Fri,  8 Jul 2022 18:26:04 +0000 (UTC)
+Subject: [PATCH v3 22/32] NFSD: nfsd_file_hash_remove can compute hashval
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
 Cc:     david@fromorbit.com, jlayton@redhat.com, tgraf@suug.ch
-Date:   Fri, 08 Jul 2022 14:26:16 -0400
-Message-ID: <165730477689.28142.2413809301889936542.stgit@klimt.1015granger.net>
+Date:   Fri, 08 Jul 2022 14:26:03 -0400
+Message-ID: <165730476376.28142.6727024491872832707.stgit@klimt.1015granger.net>
 In-Reply-To: <165730437087.28142.6731645688073512500.stgit@klimt.1015granger.net>
 References: <165730437087.28142.6731645688073512500.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.5.dev3+g9561319
@@ -37,135 +37,49 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In a moment, the nfsd_file_hashtbl global will be replaced with an
-rhashtable. Replace the one or two spots that need to check if the
-hash table is available. We can easily reuse the SHUTDOWN flag for
-this purpose.
-
-Document that this mechanism relies on callers to hold the
-nfsd_mutex to prevent init, shutdown, and purging to run
-concurrently.
+Remove an unnecessary use of nf_hashval.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/filecache.c |   42 ++++++++++++++++++++++++++----------------
- 1 file changed, 26 insertions(+), 16 deletions(-)
+ fs/nfsd/filecache.c |   19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 7e857f291d4a..b075c9223377 100644
+index 26d10e3c4e70..490e7d7da7d2 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -28,7 +28,7 @@
- #define NFSD_FILE_HASH_SIZE                  (1 << NFSD_FILE_HASH_BITS)
- #define NFSD_LAUNDRETTE_DELAY		     (2 * HZ)
- 
--#define NFSD_FILE_SHUTDOWN		     (1)
-+#define NFSD_FILE_CACHE_UP		     (0)
- 
- /* We only care about NFSD_MAY_READ/WRITE for this cache */
- #define NFSD_FILE_MAY_MASK	(NFSD_MAY_READ|NFSD_MAY_WRITE)
-@@ -59,7 +59,7 @@ static struct kmem_cache		*nfsd_file_slab;
- static struct kmem_cache		*nfsd_file_mark_slab;
- static struct nfsd_fcache_bucket	*nfsd_file_hashtbl;
- static struct list_lru			nfsd_file_lru;
--static long				nfsd_file_lru_flags;
-+static unsigned long			nfsd_file_flags;
- static struct fsnotify_group		*nfsd_file_fsnotify_group;
- static atomic_long_t			nfsd_filecache_count;
- static struct delayed_work		nfsd_filecache_laundrette;
-@@ -67,9 +67,8 @@ static struct delayed_work		nfsd_filecache_laundrette;
- static void
- nfsd_file_schedule_laundrette(void)
- {
--	long count = atomic_long_read(&nfsd_filecache_count);
--
--	if (count == 0 || test_bit(NFSD_FILE_SHUTDOWN, &nfsd_file_lru_flags))
-+	if ((atomic_long_read(&nfsd_filecache_count) == 0) ||
-+	    test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 0)
- 		return;
- 
- 	queue_delayed_work(system_wq, &nfsd_filecache_laundrette,
-@@ -704,9 +703,8 @@ nfsd_file_cache_init(void)
- 	int		ret = -ENOMEM;
- 	unsigned int	i;
- 
--	clear_bit(NFSD_FILE_SHUTDOWN, &nfsd_file_lru_flags);
--
--	if (nfsd_file_hashtbl)
-+	lockdep_assert_held(&nfsd_mutex);
-+	if (test_and_set_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 1)
- 		return 0;
- 
- 	nfsd_filecache_wq = alloc_workqueue("nfsd_filecache", 0, 0);
-@@ -792,8 +790,8 @@ nfsd_file_cache_init(void)
- /*
-  * Note this can deadlock with nfsd_file_lru_cb.
-  */
--void
--nfsd_file_cache_purge(struct net *net)
-+static void
-+__nfsd_file_cache_purge(struct net *net)
- {
- 	unsigned int		i;
- 	struct nfsd_file	*nf;
-@@ -801,9 +799,6 @@ nfsd_file_cache_purge(struct net *net)
- 	LIST_HEAD(dispose);
- 	bool del;
- 
--	if (!nfsd_file_hashtbl)
--		return;
--
- 	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
- 		struct nfsd_fcache_bucket *nfb = &nfsd_file_hashtbl[i];
- 
-@@ -864,6 +859,19 @@ nfsd_file_cache_start_net(struct net *net)
- 	return nn->fcache_disposal ? 0 : -ENOMEM;
+@@ -294,6 +294,18 @@ nfsd_file_do_unhash(struct nfsd_file *nf)
+ 	atomic_long_dec(&nfsd_filecache_count);
  }
  
-+/**
-+ * nfsd_file_cache_purge - Remove all cache items associated with @net
-+ * @net: target net namespace
-+ *
-+ */
-+void
-+nfsd_file_cache_purge(struct net *net)
++static void
++nfsd_file_hash_remove(struct nfsd_file *nf)
 +{
-+	lockdep_assert_held(&nfsd_mutex);
-+	if (test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 1)
-+		__nfsd_file_cache_purge(net);
++	struct inode *inode = nf->nf_inode;
++	unsigned int hashval = (unsigned int)hash_long(inode->i_ino,
++				NFSD_FILE_HASH_BITS);
++
++	spin_lock(&nfsd_file_hashtbl[hashval].nfb_lock);
++	nfsd_file_do_unhash(nf);
++	spin_unlock(&nfsd_file_hashtbl[hashval].nfb_lock);
 +}
 +
- void
- nfsd_file_cache_shutdown_net(struct net *net)
+ static bool
+ nfsd_file_unhash(struct nfsd_file *nf)
  {
-@@ -876,7 +884,9 @@ nfsd_file_cache_shutdown(void)
+@@ -513,11 +525,8 @@ static void nfsd_file_gc_dispose_list(struct list_head *dispose)
  {
- 	int i;
+ 	struct nfsd_file *nf;
  
--	set_bit(NFSD_FILE_SHUTDOWN, &nfsd_file_lru_flags);
-+	lockdep_assert_held(&nfsd_mutex);
-+	if (test_and_clear_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 0)
-+		return;
+-	list_for_each_entry(nf, dispose, nf_lru) {
+-		spin_lock(&nfsd_file_hashtbl[nf->nf_hashval].nfb_lock);
+-		nfsd_file_do_unhash(nf);
+-		spin_unlock(&nfsd_file_hashtbl[nf->nf_hashval].nfb_lock);
+-	}
++	list_for_each_entry(nf, dispose, nf_lru)
++		nfsd_file_hash_remove(nf);
+ 	nfsd_file_dispose_list_delayed(dispose);
+ }
  
- 	lease_unregister_notifier(&nfsd_file_lease_notifier);
- 	unregister_shrinker(&nfsd_file_shrinker);
-@@ -885,7 +895,7 @@ nfsd_file_cache_shutdown(void)
- 	 * calling nfsd_file_cache_purge
- 	 */
- 	cancel_delayed_work_sync(&nfsd_filecache_laundrette);
--	nfsd_file_cache_purge(NULL);
-+	__nfsd_file_cache_purge(NULL);
- 	list_lru_destroy(&nfsd_file_lru);
- 	rcu_barrier();
- 	fsnotify_put_group(nfsd_file_fsnotify_group);
-@@ -1163,7 +1173,7 @@ static int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
- 	 * don't end up racing with server shutdown
- 	 */
- 	mutex_lock(&nfsd_mutex);
--	if (nfsd_file_hashtbl) {
-+	if (test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 1) {
- 		for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
- 			count += nfsd_file_hashtbl[i].nfb_count;
- 			longest = max(longest, nfsd_file_hashtbl[i].nfb_count);
 
 
