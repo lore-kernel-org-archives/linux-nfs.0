@@ -2,143 +2,141 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A81F9CCA47F
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Jul 2022 18:28:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39ACDC433EF
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Jul 2022 19:16:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239516AbiGHS2X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Jul 2022 14:28:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48394 "EHLO
+        id S239188AbiGHTQx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Jul 2022 15:16:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58750 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239618AbiGHS11 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2022 14:27:27 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2EABC88F1A;
-        Fri,  8 Jul 2022 11:27:00 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id D4B27B82928;
-        Fri,  8 Jul 2022 18:26:58 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 40C72C341C0;
-        Fri,  8 Jul 2022 18:26:57 +0000 (UTC)
-Subject: [PATCH v3 30/32] NFSD: Update the nfsd_file_fsnotify_handle_event()
- tracepoint
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Cc:     david@fromorbit.com, jlayton@redhat.com, tgraf@suug.ch
-Date:   Fri, 08 Jul 2022 14:26:56 -0400
-Message-ID: <165730481643.28142.10460346630935183143.stgit@klimt.1015granger.net>
-In-Reply-To: <165730437087.28142.6731645688073512500.stgit@klimt.1015granger.net>
+        with ESMTP id S238184AbiGHTQw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2022 15:16:52 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id C2ED645042
+        for <linux-nfs@vger.kernel.org>; Fri,  8 Jul 2022 12:16:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1657307810;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=q+E5Uxc1L6lY8x0Xu20nKw3rP9x1iQMo5WfF11E2oEw=;
+        b=asVp6543y2DeotKkJtVE9ugvnf8GkNsTXY7lxehgEWNL/INtsUgC15pjAeUa+trVUQl6bg
+        UAKXZXGOSJ1VRIuK7hPsfVp61lEh3OEzzytf97cnqYl2AG52WB170EscZLfxhP6j0wVArW
+        dROcTMYhlK4/9Iy/IzrhR3BMvUX+pM0=
+Received: from mail-qk1-f199.google.com (mail-qk1-f199.google.com
+ [209.85.222.199]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-64-TZgZoY-KM3mL-GiPZeEMRg-1; Fri, 08 Jul 2022 15:16:49 -0400
+X-MC-Unique: TZgZoY-KM3mL-GiPZeEMRg-1
+Received: by mail-qk1-f199.google.com with SMTP id f10-20020a05620a408a00b006b267fdf71fso19714902qko.6
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Jul 2022 12:16:49 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
+         :references:content-transfer-encoding:user-agent:mime-version;
+        bh=q+E5Uxc1L6lY8x0Xu20nKw3rP9x1iQMo5WfF11E2oEw=;
+        b=FT/8sNXp8cTHEqOlvCkVt4K5Uc+GWMz4dSlcFQsUchkLs0OOsEeYZEaRezrvZQpkzN
+         e5hkHQ5Ru586wL1boWyivhoUEJ/TXJCftSF42dj7i2y/1VHGZD6r6OAIE0SfpQZprMHY
+         DRqMD8b+3Z3p8AnUzl9GkdxnE8jHCme4k5IX75wCyBkDdwu8OtzmsN3NjFhzO8tqTmJ9
+         Wjd1tyhr42g0M5o+3GHnx1D+OFSJMYpwB0wSg9oEyRz6vpXArnWHHzzbgFXspzXqsAsP
+         xzfD4uOQsqRkdT8WlnudBw9N22DQ3i9LIV/Zp3ZzajeiLhBGL/k79xQ3TI7HvqwycAHp
+         CF3w==
+X-Gm-Message-State: AJIora/f07X9vzzDEFD9bKJ6YeKSnXXDAl30z3rrvSmQClTIRspqKPBS
+        lrKnOCoSpQQvOwheEDjxGgNQOdVIKhCWbmqckBZMcABU/d/Y4VyGKVNiiwqEsMoYcNdLn2YNN4T
+        Y9xWlrDbenM9ZX9wUGP9R
+X-Received: by 2002:a05:620a:d54:b0:6b2:5a9b:ef2e with SMTP id o20-20020a05620a0d5400b006b25a9bef2emr3503359qkl.715.1657307809129;
+        Fri, 08 Jul 2022 12:16:49 -0700 (PDT)
+X-Google-Smtp-Source: AGRyM1vlPO7bIup7NI64TA0vi+uk6M4ZJZb5w0BEQ0gp7V0aT/fIJeYl2XMp80DsYKvhK90F7DLtHg==
+X-Received: by 2002:a05:620a:d54:b0:6b2:5a9b:ef2e with SMTP id o20-20020a05620a0d5400b006b25a9bef2emr3503336qkl.715.1657307808806;
+        Fri, 08 Jul 2022 12:16:48 -0700 (PDT)
+Received: from [192.168.1.3] (68-20-15-154.lightspeed.rlghnc.sbcglobal.net. [68.20.15.154])
+        by smtp.gmail.com with ESMTPSA id u19-20020a37ab13000000b006b56a4400f6sm1101878qke.16.2022.07.08.12.16.48
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 08 Jul 2022 12:16:48 -0700 (PDT)
+Message-ID: <60ee503b9cd5c0d2963070184eb246df22aa716b.camel@redhat.com>
+Subject: Re: [PATCH v3 12/32] NFSD: Hook up the filecache stat file
+From:   Jeff Layton <jlayton@redhat.com>
+To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Cc:     david@fromorbit.com, tgraf@suug.ch
+Date:   Fri, 08 Jul 2022 15:16:47 -0400
+In-Reply-To: <165730469820.28142.10369457240055089259.stgit@klimt.1015granger.net>
 References: <165730437087.28142.6731645688073512500.stgit@klimt.1015granger.net>
-User-Agent: StGit/1.5.dev3+g9561319
+         <165730469820.28142.10369457240055089259.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.3 (3.44.3-1.fc36) 
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-As a convenience, display the mode and event mask symbolically
-rather than numerically.
+On Fri, 2022-07-08 at 14:24 -0400, Chuck Lever wrote:
+> There has always been the capability of exporting filecache metrics
+> via /proc, but it was never hooked up. Let's surface these metrics
+> to enable better observability of the filecache.
+>=20
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/nfsctl.c |   10 ++++++++++
+>  1 file changed, 10 insertions(+)
+>=20
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 66c352bf61b1..ecc08cf97a86 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -25,6 +25,7 @@
+>  #include "state.h"
+>  #include "netns.h"
+>  #include "pnfs.h"
+> +#include "filecache.h"
+> =20
+>  /*
+>   *	We have a single directory with several nodes in it.
+> @@ -46,6 +47,7 @@ enum {
+>  	NFSD_MaxBlkSize,
+>  	NFSD_MaxConnections,
+>  	NFSD_SupportedEnctypes,
+> +	NFSD_Filecache,
+>  	/*
+>  	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
+>  	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
+> @@ -229,6 +231,13 @@ static const struct file_operations reply_cache_stat=
+s_operations =3D {
+>  	.release	=3D single_release,
+>  };
+> =20
+> +static const struct file_operations filecache_ops =3D {
+> +	.open		=3D nfsd_file_cache_stats_open,
+> +	.read		=3D seq_read,
+> +	.llseek		=3D seq_lseek,
+> +	.release	=3D single_release,
+> +};
+> +
+>  /*----------------------------------------------------------------------=
+------*/
+>  /*
+>   * payload - write methods
+> @@ -1370,6 +1379,7 @@ static int nfsd_fill_super(struct super_block *sb, =
+struct fs_context *fc)
+>  		[NFSD_Ports] =3D {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+>  		[NFSD_MaxBlkSize] =3D {"max_block_size", &transaction_ops, S_IWUSR|S_I=
+RUGO},
+>  		[NFSD_MaxConnections] =3D {"max_connections", &transaction_ops, S_IWUS=
+R|S_IRUGO},
+> +		[NFSD_Filecache] =3D {"filecache", &filecache_ops, S_IRUGO},
+>  #if defined(CONFIG_SUNRPC_GSS) || defined(CONFIG_SUNRPC_GSS_MODULE)
+>  		[NFSD_SupportedEnctypes] =3D {"supported_krb5_enctypes", &supported_en=
+ctypes_ops, S_IRUGO},
+>  #endif /* CONFIG_SUNRPC_GSS or CONFIG_SUNRPC_GSS_MODULE */
+>=20
+>=20
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/trace.h           |   21 ++++++++++++++-------
- include/trace/events/fs.h |   37 +++++++++++++++++++++++++++++++++++++
- 2 files changed, 51 insertions(+), 7 deletions(-)
+<facepalm>
+Ouch, that's quite an oversight.
+</facepalm>
 
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 96bb6629541e..f68bcf13be8e 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -9,6 +9,7 @@
- #define _NFSD_TRACE_H
- 
- #include <linux/tracepoint.h>
-+#include <trace/events/fs.h>
- 
- #include "export.h"
- #include "nfsfh.h"
-@@ -1020,22 +1021,28 @@ TRACE_EVENT(nfsd_file_is_cached,
- );
- 
- TRACE_EVENT(nfsd_file_fsnotify_handle_event,
--	TP_PROTO(struct inode *inode, u32 mask),
-+	TP_PROTO(
-+		const struct inode *inode,
-+		u32 mask
-+	),
- 	TP_ARGS(inode, mask),
- 	TP_STRUCT__entry(
--		__field(struct inode *, inode)
-+		__field(const struct inode *, inode)
- 		__field(unsigned int, nlink)
--		__field(umode_t, mode)
--		__field(u32, mask)
-+		__field(unsigned long, mode)
-+		__field(unsigned long, mask)
- 	),
- 	TP_fast_assign(
- 		__entry->inode = inode;
- 		__entry->nlink = inode->i_nlink;
--		__entry->mode = inode->i_mode;
-+		__entry->mode = inode->i_mode & S_IFMT;
- 		__entry->mask = mask;
- 	),
--	TP_printk("inode=%p nlink=%u mode=0%ho mask=0x%x", __entry->inode,
--			__entry->nlink, __entry->mode, __entry->mask)
-+	TP_printk("inode=%p nlink=%u mode=%s mask=%s",
-+		__entry->inode, __entry->nlink,
-+		show_fs_file_type(__entry->mode),
-+		show_fs_notify_flags(__entry->mask)
-+	)
- );
- 
- DECLARE_EVENT_CLASS(nfsd_file_gc_class,
-diff --git a/include/trace/events/fs.h b/include/trace/events/fs.h
-index 738b97f22f36..3c75f85086a2 100644
---- a/include/trace/events/fs.h
-+++ b/include/trace/events/fs.h
-@@ -120,3 +120,40 @@
- 		{ LOOKUP_BENEATH,	"BENEATH" }, \
- 		{ LOOKUP_IN_ROOT,	"IN_ROOT" }, \
- 		{ LOOKUP_CACHED,	"CACHED" })
-+
-+#define show_fs_file_type(x) \
-+	__print_symbolic(x, \
-+		{ S_IFLNK,		"LNK" }, \
-+		{ S_IFREG,		"REG" }, \
-+		{ S_IFDIR,		"DIR" }, \
-+		{ S_IFCHR,		"CHR" }, \
-+		{ S_IFBLK,		"BLK" }, \
-+		{ S_IFIFO,		"FIFO" }, \
-+		{ S_IFSOCK,		"SOCK" })
-+
-+#define show_fs_notify_flags(x) \
-+	__print_flags(x, "|", \
-+		{ FS_ACCESS,		"ACCESS" }, \
-+		{ FS_MODIFY,		"MODIFY" }, \
-+		{ FS_ATTRIB,		"ATTRIB" }, \
-+		{ FS_CLOSE_WRITE,	"CLOSE_WRITE" }, \
-+		{ FS_CLOSE_NOWRITE,	"CLOSE_NOWRITE" }, \
-+		{ FS_OPEN,		"OPEN" }, \
-+		{ FS_MOVED_FROM,	"MOVED_FROM" }, \
-+		{ FS_MOVED_TO,		"MOVED_TO" }, \
-+		{ FS_CREATE,		"CREATE" }, \
-+		{ FS_DELETE,		"DELETE" }, \
-+		{ FS_DELETE_SELF,	"DELETE_SELF" }, \
-+		{ FS_MOVE_SELF,		"MOVE_SELF" }, \
-+		{ FS_OPEN_EXEC,		"OPEN_EXEC" }, \
-+		{ FS_UNMOUNT,		"UNMOUNT" }, \
-+		{ FS_Q_OVERFLOW,	"Q_OVERFLOW" }, \
-+		{ FS_ERROR,		"ERROR" }, \
-+		{ FS_IN_IGNORED,	"IN_IGNORED" }, \
-+		{ FS_OPEN_PERM,		"OPEN_PERM" }, \
-+		{ FS_ACCESS_PERM,	"ACCESS_PERM" }, \
-+		{ FS_OPEN_EXEC_PERM,	"OPEN_EXEC_PERM" }, \
-+		{ FS_EVENT_ON_CHILD,	"EVENT_ON_CHILD" }, \
-+		{ FS_RENAME,		"RENAME" }, \
-+		{ FS_DN_MULTISHOT,	"DN_MULTISHOT" }, \
-+		{ FS_ISDIR,		"ISDIR" })
-
+--=20
+Jeff Layton <jlayton@redhat.com>
 
