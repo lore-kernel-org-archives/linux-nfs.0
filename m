@@ -2,31 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 573C3CCA47B
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Jul 2022 18:28:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3448ECCA47F
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Jul 2022 18:28:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239458AbiGHS2O (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Jul 2022 14:28:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47186 "EHLO
+        id S238205AbiGHS2P (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Jul 2022 14:28:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47864 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238205AbiGHS1U (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2022 14:27:20 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B8A19FE24;
-        Fri,  8 Jul 2022 11:26:52 -0700 (PDT)
+        with ESMTP id S239463AbiGHS1Q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jul 2022 14:27:16 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50EC79A6B7;
+        Fri,  8 Jul 2022 11:26:47 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id C5E4A6246A;
-        Fri,  8 Jul 2022 18:26:51 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CB771C341C0;
-        Fri,  8 Jul 2022 18:26:50 +0000 (UTC)
-Subject: [PATCH v3 29/32] NFSD: Move nfsd_file_trace_alloc() tracepoint
+        by ams.source.kernel.org (Postfix) with ESMTPS id 61588B82925;
+        Fri,  8 Jul 2022 18:26:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BFDD9C341C0;
+        Fri,  8 Jul 2022 18:26:37 +0000 (UTC)
+Subject: [PATCH v3 27/32] NFSD: Clean up unused code after rhashtable
+ conversion
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
 Cc:     david@fromorbit.com, jlayton@redhat.com, tgraf@suug.ch
-Date:   Fri, 08 Jul 2022 14:26:49 -0400
-Message-ID: <165730480977.28142.6276202322556034271.stgit@klimt.1015granger.net>
+Date:   Fri, 08 Jul 2022 14:26:36 -0400
+Message-ID: <165730479681.28142.15040014367918714032.stgit@klimt.1015granger.net>
 In-Reply-To: <165730437087.28142.6731645688073512500.stgit@klimt.1015granger.net>
 References: <165730437087.28142.6731645688073512500.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.5.dev3+g9561319
@@ -37,76 +38,123 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Avoid recording the allocation of an nfsd_file item that is
-immediately released because a matching item was already
-inserted in the hash.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/filecache.c |    2 +-
- fs/nfsd/trace.h     |   25 ++++++++++++++++++++++++-
- 2 files changed, 25 insertions(+), 2 deletions(-)
+ fs/nfsd/filecache.c |   33 +--------------------------------
+ fs/nfsd/filecache.h |    1 -
+ 2 files changed, 1 insertion(+), 33 deletions(-)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 21bc7b9c25f3..a904364551e8 100644
+index 7ae243ddf631..47826fb09b67 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -309,7 +309,6 @@ nfsd_file_alloc(struct nfsd_file_lookup_key *key, unsigned int may)
- 				__set_bit(NFSD_FILE_BREAK_READ, &nf->nf_flags);
- 		}
- 		nf->nf_mark = NULL;
--		trace_nfsd_file_alloc(nf);
+@@ -22,11 +22,6 @@
+ #include "filecache.h"
+ #include "trace.h"
+ 
+-#define NFSDDBG_FACILITY	NFSDDBG_FH
+-
+-/* FIXME: dynamically size this for the machine somehow? */
+-#define NFSD_FILE_HASH_BITS                   12
+-#define NFSD_FILE_HASH_SIZE                  (1 << NFSD_FILE_HASH_BITS)
+ #define NFSD_LAUNDRETTE_DELAY		     (2 * HZ)
+ 
+ #define NFSD_FILE_CACHE_UP		     (0)
+@@ -34,13 +29,6 @@
+ /* We only care about NFSD_MAY_READ/WRITE for this cache */
+ #define NFSD_FILE_MAY_MASK	(NFSD_MAY_READ|NFSD_MAY_WRITE)
+ 
+-struct nfsd_fcache_bucket {
+-	struct hlist_head	nfb_head;
+-	spinlock_t		nfb_lock;
+-	unsigned int		nfb_count;
+-	unsigned int		nfb_maxcount;
+-};
+-
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_cache_hits);
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_acquisitions);
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_releases);
+@@ -58,7 +46,6 @@ static struct workqueue_struct *nfsd_filecache_wq __read_mostly;
+ 
+ static struct kmem_cache		*nfsd_file_slab;
+ static struct kmem_cache		*nfsd_file_mark_slab;
+-static struct nfsd_fcache_bucket	*nfsd_file_hashtbl;
+ static struct list_lru			nfsd_file_lru;
+ static unsigned long			nfsd_file_flags;
+ static struct fsnotify_group		*nfsd_file_fsnotify_group;
+@@ -303,7 +290,6 @@ nfsd_file_alloc(struct nfsd_file_lookup_key *key, unsigned int may)
+ 
+ 	nf = kmem_cache_alloc(nfsd_file_slab, GFP_KERNEL);
+ 	if (nf) {
+-		INIT_HLIST_NODE(&nf->nf_node);
+ 		INIT_LIST_HEAD(&nf->nf_lru);
+ 		nf->nf_birthtime = ktime_get();
+ 		nf->nf_file = NULL;
+@@ -817,8 +803,7 @@ static const struct fsnotify_ops nfsd_file_fsnotify_ops = {
+ int
+ nfsd_file_cache_init(void)
+ {
+-	int		ret;
+-	unsigned int	i;
++	int ret;
+ 
+ 	lockdep_assert_held(&nfsd_mutex);
+ 	if (test_and_set_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 1)
+@@ -833,13 +818,6 @@ nfsd_file_cache_init(void)
+ 	if (!nfsd_filecache_wq)
+ 		goto out;
+ 
+-	nfsd_file_hashtbl = kvcalloc(NFSD_FILE_HASH_SIZE,
+-				sizeof(*nfsd_file_hashtbl), GFP_KERNEL);
+-	if (!nfsd_file_hashtbl) {
+-		pr_err("nfsd: unable to allocate nfsd_file_hashtbl\n");
+-		goto out_err;
+-	}
+-
+ 	nfsd_file_slab = kmem_cache_create("nfsd_file",
+ 				sizeof(struct nfsd_file), 0, 0, NULL);
+ 	if (!nfsd_file_slab) {
+@@ -883,11 +861,6 @@ nfsd_file_cache_init(void)
+ 		goto out_notifier;
  	}
- 	return nf;
- }
-@@ -1146,6 +1145,7 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	return status;
  
- open_file:
-+	trace_nfsd_file_alloc(nf);
- 	nf->nf_mark = nfsd_file_mark_find_or_create(nf);
- 	if (nf->nf_mark) {
- 		if (open) {
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 1c4cf9d2dd8e..96bb6629541e 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -776,12 +776,35 @@ DEFINE_EVENT(nfsd_file_class, name, \
- 	TP_PROTO(struct nfsd_file *nf), \
- 	TP_ARGS(nf))
- 
--DEFINE_NFSD_FILE_EVENT(nfsd_file_alloc);
- DEFINE_NFSD_FILE_EVENT(nfsd_file_put_final);
- DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash);
- DEFINE_NFSD_FILE_EVENT(nfsd_file_put);
- DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash_and_dispose);
- 
-+TRACE_EVENT(nfsd_file_alloc,
-+	TP_PROTO(
-+		const struct nfsd_file *nf
-+	),
-+	TP_ARGS(nf),
-+	TP_STRUCT__entry(
-+		__field(const void *, nf_inode)
-+		__field(unsigned long, nf_flags)
-+		__field(unsigned long, nf_may)
-+		__field(unsigned int, nf_ref)
-+	),
-+	TP_fast_assign(
-+		__entry->nf_inode = nf->nf_inode;
-+		__entry->nf_flags = nf->nf_flags;
-+		__entry->nf_ref = refcount_read(&nf->nf_ref);
-+		__entry->nf_may = nf->nf_may;
-+	),
-+	TP_printk("inode=%p ref=%u flags=%s may=%s",
-+		__entry->nf_inode, __entry->nf_ref,
-+		show_nf_flags(__entry->nf_flags),
-+		show_nfsd_may_flags(__entry->nf_may)
-+	)
-+);
-+
- TRACE_EVENT(nfsd_file_acquire,
- 	TP_PROTO(
- 		const struct svc_rqst *rqstp,
+-	for (i = 0; i < NFSD_FILE_HASH_SIZE; i++) {
+-		INIT_HLIST_HEAD(&nfsd_file_hashtbl[i].nfb_head);
+-		spin_lock_init(&nfsd_file_hashtbl[i].nfb_lock);
+-	}
+-
+ 	INIT_DELAYED_WORK(&nfsd_filecache_laundrette, nfsd_file_gc_worker);
+ out:
+ 	return ret;
+@@ -902,8 +875,6 @@ nfsd_file_cache_init(void)
+ 	nfsd_file_slab = NULL;
+ 	kmem_cache_destroy(nfsd_file_mark_slab);
+ 	nfsd_file_mark_slab = NULL;
+-	kvfree(nfsd_file_hashtbl);
+-	nfsd_file_hashtbl = NULL;
+ 	destroy_workqueue(nfsd_filecache_wq);
+ 	nfsd_filecache_wq = NULL;
+ 	rhashtable_destroy(&nfsd_file_rhash_tbl);
+@@ -1033,8 +1004,6 @@ nfsd_file_cache_shutdown(void)
+ 	fsnotify_wait_marks_destroyed();
+ 	kmem_cache_destroy(nfsd_file_mark_slab);
+ 	nfsd_file_mark_slab = NULL;
+-	kvfree(nfsd_file_hashtbl);
+-	nfsd_file_hashtbl = NULL;
+ 	destroy_workqueue(nfsd_filecache_wq);
+ 	nfsd_filecache_wq = NULL;
+ 	rhashtable_destroy(&nfsd_file_rhash_tbl);
+diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
+index 7fc017e7b09e..7b40d5b446e1 100644
+--- a/fs/nfsd/filecache.h
++++ b/fs/nfsd/filecache.h
+@@ -30,7 +30,6 @@ struct nfsd_file_mark {
+  */
+ struct nfsd_file {
+ 	struct rhash_head	nf_rhash;
+-	struct hlist_node	nf_node;
+ 	struct list_head	nf_lru;
+ 	struct rcu_head		nf_rcu;
+ 	struct file		*nf_file;
 
 
