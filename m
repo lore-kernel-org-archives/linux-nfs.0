@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 064A5C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20486C43334
 	for <linux-nfs@archiver.kernel.org>; Wed, 13 Jul 2022 19:09:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236850AbiGMTJA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Jul 2022 15:09:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34924 "EHLO
+        id S236885AbiGMTJB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Jul 2022 15:09:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34960 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236885AbiGMTIz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2022 15:08:55 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 736091EC5F
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 12:08:54 -0700 (PDT)
+        with ESMTP id S236886AbiGMTI4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2022 15:08:56 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E5C61EEEA
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 12:08:55 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 2F7D5B82130
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 19:08:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8CD55C341C0;
-        Wed, 13 Jul 2022 19:08:51 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0335661DC3
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 19:08:55 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 08C22C341C8;
+        Wed, 13 Jul 2022 19:08:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1657739331;
-        bh=MoEnAgAkrZFeK8lW3w10TAccR4+ENUqcgZQSw8DGZIc=;
+        s=k20201202; t=1657739334;
+        bh=rxJymRpSJyjY69EEzUSxiQJHV9orLh80D7Kr0qkSBIQ=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=p1Lj2KxcAt9gn4C3dOx9zs7UF5n6mhZGJ80iA85/zacewAp65T5lkSnnTaqpnBeK9
-         6pK6B0GmQy4TpZ6z9HfGOcFx+wW4R7LAzcVU8hwE6ldOb6YxT89pcwO7xje+8FLQtD
-         ed9N/98YrwjeSwFQLXyWFC2ilJYw/aSslmDB596ZqRxe6709TFpwr+aNYlk07nnlYn
-         e72iZmNLinJHHMtvE8eG3Tm2MjYX1lwqJQfqcwbJ3wEu5WZgj/POaXMNZXfHZD2dqd
-         wERqgsEfpE+QNzes9juqC0At9DA1FXAZKZ0A59Xs+R0+cum8TsnS3PbJcRwBtlbX4o
-         i/HH3QsPcqttg==
+        b=OFIMJC5T/8PEizxCEXvq0m/SxFSnclKFlTdSnLxMk1nMkMoqE7Qx7/SkkqRUeW1Ch
+         VSX/Sq73ZkWkSRcstZbkKg2Ax2wR3UuwP6U4Kq4LI5QjL0hLitkpct+7lMud3cv+jK
+         io7hpRou+sr08XIkK0/mF8bI31dNKLo5su9oY84v83vHAYJKGMDeve13XrdVWQH0rf
+         7n1BdB1G8eDy1mmPobSlcfs4D02Jihvn3CYzh/tv8sj1wW+8b4ZeO1G8p4dkfDlTDq
+         ojYYHvtHJQ7biziatE21paPFMzLOhKryLqrKEgq813XcWy9zjUCPdXZezEkOpX+eYm
+         34p98+5/5c/Cw==
 From:   Anna Schumaker <anna@kernel.org>
 To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
 Cc:     anna@kernel.org
-Subject: [PATCH v2 1/5] SUNRPC: Add a function for directly setting the xdr page len
-Date:   Wed, 13 Jul 2022 15:08:45 -0400
-Message-Id: <20220713190849.615778-2-anna@kernel.org>
+Subject: [PATCH v2 5/5] NFS: Remove the CONFIG_NFS_V4_2_READ_PLUS Kconfig option
+Date:   Wed, 13 Jul 2022 15:08:49 -0400
+Message-Id: <20220713190849.615778-6-anna@kernel.org>
 X-Mailer: git-send-email 2.37.0
 In-Reply-To: <20220713190849.615778-1-anna@kernel.org>
 References: <20220713190849.615778-1-anna@kernel.org>
@@ -48,67 +48,41 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-We need to do this step during READ_PLUS decoding so that we know pages
-are the right length and any extra data has been preserved in the tail.
-
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- include/linux/sunrpc/xdr.h |  1 +
- net/sunrpc/xdr.c           | 30 ++++++++++++++++++++++++++++++
- 2 files changed, 31 insertions(+)
+ fs/nfs/Kconfig    | 9 ---------
+ fs/nfs/nfs4proc.c | 2 +-
+ 2 files changed, 1 insertion(+), 10 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 79824fea4529..b8f3011e109b 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -262,6 +262,7 @@ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
- extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(const struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
-+extern void xdr_set_pagelen(struct xdr_stream *, unsigned int len);
- extern unsigned int xdr_align_data(struct xdr_stream *, unsigned int offset, unsigned int length);
- extern unsigned int xdr_expand_hole(struct xdr_stream *, unsigned int offset, unsigned int length);
- extern bool xdr_stream_subsegment(struct xdr_stream *xdr, struct xdr_buf *subbuf,
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index ea734b14af0f..9d7c93645f01 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1518,6 +1518,36 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 14a72224b657..5dcd84ce1c0c 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -205,12 +205,3 @@ config NFS_DISABLE_UDP_SUPPORT
+ 	 Choose Y here to disable the use of NFS over UDP. NFS over UDP
+ 	 on modern networks (1Gb+) can lead to data corruption caused by
+ 	 fragmentation during high loads.
+-
+-config NFS_V4_2_READ_PLUS
+-	bool "NFS: Enable support for the NFSv4.2 READ_PLUS operation"
+-	depends on NFS_V4_2
+-	default n
+-	help
+-	 This is intended for developers only. The READ_PLUS operation has
+-	 been shown to have issues under specific conditions and should not
+-	 be used in production.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index bb0e84a46d61..fdd6e22a06ed 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5446,7 +5446,7 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
+ 				    nfs4_read_done_cb(task, hdr);
  }
- EXPORT_SYMBOL_GPL(xdr_read_pages);
  
-+/**
-+ * xdr_set_pagelen - Sets the length of the XDR pages
-+ * @xdr: pointer to xdr_stream struct
-+ * @len: new length of the XDR page data
-+ *
-+ * Either grows or shrinks the length of the xdr pages by setting pagelen to
-+ * @len bytes. When shrinking, any extra data is moved into buf->tail, whereas
-+ * when growing any data beyond the current pointer is moved into the tail.
-+ *
-+ * Returns True if the operation was successful, and False otherwise.
-+ */
-+void xdr_set_pagelen(struct xdr_stream *xdr, unsigned int len)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+	size_t remaining = xdr_stream_remaining(xdr);
-+	size_t base = 0;
-+
-+	if (len < buf->page_len) {
-+		base = buf->page_len - len;
-+		xdr_shrink_pagelen(buf, len);
-+	} else {
-+		xdr_buf_head_shift_right(buf, xdr_stream_pos(xdr),
-+					 buf->page_len, remaining);
-+		if (len > buf->page_len)
-+			xdr_buf_try_expand(buf, len - buf->page_len);
-+	}
-+	xdr_set_tail_base(xdr, base, remaining);
-+}
-+EXPORT_SYMBOL_GPL(xdr_set_pagelen);
-+
- unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
- 			    unsigned int length)
+-#if defined CONFIG_NFS_V4_2 && defined CONFIG_NFS_V4_2_READ_PLUS
++#if defined CONFIG_NFS_V4_2
+ static void nfs42_read_plus_support(struct nfs_pgio_header *hdr,
+ 				    struct rpc_message *msg)
  {
 -- 
 2.37.0
