@@ -2,151 +2,318 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20626C43334
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Jul 2022 19:09:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 09203C43334
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Jul 2022 19:13:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236886AbiGMTJL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Jul 2022 15:09:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34994 "EHLO
+        id S236487AbiGMTNT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Jul 2022 15:13:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37742 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236898AbiGMTI6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2022 15:08:58 -0400
+        with ESMTP id S231910AbiGMTNT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2022 15:13:19 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CD25F20F54
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 12:08:56 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BECE227FCA
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 12:13:17 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 26AB6B8212F
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 19:08:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 665B6C341C0;
-        Wed, 13 Jul 2022 19:08:53 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 58899B82127
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 19:13:16 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B26DDC34114;
+        Wed, 13 Jul 2022 19:13:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1657739333;
-        bh=EGEcbeldv7v0DFGbKs8GWbBOOtMo98ON6Zyw/hkcD4M=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Sz+F2kQDNEqxHvPSea/l5w4wZkXe0IGFWyesqkK9SUpWGY1Z6wyQsTsyUHVpZmsaM
-         A6ut2gLzzXN10/QMoIGjr43FbqOPH/sL/2OGeluDlSMZl+53lKG5ATPMgSCBvDcnnD
-         9ifnE25cfSH9snd9jrRKOp7/wYs+0Osa7Mqv8HwDSB5R2XpCvadwqifwO8yjx9ybSa
-         SU2FSpfzqVCPgjfR4cYrItxxn9wrBHvkvSknme43ij1QnmCZfwMzyo9YbU7Sti3XMT
-         mAm5nHUAr5DCXbKDzFbtNLDl3Wg9nwooT68qemOj6BYt4Fp2Ff+7+eOs/blru7LZd2
-         UBUyYlQAco7dw==
-From:   Anna Schumaker <anna@kernel.org>
-To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
-Cc:     anna@kernel.org
-Subject: [PATCH v2 4/5] SUNRPC: Remove xdr_align_data() and xdr_expand_hole()
-Date:   Wed, 13 Jul 2022 15:08:48 -0400
-Message-Id: <20220713190849.615778-5-anna@kernel.org>
-X-Mailer: git-send-email 2.37.0
-In-Reply-To: <20220713190849.615778-1-anna@kernel.org>
-References: <20220713190849.615778-1-anna@kernel.org>
+        s=k20201202; t=1657739595;
+        bh=cGnmmoy035VJo5AjAdAgJfAkmvYdLE8EJYFHoMKb1t4=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=f2zua78yqXR5dvmi44dvAGR4WXcwFM2KdQZMcwJPQcd01QAQutZgJ62iIvjZM/Ipc
+         Dabcrl5Boxy/15hBLpCWLGi0YFUmQ+P/xHZEU25BHaoc7FtMg15Injr07FrgjEQOu4
+         eOIl5P0nZ5wUtjPfESf4c3sSZrRcRrtADaWBQwHO9Oot2fHIG/OulSeG6cZJeQbsVq
+         MqQqGJu7SaNQSR/Y39DDhGpyiypgucRQd+GJxacbQ3RE5MlZFlFqb5EW+FNFSqLgtX
+         qNqxxBsVP/BQgPb0q29ssEGzzP+h3VdbK5c092yKcfJ4eid/ts1qeQnyXgt7bfhgrI
+         WGE9KiDr9ciUg==
+Message-ID: <305c28b90f4d51dac01456cbb383c95999ef5f65.camel@kernel.org>
+Subject: Re: [PATCH 0/8] NFSD: clean up locking.
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Chuck Lever III <chuck.lever@oracle.com>,
+        Neil Brown <neilb@suse.de>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date:   Wed, 13 Jul 2022 15:13:13 -0400
+In-Reply-To: <13CEFBB0-45FB-4051-8F69-B41DC40CBD52@oracle.com>
+References: <165708033167.1940.3364591321728458949.stgit@noble.brown>
+         <3FF88D5A-9DBF-4115-A31C-6C6A888F272F@oracle.com>
+         <165759318889.25184.8939985512802350340@noble.neil.brown.name>
+         <3C945625-ED72-4CC1-9CC0-F354FEF0C2E4@oracle.com>
+         <165768676476.25184.1334928545636067316@noble.neil.brown.name>
+         <13CEFBB0-45FB-4051-8F69-B41DC40CBD52@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.3 (3.44.3-1.fc36) 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+On Wed, 2022-07-13 at 14:15 +0000, Chuck Lever III wrote:
+>=20
+> > On Jul 13, 2022, at 12:32 AM, NeilBrown <neilb@suse.de> wrote:
+> >=20
+> > On Wed, 13 Jul 2022, Chuck Lever III wrote:
+> > >=20
+> > > > On Jul 11, 2022, at 10:33 PM, NeilBrown <neilb@suse.de> wrote:
+> > > >=20
+> > > > On Thu, 07 Jul 2022, Chuck Lever III wrote:
+> > > > >=20
+> > > > > > On Jul 6, 2022, at 12:18 AM, NeilBrown <neilb@suse.de> wrote:
+> > > > > >=20
+> > > > > > This series prepares NFSD to be able to adjust to work with a p=
+roposed
+> > > > > > patch which allows updates to directories to happen in parallel=
+.
+> > > > > > This patch set changes the way directories are locked, so the p=
+resent
+> > > > > > series cleans up some locking in nfsd.
+> > > > > >=20
+> > > > > > Specifically we remove fh_lock() and fh_unlock().
+> > > > > > These functions are problematic for a few reasons.
+> > > > > > - they are deliberately idempotent - setting or clearing a flag
+> > > > > > so that a second call does nothing. This makes locking errors h=
+arder,
+> > > > > > but it results in code that looks wrong ... and maybe sometimes=
+ is a
+> > > > > > little bit wrong.
+> > > > > > Early patches clean up several places where this idempotent nat=
+ure of
+> > > > > > the functions is depended on, and so makes the code clearer.
+> > > > > >=20
+> > > > > > - they transparently call fh_fill_pre/post_attrs(), including a=
+t times
+> > > > > > when this is not necessary. Having the calls only when necessar=
+y is
+> > > > > > marginally more efficient, and arguably makes the code clearer.
+> > > > > >=20
+> > > > > > nfsd_lookup() currently always locks the directory, though ofte=
+n no lock
+> > > > > > is needed. So a patch in this series reduces this locking.
+> > > > > >=20
+> > > > > > There is an awkward case that could still be further improved.
+> > > > > > NFSv4 open needs to ensure the file is not renamed (or unlinked=
+ etc)
+> > > > > > between the moment when the open succeeds, and a later moment w=
+hen a
+> > > > > > "lease" is attached to support a delegation. The handling of th=
+is lock
+> > > > > > is currently untidy, particularly when creating a file.
+> > > > > > It would probably be better to take a lease immediately after
+> > > > > > opening the file, and then discarding if after deciding not to =
+provide a
+> > > > > > delegation.
+> > > > > >=20
+> > > > > > I have run fstests and cthon tests on this, but I wouldn't be s=
+urprised
+> > > > > > if there is a corner case that I've missed.
+> > > > >=20
+> > > > > Hi Neil, thanks for (re)posting.
+> > > > >=20
+> > > > > Let me make a few general comments here before I send out specifi=
+c
+> > > > > review nits.
+> > > > >=20
+> > > > > I'm concerned mostly with how this series can be adequately teste=
+d.
+> > > > > The two particular areas I'm worried about:
+> > > > >=20
+> > > > > - There are some changes to NFSv2 code, which is effectively
+> > > > > fallow. I think I can run v2 tests, once we decide what tests
+> > > > > should be run.
+> > > >=20
+> > > > I hope we can still test v2... I know it is disabled by default..
+> > > > If we can't test it, we should consider removing it.
+> > >=20
+> > > The work of deprecating and removing NFSv2 is already under way.
+> > > I think what I'm asking is if /you/ have tested the NFSv2 changes.
+> >=20
+> > That's a question I can answer. I haven't. I will.
+>=20
+> Just in case it's not clear by now, NFSv2 (and NFSv3)
+> stability is the reason I don't want to perturb the
+> NFSD VFS API code in any significant way unless it's
+> absolutely needed.
+>=20
+>=20
+> > > > > Secondarily, the series adds more bells and whistles to the gener=
+ic
+> > > > > NFSD VFS APIs on behalf of NFSv4-specific requirements. In partic=
+ular:
+> > > > >=20
+> > > > > - ("NFSD: change nfsd_create() to unlock directory before returni=
+ng.")
+> > > > > makes some big changes to nfsd_create(). But that helper itself
+> > > > > is pretty small. Seems like cleaner code would result if NFSv4
+> > > > > had its own version of nfsd_create() to deal with the post-change
+> > > > > cases.
+> > > >=20
+> > > > I would not like that approach. Duplicating code is rarely a good i=
+dea.
+> > >=20
+> > > De-duplicating code /can/ be a good idea, but isn't always a good
+> > > idea. If the exceptional cases add a lot of logic, that can make the
+> > > de-duplicated code difficult to read and reason about, and it can
+> > > make it brittle, just as it does in this case. Modifications on
+> > > behalf of NFSv4 in this common piece of code is possibly hazardous
+> > > to NFSv3, and navigating around the exception logic makes it
+> > > difficult to understand and review.
+> >=20
+> > Are we looking at the same code?
+> > The sum total of extra code needed for v4 is:
+> > - two extra parameters:
+> > 	 void (*post_create)(struct svc_fh *fh, void *data),
+> > 	 void *data)
+> > - two lines of code:
+> > 	if (!err && post_create)
+> > 		post_create(resfhp, data);
+> >=20
+> > does that really make anything hard to follow?
+>=20
+> The synopsis of nfsd_create() is already pretty cluttered.
+>=20
+> You're adding that extra code in nfsd_symlink() too IIRC? And,
+> this change adds a virtual function call (which has significant
+> overhead these days) for reasons of convenience rather than
+> necessity.
+>=20
+>=20
+> > > IMO code duplication is not an appropriate design pattern in this
+> > > specific instance.
+> >=20
+> > I'm guessing there is a missing negation in there.
+>=20
+> Yes, thanks.
+>=20
+>=20
+> > > > Maybe, rather than passing a function and void* to nfsd_create(), w=
+e
+> > > > could pass an acl and a label and do the setting in vfs.c rather th=
+en
+> > > > nfs4proc.c. The difficult part of that approach is getting back the
+> > > > individual error statuses. That should be solvable though.
+> > >=20
+> > > The bulk of the work in nfsd_create() is done by lookup_one_len()
+> > > and nfsd_create_locked(), both of which are public APIs. The rest
+> > > of nfsd_create() is code that appears in several other places
+> > > already.
+> >=20
+> > "several" =3D=3D 1. The only other call site for nfsd_create_locked() i=
+s in
+> > nfsd_proc_create()
+>=20
+> But there are 15 call sites under fs/nfsd/ for lookup_one_len().
+> It's a pretty common trope.
+>=20
+>=20
+> > I would say that the "bulk" of the work is the interplay between
+> > locking, error checking, and these two functions you mention.
+>=20
+> You're looking at the details of your particular change, and
+> I'm concerned about how much technical debt is going to
+> continue to accrue in an area shared with legacy protocol
+> implementation.
+>=20
+> I'm still asking myself if I can live with the extra parameters
+> and virtual function call. Maybe. IMO, there are three ways
+> forward:
+>=20
+> 1. I can merge your patch and move on.
+> 2. I can merge your patch as it is and follow up with clean-up.
+> 3. I can drop your patch and write it the way I prefer.
+>=20
+>=20
+> > > > > - ("NFSD: reduce locking in nfsd_lookup()") has a similar issue:
+> > > > > nfsd_lookup() is being changed such that its semantics are
+> > > > > substantially different for NFSv4 than for others. This is
+> > > > > possibly an indication that nfsd_lookup() should also be
+> > > > > duplicated into the NFSv4-specific code and the generic VFS
+> > > > > version should be left alone.
+> > > >=20
+> > > > Again, I don't like duplication. In this case, I think the longer t=
+erm
+> > > > solution is to remove the NFSv4 specific locking differences and so=
+lve
+> > > > the problem differently. i.e. don't hold the inode locked, but chec=
+k
+> > > > for any possible rename after getting a lease. Once that is done,
+> > > > nfsd_lookup() can have saner semantics.
+> > >=20
+> > > Then, perhaps we should bite that bullet and do that work now.
+> >=20
+> > While this does have an appeal, it also looks like the start of a rabbi=
+t
+> > hole where I find have to fix up a growing collection of problems befor=
+e
+> > my patch can land.
+>=20
+> That's kind of the nature of the beast.
+>=20
+> You are requesting changes that add technical debt with the
+> promise that "sometime in the future" that debt will be
+> erased. Meanwhile, nfsd_lookup() will be made harder to
+> maintain, and it will continue to contain a real bug.
+>=20
+> I'm saying if there's a real bug here, addressing that should
+> be the priority.
+>=20
+>=20
+> > I think balance is needed - certainly asking for some preliminary
+> > cleanup is appropriate. Expecting long standing and subtle issues that
+> > are tangential to the main goal to be resolved first is possibly asking
+> > too much.
+>=20
+> Fixing the bug seems to me (perhaps naively) to be directly
+> related to the parallelism of directory operations. Why do
+> you think it is tangential?
+>=20
+> Asking for bugs to be addressed before new features go in
+> seems sensible to me, and is a common practice to enable the
+> resulting fixes to be backported. If you don't want to address
+> the bug you mentioned, then someone else will need to, and
+> that's fine. I think the priority should be bug fixes first.
+>=20
+> Just to be clear, I'm referring to this issue:
+>=20
+> > > NOTE: when nfsd4_open() creates a file, the directory does *NOT* rema=
+in
+> > > locked and never has. So it is possible (though unlikely) for the
+> > > newly created file to be renamed before a delegation is handed out,
+> > > and that would be bad. This patch does *NOT* fix that, but *DOES*
+> > > take the directory lock immediately after creating the file, which
+> > > reduces the size of the window and ensure that the lock is held
+> > > consistently. More work is needed to guarantee no rename happens
+> > > before the delegation.
+> >=20
+> > Interesting. Maybe after taking the lock, we could re-vet the dentry vs=
+.
+> > the info in the OPEN request? That way, we'd presumably know that the
+> > above race didn't occur.
+>=20
+>=20
 
-These functions are no longer needed now that the NFS client places data
-and hole segments directly.
+I usually like to see bugfixes first too, but I haven't heard of anyone
+ever hitting this problem in the field. We've lived with this bug for a
+long time, so I don't see a problem with cleaning up the locking first
+and then fixing this on top of that.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- include/linux/sunrpc/xdr.h |  2 --
- net/sunrpc/xdr.c           | 66 --------------------------------------
- 2 files changed, 68 deletions(-)
+That said, if we're concerned about it, we could just add an extra check
+to nfs4_set_delegation. Basically, take parent mutex, set the
+delegation, walk the inode->i_dentry list and vet that one of them
+matches the OPEN args. That change probably wouldn't be too invasive and
+should be backportable, but it means taking that mutex twice.
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 4fd208da1a5e..bc21e313e2e3 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -263,8 +263,6 @@ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(const struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
- extern void xdr_set_pagelen(struct xdr_stream *, unsigned int len);
--extern unsigned int xdr_align_data(struct xdr_stream *, unsigned int offset, unsigned int length);
--extern unsigned int xdr_expand_hole(struct xdr_stream *, unsigned int offset, unsigned int length);
- extern bool xdr_stream_subsegment(struct xdr_stream *xdr, struct xdr_buf *subbuf,
- 				  unsigned int len);
- extern unsigned int xdr_stream_move_subsegment(struct xdr_stream *xdr, unsigned int offset,
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 5c9ba26875cf..6a3781b2f378 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1548,72 +1548,6 @@ void xdr_set_pagelen(struct xdr_stream *xdr, unsigned int len)
- }
- EXPORT_SYMBOL_GPL(xdr_set_pagelen);
- 
--unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
--			    unsigned int length)
--{
--	struct xdr_buf *buf = xdr->buf;
--	unsigned int from, bytes, len;
--	unsigned int shift;
--
--	xdr_realign_pages(xdr);
--	from = xdr_page_pos(xdr);
--
--	if (from >= buf->page_len + buf->tail->iov_len)
--		return 0;
--	if (from + buf->head->iov_len >= buf->len)
--		return 0;
--
--	len = buf->len - buf->head->iov_len;
--
--	/* We only shift data left! */
--	if (WARN_ONCE(from < offset, "SUNRPC: misaligned data src=%u dst=%u\n",
--		      from, offset))
--		return 0;
--	if (WARN_ONCE(offset > buf->page_len,
--		      "SUNRPC: buffer overflow. offset=%u, page_len=%u\n",
--		      offset, buf->page_len))
--		return 0;
--
--	/* Move page data to the left */
--	shift = from - offset;
--	xdr_buf_pages_shift_left(buf, from, len, shift);
--
--	bytes = xdr_stream_remaining(xdr);
--	if (length > bytes)
--		length = bytes;
--	bytes -= length;
--
--	xdr->buf->len -= shift;
--	xdr_set_page(xdr, offset + length, bytes);
--	return length;
--}
--EXPORT_SYMBOL_GPL(xdr_align_data);
--
--unsigned int xdr_expand_hole(struct xdr_stream *xdr, unsigned int offset,
--			     unsigned int length)
--{
--	struct xdr_buf *buf = xdr->buf;
--	unsigned int from, to, shift;
--
--	xdr_realign_pages(xdr);
--	from = xdr_page_pos(xdr);
--	to = xdr_align_size(offset + length);
--
--	/* Could the hole be behind us? */
--	if (to > from) {
--		unsigned int buflen = buf->len - buf->head->iov_len;
--		shift = to - from;
--		xdr_buf_try_expand(buf, shift);
--		xdr_buf_pages_shift_right(buf, from, buflen, shift);
--		xdr_set_page(xdr, to, xdr_stream_remaining(xdr));
--	} else if (to != from)
--		xdr_align_data(xdr, to, 0);
--	xdr_buf_pages_zero(buf, offset, length);
--
--	return length;
--}
--EXPORT_SYMBOL_GPL(xdr_expand_hole);
--
- /**
-  * xdr_enter_page - decode data from the XDR page
-  * @xdr: pointer to xdr_stream struct
--- 
-2.37.0
+The alternate idea would be to try to set the delegation a lot earlier,
+while we still hold the parent mutex for the open. That makes the
+cleanup trickier, but is potentially more efficient. I think it'd be=20
+simpler to implement this on top of Neil's patchset since it simplifies
+the locking. Backporting that by itself is probably going to be painful
+though.
 
+What should we aim for here?
+--
+Jeff Layton <jlayton@kernel.org>
