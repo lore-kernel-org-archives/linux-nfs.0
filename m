@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25519C433EF
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Jul 2022 19:09:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 064A5C433EF
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Jul 2022 19:09:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236848AbiGMTI7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Jul 2022 15:08:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34912 "EHLO
+        id S236850AbiGMTJA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Jul 2022 15:09:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34924 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236850AbiGMTIz (ORCPT
+        with ESMTP id S236885AbiGMTIz (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2022 15:08:55 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3FFBB1EC50
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 736091EC5F
         for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 12:08:54 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id BE66061DC4
+        by ams.source.kernel.org (Postfix) with ESMTPS id 2F7D5B82130
         for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 19:08:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C3FD9C341CE;
-        Wed, 13 Jul 2022 19:08:52 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8CD55C341C0;
+        Wed, 13 Jul 2022 19:08:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1657739333;
-        bh=fmJ8s7x27mEIM9o2owbfSQ05uOJ3dXYeVj4HPM9/c/k=;
+        s=k20201202; t=1657739331;
+        bh=MoEnAgAkrZFeK8lW3w10TAccR4+ENUqcgZQSw8DGZIc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=I82i7h8wV8zPaENi4a4IViYXVkMVOzTXmsjy+bpszYUu+05qcrR/4P2xRlhkpIYyC
-         xa5LEPM45xpoWcBVWXfl5qu6QMAXsBszbOB13+PRE5SsyqqH7+gWktzq4F/rBhzOHJ
-         ehnSDY6F0uZ/LR8TXJJ2lSVHwCZ+GLqv9B+3jCOTg87bK2Zs15I311j+qh2hr1Kl2C
-         2x0uxP+wVNIchaBzYm/vcXeJq8nKrre2T+m7EWVGdetHiwAqu2/6Qi17kLR/uXxNq1
-         rQzS3dLPJiBiM8jzNNUAAMOcwxNS5eK0kku2WIUIYK/BrONWo4RBxjcdQ+oCCzsjMF
-         yld9WeBtzw4cw==
+        b=p1Lj2KxcAt9gn4C3dOx9zs7UF5n6mhZGJ80iA85/zacewAp65T5lkSnnTaqpnBeK9
+         6pK6B0GmQy4TpZ6z9HfGOcFx+wW4R7LAzcVU8hwE6ldOb6YxT89pcwO7xje+8FLQtD
+         ed9N/98YrwjeSwFQLXyWFC2ilJYw/aSslmDB596ZqRxe6709TFpwr+aNYlk07nnlYn
+         e72iZmNLinJHHMtvE8eG3Tm2MjYX1lwqJQfqcwbJ3wEu5WZgj/POaXMNZXfHZD2dqd
+         wERqgsEfpE+QNzes9juqC0At9DA1FXAZKZ0A59Xs+R0+cum8TsnS3PbJcRwBtlbX4o
+         i/HH3QsPcqttg==
 From:   Anna Schumaker <anna@kernel.org>
 To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
 Cc:     anna@kernel.org
-Subject: [PATCH v2 3/5] NFS: Replace the READ_PLUS decoding code
-Date:   Wed, 13 Jul 2022 15:08:47 -0400
-Message-Id: <20220713190849.615778-4-anna@kernel.org>
+Subject: [PATCH v2 1/5] SUNRPC: Add a function for directly setting the xdr page len
+Date:   Wed, 13 Jul 2022 15:08:45 -0400
+Message-Id: <20220713190849.615778-2-anna@kernel.org>
 X-Mailer: git-send-email 2.37.0
 In-Reply-To: <20220713190849.615778-1-anna@kernel.org>
 References: <20220713190849.615778-1-anna@kernel.org>
@@ -48,231 +48,68 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-We now take a 2-step process that allows us to place data and hole
-segments directly at their final position in the xdr_stream without
-needing to do a bunch of redundant copies to expand holes. Due to the
-variable lengths of each segment, the xdr metadata might cross page
-boundaries which I account for by setting a small scratch buffer so
-xdr_inline_decode() won't fail.
+We need to do this step during READ_PLUS decoding so that we know pages
+are the right length and any extra data has been preserved in the tail.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs42xdr.c | 168 ++++++++++++++++++++++++----------------------
- 1 file changed, 87 insertions(+), 81 deletions(-)
+ include/linux/sunrpc/xdr.h |  1 +
+ net/sunrpc/xdr.c           | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 271e5f92ed01..b56f05113d36 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -1025,73 +1025,84 @@ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *re
- 	return decode_op_hdr(xdr, OP_DEALLOCATE);
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 79824fea4529..b8f3011e109b 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -262,6 +262,7 @@ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
+ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
+ extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
+ extern int xdr_process_buf(const struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
++extern void xdr_set_pagelen(struct xdr_stream *, unsigned int len);
+ extern unsigned int xdr_align_data(struct xdr_stream *, unsigned int offset, unsigned int length);
+ extern unsigned int xdr_expand_hole(struct xdr_stream *, unsigned int offset, unsigned int length);
+ extern bool xdr_stream_subsegment(struct xdr_stream *xdr, struct xdr_buf *subbuf,
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index ea734b14af0f..9d7c93645f01 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -1518,6 +1518,36 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
  }
+ EXPORT_SYMBOL_GPL(xdr_read_pages);
  
--static int decode_read_plus_data(struct xdr_stream *xdr,
--				 struct nfs_pgio_args *args,
--				 struct nfs_pgio_res *res)
--{
--	uint32_t count, recvd;
-+struct read_plus_segment {
-+	enum data_content4 type;
- 	uint64_t offset;
-+	union {
-+		struct {
-+			uint64_t length;
-+		} hole;
-+
-+		struct {
-+			uint32_t length;
-+			unsigned int from;
-+		} data;
-+	};
-+};
-+
-+static inline uint64_t read_plus_segment_length(struct read_plus_segment *seg)
++/**
++ * xdr_set_pagelen - Sets the length of the XDR pages
++ * @xdr: pointer to xdr_stream struct
++ * @len: new length of the XDR page data
++ *
++ * Either grows or shrinks the length of the xdr pages by setting pagelen to
++ * @len bytes. When shrinking, any extra data is moved into buf->tail, whereas
++ * when growing any data beyond the current pointer is moved into the tail.
++ *
++ * Returns True if the operation was successful, and False otherwise.
++ */
++void xdr_set_pagelen(struct xdr_stream *xdr, unsigned int len)
 +{
-+	return seg->type == NFS4_CONTENT_DATA ? seg->data.length : seg->hole.length;
++	struct xdr_buf *buf = xdr->buf;
++	size_t remaining = xdr_stream_remaining(xdr);
++	size_t base = 0;
++
++	if (len < buf->page_len) {
++		base = buf->page_len - len;
++		xdr_shrink_pagelen(buf, len);
++	} else {
++		xdr_buf_head_shift_right(buf, xdr_stream_pos(xdr),
++					 buf->page_len, remaining);
++		if (len > buf->page_len)
++			xdr_buf_try_expand(buf, len - buf->page_len);
++	}
++	xdr_set_tail_base(xdr, base, remaining);
 +}
++EXPORT_SYMBOL_GPL(xdr_set_pagelen);
 +
-+static int decode_read_plus_segment(struct xdr_stream *xdr,
-+				    struct read_plus_segment *seg)
-+{
- 	__be32 *p;
- 
--	p = xdr_inline_decode(xdr, 8 + 4);
-+	p = xdr_inline_decode(xdr, 4);
- 	if (!p)
--		return 1;
--
--	p = xdr_decode_hyper(p, &offset);
--	count = be32_to_cpup(p);
--	recvd = xdr_align_data(xdr, res->count, xdr_align_size(count));
--	if (recvd > count)
--		recvd = count;
--	if (res->count + recvd > args->count) {
--		if (args->count > res->count)
--			res->count += args->count - res->count;
--		return 1;
--	}
--	res->count += recvd;
--	if (count > recvd)
--		return 1;
-+		return -EIO;
-+	seg->type = be32_to_cpup(p++);
-+
-+	p = xdr_inline_decode(xdr, seg->type == NFS4_CONTENT_DATA ? 12 : 16);
-+	if (!p)
-+		return -EIO;
-+	p = xdr_decode_hyper(p, &seg->offset);
-+
-+	if (seg->type == NFS4_CONTENT_DATA) {
-+		struct xdr_buf buf;
-+		uint32_t len = be32_to_cpup(p);
-+
-+		seg->data.length = len;
-+		seg->data.from = xdr_stream_pos(xdr);
-+
-+		if (!xdr_stream_subsegment(xdr, &buf, xdr_align_size(len)))
-+			return -EIO;
-+	} else if (seg->type == NFS4_CONTENT_HOLE) {
-+		xdr_decode_hyper(p, &seg->hole.length);
-+	} else
-+		return -EINVAL;
- 	return 0;
- }
- 
--static int decode_read_plus_hole(struct xdr_stream *xdr,
--				 struct nfs_pgio_args *args,
--				 struct nfs_pgio_res *res, uint32_t *eof)
-+static int process_read_plus_segment(struct xdr_stream *xdr,
-+				     struct nfs_pgio_args *args,
-+				     struct nfs_pgio_res *res,
-+				     struct read_plus_segment *seg)
+ unsigned int xdr_align_data(struct xdr_stream *xdr, unsigned int offset,
+ 			    unsigned int length)
  {
--	uint64_t offset, length, recvd;
--	__be32 *p;
-+	unsigned long offset = seg->offset;
-+	unsigned long length = read_plus_segment_length(seg);
-+	unsigned int bufpos;
- 
--	p = xdr_inline_decode(xdr, 8 + 8);
--	if (!p)
--		return 1;
--
--	p = xdr_decode_hyper(p, &offset);
--	p = xdr_decode_hyper(p, &length);
--	if (offset != args->offset + res->count) {
--		/* Server returned an out-of-sequence extent */
--		if (offset > args->offset + res->count ||
--		    offset + length < args->offset + res->count) {
--			dprintk("NFS: server returned out of sequence extent: "
--				"offset/size = %llu/%llu != expected %llu\n",
--				(unsigned long long)offset,
--				(unsigned long long)length,
--				(unsigned long long)(args->offset +
--						     res->count));
--			return 1;
--		}
--		length -= args->offset + res->count - offset;
-+	if (offset + length < args->offset)
-+		return 0;
-+	else if (offset > args->offset + args->count) {
-+		res->eof = 0;
-+		return 0;
-+	} else if (offset < args->offset) {
-+		length -= (args->offset - offset);
-+		offset = args->offset;
-+	} else if (offset + length > args->offset + args->count) {
-+		length = (args->offset + args->count) - offset;
-+		res->eof = 0;
- 	}
--	if (length + res->count > args->count) {
--		*eof = 0;
--		if (unlikely(res->count >= args->count))
--			return 1;
--		length = args->count - res->count;
--	}
--	recvd = xdr_expand_hole(xdr, res->count, length);
--	res->count += recvd;
- 
--	if (recvd < length)
--		return 1;
--	return 0;
-+	bufpos = xdr->buf->head[0].iov_len + (offset - args->offset);
-+	if (seg->type == NFS4_CONTENT_HOLE)
-+		return xdr_stream_zero(xdr, bufpos, length);
-+	else
-+		return xdr_stream_move_subsegment(xdr, seg->data.from, bufpos, length);
- }
- 
- static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
-@@ -1099,8 +1110,10 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- 	struct nfs_pgio_header *hdr =
- 		container_of(res, struct nfs_pgio_header, res);
- 	struct nfs_pgio_args *args = &hdr->args;
--	uint32_t eof, segments, type;
-+	uint32_t segments;
-+	struct read_plus_segment *segs;
- 	int status, i;
-+	char scratch_buf[16];
- 	__be32 *p;
- 
- 	status = decode_op_hdr(xdr, OP_READ_PLUS);
-@@ -1112,38 +1125,31 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- 		return -EIO;
- 
- 	res->count = 0;
--	eof = be32_to_cpup(p++);
-+	res->eof = be32_to_cpup(p++);
- 	segments = be32_to_cpup(p++);
- 	if (segments == 0)
--		goto out;
-+		return status;
- 
-+	segs = kmalloc_array(segments, sizeof(*segs), GFP_KERNEL);
-+	if (!segs)
-+		return -ENOMEM;
-+
-+	xdr_set_scratch_buffer(xdr, &scratch_buf, 32);
-+	status = -EIO;
- 	for (i = 0; i < segments; i++) {
--		p = xdr_inline_decode(xdr, 4);
--		if (!p)
--			goto early_out;
--
--		type = be32_to_cpup(p++);
--		if (type == NFS4_CONTENT_DATA)
--			status = decode_read_plus_data(xdr, args, res);
--		else if (type == NFS4_CONTENT_HOLE)
--			status = decode_read_plus_hole(xdr, args, res, &eof);
--		else
--			return -EINVAL;
--
-+		status = decode_read_plus_segment(xdr, &segs[i]);
- 		if (status < 0)
--			return status;
--		if (status > 0)
--			goto early_out;
-+			goto out;
- 	}
- 
-+	xdr_set_pagelen(xdr, xdr_align_size(args->count));
-+	for (i = segments; i > 0; i--)
-+		res->count += process_read_plus_segment(xdr, args, res, &segs[i-1]);
-+	status = 0;
-+
- out:
--	res->eof = eof;
--	return 0;
--early_out:
--	if (unlikely(!i))
--		return -EIO;
--	res->eof = 0;
--	return 0;
-+	kfree(segs);
-+	return status;
- }
- 
- static int decode_seek(struct xdr_stream *xdr, struct nfs42_seek_res *res)
 -- 
 2.37.0
 
