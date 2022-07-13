@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF2B4C43334
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Jul 2022 19:08:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6647CCA47C
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Jul 2022 19:08:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235383AbiGMTIg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Jul 2022 15:08:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34180 "EHLO
+        id S236502AbiGMTIi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Jul 2022 15:08:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34186 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236502AbiGMTIf (ORCPT
+        with ESMTP id S236646AbiGMTIf (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jul 2022 15:08:35 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB4D62BF
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 12:08:31 -0700 (PDT)
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3290FB5B
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 12:08:33 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id B00BFB82130
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 19:08:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C304C341C6;
-        Wed, 13 Jul 2022 19:08:29 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id D0FBAB82120
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Jul 2022 19:08:31 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3965FC3411E;
+        Wed, 13 Jul 2022 19:08:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1657739309;
-        bh=z6eXA65BD09Jyev3T8fHrTGmJnWKOLPXSDRw9hwPTyU=;
+        s=k20201202; t=1657739310;
+        bh=6+eHd8H9jHMNlhID7997tVEizQaw08h5kwQLixpxpYE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=c0JoZKQSo8uhlvcRvMlTS7cvzOqpQYkpvumnvhQPsjkOzUdjSgG0aYmRglXLJmnqr
-         IiMc7XziWtcPBuJl3gqhoOsofQxm4aETwlIT7RA5QnXr1I8ctxSrrPYVr4OnXwFTdu
-         Tncp49BxJDG7T8zyKtp+njv9PZOsY7Xa7xoMfT7Jo2aVvLxIVfJDdjtulI1S6tyc+s
-         +K6NQakJsM4hcIAmGxzWW4SUYRzqke8zE3D0eB28XmVvdjei4DshBOVCfgvBnu1Ohk
-         pMR9n8GfKQ9uFCz7Q+THvpI9+qtLhJT6BuPFLdwh/NS0rrqjh8bUX3yfYEp3ObTnEj
-         OONYTBgaZ727Q==
+        b=QzIsME98G7Xb4it3DslA3TOrsfuSWSJTglaKFFXsoBvDvodtH0Y0yD9kxcFlzVhV9
+         2K76KWS+nAw8kI0kkeEA2DpqEYQFjn5Ia39LprinHswzySeS7AURLzJFiBe3hmHIAJ
+         5Vqbgq0KJ4RzJXAZP9qIYhMwijo7Uy1EUjP2UmvLdNvYBqyHp3WKudw7d2hYH2c6Nt
+         WBYX7l4mDw/snPSMa4DXWtJ+ntQY04hltXGGNhYI5g9EtvVj4cge61PD7gl+yZsoYI
+         gfo2Pr4QTrTZq6Ww+BbcrOFotDVgZhq4VQ6cPCqxOSfbvnYilcSKKZnTUcgGL0tSjb
+         l+PKz/ZNAWB9g==
 From:   Anna Schumaker <anna@kernel.org>
 To:     linux-nfs@vger.kernel.org, chuck.lever@oracle.com
 Cc:     anna@kernel.org
-Subject: [PATCH v2 3/6] SUNRPC: Introduce xdr_buf_trim_head()
-Date:   Wed, 13 Jul 2022 15:08:22 -0400
-Message-Id: <20220713190825.615678-4-anna@kernel.org>
+Subject: [PATCH v2 5/6] SUNRPC: Export xdr_buf_pagecount()
+Date:   Wed, 13 Jul 2022 15:08:24 -0400
+Message-Id: <20220713190825.615678-6-anna@kernel.org>
 X-Mailer: git-send-email 2.37.0
 In-Reply-To: <20220713190825.615678-1-anna@kernel.org>
 References: <20220713190825.615678-1-anna@kernel.org>
@@ -48,58 +48,26 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-The READ_PLUS operation uses a 32-bit length field for encoding a DATA
-segment, but 64-bit length field for encoding a HOLE segment. When
-setting up our reply buffer, we need to reserve enough space to encode
-a HOLE before reading the file data and use this function if the first
-segment turns out to be DATA.
+The NFS server will need this for iterating over pages in a READ_PLUS
+reply
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- include/linux/sunrpc/xdr.h |  1 +
- net/sunrpc/xdr.c           | 17 +++++++++++++++++
- 2 files changed, 18 insertions(+)
+ net/sunrpc/xdr.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index e26047d474b2..bdaf048edde0 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -191,6 +191,7 @@ xdr_adjust_iovec(struct kvec *iov, __be32 *p)
- extern void xdr_shift_buf(struct xdr_buf *, size_t);
- extern void xdr_buf_from_iov(const struct kvec *, struct xdr_buf *);
- extern int xdr_buf_subsegment(const struct xdr_buf *, struct xdr_buf *, unsigned int, unsigned int);
-+extern void xdr_buf_trim_head(struct xdr_buf *, unsigned int);
- extern void xdr_buf_trim(struct xdr_buf *, unsigned int);
- extern int read_bytes_from_xdr_buf(const struct xdr_buf *, unsigned int, void *, unsigned int);
- extern int write_bytes_to_xdr_buf(const struct xdr_buf *, unsigned int, void *, unsigned int);
 diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 63d9cdc989da..37956a274f81 100644
+index 88b28656a05d..ea734b14af0f 100644
 --- a/net/sunrpc/xdr.c
 +++ b/net/sunrpc/xdr.c
-@@ -1739,6 +1739,23 @@ unsigned int xdr_stream_move_subsegment(struct xdr_stream *xdr, unsigned int off
+@@ -139,6 +139,7 @@ size_t xdr_buf_pagecount(const struct xdr_buf *buf)
+ 		return 0;
+ 	return (buf->page_base + buf->page_len + PAGE_SIZE - 1) >> PAGE_SHIFT;
  }
- EXPORT_SYMBOL_GPL(xdr_stream_move_subsegment);
++EXPORT_SYMBOL_GPL(xdr_buf_pagecount);
  
-+/**
-+ * xdr_buf_trim_head - lop at most "len" bytes off the end of "buf"->head
-+ * @buf: buf to be trimmed
-+ * @len: number of bytes to reduce "buf"->head by
-+ *
-+ * Trim an xdr_buf->head by the given number of bytes by fixing up the lengths.
-+ * Note that it's possible that we'll trim less than that amount if the
-+ *  xdr_buf->head is too small.
-+ */
-+void xdr_buf_trim_head(struct xdr_buf *buf, unsigned int len)
-+{
-+	size_t trim = min_t(size_t, buf->head[0].iov_len, len);
-+	buf->head[0].iov_len -= trim;
-+	buf->len -= trim;
-+}
-+EXPORT_SYMBOL_GPL(xdr_buf_trim_head);
-+
- /**
-  * xdr_buf_trim - lop at most "len" bytes off the end of "buf"
-  * @buf: buf to be trimmed
+ char *xdr_buf_nth_page_address(const struct xdr_buf *buf, unsigned int n,
+ 			       unsigned int *len)
 -- 
 2.37.0
 
