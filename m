@@ -2,42 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F32CCCA480
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Jul 2022 18:44:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A81FCC43334
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Jul 2022 18:44:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230235AbiGOSoj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Jul 2022 14:44:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59428 "EHLO
+        id S230269AbiGOSok (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Jul 2022 14:44:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59444 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229481AbiGOSoj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2022 14:44:39 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CA02C15717
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Jul 2022 11:44:37 -0700 (PDT)
+        with ESMTP id S229481AbiGOSok (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jul 2022 14:44:40 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B184314D14
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Jul 2022 11:44:38 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 78EB8B82DE5
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Jul 2022 18:44:36 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D629EC34115;
-        Fri, 15 Jul 2022 18:44:34 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 4C94462344
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Jul 2022 18:44:38 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5763BC36AE7;
+        Fri, 15 Jul 2022 18:44:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1657910675;
-        bh=U9zvHvoyQSt2ioCyqpfSexkTyKGm/Adnh4GNtaB7Nww=;
-        h=From:To:Cc:Subject:Date:From;
-        b=IYpaOO422bRSs/o4/RLZQoRR5MY9yytNFBb826P42eZuqlhpLtqqo4F9C4j3imF+v
-         6A/LC+volyV9rE/0lsagpco3P+cukq0Nc3MNsfKHZkBfVb/Y6jtZHtxu/RuKTM2+z1
-         7Wkx/9nwV5tLKap4MVm86vgoN6r+JB+ZLvRCSrJIShgsV6mBZ4YDyOcHEO2Y29G4Ol
-         PA7oe91btg9xXTlAp/zwQd5KatEYhEINOQ5dwZhH5vvv9oeKYpWScWwqJ1eQv9YlS6
-         mEtYMCvgmL4Vu+726JveuueXy/IJtXWSosiQbHoz1WY3vbpPctNTFj07+n/e7GRir0
-         ToPFDr78yWWuw==
+        s=k20201202; t=1657910677;
+        bh=/G/PnfbcZZNw5IcZF3cQ6cOKcMI3B2noDm5Z4XxTY1o=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=rpliADDb0OElJeEjNke3H+0TSD72wQmqsWSo7gEJKMzrTmA21tNctlDzlFeBFVrlb
+         04pWkI8Xa9eS6KaAG9DVr5VOJCG5LqUsyvuUsk0ez3E+rUVBRAx5/grPsYGnknvc+c
+         GwWAqAq82gZTdaMqbQeaMFSJty50lBqoQOzg3QLtTLY7tudiPo0QQcX/2tm6LJk0O8
+         EI0MbF4cksXPoaBvg4+ToRtLa1hqgq/uHpDq2ebYYKBFaV4diZH0ds5wVir5mec6N3
+         rklG12KRL4AjqGnLbI2flcvz4nio5w1G1Rq8p6xxZ/frlWS8rMC2PKoQRUkzc4JOsp
+         C0G+jQYzewf/A==
 From:   Anna Schumaker <anna@kernel.org>
 To:     linux-nfs@vger.kernel.org, chuck.lever@oracle.com
 Cc:     anna@kernel.org
-Subject: [PATCH v3 0/6] NFSD: Improvements for the NFSv4.2 READ_PLUS operation
-Date:   Fri, 15 Jul 2022 14:44:27 -0400
-Message-Id: <20220715184433.838521-1-anna@kernel.org>
+Subject: [PATCH v3 4/6] SUNRPC: Introduce xdr_buf_nth_page_address()
+Date:   Fri, 15 Jul 2022 14:44:31 -0400
+Message-Id: <20220715184433.838521-5-anna@kernel.org>
 X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20220715184433.838521-1-anna@kernel.org>
+References: <20220715184433.838521-1-anna@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -46,49 +48,56 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-The main motivation for this patchset is fixing generic/091 and
-generic/263 with READ_PLUS. These tests appear to be failing due to
-files getting modified in the middle of reply encoding. Attempts to lock
-the file for the entire encode result in a deadlock, since llseek() and
-read() both need the file lock.
+For getting a pointer to the memory address represented by the nth page,
+along with the length of the data on that page.
 
-The solution is to read everything from disk at once, and then check if
-each buffer page is all zeroes or not. As a bonus, this lets us support
-READ_PLUS hole segments on filesystems that don't track sparse files.
-Additionally, this also solves the performance issues I hit when testing
-using btrfs on a virtual machine.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ include/linux/sunrpc/xdr.h |  2 ++
+ net/sunrpc/xdr.c           | 17 +++++++++++++++++
+ 2 files changed, 19 insertions(+)
 
-I created a wiki page with the results of my performance testing here:
-    https://wiki.linux-nfs.org/wiki/index.php/Read_Plus_May_2022
-
-These patches should probably go in before the related client changes
-as the client will also be changed to make use of the
-xdr_stream_move_subsegment() function.
-
-Changed in v3:
-  - Respond to as many of Chuck's comments as possible
-
-Changed in v2:
-  - Update to v5.19-rc6
-  - Rename xdr_stream_move_segment() -> xdr_stream_move_subsegment()
-
-Thoughts?
-Anna
-
-
-Anna Schumaker (6):
-  SUNRPC: Introduce xdr_stream_move_subsegment()
-  SUNRPC: Introduce xdr_encode_double()
-  SUNRPC: Introduce xdr_buf_trim_head()
-  SUNRPC: Introduce xdr_buf_nth_page_address()
-  SUNRPC: Export xdr_buf_pagecount()
-  NFSD: Repeal and replace the READ_PLUS implementation
-
- fs/nfsd/nfs4xdr.c          | 219 ++++++++++++++++++++-----------------
- include/linux/sunrpc/xdr.h |   6 +
- net/sunrpc/xdr.c           | 102 +++++++++++++++++
- 3 files changed, 227 insertions(+), 100 deletions(-)
-
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index bdaf048edde0..79824fea4529 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -137,6 +137,8 @@ void	xdr_inline_pages(struct xdr_buf *, unsigned int,
+ 			 struct page **, unsigned int, unsigned int);
+ void	xdr_terminate_string(const struct xdr_buf *, const u32);
+ size_t	xdr_buf_pagecount(const struct xdr_buf *buf);
++char	*xdr_buf_nth_page_address(const struct xdr_buf *buf, unsigned int n,
++				  unsigned int *len);
+ int	xdr_alloc_bvec(struct xdr_buf *buf, gfp_t gfp);
+ void	xdr_free_bvec(struct xdr_buf *buf);
+ 
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 37956a274f81..88b28656a05d 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -140,6 +140,23 @@ size_t xdr_buf_pagecount(const struct xdr_buf *buf)
+ 	return (buf->page_base + buf->page_len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ }
+ 
++char *xdr_buf_nth_page_address(const struct xdr_buf *buf, unsigned int n,
++			       unsigned int *len)
++{
++	unsigned int pgbase = buf->page_base + (n * PAGE_SIZE);
++	struct page **pages = buf->pages;
++	struct page **page;
++
++	if (n >= xdr_buf_pagecount(buf))
++		return NULL;
++
++	page = pages + (pgbase >> PAGE_SHIFT);
++	pgbase &= ~PAGE_MASK;
++	*len = min_t(size_t, PAGE_SIZE, buf->page_len - (n * PAGE_SIZE));
++	return page_address(*page) + pgbase;
++}
++EXPORT_SYMBOL_GPL(xdr_buf_nth_page_address);
++
+ int
+ xdr_alloc_bvec(struct xdr_buf *buf, gfp_t gfp)
+ {
 -- 
 2.37.1
 
