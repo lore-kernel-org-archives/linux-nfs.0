@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F0E6C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF753CCA47C
 	for <linux-nfs@archiver.kernel.org>; Fri, 22 Jul 2022 18:12:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230273AbiGVSM2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S235596AbiGVSM2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 22 Jul 2022 14:12:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60406 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60410 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236103AbiGVSM1 (ORCPT
+        with ESMTP id S236132AbiGVSM1 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jul 2022 14:12:27 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 281F197A2F
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D9F779687
         for <linux-nfs@vger.kernel.org>; Fri, 22 Jul 2022 11:12:26 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B9E5C622DB
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Jul 2022 18:12:25 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B8D6C341C6;
-        Fri, 22 Jul 2022 18:12:24 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id D25C6B829C8
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Jul 2022 18:12:24 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1497FC341CB;
+        Fri, 22 Jul 2022 18:12:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1658513545;
-        bh=vlTMoCE6tYvp/S9rbUc5lDc5FJNn+2wuZg9qtn35Wnw=;
+        s=k20201202; t=1658513543;
+        bh=4unQ+qRQn9Wxj2h76u02m3cwSeoDQMg2st+gsmemt3c=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=brNTVq3RTSH32Jgz/Fq+WjwTJK+OQYequ5tPVnx9v/bKUzUWUicFmnVrN6Zq+Egit
-         suxJxpmtpHiobkSCVpQw3tvbS/p9eo2OA+JLBm1ZaCA8HIl41OLvvmxVtUYRnGV1Rl
-         Z+zIqRwXs350QUVW5M1gZDKGeQxuzUN7Erta/i6ExunmWJQiBScxWNQ5msWn3nDakI
-         kwBB0LoFJDkeHi0zGmM62cfUABpOrAA/Ijk8nEA2dNAMEmSXU9HFCenrr9s0mZ75SF
-         gmlMB71yhTl3Kvaouqb9/IEQT+r3KXbzgibVdV5VpGZdai/dyfSMKN1STy6JqdCRbi
-         xu9w84lHXBdgQ==
+        b=upzP81m9JzoOFFf19IgXVbV5Ofei6Lr5fQUOquNnxllKcKLN0K/o3yPTYB/2Crcr/
+         MuoNzLAyFoEUIBqDyDoVtcq8Q3ZjPZbbEWbaOhtb7PCVMhwIykd4XEhCYIVICH6cFd
+         Agzc31k3v3YwPCQalkoHvas6tlNr9Onk9nMzJDANcQ9o0ojlQTbdK3mMN2mwf6We1i
+         JwzBh1s409HHCTIlVyojzCnU4DzZeNk9vtUjahDnSO2FTd/ZW00wsjmgoF/w9bfkTI
+         XAgCabBYl4QtDSSIU/8pE9zgruJgE6bVrfvZ6s3FTDZalaRwQ86cGSJw0Caj5astmm
+         dkECbzHCiXvQQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     trond.myklebust@hammerspace.com, anna@kernel.org
 Cc:     linux-nfs@vger.kernel.org, chuck.lever@oracle.com, bxue@redhat.com
-Subject: [PATCH 3/3] nfs: only issue commit in DIO codepath if we have uncommitted data
-Date:   Fri, 22 Jul 2022 14:12:20 -0400
-Message-Id: <20220722181220.81636-4-jlayton@kernel.org>
+Subject: [PATCH 1/3] nfs: add new nfs_direct_req tracepoint events
+Date:   Fri, 22 Jul 2022 14:12:18 -0400
+Message-Id: <20220722181220.81636-2-jlayton@kernel.org>
 X-Mailer: git-send-email 2.36.1
 In-Reply-To: <20220722181220.81636-1-jlayton@kernel.org>
 References: <20220722181220.81636-1-jlayton@kernel.org>
@@ -46,108 +46,239 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Currently, we try to determine whether to issue a commit based on
-nfs_write_need_commit which looks at the current verifier. In the case
-where we got a short write and then tried to follow it up with one that
-failed, the verifier can't be trusted.
-
-What we really want to know is whether the pgio request had any
-successful writes that came back as UNSTABLE. Add a new flag to the pgio
-request, and use that to indicate that we've had a successful unstable
-write. Only issue a commit if that flag is set.
+Add some new tracepoints to the DIO write code.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfs/direct.c         |  2 +-
- fs/nfs/write.c          | 48 +++++++++++++++++++++++++----------------
- include/linux/nfs_xdr.h |  1 +
- 3 files changed, 32 insertions(+), 19 deletions(-)
+ fs/nfs/direct.c   | 45 +++++++++----------------------
+ fs/nfs/internal.h | 33 +++++++++++++++++++++++
+ fs/nfs/nfstrace.h | 69 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 114 insertions(+), 33 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index a47d13296194..86df66bb14c5 100644
+index 4eb2a8380a28..ad40e81857ee 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -690,7 +690,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 	}
+@@ -60,44 +60,12 @@
+ #include "iostat.h"
+ #include "pnfs.h"
+ #include "fscache.h"
++#include "nfstrace.h"
  
- 	nfs_direct_count_bytes(dreq, hdr);
--	if (hdr->good_bytes != 0 && nfs_write_need_commit(hdr)) {
-+	if (test_bit(NFS_IOHDR_UNSTABLE_WRITES, &hdr->flags)) {
- 		if (!dreq->flags)
- 			dreq->flags = NFS_ODIRECT_DO_COMMIT;
- 		flags = dreq->flags;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 1c706465d090..16d166bc4099 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1576,25 +1576,37 @@ static int nfs_writeback_done(struct rpc_task *task,
- 	nfs_add_stats(inode, NFSIOS_SERVERWRITTENBYTES, hdr->res.count);
- 	trace_nfs_writeback_done(task, hdr);
+ #define NFSDBG_FACILITY		NFSDBG_VFS
  
--	if (hdr->res.verf->committed < hdr->args.stable &&
--	    task->tk_status >= 0) {
--		/* We tried a write call, but the server did not
--		 * commit data to stable storage even though we
--		 * requested it.
--		 * Note: There is a known bug in Tru64 < 5.0 in which
--		 *	 the server reports NFS_DATA_SYNC, but performs
--		 *	 NFS_FILE_SYNC. We therefore implement this checking
--		 *	 as a dprintk() in order to avoid filling syslog.
--		 */
--		static unsigned long    complain;
-+	if (task->tk_status >= 0) {
-+		enum nfs3_stable_how committed = hdr->res.verf->committed;
+ static struct kmem_cache *nfs_direct_cachep;
+ 
+-struct nfs_direct_req {
+-	struct kref		kref;		/* release manager */
+-
+-	/* I/O parameters */
+-	struct nfs_open_context	*ctx;		/* file open context info */
+-	struct nfs_lock_context *l_ctx;		/* Lock context info */
+-	struct kiocb *		iocb;		/* controlling i/o request */
+-	struct inode *		inode;		/* target file of i/o */
+-
+-	/* completion state */
+-	atomic_t		io_count;	/* i/os we're waiting for */
+-	spinlock_t		lock;		/* protect completion state */
+-
+-	loff_t			io_start;	/* Start offset for I/O */
+-	ssize_t			count,		/* bytes actually processed */
+-				max_count,	/* max expected count */
+-				bytes_left,	/* bytes left to be sent */
+-				error;		/* any reported error */
+-	struct completion	completion;	/* wait for i/o completion */
+-
+-	/* commit state */
+-	struct nfs_mds_commit_info mds_cinfo;	/* Storage for cinfo */
+-	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
+-	struct work_struct	work;
+-	int			flags;
+-	/* for write */
+-#define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
+-#define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
+-	/* for read */
+-#define NFS_ODIRECT_SHOULD_DIRTY	(3)	/* dirty user-space page after read */
+-#define NFS_ODIRECT_DONE		INT_MAX	/* write verification failed */
+-};
+-
+ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops;
+ static const struct nfs_commit_completion_ops nfs_direct_commit_completion_ops;
+ static void nfs_direct_write_complete(struct nfs_direct_req *dreq);
+@@ -595,6 +563,8 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ 	struct nfs_page *req;
+ 	int status = data->task.tk_status;
+ 
++	trace_nfs_direct_commit_complete(dreq);
 +
-+		if (committed == NFS_UNSTABLE) {
-+			/*
-+			 * We have some uncommitted data on the server at
-+			 * this point, so ensure that we keep track of that
-+			 * fact irrespective of what later writes do.
-+			 */
-+			set_bit(NFS_IOHDR_UNSTABLE_WRITES, &hdr->flags);
-+		}
+ 	if (status < 0) {
+ 		/* Errors in commit are fatal */
+ 		dreq->error = status;
+@@ -631,6 +601,8 @@ static void nfs_direct_resched_write(struct nfs_commit_info *cinfo,
+ {
+ 	struct nfs_direct_req *dreq = cinfo->dreq;
  
--		/* Note this will print the MDS for a DS write */
--		if (time_before(complain, jiffies)) {
--			dprintk("NFS:       faulty NFS server %s:"
--				" (committed = %d) != (stable = %d)\n",
--				NFS_SERVER(inode)->nfs_client->cl_hostname,
--				hdr->res.verf->committed, hdr->args.stable);
--			complain = jiffies + 300 * HZ;
-+		if (committed < hdr->args.stable) {
-+			/* We tried a write call, but the server did not
-+			 * commit data to stable storage even though we
-+			 * requested it.
-+			 * Note: There is a known bug in Tru64 < 5.0 in which
-+			 *	 the server reports NFS_DATA_SYNC, but performs
-+			 *	 NFS_FILE_SYNC. We therefore implement this checking
-+			 *	 as a dprintk() in order to avoid filling syslog.
-+			 */
-+			static unsigned long    complain;
++	trace_nfs_direct_resched_write(dreq);
 +
-+			/* Note this will print the MDS for a DS write */
-+			if (time_before(complain, jiffies)) {
-+				dprintk("NFS:       faulty NFS server %s:"
-+					" (committed = %d) != (stable = %d)\n",
-+					NFS_SERVER(inode)->nfs_client->cl_hostname,
-+					committed, hdr->args.stable);
-+				complain = jiffies + 300 * HZ;
-+			}
- 		}
- 	}
+ 	spin_lock(&dreq->lock);
+ 	if (dreq->flags != NFS_ODIRECT_DONE)
+ 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+@@ -695,6 +667,7 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
  
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 0e3aa0f5f324..e86cf6642d21 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1600,6 +1600,7 @@ enum {
- 	NFS_IOHDR_STAT,
- 	NFS_IOHDR_RESEND_PNFS,
- 	NFS_IOHDR_RESEND_MDS,
-+	NFS_IOHDR_UNSTABLE_WRITES,
- };
+ static void nfs_direct_write_complete(struct nfs_direct_req *dreq)
+ {
++	trace_nfs_direct_write_complete(dreq);
+ 	queue_work(nfsiod_workqueue, &dreq->work); /* Calls nfs_direct_write_schedule_work */
+ }
  
- struct nfs_io_completion;
+@@ -705,6 +678,8 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 	struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+ 	int flags = NFS_ODIRECT_DONE;
+ 
++	trace_nfs_direct_write_completion(dreq);
++
+ 	nfs_init_cinfo_from_dreq(&cinfo, dreq);
+ 
+ 	spin_lock(&dreq->lock);
+@@ -759,6 +734,8 @@ static void nfs_direct_write_reschedule_io(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_direct_req *dreq = hdr->dreq;
+ 
++	trace_nfs_direct_write_reschedule_io(dreq);
++
+ 	spin_lock(&dreq->lock);
+ 	if (dreq->error == 0) {
+ 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+@@ -799,6 +776,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 	size_t requested_bytes = 0;
+ 	size_t wsize = max_t(size_t, NFS_SERVER(inode)->wsize, PAGE_SIZE);
+ 
++	trace_nfs_direct_write_schedule_iovec(dreq);
++
+ 	nfs_pageio_init_write(&desc, inode, ioflags, false,
+ 			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8f8cd6e2d4db..24a48ba1ca7e 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -859,3 +859,36 @@ static inline void nfs_set_port(struct sockaddr *sap, int *port,
+ 
+ 	rpc_set_port(sap, *port);
+ }
++
++struct nfs_direct_req {
++	struct kref		kref;		/* release manager */
++
++	/* I/O parameters */
++	struct nfs_open_context	*ctx;		/* file open context info */
++	struct nfs_lock_context *l_ctx;		/* Lock context info */
++	struct kiocb *		iocb;		/* controlling i/o request */
++	struct inode *		inode;		/* target file of i/o */
++
++	/* completion state */
++	atomic_t		io_count;	/* i/os we're waiting for */
++	spinlock_t		lock;		/* protect completion state */
++
++	loff_t			io_start;	/* Start offset for I/O */
++	ssize_t			count,		/* bytes actually processed */
++				max_count,	/* max expected count */
++				bytes_left,	/* bytes left to be sent */
++				error;		/* any reported error */
++	struct completion	completion;	/* wait for i/o completion */
++
++	/* commit state */
++	struct nfs_mds_commit_info mds_cinfo;	/* Storage for cinfo */
++	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
++	struct work_struct	work;
++	int			flags;
++	/* for write */
++#define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
++#define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
++	/* for read */
++#define NFS_ODIRECT_SHOULD_DIRTY	(3)	/* dirty user-space page after read */
++#define NFS_ODIRECT_DONE		INT_MAX	/* write verification failed */
++};
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 012bd7339862..65388e4a0cd7 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -1576,6 +1576,75 @@ TRACE_EVENT(nfs_commit_done,
+ 		)
+ );
+ 
++#define nfs_show_direct_req_flags(v) \
++	__print_flags(v, "|", \
++			{ NFS_ODIRECT_DO_COMMIT, "DO_COMMIT" }, \
++			{ NFS_ODIRECT_RESCHED_WRITES, "RESCHED_WRITES" }, \
++			{ NFS_ODIRECT_SHOULD_DIRTY, "SHOULD DIRTY" }, \
++			{ NFS_ODIRECT_DONE, "DONE" } )
++
++DECLARE_EVENT_CLASS(nfs_direct_req_class,
++		TP_PROTO(
++			const struct nfs_direct_req *dreq
++		),
++
++		TP_ARGS(dreq),
++
++		TP_STRUCT__entry(
++			__field(const struct nfs_direct_req *, dreq)
++			__field(dev_t, dev)
++			__field(u64, fileid)
++			__field(u32, fhandle)
++			__field(int, ref)
++			__field(loff_t, io_start)
++			__field(ssize_t, count)
++			__field(ssize_t, bytes_left)
++			__field(ssize_t, error)
++			__field(int, flags)
++		),
++
++		TP_fast_assign(
++			const struct inode *inode = dreq->inode;
++			const struct nfs_inode *nfsi = NFS_I(inode);
++			const struct nfs_fh *fh = &nfsi->fh;
++
++			__entry->dreq = dreq;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(fh);
++			__entry->ref = kref_read(&dreq->kref);
++			__entry->io_start = dreq->io_start;
++			__entry->count = dreq->count;
++			__entry->bytes_left = dreq->bytes_left;
++			__entry->error = dreq->error;
++			__entry->flags = dreq->flags;
++		),
++
++		TP_printk(
++			"dreq=%p fileid=%02x:%02x:%llu fhandle=0x%08x ref=%d "
++			"io_start=%lld count=%zd bytes_left=%zd error=%zd flags=%s",
++			__entry->dreq, MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle, __entry->ref,
++			__entry->io_start, __entry->count, __entry->bytes_left,
++			__entry->error, nfs_show_direct_req_flags(__entry->flags)
++		)
++);
++
++#define DEFINE_NFS_DIRECT_REQ_EVENT(name) \
++	DEFINE_EVENT(nfs_direct_req_class, name, \
++			TP_PROTO( \
++				const struct nfs_direct_req *dreq \
++			), \
++			TP_ARGS(dreq))
++
++DEFINE_NFS_DIRECT_REQ_EVENT(nfs_direct_commit_complete);
++DEFINE_NFS_DIRECT_REQ_EVENT(nfs_direct_resched_write);
++DEFINE_NFS_DIRECT_REQ_EVENT(nfs_direct_write_complete);
++DEFINE_NFS_DIRECT_REQ_EVENT(nfs_direct_write_completion);
++DEFINE_NFS_DIRECT_REQ_EVENT(nfs_direct_write_schedule_iovec);
++DEFINE_NFS_DIRECT_REQ_EVENT(nfs_direct_write_reschedule_io);
++
+ TRACE_EVENT(nfs_fh_to_dentry,
+ 		TP_PROTO(
+ 			const struct super_block *sb,
 -- 
 2.36.1
 
