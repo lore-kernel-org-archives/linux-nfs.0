@@ -2,57 +2,57 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 927ECCCA48B
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jul 2022 13:32:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 375D3C43334
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Jul 2022 13:32:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235509AbiGYNcy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 25 Jul 2022 09:32:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53570 "EHLO
+        id S235133AbiGYNcz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 25 Jul 2022 09:32:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53732 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235333AbiGYNcq (ORCPT
+        with ESMTP id S235049AbiGYNcq (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jul 2022 09:32:46 -0400
-Received: from mail-vs1-xe2c.google.com (mail-vs1-xe2c.google.com [IPv6:2607:f8b0:4864:20::e2c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B721FDEB3
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 06:32:44 -0700 (PDT)
-Received: by mail-vs1-xe2c.google.com with SMTP id c3so10670869vsc.6
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 06:32:44 -0700 (PDT)
+Received: from mail-vk1-xa29.google.com (mail-vk1-xa29.google.com [IPv6:2607:f8b0:4864:20::a29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 11567DF7E
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 06:32:42 -0700 (PDT)
+Received: by mail-vk1-xa29.google.com with SMTP id a7so3733688vkl.0
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 06:32:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=XxWsksLwNP5augzEl67LHViorzikGGB1fkSMEHJ+uOs=;
-        b=NAyrBMObTiAPltvvN6HLt4OUF8MmoCGTCzy6st2Bu8AjvhlRm1Q5ItErtqBqYiwaky
-         EmAr2vogwb0kwyXGQ12l4GMLuba3gaY7ws7uBf4CAXOlOh+Kmd6e96mVQCMa1/poijqH
-         rUh9j0biZyT6WINVaEuVRCvVRrWkP+vQFb5xMVKPx0zgmvCNMKBv6IKPJPX6cuh/r1U6
-         tbo/a1gyUJzU0MG40V67vdY8tgQgWx/MvuMGQqRl5VmLQCIdGaa/U8bwc8DIfoOJj+7I
-         GcwSf9osOuErOpynZkkjHD56pwzqHhK5zkmS3Gf8lRGF+he2IED9Y4r8rb7/UTmN7xkx
-         D8Nw==
+        bh=p/Ff1Wz8vtr24ZP3FEb7/lynhGvGiAjb8N0JIVBZTnk=;
+        b=FVT0kI1gKKCN/nEDvuRsa5Zcw3EY3C+QoaUL1T34hEnTkPdcuFUkkigWIoDhhRYzHQ
+         e1Qz/lRRzxQf+3T2wgFDyLWK7rzurXdJzex6QDTTD9r6S0FMqZ7mND+7QhXGz3/JnpwP
+         1HcCW7W58KARDwYM1Wt1Ri5/PHg8hYZ5B8vk6bATCiMUokr4EjTEa3i/FTwROHAwbNJe
+         HSlbnzs8VCCrns22OjGxPO19IoYLzWw0rfyK07X+Dcw52ysVWPjFyFk2TmpcpkZViXfA
+         sGuLz30VH588MqK5S4ZNGM7Nh/y5Pf3umsTnPKWEwUPBJwGRMe3EvXTHVgHmAvbky2gl
+         pBdw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=XxWsksLwNP5augzEl67LHViorzikGGB1fkSMEHJ+uOs=;
-        b=N6iW4Pmkv8K5q1fJiDT2vet/k89um0MoVOucHMAzkK3/0N7HpTbb2yRB+ECfqbThq1
-         lpRbgl2QAIFVRjl/Y5bQ/gqVZALqaC/QH9/IFKmtSm0A2/BoQONh4iLCcYlmgGFuJLO8
-         iOpU8MBFO5rDbQ1HWtIW4PxPtaTmgK1tjyTJ7JwJ795FhcW7e/J4AvVeZtfZgFOFUjyU
-         1OpSo9MxhUEb12lG0ns6BildzHvxgcCDHinpLtr2TuCh0q4If5G3hZZte6hsCoCJUeGM
-         RA+8+m4H2GGTAheYHyX2FffPJ/oqR+rq/DJl+WNf+U09scQU8Ewh+CYARjPV0ylExoBr
-         TB7A==
-X-Gm-Message-State: AJIora8A0ztQu0jzPkctKAvJQrPVGvrUrSdvjpiy1GW2NngYDcMctMdc
-        QcXfDfFymIhODecS0Ma3gDaL3TQQUFk=
-X-Google-Smtp-Source: AGRyM1snSM9hF/9BenODIijQ4iLcS33i59NJpVcGhttshKD/SrExPt6IX8rjH5tvhOQHXGEU6/CUog==
-X-Received: by 2002:a67:edc5:0:b0:358:6a1f:552a with SMTP id e5-20020a67edc5000000b003586a1f552amr94249vsp.53.1658755963492;
-        Mon, 25 Jul 2022 06:32:43 -0700 (PDT)
+        bh=p/Ff1Wz8vtr24ZP3FEb7/lynhGvGiAjb8N0JIVBZTnk=;
+        b=McTSbSj6X4cpk58GC+OkaNVSgdqNG8EdHwtFHCaX5lT+PIgCYTeiQpY6j2ay0HSET/
+         erN+Vf+pU9+Bv4inczRTWUu1Z9sGcV/jyD1geRySnJsWj6BxKrh4HWYjDlfDzz/LUyyd
+         1SKFzuuuhPglRh7vi49NDT+8u1pr8YmWEjVqaXCMP8k4NZTd36mJ5qz41K9D0VIoULV7
+         Q4dro5ogW8+QfueDhtOMeEWzSvYGU6kIyA715qUQR9PH0visjsFwn38+G3lDxtJYIdcJ
+         TE2y66J4ITTnKCOQGPNjBFZfnutk8CtnW6ciulB9WTzbv8ONgFWQjIfNpwv/dAKn+xwx
+         kQuQ==
+X-Gm-Message-State: AJIora/goPp2nquIbwwa/PVDyH5QGK7bAX/8eNvym1JIz0KLUmZgHYn0
+        5KqjQZzKm18fZmkVXCMIPkVe6lYS0i0=
+X-Google-Smtp-Source: AGRyM1s0pxZNREyEaaYRaVCHaiVMDbus0EopmzZftuW19cMw2GJ8BK8Xdi69ZDwi4LlV7/u9akdj5Q==
+X-Received: by 2002:a1f:9f92:0:b0:376:3525:998 with SMTP id i140-20020a1f9f92000000b0037635250998mr2458971vke.41.1658755962513;
+        Mon, 25 Jul 2022 06:32:42 -0700 (PDT)
 Received: from localhost.localdomain (071-047-011-047.res.spectrum.com. [71.47.11.47])
-        by smtp.gmail.com with ESMTPSA id a6-20020ab06306000000b00383aeb53100sm2128826uap.16.2022.07.25.06.32.42
+        by smtp.gmail.com with ESMTPSA id a6-20020ab06306000000b00383aeb53100sm2128826uap.16.2022.07.25.06.32.41
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Mon, 25 Jul 2022 06:32:42 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 08/11] SUNRPC restructure rpc_clnt_setup_test_and_add_xprt
-Date:   Mon, 25 Jul 2022 09:32:28 -0400
-Message-Id: <20220725133231.4279-9-olga.kornievskaia@gmail.com>
+Subject: [PATCH v3 07/11] NFSv4.1 remove xprt from xprt_switch if session trunking test fails
+Date:   Mon, 25 Jul 2022 09:32:27 -0400
+Message-Id: <20220725133231.4279-8-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20220725133231.4279-1-olga.kornievskaia@gmail.com>
 References: <20220725133231.4279-1-olga.kornievskaia@gmail.com>
@@ -62,100 +62,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In preparation for code re-use, pull out the part of the
-rpc_clnt_setup_test_and_add_xprt() portion that sends a NULL rpc
-and then calls a session trunking function into a helper function.
-
-Re-organize the end of the function for code re-use.
+If we are doing a session trunking test and it fails for the transport,
+then remove this transport from the xprt_switch group.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- net/sunrpc/clnt.c | 52 ++++++++++++++++++++++++++++-------------------
- 1 file changed, 31 insertions(+), 21 deletions(-)
+ fs/nfs/nfs4proc.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 26f3102500bb..9c9712274ca8 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2874,6 +2874,30 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3f4e84e9646e..4850e29904e6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8922,6 +8922,9 @@ void nfs4_test_session_trunk(struct rpc_clnt *clnt, struct rpc_xprt *xprt,
+ 
+ 	if (status == 0)
+ 		rpc_clnt_xprt_switch_add_xprt(clnt, xprt);
++	else if (rpc_clnt_xprt_switch_has_addr(clnt,
++				(struct sockaddr *)&xprt->addr))
++		rpc_clnt_xprt_switch_remove_xprt(clnt, xprt);
+ 
+ 	rpc_put_task(task);
  }
- EXPORT_SYMBOL_GPL(rpc_clnt_test_and_add_xprt);
- 
-+static int rpc_clnt_add_xprt_helper(struct rpc_clnt *clnt,
-+				    struct rpc_xprt *xprt,
-+				    struct rpc_add_xprt_test *data)
-+{
-+	struct rpc_task *task;
-+	int status = -EADDRINUSE;
-+
-+	/* Test the connection */
-+	task = rpc_call_null_helper(clnt, xprt, NULL, 0, NULL, NULL);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+
-+	status = task->tk_status;
-+	rpc_put_task(task);
-+
-+	if (status < 0)
-+		return status;
-+
-+	/* rpc_xprt_switch and rpc_xprt are deferrenced by add_xprt_test() */
-+	data->add_xprt_test(clnt, xprt, data->data);
-+
-+	return 0;
-+}
-+
- /**
-  * rpc_clnt_setup_test_and_add_xprt()
-  *
-@@ -2897,8 +2921,6 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
- 				     struct rpc_xprt *xprt,
- 				     void *data)
- {
--	struct rpc_task *task;
--	struct rpc_add_xprt_test *xtest = (struct rpc_add_xprt_test *)data;
- 	int status = -EADDRINUSE;
- 
- 	xprt = xprt_get(xprt);
-@@ -2907,31 +2929,19 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
- 	if (rpc_xprt_switch_has_addr(xps, (struct sockaddr *)&xprt->addr))
- 		goto out_err;
- 
--	/* Test the connection */
--	task = rpc_call_null_helper(clnt, xprt, NULL, 0, NULL, NULL);
--	if (IS_ERR(task)) {
--		status = PTR_ERR(task);
--		goto out_err;
--	}
--	status = task->tk_status;
--	rpc_put_task(task);
--
-+	status = rpc_clnt_add_xprt_helper(clnt, xprt, data);
- 	if (status < 0)
- 		goto out_err;
- 
--	/* rpc_xprt_switch and rpc_xprt are deferrenced by add_xprt_test() */
--	xtest->add_xprt_test(clnt, xprt, xtest->data);
--
--	xprt_put(xprt);
--	xprt_switch_put(xps);
--
--	/* so that rpc_clnt_add_xprt does not call rpc_xprt_switch_add_xprt */
--	return 1;
-+	status = 1;
- out_err:
- 	xprt_put(xprt);
- 	xprt_switch_put(xps);
--	pr_info("RPC:   rpc_clnt_test_xprt failed: %d addr %s not added\n",
--		status, xprt->address_strings[RPC_DISPLAY_ADDR]);
-+	if (status < 0)
-+		pr_info("RPC:   rpc_clnt_test_xprt failed: %d addr %s not "
-+			"added\n", status,
-+			xprt->address_strings[RPC_DISPLAY_ADDR]);
-+	/* so that rpc_clnt_add_xprt does not call rpc_xprt_switch_add_xprt */
- 	return status;
- }
- EXPORT_SYMBOL_GPL(rpc_clnt_setup_test_and_add_xprt);
 -- 
 2.27.0
 
