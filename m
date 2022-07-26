@@ -2,57 +2,61 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D055BC433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jul 2022 06:46:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A55DBC43334
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jul 2022 06:46:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237858AbiGZGqf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jul 2022 02:46:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58974 "EHLO
+        id S237776AbiGZGqm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jul 2022 02:46:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59032 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237776AbiGZGqe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2022 02:46:34 -0400
+        with ESMTP id S237863AbiGZGqm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2022 02:46:42 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C84201EAFE
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 23:46:33 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 18FFA20BD6
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 23:46:41 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 58F1834595;
-        Tue, 26 Jul 2022 06:46:31 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id C6CEA34595;
+        Tue, 26 Jul 2022 06:46:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1658817991; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1658817999; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=ZLzWk/qU4dU6J2EdsmsXbjIubh0L0To9Nfu6l4+1jRw=;
-        b=Y4Mr2XiFAizUMzVm6snJzUptOPLlswdBwM5JCB6OsB1raoMvZrTbpmL8VzO4Da1BP9SEb4
-        2V8MJu2huFtXslR64rmKghPSqn8Wdx9o5aQpxGUgQN63nBl/ZPoCclAbEnvyj+/vcBjajr
-        AbGX0ar+38vAeWAbSEN0t/bxvsx9hNI=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ePa1x2uD8CtuHpfLxEYr/n7k1l/cebYMz0fEjvXQz40=;
+        b=OYLJrya4pcSi+L32rmSMbFsr5awCIIvA8oVwVUBKqWeCDQz4W1v3EPnGh9Av6QrCnXV4MI
+        e8a1lFDAh49cSB56/Ojg4wI07jUEV7aBG+dAUUQMDfa23FaHOH0GamkLRP4u04ZF7FD8g3
+        PminR6XWdtX1BQDTFKfSYzIhbL70/uM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1658817991;
+        s=susede2_ed25519; t=1658817999;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=ZLzWk/qU4dU6J2EdsmsXbjIubh0L0To9Nfu6l4+1jRw=;
-        b=CGRmacDaAwtpczwtSm3yBnyBQK46aKzu3PhhHaE9uxMbDcXK9vD2tIDThwSNb+XUjZq7+F
-        4C5tOC+YTC/jz9AQ==
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ePa1x2uD8CtuHpfLxEYr/n7k1l/cebYMz0fEjvXQz40=;
+        b=Z5E2ld7X7l4Y4FlqX7pt0v3hTPPUqdN/mMQBtEf/l6KwtT0KYrlTm5IrYVqaal3hKBA97W
+        Xr81zEyK2SWTEMBg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3E84713A7C;
-        Tue, 26 Jul 2022 06:46:29 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A888713A7C;
+        Tue, 26 Jul 2022 06:46:38 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id 5sjKOsWN32IiWAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 26 Jul 2022 06:46:29 +0000
-Subject: [PATCH 00/13] NFSD: clean up locking
+        id 1C0DGc6N32I3WAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 26 Jul 2022 06:46:38 +0000
+Subject: [PATCH 01/13] NFSD: drop fh argument from alloc_init_deleg
 From:   NeilBrown <neilb@suse.de>
 To:     Chuck Lever III <chuck.lever@oracle.com>,
         Jeff Layton <jlayton@kernel.org>
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Date:   Tue, 26 Jul 2022 16:45:30 +1000
-Message-ID: <165881740958.21666.5904057696047278505.stgit@noble.brown>
+Message-ID: <165881793053.21666.13673223627958617026.stgit@noble.brown>
+In-Reply-To: <165881740958.21666.5904057696047278505.stgit@noble.brown>
+References: <165881740958.21666.5904057696047278505.stgit@noble.brown>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -61,63 +65,87 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is the latest version of my series to clean up locking -
-particularly of directories - in preparation for proposed patches which
-change how directory locking works across the VFS.
+From: Jeff Layton <jlayton@kernel.org>
 
-I've included Jeff's patches to validate the dentry after getting a
-delegation.  The second patch has been changed quite a bit to use
-nfsd_lookup_dentry(). I've left Jeff's From: line in place - let me know
-if you'd rather I change it.
+Currently, we pass the fh of the opened file down through several
+functions so that alloc_init_deleg can pass it to delegation_blocked.
+The filehandle of the open file is available in the nfs4_file however,
+so there's no need to pass it in a separate argument.
 
-Setting of ACLs and security labels has been moved from nfs4 code to
-nfsd_setattr() which allows quite a lot of code cleanup.
+Drop the argument from alloc_init_deleg, nfs4_open_delegation and
+nfs4_set_delegation.
 
-I think I've addressed all the concerns that have been raised, though
-maybe not in the way that was suggested.
-
-I've tested this with cthon tests over v2, v3, v4.0, v4.1, and xfstests
-on v3 and v4.1, and pynfs 4.0, 4.1.  No problems appeared.
-
-Thanks,
-NeilBrown
-
-
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
+ fs/nfsd/nfs4state.c |   14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
 
-Jeff Layton (2):
-      NFSD: drop fh argument from alloc_init_deleg
-      NFSD: verify the opened dentry after setting a delegation
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e46e3392d557..279c7a1502c9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1131,7 +1131,6 @@ static void block_delegations(struct knfsd_fh *fh)
+ 
+ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+-		 struct svc_fh *current_fh,
+ 		 struct nfs4_clnt_odstate *odstate)
+ {
+ 	struct nfs4_delegation *dp;
+@@ -1141,7 +1140,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 	n = atomic_long_inc_return(&num_delegations);
+ 	if (n < 0 || n > max_delegations)
+ 		goto out_dec;
+-	if (delegation_blocked(&current_fh->fh_handle))
++	if (delegation_blocked(&fp->fi_fhandle))
+ 		goto out_dec;
+ 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab, nfs4_free_deleg));
+ 	if (dp == NULL)
+@@ -5290,7 +5289,7 @@ static int nfsd4_check_conflicting_opens(struct nfs4_client *clp,
+ }
+ 
+ static struct nfs4_delegation *
+-nfs4_set_delegation(struct nfs4_client *clp, struct svc_fh *fh,
++nfs4_set_delegation(struct nfs4_client *clp,
+ 		    struct nfs4_file *fp, struct nfs4_clnt_odstate *odstate)
+ {
+ 	int status = 0;
+@@ -5335,7 +5334,7 @@ nfs4_set_delegation(struct nfs4_client *clp, struct svc_fh *fh,
+ 		return ERR_PTR(status);
+ 
+ 	status = -ENOMEM;
+-	dp = alloc_init_deleg(clp, fp, fh, odstate);
++	dp = alloc_init_deleg(clp, fp, odstate);
+ 	if (!dp)
+ 		goto out_delegees;
+ 
+@@ -5403,8 +5402,7 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+  * proper support for them.
+  */
+ static void
+-nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
+-			struct nfs4_ol_stateid *stp)
++nfs4_open_delegation(struct nfsd4_open *open, struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_delegation *dp;
+ 	struct nfs4_openowner *oo = openowner(stp->st_stateowner);
+@@ -5436,7 +5434,7 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
+ 		default:
+ 			goto out_no_deleg;
+ 	}
+-	dp = nfs4_set_delegation(clp, fh, stp->st_stid.sc_file, stp->st_clnt_odstate);
++	dp = nfs4_set_delegation(clp, stp->st_stid.sc_file, stp->st_clnt_odstate);
+ 	if (IS_ERR(dp))
+ 		goto out_no_deleg;
+ 
+@@ -5568,7 +5566,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	* Attempt to hand out a delegation. No error return, because the
+ 	* OPEN succeeds even if we fail.
+ 	*/
+-	nfs4_open_delegation(current_fh, open, stp);
++	nfs4_open_delegation(open, stp);
+ nodeleg:
+ 	status = nfs_ok;
+ 	trace_nfsd_open(&stp->st_stid.sc_stateid);
 
-NeilBrown (11):
-      NFSD: introduce struct nfsd_attrs
-      NFSD: set attributes when creating symlinks
-      NFSD: add security label to struct nfsd_attrs
-      NFSD: add posix ACLs to struct nfsd_attrs
-      NFSD: change nfsd_create()/nfsd_symlink() to unlock directory before returning.
-      NFSD: always drop directory lock in nfsd_unlink()
-      NFSD: only call fh_unlock() once in nfsd_link()
-      NFSD: reduce locking in nfsd_lookup()
-      NFSD: use explicit lock/unlock for directory ops
-      NFSD: use (un)lock_inode instead of fh_(un)lock for file operations
-      NFSD: discard fh_locked flag and fh_lock/fh_unlock
-
-
- fs/nfsd/acl.h       |   6 +-
- fs/nfsd/nfs2acl.c   |   6 +-
- fs/nfsd/nfs3acl.c   |   4 +-
- fs/nfsd/nfs3proc.c  |  25 ++---
- fs/nfsd/nfs4acl.c   |  46 ++-------
- fs/nfsd/nfs4proc.c  | 153 ++++++++++++-----------------
- fs/nfsd/nfs4state.c |  71 +++++++++++---
- fs/nfsd/nfsfh.c     |  22 ++++-
- fs/nfsd/nfsfh.h     |  58 +----------
- fs/nfsd/nfsproc.c   |  19 ++--
- fs/nfsd/vfs.c       | 230 +++++++++++++++++++++-----------------------
- fs/nfsd/vfs.h       |  31 ++++--
- fs/nfsd/xdr4.h      |   1 +
- 13 files changed, 314 insertions(+), 358 deletions(-)
-
---
-Signature
 
