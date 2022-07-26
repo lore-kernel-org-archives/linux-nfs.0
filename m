@@ -2,223 +2,137 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4445CC00140
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jul 2022 14:21:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 27123C00140
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jul 2022 17:17:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238863AbiGZOVM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jul 2022 10:21:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59356 "EHLO
+        id S230214AbiGZRQ7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jul 2022 13:16:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47080 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235886AbiGZOVK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2022 10:21:10 -0400
-Received: from mail-qv1-xf32.google.com (mail-qv1-xf32.google.com [IPv6:2607:f8b0:4864:20::f32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD04415FFC
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2022 07:21:09 -0700 (PDT)
-Received: by mail-qv1-xf32.google.com with SMTP id i13so10701655qvo.3
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2022 07:21:09 -0700 (PDT)
+        with ESMTP id S230170AbiGZRQ7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2022 13:16:59 -0400
+Received: from mail-lf1-x130.google.com (mail-lf1-x130.google.com [IPv6:2a00:1450:4864:20::130])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3141F1A04C
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2022 10:16:58 -0700 (PDT)
+Received: by mail-lf1-x130.google.com with SMTP id q23so10393467lfr.3
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Jul 2022 10:16:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cfa.harvard.edu; s=google;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=XUev4aVqJ5kVJbWbmM/RDsUFZ/tOjyhFiv32RH06njk=;
-        b=AeTi8kiIURrOjxL10vvu4A0RfLLpLnN33JH5nkxhk9tRKUn0Gnx75oSBAIo1ir3qT0
-         GO2YsJcOir+suz56U/Ojn3r9HgP8eiT5n1gk/opNBT/7w4kiYQBbkb6GqSUM0Hf61AUU
-         oQD+XnODoAiJ7idrZ7VYDe1d9syoHPtmuSQDFiVSJY6ClRt2cRu62Fli9p/nm2Rr9pMZ
-         LMOZlPXpIjLDX83AwCZU7reAXdm3WQNb8Wc/yWABf1vTLsAi/glS8LfRvdy4h580cUdQ
-         T2LnE3GY5Y2CeulVQ07geEgvRd+g3fXOXWKv0GJCeHBOBYUZ9FEjAMP5YUurxyCwkV5C
-         EClA==
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to;
+        bh=4jhcdp/3tGE30Y8lsXkhUzIMOQ7pq2o374TyaQfvuy4=;
+        b=ljtebOTm04xgawEBWUHCjD3hSpl8GjD+Y3MYPc7KORUHPODwkAn/VDrBYlULAqPcIQ
+         +bAjsYMPpC9KVeg1k9/YskIIlSKaMfaguxY/QpxFVANb+7D8Q0O5Fl23n5qcD485VnHT
+         tuu/FGOAr7GxI6jfqumpNN/VmadqHl7qKDmnRIHzoHqVqzGz3SWoTGwCNEN35w922ujB
+         jHA5Zflo9aFo7RAuTgzqw9tGe/56zZY6s/ld0qHMXPUDUtLxSd7GuReDSvGx8HG0R0ab
+         SGOjIfJEX3d/1Vkuv87oOqeCidLjsCFhUhxtuSRtyeVYqOAuEJ6Cw7pvvba5BjLy5PEU
+         tUqw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=XUev4aVqJ5kVJbWbmM/RDsUFZ/tOjyhFiv32RH06njk=;
-        b=AcGHHI4D7LtH56x8FYHo0AZrB+q+vBTT3LAriBoMRE6x3wn+SI9ESbLy+/KWLa6UOv
-         KsygaFONFZ0q5d9giA5MCqE2/8KxJdhKmtsV/YWayvGbAURxnqJ6iWJ9jf37O8mzTMrr
-         R5pYsvV2U5ivgXzsn/h4CnS/vh5YDiz8RzlldBKRirU4ROMKasqPvUiP5QFIKDj6cjXG
-         jz4qbESofl9V3KdnrI2I5u8SNnWbQ6p7sQJoPG58VAryzJ6YP5AM6GsYK9pP5muuyws6
-         IiokZHwYhi4Aai70C40Uv/2KxmuGNettRNNPXzVlKeQn+xS3B7vx8JL9uvKcQRPVhHYb
-         rcjQ==
-X-Gm-Message-State: AJIora8IyObJfMxxwWzymHyYfAv1Rtdp8nWT7rKstzUIX0uP5/dH6CRw
-        jwIQKFxJZR8DVZhjk2XTX31vZi3ytPOX1g==
-X-Google-Smtp-Source: AGRyM1t1p4UvfIWlT5OPoMpJczH5HNz9HkPHYHm/HsDcICGS2nVhcNQ6bdNeyZYj3iPtbEBry/tXSw==
-X-Received: by 2002:a0c:dc0f:0:b0:474:1c35:1fbc with SMTP id s15-20020a0cdc0f000000b004741c351fbcmr15052651qvk.78.1658845268458;
-        Tue, 26 Jul 2022 07:21:08 -0700 (PDT)
-Received: from pihe (dhcp-131-142-152-103.cfa.harvard.edu. [131.142.152.103])
-        by smtp.gmail.com with ESMTPSA id i67-20020a375446000000b006a6a6f148e6sm11263873qkb.17.2022.07.26.07.21.07
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 26 Jul 2022 07:21:08 -0700 (PDT)
-Received: from pihe (localhost [127.0.0.1])
-        by pihe (8.17.1/8.17.1) with ESMTPS id 26QEL74Q069151
-        (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NOT);
-        Tue, 26 Jul 2022 10:21:07 -0400
-Received: (from pumukli@localhost)
-        by pihe (8.17.1/8.17.1/Submit) id 26QEL7Od069101;
-        Tue, 26 Jul 2022 10:21:07 -0400
-From:   Attila Kovacs <attila.kovacs@cfa.harvard.edu>
-To:     Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] thread safe clnt destruction.
-Date:   Tue, 26 Jul 2022 10:19:06 -0400
-Message-Id: <20220726141906.69023-2-attila.kovacs@cfa.harvard.edu>
-X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20220726141906.69023-1-attila.kovacs@cfa.harvard.edu>
-References: <20220726141906.69023-1-attila.kovacs@cfa.harvard.edu>
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to;
+        bh=4jhcdp/3tGE30Y8lsXkhUzIMOQ7pq2o374TyaQfvuy4=;
+        b=Cq6rYrcPezZmQhloX0qAAXl10zrZj0guT9aeQEp9Duz4RpjSdIRNC1K/BYycd+ylyX
+         NRjo3yQbtwUMccFg1ftwU5BAU1OH3heaSw8qOg5aHChObzKUxvWQDg8X1SrHqTxMaSji
+         GEuwBAKehNqEZUR1SooqCokU9saHHX2uvsdXMsO1NA9aR0sSTM5xa428z0jAlO1L5ICt
+         +NrK5Ypn6GyL5wqMJq2gScUMiWx8JtYaTSPdyjqC2uZz17LtzvgjC0xBx1aVBHHZ3oao
+         kFtIbZ/yJFr8EepNMqpOyZ48Kz/n2GuPcr/8lsQ1FJ7RwWpbqBDLnQ29zDX08zS4Tknu
+         YwrA==
+X-Gm-Message-State: AJIora8q6LLGN7F2hKnv82vAIYjZb8F7E/KbNx9cx5mLhRfR+3zjXLoJ
+        P75ttdGlLZet6nft7IFseqCAm5kk4tFG+SxdHlCCpD8pH10=
+X-Google-Smtp-Source: AGRyM1tLRUTThfdm/aLOxp7lxaEWxS6MyPCQSc2DgpzKcf+sRUyalUUJEa2qhP5D0RnHvV2812dt1N6+KDm9CMdphlg=
+X-Received: by 2002:a05:6512:159d:b0:48a:9c0b:752a with SMTP id
+ bp29-20020a056512159d00b0048a9c0b752amr2689511lfb.321.1658855815909; Tue, 26
+ Jul 2022 10:16:55 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAD15GZd=sxsXiNmuN-FpRk3E_cKRF_CTLqxd5XJ4KhtON4XkPQ@mail.gmail.com>
+ <CAD15GZe1__nJ6SfAr1zs4Vq4za9D=FP__SotyS37RVh=2OWu-g@mail.gmail.com>
+In-Reply-To: <CAD15GZe1__nJ6SfAr1zs4Vq4za9D=FP__SotyS37RVh=2OWu-g@mail.gmail.com>
+From:   Jan Kasiak <j.kasiak@gmail.com>
+Date:   Tue, 26 Jul 2022 13:16:44 -0400
+Message-ID: <CAD15GZdCYTr0Xfn1-n-aXf5FxLDR-zrYR2TutHk_4RRbP6+pVA@mail.gmail.com>
+Subject: Re: NLM 4 Infinite Loop Bug
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Attila Kovacs <attipaci@gmail.com>
+Hi all,
 
-If clnt_dg_destroy() or clnt_vc_destroy() is awoken with other blocked 
-operations pending (such as clnt_*_call(), clnt_*_control(), or 
-clnt_*_freeres()) but no active operation currently being executed, then the 
-client gets destroyed. Then, as the other blocked operations get subsequently 
-awoken, they will try operate on an invalid client handle, potentially causing 
-unpredictable behavior and stack corruption. 
+Even after applying the above two patches, I have discovered a new set
+of NLM 4 requests that break lockd.
 
-Signed-off-by: Attila Kovacs <attipaci@gmail.com>
----
- src/clnt_dg.c       | 13 ++++++++++++-
- src/clnt_fd_locks.h |  2 ++
- src/clnt_vc.c       | 13 ++++++++++++-
- 3 files changed, 26 insertions(+), 2 deletions(-)
+Unfortunately, I don't have enough experience to suggest a fix, but
+would be glad to test anyone's attempt.
 
-diff --git a/src/clnt_dg.c b/src/clnt_dg.c
-index b2043ac..166af63 100644
---- a/src/clnt_dg.c
-+++ b/src/clnt_dg.c
-@@ -101,6 +101,7 @@ extern mutex_t clnt_fd_lock;
- #define	release_fd_lock(fd_lock, mask) {	\
- 	mutex_lock(&clnt_fd_lock);	\
- 	fd_lock->active = FALSE;	\
-+	fd_lock->pending--;		\
- 	thr_sigsetmask(SIG_SETMASK, &(mask), NULL); \
- 	cond_signal(&fd_lock->cv);	\
- 	mutex_unlock(&clnt_fd_lock);    \
-@@ -311,6 +312,7 @@ clnt_dg_call(cl, proc, xargs, argsp, xresults, resultsp, utimeout)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
-+	cu->cu_fd_lock->pending++;
- 	while (cu->cu_fd_lock->active)
- 		cond_wait(&cu->cu_fd_lock->cv, &clnt_fd_lock);
- 	cu->cu_fd_lock->active = TRUE;
-@@ -571,10 +573,12 @@ clnt_dg_freeres(cl, xdr_res, res_ptr)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
-+	cu->cu_fd_lock->pending++;
- 	while (cu->cu_fd_lock->active)
- 		cond_wait(&cu->cu_fd_lock->cv, &clnt_fd_lock);
- 	xdrs->x_op = XDR_FREE;
- 	dummy = (*xdr_res)(xdrs, res_ptr);
-+	cu->cu_fd_lock->pending--;
- 	thr_sigsetmask(SIG_SETMASK, &mask, NULL);
- 	cond_signal(&cu->cu_fd_lock->cv);
- 	mutex_unlock(&clnt_fd_lock);
-@@ -602,6 +606,7 @@ clnt_dg_control(cl, request, info)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
-+	cu->cu_fd_lock->pending++;
- 	while (cu->cu_fd_lock->active)
- 		cond_wait(&cu->cu_fd_lock->cv, &clnt_fd_lock);
- 	cu->cu_fd_lock->active = TRUE;
-@@ -742,8 +747,14 @@ clnt_dg_destroy(cl)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
--	while (cu_fd_lock->active)
-+	/* wait until all pending operations on client are completed. */
-+	while (cu_fd_lock->pending > 0) {
-+		/* If a blocked operation can be awakened, then do it. */
-+		if (cu_fd_lock->active == FALSE)
-+			cond_signal(&cu_fd_lock->cv);
-+		/* keep waiting... */
- 		cond_wait(&cu_fd_lock->cv, &clnt_fd_lock);
-+	}
- 	if (cu->cu_closeit)
- 		(void)close(cu_fd);
- 	XDR_DESTROY(&(cu->cu_outxdrs));
-diff --git a/src/clnt_fd_locks.h b/src/clnt_fd_locks.h
-index 359f995..6ba62cb 100644
---- a/src/clnt_fd_locks.h
-+++ b/src/clnt_fd_locks.h
-@@ -50,6 +50,7 @@ static unsigned int fd_locks_prealloc = 0;
- /* per-fd lock */
- struct fd_lock_t {
- 	bool_t active;
-+	int pending;        /* Number of pending operations on fd */
- 	cond_t cv;
- };
- typedef struct fd_lock_t fd_lock_t;
-@@ -180,6 +181,7 @@ fd_lock_t* fd_lock_create(int fd, fd_locks_t *fd_locks) {
- 		item->fd = fd;
- 		item->refs = 1;
- 		item->fd_lock.active = FALSE;
-+		item->fd_lock.pending = 0;
- 		cond_init(&item->fd_lock.cv, 0, (void *) 0);
- 		TAILQ_INSERT_HEAD(list, item, link);
- 	} else {
-diff --git a/src/clnt_vc.c b/src/clnt_vc.c
-index 3c73e65..5bbc78b 100644
---- a/src/clnt_vc.c
-+++ b/src/clnt_vc.c
-@@ -153,6 +153,7 @@ extern mutex_t  clnt_fd_lock;
- #define release_fd_lock(fd_lock, mask) {	\
- 	mutex_lock(&clnt_fd_lock);	\
- 	fd_lock->active = FALSE;	\
-+	fd_lock->pending--;		\
- 	thr_sigsetmask(SIG_SETMASK, &(mask), (sigset_t *) NULL);	\
- 	cond_signal(&fd_lock->cv);	\
- 	mutex_unlock(&clnt_fd_lock);    \
-@@ -357,6 +358,7 @@ clnt_vc_call(cl, proc, xdr_args, args_ptr, xdr_results, results_ptr, timeout)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
-+	ct->ct_fd_lock->pending++;
- 	while (ct->ct_fd_lock->active)
- 		cond_wait(&ct->ct_fd_lock->cv, &clnt_fd_lock);
- 	ct->ct_fd_lock->active = TRUE;
-@@ -495,10 +497,12 @@ clnt_vc_freeres(cl, xdr_res, res_ptr)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
-+	ct->ct_fd_lock->pending++;
- 	while (ct->ct_fd_lock->active)
- 		cond_wait(&ct->ct_fd_lock->cv, &clnt_fd_lock);
- 	xdrs->x_op = XDR_FREE;
- 	dummy = (*xdr_res)(xdrs, res_ptr);
-+	ct->ct_fd_lock->pending--;
- 	thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
- 	cond_signal(&ct->ct_fd_lock->cv);
- 	mutex_unlock(&clnt_fd_lock);
-@@ -533,6 +537,7 @@ clnt_vc_control(cl, request, info)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
-+	ct->ct_fd_lock->pending++;
- 	while (ct->ct_fd_lock->active)
- 		cond_wait(&ct->ct_fd_lock->cv, &clnt_fd_lock);
- 	ct->ct_fd_lock->active = TRUE;
-@@ -655,8 +660,14 @@ clnt_vc_destroy(cl)
- 	sigfillset(&newmask);
- 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
- 	mutex_lock(&clnt_fd_lock);
--	while (ct_fd_lock->active)
-+	/* wait until all pending operations on client are completed. */
-+	while (ct_fd_lock->pending > 0) {
-+		/* If a blocked operation can be awakened, then do it. */
-+		if (ct_fd_lock->active == FALSE)
-+			cond_signal(&ct_fd_lock->cv);
-+		/* keep waiting... */
- 		cond_wait(&ct_fd_lock->cv, &clnt_fd_lock);
-+	}
- 	if (ct->ct_closeit && ct->ct_fd != -1) {
- 		(void)close(ct->ct_fd);
- 	}
--- 
-2.37.1
+All requests are non-blocking.
 
+Scenario A
+=========
+lock(offset=UINT64_MAX, len=100) - GRANTED
+free_all() - never finishes and lockd thread is stuck busy looping
+
+Scenario B
+========
+lock(svid=1, offset=UINT64_MAX, len=100) - GRANTED
+
+test(svid=2, offset=UINT64_MAX, len=50) - DENIED
+correct, holder offset, len are (UINT64_MAX, 100)
+
+test(svid=2, offset=75, len=10) - DENIED
+wrong, because holder (offset, len) are wrong (UINT64_MAX, 100),
+because the above
+lock overflows during comparison to (49, 50)
+
+Scenario C
+========
+lock(svid=1, offset=UINT64_MAX, len=100) - GRANTED
+
+test(svid=2, offset=UINT64_MAX, len=50) - DENIED
+correct, holder offset, len are (UINT64_MAX, 100)
+
+unlock(svid=1, offset=UINT64_MAX, len=50) - GRANTED
+weird, because it has now created a lock at (offset=UINT64_MAX + 50, len=50)
+not sure what the correct behavior should be here - FBIG error?
+
+test(svid=2, offset=75, len=10) - DENIED
+wrong, because holder offset, len are wrong (49, 50), because the above
+unlock has overflowed the offset
+
+-Jan
+
+On Wed, Jul 20, 2022 at 4:01 PM Jan Kasiak <j.kasiak@gmail.com> wrote:
+>
+> Applying two commits from the Linux master branch seems to have fixed
+> the problem:
+>
+> aec158242b87a43d83322e99bc71ab4428e5ab79
+> 1197eb5906a5464dbaea24cac296dfc38499cc00
+>
+> -Jan
+>
+> On Wed, Jul 20, 2022 at 2:46 PM Jan Kasiak <j.kasiak@gmail.com> wrote:
+> >
+> > Hi all,
+> >
+> > I'm writing my own NFS client, and while trying to test it, I've come
+> > across a way to get the lockd thread into an infinite loop and stop
+> > accepting any new requests.
+> >
+> > Kernel Version: Linux ubuntu-jammy 5.15.0-41-generic
+> >
+> > The client is a python program, and it does not run rpcbind, NLM, etc...
+> >
+> > I issue an NM_LOCK (procedure 22) request with block set to false, and
+> > get a GRANTED reply.
+> >
+> > I then issue a FREE_ALL (procedure 23) request, and the lockd thread
+> > gets stuck in nlm_traverse_locks - it matches the host, calls
+> > nlm_unlock_files, and then jumps to the again label, and repeats this
+> > loop forever.
+> >
+> > It's not clear to me who is supposed to unset the host from the lock?
+> > Any pointers as to why there is a jump to again?
+> >
+> > Thanks,
+> > -Jan
