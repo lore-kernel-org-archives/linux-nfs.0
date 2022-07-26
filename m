@@ -2,104 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 60288C433EF
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jul 2022 05:02:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D055BC433EF
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Jul 2022 06:46:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230410AbiGZFCD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Jul 2022 01:02:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53802 "EHLO
+        id S237858AbiGZGqf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Jul 2022 02:46:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58974 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237481AbiGZFCC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2022 01:02:02 -0400
+        with ESMTP id S237776AbiGZGqe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jul 2022 02:46:34 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9CE35CE2A
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 22:02:01 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C84201EAFE
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Jul 2022 23:46:33 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 4758034B61;
-        Tue, 26 Jul 2022 05:02:00 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 58F1834595;
+        Tue, 26 Jul 2022 06:46:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1658811720; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1658817991; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=I0lJJLDRJACjPVVJ8KSa2Sgzh51LITR8rcE37QAxbNI=;
-        b=nUqBPS93uaIg/sogXuMo2kUDdTmgdHUqjGty8XCw3/c76xXDyZTmfyIJVOD711i0E8YYF2
-        3ZWNmFMT4Av357mjyvBqP2nGlz4YkV/MS0DECNhZx4aqB18NstICx0Shs2nFVZHByQ067j
-        e/KAzFpHVWx+kHRE9d1jP0Up7qOreIM=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=ZLzWk/qU4dU6J2EdsmsXbjIubh0L0To9Nfu6l4+1jRw=;
+        b=Y4Mr2XiFAizUMzVm6snJzUptOPLlswdBwM5JCB6OsB1raoMvZrTbpmL8VzO4Da1BP9SEb4
+        2V8MJu2huFtXslR64rmKghPSqn8Wdx9o5aQpxGUgQN63nBl/ZPoCclAbEnvyj+/vcBjajr
+        AbGX0ar+38vAeWAbSEN0t/bxvsx9hNI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1658811720;
+        s=susede2_ed25519; t=1658817991;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=I0lJJLDRJACjPVVJ8KSa2Sgzh51LITR8rcE37QAxbNI=;
-        b=QguInsBaAbT+zGwovp8HuEjJvrLuUFQjyhPADO+ucAxGOPyYPDQ4G5DgVqfooh09J+WFZE
-        PjxTy216CIN1kADw==
+         content-transfer-encoding:content-transfer-encoding;
+        bh=ZLzWk/qU4dU6J2EdsmsXbjIubh0L0To9Nfu6l4+1jRw=;
+        b=CGRmacDaAwtpczwtSm3yBnyBQK46aKzu3PhhHaE9uxMbDcXK9vD2tIDThwSNb+XUjZq7+F
+        4C5tOC+YTC/jz9AQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 6E95113A12;
-        Tue, 26 Jul 2022 05:01:59 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3E84713A7C;
+        Tue, 26 Jul 2022 06:46:29 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id ZrqsCkd132LoNAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 26 Jul 2022 05:01:59 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+        id 5sjKOsWN32IiWAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 26 Jul 2022 06:46:29 +0000
+Subject: [PATCH 00/13] NFSD: clean up locking
+From:   NeilBrown <neilb@suse.de>
+To:     Chuck Lever III <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date:   Tue, 26 Jul 2022 16:45:30 +1000
+Message-ID: <165881740958.21666.5904057696047278505.stgit@noble.brown>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Felipe Gasper" <felipe@felipegasper.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: Supplementary GIDs?
-In-reply-to: <4A964428-65EA-49D4-B7B4-35D22D89D418@felipegasper.com>
-References: <4A964428-65EA-49D4-B7B4-35D22D89D418@felipegasper.com>
-Date:   Tue, 26 Jul 2022 15:01:56 +1000
-Message-id: <165881171619.4359.3075025793434550604@noble.neil.brown.name>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, 24 Jul 2022, Felipe Gasper wrote:
-> Hello,
->=20
-> 	I=E2=80=99m seeing two different behaviours between kernel NFS server vers=
-ions in AlmaLinux 8 and Ubuntu 20. The following Perl demonstrates the issue:
->=20
-> --------
-> perl -MFile::Temp -Mautodie -Mstrict -e'my $fh =3D File::Temp::tempfile( DI=
-R =3D> "/the/nfs/mount" ); my $mailgid =3D getgrnam "mail"; my ($uid, $gid) =
-=3D (getpwnam "bin")[2,3]; chown $uid, $gid, $fh; $) =3D "$gid $mailgid"; $> =
-=3D $uid; chown -1, $mailgid, $fh'
-> --------
->=20
-> 	What this does, as root, is:
->=20
-> 1) Creates a file under /mnt, then deletes it, leaving the Linux file descr=
-iptor open.
->=20
-> 2) chowns the file to bin:bin.
->=20
-> 3) Sets the process=E2=80=99s EUID & GUID to bin & bin/mail.
->=20
-> 4) Does fchown( fd, -1, mailgid ).
->=20
-> 	When the server is AlmaLinux 8, the above works. When the server is Ubuntu=
- 20, it fails with EPERM. (The client is AlmaLinux 8 in both cases.) Both are=
- configured identically.
->=20
-> 	Does anyone know of anything that changed fairly recently in the kernel=E2=
-=80=99s NFS server that might affect this? I=E2=80=99ve done a packet capture=
- and confirmed that in both cases there=E2=80=99s an NFS SETATTR sent in an R=
-PC 2.4 packet whose UID & GIDs match the process.
->=20
+This is the latest version of my series to clean up locking -
+particularly of directories - in preparation for proposed patches which
+change how directory locking works across the VFS.
 
-Is mountd on Ubuntu running with "--manage-gids"??  And is mountd on
-AlmaLinux running without that flag?
+I've included Jeff's patches to validate the dentry after getting a
+delegation.  The second patch has been changed quite a bit to use
+nfsd_lookup_dentry(). I've left Jeff's From: line in place - let me know
+if you'd rather I change it.
 
-That would explain the difference.
+Setting of ACLs and security labels has been moved from nfs4 code to
+nfsd_setattr() which allows quite a lot of code cleanup.
 
+I think I've addressed all the concerns that have been raised, though
+maybe not in the way that was suggested.
+
+I've tested this with cthon tests over v2, v3, v4.0, v4.1, and xfstests
+on v3 and v4.1, and pynfs 4.0, 4.1.  No problems appeared.
+
+Thanks,
 NeilBrown
+
+
+---
+
+Jeff Layton (2):
+      NFSD: drop fh argument from alloc_init_deleg
+      NFSD: verify the opened dentry after setting a delegation
+
+NeilBrown (11):
+      NFSD: introduce struct nfsd_attrs
+      NFSD: set attributes when creating symlinks
+      NFSD: add security label to struct nfsd_attrs
+      NFSD: add posix ACLs to struct nfsd_attrs
+      NFSD: change nfsd_create()/nfsd_symlink() to unlock directory before returning.
+      NFSD: always drop directory lock in nfsd_unlink()
+      NFSD: only call fh_unlock() once in nfsd_link()
+      NFSD: reduce locking in nfsd_lookup()
+      NFSD: use explicit lock/unlock for directory ops
+      NFSD: use (un)lock_inode instead of fh_(un)lock for file operations
+      NFSD: discard fh_locked flag and fh_lock/fh_unlock
+
+
+ fs/nfsd/acl.h       |   6 +-
+ fs/nfsd/nfs2acl.c   |   6 +-
+ fs/nfsd/nfs3acl.c   |   4 +-
+ fs/nfsd/nfs3proc.c  |  25 ++---
+ fs/nfsd/nfs4acl.c   |  46 ++-------
+ fs/nfsd/nfs4proc.c  | 153 ++++++++++++-----------------
+ fs/nfsd/nfs4state.c |  71 +++++++++++---
+ fs/nfsd/nfsfh.c     |  22 ++++-
+ fs/nfsd/nfsfh.h     |  58 +----------
+ fs/nfsd/nfsproc.c   |  19 ++--
+ fs/nfsd/vfs.c       | 230 +++++++++++++++++++++-----------------------
+ fs/nfsd/vfs.h       |  31 ++++--
+ fs/nfsd/xdr4.h      |   1 +
+ 13 files changed, 314 insertions(+), 358 deletions(-)
+
+--
+Signature
+
