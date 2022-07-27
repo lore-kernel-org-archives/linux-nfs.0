@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD0FBC04A68
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jul 2022 19:07:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E699C19F21
+	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jul 2022 19:07:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235229AbiG0THk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 27 Jul 2022 15:07:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47334 "EHLO
+        id S235254AbiG0THl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 27 Jul 2022 15:07:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46802 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234681AbiG0THP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2022 15:07:15 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B5A8BF5B3
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2022 11:40:55 -0700 (PDT)
+        with ESMTP id S232084AbiG0THX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2022 15:07:23 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F00B28B
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2022 11:41:14 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 53B33619D7
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2022 18:40:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE54DC433D6
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2022 18:40:54 +0000 (UTC)
-Subject: [PATCH v2 09/13] NFSD: Refactor nfsd4_cleanup_inter_ssc() (2/2)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 45CB8619C5
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2022 18:41:14 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 940ACC433C1
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jul 2022 18:41:13 +0000 (UTC)
+Subject: [PATCH v2 12/13] NFSD: Add nfsd4_send_cb_offload()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Wed, 27 Jul 2022 14:40:53 -0400
-Message-ID: <165894725378.11193.13200227821674084256.stgit@manet.1015granger.net>
+Date:   Wed, 27 Jul 2022 14:41:12 -0400
+Message-ID: <165894727256.11193.4397590214956949570.stgit@manet.1015granger.net>
 In-Reply-To: <165894669884.11193.6386905165076468843.stgit@manet.1015granger.net>
 References: <165894669884.11193.6386905165076468843.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5.dev2+g9ce680a5
@@ -36,56 +36,74 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Move the nfsd4_cleanup_*() call sites out of nfsd4_do_copy(). A
-subsequent patch will modify one of the new call sites to avoid
-the need to manufacture the phony struct nfsd_file.
+Refactor for legibility.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4proc.c |   15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4proc.c |   37 ++++++++++++++++++++++---------------
+ 1 file changed, 22 insertions(+), 15 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index b6e1fb8006cd..bb0f8d094530 100644
+index 336fdfae2230..479dc03d286e 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1724,13 +1724,6 @@ static __be32 nfsd4_do_copy(struct nfsd4_copy *copy, bool sync)
- 		nfsd4_init_copy_res(copy, sync);
- 		status = nfs_ok;
- 	}
--
--	if (nfsd4_ssc_is_inter(copy))
--		nfsd4_cleanup_inter_ssc(copy->ss_mnt, copy->nf_src->nf_file,
--					copy->nf_dst);
--	else
--		nfsd4_cleanup_intra_ssc(copy->nf_src, copy->nf_dst);
--
- 	return status;
+@@ -1763,6 +1763,27 @@ static void cleanup_async_copy(struct nfsd4_copy *copy)
+ 	nfs4_put_copy(copy);
  }
  
-@@ -1786,9 +1779,14 @@ static int nfsd4_do_async_copy(void *data)
- 			nfsd4_interssc_disconnect(copy->ss_mnt);
- 			goto do_callback;
- 		}
-+		copy->nfserr = nfsd4_do_copy(copy, 0);
-+		nfsd4_cleanup_inter_ssc(copy->ss_mnt, copy->nf_src->nf_file,
-+					copy->nf_dst);
-+	} else {
-+		copy->nfserr = nfsd4_do_copy(copy, 0);
-+		nfsd4_cleanup_intra_ssc(copy->nf_src, copy->nf_dst);
++static void nfsd4_send_cb_offload(struct nfsd4_copy *copy)
++{
++	struct nfsd4_copy *cb_copy;
++
++	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
++	if (!cb_copy)
++		return;
++
++	refcount_set(&cb_copy->refcount, 1);
++	memcpy(&cb_copy->cp_res, &copy->cp_res, sizeof(copy->cp_res));
++	cb_copy->cp_clp = copy->cp_clp;
++	cb_copy->nfserr = copy->nfserr;
++	memcpy(&cb_copy->fh, &copy->fh, sizeof(copy->fh));
++
++	nfsd4_init_cb(&cb_copy->cp_cb, cb_copy->cp_clp,
++			&nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
++	trace_nfsd_cb_offload(copy->cp_clp, &copy->cp_res.cb_stateid,
++			      &copy->fh, copy->cp_count, copy->nfserr);
++	nfsd4_run_cb(&cb_copy->cp_cb);
++}
++
+ /**
+  * nfsd4_do_async_copy - kthread function for background server-side COPY
+  * @data: arguments for COPY operation
+@@ -1773,7 +1794,6 @@ static void cleanup_async_copy(struct nfsd4_copy *copy)
+ static int nfsd4_do_async_copy(void *data)
+ {
+ 	struct nfsd4_copy *copy = (struct nfsd4_copy *)data;
+-	struct nfsd4_copy *cb_copy;
+ 
+ 	if (nfsd4_ssc_is_inter(copy)) {
+ 		struct file *filp;
+@@ -1795,20 +1815,7 @@ static int nfsd4_do_async_copy(void *data)
  	}
  
--	copy->nfserr = nfsd4_do_copy(copy, 0);
  do_callback:
- 	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
- 	if (!cb_copy)
-@@ -1864,6 +1862,7 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfs_ok;
- 	} else {
- 		status = nfsd4_do_copy(copy, 1);
-+		nfsd4_cleanup_intra_ssc(copy->nf_src, copy->nf_dst);
- 	}
- out:
- 	return status;
+-	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+-	if (!cb_copy)
+-		goto out;
+-	refcount_set(&cb_copy->refcount, 1);
+-	memcpy(&cb_copy->cp_res, &copy->cp_res, sizeof(copy->cp_res));
+-	cb_copy->cp_clp = copy->cp_clp;
+-	cb_copy->nfserr = copy->nfserr;
+-	memcpy(&cb_copy->fh, &copy->fh, sizeof(copy->fh));
+-	nfsd4_init_cb(&cb_copy->cp_cb, cb_copy->cp_clp,
+-			&nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
+-	trace_nfsd_cb_offload(copy->cp_clp, &copy->cp_res.cb_stateid,
+-			      &copy->fh, copy->cp_count, copy->nfserr);
+-	nfsd4_run_cb(&cb_copy->cp_cb);
+-out:
++	nfsd4_send_cb_offload(copy);
+ 	cleanup_async_copy(copy);
+ 	return 0;
+ }
 
 
