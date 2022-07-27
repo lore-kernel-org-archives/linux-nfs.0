@@ -2,100 +2,157 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36C46C04A68
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jul 2022 10:14:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 83CAAC19F29
+	for <linux-nfs@archiver.kernel.org>; Wed, 27 Jul 2022 11:34:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232063AbiG0KOf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 27 Jul 2022 06:14:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50304 "EHLO
+        id S230521AbiG0LeR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 27 Jul 2022 07:34:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50606 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229763AbiG0KOG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2022 06:14:06 -0400
-X-Greylist: delayed 588 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 27 Jul 2022 03:14:04 PDT
-Received: from mxct.zte.com.cn (mxct.zte.com.cn [58.251.27.85])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8C60B1277B;
-        Wed, 27 Jul 2022 03:14:04 -0700 (PDT)
-Received: from mxde.zte.com.cn (unknown [10.35.8.63])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mxct.zte.com.cn (FangMail) with ESMTPS id 4Lt8Wf6X0KzvLC;
-        Wed, 27 Jul 2022 18:04:14 +0800 (CST)
-Received: from mxus.zte.com.cn (unknown [10.207.168.8])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mxde.zte.com.cn (FangMail) with ESMTPS id 4Lt8WN3JS5zCVKg3;
-        Wed, 27 Jul 2022 18:04:00 +0800 (CST)
-Received: from mxhk.zte.com.cn (unknown [192.168.250.137])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mxus.zte.com.cn (FangMail) with ESMTPS id 4Lt8WJ6mXSzdmXX7;
-        Wed, 27 Jul 2022 18:03:56 +0800 (CST)
-Received: from mse-fl1.zte.com.cn (unknown [10.5.228.81])
+        with ESMTP id S229604AbiG0LeP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jul 2022 07:34:15 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E892B13CDE;
+        Wed, 27 Jul 2022 04:34:14 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mxhk.zte.com.cn (FangMail) with ESMTPS id 4Lt8WF1LG4z8R047;
-        Wed, 27 Jul 2022 18:03:53 +0800 (CST)
-Received: from szxlzmapp05.zte.com.cn ([10.5.230.85])
-        by mse-fl1.zte.com.cn with SMTP id 26RA3VN4074081;
-        Wed, 27 Jul 2022 18:03:31 +0800 (GMT-8)
-        (envelope-from wang.yi59@zte.com.cn)
-Received: from fox-cloudhost8.zte.com.cn (unknown [10.234.72.110])
-        by smtp (Zmail) with SMTP;
-        Wed, 27 Jul 2022 18:03:32 +0800
-X-Zmail-TransId: 3e8162e10d73022-19baa
-From:   Yi Wang <wang.yi59@zte.com.cn>
-To:     trond.myklebust@hammerspace.com
-Cc:     anna@kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xue.zhihong@zte.com.cn,
-        wang.yi59@zte.com.cn, wang.liang82@zte.com.cn,
-        Zhang Xianwei <zhang.xianwei8@zte.com.cn>
-Subject: [PATCH] NFSv4.1: RECLAIM_COMPLETE must handle EACCES
-Date:   Wed, 27 Jul 2022 18:01:07 +0800
-Message-Id: <20220727100107.3062-1-wang.yi59@zte.com.cn>
-X-Mailer: git-send-email 2.33.0.rc0.dirty
+        by ams.source.kernel.org (Postfix) with ESMTPS id 8FF94B82022;
+        Wed, 27 Jul 2022 11:34:13 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8D119C433C1;
+        Wed, 27 Jul 2022 11:34:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1658921652;
+        bh=db3UoE/JVeKIkJbNmRDPqnol/NodJCjMUZp8vPWicCs=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=iqBNMAw4d8h6D2FW8pNMl/xzkWqHEMCuV4bviEGmRGIT4dJ5u4m5B77JxMTp0zYwm
+         Gtrq8OUXh6pYU0QtNfK4gEEOWKBPa3Z2XD5iR4Eknd7/yviaLd2NAFsTD+5mb8ifY6
+         GeJFS4qjfrmv92fFRtlx+qu48rTzv0+RAq3cD4hFAwpIWWjx2gIrW7SrWdgEKgEw/x
+         vOJL+XTk4y2VyyrZk++kqwTei9MCpBEdJOHAFhyv3AMCOSnktC5R/PV62sRb8b6uCs
+         loqefTIB6JbzdZbTeEwyxRsIIUxXbjQ3C84er3lkzLctezVdAxMri2l5dlPmocv2BA
+         KgIDl2URQW1mQ==
+Date:   Wed, 27 Jul 2022 13:34:06 +0200
+From:   Christian Brauner <brauner@kernel.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Yongchen Yang <yoyang@redhat.com>
+Subject: Re: [RFC PATCH] vfs: don't check may_create_in_sticky if the file is
+ already open/created
+Message-ID: <20220727113406.ewu4kzsoo643cf66@wittgenstein>
+References: <20220726202333.165490-1-jlayton@kernel.org>
+ <8e4d498a3e8ed80ada2d3da01e7503e082be31a3.camel@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain;
-        charset="UTF-8"
-X-MAIL: mse-fl1.zte.com.cn 26RA3VN4074081
-X-Fangmail-Gw-Spam-Type: 0
-X-FangMail-Miltered: at cgslv5.04-192.168.251.14.novalocal with ID 62E10D9D.000 by FangMail milter!
-X-FangMail-Envelope: 1658916255/4Lt8Wf6X0KzvLC/62E10D9D.000/10.35.8.63/[10.35.8.63]/mxde.zte.com.cn/<wang.yi59@zte.com.cn>
-X-Fangmail-Anti-Spam-Filtered: true
-X-Fangmail-MID-QID: 62E10D9D.000/4Lt8Wf6X0KzvLC
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <8e4d498a3e8ed80ada2d3da01e7503e082be31a3.camel@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Zhang Xianwei <zhang.xianwei8@zte.com.cn>
+On Tue, Jul 26, 2022 at 04:27:56PM -0400, Jeff Layton wrote:
+> On Tue, 2022-07-26 at 16:23 -0400, Jeff Layton wrote:
+> > NFS server is exporting a sticky directory (mode 01777) with root
+> > squashing enabled. Client has protect_regular enabled and then tries to
+> > open a file as root in that directory. File is created (with ownership
+> > set to nobody:nobody) but the open syscall returns an error.
+> > 
+> > The problem is may_create_in_sticky, which rejects the open even though
+> > the file has already been created/opened. Only call may_create_in_sticky
+> > if the file hasn't already been opened or created.
+> > 
+> > Cc: Christian Brauner <brauner@kernel.org>
+> > Link: https://bugzilla.redhat.com/show_bug.cgi?id=1976829
+> > Reported-by: Yongchen Yang <yoyang@redhat.com>
+> > Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> > ---
+> >  fs/namei.c | 13 +++++++++----
+> >  1 file changed, 9 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index 1f28d3f463c3..7480b6dc8d27 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -3495,10 +3495,15 @@ static int do_open(struct nameidata *nd,
+> >  			return -EEXIST;
+> >  		if (d_is_dir(nd->path.dentry))
+> >  			return -EISDIR;
+> > -		error = may_create_in_sticky(mnt_userns, nd,
+> > -					     d_backing_inode(nd->path.dentry));
+> > -		if (unlikely(error))
+> > -			return error;
+> > +		if (!(file->f_mode & (FMODE_OPENED | FMODE_CREATED))) {
+> > +			error = may_create_in_sticky(mnt_userns, nd,
+> > +						d_backing_inode(nd->path.dentry));
+> > +			if (unlikely(error)) {
+> > +				printk("%s: f_mode=0x%x oflag=0x%x\n",
+> > +					__func__, file->f_mode, open_flag);
+> > +				return error;
+> > +			}
+> > +		}
+> >  	}
+> >  	if ((nd->flags & LOOKUP_DIRECTORY) && !d_can_lookup(nd->path.dentry))
+> >  		return -ENOTDIR;
+> 
+> I'm pretty sure this patch is the wrong approach, actually, since it
+> doesn't fix the regular (non-atomic) open codepath. Any thoughts on what
 
-A client should be able to handle getting an EACCES error while doing
-a mount operation to reclaim state due to NFS4CLNT_RECLAIM_REBOOT
-being set. If the server returns RPC_AUTH_BADCRED because authentication
-failed when we execute "exportfs -au", then RECLAIM_COMPLETE will go a
-wrong way. After mount succeeds, all OPEN call will fail due to an
-NFS4ERR_GRACE error being returned. This patch is to fix it by resending
-a RPC request.
+Hey Jeff,
 
-Signed-off-by: Zhang Xianwei <zhang.xianwei8@zte.com.cn>
-Signed-off-by: Yi Wang <wang.yi59@zte.com.cn>
----
- fs/nfs/nfs4proc.c | 3 +++
- 1 file changed, 3 insertions(+)
+I haven't quite understood why that won't work for the regular open
+codepaths. I'm probably missing something obvious.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bb0e84a46d61..b51b83506011 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -9477,6 +9477,9 @@ static int nfs41_reclaim_complete_handle_errors(struct rpc_task *task, struct nf
- 		rpc_delay(task, NFS4_POLL_RETRY_MAX);
- 		fallthrough;
- 	case -NFS4ERR_RETRY_UNCACHED_REP:
-+	case -EACCES:
-+		dprintk("%s: failed to reclaim complete error %d for server %s, retrying\n",
-+			__func__, task->tk_status, clp->cl_hostname);
- 		return -EAGAIN;
- 	case -NFS4ERR_BADSESSION:
- 	case -NFS4ERR_DEADSESSION:
--- 
-2.18.4
+> the right fix might be?
+
+When an actual creation has taken place - and not just a lookup - then
+may_create_in_sticky() assumes that the owner of the inode matches
+current_fsuid(). That'd would also be problematic on fat or in fact on
+any fs where the actual inode->i_{g,u}id are based on e.g. uid/gid mount
+options and not on current_fsuid(), I think?
+
+So in order to improve this we would need to work around that assumption
+in some way. Either by skipping may_create_in_sticky() if the file got
+created or by adapting may_create_in_sticky().
+
+I only wonder whether skipping may_create_in_sticky() altogether might
+be a bit too lax. One possibility that came to my mind might be to relax
+this assumption when the file has been created and the creator has
+CAP_FOWNER.
+
+So (not compile tested or in any way) sm like:
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 1f28d3f463c3..239e9f423346 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1221,7 +1221,8 @@ int may_linkat(struct user_namespace *mnt_userns, struct path *link)
+  * Returns 0 if the open is allowed, -ve on error.
+  */
+ static int may_create_in_sticky(struct user_namespace *mnt_userns,
+-                               struct nameidata *nd, struct inode *const inode)
++                               struct nameidata *nd, struct inode *const inode,
++                               bool created)
+ {
+        umode_t dir_mode = nd->dir_mode;
+        kuid_t dir_uid = nd->dir_uid;
+@@ -1230,7 +1231,9 @@ static int may_create_in_sticky(struct user_namespace *mnt_userns,
+            (!sysctl_protected_regular && S_ISREG(inode->i_mode)) ||
+            likely(!(dir_mode & S_ISVTX)) ||
+            uid_eq(i_uid_into_mnt(mnt_userns, inode), dir_uid) ||
+-           uid_eq(current_fsuid(), i_uid_into_mnt(mnt_userns, inode)))
++           uid_eq(current_fsuid(), i_uid_into_mnt(mnt_userns, inode)) ||
++           (created &&
++            capable_wrt_inode_uidgid(mnt_userns, inode, CAP_FOWNER)))
+                return 0;
+
+        if (likely(dir_mode & 0002) ||
+@@ -3496,7 +3499,8 @@ static int do_open(struct nameidata *nd,
+                if (d_is_dir(nd->path.dentry))
+                        return -EISDIR;
+                error = may_create_in_sticky(mnt_userns, nd,
+-                                            d_backing_inode(nd->path.dentry));
++                                            d_backing_inode(nd->path.dentry),
++                                            (file->f_mode & FMODE_CREATED));
+                if (unlikely(error))
+                        return error;
+        }
