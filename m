@@ -2,108 +2,69 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 78FBCC25B06
-	for <linux-nfs@archiver.kernel.org>; Sun, 14 Aug 2022 14:56:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EBC25C28B2B
+	for <linux-nfs@archiver.kernel.org>; Sun, 14 Aug 2022 15:33:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229558AbiHNO4V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 14 Aug 2022 10:56:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39794 "EHLO
+        id S240662AbiHNPd1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 14 Aug 2022 11:33:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39370 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230088AbiHNO4V (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2022 10:56:21 -0400
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04EBA175B6
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2022 07:56:19 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id B25B225FE; Sun, 14 Aug 2022 10:56:18 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org B25B225FE
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1660488978;
-        bh=EKRv2Vt7hnkHgV8MtxOm+AbeEDQhm+txZHOHevHcxoQ=;
-        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
-        b=WH5rgj2PO2sQTodh5NucA3Bzpqb8h/3WEX72TrbuSzvNdirQxu2IjmMYmYccKOhB6
-         liK/ljN0Bdg75UXmeCqjzWG7K2LbMnMogoIqAhs5TLECnCmuzbJtDsbU9pLR3tUX7b
-         4u/3y/PSiX/AlR2afFyXWlwnP6+joIeazhoKicrI=
-Date:   Sun, 14 Aug 2022 10:56:18 -0400
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] DELEG5: Create test file with mode o666
-Message-ID: <20220814145618.GA5578@fieldses.org>
-References: <166031330113.3080139.1273532571655274363.stgit@morisot.1015granger.net>
- <F2DE58E9-E804-4F5E-9A9D-1EBEEAC9ECE5@oracle.com>
+        with ESMTP id S240523AbiHNPcx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Aug 2022 11:32:53 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6EC491C106
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2022 08:30:08 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 048BB60C05
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2022 15:30:06 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2CCB4C43470
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Aug 2022 15:30:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1660491005;
+        bh=80yXD1lv8ELOvZ3mMXWW4OcUeUDp36eizqrwtCT95A4=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=rEJVlSDdJV1YXdjqPRRLnZMJom1DpSHjEycV6i74IFpGLepVBH8N+AUn338birnIR
+         rSKu6AWcFDQxMUzYTnatwennQQs5cCHyEaytzdLyxiWFzKLiZ4ZsylOEPxuGTfF/7v
+         g0TASipjO8BF/qWCsiCyEe5lagVYYUKqJkBxMiof8PoQUzqmS3IRZNnlls56z5BTxJ
+         Qmbrj1RncPxieYDowSW/UVCZIVIsMwssTW82E+lSavCAEgeekHFLn50i8CS7cCwla5
+         jHW5X440R0y93Q5u36sXjp449K+AyFcBg+XERM1PIazdFI+JYShroXXXFMGgRhqv/g
+         K8xFGdY/DNY0A==
+From:   trondmy@kernel.org
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFS: Cleanup to remove unused flag NFS_CONTEXT_RESEND_WRITES
+Date:   Sun, 14 Aug 2022 11:23:17 -0400
+Message-Id: <20220814152317.30985-3-trondmy@kernel.org>
+X-Mailer: git-send-email 2.37.2
+In-Reply-To: <20220814152317.30985-2-trondmy@kernel.org>
+References: <20220814152317.30985-1-trondmy@kernel.org>
+ <20220814152317.30985-2-trondmy@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <F2DE58E9-E804-4F5E-9A9D-1EBEEAC9ECE5@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks, updated the changelog and applied.--b.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-On Fri, Aug 12, 2022 at 07:12:42PM +0000, Chuck Lever III wrote:
-> 
-> 
-> > On Aug 12, 2022, at 10:08 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > DELEG5   st_delegation.testManyReaddeleg                          : FAILURE
-> >           Open which causes recall should return NFS4_OK or
-> >           NFS4ERR_DELAY, instead got NFS4ERR_ACCESS
-> > ******* CB_Recall (id=14)********
-> > **************************************************
-> > Command line asked for 1 of 678 tests
-> > Of those: 0 Skipped, 1 Failed, 0 Warned, 0 Passed
-> > 
-> > WARNING: could not clean testdir due to:
-> > Making sure b'DELEG5-1' is writable: operation OP_SETATTR should return NFS4_OK, instead got NFS4ERR_DELAY
-> > 
-> > DELEG5 attempts an OPEN with ACCESS_WRITE to force the recall of
-> > a bunch of delegations. The OPEN that requests ACCESS_WRITE fails,
-> > however, because the test file was created as 0,0 with mode o644.
-> 
-> This paragraph could be more clear:
-> 
-> DELEG5 creates the test file as UID 0 with mode rw-r--r--
-> 
-> The later OPEN for Write (to trigger delegation recall) is sent as UID 1.
-> This OPEN fails because mode rw-r--r-- does not permit UID 1 to open a file
-> owned by UID 0 for write.
-> 
-> 
-> > A perhaps more preferable long-term fix would be to follow the
-> > advice of the nearby comment and convert DELEG5 to use _get_deleg(),
-> > but I'm not expert enough to tackle that yet.
-> 
-> _get_deleg() creates its test file as UID0 with mode rw-rw-rw-,
-> thus side-stepping the subsequent permission conflict. My proposed
-> fix simply copies that behavior to DELEG5.
-> 
-> 
-> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > ---
-> > nfs4.0/servertests/st_delegation.py |    3 ++-
-> > 1 file changed, 2 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/nfs4.0/servertests/st_delegation.py b/nfs4.0/servertests/st_delegation.py
-> > index 9c98ec0e0fb3..ba49cf9f09db 100644
-> > --- a/nfs4.0/servertests/st_delegation.py
-> > +++ b/nfs4.0/servertests/st_delegation.py
-> > @@ -244,7 +244,8 @@ def testManyReaddeleg(t, env, funct=_recall, response=NFS4_OK):
-> >     c.init_connection(b'pynfs%i_%s' % (os.getpid(), t.word()), cb_ident=0)
-> >     cbids = []
-> >     fh, stateid = c.create_confirm(t.word(), access=OPEN4_SHARE_ACCESS_READ,
-> > -                                   deny=OPEN4_SHARE_DENY_NONE)
-> > +                                   deny=OPEN4_SHARE_DENY_NONE,
-> > +                                   attrs={FATTR4_MODE: 0o666})
-> >     for i in range(count):
-> >         c.init_connection(b'pynfs%i_%s_%i' % (os.getpid(), t.word(), i), cb_ident=0)
-> >         fh, stateid = c.open_confirm(t.word(), access=OPEN4_SHARE_ACCESS_READ,
-> > 
-> > 
-> 
-> --
-> Chuck Lever
-> 
-> 
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ include/linux/nfs_fs.h | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index f08e581f0161..7931fa472561 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -83,7 +83,6 @@ struct nfs_open_context {
+ 	fmode_t mode;
+ 
+ 	unsigned long flags;
+-#define NFS_CONTEXT_RESEND_WRITES	(1)
+ #define NFS_CONTEXT_BAD			(2)
+ #define NFS_CONTEXT_UNLOCK	(3)
+ #define NFS_CONTEXT_FILE_OPEN		(4)
+-- 
+2.37.1
+
