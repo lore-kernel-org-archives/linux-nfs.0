@@ -2,153 +2,99 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A00D1C00140
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Aug 2022 08:39:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 995F2C00140
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Aug 2022 15:31:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241308AbiHOIjP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Aug 2022 04:39:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33864 "EHLO
+        id S229523AbiHOPbI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Aug 2022 11:31:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45366 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241110AbiHOIjN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2022 04:39:13 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 17362205D9
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 01:39:12 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1660552751;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=RtCG0fMMsALwDFLyg5EOuNj36gZMfyU4x6lmh7oVWAQ=;
-        b=bMjzGz11ZT5ZpkIC5GHq2w5zPSoFBUryIjqejAvOnYwKprSBxzzI7tNbkOyaGasdmOdqIT
-        QoivyPLfc9uLwISZ10I84Kei/YLMbxaZ/zgyFuAQJVP0UZgxTespWIBX5yHjcdC7enkmo6
-        A/61/egpVE40jBRSH7HBLBPcUisU6Lw=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-219-avz4XaOzOTm-MhDto53Sqw-1; Mon, 15 Aug 2022 04:39:09 -0400
-X-MC-Unique: avz4XaOzOTm-MhDto53Sqw-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 5AA5618E5340
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 08:39:09 +0000 (UTC)
-Received: from plambri-t490s.lan (unknown [10.33.36.37])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E7A33C15BA6
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 08:39:08 +0000 (UTC)
-From:   Pierguido Lambri <plambri@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfs4_setfacl: add a specific option for indexes
-Date:   Mon, 15 Aug 2022 09:39:08 +0100
-Message-Id: <20220815083908.65720-1-plambri@redhat.com>
+        with ESMTP id S229445AbiHOPbG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Aug 2022 11:31:06 -0400
+Received: from mail-ej1-x62a.google.com (mail-ej1-x62a.google.com [IPv6:2a00:1450:4864:20::62a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 057936578
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 08:31:06 -0700 (PDT)
+Received: by mail-ej1-x62a.google.com with SMTP id tl27so14141527ejc.1
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 08:31:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:to:subject:message-id:date:from
+         :mime-version:from:to:cc;
+        bh=VUY5kDmR9824W1xBk14XxSvJCM0WwmjsFK95MEw3090=;
+        b=R2mu5jtzARQVN3Cpobt8B4kovytSM+7bVT2RAjVNfDUzR+4eLAjqiONeQ5RhqczRNa
+         mYofHYZGJj7lnhr60oq4pAput+9OhFWUY1JPCho+/FSHIZLdb6c1rpBn8+9HdGeC22u6
+         xHGZWOpdZqlJmdIxh+U4CM3HGHfhwiwDP7bxwiiGiAldW00lQSHK1aE1a2UF+q6QRpYa
+         eOYKdVqcWBbsbngUjdbjYmss9kUM5YlwSVTrbaOqZRRJvixVVhOulCX5LreorkoQElTh
+         MFxzqeHP8OwQ70spYERSyA7RJt+Bzrf8Qsz33tfT8FWLRsdIC+FXtiUhxNa52VRfT20z
+         Vpzg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=content-transfer-encoding:to:subject:message-id:date:from
+         :mime-version:x-gm-message-state:from:to:cc;
+        bh=VUY5kDmR9824W1xBk14XxSvJCM0WwmjsFK95MEw3090=;
+        b=Y3ol1J1EU9OxvJAuIjl0A1vXil/Qa/jTSA9dXCFCna4IT+vEsYIpk1sX2wIaTFvWx9
+         LNLduuxRqtusAajtTMQu8ElsOL+wVviVjmqSMycLfvew6DCzdzt/s9VHxf7JeaVgFlkS
+         rl/LpwlxDMwajOaHw9q56TpgPJsmhLHL96vfqAv3HFzB9OCmma0a6q4NAJzZNYFu1xpt
+         S4zS5Q7IDS1BQJ66hIn+IA445HNqOGyU0Ba8y0zkmDssVphNl3OZENrqVBbjZnTEe2dY
+         Y7OkkIjclklSCWvRxRwJhmYQCe+BmEpQGRbqDcyfpk3G6BBfaPSisitzXY6rYqPlcT6l
+         hg1A==
+X-Gm-Message-State: ACgBeo0Tay9L6AAcdjm4iyKSc7T2pN5PzYVzCcP4sbZMdYUSYn7OBn/a
+        MLXnk/najJxZ9TDHgqAZtt/lzgzfUwKJ8mLTIdln14YfXWNiGQ==
+X-Google-Smtp-Source: AA6agR59CyxSbeeHvnJYBi+pvKw+2sL7RiENRNSDa8gwnVXqAtEpGYHL8K4Qb8DXPuIF4Ly83gICYx6E7Vz/YnBMRVc=
+X-Received: by 2002:a17:906:216:b0:711:f623:8bb0 with SMTP id
+ 22-20020a170906021600b00711f6238bb0mr11127237ejd.174.1660577464337; Mon, 15
+ Aug 2022 08:31:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.85 on 10.11.54.8
+From:   Lukasz Jurewicz <lukasz.jurewicz@gmail.com>
+Date:   Mon, 15 Aug 2022 17:30:28 +0200
+Message-ID: <CANfUGLZaPsxk+Ko-GWKe1=Q_aKVSPd8HEGO4kpRWYmOEbKrUXA@mail.gmail.com>
+Subject: NFS ver 4.2 performance drops down to 20MB/s
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-nfs4_setfacl had the possibility to use an optional index
-to add/remove an ACL entry.
-This was causing some confusion as numeric files could be interpreted
-as indexes.
-This change adds an extra command line option '-i' to specifically
-handle the indexes.
-The index can be used only with certain operations (add and remove).
-The new syntax, when using indexes, would be:
+Hi
 
-~]# nfs4_setfacl -i 3 -a A::101:rxtncy file123
+I believe that i have found an issue with the nfs version 4.2 client side c=
+ode.
 
-Signed-off-by: Pierguido Lambri <plambri@redhat.com>
----
- nfs4_setfacl/nfs4_setfacl.c | 37 +++++++++++++++++--------------------
- 1 file changed, 17 insertions(+), 20 deletions(-)
+I notice that sometimes read performance over nfs (using tcp protocol)
+drops down to 20MB/s
 
-diff --git a/nfs4_setfacl/nfs4_setfacl.c b/nfs4_setfacl/nfs4_setfacl.c
-index d0485ad..c3bdf56 100644
---- a/nfs4_setfacl/nfs4_setfacl.c
-+++ b/nfs4_setfacl/nfs4_setfacl.c
-@@ -148,7 +148,7 @@ int main(int argc, char **argv)
- 		return err;
- 	}
- 
--	while ((opt = getopt_long(argc, argv, "-:a:A:s:S:x:X:m:ethvHRPL", long_options, NULL)) != -1) {
-+	while ((opt = getopt_long(argc, argv, "-:a:A:i:s:S:x:X:m:ethvHRPL", long_options, NULL)) != -1) {
- 		switch (opt) {
- 			case 'a':
- 				mod_string = optarg;
-@@ -158,21 +158,14 @@ int main(int argc, char **argv)
- 			add:
- 				assert_wu_wei(action);
- 				action = INSERT_ACTION;
--
--				/* run along if no more args (defaults to ace_index 1 == prepend) */
--				if (optind == argc)
--					break;
--				ace_index = strtoul_reals(argv[optind++], 10);
--				if (ace_index == ULONG_MAX) {
--					/* oops it wasn't an ace_index; reset */
--					optind--;
--					ace_index = -1;
--				} else if (ace_index == 0) {
--					fprintf(stderr, "Sorry, valid indices start at '1'.\n");
--					goto out;
-+				break;
-+			case 'i':
-+				ace_index = strtoul_reals(optarg, 10);
-+				if (ace_index == 0) {
-+                                    fprintf(stderr, "Sorry, valid indices start at '1'.\n");
-+                                    goto out;
- 				}
- 				break;
--
- 			case 's':
- 				mod_string = optarg;
- 				goto set;
-@@ -184,9 +177,6 @@ int main(int argc, char **argv)
- 				break;
- 
- 			case 'x':
--				ace_index = strtoul_reals(optarg, 10);
--				if(ace_index == ULONG_MAX)
--					mod_string = optarg;
- 				goto remove;
- 			case 'X':
- 				spec_file = optarg;
-@@ -248,6 +238,9 @@ int main(int argc, char **argv)
- 					case 'A':
- 						fprintf(stderr, "Sorry, -a requires an 'acl_spec', whilst -A requires a 'spec_file'.\n");
- 						goto out;
-+					case 'i':
-+						fprintf(stderr, "Sorry, -i requires an index (numerical)\n");
-+						goto out;
- 					case 's':
- 						fprintf(stderr, "Sorry, -s requires an 'acl_spec'.\n");
- 						goto out;
-@@ -283,6 +276,9 @@ int main(int argc, char **argv)
- 	if (action == NO_ACTION) {
- 		fprintf(stderr, "No action specified.\n");
- 		goto out;
-+	} else if (action != INSERT_ACTION && action != REMOVE_ACTION && ace_index >= 0) {
-+		fprintf(stderr, "Index can be used only with add or remove.\n");
-+		goto out;
- 	} else if (numpaths < 1) {
- 		fprintf(stderr, "No path(s) specified.\n");
- 		goto out;
-@@ -548,9 +544,10 @@ static void __usage(const char *name, int is_ef)
- 	"%s %s -- manipulate NFSv4 file/directory access control lists\n"
- 	"Usage: %s [OPTIONS] COMMAND file ...\n"
- 	" .. where COMMAND is one of:\n"
--	"   -a acl_spec [index]	 add ACL entries in acl_spec at index (DEFAULT: 1)\n"
--	"   -A file [index]	 read ACL entries to add from file\n"
--	"   -x acl_spec | index	 remove ACL entries or entry-at-index from ACL\n"
-+	"   -a acl_spec		 add ACL entries in acl_spec at defaul index (DEFAULT: 1)\n"
-+	"   -A file 		 read ACL entries to add from file\n"
-+	"   -i index 		 use the entry-at-index from ACL (only for add and remove)\n"
-+	"   -x acl_speci 	 remove ACL entries\n"
- 	"   -X file  		 read ACL entries to remove from file\n"
- 	"   -s acl_spec		 set ACL to acl_spec (replaces existing ACL)\n"
- 	"   -S file		 read ACL entries to set from file\n"
--- 
-2.37.2
+To bring performance back to normal in this case (5GB/s) I have to
+manually remount the nfs share.
 
+After investigations I believe I that the issue is related to
+reconnect after a connection failure.
+
+I have found an easy way to reproduce the problem:
+  1.      Start a simple read io test using for example =E2=80=98fio=E2=80=
+=99
+  2.      Pull out the network cable
+  3.      Wait a few seconds
+  4.      Reinsert the network cable to restore connection
+
+The NFS client will reestablish the connection, however the speed
+recovers only up to 20MB/s. Before cable pull it was 5 GB/s.  Leaving
+the connection for X time does not change the speed, only stopping IO
+and remounting restores performance.
+
+I can see this issue on the latest Ubuntu 22.04 kernels and also clean
+vanilla kernel =E2=80=93 5.19.1.
+
+NFS server side is using Ubuntu 20.04.4.
+
+NFS client is connected directly to server (no switch). Network
+devices are Mellanox ConnectX-5 cards in ethernet mode.
+
+I have also tried the MOFED drivers (latest version 5.7.1) and no luck
+in case this OFED related.
+
+Is this known problem? Or any advice would be appreciated.
+I can supply logs / debug should this we required
+
+Thank you
+Lukasz
