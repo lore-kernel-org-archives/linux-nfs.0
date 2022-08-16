@@ -2,64 +2,103 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B57CCC32771
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Aug 2022 07:07:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 70C2FC32772
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Aug 2022 08:11:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231577AbiHPHHv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Aug 2022 03:07:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56884 "EHLO
+        id S230387AbiHPILH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Aug 2022 04:11:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39992 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231583AbiHPHHg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2022 03:07:36 -0400
-Received: from mail-pg1-x532.google.com (mail-pg1-x532.google.com [IPv6:2607:f8b0:4864:20::532])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 476DA8606D
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 19:41:29 -0700 (PDT)
-Received: by mail-pg1-x532.google.com with SMTP id r22so8104329pgm.5
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 19:41:29 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc;
-        bh=namolCRw6lfeOzEubChBAcAldJ64QnTBesyE0AiqIUw=;
-        b=QPg/Jl4p8WwvNgYR4qUvKBY+o1akhyHJJktJ0Fgof+qjSOcZmdGj43v47VTmma3vY8
-         tp0zcC73hj07+4nvV84Z/IezIWIjFP1TC+hIiyDk8coc5bgI8xXxV+Igq+ZqgMr5BAG7
-         mUqe2VRPE55cQlVskO/S+pOnduuI/GdXhudQZNoz9Q+3cgY32q4Uq6bSLqHEo9xi52iX
-         pOeJH/Rhh7GWpGQamSttlCymu9R/cuAwOlquSA/TRyifZZMCIDtbfkJFvsATeaXAeXyC
-         8UJCJ6HRBwJ1fdlDQVCLPk3nlyEKvbUDRbbi5XZyOckfXgG4R1UaO/mYcu1NTWdMo9Sx
-         a0Dg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc;
-        bh=namolCRw6lfeOzEubChBAcAldJ64QnTBesyE0AiqIUw=;
-        b=NYmR60wvj1kaQGr+k1l1gnvVjooAXhqiv5Iw8UwuXz1yxhJ1mePA7WgntzmT4LRCui
-         ZKTnCh9pMuu1vwFPG9e3EkfxXecm7OjTMVV/aybAxuhF5DyDId/SC9xm39y7pKODcPtf
-         wulGXpjF7uyBIVX7JpttHB//xzPeGv4wGgV/4obBrM6BiiP0U4IFUwuORnEIM7g589iS
-         1DHDdqRTK1Ykkbyon74BCvXvO2m91wiRTo9yfJ8UIOu1YceJCxiZ1lji7gSAQc9TFFFs
-         elac0Vh3g5bDtcsnsJWfXrk3MY2gZ6ZkH6s6tf6xBIYaPitKgqkubD8PYq/M5EJDNTqf
-         w4BA==
-X-Gm-Message-State: ACgBeo0I01YwM8y6VgqgUtKEXNoc3oOwE78Do0r2zzylGe10QAj2rmrd
-        AZC/TCbDgdWkAN6X7FS+gL4=
-X-Google-Smtp-Source: AA6agR7kgBo+SZKAH4TQLp2+hoZOl03BJhce7fmrfQFG46mtTRhiRHtAqk+u3AjuNbRG53sHQKfXRw==
-X-Received: by 2002:a05:6a00:a08:b0:52b:fd6e:b198 with SMTP id p8-20020a056a000a0800b0052bfd6eb198mr19104003pfh.53.1660617688492;
-        Mon, 15 Aug 2022 19:41:28 -0700 (PDT)
-Received: from apollo.hsd1.ca.comcast.net ([2601:646:9200:a0f0::bb7a])
-        by smtp.gmail.com with ESMTPSA id i6-20020a17090a2a0600b001f1dc5aa675sm5206986pjd.16.2022.08.15.19.41.27
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 15 Aug 2022 19:41:27 -0700 (PDT)
-From:   Khem Raj <raj.khem@gmail.com>
-To:     raj.khem@gmail.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Detect warning options during configure
-Date:   Mon, 15 Aug 2022 19:41:26 -0700
-Message-Id: <20220816024126.2694053-1-raj.khem@gmail.com>
-X-Mailer: git-send-email 2.37.2
-In-Reply-To: <20220815215511.2595236-1-raj.khem@gmail.com>
-References: <20220815215511.2595236-1-raj.khem@gmail.com>
+        with ESMTP id S232002AbiHPIKQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2022 04:10:16 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8C7FD9FF7
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 23:35:40 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id A7398382AF;
+        Tue, 16 Aug 2022 06:35:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1660631738; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=sSiUS2bJ8VKWddLfrmXez5xX6dRLY9R5d2Y5iVN7zbc=;
+        b=nTrGijRMwkax3ZiCHE5Ztmwy7+jteGftHdtrutrYEc7BbDWqooeB8NSjYIQlpjXN3JMxIM
+        2oGk3vpmawOoU8ON1sC97TQ8m9zaQ4TOLvf07ENa3YYxHXGJT+pJ0W3m7Mwl8efPpNOY+K
+        06NLwu+SpUNy01hUo8/1lWjUDRkBXsw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1660631738;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=sSiUS2bJ8VKWddLfrmXez5xX6dRLY9R5d2Y5iVN7zbc=;
+        b=00AIlWzSK9vCsdFkxY9dmb4tdBSqKp3ncCeVfVknem4RpCu3KoxoWgZ5bIRa1gu9ZCPHUV
+        oe4/twLHgrcfAPBg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 8B169139B7;
+        Tue, 16 Aug 2022 06:35:37 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id +ploEbk6+2LoMAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 16 Aug 2022 06:35:37 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From:   "NeilBrown" <neilb@suse.de>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: unlink/rmdir shouldn't call d_delete() twice on ENOENT
+Date:   Tue, 16 Aug 2022 16:35:34 +1000
+Message-id: <166063173439.5425.8345694210902041629@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Please ignore this patch. It was not right one. I am sending a v2
+
+nfs_unlink() calls d_delete() twice if it receives ENOENT from the
+server - once in nfs_dentry_handle_enoent() from nfs_safe_remove and
+once in nfs_dentry_remove_handle_error().
+
+nfs_rmddir() also calls it twice - the nfs_dentry_handle_enoent() call
+is direct and inside a region locked with ->rmdir_sem
+
+It is safe to call d_delete() twice if the refcount > 1 as the dentry is
+simply unhashed.
+If the refcount is 1, the first call sets d_inode to NULL and the second
+call crashes.
+
+Refcount is almost always 1 in nfs_unlink() so this must almost never
+happen else we would have seen crashes before.
+
+This patch removes the d_delete() call from nfs_dentry_handle_enoent()
+so as to leave the one under ->remdir_sem in case that is important.
+
+Fixes: 9019fb391de0 ("NFS: Label the dentry with a verifier in nfs_rmdir() an=
+d nfs_unlink()")
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/dir.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index dbab3caa15ed..4648b421025c 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2382,7 +2382,6 @@ static void nfs_dentry_remove_handle_error(struct inode=
+ *dir,
+ {
+ 	switch (error) {
+ 	case -ENOENT:
+-		d_delete(dentry);
+ 		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ 		break;
+ 	case 0:
+--=20
+2.37.1
+
