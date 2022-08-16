@@ -2,43 +2,43 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6734C3F6B0
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Aug 2022 13:28:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60D5EC25B0E
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Aug 2022 13:28:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235600AbiHPN2K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Aug 2022 09:28:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41154 "EHLO
+        id S235616AbiHPN2L (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Aug 2022 09:28:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41214 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235621AbiHPN2F (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2022 09:28:05 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88209100B;
-        Tue, 16 Aug 2022 06:28:04 -0700 (PDT)
+        with ESMTP id S235572AbiHPN2J (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2022 09:28:09 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F3B87286F1;
+        Tue, 16 Aug 2022 06:28:07 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 1842261389;
+        by ams.source.kernel.org (Postfix) with ESMTPS id 873A4B81A21;
+        Tue, 16 Aug 2022 13:28:06 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83B01C433D6;
         Tue, 16 Aug 2022 13:28:04 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D1725C433D7;
-        Tue, 16 Aug 2022 13:28:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1660656483;
-        bh=cTr5A+pQEYd+LPQGgUFgls+hS7mB/Fi2JYqeZ2/L04E=;
+        s=k20201202; t=1660656485;
+        bh=WDIrsbOP3njOorYL2sAcnE2hJpRqVDbN3dfL/42j+/g=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=C7ZCBf8imhM0/fi+Bb6NfnLwMInuUNICHVhP9lUxDn6lB576or/Oh0WkgeJIjOMhR
-         Qpihrx/Ab8JhsIeG8ZcCAIHVkRRrC+6mrhkTIL88iA+zQHJX74GZbTHHI/b7fu5xyr
-         K6vZQqIaxkYKT+qPXYXU+np/4RJEN6NkViu3FneJ1P9mFF/NQpw2t6HK/6Or1nvZDL
-         z9Aykd7jAwAdPWpULqjHi3zKtqx/M6x/G2ABx5+uejQzjjFdwAuHsx4nyVjBF0jx1K
-         4B0f3+3Dfe9KLqn5SDJLMBLoetft6m6dO66gT58EobehZ0ED85j3AvAF+hGX6JBEZO
-         MBxUydG8+1Dqw==
+        b=HVXEtDS1FUczDN+l+uPOQ1A17CtM836+UL6FweXJxLsSedwHBKlj49XpUpCWqsffD
+         5phGdeY4c97Pf107QATwIK3IAbBlnnvOyU0Bzes6Ts0IreSlWbuymrDYkKIYQM8iLM
+         1KhhhQolM4UlbnnaU9TiGSE3Yy4HJ2cuPozOffK9jlL27eHpi3N7VtS1BPt/EhyXY7
+         FI6fI/eytYM/dF/7YlWuXi0SGlEIP7ZxZCuG3lU6h57CZ8VLBUT8WudXyFR0SDtuDJ
+         DcGE3z1LTKj0kZcnrII9XtSk/TdEHcUfjpnn6eWXupKXwV0V8fFUBJ4LmGf6k0XI30
+         OHRZ87O9E/pgg==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     viro@zeniv.linux.org.uk
 Cc:     dhowells@redhat.com, linux-afs@lists.infradead.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org
-Subject: [PATCH 2/4] nfs: report the change attribute if requested
-Date:   Tue, 16 Aug 2022 09:27:57 -0400
-Message-Id: <20220816132759.43248-3-jlayton@kernel.org>
+        ceph-devel@vger.kernel.org, Xiubo Li <xiubli@redhat.com>
+Subject: [PATCH 4/4] ceph: fill in the change attribute in statx requests
+Date:   Tue, 16 Aug 2022 09:27:59 -0400
+Message-Id: <20220816132759.43248-5-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.2
 In-Reply-To: <20220816132759.43248-1-jlayton@kernel.org>
 References: <20220816132759.43248-1-jlayton@kernel.org>
@@ -48,54 +48,59 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Allow NFS to report the i_version in statx. Since the cost to fetch it
-is relatively cheap, do it unconditionally and just set the flag if it
-looks like it's valid.
+When statx requests the change attribute, request the full gamut of caps
+(similarly to how ctime is handled). When the change attribute seems to
+be valid, return it in the chgattr field.
 
+Reviewed-by: Xiubo Li <xiubli@redhat.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfs/inode.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/ceph/inode.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index b4e46b0ffa2d..43e23ec2a64d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -829,6 +829,8 @@ static u32 nfs_get_valid_attrmask(struct inode *inode)
- 		reply_mask |= STATX_UID | STATX_GID;
- 	if (!(cache_validity & NFS_INO_INVALID_BLOCKS))
- 		reply_mask |= STATX_BLOCKS;
-+	if (!(cache_validity & NFS_INO_INVALID_CHANGE))
-+		reply_mask |= STATX_CHANGE_ATTR;
- 	return reply_mask;
- }
+diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
+index 42351d7a0dd6..171a32d623d2 100644
+--- a/fs/ceph/inode.c
++++ b/fs/ceph/inode.c
+@@ -2415,10 +2415,10 @@ static int statx_to_caps(u32 want, umode_t mode)
+ {
+ 	int mask = 0;
  
-@@ -847,7 +849,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+-	if (want & (STATX_MODE|STATX_UID|STATX_GID|STATX_CTIME|STATX_BTIME))
++	if (want & (STATX_MODE|STATX_UID|STATX_GID|STATX_CTIME|STATX_BTIME|STATX_CHANGE_ATTR))
+ 		mask |= CEPH_CAP_AUTH_SHARED;
  
- 	request_mask &= STATX_TYPE | STATX_MODE | STATX_NLINK | STATX_UID |
- 			STATX_GID | STATX_ATIME | STATX_MTIME | STATX_CTIME |
--			STATX_INO | STATX_SIZE | STATX_BLOCKS;
-+			STATX_INO | STATX_SIZE | STATX_BLOCKS | STATX_CHANGE_ATTR;
+-	if (want & (STATX_NLINK|STATX_CTIME)) {
++	if (want & (STATX_NLINK|STATX_CTIME|STATX_CHANGE_ATTR)) {
+ 		/*
+ 		 * The link count for directories depends on inode->i_subdirs,
+ 		 * and that is only updated when Fs caps are held.
+@@ -2429,11 +2429,10 @@ static int statx_to_caps(u32 want, umode_t mode)
+ 			mask |= CEPH_CAP_LINK_SHARED;
+ 	}
  
- 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
- 		if (readdirplus_enabled)
-@@ -876,7 +878,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 	/* Is the user requesting attributes that might need revalidation? */
- 	if (!(request_mask & (STATX_MODE|STATX_NLINK|STATX_ATIME|STATX_CTIME|
- 					STATX_MTIME|STATX_UID|STATX_GID|
--					STATX_SIZE|STATX_BLOCKS)))
-+					STATX_SIZE|STATX_BLOCKS|STATX_CHANGE_ATTR)))
- 		goto out_no_revalidate;
+-	if (want & (STATX_ATIME|STATX_MTIME|STATX_CTIME|STATX_SIZE|
+-		    STATX_BLOCKS))
++	if (want & (STATX_ATIME|STATX_MTIME|STATX_CTIME|STATX_SIZE|STATX_BLOCKS|STATX_CHANGE_ATTR))
+ 		mask |= CEPH_CAP_FILE_SHARED;
  
- 	/* Check whether the cached attributes are stale */
-@@ -914,6 +916,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+-	if (want & (STATX_CTIME))
++	if (want & (STATX_CTIME|STATX_CHANGE_ATTR))
+ 		mask |= CEPH_CAP_XATTR_SHARED;
  
- 	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
-+	stat->change_attr = inode_peek_iversion_raw(inode);
- 	if (S_ISDIR(inode->i_mode))
- 		stat->blksize = NFS_SERVER(inode)->dtsize;
- out:
+ 	return mask;
+@@ -2475,6 +2474,11 @@ int ceph_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 		valid_mask |= STATX_BTIME;
+ 	}
+ 
++	if (request_mask & STATX_CHANGE_ATTR) {
++		stat->change_attr = inode_peek_iversion_raw(inode);
++		valid_mask |= STATX_CHANGE_ATTR;
++	}
++
+ 	if (ceph_snap(inode) == CEPH_NOSNAP)
+ 		stat->dev = inode->i_sb->s_dev;
+ 	else
 -- 
 2.37.2
 
