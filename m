@@ -2,76 +2,186 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5ED6EC25B0D
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Aug 2022 04:27:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16B04C2BB41
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Aug 2022 06:39:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229726AbiHPE1m (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Aug 2022 00:27:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38064 "EHLO
+        id S229872AbiHPGjc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Aug 2022 02:39:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46670 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229744AbiHPE11 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2022 00:27:27 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5964B1A6CD6;
-        Mon, 15 Aug 2022 18:06:10 -0700 (PDT)
-Received: from dggemv703-chm.china.huawei.com (unknown [172.30.72.57])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4M6Cb15V6RzmVpd;
-        Tue, 16 Aug 2022 09:03:57 +0800 (CST)
-Received: from kwepemm600010.china.huawei.com (7.193.23.86) by
- dggemv703-chm.china.huawei.com (10.3.19.46) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.24; Tue, 16 Aug 2022 09:06:08 +0800
-Received: from [10.174.178.31] (10.174.178.31) by
- kwepemm600010.china.huawei.com (7.193.23.86) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.24; Tue, 16 Aug 2022 09:06:07 +0800
-Subject: Re: [PATCH] NFS: Fix missing unlock in nfs_unlink()
-To:     <trond.myklebust@hammerspace.com>, <anna@kernel.org>
-CC:     <linux-nfs@vger.kernel.org>, <kernel-janitors@vger.kernel.org>,
-        <neilb@suse.de>
-References: <20220812011440.3602849-1-sunke32@huawei.com>
-From:   Sun Ke <sunke32@huawei.com>
-Message-ID: <5e947976-0808-1d32-e170-d85ef73972e7@huawei.com>
-Date:   Tue, 16 Aug 2022 09:06:06 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.6.1
+        with ESMTP id S229679AbiHPGjS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Aug 2022 02:39:18 -0400
+Received: from mail-oo1-xc2b.google.com (mail-oo1-xc2b.google.com [IPv6:2607:f8b0:4864:20::c2b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C58C629F1B8
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 20:25:56 -0700 (PDT)
+Received: by mail-oo1-xc2b.google.com with SMTP id s10-20020a4ab54a000000b00435f410bbacso1623696ooo.9
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Aug 2022 20:25:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=paul-moore-com.20210112.gappssmtp.com; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc;
+        bh=zaeaXOVhK8m3M+XNtVCsn3FcDPtm1Tez2CwtXwPcxOY=;
+        b=ARpEypITrGuMgsrdF/wN/8bNfpLSXuim/YQsP6UIexuLvx9eah8yn7l0kXMXTyjwRE
+         8qEhtjeKt2qs0E1Bh8Eo4E50vhNsHzDuxXjsy8Vj9b9wOEz7F0cKQq91DTLmhFa8ZmzR
+         ZSRerEin4ZzObLPGAcdjLG4Oct5E0rKGX6n6LyKNvFmuGYb+0/8nwNP9weHRw7JRtPG5
+         gDR5e0wMYm2WtchMcwKiu6iURzB2Z2tlaVfJsciS3HYKxa4MxLUHIx30a6b/OAROicQN
+         6sijuR8Y27JwEPCvlIQ3zLMZyP7xl11JHJDUrGgbcAyEL0jSsQP3GnvvVETSqzGeMEgX
+         tVgQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc;
+        bh=zaeaXOVhK8m3M+XNtVCsn3FcDPtm1Tez2CwtXwPcxOY=;
+        b=RJVLBINnRJ5u44Xb2kYHWXWK0yYLwMS4NmN91o1MWDTUz7LbsHs+WKcbBCkTG/4gSD
+         SjWYnjLTa2txcxcXjkKs6lgKNBij3QeyRssY1eSxwqPj91PBjDKOPNOO9yTvdC90Pr9Z
+         lr4f9XYcfeWdvp3K/Pj+zMprOk0gP8MLRex4Lre2Cnj1t6Gn2qKheLeX+cxen7iuuqK7
+         8F3bZNzPrHfJLrwGIa1fp8ETX2CwzsZ1cfrdVfEI/u3ap4/0pC5O4xsSQ7F1dzwZzBBp
+         Xj6b3CYM9c9JB8QC1l/f+qkqak34yED6cO5S7wdn0JZe8EmHFa+b7X+sAOwBVZcPVjgJ
+         5xPg==
+X-Gm-Message-State: ACgBeo1s6+ojgGoWy5KiUxe8p/3AkCtF3t/psd/24lD5r3sTZtzImh+O
+        7fjAmYsCppNZF+BRNHyyNgKio66BEEFVn4QAEol2
+X-Google-Smtp-Source: AA6agR5jcjvLLnXLLTG9WPjI04CMRso162GWkwQVn+kAtpYa5HfLpsgdVT8wApsA1aQLcKFgfc03rLsSBvXINeCUPls=
+X-Received: by 2002:a4a:1103:0:b0:435:4c6c:6f92 with SMTP id
+ 3-20020a4a1103000000b004354c6c6f92mr5750472ooc.26.1660620355452; Mon, 15 Aug
+ 2022 20:25:55 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20220812011440.3602849-1-sunke32@huawei.com>
-Content-Type: text/plain; charset="gbk"; format=flowed
-Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.174.178.31]
-X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
- kwepemm600010.china.huawei.com (7.193.23.86)
-X-CFilter-Loop: Reflected
+References: <165970659095.2812394.6868894171102318796.stgit@warthog.procyon.org.uk>
+ <CAFqZXNv+ahpN3Hdv54ixa4u-LKaqTtCyjtkpzKGbv7x4dzwc0Q@mail.gmail.com>
+In-Reply-To: <CAFqZXNv+ahpN3Hdv54ixa4u-LKaqTtCyjtkpzKGbv7x4dzwc0Q@mail.gmail.com>
+From:   Paul Moore <paul@paul-moore.com>
+Date:   Mon, 15 Aug 2022 23:25:44 -0400
+Message-ID: <CAHC9VhTpqvFbjKG5FMKGRBRHavOUrsCSFgayh+BNgSrry8bWLg@mail.gmail.com>
+Subject: Re: [PATCH v3] nfs: Fix automount superblock LSM init problem,
+ preventing sb sharing
+To:     Ondrej Mosnacek <omosnace@redhat.com>
+Cc:     David Howells <dhowells@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        Scott Mayhew <smayhew@redhat.com>,
+        Jeff Layton <jlayton@kernel.org>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        SElinux list <selinux@vger.kernel.org>,
+        Linux Security Module list 
+        <linux-security-module@vger.kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        dwysocha@redhat.com,
+        Linux kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-friendly ping...
+On Thu, Aug 11, 2022 at 8:28 AM Ondrej Mosnacek <omosnace@redhat.com> wrote:
+> On Fri, Aug 5, 2022 at 3:36 PM David Howells <dhowells@redhat.com> wrote:
+> > When NFS superblocks are created by automounting, their LSM parameters
+> > aren't set in the fs_context struct prior to sget_fc() being called,
+> > leading to failure to match existing superblocks.
+> >
+> > Fix this by adding a new LSM hook to load fc->security for submount
+> > creation when alloc_fs_context() is creating the fs_context for it.
+> >
+> > However, this uncovers a further bug: nfs_get_root() initialises the
+> > superblock security manually by calling security_sb_set_mnt_opts() or
+> > security_sb_clone_mnt_opts() - but then vfs_get_tree() calls
+> > security_sb_set_mnt_opts(), which can lead to SELinux, at least,
+> > complaining.
+> >
+> > Fix that by adding a flag to the fs_context that suppresses the
+> > security_sb_set_mnt_opts() call in vfs_get_tree().  This can be set by NFS
+> > when it sets the LSM context on the new superblock.
+> >
+> > The first bug leads to messages like the following appearing in dmesg:
+> >
+> >         NFS: Cache volume key already in use (nfs,4.2,2,108,106a8c0,1,,,,100000,100000,2ee,3a98,1d4c,3a98,1)
+> >
+> > Changes
+> > =======
+> > ver #2)
+> >  - Made LSM parameter extraction dependent on fc->purpose ==
+> >    FS_CONTEXT_FOR_SUBMOUNT.  Shouldn't happen on FOR_RECONFIGURE.
+> >
+> > ver #2)
+> >  - Added Smack support
+> >  - Made LSM parameter extraction dependent on reference != NULL.
+> >
+> > Signed-off-by: David Howells <dhowells@redhat.com>
+> > Fixes: 9bc61ab18b1d ("vfs: Introduce fs_context, switch vfs_kern_mount() to it.")
+> > Fixes: 779df6a5480f ("NFS: Ensure security label is set for root inode)
+> > cc: Trond Myklebust <trond.myklebust@hammerspace.com>
+> > cc: Anna Schumaker <anna@kernel.org>
+> > cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> > cc: Scott Mayhew <smayhew@redhat.com>
+> > cc: Jeff Layton <jlayton@kernel.org>
+> > cc: Paul Moore <paul@paul-moore.com>
+> > cc: Casey Schaufler <casey@schaufler-ca.com>
+> > cc: linux-nfs@vger.kernel.org
+> > cc: selinux@vger.kernel.org
+> > cc: linux-security-module@vger.kernel.org
+> > cc: linux-fsdevel@vger.kernel.org
+> > ---
+> >
+> >  fs/fs_context.c               |    4 +++
+> >  fs/nfs/getroot.c              |    1 +
+> >  fs/super.c                    |   10 ++++---
+> >  include/linux/fs_context.h    |    1 +
+> >  include/linux/lsm_hook_defs.h |    1 +
+> >  include/linux/lsm_hooks.h     |    6 +++-
+> >  include/linux/security.h      |    6 ++++
+> >  security/security.c           |    5 +++
+> >  security/selinux/hooks.c      |   29 +++++++++++++++++++
+> >  security/smack/smack_lsm.c    |   61 +++++++++++++++++++++++++++++++++++++++++
+> >  10 files changed, 119 insertions(+), 5 deletions(-)
+>
+> <snip>
+>
+> > diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> > index 1bbd53321d13..ddeaff4f3bb1 100644
+> > --- a/security/selinux/hooks.c
+> > +++ b/security/selinux/hooks.c
+> > @@ -2768,6 +2768,34 @@ static int selinux_umount(struct vfsmount *mnt, int flags)
+> >                                    FILESYSTEM__UNMOUNT, NULL);
+> >  }
+> >
+> > +static int selinux_fs_context_init(struct fs_context *fc,
+> > +                                  struct dentry *reference)
+> > +{
+> > +       const struct superblock_security_struct *sbsec;
+> > +       const struct inode_security_struct *root_isec;
+> > +       struct selinux_mnt_opts *opts;
+> > +
+> > +       if (fc->purpose == FS_CONTEXT_FOR_SUBMOUNT) {
+> > +               opts = kzalloc(sizeof(*opts), GFP_KERNEL);
+> > +               if (!opts)
+> > +                       return -ENOMEM;
+> > +
+> > +               root_isec = backing_inode_security(reference->d_sb->s_root);
+> > +               sbsec = selinux_superblock(reference->d_sb);
+> > +               if (sbsec->flags & FSCONTEXT_MNT)
+> > +                       opts->fscontext_sid     = sbsec->sid;
+> > +               if (sbsec->flags & CONTEXT_MNT)
+> > +                       opts->context_sid       = sbsec->mntpoint_sid;
+> > +               if (sbsec->flags & ROOTCONTEXT_MNT)
+> > +                       opts->rootcontext_sid   = root_isec->sid;
+>
+> I wonder if this part is correct... The rootcontext=... mount option
+> relates to the root inode of the mount where it is specified - i.e. in
+> case of NFS only to the toplevel inode of the initial mount. Setting
+> the same context on the root inode of submounts, which AFAIK are
+> supposed to be transparent to the user, doesn't seem correct to me -
+> i.e. it should just be left unset for the automatically created
+> submounts.
 
-ÔÚ 2022/8/12 9:14, Sun Ke Ð´µÀ:
-> Add the missing unlock before goto.
-> 
-> Fixes: 3c59366c207e ("NFS: don't unhash dentry during unlink/rename")
-> Signed-off-by: Sun Ke <sunke32@huawei.com>
-> ---
->   fs/nfs/dir.c | 4 +++-
->   1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index dbab3caa15ed..1b879584d4fe 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -2484,8 +2484,10 @@ int nfs_unlink(struct inode *dir, struct dentry *dentry)
->   	 */
->   	error = -ETXTBSY;
->   	if (WARN_ON(dentry->d_flags & DCACHE_NFSFS_RENAMED) ||
-> -	    WARN_ON(dentry->d_fsdata == NFS_FSDATA_BLOCKED))
-> +	    WARN_ON(dentry->d_fsdata == NFS_FSDATA_BLOCKED)) {
-> +		spin_unlock(&dentry->d_lock);
->   		goto out;
-> +	}
->   	if (dentry->d_fsdata)
->   		/* old devname */
->   		kfree(dentry->d_fsdata);
-> 
+Like Ondrej, I'm not going to say I'm very comfortable with some of
+the VFS corner cases, but this is an interesting case ... as far as I
+can tell, the submount has a superblock and is treated like a normal
+filesystem mount with the one exception that it is mounted
+automatically so that users might not be aware it is a separate mount.
+
+I guess my question is this: for inodes inside the superblock, does
+their superblock pointer point to the submount's superblock, or the
+parent filesystem's superblock?
+
+-- 
+paul-moore.com
