@@ -2,30 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F9AFC32772
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Aug 2022 21:00:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39101C32772
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Aug 2022 21:00:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230099AbiHWVAR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Aug 2022 17:00:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47236 "EHLO
+        id S229954AbiHWVAe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Aug 2022 17:00:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48414 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229850AbiHWVAM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2022 17:00:12 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECE40785B0
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Aug 2022 14:00:09 -0700 (PDT)
+        with ESMTP id S231517AbiHWVAb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Aug 2022 17:00:31 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 324987963F
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Aug 2022 14:00:30 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 471B56159D
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Aug 2022 21:00:09 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 863D0C433B5;
-        Tue, 23 Aug 2022 21:00:08 +0000 (UTC)
-Subject: [PATCH v1 1/7] SUNRPC: Fix end-of-buffer calculation
+        by ams.source.kernel.org (Postfix) with ESMTPS id E40D8B81F3B
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Aug 2022 21:00:28 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8FC05C433D6;
+        Tue, 23 Aug 2022 21:00:27 +0000 (UTC)
+Subject: [PATCH v1 4/7] lockd: Check for junk after RPC Call messages
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Tue, 23 Aug 2022 17:00:07 -0400
-Message-ID: <166128840714.2788.7887913547062461761.stgit@manet.1015granger.net>
+Date:   Tue, 23 Aug 2022 17:00:26 -0400
+Message-ID: <166128842661.2788.12824170997837980965.stgit@manet.1015granger.net>
+In-Reply-To: <166128840714.2788.7887913547062461761.stgit@manet.1015granger.net>
+References: <166128840714.2788.7887913547062461761.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5.dev2+g9ce680a5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -34,83 +36,50 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Ensure that stream-based argument decoding can't go past the actual
-end of the receive buffer. xdr_init_decode's calculation of the
-value of xdr->end over-estimates the end of the buffer because the
-Linux kernel RPC server code does not remove the size of the RPC
-header from rqstp->rq_arg before calling the upper layer's
-dispatcher.
+The current RPC server code allows incoming RPC messages up to about
+a megabyte in size. For TCP, this is based on the size value
+contained in the RPC record marker.
 
-The server-side still uses the svc_getnl() macros to decode the
-RPC call header. These macros reduce the length of the head iov
-but do not update the total length of the message in the buffer
-(buf->len).
+Currently, lockd ignores anything in the message that is past the end
+of the encoded RPC Call message. A very large RPC message can arrive
+with just an NLM LOCK operation in it, and lockd ignores the rest of
+the message until the next RPC fragment in the TCP stream.
 
-A proper fix for this would be to replace the use of svc_getnl() and
-friends in the RPC header decoder, but that would be a large and
-invasive change that would be difficult to backport.
+That ignored data still consumes pages in the svc_rqst's page array,
+however. The current arrangement is that each svc_rqst gets about
+260 pages, assuming that all supported NLM operations will never
+require more than a total of 260 pages to decode a Call message
+and construct its corresponding Reply message.
 
-Fixes: 5191955d6fc6 ("SUNRPC: Prepare for xdr_stream-style decoding on the server-side")
+A clever attacker can add garbage at the end of an RPC Call message.
+At the least, it can result in a short or empty NLM result.
+
+So, let's teach lockd to look for such shenanigans and reject any
+Call where the incoming RPC frame has content remaining in the
+receive buffer after lockd has decoded the Call arguments.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc.h |   14 +++++++++++---
- include/linux/sunrpc/xdr.h |   12 ++++++++++++
- 2 files changed, 23 insertions(+), 3 deletions(-)
+ fs/lockd/svc.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index daecb009c05b..494375313a6f 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -544,16 +544,24 @@ static inline void svc_reserve_auth(struct svc_rqst *rqstp, int space)
- }
- 
- /**
-- * svcxdr_init_decode - Prepare an xdr_stream for svc Call decoding
-+ * svcxdr_init_decode - Prepare an xdr_stream for Call decoding
-  * @rqstp: controlling server RPC transaction context
-  *
-+ * This function currently assumes the RPC header in rq_arg has
-+ * already been decoded. Upon return, xdr->p points to the
-+ * location of the upper layer header.
-  */
- static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 59ef8a1f843f..80b3f1a006f6 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -694,9 +694,12 @@ module_exit(exit_nlm);
+ static int nlmsvc_dispatch(struct svc_rqst *rqstp, __be32 *statp)
  {
- 	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
--	struct kvec *argv = rqstp->rq_arg.head;
-+	struct xdr_buf *buf = &rqstp->rq_arg;
-+	struct kvec *argv = buf->head;
+ 	const struct svc_procedure *procp = rqstp->rq_procinfo;
++	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
  
--	xdr_init_decode(xdr, &rqstp->rq_arg, argv->iov_base, NULL);
-+	/* Reset the argument buffer's length, now that the RPC header
-+	 * has been decoded. */
-+	buf->len = xdr_buf_length(buf);
-+
-+	xdr_init_decode(xdr, buf, argv->iov_base, NULL);
- 	xdr_set_scratch_page(xdr, rqstp->rq_scratch_page);
- }
+ 	svcxdr_init_decode(rqstp);
+-	if (!procp->pc_decode(rqstp, &rqstp->rq_arg_stream))
++	if (!procp->pc_decode(rqstp, xdr))
++		goto out_decode_err;
++	if (xdr_stream_remaining(xdr))
+ 		goto out_decode_err;
  
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 69175029abbb..f6bb215d4029 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -83,6 +83,18 @@ xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
- 	buf->buflen = len;
- }
- 
-+/**
-+ * xdr_buf_length - Return the summed length of @buf's sub-buffers
-+ * @buf: an instantiated xdr_buf
-+ *
-+ * Returns the sum of the lengths of the head kvec, the tail kvec,
-+ * and the page array.
-+ */
-+static inline unsigned int xdr_buf_length(const struct xdr_buf *buf)
-+{
-+	return buf->head->iov_len + buf->page_len + buf->tail->iov_len;
-+}
-+
- /*
-  * pre-xdr'ed macros.
-  */
+ 	*statp = procp->pc_func(rqstp);
 
 
