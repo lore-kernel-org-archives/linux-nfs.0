@@ -2,54 +2,53 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA923ECAAA2
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Aug 2022 02:17:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60112ECAAA3
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Aug 2022 02:17:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244036AbiHZCRW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Aug 2022 22:17:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36070 "EHLO
+        id S244734AbiHZCRa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Aug 2022 22:17:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36240 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244739AbiHZCRS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2022 22:17:18 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DEAB9CB5D9;
-        Thu, 25 Aug 2022 19:17:11 -0700 (PDT)
+        with ESMTP id S244746AbiHZCRX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2022 22:17:23 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D8F6CB5DB;
+        Thu, 25 Aug 2022 19:17:21 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 60F5A20781;
-        Fri, 26 Aug 2022 02:17:10 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id A1F1E2298A;
+        Fri, 26 Aug 2022 02:17:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1661480230; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1661480239; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=IAy5RIlK+BKXr3TtbnQGrDhGvJvfQnV3J6gfvsVI2SI=;
-        b=Y6yj7S4oNnQdmlZED4Sv2odlp45fzx1VpVUavURqmBrMe1lS8cFAWL7Vr+fDDacDg86PBP
-        xlvopoqEdpGN90wF/FxrX0wXM+JlFXMjdgunwCGmCPt3lUXRcZ1z+75W46z72RDtladjCl
-        Xmgy1l2RHbiBbHMnt2HUgbQqm5i7H48=
+        bh=5oQjdZ4RU13qv7ERg7wUf7fqXZRo2xGMUxfTKvystxA=;
+        b=K8TMCl0dzuN7diDZUyyOSvTgk3rs7dP3YNTF/SkXDwRx2jhMqqd1XITc+aMCww1u3YCgO2
+        1hX4VSOkpnyo/Q0+Zam4eRai05jEnIZ7ujrI/AQ8CbnMyGgGtpe1/C4qs2hIOgtCQwJn67
+        yUz0RKZwyVHtS4oscsZ4CCz8lFGwCtk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1661480230;
+        s=susede2_ed25519; t=1661480239;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=IAy5RIlK+BKXr3TtbnQGrDhGvJvfQnV3J6gfvsVI2SI=;
-        b=Ua0xxjneF59o45AsOnrN7VuFr9bOCgaBvcGGtWeZBzHmtOxoOIbXZjZ66XIWEE++e7f+I0
-        QZ6LBjQNCDAYrTAg==
+        bh=5oQjdZ4RU13qv7ERg7wUf7fqXZRo2xGMUxfTKvystxA=;
+        b=WulEif6gsEbqX0y/kzjG+IfUQfXjh9oKaMAMkjof9HLt6hnuZiAZf05zE06CrWk+oOtwAC
+        EPNS7aEswe1OMWAQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4057313A65;
-        Fri, 26 Aug 2022 02:16:58 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 48AD913A65;
+        Fri, 26 Aug 2022 02:17:17 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id J8SJOhotCGNZMQAAMHmgww
-        (envelope-from <neilb@suse.de>); Fri, 26 Aug 2022 02:16:58 +0000
-Subject: [PATCH 02/10] VFS: move EEXIST and ENOENT tests into
- lookup_hash_update()
+        id Pc1dAi0tCGNwMQAAMHmgww
+        (envelope-from <neilb@suse.de>); Fri, 26 Aug 2022 02:17:17 +0000
+Subject: [PATCH 03/10] VFS: move want_write checks into lookup_hash_update()
 From:   NeilBrown <neilb@suse.de>
 To:     Al Viro <viro@zeniv.linux.org.uk>,
         Linus Torvalds <torvalds@linux-foundation.org>,
@@ -59,7 +58,7 @@ To:     Al Viro <viro@zeniv.linux.org.uk>,
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
 Date:   Fri, 26 Aug 2022 12:10:43 +1000
-Message-ID: <166147984373.25420.5973159222199992210.stgit@noble.brown>
+Message-ID: <166147984374.25420.3477094952897986387.stgit@noble.brown>
 In-Reply-To: <166147828344.25420.13834885828450967910.stgit@noble.brown>
 References: <166147828344.25420.13834885828450967910.stgit@noble.brown>
 User-Agent: StGit/1.5
@@ -70,139 +69,188 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Moving common error handling into lookup_hash_update() simplifies
-callers.
-A future patch will export this functionality to nfsd, and the more code
-we put in the interface, the less code will be needed in nfsd.
+mnt_want_write() is always called before lookup_hash_update(), so
+we can simplify the code by moving the call into that function.
 
-EEXIST is returned if LOOKUP_EXCL is set and dentry is positivie.
-ENOENT is returned if LOOKUP_CREAT is NOT set and dentry is negative.
+If lookup_hash_update() succeeds, it now will have claimed the
+want_write lock.  If it fails, the want_write lock isn't held.
 
-This involves seting LOOKUP_EXCL in cases where it wasn't before.
-In particular, when creating a non-dir named "foo/", we want the
-EEXIST error, but don't want to actually create anything.
-Some filesystems assume LOOKUP_EXCL implies LOOKUP_CREATE, so ensure it
-does when calling ->lookup().
+To allow this, lookup_hash_update() now receives a 'struct path *'
+instead of 'struct dentry *'
+
+Note that when creating a name, any error from mnt_want_write() does not
+get reported unless there is no other error.  For unlink/rmdir though,
+an error from mnt_want_write() is immediately fatal - overriding ENOENT
+for example.  This behaviour seems strange, but this patch is careful to
+preserve it.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/namei.c |   58 ++++++++++++++++++++++++++++++++++------------------------
- 1 file changed, 34 insertions(+), 24 deletions(-)
+ fs/namei.c |   72 ++++++++++++++++++++++++++----------------------------------
+ 1 file changed, 31 insertions(+), 41 deletions(-)
 
 diff --git a/fs/namei.c b/fs/namei.c
-index c008dfd01e30..09c2d007814a 100644
+index 09c2d007814a..73c3319a1703 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -1562,7 +1562,13 @@ static struct dentry *lookup_dcache(const struct qstr *name,
- {
- 	struct dentry *dentry = d_lookup(dir, name);
- 	if (dentry) {
--		int error = d_revalidate(dentry, flags);
-+		int error;
-+		/* Some filesystems assume EXCL -> CREATE, so make
-+		 * sure it does.
-+		 */
-+		if (!(flags & LOOKUP_CREATE))
-+			flags &= ~LOOKUP_EXCL;
-+		error = d_revalidate(dentry, flags);
- 		if (unlikely(error <= 0)) {
- 			if (!error)
- 				d_invalidate(dentry);
-@@ -1621,6 +1627,8 @@ static struct dentry *__lookup_hash(const struct qstr *name,
-  * or shared lock depending on the fs preference, then do a lookup,
-  * and then set the DCACHE_PAR_UPDATE bit on the child if a shared lock
-  * was taken on the parent.
-+ * If LOOKUP_EXCL, name should not already exist, else -EEXIST
-+ * If not LOOKUP_CREATE, name should already exist, else -ENOENT
+@@ -1632,12 +1632,22 @@ static struct dentry *__lookup_hash(const struct qstr *name,
   */
  static struct dentry *lookup_hash_update(
  	const struct qstr *name,
-@@ -1651,6 +1659,24 @@ static struct dentry *lookup_hash_update(
- 		dput(dentry);
- 		goto retry;
+-	struct dentry *base, unsigned int flags,
++	struct path *path, unsigned int flags,
+ 	wait_queue_head_t *wq)
+ {
+ 	struct dentry *dentry;
++	struct dentry *base = path->dentry;
+ 	struct inode *dir = base->d_inode;
+-	int err;
++	int err, err2;
++
++	/* For create, don't fail immediately if it's r/o,
++	 * at least try to report other errors.
++	 * For unlink/rmdir where LOOKUP_REVAl is the only
++	 * flag, fail immediately if r/o.
++	 */
++	err2 = mnt_want_write(path->mnt);
++	if (err2 && (flags & ~LOOKUP_REVAL) == 0)
++		return ERR_PTR(err2);
+ 
+ 	if (wq && IS_PAR_UPDATE(dir))
+ 		inode_lock_shared_nested(dir, I_MUTEX_PARENT);
+@@ -1677,6 +1687,13 @@ static struct dentry *lookup_hash_update(
+ 			goto out_err;
+ 		}
  	}
-+	if (flags & LOOKUP_EXCL) {
-+		if (d_is_positive(dentry)) {
-+			d_lookup_done(dentry);
-+			d_unlock_update(dentry);
-+			dput(dentry);
-+			err = -EEXIST;
-+			goto out_err;
-+		}
-+	}
-+	if (!(flags & LOOKUP_CREATE)) {
-+		if (!dentry->d_inode) {
-+			d_lookup_done(dentry);
-+			d_unlock_update(dentry);
-+			dput(dentry);
-+			err = -ENOENT;
-+			goto out_err;
-+		}
++	if (err2) {
++		err = err2;
++		d_lookup_done(dentry);
++		d_unlock_update(dentry);
++		dput(dentry);
++		goto out_err;
 +	}
  	return dentry;
  
  out_err:
-@@ -3868,7 +3894,7 @@ static struct dentry *filename_create_one(struct qstr *last, struct path *path,
- 	struct dentry *dentry;
+@@ -1684,6 +1701,8 @@ static struct dentry *lookup_hash_update(
+ 		inode_unlock_shared(dir);
+ 	else
+ 		inode_unlock(dir);
++	if (!err2)
++		mnt_drop_write(path->mnt);
+ 	return ERR_PTR(err);
+ }
+ 
+@@ -1700,7 +1719,7 @@ struct dentry *lookup_hash_update_len(const char *name, int nlen,
+ 				    path->dentry, nlen, &this);
+ 	if (err)
+ 		return ERR_PTR(err);
+-	return lookup_hash_update(&this, path->dentry, flags, wq);
++	return lookup_hash_update(&this, path, flags, wq);
+ }
+ EXPORT_SYMBOL(lookup_hash_update_len);
+ 
+@@ -3891,15 +3910,10 @@ static struct dentry *filename_create_one(struct qstr *last, struct path *path,
+ 					  unsigned int lookup_flags,
+ 					  wait_queue_head_t *wq)
+ {
+-	struct dentry *dentry;
  	bool want_dir = lookup_flags & LOOKUP_DIRECTORY;
  	unsigned int reval_flag = lookup_flags & LOOKUP_REVAL;
--	unsigned int create_flags = LOOKUP_CREATE | LOOKUP_EXCL;
-+	unsigned int create_flag = LOOKUP_CREATE;
- 	int err2;
- 	int error;
+ 	unsigned int create_flag = LOOKUP_CREATE;
+-	int err2;
+-	int error;
  
-@@ -3879,26 +3905,16 @@ static struct dentry *filename_create_one(struct qstr *last, struct path *path,
+-	/* don't fail immediately if it's r/o, at least try to report other errors */
+-	err2 = mnt_want_write(path->mnt);
+ 	/*
+ 	 * Do the final lookup.  Suppress 'create' if there is a trailing
  	 * '/', and a directory wasn't requested.
- 	 */
- 	if (last->name[last->len] && !want_dir)
--		create_flags = 0;
-+		/* Name was foo/bar/ but not creating a directory, so
-+		 * we won't try to create - result will be either -ENOENT
-+		 * or -EEXIST.
-+		 */
-+		create_flag = 0;
- 	dentry = lookup_hash_update(last, path->dentry,
--				    reval_flag | create_flags,  wq);
-+				    reval_flag | create_flag | LOOKUP_EXCL, wq);
- 	if (IS_ERR(dentry))
- 		goto drop_write;
- 
--	error = -EEXIST;
--	if (d_is_positive(dentry))
--		goto fail;
+@@ -3910,24 +3924,9 @@ static struct dentry *filename_create_one(struct qstr *last, struct path *path,
+ 		 * or -EEXIST.
+ 		 */
+ 		create_flag = 0;
+-	dentry = lookup_hash_update(last, path->dentry,
+-				    reval_flag | create_flag | LOOKUP_EXCL, wq);
+-	if (IS_ERR(dentry))
+-		goto drop_write;
 -
--	/*
--	 * Special case - lookup gave negative, but... we had foo/bar/
--	 * From the vfs_mknod() POV we just have a negative dentry -
--	 * all is fine. Let's be bastards - you had / on the end, you've
--	 * been asking for (non-existent) directory. -ENOENT for you.
--	 */
--	if (unlikely(!create_flags)) {
--		error = -ENOENT;
+-	if (unlikely(err2)) {
+-		error = err2;
 -		goto fail;
 -	}
- 	if (unlikely(err2)) {
- 		error = err2;
- 		goto fail;
-@@ -4292,10 +4308,6 @@ int do_rmdir(int dfd, struct filename *name)
+-	return dentry;
+-fail:
+-	done_path_update(path, dentry, !!wq);
+-	dput(dentry);
+-	dentry = ERR_PTR(error);
+-drop_write:
+-	if (!err2)
+-		mnt_drop_write(path->mnt);
+-	return dentry;
++	return lookup_hash_update(last, path,
++				  reval_flag | create_flag | LOOKUP_EXCL,
++				  wq);
+ }
+ 
+ struct dentry *filename_create_one_len(const char *name, int nlen,
+@@ -4300,23 +4299,18 @@ int do_rmdir(int dfd, struct filename *name)
+ 		goto exit2;
+ 	}
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto exit2;
+-
+-	dentry = lookup_hash_update(&last, path.dentry, lookup_flags, &wq);
++	dentry = lookup_hash_update(&last, &path, lookup_flags, &wq);
  	error = PTR_ERR(dentry);
  	if (IS_ERR(dentry))
- 		goto exit3;
--	if (!dentry->d_inode) {
--		error = -ENOENT;
--		goto exit4;
--	}
+-		goto exit3;
++		goto exit2;
  	error = security_path_rmdir(&path, dentry);
  	if (error)
- 		goto exit4;
-@@ -4435,8 +4447,6 @@ int do_unlinkat(int dfd, struct filename *name)
- 		if (last.name[last.len])
- 			goto slashes;
- 		inode = dentry->d_inode;
--		if (d_is_negative(dentry))
--			goto slashes;
- 		ihold(inode);
- 		error = security_path_unlink(&path, dentry);
- 		if (error)
+-		goto exit4;
++		goto exit3;
+ 	mnt_userns = mnt_user_ns(path.mnt);
+ 	error = vfs_rmdir(mnt_userns, path.dentry->d_inode, dentry);
+-exit4:
++exit3:
+ 	done_path_update(&path, dentry, true);
+ 	dput(dentry);
+-exit3:
+ 	mnt_drop_write(path.mnt);
+ exit2:
+ 	path_put(&path);
+@@ -4433,12 +4427,8 @@ int do_unlinkat(int dfd, struct filename *name)
+ 	if (type != LAST_NORM)
+ 		goto exit2;
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto exit2;
+-
+ retry_deleg:
+-	dentry = lookup_hash_update(&last, path.dentry, lookup_flags, &wq);
++	dentry = lookup_hash_update(&last, &path, lookup_flags, &wq);
+ 	error = PTR_ERR(dentry);
+ 	if (!IS_ERR(dentry)) {
+ 		struct user_namespace *mnt_userns;
+@@ -4457,6 +4447,7 @@ int do_unlinkat(int dfd, struct filename *name)
+ exit3:
+ 		done_path_update(&path, dentry, true);
+ 		dput(dentry);
++		mnt_drop_write(path.mnt);
+ 	}
+ 	if (inode)
+ 		iput(inode);	/* truncate the inode here */
+@@ -4466,7 +4457,6 @@ int do_unlinkat(int dfd, struct filename *name)
+ 		if (!error)
+ 			goto retry_deleg;
+ 	}
+-	mnt_drop_write(path.mnt);
+ exit2:
+ 	path_put(&path);
+ 	if (retry_estale(error, lookup_flags)) {
 
 
