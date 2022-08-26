@@ -2,103 +2,149 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 30731ECAA2C
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Aug 2022 19:48:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C6B91ECAAA3
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Aug 2022 02:16:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235510AbiHYTsQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Aug 2022 15:48:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45254 "EHLO
+        id S243360AbiHZCQu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Aug 2022 22:16:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35798 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233141AbiHYTsP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2022 15:48:15 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3A225F12A;
-        Thu, 25 Aug 2022 12:48:13 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S233431AbiHZCQt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Aug 2022 22:16:49 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 684EFC9EA3;
+        Thu, 25 Aug 2022 19:16:48 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 7612761DCF;
-        Thu, 25 Aug 2022 19:48:13 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0EBCBC433C1;
-        Thu, 25 Aug 2022 19:48:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1661456892;
-        bh=r8gaxJKLQI+z6juVzGPZoOj4RUwyYCmoO+hFGBi7yio=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=HDLiJw9Oy8arB3LTOsdS+SDOeJbX+vBcaTADTdnfo41tdS09mjbzlWhnDnfva+x4g
-         BjKUYzjJM0KmbD5ADf4P2NZUl6JYLFgGhIqfJv+PBq8RAZA+1zu7S79xGQXsz5M2Ci
-         0YEfVeZs98dFwDoUhDpoxiDLWCB/NmTFitQq9abEb6kP+l4mP3Zztwp74A3uHznlIA
-         Nlpuue//VRmfvXJahz0JhGI6SaPXkVDjIWHKMK/6sf45SCoepMiCV91giZ2O+EJPME
-         qaOJ0nE5cyGhIXp6sgMq5RBjvGMrBhMcHFq8rSuvQToRb3cIml8cmdtm7nY26beVcU
-         kAw01z3J9LPeg==
-Message-ID: <0339f5f540010ba1bae74121d33c0643f26fefab.camel@kernel.org>
-Subject: Re: [PATCH] vfs: report an inode version in statx for IS_I_VERSION
- inodes
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Colin Walters <walters@verbum.org>,
-        Dave Chinner <david@fromorbit.com>
-Cc:     Al Viro <viro@zeniv.linux.org.uk>, linux-api@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        David Howells <dhowells@redhat.com>,
-        Frank Filz <ffilzlnx@mindspring.com>
-Date:   Thu, 25 Aug 2022 15:48:10 -0400
-In-Reply-To: <fc59bfa8-295e-4180-9cf0-c2296d2e8707@www.fastmail.com>
-References: <20220819115641.14744-1-jlayton@kernel.org>
-         <20220823215333.GC3144495@dread.disaster.area>
-         <fc59bfa8-295e-4180-9cf0-c2296d2e8707@www.fastmail.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 019A420441;
+        Fri, 26 Aug 2022 02:16:47 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1661480207; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=rdewQxjoX3h2OYaDP8Q52JaGQBN0oIzHjo+RTRN04G4=;
+        b=MBjbPDKRhm92P0yOj50KQYPjcAwo5rPA217+WOb37bH9d6Hrr/QwT9H8SKTSvFYf95Ujct
+        ScnjsCkqwlaqlBCiMaO9hB56oLl3xcyPNA8fouOLDFh2cLSgfDyU4NAxeZA/+Nx7eC4sdY
+        hRUh8Syjaimegb0WF51F/EHDozAJszA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1661480207;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=rdewQxjoX3h2OYaDP8Q52JaGQBN0oIzHjo+RTRN04G4=;
+        b=DnlkIkPs1iBbbePvziGXurxqyOTbqAazE1qRcEhbnn5zMTgt4Ju9viiCoDAr2SJK2lDKn8
+        Q/Q/L9OiKI6a/fBg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 6B17313A65;
+        Fri, 26 Aug 2022 02:16:44 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 1NFdCQwtCGNCMQAAMHmgww
+        (envelope-from <neilb@suse.de>); Fri, 26 Aug 2022 02:16:44 +0000
+Subject: [PATCH/RFC 00/10 v5] Improve scalability of directory operations
+From:   NeilBrown <neilb@suse.de>
+To:     Al Viro <viro@zeniv.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Daire Byrne <daire@dneg.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+Date:   Fri, 26 Aug 2022 12:10:43 +1000
+Message-ID: <166147828344.25420.13834885828450967910.stgit@noble.brown>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2022-08-25 at 14:48 -0400, Colin Walters wrote:
->=20
-> On Tue, Aug 23, 2022, at 5:53 PM, Dave Chinner wrote:
-> >=20
-> > THere's no definition of what consitutes an "inode change" and this
-> > exposes internal filesystem implementation details (i.e. on disk
-> > format behaviour) directly to userspace. That means when the
-> > internal filesystem behaviour changes, userspace applications will
-> > see changes in stat->ino_version changes and potentially break them.
->=20
-> As a userspace developer (ostree, etc. who is definitely interested in th=
-is functionality) I do agree with this concern; but a random drive by comme=
-nt: would it be helpful to expose iversion (or other bits like this from th=
-e vfs) via e.g. debugfs to start?  I think that'd unblock writing fstests i=
-n the short term right?
->=20
->=20
+[I made up "v5" - I haven't been counting]
 
-It's great to hear from userland developers who are interested in this!
+VFS currently holds an exclusive lock on the directory while making
+changes: add, remove, rename.
+When multiple threads make changes in the one directory, the contention
+can be noticeable.
+In the case of NFS with a high latency link, this can easily be
+demonstrated.  NFS doesn't really need VFS locking as the server ensures
+correctness.
 
-I don't think there is a lot of controversy about the idea of presenting
-a value like this via statx. The usefulness seems pretty obvious if
-you've ever had to deal with timestamp granularity issues.
+Lustre uses a single(?) directory for object storage, and has patches
+for ext4 to support concurrent updates (Lustre accesses ext4 directly,
+not via the VFS).
 
-The part we're wrestling with now is that applications will need a clear
-(and testable!) definition of what this value means. We need to be very
-careful how we define this so that userland developers don't get stuck
-dealing with semantics that vary per fstype, while still allowing the
-broadest range of filesystems to support it.
+XFS (it is claimed) doesn't its own locking and doesn't need the VFS to
+help at all.
 
-My current thinking is to define this such that the reported ino_version
-MUST change any time that the ctime would change (even if the timestamp
-doesn't appear to change). That should also catch mtime updates.
+This patch series allows filesystems to request a shared lock on
+directories and provides serialisation on just the affected name, not the
+whole directory.  It changes both the VFS and NFSD to use shared locks
+when appropriate, and changes NFS to request shared locks.
 
-The part I'm still conflicted about is whether we should allow for a
-conformant implementation to increment the value even when there is no
-apparent change to the inode.
+The central enabling feature is a new dentry flag DCACHE_PAR_UPDATE
+which acts as a bit-lock.  The ->d_lock spinlock is taken to set/clear
+it, and wait_var_event() is used for waiting.  This flag is set on all
+dentries that are part of a directory update, not just when a shared
+lock is taken.
 
-IOW, should this value mean that something _did_ change in the inode or
-that something _may_ have changed in it?
+When a shared lock is taken we must use alloc_dentry_parallel() which
+needs a wq which must remain until the update is completed.  To make use
+of concurrent create, kern_path_create() would need to be passed a wq.
+Rather than the churn required for that, we use exclusive locking when
+no wq is provided.
 
-Implementations that do spurious increments would less than ideal, but
-defining it that way might allow a broader range of filesystems to
-present this value.
+One interesting consequence of this is that silly-rename becomes a
+little more complex.  As the directory may not be exclusively locked,
+the new silly-name needs to be locked (DCACHE_PAR_UPDATE) as well.
+A new LOOKUP_SILLY_RENAME is added which helps implement this using
+common code.
 
-What would you prefer, as a userland developer?
---=20
-Jeff Layton <jlayton@kernel.org>
+While testing I found some odd behaviour that was caused by
+d_revalidate() racing with rename().  To resolve this I used
+DCACHE_PAR_UPDATE to ensure they cannot race any more.
+
+Testing, review, or other comments would be most welcome,
+
+NeilBrown
+
+
+---
+
+NeilBrown (10):
+      VFS: support parallel updates in the one directory.
+      VFS: move EEXIST and ENOENT tests into lookup_hash_update()
+      VFS: move want_write checks into lookup_hash_update()
+      VFS: move dput() and mnt_drop_write() into done_path_update()
+      VFS: export done_path_update()
+      VFS: support concurrent renames.
+      VFS: hold DCACHE_PAR_UPDATE lock across d_revalidate()
+      NFSD: allow parallel creates from nfsd
+      VFS: add LOOKUP_SILLY_RENAME
+      NFS: support parallel updates in the one directory.
+
+
+ fs/dcache.c            |  72 ++++-
+ fs/namei.c             | 616 ++++++++++++++++++++++++++++++++---------
+ fs/nfs/dir.c           |  28 +-
+ fs/nfs/fs_context.c    |   6 +-
+ fs/nfs/internal.h      |   3 +-
+ fs/nfs/unlink.c        |  51 +++-
+ fs/nfsd/nfs3proc.c     |  28 +-
+ fs/nfsd/nfs4proc.c     |  29 +-
+ fs/nfsd/nfsfh.c        |   9 +
+ fs/nfsd/nfsproc.c      |  29 +-
+ fs/nfsd/vfs.c          | 177 +++++-------
+ include/linux/dcache.h |  28 ++
+ include/linux/fs.h     |   5 +-
+ include/linux/namei.h  |  39 ++-
+ 14 files changed, 799 insertions(+), 321 deletions(-)
+
+--
+Signature
+
