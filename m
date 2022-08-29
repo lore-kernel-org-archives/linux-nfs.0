@@ -2,44 +2,43 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42BE8ECAAD2
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Aug 2022 13:48:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 587DBECAAD5
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Aug 2022 13:49:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229557AbiH2Nse (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Aug 2022 09:48:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50980 "EHLO
+        id S230332AbiH2NtT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Aug 2022 09:49:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51784 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229724AbiH2Nsd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2022 09:48:33 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AD721956BD
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2022 06:48:32 -0700 (PDT)
+        with ESMTP id S230343AbiH2NtQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Aug 2022 09:49:16 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 972CD96741
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2022 06:49:15 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 56D04B8107A
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2022 13:48:31 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E4A9C433D6;
-        Mon, 29 Aug 2022 13:48:29 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E4CAA60DBF
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Aug 2022 13:49:14 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 14BF5C433C1;
+        Mon, 29 Aug 2022 13:49:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1661780909;
-        bh=NWMyxZvup7b12MaC/BZ0HppMAePd+fwYJWJF9RHwOrs=;
+        s=k20201202; t=1661780954;
+        bh=i/BhSomZ4QjRi6LppWHNJsWYtHQdrTGqKk3m38t/shs=;
         h=Subject:From:To:Date:In-Reply-To:References:From;
-        b=dcSVxjPv0hMdRMErkdwfnRZ9BiA8TnEK0gIoENytv5Wcpino1ixcWDE/GvezL5CmA
-         4Vn7n7AlNKbwJawOvWOrBZvhf6cgvtwxk85Wx1vx5zjkAj20JjabWZkxiEs1Veu2qS
-         2WHqY1lKEyEXWIHke3UWCNqvbzJ5AzHczpELrAIGDhoN2pcQ9oXLCHIbub+29gcl9M
-         IT7YqNG7uVVEOvT7JX+W0mA0KhNRSp6u9gPJQpjb9QUOjeCmwp2EgSmEb888XODhO+
-         3Fg80wiTSRav7ifdF9Tat3T+sEh1BVO0FRFU3Du9rzp77Bc7FT+YMyiWwYQV5OnSi4
-         8pXzd/4KHEvbQ==
-Message-ID: <6b5b45ea8d94c6122445ee26ae7bf6d2555770f2.camel@kernel.org>
-Subject: Re: [PATCH v2 4/7] NFSD: Use xdr_inline_decode() to decode NFSv3
- symlinks
+        b=d1rhqOe6Q4gxV3J+1PZchKFRkfJ0ZmUnczQoQ8P9CMkfKg/5/JnbpQpFC9SdSu1vq
+         7ZAwiX4xyhap9D4t7yAA97P2ba39Fa5qlsM+1577qM38P8Dd8csQQhHRCz17MF2gaS
+         t4Toq7ElACJqMkZOXq/wJDTAuZd2d99JIQjPpbMO6kI6RwNA2Ii7jgyvN6dg9/gHt+
+         /GhWvOdJvIxQ2p+M80qcBdwOGSVISTz2SQaitIAe1WLlhK3YkDllcVXJk1vhZLKG7e
+         ZPpxRoLmu4zoqOV7if8uLI2aK9h1DE+c6HV82sTSifOPjymhKtffxyQYP+R2mC0Bff
+         JwLkUNG1f2HHA==
+Message-ID: <a1790685fd8967838243ced5fe54d7acca43df88.camel@kernel.org>
+Subject: Re: [PATCH v2 5/7] NFSD: Clean up WRITE arg decoders
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Date:   Mon, 29 Aug 2022 09:48:28 -0400
-In-Reply-To: <166171264105.21449.17586756015319208200.stgit@manet.1015granger.net>
+Date:   Mon, 29 Aug 2022 09:49:12 -0400
+In-Reply-To: <166171264742.21449.12798598095676580927.stgit@manet.1015granger.net>
 References: <166171174172.21449.5036120183381273656.stgit@manet.1015granger.net>
-         <166171264105.21449.17586756015319208200.stgit@manet.1015granger.net>
+         <166171264742.21449.12798598095676580927.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
@@ -49,49 +48,45 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 On Sun, 2022-08-28 at 14:50 -0400, Chuck Lever wrote:
-> Replace the check for buffer over/underflow with a helper that is
-> commonly used for this purpose. The helper also sets xdr->nwords
-> correctly after successfully linearizing the symlink argument into
-> the stream's scratch buffer.
+> xdr_stream_subsegment() already returns a boolean value.
 >=20
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  fs/nfsd/nfs3xdr.c |   14 +++-----------
->  1 file changed, 3 insertions(+), 11 deletions(-)
+>  fs/nfsd/nfs3xdr.c |    4 +---
+>  fs/nfsd/nfsxdr.c  |    4 +---
+>  2 files changed, 2 insertions(+), 6 deletions(-)
 >=20
 > diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index 0293b8d65f10..71e32cf28885 100644
+> index 71e32cf28885..3308dd671ef0 100644
 > --- a/fs/nfsd/nfs3xdr.c
 > +++ b/fs/nfsd/nfs3xdr.c
-> @@ -616,8 +616,6 @@ nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, st=
-ruct xdr_stream *xdr)
->  {
->  	struct nfsd3_symlinkargs *args =3D rqstp->rq_argp;
->  	struct kvec *head =3D rqstp->rq_arg.head;
-> -	struct kvec *tail =3D rqstp->rq_arg.tail;
-> -	size_t remaining;
-> =20
->  	if (!svcxdr_decode_diropargs3(xdr, &args->ffh, &args->fname, &args->fle=
-n))
->  		return false;
-> @@ -626,16 +624,10 @@ nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, =
-struct xdr_stream *xdr)
->  	if (xdr_stream_decode_u32(xdr, &args->tlen) < 0)
->  		return false;
-> =20
-> -	/* request sanity */
-> -	remaining =3D head->iov_len + rqstp->rq_arg.page_len + tail->iov_len;
-> -	remaining -=3D xdr_stream_pos(xdr);
-> -	if (remaining < xdr_align_size(args->tlen))
+> @@ -571,10 +571,8 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, str=
+uct xdr_stream *xdr)
+>  		args->count =3D max_blocksize;
+>  		args->len =3D max_blocksize;
+>  	}
+> -	if (!xdr_stream_subsegment(xdr, &args->payload, args->count))
 > -		return false;
-> -
-> -	args->first.iov_base =3D xdr->p;
-> +	/* symlink_data */
->  	args->first.iov_len =3D head->iov_len - xdr_stream_pos(xdr);
-> -
+> =20
 > -	return true;
-> +	args->first.iov_base =3D xdr_inline_decode(xdr, args->tlen);
-> +	return args->first.iov_base !=3D NULL;
+> +	return xdr_stream_subsegment(xdr, &args->payload, args->count);
+>  }
+> =20
+>  bool
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index aba8520b4b8b..caf6355b18fa 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -338,10 +338,8 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, stru=
+ct xdr_stream *xdr)
+>  		return false;
+>  	if (args->len > NFSSVC_MAXBLKSIZE_V2)
+>  		return false;
+> -	if (!xdr_stream_subsegment(xdr, &args->payload, args->len))
+> -		return false;
+> =20
+> -	return true;
+> +	return xdr_stream_subsegment(xdr, &args->payload, args->len);
 >  }
 > =20
 >  bool
