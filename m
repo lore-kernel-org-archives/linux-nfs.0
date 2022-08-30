@@ -2,303 +2,143 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A7BFC54EE9
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Aug 2022 19:11:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97A0BECAAD5
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Aug 2022 19:14:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231272AbiH3TLy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 30 Aug 2022 15:11:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42178 "EHLO
+        id S229774AbiH3TO6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 30 Aug 2022 15:14:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45304 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229524AbiH3TLw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2022 15:11:52 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB3B274E11;
-        Tue, 30 Aug 2022 12:11:50 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3CDD861695;
-        Tue, 30 Aug 2022 19:11:50 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9312EC433C1;
-        Tue, 30 Aug 2022 19:11:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1661886709;
-        bh=SPa2tEJ5w/SE1cqkGtFfCLkYKPUm9PvqqzayAAypJo0=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=k8r5vD2Bu6UmbKLZIw4GmTLSsL/bpLNukxIWBSKt7NgMJM5qpZlllr6e2Y5pKXnxP
-         OdGow0u+K1377QX3gKtYq3lSvCujilWwSlJulOc2PKnJhZ+vBkIWT19bOE1rtrp0DO
-         2TcBBCVe9uFI7TOYbR9JlCj4Q2k83unyd4UHPtEDh9gSsnzNOyT14QsX9SpwUTu4fY
-         zdBj2S2gFysCgAVqdEl1zUSie+ijoHoIOK+jBYWYiUZL/STpoK/pZCnibNMYlqDSEa
-         efotL76OIdtbNL8lGv0e9b52Fm9Ok8e3n+Ij7feEdg+h7fswk1QrZQNjPXiAXD3whA
-         8R8CDTjRQrxag==
-Message-ID: <8b71a82b0dc0dbb121c9ef72f8a70389e729d831.camel@kernel.org>
-Subject: Re: [PATCH v3 1/7] iversion: update comments with info about atime
- updates
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Cc:     "zohar@linux.ibm.com" <zohar@linux.ibm.com>,
-        "djwong@kernel.org" <djwong@kernel.org>,
-        "xiubli@redhat.com" <xiubli@redhat.com>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "neilb@suse.de" <neilb@suse.de>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "david@fromorbit.com" <david@fromorbit.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-ceph@vger.kernel.org" <linux-ceph@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "tytso@mit.edu" <tytso@mit.edu>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "jack@suse.cz" <jack@suse.cz>,
-        "brauner@kernel.org" <brauner@kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "lczerner@redhat.com" <lczerner@redhat.com>,
-        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-        "walters@verbum.org" <walters@verbum.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
-Date:   Tue, 30 Aug 2022 15:11:46 -0400
-In-Reply-To: <a7a5a9acbe88d8ebcfd7074bf663359f1647cafc.camel@hammerspace.com>
-References: <20220826214703.134870-1-jlayton@kernel.org>
-         <20220826214703.134870-2-jlayton@kernel.org>
-         <20220829075651.GS3600936@dread.disaster.area>
-         <549776abfaddcc936c6de7800b6d8249d97d9f28.camel@kernel.org>
-         <166181389550.27490.8200873228292034867@noble.neil.brown.name>
-         <f5c42c0d87dfa45188c2109ccf9baeb7a42aa27e.camel@kernel.org>
-         <20220830132443.GA26330@fieldses.org>
-         <a07686e7e1d1ef15720194be2abe5681f6a6c78e.camel@kernel.org>
-         <20220830144430.GD26330@fieldses.org>
-         <e4815337177c74a9928098940dfdcb371017a40c.camel@hammerspace.com>
-         <20220830151715.GE26330@fieldses.org>
-         <3e8c7af5d39870c5b0dc61736a79bd134be5a9b3.camel@hammerspace.com>
-         <4adb2abd1890b147dbc61a06413f35d2f147c43a.camel@kernel.org>
-         <5fd1f7e99d5ab87db48c8c3603b014c1c2d2ec5a.camel@hammerspace.com>
-         <5f194ec391498f18602f75126d78bfe21132ecea.camel@kernel.org>
-         <a7a5a9acbe88d8ebcfd7074bf663359f1647cafc.camel@hammerspace.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
-MIME-Version: 1.0
+        with ESMTP id S230445AbiH3TO5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Aug 2022 15:14:57 -0400
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0D427674
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Aug 2022 12:14:53 -0700 (PDT)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 27UHtkf4000518;
+        Tue, 30 Aug 2022 19:14:50 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2022-7-12;
+ bh=kx07QSiLZO+txINdrdb2bj8WETd+aZRLFm1Vd7swOOw=;
+ b=xC7IOOvIdFSpKNUWLUhgHU0L6+6Q1c7dBjJkX2LwW2mGIoXQCRU+a1KW4AShwOcXAYG3
+ Qzn0ojH1PERSEt/tCN3QFpqQ082edSqOfmIRaf84uz2QNA8/C0xOBQXFhjizIb2Cv0pt
+ aOjFkrvCkvNsG3Ywu8NbZOcukRBvNO2/U3+HlS6bFhWnOOP1CtnNcJo3zaRRM74y4hCF
+ 583bLdaWUggX16ZjtcyUHAQe4Ql6tf/S+8Wh4Da8RVd8qY6mFBzOzuVh46x94bQRqoD5
+ AxHAeF0+2APKgFPGCDOmKYkRFz/g5jQBW4ZkNWdDsTnnxdl5s/u+S3pyfDcIOmDEZ6ky zQ== 
+Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.appoci.oracle.com [147.154.114.232])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3j7btt7adx-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 30 Aug 2022 19:14:50 +0000
+Received: from pps.filterd (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 27UIXXtP035953;
+        Tue, 30 Aug 2022 19:14:50 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3j79q4h61v-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 30 Aug 2022 19:14:50 +0000
+Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 27UJEn1v002516;
+        Tue, 30 Aug 2022 19:14:49 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 3j79q4h61f-2;
+        Tue, 30 Aug 2022 19:14:49 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, jlayton@kernel.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v3 1/2] NFSD: keep track of the number of courtesy clients in the system
+Date:   Tue, 30 Aug 2022 12:14:24 -0700
+Message-Id: <1661886865-30304-2-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1661886865-30304-1-git-send-email-dai.ngo@oracle.com>
+References: <1661886865-30304-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.517,FMLib:17.11.122.1
+ definitions=2022-08-30_10,2022-08-30_01,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 malwarescore=0 spamscore=0
+ adultscore=0 mlxscore=0 mlxlogscore=999 suspectscore=0 phishscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2207270000
+ definitions=main-2208300086
+X-Proofpoint-ORIG-GUID: uE94wHZGyBF2j6YQGbtVa-JxQ23CJlYP
+X-Proofpoint-GUID: uE94wHZGyBF2j6YQGbtVa-JxQ23CJlYP
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 2022-08-30 at 18:25 +0000, Trond Myklebust wrote:
-> On Tue, 2022-08-30 at 13:53 -0400, Jeff Layton wrote:
-> > On Tue, 2022-08-30 at 17:47 +0000, Trond Myklebust wrote:
-> > > On Tue, 2022-08-30 at 13:02 -0400, Jeff Layton wrote:
-> > > > On Tue, 2022-08-30 at 15:43 +0000, Trond Myklebust wrote:
-> > > > > On Tue, 2022-08-30 at 11:17 -0400, J. Bruce Fields wrote:
-> > > > > > On Tue, Aug 30, 2022 at 02:58:27PM +0000, Trond Myklebust
-> > > > > > wrote:
-> > > > > > > On Tue, 2022-08-30 at 10:44 -0400, J. Bruce Fields wrote:
-> > > > > > > > On Tue, Aug 30, 2022 at 09:50:02AM -0400, Jeff Layton
-> > > > > > > > wrote:
-> > > > > > > > > On Tue, 2022-08-30 at 09:24 -0400, J. Bruce Fields
-> > > > > > > > > wrote:
-> > > > > > > > > > On Tue, Aug 30, 2022 at 07:40:02AM -0400, Jeff Layton
-> > > > > > > > > > wrote:
-> > > > > > > > > > > Yes, saying only that it must be different is
-> > > > > > > > > > > intentional.
-> > > > > > > > > > > What
-> > > > > > > > > > > we
-> > > > > > > > > > > really want is for consumers to treat this as an
-> > > > > > > > > > > opaque
-> > > > > > > > > > > value
-> > > > > > > > > > > for the
-> > > > > > > > > > > most part [1]. Therefore an implementation based on
-> > > > > > > > > > > hashing
-> > > > > > > > > > > would
-> > > > > > > > > > > conform to the spec, I'd think, as long as all of
-> > > > > > > > > > > the
-> > > > > > > > > > > relevant
-> > > > > > > > > > > info is
-> > > > > > > > > > > part of the hash.
-> > > > > > > > > >=20
-> > > > > > > > > > It'd conform, but it might not be as useful as an
-> > > > > > > > > > increasing
-> > > > > > > > > > value.
-> > > > > > > > > >=20
-> > > > > > > > > > E.g. a client can use that to work out which of a
-> > > > > > > > > > series
-> > > > > > > > > > of
-> > > > > > > > > > reordered
-> > > > > > > > > > write replies is the most recent, and I seem to
-> > > > > > > > > > recall
-> > > > > > > > > > that
-> > > > > > > > > > can
-> > > > > > > > > > prevent
-> > > > > > > > > > unnecessary invalidations in some cases.
-> > > > > > > > > >=20
-> > > > > > > > >=20
-> > > > > > > > > That's a good point; the linux client does this. That
-> > > > > > > > > said,
-> > > > > > > > > NFSv4
-> > > > > > > > > has a
-> > > > > > > > > way for the server to advertise its change attribute
-> > > > > > > > > behavior
-> > > > > > > > > [1]
-> > > > > > > > > (though nfsd hasn't implemented this yet).
-> > > > > > > >=20
-> > > > > > > > It was implemented and reverted.=A0 The issue was that I
-> > > > > > > > thought
-> > > > > > > > nfsd
-> > > > > > > > should mix in the ctime to prevent the change attribute
-> > > > > > > > going
-> > > > > > > > backwards
-> > > > > > > > on reboot (see fs/nfsd/nfsfh.h:nfsd4_change_attribute()),
-> > > > > > > > but
-> > > > > > > > Trond
-> > > > > > > > was
-> > > > > > > > concerned about the possibility of time going backwards.=A0
-> > > > > > > > See
-> > > > > > > > 1631087ba872 "Revert "nfsd4: support change_attr_type
-> > > > > > > > attribute"".
-> > > > > > > > There's some mailing list discussion to that I'm not
-> > > > > > > > turning
-> > > > > > > > up
-> > > > > > > > right
-> > > > > > > > now.
-> > > > > >=20
-> > > > > > https://lore.kernel.org/linux-nfs/a6294c25cb5eb98193f609a52aa8f=
-4b5d4e81279.camel@hammerspace.com/
-> > > > > > is what I was thinking of but it isn't actually that
-> > > > > > interesting.
-> > > > > >=20
-> > > > > > > My main concern was that some filesystems (e.g. ext3) were
-> > > > > > > failing
-> > > > > > > to
-> > > > > > > provide sufficient timestamp resolution to actually label
-> > > > > > > the
-> > > > > > > resulting
-> > > > > > > 'change attribute' as being updated monotonically. If the
-> > > > > > > time
-> > > > > > > stamp
-> > > > > > > doesn't change when the file data or metadata are changed,
-> > > > > > > then
-> > > > > > > the
-> > > > > > > client has to perform extra checks to try to figure out
-> > > > > > > whether
-> > > > > > > or
-> > > > > > > not
-> > > > > > > its caches are up to date.
-> > > > > >=20
-> > > > > > That's a different issue from the one you were raising in
-> > > > > > that
-> > > > > > discussion.
-> > > > > >=20
-> > > > > > > > Did NFSv4 add change_attr_type because some
-> > > > > > > > implementations
-> > > > > > > > needed
-> > > > > > > > the
-> > > > > > > > unordered case, or because they realized ordering was
-> > > > > > > > useful
-> > > > > > > > but
-> > > > > > > > wanted
-> > > > > > > > to keep backwards compatibility?=A0 I don't know which it
-> > > > > > > > was.
-> > > > > > >=20
-> > > > > > > We implemented it because, as implied above, knowledge of
-> > > > > > > whether
-> > > > > > > or
-> > > > > > > not the change attribute behaves monotonically, or strictly
-> > > > > > > monotonically, enables a number of optimisations.
-> > > > > >=20
-> > > > > > Of course, but my question was about the value of the old
-> > > > > > behavior,
-> > > > > > not
-> > > > > > about the value of the monotonic behavior.
-> > > > > >=20
-> > > > > > Put differently, if we could redesign the protocol from
-> > > > > > scratch
-> > > > > > would
-> > > > > > we
-> > > > > > actually have included the option of non-monotonic behavior?
-> > > > > >=20
-> > > > >=20
-> > > > > If we could design the filesystems from scratch, we probably
-> > > > > would
-> > > > > not.
-> > > > > The protocol ended up being as it is because people were trying
-> > > > > to
-> > > > > make
-> > > > > it as easy to implement as possible.
-> > > > >=20
-> > > > > So if we could design the filesystem from scratch, we would
-> > > > > have
-> > > > > probably designed it along the lines of what AFS does.
-> > > > > i.e. each explicit change is accompanied by a single bump of
-> > > > > the
-> > > > > change
-> > > > > attribute, so that the clients can not only decide the order of
-> > > > > the
-> > > > > resulting changes, but also if they have missed a change (that
-> > > > > might
-> > > > > have been made by a different client).
-> > > > >=20
-> > > > > However that would be a requirement that is likely to be very
-> > > > > specific
-> > > > > to distributed caches (and hence distributed filesystems). I
-> > > > > doubt
-> > > > > there are many user space applications that would need that
-> > > > > high
-> > > > > precision. Maybe MPI, but that's the only candidate I can think
-> > > > > of
-> > > > > for
-> > > > > now?
-> > > > >=20
-> > > >=20
-> > > > The fact that NFS kept this more loosely-defined is what allowed
-> > > > us
-> > > > to
-> > > > elide some of the i_version bumps and regain a fair bit of
-> > > > performance
-> > > > for local filesystems [1]. If the change attribute had been more
-> > > > strictly defined like you mention, then that particular
-> > > > optimization
-> > > > would not have been possible.
-> > > >=20
-> > > > This sort of thing is why I'm a fan of not defining this any more
-> > > > strictly than we require. Later on, maybe we'll come up with a
-> > > > way
-> > > > for
-> > > > filesystems to advertise that they can offer stronger guarantees.
-> > >=20
-> > > What 'eliding of the bumps' are we talking about here? If it
-> > > results in
-> > > unreliable behaviour, then I propose we just drop the whole concept
-> > > and
-> > > go back to using the ctime. The change attribute is only useful if
-> > > it
-> > > results in a reliable mechanism for detecting changes. Once you
-> > > "elide
-> > > away" the word "reliable", then it has no value beyond what ctime
-> > > already does.
-> > >=20
-> >=20
-> > I'm talking about the scheme to optimize away i_version updates when
-> > the
-> > current one has never been queried:
-> >=20
-> > =A0=A0=A0
-> > https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/comm=
-it/?id=3Df02a9ad1f15d
-> >=20
-> > There's nothing unreliable about it.
->=20
-> Not really seeing why that would be incompatible with the idea of
-> bumping on every change. The I_VERSION_QUERIED is just a hint to tell
-> you that at the very least you need to sync the next metadata update
-> after someone peeked at the value. You could still continue to cache
-> updates after that, and only sync them once a O_SYNC or an fsync() call
-> explicitly requires you to do so.
->=20
+Add counter nfs4_courtesy_client_count to nfsd_net to keep track
+of the number of courtesy clients in the system.
 
-Good point! It's not implemented that way today, but we could change it
-to do that if it were useful. I think it'd be slightly more costly
-CPU-wise when the update isn't going to disk, since you'd now have to
-update the value on every change instead of just skipping it, but I
-doubt anyone would notice the extra overhead.
---=20
-Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/netns.h     |  2 ++
+ fs/nfsd/nfs4state.c | 14 +++++++++++---
+ 2 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index ffe17743cc74..2695dff1378a 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -192,6 +192,8 @@ struct nfsd_net {
+ 
+ 	atomic_t		nfs4_client_count;
+ 	int			nfs4_max_clients;
++
++	atomic_t		nfsd_courtesy_client_count;
+ };
+ 
+ /* Simple check to find out if a given net was properly initialized */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c5d199d7e6b4..9675b5d8f408 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -169,7 +169,8 @@ static __be32 get_client_locked(struct nfs4_client *clp)
+ 	if (is_client_expired(clp))
+ 		return nfserr_expired;
+ 	atomic_inc(&clp->cl_rpc_users);
+-	clp->cl_state = NFSD4_ACTIVE;
++	if (xchg(&clp->cl_state, NFSD4_ACTIVE) != NFSD4_ACTIVE)
++		atomic_add_unless(&nn->nfsd_courtesy_client_count, -1, 0);
+ 	return nfs_ok;
+ }
+ 
+@@ -190,7 +191,8 @@ renew_client_locked(struct nfs4_client *clp)
+ 
+ 	list_move_tail(&clp->cl_lru, &nn->client_lru);
+ 	clp->cl_time = ktime_get_boottime_seconds();
+-	clp->cl_state = NFSD4_ACTIVE;
++	if (xchg(&clp->cl_state, NFSD4_ACTIVE) != NFSD4_ACTIVE)
++		atomic_add_unless(&nn->nfsd_courtesy_client_count, -1, 0);
+ }
+ 
+ static void put_client_renew_locked(struct nfs4_client *clp)
+@@ -2233,6 +2235,8 @@ __destroy_client(struct nfs4_client *clp)
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+ 	atomic_add_unless(&nn->nfs4_client_count, -1, 0);
++	if (clp->cl_state != NFSD4_ACTIVE)
++		atomic_add_unless(&nn->nfsd_courtesy_client_count, -1, 0);
+ 	free_client(clp);
+ 	wake_up_all(&expiry_wq);
+ }
+@@ -4356,6 +4360,8 @@ void nfsd4_init_leases_net(struct nfsd_net *nn)
+ 	max_clients = (u64)si.totalram * si.mem_unit / (1024 * 1024 * 1024);
+ 	max_clients *= NFS4_CLIENTS_PER_GB;
+ 	nn->nfs4_max_clients = max_t(int, max_clients, NFS4_CLIENTS_PER_GB);
++
++	atomic_set(&nn->nfsd_courtesy_client_count, 0);
+ }
+ 
+ static void init_nfs4_replay(struct nfs4_replay *rp)
+@@ -5879,7 +5885,9 @@ nfs4_get_client_reaplist(struct nfsd_net *nn, struct list_head *reaplist,
+ 		if (!state_expired(lt, clp->cl_time))
+ 			break;
+ 		if (!atomic_read(&clp->cl_rpc_users))
+-			clp->cl_state = NFSD4_COURTESY;
++			if (xchg(&clp->cl_state, NFSD4_COURTESY) ==
++							NFSD4_ACTIVE)
++				atomic_inc(&nn->nfsd_courtesy_client_count);
+ 		if (!client_has_state(clp))
+ 			goto exp_client;
+ 		if (!nfs4_anylock_blockers(clp))
+-- 
+2.9.5
+
