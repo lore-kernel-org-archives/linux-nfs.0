@@ -2,25 +2,25 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0B3CC0502A
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Aug 2022 04:20:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DCC7C0502A
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Aug 2022 04:20:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231812AbiHaET5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 Aug 2022 00:19:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41692 "EHLO
+        id S232078AbiHaEUS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Aug 2022 00:20:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42114 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231468AbiHaETa (ORCPT
+        with ESMTP id S231852AbiHaETa (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2022 00:19:30 -0400
-Received: from NAM10-MW2-obe.outbound.protection.outlook.com (mail-mw2nam10on2070.outbound.protection.outlook.com [40.107.94.70])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AB20BB7755;
-        Tue, 30 Aug 2022 21:19:06 -0700 (PDT)
+Received: from NAM04-MW2-obe.outbound.protection.outlook.com (mail-mw2nam04on2046.outbound.protection.outlook.com [40.107.101.46])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2B669B775B;
+        Tue, 30 Aug 2022 21:19:07 -0700 (PDT)
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=mMR/rCPldybrX/hf6dkxWwSUImNvNmBTN/w4W2uwkIDNukosK3JrwtynebtJKHzRasQun2nZynyIDfJuhxwgmq5ZTum0X2RM6XTCyvkJhR71Kqo5ZP9Fd/+EqYm85xHoduW+WtZOeiTZ0Od5ZVhSzKXQSJEplHu0TIkj0KuK54+lCgBhqnzIkzsGTtNuJD5MyX1K7fFuwJ03jf7dwVusvUuCo92ZJc8Jp6bSbmOGx4MA6XuxAWOKBI5FBrEG4XxYIyBqzbiQRGnMJaVR3mI6Iu5HPNrcrLgvePDqJOQKBq75r3SlssneilMrG5NbCPFRM3xQptW9G0A6McGvSgPwDw==
+ b=au1kMEZNWkQWqczF+kL+IONwGPN0SGcEuDldSIqN2rXCEtW+6rqM0VeOw7J3nRtHonZgZOybpDbV4xaH4ucg9aJyJ2Ihlq7kMOCnR3fQ/0DsB1qU+DCtHzHkNEfyyi6HfZEsblxftJ14Wj8Fb3Ig/w0/Arx3VCNpDZ28ooMC3c4FCQ4b2BIY/oKiVRABMWYBpXbGla7M/MMZpki6HWvyEQQrvigk6sZMzTeSDuvDVees071KUVsRaxvkt4UaIcnE9e6hDzdTpayEPLwM6NG12+ho0uQ3oiVFzy6lnRbxwYeJdY7BcY8xS1yNk7TSlpCfLwFD15+f76bidr0wKB8DtA==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=IAu/h0sUVw6tD3CUItXDkxlRPxdYIPja298n2n76n1w=;
- b=Q1xdos6AyvvvKYlsuaA9q1ovCfA6T83cffpaeH3+yPp9cXZbkybeRiWLiUQ0v6h39tzpUIZaTVawJcWc9E5lG6lm+obMU0Z1dlrVUVkL3U6Rm6wiwooJ8YIhi+2vie5KW3gvNCPhLdols6kbXueuQD8okF/1OyIRcmM5JbQi+dS9uvY8FFQCgQewZX4MAeek+yMKJ9jfN80twCQzmsswz1tv5zRubQgeutZUfc5ksJD9O1kagbpn32cQ8N7YF8FqoFaty8Quc/qH6ixXh6RaSJOEaXFCAlQauYJikV5KyKJ/APfai39cHNnYbz694DRrJAGoglxzQKRFpJWsncwF2g==
+ bh=aczRj79FDq5zhgDXgkdSZ6tHCMLon+GUs7nYvdVmu24=;
+ b=EywoaBpCfsNxHV8bjgnl/AA+fRdZSnxtfym3J+4Uv3VNp4PExjwRSZpEbFo0HS3VPv+5jPQZRMYCfbP08W190S/swl6IXKsPazpwvW61H7vLi1Nf9PefRfqR13pZRk2xjB9W5e+hRx30RR4zg7jjGuNGy5o5CRRRNkin1UkraEGmeysFofGsztU3mLWwAm1WP0TQZnRo3vRX14p2bkw5V98PrTh7GnQIn0PqemLUU0dh89KPg02OkwUsaSnA03nxLyEThqzK/v4MGjFiHro+lFfnhX6WjvsPX2gSn1dbtq2/tJrbxgwddBQ6ODjGoBeHJLUiwtrMJscqYm/hPJ/Tow==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
  12.22.5.234) smtp.rcpttodomain=kernel.org smtp.mailfrom=nvidia.com;
  dmarc=pass (p=reject sp=reject pct=100) action=none header.from=nvidia.com;
@@ -28,18 +28,18 @@ ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
  s=selector2;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=IAu/h0sUVw6tD3CUItXDkxlRPxdYIPja298n2n76n1w=;
- b=HRGP9kaHuNmnvEaWIQ/Iz7OmlBEsvKOzirblc+rsILS1krZdCjjqEGRt4TIMUugAzSNG48IMLPmHaogkz/KVO1yVPTuIuNJbEYvj3XOYBMOTw4JzTb1oxtrjoZeenBQDEagbx7kc5Ne8JEBFuoxBBe35ItnwK7oksMOcXCy93KhivUXGbA5oiNKqg1t/r52afLSEwOJQBbX3RTrfmtSPpD6Bl8TjIBWgz+EdqstBpFKGB9Y9iKe0i5C1tUTtFDW/n8CW/aqCYgBCU/LOvXc/oyt7M0KBvGKMksJK8E/QHA5+EfAwm+i+VuFzF/0UWrCvNVyd0BhvUFh1npDxPoPB/A==
-Received: from DM6PR02CA0058.namprd02.prod.outlook.com (2603:10b6:5:177::35)
- by CH2PR12MB4263.namprd12.prod.outlook.com (2603:10b6:610:a6::8) with
+ bh=aczRj79FDq5zhgDXgkdSZ6tHCMLon+GUs7nYvdVmu24=;
+ b=Vi8obwFlYuyrSMwI30cNt21RrBFdUoc8tzPUG84uRajCK3pFcfMuzg9qxSWD4Jse0AlNZDXLnoVXAhS/GpW5as2xk97JO9WodeHWdeKXge004BFTmRXmdJCsof74w0UG4ovBvw/4rrwklXtda25q8A710th2wOoD3oscVDnMygvwqnFrscqX2VYKr52ydX28aA4dEWjaIWfBi6r4Uda/zDVqco9jEbBBNgtli6IY+DpPCJwnAlbaoUCzhSUkIKf2notlcEtVug7VFYNBIYsdyKnesfSWBzysRvGpIcftpgBM8/UkO62mstw9HTEhv5ysUNoMq9ee4002e3cjkgGzPw==
+Received: from DM6PR02CA0044.namprd02.prod.outlook.com (2603:10b6:5:177::21)
+ by IA1PR12MB6410.namprd12.prod.outlook.com (2603:10b6:208:38a::21) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5566.15; Wed, 31 Aug
- 2022 04:19:04 +0000
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5566.21; Wed, 31 Aug
+ 2022 04:19:05 +0000
 Received: from DM6NAM11FT090.eop-nam11.prod.protection.outlook.com
- (2603:10b6:5:177:cafe::7c) by DM6PR02CA0058.outlook.office365.com
- (2603:10b6:5:177::35) with Microsoft SMTP Server (version=TLS1_2,
+ (2603:10b6:5:177:cafe::6) by DM6PR02CA0044.outlook.office365.com
+ (2603:10b6:5:177::21) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5588.10 via Frontend
- Transport; Wed, 31 Aug 2022 04:19:03 +0000
+ Transport; Wed, 31 Aug 2022 04:19:05 +0000
 X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 12.22.5.234)
  smtp.mailfrom=nvidia.com; dkim=none (message not signed)
  header.d=none;dmarc=pass action=none header.from=nvidia.com;
@@ -49,17 +49,17 @@ Received-SPF: Pass (protection.outlook.com: domain of nvidia.com designates
 Received: from mail.nvidia.com (12.22.5.234) by
  DM6NAM11FT090.mail.protection.outlook.com (10.13.172.184) with Microsoft SMTP
  Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id
- 15.20.5588.10 via Frontend Transport; Wed, 31 Aug 2022 04:19:03 +0000
-Received: from rnnvmail205.nvidia.com (10.129.68.10) by DRHQMAIL101.nvidia.com
+ 15.20.5588.10 via Frontend Transport; Wed, 31 Aug 2022 04:19:05 +0000
+Received: from rnnvmail204.nvidia.com (10.129.68.6) by DRHQMAIL101.nvidia.com
  (10.27.9.10) with Microsoft SMTP Server (TLS) id 15.0.1497.38; Wed, 31 Aug
- 2022 04:18:48 +0000
-Received: from rnnvmail201.nvidia.com (10.129.68.8) by rnnvmail205.nvidia.com
- (10.129.68.10) with Microsoft SMTP Server (version=TLS1_2,
+ 2022 04:18:54 +0000
+Received: from rnnvmail201.nvidia.com (10.129.68.8) by rnnvmail204.nvidia.com
+ (10.129.68.6) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.986.29; Tue, 30 Aug
- 2022 21:18:47 -0700
+ 2022 21:18:54 -0700
 Received: from sandstorm.attlocal.net (10.127.8.14) by mail.nvidia.com
  (10.129.68.8) with Microsoft SMTP Server id 15.2.986.29 via Frontend
- Transport; Tue, 30 Aug 2022 21:18:46 -0700
+ Transport; Tue, 30 Aug 2022 21:18:53 -0700
 From:   John Hubbard <jhubbard@nvidia.com>
 To:     Andrew Morton <akpm@linux-foundation.org>
 CC:     Jens Axboe <axboe@kernel.dk>,
@@ -75,9 +75,9 @@ CC:     Jens Axboe <axboe@kernel.dk>,
         <linux-xfs@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
         <linux-mm@kvack.org>, LKML <linux-kernel@vger.kernel.org>,
         John Hubbard <jhubbard@nvidia.com>
-Subject: [PATCH v2 1/7] mm: change release_pages() to use unsigned long for npages
-Date:   Tue, 30 Aug 2022 21:18:37 -0700
-Message-ID: <20220831041843.973026-2-jhubbard@nvidia.com>
+Subject: [PATCH v2 6/7] NFS: direct-io: convert to FOLL_PIN pages
+Date:   Tue, 30 Aug 2022 21:18:42 -0700
+Message-ID: <20220831041843.973026-7-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.37.2
 In-Reply-To: <20220831041843.973026-1-jhubbard@nvidia.com>
 References: <20220831041843.973026-1-jhubbard@nvidia.com>
@@ -87,79 +87,106 @@ Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
 X-EOPAttributedMessage: 0
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 2a88de84-39ce-421e-ac28-08da8b07f049
-X-MS-TrafficTypeDiagnostic: CH2PR12MB4263:EE_
+X-MS-Office365-Filtering-Correlation-Id: 69e423cc-d748-4009-b298-08da8b07f116
+X-MS-TrafficTypeDiagnostic: IA1PR12MB6410:EE_
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: 4e2dweLHYfEt2/xQ+xdU1gmcauZKRdyfVBBCaL/l5qLYw8uso0ndfAuJ7DsG5YEJjyDAwNLcdgEbsaksaANMtp+ZxbW8DrK0ApEo9sSwUzsGqtaM4YPrunSgT1EE4G/LorJ/nWCXNFG44xVMSDyYEW7nwQfW9WAsjOcFOSY8ti0XAsFzoskP+Gr8k48uizGNTKkx+IFtj1XJSewlpS3sJ23MdlwOsXX5FuaFmtqJ+iIpGkfXiIwP2BRdKcczn980YiuwCZW4Zo8NEaBzH14Ghu6qEbaV571nzN3CRzwZoRUKUesS27WYwoUzrg3iVNqWZ/5udscFyCYoXe/eTjoi64G/IGFjpNZ6nB1z5tn/J+M7JQXxILtYPZ/fBprXhJALwVbBxTH9SxF9pyW5S6s+fJBnumWhDc/g8EyAg60Ewvt2zURmmp1QAaZpM6+IC5v7Z9Dl9LFzhj38ABeN1PqhbXrJNzDcTLvz4dLp9/mQEl1vfQWWgl3CZdrRrddDA/3Pu4WgJwsgHltpgdlsCTGCPT2xWx8wO7VAzDlRj80hGtNQPujGXFi9/YzzBX6aRQZCqV2Vu3NbODkpc+BfzMZkjwI0yrV7jzan+qM35Ja7ZulxrlIYyxyuNWUiwSIexf4XJWnslXkjpz+u96KgfAQ0eMPTbGDCEZ9RRYivhki9ViAeHpIjdeSWN98Ea4unTDhTuBc2sqLb4/pNes9LSNvBMTykSTGfwAFIVJVGBcM+J8zYZNqPIMi8sYsZunaEBT3BZ9ItDTEajwAjeFQwPOg5WZI9Q2072dWawTEsPp47jOF704q8PwHbB48Asi3BqJc3
-X-Forefront-Antispam-Report: CIP:12.22.5.234;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail.nvidia.com;PTR:InfoNoRecords;CAT:NONE;SFS:(13230016)(4636009)(376002)(346002)(396003)(136003)(39860400002)(46966006)(36840700001)(40470700004)(70206006)(2616005)(336012)(47076005)(1076003)(186003)(316002)(26005)(426003)(6916009)(86362001)(36756003)(2906002)(6666004)(83380400001)(107886003)(82740400003)(356005)(40460700003)(40480700001)(36860700001)(478600001)(82310400005)(7416002)(41300700001)(8936002)(5660300002)(54906003)(81166007)(8676002)(4326008)(70586007)(36900700001);DIR:OUT;SFP:1101;
+X-Microsoft-Antispam-Message-Info: i8BaR9LcljAxg9H/peMbr52F7edgS1XU8PnaupyQA6Z5F3k0Y+uPQ+KfiZS2OyUagBOaAicXFiPAKGCXJHVOxKJZsjEENc0NHwLWpLZ2vXsgqXVsdZVQPCHqRbMmlcyFr0Y+1NHaQN3p/AZQcrVVLKDTgj8k8hZDE/KvVzmHobE2GmLAHJF9BTihan12VWSxhO1Ey50PP4X07nryuLwcAE4l5wn2jBk/v0omdkjQc7leNbPUGuF/pgDEmZysEIj9MzV3gMMuwG/SJ6gPmJKN2BsDqmVxwZR5/TAZhgjfYTdpr/GPvqdTfqTwX+Gn7o8qnU3TOIP60VPx2jTz8zlNJmAt18UJDkeLDa6OS5Q6rwCiXkoEyROjjFMAwvgdba5IYolOrIWpOJggaMGEiCEtkwuptGWuWjFl5O3foqmR0AYH5KhkWbxKdpylULYkzUJelbuosy1U0tYj0OAQJ98fmvkvsnR89ZlzrtXIQi2EnyIakJHTw12v24KA1oG3ivtOyI96oeVA93Eg/UwZzpYb/+KtKQL7DjdE9A6UF/+L7+zlz1ov/G66j7xNkuM3OJSlqKHKqE1XcOKKIs2Fkin3RvBDOg7dih4cL/sFJVQ23+B2xksN+eOZeOhXZwbB94TuKga1ssTiIRuoR+2Ge6374+cDeKhDpdYbbfLAt7PZGOvcyHXvL0Gg+SzlMxk6FsFfMmd71+UB3dOh23dDIq7H5yh4x/YgHayq2Hhl/hg7XVSzQBgLHnW/kMkZc1E6Kdveyt6O8BgQXv1yRa9gAe/9YAPcTWjADapjZ6PZZ4LubWzakmyjYouhUV0urI4UFuOg
+X-Forefront-Antispam-Report: CIP:12.22.5.234;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail.nvidia.com;PTR:InfoNoRecords;CAT:NONE;SFS:(13230016)(4636009)(346002)(396003)(39860400002)(376002)(136003)(46966006)(36840700001)(40470700004)(36860700001)(40480700001)(82310400005)(356005)(86362001)(40460700003)(82740400003)(70586007)(70206006)(81166007)(8676002)(4326008)(7416002)(41300700001)(8936002)(54906003)(5660300002)(478600001)(426003)(1076003)(316002)(6916009)(47076005)(2616005)(2906002)(186003)(83380400001)(26005)(6666004)(336012)(107886003)(36756003)(36900700001);DIR:OUT;SFP:1101;
 X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 31 Aug 2022 04:19:03.7176
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 31 Aug 2022 04:19:05.0768
  (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 2a88de84-39ce-421e-ac28-08da8b07f049
+X-MS-Exchange-CrossTenant-Network-Message-Id: 69e423cc-d748-4009-b298-08da8b07f116
 X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
 X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=43083d15-7273-40c1-b7db-39efd9ccc17a;Ip=[12.22.5.234];Helo=[mail.nvidia.com]
 X-MS-Exchange-CrossTenant-AuthSource: DM6NAM11FT090.eop-nam11.prod.protection.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Anonymous
 X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR12MB4263
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: IA1PR12MB6410
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The various callers of release_pages() are passing in either various
-types (signed or unsigned) and lengths (int or long) of integers, for
-the second argument (number of pages). To make this conversion accurate
-and to avoid having to check for overflow (or deal with type conversion
-warnings), let's just change release_pages() to accept an unsigned long
-for the number of pages.
+Convert the NFS Direct IO layer to use pin_user_pages_fast() and
+unpin_user_page(), instead of get_user_pages_fast() and put_page().
 
-Also change the name of the argument, from "nr" to "npages", for
-clarity, as long as that line is being changed anyway.
+The user of pin_user_pages_fast() depends upon:
+
+1) CONFIG_BLK_USE_PIN_USER_PAGES_FOR_DIO, and
+
+2) User-space-backed pages: user_backed_iter(i) == true
 
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- include/linux/mm.h | 2 +-
- mm/swap.c          | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/direct.c | 22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 21f8b27bd9fd..61c5dc37370e 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1145,7 +1145,7 @@ static inline void folio_put_refs(struct folio *folio, int refs)
- 		__folio_put(folio);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 1707f46b1335..71b794f39ee2 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -142,11 +142,13 @@ int nfs_swap_rw(struct kiocb *iocb, struct iov_iter *iter)
+ 	return 0;
  }
  
--void release_pages(struct page **pages, int nr);
-+void release_pages(struct page **pages, unsigned long npages);
- 
- /**
-  * folios_put - Decrement the reference count on an array of folios.
-diff --git a/mm/swap.c b/mm/swap.c
-index 9cee7f6a3809..ac6482d86187 100644
---- a/mm/swap.c
-+++ b/mm/swap.c
-@@ -931,15 +931,15 @@ void lru_cache_disable(void)
-  * Decrement the reference count on all the pages in @pages.  If it
-  * fell to zero, remove the page from the LRU and free it.
-  */
--void release_pages(struct page **pages, int nr)
-+void release_pages(struct page **pages, unsigned long npages)
+-static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
++static void nfs_direct_release_pages(struct iov_iter *iter, struct page **pages,
++				     unsigned int npages)
  {
--	int i;
-+	unsigned long i;
- 	LIST_HEAD(pages_to_free);
- 	struct lruvec *lruvec = NULL;
- 	unsigned long flags = 0;
- 	unsigned int lock_batch;
+-	unsigned int i;
+-	for (i = 0; i < npages; i++)
+-		put_page(pages[i]);
++	if (user_backed_iter(iter) || iov_iter_is_bvec(iter))
++		dio_w_unpin_user_pages(pages, npages);
++	else
++		release_pages(pages, npages);
+ }
  
--	for (i = 0; i < nr; i++) {
-+	for (i = 0; i < npages; i++) {
- 		struct folio *folio = page_folio(pages[i]);
+ void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+@@ -332,11 +334,11 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 		size_t pgbase;
+ 		unsigned npages, i;
  
- 		/*
+-		result = iov_iter_get_pages_alloc2(iter, &pagevec,
++		result = dio_w_iov_iter_pin_pages_alloc(iter, &pagevec,
+ 						  rsize, &pgbase);
+ 		if (result < 0)
+ 			break;
+-	
++
+ 		bytes = result;
+ 		npages = (result + pgbase + PAGE_SIZE - 1) / PAGE_SIZE;
+ 		for (i = 0; i < npages; i++) {
+@@ -362,7 +364,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 			pos += req_len;
+ 			dreq->bytes_left -= req_len;
+ 		}
+-		nfs_direct_release_pages(pagevec, npages);
++		nfs_direct_release_pages(iter, pagevec, npages);
+ 		kvfree(pagevec);
+ 		if (result < 0)
+ 			break;
+@@ -791,8 +793,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 		size_t pgbase;
+ 		unsigned npages, i;
+ 
+-		result = iov_iter_get_pages_alloc2(iter, &pagevec,
+-						  wsize, &pgbase);
++		result = dio_w_iov_iter_pin_pages_alloc(iter, &pagevec,
++							wsize, &pgbase);
+ 		if (result < 0)
+ 			break;
+ 
+@@ -829,7 +831,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			pos += req_len;
+ 			dreq->bytes_left -= req_len;
+ 		}
+-		nfs_direct_release_pages(pagevec, npages);
++		nfs_direct_release_pages(iter, pagevec, npages);
+ 		kvfree(pagevec);
+ 		if (result < 0)
+ 			break;
 -- 
 2.37.2
 
