@@ -2,76 +2,223 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09B27ECAAD4
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Sep 2022 00:43:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66751ECAAD4
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Sep 2022 00:49:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229711AbiIAAnA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 Aug 2022 20:43:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35948 "EHLO
+        id S231585AbiIAAtB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Aug 2022 20:49:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42630 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229459AbiIAAm7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2022 20:42:59 -0400
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 33645E0976;
-        Wed, 31 Aug 2022 17:42:58 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
-        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=C7e5gupx7uxhb230xCd10coToUBiCKDWQPIlevGdY80=; b=hOmLMP+ugUyeMF+6QA09PjcGfu
-        0tRtPHTBgl7z0s+0RBcR5HuECX6vysi72oyqb9nKg5wfcAeYH/E5qvTZmEwzNP02MAz3qPXJ2urMq
-        QOEo7VxYgfOzukB5+Q1xXyGnNcYh1a5f1Ccjj4umz03kPQ8jMURb+pUCnQE0CQCv6lLQOzQmYKqLs
-        Wjx2NxdOHt3j+kmpXPmv2ZJZKZWFhn7QqvE02d6Oenv6a0u53D681c/AL6Ll/H2pW8+77KFGmiFSo
-        uefabYiIChsmUAUy82RL56+vUhGqlH10rlzlzMZwSYk+7CP8NtmpA4CSnqdXla4EwnXtAff+Ztcj8
-        HY+Qicmw==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.95 #2 (Red Hat Linux))
-        id 1oTYIA-00AnSf-7D;
-        Thu, 01 Sep 2022 00:42:46 +0000
-Date:   Thu, 1 Sep 2022 01:42:46 +0100
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     John Hubbard <jhubbard@nvidia.com>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Darrick J . Wong" <djwong@kernel.org>,
+        with ESMTP id S231755AbiIAAs7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Aug 2022 20:48:59 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2F1E3E97E6
+        for <linux-nfs@vger.kernel.org>; Wed, 31 Aug 2022 17:48:58 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1661993337;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=IQ9LpZzin/PjO2lZO197syt+5oE3ywkKnUdwXnxmbGY=;
+        b=b+gaNq+FsL2NprCkjMqf7AiDkvS1RQDmYTWeMLJYNHBBhJBqoBY7Brcbs/HAGCdAK1Ck+S
+        iCB5Qk7WlOc+0NSpbJdzO67heWvzs4F5twZhSQPGjc+RJqqRaPPHI+KjCRYCBX3bteZ4yS
+        5BoshQ5npd+XT68FLrfcUG9UY9vEMlQ=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-318-SBnGImn3N6yo0Gl-O6iENg-1; Wed, 31 Aug 2022 20:48:54 -0400
+X-MC-Unique: SBnGImn3N6yo0Gl-O6iENg-1
+Received: from smtp.corp.redhat.com (int-mx10.intmail.prod.int.rdu2.redhat.com [10.11.54.10])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 98B968037AA;
+        Thu,  1 Sep 2022 00:48:53 +0000 (UTC)
+Received: from dwysocha.rdu.csb (unknown [10.22.8.98])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id E4CEE492C3B;
+        Thu,  1 Sep 2022 00:48:52 +0000 (UTC)
+From:   Dave Wysochanski <dwysocha@redhat.com>
+To:     Anna Schumaker <anna.schumaker@netapp.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>, Jan Kara <jack@suse.cz>,
-        David Hildenbrand <david@redhat.com>,
-        Logan Gunthorpe <logang@deltatee.com>,
-        linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2 4/7] iov_iter: new iov_iter_pin_pages*() routines
-Message-ID: <YxAABm0BljO0aP2h@ZenIV>
-References: <20220831041843.973026-1-jhubbard@nvidia.com>
- <20220831041843.973026-5-jhubbard@nvidia.com>
+        David Howells <dhowells@redhat.com>
+Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
+        Benjamin Maynard <benmaynard@google.com>,
+        Daire Byrne <daire.byrne@gmail.com>
+Subject: [PATCH v4 1/3] NFS: Rename readpage_async_filler to nfs_pageio_add_page
+Date:   Wed, 31 Aug 2022 20:48:48 -0400
+Message-Id: <20220901004850.1431412-2-dwysocha@redhat.com>
+In-Reply-To: <20220901004850.1431412-1-dwysocha@redhat.com>
+References: <20220901004850.1431412-1-dwysocha@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220831041843.973026-5-jhubbard@nvidia.com>
-Sender: Al Viro <viro@ftp.linux.org.uk>
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.85 on 10.11.54.10
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Aug 30, 2022 at 09:18:40PM -0700, John Hubbard wrote:
-> Provide two new wrapper routines that are intended for user space pages
-> only:
-> 
->     iov_iter_pin_pages()
->     iov_iter_pin_pages_alloc()
-> 
-> Internally, these routines call pin_user_pages_fast(), instead of
-> get_user_pages_fast(), for user_backed_iter(i) and iov_iter_bvec(i)
-> cases.
-> 
-> As always, callers must use unpin_user_pages() or a suitable FOLL_PIN
-> variant, to release the pages, if they actually were acquired via
-> pin_user_pages_fast().
-> 
-> This is a prerequisite to converting bio/block layers over to use
-> pin_user_pages_fast().
+Rename readpage_async_filler to nfs_pageio_add_page to
+better reflect what this function does (add a page to
+the nfs_pageio_descriptor), and simplify arguments to
+this function by removing struct nfs_readdesc.
 
-What of ITER_PIPE (splice from O_DIRECT fd to a to pipe, for filesystem
-that uses generic_file_splice_read())?
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+---
+ fs/nfs/read.c | 60 +++++++++++++++++++++++++--------------------------
+ 1 file changed, 30 insertions(+), 30 deletions(-)
+
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 8ae2c8d1219d..525e82ea9a9e 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -127,11 +127,6 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
+ 	nfs_release_request(req);
+ }
+ 
+-struct nfs_readdesc {
+-	struct nfs_pageio_descriptor pgio;
+-	struct nfs_open_context *ctx;
+-};
+-
+ static void nfs_page_group_set_uptodate(struct nfs_page *req)
+ {
+ 	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
+@@ -153,7 +148,8 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+ 
+ 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+ 			/* note: regions of the page not covered by a
+-			 * request are zeroed in readpage_async_filler */
++			 * request are zeroed in nfs_pageio_add_page
++			 */
+ 			if (bytes > hdr->good_bytes) {
+ 				/* nothing in this request was good, so zero
+ 				 * the full extent of the request */
+@@ -281,8 +277,10 @@ static void nfs_readpage_result(struct rpc_task *task,
+ 		nfs_readpage_retry(task, hdr);
+ }
+ 
+-static int
+-readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
++int
++nfs_pageio_add_page(struct nfs_pageio_descriptor *pgio,
++		    struct nfs_open_context *ctx,
++		    struct page *page)
+ {
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 	unsigned int rsize = NFS_SERVER(inode)->rsize;
+@@ -302,15 +300,15 @@ readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
+ 			goto out_unlock;
+ 	}
+ 
+-	new = nfs_create_request(desc->ctx, page, 0, aligned_len);
++	new = nfs_create_request(ctx, page, 0, aligned_len);
+ 	if (IS_ERR(new))
+ 		goto out_error;
+ 
+ 	if (len < PAGE_SIZE)
+ 		zero_user_segment(page, len, PAGE_SIZE);
+-	if (!nfs_pageio_add_request(&desc->pgio, new)) {
++	if (!nfs_pageio_add_request(pgio, new)) {
+ 		nfs_list_remove_request(new);
+-		error = desc->pgio.pg_error;
++		error = pgio->pg_error;
+ 		nfs_readpage_release(new, error);
+ 		goto out;
+ 	}
+@@ -332,7 +330,8 @@ readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
+ int nfs_read_folio(struct file *file, struct folio *folio)
+ {
+ 	struct page *page = &folio->page;
+-	struct nfs_readdesc desc;
++	struct nfs_pageio_descriptor pgio;
++	struct nfs_open_context *ctx;
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 	int ret;
+ 
+@@ -358,29 +357,29 @@ int nfs_read_folio(struct file *file, struct folio *folio)
+ 
+ 	if (file == NULL) {
+ 		ret = -EBADF;
+-		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+-		if (desc.ctx == NULL)
++		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
++		if (ctx == NULL)
+ 			goto out_unlock;
+ 	} else
+-		desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
++		ctx = get_nfs_open_context(nfs_file_open_context(file));
+ 
+-	xchg(&desc.ctx->error, 0);
+-	nfs_pageio_init_read(&desc.pgio, inode, false,
++	xchg(&ctx->error, 0);
++	nfs_pageio_init_read(&pgio, inode, false,
+ 			     &nfs_async_read_completion_ops);
+ 
+-	ret = readpage_async_filler(&desc, page);
++	ret = nfs_pageio_add_page(&pgio, ctx, page);
+ 	if (ret)
+ 		goto out;
+ 
+-	nfs_pageio_complete_read(&desc.pgio);
+-	ret = desc.pgio.pg_error < 0 ? desc.pgio.pg_error : 0;
++	nfs_pageio_complete_read(&pgio);
++	ret = pgio.pg_error < 0 ? pgio.pg_error : 0;
+ 	if (!ret) {
+ 		ret = wait_on_page_locked_killable(page);
+ 		if (!PageUptodate(page) && !ret)
+-			ret = xchg(&desc.ctx->error, 0);
++			ret = xchg(&ctx->error, 0);
+ 	}
+ out:
+-	put_nfs_open_context(desc.ctx);
++	put_nfs_open_context(ctx);
+ 	trace_nfs_aop_readpage_done(inode, page, ret);
+ 	return ret;
+ out_unlock:
+@@ -391,9 +390,10 @@ int nfs_read_folio(struct file *file, struct folio *folio)
+ 
+ void nfs_readahead(struct readahead_control *ractl)
+ {
++	struct nfs_pageio_descriptor pgio;
++	struct nfs_open_context *ctx;
+ 	unsigned int nr_pages = readahead_count(ractl);
+ 	struct file *file = ractl->file;
+-	struct nfs_readdesc desc;
+ 	struct inode *inode = ractl->mapping->host;
+ 	struct page *page;
+ 	int ret;
+@@ -407,25 +407,25 @@ void nfs_readahead(struct readahead_control *ractl)
+ 
+ 	if (file == NULL) {
+ 		ret = -EBADF;
+-		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+-		if (desc.ctx == NULL)
++		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
++		if (ctx == NULL)
+ 			goto out;
+ 	} else
+-		desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
++		ctx = get_nfs_open_context(nfs_file_open_context(file));
+ 
+-	nfs_pageio_init_read(&desc.pgio, inode, false,
++	nfs_pageio_init_read(&pgio, inode, false,
+ 			     &nfs_async_read_completion_ops);
+ 
+ 	while ((page = readahead_page(ractl)) != NULL) {
+-		ret = readpage_async_filler(&desc, page);
++		ret = nfs_pageio_add_page(&pgio, ctx, page);
+ 		put_page(page);
+ 		if (ret)
+ 			break;
+ 	}
+ 
+-	nfs_pageio_complete_read(&desc.pgio);
++	nfs_pageio_complete_read(&pgio);
+ 
+-	put_nfs_open_context(desc.ctx);
++	put_nfs_open_context(ctx);
+ out:
+ 	trace_nfs_aop_readahead_done(inode, nr_pages, ret);
+ }
+-- 
+2.31.1
+
