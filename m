@@ -2,55 +2,85 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D841BC54EE9
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Sep 2022 08:22:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CD434C38145
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Sep 2022 13:32:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235325AbiIBIW0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Sep 2022 04:22:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47160 "EHLO
+        id S236983AbiIBNco (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Sep 2022 09:32:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40482 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235293AbiIBIWZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2022 04:22:25 -0400
-Received: from mail.connexion24.pl (mail.connexion24.pl [141.94.21.111])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 658854D816
-        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 01:22:25 -0700 (PDT)
-Received: by mail.connexion24.pl (Postfix, from userid 1002)
-        id 40EE2AEDC8; Fri,  2 Sep 2022 07:56:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=connexion24.pl;
-        s=mail; t=1662105429;
-        bh=ChRcLNpIfKnVgp03/tSyWuRw1tWSTk/OEiEnuZMWs58=;
-        h=Date:From:To:Subject:From;
-        b=QLPHRQU1wNVWJLQ1SGlBD7PgwELjAwrbB6105IIf4GxundegwrdgVUxolIkU9yaTg
-         wyeXKQ+eipCChY3Qr6LOFVGoiiSE/ByWWjE+XJfXO0yp4W5U+CcCcd/oAaxWw0L/6I
-         tieNVwm3EDI6wfzx52E0oMB/45w9RlyPVLNcO5D7M+3C0TuR4avk9GSCxelzVmqPPq
-         aLQZ/5PUGqcFEpSpqmJu5TBSp9sP8mLSy6PhPYrvZLag4GMBi63LhzN4cswUFLsZjV
-         OX8pv9XO42s1Dmm80iJ3m8SNkTWVEV0+bWxIGs8BMTojiyfXOd0r/PDfR0LnwXfivu
-         66njVZrlNh1Gw==
-Received: by mail.connexion24.pl for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 07:55:42 GMT
-Message-ID: <20220902064500-0.1.5l.ytsi.0.nviqj4dco0@connexion24.pl>
-Date:   Fri,  2 Sep 2022 07:55:42 GMT
-From:   "Norbert Karecki" <norbert.karecki@connexion24.pl>
-To:     <linux-nfs@vger.kernel.org>
-Subject: Wycena paneli fotowoltaicznych
-X-Mailer: mail.connexion24.pl
-MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+        with ESMTP id S236671AbiIBNcA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2022 09:32:00 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 511F2F1B60
+        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 06:11:38 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id CED30B82AA2
+        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 13:09:04 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 285D6C433D6;
+        Fri,  2 Sep 2022 13:09:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1662124143;
+        bh=8yJaune/I/GjLWkPAbYvzup7MYyVgo8xj9Dqh8wrCGQ=;
+        h=Subject:From:To:Date:In-Reply-To:References:From;
+        b=Vi9xxENClUxXZQzEckxVa5KtnbzIcfqX+bItUQWraUZn939g5rLKbGjB/tBjwWaNC
+         gBODbUNZCGY5KmAF/Es13jm+OoJ4kPW+kHCOWQxms5Y9Zuv3SN45qRvywnpgFj0X0d
+         ub0bbOMIkC0VQORHS4rs3RjjaEZISURgRnS+UsxnsktPq5dy/PnhYNplrHujRr/wDl
+         893ftDsNMUmcfnig5ooP3w4YubfAN6Oawt9cJP4VCmHBSFf2S8tgaesSs/GMJgUTcP
+         v1q/AAlX4Dwh8irsd0ElBferEi+Twe+wJmQPopj7u0UPViSffalJ/x8nwTMn0QYacQ
+         V/dRkqPfW8Hpw==
+Message-ID: <86bb9bc0a5b9e46c93c9918b7df6708ef7e01830.camel@kernel.org>
+Subject: Re: [PATCH v3 3/6] NFSD: Protect against send buffer overflow in
+ NFSv2 READDIR
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date:   Fri, 02 Sep 2022 09:09:01 -0400
+In-Reply-To: <166205940565.1435.7170548905174362083.stgit@manet.1015granger.net>
+References: <166204973526.1435.6068003336048840051.stgit@manet.1015granger.net>
+         <166205940565.1435.7170548905174362083.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
+MIME-Version: 1.0
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Dzie=C5=84 dobry,
+On Thu, 2022-09-01 at 15:10 -0400, Chuck Lever wrote:
+> Restore the previous limit on the @count argument to prevent a
+> buffer overflow attack.
+>=20
+> Fixes: 53b1119a6e50 ("NFSD: Fix READDIR buffer overflow")
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/nfsproc.c |    5 ++---
+>  1 file changed, 2 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index 7381972f1677..ddb1902c0a18 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -567,12 +567,11 @@ static void nfsd_init_dirlist_pages(struct svc_rqst=
+ *rqstp,
+>  	struct xdr_buf *buf =3D &resp->dirlist;
+>  	struct xdr_stream *xdr =3D &resp->xdr;
+> =20
+> -	count =3D clamp(count, (u32)(XDR_UNIT * 2), svc_max_payload(rqstp));
+> -
+>  	memset(buf, 0, sizeof(*buf));
+> =20
+>  	/* Reserve room for the NULL ptr & eof flag (-2 words) */
+> -	buf->buflen =3D count - XDR_UNIT * 2;
+> +	buf->buflen =3D clamp(count, (u32)(XDR_UNIT * 2), (u32)PAGE_SIZE);
 
-dostrzegam mo=C5=BCliwo=C5=9B=C4=87 wsp=C3=B3=C5=82pracy z Pa=C5=84stwa f=
-irm=C4=85.
 
-=C5=9Awiadczymy kompleksow=C4=85 obs=C5=82ug=C4=99 inwestycji w fotowolta=
-ik=C4=99, kt=C3=B3ra obni=C5=BCa koszty energii elektrycznej nawet o 90%.
+> +	buf->buflen -=3D XDR_UNIT * 2;
+>  	buf->pages =3D rqstp->rq_next_page;
+>  	rqstp->rq_next_page++;
+> =20
+>=20
+>=20
 
-Czy s=C4=85 Pa=C5=84stwo zainteresowani weryfikacj=C4=85 wst=C4=99pnych p=
-ropozycji?
-
-
-Pozdrawiam,
-Norbert Karecki
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
