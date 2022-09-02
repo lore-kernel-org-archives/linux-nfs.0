@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D667C6FA82
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Sep 2022 22:17:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 691E3ECAAA1
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Sep 2022 22:18:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229593AbiIBWRK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Sep 2022 18:17:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58212 "EHLO
+        id S231238AbiIBWS0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Sep 2022 18:18:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59114 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230435AbiIBWRI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2022 18:17:08 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30A7BB4EB7
-        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 15:17:07 -0700 (PDT)
+        with ESMTP id S231319AbiIBWSY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2022 18:18:24 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D83CFC2E92
+        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 15:18:18 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id B4CD5B82DE4
-        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 22:17:05 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 506B2C43140
-        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 22:17:04 +0000 (UTC)
-Subject: [PATCH v2] NFSD: Increase NFSD_MAX_OPS_PER_COMPOUND
+        by dfw.source.kernel.org (Postfix) with ESMTPS id A4F6661E11
+        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 22:18:17 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 07747C433C1
+        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 22:18:16 +0000 (UTC)
+Subject: [PATCH v3] NFSD: Increase NFSD_MAX_OPS_PER_COMPOUND
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Fri, 02 Sep 2022 18:17:03 -0400
-Message-ID: <166215702314.2717.14850705510680985267.stgit@bazille.1015granger.net>
+Date:   Fri, 02 Sep 2022 18:18:16 -0400
+Message-ID: <166215705963.2962.2787714967300626937.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -52,15 +52,27 @@ help ensure memory fragmentation won't cause an allocation failure.
 Link: https://bugzilla.kernel.org/show_bug.cgi?id=216383
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |    5 ++---
+ fs/nfsd/nfs4xdr.c |    7 ++++---
  fs/nfsd/state.h   |    2 +-
- 2 files changed, 3 insertions(+), 4 deletions(-)
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+Goddamnit. git let me mail out v2 while the work space was still
+dirty.
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1e9690a061ec..a04b9b29678f 100644
+index 1e9690a061ec..4b69e86240eb 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -2369,10 +2369,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+@@ -42,6 +42,8 @@
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/xattr.h>
++#include <linux/vmalloc.h>
++
+ #include <uapi/linux/xattr.h>
+ 
+ #include "idmap.h"
+@@ -2369,10 +2371,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
  		return true;
  
  	if (argp->opcnt > ARRAY_SIZE(argp->iops)) {
@@ -72,7 +84,7 @@ index 1e9690a061ec..a04b9b29678f 100644
  			return false;
  		}
  	}
-@@ -5394,7 +5393,7 @@ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
+@@ -5394,7 +5395,7 @@ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
  	struct nfsd4_compoundargs *args = rqstp->rq_argp;
  
  	if (args->ops != args->iops) {
