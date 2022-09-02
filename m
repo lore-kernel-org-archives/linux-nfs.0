@@ -2,44 +2,44 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD434C38145
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Sep 2022 13:32:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CFBD4C54EE9
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Sep 2022 13:37:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236983AbiIBNco (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Sep 2022 09:32:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40482 "EHLO
+        id S236200AbiIBNhn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Sep 2022 09:37:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52898 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236671AbiIBNcA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2022 09:32:00 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 511F2F1B60
-        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 06:11:38 -0700 (PDT)
+        with ESMTP id S237366AbiIBNgv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Sep 2022 09:36:51 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CC5E6EA882
+        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 06:15:52 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id CED30B82AA2
-        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 13:09:04 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 285D6C433D6;
-        Fri,  2 Sep 2022 13:09:03 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id AABAD62074
+        for <linux-nfs@vger.kernel.org>; Fri,  2 Sep 2022 13:14:26 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C8A60C433D6;
+        Fri,  2 Sep 2022 13:14:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1662124143;
-        bh=8yJaune/I/GjLWkPAbYvzup7MYyVgo8xj9Dqh8wrCGQ=;
+        s=k20201202; t=1662124466;
+        bh=QizeWyoBjkNR0FQWB4ktd+594kSKd/dLwPK0C+KmXKs=;
         h=Subject:From:To:Date:In-Reply-To:References:From;
-        b=Vi9xxENClUxXZQzEckxVa5KtnbzIcfqX+bItUQWraUZn939g5rLKbGjB/tBjwWaNC
-         gBODbUNZCGY5KmAF/Es13jm+OoJ4kPW+kHCOWQxms5Y9Zuv3SN45qRvywnpgFj0X0d
-         ub0bbOMIkC0VQORHS4rs3RjjaEZISURgRnS+UsxnsktPq5dy/PnhYNplrHujRr/wDl
-         893ftDsNMUmcfnig5ooP3w4YubfAN6Oawt9cJP4VCmHBSFf2S8tgaesSs/GMJgUTcP
-         v1q/AAlX4Dwh8irsd0ElBferEi+Twe+wJmQPopj7u0UPViSffalJ/x8nwTMn0QYacQ
-         V/dRkqPfW8Hpw==
-Message-ID: <86bb9bc0a5b9e46c93c9918b7df6708ef7e01830.camel@kernel.org>
-Subject: Re: [PATCH v3 3/6] NFSD: Protect against send buffer overflow in
- NFSv2 READDIR
+        b=ChmNmyr0jlFXsQaxLmYrM5WmaXjYtCIdBrqbuzhMyD9141AFgTraTqGKOfXvCn+iN
+         Xta6HEnzCsi8mMF9Y29OaewdwPArH/d80uvg83tmVfcSM1LKXNZGV0ufCaSHhurLHC
+         mrdEUhnSWre62NB0DRNcM56HfAOAHJ1G2XUFU1IwZdnKJiWTXovF5QV1icqxbo1UMu
+         FwzybIlor4kVWEN4ZwLiriWGc8A+hCuqtVv2ZmPwVc9Tqcoe+i/5+48Bn3sUaGeP1R
+         cSZeAUKXPx2GS6JdgRbZQ9n1ooxR/RbUeLdizkIm5FuhF6VKI9SA6xT1/UoPy1YBqp
+         M3OMog+PNL4Fw==
+Message-ID: <13dd5b2a5d90ebf4dd782d89a34cb2d7ce62f7e2.camel@kernel.org>
+Subject: Re: [PATCH v3 5/6] NFSD: Protect against send buffer overflow in
+ NFSv2 READ
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Date:   Fri, 02 Sep 2022 09:09:01 -0400
-In-Reply-To: <166205940565.1435.7170548905174362083.stgit@manet.1015granger.net>
+Date:   Fri, 02 Sep 2022 09:14:24 -0400
+In-Reply-To: <166205941847.1435.15080240781458940273.stgit@manet.1015granger.net>
 References: <166204973526.1435.6068003336048840051.stgit@manet.1015granger.net>
-         <166205940565.1435.7170548905174362083.stgit@manet.1015granger.net>
+         <166205941847.1435.15080240781458940273.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
@@ -49,37 +49,41 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 On Thu, 2022-09-01 at 15:10 -0400, Chuck Lever wrote:
-> Restore the previous limit on the @count argument to prevent a
-> buffer overflow attack.
+> Since before the git era, NFSD has conserved the number of pages
+> held by each nfsd thread by combining the RPC receive and send
+> buffers into a single array of pages. This works because there are
+> no cases where an operation needs a large RPC Call message and a
+> large RPC Reply at the same time.
 >=20
-> Fixes: 53b1119a6e50 ("NFSD: Fix READDIR buffer overflow")
+> Once an RPC Call has been received, svc_process() updates
+> svc_rqst::rq_res to describe the part of rq_pages that can be
+> used for constructing the Reply. This means that the send buffer
+> (rq_res) shrinks when the received RPC record containing the RPC
+> Call is large.
+>=20
+> A client can force this shrinkage on TCP by sending a correctly-
+> formed RPC Call header contained in an RPC record that is
+> excessively large. The full maximum payload size cannot be
+> constructed in that case.
+>=20
+> Cc: <stable@vger.kernel.org>
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  fs/nfsd/nfsproc.c |    5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
+>  fs/nfsd/nfsproc.c |    1 +
+>  1 file changed, 1 insertion(+)
 >=20
 > diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-> index 7381972f1677..ddb1902c0a18 100644
+> index ddb1902c0a18..4b19cc727ea5 100644
 > --- a/fs/nfsd/nfsproc.c
 > +++ b/fs/nfsd/nfsproc.c
-> @@ -567,12 +567,11 @@ static void nfsd_init_dirlist_pages(struct svc_rqst=
- *rqstp,
->  	struct xdr_buf *buf =3D &resp->dirlist;
->  	struct xdr_stream *xdr =3D &resp->xdr;
+> @@ -185,6 +185,7 @@ nfsd_proc_read(struct svc_rqst *rqstp)
+>  		argp->count, argp->offset);
 > =20
-> -	count =3D clamp(count, (u32)(XDR_UNIT * 2), svc_max_payload(rqstp));
-> -
->  	memset(buf, 0, sizeof(*buf));
+>  	argp->count =3D min_t(u32, argp->count, NFSSVC_MAXBLKSIZE_V2);
+> +	argp->count =3D min_t(u32, argp->count, rqstp->rq_res.buflen);
 > =20
->  	/* Reserve room for the NULL ptr & eof flag (-2 words) */
-> -	buf->buflen =3D count - XDR_UNIT * 2;
-> +	buf->buflen =3D clamp(count, (u32)(XDR_UNIT * 2), (u32)PAGE_SIZE);
-
-
-> +	buf->buflen -=3D XDR_UNIT * 2;
->  	buf->pages =3D rqstp->rq_next_page;
->  	rqstp->rq_next_page++;
-> =20
+>  	v =3D 0;
+>  	len =3D argp->count;
 >=20
 >=20
 
