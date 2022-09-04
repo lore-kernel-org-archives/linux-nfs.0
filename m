@@ -2,93 +2,224 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A1B7BC54EE9
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Sep 2022 08:50:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62B0AECAAD3
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Sep 2022 09:06:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229815AbiIDIuO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 4 Sep 2022 04:50:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55568 "EHLO
+        id S231252AbiIDJGG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 4 Sep 2022 05:06:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46320 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229537AbiIDIuM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Sep 2022 04:50:12 -0400
+        with ESMTP id S230190AbiIDJGF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Sep 2022 05:06:05 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D625303E1
-        for <linux-nfs@vger.kernel.org>; Sun,  4 Sep 2022 01:50:11 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E278491D3
+        for <linux-nfs@vger.kernel.org>; Sun,  4 Sep 2022 02:06:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1662281410;
+        s=mimecast20190719; t=1662282363;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=4IccMBIxX+PSaiDwmAN+nA6tZvbJnmKwnOFFRWTaiQ4=;
-        b=AoyCvLNZFNDT7zOnaBVvY24lyTHa4L3MCtYgUTqQstGZ7KNIml4dZPdca2wyTMZ8W61ik7
-        UcpPNXlsIFmnW5rKfzw1pS06Qrfu/GSYgKI2jLTIOsk32T8qrwvipH+ONGSU27eoRtjR5u
-        NS9JcEyOA1rmFIUHnYiB80Vu9T3H0zg=
-Received: from mail-ed1-f70.google.com (mail-ed1-f70.google.com
- [209.85.208.70]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_128_GCM_SHA256) id
- us-mta-50-93gTHfF4MPyYu-4MJyO6ag-1; Sun, 04 Sep 2022 04:49:59 -0400
-X-MC-Unique: 93gTHfF4MPyYu-4MJyO6ag-1
-Received: by mail-ed1-f70.google.com with SMTP id w19-20020a05640234d300b004482dd03feeso4062521edc.0
-        for <linux-nfs@vger.kernel.org>; Sun, 04 Sep 2022 01:49:59 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date;
-        bh=4IccMBIxX+PSaiDwmAN+nA6tZvbJnmKwnOFFRWTaiQ4=;
-        b=FZBV0X7I55cujoskh5oGzyDxQhSeBgMb9hriZLw5iE3q2tK5nEN++aN+1ecr3d5XdV
-         V8lr2ljGdukI0RAMXbx+YqWOpAVkTpHu6Ktb05KGsi8oFP9pgJ4oYZ2cIM1xDjgUbgQL
-         3u1NokdUJbW0Twh0+WUiN9wXuEwAfPKQFgv1aP0RF6zFPGUjDoFmLr0WjiqqxyWL4kqs
-         0Vc3WW5Lc1oy+UuvL69rW1VpUXBRQTzU5LHoCMWByaSEQPlH86/iS/Y+5q87qalVFeLB
-         ZOiSquD/d8s39S2/uuYPB6lpkat0dxnZLkR2kLeV5s1b5NfCk2jWWvvMdRscUxECpaWq
-         5Q3g==
-X-Gm-Message-State: ACgBeo2V5Ts75Ma64JCrU9RT8Xt4IdvTNzBtHziyIMPWAhoOGL8Po5mT
-        sDYulDYClaxGjjCYa6L9kctgFB1TeY7cNlIc3p7NqCEBqR/nKHFSl8xrVH9skCW4nLI+Btrlkp5
-        gQr5f/eHPGWabZI5TJtAUAIzIKCm1FHM8IoRe
-X-Received: by 2002:a17:906:7714:b0:74f:f771:4e0 with SMTP id q20-20020a170906771400b0074ff77104e0mr7247123ejm.623.1662281398532;
-        Sun, 04 Sep 2022 01:49:58 -0700 (PDT)
-X-Google-Smtp-Source: AA6agR7GWmOQP5L6NgokG8GdLGx7Oj5xKtNWYtmiCninLP5NIKFthrhidP5D3ztGKoQshmmVZsdJIr6/fqY4j6K2mmc=
-X-Received: by 2002:a17:906:7714:b0:74f:f771:4e0 with SMTP id
- q20-20020a170906771400b0074ff77104e0mr7247114ejm.623.1662281398321; Sun, 04
- Sep 2022 01:49:58 -0700 (PDT)
+        bh=QPbW0Esww+n7KzM4XoHJMPjD26OFWFqNl0Aq83pM10s=;
+        b=YHuKGj6lI1TWYvNVwDSFszk01HKwtHJ8Ow4X66Pm+EWNvCNTGQKYhAU41EGIeEjczODkFs
+        6ymS2/tlT0AuN58gObIf1esbj2NCioWx3Zw61R/GV8AevGJBAnyqUV0pGr5nh3QK+XNBn/
+        bB8U3zKRwcqWnSzBOgzPA8sNVoesP/Q=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-540-DwHpwH8xOOSyHkV9i6_0Cg-1; Sun, 04 Sep 2022 05:05:59 -0400
+X-MC-Unique: DwHpwH8xOOSyHkV9i6_0Cg-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 1A5C138173C5;
+        Sun,  4 Sep 2022 09:05:59 +0000 (UTC)
+Received: from dwysocha.rdu.csb (unknown [10.22.8.98])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id C8DEA1415102;
+        Sun,  4 Sep 2022 09:05:58 +0000 (UTC)
+From:   Dave Wysochanski <dwysocha@redhat.com>
+To:     Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        David Howells <dhowells@redhat.com>
+Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
+        Benjamin Maynard <benmaynard@google.com>,
+        Daire Byrne <daire.byrne@gmail.com>
+Subject: [PATCH v6 1/3] NFS: Rename readpage_async_filler to nfs_pageio_add_page
+Date:   Sun,  4 Sep 2022 05:05:55 -0400
+Message-Id: <20220904090557.1901131-2-dwysocha@redhat.com>
+In-Reply-To: <20220904090557.1901131-1-dwysocha@redhat.com>
+References: <20220904090557.1901131-1-dwysocha@redhat.com>
 MIME-Version: 1.0
-References: <3E21DFEA-8DF7-484B-8122-D578BFF7F9E0@oracle.com>
-In-Reply-To: <3E21DFEA-8DF7-484B-8122-D578BFF7F9E0@oracle.com>
-From:   David Wysochanski <dwysocha@redhat.com>
-Date:   Sun, 4 Sep 2022 04:49:22 -0400
-Message-ID: <CALF+zOnrKU-ba3aRcdvJvEuZv2kP_Pg7CpotuSkkEofipEZ0-w@mail.gmail.com>
-Subject: Re: generic/650 makes v6.0-rc client unusable
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "fstests@vger.kernel.org" <fstests@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.85 on 10.11.54.7
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sat, Sep 3, 2022 at 2:44 PM Chuck Lever III <chuck.lever@oracle.com> wrote:
->
-> While investigating some of the other issues that have been
-> reported lately, I've found that my v6.0-rc3 NFS/TCP client
-> goes off the rails often (but not always) during generic/650.
->
-> This is the test that runs a workload while offlining and
-> onlining CPUs. My test client has 12 physical cores.
->
-> The test appears to start normally, but then after a bit
-> the NFS server workload drops to zero and the NFS mount
-> disappears. I can't run programs (sudo, for example) on
-> the client. Can't log in, even on the console. The console
-> has a constant stream of "can't rotate log: Input/Output
-> error" type messages.
->
-I've seen this occasionally as well.
+Rename readpage_async_filler to nfs_pageio_add_page to
+better reflect what this function does (add a page to
+the nfs_pageio_descriptor), and simplify arguments to
+this function by removing struct nfs_readdesc.
 
-> I haven't looked further into this yet. Actually I'm not
-> quite sure where to start looking.
->
-> I recently switched this client from a local /home to an
-> NFS-mounted one, and that's where the xfstests are built
-> and run from, fwiw.
->
-My testbeds have xfstests built/run on a local filesystem.
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/nfs/read.c | 60 +++++++++++++++++++++++++--------------------------
+ 1 file changed, 30 insertions(+), 30 deletions(-)
+
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 8ae2c8d1219d..525e82ea9a9e 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -127,11 +127,6 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
+ 	nfs_release_request(req);
+ }
+ 
+-struct nfs_readdesc {
+-	struct nfs_pageio_descriptor pgio;
+-	struct nfs_open_context *ctx;
+-};
+-
+ static void nfs_page_group_set_uptodate(struct nfs_page *req)
+ {
+ 	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
+@@ -153,7 +148,8 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+ 
+ 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+ 			/* note: regions of the page not covered by a
+-			 * request are zeroed in readpage_async_filler */
++			 * request are zeroed in nfs_pageio_add_page
++			 */
+ 			if (bytes > hdr->good_bytes) {
+ 				/* nothing in this request was good, so zero
+ 				 * the full extent of the request */
+@@ -281,8 +277,10 @@ static void nfs_readpage_result(struct rpc_task *task,
+ 		nfs_readpage_retry(task, hdr);
+ }
+ 
+-static int
+-readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
++int
++nfs_pageio_add_page(struct nfs_pageio_descriptor *pgio,
++		    struct nfs_open_context *ctx,
++		    struct page *page)
+ {
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 	unsigned int rsize = NFS_SERVER(inode)->rsize;
+@@ -302,15 +300,15 @@ readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
+ 			goto out_unlock;
+ 	}
+ 
+-	new = nfs_create_request(desc->ctx, page, 0, aligned_len);
++	new = nfs_create_request(ctx, page, 0, aligned_len);
+ 	if (IS_ERR(new))
+ 		goto out_error;
+ 
+ 	if (len < PAGE_SIZE)
+ 		zero_user_segment(page, len, PAGE_SIZE);
+-	if (!nfs_pageio_add_request(&desc->pgio, new)) {
++	if (!nfs_pageio_add_request(pgio, new)) {
+ 		nfs_list_remove_request(new);
+-		error = desc->pgio.pg_error;
++		error = pgio->pg_error;
+ 		nfs_readpage_release(new, error);
+ 		goto out;
+ 	}
+@@ -332,7 +330,8 @@ readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
+ int nfs_read_folio(struct file *file, struct folio *folio)
+ {
+ 	struct page *page = &folio->page;
+-	struct nfs_readdesc desc;
++	struct nfs_pageio_descriptor pgio;
++	struct nfs_open_context *ctx;
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 	int ret;
+ 
+@@ -358,29 +357,29 @@ int nfs_read_folio(struct file *file, struct folio *folio)
+ 
+ 	if (file == NULL) {
+ 		ret = -EBADF;
+-		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+-		if (desc.ctx == NULL)
++		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
++		if (ctx == NULL)
+ 			goto out_unlock;
+ 	} else
+-		desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
++		ctx = get_nfs_open_context(nfs_file_open_context(file));
+ 
+-	xchg(&desc.ctx->error, 0);
+-	nfs_pageio_init_read(&desc.pgio, inode, false,
++	xchg(&ctx->error, 0);
++	nfs_pageio_init_read(&pgio, inode, false,
+ 			     &nfs_async_read_completion_ops);
+ 
+-	ret = readpage_async_filler(&desc, page);
++	ret = nfs_pageio_add_page(&pgio, ctx, page);
+ 	if (ret)
+ 		goto out;
+ 
+-	nfs_pageio_complete_read(&desc.pgio);
+-	ret = desc.pgio.pg_error < 0 ? desc.pgio.pg_error : 0;
++	nfs_pageio_complete_read(&pgio);
++	ret = pgio.pg_error < 0 ? pgio.pg_error : 0;
+ 	if (!ret) {
+ 		ret = wait_on_page_locked_killable(page);
+ 		if (!PageUptodate(page) && !ret)
+-			ret = xchg(&desc.ctx->error, 0);
++			ret = xchg(&ctx->error, 0);
+ 	}
+ out:
+-	put_nfs_open_context(desc.ctx);
++	put_nfs_open_context(ctx);
+ 	trace_nfs_aop_readpage_done(inode, page, ret);
+ 	return ret;
+ out_unlock:
+@@ -391,9 +390,10 @@ int nfs_read_folio(struct file *file, struct folio *folio)
+ 
+ void nfs_readahead(struct readahead_control *ractl)
+ {
++	struct nfs_pageio_descriptor pgio;
++	struct nfs_open_context *ctx;
+ 	unsigned int nr_pages = readahead_count(ractl);
+ 	struct file *file = ractl->file;
+-	struct nfs_readdesc desc;
+ 	struct inode *inode = ractl->mapping->host;
+ 	struct page *page;
+ 	int ret;
+@@ -407,25 +407,25 @@ void nfs_readahead(struct readahead_control *ractl)
+ 
+ 	if (file == NULL) {
+ 		ret = -EBADF;
+-		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+-		if (desc.ctx == NULL)
++		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
++		if (ctx == NULL)
+ 			goto out;
+ 	} else
+-		desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
++		ctx = get_nfs_open_context(nfs_file_open_context(file));
+ 
+-	nfs_pageio_init_read(&desc.pgio, inode, false,
++	nfs_pageio_init_read(&pgio, inode, false,
+ 			     &nfs_async_read_completion_ops);
+ 
+ 	while ((page = readahead_page(ractl)) != NULL) {
+-		ret = readpage_async_filler(&desc, page);
++		ret = nfs_pageio_add_page(&pgio, ctx, page);
+ 		put_page(page);
+ 		if (ret)
+ 			break;
+ 	}
+ 
+-	nfs_pageio_complete_read(&desc.pgio);
++	nfs_pageio_complete_read(&pgio);
+ 
+-	put_nfs_open_context(desc.ctx);
++	put_nfs_open_context(ctx);
+ out:
+ 	trace_nfs_aop_readahead_done(inode, nr_pages, ret);
+ }
+-- 
+2.31.1
 
