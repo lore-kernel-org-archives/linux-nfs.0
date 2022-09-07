@@ -2,71 +2,59 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 751DBC6FA8B
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Sep 2022 14:05:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F6BAC6FA8D
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Sep 2022 14:44:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229976AbiIGOFP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Sep 2022 10:05:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57058 "EHLO
+        id S229540AbiIGOnm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 7 Sep 2022 10:43:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40820 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229596AbiIGOFN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Sep 2022 10:05:13 -0400
+        with ESMTP id S229701AbiIGOnP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Sep 2022 10:43:15 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0E982EF07;
-        Wed,  7 Sep 2022 07:05:11 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 19927956BA;
+        Wed,  7 Sep 2022 07:43:14 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 4CEC0B81CBB;
-        Wed,  7 Sep 2022 14:05:10 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B4B7BC433D7;
-        Wed,  7 Sep 2022 14:05:06 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 745D9B81D4C;
+        Wed,  7 Sep 2022 14:43:12 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC28BC433D6;
+        Wed,  7 Sep 2022 14:43:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1662559508;
-        bh=5lNGsOF2ajdE3eZM/ZhuIKJFPKWxkqc/O43CxlRdETw=;
+        s=k20201202; t=1662561791;
+        bh=RJUuE6TtbAEmyXO144jflnrUxtajEUR5AU9O8xs0fkA=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=iHINgelRFdW9XpgWxJT4+BZAOcCagp76Jlx168FXARg9CGlzv1O9X1nbzOBkyWnfH
-         DvcNjBBa2NBfDaLCDdulT4eoGcqyRAfrU7Pkwia/jC++XRnrwvEDdA0yuBiidY8n9z
-         xkYy9xO+PosTOFM/Z5gioUWOqnPpGn/5RwsW5IwsGpJjb3aTgJMDcNaTBbwPxGb/9N
-         75WPXU/Rxqm3c7uF3u+uomA6YVE4jfr4fX45ocNA2xpSTYq8csdcEYk8JWzhh8IS7f
-         P17k7h+Nxi28WUxLZC8RBrkt6nvaFageSdyvAPIJW2/KPzvp7KNqmcmCCL7jNYUMVD
-         KO6UPHjE9x1IQ==
-Message-ID: <c22baa64133a23be3aba81df23b4af866df51343.camel@kernel.org>
+        b=G3Mqs2auJIxQBypGYorryf7m3qZLDZrNkCO2Ze1TQVFb6eeUpsTrFjepv3AgkfcUO
+         N7rmiK+hknBW94epBcdF3wYws+2vefcFR/8VL26f0xi4GPORhEtyhN/SS0wBlZrv6G
+         C+OufpGojYQTqW4iDUIONf6B6VD1TUrNY7dPEAJ3Yoy7udhhp2mQ0FII/UALu9pTyl
+         JE2X4fC5LAY0K5ZTwdx1AumiYyRGDARwPNX2qzHQWvZNSTOiM7QDDlla4LpeaBPFmY
+         sdwQCneyPDbAD6Nv10StzJ4VY1Bekdy1/k/Lr61M7W8oHoiYa6yXzN/X9iTJRLol3t
+         xg9VTtkCFaUUg==
+Message-ID: <36e2a19ea789aca3c1cdc9a93b26285b6e7b428c.camel@kernel.org>
 Subject: Re: [man-pages RFC PATCH v4] statx, inode: document the new
  STATX_INO_VERSION field
 From:   Jeff Layton <jlayton@kernel.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Cc:     "zohar@linux.ibm.com" <zohar@linux.ibm.com>,
-        "djwong@kernel.org" <djwong@kernel.org>,
-        "xiubli@redhat.com" <xiubli@redhat.com>,
-        "brauner@kernel.org" <brauner@kernel.org>,
-        "neilb@suse.de" <neilb@suse.de>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "david@fromorbit.com" <david@fromorbit.com>,
-        "fweimer@redhat.com" <fweimer@redhat.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-man@vger.kernel.org" <linux-man@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "tytso@mit.edu" <tytso@mit.edu>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "jack@suse.cz" <jack@suse.cz>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "lczerner@redhat.com" <lczerner@redhat.com>,
-        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>
-Date:   Wed, 07 Sep 2022 10:05:05 -0400
-In-Reply-To: <8a71986b4fb61cd9b4adc8b4250118cbb19eec58.camel@hammerspace.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        NeilBrown <neilb@suse.de>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, djwong@kernel.org, david@fromorbit.com,
+        trondmy@hammerspace.com, viro@zeniv.linux.org.uk,
+        zohar@linux.ibm.com, xiubli@redhat.com, chuck.lever@oracle.com,
+        lczerner@redhat.com, brauner@kernel.org, fweimer@redhat.com,
+        linux-man@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Date:   Wed, 07 Sep 2022 10:43:07 -0400
+In-Reply-To: <20220907135153.qvgibskeuz427abw@quack3>
 References: <20220907111606.18831-1-jlayton@kernel.org>
          <166255065346.30452.6121947305075322036@noble.neil.brown.name>
          <79aaf122743a295ddab9525d9847ac767a3942aa.camel@kernel.org>
          <20220907125211.GB17729@fieldses.org>
          <771650a814ab1ff4dc5473d679936b747d9b6cf5.camel@kernel.org>
-         <8a71986b4fb61cd9b4adc8b4250118cbb19eec58.camel@hammerspace.com>
+         <20220907135153.qvgibskeuz427abw@quack3>
 Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
@@ -75,43 +63,38 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 2022-09-07 at 13:55 +0000, Trond Myklebust wrote:
-> On Wed, 2022-09-07 at 09:12 -0400, Jeff Layton wrote:
+On Wed, 2022-09-07 at 15:51 +0200, Jan Kara wrote:
+> On Wed 07-09-22 09:12:34, Jeff Layton wrote:
 > > On Wed, 2022-09-07 at 08:52 -0400, J. Bruce Fields wrote:
 > > > On Wed, Sep 07, 2022 at 08:47:20AM -0400, Jeff Layton wrote:
 > > > > On Wed, 2022-09-07 at 21:37 +1000, NeilBrown wrote:
 > > > > > On Wed, 07 Sep 2022, Jeff Layton wrote:
-> > > > > > +The change to \fIstatx.stx_ino_version\fP is not atomic with
-> > > > > > respect to the
-> > > > > > +other changes in the inode. On a write, for instance, the
-> > > > > > i_version it usually
-> > > > > > +incremented before the data is copied into the pagecache.
-> > > > > > Therefore it is
-> > > > > > +possible to see a new i_version value while a read still
-> > > > > > shows the old data.
+> > > > > > +The change to \fIstatx.stx_ino_version\fP is not atomic with r=
+espect to the
+> > > > > > +other changes in the inode. On a write, for instance, the i_ve=
+rsion it usually
+> > > > > > +incremented before the data is copied into the pagecache. Ther=
+efore it is
+> > > > > > +possible to see a new i_version value while a read still shows=
+ the old data.
 > > > > >=20
 > > > > > Doesn't that make the value useless?
 > > > > >=20
 > > > >=20
-> > > > No, I don't think so. It's only really useful for comparing to an
-> > > > older
-> > > > sample anyway. If you do "statx; read; statx" and the value
-> > > > hasn't
+> > > > No, I don't think so. It's only really useful for comparing to an o=
+lder
+> > > > sample anyway. If you do "statx; read; statx" and the value hasn't
 > > > > changed, then you know that things are stable.=20
 > > >=20
-> > > I don't see how that helps.=A0 It's still possible to get:
+> > > I don't see how that helps.  It's still possible to get:
 > > >=20
-> > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0reader=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0writer
-> > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0------=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0------
-> > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0=A0=A0=A0=A0i_version++
-> > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0statx
-> > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0read
-> > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0statx
-> > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0=A0=A0=A0=A0update page cache
+> > > 		reader		writer
+> > > 		------		------
+> > > 				i_version++
+> > > 		statx
+> > > 		read
+> > > 		statx
+> > > 				update page cache
 > > >=20
 > > > right?
 > > >=20
@@ -124,29 +107,37 @@ On Wed, 2022-09-07 at 13:55 +0000, Trond Myklebust wrote:
 > > could we use as an alternate interface? ioctl? Some sort of global
 > > virtual xattr? It does need to be something per-inode.
 >=20
-> I don't see how a non-atomic change attribute is remotely useful even
-> for NFS.
->=20
-> The main problem is not so much the above (although NFS clients are
-> vulnerable to that too) but the behaviour w.r.t. directory changes.
->=20
-> If the server can't guarantee that file/directory/... creation and
-> unlink are atomically recorded with change attribute updates, then the
-> client has to always assume that the server is lying, and that it has
-> to revalidate all its caches anyway. Cue endless readdir/lookup/getattr
-> requests after each and every directory modification in order to check
-> that some other client didn't also sneak in a change of their own.
+> I was thinking how hard would it be to increment i_version after updating
+> data but it will be rather hairy. In particular because of stuff like
+> IOCB_NOWAIT support which needs to bail if i_version update is needed. So
+> yeah, I don't think there's an easy way how to provide useful i_version f=
+or
+> general purpose use.
 >=20
 
-We generally hold the parent dir's inode->i_rwsem exclusively over most
-important directory changes, and the times/i_version are also updated
-while holding it. What we don't do is serialize reads of this value vs.
-the i_rwsem, so you could see new directory contents alongside an old
-i_version. Maybe we should be taking it for read when we query it on a
-directory?
+Yeah, it does look ugly.
 
-Achieving atomicity with file writes though is another matter entirely.
-I'm not sure that's even doable or how to approach it if so.
-Suggestions?
+Another idea might be to just take the i_rwsem for read in the statx
+codepath when STATX_INO_VERSION has been requested. xfs, ext4 and btrfs
+hold the i_rwsem exclusively over their buffered write ops. Doing that
+should be enough to prevent the race above, I think. The ext4 DAX path
+also looks ok there.
+
+The ext4 DIO write implementation seems to take the i_rwsem for read
+though unless the size is changing or the write is unaligned. So a
+i_rwsem readlock would probably not be enough to guard against changes
+there. Maybe we can just say if you're doing DIO, then don't expect real
+atomicity wrt i_version?
+
+knfsd seems to already hold i_rwsem when doing directory morphing
+operations (where it fetches the pre and post attrs), but it doesn't
+take it when calling nfsd4_encode_fattr (which is used to fill out
+GETATTR and READDIR replies, etc.). We'd probably have to start taking
+it in those codepaths too.
+
+We should also bear in mind that from userland, doing a read of a normal
+file and fetching the i_version takes two different syscalls. I'm not
+sure we need things to be truly "atomic", per-se. Whether and how we can
+exploit that fact, I'm not sure.
 --=20
 Jeff Layton <jlayton@kernel.org>
