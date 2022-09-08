@@ -2,126 +2,92 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 252AAC54EE9
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Sep 2022 17:00:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75980C38145
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Sep 2022 17:25:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230507AbiIHRAx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 8 Sep 2022 13:00:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44412 "EHLO
+        id S231299AbiIHRZN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 8 Sep 2022 13:25:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55516 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229504AbiIHRAu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2022 13:00:50 -0400
+        with ESMTP id S229799AbiIHRZB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2022 13:25:01 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 407B3C4831
-        for <linux-nfs@vger.kernel.org>; Thu,  8 Sep 2022 10:00:49 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1AA34F398;
+        Thu,  8 Sep 2022 10:24:56 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id E011DB818B5
-        for <linux-nfs@vger.kernel.org>; Thu,  8 Sep 2022 17:00:47 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5A01DC433D6;
-        Thu,  8 Sep 2022 17:00:46 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 740B9B821D4;
+        Thu,  8 Sep 2022 17:24:55 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C2E1C433D7;
+        Thu,  8 Sep 2022 17:24:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1662656446;
-        bh=1eY/HOWwy2efhbRjsiAhA60K8ylM9PwTnRJ2H6lYYmI=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=L+mOrxiGJhskJoLaWQPv8f4jkiaBtA/CU1sBHKY8G1yV0PpRqebKP2UiVDn0OBgpZ
-         BNwDromGXYs0TCgNfkG5p671vTGySVwq+VFwnrk3LlqU25iS8JAKx2KX90Dhlssnvp
-         kb3Qz+vV/a+jIr9kzb/aujemUtVZ+svsFNzIyGHbcFsojb/JsZBuSWk0mSfpI9gZiW
-         c2iEkLbHmE8YaruIL4ELa0Q/XNH9B3E0Y4jbcz416RUKbnRBOX3TVFV98KZqFzonDs
-         FbiTuw75uOI85q8iqlZq3edZABTB5FZvcFWrzEhM1Sp2+qfapsNea8dfXc5KL0D9ST
-         ejZLw0pjNWdgA==
-Message-ID: <3ecdb5e4baff87b3dcfb77ce3dc7b6336b9832ce.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: clean up mounted_on_fileid handling
+        s=k20201202; t=1662657894;
+        bh=5RwWtZAQsV8rQ6WEtGKbKdleHPjSdSyUVZNqRyCE/eM=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=tRlN0pfUD9xuLABWeALrjLUrDFjn0LMhSECknUUklQFg9zkp/9r8aM/Q7Id3OVPtZ
+         wTynxxgyVyBdBBIjt1V0zEj6mHEZKpJtkOX17Tnk1UvJBHXbgyfKy6vMZIunUN5WDZ
+         YuVXP2BivVgiZk8ygz+0WCZ+jqfH8bxcpCVyh3lmjHGV7YKVGfOUwcNDQ6OqP0kELw
+         j/RVFd8NT0U19s6Dvx+nvvGIKyZNWRX6R5BaIiOX9PhvjOgKJW//Fdk5yYbonDRCiy
+         Eg+sTQkJQS6rBD+xAmVD03xvgEDGHdI+8kmklMO6GU+9MUjxvHl5xGRDSMr/jA94BX
+         RF0cg+hrT8NVA==
 From:   Jeff Layton <jlayton@kernel.org>
-To:     chuck.lever@oracle.com
-Cc:     linux-nfs@vger.kernel.org
-Date:   Thu, 08 Sep 2022 13:00:44 -0400
-In-Reply-To: <20220908163107.202597-1-jlayton@kernel.org>
-References: <20220908163107.202597-1-jlayton@kernel.org>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
+        david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
+        viro@zeniv.linux.org.uk, zohar@linux.ibm.com, xiubli@redhat.com,
+        chuck.lever@oracle.com, lczerner@redhat.com, jack@suse.cz,
+        bfields@fieldses.org, brauner@kernel.org, fweimer@redhat.com
+Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Colin Walters <walters@verbum.org>
+Subject: [PATCH v5 1/8] iversion: clarify when the i_version counter must be updated
+Date:   Thu,  8 Sep 2022 13:24:41 -0400
+Message-Id: <20220908172448.208585-2-jlayton@kernel.org>
+X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20220908172448.208585-1-jlayton@kernel.org>
+References: <20220908172448.208585-1-jlayton@kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2022-09-08 at 12:31 -0400, Jeff Layton wrote:
-> We only need the inode number for this, not a full rack of attributes.
-> Rename this function make it take a pointer to a u64 instead of
-> struct kstat, and change it to just request STATX_INO.
->=20
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> ---
->  fs/nfsd/nfs4xdr.c | 16 +++++++++-------
->  1 file changed, 9 insertions(+), 7 deletions(-)
->=20
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 1e9690a061ec..5980df859c3a 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -2774,9 +2774,10 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, =
-u32 *bmval1, u32 *bmval2, u32
->  }
-> =20
-> =20
-> -static int get_parent_attributes(struct svc_export *exp, struct kstat *s=
-tat)
-> +static int get_mounted_on_ino(struct svc_export *exp, u64 *pino)
->  {
->  	struct path path =3D exp->ex_path;
-> +	struct kstat stat;
->  	int err;
-> =20
->  	path_get(&path);
-> @@ -2784,8 +2785,10 @@ static int get_parent_attributes(struct svc_export=
- *exp, struct kstat *stat)
->  		if (path.dentry !=3D path.mnt->mnt_root)
->  			break;
->  	}
-> -	err =3D vfs_getattr(&path, stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_ST=
-AT);
-> +	err =3D vfs_getattr(&path, &stat, STATX_INO, AT_STATX_SYNC_AS_STAT);
+The i_version field in the kernel has had different semantics over
+the decades, but NFSv4 has certain expectations. Update the comments
+in iversion.h to describe when the i_version must change.
 
-We could also consider using AT_STATX_DONT_SYNC here as well, but it's
-probably not worthwhile. Just asking for the inode number shouldn't
-result in any I/O in a sanely-written getattr.
+Cc: Colin Walters <walters@verbum.org>
+Cc: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trondmy@hammerspace.com>
+Cc: Dave Chinner <david@fromorbit.com>
+Link: https://lore.kernel.org/linux-xfs/166086932784.5425.17134712694961326033@noble.neil.brown.name/#t
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ include/linux/iversion.h | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
->  	path_put(&path);
-> +	if (!err)
-> +		*pino =3D stat.ino;
->  	return err;
->  }
-> =20
-> @@ -3282,22 +3285,21 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct=
- svc_fh *fhp,
->  		*p++ =3D cpu_to_be32(stat.btime.tv_nsec);
->  	}
->  	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
-> -		struct kstat parent_stat;
->  		u64 ino =3D stat.ino;
-> =20
->  		p =3D xdr_reserve_space(xdr, 8);
->  		if (!p)
->                  	goto out_resource;
->  		/*
-> -		 * Get parent's attributes if not ignoring crossmount
-> -		 * and this is the root of a cross-mounted filesystem.
-> +		 * Get ino of mountpoint in parent filesystem, if not ignoring
-> +		 * crossmount and this is the root of a cross-mounted
-> +		 * filesystem.
->  		 */
->  		if (ignore_crossmnt =3D=3D 0 &&
->  		    dentry =3D=3D exp->ex_path.mnt->mnt_root) {
-> -			err =3D get_parent_attributes(exp, &parent_stat);
-> +			err =3D get_mounted_on_ino(exp, &ino);
->  			if (err)
->  				goto out_nfserr;
-> -			ino =3D parent_stat.ino;
->  		}
->  		p =3D xdr_encode_hyper(p, ino);
->  	}
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index 3bfebde5a1a6..0555a3851dbf 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -9,8 +9,14 @@
+  * ---------------------------
+  * The change attribute (i_version) is mandated by NFSv4 and is mostly for
+  * knfsd, but is also used for other purposes (e.g. IMA). The i_version must
+- * appear different to observers if there was a change to the inode's data or
+- * metadata since it was last queried.
++ * appear larger to observers if there was an explicit change to the inode's
++ * data or metadata since it was last queried.
++ *
++ * An explicit change is one that would ordinarily result in a change to the
++ * inode status change time (aka ctime). i_version must appear to change, even
++ * if the ctime does not (since the whole point is to avoid missing updates due
++ * to timestamp granularity). If POSIX mandates that the ctime must change due
++ * to an operation, then the i_version counter must be incremented as well.
+  *
+  * Observers see the i_version as a 64-bit number that never decreases. If it
+  * remains the same since it was last checked, then nothing has changed in the
+-- 
+2.37.3
 
---=20
-Jeff Layton <jlayton@kernel.org>
