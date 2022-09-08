@@ -2,175 +2,59 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 577F6C6FA8D
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Sep 2022 11:37:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EDE4C54EE9
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Sep 2022 12:29:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230232AbiIHLhO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 8 Sep 2022 07:37:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44634 "EHLO
+        id S231806AbiIHM3c (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 8 Sep 2022 08:29:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59272 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229480AbiIHLhM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2022 07:37:12 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 505807D7A9;
-        Thu,  8 Sep 2022 04:37:11 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 07D9BB820BD;
-        Thu,  8 Sep 2022 11:37:10 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 74312C433D6;
-        Thu,  8 Sep 2022 11:37:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1662637028;
-        bh=nFaIloh72XswjqLypFm7qEwZe0n6G6z7SXTNzBgCMjg=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=T8fy2B8GzUAkzTIPSAwnHwIr6BrIEln2MeWmJAxpt9MOd925gW1B2lQhZYSO4COYu
-         B2O8n2i73wr8nQ+Xl9fXqr5P9fydyAptj/hEQAIeJ51Xa/wC8HJ39zNDiXvXlWzeAH
-         Yda5slhtPSR7aZt2pwMzXhhFhRe5nrfP+UOan5Gou2I7n4cg45cMkkZXhJqXnq7/W9
-         aIDWYDkMNc0c9V1oMyr0Ojcp8Tb3pXVFnJPg/eIRJfpXyzU5wP48Yb60jYJPaVcfwS
-         jtr/wUtGXPernRKRBPdv9HqXzzQo9VLCkAV2iNdNCznGAQGrXT/r2lX5iXbMgopjjo
-         jBbL/T/kwrleQ==
-Message-ID: <c15f58c78e560bb9a597db6d22c317f98f020435.camel@kernel.org>
-Subject: Re: [man-pages RFC PATCH v4] statx, inode: document the new
- STATX_INO_VERSION field
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "neilb@suse.de" <neilb@suse.de>
-Cc:     "zohar@linux.ibm.com" <zohar@linux.ibm.com>,
-        "djwong@kernel.org" <djwong@kernel.org>,
-        "xiubli@redhat.com" <xiubli@redhat.com>,
-        "brauner@kernel.org" <brauner@kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "david@fromorbit.com" <david@fromorbit.com>,
-        "fweimer@redhat.com" <fweimer@redhat.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-man@vger.kernel.org" <linux-man@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "tytso@mit.edu" <tytso@mit.edu>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "jack@suse.cz" <jack@suse.cz>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "lczerner@redhat.com" <lczerner@redhat.com>,
-        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>
-Date:   Thu, 08 Sep 2022 07:37:05 -0400
-In-Reply-To: <9f8b9ee28dcc479ab6fb1105fc12ff190a9b5c48.camel@hammerspace.com>
-References: <20220907111606.18831-1-jlayton@kernel.org>
-                , <166255065346.30452.6121947305075322036@noble.neil.brown.name>
-                , <79aaf122743a295ddab9525d9847ac767a3942aa.camel@kernel.org>
-                , <20220907125211.GB17729@fieldses.org>
-                , <771650a814ab1ff4dc5473d679936b747d9b6cf5.camel@kernel.org>
-                , <8a71986b4fb61cd9b4adc8b4250118cbb19eec58.camel@hammerspace.com>
-         <166259706887.30452.6749778447732126953@noble.neil.brown.name>
-         <9f8b9ee28dcc479ab6fb1105fc12ff190a9b5c48.camel@hammerspace.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
+        with ESMTP id S231837AbiIHM14 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Sep 2022 08:27:56 -0400
+Received: from mail-vs1-xe32.google.com (mail-vs1-xe32.google.com [IPv6:2607:f8b0:4864:20::e32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5DE81ED38A
+        for <linux-nfs@vger.kernel.org>; Thu,  8 Sep 2022 05:27:53 -0700 (PDT)
+Received: by mail-vs1-xe32.google.com with SMTP id o123so18136020vsc.3
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Sep 2022 05:27:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date;
+        bh=i1yUeKSl7+V1QiCXx8cINoGbuohQMkhiH7Z99zqwsr0=;
+        b=QBy5dSW9XpRq3E/7MyVHNIEAj3ccR6SXTOtspl0NSeZNQr++0ngaNdTnlS9l7OtbFW
+         J2ZXVDPeqGdx5zG4ZLGg9VPa9K1dFjVYS6lh7f9XKfMC6aoZcggTTPwwLxUB4S2sCRao
+         TFal3VACZ44orqbHisSr2aAxP/zxFlE91dSD5qwIzuv9bR+YE3ERhk4CEqN8S/8Gu2Oz
+         9HKktVaFCI3sgRBA7imYdhARcRg03qDsUT9cEGDR9Yzd8CwHwKpIGdHPXrS7o3xDiAUL
+         0sdACnHud0qBk8cEQNVmFF0Q1SfREmR1l3q1LU6z38v46BaXJe9Zq6AQE/dio+QF6zd/
+         V/ZA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date;
+        bh=i1yUeKSl7+V1QiCXx8cINoGbuohQMkhiH7Z99zqwsr0=;
+        b=pr2ch7u1X9Bl7iJShryzTfmAjJxlfGprPTDLMJwYeoFHtVugMbtJN/Nb2JHTRz+ekX
+         CwKpzfgpkuG7M05ywI7oDZ1iEpRvKKcLDLWhQKD3i37BRnplBjghh2C2/ID+9BuC9nea
+         cDck44BKDjOCbhOYQGgUVOggbh+6GKWUSyy4O39bQnuChKKzaE3nfLhDENbW4SMg9mab
+         ZjI62XZf0HIu8OIvmvkvqKtYVwPpifNkIn9aTagzErXgKSLmqzgM7XEhz+BaRNMuQ+hV
+         YtOTwsAM4+eOskJlCcLxGq4ahOVAATY4vrpJz20Doi8QWj1POrfY4eXalpMGdT2imPgn
+         wvvA==
+X-Gm-Message-State: ACgBeo0ygWhRuoiAdgI89xR4/aYHNw4XN1GHQJ/jCuEkRgaZ9/YAEyeu
+        soB9uiey/5ZLQn/YDll7KirHxoW6saeBadvKYBN6V0Sg7EKX5g==
+X-Google-Smtp-Source: AA6agR5XBt6lICKafBAm6VyjH7SbLe5noBPvK4xWkLSVBFoaS2nVwC65/PWbDOO1TkXzokSBmbjbkzipXlBrbSf/DQM=
+X-Received: by 2002:a67:ac0b:0:b0:388:6b47:2b1d with SMTP id
+ v11-20020a67ac0b000000b003886b472b1dmr2878087vse.37.1662640072084; Thu, 08
+ Sep 2022 05:27:52 -0700 (PDT)
 MIME-Version: 1.0
+From:   battery dude <jyf007@gmail.com>
+Date:   Thu, 8 Sep 2022 07:27:05 -0500
+Message-ID: <CAMBbDaF2Ni0gMRKNeFTQwgAOPPYy7RLXYwDJyZ1edq=tfATFzw@mail.gmail.com>
+Subject: Does NFS support Linux Capabilities
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2022-09-08 at 00:41 +0000, Trond Myklebust wrote:
-> On Thu, 2022-09-08 at 10:31 +1000, NeilBrown wrote:
-> > On Wed, 07 Sep 2022, Trond Myklebust wrote:
-> > > On Wed, 2022-09-07 at 09:12 -0400, Jeff Layton wrote:
-> > > > On Wed, 2022-09-07 at 08:52 -0400, J. Bruce Fields wrote:
-> > > > > On Wed, Sep 07, 2022 at 08:47:20AM -0400, Jeff Layton wrote:
-> > > > > > On Wed, 2022-09-07 at 21:37 +1000, NeilBrown wrote:
-> > > > > > > On Wed, 07 Sep 2022, Jeff Layton wrote:
-> > > > > > > > +The change to \fIstatx.stx_ino_version\fP is not atomic
-> > > > > > > > with
-> > > > > > > > respect to the
-> > > > > > > > +other changes in the inode. On a write, for instance,
-> > > > > > > > the
-> > > > > > > > i_version it usually
-> > > > > > > > +incremented before the data is copied into the
-> > > > > > > > pagecache.
-> > > > > > > > Therefore it is
-> > > > > > > > +possible to see a new i_version value while a read still
-> > > > > > > > shows the old data.
-> > > > > > >=20
-> > > > > > > Doesn't that make the value useless?
-> > > > > > >=20
-> > > > > >=20
-> > > > > > No, I don't think so. It's only really useful for comparing
-> > > > > > to an
-> > > > > > older
-> > > > > > sample anyway. If you do "statx; read; statx" and the value
-> > > > > > hasn't
-> > > > > > changed, then you know that things are stable.=20
-> > > > >=20
-> > > > > I don't see how that helps.=A0 It's still possible to get:
-> > > > >=20
-> > > > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0reader=A0=A0=A0=
-=A0=A0=A0=A0=A0=A0=A0writer
-> > > > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0------=A0=A0=A0=
-=A0=A0=A0=A0=A0=A0=A0------
-> > > > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0i_version++
-> > > > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0statx
-> > > > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0read
-> > > > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0statx
-> > > > > =A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=
-=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0update page cache
-> > > > >=20
-> > > > > right?
-> > > > >=20
-> > > >=20
-> > > > Yeah, I suppose so -- the statx wouldn't necessitate any locking.
-> > > > In
-> > > > that case, maybe this is useless then other than for testing
-> > > > purposes
-> > > > and userland NFS servers.
-> > > >=20
-> > > > Would it be better to not consume a statx field with this if so?
-> > > > What
-> > > > could we use as an alternate interface? ioctl? Some sort of
-> > > > global
-> > > > virtual xattr? It does need to be something per-inode.
-> > >=20
-> > > I don't see how a non-atomic change attribute is remotely useful
-> > > even
-> > > for NFS.
-> > >=20
-> > > The main problem is not so much the above (although NFS clients are
-> > > vulnerable to that too) but the behaviour w.r.t. directory changes.
-> > >=20
-> > > If the server can't guarantee that file/directory/... creation and
-> > > unlink are atomically recorded with change attribute updates, then
-> > > the
-> > > client has to always assume that the server is lying, and that it
-> > > has
-> > > to revalidate all its caches anyway. Cue endless
-> > > readdir/lookup/getattr
-> > > requests after each and every directory modification in order to
-> > > check
-> > > that some other client didn't also sneak in a change of their own.
-> >=20
-> > NFS re-export doesn't support atomic change attributes on
-> > directories.
-> > Do we see the endless revalidate requests after directory
-> > modification
-> > in that situation?=A0 Just curious.
->=20
-> Why wouldn't NFS re-export be capable of supporting atomic change
-> attributes in those cases, provided that the server does? It seems to
-> me that is just a question of providing the correct information w.r.t.
-> atomicity to knfsd.
->=20
-> ...but yes, a quick glance at nfs4_update_changeattr_locked(), and what
-> happens when !cinfo->atomic should tell you all you need to know.
-
-The main reason we disabled atomic change attribute updates was that
-getattr calls on NFS can be pretty expensive. By setting the NOWCC flag,
-we can avoid those for WCC info, but at the expense of the client having
-to do more revalidation on its own.
---=20
-Jeff Layton <jlayton@kernel.org>
+According to https://access.redhat.com/solutions/2117321 this article,
+I want to ask, how to make NFS support the penetration of Linux
+Capabilities
