@@ -2,266 +2,195 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10ABCC54EE9
-	for <linux-nfs@archiver.kernel.org>; Tue, 13 Sep 2022 19:12:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BC9DC54EE9
+	for <linux-nfs@archiver.kernel.org>; Tue, 13 Sep 2022 20:12:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230518AbiIMTM5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 13 Sep 2022 15:12:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52586 "EHLO
+        id S229551AbiIMUMV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 13 Sep 2022 16:12:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44746 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230408AbiIMTM5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2022 15:12:57 -0400
-Received: from mail-ed1-x52b.google.com (mail-ed1-x52b.google.com [IPv6:2a00:1450:4864:20::52b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C08263F36
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2022 12:12:55 -0700 (PDT)
-Received: by mail-ed1-x52b.google.com with SMTP id m1so18980027edb.7
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2022 12:12:55 -0700 (PDT)
+        with ESMTP id S229510AbiIMUMU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Sep 2022 16:12:20 -0400
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F0889642D3
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Sep 2022 13:12:19 -0700 (PDT)
+Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 28DK1pkf025656;
+        Tue, 13 Sep 2022 20:12:15 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2022-7-12;
+ bh=XZkYlepARouY3rFyH7F7RKkVxFHuG/wUamV0QakzmUo=;
+ b=C58O84GxW60nzuiwiOGbt/dyjgeb8j0ppQwuyLwUpjj+7tcactHbHyxsX5wMR9cUDJ6w
+ hX3Fmf1oWa5aKxchYwfXWt+GPBoqsLbt/gT7fMd4XkYGKpBd/FU9Q03XPcCx7uNJaH4X
+ hMnq+T4ZGLfaqLoYZ1HYDoO4Z8Ndqwek5Sl3EN0M4SpkCTeC+E5khy74WnNzoJV3MDvO
+ lShwV75qlKRVg5vxHMPjuZp6mqEiUc1WkbJu3c1QvxZR2VRuSbVwnkBca0hqTg5Bq/6D
+ n7PvyajOZkfJJ55RONao3efhEhY3H4aog1OzbW7Prv9ZGQrnF/AQJ4W2amOX3oPX4+aE jg== 
+Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3jjxyp89vp-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 13 Sep 2022 20:12:15 +0000
+Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 28DIwhOe013406;
+        Tue, 13 Sep 2022 20:12:14 GMT
+Received: from nam11-bn8-obe.outbound.protection.outlook.com (mail-bn8nam11lp2168.outbound.protection.outlook.com [104.47.58.168])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3jjym3sxts-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 13 Sep 2022 20:12:14 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=U3rlWQr64iUTbxpVqn7tcTV8tR46js+Txv7YwQrdfYGGiK80uuix9FqbB+EHEN3MS0D3cRUoEtGUUGSRUFKDP+ZKn8xfW2HQhgFQwNqhuSNdM2PF4Rvqa2K7o6sFWUNrqdgUFzN6kH5LnSAm/HPAF7An9tydXIyiyoNFsICx1taVTfKJa/Toxcd/rur5olFk2VyRLTHc/WltxB3t34IsM/nWX8OozjOUQrYcLFq/Zv/YiaIEvdC7M8TvJgep/0EK9CaZOPE/S3CeZyQEzrXMA+LrLDAb0wYTRLn8eKAJLeEXWqgCW57Mmjh4TeiQwsfws3nbtsheDrVpRcUN3ysL/g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=XZkYlepARouY3rFyH7F7RKkVxFHuG/wUamV0QakzmUo=;
+ b=DCkJyk6roBD1Rs3Lm3rdTmqT+iSPkKGCXRDe/dyQvP0iH8GBdPCqKLSi1dd/l/PXGkCVxBdIImZ9Y46CzdOeWFXNr/qAWAO8NY0R7fHMHdH5bJR++Uk/ZrEKkbZhmxyo6I57vulUuYpY80j8KRjVVpUXdkHd9twdzjHB4bZR3pEoFE8JeJZhTqfB08PuEy1RQaA4wdsFD68Cwv/2Nd92YMlJ0e6pL7/Uesr+r1t5/FUYhNvrpLIkqzQgI+iPf5EPU7rIWLMzJ7YitEl7zD25cMhxUI/U7MzjllyIjzWcKV3EBHJ9pPECt5SWTtL07w7GZQyfe7cIYAhvzt9o9+9Y1w==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :references:in-reply-to:mime-version:from:to:cc:subject:date;
-        bh=cifjMWu40U+aheJTofCk0sZ2GPleCK2AUlpVDHejNg0=;
-        b=fAj1Uc1BaaoUgaaWKzp5lXdr3AcKiptQ6V0W8Npo3mBrlGSUNmKY41TUBnlG8TjoTa
-         1i845kt4YRQCqnE7thOFqLk/W66sicI0xZnrCIDBvfv1BPNHND3t9izx9KvCuCkJzLKC
-         33FotUIjzJFfEOL3MvWY2yjeDQlcB8c7bdxo5SErjumcYTOZcOxrc8pBgqRIR1x6wQA3
-         dELItRiF5rbpmCrIKgeGVVx3Fp5bpiM5Wi/TwI4b0+WXCa/VfOamoKWGAR6fpevpVIiw
-         82d1yMKRt5bil24q0j4PsvboW2J0DD0Mtu1XaYGZ2F0ca4h2v8O0Yl7LEeGPziIQ3apa
-         5dhQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :references:in-reply-to:mime-version:x-gm-message-state:from:to:cc
-         :subject:date;
-        bh=cifjMWu40U+aheJTofCk0sZ2GPleCK2AUlpVDHejNg0=;
-        b=mCP6sRldGHX1tuQ5KwQ8na8hyDew61NwbstrXzxuOFq9XLfbC6SAM9/O2xSFlu03oa
-         So+Lt3LPVs4+aeOstiPYtWPxWFQWpSIhToxNwtmlvO0Cam6WtIKoKq2aGyFtrzwc21CT
-         6sqefMCTgq+IXMmJXrSuQ0I5aRyW+j7QljBWCxN3x2XOxF13FZVW3yuP6PPvbWsqd0Y2
-         3tvCfiRDXAjxAD+NkfBJklWHSt7MUe/GFnFi3T467SF/4sfmtJXSxb6Ajz3+sie7UD54
-         4SZQCa+NZvGYwgiexF3YplUcRLvd4Au2MspVccuOVCSh9imWrmXjcog4QxtIXlznqfqT
-         hQRw==
-X-Gm-Message-State: ACgBeo1qIEkHewr0p13vAp6JmMa4zE87/MrgPdG9b9LnGl0wAvq7M/ol
-        lNimIBSDsd6Uh8fS7BfC6TQlq9RohgCtqPUU+D8l8Nqq
-X-Google-Smtp-Source: AA6agR540FWLQf6K2TijgShpVF18bD2u5enTq22iiCKx+fryHIqYZzwGcVVJxEcZApzu+dm8p54CgwVZT64eYAKs/EE=
-X-Received: by 2002:a05:6402:4305:b0:451:7b78:f2e0 with SMTP id
- m5-20020a056402430500b004517b78f2e0mr12104733edc.342.1663096373717; Tue, 13
- Sep 2022 12:12:53 -0700 (PDT)
-MIME-Version: 1.0
-Received: by 2002:a17:906:4ece:b0:773:db39:8961 with HTTP; Tue, 13 Sep 2022
- 12:12:53 -0700 (PDT)
-In-Reply-To: <f85356b31470779736f60500b0a89561db9cf8de.camel@kernel.org>
-References: <CAALSs0ZuC2FLuk3PsiXKCc+3vZoAz5UWPaX+D7WV8JcpP8_Ueg@mail.gmail.com>
- <8201ede6bcb5d6ab77bb4cce08f3b6c6776a43af.camel@kernel.org>
- <CAALSs0bxqODBzN0V67ExMCnOJFi_+9vZ0_zK1DTGOomb+H-D7Q@mail.gmail.com> <f85356b31470779736f60500b0a89561db9cf8de.camel@kernel.org>
-From:   Isak <netamego@gmail.com>
-Date:   Tue, 13 Sep 2022 21:12:53 +0200
-Message-ID: <CAALSs0bq2hnU45XwXQxY07pxDAy=eSWCMGrAZgD9+9KQ8qyi3w@mail.gmail.com>
-Subject: Re: nfs client strange behavior with cpuwait and memory writeback
-To:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=XZkYlepARouY3rFyH7F7RKkVxFHuG/wUamV0QakzmUo=;
+ b=S+pipNW3pKDLoAc915qlyoB5FIr8FaUH0f/5Wupl4yQvuYkYCZLJoKZ2fXRLz5Gx9T0odKOQ7sAzHKQ36PJnYprRXdsiOd2OGFDX9p1rFiOXh9dlFEDRFf282K5/XwAc69F3mQ53X0LLj2aeRCDMu3RwcI9YH7W8uedzEycQJ+Q=
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
+ by BL3PR10MB6235.namprd10.prod.outlook.com (2603:10b6:208:38e::11) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5612.22; Tue, 13 Sep
+ 2022 20:12:12 +0000
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::25d6:da15:34d:92fa]) by BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::25d6:da15:34d:92fa%4]) with mapi id 15.20.5612.022; Tue, 13 Sep 2022
+ 20:12:12 +0000
+From:   Chuck Lever III <chuck.lever@oracle.com>
+To:     Anna Schumaker <anna@kernel.org>
+CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 1/2] NFSD: Return nfserr_serverfault if splice_ok but
+ buf->pages have data
+Thread-Topic: [PATCH v4 1/2] NFSD: Return nfserr_serverfault if splice_ok but
+ buf->pages have data
+Thread-Index: AQHYx5rr/lc8S5bVRUSZRf9utUmxSK3dywCA
+Date:   Tue, 13 Sep 2022 20:12:12 +0000
+Message-ID: <DE16B82B-67D9-49BA-B797-AC21AC8E7CE4@oracle.com>
+References: <20220913180151.1928363-1-anna@kernel.org>
+ <20220913180151.1928363-2-anna@kernel.org>
+In-Reply-To: <20220913180151.1928363-2-anna@kernel.org>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-mailer: Apple Mail (2.3696.120.41.1.1)
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|BL3PR10MB6235:EE_
+x-ms-office365-filtering-correlation-id: a6d80456-9b68-452f-203a-08da95c43ed2
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: +AZ+fO/Uwhw9Wkv5uMufcs5GYTl3L5ozPYk5PwWnzubXel23jHhK/Xbpvzv9inaNURdu1xgwUH70M0cBS5dd4/6lifvQagfpcSUPL/ExNyXpytP5lyraM1Qr/aAxPZhpLIDS2ak5Dn0CJzPpUee6CQWMWso+jemmudUsBrmL6yDNn2h3ieV+pjLIO4UqM7H+e1WaP3WEQiqxC1gqDn+ljePuIpFhuoymqkYB5DWIL3nqY27x7qpA19uXOLNzlh3z7fie5xvwg9B4xJVh1e5uInq5QAsyhmsSCwCKmZPQt3y+YAXYrezKegLOPq5wFgOyC6fE9Ej11amsR5n4rp2BF0UG7YldlRimPkOUVktUlFncj6h77NT8yGSloxN+CFSda8nZxW7IkunGyyVPtFbFra/JTP2GIw2egNTBaeKjKaHL6ein1J03P+gJ+9X4spxG45wgVVKOZOmS/NnBRhsvHm9GmXa3oeOEPtAdO+0wzbMZ1gm66D0aNbMc9MZZCkybnlmIGhcgpXaSKl+df1XYm6O4QY8GoY2vo6nxfdIXjG6cg2JOqPbrHxTwovqlaCB8FMe7WTdc4pgiAA+nLu4XqqjOJN+W4HgLe3nugdP3KLKJKn0UMZ6puyHIFEFnscEOCtvSF3YkKsTA2XLG6FqO2GnBVQ/t7y3Kd5H9y34Cwnif1Sz2WlNVxyOed27tLfS94dWiJoOBC6i1DJK+fD7SnQa+8jBalpeZqprTfL234ukZ+K4r4XD+qH3lkPny98p5hy027macsVwPm/tMph+NEWKHqw8zu2QhdLIJezaXjfU=
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230022)(376002)(346002)(396003)(136003)(39860400002)(366004)(451199015)(478600001)(5660300002)(8936002)(36756003)(2906002)(122000001)(71200400001)(86362001)(33656002)(6486002)(38100700002)(316002)(26005)(83380400001)(186003)(53546011)(38070700005)(6506007)(6512007)(41300700001)(2616005)(6916009)(4326008)(66476007)(66946007)(66556008)(66446008)(91956017)(64756008)(8676002)(76116006)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?dixP5WGMXKj9jG6CzTPhYyL0r5JjedTiMkonKubQB4owe1x2WU2EQR6JCFag?=
+ =?us-ascii?Q?c5/HZWy4+RbwdhTf03GolGQ+PddS+ZrR6NYtTzljfGHNZs7DYWBhZYZ5kkQu?=
+ =?us-ascii?Q?t/WYCAPl6qLa5xjcQk5OACnG+bpOkG0zaZrDC5rrNpAkF68H+9uSgHNnP1kD?=
+ =?us-ascii?Q?bPdTZJXvGv53OZT0WSbfZDom+UzvzoHmHuTfvaursVm4gfcuD3kTALkRt2iE?=
+ =?us-ascii?Q?NMLvKtSq8vM5IUwd4bcn2qaGnikuvgt9uE8wPVJ0RGo2SkszgzO2g4nBEZ5M?=
+ =?us-ascii?Q?kiQh2jsRYNZKHiDFUVpK9KsVUcVhj/CnKsHRpECR6yWXfxhHObROMbyYLenA?=
+ =?us-ascii?Q?DXScLoaEeYHNPHw5pLIGTRCxGlDJwHu73OAjiyaWo1GZ43XqBZ/CLtg12ze3?=
+ =?us-ascii?Q?NjizYyIOudqDEw8aRwM84WTBetuvLlWxWvFXeFf08EKuLUkLJRNSqNvHR+Sn?=
+ =?us-ascii?Q?kmA55QVM8kMFYDP4Fy7SlCpmRJtxusQeERWc4zOADjPrCZ6p5sTUKgOmQ+aQ?=
+ =?us-ascii?Q?TC/WAXcjLjZAR3auAN0GCr9hmCs9SuDc0rbofJ8FNWKb7FJZAR2wzRFXYXgZ?=
+ =?us-ascii?Q?tqvs/0zy4nghuX3J47SLe2FlIVlF483mGd0v5qOpzsl4YZL8uuiBncwkB0BD?=
+ =?us-ascii?Q?XlKGuvybWDGVrR0WFEiPG+3bsJOOpyfG/RSB5aP4X5Qyk4nbyAEjVQVKDGXL?=
+ =?us-ascii?Q?melg4mECSs781UwlXdSKOz0+FfuezOZa/B7F1Z7m0+SNvg1Zjhz0e7zkLPWT?=
+ =?us-ascii?Q?PZQ/J/0AqeJUczPreY+fK5J//baFvLP6t0cTu7jJDN/QDWUj+CMtM2ocpV4a?=
+ =?us-ascii?Q?tC1dFnSFN8XKfxRJncqRgWXDIN5YS9k3vG9YykzZE7dTnrQD7pZk1+tIeNz3?=
+ =?us-ascii?Q?TJm/MMCHhzWtoAJqE9rNJyesSOQ43rdnD+2RDLvubpgqkcbfT6FN1p7roiTo?=
+ =?us-ascii?Q?WVDkogKnVOi0dtnhq1eXbih5bioAY6djjHnVr2rp2E4glGMBnGWhCn2gXCV3?=
+ =?us-ascii?Q?39kG17Ujx0/E3jnTEndrJ3X9ttwHWB/nG66eu4sDqkZV2mw8og8ZEfaOeQqQ?=
+ =?us-ascii?Q?G2FoZtFti7aV8p1byAUbHeDuY4zlgqFgJ82DCOdrA2DM+cBn3U23HUZsCoIw?=
+ =?us-ascii?Q?//BYZda0mXZ6JDl+0OvDauPNDXR/O8uuHt4GrLtrCgcfOH9cAAC4+/nIgCcD?=
+ =?us-ascii?Q?bfaztWP253JJYkYOCFUXrufoLQl5KMAog2B8LqxgNf+mJJHcLC8ChVqaBV0f?=
+ =?us-ascii?Q?lPBcB0S9oQohYFI7v8EyAT/e/D5OyoPjaqFiQZ85Moz4dB3poLTT14fCXAWa?=
+ =?us-ascii?Q?HaWQcIpRlyn973u9hrKese1a419KFeGFJn+aCWzFxiiRuPPuyG74dinkFA6W?=
+ =?us-ascii?Q?o4y1tqHsHpLCRG+jqTvO4NVVF7zcjUKDIz4ywjKX+bBU46Owr0X5RqEgPHjF?=
+ =?us-ascii?Q?Wn1tadK16UF+IJmIfYsoq+qTTgPZbQzT1S/dh2yHIqNXsfKNv9sOIWy/rYuH?=
+ =?us-ascii?Q?tuGuhU3tFIrd7puexLEge5wIO0zftdYKDMMUzuPyq+aX3IxJnuewQH5LNdjE?=
+ =?us-ascii?Q?DAZoZTU5RepNGD6J1tv/hGmyhUCiqRfl9sixxew6rgj7IYUtbHYwwjv+Mo85?=
+ =?us-ascii?Q?zg=3D=3D?=
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <32900A8F10F4D64082739D4DC724089C@namprd10.prod.outlook.com>
 Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: a6d80456-9b68-452f-203a-08da95c43ed2
+X-MS-Exchange-CrossTenant-originalarrivaltime: 13 Sep 2022 20:12:12.6277
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: v/wW4VtHDLNwMv6LLLtR3D1hD7GkjWpP24U8a0+dcX96iEovvtRF/h6ea0mLeo9+S+gvBaDKYL1Up5sQWZ2ISw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL3PR10MB6235
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.528,FMLib:17.11.122.1
+ definitions=2022-09-13_09,2022-09-13_01,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 phishscore=0 bulkscore=0
+ mlxlogscore=999 mlxscore=0 suspectscore=0 malwarescore=0 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2208220000
+ definitions=main-2209130093
+X-Proofpoint-ORIG-GUID: OEReD4l6BzJ-4cupR0gO_hX-zH4dkpSP
+X-Proofpoint-GUID: OEReD4l6BzJ-4cupR0gO_hX-zH4dkpSP
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thank you very much Jeff. Understood. That explains why I have high cpu
-iowait and high latency (nfsiostat) when launching a dd to an NFS
-filesystem without the sync option. Surely my vm.dirty tunables are wrong
-for the workload. Maybe more RAM is needed.
-
-But what about dd to NFS filesystem mounted with Sync (Test 2)?. As I
-understood (from your free lessons) VM.dirty tunables don't have much sense
-in that scenario because a fsync is done after 1MB write (in my case). I
-have high cpuwait and low NFS latency (nfsiostat).How is This posible?This
-is extruding my brain. If dd is launched with oflag=3Ddirect in the same NF=
-S
-filesystem (mounted with Sync), page cache is not used and there isn't
-cpuwait.
 
 
-Thank you very much.
+> On Sep 13, 2022, at 11:01 AM, Anna Schumaker <anna@kernel.org> wrote:
+>=20
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>=20
+> This was discussed with Chuck as part of this patch set. Returning
+> nfserr_resource was decided to not be the best error message here, and
+> he suggested changing to nfserr_serverfault instead.
+>=20
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+> fs/nfsd/nfs4xdr.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
 
-2022-09-13 13:51 GMT+02:00, Jeff Layton <jlayton@kernel.org>:
-> On Mon, 2022-09-12 at 21:00 +0200, Isak wrote:
->> El lun, 12 sept 2022 a las 12:40, Jeff Layton (<jlayton@kernel.org>)
->> escribi=C3=B3:
->> >
->> > On Sun, 2022-09-11 at 20:58 +0200, Isak wrote:
->> > > Hi everybody!!!
->> > >
->> > > I am very happy writing my first email to one of the Linux mailing
->> > > list.
->> > >
->> > > I have read the faq and i know this mailing list is not a user help
->> > > desk but i have strange behaviour with memory write back and NFS.
->> > > Maybe someone can help me. I am so sorry if this is not the right
->> > > "forum".
->> > >
->> > > I did three simple tests writing to the same NFS filesystem and the
->> > > behavior of the cpu and memory is extruding my brain.
->> > >
->> > > The Environment:
->> > >
->> > > - Linux RedHat 8.6, 2 vCPU (VMWare VM) and 8 GB RAM (but same
->> > > behavior
->> > > with Red Hat 7.9)
->> > >
->> > > - One nfs filesystem mounted with sync and without sync
->> > >
->> > > 1x.1x.2xx.1xx:/test_fs on /mnt/test_fs_with_sync type nfs
->> > > (rw,relatime,sync,vers=3D3,rsize=3D1048576,wsize=3D1048576,namlen=3D=
-255,hard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,mountaddr=3D1x.1x.2x=
-x.1xx,mountvers=3D3,mountport=3D2050,mountproto=3Dudp,local_lock=3Dnone,add=
-r=3D1x.1x.2xx.1xx)
->> > >
->> > > 1x.1x.2xx.1xx:/test_fs on /mnt/test_fs_without_sync type nfs
->> > > (rw,relatime,vers=3D3,rsize=3D1048576,wsize=3D1048576,namlen=3D255,h=
-ard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,mountaddr=3D1x.1x.2xx.1xx=
-,mountvers=3D3,mountport=3D2050,mountproto=3Dudp,local_lock=3Dnone,addr=3D1=
-x.1x.2xx.1xx:)
->> > >
->> > > - Link between nfs client and nfs server is a 10Gb (Fiber) and iperf=
-3
->> > > data show the link works at maximum speed. No problems here. I know
->> > > there are nfs options like nconnect to improve performance but I am
->> > > interested in linux kernel internals.
->> > >
->> > > The test:
->> > >
->> > > 1.- dd in /mnt/test_fs_without_sync
->> > >
->> > > dd if=3D/dev/zero of=3Dtest.out bs=3D1M count=3D5000
->> > > 5000+0 records in
->> > > 5000+0 records out
->> > > 5242880000 bytes (5.2 GB, 4.9 GiB) copied, 21.4122 s, 245 MB/s
->> > >
->> > > * High cpuwait
->> > > * High nfs latency
->> > > * Writeback in use
->> > >
->> > > Evidences:
->> > > https://zerobin.net/?43f9bea1953ed7aa#TaUk+K0GDhxjPq1EgJ2aAHgEyhntQ0=
-NQzeFF51d9qI0=3D
->> > >
->> > > https://i.stack.imgur.com/pTong.png
->> > >
->> > >
->> > >
->> > > 2.- dd in /mnt/test_fs_with_sync
->> > >
->> > > dd if=3D/dev/zero of=3Dtest.out bs=3D1M count=3D5000
->> > > 5000+0 records in
->> > > 5000+0 records out
->> > > 5242880000 bytes (5.2 GB, 4.9 GiB) copied, 35.6462 s, 147 MB/s
->> > >
->> > > * High cpuwait
->> > > * Low nfs latency
->> > > * No writeback
->> > >
->> > > Evidences
->> > > https://zerobin.net/?0ce52c5c5d946d7a#ZeyjHFIp7B+K+65DX2RzEGlp+Oq9rC=
-idAKL8RpKpDJ8=3D
->> > >
->> > > https://i.stack.imgur.com/Pf1xS.png
->> > >
->> > >
->> > >
->> > > 3.- dd in /mnt/test_fs_with_sync and oflag=3Ddirect
->> > >
->> > > dd if=3D/dev/zero of=3Dtest.out bs=3D1M oflag=3Ddirect count=3D5000
->> > > 5000+0 records in
->> > > 5000+0 records out
->> > > 5242880000 bytes (5.2 GB, 4.9 GiB) copied, 34.6491 s, 151 MB/s
->> > >
->> > > * Low cpuwait
->> > > * Low nfs latency
->> > > * No writeback
->> > >
->> > > Evidences:
->> > > https://zerobin.net/?03c4aa040a7a5323#bScEK36+Sdcz18VwKnBXNbOsi/qFt/=
-O+qFyNj5FUs8k=3D
->> > >
->> > > https://i.stack.imgur.com/Qs6y5.png
->> > >
->> > >
->> > >
->> > >
->> > > The questions:
->> > >
->> > > I know write back is an old issue in linux and seems is the problem
->> > > here.I played with
->> > > vm.dirty_background_bytes/vm.dirty_background_ratio
->> > > and vm.dirty_background_ratio/vm.dirty_background_ratio (i know only
->> > > one is valid) but whatever value put in this tunables I always have
->> > > iowait (except from dd with oflag=3Ddirect)
->> > >
->> > > - In test number 2. How is it possible that it has no nfs latency bu=
-t
->> > > has a high cpu wait?
->> > >
->> > > - In test number 2. How is it possible that have almost the same cod=
-e
->> > > path than test number 1? Test number 2 use a nfs filesystem mounted
->> > > with sync option but seems to use pagecache codepath (see flame
->> > > graph)
->> > >
->> >
->> > "sync" just means that the write codepaths do an implicit fsync of the
->> > written range after every write. The data still goes through the
->> > pagecache in that case. It just does a (synchronous) flush of the data
->> > to the server and a commit after every 1M (in your case).
->>
->> Thank you very much Jeff. Understood. My mistake. I thought that, with
->> the nfs sync option, page cache was actually not used. What about test
->> 2 (with Sync) regarding to cpuwait? Seems like a CPU accounting
->> "problem"? I have high cpuwait and low NFS latency (nfsiostat). If dd
->> is launched with oflag=3Ddirect in the same NFS filesystem (mounted with
->> Sync), page cache is not used and there isn't cpuwait.
->>
->> >
->> > >
->> > > - In test number 1. Why isn't there a change in cpuwait behavior whe=
-n
->> > > vm.dirty tunables are changed? (i have tested a lot of combinations)
->> > >
->> > >
->> >
->> > Depends on which tunables you're twiddling, but you have 8G of RAM and
->> > are writing a 5G file. All of that should fit in the pagecache without
->> > needing to flush anything before all the writes are done. I imagine th=
-e
->> > vm.dirty tunables don't really come into play in these tests, other
->> > than
->> > maybe the background ones, and those shouldn't really affect your
->> > buffered write throughput.
->>
->> My understanding (surely wrong) about page cache in Linux is that we
->> actually have two caches. One is "read cache" and the other is "write
->> cache" aka dirty pages so write cache should not exceed the parameter
->> vm.dirty_bytes or vm.dirty_ratio so I don't think 5gb file in 8gb RAM
->> with low vm.dirty_ratio does much buffering.
->>
->
-> Not exactly.
->
-> The VM has two sets of thresholds: dirty_bytes and dirty_ratio, along
-> with "background" versions of the same tunables. Most distros these days
-> don't work the "bytes" values, but work with the "ratio" ones, primarily
-> because memory sizes can vary wildly and that gives better results.
->
-> The dirty_ratio indicates the point where the client starts forcibly
-> flushing pages in order to satisfy new allocation requests. If you want
-> to do a write, you have to allocate pages to hold the data and that will
-> block until the ratio of dirty memory to clean is below the threshold.
->
-> The dirty_background_ratio indicates the point where the VM starts more
-> aggressively flushing data in the background, but that doesn't usually
-> affect userland activity. Your allocations won't block when you exceed
-> the background ratio, for instance so you can just keep writing and
-> filling memory.
->
-> Ideally, you never want to hit the dirty_ratio, and if things are tuned
-> well, you never will as long as background writeback is keeping up with
-> the rate of page dirtying.
-> --
-> Jeff Layton <jlayton@kernel.org>
->
+I've applied this one for nfsd for-next. Thanks!
+
+As I mentioned, 2/2 looks OK, and I'll apply it to my private
+tree for testing while we work out why it's a little slower.
+
+
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 1e9690a061ec..01dd73ed5720 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3994,7 +3994,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, _=
+_be32 nfserr,
+> 	}
+> 	if (resp->xdr->buf->page_len && splice_ok) {
+> 		WARN_ON_ONCE(1);
+> -		return nfserr_resource;
+> +		return nfserr_serverfault;
+
+Odd, I couldn't find a definition for nfserr_serverfault when
+I asked for this patch last week, but this one-liner seems to
+compile correctly. Oh well!
+
+
+> 	}
+> 	xdr_commit_encode(xdr);
+>=20
+> --=20
+> 2.37.3
+>=20
+
+--
+Chuck Lever
+
+
+
