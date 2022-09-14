@@ -2,95 +2,122 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06D70C6FA82
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Sep 2022 16:43:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81DAFC6FA82
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Sep 2022 17:31:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229941AbiINQnJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Sep 2022 12:43:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40684 "EHLO
+        id S229570AbiINRbX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Sep 2022 13:31:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55890 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229953AbiINQnD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2022 12:43:03 -0400
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9DF956E8B5;
-        Wed, 14 Sep 2022 09:43:00 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
-        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=drGd84Y88D87DtABnnd7yh6bhIO3nFxVGZfiNKSay/w=; b=NJ6SAfFns58rMbVH+azyEAlIBe
-        P6n1bn9OXiF4fmUEUpqXGV/bE106qYmZbX/MwFVbHxtW6ssgk2PCE8UfNTQg1aWm+yynxcJ9j7g08
-        8/tgQ5onCzhF8MKSQaEQ6zA3aarCv+3D7yqjX8P1okh4bYNOq1WFHE1a4IQDf5KHdx5u5zA+Wymlc
-        S+7i9ko/VpxQnZRAsQ62an08GtRr8DVSaNW3j49A/qLEWP1M+neWYX1OVsjvTIT7LfH477m66cmRa
-        Nyt7CbCvmVkXs5Lmdv1xX0vhwGMMyYK/hJL+vP9XhDhzkKBGXkATkAHo1w7IXkb8b+clGQVzjQxRV
-        f5T3UCDA==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
-        id 1oYVTE-00GF4L-1R;
-        Wed, 14 Sep 2022 16:42:40 +0000
-Date:   Wed, 14 Sep 2022 17:42:40 +0100
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     Jan Kara <jack@suse.cz>
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        "Darrick J . Wong" <djwong@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        David Hildenbrand <david@redhat.com>,
-        Logan Gunthorpe <logang@deltatee.com>,
-        linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2 4/7] iov_iter: new iov_iter_pin_pages*() routines
-Message-ID: <YyIEgD8ksSZTsUdJ@ZenIV>
-References: <20220831041843.973026-1-jhubbard@nvidia.com>
- <20220831041843.973026-5-jhubbard@nvidia.com>
- <YxbtF1O8+kXhTNaj@infradead.org>
- <103fe662-3dc8-35cb-1a68-dda8af95c518@nvidia.com>
- <Yxb7YQWgjHkZet4u@infradead.org>
- <20220906102106.q23ovgyjyrsnbhkp@quack3>
- <YxhaJktqtHw3QTSG@infradead.org>
- <YyFPtTtxYozCuXvu@ZenIV>
- <20220914145233.cyeljaku4egeu4x2@quack3>
+        with ESMTP id S229733AbiINRbW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2022 13:31:22 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8A28082D24
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2022 10:31:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1663176679;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=oP3Gc16ir0eGZ+1EzBVXgI9LuLQTzv2qXRYSOMhHhjY=;
+        b=aWOQSdwuvhFAIly/JPbos9xJUrcdulQkjCAuxsTPS2Yi8erzhD3kiNyOdocEtGw5A11j2U
+        Y7KzQfKaLeEcfFfYdsT2DRCknitezh+dworMdC1wowmSc/6uKaIAyHWszzCGioS4BCLMTN
+        s4ze+EJTP/tcv5MRMRC9b3TE5hAbnFs=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-539--mHj1njSMKyndaCWPWvImQ-1; Wed, 14 Sep 2022 13:31:18 -0400
+X-MC-Unique: -mHj1njSMKyndaCWPWvImQ-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 4FD133C10149
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2022 17:31:18 +0000 (UTC)
+Received: from plambri-t490s.homenet.telecomitalia.it (unknown [10.33.36.13])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A4D6440C6EC2
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2022 17:31:17 +0000 (UTC)
+From:   Pierguido Lambri <plambri@redhat.com>
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 2/2] nfs4_setfacl: update man page about new option index
+Date:   Wed, 14 Sep 2022 18:31:15 +0100
+Message-Id: <20220914173115.296058-2-plambri@redhat.com>
+In-Reply-To: <20220914173115.296058-1-plambri@redhat.com>
+References: <20220914173115.296058-1-plambri@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220914145233.cyeljaku4egeu4x2@quack3>
-Sender: Al Viro <viro@ftp.linux.org.uk>
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.2
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Sep 14, 2022 at 04:52:33PM +0200, Jan Kara wrote:
-> > =================================================================================
-> > CASE 5: Pinning in order to write to the data within the page
-> > -------------------------------------------------------------
-> > Even though neither DMA nor Direct IO is involved, just a simple case of "pin,
-> > write to a page's data, unpin" can cause a problem. Case 5 may be considered a
-> > superset of Case 1, plus Case 2, plus anything that invokes that pattern. In
-> > other words, if the code is neither Case 1 nor Case 2, it may still require
-> > FOLL_PIN, for patterns like this:
-> > 
-> > Correct (uses FOLL_PIN calls):
-> >     pin_user_pages()
-> >     write to the data within the pages
-> >     unpin_user_pages()
-> > 
-> > INCORRECT (uses FOLL_GET calls):
-> >     get_user_pages()
-> >     write to the data within the pages
-> >     put_page()
-> > =================================================================================
-> 
-> Yes, that was my point.
+The man page now reflects the newly added syntax to handle indexes.
 
-The thing is, at which point do we pin those pages?  pin_user_pages() works by
-userland address; by the time we get to any of those we have struct page
-references and no idea whether they are still mapped anywhere.
+Signed-off-by: Pierguido Lambri <plambri@redhat.com>
+---
+ man/man1/nfs4_setfacl.1 | 26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
 
-How would that work?  What protects the area where you want to avoid running
-into pinned pages from previously acceptable page getting pinned?  If "they
-must have been successfully unmapped" is a part of what you are planning, we
-really do have a problem...
+diff --git a/man/man1/nfs4_setfacl.1 b/man/man1/nfs4_setfacl.1
+index 47ab517..61699ae 100644
+--- a/man/man1/nfs4_setfacl.1
++++ b/man/man1/nfs4_setfacl.1
+@@ -30,27 +30,21 @@ Refer to the
+ manpage for information about NFSv4 ACL terminology and syntax.
+ .SS COMMANDS
+ .TP
+-.BR "-a " "\fIacl_spec\fP [\fIindex\fP]"
++.BR "-a " "\fIacl_spec\fP"
+ .RI "add the ACEs from " acl_spec " to " file "'s ACL."
+-ACEs are inserted starting at the
+-.IR index th
+-position (DEFAULT: 1) of
++ACEs are inserted starting at the default position 1 of
+ .IR file "'s ACL."
+ .\".ns
+ .TP
+-.BR "-A " "\fIacl_file\fP [\fIindex\fP]"
++.BR "-A " "\fIacl_file\fP "
+ .RI "add the ACEs from the acl_spec in " acl_file " to " file "'s ACL."
+-ACEs are inserted starting at the
+-.IR index th
+-position (DEFAULT: 1) of
++ACEs are inserted starting at the default position 1 of
+ .IR file "'s ACL."
+ .TP
+-.BI "-x " "acl_spec \fR|\fP index"
++.BI "-x " "acl_spec \fR"
+ delete ACEs matched from
+ .I acl_spec
+-- or delete the 
+-.IR index th
+-ACE - from 
++from
+ .IR file 's
+ ACL.  Note that the ordering of the ACEs in
+ .I acl_spec
+@@ -61,6 +55,10 @@ delete ACEs matched from the acl_spec in
+ .IR acl_file " from " file "'s ACL."
+ Note that the ordering of the ACEs in the acl_spec does not matter.
+ .TP
++.BI "-i " "\fIindex\fP"
++.RI "ACEs are inserted or deleted starting at the " index "th position (DEFAULT: 1) of file's ACL.
++It can be used only with the add or delete action.
++.TP
+ .BI "-s " acl_spec
+ .RI "set " file "'s ACL to " acl_spec .
+ .TP
+@@ -189,6 +187,10 @@ add the same ACE as above, but using aliases:
+ .br
+ 	$ nfs4_setfacl -a A::alice@nfsdomain.org:RX foo
+ .IP - 2
++add the same ACE as above, at index 2:
++.br
++	$ nfs4_setfacl -i 2 -a A::alice@nfsdomain.org:RX foo
++.IP - 2
+ edit existing ACL in a text editor and set modified ACL on clean save/exit:
+ .br
+ 	$ nfs4_setfacl -e foo
+-- 
+2.37.3
+
