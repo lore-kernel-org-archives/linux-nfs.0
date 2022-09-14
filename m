@@ -2,117 +2,95 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97E99C6FA82
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Sep 2022 15:54:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06D70C6FA82
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Sep 2022 16:43:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229598AbiINPyo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Sep 2022 11:54:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51714 "EHLO
+        id S229941AbiINQnJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Sep 2022 12:43:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40684 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230259AbiINPyl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2022 11:54:41 -0400
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F1CE764A
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2022 08:54:38 -0700 (PDT)
-Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 28EFkNqS028304;
-        Wed, 14 Sep 2022 15:54:34 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id; s=corp-2022-7-12;
- bh=8SBa3dQJB4neXUGzhpVC+X9w2Q5iqRv4/+L0MdigOlI=;
- b=fQ2gZSnanmHz+5YvR5hsSeMAYHJNrVebHkARszDHLiVfS9mH5SWQ5B4364Di/66ddlHo
- rCfXYkCCWLxFzwzQNIILvC4ws5K2dxeKMoX4Krl507VVSOy+UiQxcwFZAxS2ypeDugBx
- 7R4fUoVRujmVIr9AyEiHISaPJ2KPTmY+dXcboxnELDnvBGphN9iP+ihLhavoSHwxlVly
- N3+jMZRfsbArsr0WayifIovepKT6dkfRwaC87av2+TnWuxP6ngu+QdqGnXdc3A72h0iT
- baIeZfPzgPw4SI3zjJCiCskYXv2BHMIfflKi0MPyrdKmFUjQMgbYbTbQWTCIir1JG+71 OA== 
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3jjxyf2pvv-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 14 Sep 2022 15:54:34 +0000
-Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 28EDZbB2035419;
-        Wed, 14 Sep 2022 15:54:33 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3jjykyt0xr-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 14 Sep 2022 15:54:33 +0000
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 28EFp3ZE025970;
-        Wed, 14 Sep 2022 15:54:32 GMT
-Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 3jjykyt0xj-1;
-        Wed, 14 Sep 2022 15:54:32 +0000
-From:   Dai Ngo <dai.ngo@oracle.com>
-To:     chuck.lever@oracle.com, jlayton@kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v7 0/2] NFSD: memory shrinker for NFSv4 clients
-Date:   Wed, 14 Sep 2022 08:54:24 -0700
-Message-Id: <1663170866-21524-1-git-send-email-dai.ngo@oracle.com>
-X-Mailer: git-send-email 1.8.3.1
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.528,FMLib:17.11.122.1
- definitions=2022-09-14_07,2022-09-14_04,2022-06-22_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 spamscore=0 adultscore=0
- malwarescore=0 suspectscore=0 bulkscore=0 mlxlogscore=999 phishscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2208220000
- definitions=main-2209140077
-X-Proofpoint-GUID: bkIYLy3BuNJQDF_ObNFH8_HzHcvtLgBh
-X-Proofpoint-ORIG-GUID: bkIYLy3BuNJQDF_ObNFH8_HzHcvtLgBh
+        with ESMTP id S229953AbiINQnD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2022 12:43:03 -0400
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9DF956E8B5;
+        Wed, 14 Sep 2022 09:43:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=drGd84Y88D87DtABnnd7yh6bhIO3nFxVGZfiNKSay/w=; b=NJ6SAfFns58rMbVH+azyEAlIBe
+        P6n1bn9OXiF4fmUEUpqXGV/bE106qYmZbX/MwFVbHxtW6ssgk2PCE8UfNTQg1aWm+yynxcJ9j7g08
+        8/tgQ5onCzhF8MKSQaEQ6zA3aarCv+3D7yqjX8P1okh4bYNOq1WFHE1a4IQDf5KHdx5u5zA+Wymlc
+        S+7i9ko/VpxQnZRAsQ62an08GtRr8DVSaNW3j49A/qLEWP1M+neWYX1OVsjvTIT7LfH477m66cmRa
+        Nyt7CbCvmVkXs5Lmdv1xX0vhwGMMyYK/hJL+vP9XhDhzkKBGXkATkAHo1w7IXkb8b+clGQVzjQxRV
+        f5T3UCDA==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1oYVTE-00GF4L-1R;
+        Wed, 14 Sep 2022 16:42:40 +0000
+Date:   Wed, 14 Sep 2022 17:42:40 +0100
+From:   Al Viro <viro@zeniv.linux.org.uk>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        John Hubbard <jhubbard@nvidia.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jens Axboe <axboe@kernel.dk>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "Darrick J . Wong" <djwong@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        David Hildenbrand <david@redhat.com>,
+        Logan Gunthorpe <logang@deltatee.com>,
+        linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2 4/7] iov_iter: new iov_iter_pin_pages*() routines
+Message-ID: <YyIEgD8ksSZTsUdJ@ZenIV>
+References: <20220831041843.973026-1-jhubbard@nvidia.com>
+ <20220831041843.973026-5-jhubbard@nvidia.com>
+ <YxbtF1O8+kXhTNaj@infradead.org>
+ <103fe662-3dc8-35cb-1a68-dda8af95c518@nvidia.com>
+ <Yxb7YQWgjHkZet4u@infradead.org>
+ <20220906102106.q23ovgyjyrsnbhkp@quack3>
+ <YxhaJktqtHw3QTSG@infradead.org>
+ <YyFPtTtxYozCuXvu@ZenIV>
+ <20220914145233.cyeljaku4egeu4x2@quack3>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220914145233.cyeljaku4egeu4x2@quack3>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch series implements the memory shrinker for NFSv4 clients
-to react to system low memory condition.
+On Wed, Sep 14, 2022 at 04:52:33PM +0200, Jan Kara wrote:
+> > =================================================================================
+> > CASE 5: Pinning in order to write to the data within the page
+> > -------------------------------------------------------------
+> > Even though neither DMA nor Direct IO is involved, just a simple case of "pin,
+> > write to a page's data, unpin" can cause a problem. Case 5 may be considered a
+> > superset of Case 1, plus Case 2, plus anything that invokes that pattern. In
+> > other words, if the code is neither Case 1 nor Case 2, it may still require
+> > FOLL_PIN, for patterns like this:
+> > 
+> > Correct (uses FOLL_PIN calls):
+> >     pin_user_pages()
+> >     write to the data within the pages
+> >     unpin_user_pages()
+> > 
+> > INCORRECT (uses FOLL_GET calls):
+> >     get_user_pages()
+> >     write to the data within the pages
+> >     put_page()
+> > =================================================================================
+> 
+> Yes, that was my point.
 
-The first patch adds a counter to keep track of the number of
-courtesy clients in the system.
+The thing is, at which point do we pin those pages?  pin_user_pages() works by
+userland address; by the time we get to any of those we have struct page
+references and no idea whether they are still mapped anywhere.
 
-The second patch implements the courtesy_client_reaper used to
-expiring the courtesy clients.
-
-By destroying the courtesy clients, all states associated with
-these clients are also released.
-
-v2:
-. fix kernel test robot errors in nfsd.h when CONFIG_NFSD_V4 not defined.
-
-v3:
-. add mod_delayed_work in nfsd_courtesy_client_scan to kick start
-  the laundromat.
-
-v4:
-. replace the use of xchg() with vanilla '=' in patch 1.
-
-v5:
-. rename nfsd_courtesy_client_count to nfsd_courtesy_clients
-. add helper nfsd4_update_courtesy_client_count
-. move nfsd_register_client_shrinker into nfsd4_init_leases_net
-. move nfsd4_leases_net_shutdown from nfsd.h to nfs4state.c
-. do away with shrinker 'scan' callback, just return SHRINK_STOP
-. remove unused nfsd_client_shrinker_reapcount
-
-v6:
-. create courtesy_client_reaper and a separate delayed_work for it
-  using the laundromat_wq. 
-  I tried merging nfs4_get_courtesy_client_reaplist and
-  nfs4_get_client_reaplist but it make the code looks ugly and
-  hard to read so I leave them as separate for now.
-
-v7:
-. patch1: rename nfsd4_decr_courtesy_client_count to
-  nfsd4_dec_courtesy_client_count
-. patch 2: get rid of nfsd_client_shrinker_cb_count and do not
-  reschedule courtesy_client_reaper
----
-
-Dai Ngo (2):
-      NFSD: keep track of the number of courtesy clients in the system
-      NFSD: add shrinker to reap courtesy clients on low memory condition
-
- fs/nfsd/netns.h     |   4 ++
- fs/nfsd/nfs4state.c | 111 +++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/nfsctl.c    |   6 ++-
- fs/nfsd/nfsd.h      |   7 ++-
- 4 files changed, 115 insertions(+), 13 deletions(-)
-
+How would that work?  What protects the area where you want to avoid running
+into pinned pages from previously acceptable page getting pinned?  If "they
+must have been successfully unmapped" is a part of what you are planning, we
+really do have a problem...
