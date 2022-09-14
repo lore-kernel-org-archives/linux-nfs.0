@@ -2,141 +2,300 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11D97C6FA8B
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Sep 2022 14:52:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D84DDECAAD3
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Sep 2022 15:54:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229744AbiINOwi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Sep 2022 10:52:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34332 "EHLO
+        id S229683AbiINPym (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Sep 2022 11:54:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51528 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229520AbiINOwh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2022 10:52:37 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 739C51A83D;
-        Wed, 14 Sep 2022 07:52:35 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id BAC0A339CE;
-        Wed, 14 Sep 2022 14:52:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1663167153; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=wCNnJsTvzDL0Ox0oJoto7Z0gWCmReDnFFpxhGEpv45M=;
-        b=lK0OJflOFaTVBDNJGHIUSBQa3bUT+rqVNAOzb42o4ScXiVv1vJMQE0dPHLHRbiDHdkVX+G
-        ilzuajvlwOM16QdSohRsh+XSCBQylRQrUx0g9xl98uhPJsdjw2Ldg1BHMs/m3TIcc1fk2J
-        LV7soPZ1H7wl7Yj+sCJSmuokSlTfFg8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1663167153;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=wCNnJsTvzDL0Ox0oJoto7Z0gWCmReDnFFpxhGEpv45M=;
-        b=HDEaQIgQZQFxnGUVEGHKXrWl+9KmSpSPW44OQxNkxlot3B2fvH+wLLh/l5Cqrf2pJkcL8Y
-        zx1SOSVooD/X0tAQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A8895134B3;
-        Wed, 14 Sep 2022 14:52:33 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id n84lKbHqIWMbQAAAMHmgww
-        (envelope-from <jack@suse.cz>); Wed, 14 Sep 2022 14:52:33 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 38F74A0680; Wed, 14 Sep 2022 16:52:33 +0200 (CEST)
-Date:   Wed, 14 Sep 2022 16:52:33 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        "Darrick J . Wong" <djwong@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        David Hildenbrand <david@redhat.com>,
-        Logan Gunthorpe <logang@deltatee.com>,
-        linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2 4/7] iov_iter: new iov_iter_pin_pages*() routines
-Message-ID: <20220914145233.cyeljaku4egeu4x2@quack3>
-References: <20220831041843.973026-1-jhubbard@nvidia.com>
- <20220831041843.973026-5-jhubbard@nvidia.com>
- <YxbtF1O8+kXhTNaj@infradead.org>
- <103fe662-3dc8-35cb-1a68-dda8af95c518@nvidia.com>
- <Yxb7YQWgjHkZet4u@infradead.org>
- <20220906102106.q23ovgyjyrsnbhkp@quack3>
- <YxhaJktqtHw3QTSG@infradead.org>
- <YyFPtTtxYozCuXvu@ZenIV>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YyFPtTtxYozCuXvu@ZenIV>
+        with ESMTP id S230118AbiINPyl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Sep 2022 11:54:41 -0400
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5ED9E65FF
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Sep 2022 08:54:39 -0700 (PDT)
+Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 28EFkNqs015178;
+        Wed, 14 Sep 2022 15:54:35 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2022-7-12;
+ bh=ULalCUJ5mTCefd1Pn13LhFhOJQ9ZG+J1nS6v/wwzngo=;
+ b=jmkRmmx0Nr8qAFPR7eq65zjybPLlHP57y3ys7Tesay184CM122ZsmHDXu8FqJZTT3afq
+ VHCC71ddy+tK1R/TzcYVf17uke5sgDJeZPPRyJTn+NItAdo+4rz3IyWRD9ld6hOgdqUp
+ Z0c1Mkjn64r5F9Hvq2yat/+fC/so3ua4mBFyCwXhYzYVH3MuicMBp3j4vlmDL385aYcY
+ TbOgac00lkksdVWABdnrYDpq2LoGjwxzUQDd2wkqtPVs27BFzq3Arn/GjPfrrWmqQa12
+ u289RI2Ao9Ap30+vMGFF21mZuWCYdma5irFQTtl7uEZsYUuNCGXGB3G4gK3/vrwuojU6 wQ== 
+Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3jjxydtsn2-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 14 Sep 2022 15:54:34 +0000
+Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 28EDZbhe035392;
+        Wed, 14 Sep 2022 15:54:34 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3jjykyt0y4-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 14 Sep 2022 15:54:33 +0000
+Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 28EFp3ZI025970;
+        Wed, 14 Sep 2022 15:54:33 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 3jjykyt0xj-3;
+        Wed, 14 Sep 2022 15:54:33 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, jlayton@kernel.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v7 2/2] NFSD: add shrinker to reap courtesy clients on low memory condition
+Date:   Wed, 14 Sep 2022 08:54:26 -0700
+Message-Id: <1663170866-21524-3-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1663170866-21524-1-git-send-email-dai.ngo@oracle.com>
+References: <1663170866-21524-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.528,FMLib:17.11.122.1
+ definitions=2022-09-14_07,2022-09-14_04,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 spamscore=0 adultscore=0
+ malwarescore=0 suspectscore=0 bulkscore=0 mlxlogscore=999 phishscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2208220000
+ definitions=main-2209140077
+X-Proofpoint-ORIG-GUID: HbC046I6TsU60xQhSLs9ID_KlCHGK2O9
+X-Proofpoint-GUID: HbC046I6TsU60xQhSLs9ID_KlCHGK2O9
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed 14-09-22 04:51:17, Al Viro wrote:
-> On Wed, Sep 07, 2022 at 01:45:26AM -0700, Christoph Hellwig wrote:
-> > On Tue, Sep 06, 2022 at 12:21:06PM +0200, Jan Kara wrote:
-> > > > For FOLL_PIN callers, never pin bvec and kvec pages:  For file systems
-> > > > not acquiring a reference is obviously safe, and the other callers will
-> > > > need an audit, but I can't think of why it woul  ever be unsafe.
-> > > 
-> > > Are you sure about "For file systems not acquiring a reference is obviously
-> > > safe"? I can see places e.g. in orangefs, afs, etc. which create bvec iters
-> > > from pagecache pages. And then we have iter_file_splice_write() which
-> > > creates bvec from pipe pages (which can also be pagecache pages if
-> > > vmsplice() is used). So perhaps there are no lifetime issues even without
-> > > acquiring a reference (but looking at the code I would not say it is
-> > > obvious) but I definitely don't see how it would be safe to not get a pin
-> > > to signal to filesystem backing the pagecache page that there is DMA
-> > > happening to/from the page.
-> > 
-> > I mean in the context of iov_iter_get_pages callers, that is direct
-> > I/O.  Direct callers of iov_iter_bvec which then pass that iov to
-> > ->read_iter / ->write_iter will need to hold references (those are
-> > the references that the callers of iov_iter_get_pages rely on!).
-> 
-> Unless I'm misreading Jan, the question is whether they should get or
-> pin.  AFAICS, anyone who passes the sucker to ->read_iter() (or ->recvmsg(),
-> or does direct copy_to_iter()/zero_iter(), etc.) is falling under
-> =================================================================================
-> CASE 5: Pinning in order to write to the data within the page
-> -------------------------------------------------------------
-> Even though neither DMA nor Direct IO is involved, just a simple case of "pin,
-> write to a page's data, unpin" can cause a problem. Case 5 may be considered a
-> superset of Case 1, plus Case 2, plus anything that invokes that pattern. In
-> other words, if the code is neither Case 1 nor Case 2, it may still require
-> FOLL_PIN, for patterns like this:
-> 
-> Correct (uses FOLL_PIN calls):
->     pin_user_pages()
->     write to the data within the pages
->     unpin_user_pages()
-> 
-> INCORRECT (uses FOLL_GET calls):
->     get_user_pages()
->     write to the data within the pages
->     put_page()
-> =================================================================================
+Add courtesy_client_reaper to react to low memory condition triggered
+by the system memory shrinker.
 
-Yes, that was my point.
+The delayed_work for the courtesy_client_reaper is scheduled on
+the shrinker's count callback using the laundry_wq.
 
-> Regarding iter_file_splice_write() case, do we need to pin pages
-> when we are not going to modify the data in those?
+The shrinker's scan callback is not used for expiring the courtesy
+clients due to potential deadlocks.
 
-Strictly speaking not. So far we are pinning pages even if they serve as
-data source because it is simpler not to bother about data access direction
-but I'm not really aware of anything that would mandate that.
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/netns.h     |  2 ++
+ fs/nfsd/nfs4state.c | 94 ++++++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfsctl.c    |  6 ++--
+ fs/nfsd/nfsd.h      |  7 ++--
+ 4 files changed, 97 insertions(+), 12 deletions(-)
 
-								Honza
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 55c7006d6109..8c854ba3285b 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -194,6 +194,8 @@ struct nfsd_net {
+ 	int			nfs4_max_clients;
+ 
+ 	atomic_t		nfsd_courtesy_clients;
++	struct shrinker		nfsd_client_shrinker;
++	struct delayed_work	nfsd_shrinker_work;
+ };
+ 
+ /* Simple check to find out if a given net was properly initialized */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2827329704ea..62b848bb55df 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4347,7 +4347,27 @@ nfsd4_init_slabs(void)
+ 	return -ENOMEM;
+ }
+ 
+-void nfsd4_init_leases_net(struct nfsd_net *nn)
++static unsigned long
++nfsd_courtesy_client_count(struct shrinker *shrink, struct shrink_control *sc)
++{
++	int cnt;
++	struct nfsd_net *nn = container_of(shrink,
++			struct nfsd_net, nfsd_client_shrinker);
++
++	cnt = atomic_read(&nn->nfsd_courtesy_clients);
++	if (cnt > 0)
++		mod_delayed_work(laundry_wq, &nn->nfsd_shrinker_work, 0);
++	return (unsigned long)cnt;
++}
++
++static unsigned long
++nfsd_courtesy_client_scan(struct shrinker *shrink, struct shrink_control *sc)
++{
++	return SHRINK_STOP;
++}
++
++int
++nfsd4_init_leases_net(struct nfsd_net *nn)
+ {
+ 	struct sysinfo si;
+ 	u64 max_clients;
+@@ -4368,6 +4388,16 @@ void nfsd4_init_leases_net(struct nfsd_net *nn)
+ 	nn->nfs4_max_clients = max_t(int, max_clients, NFS4_CLIENTS_PER_GB);
+ 
+ 	atomic_set(&nn->nfsd_courtesy_clients, 0);
++	nn->nfsd_client_shrinker.scan_objects = nfsd_courtesy_client_scan;
++	nn->nfsd_client_shrinker.count_objects = nfsd_courtesy_client_count;
++	nn->nfsd_client_shrinker.seeks = DEFAULT_SEEKS;
++	return register_shrinker(&nn->nfsd_client_shrinker, "nfsd-client");
++}
++
++void
++nfsd4_leases_net_shutdown(struct nfsd_net *nn)
++{
++	unregister_shrinker(&nn->nfsd_client_shrinker);
+ }
+ 
+ static void init_nfs4_replay(struct nfs4_replay *rp)
+@@ -5909,10 +5939,49 @@ nfs4_get_client_reaplist(struct nfsd_net *nn, struct list_head *reaplist,
+ 	spin_unlock(&nn->client_lock);
+ }
+ 
++static void
++nfs4_get_courtesy_client_reaplist(struct nfsd_net *nn,
++				struct list_head *reaplist)
++{
++	unsigned int maxreap = 0, reapcnt = 0;
++	struct list_head *pos, *next;
++	struct nfs4_client *clp;
++
++	maxreap = NFSD_CLIENT_MAX_TRIM_PER_RUN;
++	INIT_LIST_HEAD(reaplist);
++
++	spin_lock(&nn->client_lock);
++	list_for_each_safe(pos, next, &nn->client_lru) {
++		clp = list_entry(pos, struct nfs4_client, cl_lru);
++		if (clp->cl_state == NFSD4_ACTIVE)
++			break;
++		if (reapcnt >= maxreap)
++			break;
++		if (!mark_client_expired_locked(clp)) {
++			list_add(&clp->cl_lru, reaplist);
++			reapcnt++;
++		}
++	}
++	spin_unlock(&nn->client_lock);
++}
++
++static void
++nfs4_process_client_reaplist(struct list_head *reaplist)
++{
++	struct list_head *pos, *next;
++	struct nfs4_client *clp;
++
++	list_for_each_safe(pos, next, reaplist) {
++		clp = list_entry(pos, struct nfs4_client, cl_lru);
++		trace_nfsd_clid_purged(&clp->cl_clientid);
++		list_del_init(&clp->cl_lru);
++		expire_client(clp);
++	}
++}
++
+ static time64_t
+ nfs4_laundromat(struct nfsd_net *nn)
+ {
+-	struct nfs4_client *clp;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
+ 	struct nfs4_ol_stateid *stp;
+@@ -5941,12 +6010,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	}
+ 	spin_unlock(&nn->s2s_cp_lock);
+ 	nfs4_get_client_reaplist(nn, &reaplist, &lt);
+-	list_for_each_safe(pos, next, &reaplist) {
+-		clp = list_entry(pos, struct nfs4_client, cl_lru);
+-		trace_nfsd_clid_purged(&clp->cl_clientid);
+-		list_del_init(&clp->cl_lru);
+-		expire_client(clp);
+-	}
++	nfs4_process_client_reaplist(&reaplist);
++
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+@@ -6029,6 +6094,18 @@ laundromat_main(struct work_struct *laundry)
+ 	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
+ }
+ 
++static void
++courtesy_client_reaper(struct work_struct *reaper)
++{
++	struct list_head reaplist;
++	struct delayed_work *dwork = to_delayed_work(reaper);
++	struct nfsd_net *nn = container_of(dwork, struct nfsd_net,
++					nfsd_shrinker_work);
++
++	nfs4_get_courtesy_client_reaplist(nn, &reaplist);
++	nfs4_process_client_reaplist(&reaplist);
++}
++
+ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
+ {
+ 	if (!fh_match(&fhp->fh_handle, &stp->sc_file->fi_fhandle))
+@@ -7845,6 +7922,7 @@ static int nfs4_state_create_net(struct net *net)
+ 	INIT_LIST_HEAD(&nn->blocked_locks_lru);
+ 
+ 	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
++	INIT_DELAYED_WORK(&nn->nfsd_shrinker_work, courtesy_client_reaper);
+ 	get_net(net);
+ 
+ 	return 0;
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 917fa1892fd2..597a26ad4183 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1481,11 +1481,12 @@ static __net_init int nfsd_init_net(struct net *net)
+ 		goto out_idmap_error;
+ 	nn->nfsd_versions = NULL;
+ 	nn->nfsd4_minorversions = NULL;
++	retval = nfsd4_init_leases_net(nn);
++	if (retval)
++		goto out_drc_error;
+ 	retval = nfsd_reply_cache_init(nn);
+ 	if (retval)
+ 		goto out_drc_error;
+-	nfsd4_init_leases_net(nn);
+-
+ 	get_random_bytes(&nn->siphash_key, sizeof(nn->siphash_key));
+ 	seqlock_init(&nn->writeverf_lock);
+ 
+@@ -1507,6 +1508,7 @@ static __net_exit void nfsd_exit_net(struct net *net)
+ 	nfsd_idmap_shutdown(net);
+ 	nfsd_export_shutdown(net);
+ 	nfsd_netns_free_versions(net_generic(net, nfsd_net_id));
++	nfsd4_leases_net_shutdown(nn);
+ }
+ 
+ static struct pernet_operations nfsd_net_ops = {
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 57a468ed85c3..cd92f615faa3 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -343,6 +343,7 @@ void		nfsd_lockd_shutdown(void);
+ #define	NFSD_COURTESY_CLIENT_TIMEOUT	(24 * 60 * 60)	/* seconds */
+ #define	NFSD_CLIENT_MAX_TRIM_PER_RUN	128
+ #define	NFS4_CLIENTS_PER_GB		1024
++#define	NFSD_CLIENT_SHRINKER_MINTIMEOUT	1   /* seconds */
+ 
+ /*
+  * The following attributes are currently not supported by the NFSv4 server:
+@@ -498,7 +499,8 @@ extern void unregister_cld_notifier(void);
+ extern void nfsd4_ssc_init_umount_work(struct nfsd_net *nn);
+ #endif
+ 
+-extern void nfsd4_init_leases_net(struct nfsd_net *nn);
++extern int nfsd4_init_leases_net(struct nfsd_net *nn);
++extern void nfsd4_leases_net_shutdown(struct nfsd_net *nn);
+ 
+ #else /* CONFIG_NFSD_V4 */
+ static inline int nfsd4_is_junction(struct dentry *dentry)
+@@ -506,7 +508,8 @@ static inline int nfsd4_is_junction(struct dentry *dentry)
+ 	return 0;
+ }
+ 
+-static inline void nfsd4_init_leases_net(struct nfsd_net *nn) {};
++static inline int nfsd4_init_leases_net(struct nfsd_net *nn) { return 0; };
++static inline void nfsd4_leases_net_shutdown(struct nfsd_net *nn) {};
+ 
+ #define register_cld_notifier() 0
+ #define unregister_cld_notifier() do { } while(0)
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.9.5
+
