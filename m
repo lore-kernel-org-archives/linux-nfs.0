@@ -2,41 +2,40 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B67DAECAAD8
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Sep 2022 16:54:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81643ECAAA1
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Sep 2022 16:54:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229833AbiIPQyG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 16 Sep 2022 12:54:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45740 "EHLO
+        id S229479AbiIPQyI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 16 Sep 2022 12:54:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45744 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229688AbiIPQyE (ORCPT
+        with ESMTP id S229731AbiIPQyE (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2022 12:54:04 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF206A9251
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2022 09:54:01 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5846EAA4F0
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2022 09:54:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1663347240;
+        s=mimecast20190719; t=1663347241;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=AlJVY54PoX8rEyViYgEBjBLoPi37NHQqhSvesctZlMw=;
-        b=cQm3Nu2Gn3j9P6lrZUCrjZVhtEVxfMOdfjVQuqpBG8uvLVDAT+k44LD1gUZzgcWW7GHDGb
-        Yedh+pQYrg+EMacozJspYvTYlJhr0OKet0Kuka+n4i+5FZ/ytzVtF33Ystbcq6YTv58NVJ
-        ovv8mCJSjk85hqGZBXblzCF2MlmWfww=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=rbdEGuRFArYy2lDWyG142hWWSwXdkKzdFyM+/vYHYJM=;
+        b=CsdwJqFhnOO4YoBk0Mks7lHzOLXvs6K0PKKK0cd0nuEAsusmoU+Jxqnak1x0tTCzFp2c2Y
+        ywsNo7OyIP3uE7czJnccm5J061W2MrO/UTPzBtqUQ8dGzS6/NwK2ejub1lOrbiT0SZwin5
+        HGPzZ0m0YCQlIa+jWmjiBgzojdHcX3o=
 Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
  [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-604-LzFm6WLIO6iSQaWovdaT4w-1; Fri, 16 Sep 2022 12:53:57 -0400
-X-MC-Unique: LzFm6WLIO6iSQaWovdaT4w-1
+ us-mta-10-VwS1pf_GNHWR5xMuZ6q8cQ-1; Fri, 16 Sep 2022 12:53:56 -0400
+X-MC-Unique: VwS1pf_GNHWR5xMuZ6q8cQ-1
 Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 0DCDE38041DC;
-        Fri, 16 Sep 2022 16:53:57 +0000 (UTC)
-Received: from dwysocha.rdu.csb (unknown [10.22.8.215])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id BB16A40C6EC2;
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 654F41C05145;
         Fri, 16 Sep 2022 16:53:56 +0000 (UTC)
+Received: from dwysocha.rdu.csb (unknown [10.22.8.215])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id BD91B40C6EC2;
+        Fri, 16 Sep 2022 16:53:53 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Anna Schumaker <anna.schumaker@netapp.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -44,11 +43,9 @@ To:     Anna Schumaker <anna.schumaker@netapp.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
         Benjamin Maynard <benmaynard@google.com>,
         Daire Byrne <daire.byrne@gmail.com>
-Subject: [PATCH v7 2/3] NFS: Configure support for netfs when NFS fscache is configured
-Date:   Fri, 16 Sep 2022 12:53:51 -0400
-Message-Id: <20220916165352.885955-3-dwysocha@redhat.com>
-In-Reply-To: <20220916165352.885955-1-dwysocha@redhat.com>
-References: <20220916165352.885955-1-dwysocha@redhat.com>
+Subject: [PATCH v7 0/3] Convert NFS with fscache to the netfs API
+Date:   Fri, 16 Sep 2022 12:53:49 -0400
+Message-Id: <20220916165352.885955-1-dwysocha@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.1 on 10.11.54.2
@@ -56,359 +53,117 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-As first steps for support of the netfs library when NFS_FSCACHE is
-configured, add NETFS_SUPPORT to Kconfig and add the required netfs_inode
-into struct nfs_inode.
+This patchset converts NFS with fscache non-direct READ IO paths to
+use the netfs API with a non-invasive approach.  The existing NFS pgio
+layer does not need extensive changes, and is the best way so far I've
+found to address Trond's concerns about modifying the IO path [1] as
+well as only enabling netfs when fscache is configured and enabled [2].
+I have not attempted performance comparisions to address Chuck
+Lever's concern [3] because we are not converting the non-fscache
+enabled NFS IO paths to netfs.
 
-Using netfs requires we move the VFS inode structure to be stored
-inside struct netfs_inode, along with the fscache_cookie.
-Thus, create a new helper, VFS_I(), which is defined
-differently depending on whether NFS_FSCACHE is configured.
-In addition, use the netfs_inode() and netfs_i_cookie() helpers,
-and remove our own helper, nfs_i_fscache().
+The main patch to be reviewed is patch #3 which converts nfs_read_folio
+and nfs_readahead.
 
-Later patches will convert NFS fscache to fully use netfs.
+The patchset is based on 6.0-rc5 and has been pushed to github at:
+https://github.com/DaveWysochanskiRH/kernel/commits/nfs-fscache-netfs
+https://github.com/DaveWysochanskiRH/kernel/commit/7d57f6484951800de518f555a04a3a4dc4a1327c
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfs/Kconfig         |  1 +
- fs/nfs/delegation.c    |  2 +-
- fs/nfs/dir.c           |  2 +-
- fs/nfs/fscache.c       | 20 +++++++++-----------
- fs/nfs/fscache.h       | 15 ++++++---------
- fs/nfs/inode.c         |  6 +++---
- fs/nfs/internal.h      |  2 +-
- fs/nfs/pnfs.c          | 12 ++++++------
- fs/nfs/write.c         |  2 +-
- include/linux/nfs_fs.h | 34 +++++++++++++++++++++++-----------
- 10 files changed, 52 insertions(+), 44 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 14a72224b657..8fbb6caf3481 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -171,6 +171,7 @@ config ROOT_NFS
- config NFS_FSCACHE
- 	bool "Provide NFS client caching support"
- 	depends on NFS_FS=m && FSCACHE || NFS_FS=y && FSCACHE=y
-+	select NETFS_SUPPORT
- 	help
- 	  Say Y here if you want NFS data to be cached locally on disc through
- 	  the general filesystem cache manager
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 5c97cad741a7..b5c492d40367 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -306,7 +306,7 @@ nfs_start_delegation_return_locked(struct nfs_inode *nfsi)
- 	}
- 	spin_unlock(&delegation->lock);
- 	if (ret)
--		nfs_clear_verifier_delegated(&nfsi->vfs_inode);
-+		nfs_clear_verifier_delegated(VFS_I(nfsi));
- out:
- 	return ret;
- }
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 5d6c2ddc7ea6..b63c624cea6d 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2799,7 +2799,7 @@ nfs_do_access_cache_scan(unsigned int nr_to_scan)
- 
- 		if (nr_to_scan-- == 0)
- 			break;
--		inode = &nfsi->vfs_inode;
-+		inode = VFS_I(nfsi);
- 		spin_lock(&inode->i_lock);
- 		if (list_empty(&nfsi->access_cache_entry_lru))
- 			goto remove_lru_entry;
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index e861d7bae305..a6fc1c8b6644 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -163,13 +163,14 @@ void nfs_fscache_init_inode(struct inode *inode)
- 	struct nfs_server *nfss = NFS_SERVER(inode);
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 
--	nfsi->fscache = NULL;
-+	netfs_inode(inode)->cache = NULL;
- 	if (!(nfss->fscache && S_ISREG(inode->i_mode)))
- 		return;
- 
- 	nfs_fscache_update_auxdata(&auxdata, inode);
- 
--	nfsi->fscache = fscache_acquire_cookie(NFS_SB(inode->i_sb)->fscache,
-+	netfs_inode(inode)->cache = fscache_acquire_cookie(
-+					       nfss->fscache,
- 					       0,
- 					       nfsi->fh.data, /* index_key */
- 					       nfsi->fh.size,
-@@ -183,11 +184,8 @@ void nfs_fscache_init_inode(struct inode *inode)
-  */
- void nfs_fscache_clear_inode(struct inode *inode)
- {
--	struct nfs_inode *nfsi = NFS_I(inode);
--	struct fscache_cookie *cookie = nfs_i_fscache(inode);
--
--	fscache_relinquish_cookie(cookie, false);
--	nfsi->fscache = NULL;
-+	fscache_relinquish_cookie(netfs_i_cookie(&NFS_I(inode)->netfs), false);
-+	netfs_inode(inode)->cache = NULL;
- }
- 
- /*
-@@ -212,7 +210,7 @@ void nfs_fscache_clear_inode(struct inode *inode)
- void nfs_fscache_open_file(struct inode *inode, struct file *filp)
- {
- 	struct nfs_fscache_inode_auxdata auxdata;
--	struct fscache_cookie *cookie = nfs_i_fscache(inode);
-+	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
- 	bool open_for_write = inode_is_open_for_write(inode);
- 
- 	if (!fscache_cookie_valid(cookie))
-@@ -230,7 +228,7 @@ EXPORT_SYMBOL_GPL(nfs_fscache_open_file);
- void nfs_fscache_release_file(struct inode *inode, struct file *filp)
- {
- 	struct nfs_fscache_inode_auxdata auxdata;
--	struct fscache_cookie *cookie = nfs_i_fscache(inode);
-+	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
- 	loff_t i_size = i_size_read(inode);
- 
- 	nfs_fscache_update_auxdata(&auxdata, inode);
-@@ -243,7 +241,7 @@ void nfs_fscache_release_file(struct inode *inode, struct file *filp)
- static int fscache_fallback_read_page(struct inode *inode, struct page *page)
- {
- 	struct netfs_cache_resources cres;
--	struct fscache_cookie *cookie = nfs_i_fscache(inode);
-+	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
- 	struct iov_iter iter;
- 	struct bio_vec bvec[1];
- 	int ret;
-@@ -271,7 +269,7 @@ static int fscache_fallback_write_page(struct inode *inode, struct page *page,
- 				       bool no_space_allocated_yet)
- {
- 	struct netfs_cache_resources cres;
--	struct fscache_cookie *cookie = nfs_i_fscache(inode);
-+	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
- 	struct iov_iter iter;
- 	struct bio_vec bvec[1];
- 	loff_t start = page_offset(page);
-diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
-index 2a37af880978..38614ed8f951 100644
---- a/fs/nfs/fscache.h
-+++ b/fs/nfs/fscache.h
-@@ -54,7 +54,7 @@ static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
- 		if (current_is_kswapd() || !(gfp & __GFP_FS))
- 			return false;
- 		folio_wait_fscache(folio);
--		fscache_note_page_release(nfs_i_fscache(folio->mapping->host));
-+		fscache_note_page_release(netfs_i_cookie(&NFS_I(folio->mapping->host)->netfs));
- 		nfs_inc_fscache_stats(folio->mapping->host,
- 				      NFSIOS_FSCACHE_PAGES_UNCACHED);
- 	}
-@@ -66,7 +66,7 @@ static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
-  */
- static inline int nfs_fscache_read_page(struct inode *inode, struct page *page)
- {
--	if (nfs_i_fscache(inode))
-+	if (netfs_inode(inode)->cache)
- 		return __nfs_fscache_read_page(inode, page);
- 	return -ENOBUFS;
- }
-@@ -78,7 +78,7 @@ static inline int nfs_fscache_read_page(struct inode *inode, struct page *page)
- static inline void nfs_fscache_write_page(struct inode *inode,
- 					   struct page *page)
- {
--	if (nfs_i_fscache(inode))
-+	if (netfs_inode(inode)->cache)
- 		__nfs_fscache_write_page(inode, page);
- }
- 
-@@ -101,13 +101,10 @@ static inline void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *
- static inline void nfs_fscache_invalidate(struct inode *inode, int flags)
- {
- 	struct nfs_fscache_inode_auxdata auxdata;
--	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct fscache_cookie *cookie =  netfs_i_cookie(&NFS_I(inode)->netfs);
- 
--	if (nfsi->fscache) {
--		nfs_fscache_update_auxdata(&auxdata, inode);
--		fscache_invalidate(nfsi->fscache, &auxdata,
--				   i_size_read(inode), flags);
--	}
-+	nfs_fscache_update_auxdata(&auxdata, inode);
-+	fscache_invalidate(cookie, &auxdata, i_size_read(inode), flags);
- }
- 
- /*
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index bea7c005119c..aa2aec785ab5 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1411,7 +1411,7 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
- 
- static bool nfs_file_has_writers(struct nfs_inode *nfsi)
- {
--	struct inode *inode = &nfsi->vfs_inode;
-+	struct inode *inode = VFS_I(nfsi);
- 
- 	if (!S_ISREG(inode->i_mode))
- 		return false;
-@@ -2249,7 +2249,7 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
- #ifdef CONFIG_NFS_V4_2
- 	nfsi->xattr_cache = NULL;
- #endif
--	return &nfsi->vfs_inode;
-+	return VFS_I(nfsi);
- }
- EXPORT_SYMBOL_GPL(nfs_alloc_inode);
- 
-@@ -2273,7 +2273,7 @@ static void init_once(void *foo)
- {
- 	struct nfs_inode *nfsi = (struct nfs_inode *) foo;
- 
--	inode_init_once(&nfsi->vfs_inode);
-+	inode_init_once(VFS_I(nfsi));
- 	INIT_LIST_HEAD(&nfsi->open_files);
- 	INIT_LIST_HEAD(&nfsi->access_cache_entry_lru);
- 	INIT_LIST_HEAD(&nfsi->access_cache_inode_lru);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 27c720d71b4e..273687082992 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -355,7 +355,7 @@ nfs4_label_copy(struct nfs4_label *dst, struct nfs4_label *src)
- 
- static inline void nfs_zap_label_cache_locked(struct nfs_inode *nfsi)
- {
--	if (nfs_server_capable(&nfsi->vfs_inode, NFS_CAP_SECURITY_LABEL))
-+	if (nfs_server_capable(VFS_I(nfsi), NFS_CAP_SECURITY_LABEL))
- 		nfsi->cache_validity |= NFS_INO_INVALID_LABEL;
- }
- #else
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2613b7e36eb9..035bf2eac2cf 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -763,19 +763,19 @@ static struct pnfs_layout_hdr *__pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	struct pnfs_layout_hdr *lo;
- 	LIST_HEAD(tmp_list);
- 
--	spin_lock(&nfsi->vfs_inode.i_lock);
-+	spin_lock(&VFS_I(nfsi)->i_lock);
- 	lo = nfsi->layout;
- 	if (lo) {
- 		pnfs_get_layout_hdr(lo);
- 		pnfs_mark_layout_stateid_invalid(lo, &tmp_list);
- 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RO_FAILED);
- 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
--		spin_unlock(&nfsi->vfs_inode.i_lock);
-+		spin_unlock(&VFS_I(nfsi)->i_lock);
- 		pnfs_free_lseg_list(&tmp_list);
--		nfs_commit_inode(&nfsi->vfs_inode, 0);
-+		nfs_commit_inode(VFS_I(nfsi), 0);
- 		pnfs_put_layout_hdr(lo);
- 	} else
--		spin_unlock(&nfsi->vfs_inode.i_lock);
-+		spin_unlock(&VFS_I(nfsi)->i_lock);
- 	return lo;
- }
- 
-@@ -790,9 +790,9 @@ static bool pnfs_layout_removed(struct nfs_inode *nfsi,
- {
- 	bool ret;
- 
--	spin_lock(&nfsi->vfs_inode.i_lock);
-+	spin_lock(&VFS_I(nfsi)->i_lock);
- 	ret = nfsi->layout != lo;
--	spin_unlock(&nfsi->vfs_inode.i_lock);
-+	spin_unlock(&VFS_I(nfsi)->i_lock);
- 	return ret;
- }
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 1843fa235d9b..d84121799a7a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -828,7 +828,7 @@ nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
- {
- 	struct nfs_page *freq, *t;
- 	struct nfs_commit_info cinfo;
--	struct inode *inode = &nfsi->vfs_inode;
-+	struct inode *inode = VFS_I(nfsi);
- 
- 	nfs_init_cinfo_from_inode(&cinfo, inode);
- 
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 7931fa472561..a1c402e26abf 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -31,6 +31,10 @@
- #include <linux/sunrpc/auth.h>
- #include <linux/sunrpc/clnt.h>
- 
-+#ifdef CONFIG_NFS_FSCACHE
-+#include <linux/netfs.h>
-+#endif
-+
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs3.h>
-@@ -204,9 +208,11 @@ struct nfs_inode {
- 	__u64 write_io;
- 	__u64 read_io;
- #ifdef CONFIG_NFS_FSCACHE
--	struct fscache_cookie	*fscache;
--#endif
-+	struct netfs_inode	netfs; /* netfs context and VFS inode */
-+#else
- 	struct inode		vfs_inode;
-+#endif
-+
- 
- #ifdef CONFIG_NFS_V4_2
- 	struct nfs4_xattr_cache *xattr_cache;
-@@ -281,10 +287,25 @@ struct nfs4_copy_state {
- #define NFS_INO_LAYOUTSTATS	(11)		/* layoutstats inflight */
- #define NFS_INO_ODIRECT		(12)		/* I/O setting is O_DIRECT */
- 
-+#ifdef CONFIG_NFS_FSCACHE
-+static inline struct inode *VFS_I(struct nfs_inode *nfsi)
-+{
-+	return &nfsi->netfs.inode;
-+}
-+static inline struct nfs_inode *NFS_I(const struct inode *inode)
-+{
-+	return container_of(inode, struct nfs_inode, netfs.inode);
-+}
-+#else
-+static inline struct inode *VFS_I(struct nfs_inode *nfsi)
-+{
-+	return &nfsi->vfs_inode;
-+}
- static inline struct nfs_inode *NFS_I(const struct inode *inode)
- {
- 	return container_of(inode, struct nfs_inode, vfs_inode);
- }
-+#endif
- 
- static inline struct nfs_server *NFS_SB(const struct super_block *s)
- {
-@@ -328,15 +349,6 @@ static inline int NFS_STALE(const struct inode *inode)
- 	return test_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
- }
- 
--static inline struct fscache_cookie *nfs_i_fscache(struct inode *inode)
--{
--#ifdef CONFIG_NFS_FSCACHE
--	return NFS_I(inode)->fscache;
--#else
--	return NULL;
--#endif
--}
--
- static inline __u64 NFS_FILEID(const struct inode *inode)
- {
- 	return NFS_I(inode)->fileid;
+Changes since v6
+================
+PATCH3: Fix generic/127 "Subreq overread" by calling netfs_subreq_terminated()
+with a length capped by sreq->len.  This is related to the following patch which
+may cause us to read a full page even if the i_size does not extend to the end of
+the page:
+8cfb9015280d NFS: Always provide aligned buffers to the RPC read layers
+
+Testing
+=======
+The patches are fairly stable as evidenced with xfstests generic with
+various servers, both with and without fscache enabled, with no hangs
+or crashes seen: 
+hammerspace(pNFS flexfiles): NFS4.1, NFS4.2
+NetApp(pNFS filelayout): NFS3, NFS4.0, NFS4.1
+RHEL8: NFS3,NFS4.1,NFS4.2
+
+The known issues are as follows:
+
+1. Unit test setting rsize < readahead does not properly read from
+fscache but re-reads data from the NFS server
+* This will be fixed with another linux-cachefs [4] patch to resolve
+"Stop read optimisation when folio removed from pagecache"
+* Daire Byrne also verified the patch fixes his issue as well
+
+2. "Cache volume key already in use" after xfstest runs
+* xfstests (hammerspace with vers=4.2,fsc) shows the following on the
+console after some tests:
+"NFS: Cache volume key already in use (nfs,4.1,2,c50,cfe0100a,3,,,8000,100000,100000,bb8,ea60,7530,ea60,1)"
+* This may be fixed with another patch [5] that is in progress
+
+3. Daire Byrne reported a NULL pointer oops at cachefiles_prepare_write+0x28/0x90
+* may be a bug in netfs or cachefiles exposed by NFS patches
+* under investigation
+
+[58710.346376] BUG: kernel NULL pointer dereference, address: 0000000000000008
+[58710.371212] CPU: 12 PID: 9134 Comm: kworker/u129:0 Tainted: G E      6.0.0-2.dneg.x86_64 #1
+...
+[58710.389995] Workqueue: events_unbound netfs_rreq_write_to_cache_work [netfs]
+[58710.397188] RIP: 0010:cachefiles_prepare_write+0x28/0x90 [cachefiles]
+...
+[58710.500316] Call Trace:
+[58710.502894]  <TASK>
+[58710.505126]  netfs_rreq_write_to_cache_work+0x11c/0x320 [netfs]
+[58710.511201]  process_one_work+0x217/0x3e0
+[58710.515358]  worker_thread+0x4a/0x3b0
+[58710.519152]  ? process_one_work+0x3e0/0x3e0
+[58710.523467]  kthread+0xd6/0x100
+[58710.526740]  ? kthread_complete_and_exit+0x20/0x20
+[58710.531659]  ret_from_fork+0x1f/0x30
+
+
+
+Outstanding
+===========
+Note that the existing NFS fscache stats ("fsc:" line in /proc/self/mountstats)
+as well as trace events still need removed.  I've left these out of
+this patchset for now as removing them are benign and can come later
+(the stats will all be 0, and trace events are no longer used).
+The existing NFS fscache stat counts no longer apply since the new
+API is not page based - they are not meaningful or possible to obtain,
+and there are new fscache stats in /proc/fs/fscache/stats.  A similar
+situation exists with the NFS trace events - netfs and fscache have
+plenty of trace events so the NFS specific ones probably are not needed.
+
+References
+==========
+[1] https://lore.kernel.org/linux-nfs/9cfd5bc3cfc6abc2d3316b0387222e708d67f595.camel@hammerspace.com/
+[2] https://lore.kernel.org/linux-nfs/da9200f1bded9b8b078a7aef227fd6b92eb028fb.camel@hammerspace.com/
+[3] https://marc.info/?l=linux-nfs&m=160597917525083&w=4
+[4] https://www.mail-archive.com/linux-cachefs@redhat.com/msg03043.html
+[5] https://marc.info/?l=linux-nfs&m=165962662200679&w=4
+
+Dave Wysochanski (3):
+  NFS: Rename readpage_async_filler to nfs_pageio_add_page
+  NFS: Configure support for netfs when NFS fscache is configured
+  NFS: Convert buffered read paths to use netfs when fscache is enabled
+
+ fs/nfs/Kconfig           |   1 +
+ fs/nfs/delegation.c      |   2 +-
+ fs/nfs/dir.c             |   2 +-
+ fs/nfs/fscache.c         | 251 +++++++++++++++++++++++----------------
+ fs/nfs/fscache.h         | 113 ++++++++++++------
+ fs/nfs/inode.c           |   8 +-
+ fs/nfs/internal.h        |  11 +-
+ fs/nfs/pagelist.c        |  12 ++
+ fs/nfs/pnfs.c            |  12 +-
+ fs/nfs/read.c            | 111 +++++++++--------
+ fs/nfs/write.c           |   2 +-
+ include/linux/nfs_fs.h   |  34 ++++--
+ include/linux/nfs_page.h |   3 +
+ include/linux/nfs_xdr.h  |   3 +
+ 14 files changed, 347 insertions(+), 218 deletions(-)
+
 -- 
 2.31.1
 
