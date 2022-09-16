@@ -2,172 +2,224 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E46CC6FA92
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Sep 2022 15:11:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC4F7ECAAA1
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Sep 2022 16:54:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231646AbiIPPLn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 16 Sep 2022 11:11:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50074 "EHLO
+        id S229824AbiIPQyF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 16 Sep 2022 12:54:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45738 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229714AbiIPPLk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2022 11:11:40 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4779DAA344;
-        Fri, 16 Sep 2022 08:11:39 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S229676AbiIPQyE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Sep 2022 12:54:04 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7DE2CA723C
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Sep 2022 09:54:01 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1663347240;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=QPbW0Esww+n7KzM4XoHJMPjD26OFWFqNl0Aq83pM10s=;
+        b=YwByO7OyIznUy9DQ4N/6XcCecOCPJGwG/qxlJp/lQHvlmarzZoTa2t4V1Gf8vbcMFkrzg2
+        bafDw43VK/cNX8AC+Dif6t5LwjUsPuj13kiGeLivzDtqDfVmqJqWO4c6YmLRHy34+H+JSx
+        qpqDZCKtA9z+zVIrxU+DVGDLktX95pI=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-536-l4Z0qFYoNq-yHJfNyZE-UA-1; Fri, 16 Sep 2022 12:53:57 -0400
+X-MC-Unique: l4Z0qFYoNq-yHJfNyZE-UA-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id CC5D162C56;
-        Fri, 16 Sep 2022 15:11:38 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 20D98C433D6;
-        Fri, 16 Sep 2022 15:11:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1663341098;
-        bh=xvCxeZz4qr3XPSIp4Xc+yhFsHVPnIedgZs2G2tMZsFY=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=dflY6BY+7OgdppPwGYZ1j2a+2JWSUCq/paCdLXV43SC0YRNH9B1ZehljmY7G9jgUB
-         R+rM9MN6G0TxYueqvRv2PUYrwCdN0UYQBSdo/ssfH5paScu6u6nG9H1FhTRFVqTgnV
-         CDM4JmVTvgLtnXjop8rcMSH0BTec5Ri2zUU8JXcp64lS4X57v/A76eH+n2gNIog+yD
-         +jCeKc2Gv2fgbGnsA8Ipm2MgrEx/ZugChsvZxy+JkRqSV/xO8Edtk9rlY9neC/OxIz
-         37bpYnrUKpwjmWEgOvwAtmZo4hR/69GhVDEpM7zxq/Eh0xxPN8EamCTLOpo8NliT62
-         Bcm3mFB44vmxA==
-Message-ID: <24005713ad25370d64ab5bd0db0b2e4fcb902c1c.camel@kernel.org>
-Subject: Re: [man-pages RFC PATCH v4] statx, inode: document the new
- STATX_INO_VERSION field
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Theodore Ts'o <tytso@mit.edu>, NeilBrown <neilb@suse.de>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "zohar@linux.ibm.com" <zohar@linux.ibm.com>,
-        "djwong@kernel.org" <djwong@kernel.org>,
-        "brauner@kernel.org" <brauner@kernel.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "david@fromorbit.com" <david@fromorbit.com>,
-        "fweimer@redhat.com" <fweimer@redhat.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-man@vger.kernel.org" <linux-man@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "jack@suse.cz" <jack@suse.cz>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "xiubli@redhat.com" <xiubli@redhat.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-        "lczerner@redhat.com" <lczerner@redhat.com>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
-Date:   Fri, 16 Sep 2022 11:11:34 -0400
-In-Reply-To: <7027d1c2923053fe763e9218d10ce8634b56e81d.camel@kernel.org>
-References: <20220912134208.GB9304@fieldses.org>
-         <166302447257.30452.6751169887085269140@noble.neil.brown.name>
-         <20220915140644.GA15754@fieldses.org>
-         <577b6d8a7243aeee37eaa4bbb00c90799586bc48.camel@hammerspace.com>
-         <1a968b8e87f054e360877c9ab8cdfc4cfdfc8740.camel@kernel.org>
-         <0646410b6d2a5d19d3315f339b2928dfa9f2d922.camel@hammerspace.com>
-         <34e91540c92ad6980256f6b44115cf993695d5e1.camel@kernel.org>
-         <871f9c5153ddfe760854ca31ee36b84655959b83.camel@hammerspace.com>
-         <e8922bc821a40f5a3f0a1301583288ed19b6891b.camel@kernel.org>
-         <166328063547.15759.12797959071252871549@noble.neil.brown.name>
-         <YyQdmLpiAMvl5EkU@mit.edu>
-         <7027d1c2923053fe763e9218d10ce8634b56e81d.camel@kernel.org>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.44.4 (3.44.4-1.fc36) 
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id B0F4029AB3E0;
+        Fri, 16 Sep 2022 16:53:56 +0000 (UTC)
+Received: from dwysocha.rdu.csb (unknown [10.22.8.215])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 702D740C6EC2;
+        Fri, 16 Sep 2022 16:53:56 +0000 (UTC)
+From:   Dave Wysochanski <dwysocha@redhat.com>
+To:     Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        David Howells <dhowells@redhat.com>
+Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
+        Benjamin Maynard <benmaynard@google.com>,
+        Daire Byrne <daire.byrne@gmail.com>
+Subject: [PATCH v7 1/3] NFS: Rename readpage_async_filler to nfs_pageio_add_page
+Date:   Fri, 16 Sep 2022 12:53:50 -0400
+Message-Id: <20220916165352.885955-2-dwysocha@redhat.com>
+In-Reply-To: <20220916165352.885955-1-dwysocha@redhat.com>
+References: <20220916165352.885955-1-dwysocha@redhat.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.2
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2022-09-16 at 07:36 -0400, Jeff Layton wrote:
-> On Fri, 2022-09-16 at 02:54 -0400, Theodore Ts'o wrote:
-> > On Fri, Sep 16, 2022 at 08:23:55AM +1000, NeilBrown wrote:
-> > > > > If the answer is that 'all values change', then why store the cra=
-sh
-> > > > > counter in the inode at all? Why not just add it as an offset whe=
-n
-> > > > > you're generating the user-visible change attribute?
-> > > > >=20
-> > > > > i.e. statx.change_attr =3D inode->i_version + (crash counter * of=
-fset)
-> >=20
-> > I had suggested just hashing the crash counter with the file system's
-> > on-disk i_version number, which is essentially what you are suggested.
-> >=20
-> > > > Yes, if we plan to ensure that all the change attrs change after a
-> > > > crash, we can do that.
-> > > >=20
-> > > > So what would make sense for an offset? Maybe 2**12? One would hope=
- that
-> > > > there wouldn't be more than 4k increments before one of them made i=
-t to
-> > > > disk. OTOH, maybe that can happen with teeny-tiny writes.
-> > >=20
-> > > Leave it up the to filesystem to decide.  The VFS and/or NFSD should
-> > > have not have part in calculating the i_version.  It should be entire=
-ly
-> > > in the filesystem - though support code could be provided if common
-> > > patterns exist across filesystems.
-> >=20
-> > Oh, *heck* no.  This parameter is for the NFS implementation to
-> > decide, because it's NFS's caching algorithms which are at stake here.
-> >=20
-> > As a the file system maintainer, I had offered to make an on-disk
-> > "crash counter" which would get updated when the journal had gotten
-> > replayed, in addition to the on-disk i_version number.  This will be
-> > available for the Linux implementation of NFSD to use, but that's up
-> > to *you* to decide how you want to use them.
-> >=20
-> > I was perfectly happy with hashing the crash counter and the i_version
-> > because I had assumed that not *that* much stuff was going to be
-> > cached, and so invalidating all of the caches in the unusual case
-> > where there was a crash was acceptable.  After all it's a !@#?!@
-> > cache.  Caches sometimmes get invalidated.  "That is the order of
-> > things." (as Ramata'Klan once said in "Rocks and Shoals")
-> >=20
-> > But if people expect that multiple TB's of data is going to be stored;
-> > that cache invalidation is unacceptable; and that a itsy-weeny chance
-> > of false negative failures which might cause data corruption might be
-> > acceptable tradeoff, hey, that's for the system which is providing
-> > caching semantics to determine.
-> >=20
-> > PLEASE don't put this tradeoff on the file system authors; I would
-> > much prefer to leave this tradeoff in the hands of the system which is
-> > trying to do the caching.
-> >=20
->=20
-> Yeah, if we were designing this from scratch, I might agree with leaving
-> more up to the filesystem, but the existing users all have pretty much
-> the same needs. I'm going to plan to try to keep most of this in the
-> common infrastructure defined in iversion.h.
->=20
-> Ted, for the ext4 crash counter, what wordsize were you thinking? I
-> doubt we'll be able to use much more than 32 bits so a larger integer is
-> probably not worthwhile. There are several holes in struct super_block
-> (at least on x86_64), so adding this field to the generic structure
-> needn't grow it.
+Rename readpage_async_filler to nfs_pageio_add_page to
+better reflect what this function does (add a page to
+the nfs_pageio_descriptor), and simplify arguments to
+this function by removing struct nfs_readdesc.
 
-That said, now that I've taken a swipe at implementing this, I need more
-information than just the crash counter. We need to multiply the crash
-counter with a reasonable estimate of the maximum number of individual
-writes that could occur between an i_version being incremented and that
-value making it to the backing store.
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/nfs/read.c | 60 +++++++++++++++++++++++++--------------------------
+ 1 file changed, 30 insertions(+), 30 deletions(-)
 
-IOW, given a write that bumps the i_version to X, how many more write
-calls could race in before X makes it to the platter? I took a SWAG and
-said 4k in an earlier email, but I don't really have a way to know, and
-that could vary wildly with different filesystems and storage.
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 8ae2c8d1219d..525e82ea9a9e 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -127,11 +127,6 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
+ 	nfs_release_request(req);
+ }
+ 
+-struct nfs_readdesc {
+-	struct nfs_pageio_descriptor pgio;
+-	struct nfs_open_context *ctx;
+-};
+-
+ static void nfs_page_group_set_uptodate(struct nfs_page *req)
+ {
+ 	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
+@@ -153,7 +148,8 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+ 
+ 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+ 			/* note: regions of the page not covered by a
+-			 * request are zeroed in readpage_async_filler */
++			 * request are zeroed in nfs_pageio_add_page
++			 */
+ 			if (bytes > hdr->good_bytes) {
+ 				/* nothing in this request was good, so zero
+ 				 * the full extent of the request */
+@@ -281,8 +277,10 @@ static void nfs_readpage_result(struct rpc_task *task,
+ 		nfs_readpage_retry(task, hdr);
+ }
+ 
+-static int
+-readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
++int
++nfs_pageio_add_page(struct nfs_pageio_descriptor *pgio,
++		    struct nfs_open_context *ctx,
++		    struct page *page)
+ {
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 	unsigned int rsize = NFS_SERVER(inode)->rsize;
+@@ -302,15 +300,15 @@ readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
+ 			goto out_unlock;
+ 	}
+ 
+-	new = nfs_create_request(desc->ctx, page, 0, aligned_len);
++	new = nfs_create_request(ctx, page, 0, aligned_len);
+ 	if (IS_ERR(new))
+ 		goto out_error;
+ 
+ 	if (len < PAGE_SIZE)
+ 		zero_user_segment(page, len, PAGE_SIZE);
+-	if (!nfs_pageio_add_request(&desc->pgio, new)) {
++	if (!nfs_pageio_add_request(pgio, new)) {
+ 		nfs_list_remove_request(new);
+-		error = desc->pgio.pg_error;
++		error = pgio->pg_error;
+ 		nfs_readpage_release(new, error);
+ 		goto out;
+ 	}
+@@ -332,7 +330,8 @@ readpage_async_filler(struct nfs_readdesc *desc, struct page *page)
+ int nfs_read_folio(struct file *file, struct folio *folio)
+ {
+ 	struct page *page = &folio->page;
+-	struct nfs_readdesc desc;
++	struct nfs_pageio_descriptor pgio;
++	struct nfs_open_context *ctx;
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 	int ret;
+ 
+@@ -358,29 +357,29 @@ int nfs_read_folio(struct file *file, struct folio *folio)
+ 
+ 	if (file == NULL) {
+ 		ret = -EBADF;
+-		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+-		if (desc.ctx == NULL)
++		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
++		if (ctx == NULL)
+ 			goto out_unlock;
+ 	} else
+-		desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
++		ctx = get_nfs_open_context(nfs_file_open_context(file));
+ 
+-	xchg(&desc.ctx->error, 0);
+-	nfs_pageio_init_read(&desc.pgio, inode, false,
++	xchg(&ctx->error, 0);
++	nfs_pageio_init_read(&pgio, inode, false,
+ 			     &nfs_async_read_completion_ops);
+ 
+-	ret = readpage_async_filler(&desc, page);
++	ret = nfs_pageio_add_page(&pgio, ctx, page);
+ 	if (ret)
+ 		goto out;
+ 
+-	nfs_pageio_complete_read(&desc.pgio);
+-	ret = desc.pgio.pg_error < 0 ? desc.pgio.pg_error : 0;
++	nfs_pageio_complete_read(&pgio);
++	ret = pgio.pg_error < 0 ? pgio.pg_error : 0;
+ 	if (!ret) {
+ 		ret = wait_on_page_locked_killable(page);
+ 		if (!PageUptodate(page) && !ret)
+-			ret = xchg(&desc.ctx->error, 0);
++			ret = xchg(&ctx->error, 0);
+ 	}
+ out:
+-	put_nfs_open_context(desc.ctx);
++	put_nfs_open_context(ctx);
+ 	trace_nfs_aop_readpage_done(inode, page, ret);
+ 	return ret;
+ out_unlock:
+@@ -391,9 +390,10 @@ int nfs_read_folio(struct file *file, struct folio *folio)
+ 
+ void nfs_readahead(struct readahead_control *ractl)
+ {
++	struct nfs_pageio_descriptor pgio;
++	struct nfs_open_context *ctx;
+ 	unsigned int nr_pages = readahead_count(ractl);
+ 	struct file *file = ractl->file;
+-	struct nfs_readdesc desc;
+ 	struct inode *inode = ractl->mapping->host;
+ 	struct page *page;
+ 	int ret;
+@@ -407,25 +407,25 @@ void nfs_readahead(struct readahead_control *ractl)
+ 
+ 	if (file == NULL) {
+ 		ret = -EBADF;
+-		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+-		if (desc.ctx == NULL)
++		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
++		if (ctx == NULL)
+ 			goto out;
+ 	} else
+-		desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
++		ctx = get_nfs_open_context(nfs_file_open_context(file));
+ 
+-	nfs_pageio_init_read(&desc.pgio, inode, false,
++	nfs_pageio_init_read(&pgio, inode, false,
+ 			     &nfs_async_read_completion_ops);
+ 
+ 	while ((page = readahead_page(ractl)) != NULL) {
+-		ret = readpage_async_filler(&desc, page);
++		ret = nfs_pageio_add_page(&pgio, ctx, page);
+ 		put_page(page);
+ 		if (ret)
+ 			break;
+ 	}
+ 
+-	nfs_pageio_complete_read(&desc.pgio);
++	nfs_pageio_complete_read(&pgio);
+ 
+-	put_nfs_open_context(desc.ctx);
++	put_nfs_open_context(ctx);
+ out:
+ 	trace_nfs_aop_readahead_done(inode, nr_pages, ret);
+ }
+-- 
+2.31.1
 
-What I'd like to see is this in struct super_block:
-
-	u32		s_version_offset;
-
-...and then individual filesystems can calculate:
-
-	crash_counter * max_number_of_writes
-
-and put the correct value in there at mount time.
-
---=20
-Jeff Layton <jlayton@kernel.org>
