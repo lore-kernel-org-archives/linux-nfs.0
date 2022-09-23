@@ -2,120 +2,62 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1197AECAAD8
-	for <linux-nfs@archiver.kernel.org>; Fri, 23 Sep 2022 04:39:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 807B2C6FA82
+	for <linux-nfs@archiver.kernel.org>; Fri, 23 Sep 2022 07:41:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229826AbiIWEjk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 23 Sep 2022 00:39:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36536 "EHLO
+        id S229520AbiIWHk7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 23 Sep 2022 03:40:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54310 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229640AbiIWEjh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2022 00:39:37 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F2D9BC77;
-        Thu, 22 Sep 2022 21:39:30 -0700 (PDT)
-Received: from dggemv711-chm.china.huawei.com (unknown [172.30.72.55])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4MYfVt3BdszpTJK;
-        Fri, 23 Sep 2022 12:36:38 +0800 (CST)
-Received: from kwepemm600015.china.huawei.com (7.193.23.52) by
- dggemv711-chm.china.huawei.com (10.1.198.66) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.31; Fri, 23 Sep 2022 12:39:29 +0800
-Received: from huawei.com (10.175.101.6) by kwepemm600015.china.huawei.com
- (7.193.23.52) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Fri, 23 Sep
- 2022 12:39:28 +0800
-From:   ChenXiaoSong <chenxiaosong2@huawei.com>
-To:     <trond.myklebust@hammerspace.com>, <anna@kernel.org>
-CC:     <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <chenxiaosong2@huawei.com>, <yi.zhang@huawei.com>,
-        <zhangxiaoxu5@huawei.com>
-Subject: [PATCH v3 1/2] NFS: make sure open context mode have FMODE_EXEC when file open for exec
-Date:   Fri, 23 Sep 2022 13:40:14 +0800
-Message-ID: <20220923054015.2890271-2-chenxiaosong2@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20220923054015.2890271-1-chenxiaosong2@huawei.com>
-References: <20220923054015.2890271-1-chenxiaosong2@huawei.com>
+        with ESMTP id S229677AbiIWHk5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Sep 2022 03:40:57 -0400
+Received: from mail.fadrush.pl (mail.fadrush.pl [54.37.225.211])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99E0111C160
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2022 00:40:55 -0700 (PDT)
+Received: by mail.fadrush.pl (Postfix, from userid 1002)
+        id 0717C2363E; Fri, 23 Sep 2022 07:37:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fadrush.pl; s=mail;
+        t=1663918807; bh=bD6j9gIFU6CLTaCGl0Ow9oeIxtirvTfMeNZSfLEZQ+I=;
+        h=Date:From:To:Subject:From;
+        b=gFu2VFOyz0uuYjvjJzcerrX4fItIjUlP4u2L9tP2MFxy3AxUpIivb/dLRp89a9LR8
+         QZMfOMUkx3bomJuRA/6FJ8UaPI+hPTDC7UIx81kdsyhQdTQXFG3732+kEKLq5RQzJe
+         KHxV8Mkc5JVjjjx6VTHWtYLT7klPiY9SvckyWjPn1Rn8fSyw11Ok7xyD+w33F9QKOb
+         E1TVMhFvv63WRIxizqpX9z4Xnb7K+e9XAyGjgfh4tRh1pK+5GaEdpOeXldNjgjJi1Y
+         dbivu5uwa9itesUQzay37dRr+WcrEMfp39EE7VtL6SRLfcbdMZJO6lvldfaVHSzcSZ
+         OCaGK0QosKSBw==
+Received: by mail.fadrush.pl for <linux-nfs@vger.kernel.org>; Fri, 23 Sep 2022 07:36:05 GMT
+Message-ID: <20220923064500-0.1.1t.h9tx.0.q6n9eazg7z@fadrush.pl>
+Date:   Fri, 23 Sep 2022 07:36:05 GMT
+From:   "Jakub Olejniczak" <jakub.olejniczak@fadrush.pl>
+To:     <linux-nfs@vger.kernel.org>
+Subject: =?UTF-8?Q?Zwi=C4=99kszenie_p=C5=82ynno=C5=9Bci_finansowej?=
+X-Mailer: mail.fadrush.pl
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.101.6]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- kwepemm600015.china.huawei.com (7.193.23.52)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Because file f_mode never have FMODE_EXEC, open context mode won't get
-FMODE_EXEC from file f_mode. Open context mode only care about FMODE_READ/
-FMODE_WRITE/FMODE_EXEC, and all info about open context mode can be convert
-from file f_flags, so convert file f_flags to open context mode by
-flags_to_mode().
+Dzie=C5=84 dobry,
 
-Signed-off-by: ChenXiaoSong <chenxiaosong2@huawei.com>
----
- fs/nfs/inode.c    |  3 ++-
- fs/nfs/nfs4file.c | 12 ++++--------
- 2 files changed, 6 insertions(+), 9 deletions(-)
+kontaktuj=C4=99 si=C4=99 z Pa=C5=84stwem, poniewa=C5=BC chcia=C5=82bym za=
+proponowa=C4=87 wygodne rozwi=C4=85zanie, kt=C3=B3re umo=C5=BCliwi Pa=C5=84=
+stwa firmie stabilny rozw=C3=B3j.=20
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index bea7c005119c..bafa808823db 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1173,7 +1173,8 @@ int nfs_open(struct inode *inode, struct file *filp)
- {
- 	struct nfs_open_context *ctx;
- 
--	ctx = alloc_nfs_open_context(file_dentry(filp), filp->f_mode, filp);
-+	ctx = alloc_nfs_open_context(file_dentry(filp),
-+				     flags_to_mode(filp->f_flags), filp);
- 	if (IS_ERR(ctx))
- 		return PTR_ERR(ctx);
- 	nfs_file_set_open_context(filp, ctx);
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 9eb181287879..2563ed8580f3 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -32,7 +32,6 @@ nfs4_file_open(struct inode *inode, struct file *filp)
- 	struct dentry *parent = NULL;
- 	struct inode *dir;
- 	unsigned openflags = filp->f_flags;
--	fmode_t f_mode;
- 	struct iattr attr;
- 	int err;
- 
-@@ -51,17 +50,14 @@ nfs4_file_open(struct inode *inode, struct file *filp)
- 	if (err)
- 		return err;
- 
--	f_mode = filp->f_mode;
--	if ((openflags & O_ACCMODE) == 3)
--		f_mode |= flags_to_mode(openflags);
--
- 	/* We can't create new files here */
- 	openflags &= ~(O_CREAT|O_EXCL);
- 
- 	parent = dget_parent(dentry);
- 	dir = d_inode(parent);
- 
--	ctx = alloc_nfs_open_context(file_dentry(filp), f_mode, filp);
-+	ctx = alloc_nfs_open_context(file_dentry(filp),
-+				     flags_to_mode(openflags), filp);
- 	err = PTR_ERR(ctx);
- 	if (IS_ERR(ctx))
- 		goto out;
-@@ -366,8 +362,8 @@ static struct file *__nfs42_ssc_open(struct vfsmount *ss_mnt,
- 		goto out_free_name;
- 	}
- 
--	ctx = alloc_nfs_open_context(filep->f_path.dentry, filep->f_mode,
--					filep);
-+	ctx = alloc_nfs_open_context(filep->f_path.dentry,
-+				     flags_to_mode(filep->f_flags), filep);
- 	if (IS_ERR(ctx)) {
- 		res = ERR_CAST(ctx);
- 		goto out_filep;
--- 
-2.31.1
+Konkurencyjne otoczenie wymaga ci=C4=85g=C5=82ego ulepszania i poszerzeni=
+a oferty, co z kolei wi=C4=85=C5=BCe si=C4=99 z konieczno=C5=9Bci=C4=85 i=
+nwestowania. Brak odpowiedniego kapita=C5=82u powa=C5=BCnie ogranicza tem=
+po rozwoju firmy.
 
+Od wielu lat z powodzeniem pomagam firmom w uzyskaniu najlepszej formy fi=
+nansowania z banku oraz UE. Mam sta=C5=82ych Klient=C3=B3w, kt=C3=B3rzy n=
+adal ch=C4=99tnie korzystaj=C4=85 z moich us=C5=82ug, a tak=C5=BCe poleca=
+j=C4=85 je innym.
+
+Czy chcieliby Pa=C5=84stwo skorzysta=C4=87 z pomocy wykwalifikowanego i d=
+o=C5=9Bwiadczonego doradcy finansowego?
+
+
+Pozdrawiam
+Jakub Olejniczak
