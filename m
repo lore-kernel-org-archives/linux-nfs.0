@@ -2,83 +2,91 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7466FECAAD8
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Sep 2022 21:49:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB6B2C6FA8E
+	for <linux-nfs@archiver.kernel.org>; Fri, 23 Sep 2022 03:20:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231462AbiIVVtd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 22 Sep 2022 17:49:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52024 "EHLO
+        id S231308AbiIWDUO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 22 Sep 2022 23:20:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38830 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231195AbiIVVtb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2022 17:49:31 -0400
-X-Greylist: delayed 183 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 22 Sep 2022 14:49:26 PDT
-Received: from mo4-p00-ob.smtp.rzone.de (mo4-p00-ob.smtp.rzone.de [85.215.255.24])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CA42F508E
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2022 14:49:26 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1663883181;
-    s=strato-dkim-0002; d=garloff.de;
-    h=Subject:From:To:Date:Message-ID:Cc:Date:From:Subject:Sender;
-    bh=xBs2Wqix5DTO3DjmgN94fEWRrRa4QOlA7u9cTAYpEeE=;
-    b=epeRw0okNqybxdsxvCV3+3I25VZOFtutR6KhNbLflr9nAJrISIYWgBioDYpTUBniei
-    di3SLv/DUM2VkilO3U/EHTOGU+TH5UXPED+9/tb2TCCsZCFh7EjldpTs6SF8K74A9cSh
-    9eNvlslPC/O5/yVIwm6db1iSe0HbtMX9m15MDAJLAGPocYc8nZeXGYe+/SWte5NCDG6l
-    LjP0Oc9QBX8RzsNWXNNGNsN8alw+Q/f0i+iuls5BH3C73Qcxq8je/X7TjQRWM/Wuy01J
-    0q8IzejZOjNfDGiTRh7KFsEanyEKdztFTeHqjqtS11OXlBZuwaEF61gjKGrqqSc0gxRr
-    IGxg==
-Authentication-Results: strato.com;
-    dkim=none
-X-RZG-AUTH: ":J3kWYWCveu3U88BfwGxYwcN+YZ41GOdzTdHQ+J8VEEsqY6Ge7bJ1uNpe7Q=="
-X-RZG-CLASS-ID: mo00
-Received: from nas2.garloff.de
-    by smtp.strato.de (RZmta 48.1.1 DYNA|AUTH)
-    with ESMTPSA id Vd953dy8MLkLn5Z
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (curve X9_62_prime256v1 with 256 ECDH bits, eq. 3072 bits RSA))
-        (Client did not present a certificate)
-    for <linux-nfs@vger.kernel.org>;
-    Thu, 22 Sep 2022 23:46:21 +0200 (CEST)
-Received: from [192.168.155.202] (unknown [192.168.155.10])
-        by nas2.garloff.de (Postfix) with ESMTPSA id 6F1DEB3B0054
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Sep 2022 23:45:23 +0200 (CEST)
-Message-ID: <f6755107-b62c-a388-0ab5-0a6633bf9082@garloff.de>
-Date:   Thu, 22 Sep 2022 23:46:19 +0200
+        with ESMTP id S229706AbiIWDUN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Sep 2022 23:20:13 -0400
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30584814D1;
+        Thu, 22 Sep 2022 20:20:09 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=Q+FM57iduMogJtSFwZB4LfTdEsChuEHae2/DVlkArcM=; b=sk/KR0xPUKPHHKWolvPzsqAt4o
+        o9FlyBUe1wX2zq2RbXWaAJTiFJqpuaVPHn1hI4kFCMLxmK2i4rRcZyBQ7i8qSoGeGHFgdH3ZJ0UN5
+        dLNBxE5Tu66mnNUVk9JDrYHLUSZ5tR8FUBrd6EieY3EtTeOzsSdqmQkk2T5jFMG+0yVorDIOTv6BI
+        x2e9UgKUZKYh/UhIHRV8YFxRZVu+ZhV9ughRdGArDVjBkXAu9QUFk9H7Msq1b4dF/F8zWJ6sfxbPX
+        1KW1gnVTo+E89ZNUi1kmPsIS+V0iIkxK6dzo7GQGwpv2V3hXCjpWSwrQMvlVc1ZMa41+fwRncsoTL
+        6/jkjISg==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1obZE6-002eVa-0R;
+        Fri, 23 Sep 2022 03:19:42 +0000
+Date:   Fri, 23 Sep 2022 04:19:42 +0100
+From:   Al Viro <viro@zeniv.linux.org.uk>
+To:     Jan Kara <jack@suse.cz>
+Cc:     John Hubbard <jhubbard@nvidia.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jens Axboe <axboe@kernel.dk>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "Darrick J . Wong" <djwong@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        David Hildenbrand <david@redhat.com>,
+        Logan Gunthorpe <logang@deltatee.com>,
+        linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2 4/7] iov_iter: new iov_iter_pin_pages*() routines
+Message-ID: <Yy0lztxfwfGXFme4@ZenIV>
+References: <Yxb7YQWgjHkZet4u@infradead.org>
+ <20220906102106.q23ovgyjyrsnbhkp@quack3>
+ <YxhaJktqtHw3QTSG@infradead.org>
+ <YyFPtTtxYozCuXvu@ZenIV>
+ <20220914145233.cyeljaku4egeu4x2@quack3>
+ <YyIEgD8ksSZTsUdJ@ZenIV>
+ <20220915081625.6a72nza6yq4l5etp@quack3>
+ <YyvG+Oih2A37Grcf@ZenIV>
+ <a6f95605-c2d5-6ec5-b85c-d1f3f8664646@nvidia.com>
+ <20220922112935.pep45vfqfw5766gq@quack3>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.2.2
-To:     linux-nfs <linux-nfs@vger.kernel.org>
-Content-Language: en-US
-From:   Kurt Garloff <kurt@garloff.de>
-Subject: linux-5.15.69 breaks nfs client
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220922112935.pep45vfqfw5766gq@quack3>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+On Thu, Sep 22, 2022 at 01:29:35PM +0200, Jan Kara wrote:
 
-a freshly compiled 5.15.69 kernel showed hangs with NFS.
-Typically mkdir would end up in a 'D' process state, but I
-have seen ls -l hanging as well.
-Server is kernel NFS 5.15.69.
+> > This rule would mostly work, as long as we can relax it in some cases, to
+> > allow pinning of both source and dest pages, instead of just destination
+> > pages, in some cases. In particular, bio_release_pages() has lost all
+> > context about whether it was a read or a write request, as far as I can
+> > tell. And bio_release_pages() is the primary place to unpin pages for
+> > direct IO.
+> 
+> Well, we already do have BIO_NO_PAGE_REF bio flag that gets checked in
+> bio_release_pages(). I think we can easily spare another bio flag to tell
+> whether we need to unpin or not. So as long as all the pages in the created
+> bio need the same treatment, the situation should be simple.
 
-After reverting the last three NFS related commits,
-a68a734b19af NFS: Fix WARN_ON due to unionization of nfs_inode.nrequests
-3b97deb4abf5 NFS: Fix another fsync() issue after a server reboot
-31b992b3c39b NFS: Save some space in the inode
+Yes.  Incidentally, the same condition is already checked by the creators
+of those bio - see the assorted should_dirty logics.
 
-things work normally again.
-
-As you can see, I suspected 31b992b3c39b ...
-
-I know this report is light on details; if nothing like this has been
-reported yet, let me know and I'll try to find some time to investigate
-further.
-
-PS: Please keep me on Cc, I'm not subscribed to linux-nfs.
-
-Best,
-
--- 
-Kurt Garloff <kurt@garloff.de>
-Cologne, Germany
-
+While we are at it - how much of the rationale around bio_check_pages_dirty()
+doing dirtying is still applicable with pinning pages before we stick them
+into bio?  We do dirty them before submitting bio, then on completion
+bio_check_pages_dirty() checks if something has marked them clean while
+we'd been doing IO; if all of them are still dirty we just drop the pages
+(well, unpin and drop), otherwise we arrange for dirty + unpin + drop
+done in process context (via schedule_work()).  Can they be marked clean by
+anyone while they are pinned?  After all, pinning is done to prevent
+writeback getting done on them while we are modifying the suckers...
