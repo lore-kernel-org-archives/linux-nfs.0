@@ -2,93 +2,82 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 301E3C6FA92
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Sep 2022 16:58:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9EE2C07E9D
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Sep 2022 17:24:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229509AbiIZQ6I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 26 Sep 2022 12:58:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40716 "EHLO
+        id S230436AbiIZRYF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Sep 2022 13:24:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44278 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230091AbiIZQ5w (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2022 12:57:52 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9FB07293;
-        Mon, 26 Sep 2022 08:54:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=GLjOCldwMSYbtIvOp9MNc738nkI+qSWqG0cQCtDGyYs=; b=iKgsgckx1BpnYBt1Ml1luRzlNo
-        UEaD93VJ/NaxUNW6l6hN4BiK/C+lXg9TvmRBVZsr6VTRgniAUARhROkGwU1gb/+ga6hgyHbqIk4/Z
-        MZ2vk2dp+YZ4n0PysUqI70IA94ZPELr3jKfzqB+j9wqcDa40U1/yUR6ed5i6U/Ooq6akJwUIH9LCc
-        4FE9DI2L7LRdgnfG+csHbDb8jVG/m3HrQoeTsrshIrc6b/uSVjKzkoMcldkhksDV/gf35W549vzaw
-        QW3k1gYHecYAhnbGFnhN3AfKto9jFnIhYWcwx925qCXeqVUi440PLfDtd4qG2idoghktcU6o/gEhs
-        CpXOoeeQ==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1ocqQR-005okf-Pg; Mon, 26 Sep 2022 15:53:43 +0000
-Date:   Mon, 26 Sep 2022 08:53:43 -0700
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        "Darrick J . Wong" <djwong@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        David Hildenbrand <david@redhat.com>,
-        Logan Gunthorpe <logang@deltatee.com>,
-        linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2 4/7] iov_iter: new iov_iter_pin_pages*() routines
-Message-ID: <YzHLB4lGa2vktN7W@infradead.org>
-References: <YxhaJktqtHw3QTSG@infradead.org>
- <YyFPtTtxYozCuXvu@ZenIV>
- <20220914145233.cyeljaku4egeu4x2@quack3>
- <YyIEgD8ksSZTsUdJ@ZenIV>
- <20220915081625.6a72nza6yq4l5etp@quack3>
- <YyvG+Oih2A37Grcf@ZenIV>
- <YyxzYTlyGhbb2MOu@infradead.org>
- <Yy00eSjyxvUIp7D5@ZenIV>
- <Yy1x8QE9YA4HHzbQ@infradead.org>
- <Yy3bNjaiUoGv/djG@ZenIV>
+        with ESMTP id S231158AbiIZRXp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Sep 2022 13:23:45 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6CC91151DC6
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2022 09:38:53 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 642D161029
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Sep 2022 16:38:52 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7E651C43470;
+        Mon, 26 Sep 2022 16:38:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1664210331;
+        bh=4aQTxyFHk1yHlT+oR3aAscCn1o/8MjoCJ22b8O8VS0E=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=OYHIVw3MMdQXk9mxmpKIXKFofAjkTYzOwIwFNHeb05WCP4LTtxmt/l+z7urZTC5c1
+         4z65Q12NST1zZB0tmMfI9LM8VUWF8n0OSWaYNpEnkJwd646qd545H8YXVkkITX/wM2
+         mUeXVLlASX4IELpTGMTNAsjqXfWQOvCuP5sS1vlG6vzRxeLNgvQk/+bOeZQG1TxkC9
+         LsGqeyGN9Wae9Bqc2/S7I6LR7S635KngVIHktsqA1T4J7RYXj05QlPSzq+UeAe8Vv7
+         XH9y6PRe1Zs4xUJHqTYyIMv7cNCfi09P7kxoKg+sIODBPH7ssuQESb2YjS9Z8svj9c
+         3mcaYJwdWu4XA==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     chuck.lever@oracle.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 4/4] nfsd: extra checks when freeing delegation stateids
+Date:   Mon, 26 Sep 2022 12:38:47 -0400
+Message-Id: <20220926163847.47558-5-jlayton@kernel.org>
+X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20220926163847.47558-1-jlayton@kernel.org>
+References: <20220926163847.47558-1-jlayton@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Yy3bNjaiUoGv/djG@ZenIV>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Sep 23, 2022 at 05:13:42PM +0100, Al Viro wrote:
-> You are mixing two issues here - holding references to pages while using
-> iov_iter instance is obvious; holding them until async IO is complete, even
-> though struct iov_iter might be long gone by that point is a different
-> story.
+We've had some reports of problems in the refcounting for delegation
+stateids that we've yet to track down. Add some extra checks to ensure
+that we've removed the object from various lists before freeing it.
 
-But someone needs to hold a refernce until the I/O is completed, because
-the I/O obviously needs the pages.  Yes, we could say the callers holds
-them and can drop the references right after I/O submission, while
-the method needs to grab another reference.  But that is more
-complicated and is more costly than just holding the damn reference.
+Link: https://bugzilla.redhat.com/show_bug.cgi?id=2127067
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/nfsd/nfs4state.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-> And originating iov_iter instance really can be long-gone by the time
-> of IO completion - requirement to keep it around would be very hard to
-> satisfy.  I've no objections to requiring the pages in ITER_BVEC to be
-> preserved at least until the IO completion by means independent of
-> whatever ->read_iter/->write_iter does to them, but
-> 	* that needs to be spelled out very clearly and
-> 	* we need to verify that it is, indeed, the case for all existing
-> iov_iter_bvec callers, preferably with comments next to non-obvious ones
-> (something that is followed only by the sync IO is obvious)
+This one may need adjustment after Dai fixes the use of openlockstateid
+here.
 
-Agreed.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 90533f43fea9..490092a10285 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1060,9 +1060,12 @@ static struct nfs4_ol_stateid * nfs4_alloc_open_stateid(struct nfs4_client *clp)
+ 
+ static void nfs4_free_deleg(struct nfs4_stid *stid)
+ {
+-	struct nfs4_ol_stateid *stp = openlockstateid(stid);
++	struct nfs4_delegation *dp = delegstateid(stid);
+ 
+-	WARN_ON(!list_empty(&stp->st_stid.sc_cp_list));
++	WARN_ON_ONCE(!list_empty(&stid->sc_cp_list));
++	WARN_ON_ONCE(!list_empty(&dp->dl_perfile));
++	WARN_ON_ONCE(!list_empty(&dp->dl_perclnt));
++	WARN_ON_ONCE(!list_empty(&dp->dl_recall_lru));
+ 	kmem_cache_free(deleg_slab, stid);
+ 	atomic_long_dec(&num_delegations);
+ }
+-- 
+2.37.3
 
-> That goes not just for bio - if we make get_pages *NOT* grab references
-> on ITER_BVEC (and I'm all for it), we need to make sure that those
-> pages won't be retained after the original protection runs out.
-
-Yes.
