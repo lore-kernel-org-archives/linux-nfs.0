@@ -2,84 +2,92 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5CB3C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Sep 2022 01:23:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC7E2C4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Sep 2022 11:27:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229952AbiI3BXa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 29 Sep 2022 21:23:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48682 "EHLO
+        id S232278AbiI3L1A (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Sep 2022 07:27:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57170 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229449AbiI3BX2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Sep 2022 21:23:28 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C50C01F34B5;
-        Thu, 29 Sep 2022 18:23:26 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-173-48-120-46.bstnma.fios.verizon.net [173.48.120.46])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 28U1MqlG010966
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 29 Sep 2022 21:22:54 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1664500982; bh=MMajPwAjURWxTvOvdJLhItRHH+a8PB3KnPvtMrFA1PA=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=VAEiiP6yp/EwZmY81q7oozZTyov097KW2IVId7q2lCYOL6QZ/Us/YOR8XwnK8pEk9
-         MgC92A9NgKDlHDSmlAGk6tbFY0ppzFjOEadWRC8nOyRm0Om2lrvQ5VeYRmm5bi6pGR
-         S77dg7CwxZq1isPXxGr3jidqtvJgqP3usRT9jw9MdwzHajemHIJ+8thAQKnuZZ3Vsn
-         XLc7EcFGydDYzfrLFAcTLGBzNDfOm+I1FdicJuemqaUjRNgiD930DJ7DTp6q2cHSRZ
-         6NArrV6FhjX6RvF6sCKwOjuQC896+AiJHJ7j5i87kXSnhx7Ow88VSW7/b30wpizIhD
-         kOr8m0zsUp6yw==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 103E915C00C9; Thu, 29 Sep 2022 21:22:52 -0400 (EDT)
-Date:   Thu, 29 Sep 2022 21:22:52 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     adilger.kernel@dilger.ca, djwong@kernel.org, david@fromorbit.com,
-        trondmy@hammerspace.com, neilb@suse.de, viro@zeniv.linux.org.uk,
-        zohar@linux.ibm.com, xiubli@redhat.com, chuck.lever@oracle.com,
-        lczerner@redhat.com, jack@suse.cz, bfields@fieldses.org,
-        brauner@kernel.org, fweimer@redhat.com,
-        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        with ESMTP id S232155AbiI3L02 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Sep 2022 07:26:28 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DDE7A17586;
+        Fri, 30 Sep 2022 04:18:49 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 5875A62299;
+        Fri, 30 Sep 2022 11:18:49 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B809DC4347C;
+        Fri, 30 Sep 2022 11:18:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1664536728;
+        bh=G3/t3BDJDz9EMHp0QOUkv/5jjrPwNlRd22Dc40GCbVw=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=C25sKiNghUeIo8SwmYaYrlE+zqQ8SiqFO1YRyhXnVgyCIbnfvq9wmQYyiIqF4zFsv
+         rSZh+fnIP5m63rqFcDKETiVW/X9XMxJme7LIGk8zgSkJCNKnKqPFNjX2YVRgqO0Xat
+         pWCw1FipBPRWr9MCej2o/JrTvT7fANuSyH5vsOxqloZ99kutXIsgZTaKLP4MJneiPb
+         90+iOUXbBP+d+xXmnjJF3BjfZ0AmRT95opCBPYg28qO6uaZrehTC9U1CH6OnxdBMkq
+         xg7JPVll9IPj7BrNU4AUfgIJ9QGSRvH+Tw/ZwggNIU1uq90lmtvvXkR1AUTBLtyBgB
+         fhIcj1YFTc/aA==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
+        david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
+        viro@zeniv.linux.org.uk, zohar@linux.ibm.com, xiubli@redhat.com,
+        chuck.lever@oracle.com, lczerner@redhat.com, jack@suse.cz,
+        bfields@fieldses.org, brauner@kernel.org, fweimer@redhat.com
+Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Subject: Re: [PATCH v5 2/8] ext4: fix i_version handling in ext4
-Message-ID: <YzZE7PUB13cqSw1x@mit.edu>
-References: <20220908172448.208585-1-jlayton@kernel.org>
- <20220908172448.208585-3-jlayton@kernel.org>
+        linux-xfs@vger.kernel.org, Colin Walters <walters@verbum.org>
+Subject: [PATCH v6 2/9] iversion: clarify when the i_version counter must be updated
+Date:   Fri, 30 Sep 2022 07:18:33 -0400
+Message-Id: <20220930111840.10695-3-jlayton@kernel.org>
+X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20220930111840.10695-1-jlayton@kernel.org>
+References: <20220930111840.10695-1-jlayton@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220908172448.208585-3-jlayton@kernel.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Sep 08, 2022 at 01:24:42PM -0400, Jeff Layton wrote:
-> ext4 currently updates the i_version counter when the atime is updated
-> during a read. This is less than ideal as it can cause unnecessary cache
-> invalidations with NFSv4 and unnecessary remeasurements for IMA.
-> 
-> The increment in ext4_mark_iloc_dirty is also problematic since it can
-> corrupt the i_version counter for ea_inodes. We aren't bumping the file
-> times in ext4_mark_iloc_dirty, so changing the i_version there seems
-> wrong, and is the cause of both problems.
-> 
-> Remove that callsite and add increments to the setattr, setxattr and
-> ioctl codepaths, at the same times that we update the ctime. The
-> i_version bump that already happens during timestamp updates should take
-> care of the rest.
-> 
-> In ext4_move_extents, increment the i_version on both inodes, and also
-> add in missing ctime updates.
-> 
-> Cc: Lukas Czerner <lczerner@redhat.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Reviewed-by: Christian Brauner (Microsoft) <brauner@kernel.org>
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+The i_version field in the kernel has had different semantics over
+the decades, but NFSv4 has certain expectations. Update the comments
+in iversion.h to describe when the i_version must change.
 
-Thanks, I've applied just this patch from this patch series.  I made
-some minor adjustments since we've already enabled the i_version
-counter unconditionally via another patch series from Lukas.
+Cc: Colin Walters <walters@verbum.org>
+Cc: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trondmy@hammerspace.com>
+Cc: Dave Chinner <david@fromorbit.com>
+Link: https://lore.kernel.org/linux-xfs/166086932784.5425.17134712694961326033@noble.neil.brown.name/#t
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ include/linux/iversion.h | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-			    	    	  - Ted
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index 6755d8b4f20b..9925cac1fa94 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -9,8 +9,14 @@
+  * ---------------------------
+  * The change attribute (i_version) is mandated by NFSv4 and is mostly for
+  * knfsd, but is also used for other purposes (e.g. IMA). The i_version must
+- * appear different to observers if there was a change to the inode's data or
+- * metadata since it was last queried.
++ * appear larger to observers if there was an explicit change to the inode's
++ * data or metadata since it was last queried.
++ *
++ * An explicit change is one that would ordinarily result in a change to the
++ * inode status change time (aka ctime). i_version must appear to change, even
++ * if the ctime does not (since the whole point is to avoid missing updates due
++ * to timestamp granularity). If POSIX mandates that the ctime must change due
++ * to an operation, then the i_version counter must be incremented as well.
+  *
+  * Observers see the i_version as a 64-bit number that never decreases. If it
+  * remains the same since it was last checked, then nothing has changed in the
+-- 
+2.37.3
+
