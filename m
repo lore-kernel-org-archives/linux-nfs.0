@@ -2,219 +2,155 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D558C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Oct 2022 12:48:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33DA8C4332F
+	for <linux-nfs@archiver.kernel.org>; Sun, 16 Oct 2022 11:21:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229659AbiJNMsg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Oct 2022 08:48:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51738 "EHLO
+        id S229740AbiJPLVf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 16 Oct 2022 07:21:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38262 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229539AbiJNMsf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Oct 2022 08:48:35 -0400
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7DA78185427
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Oct 2022 05:48:33 -0700 (PDT)
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 29EBfnUW003275;
-        Fri, 14 Oct 2022 12:48:30 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2022-7-12;
- bh=jPZMIU0Q9zzQA+kA6C51QgEZy9GXu974+HR6UxwGHFQ=;
- b=retZfW2iBy9hr5qNm3PjwxMe3AnjHUNtWTxqrHBYGQW1pktPRdmga4sZc/dU7hQoCQhc
- U3Yqs2vFqgACggAHmFwh3znkgkCO8c+HJcgprZwhe0+UI2YKZ9Sti3jYWLmxNDjzBvmz
- CgSNJsGqGPDt6fu/2kvASPJ3xcv74bw8T5JbVPsYMJ+M0//CnnDptK0oMQQXbezqeBZm
- ddOt73uX6Oxilw6YcT1YK+E0s3uf1giMivc5i6aqWJhrEI/yuhpa8YLRvebbNXuxsPQL
- 0CmLeyAilvLvUkd+LsnmTyvvaFeyPZydgikqKjmTUrREVovnKoKVgEGBfS49+bWwTeCY rA== 
-Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3k6mswjn0j-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 14 Oct 2022 12:48:30 +0000
-Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 29ECgvt8003942;
-        Fri, 14 Oct 2022 12:48:30 GMT
-Received: from nam11-co1-obe.outbound.protection.outlook.com (mail-co1nam11lp2172.outbound.protection.outlook.com [104.47.56.172])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3k2yndmaux-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 14 Oct 2022 12:48:29 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=nHLm6pwE1cVSCI1mMoP9c5XY+OQhhkDJcBKO+h7AF2nwmxo1klzGVLNVD2OmOyO2j5OlWkU5FOprH6y4dqC0kvV76SBPgRsR87wBxyld30wnU1Mr82uNB00LGzGq12C9d22UYyirt4fn05lhaB+r9lday/WiZitfQZYkTSDTvgTqZv4xPSTUi5NAYBdB6XEWV///l8S2HsxhxRyh5n0cwVxBOXU8zLif5KhFXrLKf6ISMO4P1ffIi9yNpzYgxUtP8G8+2UNIV4uFji9/4FK1LpG1US7okgj3k7mF64ERMX/qu5y7KCEwDtaLyFAv1g/QNLDyRZz3+zN8RSdcVOMqhg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=jPZMIU0Q9zzQA+kA6C51QgEZy9GXu974+HR6UxwGHFQ=;
- b=e8ATOnDWh62yW3eUYiFC6DZQN1XltCWxCIra0X6gyoZpmNa6TQAEAKt4vtbTt2AP/RX7IK7C7/gm54zB2oOw32YmdMx6WiiV+xetA5br3GwhEmhWJFwVzofuF1xYlfJqS52sKChU7g4c1b1dTwktO/NTSXP83YgWDz5psPogphK4tcJi7HWZVPqfXBNSv8OtxtDE0YsynoCtdLh5pQ2AUQOiLuhS43Ea9/wjOtfq0EetP8wDpk/9naPNJBd7HMMr5Q+L4qKVOFl6W58prubMRGhlUC++8XdBjh/h/hOHlR743OvoMdOfDbt2rwfTSGKFL0OFPILS7w/+MYlv4g+6cQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=jPZMIU0Q9zzQA+kA6C51QgEZy9GXu974+HR6UxwGHFQ=;
- b=dWdHN51ShzFDaQmDKiIPbKvNvAzwflaweLFeKvnM1abfq8/1pVpm3kjUg28noyk74G8b028w8Ym74gBKq8B/s4FEZfY9eb+XNGPYBRalezktUfXmOORjCbo1CyrFHWIQvPMJIrkB6eFSMUqleCgKyNqOhPFf58hborekcmnvtXU=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by CH2PR10MB4182.namprd10.prod.outlook.com (2603:10b6:610:7a::22) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5723.29; Fri, 14 Oct
- 2022 12:48:12 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::5403:3164:f6c3:d48a]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::5403:3164:f6c3:d48a%3]) with mapi id 15.20.5709.022; Fri, 14 Oct 2022
- 12:48:12 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Neil Brown <neilb@suse.de>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 7/9] NFSD: Use rhashtable for managing nfs4_file
- objects
-Thread-Topic: [PATCH v2 7/9] NFSD: Use rhashtable for managing nfs4_file
- objects
-Thread-Index: AQHY2Z+f4KLIvxFyZE+pJJ7lJKAPUq4IWjWAgADUNACAALMrAIABAksAgABpQgCAAR1KgIAAhLgAgAD0DIA=
-Date:   Fri, 14 Oct 2022 12:48:12 +0000
-Message-ID: <BB91F1B4-1E5A-4E13-BEF8-83455BA4F60B@oracle.com>
-References: <166507275951.1802.13184584115155050247.stgit@manet.1015granger.net>
- <166507324882.1802.884870684212914640.stgit@manet.1015granger.net>
- <166544739751.14457.9018300177489236723@noble.neil.brown.name>
- <EB08B095-BF02-4B5E-8CD2-12B0201328D2@oracle.com>
- <166553144435.32740.14940127200777208215@noble.neil.brown.name>
- <4004BFE1-C887-4A53-9512-8A264E0361FF@oracle.com>
- <166560951668.32740.3528791072339550207@noble.neil.brown.name>
- <E69F66C3-C17E-4397-8329-8B6C2D2E2F0F@oracle.com>
- <166569928288.32740.15383309396957908665@noble.neil.brown.name>
-In-Reply-To: <166569928288.32740.15383309396957908665@noble.neil.brown.name>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3696.120.41.1.1)
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|CH2PR10MB4182:EE_
-x-ms-office365-filtering-correlation-id: ed4bbfa6-87e4-4155-17db-08daade25aae
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: dmNF/2NZ0mVVS5Rql0fvLfhjxKV4B1ggKLSjAeDpsF5zVMMZlt2IHZivXz/apEvNyafpSmTVDXIYAGziPefYdpqFDuMfH3hEHr0r5qJHB+XJRS6HIxv0aNTlzeaJVbPS1gQGBUsY895SYa92t6hkvGk/aGy7tVNIXQ1Ez5qE8aUE9wlJz4mziyx7LStlQAR+hXoSC0Y77mpusRK8WfgVTTlJwoHdV2rtOqA89fcpfgDx88LuA05bxch/FynEByDaKVotAVXM3OWZWHDYaO6oLBmjeLdk3Jc2K1uCxaluHeuLmjJK85lifP8XzNp4vEdaCF1zoAGNxQgtNF7fdgRXx1og1DY8KjhOkBnLrESFICeM3Ij4VzFCmeZ83JgAEErcyyr2xTobbT5spK+aR4VsC/0uYMk8mTHW6YMvLppBxDYAXxz5qppxhjluTruPmiWY5S5c+SK1e766dzrm6a0v9ox3IvQ4qZC1XMBG+KwuTPcWq20v+8wn0aWQysC7YD52iuoBrvJibbaW/KGq1EIs4MABjq3u5fRhCfLrtoYJ3BZoU2NCfpa0ys7UevLajLmKFN1su/Ad7VS5I3gc2pfNxt/I3SgW5nHIvKF1VQMZgf+mKSGP55iBLQkP9xH3KJS6tEAbNLa4zoh1vOKY7ooncZT7Y+uz1FlCPgDZQuaPW4OY5/mzMxBj8kcCDbqlXuHKSCaINP8KnyJWFZIBJY9tUsiyLe9Xz+3mGIBrbqSeApb89uo3+uJwqGv6nDFjdkXXYaNSwge705TkR2BJQ00kCuxSEpO+fCXfdIQb1hVHR/4=
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230022)(396003)(136003)(346002)(366004)(39860400002)(376002)(451199015)(36756003)(38070700005)(76116006)(66946007)(91956017)(83380400001)(71200400001)(2906002)(8676002)(8936002)(66556008)(66476007)(66446008)(4326008)(53546011)(64756008)(33656002)(26005)(6512007)(41300700001)(5660300002)(38100700002)(6506007)(2616005)(86362001)(6916009)(122000001)(186003)(316002)(66899015)(478600001)(6486002)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?hxNoDEONtWmwCrUczKhgV0SVXxgwakmoSLbhN8APWm+Z1OdhYGQ28RDpo/h3?=
- =?us-ascii?Q?vTHzy/pO8LLdNBqCo8V71UKdaRSLcOn3+3U5fbWWqZo/B1PXrTEvNI81hA4Z?=
- =?us-ascii?Q?DQAWvrOTFUE+zB15wsGCHQzZpQLxEOHDpNeqXRW4CXTPyuZBsBxzkU41vKK1?=
- =?us-ascii?Q?hWh/I2tblE2DFZgn/6W6MWi7QwtPbAiP4T+ACylrJDmSxflQ47fQjTvrjoae?=
- =?us-ascii?Q?dmHoynXvpwEEK/S047GFBmHsRCQAp8l2xq0poe2uVe3QqHSCTi6wTUZeyJGo?=
- =?us-ascii?Q?ujIKpk79sow4MnLusGxCAauQz0az0Zb14dp0OKWMivp6PHLKjHyOfhWTx4C7?=
- =?us-ascii?Q?XWuKoNSqOam5/FBjiZ2Dx6VMaW8tTaBNv+JYl65TLF9Oaq9FM54oK+w/Bu/R?=
- =?us-ascii?Q?oNfOuJXaTODUUPUoChiE9+0vxmGE2lLyZj1JxwY8mKg5YsnGpSRMyh2wAmbK?=
- =?us-ascii?Q?ViBF82PnKhKOQ2NyAKd2UJenolk3Qq1uS1fg82BK8PXG9ErXAGmr6VfcZXKx?=
- =?us-ascii?Q?CMQj/xLKxk/w+QJR0qeBJfaef6yRIJyJSFTIVnnul7cvioCaRvKiBOqJ6uVC?=
- =?us-ascii?Q?T2yDsS+9HCOTY36DAFfUMXOI3ZK3scc0BGwlX4Ojith9WmM6o54kdqglH8Ou?=
- =?us-ascii?Q?VpaZ+Ed4qmBdlIzjOWXsA42CoMZ4dlaJwK98HifuvqaKGKyXCTBc/86J5F6O?=
- =?us-ascii?Q?sNmYd61zlUVeqgxTzXt7+Uy/IvXpVuZNZRr4x5nI0f3Jp3VpXbacxcV/qdBT?=
- =?us-ascii?Q?I4pJ96UIJG3OlUvVoWj3ppmSaODz4QtnK2QLoYpm2a/1u2siTUuEJLhSngrv?=
- =?us-ascii?Q?dKRGt7np0o0BLdQDj6ZpJoF3Y+LNTPzReG14mtBlUzDlFuVOjMJG1eaf03/5?=
- =?us-ascii?Q?gK1O5cgPtVcScLcY7He3CcDip+2yV8Pd2qN2ORvzEzehMQ+Koym2PU2suXoF?=
- =?us-ascii?Q?dO7hNKm/ZraAL+SQyXJwmXkWi2P6zKM8dVP4EzUup/XVf31noRF9NRn7S9W1?=
- =?us-ascii?Q?mH0zkB5rhHsNrsKIJWnSd+JiafHqOaGkjIYXwrHDAfu/q8GoqJ2KoCJd5N84?=
- =?us-ascii?Q?00hMGiCx387fGEYoAg79Skt6wsM8UelPPWQpQJPCo+J4fPvP/fXQLxJyNCY8?=
- =?us-ascii?Q?DQwUkit30JXzFN+ctXe2qeDkZV996gMzIGgtbvqrndGl51zkA7LiADndQDTw?=
- =?us-ascii?Q?dcJKBCcYNU98CInohxsg6Ak2ncneFydoaYKqKS5LE/cmnnmqKRgtBBzESe69?=
- =?us-ascii?Q?SuHwnJy0AV9upsIURVEo5Q1/MdQ3iUp8hF93MqEakSbs1wxBBogBptG6c4ka?=
- =?us-ascii?Q?HpFTN3e+ftsYTZX1FF+wskVRTSlDmGZUmsYHwJa/lCcDz1U6xEBt2dSu3YJZ?=
- =?us-ascii?Q?X4ulet1ftNkr5NZAOSlacQQiKJN+1S7ymn1PUv77nx44RxNqWK/hrMYTi/Pa?=
- =?us-ascii?Q?3+mdBrHkhSXLvpWLh29xYB8JbjSyQvuL6/L6JzdNX7rs7/TuURkulnIOzvOO?=
- =?us-ascii?Q?mYTKplYpgiKamX7fBFbp2hL5vSebjSiGZJP6iMJ/QAIGBfH7FGbxKAX6y3eQ?=
- =?us-ascii?Q?rhQmUo17OJHmRu8LPa84lwNkX2r9vMTH5DN3vvfsPuODpWBinVqyD9DC8jLL?=
- =?us-ascii?Q?DQ=3D=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <8ACD9B2190EB8A41B15C47EFADE9D6A5@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        with ESMTP id S229739AbiJPLVb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Oct 2022 07:21:31 -0400
+Received: from wp530.webpack.hosteurope.de (wp530.webpack.hosteurope.de [IPv6:2a01:488:42:1000:50ed:8234::])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8128831344
+        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 04:21:28 -0700 (PDT)
+Received: from [2a02:8108:963f:de38:eca4:7d19:f9a2:22c5]; authenticated
+        by wp530.webpack.hosteurope.de running ExIM with esmtpsa (TLS1.3:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        id 1ok1hr-0007OE-BF; Sun, 16 Oct 2022 13:21:23 +0200
+Message-ID: <8942d26d-1085-27f3-d15b-782d368e53b1@leemhuis.info>
+Date:   Sun, 16 Oct 2022 13:21:22 +0200
 MIME-Version: 1.0
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ed4bbfa6-87e4-4155-17db-08daade25aae
-X-MS-Exchange-CrossTenant-originalarrivaltime: 14 Oct 2022 12:48:12.1294
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: kv8GB1+jnYtKWcyDEuP3X0fVnuSkWAZGxETxL0HNxvkrqgOQLXBCH0wfGxAUlDxFOqJEUcm8fRlgh8tGMQ0Wtg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR10MB4182
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.545,FMLib:17.11.122.1
- definitions=2022-10-14_06,2022-10-14_01,2022-06-22_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 suspectscore=0
- adultscore=0 mlxscore=0 bulkscore=0 malwarescore=0 phishscore=0
- spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2209130000 definitions=main-2210140074
-X-Proofpoint-ORIG-GUID: zRwGQgxPJkXYX_wlkV0ORjdOPWkLRwgP
-X-Proofpoint-GUID: zRwGQgxPJkXYX_wlkV0ORjdOPWkLRwgP
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.3.1
+Content-Language: en-US, de-DE
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        "regressions@lists.linux.dev" <regressions@lists.linux.dev>,
+        Daire Byrne <daire@dneg.com>
+From:   Thorsten Leemhuis <regressions@leemhuis.info>
+Subject: Bug 216582 - BUG: kernel NULL pointer dereference -
+ nlmclnt_setlockargs
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-bounce-key: webpack.hosteurope.de;regressions@leemhuis.info;1665919288;b0637e82;
+X-HE-SMSGID: 1ok1hr-0007OE-BF
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi, this is your Linux kernel regression tracker speaking.
 
+I noticed a regression report in bugzilla.kernel.org. As many (most?)
+kernel developer don't keep an eye on it, I decided to forward it by
+mail. Quoting from https://bugzilla.kernel.org/show_bug.cgi?id=216582 :
 
-> On Oct 13, 2022, at 6:14 PM, NeilBrown <neilb@suse.de> wrote:
->=20
-> On Fri, 14 Oct 2022, Chuck Lever III wrote:
->>=20
->>> On Oct 12, 2022, at 5:18 PM, NeilBrown <neilb@suse.de> wrote:
->>>=20
->>> On Thu, 13 Oct 2022, Chuck Lever III wrote:
->>>>=20
->>>> I think I stopped at the non-list variant of rhashtable because
->>>> using rhl was more complex, and the non-list variant seemed to
->>>> work fine. There's no architectural reason either file_hashtbl
->>>> or the filecache must use the non-list variant.
->>>>=20
->>>> In any event, it's worth taking the trouble now to change the
->>>> nfs4_file implementation proposed here as you suggest.
->>>=20
->>> If you like you could leave it as-is for now and I can provide a patch
->>> to convert to rhl-tables later (won't be until late October).
->>> There is one thing I would need to understand though: why are the
->>> nfsd_files per-filehandle instead of per-inode?  There is probably a
->>> good reason, but I cannot think of one.
->>=20
->> I'm not clear on your offer: do you mean converting the nfsd_file
->> cache from rhashtable to rhl, or converting the proposed nfs4_file
->> rework? I had planned to do the latter myself and post a refresh.
->=20
-> Either/both.  Of course if you do the refresh, then I'll just review it.
+>  Daire Byrne 2022-10-13 22:04:19 UTC
+> 
+> Hi,
+> 
+> I've started seeing this crash at least once or twice a week with our
+> NFS re-export workloads (re-exporting a Linux NFsv3 server as
+> NFSv3).
+> 
+> We have been stepping through kernel versions a bit on the server
+> recently so it feels like something new introduced somewhere around
+> v5.17 but I also can't rule out that our clients are doing something
+> "different" with their workloads to stress this code in some new way.
+> It still occurs in v6.0 too.
+> 
+> [106412.314663] BUG: kernel NULL pointer dereference, address: 0000000000000020
+> [106412.321879] #PF: supervisor read access in kernel mode
+> [106412.327237] #PF: error_code(0x0000) - not-present page
+> [106412.332599] PGD 0 P4D 0 
+> [106412.335353] Oops: 0000 [#1] PREEMPT SMP NOPTI
+> [106412.339935] CPU: 34 PID: 2382 Comm: lockd Tainted: G            E     5.18.10-1.dneg.x86_64 #1
+> [106412.348773] Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 08/26/2022
+> [106412.358223] RIP: 0010:nlmclnt_setlockargs+0x4a/0x100 [lockd]
+> [106412.364116] Code: 00 00 49 81 c0 88 00 00 00 f0 0f c1 05 bf 06 01 00 83 c0 01 c7 47 30 04 00 00 00 48 8d 4f 44 48 8d 7f 4c 89 47 c4 48 8b 46 78 <48> 8b 40 20 48 8b 90 60 fe ff ff 48 8d b0 60 fe ff ff 48 89 57 f8
+> [106412.383117] RSP: 0018:ffffb3db50cdfa80 EFLAGS: 00010202
+> [106412.388569] RAX: 0000000000000000 RBX: ffff8a36749c9400 RCX: ffff8a36749c9444
+> [106412.395924] RDX: ffff8a37f8696300 RSI: ffffb3db50cdfbd8 RDI: ffff8a36749c944c
+> [106412.403277] RBP: ffffb3db50cdfa90 R08: ffff8a750b49bc88 R09: ffff8a37f8696300
+> [106412.410634] R10: 0000000000000230 R11: ffffffffffffffff R12: ffffb3db50cdfbd8
+> [106412.417984] R13: ffff8a7508beac00 R14: ffffb3db50cdfca0 R15: ffffb3db50cdfbd8
+> [106412.425338] FS:  0000000000000000(0000) GS:ffff8a73ffa80000(0000) knlGS:0000000000000000
+> [106412.433649] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [106412.439611] CR2: 0000000000000020 CR3: 00000001118e6006 CR4: 00000000003706e0
+> [106412.446984] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [106412.454346] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> [106412.461696] Call Trace:
+> [106412.464361]  <TASK>
+> [106412.466689]  nlmclnt_proc+0x1c6/0x5b0 [lockd]
+> [106412.471272]  nfs3_proc_lock+0x33/0xb0 [nfsv3]
+> [106412.475848]  ? nfs_put_lock_context+0x86/0x90 [nfs]
+> [106412.481008]  do_unlk+0x8f/0xd0 [nfs]
+> [106412.484837]  nfs_lock+0xcd/0x180 [nfs]
+> [106412.488815]  ? nlmsvc_mark_host+0x30/0x30 [lockd]
+> [106412.493752]  vfs_lock_file+0x1e/0x40
+> [106412.497547]  nlm_unlock_files.isra.0+0x6d/0xc0 [lockd]
+> [106412.502905]  nlm_traverse_files+0x163/0x2a0 [lockd]
+> [106412.508020]  nlmsvc_free_host_resources+0x2b/0x40 [lockd]
+> [106412.513648]  nlm_host_rebooted+0x2c/0x90 [lockd]
+> [106412.518483]  nlmsvc_proc_sm_notify+0xc0/0x130 [lockd]
+> [106412.523759]  ? nlmsvc_decode_reboot+0x7d/0xa0 [lockd]
+> [106412.529027]  nlmsvc_dispatch+0x8e/0x1a0 [lockd]
+> [106412.534312]  svc_process_common+0x484/0x620 [sunrpc]
+> [106412.539521]  ? lockd+0x1d0/0x1d0 [lockd]
+> [106412.543661]  ? set_grace_period+0xa0/0xa0 [lockd]
+> [106412.548582]  svc_process+0xbc/0xf0 [sunrpc]
+> [106412.553008]  lockd+0xd2/0x1d0 [lockd]
+> [106412.556906]  ? set_grace_period+0xa0/0xa0 [lockd]
+> [106412.561849]  kthread+0xee/0x120
+> [106412.565228]  ? kthread_complete_and_exit+0x20/0x20
+> [106412.570239]  ret_from_fork+0x1f/0x30
+> [106412.574033]  </TASK>
+> [106412.576436] Modules linked in: tcp_diag(E) inet_diag(E) nfsv3(E) nfs(E) cachefiles(E) fscache(E) netfs(E) ext4(E) mbcache(E) jbd2(E) intel_uncore_frequency_common(E) isst_if_common(E) sg(E) nfit(E) virtio_rng(E) rapl(E) i2c_piix4(E) input_leds(E) nfsd(E) sch_fq(E) auth_rpcgss(E) nfs_acl(E) lockd(E) grace(E) tcp_bbr(E) binfmt_misc(E) ip_tables(E) xfs(E) libcrc32c(E) sd_mod(E) t10_pi(E) crc64_rocksoft_generic(E) crc64_rocksoft(E) crc64(E) crct10dif_pclmul(E) crc32_pclmul(E) virtio_scsi(E) crc32c_intel(E) ghash_clmulni_intel(E) 8021q(E) garp(E) mrp(E) virtio_pci(E) scsi_transport_iscsi(E) virtio_pci_legacy_dev(E) aesni_intel(E) virtio_pci_modern_dev(E) crypto_simd(E) virtio_ring(E) cryptd(E) gve(E) serio_raw(E) virtio(E) sunrpc(E) dm_mirror(E) dm_region_hash(E) dm_log(E) dm_mod(E) fuse(E)
+> [106412.646242] CR2: 0000000000000020
+> [106412.649780] ---[ end trace 0000000000000000 ]---
+> [106412.654617] RIP: 0010:nlmclnt_setlockargs+0x4a/0x100 [lockd]
+> [106412.660495] Code: 00 00 49 81 c0 88 00 00 00 f0 0f c1 05 bf 06 01 00 83 c0 01 c7 47 30 04 00 00 00 48 8d 4f 44 48 8d 7f 4c 89 47 c4 48 8b 46 78 <48> 8b 40 20 48 8b 90 60 fe ff ff 48 8d b0 60 fe ff ff 48 89 57 f8
+> [106412.679481] RSP: 0018:ffffb3db50cdfa80 EFLAGS: 00010202
+> [106412.684922] RAX: 0000000000000000 RBX: ffff8a36749c9400 RCX: ffff8a36749c9444
+> [106412.692269] RDX: ffff8a37f8696300 RSI: ffffb3db50cdfbd8 RDI: ffff8a36749c944c
+> [106412.699617] RBP: ffffb3db50cdfa90 R08: ffff8a750b49bc88 R09: ffff8a37f8696300
+> [106412.706969] R10: 0000000000000230 R11: ffffffffffffffff R12: ffffb3db50cdfbd8
+> [106412.714329] R13: ffff8a7508beac00 R14: ffffb3db50cdfca0 R15: ffffb3db50cdfbd8
+> [106412.721676] FS:  0000000000000000(0000) GS:ffff8a73ffa80000(0000) knlGS:0000000000000000
+> [106412.729981] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [106412.736472] CR2: 0000000000000020 CR3: 00000001118e6006 CR4: 00000000003706e0
+> [106412.743821] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [106412.751171] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> [106412.758520] Kernel panic - not syncing: Fatal exception
+> [106412.764850] Kernel Offset: 0x30000000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+> [106412.775850] ---[ end Kernel panic - not syncing: Fatal exception ]---
+> 
+> 
+> All I know is that I didn't notice this crash from v5.12 to v5.16 but
+> I have not been able to test this qualitatively yet. The crash is
+> rare enough that it makes A/B testing quite tricky.
+> 
+> It's somewhat similar to
+> https://bugzilla.kernel.org/show_bug.cgi?id=213273 but that was for a
+> NFv4.2 re-export of NFSv3 and this is for a NFSv3 re-export of NFSv3
+> (for WAN caching).
+> 
+> We are using nfs-utils-2.5.4.
+> 
+> Daire
 
-Yep, I plan to repost, as part of addressing (your) review comments.
+See the ticket for more details.
 
+BTW, let me use this mail to also add the report to the list of tracked
+regressions to ensure it's doesn't fall through the cracks:
 
->> The nfsd_file_acquire API is the only place that seems to want a
->> filehandle, and it's just to lookup the underlying inode. Perhaps
->> I don't understand your question?
->=20
-> Sorry, I meant nfs4_files, not nfsd_file: find_file() and find_or_add_fil=
-e().
-> Why is there one nfs4_file per filehandle
+#regzbot introduced: v5.17..v5.18
+#regzbot ignore-activity
 
-I can't answer that (yet), but I suspect there is some semantic
-association between the [current] filehandle and a particular
-state ID that makes this a sensible arrangement.
+Ciao, Thorsten (wearing his 'the Linux kernel's regression tracker' hat)
 
-
-> I see that there can be several nfsd_file per inode - in different
-> network namespaces, or with different credentials or different access
-> modes.
-
-My impression is that is by design. Each namespace and unique
-credential needs a distinct nfsd_file. Each nfsd_file acts like
-an open file descriptor in user space.
-
-
-> That really needs to be fixed.
-
-I'm not sure I agree, but maybe "that" and "fixed" are doing some
-heavy lifting. Jeff might be able to add some insight on design
-purpose, and we can write a patch that adds that as a documenting
-comment somewhere.
-
---
-Chuck Lever
-
-
-
+P.S.: As the Linux kernel's regression tracker I deal with a lot of
+reports and sometimes miss something important when writing mails like
+this. If that's the case here, don't hesitate to tell me in a public
+reply, it's in everyone's interest to set the public record straight.
