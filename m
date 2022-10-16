@@ -2,42 +2,45 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10D13C43217
-	for <linux-nfs@archiver.kernel.org>; Sun, 16 Oct 2022 18:51:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 44834C43219
+	for <linux-nfs@archiver.kernel.org>; Sun, 16 Oct 2022 18:51:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229583AbiJPSvF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 16 Oct 2022 14:51:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50768 "EHLO
+        id S229464AbiJPSvG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 16 Oct 2022 14:51:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50770 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229464AbiJPSvE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Oct 2022 14:51:04 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D25A13120D
-        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 11:51:02 -0700 (PDT)
+        with ESMTP id S229662AbiJPSvF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Oct 2022 14:51:05 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 074FD31369
+        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 11:51:04 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 7D715B80B40
-        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 18:51:01 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0F82C433D6;
-        Sun, 16 Oct 2022 18:50:59 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id AB8BEB80D2F
+        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 18:51:02 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 12D1AC433C1;
+        Sun, 16 Oct 2022 18:51:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1665946260;
-        bh=HJoOA4lfMzXOBwTJlv5nzdicTEQlDMevIR+sVH0Vs+c=;
-        h=From:To:Cc:Subject:Date:From;
-        b=OpRSdGTcNNALVORVZI/gYBnVlcOQYD/chSjxGZb8yIzT7at99OSWg4s3rKhKO/TV3
-         4Kv8gWm7wq4OB7hGKRmCidEHzGI6TQVWFEyfpqZO+4IYddc0t2mtkInpVvlUvHjdOb
-         2AiTkKBp/fqGjJz4q4y+6KZfTbf8LTaualKYelznX7Rz/TRL4LePfKBeFTNNipTqRM
-         qkvqozXAin606PsPFedwtyyeYMJaEf8FqcAU0UZtSA316+Q2bSfKpTDyvcu4/xBqQE
-         zSZn9DRRXu8zOrZpyb3Sk8RyO2S3rIagkpvfOXYGWHDT8B8u/A5uSBFty5g+HrXwlI
-         1s2ryg5Tyge9g==
+        s=k20201202; t=1665946261;
+        bh=R+pbfQYQg9KAfOO2B8frGp5NhKlHbUIMaSxfrz1yx0w=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=NDhDOp6b7PLwVOCweC+A4/GyPe5HMGpwCiHt66lNlIhO3RZczlWzx1byXbZLUaGMP
+         pwUtmtAcgbfO/p9hotTa8MYS7/GGiodTH4imaxnJs6OCkRZd1dx0U4glOtxFT3oxuK
+         3IPgn5XCCpyLX6iqOLPuEpNPBxa7lquyiUCqpo4/czAUalz7uqF2DfCcu7p8362ixs
+         ZMzEFSYl0a1HzPQvFoakSkjd2WC2NGOxNITCvb7QGDm71LVhurCqVLaLlPG1ddY+y/
+         C5O17luLIXbzI1hkFINHd6Ol12NZPH4Fdbz8ETH7bkWD5gl/kxa/MOlMezcyi/6TxK
+         U/LAEPDezmRag==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFSv4: Fix a potential state reclaim deadlock
-Date:   Sun, 16 Oct 2022 14:44:31 -0400
-Message-Id: <20221016184433.31213-1-trondmy@kernel.org>
+Subject: [PATCH 3/3] NFSv4.1: We must always send RECLAIM_COMPLETE after a reboot
+Date:   Sun, 16 Oct 2022 14:44:33 -0400
+Message-Id: <20221016184433.31213-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20221016184433.31213-2-trondmy@kernel.org>
+References: <20221016184433.31213-1-trondmy@kernel.org>
+ <20221016184433.31213-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -46,75 +49,28 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the server reboots while we are engaged in a delegation return, and
-there is a pNFS layout with return-on-close set, then the current code
-can end up deadlocking in pnfs_roc() when nfs_inode_set_delegation()
-tries to return the old delegation.
-Now that delegreturn actually uses its own copy of the stateid, it
-should be safe to just always update the delegation stateid in place.
+Currently, we are only guaranteed to send RECLAIM_COMPLETE if we have
+open state to recover. Fix the client to always send RECLAIM_COMPLETE
+after setting up the lease.
 
-Fixes: 078000d02d57 ("pNFS: We want return-on-close to complete when evicting the inode")
+Fixes: fce5c838e133 ("nfs41: RECLAIM_COMPLETE functionality")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/delegation.c | 36 +++++++++++++++++-------------------
- 1 file changed, 17 insertions(+), 19 deletions(-)
+ fs/nfs/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 5c97cad741a7..ead8a0e06abf 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -228,8 +228,7 @@ static int nfs_delegation_claim_opens(struct inode *inode,
-  *
-  */
- void nfs_inode_reclaim_delegation(struct inode *inode, const struct cred *cred,
--				  fmode_t type,
--				  const nfs4_stateid *stateid,
-+				  fmode_t type, const nfs4_stateid *stateid,
- 				  unsigned long pagemod_limit)
- {
- 	struct nfs_delegation *delegation;
-@@ -239,25 +238,24 @@ void nfs_inode_reclaim_delegation(struct inode *inode, const struct cred *cred,
- 	delegation = rcu_dereference(NFS_I(inode)->delegation);
- 	if (delegation != NULL) {
- 		spin_lock(&delegation->lock);
--		if (nfs4_is_valid_delegation(delegation, 0)) {
--			nfs4_stateid_copy(&delegation->stateid, stateid);
--			delegation->type = type;
--			delegation->pagemod_limit = pagemod_limit;
--			oldcred = delegation->cred;
--			delegation->cred = get_cred(cred);
--			clear_bit(NFS_DELEGATION_NEED_RECLAIM,
--				  &delegation->flags);
--			spin_unlock(&delegation->lock);
--			rcu_read_unlock();
--			put_cred(oldcred);
--			trace_nfs4_reclaim_delegation(inode, type);
--			return;
--		}
--		/* We appear to have raced with a delegation return. */
-+		nfs4_stateid_copy(&delegation->stateid, stateid);
-+		delegation->type = type;
-+		delegation->pagemod_limit = pagemod_limit;
-+		oldcred = delegation->cred;
-+		delegation->cred = get_cred(cred);
-+		clear_bit(NFS_DELEGATION_NEED_RECLAIM, &delegation->flags);
-+		if (test_and_clear_bit(NFS_DELEGATION_REVOKED,
-+				       &delegation->flags))
-+			atomic_long_inc(&nfs_active_delegations);
- 		spin_unlock(&delegation->lock);
-+		rcu_read_unlock();
-+		put_cred(oldcred);
-+		trace_nfs4_reclaim_delegation(inode, type);
-+	} else {
-+		rcu_read_unlock();
-+		nfs_inode_set_delegation(inode, cred, type, stateid,
-+					 pagemod_limit);
- 	}
--	rcu_read_unlock();
--	nfs_inode_set_delegation(inode, cred, type, stateid, pagemod_limit);
- }
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 0b6bd6336c98..a629d7db9420 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1787,6 +1787,7 @@ static void nfs4_state_mark_reclaim_helper(struct nfs_client *clp,
  
- static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
+ static void nfs4_state_start_reclaim_reboot(struct nfs_client *clp)
+ {
++	set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
+ 	/* Mark all delegations for reclaim */
+ 	nfs_delegation_mark_reclaim(clp);
+ 	nfs4_state_mark_reclaim_helper(clp, nfs4_state_mark_reclaim_reboot);
 -- 
 2.37.3
 
