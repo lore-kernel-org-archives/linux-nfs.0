@@ -2,98 +2,73 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A231FC4332F
-	for <linux-nfs@archiver.kernel.org>; Sun, 16 Oct 2022 15:47:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F3E35C4332F
+	for <linux-nfs@archiver.kernel.org>; Sun, 16 Oct 2022 18:51:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229730AbiJPPrO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 16 Oct 2022 11:47:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43458 "EHLO
+        id S229679AbiJPSvF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 16 Oct 2022 14:51:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50766 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229751AbiJPPrN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Oct 2022 11:47:13 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3179C33863
-        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 08:47:12 -0700 (PDT)
+        with ESMTP id S229583AbiJPSvE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Oct 2022 14:51:04 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CD6DA30558
+        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 11:51:01 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id E05CAB80B7E
-        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 15:47:10 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85F45C433D6
-        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 15:47:09 +0000 (UTC)
-Subject: [PATCH 1 3/3] NFSD: Finish converting the NFSv3 GETACL result encoder
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Date:   Sun, 16 Oct 2022 11:47:08 -0400
-Message-ID: <166593522862.1710.16255807600348080659.stgit@klimt.1015granger.net>
-In-Reply-To: <166593521604.1710.10648202421284171508.stgit@klimt.1015granger.net>
-References: <166593521604.1710.10648202421284171508.stgit@klimt.1015granger.net>
-User-Agent: StGit/1.5.dev3+g9561319
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 6719160DDA
+        for <linux-nfs@vger.kernel.org>; Sun, 16 Oct 2022 18:51:01 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7E4F3C433D7;
+        Sun, 16 Oct 2022 18:51:00 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1665946260;
+        bh=FTwWdeomchW2unazJbYEhesPI8PTu6bcrsyOv/lR+hM=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=GVaV01NEjUHV5VZzMqUQmELNZvxKyHfvIQeOGgIh5sYpZCVSHImZpqRIXrglFBmd3
+         ltlSkLhV4H6woosqmt2LrSnwcwHiV675F5Own8rSbKDLQQpFH5Bc7MQVOnHknW6nZy
+         HkHuExzren4oQpYhe8HQyoIAV8cofogR26UO9hYgio+G+r6YWaY4u+FIphzrqlL5pt
+         hLS3d+HcSaxuKqOUTzSh5kv/4njLOh43ZD1Ai5xQpSTvGT2BXiz6rq/Zf+EOgMOrfO
+         xkR3CD0Av/xzbjmXFtam4nD9wzmN6jSm1q9+DLb+MMt65c/BTA7i9ELnqc2GvnauKc
+         k/dLy4+fv7cdA==
+From:   trondmy@kernel.org
+To:     Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] NFSv4.1: Handle RECLAIM_COMPLETE trunking errors
+Date:   Sun, 16 Oct 2022 14:44:32 -0400
+Message-Id: <20221016184433.31213-2-trondmy@kernel.org>
+X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20221016184433.31213-1-trondmy@kernel.org>
+References: <20221016184433.31213-1-trondmy@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-For some reason, the NFSv2 GETACL result encoder was fully converted
-to use the new nfs_stream_encode_acl(), but the NFSv3 equivalent was
-not similarly converted.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Fixes: 20798dfe249a ("NFSD: Update the NFSv3 GETACL result encoder to use struct xdr_stream")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+If RECLAIM_COMPLETE sets the NFS4CLNT_BIND_CONN_TO_SESSION flag, then we
+need to loop back in order to handle it.
+
+Fixes: 0048fdd06614 ("NFSv4.1: RECLAIM_COMPLETE must handle NFS4ERR_CONN_NOT_BOUND_TO_SESSION")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfsd/nfs3acl.c |   30 ++++++------------------------
- 1 file changed, 6 insertions(+), 24 deletions(-)
+ fs/nfs/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index 9446c6743664..7c798b5f4ec6 100644
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -171,11 +171,7 @@ nfs3svc_encode_getaclres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- {
- 	struct nfsd3_getaclres *resp = rqstp->rq_resp;
- 	struct dentry *dentry = resp->fh.fh_dentry;
--	struct kvec *head = rqstp->rq_res.head;
- 	struct inode *inode;
--	unsigned int base;
--	int n;
--	int w;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 9bab3e9c702a..0b6bd6336c98 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2671,6 +2671,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			if (status < 0)
+ 				goto out_error;
+ 			nfs4_state_end_reclaim_reboot(clp);
++			continue;
+ 		}
  
- 	if (!svcxdr_encode_nfsstat3(xdr, resp->status))
- 		return false;
-@@ -187,26 +183,12 @@ nfs3svc_encode_getaclres(struct svc_rqst *rqstp, struct xdr_stream *xdr)
- 		if (xdr_stream_encode_u32(xdr, resp->mask) < 0)
- 			return false;
- 
--		base = (char *)xdr->p - (char *)head->iov_base;
--
--		rqstp->rq_res.page_len = w = nfsacl_size(
--			(resp->mask & NFS_ACL)   ? resp->acl_access  : NULL,
--			(resp->mask & NFS_DFACL) ? resp->acl_default : NULL);
--		while (w > 0) {
--			if (!*(rqstp->rq_next_page++))
--				return false;
--			w -= PAGE_SIZE;
--		}
--
--		n = nfsacl_encode(&rqstp->rq_res, base, inode,
--				  resp->acl_access,
--				  resp->mask & NFS_ACL, 0);
--		if (n > 0)
--			n = nfsacl_encode(&rqstp->rq_res, base + n, inode,
--					  resp->acl_default,
--					  resp->mask & NFS_DFACL,
--					  NFS_ACL_DEFAULT);
--		if (n <= 0)
-+		if (!nfs_stream_encode_acl(xdr, inode, resp->acl_access,
-+					   resp->mask & NFS_ACL, 0))
-+			return false;
-+		if (!nfs_stream_encode_acl(xdr, inode, resp->acl_default,
-+					   resp->mask & NFS_DFACL,
-+					   NFS_ACL_DEFAULT))
- 			return false;
- 		break;
- 	default:
-
+ 		/* Detect expired delegations... */
+-- 
+2.37.3
 
