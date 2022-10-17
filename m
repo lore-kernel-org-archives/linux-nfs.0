@@ -2,142 +2,86 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC7ADC04A95
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Oct 2022 10:59:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AB9CC4332F
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Oct 2022 12:55:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230438AbiJQK7A (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Oct 2022 06:59:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44638 "EHLO
+        id S230462AbiJQMzj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Oct 2022 08:55:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43888 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230464AbiJQK5a (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2022 06:57:30 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A770D61708;
-        Mon, 17 Oct 2022 03:57:28 -0700 (PDT)
+        with ESMTP id S230436AbiJQMzi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2022 08:55:38 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B470D42E65
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Oct 2022 05:55:37 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 6E0D86105A;
-        Mon, 17 Oct 2022 10:57:27 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB448C433D6;
-        Mon, 17 Oct 2022 10:57:24 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 2FB52B8167E
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Oct 2022 12:55:36 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 68E7CC433C1;
+        Mon, 17 Oct 2022 12:55:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1666004246;
-        bh=LBaEFSh5DOeyzDGsOyxhMwQpssm5JK6u2HESg5ybNII=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=GcdT6b7mb+oJp742oGeuVIMOfw8oEZ0enQ18wg8Ay/lNdbFfxNrtDJeG5LwPho5dD
-         mjrEEtQNE5tTDsZ3XJBuv/1zzQ2QeaSuOG/cCyWcsUY7eJIEeSErX+E+vAIFJQsC55
-         N0s4+1Hq8cIO6nsNFLSxEB+742ItXHY3Kedw1srG/T4sW8IkT4hPE77/++e78jtlwu
-         /K5Vs5K3g2tUySh+SylFTQGTzwZWsWsW8g3y1rdekQXDShurEUkxEr/O+y+NwuXVZ7
-         V0SmxQbcJ+ulid2bOfa6XXx920Zn48b/9WwRFyMGnJFHPxLoEn+tBpw6zmF+eqKvTC
-         tpSNnThfThorQ==
+        s=k20201202; t=1666011334;
+        bh=6jYfa+aWoAwoOHiEOCdQ1jS5Q92cPK2kehIivy86RGU=;
+        h=Subject:From:To:Date:In-Reply-To:References:From;
+        b=Xt7vOZfZWNwkSgnEGbrZ02nFAA/ow56w1w4ZPDnWC1u0ICsZewIK/VY6I4j4731SX
+         WGzhQk8y1CjjILqVU1Aw5oskWpal4ul7HjMFsztDEevtqABD2LMimp+rVXnpzwGSJq
+         8Uj2pwLbPaxsLj5GFsZCZ8zx+SHe9P8gZweEVOrXzcsqs49tuHtCxvg1906WF66PXQ
+         ewFb83PyHathJ8cpqmF1ENSL1WUTZFB6jalXHlVv3RkTaBOSLmY8YEc6nbEZZmExVE
+         PySNO/V1201BciyrWo0WzBjfwbX4/pUNTTeKtCqWMfY3GtiqKd+Salx5H2nFm7lDcn
+         bs3rKvYThnZuw==
+Message-ID: <355a0d843130bad8fc743b19fec2b829aed6b326.camel@kernel.org>
+Subject: Re: [PATCH 1 1/3] SUNRPC: Remove unused svc_rqst::rq_lock field
 From:   Jeff Layton <jlayton@kernel.org>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
-        david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
-        viro@zeniv.linux.org.uk, zohar@linux.ibm.com, xiubli@redhat.com,
-        chuck.lever@oracle.com, lczerner@redhat.com, jack@suse.cz,
-        bfields@fieldses.org, brauner@kernel.org, fweimer@redhat.com
-Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Subject: [PATCH v7 6/9] nfsd: move nfsd4_change_attribute to nfsfh.c
-Date:   Mon, 17 Oct 2022 06:57:06 -0400
-Message-Id: <20221017105709.10830-7-jlayton@kernel.org>
-X-Mailer: git-send-email 2.37.3
-In-Reply-To: <20221017105709.10830-1-jlayton@kernel.org>
-References: <20221017105709.10830-1-jlayton@kernel.org>
+To:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date:   Mon, 17 Oct 2022 08:55:33 -0400
+In-Reply-To: <166593521604.1710.10648202421284171508.stgit@klimt.1015granger.net>
+References: <166593521604.1710.10648202421284171508.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.4 (3.44.4-2.fc36) 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is a pretty big function for inlining. Move it to being
-non-inlined.
+On Sun, 2022-10-16 at 11:46 -0400, Chuck Lever wrote:
+> Clean up after commit 22700f3c6df5 ("SUNRPC: Improve ordering of
+> transport processing").
+>=20
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  include/linux/sunrpc/svc.h |    1 -
+>  net/sunrpc/svc.c           |    1 -
+>  2 files changed, 2 deletions(-)
+>=20
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index daecb009c05b..3b59eb9cf884 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -311,7 +311,6 @@ struct svc_rqst {
+>  	struct auth_domain *	rq_gssclient;	/* "gss/"-style peer info */
+>  	struct svc_cacherep *	rq_cacherep;	/* cache info */
+>  	struct task_struct	*rq_task;	/* service thread */
+> -	spinlock_t		rq_lock;	/* per-request lock */
+>  	struct net		*rq_bc_net;	/* pointer to backchannel's
+>  						 * net namespace
+>  						 */
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 7c9a0d0b1230..d2bb1d04c524 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -638,7 +638,6 @@ svc_rqst_alloc(struct svc_serv *serv, struct svc_pool=
+ *pool, int node)
+>  		return rqstp;
+> =20
+>  	__set_bit(RQ_BUSY, &rqstp->rq_flags);
+> -	spin_lock_init(&rqstp->rq_lock);
+>  	rqstp->rq_server =3D serv;
+>  	rqstp->rq_pool =3D pool;
+> =20
+>=20
+>=20
 
-Reviewed-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfsd/nfsfh.c | 27 +++++++++++++++++++++++++++
- fs/nfsd/nfsfh.h | 29 +----------------------------
- 2 files changed, 28 insertions(+), 28 deletions(-)
-
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index d73434200df9..7030d9209903 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -748,3 +748,30 @@ enum fsid_source fsid_source(const struct svc_fh *fhp)
- 		return FSIDSOURCE_UUID;
- 	return FSIDSOURCE_DEV;
- }
-+
-+/*
-+ * We could use i_version alone as the change attribute.  However,
-+ * i_version can go backwards after a reboot.  On its own that doesn't
-+ * necessarily cause a problem, but if i_version goes backwards and then
-+ * is incremented again it could reuse a value that was previously used
-+ * before boot, and a client who queried the two values might
-+ * incorrectly assume nothing changed.
-+ *
-+ * By using both ctime and the i_version counter we guarantee that as
-+ * long as time doesn't go backwards we never reuse an old value.
-+ */
-+u64 nfsd4_change_attribute(struct kstat *stat, struct inode *inode)
-+{
-+	if (inode->i_sb->s_export_op->fetch_iversion)
-+		return inode->i_sb->s_export_op->fetch_iversion(inode);
-+	else if (IS_I_VERSION(inode)) {
-+		u64 chattr;
-+
-+		chattr =  stat->ctime.tv_sec;
-+		chattr <<= 30;
-+		chattr += stat->ctime.tv_nsec;
-+		chattr += inode_query_iversion(inode);
-+		return chattr;
-+	} else
-+		return time_to_chattr(&stat->ctime);
-+}
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index c3ae6414fc5c..4c223a7a91d4 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -291,34 +291,7 @@ static inline void fh_clear_pre_post_attrs(struct svc_fh *fhp)
- 	fhp->fh_pre_saved = false;
- }
- 
--/*
-- * We could use i_version alone as the change attribute.  However,
-- * i_version can go backwards after a reboot.  On its own that doesn't
-- * necessarily cause a problem, but if i_version goes backwards and then
-- * is incremented again it could reuse a value that was previously used
-- * before boot, and a client who queried the two values might
-- * incorrectly assume nothing changed.
-- *
-- * By using both ctime and the i_version counter we guarantee that as
-- * long as time doesn't go backwards we never reuse an old value.
-- */
--static inline u64 nfsd4_change_attribute(struct kstat *stat,
--					 struct inode *inode)
--{
--	if (inode->i_sb->s_export_op->fetch_iversion)
--		return inode->i_sb->s_export_op->fetch_iversion(inode);
--	else if (IS_I_VERSION(inode)) {
--		u64 chattr;
--
--		chattr =  stat->ctime.tv_sec;
--		chattr <<= 30;
--		chattr += stat->ctime.tv_nsec;
--		chattr += inode_query_iversion(inode);
--		return chattr;
--	} else
--		return time_to_chattr(&stat->ctime);
--}
--
-+u64 nfsd4_change_attribute(struct kstat *stat, struct inode *inode);
- extern void fh_fill_pre_attrs(struct svc_fh *fhp);
- extern void fh_fill_post_attrs(struct svc_fh *fhp);
- extern void fh_fill_both_attrs(struct svc_fh *fhp);
--- 
-2.37.3
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
