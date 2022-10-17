@@ -2,35 +2,35 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C79A2C43217
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Oct 2022 10:58:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB5A9C41535
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Oct 2022 10:59:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231341AbiJQK66 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Oct 2022 06:58:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44638 "EHLO
+        id S230497AbiJQK67 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Oct 2022 06:58:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44576 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230433AbiJQK6J (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2022 06:58:09 -0400
+        with ESMTP id S230349AbiJQK52 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2022 06:57:28 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C9E761135;
-        Mon, 17 Oct 2022 03:57:34 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1CB0061B0E;
+        Mon, 17 Oct 2022 03:57:24 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 87ED8B81338;
-        Mon, 17 Oct 2022 10:57:32 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4C0C6C43142;
-        Mon, 17 Oct 2022 10:57:29 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id A3FCEB812AC;
+        Mon, 17 Oct 2022 10:57:23 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7664FC433C1;
+        Mon, 17 Oct 2022 10:57:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1666004251;
-        bh=IFSEjIJ9849haCXwjIMjlrBQFkMr+ez73GPRlwR8RA8=;
+        s=k20201202; t=1666004242;
+        bh=pekK2QX2KgEQVYMZRaffG2V7y/r770DCCIDCn7vh39M=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=TTvGFNOCk9adYVcWoJdmaLqoLOr9mZe4vfjD2CR+bk5kFt3mQr3TRyZ9VeVqw3vWc
-         75uB9/qN74O3l06iOrAPwNi90tSGXI7QwycTpEVgKJE2n6fAk97o44zi+Y//SeCXgr
-         F2SAomQaWPaJgfikV8Apjj9q+0URmKaViRA95YLqHzvGFiQgado/Mih8OM9wnOjY4X
-         MUs8KDvXsb9qML6ZaHAFwfy4GW5sDqLZsvK8J+3b0gOBfZSGjEWolSsNVbuWbKcIm5
-         9mdCKS4IEoiCpphQqhMigKXqGaXwOLLFn9K6H/3hpF2G680esQ+7AyKwnn9kzXxLYS
-         XPQhxSOBNuVUw==
+        b=T3Ky4C9q3L69subjakIcY7GefggWpp4am8aahclTk9o5/rR2lV9HA6L8t1/sxry5+
+         ZJ0se7Xs9NyKsNFZdGHo+8LrlfexywLrAEeOiRCTHHngmUUmRF/C4MR3ldr/WslKGc
+         vO72WVCpmN1rI4m6TTd8nCdu6UF7R+/nmoDnhSBMcNwGGOTwgZVwa2Xx45WJoHuP08
+         j0aCxtYUFeg4TIFVHmzBxwwCzwe8q5M6sIbD4+2lWzYdKXwESDj/UsxKMxrd2AZrcS
+         F9KuS57VqwxPG0acFwpX4R9uC1YwgBlkg5Eu0+Qdzjm5s18tz2x0+AsK3SJ5PtGkpA
+         mXF0mCfXaMaAQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
         david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
@@ -41,9 +41,9 @@ Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
-Subject: [PATCH v7 8/9] nfsd: remove fetch_iversion export operation
-Date:   Mon, 17 Oct 2022 06:57:08 -0400
-Message-Id: <20221017105709.10830-9-jlayton@kernel.org>
+Subject: [PATCH v7 4/9] nfs: report the inode version in getattr if requested
+Date:   Mon, 17 Oct 2022 06:57:04 -0400
+Message-Id: <20221017105709.10830-5-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.3
 In-Reply-To: <20221017105709.10830-1-jlayton@kernel.org>
 References: <20221017105709.10830-1-jlayton@kernel.org>
@@ -53,64 +53,71 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Now that the i_version counter is reported in struct kstat, there is no
-need for this export operation.
+Allow NFS to report the i_version in getattr requests. Since the cost to
+fetch it is relatively cheap, do it unconditionally and just set the
+flag if it looks like it's valid. Also, conditionally enable the
+MONOTONIC flag when the server reports its change attr type as such.
 
 Reviewed-by: NeilBrown <neilb@suse.de>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfs/export.c          | 7 -------
- fs/nfsd/nfsfh.c          | 2 --
- include/linux/exportfs.h | 1 -
- 3 files changed, 10 deletions(-)
+ fs/nfs/inode.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/export.c b/fs/nfs/export.c
-index 01596f2d0a1e..1a9d5aa51dfb 100644
---- a/fs/nfs/export.c
-+++ b/fs/nfs/export.c
-@@ -145,17 +145,10 @@ nfs_get_parent(struct dentry *dentry)
- 	return parent;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index bea7c005119c..7ed1b4c9260a 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -830,6 +830,8 @@ static u32 nfs_get_valid_attrmask(struct inode *inode)
+ 		reply_mask |= STATX_UID | STATX_GID;
+ 	if (!(cache_validity & NFS_INO_INVALID_BLOCKS))
+ 		reply_mask |= STATX_BLOCKS;
++	if (!(cache_validity & NFS_INO_INVALID_CHANGE))
++		reply_mask |= STATX_VERSION;
+ 	return reply_mask;
  }
  
--static u64 nfs_fetch_iversion(struct inode *inode)
--{
--	nfs_revalidate_inode(inode, NFS_INO_INVALID_CHANGE);
--	return inode_peek_iversion_raw(inode);
--}
--
- const struct export_operations nfs_export_ops = {
- 	.encode_fh = nfs_encode_fh,
- 	.fh_to_dentry = nfs_fh_to_dentry,
- 	.get_parent = nfs_get_parent,
--	.fetch_iversion = nfs_fetch_iversion,
- 	.flags = EXPORT_OP_NOWCC|EXPORT_OP_NOSUBTREECHK|
- 		EXPORT_OP_CLOSE_BEFORE_UNLINK|EXPORT_OP_REMOTE_FS|
- 		EXPORT_OP_NOATOMIC_ATTR,
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 21b64ac97a06..9c1f697ffc72 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -777,8 +777,6 @@ u64 nfsd4_change_attribute(struct kstat *stat, struct inode *inode)
- {
- 	u64 chattr;
+@@ -848,7 +850,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
  
--	if (inode->i_sb->s_export_op->fetch_iversion)
--		return inode->i_sb->s_export_op->fetch_iversion(inode);
- 	if (stat->result_mask & STATX_VERSION) {
- 		chattr = stat->version;
+ 	request_mask &= STATX_TYPE | STATX_MODE | STATX_NLINK | STATX_UID |
+ 			STATX_GID | STATX_ATIME | STATX_MTIME | STATX_CTIME |
+-			STATX_INO | STATX_SIZE | STATX_BLOCKS;
++			STATX_INO | STATX_SIZE | STATX_BLOCKS | STATX_BTIME |
++			STATX_VERSION;
  
-diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-index fe848901fcc3..9f4d4bcbf251 100644
---- a/include/linux/exportfs.h
-+++ b/include/linux/exportfs.h
-@@ -213,7 +213,6 @@ struct export_operations {
- 			  bool write, u32 *device_generation);
- 	int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
- 			     int nr_iomaps, struct iattr *iattr);
--	u64 (*fetch_iversion)(struct inode *);
- #define	EXPORT_OP_NOWCC			(0x1) /* don't collect v3 wcc data */
- #define	EXPORT_OP_NOSUBTREECHK		(0x2) /* no subtree checking */
- #define	EXPORT_OP_CLOSE_BEFORE_UNLINK	(0x4) /* close files before unlink */
+ 	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
+ 		if (readdirplus_enabled)
+@@ -856,8 +859,8 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 		goto out_no_revalidate;
+ 	}
+ 
+-	/* Flush out writes to the server in order to update c/mtime.  */
+-	if ((request_mask & (STATX_CTIME | STATX_MTIME)) &&
++	/* Flush out writes to the server in order to update c/mtime/version.  */
++	if ((request_mask & (STATX_CTIME | STATX_MTIME | STATX_VERSION)) &&
+ 	    S_ISREG(inode->i_mode))
+ 		filemap_write_and_wait(inode->i_mapping);
+ 
+@@ -877,7 +880,7 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 	/* Is the user requesting attributes that might need revalidation? */
+ 	if (!(request_mask & (STATX_MODE|STATX_NLINK|STATX_ATIME|STATX_CTIME|
+ 					STATX_MTIME|STATX_UID|STATX_GID|
+-					STATX_SIZE|STATX_BLOCKS)))
++					STATX_SIZE|STATX_BLOCKS|STATX_VERSION)))
+ 		goto out_no_revalidate;
+ 
+ 	/* Check whether the cached attributes are stale */
+@@ -915,6 +918,10 @@ int nfs_getattr(struct user_namespace *mnt_userns, const struct path *path,
+ 
+ 	generic_fillattr(&init_user_ns, inode, stat);
+ 	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
++	stat->version = inode_peek_iversion_raw(inode);
++	stat->attributes_mask |= STATX_ATTR_VERSION_MONOTONIC;
++	if (server->change_attr_type != NFS4_CHANGE_TYPE_IS_UNDEFINED)
++		stat->attributes |= STATX_ATTR_VERSION_MONOTONIC;
+ 	if (S_ISDIR(inode->i_mode))
+ 		stat->blksize = NFS_SERVER(inode)->dtsize;
+ out:
 -- 
 2.37.3
 
