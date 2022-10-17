@@ -2,163 +2,94 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2E38C4332F
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Oct 2022 10:52:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E1DDC43217
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Oct 2022 10:57:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230061AbiJQKwh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Oct 2022 06:52:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34152 "EHLO
+        id S229810AbiJQK5U (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Oct 2022 06:57:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44222 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230174AbiJQKwe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2022 06:52:34 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6AFF060681
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Oct 2022 03:52:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1666003952;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=OfEwbQN1PMM2nsEq/v4tNEXoVx7e18h8ANGJ1MzaO+4=;
-        b=FEkgfm5VNyoX9OXiwNw/TDk/eFhKQQSaSDS0MJIdsXXNWKj/+JBvIwEG8yaIntZV1+SUOJ
-        rV0y01vKxEgF9bWIf/YrZbBn1dgYB56n4K6QvvL+6aONFedz8RpxZ00Sh6j0lYsHmEr3NS
-        elY8iiJM7HFlJRRjxAY5IvnMzE9OV6o=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-14-ZUeHdzz7N7-FDoZZSG5b0g-1; Mon, 17 Oct 2022 06:52:27 -0400
-X-MC-Unique: ZUeHdzz7N7-FDoZZSG5b0g-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S230144AbiJQK5P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Oct 2022 06:57:15 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D1845C9D7;
+        Mon, 17 Oct 2022 03:57:14 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id CCAA618E004A;
-        Mon, 17 Oct 2022 10:52:26 +0000 (UTC)
-Received: from dwysocha.rdu.csb (unknown [10.22.8.42])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 886A61121319;
-        Mon, 17 Oct 2022 10:52:26 +0000 (UTC)
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        David Howells <dhowells@redhat.com>
-Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
-        Benjamin Maynard <benmaynard@google.com>,
-        Daire Byrne <daire.byrne@gmail.com>
-Subject: [PATCH v9 4/5] NFS: Remove all NFSIOS_FSCACHE counters due to conversion to netfs API
-Date:   Mon, 17 Oct 2022 06:52:11 -0400
-Message-Id: <20221017105212.77588-5-dwysocha@redhat.com>
-In-Reply-To: <20221017105212.77588-1-dwysocha@redhat.com>
-References: <20221017105212.77588-1-dwysocha@redhat.com>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0A0D66103A;
+        Mon, 17 Oct 2022 10:57:14 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F241C433C1;
+        Mon, 17 Oct 2022 10:57:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1666004233;
+        bh=6YT8a4bXoeXs8XCfVDx3M0Me+DkkbCjCyiu7tCiJL+s=;
+        h=From:To:Cc:Subject:Date:From;
+        b=Gj7zxfDuAX7XjOBrXuruhtxnquTTTafw/403MMHjD9isqBeJP2M9YniIOu5CZ1rHj
+         urP61o2T+SVbkLdDx4Kd4xuw55ioynZlC4Lts975BLgtdZjhxrBrXpWc907xShB3RC
+         2ZtNUB7vJ3PGARKYGkDXHUC8mlqaFGHy/HCM1lXgkJYGBdj96W0XXcWMLrWc4m1lFy
+         uriZS+qEWlw2JfLC10mtBf4dpwQp2BpxhMSFxWgOepFJiQxd3HvBBFvhpJSHu3/Osg
+         XvQn8aLxzoFoN6LtpkL6PD5Y3unGQ4WVbpFaN7RMDEA+ldANE+GjmmbKMMjYkCMBnr
+         9I+ZFiT+pBJSA==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
+        david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
+        viro@zeniv.linux.org.uk, zohar@linux.ibm.com, xiubli@redhat.com,
+        chuck.lever@oracle.com, lczerner@redhat.com, jack@suse.cz,
+        bfields@fieldses.org, brauner@kernel.org, fweimer@redhat.com
+Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Subject: [PATCH v7 0/9] fs: clean up handling of i_version counter
+Date:   Mon, 17 Oct 2022 06:57:00 -0400
+Message-Id: <20221017105709.10830-1-jlayton@kernel.org>
+X-Mailer: git-send-email 2.37.3
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.3
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The old NFSIOS_FSCACHE counters are no longer accurate or useful with
-the conversion to the new netfs API.  The new API does not have a page
-based interface, and so the counters in nfs_stat_fscachecounters are
-no longer obtainable.  The new netfs the API has extensive statistics
-inside /proc/fs/fscache/stats so we no longer need NFS specific fscache
-stats.
+This patchset is intended to clean up the handling of the i_version
+counter by nfsd. Most of the changes are to internal interfaces.
 
-Note this also removes the 'fsc:' line from /proc/self/mountstats so
-it will be a user-visible change.
+This set is not intended to address crash resilience, or the fact that
+the counter is bumped before a change and not after. I intend to tackle
+those in follow-on patchsets.
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfs/iostat.h            | 17 -----------------
- fs/nfs/super.c             | 11 -----------
- include/linux/nfs_iostat.h | 12 ------------
- 3 files changed, 40 deletions(-)
+My intention is to get this series included into linux-next soon, with
+an eye toward merging most of it during the v6.2 merge window. The last
+patch in the series is probably not suitable for merge as-is, at least
+until we sort out the semantics we want to present to userland for it.
 
-diff --git a/fs/nfs/iostat.h b/fs/nfs/iostat.h
-index 2ddaab1ac653..5aa776b5a3e7 100644
---- a/fs/nfs/iostat.h
-+++ b/fs/nfs/iostat.h
-@@ -17,9 +17,6 @@
- 
- struct nfs_iostats {
- 	unsigned long long	bytes[__NFSIOS_BYTESMAX];
--#ifdef CONFIG_NFS_FSCACHE
--	unsigned long long	fscache[__NFSIOS_FSCACHEMAX];
--#endif
- 	unsigned long		events[__NFSIOS_COUNTSMAX];
- } ____cacheline_aligned;
- 
-@@ -49,20 +46,6 @@ static inline void nfs_add_stats(const struct inode *inode,
- 	nfs_add_server_stats(NFS_SERVER(inode), stat, addend);
- }
- 
--#ifdef CONFIG_NFS_FSCACHE
--static inline void nfs_add_fscache_stats(struct inode *inode,
--					 enum nfs_stat_fscachecounters stat,
--					 long addend)
--{
--	this_cpu_add(NFS_SERVER(inode)->io_stats->fscache[stat], addend);
--}
--static inline void nfs_inc_fscache_stats(struct inode *inode,
--					 enum nfs_stat_fscachecounters stat)
--{
--	this_cpu_inc(NFS_SERVER(inode)->io_stats->fscache[stat]);
--}
--#endif
--
- static inline struct nfs_iostats __percpu *nfs_alloc_iostats(void)
- {
- 	return alloc_percpu(struct nfs_iostats);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ee66ffdb985e..302148258ff1 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -692,10 +692,6 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 			totals.events[i] += stats->events[i];
- 		for (i = 0; i < __NFSIOS_BYTESMAX; i++)
- 			totals.bytes[i] += stats->bytes[i];
--#ifdef CONFIG_NFS_FSCACHE
--		for (i = 0; i < __NFSIOS_FSCACHEMAX; i++)
--			totals.fscache[i] += stats->fscache[i];
--#endif
- 
- 		preempt_enable();
- 	}
-@@ -706,13 +702,6 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 	seq_puts(m, "\n\tbytes:\t");
- 	for (i = 0; i < __NFSIOS_BYTESMAX; i++)
- 		seq_printf(m, "%Lu ", totals.bytes[i]);
--#ifdef CONFIG_NFS_FSCACHE
--	if (nfss->options & NFS_OPTION_FSCACHE) {
--		seq_puts(m, "\n\tfsc:\t");
--		for (i = 0; i < __NFSIOS_FSCACHEMAX; i++)
--			seq_printf(m, "%Lu ", totals.fscache[i]);
--	}
--#endif
- 	seq_putc(m, '\n');
- 
- 	rpc_clnt_show_stats(m, nfss->client);
-diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
-index 027874c36c88..8d946089d151 100644
---- a/include/linux/nfs_iostat.h
-+++ b/include/linux/nfs_iostat.h
-@@ -119,16 +119,4 @@ enum nfs_stat_eventcounters {
- 	__NFSIOS_COUNTSMAX,
- };
- 
--/*
-- * NFS local caching servicing counters
-- */
--enum nfs_stat_fscachecounters {
--	NFSIOS_FSCACHE_PAGES_READ_OK,
--	NFSIOS_FSCACHE_PAGES_READ_FAIL,
--	NFSIOS_FSCACHE_PAGES_WRITTEN_OK,
--	NFSIOS_FSCACHE_PAGES_WRITTEN_FAIL,
--	NFSIOS_FSCACHE_PAGES_UNCACHED,
--	__NFSIOS_FSCACHEMAX,
--};
--
- #endif	/* _LINUX_NFS_IOSTAT */
+Jeff Layton (9):
+  fs: uninline inode_query_iversion
+  fs: clarify when the i_version counter must be updated
+  vfs: plumb i_version handling into struct kstat
+  nfs: report the inode version in getattr if requested
+  ceph: report the inode version in getattr if requested
+  nfsd: move nfsd4_change_attribute to nfsfh.c
+  nfsd: use the getattr operation to fetch i_version
+  nfsd: remove fetch_iversion export operation
+  vfs: expose STATX_VERSION to userland
+
+ fs/ceph/inode.c           | 16 +++++++----
+ fs/libfs.c                | 36 ++++++++++++++++++++++++
+ fs/nfs/export.c           |  7 -----
+ fs/nfs/inode.c            | 15 +++++++---
+ fs/nfsd/nfs4xdr.c         |  4 ++-
+ fs/nfsd/nfsfh.c           | 42 ++++++++++++++++++++++++++++
+ fs/nfsd/nfsfh.h           | 29 +-------------------
+ fs/nfsd/vfs.h             |  7 ++++-
+ fs/stat.c                 |  7 +++++
+ include/linux/exportfs.h  |  1 -
+ include/linux/iversion.h  | 58 ++++++++++++++-------------------------
+ include/linux/stat.h      |  2 +-
+ include/uapi/linux/stat.h |  6 ++--
+ samples/vfs/test-statx.c  |  8 ++++--
+ 14 files changed, 148 insertions(+), 90 deletions(-)
+
 -- 
-2.31.1
+2.37.3
 
