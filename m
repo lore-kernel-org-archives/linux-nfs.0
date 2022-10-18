@@ -2,286 +2,227 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E184C4332F
-	for <linux-nfs@archiver.kernel.org>; Tue, 18 Oct 2022 11:48:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86A45C4332F
+	for <linux-nfs@archiver.kernel.org>; Tue, 18 Oct 2022 13:07:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229692AbiJRLsG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Oct 2022 07:48:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36676 "EHLO
+        id S229619AbiJRNHr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 18 Oct 2022 09:07:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55512 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230166AbiJRLsF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2022 07:48:05 -0400
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F4197BBE19
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 04:48:03 -0700 (PDT)
+        with ESMTP id S229520AbiJRNHp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2022 09:07:45 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64E2FC5897
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 06:07:44 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 74889CE1D31
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 11:48:00 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 67E44C433D6;
-        Tue, 18 Oct 2022 11:47:58 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id C8406B81F1D
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 13:07:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E6CFC433C1;
+        Tue, 18 Oct 2022 13:07:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1666093678;
-        bh=dRSValb3GeJrjio1J4qkphMyw1UK1EVNoTEVN+pM+2k=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=oEWcMWtOIhupcV2/rJYgfjY27Mha+5GPnr0Ivr1kb/Q6W5TNobPk6iWOmmRrC6RQM
-         YFC8geIO0x7XJDg2h11bkXux/TQ36UhpFagpiXNVLw1ierBAMpE5BRYaFbS7L6vlsl
-         aH3bAWZEt/+dhPzCxc4MZlN0hWiiAbpTRp0dbq6+Aahd+wmq2BSipHz1v4EsBIojGJ
-         1TxD1J+AEWI90oIRlp8paqzwXCNFD3guNLl0ernrXGdd9qMgGLNyexDT773Ww+UU5D
-         /aKkY410JdvlcAbgmNYfWYF39NjcqyrDmNe4Xc1Kl/e0c2WqFUSQ1wBKj4MFF6qCUv
-         rt3cu8phgFIFw==
+        s=k20201202; t=1666098461;
+        bh=FnRVeG/qCCThLsTV97E3VMbWP8nkHqfmsSSLmP88rbI=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=Ys/jql1hjeLZ6t1GUGD8kSThztHvj/ZZv6To7KSvIFzJqyw4FvyNLrRZBipc5x77U
+         vhd4e4M3WIpamO6UmRUbVuk+Kbkj5x1JSe0sa25f/CVUKcnGvd+cKYHsBvrZc5D41s
+         JrLgkPefdspciieG2vK7Q005K/VDPTjjoNPyXb5OBVQGWsLuITrRgVVSkVj580neHO
+         5MaBjZLKaTOc0+FRTN52uZmJNb0gEzGXVwpq2HhSu+CHXOklaqqQt5aTMCYMZ73f1u
+         7urBc/jGzr9tdjQIsNtoAs5mEfV2BGBe0CHuHaPJzxp/1sFq8WInEiqAhc/4Yr4zRz
+         Lg3KRPjpgrkSg==
+Message-ID: <9d1be93452dc03f911c684946464b0862c93b965.camel@kernel.org>
+Subject: Re: [PATCH 2/2] NFSD: add delegation shrinker to react to low
+ memory condition
 From:   Jeff Layton <jlayton@kernel.org>
-To:     chuck.lever@oracle.com
-Cc:     tom@talpey.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/3] nfsd: move nfserrno() to vfs.c
-Date:   Tue, 18 Oct 2022 07:47:55 -0400
-Message-Id: <20221018114756.23679-2-jlayton@kernel.org>
-X-Mailer: git-send-email 2.37.3
-In-Reply-To: <20221018114756.23679-1-jlayton@kernel.org>
-References: <20221018114756.23679-1-jlayton@kernel.org>
+To:     Dai Ngo <dai.ngo@oracle.com>, chuck.lever@oracle.com
+Cc:     linux-nfs@vger.kernel.org
+Date:   Tue, 18 Oct 2022 09:07:39 -0400
+In-Reply-To: <1666070139-18843-3-git-send-email-dai.ngo@oracle.com>
+References: <1666070139-18843-1-git-send-email-dai.ngo@oracle.com>
+         <1666070139-18843-3-git-send-email-dai.ngo@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.4 (3.44.4-2.fc36) 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-nfserrno() is common to all nfs versions, but nfsproc.c is specifically
-for NFSv2. Move it to vfs.c, and the prototype to vfs.h.
+On Mon, 2022-10-17 at 22:15 -0700, Dai Ngo wrote:
+> The delegation shrinker is scheduled to run on every shrinker's
+> 'count' callback. It scans the client list and sends the
+> courtesy CB_RECALL_ANY to the clients that hold delegations.
+>=20
+> To avoid flooding the clients with CB_RECALL_ANY requests, the
+> delegation shrinker is scheduled to run after a 5 seconds delay.
+>=20
 
-While we're in here, remove the #ifdef EDQUOT check in this function.
-It's apparently a holdover from the initial merge of the nfsd code in
-1997. No other place in the kernel checks that that symbol is defined
-before using it, so I think we can dispense with it here.
+But...when the kernel needs memory, it generally needs it _now_, and 5s
+is a long time. It'd be better to not delay the initial sending of
+CB_RECALL_ANY callbacks this much.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfsd/blocklayout.c    |  1 +
- fs/nfsd/blocklayoutxdr.c |  1 +
- fs/nfsd/export.h         |  1 -
- fs/nfsd/flexfilelayout.c |  1 +
- fs/nfsd/nfs4idmap.c      |  1 +
- fs/nfsd/nfsproc.c        | 62 ---------------------------------------
- fs/nfsd/vfs.c            | 63 ++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/vfs.h            |  1 +
- 8 files changed, 68 insertions(+), 63 deletions(-)
+Maybe the logic should be changed such that it runs no more frequently
+than once every 5s, but don't delay the initial sending of
+CB_RECALL_ANYs.
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index b6d01d51a746..04697f8dc37d 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -12,6 +12,7 @@
- #include "blocklayoutxdr.h"
- #include "pnfs.h"
- #include "filecache.h"
-+#include "vfs.h"
- 
- #define NFSDDBG_FACILITY	NFSDDBG_PNFS
- 
-diff --git a/fs/nfsd/blocklayoutxdr.c b/fs/nfsd/blocklayoutxdr.c
-index 442543304930..8e9c1a0f8d38 100644
---- a/fs/nfsd/blocklayoutxdr.c
-+++ b/fs/nfsd/blocklayoutxdr.c
-@@ -9,6 +9,7 @@
- 
- #include "nfsd.h"
- #include "blocklayoutxdr.h"
-+#include "vfs.h"
- 
- #define NFSDDBG_FACILITY	NFSDDBG_PNFS
- 
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index ee0e3aba4a6e..d03f7f6a8642 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -115,7 +115,6 @@ struct svc_export *	rqst_find_fsidzero_export(struct svc_rqst *);
- int			exp_rootfh(struct net *, struct auth_domain *,
- 					char *path, struct knfsd_fh *, int maxsize);
- __be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
--__be32			nfserrno(int errno);
- 
- static inline void exp_put(struct svc_export *exp)
- {
-diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
-index 070f90ed09b6..3ca5304440ff 100644
---- a/fs/nfsd/flexfilelayout.c
-+++ b/fs/nfsd/flexfilelayout.c
-@@ -15,6 +15,7 @@
- 
- #include "flexfilelayoutxdr.h"
- #include "pnfs.h"
-+#include "vfs.h"
- 
- #define NFSDDBG_FACILITY	NFSDDBG_PNFS
- 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index e70a1a2999b7..5e9809aff37e 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -41,6 +41,7 @@
- #include "idmap.h"
- #include "nfsd.h"
- #include "netns.h"
-+#include "vfs.h"
- 
- /*
-  * Turn off idmapping when using AUTH_SYS.
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 82b3ddeacc33..52fc222c34f2 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -848,65 +848,3 @@ const struct svc_version nfsd_version2 = {
- 	.vs_dispatch	= nfsd_dispatch,
- 	.vs_xdrsize	= NFS2_SVC_XDRSIZE,
- };
--
--/*
-- * Map errnos to NFS errnos.
-- */
--__be32
--nfserrno (int errno)
--{
--	static struct {
--		__be32	nfserr;
--		int	syserr;
--	} nfs_errtbl[] = {
--		{ nfs_ok, 0 },
--		{ nfserr_perm, -EPERM },
--		{ nfserr_noent, -ENOENT },
--		{ nfserr_io, -EIO },
--		{ nfserr_nxio, -ENXIO },
--		{ nfserr_fbig, -E2BIG },
--		{ nfserr_stale, -EBADF },
--		{ nfserr_acces, -EACCES },
--		{ nfserr_exist, -EEXIST },
--		{ nfserr_xdev, -EXDEV },
--		{ nfserr_mlink, -EMLINK },
--		{ nfserr_nodev, -ENODEV },
--		{ nfserr_notdir, -ENOTDIR },
--		{ nfserr_isdir, -EISDIR },
--		{ nfserr_inval, -EINVAL },
--		{ nfserr_fbig, -EFBIG },
--		{ nfserr_nospc, -ENOSPC },
--		{ nfserr_rofs, -EROFS },
--		{ nfserr_mlink, -EMLINK },
--		{ nfserr_nametoolong, -ENAMETOOLONG },
--		{ nfserr_notempty, -ENOTEMPTY },
--#ifdef EDQUOT
--		{ nfserr_dquot, -EDQUOT },
--#endif
--		{ nfserr_stale, -ESTALE },
--		{ nfserr_jukebox, -ETIMEDOUT },
--		{ nfserr_jukebox, -ERESTARTSYS },
--		{ nfserr_jukebox, -EAGAIN },
--		{ nfserr_jukebox, -EWOULDBLOCK },
--		{ nfserr_jukebox, -ENOMEM },
--		{ nfserr_io, -ETXTBSY },
--		{ nfserr_notsupp, -EOPNOTSUPP },
--		{ nfserr_toosmall, -ETOOSMALL },
--		{ nfserr_serverfault, -ESERVERFAULT },
--		{ nfserr_serverfault, -ENFILE },
--		{ nfserr_io, -EREMOTEIO },
--		{ nfserr_stale, -EOPENSTALE },
--		{ nfserr_io, -EUCLEAN },
--		{ nfserr_perm, -ENOKEY },
--		{ nfserr_no_grace, -ENOGRACE},
--	};
--	int	i;
--
--	for (i = 0; i < ARRAY_SIZE(nfs_errtbl); i++) {
--		if (nfs_errtbl[i].syserr == errno)
--			return nfs_errtbl[i].nfserr;
--	}
--	WARN_ONCE(1, "nfsd: non-standard errno: %d\n", errno);
--	return nfserr_io;
--}
--
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 83be89905cbf..bee6f4a32f3b 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -49,6 +49,69 @@
- 
- #define NFSDDBG_FACILITY		NFSDDBG_FILEOP
- 
-+/**
-+ * nfserrno - Map Linux errnos to NFS errnos
-+ * @errno: POSIX(-ish) error code to be mapped
-+ *
-+ * Returns the appropriate (net-endian) nfserr_* (or nfs_ok if errno is 0). If
-+ * it's an error we don't expect, log it once and return nfserr_io.
-+ */
-+__be32
-+nfserrno (int errno)
-+{
-+	static struct {
-+		__be32	nfserr;
-+		int	syserr;
-+	} nfs_errtbl[] = {
-+		{ nfs_ok, 0 },
-+		{ nfserr_perm, -EPERM },
-+		{ nfserr_noent, -ENOENT },
-+		{ nfserr_io, -EIO },
-+		{ nfserr_nxio, -ENXIO },
-+		{ nfserr_fbig, -E2BIG },
-+		{ nfserr_stale, -EBADF },
-+		{ nfserr_acces, -EACCES },
-+		{ nfserr_exist, -EEXIST },
-+		{ nfserr_xdev, -EXDEV },
-+		{ nfserr_mlink, -EMLINK },
-+		{ nfserr_nodev, -ENODEV },
-+		{ nfserr_notdir, -ENOTDIR },
-+		{ nfserr_isdir, -EISDIR },
-+		{ nfserr_inval, -EINVAL },
-+		{ nfserr_fbig, -EFBIG },
-+		{ nfserr_nospc, -ENOSPC },
-+		{ nfserr_rofs, -EROFS },
-+		{ nfserr_mlink, -EMLINK },
-+		{ nfserr_nametoolong, -ENAMETOOLONG },
-+		{ nfserr_notempty, -ENOTEMPTY },
-+		{ nfserr_dquot, -EDQUOT },
-+		{ nfserr_stale, -ESTALE },
-+		{ nfserr_jukebox, -ETIMEDOUT },
-+		{ nfserr_jukebox, -ERESTARTSYS },
-+		{ nfserr_jukebox, -EAGAIN },
-+		{ nfserr_jukebox, -EWOULDBLOCK },
-+		{ nfserr_jukebox, -ENOMEM },
-+		{ nfserr_io, -ETXTBSY },
-+		{ nfserr_notsupp, -EOPNOTSUPP },
-+		{ nfserr_toosmall, -ETOOSMALL },
-+		{ nfserr_serverfault, -ESERVERFAULT },
-+		{ nfserr_serverfault, -ENFILE },
-+		{ nfserr_io, -EREMOTEIO },
-+		{ nfserr_stale, -EOPENSTALE },
-+		{ nfserr_io, -EUCLEAN },
-+		{ nfserr_perm, -ENOKEY },
-+		{ nfserr_no_grace, -ENOGRACE},
-+	};
-+	int	i;
-+
-+	for (i = 0; i < ARRAY_SIZE(nfs_errtbl); i++) {
-+		if (nfs_errtbl[i].syserr == errno)
-+			return nfs_errtbl[i].nfserr;
-+	}
-+	WARN_ONCE(1, "nfsd: non-standard errno: %d\n", errno);
-+	return nfserr_io;
-+}
-+
- /* 
-  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
-  * a mount point.
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index c98e13ec37b2..b556e9307d37 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -60,6 +60,7 @@ static inline void nfsd_attrs_free(struct nfsd_attrs *attrs)
- 	posix_acl_release(attrs->na_dpacl);
- }
- 
-+__be32		nfserrno (int errno);
- int		nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
- 		                struct svc_export **expp);
- __be32		nfsd_lookup(struct svc_rqst *, struct svc_fh *,
--- 
-2.37.3
+> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+> ---
+>  fs/nfsd/netns.h     |  3 +++
+>  fs/nfsd/nfs4state.c | 70 +++++++++++++++++++++++++++++++++++++++++++++++=
++++++-
+>  fs/nfsd/state.h     |  1 +
+>  3 files changed, 73 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> index 8c854ba3285b..394a05fb46d8 100644
+> --- a/fs/nfsd/netns.h
+> +++ b/fs/nfsd/netns.h
+> @@ -196,6 +196,9 @@ struct nfsd_net {
+>  	atomic_t		nfsd_courtesy_clients;
+>  	struct shrinker		nfsd_client_shrinker;
+>  	struct delayed_work	nfsd_shrinker_work;
+> +
+> +	struct shrinker		nfsd_deleg_shrinker;
+> +	struct delayed_work	nfsd_deleg_shrinker_work;
+>  };
+> =20
+>  /* Simple check to find out if a given net was properly initialized */
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index c60c937dece6..bdaea0e6e72f 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4392,11 +4392,32 @@ nfsd_courtesy_client_scan(struct shrinker *shrink=
+, struct shrink_control *sc)
+>  	return SHRINK_STOP;
+>  }
+> =20
+> +static unsigned long
+> +nfsd_deleg_shrinker_count(struct shrinker *shrink, struct shrink_control=
+ *sc)
+> +{
+> +	unsigned long cnt;
+> +	struct nfsd_net *nn =3D container_of(shrink,
+> +				struct nfsd_net, nfsd_deleg_shrinker);
+> +
+> +	cnt =3D atomic_long_read(&num_delegations);
+> +	if (cnt)
+> +		mod_delayed_work(laundry_wq,
+> +			&nn->nfsd_deleg_shrinker_work, 5 * HZ);
+> +	return cnt;
+> +}
+> +
 
+What's the rationale for doing all of this in the count callback? Why
+not just return the value here and leave scheduling to the scan
+callback?
+
+> +static unsigned long
+> +nfsd_deleg_shrinker_scan(struct shrinker *shrink, struct shrink_control =
+*sc)
+> +{
+> +	return SHRINK_STOP;
+> +}
+> +
+>  int
+>  nfsd4_init_leases_net(struct nfsd_net *nn)
+>  {
+>  	struct sysinfo si;
+>  	u64 max_clients;
+> +	int retval;
+> =20
+>  	nn->nfsd4_lease =3D 90;	/* default lease time */
+>  	nn->nfsd4_grace =3D 90;
+> @@ -4417,13 +4438,23 @@ nfsd4_init_leases_net(struct nfsd_net *nn)
+>  	nn->nfsd_client_shrinker.scan_objects =3D nfsd_courtesy_client_scan;
+>  	nn->nfsd_client_shrinker.count_objects =3D nfsd_courtesy_client_count;
+>  	nn->nfsd_client_shrinker.seeks =3D DEFAULT_SEEKS;
+> -	return register_shrinker(&nn->nfsd_client_shrinker, "nfsd-client");
+> +	retval =3D register_shrinker(&nn->nfsd_client_shrinker, "nfsd-client");
+> +	if (retval)
+> +		return retval;
+> +	nn->nfsd_deleg_shrinker.scan_objects =3D nfsd_deleg_shrinker_scan;
+> +	nn->nfsd_deleg_shrinker.count_objects =3D nfsd_deleg_shrinker_count;
+> +	nn->nfsd_deleg_shrinker.seeks =3D DEFAULT_SEEKS;
+> +	retval =3D register_shrinker(&nn->nfsd_deleg_shrinker, "nfsd-delegation=
+");
+> +	if (retval)
+> +		unregister_shrinker(&nn->nfsd_client_shrinker);
+> +	return retval;
+>  }
+> =20
+>  void
+>  nfsd4_leases_net_shutdown(struct nfsd_net *nn)
+>  {
+>  	unregister_shrinker(&nn->nfsd_client_shrinker);
+> +	unregister_shrinker(&nn->nfsd_deleg_shrinker);
+>  }
+> =20
+>  static void init_nfs4_replay(struct nfs4_replay *rp)
+> @@ -6162,6 +6193,42 @@ courtesy_client_reaper(struct work_struct *reaper)
+>  	nfs4_process_client_reaplist(&reaplist);
+>  }
+> =20
+> +static void
+> +deleg_reaper(struct work_struct *deleg_work)
+> +{
+> +	struct list_head *pos, *next;
+> +	struct nfs4_client *clp;
+> +	struct list_head cblist;
+> +	struct delayed_work *dwork =3D to_delayed_work(deleg_work);
+> +	struct nfsd_net *nn =3D container_of(dwork, struct nfsd_net,
+> +					nfsd_deleg_shrinker_work);
+> +
+> +	INIT_LIST_HEAD(&cblist);
+> +	spin_lock(&nn->client_lock);
+> +	list_for_each_safe(pos, next, &nn->client_lru) {
+> +		clp =3D list_entry(pos, struct nfs4_client, cl_lru);
+> +		if (clp->cl_state !=3D NFSD4_ACTIVE ||
+> +				list_empty(&clp->cl_delegations) ||
+> +				atomic_read(&clp->cl_delegs_in_recall) ||
+> +				clp->cl_recall_any_busy) {
+> +			continue;
+> +		}
+> +		clp->cl_recall_any_busy =3D true;
+> +		list_add(&clp->cl_recall_any_cblist, &cblist);
+> +
+> +		/* release in nfsd4_cb_recall_any_release */
+> +		atomic_inc(&clp->cl_rpc_users);
+> +	}
+> +	spin_unlock(&nn->client_lock);
+> +	list_for_each_safe(pos, next, &cblist) {
+> +		clp =3D list_entry(pos, struct nfs4_client, cl_recall_any_cblist);
+> +		list_del_init(&clp->cl_recall_any_cblist);
+> +		clp->cl_recall_any_bm =3D BIT(RCA4_TYPE_MASK_RDATA_DLG) |
+> +						BIT(RCA4_TYPE_MASK_WDATA_DLG);
+> +		nfsd4_run_cb(&clp->cl_recall_any);
+> +	}
+> +}
+> +
+>  static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid =
+*stp)
+>  {
+>  	if (!fh_match(&fhp->fh_handle, &stp->sc_file->fi_fhandle))
+> @@ -7985,6 +8052,7 @@ static int nfs4_state_create_net(struct net *net)
+> =20
+>  	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
+>  	INIT_DELAYED_WORK(&nn->nfsd_shrinker_work, courtesy_client_reaper);
+> +	INIT_DELAYED_WORK(&nn->nfsd_deleg_shrinker_work, deleg_reaper);
+>  	get_net(net);
+> =20
+>  	return 0;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 49ca06169642..05b572ce6605 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -415,6 +415,7 @@ struct nfs4_client {
+>  	bool			cl_recall_any_busy;
+>  	uint32_t		cl_recall_any_bm;
+>  	struct nfsd4_callback	cl_recall_any;
+> +	struct list_head	cl_recall_any_cblist;
+>  };
+> =20
+>  /* struct nfs4_client_reset
+
+--=20
+Jeff Layton <jlayton@kernel.org>
