@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E72CC4332F
-	for <linux-nfs@archiver.kernel.org>; Tue, 18 Oct 2022 19:58:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D211C4332F
+	for <linux-nfs@archiver.kernel.org>; Tue, 18 Oct 2022 19:59:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229892AbiJRT6x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Oct 2022 15:58:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37596 "EHLO
+        id S229947AbiJRT7Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 18 Oct 2022 15:59:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37632 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229998AbiJRT6t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2022 15:58:49 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7C0E09AC29
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 12:58:48 -0700 (PDT)
+        with ESMTP id S230097AbiJRT7I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Oct 2022 15:59:08 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0CE20915CF
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 12:59:07 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id EDBB5B82106
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 19:58:46 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 81616C4314C;
-        Tue, 18 Oct 2022 19:58:45 +0000 (UTC)
-Subject: [PATCH v4 4/7] NFSD: Use const pointers as parameters to fh_ helpers
+        by ams.source.kernel.org (Postfix) with ESMTPS id AD878B82103
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Oct 2022 19:59:05 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 57CEEC433C1;
+        Tue, 18 Oct 2022 19:59:04 +0000 (UTC)
+Subject: [PATCH v4 7/7] NFSD: Trace delegation revocations
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     neilb@suse.de
-Date:   Tue, 18 Oct 2022 15:58:44 -0400
-Message-ID: <166612312451.1291.10615396222464284428.stgit@manet.1015granger.net>
+Date:   Tue, 18 Oct 2022 15:59:03 -0400
+Message-ID: <166612314338.1291.6816037057097504104.stgit@manet.1015granger.net>
 In-Reply-To: <166612295223.1291.11761205673682408148.stgit@manet.1015granger.net>
 References: <166612295223.1291.11761205673682408148.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5.dev2+g9ce680a5
@@ -37,56 +37,102 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Enable callers to use const pointers where they are able to.
+Delegation revocation is an exceptional event that is not otherwise
+visible externally (eg, no network traffic is emitted). Generate a
+trace record when it occurs so that revocation can be observed or
+other activity can be triggered. Example:
+
+nfsd-1104  [005]  1912.002544: nfsd_stid_revoke:        client 633c9343:4e82788d stateid 00000003:00000001 ref=2 type=DELEG
+
+Trace infrastructure is provided for subsequent additional tracing
+related to nfs4_stid activity.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Tested-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsfh.h |   10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c |    2 ++
+ fs/nfsd/trace.h     |   55 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 57 insertions(+)
 
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index c3ae6414fc5c..513e028b0bbe 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -220,7 +220,7 @@ __be32	fh_update(struct svc_fh *);
- void	fh_put(struct svc_fh *);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a63334ad61f6..c37f07bb874d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1401,6 +1401,8 @@ static void revoke_delegation(struct nfs4_delegation *dp)
  
- static __inline__ struct svc_fh *
--fh_copy(struct svc_fh *dst, struct svc_fh *src)
-+fh_copy(struct svc_fh *dst, const struct svc_fh *src)
- {
- 	WARN_ON(src->fh_dentry);
+ 	WARN_ON(!list_empty(&dp->dl_recall_lru));
  
-@@ -229,7 +229,7 @@ fh_copy(struct svc_fh *dst, struct svc_fh *src)
- }
++	trace_nfsd_stid_revoke(&dp->dl_stid);
++
+ 	if (clp->cl_minorversion) {
+ 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+ 		refcount_inc(&dp->dl_stid.sc_count);
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index 4921144880d3..23fb39c957af 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -561,6 +561,61 @@ DEFINE_EVENT(nfsd_stateseqid_class, nfsd_##name, \
+ DEFINE_STATESEQID_EVENT(preprocess);
+ DEFINE_STATESEQID_EVENT(open_confirm);
  
- static inline void
--fh_copy_shallow(struct knfsd_fh *dst, struct knfsd_fh *src)
-+fh_copy_shallow(struct knfsd_fh *dst, const struct knfsd_fh *src)
- {
- 	dst->fh_size = src->fh_size;
- 	memcpy(&dst->fh_raw, &src->fh_raw, src->fh_size);
-@@ -243,7 +243,8 @@ fh_init(struct svc_fh *fhp, int maxsize)
- 	return fhp;
- }
- 
--static inline bool fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
-+static inline bool fh_match(const struct knfsd_fh *fh1,
-+			    const struct knfsd_fh *fh2)
- {
- 	if (fh1->fh_size != fh2->fh_size)
- 		return false;
-@@ -252,7 +253,8 @@ static inline bool fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
- 	return true;
- }
- 
--static inline bool fh_fsid_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
-+static inline bool fh_fsid_match(const struct knfsd_fh *fh1,
-+				 const struct knfsd_fh *fh2)
- {
- 	if (fh1->fh_fsid_type != fh2->fh_fsid_type)
- 		return false;
++TRACE_DEFINE_ENUM(NFS4_OPEN_STID);
++TRACE_DEFINE_ENUM(NFS4_LOCK_STID);
++TRACE_DEFINE_ENUM(NFS4_DELEG_STID);
++TRACE_DEFINE_ENUM(NFS4_CLOSED_STID);
++TRACE_DEFINE_ENUM(NFS4_REVOKED_DELEG_STID);
++TRACE_DEFINE_ENUM(NFS4_CLOSED_DELEG_STID);
++TRACE_DEFINE_ENUM(NFS4_LAYOUT_STID);
++
++#define show_stid_type(x)						\
++	__print_flags(x, "|",						\
++		{ NFS4_OPEN_STID,		"OPEN" },		\
++		{ NFS4_LOCK_STID,		"LOCK" },		\
++		{ NFS4_DELEG_STID,		"DELEG" },		\
++		{ NFS4_CLOSED_STID,		"CLOSED" },		\
++		{ NFS4_REVOKED_DELEG_STID,	"REVOKED" },		\
++		{ NFS4_CLOSED_DELEG_STID,	"CLOSED_DELEG" },	\
++		{ NFS4_LAYOUT_STID,		"LAYOUT" })
++
++DECLARE_EVENT_CLASS(nfsd_stid_class,
++	TP_PROTO(
++		const struct nfs4_stid *stid
++	),
++	TP_ARGS(stid),
++	TP_STRUCT__entry(
++		__field(unsigned long, sc_type)
++		__field(int, sc_count)
++		__field(u32, cl_boot)
++		__field(u32, cl_id)
++		__field(u32, si_id)
++		__field(u32, si_generation)
++	),
++	TP_fast_assign(
++		const stateid_t *stp = &stid->sc_stateid;
++
++		__entry->sc_type = stid->sc_type;
++		__entry->sc_count = refcount_read(&stid->sc_count);
++		__entry->cl_boot = stp->si_opaque.so_clid.cl_boot;
++		__entry->cl_id = stp->si_opaque.so_clid.cl_id;
++		__entry->si_id = stp->si_opaque.so_id;
++		__entry->si_generation = stp->si_generation;
++	),
++	TP_printk("client %08x:%08x stateid %08x:%08x ref=%d type=%s",
++		__entry->cl_boot, __entry->cl_id,
++		__entry->si_id, __entry->si_generation,
++		__entry->sc_count, show_stid_type(__entry->sc_type)
++	)
++);
++
++#define DEFINE_STID_EVENT(name)					\
++DEFINE_EVENT(nfsd_stid_class, nfsd_stid_##name,			\
++	TP_PROTO(const struct nfs4_stid *stid),			\
++	TP_ARGS(stid))
++
++DEFINE_STID_EVENT(revoke);
++
+ DECLARE_EVENT_CLASS(nfsd_clientid_class,
+ 	TP_PROTO(const clientid_t *clid),
+ 	TP_ARGS(clid),
 
 
