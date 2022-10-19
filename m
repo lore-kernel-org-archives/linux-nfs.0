@@ -2,44 +2,46 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 07701C4332F
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Oct 2022 17:43:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00CF1C43217
+	for <linux-nfs@archiver.kernel.org>; Wed, 19 Oct 2022 17:43:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230063AbiJSRnp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S230349AbiJSRnp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 19 Oct 2022 13:43:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35940 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35950 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230349AbiJSRno (ORCPT
+        with ESMTP id S230522AbiJSRno (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Oct 2022 13:43:44 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 54D641C2F08
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2022 10:43:42 -0700 (PDT)
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F4351C5A63
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2022 10:43:41 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 6A3B2B81E62
+        by dfw.source.kernel.org (Postfix) with ESMTPS id A652961978
         for <linux-nfs@vger.kernel.org>; Wed, 19 Oct 2022 17:43:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA572C433D7;
-        Wed, 19 Oct 2022 17:43:38 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CA3EFC43470;
+        Wed, 19 Oct 2022 17:43:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1666201419;
-        bh=t2/xg3pT7kkeTRUALvA7eHeItxqCkGEC5tZzOF2LVPk=;
+        s=k20201202; t=1666201420;
+        bh=7lDpbBXJKkNTE1Dc1QHMNBNj9/EJ8YDwHvd2BCTRqwA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=pkftqZ6arxFo9KTPueBx6JXeVMkDJ35jbGREQC7V0kD+TbQhVF0kSkMj2gSDRcQJ5
-         pcNJ/QMwa+euS+wy8pykUKtAIuZ2f0jt5aVhM13BlrWymoriKOFsab3rJJDGf7+U3h
-         MOq3ptiD1xWiYLcEEaJ3dj/zHFe+xtB90839wpNqm3z6UxIzznWX1UMBC9A3ReIM/L
-         VSrgK4C7iPxCxJvZMyiJOjksczB67Brdq0TLmZsnLGMLk2YcvcMutws9svK7U5A+Mi
-         QWmq8uz+90KodG3WbzEY8xts70Jyb8I7NUVAqPNqmh6c9mgmyDYN4z2fVKKqPNUmfC
-         t0qBTjLMkyC8g==
+        b=auqUq2ojBx3uZi70dV5FTNx0Dq8wJQ8t89Z8LDatq/MTvijpgXqlJRVyYABHk6tRs
+         Rfgq+ey8eCOFnqhr1Ti3UAZAi5yMwomxQw/ANJ9IsJ908k2g+0FFJZeFRR6SG3aT0I
+         YKCFiqbQ6aBW6pL+rp/x1N1qc0B2NhRq15zVOGXuCQaieQieNK6yJsfSRLVq661hoG
+         FdQXBBq2tRn+/pGBvcxnj2/89vOsEHHTpGC1Ie6oU9RdsIVkKhHFHuBUGDAnPTMOsL
+         C88Y2SuprAPPNkvsrA4W+YrQGRnEVaakexPjfo4G8mtV/KH8YcJnSTtAh31gPHRCTV
+         bi9pqRb+DPeYw==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/4] NFSv4.2: Always decode the security label
-Date:   Wed, 19 Oct 2022 13:36:49 -0400
-Message-Id: <20221019173651.32096-2-trondmy@kernel.org>
+Subject: [PATCH v2 4/4] NFSv4.2: Fix initialisation of struct nfs4_label
+Date:   Wed, 19 Oct 2022 13:36:51 -0400
+Message-Id: <20221019173651.32096-4-trondmy@kernel.org>
 X-Mailer: git-send-email 2.37.3
-In-Reply-To: <20221019173651.32096-1-trondmy@kernel.org>
+In-Reply-To: <20221019173651.32096-3-trondmy@kernel.org>
 References: <20221019173651.32096-1-trondmy@kernel.org>
+ <20221019173651.32096-2-trondmy@kernel.org>
+ <20221019173651.32096-3-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -48,36 +50,76 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the server returns a reply that includes a security label, then we
-must decode it whether or not we can store the results.
+The call to nfs4_label_init_security() should return a fully initialised
+label.
 
-Fixes: 1e2f67da8931 ("NFS: Remove the nfs4_label argument from decode_getattr_*() functions")
+Fixes: aa9c2669626c ("NFS: Client implementation of Labeled-NFS")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs4xdr.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4proc.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 8c5298e37f0f..9103e022376a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4755,12 +4755,10 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 	if (status < 0)
- 		goto xdr_error;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3ed14a2a84a4..0ae48498c174 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -122,6 +122,11 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
+ 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
+ 		return NULL;
  
--	if (fattr->label) {
--		status = decode_attr_security_label(xdr, bitmap, fattr->label);
--		if (status < 0)
--			goto xdr_error;
--		fattr->valid |= status;
--	}
-+	status = decode_attr_security_label(xdr, bitmap, fattr->label);
-+	if (status < 0)
-+		goto xdr_error;
-+	fattr->valid |= status;
++	label->lfs = 0;
++	label->pi = 0;
++	label->len = 0;
++	label->label = NULL;
++
+ 	err = security_dentry_init_security(dentry, sattr->ia_mode,
+ 				&dentry->d_name, NULL,
+ 				(void **)&label->label, &label->len);
+@@ -3795,7 +3800,7 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx,
+ 		int open_flags, struct iattr *attr, int *opened)
+ {
+ 	struct nfs4_state *state;
+-	struct nfs4_label l = {0, 0, 0, NULL}, *label = NULL;
++	struct nfs4_label l, *label;
  
- xdr_error:
- 	dprintk("%s: xdr returned %d\n", __func__, -status);
+ 	label = nfs4_label_init_security(dir, ctx->dentry, attr, &l);
+ 
+@@ -4681,7 +4686,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 		 int flags)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	struct nfs4_label l, *ilabel = NULL;
++	struct nfs4_label l, *ilabel;
+ 	struct nfs_open_context *ctx;
+ 	struct nfs4_state *state;
+ 	int status = 0;
+@@ -5032,7 +5037,7 @@ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
+ 	struct nfs4_exception exception = {
+ 		.interruptible = true,
+ 	};
+-	struct nfs4_label l, *label = NULL;
++	struct nfs4_label l, *label;
+ 	int err;
+ 
+ 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
+@@ -5073,7 +5078,7 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
+ 	struct nfs4_exception exception = {
+ 		.interruptible = true,
+ 	};
+-	struct nfs4_label l, *label = NULL;
++	struct nfs4_label l, *label;
+ 	int err;
+ 
+ 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
+@@ -5192,7 +5197,7 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
+ 	struct nfs4_exception exception = {
+ 		.interruptible = true,
+ 	};
+-	struct nfs4_label l, *label = NULL;
++	struct nfs4_label l, *label;
+ 	int err;
+ 
+ 	label = nfs4_label_init_security(dir, dentry, sattr, &l);
 -- 
 2.37.3
 
