@@ -2,91 +2,164 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29187C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Oct 2022 12:44:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A139C433FE
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Oct 2022 13:06:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229746AbiJUMoH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Oct 2022 08:44:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58820 "EHLO
+        id S230084AbiJUNGN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Oct 2022 09:06:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44870 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230085AbiJUMny (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2022 08:43:54 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1442625FD18
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Oct 2022 05:43:52 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1666356231;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=LjUdl7eLqQYzlkm0EfvfVZQpUsrnAX3nZytknp2wvNA=;
-        b=ezVCSzDc4kG9u2KNcoepOlAMZgNKlRVG1QFgjm2dJRZtGrQZ3bn3Y71t4clsJFHLpwj+yl
-        VxyVdDf71MkIwFOWAMONEMC7S4iamgCzX7APgCs3OR6v96S9gSMz0k1wJfGuBtbkEhV2kF
-        aiyrcEqg/Mk5FPrMJ+EeY7yEbmRVs3o=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-626-0lPuMdE6Pm-qcf2LyoTx1w-1; Fri, 21 Oct 2022 08:43:50 -0400
-X-MC-Unique: 0lPuMdE6Pm-qcf2LyoTx1w-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S229854AbiJUNGK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2022 09:06:10 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0779E4E854;
+        Fri, 21 Oct 2022 06:06:09 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id E96C8185A7B0;
-        Fri, 21 Oct 2022 12:43:49 +0000 (UTC)
-Received: from [172.16.176.1] (unknown [10.22.50.7])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 3C9D42166B33;
-        Fri, 21 Oct 2022 12:43:48 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Trigger the "ls -l" readdir heuristic sooner
-Date:   Fri, 21 Oct 2022 08:43:45 -0400
-Message-ID: <2B40F919-4E12-4891-B732-59650B507AA9@redhat.com>
-In-Reply-To: <20220920170021.1391560-1-bcodding@redhat.com>
-References: <20220920170021.1391560-1-bcodding@redhat.com>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 99EB761D11;
+        Fri, 21 Oct 2022 13:06:08 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 251D1C43470;
+        Fri, 21 Oct 2022 13:06:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1666357568;
+        bh=tc1RUm4guOoZTsO0VdPQH+XnxC1sMtsO6DtotD5Lcrw=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=eAhmr9yWeS0wVEiVIgOWu1jlRYjG0WT5NB1ecC/uQxCrIfhjwPSsIUbf/tXfO3unE
+         e0r32nDpuAZBm2Lop8vuIwFPI1Vu4ZtCzZErW16ygMxndEcmdWUD7xcbH8+RSOuWHB
+         vbjv+2g0BW9bN052u7XJGnXbsFjzt8s1pPgNSITv5ezyP38rqsZ6oXhh9bQNyhEWvq
+         /8aPUz2dUVAIjZ+JRXPCcyyTRgRJXyH/34pvoqmRLDbFcyfY4rwRbPoXR7Di581w/6
+         9p67AFlGaMiVsx5GqUjXNpFTm/3/gRaX+eu2ibO8xgOw+GSqs6BrjwgqwBPpxd/4Bq
+         kc+5i0Af2xq7A==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
+        david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
+        viro@zeniv.linux.org.uk, zohar@linux.ibm.com, xiubli@redhat.com,
+        chuck.lever@oracle.com, lczerner@redhat.com, jack@suse.cz,
+        bfields@fieldses.org, brauner@kernel.org, fweimer@redhat.com
+Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Subject: [PATCH v8 1/8] fs: uninline inode_query_iversion
+Date:   Fri, 21 Oct 2022 09:05:55 -0400
+Message-Id: <20221021130602.99099-2-jlayton@kernel.org>
+X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20221021130602.99099-1-jlayton@kernel.org>
+References: <20221021130602.99099-1-jlayton@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.6
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 20 Sep 2022, at 13:00, Benjamin Coddington wrote:
+Reviewed-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/libfs.c               | 36 ++++++++++++++++++++++++++++++++++++
+ include/linux/iversion.h | 38 ++------------------------------------
+ 2 files changed, 38 insertions(+), 36 deletions(-)
 
-> Since commit 1a34c8c9a49e ("NFS: Support larger readdir buffers") has
-> updated dtsize, and with recent improvements to the READDIRPLUS helper
-> heuristic, the heuristic may not trigger until many dentries are emitte=
-d
-> to userspace.   This will cause many thousands of GETATTR calls for "ls=
-
-> -l" when the directory's pagecache has already been populated.  This
-> manifests as poor performance for long directory listings after an
-> initially fast "ls -l".
->
-> Fix this by emitting only 17 entries for any first pass through the NFS=
-
-> directory's ->iterate_shared(), which allows userpace to prime the
-> counters for the heuristic.
->
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
-
-Hello Trond and Anna, please consider this patch.  We have folks that are=
-
-sad and confused that "ls -l" becomes much slower after running it once.
-
-Olga also tested this fix and reported performance gains here:
-https://lore.kernel.org/linux-nfs/CAN-5tyFsJy-D9cEfk8zCH8-0KErWteVW8Zb7BM=
-qjL7=3D=3D2qtT_A@mail.gmail.com/
-
-Olga, would you be willing to contribute your "Tested-by" for this patch?=
-
-
-Any comments from anyone would also be welcome.
-
-Ben
+diff --git a/fs/libfs.c b/fs/libfs.c
+index 682d56345a1c..5ae81466a422 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -1566,3 +1566,39 @@ bool inode_maybe_inc_iversion(struct inode *inode, bool force)
+ 	return true;
+ }
+ EXPORT_SYMBOL(inode_maybe_inc_iversion);
++
++/**
++ * inode_query_iversion - read i_version for later use
++ * @inode: inode from which i_version should be read
++ *
++ * Read the inode i_version counter. This should be used by callers that wish
++ * to store the returned i_version for later comparison. This will guarantee
++ * that a later query of the i_version will result in a different value if
++ * anything has changed.
++ *
++ * In this implementation, we fetch the current value, set the QUERIED flag and
++ * then try to swap it into place with a cmpxchg, if it wasn't already set. If
++ * that fails, we try again with the newly fetched value from the cmpxchg.
++ */
++u64 inode_query_iversion(struct inode *inode)
++{
++	u64 cur, new;
++
++	cur = inode_peek_iversion_raw(inode);
++	do {
++		/* If flag is already set, then no need to swap */
++		if (cur & I_VERSION_QUERIED) {
++			/*
++			 * This barrier (and the implicit barrier in the
++			 * cmpxchg below) pairs with the barrier in
++			 * inode_maybe_inc_iversion().
++			 */
++			smp_mb();
++			break;
++		}
++
++		new = cur | I_VERSION_QUERIED;
++	} while (!atomic64_try_cmpxchg(&inode->i_version, &cur, new));
++	return cur >> I_VERSION_QUERIED_SHIFT;
++}
++EXPORT_SYMBOL(inode_query_iversion);
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index e27bd4f55d84..6755d8b4f20b 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -234,42 +234,6 @@ inode_peek_iversion(const struct inode *inode)
+ 	return inode_peek_iversion_raw(inode) >> I_VERSION_QUERIED_SHIFT;
+ }
+ 
+-/**
+- * inode_query_iversion - read i_version for later use
+- * @inode: inode from which i_version should be read
+- *
+- * Read the inode i_version counter. This should be used by callers that wish
+- * to store the returned i_version for later comparison. This will guarantee
+- * that a later query of the i_version will result in a different value if
+- * anything has changed.
+- *
+- * In this implementation, we fetch the current value, set the QUERIED flag and
+- * then try to swap it into place with a cmpxchg, if it wasn't already set. If
+- * that fails, we try again with the newly fetched value from the cmpxchg.
+- */
+-static inline u64
+-inode_query_iversion(struct inode *inode)
+-{
+-	u64 cur, new;
+-
+-	cur = inode_peek_iversion_raw(inode);
+-	do {
+-		/* If flag is already set, then no need to swap */
+-		if (cur & I_VERSION_QUERIED) {
+-			/*
+-			 * This barrier (and the implicit barrier in the
+-			 * cmpxchg below) pairs with the barrier in
+-			 * inode_maybe_inc_iversion().
+-			 */
+-			smp_mb();
+-			break;
+-		}
+-
+-		new = cur | I_VERSION_QUERIED;
+-	} while (!atomic64_try_cmpxchg(&inode->i_version, &cur, new));
+-	return cur >> I_VERSION_QUERIED_SHIFT;
+-}
+-
+ /*
+  * For filesystems without any sort of change attribute, the best we can
+  * do is fake one up from the ctime:
+@@ -283,6 +247,8 @@ static inline u64 time_to_chattr(struct timespec64 *t)
+ 	return chattr;
+ }
+ 
++u64 inode_query_iversion(struct inode *inode);
++
+ /**
+  * inode_eq_iversion_raw - check whether the raw i_version counter has changed
+  * @inode: inode to check
+-- 
+2.37.3
 
