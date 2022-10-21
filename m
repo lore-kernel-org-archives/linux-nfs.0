@@ -2,35 +2,35 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B019C43217
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Oct 2022 13:07:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F256C43217
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Oct 2022 13:07:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230238AbiJUNHA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Oct 2022 09:07:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45152 "EHLO
+        id S230280AbiJUNHI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Oct 2022 09:07:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45278 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230124AbiJUNGX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2022 09:06:23 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5784F26B4BE;
-        Fri, 21 Oct 2022 06:06:18 -0700 (PDT)
+        with ESMTP id S230161AbiJUNG1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2022 09:06:27 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3F1E026B4BC;
+        Fri, 21 Oct 2022 06:06:23 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 7DE8D61E9D;
-        Fri, 21 Oct 2022 13:06:17 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 044E4C433D6;
-        Fri, 21 Oct 2022 13:06:14 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id DBEB961D11;
+        Fri, 21 Oct 2022 13:06:21 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5AA3AC433C1;
+        Fri, 21 Oct 2022 13:06:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1666357576;
-        bh=XTCQklTYch506fsKvxW5ImA5FCnKyk22+LeCOXARq2w=;
+        s=k20201202; t=1666357581;
+        bh=o/W2G2/aFsV8kJG6gd0NpL/EXPewZKlzXLb+OuWvXdY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=sOHJ0lyDnodI/pMdW/riO8Mlc7c3TXOUu3cVbHVd0S3sDMkrwQL3useK0XlgQZlSz
-         O0wVWgujInzFgk7f2U+CS93aXxC9Ut4leanCI4L9eyimSUvz/BOrPpxbJ34njq1PJq
-         +jjzkL/YehSxS2O/hgAG0+e+x0uPY/EPCwAme6V1t8tG/L6LtoREMaRXtw59nOYDnz
-         xB6wzbZ62nsMC04zkIlU2EnGtMUQWguL7aBZt8sxvD+L4IfT93F8RkTd8OrpXEEZcY
-         o2e4qO1gm2ecMPUFdp7NQVspCgHEl+eypbf9GaKDBTr6G7zmrTR73aLKp7mTazsJ7R
-         XQH/Jr8JywX0A==
+        b=O/xdn7ai761Bq8YKbEtusR1eNhStdXiq4DeNtVyjL27dDvHnjkTfa/NuLCbwbdAMv
+         zQNuZmSAAzKg2FYhKZnEfk5qNwBii0mwAfeXdchQ0Q+f83XSaGCclNd0/zAhIbmlwX
+         gDL9lBAKlfAMLqJQ3ls/m0Onl0oodOEz9MW+ev1MR54wsIJBOuAqJkQswNfe+HzWOW
+         8TnJIn8ll/n3PK4WuURjGs/9L2NRayMB7g3RI0wBLwaT9oEhl1yjgKtmmuMTNYhors
+         3Gxek3h73fYx1bl+sfamccL3WnHB0JVtITLXeCiltyKVqvjwN2Bv7NNMsj0Ym6yRzq
+         k0/ljrt+L8opw==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
         david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
@@ -41,9 +41,9 @@ Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-xfs@vger.kernel.org
-Subject: [PATCH v8 5/8] ceph: report the inode version in getattr if requested
-Date:   Fri, 21 Oct 2022 09:05:59 -0400
-Message-Id: <20221021130602.99099-6-jlayton@kernel.org>
+Subject: [PATCH v8 7/8] nfsd: use the getattr operation to fetch i_version
+Date:   Fri, 21 Oct 2022 09:06:01 -0400
+Message-Id: <20221021130602.99099-8-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.3
 In-Reply-To: <20221021130602.99099-1-jlayton@kernel.org>
 References: <20221021130602.99099-1-jlayton@kernel.org>
@@ -53,70 +53,148 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When getattr requests the STX_CHANGE_COOKIE, request the full gamut of
-caps (similarly to how ctime is handled). When the change attribute
-seems to be valid, return it in the change_cookie field and set the flag
-in the reply mask. Also, unconditionally enable
-STATX_ATTR_CHANGE_MONOTONIC.
+Now that we can call into vfs_getattr to get the i_version field, use
+that facility to fetch it instead of doing it in nfsd4_change_attribute.
 
-Reviewed-by: Xiubo Li <xiubli@redhat.com>
+Neil also pointed out recently that IS_I_VERSION directory operations
+are always logged, and so we only need to mitigate the rollback problem
+on regular files. Also, we don't need to factor in the ctime when
+reexporting NFS or Ceph.
+
+Set the STATX_CHANGE_COOKIE (and BTIME) bits in the request when we're
+dealing with a v4 request. Then, instead of looking at IS_I_VERSION when
+generating the change attr, look at the result mask and only use it if
+STATX_CHANGE_COOKIE is set.
+
+Change nfsd4_change_attribute to only factor in the ctime if it's a
+regular file and the fs doesn't advertise STATX_ATTR_CHANGE_MONOTONIC.
+
+Reviewed-by: NeilBrown <neilb@suse.de>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/ceph/inode.c | 16 +++++++++++-----
- 1 file changed, 11 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4xdr.c |  4 +++-
+ fs/nfsd/nfsfh.c   | 54 +++++++++++++++++++++++++++++++----------------
+ fs/nfsd/vfs.h     |  7 +++++-
+ 3 files changed, 45 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
-index 4af5e55abc15..0e2e6ca399a9 100644
---- a/fs/ceph/inode.c
-+++ b/fs/ceph/inode.c
-@@ -2417,10 +2417,10 @@ static int statx_to_caps(u32 want, umode_t mode)
- {
- 	int mask = 0;
- 
--	if (want & (STATX_MODE|STATX_UID|STATX_GID|STATX_CTIME|STATX_BTIME))
-+	if (want & (STATX_MODE|STATX_UID|STATX_GID|STATX_CTIME|STATX_BTIME|STATX_CHANGE_COOKIE))
- 		mask |= CEPH_CAP_AUTH_SHARED;
- 
--	if (want & (STATX_NLINK|STATX_CTIME)) {
-+	if (want & (STATX_NLINK|STATX_CTIME|STATX_CHANGE_COOKIE)) {
- 		/*
- 		 * The link count for directories depends on inode->i_subdirs,
- 		 * and that is only updated when Fs caps are held.
-@@ -2431,11 +2431,10 @@ static int statx_to_caps(u32 want, umode_t mode)
- 			mask |= CEPH_CAP_LINK_SHARED;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index bcfeb1a922c0..06eb1aa7846b 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2906,7 +2906,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
  	}
  
--	if (want & (STATX_ATIME|STATX_MTIME|STATX_CTIME|STATX_SIZE|
--		    STATX_BLOCKS))
-+	if (want & (STATX_ATIME|STATX_MTIME|STATX_CTIME|STATX_SIZE|STATX_BLOCKS|STATX_CHANGE_COOKIE))
- 		mask |= CEPH_CAP_FILE_SHARED;
- 
--	if (want & (STATX_CTIME))
-+	if (want & (STATX_CTIME|STATX_CHANGE_COOKIE))
- 		mask |= CEPH_CAP_XATTR_SHARED;
- 
- 	return mask;
-@@ -2478,6 +2477,11 @@ int ceph_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 		valid_mask |= STATX_BTIME;
+-	err = vfs_getattr(&path, &stat, STATX_BASIC_STATS, AT_STATX_SYNC_AS_STAT);
++	err = vfs_getattr(&path, &stat,
++			  STATX_BASIC_STATS | STATX_BTIME | STATX_CHANGE_COOKIE,
++			  AT_STATX_SYNC_AS_STAT);
+ 	if (err)
+ 		goto out_nfserr;
+ 	if (!(stat.result_mask & STATX_BTIME))
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 7030d9209903..3e09129db340 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -628,6 +628,10 @@ void fh_fill_pre_attrs(struct svc_fh *fhp)
+ 		stat.mtime = inode->i_mtime;
+ 		stat.ctime = inode->i_ctime;
+ 		stat.size  = inode->i_size;
++		if (v4 && IS_I_VERSION(inode)) {
++			stat.change_cookie = inode_query_iversion(inode);
++			stat.result_mask |= STATX_CHANGE_COOKIE;
++		}
  	}
- 
-+	if (request_mask & STATX_CHANGE_COOKIE) {
-+		stat->change_cookie = inode_peek_iversion_raw(inode);
-+		valid_mask |= STATX_CHANGE_COOKIE;
-+	}
-+
- 	if (ceph_snap(inode) == CEPH_NOSNAP)
- 		stat->dev = sb->s_dev;
- 	else
-@@ -2519,6 +2523,8 @@ int ceph_getattr(struct user_namespace *mnt_userns, const struct path *path,
- 			stat->nlink = 1 + 1 + ci->i_subdirs;
- 	}
- 
-+	stat->attributes_mask |= STATX_ATTR_CHANGE_MONOTONIC;
-+	stat->attributes |= STATX_ATTR_CHANGE_MONOTONIC;
- 	stat->result_mask = request_mask & valid_mask;
- 	return err;
+ 	if (v4)
+ 		fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
+@@ -659,6 +663,10 @@ void fh_fill_post_attrs(struct svc_fh *fhp)
+ 	if (err) {
+ 		fhp->fh_post_saved = false;
+ 		fhp->fh_post_attr.ctime = inode->i_ctime;
++		if (v4 && IS_I_VERSION(inode)) {
++			fhp->fh_post_attr.change_cookie = inode_query_iversion(inode);
++			fhp->fh_post_attr.result_mask |= STATX_CHANGE_COOKIE;
++		}
+ 	} else
+ 		fhp->fh_post_saved = true;
+ 	if (v4)
+@@ -750,28 +758,38 @@ enum fsid_source fsid_source(const struct svc_fh *fhp)
  }
+ 
+ /*
+- * We could use i_version alone as the change attribute.  However,
+- * i_version can go backwards after a reboot.  On its own that doesn't
+- * necessarily cause a problem, but if i_version goes backwards and then
+- * is incremented again it could reuse a value that was previously used
+- * before boot, and a client who queried the two values might
+- * incorrectly assume nothing changed.
++ * We could use i_version alone as the change attribute.  However, i_version
++ * can go backwards on a regular file after an unclean shutdown.  On its own
++ * that doesn't necessarily cause a problem, but if i_version goes backwards
++ * and then is incremented again it could reuse a value that was previously
++ * used before boot, and a client who queried the two values might incorrectly
++ * assume nothing changed.
++ *
++ * By using both ctime and the i_version counter we guarantee that as long as
++ * time doesn't go backwards we never reuse an old value. If the filesystem
++ * advertises STATX_ATTR_CHANGE_MONOTONIC, then this mitigation is not
++ * needed.
+  *
+- * By using both ctime and the i_version counter we guarantee that as
+- * long as time doesn't go backwards we never reuse an old value.
++ * We only need to do this for regular files as well. For directories, we
++ * assume that the new change attr is always logged to stable storage in some
++ * fashion before the results can be seen.
+  */
+ u64 nfsd4_change_attribute(struct kstat *stat, struct inode *inode)
+ {
++	u64 chattr;
++
+ 	if (inode->i_sb->s_export_op->fetch_iversion)
+ 		return inode->i_sb->s_export_op->fetch_iversion(inode);
+-	else if (IS_I_VERSION(inode)) {
+-		u64 chattr;
+-
+-		chattr =  stat->ctime.tv_sec;
+-		chattr <<= 30;
+-		chattr += stat->ctime.tv_nsec;
+-		chattr += inode_query_iversion(inode);
+-		return chattr;
+-	} else
+-		return time_to_chattr(&stat->ctime);
++	if (stat->result_mask & STATX_CHANGE_COOKIE) {
++		chattr = stat->change_cookie;
++
++		if (S_ISREG(inode->i_mode) &&
++		    !(stat->attributes & STATX_ATTR_CHANGE_MONOTONIC)) {
++			chattr += (u64)stat->ctime.tv_sec << 30;
++			chattr += stat->ctime.tv_nsec;
++		}
++	} else {
++		chattr = time_to_chattr(&stat->ctime);
++	}
++	return chattr;
+ }
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 120521bc7b24..1b205a27f961 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -168,9 +168,14 @@ static inline void fh_drop_write(struct svc_fh *fh)
+ 
+ static inline __be32 fh_getattr(const struct svc_fh *fh, struct kstat *stat)
+ {
++	u32 request_mask = STATX_BASIC_STATS;
+ 	struct path p = {.mnt = fh->fh_export->ex_path.mnt,
+ 			 .dentry = fh->fh_dentry};
+-	return nfserrno(vfs_getattr(&p, stat, STATX_BASIC_STATS,
++
++	if (fh->fh_maxsize == NFS4_FHSIZE)
++		request_mask |= (STATX_BTIME | STATX_CHANGE_COOKIE);
++
++	return nfserrno(vfs_getattr(&p, stat, request_mask,
+ 				    AT_STATX_SYNC_AS_STAT));
+ }
+ 
 -- 
 2.37.3
 
