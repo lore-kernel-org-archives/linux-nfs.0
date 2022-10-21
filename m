@@ -2,35 +2,35 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45F68C4167B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EAF6FC4321E
 	for <linux-nfs@archiver.kernel.org>; Fri, 21 Oct 2022 13:06:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230172AbiJUNG3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Oct 2022 09:06:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44920 "EHLO
+        id S230062AbiJUNGa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Oct 2022 09:06:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44948 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230091AbiJUNGO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2022 09:06:14 -0400
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 809A926B4AE;
-        Fri, 21 Oct 2022 06:06:11 -0700 (PDT)
+        with ESMTP id S230093AbiJUNGQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Oct 2022 09:06:16 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 37FCD26B4B6;
+        Fri, 21 Oct 2022 06:06:15 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id C7024CE2AB5;
-        Fri, 21 Oct 2022 13:06:07 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E8DCBC433C1;
-        Fri, 21 Oct 2022 13:06:03 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id DD05BB80C98;
+        Fri, 21 Oct 2022 13:06:13 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8CA75C433D6;
+        Fri, 21 Oct 2022 13:06:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1666357565;
-        bh=WAuTFW3O+DY8MVhZwhFFkTH4TiFW9rYutffTWkjHS1o=;
-        h=From:To:Cc:Subject:Date:From;
-        b=iufBETIxL2UBu1twVnFCO0KsIKfIO8XexyQpAyERQJ2FVgGV6YUxADauBUZpucT1V
-         V1Pp5MGo0KE9itLR+J4QHsdEzaduvnc38rL0dE4eS2EaOVJB5MyHwLNGuMitP7ihC4
-         VZMkhKv9hRGVB5GFNdVW2fjPzEpigGMZMgyv1XGQXIhfDs+sOswdKR3nQvlwXg9zGV
-         gHxhx32GOxYuBz7UDuetQt2Agbs+dLEs7qIrQmiJKzxLP62nVZwMd32ANMFecLDCjL
-         Mp+PF0MthMctfI2Tve2DGDiX9OTdwZ50fSkj3cVUI4rX8aubR0mdDLTOfNY9JOJJNe
-         BHhmtzv/ojRUw==
+        s=k20201202; t=1666357572;
+        bh=HgePQpANeCyNlHouoSiNjOumB4QLppVOqg1bfK18//Q=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=h9mbxrDiIYcO5M594qgki/ibDkOhScW1YhL3UPYCtHT9f8bCwJB8HCFDKdVUKC6wZ
+         6R0yel5DiglAUUcuypMfskj4I2Dnsz1Qy8q6Q0at8S8blOCfyYKgNLgvI+7HXh3MFN
+         H8+z2wt25heOIhj7XLCQ4eIWO0hi/F1Ou++t2wk3HuueTb4crdcgIuEqy1YiWr6wte
+         yhRSRrpLky8tlchsXPF0Emje/Gq97Dd8G2TojEbb9qM+k0IIXqbo+ksGyHATZo0ySV
+         woTfZv5gdVrUSVlcW5Y1dwhknZhgwxeu1QYwc5eOiJNfeg+KaYQrOZ9o7pQT02mBPn
+         RWddg7Kx8PrLw==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
         david@fromorbit.com, trondmy@hammerspace.com, neilb@suse.de,
@@ -40,64 +40,118 @@ To:     tytso@mit.edu, adilger.kernel@dilger.ca, djwong@kernel.org,
 Cc:     linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Subject: [PATCH v8 0/8] fs: clean up internal i_version handling
-Date:   Fri, 21 Oct 2022 09:05:54 -0400
-Message-Id: <20221021130602.99099-1-jlayton@kernel.org>
+        linux-xfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH v8 3/8] vfs: plumb i_version handling into struct kstat
+Date:   Fri, 21 Oct 2022 09:05:57 -0400
+Message-Id: <20221021130602.99099-4-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.3
+In-Reply-To: <20221021130602.99099-1-jlayton@kernel.org>
+References: <20221021130602.99099-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The main consumer of i_version field (knfsd) has to jump through a
-number of hoops to fetch it, depending on what sort of inode it is.
-Rather than do this, we want to offload the responsibility for
-presenting this field to the filesystem's ->getattr operation, which is
-a more natural way to deal with a field that may be implemented
-differently.
+From: Jeff Layton <jlayton@redhat.com>
 
-The focus of this patchset is to clean up these internal interfaces.
-This should also make it simple to present this attribute to userland in
-the future, which should be possible once the semantics are a bit more
-consistent across different backing filesystems.
+The NFS server has a lot of special handling for different types of
+change attribute access, depending on the underlying filesystem. In
+most cases, it's doing a getattr anyway and then fetching that value
+after the fact.
 
-The change are fairly small, but they cross several subsystems. I'd
-appreciate R-b's and A-b's from maintainers whose subsystems I'm
-touching (Chuck, Al, Trond, and Xiubo in particular).
+Rather that do that, add a new STATX_CHANGE_COOKIE flag that is a
+kernel-only symbol (for now). If requested and getattr can implement it,
+it can fill out this field. For IS_I_VERSION inodes, add a generic
+implementation in vfs_getattr_nosec. Take care to mask
+STATX_CHANGE_COOKIE off in requests from userland and in the result
+mask.
 
-For now, I'm leaving out more siginificant behavioral changes to
-i_version handling so that we can keep the focus on this set rather
-narrow. The next stap is to get this into linux-next with an aim toward
-merge in v6.2.
+Since not all filesystems can give the same guarantees of monotonicity,
+claim a STATX_ATTR_CHANGE_MONOTONIC flag that filesystems can set to
+indicate that they offer an i_version value that can never go backward.
 
-Thanks!
+Eventually if we decide to make the i_version available to userland, we
+can just designate a field for it in struct statx, and move the
+STATX_CHANGE_COOKIE definition to the uapi header.
 
-Jeff Layton (8):
-  fs: uninline inode_query_iversion
-  fs: clarify when the i_version counter must be updated
-  vfs: plumb i_version handling into struct kstat
-  nfs: report the inode version in getattr if requested
-  ceph: report the inode version in getattr if requested
-  nfsd: move nfsd4_change_attribute to nfsfh.c
-  nfsd: use the getattr operation to fetch i_version
-  nfsd: remove fetch_iversion export operation
+Reviewed-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/stat.c            | 17 +++++++++++++++--
+ include/linux/stat.h |  9 +++++++++
+ 2 files changed, 24 insertions(+), 2 deletions(-)
 
- fs/ceph/inode.c          | 16 +++++++----
- fs/libfs.c               | 36 +++++++++++++++++++++++++
- fs/nfs/export.c          |  7 -----
- fs/nfs/inode.c           | 16 ++++++++---
- fs/nfsd/nfs4xdr.c        |  4 ++-
- fs/nfsd/nfsfh.c          | 42 +++++++++++++++++++++++++++++
- fs/nfsd/nfsfh.h          | 29 +-------------------
- fs/nfsd/vfs.h            |  7 ++++-
- fs/stat.c                | 17 ++++++++++--
- include/linux/exportfs.h |  1 -
- include/linux/iversion.h | 58 ++++++++++++++--------------------------
- include/linux/stat.h     |  9 +++++++
- 12 files changed, 155 insertions(+), 87 deletions(-)
-
+diff --git a/fs/stat.c b/fs/stat.c
+index ef50573c72a2..06fd3fc1ab84 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -18,6 +18,7 @@
+ #include <linux/syscalls.h>
+ #include <linux/pagemap.h>
+ #include <linux/compat.h>
++#include <linux/iversion.h>
+ 
+ #include <linux/uaccess.h>
+ #include <asm/unistd.h>
+@@ -119,6 +120,11 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
+ 	stat->attributes_mask |= (STATX_ATTR_AUTOMOUNT |
+ 				  STATX_ATTR_DAX);
+ 
++	if ((request_mask & STATX_CHANGE_COOKIE) && IS_I_VERSION(inode)) {
++		stat->result_mask |= STATX_CHANGE_COOKIE;
++		stat->change_cookie = inode_query_iversion(inode);
++	}
++
+ 	mnt_userns = mnt_user_ns(path->mnt);
+ 	if (inode->i_op->getattr)
+ 		return inode->i_op->getattr(mnt_userns, path, stat,
+@@ -599,9 +605,11 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
+ 
+ 	memset(&tmp, 0, sizeof(tmp));
+ 
+-	tmp.stx_mask = stat->result_mask;
++	/* STATX_CHANGE_COOKIE is kernel-only for now */
++	tmp.stx_mask = stat->result_mask & ~STATX_CHANGE_COOKIE;
+ 	tmp.stx_blksize = stat->blksize;
+-	tmp.stx_attributes = stat->attributes;
++	/* STATX_ATTR_CHANGE_MONOTONIC is kernel-only for now */
++	tmp.stx_attributes = stat->attributes & ~STATX_ATTR_CHANGE_MONOTONIC;
+ 	tmp.stx_nlink = stat->nlink;
+ 	tmp.stx_uid = from_kuid_munged(current_user_ns(), stat->uid);
+ 	tmp.stx_gid = from_kgid_munged(current_user_ns(), stat->gid);
+@@ -640,6 +648,11 @@ int do_statx(int dfd, struct filename *filename, unsigned int flags,
+ 	if ((flags & AT_STATX_SYNC_TYPE) == AT_STATX_SYNC_TYPE)
+ 		return -EINVAL;
+ 
++	/* STATX_CHANGE_COOKIE is kernel-only for now. Ignore requests
++	 * from userland.
++	 */
++	mask &= ~STATX_CHANGE_COOKIE;
++
+ 	error = vfs_statx(dfd, filename, flags, &stat, mask);
+ 	if (error)
+ 		return error;
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index ff277ced50e9..52150570d37a 100644
+--- a/include/linux/stat.h
++++ b/include/linux/stat.h
+@@ -52,6 +52,15 @@ struct kstat {
+ 	u64		mnt_id;
+ 	u32		dio_mem_align;
+ 	u32		dio_offset_align;
++	u64		change_cookie;
+ };
+ 
++/* These definitions are internal to the kernel for now. Mainly used by nfsd. */
++
++/* mask values */
++#define STATX_CHANGE_COOKIE		0x40000000U	/* Want/got stx_change_attr */
++
++/* file attribute values */
++#define STATX_ATTR_CHANGE_MONOTONIC	0x8000000000000000ULL /* version monotonically increases */
++
+ #endif
 -- 
 2.37.3
 
