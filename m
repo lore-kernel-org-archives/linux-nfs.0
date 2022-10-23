@@ -2,265 +2,118 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69991C433FE
-	for <linux-nfs@archiver.kernel.org>; Sat, 22 Oct 2022 18:10:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C59B2ECAAA1
+	for <linux-nfs@archiver.kernel.org>; Sun, 23 Oct 2022 16:41:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229882AbiJVSJ7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 22 Oct 2022 14:09:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57950 "EHLO
+        id S230337AbiJWQln (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 23 Oct 2022 12:41:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45106 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229838AbiJVSJ5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Oct 2022 14:09:57 -0400
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F6F12C13E
-        for <linux-nfs@vger.kernel.org>; Sat, 22 Oct 2022 11:09:55 -0700 (PDT)
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 29M8Wun0029397;
-        Sat, 22 Oct 2022 18:09:51 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : in-reply-to : references; s=corp-2022-7-12;
- bh=GceeZYkl20KUlegGIRh8jEIrPlgu5szWrEE8raqg0UQ=;
- b=yztuaQMrLpqqAAM7vVnCWpoAMmH85G8Z5UJqgKL380IsCEgxjkrObBlOuTOl8LoWL58m
- qx35lEZOBiiEmVRlhBbQuewAPWCtRW8B53gxOvBXgCXVR3Pl1e6u/7+XMPmxWA08cu02
- sKRelliIoE6hk3VVp0CKeESxDwITv1M/C6KyGck5zpgKa8xkwPEfqMlVwLRI2mcjESvO
- y5RPJ/BIwOqZHmRTBTq0Y+VhpGAcoBNEs27mfBw0U2BvifUOxF22ofopTU81+HZu6O6Q
- rsrg7HTy/GDxCECdJKJfKNRhPMWc0Ck4VZh5EtjpB34y1JYbh8nVWSHvDmz2UKXMSNK1 bw== 
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3kc7a2rrvg-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 22 Oct 2022 18:09:50 +0000
-Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 29M8L7m9032090;
-        Sat, 22 Oct 2022 18:09:24 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3kc6y2u3x3-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 22 Oct 2022 18:09:24 +0000
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 29MI9OHi026867;
-        Sat, 22 Oct 2022 18:09:24 GMT
-Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 3kc6y2u3wv-2;
-        Sat, 22 Oct 2022 18:09:24 +0000
-From:   Dai Ngo <dai.ngo@oracle.com>
-To:     chuck.lever@oracle.com, jlayton@kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] NFSD: add support for sending CB_RECALL_ANY
-Date:   Sat, 22 Oct 2022 11:09:09 -0700
-Message-Id: <1666462150-11736-2-git-send-email-dai.ngo@oracle.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1666462150-11736-1-git-send-email-dai.ngo@oracle.com>
-References: <1666462150-11736-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.545,FMLib:17.11.122.1
- definitions=2022-10-21_04,2022-10-21_01,2022-06-22_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 mlxscore=0 phishscore=0
- mlxlogscore=999 adultscore=0 malwarescore=0 spamscore=0 suspectscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2209130000
- definitions=main-2210220114
-X-Proofpoint-GUID: hbUlH_GoFDO3tyZeXP-2iNst52MgcVEF
-X-Proofpoint-ORIG-GUID: hbUlH_GoFDO3tyZeXP-2iNst52MgcVEF
+        with ESMTP id S230355AbiJWQlm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Oct 2022 12:41:42 -0400
+Received: from mail-pg1-x52f.google.com (mail-pg1-x52f.google.com [IPv6:2607:f8b0:4864:20::52f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D3CB665667;
+        Sun, 23 Oct 2022 09:41:41 -0700 (PDT)
+Received: by mail-pg1-x52f.google.com with SMTP id q71so6804037pgq.8;
+        Sun, 23 Oct 2022 09:41:41 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=Y2bDAIefZxbRVSM/SaH1NL1oBBLTDGxU2sWjuEVySo0=;
+        b=Al/bcK0raH1SRXE3/4nftiI+qFU0z7u3k5IRgL6icE1yDmPYX2WINBttZZWg6W9gdw
+         qHV+4EGaMiArBjM6MvF2wwY6mN2LVba5NOMZj/QrP/5+Bryf2WTfQlW+08VUjSMr5MG/
+         13kG3W3i7TdUKHtJrSytliHcOPp9cuLRBFRAuhlht3va1ku6Xf1g7XQFZMHBzKnqsAMH
+         Ae21n34Q7N6EUO2YWsClQUHKZZwnQnTl2NdNcEAbjYYplZ6LBpjtKQj1EwcNKC750YTE
+         uI7vtK/s1V8cusDsD9AUW+bkBmYF9/UMTyhRCRsXOxv79AISblKjdYeq2okdLegW+Jpw
+         MZ8A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=Y2bDAIefZxbRVSM/SaH1NL1oBBLTDGxU2sWjuEVySo0=;
+        b=rxm/W7eI9a0komlZLMZWCKPXIs/fD8BKPFgqGSUU0vcG/NAta5SUHft2TQlSoq/os8
+         AtD0T+C5m+JxcaIXFDGnFgdf4xm2Y+RZSxyqGyOhgUxVH6B9vnB9p+BZm9HOnTF7Am+C
+         aDijTa3+TxsHf6urxkHIt4AB/HTv1OVR3993BfJcP6CvRkmASiIkgqQQB1imri+/3zCj
+         n7gPTwfI8l0AOGZu/iWjz9P/vetGn6tNc9Viqr5jj3RgH6rz0EL7lza5gzi3ddPW09ba
+         GK35aLFVoKjzObqrleU6QKU/s3Ibe7R2ZiDzzOoI8GrHMiiHgkCAZiTbCpLTVoZXx9dl
+         cHjQ==
+X-Gm-Message-State: ACrzQf0I3brjG7BhCcw15Y7QxNdUXqE5/1urXm8Uy5E3KiyoK2J3d2pX
+        jYzMYtgMaLA9li44uSueZMA=
+X-Google-Smtp-Source: AMsMyM7irLWDlav1VeIiY5mui3ckyNhI3n2zU5dxXGRJ0JYZXVfYymRXmX9OmNkmEthf8F8HB6u5Zw==
+X-Received: by 2002:a05:6a00:27a1:b0:566:8937:27c2 with SMTP id bd33-20020a056a0027a100b00566893727c2mr29010630pfb.24.1666543301375;
+        Sun, 23 Oct 2022 09:41:41 -0700 (PDT)
+Received: from localhost ([223.104.41.250])
+        by smtp.gmail.com with ESMTPSA id f7-20020a170902684700b0017a04542a45sm5618366pln.159.2022.10.23.09.41.39
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 23 Oct 2022 09:41:41 -0700 (PDT)
+From:   Hawkins Jiawei <yin31149@gmail.com>
+To:     yin31149@gmail.com,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>
+Cc:     18801353760@163.com, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH -next 2/5] nfs: fix possible null-ptr-deref when parsing param
+Date:   Mon, 24 Oct 2022 00:39:45 +0800
+Message-Id: <20221023163945.39920-3-yin31149@gmail.com>
+X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20221023163945.39920-1-yin31149@gmail.com>
+References: <20221023163945.39920-1-yin31149@gmail.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-There is only one nfsd4_callback, cl_recall_any, added for each
-nfs4_client. Access to it must be serialized. For now it's done
-by the cl_recall_any_busy flag since it's used only by the
-delegation shrinker. If there is another consumer of CB_RECALL_ANY
-then a spinlock must be used.
+According to commit "vfs: parse: deal with zero length string value",
+kernel will set the param->string to null pointer in vfs_parse_fs_string()
+if fs string has zero length.
 
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+Yet the problem is that, nfs_fs_context_parse_param() will dereferences the
+param->string, without checking whether it is a null pointer, which may
+trigger a null-ptr-deref bug.
+
+This patch solves it by adding sanity check on param->string
+in nfs_fs_context_parse_param().
+
+Signed-off-by: Hawkins Jiawei <yin31149@gmail.com>
 ---
- fs/nfsd/nfs4callback.c | 64 ++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4state.c    | 27 +++++++++++++++++++++
- fs/nfsd/state.h        |  8 +++++++
- fs/nfsd/xdr4cb.h       |  6 +++++
- 4 files changed, 105 insertions(+)
+ fs/nfs/fs_context.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index f0e69edf5f0f..03587e1397f4 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -329,6 +329,29 @@ static void encode_cb_recall4args(struct xdr_stream *xdr,
- }
+diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+index 4da701fd1424..0c330bc13ef2 100644
+--- a/fs/nfs/fs_context.c
++++ b/fs/nfs/fs_context.c
+@@ -684,6 +684,8 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 			return ret;
+ 		break;
+ 	case Opt_vers:
++		if (!param->string)
++			goto out_invalid_value;
+ 		trace_nfs_mount_assign(param->key, param->string);
+ 		ret = nfs_parse_version_string(fc, param->string);
+ 		if (ret < 0)
+@@ -696,6 +698,8 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 		break;
  
- /*
-+ * CB_RECALLANY4args
-+ *
-+ *	struct CB_RECALLANY4args {
-+ *		uint32_t	craa_objects_to_keep;
-+ *		bitmap4		craa_type_mask;
-+ *	};
-+ */
-+static void
-+encode_cb_recallany4args(struct xdr_stream *xdr,
-+			struct nfs4_cb_compound_hdr *hdr, uint32_t bmval)
-+{
-+	__be32 *p;
-+
-+	encode_nfs_cb_opnum4(xdr, OP_CB_RECALL_ANY);
-+	p = xdr_reserve_space(xdr, 4);
-+	*p++ = xdr_zero;	/* craa_objects_to_keep */
-+	p = xdr_reserve_space(xdr, 8);
-+	*p++ = cpu_to_be32(1);
-+	*p++ = cpu_to_be32(bmval);
-+	hdr->nops++;
-+}
-+
-+/*
-  * CB_SEQUENCE4args
-  *
-  *	struct CB_SEQUENCE4args {
-@@ -482,6 +505,24 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_cb_nops(&hdr);
- }
+ 	case Opt_proto:
++		if (!param->string)
++			goto out_invalid_value;
+ 		trace_nfs_mount_assign(param->key, param->string);
+ 		protofamily = AF_INET;
+ 		switch (lookup_constant(nfs_xprt_protocol_tokens, param->string, -1)) {
+@@ -732,6 +736,8 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 		break;
  
-+/*
-+ * 20.6. Operation 8: CB_RECALL_ANY - Keep Any N Recallable Objects
-+ */
-+static void
-+nfs4_xdr_enc_cb_recall_any(struct rpc_rqst *req,
-+		struct xdr_stream *xdr, const void *data)
-+{
-+	const struct nfsd4_callback *cb = data;
-+	struct nfs4_cb_compound_hdr hdr = {
-+		.ident = cb->cb_clp->cl_cb_ident,
-+		.minorversion = cb->cb_clp->cl_minorversion,
-+	};
-+
-+	encode_cb_compound4args(xdr, &hdr);
-+	encode_cb_sequence4args(xdr, cb, &hdr);
-+	encode_cb_recallany4args(xdr, &hdr, cb->cb_clp->cl_recall_any_bm);
-+	encode_cb_nops(&hdr);
-+}
- 
- /*
-  * NFSv4.0 and NFSv4.1 XDR decode functions
-@@ -520,6 +561,28 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
- 	return decode_cb_op_status(xdr, OP_CB_RECALL, &cb->cb_status);
- }
- 
-+/*
-+ * 20.6. Operation 8: CB_RECALL_ANY - Keep Any N Recallable Objects
-+ */
-+static int
-+nfs4_xdr_dec_cb_recall_any(struct rpc_rqst *rqstp,
-+				  struct xdr_stream *xdr,
-+				  void *data)
-+{
-+	struct nfsd4_callback *cb = data;
-+	struct nfs4_cb_compound_hdr hdr;
-+	int status;
-+
-+	status = decode_cb_compound4res(xdr, &hdr);
-+	if (unlikely(status))
-+		return status;
-+	status = decode_cb_sequence4res(xdr, cb);
-+	if (unlikely(status || cb->cb_seq_status))
-+		return status;
-+	status =  decode_cb_op_status(xdr, OP_CB_RECALL_ANY, &cb->cb_status);
-+	return status;
-+}
-+
- #ifdef CONFIG_NFSD_PNFS
- /*
-  * CB_LAYOUTRECALL4args
-@@ -783,6 +846,7 @@ static const struct rpc_procinfo nfs4_cb_procedures[] = {
- #endif
- 	PROC(CB_NOTIFY_LOCK,	COMPOUND,	cb_notify_lock,	cb_notify_lock),
- 	PROC(CB_OFFLOAD,	COMPOUND,	cb_offload,	cb_offload),
-+	PROC(CB_RECALL_ANY,	COMPOUND,	cb_recall_any,	cb_recall_any),
- };
- 
- static unsigned int nfs4_cb_counts[ARRAY_SIZE(nfs4_cb_procedures)];
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4e718500a00c..c60c937dece6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2854,6 +2854,31 @@ static const struct tree_descr client_files[] = {
- 	[3] = {""},
- };
- 
-+static int
-+nfsd4_cb_recall_any_done(struct nfsd4_callback *cb,
-+			struct rpc_task *task)
-+{
-+	switch (task->tk_status) {
-+	case -NFS4ERR_DELAY:
-+		rpc_delay(task, 2 * HZ);
-+		return 0;
-+	default:
-+		return 1;
-+	}
-+}
-+
-+static void
-+nfsd4_cb_recall_any_release(struct nfsd4_callback *cb)
-+{
-+	cb->cb_clp->cl_recall_any_busy = false;
-+	atomic_dec(&cb->cb_clp->cl_rpc_users);
-+}
-+
-+static const struct nfsd4_callback_ops nfsd4_cb_recall_any_ops = {
-+	.done		= nfsd4_cb_recall_any_done,
-+	.release	= nfsd4_cb_recall_any_release,
-+};
-+
- static struct nfs4_client *create_client(struct xdr_netobj name,
- 		struct svc_rqst *rqstp, nfs4_verifier *verf)
- {
-@@ -2891,6 +2916,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 		free_client(clp);
- 		return NULL;
- 	}
-+	nfsd4_init_cb(&clp->cl_recall_any, clp, &nfsd4_cb_recall_any_ops,
-+			NFSPROC4_CLNT_CB_RECALL_ANY);
- 	return clp;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e2daef3cc003..49ca06169642 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -411,6 +411,10 @@ struct nfs4_client {
- 
- 	unsigned int		cl_state;
- 	atomic_t		cl_delegs_in_recall;
-+
-+	bool			cl_recall_any_busy;
-+	uint32_t		cl_recall_any_bm;
-+	struct nfsd4_callback	cl_recall_any;
- };
- 
- /* struct nfs4_client_reset
-@@ -639,8 +643,12 @@ enum nfsd4_cb_op {
- 	NFSPROC4_CLNT_CB_OFFLOAD,
- 	NFSPROC4_CLNT_CB_SEQUENCE,
- 	NFSPROC4_CLNT_CB_NOTIFY_LOCK,
-+	NFSPROC4_CLNT_CB_RECALL_ANY,
- };
- 
-+#define RCA4_TYPE_MASK_RDATA_DLG	0
-+#define RCA4_TYPE_MASK_WDATA_DLG	1
-+
- /* Returns true iff a is later than b: */
- static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
- {
-diff --git a/fs/nfsd/xdr4cb.h b/fs/nfsd/xdr4cb.h
-index 547cf07cf4e0..0d39af1b00a0 100644
---- a/fs/nfsd/xdr4cb.h
-+++ b/fs/nfsd/xdr4cb.h
-@@ -48,3 +48,9 @@
- #define NFS4_dec_cb_offload_sz		(cb_compound_dec_hdr_sz  +      \
- 					cb_sequence_dec_sz +            \
- 					op_dec_sz)
-+#define NFS4_enc_cb_recall_any_sz	(cb_compound_enc_hdr_sz +       \
-+					cb_sequence_enc_sz +            \
-+					1 + 1 + 1)
-+#define NFS4_dec_cb_recall_any_sz	(cb_compound_dec_hdr_sz  +      \
-+					cb_sequence_dec_sz +            \
-+					op_dec_sz)
+ 	case Opt_mountproto:
++		if (!param->string)
++			goto out_invalid_value;
+ 		trace_nfs_mount_assign(param->key, param->string);
+ 		mountfamily = AF_INET;
+ 		switch (lookup_constant(nfs_xprt_protocol_tokens, param->string, -1)) {
 -- 
-2.9.5
+2.25.1
 
