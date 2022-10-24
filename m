@@ -2,151 +2,217 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D8840ECAAA1
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Oct 2022 19:05:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AD28EECAAA1
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Oct 2022 19:07:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230366AbiJXTFL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Oct 2022 15:05:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48106 "EHLO
+        id S232532AbiJXTHE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Oct 2022 15:07:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34206 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233015AbiJXTEH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2022 15:04:07 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 597D898C87
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2022 10:43:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1666633346;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=8xTScrm/C4P5LsOqv2gmaJGgYIy5W21InSwcYJLPGZw=;
-        b=SaU5ynR3nJ61gHnOLFfZ72ZAEBnjmyyZj1CvBMUZkkRR9rJu5bQ4SIuIYUqpKP8eZ1HDOe
-        h4Jfi9n5dSWXp6qyVdoWO2a/UUPrY7R8GNRL2faDRJnepPgPygvMd5vzx6zwXr7G7cyVJ3
-        PLmnySeIwXKS94lAbkU0KEZDqTjETk4=
-Received: from mail-qk1-f200.google.com (mail-qk1-f200.google.com
- [209.85.222.200]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_128_GCM_SHA256) id
- us-mta-599-8crPYYAEOdGGM6x2wsN3Ng-1; Mon, 24 Oct 2022 13:42:24 -0400
-X-MC-Unique: 8crPYYAEOdGGM6x2wsN3Ng-1
-Received: by mail-qk1-f200.google.com with SMTP id h9-20020a05620a244900b006ee944ec451so9550012qkn.13
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2022 10:42:24 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=8xTScrm/C4P5LsOqv2gmaJGgYIy5W21InSwcYJLPGZw=;
-        b=WHFW5gjVfYCP/nE8z+LtiYsFwpyBxPl9c72zdcWcaIoUp+DuMCKbraPPDdpRVWoa28
-         dyFqZrfYMYu/NckUCYLZ9dzSErz0yVDTozHsvdOuOr/y1IlJ9DnXd99GEtoDEzDKSc9q
-         aWeCU4cV61qyB4tS7OXPE2EqDwiWitHt9vVl8z4oyvtaR94S+HpgH9ago9azwmNM72lH
-         yE6/VOyxDSfrK3yGgd4yH9Me1h9sREZBUMiPmUzT7eWzufxYxn1dzzYn9czfVnupqZ/3
-         YJi5qhmXrpkjQRhXoWhdqrmxKDfMVrPnfSZtFUV9uGq3GDJNHrjDjeoqJSh5sT7PR7Eb
-         Obfg==
-X-Gm-Message-State: ACrzQf3yXMYk7Llq+SRBSGC1796/7z9ntHqPAW/zoA0LpfA/jDQi5vFl
-        FGloeYzNmN9h5JuEggGk/ApC7T1sdBcjXC5Q/Sv4tbugJR7YgqrK3nLBINjd10Whr0wyUHXgS2K
-        iQRC0Cnwqj1X7V6q/GO+h
-X-Received: by 2002:a05:620a:46a7:b0:6ee:dea7:cc1c with SMTP id bq39-20020a05620a46a700b006eedea7cc1cmr24475122qkb.506.1666633343649;
-        Mon, 24 Oct 2022 10:42:23 -0700 (PDT)
-X-Google-Smtp-Source: AMsMyM5OhAKWEJHovasT+cvZtPaKhh7DjW0eEGQDFYDB2Vlzo57Finb7SgMfCWlfSGDIRSfICPaZkw==
-X-Received: by 2002:a05:620a:46a7:b0:6ee:dea7:cc1c with SMTP id bq39-20020a05620a46a700b006eedea7cc1cmr24475102qkb.506.1666633343373;
-        Mon, 24 Oct 2022 10:42:23 -0700 (PDT)
-Received: from ?IPV6:2603:6000:d605:db00:db8c:7bbd:f449:802d? (2603-6000-d605-db00-db8c-7bbd-f449-802d.res6.spectrum.com. [2603:6000:d605:db00:db8c:7bbd:f449:802d])
-        by smtp.gmail.com with ESMTPSA id q29-20020a37f71d000000b006bb83c2be40sm332922qkj.59.2022.10.24.10.42.21
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 24 Oct 2022 10:42:22 -0700 (PDT)
-Message-ID: <4f3047ad-85f3-f1dd-e3e6-44624a49a017@redhat.com>
-Date:   Mon, 24 Oct 2022 13:42:21 -0400
-MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.4.0
-Subject: Re: [PATCH v2 1/1] nfsiostat: Handle both readahead counts for
- statsver >= 1.2
+        with ESMTP id S232539AbiJXTGf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2022 15:06:35 -0400
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7A05D8B2CD
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2022 10:45:39 -0700 (PDT)
+Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 29OFYW5I001451;
+        Mon, 24 Oct 2022 17:28:13 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2022-7-12;
+ bh=L8zH/fpz0mjJXJmRYzv3dc+hJMcXbhYWCbx3Hr3nqhs=;
+ b=v7rMzrv72HgsZuENJAzHT7XBtJf32+72LTjuab05HVPZFm9bCTUUohwmsL7ohzeTBZDP
+ BD3BK067BkIiAtnIjiKGhs5GLNsWD6arEnr9hkyCSEw1fBV2lOQVf23i4/+F5VizPRxG
+ iP6f7AKL57BJQIBiURboq5GqkmcPvHB2gFIeSB4GLlE7jZe8WYq5I6UbsXICdrvbzQf6
+ C0ZnprFWL4pfHKNcwR2o5Q452JP0TJEu3Ll5SDIOH/eeuWUSu75w5DN9aChhHXSPYfRZ
+ 4TVBBqE2MdO/dmG3cCI46Wt1CodYL0MOdC7TlMVfRU+ecLkM8/DYbmaG/xmg7xDeAOtM Fg== 
+Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.appoci.oracle.com [147.154.114.232])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3kc6xdv92t-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 24 Oct 2022 17:28:13 +0000
+Received: from pps.filterd (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 29OGmkZC012771;
+        Mon, 24 Oct 2022 17:28:12 GMT
+Received: from nam04-mw2-obe.outbound.protection.outlook.com (mail-mw2nam04lp2177.outbound.protection.outlook.com [104.47.73.177])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3kc6y3tcwu-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 24 Oct 2022 17:28:12 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=g2nlPPuGK0/xBYaguL73FwAHX0bILnkt41SAQgS8UUjjQbYaw73+WAi66+8v+SrqGsLpF1sThc74mVpNqLEtHonONCJP5JUVzcUkKVcULbb5mQlG0MfEWEqVnodadIy54zC3BpxDEw9D3HvRfQRPqJPvGBLhwx3JNXN0EWIxEydJ47bDN1pM2dWVnomofj6JD3dNxoUo4ku9qmWwUf7Qyq0KdOxezAmLNIVRlz0VFX5ozEhja7r+Bb4LfWNLnx552HvOJjknA5obDp4aCiFKI6l/9upyTtKBJJQyQYE5ZhAhOsPMDWCb4l/wm+AuyQwNECibmm1thSosHg5rpQmXtQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=L8zH/fpz0mjJXJmRYzv3dc+hJMcXbhYWCbx3Hr3nqhs=;
+ b=MI3K/Q+Bo+VPlyBfk79PfeJb2YZChPkWQYaWx3v/UdKLDL0DIcG4+X0goCWsMWPq/cZCwmRpeIEj0SmpcsI8vPOvs056n1bLR0xLdz3f6M9M0OD6HXLAJuKdOj9gDZxKlhLaEOz9DEsePfMvTczw1YLQcRXmmp8afjkuGOrQlMy4Dt2RkA8HfnsPW0t/NP+GqYoZO1GlmeMOs31RIa9sfbagsSaTRgPSA9RKhQI7k2yFXpDGu+MV3KOC0cW9789ihqnwYzAu/cNn7uyubMn9hMA783epYLU25NtPR+JkeHqB5vKFNICEdGNo7CM5qnwsfbPCZp92K3OvIaAVc6VL0Q==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=L8zH/fpz0mjJXJmRYzv3dc+hJMcXbhYWCbx3Hr3nqhs=;
+ b=vJXsnkiYDInUUCfsyXmNUwfnR8r+dB3vGbREufoi5BIUEdZbMlt1volF0rvKUIufBsFTA8XOWkFADgEgItYV8BDihUo3VniGbnXZVGDsYTcCtu7Z2F1CLDjrq/LHnx0B2r3bKralvHUVsxmplti9K8EP3p640m+H0bq2yWEhgmo=
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
+ by BL3PR10MB6188.namprd10.prod.outlook.com (2603:10b6:208:3bf::14) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5723.26; Mon, 24 Oct
+ 2022 17:28:05 +0000
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::5403:3164:f6c3:d48a]) by BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::5403:3164:f6c3:d48a%3]) with mapi id 15.20.5746.021; Mon, 24 Oct 2022
+ 17:28:05 +0000
+From:   Chuck Lever III <chuck.lever@oracle.com>
+To:     Jeff Layton <jlayton@kernel.org>
+CC:     Neil Brown <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 5/7] NFSD: Use rhashtable for managing nfs4_file
+ objects
+Thread-Topic: [PATCH v4 5/7] NFSD: Use rhashtable for managing nfs4_file
+ objects
+Thread-Index: AQHY4ywcCv9nfMlOd0+Wa/Y/m9MOsq4VmJcAgAAuS4CABw1rAIAAlEuAgABtAQA=
+Date:   Mon, 24 Oct 2022 17:28:05 +0000
+Message-ID: <1ACC29A8-B45F-4DF3-BA90-4791EE8A3A04@oracle.com>
+References: <166612295223.1291.11761205673682408148.stgit@manet.1015granger.net>
+ <166612313084.1291.5764156173845222109.stgit@manet.1015granger.net>
+ <cdad5af44b1c62c8e2ceae27cb2b646f7b2ec0bd.camel@poochiereds.net>
+ <1DE04392-E8C9-4D39-BF23-BD1A59DB4FE3@oracle.com>
+ <166657723034.12462.8422170607830380805@noble.neil.brown.name>
+ <6af5e6b60fcac271b4bb37dec2ffe25adfef80df.camel@kernel.org>
+In-Reply-To: <6af5e6b60fcac271b4bb37dec2ffe25adfef80df.camel@kernel.org>
+Accept-Language: en-US
 Content-Language: en-US
-To:     Dave Wysochanski <dwysocha@redhat.com>, chuck.lever@oracle.com
-Cc:     linux-nfs@vger.kernel.org
-References: <1633782441-17839-1-git-send-email-dwysocha@redhat.com>
- <1633782441-17839-2-git-send-email-dwysocha@redhat.com>
-From:   Steve Dickson <steved@redhat.com>
-In-Reply-To: <1633782441-17839-2-git-send-email-dwysocha@redhat.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-mailer: Apple Mail (2.3696.120.41.1.1)
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|BL3PR10MB6188:EE_
+x-ms-office365-filtering-correlation-id: eab330a8-801d-4042-4703-08dab5e51c50
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: yOH7nHX25f/GPiwx44NXSzwlnWHo2DNcCqBDGkWEVQwfDIkGW1tBZ+FM72in1QWc5TsheUsbKxoUf6W4KRyodTNT0FIdwg5u1Yj0O6QK7lVctHlnmJ+zWAYG5d2V5vtGasJglU1ONMovsr+323ts1uy18KAV8wkdP77+xAxC/8PhDWilrZlDex324yY3SrCOe4UFy6FskOU7bGB94mW4lELOwuIJlpUxxRnW9AkvBlQABkjI2+TigipjzgR4yRsSlmeY/xMPesHHMEy2RgISgpEz67dBPMnRzSnVRVrDcb7tyf6kP/Z3ArYHMASVvSfRWaShMdOxn3FkORZGp2AZpm9sAazf7Ipcf3X6OUFtryAAoHXUSNjcsHq6kVzIUVse58NmrQjd0IxlivihqcWUS9iK+ytwUk7ebzxlWwrQOR7rKwhQVqSqezDDJlJHSXPK/T7lawnVtA/dUSMtZZYnfIMCRbgRBii8uwm9tJZSxXTDlLKkFU3meCtcGVUaYah43/Uzehx7Od2BWQFAdVGzuVy0s1yVXZ5bV2R1aZvdD06bJe0yHyq+d8CM9Xz73ITewM4yrU6U2HnBDibktQEGHddh1bxxzjSzKh0wQQ2aVuYEiak4rScpHnXXO8WRrwH+GnnP08Bep9O9+KW6LLYm4pjma6oeBTrxkgMwkqep6IxWuR1l1cEINHjXtr8dcsuetW7UwLo57SMwvxddb+ikksU4syrymBp7dF/vpzx6vK2lg7J+iz8ZNq/k2LAdXxzafYlXne9eqtpR29diw002KmCH7/HTVelzilJh8YgpLHo=
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230022)(396003)(376002)(39860400002)(366004)(136003)(346002)(451199015)(36756003)(83380400001)(38070700005)(33656002)(4001150100001)(86362001)(91956017)(38100700002)(122000001)(76116006)(54906003)(6916009)(66556008)(2616005)(316002)(5660300002)(66476007)(6506007)(186003)(66946007)(8936002)(2906002)(478600001)(53546011)(26005)(64756008)(6512007)(8676002)(66446008)(4326008)(71200400001)(41300700001)(6486002)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?uqdtvy0H7kg/FzqbMCMsYkBIi/6PF6zatOmz6VP5JII2sxGXdWsldLOxBn3T?=
+ =?us-ascii?Q?LRPTLvMK60oy07jPhP0LYrlCg5bsM6+RUhBtN4jUiLgmOsaiHFdNKggTmhUv?=
+ =?us-ascii?Q?HgXsPVMV2NixHLMp/v874+3ZBcqWRMTSrdmiIp+5gqCCMZdxMAUNEt0EC0KX?=
+ =?us-ascii?Q?vcJWuxGpYncfcwnz1XPYQrPVtmUNq4Pi5uCreEq1MNy3eO8c4qqeE6ouuJEF?=
+ =?us-ascii?Q?w+mtjzpo1WCHjRdOScn5ltRP8UYL+qcLS2UlewpAfsQD6Ws233Ew1PvwDu9P?=
+ =?us-ascii?Q?2tUHVNlPXDJgSKxJOag5Ln7sFyYQ9UwXIi8FNtezQV2NY8+yrpw2kd8tzSbr?=
+ =?us-ascii?Q?1YoaHMkWjEpnEOPTVPyJCQIacWwRuG+ip9O5WFfqaqondb1TzhZ+ouogU7kx?=
+ =?us-ascii?Q?98FWWjYK07+G4k3PZ2Ud98M/HaEwTX7LBzepKf9fdfbqnryA5FxsMXBvQCT9?=
+ =?us-ascii?Q?XByFF7V+oxjKrAX7FQJeDZCJ2lW/ZJEUsH7HgiKp0UE+NKry3fLkcqXy0k2l?=
+ =?us-ascii?Q?t7DXUIj+S0bjxiDfwmVhGBVeCmY3gH02BfORvbR+UY8LEU+vthtTdRcoEI0H?=
+ =?us-ascii?Q?4ff5dURiOdSDURM0W/O5ow8LoII2x5aE94bKRY6TtPBnKNIj9jlDE0j+TqZ4?=
+ =?us-ascii?Q?2oVn4L9oWJufTcnxsslgJ/Z+t7QXevPCTqTVwhN/aC+bXf3tLCE69VWcOPpO?=
+ =?us-ascii?Q?wTjAjmz9H0dxMmB+IcnkCutww60kQkig7xmblluoFHbC9IEe6r7XoS3H3Pbr?=
+ =?us-ascii?Q?F837QTfSwxK/bkVkmDAYTtptyawdvGOJzsvkWweRf5X+uatSrElvhm6Cuarm?=
+ =?us-ascii?Q?BACTLcWhxcOLqREZ5IyMp7MyEZRMQVvUSRokr0wu/fQ9vjHKeFH9C0PPOlGO?=
+ =?us-ascii?Q?Z/6HDDfwZT0hDFBBVkYwjiJxqD/oQZ51kWk4o/uR/p8UQuQErvHiyxo5Ja92?=
+ =?us-ascii?Q?72/soVqTn1XfsxGJX5uSWjxRsNFRWGRkVy7XpS3gMLYILOM36mpdtWz06fN+?=
+ =?us-ascii?Q?VYjl4b0D/3hUlnBF4FhRMH2ytGV00hzjhPjz9vjMGlQAOSup+9ory6CFyJxl?=
+ =?us-ascii?Q?L20yw/P3qAFZI2fLquZUtbZMTBclVziqkn0LCDL7gI2cF0nm5RK16P2WMgvE?=
+ =?us-ascii?Q?2EBQMIdsEEcyPRXvkWBh2+bfY7npN0bMKed8zCMLjhQpIhJf78BDQXl6/UjI?=
+ =?us-ascii?Q?B0DG5CTbdWwpVSf7T7OSQIhmLuccx+XE4FEL1tBakVaCVqlBMyi9BcXLXans?=
+ =?us-ascii?Q?T+pzyXzxMohG//o1Oz/q2AcYlRsC4x8crHO1Y6xELXlnxbRhL1xQ5i4ciogj?=
+ =?us-ascii?Q?tYvWT8fBj+QxdAnrscAuqRqofFhf034ccyROCIu0IS0oCEnuJj3auv7rqlg2?=
+ =?us-ascii?Q?Qq/lVMg+cpXHDU3SG8L/uwWvSLcVzxE4ookaUURHmh/xWqZ39iU2tF7Hfwf5?=
+ =?us-ascii?Q?nzOqbKtHVPIU69bMeTM85qQ83GNeamOchsicYKQ67XwqdNIIfrqd1nwPd2R2?=
+ =?us-ascii?Q?u02vB1UZxNOZ0gdPQJEuNiiPsfKNOIpxNuVQOos3Z+cIEdDE05G4LUevAjz3?=
+ =?us-ascii?Q?nffbwrKvg7yE3y/ywApD4fb+0mmnE72ctXVExkHDT8N3snX3BoHzk6Bxyk/l?=
+ =?us-ascii?Q?Qg=3D=3D?=
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <EB2F7BEC0CF3D44D95B08B0CF8A1AF90@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: eab330a8-801d-4042-4703-08dab5e51c50
+X-MS-Exchange-CrossTenant-originalarrivaltime: 24 Oct 2022 17:28:05.3027
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: SNMm1Hfi/ZCKT8uZ6awdQxPs7ckvpgZbwmSMghArfdFoswsIfMjUbqd7g2oA8zFbiwOQn3CA3aEzL7RuO4oIBQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL3PR10MB6188
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.545,FMLib:17.11.122.1
+ definitions=2022-10-24_05,2022-10-21_01,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=373 bulkscore=0
+ suspectscore=0 malwarescore=0 phishscore=0 mlxscore=0 spamscore=0
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2209130000 definitions=main-2210240106
+X-Proofpoint-GUID: vsj8rulcL0j6-gY_K7vyBnNw73LA5xUN
+X-Proofpoint-ORIG-GUID: vsj8rulcL0j6-gY_K7vyBnNw73LA5xUN
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
 
-On 10/9/21 8:27 AM, Dave Wysochanski wrote:
-> Subject:
-> [PATCH v2 1/1] nfsiostat: Handle both readahead counts for statsver >= 1.2
-> From:
-> Dave Wysochanski <dwysocha@redhat.com>
-> Date:
-> 10/9/21, 8:27 AM
-> 
-> To:
-> chuck.lever@oracle.com, steved@redhat.com
-> CC:
-> linux-nfs@vger.kernel.org
-> 
-> 
-> Later kernel versions convert NFS readpages to readahead so update
-> the counts accordingly.
-> 
-> Signed-off-by: Dave Wysochanski<dwysocha@redhat.com>
-Committed...
+> On Oct 24, 2022, at 6:57 AM, Jeff Layton <jlayton@kernel.org> wrote:
+>=20
+> On Mon, 2022-10-24 at 13:07 +1100, NeilBrown wrote:
+>> On Thu, 20 Oct 2022, Chuck Lever III wrote:
+>>>=20
+>>>> On Oct 19, 2022, at 7:39 AM, Jeff Layton <jlayton@poochiereds.net> wro=
+te:
+>>>>=20
+>>>>> -	fp =3D find_or_add_file(open->op_file, current_fh);
+>>>>> +	rcu_read_lock();
+>>>>> +	fp =3D insert_nfs4_file(open->op_file, current_fh);
+>>>>> +	rcu_read_unlock();
+>>>>=20
+>>>> It'd probably be better to push this rcu_read_lock down into
+>>>> insert_nfs4_file. You don't need to hold it over the actual insertion,
+>>>> since that requires the state_lock.
+>>>=20
+>>> I used this arrangement because:
+>>>=20
+>>> insert_nfs4_file() invokes only find_nfs4_file() and the
+>>> insert_file() helper. Both find_nfs4_file() and the
+>>> insert_file() helper invoke rhltable_lookup(), which
+>>> must be called with the RCU read lock held.
+>>>=20
+>>> And this is the reason why put_nfs4_file() no longer takes
+>>> the state_lock: it would take the state_lock first and
+>>> then the RCU read lock (which is implicitly taken in
+>>> rhltable_remove()), which results in a lock inversion
+>>> relative to insert_nfs4_file(), which takes the RCU read
+>>> lock first, then the state_lock.
+>>=20
+>> It doesn't make any sense to talk about lock inversion with
+>> rcu_read_lock().  It isn't really a lock in any traditional sense in
+>> that it can never block (which is what cause lock-inversion problems).
+>> I prefer to think for rcu_read_lock() as taking a reference on some
+>> global state.
+>>=20
+>=20
+> Right. To be clear, you can deadlock with synchronize_rcu if you use it
+> improperly, but the rcu_read_lock itself never blocks.
+>=20
+>>>=20
+>>>=20
+>>> I'm certainly not an expert, so I'm willing to listen to
+>>> alternative approaches. Can we rely on only the RCU read
+>>> lock for exclusion on hash insertion?
+>>=20
+>> Probably we can.  I'll read through all the patches now and provide some
+>> review.
+>>=20
+>=20
+> The rcu_read_lock provides _no_ exclusion whatsoever, so it's not
+> usually suitable for things that need exclusive access (like a hash
+> insertion). If each rhl hash chain has its own lock though, then we may
+> not require other locking to serialize insertions.
 
-steved
-> ---
->   tools/nfs-iostat/nfs-iostat.py | 15 +++++++++------
->   1 file changed, 9 insertions(+), 6 deletions(-)
-> 
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index 1df74ba822b5..85294fb9448c 100755
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -43,7 +43,7 @@ NfsEventCounters = [
->       'vfspermission',
->       'vfsupdatepage',
->       'vfsreadpage',
-> -    'vfsreadpages',
-> +    'vfsreadpages', # or vfsreadahead in statvers=1.2 or above
->       'vfswritepage',
->       'vfswritepages',
->       'vfsreaddir',
-> @@ -86,14 +86,14 @@ class DeviceData:
->               self.__nfs_data['export'] = words[1]
->               self.__nfs_data['mountpoint'] = words[4]
->               self.__nfs_data['fstype'] = words[7]
-> -            if words[7] == 'nfs':
-> -                self.__nfs_data['statvers'] = words[8]
-> +            if words[7] == 'nfs' or words[7] == 'nfs4':
-> +                self.__nfs_data['statvers'] = float(words[8].split('=',1)[1])
->           elif 'nfs' in words or 'nfs4' in words:
->               self.__nfs_data['export'] = words[0]
->               self.__nfs_data['mountpoint'] = words[3]
->               self.__nfs_data['fstype'] = words[6]
->               if words[6] == 'nfs':
-> -                self.__nfs_data['statvers'] = words[7]
-> +                self.__nfs_data['statvers'] = float(words[7].split('=',1)[1])
->           elif words[0] == 'age:':
->               self.__nfs_data['age'] = int(words[1])
->           elif words[0] == 'opts:':
-> @@ -294,8 +294,11 @@ class DeviceData:
->           print()
->           print('%d nfs_readpage() calls read %d pages' % \
->               (vfsreadpage, vfsreadpage))
-> -        print('%d nfs_readpages() calls read %d pages' % \
-> -            (vfsreadpages, pages_read - vfsreadpage))
-> +        multipageread = "readpages"
-> +        if self.__nfs_data['statvers'] >= 1.2:
-> +            multipageread = "readahead"
-> +        print('%d nfs_%s() calls read %d pages' % \
-> +            (vfsreadpages, multipageread, pages_read - vfsreadpage))
->           if vfsreadpages != 0:
->               print('(%.1f pages per call)' % \
->                   (float(pages_read - vfsreadpage) / vfsreadpages))
-> -- 1.8.3.1
-> 
+rhash does have per-bucket serialization using bit-spin-locks,
+as far as I can tell.
+
+
+--
+Chuck Lever
+
+
 
