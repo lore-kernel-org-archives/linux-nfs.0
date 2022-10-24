@@ -2,180 +2,118 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 58947ECAAA1
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Oct 2022 19:13:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63BAAFA3741
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Oct 2022 19:30:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232957AbiJXTNK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Oct 2022 15:13:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60092 "EHLO
+        id S230289AbiJXTaj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Oct 2022 15:30:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38076 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233061AbiJXTMc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2022 15:12:32 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C40E5B2748
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2022 10:50:48 -0700 (PDT)
+        with ESMTP id S231246AbiJXT2p (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Oct 2022 15:28:45 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 013EEA7ABC
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2022 11:00:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1666633776;
+        s=mimecast20190719; t=1666634349;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=0QFzMPOVhlSWF5NJr8yaXnz5DygEX2t8aC7JOeR+QXE=;
-        b=KNlqNiq/qFm4FGiqzcvgAXXPBvdN43grndjdMnYg84cR0oyHmjtQqbJR+xqrVlHLrUY85r
-        l/lmtBJGLUcb9nnb8gqRmmA4YRvDGjMzWmKoA1B2Lqhc8K8D2cWUUmCEJSOeA0S0X/0qje
-        cNhaFaj26dlDyrXB7TM3vBccDi9dr04=
-Received: from mail-qk1-f199.google.com (mail-qk1-f199.google.com
- [209.85.222.199]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=vZozVNRvVQt5X8iZzcuxyit4OFkJ51NIuBTUkymNjEY=;
+        b=c7uSUMt3ncvwBpFvh7dLi9Ja9TU2b2kU9lykdn0o/lLFnaHehcwVZGACrm1vh6Gil/dJjN
+        WkPQjQ/UxPkfYuZZDY4gb3GzFnuoPvU6pv+MrxN8beRRV5VXsTW10zLOX8OghGW2cmGMo3
+        yYLclHNBp9pW09pNKaGyG6EIRILJVWc=
+Received: from mail-qt1-f197.google.com (mail-qt1-f197.google.com
+ [209.85.160.197]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_128_GCM_SHA256) id
- us-mta-501-ScpMgtj2Mz26m26_p-ePFA-1; Mon, 24 Oct 2022 13:25:03 -0400
-X-MC-Unique: ScpMgtj2Mz26m26_p-ePFA-1
-Received: by mail-qk1-f199.google.com with SMTP id o13-20020a05620a2a0d00b006cf9085682dso9396355qkp.7
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2022 10:25:03 -0700 (PDT)
+ us-mta-198-vty73XmtNH2pHGJDvDVjtw-1; Mon, 24 Oct 2022 13:48:21 -0400
+X-MC-Unique: vty73XmtNH2pHGJDvDVjtw-1
+Received: by mail-qt1-f197.google.com with SMTP id a19-20020a05622a02d300b0039a3711179dso7482251qtx.12
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Oct 2022 10:48:21 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+        h=content-transfer-encoding:in-reply-to:from:references:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=0QFzMPOVhlSWF5NJr8yaXnz5DygEX2t8aC7JOeR+QXE=;
-        b=Ast5O0wLTRTwukbLTanzbfjIBdFB0Kdlpr5k6qK1EeYUNfEu9XXy8d3XmVaX6lQaTz
-         UKEKYk7Y34dg+wqZZftzKqvv3G8Wqa+spQx8bbBu4dGazRy1QiMcROv2rzKCNsr8H+Zb
-         9CFBGZLzPEq+OWshYNVCn/1puOIg3SfBn/PoEwwWKq54HWtfuWJnkBHF4GuGEJ8GwUep
-         Mwqm+lSKS3vSb6Leu/P6F+iKkP4u4PwtaXYu026ZNTNozn0rO2dyP7JLTA2HSLobY8R6
-         OLmRb7vOL/QPSMdlzqveUR91vuiRTTElalBk8d3cFMOmRILN4bADeaoB41NDwVEjb8f6
-         1Lig==
-X-Gm-Message-State: ACrzQf3DiBf3TWSoHWo1vjw+hPo81gaV+GFVhHNyNl5qyWdDne064kaE
-        R44CuALOo3ehfyMoNKqkI63/6lQ8VTx4MDTsQ/ffv9sOLgc6vJRTjB1ClDF6A4ktDdjBW5wXwNs
-        my4d1SvPT0Uc1VVDmd4ET
-X-Received: by 2002:a05:620a:46a0:b0:6ee:afc7:d9dc with SMTP id bq32-20020a05620a46a000b006eeafc7d9dcmr22828199qkb.189.1666632302303;
-        Mon, 24 Oct 2022 10:25:02 -0700 (PDT)
-X-Google-Smtp-Source: AMsMyM7pW2yjruP5el4yeBOcfYfF1qlMHB2k0cZdMQqO5yLugc6j5UI5xWynds2pRQc5lxZKX9xI3Q==
-X-Received: by 2002:a05:620a:46a0:b0:6ee:afc7:d9dc with SMTP id bq32-20020a05620a46a000b006eeafc7d9dcmr22828172qkb.189.1666632301966;
-        Mon, 24 Oct 2022 10:25:01 -0700 (PDT)
+        bh=vZozVNRvVQt5X8iZzcuxyit4OFkJ51NIuBTUkymNjEY=;
+        b=mZHOJJuzXuDpE2aRYtgrhs/8EzFORFBqWS67noXInCYOIpuQ3l5uEbhN1aAhiEuLfv
+         UWVjr566AXDeKFmraHR+J7u2ELF65odxLKjnb1z03cYoK5aOhlRo6yZWxTxU8hgP2L7n
+         H8g143dnVajCml+kZt3KVZlWGLMaoVClPN10k6bB7CtUQy9om5xxXA/2u5UZ/4qKb9tD
+         NGQ3vxob4ztZvT2hg8LNjYpg5JqQWGGpcG1e6E1Zspu1F7cADhs93yyHMR7CQ5/G3sdj
+         CBOlhSmU+6ttA4kUDHdCvKjdqbUlm45fAFTJrGKnXrTiaR/P+U5RqtBkBRzCQOKnXlc7
+         M8zg==
+X-Gm-Message-State: ACrzQf3e2127wa88u3THcXi3JJVbrH70zGEFAEVMHV+VUI4fECp7FQ62
+        pNd74xjeSkX75LADClarEkp+Xq9G797uY07a99jEsSfIU0etTk25t3cbBiFJ2pzqUkGs77BaBSy
+        R66ugLssHstWXhpFybto1
+X-Received: by 2002:a05:622a:1905:b0:39c:f723:f31 with SMTP id w5-20020a05622a190500b0039cf7230f31mr27010069qtc.54.1666633700769;
+        Mon, 24 Oct 2022 10:48:20 -0700 (PDT)
+X-Google-Smtp-Source: AMsMyM7jcFQqNDnE8yfObwyePzM44sFxP9vwPCOl1rGZx/d2U5dfmvTpFeydgQZhgK3qZIIyCv6rng==
+X-Received: by 2002:a05:622a:1905:b0:39c:f723:f31 with SMTP id w5-20020a05622a190500b0039cf7230f31mr27010058qtc.54.1666633700484;
+        Mon, 24 Oct 2022 10:48:20 -0700 (PDT)
 Received: from ?IPV6:2603:6000:d605:db00:db8c:7bbd:f449:802d? (2603-6000-d605-db00-db8c-7bbd-f449-802d.res6.spectrum.com. [2603:6000:d605:db00:db8c:7bbd:f449:802d])
-        by smtp.gmail.com with ESMTPSA id he19-20020a05622a601300b0039cc7ebf46bsm216508qtb.93.2022.10.24.10.25.00
+        by smtp.gmail.com with ESMTPSA id l16-20020a05622a051000b0039ee562799csm282064qtx.59.2022.10.24.10.48.19
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 24 Oct 2022 10:25:01 -0700 (PDT)
-Message-ID: <c6568a8b-7d55-6185-54f3-721c0a664de9@redhat.com>
-Date:   Mon, 24 Oct 2022 13:25:00 -0400
+        Mon, 24 Oct 2022 10:48:19 -0700 (PDT)
+Message-ID: <05574fc8-7d4a-e68d-2167-cac6f631e105@redhat.com>
+Date:   Mon, 24 Oct 2022 13:48:18 -0400
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
  Thunderbird/102.4.0
-Subject: Re: [PATCH v2] nfs-blkmapd: PID file read by systemd failed
+Subject: Re: [PATCH] [nfs/nfs-utils/libtirpc] bindresvport.c: fix a potential
+ resource leakage
 Content-Language: en-US
-To:     zhanchengbin <zhanchengbin1@huawei.com>
-Cc:     linux-nfs@vger.kernel.org, liuzhiqiang26@huawei.com,
-        linfeilong <linfeilong@huawei.com>
-References: <f81e71f4-ea7b-c512-573f-ac1f6e4bcefd@huawei.com>
+To:     Zhi Li <yieli@redhat.com>, linux-nfs@vger.kernel.org
+References: <20221020063309.3674419-1-yieli@redhat.com>
 From:   Steve Dickson <steved@redhat.com>
-In-Reply-To: <f81e71f4-ea7b-c512-573f-ac1f6e4bcefd@huawei.com>
+In-Reply-To: <20221020063309.3674419-1-yieli@redhat.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello,
 
-This still does not apply.. at all.. but
-did take a look.
 
-On 10/17/22 11:05 PM, zhanchengbin wrote:
-> When started nfs-blkmap.service, the PID file can't be opened, The
-> cause is that the child process does not create the PID file before
-> the systemd reads the PID file.
-> Adding "ExecStartPost=/bin/sleep 0.1" to
-> /usr/lib/systemd/system/nfs-blkmap.service will probably solve this
-> problem, However, there is no guarantee that the above solutions are
-> effective under high cpu pressure.So replace the daemon function with
-> the fork function, and put the behavior of creating the PID file in
-> the parent process to solve the above problems.
+On 10/20/22 2:33 AM, Zhi Li wrote:
+> Subject:
+> [PATCH] [nfs/nfs-utils/libtirpc] bindresvport.c: fix a potential 
+> resource leakage
+> From:
+> Zhi Li <yieli@redhat.com>
+> Date:
+> 10/20/22, 2:33 AM
 > 
-> Signed-off-by: zhanchengbin <zhanchengbin1@huawei.com>
-> Reviewed-by: Zhiqiang Liu <liuzhiqiang26@huawei.com>
-> ---
-> V1->V2:
->   2.27.0 -> 2.33.0
+> To:
+> linux-nfs@vger.kernel.org
+> CC:
+> steved@redhat.com, Zhi Li <yieli@redhat.com>
 > 
->   utils/blkmapd/device-discovery.c | 48 +++++++++++++++++++++-----------
->   1 file changed, 32 insertions(+), 16 deletions(-)
 > 
-> diff --git a/utils/blkmapd/device-discovery.c 
-> b/utils/blkmapd/device-discovery.c
-> index 49935c2e..dcced5c3 100644
-> --- a/utils/blkmapd/device-discovery.c
-> +++ b/utils/blkmapd/device-discovery.c
-> @@ -507,28 +507,44 @@ int main(int argc, char **argv)
->       if (fg) {
->           openlog("blkmapd", LOG_PERROR, 0);
->       } else {
-> -        if (daemon(0, 0) != 0) {
-> -            fprintf(stderr, "Daemonize failed\n");
-> +        pid_t pid = fork();
-> +        if (pid < 0) {
-> +            fprintf(stderr, "fork error\n");
-use BL_LOG_ERR("fork error: %s\n", strerror(errno)) or
-something similar which tells why the fork failed.
-
->               exit(1);
-> +        } else if (pid != 0) {
-> +            pidfd = open(PID_FILE, O_WRONLY | O_CREAT, 0644);
-> +            if (pidfd < 0) {
-> +                fprintf(stderr, "Create pid file %s failed\n", PID_FILE);
-Same thing here... it is good you are showing the failed file
-but you are not showing my it failed.
-
-> +                exit(1);
-> +            }
-> +
-> +            if (lockf(pidfd, F_TLOCK, 0) < 0) {
-> +                fprintf(stderr, "Already running; Exiting!");
-> +                close(pidfd);
-> +                exit(1);
-> +            }
-> +            if (ftruncate(pidfd, 0) < 0)
-> +                fprintf(stderr, "ftruncate on %s failed: m\n", PID_FILE);
-> +            sprintf(pidbuf, "%d\n", pid);
-> +            if (write(pidfd, pidbuf, strlen(pidbuf)) != 
-> (ssize_t)strlen(pidbuf))
-> +                fprintf(stderr, "write on %s failed: m\n", PID_FILE);
-> +            exit(0);
->           }
+> Close the FILE *fp of load_blacklist() in another
+> return path to avoid potential resource leakage.
 > 
-> -        openlog("blkmapd", LOG_PID, 0);
-> -        pidfd = open(PID_FILE, O_WRONLY | O_CREAT, 0644);
-> -        if (pidfd < 0) {
-> -            BL_LOG_ERR("Create pid file %s failed\n", PID_FILE);
-> -            exit(1);
-> +        (void)setsid();
-> +        if (chdir("/")) {
-> +            fprintf(stderr, "chdir error\n");
->           }
-> +        int fd = open("/dev/null", O_RDWR, 0);
-> +        if (fd >= 0) {
-> +            (void)dup2(fd, STDIN_FILENO);
-> +            (void)dup2(fd, STDOUT_FILENO);
-> +            (void)dup2(fd, STDERR_FILENO);
-not clear this is necessary but it is
-probably the safest since that's what
-daemon() does.
+> Fixes:https://bugzilla.redhat.com/show_bug.cgi?id=2135405
+> Signed-off-by: Zhi Li<yieli@redhat.com>
+Committed...
 
 steved.
+> ---
+>   src/bindresvport.c | 1 +
+>   1 file changed, 1 insertion(+)
 > 
-> -        if (lockf(pidfd, F_TLOCK, 0) < 0) {
-> -            BL_LOG_ERR("Already running; Exiting!");
-> -            close(pidfd);
-> -            exit(1);
-> +            (void)close(fd);
->           }
-> -        if (ftruncate(pidfd, 0) < 0)
-> -            BL_LOG_WARNING("ftruncate on %s failed: m\n", PID_FILE);
-> -        sprintf(pidbuf, "%d\n", getpid());
-> -        if (write(pidfd, pidbuf, strlen(pidbuf)) != 
-> (ssize_t)strlen(pidbuf))
-> -            BL_LOG_WARNING("write on %s failed: m\n", PID_FILE);
-> +
-> +        openlog("blkmapd", LOG_PID, 0);
->       }
+> diff --git a/src/bindresvport.c b/src/bindresvport.c
+> index 5c0ddcf..efeb1cc 100644
+> --- a/src/bindresvport.c
+> +++ b/src/bindresvport.c
+> @@ -130,6 +130,7 @@ load_blacklist (void)
+>   	  if (list == NULL)
+>   	    {
+>   	      free (buf);
+> +	      fclose (fp);
+>   	      return;
+>   	    }
+>   	}
+> -- 2.31.1
 > 
->       signal(SIGINT, sig_die);
 
