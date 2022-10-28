@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F9C8ECAAA1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F41DDC38A02
 	for <linux-nfs@archiver.kernel.org>; Fri, 28 Oct 2022 18:57:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229975AbiJ1S5T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229455AbiJ1S5T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 28 Oct 2022 14:57:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55100 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55102 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229455AbiJ1S5S (ORCPT
+        with ESMTP id S229935AbiJ1S5S (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2022 14:57:18 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98BBA1D2B51
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 11:57:17 -0700 (PDT)
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 036971ABA3B
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 11:57:18 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3820562A26
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 18:57:17 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3EDB9C43470;
-        Fri, 28 Oct 2022 18:57:16 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id AA2F1B82C8D
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 18:57:16 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F2683C433D7;
+        Fri, 28 Oct 2022 18:57:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1666983436;
-        bh=NJmStmbj9UXmkjFc0+Ec0WT9PNFAnNPfSrmtnQZ5jFY=;
+        s=k20201202; t=1666983435;
+        bh=19GN2WutVnfU1eKRekedqCHUhQm55dxuykeR22OypyA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=q9WAS2KgoswbDz16wXiy6IchkH7G5dDMRb7tmEfuQM+3T6RgJWjCJNVlp2YZeJunL
-         9KlsbR201V04kYx+RHrQst72e+8JtqRIzbpdfM/ajUSHkdmtDDwmC6xSTRg5UYrzVn
-         oHpVft1mqj3Twsx/5/71fp4++WHgTQCI7GC2pUEND0envsM3xMSMFvNLPa/a6bPn3i
-         YHHuewirylsAOPukbRm4N3mnYNNljexJLqBnkKwZokDRQK2QlRe7llDA9RvdL6iCr2
-         khCRwSq/r9HePS5hcetJJvA4wtpqptGvqapEEwB1dfjyBKxz6+FFHNklzvbQKqCy4H
-         OQnUvJggP/Pvg==
+        b=Q7ZHwZ6vvqlN4G1gKYgYg30XUSdqdy/+WKE7bP2yBOEVDdZECUhubFZpPlkUzYod+
+         dJThnW6amsBmLxOLDxhofqSti2lFIi9pbx2A8lDDcLw6uPOHCsvKpnW8tGEZBPb/xY
+         ptQyxb8tTMuJUqQqBItMcsDSD5TrUmvMhwruVU/1LJgRWYiZZsJ9r4acJy183QssWX
+         qNININq0Lad4fipuoM/1PJoejfRGB8V/HFL1e2MjqCDcZR7rPBKAXDnHPuiIxriDMs
+         ixEF73CEy1kNCNmvhmYTswByx5hYbptKwWvWG9ZxMCMlQEDfEb2fpZuzZZu2/oD07R
+         xF9sk6Lk1eGAA==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: [PATCH v3 3/4] nfsd: close race between unhashing and LRU addition
-Date:   Fri, 28 Oct 2022 14:57:11 -0400
-Message-Id: <20221028185712.79863-4-jlayton@kernel.org>
+Subject: [PATCH v3 1/4] nfsd: remove the pages_flushed statistic from filecache
+Date:   Fri, 28 Oct 2022 14:57:09 -0400
+Message-Id: <20221028185712.79863-2-jlayton@kernel.org>
 X-Mailer: git-send-email 2.37.3
 In-Reply-To: <20221028185712.79863-1-jlayton@kernel.org>
 References: <20221028185712.79863-1-jlayton@kernel.org>
@@ -46,111 +46,67 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The list_lru_add and list_lru_del functions use list_empty checks to see
-whether the object is already on the LRU. That's fine in most cases, but
-we occasionally repurpose nf_lru after unhashing. It's possible for an
-LRU removal to remove it from a different list altogether if we lose a
-race.
-
-Add a new NFSD_FILE_LRU flag, which indicates that the object actually
-resides on the LRU and not some other list. Use that when adding and
-removing it from the LRU instead of just relying on list_empty checks.
-
-Add an extra HASHED check after adding the entry to the LRU. If it's now
-clear, just remove it from the LRU again and put the reference if that
-remove is successful.
+We're counting mapping->nrpages, but not all of those are necessarily
+dirty. We don't really have a simple way to count just the dirty pages,
+so just remove this stat since it's not accurate.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/filecache.c | 44 +++++++++++++++++++++++++++++---------------
- fs/nfsd/filecache.h |  1 +
- 2 files changed, 30 insertions(+), 15 deletions(-)
+ fs/nfsd/filecache.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index d928c5e38eeb..47cdc6129a7b 100644
+index 98c6b5f51bc8..f8ebbf7daa18 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -403,18 +403,22 @@ nfsd_file_check_writeback(struct nfsd_file *nf)
- static bool nfsd_file_lru_add(struct nfsd_file *nf)
- {
- 	set_bit(NFSD_FILE_REFERENCED, &nf->nf_flags);
--	if (list_lru_add(&nfsd_file_lru, &nf->nf_lru)) {
--		trace_nfsd_file_lru_add(nf);
--		return true;
-+	if (!test_and_set_bit(NFSD_FILE_LRU, &nf->nf_flags)) {
-+		if (list_lru_add(&nfsd_file_lru, &nf->nf_lru)) {
-+			trace_nfsd_file_lru_add(nf);
-+			return true;
-+		}
- 	}
- 	return false;
- }
+@@ -32,7 +32,6 @@ static DEFINE_PER_CPU(unsigned long, nfsd_file_cache_hits);
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_acquisitions);
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_releases);
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_total_age);
+-static DEFINE_PER_CPU(unsigned long, nfsd_file_pages_flushed);
+ static DEFINE_PER_CPU(unsigned long, nfsd_file_evictions);
  
- static bool nfsd_file_lru_remove(struct nfsd_file *nf)
- {
--	if (list_lru_del(&nfsd_file_lru, &nf->nf_lru)) {
--		trace_nfsd_file_lru_del(nf);
--		return true;
-+	if (test_and_clear_bit(NFSD_FILE_LRU, &nf->nf_flags)) {
-+		if (list_lru_del(&nfsd_file_lru, &nf->nf_lru)) {
-+			trace_nfsd_file_lru_del(nf);
-+			return true;
-+		}
- 	}
- 	return false;
- }
-@@ -469,20 +473,30 @@ nfsd_file_put(struct nfsd_file *nf)
- {
- 	trace_nfsd_file_put(nf);
+ struct nfsd_fcache_disposal {
+@@ -370,7 +369,6 @@ nfsd_file_flush(struct nfsd_file *nf)
  
--	/*
--	 * The HASHED check is racy. We may end up with the occasional
--	 * unhashed entry on the LRU, but they should get cleaned up
--	 * like any other.
--	 */
- 	if (test_bit(NFSD_FILE_GC, &nf->nf_flags) &&
- 	    test_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
- 		/*
--		 * If this is the last reference (nf_ref == 1), then transfer
--		 * it to the LRU. If the add to the LRU fails, just put it as
--		 * usual.
-+		 * If this is the last reference (nf_ref == 1), then try to
-+		 * transfer it to the LRU.
- 		 */
--		if (refcount_dec_not_one(&nf->nf_ref) || nfsd_file_lru_add(nf))
-+		if (refcount_dec_not_one(&nf->nf_ref))
- 			return;
-+
-+		/* Try to add it to the LRU.  If that fails, decrement. */
-+		if (nfsd_file_lru_add(nf)) {
-+			/* If it's still hashed, we're done */
-+			if (test_bit(NFSD_FILE_HASHED, &nf->nf_flags))
-+				return;
-+
-+			/*
-+			 * We're racing with unhashing, so try to remove it from
-+			 * the LRU. If removal fails, then someone else already
-+			 * has our reference and we're done. If it succeeds,
-+			 * fall through to decrement.
-+			 */
-+			if (!nfsd_file_lru_remove(nf))
-+				return;
-+		}
+ 	if (!file || !(file->f_mode & FMODE_WRITE))
+ 		return;
+-	this_cpu_add(nfsd_file_pages_flushed, file->f_mapping->nrpages);
+ 	if (vfs_fsync(file, 1) != 0)
+ 		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
+ }
+@@ -998,7 +996,6 @@ nfsd_file_cache_shutdown(void)
+ 		per_cpu(nfsd_file_acquisitions, i) = 0;
+ 		per_cpu(nfsd_file_releases, i) = 0;
+ 		per_cpu(nfsd_file_total_age, i) = 0;
+-		per_cpu(nfsd_file_pages_flushed, i) = 0;
+ 		per_cpu(nfsd_file_evictions, i) = 0;
  	}
- 	if (refcount_dec_and_test(&nf->nf_ref))
- 		nfsd_file_free(nf);
-diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-index b7efb2c3ddb1..e52ab7d5a44c 100644
---- a/fs/nfsd/filecache.h
-+++ b/fs/nfsd/filecache.h
-@@ -39,6 +39,7 @@ struct nfsd_file {
- #define NFSD_FILE_PENDING	(1)
- #define NFSD_FILE_REFERENCED	(2)
- #define NFSD_FILE_GC		(3)
-+#define NFSD_FILE_LRU		(4)	/* file is on LRU */
- 	unsigned long		nf_flags;
- 	struct inode		*nf_inode;	/* don't deref */
- 	refcount_t		nf_ref;
+ }
+@@ -1212,7 +1209,7 @@ nfsd_file_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  */
+ int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
+ {
+-	unsigned long releases = 0, pages_flushed = 0, evictions = 0;
++	unsigned long releases = 0, evictions = 0;
+ 	unsigned long hits = 0, acquisitions = 0;
+ 	unsigned int i, count = 0, buckets = 0;
+ 	unsigned long lru = 0, total_age = 0;
+@@ -1240,7 +1237,6 @@ int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
+ 		releases += per_cpu(nfsd_file_releases, i);
+ 		total_age += per_cpu(nfsd_file_total_age, i);
+ 		evictions += per_cpu(nfsd_file_evictions, i);
+-		pages_flushed += per_cpu(nfsd_file_pages_flushed, i);
+ 	}
+ 
+ 	seq_printf(m, "total entries: %u\n", count);
+@@ -1254,6 +1250,5 @@ int nfsd_file_cache_stats_show(struct seq_file *m, void *v)
+ 		seq_printf(m, "mean age (ms): %ld\n", total_age / releases);
+ 	else
+ 		seq_printf(m, "mean age (ms): -\n");
+-	seq_printf(m, "pages flushed: %lu\n", pages_flushed);
+ 	return 0;
+ }
 -- 
 2.37.3
 
