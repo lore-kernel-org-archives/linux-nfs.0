@@ -2,72 +2,198 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 387E4ECAAA1
-	for <linux-nfs@archiver.kernel.org>; Fri, 28 Oct 2022 14:49:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47312FA3742
+	for <linux-nfs@archiver.kernel.org>; Fri, 28 Oct 2022 15:05:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231423AbiJ1Ot1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 28 Oct 2022 10:49:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37902 "EHLO
+        id S231214AbiJ1PFW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 28 Oct 2022 11:05:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48910 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231531AbiJ1OtF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2022 10:49:05 -0400
-X-Greylist: delayed 376 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 28 Oct 2022 07:48:04 PDT
-Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 32D111FB7A0
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 07:48:03 -0700 (PDT)
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 8D5753FCB; Fri, 28 Oct 2022 10:41:46 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 8D5753FCB
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
-        s=default; t=1666968106;
-        bh=3BInrWdPz0qkcKTgqkWhUd29F6unsViZYMA7JT94jUw=;
-        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
-        b=mGCFbeJnht4oF9/Ctz7ZwygEU+Wm9b4e+rXNN90T416M0uaDIwZF4EkMJNxwipW6h
-         9ihWr/HnRPDCLQXap+L2iC+gIF9x/F97ai6EULq09vQMNK2jWay7J0uOCHHTOwHEqH
-         ltWpt7Ko25qHlKsyuE20tqqHfpWl9uiTG0CI0oV0=
-Date:   Fri, 28 Oct 2022 10:41:46 -0400
+        with ESMTP id S229817AbiJ1PFS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2022 11:05:18 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5461D5C95B
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 08:05:11 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id EA64262906
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 15:05:10 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9169C433D6;
+        Fri, 28 Oct 2022 15:05:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1666969510;
+        bh=q6qbx9E39EZoCKWS4VIzviiamLW0NoH2CRzvecowd58=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=B2qNITlYHfz8uIwSFqlTUq2YWTS+n5lZHdq5in22uWDlWG2G4h26IQOxssyDxUHt4
+         1UHZVl+6C6qKHhZul1spse4qxXj2jHvnU3MZ1eFoby6nCIheodD5ryY9/hvP329Z30
+         QDEFUnrOyDyv9PM8lT4eWIXAosBNi5EtRGIZq1kxI6hJD5G7ie18g51XmMLEAATSbK
+         n4D5xwiTcA07yeKustTN8l/BZBTvi0+mxJVqNR0w48ddnTNh5C+r6EvT4klnIHR91/
+         Y3OT47tbut6Ktgb+KjYU/lLGdf5kc3LcZ5vr7WaR6gi9R/qIA0rKD7t+MIGJIvNwGD
+         Bi9nzkUydTbmg==
+Message-ID: <ae07f54d107cf1848c0a36dd16e437185a0304c3.camel@kernel.org>
+Subject: Re: [PATCH v2 3/3] nfsd: start non-blocking writeback after adding
+ nfsd_file to the LRU
+From:   Jeff Layton <jlayton@kernel.org>
 To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Fwd: NFS 4 GPF while processing compound with multiple reads
-Message-ID: <20221028144146.GA25371@fieldses.org>
-References: <CAD15GZfmZYKmGs7GfaUwM1V65uLirgwYBwrvBj7VrUpmFUjOTQ@mail.gmail.com>
- <54463F56-C3EE-431B-9BEE-8B805AD011B9@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>
+Date:   Fri, 28 Oct 2022 11:05:08 -0400
+In-Reply-To: <D32F829C-434C-4BA4-9057-C9769C2F4655@oracle.com>
+References: <20221027215213.138304-1-jlayton@kernel.org>
+         <20221027215213.138304-4-jlayton@kernel.org>
+         <D32F829C-434C-4BA4-9057-C9769C2F4655@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.44.4 (3.44.4-2.fc36) 
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <54463F56-C3EE-431B-9BEE-8B805AD011B9@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Oct 27, 2022 at 07:12:07PM +0000, Chuck Lever III wrote:
-> 
-> 
-> > Begin forwarded message:
-> > 
-> > From: Jan Kasiak <j.kasiak@gmail.com>
-> > Subject: NFS 4 GPF while processing compound with multiple reads
-> > Date: October 27, 2022 at 2:16:36 PM EDT
-> > To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-> > 
-> > Hi all,
-> > 
-> > While writing my own NFS client, I have found a simple test case that
-> > triggers a general protection fault on the NFS server.
-> > 
-> > The NFS 4 compound is: PUT_FH, READ, READ
-> > The second read causes the fault.
-> > 
-> > More information, including how to reproduce the bug is available in
-> > the bug tracker: https://bugzilla.linux-nfs.org/show_bug.cgi?id=402
-> 
-> Bruce, are you interested in applying:
-> 
-> https://bugzilla.linux-nfs.org/show_bug.cgi?id=402#c2
+On Fri, 2022-10-28 at 13:16 +0000, Chuck Lever III wrote:
+>=20
+> > On Oct 27, 2022, at 5:52 PM, Jeff Layton <jlayton@kernel.org> wrote:
+> >=20
+> > When a GC entry gets added to the LRU, kick off SYNC_NONE writeback
+> > so that we can be ready to close it out when the time comes.
+>=20
+> For a large file, a background flush still has to walk the file's
+> pages to see if they are dirty, and that consumes time, CPU, and
+> memory bandwidth. We're talking hundreds of microseconds for a
+> large file.
+>=20
+> Then the final flush does all that again.
+>=20
+> Basically, two (or more!) passes through the file for exactly the
+> same amount of work. Is there any measured improvement in latency
+> or throughput?
+>=20
+> And then... for a GC file, no-one is waiting on data persistence
+> during nfsd_file_put() so I'm not sure what is gained by taking
+> control of the flushing process away from the underlying filesystem.
+>=20
+>=20
+> Remind me why the filecache is flushing? Shouldn't NFSD rely on
+> COMMIT operations for that? (It's not obvious reading the code,
+> maybe there should be a documenting comment somewhere that
+> explains this arrangement).
+>=20
 
-Applied and pushed out.  (But not actually tested!  Let me know if
-there's a problem.)
 
---b.
+Fair point. I was trying to replicate the behaviors introduced in these
+patches:
+
+b6669305d35a nfsd: Reduce the number of calls to nfsd_file_gc()
+6b8a94332ee4 nfsd: Fix a write performance regression
+
+AFAICT, the fsync is there to catch writeback errors so that we can
+reset the write verifiers (AFAICT). The rationale for that is described
+here:
+
+055b24a8f230 nfsd: Don't garbage collect files that might contain write err=
+ors
+
+The problem with not calling vfs_fsync is that we might miss writeback
+errors. The nfsd_file could get reaped before a v3 COMMIT ever comes in.
+nfsd would eventually reopen the file but it could miss seeing the error
+if it got opened locally in the interim.
+
+I'm not sure we need to worry about that so much for v4 though. Maybe we
+should just do this for GC files?
+
+>=20
+> > Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> > ---
+> > fs/nfsd/filecache.c | 37 +++++++++++++++++++++++++++++++------
+> > 1 file changed, 31 insertions(+), 6 deletions(-)
+> >=20
+> > diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+> > index d2bbded805d4..491d3d9a1870 100644
+> > --- a/fs/nfsd/filecache.c
+> > +++ b/fs/nfsd/filecache.c
+> > @@ -316,7 +316,7 @@ nfsd_file_alloc(struct nfsd_file_lookup_key *key, u=
+nsigned int may)
+> > }
+> >=20
+> > static void
+> > -nfsd_file_flush(struct nfsd_file *nf)
+> > +nfsd_file_fsync(struct nfsd_file *nf)
+> > {
+> > 	struct file *file =3D nf->nf_file;
+> >=20
+> > @@ -327,6 +327,22 @@ nfsd_file_flush(struct nfsd_file *nf)
+> > 		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
+> > }
+> >=20
+> > +static void
+> > +nfsd_file_flush(struct nfsd_file *nf)
+> > +{
+> > +	struct file *file =3D nf->nf_file;
+> > +	unsigned long nrpages;
+> > +
+> > +	if (!file || !(file->f_mode & FMODE_WRITE))
+> > +		return;
+> > +
+> > +	nrpages =3D file->f_mapping->nrpages;
+> > +	if (nrpages) {
+> > +		this_cpu_add(nfsd_file_pages_flushed, nrpages);
+> > +		filemap_flush(file->f_mapping);
+> > +	}
+> > +}
+> > +
+> > static void
+> > nfsd_file_free(struct nfsd_file *nf)
+> > {
+> > @@ -337,7 +353,7 @@ nfsd_file_free(struct nfsd_file *nf)
+> > 	this_cpu_inc(nfsd_file_releases);
+> > 	this_cpu_add(nfsd_file_total_age, age);
+> >=20
+> > -	nfsd_file_flush(nf);
+> > +	nfsd_file_fsync(nf);
+> >=20
+> > 	if (nf->nf_mark)
+> > 		nfsd_file_mark_put(nf->nf_mark);
+> > @@ -500,12 +516,21 @@ nfsd_file_put(struct nfsd_file *nf)
+> >=20
+> > 	if (test_bit(NFSD_FILE_GC, &nf->nf_flags)) {
+> > 		/*
+> > -		 * If this is the last reference (nf_ref =3D=3D 1), then transfer
+> > -		 * it to the LRU. If the add to the LRU fails, just put it as
+> > -		 * usual.
+> > +		 * If this is the last reference (nf_ref =3D=3D 1), then try
+> > +		 * to transfer it to the LRU.
+> > +		 */
+> > +		if (refcount_dec_not_one(&nf->nf_ref))
+> > +			return;
+> > +
+> > +		/*
+> > +		 * If the add to the list succeeds, try to kick off SYNC_NONE
+> > +		 * writeback. If the add fails, then just fall through to
+> > +		 * decrement as usual.
+>=20
+> These comments simply repeat what the code does, so they seem
+> redundant to me. Could they instead explain why?
+>=20
+>=20
+> > 		 */
+> > -		if (refcount_dec_not_one(&nf->nf_ref) || nfsd_file_lru_add(nf))
+> > +		if (nfsd_file_lru_add(nf)) {
+> > +			nfsd_file_flush(nf);
+> > 			return;
+> > +		}
+> > 	}
+> > 	__nfsd_file_put(nf);
+> > }
+> > --=20
+> > 2.37.3
+> >=20
+>=20
+> --
+> Chuck Lever
+>=20
+>=20
+>=20
+
+--=20
+Jeff Layton <jlayton@kernel.org>
