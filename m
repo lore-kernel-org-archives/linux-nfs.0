@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AADDEECAAA1
-	for <linux-nfs@archiver.kernel.org>; Fri, 28 Oct 2022 14:49:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EE8D1FA3742
+	for <linux-nfs@archiver.kernel.org>; Fri, 28 Oct 2022 14:49:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231553AbiJ1OtH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 28 Oct 2022 10:49:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38528 "EHLO
+        id S230328AbiJ1OtJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 28 Oct 2022 10:49:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39338 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231283AbiJ1Os3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2022 10:48:29 -0400
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5C15A1F8128
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 07:47:28 -0700 (PDT)
+        with ESMTP id S231386AbiJ1Oso (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Oct 2022 10:48:44 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 08C6F1F5242
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 07:47:37 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 38E6CCE2BD5
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 14:47:25 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F743C433C1;
-        Fri, 28 Oct 2022 14:47:23 +0000 (UTC)
-Subject: [PATCH v7 08/14] NFSD: Update file_hashtbl() helpers
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 97CCA628E5
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Oct 2022 14:47:36 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CFB63C433C1;
+        Fri, 28 Oct 2022 14:47:35 +0000 (UTC)
+Subject: [PATCH v7 10/14] NFSD: Add a nfsd4_file_hash_remove() helper
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     neilb@suse.de, jlayton@redhat.com
-Date:   Fri, 28 Oct 2022 10:47:22 -0400
-Message-ID: <166696844244.106044.9547058764290901363.stgit@klimt.1015granger.net>
+Date:   Fri, 28 Oct 2022 10:47:34 -0400
+Message-ID: <166696845494.106044.16955031104437790108.stgit@klimt.1015granger.net>
 In-Reply-To: <166696812922.106044.679812521105874329.stgit@klimt.1015granger.net>
 References: <166696812922.106044.679812521105874329.stgit@klimt.1015granger.net>
 User-Agent: StGit/1.5.dev3+g9561319
@@ -37,35 +37,56 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Enable callers to use const pointers for type safety.
+Refactor to relocate hash deletion operation to a helper function
+that is close to most other nfs4_file data structure operations.
+
+The "noinline" annotation will become useful in a moment when the
+hlist_del_rcu() is replaced with a more complex rhash remove
+operation. It also guarantees that hash remove operations can be
+traced with "-p function -l remove_nfs4_file_locked".
+
+This also simplifies the organization of forward declarations: the
+to-be-added rhashtable and its param structure will be defined
+/after/ put_nfs4_file().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/nfs4state.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e6e1ee096b5..60f1aa2c5442 100644
+index 3132e4844ef8..504455cb80e9 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -710,7 +710,7 @@ static unsigned int ownerstr_hashval(struct xdr_netobj *ownername)
- #define FILE_HASH_BITS                   8
- #define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
+@@ -84,6 +84,7 @@ static bool check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner)
+ static void nfs4_free_ol_stateid(struct nfs4_stid *stid);
+ void nfsd4_end_grace(struct nfsd_net *nn);
+ static void _free_cpntf_state_locked(struct nfsd_net *nn, struct nfs4_cpntf_state *cps);
++static void nfsd4_file_hash_remove(struct nfs4_file *fi);
  
--static unsigned int file_hashval(struct svc_fh *fh)
-+static unsigned int file_hashval(const struct svc_fh *fh)
- {
- 	struct inode *inode = d_inode(fh->fh_dentry);
+ /* Locking: */
  
-@@ -4671,7 +4671,7 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+@@ -591,7 +592,7 @@ put_nfs4_file(struct nfs4_file *fi)
+ 	might_lock(&state_lock);
  
- /* search file_hashtbl[] for file */
- static struct nfs4_file *
--find_file_locked(struct svc_fh *fh, unsigned int hashval)
-+find_file_locked(const struct svc_fh *fh, unsigned int hashval)
- {
- 	struct nfs4_file *fp;
+ 	if (refcount_dec_and_lock(&fi->fi_ref, &state_lock)) {
+-		hlist_del_rcu(&fi->fi_hash);
++		nfsd4_file_hash_remove(fi);
+ 		spin_unlock(&state_lock);
+ 		WARN_ON_ONCE(!list_empty(&fi->fi_clnt_odstate));
+ 		WARN_ON_ONCE(!list_empty(&fi->fi_delegations));
+@@ -4734,6 +4735,11 @@ find_or_add_file(struct nfs4_file *new, struct svc_fh *fh)
+ 	return insert_file(new, fh, hashval);
+ }
  
++static noinline_for_stack void nfsd4_file_hash_remove(struct nfs4_file *fi)
++{
++	hlist_del_rcu(&fi->fi_hash);
++}
++
+ /*
+  * Called to check deny when READ with all zero stateid or
+  * WRITE with all zero or all one stateid
 
 
