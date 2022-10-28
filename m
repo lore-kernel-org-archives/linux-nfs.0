@@ -2,111 +2,270 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50336ECAAA1
-	for <linux-nfs@archiver.kernel.org>; Fri, 28 Oct 2022 00:13:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DAB7ECAAA1
+	for <linux-nfs@archiver.kernel.org>; Fri, 28 Oct 2022 02:16:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234137AbiJ1ANd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 27 Oct 2022 20:13:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57316 "EHLO
+        id S235884AbiJ1CQg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 27 Oct 2022 22:16:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49684 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233946AbiJ1ANc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Oct 2022 20:13:32 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 998D7836DD
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Oct 2022 17:13:31 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 49A71219B4;
-        Fri, 28 Oct 2022 00:13:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1666916010; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=oNPTg2XmTNh7CXx4owbb65ljCWD6oEyJZ6sm6RSZCO4=;
-        b=begJEwMfD1vVUZmLWtr2hoKlc7eGOydYzSHt7Ol6wyhRUnNAu2yrMVGGb2pAgbq+FG3DnU
-        We80O7A+MwSx60YXjfMyaMECzplH+/0vQnYQgwnu8GhEoiDj7tQIEvsBk1nj66ZmBGYf4M
-        CtMbhIzkP7yVL3lrIQdqNphB6B0rvbs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1666916010;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=oNPTg2XmTNh7CXx4owbb65ljCWD6oEyJZ6sm6RSZCO4=;
-        b=lDg4beuW85az0k/mqtHwAd580c5Ze3oav0TbrLFjqkh0LmoKaOXOwJb4hXZy7yzIWk/run
-        //RPUSFcFT5P+qBw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 13C1313A37;
-        Fri, 28 Oct 2022 00:13:28 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id HAinLqgeW2OjKAAAMHmgww
-        (envelope-from <neilb@suse.de>); Fri, 28 Oct 2022 00:13:28 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Chuck Lever III" <chuck.lever@oracle.com>
-Cc:     "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
-        "Jeff Layton" <jlayton@redhat.com>
-Subject: Re: [PATCH v6 09/14] NFSD: Clean up nfsd4_init_file()
-In-reply-to: <293CDB70-F274-425C-BB16-9276BCC48545@oracle.com>
-References: <166689625728.90991.15067635142973595248.stgit@klimt.1015granger.net>,
- <166689675530.90991.2630847343462195612.stgit@klimt.1015granger.net>,
- <166691293591.13915.198182531468244072@noble.neil.brown.name>,
- <293CDB70-F274-425C-BB16-9276BCC48545@oracle.com>
-Date:   Fri, 28 Oct 2022 11:13:13 +1100
-Message-id: <166691599396.13915.21309745977669653@noble.neil.brown.name>
+        with ESMTP id S235860AbiJ1CQf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Oct 2022 22:16:35 -0400
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6573CB878B
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Oct 2022 19:16:34 -0700 (PDT)
+Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 29S1i65F027938;
+        Fri, 28 Oct 2022 02:16:31 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2022-7-12;
+ bh=/6xjQ98fTvQd7AcdUwxDYNQnrQ7Z70nWpLuoK0ss1fo=;
+ b=Ssm/7jRWox0hxXLjBZwRZFUYenQi2Jr4WbZIVxtffRHws8qxx4SylaSJsnBf8VChlSar
+ pEzrk6MhsA/znmGSR5/xcWAfyOkw0MLxwF9DsoNnaZDyiMRxBZCiXvx0OBbOP1JhohJS
+ rrCfA4yODi3rEmUJBMyFtFJslrj4jNq+WkKfT0to8oER8cibJ1POEaQd0jUvrr9XtmuD
+ SLLyDXbUweHyTeUA6M+BAUkZGzMxiOU09g5i1d8bzWr/JtOKJMDnDKQbdGQnDFk+DK4c
+ APYTMUHCBJGzGMVu6LNu43ZilqLBcxMbGlEZNDB/U12dcW4mAYdLULpVq2Zr4MfOwgHc 1A== 
+Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.appoci.oracle.com [130.35.103.27])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3kfays3yhb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 28 Oct 2022 02:16:31 +0000
+Received: from pps.filterd (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 29S09R44011562;
+        Fri, 28 Oct 2022 02:16:29 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3kfagrm5vk-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 28 Oct 2022 02:16:29 +0000
+Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 29S2GSSI002910;
+        Fri, 28 Oct 2022 02:16:29 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3kfagrm5v3-2;
+        Fri, 28 Oct 2022 02:16:29 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, jlayton@kernel.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v3 1/2] NFSD: add support for sending CB_RECALL_ANY
+Date:   Thu, 27 Oct 2022 19:16:08 -0700
+Message-Id: <1666923369-21235-2-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1666923369-21235-1-git-send-email-dai.ngo@oracle.com>
+References: <1666923369-21235-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.895,Hydra:6.0.545,FMLib:17.11.122.1
+ definitions=2022-10-27_07,2022-10-27_01,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 phishscore=0
+ adultscore=0 malwarescore=0 mlxscore=0 suspectscore=0 bulkscore=0
+ spamscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2210170000 definitions=main-2210280013
+X-Proofpoint-ORIG-GUID: anoYp37bp5DymuX-yqWMw-M5zsdjHTRe
+X-Proofpoint-GUID: anoYp37bp5DymuX-yqWMw-M5zsdjHTRe
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 28 Oct 2022, Chuck Lever III wrote:
-> 
-> > On Oct 27, 2022, at 7:22 PM, NeilBrown <neilb@suse.de> wrote:
-> > 
-> > On Fri, 28 Oct 2022, Chuck Lever wrote:
-> >> Name nfs4_file-related helpers consistently. There are already
-> >> nfs4_file_yada functions, so let's go with the same convention used
-> >> by put_nfs4_file(): init_nfs4_file().
-> > 
-> > I don't understand.  You say "consistently", then you say that as we
-> > have lots of "nfs4_file_yada" functions, this new one will NOT follow
-> > that pattern.
-> 
-> Patch description is admittedly terse.
-> 
-> I want a naming convention that sets apart the helpers that
-> deal with the nfs4_file hash table. Maybe nfs4_file_hash_yada
-> would be a better choice?
-> 
-> But we already have put_nfs4_file()...
+There is only one nfsd4_callback, cl_recall_any, added for each
+nfs4_client. Access to it must be serialized. For now it's done
+by the cl_recall_any_busy flag since it's used only by the
+delegation shrinker. If there is another consumer of CB_RECALL_ANY
+then a spinlock must be used.
 
-OK, that makes more sense.  Thanks,
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/nfs4callback.c | 64 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4state.c    | 32 +++++++++++++++++++++++++
+ fs/nfsd/state.h        |  8 +++++++
+ fs/nfsd/xdr4cb.h       |  6 +++++
+ 4 files changed, 110 insertions(+)
 
-NeilBrown
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index f0e69edf5f0f..03587e1397f4 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -329,6 +329,29 @@ static void encode_cb_recall4args(struct xdr_stream *xdr,
+ }
+ 
+ /*
++ * CB_RECALLANY4args
++ *
++ *	struct CB_RECALLANY4args {
++ *		uint32_t	craa_objects_to_keep;
++ *		bitmap4		craa_type_mask;
++ *	};
++ */
++static void
++encode_cb_recallany4args(struct xdr_stream *xdr,
++			struct nfs4_cb_compound_hdr *hdr, uint32_t bmval)
++{
++	__be32 *p;
++
++	encode_nfs_cb_opnum4(xdr, OP_CB_RECALL_ANY);
++	p = xdr_reserve_space(xdr, 4);
++	*p++ = xdr_zero;	/* craa_objects_to_keep */
++	p = xdr_reserve_space(xdr, 8);
++	*p++ = cpu_to_be32(1);
++	*p++ = cpu_to_be32(bmval);
++	hdr->nops++;
++}
++
++/*
+  * CB_SEQUENCE4args
+  *
+  *	struct CB_SEQUENCE4args {
+@@ -482,6 +505,24 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_cb_nops(&hdr);
+ }
+ 
++/*
++ * 20.6. Operation 8: CB_RECALL_ANY - Keep Any N Recallable Objects
++ */
++static void
++nfs4_xdr_enc_cb_recall_any(struct rpc_rqst *req,
++		struct xdr_stream *xdr, const void *data)
++{
++	const struct nfsd4_callback *cb = data;
++	struct nfs4_cb_compound_hdr hdr = {
++		.ident = cb->cb_clp->cl_cb_ident,
++		.minorversion = cb->cb_clp->cl_minorversion,
++	};
++
++	encode_cb_compound4args(xdr, &hdr);
++	encode_cb_sequence4args(xdr, cb, &hdr);
++	encode_cb_recallany4args(xdr, &hdr, cb->cb_clp->cl_recall_any_bm);
++	encode_cb_nops(&hdr);
++}
+ 
+ /*
+  * NFSv4.0 and NFSv4.1 XDR decode functions
+@@ -520,6 +561,28 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
+ 	return decode_cb_op_status(xdr, OP_CB_RECALL, &cb->cb_status);
+ }
+ 
++/*
++ * 20.6. Operation 8: CB_RECALL_ANY - Keep Any N Recallable Objects
++ */
++static int
++nfs4_xdr_dec_cb_recall_any(struct rpc_rqst *rqstp,
++				  struct xdr_stream *xdr,
++				  void *data)
++{
++	struct nfsd4_callback *cb = data;
++	struct nfs4_cb_compound_hdr hdr;
++	int status;
++
++	status = decode_cb_compound4res(xdr, &hdr);
++	if (unlikely(status))
++		return status;
++	status = decode_cb_sequence4res(xdr, cb);
++	if (unlikely(status || cb->cb_seq_status))
++		return status;
++	status =  decode_cb_op_status(xdr, OP_CB_RECALL_ANY, &cb->cb_status);
++	return status;
++}
++
+ #ifdef CONFIG_NFSD_PNFS
+ /*
+  * CB_LAYOUTRECALL4args
+@@ -783,6 +846,7 @@ static const struct rpc_procinfo nfs4_cb_procedures[] = {
+ #endif
+ 	PROC(CB_NOTIFY_LOCK,	COMPOUND,	cb_notify_lock,	cb_notify_lock),
+ 	PROC(CB_OFFLOAD,	COMPOUND,	cb_offload,	cb_offload),
++	PROC(CB_RECALL_ANY,	COMPOUND,	cb_recall_any,	cb_recall_any),
+ };
+ 
+ static unsigned int nfs4_cb_counts[ARRAY_SIZE(nfs4_cb_procedures)];
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4e718500a00c..68d049973ce3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2854,6 +2854,36 @@ static const struct tree_descr client_files[] = {
+ 	[3] = {""},
+ };
+ 
++static int
++nfsd4_cb_recall_any_done(struct nfsd4_callback *cb,
++			struct rpc_task *task)
++{
++	switch (task->tk_status) {
++	case -NFS4ERR_DELAY:
++		rpc_delay(task, 2 * HZ);
++		return 0;
++	default:
++		return 1;
++	}
++}
++
++static void
++nfsd4_cb_recall_any_release(struct nfsd4_callback *cb)
++{
++	struct nfs4_client *clp = cb->cb_clp;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	clp->cl_recall_any_busy = false;
++	put_client_renew_locked(clp);
++	spin_unlock(&nn->client_lock);
++}
++
++static const struct nfsd4_callback_ops nfsd4_cb_recall_any_ops = {
++	.done		= nfsd4_cb_recall_any_done,
++	.release	= nfsd4_cb_recall_any_release,
++};
++
+ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		struct svc_rqst *rqstp, nfs4_verifier *verf)
+ {
+@@ -2891,6 +2921,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		free_client(clp);
+ 		return NULL;
+ 	}
++	nfsd4_init_cb(&clp->cl_recall_any, clp, &nfsd4_cb_recall_any_ops,
++			NFSPROC4_CLNT_CB_RECALL_ANY);
+ 	return clp;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e2daef3cc003..49ca06169642 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -411,6 +411,10 @@ struct nfs4_client {
+ 
+ 	unsigned int		cl_state;
+ 	atomic_t		cl_delegs_in_recall;
++
++	bool			cl_recall_any_busy;
++	uint32_t		cl_recall_any_bm;
++	struct nfsd4_callback	cl_recall_any;
+ };
+ 
+ /* struct nfs4_client_reset
+@@ -639,8 +643,12 @@ enum nfsd4_cb_op {
+ 	NFSPROC4_CLNT_CB_OFFLOAD,
+ 	NFSPROC4_CLNT_CB_SEQUENCE,
+ 	NFSPROC4_CLNT_CB_NOTIFY_LOCK,
++	NFSPROC4_CLNT_CB_RECALL_ANY,
+ };
+ 
++#define RCA4_TYPE_MASK_RDATA_DLG	0
++#define RCA4_TYPE_MASK_WDATA_DLG	1
++
+ /* Returns true iff a is later than b: */
+ static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
+ {
+diff --git a/fs/nfsd/xdr4cb.h b/fs/nfsd/xdr4cb.h
+index 547cf07cf4e0..0d39af1b00a0 100644
+--- a/fs/nfsd/xdr4cb.h
++++ b/fs/nfsd/xdr4cb.h
+@@ -48,3 +48,9 @@
+ #define NFS4_dec_cb_offload_sz		(cb_compound_dec_hdr_sz  +      \
+ 					cb_sequence_dec_sz +            \
+ 					op_dec_sz)
++#define NFS4_enc_cb_recall_any_sz	(cb_compound_enc_hdr_sz +       \
++					cb_sequence_enc_sz +            \
++					1 + 1 + 1)
++#define NFS4_dec_cb_recall_any_sz	(cb_compound_dec_hdr_sz  +      \
++					cb_sequence_dec_sz +            \
++					op_dec_sz)
+-- 
+2.9.5
 
-
-> 
-> 
-> > Surely "consistency" means renaming put_nfs4_file() to nfs4_file_put(),
-> > and introducing nfs4_file_init().
-> > 
-> > Not that I really care that much about the naming, but would like to be
-> > able to follow your logic.
-> > 
-> > Thanks,
-> > NeilBrown
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> 
