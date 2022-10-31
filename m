@@ -2,76 +2,94 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B45EDFA3741
-	for <linux-nfs@archiver.kernel.org>; Mon, 31 Oct 2022 14:01:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 27694FA3741
+	for <linux-nfs@archiver.kernel.org>; Mon, 31 Oct 2022 15:36:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231438AbiJaOBg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 31 Oct 2022 10:01:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52710 "EHLO
+        id S229787AbiJaPgC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 31 Oct 2022 11:36:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41658 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231423AbiJaOBf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2022 10:01:35 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B70421006C;
-        Mon, 31 Oct 2022 07:01:34 -0700 (PDT)
+        with ESMTP id S231888AbiJaPgA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Oct 2022 11:36:00 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DEC416575
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2022 08:35:57 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 616B0B816D6;
-        Mon, 31 Oct 2022 14:01:33 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DFE12C43470;
-        Mon, 31 Oct 2022 14:01:31 +0000 (UTC)
-Subject: [PATCH 2] MAINTAINERS: NFSD should be responsible for fs/exportfs
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Date:   Mon, 31 Oct 2022 10:01:30 -0400
-Message-ID: <166722486403.129894.8530131246045193767.stgit@klimt.1015granger.net>
-User-Agent: StGit/1.5.dev3+g9561319
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7A506612AE
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Oct 2022 15:35:57 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7B6ABC433D7;
+        Mon, 31 Oct 2022 15:35:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1667230556;
+        bh=7Cimu96ndPeJ50Hetw9q5aYq10IbyynP4U+H5c2Y8C4=;
+        h=From:To:Cc:Subject:Date:From;
+        b=oVvdeWPxC8hDpxSnqgrAaD98Wy0VPJPGPHXXiXH8Fgs/DlwLK0NvX+JwFaZajYRVc
+         AkiQ+w5tXExkpdV2VKkpWqX5rC3vuYCg8wE1HUaeYADpOm/QhAQLiIB+kptWXd1jwi
+         CGti90HUUCN9yVuvI/q9BY8UpTr9Hf/3SKRMMctjzPcYwoTAyYDaU4F2dHz9xyVJpM
+         RPS16LaJzCIxnGGVU0waLXB+DUtPrx/5m92FezZLCGCCRXuNpZuwTuMJ0bhxWw7NsU
+         CuhWKcwPSDUkV8cQFYFp1BgiqwFQ+rPTBrCiz2RKBhQQJvTUzhArUzi+JAZcnMj/zv
+         Gcj3lUxif0sFQ==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     chuck.lever@oracle.com
+Cc:     linux-nfs@vger.kernel.org, Petr Vorel <pvorel@suse.cz>
+Subject: [PATCH] nfsd: fix net-namespace logic in __nfsd_file_cache_purge
+Date:   Mon, 31 Oct 2022 11:35:54 -0400
+Message-Id: <20221031153554.498442-1-jlayton@kernel.org>
+X-Mailer: git-send-email 2.38.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We recently received a patch for fs/exportfs/expfs.c, but there
-isn't a subsystem maintainer listed for fs/exportfs:
+If the namespace doesn't match the one in "net", then we'll continue,
+but that doesn't cause another rhashtable_walk_next call, so it will
+loop infinitely.
 
-Christian Brauner <brauner@kernel.org> (commit_signer:2/2=100%,authored:1/2=50%,added_lines:3/6=50%,removed_lines:2/6=33%)
-Al Viro <viro@zeniv.linux.org.uk> (commit_signer:1/2=50%,authored:1/2=50%,added_lines:3/6=50%,removed_lines:4/6=67%)
-Miklos Szeredi <mszeredi@redhat.com> (commit_signer:1/2=50%)
-Amir Goldstein <amir73il@gmail.com> (commit_signer:1/2=50%)
-linux-kernel@vger.kernel.org (open list)
-
-Neil says:
-> Looking at recent commits, patches come in through multiple
-> different trees.
-> nfsd certainly has an interest in expfs.c.  The only other user is
-> name_to_handle/open_by_handle API.
-> I see it as primarily nfsd functionality which is useful enough to
-> be exported directly to user-space.
-> (It was created by me when I was nfsd maintainer - does that
-> count?)
-
-Suggested-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Fixes: ce502f81ba88 ("NFSD: Convert the filecache to use rhashtable")
+Reported-by: Petr Vorel <pvorel@suse.cz>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- MAINTAINERS |    1 +
- 1 file changed, 1 insertion(+)
+ fs/nfsd/filecache.c | 20 +++++++++-----------
+ 1 file changed, 9 insertions(+), 11 deletions(-)
 
-The patch description in v1 was truncated. Here's a refresh.
+This should probably go to stable too.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 379945f82a64..61fb45cfc825 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -11129,6 +11129,7 @@ L:	linux-nfs@vger.kernel.org
- S:	Supported
- W:	http://nfs.sourceforge.net/
- T:	git git://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
-+F:	fs/exportfs/
- F:	fs/lockd/
- F:	fs/nfs_common/
- F:	fs/nfsd/
-
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index eeed4ae5b4ad..f9ea89057ae8 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -908,19 +908,17 @@ __nfsd_file_cache_purge(struct net *net)
+ 
+ 		nf = rhashtable_walk_next(&iter);
+ 		while (!IS_ERR_OR_NULL(nf)) {
+-			if (net && nf->nf_net != net)
+-				continue;
+-			del = nfsd_file_unhash_and_dispose(nf, &dispose);
+-
+-			/*
+-			 * Deadlock detected! Something marked this entry as
+-			 * unhased, but hasn't removed it from the hash list.
+-			 */
+-			WARN_ON_ONCE(!del);
+-
++			if (!net || nf->nf_net == net) {
++				del = nfsd_file_unhash_and_dispose(nf, &dispose);
++
++				/*
++				 * Deadlock detected! Something marked this entry as
++				 * unhased, but hasn't removed it from the hash list.
++				 */
++				WARN_ON_ONCE(!del);
++			}
+ 			nf = rhashtable_walk_next(&iter);
+ 		}
+-
+ 		rhashtable_walk_stop(&iter);
+ 	} while (nf == ERR_PTR(-EAGAIN));
+ 	rhashtable_walk_exit(&iter);
+-- 
+2.38.1
 
