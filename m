@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B1B0C4321E
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Nov 2022 14:46:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA121C4332F
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Nov 2022 14:46:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230358AbiKAOq5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229813AbiKAOq5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 1 Nov 2022 10:46:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57214 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57204 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230357AbiKAOqz (ORCPT
+        with ESMTP id S230071AbiKAOqz (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Nov 2022 10:46:55 -0400
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E145B1BEA4
-        for <linux-nfs@vger.kernel.org>; Tue,  1 Nov 2022 07:46:54 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EDE68175B7
+        for <linux-nfs@vger.kernel.org>; Tue,  1 Nov 2022 07:46:53 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 9B881B81DED
-        for <linux-nfs@vger.kernel.org>; Tue,  1 Nov 2022 14:46:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF8A4C433C1;
-        Tue,  1 Nov 2022 14:46:51 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 6662DB81DEB
+        for <linux-nfs@vger.kernel.org>; Tue,  1 Nov 2022 14:46:52 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E4C7C4347C;
+        Tue,  1 Nov 2022 14:46:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1667314012;
-        bh=o6UOuYz2auietgT4/1S7eiLYAmRw6I4SWm3wNjnuvMU=;
+        s=k20201202; t=1667314011;
+        bh=0R0EdfCwdJ2DYzMllgvY+2urLzv0HgEqacF/n3IviZE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=AjJVHWfH33pALEtWoSd/2BnCr9sB5dcWzgY/PusUk9btiwIzIVBloc1mj9quGrLgh
-         khfHs1NQUWwS5LQSRKreBRxKeQSM7QqhpA2TlhYyO/Kp4kVESIVlyUdBS2HAzBnk3Y
-         h0hMGl5uwZhYuwCPn/Pij7Y6hgLoM/nbn3qPR1iT3zUzNFmkT1FIrtDUk64/tS4R9h
-         RwJW7arEqLCn/JoUPqXhQGiHQlG63G5pHbwlkbLlT74DmpeIWDD9EVgH3ztvmBxgm3
-         R4fnSMNoz1NIcuaPZlFuzB5LzpZrnI3CiJINwDSpDRQtPa4WsEhDUGlYPGnq/TMIeH
-         eIOqMzrHwyPgQ==
+        b=AZ+FQrl4ex378s+D2TyveBQ4FaSD8X3wBmyQpatRdc3wRAddjMdiQBQF2G4AoVjm6
+         bYxce5lE5b+ewtaOZgclMdpinYMpuRArsTAbdLVWiRlcVmvJBfVNCT0KK+4GKOPJeU
+         43Pa3jsbSLahhOJMKXxUiXarWEONo3vhAzS8TF1HzVqktnBdDYIjQM3q1H49pPNGAP
+         97W7Uvlbj6pJ/RNONG1vApRUvZvALE7y8ehvMbGNKhfVOUI40CfJgzG49xuKdEZuKR
+         1MZlxBIyPbsN6WZpxcuhrxjLHi/EnoHdfo7cK9TxPC95KLVWxLlOcsiUM9OqyAOrJp
+         mt9HA5l3hOdWg==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
 Cc:     neilb@suse.de, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 4/5] nfsd: close race between unhashing and LRU addition
-Date:   Tue,  1 Nov 2022 10:46:46 -0400
-Message-Id: <20221101144647.136696-5-jlayton@kernel.org>
+Subject: [PATCH v5 2/5] nfsd: reorganize filecache.c
+Date:   Tue,  1 Nov 2022 10:46:44 -0400
+Message-Id: <20221101144647.136696-3-jlayton@kernel.org>
 X-Mailer: git-send-email 2.38.1
 In-Reply-To: <20221101144647.136696-1-jlayton@kernel.org>
 References: <20221101144647.136696-1-jlayton@kernel.org>
@@ -46,124 +46,276 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The list_lru_add and list_lru_del functions use list_empty checks to see
-whether the object is already on the LRU. That's fine in most cases, but
-we occasionally repurpose nf_lru after unhashing. It's possible for an
-LRU removal to remove it from a different list altogether if we lose a
-race.
-
-Add a new NFSD_FILE_LRU flag, which indicates that the object actually
-resides on the LRU and not some other list. Use that when adding and
-removing it from the LRU instead of just relying on list_empty checks.
-
-Add an extra HASHED check after adding the entry to the LRU. If it's now
-clear, just remove it from the LRU again and put the reference if that
-remove is successful.
+In a coming patch, we're going to rework how the filecache refcounting
+works. Move some code around in the function to reduce the churn in the
+later patches, and rename some of the functions with (hopefully) clearer
+names. This should introduce no functional changes.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/filecache.c | 50 ++++++++++++++++++++++++++++++---------------
- fs/nfsd/filecache.h |  1 +
- 2 files changed, 35 insertions(+), 16 deletions(-)
+ fs/nfsd/filecache.c | 135 ++++++++++++++++++++++----------------------
+ fs/nfsd/trace.h     |   4 +-
+ 2 files changed, 70 insertions(+), 69 deletions(-)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index e67297ad12bf..bcea201d79c3 100644
+index 90e62042d6d6..0bf3727455e2 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -409,18 +409,22 @@ nfsd_file_check_writeback(struct nfsd_file *nf)
- static bool nfsd_file_lru_add(struct nfsd_file *nf)
+@@ -311,16 +311,59 @@ nfsd_file_alloc(struct nfsd_file_lookup_key *key, unsigned int may)
+ 	return nf;
+ }
+ 
++static void
++nfsd_file_fsync(struct nfsd_file *nf)
++{
++	struct file *file = nf->nf_file;
++
++	if (!file || !(file->f_mode & FMODE_WRITE))
++		return;
++	if (vfs_fsync(file, 1) != 0)
++		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
++}
++
++static int
++nfsd_file_check_write_error(struct nfsd_file *nf)
++{
++	struct file *file = nf->nf_file;
++
++	if (!file || !(file->f_mode & FMODE_WRITE))
++		return 0;
++	return filemap_check_wb_err(file->f_mapping, READ_ONCE(file->f_wb_err));
++}
++
++static void
++nfsd_file_hash_remove(struct nfsd_file *nf)
++{
++	trace_nfsd_file_unhash(nf);
++
++	if (nfsd_file_check_write_error(nf))
++		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
++	rhashtable_remove_fast(&nfsd_file_rhash_tbl, &nf->nf_rhash,
++			       nfsd_file_rhash_params);
++}
++
++static bool
++nfsd_file_unhash(struct nfsd_file *nf)
++{
++	if (test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
++		nfsd_file_hash_remove(nf);
++		return true;
++	}
++	return false;
++}
++
+ static bool
+ nfsd_file_free(struct nfsd_file *nf)
+ {
+ 	s64 age = ktime_to_ms(ktime_sub(ktime_get(), nf->nf_birthtime));
+ 	bool flush = false;
+ 
++	trace_nfsd_file_free(nf);
++
+ 	this_cpu_inc(nfsd_file_releases);
+ 	this_cpu_add(nfsd_file_total_age, age);
+ 
+-	trace_nfsd_file_put_final(nf);
+ 	if (nf->nf_mark)
+ 		nfsd_file_mark_put(nf->nf_mark);
+ 	if (nf->nf_file) {
+@@ -354,27 +397,6 @@ nfsd_file_check_writeback(struct nfsd_file *nf)
+ 		mapping_tagged(mapping, PAGECACHE_TAG_WRITEBACK);
+ }
+ 
+-static int
+-nfsd_file_check_write_error(struct nfsd_file *nf)
+-{
+-	struct file *file = nf->nf_file;
+-
+-	if (!file || !(file->f_mode & FMODE_WRITE))
+-		return 0;
+-	return filemap_check_wb_err(file->f_mapping, READ_ONCE(file->f_wb_err));
+-}
+-
+-static void
+-nfsd_file_flush(struct nfsd_file *nf)
+-{
+-	struct file *file = nf->nf_file;
+-
+-	if (!file || !(file->f_mode & FMODE_WRITE))
+-		return;
+-	if (vfs_fsync(file, 1) != 0)
+-		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
+-}
+-
+ static void nfsd_file_lru_add(struct nfsd_file *nf)
  {
  	set_bit(NFSD_FILE_REFERENCED, &nf->nf_flags);
--	if (list_lru_add(&nfsd_file_lru, &nf->nf_lru)) {
--		trace_nfsd_file_lru_add(nf);
--		return true;
-+	if (!test_and_set_bit(NFSD_FILE_LRU, &nf->nf_flags)) {
-+		if (list_lru_add(&nfsd_file_lru, &nf->nf_lru)) {
-+			trace_nfsd_file_lru_add(nf);
-+			return true;
-+		}
- 	}
- 	return false;
+@@ -388,31 +410,18 @@ static void nfsd_file_lru_remove(struct nfsd_file *nf)
+ 		trace_nfsd_file_lru_del(nf);
  }
  
- static bool nfsd_file_lru_remove(struct nfsd_file *nf)
+-static void
+-nfsd_file_hash_remove(struct nfsd_file *nf)
+-{
+-	trace_nfsd_file_unhash(nf);
+-
+-	if (nfsd_file_check_write_error(nf))
+-		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
+-	rhashtable_remove_fast(&nfsd_file_rhash_tbl, &nf->nf_rhash,
+-			       nfsd_file_rhash_params);
+-}
+-
+-static bool
+-nfsd_file_unhash(struct nfsd_file *nf)
++struct nfsd_file *
++nfsd_file_get(struct nfsd_file *nf)
  {
--	if (list_lru_del(&nfsd_file_lru, &nf->nf_lru)) {
--		trace_nfsd_file_lru_del(nf);
+-	if (test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
+-		nfsd_file_hash_remove(nf);
 -		return true;
-+	if (test_and_clear_bit(NFSD_FILE_LRU, &nf->nf_flags)) {
-+		if (list_lru_del(&nfsd_file_lru, &nf->nf_lru)) {
-+			trace_nfsd_file_lru_del(nf);
-+			return true;
-+		}
- 	}
- 	return false;
+-	}
+-	return false;
++	if (likely(refcount_inc_not_zero(&nf->nf_ref)))
++		return nf;
++	return NULL;
  }
-@@ -476,21 +480,31 @@ nfsd_file_put(struct nfsd_file *nf)
- 	might_sleep();
- 	trace_nfsd_file_put(nf);
  
--	/*
--	 * The HASHED check is racy. We may end up with the occasional
--	 * unhashed entry on the LRU, but they should get cleaned up
--	 * like any other.
--	 */
- 	if (test_bit(NFSD_FILE_GC, &nf->nf_flags) &&
- 	    test_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
- 		/*
--		 * If this is the last reference (nf_ref == 1), then transfer
--		 * it to the LRU. If the add to the LRU fails, just put it as
--		 * usual.
-+		 * If this is the last reference (nf_ref == 1), then try to
-+		 * transfer it to the LRU.
- 		 */
--		if (refcount_dec_not_one(&nf->nf_ref) || nfsd_file_lru_add(nf)) {
--			nfsd_file_schedule_laundrette();
-+		if (refcount_dec_not_one(&nf->nf_ref))
- 			return;
-+
-+		/* Try to add it to the LRU.  If that fails, decrement. */
-+		if (nfsd_file_lru_add(nf)) {
-+			/* If it's still hashed, we're done */
-+			if (test_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
-+				nfsd_file_schedule_laundrette();
-+				return;
-+			}
-+
-+			/*
-+			 * We're racing with unhashing, so try to remove it from
-+			 * the LRU. If removal fails, then someone else already
-+			 * has our reference and we're done. If it succeeds,
-+			 * fall through to decrement.
-+			 */
-+			if (!nfsd_file_lru_remove(nf))
-+				return;
+ static void
+-nfsd_file_unhash_and_dispose(struct nfsd_file *nf, struct list_head *dispose)
++nfsd_file_unhash_and_queue(struct nfsd_file *nf, struct list_head *dispose)
+ {
+-	trace_nfsd_file_unhash_and_dispose(nf);
++	trace_nfsd_file_unhash_and_queue(nf);
+ 	if (nfsd_file_unhash(nf)) {
+ 		/* caller must call nfsd_file_dispose_list() later */
+ 		nfsd_file_lru_remove(nf);
+@@ -450,7 +459,7 @@ nfsd_file_put(struct nfsd_file *nf)
+ 		nfsd_file_unhash_and_put(nf);
+ 
+ 	if (!test_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
+-		nfsd_file_flush(nf);
++		nfsd_file_fsync(nf);
+ 		nfsd_file_put_noref(nf);
+ 	} else if (nf->nf_file && test_bit(NFSD_FILE_GC, &nf->nf_flags)) {
+ 		nfsd_file_put_noref(nf);
+@@ -459,14 +468,6 @@ nfsd_file_put(struct nfsd_file *nf)
+ 		nfsd_file_put_noref(nf);
+ }
+ 
+-struct nfsd_file *
+-nfsd_file_get(struct nfsd_file *nf)
+-{
+-	if (likely(refcount_inc_not_zero(&nf->nf_ref)))
+-		return nf;
+-	return NULL;
+-}
+-
+ static void
+ nfsd_file_dispose_list(struct list_head *dispose)
+ {
+@@ -475,7 +476,7 @@ nfsd_file_dispose_list(struct list_head *dispose)
+ 	while(!list_empty(dispose)) {
+ 		nf = list_first_entry(dispose, struct nfsd_file, nf_lru);
+ 		list_del_init(&nf->nf_lru);
+-		nfsd_file_flush(nf);
++		nfsd_file_fsync(nf);
+ 		nfsd_file_put_noref(nf);
+ 	}
+ }
+@@ -489,7 +490,7 @@ nfsd_file_dispose_list_sync(struct list_head *dispose)
+ 	while(!list_empty(dispose)) {
+ 		nf = list_first_entry(dispose, struct nfsd_file, nf_lru);
+ 		list_del_init(&nf->nf_lru);
+-		nfsd_file_flush(nf);
++		nfsd_file_fsync(nf);
+ 		if (!refcount_dec_and_test(&nf->nf_ref))
+ 			continue;
+ 		if (nfsd_file_free(nf))
+@@ -689,7 +690,7 @@ __nfsd_file_close_inode(struct inode *inode, struct list_head *dispose)
+ 				       nfsd_file_rhash_params);
+ 		if (!nf)
+ 			break;
+-		nfsd_file_unhash_and_dispose(nf, dispose);
++		nfsd_file_unhash_and_queue(nf, dispose);
+ 		count++;
+ 	} while (1);
+ 	rcu_read_unlock();
+@@ -697,37 +698,37 @@ __nfsd_file_close_inode(struct inode *inode, struct list_head *dispose)
+ }
+ 
+ /**
+- * nfsd_file_close_inode_sync - attempt to forcibly close a nfsd_file
++ * nfsd_file_close_inode - attempt a delayed close of a nfsd_file
+  * @inode: inode of the file to attempt to remove
+  *
+- * Unhash and put, then flush and fput all cache items associated with @inode.
++ * Unhash and put all cache item associated with @inode.
+  */
+-void
+-nfsd_file_close_inode_sync(struct inode *inode)
++static void
++nfsd_file_close_inode(struct inode *inode)
+ {
+ 	LIST_HEAD(dispose);
+ 	unsigned int count;
+ 
+ 	count = __nfsd_file_close_inode(inode, &dispose);
+-	trace_nfsd_file_close_inode_sync(inode, count);
+-	nfsd_file_dispose_list_sync(&dispose);
++	trace_nfsd_file_close_inode(inode, count);
++	nfsd_file_dispose_list_delayed(&dispose);
+ }
+ 
+ /**
+- * nfsd_file_close_inode - attempt a delayed close of a nfsd_file
++ * nfsd_file_close_inode_sync - attempt to forcibly close a nfsd_file
+  * @inode: inode of the file to attempt to remove
+  *
+- * Unhash and put all cache item associated with @inode.
++ * Unhash and put, then flush and fput all cache items associated with @inode.
+  */
+-static void
+-nfsd_file_close_inode(struct inode *inode)
++void
++nfsd_file_close_inode_sync(struct inode *inode)
+ {
+ 	LIST_HEAD(dispose);
+ 	unsigned int count;
+ 
+ 	count = __nfsd_file_close_inode(inode, &dispose);
+-	trace_nfsd_file_close_inode(inode, count);
+-	nfsd_file_dispose_list_delayed(&dispose);
++	trace_nfsd_file_close_inode_sync(inode, count);
++	nfsd_file_dispose_list_sync(&dispose);
+ }
+ 
+ /**
+@@ -891,7 +892,7 @@ __nfsd_file_cache_purge(struct net *net)
+ 		nf = rhashtable_walk_next(&iter);
+ 		while (!IS_ERR_OR_NULL(nf)) {
+ 			if (!net || nf->nf_net == net)
+-				nfsd_file_unhash_and_dispose(nf, &dispose);
++				nfsd_file_unhash_and_queue(nf, &dispose);
+ 			nf = rhashtable_walk_next(&iter);
  		}
- 	}
- 	if (refcount_dec_and_test(&nf->nf_ref))
-@@ -594,6 +608,10 @@ nfsd_file_lru_cb(struct list_head *item, struct list_lru_one *lru,
- 		return LRU_ROTATE;
- 	}
  
-+	/* Make sure we're not racing with another removal. */
-+	if (!test_and_clear_bit(NFSD_FILE_LRU, &nf->nf_flags))
-+		return LRU_SKIP;
-+
- 	/*
- 	 * Put the reference held on behalf of the LRU. If it wasn't the last
- 	 * one, then just remove it from the LRU and ignore it.
-diff --git a/fs/nfsd/filecache.h b/fs/nfsd/filecache.h
-index b7efb2c3ddb1..e52ab7d5a44c 100644
---- a/fs/nfsd/filecache.h
-+++ b/fs/nfsd/filecache.h
-@@ -39,6 +39,7 @@ struct nfsd_file {
- #define NFSD_FILE_PENDING	(1)
- #define NFSD_FILE_REFERENCED	(2)
- #define NFSD_FILE_GC		(3)
-+#define NFSD_FILE_LRU		(4)	/* file is on LRU */
- 	unsigned long		nf_flags;
- 	struct inode		*nf_inode;	/* don't deref */
- 	refcount_t		nf_ref;
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index b09ab4f92d43..940252482fd4 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -903,10 +903,10 @@ DEFINE_EVENT(nfsd_file_class, name, \
+ 	TP_PROTO(struct nfsd_file *nf), \
+ 	TP_ARGS(nf))
+ 
+-DEFINE_NFSD_FILE_EVENT(nfsd_file_put_final);
++DEFINE_NFSD_FILE_EVENT(nfsd_file_free);
+ DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash);
+ DEFINE_NFSD_FILE_EVENT(nfsd_file_put);
+-DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash_and_dispose);
++DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash_and_queue);
+ 
+ TRACE_EVENT(nfsd_file_alloc,
+ 	TP_PROTO(
 -- 
 2.38.1
 
