@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2037C43217
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Nov 2022 18:44:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E9CBC4321E
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Nov 2022 18:45:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231519AbiKBSo5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Nov 2022 14:44:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39766 "EHLO
+        id S231527AbiKBSo7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Nov 2022 14:44:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39840 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231508AbiKBSo4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Nov 2022 14:44:56 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04B092D76A
-        for <linux-nfs@vger.kernel.org>; Wed,  2 Nov 2022 11:44:56 -0700 (PDT)
+        with ESMTP id S231540AbiKBSo6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Nov 2022 14:44:58 -0400
+Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1FB3A2FC08
+        for <linux-nfs@vger.kernel.org>; Wed,  2 Nov 2022 11:44:57 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 9449761B4D
+        by sin.source.kernel.org (Postfix) with ESMTPS id 80BE4CE2070
         for <linux-nfs@vger.kernel.org>; Wed,  2 Nov 2022 18:44:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9C8F8C433C1;
-        Wed,  2 Nov 2022 18:44:54 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F539C433D6;
+        Wed,  2 Nov 2022 18:44:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1667414695;
-        bh=QVYNvjzI/NnAQ0HFG37aWUwUKq1W9OoUog3ckUaq3IY=;
+        s=k20201202; t=1667414693;
+        bh=5F+tia+ZoQtUSZP7SXI99PM5T9RRioV7puxjuIAR6XU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=b4NgYx+kJcmMOvg3nFT2nSqsf8PwE/PTy3yQJCFGOLgXf2jFbYkGRNE/fK3LRis/+
-         f5tbPNcqNjYhXwbv+6eZfOY6di5PiEZ4a9ZVCKjtPv5lsRv+JxNKyHFdu/OxkMrv8X
-         mM398HxqFG5/A7TYNkq0Y/BOzlRufHeNiXku1LD3y7CfffTWaWY0bctqwPY8MG6B5w
-         HrV3zikVGDRolCfuZFdkVUbqoTXfRpcUe5USLARm9yCmR+cFqJirw2vwKI7pMfubZY
-         BqbCXi7R7X3VCfeECeaX/K0P1+3hJ4xBnhHUWdmKdd4JzWL9QjJL62lmnQSOTSCzKO
-         Kr51JoP/Fjkww==
+        b=CxWQYEuWZV3FZSkPlXkC6jDrFHkPTB2G4R0DUjdcmOUmO1/qY7jz4wwkQHfvTkmlh
+         1Ljpuiqf6J4Rz1EmRKB33Doa+k4hgt317GSk0HYMmHjNYCZUs52cbXy7W7exVXSpzb
+         OG/Iki9K3MsWBreWtwZecMMaoHo7Mk6QZglYdiuYpDEejlhlIFc1I9nYTP83GrnAJs
+         AvmljoJaHOSDOWn0n7YFPotx2Acy47aRjennzcEzwwHWiprgs+sOk1vE94GmzEnUMf
+         9WGycOhysN8vMU5pLgbxZtIvtfbKT2W3ZIlxe5oa5rJBNNVrQM3c2PPNQhbO8VlUV7
+         IGN1dWoCYRFgw==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: [PATCH v6 4/4] nfsd: fix up the filecache laundrette scheduling
-Date:   Wed,  2 Nov 2022 14:44:50 -0400
-Message-Id: <20221102184450.130397-5-jlayton@kernel.org>
+Subject: [PATCH v6 2/4] nfsd: reorganize filecache.c
+Date:   Wed,  2 Nov 2022 14:44:48 -0400
+Message-Id: <20221102184450.130397-3-jlayton@kernel.org>
 X-Mailer: git-send-email 2.38.1
 In-Reply-To: <20221102184450.130397-1-jlayton@kernel.org>
 References: <20221102184450.130397-1-jlayton@kernel.org>
@@ -46,50 +46,230 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We don't really care whether there are hashed entries when it comes to
-scheduling the laundrette. They might all be non-gc entries, after all.
-We only want to schedule it if there are entries on the LRU.
+In a coming patch, we're going to rework how the filecache refcounting
+works. Move some code around in the function to reduce the churn in the
+later patches, and rename some of the functions with (hopefully) clearer
+names: nfsd_file_flush becomes nfsd_file_fsync, and
+nfsd_file_unhash_and_dispose is renamed to nfsd_file_unhash_and_queue.
 
-Switch to using list_lru_count, and move the check into
-nfsd_file_gc_worker. The other callsite in nfsd_file_put doesn't need to
-count entries, since it only schedules the laundrette after adding an
-entry to the LRU.
+Also, the nfsd_file_put_final tracepoint is renamed to nfsd_file_free,
+to better match the name of the function from which it's called.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/filecache.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ fs/nfsd/filecache.c | 111 ++++++++++++++++++++++----------------------
+ fs/nfsd/trace.h     |   4 +-
+ 2 files changed, 58 insertions(+), 57 deletions(-)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index d8f9430d29e4..29b216b1d15c 100644
+index 001593ff23ae..c52c273df054 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -211,12 +211,9 @@ static const struct rhashtable_params nfsd_file_rhash_params = {
- static void
- nfsd_file_schedule_laundrette(void)
+@@ -335,16 +335,59 @@ nfsd_file_alloc(struct nfsd_file_lookup_key *key, unsigned int may)
+ 	return nf;
+ }
+ 
++static void
++nfsd_file_fsync(struct nfsd_file *nf)
++{
++	struct file *file = nf->nf_file;
++
++	if (!file || !(file->f_mode & FMODE_WRITE))
++		return;
++	if (vfs_fsync(file, 1) != 0)
++		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
++}
++
++static int
++nfsd_file_check_write_error(struct nfsd_file *nf)
++{
++	struct file *file = nf->nf_file;
++
++	if (!file || !(file->f_mode & FMODE_WRITE))
++		return 0;
++	return filemap_check_wb_err(file->f_mapping, READ_ONCE(file->f_wb_err));
++}
++
++static void
++nfsd_file_hash_remove(struct nfsd_file *nf)
++{
++	trace_nfsd_file_unhash(nf);
++
++	if (nfsd_file_check_write_error(nf))
++		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
++	rhashtable_remove_fast(&nfsd_file_rhash_tbl, &nf->nf_rhash,
++			       nfsd_file_rhash_params);
++}
++
++static bool
++nfsd_file_unhash(struct nfsd_file *nf)
++{
++	if (test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
++		nfsd_file_hash_remove(nf);
++		return true;
++	}
++	return false;
++}
++
+ static bool
+ nfsd_file_free(struct nfsd_file *nf)
  {
--	if ((atomic_read(&nfsd_file_rhash_tbl.nelems) == 0) ||
--	    test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags) == 0)
--		return;
+ 	s64 age = ktime_to_ms(ktime_sub(ktime_get(), nf->nf_birthtime));
+ 	bool flush = false;
+ 
++	trace_nfsd_file_free(nf);
++
+ 	this_cpu_inc(nfsd_file_releases);
+ 	this_cpu_add(nfsd_file_total_age, age);
+ 
+-	trace_nfsd_file_put_final(nf);
+ 	if (nf->nf_mark)
+ 		nfsd_file_mark_put(nf->nf_mark);
+ 	if (nf->nf_file) {
+@@ -378,27 +421,6 @@ nfsd_file_check_writeback(struct nfsd_file *nf)
+ 		mapping_tagged(mapping, PAGECACHE_TAG_WRITEBACK);
+ }
+ 
+-static int
+-nfsd_file_check_write_error(struct nfsd_file *nf)
+-{
+-	struct file *file = nf->nf_file;
 -
--	queue_delayed_work(system_wq, &nfsd_filecache_laundrette,
--			NFSD_LAUNDRETTE_DELAY);
-+	if (test_bit(NFSD_FILE_CACHE_UP, &nfsd_file_flags))
-+		queue_delayed_work(system_wq, &nfsd_filecache_laundrette,
-+				   NFSD_LAUNDRETTE_DELAY);
+-	if (!file || !(file->f_mode & FMODE_WRITE))
+-		return 0;
+-	return filemap_check_wb_err(file->f_mapping, READ_ONCE(file->f_wb_err));
+-}
+-
+-static void
+-nfsd_file_flush(struct nfsd_file *nf)
+-{
+-	struct file *file = nf->nf_file;
+-
+-	if (!file || !(file->f_mode & FMODE_WRITE))
+-		return;
+-	if (vfs_fsync(file, 1) != 0)
+-		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
+-}
+-
+ static void nfsd_file_lru_add(struct nfsd_file *nf)
+ {
+ 	set_bit(NFSD_FILE_REFERENCED, &nf->nf_flags);
+@@ -412,31 +434,18 @@ static void nfsd_file_lru_remove(struct nfsd_file *nf)
+ 		trace_nfsd_file_lru_del(nf);
+ }
+ 
+-static void
+-nfsd_file_hash_remove(struct nfsd_file *nf)
+-{
+-	trace_nfsd_file_unhash(nf);
+-
+-	if (nfsd_file_check_write_error(nf))
+-		nfsd_reset_write_verifier(net_generic(nf->nf_net, nfsd_net_id));
+-	rhashtable_remove_fast(&nfsd_file_rhash_tbl, &nf->nf_rhash,
+-			       nfsd_file_rhash_params);
+-}
+-
+-static bool
+-nfsd_file_unhash(struct nfsd_file *nf)
++struct nfsd_file *
++nfsd_file_get(struct nfsd_file *nf)
+ {
+-	if (test_and_clear_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
+-		nfsd_file_hash_remove(nf);
+-		return true;
+-	}
+-	return false;
++	if (likely(refcount_inc_not_zero(&nf->nf_ref)))
++		return nf;
++	return NULL;
  }
  
  static void
-@@ -671,7 +668,8 @@ static void
- nfsd_file_gc_worker(struct work_struct *work)
+-nfsd_file_unhash_and_dispose(struct nfsd_file *nf, struct list_head *dispose)
++nfsd_file_unhash_and_queue(struct nfsd_file *nf, struct list_head *dispose)
  {
- 	nfsd_file_gc();
--	nfsd_file_schedule_laundrette();
-+	if (list_lru_count(&nfsd_file_lru))
-+		nfsd_file_schedule_laundrette();
+-	trace_nfsd_file_unhash_and_dispose(nf);
++	trace_nfsd_file_unhash_and_queue(nf);
+ 	if (nfsd_file_unhash(nf)) {
+ 		/* caller must call nfsd_file_dispose_list() later */
+ 		nfsd_file_lru_remove(nf);
+@@ -474,7 +483,7 @@ nfsd_file_put(struct nfsd_file *nf)
+ 		nfsd_file_unhash_and_put(nf);
+ 
+ 	if (!test_bit(NFSD_FILE_HASHED, &nf->nf_flags)) {
+-		nfsd_file_flush(nf);
++		nfsd_file_fsync(nf);
+ 		nfsd_file_put_noref(nf);
+ 	} else if (nf->nf_file && test_bit(NFSD_FILE_GC, &nf->nf_flags)) {
+ 		nfsd_file_put_noref(nf);
+@@ -483,14 +492,6 @@ nfsd_file_put(struct nfsd_file *nf)
+ 		nfsd_file_put_noref(nf);
  }
  
- static unsigned long
+-struct nfsd_file *
+-nfsd_file_get(struct nfsd_file *nf)
+-{
+-	if (likely(refcount_inc_not_zero(&nf->nf_ref)))
+-		return nf;
+-	return NULL;
+-}
+-
+ static void
+ nfsd_file_dispose_list(struct list_head *dispose)
+ {
+@@ -499,7 +500,7 @@ nfsd_file_dispose_list(struct list_head *dispose)
+ 	while(!list_empty(dispose)) {
+ 		nf = list_first_entry(dispose, struct nfsd_file, nf_lru);
+ 		list_del_init(&nf->nf_lru);
+-		nfsd_file_flush(nf);
++		nfsd_file_fsync(nf);
+ 		nfsd_file_put_noref(nf);
+ 	}
+ }
+@@ -513,7 +514,7 @@ nfsd_file_dispose_list_sync(struct list_head *dispose)
+ 	while(!list_empty(dispose)) {
+ 		nf = list_first_entry(dispose, struct nfsd_file, nf_lru);
+ 		list_del_init(&nf->nf_lru);
+-		nfsd_file_flush(nf);
++		nfsd_file_fsync(nf);
+ 		if (!refcount_dec_and_test(&nf->nf_ref))
+ 			continue;
+ 		if (nfsd_file_free(nf))
+@@ -713,7 +714,7 @@ __nfsd_file_close_inode(struct inode *inode, struct list_head *dispose)
+ 				       nfsd_file_rhash_params);
+ 		if (!nf)
+ 			break;
+-		nfsd_file_unhash_and_dispose(nf, dispose);
++		nfsd_file_unhash_and_queue(nf, dispose);
+ 		count++;
+ 	} while (1);
+ 	rcu_read_unlock();
+@@ -915,7 +916,7 @@ __nfsd_file_cache_purge(struct net *net)
+ 		nf = rhashtable_walk_next(&iter);
+ 		while (!IS_ERR_OR_NULL(nf)) {
+ 			if (!net || nf->nf_net == net)
+-				nfsd_file_unhash_and_dispose(nf, &dispose);
++				nfsd_file_unhash_and_queue(nf, &dispose);
+ 			nf = rhashtable_walk_next(&iter);
+ 		}
+ 
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index b09ab4f92d43..940252482fd4 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -903,10 +903,10 @@ DEFINE_EVENT(nfsd_file_class, name, \
+ 	TP_PROTO(struct nfsd_file *nf), \
+ 	TP_ARGS(nf))
+ 
+-DEFINE_NFSD_FILE_EVENT(nfsd_file_put_final);
++DEFINE_NFSD_FILE_EVENT(nfsd_file_free);
+ DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash);
+ DEFINE_NFSD_FILE_EVENT(nfsd_file_put);
+-DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash_and_dispose);
++DEFINE_NFSD_FILE_EVENT(nfsd_file_unhash_and_queue);
+ 
+ TRACE_EVENT(nfsd_file_alloc,
+ 	TP_PROTO(
 -- 
 2.38.1
 
