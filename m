@@ -2,41 +2,40 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A75FC433FE
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72C15C43219
 	for <linux-nfs@archiver.kernel.org>; Thu,  3 Nov 2022 16:17:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229708AbiKCQRm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Nov 2022 12:17:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45584 "EHLO
+        id S231336AbiKCQRn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Nov 2022 12:17:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45578 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231836AbiKCQRj (ORCPT
+        with ESMTP id S231873AbiKCQRj (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Nov 2022 12:17:39 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0151B1838E
-        for <linux-nfs@vger.kernel.org>; Thu,  3 Nov 2022 09:16:43 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6A8211154
+        for <linux-nfs@vger.kernel.org>; Thu,  3 Nov 2022 09:16:44 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1667492203;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=X4oEMFKw4awBv6GgPhVrKbIcR1gPPxJRO1vrWls8NAQ=;
-        b=FKY3ePvC2gmL3PbqN2JXsaqEBzyDMk79KMlWDrmVGUaYzQG/oBudB+V0V+/tUpZs8i1id+
-        414yTf98B9iAMOq4PRz2dmsTrGyprMhjwI8XAqu/HINcA+tYloL6Fq9/FoBVC5QxgO/Awc
-        pYOP5kv22J0J/n6AqRv1nQjw09GUMrw=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+         content-transfer-encoding:content-transfer-encoding;
+        bh=iZLYUlTfkNsEFb90/6rRUPnaF4FyWc/ZnESSH4x3jIg=;
+        b=B0G3jXEw9ClMF3SAzL2tUClveWHvh20i4s/INKvlfzmewFIda3AA9zKmgsPLcJL1pFxiuv
+        pVjzpBGAJmv9HvbKusnri91qlUB4j5YBtIwTiMDsFjgvZUJDcNlBk5WLndPkp3uP/Xm2sf
+        mctdVOA4TQtezkC62KsYc9VmI5msmbg=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-37-MxLI7KYwM0qcfpseng2L5g-1; Thu, 03 Nov 2022 12:16:41 -0400
-X-MC-Unique: MxLI7KYwM0qcfpseng2L5g-1
+ us-mta-423-uriHy2v3OE6wpUP3QrT-nw-1; Thu, 03 Nov 2022 12:16:41 -0400
+X-MC-Unique: uriHy2v3OE6wpUP3QrT-nw-1
 Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 4312E85A5B6;
-        Thu,  3 Nov 2022 16:16:41 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id CFBFE3C11EB7;
+        Thu,  3 Nov 2022 16:16:39 +0000 (UTC)
 Received: from dwysocha.rdu.csb (unknown [10.22.10.74])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id F17B21415139;
-        Thu,  3 Nov 2022 16:16:40 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1CEA01415139;
+        Thu,  3 Nov 2022 16:16:39 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Anna Schumaker <anna.schumaker@netapp.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -44,11 +43,9 @@ To:     Anna Schumaker <anna.schumaker@netapp.com>,
 Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com,
         Benjamin Maynard <benmaynard@google.com>,
         Daire Byrne <daire.byrne@gmail.com>
-Subject: [PATCH v10 3/6] NFS: Convert buffered read paths to use netfs when fscache is enabled
-Date:   Thu,  3 Nov 2022 12:16:34 -0400
-Message-Id: <20221103161637.1725471-4-dwysocha@redhat.com>
-In-Reply-To: <20221103161637.1725471-1-dwysocha@redhat.com>
-References: <20221103161637.1725471-1-dwysocha@redhat.com>
+Subject: [PATCH v10 0/6] Convert NFS with fscache to the netfs API 
+Date:   Thu,  3 Nov 2022 12:16:31 -0400
+Message-Id: <20221103161637.1725471-1-dwysocha@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.1 on 10.11.54.7
@@ -56,787 +53,164 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Convert the NFS buffered read code paths to corresponding netfs APIs,
-but only when fscache is configured and enabled.
+This v10 patchset addresses at least some of Trond's latest concerns.
+Some of the feedback like the unlock_page() wrapper function in
+nfs_read_completion() I don't know how to address without an
+ifdef.  Other feedback I'm not quite sure about splitting out
+netfs bits or what you would like to see.  Trond I do not want to
+in any way ignore or miss any of your feedback so please elaborate
+as needed.
 
-The netfs API defines struct netfs_request_ops which must be filled
-in by the network filesystem.  For NFS, we only need to define 5 of
-the functions, the main one being the issue_read() function.
-The issue_read() function is called by the netfs layer when a read
-cannot be fulfilled locally, and must be sent to the server (either
-the cache is not active, or it is active but the data is not available).
-Once the read from the server is complete, netfs requires a call to
-netfs_subreq_terminated() which conveys either how many bytes were read
-successfully, or an error.  Note that issue_read() is called with a
-structure, netfs_io_subrequest, which defines the IO requested, and
-contains a start and a length (both in bytes), and assumes the underlying
-netfs will return a either an error on the whole region, or the number
-of bytes successfully read.
+This patchset converts NFS with fscache non-direct READ IO paths to
+use the netfs API with a non-invasive approach.  The existing NFS pgio
+layer does not need extensive changes, and is the best way so far I've
+found to address Trond's concerns about modifying the IO path [1] as
+well as only enabling netfs when fscache is configured and enabled [2].
+I have not attempted performance comparisions to address Chuck
+Lever's concern [3] because we are not converting the non-fscache
+enabled NFS IO paths to netfs.
 
-The NFS IO path is page based and the main APIs are the pgio APIs defined
-in pagelist.c.  For the pgio APIs, there is no way for the caller to
-know how many RPCs will be sent and how the pages will be broken up
-into underlying RPCs, each of which will have their own completion and
-return code.  In contrast, netfs is subrequest based, a single
-subrequest may contain multiple pages, and a single subrequest is
-initiated with issue_read() and terminated with netfs_subreq_terminated().
-Thus, to utilze the netfs APIs, NFS needs some way to accommodate
-the netfs API requirement on the single response to the whole
-subrequest, while also minimizing disruptive changes to the NFS
-pgio layer.
+The patchset is based on 6.1-rc3 and has been pushed to github at:
+https://github.com/DaveWysochanskiRH/kernel/commits/nfs-fscache-netfs
+https://github.com/DaveWysochanskiRH/kernel/commit/bff09aa979010f38a11a6f92451e85d04d850715
 
-The approach taken with this patch is to allocate a small structure
-for each nfs_netfs_issue_read() call, store the final error and number
-of bytes successfully transferred in the structure, and update these values
-as each RPC completes.  The refcount on the structure is used as a marker
-for the last RPC completion, is incremented in nfs_netfs_read_initiate(),
-and decremented inside nfs_netfs_read_completion(), when a nfs_pgio_header
-contains a valid pointer to the data.  On the final put (which signals
-the final outstanding RPC is complete) in nfs_netfs_read_completion(),
-call netfs_subreq_terminated() with either the final error value (if
-one or more READs complete with an error) or the number of bytes
-successfully transferred (if all RPCs complete successfully).  Note
-that when all RPCs complete successfully, the number of bytes transferred
-is capped to the length of the subrequest.  Capping the transferred length
-to the subrequest length prevents "Subreq overread" warnings from netfs.
-This is due to the "aligned_len" in nfs_pageio_add_page(), and the
-corner case where NFS requests a full page at the end of the file,
-even when i_size reflects only a partial page (NFS overread).
+Changes since v9 [7]
+====================
+PATCH1: Rename nfs_pageio_add_page to nfs_read_add_page (Trond)
+PATCH3: Remove a few #ifdef's and replace with wrappers (Trond) [8]
+PATCH6: RFC patch to reduce increase in nfs_inode memory footprint
+when netfs is configured but not enabled (Trond) [9]
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
----
- fs/nfs/fscache.c         | 232 +++++++++++++++++++++++----------------
- fs/nfs/fscache.h         | 122 ++++++++++++++------
- fs/nfs/inode.c           |   2 +
- fs/nfs/internal.h        |   9 ++
- fs/nfs/pagelist.c        |   4 +
- fs/nfs/read.c            |  52 +++++----
- include/linux/nfs_page.h |   3 +
- include/linux/nfs_xdr.h  |   3 +
- 8 files changed, 273 insertions(+), 154 deletions(-)
+Testing
+=======
+I did not do much testing on this as the changes to patches 1 and 3
+are cosmetic.  Patch #6 is RFC patch and may change, so if that is
+added it may need more testing.
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index a6fc1c8b6644..8dac02d05f70 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -15,6 +15,9 @@
- #include <linux/seq_file.h>
- #include <linux/slab.h>
- #include <linux/iversion.h>
-+#include <linux/xarray.h>
-+#include <linux/fscache.h>
-+#include <linux/netfs.h>
- 
- #include "internal.h"
- #include "iostat.h"
-@@ -184,7 +187,7 @@ void nfs_fscache_init_inode(struct inode *inode)
-  */
- void nfs_fscache_clear_inode(struct inode *inode)
- {
--	fscache_relinquish_cookie(netfs_i_cookie(&NFS_I(inode)->netfs), false);
-+	fscache_relinquish_cookie(netfs_i_cookie(netfs_inode(inode)), false);
- 	netfs_inode(inode)->cache = NULL;
- }
- 
-@@ -210,7 +213,7 @@ void nfs_fscache_clear_inode(struct inode *inode)
- void nfs_fscache_open_file(struct inode *inode, struct file *filp)
- {
- 	struct nfs_fscache_inode_auxdata auxdata;
--	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
-+	struct fscache_cookie *cookie = netfs_i_cookie(netfs_inode(inode));
- 	bool open_for_write = inode_is_open_for_write(inode);
- 
- 	if (!fscache_cookie_valid(cookie))
-@@ -228,119 +231,160 @@ EXPORT_SYMBOL_GPL(nfs_fscache_open_file);
- void nfs_fscache_release_file(struct inode *inode, struct file *filp)
- {
- 	struct nfs_fscache_inode_auxdata auxdata;
--	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
-+	struct fscache_cookie *cookie = netfs_i_cookie(netfs_inode(inode));
- 	loff_t i_size = i_size_read(inode);
- 
- 	nfs_fscache_update_auxdata(&auxdata, inode);
- 	fscache_unuse_cookie(cookie, &auxdata, &i_size);
- }
- 
--/*
-- * Fallback page reading interface.
-- */
--static int fscache_fallback_read_page(struct inode *inode, struct page *page)
-+int nfs_netfs_read_folio(struct file *file, struct folio *folio)
- {
--	struct netfs_cache_resources cres;
--	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
--	struct iov_iter iter;
--	struct bio_vec bvec[1];
--	int ret;
--
--	memset(&cres, 0, sizeof(cres));
--	bvec[0].bv_page		= page;
--	bvec[0].bv_offset	= 0;
--	bvec[0].bv_len		= PAGE_SIZE;
--	iov_iter_bvec(&iter, READ, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
--
--	ret = fscache_begin_read_operation(&cres, cookie);
--	if (ret < 0)
--		return ret;
--
--	ret = fscache_read(&cres, page_offset(page), &iter, NETFS_READ_HOLE_FAIL,
--			   NULL, NULL);
--	fscache_end_operation(&cres);
--	return ret;
-+	if (!netfs_inode(folio_inode(folio))->cache)
-+		return -ENOBUFS;
-+
-+	return netfs_read_folio(file, folio);
- }
- 
--/*
-- * Fallback page writing interface.
-- */
--static int fscache_fallback_write_page(struct inode *inode, struct page *page,
--				       bool no_space_allocated_yet)
-+int nfs_netfs_readahead(struct readahead_control *ractl)
- {
--	struct netfs_cache_resources cres;
--	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
--	struct iov_iter iter;
--	struct bio_vec bvec[1];
--	loff_t start = page_offset(page);
--	size_t len = PAGE_SIZE;
--	int ret;
--
--	memset(&cres, 0, sizeof(cres));
--	bvec[0].bv_page		= page;
--	bvec[0].bv_offset	= 0;
--	bvec[0].bv_len		= PAGE_SIZE;
--	iov_iter_bvec(&iter, WRITE, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
--
--	ret = fscache_begin_write_operation(&cres, cookie);
--	if (ret < 0)
--		return ret;
--
--	ret = cres.ops->prepare_write(&cres, &start, &len, i_size_read(inode),
--				      no_space_allocated_yet);
--	if (ret == 0)
--		ret = fscache_write(&cres, page_offset(page), &iter, NULL, NULL);
--	fscache_end_operation(&cres);
--	return ret;
-+	struct inode *inode = ractl->mapping->host;
-+
-+	if (!netfs_inode(inode)->cache)
-+		return -ENOBUFS;
-+
-+	netfs_readahead(ractl);
-+	return 0;
- }
- 
--/*
-- * Retrieve a page from fscache
-- */
--int __nfs_fscache_read_page(struct inode *inode, struct page *page)
-+atomic_t nfs_netfs_debug_id;
-+static int nfs_netfs_init_request(struct netfs_io_request *rreq, struct file *file)
- {
--	int ret;
-+	rreq->netfs_priv = get_nfs_open_context(nfs_file_open_context(file));
-+	rreq->debug_id = atomic_inc_return(&nfs_netfs_debug_id);
- 
--	trace_nfs_fscache_read_page(inode, page);
--	if (PageChecked(page)) {
--		ClearPageChecked(page);
--		ret = 1;
--		goto out;
--	}
-+	return 0;
-+}
- 
--	ret = fscache_fallback_read_page(inode, page);
--	if (ret < 0) {
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_READ_FAIL);
--		SetPageChecked(page);
--		goto out;
--	}
-+static void nfs_netfs_free_request(struct netfs_io_request *rreq)
-+{
-+	put_nfs_open_context(rreq->netfs_priv);
-+}
- 
--	/* Read completed synchronously */
--	nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_READ_OK);
--	SetPageUptodate(page);
--	ret = 0;
--out:
--	trace_nfs_fscache_read_page_exit(inode, page, ret);
--	return ret;
-+static inline int nfs_netfs_begin_cache_operation(struct netfs_io_request *rreq)
-+{
-+	return fscache_begin_read_operation(&rreq->cache_resources,
-+					    netfs_i_cookie(netfs_inode(rreq->inode)));
- }
- 
--/*
-- * Store a newly fetched page in fscache.  We can be certain there's no page
-- * stored in the cache as yet otherwise we would've read it from there.
-- */
--void __nfs_fscache_write_page(struct inode *inode, struct page *page)
-+static struct nfs_netfs_io_data *nfs_netfs_alloc(struct netfs_io_subrequest *sreq)
- {
--	int ret;
-+	struct nfs_netfs_io_data *netfs;
-+
-+	netfs = kzalloc(sizeof(*netfs), GFP_KERNEL_ACCOUNT);
-+	if (!netfs)
-+		return NULL;
-+	netfs->sreq = sreq;
-+	refcount_set(&netfs->refcount, 1);
-+	return netfs;
-+}
- 
--	trace_nfs_fscache_write_page(inode, page);
-+static bool nfs_netfs_clamp_length(struct netfs_io_subrequest *sreq)
-+{
-+	size_t	rsize = NFS_SB(sreq->rreq->inode->i_sb)->rsize;
- 
--	ret = fscache_fallback_write_page(inode, page, true);
-+	sreq->len = min(sreq->len, rsize);
-+	return true;
-+}
- 
--	if (ret != 0) {
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_WRITTEN_FAIL);
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_UNCACHED);
--	} else {
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_WRITTEN_OK);
-+static void nfs_netfs_issue_read(struct netfs_io_subrequest *sreq)
-+{
-+	struct nfs_netfs_io_data	*netfs;
-+	struct nfs_pageio_descriptor	pgio;
-+	struct inode *inode = sreq->rreq->inode;
-+	struct nfs_open_context *ctx = sreq->rreq->netfs_priv;
-+	struct page *page;
-+	int err;
-+	pgoff_t start = (sreq->start + sreq->transferred) >> PAGE_SHIFT;
-+	pgoff_t last = ((sreq->start + sreq->len -
-+			 sreq->transferred - 1) >> PAGE_SHIFT);
-+	XA_STATE(xas, &sreq->rreq->mapping->i_pages, start);
-+
-+	nfs_pageio_init_read(&pgio, inode, false,
-+			     &nfs_async_read_completion_ops);
-+
-+	netfs = nfs_netfs_alloc(sreq);
-+	if (!netfs)
-+		return netfs_subreq_terminated(sreq, -ENOMEM, false);
-+
-+	pgio.pg_netfs = netfs; /* used in completion */
-+
-+	xas_lock(&xas);
-+	xas_for_each(&xas, page, last) {
-+		/* nfs_read_add_page() may schedule() due to pNFS layout and other RPCs  */
-+		xas_pause(&xas);
-+		xas_unlock(&xas);
-+		err = nfs_read_add_page(&pgio, ctx, page);
-+		if (err < 0) {
-+			netfs->error = err;
-+			goto out;
-+		}
-+		xas_lock(&xas);
- 	}
--	trace_nfs_fscache_write_page_exit(inode, page, ret);
-+	xas_unlock(&xas);
-+out:
-+	nfs_pageio_complete_read(&pgio);
-+	nfs_netfs_put(netfs);
-+}
-+
-+void nfs_netfs_initiate_read(struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_netfs_io_data        *netfs = hdr->netfs;
-+
-+	if (!netfs)
-+		return;
-+
-+	nfs_netfs_get(netfs);
-+}
-+
-+void nfs_netfs_readpage_release(struct nfs_page *req)
-+{
-+	struct inode *inode = d_inode(nfs_req_openctx(req)->dentry);
-+
-+	/*
-+	 * If fscache is enabled, netfs will unlock pages.
-+	 */
-+	if (netfs_inode(inode)->cache)
-+		return;
-+
-+	unlock_page(req->wb_page);
- }
-+
-+void nfs_netfs_read_completion(struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_netfs_io_data        *netfs = hdr->netfs;
-+	struct netfs_io_subrequest      *sreq;
-+
-+	if (!netfs)
-+		return;
-+
-+	sreq = netfs->sreq;
-+	if (test_bit(NFS_IOHDR_EOF, &hdr->flags))
-+		__set_bit(NETFS_SREQ_CLEAR_TAIL, &sreq->flags);
-+
-+	if (hdr->error)
-+		netfs->error = hdr->error;
-+	else
-+		atomic64_add(hdr->res.count, &netfs->transferred);
-+
-+	nfs_netfs_put(netfs);
-+	hdr->netfs = NULL;
-+}
-+
-+const struct netfs_request_ops nfs_netfs_ops = {
-+	.init_request		= nfs_netfs_init_request,
-+	.free_request		= nfs_netfs_free_request,
-+	.begin_cache_operation	= nfs_netfs_begin_cache_operation,
-+	.issue_read		= nfs_netfs_issue_read,
-+	.clamp_length		= nfs_netfs_clamp_length
-+};
-diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
-index 38614ed8f951..18da26157fda 100644
---- a/fs/nfs/fscache.h
-+++ b/fs/nfs/fscache.h
-@@ -34,6 +34,58 @@ struct nfs_fscache_inode_auxdata {
- 	u64	change_attr;
- };
- 
-+struct nfs_netfs_io_data {
-+	/*
-+	 * NFS may split a netfs_io_subrequest into multiple RPCs, each
-+	 * with their own read completion.  In netfs, we can only call
-+	 * netfs_subreq_terminated() once for each subrequest.  Use the
-+	 * refcount here to double as a marker of the last RPC completion,
-+	 * and only call netfs via netfs_subreq_terminated() once.
-+	 */
-+	refcount_t			refcount;
-+	struct netfs_io_subrequest	*sreq;
-+
-+	/*
-+	 * Final disposition of the netfs_io_subrequest, sent in
-+	 * netfs_subreq_terminated()
-+	 */
-+	atomic64_t	transferred;
-+	int		error;
-+};
-+
-+static inline void nfs_netfs_get(struct nfs_netfs_io_data *netfs)
-+{
-+	refcount_inc(&netfs->refcount);
-+}
-+
-+static inline void nfs_netfs_put(struct nfs_netfs_io_data *netfs)
-+{
-+	ssize_t final_len;
-+
-+	/* Only the last RPC completion should call netfs_subreq_terminated() */
-+	if (!refcount_dec_and_test(&netfs->refcount))
-+		return;
-+
-+	/*
-+	 * The NFS pageio interface may read a complete page, even when netfs
-+	 * only asked for a partial page.  Specifically, this may be seen when
-+	 * one thread is truncating a file while another one is reading the last
-+	 * page of the file.
-+	 * Correct the final length here to be no larger than the netfs subrequest
-+	 * length, and prevent netfs from complain throwing "Subreq overread".
-+	 */
-+	final_len = min_t(s64, netfs->sreq->len, atomic64_read(&netfs->transferred));
-+	netfs_subreq_terminated(netfs->sreq, netfs->error ?: final_len, false);
-+	kfree(netfs);
-+}
-+static inline void nfs_netfs_inode_init(struct nfs_inode *nfsi)
-+{
-+	netfs_inode_init(&nfsi->netfs, &nfs_netfs_ops);
-+}
-+extern void nfs_netfs_initiate_read(struct nfs_pgio_header *hdr);
-+extern void nfs_netfs_read_completion(struct nfs_pgio_header *hdr);
-+extern void nfs_netfs_readpage_release(struct nfs_page *req);
-+
- /*
-  * fscache.c
-  */
-@@ -44,9 +96,8 @@ extern void nfs_fscache_init_inode(struct inode *);
- extern void nfs_fscache_clear_inode(struct inode *);
- extern void nfs_fscache_open_file(struct inode *, struct file *);
- extern void nfs_fscache_release_file(struct inode *, struct file *);
--
--extern int __nfs_fscache_read_page(struct inode *, struct page *);
--extern void __nfs_fscache_write_page(struct inode *, struct page *);
-+extern int nfs_netfs_readahead(struct readahead_control *ractl);
-+extern int nfs_netfs_read_folio(struct file *file, struct folio *folio);
- 
- static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
- {
-@@ -54,34 +105,11 @@ static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
- 		if (current_is_kswapd() || !(gfp & __GFP_FS))
- 			return false;
- 		folio_wait_fscache(folio);
--		fscache_note_page_release(netfs_i_cookie(&NFS_I(folio->mapping->host)->netfs));
--		nfs_inc_fscache_stats(folio->mapping->host,
--				      NFSIOS_FSCACHE_PAGES_UNCACHED);
- 	}
-+	fscache_note_page_release(netfs_i_cookie(&NFS_I(folio->mapping->host)->netfs));
- 	return true;
- }
- 
--/*
-- * Retrieve a page from an inode data storage object.
-- */
--static inline int nfs_fscache_read_page(struct inode *inode, struct page *page)
--{
--	if (netfs_inode(inode)->cache)
--		return __nfs_fscache_read_page(inode, page);
--	return -ENOBUFS;
--}
--
--/*
-- * Store a page newly fetched from the server in an inode data storage object
-- * in the cache.
-- */
--static inline void nfs_fscache_write_page(struct inode *inode,
--					   struct page *page)
--{
--	if (netfs_inode(inode)->cache)
--		__nfs_fscache_write_page(inode, page);
--}
--
- static inline void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *auxdata,
- 					      struct inode *inode)
- {
-@@ -117,7 +145,28 @@ static inline const char *nfs_server_fscache_state(struct nfs_server *server)
- 	return "no ";
- }
- 
-+static inline void nfs_netfs_set_pgio_header(struct nfs_pgio_header *hdr,
-+					     struct nfs_pageio_descriptor *desc)
-+{
-+	hdr->netfs = desc->pg_netfs;
-+}
-+static inline void nfs_netfs_set_pageio_descriptor(struct nfs_pageio_descriptor *desc,
-+						   struct nfs_pgio_header *hdr)
-+{
-+	desc->pg_netfs = hdr->netfs;
-+}
-+static inline void nfs_netfs_reset_pageio_descriptor(struct nfs_pageio_descriptor *desc)
-+{
-+	desc->pg_netfs = NULL;
-+}
- #else /* CONFIG_NFS_FSCACHE */
-+static inline void nfs_netfs_inode_init(struct nfs_inode *nfsi) {}
-+static inline void nfs_netfs_initiate_read(struct nfs_pgio_header *hdr) {}
-+static inline void nfs_netfs_read_completion(struct nfs_pgio_header *hdr) {}
-+static inline void nfs_netfs_readpage_release(struct nfs_page *req)
-+{
-+	unlock_page(req->wb_page);
-+}
- static inline void nfs_fscache_release_super_cookie(struct super_block *sb) {}
- 
- static inline void nfs_fscache_init_inode(struct inode *inode) {}
-@@ -125,22 +174,29 @@ static inline void nfs_fscache_clear_inode(struct inode *inode) {}
- static inline void nfs_fscache_open_file(struct inode *inode,
- 					 struct file *filp) {}
- static inline void nfs_fscache_release_file(struct inode *inode, struct file *file) {}
--
--static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
-+static inline int nfs_netfs_readahead(struct readahead_control *ractl)
- {
--	return true; /* may release folio */
-+	return -ENOBUFS;
- }
--static inline int nfs_fscache_read_page(struct inode *inode, struct page *page)
-+static inline int nfs_netfs_read_folio(struct file *file, struct folio *folio)
- {
- 	return -ENOBUFS;
- }
--static inline void nfs_fscache_write_page(struct inode *inode, struct page *page) {}
-+
-+static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
-+{
-+	return true; /* may release folio */
-+}
- static inline void nfs_fscache_invalidate(struct inode *inode, int flags) {}
- 
- static inline const char *nfs_server_fscache_state(struct nfs_server *server)
- {
- 	return "no ";
- }
--
-+static inline void nfs_netfs_set_pgio_header(struct nfs_pgio_header *hdr,
-+					     struct nfs_pageio_descriptor *desc) {}
-+static inline void nfs_netfs_set_pageio_descriptor(struct nfs_pageio_descriptor *desc,
-+						   struct nfs_pgio_header *hdr) {}
-+static inline void nfs_netfs_reset_pageio_descriptor(struct nfs_pageio_descriptor *desc) {}
- #endif /* CONFIG_NFS_FSCACHE */
- #endif /* _NFS_FSCACHE_H */
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index acc0f5899577..116ae689a490 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -2245,6 +2245,8 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
- #ifdef CONFIG_NFS_V4_2
- 	nfsi->xattr_cache = NULL;
- #endif
-+	nfs_netfs_inode_init(nfsi);
-+
- 	return VFS_I(nfsi);
- }
- EXPORT_SYMBOL_GPL(nfs_alloc_inode);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 13ea6d42d26f..6dd6d114406b 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -452,6 +452,10 @@ extern void nfs_sb_deactive(struct super_block *sb);
- extern int nfs_client_for_each_server(struct nfs_client *clp,
- 				      int (*fn)(struct nfs_server *, void *),
- 				      void *data);
-+#ifdef CONFIG_NFS_FSCACHE
-+extern const struct netfs_request_ops nfs_netfs_ops;
-+#endif
-+
- /* io.c */
- extern void nfs_start_io_read(struct inode *inode);
- extern void nfs_end_io_read(struct inode *inode);
-@@ -481,9 +485,14 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- 
- struct nfs_pgio_completion_ops;
- /* read.c */
-+extern const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
-+extern int nfs_read_add_page(struct nfs_pageio_descriptor *pgio,
-+			       struct nfs_open_context *ctx,
-+			       struct page *page);
-+extern void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 317cedfa52bf..870a7a8f299e 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -25,6 +25,7 @@
- #include "internal.h"
- #include "pnfs.h"
- #include "nfstrace.h"
-+#include "fscache.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
-@@ -68,6 +69,7 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- 	hdr->good_bytes = mirror->pg_count;
- 	hdr->io_completion = desc->pg_io_completion;
- 	hdr->dreq = desc->pg_dreq;
-+	nfs_netfs_set_pgio_header(hdr, desc);
- 	hdr->release = release;
- 	hdr->completion_ops = desc->pg_completion_ops;
- 	if (hdr->completion_ops->init_hdr)
-@@ -846,6 +848,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 	desc->pg_lseg = NULL;
- 	desc->pg_io_completion = NULL;
- 	desc->pg_dreq = NULL;
-+	nfs_netfs_reset_pageio_descriptor(desc);
- 	desc->pg_bsize = bsize;
- 
- 	desc->pg_mirror_count = 1;
-@@ -1360,6 +1363,7 @@ int nfs_pageio_resend(struct nfs_pageio_descriptor *desc,
- 
- 	desc->pg_io_completion = hdr->io_completion;
- 	desc->pg_dreq = hdr->dreq;
-+	nfs_netfs_set_pageio_descriptor(desc, hdr);
- 	list_splice_init(&hdr->pages, &pages);
- 	while (!list_empty(&pages)) {
- 		struct nfs_page *req = nfs_list_entry(pages.next);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 71267a3174f1..bede5dea0671 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -30,7 +30,7 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
- static struct kmem_cache *nfs_rdata_cachep;
-@@ -74,7 +74,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
--static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
-+void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
- {
- 	struct nfs_pgio_mirror *pgm;
- 	unsigned long npages;
-@@ -110,20 +110,13 @@ EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
- 
- static void nfs_readpage_release(struct nfs_page *req, int error)
- {
--	struct inode *inode = d_inode(nfs_req_openctx(req)->dentry);
- 	struct page *page = req->wb_page;
- 
--	dprintk("NFS: read done (%s/%llu %d@%lld)\n", inode->i_sb->s_id,
--		(unsigned long long)NFS_FILEID(inode), req->wb_bytes,
--		(long long)req_offset(req));
--
- 	if (nfs_error_is_fatal_on_server(error) && error != -ETIMEDOUT)
- 		SetPageError(page);
--	if (nfs_page_group_sync_on_bit(req, PG_UNLOCKPAGE)) {
--		if (PageUptodate(page))
--			nfs_fscache_write_page(inode, page);
--		unlock_page(page);
--	}
-+	if (nfs_page_group_sync_on_bit(req, PG_UNLOCKPAGE))
-+		nfs_netfs_readpage_release(req);
-+
- 	nfs_release_request(req);
- }
- 
-@@ -177,6 +170,8 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
- 		nfs_list_remove_request(req);
- 		nfs_readpage_release(req, error);
- 	}
-+	nfs_netfs_read_completion(hdr);
-+
- out:
- 	hdr->release(hdr);
- }
-@@ -187,6 +182,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
- 			      struct rpc_task_setup *task_setup_data, int how)
- {
- 	rpc_ops->read_setup(hdr, msg);
-+	nfs_netfs_initiate_read(hdr);
- 	trace_nfs_initiate_read(hdr);
- }
- 
-@@ -202,7 +198,7 @@ nfs_async_read_error(struct list_head *head, int error)
- 	}
- }
- 
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.error_cleanup = nfs_async_read_error,
- 	.completion = nfs_read_completion,
- };
-@@ -277,7 +273,7 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
- 
--static int
-+int
- nfs_read_add_page(struct nfs_pageio_descriptor *pgio,
- 		    struct nfs_open_context *ctx,
- 		    struct page *page)
-@@ -294,12 +290,6 @@ nfs_read_add_page(struct nfs_pageio_descriptor *pgio,
- 
- 	aligned_len = min_t(unsigned int, ALIGN(len, rsize), PAGE_SIZE);
- 
--	if (!IS_SYNC(page->mapping->host)) {
--		error = nfs_fscache_read_page(page->mapping->host, page);
--		if (error == 0)
--			goto out_unlock;
--	}
--
- 	new = nfs_create_request(ctx, page, 0, aligned_len);
- 	if (IS_ERR(new))
- 		goto out_error;
-@@ -315,8 +305,6 @@ nfs_read_add_page(struct nfs_pageio_descriptor *pgio,
- 	return 0;
- out_error:
- 	error = PTR_ERR(new);
--out_unlock:
--	unlock_page(page);
- out:
- 	return error;
- }
-@@ -355,6 +343,10 @@ int nfs_read_folio(struct file *file, struct folio *folio)
- 	if (NFS_STALE(inode))
- 		goto out_unlock;
- 
-+	ret = nfs_netfs_read_folio(file, folio);
-+	if (!ret)
-+		goto out;
-+
- 	if (file == NULL) {
- 		ret = -EBADF;
- 		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
-@@ -368,8 +360,10 @@ int nfs_read_folio(struct file *file, struct folio *folio)
- 			     &nfs_async_read_completion_ops);
- 
- 	ret = nfs_read_add_page(&pgio, ctx, page);
--	if (ret)
--		goto out;
-+	if (ret) {
-+		put_nfs_open_context(ctx);
-+		goto out_unlock;
-+	}
- 
- 	nfs_pageio_complete_read(&pgio);
- 	ret = pgio.pg_error < 0 ? pgio.pg_error : 0;
-@@ -378,12 +372,12 @@ int nfs_read_folio(struct file *file, struct folio *folio)
- 		if (!PageUptodate(page) && !ret)
- 			ret = xchg(&ctx->error, 0);
- 	}
--out:
- 	put_nfs_open_context(ctx);
--	trace_nfs_aop_readpage_done(inode, page, ret);
--	return ret;
-+	goto out;
-+
- out_unlock:
- 	unlock_page(page);
-+out:
- 	trace_nfs_aop_readpage_done(inode, page, ret);
- 	return ret;
- }
-@@ -405,6 +399,10 @@ void nfs_readahead(struct readahead_control *ractl)
- 	if (NFS_STALE(inode))
- 		goto out;
- 
-+	ret = nfs_netfs_readahead(ractl);
-+	if (!ret)
-+		goto out;
-+
- 	if (file == NULL) {
- 		ret = -EBADF;
- 		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index ba7e2e4b0926..8eeb16d9bacd 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -101,6 +101,9 @@ struct nfs_pageio_descriptor {
- 	struct pnfs_layout_segment *pg_lseg;
- 	struct nfs_io_completion *pg_io_completion;
- 	struct nfs_direct_req	*pg_dreq;
-+#ifdef CONFIG_NFS_FSCACHE
-+	void			*pg_netfs;
-+#endif
- 	unsigned int		pg_bsize;	/* default bsize for mirrors */
- 
- 	u32			pg_mirror_count;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index e86cf6642d21..e196ef595908 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1619,6 +1619,9 @@ struct nfs_pgio_header {
- 	const struct nfs_rw_ops	*rw_ops;
- 	struct nfs_io_completion *io_completion;
- 	struct nfs_direct_req	*dreq;
-+#ifdef CONFIG_NFS_FSCACHE
-+	void			*netfs;
-+#endif
- 
- 	int			pnfs_error;
- 	int			error;		/* merge with pnfs_error */
+Known issues
+============
+1. Unit test setting rsize < readahead does not properly read from
+fscache but re-reads data from the NFS server
+* This will be fixed with another linux-cachefs [4] patch to resolve
+"Stop read optimisation when folio removed from pagecache"
+* Daire Byrne also verified the patch fixes his issue as well
+
+2. "Cache volume key already in use" after xfstest runs
+* xfstests (hammerspace with vers=4.2,fsc) shows the following on the
+console after some tests:
+"NFS: Cache volume key already in use (nfs,4.1,2,c50,cfe0100a,3,,,8000,100000,100000,bb8,ea60,7530,ea60,1)"
+* This may be fixed with another patch [5] that is in progress
+
+3. Daire Byrne reported a NULL pointer oops at cachefiles_prepare_write+0x28/0x90
+* harder to reproduce/debug but under investigation [6]
+* only reproduced on RHEL7.9 based NFS re-export server using fscache with upstream kernel plus
+the previous patches
+* Debug in progress, first pass at where the problem is indicates a race
+between fscache cookie LRU and use_cookie; looking at cookie state machine [10]
+
+[58710.346376] BUG: kernel NULL pointer dereference, address: 0000000000000008
+[58710.371212] CPU: 12 PID: 9134 Comm: kworker/u129:0 Tainted: G E      6.0.0-2.dneg.x86_64 #1
+...
+[58710.389995] Workqueue: events_unbound netfs_rreq_write_to_cache_work [netfs]
+[58710.397188] RIP: 0010:cachefiles_prepare_write+0x28/0x90 [cachefiles]
+...
+[58710.500316] Call Trace:
+[58710.502894]  <TASK>
+[58710.505126]  netfs_rreq_write_to_cache_work+0x11c/0x320 [netfs]
+[58710.511201]  process_one_work+0x217/0x3e0
+[58710.515358]  worker_thread+0x4a/0x3b0
+[58710.519152]  ? process_one_work+0x3e0/0x3e0
+[58710.523467]  kthread+0xd6/0x100
+[58710.526740]  ? kthread_complete_and_exit+0x20/0x20
+[58710.531659]  ret_from_fork+0x1f/0x30
+
+
+
+References
+==========
+[1] https://lore.kernel.org/linux-nfs/9cfd5bc3cfc6abc2d3316b0387222e708d67f595.camel@hammerspace.com/
+[2] https://lore.kernel.org/linux-nfs/da9200f1bded9b8b078a7aef227fd6b92eb028fb.camel@hammerspace.com/
+[3] https://marc.info/?l=linux-nfs&m=160597917525083&w=4
+[4] https://www.mail-archive.com/linux-cachefs@redhat.com/msg03043.html
+[5] https://marc.info/?l=linux-nfs&m=165962662200679&w=4
+[6] https://listman.redhat.com/archives/linux-cachefs/2022-September/007183.html
+[7] https://marc.info/?l=linux-nfs&m=166600357429305&w=4
+[8] https://marc.info/?l=linux-nfs&m=166697599503342&w=4
+[9] https://marc.info/?l=linux-nfs&m=166717208305834&w=4
+[10] https://listman.redhat.com/archives/linux-cachefs/2022-October/007259.html
+
+Dave Wysochanski (5):
+  NFS: Rename readpage_async_filler to nfs_pageio_add_page
+  NFS: Configure support for netfs when NFS fscache is configured
+  NFS: Convert buffered read paths to use netfs when fscache is enabled
+  NFS: Remove all NFSIOS_FSCACHE counters due to conversion to netfs API
+  NFS: Remove fscache specific trace points and NFS_INO_FSCACHE bit
+
+ fs/nfs/Kconfig             |   1 +
+ fs/nfs/delegation.c        |   2 +-
+ fs/nfs/dir.c               |   2 +-
+ fs/nfs/fscache.c           | 242 ++++++++++++++++++++++---------------
+ fs/nfs/fscache.h           | 111 +++++++++++------
+ fs/nfs/inode.c             |   8 +-
+ fs/nfs/internal.h          |  11 +-
+ fs/nfs/iostat.h            |  17 ---
+ fs/nfs/nfstrace.h          |  91 --------------
+ fs/nfs/pagelist.c          |  12 ++
+ fs/nfs/pnfs.c              |  12 +-
+ fs/nfs/read.c              | 110 +++++++++--------
+ fs/nfs/super.c             |  11 --
+ fs/nfs/write.c             |   2 +-
+ include/linux/nfs_fs.h     |  35 ++++--
+ include/linux/nfs_iostat.h |  12 --
+ include/linux/nfs_page.h   |   3 +
+ include/linux/nfs_xdr.h    |   3 +
+ 18 files changed, 335 insertions(+), 350 deletions(-)
+
+-- 
+2.31.1
+
+*** BLURB HERE ***
+
+Dave Wysochanski (6):
+  NFS: Rename readpage_async_filler to nfs_read_add_page
+  NFS: Configure support for netfs when NFS fscache is configured
+  NFS: Convert buffered read paths to use netfs when fscache is enabled
+  NFS: Remove all NFSIOS_FSCACHE counters due to conversion to netfs API
+  NFS: Remove fscache specific trace points and NFS_INO_FSCACHE bit
+  netfs: Change netfs_inode_init to allocate memory to allow opt-in
+
+ fs/9p/cache.c              |   2 +-
+ fs/9p/vfs_inode.c          |  17 ++-
+ fs/afs/dynroot.c           |   7 +-
+ fs/afs/inode.c             |  14 +--
+ fs/afs/internal.h          |   2 +-
+ fs/afs/super.c             |   7 ++
+ fs/afs/write.c             |   2 +-
+ fs/ceph/inode.c            |   6 +-
+ fs/netfs/buffered_read.c   |  16 +--
+ fs/netfs/internal.h        |   2 +-
+ fs/netfs/objects.c         |   2 +-
+ fs/nfs/Kconfig             |   1 +
+ fs/nfs/delegation.c        |   2 +-
+ fs/nfs/dir.c               |   2 +-
+ fs/nfs/fscache.c           | 242 ++++++++++++++++++++++---------------
+ fs/nfs/fscache.h           | 136 +++++++++++++++------
+ fs/nfs/inode.c             |  15 ++-
+ fs/nfs/internal.h          |  11 +-
+ fs/nfs/iostat.h            |  17 ---
+ fs/nfs/nfstrace.h          |  91 --------------
+ fs/nfs/pagelist.c          |   4 +
+ fs/nfs/pnfs.c              |  12 +-
+ fs/nfs/read.c              | 110 +++++++++--------
+ fs/nfs/super.c             |  11 --
+ fs/nfs/write.c             |   2 +-
+ include/linux/netfs.h      |  41 +++++--
+ include/linux/nfs_fs.h     |  35 ++++--
+ include/linux/nfs_iostat.h |  12 --
+ include/linux/nfs_page.h   |   3 +
+ include/linux/nfs_xdr.h    |   3 +
+ 30 files changed, 428 insertions(+), 399 deletions(-)
+
 -- 
 2.31.1
 
